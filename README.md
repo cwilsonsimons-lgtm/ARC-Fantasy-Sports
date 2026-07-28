@@ -94,17 +94,31 @@ Nine values are rebound from a module other than the one that declared them.
 An imported binding is read-only in ES modules, so those live as properties on
 a single exported `S` object. Everything else stays module-local.
 
-## The draft board
+## The draft room
 
-Teams across, rounds down, snaking — the layout every drafter already knows,
-with cells tinted by position so the shape of a roster reads at a glance.
+Sleeper's layout on purpose: owners across, rounds down, snaking, the whole
+draft visible, tiles tinted by position. Density is deliberately unchanged — the
+additions are metadata and history, not a new interface.
 
-What it adds is **value against the market**. A player's ADP is where the crowd
-expects him to go, so `adp - overall pick` is how far he fell. A pick two rounds
-past his ADP shows green; a reach shows red. Picks within ±1 are unmarked, since
-drafting at market value is the norm rather than news. The column headers total
-it, so the board doubles as a live scoreboard of who is actually drafting well —
-which a conventional draft grid cannot tell you.
+**On the clock** — the owner's column carries a timer above it, a tinted header
+and a soft pulse on the pending cell. Nothing moves; it just becomes obvious.
+
+**Badges** sit tiny in a tile corner and are configurable per league in
+`draft-meta.js`: auto pick, clutch (submitted under a threshold, default 5s),
+reach and steal (a threshold either side of ADP). Icons are swappable, each
+badge can be turned off, and they are computed from the stored pick rather than
+saved, so changing a threshold re-reads history rather than rewriting it.
+
+**Reactions** are the point. Hold any tile to react; one per league member,
+changeable until the next pick lands, then locked forever. Tiles show the top
+three as bubbles along the bottom edge, tapping those opens the full breakdown,
+and the whole thing is stored with the pick — so reopening a draft years later
+still shows what the league said on the night. Holding rather than tapping keeps
+the draft workflow intact: the common action stays one tap, and reacting is a
+deliberate gesture that can't fire while scanning the board.
+
+Each pick record is `{ id, ts, ms, auto, react }`. Older saves held bare id
+strings; `migrateDraft()` lifts them on load.
 
 ## Verifying changes
 

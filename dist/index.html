@@ -883,53 +883,56 @@ body.open .drawer{transform:translateX(0)}
 .dr-done{border:1px solid var(--green);border-radius:14px;background:rgba(140,224,74,.08);padding:13px;text-align:center;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:12px}
 
-/* ===== DRAFT BOARD GRID =====
-   Teams across, rounds down, snaking. Cells are tinted by position so the shape
-   of a roster reads at a glance, and each carries its value against the market. */
-.dg-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:2px 2px 9px;
-  font-size:10px;font-weight:600;color:var(--ink-3)}
-.dg-legend span{display:inline-flex;align-items:center;gap:5px}
-.dg-legend .sw{width:9px;height:9px;border-radius:3px;display:inline-block}
-.dg-legend .sw.steal{background:#8CE04A}
-.dg-legend .sw.fair{background:#5E6B7C}
-.dg-legend .sw.reach{background:#F0453E}
-.dg-legend .dg-note{color:var(--ink-3);opacity:.75;font-weight:500}
 
+/* ===== DRAFT BOARD =====
+   Sleeper's density on purpose. Everything added here — badges, reactions, the
+   on-clock treatment — is sized to sit under the pick, never over it. */
 .dg-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;
-  border:1px solid var(--line-soft);border-radius:14px;background:var(--card-2)}
+  border:1px solid var(--line-soft);border-radius:16px;
+  background:linear-gradient(180deg,#0b1220,#080c14)}
 .dg-scroll::-webkit-scrollbar{display:none}
 .dg{width:max-content;min-width:100%}
 .dg-row{display:flex}
 .dg-rd{position:sticky;left:0;z-index:3;flex:none;width:22px;display:grid;place-items:center;
-  background:var(--card-2);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  background:#0a0f1a;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
   font-size:10px;color:var(--ink-3);border-right:1px solid var(--line-soft)}
 
-.dg-head{position:sticky;top:0;z-index:4;background:var(--bg);border-bottom:1px solid var(--line)}
-.dg-head .dg-rd{background:var(--bg)}
-.dg-th{flex:none;width:88px;padding:7px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  border-left:1px solid var(--line-soft)}
-.dg-th.me{background:rgba(124,92,255,.12)}
+.dg-head{position:sticky;top:0;z-index:4;
+  background:linear-gradient(180deg,#0d1526,#0a0f1a);border-bottom:1px solid var(--line)}
+.dg-head .dg-rd{background:transparent}
+.dg-th{flex:none;width:88px;padding:6px 4px 7px;display:flex;flex-direction:column;align-items:center;
+  gap:3px;border-left:1px solid var(--line-soft);position:relative}
+.dg-th.me{background:rgba(124,92,255,.10)}
+.dg-th.clock{background:linear-gradient(180deg,rgba(124,92,255,.22),transparent)}
 .dg-crest{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;overflow:hidden;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:10px}
 .dg-crest img{width:100%;height:100%;object-fit:cover}
 .dg-mgr{font-size:9.5px;font-weight:700;color:var(--ink-2);max-width:80px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
-.dg-tv{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--ink-3)}
+.dg-timer{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
+  color:var(--violet);background:rgba(124,92,255,.16);border:1px solid rgba(124,92,255,.5);
+  border-radius:6px;padding:1px 5px;margin-bottom:1px}
+.dg-timer.low{color:var(--red);background:rgba(240,69,62,.16);border-color:rgba(240,69,62,.55)}
 
-.dg-cell{flex:none;width:88px;min-height:56px;padding:5px 6px 4px;border-left:1px solid rgba(0,0,0,.35);
-  border-top:1px solid rgba(0,0,0,.3);position:relative;cursor:pointer;overflow:hidden}
+.dg-cell{flex:none;width:88px;min-height:58px;padding:5px 6px 4px;
+  border-left:1px solid rgba(0,0,0,.35);border-top:1px solid rgba(0,0,0,.3);
+  position:relative;cursor:pointer;overflow:hidden;transition:transform .12s ease}
+.dg-cell.held{transform:scale(.96)}
 .dg-cell .dg-m{display:flex;justify-content:space-between;gap:3px;font-size:7.5px;font-weight:700;
   opacity:.85;white-space:nowrap}
-.dg-cell .dg-f{font-size:10px;font-weight:600;line-height:1.15;margin-top:2px;
+.dg-cell .dg-f{font-size:10px;font-weight:600;line-height:1.15;margin-top:1px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dg-cell .dg-l{font-size:12px;font-weight:800;line-height:1.1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dg-cell .ar{position:absolute;right:4px;bottom:2px;font-size:9px;opacity:.5}
-.dg-cell.empty{background:var(--card-2);color:var(--ink-3);display:grid;place-items:center}
-.dg-cell.empty .pk{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;opacity:.55}
-.dg-cell.empty.clock{background:rgba(124,92,255,.16);box-shadow:inset 0 0 0 1.5px var(--violet)}
+.dg-cell.empty{background:#080d16;color:var(--ink-3);display:grid;place-items:center}
+.dg-cell.empty .pk{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
+.dg-cell.col{box-shadow:inset 1px 0 0 rgba(124,92,255,.35),inset -1px 0 0 rgba(124,92,255,.35)}
+.dg-cell.empty.clock{background:rgba(124,92,255,.14);
+  box-shadow:inset 0 0 0 1.5px var(--violet);animation:dgpulse 2.4s ease-in-out infinite}
+@keyframes dgpulse{0%,100%{box-shadow:inset 0 0 0 1.5px rgba(124,92,255,.55)}
+  50%{box-shadow:inset 0 0 0 1.5px rgba(124,92,255,1)}}
 
-/* position tints - the app's own hues, deep enough for white type */
+/* position tints — the app's own hues, deep enough for white type */
 .dg-cell.QB{background:#5c2340;color:#ffd9ec}
 .dg-cell.RB{background:#12463a;color:#c8f5e6}
 .dg-cell.WR{background:#173a5c;color:#cfe6ff}
@@ -937,12 +940,56 @@ body.open .drawer{transform:translateX(0)}
 .dg-cell.K{background:#3d2a5c;color:#e6d7ff}
 .dg-cell.DEF{background:#2b3540;color:#d6e0ea}
 
-/* the differentiator: how far the player fell past the market */
-.dg-v{position:absolute;left:5px;bottom:2px;font-family:'JetBrains Mono',ui-monospace,monospace;
-  font-size:8.5px;font-weight:700;padding:1px 3px;border-radius:4px;background:rgba(0,0,0,.4)}
-.dg-v.steal,.dg-tv.steal{color:#8CE04A}
-.dg-v.reach,.dg-tv.reach{color:#F0453E}
-.dg-v.fair,.dg-tv.fair{color:#C3CCD8}
+/* metadata: tiny by design */
+.dg-badges{position:absolute;right:3px;top:15px;display:flex;gap:1px}
+.dg-b{font-style:normal;font-size:8px;line-height:1}
+.dg-react{position:absolute;left:4px;bottom:2px;display:flex;gap:2px;align-items:center}
+.dg-react i{font-style:normal;font-size:8px;line-height:1;background:rgba(0,0,0,.45);
+  border-radius:5px;padding:1px 3px;display:inline-flex;align-items:center;gap:1px}
+.dg-react i b{font-size:7px;font-weight:700;opacity:.9}
+.dg-react i.more{opacity:.7;font-size:7px}
+.dg-open{position:absolute;right:3px;bottom:3px;width:4px;height:4px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 4px rgba(140,224,74,.8)}
+.dg-note{font-size:10px;color:var(--ink-3);text-align:center;padding:8px 4px 2px;font-weight:500}
+
+/* ===== pick detail / reaction sheets ===== */
+.dp-top{display:flex;align-items:center;gap:12px;padding:2px 0 12px}
+.dp-face{width:52px;height:52px;border-radius:14px;overflow:hidden;flex:none;background:var(--card);
+  display:grid;place-items:center}
+.dp-face img{width:100%;height:100%;object-fit:cover}
+.dp-id{flex:1;min-width:0}
+.dp-pos{font-size:12px;font-weight:700;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.dp-proj{font-size:11px;color:var(--ink-3);font-weight:600;margin-top:3px}
+.dp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px}
+.dp-grid>div{background:var(--card-2);border:1px solid var(--line-soft);border-radius:10px;padding:7px 8px}
+.dp-grid .k{display:block;font-size:8px;letter-spacing:.7px;color:var(--ink-3);font-weight:700}
+.dp-grid .v{display:block;font-size:13px;font-weight:700;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-grid .v.sm{font-size:11px}
+.dp-badges{display:flex;flex-wrap:wrap;gap:6px}
+.dp-badge{font-size:11px;font-weight:700;padding:4px 9px;border-radius:9px;
+  background:var(--card-2);border:1px solid var(--line)}
+.dp-badge.steal{border-color:rgba(140,224,74,.5);color:var(--green)}
+.dp-badge.reach{border-color:rgba(240,69,62,.5);color:var(--red)}
+.dp-reacts{display:flex;flex-direction:column;gap:5px}
+.dp-rr{display:flex;align-items:center;gap:9px;background:var(--card-2);border:1px solid var(--line-soft);
+  border-radius:10px;padding:7px 10px}
+.dp-rr .e{font-size:15px}
+.dp-rr .who{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--ink-2)}
+.dp-rr b{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:var(--ink-3)}
+.dp-none{font-size:12px;color:var(--ink-3);padding:4px 2px}
+.dp-locked{font-size:11px;color:var(--ink-3);text-align:center;margin-top:10px}
+.dp-acts{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
+.dp-acts .dr-btn{flex:1;min-width:96px;text-align:center}
+
+.rx-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rx{display:flex;align-items:center;gap:9px;background:var(--card-2);border:1px solid var(--line);
+  border-radius:12px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s}
+.rx:active{background:var(--card)}
+.rx.on{border-color:var(--violet);background:rgba(124,92,255,.14)}
+.rx .e{font-size:19px}
+.rx .l{font-size:12px;font-weight:700;color:var(--ink-2)}
+.rx-note{font-size:11px;color:var(--ink-3);margin-top:12px;line-height:1.5}
 
 /* css/panel.css */
 /* panel search: sits under the panel title, above the position pills */
@@ -1401,6 +1448,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   <div class="sheet" id="swapSheet">
     <div class="sheet-h" id="swapTitle">Swap Player</div>
     <div id="swapBody"></div>
+  </div>
+
+  <div class="sheet-scrim" id="drSheetScrim" onclick="closeDraftSheet()"></div>
+  <div class="sheet" id="drSheet">
+    <div class="sheet-h" id="drSheetTitle">Pick</div>
+    <div id="drSheetBody"></div>
   </div>
 
   <div class="sheet-scrim" id="confirmScrim" onclick="closeConfirm()"></div>
@@ -2912,10 +2965,13 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     draftPicks: () => draftPicks,
     draftPlayer: () => draftPlayer,
     fillSide: () => fillSide,
+    markOnClock: () => markOnClock,
     mkPlayer: () => mkPlayer,
     myTurn: () => myTurn,
     onClockIdx: () => onClockIdx,
     onClockTeam: () => onClockTeam,
+    pickAt: () => pickAt,
+    pickIds: () => pickIds,
     pickMeta: () => pickMeta,
     posCount: () => posCount,
     resetDraft: () => resetDraft,
@@ -2943,21 +2999,137 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     setDraftPos: () => setDraftPos
   });
 
-  // js/nav.js
-  var nav_exports = {};
-  __export(nav_exports, {
-    TABS: () => TABS,
-    bindVs: () => bindVs,
-    goLeague: () => goLeague,
-    homeTab: () => homeTab2,
-    ht: () => ht,
-    preDraft: () => preDraft,
-    renderTabs: () => renderTabs2,
-    showLeagueView: () => showLeagueView,
-    showTab: () => showTab2,
-    showView: () => showView,
-    toast: () => toast2,
-    toggleDrawer: () => toggleDrawer
+  // js/draft-meta.js
+  var draft_meta_exports = {};
+  __export(draft_meta_exports, {
+    REACTIONS: () => REACTIONS,
+    draftCfg: () => draftCfg,
+    migrateDraft: () => migrateDraft2,
+    pickBadges: () => pickBadges,
+    reactionTally: () => reactionTally,
+    reactionsOpen: () => reactionsOpen,
+    seedReactions: () => seedReactions,
+    setDraftCfg: () => setDraftCfg,
+    setReaction: () => setReaction
+  });
+  var REACTIONS = [
+    ["\u{1F44D}", "Great Pick"],
+    ["\u{1F525}", "Love It"],
+    ["\u{1F602}", "Reach"],
+    ["\u{1F62C}", "Bold"],
+    ["\u{1F48E}", "Steal"],
+    ["\u{1F92F}", "WTF"],
+    ["\u2764\uFE0F", "Favorite"],
+    ["\u{1F44F}", "Nice"]
+  ];
+  var CFG_DEFAULTS = {
+    clutchSec: 5,
+    // pick submitted faster than this earns the clutch badge
+    clutchIcon: "\u26A1",
+    // commissioner may swap for any emoji
+    autoIcon: "\u{1F552}",
+    reachIcon: "\u{1F525}",
+    stealIcon: "\u{1F48E}",
+    reachBy: 12,
+    // picks taken this far ahead of ADP
+    stealBy: 12,
+    // …or this far past it
+    badges: { auto: true, clutch: true, reach: true, steal: true }
+  };
+  function draftCfg() {
+    if (!store.draft) store.draft = { picks: [] };
+    store.draft.cfg = Object.assign({}, CFG_DEFAULTS, store.draft.cfg || {});
+    store.draft.cfg.badges = Object.assign({}, CFG_DEFAULTS.badges, store.draft.cfg.badges || {});
+    return store.draft.cfg;
+  }
+  function setDraftCfg(k, v) {
+    const c = draftCfg();
+    if (k.indexOf("badges.") === 0) c.badges[k.slice(7)] = v;
+    else c[k] = v;
+    saveStore();
+  }
+  function migrateDraft2() {
+    if (!store.draft) store.draft = { picks: [] };
+    const p = store.draft.picks || [];
+    if (p.length && typeof p[0] === "string") {
+      store.draft.picks = p.map((id) => ({ id, ts: null, ms: null, auto: true, react: {} }));
+      saveStore();
+    }
+    store.draft.picks.forEach((r) => {
+      r.react = r.react || {};
+    });
+  }
+  function pickBadges(rec, overall) {
+    const c = draftCfg(), out = [];
+    if (!rec) return out;
+    const p = NFL_BY_ID[rec.id];
+    const adp = p && p.adp < 999 ? p.adp : null;
+    if (c.badges.auto && rec.auto) out.push({ k: "auto", icon: c.autoIcon, label: "Auto pick" });
+    if (c.badges.clutch && !rec.auto && rec.ms != null && rec.ms <= c.clutchSec * 1e3)
+      out.push({ k: "clutch", icon: c.clutchIcon, label: `Under ${c.clutchSec}s` });
+    if (adp != null) {
+      const fell = adp - (overall + 1);
+      if (c.badges.steal && fell >= c.stealBy)
+        out.push({ k: "steal", icon: c.stealIcon, label: `Steal \xB7 ${Math.round(fell)} past ADP` });
+      if (c.badges.reach && -fell >= c.reachBy)
+        out.push({ k: "reach", icon: c.reachIcon, label: `Reach \xB7 ${Math.round(-fell)} ahead of ADP` });
+    }
+    return out;
+  }
+  function reactionsOpen(overall, totalPicks) {
+    return overall >= totalPicks - 1;
+  }
+  function setReaction(rec, teamKey, emoji) {
+    if (!rec) return;
+    rec.react = rec.react || {};
+    if (rec.react[teamKey] === emoji) delete rec.react[teamKey];
+    else rec.react[teamKey] = emoji;
+    saveStore();
+  }
+  function reactionTally(rec) {
+    const by = {};
+    Object.entries(rec && rec.react || {}).forEach(([team, e]) => {
+      (by[e] = by[e] || []).push(team);
+    });
+    return Object.entries(by).map(([e, teams]) => [e, teams.length, teams]).sort((a, b) => b[1] - a[1]);
+  }
+  function hash(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function seedReactions(rec, overall) {
+    if (!rec || rec.seeded) return;
+    rec.seeded = true;
+    rec.react = rec.react || {};
+    const badges = pickBadges(rec, overall).map((b) => b.k);
+    const loud = badges.includes("steal") || badges.includes("reach");
+    let h = hash(rec.id + "#" + overall);
+    const roll = () => (h = Math.imul(h ^ h >>> 15, h | 1) >>> 0) / 4294967296;
+    if (!loud && roll() > 0.45) return;
+    const others = DRAFT_ORDER.filter((k) => k !== MY_TEAM && T[k]);
+    const n = 1 + Math.floor(roll() * (loud ? 4 : 2));
+    for (let i = 0; i < n; i++) {
+      const who = others[Math.floor(roll() * others.length)];
+      const pool = badges.includes("steal") ? ["\u{1F48E}", "\u{1F525}", "\u{1F44F}", "\u{1F44D}"] : badges.includes("reach") ? ["\u{1F602}", "\u{1F62C}", "\u{1F92F}", "\u{1F44D}"] : ["\u{1F44D}", "\u{1F44F}", "\u{1F525}", "\u{1F62C}"];
+      rec.react[who] = pool[Math.floor(roll() * pool.length)];
+    }
+  }
+
+  // js/draft-room.js
+  var draft_room_exports = {};
+  __export(draft_room_exports, {
+    bindDraftTiles: () => bindDraftTiles,
+    closeDraftSheet: () => closeDraftSheet,
+    openPickDetail: () => openPickDetail,
+    openReactionBreakdown: () => openReactionBreakdown,
+    openReactionSheet: () => openReactionSheet,
+    pickReaction: () => pickReaction,
+    startDraftClock: () => startDraftClock,
+    stopDraftClock: () => stopDraftClock
   });
 
   // js/team.js
@@ -3049,6 +3221,92 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     stepSim: () => stepSim,
     swapIdx: () => swapIdx
   });
+
+  // js/nav.js
+  var nav_exports = {};
+  __export(nav_exports, {
+    TABS: () => TABS,
+    bindVs: () => bindVs,
+    goLeague: () => goLeague,
+    homeTab: () => homeTab2,
+    ht: () => ht,
+    preDraft: () => preDraft,
+    renderTabs: () => renderTabs2,
+    showLeagueView: () => showLeagueView,
+    showTab: () => showTab2,
+    showView: () => showView,
+    toast: () => toast2,
+    toggleDrawer: () => toggleDrawer
+  });
+  function showView(name) {
+    document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
+    document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
+  }
+  function preDraft() {
+    return !draftDone();
+  }
+  function TABS() {
+    return preDraft() ? [{ k: "draft", lb: "Draft" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }] : [{ k: "matchup", lb: "Matchup" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }];
+  }
+  function homeTab2() {
+    return preDraft() ? "draft" : "matchup";
+  }
+  function renderTabs2(active) {
+    const el = document.getElementById("tabs");
+    if (!el) return;
+    const cur = active || currentViewName();
+    el.innerHTML = TABS().map((t) => `<div class="tab${t.k === cur ? " on" : ""}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join("");
+  }
+  function showTab2(name) {
+    if (name === "team") {
+      renderTeam(MY_TEAM);
+      S.teamBackView = homeTab2();
+    }
+    if (name === "draft") renderDraft();
+    renderTabs2(name);
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === name));
+    showView(name);
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function toggleDrawer() {
+    document.body.classList.toggle("open");
+  }
+  function showLeagueView() {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    showView("league");
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function goLeague() {
+    showLeagueView();
+    toast2("All league matchups \u2014 tap any to open");
+  }
+  function bindVs(el) {
+    if (!el) return;
+    el.addEventListener("dblclick", goLeague);
+    let t;
+    const s = () => {
+      clearTimeout(t);
+      t = setTimeout(goLeague, 500);
+    };
+    const e = () => clearTimeout(t);
+    el.addEventListener("mousedown", s);
+    el.addEventListener("mouseup", e);
+    el.addEventListener("mouseleave", e);
+    el.addEventListener("touchstart", s, { passive: true });
+    el.addEventListener("touchmove", e, { passive: true });
+    el.addEventListener("touchend", e);
+    el.addEventListener("touchcancel", e);
+  }
+  var ht;
+  function toast2(m) {
+    const h = document.getElementById("hint");
+    h.textContent = m;
+    h.classList.add("show");
+    clearTimeout(ht);
+    ht = setTimeout(() => h.classList.remove("show"), 1600);
+  }
 
   // js/rewind.js
   var rewind_exports = {};
@@ -4422,75 +4680,154 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     if (document.querySelector('.view[data-view="draft"].on')) renderDraft();
   }
 
-  // js/nav.js
-  function showView(name) {
-    document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
-    document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
+  // js/draft-room.js
+  var PICK_SECONDS = 90;
+  function sheet(title, body2) {
+    document.getElementById("drSheetTitle").innerHTML = title;
+    document.getElementById("drSheetBody").innerHTML = body2;
+    document.getElementById("drSheetScrim").classList.add("show");
+    document.getElementById("drSheet").classList.add("show");
   }
-  function preDraft() {
-    return !draftDone();
+  function closeDraftSheet() {
+    document.getElementById("drSheetScrim").classList.remove("show");
+    document.getElementById("drSheet").classList.remove("show");
   }
-  function TABS() {
-    return preDraft() ? [{ k: "draft", lb: "Draft" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }] : [{ k: "matchup", lb: "Matchup" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }];
+  function openPickDetail(overall) {
+    const rec = pickAt(overall);
+    if (!rec) return;
+    const p = NFL_BY_ID[rec.id], m = pickMeta(overall), t = T[m.team];
+    const badges = pickBadges(rec, overall);
+    const tally = reactionTally(rec);
+    const when = rec.ts ? new Date(rec.ts).toLocaleString(
+      void 0,
+      { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+    ) : "\u2014";
+    sheet(escHtml(p.full || p.n), `
+    <div class="dp-top">
+      <div class="dp-face">${faceInner(p.id)}</div>
+      <div class="dp-id">
+        <div class="dp-pos"><span class="pos ${p.pos}">${p.pos}</span> ${esc(p.tm)}
+          &middot; #${esc(p.num || "")}</div>
+        <div class="dp-proj">${p.sproj.toFixed(0)} proj pts &middot; ADP ${p.adp < 999 ? p.adp : "\u2014"}</div>
+      </div>
+    </div>
+
+    <div class="dp-grid">
+      <div><span class="k">DRAFTED BY</span><span class="v tf-${m.team}">${escHtml(t.n)}</span></div>
+      <div><span class="k">ROUND</span><span class="v">${m.round}</span></div>
+      <div><span class="k">PICK</span><span class="v">${m.round}.${m.pick}</span></div>
+      <div><span class="k">OVERALL</span><span class="v">#${overall + 1}</span></div>
+      <div><span class="k">WHEN</span><span class="v sm">${esc(when)}</span></div>
+      <div><span class="k">ON CLOCK</span><span class="v sm">${rec.auto ? "Auto" : rec.ms != null ? (rec.ms / 1e3).toFixed(1) + "s" : "\u2014"}</span></div>
+    </div>
+
+    ${badges.length ? `<h4>BADGES</h4><div class="dp-badges">${badges.map((b) => `<span class="dp-badge ${b.k}">${b.icon} ${esc(b.label)}</span>`).join("")}</div>` : ""}
+
+    <h4>LEAGUE REACTIONS</h4>
+    ${tally.length ? `<div class="dp-reacts">${tally.map(([e, n, teams]) => `<div class="dp-rr"><span class="e">${e}</span><span class="who">${teams.map((k) => escHtml((T[k] || {}).mgr || k)).join(", ")}</span><b>${n}</b></div>`).join("")}</div>` : `<div class="dp-none">No reactions on this pick</div>`}
+
+    <div class="dp-acts">
+      <div class="dr-btn" onclick="closeDraftSheet();openPlayer('${esc(p.id)}')">Player profile</div>
+      <div class="dr-btn" onclick="toast('Trade history \u2014 not in this prototype')">Trade history</div>
+      <div class="dr-btn" onclick="toast('Fantasy history \u2014 not in this prototype')">Fantasy history</div>
+    </div>
+    ${reactionsOpen(overall, draftPicks().length) ? `<div class="dr-btn go" style="margin-top:10px" onclick="openReactionSheet(${overall})">React to this pick</div>` : `<div class="dp-locked">Reactions locked when the next pick landed</div>`}`);
   }
-  function homeTab2() {
-    return preDraft() ? "draft" : "matchup";
-  }
-  function renderTabs2(active) {
-    const el = document.getElementById("tabs");
-    if (!el) return;
-    const cur = active || currentViewName();
-    el.innerHTML = TABS().map((t) => `<div class="tab${t.k === cur ? " on" : ""}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join("");
-  }
-  function showTab2(name) {
-    if (name === "team") {
-      renderTeam(MY_TEAM);
-      S.teamBackView = homeTab2();
+  function openReactionSheet(overall) {
+    const rec = pickAt(overall);
+    if (!rec) return;
+    if (!reactionsOpen(overall, draftPicks().length)) {
+      toast2("Reactions locked \u2014 the next pick already landed");
+      return;
     }
-    if (name === "draft") renderDraft();
-    renderTabs2(name);
-    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === name));
-    showView(name);
-    document.getElementById("scroll").scrollTop = 0;
-    if (document.body.classList.contains("open")) toggleDrawer();
+    const p = NFL_BY_ID[rec.id], mine = (rec.react || {})[MY_TEAM];
+    sheet("React to " + escHtml(p.full || p.n), `
+    <div class="rx-grid">
+      ${REACTIONS.map(([e, label]) => `<div class="rx${mine === e ? " on" : ""}"
+        onclick="pickReaction(${overall},'${e}')">
+        <span class="e">${e}</span><span class="l">${esc(label)}</span></div>`).join("")}
+    </div>
+    <div class="rx-note">One reaction each. Change it until the next pick lands \u2014
+      after that it is part of the draft forever.</div>`);
   }
-  function toggleDrawer() {
-    document.body.classList.toggle("open");
+  function pickReaction(overall, emoji) {
+    const rec = pickAt(overall);
+    if (!rec) return;
+    if (!reactionsOpen(overall, draftPicks().length)) {
+      toast2("Reactions locked");
+      return;
+    }
+    setReaction(rec, MY_TEAM, emoji);
+    closeDraftSheet();
+    window.renderDraft && window.renderDraft();
+    toast2((rec.react || {})[MY_TEAM] ? "Reaction saved" : "Reaction removed");
   }
-  function showLeagueView() {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-    showView("league");
-    document.getElementById("scroll").scrollTop = 0;
-    if (document.body.classList.contains("open")) toggleDrawer();
+  function openReactionBreakdown(overall) {
+    const rec = pickAt(overall);
+    if (!rec) return;
+    const p = NFL_BY_ID[rec.id], tally = reactionTally(rec);
+    sheet(escHtml(p.full || p.n), `
+    <div class="dp-reacts">${tally.map(([e, n, teams]) => teams.map((k) => `<div class="dp-rr"><span class="e">${e}</span>
+       <span class="who">${escHtml((T[k] || {}).mgr || k)}</span></div>`).join("")).join("")}</div>
+    ${reactionsOpen(overall, draftPicks().length) ? `<div class="dr-btn go" style="margin-top:12px" onclick="openReactionSheet(${overall})">Add or change yours</div>` : `<div class="dp-locked">Locked \u2014 this is how draft night saw it</div>`}`);
   }
-  function goLeague() {
-    showLeagueView();
-    toast2("All league matchups \u2014 tap any to open");
+  function bindDraftTiles() {
+    document.querySelectorAll(".dg-cell[data-pick]").forEach((el) => {
+      let timer = null, held = false;
+      const overall = +el.dataset.pick;
+      const start = () => {
+        held = false;
+        timer = setTimeout(() => {
+          held = true;
+          el.classList.add("held");
+          openReactionSheet(overall);
+        }, 420);
+      };
+      const cancel = () => {
+        clearTimeout(timer);
+        el.classList.remove("held");
+      };
+      el.addEventListener("mousedown", start);
+      el.addEventListener("mouseup", cancel);
+      el.addEventListener("mouseleave", cancel);
+      el.addEventListener("touchstart", start, { passive: true });
+      el.addEventListener("touchmove", cancel, { passive: true });
+      el.addEventListener("touchend", cancel);
+      el.addEventListener("touchcancel", cancel);
+      el.addEventListener("click", (e) => {
+        if (held) {
+          e.stopPropagation();
+          e.preventDefault();
+          held = false;
+        }
+      }, true);
+    });
   }
-  function bindVs(el) {
-    if (!el) return;
-    el.addEventListener("dblclick", goLeague);
-    let t;
-    const s = () => {
-      clearTimeout(t);
-      t = setTimeout(goLeague, 500);
-    };
-    const e = () => clearTimeout(t);
-    el.addEventListener("mousedown", s);
-    el.addEventListener("mouseup", e);
-    el.addEventListener("mouseleave", e);
-    el.addEventListener("touchstart", s, { passive: true });
-    el.addEventListener("touchmove", e, { passive: true });
-    el.addEventListener("touchend", e);
-    el.addEventListener("touchcancel", e);
+  var tick = null;
+  var deadline = 0;
+  function startDraftClock() {
+    stopDraftClock();
+    if (draftDone()) return;
+    deadline = Date.now() + PICK_SECONDS * 1e3;
+    paintClock();
+    tick = setInterval(paintClock, 1e3);
   }
-  var ht;
-  function toast2(m) {
-    const h = document.getElementById("hint");
-    h.textContent = m;
-    h.classList.add("show");
-    clearTimeout(ht);
-    ht = setTimeout(() => h.classList.remove("show"), 1600);
+  function stopDraftClock() {
+    if (tick) {
+      clearInterval(tick);
+      tick = null;
+    }
+  }
+  function paintClock() {
+    const el = document.getElementById("dgTimer");
+    if (!el) {
+      stopDraftClock();
+      return;
+    }
+    const left = Math.max(0, Math.round((deadline - Date.now()) / 1e3));
+    const s = String(left % 60).padStart(2, "0");
+    el.innerHTML = `<span>${Math.floor(left / 60)}:${s}</span>`;
+    el.classList.toggle("low", left <= 10);
   }
 
   // js/draft-ui.js
@@ -4523,35 +4860,32 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const el = document.getElementById("draftList");
     if (el) el.innerHTML = draftBoardHTML();
   }
-  function pickValue(id, overall) {
-    const p = NFL_BY_ID[id];
-    if (!p || p.adp >= 999) return null;
-    return Math.round(p.adp - (overall + 1));
+  var REACT_SHOWN = 3;
+  function badgeStrip(rec, overall) {
+    const b = pickBadges(rec, overall);
+    if (!b.length) return "";
+    return `<span class="dg-badges">${b.map((x) => `<i class="dg-b ${x.k}" title="${esc(x.label)}">${x.icon}</i>`).join("")}</span>`;
   }
-  function teamValue(key) {
-    const picks = draftPicks();
-    let v = 0, n = 0;
-    picks.forEach((id, i) => {
-      if (pickMeta(i).team !== key) return;
-      const d = pickValue(id, i);
-      if (d != null) {
-        v += d;
-        n++;
-      }
-    });
-    return n ? v : null;
+  function reactionStrip(rec, overall) {
+    const tally = reactionTally(rec);
+    if (!tally.length) return "";
+    const shown = tally.slice(0, REACT_SHOWN);
+    const more = tally.length - shown.length;
+    return `<span class="dg-react" onclick="event.stopPropagation();openReactionBreakdown(${overall})">
+    ${shown.map(([e, n]) => `<i>${e}${n > 1 ? `<b>${n}</b>` : ""}</i>`).join("")}
+    ${more ? `<i class="more">+${more}</i>` : ""}</span>`;
   }
-  var valClass = (v) => v == null ? "" : v > 4 ? " steal" : v < -4 ? " reach" : " fair";
   function draftGridHTML() {
     const picks = draftPicks(), onClock = onClockIdx(), n = DRAFT_ORDER.length;
+    const clockTeam = draftDone() ? null : pickMeta(onClock).team;
     const head = `<div class="dg-row dg-head">
     <div class="dg-rd"></div>
     ${DRAFT_ORDER.map((k) => {
-      const t = T[k], v = teamValue(k);
-      return `<div class="dg-th${k === MY_TEAM ? " me" : ""}">
+      const t = T[k], live = k === clockTeam;
+      return `<div class="dg-th${k === MY_TEAM ? " me" : ""}${live ? " clock" : ""}">
+        ${live ? `<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec > 0 ? "" : ""}<span>1:30</span></div>` : ""}
         <div class="dg-crest" style="background:${t.bg};color:${t.c}">${markInner(t)}</div>
         <div class="dg-mgr">${esc(t.mgr)}</div>
-        <div class="dg-tv${valClass(v)}">${v == null ? "\u2014" : (v > 0 ? "+" : "") + v}</div>
       </div>`;
     }).join("")}
   </div>`;
@@ -4559,34 +4893,34 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       const down = r % 2 === 0;
       const cells = Array.from({ length: n }, (_2, c) => {
         const overall = r * n + (down ? c : n - 1 - c);
-        const id = picks[overall];
+        const rec = picks[overall];
+        const team = DRAFT_ORDER[c];
         const label = `${r + 1}.${overall % n + 1}`;
-        const arrow = c === n - 1 ? "\u2193" : down ? "\u2192" : "\u2190";
-        if (!id) {
-          return `<div class="dg-cell empty${overall === onClock ? " clock" : ""}">
-          <span class="pk">${label}</span><span class="ar">${arrow}</span></div>`;
+        const live = !draftDone() && overall === onClock;
+        if (!rec) {
+          return `<div class="dg-cell empty${live ? " clock" : ""}${team === clockTeam ? " col" : ""}">
+          <span class="pk">${label}</span></div>`;
         }
-        const p = NFL_BY_ID[id];
+        seedReactions(rec, overall);
+        const p = NFL_BY_ID[rec.id];
         const parts = (p.full || p.n).split(" ");
         const first = parts.shift(), last = parts.join(" ");
-        const bye = byeFor(p.tm);
-        const v = pickValue(id, overall);
-        return `<div class="dg-cell ${p.pos}" onclick="openPlayer('${esc(p.id)}')">
-        <div class="dg-m"><span>${p.pos} \xB7 ${p.tm}${bye ? ` (${bye})` : ""}</span><span class="pk">${label}</span></div>
+        const open = reactionsOpen(overall, picks.length);
+        return `<div class="dg-cell ${p.pos}${team === clockTeam ? " col" : ""}" data-pick="${overall}"
+          onclick="openPickDetail(${overall})">
+        <div class="dg-m"><span>${p.pos} \xB7 ${p.tm}</span><span class="pk">${label}</span></div>
         <div class="dg-f">${esc(first)}</div>
         <div class="dg-l">${esc(last)}</div>
-        ${v == null || Math.abs(v) < 2 ? "" : `<span class="dg-v${valClass(v)}">${v > 0 ? "+" : ""}${v}</span>`}
-        <span class="ar">${arrow}</span>
+        ${badgeStrip(rec, overall)}
+        ${reactionStrip(rec, overall)}
+        ${open ? '<span class="dg-open" title="Reactions still open"></span>' : ""}
       </div>`;
       }).join("");
       return `<div class="dg-row"><div class="dg-rd">${r + 1}</div>${cells}</div>`;
     }).join("");
-    return `<div class="dg-legend">
-      <span><i class="sw steal"></i>Steal</span><span><i class="sw fair"></i>Near value</span>
-      <span><i class="sw reach"></i>Reach</span>
-      <span class="dg-note">value = market ADP &minus; where he actually went</span>
-    </div>
-    <div class="dg-scroll"><div class="dg">${head}${rows2}</div></div>`;
+    return `<div class="dg-scroll"><div class="dg">${head}${rows2}</div></div>
+    <div class="dg-note">Tap a pick for detail &middot; hold to react &middot;
+      reactions lock when the next pick lands</div>`;
   }
   function draftBoardHTML() {
     const mine = myTurn();
@@ -4618,11 +4952,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   function recentPicksHTML() {
     const ps = draftPicks();
     if (!ps.length) return `<div class="empty">No picks yet</div>`;
-    return ps.slice(-24).reverse().map((id, k) => {
-      const i = ps.length - 1 - k, m = pickMeta(i), p = NFL_BY_ID[id], t = T[m.team];
+    return ps.slice(-24).reverse().map((rec, k) => {
+      const i = ps.length - 1 - k, m = pickMeta(i), id = rec && rec.id, p = NFL_BY_ID[id], t = T[m.team];
       return `<div class="dr-pick${m.team === MY_TEAM ? " me" : ""}">
       <span class="no">${m.round}.${String(m.pick).padStart(2, "0")}</span>
-      <span class="pn">${p ? p.full : id} <span class="dr-mt">${p ? p.pos + " \xB7 " + p.tm : ""}</span></span>
+      <span class="pn">${p ? esc(p.full) : ""} <span class="dr-mt">${p ? p.pos + " \xB7 " + p.tm : ""}</span></span>
       <span class="tn tf-${m.team}" style="color:${t.c}">${t.n}</span></div>`;
     }).join("");
   }
@@ -4667,12 +5001,20 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
      <div id="draftList">${draftBoardHTML()}</div>
      <div class="dr-sec">Recent Picks <span class="c">${draftPicks().length}/${DRAFT_TOTAL}</span></div>
      <div>${recentPicksHTML()}</div>`;
+    bindDraftTiles();
+    startDraftClock();
   }
 
   // js/draft.js
   function draftPicks() {
     if (!store.draft) store.draft = { picks: [] };
     return store.draft.picks;
+  }
+  function pickIds() {
+    return draftPicks().map((r) => r && r.id);
+  }
+  function pickAt(overall) {
+    return draftPicks()[overall] || null;
   }
   function draftDone() {
     return draftPicks().length >= DRAFT_TOTAL;
@@ -4696,7 +5038,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   }
   var _taken = null;
   function takenIds() {
-    if (!_taken) _taken = new Set(draftPicks());
+    if (!_taken) _taken = new Set(pickIds());
     return _taken;
   }
   function draftBoard() {
@@ -4705,8 +5047,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   }
   function teamRosterIds(key) {
     const out = [];
-    draftPicks().forEach((id, i) => {
-      if (teamOnPick(i) === key) out.push(id);
+    draftPicks().forEach((r, i) => {
+      if (teamOnPick(i) === key) out.push(r && r.id);
     });
     return out;
   }
@@ -4724,9 +5066,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const room = (p) => c[p.pos] < ROSTER_CAP[p.pos];
     return board.find((p) => need(p) && room(p)) || board.find(room) || board[0] || null;
   }
-  function commitPick(id) {
+  function commitPick(id, opts) {
     if (!id || draftDone()) return false;
-    store.draft.picks.push(id);
+    const o = opts || {};
+    store.draft.picks.push({ id, ts: o.ts || null, ms: o.ms == null ? null : o.ms, auto: !!o.auto, react: {} });
     _taken = null;
     saveStore();
     if (draftDone()) {
@@ -4737,13 +5080,18 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     }
     return true;
   }
+  var clockStart = Date.now();
+  function markOnClock() {
+    clockStart = Date.now();
+  }
   function runAutoPicks() {
     let guard = 0;
     while (!draftDone() && !myTurn() && guard++ < DRAFT_TOTAL) {
       const t = onClockTeam(), p = autoPick(t);
       if (!p) break;
-      commitPick(p.id);
+      commitPick(p.id, { auto: true, ts: Date.now() });
     }
+    markOnClock();
   }
   function draftPlayer(id) {
     if (!myTurn()) {
@@ -4757,7 +5105,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       toast2(`Roster limit reached at ${p.pos}`);
       return;
     }
-    commitPick(id);
+    commitPick(id, { auto: false, ts: Date.now(), ms: Date.now() - clockStart });
     toast2(`Drafted ${p.full}`);
     runAutoPicks();
     renderDraft();
@@ -4773,13 +5121,15 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     while (!draftDone() && guard++ < DRAFT_TOTAL + 5) {
       const t = onClockTeam(), p = autoPick(t);
       if (!p) break;
-      commitPick(p.id);
+      commitPick(p.id, { auto: true, ts: Date.now() });
     }
     renderDraft();
     refreshApp();
   }
   function resetDraft() {
-    store.draft = { picks: [] };
+    const cfg = store.draft && store.draft.cfg;
+    store.draft = { picks: [], cfg };
+    markOnClock();
     _taken = null;
     saveStore();
     clearRosters();
@@ -5476,7 +5826,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   var SHARES_PER_LOT = 50;
   var HOLDING_COUNT = 28;
   var STORE_KEY2 = "arc_markets_v1";
-  function hash(str) {
+  function hash2(str) {
     let h = 2166136261;
     for (let i = 0; i < str.length; i++) {
       h ^= str.charCodeAt(i);
@@ -5513,7 +5863,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const pool = NFL_PLAYERS.filter((p) => p.sproj > 60 && ["QB", "RB", "WR", "TE"].includes(p.pos)).sort((a, b) => b.sproj - a.sproj).slice(0, 150);
     const rank = {};
     return pool.map((p) => {
-      const r = rng(hash(p.id));
+      const r = rng(hash2(p.id));
       const price = Math.round(p.sproj / POINTS_PER_DOLLAR * 100) / 100;
       const swing = r() < 0.18 ? 5.5 : 2.2;
       const pct = Math.round(((r() * 2 - 1) * swing + 0.75) * 10) / 10;
@@ -5540,7 +5890,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     });
   }
   function sparkline(id, pct) {
-    const r = rng(hash(id + "#spark"));
+    const r = rng(hash2(id + "#spark"));
     const n = 24;
     const jitter = Array.from({ length: n }, () => (r() * 2 - 1) * 6);
     const ramp = Math.sign(pct || 1) * (3 + Math.abs(pct) * 2.2);
@@ -5598,7 +5948,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     };
   }
   function portfolioSeries(value, dayChange) {
-    const r = rng(hash("arc-portfolio"));
+    const r = rng(hash2("arc-portfolio"));
     const start = value - dayChange;
     const n = 64, out = [];
     for (let i = 0; i < n; i++) {
@@ -5623,7 +5973,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     return mkStore.watch.map((id) => BY_ID[id]).filter(Boolean);
   }
   function seasonCurve(p) {
-    const r = rng(hash(p.id + "#curve"));
+    const r = rng(hash2(p.id + "#curve"));
     const young = p.exp <= 3;
     return [2026, 2027, 2028].map((yr, i) => {
       const drift = i === 0 ? 0 : (young ? 0.06 + r() * 0.05 : -0.07 - r() * 0.05) * i;
@@ -6140,6 +6490,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     detail_exports,
     week_exports,
     nav_exports,
+    draft_meta_exports,
+    draft_room_exports,
     data_exports,
     ui_exports,
     market_exports,
@@ -6147,6 +6499,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     markets_exports
   );
   initStore();
+  migrateDraft();
   initLeagueConfig();
   initClock();
   renderStandings();

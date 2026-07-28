@@ -3,7 +3,9 @@ import { DRAFT_ORDER, DRAFT_ROUNDS, DRAFT_TOTAL, slotAllows } from './clock.js';
 import { NFL_BY_ID } from './data/nfl-players.js';
 import { byeFor } from './data/nfl-index.js';
 import { MY_TEAM, T } from './data/teams.js';
-import { draftBoard, draftDone, draftPicks, myTurn, onClockIdx, pickMeta, teamRosterIds } from './draft.js';
+import { draftBoard, draftDone, draftPicks, pickAt, myTurn, onClockIdx, pickMeta, teamRosterIds } from './draft.js';
+import { pickBadges, reactionTally, reactionsOpen, seedReactions, draftCfg } from './draft-meta.js';
+import { bindDraftTiles, startDraftClock } from './draft-room.js';
 import { preDraft, showTab } from './nav.js';
 import { PANEL_CAP, escAttr, matchQ, pillsHTML } from './panel.js';
 import { faceInner, posMatch } from './player.js';
@@ -21,46 +23,41 @@ export function paintDraftBoard(){const el=document.getElementById('draftList');
 
 // ---------- DRAFT BOARD GRID ----------
 //
-// Teams across, rounds down, snaking - the shape every drafter already knows.
-//
-// What it adds: every pick carries its value against the crowd. A player's ADP
-// is where the market expects him to go, so `adp - overall pick` is how far he
-// fell to you. Take Bijan at 1.4 when the board says 1.1 and that is +3; reach
-// for a QB two rounds early and it shows red. The column headers total it, so
-// the board doubles as a live scoreboard of who is actually drafting well -
-// something a normal draft grid cannot tell you.
+// Sleeper's shape on purpose: owners across, rounds down, snaking, whole draft
+// visible. The additions are metadata, not layout - badges in the corner and
+// league reactions along the bottom edge, both sized to stay under the pick.
 
-/** How far a player fell past the market's expectation. Positive = a steal. */
-function pickValue(id, overall){
-  const p = NFL_BY_ID[id];
-  if (!p || p.adp >= 999) return null;
-  return Math.round(p.adp - (overall + 1));
+const REACT_SHOWN = 3;   // more than this and the tile stops reading as a pick
+
+function badgeStrip(rec, overall){
+  const b = pickBadges(rec, overall);
+  if(!b.length) return '';
+  return `<span class="dg-badges">${b.map(x =>
+    `<i class="dg-b ${x.k}" title="${esc(x.label)}">${x.icon}</i>`).join('')}</span>`;
 }
 
-function teamValue(key){
-  const picks = draftPicks();
-  let v = 0, n = 0;
-  picks.forEach((id, i) => {
-    if (pickMeta(i).team !== key) return;
-    const d = pickValue(id, i);
-    if (d != null) { v += d; n++; }
-  });
-  return n ? v : null;
+function reactionStrip(rec, overall){
+  const tally = reactionTally(rec);
+  if(!tally.length) return '';
+  const shown = tally.slice(0, REACT_SHOWN);
+  const more = tally.length - shown.length;
+  return `<span class="dg-react" onclick="event.stopPropagation();openReactionBreakdown(${overall})">
+    ${shown.map(([e,n]) => `<i>${e}${n>1?`<b>${n}</b>`:''}</i>`).join('')}
+    ${more?`<i class="more">+${more}</i>`:''}</span>`;
 }
-
-const valClass = v => v == null ? '' : v > 4 ? ' steal' : v < -4 ? ' reach' : ' fair';
 
 export function draftGridHTML(){
   const picks = draftPicks(), onClock = onClockIdx(), n = DRAFT_ORDER.length;
+  const clockTeam = draftDone() ? null : pickMeta(onClock).team;
 
   const head = `<div class="dg-row dg-head">
     <div class="dg-rd"></div>
     ${DRAFT_ORDER.map(k=>{
-      const t=T[k], v=teamValue(k);
-      return `<div class="dg-th${k===MY_TEAM?' me':''}">
+      const t=T[k], live = k===clockTeam;
+      return `<div class="dg-th${k===MY_TEAM?' me':''}${live?' clock':''}">
+        ${live?`<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec>0?'':''}<span>1:30</span></div>`:''}
         <div class="dg-crest" style="background:${t.bg};color:${t.c}">${markInner(t)}</div>
         <div class="dg-mgr">${esc(t.mgr)}</div>
-        <div class="dg-tv${valClass(v)}">${v==null?'—':(v>0?'+':'')+v}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -69,35 +66,35 @@ export function draftGridHTML(){
     const down = r%2===0;                       // snake direction for this round
     const cells = Array.from({length:n},(_,c)=>{
       const overall = r*n + (down ? c : n-1-c);
-      const id = picks[overall];
+      const rec = picks[overall];
+      const team = DRAFT_ORDER[c];
       const label = `${r+1}.${(overall%n)+1}`;
-      const arrow = c===n-1 ? '↓' : (down ? '→' : '←');
-      if(!id){
-        return `<div class="dg-cell empty${overall===onClock?' clock':''}">
-          <span class="pk">${label}</span><span class="ar">${arrow}</span></div>`;
+      const live = !draftDone() && overall===onClock;
+      if(!rec){
+        return `<div class="dg-cell empty${live?' clock':''}${team===clockTeam?' col':''}">
+          <span class="pk">${label}</span></div>`;
       }
-      const p = NFL_BY_ID[id];
+      seedReactions(rec, overall);
+      const p = NFL_BY_ID[rec.id];
       const parts = (p.full||p.n).split(' ');
       const first = parts.shift(), last = parts.join(' ');
-      const bye = byeFor(p.tm);
-      const v = pickValue(id, overall);
-      return `<div class="dg-cell ${p.pos}" onclick="openPlayer('${esc(p.id)}')">
-        <div class="dg-m"><span>${p.pos} · ${p.tm}${bye?` (${bye})`:''}</span><span class="pk">${label}</span></div>
+      const open = reactionsOpen(overall, picks.length);
+      return `<div class="dg-cell ${p.pos}${team===clockTeam?' col':''}" data-pick="${overall}"
+          onclick="openPickDetail(${overall})">
+        <div class="dg-m"><span>${p.pos} · ${p.tm}</span><span class="pk">${label}</span></div>
         <div class="dg-f">${esc(first)}</div>
         <div class="dg-l">${esc(last)}</div>
-        ${(v==null||Math.abs(v)<2)?'':`<span class="dg-v${valClass(v)}">${v>0?'+':''}${v}</span>`}
-        <span class="ar">${arrow}</span>
+        ${badgeStrip(rec, overall)}
+        ${reactionStrip(rec, overall)}
+        ${open?'<span class="dg-open" title="Reactions still open"></span>':''}
       </div>`;
     }).join('');
     return `<div class="dg-row"><div class="dg-rd">${r+1}</div>${cells}</div>`;
   }).join('');
 
-  return `<div class="dg-legend">
-      <span><i class="sw steal"></i>Steal</span><span><i class="sw fair"></i>Near value</span>
-      <span><i class="sw reach"></i>Reach</span>
-      <span class="dg-note">value = market ADP &minus; where he actually went</span>
-    </div>
-    <div class="dg-scroll"><div class="dg">${head}${rows}</div></div>`;
+  return `<div class="dg-scroll"><div class="dg">${head}${rows}</div></div>
+    <div class="dg-note">Tap a pick for detail &middot; hold to react &middot;
+      reactions lock when the next pick lands</div>`;
 }
 
 export function draftBoardHTML(){
@@ -130,11 +127,11 @@ export function myDraftSlotsHTML(){
 export function recentPicksHTML(){
   const ps=draftPicks();
   if(!ps.length)return `<div class="empty">No picks yet</div>`;
-  return ps.slice(-24).reverse().map((id,k)=>{
-    const i=ps.length-1-k,m=pickMeta(i),p=NFL_BY_ID[id],t=T[m.team];
+  return ps.slice(-24).reverse().map((rec,k)=>{
+    const i=ps.length-1-k,m=pickMeta(i),id=rec&&rec.id,p=NFL_BY_ID[id],t=T[m.team];
     return `<div class="dr-pick${m.team===MY_TEAM?' me':''}">
       <span class="no">${m.round}.${String(m.pick).padStart(2,'0')}</span>
-      <span class="pn">${p?p.full:id} <span class="dr-mt">${p?p.pos+' · '+p.tm:''}</span></span>
+      <span class="pn">${p?esc(p.full):''} <span class="dr-mt">${p?p.pos+' · '+p.tm:''}</span></span>
       <span class="tn tf-${m.team}" style="color:${t.c}">${t.n}</span></div>`;
   }).join('');
 }
@@ -179,4 +176,7 @@ export function renderDraft(){
      <div id="draftList">${draftBoardHTML()}</div>
      <div class="dr-sec">Recent Picks <span class="c">${draftPicks().length}/${DRAFT_TOTAL}</span></div>
      <div>${recentPicksHTML()}</div>`;
+  // the grid is replaced wholesale each render, so gestures and the clock rebind
+  bindDraftTiles();
+  startDraftClock();
 }

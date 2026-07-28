@@ -11,8 +11,15 @@ import { BENCH, IR, LINEUP, TAXI, saveStore, store } from './store.js';
 import { refreshApp } from './team.js';
 
 // ======================= DRAFT =======================
-// 10-team snake, 15 rounds. store.draft.picks holds player ids in overall pick order.
+// 10-team snake, 15 rounds.
+//
+// store.draft.picks holds a record per pick, in overall order:
+//   { id, ts, ms, auto, react }
+// It used to be bare id strings; migrateDraft() in draft-meta.js lifts old saves.
+// Anything that just wants the players uses pickIds().
 export function draftPicks(){if(!store.draft)store.draft={picks:[]};return store.draft.picks;}
+export function pickIds(){return draftPicks().map(r=>r&&r.id);}
+export function pickAt(overall){return draftPicks()[overall]||null;}
 export function draftDone(){return draftPicks().length>=DRAFT_TOTAL;}
 // snake: odd rounds run down the order, even rounds run back up
 export function teamOnPick(i){
@@ -25,13 +32,13 @@ export function onClockTeam(){return draftDone()?null:teamOnPick(onClockIdx());}
 export function myTurn(){return onClockTeam()===MY_TEAM;}
 
 export let _taken=null;
-export function takenIds(){if(!_taken)_taken=new Set(draftPicks());return _taken;}
+export function takenIds(){if(!_taken)_taken=new Set(pickIds());return _taken;}
 export function draftBoard(){   // undrafted, ADP order
   const t=takenIds();
   return NFL_PLAYERS.filter(p=>!t.has(p.id)).sort((a,b)=>a.adp-b.adp);
 }
 export function teamRosterIds(key){
-  const out=[];draftPicks().forEach((id,i)=>{if(teamOnPick(i)===key)out.push(id);});return out;
+  const out=[];draftPicks().forEach((r,i)=>{if(teamOnPick(i)===key)out.push(r&&r.id);});return out;
 }
 export function posCount(key){
   const c={QB:0,RB:0,WR:0,TE:0};
@@ -44,27 +51,36 @@ export function autoPick(key){
   const room=p=>c[p.pos]<ROSTER_CAP[p.pos];
   return (board.find(p=>need(p)&&room(p))||board.find(room)||board[0]||null);
 }
-export function commitPick(id){
+/** `opts.auto` marks a pick the clock made; `opts.ms` is how long the owner took. */
+export function commitPick(id,opts){
   if(!id||draftDone())return false;
-  store.draft.picks.push(id);_taken=null;saveStore();
+  const o=opts||{};
+  store.draft.picks.push({id,ts:o.ts||null,ms:o.ms==null?null:o.ms,auto:!!o.auto,react:{}});
+  _taken=null;saveStore();
   if(draftDone()){applyDraftToRosters();renderTabs();invalidateRosters();renderPanel(currentRail);}
   return true;
 }
+// When the user's turn began, so a submitted pick can be timed for the clutch
+// badge. Reset every time control passes back to them.
+let clockStart = Date.now();
+export function markOnClock(){ clockStart = Date.now(); }
+
 // run the AI teams until it's the user's turn again (or the draft ends)
 export function runAutoPicks(){
   let guard=0;
   while(!draftDone()&&!myTurn()&&guard++<DRAFT_TOTAL){
     const t=onClockTeam(),p=autoPick(t);
     if(!p)break;
-    commitPick(p.id);
+    commitPick(p.id,{auto:true,ts:Date.now()});
   }
+  markOnClock();
 }
 export function draftPlayer(id){
   if(!myTurn()){toast('Not your pick');return;}
   const p=NFL_BY_ID[id];if(!p)return;
   const c=posCount(MY_TEAM);
   if(c[p.pos]>=ROSTER_CAP[p.pos]){toast(`Roster limit reached at ${p.pos}`);return;}
-  commitPick(id);
+  commitPick(id,{auto:false,ts:Date.now(),ms:Date.now()-clockStart});
   toast(`Drafted ${p.full}`);
   runAutoPicks();
   renderDraft();refreshApp();
@@ -73,11 +89,11 @@ export function simToMyPick(){runAutoPicks();renderDraft();refreshApp();}
 export function autoDraftAll(){
   let guard=0;
   while(!draftDone()&&guard++<DRAFT_TOTAL+5){
-    const t=onClockTeam(),p=autoPick(t);if(!p)break;commitPick(p.id);
+    const t=onClockTeam(),p=autoPick(t);if(!p)break;commitPick(p.id,{auto:true,ts:Date.now()});
   }
   renderDraft();refreshApp();
 }
-export function resetDraft(){store.draft={picks:[]};_taken=null;saveStore();clearRosters();showTab('draft');refreshApp();renderPanel(currentRail);}
+export function resetDraft(){const cfg=store.draft&&store.draft.cfg;store.draft={picks:[],cfg};markOnClock();_taken=null;saveStore();clearRosters();showTab('draft');refreshApp();renderPanel(currentRail);}
 
 export function clearRosters(){
   LINEUP.forEach(r=>{r.a=null;r.x=null;});
