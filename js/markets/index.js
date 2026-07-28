@@ -56,9 +56,9 @@ export function mkToggleWatch(id, el) {
 function openSheet(title, html) {
   document.getElementById('mkSheetTitle').innerHTML = title;
   document.getElementById('mkSheetBody').innerHTML = html;
-  document.body.classList.add('mk-sheet');
+  document.body.classList.add('mk-sheet-open');
 }
-export function mkCloseSheet() { document.body.classList.remove('mk-sheet'); }
+export function mkCloseSheet() { document.body.classList.remove('mk-sheet-open'); }
 
 export function mkOpenPlayer(id) {
   const p = BY_ID[id];

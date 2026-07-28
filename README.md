@@ -42,6 +42,15 @@ stable across reloads and screenshots.
 Deliberately *not* faked: the News and History tabs are empty states rather than
 invented headlines about real players.
 
+`npm run check:markets` drives the section through 23 interaction checks. Several
+assert *geometry*, not just DOM, because both bugs found here were invisible to
+content assertions: a body state class that collided with the sheet element's own
+class (applying `position:absolute; transform:translateY(102%)` to `<body>` and
+sliding the app off screen), and a `.face` rule scoped so narrowly that a face
+used outside a card or row rendered its headshot at full natural size. The check
+also fakes a successful headshot load, so layout is tested the way a user with a
+working network sees it.
+
 ## Layout
 
 ```
