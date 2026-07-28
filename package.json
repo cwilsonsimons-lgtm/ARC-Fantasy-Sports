@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node tools/serve.mjs . 8080",
+    "build": "node tools/build.mjs",
     "snapshot": "node tools/snapshot.mjs http://127.0.0.1:8080/index.html snapshots",
     "pixel-diff": "node tools/pixel-diff.mjs"
   },

@@ -5,15 +5,19 @@ draft room, free agency, and a simulated live-scoring week clock.
 
 ## Running it
 
-The app is plain ES modules, so it needs to be served over HTTP (opening
-`index.html` from the filesystem will not work — the browser blocks module
-loading over `file://`).
+**Just want to look at it?** Open `dist/index.html` — it is the whole app in one
+self-contained file, so double-clicking it works. Rebuild it with `npm run build`
+after changing anything under `css/` or `js/`.
+
+**Working on the code?** The source is plain ES modules, which browsers refuse to
+load over `file://`, so it needs to be served:
 
 ```
 npm start          # serves the repo at http://127.0.0.1:8080
 ```
 
-No build step, no framework, no runtime dependencies.
+No framework and no runtime dependencies; `esbuild` is only used to produce the
+single-file build, and `playwright` only for the verification harness.
 
 ## Layout
 
