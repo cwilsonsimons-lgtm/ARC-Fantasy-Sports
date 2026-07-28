@@ -30,7 +30,11 @@ export function renderUserMatchup(){
 
   const sk=live?simKick():null;
   const phase=live?(sk<0?'pre':(!isFinite(sk)?'final':'live')):null;
-  const canRewind = S.week<=LIVE_WEEK;
+  // Rewind is available on every matchup, matching the detail view, which has
+  // always wired it unconditionally. This used to read `S.week <= LIVE_WEEK`,
+  // but LIVE_WEEK is 0 while weeks run from MINW (1), so it was never true and
+  // the scrubber was silently dead on this tab.
+  const canRewind = S.week >= MINW;
   uHero.className='';
   uHero.innerHTML=stadiumStageHTML(aK,xK,as,xs,aw,xw,ap,xp,{phase:phase,rewind:canRewind?'userRewind':null});
   bindVs(uHero.querySelector('[data-vs]'));

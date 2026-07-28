@@ -16,7 +16,11 @@ export const badge=(t,cls)=>`<span class="${cls}" style="background:${t.bg};colo
 
 // ----- week engine state -----
 // LIVE_WEEK 0 = nothing has kicked off yet (preseason)
-export const LIVE_WEEK=0, MINW=1, MAXW=14;
+// Week 1 is the live week. This was 0 while weeks run from MINW (1), so
+// `week === LIVE_WEEK` was never true and the whole live-scoring path was
+// unreachable: the hero showed 0.0-0.0 no matter how far the game clock was
+// stepped, and the Rewind scrubber interpolated between zeroes.
+export const LIVE_WEEK=1, MINW=1, MAXW=14;
 
 
 export function gameClock(name){

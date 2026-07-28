@@ -120,6 +120,21 @@ deliberate gesture that can't fire while scanning the board.
 Each pick record is `{ id, ts, ms, auto, react }`. Older saves held bare id
 strings; `migrateDraft()` lifts them on load.
 
+## The live week and Rewind
+
+`LIVE_WEEK` names the week that is currently being played; the user's own
+matchup takes its score from the running lineup total rather than the seeded
+schedule, and starters lock as their kickoffs pass.
+
+Tapping either win % or the win bar opens **Rewind** — a scrubbable timeline of
+the matchup. Dragging the handle reports the score and win odds at that moment.
+
+Both were unreachable for a while: `LIVE_WEEK` was `0` while weeks run from
+`MINW` (1), so `week === LIVE_WEEK` could never be true. The hero stayed at
+0.0-0.0 however far the clock was stepped, and Rewind interpolated between
+zeroes. The matchup screen had a second copy of the same mistake in its
+`canRewind` check, which left the scrubber wired up only in the detail view.
+
 ## Verifying changes
 
 The app is deterministic — no `Math.random`, no `Date.now` — so it can be

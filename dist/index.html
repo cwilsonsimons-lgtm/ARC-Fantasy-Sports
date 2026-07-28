@@ -3743,7 +3743,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     }
     const sk = live ? simKick() : null;
     const phase = live ? sk < 0 ? "pre" : !isFinite(sk) ? "final" : "live" : null;
-    const canRewind = S.week <= LIVE_WEEK;
+    const canRewind = S.week >= MINW;
     uHero.className = "";
     uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null });
     bindVs(uHero.querySelector("[data-vs]"));
@@ -4300,7 +4300,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 
   // js/lineup.js
   var badge = (t, cls) => `<span class="${cls}" style="background:${t.bg};color:${t.c};overflow:hidden">${markInner(t)}</span>`;
-  var LIVE_WEEK = 0;
+  var LIVE_WEEK = 1;
   var MINW = 1;
   var MAXW = 14;
   function gameClock(name) {
