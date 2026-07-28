@@ -94,6 +94,18 @@ Nine values are rebound from a module other than the one that declared them.
 An imported binding is read-only in ES modules, so those live as properties on
 a single exported `S` object. Everything else stays module-local.
 
+## The draft board
+
+Teams across, rounds down, snaking — the layout every drafter already knows,
+with cells tinted by position so the shape of a roster reads at a glance.
+
+What it adds is **value against the market**. A player's ADP is where the crowd
+expects him to go, so `adp - overall pick` is how far he fell. A pick two rounds
+past his ADP shows green; a reach shows red. Picks within ±1 are unmarked, since
+drafting at market value is the norm rather than news. The column headers total
+it, so the board doubles as a live scoreboard of who is actually drafting well —
+which a conventional draft grid cannot tell you.
+
 ## Verifying changes
 
 The app is deterministic — no `Math.random`, no `Date.now` — so it can be

@@ -39,3 +39,64 @@
 .dr-slot .pn.e{color:var(--ink-3);font-weight:500;font-style:italic}
 .dr-done{border:1px solid var(--green);border-radius:14px;background:rgba(140,224,74,.08);padding:13px;text-align:center;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+
+/* ===== DRAFT BOARD GRID =====
+   Teams across, rounds down, snaking. Cells are tinted by position so the shape
+   of a roster reads at a glance, and each carries its value against the market. */
+.dg-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:2px 2px 9px;
+  font-size:10px;font-weight:600;color:var(--ink-3)}
+.dg-legend span{display:inline-flex;align-items:center;gap:5px}
+.dg-legend .sw{width:9px;height:9px;border-radius:3px;display:inline-block}
+.dg-legend .sw.steal{background:#8CE04A}
+.dg-legend .sw.fair{background:#5E6B7C}
+.dg-legend .sw.reach{background:#F0453E}
+.dg-legend .dg-note{color:var(--ink-3);opacity:.75;font-weight:500}
+
+.dg-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--line-soft);border-radius:14px;background:var(--card-2)}
+.dg-scroll::-webkit-scrollbar{display:none}
+.dg{width:max-content;min-width:100%}
+.dg-row{display:flex}
+.dg-rd{position:sticky;left:0;z-index:3;flex:none;width:22px;display:grid;place-items:center;
+  background:var(--card-2);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:10px;color:var(--ink-3);border-right:1px solid var(--line-soft)}
+
+.dg-head{position:sticky;top:0;z-index:4;background:var(--bg);border-bottom:1px solid var(--line)}
+.dg-head .dg-rd{background:var(--bg)}
+.dg-th{flex:none;width:88px;padding:7px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  border-left:1px solid var(--line-soft)}
+.dg-th.me{background:rgba(124,92,255,.12)}
+.dg-crest{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:10px}
+.dg-crest img{width:100%;height:100%;object-fit:cover}
+.dg-mgr{font-size:9.5px;font-weight:700;color:var(--ink-2);max-width:80px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.dg-tv{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--ink-3)}
+
+.dg-cell{flex:none;width:88px;min-height:56px;padding:5px 6px 4px;border-left:1px solid rgba(0,0,0,.35);
+  border-top:1px solid rgba(0,0,0,.3);position:relative;cursor:pointer;overflow:hidden}
+.dg-cell .dg-m{display:flex;justify-content:space-between;gap:3px;font-size:7.5px;font-weight:700;
+  opacity:.85;white-space:nowrap}
+.dg-cell .dg-f{font-size:10px;font-weight:600;line-height:1.15;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dg-cell .dg-l{font-size:12px;font-weight:800;line-height:1.1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dg-cell .ar{position:absolute;right:4px;bottom:2px;font-size:9px;opacity:.5}
+.dg-cell.empty{background:var(--card-2);color:var(--ink-3);display:grid;place-items:center}
+.dg-cell.empty .pk{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;opacity:.55}
+.dg-cell.empty.clock{background:rgba(124,92,255,.16);box-shadow:inset 0 0 0 1.5px var(--violet)}
+
+/* position tints - the app's own hues, deep enough for white type */
+.dg-cell.QB{background:#5c2340;color:#ffd9ec}
+.dg-cell.RB{background:#12463a;color:#c8f5e6}
+.dg-cell.WR{background:#173a5c;color:#cfe6ff}
+.dg-cell.TE{background:#5a3d16;color:#ffe6c2}
+.dg-cell.K{background:#3d2a5c;color:#e6d7ff}
+.dg-cell.DEF{background:#2b3540;color:#d6e0ea}
+
+/* the differentiator: how far the player fell past the market */
+.dg-v{position:absolute;left:5px;bottom:2px;font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:8.5px;font-weight:700;padding:1px 3px;border-radius:4px;background:rgba(0,0,0,.4)}
+.dg-v.steal,.dg-tv.steal{color:#8CE04A}
+.dg-v.reach,.dg-tv.reach{color:#F0453E}
+.dg-v.fair,.dg-tv.fair{color:#C3CCD8}
