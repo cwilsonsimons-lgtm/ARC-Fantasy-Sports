@@ -758,7 +758,13 @@ body.open .drawer{transform:translateX(0)}
 }
 body.markets .mk{display:flex}
 /* while Markets is open the fantasy chrome underneath is fully covered */
-body.markets .nav,body.markets .shift,body.markets .drawer,body.markets .scrim{visibility:hidden}
+body.markets .shift,body.markets .drawer,body.markets .scrim{visibility:hidden}
+/* The app keeps its own bottom nav while Markets is open, so it has to paint
+   above the section. Markets highlights itself there without touching the
+   fantasy code - the .on class stays where it is and CSS overrides the colour. */
+body.markets .nav{z-index:75}
+body.markets .nav .nv.on{color:var(--ink-3)}
+body.markets .nav .nv[data-nav="markets"]{color:#2E8CFF}
 /* the fantasy toast sits above everything; it must not float over Markets */
 body.markets #hint{display:none}
 
@@ -770,7 +776,11 @@ body.markets #hint{display:none}
 .mk-brand{text-align:center;line-height:1;cursor:pointer}
 .mk-brand .a{font-size:29px;font-weight:800;letter-spacing:-.5px}
 .mk-brand .m{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:var(--mk-blue);margin-top:5px}
-.mk-tools{display:flex;gap:10px;align-items:center}
+.mk-tools{display:flex;gap:9px;align-items:center}
+.mk-pf{border-radius:9px;border:1px solid var(--mk-line);background:var(--mk-card);
+  width:32px;height:32px;color:var(--mk-ink-2)}
+.mk-pf svg{width:18px;height:18px}
+.mk-pf.on{background:rgba(46,140,255,.14);border-color:var(--mk-blue-dim);color:var(--mk-blue)}
 .mk-bell{position:relative}
 .mk-bell .bdg{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
   background:var(--mk-blue);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center}
@@ -896,13 +906,6 @@ body.markets #hint{display:none}
 .mk-empty .t{font-size:14px;font-weight:700;color:var(--mk-ink-2)}
 .mk-empty .s{font-size:12px;margin-top:7px;line-height:1.55}
 
-/* ---------- bottom nav ---------- */
-.mk-nav{position:absolute;left:0;right:0;bottom:0;z-index:70;height:84px;background:rgba(6,10,16,.96);
-  backdrop-filter:blur(18px);border-top:1px solid var(--mk-line);display:flex;padding:9px 10px 26px;gap:6px}
-.mk-nv{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  color:var(--mk-ink-3);cursor:pointer;font-size:10.5px;font-weight:700;border-radius:14px}
-.mk-nv svg{width:22px;height:22px}
-.mk-nv.on{color:var(--mk-blue);background:rgba(46,140,255,.10)}
 
 /* ---------- sheet (player detail / about) ---------- */
 .mk-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;
@@ -938,8 +941,7 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
 /* real device: match the fantasy app's safe-area handling */
 @media (max-width:440px){
   .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
-  .mk-nav{height:var(--navh);padding:9px 10px calc(env(safe-area-inset-bottom,0px) + 2px)}
-  .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
+    .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
 }
 
 </style>
@@ -1079,10 +1081,10 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
 
   <!-- BOTTOM NAV -->
   <div class="nav">
-    <div class="nv on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
-    <div class="nv" onclick="toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
-    <div class="nv" onclick="toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+    <div class="nv on" data-nav="matchup" onclick="closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
+    <div class="nv" data-nav="markets" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" data-nav="feed" onclick="closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
+    <div class="nv" data-nav="profile" onclick="closeMarkets();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
 
   <div class="sheet-scrim" id="sheetScrim" onclick="closeWeekPicker()"></div>
@@ -1106,8 +1108,9 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
   <div class="hint" id="hint"></div>
 
   <!-- ===== ARC MARKETS =====
-       A separate section, not a fantasy screen. It covers the whole phone and
-       carries its own header and bottom nav; "Leagues" returns to the app. -->
+       A separate section, not a fantasy screen. It covers the phone above the
+       app's own bottom nav, which stays put; the briefcase button in the header
+       swaps between the market and the portfolio. -->
   <div class="mk" id="mk">
     <div class="mk-head">
       <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
@@ -1118,6 +1121,7 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
       <div class="mk-tools">
         <div class="mk-ic" onclick="mkToast('Search is not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
         <div class="mk-ic mk-bell" onclick="mkToast('Alerts are not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span class="bdg">3</span></div>
+        <div class="mk-ic mk-pf" id="mkPfBtn" onclick="mkTogglePortfolio()" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
       </div>
     </div>
 
@@ -1126,7 +1130,6 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
       <div class="mk-view" data-mkview="portfolio" id="mkPortfolio"></div>
     </div>
 
-    <div class="mk-nav" id="mkNav"></div>
 
     <div class="mk-scrim" onclick="mkCloseSheet()"></div>
     <div class="mk-sheet" id="mkSheet">
@@ -5554,50 +5557,34 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
     mkCloseSheet: () => mkCloseSheet,
     mkOpenPlayer: () => mkOpenPlayer,
     mkToast: () => mkToast,
+    mkTogglePortfolio: () => mkTogglePortfolio,
     mkToggleWatch: () => mkToggleWatch,
     mkView: () => mkView,
-    openMarkets: () => openMarkets,
-    renderMkNav: () => renderMkNav
+    openMarkets: () => openMarkets
   });
   var view = "market";
-  var NAV = [
-    ["market", "Market", ICON.market],
-    ["portfolio", "Portfolio", ICON.bag],
-    ["leagues", "Leagues", ICON.trophy],
-    ["profile", "Profile", ICON.person]
-  ];
   function openMarkets() {
     document.body.classList.add("markets");
     mkView(view);
   }
   function closeMarkets() {
+    if (!document.body.classList.contains("markets")) return;
     document.body.classList.remove("markets");
     mkCloseSheet();
     window.showTab && window.showTab(window.homeTab ? window.homeTab() : "matchup");
   }
   function mkView(name) {
-    if (name === "leagues") {
-      closeMarkets();
-      return;
-    }
-    if (name === "profile") {
-      mkToast("Profile \u2014 not part of this concept build");
-      return;
-    }
     view = name;
     document.querySelectorAll(".mk-view").forEach((v) => v.classList.toggle("on", v.dataset.mkview === name));
-    document.querySelectorAll(".mk-nv").forEach((n) => n.classList.toggle("on", n.dataset.nv === name));
+    const btn = document.getElementById("mkPfBtn");
+    if (btn) btn.classList.toggle("on", name === "portfolio");
     if (name === "market") renderMarket();
     else renderPortfolio();
     const sc = document.getElementById("mkScroll");
     if (sc) sc.scrollTop = 0;
   }
-  function renderMkNav() {
-    const el = document.getElementById("mkNav");
-    if (!el) return;
-    el.innerHTML = NAV.map(
-      ([k, lb, ic]) => `<div class="mk-nv${view === k ? " on" : ""}" data-nv="${k}" onclick="mkView('${k}')">${ic}${lb}</div>`
-    ).join("");
+  function mkTogglePortfolio() {
+    mkView(view === "portfolio" ? "market" : "portfolio");
   }
   function mkToggleWatch(id, el) {
     const on = toggleWatch(id);
@@ -5703,7 +5690,6 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
     mkT = setTimeout(() => el.classList.remove("show"), 1700);
   }
   function initMarkets2() {
-    renderMkNav();
   }
 
   // js/main.js

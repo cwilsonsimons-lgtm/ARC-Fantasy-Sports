@@ -3,6 +3,9 @@
 // This is the only file that touches the fantasy app, and only at the seam:
 // opening the section adds a class to <body>, closing it removes it. Markets
 // never reads league state, and the fantasy app never reads market state.
+//
+// The app's own bottom nav stays visible throughout; Markets has no nav of its
+// own, and reaches the portfolio from a button in the header instead.
 import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
          holdingRows } from './data.js';
 import { ICON, spark, face, esc, money, pctText, dirClass, tri } from './ui.js';
@@ -11,13 +14,6 @@ import { renderPortfolio } from './portfolio.js';
 
 let view = 'market';
 
-const NAV = [
-  ['market',    'Market',    ICON.market],
-  ['portfolio', 'Portfolio', ICON.bag],
-  ['leagues',   'Leagues',   ICON.trophy],
-  ['profile',   'Profile',   ICON.person],
-];
-
 export function openMarkets() {
   document.body.classList.add('markets');
   mkView(view);
@@ -25,6 +21,7 @@ export function openMarkets() {
 
 /** Leave Arc Markets and go back to the fantasy app. */
 export function closeMarkets() {
+  if (!document.body.classList.contains('markets')) return;   // also called by nav items
   document.body.classList.remove('markets');
   mkCloseSheet();
   // hand control back to whichever fantasy tab makes sense right now
@@ -32,25 +29,21 @@ export function closeMarkets() {
 }
 
 export function mkView(name) {
-  if (name === 'leagues') { closeMarkets(); return; }
-  if (name === 'profile') { mkToast('Profile — not part of this concept build'); return; }
   view = name;
   document.querySelectorAll('.mk-view').forEach(v =>
     v.classList.toggle('on', v.dataset.mkview === name));
-  document.querySelectorAll('.mk-nv').forEach(n =>
-    n.classList.toggle('on', n.dataset.nv === name));
+  const btn = document.getElementById('mkPfBtn');
+  if (btn) btn.classList.toggle('on', name === 'portfolio');
   if (name === 'market') renderMarket(); else renderPortfolio();
   const sc = document.getElementById('mkScroll');
   if (sc) sc.scrollTop = 0;
 }
 
-export function renderMkNav() {
-  const el = document.getElementById('mkNav');
-  if (!el) return;
-  el.innerHTML = NAV.map(([k, lb, ic]) =>
-    `<div class="mk-nv${view === k ? ' on' : ''}" data-nv="${k}" onclick="mkView('${k}')">${ic}${lb}</div>`
-  ).join('');
+/** The header's top-right button swaps between the market and the portfolio. */
+export function mkTogglePortfolio() {
+  mkView(view === 'portfolio' ? 'market' : 'portfolio');
 }
+
 
 // ---------------------------------------------------------------- watchlist
 export function mkToggleWatch(id, el) {
@@ -164,4 +157,4 @@ export function mkToast(msg) {
   mkT = setTimeout(() => el.classList.remove('show'), 1700);
 }
 
-export function initMarkets() { renderMkNav(); }
+export function initMarkets() { /* nothing to prerender; views build on open */ }

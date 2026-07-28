@@ -12,7 +12,13 @@
 }
 body.markets .mk{display:flex}
 /* while Markets is open the fantasy chrome underneath is fully covered */
-body.markets .nav,body.markets .shift,body.markets .drawer,body.markets .scrim{visibility:hidden}
+body.markets .shift,body.markets .drawer,body.markets .scrim{visibility:hidden}
+/* The app keeps its own bottom nav while Markets is open, so it has to paint
+   above the section. Markets highlights itself there without touching the
+   fantasy code - the .on class stays where it is and CSS overrides the colour. */
+body.markets .nav{z-index:75}
+body.markets .nav .nv.on{color:var(--ink-3)}
+body.markets .nav .nv[data-nav="markets"]{color:#2E8CFF}
 /* the fantasy toast sits above everything; it must not float over Markets */
 body.markets #hint{display:none}
 
@@ -24,7 +30,11 @@ body.markets #hint{display:none}
 .mk-brand{text-align:center;line-height:1;cursor:pointer}
 .mk-brand .a{font-size:29px;font-weight:800;letter-spacing:-.5px}
 .mk-brand .m{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:var(--mk-blue);margin-top:5px}
-.mk-tools{display:flex;gap:10px;align-items:center}
+.mk-tools{display:flex;gap:9px;align-items:center}
+.mk-pf{border-radius:9px;border:1px solid var(--mk-line);background:var(--mk-card);
+  width:32px;height:32px;color:var(--mk-ink-2)}
+.mk-pf svg{width:18px;height:18px}
+.mk-pf.on{background:rgba(46,140,255,.14);border-color:var(--mk-blue-dim);color:var(--mk-blue)}
 .mk-bell{position:relative}
 .mk-bell .bdg{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
   background:var(--mk-blue);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center}
@@ -150,13 +160,6 @@ body.markets #hint{display:none}
 .mk-empty .t{font-size:14px;font-weight:700;color:var(--mk-ink-2)}
 .mk-empty .s{font-size:12px;margin-top:7px;line-height:1.55}
 
-/* ---------- bottom nav ---------- */
-.mk-nav{position:absolute;left:0;right:0;bottom:0;z-index:70;height:84px;background:rgba(6,10,16,.96);
-  backdrop-filter:blur(18px);border-top:1px solid var(--mk-line);display:flex;padding:9px 10px 26px;gap:6px}
-.mk-nv{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  color:var(--mk-ink-3);cursor:pointer;font-size:10.5px;font-weight:700;border-radius:14px}
-.mk-nv svg{width:22px;height:22px}
-.mk-nv.on{color:var(--mk-blue);background:rgba(46,140,255,.10)}
 
 /* ---------- sheet (player detail / about) ---------- */
 .mk-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;
@@ -192,6 +195,5 @@ body.mk-sheet .mk-sheet{transform:translateY(0)}
 /* real device: match the fantasy app's safe-area handling */
 @media (max-width:440px){
   .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
-  .mk-nav{height:var(--navh);padding:9px 10px calc(env(safe-area-inset-bottom,0px) + 2px)}
-  .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
+    .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
 }
