@@ -1,0 +1,37 @@
+/* shiftable region (pushes left when drawer opens) */
+.shift{position:absolute;inset:52px 0 0 0;z-index:10;display:flex;flex-direction:column;
+  transition:transform .38s cubic-bezier(.4,0,.2,1)}
+body.open .shift{transform:translateX(-58px) scale(.975);transform-origin:left center}
+.scrim{position:absolute;inset:52px 0 84px 0;z-index:20;background:rgba(3,5,9,.66);
+  opacity:0;pointer-events:none;transition:opacity .38s}
+body.open .scrim{opacity:1;pointer-events:auto}
+
+/* fixed header */
+.leaguebar{display:flex;align-items:center;justify-content:space-between;padding:11px 16px 9px;
+  background:var(--bg);border-bottom:1px solid var(--line-soft)}
+.burger{width:34px;height:34px;border-radius:10px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+.burger svg{width:17px;height:17px}
+.league-id{display:flex;align-items:center;gap:8px;cursor:pointer}
+.shield{width:24px;height:24px;color:var(--violet)}
+.league-id .nm{font-family:'Oswald';font-weight:600;font-size:16px;letter-spacing:.3px;line-height:1}
+.league-id .wk{font-size:10px;color:var(--ink-3);letter-spacing:.5px;margin-top:2px;font-weight:600;text-align:center}
+.chev{font-size:9px;color:var(--ink-2);margin-left:2px}
+.msg{width:34px;height:34px;border-radius:10px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);position:relative}
+.msg svg{width:17px;height:17px}
+.msg .b{position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--violet);
+  border:2px solid var(--bg);font-size:9px;font-weight:700;display:grid;place-items:center;color:#fff}
+
+/* top tabs */
+.tabs{display:flex;justify-content:center;gap:30px;background:var(--bg);border-bottom:1px solid var(--line-soft);padding:2px 8px 0}
+.tab{text-align:center;padding:12px 2px 15px;font-family:'Oswald';font-weight:600;font-size:14px;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);cursor:pointer;position:relative;transition:color .15s}
+.tab.on{color:var(--ink)}
+.tab.on::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
+  width:5px;height:5px;border-radius:50%;background:var(--violet)}
+
+.scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:96px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.view{display:none;padding:14px 16px 0}
+.view.on{display:block}

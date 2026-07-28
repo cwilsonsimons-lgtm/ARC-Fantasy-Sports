@@ -1,0 +1,197 @@
+import { S } from './state.js';
+import { slotAllows } from './clock.js';
+import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.js';
+import { invalidateRosters, persistRoster, refreshRosterViews } from './freeagency.js';
+import { MAXW, MINW } from './lineup.js';
+import { preDraft, showView, toggleDrawer } from './nav.js';
+import { BENCH, IR, LINEUP, SLOTS, SLOT_ORDER, TAXI, buildSlots, saveStore, store } from './store.js';
+import { ICON_STAR, ICON_UP, ICON_X } from './team.js';
+
+// ---- league settings controls ----
+export const WDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+export function hourLabel(h){return (h%12||12)+':00 '+(h<12?'AM':'PM');}
+export function setLeague(key,val,num){
+  LG()[key]=num?+val:val;
+  saveStore();
+  renderSettings();
+}
+export function setLeagueNum(key,val,min,max){
+  let v=Math.round(+val);
+  if(!isFinite(v))v=LEAGUE_DEFAULTS[key];
+  setLeague(key,Math.max(min,Math.min(max,v)),1);
+}
+export function optList(opts,cur){
+  return opts.map(o=>`<option value="${o[0]}"${String(o[0])===String(cur)?' selected':''}>${o[1]}</option>`).join('');
+}
+export function setSel(key,opts,cur,num){
+  return `<select class="set-ctl" onchange="setLeague('${key}',this.value,${num?1:0})">${optList(opts,cur)}</select>`;
+}
+export function setNum(key,cur,min,max){
+  return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"
+    onchange="setLeagueNum('${key}',this.value,${min},${max})">`;
+}
+export function setRow(label,ctl){return `<div class="set-row"><div class="set-lb">${label}</div><div class="set-ctls">${ctl}</div></div>`;}
+export function rangeOpts(a,b,fmt){const o=[];for(let i=a;i<=b;i++)o.push([i,fmt?fmt(i):String(i)]);return o;}
+export function leagueCards(){
+  const L=LG();
+  const teamOpts=[8,10,12,14,16].map(n=>[n,n+' teams']);
+  const waiverRows=L.waiver==='faab'
+    ? setRow('Waiver budget',setNum('faabBudget',L.faabBudget,1,1000))+
+      setRow('Minimum bid',setNum('faabMin',L.faabMin,0,Math.max(1,L.faabBudget)))
+    : '';
+  const sizeNote=+L.teams!==10
+    ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season — ${L.teams} takes effect at the next draft.</div>`
+    : '';
+  return `
+    <div class="set-card">
+      <div class="set-title">General</div>
+      ${setRow('League type',setSel('type',[['redraft','Redraft'],['keeper','Keeper'],['dynasty','Dynasty']],L.type))}
+      ${setRow('Teams',setSel('teams',teamOpts,L.teams,1))}
+      ${setRow('Lineup type',setSel('lineup',[['classic','Classic'],['bestball','Best ball']],L.lineup))}
+      ${sizeNote}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Waivers</div>
+      ${setRow('Waiver order',setSel('waiver',[['rolling','Rolling waivers'],['reverse','Reverse standings'],['faab','FAAB']],L.waiver))}
+      ${waiverRows}
+      ${setRow('Waivers clear',
+        setSel('waiverDay',WDAYS.map((d,i)=>[i,d]),L.waiverDay,1)+
+        setSel('waiverHour',rangeOpts(0,23,hourLabel),L.waiverHour,1))}
+      ${setRow('Time on waivers',setSel('waiverPeriod',[[0,'None'],[1,'1 day'],[2,'2 days'],[3,'3 days']],L.waiverPeriod,1))}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Trades</div>
+      ${setRow('Trade deadline',setSel('tradeDeadline',[[0,'No deadline']].concat(rangeOpts(MINW,MAXW,w=>'Week '+w)),L.tradeDeadline,1))}
+    </div>`;
+}
+// ---- roster shape ----
+export const SLOT_LABEL={QB:'QB',RB:'RB',WR:'WR',TE:'TE',FLEX:'FLEX',SFLX:'SFLX'};
+export const SLOT_ELIG_TXT={QB:'Quarterback',RB:'Running back',WR:'Wide receiver',TE:'Tight end',
+  FLEX:'Any RB, WR or TE',SFLX:'Any offensive player'};
+export const SLOT_MAX={QB:4,RB:6,WR:6,TE:4,FLEX:4,SFLX:2};
+export function starterCount(){return buildSlots().length;}
+// grow/shrink a reserve array without ever dropping a row that still holds a player
+export function resizeRows(arr,want){
+  want=Math.max(0,Math.min(20,+want||0));
+  while(arr.length<want)arr.push({a:null,x:null});
+  for(let i=arr.length-1;i>=0&&arr.length>want;i--){if(!arr[i].a&&!arr[i].x)arr.splice(i,1);}
+}
+// re-seat one side into the new lineup: best projection first, overflow to the bench
+export function reseat(list,side){
+  list.sort((a,b)=>(b.proj||0)-(a.proj||0));
+  const left=[];
+  list.forEach(p=>{
+    const r=LINEUP.find(row=>!row[side]&&slotAllows(row.slot,p.pos));
+    if(r)r[side]=p;else left.push(p);
+  });
+  left.forEach(p=>{
+    let row=BENCH.find(r=>!r[side]);
+    if(!row){row={a:null,x:null};BENCH.push(row);}
+    row[side]=p;
+  });
+}
+export function applyRosterShape(){
+  const S=SLOTS();
+  const oldA=[],oldX=[];
+  LINEUP.forEach(r=>{if(r.a)oldA.push(r.a);if(r.x)oldX.push(r.x);});
+  BENCH.forEach(r=>{if(r.a)oldA.push(r.a);if(r.x)oldX.push(r.x);});
+  BENCH.forEach(r=>{r.a=null;r.x=null;});
+  S.lineupSlots=buildSlots();
+  LINEUP.length=0;
+  S.lineupSlots.forEach(sl=>LINEUP.push({slot:sl,a:null,x:null}));
+  resizeRows(BENCH,S.bench);resizeRows(IR,S.ir);resizeRows(TAXI,S.taxi);
+  reseat(oldA,'a');reseat(oldX,'x');
+  S.pidx=null;invalidateRosters();persistRoster();
+  refreshRosterViews();
+}
+export function setSlot(key,val){
+  SLOTS()[key]=Math.max(0,Math.min(20,Math.round(+val)||0));
+  saveStore();applyRosterShape();renderSettings();
+}
+export function slotSel(key,cur,max){
+  return `<select class="set-ctl" onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0,max),cur)}</select>`;
+}
+export function rosterCards(){
+  const S=SLOTS();
+  return `
+    <div class="set-card">
+      <div class="set-title">Starting Lineup <span class="c">${starterCount()} STARTERS</span></div>
+      ${SLOT_ORDER.map(k=>setRow(
+        `${SLOT_LABEL[k]}<span class="s">${SLOT_ELIG_TXT[k]}</span>`,
+        slotSel(k,S[k],SLOT_MAX[k]))).join('')}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Reserve</div>
+      ${setRow('Bench spots',slotSel('bench',S.bench,16))}
+      ${setRow('IR spots',slotSel('ir',S.ir,6))}
+      ${setRow('Taxi squad spots',slotSel('taxi',S.taxi,6))}
+    </div>`;
+}
+// ---- scoring ----
+export function setScoring(key,val){
+  let v=parseFloat(val);
+  if(!isFinite(v))v=SCORING_DEFAULTS[key];
+  SC()[key]=Math.max(-100,Math.min(100,Math.round(v*100)/100));
+  saveStore();renderSettings();
+}
+export function scoreNum(key){
+  return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"
+    onchange="setScoring('${key}',this.value)">`;
+}
+export function resetScoring(){store.scoring=Object.assign({},SCORING_DEFAULTS);saveStore();renderSettings();}
+export function scoringCard(title,rows){
+  return `<div class="set-card"><div class="set-title">${title}</div>
+    ${rows.map(r=>setRow(r[1],scoreNum(r[0]))).join('')}</div>`;
+}
+export function scoringCards(){
+  return scoringCard('Passing',[['passYd','Yards per point'],['passTD','Touchdown'],['passInt','Interception'],
+      ['pass2pt','2-point conversion'],['passComp','Completion']])
+    +scoringCard('Rushing',[['rushYd','Yards per point'],['rushTD','Touchdown'],
+      ['rushAtt','Attempt'],['rush2pt','2-point conversion']])
+    +scoringCard('Receiving',[['rec','Reception'],['recYd','Yards per point'],['recTD','Touchdown'],
+      ['rec2pt','2-point conversion']])
+    +scoringCard('Miscellaneous',[['fumLost','Fumble lost'],['fumTD','Fumble recovery TD'],
+      ['krTD','Kick return TD'],['prTD','Punt return TD']])
+    +`<div class="set-card"><div class="set-btns">
+        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>`;
+}
+export const SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
+export let setTab='general';
+export function setSetTab(k){setTab=k;renderSettings();document.getElementById('scroll').scrollTop=0;}
+export function renderSettings(){
+  const bl=document.getElementById('setBackLb');if(bl)bl.textContent=preDraft()?'Draft':'Matchup';
+  const has=!!store.globalBackdrop;
+  const perGame=Object.keys(store.backdrops||{}).length;
+  const preview=has
+    ? `<div class="set-preview" style="background-image:url('${store.globalBackdrop}')"></div>`
+    : `<div class="set-preview none">Default stadium field</div>`;
+  const backdropCards=`
+    <div class="set-card">
+      <div class="set-title">League Matchup Backgrounds</div>
+      <div class="set-note">Set one background for every matchup at once. This replaces any per-game backgrounds.</div>
+      ${preview}
+      <div class="set-btns">
+        <div class="set-btn primary" onclick="pickGlobalBackdrop()">${ICON_UP} ${has?'Change':'Set'} background for all matchups</div>
+        <div class="set-btn" onclick="clearAllBackdrops()">${ICON_X} Clear all backgrounds</div>
+      </div>
+      ${perGame?`<div class="set-note" style="margin-top:11px;color:var(--violet)">${perGame} game${perGame>1?'s have':' has'} a custom background. Setting one for all clears those.</div>`:''}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Per-game backgrounds</div>
+      <div class="set-note">Open any matchup — yours, or tap a game in All Matchups — and use the camera on the stadium banner to set a background for just that game.</div>
+    </div>`;
+  const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),matchups:backdropCards};
+  document.getElementById('settingsBody').innerHTML=`
+    <div class="set-h">Settings</div>
+    <div class="set-sub">${ICON_STAR} Commissioner · City Boys Dynasty</div>
+    <div class="set-tabs">${SET_TABS.map(t=>
+      `<div class="set-tab${t[0]===setTab?' on':''}" onclick="setSetTab('${t[0]}')">${t[1]}</div>`).join('')}</div>
+    ${bodies[setTab]||bodies.general}`;
+}
+export function openSettings(){
+  renderSettings();
+  showView('settings');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('scroll').scrollTop=0;
+  if(document.body.classList.contains('open'))toggleDrawer();
+}

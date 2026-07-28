@@ -1,0 +1,43 @@
+/* week switcher + all matchups */
+.mrow{display:flex;align-items:center;gap:10px;margin:2px 0 2px}
+.allbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;padding:11px;cursor:pointer;color:var(--ink);
+  font-family:'Oswald';font-weight:600;font-size:12px;letter-spacing:1.5px;text-transform:uppercase}
+.allbtn svg{width:16px;height:16px;color:var(--violet)}
+.allbtn:active{border-color:var(--violet)}
+.wsw{display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
+.wsw.center{margin:0 auto 10px;width:max-content}
+.wsw .ar{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+.wsw .ar svg{width:16px;height:16px}
+.wsw .ar:active{background:var(--violet-soft);color:var(--violet)}
+.wsw .ar.dis{opacity:.28;pointer-events:none}
+.wsw .wk{min-width:78px;text-align:center;font-family:'Oswald';font-weight:600;font-size:13px;letter-spacing:.5px;
+  cursor:pointer;padding:5px 4px;display:flex;align-items:center;justify-content:center;gap:5px}
+.wsw .wk .cv{font-size:8px;color:var(--ink-3)}
+
+/* matchup view density toggle */
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px;margin:8px 0 2px}
+.seg-b{flex:1;text-align:center;padding:7px 0;border-radius:8px;font-family:'Oswald';font-weight:600;font-size:12px;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);cursor:pointer;transition:background .15s,color .15s}
+.seg-b.on{background:var(--violet);color:#fff}
+
+/* compact mini-hero (score + players visible together) */
+.mini{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);padding:13px 14px;
+  background:radial-gradient(120% 120% at 0% 0%,rgba(140,224,74,.14),transparent 55%),
+  radial-gradient(120% 120% at 100% 0%,rgba(240,69,62,.14),transparent 55%),linear-gradient(180deg,#101725,#0B111B)}
+.mini-row{display:flex;align-items:flex-start;gap:8px}
+.mini-team{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;padding-top:2px}
+.mini-team.opp{flex-direction:row-reverse;text-align:right}
+.mini-info{min-width:0;padding-top:3px}
+.mini-crest{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:'Oswald';font-weight:700;font-size:15px;flex:none}
+/* crest stacked over that team's win % */
+.mini-crest-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none}
+.mini-pct{font-family:'JetBrains Mono';font-weight:700;font-size:11px;line-height:1}
+.mini-nm{font-family:'Oswald';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+.mini-rec{font-size:10px;color:var(--ink-3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-center{flex:none;text-align:center;padding:6px 4px 0;cursor:pointer}
+.mini-scores{font-family:'Oswald';font-weight:700;font-size:22px;line-height:1;white-space:nowrap}
+.mini-proj{font-family:'JetBrains Mono';font-size:9.5px;color:var(--ink-3);letter-spacing:.4px;margin-top:5px;white-space:nowrap}
+.mini-proj b{color:var(--ink-2);font-weight:700}
+.mini-dash{color:var(--ink-3);margin:0 5px}

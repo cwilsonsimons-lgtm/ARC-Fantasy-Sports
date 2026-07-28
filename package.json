@@ -1,0 +1,16 @@
+{
+  "name": "arc-fantasy-sports",
+  "version": "0.1.0",
+  "private": true,
+  "description": "City Boys Dynasty — fantasy league app prototype",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs . 8080",
+    "snapshot": "node tools/snapshot.mjs http://127.0.0.1:8080/index.html snapshots",
+    "pixel-diff": "node tools/pixel-diff.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "playwright": "^1.62.0"
+  }
+}

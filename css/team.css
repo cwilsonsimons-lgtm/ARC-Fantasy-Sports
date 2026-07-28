@@ -1,0 +1,86 @@
+/* ===== TEAM view ===== */
+.tv-head{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);padding:18px 16px;margin-top:6px;
+  background:linear-gradient(180deg,#101725,#0B111B)}
+.tv-band{position:absolute;left:0;right:0;top:0;height:4px}
+.tv-top{display:flex;align-items:center;gap:14px}
+.tv-crest{width:66px;height:66px;border-radius:18px;display:grid;place-items:center;overflow:hidden;flex:none;
+  font-family:'Oswald';font-weight:700;font-size:28px;position:relative}
+.tv-crest .cam{position:absolute;right:-3px;bottom:-3px;width:24px;height:24px;border-radius:50%;background:var(--violet);
+  border:2px solid var(--bg);display:grid;place-items:center;cursor:pointer}
+.tv-crest .cam svg{width:12px;height:12px;color:#fff}
+.tv-idwrap{flex:1;min-width:0}
+.tv-name{--tn-size:22px;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-fontsel{margin-top:10px}
+.fs-btn{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);
+  border-radius:11px;background:var(--card-2);cursor:pointer}
+.fs-btn.open{border-color:var(--violet);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.fs-lb{font-family:'Oswald';font-weight:600;font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--ink-3);flex:none}
+.fs-cur{flex:1;min-width:0;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fs-tag{flex:none;font-family:'Oswald';font-weight:600;font-size:9.5px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--ink-3)}
+.fs-cv{flex:none;font-size:10px;color:var(--ink-3);transition:transform .18s}
+.fs-btn.open .fs-cv{transform:rotate(180deg);color:var(--violet)}
+.fs-menu{border:1px solid var(--violet);border-top:none;border-radius:0 0 11px 11px;
+  background:var(--card-2);overflow:hidden}
+.fs-opt{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;
+  border-top:1px solid var(--line-soft)}
+.fs-opt:active{background:rgba(255,255,255,.05)}
+.fs-opt.on{background:rgba(124,92,255,.1)}
+.fs-pv{flex:1;min-width:0;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fs-nm{flex:none;font-family:'Oswald';font-weight:600;font-size:9.5px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--ink-3)}
+.fs-ck{flex:none;color:var(--violet);font-size:12px;font-weight:700}
+.tv-name-input{width:100%;background:#0A0E15;border:1px solid var(--line);border-radius:10px;color:var(--ink);
+  font-family:'Oswald';font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.4px;padding:7px 10px;outline:none}
+.tv-name-input:focus{border-color:var(--violet)}
+.tv-sub{font-size:12px;color:var(--ink-2);font-weight:600;margin-top:5px}
+.tv-own-tag{display:inline-flex;align-items:center;gap:5px;font-family:'Oswald';font-weight:600;font-size:10px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--violet);background:var(--violet-soft);border-radius:6px;padding:3px 8px;margin-top:9px}
+.tv-edit-row{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.tv-swatch{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink-2);font-weight:600}
+.tv-swatch input[type=color]{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:none;padding:0;cursor:pointer}
+.tv-mini-btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:9px;
+  padding:7px 11px;cursor:pointer;color:var(--ink-2);font-family:'Oswald';font-weight:600;font-size:11px;letter-spacing:.8px;text-transform:uppercase}
+.tv-mini-btn svg{width:14px;height:14px;color:var(--violet)}
+.tv-mini-btn:active{border-color:var(--violet)}
+
+.tv-sec-hd{font-family:'Oswald';font-weight:600;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-3);
+  margin:18px 2px 8px}
+.tv-roster{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.tv-row{display:flex;align-items:center;gap:11px;padding:10px 12px;border-top:1px solid var(--line-soft)}
+.tv-row:first-child{border-top:none}
+.tv-face{width:42px;height:42px;border-radius:11px;flex:none;overflow:hidden;position:relative;
+  background:linear-gradient(155deg,#243247,#141b28);border:1px solid var(--line);display:grid;place-items:center;
+  font-size:12px;color:var(--ink-3);font-weight:700}
+.tv-face img{width:100%;height:100%;object-fit:cover}
+.tv-face.editable{cursor:pointer}
+.tv-face .cam{position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:var(--violet);
+  border:2px solid var(--card);display:grid;place-items:center}
+.tv-face .cam svg{width:9px;height:9px;color:#fff}
+.tv-pinfo{flex:1;min-width:0}
+.tv-pn{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-nick{font-size:11px;color:#E6B35A;font-weight:600;font-style:italic}
+.tv-pmeta{font-size:10.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
+.tv-pmeta .slot{color:var(--ink-2)}
+.tv-nick-input{background:#0A0E15;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:11px;
+  padding:4px 8px;outline:none;width:118px;margin-top:3px}
+.tv-nick-input:focus{border-color:var(--violet)}
+.tv-pts{font-family:'JetBrains Mono';font-weight:700;font-size:14px;color:var(--ink-2);flex:none}
+.tv-rt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.tv-drop{font-family:'Oswald';font-weight:600;font-size:9px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--red);border:1px solid rgba(240,69,62,.4);border-radius:7px;padding:3px 7px;cursor:pointer;line-height:1}
+.tv-drop:active{background:rgba(240,69,62,.14)}
+.pc-drop{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;
+  border:1px solid rgba(240,69,62,.5);border-radius:12px;padding:12px;cursor:pointer;color:var(--red);
+  font-family:'Oswald';font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+.pc-drop:active{background:rgba(240,69,62,.12)}
+.cf-msg{font-size:12.5px;line-height:1.5;color:var(--ink-2);text-align:center;padding:0 6px 4px}
+.cf-btns{display:flex;gap:10px;margin-top:16px}
+.cf-btn{flex:1;text-align:center;padding:13px;border-radius:12px;cursor:pointer;
+  font-family:'Oswald';font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+.cf-btn.cancel{border:1px solid var(--line);background:var(--card);color:var(--ink-2)}
+.cf-btn.danger{background:var(--red);color:#fff}
+.cf-btn:active{opacity:.85}
+.hidden-file{display:none}

@@ -1,0 +1,44 @@
+/* LEAGUE view (all matchups, sleeper style) */
+.lg-card{background:var(--card);border:1px solid var(--line-soft);border-radius:18px;padding:14px;margin-bottom:12px;cursor:pointer;
+  transition:border-color .15s,transform .12s}
+.lg-card:active{transform:scale(.99)}
+.lg-card.me{border-color:rgba(124,92,255,.5);box-shadow:0 0 0 1px rgba(124,92,255,.25)}
+.lg-top{display:flex;align-items:center}
+.lg-side{flex:1;min-width:0}
+.lg-side.opp{text-align:right}
+.lg-team{display:flex;align-items:center;gap:9px}
+.lg-side.opp .lg-team{flex-direction:row-reverse}
+.lg-badge{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:'Oswald';font-weight:700;font-size:14px;flex:none}
+.lg-meta{min-width:0}
+.lg-nm{font-family:'Oswald';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
+.lg-sub{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:2px}
+.lg-vs{width:44px;flex:none;text-align:center}
+.lg-vs b{font-family:'Oswald';font-weight:700;font-size:12px;color:var(--ink-3);background:var(--card-2);
+  border:1px solid var(--line);border-radius:8px;padding:4px 0;display:block}
+.lg-scores{display:flex;align-items:center;margin-top:11px}
+.lg-scr{flex:1;font-family:'Oswald';font-weight:700;font-size:20px}
+.lg-scr.opp{text-align:right}
+.lg-win{width:74px;flex:none;text-align:center;font-family:'JetBrains Mono';font-size:10px;font-weight:700}
+.lg-bar{height:4px;border-radius:2px;margin-top:9px;background:rgba(240,69,62,.3);overflow:hidden}
+.lg-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),#5fa82c)}
+.lg-live{display:inline-flex;align-items:center;gap:4px;font-family:'JetBrains Mono';font-size:9px;color:var(--green);margin-top:8px;font-weight:700}
+
+/* STANDINGS view */
+.stand{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.stand-row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-top:1px solid var(--line-soft)}
+.stand-row:first-child{border-top:none}
+.stand-row.me{background:linear-gradient(90deg,rgba(124,92,255,.12),transparent)}
+.stand-rk{font-family:'Oswald';font-weight:700;font-size:15px;color:var(--ink-3);width:18px}
+.stand-bd{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-family:'Oswald';font-weight:700;font-size:12px;flex:none}
+.stand-nm{flex:1;min-width:0}
+.stand-nm .n{--tn-size:14px;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stand-nm .n.me{color:var(--violet)}
+.stand-nm .m{font-size:10px;color:var(--ink-3);font-weight:600}
+.stand-rec{font-family:'JetBrains Mono';font-weight:700;font-size:14px;color:var(--ink)}
+
+/* detail back */
+.back{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:600;font-size:13px;
+  cursor:pointer;padding:4px 2px;margin-bottom:2px}
+.back svg{width:16px;height:16px}

@@ -1,0 +1,25 @@
+/* ===== STADIUM MATCHUP HERO (battling logos over a swappable backdrop) ===== */
+.sh{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#0a1a10}
+.sh.compact .sh-arena{padding:13px 10px 6px}
+.sh.compact .sh-logo{width:58px;height:58px;font-size:26px}
+.sh.compact .sh-score{font-size:22px}
+.sh-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center}
+.sh-field{position:absolute;inset:0;z-index:0;background:
+  linear-gradient(180deg,rgba(7,10,15,.15),rgba(7,10,15,.78)),
+  repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0 2px,transparent 2px 54px),
+  linear-gradient(180deg,#17532c,#0b3018 68%,#071b0e)}
+.sh-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(7,10,15,.30),rgba(7,10,15,.60))}
+.sh-glowL{position:absolute;top:-34%;left:-12%;width:64%;height:86%;z-index:1;pointer-events:none;
+  background:radial-gradient(closest-side,var(--ac),transparent 70%);opacity:.32;filter:blur(5px)}
+.sh-glowR{position:absolute;top:-34%;right:-12%;width:64%;height:86%;z-index:1;pointer-events:none;
+  background:radial-gradient(closest-side,var(--xc),transparent 70%);opacity:.32;filter:blur(5px)}
+.sh-status{position:absolute;left:11px;top:11px;z-index:5;font-family:'JetBrains Mono';font-weight:700;font-size:9px;
+  letter-spacing:.5px;padding:3px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:5px}
+.sh-status.live{color:#8CE04A;background:rgba(140,224,74,.14);border:1px solid rgba(140,224,74,.4)}
+.sh-status.final,.sh-status.sched{color:#c9d3df;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.2)}
+.sh-cam{position:absolute;right:11px;top:11px;z-index:5;width:30px;height:30px;border-radius:50%;
+  background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.4);display:grid;place-items:center;color:#fff;cursor:pointer}
+.sh-cam svg{width:15px;height:15px}
+.sh-cams{position:absolute;right:11px;top:11px;z-index:5;display:flex;gap:7px}
+.sh-cams .sh-cam{position:static}
+.sh-cams .sh-cam.rm{background:rgba(240,69,62,.5);border-color:rgba(240,69,62,.7)}
