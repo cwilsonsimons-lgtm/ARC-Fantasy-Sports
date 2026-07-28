@@ -19,6 +19,16 @@ npm start          # serves the repo at http://127.0.0.1:8080
 No framework and no runtime dependencies; `esbuild` is only used to produce the
 single-file build, and `playwright` only for the verification harness.
 
+### Fonts
+
+The typefaces are embedded as base64 `@font-face` rules in `css/fonts.css`, so
+the app renders identically with no network at all. It previously linked
+fonts.googleapis.com, which meant the design only appeared online — offline,
+every `font-family:'Oswald'` rule (78 of them, none with a fallback) dropped to
+the browser's default serif and the whole app changed character. Every family
+now carries a fallback too, so a miss degrades to a condensed sans rather than
+Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
+
 ## Arc Markets
 
 The **Markets** item in the bottom nav opens Arc Markets — a separate section, not

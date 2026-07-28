@@ -4,11 +4,11 @@
 .sheet{position:absolute;left:0;right:0;bottom:0;z-index:97;background:#0C121C;border-top:1px solid var(--line);
   border-radius:22px 22px 0 0;padding:16px 16px 30px;transform:translateY(105%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
 .sheet.show{transform:translateY(0)}
-.sheet-h{font-family:'Oswald';font-weight:600;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;
+.sheet-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;
   color:var(--ink-2);text-align:center;margin-bottom:14px}
 .wgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .wcell{padding:11px 0;text-align:center;border:1px solid var(--line);border-radius:11px;cursor:pointer;
-  font-family:'Oswald';font-weight:600;font-size:15px;color:var(--ink-2)}
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;color:var(--ink-2)}
 .wcell .s{display:block;font-size:8px;color:var(--ink-3);letter-spacing:.5px;margin-top:2px;font-weight:500}
 .wcell.now{color:var(--green)}
 .wcell.on{border-color:var(--violet);background:var(--violet-soft);color:#fff}
