@@ -100,6 +100,11 @@
 
       <!-- ===== STANDINGS VIEW ===== -->
       <div class="view" data-view="standings">
+        <div class="wsw center">
+          <div class="ar" data-step="-1" onclick="stepWeek(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg></div>
+          <div class="wk" onclick="openWeekPicker()"><span data-weeklabel>Week 8</span><span class="cv">▼</span></div>
+          <div class="ar" data-step="1" onclick="stepWeek(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></div>
+        </div>
         <div class="hd"><span><span data-weeklabel>Week 8</span> &middot; Matchups</span></div>
         <div class="sm-wrap" id="standMatchups"></div>
         <div class="hd"><span>League Standings</span></div>

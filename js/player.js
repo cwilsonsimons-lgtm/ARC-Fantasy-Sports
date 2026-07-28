@@ -4,7 +4,7 @@ import { byeFor, gameLabel, pkey } from './data/nfl-index.js';
 import { NFL_BY_ID, NFL_BY_NAME } from './data/nfl-players.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { canDraftNow, faOpen, freeAgents, isRostered } from './freeagency.js';
-import { badge } from './lineup.js';
+import { badge, seasonTotals } from './lineup.js';
 import { showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { BENCH, LINEUP, TAXI, store } from './store.js';
 import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
@@ -163,12 +163,27 @@ export function playerBack(){
 // standings
 export const order=Object.keys(T).sort((a,b)=>T[a].rk-T[b].rk);
 export function renderStandings(){
-  document.getElementById('standBody').innerHTML = order.map(k=>{
-    const t=T[k],me=k===MY_TEAM;
+  const col = k => `<span class="st-c ${k}">`;
+  const head = `<div class="stand-row head">
+    <div class="stand-c1">TEAM</div>
+    <span class="st-c rec">W-L</span>
+    <span class="st-c pf">PF</span>
+    <span class="st-c pa">PA</span>
+    <span class="st-c df">DIFF</span>
+  </div>`;
+  document.getElementById('standBody').innerHTML = head + order.map(k=>{
+    const t=T[k],me=k===MY_TEAM,tot=seasonTotals(k);
+    const diff=Math.round((tot.pf-tot.pa)*10)/10;
     return `<div class="stand-row ${me?'me':''}">
-      <span class="stand-rk">${t.rk}</span>${badge(t,'stand-bd')}
-      <div class="stand-nm"><div class="n tf-${k} ${me?'me':''}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
-      <span class="stand-rec">${t.rec}</span></div>`;
+      <div class="stand-c1">
+        <span class="stand-rk">${t.rk}</span>${badge(t,'stand-bd')}
+        <div class="stand-nm"><div class="n tf-${k} ${me?'me':''}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
+      </div>
+      <span class="st-c rec">${t.rec}</span>
+      <span class="st-c pf">${tot.pf.toFixed(1)}</span>
+      <span class="st-c pa">${tot.pa.toFixed(1)}</span>
+      <span class="st-c df ${diff>0?'pos':diff<0?'neg':''}">${diff>0?'+':''}${diff.toFixed(1)}</span>
+    </div>`;
   }).join('');
 }
 

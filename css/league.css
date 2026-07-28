@@ -25,18 +25,37 @@
 .lg-live{display:inline-flex;align-items:center;gap:4px;font-family:'JetBrains Mono';font-size:9px;color:var(--green);margin-top:8px;font-weight:700}
 
 /* STANDINGS view */
-.stand{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
-.stand-row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-top:1px solid var(--line-soft)}
+/* ===== STANDINGS =====
+   The team column is pinned; W-L sits beside it, and the scoring columns run off
+   the right edge to be scrolled to. Text is sized so crest, name and record all
+   land on screen without scrolling. */
+.stand{border:1px solid var(--line-soft);border-radius:16px;overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.stand::-webkit-scrollbar{display:none}
+.stand-row{display:flex;align-items:center;width:max-content;min-width:100%;
+  border-top:1px solid var(--line-soft)}
 .stand-row:first-child{border-top:none}
-.stand-row.me{background:linear-gradient(90deg,rgba(124,92,255,.12),transparent)}
-.stand-rk{font-family:'Oswald';font-weight:700;font-size:15px;color:var(--ink-3);width:18px}
-.stand-bd{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-family:'Oswald';font-weight:700;font-size:12px;flex:none}
+.stand-row.head{background:var(--bg)}
+.stand-row.head .stand-c1,.stand-row.head .st-c{font-family:'Oswald';font-weight:600;font-size:9px;
+  letter-spacing:1px;color:var(--ink-3);padding-top:7px;padding-bottom:7px}
+.stand-c1{position:sticky;left:0;z-index:2;flex:none;width:218px;display:flex;align-items:center;gap:9px;
+  padding:9px 10px 9px 12px;background:var(--card-2)}
+.stand-row.me .stand-c1{background:linear-gradient(90deg,#241d3f,#0E1420)}
+.stand-row.head .stand-c1{background:var(--bg)}
+.stand-row.me{background:linear-gradient(90deg,rgba(124,92,255,.07),transparent)}
+.stand-rk{font-family:'Oswald';font-weight:700;font-size:13px;color:var(--ink-3);width:14px;flex:none}
+.stand-bd{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-family:'Oswald';font-weight:700;font-size:11px;flex:none}
 .stand-nm{flex:1;min-width:0}
-.stand-nm .n{--tn-size:14px;line-height:1.2;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stand-nm .n{--tn-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stand-nm .n.me{color:var(--violet)}
-.stand-nm .m{font-size:10px;color:var(--ink-3);font-weight:600}
-.stand-rec{font-family:'JetBrains Mono';font-weight:700;font-size:14px;color:var(--ink)}
+.stand-nm .m{font-size:9.5px;color:var(--ink-3);font-weight:600}
+.st-c{flex:none;text-align:right;font-family:'JetBrains Mono';font-weight:700;font-size:12px;
+  color:var(--ink-2);padding:9px 6px}
+.st-c.rec{width:52px;color:var(--ink)}
+.st-c.pf,.st-c.pa{width:66px}
+.st-c.df{width:70px;padding-right:12px}
+.st-c.df.pos{color:var(--green)}
+.st-c.df.neg{color:var(--red)}
 
 /* detail back */
 .back{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:600;font-size:13px;

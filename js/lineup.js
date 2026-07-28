@@ -140,6 +140,19 @@ export function getGames(week){
  *  detail view a tap opens: this is a glance at the week, not the destination.
  *  Scores stay dashes until a game has started, so an unplayed week does not
  *  read as a 0-0 result. */
+/** Season points for / against, from the same seeded scores the matchups use.
+ *  Unplayed weeks score 0, so these read 0.0 until games are played. */
+export function seasonTotals(key){
+  let pf=0,pa=0;
+  for(let w=MINW;w<=MAXW;w++){
+    const pair=scheduleForWeek(w).find(p=>p.indexOf(key)>-1);
+    if(!pair)continue;
+    const opp=pair[0]===key?pair[1]:pair[0];
+    pf+=seededScore(w,key);
+    pa+=seededScore(w,opp);
+  }
+  return {pf:Math.round(pf*10)/10, pa:Math.round(pa*10)/10};
+}
 export function renderStandingsMatchups(){
   const el=document.getElementById('standMatchups'); if(!el)return;
   el.innerHTML = S.games.map((g,i)=>{
