@@ -65,10 +65,26 @@ node tools/pixel-diff.mjs <url-a> <url-b>     # screenshot comparison
 `tools/snapshot.mjs` drives the app through every view and writes the resulting
 DOM to one file per step. Diff two runs to see exactly what a change altered.
 
-Note that `pixel-diff` is timing-sensitive: the live-score dot pulses on a 1.8s
-loop and toasts are timer-driven, so it freezes animations and hides the toast
-before capturing. Treat a lone differing view as suspect before treating it as
-a regression.
+`tools/pixel-diff.mjs` compares rendered pixels. Three things had to be
+controlled before it gave trustworthy answers, and all three produced convincing
+false alarms first:
+
+1. **Remote assets.** Player headshots and webfonts load from nfl.com and Google.
+   When they are unreachable, each broken-image placeholder appears whenever its
+   request happens to fail, so two runs of the *same* build disagree. The tool
+   now aborts non-local requests up front to make that failure deterministic.
+2. **The pulse animation.** The live-score dot loops every 1.8s, so its phase
+   tracks wall-clock time. Animations and transitions are frozen before capture.
+3. **Toasts.** They are `setTimeout`-driven; `#hint` is hidden before capture.
+
+Even with all three controlled, expect a handful of pixels to differ by one unit
+in one channel — the compositor rounds gradients and anti-aliased edges. The tool
+reports `max delta` so you can tell a rounding artifact (1–2) from a real change,
+and only counts pixels beyond that tolerance.
+
+If a view still reports a difference, capture it *in isolation* before believing
+it. Differences that appear only partway through the scripted sequence have so
+far always been sequencing artifacts rather than real regressions.
 
 ## Where this came from
 
