@@ -743,6 +743,205 @@ body.open .drawer{transform:translateX(0)}
 .caption{color:#5E6B7C;font-size:12.5px;text-align:center;max-width:390px;line-height:1.5}
 .caption b{color:#93A0B0}
 
+/* css/markets.css */
+/* ===== ARC MARKETS =====
+   A separate surface from the fantasy app: its own palette (blue, not violet),
+   its own header and its own bottom nav. Every rule here is scoped under .mk. */
+.mk{
+  --mk-blue:#2E8CFF; --mk-blue-dim:#1B4E8F;
+  --mk-green:#2BE06B; --mk-red:#FF4B4B;
+  --mk-bg:#05080D; --mk-card:#0C121C; --mk-card-2:#0A0F18;
+  --mk-line:#18202D; --mk-line-soft:#121926;
+  --mk-ink:#FFFFFF; --mk-ink-2:#8E9BAC; --mk-ink-3:#5A6675;
+  position:absolute;inset:0;z-index:60;background:var(--mk-bg);
+  display:none;flex-direction:column;color:var(--mk-ink);
+}
+body.markets .mk{display:flex}
+/* while Markets is open the fantasy chrome underneath is fully covered */
+body.markets .nav,body.markets .shift,body.markets .drawer,body.markets .scrim{visibility:hidden}
+/* the fantasy toast sits above everything; it must not float over Markets */
+body.markets #hint{display:none}
+
+/* ---------- header ---------- */
+.mk-head{flex:none;padding:56px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;
+  background:var(--mk-bg);border-bottom:1px solid var(--mk-line-soft)}
+.mk-ic{width:30px;height:30px;display:grid;place-items:center;color:var(--mk-ink);cursor:pointer;flex:none}
+.mk-ic svg{width:23px;height:23px}
+.mk-brand{text-align:center;line-height:1;cursor:pointer}
+.mk-brand .a{font-size:29px;font-weight:800;letter-spacing:-.5px}
+.mk-brand .m{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:var(--mk-blue);margin-top:5px}
+.mk-tools{display:flex;gap:10px;align-items:center}
+.mk-bell{position:relative}
+.mk-bell .bdg{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
+  background:var(--mk-blue);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center}
+
+/* ---------- scroll body ---------- */
+.mk-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:96px;scrollbar-width:none}
+.mk-scroll::-webkit-scrollbar{display:none}
+.mk-view{display:none;padding:0 0 4px}
+.mk-view.on{display:block}
+
+/* ---------- market status strip ---------- */
+.mk-strip{display:flex;align-items:center;gap:9px;padding:9px 14px;font-size:9.5px;font-weight:600;
+  color:var(--mk-ink-2);border-bottom:1px solid var(--mk-line-soft);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.mk-strip::-webkit-scrollbar{display:none}
+.mk-strip .open{display:inline-flex;align-items:center;gap:5px;color:var(--mk-green);font-weight:700;letter-spacing:.6px}
+.mk-strip .dot{width:7px;height:7px;border-radius:50%;background:var(--mk-green);
+  box-shadow:0 0 0 0 rgba(43,224,107,.6);animation:mkpulse 2s infinite}
+@keyframes mkpulse{0%{box-shadow:0 0 0 0 rgba(43,224,107,.55)}70%{box-shadow:0 0 0 7px rgba(43,224,107,0)}100%{box-shadow:0 0 0 0 rgba(43,224,107,0)}}
+.mk-strip .sep{color:var(--mk-line);}
+.mk-strip b{color:var(--mk-ink);font-weight:700}
+.mk-strip .up{color:var(--mk-green)}
+
+/* ---------- highlight cards ---------- */
+.mk-cards{display:flex;gap:9px;padding:12px 14px 4px;overflow-x:auto;scrollbar-width:none}
+.mk-cards::-webkit-scrollbar{display:none}
+.mk-card{flex:none;width:84px;border-radius:14px;border:1px solid var(--mk-line);background:var(--mk-card);
+  padding:9px 8px 7px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;position:relative;overflow:hidden}
+.mk-card .lb{display:flex;align-items:center;gap:3px;font-size:7px;font-weight:800;letter-spacing:.3px;
+  align-self:flex-start;white-space:nowrap}
+.mk-card .lb svg{width:9px;height:9px;flex:none}
+.mk-card .face{width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--mk-card-2);
+  display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--mk-ink-3);position:relative}
+.mk-card .face img{width:100%;height:100%;object-fit:cover;inset:0}
+.mk-card .nm{font-size:9.5px;font-weight:700;text-align:center;line-height:1.15;min-height:22px}
+.mk-card .vl{font-size:13px;font-weight:800;line-height:1}
+.mk-card .sub{font-size:8.5px;color:var(--mk-ink-3);font-weight:600;margin-top:-3px}
+.mk-card svg.spark{width:100%;height:24px;margin-top:2px}
+.mk-card.up{background:linear-gradient(180deg,rgba(43,224,107,.09),transparent 60%),var(--mk-card)}
+.mk-card.down{background:linear-gradient(180deg,rgba(255,75,75,.09),transparent 60%),var(--mk-card)}
+.mk-card.act{background:linear-gradient(180deg,rgba(46,140,255,.10),transparent 60%),var(--mk-card)}
+.mk-card.rook{background:linear-gradient(180deg,rgba(168,110,255,.10),transparent 60%),var(--mk-card)}
+
+/* ---------- filter pills ---------- */
+.mk-pills{display:flex;align-items:center;gap:7px;padding:12px 14px 10px;overflow-x:auto;scrollbar-width:none}
+.mk-pills::-webkit-scrollbar{display:none}
+.mk-pill{flex:none;padding:8px 15px;border-radius:11px;background:var(--mk-card);border:1px solid var(--mk-line);
+  font-size:12.5px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.mk-pill svg{width:14px;height:14px}
+.mk-pill.on{background:var(--mk-blue);border-color:var(--mk-blue);color:#fff}
+.mk-pill.div{width:1px;padding:0;height:24px;background:var(--mk-line);border:none;border-radius:0}
+
+/* ---------- table ---------- */
+.mk-th{display:flex;align-items:center;padding:6px 14px 8px;font-size:9.5px;font-weight:700;
+  letter-spacing:.8px;color:var(--mk-ink-3)}
+.mk-th .s{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
+.mk-th .s svg{width:11px;height:11px;color:var(--mk-blue)}
+
+.mk-row{display:flex;align-items:center;padding:9px 14px 9px 0;border-bottom:1px solid var(--mk-line-soft);
+  cursor:pointer;position:relative}
+.mk-row:active{background:var(--mk-card-2)}
+.mk-row .bar{width:4px;height:40px;border-radius:0 3px 3px 0;flex:none;margin-right:9px}
+.mk-row .face{width:38px;height:38px;border-radius:50%;overflow:hidden;flex:none;background:var(--mk-card);
+  display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--mk-ink-3);position:relative}
+.mk-row .face img{width:100%;height:100%;object-fit:cover;inset:0}
+.mk-row .who{flex:1;min-width:0;padding:0 8px}
+.mk-row .who .nm{font-size:13px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-row .who .sb{font-size:10.5px;color:var(--mk-ink-3);font-weight:600;margin-top:2px}
+.mk-row .chip{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:7px;background:var(--mk-card);
+  border:1px solid var(--mk-line);font-size:9.5px;font-weight:700;color:var(--mk-ink-2)}
+.mk-row .pr{text-align:right;flex:none;min-width:54px;margin-right:7px}
+.mk-row .pr .p{font-size:14.5px;font-weight:800;line-height:1.1}
+.mk-row .pr .c{font-size:10.5px;font-weight:700;margin-top:2px;display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.mk-row .tv{text-align:right;flex:none;min-width:62px;font-size:13.5px;font-weight:700}
+.mk-row .dc{text-align:right;flex:none;min-width:78px}
+.mk-row .dc .d{font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:flex-end;gap:4px;line-height:1.1}
+.mk-row .dc .q{font-size:10.5px;font-weight:600;margin-top:2px}
+.mk-row svg.spark{width:46px;height:26px;flex:none}
+.mk-row .star{width:21px;flex:none;display:grid;place-items:center;color:var(--mk-ink-3);margin-left:6px}
+.mk-row .star svg{width:19px;height:19px}
+.mk-row .star.on{color:var(--mk-blue)}
+.up{color:var(--mk-green)}
+.down{color:var(--mk-red)}
+.mk-tri{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;display:inline-block}
+.mk-tri.u{border-bottom:6px solid var(--mk-green)}
+.mk-tri.d{border-top:6px solid var(--mk-red)}
+
+/* ---------- portfolio ---------- */
+.mk-ptop{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px}
+.mk-ptop h1{font-size:27px;font-weight:800;letter-spacing:-.4px}
+.mk-range{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:12px;
+  border:1px solid var(--mk-line);background:var(--mk-card);font-size:13px;font-weight:700;cursor:pointer}
+.mk-range svg{width:13px;height:13px;color:var(--mk-ink-2)}
+
+.mk-val{margin:0 14px;border-radius:16px;border:1px solid var(--mk-line);background:var(--mk-card);
+  padding:14px 14px 12px;display:flex;align-items:stretch;gap:10px;overflow:hidden}
+.mk-val .l{flex:1;min-width:0}
+.mk-val .k{font-size:9.5px;font-weight:700;letter-spacing:.9px;color:var(--mk-ink-3)}
+.mk-val .v{font-size:26px;font-weight:800;letter-spacing:-.8px;margin-top:5px;line-height:1}
+.mk-val .c{font-size:12px;font-weight:700;margin-top:7px;display:flex;align-items:center;gap:4px;
+  white-space:nowrap}
+.mk-val .c em{font-style:normal;color:var(--mk-ink-2);font-weight:600}
+.mk-val .g{flex:none;width:132px;display:flex;align-items:flex-end}
+.mk-val svg{width:100%;height:82px;overflow:visible}
+
+.mk-tabs{display:flex;margin:14px 14px 0;border:1px solid var(--mk-line);border-radius:14px;
+  background:var(--mk-card);overflow:hidden}
+.mk-tab{flex:1;padding:13px 2px;display:flex;align-items:center;justify-content:center;gap:4px;
+  font-size:11.5px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;position:relative;white-space:nowrap}
+.mk-tab svg{width:14px;height:14px;flex:none}
+.mk-tab.on{color:var(--mk-blue)}
+.mk-tab.on::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:var(--mk-blue)}
+.mk-tab .nd{width:6px;height:6px;border-radius:50%;background:var(--mk-blue);margin-left:-2px;margin-top:-8px}
+
+.mk-hcount{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 6px}
+.mk-hcount .n{font-size:13.5px;font-weight:700;color:var(--mk-blue)}
+.mk-sort{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;
+  border:1px solid var(--mk-line);background:var(--mk-card);font-size:12.5px;font-weight:700;cursor:pointer}
+.mk-sort svg{width:14px;height:14px;color:var(--mk-blue)}
+
+/* ---------- empty states ---------- */
+.mk-empty{padding:44px 30px;text-align:center;color:var(--mk-ink-3)}
+.mk-empty svg{width:34px;height:34px;margin-bottom:12px;color:var(--mk-line)}
+.mk-empty .t{font-size:14px;font-weight:700;color:var(--mk-ink-2)}
+.mk-empty .s{font-size:12px;margin-top:7px;line-height:1.55}
+
+/* ---------- bottom nav ---------- */
+.mk-nav{position:absolute;left:0;right:0;bottom:0;z-index:70;height:84px;background:rgba(6,10,16,.96);
+  backdrop-filter:blur(18px);border-top:1px solid var(--mk-line);display:flex;padding:9px 10px 26px;gap:6px}
+.mk-nv{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  color:var(--mk-ink-3);cursor:pointer;font-size:10.5px;font-weight:700;border-radius:14px}
+.mk-nv svg{width:22px;height:22px}
+.mk-nv.on{color:var(--mk-blue);background:rgba(46,140,255,.10)}
+
+/* ---------- sheet (player detail / about) ---------- */
+.mk-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;
+  transition:opacity .28s}
+body.mk-sheet .mk-scrim{opacity:1;pointer-events:auto}
+.mk-sheet{position:absolute;left:0;right:0;bottom:0;z-index:81;max-height:82%;overflow-y:auto;
+  background:var(--mk-card);border:1px solid var(--mk-line);border-bottom:none;
+  border-radius:22px 22px 0 0;transform:translateY(102%);transition:transform .32s cubic-bezier(.4,0,.2,1);
+  scrollbar-width:none;padding-bottom:26px}
+.mk-sheet::-webkit-scrollbar{display:none}
+body.mk-sheet .mk-sheet{transform:translateY(0)}
+.mk-sheet .grab{width:38px;height:4px;border-radius:3px;background:var(--mk-line);margin:10px auto 4px}
+.mk-sheet .hd{padding:10px 18px 6px;font-size:17px;font-weight:800}
+.mk-sheet .bd{padding:0 18px}
+.mk-sheet p{font-size:13px;line-height:1.6;color:var(--mk-ink-2);margin-bottom:11px;font-weight:500}
+.mk-sheet p b{color:var(--mk-ink);font-weight:700}
+.mk-sheet .fine{font-size:10.5px;line-height:1.55;color:var(--mk-ink-3);border-top:1px solid var(--mk-line-soft);
+  padding-top:12px;margin-top:4px}
+.mk-sheet h4{font-size:10px;letter-spacing:.9px;color:var(--mk-ink-3);font-weight:800;margin:16px 0 9px}
+
+.mk-curve{display:flex;gap:8px}
+.mk-curve .yr{flex:1;border:1px solid var(--mk-line);border-radius:13px;background:var(--mk-card-2);
+  padding:11px 9px;text-align:center}
+.mk-curve .yr .y{font-size:10px;font-weight:700;color:var(--mk-ink-3);letter-spacing:.6px}
+.mk-curve .yr .p{font-size:17px;font-weight:800;margin-top:5px}
+.mk-curve .yr.now{border-color:var(--mk-blue-dim);background:rgba(46,140,255,.08)}
+
+.mk-settle{display:flex;align-items:center;gap:9px;background:var(--mk-card-2);border:1px solid var(--mk-line);
+  border-radius:13px;padding:11px 12px;margin-top:6px}
+.mk-settle svg{width:17px;height:17px;color:var(--mk-blue);flex:none}
+.mk-settle span{font-size:11.5px;line-height:1.5;color:var(--mk-ink-2);font-weight:600}
+
+/* real device: match the fantasy app's safe-area handling */
+@media (max-width:440px){
+  .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
+  .mk-nav{height:var(--navh);padding:9px 10px calc(env(safe-area-inset-bottom,0px) + 2px)}
+  .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
+}
+
 </style>
 </head>
 <body>
@@ -881,7 +1080,7 @@ body.open .drawer{transform:translateX(0)}
   <!-- BOTTOM NAV -->
   <div class="nav">
     <div class="nv on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" onclick="toast('Markets — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
     <div class="nv" onclick="toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
     <div class="nv" onclick="toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
@@ -905,6 +1104,38 @@ body.open .drawer{transform:translateX(0)}
   </div>
 
   <div class="hint" id="hint"></div>
+
+  <!-- ===== ARC MARKETS =====
+       A separate section, not a fantasy screen. It covers the whole phone and
+       carries its own header and bottom nav; "Leagues" returns to the app. -->
+  <div class="mk" id="mk">
+    <div class="mk-head">
+      <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+      <div class="mk-brand" onclick="mkAbout()">
+        <div class="a">Arc</div>
+        <div class="m">MARKETS</div>
+      </div>
+      <div class="mk-tools">
+        <div class="mk-ic" onclick="mkToast('Search is not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+        <div class="mk-ic mk-bell" onclick="mkToast('Alerts are not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span class="bdg">3</span></div>
+      </div>
+    </div>
+
+    <div class="mk-scroll" id="mkScroll">
+      <div class="mk-view on" data-mkview="market" id="mkMarket"></div>
+      <div class="mk-view" data-mkview="portfolio" id="mkPortfolio"></div>
+    </div>
+
+    <div class="mk-nav" id="mkNav"></div>
+
+    <div class="mk-scrim" onclick="mkCloseSheet()"></div>
+    <div class="mk-sheet" id="mkSheet">
+      <div class="grab"></div>
+      <div class="hd" id="mkSheetTitle"></div>
+      <div class="bd" id="mkSheetBody"></div>
+    </div>
+    <div class="hint" id="mkHint"></div>
+  </div>
 </div>
 
 <p class="caption">Tap the <b>☰ hamburger</b> to push the screen aside and open the Leaders rail. <b>Hold or double-tap the VS</b> to jump to all league matchups. Tap either <b>win %</b> or the <b>win bar</b> under the logos to open the Rewind timeline.</p>
@@ -1118,9 +1349,9 @@ body.open .drawer{transform:translateX(0)}
       delete store.league.irSpots;
     }
     S.lineupSlots = buildSlots();
-    const fill = (rows, n) => {
-      rows.length = 0;
-      for (let i = 0; i < Math.max(0, n); i++) rows.push({ a: null, x: null });
+    const fill = (rows2, n) => {
+      rows2.length = 0;
+      for (let i = 0; i < Math.max(0, n); i++) rows2.push({ a: null, x: null });
     };
     LINEUP.length = 0;
     S.lineupSlots.forEach((sl) => LINEUP.push({ slot: sl, a: null, x: null }));
@@ -2776,9 +3007,9 @@ body.open .drawer{transform:translateX(0)}
     return g ? (g.home ? "vs " : "@ ") + g.opp : "BYE";
   }
   function leadersListHTML() {
-    const rows = POOL.filter((p) => posMatch(p.pos, leaderPos) && matchQ(p, panelQ.leaders)).map((p) => ({ p, v: leaderVal(p) })).sort((a, b) => (b.v == null ? -1 : b.v) - (a.v == null ? -1 : a.v) || b.p.sproj - a.p.sproj);
-    if (!rows.length) return noHits("leaders", `No ${leaderPos} players`);
-    return rows.slice(0, PANEL_CAP).map((r, i) => {
+    const rows2 = POOL.filter((p) => posMatch(p.pos, leaderPos) && matchQ(p, panelQ.leaders)).map((p) => ({ p, v: leaderVal(p) })).sort((a, b) => (b.v == null ? -1 : b.v) - (a.v == null ? -1 : a.v) || b.p.sproj - a.p.sproj);
+    if (!rows2.length) return noHits("leaders", `No ${leaderPos} players`);
+    return rows2.slice(0, PANEL_CAP).map((r, i) => {
       const p = r.p;
       const add = faOpen() && !isRostered(pKeyOf(p)) ? `<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(pKeyOf(p))}')">+</span>` : "";
       return `<div class="ld-row" onclick="openPlayer('${esc(p.id)}')"><span class="ld-rk">${i + 1}</span>
@@ -3002,18 +3233,18 @@ body.open .drawer{transform:translateX(0)}
       if (!p || p.fa || !slotAllows(slot, p.pos)) return;
       (isLocked(p) ? locked : open).push({ p, j });
     });
-    let body = `<div class="swap-cur">${cur ? `Sit <b>${cur.n}</b> \xB7 start` : `Fill <b>${slot}</b> \xB7`} a ${SLOT_ELIG[slot].join("/")} from your bench</div>`;
-    if (!open.length && !locked.length) body += `<div class="swap-empty">No eligible bench players for this slot.<br>Open the \u2630 menu \u2192 <b>Available</b> to add a free agent.</div>`;
-    body += open.map(({ p, j }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
+    let body2 = `<div class="swap-cur">${cur ? `Sit <b>${cur.n}</b> \xB7 start` : `Fill <b>${slot}</b> \xB7`} a ${SLOT_ELIG[slot].join("/")} from your bench</div>`;
+    if (!open.length && !locked.length) body2 += `<div class="swap-empty">No eligible bench players for this slot.<br>Open the \u2630 menu \u2192 <b>Available</b> to add a free agent.</div>`;
+    body2 += open.map(({ p, j }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
     <div class="swap-pos">${p.pos}</div>
     <div class="swap-nm"><div class="n">${p.n}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}</div><div class="m">${p.tm}${p.bye ? ` (${p.bye})` : ""} \xB7 ${p.g || "\u2014"}</div></div>
     <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
-    body += locked.map(({ p }) => `<div class="swap-row dis">
+    body2 += locked.map(({ p }) => `<div class="swap-row dis">
     <div class="swap-pos">${p.pos}</div>
     <div class="swap-nm"><div class="n">${p.n}</div><div class="m">Locked \xB7 ${p.g}</div></div>
     <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
     document.getElementById("swapTitle").textContent = cur ? `Swap ${slot}` : `Fill ${slot}`;
-    document.getElementById("swapBody").innerHTML = body;
+    document.getElementById("swapBody").innerHTML = body2;
     document.getElementById("swapScrim").classList.add("show");
     document.getElementById("swapSheet").classList.add("show");
   }
@@ -3030,18 +3261,18 @@ body.open .drawer{transform:translateX(0)}
       if (!slotAllows(r.slot, p.pos)) return;
       (r.a && isLocked(r.a) ? locked : open).push({ r, i });
     });
-    let body = `<div class="swap-cur">Start <b>${p.n}</b> \xB7 pick a ${p.pos}-eligible slot</div>`;
-    if (!open.length && !locked.length) body += `<div class="swap-empty">No starting slot accepts a ${p.pos}.</div>`;
-    body += open.map(({ r, i }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
+    let body2 = `<div class="swap-cur">Start <b>${p.n}</b> \xB7 pick a ${p.pos}-eligible slot</div>`;
+    if (!open.length && !locked.length) body2 += `<div class="swap-empty">No starting slot accepts a ${p.pos}.</div>`;
+    body2 += open.map(({ r, i }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
     <div class="swap-pos">${r.slot}</div>
     <div class="swap-nm"><div class="n">${r.a ? r.a.n : "Empty"}</div><div class="m">${r.a ? `${r.a.pos} \xB7 ${r.a.tm} \xB7 sits` : "Open slot"}</div></div>
     <div class="swap-pts">${r.a ? r.a.proj.toFixed(1) : "\u2014"}</div></div>`).join("");
-    body += locked.map(({ r }) => `<div class="swap-row dis">
+    body2 += locked.map(({ r }) => `<div class="swap-row dis">
     <div class="swap-pos">${r.slot}</div>
     <div class="swap-nm"><div class="n">${r.a.n}</div><div class="m">Locked \xB7 ${r.a.g}</div></div>
     <div class="swap-pts">${r.a.proj.toFixed(1)}</div></div>`).join("");
     document.getElementById("swapTitle").textContent = `Start ${p.pos}`;
-    document.getElementById("swapBody").innerHTML = body;
+    document.getElementById("swapBody").innerHTML = body2;
     document.getElementById("swapScrim").classList.add("show");
     document.getElementById("swapSheet").classList.add("show");
   }
@@ -3270,9 +3501,9 @@ body.open .drawer{transform:translateX(0)}
     saveStore();
     renderSettings();
   }
-  function scoringCard(title, rows) {
+  function scoringCard(title, rows2) {
     return `<div class="set-card"><div class="set-title">${title}</div>
-    ${rows.map((r) => setRow(r[1], scoreNum(r[0]))).join("")}</div>`;
+    ${rows2.map((r) => setRow(r[1], scoreNum(r[0]))).join("")}</div>`;
   }
   function scoringCards() {
     return scoringCard("Passing", [
@@ -3553,9 +3784,9 @@ body.open .drawer{transform:translateX(0)}
     opts = opts || {};
     return hhRow(r.a, r.x, r.slot, { phased: opts.phased, editIdx: opts.editable ? i : null });
   }
-  function reserveSection(title, rows, badge2, phased, editable) {
+  function reserveSection(title, rows2, badge2, phased, editable) {
     let h = `<div class="starters" style="margin-top:12px"><div class="st-hd"><span class="g">${title}</span><span></span></div>`;
-    if (rows.some((r) => r.a || r.x)) h += rows.map((r, j) => hhRow(r.a, r.x, badge2, { phased, benchIdx: editable ? j : null })).join("");
+    if (rows2.some((r) => r.a || r.x)) h += rows2.map((r, j) => hhRow(r.a, r.x, badge2, { phased, benchIdx: editable ? j : null })).join("");
     else h += `<div class="bnch-empty">${title} \xB7 Empty</div>`;
     return h + `</div>`;
   }
@@ -3725,15 +3956,15 @@ body.open .drawer{transform:translateX(0)}
   function renderTeam(key) {
     currentTeamKey = key;
     const t = T[key], own = key === MY_TEAM, roster = rosterFor(key);
-    let body = teamHead(t, own);
+    let body2 = teamHead(t, own);
     ["STARTERS", "BENCH", "TAXI SQUAD"].forEach((gp) => {
       const list = roster.filter((p) => p.group === gp);
       if (!list.length) return;
-      body += `<div class="tv-sec-hd">${gp}</div><div class="tv-roster">${list.map((p) => teamRow(p, own)).join("")}</div>`;
+      body2 += `<div class="tv-sec-hd">${gp}</div><div class="tv-roster">${list.map((p) => teamRow(p, own)).join("")}</div>`;
     });
-    body += `<input type="file" accept="image/*" class="hidden-file" id="playerPhotoInput" onchange="onPlayerPhoto(this)">
+    body2 += `<input type="file" accept="image/*" class="hidden-file" id="playerPhotoInput" onchange="onPlayerPhoto(this)">
          <input type="file" accept="image/*" class="hidden-file" id="logoInput" onchange="onLogo(this)">`;
-    document.getElementById("teamBody").innerHTML = body;
+    document.getElementById("teamBody").innerHTML = body2;
   }
   function openTeam(key) {
     if (!T[key]) return;
@@ -3963,17 +4194,17 @@ body.open .drawer{transform:translateX(0)}
   }
   function myDraftSlotsHTML() {
     const ids = teamRosterIds(MY_TEAM).map((id) => NFL_BY_ID[id]).filter(Boolean).sort((a, b) => b.sproj - a.sproj);
-    const used = /* @__PURE__ */ new Set(), rows = [];
+    const used = /* @__PURE__ */ new Set(), rows2 = [];
     S.lineupSlots.forEach((sl) => {
       const p = ids.find((q) => !used.has(q.id) && slotAllows(sl, q.pos));
       if (p) used.add(p.id);
-      rows.push(`<div class="dr-slot"><span class="sl">${sl}</span>
+      rows2.push(`<div class="dr-slot"><span class="sl">${sl}</span>
       <span class="pn${p ? "" : " e"}">${p ? p.full : "Empty"}</span>
       <span class="dr-mt">${p ? p.pos + " \xB7 " + p.tm : ""}</span></div>`);
     });
-    ids.filter((q) => !used.has(q.id)).forEach((p) => rows.push(`<div class="dr-slot"><span class="sl">BN</span>
+    ids.filter((q) => !used.has(q.id)).forEach((p) => rows2.push(`<div class="dr-slot"><span class="sl">BN</span>
       <span class="pn">${p.full}</span><span class="dr-mt">${p.pos} \xB7 ${p.tm}</span></div>`));
-    return rows.join("");
+    return rows2.join("");
   }
   function recentPicksHTML() {
     const ps = draftPicks();
@@ -4752,13 +4983,766 @@ body.open .drawer{transform:translateX(0)}
     document.getElementById("scroll").scrollTop = 0;
   }
 
+  // js/markets/data.js
+  var data_exports = {};
+  __export(data_exports, {
+    BY_ID: () => BY_ID,
+    HOLDINGS: () => HOLDINGS,
+    HOLDING_COUNT: () => HOLDING_COUNT,
+    MARKET: () => MARKET,
+    POINTS_PER_DOLLAR: () => POINTS_PER_DOLLAR,
+    SHARES_PER_LOT: () => SHARES_PER_LOT,
+    holdingRows: () => holdingRows,
+    isWatched: () => isWatched,
+    marketStats: () => marketStats,
+    mkStore: () => mkStore,
+    mostActive: () => mostActive,
+    portfolio: () => portfolio,
+    saveMk: () => saveMk,
+    seasonCurve: () => seasonCurve,
+    toggleWatch: () => toggleWatch,
+    topMover: () => topMover,
+    topRookie: () => topRookie,
+    watchRows: () => watchRows
+  });
+
+  // js/data/nfl-colors.js
+  var TEAM_COLOR = {
+    ARI: "#97233F",
+    ATL: "#A71930",
+    BAL: "#241773",
+    BUF: "#00338D",
+    CAR: "#0085CA",
+    CHI: "#E64100",
+    CIN: "#FB4F14",
+    CLE: "#FF3C00",
+    DAL: "#869397",
+    DEN: "#FA4616",
+    DET: "#0076B6",
+    GB: "#FFB612",
+    HOU: "#A71930",
+    IND: "#005A8B",
+    JAX: "#00839C",
+    KC: "#E31837",
+    LA: "#FFD100",
+    LAC: "#0080C6",
+    LV: "#A5ACAF",
+    MIA: "#008E97",
+    MIN: "#4F2683",
+    NE: "#B0B7BC",
+    NO: "#D3BC8D",
+    NYG: "#0B2265",
+    NYJ: "#125740",
+    PHI: "#004C54",
+    PIT: "#FFB612",
+    SEA: "#69BE28",
+    SF: "#AA0000",
+    TB: "#D50A0A",
+    TEN: "#4B92DB",
+    WAS: "#5A1414"
+  };
+  function teamColor(tm) {
+    return TEAM_COLOR[tm] || "#5E6B7C";
+  }
+
+  // js/markets/data.js
+  var POINTS_PER_DOLLAR = 100;
+  var SHARES_PER_LOT = 50;
+  var HOLDING_COUNT = 28;
+  var STORE_KEY2 = "arc_markets_v1";
+  function hash(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function rng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = s + 1831565813 >>> 0;
+      let t = s;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function load() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE_KEY2)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  var mkStore = load();
+  mkStore.watch = mkStore.watch || [];
+  function saveMk() {
+    try {
+      localStorage.setItem(STORE_KEY2, JSON.stringify(mkStore));
+    } catch (e) {
+    }
+  }
+  function build() {
+    const pool = NFL_PLAYERS.filter((p) => p.sproj > 60 && ["QB", "RB", "WR", "TE"].includes(p.pos)).sort((a, b) => b.sproj - a.sproj).slice(0, 150);
+    const rank = {};
+    return pool.map((p) => {
+      const r = rng(hash(p.id));
+      const price = Math.round(p.sproj / POINTS_PER_DOLLAR * 100) / 100;
+      const swing = r() < 0.18 ? 5.5 : 2.2;
+      const pct = Math.round(((r() * 2 - 1) * swing + 0.75) * 10) / 10;
+      const change = Math.round(price * pct) / 100;
+      rank[p.pos] = (rank[p.pos] || 0) + 1;
+      return {
+        id: p.id,
+        name: p.full || p.n,
+        short: p.n,
+        pos: p.pos,
+        tm: p.tm,
+        hs: p.hs,
+        exp: p.exp,
+        color: teamColor(p.tm),
+        posRank: p.pos + rank[p.pos],
+        sproj: p.sproj,
+        price,
+        pct,
+        change,
+        // heavily skewed: a handful of names carry most of the day's activity
+        trades: 25 + Math.floor(Math.pow(r(), 4) * 12400),
+        spark: sparkline(p.id, pct)
+      };
+    });
+  }
+  function sparkline(id, pct) {
+    const r = rng(hash(id + "#spark"));
+    const n = 24;
+    const jitter = Array.from({ length: n }, () => (r() * 2 - 1) * 6);
+    const ramp = Math.sign(pct || 1) * (3 + Math.abs(pct) * 2.2);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const smooth = (jitter[i] + (jitter[i - 1] ?? jitter[i]) + (jitter[i + 1] ?? jitter[i])) / 3;
+      out.push(50 + smooth + ramp * (i / (n - 1)));
+    }
+    const lo = Math.min(...out), hi = Math.max(...out), span = hi - lo || 1;
+    return out.map((v) => Math.round((v - lo) / span * 100) / 100);
+  }
+  var MARKET = build();
+  var BY_ID = Object.fromEntries(MARKET.map((p) => [p.id, p]));
+  function marketStats() {
+    const trades = MARKET.reduce((n, p) => n + p.trades, 0);
+    return {
+      trades,
+      volumePct: 18,
+      open: true
+    };
+  }
+  function topMover(dir) {
+    return [...MARKET].sort((a, b) => dir > 0 ? b.pct - a.pct : a.pct - b.pct)[0];
+  }
+  function mostActive() {
+    return [...MARKET].sort((a, b) => b.trades - a.trades)[0];
+  }
+  function topRookie() {
+    const rookies = MARKET.filter((p) => p.exp <= 1);
+    return [...rookies].sort((a, b) => b.pct - a.pct)[0] || MARKET[0];
+  }
+  var HOLDINGS = MARKET.slice(0, HOLDING_COUNT).map((p) => ({ id: p.id, shares: SHARES_PER_LOT }));
+  function holdingRows() {
+    return HOLDINGS.map((h) => {
+      const p = BY_ID[h.id];
+      return {
+        ...p,
+        shares: h.shares,
+        value: Math.round(p.price * h.shares * 100) / 100,
+        dayChange: Math.round(p.change * h.shares * 100) / 100
+      };
+    });
+  }
+  function portfolio() {
+    const rows2 = holdingRows();
+    const value = rows2.reduce((n, r) => n + r.value, 0);
+    const dayChange = rows2.reduce((n, r) => n + r.dayChange, 0);
+    const open = value - dayChange;
+    return {
+      rows: rows2,
+      value: Math.round(value * 100) / 100,
+      dayChange: Math.round(dayChange * 100) / 100,
+      dayPct: Math.round(dayChange / (open || 1) * 1e3) / 10,
+      series: portfolioSeries(value, dayChange)
+    };
+  }
+  function portfolioSeries(value, dayChange) {
+    const r = rng(hash("arc-portfolio"));
+    const start = value - dayChange;
+    const n = 64, out = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      out.push(start + dayChange * t + (r() * 2 - 1) * Math.abs(dayChange) * 0.16 * (1 - t * 0.3));
+    }
+    out[n - 1] = value;
+    const lo = Math.min(...out), hi = Math.max(...out), span = hi - lo || 1;
+    return out.map((v) => Math.round((v - lo) / span * 100) / 100);
+  }
+  function isWatched(id) {
+    return mkStore.watch.includes(id);
+  }
+  function toggleWatch(id) {
+    const i = mkStore.watch.indexOf(id);
+    if (i > -1) mkStore.watch.splice(i, 1);
+    else mkStore.watch.push(id);
+    saveMk();
+    return isWatched(id);
+  }
+  function watchRows() {
+    return mkStore.watch.map((id) => BY_ID[id]).filter(Boolean);
+  }
+  function seasonCurve(p) {
+    const r = rng(hash(p.id + "#curve"));
+    const young = p.exp <= 3;
+    return [2026, 2027, 2028].map((yr, i) => {
+      const drift = i === 0 ? 0 : (young ? 0.06 + r() * 0.05 : -0.07 - r() * 0.05) * i;
+      return { year: yr, price: Math.round(p.price * (1 + drift) * 100) / 100 };
+    });
+  }
+
+  // js/markets/ui.js
+  var ui_exports = {};
+  __export(ui_exports, {
+    ICON: () => ICON,
+    dirClass: () => dirClass,
+    empty: () => empty,
+    esc: () => esc2,
+    face: () => face,
+    holdingRow: () => holdingRow,
+    marketRow: () => marketRow,
+    money: () => money,
+    pctText: () => pctText,
+    signed: () => signed,
+    spark: () => spark,
+    starCell: () => starCell,
+    tri: () => tri
+  });
+  var money = (n) => "$" + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  var signed = (n) => (n < 0 ? "-" : "+") + money(n);
+  var pctText = (n) => (n < 0 ? "" : "") + n.toFixed(1) + "%";
+  var dirClass = (n) => n < 0 ? "down" : "up";
+  var esc2 = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  var svg = (d, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+  var ICON = {
+    burger: svg('<path d="M3 6h18M3 12h18M3 18h18"/>'),
+    search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>'),
+    bell: svg('<path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/>'),
+    chevron: svg('<path d="m6 9 6 6 6-6"/>'),
+    flame: svg('<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.8-3 1.6-4"/>'),
+    drop: svg('<path d="M4 7 10 13l4-4 6 6"/><path d="M20 15v-4h-4"/>'),
+    rocket: svg('<path d="M5 15c-1 2-1 5-1 5s3 0 5-1"/><path d="M9 13a12 12 0 0 1 9-9 12 12 0 0 1-9 9Z"/><path d="m9 13 2 2"/>'),
+    star: svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+    trend: svg('<path d="M3 17 9 11l4 4 8-8"/><path d="M17 7h4v4"/>'),
+    movers: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20v-3"/>'),
+    sliders: svg('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
+    sort: svg('<path d="M7 4v16m0 0-3-3m3 3 3-3M17 20V4m0 0-3 3m3-3 3 3"/>'),
+    market: svg('<path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/>'),
+    bag: svg('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'),
+    trophy: svg('<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/><path d="M9 20h6M12 14v6"/>'),
+    person: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+    news: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h7M7 12h10M7 16h6"/>'),
+    history: svg('<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/>'),
+    info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h0"/>'),
+    bars: svg('<path d="M5 20V12M12 20V6M19 20v-5"/>')
+  };
+  function spark(values, color, { w = 58, h = 26, fill = false, id = "" } = {}) {
+    if (!values || !values.length) return "";
+    const step = w / (values.length - 1);
+    const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(h - 2 - v * (h - 4)).toFixed(1)}`);
+    const line = `<polyline points="${pts.join(" ")}" fill="none" stroke="${color}"
+    stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (!fill) return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${line}</svg>`;
+    const gid = "mkg" + id;
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${color}" stop-opacity=".45"/>
+      <stop offset="1" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="0,${h} ${pts.join(" ")} ${w},${h}" fill="url(#${gid})"/>${line}
+    <circle cx="${w}" cy="${(h - 2 - values[values.length - 1] * (h - 4)).toFixed(1)}" r="2.6" fill="${color}"/>
+  </svg>`;
+  }
+  function face(p) {
+    const initials2 = (p.name || "").split(" ").map((s) => s[0]).slice(0, 2).join("");
+    return `<div class="face">${esc2(initials2)}${p.hs ? `<img src="${esc2(p.hs)}" alt="" loading="lazy"
+         style="position:absolute" onerror="this.remove()">` : ""}</div>`;
+  }
+  var tri = (n) => `<span class="mk-tri ${n < 0 ? "d" : "u"}"></span>`;
+  function starCell(p) {
+    return `<div class="star${isWatched(p.id) ? " on" : ""}" data-star="${p.id}"
+    onclick="event.stopPropagation();mkToggleWatch('${p.id}',this)">${ICON.star}</div>`;
+  }
+  function marketRow(p) {
+    const d = dirClass(p.pct);
+    return `<div class="mk-row" onclick="mkOpenPlayer('${p.id}')">
+    <div class="bar" style="background:${p.color}"></div>
+    ${face(p)}
+    <div class="who">
+      <div class="nm">${esc2(p.name)}</div>
+      <div class="sb">${esc2(p.tm)} &middot; ${esc2(p.posRank)}</div>
+    </div>
+    <div class="pr">
+      <div class="p">${money(p.price)}</div>
+      <div class="c ${d}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
+    </div>
+    ${spark(p.spark, p.pct < 0 ? "#FF4B4B" : "#2BE06B")}
+    ${starCell(p)}
+  </div>`;
+  }
+  function holdingRow(p) {
+    const d = dirClass(p.dayChange);
+    return `<div class="mk-row" onclick="mkOpenPlayer('${p.id}')">
+    <div class="bar" style="background:${p.color}"></div>
+    ${face(p)}
+    <div class="who">
+      <div class="nm">${esc2(p.name)}</div>
+      <div class="sb">${esc2(p.pos)} &middot; ${esc2(p.tm)}</div>
+      <span class="chip">${p.shares} shares</span>
+    </div>
+    <div class="pr">
+      <div class="p">${money(p.price)}</div>
+      <div class="c ${dirClass(p.pct)}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
+    </div>
+    <div class="dc">
+      <div class="d ${d}">${tri(p.dayChange)} ${money(p.dayChange)}</div>
+      <div class="q ${d}">(${p.dayChange < 0 ? "-" : ""}${pctText(Math.abs(p.pct))})</div>
+    </div>
+  </div>`;
+  }
+  function empty(icon, title, sub) {
+    return `<div class="mk-empty">${icon}<div class="t">${esc2(title)}</div><div class="s">${sub}</div></div>`;
+  }
+
+  // js/markets/market.js
+  var market_exports = {};
+  __export(market_exports, {
+    mkFilter: () => mkFilter,
+    mkSort: () => mkSort,
+    renderMarket: () => renderMarket
+  });
+  var filter = "All";
+  var sortDesc = true;
+  function highlight(kind, p) {
+    const map = {
+      up: {
+        cls: "up",
+        lb: "TRENDING UP",
+        ic: ICON.flame,
+        color: "#2BE06B",
+        val: `+${pctText(Math.abs(p.pct))}`,
+        tone: "up"
+      },
+      down: {
+        cls: "down",
+        lb: "BIGGEST DROP",
+        ic: ICON.drop,
+        color: "#FF4B4B",
+        val: `-${pctText(Math.abs(p.pct))}`,
+        tone: "down"
+      },
+      act: {
+        cls: "act",
+        lb: "MOST ACTIVE",
+        ic: ICON.rocket,
+        color: "#2E8CFF",
+        val: (p.trades / 1e3).toFixed(1) + "K",
+        tone: "act",
+        sub: "trades today"
+      },
+      rook: {
+        cls: "rook",
+        lb: "ROOKIE BUZZ",
+        ic: ICON.star,
+        color: "#A86EFF",
+        val: `+${pctText(Math.abs(p.pct))}`,
+        tone: "rook"
+      }
+    };
+    const m = map[kind];
+    return `<div class="mk-card ${m.cls}" onclick="mkOpenPlayer('${p.id}')">
+    <div class="lb" style="color:${m.color}">${m.ic}${m.lb}</div>
+    ${face(p)}
+    <div class="nm">${esc2(p.name)}</div>
+    <div class="vl" style="color:${m.color}">${m.val}</div>
+    ${m.sub ? `<div class="sub">${m.sub}</div>` : ""}
+    ${spark(p.spark, m.color, { w: 88, h: 24, id: m.cls })}
+  </div>`;
+  }
+  var PILLS = [
+    ["All"],
+    ["QB"],
+    ["RB"],
+    ["WR"],
+    ["TE"],
+    ["|"],
+    ["Trending", ICON.trend],
+    ["Movers", ICON.movers],
+    ["Watch", ICON.star]
+  ];
+  function rows() {
+    let list = MARKET;
+    if (["QB", "RB", "WR", "TE"].includes(filter)) list = list.filter((p) => p.pos === filter);
+    else if (filter === "Trending") list = [...list].sort((a, b) => b.pct - a.pct);
+    else if (filter === "Movers") list = [...list].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+    else if (filter === "Watch") list = watchRows();
+    if (filter === "All" || ["QB", "RB", "WR", "TE"].includes(filter)) {
+      list = [...list].sort((a, b) => sortDesc ? b.price - a.price : a.price - b.price);
+    }
+    if (!list.length) {
+      return `<div class="mk-empty">${ICON.star}<div class="t">Nothing on your watchlist yet</div>
+      <div class="s">Tap the star on any player to follow their price here.</div></div>`;
+    }
+    return list.map(marketRow).join("");
+  }
+  function renderMarket() {
+    const el = document.getElementById("mkMarket");
+    if (!el) return;
+    const st = marketStats();
+    el.innerHTML = `
+    <div class="mk-strip">
+      <span class="open"><span class="dot"></span>MARKET OPEN</span>
+      <span class="sep">|</span>
+      <span><b>${st.trades.toLocaleString()}</b> trades today</span>
+      <span class="sep">|</span>
+      <span>Volume <span class="up">&#9650; ${st.volumePct}%</span></span>
+      <span class="sep">|</span>
+      <span>Season 2026</span>
+    </div>
+
+    <div class="mk-cards">
+      ${highlight("up", topMover(1))}
+      ${highlight("down", topMover(-1))}
+      ${highlight("act", mostActive())}
+      ${highlight("rook", topRookie())}
+    </div>
+
+    <div class="mk-pills">
+      ${PILLS.map(
+      ([k, ic]) => k === "|" ? '<div class="mk-pill div"></div>' : `<div class="mk-pill${filter === k ? " on" : ""}" onclick="mkFilter('${k}')">${ic || ""}${k === "Watch" ? "" : k}</div>`
+    ).join("")}
+    </div>
+
+    <div class="mk-th">
+      <span style="flex:1">PLAYER</span>
+      <span class="s" style="min-width:54px;justify-content:flex-end;margin-right:7px" onclick="mkSort()">PRICE ${ICON.sort}</span>
+      <span style="min-width:46px;text-align:center">TREND</span>
+      <span style="min-width:27px"></span>
+    </div>
+    ${rows()}`;
+  }
+  function mkFilter(k) {
+    filter = k;
+    renderMarket();
+  }
+  function mkSort() {
+    sortDesc = !sortDesc;
+    renderMarket();
+  }
+
+  // js/markets/portfolio.js
+  var portfolio_exports = {};
+  __export(portfolio_exports, {
+    mkCycleSort: () => mkCycleSort,
+    mkTab: () => mkTab,
+    renderPortfolio: () => renderPortfolio
+  });
+  var tab = "holdings";
+  var sortKey = "value";
+  var TABS2 = [
+    ["holdings", "Holdings", ICON.bag],
+    ["watchlist", "Watchlist", ICON.star],
+    ["news", "News", ICON.news],
+    ["history", "History", ICON.history]
+  ];
+  function sortRows(rows2) {
+    const by = {
+      value: (a, b) => b.value - a.value,
+      change: (a, b) => b.dayChange - a.dayChange,
+      price: (a, b) => b.price - a.price,
+      name: (a, b) => a.name.localeCompare(b.name)
+    };
+    return [...rows2].sort(by[sortKey] || by.value);
+  }
+  function body(pf) {
+    if (tab === "holdings") {
+      return `<div class="mk-hcount">
+        <span class="n">${pf.rows.length} Holdings</span>
+        <span class="mk-sort" onclick="mkCycleSort()">${ICON.sliders} Sort by ${ICON.chevron}</span>
+      </div>
+      <div class="mk-th">
+        <span style="flex:1">PLAYER</span>
+        <span style="min-width:54px;text-align:right;margin-right:7px">PRICE</span>
+        <span style="min-width:78px;text-align:right">TODAY'S CHANGE</span>
+      </div>
+      ${sortRows(pf.rows).map(holdingRow).join("")}`;
+    }
+    if (tab === "watchlist") {
+      const rows2 = watchRows();
+      return rows2.length ? `<div class="mk-hcount"><span class="n">${rows2.length} Watching</span></div>
+         ${rows2.map(marketRow).join("")}` : empty(
+        ICON.star,
+        "Nothing on your watchlist",
+        "Tap the star on any player in the Market tab to follow their price here."
+      );
+    }
+    if (tab === "news") {
+      return empty(
+        ICON.news,
+        "No news in this prototype",
+        "Player news would land here. It is deliberately empty rather than filled with invented headlines about real players."
+      );
+    }
+    return empty(
+      ICON.history,
+      "No trades yet",
+      "Arc Markets is a concept. The first build is free to play, with no real money \u2014 your play-money trade history would appear here."
+    );
+  }
+  function renderPortfolio() {
+    const el = document.getElementById("mkPortfolio");
+    if (!el) return;
+    const pf = portfolio();
+    const d = dirClass(pf.dayChange);
+    const color = pf.dayChange < 0 ? "#FF4B4B" : "#2BE06B";
+    el.innerHTML = `
+    <div class="mk-ptop">
+      <h1>Portfolio</h1>
+      <span class="mk-range" onclick="mkToast('Range switching is not wired up in this prototype')">
+        Today ${ICON.chevron}</span>
+    </div>
+
+    <div class="mk-val">
+      <div class="l">
+        <div class="k">PORTFOLIO VALUE</div>
+        <div class="v">${money(pf.value)}</div>
+        <div class="c ${d}">${tri(pf.dayChange)} ${signed(pf.dayChange)}
+          (${pctText(Math.abs(pf.dayPct))}) <em>today</em></div>
+      </div>
+      <div class="g">${spark(pf.series, color, { w: 150, h: 82, fill: true, id: "pf" })}</div>
+    </div>
+
+    <div class="mk-tabs">
+      ${TABS2.map(([k, lb, ic]) => `<div class="mk-tab${tab === k ? " on" : ""}" onclick="mkTab('${k}')">
+        ${ic}${lb}${k === "news" ? '<span class="nd"></span>' : ""}</div>`).join("")}
+    </div>
+
+    ${body(pf)}`;
+  }
+  function mkTab(k) {
+    tab = k;
+    renderPortfolio();
+  }
+  function mkCycleSort() {
+    const order2 = ["value", "change", "price", "name"];
+    sortKey = order2[(order2.indexOf(sortKey) + 1) % order2.length];
+    renderPortfolio();
+    window.mkToast && window.mkToast("Sorted by " + sortKey);
+  }
+
+  // js/markets/index.js
+  var markets_exports = {};
+  __export(markets_exports, {
+    closeMarkets: () => closeMarkets,
+    initMarkets: () => initMarkets2,
+    mkAbout: () => mkAbout,
+    mkCloseSheet: () => mkCloseSheet,
+    mkOpenPlayer: () => mkOpenPlayer,
+    mkToast: () => mkToast,
+    mkToggleWatch: () => mkToggleWatch,
+    mkView: () => mkView,
+    openMarkets: () => openMarkets,
+    renderMkNav: () => renderMkNav
+  });
+  var view = "market";
+  var NAV = [
+    ["market", "Market", ICON.market],
+    ["portfolio", "Portfolio", ICON.bag],
+    ["leagues", "Leagues", ICON.trophy],
+    ["profile", "Profile", ICON.person]
+  ];
+  function openMarkets() {
+    document.body.classList.add("markets");
+    mkView(view);
+  }
+  function closeMarkets() {
+    document.body.classList.remove("markets");
+    mkCloseSheet();
+    window.showTab && window.showTab(window.homeTab ? window.homeTab() : "matchup");
+  }
+  function mkView(name) {
+    if (name === "leagues") {
+      closeMarkets();
+      return;
+    }
+    if (name === "profile") {
+      mkToast("Profile \u2014 not part of this concept build");
+      return;
+    }
+    view = name;
+    document.querySelectorAll(".mk-view").forEach((v) => v.classList.toggle("on", v.dataset.mkview === name));
+    document.querySelectorAll(".mk-nv").forEach((n) => n.classList.toggle("on", n.dataset.nv === name));
+    if (name === "market") renderMarket();
+    else renderPortfolio();
+    const sc = document.getElementById("mkScroll");
+    if (sc) sc.scrollTop = 0;
+  }
+  function renderMkNav() {
+    const el = document.getElementById("mkNav");
+    if (!el) return;
+    el.innerHTML = NAV.map(
+      ([k, lb, ic]) => `<div class="mk-nv${view === k ? " on" : ""}" data-nv="${k}" onclick="mkView('${k}')">${ic}${lb}</div>`
+    ).join("");
+  }
+  function mkToggleWatch(id, el) {
+    const on = toggleWatch(id);
+    if (el) el.classList.toggle("on", on);
+    mkToast(on ? "Added to watchlist" : "Removed from watchlist");
+  }
+  function openSheet(title, html) {
+    document.getElementById("mkSheetTitle").innerHTML = title;
+    document.getElementById("mkSheetBody").innerHTML = html;
+    document.body.classList.add("mk-sheet");
+  }
+  function mkCloseSheet() {
+    document.body.classList.remove("mk-sheet");
+  }
+  function mkOpenPlayer(id) {
+    const p = BY_ID[id];
+    if (!p) return;
+    const d = dirClass(p.pct);
+    const color = p.pct < 0 ? "#FF4B4B" : "#2BE06B";
+    const curve = seasonCurve(p);
+    openSheet(esc2(p.name), `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      ${face(p)}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--mk-ink-3);font-weight:700">
+          ${esc2(p.tm)} &middot; ${esc2(p.posRank)}</div>
+        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(p.price)}</div>
+        <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
+          ${tri(p.pct)} ${money(p.change)} (${pctText(Math.abs(p.pct))}) today</div>
+      </div>
+      <div style="width:96px">${spark(p.spark, color, { w: 96, h: 46, fill: true, id: "sheet" })}</div>
+    </div>
+
+    ${holdingFor(p.id)}
+
+    <div class="mk-settle">${ICON.info}<span>Settles on official season production at
+      <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
+      ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
+      projection \u2014 the final number is whatever the player actually does.</span></div>
+
+    <h4>SEASON CONTRACTS</h4>
+    <div class="mk-curve">
+      ${curve.map((c, i) => `<div class="yr${i === 0 ? " now" : ""}">
+        <div class="y">${c.year}</div><div class="p">${money(c.price)}</div></div>`).join("")}
+    </div>
+    <p style="font-size:11.5px;color:var(--mk-ink-3);margin-top:10px">Three seasons priced side by
+      side sketch the shape of a career \u2014 a premium on players with room to grow, a discount on
+      those past their peak.</p>
+
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <div class="mk-pill${isWatched(p.id) ? " on" : ""}" style="flex:1;justify-content:center"
+        onclick="mkToggleWatch('${p.id}');mkOpenPlayer('${p.id}')">${ICON.star} Watch</div>
+      <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
+        border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
+    </div>`);
+  }
+  function holdingFor(id) {
+    const h = holdingRows().find((r) => r.id === id);
+    if (!h) return "";
+    return `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You hold
+    <b>${h.shares} shares</b> &middot; total value <b>${money(h.value)}</b>
+    &middot; <span class="${dirClass(h.dayChange)}">${money(h.dayChange)} today</span></span></div>`;
+  }
+  function mkAbout() {
+    openSheet("Arc Markets", `
+    <p><b>Follow \u2014 and one day trade \u2014 the value of players the way you'd follow a stock.</b>
+      Every notable player has a price that rises and falls as the season unfolds: big games,
+      injuries, benchings, breakouts.</p>
+    <p>Each contract tracks a player's <b>season scorecard number</b> \u2014 the sum of their official
+      statistics, the same way fantasy football counts points. Buy at today's price; when the
+      season ends the contract pays out on the player's real, official number, at
+      ${POINTS_PER_DOLLAR} points per dollar.</p>
+    <p>Nothing is decided by a bookmaker, an odds-setter, or the company \u2014 only by what the player
+      actually does on the field, and what other fans were willing to pay along the way.</p>
+
+    <h4>WHAT WOULD BE BUILT FIRST</h4>
+    <p>A completely free app: this market as a game with play money and real prices, plus a trade
+      calculator that values any proposed fantasy trade using live crowd prices. Real-money
+      trading would come later, only through federally regulated exchange partners, and only if
+      the free version proves itself against numbers set in advance.</p>
+
+    <h4>WHAT'S GENUINELY HARD</h4>
+    <p>The rules are still being fought over in court. Markets need enough traders before prices
+      are fair. Bigger companies could copy it. And it has to be built responsibly \u2014 deposit
+      limits, self-exclusion and real consumer protections from day one, around season-long
+      opinions rather than rapid-fire action.</p>
+
+    <div class="fine">Concept only \u2014 nothing is built. \u201CArc Markets\u201D is a working title. This
+      prototype is not an offer to sell securities, an invitation to invest, or a solicitation to
+      participate in any trading, gaming or wagering product. No real-money product exists or is
+      being offered. Any future real-money markets would be listed only on exchanges regulated by
+      the U.S. Commodity Futures Trading Commission and operated by licensed partners, subject to
+      all applicable law and eligibility requirements. Player names and all prices and figures
+      shown here are illustrative.</div>`);
+  }
+  var mkT;
+  function mkToast(msg) {
+    const el = document.getElementById("mkHint");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(mkT);
+    mkT = setTimeout(() => el.classList.remove("show"), 1700);
+  }
+  function initMarkets2() {
+    renderMkNav();
+  }
+
   // js/main.js
-  Object.assign(window, teams_exports, store_exports, league_config_exports, nfl_teams_exports, nfl_schedule_exports, nfl_players_exports, nfl_index_exports, clock_exports, lineup_exports, hero_exports, settings_exports, team_exports, player_exports, panel_exports, rewind_exports, draft_exports, draft_ui_exports, matchup_exports, freeagency_exports, detail_exports, week_exports, nav_exports);
+  Object.assign(
+    window,
+    teams_exports,
+    store_exports,
+    league_config_exports,
+    nfl_teams_exports,
+    nfl_schedule_exports,
+    nfl_players_exports,
+    nfl_index_exports,
+    clock_exports,
+    lineup_exports,
+    hero_exports,
+    settings_exports,
+    team_exports,
+    player_exports,
+    panel_exports,
+    rewind_exports,
+    draft_exports,
+    draft_ui_exports,
+    matchup_exports,
+    freeagency_exports,
+    detail_exports,
+    week_exports,
+    nav_exports,
+    data_exports,
+    ui_exports,
+    market_exports,
+    portfolio_exports,
+    markets_exports
+  );
   initStore();
   initLeagueConfig();
   initClock();
   renderStandings();
   initPanel();
+  initMarkets();
   applyStoredRoster();
   renderWeek();
   document.querySelector(".shift").classList.add("stage-on");

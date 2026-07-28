@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="css/draft.css">
   <link rel="stylesheet" href="css/panel.css">
   <link rel="stylesheet" href="css/nav.css">
+  <link rel="stylesheet" href="css/markets.css">
 </head>
 <body>
 <div class="phone">
@@ -162,7 +163,7 @@
   <!-- BOTTOM NAV -->
   <div class="nav">
     <div class="nv on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" onclick="toast('Markets — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
     <div class="nv" onclick="toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
     <div class="nv" onclick="toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
@@ -186,6 +187,38 @@
   </div>
 
   <div class="hint" id="hint"></div>
+
+  <!-- ===== ARC MARKETS =====
+       A separate section, not a fantasy screen. It covers the whole phone and
+       carries its own header and bottom nav; "Leagues" returns to the app. -->
+  <div class="mk" id="mk">
+    <div class="mk-head">
+      <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+      <div class="mk-brand" onclick="mkAbout()">
+        <div class="a">Arc</div>
+        <div class="m">MARKETS</div>
+      </div>
+      <div class="mk-tools">
+        <div class="mk-ic" onclick="mkToast('Search is not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+        <div class="mk-ic mk-bell" onclick="mkToast('Alerts are not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span class="bdg">3</span></div>
+      </div>
+    </div>
+
+    <div class="mk-scroll" id="mkScroll">
+      <div class="mk-view on" data-mkview="market" id="mkMarket"></div>
+      <div class="mk-view" data-mkview="portfolio" id="mkPortfolio"></div>
+    </div>
+
+    <div class="mk-nav" id="mkNav"></div>
+
+    <div class="mk-scrim" onclick="mkCloseSheet()"></div>
+    <div class="mk-sheet" id="mkSheet">
+      <div class="grab"></div>
+      <div class="hd" id="mkSheetTitle"></div>
+      <div class="bd" id="mkSheetBody"></div>
+    </div>
+    <div class="hint" id="mkHint"></div>
+  </div>
 </div>
 
 <p class="caption">Tap the <b>☰ hamburger</b> to push the screen aside and open the Leaders rail. <b>Hold or double-tap the VS</b> to jump to all league matchups. Tap either <b>win %</b> or the <b>win bar</b> under the logos to open the Rewind timeline.</p>

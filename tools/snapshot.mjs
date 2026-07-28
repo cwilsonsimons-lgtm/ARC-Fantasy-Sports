@@ -55,6 +55,7 @@ const steps = [
 const capture = `(()=>{
   const clone = document.body.cloneNode(true);
   clone.querySelectorAll('style,script').forEach(s=>s.remove());
+  const mk = clone.querySelector('#mk'); if (mk) mk.remove();  // Arc Markets is a separate surface
   return document.body.className + '\\n' + clone.innerHTML;
 })()`;
 

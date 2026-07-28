@@ -19,6 +19,29 @@ npm start          # serves the repo at http://127.0.0.1:8080
 No framework and no runtime dependencies; `esbuild` is only used to produce the
 single-file build, and `playwright` only for the verification harness.
 
+## Arc Markets
+
+The **Markets** item in the bottom nav opens Arc Markets — a separate section, not
+another fantasy screen. It takes over the whole phone with its own header, its own
+blue palette, its own bottom nav and its own `localStorage` key
+(`arc_markets_v1`). "Leagues" in its nav returns to the fantasy app.
+
+The code boundary matches the product boundary: `js/markets/` imports only from
+`js/data/` (plain NFL facts — players, teams, colours) and never touches league
+settings, rosters, lineups or scoring. The only seam is `openMarkets()`, which
+adds a class to `<body>`.
+
+**The pricing model** comes from the concept brief: a contract settles on the
+player's official season production at **100 points per dollar**, so a player
+projected for 328 points prices near $3.28 and pays out their real total ÷ 100 at
+season end. Prices are therefore derived from real projections rather than copied
+from the mockups, which keeps the whole market internally consistent. Day moves,
+trade counts and sparklines are seeded from each player's id, so the numbers are
+stable across reloads and screenshots.
+
+Deliberately *not* faked: the News and History tabs are empty states rather than
+invented headlines about real players.
+
 ## Layout
 
 ```
@@ -28,7 +51,8 @@ js/
   main.js       entry point: module order, window bridge, boot sequence
   state.js      the handful of values shared across modules
   store.js      localStorage persistence, roster rows, image downscaling
-  data/         teams, league config, and the NFL player/schedule tables
+  data/         teams, league config, NFL player/schedule/colour tables
+  markets/      Arc Markets — self-contained, see above
   *.js          one module per screen or subsystem
 tools/          dev server and the verification harness
 ```
