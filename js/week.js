@@ -1,7 +1,8 @@
 import { S } from './state.js';
 import { recomputeLT } from './clock.js';
 import { hydrateRosters } from './data/nfl-index.js';
-import { LIVE_WEEK, MAXW, MINW, getGames, renderLeagueBody } from './lineup.js';
+import { LIVE_WEEK, MAXW, MINW, getGames, renderLeagueBody,
+         renderStandingsMatchups } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { renderLeaders } from './panel.js';
 
@@ -13,7 +14,7 @@ export function renderWeek(){
   const lb=document.querySelector('.league-id .wk');if(lb)lb.textContent='WEEK '+S.week;
   hydrateRosters(S.week);
   S.games=getGames(S.week);
-  renderLeagueBody();renderUserMatchup();
+  renderLeagueBody();renderStandingsMatchups();renderUserMatchup();
   document.querySelectorAll('.ar').forEach(el=>{const s=+el.dataset.step;
     el.classList.toggle('dis',(s<0&&S.week<=MINW)||(s>0&&S.week>=MAXW));});
 }

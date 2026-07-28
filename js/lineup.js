@@ -7,6 +7,9 @@ import { showTab } from './nav.js';
 import { pKeyOf } from './player.js';
 import { BENCH, GAMES, IR, LINEUP, TAXI, markInner } from './store.js';
 import { esc } from './team.js';
+// esc() escapes for inline JS handlers; team names rendered as text need
+// HTML escaping instead, or an apostrophe shows up as \'
+import { escHtml } from './panel.js';
 
 // ---------- RENDER ----------
 export const badge=(t,cls)=>`<span class="${cls}" style="background:${t.bg};color:${t.c};overflow:hidden">${markInner(t)}</span>`;
@@ -131,6 +134,35 @@ export function getGames(week){
   return games;
 }
 
+/** Compact matchup cards for the League tab, sitting above the standings.
+ *
+ *  Deliberately much smaller than the stadium cards in All Matchups and than the
+ *  detail view a tap opens: this is a glance at the week, not the destination.
+ *  Scores stay dashes until a game has started, so an unplayed week does not
+ *  read as a 0-0 result. */
+export function renderStandingsMatchups(){
+  const el=document.getElementById('standMatchups'); if(!el)return;
+  el.innerHTML = S.games.map((g,i)=>{
+    const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
+    const st = g.status==='live' ? {c:'live',t:'LIVE'}
+             : g.status==='final' ? {c:'final',t:'FINAL'}
+             : {c:'sched',t:'WK '+S.week};
+    const played = g.status!=='sched';
+    const row=(k,score,win)=>`<div class="sm-tr${win?' w':''}">
+      ${badge(T[k],'sm-bd')}
+      <div class="sm-nm tf-${k}">${escHtml(T[k].n)}</div>
+      <div class="sm-pt">${(+score).toFixed(1)}</div>
+    </div>`;
+    return `<div class="sm-card${g.me?' me':''}" onclick="${openClick}">
+      <div class="sm-st ${st.c}">${st.t}</div>
+      <div class="sm-teams">
+        ${row(g.a,g.as,played&&g.as>g.xs)}
+        ${row(g.x,g.xs,played&&g.xs>g.as)}
+      </div>
+      <div class="sm-arr">&rsaquo;</div>
+    </div>`;
+  }).join('');
+}
 export function renderLeagueBody(){
   document.getElementById('leagueBody').innerHTML = S.games.map((g,i)=>{
     const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;

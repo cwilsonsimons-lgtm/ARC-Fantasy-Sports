@@ -42,3 +42,28 @@
 .back{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:600;font-size:13px;
   cursor:pointer;padding:4px 2px;margin-bottom:2px}
 .back svg{width:16px;height:16px}
+
+/* ===== compact week matchups (League tab, above the standings) =====
+   Sized to be scannable at a glance and clearly smaller than both the stadium
+   cards in All Matchups and the detail view a tap opens. */
+.sm-wrap{display:flex;flex-direction:column;gap:7px;margin-bottom:4px}
+.sm-card{display:flex;align-items:center;gap:9px;padding:7px 8px 7px 9px;
+  border:1px solid var(--line-soft);border-radius:12px;background:var(--card-2);cursor:pointer}
+.sm-card:active{background:var(--card)}
+.sm-card.me{border-color:rgba(124,92,255,.4);
+  background:linear-gradient(90deg,rgba(124,92,255,.11),var(--card-2) 65%)}
+.sm-st{flex:none;width:38px;text-align:center;font-family:'Oswald';font-weight:600;
+  font-size:8.5px;letter-spacing:.7px;color:var(--ink-3);line-height:1.3}
+.sm-st.live{color:var(--green)}
+.sm-st.final{color:var(--ink-2)}
+.sm-teams{flex:1;min-width:0}
+.sm-tr{display:flex;align-items:center;gap:7px;padding:2px 0}
+.sm-bd{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
+  font-family:'Oswald';font-weight:700;font-size:9px;flex:none}
+.sm-bd img{width:100%;height:100%;object-fit:cover}
+.sm-nm{--tn-size:11.5px;flex:1;min-width:0;line-height:1.25;color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sm-pt{flex:none;font-family:'JetBrains Mono';font-weight:700;font-size:12px;color:var(--ink-3)}
+.sm-tr.w .sm-nm{color:var(--ink)}
+.sm-tr.w .sm-pt{color:var(--green)}
+.sm-arr{flex:none;color:var(--ink-3);font-size:15px;padding-right:2px}
