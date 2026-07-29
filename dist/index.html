@@ -3392,22 +3392,20 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     for (const j of jumpsFor(name)) if (f >= j.at - TOL) got += j.share;
     return total * got;
   }
-  function scoringPlays(A, X) {
+  var TD_PTS = 6;
+  function touchdowns(A, X) {
     const out = [];
     const add = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
-      out.push({
-        t: Math.round(p.kick + j.at * GAME_MIN),
-        name: p.name,
-        side,
-        pts: Math.round(p.total * j.share * 10) / 10
-      });
+      const pts = Math.round(p.total * j.share * 10) / 10;
+      if (pts < TD_PTS) return;
+      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
     }));
     add(A, "a");
     add(X, "x");
-    return out.filter((e) => e.pts >= 0.1).sort((a, b) => a.t - b.t);
+    return out.sort((a, b) => a.t - b.t);
   }
   function liveWindows(kicks) {
-    const spans = kicks.map((k) => [k - 10, k + GAME_MIN + 10]).sort((a, b) => a[0] - b[0]);
+    const spans = kicks.map((k) => [k, k + GAME_MIN]).sort((a, b) => a[0] - b[0]);
     const out = [];
     spans.forEach((sp) => {
       const last = out[out.length - 1];
@@ -3442,7 +3440,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
       return n + p.proj * (1 - done);
     }, 0);
-    const plays = scoringPlays(A, X);
+    const plays = touchdowns(A, X);
     const out = [];
     windows.forEach(([ws, we], w) => {
       const times = /* @__PURE__ */ new Set();
@@ -3534,7 +3532,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       rW.className = "w " + (p.win >= 50 ? "up" : "dn");
       rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
       rE.innerHTML = p.ev.map(
-        (e) => `<span class="${e.side === "a" ? "me" : "opp"}">${escName(e.name)} +${e.pts.toFixed(1)}</span>`
+        (e) => `<span class="${e.side === "a" ? "me" : "opp"}">${escName(e.name)} TD +${e.pts.toFixed(1)}</span>`
       ).join("");
     }
     show(n - 1);

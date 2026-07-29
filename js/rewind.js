@@ -5,14 +5,14 @@
 // ahead. Scrub it to read the score, the odds and what had just happened.
 //
 // Points come from the lineup itself. Every player's game has a kickoff ordinal,
-// and their points accrue across that window in a few discrete jumps - the
-// scoring plays.
+// and their points accrue across that window in a few discrete jumps.
 //
-// The axis only covers time when games are actually running. Kickoff windows are
-// merged, and everything between them is dropped: no Saturday if nobody plays
-// Saturday, no Sunday morning, no Monday daytime before the night game. Dead
-// hours would otherwise be most of the chart, since a week is ~7,500 minutes and
-// only about a third of that has a ball in the air.
+// The axis only covers time when games are actually running. It opens on the
+// first kickoff of the week and closes on the last final whistle, and every
+// window in between is merged: no Saturday if nobody plays Saturday, no Sunday
+// morning, no Monday daytime before the night game. Dead hours would otherwise
+// be most of the chart, since a week is ~7,500 minutes and only about a third of
+// that has a ball in the air.
 import { LINEUP } from './store.js';
 import { pLive, pOrd, winProbability } from './clock.js';
 
@@ -66,20 +66,31 @@ function accrued(total, name, f){
   return total * got;
 }
 
-/** Every scoring play in the week: who, when, how many, which side. */
-function scoringPlays(A, X){
+// A jump is a touchdown when it is worth at least this much: six for the score
+// itself, plus whatever yardage came with it. Everything smaller is catches,
+// carries and field goals - those still move the score, they just do not earn
+// their own point on the chart.
+const TD_PTS = 6;
+
+/** Every touchdown in the week: who scored, when, how many, which side. */
+function touchdowns(A, X){
   const out = [];
   const add = (list, side) => list.forEach(p => jumpsFor(p.name).forEach(j => {
-    out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side,
-               pts: Math.round(p.total * j.share * 10) / 10 });
+    const pts = Math.round(p.total * j.share * 10) / 10;
+    if (pts < TD_PTS) return;
+    out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
   }));
   add(A, 'a'); add(X, 'x');
-  return out.filter(e => e.pts >= 0.1).sort((a,b) => a.t - b.t);
+  return out.sort((a,b) => a.t - b.t);
 }
 
-/** Merge each player's game window, so only live stretches survive. */
+/**
+ * Merge each player's game window, so only live stretches survive. A span runs
+ * from kickoff to the final whistle exactly - no padding, so the chart opens on
+ * the week's first snap and closes on its last.
+ */
 function liveWindows(kicks){
-  const spans = kicks.map(k => [k - 10, k + GAME_MIN + 10]).sort((a,b) => a[0] - b[0]);
+  const spans = kicks.map(k => [k, k + GAME_MIN]).sort((a,b) => a[0] - b[0]);
   const out = [];
   spans.forEach(sp => {
     const last = out[out.length - 1];
@@ -128,10 +139,10 @@ export function rewindSeries(){
     return n + p.proj * (1 - done);
   }, 0);
 
-  const plays = scoringPlays(A, X);
+  const plays = touchdowns(A, X);
   const out = [];
   windows.forEach(([ws, we], w) => {
-    // the regular cadence, plus a point at the exact minute of every score
+    // the regular cadence, plus a point at the exact minute of every touchdown
     const times = new Set();
     for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
     plays.forEach(e => { if (e.t >= ws && e.t <= we) times.add(e.t); });
@@ -226,7 +237,7 @@ export function buildRewind(el, aFinal, xFinal){
     rW.className = 'w ' + (p.win >= 50 ? 'up' : 'dn');
     rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
     rE.innerHTML = p.ev.map(e =>
-      `<span class="${e.side === 'a' ? 'me' : 'opp'}">${escName(e.name)} +${e.pts.toFixed(1)}</span>`
+      `<span class="${e.side === 'a' ? 'me' : 'opp'}">${escName(e.name)} TD +${e.pts.toFixed(1)}</span>`
     ).join('');
   }
   show(n - 1);
