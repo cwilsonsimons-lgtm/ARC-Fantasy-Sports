@@ -356,7 +356,9 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .rw-mid{stroke:rgba(255,255,255,.34);stroke-width:1;vector-effect:non-scaling-stroke}
 .rw-line{fill:none;stroke:var(--green);stroke-width:2;stroke-linejoin:round;
   vector-effect:non-scaling-stroke}
-.rw-td{fill:#fff;opacity:.9}
+.rw-td{opacity:.95;stroke:#0a0f19;stroke-width:1}
+.rw-td.me{fill:var(--green)}
+.rw-td.opp{fill:var(--red)}
 .rw-cursor{stroke:var(--ink-2);stroke-width:1;vector-effect:non-scaling-stroke}
 .rw-dot{fill:#fff;stroke:var(--green);stroke-width:2;vector-effect:non-scaling-stroke}
 .rw-axis{position:relative;height:13px;margin-top:2px}
@@ -375,7 +377,9 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .rw-r2{display:flex;align-items:baseline;justify-content:space-between;margin-top:2px}
 .rw-r2 .sc{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;color:var(--ink-3)}
 .rw-r2 .sc b{color:var(--ink);font-weight:700}
-.rw-r2 .ev{font-size:10px;font-weight:700;color:var(--green);letter-spacing:.4px}
+.rw-r2 .ev{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;font-size:10.5px;font-weight:700}
+.rw-r2 .ev .me{color:var(--green)}
+.rw-r2 .ev .opp{color:var(--red)}
 .rw-empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
 
 /* starters */
@@ -3380,12 +3384,27 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const tot = w.reduce((s, v) => s + v, 0);
     return at.map((f, i) => ({ at: f, share: w[i] / tot }));
   }
+  var TOL = 0.5 / GAME_MIN;
   function accrued(total, name, f) {
     if (f <= 0) return 0;
     if (f >= 1) return total;
     let got = 0;
-    for (const j of jumpsFor(name)) if (f >= j.at) got += j.share;
+    for (const j of jumpsFor(name)) if (f >= j.at - TOL) got += j.share;
     return total * got;
+  }
+  function scoringPlays(A, X) {
+    const out = [];
+    const add = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
+      out.push({
+        t: Math.round(p.kick + j.at * GAME_MIN),
+        name: p.name,
+        side,
+        pts: Math.round(p.total * j.share * 10) / 10
+      });
+    }));
+    add(A, "a");
+    add(X, "x");
+    return out.filter((e) => e.pts >= 0.1).sort((a, b) => a.t - b.t);
   }
   function liveWindows(kicks) {
     const spans = kicks.map((k) => [k - 10, k + GAME_MIN + 10]).sort((a, b) => a[0] - b[0]);
@@ -3423,26 +3442,24 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
       return n + p.proj * (1 - done);
     }, 0);
+    const plays = scoringPlays(A, X);
     const out = [];
-    let prevA = 0, prevX = 0;
     windows.forEach(([ws, we], w) => {
-      for (let t = ws; t <= we; t += SAMPLE_MIN) {
+      const times = /* @__PURE__ */ new Set();
+      for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
+      plays.forEach((e) => {
+        if (e.t >= ws && e.t <= we) times.add(e.t);
+      });
+      [...times].sort((p, q) => p - q).forEach((t) => {
+        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side }));
         const a = sum(A, t), x = sum(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
-        out.push({
-          abs: t,
-          a: Math.round(a * 10) / 10,
-          x: Math.round(x * 10) / 10,
-          win,
-          w,
-          td: a - prevA > 4 || x - prevX > 4
-        });
-        prevA = a;
-        prevX = x;
-      }
+        out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev });
+      });
     });
     return out;
   }
+  var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   var W = 320;
   var H = 150;
   var PADL = 4;
@@ -3458,7 +3475,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const Y = (w) => H - w / 100 * H;
     const line = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.win).toFixed(1)}`).join(" ");
     const area = `${PADL},${Y(50)} ${line} ${X(n - 1).toFixed(1)},${Y(50)}`;
-    const scored = pts.map((p, i) => p.td ? `<circle class="rw-td" cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.4"/>` : "").join("");
+    const scored = pts.map((p, i) => p.ev.length ? `<circle class="rw-td ${p.ev[0].side === "a" ? "me" : "opp"}"
+         cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.8"/>` : "").join("");
     const marks = [];
     let lastW = null;
     pts.forEach((p, i) => {
@@ -3515,7 +3533,9 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       rW.textContent = p.win + "% win";
       rW.className = "w " + (p.win >= 50 ? "up" : "dn");
       rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
-      rE.textContent = p.td ? "Scoring play" : "";
+      rE.innerHTML = p.ev.map(
+        (e) => `<span class="${e.side === "a" ? "me" : "opp"}">${escName(e.name)} +${e.pts.toFixed(1)}</span>`
+      ).join("");
     }
     show(n - 1);
     let drag = false;

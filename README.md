@@ -140,7 +140,11 @@ windows instead of 744 across the whole calendar.
 
 The series comes from the lineup rather than being drawn: each player's game has
 a kickoff, their points land in two to four deterministic jumps across it, and
-the chart samples every ten minutes. That is what gives the line its shape —
+the chart samples every ten minutes **plus a point at the exact minute of every
+scoring play**, so a score is never rounded onto the nearest tick. Those points
+carry the scorer and the points gained, which is what the readout shows — a
+typical week has ~46 scoring points, most of them off the ten-minute grid.
+Dots are coloured by side: green for your players, red for the opponent's. That is what gives the line its shape —
 flat overnight, jagged on Sunday afternoon when games overlap. Odds come from `winProbability(edge, rem)` in `js/clock.js`, shared with the
 live hero so the two never disagree. `edge` is the expected-points margin,
 `rem` the points still to be played — the uncertainty the margin is measured

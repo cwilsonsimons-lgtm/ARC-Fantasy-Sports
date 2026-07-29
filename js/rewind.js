@@ -53,13 +53,28 @@ function jumpsFor(name){
   return at.map((f,i) => ({ at:f, share: w[i]/tot }));
 }
 
+// Event times are rounded to the minute, so a sample taken exactly on a scoring
+// play can land a hair before it. Allow half a minute of slack.
+const TOL = 0.5 / GAME_MIN;
+
 /** A player's accrued points at elapsed fraction `f` of their game. */
 function accrued(total, name, f){
   if (f <= 0) return 0;
   if (f >= 1) return total;
   let got = 0;
-  for (const j of jumpsFor(name)) if (f >= j.at) got += j.share;
+  for (const j of jumpsFor(name)) if (f >= j.at - TOL) got += j.share;
   return total * got;
+}
+
+/** Every scoring play in the week: who, when, how many, which side. */
+function scoringPlays(A, X){
+  const out = [];
+  const add = (list, side) => list.forEach(p => jumpsFor(p.name).forEach(j => {
+    out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side,
+               pts: Math.round(p.total * j.share * 10) / 10 });
+  }));
+  add(A, 'a'); add(X, 'x');
+  return out.filter(e => e.pts >= 0.1).sort((a,b) => a.t - b.t);
 }
 
 /** Merge each player's game window, so only live stretches survive. */
@@ -113,19 +128,26 @@ export function rewindSeries(){
     return n + p.proj * (1 - done);
   }, 0);
 
+  const plays = scoringPlays(A, X);
   const out = [];
-  let prevA = 0, prevX = 0;
   windows.forEach(([ws, we], w) => {
-    for (let t = ws; t <= we; t += SAMPLE_MIN){
+    // the regular cadence, plus a point at the exact minute of every score
+    const times = new Set();
+    for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
+    plays.forEach(e => { if (e.t >= ws && e.t <= we) times.add(e.t); });
+
+    [...times].sort((p, q) => p - q).forEach(t => {
+      const ev = plays.filter(e => e.t === t)
+                      .map(e => ({ name:e.name, pts:e.pts, side:e.side }));
       const a = sum(A, t), x = sum(X, t);
       const win = winProbability(expect(A,t) - expect(X,t), remain(A,t) + remain(X,t));
-      out.push({ abs:t, a:Math.round(a*10)/10, x:Math.round(x*10)/10, win, w,
-                 td: (a - prevA > 4) || (x - prevX > 4) });
-      prevA = a; prevX = x;
-    }
+      out.push({ abs:t, a:Math.round(a*10)/10, x:Math.round(x*10)/10, win, w, ev });
+    });
   });
   return out;
 }
+
+const escName = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // ---------------------------------------------------------------- rendering
 const W = 320, H = 150, PADL = 4, PADR = 4;
@@ -140,8 +162,9 @@ export function buildRewind(el, aFinal, xFinal){
 
   const line = pts.map((p,i) => `${X(i).toFixed(1)},${Y(p.win).toFixed(1)}`).join(' ');
   const area = `${PADL},${Y(50)} ${line} ${X(n-1).toFixed(1)},${Y(50)}`;
-  const scored = pts.map((p,i) => p.td
-    ? `<circle class="rw-td" cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.4"/>` : '').join('');
+  const scored = pts.map((p,i) => p.ev.length
+    ? `<circle class="rw-td ${p.ev[0].side === 'a' ? 'me' : 'opp'}"
+         cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.8"/>` : '').join('');
 
   // one divider per live window; the gaps between them are hours nobody played
   const marks = [];
@@ -202,7 +225,9 @@ export function buildRewind(el, aFinal, xFinal){
     rW.textContent = p.win + '% win';
     rW.className = 'w ' + (p.win >= 50 ? 'up' : 'dn');
     rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
-    rE.textContent = p.td ? 'Scoring play' : '';
+    rE.innerHTML = p.ev.map(e =>
+      `<span class="${e.side === 'a' ? 'me' : 'opp'}">${escName(e.name)} +${e.pts.toFixed(1)}</span>`
+    ).join('');
   }
   show(n - 1);
 
