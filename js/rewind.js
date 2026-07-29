@@ -6,9 +6,13 @@
 //
 // Points come from the lineup itself. Every player's game has a kickoff ordinal,
 // and their points accrue across that window in a few discrete jumps - the
-// scoring plays. The chart samples every ten minutes of game time and marks the
-// jumps, which is what gives the line its shape: flat overnight, jagged on
-// Sunday afternoon when eight games overlap.
+// scoring plays.
+//
+// The axis only covers time when games are actually running. Kickoff windows are
+// merged, and everything between them is dropped: no Saturday if nobody plays
+// Saturday, no Sunday morning, no Monday daytime before the night game. Dead
+// hours would otherwise be most of the chart, since a week is ~7,500 minutes and
+// only about a third of that has a ball in the air.
 import { LINEUP } from './store.js';
 import { pLive, pOrd } from './clock.js';
 
@@ -18,6 +22,15 @@ const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 
 // ord packs a day number and minutes-of-day; flatten it to absolute minutes
 const absMin = ord => Math.floor(ord / 2000) * 1440 + (ord % 2000);
+
+/** Short window label, e.g. SUN 12PM. */
+function slotLabel(abs){
+  const day = Math.floor(abs / 1440), mins = ((abs % 1440) + 1440) % 1440;
+  let h = Math.floor(mins / 60);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${DAYS[(day + 4) % 7]} ${h}${ap}`;
+}
 
 function clockLabel(abs){
   const day = Math.floor(abs / 1440), mins = ((abs % 1440) + 1440) % 1440;
@@ -49,9 +62,21 @@ function accrued(total, name, f){
   return total * got;
 }
 
+/** Merge each player's game window, so only live stretches survive. */
+function liveWindows(kicks){
+  const spans = kicks.map(k => [k - 10, k + GAME_MIN + 10]).sort((a,b) => a[0] - b[0]);
+  const out = [];
+  spans.forEach(sp => {
+    const last = out[out.length - 1];
+    if (last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
+    else out.push([sp[0], sp[1]]);
+  });
+  return out;
+}
+
 /**
- * The full week as chart points.
- * Each: { abs, a, x, win, td } - td flags a sample where someone scored.
+ * The live stretches of the week as chart points.
+ * Each: { abs, a, x, win, td, w } - td flags a scoring play, w the window index.
  */
 export function rewindSeries(){
   const rows = LINEUP.filter(r => r.a || r.x);
@@ -64,8 +89,7 @@ export function rewindSeries(){
   }));
   if (!ords.length) return [];
 
-  const start = Math.min(...ords.map(absMin)) - 20;
-  const end   = Math.max(...ords.map(absMin)) + GAME_MIN + 20;
+  const windows = liveWindows(ords.map(absMin));
 
   // precompute each player's total and kickoff so sampling stays cheap
   const side = s => rows.map(r => {
@@ -86,13 +110,15 @@ export function rewindSeries(){
 
   const out = [];
   let prevA = 0, prevX = 0;
-  for (let t = start; t <= end; t += SAMPLE_MIN){
-    const a = sum(A, t), x = sum(X, t);
-    const win = Math.max(1, Math.min(99, Math.round(50 + (blend(A,t) - blend(X,t)) * 1.1)));
-    out.push({ abs:t, a:Math.round(a*10)/10, x:Math.round(x*10)/10, win,
-               td: (a - prevA > 4) || (x - prevX > 4) });
-    prevA = a; prevX = x;
-  }
+  windows.forEach(([ws, we], w) => {
+    for (let t = ws; t <= we; t += SAMPLE_MIN){
+      const a = sum(A, t), x = sum(X, t);
+      const win = Math.max(1, Math.min(99, Math.round(50 + (blend(A,t) - blend(X,t)) * 1.1)));
+      out.push({ abs:t, a:Math.round(a*10)/10, x:Math.round(x*10)/10, win, w,
+                 td: (a - prevA > 4) || (x - prevX > 4) });
+      prevA = a; prevX = x;
+    }
+  });
   return out;
 }
 
@@ -112,18 +138,15 @@ export function buildRewind(el, aFinal, xFinal){
   const scored = pts.map((p,i) => p.td
     ? `<circle class="rw-td" cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.4"/>` : '').join('');
 
-  // day gridlines, so the week reads at a glance
+  // one divider per live window; the gaps between them are hours nobody played
   const marks = [];
-  let lastDay = null;
+  let lastW = null;
   pts.forEach((p,i) => {
-    const d = Math.floor(p.abs / 1440);
-    if (d !== lastDay){
-      lastDay = d;
-      const x = X(i);
-      const prev = marks[marks.length - 1];
-      if (!prev || x - prev.x > 26) marks.push({ x, lb:DAYS[(d + 4) % 7] });
-      else marks.push({ x, lb:'' });          // keep the gridline, drop the label
-    }
+    if (p.w === lastW) return;
+    lastW = p.w;
+    const x = X(i);
+    const prev = marks[marks.length - 1];
+    marks.push({ x, lb: (!prev || x - prev.x > 34) ? slotLabel(p.abs) : '' });
   });
 
   el.innerHTML = `

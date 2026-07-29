@@ -102,7 +102,10 @@
 .rw-dot{fill:#fff;stroke:var(--green);stroke-width:2;vector-effect:non-scaling-stroke}
 .rw-axis{position:relative;height:13px;margin-top:2px}
 .rw-axis span{position:absolute;transform:translateX(-50%);font-family:'JetBrains Mono',ui-monospace,monospace;
-  font-size:8px;color:var(--ink-3)}
+  font-size:8px;color:var(--ink-3);white-space:nowrap}
+/* the first and last ticks sit on the edges; centring them would clip the text */
+.rw-axis span:first-child{transform:translateX(0)}
+.rw-axis span:last-child{transform:translateX(-100%)}
 
 .rw-read{border-top:1px solid var(--line-soft);margin-top:6px;padding-top:7px}
 .rw-r1{display:flex;align-items:baseline;justify-content:space-between}

@@ -131,6 +131,13 @@ across the whole NFL week, 50% on the midline, the area filled green while you
 lead and red once you trail. Scrub it to read the time, the score and the odds
 at that moment; white dots mark scoring plays.
 
+The axis only covers time when games are running. Kickoff windows are merged and
+everything between them is dropped — no Saturday if nobody plays Saturday, no
+Sunday morning, no Monday daytime before the night game. Dead hours would
+otherwise be most of the chart: a week is about 7,500 minutes and only a third
+of it has a ball in the air. For a drafted week that is 135 samples across five
+windows instead of 744 across the whole calendar.
+
 The series comes from the lineup rather than being drawn: each player's game has
 a kickoff, their points land in two to four deterministic jumps across it, and
 the chart samples every ten minutes. That is what gives the line its shape —
