@@ -20,6 +20,11 @@ body.open .drawer{transform:translateX(0)}
 .ld-mt{font-size:9.5px;color:var(--ink-3);font-weight:600}
 .ld-pt{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px}
 .ld-pt.none{color:var(--ink-3);font-weight:600}
+/* past-season rows: retired players have no profile to open and no headshot */
+.ld-gone{cursor:default}
+.ld-init{font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.3px}
+.ld-note{font-size:9.5px;font-weight:600;color:var(--ink-3);letter-spacing:.4px;
+  padding:0 6px 7px;border-bottom:1px solid var(--line-soft);margin-bottom:2px}
 .ld-mt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .panel-hd.sm{font-size:12px;letter-spacing:1px;gap:6px}
 .hd-sel{background:var(--card);border:1px solid var(--line);border-radius:9px;color:var(--ink-2);

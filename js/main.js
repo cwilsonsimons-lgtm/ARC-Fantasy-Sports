@@ -8,6 +8,7 @@ import * as m3 from './data/nfl-teams.js';
 import * as m4 from './data/nfl-schedule.js';
 import * as m5 from './data/nfl-players.js';
 import * as m6 from './data/nfl-index.js';
+import * as mh from './data/nfl-history.js';
 import * as m7 from './clock.js';
 import * as m8 from './lineup.js';
 import * as m9 from './hero.js';
@@ -39,6 +40,7 @@ import * as mk5 from './markets/index.js';
 // explicit handler list is the natural next cleanup.
 Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
   m22, m23,
+  mh,
   mk0, mk1, mk2, mk3, mk4, mk5);
 
 // Startup, in the order these ran in the original script.

@@ -2,6 +2,7 @@ import { S } from './state.js';
 import { POOL, RAIL, pLive } from './clock.js';
 import { byeFor, hydrateRosters, weekGame } from './data/nfl-index.js';
 import { NFL_PLAYERS } from './data/nfl-players.js';
+import { HIST_SEASONS, histLeaders } from './data/nfl-history.js';
 import { applyDraftToRosters, draftPicks, takenIds } from './draft.js';
 import { availableListHTML, faOpen, isRostered, renderAvailable } from './freeagency.js';
 import { LIVE_WEEK, MAXW, MINW } from './lineup.js';
@@ -120,7 +121,38 @@ export function leaderMeta(p){
   const g=weekGame(p.tm,S.leaderWeek);
   return g?(g.home?'vs ':'@ ')+g.opp:'BYE';
 }
+// ---- past seasons ----
+// Real production, not the simulation: nflverse regular-season totals baked into
+// js/data/nfl-history.js. A completed season has no projection and no upcoming
+// opponent, so those controls are hidden while one is selected and the metric
+// switches to points per game.
+export function histOn(){ return HIST_SEASONS.indexOf(+S.leaderScope) > -1; }
+function histMatch(r,q){
+  q=(q||'').trim().toLowerCase();if(!q)return true;
+  return r.name.toLowerCase().includes(q)||r.tm.toLowerCase().includes(q)||r.pos.toLowerCase()===q;
+}
+export function histListHTML(){
+  const year=+S.leaderScope;
+  const val=r=>leaderMetric==='ppg'?r.ppg:leaderMetric==='std'?r.std:r.ppr;
+  // stored best-PPR first; per-game and standard are different orders entirely
+  const rows=histLeaders(year,leaderPos).filter(r=>histMatch(r,panelQ.leaders))
+    .slice().sort((a,b)=>val(b)-val(a));
+  if(!rows.length)return noHits('leaders',`No ${leaderPos} players in ${year}`);
+  return rows.slice(0,PANEL_CAP).map((r,i)=>{
+    // still on a roster: keep the face and let the row open their profile
+    const face=r.id?faceInner(r.id):`<span class="ld-init">${escHtml(
+      r.name.split(' ').map(s=>s[0]).slice(0,2).join(''))}</span>`;
+    const open=r.id?` onclick="openPlayer('${esc(r.id)}')"`:'';
+    return `<div class="ld-row${r.id?'':' ld-gone'}"${open}><span class="ld-rk">${i+1}</span>
+        <span class="ld-face">${face}</span>
+        <div class="ld-info"><div class="ld-nm">${escHtml(r.name)}</div>
+          <div class="ld-mt"><span class="pos ${r.pos}">${r.pos}</span> · ${escHtml(r.tm)} · ${r.g} games</div></div>
+        <span class="ld-pt">${val(r).toFixed(1)}</span></div>`;
+  }).join('');
+}
+
 export function leadersListHTML(){
+  if(histOn())return histListHTML();
   const rows=POOL.filter(p=>posMatch(p.pos,leaderPos)&&matchQ(p,panelQ.leaders))
     .map(p=>({p,v:leaderVal(p)}))
     .sort((a,b)=>((b.v==null?-1:b.v)-(a.v==null?-1:a.v))||(b.p.sproj-a.p.sproj));
@@ -136,19 +168,27 @@ export function leadersListHTML(){
   }).join('');
 }
 export function leaderScopeOpts(){
-  const o=[`<option value="season"${S.leaderScope==='season'?' selected':''}>Season</option>`];
+  const o=[`<option value="season"${S.leaderScope==='season'?' selected':''}>2026 Season</option>`];
   for(let w=MINW;w<=MAXW;w++)o.push(`<option value="w${w}"${S.leaderScope==='week'&&S.leaderWeek===w?' selected':''}>Wk ${w}</option>`);
+  o.push('<option disabled>──────</option>');
+  HIST_SEASONS.forEach(y=>o.push(
+    `<option value="${y}"${+S.leaderScope===y?' selected':''}>${y}</option>`));
   return o.join('');
+}
+function leaderMetricOpts(){
+  const opts=histOn()
+    ? [['ppr','PPR'],['ppg','Per game'],['std','Standard']]
+    : [['proj','Proj'],['pts','Points']];
+  return opts.map(([v,l])=>
+    `<option value="${v}"${leaderMetric===v?' selected':''}>${l}</option>`).join('');
 }
 export function renderLeaders(){
   document.getElementById('panel').innerHTML=
     `<div class="panel-hd sm"><span class="d"></span>Leaders
-       <select class="hd-sel" onchange="setLeaderMetric(this.value)">
-         <option value="proj"${leaderMetric==='proj'?' selected':''}>Proj</option>
-         <option value="pts"${leaderMetric==='pts'?' selected':''}>Points</option>
-       </select>
+       <select class="hd-sel" onchange="setLeaderMetric(this.value)">${leaderMetricOpts()}</select>
        <select class="hd-sel" onchange="setLeaderScope(this.value)">${leaderScopeOpts()}</select>
      </div>
+     ${histOn()?`<div class="ld-note">Real ${S.leaderScope} regular-season production</div>`:''}
      ${searchBar('leaders','Search all players')}
      ${pillsHTML(leaderPos,'setLeaderPos')}
      <div id="panelList">${leadersListHTML()}</div>`;
@@ -156,8 +196,18 @@ export function renderLeaders(){
 export function setLeaderPos(pl){leaderPos=pl;setPills(pl);paintPanelList('leaders');}
 export function setLeaderMetric(v){leaderMetric=v;paintPanelList('leaders');}
 export function setLeaderScope(v){
+  const was=histOn();
   if(v==='season')S.leaderScope='season';
+  else if(HIST_SEASONS.indexOf(+v)>-1)S.leaderScope=+v;
   else{S.leaderScope='week';S.leaderWeek=+v.slice(1);}
+  // Crossing between the live season and a past one swaps the metric list, and
+  // switching between two past seasons has to restamp the year in the note - so
+  // anything touching a past season repaints the whole rail, not just the rows.
+  if(histOn()||was){
+    if(histOn()!==was)leaderMetric=histOn()?'ppr':'pts';
+    renderLeaders();
+    return;
+  }
   paintPanelList('leaders');
 }
 
