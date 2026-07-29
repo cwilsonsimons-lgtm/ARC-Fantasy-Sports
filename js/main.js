@@ -30,7 +30,8 @@ import * as mk0 from './markets/data.js';
 import * as mk1 from './markets/ui.js';
 import * as mk2 from './markets/market.js';
 import * as mk3 from './markets/portfolio.js';
-import * as mk4 from './markets/index.js';
+import * as mk4 from './markets/charts.js';
+import * as mk5 from './markets/index.js';
 
 // The markup drives the app through inline `onclick="..."` attributes, which
 // resolve against the global scope. Every top-level name was a global in the
@@ -38,7 +39,7 @@ import * as mk4 from './markets/index.js';
 // explicit handler list is the natural next cleanup.
 Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
   m22, m23,
-  mk0, mk1, mk2, mk3, mk4);
+  mk0, mk1, mk2, mk3, mk4, mk5);
 
 // Startup, in the order these ran in the original script.
 initStore();

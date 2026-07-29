@@ -1324,6 +1324,73 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mk-settle svg{width:17px;height:17px;color:var(--mk-blue);flex:none}
 .mk-settle span{font-size:11.5px;line-height:1.5;color:var(--mk-ink-2);font-weight:600}
 
+/* ===== contract charts: price, last five, pace ===== */
+.mkc{border:1px solid var(--mk-line);border-radius:15px;background:var(--mk-card-2);
+  padding:13px 13px 11px;margin-top:12px}
+.mkc-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.mkc-t{font-size:10px;letter-spacing:1.1px;font-weight:800;color:var(--mk-ink-3)}
+.mkc-d{font-size:11.5px;font-weight:700;color:var(--mk-ink-2);text-align:right}
+.mkc-d.up{color:var(--mk-green)}
+.mkc-d.down{color:var(--mk-red)}
+
+.mkc-plot{position:relative;height:118px}
+.mkc-plot.tall{height:126px}
+.mkc-svg{width:100%;height:100%;display:block;overflow:visible}
+.mkc-base{stroke:var(--mk-line);stroke-width:1;stroke-dasharray:3 4}
+.mkc-cur{stroke:var(--mk-ink-3);stroke-width:1;opacity:0}
+.mkc-pace{stroke:var(--mk-ink-3);stroke-width:1.6;stroke-dasharray:5 4}
+.mkc-proj{stroke-width:1.6;stroke-dasharray:3 4;opacity:.6}
+.mkc-hi,.mkc-lo{position:absolute;right:0;font-size:9.5px;font-weight:700;color:var(--mk-ink-3);
+  background:var(--mk-card-2);padding:0 2px;pointer-events:none}
+.mkc-hi{top:-4px}
+.mkc-lo{bottom:-2px}
+
+.mkc-x{position:relative;height:14px;margin-top:8px}
+.mkc-x span{position:absolute;transform:translateX(-50%);font-size:9px;font-weight:700;
+  letter-spacing:.6px;color:var(--mk-ink-3);white-space:nowrap}
+.mkc-x span:first-child{transform:none}
+.mkc-x span:last-child{transform:translateX(-100%)}
+
+.mkc-read{display:flex;align-items:baseline;gap:7px;margin-top:4px}
+.mkc-read .a{font-size:19px;font-weight:800}
+.mkc-read .b{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--mk-ink-3)}
+
+.mkc-ranges{display:flex;gap:6px;margin-top:11px}
+.mkc-rg{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:10px;padding:7px 4px;
+  font-size:10.5px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;background:var(--mk-card);
+  white-space:nowrap}
+.mkc-rg.on{border-color:var(--mk-blue);color:#fff;background:var(--mk-blue)}
+.mkc-rg:active{opacity:.85}
+
+/* chart B — the bar band (92px) and the week label (18px) are fixed so the
+   average line can be positioned in px against the same scale as the bars */
+.mkc-bars{position:relative;display:flex;align-items:flex-end;gap:9px;padding-top:16px}
+.mkc-bar{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.mkc-bar .col{width:100%;height:92px;display:flex;align-items:flex-end}
+.mkc-bar .b{position:relative;width:100%;border-radius:5px 5px 2px 2px}
+.mkc-bar .b.up{background:linear-gradient(180deg,var(--mk-green),rgba(43,224,107,.28))}
+.mkc-bar .b.down{background:linear-gradient(180deg,var(--mk-red),rgba(255,75,75,.26))}
+.mkc-bar .v{position:absolute;bottom:100%;left:-2px;right:-2px;text-align:center;margin-bottom:4px;
+  font-size:10.5px;font-weight:800}
+.mkc-bar .v.up{color:var(--mk-green)}
+.mkc-bar .v.down{color:var(--mk-red)}
+.mkc-bar .w{height:18px;line-height:18px;font-size:9px;font-weight:700;color:var(--mk-ink-3);letter-spacing:.4px}
+.mkc-avg{position:absolute;left:0;right:0;border-top:1.5px dashed var(--mk-ink-3);pointer-events:none;z-index:1}
+.mkc-avg span{position:absolute;left:0;top:-13px;font-size:9px;font-weight:800;letter-spacing:.5px;
+  color:var(--mk-card-2);background:var(--mk-ink-3);padding:1px 4px;border-radius:4px}
+
+/* chart C */
+.mkc-key{display:flex;gap:14px;margin-top:7px}
+.mkc-key span{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--mk-ink-3)}
+.mkc-key i{width:11px;height:2.5px;border-radius:2px;background:var(--mk-ink-3);flex:none}
+.mkc-key i.dash{background:repeating-linear-gradient(90deg,var(--mk-ink-3) 0 4px,transparent 4px 7px)}
+.mkc-verdict{font-size:11.5px;line-height:1.5;font-weight:600;color:var(--mk-ink-2);margin-top:10px;
+  border-left:2px solid var(--mk-ink-3);padding-left:9px}
+.mkc-verdict.up{border-left-color:var(--mk-green)}
+.mkc-verdict.down{border-left-color:var(--mk-red)}
+.mkc-verdict b{color:var(--mk-ink);font-weight:800}
+.mkc-note{font-size:10.5px;line-height:1.5;color:var(--mk-ink-3);font-weight:500;margin-top:9px}
+
 /* real device: match the fantasy app's safe-area handling */
 @media (max-width:440px){
   .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
@@ -6119,13 +6186,18 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     HOLDING_COUNT: () => HOLDING_COUNT,
     MARKET: () => MARKET,
     POINTS_PER_DOLLAR: () => POINTS_PER_DOLLAR,
+    SEASON_GAMES: () => SEASON_GAMES,
     SHARES_PER_LOT: () => SHARES_PER_LOT,
+    WEEKS_PLAYED: () => WEEKS_PLAYED,
+    careerSeries: () => careerSeries,
+    gameLog: () => gameLog,
     holdingRows: () => holdingRows,
     isWatched: () => isWatched,
     marketStats: () => marketStats,
     mkStore: () => mkStore,
     mostActive: () => mostActive,
     portfolio: () => portfolio,
+    priceDays: () => priceDays,
     saveMk: () => saveMk,
     seasonCurve: () => seasonCurve,
     toggleWatch: () => toggleWatch,
@@ -6323,6 +6395,60 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   }
   function watchRows() {
     return mkStore.watch.map((id) => BY_ID[id]).filter(Boolean);
+  }
+  var SEASON_GAMES = 17;
+  var WEEKS_PLAYED = 8;
+  var logCache = {};
+  function gameLog(p) {
+    if (logCache[p.id]) return logCache[p.id];
+    const r = rng(hash2(p.id + "#log"));
+    const perGame = p.sproj / SEASON_GAMES;
+    const raw = [];
+    for (let w = 0; w < SEASON_GAMES; w++) {
+      const base = (r() + r()) / 2;
+      const spike = r() < 0.12 ? 0.55 + r() * 0.7 : 0;
+      raw.push(Math.max(0, perGame * (0.28 + base * 1.42 + spike)));
+    }
+    const scale = p.sproj / (raw.reduce((n, v) => n + v, 0) || 1);
+    const out = raw.map((v, i) => ({ week: i + 1, pts: Math.round(v * scale * 10) / 10 }));
+    logCache[p.id] = out;
+    return out;
+  }
+  var dayCache = {};
+  function priceDays(p) {
+    if (dayCache[p.id]) return dayCache[p.id];
+    const r = rng(hash2(p.id + "#px"));
+    const log = gameLog(p), perGame = p.sproj / SEASON_GAMES;
+    const out = [];
+    let v = 1;
+    for (let w = 0; w < WEEKS_PLAYED; w++) {
+      for (let d = 0; d < 7; d++) {
+        if (d === 0) {
+          const surprise = (log[w].pts - perGame) / (perGame || 1);
+          v *= 1 + Math.max(-0.2, Math.min(0.2, surprise * 0.14));
+        } else {
+          v *= 1 + (r() * 2 - 1) * 0.011;
+        }
+        out.push({ v, w, game: d === 0, pts: d === 0 ? log[w].pts : null });
+      }
+    }
+    const k = p.price / (out[out.length - 1].v || 1);
+    out.forEach((x) => {
+      x.v = Math.round(x.v * k * 1e4) / 1e4;
+    });
+    dayCache[p.id] = out;
+    return out;
+  }
+  function careerSeries(p) {
+    const r = rng(hash2(p.id + "#career"));
+    const yrs = Math.max(1, Math.min(9, p.exp || 1));
+    const raw = [];
+    for (let i = 0; i <= yrs; i++) {
+      const arc = 0.4 + 0.72 * (1 - Math.pow((i - 5) / 6, 2));
+      raw.push({ year: 2026 - yrs + i, v: Math.max(0.15, arc * (0.9 + r() * 0.2)) });
+    }
+    const k = p.price / (raw[raw.length - 1].v || 1);
+    return raw.map((o) => ({ year: o.year, price: Math.round(o.v * k * 100) / 100 }));
   }
   function seasonCurve(p) {
     const r = rng(hash2(p.id + "#curve"));
@@ -6673,6 +6799,218 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     window.mkToast && window.mkToast("Sorted by " + sortKey);
   }
 
+  // js/markets/charts.js
+  var charts_exports = {};
+  __export(charts_exports, {
+    RANGES: () => RANGES,
+    lastFiveChart: () => lastFiveChart,
+    paceChart: () => paceChart,
+    paceData: () => paceData,
+    playerCharts: () => playerCharts,
+    priceChart: () => priceChart,
+    priceSeries: () => priceSeries
+  });
+  var UP = "#2BE06B";
+  var DOWN = "#FF4B4B";
+  var RANGES = [
+    ["week", "This week", "Since the last kickoff"],
+    ["five", "Last 5", "The last five game weeks"],
+    ["season", "Season", `Week 1 through week ${WEEKS_PLAYED}`],
+    ["career", "Career", "One price per season in the league"]
+  ];
+  function priceSeries(p, range) {
+    if (range === "career") {
+      const yrs = careerSeries(p);
+      return frame(yrs.map((y) => ({
+        v: y.price,
+        label: "'" + String(y.year).slice(2),
+        sub: `${y.year} season`
+      })));
+    }
+    const days = priceDays(p);
+    const span = range === "week" ? 7 : range === "five" ? 35 : days.length;
+    const cut = days.slice(Math.max(0, days.length - span));
+    const every = range === "week" ? 1 : 7;
+    let seen = null;
+    return frame(cut.map((d, i) => {
+      let label = "";
+      if (i % every === 0 || i === cut.length - 1) {
+        label = range === "week" ? DAY[i % 7] : "W" + (d.w + 1);
+        if (label === seen) label = "";
+        else seen = label;
+      }
+      return {
+        v: d.v,
+        label,
+        sub: range === "week" ? `${DAY_FULL[i % 7]}, week ${d.w + 1}` : `Week ${d.w + 1}`
+      };
+    }));
+  }
+  var DAY = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  var DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  function frame(pts) {
+    const vs = pts.map((p) => p.v);
+    const min = Math.min(...vs), max = Math.max(...vs);
+    return { pts, first: vs[0], last: vs[vs.length - 1], min, max };
+  }
+  var W2 = 320;
+  var H2 = 118;
+  function priceChart(p, range) {
+    const s = priceSeries(p, range);
+    const n = s.pts.length;
+    const up = s.last >= s.first;
+    const color = up ? UP : DOWN;
+    const pad = (s.max - s.min) * 0.18 || 0.05;
+    const lo = s.min - pad, hi = s.max + pad;
+    const X = (i) => i / Math.max(1, n - 1) * W2;
+    const Y = (v) => H2 - (v - lo) / (hi - lo) * H2;
+    const line = s.pts.map((q, i) => `${X(i).toFixed(1)},${Y(q.v).toFixed(1)}`).join(" ");
+    const delta = s.last - s.first;
+    const pct = s.first ? delta / s.first * 100 : 0;
+    const label = (RANGES.find((r) => r[0] === range) || RANGES[0])[1];
+    return `
+    <div class="mkc" data-mkc="price">
+      <div class="mkc-h">
+        <div class="mkc-t">PRICE</div>
+        <div class="mkc-d ${up ? "up" : "down"}">${delta < 0 ? "-" : "+"}${money(delta)}
+          (${pct < 0 ? "-" : "+"}${Math.abs(pct).toFixed(1)}%) &middot; ${esc2(label.toLowerCase())}</div>
+      </div>
+      <div class="mkc-plot">
+        <svg viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none" class="mkc-svg">
+          <defs><linearGradient id="mkcpx" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="${color}" stop-opacity=".34"/>
+            <stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+          <line class="mkc-base" x1="0" y1="${Y(s.first).toFixed(1)}" x2="${W2}" y2="${Y(s.first).toFixed(1)}"/>
+          <polygon points="0,${H2} ${line} ${W2},${H2}" fill="url(#mkcpx)"/>
+          <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2"
+            stroke-linejoin="round" stroke-linecap="round"/>
+          <line class="mkc-cur" x1="0" y1="0" x2="0" y2="${H2}"/>
+          <circle class="mkc-dot" cx="${X(n - 1)}" cy="${Y(s.last).toFixed(1)}" r="3.4" fill="${color}"/>
+        </svg>
+        <div class="mkc-hi">${money(s.max)}</div>
+        <div class="mkc-lo">${money(s.min)}</div>
+      </div>
+      <div class="mkc-x">${s.pts.map((q, i) => q.label ? `<span style="left:${(X(i) / W2 * 100).toFixed(2)}%">${esc2(q.label)}</span>` : "").join("")}</div>
+      <div class="mkc-read"><span class="a">${money(s.last)}</span><span class="b">Now</span></div>
+      <div class="mkc-ranges">${RANGES.map(
+      ([k, lb]) => `<div class="mkc-rg${k === range ? " on" : ""}" onclick="mkRange('${p.id}','${k}')">${lb}</div>`
+    ).join("")}</div>
+    </div>`;
+  }
+  function lastFiveChart(p) {
+    const log = gameLog(p);
+    const played = log.slice(0, WEEKS_PLAYED);
+    if (!played.length) return "";
+    const five = played.slice(-5);
+    const avg = played.reduce((n, g) => n + g.pts, 0) / played.length;
+    const top = Math.max(avg, ...five.map((g) => g.pts)) * 1.14 || 1;
+    const beat = five.filter((g) => g.pts >= avg).length;
+    const BAND = 92, FOOT = 18;
+    return `
+    <div class="mkc">
+      <div class="mkc-h">
+        <div class="mkc-t">LAST 5 GAMES</div>
+        <div class="mkc-d">${beat} of ${five.length} over average</div>
+      </div>
+      <div class="mkc-bars">
+        <div class="mkc-avg" style="bottom:${(FOOT + avg / top * BAND).toFixed(1)}px">
+          <span>AVG ${avg.toFixed(1)}</span>
+        </div>
+        ${five.map((g) => {
+      const over = g.pts >= avg;
+      return `<div class="mkc-bar">
+            <div class="col"><div class="b ${over ? "up" : "down"}"
+              style="height:${Math.max(2, g.pts / top * 100).toFixed(1)}%"><span
+              class="v ${over ? "up" : "down"}">${g.pts.toFixed(1)}</span></div></div>
+            <div class="w">W${g.week}</div>
+          </div>`;
+    }).join("")}
+      </div>
+      <div class="mkc-note">PPR points per game. The dashed line is his own season average
+        (${avg.toFixed(1)}), so a green bar is a week he beat himself.</div>
+    </div>`;
+  }
+  function paceData(p) {
+    const log = gameLog(p);
+    const target = p.price * POINTS_PER_DOLLAR;
+    const cum = [{ week: 0, pts: 0 }];
+    let run = 0;
+    log.slice(0, WEEKS_PLAYED).forEach((g) => {
+      run += g.pts;
+      cum.push({ week: g.week, pts: run });
+    });
+    const w = WEEKS_PLAYED || 1;
+    const paceNow = target * (w / SEASON_GAMES);
+    const rate = run / w;
+    return {
+      cum,
+      target,
+      run,
+      paceNow,
+      rate,
+      finish: rate * SEASON_GAMES,
+      // season total at this rate
+      ahead: run - paceNow
+    };
+  }
+  function paceChart(p) {
+    const d = paceData(p);
+    if (d.cum.length < 2) return "";
+    const ahead = d.ahead >= 0;
+    const color = ahead ? UP : DOWN;
+    const top = Math.max(d.target, d.finish, d.run) * 1.06 || 1;
+    const X = (w) => w / SEASON_GAMES * W2;
+    const Y = (v) => H2 - v / top * H2;
+    const actual = d.cum.map((c) => `${X(c.week).toFixed(1)},${Y(c.pts).toFixed(1)}`).join(" ");
+    const last = d.cum[d.cum.length - 1];
+    const gap = `${X(0)},${Y(0)} ${actual} ${X(last.week).toFixed(1)},${Y(d.paceNow).toFixed(1)}`;
+    const settle = d.finish / POINTS_PER_DOLLAR;
+    return `
+    <div class="mkc">
+      <div class="mkc-h">
+        <div class="mkc-t">PACE</div>
+        <div class="mkc-d ${ahead ? "up" : "down"}">${ahead ? "+" : "-"}${Math.abs(d.ahead).toFixed(1)} pts
+          ${ahead ? "ahead of" : "behind"} the price</div>
+      </div>
+      <div class="mkc-plot tall">
+        <svg viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none" class="mkc-svg">
+          <defs><linearGradient id="mkcpace" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="${color}" stop-opacity=".30"/>
+            <stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+          <polygon points="${gap}" fill="url(#mkcpace)"/>
+          <line class="mkc-pace" x1="0" y1="${Y(0)}" x2="${X(SEASON_GAMES)}" y2="${Y(d.target).toFixed(1)}"/>
+          <line class="mkc-proj" style="stroke:${color}"
+            x1="${X(last.week).toFixed(1)}" y1="${Y(last.pts).toFixed(1)}"
+            x2="${X(SEASON_GAMES)}" y2="${Y(d.finish).toFixed(1)}"/>
+          <polyline points="${actual}" fill="none" stroke="${color}" stroke-width="2.2"
+            stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${X(last.week).toFixed(1)}" cy="${Y(last.pts).toFixed(1)}" r="3.4" fill="${color}"/>
+        </svg>
+        <div class="mkc-hi">${Math.round(top)}</div>
+        <div class="mkc-lo">0</div>
+      </div>
+      <div class="mkc-x">
+        <span style="left:0%">W1</span>
+        <span style="left:${(WEEKS_PLAYED / SEASON_GAMES * 100).toFixed(1)}%">NOW</span>
+        <span style="left:100%">W${SEASON_GAMES}</span>
+      </div>
+      <div class="mkc-key">
+        <span><i style="background:${color}"></i>Actual ${d.run.toFixed(0)} pts</span>
+        <span><i class="dash"></i>Price pace ${d.target.toFixed(0)} pts</span>
+      </div>
+      <div class="mkc-verdict ${ahead ? "up" : "down"}">
+        At ${d.rate.toFixed(1)} points a game he finishes on <b>${d.finish.toFixed(0)}</b>, and the
+        contract settles near <b>${money(settle)}</b> against <b>${money(p.price)}</b> today.
+      </div>
+      <div class="mkc-note">The straight line is the season total you are paying for at
+        ${money(p.price)}. The climbing line is what he has actually banked. The gap between
+        them is the whole trade.</div>
+    </div>`;
+  }
+  function playerCharts(p, range) {
+    return priceChart(p, range) + lastFiveChart(p) + paceChart(p);
+  }
+
   // js/markets/index.js
   var markets_exports = {};
   __export(markets_exports, {
@@ -6681,6 +7019,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     mkAbout: () => mkAbout,
     mkCloseSheet: () => mkCloseSheet,
     mkOpenPlayer: () => mkOpenPlayer,
+    mkRange: () => mkRange,
     mkToast: () => mkToast,
     mkTogglePortfolio: () => mkTogglePortfolio,
     mkToggleWatch: () => mkToggleWatch,
@@ -6688,6 +7027,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     openMarkets: () => openMarkets
   });
   var view = "market";
+  var pxRange = "season";
   function openMarkets() {
     document.body.classList.add("markets");
     mkView(view);
@@ -6745,6 +7085,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 
     ${holdingFor(p.id)}
 
+    <div id="mkCharts">${playerCharts(p, pxRange)}</div>
+
     <div class="mk-settle">${ICON.info}<span>Settles on official season production at
       <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
       ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
@@ -6765,6 +7107,14 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
         border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
     </div>`);
+  }
+  function mkRange(id, key) {
+    const p = BY_ID[id];
+    if (!p) return;
+    pxRange = key;
+    const host = document.querySelector('#mkCharts [data-mkc="price"]');
+    if (host) host.outerHTML = priceChart(p, key);
+    else mkOpenPlayer(id);
   }
   function holdingFor(id) {
     const h = holdingRows().find((r) => r.id === id);
@@ -6848,6 +7198,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     ui_exports,
     market_exports,
     portfolio_exports,
+    charts_exports,
     markets_exports
   );
   initStore();

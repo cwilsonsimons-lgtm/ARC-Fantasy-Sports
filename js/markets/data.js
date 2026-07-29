@@ -175,6 +175,86 @@ export function toggleWatch(id) {
 }
 export function watchRows() { return mkStore.watch.map(id => BY_ID[id]).filter(Boolean); }
 
+// ---------------------------------------------------------------- the season
+// Markets keeps its own clock. The fantasy side of the app sits at week 1
+// pregame, but a contract with no games behind it has nothing to chart - the
+// game log is empty and the pace line is flat at zero. So the market runs at a
+// point in the season where the charts say something. Wire this to the real
+// week when there is a live season behind it.
+export const SEASON_GAMES = 17;
+export const WEEKS_PLAYED = 8;
+
+// A player's season, week by week. Weekly fantasy scoring is wildly uneven -
+// the same player puts up 4 and 31 a fortnight apart - so the spread here is
+// deliberately wide, with the mean tracking the season projection.
+const logCache = {};
+export function gameLog(p) {
+  if (logCache[p.id]) return logCache[p.id];
+  const r = rng(hash(p.id + '#log'));
+  const perGame = p.sproj / SEASON_GAMES;
+  const raw = [];
+  for (let w = 0; w < SEASON_GAMES; w++) {
+    // two rolls averaged, so most weeks land near the mean and the tails are
+    // reachable rather than uniform; the occasional roll adds a real spike
+    const base = (r() + r()) / 2;
+    const spike = r() < 0.12 ? 0.55 + r() * 0.7 : 0;
+    raw.push(Math.max(0, perGame * (0.28 + base * 1.42 + spike)));
+  }
+  // rescale so the season really does add up to the projection
+  const scale = p.sproj / (raw.reduce((n, v) => n + v, 0) || 1);
+  const out = raw.map((v, i) => ({ week: i + 1, pts: Math.round(v * scale * 10) / 10 }));
+  logCache[p.id] = out;
+  return out;
+}
+
+// A daily price path across the season so far. Game days move the price by how
+// far that game landed from expectation; the days between drift. The whole path
+// is then scaled so it ends exactly on today's quoted price - the history has to
+// agree with the number on the row.
+const dayCache = {};
+export function priceDays(p) {
+  if (dayCache[p.id]) return dayCache[p.id];
+  const r = rng(hash(p.id + '#px'));
+  const log = gameLog(p), perGame = p.sproj / SEASON_GAMES;
+  const out = [];
+  let v = 1;
+  for (let w = 0; w < WEEKS_PLAYED; w++) {
+    for (let d = 0; d < 7; d++) {
+      if (d === 0) {
+        const surprise = (log[w].pts - perGame) / (perGame || 1);
+        v *= 1 + Math.max(-0.2, Math.min(0.2, surprise * 0.14));
+      } else {
+        v *= 1 + (r() * 2 - 1) * 0.011;
+      }
+      out.push({ v, w, game: d === 0, pts: d === 0 ? log[w].pts : null });
+    }
+  }
+  const k = p.price / (out[out.length - 1].v || 1);
+  out.forEach(x => { x.v = Math.round(x.v * k * 10000) / 10000; });
+  dayCache[p.id] = out;
+  return out;
+}
+
+/**
+ * One closing price per season the player has been in the league, ending today.
+ *
+ * Built forward along a career arc rather than by walking backwards from today:
+ * cheap as a rookie, steepest gains in years two and three, a plateau around
+ * year five, a taper after. The whole curve is then scaled so the final year is
+ * exactly today's quote, which is what makes the chart honest at the right edge.
+ */
+export function careerSeries(p) {
+  const r = rng(hash(p.id + '#career'));
+  const yrs = Math.max(1, Math.min(9, p.exp || 1));
+  const raw = [];
+  for (let i = 0; i <= yrs; i++) {
+    const arc = 0.40 + 0.72 * (1 - Math.pow((i - 5) / 6, 2));
+    raw.push({ year: 2026 - yrs + i, v: Math.max(0.15, arc * (0.9 + r() * 0.2)) });
+  }
+  const k = p.price / (raw[raw.length - 1].v || 1);
+  return raw.map(o => ({ year: o.year, price: Math.round(o.v * k * 100) / 100 }));
+}
+
 // ---------------------------------------------------------------- career curve
 // The concept's "shape of a career": the same player priced for three seasons.
 // Younger players carry a premium further out, veterans a discount.

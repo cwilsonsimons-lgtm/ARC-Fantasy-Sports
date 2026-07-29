@@ -9,10 +9,12 @@
 import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
          holdingRows } from './data.js';
 import { ICON, spark, face, esc, money, pctText, dirClass, tri } from './ui.js';
+import { playerCharts, priceChart } from './charts.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
 
 let view = 'market';
+let pxRange = 'season';   // survives across sheet opens, like a stock app's
 
 export function openMarkets() {
   document.body.classList.add('markets');
@@ -82,6 +84,8 @@ export function mkOpenPlayer(id) {
 
     ${holdingFor(p.id)}
 
+    <div id="mkCharts">${playerCharts(p, pxRange)}</div>
+
     <div class="mk-settle">${ICON.info}<span>Settles on official season production at
       <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
       ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
@@ -102,6 +106,15 @@ export function mkOpenPlayer(id) {
       <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
         border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
     </div>`);
+}
+
+/** Range buttons on the price chart: swap that one chart, leave the sheet alone. */
+export function mkRange(id, key) {
+  const p = BY_ID[id];
+  if (!p) return;
+  pxRange = key;
+  const host = document.querySelector('#mkCharts [data-mkc="price"]');
+  if (host) host.outerHTML = priceChart(p, key); else mkOpenPlayer(id);
 }
 
 /** The holdings row no longer has room for total value, so it lives here. */
