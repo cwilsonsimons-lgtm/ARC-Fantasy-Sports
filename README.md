@@ -141,9 +141,12 @@ windows instead of 744 across the whole calendar.
 The series comes from the lineup rather than being drawn: each player's game has
 a kickoff, their points land in two to four deterministic jumps across it, and
 the chart samples every ten minutes. That is what gives the line its shape —
-flat overnight, jagged on Sunday afternoon when games overlap. Odds at each
-sample use points banked so far plus the projection still to come, the same
-blend the live hero uses.
+flat overnight, jagged on Sunday afternoon when games overlap. Odds come from `winProbability(edge, rem)` in `js/clock.js`, shared with the
+live hero so the two never disagree. `edge` is the expected-points margin,
+`rem` the points still to be played — the uncertainty the margin is measured
+against. As the last game ends `rem` reaches zero and the function returns an
+exact 0 or 100, because by then the result is simply known. The previous
+straight-line formula clamped at 1–99 and so never resolved.
 
 Both were unreachable for a while: `LIVE_WEEK` was `0` while weeks run from
 `MINW` (1), so `week === LIVE_WEEK` could never be true. The hero stayed at

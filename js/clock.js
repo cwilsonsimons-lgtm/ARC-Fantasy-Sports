@@ -51,16 +51,33 @@ export function pLive(proj,name){let h=2166136261;for(let i=0;i<name.length;i++)
 export function onField(name){let h=5381;for(let i=0;i<name.length;i++)h=((h<<5)+h+name.charCodeAt(i))>>>0;return h%3===0?'off':'on';}
 // live-week totals — recomputed from the CURRENT lineup + sim clock (started players count, others are 0)
 export let LT={a:0,x:0,ap:0,xp:0,aw:50,xw:50};
+/**
+ * Win probability from an expected-points edge and the points still to come.
+ *
+ * `rem` is the uncertainty: while games are outstanding the edge is only a
+ * guess, and the more that is left to play the less a lead means. As the last
+ * game ends `rem` reaches zero and the result is simply known - which is why
+ * this returns an exact 0 or 100 rather than clamping near the edges the way a
+ * straight-line formula does.
+ */
+export function winProbability(edge, rem){
+  if (rem <= 0.01) return edge > 0 ? 100 : edge < 0 ? 0 : 50;
+  // a fantasy week's remaining points swing roughly 1.8*sqrt(rem) either way
+  const sigma = 1.8 * Math.sqrt(rem) + 1;
+  return Math.round(100 / (1 + Math.exp(-1.7 * (edge / sigma))));
+}
+
 export function recomputeLT(){
-  let a=0,x=0,ap=0,xp=0,aBlend=0,xBlend=0;
+  let a=0,x=0,ap=0,xp=0,remA=0,remX=0;
   LINEUP.forEach(r=>{
     const alp=r.a?pLive(r.a.proj,r.a.n):0, xlp=r.x?pLive(r.x.proj,r.x.n):0;
-    a+=(r.a&&isLocked(r.a))?alp:0; x+=(r.x&&isLocked(r.x))?xlp:0;
+    const aOn=r.a&&isLocked(r.a), xOn=r.x&&isLocked(r.x);
+    a+=aOn?alp:0; x+=xOn?xlp:0;
     ap+=r.a?r.a.proj:0; xp+=r.x?r.x.proj:0;
-    aBlend+=r.a?(isLocked(r.a)?alp:r.a.proj):0; xBlend+=r.x?(isLocked(r.x)?xlp:r.x.proj):0; // live win% = actual-so-far + projected rest
+    remA+=(r.a&&!aOn)?r.a.proj:0; remX+=(r.x&&!xOn)?r.x.proj:0;   // still to play
   });
   const rnd=v=>Math.round(v*10)/10;
-  const aw=Math.max(1,Math.min(99,Math.round(50+(aBlend-xBlend)*1.1)));
+  const aw=winProbability((a+remA)-(x+remX), remA+remX);
   LT={a:rnd(a),x:rnd(x),ap:rnd(ap),xp:rnd(xp),aw,xw:100-aw};
 }
 export const LEADERS = [

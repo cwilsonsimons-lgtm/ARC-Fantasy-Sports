@@ -2817,7 +2817,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     recomputeLT: () => recomputeLT,
     simKick: () => simKick,
     simStops: () => simStops,
-    slotAllows: () => slotAllows
+    slotAllows: () => slotAllows,
+    winProbability: () => winProbability
   });
   var SLOT_ELIG = {
     QB: ["QB"],
@@ -2891,19 +2892,25 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     return h % 3 === 0 ? "off" : "on";
   }
   var LT = { a: 0, x: 0, ap: 0, xp: 0, aw: 50, xw: 50 };
+  function winProbability(edge, rem) {
+    if (rem <= 0.01) return edge > 0 ? 100 : edge < 0 ? 0 : 50;
+    const sigma = 1.8 * Math.sqrt(rem) + 1;
+    return Math.round(100 / (1 + Math.exp(-1.7 * (edge / sigma))));
+  }
   function recomputeLT() {
-    let a = 0, x = 0, ap = 0, xp = 0, aBlend = 0, xBlend = 0;
+    let a = 0, x = 0, ap = 0, xp = 0, remA = 0, remX = 0;
     LINEUP.forEach((r) => {
       const alp = r.a ? pLive(r.a.proj, r.a.n) : 0, xlp = r.x ? pLive(r.x.proj, r.x.n) : 0;
-      a += r.a && isLocked(r.a) ? alp : 0;
-      x += r.x && isLocked(r.x) ? xlp : 0;
+      const aOn = r.a && isLocked(r.a), xOn = r.x && isLocked(r.x);
+      a += aOn ? alp : 0;
+      x += xOn ? xlp : 0;
       ap += r.a ? r.a.proj : 0;
       xp += r.x ? r.x.proj : 0;
-      aBlend += r.a ? isLocked(r.a) ? alp : r.a.proj : 0;
-      xBlend += r.x ? isLocked(r.x) ? xlp : r.x.proj : 0;
+      remA += r.a && !aOn ? r.a.proj : 0;
+      remX += r.x && !xOn ? r.x.proj : 0;
     });
     const rnd = (v) => Math.round(v * 10) / 10;
-    const aw = Math.max(1, Math.min(99, Math.round(50 + (aBlend - xBlend) * 1.1)));
+    const aw = winProbability(a + remA - (x + remX), remA + remX);
     LT = { a: rnd(a), x: rnd(x), ap: rnd(ap), xp: rnd(xp), aw, xw: 100 - aw };
   }
   var LEADERS = [
@@ -3407,17 +3414,21 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     }).filter(Boolean);
     const A = side("a"), X = side("x");
     const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
-    const blend = (list, t) => list.reduce((n, p) => {
+    const expect = (list, t) => list.reduce((n, p) => {
       const f = (t - p.kick) / GAME_MIN;
       const done = Math.max(0, Math.min(1, f));
       return n + (f >= 1 ? p.total : accrued(p.total, p.name, f) + p.proj * (1 - done));
+    }, 0);
+    const remain = (list, t) => list.reduce((n, p) => {
+      const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
+      return n + p.proj * (1 - done);
     }, 0);
     const out = [];
     let prevA = 0, prevX = 0;
     windows.forEach(([ws, we], w) => {
       for (let t = ws; t <= we; t += SAMPLE_MIN) {
         const a = sum(A, t), x = sum(X, t);
-        const win = Math.max(1, Math.min(99, Math.round(50 + (blend(A, t) - blend(X, t)) * 1.1)));
+        const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
         out.push({
           abs: t,
           a: Math.round(a * 10) / 10,

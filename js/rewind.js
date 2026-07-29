@@ -14,7 +14,7 @@
 // hours would otherwise be most of the chart, since a week is ~7,500 minutes and
 // only about a third of that has a ball in the air.
 import { LINEUP } from './store.js';
-import { pLive, pOrd } from './clock.js';
+import { pLive, pOrd, winProbability } from './clock.js';
 
 const SAMPLE_MIN = 10;      // one point every ten minutes of game time
 const GAME_MIN = 200;       // a player's game is worth this much elapsed time
@@ -101,11 +101,16 @@ export function rewindSeries(){
 
   const sum = (list, t) => list.reduce((n, p) =>
     n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
-  // win odds use points banked so far plus the projection still to come
-  const blend = (list, t) => list.reduce((n, p) => {
+  // expected final = banked so far + whatever the unplayed share still projects
+  const expect = (list, t) => list.reduce((n, p) => {
     const f = (t - p.kick) / GAME_MIN;
     const done = Math.max(0, Math.min(1, f));
     return n + (f >= 1 ? p.total : accrued(p.total, p.name, f) + p.proj * (1 - done));
+  }, 0);
+  // points still to be played: the uncertainty the odds are measured against
+  const remain = (list, t) => list.reduce((n, p) => {
+    const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
+    return n + p.proj * (1 - done);
   }, 0);
 
   const out = [];
@@ -113,7 +118,7 @@ export function rewindSeries(){
   windows.forEach(([ws, we], w) => {
     for (let t = ws; t <= we; t += SAMPLE_MIN){
       const a = sum(A, t), x = sum(X, t);
-      const win = Math.max(1, Math.min(99, Math.round(50 + (blend(A,t) - blend(X,t)) * 1.1)));
+      const win = winProbability(expect(A,t) - expect(X,t), remain(A,t) + remain(X,t));
       out.push({ abs:t, a:Math.round(a*10)/10, x:Math.round(x*10)/10, win, w,
                  td: (a - prevA > 4) || (x - prevX > 4) });
       prevA = a; prevX = x;
