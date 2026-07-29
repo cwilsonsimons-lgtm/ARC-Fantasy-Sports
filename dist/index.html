@@ -6309,22 +6309,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         change,
         // heavily skewed: a handful of names carry most of the day's activity
         trades: 25 + Math.floor(Math.pow(r(), 4) * 12400),
-        spark: sparkline(p.id, pct)
+        // spark and seasonUp are attached at the bottom of this file, once the
+        // season price path exists to derive them from
+        spark: [],
+        seasonUp: true
       };
     });
-  }
-  function sparkline(id, pct) {
-    const r = rng(hash2(id + "#spark"));
-    const n = 24;
-    const jitter = Array.from({ length: n }, () => (r() * 2 - 1) * 6);
-    const ramp = Math.sign(pct || 1) * (3 + Math.abs(pct) * 2.2);
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const smooth = (jitter[i] + (jitter[i - 1] ?? jitter[i]) + (jitter[i + 1] ?? jitter[i])) / 3;
-      out.push(50 + smooth + ramp * (i / (n - 1)));
-    }
-    const lo = Math.min(...out), hi = Math.max(...out), span = hi - lo || 1;
-    return out.map((v) => Math.round((v - lo) / span * 100) / 100);
   }
   var MARKET = build();
   var BY_ID = Object.fromEntries(MARKET.map((p) => [p.id, p]));
@@ -6432,13 +6422,28 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         out.push({ v, w, game: d === 0, pts: d === 0 ? log[w].pts : null });
       }
     }
-    const k = p.price / (out[out.length - 1].v || 1);
+    const n = out.length;
+    const open = p.price - p.change;
+    const k = open / (out[Math.max(0, n - 2)].v || 1);
     out.forEach((x) => {
       x.v = Math.round(x.v * k * 1e4) / 1e4;
     });
+    out[n - 1].v = p.price;
     dayCache[p.id] = out;
     return out;
   }
+  function sparkFrom(p, n = 24) {
+    const days = priceDays(p);
+    const vs = [];
+    for (let i = 0; i < n; i++) vs.push(days[Math.round(i / (n - 1) * (days.length - 1))].v);
+    const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+    return vs.map((v) => Math.round((v - lo) / span * 100) / 100);
+  }
+  MARKET.forEach((p) => {
+    const days = priceDays(p);
+    p.spark = sparkFrom(p);
+    p.seasonUp = days[days.length - 1].v >= days[0].v;
+  });
   function careerSeries(p) {
     const r = rng(hash2(p.id + "#career"));
     const yrs = Math.max(1, Math.min(9, p.exp || 1));
@@ -6473,6 +6478,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     pctText: () => pctText,
     signed: () => signed,
     spark: () => spark,
+    sparkColor: () => sparkColor,
     starCell: () => starCell,
     tri: () => tri
   });
@@ -6528,6 +6534,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
          style="position:absolute" onerror="this.remove()">` : ""}</div>`;
   }
   var tri = (n) => `<span class="mk-tri ${n < 0 ? "d" : "u"}"></span>`;
+  var sparkColor = (p) => p.seasonUp === false ? "#FF4B4B" : "#2BE06B";
   function starCell(p) {
     return `<div class="star${isWatched(p.id) ? " on" : ""}" data-star="${p.id}"
     onclick="event.stopPropagation();mkToggleWatch('${p.id}',this)">${ICON.star}</div>`;
@@ -6545,7 +6552,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="p">${money(p.price)}</div>
       <div class="c ${d}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
-    ${spark(p.spark, p.pct < 0 ? "#FF4B4B" : "#2BE06B")}
+    ${spark(p.spark, sparkColor(p))}
     ${starCell(p)}
   </div>`;
   }
@@ -7068,7 +7075,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const p = BY_ID[id];
     if (!p) return;
     const d = dirClass(p.pct);
-    const color = p.pct < 0 ? "#FF4B4B" : "#2BE06B";
+    const color = sparkColor(p);
     const curve = seasonCurve(p);
     openSheet(esc2(p.name), `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">

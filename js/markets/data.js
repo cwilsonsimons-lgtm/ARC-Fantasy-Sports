@@ -73,29 +73,11 @@ function build() {
       price, pct, change,
       // heavily skewed: a handful of names carry most of the day's activity
       trades: 25 + Math.floor(Math.pow(r(), 4) * 12400),
-      spark: sparkline(p.id, pct),
+      // spark and seasonUp are attached at the bottom of this file, once the
+      // season price path exists to derive them from
+      spark: [], seasonUp: true,
     };
   });
-}
-
-// 24 points whose overall direction matches the day's move.
-//
-// A plain random walk accumulates drift and regularly ends up pointing the wrong
-// way, which reads as a bug next to a red percentage. So the jitter is
-// independent per point (it cannot accumulate) and a linear ramp carries the
-// trend, scaled so it stays legible even on a small move.
-function sparkline(id, pct) {
-  const r = rng(hash(id + '#spark'));
-  const n = 24;
-  const jitter = Array.from({ length: n }, () => (r() * 2 - 1) * 6);
-  const ramp = Math.sign(pct || 1) * (3 + Math.abs(pct) * 2.2);
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const smooth = (jitter[i] + (jitter[i - 1] ?? jitter[i]) + (jitter[i + 1] ?? jitter[i])) / 3;
-    out.push(50 + smooth + ramp * (i / (n - 1)));
-  }
-  const lo = Math.min(...out), hi = Math.max(...out), span = hi - lo || 1;
-  return out.map(v => Math.round(((v - lo) / span) * 100) / 100);
 }
 
 export const MARKET = build();
@@ -229,11 +211,37 @@ export function priceDays(p) {
       out.push({ v, w, game: d === 0, pts: d === 0 ? log[w].pts : null });
     }
   }
-  const k = p.price / (out[out.length - 1].v || 1);
+  // Scale so yesterday's close is the open the quoted day move is measured from,
+  // then plant today exactly on the quote. The last segment of the path is then
+  // the day move on the row, so the sparkline, the chart and the percentage
+  // beside them are all reading off one series.
+  const n = out.length;
+  const open = p.price - p.change;
+  const k = open / (out[Math.max(0, n - 2)].v || 1);
   out.forEach(x => { x.v = Math.round(x.v * k * 10000) / 10000; });
+  out[n - 1].v = p.price;
   dayCache[p.id] = out;
   return out;
 }
+
+/** `n` evenly spaced samples of the season path, normalised 0..1 for spark(). */
+function sparkFrom(p, n = 24) {
+  const days = priceDays(p);
+  const vs = [];
+  for (let i = 0; i < n; i++) vs.push(days[Math.round((i / (n - 1)) * (days.length - 1))].v);
+  const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  return vs.map(v => Math.round(((v - lo) / span) * 100) / 100);
+}
+
+// The row sparkline, the one in the sheet header and the price chart on the
+// contract all draw the same season now, so they cannot show different shapes.
+// `seasonUp` is the chart's own colour rule - the direction over the whole
+// range - which is not always the direction of today's move sitting next to it.
+MARKET.forEach(p => {
+  const days = priceDays(p);
+  p.spark = sparkFrom(p);
+  p.seasonUp = days[days.length - 1].v >= days[0].v;
+});
 
 /**
  * One closing price per season the player has been in the league, ending today.

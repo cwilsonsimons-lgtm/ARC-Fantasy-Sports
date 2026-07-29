@@ -8,7 +8,7 @@
 // own, and reaches the portfolio from a button in the header instead.
 import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
          holdingRows } from './data.js';
-import { ICON, spark, face, esc, money, pctText, dirClass, tri } from './ui.js';
+import { ICON, spark, face, esc, money, pctText, dirClass, tri, sparkColor } from './ui.js';
 import { playerCharts, priceChart } from './charts.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
@@ -66,7 +66,7 @@ export function mkOpenPlayer(id) {
   const p = BY_ID[id];
   if (!p) return;
   const d = dirClass(p.pct);
-  const color = p.pct < 0 ? '#FF4B4B' : '#2BE06B';
+  const color = sparkColor(p);
   const curve = seasonCurve(p);
 
   openSheet(esc(p.name), `

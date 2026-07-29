@@ -66,6 +66,11 @@ export function face(p) {
 
 export const tri = n => `<span class="mk-tri ${n < 0 ? 'd' : 'u'}"></span>`;
 
+// A sparkline draws the whole season, so it is coloured by the season - the
+// same rule the price chart uses. The percentage beside it is today's move and
+// keeps its own colour; a green day inside a red year is worth seeing.
+export const sparkColor = p => (p.seasonUp === false ? '#FF4B4B' : '#2BE06B');
+
 export function starCell(p) {
   return `<div class="star${isWatched(p.id) ? ' on' : ''}" data-star="${p.id}"
     onclick="event.stopPropagation();mkToggleWatch('${p.id}',this)">${ICON.star}</div>`;
@@ -85,7 +90,7 @@ export function marketRow(p) {
       <div class="p">${money(p.price)}</div>
       <div class="c ${d}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
-    ${spark(p.spark, p.pct < 0 ? '#FF4B4B' : '#2BE06B')}
+    ${spark(p.spark, sparkColor(p))}
     ${starCell(p)}
   </div>`;
 }

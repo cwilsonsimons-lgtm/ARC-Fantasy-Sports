@@ -55,6 +55,31 @@ ok('every contract covered', model.n > 100, model.n);
 ok('game log is stable', await page.evaluate(
   `JSON.stringify(gameLog(MARKET[3])) === JSON.stringify(gameLog(MARKET[3]))`));
 
+// The row sparkline, the sheet header spark and the price chart must be the
+// same season. Re-derive the spark from the path and compare against the
+// stored one; and check the path's last step is exactly the quoted day move.
+const sparks = await p2(page);
+async function p2(pg) {
+  return pg.evaluate(`(()=>{
+    const norm = vs => { const lo=Math.min(...vs), hi=Math.max(...vs), s=hi-lo||1;
+      return vs.map(v=>Math.round(((v-lo)/s)*100)/100); };
+    const bad = { shape: [], move: [], tone: [] };
+    MARKET.forEach(m => {
+      const days = priceDays(m), n = 24;
+      const want = norm(Array.from({length:n}, (_,i) =>
+        days[Math.round((i/(n-1))*(days.length-1))].v));
+      if (JSON.stringify(want) !== JSON.stringify(m.spark)) bad.shape.push(m.name);
+      const step = Math.round((days[days.length-1].v - days[days.length-2].v)*100)/100;
+      if (Math.abs(step - m.change) > 0.011) bad.move.push(m.name+' '+step+' vs '+m.change);
+      if (m.seasonUp !== (days[days.length-1].v >= days[0].v)) bad.tone.push(m.name);
+    });
+    return bad;
+  })()`);
+}
+ok('spark is the season path', sparks.shape.length === 0, sparks.shape.slice(0, 3));
+ok('path lands the day move', sparks.move.length === 0, sparks.move.slice(0, 3));
+ok('spark tone tracks season', sparks.tone.length === 0, sparks.tone.slice(0, 3));
+
 // ---------------------------------------------------------------- rendering
 const id = await page.evaluate(`MARKET[0].id`);
 await page.evaluate(`mkOpenPlayer('${id}')`);
