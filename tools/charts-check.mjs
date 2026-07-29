@@ -133,6 +133,29 @@ for (const [range, min] of [['week', 7], ['five', 35], ['season', 20], ['career'
 ok('range keeps the sheet open',
    await page.evaluate(`document.body.classList.contains('mk-sheet-open')`));
 
+// The app's bottom nav paints over the sheet, so scrolling to the end has to
+// leave the last element above it - not merely inside the scroll box.
+async function bottomOut(label) {
+  await page.evaluate(`(()=>{const s=document.querySelector('.mk-sheet');s.scrollTop=s.scrollHeight;})()`);
+  await page.waitForTimeout(300);
+  const v = await page.evaluate(`(()=>{
+    const s = document.querySelector('.mk-sheet');
+    const navTop = document.querySelector('.nav').getBoundingClientRect().top;
+    const kids = [...s.querySelectorAll('.mk-sheet .bd > *')];
+    const last = kids[kids.length - 1].getBoundingClientRect();
+    return { atBottom: s.scrollTop + s.clientHeight >= s.scrollHeight - 1,
+             clears: last.bottom <= navTop + 1,
+             lastBottom: Math.round(last.bottom), navTop: Math.round(navTop) };
+  })()`);
+  ok(label, v.atBottom && v.clears, v);
+}
+await bottomOut('contract scrolls clear of nav');
+await page.evaluate(`mkAbout()`);
+await page.waitForTimeout(300);
+await bottomOut('about scrolls clear of nav');
+await page.evaluate(`mkOpenPlayer('${id}')`);
+await page.waitForTimeout(250);
+
 // ---------------------------------------------------------------- edges
 // The extremes are where a chart breaks: a player miles behind his price draws
 // the gap the other way, and a rookie has almost no career to draw.

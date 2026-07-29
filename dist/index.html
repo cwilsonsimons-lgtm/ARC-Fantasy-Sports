@@ -201,6 +201,9 @@
   --line:#1E2836;--line-soft:#161E2A;
   --ink:#F3F6FA;--ink-2:#93A0B0;--ink-3:#5E6B7C;
   --green:#8CE04A;--red:#F0453E;--violet:#7C5CFF;--violet-soft:#2A2350;
+  /* height of the bottom nav; the phone breakpoint in nav.css overrides it with
+     the safe-area inset. Anything that ends underneath the nav pads by this. */
+  --navh:84px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none}
@@ -1311,7 +1314,11 @@ body.mk-sheet-open .mk-scrim{opacity:1;pointer-events:auto}
 .mk-sheet{position:absolute;left:0;right:0;bottom:0;z-index:81;max-height:82%;overflow-y:auto;
   background:var(--mk-card);border:1px solid var(--mk-line);border-bottom:none;
   border-radius:22px 22px 0 0;transform:translateY(102%);transition:transform .32s cubic-bezier(.4,0,.2,1);
-  scrollbar-width:none;padding-bottom:26px}
+  scrollbar-width:none;
+  /* the app's bottom nav paints over the sheet, so the last screenful of a long
+     contract has to clear it - otherwise the scroll ends with content still
+     hidden behind the tab bar */
+  padding-bottom:calc(var(--navh) + 26px)}
 .mk-sheet::-webkit-scrollbar{display:none}
 body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mk-sheet .face{width:52px;height:52px;font-size:15px}

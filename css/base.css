@@ -3,6 +3,9 @@
   --line:#1E2836;--line-soft:#161E2A;
   --ink:#F3F6FA;--ink-2:#93A0B0;--ink-3:#5E6B7C;
   --green:#8CE04A;--red:#F0453E;--violet:#7C5CFF;--violet-soft:#2A2350;
+  /* height of the bottom nav; the phone breakpoint in nav.css overrides it with
+     the safe-area inset. Anything that ends underneath the nav pads by this. */
+  --navh:84px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none}
