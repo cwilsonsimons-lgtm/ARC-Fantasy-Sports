@@ -1,6 +1,8 @@
 import { S } from './state.js';
-import { POOL } from './clock.js';
-import { pkey } from './data/nfl-index.js';
+import { DRAFT_ORDER, POOL, slotAllows } from './clock.js';
+import { hydratePlayer, pkey } from './data/nfl-index.js';
+import { NFL_BY_ID } from './data/nfl-players.js';
+import { mkPlayer, teamRosterIds } from './draft.js';
 import { FONT_BY_KEY, MY_TEAM, T, TEAM_FONTS, applyTeamFonts } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
 import { renderLeagueBody } from './lineup.js';
@@ -20,7 +22,8 @@ export let currentTeamKey=null, photoTargetName=null;
 export function esc(s){return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 export function currentViewName(){const v=document.querySelector('.view.on');return v?v.dataset.view:'matchup';}
 
-// rosters: my team + current opponent use the real lineup; others get a stable mock roster
+// rosters: my team + current opponent use the real lineup; the rest are read
+// back out of the draft, so a player belongs to exactly one team.
 export function collectSide(side){
   const out=[];
   LINEUP.forEach(r=>{if(r[side])out.push({...r[side],slot:r.slot,group:'STARTERS'});});
@@ -28,19 +31,43 @@ export function collectSide(side){
   TAXI.forEach(r=>{if(r[side])out.push({...r[side],group:'TAXI SQUAD'});});
   return out;
 }
+// The draft already guarantees uniqueness - a drafted id leaves the board - so
+// slotting a team's own picks is the only way to be sure nobody is on two
+// rosters. Slotting mirrors fillSide(): best projection into each starting slot
+// it is eligible for, everyone else to the bench.
+export function draftedRoster(key){
+  const ids=teamRosterIds(key).map(id=>NFL_BY_ID[id]).filter(Boolean)
+    .sort((a,b)=>b.sproj-a.sproj);
+  if(!ids.length) return null;
+  const used=new Set(),out=[];
+  LINEUP.forEach(r=>{
+    const p=ids.find(q=>!used.has(q.id)&&slotAllows(r.slot,q.pos));
+    if(p){used.add(p.id);out.push({...hydratePlayer(mkPlayer(p),S.week),slot:r.slot,group:'STARTERS'});}
+  });
+  ids.filter(q=>!used.has(q.id)).forEach(p=>
+    out.push({...hydratePlayer(mkPlayer(p),S.week),group:'BENCH'}));
+  return out;
+}
+// Only reachable before the draft, when no team has real picks yet. Deal the
+// pool round-robin by team index so these placeholder rosters are still
+// disjoint - the old version sampled per team and handed the same player out
+// more than once.
 export function mockRoster(key){
-  const n=POOL.length;let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;
-  const start=h%n,out=[],seen={};
-  for(let i=0;out.length<14&&i<n*3;i++){
-    const p=POOL[(start+i*3)%n];if(seen[p.n])continue;seen[p.n]=1;
-    out.push({n:p.n,pos:p.pos,tm:p.tm,proj:seededPts(S.week,p.n+key,p.pos),group:out.length<9?'STARTERS':'BENCH'});
+  const keys=DRAFT_ORDER,k=keys.length||1;
+  const ti=Math.max(0,keys.indexOf(key)),out=[];
+  for(let i=ti;i<POOL.length&&out.length<14;i+=k){
+    const p=POOL[i];
+    // carry the id: short names repeat across the league (two D. Moores, four
+    // T. Johnsons), and photos and nicknames are stored per id
+    out.push({id:p.id,n:p.n,pos:p.pos,tm:p.tm,proj:seededPts(S.week,p.n+key,p.pos),
+      group:out.length<9?'STARTERS':'BENCH'});
   }
   return out;
 }
 export function rosterFor(key){
   if(key===MY_TEAM) return collectSide('a');
   if(key==='radiator') return collectSide('x');
-  return mockRoster(key);
+  return draftedRoster(key)||mockRoster(key);
 }
 
 export function teamHead(t,own){
@@ -69,7 +96,8 @@ export function teamHead(t,own){
 export function teamRow(p,own){
   const cam=own?`<span class="cam">${ICON_CAM}</span>`:'';
   const faceClick=own?`onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"`:'';
-  const slot=p.slot?`<span class="slot">${p.slot}</span> · `:'';
+  // FLEX is worth calling out; "QB · QB" is not
+  const slot=(p.slot&&p.slot!==p.pos)?`<span class="slot">${p.slot}</span> · `:'';
   const nick=own
     ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">`
     : (playerNick(p.n)?`<div class="tv-nick">“${playerNick(p.n)}”</div>`:'');

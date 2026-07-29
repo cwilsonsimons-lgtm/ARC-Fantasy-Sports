@@ -3178,6 +3178,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     collectSide: () => collectSide,
     currentTeamKey: () => currentTeamKey,
     currentViewName: () => currentViewName,
+    draftedRoster: () => draftedRoster,
     esc: () => esc,
     fontDropdownHTML: () => fontDropdownHTML,
     fontMenuOpen: () => fontMenuOpen,
@@ -4691,23 +4692,40 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     });
     return out;
   }
+  function draftedRoster(key) {
+    const ids = teamRosterIds(key).map((id) => NFL_BY_ID[id]).filter(Boolean).sort((a, b) => b.sproj - a.sproj);
+    if (!ids.length) return null;
+    const used = /* @__PURE__ */ new Set(), out = [];
+    LINEUP.forEach((r) => {
+      const p = ids.find((q) => !used.has(q.id) && slotAllows(r.slot, q.pos));
+      if (p) {
+        used.add(p.id);
+        out.push({ ...hydratePlayer(mkPlayer(p), S.week), slot: r.slot, group: "STARTERS" });
+      }
+    });
+    ids.filter((q) => !used.has(q.id)).forEach((p) => out.push({ ...hydratePlayer(mkPlayer(p), S.week), group: "BENCH" }));
+    return out;
+  }
   function mockRoster(key) {
-    const n = POOL.length;
-    let h = 0;
-    for (let i = 0; i < key.length; i++) h = h * 31 + key.charCodeAt(i) >>> 0;
-    const start = h % n, out = [], seen = {};
-    for (let i = 0; out.length < 14 && i < n * 3; i++) {
-      const p = POOL[(start + i * 3) % n];
-      if (seen[p.n]) continue;
-      seen[p.n] = 1;
-      out.push({ n: p.n, pos: p.pos, tm: p.tm, proj: seededPts(S.week, p.n + key, p.pos), group: out.length < 9 ? "STARTERS" : "BENCH" });
+    const keys = DRAFT_ORDER, k = keys.length || 1;
+    const ti = Math.max(0, keys.indexOf(key)), out = [];
+    for (let i = ti; i < POOL.length && out.length < 14; i += k) {
+      const p = POOL[i];
+      out.push({
+        id: p.id,
+        n: p.n,
+        pos: p.pos,
+        tm: p.tm,
+        proj: seededPts(S.week, p.n + key, p.pos),
+        group: out.length < 9 ? "STARTERS" : "BENCH"
+      });
     }
     return out;
   }
   function rosterFor(key) {
     if (key === MY_TEAM) return collectSide("a");
     if (key === "radiator") return collectSide("x");
-    return mockRoster(key);
+    return draftedRoster(key) || mockRoster(key);
   }
   function teamHead(t, own) {
     const crestInner = t.logo ? `<img src="${t.logo}" alt="" style="width:100%;height:100%;object-fit:cover">` : t.mono;
@@ -4733,7 +4751,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   function teamRow(p, own) {
     const cam = own ? `<span class="cam">${ICON_CAM}</span>` : "";
     const faceClick = own ? `onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"` : "";
-    const slot = p.slot ? `<span class="slot">${p.slot}</span> \xB7 ` : "";
+    const slot = p.slot && p.slot !== p.pos ? `<span class="slot">${p.slot}</span> \xB7 ` : "";
     const nick = own ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">` : playerNick(p.n) ? `<div class="tv-nick">\u201C${playerNick(p.n)}\u201D</div>` : "";
     const rt = own ? `<div class="tv-rt"><div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>
         <span class="tv-drop" onclick="event.stopPropagation();confirmDrop('${esc(pKeyOf(p))}')">Drop</span></div>` : `<div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>`;
