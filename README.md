@@ -126,8 +126,17 @@ strings; `migrateDraft()` lifts them on load.
 matchup takes its score from the running lineup total rather than the seeded
 schedule, and starters lock as their kickoffs pass.
 
-Tapping either win % or the win bar opens **Rewind** — a scrubbable timeline of
-the matchup. Dragging the handle reports the score and win odds at that moment.
+Tapping either win % or the win bar opens **Rewind** — a win-probability chart
+across the whole NFL week, 50% on the midline, the area filled green while you
+lead and red once you trail. Scrub it to read the time, the score and the odds
+at that moment; white dots mark scoring plays.
+
+The series comes from the lineup rather than being drawn: each player's game has
+a kickoff, their points land in two to four deterministic jumps across it, and
+the chart samples every ten minutes. That is what gives the line its shape —
+flat overnight, jagged on Sunday afternoon when games overlap. Odds at each
+sample use points banked so far plus the projection still to come, the same
+blend the live hero uses.
 
 Both were unreachable for a while: `LIVE_WEEK` was `0` while weeks run from
 `MINW` (1), so `week === LIVE_WEEK` could never be true. The hero stayed at
