@@ -9,7 +9,9 @@ body.open .drawer{transform:translateX(0)}
 .panel-hd .d{width:5px;height:5px;border-radius:50%;background:var(--violet)}
 .panel-hd .wk{color:var(--ink-3);font-weight:500;font-size:12px}
 .panel-hd .wk-pick{cursor:pointer;color:var(--green)}
-.ld-row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line-soft)}
+/* gaps and padding are tight because the meta line carries pos, team, age and
+   the scope metric inside ~80px; loosening either starts cutting "ADP 264" off */
+.ld-row{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line-soft)}
 .ld-rk{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:14px;color:var(--ink-3);width:14px}
 .ld-face{width:32px;height:32px;border-radius:50%;overflow:hidden;background:linear-gradient(155deg,#243247,#141b28);
   border:1px solid var(--line);flex:none;display:grid;place-items:center;font-size:10px;color:var(--ink-3);font-weight:700}
@@ -17,7 +19,7 @@ body.open .drawer{transform:translateX(0)}
 .ld-row{cursor:pointer}
 .ld-info{flex:1;min-width:0}
 .ld-nm{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ld-mt{font-size:9.5px;color:var(--ink-3);font-weight:600}
+.ld-mt{font-size:9px;color:var(--ink-3);font-weight:600}
 .ld-pt{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px}
 .ld-pt.none{color:var(--ink-3);font-weight:600}
 /* past-season rows: retired players have no profile to open and no headshot */

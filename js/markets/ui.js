@@ -65,6 +65,8 @@ export function face(p) {
 }
 
 export const tri = n => `<span class="mk-tri ${n < 0 ? 'd' : 'u'}"></span>`;
+// contracts carry the player's real age; a few undrafted rookies have none
+export const ageBit = p => (p && p.age != null ? ' &middot; ' + p.age : '');
 
 // A sparkline draws the whole season, so it is coloured by the season - the
 // same rule the price chart uses. The percentage beside it is today's move and
@@ -140,7 +142,7 @@ export function marketRow(p, mode) {
     ${face(p)}
     <div class="who">
       <div class="nm">${esc(p.name)}</div>
-      <div class="sb">${esc(p.tm)} &middot; ${esc(p.posRank)}</div>
+      <div class="sb">${esc(p.tm)} &middot; ${esc(p.posRank)}${ageBit(p)}</div>
     </div>
     <div class="pr">
       <div class="p">${money(p.price)}</div>
@@ -159,7 +161,7 @@ export function holdingRow(p) {
     ${face(p)}
     <div class="who">
       <div class="nm">${esc(p.name)}</div>
-      <div class="sb">${esc(p.pos)} &middot; ${esc(p.tm)}</div>
+      <div class="sb">${esc(p.pos)} &middot; ${esc(p.tm)}${ageBit(p)}</div>
       <span class="chip">${p.shares} shares</span>
     </div>
     <div class="pr">

@@ -105,7 +105,7 @@ export function draftBoardHTML(){
     <span class="dr-adp">${p.adp}</span>
     <span class="dr-face">${faceInner(p.id)}</span>
     <div class="dr-info"><div class="dr-nm">${p.full}</div>
-      <div class="dr-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm} · ${p.sproj.toFixed(0)} proj pts</div></div>
+      <div class="dr-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm}${p.age!=null?` · ${p.age}`:''} · ${p.sproj.toFixed(0)} proj pts</div></div>
     <span class="dr-pj">${p.proj.toFixed(1)}</span>
     <span class="dr-take${mine?'':' off'}" onclick="event.stopPropagation();draftPlayer('${p.id}')">+</span>
   </div>`).join('');

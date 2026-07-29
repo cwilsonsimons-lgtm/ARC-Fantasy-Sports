@@ -6,7 +6,7 @@ import { HIST_SEASONS, histLeaders } from './data/nfl-history.js';
 import { applyDraftToRosters, draftPicks, takenIds } from './draft.js';
 import { availableListHTML, faOpen, isRostered, renderAvailable } from './freeagency.js';
 import { LIVE_WEEK, MAXW, MINW } from './lineup.js';
-import { faceInner, pKeyOf, posMatch } from './player.js';
+import { ageBit, faceInner, pKeyOf, posMatch } from './player.js';
 import { esc } from './team.js';
 
 // ---- shared panel search (Leaders / Trending / Available) ----
@@ -67,7 +67,7 @@ export function trendingListHTML(){
     <span class="tr-rk">${p.adp}</span>
     <span class="tr-face">${faceInner(p.id)}</span>
     <div class="tr-info"><div class="tr-nm">${p.full}${p.exp===0?'<span class="rk-badge">R</span>':''}</div>
-      <div class="tr-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm} · ${p.sproj.toFixed(0)} proj</div></div>
+      <div class="tr-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm}${p.age!=null?` · ${p.age}`:''} · ${p.sproj.toFixed(0)} proj</div></div>
     <div class="tr-add">${t.has(p.id)?'DRAFTED':'ADP '+p.adp}</div>
   </div>`).join('');
 }
@@ -163,7 +163,7 @@ export function leadersListHTML(){
       ?`<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(pKeyOf(p))}')">+</span>`:'';
     return `<div class="ld-row" onclick="openPlayer('${esc(p.id)}')"><span class="ld-rk">${i+1}</span>
         <span class="ld-face">${faceInner(p.id)}</span>
-        <div class="ld-info"><div class="ld-nm">${p.full}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm} · ${leaderMeta(p)}</div></div>
+        <div class="ld-info"><div class="ld-nm">${p.full}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm}${ageBit(pKeyOf(p))} · ${leaderMeta(p)}</div></div>
         <span class="ld-pt${r.v==null?' none':''}">${leaderFmt(r.v)}</span>${add}</div>`;
   }).join('');
 }

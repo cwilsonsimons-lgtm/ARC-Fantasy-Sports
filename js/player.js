@@ -28,6 +28,18 @@ export function headshotFor(key){
   const r=pIdx()[key];
   if(r&&r.id&&NFL_BY_ID[r.id])return NFL_BY_ID[r.id].hs||'';
   const m=NFL_BY_NAME[key];return (m&&m.length===1&&m[0].hs)||'';}
+// Age resolves the same way a headshot does: off the league data by id, falling
+// back to an unambiguous name. null for anyone we have no birth date for.
+export function ageFor(key){
+  if(NFL_BY_ID[key])return NFL_BY_ID[key].age;
+  const r=pIdx()[key];
+  if(r){
+    if(r.age!=null)return r.age;
+    if(r.id&&NFL_BY_ID[r.id])return NFL_BY_ID[r.id].age;
+  }
+  const m=NFL_BY_NAME[key];return (m&&m.length===1?m[0].age:null);}
+// the age fragment every meta line shares, e.g. " · 28"
+export function ageBit(key,sep=' · '){const a=ageFor(key);return a==null?'':sep+a;}
 
 // Every player is addressed by a stable key: the nflverse id when we have one,
 // otherwise the display name (K/DEF and other legacy rows).
@@ -38,6 +50,7 @@ export function pIdx(){
   const put=p=>{
     if(!p||!p.n)return;
     const rec={id:p.id||null,n:p.n,full:p.full||p.n,pos:p.pos,tm:p.tm,num:p.num,exp:p.exp,hs:p.hs,
+      age:p.age!=null?p.age:(p.id&&NFL_BY_ID[p.id]?NFL_BY_ID[p.id].age:null),
       bye:p.bye!=null?p.bye:byeFor(p.tm),proj:p.proj,g:p.g||gameLabel(p.tm,S.week),tag:p.tag,adp:p.adp};
     const k=pKeyOf(p);
     if(k&&!S.pidx[k])S.pidx[k]=rec;
@@ -94,6 +107,7 @@ export function renderPlayer(key){
   const parts=String(disp).split(' ');
   const first=parts.length>1?parts[0]:'';
   const last=parts.length>1?parts.slice(1).join(' '):parts[0];
+  const age=ageFor(key);
   const rec=NFL_BY_ID[p.id]||null;
   const jersey=(rec&&rec.num)?rec.num:(seedHash(name)%99)+1;
   const cardNo=String(1+seedHash(String(key)+'c')%500).padStart(3,'0');
@@ -128,6 +142,7 @@ export function renderPlayer(key){
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj||0).toFixed(1)}</div><div class="l">Proj</div></div>
         <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
         <div class="pc-stat"><div class="v">${p.pos||'—'}${posRankNo(name,p.pos)}</div><div class="l">Pos Rank</div></div>
+        ${age!=null?`<div class="pc-stat"><div class="v">${age}</div><div class="l">Age</div></div>`:''}
         <div class="pc-stat"><div class="v">${rostPct(name)}%</div><div class="l">Rostered</div></div>
       </div>
       <div class="pc-week">
@@ -199,7 +214,7 @@ export function trendRow(t){
     <span class="tr-rk">${t.rk}</span>
     <span class="tr-face">${faceInner(t.n)}</span>
     <div class="tr-info"><div class="tr-nm">${t.n}${t.rookie?'<span class="rk-badge">R</span>':''}</div>
-      <div class="tr-mt"><span class="pos ${t.pos}">${t.pos}</span> · ${t.tm} · ${t.rost}% rost</div></div>
+      <div class="tr-mt"><span class="pos ${t.pos}">${t.pos}</span> · ${t.tm}${ageBit(t.n)} · ${t.rost}% rost</div></div>
     <div class="tr-add">+${(t.add/1000).toFixed(1)}K<div class="tr-arrow">▲</div></div>
     ${add}
   </div>`;

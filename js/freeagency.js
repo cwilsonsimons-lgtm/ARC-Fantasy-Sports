@@ -8,7 +8,7 @@ import { getGames, renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { toast } from './nav.js';
 import { PANEL_CAP, currentRail, matchQ, noHits, paintPanelList, panelQ, pillsHTML, renderPanel, searchBar, seededPts, setPills } from './panel.js';
-import { faceInner, pIdx, pKeyOf, posMatch, renderPlayer, renderStandings } from './player.js';
+import { ageBit, faceInner, pIdx, pKeyOf, posMatch, renderPlayer, renderStandings } from './player.js';
 import { BENCH, LINEUP, TAXI, saveStore, store } from './store.js';
 import { collectSide, currentTeamKey, esc, renderTeam } from './team.js';
 
@@ -119,7 +119,7 @@ export function availRow(p,i){
   return `<div class="ld-row" onclick="openPlayer('${esc(pKeyOf(p))}')">
     <span class="ld-rk">${i+1}</span>
     <span class="ld-face">${faceInner(pKeyOf(p))}</span>
-    <div class="ld-info"><div class="ld-nm">${p.n}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm}${p.bye?` (${p.bye})`:''} · ${p.g||'—'}</div></div>
+    <div class="ld-info"><div class="ld-nm">${p.n}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> · ${p.tm}${p.bye?` (${p.bye})`:''}${ageBit(pKeyOf(p))} · ${p.g||'—'}</div></div>
     <span class="ld-pt">${p.proj.toFixed(1)}</span>
     ${faOpen()?`<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(pKeyOf(p))}')">+</span>`:''}
   </div>`;

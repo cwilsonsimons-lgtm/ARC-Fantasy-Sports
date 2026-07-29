@@ -9,7 +9,7 @@ import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { renderTabs, showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { seededPts } from './panel.js';
-import { faceInner, pKeyOf, playerNick, renderStandings } from './player.js';
+import { ageBit, faceInner, pKeyOf, playerNick, renderStandings } from './player.js';
 import { BENCH, LINEUP, TAXI, processImage, saveStore, store } from './store.js';
 
 // ---------- TEAM SCREEN ----------
@@ -110,7 +110,7 @@ export function teamRow(p,own){
     <div class="tv-pinfo">
       <div class="tv-pn">${p.n}</div>
       ${nick}
-      <div class="tv-pmeta">${slot}${p.pos} · ${p.tm}${p.bye?` (${p.bye})`:''}</div>
+      <div class="tv-pmeta">${slot}${p.pos} · ${p.tm}${p.bye?` (${p.bye})`:''}${ageBit(pKeyOf(p))}</div>
     </div>
     ${rt}
   </div>`;

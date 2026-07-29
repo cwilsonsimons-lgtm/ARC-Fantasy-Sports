@@ -112,7 +112,7 @@ export function fillSide(key,side){
   const rest=ids.filter(q=>!used.has(q.id));
   BENCH.forEach((r,i)=>{r[side]=rest[i]?hydratePlayer(mkPlayer(rest[i]),S.week):null;});
 }
-export function mkPlayer(p){return {id:p.id,n:p.n,full:p.full,pos:p.pos,tm:p.tm,num:p.num,exp:p.exp,hs:p.hs,proj:p.proj};}
+export function mkPlayer(p){return {id:p.id,n:p.n,full:p.full,pos:p.pos,tm:p.tm,num:p.num,exp:p.exp,hs:p.hs,age:p.age,proj:p.proj};}
 export function applyDraftToRosters(){
   clearRosters();
   fillSide(MY_TEAM,'a');

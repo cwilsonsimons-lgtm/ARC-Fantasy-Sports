@@ -66,7 +66,7 @@ function build() {
 
     return {
       id: p.id, name: p.full || p.n, short: p.n, pos: p.pos, tm: p.tm, hs: p.hs,
-      exp: p.exp,
+      exp: p.exp, age: p.age,
       color: teamColor(p.tm),
       posRank: p.pos + rank[p.pos],
       sproj: p.sproj,

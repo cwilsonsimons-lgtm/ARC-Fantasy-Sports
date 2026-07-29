@@ -29,6 +29,24 @@ the browser's default serif and the whole app changed character. Every family
 now carries a fallback too, so a miss degrades to a condensed sans rather than
 Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
 
+### Player ages
+
+Ages are real, not modelled: `js/data/nfl-players.js` carries each player's
+birth date as the last `|` field, looked up from nflverse by the same gsis id
+the app already keys players on. Regenerate with `python3 tools/fetch-ages.py`.
+
+The number shown is the player's age **at kickoff** — `SEASON_KICKOFF`, read off
+week 1 of the schedule — the way a rankings page quotes it, so an age doesn't
+tick over mid-season and screenshots stay reproducible. Eleven undrafted rookies
+have no birth date on file anywhere in nflverse; they carry an empty field and
+simply show no age, rather than one inferred from draft class.
+
+It appears on the player card (an `Age` tile in the stat strip), on Team roster
+rows, in the Draft Board, Leaders and Available panels, in the draft pool, and
+on Arc Markets rows, holdings and contract sheets. Not on the head-to-head
+lineup rows or the past-season Leaders board — the first is a scoring row rather
+than a card, and the second would need the age *in that season* to mean anything.
+
 ## Arc Markets
 
 The **Markets** item in the bottom nav opens Arc Markets — a separate section, not
@@ -203,7 +221,8 @@ It is kept for provenance — day-to-day work happens in the split files.
 ## Known seams
 
 - **Player data is embedded.** `js/data/nfl-players.js` holds ~900 players as a
-  pipe-delimited string. That is the natural place to swap in a real feed.
+  pipe-delimited string, now including real birth dates. That is the natural
+  place to swap in a real feed.
 - **Everything is on `window`.** Faithful to the original, but the surface is
   wider than it needs to be; narrowing it to an explicit handler list is the
   obvious next cleanup.

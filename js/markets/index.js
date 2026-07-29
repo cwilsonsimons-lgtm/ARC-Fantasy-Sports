@@ -8,7 +8,7 @@
 // own, and reaches the portfolio from a button in the header instead.
 import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
          holdingRows } from './data.js';
-import { ICON, face, esc, money, pctText, dirClass, tri } from './ui.js';
+import { ICON, ageBit, face, esc, money, pctText, dirClass, tri } from './ui.js';
 import { playerCharts, priceChart } from './charts.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
@@ -75,7 +75,7 @@ export function mkOpenPlayer(id) {
       ${face(p)}
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;color:var(--mk-ink-3);font-weight:700">
-          ${esc(p.tm)} &middot; ${esc(p.posRank)}</div>
+          ${esc(p.tm)} &middot; ${esc(p.posRank)}${ageBit(p)}</div>
         <div style="font-size:24px;font-weight:800;margin-top:3px">${money(p.price)}</div>
         <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
           ${tri(p.pct)} ${money(p.change)} (${pctText(Math.abs(p.pct))}) today</div>
