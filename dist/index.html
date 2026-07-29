@@ -691,6 +691,8 @@ body.open .scrim{opacity:1;pointer-events:auto}
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;
   color:var(--ink-2);cursor:pointer}
 .set-tab.on{border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
+/* the commissioner-only tab reads as special even when it is not selected */
+.set-tab.star{border-color:var(--violet);color:var(--violet)}
 .set-title .c{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--ink-3);font-weight:700;margin-left:7px}
 .set-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft)}
 .set-row:last-child{border-bottom:0}
@@ -701,6 +703,8 @@ body.open .scrim{opacity:1;pointer-events:auto}
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;
   padding:7px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;max-width:148px}
 .set-ctl:focus{border-color:var(--violet)}
+/* members see every value; the control just cannot be worked */
+.set-ctl:disabled{opacity:.62;cursor:default;color:var(--ink-2);background:#080B11}
 .set-ctl option{background:#0A0E15;color:var(--ink);font-family:'Barlow',system-ui,sans-serif;
   text-transform:none;letter-spacing:0}
 input.set-ctl{width:74px;text-align:center;cursor:text;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:0}
@@ -711,6 +715,16 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .set-btn svg{width:15px;height:15px}
 .set-btn.primary{background:var(--violet);border-color:var(--violet);color:#fff}
 .set-btn:active{opacity:.85}
+/* read-only banner, shown to anyone who is not the commissioner */
+.set-ro{border:1px solid var(--line);border-left:3px solid var(--violet);background:var(--violet-soft);
+  border-radius:12px;padding:12px 14px;margin:0 2px 12px}
+.set-ro-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:1.1px;
+  text-transform:uppercase;color:var(--violet)}
+.set-ro-s{font-size:12px;color:var(--ink-2);line-height:1.45;margin-top:3px}
+.set-ro-btn{display:inline-block;margin-top:10px;border:1px solid var(--violet);border-radius:9px;padding:7px 12px;
+  cursor:pointer;color:var(--violet);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.set-ro-btn:active{opacity:.8}
 
 /* css/player.css */
 /* ===== PLAYER CARD ===== */
@@ -1773,8 +1787,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     // 24h clock, league time (2 = 2 AM)
     waiverPeriod: 2,
     // days a dropped player sits on waivers (0 = none)
-    tradeDeadline: 11
+    tradeDeadline: 11,
     // week number, 0 = no deadline
+    commish: "pandas"
+    // team key that owns the commissioner role
   };
   function LG() {
     return store.league;
@@ -4065,16 +4081,22 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   // js/settings.js
   var settings_exports = {};
   __export(settings_exports, {
-    SET_TABS: () => SET_TABS,
+    BASE_SET_TABS: () => BASE_SET_TABS,
     SLOT_ELIG_TXT: () => SLOT_ELIG_TXT,
     SLOT_LABEL: () => SLOT_LABEL,
     SLOT_MAX: () => SLOT_MAX,
     WDAYS: () => WDAYS,
     applyRosterShape: () => applyRosterShape,
+    commishCards: () => commishCards,
+    commishKey: () => commishKey,
+    commishTeam: () => commishTeam,
     hourLabel: () => hourLabel,
+    isCommish: () => isCommish,
     leagueCards: () => leagueCards,
     openSettings: () => openSettings,
     optList: () => optList,
+    ownsCommish: () => ownsCommish,
+    previewAsMember: () => previewAsMember,
     rangeOpts: () => rangeOpts,
     renderSettings: () => renderSettings,
     reseat: () => reseat,
@@ -4084,6 +4106,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     scoreNum: () => scoreNum,
     scoringCard: () => scoringCard,
     scoringCards: () => scoringCards,
+    setCommish: () => setCommish,
     setLeague: () => setLeague,
     setLeagueNum: () => setLeagueNum,
     setNum: () => setNum,
@@ -4093,14 +4116,47 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     setSetTab: () => setSetTab,
     setSlot: () => setSlot,
     setTab: () => setTab,
+    setTabs: () => setTabs,
     slotSel: () => slotSel,
-    starterCount: () => starterCount
+    starterCount: () => starterCount,
+    togglePreviewAsMember: () => togglePreviewAsMember
   });
+  var previewAsMember = false;
+  function commishKey() {
+    return LG().commish || MY_TEAM;
+  }
+  function commishTeam() {
+    return T[commishKey()] || T[MY_TEAM];
+  }
+  function ownsCommish() {
+    return commishKey() === MY_TEAM;
+  }
+  function isCommish() {
+    return ownsCommish() && !previewAsMember;
+  }
+  function togglePreviewAsMember() {
+    if (!ownsCommish()) return;
+    previewAsMember = !previewAsMember;
+    if (previewAsMember && setTab === "commish") setTab = "general";
+    renderSettings();
+  }
+  function guard() {
+    if (isCommish()) return true;
+    toast2(previewAsMember ? "Read-only preview \u2014 turn it off in the Commissioner tab" : `Only the commissioner (${commishTeam().mgr}) can change league settings`);
+    return false;
+  }
+  function ro() {
+    return isCommish() ? "" : " disabled";
+  }
   var WDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   function hourLabel(h) {
     return (h % 12 || 12) + ":00 " + (h < 12 ? "AM" : "PM");
   }
   function setLeague(key, val, num) {
+    if (!guard()) {
+      renderSettings();
+      return;
+    }
     LG()[key] = num ? +val : val;
     saveStore();
     renderSettings();
@@ -4114,10 +4170,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     return opts.map((o) => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${o[1]}</option>`).join("");
   }
   function setSel(key, opts, cur, num) {
-    return `<select class="set-ctl" onchange="setLeague('${key}',this.value,${num ? 1 : 0})">${optList(opts, cur)}</select>`;
+    return `<select class="set-ctl"${ro()} onchange="setLeague('${key}',this.value,${num ? 1 : 0})">${optList(opts, cur)}</select>`;
   }
   function setNum(key, cur, min, max) {
-    return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"
+    return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"${ro()}
     onchange="setLeagueNum('${key}',this.value,${min},${max})">`;
   }
   function setRow(label, ctl) {
@@ -4222,13 +4278,17 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     refreshRosterViews();
   }
   function setSlot(key, val) {
+    if (!guard()) {
+      renderSettings();
+      return;
+    }
     SLOTS()[key] = Math.max(0, Math.min(20, Math.round(+val) || 0));
     saveStore();
     applyRosterShape();
     renderSettings();
   }
   function slotSel(key, cur, max) {
-    return `<select class="set-ctl" onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0, max), cur)}</select>`;
+    return `<select class="set-ctl"${ro()} onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0, max), cur)}</select>`;
   }
   function rosterCards() {
     const S2 = SLOTS();
@@ -4248,6 +4308,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     </div>`;
   }
   function setScoring(key, val) {
+    if (!guard()) {
+      renderSettings();
+      return;
+    }
     let v = parseFloat(val);
     if (!isFinite(v)) v = SCORING_DEFAULTS[key];
     SC()[key] = Math.max(-100, Math.min(100, Math.round(v * 100) / 100));
@@ -4255,10 +4319,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     renderSettings();
   }
   function scoreNum(key) {
-    return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"
+    return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"${ro()}
     onchange="setScoring('${key}',this.value)">`;
   }
   function resetScoring() {
+    if (!guard()) return;
     store.scoring = Object.assign({}, SCORING_DEFAULTS);
     saveStore();
     renderSettings();
@@ -4289,12 +4354,69 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       ["fumTD", "Fumble recovery TD"],
       ["krTD", "Kick return TD"],
       ["prTD", "Punt return TD"]
-    ]) + `<div class="set-card"><div class="set-btns">
-        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>`;
+    ]) + (isCommish() ? `<div class="set-card"><div class="set-btns">
+        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>` : "");
   }
-  var SET_TABS = [["general", "General"], ["roster", "Roster"], ["scoring", "Scoring"], ["matchups", "Matchups"]];
+  function setCommish(key) {
+    if (!guard()) {
+      renderSettings();
+      return;
+    }
+    if (!T[key] || key === commishKey()) {
+      renderSettings();
+      return;
+    }
+    if (key !== MY_TEAM) {
+      openConfirm(
+        `Make ${T[key].mgr} commissioner?`,
+        `${T[key].mgr} takes over league settings for City Boys Dynasty. You will be able to see them but not change them, and only ${T[key].mgr} can hand the role back.`,
+        () => applyCommish(key),
+        "Hand it over"
+      );
+      renderSettings();
+      return;
+    }
+    applyCommish(key);
+  }
+  function applyCommish(key) {
+    LG().commish = key;
+    if (!ownsCommish()) setTab = "general";
+    saveStore();
+    renderSettings();
+    toast2(key === MY_TEAM ? "You are the commissioner" : `${T[key].mgr} is now the commissioner of City Boys Dynasty`);
+  }
+  function commishCards() {
+    const opts = Object.keys(T).map((k) => [k, `${T[k].mgr} \xB7 ${T[k].n}`]);
+    return `
+    <div class="set-card">
+      <div class="set-title">Role</div>
+      <div class="set-note">The commissioner is the only member who can change league settings.
+        Everyone else sees them, read-only.</div>
+      ${setRow(
+      "Commissioner",
+      `<select class="set-ctl" onchange="setCommish(this.value)">${optList(opts, commishKey())}</select>`
+    )}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Preview</div>
+      <div class="set-note">See Settings the way the other nine managers see them. This only changes
+        what you are looking at \u2014 you keep the role, and nobody else is affected.</div>
+      <div class="set-btns">
+        <div class="set-btn" onclick="togglePreviewAsMember()">View as a league member</div>
+      </div>
+    </div>
+    <div class="set-card">
+      <div class="set-title">More to come</div>
+      <div class="set-note">Commissioner-only tools land here.</div>
+    </div>`;
+  }
+  var BASE_SET_TABS = [["general", "General"], ["roster", "Roster"], ["scoring", "Scoring"], ["matchups", "Matchups"]];
+  function setTabs() {
+    return isCommish() ? BASE_SET_TABS.concat([["commish", "\u2605 Commissioner"]]) : BASE_SET_TABS;
+  }
   var setTab = "general";
   function setSetTab(k) {
+    if (!setTabs().some((t) => t[0] === k)) k = "general";
     setTab = k;
     renderSettings();
     document.getElementById("scroll").scrollTop = 0;
@@ -4310,22 +4432,40 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="set-title">League Matchup Backgrounds</div>
       <div class="set-note">Set one background for every matchup at once. This replaces any per-game backgrounds.</div>
       ${preview}
-      <div class="set-btns">
+      ${isCommish() ? `<div class="set-btns">
         <div class="set-btn primary" onclick="pickGlobalBackdrop()">${ICON_UP} ${has ? "Change" : "Set"} background for all matchups</div>
         <div class="set-btn" onclick="clearAllBackdrops()">${ICON_X} Clear all backgrounds</div>
-      </div>
+      </div>` : ""}
       ${perGame ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">${perGame} game${perGame > 1 ? "s have" : " has"} a custom background. Setting one for all clears those.</div>` : ""}
     </div>
     <div class="set-card">
       <div class="set-title">Per-game backgrounds</div>
       <div class="set-note">Open any matchup \u2014 yours, or tap a game in All Matchups \u2014 and use the camera on the stadium banner to set a background for just that game.</div>
     </div>`;
-    const bodies = { general: leagueCards(), roster: rosterCards(), scoring: scoringCards(), matchups: backdropCards };
+    const bodies = {
+      general: leagueCards(),
+      roster: rosterCards(),
+      scoring: scoringCards(),
+      matchups: backdropCards,
+      commish: commishCards()
+    };
+    const cm = commishTeam();
+    const sub = isCommish() ? `${ICON_STAR} Commissioner \xB7 City Boys Dynasty` : `City Boys Dynasty \xB7 Commissioner ${escHtml(cm.mgr)}`;
+    const banner = isCommish() ? "" : `
+    <div class="set-ro">
+      <div class="set-ro-t">${previewAsMember ? "Previewing as a league member" : "View only"}</div>
+      <div class="set-ro-s">${previewAsMember ? "This is what the other nine managers see. You still hold the role." : `Only ${escHtml(cm.mgr)} can change these.`}</div>
+      ${ownsCommish() ? `<div class="set-ro-btn" onclick="togglePreviewAsMember()">Back to commissioner view</div>` : ""}
+    </div>`;
     document.getElementById("settingsBody").innerHTML = `
     <div class="set-h">Settings</div>
-    <div class="set-sub">${ICON_STAR} Commissioner \xB7 City Boys Dynasty</div>
-    <div class="set-tabs">${SET_TABS.map((t) => `<div class="set-tab${t[0] === setTab ? " on" : ""}" onclick="setSetTab('${t[0]}')">${t[1]}</div>`).join("")}</div>
+    <div class="set-sub">${sub}</div>
+    <div class="set-tabs">${setTabs().map((t) => `<div class="set-tab${t[0] === setTab ? " on" : ""}${t[0] === "commish" ? " star" : ""}"
+        onclick="setSetTab('${t[0]}')">${t[1]}</div>`).join("")}</div>
+    ${banner}
     ${bodies[setTab] || bodies.general}`;
+    const on = document.querySelector(".set-tab.on");
+    if (on && on.scrollIntoView) on.scrollIntoView({ inline: "nearest", block: "nearest" });
   }
   function openSettings() {
     renderSettings();
@@ -4466,11 +4606,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     refreshMatchups();
   }
   function pickGlobalBackdrop() {
+    if (!isCommish()) return;
     document.getElementById("globalBackdropInput").click();
   }
   function onGlobalBackdrop(input) {
     const f = input.files && input.files[0];
-    if (!f) return;
+    if (!f || !isCommish()) return;
     processImage(f, 900, "image/jpeg", 0.8, (url) => {
       store.globalBackdrop = url;
       store.backdrops = {};
@@ -4480,6 +4621,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     });
   }
   function clearAllBackdrops() {
+    if (!isCommish()) return;
     delete store.globalBackdrop;
     store.backdrops = {};
     saveStore();
@@ -5295,8 +5437,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     clockStart = Date.now();
   }
   function runAutoPicks() {
-    let guard = 0;
-    while (!draftDone() && !myTurn() && guard++ < DRAFT_TOTAL) {
+    let guard2 = 0;
+    while (!draftDone() && !myTurn() && guard2++ < DRAFT_TOTAL) {
       const t = onClockTeam(), p = autoPick(t);
       if (!p) break;
       commitPick(p.id, { auto: true, ts: Date.now() });
@@ -5327,8 +5469,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     refreshApp();
   }
   function autoDraftAll() {
-    let guard = 0;
-    while (!draftDone() && guard++ < DRAFT_TOTAL + 5) {
+    let guard2 = 0;
+    while (!draftDone() && guard2++ < DRAFT_TOTAL + 5) {
       const t = onClockTeam(), p = autoPick(t);
       if (!p) break;
       commitPick(p.id, { auto: true, ts: Date.now() });
@@ -5574,12 +5716,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     paintPanelList("available");
   }
   var _confirmCb = null;
-  function openConfirm(title, msg, cb) {
+  function openConfirm(title, msg, cb, okLabel) {
     _confirmCb = cb;
     document.getElementById("confirmTitle").textContent = title;
     document.getElementById("confirmBody").innerHTML = `<div class="cf-msg">${msg}</div>
     <div class="cf-btns"><div class="cf-btn cancel" onclick="closeConfirm()">Cancel</div>
-    <div class="cf-btn danger" onclick="doConfirm()">Drop</div></div>`;
+    <div class="cf-btn danger" onclick="doConfirm()">${okLabel || "Drop"}</div></div>`;
     document.getElementById("confirmScrim").classList.add("show");
     document.getElementById("confirmSheet").classList.add("show");
   }

@@ -138,12 +138,12 @@ export function renderAvailable(){
 export function setAvailPos(pl){availPos=pl;setPills(pl);paintPanelList('available');}
 // ---- confirm sheet ----
 export let _confirmCb=null;
-export function openConfirm(title,msg,cb){
+export function openConfirm(title,msg,cb,okLabel){
   _confirmCb=cb;
   document.getElementById('confirmTitle').textContent=title;
   document.getElementById('confirmBody').innerHTML=`<div class="cf-msg">${msg}</div>
     <div class="cf-btns"><div class="cf-btn cancel" onclick="closeConfirm()">Cancel</div>
-    <div class="cf-btn danger" onclick="doConfirm()">Drop</div></div>`;
+    <div class="cf-btn danger" onclick="doConfirm()">${okLabel||'Drop'}</div></div>`;
   document.getElementById('confirmScrim').classList.add('show');
   document.getElementById('confirmSheet').classList.add('show');
 }

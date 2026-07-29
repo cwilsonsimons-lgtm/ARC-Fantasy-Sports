@@ -11,7 +11,8 @@ export const LEAGUE_DEFAULTS={
   waiverDay:3,           // 0 Sun … 6 Sat  (3 = Wednesday)
   waiverHour:2,          // 24h clock, league time (2 = 2 AM)
   waiverPeriod:2,        // days a dropped player sits on waivers (0 = none)
-  tradeDeadline:11       // week number, 0 = no deadline
+  tradeDeadline:11,      // week number, 0 = no deadline
+  commish:'pandas'       // team key that owns the commissioner role
 };
 
 export function LG(){return store.league;}

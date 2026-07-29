@@ -3,7 +3,7 @@ import { T } from './data/teams.js';
 import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { TABS } from './nav.js';
-import { renderSettings } from './settings.js';
+import { isCommish, renderSettings } from './settings.js';
 import { processImage, saveStore, store } from './store.js';
 import { ICON_CAM, ICON_X } from './team.js';
 
@@ -133,11 +133,18 @@ export function onBackdrop(input){
   processImage(f,900,'image/jpeg',0.8,(url)=>{store.backdrops[backdropTargetKey]=url;saveStore();refreshMatchups();});
 }
 export function removeGameBackdrop(a,x){const k=gameKey(a,x);if(store.backdrops)delete store.backdrops[k];saveStore();refreshMatchups();}
-// commissioner: one backdrop for every matchup at once (Settings)
-export function pickGlobalBackdrop(){document.getElementById('globalBackdropInput').click();}
+// commissioner: one backdrop for every matchup at once (Settings). These reach
+// every member's matchup, so they are gated at the source as well as hidden.
+export function pickGlobalBackdrop(){
+  if(!isCommish())return;
+  document.getElementById('globalBackdropInput').click();
+}
 export function onGlobalBackdrop(input){
-  const f=input.files&&input.files[0];if(!f)return;
+  const f=input.files&&input.files[0];if(!f||!isCommish())return;
   processImage(f,900,'image/jpeg',0.8,(url)=>{store.globalBackdrop=url;store.backdrops={};saveStore();refreshMatchups();renderSettings();});
 }
-export function clearAllBackdrops(){delete store.globalBackdrop;store.backdrops={};saveStore();refreshMatchups();renderSettings();}
+export function clearAllBackdrops(){
+  if(!isCommish())return;
+  delete store.globalBackdrop;store.backdrops={};saveStore();refreshMatchups();renderSettings();
+}
 export function refreshMatchups(){renderLeagueBody();renderUserMatchup();}

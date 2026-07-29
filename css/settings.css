@@ -15,6 +15,8 @@
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;
   color:var(--ink-2);cursor:pointer}
 .set-tab.on{border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
+/* the commissioner-only tab reads as special even when it is not selected */
+.set-tab.star{border-color:var(--violet);color:var(--violet)}
 .set-title .c{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--ink-3);font-weight:700;margin-left:7px}
 .set-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft)}
 .set-row:last-child{border-bottom:0}
@@ -25,6 +27,8 @@
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;
   padding:7px 8px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;max-width:148px}
 .set-ctl:focus{border-color:var(--violet)}
+/* members see every value; the control just cannot be worked */
+.set-ctl:disabled{opacity:.62;cursor:default;color:var(--ink-2);background:#080B11}
 .set-ctl option{background:#0A0E15;color:var(--ink);font-family:'Barlow',system-ui,sans-serif;
   text-transform:none;letter-spacing:0}
 input.set-ctl{width:74px;text-align:center;cursor:text;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:0}
@@ -35,3 +39,13 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .set-btn svg{width:15px;height:15px}
 .set-btn.primary{background:var(--violet);border-color:var(--violet);color:#fff}
 .set-btn:active{opacity:.85}
+/* read-only banner, shown to anyone who is not the commissioner */
+.set-ro{border:1px solid var(--line);border-left:3px solid var(--violet);background:var(--violet-soft);
+  border-radius:12px;padding:12px 14px;margin:0 2px 12px}
+.set-ro-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:1.1px;
+  text-transform:uppercase;color:var(--violet)}
+.set-ro-s{font-size:12px;color:var(--ink-2);line-height:1.45;margin-top:3px}
+.set-ro-btn{display:inline-block;margin-top:10px;border:1px solid var(--violet);border-radius:9px;padding:7px 12px;
+  cursor:pointer;color:var(--violet);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.set-ro-btn:active{opacity:.8}

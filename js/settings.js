@@ -1,16 +1,49 @@
 import { S } from './state.js';
 import { slotAllows } from './clock.js';
 import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.js';
-import { invalidateRosters, persistRoster, refreshRosterViews } from './freeagency.js';
+import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
-import { preDraft, showView, toggleDrawer } from './nav.js';
+import { preDraft, showView, toast, toggleDrawer } from './nav.js';
 import { BENCH, IR, LINEUP, SLOTS, SLOT_ORDER, TAXI, buildSlots, saveStore, store } from './store.js';
 import { ICON_STAR, ICON_UP, ICON_X } from './team.js';
+import { escHtml } from './panel.js';
+import { MY_TEAM, T } from './data/teams.js';
+
+// ---- who may change what ----
+// Everyone in the league can read every setting. Only the commissioner can
+// change one, and only the commissioner sees the Commissioner tab.
+//
+// There are no accounts in this prototype - "you" are always MY_TEAM - so the
+// member's read-only view would otherwise be unreachable. `previewAsMember`
+// makes it reachable without handing the role away; it is a view toggle, not a
+// permission, and it never leaves the commissioner's own device.
+export let previewAsMember=false;
+export function commishKey(){return LG().commish||MY_TEAM;}
+export function commishTeam(){return T[commishKey()]||T[MY_TEAM];}
+export function ownsCommish(){return commishKey()===MY_TEAM;}
+export function isCommish(){return ownsCommish()&&!previewAsMember;}
+export function togglePreviewAsMember(){
+  if(!ownsCommish())return;
+  previewAsMember=!previewAsMember;
+  if(previewAsMember&&setTab==='commish')setTab='general';
+  renderSettings();
+}
+/** Every setter funnels through this, so a stray onclick cannot write. */
+function guard(){
+  if(isCommish())return true;
+  toast(previewAsMember
+    ? 'Read-only preview — turn it off in the Commissioner tab'
+    : `Only the commissioner (${commishTeam().mgr}) can change league settings`);
+  return false;
+}
+/** Attribute for native form controls when the viewer may not edit. */
+function ro(){return isCommish()?'':' disabled';}
 
 // ---- league settings controls ----
 export const WDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 export function hourLabel(h){return (h%12||12)+':00 '+(h<12?'AM':'PM');}
 export function setLeague(key,val,num){
+  if(!guard()){renderSettings();return;}
   LG()[key]=num?+val:val;
   saveStore();
   renderSettings();
@@ -24,10 +57,10 @@ export function optList(opts,cur){
   return opts.map(o=>`<option value="${o[0]}"${String(o[0])===String(cur)?' selected':''}>${o[1]}</option>`).join('');
 }
 export function setSel(key,opts,cur,num){
-  return `<select class="set-ctl" onchange="setLeague('${key}',this.value,${num?1:0})">${optList(opts,cur)}</select>`;
+  return `<select class="set-ctl"${ro()} onchange="setLeague('${key}',this.value,${num?1:0})">${optList(opts,cur)}</select>`;
 }
 export function setNum(key,cur,min,max){
-  return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"
+  return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"${ro()}
     onchange="setLeagueNum('${key}',this.value,${min},${max})">`;
 }
 export function setRow(label,ctl){return `<div class="set-row"><div class="set-lb">${label}</div><div class="set-ctls">${ctl}</div></div>`;}
@@ -105,11 +138,12 @@ export function applyRosterShape(){
   refreshRosterViews();
 }
 export function setSlot(key,val){
+  if(!guard()){renderSettings();return;}
   SLOTS()[key]=Math.max(0,Math.min(20,Math.round(+val)||0));
   saveStore();applyRosterShape();renderSettings();
 }
 export function slotSel(key,cur,max){
-  return `<select class="set-ctl" onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0,max),cur)}</select>`;
+  return `<select class="set-ctl"${ro()} onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0,max),cur)}</select>`;
 }
 export function rosterCards(){
   const S=SLOTS();
@@ -129,16 +163,20 @@ export function rosterCards(){
 }
 // ---- scoring ----
 export function setScoring(key,val){
+  if(!guard()){renderSettings();return;}
   let v=parseFloat(val);
   if(!isFinite(v))v=SCORING_DEFAULTS[key];
   SC()[key]=Math.max(-100,Math.min(100,Math.round(v*100)/100));
   saveStore();renderSettings();
 }
 export function scoreNum(key){
-  return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"
+  return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"${ro()}
     onchange="setScoring('${key}',this.value)">`;
 }
-export function resetScoring(){store.scoring=Object.assign({},SCORING_DEFAULTS);saveStore();renderSettings();}
+export function resetScoring(){
+  if(!guard())return;
+  store.scoring=Object.assign({},SCORING_DEFAULTS);saveStore();renderSettings();
+}
 export function scoringCard(title,rows){
   return `<div class="set-card"><div class="set-title">${title}</div>
     ${rows.map(r=>setRow(r[1],scoreNum(r[0]))).join('')}</div>`;
@@ -152,12 +190,67 @@ export function scoringCards(){
       ['rec2pt','2-point conversion']])
     +scoringCard('Miscellaneous',[['fumLost','Fumble lost'],['fumTD','Fumble recovery TD'],
       ['krTD','Kick return TD'],['prTD','Punt return TD']])
-    +`<div class="set-card"><div class="set-btns">
-        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>`;
+    +(isCommish()?`<div class="set-card"><div class="set-btns">
+        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>`:'');
 }
-export const SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
+
+// ---- commissioner ----
+export function setCommish(key){
+  if(!guard()){renderSettings();return;}
+  if(!T[key]||key===commishKey()){renderSettings();return;}
+  // Handing it to someone else is one-way: the moment it lands you are a
+  // member, and members cannot set the commissioner. Say so before it happens.
+  if(key!==MY_TEAM){
+    openConfirm(`Make ${T[key].mgr} commissioner?`,
+      `${T[key].mgr} takes over league settings for City Boys Dynasty. You will be able to see them but not change them, and only ${T[key].mgr} can hand the role back.`,
+      ()=>applyCommish(key),'Hand it over');
+    renderSettings();   // snap the dropdown back until it is confirmed
+    return;
+  }
+  applyCommish(key);
+}
+function applyCommish(key){
+  LG().commish=key;
+  if(!ownsCommish())setTab='general';
+  saveStore();renderSettings();
+  toast(key===MY_TEAM?'You are the commissioner'
+    :`${T[key].mgr} is now the commissioner of City Boys Dynasty`);
+}
+// Deliberately thin for now - the tab exists, is commissioner-only, and holds
+// the two controls that have to live somewhere. The rest is still to be spec'd.
+export function commishCards(){
+  const opts=Object.keys(T).map(k=>[k,`${T[k].mgr} · ${T[k].n}`]);
+  return `
+    <div class="set-card">
+      <div class="set-title">Role</div>
+      <div class="set-note">The commissioner is the only member who can change league settings.
+        Everyone else sees them, read-only.</div>
+      ${setRow('Commissioner',
+        `<select class="set-ctl" onchange="setCommish(this.value)">${optList(opts,commishKey())}</select>`)}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Preview</div>
+      <div class="set-note">See Settings the way the other nine managers see them. This only changes
+        what you are looking at — you keep the role, and nobody else is affected.</div>
+      <div class="set-btns">
+        <div class="set-btn" onclick="togglePreviewAsMember()">View as a league member</div>
+      </div>
+    </div>
+    <div class="set-card">
+      <div class="set-title">More to come</div>
+      <div class="set-note">Commissioner-only tools land here.</div>
+    </div>`;
+}
+
+export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
+export function setTabs(){
+  return isCommish()?BASE_SET_TABS.concat([['commish','★ Commissioner']]):BASE_SET_TABS;
+}
 export let setTab='general';
-export function setSetTab(k){setTab=k;renderSettings();document.getElementById('scroll').scrollTop=0;}
+export function setSetTab(k){
+  if(!setTabs().some(t=>t[0]===k))k='general';   // e.g. Commissioner after handing the role over
+  setTab=k;renderSettings();document.getElementById('scroll').scrollTop=0;
+}
 export function renderSettings(){
   const bl=document.getElementById('setBackLb');if(bl)bl.textContent=preDraft()?'Draft':'Matchup';
   const has=!!store.globalBackdrop;
@@ -170,23 +263,43 @@ export function renderSettings(){
       <div class="set-title">League Matchup Backgrounds</div>
       <div class="set-note">Set one background for every matchup at once. This replaces any per-game backgrounds.</div>
       ${preview}
-      <div class="set-btns">
+      ${isCommish()?`<div class="set-btns">
         <div class="set-btn primary" onclick="pickGlobalBackdrop()">${ICON_UP} ${has?'Change':'Set'} background for all matchups</div>
         <div class="set-btn" onclick="clearAllBackdrops()">${ICON_X} Clear all backgrounds</div>
-      </div>
+      </div>`:''}
       ${perGame?`<div class="set-note" style="margin-top:11px;color:var(--violet)">${perGame} game${perGame>1?'s have':' has'} a custom background. Setting one for all clears those.</div>`:''}
     </div>
     <div class="set-card">
       <div class="set-title">Per-game backgrounds</div>
       <div class="set-note">Open any matchup — yours, or tap a game in All Matchups — and use the camera on the stadium banner to set a background for just that game.</div>
     </div>`;
-  const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),matchups:backdropCards};
+  const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),
+    matchups:backdropCards,commish:commishCards()};
+  const cm=commishTeam();
+  const sub=isCommish()
+    ? `${ICON_STAR} Commissioner · City Boys Dynasty`
+    : `City Boys Dynasty · Commissioner ${escHtml(cm.mgr)}`;
+  // Members get the whole of Settings, read-only. Say so once, at the top,
+  // rather than leaving them to work it out from greyed-out controls.
+  const banner=isCommish()?'':`
+    <div class="set-ro">
+      <div class="set-ro-t">${previewAsMember?'Previewing as a league member':'View only'}</div>
+      <div class="set-ro-s">${previewAsMember
+        ? 'This is what the other nine managers see. You still hold the role.'
+        : `Only ${escHtml(cm.mgr)} can change these.`}</div>
+      ${ownsCommish()?`<div class="set-ro-btn" onclick="togglePreviewAsMember()">Back to commissioner view</div>`:''}
+    </div>`;
   document.getElementById('settingsBody').innerHTML=`
     <div class="set-h">Settings</div>
-    <div class="set-sub">${ICON_STAR} Commissioner · City Boys Dynasty</div>
-    <div class="set-tabs">${SET_TABS.map(t=>
-      `<div class="set-tab${t[0]===setTab?' on':''}" onclick="setSetTab('${t[0]}')">${t[1]}</div>`).join('')}</div>
+    <div class="set-sub">${sub}</div>
+    <div class="set-tabs">${setTabs().map(t=>
+      `<div class="set-tab${t[0]===setTab?' on':''}${t[0]==='commish'?' star':''}"
+        onclick="setSetTab('${t[0]}')">${t[1]}</div>`).join('')}</div>
+    ${banner}
     ${bodies[setTab]||bodies.general}`;
+  // five tabs overflow a phone; keep the selected one on screen
+  const on=document.querySelector('.set-tab.on');
+  if(on&&on.scrollIntoView)on.scrollIntoView({inline:'nearest',block:'nearest'});
 }
 export function openSettings(){
   renderSettings();
