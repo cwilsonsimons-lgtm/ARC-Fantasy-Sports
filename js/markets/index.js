@@ -8,7 +8,7 @@
 // own, and reaches the portfolio from a button in the header instead.
 import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
          holdingRows } from './data.js';
-import { ICON, spark, face, esc, money, pctText, dirClass, tri, sparkColor } from './ui.js';
+import { ICON, face, esc, money, pctText, dirClass, tri } from './ui.js';
 import { playerCharts, priceChart } from './charts.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
@@ -66,9 +66,10 @@ export function mkOpenPlayer(id) {
   const p = BY_ID[id];
   if (!p) return;
   const d = dirClass(p.pct);
-  const color = sparkColor(p);
   const curve = seasonCurve(p);
 
+  // No sparkline in the header: the price chart below draws the same season at
+  // full width, and the thumbnail was the same picture twice.
   openSheet(esc(p.name), `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       ${face(p)}
@@ -79,7 +80,6 @@ export function mkOpenPlayer(id) {
         <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
           ${tri(p.pct)} ${money(p.change)} (${pctText(Math.abs(p.pct))}) today</div>
       </div>
-      <div style="width:96px">${spark(p.spark, color, { w: 96, h: 46, fill: true, id: 'sheet' })}</div>
     </div>
 
     ${holdingFor(p.id)}

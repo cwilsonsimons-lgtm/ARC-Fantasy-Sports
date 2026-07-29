@@ -263,6 +263,24 @@ export function careerSeries(p) {
   return raw.map(o => ({ year: o.year, price: Math.round(o.v * k * 100) / 100 }));
 }
 
+/**
+ * Cumulative production against the season total today's price is paying for.
+ * Lives here rather than in charts.js because the row thumbnails need it too.
+ */
+export function paceData(p) {
+  const log = gameLog(p);
+  const target = p.price * POINTS_PER_DOLLAR;      // the total the price implies
+  const cum = [{ week: 0, pts: 0 }];
+  let run = 0;
+  log.slice(0, WEEKS_PLAYED).forEach(g => { run += g.pts; cum.push({ week: g.week, pts: run }); });
+  const w = WEEKS_PLAYED || 1;
+  const paceNow = target * (w / SEASON_GAMES);     // where he should be by now
+  const rate = run / w;                            // his actual points per game
+  return { cum, target, run, paceNow, rate,
+           finish: rate * SEASON_GAMES,            // season total at this rate
+           ahead: run - paceNow };
+}
+
 // ---------------------------------------------------------------- career curve
 // The concept's "shape of a career": the same player priced for three seasons.
 // Younger players carry a premium further out, veterans a discount.

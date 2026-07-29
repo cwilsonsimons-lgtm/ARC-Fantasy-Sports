@@ -1,5 +1,5 @@
 // Arc Markets — shared rendering helpers (icons, sparklines, rows, formatting).
-import { isWatched } from './data.js';
+import { isWatched, gameLog, paceData, SEASON_GAMES, WEEKS_PLAYED } from './data.js';
 
 export const money = n => '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 export const signed = n => (n < 0 ? '-' : '+') + money(n);
@@ -69,7 +69,63 @@ export const tri = n => `<span class="mk-tri ${n < 0 ? 'd' : 'u'}"></span>`;
 // A sparkline draws the whole season, so it is coloured by the season - the
 // same rule the price chart uses. The percentage beside it is today's move and
 // keeps its own colour; a green day inside a red year is worth seeing.
-export const sparkColor = p => (p.seasonUp === false ? '#FF4B4B' : '#2BE06B');
+const UP = '#2BE06B', DOWN = '#FF4B4B', GREY = '#5A6675';
+export const sparkColor = p => (p.seasonUp === false ? DOWN : UP);
+
+// ---------------------------------------------------------------- thumbnails
+// The trend column on the Market screen can draw any of the three charts a
+// contract opens with, so a scan of the list can be about price, about output,
+// or about whether the price is being earned - without opening anything.
+export const THUMBS = [
+  ['price', 'Price',  'Season price line'],
+  ['five',  'Last 5', 'Points per game against his average'],
+  ['pace',  'Pace',   'Banked points against the price'],
+];
+
+/** Chart B in 46x26: five bars, the average as a dashed rule. */
+function thumbFive(p, w, h) {
+  const played = gameLog(p).slice(0, WEEKS_PLAYED);
+  if (!played.length) return '';
+  const five = played.slice(-5);
+  const avg = played.reduce((n, g) => n + g.pts, 0) / played.length;
+  const top = Math.max(avg, ...five.map(g => g.pts)) * 1.08 || 1;
+  const bw = w / five.length;
+  const ay = (h - (avg / top) * (h - 2)).toFixed(1);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    ${five.map((g, i) => {
+      const bh = Math.max(1.5, (g.pts / top) * (h - 2));
+      return `<rect x="${(i * bw + 0.8).toFixed(1)}" y="${(h - bh).toFixed(1)}"
+        width="${(bw - 1.6).toFixed(1)}" height="${bh.toFixed(1)}" rx="1"
+        fill="${g.pts >= avg ? UP : DOWN}" opacity=".92"/>`;
+    }).join('')}
+    <line x1="0" y1="${ay}" x2="${w}" y2="${ay}" stroke="${GREY}" stroke-width="1"
+      stroke-dasharray="2 2"/></svg>`;
+}
+
+/** Chart C in 46x26: banked points, the price pace as a dashed rule, gap shaded. */
+function thumbPace(p, w, h) {
+  const d = paceData(p);
+  if (d.cum.length < 2) return '';
+  const color = d.ahead >= 0 ? UP : DOWN;
+  const top = Math.max(d.target, d.run) * 1.05 || 1;
+  const X = wk => ((wk / SEASON_GAMES) * w).toFixed(1);
+  const Y = v => (h - (v / top) * (h - 2)).toFixed(1);
+  const line = d.cum.map(c => `${X(c.week)},${Y(c.pts)}`).join(' ');
+  const last = d.cum[d.cum.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polygon points="${X(0)},${Y(0)} ${line} ${X(last.week)},${Y(d.paceNow)}"
+      fill="${color}" opacity=".28"/>
+    <line x1="0" y1="${Y(0)}" x2="${X(SEASON_GAMES)}" y2="${Y(d.target)}" stroke="${GREY}"
+      stroke-width="1" stroke-dasharray="2 2"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.6"
+      stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+export function thumb(p, mode, w = 46, h = 26) {
+  if (mode === 'five') return thumbFive(p, w, h);
+  if (mode === 'pace') return thumbPace(p, w, h);
+  return spark(p.spark, sparkColor(p), { w, h });
+}
 
 export function starCell(p) {
   return `<div class="star${isWatched(p.id) ? ' on' : ''}" data-star="${p.id}"
@@ -77,7 +133,7 @@ export function starCell(p) {
 }
 
 /** A row on the Market screen: price, 24h change, trend, watch star. */
-export function marketRow(p) {
+export function marketRow(p, mode) {
   const d = dirClass(p.pct);
   return `<div class="mk-row" onclick="mkOpenPlayer('${p.id}')">
     <div class="bar" style="background:${p.color}"></div>
@@ -90,7 +146,7 @@ export function marketRow(p) {
       <div class="p">${money(p.price)}</div>
       <div class="c ${d}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
-    ${spark(p.spark, sparkColor(p))}
+    ${thumb(p, mode)}
     ${starCell(p)}
   </div>`;
 }

@@ -91,6 +91,17 @@ body.markets #hint{display:none}
 .mk-pill.on{background:var(--mk-blue);border-color:var(--mk-blue);color:#fff}
 .mk-pill.div{width:1px;padding:0;height:24px;background:var(--mk-line);border:none;border-radius:0}
 
+/* ---------- trend-column chart switcher ---------- */
+.mk-seg{display:flex;align-items:center;gap:6px;padding:2px 14px 0}
+.mk-seg .lb{flex:none;font-size:9.5px;font-weight:800;letter-spacing:1.1px;color:var(--mk-ink-3);
+  margin-right:2px}
+.mk-seg .sg{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:10px;padding:7px 4px;
+  font-size:11px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;background:var(--mk-card);
+  white-space:nowrap}
+.mk-seg .sg.on{border-color:var(--mk-blue);color:#fff;background:var(--mk-blue)}
+.mk-seg .sg:active{opacity:.85}
+.mk-sub{padding:7px 14px 0;font-size:10.5px;font-weight:600;color:var(--mk-ink-3)}
+
 /* ---------- table ---------- */
 .mk-th{display:flex;align-items:center;padding:6px 14px 8px;font-size:9.5px;font-weight:700;
   letter-spacing:.8px;color:var(--mk-ink-3)}

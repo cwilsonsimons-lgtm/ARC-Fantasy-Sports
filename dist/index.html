@@ -1215,6 +1215,17 @@ body.markets #hint{display:none}
 .mk-pill.on{background:var(--mk-blue);border-color:var(--mk-blue);color:#fff}
 .mk-pill.div{width:1px;padding:0;height:24px;background:var(--mk-line);border:none;border-radius:0}
 
+/* ---------- trend-column chart switcher ---------- */
+.mk-seg{display:flex;align-items:center;gap:6px;padding:2px 14px 0}
+.mk-seg .lb{flex:none;font-size:9.5px;font-weight:800;letter-spacing:1.1px;color:var(--mk-ink-3);
+  margin-right:2px}
+.mk-seg .sg{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:10px;padding:7px 4px;
+  font-size:11px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;background:var(--mk-card);
+  white-space:nowrap}
+.mk-seg .sg.on{border-color:var(--mk-blue);color:#fff;background:var(--mk-blue)}
+.mk-seg .sg:active{opacity:.85}
+.mk-sub{padding:7px 14px 0;font-size:10.5px;font-weight:600;color:var(--mk-ink-3)}
+
 /* ---------- table ---------- */
 .mk-th{display:flex;align-items:center;padding:6px 14px 8px;font-size:9.5px;font-weight:700;
   letter-spacing:.8px;color:var(--mk-ink-3)}
@@ -6196,6 +6207,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     marketStats: () => marketStats,
     mkStore: () => mkStore,
     mostActive: () => mostActive,
+    paceData: () => paceData,
     portfolio: () => portfolio,
     priceDays: () => priceDays,
     saveMk: () => saveMk,
@@ -6455,6 +6467,29 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const k = p.price / (raw[raw.length - 1].v || 1);
     return raw.map((o) => ({ year: o.year, price: Math.round(o.v * k * 100) / 100 }));
   }
+  function paceData(p) {
+    const log = gameLog(p);
+    const target = p.price * POINTS_PER_DOLLAR;
+    const cum = [{ week: 0, pts: 0 }];
+    let run = 0;
+    log.slice(0, WEEKS_PLAYED).forEach((g) => {
+      run += g.pts;
+      cum.push({ week: g.week, pts: run });
+    });
+    const w = WEEKS_PLAYED || 1;
+    const paceNow = target * (w / SEASON_GAMES);
+    const rate = run / w;
+    return {
+      cum,
+      target,
+      run,
+      paceNow,
+      rate,
+      finish: rate * SEASON_GAMES,
+      // season total at this rate
+      ahead: run - paceNow
+    };
+  }
   function seasonCurve(p) {
     const r = rng(hash2(p.id + "#curve"));
     const young = p.exp <= 3;
@@ -6468,6 +6503,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   var ui_exports = {};
   __export(ui_exports, {
     ICON: () => ICON,
+    THUMBS: () => THUMBS,
     dirClass: () => dirClass,
     empty: () => empty,
     esc: () => esc2,
@@ -6480,6 +6516,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     spark: () => spark,
     sparkColor: () => sparkColor,
     starCell: () => starCell,
+    thumb: () => thumb,
     tri: () => tri
   });
   var money = (n) => "$" + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -6534,12 +6571,60 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
          style="position:absolute" onerror="this.remove()">` : ""}</div>`;
   }
   var tri = (n) => `<span class="mk-tri ${n < 0 ? "d" : "u"}"></span>`;
-  var sparkColor = (p) => p.seasonUp === false ? "#FF4B4B" : "#2BE06B";
+  var UP = "#2BE06B";
+  var DOWN = "#FF4B4B";
+  var GREY = "#5A6675";
+  var sparkColor = (p) => p.seasonUp === false ? DOWN : UP;
+  var THUMBS = [
+    ["price", "Price", "Season price line"],
+    ["five", "Last 5", "Points per game against his average"],
+    ["pace", "Pace", "Banked points against the price"]
+  ];
+  function thumbFive(p, w, h) {
+    const played = gameLog(p).slice(0, WEEKS_PLAYED);
+    if (!played.length) return "";
+    const five = played.slice(-5);
+    const avg = played.reduce((n, g) => n + g.pts, 0) / played.length;
+    const top = Math.max(avg, ...five.map((g) => g.pts)) * 1.08 || 1;
+    const bw = w / five.length;
+    const ay = (h - avg / top * (h - 2)).toFixed(1);
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    ${five.map((g, i) => {
+      const bh = Math.max(1.5, g.pts / top * (h - 2));
+      return `<rect x="${(i * bw + 0.8).toFixed(1)}" y="${(h - bh).toFixed(1)}"
+        width="${(bw - 1.6).toFixed(1)}" height="${bh.toFixed(1)}" rx="1"
+        fill="${g.pts >= avg ? UP : DOWN}" opacity=".92"/>`;
+    }).join("")}
+    <line x1="0" y1="${ay}" x2="${w}" y2="${ay}" stroke="${GREY}" stroke-width="1"
+      stroke-dasharray="2 2"/></svg>`;
+  }
+  function thumbPace(p, w, h) {
+    const d = paceData(p);
+    if (d.cum.length < 2) return "";
+    const color = d.ahead >= 0 ? UP : DOWN;
+    const top = Math.max(d.target, d.run) * 1.05 || 1;
+    const X = (wk) => (wk / SEASON_GAMES * w).toFixed(1);
+    const Y = (v) => (h - v / top * (h - 2)).toFixed(1);
+    const line = d.cum.map((c) => `${X(c.week)},${Y(c.pts)}`).join(" ");
+    const last = d.cum[d.cum.length - 1];
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polygon points="${X(0)},${Y(0)} ${line} ${X(last.week)},${Y(d.paceNow)}"
+      fill="${color}" opacity=".28"/>
+    <line x1="0" y1="${Y(0)}" x2="${X(SEASON_GAMES)}" y2="${Y(d.target)}" stroke="${GREY}"
+      stroke-width="1" stroke-dasharray="2 2"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.6"
+      stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  }
+  function thumb(p, mode, w = 46, h = 26) {
+    if (mode === "five") return thumbFive(p, w, h);
+    if (mode === "pace") return thumbPace(p, w, h);
+    return spark(p.spark, sparkColor(p), { w, h });
+  }
   function starCell(p) {
     return `<div class="star${isWatched(p.id) ? " on" : ""}" data-star="${p.id}"
     onclick="event.stopPropagation();mkToggleWatch('${p.id}',this)">${ICON.star}</div>`;
   }
-  function marketRow(p) {
+  function marketRow(p, mode) {
     const d = dirClass(p.pct);
     return `<div class="mk-row" onclick="mkOpenPlayer('${p.id}')">
     <div class="bar" style="background:${p.color}"></div>
@@ -6552,7 +6637,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="p">${money(p.price)}</div>
       <div class="c ${d}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
-    ${spark(p.spark, sparkColor(p))}
+    ${thumb(p, mode)}
     ${starCell(p)}
   </div>`;
   }
@@ -6585,10 +6670,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   __export(market_exports, {
     mkFilter: () => mkFilter,
     mkSort: () => mkSort,
+    mkThumb: () => mkThumb,
     renderMarket: () => renderMarket
   });
   var filter = "All";
   var sortDesc = true;
+  var thumbMode = () => THUMBS.some((t) => t[0] === mkStore.thumb) ? mkStore.thumb : "price";
   function highlight(kind, p) {
     const map = {
       up: {
@@ -6659,7 +6746,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       return `<div class="mk-empty">${ICON.star}<div class="t">Nothing on your watchlist yet</div>
       <div class="s">Tap the star on any player to follow their price here.</div></div>`;
     }
-    return list.map(marketRow).join("");
+    const mode = thumbMode();
+    return list.map((p) => marketRow(p, mode)).join("");
   }
   function renderMarket() {
     const el = document.getElementById("mkMarket");
@@ -6689,10 +6777,17 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     ).join("")}
     </div>
 
+    <div class="mk-seg">
+      <span class="lb">CHART</span>
+      ${THUMBS.map(([k, lb]) => `<div class="sg${thumbMode() === k ? " on" : ""}"
+        onclick="mkThumb('${k}')">${lb}</div>`).join("")}
+    </div>
+    <div class="mk-sub">${esc2((THUMBS.find((t) => t[0] === thumbMode()) || THUMBS[0])[2])}</div>
+
     <div class="mk-th">
       <span style="flex:1">PLAYER</span>
       <span class="s" style="min-width:54px;justify-content:flex-end;margin-right:7px" onclick="mkSort()">PRICE ${ICON.sort}</span>
-      <span style="min-width:46px;text-align:center">TREND</span>
+      <span style="min-width:46px;text-align:center">${esc2((THUMBS.find((t) => t[0] === thumbMode()) || THUMBS[0])[1].toUpperCase())}</span>
       <span style="min-width:27px"></span>
     </div>
     ${rows()}`;
@@ -6703,6 +6798,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   }
   function mkSort() {
     sortDesc = !sortDesc;
+    renderMarket();
+  }
+  function mkThumb(k) {
+    mkStore.thumb = k;
+    saveMk();
     renderMarket();
   }
 
@@ -6812,13 +6912,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     RANGES: () => RANGES,
     lastFiveChart: () => lastFiveChart,
     paceChart: () => paceChart,
-    paceData: () => paceData,
     playerCharts: () => playerCharts,
     priceChart: () => priceChart,
     priceSeries: () => priceSeries
   });
-  var UP = "#2BE06B";
-  var DOWN = "#FF4B4B";
+  var UP2 = "#2BE06B";
+  var DOWN2 = "#FF4B4B";
   var RANGES = [
     ["week", "This week", "Since the last kickoff"],
     ["five", "Last 5", "The last five game weeks"],
@@ -6866,7 +6965,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const s = priceSeries(p, range);
     const n = s.pts.length;
     const up = s.last >= s.first;
-    const color = up ? UP : DOWN;
+    const color = up ? UP2 : DOWN2;
     const pad = (s.max - s.min) * 0.18 || 0.05;
     const lo = s.min - pad, hi = s.max + pad;
     const X = (i) => i / Math.max(1, n - 1) * W2;
@@ -6937,34 +7036,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         (${avg.toFixed(1)}), so a green bar is a week he beat himself.</div>
     </div>`;
   }
-  function paceData(p) {
-    const log = gameLog(p);
-    const target = p.price * POINTS_PER_DOLLAR;
-    const cum = [{ week: 0, pts: 0 }];
-    let run = 0;
-    log.slice(0, WEEKS_PLAYED).forEach((g) => {
-      run += g.pts;
-      cum.push({ week: g.week, pts: run });
-    });
-    const w = WEEKS_PLAYED || 1;
-    const paceNow = target * (w / SEASON_GAMES);
-    const rate = run / w;
-    return {
-      cum,
-      target,
-      run,
-      paceNow,
-      rate,
-      finish: rate * SEASON_GAMES,
-      // season total at this rate
-      ahead: run - paceNow
-    };
-  }
   function paceChart(p) {
     const d = paceData(p);
     if (d.cum.length < 2) return "";
     const ahead = d.ahead >= 0;
-    const color = ahead ? UP : DOWN;
+    const color = ahead ? UP2 : DOWN2;
     const top = Math.max(d.target, d.finish, d.run) * 1.06 || 1;
     const X = (w) => w / SEASON_GAMES * W2;
     const Y = (v) => H2 - v / top * H2;
@@ -7075,7 +7151,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     const p = BY_ID[id];
     if (!p) return;
     const d = dirClass(p.pct);
-    const color = sparkColor(p);
     const curve = seasonCurve(p);
     openSheet(esc2(p.name), `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -7087,7 +7162,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
           ${tri(p.pct)} ${money(p.change)} (${pctText(Math.abs(p.pct))}) today</div>
       </div>
-      <div style="width:96px">${spark(p.spark, color, { w: 96, h: 46, fill: true, id: "sheet" })}</div>
     </div>
 
     ${holdingFor(p.id)}

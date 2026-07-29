@@ -13,7 +13,7 @@
 // Everything here is derived from the player's id, so the same player shows the
 // same season on every load.
 import { SEASON_GAMES, WEEKS_PLAYED, POINTS_PER_DOLLAR,
-         gameLog, priceDays, careerSeries } from './data.js';
+         gameLog, priceDays, careerSeries, paceData } from './data.js';
 import { esc, money } from './ui.js';
 
 const UP = '#2BE06B', DOWN = '#FF4B4B', BLUE = '#2E8CFF', DIM = '#5A6577';
@@ -152,21 +152,6 @@ export function lastFiveChart(p) {
 }
 
 // ---------------------------------------------------------------- chart C
-/** Cumulative production against the season total today's price is paying for. */
-export function paceData(p) {
-  const log = gameLog(p);
-  const target = p.price * POINTS_PER_DOLLAR;      // the total the price implies
-  const cum = [{ week: 0, pts: 0 }];
-  let run = 0;
-  log.slice(0, WEEKS_PLAYED).forEach(g => { run += g.pts; cum.push({ week: g.week, pts: run }); });
-  const w = WEEKS_PLAYED || 1;
-  const paceNow = target * (w / SEASON_GAMES);     // where he should be by now
-  const rate = run / w;                            // his actual points per game
-  return { cum, target, run, paceNow, rate,
-           finish: rate * SEASON_GAMES,            // season total at this rate
-           ahead: run - paceNow };
-}
-
 export function paceChart(p) {
   const d = paceData(p);
   if (d.cum.length < 2) return '';

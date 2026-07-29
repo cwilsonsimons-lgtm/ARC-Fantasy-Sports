@@ -1,9 +1,14 @@
 // Arc Markets — the Market screen: status strip, highlight cards, filters, table.
-import { MARKET, marketStats, topMover, mostActive, topRookie, watchRows } from './data.js';
-import { ICON, spark, face, esc, money, pctText, marketRow } from './ui.js';
+import { MARKET, marketStats, topMover, mostActive, topRookie, watchRows,
+         mkStore, saveMk } from './data.js';
+import { ICON, spark, face, esc, money, pctText, marketRow, THUMBS } from './ui.js';
 
 let filter = 'All';          // All | QB | RB | WR | TE | Trending | Movers | Watch
 let sortDesc = true;         // price sort direction
+// which of the three contract charts the trend column draws; a reading
+// preference, so it is remembered like the watchlist
+const thumbMode = () =>
+  (THUMBS.some(t => t[0] === mkStore.thumb) ? mkStore.thumb : 'price');
 
 function highlight(kind, p) {
   const map = {
@@ -46,7 +51,8 @@ function rows() {
     return `<div class="mk-empty">${ICON.star}<div class="t">Nothing on your watchlist yet</div>
       <div class="s">Tap the star on any player to follow their price here.</div></div>`;
   }
-  return list.map(marketRow).join('');
+  const mode = thumbMode();
+  return list.map(p => marketRow(p, mode)).join('');
 }
 
 export function renderMarket() {
@@ -78,10 +84,18 @@ export function renderMarket() {
       ).join('')}
     </div>
 
+    <div class="mk-seg">
+      <span class="lb">CHART</span>
+      ${THUMBS.map(([k, lb]) => `<div class="sg${thumbMode() === k ? ' on' : ''}"
+        onclick="mkThumb('${k}')">${lb}</div>`).join('')}
+    </div>
+    <div class="mk-sub">${esc((THUMBS.find(t => t[0] === thumbMode()) || THUMBS[0])[2])}</div>
+
     <div class="mk-th">
       <span style="flex:1">PLAYER</span>
       <span class="s" style="min-width:54px;justify-content:flex-end;margin-right:7px" onclick="mkSort()">PRICE ${ICON.sort}</span>
-      <span style="min-width:46px;text-align:center">TREND</span>
+      <span style="min-width:46px;text-align:center">${
+        esc((THUMBS.find(t => t[0] === thumbMode()) || THUMBS[0])[1].toUpperCase())}</span>
       <span style="min-width:27px"></span>
     </div>
     ${rows()}`;
@@ -89,3 +103,4 @@ export function renderMarket() {
 
 export function mkFilter(k) { filter = k; renderMarket(); }
 export function mkSort() { sortDesc = !sortDesc; renderMarket(); }
+export function mkThumb(k) { mkStore.thumb = k; saveMk(); renderMarket(); }

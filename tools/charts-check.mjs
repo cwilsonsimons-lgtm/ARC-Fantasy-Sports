@@ -80,6 +80,34 @@ ok('spark is the season path', sparks.shape.length === 0, sparks.shape.slice(0, 
 ok('path lands the day move', sparks.move.length === 0, sparks.move.slice(0, 3));
 ok('spark tone tracks season', sparks.tone.length === 0, sparks.tone.slice(0, 3));
 
+// -------------------------------------------------------- trend column modes
+// Each mode has to draw for every row, not just the ones with tidy numbers.
+for (const [mode, label, marks] of [
+  ['price', 'PRICE',  'polyline'],
+  ['five',  'LAST 5', 'rect'],
+  ['pace',  'PACE',   'polyline'],
+]) {
+  await page.evaluate(`mkThumb('${mode}')`);
+  await page.waitForTimeout(200);
+  const v = await page.evaluate(`(()=>{
+    const rows = [...document.querySelectorAll('#mkMarket .mk-row')];
+    return { rows: rows.length,
+             drawn: rows.filter(r => r.querySelector('svg.spark ${marks}')).length,
+             header: document.querySelector('#mkMarket .mk-th span:nth-child(3)').textContent.trim(),
+             on: document.querySelector('.mk-seg .sg.on').textContent.trim() };
+  })()`);
+  ok(`thumb ${mode}`, v.rows > 100 && v.drawn === v.rows && v.header === label, v);
+}
+ok('thumb choice persists', await (async () => {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(700);
+  await page.evaluate(`openMarkets()`);
+  await page.waitForTimeout(250);
+  return (await page.evaluate(`document.querySelector('.mk-seg .sg.on').textContent.trim()`)) === 'Pace';
+})());
+await page.evaluate(`mkThumb('price')`);
+await page.waitForTimeout(150);
+
 // ---------------------------------------------------------------- rendering
 const id = await page.evaluate(`MARKET[0].id`);
 await page.evaluate(`mkOpenPlayer('${id}')`);
