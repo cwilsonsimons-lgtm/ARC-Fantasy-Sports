@@ -10,7 +10,11 @@ html,body{background:#000;height:100%}
 body{font-family:'Barlow',system-ui,sans-serif;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;min-height:100vh;padding:22px 12px;color:var(--ink)}
 
-.phone{width:390px;max-width:100%;height:844px;background:var(--bg);border-radius:52px;
+/* 844px is the design height, but never taller than the window - a phone that
+   runs off the bottom of a laptop screen hides the bottom nav and whatever the
+   app has parked below the fold. The layout inside is flex, so a shorter frame
+   just means a shorter scroll area. */
+.phone{width:390px;max-width:100%;height:min(844px,calc(100vh - 44px));background:var(--bg);border-radius:52px;
   border:11px solid #05070B;box-shadow:0 0 0 2px #1a1f28,0 40px 90px rgba(0,0,0,.7);
   position:relative;overflow:hidden}
 .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:30px;
