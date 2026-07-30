@@ -7,7 +7,7 @@
 // The app's own bottom nav stays visible throughout; Markets has no nav of its
 // own, and reaches the portfolio from a button in the header instead.
 import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
-         holdingRows, ownedShares, tradeShares, SHARES_PER_LOT } from './data.js';
+         holdingRows, ownedShares, buySellShares, SHARES_PER_LOT } from './data.js';
 import { ICON, face, esc, money, pctText, dirClass, tri } from './ui.js';
 import { playerCharts, priceChart } from './charts.js';
 import { renderMarket } from './market.js';
@@ -84,7 +84,7 @@ export function mkOpenPlayer(id) {
 
     ${holdingFor(p.id)}
 
-    ${tradeBlock(p)}
+    ${buySellBlock(p)}
 
     <div id="mkCharts">${playerCharts(p, pxRange)}</div>
 
@@ -119,21 +119,25 @@ export function mkRange(id, key) {
   if (host) host.outerHTML = priceChart(p, key); else mkOpenPlayer(id);
 }
 
-/** Buy / sell one lot at a time. Play money, saved to the account's markets. */
-function tradeBlock(p) {
+/** Buy or sell one lot of a contract. Play money, saved to the account's
+ *  markets. This is a market position in the player's contract — deliberately
+ *  only buy and sell, never a "trade". Fantasy roster trades are a separate
+ *  thing on the league side and have nothing to do with this. */
+function buySellBlock(p) {
   const owned = ownedShares(p.id);
-  return `<div class="mk-trade">
-    <div class="mk-trade-h"><span>TRADE</span><span class="own">${owned} shares held</span></div>
-    <div class="mk-trade-btns">
+  return `<div class="mk-bs">
+    <div class="mk-bs-h"><span>BUY / SELL</span><span class="own">${owned} shares held</span></div>
+    <div class="mk-bs-btns">
       <div class="mk-buy" onclick="mkBuy('${p.id}')">${ICON.bag} Buy ${SHARES_PER_LOT} · ${money(p.price * SHARES_PER_LOT)}</div>
       <div class="mk-sell${owned > 0 ? '' : ' off'}" onclick="mkSell('${p.id}')">Sell ${SHARES_PER_LOT}</div>
     </div>
-    <div class="mk-trade-note">Play money — no real funds change hands. Your trades save to your account.</div>
+    <div class="mk-bs-note">Play money — no real funds change hands. A market position in this
+      contract, saved to your account. Not a fantasy roster trade.</div>
   </div>`;
 }
 
 export function mkBuy(id) {
-  const n = tradeShares(id, SHARES_PER_LOT);
+  const n = buySellShares(id, SHARES_PER_LOT);
   mkToast(`Bought ${SHARES_PER_LOT} shares — you now hold ${n}`);
   mkOpenPlayer(id);
   renderMarket();
@@ -141,7 +145,7 @@ export function mkBuy(id) {
 }
 export function mkSell(id) {
   if (ownedShares(id) <= 0) { mkToast('You have no shares to sell'); return; }
-  const n = tradeShares(id, -SHARES_PER_LOT);
+  const n = buySellShares(id, -SHARES_PER_LOT);
   mkToast(n > 0 ? `Sold ${SHARES_PER_LOT} shares — you now hold ${n}` : 'Sold your position');
   mkOpenPlayer(id);
   renderMarket();

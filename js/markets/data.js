@@ -40,10 +40,15 @@ function load() {
 }
 export const mkStore = load();
 mkStore.watch = mkStore.watch || [];
-// The account's own trades, as a delta from the seeded starter lots below:
-// { playerId: sharesBoughtOrSold }. Empty for a fresh account, so a new signer
-// starts from the same seeded portfolio and can then buy, trade and sell from
-// there. Isolated per account because this whole key is namespaced (account/boot).
+// The account's own buying and selling, as a delta from the seeded starter lots
+// below: { playerId: sharesBoughtOrSold }. Empty for a fresh account, so a new
+// signer starts from the same seeded portfolio and can buy or sell from there.
+// Isolated per account because this whole key is namespaced (account/boot).
+//
+// Note: this is Arc Markets — you buy and sell a player's *contract*, like a
+// stock. It is NOT a fantasy roster trade (player-for-player between managers,
+// governed by the league trade deadline). The two are unrelated; markets never
+// touches league or roster state.
 mkStore.positions = mkStore.positions || {};
 export function saveMk() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(mkStore)); } catch (e) { /* quota */ }
@@ -115,8 +120,9 @@ export function topRookie() {
 export const HOLDINGS = MARKET.slice(0, HOLDING_COUNT)
   .map(p => ({ id: p.id, shares: SHARES_PER_LOT }));
 
-// Shares the account actually holds: the seeded starter lot plus (or minus) its
-// own trades. A fresh account has no trades, so this is exactly the seed.
+// Shares the account actually holds: the seeded starter lot plus (or minus) how
+// much it has bought or sold. A fresh account has done neither, so this is
+// exactly the seed.
 const seedShares = {};
 HOLDINGS.forEach(h => { seedShares[h.id] = h.shares; });
 export function ownedShares(id) {
@@ -125,7 +131,7 @@ export function ownedShares(id) {
 
 // Buy (+) or sell (-) `delta` shares of a contract, clamped so a position can
 // never go negative. Returns the new share count.
-export function tradeShares(id, delta) {
+export function buySellShares(id, delta) {
   if (!BY_ID[id]) return 0;
   const seed = seedShares[id] || 0;
   let pos = (mkStore.positions[id] || 0) + delta;
@@ -137,7 +143,7 @@ export function tradeShares(id, delta) {
 }
 
 export function holdingRows() {
-  // Walk the market in value order so the table stays stable, keeping any
+  // Walk the market in value order so the table stays stable, keeping every
   // contract the account currently holds — seeded or bought.
   return MARKET.filter(p => ownedShares(p.id) > 0).map(p => {
     const shares = ownedShares(p.id);

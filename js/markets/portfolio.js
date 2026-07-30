@@ -48,9 +48,9 @@ function body(pf) {
       'Player news would land here. It is deliberately empty rather than filled with '
       + 'invented headlines about real players.');
   }
-  return empty(ICON.history, 'No trades yet',
+  return empty(ICON.history, 'No orders yet',
     'Arc Markets is a concept. The first build is free to play, with no real money — '
-    + 'your play-money trade history would appear here.');
+    + 'your play-money buy and sell history would appear here.');
 }
 
 export function renderPortfolio() {

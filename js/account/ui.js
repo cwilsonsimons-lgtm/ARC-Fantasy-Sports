@@ -167,7 +167,7 @@ function profileHTML(u) {
         <div class="stat"><div class="k">HOLDINGS</div><div class="v">${pf.rows.length}</div></div>
         <div class="stat"><div class="k">WATCHING</div><div class="v">${watch}</div></div>
       </div>
-      <div class="acct-btn ghost" onclick="closeAccount();openMarkets()">Open Arc Markets — buy, trade &amp; sell ›</div>
+      <div class="acct-btn ghost" onclick="closeAccount();openMarkets()">Open Arc Markets — buy &amp; sell ›</div>
     </div>
 
     ${others.length ? `<div class="acct-lb">SWITCH ACCOUNT</div>

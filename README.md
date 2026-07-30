@@ -91,10 +91,17 @@ keys) are unaffected. Only a real sign-in moves data behind a namespace.
 
 **Leagues** are per user (`Join`/`Leave`, plus join-by-code), stored in the
 account record rather than the namespaced app data so they survive account
-switches. **Markets** gains real buy/sell: the player sheet trades in 50-share
-lots against a per-account positions ledger layered over the seeded starter
-holdings, so a fresh account starts from the same portfolio and trades from
-there.
+switches. **Markets** gains real buying and selling: the player sheet buys and
+sells in 50-share lots against a per-account positions ledger layered over the
+seeded starter holdings, so a fresh account starts from the same portfolio and
+moves from there.
+
+Arc Markets deliberately only **buys and sells** contracts — there is no "trade"
+on the markets side. "Trade" means one thing in this app: a *fantasy roster
+trade*, player-for-player between managers on the league side, bounded by the
+league's trade deadline. Buying a player's contract in Arc Markets is a market
+position, like a stock; it never touches your roster, your lineup or the league.
+Keeping the two words apart keeps the two systems from being confused.
 
 One trap worth flagging, because Arc Markets shipped the same bug once (see
 below): the overlay's element class is `.acct` but the body **state** class is

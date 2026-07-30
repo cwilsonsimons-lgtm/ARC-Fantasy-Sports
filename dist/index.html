@@ -1416,12 +1416,14 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mkc-verdict b{color:var(--mk-ink);font-weight:800}
 .mkc-note{font-size:10.5px;line-height:1.5;color:var(--mk-ink-3);font-weight:500;margin-top:9px}
 
-/* ---------- buy / sell (player sheet) ---------- */
-.mk-trade{background:var(--mk-card);border:1px solid var(--mk-line);border-radius:14px;padding:12px 13px;margin-bottom:12px}
-.mk-trade-h{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;
+/* ---------- buy / sell (player sheet) ----------
+   Arc Markets only buys and sells contracts — there is no "trade" here; that
+   word belongs to fantasy roster moves on the league side. */
+.mk-bs{background:var(--mk-card);border:1px solid var(--mk-line);border-radius:14px;padding:12px 13px;margin-bottom:12px}
+.mk-bs-h{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;
   letter-spacing:.7px;color:var(--mk-ink-3)}
-.mk-trade-h .own{color:var(--mk-ink-2);font-weight:700;letter-spacing:.2px}
-.mk-trade-btns{display:flex;gap:9px;margin-top:11px}
+.mk-bs-h .own{color:var(--mk-ink-2);font-weight:700;letter-spacing:.2px}
+.mk-bs-btns{display:flex;gap:9px;margin-top:11px}
 .mk-buy,.mk-sell{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
   padding:12px;border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer}
 .mk-buy{background:var(--mk-blue);color:#fff}
@@ -1430,7 +1432,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mk-sell{flex:0 0 96px;background:transparent;border:1px solid var(--mk-line);color:var(--mk-ink)}
 .mk-sell.off{color:var(--mk-ink-3);border-color:var(--mk-line-soft)}
 .mk-sell:active{background:var(--mk-card-2)}
-.mk-trade-note{font-size:10.5px;color:var(--mk-ink-3);margin-top:9px;line-height:1.4}
+.mk-bs-note{font-size:10.5px;color:var(--mk-ink-3);margin-top:9px;line-height:1.4}
 
 /* real device: match the fantasy app's safe-area handling */
 @media (max-width:440px){
@@ -7527,6 +7529,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     SEASON_GAMES: () => SEASON_GAMES,
     SHARES_PER_LOT: () => SHARES_PER_LOT,
     WEEKS_PLAYED: () => WEEKS_PLAYED,
+    buySellShares: () => buySellShares,
     careerSeries: () => careerSeries,
     gameLog: () => gameLog,
     holdingRows: () => holdingRows,
@@ -7543,7 +7546,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     toggleWatch: () => toggleWatch,
     topMover: () => topMover,
     topRookie: () => topRookie,
-    tradeShares: () => tradeShares,
     watchRows: () => watchRows
   });
 
@@ -7686,7 +7688,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function ownedShares(id) {
     return Math.max(0, (seedShares[id] || 0) + (mkStore.positions[id] || 0));
   }
-  function tradeShares(id, delta) {
+  function buySellShares(id, delta) {
     if (!BY_ID[id]) return 0;
     const seed = seedShares[id] || 0;
     let pos = (mkStore.positions[id] || 0) + delta;
@@ -8208,8 +8210,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     return empty(
       ICON.history,
-      "No trades yet",
-      "Arc Markets is a concept. The first build is free to play, with no real money \u2014 your play-money trade history would appear here."
+      "No orders yet",
+      "Arc Markets is a concept. The first build is free to play, with no real money \u2014 your play-money buy and sell history would appear here."
     );
   }
   function renderPortfolio() {
@@ -8515,7 +8517,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 
     ${holdingFor(p.id)}
 
-    ${tradeBlock(p)}
+    ${buySellBlock(p)}
 
     <div id="mkCharts">${playerCharts(p, pxRange)}</div>
 
@@ -8548,19 +8550,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (host) host.outerHTML = priceChart(p, key);
     else mkOpenPlayer(id);
   }
-  function tradeBlock(p) {
+  function buySellBlock(p) {
     const owned = ownedShares(p.id);
-    return `<div class="mk-trade">
-    <div class="mk-trade-h"><span>TRADE</span><span class="own">${owned} shares held</span></div>
-    <div class="mk-trade-btns">
+    return `<div class="mk-bs">
+    <div class="mk-bs-h"><span>BUY / SELL</span><span class="own">${owned} shares held</span></div>
+    <div class="mk-bs-btns">
       <div class="mk-buy" onclick="mkBuy('${p.id}')">${ICON.bag} Buy ${SHARES_PER_LOT} \xB7 ${money(p.price * SHARES_PER_LOT)}</div>
       <div class="mk-sell${owned > 0 ? "" : " off"}" onclick="mkSell('${p.id}')">Sell ${SHARES_PER_LOT}</div>
     </div>
-    <div class="mk-trade-note">Play money \u2014 no real funds change hands. Your trades save to your account.</div>
+    <div class="mk-bs-note">Play money \u2014 no real funds change hands. A market position in this
+      contract, saved to your account. Not a fantasy roster trade.</div>
   </div>`;
   }
   function mkBuy(id) {
-    const n = tradeShares(id, SHARES_PER_LOT);
+    const n = buySellShares(id, SHARES_PER_LOT);
     mkToast(`Bought ${SHARES_PER_LOT} shares \u2014 you now hold ${n}`);
     mkOpenPlayer(id);
     renderMarket();
@@ -8571,7 +8574,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       mkToast("You have no shares to sell");
       return;
     }
-    const n = tradeShares(id, -SHARES_PER_LOT);
+    const n = buySellShares(id, -SHARES_PER_LOT);
     mkToast(n > 0 ? `Sold ${SHARES_PER_LOT} shares \u2014 you now hold ${n}` : "Sold your position");
     mkOpenPlayer(id);
     renderMarket();
@@ -8779,7 +8782,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div class="stat"><div class="k">HOLDINGS</div><div class="v">${pf.rows.length}</div></div>
         <div class="stat"><div class="k">WATCHING</div><div class="v">${watch}</div></div>
       </div>
-      <div class="acct-btn ghost" onclick="closeAccount();openMarkets()">Open Arc Markets \u2014 buy, trade &amp; sell \u203A</div>
+      <div class="acct-btn ghost" onclick="closeAccount();openMarkets()">Open Arc Markets \u2014 buy &amp; sell \u203A</div>
     </div>
 
     ${others.length ? `<div class="acct-lb">SWITCH ACCOUNT</div>
