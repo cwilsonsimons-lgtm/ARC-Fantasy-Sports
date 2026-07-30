@@ -282,6 +282,22 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mkc-verdict b{color:var(--mk-ink);font-weight:800}
 .mkc-note{font-size:10.5px;line-height:1.5;color:var(--mk-ink-3);font-weight:500;margin-top:9px}
 
+/* ---------- buy / sell (player sheet) ---------- */
+.mk-trade{background:var(--mk-card);border:1px solid var(--mk-line);border-radius:14px;padding:12px 13px;margin-bottom:12px}
+.mk-trade-h{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;
+  letter-spacing:.7px;color:var(--mk-ink-3)}
+.mk-trade-h .own{color:var(--mk-ink-2);font-weight:700;letter-spacing:.2px}
+.mk-trade-btns{display:flex;gap:9px;margin-top:11px}
+.mk-buy,.mk-sell{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px;border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer}
+.mk-buy{background:var(--mk-blue);color:#fff}
+.mk-buy svg{width:16px;height:16px}
+.mk-buy:active{filter:brightness(1.08)}
+.mk-sell{flex:0 0 96px;background:transparent;border:1px solid var(--mk-line);color:var(--mk-ink)}
+.mk-sell.off{color:var(--mk-ink-3);border-color:var(--mk-line-soft)}
+.mk-sell:active{background:var(--mk-card-2)}
+.mk-trade-note{font-size:10.5px;color:var(--mk-ink-3);margin-top:9px;line-height:1.4}
+
 /* real device: match the fantasy app's safe-area handling */
 @media (max-width:440px){
   .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}

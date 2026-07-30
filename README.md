@@ -61,6 +61,47 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## Accounts
+
+The **Profile** item in the bottom nav opens the account surface — sign in,
+create an account, manage the leagues you've joined, and see a snapshot of your
+Arc Markets portfolio. It is a full-screen section like Arc Markets, on the
+fantasy app's own violet palette.
+
+There is no backend, so this is a *client-side* account system: `js/account/`
+keeps a directory of users plus a session pointer under one global `localStorage`
+key (`arc_account_v1`). The password "hash" is a non-cryptographic scramble — it
+only keeps the stored value from being readable at a glance. This makes the
+prototype feel like a real multi-account app; it is **not** real security, and a
+production build would move all of it behind a server.
+
+**Each account is its own world.** Signing in namespaces the app's own storage
+keys by the account id — `cbd_team_v1` → `cbd_team_v1::<id>`, and likewise for
+`arc_markets_v1` — so every account carries its own team, roster, lineup,
+watchlist and market positions. `js/account/boot.js` installs that namespacing
+by wrapping `localStorage`'s methods, and `main.js` imports it *first* because
+`store.js` and `markets/data.js` read those keys at load. Signing in, out or
+switching reloads the page so the whole app comes up cleanly under the new
+namespace.
+
+**Guest is the un-namespaced default.** Anyone who never signs in gets exactly
+the app that shipped before accounts — the original keys, untouched — so the
+build and the verification harness (which clears storage and asserts on the raw
+keys) are unaffected. Only a real sign-in moves data behind a namespace.
+
+**Leagues** are per user (`Join`/`Leave`, plus join-by-code), stored in the
+account record rather than the namespaced app data so they survive account
+switches. **Markets** gains real buy/sell: the player sheet trades in 50-share
+lots against a per-account positions ledger layered over the seeded starter
+holdings, so a fresh account starts from the same portfolio and trades from
+there.
+
+One trap worth flagging, because Arc Markets shipped the same bug once (see
+below): the overlay's element class is `.acct` but the body **state** class is
+`.account` — deliberately different names. Share them and every `.acct { … }`
+rule also matches `<body class="acct">`, applying `position:absolute` and
+`display:none` to the whole page.
+
 ## Layout
 
 ```
@@ -70,6 +111,7 @@ js/
   main.js       entry point: module order, window bridge, boot sequence
   state.js      the handful of values shared across modules
   store.js      localStorage persistence, roster rows, image downscaling
+  account/      client-side accounts: sign-in, per-account key namespacing
   data/         teams, league config, NFL player/schedule/colour tables
   markets/      Arc Markets — self-contained, see above
   *.js          one module per screen or subsystem

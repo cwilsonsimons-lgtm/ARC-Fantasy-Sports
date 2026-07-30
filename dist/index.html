@@ -1416,11 +1416,145 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mkc-verdict b{color:var(--mk-ink);font-weight:800}
 .mkc-note{font-size:10.5px;line-height:1.5;color:var(--mk-ink-3);font-weight:500;margin-top:9px}
 
+/* ---------- buy / sell (player sheet) ---------- */
+.mk-trade{background:var(--mk-card);border:1px solid var(--mk-line);border-radius:14px;padding:12px 13px;margin-bottom:12px}
+.mk-trade-h{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;
+  letter-spacing:.7px;color:var(--mk-ink-3)}
+.mk-trade-h .own{color:var(--mk-ink-2);font-weight:700;letter-spacing:.2px}
+.mk-trade-btns{display:flex;gap:9px;margin-top:11px}
+.mk-buy,.mk-sell{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px;border-radius:11px;font-size:13.5px;font-weight:800;cursor:pointer}
+.mk-buy{background:var(--mk-blue);color:#fff}
+.mk-buy svg{width:16px;height:16px}
+.mk-buy:active{filter:brightness(1.08)}
+.mk-sell{flex:0 0 96px;background:transparent;border:1px solid var(--mk-line);color:var(--mk-ink)}
+.mk-sell.off{color:var(--mk-ink-3);border-color:var(--mk-line-soft)}
+.mk-sell:active{background:var(--mk-card-2)}
+.mk-trade-note{font-size:10.5px;color:var(--mk-ink-3);margin-top:9px;line-height:1.4}
+
 /* real device: match the fantasy app's safe-area handling */
 @media (max-width:440px){
   .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
     .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
 }
+
+/* css/account.css */
+/* ===== ACCOUNT / PROFILE =====
+   A full-screen section like Arc Markets, but on the fantasy app's own palette
+   (violet, not markets blue). Every rule is scoped under .acct. Opened from the
+   Profile item in the bottom nav. */
+/* The overlay is `.acct`; the body state class is `.account` (a different name
+   on purpose — sharing it would make these `.acct` rules also hit <body>). */
+.acct{
+  position:absolute;inset:0;z-index:60;background:var(--bg);
+  display:none;flex-direction:column;color:var(--ink);
+}
+body.account .acct{display:flex}
+/* while the account screen is open the fantasy chrome underneath is covered */
+body.account .shift,body.account .drawer,body.account .scrim{visibility:hidden}
+/* the app keeps its bottom nav; highlight Profile there without touching the
+   nav's own .on class, exactly the way Arc Markets does */
+body.account .nav{z-index:75}
+body.account .nav .nv.on{color:var(--ink-3)}
+body.account .nav .nv[data-nav="profile"]{color:var(--violet)}
+body.account #hint{display:none}
+
+/* ---------- header ---------- */
+.acct-head{flex:none;padding:56px 16px 12px;display:flex;align-items:center;gap:10px;
+  background:var(--bg);border-bottom:1px solid var(--line-soft)}
+.acct-ic{width:30px;height:30px;display:grid;place-items:center;color:var(--ink);cursor:pointer;flex:none}
+.acct-ic.ghost{visibility:hidden}
+.acct-ic svg{width:24px;height:24px}
+.acct-title{flex:1;text-align:center;font-size:17px;font-weight:800;letter-spacing:.3px}
+
+/* ---------- scroll body ---------- */
+.acct-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:18px 16px calc(var(--navh) + 24px);
+  scrollbar-width:none}
+.acct-scroll::-webkit-scrollbar{display:none}
+
+/* text inputs need selection re-enabled (base.css turns it off globally) */
+.acct input{user-select:text;-webkit-user-select:text}
+
+/* ---------- signed-out hero ---------- */
+.acct-hero{text-align:center;padding:8px 6px 20px}
+.acct-logo{width:58px;height:58px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;
+  background:var(--violet-soft);color:var(--violet)}
+.acct-logo svg{width:32px;height:32px}
+.acct-hero h1{font-size:23px;font-weight:800;letter-spacing:-.3px}
+.acct-hero p{font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:8px;max-width:300px;
+  margin-left:auto;margin-right:auto}
+
+/* ---------- sign in / create toggle ---------- */
+.acct-seg{display:flex;gap:4px;background:var(--card-2);border:1px solid var(--line);
+  border-radius:12px;padding:4px;margin-bottom:16px}
+.acct-seg .seg{flex:1;text-align:center;padding:9px 8px;border-radius:9px;font-size:13.5px;font-weight:700;
+  color:var(--ink-2);cursor:pointer}
+.acct-seg .seg.on{background:var(--violet);color:#fff}
+
+/* ---------- forms ---------- */
+.acct-form label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--ink-3);
+  margin:12px 2px 6px}
+.acct-form input,.acct-code input{width:100%;background:var(--card);border:1px solid var(--line);
+  border-radius:11px;padding:13px 14px;color:var(--ink);font-size:15px;font-family:inherit;outline:none}
+.acct-form input:focus,.acct-code input:focus{border-color:var(--violet)}
+.acct-form input::placeholder,.acct-code input::placeholder{color:var(--ink-3)}
+
+.acct-btn{margin-top:18px;background:var(--violet);color:#fff;text-align:center;padding:14px;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;letter-spacing:.2px}
+.acct-btn:active{filter:brightness(1.08)}
+.acct-btn.sm{margin-top:0;padding:13px 18px;flex:none}
+.acct-btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.acct-btn.danger{background:transparent;border:1px solid var(--line);color:var(--red);margin-top:10px}
+
+.acct-err{background:rgba(240,69,62,.12);border:1px solid rgba(240,69,62,.4);color:#ffb4b0;
+  border-radius:11px;padding:11px 13px;font-size:13px;font-weight:600;margin-bottom:14px}
+
+.acct-guest{text-align:center;color:var(--ink-2);font-size:13.5px;font-weight:700;margin-top:22px;
+  padding:12px;cursor:pointer}
+.acct-guest:active{color:var(--ink)}
+.acct-fine{font-size:11px;line-height:1.5;color:var(--ink-3);text-align:center;margin-top:6px}
+
+/* ---------- section labels + cards ---------- */
+.acct-lb{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--ink-3);margin:22px 2px 8px}
+.acct-card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.acct-empty{padding:16px;font-size:13px;color:var(--ink-2);line-height:1.5}
+
+/* ---------- signed-in identity ---------- */
+.acct-me{display:flex;align-items:center;gap:14px;padding:6px 2px 4px}
+.acct-av{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--violet);color:#fff;font-size:20px;font-weight:800}
+.acct-av.sm{width:38px;height:38px;font-size:14px;background:var(--violet-soft);color:var(--violet)}
+.acct-me-t .a{font-size:20px;font-weight:800}
+.acct-me-t .b{font-size:13px;color:var(--ink-2);margin-top:2px}
+
+/* ---------- rows inside cards ---------- */
+.acct-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line-soft);
+  cursor:pointer}
+.acct-row:last-child{border-bottom:none}
+.acct-row-t{flex:1;min-width:0}
+.acct-row-t .a{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-row-t .b{font-size:12px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-shield{width:34px;height:34px;flex:none;display:grid;place-items:center;color:var(--violet)}
+.acct-shield.dim{color:var(--ink-3)}
+.acct-shield svg{width:26px;height:26px}
+.acct-go{color:var(--ink-3);font-size:13px;font-weight:700;flex:none}
+.acct-join{flex:none;background:var(--violet);color:#fff;font-size:12.5px;font-weight:800;
+  padding:7px 15px;border-radius:9px}
+.acct-x{flex:none;color:var(--ink-3);font-size:12.5px;font-weight:700;padding:6px 10px}
+.acct-x:active{color:var(--red)}
+
+/* ---------- join by code ---------- */
+.acct-code{display:flex;gap:8px;margin-top:10px}
+.acct-code input{flex:1}
+
+/* ---------- markets snapshot ---------- */
+.acct-mk{display:flex;padding:16px 6px 6px}
+.acct-mk .stat{flex:1;text-align:center}
+.acct-mk .stat .k{font-size:10px;font-weight:800;letter-spacing:.6px;color:var(--ink-3)}
+.acct-mk .stat .v{font-size:19px;font-weight:800;margin-top:4px}
+.acct-card .acct-btn.ghost{margin:6px 12px 14px;border:none;background:var(--card-2)}
+
+/* ---------- account toast (reuses the .hint element) ---------- */
 
 </style>
 </head>
@@ -1566,10 +1700,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 
   <!-- BOTTOM NAV -->
   <div class="nav">
-    <div class="nv on" data-nav="matchup" onclick="closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" data-nav="markets" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
-    <div class="nv" data-nav="feed" onclick="closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
-    <div class="nv" data-nav="profile" onclick="closeMarkets();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+    <div class="nv on" data-nav="matchup" onclick="closeAccount();closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
+    <div class="nv" data-nav="markets" onclick="closeAccount();openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" data-nav="feed" onclick="closeAccount();closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
+    <div class="nv" data-nav="profile" onclick="openAccount()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
 
   <div class="sheet-scrim" id="sheetScrim" onclick="closeWeekPicker()"></div>
@@ -1630,6 +1764,23 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     </div>
     <div class="hint" id="mkHint"></div>
   </div>
+
+  <!-- ===== ACCOUNT / PROFILE =====
+       Sign in, create an account, manage leagues and see your Arc Markets
+       portfolio. Signing in namespaces the app's storage per account (see
+       js/account/boot.js), so each account is its own world: its own team,
+       roster, leagues and markets. Opened from the Profile item in the nav. -->
+  <div class="acct" id="acct">
+    <div class="acct-head">
+      <div class="acct-ic" onclick="closeAccount()" title="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </div>
+      <div class="acct-title">Account</div>
+      <div class="acct-ic ghost"></div>
+    </div>
+    <div class="acct-scroll"><div id="acctBody"></div></div>
+    <div class="hint" id="acctHint"></div>
+  </div>
 </div>
 
 <script>
@@ -1639,6 +1790,130 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
   };
+
+  // js/account/store.js
+  var ACCT_KEY = "arc_account_v1";
+  function loadAccounts() {
+    try {
+      const a = JSON.parse(localStorage.getItem(ACCT_KEY)) || {};
+      a.users = Array.isArray(a.users) ? a.users : [];
+      a.session = a.session || null;
+      return a;
+    } catch (e) {
+      return { users: [], session: null };
+    }
+  }
+  function saveAccounts(a) {
+    try {
+      localStorage.setItem(ACCT_KEY, JSON.stringify(a));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function hashPass(s) {
+    let h = 2166136261 >>> 0;
+    s = String(s);
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(36);
+  }
+  var normEmail = (e) => String(e || "").trim().toLowerCase();
+  var idFor = (email) => "u_" + hashPass("id:" + normEmail(email));
+  function sessionId() {
+    return loadAccounts().session;
+  }
+  function currentUser() {
+    const a = loadAccounts();
+    return a.users.find((u) => u.id === a.session) || null;
+  }
+  function listUsers() {
+    return loadAccounts().users;
+  }
+  function createAccount({ name, email, password }) {
+    const a = loadAccounts();
+    const em = normEmail(email);
+    if (!name || !name.trim()) return { error: "Enter a display name." };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return { error: "Enter a valid email address." };
+    if (!password || password.length < 4) return { error: "Password must be at least 4 characters." };
+    if (a.users.some((u) => u.email === em)) return { error: "An account with that email already exists." };
+    const user = {
+      id: idFor(em),
+      name: name.trim(),
+      email: em,
+      pass: hashPass(password),
+      created: Date.now(),
+      leagues: []
+    };
+    a.users.push(user);
+    a.session = user.id;
+    saveAccounts(a);
+    return { user };
+  }
+  function authenticate({ email, password }) {
+    const a = loadAccounts();
+    const em = normEmail(email);
+    const user = a.users.find((u) => u.email === em);
+    if (!user) return { error: "No account found for that email." };
+    if (user.pass !== hashPass(password)) return { error: "Incorrect password." };
+    a.session = user.id;
+    saveAccounts(a);
+    return { user };
+  }
+  function setSession(id) {
+    const a = loadAccounts();
+    a.session = id;
+    saveAccounts(a);
+  }
+  function signOut() {
+    const a = loadAccounts();
+    a.session = null;
+    saveAccounts(a);
+  }
+  function joinLeague(userId, league) {
+    const a = loadAccounts();
+    const u = a.users.find((x) => x.id === userId);
+    if (!u) return false;
+    u.leagues = u.leagues || [];
+    if (u.leagues.some((l) => l.id === league.id)) return false;
+    u.leagues.push({ id: league.id, name: league.name, meta: league.meta || "", joined: Date.now() });
+    saveAccounts(a);
+    return true;
+  }
+  function leaveLeague(userId, leagueId) {
+    const a = loadAccounts();
+    const u = a.users.find((x) => x.id === userId);
+    if (!u) return false;
+    u.leagues = (u.leagues || []).filter((l) => l.id !== leagueId);
+    saveAccounts(a);
+    return true;
+  }
+
+  // js/account/boot.js
+  var OWNED = ["cbd_team_v1", "arc_markets_v1"];
+  (function install() {
+    let id = null;
+    try {
+      id = sessionId();
+    } catch (e) {
+      id = null;
+    }
+    if (!id) return;
+    const suffix = "::" + id;
+    const ls = window.localStorage;
+    const _get = ls.getItem.bind(ls);
+    const _set = ls.setItem.bind(ls);
+    const _rem = ls.removeItem.bind(ls);
+    const map = (k) => OWNED.includes(k) ? k + suffix : k;
+    try {
+      ls.getItem = (k) => _get(map(k));
+      ls.setItem = (k, v) => _set(map(k), v);
+      ls.removeItem = (k) => _rem(map(k));
+    } catch (e) {
+    }
+  })();
 
   // js/data/teams.js
   var teams_exports = {};
@@ -4884,8 +5159,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function histListHTML() {
     const year = +S.leaderScope;
-    const val = (r) => leaderMetric === "ppg" ? r.ppg : leaderMetric === "std" ? r.std : r.ppr;
-    const rows2 = histLeaders(year, leaderPos).filter((r) => histMatch(r, panelQ.leaders)).slice().sort((a, b) => val(b) - val(a));
+    const val2 = (r) => leaderMetric === "ppg" ? r.ppg : leaderMetric === "std" ? r.std : r.ppr;
+    const rows2 = histLeaders(year, leaderPos).filter((r) => histMatch(r, panelQ.leaders)).slice().sort((a, b) => val2(b) - val2(a));
     if (!rows2.length) return noHits("leaders", `No ${leaderPos} players in ${year}`);
     return rows2.slice(0, PANEL_CAP).map((r, i) => {
       const face2 = r.id ? faceInner(r.id) : `<span class="ld-init">${escHtml(
@@ -4896,7 +5171,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <span class="ld-face">${face2}</span>
         <div class="ld-info"><div class="ld-nm">${escHtml(r.name)}</div>
           <div class="ld-mt"><span class="pos ${r.pos}">${r.pos}</span> \xB7 ${escHtml(r.tm)} \xB7 ${r.g} games</div></div>
-        <span class="ld-pt">${val(r).toFixed(1)}</span></div>`;
+        <span class="ld-pt">${val2(r).toFixed(1)}</span></div>`;
     }).join("");
   }
   function leadersListHTML() {
@@ -5282,17 +5557,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function hourLabel(h) {
     return (h % 12 || 12) + ":00 " + (h < 12 ? "AM" : "PM");
   }
-  function setLeague(key, val, num) {
+  function setLeague(key, val2, num) {
     if (!guard()) {
       renderSettings();
       return;
     }
-    LG()[key] = num ? +val : val;
+    LG()[key] = num ? +val2 : val2;
     saveStore();
     renderSettings();
   }
-  function setLeagueNum(key, val, min, max) {
-    let v = Math.round(+val);
+  function setLeagueNum(key, val2, min, max) {
+    let v = Math.round(+val2);
     if (!isFinite(v)) v = LEAGUE_DEFAULTS[key];
     setLeague(key, Math.max(min, Math.min(max, v)), 1);
   }
@@ -5407,12 +5682,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     persistRoster();
     refreshRosterViews();
   }
-  function setSlot(key, val) {
+  function setSlot(key, val2) {
     if (!guard()) {
       renderSettings();
       return;
     }
-    SLOTS()[key] = Math.max(0, Math.min(20, Math.round(+val) || 0));
+    SLOTS()[key] = Math.max(0, Math.min(20, Math.round(+val2) || 0));
     saveStore();
     applyRosterShape();
     renderSettings();
@@ -5437,12 +5712,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${setRow("Taxi squad spots", slotSel("taxi", S2.taxi, 6))}
     </div>`;
   }
-  function setScoring(key, val) {
+  function setScoring(key, val2) {
     if (!guard()) {
       renderSettings();
       return;
     }
-    let v = parseFloat(val);
+    let v = parseFloat(val2);
     if (!isFinite(v)) v = SCORING_DEFAULTS[key];
     SC()[key] = Math.max(-100, Math.min(100, Math.round(v * 100) / 100));
     saveStore();
@@ -6087,9 +6362,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       renderTeam(currentTeamKey);
     });
   }
-  function setNick(name, val) {
+  function setNick(name, val2) {
     const k = pkey(name);
-    store.players[k] = Object.assign(store.players[k] || {}, { nick: (val || "").trim() });
+    store.players[k] = Object.assign(store.players[k] || {}, { nick: (val2 || "").trim() });
     saveStore();
   }
   function onLogo(input) {
@@ -6103,17 +6378,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       refreshApp();
     });
   }
-  function setTeamName(val) {
-    val = (val || "").trim() || T[MY_TEAM].n;
-    store.team.name = val;
-    T[MY_TEAM].n = val;
+  function setTeamName(val2) {
+    val2 = (val2 || "").trim() || T[MY_TEAM].n;
+    store.team.name = val2;
+    T[MY_TEAM].n = val2;
     saveStore();
     document.querySelector(".tv-sub");
     refreshApp();
   }
-  function setColor(kind, val) {
-    store.team[kind] = val;
-    T[MY_TEAM][kind] = val;
+  function setColor(kind, val2) {
+    store.team[kind] = val2;
+    T[MY_TEAM][kind] = val2;
     saveStore();
     renderTeam(MY_TEAM);
     refreshApp();
@@ -7259,6 +7534,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     marketStats: () => marketStats,
     mkStore: () => mkStore,
     mostActive: () => mostActive,
+    ownedShares: () => ownedShares,
     paceData: () => paceData,
     portfolio: () => portfolio,
     priceDays: () => priceDays,
@@ -7267,6 +7543,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     toggleWatch: () => toggleWatch,
     topMover: () => topMover,
     topRookie: () => topRookie,
+    tradeShares: () => tradeShares,
     watchRows: () => watchRows
   });
 
@@ -7341,6 +7618,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   var mkStore = load();
   mkStore.watch = mkStore.watch || [];
+  mkStore.positions = mkStore.positions || {};
   function saveMk() {
     try {
       localStorage.setItem(STORE_KEY2, JSON.stringify(mkStore));
@@ -7401,14 +7679,31 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return [...rookies].sort((a, b) => b.pct - a.pct)[0] || MARKET[0];
   }
   var HOLDINGS = MARKET.slice(0, HOLDING_COUNT).map((p) => ({ id: p.id, shares: SHARES_PER_LOT }));
+  var seedShares = {};
+  HOLDINGS.forEach((h) => {
+    seedShares[h.id] = h.shares;
+  });
+  function ownedShares(id) {
+    return Math.max(0, (seedShares[id] || 0) + (mkStore.positions[id] || 0));
+  }
+  function tradeShares(id, delta) {
+    if (!BY_ID[id]) return 0;
+    const seed = seedShares[id] || 0;
+    let pos = (mkStore.positions[id] || 0) + delta;
+    if (seed + pos < 0) pos = -seed;
+    if (pos === 0) delete mkStore.positions[id];
+    else mkStore.positions[id] = pos;
+    saveMk();
+    return ownedShares(id);
+  }
   function holdingRows() {
-    return HOLDINGS.map((h) => {
-      const p = BY_ID[h.id];
+    return MARKET.filter((p) => ownedShares(p.id) > 0).map((p) => {
+      const shares = ownedShares(p.id);
       return {
         ...p,
-        shares: h.shares,
-        value: Math.round(p.price * h.shares * 100) / 100,
-        dayChange: Math.round(p.change * h.shares * 100) / 100
+        shares,
+        value: Math.round(p.price * shares * 100) / 100,
+        dayChange: Math.round(p.change * shares * 100) / 100
       };
     });
   }
@@ -7618,8 +7913,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   </svg>`;
   }
   function face(p) {
-    const initials2 = (p.name || "").split(" ").map((s) => s[0]).slice(0, 2).join("");
-    return `<div class="face">${esc2(initials2)}${p.hs ? `<img src="${esc2(p.hs)}" alt="" loading="lazy"
+    const initials3 = (p.name || "").split(" ").map((s) => s[0]).slice(0, 2).join("");
+    return `<div class="face">${esc2(initials3)}${p.hs ? `<img src="${esc2(p.hs)}" alt="" loading="lazy"
          style="position:absolute" onerror="this.remove()">` : ""}</div>`;
   }
   var tri = (n) => `<span class="mk-tri ${n < 0 ? "d" : "u"}"></span>`;
@@ -8152,9 +8447,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     closeMarkets: () => closeMarkets,
     initMarkets: () => initMarkets2,
     mkAbout: () => mkAbout,
+    mkBuy: () => mkBuy,
     mkCloseSheet: () => mkCloseSheet,
     mkOpenPlayer: () => mkOpenPlayer,
     mkRange: () => mkRange,
+    mkSell: () => mkSell,
     mkToast: () => mkToast,
     mkTogglePortfolio: () => mkTogglePortfolio,
     mkToggleWatch: () => mkToggleWatch,
@@ -8218,6 +8515,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 
     ${holdingFor(p.id)}
 
+    ${tradeBlock(p)}
+
     <div id="mkCharts">${playerCharts(p, pxRange)}</div>
 
     <div class="mk-settle">${ICON.info}<span>Settles on official season production at
@@ -8248,6 +8547,35 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const host = document.querySelector('#mkCharts [data-mkc="price"]');
     if (host) host.outerHTML = priceChart(p, key);
     else mkOpenPlayer(id);
+  }
+  function tradeBlock(p) {
+    const owned = ownedShares(p.id);
+    return `<div class="mk-trade">
+    <div class="mk-trade-h"><span>TRADE</span><span class="own">${owned} shares held</span></div>
+    <div class="mk-trade-btns">
+      <div class="mk-buy" onclick="mkBuy('${p.id}')">${ICON.bag} Buy ${SHARES_PER_LOT} \xB7 ${money(p.price * SHARES_PER_LOT)}</div>
+      <div class="mk-sell${owned > 0 ? "" : " off"}" onclick="mkSell('${p.id}')">Sell ${SHARES_PER_LOT}</div>
+    </div>
+    <div class="mk-trade-note">Play money \u2014 no real funds change hands. Your trades save to your account.</div>
+  </div>`;
+  }
+  function mkBuy(id) {
+    const n = tradeShares(id, SHARES_PER_LOT);
+    mkToast(`Bought ${SHARES_PER_LOT} shares \u2014 you now hold ${n}`);
+    mkOpenPlayer(id);
+    renderMarket();
+    renderPortfolio();
+  }
+  function mkSell(id) {
+    if (ownedShares(id) <= 0) {
+      mkToast("You have no shares to sell");
+      return;
+    }
+    const n = tradeShares(id, -SHARES_PER_LOT);
+    mkToast(n > 0 ? `Sold ${SHARES_PER_LOT} shares \u2014 you now hold ${n}` : "Sold your position");
+    mkOpenPlayer(id);
+    renderMarket();
+    renderPortfolio();
   }
   function holdingFor(id) {
     const h = holdingRows().find((r) => r.id === id);
@@ -8300,6 +8628,249 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function initMarkets2() {
   }
 
+  // js/account/ui.js
+  var ui_exports2 = {};
+  __export(ui_exports2, {
+    acctAddAccount: () => acctAddAccount,
+    acctAuthMode: () => acctAuthMode,
+    acctCreate: () => acctCreate,
+    acctJoinCode: () => acctJoinCode,
+    acctJoinLeague: () => acctJoinLeague,
+    acctLeaveLeague: () => acctLeaveLeague,
+    acctSignIn: () => acctSignIn,
+    acctSignOut: () => acctSignOut,
+    acctSwitch: () => acctSwitch,
+    acctToast: () => acctToast,
+    closeAccount: () => closeAccount,
+    initAccount: () => initAccount2,
+    openAccount: () => openAccount,
+    renderAccount: () => renderAccount
+  });
+  var OPEN_LEAGUES = [
+    { id: "city-boys-dynasty", name: "City Boys Dynasty", meta: "12-team Dynasty \xB7 Week 8" },
+    { id: "arc-open-redraft", name: "Arc Open Redraft", meta: "10-team Redraft \xB7 Pre-draft" },
+    { id: "sunday-scaries", name: "Sunday Scaries", meta: "8-team Best Ball \xB7 Open" }
+  ];
+  var authMode = "signin";
+  var esc3 = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  var initials2 = (n) => String(n || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  var money2 = (n) => "$" + (Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function openAccount() {
+    document.body.classList.remove("markets");
+    if (window.mkCloseSheet) window.mkCloseSheet();
+    document.body.classList.add("account");
+    renderAccount();
+    const sc = document.querySelector(".acct-scroll");
+    if (sc) sc.scrollTop = 0;
+  }
+  function closeAccount() {
+    document.body.classList.remove("account");
+  }
+  function acctToast(msg) {
+    const el = document.getElementById("acctHint");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(acctToast._t);
+    acctToast._t = setTimeout(() => el.classList.remove("show"), 1700);
+  }
+  function renderAccount() {
+    const el = document.getElementById("acctBody");
+    if (!el) return;
+    const u = currentUser();
+    el.innerHTML = u ? profileHTML(u) : authHTML();
+  }
+  function authHTML() {
+    const others = listUsers();
+    return `
+    <div class="acct-hero">
+      <div class="acct-logo">${footballSvg()}</div>
+      <h1>Welcome to Arc Fantasy</h1>
+      <p>Sign in to your account \u2014 your leagues, your roster and your Arc Markets
+         portfolio all live behind it.</p>
+    </div>
+
+    <div class="acct-seg">
+      <div class="seg${authMode === "signin" ? " on" : ""}" onclick="acctAuthMode('signin')">Sign in</div>
+      <div class="seg${authMode === "create" ? " on" : ""}" onclick="acctAuthMode('create')">Create account</div>
+    </div>
+
+    <div id="acctErr" class="acct-err" style="display:none"></div>
+
+    ${authMode === "signin" ? signinForm() : createForm()}
+
+    ${others.length ? `<div class="acct-lb">SAVED ON THIS DEVICE</div>
+      <div class="acct-card">
+        ${others.map((u) => `<div class="acct-row" onclick="acctSwitch('${u.id}')">
+          <div class="acct-av sm">${initials2(u.name)}</div>
+          <div class="acct-row-t"><div class="a">${esc3(u.name)}</div><div class="b">${esc3(u.email)}</div></div>
+          <div class="acct-go">Use \u203A</div>
+        </div>`).join("")}
+      </div>` : ""}
+
+    <div class="acct-guest" onclick="closeAccount()">Keep browsing as a guest</div>
+    <p class="acct-fine">Prototype accounts are stored only in this browser \u2014 there is no server
+      and no real security. Don't reuse a password you use anywhere else.</p>`;
+  }
+  function signinForm() {
+    return `<div class="acct-form">
+    <label>Email</label>
+    <input id="acctEmail" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com">
+    <label>Password</label>
+    <input id="acctPass" type="password" autocomplete="current-password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+      onkeydown="if(event.key==='Enter')acctSignIn()">
+    <div class="acct-btn" onclick="acctSignIn()">Sign in</div>
+  </div>`;
+  }
+  function createForm() {
+    return `<div class="acct-form">
+    <label>Display name</label>
+    <input id="acctName" type="text" autocomplete="name" placeholder="Team manager name">
+    <label>Email</label>
+    <input id="acctEmail" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com">
+    <label>Password</label>
+    <input id="acctPass" type="password" autocomplete="new-password" placeholder="At least 4 characters"
+      onkeydown="if(event.key==='Enter')acctCreate()">
+    <div class="acct-btn" onclick="acctCreate()">Create account</div>
+  </div>`;
+  }
+  function profileHTML(u) {
+    const leagues = u.leagues || [];
+    const joinable = OPEN_LEAGUES.filter((l) => !leagues.some((j) => j.id === l.id));
+    const pf = portfolio();
+    const watch = (mkStore.watch || []).length;
+    const others = listUsers().filter((x) => x.id !== u.id);
+    return `
+    <div class="acct-me">
+      <div class="acct-av">${initials2(u.name)}</div>
+      <div class="acct-me-t">
+        <div class="a">${esc3(u.name)}</div>
+        <div class="b">${esc3(u.email)}</div>
+      </div>
+    </div>
+
+    <div class="acct-lb">YOUR LEAGUES</div>
+    <div class="acct-card">
+      ${leagues.length ? leagues.map((l) => `<div class="acct-row">
+          <div class="acct-shield">${shieldSvg()}</div>
+          <div class="acct-row-t"><div class="a">${esc3(l.name)}</div><div class="b">${esc3(l.meta || "League")}</div></div>
+          <div class="acct-x" onclick="acctLeaveLeague('${l.id}')" title="Leave league">Leave</div>
+        </div>`).join("") : `<div class="acct-empty">You haven't joined any leagues yet. Join one below.</div>`}
+    </div>
+
+    ${joinable.length ? `<div class="acct-lb">JOIN A LEAGUE</div>
+      <div class="acct-card">
+        ${joinable.map((l) => `<div class="acct-row">
+          <div class="acct-shield dim">${shieldSvg()}</div>
+          <div class="acct-row-t"><div class="a">${esc3(l.name)}</div><div class="b">${esc3(l.meta)}</div></div>
+          <div class="acct-join" onclick="acctJoinLeague('${l.id}')">Join</div>
+        </div>`).join("")}
+      </div>` : ""}
+    <div class="acct-code">
+      <input id="acctCode" type="text" placeholder="Have an invite code? Enter it"
+        onkeydown="if(event.key==='Enter')acctJoinCode()">
+      <div class="acct-btn sm" onclick="acctJoinCode()">Join</div>
+    </div>
+
+    <div class="acct-lb">ARC MARKETS</div>
+    <div class="acct-card">
+      <div class="acct-mk">
+        <div class="stat"><div class="k">PORTFOLIO</div><div class="v">${money2(pf.value)}</div></div>
+        <div class="stat"><div class="k">HOLDINGS</div><div class="v">${pf.rows.length}</div></div>
+        <div class="stat"><div class="k">WATCHING</div><div class="v">${watch}</div></div>
+      </div>
+      <div class="acct-btn ghost" onclick="closeAccount();openMarkets()">Open Arc Markets \u2014 buy, trade &amp; sell \u203A</div>
+    </div>
+
+    ${others.length ? `<div class="acct-lb">SWITCH ACCOUNT</div>
+      <div class="acct-card">
+        ${others.map((o) => `<div class="acct-row" onclick="acctSwitch('${o.id}')">
+          <div class="acct-av sm">${initials2(o.name)}</div>
+          <div class="acct-row-t"><div class="a">${esc3(o.name)}</div><div class="b">${esc3(o.email)}</div></div>
+          <div class="acct-go">Use \u203A</div>
+        </div>`).join("")}
+      </div>` : ""}
+
+    <div class="acct-btn ghost" onclick="acctAddAccount()">Add another account</div>
+    <div class="acct-btn danger" onclick="acctSignOut()">Sign out</div>`;
+  }
+  function acctAuthMode(m) {
+    authMode = m;
+    showErr("");
+    renderAccount();
+  }
+  function showErr(msg) {
+    const el = document.getElementById("acctErr");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.display = msg ? "block" : "none";
+  }
+  var val = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+  };
+  function acctSignIn() {
+    const r = authenticate({ email: val("acctEmail"), password: val("acctPass") });
+    if (r.error) return showErr(r.error);
+    location.reload();
+  }
+  function acctCreate() {
+    const r = createAccount({ name: val("acctName"), email: val("acctEmail"), password: val("acctPass") });
+    if (r.error) return showErr(r.error);
+    location.reload();
+  }
+  function acctSwitch(id) {
+    setSession(id);
+    location.reload();
+  }
+  function acctSignOut() {
+    signOut();
+    location.reload();
+  }
+  function acctAddAccount() {
+    signOut();
+    location.reload();
+  }
+  function acctJoinLeague(id) {
+    const u = currentUser();
+    if (!u) return;
+    const l = OPEN_LEAGUES.find((x) => x.id === id);
+    if (!l) return;
+    joinLeague(u.id, l);
+    acctToast("Joined " + l.name);
+    renderAccount();
+  }
+  function acctLeaveLeague(id) {
+    const u = currentUser();
+    if (!u) return;
+    leaveLeague(u.id, id);
+    acctToast("Left league");
+    renderAccount();
+  }
+  function acctJoinCode() {
+    const u = currentUser();
+    if (!u) return;
+    const code = val("acctCode").trim();
+    if (!code) return acctToast("Enter an invite code");
+    const id = "code-" + code.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (joinLeague(u.id, { id, name: "League " + code.toUpperCase(), meta: "Private \xB7 joined by code" })) {
+      acctToast("Joined by code");
+    } else {
+      acctToast("You are already in that league");
+    }
+    renderAccount();
+  }
+  function footballSvg() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20C3 15 5 7 12 4c5 7 5 11 8 16-5 3-13 3-16 0Z"/><path d="M9 15l6-6M10 12h4M12 10v4"/></svg>`;
+  }
+  function shieldSvg() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>`;
+  }
+  function initAccount2() {
+  }
+
   // js/main.js
   Object.assign(
     window,
@@ -8333,7 +8904,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     market_exports,
     portfolio_exports,
     charts_exports,
-    markets_exports
+    markets_exports,
+    ui_exports2
   );
   initStore();
   migrateDraft();
@@ -8342,6 +8914,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   renderStandings();
   initPanel();
   initMarkets();
+  initAccount();
   applyStoredRoster();
   renderWeek();
   document.querySelector(".shift").classList.add("stage-on");
