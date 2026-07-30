@@ -145,15 +145,6 @@
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
       </div>
 
-      <!-- ===== TRADE VIEW ===== -->
-      <div class="view" data-view="trade">
-        <div class="back" onclick="showTab(homeTab())">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-          <span>Back</span>
-        </div>
-        <div id="tradeBody"></div>
-      </div>
-
       <!-- ===== PLAYER CARD VIEW ===== -->
       <div class="view" data-view="player">
         <div class="back" onclick="playerBack()">
@@ -204,6 +195,12 @@
   <div class="sheet" id="confirmSheet">
     <div class="sheet-h" id="confirmTitle">Drop player?</div>
     <div id="confirmBody"></div>
+  </div>
+
+  <div class="sheet-scrim" id="tbScrim" onclick="closeBlockSheet()"></div>
+  <div class="sheet" id="tbSheet">
+    <div class="sheet-h">Trade Block</div>
+    <div id="tbBody"></div>
   </div>
 
   <div class="hint" id="hint"></div>

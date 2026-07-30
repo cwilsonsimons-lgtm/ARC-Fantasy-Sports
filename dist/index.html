@@ -1052,52 +1052,104 @@ body.open .drawer{transform:translateX(0)}
 .rx-note{font-size:11px;color:var(--ink-3);margin-top:12px;line-height:1.5}
 
 /* css/trade.css */
-/* ===== TRADE CENTER ===== */
-.trd-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:.5px;margin:8px 2px 2px}
-.trd-sub{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.5px;
-  text-transform:uppercase;color:var(--violet);margin:0 2px 14px}
+/* ===== TRADE CENTER (drawer panel) ===== */
+.trd-sec-hd{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 11px;
+  font-family:'Barlow',system-ui,sans-serif;font-weight:800;font-size:18px;letter-spacing:.2px;color:var(--ink)}
+.trd-sec-hd:first-child{margin-top:4px}
+.trd-hd-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--green);cursor:pointer}
+.trd-hd-btn svg{width:20px;height:20px;padding:3px;border-radius:50%;border:1.5px solid var(--green)}
 
-/* subtabs */
-.trd-tabs{display:flex;gap:6px;margin:0 2px 14px}
-.trd-tab{flex:1;text-align:center;padding:8px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card);
-  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;
-  color:var(--ink-2);cursor:pointer}
-.trd-tab.on{border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
-.trd-pill{display:inline-block;min-width:16px;padding:0 4px;margin-left:3px;border-radius:8px;background:var(--violet);color:#fff;
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;line-height:16px;letter-spacing:0}
+/* ---- trade block strip ---- */
+.tb-strip{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px}
+.tb-strip::-webkit-scrollbar{display:none}
+.tb-av{flex:none;width:64px;text-align:center;cursor:pointer}
+.tb-av-face{display:block;width:58px;height:58px;border-radius:50%;overflow:hidden;margin:0 auto 6px;
+  background:linear-gradient(155deg,#243247,#141b28);display:grid;place-items:center;font-size:13px;color:var(--ink-3);font-weight:700}
+.tb-av-face img{width:100%;height:100%;object-fit:cover}
+.tb-av-nm{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-av-mt{font-size:9px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.tb-add .tb-av-face{background:none;border:1.5px dashed var(--line);box-shadow:none!important}
+.tb-plus{color:var(--ink-2);font-size:26px;font-weight:300}
 
-/* team chooser */
-.trd-lead{font-size:13px;color:var(--ink-2);margin:2px 2px 12px}
-.trd-teams{display:flex;flex-direction:column;gap:8px}
-.trd-team{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px;cursor:pointer}
-.trd-team:active{border-color:var(--violet)}
-.trd-team-i{flex:1;min-width:0}
-.trd-team-n{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trd-team-m{font-size:11.5px;color:var(--ink-3);margin-top:1px}
-.trd-team-go{color:var(--ink-3);font-size:20px;flex:none}
-
-/* crest chip (shared) */
+/* ---- crest chip (shared) ---- */
 .trd-crest{display:inline-grid;place-items:center;border-radius:9px;flex:none;overflow:hidden;
-  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px}
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px}
 .trd-crest img{width:100%;height:100%;object-fit:cover}
 
-/* selected-partner header */
-.trd-partner{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px;margin-bottom:12px}
-.trd-partner-i{flex:1;min-width:0}
-.trd-partner-n{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trd-partner-m{font-size:11.5px;color:var(--ink-3);margin-top:1px}
-.trd-change{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;
-  text-transform:uppercase;color:var(--violet);cursor:pointer;padding:5px}
+/* ---- deal card (active + history) ---- */
+.trd-deal{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:13px;margin-bottom:10px}
+.trd-deal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.trd-deal-dir{display:inline-flex;align-items:center;gap:8px;font-family:'Barlow',system-ui,sans-serif;font-weight:800;font-size:12.5px;letter-spacing:.6px;color:var(--ink)}
+.trd-dir{display:grid;place-items:center;width:26px;height:26px;border-radius:50%}
+.trd-dir svg{width:14px;height:14px;color:#fff}
+.trd-dir.out{background:#F5487F}
+.trd-dir.in{background:#2FD4A0}
+.trd-st{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  padding:4px 9px;border-radius:7px}
+.trd-st.ok{color:#0a1f17;background:#2FD4A0}
+.trd-st.no{color:var(--red)}
+.trd-st.ex{color:var(--ink-3)}
+.trd-st.wait{color:var(--ink-3)}
+.trd-cd{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:11.5px;color:var(--ink-2);letter-spacing:.3px}
+.trd-deal-mgr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.trd-deal-nm{font-family:'Barlow',system-ui,sans-serif;font-weight:800;font-size:15px}
+.trd-deal-sub{font-size:11px;color:var(--ink-3);margin-top:1px}
 
-/* two roster columns */
-.trd-cols{display:flex;gap:9px;margin-bottom:12px}
-.trd-col{flex:1;min-width:0;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;overflow:hidden}
-.trd-col-hd{display:flex;align-items:center;gap:7px;padding:9px 10px;border-bottom:1px solid var(--line-soft);
+.trd-swap{display:flex;align-items:flex-start;gap:8px}
+.trd-side{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.trd-swap-ic{flex:none;align-self:center;color:var(--ink-3)}
+.trd-swap-ic svg{width:20px;height:20px}
+.trd-chip{width:52px;text-align:center}
+.trd-cface{display:block;width:44px;height:44px;border-radius:50%;overflow:hidden;margin:0 auto 4px;
+  background:linear-gradient(155deg,#243247,#141b28);display:grid;place-items:center;font-size:11px;color:var(--ink-3);font-weight:700}
+.trd-cface img{width:100%;height:100%;object-fit:cover}
+.trd-cnm{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
+.trd-cnone{color:var(--ink-3);font-size:20px;align-self:center}
+.trd-deal-note{font-size:11.5px;color:var(--ink-3);margin-top:11px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.trd-btns{display:flex;gap:8px;margin-top:12px}
+.trd-mini{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-2)}
+.trd-mini.danger{color:var(--red);border-color:rgba(240,69,62,.35)}
+.trd-mini.go{color:#0a1f17;background:var(--green);border-color:var(--green)}
+
+/* ---- empty active state ---- */
+.trd-empty{text-align:center;padding:18px 10px 26px}
+.trd-empty-ill{width:150px;height:auto;margin:0 auto 6px;display:block;opacity:.95}
+.trd-empty-t{font-size:14px;color:var(--ink-3);margin-bottom:12px}
+.trd-empty-cta{display:inline-block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;
+  letter-spacing:1px;text-transform:uppercase;color:var(--green);cursor:pointer}
+
+/* ---- pre-draft blank ---- */
+.trd-blank{text-align:center;padding:44px 20px;background:var(--card);border:1px solid var(--line-soft);border-radius:16px;margin-top:8px}
+.trd-blank-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2)}
+.trd-blank-s{font-size:12px;color:var(--ink-3);margin-top:7px;line-height:1.5}
+
+/* ---- back / lead (chooser + builder) ---- */
+.trd-back{display:inline-flex;align-items:center;gap:5px;margin:2px 0 12px;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2)}
+.trd-back svg{width:16px;height:16px}
+.trd-lead{font-size:13px;color:var(--ink-2);margin:2px 2px 12px}
+
+/* ---- team chooser ---- */
+.trd-teams{display:flex;flex-direction:column;gap:8px}
+.trd-team{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line-soft);border-radius:13px;padding:10px 12px;cursor:pointer}
+.trd-team:active{border-color:var(--green)}
+.trd-team-i{flex:1;min-width:0}
+.trd-team-n{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trd-team-m{font-size:11px;color:var(--ink-3);margin-top:1px}
+.trd-team-go{color:var(--ink-3);font-size:19px;flex:none}
+
+/* ---- builder ---- */
+.trd-partner{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line-soft);border-radius:13px;padding:10px 12px;margin-bottom:11px}
+.trd-partner-i{flex:1;min-width:0}
+.trd-partner-n{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trd-partner-m{font-size:11px;color:var(--ink-3);margin-top:1px}
+.trd-col{background:var(--card);border:1px solid var(--line-soft);border-radius:13px;overflow:hidden;margin-bottom:11px}
+.trd-col-hd{display:flex;align-items:center;gap:7px;padding:9px 11px;border-bottom:1px solid var(--line-soft);
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2)}
 .trd-col-hd .trd-crest{width:20px;height:20px;font-size:11px}
-.trd-col-body{max-height:none}
-
-.trd-row{display:flex;align-items:center;gap:8px;padding:8px 9px;border-top:1px solid var(--line-soft);cursor:pointer}
+.trd-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-top:1px solid var(--line-soft);cursor:pointer}
 .trd-row:first-child{border-top:none}
 .trd-row.on{background:var(--violet-soft)}
 .trd-chk{width:18px;height:18px;flex:none;border-radius:6px;border:1.5px solid var(--line);display:grid;place-items:center;color:#fff}
@@ -1110,53 +1162,36 @@ body.open .drawer{transform:translateX(0)}
 .trd-mt{font-size:10px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .trd-mt .pos{font-weight:700}
 .trd-val{flex:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:12px;color:var(--ink-2)}
-.trd-empty-col{padding:18px 10px;text-align:center;font-size:11px;color:var(--ink-3)}
-
-/* summary + verdict */
-.trd-sum{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:13px;margin-bottom:12px}
-.trd-sum-cols{display:flex;align-items:center;gap:10px}
+.trd-empty-col{padding:16px 10px;text-align:center;font-size:11px;color:var(--ink-3)}
+.trd-sum{background:var(--card);border:1px solid var(--line-soft);border-radius:13px;padding:12px;margin-bottom:11px}
+.trd-sum-cols{display:flex;align-items:center;gap:8px}
 .trd-sum-c{flex:1;text-align:center}
-.trd-sum-c .k{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3)}
-.trd-sum-c .v{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:22px;color:var(--ink);margin-top:2px}
+.trd-sum-c .k{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3)}
+.trd-sum-c .v{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:21px;color:var(--ink);margin-top:2px}
 .trd-sum-swap{flex:none;color:var(--ink-3)}
-.trd-sum-swap svg{width:20px;height:20px}
-.trd-verdict{text-align:center;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-soft);
+.trd-sum-swap svg{width:19px;height:19px}
+.trd-verdict{text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft);
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.8px;text-transform:uppercase}
 .trd-verdict.idle{color:var(--ink-3)}
 .trd-verdict.fair{color:var(--violet)}
 .trd-verdict.win{color:var(--green)}
 .trd-verdict.lose{color:var(--red)}
-
-/* propose button */
-.trd-cta{display:flex;align-items:center;justify-content:center;border-radius:13px;padding:14px;cursor:pointer;
-  background:var(--violet);color:#fff;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;
-  letter-spacing:1px;text-transform:uppercase;margin-bottom:calc(var(--navh) + 12px)}
+.trd-cta{display:flex;align-items:center;justify-content:center;border-radius:12px;padding:14px;cursor:pointer;margin-bottom:10px;
+  background:var(--violet);color:#fff;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase}
 .trd-cta.off{background:var(--card);color:var(--ink-3);border:1px solid var(--line);cursor:default}
 
-/* stored deals (pending / history) */
-.trd-deal{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:13px;margin-bottom:10px}
-.trd-deal-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px}
-.trd-deal-nm{flex:1;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trd-badge{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.8px;
-  text-transform:uppercase;padding:4px 8px;border-radius:8px;border:1px solid var(--line)}
-.trd-badge.wait{color:var(--ink-2)}
-.trd-badge.ok{color:var(--green);border-color:rgba(140,224,74,.4)}
-.trd-badge.no{color:var(--red);border-color:rgba(240,69,62,.4)}
-.trd-deal-line{display:flex;gap:8px;font-size:12.5px;color:var(--ink);padding:3px 0;line-height:1.4}
-.trd-deal-dir{flex:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:9.5px;letter-spacing:.5px;
-  width:30px;padding-top:2px}
-.trd-deal-dir.out{color:var(--red)}
-.trd-deal-dir.in{color:var(--green)}
-.trd-deal-note{font-size:11.5px;color:var(--ink-3);margin-top:8px;padding-top:8px;border-top:1px solid var(--line-soft)}
-.trd-deal-btns{display:flex;gap:8px;margin-top:11px}
-.trd-mini{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:9px;cursor:pointer;
-  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-2)}
-.trd-mini.danger{color:var(--red);border-color:rgba(240,69,62,.35)}
-
-/* empty states */
-.trd-blank{text-align:center;padding:40px 20px;background:var(--card);border:1px solid var(--line-soft);border-radius:16px}
-.trd-blank-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2)}
-.trd-blank-s{font-size:12px;color:var(--ink-3);margin-top:7px;line-height:1.5}
+/* ---- trade block sheet ---- */
+.tb-note{font-size:12px;color:var(--ink-3);line-height:1.45;margin-bottom:12px}
+.tb-row{display:flex;align-items:center;gap:11px;padding:9px 4px;border-bottom:1px solid var(--line-soft);cursor:pointer}
+.tb-face{width:38px;height:38px;border-radius:10px;flex:none;overflow:hidden;background:#0A0E15}
+.tb-face img{width:100%;height:100%;object-fit:cover}
+.tb-info{flex:1;min-width:0}
+.tb-nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-mt{font-size:11px;color:var(--ink-3);margin-top:1px}
+.tb-mt .pos{font-weight:700}
+.tb-tog{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--ink-2);border:1px solid var(--line);border-radius:9px;padding:6px 12px}
+.tb-row.on .tb-tog{color:var(--green);border-color:rgba(140,224,74,.4);background:rgba(140,224,74,.1)}
 
 /* css/panel.css */
 /* panel search: sits under the panel title, above the position pills */
@@ -1657,15 +1692,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
       </div>
 
-      <!-- ===== TRADE VIEW ===== -->
-      <div class="view" data-view="trade">
-        <div class="back" onclick="showTab(homeTab())">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-          <span>Back</span>
-        </div>
-        <div id="tradeBody"></div>
-      </div>
-
       <!-- ===== PLAYER CARD VIEW ===== -->
       <div class="view" data-view="player">
         <div class="back" onclick="playerBack()">
@@ -1716,6 +1742,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   <div class="sheet" id="confirmSheet">
     <div class="sheet-h" id="confirmTitle">Drop player?</div>
     <div id="confirmBody"></div>
+  </div>
+
+  <div class="sheet-scrim" id="tbScrim" onclick="closeBlockSheet()"></div>
+  <div class="sheet" id="tbSheet">
+    <div class="sheet-h">Trade Block</div>
+    <div id="tbBody"></div>
   </div>
 
   <div class="hint" id="hint"></div>
@@ -1947,6 +1979,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     store.tradeOwners = store.tradeOwners || {};
     store.trades = store.trades || [];
     store.tradesPending = store.tradesPending || [];
+    store.tradeBlock = store.tradeBlock || [];
+    if (store.tradesSeeded == null) store.tradesSeeded = false;
     if (store.team && store.team.font) T[MY_TEAM].font = store.team.font;
     store.backdrops = store.backdrops || {};
     if (store.backdrop) {
@@ -3179,7 +3213,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     { k: "available", lb: "Available", ic: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 8v6M21 11h-6"/>' },
     { k: "leaders", lb: "Leaders", ic: '<circle cx="12" cy="9" r="5"/><path d="m8.5 13-1.5 8 5-3 5 3-1.5-8"/>' },
     { k: "draft", lb: "Draft", action: "openDraft()", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>' },
-    { k: "trades", lb: "Trades", action: "openTrades()", ic: '<path d="M7 8h13l-3-3M17 16H4l3 3"/>' },
+    { k: "trades", lb: "Trades", action: "openTradesRail()", ic: '<path d="M7 8h13l-3-3M17 16H4l3 3"/>' },
     { k: "scores", lb: "Scores", ic: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14"/>' },
     { k: "news", lb: "News", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h7M7 12h10M7 16h6"/>' },
     { k: "settings", lb: "Settings", action: "openSettings()", ic: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>' }
@@ -5095,6 +5129,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       renderTrending();
     } else if (key === "available") {
       renderAvailable();
+    } else if (key === "trades") {
+      if (window.renderTradesPanel) window.renderTradesPanel();
     } else {
       const lb = RAIL.find((r) => r.k === key).lb;
       p.innerHTML = `<div class="panel-hd"><span class="d"></span>${lb} <span class="wk">\xB7 Week ${S.week}</span></div>
@@ -7380,28 +7416,34 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/trades.js
   var trades_exports = {};
   __export(trades_exports, {
+    acceptIncoming: () => acceptIncoming,
     assetValue: () => assetValue,
     cancelTrade: () => cancelTrade,
-    clearTradePartner: () => clearTradePartner,
+    closeBlockSheet: () => closeBlockSheet,
     executeTrade: () => executeTrade,
     getSel: () => getSel,
+    openBlockSheet: () => openBlockSheet,
     openTradeWith: () => openTradeWith,
     openTrades: () => openTrades,
+    openTradesRail: () => openTradesRail,
     pickTradePartner: () => pickTradePartner,
     proposeTrade: () => proposeTrade,
-    renderTrades: () => renderTrades,
+    rejectIncoming: () => rejectIncoming,
+    renderTradesPanel: () => renderTradesPanel,
     resolveTrade: () => resolveTrade,
     sendSel: () => sendSel,
-    setTradeTab: () => setTradeTab,
+    toggleBlock: () => toggleBlock,
+    tradeOverview: () => tradeOverview,
     tradePartner: () => tradePartner,
-    tradeTab: () => tradeTab,
+    tradeStartBuilder: () => tradeStartBuilder,
     tradeTeams: () => tradeTeams,
     tradeToggle: () => tradeToggle
   });
-  var tradeTab = "propose";
+  var mode = "overview";
   var tradePartner = null;
   var sendSel = /* @__PURE__ */ new Set();
   var getSel = /* @__PURE__ */ new Set();
+  var ticker = null;
   function assetValue(p) {
     const rec = p && p.id && NFL_BY_ID[p.id];
     if (rec && rec.sproj != null) return rec.sproj;
@@ -7412,6 +7454,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function mgrOf(key) {
     return T[key] && T[key].mgr || key;
+  }
+  function teamRoster(key) {
+    return (rosterFor(key) || []).filter((p) => p.id);
   }
   function toughness(key) {
     let h = 2166136261;
@@ -7431,142 +7476,218 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const sel = side === "send" ? sendSel : getSel;
     if (sel.has(key)) sel.delete(key);
     else sel.add(key);
-    renderTrades();
+    renderTradesPanel();
   }
-  function pickTradePartner(key) {
-    tradePartner = key;
-    sendSel = /* @__PURE__ */ new Set();
-    getSel = /* @__PURE__ */ new Set();
-    renderTrades();
-    document.getElementById("scroll").scrollTop = 0;
-  }
-  function clearTradePartner() {
+  function tradeStartBuilder() {
+    mode = "chooser";
     tradePartner = null;
     sendSel = /* @__PURE__ */ new Set();
     getSel = /* @__PURE__ */ new Set();
-    renderTrades();
+    renderTradesPanel();
   }
-  function setTradeTab(k) {
-    tradeTab = k;
-    renderTrades();
-    document.getElementById("scroll").scrollTop = 0;
+  function tradeOverview() {
+    mode = "overview";
+    renderTradesPanel();
+  }
+  function pickTradePartner(key) {
+    tradePartner = key;
+    mode = "builder";
+    sendSel = /* @__PURE__ */ new Set();
+    getSel = /* @__PURE__ */ new Set();
+    renderTradesPanel();
+    scrollTop();
+  }
+  function scrollTop() {
+    const p = document.getElementById("panel");
+    if (p) p.scrollTop = 0;
   }
   function crest(key, size) {
     const t = T[key];
     return `<span class="trd-crest" style="width:${size}px;height:${size}px;background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</span>`;
   }
-  function selRow(p, side) {
-    const k = pKeyOf(p), on = (side === "send" ? sendSel : getSel).has(k);
-    return `<div class="trd-row${on ? " on" : ""}" onclick="tradeToggle('${side}','${esc(k)}')">
-    <span class="trd-chk">${on ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-11"/></svg>' : ""}</span>
-    <span class="trd-face">${faceInner(k)}</span>
-    <div class="trd-info"><div class="trd-nm">${p.n}</div>
-      <div class="trd-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm}${p.bye ? ` (${p.bye})` : ""}</div></div>
-    <span class="trd-val">${assetValue(p).toFixed(0)}</span>
+  function faceChip(p, ring) {
+    return `<div class="trd-chip">
+    <span class="trd-cface" style="${ring ? `box-shadow:0 0 0 2px ${ring}` : ""}">${faceInner(p.id || p.n)}</span>
+    <div class="trd-cnm">${p.n}</div>
   </div>`;
   }
-  function rosterCol(key, roster, side) {
-    const label = side === "send" ? "You send" : "You get";
-    const rows2 = roster.length ? roster.map((p) => selRow(p, side)).join("") : `<div class="trd-empty-col">No players</div>`;
-    return `<div class="trd-col">
-    <div class="trd-col-hd">${crest(key, 20)}<span>${label}</span></div>
-    <div class="trd-col-body">${rows2}</div>
+  function blockList() {
+    const on = new Set(store.tradeBlock || []);
+    return teamRoster(MY_TEAM).filter((p) => on.has(p.id));
+  }
+  function toggleBlock(id) {
+    store.tradeBlock = store.tradeBlock || [];
+    const i = store.tradeBlock.indexOf(id);
+    if (i > -1) store.tradeBlock.splice(i, 1);
+    else store.tradeBlock.push(id);
+    saveStore();
+    renderBlockSheet();
+    renderTradesPanel();
+  }
+  function blockStrip() {
+    const list = blockList(), c = T[MY_TEAM].c;
+    const chips = list.map((p) => `<div class="tb-av" onclick="openPlayer('${esc(p.id)}')">
+      <span class="tb-av-face" style="box-shadow:0 0 0 2.5px ${c}">${faceInner(p.id)}</span>
+      <div class="tb-av-nm">${p.n}</div>
+      <div class="tb-av-mt">${p.pos} \xB7 ${p.tm}</div>
+    </div>`).join("");
+    const add = `<div class="tb-av tb-add" onclick="openBlockSheet()">
+      <span class="tb-av-face tb-plus">+</span><div class="tb-av-nm">Add</div><div class="tb-av-mt">&nbsp;</div></div>`;
+    return `<div class="trd-sec-hd"><span>Trade Block</span>
+      <span class="trd-hd-btn" onclick="tradeStartBuilder()">Trade <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></span></div>
+    <div class="tb-strip">${chips}${add}</div>`;
+  }
+  function openBlockSheet() {
+    renderBlockSheet();
+    document.getElementById("tbScrim").classList.add("show");
+    document.getElementById("tbSheet").classList.add("show");
+  }
+  function closeBlockSheet() {
+    document.getElementById("tbScrim").classList.remove("show");
+    document.getElementById("tbSheet").classList.remove("show");
+  }
+  function renderBlockSheet() {
+    const on = new Set(store.tradeBlock || []);
+    const rows2 = teamRoster(MY_TEAM).map((p) => {
+      const yes = on.has(p.id);
+      return `<div class="tb-row${yes ? " on" : ""}" onclick="toggleBlock('${esc(p.id)}')">
+      <span class="tb-face">${faceInner(p.id)}</span>
+      <div class="tb-info"><div class="tb-nm">${p.n}</div><div class="tb-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm}</div></div>
+      <span class="tb-tog">${yes ? "On block" : "Add"}</span>
+    </div>`;
+    }).join("");
+    document.getElementById("tbBody").innerHTML = `<div class="tb-note">Flag players you're open to moving \u2014 they show up on your block for the league to see.</div>${rows2 || '<div class="tb-note">Your roster is empty.</div>'}`;
+  }
+  function fmtCountdown(ms) {
+    if (ms <= 0) return "Expired";
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
+    const p = (n) => String(n).padStart(2, "0");
+    return (d ? `${d}D ` : "") + `${p(h)}H ${p(m)}M ${p(s)}S`;
+  }
+  function dirBadge(dir) {
+    return dir === "incoming" ? `<span class="trd-dir in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>INCOMING` : `<span class="trd-dir out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>OUTGOING`;
+  }
+  function statusRight(d) {
+    if (d.status === "accepted") return `<span class="trd-st ok">Complete</span>`;
+    if (d.status === "rejected") return `<span class="trd-st no">Rejected</span>`;
+    if (d.status === "expired") return `<span class="trd-st ex">Expired</span>`;
+    if (d.dir === "outgoing") return `<span class="trd-st wait">Reviewing\u2026</span>`;
+    return `<span class="trd-cd" data-exp="${d.expiry}">${fmtCountdown(d.expiry - Date.now())}</span>`;
+  }
+  function swapRow(d) {
+    const c = T[MY_TEAM].c, oc = T[d.partner] ? T[d.partner].c : "#5AA9E6";
+    const out = d.send.map((p) => faceChip(p, c)).join("") || '<div class="trd-cnone">\u2014</div>';
+    const inn = d.get.map((p) => faceChip(p, oc)).join("") || '<div class="trd-cnone">\u2014</div>';
+    return `<div class="trd-swap"><div class="trd-side">${out}</div>
+    <span class="trd-swap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></span>
+    <div class="trd-side">${inn}</div></div>`;
+  }
+  function dealCard(d, live) {
+    let actions = "";
+    if (live && d.status === "pending") {
+      actions = d.dir === "incoming" ? `<div class="trd-btns"><div class="trd-mini danger" onclick="rejectIncoming('${d.id}')">Reject</div><div class="trd-mini go" onclick="acceptIncoming('${d.id}')">Accept</div></div>` : `<div class="trd-btns"><div class="trd-mini danger" onclick="cancelTrade('${d.id}')">Cancel offer</div></div>`;
+    }
+    return `<div class="trd-deal">
+    <div class="trd-deal-top"><div class="trd-deal-dir ${d.dir}">${dirBadge(d.dir)}</div>${statusRight(d)}</div>
+    <div class="trd-deal-mgr">${crest(d.partner, 30)}<div><div class="trd-deal-nm">${mgrOf(d.partner)}</div><div class="trd-deal-sub">2-way trade</div></div></div>
+    ${swapRow(d)}
+    ${d.note ? `<div class="trd-deal-note">${d.note}</div>` : ""}
+    ${actions}
   </div>`;
+  }
+  function emptyActive() {
+    return `<div class="trd-empty">
+    <svg class="trd-empty-ill" viewBox="0 0 150 116" fill="none">
+      <rect x="34" y="14" width="42" height="58" rx="9" fill="#182034" stroke="#28344c" stroke-width="1.5"/>
+      <rect x="76" y="42" width="42" height="58" rx="9" fill="#182034" stroke="#28344c" stroke-width="1.5"/>
+      <circle cx="55" cy="34" r="7" fill="#2c3a54"/><path d="M45 52a10 10 0 0 1 20 0" fill="#2c3a54"/>
+      <circle cx="97" cy="62" r="7" fill="#2c3a54"/><path d="M87 80a10 10 0 0 1 20 0" fill="#2c3a54"/>
+      <path d="M82 20c22-4 30 6 28 22" stroke="#4fd6a8" stroke-width="2.5" stroke-linecap="round"/><path d="m108 44 4-8-8 1" fill="#4fd6a8"/>
+      <path d="M70 94c-22 4-30-6-28-22" stroke="#4fd6a8" stroke-width="2.5" stroke-linecap="round"/><path d="m44 70-4 8 8-1" fill="#4fd6a8"/>
+    </svg>
+    <div class="trd-empty-t">No active trades\u2026</div>
+    <div class="trd-empty-cta" onclick="tradeStartBuilder()">Propose a trade</div>
+  </div>`;
+  }
+  function overviewHTML() {
+    const active = store.tradesPending;
+    const hist = store.trades;
+    return blockStrip() + `<div class="trd-sec-hd"><span>Active Trades</span></div>` + (active.length ? active.map((d) => dealCard(d, true)).join("") : emptyActive()) + (hist.length ? `<div class="trd-sec-hd"><span>Trade History</span></div>` + hist.map((d) => dealCard(d, false)).join("") : "");
+  }
+  function chooserHTML() {
+    const chips = tradeTeams().map((k) => {
+      const t = T[k];
+      return `<div class="trd-team" onclick="pickTradePartner('${k}')">
+      ${crest(k, 38)}
+      <div class="trd-team-i"><div class="trd-team-n tf-${k}" style="color:${t.c}">${t.n}</div><div class="trd-team-m">${t.mgr} \xB7 ${t.rec}</div></div>
+      <span class="trd-team-go">\u203A</span></div>`;
+    }).join("");
+    return `<div class="trd-back" onclick="tradeOverview()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Trades</div>
+    <div class="trd-lead">Who do you want to trade with?</div><div class="trd-teams">${chips}</div>`;
+  }
+  function colHTML(key, roster, side) {
+    const rows2 = roster.length ? roster.map((p) => {
+      const k = pKeyOf(p), on = (side === "send" ? sendSel : getSel).has(k);
+      return `<div class="trd-row${on ? " on" : ""}" onclick="tradeToggle('${side}','${esc(k)}')">
+      <span class="trd-chk">${on ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-11"/></svg>' : ""}</span>
+      <span class="trd-face">${faceInner(k)}</span>
+      <div class="trd-info"><div class="trd-nm">${p.n}</div><div class="trd-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm}${p.bye ? ` (${p.bye})` : ""}</div></div>
+      <span class="trd-val">${assetValue(p).toFixed(0)}</span></div>`;
+    }).join("") : `<div class="trd-empty-col">No players</div>`;
+    return `<div class="trd-col-hd">${crest(key, 20)}<span>${side === "send" ? "You send" : "You get"}</span></div><div class="trd-col-body">${rows2}</div>`;
   }
   function verdict(give, get) {
-    if (!give && !get) return { cls: "idle", t: "Pick players from both sides" };
-    if (!give || !get) return { cls: "idle", t: "Add a player to each side" };
+    if (!give && !get) return { c: "idle", t: "Pick players from both sides" };
+    if (!give || !get) return { c: "idle", t: "Add a player to each side" };
     const diff = get - give, big = Math.max(give, get);
-    if (Math.abs(diff) <= big * 0.08) return { cls: "fair", t: "Even trade" };
-    return diff > 0 ? { cls: "win", t: "You come out ahead" } : { cls: "lose", t: "You give up more value" };
+    if (Math.abs(diff) <= big * 0.08) return { c: "fair", t: "Even trade" };
+    return diff > 0 ? { c: "win", t: "You come out ahead" } : { c: "lose", t: "You give up more value" };
   }
-  function summaryHTML(give, get) {
-    const v = verdict(give, get);
-    return `<div class="trd-sum">
-    <div class="trd-sum-cols">
-      <div class="trd-sum-c"><div class="k">You send</div><div class="v">${give.toFixed(0)}</div></div>
-      <div class="trd-sum-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
-      <div class="trd-sum-c"><div class="k">You get</div><div class="v">${get.toFixed(0)}</div></div>
-    </div>
-    <div class="trd-verdict ${v.cls}">${v.t}</div>
-  </div>`;
-  }
-  function names(list) {
-    return list.map((p) => p.n).join(", ") || "\u2014";
-  }
-  function dealCard(d, opts) {
-    const o = opts || {};
-    const badge2 = o.badge ? `<span class="trd-badge ${o.badge.cls}">${o.badge.t}</span>` : "";
-    return `<div class="trd-deal">
-    <div class="trd-deal-hd">${crest(d.partner, 22)}<span class="trd-deal-nm">${T[d.partner] ? T[d.partner].n : d.partner}</span>${badge2}</div>
-    <div class="trd-deal-line"><span class="trd-deal-dir out">OUT</span>${names(d.send)}</div>
-    <div class="trd-deal-line"><span class="trd-deal-dir in">IN</span>${names(d.get)}</div>
-    ${d.note ? `<div class="trd-deal-note">${d.note}</div>` : ""}
-    ${o.actions || ""}
-  </div>`;
-  }
-  function tabsHTML() {
-    const pend = store.tradesPending.length;
-    const tabs = [["propose", "Propose"], ["pending", `Pending${pend ? ` <span class="trd-pill">${pend}</span>` : ""}`], ["history", "History"]];
-    return `<div class="trd-tabs">${tabs.map((t) => `<div class="trd-tab${t[0] === tradeTab ? " on" : ""}" onclick="setTradeTab('${t[0]}')">${t[1]}</div>`).join("")}</div>`;
-  }
-  function proposeBody() {
-    if (!tradePartner) {
-      const chips = tradeTeams().map((k) => {
-        const t = T[k];
-        return `<div class="trd-team" onclick="pickTradePartner('${k}')">
-        ${crest(k, 40)}
-        <div class="trd-team-i"><div class="trd-team-n tf-${k}" style="color:${t.c}">${t.n}</div>
-          <div class="trd-team-m">${t.mgr} \xB7 ${t.rec}</div></div>
-        <span class="trd-team-go">\u203A</span>
-      </div>`;
-      }).join("");
-      return `<div class="trd-lead">Who do you want to trade with?</div>
-      <div class="trd-teams">${chips}</div>`;
-    }
-    const mine = rosterFor(MY_TEAM) || [];
-    const yours = rosterFor(tradePartner) || [];
+  function builderHTML() {
+    const mine = teamRoster(MY_TEAM), yours = teamRoster(tradePartner);
     const give = sum(selList(mine, sendSel)), get = sum(selList(yours, getSel));
-    const ready = sendSel.size && getSel.size;
-    return `<div class="trd-partner">
-      ${crest(tradePartner, 34)}
-      <div class="trd-partner-i"><div class="trd-partner-n tf-${tradePartner}" style="color:${T[tradePartner].c}">${T[tradePartner].n}</div>
-        <div class="trd-partner-m">${T[tradePartner].mgr} \xB7 ${T[tradePartner].rec}</div></div>
-      <span class="trd-change" onclick="clearTradePartner()">Change</span>
-    </div>
-    <div class="trd-cols">${rosterCol(MY_TEAM, mine, "send")}${rosterCol(tradePartner, yours, "get")}</div>
-    ${summaryHTML(give, get)}
+    const v = verdict(give, get), ready = sendSel.size && getSel.size;
+    return `<div class="trd-back" onclick="tradeStartBuilder()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Pick a team</div>
+    <div class="trd-partner">${crest(tradePartner, 30)}<div class="trd-partner-i"><div class="trd-partner-n tf-${tradePartner}" style="color:${T[tradePartner].c}">${T[tradePartner].n}</div><div class="trd-partner-m">${T[tradePartner].mgr} \xB7 ${T[tradePartner].rec}</div></div></div>
+    <div class="trd-col">${colHTML(MY_TEAM, mine, "send")}</div>
+    <div class="trd-col">${colHTML(tradePartner, yours, "get")}</div>
+    <div class="trd-sum"><div class="trd-sum-cols">
+        <div class="trd-sum-c"><div class="k">You send</div><div class="v">${give.toFixed(0)}</div></div>
+        <div class="trd-sum-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
+        <div class="trd-sum-c"><div class="k">You get</div><div class="v">${get.toFixed(0)}</div></div>
+      </div><div class="trd-verdict ${v.c}">${v.t}</div></div>
     <div class="trd-cta${ready ? "" : " off"}" onclick="${ready ? "proposeTrade()" : ""}">Propose Trade</div>`;
   }
-  function pendingBody() {
-    if (!store.tradesPending.length)
-      return `<div class="trd-blank"><div class="trd-blank-t">No pending trades</div><div class="trd-blank-s">Propose one and it shows up here while the other manager decides.</div></div>`;
-    return store.tradesPending.map((d) => dealCard(d, {
-      badge: { cls: "wait", t: `Waiting on ${mgrOf(d.partner)}` },
-      actions: `<div class="trd-deal-btns"><div class="trd-mini danger" onclick="cancelTrade('${d.id}')">Cancel offer</div></div>`
-    })).join("");
-  }
-  function historyBody() {
-    if (!store.trades.length)
-      return `<div class="trd-blank"><div class="trd-blank-t">No trade history yet</div><div class="trd-blank-s">Accepted and rejected trades are logged here.</div></div>`;
-    return store.trades.map((d) => dealCard(d, {
-      badge: d.status === "accepted" ? { cls: "ok", t: "Accepted" } : { cls: "no", t: "Rejected" }
-    })).join("");
-  }
-  function renderTrades() {
-    const el = document.getElementById("tradeBody");
+  function renderTradesPanel() {
+    const el = document.getElementById("panel");
     if (!el) return;
     if (!draftDone()) {
-      el.innerHTML = `<div class="trd-h">Trades</div>
-      <div class="trd-blank"><div class="trd-blank-t">Trades open after the draft</div>
-      <div class="trd-blank-s">Once every pick is in, you can start shopping your roster.</div></div>`;
+      el.innerHTML = `<div class="trd-blank"><div class="trd-blank-t">Trades open after the draft</div><div class="trd-blank-s">Once every pick is in, you can start shopping your roster.</div></div>`;
       return;
     }
-    const body2 = tradeTab === "pending" ? pendingBody() : tradeTab === "history" ? historyBody() : proposeBody();
-    el.innerHTML = `<div class="trd-h">Trades</div>
-    <div class="trd-sub">City Boys Dynasty \xB7 ${tradeTeams().length} other managers</div>
-    ${tabsHTML()}
-    ${body2}`;
+    sweepExpired();
+    resolveStaleOutgoing();
+    const body2 = mode === "chooser" ? chooserHTML() : mode === "builder" && tradePartner ? builderHTML() : overviewHTML();
+    el.innerHTML = body2;
+    startTicker();
+  }
+  function startTicker() {
+    stopTicker();
+    const has = document.querySelectorAll("#panel .trd-cd[data-exp]").length;
+    if (!has) return;
+    ticker = setInterval(() => {
+      const list = document.querySelectorAll("#panel .trd-cd[data-exp]");
+      if (!list.length) return stopTicker();
+      list.forEach((e) => {
+        e.textContent = fmtCountdown(+e.dataset.exp - Date.now());
+      });
+    }, 1e3);
+  }
+  function stopTicker() {
+    if (ticker) {
+      clearInterval(ticker);
+      ticker = null;
+    }
   }
   function slim(p) {
     return { id: p.id || null, n: p.n, pos: p.pos, tm: p.tm, proj: p.proj != null ? p.proj : null, val: assetValue(p) };
@@ -7574,49 +7695,153 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function uid() {
     return "t" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
   }
+  function dealVal(list) {
+    return (list || []).reduce((t, p) => t + (p.val || 0), 0);
+  }
   function proposeTrade() {
-    const mine = rosterFor(MY_TEAM) || [];
-    const yours = rosterFor(tradePartner) || [];
+    const mine = teamRoster(MY_TEAM), yours = teamRoster(tradePartner);
     const send = selList(mine, sendSel), get = selList(yours, getSel);
     if (!send.length || !get.length) {
       toast2("Add a player to each side");
       return;
     }
-    const deal = { id: uid(), partner: tradePartner, send: send.map(slim), get: get.map(slim), ts: Date.now(), status: "pending" };
+    const deal = {
+      id: uid(),
+      dir: "outgoing",
+      partner: tradePartner,
+      send: send.map(slim),
+      get: get.map(slim),
+      ts: Date.now(),
+      expiry: Date.now() + 3 * 864e5,
+      status: "pending"
+    };
     store.tradesPending.unshift(deal);
     saveStore();
     const mgr = mgrOf(tradePartner);
+    mode = "overview";
+    tradePartner = null;
     sendSel = /* @__PURE__ */ new Set();
     getSel = /* @__PURE__ */ new Set();
-    tradePartner = null;
-    tradeTab = "pending";
-    renderTrades();
+    renderTradesPanel();
     toast2(`Offer sent to ${mgr}`);
-    setTimeout(() => resolveTrade(deal.id), 1600);
+    setTimeout(() => resolveTrade(deal.id), 2600);
+  }
+  function cancelTrade(id) {
+    const i = store.tradesPending.findIndex((d) => d.id === id);
+    if (i < 0) return;
+    store.tradesPending.splice(i, 1);
+    saveStore();
+    renderTradesPanel();
+    toast2("Offer withdrawn");
   }
   function resolveTrade(id) {
     const i = store.tradesPending.findIndex((d2) => d2.id === id);
     if (i < 0) return;
     const d = store.tradesPending[i];
-    const give = d.send.reduce((t, p) => t + (p.val || 0), 0);
-    const get = d.get.reduce((t, p) => t + (p.val || 0), 0);
-    const accept = give >= get * toughness(d.partner);
+    const give = dealVal(d.send), get = dealVal(d.get);
+    const ok = give >= get * toughness(d.partner);
     store.tradesPending.splice(i, 1);
     const mgr = mgrOf(d.partner);
-    if (accept) {
+    if (ok) {
       d.status = "accepted";
       d.note = `${mgr} accepted your offer.`;
       executeTrade(d.partner, d.send, d.get);
       toast2(`${mgr} accepted the trade`);
     } else {
       d.status = "rejected";
-      d.note = give >= get * (toughness(d.partner) - 0.06) ? `${mgr} passed \u2014 close, but wanted a bit more back.` : `${mgr} rejected it \u2014 the value was too far in your favour.`;
+      d.note = give >= get * (toughness(d.partner) - 0.06) ? `${mgr} passed \u2014 close, but wanted a bit more back.` : `${mgr} rejected it \u2014 too far in your favour.`;
       toast2(`${mgr} rejected the trade`);
     }
     d.resolvedTs = Date.now();
     store.trades.unshift(d);
     saveStore();
-    if (document.querySelector('.view[data-view="trade"].on')) renderTrades();
+    if (document.querySelector("#panel")) renderTradesPanel();
+  }
+  function resolveStaleOutgoing() {
+    store.tradesPending.filter((d) => d.dir === "outgoing" && Date.now() - d.ts > 2600).forEach((d) => resolveTrade(d.id));
+  }
+  function acceptIncoming(id) {
+    const i = store.tradesPending.findIndex((d2) => d2.id === id);
+    if (i < 0) return;
+    const d = store.tradesPending[i];
+    store.tradesPending.splice(i, 1);
+    d.status = "accepted";
+    d.note = `You accepted ${mgrOf(d.partner)}'s offer.`;
+    d.resolvedTs = Date.now();
+    executeTrade(d.partner, d.send, d.get);
+    store.trades.unshift(d);
+    saveStore();
+    renderTradesPanel();
+    toast2("Trade accepted");
+  }
+  function rejectIncoming(id) {
+    const i = store.tradesPending.findIndex((d2) => d2.id === id);
+    if (i < 0) return;
+    const d = store.tradesPending[i];
+    store.tradesPending.splice(i, 1);
+    d.status = "rejected";
+    d.note = `You rejected ${mgrOf(d.partner)}'s offer.`;
+    d.resolvedTs = Date.now();
+    store.trades.unshift(d);
+    saveStore();
+    renderTradesPanel();
+    toast2("Trade rejected");
+  }
+  function sweepExpired() {
+    const now = Date.now();
+    let changed = false;
+    store.tradesPending.slice().forEach((d) => {
+      if (d.dir === "incoming" && d.expiry && d.expiry <= now) {
+        const i = store.tradesPending.indexOf(d);
+        store.tradesPending.splice(i, 1);
+        d.status = "expired";
+        d.note = `${mgrOf(d.partner)}'s offer expired.`;
+        d.resolvedTs = now;
+        store.trades.unshift(d);
+        changed = true;
+      }
+    });
+    if (changed) saveStore();
+  }
+  function generateIncoming() {
+    const partners = tradeTeams().filter((k) => teamRoster(k).length);
+    if (!partners.length) return false;
+    const partner = partners[Math.floor(Math.random() * partners.length)];
+    const theirs = teamRoster(partner).sort((a, b) => assetValue(b) - assetValue(a));
+    const mineAll = teamRoster(MY_TEAM);
+    const blocked = new Set(store.tradeBlock || []);
+    const wantPool = mineAll.filter((p) => blocked.has(p.id));
+    const target = (wantPool.length ? wantPool : mineAll.sort((a, b) => assetValue(b) - assetValue(a)).slice(0, 6))[Math.floor(Math.random() * (wantPool.length || Math.min(6, mineAll.length)))];
+    if (!target) return false;
+    const tv = assetValue(target);
+    const near = theirs.filter((p) => Math.abs(assetValue(p) - tv) <= tv * 0.25);
+    const offer = (near.length ? near : theirs)[Math.floor(Math.random() * (near.length || theirs.length))];
+    if (!offer) return false;
+    store.tradesPending.unshift({
+      id: uid(),
+      dir: "incoming",
+      partner,
+      send: [slim(target)],
+      // what leaves your roster if you accept
+      get: [slim(offer)],
+      // what you'd receive
+      ts: Date.now(),
+      expiry: Date.now() + (1 + Math.floor(Math.random() * 3)) * 864e5,
+      status: "pending"
+    });
+    return true;
+  }
+  function maybeIncoming() {
+    const incoming = store.tradesPending.filter((d) => d.dir === "incoming").length;
+    if (!store.tradesSeeded) {
+      if (generateIncoming()) store.tradesSeeded = true;
+      saveStore();
+      return;
+    }
+    if (incoming < 2 && Math.random() < 0.3) {
+      generateIncoming();
+      saveStore();
+    }
   }
   function clearFromMine(rec) {
     const id = rec.id, nm = rec.n;
@@ -7636,6 +7861,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     send.forEach((p) => {
       clearFromMine(p);
       if (p.id) store.tradeOwners[p.id] = partner;
+      if (p.id && store.tradeBlock) {
+        const bi = store.tradeBlock.indexOf(p.id);
+        if (bi > -1) store.tradeBlock.splice(bi, 1);
+      }
     });
     get.forEach((p) => {
       if (p.id) store.tradeOwners[p.id] = MY_TEAM;
@@ -7648,27 +7877,32 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveStore();
     refreshRosterViews();
   }
-  function cancelTrade(id) {
-    const i = store.tradesPending.findIndex((d) => d.id === id);
-    if (i < 0) return;
-    store.tradesPending.splice(i, 1);
-    saveStore();
-    renderTrades();
-    toast2("Offer withdrawn");
+  function ensureDrawer() {
+    if (!document.body.classList.contains("open")) document.body.classList.add("open");
   }
-  function openTrades() {
-    renderTrades();
-    showView("trade");
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-    document.getElementById("scroll").scrollTop = 0;
-    if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function openTradeWith(key) {
-    tradeTab = "propose";
-    tradePartner = key && key !== MY_TEAM && T[key] ? key : null;
+  function openTradesRail() {
+    mode = "overview";
     sendSel = /* @__PURE__ */ new Set();
     getSel = /* @__PURE__ */ new Set();
-    openTrades();
+    maybeIncoming();
+    selectRail("trades");
+  }
+  function openTradeWith(key) {
+    ensureDrawer();
+    if (key && key !== MY_TEAM && T[key]) {
+      mode = "builder";
+      tradePartner = key;
+    } else {
+      mode = "overview";
+    }
+    sendSel = /* @__PURE__ */ new Set();
+    getSel = /* @__PURE__ */ new Set();
+    maybeIncoming();
+    selectRail("trades");
+  }
+  function openTrades() {
+    ensureDrawer();
+    openTradesRail();
   }
 
   // js/markets/data.js
@@ -8097,16 +8331,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.6"
       stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   }
-  function thumb(p, mode, w = 46, h = 26) {
-    if (mode === "five") return thumbFive(p, w, h);
-    if (mode === "pace") return thumbPace(p, w, h);
+  function thumb(p, mode2, w = 46, h = 26) {
+    if (mode2 === "five") return thumbFive(p, w, h);
+    if (mode2 === "pace") return thumbPace(p, w, h);
     return spark(p.spark, sparkColor(p), { w, h });
   }
   function starCell(p) {
     return `<div class="star${isWatched(p.id) ? " on" : ""}" data-star="${p.id}"
     onclick="event.stopPropagation();mkToggleWatch('${p.id}',this)">${ICON.star}</div>`;
   }
-  function marketRow(p, mode) {
+  function marketRow(p, mode2) {
     const d = dirClass(p.pct);
     return `<div class="mk-row" onclick="mkOpenPlayer('${p.id}')">
     <div class="bar" style="background:${p.color}"></div>
@@ -8119,7 +8353,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="p">${money(p.price)}</div>
       <div class="c ${d}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
-    ${thumb(p, mode)}
+    ${thumb(p, mode2)}
     ${starCell(p)}
   </div>`;
   }
@@ -8228,8 +8462,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       return `<div class="mk-empty">${ICON.star}<div class="t">Nothing on your watchlist yet</div>
       <div class="s">Tap the star on any player to follow their price here.</div></div>`;
     }
-    const mode = thumbMode();
-    return list.map((p) => marketRow(p, mode)).join("");
+    const mode2 = thumbMode();
+    return list.map((p) => marketRow(p, mode2)).join("");
   }
   function renderMarket() {
     const el = document.getElementById("mkMarket");

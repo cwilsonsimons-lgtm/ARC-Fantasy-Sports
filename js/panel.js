@@ -221,6 +221,8 @@ export function renderPanel(key){
     renderTrending();
   } else if(key==='available'){
     renderAvailable();
+  } else if(key==='trades'){
+    if(window.renderTradesPanel)window.renderTradesPanel();
   } else {
     const lb=RAIL.find(r=>r.k===key).lb;
     p.innerHTML=`<div class="panel-hd"><span class="d"></span>${lb} <span class="wk">· Week ${S.week}</span></div>

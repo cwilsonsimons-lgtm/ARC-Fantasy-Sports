@@ -80,7 +80,9 @@ export function initStore(){
 store.draft=store.draft||{picks:[]};
 store.tradeOwners=store.tradeOwners||{};   // {playerId: teamKey} — trades reassign ownership
 store.trades=store.trades||[];             // completed/rejected trade history, newest first
-store.tradesPending=store.tradesPending||[]; // proposals awaiting the other manager
+store.tradesPending=store.tradesPending||[]; // live deals: outgoing (awaiting them) + incoming (awaiting you)
+store.tradeBlock=store.tradeBlock||[];     // ids of my players advertised as available
+if(store.tradesSeeded==null)store.tradesSeeded=false; // one incoming offer is seeded on first open
 if(store.team&&store.team.font)T[MY_TEAM].font=store.team.font;
 store.backdrops=store.backdrops||{};  // per-game: {gameKey: dataURL}
 if(store.backdrop){store.globalBackdrop=store.globalBackdrop||store.backdrop;delete store.backdrop;}  // migrate old single backdrop
