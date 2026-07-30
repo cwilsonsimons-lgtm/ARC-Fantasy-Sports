@@ -37,8 +37,20 @@ export function draftBoard(){   // undrafted, ADP order
   const t=takenIds();
   return NFL_PLAYERS.filter(p=>!t.has(p.id)).sort((a,b)=>a.adp-b.adp);
 }
+// Who owns a drafted player right now. Defaults to the team that drafted them,
+// but a completed trade (store.tradeOwners[id]) reassigns ownership. This is the
+// one seam that lets a player move between teams without ever landing on two.
+export function ownerOf(id,draftTeam){
+  const ov=store.tradeOwners;
+  return (ov&&id&&ov[id])||draftTeam;
+}
 export function teamRosterIds(key){
-  const out=[];draftPicks().forEach((r,i)=>{if(teamOnPick(i)===key)out.push(r&&r.id);});return out;
+  const out=[];
+  draftPicks().forEach((r,i)=>{
+    const id=r&&r.id;if(!id)return;
+    if(ownerOf(id,teamOnPick(i))===key)out.push(id);
+  });
+  return out;
 }
 export function posCount(key){
   const c={QB:0,RB:0,WR:0,TE:0};

@@ -569,6 +569,12 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .tv-mini-btn svg{width:14px;height:14px;color:var(--violet)}
 .tv-mini-btn:active{border-color:var(--violet)}
 
+.tv-trade{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;border:1px solid var(--violet);
+  background:var(--violet-soft);border-radius:12px;padding:12px;cursor:pointer;color:var(--violet);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.8px;text-transform:uppercase}
+.tv-trade svg{width:16px;height:16px}
+.tv-trade:active{background:#332a5c}
+
 .tv-sec-hd{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-3);
   margin:18px 2px 8px}
 .tv-roster{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
@@ -1044,6 +1050,113 @@ body.open .drawer{transform:translateX(0)}
 .rx .e{font-size:19px}
 .rx .l{font-size:12px;font-weight:700;color:var(--ink-2)}
 .rx-note{font-size:11px;color:var(--ink-3);margin-top:12px;line-height:1.5}
+
+/* css/trade.css */
+/* ===== TRADE CENTER ===== */
+.trd-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:.5px;margin:8px 2px 2px}
+.trd-sub{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--violet);margin:0 2px 14px}
+
+/* subtabs */
+.trd-tabs{display:flex;gap:6px;margin:0 2px 14px}
+.trd-tab{flex:1;text-align:center;padding:8px 6px;border-radius:12px;border:1px solid var(--line);background:var(--card);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--ink-2);cursor:pointer}
+.trd-tab.on{border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
+.trd-pill{display:inline-block;min-width:16px;padding:0 4px;margin-left:3px;border-radius:8px;background:var(--violet);color:#fff;
+  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;line-height:16px;letter-spacing:0}
+
+/* team chooser */
+.trd-lead{font-size:13px;color:var(--ink-2);margin:2px 2px 12px}
+.trd-teams{display:flex;flex-direction:column;gap:8px}
+.trd-team{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px;cursor:pointer}
+.trd-team:active{border-color:var(--violet)}
+.trd-team-i{flex:1;min-width:0}
+.trd-team-n{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trd-team-m{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.trd-team-go{color:var(--ink-3);font-size:20px;flex:none}
+
+/* crest chip (shared) */
+.trd-crest{display:inline-grid;place-items:center;border-radius:9px;flex:none;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px}
+.trd-crest img{width:100%;height:100%;object-fit:cover}
+
+/* selected-partner header */
+.trd-partner{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px;margin-bottom:12px}
+.trd-partner-i{flex:1;min-width:0}
+.trd-partner-n{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trd-partner-m{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.trd-change{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--violet);cursor:pointer;padding:5px}
+
+/* two roster columns */
+.trd-cols{display:flex;gap:9px;margin-bottom:12px}
+.trd-col{flex:1;min-width:0;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;overflow:hidden}
+.trd-col-hd{display:flex;align-items:center;gap:7px;padding:9px 10px;border-bottom:1px solid var(--line-soft);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2)}
+.trd-col-hd .trd-crest{width:20px;height:20px;font-size:11px}
+.trd-col-body{max-height:none}
+
+.trd-row{display:flex;align-items:center;gap:8px;padding:8px 9px;border-top:1px solid var(--line-soft);cursor:pointer}
+.trd-row:first-child{border-top:none}
+.trd-row.on{background:var(--violet-soft)}
+.trd-chk{width:18px;height:18px;flex:none;border-radius:6px;border:1.5px solid var(--line);display:grid;place-items:center;color:#fff}
+.trd-row.on .trd-chk{background:var(--violet);border-color:var(--violet)}
+.trd-chk svg{width:12px;height:12px}
+.trd-face{width:30px;height:30px;border-radius:8px;flex:none;overflow:hidden;background:#0A0E15}
+.trd-face img{width:100%;height:100%;object-fit:cover}
+.trd-info{flex:1;min-width:0}
+.trd-nm{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trd-mt{font-size:10px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.trd-mt .pos{font-weight:700}
+.trd-val{flex:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:12px;color:var(--ink-2)}
+.trd-empty-col{padding:18px 10px;text-align:center;font-size:11px;color:var(--ink-3)}
+
+/* summary + verdict */
+.trd-sum{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:13px;margin-bottom:12px}
+.trd-sum-cols{display:flex;align-items:center;gap:10px}
+.trd-sum-c{flex:1;text-align:center}
+.trd-sum-c .k{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3)}
+.trd-sum-c .v{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:22px;color:var(--ink);margin-top:2px}
+.trd-sum-swap{flex:none;color:var(--ink-3)}
+.trd-sum-swap svg{width:20px;height:20px}
+.trd-verdict{text-align:center;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-soft);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.8px;text-transform:uppercase}
+.trd-verdict.idle{color:var(--ink-3)}
+.trd-verdict.fair{color:var(--violet)}
+.trd-verdict.win{color:var(--green)}
+.trd-verdict.lose{color:var(--red)}
+
+/* propose button */
+.trd-cta{display:flex;align-items:center;justify-content:center;border-radius:13px;padding:14px;cursor:pointer;
+  background:var(--violet);color:#fff;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:calc(var(--navh) + 12px)}
+.trd-cta.off{background:var(--card);color:var(--ink-3);border:1px solid var(--line);cursor:default}
+
+/* stored deals (pending / history) */
+.trd-deal{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:13px;margin-bottom:10px}
+.trd-deal-hd{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.trd-deal-nm{flex:1;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trd-badge{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.8px;
+  text-transform:uppercase;padding:4px 8px;border-radius:8px;border:1px solid var(--line)}
+.trd-badge.wait{color:var(--ink-2)}
+.trd-badge.ok{color:var(--green);border-color:rgba(140,224,74,.4)}
+.trd-badge.no{color:var(--red);border-color:rgba(240,69,62,.4)}
+.trd-deal-line{display:flex;gap:8px;font-size:12.5px;color:var(--ink);padding:3px 0;line-height:1.4}
+.trd-deal-dir{flex:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:9.5px;letter-spacing:.5px;
+  width:30px;padding-top:2px}
+.trd-deal-dir.out{color:var(--red)}
+.trd-deal-dir.in{color:var(--green)}
+.trd-deal-note{font-size:11.5px;color:var(--ink-3);margin-top:8px;padding-top:8px;border-top:1px solid var(--line-soft)}
+.trd-deal-btns{display:flex;gap:8px;margin-top:11px}
+.trd-mini{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:9px;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-2)}
+.trd-mini.danger{color:var(--red);border-color:rgba(240,69,62,.35)}
+
+/* empty states */
+.trd-blank{text-align:center;padding:40px 20px;background:var(--card);border:1px solid var(--line-soft);border-radius:16px}
+.trd-blank-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2)}
+.trd-blank-s{font-size:12px;color:var(--ink-3);margin-top:7px;line-height:1.5}
 
 /* css/panel.css */
 /* panel search: sits under the panel title, above the position pills */
@@ -1544,6 +1657,15 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
       </div>
 
+      <!-- ===== TRADE VIEW ===== -->
+      <div class="view" data-view="trade">
+        <div class="back" onclick="showTab(homeTab())">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          <span>Back</span>
+        </div>
+        <div id="tradeBody"></div>
+      </div>
+
       <!-- ===== PLAYER CARD VIEW ===== -->
       <div class="view" data-view="player">
         <div class="back" onclick="playerBack()">
@@ -1822,6 +1944,9 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   var TAXI = [];
   function initStore2() {
     store.draft = store.draft || { picks: [] };
+    store.tradeOwners = store.tradeOwners || {};
+    store.trades = store.trades || [];
+    store.tradesPending = store.tradesPending || [];
     if (store.team && store.team.font) T[MY_TEAM].font = store.team.font;
     store.backdrops = store.backdrops || {};
     if (store.backdrop) {
@@ -3054,7 +3179,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     { k: "available", lb: "Available", ic: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 8v6M21 11h-6"/>' },
     { k: "leaders", lb: "Leaders", ic: '<circle cx="12" cy="9" r="5"/><path d="m8.5 13-1.5 8 5-3 5 3-1.5-8"/>' },
     { k: "draft", lb: "Draft", action: "openDraft()", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>' },
-    { k: "trades", lb: "Trades", ic: '<path d="M7 8h13l-3-3M17 16H4l3 3"/>' },
+    { k: "trades", lb: "Trades", action: "openTrades()", ic: '<path d="M7 8h13l-3-3M17 16H4l3 3"/>' },
     { k: "scores", lb: "Scores", ic: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14"/>' },
     { k: "news", lb: "News", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h7M7 12h10M7 16h6"/>' },
     { k: "settings", lb: "Settings", action: "openSettings()", ic: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>' }
@@ -3111,6 +3236,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     myTurn: () => myTurn,
     onClockIdx: () => onClockIdx,
     onClockTeam: () => onClockTeam,
+    ownerOf: () => ownerOf,
     pickAt: () => pickAt,
     pickIds: () => pickIds,
     pickMeta: () => pickMeta,
@@ -3537,7 +3663,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       return { name: p.n, total: pLive(p.proj, p.n), proj: p.proj, kick: absMin(pOrd(p)) };
     }).filter(Boolean);
     const A = side("a"), X = side("x");
-    const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
+    const sum2 = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
     const expect = (list, t) => list.reduce((n, p) => {
       const f = (t - p.kick) / GAME_MIN;
       const done = Math.max(0, Math.min(1, f));
@@ -3557,7 +3683,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       });
       [...times].sort((p, q) => p - q).forEach((t) => {
         const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side }));
-        const a = sum(A, t), x = sum(X, t);
+        const a = sum2(A, t), x = sum2(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
         out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev });
       });
@@ -6041,6 +6167,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     currentTeamKey = key;
     const t = T[key], own = key === MY_TEAM, roster = rosterFor(key);
     let body2 = teamHead(t, own);
+    if (!own && draftDone())
+      body2 += `<div class="tv-trade" onclick="openTradeWith('${key}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>
+      Propose a trade with ${esc(t.mgr)}</div>`;
     ["STARTERS", "BENCH", "TAXI SQUAD"].forEach((gp) => {
       const list = roster.filter((p) => p.group === gp);
       if (!list.length) return;
@@ -6527,10 +6657,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const t = takenIds();
     return NFL_PLAYERS.filter((p) => !t.has(p.id)).sort((a, b) => a.adp - b.adp);
   }
+  function ownerOf(id, draftTeam) {
+    const ov = store.tradeOwners;
+    return ov && id && ov[id] || draftTeam;
+  }
   function teamRosterIds(key) {
     const out = [];
     draftPicks().forEach((r, i) => {
-      if (teamOnPick(i) === key) out.push(r && r.id);
+      const id = r && r.id;
+      if (!id) return;
+      if (ownerOf(id, teamOnPick(i)) === key) out.push(id);
     });
     return out;
   }
@@ -7239,6 +7375,300 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     showView("detail");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
+  }
+
+  // js/trades.js
+  var trades_exports = {};
+  __export(trades_exports, {
+    assetValue: () => assetValue,
+    cancelTrade: () => cancelTrade,
+    clearTradePartner: () => clearTradePartner,
+    executeTrade: () => executeTrade,
+    getSel: () => getSel,
+    openTradeWith: () => openTradeWith,
+    openTrades: () => openTrades,
+    pickTradePartner: () => pickTradePartner,
+    proposeTrade: () => proposeTrade,
+    renderTrades: () => renderTrades,
+    resolveTrade: () => resolveTrade,
+    sendSel: () => sendSel,
+    setTradeTab: () => setTradeTab,
+    tradePartner: () => tradePartner,
+    tradeTab: () => tradeTab,
+    tradeTeams: () => tradeTeams,
+    tradeToggle: () => tradeToggle
+  });
+  var tradeTab = "propose";
+  var tradePartner = null;
+  var sendSel = /* @__PURE__ */ new Set();
+  var getSel = /* @__PURE__ */ new Set();
+  function assetValue(p) {
+    const rec = p && p.id && NFL_BY_ID[p.id];
+    if (rec && rec.sproj != null) return rec.sproj;
+    return Math.round((p && p.proj || 0) * 17);
+  }
+  function tradeTeams() {
+    return Object.keys(T).filter((k) => k !== MY_TEAM);
+  }
+  function mgrOf(key) {
+    return T[key] && T[key].mgr || key;
+  }
+  function toughness(key) {
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i++) {
+      h ^= key.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return 0.88 + (h >>> 0) % 90 / 1e3;
+  }
+  function selList(roster, sel) {
+    return roster.filter((p) => sel.has(pKeyOf(p)));
+  }
+  function sum(list) {
+    return list.reduce((t, p) => t + assetValue(p), 0);
+  }
+  function tradeToggle(side, key) {
+    const sel = side === "send" ? sendSel : getSel;
+    if (sel.has(key)) sel.delete(key);
+    else sel.add(key);
+    renderTrades();
+  }
+  function pickTradePartner(key) {
+    tradePartner = key;
+    sendSel = /* @__PURE__ */ new Set();
+    getSel = /* @__PURE__ */ new Set();
+    renderTrades();
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function clearTradePartner() {
+    tradePartner = null;
+    sendSel = /* @__PURE__ */ new Set();
+    getSel = /* @__PURE__ */ new Set();
+    renderTrades();
+  }
+  function setTradeTab(k) {
+    tradeTab = k;
+    renderTrades();
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function crest(key, size) {
+    const t = T[key];
+    return `<span class="trd-crest" style="width:${size}px;height:${size}px;background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</span>`;
+  }
+  function selRow(p, side) {
+    const k = pKeyOf(p), on = (side === "send" ? sendSel : getSel).has(k);
+    return `<div class="trd-row${on ? " on" : ""}" onclick="tradeToggle('${side}','${esc(k)}')">
+    <span class="trd-chk">${on ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-11"/></svg>' : ""}</span>
+    <span class="trd-face">${faceInner(k)}</span>
+    <div class="trd-info"><div class="trd-nm">${p.n}</div>
+      <div class="trd-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm}${p.bye ? ` (${p.bye})` : ""}</div></div>
+    <span class="trd-val">${assetValue(p).toFixed(0)}</span>
+  </div>`;
+  }
+  function rosterCol(key, roster, side) {
+    const label = side === "send" ? "You send" : "You get";
+    const rows2 = roster.length ? roster.map((p) => selRow(p, side)).join("") : `<div class="trd-empty-col">No players</div>`;
+    return `<div class="trd-col">
+    <div class="trd-col-hd">${crest(key, 20)}<span>${label}</span></div>
+    <div class="trd-col-body">${rows2}</div>
+  </div>`;
+  }
+  function verdict(give, get) {
+    if (!give && !get) return { cls: "idle", t: "Pick players from both sides" };
+    if (!give || !get) return { cls: "idle", t: "Add a player to each side" };
+    const diff = get - give, big = Math.max(give, get);
+    if (Math.abs(diff) <= big * 0.08) return { cls: "fair", t: "Even trade" };
+    return diff > 0 ? { cls: "win", t: "You come out ahead" } : { cls: "lose", t: "You give up more value" };
+  }
+  function summaryHTML(give, get) {
+    const v = verdict(give, get);
+    return `<div class="trd-sum">
+    <div class="trd-sum-cols">
+      <div class="trd-sum-c"><div class="k">You send</div><div class="v">${give.toFixed(0)}</div></div>
+      <div class="trd-sum-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
+      <div class="trd-sum-c"><div class="k">You get</div><div class="v">${get.toFixed(0)}</div></div>
+    </div>
+    <div class="trd-verdict ${v.cls}">${v.t}</div>
+  </div>`;
+  }
+  function names(list) {
+    return list.map((p) => p.n).join(", ") || "\u2014";
+  }
+  function dealCard(d, opts) {
+    const o = opts || {};
+    const badge2 = o.badge ? `<span class="trd-badge ${o.badge.cls}">${o.badge.t}</span>` : "";
+    return `<div class="trd-deal">
+    <div class="trd-deal-hd">${crest(d.partner, 22)}<span class="trd-deal-nm">${T[d.partner] ? T[d.partner].n : d.partner}</span>${badge2}</div>
+    <div class="trd-deal-line"><span class="trd-deal-dir out">OUT</span>${names(d.send)}</div>
+    <div class="trd-deal-line"><span class="trd-deal-dir in">IN</span>${names(d.get)}</div>
+    ${d.note ? `<div class="trd-deal-note">${d.note}</div>` : ""}
+    ${o.actions || ""}
+  </div>`;
+  }
+  function tabsHTML() {
+    const pend = store.tradesPending.length;
+    const tabs = [["propose", "Propose"], ["pending", `Pending${pend ? ` <span class="trd-pill">${pend}</span>` : ""}`], ["history", "History"]];
+    return `<div class="trd-tabs">${tabs.map((t) => `<div class="trd-tab${t[0] === tradeTab ? " on" : ""}" onclick="setTradeTab('${t[0]}')">${t[1]}</div>`).join("")}</div>`;
+  }
+  function proposeBody() {
+    if (!tradePartner) {
+      const chips = tradeTeams().map((k) => {
+        const t = T[k];
+        return `<div class="trd-team" onclick="pickTradePartner('${k}')">
+        ${crest(k, 40)}
+        <div class="trd-team-i"><div class="trd-team-n tf-${k}" style="color:${t.c}">${t.n}</div>
+          <div class="trd-team-m">${t.mgr} \xB7 ${t.rec}</div></div>
+        <span class="trd-team-go">\u203A</span>
+      </div>`;
+      }).join("");
+      return `<div class="trd-lead">Who do you want to trade with?</div>
+      <div class="trd-teams">${chips}</div>`;
+    }
+    const mine = rosterFor(MY_TEAM) || [];
+    const yours = rosterFor(tradePartner) || [];
+    const give = sum(selList(mine, sendSel)), get = sum(selList(yours, getSel));
+    const ready = sendSel.size && getSel.size;
+    return `<div class="trd-partner">
+      ${crest(tradePartner, 34)}
+      <div class="trd-partner-i"><div class="trd-partner-n tf-${tradePartner}" style="color:${T[tradePartner].c}">${T[tradePartner].n}</div>
+        <div class="trd-partner-m">${T[tradePartner].mgr} \xB7 ${T[tradePartner].rec}</div></div>
+      <span class="trd-change" onclick="clearTradePartner()">Change</span>
+    </div>
+    <div class="trd-cols">${rosterCol(MY_TEAM, mine, "send")}${rosterCol(tradePartner, yours, "get")}</div>
+    ${summaryHTML(give, get)}
+    <div class="trd-cta${ready ? "" : " off"}" onclick="${ready ? "proposeTrade()" : ""}">Propose Trade</div>`;
+  }
+  function pendingBody() {
+    if (!store.tradesPending.length)
+      return `<div class="trd-blank"><div class="trd-blank-t">No pending trades</div><div class="trd-blank-s">Propose one and it shows up here while the other manager decides.</div></div>`;
+    return store.tradesPending.map((d) => dealCard(d, {
+      badge: { cls: "wait", t: `Waiting on ${mgrOf(d.partner)}` },
+      actions: `<div class="trd-deal-btns"><div class="trd-mini danger" onclick="cancelTrade('${d.id}')">Cancel offer</div></div>`
+    })).join("");
+  }
+  function historyBody() {
+    if (!store.trades.length)
+      return `<div class="trd-blank"><div class="trd-blank-t">No trade history yet</div><div class="trd-blank-s">Accepted and rejected trades are logged here.</div></div>`;
+    return store.trades.map((d) => dealCard(d, {
+      badge: d.status === "accepted" ? { cls: "ok", t: "Accepted" } : { cls: "no", t: "Rejected" }
+    })).join("");
+  }
+  function renderTrades() {
+    const el = document.getElementById("tradeBody");
+    if (!el) return;
+    if (!draftDone()) {
+      el.innerHTML = `<div class="trd-h">Trades</div>
+      <div class="trd-blank"><div class="trd-blank-t">Trades open after the draft</div>
+      <div class="trd-blank-s">Once every pick is in, you can start shopping your roster.</div></div>`;
+      return;
+    }
+    const body2 = tradeTab === "pending" ? pendingBody() : tradeTab === "history" ? historyBody() : proposeBody();
+    el.innerHTML = `<div class="trd-h">Trades</div>
+    <div class="trd-sub">City Boys Dynasty \xB7 ${tradeTeams().length} other managers</div>
+    ${tabsHTML()}
+    ${body2}`;
+  }
+  function slim(p) {
+    return { id: p.id || null, n: p.n, pos: p.pos, tm: p.tm, proj: p.proj != null ? p.proj : null, val: assetValue(p) };
+  }
+  function uid() {
+    return "t" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+  }
+  function proposeTrade() {
+    const mine = rosterFor(MY_TEAM) || [];
+    const yours = rosterFor(tradePartner) || [];
+    const send = selList(mine, sendSel), get = selList(yours, getSel);
+    if (!send.length || !get.length) {
+      toast2("Add a player to each side");
+      return;
+    }
+    const deal = { id: uid(), partner: tradePartner, send: send.map(slim), get: get.map(slim), ts: Date.now(), status: "pending" };
+    store.tradesPending.unshift(deal);
+    saveStore();
+    const mgr = mgrOf(tradePartner);
+    sendSel = /* @__PURE__ */ new Set();
+    getSel = /* @__PURE__ */ new Set();
+    tradePartner = null;
+    tradeTab = "pending";
+    renderTrades();
+    toast2(`Offer sent to ${mgr}`);
+    setTimeout(() => resolveTrade(deal.id), 1600);
+  }
+  function resolveTrade(id) {
+    const i = store.tradesPending.findIndex((d2) => d2.id === id);
+    if (i < 0) return;
+    const d = store.tradesPending[i];
+    const give = d.send.reduce((t, p) => t + (p.val || 0), 0);
+    const get = d.get.reduce((t, p) => t + (p.val || 0), 0);
+    const accept = give >= get * toughness(d.partner);
+    store.tradesPending.splice(i, 1);
+    const mgr = mgrOf(d.partner);
+    if (accept) {
+      d.status = "accepted";
+      d.note = `${mgr} accepted your offer.`;
+      executeTrade(d.partner, d.send, d.get);
+      toast2(`${mgr} accepted the trade`);
+    } else {
+      d.status = "rejected";
+      d.note = give >= get * (toughness(d.partner) - 0.06) ? `${mgr} passed \u2014 close, but wanted a bit more back.` : `${mgr} rejected it \u2014 the value was too far in your favour.`;
+      toast2(`${mgr} rejected the trade`);
+    }
+    d.resolvedTs = Date.now();
+    store.trades.unshift(d);
+    saveStore();
+    if (document.querySelector('.view[data-view="trade"].on')) renderTrades();
+  }
+  function clearFromMine(rec) {
+    const id = rec.id, nm = rec.n;
+    [LINEUP, BENCH, TAXI].forEach((A) => A.forEach((r) => {
+      if (r.a && (id && String(r.a.id) === String(id) || r.a.n === nm)) r.a = null;
+    }));
+  }
+  function addToMine(rec) {
+    const src = rec.id && NFL_BY_ID[rec.id] || rec;
+    const p = hydratePlayer(mkPlayer(src), S.week);
+    let slot = BENCH.findIndex((r) => !r.a);
+    if (slot > -1) BENCH[slot].a = p;
+    else BENCH.push({ a: p, x: null });
+  }
+  function executeTrade(partner, send, get) {
+    store.tradeOwners = store.tradeOwners || {};
+    send.forEach((p) => {
+      clearFromMine(p);
+      if (p.id) store.tradeOwners[p.id] = partner;
+    });
+    get.forEach((p) => {
+      if (p.id) store.tradeOwners[p.id] = MY_TEAM;
+      addToMine(p);
+    });
+    persistRoster();
+    fillSide("radiator", "x");
+    invalidateRosters();
+    S.pidx = null;
+    saveStore();
+    refreshRosterViews();
+  }
+  function cancelTrade(id) {
+    const i = store.tradesPending.findIndex((d) => d.id === id);
+    if (i < 0) return;
+    store.tradesPending.splice(i, 1);
+    saveStore();
+    renderTrades();
+    toast2("Offer withdrawn");
+  }
+  function openTrades() {
+    renderTrades();
+    showView("trade");
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function openTradeWith(key) {
+    tradeTab = "propose";
+    tradePartner = key && key !== MY_TEAM && T[key] ? key : null;
+    sendSel = /* @__PURE__ */ new Set();
+    getSel = /* @__PURE__ */ new Set();
+    openTrades();
   }
 
   // js/markets/data.js
@@ -8327,6 +8757,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     nav_exports,
     draft_meta_exports,
     draft_room_exports,
+    trades_exports,
     nfl_history_exports,
     data_exports,
     ui_exports,

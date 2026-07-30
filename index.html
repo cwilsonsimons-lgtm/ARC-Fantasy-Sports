@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/lineup.css">
   <link rel="stylesheet" href="css/drawer.css">
   <link rel="stylesheet" href="css/draft.css">
+  <link rel="stylesheet" href="css/trade.css">
   <link rel="stylesheet" href="css/panel.css">
   <link rel="stylesheet" href="css/nav.css">
   <link rel="stylesheet" href="css/markets.css">
@@ -142,6 +143,15 @@
         </div>
         <div id="settingsBody"></div>
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
+      </div>
+
+      <!-- ===== TRADE VIEW ===== -->
+      <div class="view" data-view="trade">
+        <div class="back" onclick="showTab(homeTab())">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          <span>Back</span>
+        </div>
+        <div id="tradeBody"></div>
       </div>
 
       <!-- ===== PLAYER CARD VIEW ===== -->

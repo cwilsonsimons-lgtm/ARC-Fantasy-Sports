@@ -78,6 +78,9 @@ export const TAXI   = [];
 // during boot so it keeps its original position in the startup order.
 export function initStore(){
 store.draft=store.draft||{picks:[]};
+store.tradeOwners=store.tradeOwners||{};   // {playerId: teamKey} — trades reassign ownership
+store.trades=store.trades||[];             // completed/rejected trade history, newest first
+store.tradesPending=store.tradesPending||[]; // proposals awaiting the other manager
 if(store.team&&store.team.font)T[MY_TEAM].font=store.team.font;
 store.backdrops=store.backdrops||{};  // per-game: {gameKey: dataURL}
 if(store.backdrop){store.globalBackdrop=store.globalBackdrop||store.backdrop;delete store.backdrop;}  // migrate old single backdrop

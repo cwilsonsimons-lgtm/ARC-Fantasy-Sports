@@ -109,7 +109,7 @@ export const RAIL = [
   {k:'available',lb:'Available',ic:'<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 8v6M21 11h-6"/>'},
   {k:'leaders',lb:'Leaders',ic:'<circle cx="12" cy="9" r="5"/><path d="m8.5 13-1.5 8 5-3 5 3-1.5-8"/>'},
   {k:'draft',lb:'Draft',action:'openDraft()',ic:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>'},
-  {k:'trades',lb:'Trades',ic:'<path d="M7 8h13l-3-3M17 16H4l3 3"/>'},
+  {k:'trades',lb:'Trades',action:'openTrades()',ic:'<path d="M7 8h13l-3-3M17 16H4l3 3"/>'},
   {k:'scores',lb:'Scores',ic:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14"/>'},
   {k:'news',lb:'News',ic:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h7M7 12h10M7 16h6"/>'},
   {k:'settings',lb:'Settings',action:'openSettings()',ic:'<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>'},

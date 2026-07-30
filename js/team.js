@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { DRAFT_ORDER, POOL, slotAllows } from './clock.js';
 import { hydratePlayer, pkey } from './data/nfl-index.js';
 import { NFL_BY_ID } from './data/nfl-players.js';
-import { mkPlayer, teamRosterIds } from './draft.js';
+import { draftDone, mkPlayer, teamRosterIds } from './draft.js';
 import { FONT_BY_KEY, MY_TEAM, T, TEAM_FONTS, applyTeamFonts } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
 import { renderLeagueBody } from './lineup.js';
@@ -119,6 +119,10 @@ export function renderTeam(key){
   currentTeamKey=key;
   const t=T[key],own=(key===MY_TEAM),roster=rosterFor(key);
   let body=teamHead(t,own);
+  if(!own&&draftDone())
+    body+=`<div class="tv-trade" onclick="openTradeWith('${key}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>
+      Propose a trade with ${esc(t.mgr)}</div>`;
   ['STARTERS','BENCH','TAXI SQUAD'].forEach(gp=>{
     const list=roster.filter(p=>p.group===gp);
     if(!list.length)return;
