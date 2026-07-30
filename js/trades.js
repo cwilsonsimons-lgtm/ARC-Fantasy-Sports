@@ -51,8 +51,7 @@ export function tradeToggle(side, key){
   if (sel.has(key)) sel.delete(key); else sel.add(key);
   renderTradesPanel();
 }
-export function tradeStartBuilder(){ mode = 'chooser'; tradePartner = null; sendSel = new Set(); getSel = new Set(); renderTradesPanel(); }
-export function tradeOverview(){ mode = 'overview'; renderTradesPanel(); }
+export function tradeOverview(){ mode = 'overview'; tradePartner = null; sendSel = new Set(); getSel = new Set(); renderTradesPanel(); }
 export function pickTradePartner(key){ tradePartner = key; mode = 'builder'; sendSel = new Set(); getSel = new Set(); renderTradesPanel(); scrollTop(); }
 function scrollTop(){ const p = document.getElementById('panel'); if (p) p.scrollTop = 0; }
 
@@ -89,8 +88,7 @@ function blockStrip(){
     </div>`).join('');
   const add = `<div class="tb-av tb-add" onclick="openBlockSheet()">
       <span class="tb-av-face tb-plus">+</span><div class="tb-av-nm">Add</div><div class="tb-av-mt">&nbsp;</div></div>`;
-  return `<div class="trd-sec-hd"><span>Trade Block</span>
-      <span class="trd-hd-btn" onclick="tradeStartBuilder()">Trade <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></span></div>
+  return `<div class="trd-sec-hd"><span>Trade Block</span></div>
     <div class="tb-strip">${chips}${add}</div>`;
 }
 
@@ -163,9 +161,21 @@ function emptyActive(){
       <path d="M82 20c22-4 30 6 28 22" stroke="#4fd6a8" stroke-width="2.5" stroke-linecap="round"/><path d="m108 44 4-8-8 1" fill="#4fd6a8"/>
       <path d="M70 94c-22 4-30-6-28-22" stroke="#4fd6a8" stroke-width="2.5" stroke-linecap="round"/><path d="m44 70-4 8 8-1" fill="#4fd6a8"/>
     </svg>
-    <div class="trd-empty-t">No active trades…</div>
-    <div class="trd-empty-cta" onclick="tradeStartBuilder()">Propose a trade</div>
+    <div class="trd-empty-t">No active trades — pick a team below to start one.</div>
   </div>`;
+}
+// the league team list — the primary way to start a trade
+function proposeList(){
+  const rows = tradeTeams().map(k => {
+    const t = T[k];
+    return `<div class="trd-team" onclick="pickTradePartner('${k}')">
+      ${crest(k, 38)}
+      <div class="trd-team-i"><div class="trd-team-n tf-${k}" style="color:${t.c}">${t.n}</div><div class="trd-team-m">${t.mgr} · ${t.rec}</div></div>
+      <span class="trd-team-go">›</span></div>`;
+  }).join('');
+  return `<div class="trd-sec-hd"><span>Propose a Trade</span></div>
+    <div class="trd-lead">Pick a team, then check the players on each side.</div>
+    <div class="trd-teams">${rows}</div>`;
 }
 
 // ---------- OVERVIEW ----------
@@ -175,20 +185,8 @@ function overviewHTML(){
   return blockStrip()
     + `<div class="trd-sec-hd"><span>Active Trades</span></div>`
     + (active.length ? active.map(d => dealCard(d, true)).join('') : emptyActive())
+    + proposeList()
     + (hist.length ? `<div class="trd-sec-hd"><span>Trade History</span></div>` + hist.map(d => dealCard(d, false)).join('') : '');
-}
-
-// ---------- CHOOSER ----------
-function chooserHTML(){
-  const chips = tradeTeams().map(k => {
-    const t = T[k];
-    return `<div class="trd-team" onclick="pickTradePartner('${k}')">
-      ${crest(k, 38)}
-      <div class="trd-team-i"><div class="trd-team-n tf-${k}" style="color:${t.c}">${t.n}</div><div class="trd-team-m">${t.mgr} · ${t.rec}</div></div>
-      <span class="trd-team-go">›</span></div>`;
-  }).join('');
-  return `<div class="trd-back" onclick="tradeOverview()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Trades</div>
-    <div class="trd-lead">Who do you want to trade with?</div><div class="trd-teams">${chips}</div>`;
 }
 
 // ---------- BUILDER (in panel, stacked) ----------
@@ -214,16 +212,18 @@ function builderHTML(){
   const mine = teamRoster(MY_TEAM), yours = teamRoster(tradePartner);
   const give = sum(selList(mine, sendSel)), get = sum(selList(yours, getSel));
   const v = verdict(give, get), ready = sendSel.size && getSel.size;
-  return `<div class="trd-back" onclick="tradeStartBuilder()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Pick a team</div>
+  return `<div class="trd-back" onclick="tradeOverview()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>All teams</div>
     <div class="trd-partner">${crest(tradePartner, 30)}<div class="trd-partner-i"><div class="trd-partner-n tf-${tradePartner}" style="color:${T[tradePartner].c}">${T[tradePartner].n}</div><div class="trd-partner-m">${T[tradePartner].mgr} · ${T[tradePartner].rec}</div></div></div>
     <div class="trd-col">${colHTML(MY_TEAM, mine, 'send')}</div>
     <div class="trd-col">${colHTML(tradePartner, yours, 'get')}</div>
-    <div class="trd-sum"><div class="trd-sum-cols">
-        <div class="trd-sum-c"><div class="k">You send</div><div class="v">${give.toFixed(0)}</div></div>
-        <div class="trd-sum-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
-        <div class="trd-sum-c"><div class="k">You get</div><div class="v">${get.toFixed(0)}</div></div>
-      </div><div class="trd-verdict ${v.c}">${v.t}</div></div>
-    <div class="trd-cta${ready ? '' : ' off'}" onclick="${ready ? 'proposeTrade()' : ''}">Propose Trade</div>`;
+    <div class="trd-foot">
+      <div class="trd-sum"><div class="trd-sum-cols">
+          <div class="trd-sum-c"><div class="k">You send</div><div class="v">${give.toFixed(0)}</div></div>
+          <div class="trd-sum-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
+          <div class="trd-sum-c"><div class="k">You get</div><div class="v">${get.toFixed(0)}</div></div>
+        </div><div class="trd-verdict ${v.c}">${v.t}</div></div>
+      <div class="trd-cta${ready ? '' : ' off'}" onclick="${ready ? 'proposeTrade()' : ''}">Propose Trade</div>
+    </div>`;
 }
 
 // ---------- render ----------
@@ -234,7 +234,7 @@ export function renderTradesPanel(){
     return;
   }
   sweepExpired(); resolveStaleOutgoing();
-  const body = mode === 'chooser' ? chooserHTML() : mode === 'builder' && tradePartner ? builderHTML() : overviewHTML();
+  const body = mode === 'builder' && tradePartner ? builderHTML() : overviewHTML();
   el.innerHTML = body;
   startTicker();
 }
