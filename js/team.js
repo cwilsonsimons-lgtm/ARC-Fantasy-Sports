@@ -83,12 +83,11 @@ export function teamHead(t,own){
       <span class="tv-mini-btn" onclick="document.getElementById('logoInput').click()">${ICON_UP} Upload logo</span>
     </div>
     ${fontDropdownHTML(t)}`:'';
-  const ownTag=own?`<div class="tv-own-tag">${ICON_STAR} Your team · tap fields to edit</div>`:'';
   return `<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
-      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} · ${t.rec} · #${t.rk}</div>${ownTag}</div>
+      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} · ${t.rec} · #${t.rk}</div></div>
     </div>
     ${editRow}
   </div>`;

@@ -7,7 +7,7 @@ import { canDraftNow, faOpen, freeAgents, isRostered } from './freeagency.js';
 import { badge, seasonTotals } from './lineup.js';
 import { showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { BENCH, LINEUP, TAXI, store } from './store.js';
-import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
+import { collectSide, currentViewName, esc } from './team.js';
 
 // ---------- PLAYER CARD ----------
 export const POSCOLOR={QB:'#E65A9B',RB:'#4EC9A5',WR:'#5AA9E6',TE:'#E6A85A',K:'#C77DFF',DEF:'#8899A6'};
@@ -110,14 +110,11 @@ export function renderPlayer(key){
   const age=ageFor(key);
   const rec=NFL_BY_ID[p.id]||null;
   const jersey=(rec&&rec.num)?rec.num:(seedHash(name)%99)+1;
-  const cardNo=String(1+seedHash(String(key)+'c')%500).padStart(3,'0');
   const live=pLive(p.proj||0,name);
   const shot=photo||headshotFor(key);
   const hero=shot?`<img class="pc-img" src="${shot}" alt="" loading="lazy">`:`<div class="pc-noimg">${initials(name)}</div>`;
   const nickBanner=nick?`<div class="pc-nick">“${nick}”</div>`:'';
   const mine=isMyPlayer(key);
-  const editHint=mine?`<div class="pc-edit" onclick="openTeam('${MY_TEAM}')">
-      ${ICON_CAM}<div class="t"><b>CUSTOMIZE THIS CARD</b><br>${photo?'Update':'Add'} the PNG photo${nick?'':' & a nickname'} on your Team screen</div><div style="color:var(--ink-3)">›</div></div>`:'';
   const isFA=!mine&&faOpen()&&freeAgents('ALL').some(q=>pKeyOf(q)===key||q.n===name);
   const canTake=!mine&&canDraftNow(p.id);
   const dropBtn=mine?`<div class="pc-drop" onclick="confirmDrop('${esc(key)}')">Drop ${last} from roster</div>`
@@ -137,7 +134,6 @@ export function renderPlayer(key){
         ${nickBanner}
         <div class="pc-name"><div class="pc-first">${first}</div><div class="pc-last">${last}</div></div>
       </div>
-      <div class="pc-strip"><span>CARD <b>#${cardNo}</b> / 500</span><span>CITY BOYS DYNASTY · <b>'25</b></span></div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj||0).toFixed(1)}</div><div class="l">Proj</div></div>
         <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
@@ -149,7 +145,6 @@ export function renderPlayer(key){
         <div><div class="k">This Week</div><div class="g">${p.g||'Scheduled'}</div></div>
         <div class="p" style="color:${ac}">${(p.proj||0).toFixed(1)}</div>
       </div>
-      ${editHint}
       ${dropBtn}
     </div>`;
 }

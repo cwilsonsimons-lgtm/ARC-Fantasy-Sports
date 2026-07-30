@@ -24,8 +24,11 @@ body.open .scrim{opacity:1;pointer-events:auto}
   border:2px solid var(--bg);font-size:9px;font-weight:700;display:grid;place-items:center;color:#fff}
 
 /* top tabs */
-.tabs{display:flex;justify-content:center;gap:30px;background:var(--bg);border-bottom:1px solid var(--line-soft);padding:2px 8px 0}
-.tab{text-align:center;padding:12px 2px 15px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:14px;
+.tabs{display:flex;background:var(--bg);border-bottom:1px solid var(--line-soft);padding:2px 8px 0}
+/* each tab takes an equal share of the bar and centres its label, so the three
+   land on evenly spaced thirds instead of clustering in the middle with a fixed
+   gap (where differing word widths left them looking misaligned) */
+.tab{flex:1;text-align:center;padding:12px 2px 15px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:14px;
   letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);cursor:pointer;position:relative;transition:color .15s}
 .tab.on{color:var(--ink)}
 .tab.on::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
