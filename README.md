@@ -68,12 +68,33 @@ create an account, manage the leagues you've joined, and see a snapshot of your
 Arc Markets portfolio. It is a full-screen section like Arc Markets, on the
 fantasy app's own violet palette.
 
-There is no backend, so this is a *client-side* account system: `js/account/`
-keeps a directory of users plus a session pointer under one global `localStorage`
-key (`arc_account_v1`). The password "hash" is a non-cryptographic scramble — it
-only keeps the stored value from being readable at a glance. This makes the
-prototype feel like a real multi-account app; it is **not** real security, and a
-production build would move all of it behind a server.
+There are **two auth backends behind one UI**, and `activeAccount()` in
+`js/account/store.js` hides which is in play:
+
+- **Supabase** (when `js/account/config.js` holds a project URL + publishable
+  key): real accounts. Someone signs up on their phone and can sign in on their
+  laptop; different people get different accounts. `js/account/supabase.js` talks
+  to Supabase's auth server (GoTrue) over plain `fetch` — no SDK, so the
+  no-runtime-dependencies rule holds — for sign up, sign in, sign out and token
+  refresh. The session lives under one global key (`arc_supabase_session`).
+- **Local fallback** (config empty, or offline): a directory of users under
+  `arc_account_v1`, with a non-cryptographic password scramble. It only keeps the
+  value from being readable at a glance — **not** real security. This is what
+  runs with no network, and what the offline verification harness uses.
+
+### Configuring Supabase
+
+Fill in `js/account/config.js` with your project's **URL** and **publishable
+(anon) key** — both are safe in front-end code; Supabase's dashboard says as much
+under the key. Never put the `service_role`/secret key here. In the project's
+**Authentication** settings, turning **"Confirm email" off** lets new users sign
+in immediately; left on, sign-up returns a "confirm your email" state that the UI
+surfaces. Passwords are only ever sent to Supabase over TLS — the app never sees
+or stores them.
+
+The login is real and cross-device; the game data (roster, leagues, market
+positions) is still stored per-device, keyed by the account id. Syncing that to
+the backend so it follows a user across devices is the natural next step.
 
 **Each account is its own world.** Signing in namespaces the app's own storage
 keys by the account id — `cbd_team_v1` → `cbd_team_v1::<id>`, and likewise for

@@ -1528,6 +1528,8 @@ body.account #hint{display:none}
 .acct-av.sm{width:38px;height:38px;font-size:14px;background:var(--violet-soft);color:var(--violet)}
 .acct-me-t .a{font-size:20px;font-weight:800}
 .acct-me-t .b{font-size:13px;color:var(--ink-2);margin-top:2px}
+.acct-badge{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;letter-spacing:.4px;
+  color:var(--violet);background:var(--violet-soft);padding:3px 9px;border-radius:20px}
 
 /* ---------- rows inside cards ---------- */
 .acct-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line-soft);
@@ -1793,6 +1795,99 @@ body.account #hint{display:none}
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // js/account/config.js
+  var SUPABASE_URL = "https://xppjoqkasnuzbyvwuucu.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_Hhq2KEHIlmo1VBmz938_Ug_4F_o2qSS";
+
+  // js/account/supabase.js
+  var supaConfigured = () => !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  var SESSION_KEY = "arc_supabase_session";
+  function loadSession() {
+    try {
+      return JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function storeSession(s) {
+    try {
+      s ? localStorage.setItem(SESSION_KEY, JSON.stringify(s)) : localStorage.removeItem(SESSION_KEY);
+    } catch (e) {
+    }
+  }
+  function clearSession() {
+    storeSession(null);
+  }
+  function sessionFrom(d) {
+    const u = d.user || {};
+    const meta = u.user_metadata || {};
+    return {
+      access_token: d.access_token,
+      refresh_token: d.refresh_token,
+      // GoTrue gives expires_in (seconds from now); keep an absolute ms deadline.
+      expires_at: Date.now() + (d.expires_in || 3600) * 1e3,
+      user: {
+        id: u.id,
+        email: u.email,
+        name: meta.name || meta.full_name || (u.email || "").split("@")[0]
+      }
+    };
+  }
+  function errorFrom(data, status) {
+    return data.error_description || data.msg || data.message || (typeof data.error === "string" ? data.error : null) || `Request failed (${status}).`;
+  }
+  async function post(path, body2, token) {
+    const headers = { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY };
+    if (token) headers.Authorization = "Bearer " + token;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body2 || {})
+    });
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+    }
+    return { ok: res.ok, status: res.status, data };
+  }
+  async function supaSignUp(name, email, password) {
+    const r = await post("signup", { email, password, data: { name } });
+    if (!r.ok) return { error: errorFrom(r.data, r.status) };
+    if (r.data.access_token) {
+      const s = sessionFrom(r.data);
+      storeSession(s);
+      return { session: s };
+    }
+    return { needsConfirm: true };
+  }
+  async function supaSignIn(email, password) {
+    const r = await post("token?grant_type=password", { email, password });
+    if (!r.ok) return { error: errorFrom(r.data, r.status) };
+    const s = sessionFrom(r.data);
+    storeSession(s);
+    return { session: s };
+  }
+  async function supaSignOut() {
+    const s = loadSession();
+    if (s && s.access_token) {
+      try {
+        await post("logout", {}, s.access_token);
+      } catch (e) {
+      }
+    }
+    clearSession();
+  }
+  async function supaRefresh() {
+    const s = loadSession();
+    if (!s || !s.refresh_token) return null;
+    const r = await post("token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    if (!r.ok) return null;
+    const ns = sessionFrom(r.data);
+    storeSession(ns);
+    return ns;
+  }
+
   // js/account/store.js
   var ACCT_KEY = "arc_account_v1";
   function loadAccounts() {
@@ -1824,9 +1919,6 @@ body.account #hint{display:none}
   }
   var normEmail = (e) => String(e || "").trim().toLowerCase();
   var idFor = (email) => "u_" + hashPass("id:" + normEmail(email));
-  function sessionId() {
-    return loadAccounts().session;
-  }
   function currentUser() {
     const a = loadAccounts();
     return a.users.find((u) => u.id === a.session) || null;
@@ -1874,22 +1966,53 @@ body.account #hint{display:none}
     a.session = null;
     saveAccounts(a);
   }
-  function joinLeague(userId, league) {
-    const a = loadAccounts();
-    const u = a.users.find((x) => x.id === userId);
-    if (!u) return false;
-    u.leagues = u.leagues || [];
-    if (u.leagues.some((l) => l.id === league.id)) return false;
-    u.leagues.push({ id: league.id, name: league.name, meta: league.meta || "", joined: Date.now() });
-    saveAccounts(a);
+  function activeAccountId() {
+    if (supaConfigured()) {
+      const s = loadSession();
+      if (s && s.user && s.user.id) return "sb_" + s.user.id;
+    }
+    return loadAccounts().session;
+  }
+  function activeAccount() {
+    if (supaConfigured()) {
+      const s = loadSession();
+      if (s && s.user && s.user.id) return { id: "sb_" + s.user.id, name: s.user.name, email: s.user.email, source: "supabase" };
+    }
+    const u = currentUser();
+    return u ? { id: u.id, name: u.name, email: u.email, source: "local" } : null;
+  }
+  var MEMBER_KEY = "arc_member_v1";
+  function loadMembers() {
+    try {
+      return JSON.parse(localStorage.getItem(MEMBER_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveMembers(m) {
+    try {
+      localStorage.setItem(MEMBER_KEY, JSON.stringify(m));
+    } catch (e) {
+    }
+  }
+  function getLeagues(accountId) {
+    return accountId && loadMembers()[accountId] || [];
+  }
+  function joinLeague(accountId, league) {
+    if (!accountId) return false;
+    const m = loadMembers();
+    const list = m[accountId] || [];
+    if (list.some((l) => l.id === league.id)) return false;
+    list.push({ id: league.id, name: league.name, meta: league.meta || "", joined: Date.now() });
+    m[accountId] = list;
+    saveMembers(m);
     return true;
   }
-  function leaveLeague(userId, leagueId) {
-    const a = loadAccounts();
-    const u = a.users.find((x) => x.id === userId);
-    if (!u) return false;
-    u.leagues = (u.leagues || []).filter((l) => l.id !== leagueId);
-    saveAccounts(a);
+  function leaveLeague(accountId, leagueId) {
+    if (!accountId) return false;
+    const m = loadMembers();
+    m[accountId] = (m[accountId] || []).filter((l) => l.id !== leagueId);
+    saveMembers(m);
     return true;
   }
 
@@ -1898,7 +2021,7 @@ body.account #hint{display:none}
   (function install() {
     let id = null;
     try {
-      id = sessionId();
+      id = activeAccountId();
     } catch (e) {
       id = null;
     }
@@ -8634,7 +8757,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/account/ui.js
   var ui_exports2 = {};
   __export(ui_exports2, {
-    acctAddAccount: () => acctAddAccount,
     acctAuthMode: () => acctAuthMode,
     acctCreate: () => acctCreate,
     acctJoinCode: () => acctJoinCode,
@@ -8655,6 +8777,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     { id: "sunday-scaries", name: "Sunday Scaries", meta: "8-team Best Ball \xB7 Open" }
   ];
   var authMode = "signin";
+  var busy = false;
   var esc3 = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   var initials2 = (n) => String(n || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   var money2 = (n) => "$" + (Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -8675,16 +8798,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     el.textContent = msg;
     el.classList.add("show");
     clearTimeout(acctToast._t);
-    acctToast._t = setTimeout(() => el.classList.remove("show"), 1700);
+    acctToast._t = setTimeout(() => el.classList.remove("show"), 2200);
   }
   function renderAccount() {
     const el = document.getElementById("acctBody");
     if (!el) return;
-    const u = currentUser();
-    el.innerHTML = u ? profileHTML(u) : authHTML();
+    const acc = activeAccount();
+    el.innerHTML = acc ? profileHTML(acc) : authHTML();
   }
   function authHTML() {
-    const others = listUsers();
+    const cloud = supaConfigured();
+    const others = cloud ? [] : listUsers();
     return `
     <div class="acct-hero">
       <div class="acct-logo">${footballSvg()}</div>
@@ -8700,7 +8824,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 
     <div id="acctErr" class="acct-err" style="display:none"></div>
 
-    ${authMode === "signin" ? signinForm() : createForm()}
+    ${authMode === "signin" ? signinForm() : createForm(cloud)}
 
     ${others.length ? `<div class="acct-lb">SAVED ON THIS DEVICE</div>
       <div class="acct-card">
@@ -8712,8 +8836,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       </div>` : ""}
 
     <div class="acct-guest" onclick="closeAccount()">Keep browsing as a guest</div>
-    <p class="acct-fine">Prototype accounts are stored only in this browser \u2014 there is no server
-      and no real security. Don't reuse a password you use anywhere else.</p>`;
+    <p class="acct-fine">${cloud ? "Your account works on any device you sign in on. Passwords are handled by Supabase over an encrypted connection \u2014 this app never sees or stores them." : "Prototype accounts are stored only in this browser \u2014 there is no server and no real security. Don\u2019t reuse a password you use anywhere else."}</p>`;
   }
   function signinForm() {
     return `<div class="acct-form">
@@ -8722,33 +8845,36 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <label>Password</label>
     <input id="acctPass" type="password" autocomplete="current-password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
       onkeydown="if(event.key==='Enter')acctSignIn()">
-    <div class="acct-btn" onclick="acctSignIn()">Sign in</div>
+    <div class="acct-btn" id="acctSignInBtn" onclick="acctSignIn()">Sign in</div>
   </div>`;
   }
-  function createForm() {
+  function createForm(cloud) {
     return `<div class="acct-form">
     <label>Display name</label>
     <input id="acctName" type="text" autocomplete="name" placeholder="Team manager name">
     <label>Email</label>
     <input id="acctEmail" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com">
     <label>Password</label>
-    <input id="acctPass" type="password" autocomplete="new-password" placeholder="At least 4 characters"
+    <input id="acctPass" type="password" autocomplete="new-password"
+      placeholder="At least ${cloud ? 6 : 4} characters"
       onkeydown="if(event.key==='Enter')acctCreate()">
-    <div class="acct-btn" onclick="acctCreate()">Create account</div>
+    <div class="acct-btn" id="acctCreateBtn" onclick="acctCreate()">Create account</div>
   </div>`;
   }
-  function profileHTML(u) {
-    const leagues = u.leagues || [];
+  function profileHTML(acc) {
+    const leagues = getLeagues(acc.id);
     const joinable = OPEN_LEAGUES.filter((l) => !leagues.some((j) => j.id === l.id));
     const pf = portfolio();
     const watch = (mkStore.watch || []).length;
-    const others = listUsers().filter((x) => x.id !== u.id);
+    const local = acc.source === "local";
+    const others = local ? listUsers().filter((x) => x.id !== acc.id) : [];
     return `
     <div class="acct-me">
-      <div class="acct-av">${initials2(u.name)}</div>
+      <div class="acct-av">${initials2(acc.name)}</div>
       <div class="acct-me-t">
-        <div class="a">${esc3(u.name)}</div>
-        <div class="b">${esc3(u.email)}</div>
+        <div class="a">${esc3(acc.name)}</div>
+        <div class="b">${esc3(acc.email)}</div>
+        <div class="acct-badge">${acc.source === "supabase" ? "Signed in \xB7 works across your devices" : "Signed in \xB7 on this device"}</div>
       </div>
     </div>
 
@@ -8794,7 +8920,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         </div>`).join("")}
       </div>` : ""}
 
-    <div class="acct-btn ghost" onclick="acctAddAccount()">Add another account</div>
+    ${local ? `<div class="acct-btn ghost" onclick="acctSignOut()">Add another account</div>` : ""}
     <div class="acct-btn danger" onclick="acctSignOut()">Sign out</div>`;
   }
   function acctAuthMode(m) {
@@ -8812,51 +8938,114 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const el = document.getElementById(id);
     return el ? el.value : "";
   };
-  function acctSignIn() {
-    const r = authenticate({ email: val("acctEmail"), password: val("acctPass") });
-    if (r.error) return showErr(r.error);
-    location.reload();
+  function btnBusy(id, on, label) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.pointerEvents = on ? "none" : "";
+    el.style.opacity = on ? ".6" : "";
+    el.textContent = on ? label : id === "acctSignInBtn" ? "Sign in" : "Create account";
   }
-  function acctCreate() {
-    const r = createAccount({ name: val("acctName"), email: val("acctEmail"), password: val("acctPass") });
-    if (r.error) return showErr(r.error);
-    location.reload();
+  function friendly(msg) {
+    const m = String(msg || "");
+    if (/invalid login credentials/i.test(m)) return "That email or password isn\u2019t right.";
+    if (/user already registered/i.test(m)) return "An account with that email already exists \u2014 try signing in.";
+    if (/invalid.*email|email.*invalid/i.test(m)) return "Enter a valid email address.";
+    return m;
+  }
+  async function acctSignIn() {
+    if (busy) return;
+    showErr("");
+    if (supaConfigured()) {
+      busy = true;
+      btnBusy("acctSignInBtn", true, "Signing in\u2026");
+      let r;
+      try {
+        r = await supaSignIn(val("acctEmail"), val("acctPass"));
+      } catch (e) {
+        r = { error: "Can\u2019t reach the server. Check your connection and try again." };
+      }
+      busy = false;
+      btnBusy("acctSignInBtn", false);
+      if (r.error) return showErr(friendly(r.error));
+      location.reload();
+    } else {
+      const r = authenticate({ email: val("acctEmail"), password: val("acctPass") });
+      if (r.error) return showErr(r.error);
+      location.reload();
+    }
+  }
+  async function acctCreate() {
+    if (busy) return;
+    showErr("");
+    const name = val("acctName"), email = val("acctEmail"), password = val("acctPass");
+    if (supaConfigured()) {
+      if (!name || !name.trim()) return showErr("Enter a display name.");
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showErr("Enter a valid email address.");
+      if (!password || password.length < 6) return showErr("Password must be at least 6 characters.");
+      busy = true;
+      btnBusy("acctCreateBtn", true, "Creating\u2026");
+      let r;
+      try {
+        r = await supaSignUp(name.trim(), email, password);
+      } catch (e) {
+        r = { error: "Can\u2019t reach the server. Check your connection and try again." };
+      }
+      busy = false;
+      btnBusy("acctCreateBtn", false);
+      if (r.error) return showErr(friendly(r.error));
+      if (r.needsConfirm) {
+        authMode = "signin";
+        renderAccount();
+        showErr("Account created \u2014 check your email for a confirmation link, then sign in.");
+        return;
+      }
+      location.reload();
+    } else {
+      const r = createAccount({ name, email, password });
+      if (r.error) return showErr(r.error);
+      location.reload();
+    }
   }
   function acctSwitch(id) {
     setSession(id);
     location.reload();
   }
-  function acctSignOut() {
-    signOut();
-    location.reload();
-  }
-  function acctAddAccount() {
-    signOut();
+  async function acctSignOut() {
+    if (busy) return;
+    if (supaConfigured() && loadSession()) {
+      busy = true;
+      try {
+        await supaSignOut();
+      } catch (e) {
+        clearSession();
+      }
+      busy = false;
+    } else signOut();
     location.reload();
   }
   function acctJoinLeague(id) {
-    const u = currentUser();
-    if (!u) return;
+    const acc = activeAccount();
+    if (!acc) return;
     const l = OPEN_LEAGUES.find((x) => x.id === id);
     if (!l) return;
-    joinLeague(u.id, l);
+    joinLeague(acc.id, l);
     acctToast("Joined " + l.name);
     renderAccount();
   }
   function acctLeaveLeague(id) {
-    const u = currentUser();
-    if (!u) return;
-    leaveLeague(u.id, id);
+    const acc = activeAccount();
+    if (!acc) return;
+    leaveLeague(acc.id, id);
     acctToast("Left league");
     renderAccount();
   }
   function acctJoinCode() {
-    const u = currentUser();
-    if (!u) return;
+    const acc = activeAccount();
+    if (!acc) return;
     const code = val("acctCode").trim();
     if (!code) return acctToast("Enter an invite code");
     const id = "code-" + code.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (joinLeague(u.id, { id, name: "League " + code.toUpperCase(), meta: "Private \xB7 joined by code" })) {
+    if (joinLeague(acc.id, { id, name: "League " + code.toUpperCase(), meta: "Private \xB7 joined by code" })) {
       acctToast("Joined by code");
     } else {
       acctToast("You are already in that league");
@@ -8871,7 +9060,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>`;
   }
-  function initAccount2() {
+  async function initAccount2() {
+    if (!supaConfigured()) return;
+    const s = loadSession();
+    if (!s) return;
+    if (Date.now() > (s.expires_at || 0) - 6e4) {
+      try {
+        const ns = await supaRefresh();
+        if (!ns) {
+          clearSession();
+          location.reload();
+        }
+      } catch (e) {
+      }
+    }
   }
 
   // js/main.js

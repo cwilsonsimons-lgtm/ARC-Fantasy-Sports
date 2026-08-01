@@ -10,11 +10,13 @@
 // never signs in gets exactly the app that shipped before accounts existed, and
 // the build/verification harness is untouched.
 //
-// SECURITY: this is a front-end demo. The password "hash" below is not
-// cryptographic and the whole store is readable by anyone with the device. It
-// exists to make the prototype feel like a real multi-account app, not to
-// protect real credentials. A production build would move all of this behind a
-// server.
+// SECURITY: the *local* users below are a front-end demo — the password "hash"
+// is not cryptographic and the store is readable by anyone with the device. They
+// exist so the app works with no backend (and so the offline harness can run).
+// When a Supabase project is configured (account/config.js), real accounts come
+// from there instead, with proper server-side auth; the local users are only the
+// offline fallback.
+import { supaConfigured, loadSession } from './supabase.js';
 
 export const ACCT_KEY = 'arc_account_v1';
 
@@ -82,24 +84,46 @@ export function authenticate({ email, password }) {
 export function setSession(id) { const a = loadAccounts(); a.session = id; saveAccounts(a); }
 export function signOut() { const a = loadAccounts(); a.session = null; saveAccounts(a); }
 
+// ---------------------------------------------------------------- active account
+// The single source of truth the rest of the app reads: a Supabase session when
+// one is signed in, otherwise a local account, otherwise null (guest). The id is
+// what account/boot.js namespaces the app's storage by, so it must be stable per
+// account — Supabase ids are prefixed so they can't collide with local ones.
+export function activeAccountId() {
+  if (supaConfigured()) { const s = loadSession(); if (s && s.user && s.user.id) return 'sb_' + s.user.id; }
+  return loadAccounts().session;
+}
+export function activeAccount() {
+  if (supaConfigured()) {
+    const s = loadSession();
+    if (s && s.user && s.user.id) return { id: 'sb_' + s.user.id, name: s.user.name, email: s.user.email, source: 'supabase' };
+  }
+  const u = currentUser();
+  return u ? { id: u.id, name: u.name, email: u.email, source: 'local' } : null;
+}
+
 // ---------------------------------------------------------------- leagues
-// Membership is per user and lives in the account record (not the namespaced
-// app data), so it survives account switches and never collides across users.
-export function joinLeague(userId, league) {
-  const a = loadAccounts();
-  const u = a.users.find(x => x.id === userId);
-  if (!u) return false;
-  u.leagues = u.leagues || [];
-  if (u.leagues.some(l => l.id === league.id)) return false;
-  u.leagues.push({ id: league.id, name: league.name, meta: league.meta || '', joined: Date.now() });
-  saveAccounts(a);
+// Membership is keyed by account id in one global store, so it works the same
+// for Supabase and local accounts, survives account switches, and never collides
+// across users. (It stays on the device for now — syncing it to the backend so
+// it follows a user across devices is the natural next step.)
+const MEMBER_KEY = 'arc_member_v1';
+function loadMembers() { try { return JSON.parse(localStorage.getItem(MEMBER_KEY)) || {}; } catch (e) { return {}; } }
+function saveMembers(m) { try { localStorage.setItem(MEMBER_KEY, JSON.stringify(m)); } catch (e) { /* quota */ } }
+export function getLeagues(accountId) { return (accountId && loadMembers()[accountId]) || []; }
+export function joinLeague(accountId, league) {
+  if (!accountId) return false;
+  const m = loadMembers();
+  const list = m[accountId] || [];
+  if (list.some(l => l.id === league.id)) return false;
+  list.push({ id: league.id, name: league.name, meta: league.meta || '', joined: Date.now() });
+  m[accountId] = list; saveMembers(m);
   return true;
 }
-export function leaveLeague(userId, leagueId) {
-  const a = loadAccounts();
-  const u = a.users.find(x => x.id === userId);
-  if (!u) return false;
-  u.leagues = (u.leagues || []).filter(l => l.id !== leagueId);
-  saveAccounts(a);
+export function leaveLeague(accountId, leagueId) {
+  if (!accountId) return false;
+  const m = loadMembers();
+  m[accountId] = (m[accountId] || []).filter(l => l.id !== leagueId);
+  saveMembers(m);
   return true;
 }

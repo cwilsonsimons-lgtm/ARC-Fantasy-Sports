@@ -7,15 +7,20 @@
 // keys, so the app that ships for someone who never signs in is byte-for-byte
 // the one that existed before accounts, and the verification harness (which
 // clears storage and asserts on the raw keys) is unaffected.
-import { sessionId } from './store.js';
+//
+// The active id comes from account/store.js: a Supabase session if one is signed
+// in, otherwise a local account. Both live in localStorage and are read
+// synchronously here, so the namespace is in place before store.js and
+// markets/data.js read their keys.
+import { activeAccountId } from './store.js';
 
-// Only the app's own data keys are namespaced. The account directory itself
-// (arc_account_v1) is global and must never be rewritten.
+// Only the app's own data keys are namespaced. The account directory, the
+// Supabase session and the league membership are all global and never rewritten.
 const OWNED = ['cbd_team_v1', 'arc_markets_v1'];
 
 (function install() {
   let id = null;
-  try { id = sessionId(); } catch (e) { id = null; }
+  try { id = activeAccountId(); } catch (e) { id = null; }
   if (!id) return;                       // guest → original keys, nothing to wrap
 
   const suffix = '::' + id;
