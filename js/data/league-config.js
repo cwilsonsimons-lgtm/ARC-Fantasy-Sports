@@ -12,7 +12,17 @@ export const LEAGUE_DEFAULTS={
   waiverHour:2,          // 24h clock, league time (2 = 2 AM)
   waiverPeriod:2,        // days a dropped player sits on waivers (0 = none)
   tradeDeadline:11,      // week number, 0 = no deadline
-  commish:'pandas'       // team key that owns the commissioner role
+  commish:'pandas',      // team key that owns the commissioner role
+  // ---- draft ----
+  draftDate:'2026-08-27',  // yyyy-mm-dd the draft opens
+  draftTime:'19:00',       // 24h HH:MM the draft opens (league time)
+  draftType:'snake',       // snake | linear | auction
+  draftPool:'all',         // all | rookies | vets — who is eligible to be drafted
+  draftPickSec:90,         // seconds on the clock per pick
+  draftPauseHour:0,        // 24h hour the draft pauses each night (slow drafts only)
+  draftResumeHour:8,       // 24h hour the draft resumes the next morning
+  draftRounds:15,          // rounds in the draft
+  draftOrder:null          // array of team keys; null = fall back to the league's default order
 };
 
 export function LG(){return store.league;}

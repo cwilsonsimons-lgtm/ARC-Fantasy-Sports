@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { slotAllows } from './clock.js';
+import { DRAFT_ORDER, slotAllows } from './clock.js';
 import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.js';
 import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
@@ -95,6 +95,116 @@ export function leagueCards(){
     <div class="set-card">
       <div class="set-title">Trades</div>
       ${setRow('Trade deadline',setSel('tradeDeadline',[[0,'No deadline']].concat(rangeOpts(MINW,MAXW,w=>'Week '+w)),L.tradeDeadline,1))}
+    </div>`;
+}
+// ---- draft ----
+// Native date/time pickers, so start time reads in the viewer's own locale.
+export function setDate(key,cur){
+  return `<input class="set-ctl set-date" type="date" value="${cur||''}"${ro()}
+    onchange="setLeague('${key}',this.value,0)">`;
+}
+export function setTime(key,cur){
+  return `<input class="set-ctl set-date" type="time" value="${cur||''}"${ro()}
+    onchange="setLeague('${key}',this.value,0)">`;
+}
+// Pick clocks run from half a minute to a full day — anything past an hour is a
+// "slow" draft that people leave running for days, which is why those unlock the
+// overnight pause below.
+export const PICK_SECS=[30,60,90,120,300,600,1800,3600,7200,14400,28800,43200,86400];
+export function secLabel(s){
+  if(s<60)return s+' sec';
+  if(s<3600){const m=s/60;return m+(m===1?' min':' min');}
+  const h=s/3600;return h+(h===1?' hour':' hours');
+}
+export const DRAFT_TYPES=[['snake','Snake'],['linear','Linear'],['auction','Auction']];
+export const DRAFT_POOLS=[['all','All players'],['rookies','Rookies only'],['vets','Veterans only']];
+// The stored order can drift from the league (teams added/renamed), so always
+// reconcile against the current roster of teams before showing or saving it.
+export function draftOrderKeys(){
+  const base=DRAFT_ORDER;
+  const saved=Array.isArray(LG().draftOrder)?LG().draftOrder.filter(k=>base.indexOf(k)>-1):[];
+  base.forEach(k=>{if(saved.indexOf(k)<0)saved.push(k);});
+  return saved;
+}
+export function saveDraftOrder(order){
+  if(!guard()){renderSettings();return;}
+  LG().draftOrder=order.slice();
+  saveStore();renderSettings();
+}
+export function moveDraftPick(idx,dir){
+  if(!guard()){renderSettings();return;}
+  const o=draftOrderKeys(),j=idx+dir;
+  if(j<0||j>=o.length)return;
+  [o[idx],o[j]]=[o[j],o[idx]];
+  saveDraftOrder(o);
+}
+export function randomizeDraftOrder(){
+  if(!guard()){renderSettings();return;}
+  const o=draftOrderKeys();
+  for(let i=o.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[o[i],o[j]]=[o[j],o[i]];}
+  saveDraftOrder(o);
+  toast('Draft order randomized');
+}
+export function resetDraftOrder(){
+  if(!guard()){renderSettings();return;}
+  LG().draftOrder=null;saveStore();renderSettings();
+}
+export const ICON_CHEV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 15 6-6 6 6"/></svg>';
+export function draftOrderList(){
+  const o=draftOrderKeys(),last=o.length-1,edit=isCommish();
+  const rows=o.map((k,i)=>{
+    const t=T[k]||{n:k,mgr:'',c:'#888'};
+    const mine=k===MY_TEAM?'<span class="do-me">You</span>':'';
+    const ctrls=edit?`
+      <div class="do-btn${i===0?' off':''}" onclick="moveDraftPick(${i},-1)" aria-label="Move up">${ICON_CHEV}</div>
+      <div class="do-btn down${i===last?' off':''}" onclick="moveDraftPick(${i},1)" aria-label="Move down">${ICON_CHEV}</div>`:'';
+    return `<div class="do-row">
+      <div class="do-pos">${i+1}</div>
+      <div class="do-dot" style="background:${t.c}"></div>
+      <div class="do-team"><div class="do-name">${escHtml(t.n)}${mine}</div>
+        <div class="do-mgr">${escHtml(t.mgr)}</div></div>
+      <div class="do-ctrls">${ctrls}</div>
+    </div>`;
+  }).join('');
+  return `<div class="do-list">${rows}</div>`;
+}
+export function draftCards(){
+  const L=LG();
+  const slow=+L.draftPickSec>3600;
+  const pauseCard=slow?`
+    <div class="set-card">
+      <div class="set-title">Overnight Pause</div>
+      <div class="set-note">With picks longer than an hour the clock keeps running overnight. Pause it so nobody is on the clock while the league sleeps.</div>
+      ${setRow('Pause draft at',setSel('draftPauseHour',rangeOpts(0,23,hourLabel),L.draftPauseHour,1))}
+      ${setRow('Resume draft at',setSel('draftResumeHour',rangeOpts(0,23,hourLabel),L.draftResumeHour,1))}
+    </div>`:'';
+  const orderBtns=isCommish()?`<div class="set-btns" style="margin-top:12px">
+      <div class="set-btn" onclick="randomizeDraftOrder()">Randomize order</div>
+      <div class="set-btn" onclick="resetDraftOrder()">${ICON_X} Reset to default order</div>
+    </div>`:'';
+  return `
+    <div class="set-card">
+      <div class="set-title">Schedule</div>
+      ${setRow('Start date',setDate('draftDate',L.draftDate))}
+      ${setRow('Start time',setTime('draftTime',L.draftTime))}
+    </div>
+    <div class="set-card">
+      <div class="set-title">Format</div>
+      ${setRow('Draft type',setSel('draftType',DRAFT_TYPES,L.draftType))}
+      ${setRow('Available players',setSel('draftPool',DRAFT_POOLS,L.draftPool))}
+      ${setRow('Rounds',setNum('draftRounds',L.draftRounds,1,30))}
+      ${setRow('Time per pick',setSel('draftPickSec',PICK_SECS.map(s=>[s,secLabel(s)]),L.draftPickSec,1))}
+    </div>
+    ${pauseCard}
+    <div class="set-card">
+      <div class="set-title">Draft Order <span class="c">${draftOrderKeys().length} TEAMS</span></div>
+      <div class="set-note">${L.draftType==='snake'
+        ? 'Snake reverses this order every round.'
+        : L.draftType==='linear'
+        ? 'Linear keeps this order the same every round.'
+        : 'Nomination order for the auction.'}</div>
+      ${draftOrderList()}
+      ${orderBtns}
     </div>`;
 }
 // ---- roster shape ----
@@ -242,7 +352,7 @@ export function commishCards(){
     </div>`;
 }
 
-export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
+export const BASE_SET_TABS=[['general','General'],['draft','Draft'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
 export function setTabs(){
   return isCommish()?BASE_SET_TABS.concat([['commish','★ Commissioner']]):BASE_SET_TABS;
 }
@@ -273,7 +383,7 @@ export function renderSettings(){
       <div class="set-title">Per-game backgrounds</div>
       <div class="set-note">Open any matchup — yours, or tap a game in All Matchups — and use the camera on the stadium banner to set a background for just that game.</div>
     </div>`;
-  const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),
+  const bodies={general:leagueCards(),draft:draftCards(),roster:rosterCards(),scoring:scoringCards(),
     matchups:backdropCards,commish:commishCards()};
   const cm=commishTeam();
   const sub=isCommish()

@@ -49,3 +49,26 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
   cursor:pointer;color:var(--violet);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
   font-size:11px;letter-spacing:1px;text-transform:uppercase}
 .set-ro-btn:active{opacity:.8}
+/* native date/time pickers need a wider field than the tidy number inputs */
+input.set-ctl.set-date{width:auto;min-width:118px;text-align:left;padding:7px 10px}
+input.set-ctl.set-date::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer}
+/* draft order — a reorderable list of teams */
+.do-list{margin-top:6px}
+.do-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.do-row:last-child{border-bottom:0}
+.do-pos{flex:none;width:22px;text-align:center;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-weight:700;font-size:13px;color:var(--ink-3)}
+.do-dot{flex:none;width:10px;height:10px;border-radius:50%}
+.do-team{flex:1;min-width:0}
+.do-name{display:flex;align-items:center;gap:7px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:13px;letter-spacing:.3px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.do-me{flex:none;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--violet);
+  border:1px solid var(--violet);border-radius:6px;padding:1px 5px}
+.do-mgr{font-size:11px;color:var(--ink-3);margin-top:1px}
+.do-ctrls{flex:none;display:flex;gap:6px}
+.do-btn{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--line);border-radius:9px;
+  background:var(--card-2);color:var(--ink-2);cursor:pointer}
+.do-btn svg{width:15px;height:15px}
+.do-btn.down svg{transform:rotate(180deg)}
+.do-btn:active{opacity:.8}
+.do-btn.off{opacity:.32;pointer-events:none}
