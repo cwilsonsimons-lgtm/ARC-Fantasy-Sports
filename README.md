@@ -61,6 +61,75 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## Accounts
+
+The **Profile** item in the bottom nav opens the account surface — sign in,
+create an account, manage the leagues you've joined, and see a snapshot of your
+Arc Markets portfolio. It is a full-screen section like Arc Markets, on the
+fantasy app's own violet palette.
+
+There are **two auth backends behind one UI**, and `activeAccount()` in
+`js/account/store.js` hides which is in play:
+
+- **Supabase** (when `js/account/config.js` holds a project URL + publishable
+  key): real accounts. Someone signs up on their phone and can sign in on their
+  laptop; different people get different accounts. `js/account/supabase.js` talks
+  to Supabase's auth server (GoTrue) over plain `fetch` — no SDK, so the
+  no-runtime-dependencies rule holds — for sign up, sign in, sign out and token
+  refresh. The session lives under one global key (`arc_supabase_session`).
+- **Local fallback** (config empty, or offline): a directory of users under
+  `arc_account_v1`, with a non-cryptographic password scramble. It only keeps the
+  value from being readable at a glance — **not** real security. This is what
+  runs with no network, and what the offline verification harness uses.
+
+### Configuring Supabase
+
+Fill in `js/account/config.js` with your project's **URL** and **publishable
+(anon) key** — both are safe in front-end code; Supabase's dashboard says as much
+under the key. Never put the `service_role`/secret key here. In the project's
+**Authentication** settings, turning **"Confirm email" off** lets new users sign
+in immediately; left on, sign-up returns a "confirm your email" state that the UI
+surfaces. Passwords are only ever sent to Supabase over TLS — the app never sees
+or stores them.
+
+The login is real and cross-device; the game data (roster, leagues, market
+positions) is still stored per-device, keyed by the account id. Syncing that to
+the backend so it follows a user across devices is the natural next step.
+
+**Each account is its own world.** Signing in namespaces the app's own storage
+keys by the account id — `cbd_team_v1` → `cbd_team_v1::<id>`, and likewise for
+`arc_markets_v1` — so every account carries its own team, roster, lineup,
+watchlist and market positions. `js/account/boot.js` installs that namespacing
+by wrapping `localStorage`'s methods, and `main.js` imports it *first* because
+`store.js` and `markets/data.js` read those keys at load. Signing in, out or
+switching reloads the page so the whole app comes up cleanly under the new
+namespace.
+
+**Guest is the un-namespaced default.** Anyone who never signs in gets exactly
+the app that shipped before accounts — the original keys, untouched — so the
+build and the verification harness (which clears storage and asserts on the raw
+keys) are unaffected. Only a real sign-in moves data behind a namespace.
+
+**Leagues** are per user (`Join`/`Leave`, plus join-by-code), stored in the
+account record rather than the namespaced app data so they survive account
+switches. **Markets** gains real buying and selling: the player sheet buys and
+sells in 50-share lots against a per-account positions ledger layered over the
+seeded starter holdings, so a fresh account starts from the same portfolio and
+moves from there.
+
+Arc Markets deliberately only **buys and sells** contracts — there is no "trade"
+on the markets side. "Trade" means one thing in this app: a *fantasy roster
+trade*, player-for-player between managers on the league side, bounded by the
+league's trade deadline. Buying a player's contract in Arc Markets is a market
+position, like a stock; it never touches your roster, your lineup or the league.
+Keeping the two words apart keeps the two systems from being confused.
+
+One trap worth flagging, because Arc Markets shipped the same bug once (see
+below): the overlay's element class is `.acct` but the body **state** class is
+`.account` — deliberately different names. Share them and every `.acct { … }`
+rule also matches `<body class="acct">`, applying `position:absolute` and
+`display:none` to the whole page.
+
 ## Layout
 
 ```
@@ -70,6 +139,7 @@ js/
   main.js       entry point: module order, window bridge, boot sequence
   state.js      the handful of values shared across modules
   store.js      localStorage persistence, roster rows, image downscaling
+  account/      client-side accounts: sign-in, per-account key namespacing
   data/         teams, league config, NFL player/schedule/colour tables
   markets/      Arc Markets — self-contained, see above
   *.js          one module per screen or subsystem

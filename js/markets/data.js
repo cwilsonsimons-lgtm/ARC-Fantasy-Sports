@@ -40,6 +40,16 @@ function load() {
 }
 export const mkStore = load();
 mkStore.watch = mkStore.watch || [];
+// The account's own buying and selling, as a delta from the seeded starter lots
+// below: { playerId: sharesBoughtOrSold }. Empty for a fresh account, so a new
+// signer starts from the same seeded portfolio and can buy or sell from there.
+// Isolated per account because this whole key is namespaced (account/boot).
+//
+// Note: this is Arc Markets — you buy and sell a player's *contract*, like a
+// stock. It is NOT a fantasy roster trade (player-for-player between managers,
+// governed by the league trade deadline). The two are unrelated; markets never
+// touches league or roster state.
+mkStore.positions = mkStore.positions || {};
 export function saveMk() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(mkStore)); } catch (e) { /* quota */ }
 }
@@ -110,12 +120,36 @@ export function topRookie() {
 export const HOLDINGS = MARKET.slice(0, HOLDING_COUNT)
   .map(p => ({ id: p.id, shares: SHARES_PER_LOT }));
 
+// Shares the account actually holds: the seeded starter lot plus (or minus) how
+// much it has bought or sold. A fresh account has done neither, so this is
+// exactly the seed.
+const seedShares = {};
+HOLDINGS.forEach(h => { seedShares[h.id] = h.shares; });
+export function ownedShares(id) {
+  return Math.max(0, (seedShares[id] || 0) + (mkStore.positions[id] || 0));
+}
+
+// Buy (+) or sell (-) `delta` shares of a contract, clamped so a position can
+// never go negative. Returns the new share count.
+export function buySellShares(id, delta) {
+  if (!BY_ID[id]) return 0;
+  const seed = seedShares[id] || 0;
+  let pos = (mkStore.positions[id] || 0) + delta;
+  if (seed + pos < 0) pos = -seed;            // can't sell more than you hold
+  if (pos === 0) delete mkStore.positions[id];
+  else mkStore.positions[id] = pos;
+  saveMk();
+  return ownedShares(id);
+}
+
 export function holdingRows() {
-  return HOLDINGS.map(h => {
-    const p = BY_ID[h.id];
-    return { ...p, shares: h.shares,
-             value: Math.round(p.price * h.shares * 100) / 100,
-             dayChange: Math.round(p.change * h.shares * 100) / 100 };
+  // Walk the market in value order so the table stays stable, keeping every
+  // contract the account currently holds — seeded or bought.
+  return MARKET.filter(p => ownedShares(p.id) > 0).map(p => {
+    const shares = ownedShares(p.id);
+    return { ...p, shares,
+             value: Math.round(p.price * shares * 100) / 100,
+             dayChange: Math.round(p.change * shares * 100) / 100 };
   });
 }
 
