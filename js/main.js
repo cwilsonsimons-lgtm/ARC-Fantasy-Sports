@@ -34,6 +34,18 @@ import * as mk2 from './markets/market.js';
 import * as mk3 from './markets/portfolio.js';
 import * as mk4 from './markets/charts.js';
 import * as mk5 from './markets/index.js';
+import * as mk6 from './markets/trade.js';
+import * as mk7 from './markets/ledger.js';
+// The market's internals are namespaced rather than splatted onto window: several
+// names (seedHistory, RANGES, publish) exist in more than one of these modules,
+// and the fantasy app has its own globals to stay clear of.
+import * as mkEngine from './markets/engine.js';
+import * as mkContracts from './markets/contracts.js';
+import * as mkQuotes from './markets/quotes.js';
+import * as mkEvents from './markets/events.js';
+import * as mkProj from './markets/projections.js';
+import * as mkFlow from './markets/flow.js';
+import * as mkStatus from './markets/status.js';
 
 // The markup drives the app through inline `onclick="..."` attributes, which
 // resolve against the global scope. Every top-level name was a global in the
@@ -42,7 +54,9 @@ import * as mk5 from './markets/index.js';
 Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
   m22, m23, m24,
   mh,
-  mk0, mk1, mk2, mk3, mk4, mk5);
+  mk0, mk1, mk2, mk3, mk4, mk5, mk6, mk7);
+window.Arc = { engine: mkEngine, contracts: mkContracts, quotes: mkQuotes, events: mkEvents,
+               projections: mkProj, flow: mkFlow, status: mkStatus, ledger: mk7, trade: mk6 };
 
 // Startup, in the order these ran in the original script.
 initStore();

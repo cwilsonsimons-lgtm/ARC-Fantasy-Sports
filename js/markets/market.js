@@ -1,6 +1,7 @@
 // Arc Markets — the Market screen: status strip, highlight cards, filters, table.
-import { MARKET, marketStats, topMover, mostActive, topRookie, watchRows,
+import { MARKET, topMover, mostActive, topRookie, watchRows,
          mkStore, saveMk } from './data.js';
+import { marketTotals } from './quotes.js';
 import { ICON, spark, face, esc, money, pctText, marketRow, THUMBS } from './ui.js';
 
 let filter = 'All';          // All | QB | RB | WR | TE | Trending | Movers | Watch
@@ -58,16 +59,18 @@ function rows() {
 export function renderMarket() {
   const el = document.getElementById('mkMarket');
   if (!el) return;
-  const st = marketStats();
+  const st = marketTotals();
   el.innerHTML = `
     <div class="mk-strip">
-      <span class="open"><span class="dot"></span>MARKET OPEN</span>
+      <span class="open"><span class="dot"></span>OPEN 24/7</span>
       <span class="sep">|</span>
-      <span><b>${st.trades.toLocaleString()}</b> trades today</span>
+      <span><b>${st.trades.toLocaleString()}</b> trades</span>
       <span class="sep">|</span>
-      <span>Volume <span class="up">&#9650; ${st.volumePct}%</span></span>
+      <span><b>${st.volume.toLocaleString()}</b> shares</span>
       <span class="sep">|</span>
-      <span>Season 2026</span>
+      <span>${Math.round(st.buyRatio * 100)}% buy</span>
+      <span class="sep">|</span>
+      <span>${st.engine === 'amm' ? 'AMM' : 'Order book'}</span>
     </div>
 
     <div class="mk-cards">

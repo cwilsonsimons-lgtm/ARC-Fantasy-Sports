@@ -1571,6 +1571,95 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
 }
 
+/* ===== TRADING ===== */
+/* live badge in the contract header — the market never closes */
+.mk-live{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:800;letter-spacing:1px;
+  color:var(--mk-green);border:1px solid rgba(43,224,107,.32);background:rgba(43,224,107,.10);border-radius:7px;padding:4px 7px}
+.mk-live .dot{width:5px;height:5px;border-radius:50%;background:var(--mk-green)}
+
+/* ---- market information panel ---- */
+.mi{background:var(--mk-card);border:1px solid var(--mk-line);border-radius:13px;padding:12px;margin-bottom:12px}
+.mi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--mk-line);border-radius:9px;overflow:hidden}
+.mi-grid+.mi-grid{margin-top:10px}
+.mi-c{background:var(--mk-card);padding:8px 9px;min-width:0}
+.mi-c span{display:block;font-size:8.5px;font-weight:700;letter-spacing:.7px;color:var(--mk-ink-3);text-transform:uppercase}
+.mi-c b{display:block;font-size:12.5px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi-c b.up{color:var(--mk-green)} .mi-c b.down{color:var(--mk-red)} .mi-c b.warn{color:#FFB020}
+.mi-ratio{margin:10px 0 0}
+.mi-ratio-h{display:flex;justify-content:space-between;align-items:baseline;font-size:9px;font-weight:800;
+  letter-spacing:.9px;color:var(--mk-ink-3)}
+.mi-ratio-h b{font-size:11px;color:var(--mk-ink-2)}
+.mi-bar{height:6px;border-radius:3px;background:rgba(255,75,75,.5);overflow:hidden;margin-top:5px}
+.mi-bar i{display:block;height:100%;background:var(--mk-green)}
+.mi-src{font-size:10px;line-height:1.5;color:var(--mk-ink-3);margin-top:10px;display:flex;gap:6px}
+.mi-src svg{width:12px;height:12px;flex:none;margin-top:1px}
+
+/* ---- trade ticket ---- */
+.tk{background:var(--mk-card);border:1px solid var(--mk-line);border-radius:13px;padding:12px;margin:12px 0}
+.tk-h{display:flex;justify-content:space-between;align-items:baseline;font-size:9.5px;font-weight:800;
+  letter-spacing:1.2px;color:var(--mk-ink-3)}
+.tk-cash{color:var(--mk-ink-2);font-size:11px;letter-spacing:0}
+.tk-terms{display:flex;gap:6px;margin:10px 0;overflow-x:auto;scrollbar-width:none}
+.tk-terms::-webkit-scrollbar{display:none}
+.tk-term{flex:none;text-align:center;border:1px solid var(--mk-line);border-radius:9px;padding:6px 9px;cursor:pointer;min-width:62px}
+.tk-term b{display:block;font-size:12px;font-weight:800}
+.tk-term span{display:block;font-size:8px;color:var(--mk-ink-3);font-weight:700;margin-top:1px;white-space:nowrap}
+.tk-term.on{border-color:var(--mk-blue);background:rgba(46,140,255,.12);color:#fff}
+.tk-term.off{opacity:.38;cursor:default}
+.tk-pos{font-size:10.5px;font-weight:800;letter-spacing:.6px;border-radius:8px;padding:6px 9px;margin-bottom:9px}
+.tk-pos.long{color:var(--mk-green);background:rgba(43,224,107,.10);border:1px solid rgba(43,224,107,.3)}
+.tk-pos.short{color:var(--mk-red);background:rgba(255,75,75,.10);border:1px solid rgba(255,75,75,.3)}
+.tk-acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tk-act{text-align:center;border:1px solid var(--mk-line);border-radius:9px;padding:9px 0;cursor:pointer;
+  font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--mk-ink-2)}
+.tk-act.on.buy,.tk-act.on.cover{border-color:var(--mk-green);background:rgba(43,224,107,.14);color:var(--mk-green)}
+.tk-act.on.sell,.tk-act.on.short{border-color:var(--mk-red);background:rgba(255,75,75,.14);color:var(--mk-red)}
+.tk-act.off{opacity:.3}
+.tk-seg{display:flex;gap:6px;margin-top:9px}
+.tk-seg .sg{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:9px;padding:7px 0;cursor:pointer;
+  font-size:10.5px;font-weight:700;color:var(--mk-ink-2)}
+.tk-seg .sg.on{border-color:var(--mk-blue);background:var(--mk-blue);color:#fff}
+.tk-field{margin-top:10px}
+.tk-field label{display:block;font-size:8.5px;font-weight:800;letter-spacing:.9px;color:var(--mk-ink-3);
+  text-transform:uppercase;margin-bottom:5px}
+.tk-qty{display:flex;align-items:center;gap:6px}
+.tk-qty .b{flex:none;width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--mk-line);
+  border-radius:9px;cursor:pointer;font-size:17px;font-weight:700;color:var(--mk-ink-2)}
+.tk-qty input,.tk-in{flex:1;width:100%;background:#0B0F16;border:1px solid var(--mk-line);border-radius:9px;
+  color:#fff;font-size:15px;font-weight:700;padding:8px 10px;outline:none;text-align:center;
+  -webkit-user-select:text;user-select:text}
+.tk-in{text-align:left}
+.tk-qty input:focus,.tk-in:focus{border-color:var(--mk-blue)}
+.tk-qty input::-webkit-outer-spin-button,.tk-qty input::-webkit-inner-spin-button,
+.tk-in::-webkit-outer-spin-button,.tk-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tk-chips{display:flex;gap:6px;margin-top:7px}
+.tk-chips span{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:8px;padding:5px 0;
+  font-size:10.5px;font-weight:700;color:var(--mk-ink-3);cursor:pointer}
+.tk-sum{display:grid;grid-template-columns:1fr auto;gap:4px 10px;margin-top:11px;font-size:11.5px}
+.tk-sum span{color:var(--mk-ink-3);font-weight:600}
+.tk-sum b{text-align:right;font-weight:800}
+.tk-go{margin-top:11px;text-align:center;border-radius:10px;padding:12px;cursor:pointer;
+  background:var(--mk-blue);color:#fff;font-size:12.5px;font-weight:800;letter-spacing:.6px}
+.tk-go.off{background:#1A2230;color:var(--mk-ink-3);cursor:default}
+.tk-err{margin-top:7px;font-size:10.5px;color:var(--mk-red);font-weight:600;text-align:center}
+.tk-note{margin-top:9px;font-size:10px;line-height:1.5;color:var(--mk-ink-3)}
+.tk-work{margin-top:11px;border-top:1px solid var(--mk-line);padding-top:9px}
+.tk-work-h{font-size:8.5px;font-weight:800;letter-spacing:1px;color:var(--mk-ink-3);margin-bottom:6px}
+.tk-work-r{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11px;
+  color:var(--mk-ink-2);padding:4px 0}
+.tk-work-r .x{color:var(--mk-red);font-weight:700;cursor:pointer;flex:none}
+
+/* ---- chart event markers ---- */
+.mkc-ev line{stroke:rgba(255,255,255,.22);stroke-width:1;stroke-dasharray:2 2}
+.mkc-ev circle{stroke:#0B0F16;stroke-width:1.5}
+.mkc-ev .ev-up{fill:var(--mk-green)} .mkc-ev .ev-down{fill:var(--mk-red)}
+.mkc-ev .ev-flat{fill:#8E9BAC}
+.mkc-evs{display:flex;flex-wrap:wrap;gap:5px;padding:8px 2px 0}
+.mkc-evl{font-size:9.5px;font-weight:700;border:1px solid var(--mk-line);border-radius:7px;padding:3px 6px;
+  color:var(--mk-ink-2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.mkc-evl.ev-up{border-color:rgba(43,224,107,.3)} .mkc-evl.ev-down{border-color:rgba(255,75,75,.3)}
+.mkc-none{padding:26px 10px;text-align:center;font-size:11px;color:var(--mk-ink-3)}
+
 </style>
 </head>
 <body>
@@ -3258,13 +3347,13 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   function isLocked(p) {
     return !!(p && pOrd(p) <= simKick());
   }
-  function pLive(proj, name) {
+  function pLive(proj2, name) {
     let h = 2166136261;
     for (let i = 0; i < name.length; i++) {
       h ^= name.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
-    return Math.round(proj * (0.15 + (h >>> 0) % 120 / 100) * 10) / 10;
+    return Math.round(proj2 * (0.15 + (h >>> 0) % 120 / 100) * 10) / 10;
   }
   function onField(name) {
     let h = 5381;
@@ -3669,10 +3758,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   function homeTab2() {
     return preDraft() ? "draft" : "matchup";
   }
-  function renderTabs2(active) {
+  function renderTabs2(active2) {
     const el = document.getElementById("tabs");
     if (!el) return;
-    const cur = active || currentViewName();
+    const cur = active2 || currentViewName();
     el.innerHTML = TABS().map((t) => `<div class="tab${t.k === cur ? " on" : ""}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join("");
   }
   function showTab2(name) {
@@ -3864,8 +3953,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       if (p.w === lastW) return;
       lastW = p.w;
       const x = X(i);
-      const prev = marks[marks.length - 1];
-      marks.push({ x, lb: !prev || x - prev.x > 34 ? slotLabel(p.abs) : "" });
+      const prev2 = marks[marks.length - 1];
+      marks.push({ x, lb: !prev2 || x - prev2.x > 34 ? slotLabel(p.abs) : "" });
     });
     el.innerHTML = `
     <div class="rw-head">
@@ -5068,11 +5157,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const q = panelQ[kind];
     return q && q.trim() ? `<div class="empty">No player matches<br><b style="color:#93A0B0">${escHtml(q)}</b></div>` : `<div class="empty">${fallback}</div>`;
   }
-  function pillsHTML(active, fn) {
-    return `<div class="pillrow">${["ALL", "QB", "RB", "WR", "TE", "FLEX"].map((pl) => `<div class="pill ${pl === active ? "on" : ""}" onclick="${fn}('${pl}')">${pl}</div>`).join("")}</div>`;
+  function pillsHTML(active2, fn) {
+    return `<div class="pillrow">${["ALL", "QB", "RB", "WR", "TE", "FLEX"].map((pl) => `<div class="pill ${pl === active2 ? "on" : ""}" onclick="${fn}('${pl}')">${pl}</div>`).join("")}</div>`;
   }
-  function setPills(active) {
-    document.querySelectorAll("#panel .pillrow .pill").forEach((el) => el.classList.toggle("on", el.textContent.trim() === active));
+  function setPills(active2) {
+    document.querySelectorAll("#panel .pillrow .pill").forEach((el) => el.classList.toggle("on", el.textContent.trim() === active2));
   }
   function trendingListHTML() {
     const t = takenIds();
@@ -5329,11 +5418,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       }
       return;
     }
-    const live = S.week === LIVE_WEEK;
-    if (live) recomputeLT();
+    const live2 = S.week === LIVE_WEEK;
+    if (live2) recomputeLT();
     const uHero = document.getElementById("userHero"), uRw = document.getElementById("userRewind"), uLine = document.getElementById("userLineup");
     let aK, xK, as, xs, aw, xw, ap = null, xp = null;
-    if (live) {
+    if (live2) {
       aK = "pandas";
       xK = "radiator";
       as = LT.a;
@@ -5367,8 +5456,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         }
       }
     }
-    const sk = live ? simKick() : null;
-    const phase = live ? sk < 0 ? "pre" : !isFinite(sk) ? "final" : "live" : null;
+    const sk = live2 ? simKick() : null;
+    const phase = live2 ? sk < 0 ? "pre" : !isFinite(sk) ? "final" : "live" : null;
     const canRewind = S.week >= MINW;
     uHero.className = "";
     uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null });
@@ -5380,7 +5469,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       rwOpen.userRewind = false;
       uRw.style.display = "none";
     }
-    if (live) {
+    if (live2) {
       uLine.innerHTML = phaseStepperHTML() + fullStartersHTML({ phased: true, editable: true });
     } else if (S.week > LIVE_WEEK && S.week === MINW) {
       uLine.innerHTML = fullStartersHTML({ phased: false, editable: true });
@@ -6069,7 +6158,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rm = hasOwn ? `<div class="sh-cam rm" onclick="event.stopPropagation();removeGameBackdrop('${aKey}','${xKey}')" title="Remove background">${ICON_X}</div>` : "";
     const phase = opts.phase || (opts.live ? "live" : null);
     const pill = phase === "pre" ? `<div class="ms-live pre"><span class="dot"></span>PREGAME</div>` : phase === "final" ? `<div class="ms-live final">FINAL</div>` : phase === "live" ? `<div class="ms-live"><span class="pulse"></span>LIVE</div>` : "";
-    const proj = ap != null && xp != null ? `<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
+    const proj2 = ap != null && xp != null ? `<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
     const logo = (t) => t.logo ? `<div class="sh-logo bare"><img src="${t.logo}" alt=""></div>` : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
     const rwId = opts.rewind || null;
     const wc = rwId ? ` data-rw="${rwId}" onclick="event.stopPropagation();toggleRewind('${rwId}')"` : "";
@@ -6103,7 +6192,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-center" data-vs>
         <div class="sh-vs">VS</div>
         <div class="sh-score">${as.toFixed(1)}<span>\u2013</span>${xs.toFixed(1)}</div>
-        ${proj}
+        ${proj2}
       </div>
       <div class="ms-side R">
         ${logo(x)}
@@ -6127,7 +6216,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       cam = `<div class="sh-cams">${rm}<div class="sh-cam" onclick="event.stopPropagation();pickGameBackdrop('${aKey}','${xKey}')" title="Change background">${ICON_CAM}</div></div>`;
     }
     const status = opts.status ? `<div class="sh-status ${opts.status.cls}">${opts.status.cls === "live" ? '<span class="pulse" style="width:6px;height:6px"></span>' : ""}${opts.status.txt}</div>` : "";
-    const proj = ap != null && xp != null ? `<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
+    const proj2 = ap != null && xp != null ? `<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
     const logo = (t) => t.logo ? `<div class="sh-logo bare"><img src="${t.logo}" alt=""></div>` : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
     const nameClick = (k) => `onclick="event.stopPropagation();openTeam('${k}')"`;
     const rwId = opts.rewind || null;
@@ -6148,7 +6237,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="sh-center" ${opts.tapHint ? "data-vs" : ""}>
         <div class="sh-vs">VS</div>
         <div class="sh-score">${as.toFixed(1)}<span>\u2013</span>${xs.toFixed(1)}</div>
-        ${proj}
+        ${proj2}
       </div>
       <div class="sh-side R">
         ${logo(x)}
@@ -6710,18 +6799,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function bindDraftTiles() {
     document.querySelectorAll(".dg-cell[data-pick]").forEach((el) => {
-      let timer = null, held = false;
+      let timer2 = null, held = false;
       const overall = +el.dataset.pick;
       const start = () => {
         held = false;
-        timer = setTimeout(() => {
+        timer2 = setTimeout(() => {
           held = true;
           el.classList.add("held");
           openReactionSheet(overall);
         }, 420);
       };
       const cancel = () => {
-        clearTimeout(timer);
+        clearTimeout(timer2);
         el.classList.remove("held");
       };
       el.addEventListener("mousedown", start);
@@ -6819,9 +6908,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const head = `<div class="dg-row dg-head">
     <div class="dg-rd"></div>
     ${ORD.map((k) => {
-      const t = T[k], live = k === clockTeam;
-      return `<div class="dg-th${k === MY_TEAM ? " me" : ""}${live ? " clock" : ""}">
-        ${live ? `<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec > 0 ? "" : ""}<span>1:30</span></div>` : ""}
+      const t = T[k], live2 = k === clockTeam;
+      return `<div class="dg-th${k === MY_TEAM ? " me" : ""}${live2 ? " clock" : ""}">
+        ${live2 ? `<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec > 0 ? "" : ""}<span>1:30</span></div>` : ""}
         <div class="dg-crest" style="background:${t.bg};color:${t.c}">${markInner(t)}</div>
         <div class="dg-mgr">${escHtml(t.mgr)}</div>
       </div>`;
@@ -6834,9 +6923,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         const rec = picks[overall];
         const team = ORD[c];
         const label = `${r + 1}.${overall % n + 1}`;
-        const live = !draftDone() && overall === onClock;
+        const live2 = !draftDone() && overall === onClock;
         if (!rec) {
-          return `<div class="dg-cell empty${live ? " clock" : ""}${team === clockTeam ? " col" : ""}">
+          return `<div class="dg-cell empty${live2 ? " clock" : ""}${team === clockTeam ? " col" : ""}">
           <span class="pk">${label}</span></div>`;
         }
         seedReactions(rec, overall);
@@ -7556,7 +7645,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rec = NFL_BY_ID[p.id] || null;
     const jersey = rec && rec.num ? rec.num : seedHash(name) % 99 + 1;
     const cardNo = String(1 + seedHash(String(key) + "c") % 500).padStart(3, "0");
-    const live = pLive(p.proj || 0, name);
+    const live2 = pLive(p.proj || 0, name);
     const shot = photo || headshotFor(key);
     const hero = shot ? `<img class="pc-img" src="${shot}" alt="" loading="lazy">` : `<div class="pc-noimg">${initials(name)}</div>`;
     const nickBanner = nick ? `<div class="pc-nick">\u201C${nick}\u201D</div>` : "";
@@ -7583,7 +7672,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="pc-strip"><span>CARD <b>#${cardNo}</b> / 500</span><span>CITY BOYS DYNASTY \xB7 <b>'25</b></span></div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj || 0).toFixed(1)}</div><div class="l">Proj</div></div>
-        <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
+        <div class="pc-stat"><div class="v">${live2.toFixed(1)}</div><div class="l">FPTS</div></div>
         <div class="pc-stat"><div class="v">${p.pos || "\u2014"}${posRankNo(name, p.pos)}</div><div class="l">Pos Rank</div></div>
         <div class="pc-stat"><div class="v">${rostPct(name)}%</div><div class="l">Rostered</div></div>
       </div>
@@ -8308,6 +8397,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     SEASON_GAMES: () => SEASON_GAMES,
     SHARES_PER_LOT: () => SHARES_PER_LOT,
     WEEKS_PLAYED: () => WEEKS_PLAYED,
+    bindQuoteSource: () => bindQuoteSource,
     careerSeries: () => careerSeries,
     gameLog: () => gameLog,
     holdingRows: () => holdingRows,
@@ -8320,6 +8410,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     priceDays: () => priceDays,
     saveMk: () => saveMk,
     seasonCurve: () => seasonCurve,
+    syncMarket: () => syncMarket,
     toggleWatch: () => toggleWatch,
     topMover: () => topMover,
     topRookie: () => topRookie,
@@ -8438,6 +8529,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   var MARKET = build();
   var BY_ID = Object.fromEntries(MARKET.map((p) => [p.id, p]));
+  var syncFn = null;
+  function bindQuoteSource(fn) {
+    syncFn = fn;
+  }
+  function syncMarket() {
+    if (!syncFn) return;
+    MARKET.forEach((p) => {
+      const q = syncFn(p.id);
+      if (!q || !q.price) return;
+      p.price = q.price;
+      p.change = q.dayChange;
+      p.pct = q.dayPct;
+      p.trades = q.trades || p.trades;
+      p.bid = q.bid;
+      p.ask = q.ask;
+      p.volume = q.volume;
+    });
+  }
   function marketStats() {
     const trades = MARKET.reduce((n, p) => n + p.trades, 0);
     return {
@@ -8781,6 +8890,574 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     mkThumb: () => mkThumb,
     renderMarket: () => renderMarket
   });
+
+  // js/markets/quotes.js
+  var quotes_exports = {};
+  __export(quotes_exports, {
+    RANGES: () => RANGES,
+    fullSeries: () => fullSeries,
+    hasHistory: () => hasHistory,
+    marketTotals: () => marketTotals,
+    quoteStats: () => quoteStats,
+    record: () => record,
+    recordAll: () => recordAll,
+    seedHistory: () => seedHistory,
+    seriesFor: () => seriesFor
+  });
+
+  // js/markets/engine.js
+  var engine_exports = {};
+  __export(engine_exports, {
+    AmmEngine: () => AmmEngine,
+    MIN_QTY: () => MIN_QTY,
+    OrderBookEngine: () => OrderBookEngine,
+    TICK: () => TICK,
+    engineKind: () => engineKind,
+    getEngine: () => getEngine,
+    round2: () => round2,
+    roundQty: () => roundQty,
+    setEngine: () => setEngine
+  });
+  var TICK = 0.01;
+  var MIN_QTY = 1e-3;
+  var round2 = (n) => Math.round(n * 100) / 100;
+  var roundQty = (n) => Math.round(n * 1e3) / 1e3;
+  function print(book, qty, px, side, who) {
+    const t = { ts: Date.now(), qty: roundQty(qty), px: round2(px), side, who: who || "user" };
+    book.last = t.px;
+    book.tape.push(t);
+    if (book.tape.length > 400) book.tape.splice(0, book.tape.length - 400);
+    book.vol += t.qty;
+    book.trades += 1;
+    if (side === "buy") book.buyVol += t.qty;
+    else book.sellVol += t.qty;
+    return t;
+  }
+  function newBook(sym, px) {
+    return {
+      sym,
+      last: round2(px),
+      anchor: round2(px),
+      bids: [],
+      asks: [],
+      tape: [],
+      vol: 0,
+      trades: 0,
+      buyVol: 0,
+      sellVol: 0,
+      inv: 0,
+      seq: 1
+    };
+  }
+  var BaseEngine = class {
+    constructor() {
+      this.books = {};
+      this.subs = [];
+    }
+    book(sym) {
+      return this.books[sym] || null;
+    }
+    seed(sym, px) {
+      if (!this.books[sym]) this.books[sym] = newBook(sym, px);
+      return this.books[sym];
+    }
+    /** Notified after any fill, so views can repaint off real trades. */
+    onTrade(cb) {
+      this.subs.push(cb);
+      return () => {
+        const i = this.subs.indexOf(cb);
+        if (i > -1) this.subs.splice(i, 1);
+      };
+    }
+    emit(sym, fills) {
+      if (fills.length) this.subs.forEach((cb) => {
+        try {
+          cb(sym, fills);
+        } catch (e) {
+        }
+      });
+    }
+    last(sym) {
+      const b = this.book(sym);
+      return b ? b.last : null;
+    }
+    tape(sym) {
+      const b = this.book(sym);
+      return b ? b.tape : [];
+    }
+    /** Session counters every engine exposes the same way. */
+    stats(sym) {
+      const b = this.book(sym);
+      if (!b) return { vol: 0, trades: 0, buyVol: 0, sellVol: 0, buyRatio: 0.5 };
+      const tot = b.buyVol + b.sellVol;
+      return {
+        vol: roundQty(b.vol),
+        trades: b.trades,
+        buyVol: roundQty(b.buyVol),
+        sellVol: roundQty(b.sellVol),
+        buyRatio: tot ? b.buyVol / tot : 0.5
+      };
+    }
+    open() {
+      return [];
+    }
+    cancel() {
+      return false;
+    }
+  };
+  var AmmEngine = class extends BaseEngine {
+    constructor({ depth = 900, spread = 4e-3 } = {}) {
+      super();
+      this.depth = depth;
+      this.spreadPct = spread;
+      this.kind = "amm";
+    }
+    /** Mid price implied by current inventory. */
+    mid(b) {
+      return b.anchor * Math.exp(b.inv / this.depth);
+    }
+    /**
+     * Average price for `qty` shares in `side`, integrating the curve rather than
+     * quoting the touch — a large order pays for the impact it causes.
+     */
+    fillPrice(b, side, qty) {
+      const s = side === "buy" ? 1 : -1;
+      const i0 = b.inv, i1 = b.inv + s * qty;
+      const avg = qty <= 0 ? this.mid(b) : b.anchor * this.depth * (Math.exp(i1 / this.depth) - Math.exp(i0 / this.depth)) / (s * qty);
+      return Math.max(TICK, avg * (1 + s * this.spreadPct / 2));
+    }
+    quote(sym) {
+      const b = this.book(sym);
+      if (!b) return null;
+      const m = this.mid(b);
+      const half = m * this.spreadPct / 2;
+      return {
+        bid: round2(Math.max(TICK, m - half)),
+        ask: round2(m + half),
+        mid: round2(m),
+        last: b.last,
+        spread: round2(half * 2),
+        depth: this.depthLadder(sym)
+      };
+    }
+    /** Synthetic ladder: what successive slices would cost on the curve. */
+    depthLadder(sym, levels = 5, step = 25) {
+      const b = this.book(sym);
+      if (!b) return [];
+      const out = [];
+      for (let i = 1; i <= levels; i++) {
+        out.push({ side: "bid", px: round2(this.fillPrice(b, "sell", step * i)), qty: step });
+        out.push({ side: "ask", px: round2(this.fillPrice(b, "buy", step * i)), qty: step });
+      }
+      return out;
+    }
+    submit(o) {
+      const b = this.seed(o.sym, o.px || 1);
+      const qty = roundQty(o.qty);
+      if (qty < MIN_QTY) return { status: "rejected", reason: "Size too small", fills: [], filled: 0, avg: 0 };
+      const px = this.fillPrice(b, o.side, qty);
+      if (o.type === "limit") {
+        const ok = o.side === "buy" ? px <= o.limit + 1e-9 : px >= o.limit - 1e-9;
+        if (!ok) return {
+          status: "resting",
+          fills: [],
+          filled: 0,
+          avg: 0,
+          resting: true,
+          reason: `AMM price ${round2(px).toFixed(2)} is outside your limit`
+        };
+      }
+      b.inv += (o.side === "buy" ? 1 : -1) * qty;
+      const t = print(b, qty, px, o.side, o.who);
+      this.emit(o.sym, [t]);
+      return { status: "filled", fills: [t], filled: qty, avg: t.px };
+    }
+  };
+  var OrderBookEngine = class extends BaseEngine {
+    constructor() {
+      super();
+      this.kind = "book";
+    }
+    quote(sym) {
+      const b = this.book(sym);
+      if (!b) return null;
+      const bid = b.bids.length ? b.bids[0].px : null;
+      const ask = b.asks.length ? b.asks[0].px : null;
+      const mid = bid != null && ask != null ? (bid + ask) / 2 : b.last || b.anchor;
+      return {
+        bid,
+        ask,
+        mid: round2(mid),
+        last: b.last,
+        spread: bid != null && ask != null ? round2(ask - bid) : null,
+        depth: this.depthLadder(sym)
+      };
+    }
+    depthLadder(sym, levels = 5) {
+      const b = this.book(sym);
+      if (!b) return [];
+      const agg = (side, arr) => {
+        const by = /* @__PURE__ */ new Map();
+        arr.forEach((o) => by.set(o.px, (by.get(o.px) || 0) + o.qty));
+        return [...by.entries()].slice(0, levels).map(([px, qty]) => ({ side, px, qty: roundQty(qty) }));
+      };
+      return agg("bid", b.bids).concat(agg("ask", b.asks));
+    }
+    open(sym, who) {
+      const b = this.book(sym);
+      if (!b) return [];
+      return b.bids.concat(b.asks).filter((o) => !who || o.who === who);
+    }
+    cancel(sym, id) {
+      const b = this.book(sym);
+      if (!b) return false;
+      for (const arr of [b.bids, b.asks]) {
+        const i = arr.findIndex((o) => o.id === id);
+        if (i > -1) {
+          arr.splice(i, 1);
+          return true;
+        }
+      }
+      return false;
+    }
+    /** bids: high→low, asks: low→high, ties broken by arrival order. */
+    insert(b, o) {
+      const arr = o.side === "buy" ? b.bids : b.asks;
+      const better = o.side === "buy" ? (a, x) => a.px > x.px : (a, x) => a.px < x.px;
+      let i = 0;
+      while (i < arr.length && (better(arr[i], o) || arr[i].px === o.px && arr[i].seq < o.seq)) i++;
+      arr.splice(i, 0, o);
+    }
+    submit(o) {
+      const b = this.seed(o.sym, o.px || 1);
+      let left = roundQty(o.qty);
+      if (left < MIN_QTY) return { status: "rejected", reason: "Size too small", fills: [], filled: 0, avg: 0 };
+      const opp = o.side === "buy" ? b.asks : b.bids;
+      const crosses = (px) => o.type === "market" ? true : o.side === "buy" ? px <= o.limit + 1e-9 : px >= o.limit - 1e-9;
+      const fills = [];
+      while (left >= MIN_QTY && opp.length && crosses(opp[0].px)) {
+        const top = opp[0];
+        const take = Math.min(left, top.qty);
+        fills.push(print(b, take, top.px, o.side, o.who));
+        top.qty = roundQty(top.qty - take);
+        left = roundQty(left - take);
+        if (top.qty < MIN_QTY) opp.shift();
+      }
+      this.emit(o.sym, fills);
+      const filled = roundQty(o.qty - left);
+      const avg = filled ? round2(fills.reduce((n, f) => n + f.px * f.qty, 0) / filled) : 0;
+      let resting = null;
+      if (left >= MIN_QTY && o.type === "limit") {
+        resting = {
+          id: "o" + b.seq++,
+          sym: o.sym,
+          side: o.side,
+          px: round2(o.limit),
+          qty: left,
+          who: o.who || "user",
+          ts: Date.now(),
+          seq: b.seq
+        };
+        this.insert(b, resting);
+      }
+      return {
+        status: filled >= roundQty(o.qty) ? "filled" : filled > 0 ? resting ? "partial" : "partial-nofill" : resting ? "resting" : "rejected",
+        reason: !filled && !resting ? "No liquidity at that price" : void 0,
+        fills,
+        filled,
+        avg,
+        resting
+      };
+    }
+  };
+  var ENGINES = { amm: () => new AmmEngine(), book: () => new OrderBookEngine() };
+  var engine = ENGINES.amm();
+  function getEngine() {
+    return engine;
+  }
+  function engineKind() {
+    return engine.kind;
+  }
+  function setEngine(kind) {
+    if (!ENGINES[kind] || kind === engine.kind) return engine;
+    const prev2 = engine, next = ENGINES[kind]();
+    Object.keys(prev2.books).forEach((sym) => {
+      const ob = prev2.books[sym], nb = next.seed(sym, ob.last);
+      nb.anchor = ob.anchor;
+      nb.tape = ob.tape.slice();
+      nb.vol = ob.vol;
+      nb.trades = ob.trades;
+      nb.buyVol = ob.buyVol;
+      nb.sellVol = ob.sellVol;
+    });
+    prev2.subs.forEach((cb) => next.onTrade(cb));
+    engine = next;
+    return engine;
+  }
+
+  // js/markets/contracts.js
+  var contracts_exports = {};
+  __export(contracts_exports, {
+    DEFAULT_TERM: () => DEFAULT_TERM,
+    POINTS_PER_DOLLAR: () => POINTS_PER_DOLLAR2,
+    ROSTER_MOVES: () => ROSTER_MOVES,
+    SEASON: () => SEASON,
+    SETTLE_EXPIRY: () => SETTLE_EXPIRY,
+    SETTLE_RETIRED: () => SETTLE_RETIRED,
+    TERMS: () => TERMS,
+    TERM_BY_KEY: () => TERM_BY_KEY,
+    affectsContract: () => affectsContract,
+    contractSeasons: () => contractSeasons,
+    expirySeason: () => expirySeason,
+    intrinsic: () => intrinsic,
+    isTop100: () => isTop100,
+    parseSymbol: () => parseSymbol,
+    settlementFor: () => settlementFor,
+    symbolFor: () => symbolFor,
+    termAvailable: () => termAvailable,
+    termsFor: () => termsFor,
+    top100Rank: () => top100Rank,
+    top100Season: () => top100Season,
+    tradableUniverse: () => tradableUniverse
+  });
+  var SEASON = 2026;
+  var POINTS_PER_DOLLAR2 = 100;
+  var TERMS = [
+    {
+      key: "season",
+      years: 1,
+      label: "Current Season",
+      short: "1Y",
+      desc: `Settles on ${SEASON} production.`
+    },
+    {
+      key: "2yr",
+      years: 2,
+      label: "2 Years",
+      short: "2Y",
+      desc: `Settles on ${SEASON}\u2013${SEASON + 1} combined production.`
+    },
+    {
+      key: "3yr",
+      years: 3,
+      label: "3 Years",
+      short: "3Y",
+      desc: `Settles on ${SEASON}\u2013${SEASON + 2} combined production.`
+    },
+    {
+      key: "5yr",
+      years: 5,
+      label: "5 Years",
+      short: "5Y",
+      top100: true,
+      desc: `Settles on ${SEASON}\u2013${SEASON + 4} combined production. Top 100 only.`
+    }
+  ];
+  var TERM_BY_KEY = Object.fromEntries(TERMS.map((t) => [t.key, t]));
+  var DEFAULT_TERM = "season";
+  function symbolFor(playerId, term) {
+    return `${playerId}@${term || DEFAULT_TERM}`;
+  }
+  function parseSymbol(sym) {
+    const i = String(sym).lastIndexOf("@");
+    return i < 0 ? { playerId: sym, term: DEFAULT_TERM } : { playerId: sym.slice(0, i), term: sym.slice(i + 1) };
+  }
+  var SKILL = ["QB", "RB", "WR", "TE"];
+  function buildTop100() {
+    const prevSeason = HIST_SEASONS[0];
+    const rows2 = String(HIST_SRC[prevSeason] || "").trim().split("\n").map((line) => {
+      const [name, pos, team, games, ppr, standard, id] = line.split("|");
+      return { name, pos, id: (id || "").trim(), ppr: parseFloat(ppr) || 0 };
+    });
+    const ranked = rows2.filter((r) => r.id && SKILL.includes(r.pos)).sort((a, b) => b.ppr - a.ppr).slice(0, 100);
+    return {
+      season: prevSeason,
+      ids: new Set(ranked.map((r) => r.id)),
+      rank: Object.fromEntries(ranked.map((r, i) => [r.id, i + 1]))
+    };
+  }
+  var TOP100 = buildTop100();
+  function isTop100(playerId) {
+    return TOP100.ids.has(playerId);
+  }
+  function top100Rank(playerId) {
+    return TOP100.rank[playerId] || null;
+  }
+  function top100Season() {
+    return TOP100.season;
+  }
+  function termsFor(playerId) {
+    return TERMS.filter((t) => !t.top100 || isTop100(playerId));
+  }
+  function termAvailable(playerId, term) {
+    const t = TERM_BY_KEY[term];
+    return !!t && (!t.top100 || isTop100(playerId));
+  }
+  function contractSeasons(term, startSeason) {
+    const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
+    const s0 = startSeason || SEASON;
+    return Array.from({ length: t.years }, (_, i) => s0 + i);
+  }
+  function expirySeason(term, startSeason) {
+    const s = contractSeasons(term, startSeason);
+    return s[s.length - 1];
+  }
+  var AGE_CURVE = [1, 0.97, 0.93, 0.88, 0.82];
+  function intrinsic(player, term) {
+    const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
+    const perSeason = player.sproj || 0;
+    let pts = 0;
+    for (let i = 0; i < t.years; i++) pts += perSeason * (AGE_CURVE[i] != null ? AGE_CURVE[i] : 0.78);
+    return { points: Math.round(pts * 10) / 10, value: Math.round(pts / POINTS_PER_DOLLAR2 * 100) / 100 };
+  }
+  var SETTLE_EXPIRY = "expiry";
+  var SETTLE_RETIRED = "retired";
+  function settlementFor(term, startSeason, actuals, retired) {
+    const seasons = contractSeasons(term, startSeason);
+    const done = seasons.filter((y) => actuals && actuals[y] != null);
+    const complete = done.length === seasons.length;
+    if (!complete && !retired) {
+      return { settled: false, reason: null, points: 0, value: 0, seasons, done };
+    }
+    const points = done.reduce((n, y) => n + (actuals[y] || 0), 0);
+    return {
+      settled: true,
+      reason: complete ? SETTLE_EXPIRY : SETTLE_RETIRED,
+      points: Math.round(points * 10) / 10,
+      value: Math.round(points / POINTS_PER_DOLLAR2 * 100) / 100,
+      seasons,
+      done
+    };
+  }
+  var ROSTER_MOVES = ["trade", "free-agency", "waived", "signed", "depth-chart"];
+  function affectsContract(eventKind) {
+    return eventKind === "retirement";
+  }
+  function tradableUniverse(limit = 150) {
+    return NFL_PLAYERS.filter((p) => p.sproj > 60 && SKILL.includes(p.pos)).sort((a, b) => b.sproj - a.sproj).slice(0, limit);
+  }
+
+  // js/markets/quotes.js
+  var DAY = 864e5;
+  var live = {};
+  var hist = {};
+  function seedHistory(sym, points) {
+    if (!hist[sym]) hist[sym] = points.slice();
+    return hist[sym];
+  }
+  function hasHistory(sym) {
+    return !!hist[sym];
+  }
+  function record(sym, px) {
+    const arr = live[sym] || (live[sym] = []);
+    const now = Date.now();
+    const lastPt = arr[arr.length - 1];
+    if (lastPt && now - lastPt.t < 2e4 && arr.length > 4) {
+      lastPt.v = px;
+      lastPt.t = now;
+      return;
+    }
+    arr.push({ t: now, v: px });
+    if (arr.length > 3e3) arr.splice(0, arr.length - 3e3);
+  }
+  function recordAll() {
+    const eng = getEngine();
+    Object.keys(eng.books).forEach((sym) => {
+      const b = eng.books[sym];
+      if (b && b.last != null) record(sym, b.last);
+    });
+  }
+  function fullSeries(sym) {
+    return (hist[sym] || []).concat(live[sym] || []);
+  }
+  var RANGES = [
+    ["1d", "1D", "Today"],
+    ["1w", "1W", "This week"],
+    ["1m", "1M", "This month"],
+    ["season", "Season", "The season so far"],
+    ["contract", "Contract", "The life of this contract"],
+    ["all", "All", "Every season traded"]
+  ];
+  var SPANS = { "1d": DAY, "1w": 7 * DAY, "1m": 30 * DAY, season: 240 * DAY };
+  function seriesFor(sym, range, opts = {}) {
+    const all = fullSeries(sym);
+    if (!all.length) return [];
+    const now = Date.now();
+    let cut = all;
+    if (SPANS[range]) cut = all.filter((p) => p.t >= now - SPANS[range]);
+    else if (range === "contract" && opts.openedAt) cut = all.filter((p) => p.t >= opts.openedAt);
+    if (cut.length < 2) cut = all.slice(-2);
+    return thin(cut, range === "1d" ? 90 : 120);
+  }
+  function thin(arr, max) {
+    if (arr.length <= max) return arr;
+    const step = arr.length / max, out = [];
+    for (let i = 0; i < max; i++) out.push(arr[Math.floor(i * step)]);
+    out[out.length - 1] = arr[arr.length - 1];
+    return out;
+  }
+  function priceAgo(sym, ms) {
+    const all = fullSeries(sym);
+    if (!all.length) return null;
+    const cutoff = Date.now() - ms;
+    for (let i = all.length - 1; i >= 0; i--) if (all[i].t <= cutoff) return all[i].v;
+    return all[0].v;
+  }
+  function pctFrom(now, then) {
+    if (then == null || !then) return 0;
+    return round2((now - then) / then * 100);
+  }
+  function quoteStats(playerId, term) {
+    const sym = symbolFor(playerId, term || DEFAULT_TERM);
+    const eng = getEngine();
+    const q = eng.quote(sym);
+    const st = eng.stats(sym);
+    const last = q ? q.last != null ? q.last : q.mid : 0;
+    const d = priceAgo(sym, DAY), w = priceAgo(sym, 7 * DAY), m = priceAgo(sym, 30 * DAY);
+    return {
+      sym,
+      price: last,
+      bid: q ? q.bid : null,
+      ask: q ? q.ask : null,
+      spread: q ? q.spread : null,
+      mid: q ? q.mid : null,
+      last,
+      dayChange: d == null ? 0 : round2(last - d),
+      dayPct: pctFrom(last, d),
+      weekChange: w == null ? 0 : round2(last - w),
+      weekPct: pctFrom(last, w),
+      monthChange: m == null ? 0 : round2(last - m),
+      monthPct: pctFrom(last, m),
+      volume: st.vol,
+      trades: st.trades,
+      buyVol: st.buyVol,
+      sellVol: st.sellVol,
+      buyRatio: st.buyRatio,
+      depth: q ? q.depth : [],
+      engine: eng.kind
+    };
+  }
+  function marketTotals() {
+    const eng = getEngine();
+    let trades = 0, vol = 0, buy = 0, sell = 0;
+    Object.keys(eng.books).forEach((sym) => {
+      const s = eng.stats(sym);
+      trades += s.trades;
+      vol += s.vol;
+      buy += s.buyVol;
+      sell += s.sellVol;
+    });
+    return {
+      trades,
+      volume: Math.round(vol),
+      buyVol: buy,
+      sellVol: sell,
+      buyRatio: buy + sell ? buy / (buy + sell) : 0.5,
+      engine: eng.kind
+    };
+  }
+
+  // js/markets/market.js
   var filter = "All";
   var sortDesc = true;
   var thumbMode = () => THUMBS.some((t) => t[0] === mkStore.thumb) ? mkStore.thumb : "price";
@@ -8860,16 +9537,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function renderMarket() {
     const el = document.getElementById("mkMarket");
     if (!el) return;
-    const st = marketStats();
+    const st = marketTotals();
     el.innerHTML = `
     <div class="mk-strip">
-      <span class="open"><span class="dot"></span>MARKET OPEN</span>
+      <span class="open"><span class="dot"></span>OPEN 24/7</span>
       <span class="sep">|</span>
-      <span><b>${st.trades.toLocaleString()}</b> trades today</span>
+      <span><b>${st.trades.toLocaleString()}</b> trades</span>
       <span class="sep">|</span>
-      <span>Volume <span class="up">&#9650; ${st.volumePct}%</span></span>
+      <span><b>${st.volume.toLocaleString()}</b> shares</span>
       <span class="sep">|</span>
-      <span>Season 2026</span>
+      <span>${Math.round(st.buyRatio * 100)}% buy</span>
+      <span class="sep">|</span>
+      <span>${st.engine === "amm" ? "AMM" : "Order book"}</span>
     </div>
 
     <div class="mk-cards">
@@ -9017,16 +9696,249 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/markets/charts.js
   var charts_exports = {};
   __export(charts_exports, {
-    RANGES: () => RANGES,
+    RANGES: () => RANGES2,
     lastFiveChart: () => lastFiveChart,
     paceChart: () => paceChart,
     playerCharts: () => playerCharts,
-    priceChart: () => priceChart,
+    priceChart: () => priceChart2,
     priceSeries: () => priceSeries
   });
+
+  // js/markets/events.js
+  var events_exports = {};
+  __export(events_exports, {
+    KINDS: () => KINDS,
+    TIER_CAREER: () => TIER_CAREER,
+    TIER_INTRADAY: () => TIER_INTRADAY,
+    TIER_SEASON: () => TIER_SEASON,
+    consume: () => consume,
+    eventsFor: () => eventsFor,
+    pending: () => pending,
+    publish: () => publish,
+    recentFeed: () => recentFeed,
+    seedHistory: () => seedHistory2,
+    tierForRange: () => tierForRange
+  });
+  var TIER_INTRADAY = 3;
+  var TIER_SEASON = 2;
+  var TIER_CAREER = 1;
+  var KINDS = {
+    touchdown: { tier: TIER_INTRADAY, label: "Touchdown", icon: "\u{1F3C8}", tone: "up" },
+    bigplay: { tier: TIER_INTRADAY, label: "Big play", icon: "\u26A1", tone: "up" },
+    news: { tier: TIER_INTRADAY, label: "News", icon: "\u{1F4F0}", tone: "flat" },
+    injury: { tier: TIER_SEASON, label: "Injury", icon: "\u{1F691}", tone: "down" },
+    depthchart: { tier: TIER_SEASON, label: "Depth chart", icon: "\u{1F4CB}", tone: "flat" },
+    trade: { tier: TIER_SEASON, label: "Trade", icon: "\u{1F501}", tone: "flat" },
+    projection: { tier: TIER_SEASON, label: "Projection update", icon: "\u{1F4C8}", tone: "flat" },
+    seasonEnding: { tier: TIER_CAREER, label: "Season-ending injury", icon: "\u{1F3E5}", tone: "down" },
+    teamChange: { tier: TIER_CAREER, label: "Team change", icon: "\u2708\uFE0F", tone: "flat" },
+    award: { tier: TIER_CAREER, label: "Award", icon: "\u{1F3C6}", tone: "up" },
+    record: { tier: TIER_CAREER, label: "Record", icon: "\u{1F4DC}", tone: "up" },
+    retirement: { tier: TIER_CAREER, label: "Retirement", icon: "\u{1F3AC}", tone: "down" }
+  };
+  var SENTIMENT = {
+    touchdown: 0.35,
+    bigplay: 0.22,
+    news: 0,
+    injury: -0.8,
+    depthchart: -0.15,
+    trade: 0.05,
+    projection: 0.3,
+    seasonEnding: -2.4,
+    teamChange: 0.1,
+    award: 0.7,
+    record: 0.6,
+    retirement: -3
+  };
+  var feed = [];
+  var byPlayer = {};
+  function publish(ev) {
+    const k = KINDS[ev.kind];
+    if (!k) return null;
+    const e = {
+      id: "e" + feed.length + "-" + Math.random().toString(36).slice(2, 7),
+      ts: ev.ts || Date.now(),
+      kind: ev.kind,
+      tier: k.tier,
+      playerId: ev.playerId,
+      text: ev.text || k.label,
+      sentiment: ev.sentiment != null ? ev.sentiment : SENTIMENT[ev.kind] || 0,
+      consumed: false
+    };
+    feed.push(e);
+    (byPlayer[e.playerId] = byPlayer[e.playerId] || []).push(e);
+    if (feed.length > 1200) feed.splice(0, feed.length - 1200);
+    return e;
+  }
+  function eventsFor(playerId, { maxTier = TIER_INTRADAY, since = 0 } = {}) {
+    return (byPlayer[playerId] || []).filter((e) => e.tier <= maxTier && e.ts >= since);
+  }
+  function recentFeed(n = 40) {
+    return feed.slice(-n).reverse();
+  }
+  function pending() {
+    return feed.filter((e) => !e.consumed);
+  }
+  function consume(e) {
+    e.consumed = true;
+  }
+  function tierForRange(range) {
+    if (range === "1d" || range === "1w") return TIER_INTRADAY;
+    if (range === "1m" || range === "season" || range === "contract") return TIER_SEASON;
+    return TIER_CAREER;
+  }
+  function hash3(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function rng2(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = s + 1831565813 >>> 0;
+      let t = s;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var DAY2 = 864e5;
+  function seedHistory2(weeksPlayed = 8) {
+    const now = Date.now();
+    tradableUniverse().forEach((p, idx) => {
+      const r = rng2(hash3(p.id + "#ev"));
+      if (r() < 0.3) publish({
+        kind: "teamChange",
+        playerId: p.id,
+        ts: now - DAY2 * (400 + r() * 900),
+        text: `Signed with ${p.tm}`
+      });
+      if (idx < 12 && r() < 0.5) publish({
+        kind: "award",
+        playerId: p.id,
+        ts: now - DAY2 * (300 + r() * 500),
+        text: "All-Pro selection"
+      });
+      if (r() < 0.12) publish({
+        kind: "seasonEnding",
+        playerId: p.id,
+        ts: now - DAY2 * (380 + r() * 400),
+        text: "Missed the rest of the season"
+      });
+      for (let w = 0; w < weeksPlayed; w++) {
+        const ts = now - DAY2 * ((weeksPlayed - w) * 7);
+        const tds = Math.floor(Math.pow(r(), 1.6) * 3);
+        for (let i = 0; i < tds; i++)
+          publish({ kind: "touchdown", playerId: p.id, ts: ts + i * 9e5, text: `Touchdown \xB7 week ${w + 1}` });
+        if (r() < 0.1) publish({ kind: "injury", playerId: p.id, ts: ts + DAY2, text: "Listed as questionable" });
+        if (r() < 0.06) publish({ kind: "depthchart", playerId: p.id, ts: ts + DAY2, text: "Role change on the depth chart" });
+        if (r() < 0.05) publish({ kind: "trade", playerId: p.id, ts: ts + DAY2 * 2, text: "Involved in a trade" });
+        if (r() < 0.14) publish({ kind: "news", playerId: p.id, ts: ts + DAY2 * 3, text: "Beat-writer report" });
+      }
+      feed.forEach((e) => {
+        e.consumed = true;
+      });
+    });
+  }
+
+  // js/markets/pricechart.js
   var UP2 = "#2BE06B";
   var DOWN2 = "#FF4B4B";
-  var RANGES = [
+  var W2 = 320;
+  var H2 = 118;
+  var MAX_MARKS = { "1d": 8, "1w": 8, "1m": 7, season: 6, contract: 6, all: 5 };
+  function marksFor(playerId, range, t0, t1) {
+    const evs = eventsFor(playerId, { maxTier: tierForRange(range), since: t0 }).filter((e) => e.ts <= t1);
+    const cap = MAX_MARKS[range] || 6;
+    if (evs.length <= cap) return evs;
+    return evs.slice().sort((a, b) => a.tier - b.tier || Math.abs(b.sentiment) - Math.abs(a.sentiment)).slice(0, cap).sort((a, b) => a.ts - b.ts);
+  }
+  function priceChart(p, range, term) {
+    const key = TERM_BY_KEY[term] ? term : DEFAULT_TERM;
+    const sym = symbolFor(p.id, key);
+    const pts = seriesFor(sym, range, { openedAt: contractOpened(key) });
+    if (pts.length < 2) return `<div class="mkc" data-mkc="price"><div class="mkc-t">PRICE</div>
+    <div class="mkc-none">Not enough trades yet on this contract.</div></div>`;
+    const vs = pts.map((q) => q.v);
+    const first = vs[0], last = vs[vs.length - 1];
+    const min = Math.min(...vs), max = Math.max(...vs);
+    const up = last >= first;
+    const color = up ? UP2 : DOWN2;
+    const pad = (max - min) * 0.18 || 0.05;
+    const lo = min - pad, hi = max + pad;
+    const t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = Math.max(1, t1 - t0);
+    const X = (t) => (t - t0) / span * W2;
+    const Y = (v) => H2 - (v - lo) / (hi - lo) * H2;
+    const line = pts.map((q) => `${X(q.t).toFixed(1)},${Y(q.v).toFixed(1)}`).join(" ");
+    const delta = last - first;
+    const pct = first ? delta / first * 100 : 0;
+    const label = (RANGES.find((r) => r[0] === range) || RANGES[0])[2];
+    const marks = marksFor(p.id, range, t0, t1);
+    const valueAt = (ts) => {
+      let best = pts[0];
+      for (const q of pts) {
+        if (q.t <= ts) best = q;
+        else break;
+      }
+      return best.v;
+    };
+    const pins = marks.map((e, i) => {
+      const k = KINDS[e.kind] || {};
+      const x = Math.max(2, Math.min(W2 - 2, X(e.ts)));
+      const y = Y(valueAt(e.ts));
+      return `<g class="mkc-ev" transform="translate(${x.toFixed(1)},${y.toFixed(1)})">
+      <line x1="0" y1="0" x2="0" y2="${(H2 - y - 4).toFixed(1)}" />
+      <circle r="3" class="ev-${k.tone || "flat"}" />
+    </g>`;
+    }).join("");
+    const legend = marks.length ? `<div class="mkc-evs">${marks.map((e) => {
+      const k = KINDS[e.kind] || {};
+      return `<span class="mkc-evl ev-${k.tone || "flat"}" title="${esc2(e.text)}">${k.icon || "\u2022"} ${esc2(shortText(e.text))}</span>`;
+    }).join("")}</div>` : "";
+    return `
+    <div class="mkc" data-mkc="price">
+      <div class="mkc-h">
+        <div class="mkc-t">PRICE</div>
+        <div class="mkc-d ${up ? "up" : "down"}">${delta < 0 ? "-" : "+"}${money(delta)}
+          (${pct < 0 ? "-" : "+"}${Math.abs(pct).toFixed(1)}%) &middot; ${esc2(label.toLowerCase())}</div>
+      </div>
+      <div class="mkc-plot">
+        <svg viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none" class="mkc-svg">
+          <defs><linearGradient id="mkcpx" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="${color}" stop-opacity=".34"/>
+            <stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+          <line class="mkc-base" x1="0" y1="${Y(first).toFixed(1)}" x2="${W2}" y2="${Y(first).toFixed(1)}"/>
+          <polygon points="0,${H2} ${line} ${W2},${H2}" fill="url(#mkcpx)"/>
+          <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2"
+            stroke-linejoin="round" stroke-linecap="round"/>
+          ${pins}
+          <circle class="mkc-dot" cx="${W2}" cy="${Y(last).toFixed(1)}" r="3.4" fill="${color}"/>
+        </svg>
+        <div class="mkc-hi">${money(max)}</div>
+        <div class="mkc-lo">${money(min)}</div>
+      </div>
+      <div class="mkc-read"><span class="a">${money(last)}</span><span class="b">Live</span></div>
+      <div class="mkc-ranges">${RANGES.map(
+      ([k, lb]) => `<div class="mkc-rg${k === range ? " on" : ""}" onclick="mkRange('${p.id}','${k}')">${lb}</div>`
+    ).join("")}</div>
+      ${legend}
+    </div>`;
+  }
+  function shortText(s) {
+    return String(s).length > 26 ? String(s).slice(0, 25) + "\u2026" : s;
+  }
+  function contractOpened(term) {
+    const seasons = contractSeasons(term);
+    return Date.now() - (seasons.length * 240 + 60) * 864e5;
+  }
+
+  // js/markets/charts.js
+  var UP3 = "#2BE06B";
+  var DOWN3 = "#FF4B4B";
+  var RANGES2 = [
     ["week", "This week", "Since the last kickoff"],
     ["five", "Last 5", "The last five game weeks"],
     ["season", "Season", `Week 1 through week ${WEEKS_PLAYED}`],
@@ -9049,7 +9961,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return frame(cut.map((d, i) => {
       let label = "";
       if (i % every === 0 || i === cut.length - 1) {
-        label = range === "week" ? DAY[i % 7] : "W" + (d.w + 1);
+        label = range === "week" ? DAY3[i % 7] : "W" + (d.w + 1);
         if (label === seen) label = "";
         else seen = label;
       }
@@ -9060,28 +9972,28 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       };
     }));
   }
-  var DAY = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  var DAY3 = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   var DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   function frame(pts) {
     const vs = pts.map((p) => p.v);
     const min = Math.min(...vs), max = Math.max(...vs);
     return { pts, first: vs[0], last: vs[vs.length - 1], min, max };
   }
-  var W2 = 320;
-  var H2 = 118;
-  function priceChart(p, range) {
+  var W3 = 320;
+  var H3 = 118;
+  function priceChart2(p, range) {
     const s = priceSeries(p, range);
     const n = s.pts.length;
     const up = s.last >= s.first;
-    const color = up ? UP2 : DOWN2;
+    const color = up ? UP3 : DOWN3;
     const pad = (s.max - s.min) * 0.18 || 0.05;
     const lo = s.min - pad, hi = s.max + pad;
-    const X = (i) => i / Math.max(1, n - 1) * W2;
-    const Y = (v) => H2 - (v - lo) / (hi - lo) * H2;
+    const X = (i) => i / Math.max(1, n - 1) * W3;
+    const Y = (v) => H3 - (v - lo) / (hi - lo) * H3;
     const line = s.pts.map((q, i) => `${X(i).toFixed(1)},${Y(q.v).toFixed(1)}`).join(" ");
     const delta = s.last - s.first;
     const pct = s.first ? delta / s.first * 100 : 0;
-    const label = (RANGES.find((r) => r[0] === range) || RANGES[0])[1];
+    const label = (RANGES2.find((r) => r[0] === range) || RANGES2[0])[1];
     return `
     <div class="mkc" data-mkc="price">
       <div class="mkc-h">
@@ -9090,23 +10002,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           (${pct < 0 ? "-" : "+"}${Math.abs(pct).toFixed(1)}%) &middot; ${esc2(label.toLowerCase())}</div>
       </div>
       <div class="mkc-plot">
-        <svg viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none" class="mkc-svg">
+        <svg viewBox="0 0 ${W3} ${H3}" preserveAspectRatio="none" class="mkc-svg">
           <defs><linearGradient id="mkcpx" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="${color}" stop-opacity=".34"/>
             <stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
-          <line class="mkc-base" x1="0" y1="${Y(s.first).toFixed(1)}" x2="${W2}" y2="${Y(s.first).toFixed(1)}"/>
-          <polygon points="0,${H2} ${line} ${W2},${H2}" fill="url(#mkcpx)"/>
+          <line class="mkc-base" x1="0" y1="${Y(s.first).toFixed(1)}" x2="${W3}" y2="${Y(s.first).toFixed(1)}"/>
+          <polygon points="0,${H3} ${line} ${W3},${H3}" fill="url(#mkcpx)"/>
           <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2"
             stroke-linejoin="round" stroke-linecap="round"/>
-          <line class="mkc-cur" x1="0" y1="0" x2="0" y2="${H2}"/>
+          <line class="mkc-cur" x1="0" y1="0" x2="0" y2="${H3}"/>
           <circle class="mkc-dot" cx="${X(n - 1)}" cy="${Y(s.last).toFixed(1)}" r="3.4" fill="${color}"/>
         </svg>
         <div class="mkc-hi">${money(s.max)}</div>
         <div class="mkc-lo">${money(s.min)}</div>
       </div>
-      <div class="mkc-x">${s.pts.map((q, i) => q.label ? `<span style="left:${(X(i) / W2 * 100).toFixed(2)}%">${esc2(q.label)}</span>` : "").join("")}</div>
+      <div class="mkc-x">${s.pts.map((q, i) => q.label ? `<span style="left:${(X(i) / W3 * 100).toFixed(2)}%">${esc2(q.label)}</span>` : "").join("")}</div>
       <div class="mkc-read"><span class="a">${money(s.last)}</span><span class="b">Now</span></div>
-      <div class="mkc-ranges">${RANGES.map(
+      <div class="mkc-ranges">${RANGES2.map(
       ([k, lb]) => `<div class="mkc-rg${k === range ? " on" : ""}" onclick="mkRange('${p.id}','${k}')">${lb}</div>`
     ).join("")}</div>
     </div>`;
@@ -9148,10 +10060,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const d = paceData(p);
     if (d.cum.length < 2) return "";
     const ahead = d.ahead >= 0;
-    const color = ahead ? UP2 : DOWN2;
+    const color = ahead ? UP3 : DOWN3;
     const top = Math.max(d.target, d.finish, d.run) * 1.06 || 1;
-    const X = (w) => w / SEASON_GAMES * W2;
-    const Y = (v) => H2 - v / top * H2;
+    const X = (w) => w / SEASON_GAMES * W3;
+    const Y = (v) => H3 - v / top * H3;
     const actual = d.cum.map((c) => `${X(c.week).toFixed(1)},${Y(c.pts).toFixed(1)}`).join(" ");
     const last = d.cum[d.cum.length - 1];
     const gap = `${X(0)},${Y(0)} ${actual} ${X(last.week).toFixed(1)},${Y(d.paceNow).toFixed(1)}`;
@@ -9164,7 +10076,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           ${ahead ? "ahead of" : "behind"} the price</div>
       </div>
       <div class="mkc-plot tall">
-        <svg viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none" class="mkc-svg">
+        <svg viewBox="0 0 ${W3} ${H3}" preserveAspectRatio="none" class="mkc-svg">
           <defs><linearGradient id="mkcpace" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="${color}" stop-opacity=".30"/>
             <stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
@@ -9198,8 +10110,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         them is the whole trade.</div>
     </div>`;
   }
-  function playerCharts(p, range) {
-    return priceChart(p, range) + lastFiveChart(p) + paceChart(p);
+  function playerCharts(p, range, term) {
+    return priceChart(p, range, term) + lastFiveChart(p) + paceChart(p);
   }
 
   // js/markets/index.js
@@ -9208,17 +10120,851 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     closeMarkets: () => closeMarkets,
     initMarkets: () => initMarkets2,
     mkAbout: () => mkAbout,
+    mkBumpQty: () => mkBumpQty,
+    mkCancelOrder: () => mkCancelOrder,
     mkCloseSheet: () => mkCloseSheet,
     mkOpenPlayer: () => mkOpenPlayer,
     mkRange: () => mkRange,
+    mkRefreshPlayer: () => mkRefreshPlayer,
+    mkSetEngine: () => mkSetEngine,
+    mkSubmitTicket: () => mkSubmitTicket,
+    mkTicketSet: () => mkTicketSet,
     mkToast: () => mkToast,
     mkTogglePortfolio: () => mkTogglePortfolio,
     mkToggleWatch: () => mkToggleWatch,
     mkView: () => mkView,
     openMarkets: () => openMarkets
   });
+
+  // js/markets/trade.js
+  var trade_exports = {};
+  __export(trade_exports, {
+    bumpQty: () => bumpQty,
+    cancelWorking: () => cancelWorking,
+    marketInfoHTML: () => marketInfoHTML,
+    openTicket: () => openTicket,
+    setTicket: () => setTicket,
+    submitTicket: () => submitTicket,
+    ticket: () => ticket,
+    ticketHTML: () => ticketHTML
+  });
+
+  // js/markets/ledger.js
+  var ledger_exports = {};
+  __export(ledger_exports, {
+    ACTIONS: () => ACTIONS,
+    START_CASH: () => START_CASH,
+    accountSummary: () => accountSummary,
+    acct: () => acct,
+    cancelOrder: () => cancelOrder,
+    markPrice: () => markPrice,
+    placeOrder: () => placeOrder,
+    playerExposure: () => playerExposure,
+    playerSide: () => playerSide,
+    positionFor: () => positionFor,
+    positionRows: () => positionRows,
+    positions: () => positions,
+    positionsForPlayer: () => positionsForPlayer,
+    resetLedger: () => resetLedger,
+    saveLedger: () => saveLedger,
+    settlePositions: () => settlePositions,
+    sweepResting: () => sweepResting,
+    validate: () => validate,
+    workingOrders: () => workingOrders
+  });
+  var START_CASH = 25e3;
+  var KEY = "arc_ledger_v1";
+  function load2() {
+    try {
+      return JSON.parse(localStorage.getItem(KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  var acct = load2();
+  acct.cash = acct.cash == null ? START_CASH : acct.cash;
+  acct.positions = acct.positions || {};
+  acct.orders = acct.orders || [];
+  acct.fills = acct.fills || [];
+  acct.settled = acct.settled || [];
+  function saveLedger() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(acct));
+    } catch (e) {
+    }
+  }
+  function positionFor(sym) {
+    return acct.positions[sym] || null;
+  }
+  function positions() {
+    return Object.values(acct.positions).filter((p) => Math.abs(p.qty) >= MIN_QTY);
+  }
+  function positionsForPlayer(playerId) {
+    return positions().filter((p) => p.playerId === playerId);
+  }
+  function playerSide(playerId) {
+    let net = 0;
+    positionsForPlayer(playerId).forEach((p) => {
+      net += p.qty;
+    });
+    if (net >= MIN_QTY) return "long";
+    if (net <= -MIN_QTY) return "short";
+    return null;
+  }
+  function playerExposure(playerId) {
+    return roundQty(positionsForPlayer(playerId).reduce((n, p) => n + p.qty, 0));
+  }
+  var ACTIONS = {
+    buy: { side: "buy", dir: 1, opens: "long", label: "Buy" },
+    sell: { side: "sell", dir: -1, closes: "long", label: "Sell" },
+    short: { side: "sell", dir: -1, opens: "short", label: "Short" },
+    cover: { side: "buy", dir: 1, closes: "short", label: "Cover" }
+  };
+  function validate({ action, sym, qty, type, limit }) {
+    const a = ACTIONS[action];
+    if (!a) return { ok: false, reason: "Unknown order type" };
+    const q = roundQty(qty);
+    if (!(q >= MIN_QTY)) return { ok: false, reason: `Minimum size is ${MIN_QTY} shares` };
+    if (type === "limit" && !(limit > 0)) return { ok: false, reason: "Enter a limit price" };
+    const { playerId, term } = parseSymbol(sym);
+    if (!termAvailable(playerId, term))
+      return { ok: false, reason: "That contract length is not offered for this player" };
+    const pos = positionFor(sym);
+    const held = pos ? pos.qty : 0;
+    const side = playerSide(playerId);
+    if (a.closes === "long") {
+      if (held < MIN_QTY) return { ok: false, reason: "You have no shares of this contract to sell" };
+      if (q > held + 1e-9) return { ok: false, reason: `You only hold ${held} shares` };
+    }
+    if (a.closes === "short") {
+      if (held > -MIN_QTY) return { ok: false, reason: "You have no short position to cover" };
+      if (q > -held + 1e-9) return { ok: false, reason: `Your short is ${roundQty(-held)} shares` };
+    }
+    if (a.opens === "long" && side === "short")
+      return { ok: false, reason: "You are short this player \u2014 cover that position before going long" };
+    if (a.opens === "short" && side === "long")
+      return { ok: false, reason: "You are long this player \u2014 sell those shares before going short" };
+    if (a.side === "buy" && type === "limit") {
+      const cost = q * limit;
+      if (cost > acct.cash + 1e-9)
+        return { ok: false, reason: `Not enough cash \u2014 that order needs ${cost.toFixed(2)}` };
+    }
+    return { ok: true };
+  }
+  function applyFill(sym, action, qty, px) {
+    const a = ACTIONS[action];
+    const { playerId, term } = parseSymbol(sym);
+    const signed2 = a.dir * qty;
+    const pos = acct.positions[sym] || (acct.positions[sym] = { sym, playerId, term, qty: 0, avg: 0, opened: Date.now(), startSeason: SEASON });
+    const before = pos.qty;
+    const after = roundQty(before + signed2);
+    const cash = -a.dir * qty * px;
+    if (before === 0 || Math.sign(before) === Math.sign(signed2)) {
+      const tot = Math.abs(before) + qty;
+      pos.avg = round2((Math.abs(before) * pos.avg + qty * px) / (tot || 1));
+    } else {
+      const closedQty = Math.min(qty, Math.abs(before));
+      const perShare = before > 0 ? px - pos.avg : pos.avg - px;
+      acct.realized = round2((acct.realized || 0) + perShare * closedQty);
+    }
+    pos.qty = after;
+    acct.cash = round2(acct.cash + cash);
+    acct.fills.push({ ts: Date.now(), sym, action, qty: roundQty(qty), px: round2(px) });
+    if (acct.fills.length > 500) acct.fills.splice(0, acct.fills.length - 500);
+    if (Math.abs(after) < MIN_QTY) delete acct.positions[sym];
+    return pos;
+  }
+  var seq = 1;
+  function placeOrder({ action, sym, qty, type = "market", limit = null, who = "user" }) {
+    const v = validate({ action, sym, qty, type, limit });
+    if (!v.ok) return { ok: false, reason: v.reason };
+    const a = ACTIONS[action];
+    const res = getEngine().submit({ sym, side: a.side, qty: roundQty(qty), type, limit, who });
+    if (res.status === "rejected")
+      return { ok: false, reason: res.reason || "Order rejected" };
+    const order = {
+      id: "ord" + seq++ + "-" + Date.now().toString(36),
+      ts: Date.now(),
+      action,
+      sym,
+      type,
+      limit: limit ? round2(limit) : null,
+      qty: roundQty(qty),
+      filled: res.filled || 0,
+      avg: res.avg || 0,
+      status: res.status,
+      restingId: res.resting ? res.resting.id : null
+    };
+    if (res.filled >= MIN_QTY) applyFill(sym, action, res.filled, res.avg);
+    acct.orders.unshift(order);
+    if (acct.orders.length > 200) acct.orders.length = 200;
+    saveLedger();
+    return { ok: true, order, fills: res.fills || [] };
+  }
+  function workingOrders() {
+    return acct.orders.filter((o) => o.status === "resting" || o.status === "partial");
+  }
+  function cancelOrder(id) {
+    const o = acct.orders.find((x) => x.id === id);
+    if (!o) return false;
+    if (o.restingId) getEngine().cancel(o.sym, o.restingId);
+    o.status = "cancelled";
+    saveLedger();
+    return true;
+  }
+  function sweepResting() {
+    let touched = false;
+    workingOrders().forEach((o) => {
+      const remaining = roundQty(o.qty - o.filled);
+      if (remaining < MIN_QTY) {
+        o.status = "filled";
+        return;
+      }
+      const a = ACTIONS[o.action];
+      const q = getEngine().quote(o.sym);
+      if (!q) return;
+      const px = a.side === "buy" ? q.ask != null ? q.ask : q.mid : q.bid != null ? q.bid : q.mid;
+      const hits = a.side === "buy" ? px <= o.limit + 1e-9 : px >= o.limit - 1e-9;
+      if (!hits) return;
+      const v = validate({ action: o.action, sym: o.sym, qty: remaining, type: "market" });
+      if (!v.ok) {
+        o.status = "cancelled";
+        o.reason = v.reason;
+        touched = true;
+        return;
+      }
+      const res = getEngine().submit({ sym: o.sym, side: a.side, qty: remaining, type: "market", who: "user" });
+      if (res.filled >= MIN_QTY) {
+        applyFill(o.sym, o.action, res.filled, res.avg);
+        o.filled = roundQty(o.filled + res.filled);
+        o.avg = res.avg;
+        o.status = o.filled >= o.qty - 1e-9 ? "filled" : "partial";
+        touched = true;
+      }
+    });
+    if (touched) saveLedger();
+    return touched;
+  }
+  function markPrice(sym) {
+    const q = getEngine().quote(sym);
+    return q ? q.last != null ? q.last : q.mid : 0;
+  }
+  function positionRows() {
+    return positions().map((p) => {
+      const px = markPrice(p.sym);
+      const value = round2(p.qty * px);
+      const cost = round2(p.qty * p.avg);
+      return {
+        ...p,
+        px,
+        value,
+        cost,
+        side: p.qty < 0 ? "short" : "long",
+        pl: round2(value - cost),
+        plPct: cost ? round2((value - cost) / Math.abs(cost) * 100) : 0
+      };
+    });
+  }
+  function accountSummary() {
+    const rows2 = positionRows();
+    const long = rows2.filter((r) => r.qty > 0).reduce((n, r) => n + r.value, 0);
+    const short = rows2.filter((r) => r.qty < 0).reduce((n, r) => n + r.value, 0);
+    const unrealized = rows2.reduce((n, r) => n + r.pl, 0);
+    return {
+      cash: round2(acct.cash),
+      rows: rows2,
+      longValue: round2(long),
+      shortValue: round2(short),
+      equity: round2(acct.cash + long + short),
+      unrealized: round2(unrealized),
+      realized: round2(acct.realized || 0)
+    };
+  }
+  function settlePositions(sym, settleValue, reason) {
+    const pos = positionFor(sym);
+    if (!pos) return null;
+    const perShare = pos.qty > 0 ? settleValue - pos.avg : pos.avg - settleValue;
+    const pl = round2(perShare * Math.abs(pos.qty));
+    acct.cash = round2(acct.cash + pos.qty * settleValue);
+    acct.realized = round2((acct.realized || 0) + pl);
+    acct.settled.unshift({
+      ts: Date.now(),
+      sym,
+      qty: pos.qty,
+      avg: pos.avg,
+      settleValue: round2(settleValue),
+      pl,
+      reason
+    });
+    delete acct.positions[sym];
+    acct.orders.forEach((o) => {
+      if (o.sym === sym && (o.status === "resting" || o.status === "partial")) o.status = "void";
+    });
+    saveLedger();
+    return { sym, pl, reason };
+  }
+  function resetLedger() {
+    acct.cash = START_CASH;
+    acct.positions = {};
+    acct.orders = [];
+    acct.fills = [];
+    acct.settled = [];
+    acct.realized = 0;
+    saveLedger();
+  }
+
+  // js/markets/projections.js
+  var projections_exports = {};
+  __export(projections_exports, {
+    activeProvider: () => activeProvider,
+    applyProjections: () => applyProjections,
+    lastUpdated: () => lastUpdated,
+    listProviders: () => listProviders,
+    projectionChange: () => projectionChange,
+    projectionFor: () => projectionFor,
+    providerLabel: () => providerLabel,
+    pushProjection: () => pushProjection,
+    refreshProjections: () => refreshProjections,
+    registerProvider: () => registerProvider,
+    setProvider: () => setProvider,
+    startProjectionFeed: () => startProjectionFeed,
+    stopProjectionFeed: () => stopProjectionFeed,
+    subscribe: () => subscribe
+  });
+  var providers = {};
+  function registerProvider(name, impl) {
+    providers[name] = impl;
+  }
+  function listProviders() {
+    return Object.keys(providers);
+  }
+  registerProvider("bundled", {
+    label: "Bundled model",
+    async fetch() {
+      const out = {};
+      tradableUniverse().forEach((p) => {
+        out[p.id] = p.sproj;
+      });
+      return out;
+    }
+  });
+  registerProvider("sleeper", {
+    label: "Sleeper",
+    endpoint: "https://api.sleeper.app/v1/projections/nfl/regular/2026",
+    async fetch() {
+      const res = await fetch(this.endpoint);
+      if (!res.ok) throw new Error("projection feed unavailable");
+      const raw = await res.json();
+      const out = {};
+      Object.entries(raw || {}).forEach(([id, row]) => {
+        if (row && row.pts_ppr != null) out[id] = row.pts_ppr;
+      });
+      return out;
+    }
+  });
+  var active = "bundled";
+  function setProvider(name) {
+    if (providers[name]) active = name;
+    return active;
+  }
+  function activeProvider() {
+    return active;
+  }
+  function providerLabel() {
+    return (providers[active] || {}).label || active;
+  }
+  var proj = {};
+  var prev = {};
+  var updatedAt = null;
+  var subs = [];
+  function projectionFor(playerId) {
+    if (proj[playerId] != null) return proj[playerId];
+    const p = NFL_BY_ID[playerId];
+    return p ? p.sproj : 0;
+  }
+  function projectionChange(playerId) {
+    if (prev[playerId] == null || proj[playerId] == null) return 0;
+    return Math.round((proj[playerId] - prev[playerId]) * 10) / 10;
+  }
+  function lastUpdated() {
+    return updatedAt;
+  }
+  function subscribe(cb) {
+    subs.push(cb);
+    return () => {
+      const i = subs.indexOf(cb);
+      if (i > -1) subs.splice(i, 1);
+    };
+  }
+  function applyProjections(map) {
+    const moved = [];
+    Object.entries(map || {}).forEach(([id, pts]) => {
+      const before = proj[id];
+      if (before != null && Math.abs(pts - before) < 0.05) return;
+      if (before != null) {
+        prev[id] = before;
+        moved.push({ id, from: before, to: pts });
+      }
+      proj[id] = pts;
+    });
+    updatedAt = Date.now();
+    moved.forEach((m) => {
+      const delta = m.to - m.from;
+      publish({
+        kind: "projection",
+        playerId: m.id,
+        text: `${providerLabel()} projection ${delta > 0 ? "raised" : "cut"} to ${m.to.toFixed(1)}`,
+        sentiment: Math.max(-1.4, Math.min(1.4, delta / Math.max(1, m.from) * 9))
+      });
+    });
+    subs.forEach((cb) => {
+      try {
+        cb(moved);
+      } catch (e) {
+      }
+    });
+    return moved;
+  }
+  async function refreshProjections() {
+    const p = providers[active];
+    if (!p) return [];
+    try {
+      return applyProjections(await p.fetch());
+    } catch (e) {
+      return [];
+    }
+  }
+  var poll = null;
+  function startProjectionFeed({ intervalMs = 6e4 } = {}) {
+    refreshProjections();
+    if (poll) clearInterval(poll);
+    poll = setInterval(refreshProjections, intervalMs);
+    return poll;
+  }
+  function stopProjectionFeed() {
+    if (poll) clearInterval(poll);
+    poll = null;
+  }
+  function pushProjection(playerId, points) {
+    return applyProjections({ [playerId]: points });
+  }
+
+  // js/markets/status.js
+  var status_exports = {};
+  __export(status_exports, {
+    gameStatusFor: () => gameStatusFor,
+    injuryFor: () => injuryFor,
+    marketWeek: () => marketWeek,
+    opponentFor: () => opponentFor,
+    seasonPointsFor: () => seasonPointsFor
+  });
+  var DAY4 = 864e5;
+  function injuryFor(playerId) {
+    const evs = eventsFor(playerId, { maxTier: 2, since: Date.now() - 21 * DAY4 }).filter((e) => e.kind === "injury" || e.kind === "seasonEnding");
+    if (!evs.length) return { label: "Healthy", cls: "up", status: "healthy" };
+    const worst = evs.some((e) => e.kind === "seasonEnding");
+    if (worst) return { label: "Out (season)", cls: "down", status: "out" };
+    const last = evs[evs.length - 1];
+    const days = (Date.now() - last.ts) / DAY4;
+    if (days < 3) return { label: "Questionable", cls: "warn", status: "questionable" };
+    return { label: "Probable", cls: "warn", status: "probable" };
+  }
+  function marketWeek() {
+    return WEEKS_PLAYED + 1;
+  }
+  var OPPONENTS = [
+    "KC",
+    "BUF",
+    "PHI",
+    "SF",
+    "DAL",
+    "BAL",
+    "DET",
+    "MIA",
+    "GB",
+    "CIN",
+    "HOU",
+    "LA",
+    "NYJ",
+    "MIN",
+    "SEA",
+    "TB"
+  ];
+  function pick(playerId, list, salt) {
+    let h = 2166136261;
+    const s = playerId + (salt || "");
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return list[(h >>> 0) % list.length];
+  }
+  function opponentFor(playerId) {
+    const p = NFL_BY_ID[playerId];
+    const opp = pick(playerId, OPPONENTS, "#opp" + marketWeek());
+    if (p && opp === p.tm) return "@ " + OPPONENTS[(OPPONENTS.indexOf(opp) + 3) % OPPONENTS.length];
+    return pick(playerId, ["vs", "@"], "#ha") + " " + opp;
+  }
+  var STATES = ["Sun 1:00", "Sun 4:25", "Thu 8:15", "Mon 8:15", "Sun 8:20"];
+  function gameStatusFor(playerId) {
+    return pick(playerId, STATES, "#gs" + marketWeek());
+  }
+  function seasonPointsFor(playerId) {
+    const p = NFL_BY_ID[playerId];
+    if (!p) return 0;
+    const log = gameLog({ id: playerId, sproj: p.sproj });
+    return Math.round(log.slice(0, WEEKS_PLAYED).reduce((n, g) => n + g.pts, 0) * 10) / 10;
+  }
+
+  // js/markets/trade.js
+  var ticket = {
+    playerId: null,
+    term: DEFAULT_TERM,
+    action: "buy",
+    type: "market",
+    qty: 1,
+    limit: null
+  };
+  function openTicket(playerId, term) {
+    ticket.playerId = playerId;
+    ticket.term = term || DEFAULT_TERM;
+    const side = playerSide(playerId);
+    ticket.action = side === "short" ? "cover" : "buy";
+    ticket.type = "market";
+    ticket.qty = 1;
+    ticket.limit = null;
+    return ticketHTML();
+  }
+  function setTicket(field, value) {
+    if (field === "qty") ticket.qty = Math.max(0, parseFloat(value) || 0);
+    else if (field === "limit") ticket.limit = parseFloat(value) || null;
+    else ticket[field] = value;
+    if (field === "term") ticket.action = playerSide(ticket.playerId) === "short" ? "cover" : "buy";
+    repaintTicket();
+  }
+  function bumpQty(delta) {
+    ticket.qty = Math.max(0, Math.round((ticket.qty + delta) * 1e3) / 1e3);
+    repaintTicket();
+  }
+  function repaintTicket() {
+    const host = document.getElementById("mkTicket");
+    if (host) host.innerHTML = ticketHTML();
+  }
+  function submitTicket() {
+    const sym = symbolFor(ticket.playerId, ticket.term);
+    const res = placeOrder({
+      action: ticket.action,
+      sym,
+      qty: ticket.qty,
+      type: ticket.type,
+      limit: ticket.limit
+    });
+    const toast3 = window.mkToast || (() => {
+    });
+    if (!res.ok) {
+      toast3(res.reason);
+      repaintTicket();
+      return res;
+    }
+    const o = res.order;
+    const a = ACTIONS[o.action];
+    toast3(o.status === "resting" ? `${a.label} order resting at ${money(o.limit)}` : `${a.label} ${o.filled} @ ${money(o.avg)}`);
+    ticket.qty = 1;
+    if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
+    return res;
+  }
+  function cancelWorking(id) {
+    cancelOrder(id);
+    if (window.mkToast) window.mkToast("Order cancelled");
+    if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
+  }
+  var ACTION_ORDER = ["buy", "sell", "short", "cover"];
+  function ticketHTML() {
+    const p = BY_ID[ticket.playerId];
+    if (!p) return "";
+    const sym = symbolFor(ticket.playerId, ticket.term);
+    const q = quoteStats(ticket.playerId, ticket.term);
+    const pos = positionFor(sym);
+    const side = playerSide(ticket.playerId);
+    const acctSum = accountSummary();
+    const terms = termsFor(ticket.playerId);
+    const termRow = `<div class="tk-terms">${terms.map((t) => `
+    <div class="tk-term${t.key === ticket.term ? " on" : ""}" onclick="mkTicketSet('term','${t.key}')">
+      <b>${t.short}</b><span>${esc2(t.label)}</span></div>`).join("")}
+    ${!isTop100(ticket.playerId) ? `<div class="tk-term off" title="Top 100 only">
+      <b>5Y</b><span>Top 100</span></div>` : ""}
+  </div>`;
+    const probe = (a) => validate({
+      action: a,
+      sym,
+      qty: Math.max(ticket.qty, MIN_QTY),
+      type: ticket.type,
+      limit: ticket.limit
+    });
+    const actions = ACTION_ORDER.map((a) => {
+      const v = probe(a);
+      const on = a === ticket.action;
+      return `<div class="tk-act ${a}${on ? " on" : ""}${v.ok ? "" : " off"}"
+      ${v.ok ? `onclick="mkTicketSet('action','${a}')"` : `onclick="mkToast('${esc2(v.reason)}')"`}
+      >${ACTIONS[a].label}</div>`;
+    }).join("");
+    const est = ticket.type === "limit" && ticket.limit ? ticket.limit : ACTIONS[ticket.action].side === "buy" ? q.ask || q.price : q.bid || q.price;
+    const cost = (ticket.qty || 0) * (est || 0);
+    const check = validate({
+      action: ticket.action,
+      sym,
+      qty: ticket.qty,
+      type: ticket.type,
+      limit: ticket.limit
+    });
+    const posLine = pos ? `<div class="tk-pos ${pos.qty < 0 ? "short" : "long"}">
+      ${pos.qty < 0 ? "SHORT" : "LONG"} ${Math.abs(pos.qty)} shares @ ${money(pos.avg)}</div>` : "";
+    const hedgeNote = side ? `<div class="tk-note">You are <b>${side}</b> this player. Positions in the
+      opposite direction are blocked across every contract length until this one is closed.</div>` : "";
+    const working = workingOrders().filter((o) => o.sym === sym);
+    const workRows = working.length ? `<div class="tk-work">
+    <div class="tk-work-h">WORKING ORDERS</div>
+    ${working.map((o) => `<div class="tk-work-r">
+      <span>${ACTIONS[o.action].label} ${o.qty}${o.filled ? ` (${o.filled} filled)` : ""} @ ${money(o.limit)}</span>
+      <span class="x" onclick="mkCancelOrder('${o.id}')">Cancel</span></div>`).join("")}
+  </div>` : "";
+    return `
+    <div class="tk">
+      <div class="tk-h">
+        <span>TRADE</span>
+        <span class="tk-cash">Cash ${money(acctSum.cash)}</span>
+      </div>
+      ${termRow}
+      ${posLine}
+      <div class="tk-acts">${actions}</div>
+      <div class="tk-seg">
+        <div class="sg${ticket.type === "market" ? " on" : ""}" onclick="mkTicketSet('type','market')">Market</div>
+        <div class="sg${ticket.type === "limit" ? " on" : ""}" onclick="mkTicketSet('type','limit')">Limit</div>
+      </div>
+      <div class="tk-field">
+        <label>Shares</label>
+        <div class="tk-qty">
+          <span class="b" onclick="mkBumpQty(-1)">\u2212</span>
+          <input type="number" step="0.001" min="0" inputmode="decimal" value="${ticket.qty}"
+            onchange="mkTicketSet('qty',this.value)" oninput="mkTicketSet('qty',this.value)">
+          <span class="b" onclick="mkBumpQty(1)">+</span>
+        </div>
+      </div>
+      <div class="tk-chips">
+        ${[0.25, 0.5, 1, 5, 10].map((n) => `<span onclick="mkTicketSet('qty',${n})">${n}</span>`).join("")}
+      </div>
+      ${ticket.type === "limit" ? `<div class="tk-field">
+        <label>Limit price</label>
+        <input class="tk-in" type="number" step="0.01" inputmode="decimal"
+          value="${ticket.limit != null ? ticket.limit : (est || 0).toFixed(2)}"
+          onchange="mkTicketSet('limit',this.value)">
+      </div>` : ""}
+      <div class="tk-sum">
+        <span>${ticket.type === "limit" ? "Limit" : "Est. price"}</span><b>${money(est || 0)}</b>
+        <span>${ACTIONS[ticket.action].side === "buy" ? "Est. cost" : "Est. proceeds"}</span><b>${money(cost)}</b>
+      </div>
+      <div class="tk-go ${check.ok ? "" : "off"}"
+        onclick="${check.ok ? "mkSubmitTicket()" : `mkToast('${esc2(check.reason)}')`}">
+        ${ACTIONS[ticket.action].label} ${ticket.qty || 0} ${ticket.qty === 1 ? "share" : "shares"}
+      </div>
+      ${check.ok ? "" : `<div class="tk-err">${esc2(check.reason)}</div>`}
+      ${hedgeNote}
+      ${workRows}
+    </div>`;
+  }
+  function marketInfoHTML(playerId, term) {
+    const p = BY_ID[playerId];
+    if (!p) return "";
+    const q = quoteStats(playerId, term);
+    const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
+    const iv = intrinsic({ ...p, sproj: projectionFor(playerId) }, t.key);
+    const inj = injuryFor(playerId);
+    const pts = seasonPointsFor(playerId);
+    const cell = (lb, val, cls) => `<div class="mi-c"><span>${lb}</span><b class="${cls || ""}">${val}</b></div>`;
+    const pc = (n) => `<span class="${n < 0 ? "down" : "up"}">${n < 0 ? "" : "+"}${n.toFixed(2)}%</span>`;
+    return `
+    <div class="mi">
+      <div class="mi-grid">
+        ${cell("Price", money(q.price))}
+        ${cell("Last", money(q.last))}
+        ${cell("Bid", q.bid != null ? money(q.bid) : "\u2014")}
+        ${cell("Ask", q.ask != null ? money(q.ask) : "\u2014")}
+        ${cell("Day", pc(q.dayPct))}
+        ${cell("Week", pc(q.weekPct))}
+        ${cell("Month", pc(q.monthPct))}
+        ${cell("Volume", q.volume.toLocaleString())}
+        ${cell("Trades", q.trades.toLocaleString())}
+      </div>
+      <div class="mi-ratio">
+        <div class="mi-ratio-h"><span>BUY / SELL</span>
+          <b>${Math.round(q.buyRatio * 100)}% buy</b></div>
+        <div class="mi-bar"><i style="width:${Math.round(q.buyRatio * 100)}%"></i></div>
+      </div>
+      <div class="mi-grid">
+        ${cell("Projection", projectionFor(playerId).toFixed(1))}
+        ${cell("Points", pts.toFixed(1))}
+        ${cell("Position", esc2(p.posRank))}
+        ${cell("Team", esc2(p.tm))}
+        ${cell("Injury", inj.label, inj.cls)}
+        ${cell("Opponent", esc2(opponentFor(playerId)))}
+        ${cell("Game", esc2(gameStatusFor(playerId)))}
+        ${cell("Intrinsic", money(iv.value))}
+        ${cell("Top 100", isTop100(playerId) ? "#" + top100Rank(playerId) : "\u2014")}
+      </div>
+      <div class="mi-src">${ICON.info}<span>Projection from <b>${esc2(providerLabel())}</b> \xB7
+        intrinsic value is ${iv.points.toFixed(0)} pts \xF7 ${POINTS_PER_DOLLAR2}.
+        Informational only \u2014 price is set by trading, on the
+        <b>${q.engine === "amm" ? "automated market maker" : "order book"}</b>.</span></div>
+    </div>`;
+  }
+
+  // js/markets/flow.js
+  var flow_exports = {};
+  __export(flow_exports, {
+    isRunning: () => isRunning,
+    listMarket: () => listMarket,
+    onFlow: () => onFlow,
+    startFlow: () => startFlow,
+    stopFlow: () => stopFlow,
+    tick: () => tick2
+  });
+  var TRADERS = [
+    { kind: "value", weight: 0.42, aggression: 0.55 },
+    { kind: "momentum", weight: 0.33, aggression: 0.85 },
+    { kind: "noise", weight: 0.25, aggression: 0.35 }
+  ];
+  var listed = false;
+  var timer = null;
+  var tickMs = 3e3;
+  var subs2 = [];
+  function onFlow(cb) {
+    subs2.push(cb);
+    return () => {
+      const i = subs2.indexOf(cb);
+      if (i > -1) subs2.splice(i, 1);
+    };
+  }
+  function listMarket() {
+    if (listed) return;
+    listed = true;
+    const eng = getEngine();
+    tradableUniverse().forEach((p) => {
+      termsFor(p.id).forEach((t) => {
+        const sym = symbolFor(p.id, t.key);
+        const iv = intrinsic(p, t.key).value;
+        eng.seed(sym, Math.max(0.05, iv));
+        const n = 2 + Math.floor(rand(p.id + t.key) * 4);
+        for (let i = 0; i < n; i++) {
+          const side = rand(p.id + t.key + i) > 0.46 ? "buy" : "sell";
+          eng.submit({ sym, side, qty: roundQty(1 + rand(p.id + i + "q") * 12), type: "market", who: "mm" });
+        }
+      });
+    });
+  }
+  var rs = 1;
+  function rand(key) {
+    let h = 2166136261;
+    const s = String(key) + rs++;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    h = Math.imul(h ^ h >>> 15, h | 1);
+    return ((h ^ h >>> 14) >>> 0) / 4294967296;
+  }
+  function reactTo(ev) {
+    const eng = getEngine();
+    const terms = termsFor(ev.playerId);
+    if (!terms.length) return;
+    const crowd = 2 + Math.floor(Math.abs(ev.sentiment) * 6 + rand(ev.id) * 3);
+    for (let i = 0; i < crowd; i++) {
+      const t = pickTrader(rand(ev.id + i));
+      const term = terms[Math.floor(rand(ev.id + "tm" + i) * terms.length)];
+      const horizon = ev.tier === 3 ? term.years === 1 ? 1 : 0.35 : term.years >= 3 ? 1.15 : 1;
+      const conviction = ev.sentiment * horizon * (0.5 + rand(ev.id + "c" + i));
+      const dir = t.kind === "value" && Math.abs(conviction) > 1.2 ? -Math.sign(conviction) : Math.sign(conviction) || (rand(ev.id + "d" + i) > 0.5 ? 1 : -1);
+      const qty = roundQty((0.4 + rand(ev.id + "q" + i) * 9) * t.aggression * (1 + Math.abs(conviction)));
+      if (qty < MIN_QTY) continue;
+      eng.submit({
+        sym: symbolFor(ev.playerId, term.key),
+        side: dir > 0 ? "buy" : "sell",
+        qty,
+        type: "market",
+        who: t.kind
+      });
+    }
+  }
+  function pickTrader(r) {
+    let acc = 0;
+    for (const t of TRADERS) {
+      acc += t.weight;
+      if (r <= acc) return t;
+    }
+    return TRADERS[TRADERS.length - 1];
+  }
+  function ambient() {
+    const eng = getEngine();
+    const pool = tradableUniverse();
+    const n = 6 + Math.floor(rand("amb") * 8);
+    for (let i = 0; i < n; i++) {
+      const p = pool[Math.floor(rand("p" + i) * pool.length)];
+      const terms = termsFor(p.id);
+      const term = terms[Math.floor(rand("t" + i) * terms.length)];
+      const sym = symbolFor(p.id, term.key);
+      const q = eng.quote(sym);
+      if (!q) continue;
+      const iv = intrinsic({ ...p, sproj: projectionFor(p.id) }, term.key).value;
+      const px = q.last != null ? q.last : q.mid;
+      const gap = iv ? (iv - px) / iv : 0;
+      const t = pickTrader(rand("k" + i));
+      let bias = 0;
+      if (t.kind === "value") bias = Math.max(-0.9, Math.min(0.9, gap * 2.2));
+      else if (t.kind === "momentum") bias = lastMove(eng, sym) * 0.55;
+      const roll = rand("r" + i) * 2 - 1;
+      const side = roll + bias >= 0 ? "buy" : "sell";
+      const qty = roundQty((0.3 + rand("q" + i) * 6) * t.aggression);
+      if (qty >= MIN_QTY) eng.submit({ sym, side, qty, type: "market", who: t.kind });
+    }
+  }
+  function lastMove(eng, sym) {
+    const tape = eng.tape(sym);
+    if (tape.length < 2) return 0;
+    const a = tape[tape.length - 2].px, b = tape[tape.length - 1].px;
+    return a ? Math.max(-1, Math.min(1, (b - a) / a * 30)) : 0;
+  }
+  function tick2() {
+    pending().forEach((ev) => {
+      reactTo(ev);
+      consume(ev);
+    });
+    ambient();
+    sweepResting();
+    subs2.forEach((cb) => {
+      try {
+        cb();
+      } catch (e) {
+      }
+    });
+  }
+  function startFlow(ms) {
+    listMarket();
+    if (ms) tickMs = ms;
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick2, tickMs);
+    return timer;
+  }
+  function stopFlow() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+  function isRunning() {
+    return !!timer;
+  }
+
+  // js/markets/index.js
   var view = "market";
-  var pxRange = "season";
+  var pxRange = "1d";
+  var openId = null;
   function openMarkets() {
     document.body.classList.add("markets");
     mkView(view);
@@ -9258,59 +11004,65 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function mkOpenPlayer(id) {
     const p = BY_ID[id];
     if (!p) return;
-    const d = dirClass(p.pct);
-    const curve = seasonCurve(p);
-    openSheet(esc2(p.name), `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    openId = id;
+    openTicket(id, ticket.playerId === id ? ticket.term : DEFAULT_TERM);
+    openSheet(esc2(p.name), playerSheetHTML(p));
+  }
+  function mkRefreshPlayer(id) {
+    if (!openId || id && id !== openId) return;
+    const p = BY_ID[openId];
+    if (!p) return;
+    const body2 = document.getElementById("mkSheetBody");
+    if (body2) body2.innerHTML = playerSheetHTML(p);
+  }
+  function playerSheetHTML(p) {
+    const term = ticket.term || DEFAULT_TERM;
+    const q = quoteStats(p.id, term);
+    const d = dirClass(q.dayPct);
+    const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
+    const pos = positionFor(symbolFor(p.id, term));
+    return `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       ${face(p)}
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;color:var(--mk-ink-3);font-weight:700">
-          ${esc2(p.tm)} &middot; ${esc2(p.posRank)}</div>
-        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(p.price)}</div>
+          ${esc2(p.tm)} &middot; ${esc2(p.posRank)} &middot; ${esc2(t.short)}</div>
+        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(q.price)}</div>
         <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
-          ${tri(p.pct)} ${money(p.change)} (${pctText(Math.abs(p.pct))}) today</div>
+          ${tri(q.dayPct)} ${money(q.dayChange)} (${pctText(Math.abs(q.dayPct))}) today</div>
       </div>
+      <div class="mk-live"><span class="dot"></span>24/7</div>
     </div>
 
-    ${holdingFor(p.id)}
+    ${pos ? `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You are
+      <b>${pos.qty < 0 ? "short" : "long"} ${Math.abs(pos.qty)} shares</b> at an average of
+      <b>${money(pos.avg)}</b>.</span></div>` : ""}
 
-    <div id="mkCharts">${playerCharts(p, pxRange)}</div>
+    <div id="mkCharts">${playerCharts(p, pxRange, term)}</div>
 
-    <div class="mk-settle">${ICON.info}<span>Settles on official season production at
-      <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
-      ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
-      projection \u2014 the final number is whatever the player actually does.</span></div>
+    <h4>MARKET</h4>
+    ${marketInfoHTML(p.id, term)}
 
-    <h4>SEASON CONTRACTS</h4>
-    <div class="mk-curve">
-      ${curve.map((c, i) => `<div class="yr${i === 0 ? " now" : ""}">
-        <div class="y">${c.year}</div><div class="p">${money(c.price)}</div></div>`).join("")}
-    </div>
-    <p style="font-size:11.5px;color:var(--mk-ink-3);margin-top:10px">Three seasons priced side by
-      side sketch the shape of a career \u2014 a premium on players with room to grow, a discount on
-      those past their peak.</p>
+    <div id="mkTicket">${ticketHTML()}</div>
+
+    <div class="mk-settle">${ICON.info}<span>${esc2(t.desc)} Settles at
+      <b>${POINTS_PER_DOLLAR} points per $1</b>, immediately on expiry or if the player retires.
+      NFL trades, releases and signings do not affect the contract.</span></div>
 
     <div style="display:flex;gap:9px;margin-top:14px">
       <div class="mk-pill${isWatched(p.id) ? " on" : ""}" style="flex:1;justify-content:center"
-        onclick="mkToggleWatch('${p.id}');mkOpenPlayer('${p.id}')">${ICON.star} Watch</div>
+        onclick="mkToggleWatch('${p.id}');mkRefreshPlayer('${p.id}')">${ICON.star} Watch</div>
       <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
         border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
-    </div>`);
+    </div>`;
   }
   function mkRange(id, key) {
     const p = BY_ID[id];
     if (!p) return;
     pxRange = key;
     const host = document.querySelector('#mkCharts [data-mkc="price"]');
-    if (host) host.outerHTML = priceChart(p, key);
+    if (host) host.outerHTML = priceChart(p, key, ticket.term);
     else mkOpenPlayer(id);
-  }
-  function holdingFor(id) {
-    const h = holdingRows().find((r) => r.id === id);
-    if (!h) return "";
-    return `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You hold
-    <b>${h.shares} shares</b> &middot; total value <b>${money(h.value)}</b>
-    &middot; <span class="${dirClass(h.dayChange)}">${money(h.dayChange)} today</span></span></div>`;
   }
   function mkAbout() {
     openSheet("Arc Markets", `
@@ -9344,6 +11096,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       all applicable law and eligibility requirements. Player names and all prices and figures
       shown here are illustrative.</div>`);
   }
+  function mkTicketSet(field, value) {
+    setTicket(field, value);
+  }
+  function mkBumpQty(d) {
+    bumpQty(d);
+  }
+  function mkSubmitTicket() {
+    submitTicket();
+  }
+  function mkCancelOrder(id) {
+    cancelWorking(id);
+  }
+  function mkSetEngine(kind) {
+    setEngine(kind);
+    mkToast(kind === "amm" ? "Automated market maker" : "Order book");
+    if (openId) mkRefreshPlayer(openId);
+    else renderMarket();
+  }
   var mkT;
   function mkToast(msg) {
     const el = document.getElementById("mkHint");
@@ -9354,6 +11124,49 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     mkT = setTimeout(() => el.classList.remove("show"), 1700);
   }
   function initMarkets2() {
+    listMarket();
+    seedHistory2(WEEKS_PLAYED);
+    bootstrapSeries();
+    bindQuoteSource((id) => quoteStats(id, DEFAULT_TERM));
+    startProjectionFeed({ intervalMs: 6e4 });
+    onFlow(() => {
+      recordAll();
+      syncMarket();
+      if (!document.body.classList.contains("markets")) return;
+      if (document.body.classList.contains("mk-sheet-open")) mkRefreshPlayer(openId);
+      else if (view === "market") renderMarket();
+      else renderPortfolio();
+    });
+    startFlow(3e3);
+  }
+  function bootstrapSeries() {
+    const DAY5 = 864e5, SLOT = 15 * 6e4, INTRA = DAY5 / SLOT;
+    MARKET.forEach((p) => {
+      const days = priceDays(p);
+      termsFor(p.id).forEach((t) => {
+        const sym = symbolFor(p.id, t.key);
+        if (hasHistory(sym)) return;
+        const q = quoteStats(p.id, t.key);
+        const scale = days.length ? q.price / (days[days.length - 1].v || 1) : 1;
+        const now = Date.now();
+        const t0 = now - days.length * DAY5;
+        const pts = days.slice(0, -1).map((d, i) => ({ t: t0 + i * DAY5, v: round2px(d.v * scale) }));
+        const openPx = pts.length ? pts[pts.length - 1].v : q.price;
+        let v = openPx;
+        const drift = (q.price - openPx) / INTRA;
+        for (let i = 1; i <= INTRA; i++) {
+          v += drift + (Math.sin((i + sym.length) * 1.7) + Math.sin(i * 0.31)) * openPx * 16e-4;
+          pts.push({ t: now - DAY5 + i * SLOT, v: round2px(v) });
+        }
+        pts[pts.length - 1] = { t: now, v: q.price };
+        seedHistory(sym, pts);
+      });
+    });
+    recordAll();
+    syncMarket();
+  }
+  function round2px(v) {
+    return Math.round(v * 100) / 100;
   }
 
   // js/main.js
@@ -9390,8 +11203,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     market_exports,
     portfolio_exports,
     charts_exports,
-    markets_exports
+    markets_exports,
+    trade_exports,
+    ledger_exports
   );
+  window.Arc = {
+    engine: engine_exports,
+    contracts: contracts_exports,
+    quotes: quotes_exports,
+    events: events_exports,
+    projections: projections_exports,
+    flow: flow_exports,
+    status: status_exports,
+    ledger: ledger_exports,
+    trade: trade_exports
+  };
   initStore();
   migrateDraft();
   initLeagueConfig();

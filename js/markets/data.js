@@ -83,6 +83,25 @@ function build() {
 export const MARKET = build();
 export const BY_ID = Object.fromEntries(MARKET.map(p => [p.id, p]));
 
+// ---------------------------------------------------------------- live sync
+// The seeded numbers above are only the opening state. Once the engine is
+// listed, price/change/pct on every row are re-read from the tape — the market
+// is the source of truth for a price, and this file stops being one.
+let syncFn = null;
+export function bindQuoteSource(fn) { syncFn = fn; }
+export function syncMarket() {
+  if (!syncFn) return;
+  MARKET.forEach(p => {
+    const q = syncFn(p.id);
+    if (!q || !q.price) return;
+    p.price = q.price;
+    p.change = q.dayChange;
+    p.pct = q.dayPct;
+    p.trades = q.trades || p.trades;
+    p.bid = q.bid; p.ask = q.ask; p.volume = q.volume;
+  });
+}
+
 // ---------------------------------------------------------------- market stats
 export function marketStats() {
   const trades = MARKET.reduce((n, p) => n + p.trades, 0);

@@ -15,6 +15,7 @@
 import { SEASON_GAMES, WEEKS_PLAYED, POINTS_PER_DOLLAR,
          gameLog, priceDays, careerSeries, paceData } from './data.js';
 import { esc, money } from './ui.js';
+import { priceChart as livePriceChart } from './pricechart.js';
 
 const UP = '#2BE06B', DOWN = '#FF4B4B', BLUE = '#2E8CFF', DIM = '#5A6577';
 
@@ -211,6 +212,9 @@ export function paceChart(p) {
 }
 
 // ---------------------------------------------------------------- all three
-export function playerCharts(p, range) {
-  return priceChart(p, range) + lastFiveChart(p) + paceChart(p);
+// The price chart now comes from pricechart.js, which reads the live tape and
+// the event feed. B and C stay here: they chart the player's production, which
+// is not a market quantity.
+export function playerCharts(p, range, term) {
+  return livePriceChart(p, range, term) + lastFiveChart(p) + paceChart(p);
 }

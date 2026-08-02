@@ -6,15 +6,28 @@
 //
 // The app's own bottom nav stays visible throughout; Markets has no nav of its
 // own, and reaches the portfolio from a button in the header instead.
-import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
-         holdingRows } from './data.js';
+import { BY_ID, toggleWatch, isWatched, POINTS_PER_DOLLAR } from './data.js';
 import { ICON, face, esc, money, pctText, dirClass, tri } from './ui.js';
-import { playerCharts, priceChart } from './charts.js';
+import { playerCharts } from './charts.js';
+import { priceChart } from './pricechart.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
+import { bumpQty, cancelWorking, marketInfoHTML, openTicket, setTicket, submitTicket,
+         ticket, ticketHTML } from './trade.js';
+import { setEngine } from './engine.js';
+import { quoteStats } from './quotes.js';
+import { DEFAULT_TERM, TERM_BY_KEY, termsFor } from './contracts.js';
+import { positionFor, positionRows } from './ledger.js';
+import { symbolFor } from './contracts.js';
+import { MARKET, WEEKS_PLAYED, bindQuoteSource, priceDays, syncMarket } from './data.js';
+import { listMarket, onFlow, startFlow } from './flow.js';
+import { seedHistory as seedEventHistory } from './events.js';
+import { hasHistory, recordAll, seedHistory as seedSeries } from './quotes.js';
+import { startProjectionFeed } from './projections.js';
 
 let view = 'market';
-let pxRange = 'season';   // survives across sheet opens, like a stock app's
+let pxRange = '1d';       // survives across sheet opens, like a stock app's
+let openId = null;        // the contract sheet currently on screen
 
 export function openMarkets() {
   document.body.classList.add('markets');
@@ -65,47 +78,61 @@ export function mkCloseSheet() { document.body.classList.remove('mk-sheet-open')
 export function mkOpenPlayer(id) {
   const p = BY_ID[id];
   if (!p) return;
-  const d = dirClass(p.pct);
-  const curve = seasonCurve(p);
+  openId = id;
+  openTicket(id, ticket.playerId === id ? ticket.term : DEFAULT_TERM);
+  openSheet(esc(p.name), playerSheetHTML(p));
+}
 
-  // No sparkline in the header: the price chart below draws the same season at
-  // full width, and the thumbnail was the same picture twice.
-  openSheet(esc(p.name), `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+/** Repaint the open contract sheet in place — used after a fill and on flow. */
+export function mkRefreshPlayer(id) {
+  if (!openId || (id && id !== openId)) return;
+  const p = BY_ID[openId];
+  if (!p) return;
+  const body = document.getElementById('mkSheetBody');
+  if (body) body.innerHTML = playerSheetHTML(p);
+}
+
+function playerSheetHTML(p) {
+  const term = ticket.term || DEFAULT_TERM;
+  const q = quoteStats(p.id, term);
+  const d = dirClass(q.dayPct);
+  const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
+  const pos = positionFor(symbolFor(p.id, term));
+
+  return `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       ${face(p)}
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;color:var(--mk-ink-3);font-weight:700">
-          ${esc(p.tm)} &middot; ${esc(p.posRank)}</div>
-        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(p.price)}</div>
+          ${esc(p.tm)} &middot; ${esc(p.posRank)} &middot; ${esc(t.short)}</div>
+        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(q.price)}</div>
         <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
-          ${tri(p.pct)} ${money(p.change)} (${pctText(Math.abs(p.pct))}) today</div>
+          ${tri(q.dayPct)} ${money(q.dayChange)} (${pctText(Math.abs(q.dayPct))}) today</div>
       </div>
+      <div class="mk-live"><span class="dot"></span>24/7</div>
     </div>
 
-    ${holdingFor(p.id)}
+    ${pos ? `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You are
+      <b>${pos.qty < 0 ? 'short' : 'long'} ${Math.abs(pos.qty)} shares</b> at an average of
+      <b>${money(pos.avg)}</b>.</span></div>` : ''}
 
-    <div id="mkCharts">${playerCharts(p, pxRange)}</div>
+    <div id="mkCharts">${playerCharts(p, pxRange, term)}</div>
 
-    <div class="mk-settle">${ICON.info}<span>Settles on official season production at
-      <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
-      ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
-      projection — the final number is whatever the player actually does.</span></div>
+    <h4>MARKET</h4>
+    ${marketInfoHTML(p.id, term)}
 
-    <h4>SEASON CONTRACTS</h4>
-    <div class="mk-curve">
-      ${curve.map((c, i) => `<div class="yr${i === 0 ? ' now' : ''}">
-        <div class="y">${c.year}</div><div class="p">${money(c.price)}</div></div>`).join('')}
-    </div>
-    <p style="font-size:11.5px;color:var(--mk-ink-3);margin-top:10px">Three seasons priced side by
-      side sketch the shape of a career — a premium on players with room to grow, a discount on
-      those past their peak.</p>
+    <div id="mkTicket">${ticketHTML()}</div>
+
+    <div class="mk-settle">${ICON.info}<span>${esc(t.desc)} Settles at
+      <b>${POINTS_PER_DOLLAR} points per $1</b>, immediately on expiry or if the player retires.
+      NFL trades, releases and signings do not affect the contract.</span></div>
 
     <div style="display:flex;gap:9px;margin-top:14px">
       <div class="mk-pill${isWatched(p.id) ? ' on' : ''}" style="flex:1;justify-content:center"
-        onclick="mkToggleWatch('${p.id}');mkOpenPlayer('${p.id}')">${ICON.star} Watch</div>
+        onclick="mkToggleWatch('${p.id}');mkRefreshPlayer('${p.id}')">${ICON.star} Watch</div>
       <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
         border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
-    </div>`);
+    </div>`;
 }
 
 /** Range buttons on the price chart: swap that one chart, leave the sheet alone. */
@@ -114,16 +141,7 @@ export function mkRange(id, key) {
   if (!p) return;
   pxRange = key;
   const host = document.querySelector('#mkCharts [data-mkc="price"]');
-  if (host) host.outerHTML = priceChart(p, key); else mkOpenPlayer(id);
-}
-
-/** The holdings row no longer has room for total value, so it lives here. */
-function holdingFor(id) {
-  const h = holdingRows().find(r => r.id === id);
-  if (!h) return '';
-  return `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You hold
-    <b>${h.shares} shares</b> &middot; total value <b>${money(h.value)}</b>
-    &middot; <span class="${dirClass(h.dayChange)}">${money(h.dayChange)} today</span></span></div>`;
+  if (host) host.outerHTML = priceChart(p, key, ticket.term); else mkOpenPlayer(id);
 }
 
 export function mkAbout() {
@@ -159,6 +177,20 @@ export function mkAbout() {
       shown here are illustrative.</div>`);
 }
 
+// ---------------------------------------------------------------- ticket glue
+// The markup drives everything through inline handlers, so the ticket's
+// setters are re-exported here under the mk* names the rest of the section uses.
+export function mkTicketSet(field, value) { setTicket(field, value); }
+export function mkBumpQty(d) { bumpQty(d); }
+export function mkSubmitTicket() { submitTicket(); }
+export function mkCancelOrder(id) { cancelWorking(id); }
+/** Swap market structure at runtime — the app cannot tell the difference. */
+export function mkSetEngine(kind) {
+  setEngine(kind);
+  mkToast(kind === 'amm' ? 'Automated market maker' : 'Order book');
+  if (openId) mkRefreshPlayer(openId); else renderMarket();
+}
+
 // ---------------------------------------------------------------- toast
 let mkT;
 export function mkToast(msg) {
@@ -170,4 +202,60 @@ export function mkToast(msg) {
   mkT = setTimeout(() => el.classList.remove('show'), 1700);
 }
 
-export function initMarkets() { /* nothing to prerender; views build on open */ }
+// ---------------------------------------------------------------- boot
+// Order matters: list the contracts (which trades them into an opening price),
+// backfill the event history and the pre-session price path, start the
+// projection feed, then start the participant clock. From here on, every price
+// on screen is the last print of a trade.
+export function initMarkets() {
+  listMarket();
+  seedEventHistory(WEEKS_PLAYED);
+  bootstrapSeries();
+  bindQuoteSource(id => quoteStats(id, DEFAULT_TERM));
+  startProjectionFeed({ intervalMs: 60000 });
+
+  onFlow(() => {
+    recordAll();
+    syncMarket();
+    if (!document.body.classList.contains('markets')) return;
+    if (document.body.classList.contains('mk-sheet-open')) mkRefreshPlayer(openId);
+    else if (view === 'market') renderMarket();
+    else renderPortfolio();
+  });
+  startFlow(3000);
+}
+
+/**
+ * Give every contract a price history from before this session opened: one
+ * point per day across the season, then intraday detail through the last 24
+ * hours so the 1D range has a real shape the moment the app opens rather than
+ * a flat line waiting for live prints to accumulate.
+ */
+function bootstrapSeries() {
+  const DAY = 86400000, SLOT = 15 * 60000, INTRA = DAY / SLOT;
+  MARKET.forEach(p => {
+    const days = priceDays(p);
+    termsFor(p.id).forEach(t => {
+      const sym = symbolFor(p.id, t.key);
+      if (hasHistory(sym)) return;
+      const q = quoteStats(p.id, t.key);
+      const scale = days.length ? q.price / (days[days.length - 1].v || 1) : 1;
+      const now = Date.now();
+      const t0 = now - days.length * DAY;
+      const pts = days.slice(0, -1).map((d, i) => ({ t: t0 + i * DAY, v: round2px(d.v * scale) }));
+      // walk the final day from yesterday's close to the current price
+      const openPx = pts.length ? pts[pts.length - 1].v : q.price;
+      let v = openPx;
+      const drift = (q.price - openPx) / INTRA;
+      for (let i = 1; i <= INTRA; i++) {
+        v += drift + (Math.sin((i + sym.length) * 1.7) + Math.sin(i * 0.31)) * openPx * 0.0016;
+        pts.push({ t: now - DAY + i * SLOT, v: round2px(v) });
+      }
+      pts[pts.length - 1] = { t: now, v: q.price };
+      seedSeries(sym, pts);
+    });
+  });
+  recordAll();
+  syncMarket();
+}
+function round2px(v) { return Math.round(v * 100) / 100; }
