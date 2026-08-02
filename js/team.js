@@ -92,7 +92,7 @@ export function teamHead(t,own){
   return `<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
-      <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
+      <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
       <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} · ${t.rec} · #${t.rk}</div>${ownTag}</div>
       ${msgBtn}
     </div>

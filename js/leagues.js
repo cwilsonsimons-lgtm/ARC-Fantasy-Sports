@@ -33,11 +33,11 @@ function mkTeams(id,rows){
 
 const SUNDAY_TEAMS=mkTeams('sunday',[
   ['audible','Silent Audible','Priya','7-1','#5AE6B5','#123329'],
-  ['rondo','Rondo Numba Nine','Devin','6-2','#E6A85A','#33270f'],
+  ['rondo','Rondo Numba Nine','Devin','6-2','#329F5B','#16281C'],
   ['pylon','Pylon Pushers','Marcus','5-3','#5AA9E6','#132a3d'],
   ['gasso','Gasso Line','Tati','5-3','#C77DFF','#26163d'],
-  ['screen','Screen Pass Society','Owen','4-4','#F0453E','#33110f'],
-  ['tuddy','Tuddy Water','Reggie','4-4','#8CE04A','#1c3312'],
+  ['screen','Screen Pass Society','Owen','4-4','#F05D5E','#33110f'],
+  ['tuddy','Tuddy Water','Reggie','4-4','#329F5B','#1c3312'],
   ['pocket','Collapsed Pocket','Nadia','3-5','#E65A7A','#3d1622'],
   ['motion','Pre-Snap Motion','Ben','3-5','#7D9BFF','#151f3d'],
   ['icing','Icing The Kicker','Sol','2-6','#E6D15A','#3a3512'],
@@ -46,20 +46,20 @@ const SUNDAY_TEAMS=mkTeams('sunday',[
   ['flea','Flea Flicker Co','Junie','1-7','#B0BCC9','#242c33'],
 ]);
 const MIDWAY_TEAMS=mkTeams('midway',[
-  ['ledger','The Ledger','Wilson','0-0','#8CE04A','#1c3312'],
+  ['ledger','The Ledger','Wilson','0-0','#329F5B','#1c3312'],
   ['compound','Compound Interest','Hana','0-0','#5AA9E6','#132a3d'],
   ['tenure','Tenure Track','Diego','0-0','#E6A85A','#33270f'],
   ['vesting','Fully Vested','Kai','0-0','#C77DFF','#26163d'],
   ['arb','Arbitrage','Nolan','0-0','#5AE6B5','#123329'],
-  ['escrow','Escrow Boys','Maya','0-0','#F0453E','#33110f'],
+  ['escrow','Escrow Boys','Maya','0-0','#F05D5E','#33110f'],
   ['annuity','Annuity Ave','Trip','0-0','#E65A7A','#3d1622'],
   ['prospect','Prospect Theory','Ivy','0-0','#7D9BFF','#151f3d'],
   ['carry','Carried Interest','Sam','0-0','#E6D15A','#3a3512'],
   ['tranche','Tranche Warfare','Obi','0-0','#4EC9A5','#0f3329'],
 ]);
 const HALLMARK_TEAMS=mkTeams('hallmark',[
-  ['garland','Garland Party','Wilson','11-3','#8CE04A','#1c3312'],
-  ['mistletoe','Mistletoe Militia','Erin','10-4','#F0453E','#33110f'],
+  ['garland','Garland Party','Wilson','11-3','#329F5B','#1c3312'],
+  ['mistletoe','Mistletoe Militia','Erin','10-4','#F05D5E','#33110f'],
   ['tinsel','Tinsel Town','Gus','9-5','#E6D15A','#3a3512'],
   ['sleigh','Sleigh All Day','Rosa','8-6','#5AA9E6','#132a3d'],
   ['nutmeg','Nutmeg Nation','Pete','6-8','#E6A85A','#33270f'],
@@ -102,7 +102,7 @@ export function leagueMark(lg){
 }
 export function leagueTint(lg){
   const t=teamsOf(lg);const me=t&&t[myKeyOf(lg)];
-  return me?me.c:'var(--violet)';
+  return me?me.c:'var(--accent)';
 }
 
 // ---- the user's matchup inside a league ----

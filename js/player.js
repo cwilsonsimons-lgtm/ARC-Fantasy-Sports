@@ -10,7 +10,7 @@ import { BENCH, LINEUP, TAXI, store } from './store.js';
 import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
 
 // ---------- PLAYER CARD ----------
-export const POSCOLOR={QB:'#E65A9B',RB:'#4EC9A5',WR:'#5AA9E6',TE:'#E6A85A',K:'#C77DFF',DEF:'#8899A6'};
+export const POSCOLOR={QB:'#E65A9B',RB:'#4EC9A5',WR:'#5AA9E6',TE:'#E6A85A',K:'#C77DFF',DEF:'#8B8F93'};
 export function posColor(pos){return POSCOLOR[pos]||'#7C5CFF';}
 export function seedHash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 export function rostPct(n){return 40+seedHash(n+'r')%60;}
@@ -108,7 +108,7 @@ export function renderPlayer(key){
   const canTake=!mine&&canDraftNow(p.id);
   const dropBtn=mine?`<div class="pc-drop" onclick="confirmDrop('${esc(key)}')">Drop ${last} from roster</div>`
     :canTake?`<div class="pc-drop" style="border-color:var(--green);color:var(--green)" onclick="draftPlayer('${esc(p.id)}');showTab('draft')">Draft ${last}</div>`
-    :(isFA?`<div class="pc-drop" style="border-color:rgba(124,92,255,.5);color:var(--violet)" onclick="addPlayer('${esc(key)}')">Add ${last} to your bench</div>`:'');
+    :(isFA?`<div class="pc-drop" style="border-color:rgba(var(--accent-rgb),.5);color:var(--accent)" onclick="addPlayer('${esc(key)}')">Add ${last} to your bench</div>`:'');
   document.getElementById('playerBody').innerHTML=`
     <div class="pc">
       <div class="pc-hero" style="--ac:${ac}">

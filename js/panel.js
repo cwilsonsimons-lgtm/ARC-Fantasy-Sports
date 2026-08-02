@@ -47,7 +47,7 @@ export function clearPanelSearch(kind){
 }
 export function noHits(kind,fallback){
   const q=panelQ[kind];
-  return q&&q.trim()?`<div class="empty">No player matches<br><b style="color:#93A0B0">${escHtml(q)}</b></div>`:`<div class="empty">${fallback}</div>`;
+  return q&&q.trim()?`<div class="empty">No player matches<br><b style="color:#A5ABB0">${escHtml(q)}</b></div>`:`<div class="empty">${fallback}</div>`;
 }
 export function pillsHTML(active,fn){
   return `<div class="pillrow">${['ALL','QB','RB','WR','TE','FLEX']

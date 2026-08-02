@@ -100,8 +100,8 @@ list is no longer a fixed length.
 ## Arc Markets
 
 The **Markets** item in the bottom nav opens Arc Markets — a separate section, not
-another fantasy screen. It takes over the whole phone with its own header, its own
-blue palette, its own bottom nav and its own `localStorage` key
+another fantasy screen. It takes over the whole phone with its own header, the
+same four colours a step darker, its own bottom nav and its own `localStorage` key
 (`arc_markets_v1`). "Leagues" in its nav returns to the fantasy app.
 
 The code boundary matches the product boundary: `js/markets/` imports only from
@@ -165,6 +165,47 @@ sliding the app off screen), and a `.face` rule scoped so narrowly that a face
 used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
+
+## Colour
+
+Four colours, in `:root` in `css/base.css` and again (a step darker) in `.mk` in
+`css/markets.css`:
+
+```
+Graphite  #3A3335      Coral     #F05D5E
+Shamrock  #329F5B      Platinum  #E7ECEF
+```
+
+A dark UI needs more than four steps, so the surfaces are Graphite's hue carried
+down toward black and the ink is Platinum carried down to a mute. Graphite
+itself lands on `--line` — the edge between two dark surfaces is what it is best
+at.
+
+**Shamrock is the accent and the positive direction, deliberately.** One brand
+hue is all four colours allow, and in a sports app green already means live,
+ahead and go. Coral is kept strictly negative, so a red number never means
+anything except down. The old `--violet` and `--mk-blue` are gone; the variables
+are `--accent` and `--mk-accent`, because a name that holds a hue goes stale the
+first time the hue changes.
+
+Two places needed a decision rather than a substitution:
+
+- **Trade card status.** Five states, no spare hues. Both open states are
+  neutral Platinum because they are waiting on you — one outlined, one filled —
+  and only the outcomes take the directional pair. The word in the pill carries
+  the rest.
+- **The deal evaluator.** The brief asked for a red/yellow/green bar and the
+  palette has no yellow, so the middle band is Platinum. The scale measures
+  fairness rather than direction, and a neutral colour for "drifting" reads
+  correctly.
+
+Two colour sets are deliberately *not* on the palette. Team identities (`T`,
+and the seeded leagues in `js/leagues.js`) stay varied — flattening ten managers
+to four colours would delete the thing that makes a crest recognisable — except
+that the user's own team is Shamrock in every league, which is what makes the
+hub read as "these are all mine". Position colours (`POSCOLOR`) stay distinct
+for the same reason: QB/RB/WR/TE is a taxonomy, and four palette colours cannot
+carry six categories. NFL team colours in `js/data/nfl-colors.js` are facts.
 
 ## Layout
 

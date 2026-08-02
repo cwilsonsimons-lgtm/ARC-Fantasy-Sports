@@ -15,13 +15,13 @@ const thumbMode = () =>
 
 function highlight(kind, p) {
   const map = {
-    up:   { cls: 'up',   lb: 'TRENDING UP',  ic: ICON.flame,  color: '#2BE06B',
+    up:   { cls: 'up',   lb: 'TRENDING UP',  ic: ICON.flame,  color: '#329F5B',
             val: `+${pctText(Math.abs(p.pct))}`, tone: 'up' },
-    down: { cls: 'down', lb: 'BIGGEST DROP', ic: ICON.drop,   color: '#FF4B4B',
+    down: { cls: 'down', lb: 'BIGGEST DROP', ic: ICON.drop,   color: '#F05D5E',
             val: `-${pctText(Math.abs(p.pct))}`, tone: 'down' },
-    act:  { cls: 'act',  lb: 'MOST ACTIVE',  ic: ICON.rocket, color: '#2E8CFF',
+    act:  { cls: 'act',  lb: 'MOST ACTIVE',  ic: ICON.rocket, color: '#E7ECEF',
             val: (p.trades / 1000).toFixed(1) + 'K', tone: 'act', sub: 'trades today' },
-    rook: { cls: 'rook', lb: 'RISING',       ic: ICON.star,   color: '#A86EFF',
+    rook: { cls: 'rook', lb: 'RISING',       ic: ICON.star,   color: '#329F5B',
             val: `+${pctText(Math.abs(p.pct))}`, tone: 'rook', sub: `${p.exp} yr` },
   };
   const m = map[kind];

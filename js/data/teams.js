@@ -1,7 +1,7 @@
 // ---------- DATA ----------
 export const T = {
-  pandas:{n:'UGF Pandas',mgr:'Wilson',rec:'0-0',rk:3,c:'#8CE04A',bg:'#1c3312',mono:'P',font:'oswald'},
-  radiator:{n:'Radiator Springs',mgr:'Benton',rec:'0-0',rk:6,c:'#F0453E',bg:'#331414',mono:'R',font:'slab'},
+  pandas:{n:'UGF Pandas',mgr:'Wilson',rec:'0-0',rk:3,c:'#329F5B',bg:'#16281C',mono:'P',font:'oswald'},
+  radiator:{n:'Radiator Springs',mgr:'Benton',rec:'0-0',rk:6,c:'#F05D5E',bg:'#2E1718',mono:'R',font:'slab'},
   barzal:{n:"Barzal's Balls",mgr:'Luke',rec:'0-0',rk:1,c:'#5AA9E6',bg:'#1a2c3d',mono:'B',font:'bebas'},
   dakyard:{n:'Dakyard Football',mgr:'Jake',rec:'0-0',rk:10,c:'#E6A85A',bg:'#3d2f1a',mono:'D',font:'elite'},
   boutte:{n:'Diggin in Boutte',mgr:'Jatin',rec:'0-0',rk:4,c:'#5AE6B5',bg:'#1a3d33',mono:'D',font:'marker'},

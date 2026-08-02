@@ -76,7 +76,7 @@ export const tri = n => `<span class="mk-tri ${n < 0 ? 'd' : 'u'}"></span>`;
 // A sparkline draws the whole season, so it is coloured by the season - the
 // same rule the price chart uses. The percentage beside it is today's move and
 // keeps its own colour; a green day inside a red year is worth seeing.
-const UP = '#2BE06B', DOWN = '#FF4B4B', GREY = '#5A6675';
+const UP = '#329F5B', DOWN = '#F05D5E', GREY = '#6B6F73';
 export const sparkColor = p => (p.seasonUp === false ? DOWN : UP);
 
 // ---------------------------------------------------------------- thumbnails

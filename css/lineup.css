@@ -6,21 +6,21 @@
 .ph-lbl{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;color:var(--ink)}
 .ph-sub{font-size:9.5px;color:var(--ink-3);margin-top:1px;font-weight:600;letter-spacing:.3px}
 /* center slot badge is the ONLY swap control */
-.st-pos.tapslot{cursor:pointer;border-color:rgba(124,92,255,.45);color:var(--violet)}
-.st-pos.tapslot:active{background:rgba(124,92,255,.18)}
+.st-pos.tapslot{cursor:pointer;border-color:rgba(var(--accent-rgb),.45);color:var(--accent)}
+.st-pos.tapslot:active{background:rgba(var(--accent-rgb),.18)}
 .st-pos.lockslot{cursor:pointer;color:var(--ink-3);border-style:dashed}
-.st-pos .slotmk{display:block;margin-top:1px;line-height:0;color:var(--violet)}
+.st-pos .slotmk{display:block;margin-top:1px;line-height:0;color:var(--accent)}
 .st-pos.lockslot .slotmk{color:var(--ink-3)}
 .st-pos .slotmk svg{width:11px;height:11px;display:block;margin:0 auto}
 .st-pos .slotmk.plus{font:700 13px 'Oswald';line-height:11px}
 /* player name = open player card (tap target hugs the text) */
 .st-nm .n .pk{cursor:pointer}
-.st-nm .n .pk:active{color:var(--violet)}
+.st-nm .n .pk:active{color:var(--accent)}
 .st-pts.pre{color:var(--ink-3)}
-.swap-cur{background:var(--violet-soft);border:1px solid var(--violet);border-radius:12px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:var(--ink)}
+.swap-cur{background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:var(--ink)}
 .swap-cur b{color:#fff}
 .swap-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:12px;border:1px solid var(--line-soft);margin-bottom:8px;cursor:pointer}
-.swap-row:active{background:rgba(124,92,255,.1)}
+.swap-row:active{background:rgba(var(--accent-rgb),.1)}
 .swap-row.dis{opacity:.42;cursor:default}
 .swap-pos{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;width:36px;text-align:center;color:var(--ink-2)}
 .swap-nm{flex:1;min-width:0}
@@ -29,5 +29,5 @@
 .swap-pts{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:13px;color:var(--ink)}
 .swap-empty{color:var(--ink-3);font-size:12px;text-align:center;padding:16px}
 .ms-live.pre{color:#cbb5ff}
-.ms-live.pre .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);display:inline-block}
+.ms-live.pre .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
 .ms-live.final{color:rgba(255,255,255,.72)}

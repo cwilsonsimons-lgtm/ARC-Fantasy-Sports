@@ -1,8 +1,24 @@
+/* Four colours, and a ramp derived from them.
+ *
+ *   Graphite  #3A3335   Coral  #F05D5E
+ *   Shamrock  #329F5B   Platinum #E7ECEF
+ *
+ * A dark UI needs more than four steps, so the surfaces are Graphite's hue
+ * carried down to near-black and the ink is Platinum carried down to a mute.
+ * Graphite itself lands on `--line`, which is what it is best at: the edge
+ * between two dark surfaces.
+ *
+ * Shamrock is the accent *and* the positive direction. That is deliberate —
+ * one brand hue is all four colours allow, and in a sports app green already
+ * means live, ahead and go. Coral is kept strictly negative, so a red number
+ * never means anything except down. */
 :root{
-  --bg:#070A0F;--card:#111826;--card-2:#0E1420;
-  --line:#1E2836;--line-soft:#161E2A;
-  --ink:#F3F6FA;--ink-2:#93A0B0;--ink-3:#5E6B7C;
-  --green:#8CE04A;--red:#F0453E;--violet:#7C5CFF;--violet-soft:#2A2350;
+  --bg:#131114;--card:#221F21;--card-2:#1B181A;
+  --line:#3A3335;--line-soft:#2A2527;
+  --ink:#E7ECEF;--ink-2:#A5ABB0;--ink-3:#6E7276;
+  --green:#329F5B;--red:#F05D5E;--accent:#329F5B;--accent-soft:#1B3D28;
+  /* rgb triples, for the rgba() shading the app does everywhere */
+  --accent-rgb:50,159,91;--green-rgb:50,159,91;--red-rgb:240,93,94;
   /* height of the bottom nav; the phone breakpoint in nav.css overrides it with
      the safe-area inset. Anything that ends underneath the nav pads by this. */
   --navh:84px;
@@ -18,10 +34,10 @@ body{font-family:'Barlow',system-ui,sans-serif;display:flex;flex-direction:colum
    app has parked below the fold. The layout inside is flex, so a shorter frame
    just means a shorter scroll area. */
 .phone{width:390px;max-width:100%;height:min(844px,calc(100vh - 44px));background:var(--bg);border-radius:52px;
-  border:11px solid #05070B;box-shadow:0 0 0 2px #1a1f28,0 40px 90px rgba(0,0,0,.7);
+  border:11px solid #0A0809;box-shadow:0 0 0 2px #262123,0 40px 90px rgba(0,0,0,.7);
   position:relative;overflow:hidden}
 .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:30px;
-  background:#05070B;border-radius:0 0 20px 20px;z-index:90}
+  background:#0A0809;border-radius:0 0 20px 20px;z-index:90}
 .status{position:absolute;top:0;left:0;right:0;height:52px;z-index:85;display:flex;
   align-items:center;justify-content:space-between;padding:16px 30px 0;font-size:15px;font-weight:600;pointer-events:none}
 .status .right{display:flex;gap:7px;align-items:center}

@@ -77,7 +77,7 @@ function statusPill(st){
   return `<span class="tc-st ${cls}">${st}</span>`;
 }
 function sideBlock(key,list,label){
-  const t=T[key]||{n:key,c:'var(--ink-2)',bg:'#1a1f28',mono:'?'};
+  const t=T[key]||{n:key,c:'var(--ink-2)',bg:'#262123',mono:'?'};
   return `<div class="tc-side">
     <div class="tc-team"><span class="tc-bd" style="background:${t.bg};color:${t.c}">${markInner(t)}</span>
       <span class="tc-tn" style="color:${t.c}">${escHtml(t.n)}</span><span class="tc-dir">${label}</span></div>
@@ -132,7 +132,7 @@ export function votePoll(id,opt){
 
 // ---- message rows ----
 function msgRow(m){
-  const t=T[m.from]||{n:m.from,c:'var(--ink-2)',bg:'#1a1f28',mono:'?'};
+  const t=T[m.from]||{n:m.from,c:'var(--ink-2)',bg:'#262123',mono:'?'};
   const own=m.from===MY_TEAM;
   if(m.kind==='system'){
     return `<div class="cm-sys">${escHtml(m.body||'')}${m.poll?pollHTML(m):''}</div>`;

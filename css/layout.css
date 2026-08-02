@@ -2,7 +2,7 @@
 .shift{position:absolute;inset:52px 0 0 0;z-index:10;display:flex;flex-direction:column;
   transition:transform .38s cubic-bezier(.4,0,.2,1)}
 body.open .shift{transform:translateX(-58px) scale(.975);transform-origin:left center}
-.scrim{position:absolute;inset:52px 0 84px 0;z-index:20;background:rgba(3,5,9,.66);
+.scrim{position:absolute;inset:52px 0 84px 0;z-index:20;background:rgba(8,6,7,.66);
   opacity:0;pointer-events:none;transition:opacity .38s}
 body.open .scrim{opacity:1;pointer-events:auto}
 
@@ -13,14 +13,14 @@ body.open .scrim{opacity:1;pointer-events:auto}
   display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
 .burger svg{width:17px;height:17px}
 .league-id{display:flex;align-items:center;gap:8px;cursor:pointer}
-.shield{width:24px;height:24px;color:var(--violet)}
+.shield{width:24px;height:24px;color:var(--accent)}
 .league-id .nm{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.3px;line-height:1}
 .league-id .wk{font-size:10px;color:var(--ink-3);letter-spacing:.5px;margin-top:2px;font-weight:600;text-align:center}
 .chev{font-size:9px;color:var(--ink-2);margin-left:2px}
 .msg{width:34px;height:34px;border-radius:10px;background:var(--card);border:1px solid var(--line);
   display:grid;place-items:center;cursor:pointer;color:var(--ink-2);position:relative}
 .msg svg{width:17px;height:17px}
-.msg .b{position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--violet);
+.msg .b{position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--accent);
   border:2px solid var(--bg);font-size:9px;font-weight:700;display:grid;place-items:center;color:#fff}
 
 /* top tabs */
@@ -29,7 +29,7 @@ body.open .scrim{opacity:1;pointer-events:auto}
   letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);cursor:pointer;position:relative;transition:color .15s}
 .tab.on{color:var(--ink)}
 .tab.on::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
-  width:5px;height:5px;border-radius:50%;background:var(--violet)}
+  width:5px;height:5px;border-radius:50%;background:var(--accent)}
 
 .scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:96px;scrollbar-width:none}
 .scroll::-webkit-scrollbar{display:none}

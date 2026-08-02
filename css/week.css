@@ -3,13 +3,13 @@
 .allbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);
   border:1px solid var(--line);border-radius:12px;padding:11px;cursor:pointer;color:var(--ink);
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:1.5px;text-transform:uppercase}
-.allbtn svg{width:16px;height:16px;color:var(--violet)}
-.allbtn:active{border-color:var(--violet)}
+.allbtn svg{width:16px;height:16px;color:var(--accent)}
+.allbtn:active{border-color:var(--accent)}
 .wsw{display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}
 .wsw.center{margin:0 auto 10px;width:max-content}
 .wsw .ar{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
 .wsw .ar svg{width:16px;height:16px}
-.wsw .ar:active{background:var(--violet-soft);color:var(--violet)}
+.wsw .ar:active{background:var(--accent-soft);color:var(--accent)}
 .wsw .ar.dis{opacity:.28;pointer-events:none}
 .wsw .wk{min-width:78px;text-align:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:.5px;
   cursor:pointer;padding:5px 4px;display:flex;align-items:center;justify-content:center;gap:5px}
@@ -19,12 +19,12 @@
 .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px;margin:8px 0 2px}
 .seg-b{flex:1;text-align:center;padding:7px 0;border-radius:8px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;
   letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);cursor:pointer;transition:background .15s,color .15s}
-.seg-b.on{background:var(--violet);color:#fff}
+.seg-b.on{background:var(--accent);color:#fff}
 
 /* compact mini-hero (score + players visible together) */
 .mini{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);padding:13px 14px;
-  background:radial-gradient(120% 120% at 0% 0%,rgba(140,224,74,.14),transparent 55%),
-  radial-gradient(120% 120% at 100% 0%,rgba(240,69,62,.14),transparent 55%),linear-gradient(180deg,#101725,#0B111B)}
+  background:radial-gradient(120% 120% at 0% 0%,rgba(var(--green-rgb),.14),transparent 55%),
+  radial-gradient(120% 120% at 100% 0%,rgba(var(--red-rgb),.14),transparent 55%),linear-gradient(180deg,#211E20,#191618)}
 .mini-row{display:flex;align-items:flex-start;gap:8px}
 .mini-team{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;padding-top:2px}
 .mini-team.opp{flex-direction:row-reverse;text-align:right}

@@ -74,7 +74,7 @@ export function leagueCards(){
       setRow('Minimum bid',setNum('faabMin',L.faabMin,0,Math.max(1,L.faabBudget)))
     : '';
   const sizeNote=+L.teams!==10
-    ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season — ${L.teams} takes effect at the next draft.</div>`
+    ? `<div class="set-note" style="margin-top:11px;color:var(--accent)">City Boys Dynasty is playing 10 teams this season — ${L.teams} takes effect at the next draft.</div>`
     : '';
   return `
     <div class="set-card">
@@ -282,7 +282,7 @@ export function renderSettings(){
         <div class="set-btn primary" onclick="pickGlobalBackdrop()">${ICON_UP} ${has?'Change':'Set'} background for all matchups</div>
         <div class="set-btn" onclick="clearAllBackdrops()">${ICON_X} Clear all backgrounds</div>
       </div>`:''}
-      ${perGame?`<div class="set-note" style="margin-top:11px;color:var(--violet)">${perGame} game${perGame>1?'s have':' has'} a custom background. Setting one for all clears those.</div>`:''}
+      ${perGame?`<div class="set-note" style="margin-top:11px;color:var(--accent)">${perGame} game${perGame>1?'s have':' has'} a custom background. Setting one for all clears those.</div>`:''}
     </div>
     <div class="set-card">
       <div class="set-title">Per-game backgrounds</div>

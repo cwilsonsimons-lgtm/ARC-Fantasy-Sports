@@ -16,7 +16,7 @@ import { SEASON_GAMES, WEEKS_PLAYED, POINTS_PER_DOLLAR,
          gameLog, priceDays, careerSeries, paceData } from './data.js';
 import { esc, money } from './ui.js';
 
-const UP = '#2BE06B', DOWN = '#FF4B4B', BLUE = '#2E8CFF', DIM = '#5A6577';
+const UP = '#329F5B', DOWN = '#F05D5E', BLUE = '#329F5B', DIM = '#5A6577';
 
 // ---------------------------------------------------------------- chart A
 // Finance ranges (1D / 1W / 1M / 3M / 1Y) assume something trades every day.

@@ -85,7 +85,7 @@ export function renderPortfolio() {
   // lands anywhere is reflected here the moment this runs.
   const pf = portfolioTotals();
   const d = dirClass(pf.dayChange);
-  const color = pf.dayChange < 0 ? '#FF4B4B' : '#2BE06B';
+  const color = pf.dayChange < 0 ? '#F05D5E' : '#329F5B';
 
   el.innerHTML = `
     <div class="mk-ptop"><h1>Portfolio</h1></div>

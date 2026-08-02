@@ -116,8 +116,8 @@ export function mkOpenPlayer(id) {
     <div style="display:flex;gap:9px;margin-top:14px">
       <div class="mk-pill${isWatched(p.id) ? ' on' : ''}" style="flex:1;justify-content:center"
         onclick="mkToggleWatch('${p.id}');mkOpenPlayer('${p.id}')">${ICON.star} Watch</div>
-      <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
-        border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
+      <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-accent);
+        border-color:var(--mk-accent);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
     </div>`, p.id);
 }
 

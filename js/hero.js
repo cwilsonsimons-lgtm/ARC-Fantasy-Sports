@@ -35,7 +35,7 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
   const proj=(ap!=null&&xp!=null)?`<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> – <b>${xp.toFixed(1)}</b></div>`:'';
   const logo=(t)=>t.logo
     ? `<div class="sh-logo bare"><img src="${t.logo}" alt=""></div>`
-    : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
+    : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
   const rwId=opts.rewind||null;
   const wc=rwId?` data-rw="${rwId}" onclick="event.stopPropagation();toggleRewind('${rwId}')"`:'';
   const tw=rwId?' tapw':'';
@@ -109,7 +109,7 @@ export function stadiumHeroHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
   const proj=(ap!=null&&xp!=null)?`<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> – <b>${xp.toFixed(1)}</b></div>`:'';
   const logo=(t)=>t.logo
     ? `<div class="sh-logo bare"><img src="${t.logo}" alt=""></div>`
-    : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
+    : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
   const nameClick=(k)=>`onclick="event.stopPropagation();openTeam('${k}')"`;
   const rwId=opts.rewind||null;
   const wc=rwId?` data-rw="${rwId}" onclick="event.stopPropagation();toggleRewind('${rwId}')"`:'';

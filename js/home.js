@@ -45,7 +45,7 @@ function scoreHTML(lg){
 
 function rowHTML(lg){
   const mk=leagueMark(lg),teams=teamsOf(lg),me=teams&&teams[myKeyOf(lg)];
-  const tint=me?me.c:'var(--violet)',bgc=me?me.bg:'#171429';
+  const tint=me?me.c:'var(--accent)',bgc=me?me.bg:'#171429';
   const right=leagueStatus(lg)==='predraft'?countdownHTML(lg):scoreHTML(lg);
   return `<div class="hb-row" data-league="${lg.id}" onclick="openLeague('${lg.id}')">
     <div class="hb-grip" data-grip>${GRIP}</div>
@@ -206,7 +206,7 @@ export function openSeededTeam(lgId,key){
   let body=`<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
-      <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>
+      <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>
       <div class="tv-idwrap"><div class="tv-name" style="color:${t.c}">${escHtml(t.n)}</div>
         <div class="tv-sub">${escHtml(t.mgr)} · ${t.rec} · #${t.rk}</div></div>
     </div>

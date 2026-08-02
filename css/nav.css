@@ -1,13 +1,13 @@
 /* bottom nav */
-.nav{position:absolute;left:0;right:0;bottom:0;z-index:50;height:84px;background:rgba(9,12,18,.94);
+.nav{position:absolute;left:0;right:0;bottom:0;z-index:50;height:84px;background:rgba(21,19,21,.94);
   backdrop-filter:blur(18px);border-top:1px solid var(--line-soft);display:flex;padding:10px 8px 26px}
 .nv{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--ink-3);cursor:pointer;
   font-size:10.5px;font-weight:600;position:relative}
 .nv svg{width:23px;height:23px}
-.nv.on{color:var(--violet)}
+.nv.on{color:var(--accent)}
 
-.hint{position:absolute;bottom:98px;left:50%;transform:translateX(-50%);background:var(--violet);color:#fff;
-  font-size:12px;font-weight:600;padding:9px 16px;border-radius:20px;box-shadow:0 8px 24px rgba(124,92,255,.4);
+.hint{position:absolute;bottom:98px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;
+  font-size:12px;font-weight:600;padding:9px 16px;border-radius:20px;box-shadow:0 8px 24px rgba(var(--accent-rgb),.4);
   z-index:95;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:330px;text-align:center}
 .hint.show{opacity:1}
 
@@ -20,7 +20,7 @@
 /* On a real phone: drop the fake bezel, fill the actual screen */
 @media (max-width:440px){
   :root{--navh:calc(62px + env(safe-area-inset-bottom,0px));--topi:env(safe-area-inset-top,0px)}
-  body{display:block;padding:0;background:#070A0F;gap:0}
+  body{display:block;padding:0;background:#131114;gap:0}
   .phone{width:100vw;height:100vh;height:100dvh;border:none;border-radius:0;box-shadow:none}
   .notch,.status{display:none}
   .shift{top:var(--topi)}

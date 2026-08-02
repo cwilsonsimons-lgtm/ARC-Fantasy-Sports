@@ -1,12 +1,12 @@
 /* panel search: sits under the panel title, above the position pills */
 .psearch{position:relative;display:flex;align-items:center;margin:0 0 11px}
 .psearch .ic{position:absolute;left:10px;width:14px;height:14px;color:var(--ink-3);pointer-events:none}
-.psearch input{width:100%;background:#0A0E15;border:1px solid var(--line);border-radius:10px;color:var(--ink);
+.psearch input{width:100%;background:#171416;border:1px solid var(--line);border-radius:10px;color:var(--ink);
   font-family:'Barlow',system-ui,sans-serif;font-size:12px;font-weight:600;padding:8px 28px 8px 30px;outline:none;
   -webkit-appearance:none;appearance:none}
 .psearch input::placeholder{color:var(--ink-3);font-weight:500}
 .psearch input::-webkit-search-cancel-button{display:none}
-.psearch input:focus{border-color:var(--violet)}
+.psearch input:focus{border-color:var(--accent)}
 .psearch .clr{position:absolute;right:6px;width:20px;height:20px;display:none;place-items:center;cursor:pointer;
   color:var(--ink-3);font-size:11px;border-radius:50%}
 .psearch .clr.on{display:grid}
@@ -15,10 +15,10 @@
 .pillrow::-webkit-scrollbar{display:none}
 .pill{flex:none;padding:6px 12px;border-radius:14px;border:1px solid var(--line);background:var(--card);
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;color:var(--ink-2);cursor:pointer}
-.pill.on{border-color:var(--green);color:var(--green);background:rgba(140,224,74,.1)}
+.pill.on{border-color:var(--green);color:var(--green);background:rgba(var(--green-rgb),.1)}
 .tr-row{display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid var(--line-soft)}
 .tr-rk{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;color:var(--ink-3);width:14px;text-align:center;flex:none}
-.tr-face{width:30px;height:30px;border-radius:50%;overflow:hidden;background:linear-gradient(155deg,#243247,#141b28);
+.tr-face{width:30px;height:30px;border-radius:50%;overflow:hidden;background:linear-gradient(155deg,#453D3F,#232022);
   border:1px solid var(--line);flex:none;display:grid;place-items:center;font-size:10px;color:var(--ink-3);font-weight:700}
 .tr-face img{width:100%;height:100%;object-fit:cover}
 .tr-row{cursor:pointer}
@@ -27,14 +27,14 @@
 .rk-badge{font-size:8px;font-weight:700;color:#C77DFF;border:1px solid #C77DFF;border-radius:4px;padding:0 3px;flex:none;line-height:1.4}
 .tr-mt{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:2px}
 .tr-mt .pos{font-weight:700}
-.pos.QB{color:#E65A9B}.pos.RB{color:#4EC9A5}.pos.WR{color:#5AA9E6}.pos.TE{color:#E6A85A}.pos.K{color:#C77DFF}.pos.DEF{color:#8899A6}
+.pos.QB{color:#E65A9B}.pos.RB{color:#4EC9A5}.pos.WR{color:#5AA9E6}.pos.TE{color:#E6A85A}.pos.K{color:#C77DFF}.pos.DEF{color:#8B8F93}
 .tr-add{text-align:right;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:13px;color:var(--green);flex:none}
 .tr-arrow{font-size:8px;color:var(--green);line-height:1}
 .empty{color:var(--ink-3);font-size:12px;text-align:center;padding:26px 6px;line-height:1.5}
-.av-add{flex:none;width:27px;height:27px;border-radius:50%;border:1px solid rgba(124,92,255,.55);
-  background:var(--violet-soft);color:var(--violet);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:18px;
+.av-add{flex:none;width:27px;height:27px;border-radius:50%;border:1px solid rgba(var(--accent-rgb),.55);
+  background:var(--accent-soft);color:var(--accent);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:18px;
   display:grid;place-items:center;cursor:pointer;line-height:0}
-.av-add:active{background:var(--violet);color:#fff}
+.av-add:active{background:var(--accent);color:#fff}
 .av-tag{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:8px;letter-spacing:1px;color:var(--ink-3);
   border:1px solid var(--line);border-radius:5px;padding:3px 5px;text-transform:uppercase}
 
@@ -47,4 +47,4 @@
 .rail-item .ic svg{width:18px;height:18px}
 .rail-item .lb{font-size:9px;font-weight:600;letter-spacing:.2px}
 .rail-item.on{color:var(--green)}
-.rail-item.on .ic{background:rgba(140,224,74,.14);box-shadow:0 0 0 1px rgba(140,224,74,.35) inset}
+.rail-item.on .ic{background:rgba(var(--green-rgb),.14);box-shadow:0 0 0 1px rgba(var(--green-rgb),.35) inset}

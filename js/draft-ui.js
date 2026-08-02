@@ -151,7 +151,7 @@ export function renderDraft(){
     head=`<div class="dr-clock${mine?' mine':''}">
       <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} · PICK ${m.pick} · #${i+1} OVERALL</div>
       <div class="who">
-        <div class="dr-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
+        <div class="dr-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
         <div><div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div><div class="sub">${mine?'You are on the clock':t.mgr+' is on the clock'}</div></div>
       </div>
       <div class="dr-acts">

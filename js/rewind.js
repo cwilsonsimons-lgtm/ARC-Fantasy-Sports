@@ -199,10 +199,10 @@ export function buildRewind(el, aFinal, xFinal){
           <!-- one gradient, hard stop at the midline: green while you lead,
                red once you trail, so the side is readable without a legend -->
           <linearGradient id="rwFill" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">
-            <stop offset="0"   stop-color="#8CE04A" stop-opacity=".48"/>
-            <stop offset="0.5" stop-color="#8CE04A" stop-opacity=".04"/>
-            <stop offset="0.5" stop-color="#F0453E" stop-opacity=".04"/>
-            <stop offset="1"   stop-color="#F0453E" stop-opacity=".48"/>
+            <stop offset="0"   stop-color="#329F5B" stop-opacity=".48"/>
+            <stop offset="0.5" stop-color="#329F5B" stop-opacity=".04"/>
+            <stop offset="0.5" stop-color="#F05D5E" stop-opacity=".04"/>
+            <stop offset="1"   stop-color="#F05D5E" stop-opacity=".48"/>
           </linearGradient>
         </defs>
         ${marks.map(m => `<line class="rw-grid" x1="${m.x.toFixed(1)}" y1="0" x2="${m.x.toFixed(1)}" y2="${H}"/>`).join('')}

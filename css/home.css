@@ -18,7 +18,7 @@ body.hub .tabs{display:none}
   transition:border-color .15s,transform .12s;touch-action:pan-y}
 .hb-row:active{transform:scale(.995)}
 .hb-list.hb-reorder .hb-row{transition:transform .16s cubic-bezier(.4,0,.2,1)}
-.hb-row.hb-drag{z-index:5;transition:none;border-color:rgba(124,92,255,.6);
+.hb-row.hb-drag{z-index:5;transition:none;border-color:rgba(var(--accent-rgb),.6);
   box-shadow:0 14px 34px rgba(0,0,0,.55)}
 
 .hb-grip{flex:none;width:20px;height:34px;display:grid;place-items:center;color:var(--ink-3);
@@ -45,8 +45,8 @@ body.hub .tabs{display:none}
 .hb-pct{flex:none;width:44px;text-align:center;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:10px;font-weight:700;color:var(--ink-2);background:var(--card-2);border:1px solid var(--line);
   border-radius:8px;padding:5px 0}
-.hb-pct.up{color:var(--green);border-color:rgba(140,224,74,.35)}
-.hb-pct.down{color:var(--red);border-color:rgba(240,69,62,.35)}
+.hb-pct.up{color:var(--green);border-color:rgba(var(--green-rgb),.35)}
+.hb-pct.down{color:var(--red);border-color:rgba(var(--red-rgb),.35)}
 
 .hb-clock{flex:none;display:flex;gap:5px}
 .hb-cd{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;font-weight:700;

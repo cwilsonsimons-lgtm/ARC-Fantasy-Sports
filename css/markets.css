@@ -1,12 +1,17 @@
 /* ===== ARC MARKETS =====
-   A separate surface from the fantasy app: its own palette (blue, not violet),
+   A separate surface from the fantasy app: its own palette (a darker step of the same four colours),
    its own header and its own bottom nav. Every rule here is scoped under .mk. */
 .mk{
-  --mk-blue:#2E8CFF; --mk-blue-dim:#1B4E8F;
-  --mk-green:#2BE06B; --mk-red:#FF4B4B;
-  --mk-bg:#05080D; --mk-card:#0C121C; --mk-card-2:#0A0F18;
-  --mk-line:#18202D; --mk-line-soft:#121926;
-  --mk-ink:#FFFFFF; --mk-ink-2:#8E9BAC; --mk-ink-3:#5A6675;
+  /* Same four colours as the app, carried a step darker so the section still
+     reads as its own place. Shamrock is the accent here too — the old blue had
+     no equivalent in the palette, and inventing a fifth hue would have been
+     the one thing the palette is meant to prevent. */
+  --mk-accent:#329F5B; --mk-accent-dim:#20613A;
+  --mk-green:#329F5B; --mk-red:#F05D5E;
+  --mk-bg:#0D0B0C; --mk-card:#1B181A; --mk-card-2:#161314;
+  --mk-line:#332D2F; --mk-line-soft:#262123;
+  --mk-ink:#E7ECEF; --mk-ink-2:#9DA3A8; --mk-ink-3:#6B6F73;
+  --mk-accent-rgb:50,159,91; --mk-red-rgb:240,93,94;
   position:absolute;inset:0;z-index:60;background:var(--mk-bg);
   display:none;flex-direction:column;color:var(--mk-ink);
 }
@@ -18,7 +23,7 @@ body.markets .shift,body.markets .drawer,body.markets .scrim{visibility:hidden}
    fantasy code - the .on class stays where it is and CSS overrides the colour. */
 body.markets .nav{z-index:75}
 body.markets .nav .nv.on{color:var(--ink-3)}
-body.markets .nav .nv[data-nav="markets"]{color:#2E8CFF}
+body.markets .nav .nv[data-nav="markets"]{color:#329F5B}
 /* the fantasy toast sits above everything; it must not float over Markets */
 body.markets #hint{display:none}
 
@@ -29,15 +34,15 @@ body.markets #hint{display:none}
 .mk-ic svg{width:23px;height:23px}
 .mk-brand{text-align:center;line-height:1;cursor:pointer}
 .mk-brand .a{font-size:29px;font-weight:800;letter-spacing:-.5px}
-.mk-brand .m{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:var(--mk-blue);margin-top:5px}
+.mk-brand .m{font-size:9.5px;font-weight:700;letter-spacing:4.5px;color:var(--mk-accent);margin-top:5px}
 .mk-tools{display:flex;gap:9px;align-items:center}
 .mk-pf{border-radius:9px;border:1px solid var(--mk-line);background:var(--mk-card);
   width:32px;height:32px;color:var(--mk-ink-2)}
 .mk-pf svg{width:18px;height:18px}
-.mk-pf.on{background:rgba(46,140,255,.14);border-color:var(--mk-blue-dim);color:var(--mk-blue)}
+.mk-pf.on{background:rgba(var(--mk-accent-rgb),.14);border-color:var(--mk-accent-dim);color:var(--mk-accent)}
 .mk-bell{position:relative}
 .mk-bell .bdg{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
-  background:var(--mk-blue);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center}
+  background:var(--mk-accent);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center}
 
 /* ---------- scroll body ---------- */
 .mk-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:96px;scrollbar-width:none}
@@ -51,8 +56,8 @@ body.markets #hint{display:none}
 .mk-strip::-webkit-scrollbar{display:none}
 .mk-strip .open{display:inline-flex;align-items:center;gap:5px;color:var(--mk-green);font-weight:700;letter-spacing:.6px}
 .mk-strip .dot{width:7px;height:7px;border-radius:50%;background:var(--mk-green);
-  box-shadow:0 0 0 0 rgba(43,224,107,.6);animation:mkpulse 2s infinite}
-@keyframes mkpulse{0%{box-shadow:0 0 0 0 rgba(43,224,107,.55)}70%{box-shadow:0 0 0 7px rgba(43,224,107,0)}100%{box-shadow:0 0 0 0 rgba(43,224,107,0)}}
+  box-shadow:0 0 0 0 rgba(var(--mk-accent-rgb),.6);animation:mkpulse 2s infinite}
+@keyframes mkpulse{0%{box-shadow:0 0 0 0 rgba(var(--mk-accent-rgb),.55)}70%{box-shadow:0 0 0 7px rgba(var(--mk-accent-rgb),0)}100%{box-shadow:0 0 0 0 rgba(var(--mk-accent-rgb),0)}}
 .mk-strip .sep{color:var(--mk-line);}
 .mk-strip b{color:var(--mk-ink);font-weight:700}
 .mk-strip .up{color:var(--mk-green)}
@@ -77,10 +82,10 @@ body.markets #hint{display:none}
 .mk-card .vl{font-size:13px;font-weight:800;line-height:1}
 .mk-card .sub{font-size:8.5px;color:var(--mk-ink-3);font-weight:600;margin-top:-3px}
 .mk-card svg.spark{width:100%;height:24px;margin-top:2px}
-.mk-card.up{background:linear-gradient(180deg,rgba(43,224,107,.09),transparent 60%),var(--mk-card)}
-.mk-card.down{background:linear-gradient(180deg,rgba(255,75,75,.09),transparent 60%),var(--mk-card)}
-.mk-card.act{background:linear-gradient(180deg,rgba(46,140,255,.10),transparent 60%),var(--mk-card)}
-.mk-card.rook{background:linear-gradient(180deg,rgba(168,110,255,.10),transparent 60%),var(--mk-card)}
+.mk-card.up{background:linear-gradient(180deg,rgba(var(--mk-accent-rgb),.09),transparent 60%),var(--mk-card)}
+.mk-card.down{background:linear-gradient(180deg,rgba(var(--mk-red-rgb),.09),transparent 60%),var(--mk-card)}
+.mk-card.act{background:linear-gradient(180deg,rgba(231,236,239,.08),transparent 60%),var(--mk-card)}
+.mk-card.rook{background:linear-gradient(180deg,rgba(var(--mk-accent-rgb),.10),transparent 60%),var(--mk-card)}
 
 /* ---------- filter pills ---------- */
 .mk-pills{display:flex;align-items:center;gap:7px;padding:12px 14px 10px;overflow-x:auto;scrollbar-width:none}
@@ -88,7 +93,7 @@ body.markets #hint{display:none}
 .mk-pill{flex:none;padding:8px 15px;border-radius:11px;background:var(--mk-card);border:1px solid var(--mk-line);
   font-size:12.5px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .mk-pill svg{width:14px;height:14px}
-.mk-pill.on{background:var(--mk-blue);border-color:var(--mk-blue);color:#fff}
+.mk-pill.on{background:var(--mk-accent);border-color:var(--mk-accent);color:#fff}
 .mk-pill.div{width:1px;padding:0;height:24px;background:var(--mk-line);border:none;border-radius:0}
 
 /* ---------- trend-column chart switcher ---------- */
@@ -98,7 +103,7 @@ body.markets #hint{display:none}
 .mk-seg .sg{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:10px;padding:7px 4px;
   font-size:11px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;background:var(--mk-card);
   white-space:nowrap}
-.mk-seg .sg.on{border-color:var(--mk-blue);color:#fff;background:var(--mk-blue)}
+.mk-seg .sg.on{border-color:var(--mk-accent);color:#fff;background:var(--mk-accent)}
 .mk-seg .sg:active{opacity:.85}
 .mk-sub{padding:7px 14px 0;font-size:10.5px;font-weight:600;color:var(--mk-ink-3)}
 
@@ -106,7 +111,7 @@ body.markets #hint{display:none}
 .mk-th{display:flex;align-items:center;padding:6px 14px 8px;font-size:9.5px;font-weight:700;
   letter-spacing:.8px;color:var(--mk-ink-3)}
 .mk-th .s{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
-.mk-th .s svg{width:11px;height:11px;color:var(--mk-blue)}
+.mk-th .s svg{width:11px;height:11px;color:var(--mk-accent)}
 
 .mk-row{display:flex;align-items:center;padding:9px 14px 9px 0;border-bottom:1px solid var(--mk-line-soft);
   cursor:pointer;position:relative}
@@ -128,7 +133,7 @@ body.markets #hint{display:none}
 .mk-row svg.spark{width:46px;height:26px;flex:none}
 .mk-row .star{width:21px;flex:none;display:grid;place-items:center;color:var(--mk-ink-3);margin-left:6px}
 .mk-row .star svg{width:19px;height:19px}
-.mk-row .star.on{color:var(--mk-blue)}
+.mk-row .star.on{color:var(--mk-accent)}
 .up{color:var(--mk-green)}
 .down{color:var(--mk-red)}
 .mk-tri{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;display:inline-block}
@@ -158,15 +163,15 @@ body.markets #hint{display:none}
 .mk-tab{flex:1;padding:13px 2px;display:flex;align-items:center;justify-content:center;gap:4px;
   font-size:11.5px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;position:relative;white-space:nowrap}
 .mk-tab svg{width:14px;height:14px;flex:none}
-.mk-tab.on{color:var(--mk-blue)}
-.mk-tab.on::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:var(--mk-blue)}
-.mk-tab .nd{width:6px;height:6px;border-radius:50%;background:var(--mk-blue);margin-left:-2px;margin-top:-8px}
+.mk-tab.on{color:var(--mk-accent)}
+.mk-tab.on::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:var(--mk-accent)}
+.mk-tab .nd{width:6px;height:6px;border-radius:50%;background:var(--mk-accent);margin-left:-2px;margin-top:-8px}
 
 .mk-hcount{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 6px}
-.mk-hcount .n{font-size:13.5px;font-weight:700;color:var(--mk-blue)}
+.mk-hcount .n{font-size:13.5px;font-weight:700;color:var(--mk-accent)}
 .mk-sort{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;
   border:1px solid var(--mk-line);background:var(--mk-card);font-size:12.5px;font-weight:700;cursor:pointer}
-.mk-sort svg{width:14px;height:14px;color:var(--mk-blue)}
+.mk-sort svg{width:14px;height:14px;color:var(--mk-accent)}
 
 /* ---------- empty states ---------- */
 .mk-empty{padding:44px 30px;text-align:center;color:var(--mk-ink-3)}
@@ -179,7 +184,7 @@ body.markets #hint{display:none}
    The open-state flag on <body> must NOT be `mk-sheet`: that is the sheet
    element's own class, so `body.mk-sheet` would apply the sheet's rules to
    <body> itself - absolute positioning and translateY(102%) included. */
-.mk-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;
+.mk-scrim{position:absolute;inset:0;z-index:80;background:rgba(7,5,6,.72);opacity:0;pointer-events:none;
   transition:opacity .28s}
 /* :not(.tk) matters — the ticket has its own scrim, and without this the
    sheet-open rule lit it up too, leaving an invisible layer over the whole
@@ -211,11 +216,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   padding:11px 9px;text-align:center}
 .mk-curve .yr .y{font-size:10px;font-weight:700;color:var(--mk-ink-3);letter-spacing:.6px}
 .mk-curve .yr .p{font-size:17px;font-weight:800;margin-top:5px}
-.mk-curve .yr.now{border-color:var(--mk-blue-dim);background:rgba(46,140,255,.08)}
+.mk-curve .yr.now{border-color:var(--mk-accent-dim);background:rgba(var(--mk-accent-rgb),.08)}
 
 .mk-settle{display:flex;align-items:center;gap:9px;background:var(--mk-card-2);border:1px solid var(--mk-line);
   border-radius:13px;padding:11px 12px;margin-top:6px}
-.mk-settle svg{width:17px;height:17px;color:var(--mk-blue);flex:none}
+.mk-settle svg{width:17px;height:17px;color:var(--mk-accent);flex:none}
 .mk-settle span{font-size:11.5px;line-height:1.5;color:var(--mk-ink-2);font-weight:600}
 
 /* ===== contract charts: price, last five, pace ===== */
@@ -253,7 +258,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mkc-rg{flex:1;text-align:center;border:1px solid var(--mk-line);border-radius:10px;padding:7px 4px;
   font-size:10.5px;font-weight:700;color:var(--mk-ink-2);cursor:pointer;background:var(--mk-card);
   white-space:nowrap}
-.mkc-rg.on{border-color:var(--mk-blue);color:#fff;background:var(--mk-blue)}
+.mkc-rg.on{border-color:var(--mk-accent);color:#fff;background:var(--mk-accent)}
 .mkc-rg:active{opacity:.85}
 
 /* chart B — the bar band (92px) and the week label (18px) are fixed so the
@@ -262,8 +267,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mkc-bar{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
 .mkc-bar .col{width:100%;height:92px;display:flex;align-items:flex-end}
 .mkc-bar .b{position:relative;width:100%;border-radius:5px 5px 2px 2px}
-.mkc-bar .b.up{background:linear-gradient(180deg,var(--mk-green),rgba(43,224,107,.28))}
-.mkc-bar .b.down{background:linear-gradient(180deg,var(--mk-red),rgba(255,75,75,.26))}
+.mkc-bar .b.up{background:linear-gradient(180deg,var(--mk-green),rgba(var(--mk-accent-rgb),.28))}
+.mkc-bar .b.down{background:linear-gradient(180deg,var(--mk-red),rgba(var(--mk-red-rgb),.26))}
 .mkc-bar .v{position:absolute;bottom:100%;left:-2px;right:-2px;text-align:center;margin-bottom:4px;
   font-size:10.5px;font-weight:800}
 .mkc-bar .v.up{color:var(--mk-green)}
@@ -304,9 +309,9 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mk-tradebar.on{opacity:1;pointer-events:auto;transform:translateY(0)}
 /* the sheet's last screenful has to clear the bar as well as the nav */
 body.mk-has-bar .mk-sheet{padding-bottom:calc(var(--navh) + 104px)}
-.tb-go{height:50px;border-radius:14px;background:var(--mk-blue);color:#fff;display:grid;place-items:center;
+.tb-go{height:50px;border-radius:14px;background:var(--mk-accent);color:#fff;display:grid;place-items:center;
   font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;
-  box-shadow:0 10px 26px rgba(46,140,255,.32)}
+  box-shadow:0 10px 26px rgba(var(--mk-accent-rgb),.32)}
 .tb-go:active{transform:scale(.99)}
 
 .mk-scrim.tk{z-index:90;opacity:0;pointer-events:none}
@@ -329,8 +334,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 /* current position at the top, position after fill at the bottom */
 .tk-pos,.tk-after{display:flex;align-items:center;justify-content:space-between;margin:8px 18px;
   padding:11px 13px;border-radius:13px;border:1px solid var(--mk-line);background:var(--mk-card-2)}
-.tk-after{border-color:var(--mk-blue-dim);background:rgba(46,140,255,.08)}
-.tk-after.cross{border-color:#8a6a1f;background:rgba(230,168,90,.1)}
+.tk-after{border-color:var(--mk-accent-dim);background:rgba(var(--mk-accent-rgb),.08)}
+.tk-after.cross{border-color:rgba(var(--mk-red-rgb),.55);background:rgba(var(--mk-red-rgb),.1)}
 .tk-pos .k,.tk-after .k{font-size:9.5px;font-weight:800;letter-spacing:1.1px;color:var(--mk-ink-3)}
 .tk-pos .v,.tk-after .v{font-size:19px;font-weight:800}
 .tk-pos .v.up,.tk-after .v.up{color:var(--mk-green)}
@@ -340,8 +345,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 .tk-side .sd{flex:1;height:44px;display:grid;place-items:center;border-radius:12px;cursor:pointer;
   border:1px solid var(--mk-line);background:var(--mk-card-2);color:var(--mk-ink-2);
   font-size:13px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase}
-.tk-side .sd.buy.on{background:rgba(43,224,107,.14);border-color:var(--mk-green);color:var(--mk-green)}
-.tk-side .sd.sell.on{background:rgba(255,75,75,.14);border-color:var(--mk-red);color:var(--mk-red)}
+.tk-side .sd.buy.on{background:rgba(var(--mk-accent-rgb),.14);border-color:var(--mk-green);color:var(--mk-green)}
+.tk-side .sd.sell.on{background:rgba(var(--mk-red-rgb),.14);border-color:var(--mk-red);color:var(--mk-red)}
 
 .tk-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 18px;
   padding:12px 0;border-bottom:1px solid var(--mk-line-soft)}
@@ -351,7 +356,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 .tk-step{display:flex;align-items:center;gap:2px;border:1px solid var(--mk-line);border-radius:11px;
   background:var(--mk-card-2);overflow:hidden}
 .tk-step .s{width:38px;height:38px;display:grid;place-items:center;cursor:pointer;font-size:17px;
-  font-weight:800;color:var(--mk-blue)}
+  font-weight:800;color:var(--mk-accent)}
 .tk-step input{width:64px;height:38px;background:none;border:none;color:var(--mk-ink);text-align:center;
   font-family:inherit;font-size:15px;font-weight:800;outline:none;-webkit-user-select:text;user-select:text}
 .tk-step input::-webkit-outer-spin-button,.tk-step input::-webkit-inner-spin-button{
@@ -374,9 +379,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 .tk-btn{flex:1;height:48px;display:grid;place-items:center;border-radius:13px;cursor:pointer;
   font-size:13.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase}
 .tk-btn.ghost{flex:0 0 34%;border:1px solid var(--mk-line);background:var(--mk-card-2);color:var(--mk-ink-2)}
-.tk-btn.go{background:var(--mk-blue);color:#fff}
+.tk-btn.go{background:var(--mk-accent);color:#fff}
 .tk-btn.go.sell{background:var(--mk-red)}
-.tk-btn.go.buy{background:var(--mk-green);color:#04220f}
+.tk-btn.go.buy{background:var(--mk-green);color:#fff}
 
 /* position block on the player sheet, above the charts */
 .mk-pos{display:flex;gap:8px;margin-bottom:12px}
@@ -391,7 +396,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 .mk-term{display:flex;gap:8px;margin-top:9px;font-size:10px;font-weight:700;color:var(--mk-ink-3)}
 .mk-term span{flex:1;text-align:center;padding:7px 4px;border-radius:9px;border:1px solid var(--mk-line);
   background:var(--mk-card-2)}
-.mk-term.blue span:first-child{color:var(--mk-blue);border-color:var(--mk-blue-dim)}
+.mk-term.blue span:first-child{color:var(--mk-accent);border-color:var(--mk-accent-dim)}
 
 /* portfolio totals + sort dropdown */
 .mk-tot{display:flex;gap:8px;padding:0 14px 4px}
@@ -403,14 +408,14 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 .mk-tot .v.down{color:var(--mk-red)}
 .mk-sortsel{height:36px;border-radius:11px;border:1px solid var(--mk-line);background:var(--mk-card);
   color:var(--mk-ink);font-family:inherit;font-size:12.5px;font-weight:700;padding:0 9px;outline:none}
-.mk-row .chip.up{color:var(--mk-green);border-color:rgba(43,224,107,.4)}
-.mk-row .chip.down{color:var(--mk-red);border-color:rgba(255,75,75,.4)}
+.mk-row .chip.up{color:var(--mk-green);border-color:rgba(var(--mk-accent-rgb),.4)}
+.mk-row .chip.down{color:var(--mk-red);border-color:rgba(var(--mk-red-rgb),.4)}
 
 /* fills list on the History tab */
 .mk-fill{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--mk-line-soft)}
 .mk-fill .sd{flex:none;font-size:9px;font-weight:800;letter-spacing:.8px;padding:4px 7px;border-radius:7px}
-.mk-fill .sd.buy{background:rgba(43,224,107,.14);color:var(--mk-green)}
-.mk-fill .sd.sell{background:rgba(255,75,75,.14);color:var(--mk-red)}
+.mk-fill .sd.buy{background:rgba(var(--mk-accent-rgb),.14);color:var(--mk-green)}
+.mk-fill .sd.sell{background:rgba(var(--mk-red-rgb),.14);color:var(--mk-red)}
 .mk-fill .who{flex:1;min-width:0}
 .mk-fill .nm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mk-fill .sb{font-size:10px;color:var(--mk-ink-3);font-weight:600;margin-top:2px}
