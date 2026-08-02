@@ -119,6 +119,124 @@ ok('back returns to the seeded league',
 await page.evaluate(() => window.openLeague('cbd'));
 await page.waitForTimeout(250);
 
+console.log('\ncreate league');
+await page.evaluate(() => { window.goHome(); });
+await page.waitForTimeout(200);
+ok('create entry sits under the leagues',
+  await page.$eval('#homeBody', e => {
+    const list = e.querySelector('.hb-list'), nu = e.querySelector('.hb-new');
+    return !!nu && (list.compareDocumentPosition(nu) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
+  }));
+await page.evaluate(() => window.openCreateLeague());
+await page.waitForTimeout(200);
+ok('wizard opens on step 1', await view() === 'create'
+  && await page.$eval('.wiz-step', e => /STEP 1 OF 6/.test(e.textContent)));
+ok('six progress segments', (await page.$$('.wiz-seg')).length === 6);
+ok('next is blocked until the step is valid',
+  await page.$eval('#wizNext', e => e.classList.contains('off')));
+// drive the whole wizard
+await page.evaluate(() => {
+  window.wizName('Test League');
+  window.wizPick('source', 'default');
+  window.wizPick('type', 'dynasty');
+  window.wizPick('size', 12);
+  window.wizPick('draftType', 'snake');
+  window.wizPick('draftWhen', 'now');
+  window.wizGo(5);
+});
+await page.waitForTimeout(200);
+ok('review lists every choice',
+  await page.$eval('#createBody', e => /Test League/.test(e.textContent)
+    && /Dynasty/.test(e.textContent) && /Snake/.test(e.textContent)
+    && /Start now/.test(e.textContent)));
+ok('draft timing is on the draft step',
+  await page.evaluate(() => { window.wizGo(4);
+    return /Rolling hourly/.test(document.getElementById('createBody').textContent); }));
+await page.evaluate(() => { window.wizGo(5); window.wizCreate(); });
+await page.waitForTimeout(300);
+ok('creating lands back on the hub', await view() === 'home');
+ok('the new league is on the hub',
+  await page.$eval('#homeBody', e => /Test League/.test(e.textContent)));
+ok('it counts managers rather than scoring', (await page.$$('.hb-join')).length === 1);
+ok('wizard state is cleared after creating',
+  await page.evaluate(() => !window.store.createLeague));
+ok('it survives a reload',
+  await page.reload({ waitUntil: 'networkidle' }).then(() => page.waitForTimeout(300))
+    .then(() => page.$eval('#homeBody', e => /Test League/.test(e.textContent))));
+
+console.log('\ninvites and the waiting room');
+const newId = await page.evaluate(() => window.myLeagues()[0].id);
+await page.evaluate(id => window.openLeague(id), newId);
+await page.waitForTimeout(250);
+ok('opening it shows the waiting room',
+  (await page.$$('.dr-wait')).length === 1 && await view() === 'wait');
+// it has no stadium stage, so it must keep the league bar rather than borrow
+// the matchup view's stage mode, which hides it
+ok('waiting room keeps the league bar', await vis('.leaguebar'));
+ok('and drops the league tabs', !(await vis('.tabs')));
+ok('roll call has a row per team',
+  await page.$eval('#waitBody', e => e.querySelectorAll('.rc-row').length === 12));
+ok('start draft is blocked until it fills',
+  await page.$eval('.wiz-btn.primary', e => e.classList.contains('off')));
+await page.evaluate(id => window.openInvite(id), newId);
+await page.waitForTimeout(200);
+ok('invite link is generated',
+  await page.$eval('#invLink', e => /^https:\/\/arc\.app\/join\/\w+$/.test(e.value)));
+await page.evaluate(id => { for (let i = 0; i < 11; i++) window.simulateJoin(id); }, newId);
+await page.waitForTimeout(250);
+ok('joins fill the roll call',
+  await page.$eval('.dr-wait-s', e => /12 of 12/.test(e.textContent)));
+ok('start draft unlocks when full',
+  !(await page.$eval('.wiz-btn.primary', e => e.classList.contains('off'))));
+
+console.log('\ntable standings');
+await page.evaluate(() => { window.openLeague('cbd'); });
+await page.waitForTimeout(250);
+await page.evaluate(() => { window.setLeague('standings', 'table'); window.showTab('standings'); });
+await page.waitForTimeout(250);
+ok('table mode swaps the columns',
+  await page.$eval('#standBody', e => /W-D-L/.test(e.textContent) && /PTS/.test(e.textContent)));
+ok('sorted on points, not rank',
+  await page.evaluate(() => {
+    const pts = [...document.querySelectorAll('#standBody .st-c.df b')].map(e => +e.textContent);
+    return pts.length > 1 && pts.every((v, i) => i === 0 || pts[i - 1] >= v);
+  }));
+await page.evaluate(() => { window.setLeague('standings', 'record'); window.showTab('standings'); });
+await page.waitForTimeout(200);
+ok('record mode restores W-L',
+  await page.$eval('#standBody', e => /W-L/.test(e.textContent) && !/W-D-L/.test(e.textContent)));
+
+console.log('\nleague crest');
+await page.evaluate(() => { window.openSettings(); window.setSetTab('general'); });
+await page.waitForTimeout(200);
+ok('crest card is in league settings', (await page.$$('.set-crest')).length === 1);
+ok('upload is commissioner-gated',
+  await page.evaluate(() => {
+    const before = !!document.querySelector('.set-crestrow .set-btn');
+    window.togglePreviewAsMember();
+    const after = !!document.querySelector('.set-crestrow .set-btn');
+    window.togglePreviewAsMember();
+    return before && !after;
+  }));
+ok('an uploaded crest reaches the hub',
+  await page.evaluate(() => {
+    const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    window.store.leagueLogos = window.store.leagueLogos || {};
+    window.store.leagueLogos.cbd = px;
+    window.goHome(); window.renderHome();
+    return !!document.querySelector('.hb-row[data-league="cbd"] .hb-crest img');
+  }));
+
+console.log('\nthe Arc mark');
+ok('the mark is drawn once, as vector',
+  await page.evaluate(() => {
+    window.openMarkets();
+    const m = document.querySelectorAll('.mk-mark');
+    return m.length === 1 && m[0].tagName.toLowerCase() === 'svg';
+  }));
+await page.evaluate(() => { window.closeMarkets(); window.openLeague('cbd'); });
+await page.waitForTimeout(250);
+
 console.log('\nA2 — chat owns trades');
 await page.evaluate(() => window.openChat());
 await page.waitForTimeout(250);

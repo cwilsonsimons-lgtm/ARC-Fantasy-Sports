@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="css/panel.css">
   <link rel="stylesheet" href="css/nav.css">
   <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/create.css">
   <link rel="stylesheet" href="css/chat.css">
   <link rel="stylesheet" href="css/notifs.css">
   <link rel="stylesheet" href="css/markets.css">
@@ -72,6 +73,16 @@
       <!-- ===== HOME HUB (root view, above league scope) ===== -->
       <div class="view on" data-view="home">
         <div id="homeBody"></div>
+      </div>
+
+      <!-- ===== CREATE LEAGUE WIZARD ===== -->
+      <div class="view" data-view="create">
+        <div id="createBody"></div>
+      </div>
+
+      <!-- ===== WAITING ROOM (a league still filling up) ===== -->
+      <div class="view" data-view="wait">
+        <div id="waitBody"></div>
       </div>
 
       <!-- ===== CHAT VIEW ===== -->
@@ -247,8 +258,17 @@
   <div class="mk" id="mk">
     <div class="mk-head">
       <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+      <!-- ARC MARK — the one place the logo is drawn.
+           Vector rather than a bitmap so it stays self-contained and recolours
+           with the palette. To swap in the raster original, replace the <svg>
+           below with <img src="data:image/png;base64,..."> and nothing else
+           changes. -->
       <div class="mk-brand" onclick="mkAbout()">
-        <div class="a">Arc</div>
+        <svg class="mk-mark" viewBox="0 0 200 44" fill="none" aria-label="Arc Markets">
+          <path d="M52.5 6 34 40h7.6l4-7.9h14.6l4 7.9H72L53.5 6h-1Zm-4 20.6 4.2-8.4 4.2 8.4h-8.4Z" fill="currentColor"/>
+          <path d="M6 36.5 20.5 22l7 7L45.5 11" stroke="var(--mk-accent)" stroke-width="6.5"
+            stroke-linecap="square" stroke-linejoin="miter"/>
+        </svg>
         <div class="m">MARKETS</div>
       </div>
       <div class="mk-tools">

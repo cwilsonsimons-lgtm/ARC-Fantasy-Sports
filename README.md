@@ -54,6 +54,43 @@ returning, because `showTab` only re-renders team and draft.
 Rows reorder by drag handle (pointer events, not HTML5 drag — that never fires
 on touch) and persist to `store.leagueOrder`.
 
+## Creating a league
+
+Under the leagues you are already in sits the way to make another. `js/create.js`
+is the six-step wizard — name, starting settings, type, size, draft, review —
+ported from the standalone prototype, which had it while this repo never did.
+Progress lives in `store.createLeague`, so leaving halfway and coming back
+resumes rather than restarts; the hub row says which step you are on.
+
+The draft step carries **when** as well as how: start now, or roll hourly until
+everyone is in. That is the whole scheduling story on purpose — a created league
+opens on a waiting room with a roll call and an invite link rather than a
+calendar. `store.myLeagues` holds them, `asLeague()` lifts them into the same
+shape the seeded four use, and everything above league scope stays unaware of
+which kind it is holding.
+
+The waiting room is its own view rather than the matchup view, because the
+matchup view switches to stage mode and hides the league bar — a screen with no
+stadium behind it would have lost its only way back.
+
+Two of the notes from the product list are in: instant draft with invite links,
+and **table standings** — 3 for a win, 1 for a draw, sorted on points then
+difference, switchable in Settings ▸ General. Odd-team rotating byes and
+mid-season start are not; they change the schedule engine and were left out of
+this pass. Sleeper import is untouched.
+
+## Logos
+
+A league's crest uploads from Settings ▸ General, downscaled through the same
+`processImage()` the team logos use and stored per league id in
+`store.leagueLogos`. `leagueMark()` already preferred an uploaded logo, so the
+hub picks it up with no further wiring.
+
+The Arc mark itself is inline SVG in `index.html` — vector rather than a bitmap
+so the file stays self-contained and the mark recolours with the palette. It is
+drawn in exactly one place; swapping in the raster original means replacing that
+one `<svg>` with an `<img src="data:image/png;base64,…">` and nothing else.
+
 ## Chat owns trades
 
 There is no DM inbox and no trade tab. `store.chat[leagueId]` is one log; a

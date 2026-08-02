@@ -3,10 +3,11 @@ import { POOL } from './clock.js';
 import { seededPts } from './panel.js';
 import { stadiumHeroHTML, stadiumStageHTML } from './hero.js';
 import { countdownParts, draftAt, leagueMark, leagueScore, leagueStatus, leagueWeek,
-         myKeyOf, openLeague, orderedLeagues, setLeagueOrder, teamsOf } from './leagues.js';
+         myKeyOf, myLeagues, openLeague, orderedLeagues, setLeagueOrder, teamsOf } from './leagues.js';
+import { inviteLink } from './create.js';
 import { escHtml } from './panel.js';
 import { markInner, saveStore, store } from './store.js';
-import { showView } from './nav.js';
+import { showView, toast } from './nav.js';
 
 // ======================= HOME HUB =======================
 // The root view, above league scope. It carries no league chrome of its own —
@@ -18,10 +19,16 @@ const GRIP='<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r
 function typeLabel(lg){return lg.type==='dynasty'?'Dynasty':'Redraft';}
 function statusLine(lg){
   const st=leagueStatus(lg),bits=[typeLabel(lg),lg.teamCount+' teams'];
-  if(st==='predraft')bits.push('Pre-draft');
+  if(st==='forming')bits.push('Forming');
+  else if(st==='predraft')bits.push('Pre-draft');
   else if(st==='complete')bits.push(lg.placed?ordinal(lg.placed)+' place':'Final');
   else bits.push('Week '+leagueWeek(lg));
   return bits.join(' · ');
+}
+/** A league you just made has no score and no draft clock — it has a roll call. */
+function joinHTML(lg){
+  const joined=(lg.rec&&lg.rec.joined)||1;
+  return `<div class="hb-join"><b>${joined}</b><span>of ${lg.teamCount}</span></div>`;
 }
 function ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 
@@ -46,7 +53,8 @@ function scoreHTML(lg){
 function rowHTML(lg){
   const mk=leagueMark(lg),teams=teamsOf(lg),me=teams&&teams[myKeyOf(lg)];
   const tint=me?me.c:'var(--accent)',bgc=me?me.bg:'#171429';
-  const right=leagueStatus(lg)==='predraft'?countdownHTML(lg):scoreHTML(lg);
+  const st=leagueStatus(lg);
+  const right=st==='forming'?joinHTML(lg):st==='predraft'?countdownHTML(lg):scoreHTML(lg);
   return `<div class="hb-row" data-league="${lg.id}" onclick="openLeague('${lg.id}')">
     <div class="hb-grip" data-grip>${GRIP}</div>
     <div class="hb-crest" style="background:linear-gradient(155deg,${bgc},#0b0e14);border-color:${tint};color:${tint}">${markInner(mk)}</div>
@@ -60,7 +68,15 @@ function rowHTML(lg){
 
 export function renderHome(){
   const el=document.getElementById('homeBody');if(!el)return;
-  el.innerHTML=`<div class="hb-list" id="hbList">${orderedLeagues().map(rowHTML).join('')}</div>`;
+  // The way to make a league sits under the ones you are already in.
+  const w=store.createLeague;
+  const resume=w&&(w.step>0||(w.name||'').trim());
+  el.innerHTML=`<div class="hb-list" id="hbList">${orderedLeagues().map(rowHTML).join('')}</div>
+    <div class="hb-new" onclick="openCreateLeague()">
+      <div class="hb-plus">+</div>
+      <div class="hb-id"><div class="hb-nm">${resume?'Resume setup':'Create a league'}</div>
+        ${resume?`<div class="hb-st">${escHtml((w.name||'').trim()||'Untitled')} · step ${Math.min(w.step+1,6)} of 6</div>`:''}</div>
+    </div>`;
   bindReorder(document.getElementById('hbList'));
   startClock();
 }
@@ -224,6 +240,78 @@ export function openSeededTeam(lgId,key){
   showView('team');
   document.querySelectorAll('.tab').forEach(t2=>t2.classList.remove('on'));
   document.getElementById('scroll').scrollTop=0;
+}
+
+// ======================= WAITING ROOM =======================
+// A league you created has no matchup yet — it has a roll call and a draft that
+// starts the moment it fills. "Instant" is the point: there is no calendar to
+// negotiate, so the only controls are the invite link and starting early.
+
+export function renderWaitRoom(id){
+  const rec=myLeagues().find(l=>l.id===id);if(!rec)return;
+  const need=+rec.league.teams,joined=rec.joined||1;
+  const pct=Math.round(joined/need*100);
+  const full=joined>=need;
+  const when=rec.league.draftWhen==='hourly'
+    ? 'Rolling hourly'
+    : 'Starts when the league fills';
+  document.getElementById('waitBody').innerHTML=`
+    <div class="dr-wait">
+      <div class="dr-wait-h">${escHtml(rec.name)}</div>
+      <div class="dr-wait-s">${joined} of ${need} managers · ${escHtml(when)}</div>
+      <div class="dr-wait-bar"><i style="width:${pct}%"></i></div>
+      <div class="wiz-foot" style="margin-top:14px">
+        <div class="wiz-btn" onclick="openInvite('${rec.id}')">Invite</div>
+        <div class="wiz-btn primary${full?'':' off'}" onclick="startCreatedDraft('${rec.id}')">Start draft</div>
+      </div>
+    </div>
+    <div class="hd"><span>Managers</span></div>
+    <div class="rc">${Array.from({length:need},(_,i)=>`
+      <div class="rc-row${i<joined?'':' open'}">
+        <span class="rc-n">${i+1}</span>
+        <span class="rc-tick">${i<joined?'✓':'—'}</span>
+        <div class="rc-who"><div class="n">${i===0?'You':(i<joined?'Joined':'Open')}</div>
+          ${i===0?'<div class="m">Commissioner</div>':''}</div>
+      </div>`).join('')}</div>`;
+  document.body.classList.remove('seeded');
+  document.body.classList.add('forming');
+  showView('wait');
+  document.getElementById('scroll').scrollTop=0;
+}
+/** No backend to invite anyone through, so the link is the deliverable. */
+export function openInvite(id){
+  const rec=myLeagues().find(l=>l.id===id);if(!rec)return;
+  const url=inviteLink(rec);
+  document.getElementById('condTitle').textContent=rec.name;
+  document.getElementById('condBody').innerHTML=`
+    <div class="cond-row"><input id="invLink" class="set-ctl" type="text" readonly value="${escHtml(url)}"></div>
+    <div class="cond-btns">
+      <div class="tc-btn" onclick="simulateJoin('${rec.id}')">Simulate a join</div>
+      <div class="tc-btn acc" onclick="copyInvite()">Copy link</div>
+    </div>`;
+  document.getElementById('condScrim').classList.add('show');
+  document.getElementById('condSheet').classList.add('show');
+}
+export function copyInvite(){
+  const i=document.getElementById('invLink');if(!i)return;
+  i.select();
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(i.value).catch(()=>{});
+  else{try{document.execCommand('copy');}catch(e){}}
+  toast('Invite link copied');
+}
+/** There is no server, so joining is the one thing that has to be faked. */
+export function simulateJoin(id){
+  const rec=myLeagues().find(l=>l.id===id);if(!rec)return;
+  rec.joined=Math.min(+rec.league.teams,(rec.joined||1)+1);
+  saveStore();
+  document.getElementById('condScrim').classList.remove('show');
+  document.getElementById('condSheet').classList.remove('show');
+  renderWaitRoom(id);
+}
+export function startCreatedDraft(id){
+  const rec=myLeagues().find(l=>l.id===id);if(!rec)return;
+  if((rec.joined||1)<+rec.league.teams)return;
+  toast('Draft opening');
 }
 
 export function initHome(){

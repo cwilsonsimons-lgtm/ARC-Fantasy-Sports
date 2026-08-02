@@ -1221,6 +1221,138 @@ body.seeded #mActivity{display:none}
 .tv-own-tag{display:flex;align-items:center;color:var(--green);margin-top:4px}
 .tv-own-tag svg{width:13px;height:13px}
 
+/* css/create.css */
+/* ===== CREATE LEAGUE =====
+   Ported from the standalone prototype's wizard, repainted onto the four-colour
+   palette: --violet became --accent, and the blue-black inputs became graphite. */
+
+/* ---- the entry on the hub, under the leagues you are already in ---- */
+.hb-new{display:flex;align-items:center;gap:11px;margin-top:10px;padding:14px 13px;cursor:pointer;
+  border:1.5px dashed var(--line);border-radius:18px;background:transparent}
+.hb-new:active{opacity:.85}
+.hb-plus{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+  border:1.5px dashed rgba(var(--accent-rgb),.7);background:var(--accent-soft);color:var(--accent);
+  font-size:24px;font-weight:500;line-height:1}
+.hb-new .hb-nm{color:var(--ink)}
+
+/* a league still filling up counts managers rather than points */
+.hb-join{flex:none;min-width:56px;text-align:center;background:var(--card-2);border:1px solid var(--line);
+  border-radius:9px;padding:6px 8px}
+.hb-join b{display:block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:16px;color:var(--accent);line-height:1}
+.hb-join span{display:block;font-size:8.5px;color:var(--ink-3);font-weight:700;margin-top:2px}
+
+/* ---- wizard chrome ---- */
+.wiz-top{display:flex;align-items:center;gap:12px;margin:8px 2px 12px}
+.wiz-x{flex:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);
+  border-radius:11px;background:var(--card);color:var(--ink-2);cursor:pointer}
+.wiz-x svg{width:15px;height:15px}
+.wiz-x:active{opacity:.8}
+.wiz-step{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+  font-weight:700;letter-spacing:1.2px;color:var(--ink-3);margin-top:3px}
+.wiz-prog{display:flex;gap:5px;margin:0 2px 18px}
+.wiz-seg{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.wiz-seg.on{background:var(--accent)}
+.wiz-q{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px;
+  letter-spacing:.3px;text-transform:uppercase;margin:0 2px 12px}
+.wiz-note{font-size:11.5px;color:var(--ink-3);line-height:1.5;margin:12px 2px 0}
+.wiz-sub-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:1.3px;text-transform:uppercase;color:var(--ink-3);margin:0 2px 8px}
+
+/* ---- inputs ---- */
+.wiz-input{width:100%;background:var(--card-2);border:1px solid var(--line);border-radius:13px;
+  color:var(--ink);font-family:'Barlow',system-ui,sans-serif;font-size:16px;font-weight:600;
+  padding:13px 15px;outline:none;-webkit-user-select:text;user-select:text}
+.wiz-input:focus{border-color:var(--accent)}
+.wiz-input.num{margin-top:10px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+.wiz-input.num::-webkit-outer-spin-button,.wiz-input.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.wiz-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.wiz-chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:11.5px;
+  color:var(--ink-2);cursor:pointer}
+.wiz-chip:active{border-color:var(--accent);color:var(--accent)}
+
+/* ---- option cards ---- */
+.opt-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;
+  margin-bottom:10px;cursor:pointer}
+.opt-card:active{opacity:.9}
+.opt-card.on{border-color:var(--accent);background:var(--accent-soft)}
+.opt-card.sm{padding:11px 13px;margin-bottom:8px}
+.opt-t{display:flex;align-items:center;gap:9px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:14px;letter-spacing:.4px;text-transform:uppercase}
+.opt-radio{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.opt-card.on .opt-radio{border-color:var(--accent);
+  background:radial-gradient(circle,var(--accent) 0 4.5px,transparent 5px)}
+.opt-d{font-size:12px;color:var(--ink-2);line-height:1.5;margin:5px 0 0 24px}
+.sub-opts{border-left:2px solid var(--line-soft);margin:2px 0 12px 8px;padding:4px 0 0 12px}
+
+/* ---- size grid ---- */
+.size-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.size-cell{padding:12px 0 10px;text-align:center;border:1px solid var(--line);border-radius:12px;
+  cursor:pointer;background:var(--card);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:17px;color:var(--ink-2)}
+.size-cell .s{display:block;font-size:8px;color:var(--ink-3);letter-spacing:1px;margin-top:2px;font-weight:500}
+.size-cell.on{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+
+/* ---- footer ---- */
+.wiz-foot{display:flex;gap:10px;margin-top:18px}
+.wiz-btn{flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);
+  border-radius:12px;padding:13px;cursor:pointer;color:var(--ink);background:var(--card-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;
+  letter-spacing:1px;text-transform:uppercase}
+.wiz-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;flex:1.6}
+.wiz-btn.off{opacity:.38}
+.wiz-btn:active{opacity:.85}
+
+/* ---- review ---- */
+.rev-card{padding:6px 16px}
+.rev-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line-soft);
+  cursor:pointer}
+.rev-row:last-child{border-bottom:0}
+.rev-lb{flex:none;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3)}
+.rev-val{flex:1;text-align:right;font-size:13px;font-weight:600;color:var(--ink);min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rev-edit{flex:none;color:var(--ink-3);font-size:16px;line-height:1}
+.wiz-comm{border-color:var(--accent)}
+.wiz-comm .opt-t{color:var(--accent)}
+.wiz-comm .opt-d{margin-left:0;margin-top:6px}
+
+/* ---- waiting room ---- */
+.dr-wait{background:var(--card);border:1px solid var(--line-soft);border-radius:16px;padding:18px 16px;
+  margin:14px 0;text-align:center}
+.dr-wait-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:19px;
+  letter-spacing:.4px;text-transform:uppercase}
+.dr-wait-s{font-size:12px;color:var(--ink-2);margin-top:4px}
+.dr-wait-bar{height:6px;border-radius:3px;background:var(--line-soft);margin:12px 8px 10px;overflow:hidden}
+.dr-wait-bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .3s}
+.stand-row.dim{opacity:.42}
+
+/* league crest control in Settings */
+.set-crestrow{display:flex;align-items:center;gap:12px}
+.set-crest{flex:none;width:64px;height:64px;border-radius:18px;overflow:hidden;border:1px solid var(--line);
+  background:var(--card-2);display:grid;place-items:center}
+.set-crest img{width:100%;height:100%;object-fit:cover}
+.set-crest.none{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:26px;
+  color:var(--ink-3)}
+.set-crestrow .set-btns{display:flex;flex-direction:column;gap:7px;margin:0}
+
+/* the Arc mark in the Markets header */
+.mk-mark{width:96px;height:auto;color:var(--mk-ink);display:block;margin:0 auto}
+
+/* the waiting room keeps the league bar but has no league tabs yet */
+body.forming .tabs{display:none}
+.rc{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.rc-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border-top:1px solid var(--line-soft)}
+.rc-row:first-child{border-top:none}
+.rc-row.open{opacity:.42}
+.rc-n{flex:none;width:16px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:13px;color:var(--ink-3)}
+.rc-tick{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  background:var(--card-2);border:1px solid var(--line);color:var(--ink-3);font-size:12px}
+.rc-row:not(.open) .rc-tick{color:var(--accent);border-color:rgba(var(--accent-rgb),.45)}
+.rc-who{flex:1;min-width:0}
+.rc-who .n{font-size:13px;font-weight:700}
+.rc-who .m{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:1px}
+
 /* css/chat.css */
 /* ===== CHAT =====
    League chat and a one-to-one thread are the same surface; the thread is the
@@ -1901,6 +2033,16 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
         <div id="homeBody"></div>
       </div>
 
+      <!-- ===== CREATE LEAGUE WIZARD ===== -->
+      <div class="view" data-view="create">
+        <div id="createBody"></div>
+      </div>
+
+      <!-- ===== WAITING ROOM (a league still filling up) ===== -->
+      <div class="view" data-view="wait">
+        <div id="waitBody"></div>
+      </div>
+
       <!-- ===== CHAT VIEW ===== -->
       <div class="view" data-view="chat">
         <div id="chatBody"></div>
@@ -2074,8 +2216,17 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   <div class="mk" id="mk">
     <div class="mk-head">
       <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+      <!-- ARC MARK — the one place the logo is drawn.
+           Vector rather than a bitmap so it stays self-contained and recolours
+           with the palette. To swap in the raster original, replace the <svg>
+           below with <img src="data:image/png;base64,..."> and nothing else
+           changes. -->
       <div class="mk-brand" onclick="mkAbout()">
-        <div class="a">Arc</div>
+        <svg class="mk-mark" viewBox="0 0 200 44" fill="none" aria-label="Arc Markets">
+          <path d="M52.5 6 34 40h7.6l4-7.9h14.6l4 7.9H72L53.5 6h-1Zm-4 20.6 4.2-8.4 4.2 8.4h-8.4Z" fill="currentColor"/>
+          <path d="M6 36.5 20.5 22l7 7L45.5 11" stroke="var(--mk-accent)" stroke-width="6.5"
+            stroke-linecap="square" stroke-linejoin="miter"/>
+        </svg>
         <div class="m">MARKETS</div>
       </div>
       <div class="mk-tools">
@@ -3380,8 +3531,10 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     posRankNo: () => posRankNo,
     renderPlayer: () => renderPlayer,
     renderStandings: () => renderStandings2,
+    renderTableStandings: () => renderTableStandings,
     rostPct: () => rostPct,
     seedHash: () => seedHash,
+    tableRow: () => tableRow,
     trendRow: () => trendRow
   });
 
@@ -3873,6 +4026,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     LG_STATUS: () => LG_STATUS,
     activeLeague: () => activeLeague2,
     activeLeagueId: () => activeLeagueId,
+    allLeagues: () => allLeagues,
     countdownParts: () => countdownParts,
     draftAt: () => draftAt,
     goHome: () => goHome,
@@ -3885,6 +4039,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     leagueTint: () => leagueTint,
     leagueWeek: () => leagueWeek,
     myKeyOf: () => myKeyOf,
+    myLeagues: () => myLeagues,
     openLeague: () => openLeague,
     orderedLeagues: () => orderedLeagues,
     setLeagueOrder: () => setLeagueOrder,
@@ -3912,6 +4067,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
     document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
     document.body.classList.toggle("hub", name === "home");
+    if (name !== "wait") document.body.classList.remove("forming");
   }
   function preDraft() {
     return !draftDone();
@@ -5861,8 +6017,32 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   ];
   var LEAGUE_BY_ID = {};
   LEAGUES.forEach((l) => LEAGUE_BY_ID[l.id] = l);
+  function myLeagues() {
+    if (!store.myLeagues) store.myLeagues = [];
+    return store.myLeagues;
+  }
+  function asLeague(rec) {
+    return {
+      id: rec.id,
+      name: rec.name,
+      logo: null,
+      type: rec.league.type,
+      teamCount: +rec.league.teams,
+      week: 1,
+      status: "forming",
+      myTeamKey: null,
+      real: false,
+      created: true,
+      rec
+    };
+  }
+  function allLeagues() {
+    return LEAGUES.concat(myLeagues().map(asLeague));
+  }
   function leagueById(id) {
-    return LEAGUE_BY_ID[id] || LEAGUES[0];
+    if (LEAGUE_BY_ID[id]) return LEAGUE_BY_ID[id];
+    const mine = myLeagues().find((l) => l.id === id);
+    return mine ? asLeague(mine) : LEAGUES[0];
   }
   function activeLeagueId() {
     return store.activeLeague || "cbd";
@@ -5874,6 +6054,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return !!activeLeague2().real;
   }
   function leagueStatus(lg) {
+    if (lg.created) return "forming";
     if (!lg.real) return lg.status;
     return draftDone() ? "active" : "predraft";
   }
@@ -5932,16 +6113,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60) };
   }
   function orderedLeagues() {
+    const all = allLeagues(), byId = {};
+    all.forEach((l) => byId[l.id] = l);
     const saved = store.leagueOrder || [];
     const seen = /* @__PURE__ */ new Set(), out = [];
     saved.forEach((id) => {
-      const l = LEAGUE_BY_ID[id];
+      const l = byId[id];
       if (l && !seen.has(id)) {
         seen.add(id);
         out.push(l);
       }
     });
-    LEAGUES.forEach((l) => {
+    all.forEach((l) => {
       if (!seen.has(l.id)) out.push(l);
     });
     return out;
@@ -5957,6 +6140,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     document.body.classList.remove("hub");
     document.body.classList.toggle("seeded", !lg.real);
     stampLeagueBar2(lg);
+    if (lg.created) {
+      if (window.renderWaitRoom) window.renderWaitRoom(lg.id);
+      if (document.body.classList.contains("open")) toggleDrawer();
+      return;
+    }
     if (lg.real) {
       renderWeek2();
       showTab(homeTab2());
@@ -5984,7 +6172,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const nm = document.querySelector(".league-id .nm");
     const wk = document.querySelector(".league-id .wk");
     if (nm) nm.childNodes[0].nodeValue = lg.name + " ";
-    if (wk) wk.textContent = leagueStatus(lg) === "predraft" ? "PRE-DRAFT" : leagueStatus(lg) === "complete" ? "FINAL" : "WEEK " + leagueWeek(lg);
+    const st = leagueStatus(lg);
+    if (wk) wk.textContent = st === "forming" ? "FORMING" : st === "predraft" ? "PRE-DRAFT" : st === "complete" ? "FINAL" : "WEEK " + leagueWeek(lg);
   }
   function initLeagues2() {
     store.activeLeague = store.activeLeague || "cbd";
@@ -7035,16 +7224,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     SLOT_MAX: () => SLOT_MAX,
     WDAYS: () => WDAYS,
     applyRosterShape: () => applyRosterShape,
+    clearLeagueLogo: () => clearLeagueLogo,
     commishCards: () => commishCards,
     commishKey: () => commishKey,
     commishTeam: () => commishTeam,
     hourLabel: () => hourLabel,
     isCommish: () => isCommish,
     leagueCards: () => leagueCards,
+    leagueCrestCard: () => leagueCrestCard,
     notifCards: () => notifCards,
+    onLeagueLogo: () => onLeagueLogo,
     openSettings: () => openSettings,
     optList: () => optList,
     ownsCommish: () => ownsCommish,
+    pickLeagueLogo: () => pickLeagueLogo,
     previewAsMember: () => previewAsMember,
     rangeOpts: () => rangeOpts,
     renderSettings: () => renderSettings,
@@ -7108,6 +7301,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     LG()[key] = num ? +val : val;
     saveStore();
+    if (key === "standings") renderStandings2();
     renderSettings();
   }
   function setLeagueNum(key, val, min, max) {
@@ -7138,12 +7332,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const teamOpts = [8, 10, 12, 14, 16].map((n) => [n, n + " teams"]);
     const waiverRows = L.waiver === "faab" ? setRow("Waiver budget", setNum("faabBudget", L.faabBudget, 1, 1e3)) + setRow("Minimum bid", setNum("faabMin", L.faabMin, 0, Math.max(1, L.faabBudget))) : "";
     const sizeNote = +L.teams !== 10 ? `<div class="set-note" style="margin-top:11px;color:var(--accent)">City Boys Dynasty is playing 10 teams this season \u2014 ${L.teams} takes effect at the next draft.</div>` : "";
+    const crest = leagueCrestCard();
     return `
+    ${crest}
     <div class="set-card">
       <div class="set-title">General</div>
       ${setRow("League type", setSel("type", [["redraft", "Redraft"], ["keeper", "Keeper"], ["dynasty", "Dynasty"]], L.type))}
       ${setRow("Teams", setSel("teams", teamOpts, L.teams, 1))}
       ${setRow("Lineup type", setSel("lineup", [["classic", "Classic"], ["bestball", "Best ball"]], L.lineup))}
+      ${setRow("Standings", setSel("standings", [["record", "Win-loss record"], ["table", "Table \xB7 3 points a win"]], L.standings || "record"))}
       ${sizeNote}
     </div>
     <div class="set-card">
@@ -7160,6 +7357,44 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="set-title">Trades</div>
       ${setRow("Trade deadline", setSel("tradeDeadline", [[0, "No deadline"]].concat(rangeOpts(MINW, MAXW, (w) => "Week " + w)), L.tradeDeadline, 1))}
     </div>`;
+  }
+  function leagueCrestCard() {
+    const lg = activeLeague2();
+    const up = (store.leagueLogos || {})[lg.id];
+    const prev = up ? `<div class="set-crest"><img src="${up}" alt=""></div>` : `<div class="set-crest none">${escHtml(lg.name.charAt(0).toUpperCase())}</div>`;
+    return `<div class="set-card">
+    <div class="set-title">League Crest</div>
+    <div class="set-crestrow">
+      ${prev}
+      ${isCommish() ? `<div class="set-btns" style="flex:1">
+        <div class="set-btn primary" onclick="pickLeagueLogo()">${ICON_UP} ${up ? "Change" : "Upload"}</div>
+        ${up ? `<div class="set-btn" onclick="clearLeagueLogo()">${ICON_X} Remove</div>` : ""}
+      </div>` : ""}
+    </div>
+    <input type="file" accept="image/*" class="hidden-file" id="leagueLogoInput" onchange="onLeagueLogo(this)">
+  </div>`;
+  }
+  function pickLeagueLogo() {
+    if (!isCommish()) return;
+    document.getElementById("leagueLogoInput").click();
+  }
+  function onLeagueLogo(input) {
+    const f = input.files && input.files[0];
+    if (!f || !isCommish()) return;
+    processImage(f, 256, "image/png", 0.92, (url) => {
+      if (!store.leagueLogos) store.leagueLogos = {};
+      store.leagueLogos[activeLeague2().id] = url;
+      saveStore();
+      renderSettings();
+      if (window.renderHome) window.renderHome();
+    });
+  }
+  function clearLeagueLogo() {
+    if (!isCommish()) return;
+    if (store.leagueLogos) delete store.leagueLogos[activeLeague2().id];
+    saveStore();
+    renderSettings();
+    if (window.renderHome) window.renderHome();
   }
   var SLOT_LABEL = { QB: "QB", RB: "RB", WR: "WR", TE: "TE", FLEX: "FLEX", SFLX: "SFLX" };
   var SLOT_ELIG_TXT = {
@@ -8952,7 +9187,38 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     } else showTab("matchup");
   }
   var order = Object.keys(T).sort((a, b) => T[a].rk - T[b].rk);
+  function tableRow(k) {
+    const rec = String(T[k].rec || "0-0").split("-").map((n) => +n || 0);
+    const w = rec[0] || 0, l = rec[1] || 0, d = rec[2] || 0;
+    const tot = seasonTotals(k);
+    return { k, w, l, d, pts: w * 3 + d, gd: Math.round((tot.pf - tot.pa) * 10) / 10, pf: tot.pf };
+  }
+  function renderTableStandings() {
+    const rows2 = order.map(tableRow).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.pf - a.pf);
+    const head = `<div class="stand-row head">
+    <div class="stand-c1">TEAM</div>
+    <span class="st-c rec">W-D-L</span>
+    <span class="st-c pf">DIFF</span>
+    <span class="st-c df">PTS</span>
+  </div>`;
+    document.getElementById("standBody").innerHTML = head + rows2.map((r, i) => {
+      const t = T[r.k], me = r.k === MY_TEAM;
+      return `<div class="stand-row ${me ? "me" : ""}">
+      <div class="stand-c1">
+        <span class="stand-rk">${i + 1}</span>${badge(t, "stand-bd")}
+        <div class="stand-nm"><div class="n tf-${r.k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${r.k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
+      </div>
+      <span class="st-c rec">${r.w}-${r.d}-${r.l}</span>
+      <span class="st-c pf ${r.gd > 0 ? "pos" : r.gd < 0 ? "neg" : ""}">${r.gd > 0 ? "+" : ""}${r.gd.toFixed(1)}</span>
+      <span class="st-c df"><b>${r.pts}</b></span>
+    </div>`;
+    }).join("");
+  }
   function renderStandings2() {
+    if ((LG().standings || "record") === "table") {
+      renderTableStandings();
+      return;
+    }
     const col = (k) => `<span class="st-c ${k}">`;
     const head = `<div class="stand-row head">
     <div class="stand-c1">TEAM</div>
@@ -9093,23 +9359,403 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/home.js
   var home_exports = {};
   __export(home_exports, {
+    copyInvite: () => copyInvite,
     initHome: () => initHome2,
+    openInvite: () => openInvite,
     openSeededTeam: () => openSeededTeam,
     renderHome: () => renderHome2,
     renderSeededLeague: () => renderSeededLeague,
+    renderWaitRoom: () => renderWaitRoom,
     seededGames: () => seededGames,
-    seededRoster: () => seededRoster
+    seededRoster: () => seededRoster,
+    simulateJoin: () => simulateJoin,
+    startCreatedDraft: () => startCreatedDraft
   });
+
+  // js/create.js
+  var create_exports = {};
+  __export(create_exports, {
+    DRAFT_LABEL: () => DRAFT_LABEL,
+    SIZE_MAX: () => SIZE_MAX,
+    SIZE_MIN: () => SIZE_MIN,
+    SIZE_PRESETS: () => SIZE_PRESETS,
+    TYPE_LABEL: () => TYPE_LABEL,
+    WHEN_LABEL: () => WHEN_LABEL,
+    WIZ_TOTAL: () => WIZ_TOTAL,
+    inviteLink: () => inviteLink,
+    openCreateLeague: () => openCreateLeague,
+    renderWizard: () => renderWizard,
+    stepValid: () => stepValid,
+    wiz: () => wiz,
+    wizBack: () => wizBack,
+    wizCreate: () => wizCreate,
+    wizCustom: () => wizCustom,
+    wizGo: () => wizGo,
+    wizName: () => wizName,
+    wizNext: () => wizNext,
+    wizPick: () => wizPick,
+    wizPickCopy: () => wizPickCopy,
+    wizReset: () => wizReset,
+    wizTeams: () => wizTeams
+  });
+  var WIZ_TOTAL = 6;
+  var WIZ_BLANK = {
+    step: 0,
+    name: "",
+    source: null,
+    copyFrom: null,
+    type: null,
+    startup: "all",
+    size: 10,
+    custom: "",
+    draftType: null,
+    draftWhen: "now"
+  };
+  var SIZE_PRESETS = [4, 6, 8, 10, 12, 14, 16];
+  var SIZE_MIN = 4;
+  var SIZE_MAX = 32;
+  var TYPE_LABEL = { redraft: "Redraft", keeper: "Keeper", dynasty: "Dynasty" };
+  var DRAFT_LABEL = { snake: "Snake", linear: "Linear", auction: "Auction" };
+  var WHEN_LABEL = { now: "Start now", hourly: "Rolling hourly" };
+  function wiz() {
+    return store.createLeague = store.createLeague || Object.assign({}, WIZ_BLANK);
+  }
+  function wsave() {
+    saveStore();
+  }
+  function wizTeams() {
+    const w = wiz();
+    return w.size === "custom" ? Math.round(+w.custom) : +w.size;
+  }
+  function memberLeagues() {
+    return [{ id: "cbd", name: "City Boys Dynasty", league: store.league, scoring: store.scoring, slots: store.slots }].concat(myLeagues());
+  }
+  function findMine(id) {
+    return myLeagues().find((l) => l.id === id) || null;
+  }
+  function stepValid(i) {
+    const w = wiz();
+    switch (i) {
+      case 0:
+        return !!w.name.trim();
+      case 1:
+        return w.source === "default" || w.source === "copy" && !!w.copyFrom;
+      case 2:
+        return !!w.type;
+      case 3: {
+        const t = wizTeams();
+        return isFinite(t) && t >= SIZE_MIN && t <= SIZE_MAX;
+      }
+      case 4:
+        return !!w.draftType;
+      default:
+        return true;
+    }
+  }
+  function stepBlocker(i) {
+    switch (i) {
+      case 0:
+        return "Give the league a name first";
+      case 1:
+        return wiz().source === "copy" ? "Pick which league to copy" : "Choose how to start the settings";
+      case 2:
+        return "Pick a league type";
+      case 3:
+        return `Team count must be ${SIZE_MIN}\u2013${SIZE_MAX}`;
+      case 4:
+        return "Pick a draft type";
+      default:
+        return "";
+    }
+  }
+  function wizPick(k, v) {
+    const w = wiz();
+    w[k] = v;
+    if (k === "source" && v === "default") w.copyFrom = null;
+    wsave();
+    renderWizard();
+  }
+  function wizPickCopy(id) {
+    const w = wiz();
+    w.source = "copy";
+    w.copyFrom = id;
+    const src = id === "cbd" ? store.league : (findMine(id) || {}).league;
+    if (src) {
+      w.type = src.type;
+      w.draftType = src.draftType || "snake";
+      w.size = SIZE_PRESETS.indexOf(+src.teams) > -1 ? +src.teams : "custom";
+      w.custom = String(src.teams);
+      if (src.type === "dynasty") w.startup = src.draftPool === "rookies" ? "rookies" : "all";
+    }
+    wsave();
+    renderWizard();
+  }
+  function wizName(v) {
+    wiz().name = v;
+    wsave();
+    wizSyncNext();
+  }
+  function wizCustom(v) {
+    wiz().custom = v;
+    wsave();
+    wizSyncNext();
+    const o = document.getElementById("wizOdd");
+    if (o) o.innerHTML = oddNote();
+  }
+  function wizSyncNext() {
+    const b = document.getElementById("wizNext");
+    if (b) b.classList.toggle("off", !stepValid(wiz().step));
+  }
+  function wizGo(i) {
+    const w = wiz();
+    w.step = Math.max(0, Math.min(WIZ_TOTAL - 1, i));
+    wsave();
+    renderWizard();
+  }
+  function wizNext() {
+    const w = wiz();
+    if (!stepValid(w.step)) {
+      toast(stepBlocker(w.step));
+      return;
+    }
+    if (w.step >= WIZ_TOTAL - 1) return;
+    w.step++;
+    wsave();
+    renderWizard();
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function wizBack() {
+    const w = wiz();
+    if (w.step === 0) {
+      goHome();
+      return;
+    }
+    w.step--;
+    wsave();
+    renderWizard();
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function openCreateLeague() {
+    renderWizard();
+    showView2("create");
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function optCard(on, click, title, desc) {
+    return `<div class="opt-card${on ? " on" : ""}" onclick="${click}">
+    <div class="opt-t"><span class="opt-radio"></span>${title}</div>
+    ${desc ? `<div class="opt-d">${desc}</div>` : ""}
+  </div>`;
+  }
+  function stepName() {
+    const w = wiz();
+    const chips = ["City Boys Dynasty II", "Family Football League", "Work Fantasy League"].map((n) => `<div class="wiz-chip" onclick="wizName('${n}');document.getElementById('wizNameIn').value='${n}'">${n}</div>`).join("");
+    return `<div class="wiz-q">Name your league</div>
+    <input id="wizNameIn" class="wiz-input" type="text" maxlength="40"
+      value="${escHtml(w.name).replace(/"/g, "&quot;")}" oninput="wizName(this.value)">
+    <div class="wiz-chips">${chips}</div>`;
+  }
+  function stepSource() {
+    const w = wiz();
+    const copyList = w.source === "copy" ? `<div class="sub-opts">${memberLeagues().map((l) => `
+    <div class="opt-card sm${w.copyFrom === l.id ? " on" : ""}" onclick="wizPickCopy('${l.id}')">
+      <div class="opt-t"><span class="opt-radio"></span>${escHtml(l.name)}</div>
+      <div class="opt-d">${TYPE_LABEL[l.league.type] || ""} \xB7 ${l.league.teams} teams \xB7 ${DRAFT_LABEL[l.league.draftType] || "Snake"} draft</div>
+    </div>`).join("")}</div>` : "";
+    return `<div class="wiz-q">Starting settings</div>
+    ${optCard(
+      w.source === "copy",
+      "wizPick('source','copy')",
+      "Copy an existing league",
+      "Start from the settings of a league you are already in."
+    )}
+    ${copyList}
+    ${optCard(
+      w.source === "default",
+      "wizPick('source','default')",
+      "Start from default",
+      "Use the standard settings."
+    )}`;
+  }
+  function stepType() {
+    const w = wiz();
+    const startup = w.type === "dynasty" ? `<div class="sub-opts">
+    <div class="wiz-sub-h">Startup draft</div>
+    <div class="opt-card sm${w.startup === "rookies" ? " on" : ""}" onclick="wizPick('startup','rookies')">
+      <div class="opt-t"><span class="opt-radio"></span>Rookie only startup draft</div>
+      <div class="opt-d">Only this year's rookie class is in the startup draft.</div>
+    </div>
+    <div class="opt-card sm${w.startup !== "rookies" ? " on" : ""}" onclick="wizPick('startup','all')">
+      <div class="opt-t"><span class="opt-radio"></span>Veteran + rookie startup draft</div>
+      <div class="opt-d">Every NFL player is in the startup draft.</div>
+    </div>
+  </div>` : "";
+    return `<div class="wiz-q">What kind of league is this?</div>
+    ${optCard(
+      w.type === "redraft",
+      "wizPick('type','redraft')",
+      "Redraft",
+      "Every season starts completely fresh \u2014 a full draft every year, no players carry over."
+    )}
+    ${optCard(
+      w.type === "keeper",
+      "wizPick('type','keeper')",
+      "Keeper",
+      "A new draft every season, but each team keeps a set number of players first."
+    )}
+    ${optCard(
+      w.type === "dynasty",
+      "wizPick('type','dynasty')",
+      "Dynasty",
+      "Teams own their players year over year, until they are traded, dropped or retired."
+    )}
+    ${startup}`;
+  }
+  function stepSize() {
+    const w = wiz();
+    const cells = SIZE_PRESETS.map((n) => `<div class="size-cell${w.size === n ? " on" : ""}" onclick="wizPick('size',${n})">${n}<span class="s">TEAMS</span></div>`).join("") + `<div class="size-cell${w.size === "custom" ? " on" : ""}" onclick="wizPick('size','custom')">\u270E<span class="s">CUSTOM</span></div>`;
+    const custom = w.size === "custom" ? `
+    <input class="wiz-input num" type="number" inputmode="numeric" min="${SIZE_MIN}" max="${SIZE_MAX}"
+      value="${escHtml(w.custom).replace(/"/g, "&quot;")}" oninput="wizCustom(this.value)">` : "";
+    return `<div class="wiz-q">How many teams?</div>
+    <div class="size-grid">${cells}</div>
+    ${custom}<div id="wizOdd">${oddNote()}</div>`;
+  }
+  function oddNote() {
+    const t = wizTeams();
+    return isFinite(t) && t >= SIZE_MIN && t <= SIZE_MAX && t % 2 === 1 ? '<div class="wiz-note">One team sits on a bye each week.</div>' : "";
+  }
+  function stepDraft() {
+    const w = wiz();
+    return `<div class="wiz-q">How will you draft?</div>
+    ${optCard(w.draftType === "snake", "wizPick('draftType','snake')", "Snake draft", "Draft order reverses every round.")}
+    ${optCard(w.draftType === "linear", "wizPick('draftType','linear')", "Linear draft", "The same order is used every round.")}
+    ${optCard(w.draftType === "auction", "wizPick('draftType','auction')", "Auction draft", "Managers bid on players using a league budget.")}
+    <div class="sub-opts">
+      <div class="wiz-sub-h">When</div>
+      <div class="opt-card sm${w.draftWhen === "now" ? " on" : ""}" onclick="wizPick('draftWhen','now')">
+        <div class="opt-t"><span class="opt-radio"></span>Start now</div>
+        <div class="opt-d">The draft opens the moment the league fills.</div>
+      </div>
+      <div class="opt-card sm${w.draftWhen === "hourly" ? " on" : ""}" onclick="wizPick('draftWhen','hourly')">
+        <div class="opt-t"><span class="opt-radio"></span>Rolling hourly</div>
+        <div class="opt-d">Begins at the top of the next hour, and again every hour until everyone is in.</div>
+      </div>
+    </div>`;
+  }
+  function stepReview() {
+    const w = wiz();
+    const srcLabel = w.source === "default" ? "Default settings" : `Copied from ${escHtml((memberLeagues().find((l) => l.id === w.copyFrom) || {}).name || "?")}`;
+    const typeLabel2 = (TYPE_LABEL[w.type] || "") + (w.type === "dynasty" ? ` \xB7 ${w.startup === "rookies" ? "Rookie only" : "Veteran + rookie"} startup` : "");
+    const rows2 = [
+      ["League name", escHtml(w.name.trim()), 0],
+      ["Starting settings", srcLabel, 1],
+      ["League type", typeLabel2, 2],
+      ["Teams", String(wizTeams()), 3],
+      ["Draft", `${DRAFT_LABEL[w.draftType] || ""} \xB7 ${WHEN_LABEL[w.draftWhen] || ""}`, 4]
+    ].map((r) => `<div class="rev-row" onclick="wizGo(${r[2]})">
+      <div class="rev-lb">${r[0]}</div><div class="rev-val">${r[1]}</div><div class="rev-edit">\u203A</div>
+    </div>`).join("");
+    return `<div class="wiz-q">Review &amp; create</div>
+    <div class="set-card rev-card">${rows2}</div>
+    <div class="set-card wiz-comm">
+      <div class="opt-t">\u2605 You'll be the commissioner</div>
+      <div class="opt-d">Scoring, rosters, waivers, playoffs and every other setting are yours to configure
+        in League Settings.</div>
+    </div>`;
+  }
+  function renderWizard() {
+    const w = wiz();
+    const bodies = [stepName, stepSource, stepType, stepSize, stepDraft, stepReview];
+    const segs = Array.from({ length: WIZ_TOTAL }, (_, i) => `<div class="wiz-seg${i <= w.step ? " on" : ""}"></div>`).join("");
+    const last = w.step === WIZ_TOTAL - 1;
+    const next = last ? `<div class="wiz-btn primary" onclick="wizCreate()">Create League</div>` : `<div id="wizNext" class="wiz-btn primary${stepValid(w.step) ? "" : " off"}" onclick="wizNext()">Next</div>`;
+    document.getElementById("createBody").innerHTML = `
+    <div class="wiz-top">
+      <div class="wiz-x" onclick="goHome()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div>
+        <div class="set-h" style="margin:0">Create League</div>
+        <div class="wiz-step">STEP ${w.step + 1} OF ${WIZ_TOTAL}</div>
+      </div>
+    </div>
+    <div class="wiz-prog">${segs}</div>
+    ${bodies[w.step]()}
+    <div class="wiz-foot">
+      <div class="wiz-btn" onclick="wizBack()">${w.step === 0 ? "Cancel" : "Back"}</div>
+      ${next}
+    </div>`;
+  }
+  function inviteToken() {
+    return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+  }
+  function inviteLink(lg) {
+    return `https://arc.app/join/${lg.invite}`;
+  }
+  function wizCreate() {
+    const w = wiz();
+    for (let i = 0; i < WIZ_TOTAL - 1; i++) {
+      if (!stepValid(i)) {
+        w.step = i;
+        wsave();
+        renderWizard();
+        toast(stepBlocker(i));
+        return;
+      }
+    }
+    const cp = (o) => JSON.parse(JSON.stringify(o || {}));
+    const src = w.source === "copy" ? w.copyFrom === "cbd" ? { league: store.league, scoring: store.scoring, slots: store.slots } : findMine(w.copyFrom) : null;
+    const league = Object.assign({}, LEAGUE_DEFAULTS, src ? cp(src.league) : {});
+    const scoring = Object.assign({}, SCORING_DEFAULTS, src ? cp(src.scoring) : {});
+    const slots = Object.assign({}, SLOT_DEFAULTS, src ? cp(src.slots) : {});
+    league.type = w.type;
+    league.teams = wizTeams();
+    league.draftType = w.draftType;
+    league.draftWhen = w.draftWhen;
+    if (w.type === "dynasty") league.draftPool = w.startup === "rookies" ? "rookies" : "all";
+    league.commish = MY_TEAM;
+    const id = "lg" + Date.now().toString(36);
+    myLeagues().push({
+      id,
+      name: w.name.trim(),
+      created: Date.now(),
+      invite: inviteToken(),
+      joined: 1,
+      league,
+      scoring,
+      slots
+    });
+    delete store.createLeague;
+    if (!store.leagueOrder) store.leagueOrder = [];
+    store.leagueOrder.push(id);
+    saveStore();
+    goHome();
+    if (window.openInvite) window.openInvite(id);
+  }
+  function wizReset() {
+    delete store.createLeague;
+    saveStore();
+    renderWizard();
+  }
+
+  // js/home.js
   var GRIP = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
   function typeLabel(lg) {
     return lg.type === "dynasty" ? "Dynasty" : "Redraft";
   }
   function statusLine(lg) {
     const st = leagueStatus(lg), bits = [typeLabel(lg), lg.teamCount + " teams"];
-    if (st === "predraft") bits.push("Pre-draft");
+    if (st === "forming") bits.push("Forming");
+    else if (st === "predraft") bits.push("Pre-draft");
     else if (st === "complete") bits.push(lg.placed ? ordinal(lg.placed) + " place" : "Final");
     else bits.push("Week " + leagueWeek(lg));
     return bits.join(" \xB7 ");
+  }
+  function joinHTML(lg) {
+    const joined = lg.rec && lg.rec.joined || 1;
+    return `<div class="hb-join"><b>${joined}</b><span>of ${lg.teamCount}</span></div>`;
   }
   function ordinal(n) {
     const s = ["th", "st", "nd", "rd"], v = n % 100;
@@ -9135,7 +9781,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function rowHTML(lg) {
     const mk = leagueMark(lg), teams = teamsOf(lg), me = teams && teams[myKeyOf(lg)];
     const tint = me ? me.c : "var(--accent)", bgc = me ? me.bg : "#171429";
-    const right = leagueStatus(lg) === "predraft" ? countdownHTML(lg) : scoreHTML(lg);
+    const st = leagueStatus(lg);
+    const right = st === "forming" ? joinHTML(lg) : st === "predraft" ? countdownHTML(lg) : scoreHTML(lg);
     return `<div class="hb-row" data-league="${lg.id}" onclick="openLeague('${lg.id}')">
     <div class="hb-grip" data-grip>${GRIP}</div>
     <div class="hb-crest" style="background:linear-gradient(155deg,${bgc},#0b0e14);border-color:${tint};color:${tint}">${markInner(mk)}</div>
@@ -9149,7 +9796,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function renderHome2() {
     const el = document.getElementById("homeBody");
     if (!el) return;
-    el.innerHTML = `<div class="hb-list" id="hbList">${orderedLeagues().map(rowHTML).join("")}</div>`;
+    const w = store.createLeague;
+    const resume = w && (w.step > 0 || (w.name || "").trim());
+    el.innerHTML = `<div class="hb-list" id="hbList">${orderedLeagues().map(rowHTML).join("")}</div>
+    <div class="hb-new" onclick="openCreateLeague()">
+      <div class="hb-plus">+</div>
+      <div class="hb-id"><div class="hb-nm">${resume ? "Resume setup" : "Create a league"}</div>
+        ${resume ? `<div class="hb-st">${escHtml((w.name || "").trim() || "Untitled")} \xB7 step ${Math.min(w.step + 1, 6)} of 6</div>` : ""}</div>
+    </div>`;
     bindReorder(document.getElementById("hbList"));
     startClock();
   }
@@ -9339,6 +9993,79 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     showView2("team");
     document.querySelectorAll(".tab").forEach((t2) => t2.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
+  }
+  function renderWaitRoom(id) {
+    const rec = myLeagues().find((l) => l.id === id);
+    if (!rec) return;
+    const need = +rec.league.teams, joined = rec.joined || 1;
+    const pct = Math.round(joined / need * 100);
+    const full = joined >= need;
+    const when = rec.league.draftWhen === "hourly" ? "Rolling hourly" : "Starts when the league fills";
+    document.getElementById("waitBody").innerHTML = `
+    <div class="dr-wait">
+      <div class="dr-wait-h">${escHtml(rec.name)}</div>
+      <div class="dr-wait-s">${joined} of ${need} managers \xB7 ${escHtml(when)}</div>
+      <div class="dr-wait-bar"><i style="width:${pct}%"></i></div>
+      <div class="wiz-foot" style="margin-top:14px">
+        <div class="wiz-btn" onclick="openInvite('${rec.id}')">Invite</div>
+        <div class="wiz-btn primary${full ? "" : " off"}" onclick="startCreatedDraft('${rec.id}')">Start draft</div>
+      </div>
+    </div>
+    <div class="hd"><span>Managers</span></div>
+    <div class="rc">${Array.from({ length: need }, (_, i) => `
+      <div class="rc-row${i < joined ? "" : " open"}">
+        <span class="rc-n">${i + 1}</span>
+        <span class="rc-tick">${i < joined ? "\u2713" : "\u2014"}</span>
+        <div class="rc-who"><div class="n">${i === 0 ? "You" : i < joined ? "Joined" : "Open"}</div>
+          ${i === 0 ? '<div class="m">Commissioner</div>' : ""}</div>
+      </div>`).join("")}</div>`;
+    document.body.classList.remove("seeded");
+    document.body.classList.add("forming");
+    showView2("wait");
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function openInvite(id) {
+    const rec = myLeagues().find((l) => l.id === id);
+    if (!rec) return;
+    const url = inviteLink(rec);
+    document.getElementById("condTitle").textContent = rec.name;
+    document.getElementById("condBody").innerHTML = `
+    <div class="cond-row"><input id="invLink" class="set-ctl" type="text" readonly value="${escHtml(url)}"></div>
+    <div class="cond-btns">
+      <div class="tc-btn" onclick="simulateJoin('${rec.id}')">Simulate a join</div>
+      <div class="tc-btn acc" onclick="copyInvite()">Copy link</div>
+    </div>`;
+    document.getElementById("condScrim").classList.add("show");
+    document.getElementById("condSheet").classList.add("show");
+  }
+  function copyInvite() {
+    const i = document.getElementById("invLink");
+    if (!i) return;
+    i.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(i.value).catch(() => {
+    });
+    else {
+      try {
+        document.execCommand("copy");
+      } catch (e) {
+      }
+    }
+    toast("Invite link copied");
+  }
+  function simulateJoin(id) {
+    const rec = myLeagues().find((l) => l.id === id);
+    if (!rec) return;
+    rec.joined = Math.min(+rec.league.teams, (rec.joined || 1) + 1);
+    saveStore();
+    document.getElementById("condScrim").classList.remove("show");
+    document.getElementById("condSheet").classList.remove("show");
+    renderWaitRoom(id);
+  }
+  function startCreatedDraft(id) {
+    const rec = myLeagues().find((l) => l.id === id);
+    if (!rec) return;
+    if ((rec.joined || 1) < +rec.league.teams) return;
+    toast("Draft opening");
   }
   function initHome2() {
     store.leagueOrder = store.leagueOrder || [];
@@ -10867,6 +11594,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     trade_exports,
     chat_exports,
     home_exports,
+    create_exports,
     data_exports,
     ui_exports,
     market_exports,

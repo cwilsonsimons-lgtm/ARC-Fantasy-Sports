@@ -5,6 +5,7 @@ import { NFL_BY_ID, NFL_BY_NAME } from './data/nfl-players.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { canDraftNow, faOpen, freeAgents, isRostered } from './freeagency.js';
 import { badge, seasonTotals } from './lineup.js';
+import { LG } from './data/league-config.js';
 import { showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { BENCH, LINEUP, TAXI, store } from './store.js';
 import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
@@ -162,7 +163,38 @@ export function playerBack(){
 
 // standings
 export const order=Object.keys(T).sort((a,b)=>T[a].rk-T[b].rk);
+/** Table mode: 3 for a win, 1 for a draw, sorted on points then difference —
+ *  a football table rather than a win-loss ladder. Records are "W-L", so a draw
+ *  only exists once a season produces one; the parser handles all three. */
+export function tableRow(k){
+  const rec=String(T[k].rec||'0-0').split('-').map(n=>+n||0);
+  const w=rec[0]||0,l=rec[1]||0,d=rec[2]||0;
+  const tot=seasonTotals(k);
+  return {k,w,l,d,pts:w*3+d,gd:Math.round((tot.pf-tot.pa)*10)/10,pf:tot.pf};
+}
+export function renderTableStandings(){
+  const rows=order.map(tableRow).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.pf-a.pf);
+  const head=`<div class="stand-row head">
+    <div class="stand-c1">TEAM</div>
+    <span class="st-c rec">W-D-L</span>
+    <span class="st-c pf">DIFF</span>
+    <span class="st-c df">PTS</span>
+  </div>`;
+  document.getElementById('standBody').innerHTML = head + rows.map((r,i)=>{
+    const t=T[r.k],me=r.k===MY_TEAM;
+    return `<div class="stand-row ${me?'me':''}">
+      <div class="stand-c1">
+        <span class="stand-rk">${i+1}</span>${badge(t,'stand-bd')}
+        <div class="stand-nm"><div class="n tf-${r.k} ${me?'me':''}" style="cursor:pointer" onclick="openTeam('${r.k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
+      </div>
+      <span class="st-c rec">${r.w}-${r.d}-${r.l}</span>
+      <span class="st-c pf ${r.gd>0?'pos':r.gd<0?'neg':''}">${r.gd>0?'+':''}${r.gd.toFixed(1)}</span>
+      <span class="st-c df"><b>${r.pts}</b></span>
+    </div>`;
+  }).join('');
+}
 export function renderStandings(){
+  if((LG().standings||'record')==='table'){renderTableStandings();return;}
   const col = k => `<span class="st-c ${k}">`;
   const head = `<div class="stand-row head">
     <div class="stand-c1">TEAM</div>

@@ -11,6 +11,8 @@ export function showView(name){
   // The hub sits above league scope: `.leaguebar` and `.tabs` are league chrome
   // and must not render there.
   document.body.classList.toggle('hub', name==='home');
+  // A league still forming keeps the league bar but has no league tabs to show.
+  if(name!=='wait')document.body.classList.remove('forming');
 }
 // Before the draft, the first tab is Draft instead of Matchup. Standings reads "League".
 export function preDraft(){return !draftDone();}

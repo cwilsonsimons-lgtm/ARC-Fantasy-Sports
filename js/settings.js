@@ -4,11 +4,13 @@ import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.
 import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
 import { preDraft, showView, toast, toggleDrawer } from './nav.js';
-import { BENCH, IR, LINEUP, SLOTS, SLOT_ORDER, TAXI, buildSlots, saveStore, store } from './store.js';
+import { BENCH, IR, LINEUP, SLOTS, SLOT_ORDER, TAXI, buildSlots, processImage, saveStore, store } from './store.js';
 import { ICON_STAR, ICON_UP, ICON_X } from './team.js';
 import { escHtml } from './panel.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { NOTIF_TYPES, notifPrefs } from './notifs.js';
+import { renderStandings } from './player.js';
+import { activeLeague } from './leagues.js';
 
 // ---- who may change what ----
 // Everyone in the league can read every setting. Only the commissioner can
@@ -47,6 +49,9 @@ export function setLeague(key,val,num){
   if(!guard()){renderSettings();return;}
   LG()[key]=num?+val:val;
   saveStore();
+  // Switching standings mode swaps the whole table, and the standings view is
+  // not repainted by opening Settings, so it has to be told.
+  if(key==='standings')renderStandings();
   renderSettings();
 }
 export function setLeagueNum(key,val,min,max){
@@ -76,12 +81,15 @@ export function leagueCards(){
   const sizeNote=+L.teams!==10
     ? `<div class="set-note" style="margin-top:11px;color:var(--accent)">City Boys Dynasty is playing 10 teams this season — ${L.teams} takes effect at the next draft.</div>`
     : '';
+  const crest=leagueCrestCard();
   return `
+    ${crest}
     <div class="set-card">
       <div class="set-title">General</div>
       ${setRow('League type',setSel('type',[['redraft','Redraft'],['keeper','Keeper'],['dynasty','Dynasty']],L.type))}
       ${setRow('Teams',setSel('teams',teamOpts,L.teams,1))}
       ${setRow('Lineup type',setSel('lineup',[['classic','Classic'],['bestball','Best ball']],L.lineup))}
+      ${setRow('Standings',setSel('standings',[['record','Win-loss record'],['table','Table · 3 points a win']],L.standings||'record'))}
       ${sizeNote}
     </div>
     <div class="set-card">
@@ -98,6 +106,46 @@ export function leagueCards(){
       ${setRow('Trade deadline',setSel('tradeDeadline',[[0,'No deadline']].concat(rangeOpts(MINW,MAXW,w=>'Week '+w)),L.tradeDeadline,1))}
     </div>`;
 }
+/** The league's own crest. Stored per league id, so each one keeps its own. */
+export function leagueCrestCard(){
+  const lg=activeLeague();
+  const up=(store.leagueLogos||{})[lg.id];
+  const prev=up
+    ? `<div class="set-crest"><img src="${up}" alt=""></div>`
+    : `<div class="set-crest none">${escHtml(lg.name.charAt(0).toUpperCase())}</div>`;
+  return `<div class="set-card">
+    <div class="set-title">League Crest</div>
+    <div class="set-crestrow">
+      ${prev}
+      ${isCommish()?`<div class="set-btns" style="flex:1">
+        <div class="set-btn primary" onclick="pickLeagueLogo()">${ICON_UP} ${up?'Change':'Upload'}</div>
+        ${up?`<div class="set-btn" onclick="clearLeagueLogo()">${ICON_X} Remove</div>`:''}
+      </div>`:''}
+    </div>
+    <input type="file" accept="image/*" class="hidden-file" id="leagueLogoInput" onchange="onLeagueLogo(this)">
+  </div>`;
+}
+export function pickLeagueLogo(){
+  if(!isCommish())return;
+  document.getElementById('leagueLogoInput').click();
+}
+export function onLeagueLogo(input){
+  const f=input.files&&input.files[0];
+  if(!f||!isCommish())return;
+  processImage(f,256,'image/png',0.92,url=>{
+    if(!store.leagueLogos)store.leagueLogos={};
+    store.leagueLogos[activeLeague().id]=url;
+    saveStore();renderSettings();
+    if(window.renderHome)window.renderHome();
+  });
+}
+export function clearLeagueLogo(){
+  if(!isCommish())return;
+  if(store.leagueLogos)delete store.leagueLogos[activeLeague().id];
+  saveStore();renderSettings();
+  if(window.renderHome)window.renderHome();
+}
+
 // ---- roster shape ----
 export const SLOT_LABEL={QB:'QB',RB:'RB',WR:'WR',TE:'TE',FLEX:'FLEX',SFLX:'SFLX'};
 export const SLOT_ELIG_TXT={QB:'Quarterback',RB:'Running back',WR:'Wide receiver',TE:'Tight end',

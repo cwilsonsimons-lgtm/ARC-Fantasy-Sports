@@ -82,13 +82,32 @@ export const LEAGUES=[
 ];
 export const LEAGUE_BY_ID={};LEAGUES.forEach(l=>LEAGUE_BY_ID[l.id]=l);
 
-export function leagueById(id){return LEAGUE_BY_ID[id]||LEAGUES[0];}
+// ---- leagues the user made here ----
+// The four above are seed data. Anything the create wizard produces lands in
+// `store.myLeagues` and is lifted into the same shape, so the hub, the ordering
+// and `openLeague` do not care which kind they are holding.
+export function myLeagues(){
+  if(!store.myLeagues)store.myLeagues=[];
+  return store.myLeagues;
+}
+function asLeague(rec){
+  return {id:rec.id,name:rec.name,logo:null,type:rec.league.type,
+          teamCount:+rec.league.teams,week:1,status:'forming',
+          myTeamKey:null,real:false,created:true,rec};
+}
+export function allLeagues(){return LEAGUES.concat(myLeagues().map(asLeague));}
+export function leagueById(id){
+  if(LEAGUE_BY_ID[id])return LEAGUE_BY_ID[id];
+  const mine=myLeagues().find(l=>l.id===id);
+  return mine?asLeague(mine):LEAGUES[0];
+}
 export function activeLeagueId(){return store.activeLeague||'cbd';}
 export function activeLeague(){return leagueById(activeLeagueId());}
 export function inRealLeague(){return !!activeLeague().real;}
 
 /** City Boys Dynasty has no fixed status — it is whatever the draft says it is. */
 export function leagueStatus(lg){
+  if(lg.created)return 'forming';   // waiting on managers, not on a clock
   if(!lg.real)return lg.status;
   return draftDone()?'active':'predraft';
 }
@@ -142,10 +161,11 @@ export function countdownParts(ms){
 
 // ---- hub ordering ----
 export function orderedLeagues(){
+  const all=allLeagues(),byId={};all.forEach(l=>byId[l.id]=l);
   const saved=store.leagueOrder||[];
   const seen=new Set(),out=[];
-  saved.forEach(id=>{const l=LEAGUE_BY_ID[id];if(l&&!seen.has(id)){seen.add(id);out.push(l);}});
-  LEAGUES.forEach(l=>{if(!seen.has(l.id))out.push(l);});
+  saved.forEach(id=>{const l=byId[id];if(l&&!seen.has(id)){seen.add(id);out.push(l);}});
+  all.forEach(l=>{if(!seen.has(l.id))out.push(l);});
   return out;
 }
 export function setLeagueOrder(ids){store.leagueOrder=ids.slice();saveStore();}
@@ -157,6 +177,11 @@ export function openLeague(id){
   document.body.classList.remove('hub');
   document.body.classList.toggle('seeded',!lg.real);
   stampLeagueBar(lg);
+  if(lg.created){
+    if(window.renderWaitRoom)window.renderWaitRoom(lg.id);
+    if(document.body.classList.contains('open'))toggleDrawer();
+    return;
+  }
   if(lg.real){
     // Repaint from the real league's own state first: a seeded league leaves
     // its markup in the shared matchup containers, and `showTab` only
@@ -186,8 +211,10 @@ export function stampLeagueBar(lg){
   const nm=document.querySelector('.league-id .nm');
   const wk=document.querySelector('.league-id .wk');
   if(nm)nm.childNodes[0].nodeValue=lg.name+' ';
-  if(wk)wk.textContent=leagueStatus(lg)==='predraft'?'PRE-DRAFT'
-    :leagueStatus(lg)==='complete'?'FINAL':'WEEK '+leagueWeek(lg);
+  const st=leagueStatus(lg);
+  if(wk)wk.textContent=st==='forming'?'FORMING'
+    :st==='predraft'?'PRE-DRAFT'
+    :st==='complete'?'FINAL':'WEEK '+leagueWeek(lg);
 }
 
 export function initLeagues(){
