@@ -3,7 +3,8 @@ import { POOL, ROSTER_CAP, isLocked, recomputeLT } from './clock.js';
 import { byeFor, gameLabel, hydratePlayer } from './data/nfl-index.js';
 import { NFL_BY_ID } from './data/nfl-players.js';
 import { MY_TEAM } from './data/teams.js';
-import { draftDone, myTurn, posCount, takenIds } from './draft.js';
+import { curLeague, getRoster, setRoster } from './data/league-config.js';
+import { draftDone, draftLocked, myTurn, posCount, takenIds } from './draft.js';
 import { getGames, renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { toast } from './nav.js';
@@ -13,18 +14,19 @@ import { BENCH, LINEUP, TAXI, saveStore, store } from './store.js';
 import { collectSide, currentTeamKey, esc, renderTeam } from './team.js';
 
 // ===== ADD / CUT (free agency) =====
-// persist my full a-side roster (survives swaps, adds, and cuts) as player objects
+// persist my full a-side roster (survives swaps, adds, and cuts) as player
+// objects — written to the ACTIVE league's record, so each league keeps its own
 export function persistRoster(){
-  store.roster={
+  setRoster({
     starters:LINEUP.map(r=>r.a||null),
     bench:BENCH.map(r=>r.a||null),
     taxi:TAXI.map(r=>r.a||null)
-  };
+  });
   saveStore();
 }
 export function applyStoredRoster(){
-  const R=store.roster;
-  if(!R){applyStoredLineup();return;} // fall back to legacy name-only lineup
+  const R=getRoster();
+  if(!R){if(!curLeague())applyStoredLineup();return;} // legacy name-only fallback is home-league data
   if(Array.isArray(R.starters)) R.starters.forEach((p,i)=>{if(LINEUP[i])LINEUP[i].a=p||null;});
   if(Array.isArray(R.bench)) R.bench.forEach((p,j)=>{if(BENCH[j])BENCH[j].a=p||null;else BENCH.push({a:p||null,x:null});});
   if(Array.isArray(R.taxi)) R.taxi.forEach((p,j)=>{if(TAXI[j])TAXI[j].a=p||null;else TAXI.push({a:p||null,x:null});});
@@ -58,7 +60,7 @@ export function isRostered(key){return rosteredNames().has(key);}
 // only way a player moves onto a roster, and only when you're on the clock
 export function faOpen(){return draftDone();}
 export function canDraftNow(id){
-  if(faOpen()||!id||!myTurn())return false;
+  if(faOpen()||!id||draftLocked()||!myTurn())return false;
   const p=NFL_BY_ID[id];
   if(!p||takenIds().has(id))return false;
   const cap=ROSTER_CAP[p.pos];

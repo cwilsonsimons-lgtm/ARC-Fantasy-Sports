@@ -6,6 +6,7 @@
 // part people actually reopen a draft to see, so it is stored with the pick
 // rather than left in a chat log.
 import { store, saveStore } from './store.js';
+import { DRAFT } from './data/league-config.js';
 import { T, MY_TEAM } from './data/teams.js';
 import { NFL_BY_ID } from './data/nfl-players.js';
 import { DRAFT_ORDER } from './clock.js';
@@ -28,10 +29,10 @@ const CFG_DEFAULTS = {
 };
 
 export function draftCfg(){
-  if(!store.draft) store.draft = { picks: [] };
-  store.draft.cfg = Object.assign({}, CFG_DEFAULTS, store.draft.cfg || {});
-  store.draft.cfg.badges = Object.assign({}, CFG_DEFAULTS.badges, store.draft.cfg.badges || {});
-  return store.draft.cfg;
+  const d = DRAFT();   // each league's commissioner tunes their own draft
+  d.cfg = Object.assign({}, CFG_DEFAULTS, d.cfg || {});
+  d.cfg.badges = Object.assign({}, CFG_DEFAULTS.badges, d.cfg.badges || {});
+  return d.cfg;
 }
 export function setDraftCfg(k, v){
   const c = draftCfg();

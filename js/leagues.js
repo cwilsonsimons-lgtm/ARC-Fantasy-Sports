@@ -1,18 +1,25 @@
-// Leagues: the selector, the Create League wizard, and the home screen for
-// leagues that exist as settings only (no season behind them yet).
+// Leagues: the selector, the Create League wizard, the league home screen, and
+// the CONTEXT SWITCH that makes each league an isolated world.
 //
-// City Boys Dynasty is the playable prototype league. A league created here is
-// a real, fully editable settings object — league config, scoring, roster
-// shape — owned by store.leagues. Opening one flips store.curLeagueId so the
-// whole Settings engine (LG/SC/SLOTS) reads and writes the new league; the
-// game tabs keep belonging to City Boys Dynasty.
+// A league created here owns everything: its own teams, draft, rosters, player
+// customizations, photos and settings, stored on its record in store.leagues.
+// City Boys Dynasty is the original seeded league and keeps its data where it
+// always lived. Switching leagues points every accessor (see the MULTI-LEAGUE
+// block in data/league-config.js) at the chosen league and rebuilds the
+// runtime state — the active teams map, the roster arrays, the caches — so no
+// screen can read another league's data. Only global NFL player data and
+// "you" are shared.
 import { LEAGUE_DEFAULTS, SCORING_DEFAULTS, allLeagues, curLeague, findLeague } from './data/league-config.js';
-import { MY_TEAM } from './data/teams.js';
-import { homeTab, showTab, showView, toast, toggleDrawer } from './nav.js';
-import { SLOT_DEFAULTS, saveStore, store } from './store.js';
+import { MY_TEAM, applyTeamFonts, setActiveTeams } from './data/teams.js';
+import { homeTab, renderTabs, showTab, showView, toast, toggleDrawer } from './nav.js';
+import { BENCH, IR, LINEUP, SLOTS, SLOT_DEFAULTS, TAXI, buildSlots, saveStore, store } from './store.js';
 import { openSettings } from './settings.js';
-import { escAttr, escHtml } from './panel.js';
+import { currentRail, escAttr, escHtml, renderPanel } from './panel.js';
 import { S } from './state.js';
+import { applyDraftToRosters, draftDone, invalidateDraftCache } from './draft.js';
+import { applyStoredRoster, invalidateRosters } from './freeagency.js';
+import { renderStandings } from './player.js';
+import { renderWeek } from './week.js';
 
 // ---------------------------------------------------------------- helpers
 const HOME_NAME='City Boys Dynasty';
@@ -43,6 +50,69 @@ export function settingsBack(){
   else showTab(homeTab());
 }
 
+// ---------------------------------------------------------------- league data
+/** The creator's team in a brand-new league. Fresh every time — nothing about
+ *  it is inherited from any other league, and edits stay in this league. */
+function freshMyTeam(){
+  return {n:"Wilson's Team",mgr:'Wilson',rec:'0-0',rk:1,c:'#7C5CFF',bg:'#221a3d',mono:'W',font:'oswald'};
+}
+/** A complete, EMPTY league database: one member (the commissioner), zero
+ *  picks, zero rosters, zero photos, zero history. Settings are the only thing
+ *  a league may inherit (when the wizard's Copy Settings option is used). */
+function emptyCollections(){
+  return {
+    teams:{[MY_TEAM]:freshMyTeam()},
+    order:[MY_TEAM],
+    draft:{picks:[]},
+    roster:null,
+    players:{},
+    backdrops:{},
+    globalBackdrop:null
+  };
+}
+/** Leagues created before leagues owned their own data get the empty
+ *  collections retrofitted. Runs once per boot from main.js. */
+export function initLeagues(){
+  allLeagues().forEach(l=>{
+    if(!l.teams)Object.assign(l,emptyCollections());
+    l.draft=l.draft||{picks:[]};
+    l.players=l.players||{};
+    l.backdrops=l.backdrops||{};
+    l.order=(l.order&&l.order.length)?l.order:Object.keys(l.teams);
+  });
+}
+
+// ---------------------------------------------------------------- context
+// Rebuild every piece of runtime state from the active league's record. After
+// this runs, all reads and writes anywhere in the app hit the active league.
+let ctxId=null;
+export function applyLeagueContext(){
+  const c=curLeague();
+  ctxId=c?c.id:null;
+  // 1. the active teams map — everything that renders a team reads T
+  setActiveTeams(c?c.teams:null);
+  applyTeamFonts();
+  // 2. roster arrays reshaped to this league's slots, then filled from ITS data
+  S.lineupSlots=buildSlots();
+  LINEUP.length=0;S.lineupSlots.forEach(sl=>LINEUP.push({slot:sl,a:null,x:null}));
+  const fill=(rows,n)=>{rows.length=0;for(let i=0;i<Math.max(0,+n||0);i++)rows.push({a:null,x:null});};
+  fill(BENCH,SLOTS().bench);fill(IR,SLOTS().ir);fill(TAXI,SLOTS().taxi);
+  if(!c&&draftDone())applyDraftToRosters();   // seeded league: rebuild from its draft
+  applyStoredRoster();                        // then the league's own saved roster
+  // 3. caches keyed to the previous league are now wrong
+  S.pidx=null;invalidateDraftCache();invalidateRosters();
+  // 4. repaint everything that shows league data
+  renderWeek();          // games, matchup, league body, standings matchups, week labels
+  renderStandings();
+  renderTabs();
+  renderPanel(currentRail);   // drawer lists (Available/Trending) follow the league's rosters
+  syncLeaguebar();
+}
+/** Make sure runtime state matches store.curLeagueId before showing a screen. */
+function ensureContext(){
+  if(ctxId!==(store.curLeagueId||null))applyLeagueContext();
+}
+
 // ---------------------------------------------------------------- selector
 export function openLeagues(){
   renderLeagues();
@@ -66,7 +136,7 @@ export function renderLeagues(){
       ${crest(l.name,'lg-crest')}
       <div class="lg-info">
         <div class="lg-name">${escHtml(l.name)}</div>
-        <div class="lg-meta">${TYPE_LABEL[l.league.type]||''} · ${l.league.teams} teams · Commissioner</div>
+        <div class="lg-meta">${TYPE_LABEL[l.league.type]||''} · ${Object.keys(l.teams||{}).length}/${l.league.teams} teams · Commissioner</div>
         <div class="lg-sub">Awaiting draft</div>
       </div>
       ${cur&&cur.id===l.id?'<div class="lg-cur">Current</div>':''}
@@ -89,7 +159,8 @@ export function renderLeagues(){
     </div>`;
 }
 export function switchLeague(id){
-  store.curLeagueId=id||null;saveStore();syncLeaguebar();
+  store.curLeagueId=id||null;saveStore();
+  ensureContext();
   if(!id){showTab(homeTab());return;}
   openLeagueHome();
 }
@@ -323,6 +394,9 @@ export function wizCreate(){
   for(let i=0;i<WIZ_TOTAL-1;i++){
     if(!stepValid(i)){w.step=i;wsave();renderWizard();toast(stepBlocker(i));return;}
   }
+  // "Copy Settings" copies CONFIGURATION only — league rules, scoring, roster
+  // shape. Teams, rosters, drafts, standings, photos and history never copy;
+  // the new league starts as an empty world with one member: you.
   const cp=o=>JSON.parse(JSON.stringify(o||{}));
   const src=w.source==='copy'
     ? (w.copyFrom==='home'
@@ -340,10 +414,13 @@ export function wizCreate(){
   league.commish=MY_TEAM;      // the creator is the commissioner, always
   league.draftOrder=null;      // no members yet, so no order to carry over
   const id='lg'+Date.now().toString(36)+Math.floor(Math.random()*46656).toString(36);
-  allLeagues().push({id,name:w.name.trim(),created:Date.now(),league,scoring,slots});
+  allLeagues().push(Object.assign(
+    {id,name:w.name.trim(),created:Date.now(),league,scoring,slots},
+    emptyCollections()));
   delete store.createLeague;
   store.curLeagueId=id;
-  saveStore();syncLeaguebar();
+  saveStore();
+  ensureContext();
   openLeagueHome();
   toast('League created — you are the commissioner');
 }
@@ -353,7 +430,7 @@ export function openLeagueHome(id){
   if(id){store.curLeagueId=id;saveStore();}
   const l=curLeague();
   if(!l){openLeagues();return;}
-  syncLeaguebar();
+  ensureContext();
   renderLeagueHome(l);
   landOn('leagueHome');
 }
@@ -382,12 +459,13 @@ function renderLeagueHome(l){
       <div class="set-note" style="margin-top:9px">The draft room opens once every team has joined.</div>
     </div>
     <div class="set-card">
-      <div class="set-title">Teams <span class="c">1 OF ${L.teams} JOINED</span></div>
+      <div class="set-title">Teams <span class="c">${Object.keys(l.teams||{}).length} OF ${L.teams} JOINED</span></div>
       <div class="set-note">You're in as commissioner. Manager invites aren't wired up in this prototype yet —
-        the other ${L.teams-1} spots stay open for now.</div>
+        the other ${L.teams-Object.keys(l.teams||{}).length} spots stay open for now.</div>
     </div>
     <div class="set-btns">
-      <div class="set-btn primary" onclick="openSettings()">League Settings</div>
+      <div class="set-btn primary" onclick="showTab(homeTab())">Open League</div>
+      <div class="set-btn" onclick="openSettings()">League Settings</div>
       <div class="set-btn" onclick="openLeagues()">Switch league</div>
     </div>`;
 }

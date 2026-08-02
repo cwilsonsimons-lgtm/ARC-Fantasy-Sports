@@ -3,12 +3,13 @@ import { DRAFT_ORDER, POOL, slotAllows } from './clock.js';
 import { hydratePlayer, pkey } from './data/nfl-index.js';
 import { NFL_BY_ID } from './data/nfl-players.js';
 import { mkPlayer, teamRosterIds } from './draft.js';
+import { PLAYERS, curLeague } from './data/league-config.js';
 import { FONT_BY_KEY, MY_TEAM, T, TEAM_FONTS, applyTeamFonts } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
 import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { renderTabs, showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
-import { seededPts } from './panel.js';
+import { escAttr, escHtml, seededPts } from './panel.js';
 import { faceInner, pKeyOf, playerNick, renderStandings } from './player.js';
 import { BENCH, LINEUP, TAXI, processImage, saveStore, store } from './store.js';
 
@@ -74,8 +75,8 @@ export function teamHead(t,own){
   const crestInner=t.logo?`<img src="${t.logo}" alt="" style="width:100%;height:100%;object-fit:cover">`:t.mono;
   const logoCam=own?`<span class="cam" onclick="document.getElementById('logoInput').click()">${ICON_CAM}</span>`:'';
   const nameBlock=own
-    ? `<input class="tv-name-input" value="${esc(t.n)}" maxlength="30" onchange="setTeamName(this.value)">`
-    : `<div class="tv-name tf-${currentTeamKey}" style="color:${t.c}">${t.n}</div>`;
+    ? `<input class="tv-name-input" value="${escAttr(t.n)}" maxlength="30" onchange="setTeamName(this.value)">`
+    : `<div class="tv-name tf-${currentTeamKey}" style="color:${t.c}">${escHtml(t.n)}</div>`;
   const editRow=own?`
     <div class="tv-edit-row">
       <span class="tv-swatch">Primary <input type="color" value="${t.c}" onchange="setColor('c',this.value)"></span>
@@ -99,7 +100,7 @@ export function teamRow(p,own){
   // FLEX is worth calling out; "QB · QB" is not
   const slot=(p.slot&&p.slot!==p.pos)?`<span class="slot">${p.slot}</span> · `:'';
   const nick=own
-    ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">`
+    ? `<input class="tv-nick-input" placeholder="add nickname" value="${escAttr(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">`
     : (playerNick(p.n)?`<div class="tv-nick">“${playerNick(p.n)}”</div>`:'');
   const rt=own
     ? `<div class="tv-rt"><div class="tv-pts">${(p.proj||0).toFixed(1)}</div>
@@ -148,19 +149,24 @@ export function teamBack(){fontMenuOpen=false;
   else showTab('matchup');
 }
 // ---- edit handlers (own team only) ----
+// Edits land on the ACTIVE league's team object. In a created league,
+// T[MY_TEAM] *is* that league's stored record, so mutating it persists there;
+// only City Boys Dynasty mirrors edits into the legacy store.team fields.
+// Either way, a change in one league never shows up in another.
+function persistMyTeam(patch){if(!curLeague())Object.assign(store.team,patch);}
 export function pickPhoto(key){photoTargetName=key;document.getElementById('playerPhotoInput').click();}
 export function onPlayerPhoto(input){
   const f=input.files&&input.files[0];if(!f||!photoTargetName)return;
   const n=photoTargetName;
-  processImage(f,600,'image/jpeg',0.82,(url)=>{store.players[pkey(n)]=Object.assign(store.players[pkey(n)]||{},{photo:url});saveStore();renderTeam(currentTeamKey);});
+  processImage(f,600,'image/jpeg',0.82,(url)=>{const P=PLAYERS();P[pkey(n)]=Object.assign(P[pkey(n)]||{},{photo:url});saveStore();renderTeam(currentTeamKey);});
 }
-export function setNick(name,val){const k=pkey(name);store.players[k]=Object.assign(store.players[k]||{},{nick:(val||'').trim()});saveStore();}
+export function setNick(name,val){const P=PLAYERS(),k=pkey(name);P[k]=Object.assign(P[k]||{},{nick:(val||'').trim()});saveStore();}
 export function onLogo(input){
   const f=input.files&&input.files[0];if(!f)return;
-  processImage(f,256,'image/png',0.92,(url)=>{store.team.logo=url;T[MY_TEAM].logo=url;saveStore();renderTeam(MY_TEAM);refreshApp();});
+  processImage(f,256,'image/png',0.92,(url)=>{T[MY_TEAM].logo=url;persistMyTeam({logo:url});saveStore();renderTeam(MY_TEAM);refreshApp();});
 }
-export function setTeamName(val){val=(val||'').trim()||T[MY_TEAM].n;store.team.name=val;T[MY_TEAM].n=val;saveStore();document.querySelector('.tv-sub');refreshApp();}
-export function setColor(kind,val){store.team[kind]=val;T[MY_TEAM][kind]=val;saveStore();renderTeam(MY_TEAM);refreshApp();}
+export function setTeamName(val){val=(val||'').trim()||T[MY_TEAM].n;T[MY_TEAM].n=val;persistMyTeam({name:val});saveStore();refreshApp();}
+export function setColor(kind,val){T[MY_TEAM][kind]=val;persistMyTeam({[kind]:val});saveStore();renderTeam(MY_TEAM);refreshApp();}
 export function fontPreviewStyle(f,color,size){
   return `font-family:${f.ff},'Oswald',sans-serif;font-weight:${f.w};font-size:calc(${size} * ${f.sc});`
        + `text-transform:${f.tt};letter-spacing:${f.ls};color:${color}`;
@@ -171,13 +177,13 @@ export function fontDropdownHTML(t){
   return `<div class="tv-fontsel">
     <div class="fs-btn${fontMenuOpen?' open':''}" onclick="toggleFontMenu()">
       <span class="fs-lb">Font</span>
-      <span class="fs-cur" style="${fontPreviewStyle(cur,t.c,'15px')}">${esc(t.n)}</span>
+      <span class="fs-cur" style="${fontPreviewStyle(cur,t.c,'15px')}">${escHtml(t.n)}</span>
       <span class="fs-tag">${cur.lb}</span>
       <span class="fs-cv">▾</span>
     </div>
     ${fontMenuOpen?`<div class="fs-menu">${TEAM_FONTS.map(f=>`
       <div class="fs-opt${f.k===cur.k?' on':''}" onclick="setTeamFont('${f.k}')">
-        <span class="fs-pv" style="${fontPreviewStyle(f,t.c,'15px')}">${esc(t.n)}</span>
+        <span class="fs-pv" style="${fontPreviewStyle(f,t.c,'15px')}">${escHtml(t.n)}</span>
         <span class="fs-nm">${f.lb}</span>
         ${f.k===cur.k?'<span class="fs-ck">✓</span>':''}
       </div>`).join('')}</div>`:''}
@@ -186,7 +192,7 @@ export function fontDropdownHTML(t){
 export function toggleFontMenu(){fontMenuOpen=!fontMenuOpen;renderTeam(MY_TEAM);}
 export function setTeamFont(k){
   fontMenuOpen=false;
-  if(FONT_BY_KEY[k]){store.team.font=k;T[MY_TEAM].font=k;saveStore();applyTeamFonts();}
+  if(FONT_BY_KEY[k]){T[MY_TEAM].font=k;persistMyTeam({font:k});saveStore();applyTeamFonts();}
   renderTeam(MY_TEAM);refreshApp();
 }
 export function refreshApp(){renderTabs();renderLeagueBody();renderUserMatchup();renderStandings();

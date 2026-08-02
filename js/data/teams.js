@@ -11,7 +11,20 @@ export const T = {
   longhorns:{n:'Texas Longhorns',mgr:'Mason',rec:'0-0',rk:8,c:'#E6845A',bg:'#3d271a',mono:'T',font:'anton'},
   doghouse:{n:"Mike Vick's Dog House",mgr:'Seabass',rec:'0-0',rk:5,c:'#E6D15A',bg:'#3d381a',mono:'M',font:'creep'},
 };
+// MY_TEAM is the user's member key. It is the same in every league (there are
+// no accounts in this prototype - "you" are the one real user), but the team
+// record it points at belongs to whichever league is active.
 export const MY_TEAM='pandas';
+// T above is the ACTIVE league's team map. It boots as City Boys Dynasty's
+// seeded ten; switching leagues swaps its contents in place so every module's
+// `T[key]` lookup automatically reads the active league. The values loaded in
+// are references to the league record's own team objects, so edits made
+// through T persist to that league and never leak into another.
+const HOME_TEAMS=Object.assign({},T);
+export function setActiveTeams(map){
+  Object.keys(T).forEach(k=>delete T[k]);
+  Object.assign(T,map||HOME_TEAMS);
+}
 // ---- team identity fonts ----
 // Each manager picks a typeface; it renders wherever their team name appears.
 // sc = optical size correction (some faces run much larger/smaller at the same px)

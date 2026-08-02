@@ -2,9 +2,11 @@ import { S } from './state.js';
 import { POOL, pLive } from './clock.js';
 import { byeFor, gameLabel, pkey } from './data/nfl-index.js';
 import { NFL_BY_ID, NFL_BY_NAME } from './data/nfl-players.js';
+import { PLAYERS, curLeague } from './data/league-config.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { canDraftNow, faOpen, freeAgents, isRostered } from './freeagency.js';
 import { badge, seasonTotals } from './lineup.js';
+import { escHtml } from './panel.js';
 import { showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { BENCH, LINEUP, TAXI, store } from './store.js';
 import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
@@ -15,9 +17,10 @@ export function posColor(pos){return POSCOLOR[pos]||'#7C5CFF';}
 export function seedHash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 export function rostPct(n){return 40+seedHash(n+'r')%60;}
 export function posRankNo(n,pos){return 1+seedHash(n+pos)%36;}
-// global (by player name) so the custom photo/nickname shows anywhere this player appears
-export function playerPhoto(name){const r=store.players[pkey(name)];return (r&&r.photo)||null;}
-export function playerNick(name){const r=store.players[pkey(name)];return (r&&r.nick)||'';}
+// keyed by player, stored per LEAGUE — a photo or nickname given in one league
+// shows anywhere that player appears in that league, and nowhere else
+export function playerPhoto(name){const r=PLAYERS()[pkey(name)];return (r&&r.photo)||null;}
+export function playerNick(name){const r=PLAYERS()[pkey(name)];return (r&&r.nick)||'';}
 export function faceInner(key){
   const src=playerPhoto(key)||headshotFor(key);
   const rec=pIdx()[key];
@@ -161,7 +164,8 @@ export function playerBack(){
 }
 
 // standings
-export const order=Object.keys(T).sort((a,b)=>T[a].rk-T[b].rk);
+// computed per render — T holds the ACTIVE league's teams, which can change
+export function standOrder(){return Object.keys(T).sort((a,b)=>(T[a].rk||99)-(T[b].rk||99));}
 export function renderStandings(){
   const col = k => `<span class="st-c ${k}">`;
   const head = `<div class="stand-row head">
@@ -171,20 +175,24 @@ export function renderStandings(){
     <span class="st-c pa">PA</span>
     <span class="st-c df">DIFF</span>
   </div>`;
-  document.getElementById('standBody').innerHTML = head + order.map(k=>{
+  // a league that is still filling up shows who's in so far, plus the open seats
+  const c=curLeague();
+  const open=c?Math.max(0,(+c.league.teams||0)-Object.keys(c.teams||{}).length):0;
+  const openNote=open?`<div class="stand-open">${open} open spot${open>1?'s':''} — waiting on managers to join</div>`:'';
+  document.getElementById('standBody').innerHTML = head + standOrder().map(k=>{
     const t=T[k],me=k===MY_TEAM,tot=seasonTotals(k);
     const diff=Math.round((tot.pf-tot.pa)*10)/10;
     return `<div class="stand-row ${me?'me':''}">
       <div class="stand-c1">
         <span class="stand-rk">${t.rk}</span>${badge(t,'stand-bd')}
-        <div class="stand-nm"><div class="n tf-${k} ${me?'me':''}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
+        <div class="stand-nm"><div class="n tf-${k} ${me?'me':''}" style="cursor:pointer" onclick="openTeam('${k}')">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
       </div>
       <span class="st-c rec">${t.rec}</span>
       <span class="st-c pf">${tot.pf.toFixed(1)}</span>
       <span class="st-c pa">${tot.pa.toFixed(1)}</span>
       <span class="st-c df ${diff>0?'pos':diff<0?'neg':''}">${diff>0?'+':''}${diff.toFixed(1)}</span>
     </div>`;
-  }).join('');
+  }).join('')+openNote;
 }
 
 

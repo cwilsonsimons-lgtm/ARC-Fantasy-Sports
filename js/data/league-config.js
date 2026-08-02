@@ -26,15 +26,51 @@ export const LEAGUE_DEFAULTS={
 };
 
 // ---------- MULTI-LEAGUE ----------
-// City Boys Dynasty is the playable league and keeps living at
-// store.league / store.scoring / store.slots. Leagues created in-app are full
-// settings objects (league + scoring + slots) with no season data behind them
-// yet; while one of them is "current", LG()/SC()/SLOTS() serve its objects so
-// the whole Settings page just works against the new league.
+// Every league is its own isolated world. The only data shared across leagues
+// is global app data: the NFL player pool and "you", the user.
+//
+// City Boys Dynasty is the original seeded league; its data keeps living where
+// it always has (store.league / scoring / slots / draft / roster / backdrops /
+// players / team, plus the hardcoded demo teams and schedule). A league
+// created in-app owns a full record in store.leagues with its own teams,
+// draft, rosters, photos and settings, all starting empty.
+//
+// The accessors below are the app's WHERE leagueId = activeLeagueId. Nothing
+// league-scoped reads store fields directly - it goes through these, which
+// route to the current league's collections. Switching leagues is therefore a
+// data-layer swap, not a UI trick.
 export function allLeagues(){return store.leagues=store.leagues||[];}
 export function findLeague(id){return allLeagues().find(l=>l.id===id)||null;}
 export function curLeague(){return store.curLeagueId?findLeague(store.curLeagueId):null;}
 export function curLeagueName(){const c=curLeague();return c?c.name:'City Boys Dynasty';}
+
+// draft (picks + commissioner draft config)
+export function DRAFT(){
+  const c=curLeague();
+  if(c)return c.draft=c.draft||{picks:[]};
+  return store.draft=store.draft||{picks:[]};
+}
+// per-league player customizations (photos, nicknames)
+export function PLAYERS(){
+  const c=curLeague();
+  if(c)return c.players=c.players||{};
+  return store.players=store.players||{};
+}
+// your persisted roster in the active league
+export function getRoster(){const c=curLeague();return c?c.roster:store.roster;}
+export function setRoster(r){const c=curLeague();if(c)c.roster=r;else store.roster=r;}
+// matchup photos (per-game and league-wide backgrounds)
+export function BACKDROPS(){
+  const c=curLeague();
+  if(c)return c.backdrops=c.backdrops||{};
+  return store.backdrops=store.backdrops||{};
+}
+export function getGlobalBackdrop(){const c=curLeague();return c?c.globalBackdrop:store.globalBackdrop;}
+export function setGlobalBackdrop(url){
+  const c=curLeague();
+  if(c){c.globalBackdrop=url||null;c.backdrops={};}
+  else{if(url)store.globalBackdrop=url;else delete store.globalBackdrop;store.backdrops={};}
+}
 
 export function LG(){const c=curLeague();return c?c.league:store.league;}
 

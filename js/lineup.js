@@ -1,5 +1,6 @@
 import { S } from './state.js';
 import { ICON_LOCK, ICON_SWAP, LT, isLocked, onField, pLive, simKick } from './clock.js';
+import { curLeague } from './data/league-config.js';
 import { T } from './data/teams.js';
 import { stadiumHeroHTML } from './hero.js';
 import { renderUserMatchup } from './matchup.js';
@@ -120,6 +121,9 @@ export function seededScore(week,key){
   return Math.round((85+((h>>>0)%700)/10)*10)/10;
 }
 export function getGames(week){
+  // a created league has no schedule until its draft has run — the seeded
+  // GAMES/schedule below are City Boys Dynasty data and must never leak in
+  if(curLeague())return [];
   if(week===LIVE_WEEK) return GAMES.map(g=>{
     const base={...g,status:g.live?'live':'final'};
     // user's live game: single source of truth = LT (the actual lineup sum), so
@@ -148,6 +152,7 @@ export function getGames(week){
  *  Unplayed weeks score 0, so these read 0.0 until games are played. */
 export function seasonTotals(key){
   let pf=0,pa=0;
+  if(curLeague())return {pf:0,pa:0};   // no games played in a league with no season yet
   for(let w=MINW;w<=MAXW;w++){
     const pair=scheduleForWeek(w).find(p=>p.indexOf(key)>-1);
     if(!pair)continue;
@@ -159,6 +164,10 @@ export function seasonTotals(key){
 }
 export function renderStandingsMatchups(){
   const el=document.getElementById('standMatchups'); if(!el)return;
+  if(!S.games.length){
+    el.innerHTML=`<div class="lg-none">No matchups yet — the schedule is made once the league drafts.</div>`;
+    return;
+  }
   el.innerHTML = S.games.map((g,i)=>{
     const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
     const st = g.status==='live' ? {c:'live',t:'LIVE'}
@@ -181,6 +190,11 @@ export function renderStandingsMatchups(){
   }).join('');
 }
 export function renderLeagueBody(){
+  if(!S.games.length){
+    document.getElementById('leagueBody').innerHTML=
+      `<div class="lg-none">No matchups yet — the schedule is made once the league drafts.</div>`;
+    return;
+  }
   document.getElementById('leagueBody').innerHTML = S.games.map((g,i)=>{
     const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
     const status = g.status==='live'?{cls:'live',txt:'LIVE'}

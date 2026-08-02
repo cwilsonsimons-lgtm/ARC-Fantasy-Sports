@@ -1,4 +1,5 @@
 import { S } from './state.js';
+import { BACKDROPS, getGlobalBackdrop, setGlobalBackdrop } from './data/league-config.js';
 import { T } from './data/teams.js';
 import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
@@ -10,7 +11,8 @@ import { ICON_CAM, ICON_X } from './team.js';
 // ===== STADIUM MATCHUP HERO (shared render) =====
 // opts: {compact, tapHint, editBackdrop, status:{cls,txt}}
 export function gameKey(a,x){return [a,x].sort().join('__');}
-export function backdropFor(a,x){return (store.backdrops&&store.backdrops[gameKey(a,x)])||store.globalBackdrop||null;}
+// backdrops are league photos — read/written through the active league
+export function backdropFor(a,x){return BACKDROPS()[gameKey(a,x)]||getGlobalBackdrop()||null;}
 // win% color: projected winner = green, projected loser = red, dead-even = neutral
 export function pctColor(mine,theirs){return mine>theirs?'var(--green)':mine<theirs?'var(--red)':'var(--ink-3)';}
 // full-bleed matchup stage: league chrome + MATCHUP/TEAM/STANDINGS nav + battling logos + scores, all over the backdrop
@@ -19,7 +21,7 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
   const a=T[aKey],x=T[xKey];
   const bdrop=backdropFor(aKey,xKey);
   const bg=bdrop?`<div class="ms-bg" style="background-image:url('${bdrop}')"></div>`:`<div class="ms-field"></div>`;
-  const hasOwn=!!(store.backdrops&&store.backdrops[gameKey(aKey,xKey)]);
+  const hasOwn=!!BACKDROPS()[gameKey(aKey,xKey)];
   const rm=hasOwn?`<div class="sh-cam rm" onclick="event.stopPropagation();removeGameBackdrop('${aKey}','${xKey}')" title="Remove background">${ICON_X}</div>`:'';
   const phase=opts.phase||(opts.live?'live':null);
   const pill = phase==='pre'?`<div class="ms-live pre"><span class="dot"></span>PREGAME</div>`
@@ -85,7 +87,7 @@ export function stadiumHeroHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
     : `<div class="sh-field"></div>`;
   let cam='';
   if(opts.editBackdrop){
-    const hasOwn=!!(store.backdrops&&store.backdrops[gameKey(aKey,xKey)]);
+    const hasOwn=!!BACKDROPS()[gameKey(aKey,xKey)];
     const rm=hasOwn?`<div class="sh-cam rm" onclick="event.stopPropagation();removeGameBackdrop('${aKey}','${xKey}')" title="Remove background">${ICON_X}</div>`:'';
     cam=`<div class="sh-cams">${rm}<div class="sh-cam" onclick="event.stopPropagation();pickGameBackdrop('${aKey}','${xKey}')" title="Change background">${ICON_CAM}</div></div>`;
   }
@@ -130,9 +132,9 @@ export let backdropTargetKey=null;
 export function pickGameBackdrop(a,x){backdropTargetKey=gameKey(a,x);document.getElementById('backdropInput').click();}
 export function onBackdrop(input){
   const f=input.files&&input.files[0];if(!f||!backdropTargetKey)return;
-  processImage(f,900,'image/jpeg',0.8,(url)=>{store.backdrops[backdropTargetKey]=url;saveStore();refreshMatchups();});
+  processImage(f,900,'image/jpeg',0.8,(url)=>{BACKDROPS()[backdropTargetKey]=url;saveStore();refreshMatchups();});
 }
-export function removeGameBackdrop(a,x){const k=gameKey(a,x);if(store.backdrops)delete store.backdrops[k];saveStore();refreshMatchups();}
+export function removeGameBackdrop(a,x){delete BACKDROPS()[gameKey(a,x)];saveStore();refreshMatchups();}
 // commissioner: one backdrop for every matchup at once (Settings). These reach
 // every member's matchup, so they are gated at the source as well as hidden.
 export function pickGlobalBackdrop(){
@@ -141,10 +143,10 @@ export function pickGlobalBackdrop(){
 }
 export function onGlobalBackdrop(input){
   const f=input.files&&input.files[0];if(!f||!isCommish())return;
-  processImage(f,900,'image/jpeg',0.8,(url)=>{store.globalBackdrop=url;store.backdrops={};saveStore();refreshMatchups();renderSettings();});
+  processImage(f,900,'image/jpeg',0.8,(url)=>{setGlobalBackdrop(url);saveStore();refreshMatchups();renderSettings();});
 }
 export function clearAllBackdrops(){
   if(!isCommish())return;
-  delete store.globalBackdrop;store.backdrops={};saveStore();refreshMatchups();renderSettings();
+  setGlobalBackdrop(null);saveStore();refreshMatchups();renderSettings();
 }
 export function refreshMatchups(){renderLeagueBody();renderUserMatchup();}

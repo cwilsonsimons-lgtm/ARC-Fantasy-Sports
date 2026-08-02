@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { DRAFT_ORDER, slotAllows } from './clock.js';
-import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS, curLeague, curLeagueName } from './data/league-config.js';
+import { BACKDROPS, LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS, curLeague, curLeagueName, getGlobalBackdrop } from './data/league-config.js';
 import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
 import { preDraft, showView, toast, toggleDrawer } from './nav.js';
@@ -259,11 +259,7 @@ export function applyRosterShape(){
 export function setSlot(key,val){
   if(!guard()){renderSettings();return;}
   SLOTS()[key]=Math.max(0,Math.min(20,Math.round(+val)||0));
-  saveStore();
-  // reshaping live rosters only makes sense for the playable league; a created
-  // league has no rosters yet, its slots are just numbers
-  if(!curLeague())applyRosterShape();
-  renderSettings();
+  saveStore();applyRosterShape();renderSettings();
 }
 export function slotSel(key,cur,max){
   return `<select class="set-ctl"${ro()} onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0,max),cur)}</select>`;
@@ -391,10 +387,10 @@ export function setSetTab(k){
 export function renderSettings(){
   const bl=document.getElementById('setBackLb');
   if(bl)bl.textContent=curLeague()?'League Home':(preDraft()?'Draft':'Matchup');
-  const has=!!store.globalBackdrop;
-  const perGame=Object.keys(store.backdrops||{}).length;
+  const has=!!getGlobalBackdrop();
+  const perGame=Object.keys(BACKDROPS()).length;
   const preview=has
-    ? `<div class="set-preview" style="background-image:url('${store.globalBackdrop}')"></div>`
+    ? `<div class="set-preview" style="background-image:url('${getGlobalBackdrop()}')"></div>`
     : `<div class="set-preview none">Default stadium field</div>`;
   const backdropCards=`
     <div class="set-card">

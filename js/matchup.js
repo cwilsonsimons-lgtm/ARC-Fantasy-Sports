@@ -1,5 +1,6 @@
 import { S } from './state.js';
 import { LT, SLOT_ELIG, isLocked, ordLabel, recomputeLT, simKick, simStops, slotAllows } from './clock.js';
+import { curLeague } from './data/league-config.js';
 import { invalidateRosters, persistRoster } from './freeagency.js';
 import { stadiumStageHTML } from './hero.js';
 import { LIVE_WEEK, MINW, fullStartersHTML } from './lineup.js';
@@ -10,6 +11,13 @@ import { renderWeek } from './week.js';
 
 // ---------- USER MATCHUP (week aware) ----------
 export function renderUserMatchup(){
+  const uH=document.getElementById('userHero');
+  // no matchup exists in a league that hasn't drafted (created leagues) — and
+  // the matchup tab isn't offered there, so just keep the containers blank
+  if(curLeague()){
+    if(uH){uH.innerHTML='';document.getElementById('userRewind').innerHTML='';document.getElementById('userLineup').innerHTML='';}
+    return;
+  }
   const live=S.week===LIVE_WEEK;
   if(live)recomputeLT();
   const uHero=document.getElementById('userHero'),uRw=document.getElementById('userRewind'),uLine=document.getElementById('userLineup');

@@ -1,5 +1,6 @@
 import { S } from './state.js';
 import { recomputeLT } from './clock.js';
+import { curLeague } from './data/league-config.js';
 import { hydrateRosters } from './data/nfl-index.js';
 import { LIVE_WEEK, MAXW, MINW, getGames, renderLeagueBody,
          renderStandingsMatchups } from './lineup.js';
@@ -11,7 +12,8 @@ export function renderWeek(){
   S.week=Math.max(MINW,Math.min(MAXW,S.week));
   recomputeLT();
   document.querySelectorAll('[data-weeklabel]').forEach(e=>e.textContent='Week '+S.week);
-  const lb=document.querySelector('.league-id .wk');if(lb)lb.textContent='WEEK '+S.week;
+  // created leagues have no week yet — their leaguebar reads PREDRAFT instead
+  if(!curLeague()){const lb=document.querySelector('.league-id .wk');if(lb)lb.textContent='WEEK '+S.week;}
   hydrateRosters(S.week);
   S.games=getGames(S.week);
   renderLeagueBody();renderStandingsMatchups();renderUserMatchup();

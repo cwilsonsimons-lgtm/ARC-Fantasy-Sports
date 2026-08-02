@@ -1,5 +1,6 @@
 import { S } from './state.js';
 import { DRAFT_ORDER, DRAFT_TOTAL, ROSTER_CAP, STARTER_NEED, slotAllows } from './clock.js';
+import { DRAFT, curLeague } from './data/league-config.js';
 import { hydratePlayer } from './data/nfl-index.js';
 import { NFL_BY_ID, NFL_PLAYERS } from './data/nfl-players.js';
 import { MY_TEAM } from './data/teams.js';
@@ -7,32 +8,49 @@ import { renderDraft } from './draft-ui.js';
 import { invalidateRosters } from './freeagency.js';
 import { renderTabs, showTab, toast } from './nav.js';
 import { currentRail, renderPanel } from './panel.js';
-import { BENCH, IR, LINEUP, TAXI, saveStore, store } from './store.js';
+import { BENCH, IR, LINEUP, TAXI, saveStore } from './store.js';
 import { refreshApp } from './team.js';
 
 // ======================= DRAFT =======================
 // 10-team snake, 15 rounds.
 //
-// store.draft.picks holds a record per pick, in overall order:
+// DRAFT().picks holds a record per pick, in overall order:
 //   { id, ts, ms, auto, react }
 // It used to be bare id strings; migrateDraft() in draft-meta.js lifts old saves.
 // Anything that just wants the players uses pickIds().
-export function draftPicks(){if(!store.draft)store.draft={picks:[]};return store.draft.picks;}
+// Every read routes through DRAFT(), so each league drafts from its own board.
+export function draftPicks(){return DRAFT().picks;}
 export function pickIds(){return draftPicks().map(r=>r&&r.id);}
 export function pickAt(overall){return draftPicks()[overall]||null;}
-export function draftDone(){return draftPicks().length>=DRAFT_TOTAL;}
+// The active league's draft shape. City Boys Dynasty uses the seeded ten-team
+// fifteen-rounder; a created league drafts by its own member order and its
+// commissioner's round count.
+export function draftOrderL(){
+  const c=curLeague();
+  return c?(c.order&&c.order.length?c.order:Object.keys(c.teams||{})):DRAFT_ORDER;
+}
+export function draftRoundsL(){const c=curLeague();return c?Math.max(1,+c.league.draftRounds||15):15;}
+export function draftTotalL(){const c=curLeague();return c?draftRoundsL()*draftOrderL().length:DRAFT_TOTAL;}
+/** A created league cannot draft until every seat is filled. */
+export function draftLocked(){
+  const c=curLeague();
+  return !!c&&Object.keys(c.teams||{}).length<+c.league.teams;
+}
+export function draftDone(){return draftPicks().length>=draftTotalL();}
 // snake: odd rounds run down the order, even rounds run back up
 export function teamOnPick(i){
-  const n=DRAFT_ORDER.length, rd=Math.floor(i/n), k=i%n;
-  return DRAFT_ORDER[rd%2===0?k:n-1-k];
+  const o=draftOrderL(),n=o.length||1, rd=Math.floor(i/n), k=i%n;
+  return o[rd%2===0?k:n-1-k];
 }
-export function pickMeta(i){const n=DRAFT_ORDER.length;return {round:Math.floor(i/n)+1,pick:i%n+1,team:teamOnPick(i)};}
+export function pickMeta(i){const n=draftOrderL().length||1;return {round:Math.floor(i/n)+1,pick:i%n+1,team:teamOnPick(i)};}
 export function onClockIdx(){return draftPicks().length;}
 export function onClockTeam(){return draftDone()?null:teamOnPick(onClockIdx());}
 export function myTurn(){return onClockTeam()===MY_TEAM;}
 
 export let _taken=null;
 export function takenIds(){if(!_taken)_taken=new Set(pickIds());return _taken;}
+/** Call after switching leagues so cached picks don't bleed across. */
+export function invalidateDraftCache(){_taken=null;}
 export function draftBoard(){   // undrafted, ADP order
   const t=takenIds();
   return NFL_PLAYERS.filter(p=>!t.has(p.id)).sort((a,b)=>a.adp-b.adp);
@@ -53,9 +71,9 @@ export function autoPick(key){
 }
 /** `opts.auto` marks a pick the clock made; `opts.ms` is how long the owner took. */
 export function commitPick(id,opts){
-  if(!id||draftDone())return false;
+  if(!id||draftDone()||draftLocked())return false;
   const o=opts||{};
-  store.draft.picks.push({id,ts:o.ts||null,ms:o.ms==null?null:o.ms,auto:!!o.auto,react:{}});
+  DRAFT().picks.push({id,ts:o.ts||null,ms:o.ms==null?null:o.ms,auto:!!o.auto,react:{}});
   _taken=null;saveStore();
   if(draftDone()){applyDraftToRosters();renderTabs();invalidateRosters();renderPanel(currentRail);}
   return true;
@@ -68,7 +86,7 @@ export function markOnClock(){ clockStart = Date.now(); }
 // run the AI teams until it's the user's turn again (or the draft ends)
 export function runAutoPicks(){
   let guard=0;
-  while(!draftDone()&&!myTurn()&&guard++<DRAFT_TOTAL){
+  while(!draftDone()&&!draftLocked()&&!myTurn()&&guard++<draftTotalL()){
     const t=onClockTeam(),p=autoPick(t);
     if(!p)break;
     commitPick(p.id,{auto:true,ts:Date.now()});
@@ -76,6 +94,7 @@ export function runAutoPicks(){
   markOnClock();
 }
 export function draftPlayer(id){
+  if(draftLocked()){toast('The draft opens once every team has joined');return;}
   if(!myTurn()){toast('Not your pick');return;}
   const p=NFL_BY_ID[id];if(!p)return;
   const c=posCount(MY_TEAM);
@@ -88,12 +107,12 @@ export function draftPlayer(id){
 export function simToMyPick(){runAutoPicks();renderDraft();refreshApp();}
 export function autoDraftAll(){
   let guard=0;
-  while(!draftDone()&&guard++<DRAFT_TOTAL+5){
+  while(!draftDone()&&!draftLocked()&&guard++<draftTotalL()+5){
     const t=onClockTeam(),p=autoPick(t);if(!p)break;commitPick(p.id,{auto:true,ts:Date.now()});
   }
   renderDraft();refreshApp();
 }
-export function resetDraft(){const cfg=store.draft&&store.draft.cfg;store.draft={picks:[],cfg};markOnClock();_taken=null;saveStore();clearRosters();showTab('draft');refreshApp();renderPanel(currentRail);}
+export function resetDraft(){const d=DRAFT();d.picks=[];markOnClock();_taken=null;saveStore();clearRosters();showTab('draft');refreshApp();renderPanel(currentRail);}
 
 export function clearRosters(){
   LINEUP.forEach(r=>{r.a=null;r.x=null;});
