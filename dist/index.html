@@ -1585,7 +1585,10 @@ body.markets #hint{display:none}
    <body> itself - absolute positioning and translateY(102%) included. */
 .mk-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;
   transition:opacity .28s}
-body.mk-sheet-open .mk-scrim{opacity:1;pointer-events:auto}
+/* :not(.tk) matters — the ticket has its own scrim, and without this the
+   sheet-open rule lit it up too, leaving an invisible layer over the whole
+   sheet that swallowed every tap on the trade bar. */
+body.mk-sheet-open .mk-scrim:not(.tk){opacity:1;pointer-events:auto}
 .mk-sheet{position:absolute;left:0;right:0;bottom:0;z-index:81;max-height:82%;overflow-y:auto;
   background:var(--mk-card);border:1px solid var(--mk-line);border-bottom:none;
   border-radius:22px 22px 0 0;transform:translateY(102%);transition:transform .32s cubic-bezier(.4,0,.2,1);
@@ -1691,6 +1694,139 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   .mk-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
     .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
 }
+
+/* ===== ORDER ENTRY =====
+   The docked trade bar and the ticket modal. Order entry lives behind the bar
+   and nowhere else: there is no inline order block at the end of the sheet. */
+
+/* Pinned above the app's bottom nav and outside the sheet's scroll, so it holds
+   at every scroll position rather than riding the content down. */
+.mk-tradebar{position:absolute;left:0;right:0;bottom:var(--navh);z-index:85;
+  padding:12px 18px 14px;background:linear-gradient(180deg,transparent,var(--mk-card) 34%);
+  opacity:0;pointer-events:none;transform:translateY(12px);
+  transition:opacity .24s,transform .24s}
+.mk-tradebar.on{opacity:1;pointer-events:auto;transform:translateY(0)}
+/* the sheet's last screenful has to clear the bar as well as the nav */
+body.mk-has-bar .mk-sheet{padding-bottom:calc(var(--navh) + 104px)}
+.tb-go{height:50px;border-radius:14px;background:var(--mk-blue);color:#fff;display:grid;place-items:center;
+  font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 10px 26px rgba(46,140,255,.32)}
+.tb-go:active{transform:scale(.99)}
+
+.mk-scrim.tk{z-index:90;opacity:0;pointer-events:none}
+body.mk-ticket-open .mk-scrim.tk{opacity:1;pointer-events:auto}
+.mk-ticket{position:absolute;left:0;right:0;bottom:0;z-index:91;max-height:88%;overflow-y:auto;
+  background:var(--mk-card);border:1px solid var(--mk-line);border-bottom:none;
+  border-radius:22px 22px 0 0;transform:translateY(104%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);scrollbar-width:none;
+  padding-bottom:calc(var(--navh) + 18px)}
+.mk-ticket::-webkit-scrollbar{display:none}
+body.mk-ticket-open .mk-ticket{transform:translateY(0)}
+.mk-ticket .grab{width:38px;height:4px;border-radius:3px;background:var(--mk-line);margin:10px auto 2px}
+
+.tk-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 4px}
+.tk-nm{font-size:17px;font-weight:800}
+.tk-x{width:28px;height:28px;display:grid;place-items:center;color:var(--mk-ink-3);cursor:pointer;
+  transform:rotate(180deg)}
+.tk-x svg{width:18px;height:18px}
+
+/* current position at the top, position after fill at the bottom */
+.tk-pos,.tk-after{display:flex;align-items:center;justify-content:space-between;margin:8px 18px;
+  padding:11px 13px;border-radius:13px;border:1px solid var(--mk-line);background:var(--mk-card-2)}
+.tk-after{border-color:var(--mk-blue-dim);background:rgba(46,140,255,.08)}
+.tk-after.cross{border-color:#8a6a1f;background:rgba(230,168,90,.1)}
+.tk-pos .k,.tk-after .k{font-size:9.5px;font-weight:800;letter-spacing:1.1px;color:var(--mk-ink-3)}
+.tk-pos .v,.tk-after .v{font-size:19px;font-weight:800}
+.tk-pos .v.up,.tk-after .v.up{color:var(--mk-green)}
+.tk-pos .v.down,.tk-after .v.down{color:var(--mk-red)}
+
+.tk-side{display:flex;gap:9px;margin:12px 18px}
+.tk-side .sd{flex:1;height:44px;display:grid;place-items:center;border-radius:12px;cursor:pointer;
+  border:1px solid var(--mk-line);background:var(--mk-card-2);color:var(--mk-ink-2);
+  font-size:13px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase}
+.tk-side .sd.buy.on{background:rgba(43,224,107,.14);border-color:var(--mk-green);color:var(--mk-green)}
+.tk-side .sd.sell.on{background:rgba(255,75,75,.14);border-color:var(--mk-red);color:var(--mk-red)}
+
+.tk-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 18px;
+  padding:12px 0;border-bottom:1px solid var(--mk-line-soft)}
+.tk-row .k{font-size:12.5px;font-weight:700;color:var(--mk-ink-2)}
+.tk-row.tot{border-bottom:none}
+.tk-row.tot b{font-size:16px;font-weight:800}
+.tk-step{display:flex;align-items:center;gap:2px;border:1px solid var(--mk-line);border-radius:11px;
+  background:var(--mk-card-2);overflow:hidden}
+.tk-step .s{width:38px;height:38px;display:grid;place-items:center;cursor:pointer;font-size:17px;
+  font-weight:800;color:var(--mk-blue)}
+.tk-step input{width:64px;height:38px;background:none;border:none;color:var(--mk-ink);text-align:center;
+  font-family:inherit;font-size:15px;font-weight:800;outline:none;-webkit-user-select:text;user-select:text}
+.tk-step input::-webkit-outer-spin-button,.tk-step input::-webkit-inner-spin-button{
+  -webkit-appearance:none;margin:0}
+.tk-sel{height:38px;min-width:118px;border-radius:11px;border:1px solid var(--mk-line);
+  background:var(--mk-card-2);color:var(--mk-ink);font-family:inherit;font-size:13px;font-weight:700;
+  padding:0 10px;outline:none;-webkit-user-select:text;user-select:text}
+
+.tk-review{margin:10px 18px;border:1px solid var(--mk-line);border-radius:14px;background:var(--mk-card-2);
+  padding:4px 13px}
+.tk-r{display:flex;align-items:center;justify-content:space-between;padding:10px 0;
+  border-bottom:1px solid var(--mk-line-soft);font-size:12.5px;font-weight:700;color:var(--mk-ink-2)}
+.tk-r:last-child{border-bottom:none}
+.tk-r b{color:var(--mk-ink);font-size:14px;font-weight:800}
+.tk-r b.up{color:var(--mk-green)}
+.tk-r b.down{color:var(--mk-red)}
+.tk-r.tot b{font-size:16px}
+
+.tk-acts{display:flex;gap:9px;margin:14px 18px 4px}
+.tk-btn{flex:1;height:48px;display:grid;place-items:center;border-radius:13px;cursor:pointer;
+  font-size:13.5px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase}
+.tk-btn.ghost{flex:0 0 34%;border:1px solid var(--mk-line);background:var(--mk-card-2);color:var(--mk-ink-2)}
+.tk-btn.go{background:var(--mk-blue);color:#fff}
+.tk-btn.go.sell{background:var(--mk-red)}
+.tk-btn.go.buy{background:var(--mk-green);color:#04220f}
+
+/* position block on the player sheet, above the charts */
+.mk-pos{display:flex;gap:8px;margin-bottom:12px}
+.mk-pos .c{flex:1;border:1px solid var(--mk-line);border-radius:13px;background:var(--mk-card-2);
+  padding:10px 9px;text-align:center;min-width:0}
+.mk-pos .k{display:block;font-size:8.5px;font-weight:800;letter-spacing:.9px;color:var(--mk-ink-3)}
+.mk-pos .v{display:block;font-size:15px;font-weight:800;margin-top:4px}
+.mk-pos .v.up{color:var(--mk-green)}
+.mk-pos .v.down{color:var(--mk-red)}
+
+/* contract length, from the frozen prior-season finish */
+.mk-term{display:flex;gap:8px;margin-top:9px;font-size:10px;font-weight:700;color:var(--mk-ink-3)}
+.mk-term span{flex:1;text-align:center;padding:7px 4px;border-radius:9px;border:1px solid var(--mk-line);
+  background:var(--mk-card-2)}
+.mk-term.blue span:first-child{color:var(--mk-blue);border-color:var(--mk-blue-dim)}
+
+/* portfolio totals + sort dropdown */
+.mk-tot{display:flex;gap:8px;padding:0 14px 4px}
+.mk-tot > div{flex:1;border:1px solid var(--mk-line);border-radius:13px;background:var(--mk-card-2);
+  padding:10px 8px;text-align:center;min-width:0}
+.mk-tot .k{display:block;font-size:8.5px;font-weight:800;letter-spacing:.9px;color:var(--mk-ink-3)}
+.mk-tot .v{display:block;font-size:14px;font-weight:800;margin-top:4px}
+.mk-tot .v.up{color:var(--mk-green)}
+.mk-tot .v.down{color:var(--mk-red)}
+.mk-sortsel{height:36px;border-radius:11px;border:1px solid var(--mk-line);background:var(--mk-card);
+  color:var(--mk-ink);font-family:inherit;font-size:12.5px;font-weight:700;padding:0 9px;outline:none}
+.mk-row .chip.up{color:var(--mk-green);border-color:rgba(43,224,107,.4)}
+.mk-row .chip.down{color:var(--mk-red);border-color:rgba(255,75,75,.4)}
+
+/* fills list on the History tab */
+.mk-fill{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--mk-line-soft)}
+.mk-fill .sd{flex:none;font-size:9px;font-weight:800;letter-spacing:.8px;padding:4px 7px;border-radius:7px}
+.mk-fill .sd.buy{background:rgba(43,224,107,.14);color:var(--mk-green)}
+.mk-fill .sd.sell{background:rgba(255,75,75,.14);color:var(--mk-red)}
+.mk-fill .who{flex:1;min-width:0}
+.mk-fill .nm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-fill .sb{font-size:10px;color:var(--mk-ink-3);font-weight:600;margin-top:2px}
+.mk-fill .qt{flex:none;font-size:12px;font-weight:800;color:var(--mk-ink-2)}
+
+/* search */
+.mk-search{display:flex;align-items:center;gap:9px;margin:10px 14px 2px;padding:0 12px;height:42px;
+  border-radius:13px;border:1px solid var(--mk-line);background:var(--mk-card)}
+.mk-search svg{width:16px;height:16px;color:var(--mk-ink-3);flex:none}
+.mk-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--mk-ink);
+  font-family:inherit;font-size:13.5px;font-weight:600;-webkit-user-select:text;user-select:text}
+.mk-search .x{color:var(--mk-ink-3);font-size:13px;cursor:pointer;flex:none;padding:4px}
 
 </style>
 </head>
@@ -1919,7 +2055,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         <div class="m">MARKETS</div>
       </div>
       <div class="mk-tools">
-        <div class="mk-ic" onclick="mkToast('Search is not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+        <div class="mk-ic" onclick="mkSearchOpen()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
         <div class="mk-ic mk-bell" onclick="mkToast('Alerts are not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span class="bdg">3</span></div>
         <div class="mk-ic mk-pf" id="mkPfBtn" onclick="mkTogglePortfolio()" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
       </div>
@@ -1936,6 +2072,15 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="grab"></div>
       <div class="hd" id="mkSheetTitle"></div>
       <div class="bd" id="mkSheetBody"></div>
+    </div>
+    <!-- a sibling of the sheet, not a child: the sheet is itself the scroll
+         container, so a bar inside it parks mid-content instead of docking -->
+    <div class="mk-tradebar" id="mkTradeBar"></div>
+
+    <div class="mk-scrim tk" onclick="mkCloseTicket()"></div>
+    <div class="mk-ticket" id="mkTicket">
+      <div class="grab"></div>
+      <div id="mkTicketBody"></div>
     </div>
     <div class="hint" id="mkHint"></div>
   </div>
@@ -9180,28 +9325,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var data_exports = {};
   __export(data_exports, {
     BY_ID: () => BY_ID,
-    HOLDINGS: () => HOLDINGS,
-    HOLDING_COUNT: () => HOLDING_COUNT,
     MARKET: () => MARKET,
     POINTS_PER_DOLLAR: () => POINTS_PER_DOLLAR,
     SEASON_GAMES: () => SEASON_GAMES,
-    SHARES_PER_LOT: () => SHARES_PER_LOT,
     WEEKS_PLAYED: () => WEEKS_PLAYED,
     careerSeries: () => careerSeries,
     gameLog: () => gameLog,
-    holdingRows: () => holdingRows,
     isWatched: () => isWatched,
     marketStats: () => marketStats,
     mkStore: () => mkStore,
     mostActive: () => mostActive,
     paceData: () => paceData,
-    portfolio: () => portfolio,
+    portfolioSeries: () => portfolioSeries,
     priceDays: () => priceDays,
     saveMk: () => saveMk,
     seasonCurve: () => seasonCurve,
     toggleWatch: () => toggleWatch,
     topMover: () => topMover,
-    topRookie: () => topRookie,
+    topYoung: () => topYoung,
     watchRows: () => watchRows
   });
 
@@ -9244,10 +9385,73 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return TEAM_COLOR[tm] || "#5E6B7C";
   }
 
+  // js/markets/universe.js
+  var universe_exports = {};
+  __export(universe_exports, {
+    ELIGIBLE: () => ELIGIBLE,
+    ELIGIBLE_IDS: () => ELIGIBLE_IDS,
+    UNIVERSE: () => UNIVERSE,
+    canRecompute: () => canRecompute,
+    contractTier: () => contractTier,
+    contractYears: () => contractYears,
+    heldThrough: () => heldThrough,
+    isEligible: () => isEligible,
+    priorRank: () => priorRank
+  });
+  var UNIVERSE = {
+    SIZE: 100,
+    // how many contracts are listed at all
+    POSITIONS: ["QB", "RB", "WR", "TE"],
+    BLUE_CHIP_YEARS: 5,
+    STANDARD_YEARS: 3,
+    BLUE_CHIP_SIZE: 30,
+    // top slice of SIZE that earns the longer contract
+    RECOMPUTE: "offseason",
+    // 'offseason' | 'never'
+    SEASON: 2025,
+    // the season being played
+    PRIOR_SEASON: 2024
+    // the completed season eligibility is frozen from
+  };
+  function rankPriorSeason() {
+    return histSeason(UNIVERSE.PRIOR_SEASON).filter((r) => UNIVERSE.POSITIONS.includes(r.pos)).filter((r) => r.id && NFL_BY_ID[r.id]).sort((a, b) => b.ppr - a.ppr).slice(0, UNIVERSE.SIZE);
+  }
+  var RANKED = rankPriorSeason();
+  var ELIGIBLE = Object.fromEntries(RANKED.map((r, i) => {
+    const blue = i < UNIVERSE.BLUE_CHIP_SIZE;
+    return [r.id, {
+      rank: i + 1,
+      ppr: r.ppr,
+      tier: blue ? "blue" : "standard",
+      years: blue ? UNIVERSE.BLUE_CHIP_YEARS : UNIVERSE.STANDARD_YEARS
+    }];
+  }));
+  var ELIGIBLE_IDS = RANKED.map((r) => r.id);
+  function isEligible(id) {
+    return !!ELIGIBLE[id];
+  }
+  function contractYears(id) {
+    const e = ELIGIBLE[id];
+    return e ? e.years : 0;
+  }
+  function contractTier(id) {
+    const e = ELIGIBLE[id];
+    return e ? e.tier : null;
+  }
+  function priorRank(id) {
+    const e = ELIGIBLE[id];
+    return e ? e.rank : null;
+  }
+  function heldThrough(id) {
+    const y = contractYears(id);
+    return y ? UNIVERSE.SEASON + y - 1 : UNIVERSE.SEASON;
+  }
+  function canRecompute(phase) {
+    return UNIVERSE.RECOMPUTE === "offseason" && phase === "offseason";
+  }
+
   // js/markets/data.js
   var POINTS_PER_DOLLAR = 100;
-  var SHARES_PER_LOT = 50;
-  var HOLDING_COUNT = 28;
   var STORE_KEY2 = "arc_markets_v1";
   function hash3(str) {
     let h = 2166136261;
@@ -9283,7 +9487,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
   }
   function build() {
-    const pool = NFL_PLAYERS.filter((p) => p.sproj > 60 && ["QB", "RB", "WR", "TE"].includes(p.pos)).sort((a, b) => b.sproj - a.sproj).slice(0, 150);
+    const pool = ELIGIBLE_IDS.map((id) => NFL_BY_ID[id]).filter(Boolean);
     const rank = {};
     return pool.map((p) => {
       const r = rng(hash3(p.id));
@@ -9303,6 +9507,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         color: teamColor(p.tm),
         posRank: p.pos + rank[p.pos],
         sproj: p.sproj,
+        years: contractYears(p.id),
+        priorRank: priorRank(p.id),
         price,
         pct,
         change,
@@ -9331,34 +9537,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function mostActive() {
     return [...MARKET].sort((a, b) => b.trades - a.trades)[0];
   }
-  function topRookie() {
-    const rookies = MARKET.filter((p) => p.exp <= 1);
-    return [...rookies].sort((a, b) => b.pct - a.pct)[0] || MARKET[0];
-  }
-  var HOLDINGS = MARKET.slice(0, HOLDING_COUNT).map((p) => ({ id: p.id, shares: SHARES_PER_LOT }));
-  function holdingRows() {
-    return HOLDINGS.map((h) => {
-      const p = BY_ID[h.id];
-      return {
-        ...p,
-        shares: h.shares,
-        value: Math.round(p.price * h.shares * 100) / 100,
-        dayChange: Math.round(p.change * h.shares * 100) / 100
-      };
-    });
-  }
-  function portfolio() {
-    const rows2 = holdingRows();
-    const value = rows2.reduce((n, r) => n + r.value, 0);
-    const dayChange = rows2.reduce((n, r) => n + r.dayChange, 0);
-    const open = value - dayChange;
-    return {
-      rows: rows2,
-      value: Math.round(value * 100) / 100,
-      dayChange: Math.round(dayChange * 100) / 100,
-      dayPct: Math.round(dayChange / (open || 1) * 1e3) / 10,
-      series: portfolioSeries(value, dayChange)
-    };
+  function topYoung() {
+    const min = Math.min(...MARKET.map((p) => p.exp));
+    const young = MARKET.filter((p) => p.exp <= min + 1);
+    return [...young].sort((a, b) => b.pct - a.pct)[0] || MARKET[0];
   }
   function portfolioSeries(value, dayChange) {
     const r = rng(hash3("arc-portfolio"));
@@ -9449,7 +9631,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const raw = [];
     for (let i = 0; i <= yrs; i++) {
       const arc = 0.4 + 0.72 * (1 - Math.pow((i - 5) / 6, 2));
-      raw.push({ year: 2026 - yrs + i, v: Math.max(0.15, arc * (0.9 + r() * 0.2)) });
+      raw.push({ year: UNIVERSE.SEASON - yrs + i, v: Math.max(0.15, arc * (0.9 + r() * 0.2)) });
     }
     const k = p.price / (raw[raw.length - 1].v || 1);
     return raw.map((o) => ({ year: o.year, price: Math.round(o.v * k * 100) / 100 }));
@@ -9480,7 +9662,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function seasonCurve(p) {
     const r = rng(hash3(p.id + "#curve"));
     const young = p.exp <= 3;
-    return [2026, 2027, 2028].map((yr, i) => {
+    const yrs = Math.max(1, p.years || UNIVERSE.STANDARD_YEARS);
+    return Array.from({ length: yrs }, (_, i) => UNIVERSE.SEASON + i).map((yr, i) => {
       const drift = i === 0 ? 0 : (young ? 0.06 + r() * 0.05 : -0.07 - r() * 0.05) * i;
       return { year: yr, price: Math.round(p.price * (1 + drift) * 100) / 100 };
     });
@@ -9499,6 +9682,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     marketRow: () => marketRow,
     money: () => money,
     pctText: () => pctText,
+    qtyClass: () => qtyClass,
+    qtyText: () => qtyText,
     signed: () => signed,
     spark: () => spark,
     sparkColor: () => sparkColor,
@@ -9506,10 +9691,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     thumb: () => thumb,
     tri: () => tri
   });
-  var money = (n) => "$" + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  var money = (n) => Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   var signed = (n) => (n < 0 ? "-" : "+") + money(n);
-  var pctText = (n) => (n < 0 ? "" : "") + n.toFixed(1) + "%";
+  var pctText = (n) => n.toFixed(1) + "%";
   var dirClass = (n) => n < 0 ? "down" : "up";
+  var qtyText = (n) => (n < 0 ? "\u2212" : "") + Math.abs(n).toLocaleString();
+  var qtyClass = (n) => n < 0 ? "down" : n > 0 ? "up" : "";
   var esc2 = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   var svg = (d, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
     stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
@@ -9636,15 +9823,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="who">
       <div class="nm">${esc2(p.name)}</div>
       <div class="sb">${esc2(p.pos)} &middot; ${esc2(p.tm)}</div>
-      <span class="chip">${p.shares} shares</span>
+      <span class="chip ${qtyClass(p.qty)}">${qtyText(p.qty)}</span>
     </div>
     <div class="pr">
       <div class="p">${money(p.price)}</div>
       <div class="c ${dirClass(p.pct)}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
     <div class="dc">
-      <div class="d ${d}">${tri(p.dayChange)} ${money(p.dayChange)}</div>
-      <div class="q ${d}">(${p.dayChange < 0 ? "-" : ""}${pctText(Math.abs(p.pct))})</div>
+      <div class="d ${d}">${signed(p.dayChange)}</div>
+      <div class="q">${money(Math.abs(p.value))}</div>
     </div>
   </div>`;
   }
@@ -9656,12 +9843,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var market_exports = {};
   __export(market_exports, {
     mkFilter: () => mkFilter,
+    mkSearch: () => mkSearch,
+    mkSearchClose: () => mkSearchClose,
+    mkSearchOpen: () => mkSearchOpen,
     mkSort: () => mkSort,
     mkThumb: () => mkThumb,
     renderMarket: () => renderMarket
   });
   var filter = "All";
   var sortDesc = true;
+  var query = "";
+  var searchOn = false;
   var thumbMode = () => THUMBS.some((t) => t[0] === mkStore.thumb) ? mkStore.thumb : "price";
   function highlight(kind, p) {
     const map = {
@@ -9692,11 +9884,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       },
       rook: {
         cls: "rook",
-        lb: "ROOKIE BUZZ",
+        lb: "RISING",
         ic: ICON.star,
         color: "#A86EFF",
         val: `+${pctText(Math.abs(p.pct))}`,
-        tone: "rook"
+        tone: "rook",
+        sub: `${p.exp} yr`
       }
     };
     const m = map[kind];
@@ -9720,6 +9913,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ["Movers", ICON.movers],
     ["Watch", ICON.star]
   ];
+  function matches(p, q) {
+    q = q.trim().toLowerCase();
+    if (!q) return true;
+    return p.name.toLowerCase().includes(q) || p.short.toLowerCase().includes(q) || p.tm.toLowerCase().includes(q) || p.pos.toLowerCase() === q || p.posRank.toLowerCase() === q;
+  }
   function rows() {
     let list = MARKET;
     if (["QB", "RB", "WR", "TE"].includes(filter)) list = list.filter((p) => p.pos === filter);
@@ -9729,9 +9927,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (filter === "All" || ["QB", "RB", "WR", "TE"].includes(filter)) {
       list = [...list].sort((a, b) => sortDesc ? b.price - a.price : a.price - b.price);
     }
+    list = list.filter((p) => matches(p, query));
     if (!list.length) {
-      return `<div class="mk-empty">${ICON.star}<div class="t">Nothing on your watchlist yet</div>
-      <div class="s">Tap the star on any player to follow their price here.</div></div>`;
+      return `<div class="mk-empty">${ICON.search}<div class="t">${query ? "No contract matches " + esc2(query.trim()) : "Nothing here"}</div><div class="s"></div></div>`;
     }
     const mode = thumbMode();
     return list.map((p) => marketRow(p, mode)).join("");
@@ -9748,14 +9946,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <span class="sep">|</span>
       <span>Volume <span class="up">&#9650; ${st.volumePct}%</span></span>
       <span class="sep">|</span>
-      <span>Season 2026</span>
+      <span>Season ${UNIVERSE.SEASON}</span>
     </div>
+
+    ${searchOn ? `<div class="mk-search">
+      ${ICON.search}
+      <input id="mkSearchInput" type="search" autocomplete="off" autocapitalize="off"
+        spellcheck="false" value="${esc2(query)}" oninput="mkSearch(this.value)">
+      <span class="x" onclick="mkSearchClose()">&#10005;</span>
+    </div>` : ""}
 
     <div class="mk-cards">
       ${highlight("up", topMover(1))}
       ${highlight("down", topMover(-1))}
       ${highlight("act", mostActive())}
-      ${highlight("rook", topRookie())}
+      ${highlight("rook", topYoung())}
     </div>
 
     <div class="mk-pills">
@@ -9777,7 +9982,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <span style="min-width:46px;text-align:center">${esc2((THUMBS.find((t) => t[0] === thumbMode()) || THUMBS[0])[1].toUpperCase())}</span>
       <span style="min-width:27px"></span>
     </div>
-    ${rows()}`;
+    <div id="mkRows">${rows()}</div>`;
   }
   function mkFilter(k) {
     filter = k;
@@ -9792,14 +9997,182 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveMk();
     renderMarket();
   }
+  function mkSearch(v) {
+    query = v;
+    const el = document.getElementById("mkRows");
+    if (el) el.innerHTML = rows();
+    else renderMarket();
+  }
+  function mkSearchOpen() {
+    searchOn = true;
+    renderMarket();
+    const i = document.getElementById("mkSearchInput");
+    if (i) i.focus();
+  }
+  function mkSearchClose() {
+    searchOn = false;
+    query = "";
+    renderMarket();
+  }
 
   // js/markets/portfolio.js
   var portfolio_exports = {};
   __export(portfolio_exports, {
-    mkCycleSort: () => mkCycleSort,
+    mkSortBy: () => mkSortBy,
     mkTab: () => mkTab,
     renderPortfolio: () => renderPortfolio
   });
+
+  // js/markets/orders.js
+  var orders_exports = {};
+  __export(orders_exports, {
+    START_CASH: () => START_CASH,
+    execute: () => execute,
+    initOrders: () => initOrders,
+    openPositions: () => openPositions,
+    orders: () => orders,
+    portfolioTotals: () => portfolioTotals,
+    positionFor: () => positionFor,
+    positions: () => positions,
+    projectFill: () => projectFill
+  });
+  var START_CASH = 25e3;
+  function orders() {
+    if (!mkStore.orders) mkStore.orders = [];
+    return mkStore.orders;
+  }
+  function positions() {
+    const pos = {};
+    let cash = START_CASH;
+    orders().forEach((o) => {
+      const delta = o.side === "buy" ? o.qty : -o.qty;
+      cash += (o.side === "buy" ? -1 : 1) * o.qty * o.price;
+      const p = pos[o.pid] || (pos[o.pid] = { qty: 0, avg: 0, realized: 0 });
+      if (p.qty === 0 || Math.sign(p.qty) === Math.sign(delta)) {
+        const total = Math.abs(p.qty) + Math.abs(delta);
+        p.avg = (p.avg * Math.abs(p.qty) + o.price * Math.abs(delta)) / (total || 1);
+        p.qty += delta;
+      } else {
+        const closed = Math.min(Math.abs(p.qty), Math.abs(delta));
+        p.realized += closed * (o.price - p.avg) * Math.sign(p.qty);
+        const left = Math.abs(delta) - closed;
+        p.qty += delta;
+        if (left > 0) p.avg = o.price;
+        else if (p.qty === 0) p.avg = 0;
+      }
+    });
+    Object.keys(pos).forEach((k) => {
+      pos[k].avg = Math.round(pos[k].avg * 1e4) / 1e4;
+      pos[k].realized = Math.round(pos[k].realized * 100) / 100;
+    });
+    return { pos, cash: Math.round(cash * 100) / 100 };
+  }
+  function positionFor(pid) {
+    const { pos } = positions();
+    const p = pos[pid] || { qty: 0, avg: 0, realized: 0 };
+    const mk = BY_ID[pid];
+    const mark = mk ? mk.price : 0;
+    return {
+      qty: p.qty,
+      avg: p.avg,
+      realized: p.realized,
+      mark,
+      value: Math.round(p.qty * mark * 100) / 100,
+      open: Math.round(p.qty * (mark - p.avg) * 100) / 100,
+      // works for both directions
+      dayChange: Math.round(p.qty * (mk ? mk.change : 0) * 100) / 100
+    };
+  }
+  function openPositions() {
+    const { pos } = positions();
+    return Object.keys(pos).filter((id) => pos[id].qty !== 0 && BY_ID[id]).map((id) => {
+      const p = BY_ID[id], f = positionFor(id);
+      return {
+        ...p,
+        qty: f.qty,
+        avg: f.avg,
+        value: f.value,
+        open: f.open,
+        dayChange: f.dayChange,
+        realized: f.realized
+      };
+    });
+  }
+  function portfolioTotals() {
+    const rows2 = openPositions();
+    const { cash } = positions();
+    const { pos } = positions();
+    const value = rows2.reduce((n, r) => n + r.value, 0);
+    const dayChange = rows2.reduce((n, r) => n + r.dayChange, 0);
+    const realized = Object.keys(pos).reduce((n, k) => n + pos[k].realized, 0);
+    const openPL = rows2.reduce((n, r) => n + r.open, 0);
+    const prior = value - dayChange;
+    return {
+      rows: rows2,
+      value: Math.round(value * 100) / 100,
+      dayChange: Math.round(dayChange * 100) / 100,
+      dayPct: Math.round(dayChange / (prior || 1) * 1e3) / 10,
+      buyingPower: Math.round(cash * 100) / 100,
+      realized: Math.round(realized * 100) / 100,
+      openPL: Math.round(openPL * 100) / 100,
+      total: Math.round((value + cash) * 100) / 100
+    };
+  }
+  function projectFill(pid, side, qty) {
+    const cur = positionFor(pid).qty;
+    return cur + (side === "buy" ? qty : -qty);
+  }
+  function execute(pid, side, qty, price) {
+    qty = Math.max(1, Math.round(+qty || 0));
+    if (!BY_ID[pid] || !qty) return null;
+    mkStore.orderSeq = (mkStore.orderSeq || 0) + 1;
+    const o = {
+      id: "o" + mkStore.orderSeq,
+      pid,
+      side,
+      qty,
+      price: Math.round(price * 100) / 100,
+      ts: Date.now()
+    };
+    orders().push(o);
+    saveMk();
+    return o;
+  }
+  function initOrders() {
+    if (mkStore.ordersSeeded) {
+      orders();
+      return;
+    }
+    mkStore.ordersSeeded = 1;
+    mkStore.orders = [];
+    mkStore.orderSeq = 0;
+    const ids = Object.keys(BY_ID);
+    const day = 864e5, now = Date.now();
+    let n = 0;
+    const add = (pid, side, qty, mult, daysAgo) => {
+      const p = BY_ID[pid];
+      if (!p) return;
+      mkStore.orderSeq = ++n;
+      mkStore.orders.push({
+        id: "o" + n,
+        pid,
+        side,
+        qty,
+        price: Math.round(p.price * mult * 100) / 100,
+        ts: now - daysAgo * day
+      });
+    };
+    ids.slice(0, 14).forEach((id, i) => add(id, "buy", 20 + i % 4 * 15, 0.88 + i % 7 * 0.03, 40 - i));
+    if (ids[2]) add(ids[2], "sell", 15, 1.06, 9);
+    if (ids[5]) add(ids[5], "sell", 60, 1.02, 6);
+    if (ids[18]) {
+      add(ids[18], "sell", 30, 1.09, 12);
+      add(ids[18], "buy", 10, 0.94, 4);
+    }
+    saveMk();
+  }
+
+  // js/markets/portfolio.js
   var tab = "holdings";
   var sortKey = "value";
   var TABS2 = [
@@ -9808,27 +10181,50 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ["news", "News", ICON.news],
     ["history", "History", ICON.history]
   ];
+  var SORTS = [
+    ["value", "Value"],
+    ["name", "Name"],
+    ["change", "Change"],
+    ["size", "Position size"]
+  ];
   function sortRows(rows2) {
     const by = {
-      value: (a, b) => b.value - a.value,
+      value: (a, b) => Math.abs(b.value) - Math.abs(a.value),
+      name: (a, b) => a.name.localeCompare(b.name),
       change: (a, b) => b.dayChange - a.dayChange,
-      price: (a, b) => b.price - a.price,
-      name: (a, b) => a.name.localeCompare(b.name)
+      size: (a, b) => Math.abs(b.qty) - Math.abs(a.qty)
     };
     return [...rows2].sort(by[sortKey] || by.value);
   }
   function body(pf) {
     if (tab === "holdings") {
+      if (!pf.rows.length) return empty(ICON.bag, "No open positions", "");
       return `<div class="mk-hcount">
-        <span class="n">${pf.rows.length} Holdings</span>
-        <span class="mk-sort" onclick="mkCycleSort()">${ICON.sliders} Sort by ${ICON.chevron}</span>
+        <span class="n">${pf.rows.length} Positions</span>
+        <select class="mk-sortsel" onchange="mkSortBy(this.value)">
+          ${SORTS.map(([k, lb]) => `<option value="${k}"${sortKey === k ? " selected" : ""}>${lb}</option>`).join("")}
+        </select>
       </div>
       <div class="mk-th">
         <span style="flex:1">PLAYER</span>
-        <span style="min-width:54px;text-align:right;margin-right:7px">PRICE</span>
-        <span style="min-width:78px;text-align:right">TODAY'S CHANGE</span>
+        <span style="min-width:54px;text-align:right;margin-right:7px">MARK</span>
+        <span style="min-width:78px;text-align:right">TODAY / VALUE</span>
       </div>
       ${sortRows(pf.rows).map(holdingRow).join("")}`;
+    }
+    if (tab === "history") {
+      const log = orders();
+      if (!log.length) return empty(ICON.history, "No trades yet", "");
+      return `<div class="mk-hcount"><span class="n">${log.length} Fills</span></div>
+      ${[...log].reverse().map((o) => {
+        const p = BY_ID[o.pid];
+        return `<div class="mk-fill" onclick="mkOpenPlayer('${o.pid}')">
+          <span class="sd ${o.side}">${o.side.toUpperCase()}</span>
+          <div class="who"><div class="nm">${esc2(p ? p.name : o.pid)}</div>
+            <div class="sb">${new Date(o.ts).toLocaleDateString()}</div></div>
+          <div class="qt">${o.qty.toLocaleString()} @ ${money(o.price)}</div>
+        </div>`;
+      }).join("")}`;
     }
     if (tab === "watchlist") {
       const rows2 = watchRows();
@@ -9846,33 +10242,35 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         "Player news would land here. It is deliberately empty rather than filled with invented headlines about real players."
       );
     }
-    return empty(
-      ICON.history,
-      "No trades yet",
-      "Arc Markets is a concept. The first build is free to play, with no real money \u2014 your play-money trade history would appear here."
-    );
+    return empty(ICON.news, "No news in this prototype", "");
   }
   function renderPortfolio() {
     const el = document.getElementById("mkPortfolio");
     if (!el) return;
-    const pf = portfolio();
+    const pf = portfolioTotals();
     const d = dirClass(pf.dayChange);
     const color = pf.dayChange < 0 ? "#FF4B4B" : "#2BE06B";
     el.innerHTML = `
-    <div class="mk-ptop">
-      <h1>Portfolio</h1>
-      <span class="mk-range" onclick="mkToast('Range switching is not wired up in this prototype')">
-        Today ${ICON.chevron}</span>
-    </div>
+    <div class="mk-ptop"><h1>Portfolio</h1></div>
 
     <div class="mk-val">
       <div class="l">
-        <div class="k">PORTFOLIO VALUE</div>
+        <div class="k">POSITIONS VALUE</div>
         <div class="v">${money(pf.value)}</div>
         <div class="c ${d}">${tri(pf.dayChange)} ${signed(pf.dayChange)}
           (${pctText(Math.abs(pf.dayPct))}) <em>today</em></div>
       </div>
-      <div class="g">${spark(pf.series, color, { w: 150, h: 82, fill: true, id: "pf" })}</div>
+      <div class="g">${spark(
+      portfolioSeries(pf.value, pf.dayChange),
+      color,
+      { w: 150, h: 82, fill: true, id: "pf" }
+    )}</div>
+    </div>
+
+    <div class="mk-tot">
+      <div><span class="k">BUYING POWER</span><span class="v">${money(pf.buyingPower)}</span></div>
+      <div><span class="k">OPEN P/L</span><span class="v ${dirClass(pf.openPL)}">${signed(pf.openPL)}</span></div>
+      <div><span class="k">REALIZED</span><span class="v ${dirClass(pf.realized)}">${signed(pf.realized)}</span></div>
     </div>
 
     <div class="mk-tabs">
@@ -9886,11 +10284,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     tab = k;
     renderPortfolio();
   }
-  function mkCycleSort() {
-    const order2 = ["value", "change", "price", "name"];
-    sortKey = order2[(order2.indexOf(sortKey) + 1) % order2.length];
+  function mkSortBy(k) {
+    sortKey = k;
     renderPortfolio();
-    window.mkToast && window.mkToast("Sorted by " + sortKey);
   }
 
   // js/markets/charts.js
@@ -10081,6 +10477,165 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return priceChart(p, range) + lastFiveChart(p) + paceChart(p);
   }
 
+  // js/markets/ticket.js
+  var ticket_exports = {};
+  __export(ticket_exports, {
+    mkCloseTicket: () => mkCloseTicket,
+    mkTicket: () => mkTicket,
+    mkTicketBack: () => mkTicketBack,
+    mkTicketConfirm: () => mkTicketConfirm,
+    mkTicketLimit: () => mkTicketLimit,
+    mkTicketQty: () => mkTicketQty,
+    mkTicketQtySet: () => mkTicketQtySet,
+    mkTicketRepaint: () => mkTicketRepaint,
+    mkTicketReview: () => mkTicketReview,
+    mkTicketSide: () => mkTicketSide,
+    mkTicketType: () => mkTicketType
+  });
+  var T2 = null;
+  function mkTicket(pid) {
+    const p = BY_ID[pid];
+    if (!p) return;
+    T2 = { pid, side: "buy", qty: 1, type: "market", limit: p.price, stage: "entry" };
+    paint();
+    document.body.classList.add("mk-ticket-open");
+  }
+  function mkCloseTicket() {
+    document.body.classList.remove("mk-ticket-open");
+    T2 = null;
+  }
+  function mkTicketSide(s) {
+    if (T2) {
+      T2.side = s;
+      paint();
+    }
+  }
+  function mkTicketQty(d) {
+    if (!T2) return;
+    T2.qty = Math.max(1, Math.min(9999, T2.qty + d));
+    paint();
+  }
+  function mkTicketQtySet(v) {
+    if (!T2) return;
+    T2.qty = Math.max(1, Math.min(9999, Math.round(+v || 1)));
+    paint();
+  }
+  function mkTicketType(v) {
+    if (!T2) return;
+    T2.type = v;
+    if (v === "limit" && !T2.limit) T2.limit = BY_ID[T2.pid].price;
+    paint();
+  }
+  function mkTicketLimit(v) {
+    if (!T2) return;
+    T2.limit = Math.max(0.01, Math.round((+v || 0) * 100) / 100);
+  }
+  function mkTicketReview() {
+    if (T2) {
+      T2.stage = "review";
+      paint();
+    }
+  }
+  function mkTicketBack() {
+    if (T2) {
+      T2.stage = "entry";
+      paint();
+    }
+  }
+  function mkTicketConfirm() {
+    if (!T2) return;
+    const p = BY_ID[T2.pid];
+    const price = T2.type === "limit" ? T2.limit : p.price;
+    execute(T2.pid, T2.side, T2.qty, price);
+    const pid = T2.pid;
+    mkCloseTicket();
+    window.mkRepaintPositions && window.mkRepaintPositions(pid);
+  }
+  function fillPrice() {
+    const p = BY_ID[T2.pid];
+    return T2.type === "limit" ? T2.limit || p.price : p.price;
+  }
+  function paint() {
+    const el = document.getElementById("mkTicketBody");
+    if (!el || !T2) return;
+    const p = BY_ID[T2.pid];
+    const cur = positionFor(T2.pid);
+    const after = projectFill(T2.pid, T2.side, T2.qty);
+    const px = fillPrice();
+    const cost = Math.round(T2.qty * px * 100) / 100;
+    const crosses = cur.qty !== 0 && Math.sign(after) !== 0 && Math.sign(after) !== Math.sign(cur.qty);
+    const head = `<div class="tk-hd">
+      <div class="tk-nm">${esc2(p.name)}</div>
+      <div class="tk-x" onclick="mkCloseTicket()">${ICON.chevron}</div>
+    </div>
+    <div class="tk-pos">
+      <span class="k">POSITION</span>
+      <span class="v ${qtyClass(cur.qty)}">${qtyText(cur.qty)}</span>
+    </div>`;
+    const foot = `<div class="tk-after${crosses ? " cross" : ""}">
+      <span class="k">AFTER FILL</span>
+      <span class="v ${qtyClass(after)}">${qtyText(after)}</span>
+    </div>`;
+    if (T2.stage === "review") {
+      el.innerHTML = `${head}
+      <div class="tk-review">
+        <div class="tk-r"><span>Action</span><b class="${T2.side === "buy" ? "up" : "down"}">${T2.side.toUpperCase()}</b></div>
+        <div class="tk-r"><span>Quantity</span><b>${T2.qty.toLocaleString()}</b></div>
+        <div class="tk-r"><span>Type</span><b>${T2.type === "limit" ? "Limit" : "Market"}</b></div>
+        <div class="tk-r"><span>${T2.type === "limit" ? "Limit price" : "Mark"}</span><b>${money(px)}</b></div>
+        <div class="tk-r tot"><span>Estimated ${T2.side === "buy" ? "cost" : "proceeds"}</span><b>${money(cost)}</b></div>
+      </div>
+      ${foot}
+      <div class="tk-acts">
+        <div class="tk-btn ghost" onclick="mkTicketBack()">Back</div>
+        <div class="tk-btn go ${T2.side}" onclick="mkTicketConfirm()">Confirm ${T2.side}</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = `${head}
+    <div class="tk-side">
+      <div class="sd buy${T2.side === "buy" ? " on" : ""}" onclick="mkTicketSide('buy')">Buy</div>
+      <div class="sd sell${T2.side === "sell" ? " on" : ""}" onclick="mkTicketSide('sell')">Sell</div>
+    </div>
+
+    <div class="tk-row">
+      <span class="k">Quantity</span>
+      <div class="tk-step">
+        <div class="s" onclick="mkTicketQty(-1)">\u2212</div>
+        <input id="tkQty" type="number" inputmode="numeric" min="1" value="${T2.qty}"
+          onchange="mkTicketQtySet(this.value)">
+        <div class="s" onclick="mkTicketQty(1)">+</div>
+      </div>
+    </div>
+
+    <div class="tk-row">
+      <span class="k">Order type</span>
+      <select class="tk-sel" onchange="mkTicketType(this.value)">
+        <option value="market"${T2.type === "market" ? " selected" : ""}>Market</option>
+        <option value="limit"${T2.type === "limit" ? " selected" : ""}>Limit</option>
+      </select>
+    </div>
+
+    ${T2.type === "limit" ? `<div class="tk-row">
+      <span class="k">Limit price</span>
+      <input class="tk-sel" id="tkLimit" type="number" step="0.01" min="0.01"
+        value="${(T2.limit || p.price).toFixed(2)}" onchange="mkTicketLimit(this.value);mkTicketRepaint()">
+    </div>` : ""}
+
+    <div class="tk-row tot">
+      <span class="k">Estimated ${T2.side === "buy" ? "cost" : "proceeds"}</span>
+      <b>${money(cost)}</b>
+    </div>
+
+    ${foot}
+    <div class="tk-acts">
+      <div class="tk-btn go ${T2.side}" onclick="mkTicketReview()">Review</div>
+    </div>`;
+  }
+  function mkTicketRepaint() {
+    paint();
+  }
+
   // js/markets/index.js
   var markets_exports = {};
   __export(markets_exports, {
@@ -10090,6 +10645,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     mkCloseSheet: () => mkCloseSheet,
     mkOpenPlayer: () => mkOpenPlayer,
     mkRange: () => mkRange,
+    mkRepaintPositions: () => mkRepaintPositions,
     mkToast: () => mkToast,
     mkTogglePortfolio: () => mkTogglePortfolio,
     mkToggleWatch: () => mkToggleWatch,
@@ -10126,13 +10682,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (el) el.classList.toggle("on", on);
     mkToast(on ? "Added to watchlist" : "Removed from watchlist");
   }
-  function openSheet(title, html) {
+  function openSheet(title, html, tradePid) {
     document.getElementById("mkSheetTitle").innerHTML = title;
     document.getElementById("mkSheetBody").innerHTML = html;
+    const bar = document.getElementById("mkTradeBar");
+    if (bar) {
+      bar.innerHTML = tradePid ? `<div class="tb-go" onclick="mkTicket('${tradePid}')">Trade</div>` : "";
+      bar.classList.toggle("on", !!tradePid);
+    }
+    document.body.classList.toggle("mk-has-bar", !!tradePid);
     document.body.classList.add("mk-sheet-open");
   }
   function mkCloseSheet() {
-    document.body.classList.remove("mk-sheet-open");
+    document.body.classList.remove("mk-sheet-open", "mk-has-bar");
   }
   function mkOpenPlayer(id) {
     const p = BY_ID[id];
@@ -10151,12 +10713,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       </div>
     </div>
 
-    ${holdingFor(p.id)}
+    <div id="mkPosBlock">${positionBlock(p.id)}</div>
 
     <div id="mkCharts">${playerCharts(p, pxRange)}</div>
 
     <div class="mk-settle">${ICON.info}<span>Settles on official season production at
-      <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
+      <b>${POINTS_PER_DOLLAR} points per dollar</b>. This contract pays out
       ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
       projection \u2014 the final number is whatever the player actually does.</span></div>
 
@@ -10165,16 +10727,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${curve.map((c, i) => `<div class="yr${i === 0 ? " now" : ""}">
         <div class="y">${c.year}</div><div class="p">${money(c.price)}</div></div>`).join("")}
     </div>
-    <p style="font-size:11.5px;color:var(--mk-ink-3);margin-top:10px">Three seasons priced side by
-      side sketch the shape of a career \u2014 a premium on players with room to grow, a discount on
-      those past their peak.</p>
+    <div class="mk-term ${contractTier(p.id) || ""}">
+      <span>${p.years} seasons</span><span>through ${heldThrough(p.id)}</span>
+      <span>${UNIVERSE.PRIOR_SEASON} finish ${priorRank(p.id)}</span>
+    </div>
 
     <div style="display:flex;gap:9px;margin-top:14px">
       <div class="mk-pill${isWatched(p.id) ? " on" : ""}" style="flex:1;justify-content:center"
         onclick="mkToggleWatch('${p.id}');mkOpenPlayer('${p.id}')">${ICON.star} Watch</div>
       <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
         border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
-    </div>`);
+    </div>`, p.id);
   }
   function mkRange(id, key) {
     const p = BY_ID[id];
@@ -10184,12 +10747,22 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (host) host.outerHTML = priceChart(p, key);
     else mkOpenPlayer(id);
   }
-  function holdingFor(id) {
-    const h = holdingRows().find((r) => r.id === id);
-    if (!h) return "";
-    return `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You hold
-    <b>${h.shares} shares</b> &middot; total value <b>${money(h.value)}</b>
-    &middot; <span class="${dirClass(h.dayChange)}">${money(h.dayChange)} today</span></span></div>`;
+  function positionBlock(id) {
+    const f = positionFor(id);
+    if (!f.qty) return "";
+    return `<div class="mk-pos">
+    <div class="c"><span class="k">POSITION</span>
+      <span class="v ${qtyClass(f.qty)}">${qtyText(f.qty)}</span></div>
+    <div class="c"><span class="k">AVG COST</span><span class="v">${money(f.avg)}</span></div>
+    <div class="c"><span class="k">OPEN P/L</span>
+      <span class="v ${dirClass(f.open)}">${signed(f.open)}</span></div>
+  </div>`;
+  }
+  function mkRepaintPositions(pid) {
+    const block = document.getElementById("mkPosBlock");
+    if (block && pid) block.innerHTML = positionBlock(pid);
+    renderPortfolio();
+    renderMarket();
   }
   function mkAbout() {
     openSheet("Arc Markets", `
@@ -10233,6 +10806,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     mkT = setTimeout(() => el.classList.remove("show"), 1700);
   }
   function initMarkets2() {
+    initOrders();
   }
 
   // js/main.js
@@ -10274,7 +10848,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     market_exports,
     portfolio_exports,
     charts_exports,
-    markets_exports
+    markets_exports,
+    universe_exports,
+    orders_exports,
+    ticket_exports
   );
   initStore();
   migrateDraft();

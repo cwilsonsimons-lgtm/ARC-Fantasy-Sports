@@ -39,6 +39,9 @@ import * as mk1 from './markets/ui.js';
 import * as mk2 from './markets/market.js';
 import * as mk3 from './markets/portfolio.js';
 import * as mk4 from './markets/charts.js';
+import * as mk6 from './markets/universe.js';
+import * as mk7 from './markets/orders.js';
+import * as mk8 from './markets/ticket.js';
 import * as mk5 from './markets/index.js';
 
 // The markup drives the app through inline `onclick="..."` attributes, which
@@ -49,7 +52,7 @@ Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13
   m22, m23,
   mh,
   h0, h1, h2, h3, h4, h5,
-  mk0, mk1, mk2, mk3, mk4, mk5);
+  mk0, mk1, mk2, mk3, mk4, mk5, mk6, mk7, mk8);
 
 // Startup, in the order these ran in the original script.
 initStore();

@@ -8,12 +8,11 @@
 // player's official season production, at 100 points per dollar. So a player
 // projected for 328 season points prices near $3.28, and the payout at the end
 // of the year is simply their real total divided by 100. No house, no odds.
-import { NFL_PLAYERS } from '../data/nfl-players.js';
+import { NFL_BY_ID } from '../data/nfl-players.js';
 import { teamColor } from '../data/nfl-colors.js';
+import { ELIGIBLE_IDS, UNIVERSE, contractYears, priorRank } from './universe.js';
 
 export const POINTS_PER_DOLLAR = 100;
-export const SHARES_PER_LOT = 50;      // every seeded holding is one 50-share lot
-export const HOLDING_COUNT = 28;
 const STORE_KEY = 'arc_markets_v1';
 
 // ---------------------------------------------------------------- seeded noise
@@ -45,11 +44,10 @@ export function saveMk() {
 }
 
 // ---------------------------------------------------------------- the universe
+// Only the eligible are listed. A player outside the universe is not restricted
+// here, he is simply absent — there is no row to find and no price to quote.
 function build() {
-  const pool = NFL_PLAYERS
-    .filter(p => p.sproj > 60 && ['QB', 'RB', 'WR', 'TE'].includes(p.pos))
-    .sort((a, b) => b.sproj - a.sproj)
-    .slice(0, 150);
+  const pool = ELIGIBLE_IDS.map(id => NFL_BY_ID[id]).filter(Boolean);
 
   const rank = {};   // running count per position, for the WR1 / RB2 label
   return pool.map(p => {
@@ -70,6 +68,8 @@ function build() {
       color: teamColor(p.tm),
       posRank: p.pos + rank[p.pos],
       sproj: p.sproj,
+      years: contractYears(p.id),
+      priorRank: priorRank(p.id),
       price, pct, change,
       // heavily skewed: a handful of names carry most of the day's activity
       trades: 25 + Math.floor(Math.pow(r(), 4) * 12400),
@@ -99,42 +99,26 @@ export function topMover(dir) {
 export function mostActive() {
   return [...MARKET].sort((a, b) => b.trades - a.trades)[0];
 }
-export function topRookie() {
-  const rookies = MARKET.filter(p => p.exp <= 1);
-  return [...rookies].sort((a, b) => b.pct - a.pct)[0] || MARKET[0];
+/**
+ * The best mover among the least experienced contracts listed.
+ *
+ * This used to look for rookies, which the eligibility rule now makes
+ * impossible: a rookie has no prior completed season, so he can never finish
+ * top SIZE in one, and can never be listed. Rather than fall back to a veteran
+ * under a "rookie" label, this asks the question the universe can actually
+ * answer — who is the youngest name in the market, and what is he doing today.
+ */
+export function topYoung() {
+  const min = Math.min(...MARKET.map(p => p.exp));
+  const young = MARKET.filter(p => p.exp <= min + 1);
+  return [...young].sort((a, b) => b.pct - a.pct)[0] || MARKET[0];
 }
 
-// ---------------------------------------------------------------- the holdings
-// Seeded so the portfolio has something to show. One 50-share lot in each of the
-// most valuable contracts.
-export const HOLDINGS = MARKET.slice(0, HOLDING_COUNT)
-  .map(p => ({ id: p.id, shares: SHARES_PER_LOT }));
-
-export function holdingRows() {
-  return HOLDINGS.map(h => {
-    const p = BY_ID[h.id];
-    return { ...p, shares: h.shares,
-             value: Math.round(p.price * h.shares * 100) / 100,
-             dayChange: Math.round(p.change * h.shares * 100) / 100 };
-  });
-}
-
-export function portfolio() {
-  const rows = holdingRows();
-  const value = rows.reduce((n, r) => n + r.value, 0);
-  const dayChange = rows.reduce((n, r) => n + r.dayChange, 0);
-  const open = value - dayChange;
-  return {
-    rows,
-    value: Math.round(value * 100) / 100,
-    dayChange: Math.round(dayChange * 100) / 100,
-    dayPct: Math.round((dayChange / (open || 1)) * 1000) / 10,
-    series: portfolioSeries(value, dayChange),
-  };
-}
+// Holdings used to be seeded here, as a table sitting beside the market. They
+// are gone: positions now come only from executed orders, in orders.js.
 
 // A day's worth of portfolio value, ending exactly on today's number.
-function portfolioSeries(value, dayChange) {
+export function portfolioSeries(value, dayChange) {
   const r = rng(hash('arc-portfolio'));
   const start = value - dayChange;
   const n = 64, out = [];
@@ -257,7 +241,7 @@ export function careerSeries(p) {
   const raw = [];
   for (let i = 0; i <= yrs; i++) {
     const arc = 0.40 + 0.72 * (1 - Math.pow((i - 5) / 6, 2));
-    raw.push({ year: 2026 - yrs + i, v: Math.max(0.15, arc * (0.9 + r() * 0.2)) });
+    raw.push({ year: UNIVERSE.SEASON - yrs + i, v: Math.max(0.15, arc * (0.9 + r() * 0.2)) });
   }
   const k = p.price / (raw[raw.length - 1].v || 1);
   return raw.map(o => ({ year: o.year, price: Math.round(o.v * k * 100) / 100 }));
@@ -282,12 +266,14 @@ export function paceData(p) {
 }
 
 // ---------------------------------------------------------------- career curve
-// The concept's "shape of a career": the same player priced for three seasons.
-// Younger players carry a premium further out, veterans a discount.
+// The concept's "shape of a career": the same player priced season by season,
+// out as far as his contract may be held. Younger players carry a premium
+// further out, veterans a discount.
 export function seasonCurve(p) {
   const r = rng(hash(p.id + '#curve'));
   const young = p.exp <= 3;
-  return [2026, 2027, 2028].map((yr, i) => {
+  const yrs = Math.max(1, p.years || UNIVERSE.STANDARD_YEARS);
+  return Array.from({ length: yrs }, (_, i) => UNIVERSE.SEASON + i).map((yr, i) => {
     const drift = i === 0 ? 0 : (young ? 0.06 + r() * 0.05 : -0.07 - r() * 0.05) * i;
     return { year: yr, price: Math.round(p.price * (1 + drift) * 100) / 100 };
   });

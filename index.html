@@ -252,7 +252,7 @@
         <div class="m">MARKETS</div>
       </div>
       <div class="mk-tools">
-        <div class="mk-ic" onclick="mkToast('Search is not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+        <div class="mk-ic" onclick="mkSearchOpen()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
         <div class="mk-ic mk-bell" onclick="mkToast('Alerts are not wired up in this prototype')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span class="bdg">3</span></div>
         <div class="mk-ic mk-pf" id="mkPfBtn" onclick="mkTogglePortfolio()" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
       </div>
@@ -269,6 +269,15 @@
       <div class="grab"></div>
       <div class="hd" id="mkSheetTitle"></div>
       <div class="bd" id="mkSheetBody"></div>
+    </div>
+    <!-- a sibling of the sheet, not a child: the sheet is itself the scroll
+         container, so a bar inside it parks mid-content instead of docking -->
+    <div class="mk-tradebar" id="mkTradeBar"></div>
+
+    <div class="mk-scrim tk" onclick="mkCloseTicket()"></div>
+    <div class="mk-ticket" id="mkTicket">
+      <div class="grab"></div>
+      <div id="mkTicketBody"></div>
     </div>
     <div class="hint" id="mkHint"></div>
   </div>

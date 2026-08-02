@@ -1,10 +1,13 @@
 // Arc Markets — the Market screen: status strip, highlight cards, filters, table.
-import { MARKET, marketStats, topMover, mostActive, topRookie, watchRows,
+import { MARKET, marketStats, topMover, mostActive, topYoung, watchRows,
          mkStore, saveMk } from './data.js';
 import { ICON, spark, face, esc, money, pctText, marketRow, THUMBS } from './ui.js';
+import { UNIVERSE } from './universe.js';
 
 let filter = 'All';          // All | QB | RB | WR | TE | Trending | Movers | Watch
 let sortDesc = true;         // price sort direction
+let query = '';              // search box; matches name, team or exact position
+let searchOn = false;
 // which of the three contract charts the trend column draws; a reading
 // preference, so it is remembered like the watchlist
 const thumbMode = () =>
@@ -18,8 +21,8 @@ function highlight(kind, p) {
             val: `-${pctText(Math.abs(p.pct))}`, tone: 'down' },
     act:  { cls: 'act',  lb: 'MOST ACTIVE',  ic: ICON.rocket, color: '#2E8CFF',
             val: (p.trades / 1000).toFixed(1) + 'K', tone: 'act', sub: 'trades today' },
-    rook: { cls: 'rook', lb: 'ROOKIE BUZZ',  ic: ICON.star,   color: '#A86EFF',
-            val: `+${pctText(Math.abs(p.pct))}`, tone: 'rook' },
+    rook: { cls: 'rook', lb: 'RISING',       ic: ICON.star,   color: '#A86EFF',
+            val: `+${pctText(Math.abs(p.pct))}`, tone: 'rook', sub: `${p.exp} yr` },
   };
   const m = map[kind];
   return `<div class="mk-card ${m.cls}" onclick="mkOpenPlayer('${p.id}')">
@@ -37,6 +40,14 @@ const PILLS = [
   ['Trending', ICON.trend], ['Movers', ICON.movers], ['Watch', ICON.star],
 ];
 
+function matches(p, q) {
+  q = q.trim().toLowerCase();
+  if (!q) return true;
+  return p.name.toLowerCase().includes(q) || p.short.toLowerCase().includes(q)
+      || p.tm.toLowerCase().includes(q) || p.pos.toLowerCase() === q
+      || p.posRank.toLowerCase() === q;
+}
+
 function rows() {
   let list = MARKET;
   if (['QB', 'RB', 'WR', 'TE'].includes(filter)) list = list.filter(p => p.pos === filter);
@@ -47,9 +58,10 @@ function rows() {
   if (filter === 'All' || ['QB', 'RB', 'WR', 'TE'].includes(filter)) {
     list = [...list].sort((a, b) => sortDesc ? b.price - a.price : a.price - b.price);
   }
+  list = list.filter(p => matches(p, query));
   if (!list.length) {
-    return `<div class="mk-empty">${ICON.star}<div class="t">Nothing on your watchlist yet</div>
-      <div class="s">Tap the star on any player to follow their price here.</div></div>`;
+    return `<div class="mk-empty">${ICON.search}<div class="t">${
+      query ? 'No contract matches ' + esc(query.trim()) : 'Nothing here'}</div><div class="s"></div></div>`;
   }
   const mode = thumbMode();
   return list.map(p => marketRow(p, mode)).join('');
@@ -67,14 +79,21 @@ export function renderMarket() {
       <span class="sep">|</span>
       <span>Volume <span class="up">&#9650; ${st.volumePct}%</span></span>
       <span class="sep">|</span>
-      <span>Season 2026</span>
+      <span>Season ${UNIVERSE.SEASON}</span>
     </div>
+
+    ${searchOn ? `<div class="mk-search">
+      ${ICON.search}
+      <input id="mkSearchInput" type="search" autocomplete="off" autocapitalize="off"
+        spellcheck="false" value="${esc(query)}" oninput="mkSearch(this.value)">
+      <span class="x" onclick="mkSearchClose()">&#10005;</span>
+    </div>` : ''}
 
     <div class="mk-cards">
       ${highlight('up', topMover(1))}
       ${highlight('down', topMover(-1))}
       ${highlight('act', mostActive())}
-      ${highlight('rook', topRookie())}
+      ${highlight('rook', topYoung())}
     </div>
 
     <div class="mk-pills">
@@ -98,9 +117,27 @@ export function renderMarket() {
         esc((THUMBS.find(t => t[0] === thumbMode()) || THUMBS[0])[1].toUpperCase())}</span>
       <span style="min-width:27px"></span>
     </div>
-    ${rows()}`;
+    <div id="mkRows">${rows()}</div>`;
 }
 
 export function mkFilter(k) { filter = k; renderMarket(); }
 export function mkSort() { sortDesc = !sortDesc; renderMarket(); }
 export function mkThumb(k) { mkStore.thumb = k; saveMk(); renderMarket(); }
+
+// ---------------------------------------------------------------- search
+// Repaint the rows only, so the input keeps focus and the caret while typing.
+export function mkSearch(v) {
+  query = v;
+  const el = document.getElementById('mkRows');
+  if (el) el.innerHTML = rows(); else renderMarket();
+}
+export function mkSearchOpen() {
+  searchOn = true;
+  renderMarket();
+  const i = document.getElementById('mkSearchInput');
+  if (i) i.focus();
+}
+export function mkSearchClose() {
+  searchOn = false; query = '';
+  renderMarket();
+}

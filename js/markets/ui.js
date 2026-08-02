@@ -1,10 +1,17 @@
 // Arc Markets — shared rendering helpers (icons, sparklines, rows, formatting).
 import { isWatched, gameLog, paceData, SEASON_GAMES, WEEKS_PLAYED } from './data.js';
 
-export const money = n => '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+// No currency marks anywhere in this section: a price is a quantity of points
+// over POINTS_PER_DOLLAR, and it reads as a bare number. `money` keeps its name
+// because every call site means "format this as a price".
+export const money = n => Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 export const signed = n => (n < 0 ? '-' : '+') + money(n);
-export const pctText = n => (n < 0 ? '' : '') + n.toFixed(1) + '%';
+export const pctText = n => n.toFixed(1) + '%';
 export const dirClass = n => (n < 0 ? 'down' : 'up');
+// A short position is one signed integer, shown with its minus and its colour.
+// There is no separate short ledger for it to live in.
+export const qtyText = n => (n < 0 ? '−' : '') + Math.abs(n).toLocaleString();
+export const qtyClass = n => (n < 0 ? 'down' : n > 0 ? 'up' : '');
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -151,7 +158,9 @@ export function marketRow(p, mode) {
   </div>`;
 }
 
-/** A row on the Portfolio screen: shares, price, total value, today's change. */
+/** A row on the Portfolio screen: signed position, live mark, today's change,
+ *  total value. A negative position carries its minus and its colour here the
+ *  same way it does everywhere else. */
 export function holdingRow(p) {
   const d = dirClass(p.dayChange);
   return `<div class="mk-row" onclick="mkOpenPlayer('${p.id}')">
@@ -160,15 +169,15 @@ export function holdingRow(p) {
     <div class="who">
       <div class="nm">${esc(p.name)}</div>
       <div class="sb">${esc(p.pos)} &middot; ${esc(p.tm)}</div>
-      <span class="chip">${p.shares} shares</span>
+      <span class="chip ${qtyClass(p.qty)}">${qtyText(p.qty)}</span>
     </div>
     <div class="pr">
       <div class="p">${money(p.price)}</div>
       <div class="c ${dirClass(p.pct)}">${tri(p.pct)} ${pctText(Math.abs(p.pct))}</div>
     </div>
     <div class="dc">
-      <div class="d ${d}">${tri(p.dayChange)} ${money(p.dayChange)}</div>
-      <div class="q ${d}">(${p.dayChange < 0 ? '-' : ''}${pctText(Math.abs(p.pct))})</div>
+      <div class="d ${d}">${signed(p.dayChange)}</div>
+      <div class="q">${money(Math.abs(p.value))}</div>
     </div>
   </div>`;
 }

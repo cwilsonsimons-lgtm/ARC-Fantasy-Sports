@@ -6,12 +6,13 @@
 //
 // The app's own bottom nav stays visible throughout; Markets has no nav of its
 // own, and reaches the portfolio from a button in the header instead.
-import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR,
-         holdingRows } from './data.js';
-import { ICON, face, esc, money, pctText, dirClass, tri } from './ui.js';
+import { BY_ID, toggleWatch, isWatched, seasonCurve, POINTS_PER_DOLLAR } from './data.js';
+import { ICON, face, esc, money, signed, pctText, dirClass, tri, qtyClass, qtyText } from './ui.js';
 import { playerCharts, priceChart } from './charts.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
+import { initOrders, positionFor } from './orders.js';
+import { UNIVERSE, contractTier, heldThrough, priorRank } from './universe.js';
 
 let view = 'market';
 let pxRange = 'season';   // survives across sheet opens, like a stock app's
@@ -55,12 +56,23 @@ export function mkToggleWatch(id, el) {
 }
 
 // ---------------------------------------------------------------- sheets
-function openSheet(title, html) {
+function openSheet(title, html, tradePid) {
   document.getElementById('mkSheetTitle').innerHTML = title;
   document.getElementById('mkSheetBody').innerHTML = html;
+  // Order entry is not ambient: the bar is the only way in, and it is docked
+  // rather than sitting at the end of the scroll.
+  const bar = document.getElementById('mkTradeBar');
+  if (bar) {
+    bar.innerHTML = tradePid
+      ? `<div class="tb-go" onclick="mkTicket('${tradePid}')">Trade</div>` : '';
+    bar.classList.toggle('on', !!tradePid);
+  }
+  document.body.classList.toggle('mk-has-bar', !!tradePid);
   document.body.classList.add('mk-sheet-open');
 }
-export function mkCloseSheet() { document.body.classList.remove('mk-sheet-open'); }
+export function mkCloseSheet() {
+  document.body.classList.remove('mk-sheet-open', 'mk-has-bar');
+}
 
 export function mkOpenPlayer(id) {
   const p = BY_ID[id];
@@ -82,12 +94,12 @@ export function mkOpenPlayer(id) {
       </div>
     </div>
 
-    ${holdingFor(p.id)}
+    <div id="mkPosBlock">${positionBlock(p.id)}</div>
 
     <div id="mkCharts">${playerCharts(p, pxRange)}</div>
 
     <div class="mk-settle">${ICON.info}<span>Settles on official season production at
-      <b>${POINTS_PER_DOLLAR} points per $1</b>. This contract pays out
+      <b>${POINTS_PER_DOLLAR} points per dollar</b>. This contract pays out
       ${p.sproj.toFixed(1)} &divide; ${POINTS_PER_DOLLAR} = <b>${money(p.price)}</b> at today's
       projection — the final number is whatever the player actually does.</span></div>
 
@@ -96,16 +108,17 @@ export function mkOpenPlayer(id) {
       ${curve.map((c, i) => `<div class="yr${i === 0 ? ' now' : ''}">
         <div class="y">${c.year}</div><div class="p">${money(c.price)}</div></div>`).join('')}
     </div>
-    <p style="font-size:11.5px;color:var(--mk-ink-3);margin-top:10px">Three seasons priced side by
-      side sketch the shape of a career — a premium on players with room to grow, a discount on
-      those past their peak.</p>
+    <div class="mk-term ${contractTier(p.id) || ''}">
+      <span>${p.years} seasons</span><span>through ${heldThrough(p.id)}</span>
+      <span>${UNIVERSE.PRIOR_SEASON} finish ${priorRank(p.id)}</span>
+    </div>
 
     <div style="display:flex;gap:9px;margin-top:14px">
       <div class="mk-pill${isWatched(p.id) ? ' on' : ''}" style="flex:1;justify-content:center"
         onclick="mkToggleWatch('${p.id}');mkOpenPlayer('${p.id}')">${ICON.star} Watch</div>
       <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
         border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
-    </div>`);
+    </div>`, p.id);
 }
 
 /** Range buttons on the price chart: swap that one chart, leave the sheet alone. */
@@ -117,13 +130,26 @@ export function mkRange(id, key) {
   if (host) host.outerHTML = priceChart(p, key); else mkOpenPlayer(id);
 }
 
-/** The holdings row no longer has room for total value, so it lives here. */
-function holdingFor(id) {
-  const h = holdingRows().find(r => r.id === id);
-  if (!h) return '';
-  return `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You hold
-    <b>${h.shares} shares</b> &middot; total value <b>${money(h.value)}</b>
-    &middot; <span class="${dirClass(h.dayChange)}">${money(h.dayChange)} today</span></span></div>`;
+/** Shares, average cost and open P/L, above the fold. It is the most important
+ *  number on the screen, so it sits before the charts rather than after them. */
+function positionBlock(id) {
+  const f = positionFor(id);
+  if (!f.qty) return '';
+  return `<div class="mk-pos">
+    <div class="c"><span class="k">POSITION</span>
+      <span class="v ${qtyClass(f.qty)}">${qtyText(f.qty)}</span></div>
+    <div class="c"><span class="k">AVG COST</span><span class="v">${money(f.avg)}</span></div>
+    <div class="c"><span class="k">OPEN P/L</span>
+      <span class="v ${dirClass(f.open)}">${signed(f.open)}</span></div>
+  </div>`;
+}
+
+/** A fill lands: repaint the badge on the sheet and the portfolio, in this tick. */
+export function mkRepaintPositions(pid) {
+  const block = document.getElementById('mkPosBlock');
+  if (block && pid) block.innerHTML = positionBlock(pid);
+  renderPortfolio();
+  renderMarket();
 }
 
 export function mkAbout() {
@@ -170,4 +196,4 @@ export function mkToast(msg) {
   mkT = setTimeout(() => el.classList.remove('show'), 1700);
 }
 
-export function initMarkets() { /* nothing to prerender; views build on open */ }
+export function initMarkets() { initOrders(); }

@@ -51,15 +51,23 @@ const isAnchored = r => r && r.bodyY === 0 && r.docH <= 940;
 
 await check('opens from the app nav', `document.querySelector('.nav .nv[data-nav=markets]').click();
   document.body.classList.contains('markets')`, true);
-await check('market rows render', `document.querySelectorAll('#mkMarket .mk-row').length`, n => n > 100);
+// The listed universe is exactly UNIVERSE.SIZE now, not "as many as clear a
+// projection floor" — so this asserts the config rather than a lower bound.
+await check('market lists the whole universe', `document.querySelectorAll('#mkMarket .mk-row').length
+  === UNIVERSE.SIZE && UNIVERSE.SIZE === 100`, true);
 await check('app nav still has 4 tabs', `document.querySelectorAll('.nav .nv').length`, 4);
 await check('layout anchored', anchored, isAnchored);
 
+// Rounded, not truncated: while the sheet is still sliding, its children come
+// back on fractional pixels and `|0` turns a 52px box into 51.
 await check('faces are 38px in rows', `(()=>{const r=document.querySelector('#mkMarket .mk-row .face')
-  .getBoundingClientRect(); return [r.width|0, r.height|0];})()`, [38, 38]);
+  .getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)];})()`, [38, 38]);
 
+// Rows are whatever the order book nets out to, so this reads the same source
+// rather than a seeded holdings count.
 await check('portfolio via header btn', `document.getElementById('mkPfBtn').click();
-  document.querySelectorAll('#mkPortfolio .mk-row').length`, 28);
+  document.querySelectorAll('#mkPortfolio .mk-row').length === openPositions().length
+  && openPositions().length > 0`, true);
 await check('portfolio btn is active', `document.getElementById('mkPfBtn').classList.contains('on')`, true);
 await check('toggles back to market', `document.getElementById('mkPfBtn').click();
   document.querySelector('.mk-view.on').dataset.mkview`, 'market');
@@ -77,7 +85,7 @@ await check('sheet is on screen', `(()=>{const r=document.getElementById('mkShee
   return r.y < innerHeight && r.y > 0;})()`, true);
 await check('layout anchored w/ sheet', anchored, isAnchored);
 await check('sheet face is 52px', `(()=>{const r=document.querySelector('#mkSheetBody .face')
-  .getBoundingClientRect(); return [r.width|0, r.height|0];})()`, [52, 52]);
+  .getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)];})()`, [52, 52]);
 await check('sheet closes off screen', `mkCloseSheet(); new Promise(r => setTimeout(() =>
   r(document.getElementById('mkSheet').getBoundingClientRect().y >= innerHeight), 450))`, true);
 
@@ -91,7 +99,8 @@ await check('Matchup leaves markets', `mkCloseSheet();
   document.querySelector('.nav .nv[data-nav=matchup]').click(); document.body.classList.contains('markets')`, false);
 await check('fantasy app still renders', `!!document.querySelector('.view.on')`, true);
 await check('fantasy store untouched', `!!localStorage.getItem('cbd_team_v1')`, true);
-await check('re-enters cleanly', `openMarkets(); document.querySelectorAll('#mkMarket .mk-row').length`, n => n > 100);
+await check('re-enters cleanly', `openMarkets();
+  document.querySelectorAll('#mkMarket .mk-row').length === UNIVERSE.SIZE`, true);
 
 await browser.close();
 console.log(`\n${pass} passed, ${fail} failed, ${errors.length} page errors`);

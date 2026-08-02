@@ -49,7 +49,9 @@ const model = await page.evaluate(`(()=>{
 ok('game log sums to projection', model.sum.length === 0, model.sum.slice(0, 3));
 ok('price history ends at quote', model.quote.length === 0, model.quote.slice(0, 3));
 ok('career ends at quote', model.monotonic.length === 0, model.monotonic.slice(0, 3));
-ok('every contract covered', model.n > 100, model.n);
+// The universe is exactly UNIVERSE.SIZE now, so this is equality rather than a
+// lower bound — a shrunk market should fail here, not pass quietly.
+ok('every contract covered', model.n === 100, model.n);
 
 // determinism: the same player must chart the same season on a second read
 ok('game log is stable', await page.evaluate(
@@ -96,7 +98,7 @@ for (const [mode, label, marks] of [
              header: document.querySelector('#mkMarket .mk-th span:nth-child(3)').textContent.trim(),
              on: document.querySelector('.mk-seg .sg.on').textContent.trim() };
   })()`);
-  ok(`thumb ${mode}`, v.rows > 100 && v.drawn === v.rows && v.header === label, v);
+  ok(`thumb ${mode}`, v.rows === 100 && v.drawn === v.rows && v.header === label, v);
 }
 ok('thumb choice persists', await (async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -163,7 +165,7 @@ const edges = await page.evaluate(`(()=>{
   const s = MARKET.map(m=>({id:m.id,name:m.name,exp:m.exp,ahead:paceData(m).ahead}));
   return { worst: [...s].sort((a,b)=>a.ahead-b.ahead)[0],
            best:  [...s].sort((a,b)=>b.ahead-a.ahead)[0],
-           rook:  s.filter(x=>x.exp<=1)[0] };
+           rook:  [...s].sort((a,b)=>a.exp-b.exp)[0] };
 })()`);
 for (const [k, who] of Object.entries(edges)) {
   await page.evaluate(`mkOpenPlayer('${who.id}')`);

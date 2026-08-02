@@ -109,6 +109,40 @@ The code boundary matches the product boundary: `js/markets/` imports only from
 settings, rosters, lineups or scoring. The only seam is `openMarkets()`, which
 adds a class to `<body>`.
 
+**The tradeable universe** is `js/markets/universe.js`. `ELIGIBLE` is the top
+`UNIVERSE.SIZE` fantasy scorers at skill positions from the prior *completed*
+season — real nflverse PPR totals out of `js/data/nfl-history.js`, not
+projections — computed once at load and frozen. A player outside it is not
+listed-and-restricted, he is absent: there is no row and no quote.
+`canRecompute()` is the gate, and it refuses in-season by design.
+
+Within the 100, the top `BLUE_CHIP_SIZE` carry `BLUE_CHIP_YEARS` and the rest
+carry `STANDARD_YEARS`, which is what the SEASON CONTRACTS strip draws.
+
+One consequence is worth naming: **a rookie can never be tradeable.** He has no
+prior completed season, so he cannot finish top 100 in one. The Market screen's
+fourth highlight card used to be "Rookie Buzz" and would have fallen back to a
+veteran under a rookie label; it now asks a question the universe can answer —
+the best mover among the youngest contracts listed.
+
+**Positions come only from executed orders.** `js/markets/orders.js` folds the
+order book into a position and nothing else creates one — a player on your
+fantasy roster grants zero shares, and `orders-check` asserts exactly that by
+drafting a roster and confirming the untraded names still hold nothing. Holdings
+used to be seeded as a table beside the market; that is gone, and the seed is a
+list of fills.
+
+A position is **one signed integer**. Long is positive, short is negative, and a
+single order may cross zero: own 5, sell 6 nets to −1, and the remainder
+reprices at the fill. There is no Short button, no Cover button and no separate
+short ledger to reconcile against. Order entry lives behind the docked TRADE bar
+and nowhere else — the bar is a sibling of the sheet rather than a child,
+because the sheet is itself the scroll container and a bar inside it parks
+mid-content instead of docking.
+
+**No currency marks anywhere in the section.** `money()` returns a bare number;
+`orders-check` fails on a single `$` in the rendered DOM.
+
 **The pricing model** comes from the concept brief: a contract settles on the
 player's official season production at **100 points per dollar**, so a player
 projected for 328 points prices near $3.28 and pays out their real total ÷ 100 at
@@ -120,8 +154,10 @@ stable across reloads and screenshots.
 Deliberately *not* faked: the News and History tabs are empty states rather than
 invented headlines about real players.
 
-`npm run check:markets` drives the section through 23 interaction checks. The
-hub, chat and notification surfaces have their own 62 in `npm run check:hub`. Several
+`npm run check:markets` drives the section through 23 interaction checks, and
+`npm run check:orders` adds 45 for the order book, net positioning, portfolio
+independence and the universe. The hub, chat and notification surfaces have
+their own 62 in `npm run check:hub`. Several
 assert *geometry*, not just DOM, because both bugs found here were invisible to
 content assertions: a body state class that collided with the sheet element's own
 class (applying `position:absolute; transform:translateY(102%)` to `<body>` and
