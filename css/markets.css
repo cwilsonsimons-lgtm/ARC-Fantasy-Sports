@@ -196,6 +196,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mk-sheet svg.spark{width:100%;height:46px}
 .mk-sheet .grab{width:38px;height:4px;border-radius:3px;background:var(--mk-line);margin:10px auto 4px}
 .mk-sheet .hd{padding:10px 18px 6px;font-size:17px;font-weight:800}
+/* a sheet whose body carries its own header (the player page) leaves .hd empty */
+.mk-sheet .hd:empty{display:none}
 .mk-sheet .bd{padding:0 18px}
 .mk-sheet p{font-size:13px;line-height:1.6;color:var(--mk-ink-2);margin-bottom:11px;font-weight:500}
 .mk-sheet p b{color:var(--mk-ink);font-weight:700}
@@ -376,3 +378,74 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   color:var(--mk-ink-2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .mkc-evl.ev-up{border-color:rgba(43,224,107,.3)} .mkc-evl.ev-down{border-color:rgba(255,75,75,.3)}
 .mkc-none{padding:26px 10px;text-align:center;font-size:11px;color:var(--mk-ink-3)}
+
+/* ===== PLAYER PAGE (trading layout) ===== */
+.pg-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.pg-id{flex:1;min-width:0}
+.pg-nm{display:flex;align-items:center;gap:8px;min-width:0}
+.pg-nm>span:first-child{font-size:19px;font-weight:800;letter-spacing:.2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+/* the watchlist control is the star and nothing else */
+.pg-star{flex:none;display:grid;place-items:center;width:30px;height:30px;cursor:pointer;color:var(--mk-ink-3)}
+.pg-star svg{width:21px;height:21px}
+.pg-star.on{color:#FFC531}
+.pg-star:active{transform:scale(.88)}
+.pg-sub{font-size:11.5px;font-weight:700;color:var(--mk-ink-3);margin-top:3px}
+.pg-px{margin-bottom:12px}
+.pg-px .v{font-size:33px;font-weight:800;letter-spacing:-.5px;line-height:1.05}
+.pg-px .c{font-size:13px;font-weight:700;margin-top:4px}
+.pg-px .c em{font-style:normal;color:var(--mk-ink-3);font-weight:600}
+.pg-pos{display:flex;justify-content:space-between;align-items:center;gap:10px;border-radius:11px;
+  padding:9px 12px;margin-bottom:11px;font-size:12px;font-weight:600;color:var(--mk-ink-2);
+  border:1px solid var(--mk-line);background:var(--mk-card)}
+.pg-pos b{font-weight:800;color:#fff}
+.pg-pos.long{border-color:rgba(43,224,107,.28)} .pg-pos.short{border-color:rgba(255,75,75,.28)}
+.pg-pos b.up{color:var(--mk-green)} .pg-pos b.down{color:var(--mk-red)}
+/* Buy is the primary action and sits above the fold, always */
+.pg-actions{display:flex;gap:9px;margin-bottom:14px}
+.pg-buy{flex:2;text-align:center;border-radius:12px;padding:15px 12px;cursor:pointer;
+  background:var(--mk-green);color:#04240F;font-size:14.5px;font-weight:800;letter-spacing:.4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-buy:active{opacity:.88}
+.pg-sell{flex:1;text-align:center;border-radius:12px;padding:15px 12px;cursor:pointer;
+  border:1px solid var(--mk-line);background:var(--mk-card);color:#fff;font-size:14.5px;font-weight:800}
+.pg-sell:active{opacity:.85}
+
+/* ---- order pad extras ---- */
+.tk-x{cursor:pointer;color:var(--mk-ink-3);font-size:13px;font-weight:700;letter-spacing:0}
+.tk-field label em{font-style:normal;color:var(--mk-ink-3);font-weight:600;letter-spacing:0;
+  text-transform:none;font-size:9px;margin-left:5px}
+.tk-cancel{text-align:center;margin-top:9px;font-size:12px;font-weight:700;color:var(--mk-ink-3);cursor:pointer}
+.tk-rev{border:1px solid var(--mk-line);border-radius:11px;padding:4px 12px;margin:10px 0}
+.tk-rev>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 0;
+  border-bottom:1px solid var(--mk-line);font-size:12px}
+.tk-rev>div:last-child{border-bottom:0}
+.tk-rev span{color:var(--mk-ink-3);font-weight:600}
+.tk-rev b{font-weight:800;text-align:right}
+.tk-rev .tot b{font-size:15px}
+
+/* ---- portfolio ---- */
+.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--mk-line);
+  border-radius:11px;overflow:hidden;margin:0 14px 14px}
+.pf-s{background:var(--mk-card);padding:9px 10px}
+.pf-s span{display:block;font-size:8.5px;font-weight:700;letter-spacing:.7px;color:var(--mk-ink-3);text-transform:uppercase}
+.pf-s b{display:block;font-size:13px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-s b.up{color:var(--mk-green)} .pf-s b.down{color:var(--mk-red)}
+.pf-row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--mk-line);
+  cursor:pointer;position:relative}
+.pf-row .bar{position:absolute;left:0;top:0;bottom:0;width:3px}
+.pf-row .who{flex:1;min-width:0}
+.pf-row .nm{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-row .sb{font-size:10.5px;color:var(--mk-ink-3);font-weight:600;margin-top:2px}
+.pf-row .chip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;border:1px solid var(--mk-line);
+  border-radius:6px;padding:2px 5px;margin:4px 4px 0 0;color:var(--mk-ink-2)}
+.pf-row .chip.short{color:var(--mk-red);border-color:rgba(255,75,75,.35)}
+.pf-row .chip.long{color:var(--mk-green);border-color:rgba(43,224,107,.35)}
+.pf-row .vals{flex:none;text-align:right}
+.pf-row .v{font-size:13.5px;font-weight:800}
+.pf-row .pl{font-size:11.5px;font-weight:700;margin-top:2px}
+.pf-row .pp{font-size:10px;font-weight:600;color:var(--mk-ink-3);margin-top:1px}
+.pf-row .pp.up{color:var(--mk-green)} .pf-row .pp.down{color:var(--mk-red)}
+.pf-row.closed{opacity:.82}
+.pf-row .cancel{font-size:11px;font-weight:700;color:var(--mk-red);cursor:pointer;
+  border:1px solid rgba(255,75,75,.3);border-radius:8px;padding:6px 10px}

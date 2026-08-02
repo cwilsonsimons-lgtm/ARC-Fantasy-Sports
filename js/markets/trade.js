@@ -16,18 +16,45 @@ import { gameStatusFor, injuryFor, opponentFor, seasonPointsFor } from './status
 import { MIN_QTY } from './engine.js';
 
 // ---------------------------------------------------------------- ticket state
+// `open` is what keeps the player page clean: the order pad only exists while
+// the user is actually placing a trade. Everything else on the page is
+// read-only, and the single Buy button is the way in.
 export const ticket = { playerId: null, term: DEFAULT_TERM, action: 'buy',
-                        type: 'market', qty: 1, limit: null };
+                        type: 'market', qty: 1, limit: null, open: false, review: false };
 
+/** Prepare the ticket for a player without opening it. */
 export function openTicket(playerId, term) {
   ticket.playerId = playerId;
   ticket.term = term || DEFAULT_TERM;
-  const side = playerSide(playerId);
-  ticket.action = side === 'short' ? 'cover' : 'buy';
+  ticket.action = playerSide(playerId) === 'short' ? 'cover' : 'buy';
   ticket.type = 'market';
   ticket.qty = 1;
   ticket.limit = null;
-  return ticketHTML();
+  ticket.open = false;
+  ticket.review = false;
+  return '';
+}
+/** Reveal the order pad. `intent` is 'buy' or 'sell' from the page buttons. */
+export function beginTrade(playerId, intent, term) {
+  const side = playerSide(playerId);
+  if (ticket.playerId !== playerId) openTicket(playerId, term);
+  if (term) ticket.term = term;
+  ticket.action = intent === 'sell'
+    ? (side === 'short' ? 'cover' : 'sell')
+    : (side === 'short' ? 'cover' : 'buy');
+  ticket.open = true;
+  ticket.review = false;
+  ticket.qty = 1;
+  if (window.mkRefreshPlayer) window.mkRefreshPlayer(playerId);
+}
+export function closeTrade() {
+  ticket.open = false;
+  ticket.review = false;
+  if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
+}
+export function toggleReview(on) {
+  ticket.review = !!on;
+  repaintTicket();
 }
 export function setTicket(field, value) {
   if (field === 'qty') ticket.qty = Math.max(0, parseFloat(value) || 0);
@@ -58,6 +85,8 @@ export function submitTicket() {
     ? `${a.label} order resting at ${money(o.limit)}`
     : `${a.label} ${o.filled} @ ${money(o.avg)}`);
   ticket.qty = 1;
+  ticket.open = false;      // order placed — put the page back to its clean state
+  ticket.review = false;
   if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
   return res;
 }
@@ -67,80 +96,99 @@ export function cancelWorking(id) {
   if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
 }
 
-// ---------------------------------------------------------------- ticket view
-const ACTION_ORDER = ['buy', 'sell', 'short', 'cover'];
+// ---------------------------------------------------------------- order pad
+// Shown only while ticket.open is true. The action set is scoped to what the
+// user came here to do: the Buy pad offers Buy (or Short, if they hold
+// nothing); the Sell pad offers Sell or Cover depending on which side they are
+// on. Actions that would break the no-hedge rule are never offered at all.
+function padActions() {
+  const side = playerSide(ticket.playerId);
+  if (ticket.action === 'sell' || ticket.action === 'cover') {
+    return side === 'short' ? ['cover'] : ['sell'];
+  }
+  return side === 'long' ? ['buy'] : side === 'short' ? ['cover'] : ['buy', 'short'];
+}
 
 export function ticketHTML() {
+  if (!ticket.open) return '';
   const p = BY_ID[ticket.playerId];
   if (!p) return '';
   const sym = symbolFor(ticket.playerId, ticket.term);
   const q = quoteStats(ticket.playerId, ticket.term);
   const pos = positionFor(sym);
-  const side = playerSide(ticket.playerId);
+  const a = ACTIONS[ticket.action];
   const acctSum = accountSummary();
+  const buying = a.side === 'buy';
+
+  const est = ticket.type === 'limit' && ticket.limit ? ticket.limit
+            : (buying ? (q.ask || q.price) : (q.bid || q.price));
+  const cost = (ticket.qty || 0) * (est || 0);
+  const check = validate({ action: ticket.action, sym, qty: ticket.qty,
+                           type: ticket.type, limit: ticket.limit });
+
+  const acts = padActions();
+  const actionRow = acts.length > 1 ? `<div class="tk-acts">${acts.map(k =>
+    `<div class="tk-act ${k}${k === ticket.action ? ' on' : ''}"
+      onclick="mkTicketSet('action','${k}')">${ACTIONS[k].label}</div>`).join('')}</div>` : '';
 
   const terms = termsFor(ticket.playerId);
   const termRow = `<div class="tk-terms">${terms.map(t => `
     <div class="tk-term${t.key === ticket.term ? ' on' : ''}" onclick="mkTicketSet('term','${t.key}')">
       <b>${t.short}</b><span>${esc(t.label)}</span></div>`).join('')}
-    ${!isTop100(ticket.playerId) ? `<div class="tk-term off" title="Top 100 only">
+    ${!isTop100(ticket.playerId) ? `<div class="tk-term off" title="Five-year contracts are Top 100 only">
       <b>5Y</b><span>Top 100</span></div>` : ''}
   </div>`;
 
-  // every action is validated up front, so a disabled button can say why
-  const probe = a => validate({ action: a, sym, qty: Math.max(ticket.qty, MIN_QTY),
-                               type: ticket.type, limit: ticket.limit });
-  const actions = ACTION_ORDER.map(a => {
-    const v = probe(a);
-    const on = a === ticket.action;
-    return `<div class="tk-act ${a}${on ? ' on' : ''}${v.ok ? '' : ' off'}"
-      ${v.ok ? `onclick="mkTicketSet('action','${a}')"` : `onclick="mkToast('${esc(v.reason)}')"`}
-      >${ACTIONS[a].label}</div>`;
-  }).join('');
-
-  const est = ticket.type === 'limit' && ticket.limit ? ticket.limit
-            : (ACTIONS[ticket.action].side === 'buy' ? (q.ask || q.price) : (q.bid || q.price));
-  const cost = (ticket.qty || 0) * (est || 0);
-  const check = validate({ action: ticket.action, sym, qty: ticket.qty,
-                           type: ticket.type, limit: ticket.limit });
-
-  const posLine = pos ? `<div class="tk-pos ${pos.qty < 0 ? 'short' : 'long'}">
-      ${pos.qty < 0 ? 'SHORT' : 'LONG'} ${Math.abs(pos.qty)} shares @ ${money(pos.avg)}</div>` : '';
-  const hedgeNote = side ? `<div class="tk-note">You are <b>${side}</b> this player. Positions in the
-      opposite direction are blocked across every contract length until this one is closed.</div>` : '';
-
-  const working = workingOrders().filter(o => o.sym === sym);
-  const workRows = working.length ? `<div class="tk-work">
-    <div class="tk-work-h">WORKING ORDERS</div>
-    ${working.map(o => `<div class="tk-work-r">
-      <span>${ACTIONS[o.action].label} ${o.qty}${o.filled ? ` (${o.filled} filled)` : ''} @ ${money(o.limit)}</span>
-      <span class="x" onclick="mkCancelOrder('${o.id}')">Cancel</span></div>`).join('')}
-  </div>` : '';
+  // review step: confirm the order before it goes in
+  if (ticket.review) {
+    return `<div class="tk">
+      <div class="tk-h"><span>REVIEW ORDER</span>
+        <span class="tk-x" onclick="mkReview(0)">Edit</span></div>
+      <div class="tk-rev">
+        <div><span>Action</span><b>${a.label}</b></div>
+        <div><span>Contract</span><b>${esc(p.name)} · ${esc((TERM_BY_KEY[ticket.term] || {}).short || '')}</b></div>
+        <div><span>Order type</span><b>${ticket.type === 'limit' ? 'Limit' : 'Market'}</b></div>
+        <div><span>Quantity</span><b>${ticket.qty} ${ticket.qty === 1 ? 'share' : 'shares'}</b></div>
+        <div><span>${ticket.type === 'limit' ? 'Limit price' : 'Est. price'}</span><b>${money(est || 0)}</b></div>
+        <div class="tot"><span>${buying ? 'Estimated cost' : 'Estimated proceeds'}</span><b>${money(cost)}</b></div>
+      </div>
+      <div class="tk-go ${check.ok ? '' : 'off'}"
+        onclick="${check.ok ? 'mkSubmitTicket()' : `mkToast('${esc(check.reason)}')`}">
+        Place ${a.label.toLowerCase()} order</div>
+      ${check.ok ? '' : `<div class="tk-err">${esc(check.reason)}</div>`}
+      <div class="tk-cancel" onclick="mkCloseTrade()">Cancel</div>
+    </div>`;
+  }
 
   return `
     <div class="tk">
       <div class="tk-h">
-        <span>TRADE</span>
-        <span class="tk-cash">Cash ${money(acctSum.cash)}</span>
+        <span>${a.label.toUpperCase()} ${esc(p.short || p.name)}</span>
+        <span class="tk-x" onclick="mkCloseTrade()">&#10005;</span>
       </div>
       ${termRow}
-      ${posLine}
-      <div class="tk-acts">${actions}</div>
+      ${pos ? `<div class="tk-pos ${pos.qty < 0 ? 'short' : 'long'}">
+        ${pos.qty < 0 ? 'SHORT' : 'LONG'} ${Math.abs(pos.qty)} shares @ ${money(pos.avg)}</div>` : ''}
+      ${actionRow}
       <div class="tk-seg">
-        <div class="sg${ticket.type === 'market' ? ' on' : ''}" onclick="mkTicketSet('type','market')">Market</div>
-        <div class="sg${ticket.type === 'limit' ? ' on' : ''}" onclick="mkTicketSet('type','limit')">Limit</div>
+        <div class="sg${ticket.type === 'market' ? ' on' : ''}" onclick="mkTicketSet('type','market')">
+          Market ${buying ? 'buy' : a.label.toLowerCase()}</div>
+        <div class="sg${ticket.type === 'limit' ? ' on' : ''}" onclick="mkTicketSet('type','limit')">
+          Limit ${buying ? 'buy' : a.label.toLowerCase()}</div>
       </div>
       <div class="tk-field">
-        <label>Shares</label>
+        <label>Quantity <em>fractional shares welcome</em></label>
         <div class="tk-qty">
-          <span class="b" onclick="mkBumpQty(-1)">−</span>
+          <span class="b" onclick="mkBumpQty(-1)">&minus;</span>
           <input type="number" step="0.001" min="0" inputmode="decimal" value="${ticket.qty}"
-            onchange="mkTicketSet('qty',this.value)" oninput="mkTicketSet('qty',this.value)">
+            onchange="mkTicketSet('qty',this.value)">
           <span class="b" onclick="mkBumpQty(1)">+</span>
         </div>
       </div>
       <div class="tk-chips">
-        ${[0.25, 0.5, 1, 5, 10].map(n => `<span onclick="mkTicketSet('qty',${n})">${n}</span>`).join('')}
+        ${(buying ? [0.25, 0.5, 1, 5, 10] : sellChips(pos)).map(n =>
+          `<span onclick="mkTicketSet('qty',${n})">${n}</span>`).join('')}
+        ${!buying && pos ? `<span onclick="mkTicketSet('qty',${Math.abs(pos.qty)})">All</span>` : ''}
       </div>
       ${ticket.type === 'limit' ? `<div class="tk-field">
         <label>Limit price</label>
@@ -149,17 +197,19 @@ export function ticketHTML() {
           onchange="mkTicketSet('limit',this.value)">
       </div>` : ''}
       <div class="tk-sum">
-        <span>${ticket.type === 'limit' ? 'Limit' : 'Est. price'}</span><b>${money(est || 0)}</b>
-        <span>${ACTIONS[ticket.action].side === 'buy' ? 'Est. cost' : 'Est. proceeds'}</span><b>${money(cost)}</b>
+        <span>${ticket.type === 'limit' ? 'Limit price' : 'Est. price'}</span><b>${money(est || 0)}</b>
+        <span>${buying ? 'Estimated cost' : 'Estimated proceeds'}</span><b>${money(cost)}</b>
+        <span>${buying ? 'Buying power' : 'Cash after'}</span><b>${money(buying ? acctSum.buyingPower : acctSum.cash + cost)}</b>
       </div>
       <div class="tk-go ${check.ok ? '' : 'off'}"
-        onclick="${check.ok ? 'mkSubmitTicket()' : `mkToast('${esc(check.reason)}')`}">
-        ${ACTIONS[ticket.action].label} ${ticket.qty || 0} ${ticket.qty === 1 ? 'share' : 'shares'}
-      </div>
+        onclick="${check.ok ? 'mkReview(1)' : `mkToast('${esc(check.reason)}')`}">Review order</div>
       ${check.ok ? '' : `<div class="tk-err">${esc(check.reason)}</div>`}
-      ${hedgeNote}
-      ${workRows}
     </div>`;
+}
+function sellChips(pos) {
+  const held = pos ? Math.abs(pos.qty) : 1;
+  return [0.25, 0.5, 1, Math.round(held * 0.5 * 1000) / 1000].filter((n, i, a) =>
+    n > 0 && n <= held && a.indexOf(n) === i);
 }
 
 // ---------------------------------------------------------------- info panel

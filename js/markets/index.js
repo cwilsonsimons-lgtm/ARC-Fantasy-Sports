@@ -7,17 +7,17 @@
 // The app's own bottom nav stays visible throughout; Markets has no nav of its
 // own, and reaches the portfolio from a button in the header instead.
 import { BY_ID, toggleWatch, isWatched, POINTS_PER_DOLLAR } from './data.js';
-import { ICON, face, esc, money, pctText, dirClass, tri } from './ui.js';
+import { ICON, face, esc, money, signed, pctText, dirClass, tri } from './ui.js';
 import { playerCharts } from './charts.js';
 import { priceChart } from './pricechart.js';
 import { renderMarket } from './market.js';
 import { renderPortfolio } from './portfolio.js';
-import { bumpQty, cancelWorking, marketInfoHTML, openTicket, setTicket, submitTicket,
-         ticket, ticketHTML } from './trade.js';
+import { beginTrade, bumpQty, cancelWorking, closeTrade, marketInfoHTML, openTicket,
+         setTicket, submitTicket, ticket, ticketHTML, toggleReview } from './trade.js';
 import { setEngine } from './engine.js';
 import { quoteStats } from './quotes.js';
 import { DEFAULT_TERM, TERM_BY_KEY, termsFor } from './contracts.js';
-import { positionFor, positionRows } from './ledger.js';
+import { playerSide, positionFor } from './ledger.js';
 import { symbolFor } from './contracts.js';
 import { MARKET, WEEKS_PLAYED, bindQuoteSource, priceDays, syncMarket } from './data.js';
 import { listMarket, onFlow, startFlow } from './flow.js';
@@ -63,7 +63,8 @@ export function mkTogglePortfolio() {
 // ---------------------------------------------------------------- watchlist
 export function mkToggleWatch(id, el) {
   const on = toggleWatch(id);
-  if (el) el.classList.toggle('on', on);
+  if (el) el.classList.toggle('on', on);      // row stars flip in place
+  if (openId === id) mkRefreshPlayer(id);     // the sheet star swaps outline/filled
   mkToast(on ? 'Added to watchlist' : 'Removed from watchlist');
 }
 
@@ -80,7 +81,8 @@ export function mkOpenPlayer(id) {
   if (!p) return;
   openId = id;
   openTicket(id, ticket.playerId === id ? ticket.term : DEFAULT_TERM);
-  openSheet(esc(p.name), playerSheetHTML(p));
+  // no sheet title: the page's own header carries the photo, name and star
+  openSheet('', playerSheetHTML(p));
 }
 
 /** Repaint the open contract sheet in place — used after a fill and on flow. */
@@ -98,40 +100,61 @@ function playerSheetHTML(p) {
   const d = dirClass(q.dayPct);
   const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
   const pos = positionFor(symbolFor(p.id, term));
+  const side = playerSide(p.id);
+  const watched = isWatched(p.id);
 
+  // The order in the spec, top to bottom: photo, name + star, position/team,
+  // price, daily change, Buy. Everything below is read-only until the user
+  // starts a trade.
   return `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div class="pg-head">
       ${face(p)}
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;color:var(--mk-ink-3);font-weight:700">
-          ${esc(p.tm)} &middot; ${esc(p.posRank)} &middot; ${esc(t.short)}</div>
-        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(q.price)}</div>
-        <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
-          ${tri(q.dayPct)} ${money(q.dayChange)} (${pctText(Math.abs(q.dayPct))}) today</div>
+      <div class="pg-id">
+        <div class="pg-nm">
+          <span>${esc(p.name)}</span>
+          <span class="pg-star${watched ? ' on' : ''}" role="button"
+            aria-label="${watched ? 'Remove from watchlist' : 'Add to watchlist'}"
+            aria-pressed="${watched}" onclick="mkToggleWatch('${p.id}')">${watched ? ICON.starFill : ICON.star}</span>
+        </div>
+        <div class="pg-sub">${esc(p.posRank)} &middot; ${esc(p.tm)}</div>
       </div>
-      <div class="mk-live"><span class="dot"></span>24/7</div>
     </div>
 
-    ${pos ? `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You are
-      <b>${pos.qty < 0 ? 'short' : 'long'} ${Math.abs(pos.qty)} shares</b> at an average of
-      <b>${money(pos.avg)}</b>.</span></div>` : ''}
+    <div class="pg-px">
+      <div class="v">${money(q.price)}</div>
+      <div class="c ${d}">${tri(q.dayPct)} ${money(q.dayChange)}
+        (${pctText(Math.abs(q.dayPct))}) <em>today</em></div>
+    </div>
 
-    <div id="mkCharts">${playerCharts(p, pxRange, term)}</div>
+    ${pos ? `<div class="pg-pos ${pos.qty < 0 ? 'short' : 'long'}">
+      <span>${pos.qty < 0 ? 'Short' : 'Holding'} <b>${Math.abs(pos.qty)}</b> shares
+        &middot; avg ${money(pos.avg)}</span>
+      <b class="${dirClass(pos.qty * q.price - pos.qty * pos.avg)}">${signed(
+        Math.round((pos.qty * q.price - pos.qty * pos.avg) * 100) / 100)}</b>
+    </div>` : ''}
 
-    <h4>MARKET</h4>
-    ${marketInfoHTML(p.id, term)}
+    <div class="pg-actions">
+      <div class="pg-buy" onclick="mkBeginTrade('${p.id}','buy')">
+        ${side === 'short' ? 'Cover' : 'Buy'} ${esc(p.short || p.name)}</div>
+      ${pos ? `<div class="pg-sell" onclick="mkBeginTrade('${p.id}','sell')">
+        ${side === 'short' ? 'Add to short' : 'Sell'}</div>` : ''}
+    </div>
 
     <div id="mkTicket">${ticketHTML()}</div>
 
+    <div id="mkCharts">${playerCharts(p, pxRange, term)}</div>
+
+    <h4>MARKET STATISTICS</h4>
+    ${marketInfoHTML(p.id, term)}
+
+    <h4>CONTRACT</h4>
     <div class="mk-settle">${ICON.info}<span>${esc(t.desc)} Settles at
       <b>${POINTS_PER_DOLLAR} points per $1</b>, immediately on expiry or if the player retires.
       NFL trades, releases and signings do not affect the contract.</span></div>
 
-    <div style="display:flex;gap:9px;margin-top:14px">
-      <div class="mk-pill${isWatched(p.id) ? ' on' : ''}" style="flex:1;justify-content:center"
-        onclick="mkToggleWatch('${p.id}');mkRefreshPlayer('${p.id}')">${ICON.star} Watch</div>
-      <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
-        border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
+    <div style="margin-top:12px">
+      <div class="mk-pill" style="justify-content:center" onclick="mkAbout()">
+        ${ICON.info} How this works</div>
     </div>`;
 }
 
@@ -184,6 +207,9 @@ export function mkTicketSet(field, value) { setTicket(field, value); }
 export function mkBumpQty(d) { bumpQty(d); }
 export function mkSubmitTicket() { submitTicket(); }
 export function mkCancelOrder(id) { cancelWorking(id); }
+export function mkBeginTrade(id, intent) { beginTrade(id, intent); }
+export function mkCloseTrade() { closeTrade(); }
+export function mkReview(on) { toggleReview(+on === 1); }
 /** Swap market structure at runtime — the app cannot tell the difference. */
 export function mkSetEngine(kind) {
   setEngine(kind);

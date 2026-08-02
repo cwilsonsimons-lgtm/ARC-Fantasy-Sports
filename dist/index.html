@@ -1479,6 +1479,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 .mk-sheet svg.spark{width:100%;height:46px}
 .mk-sheet .grab{width:38px;height:4px;border-radius:3px;background:var(--mk-line);margin:10px auto 4px}
 .mk-sheet .hd{padding:10px 18px 6px;font-size:17px;font-weight:800}
+/* a sheet whose body carries its own header (the player page) leaves .hd empty */
+.mk-sheet .hd:empty{display:none}
 .mk-sheet .bd{padding:0 18px}
 .mk-sheet p{font-size:13px;line-height:1.6;color:var(--mk-ink-2);margin-bottom:11px;font-weight:500}
 .mk-sheet p b{color:var(--mk-ink);font-weight:700}
@@ -1659,6 +1661,77 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   color:var(--mk-ink-2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .mkc-evl.ev-up{border-color:rgba(43,224,107,.3)} .mkc-evl.ev-down{border-color:rgba(255,75,75,.3)}
 .mkc-none{padding:26px 10px;text-align:center;font-size:11px;color:var(--mk-ink-3)}
+
+/* ===== PLAYER PAGE (trading layout) ===== */
+.pg-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.pg-id{flex:1;min-width:0}
+.pg-nm{display:flex;align-items:center;gap:8px;min-width:0}
+.pg-nm>span:first-child{font-size:19px;font-weight:800;letter-spacing:.2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+/* the watchlist control is the star and nothing else */
+.pg-star{flex:none;display:grid;place-items:center;width:30px;height:30px;cursor:pointer;color:var(--mk-ink-3)}
+.pg-star svg{width:21px;height:21px}
+.pg-star.on{color:#FFC531}
+.pg-star:active{transform:scale(.88)}
+.pg-sub{font-size:11.5px;font-weight:700;color:var(--mk-ink-3);margin-top:3px}
+.pg-px{margin-bottom:12px}
+.pg-px .v{font-size:33px;font-weight:800;letter-spacing:-.5px;line-height:1.05}
+.pg-px .c{font-size:13px;font-weight:700;margin-top:4px}
+.pg-px .c em{font-style:normal;color:var(--mk-ink-3);font-weight:600}
+.pg-pos{display:flex;justify-content:space-between;align-items:center;gap:10px;border-radius:11px;
+  padding:9px 12px;margin-bottom:11px;font-size:12px;font-weight:600;color:var(--mk-ink-2);
+  border:1px solid var(--mk-line);background:var(--mk-card)}
+.pg-pos b{font-weight:800;color:#fff}
+.pg-pos.long{border-color:rgba(43,224,107,.28)} .pg-pos.short{border-color:rgba(255,75,75,.28)}
+.pg-pos b.up{color:var(--mk-green)} .pg-pos b.down{color:var(--mk-red)}
+/* Buy is the primary action and sits above the fold, always */
+.pg-actions{display:flex;gap:9px;margin-bottom:14px}
+.pg-buy{flex:2;text-align:center;border-radius:12px;padding:15px 12px;cursor:pointer;
+  background:var(--mk-green);color:#04240F;font-size:14.5px;font-weight:800;letter-spacing:.4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-buy:active{opacity:.88}
+.pg-sell{flex:1;text-align:center;border-radius:12px;padding:15px 12px;cursor:pointer;
+  border:1px solid var(--mk-line);background:var(--mk-card);color:#fff;font-size:14.5px;font-weight:800}
+.pg-sell:active{opacity:.85}
+
+/* ---- order pad extras ---- */
+.tk-x{cursor:pointer;color:var(--mk-ink-3);font-size:13px;font-weight:700;letter-spacing:0}
+.tk-field label em{font-style:normal;color:var(--mk-ink-3);font-weight:600;letter-spacing:0;
+  text-transform:none;font-size:9px;margin-left:5px}
+.tk-cancel{text-align:center;margin-top:9px;font-size:12px;font-weight:700;color:var(--mk-ink-3);cursor:pointer}
+.tk-rev{border:1px solid var(--mk-line);border-radius:11px;padding:4px 12px;margin:10px 0}
+.tk-rev>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 0;
+  border-bottom:1px solid var(--mk-line);font-size:12px}
+.tk-rev>div:last-child{border-bottom:0}
+.tk-rev span{color:var(--mk-ink-3);font-weight:600}
+.tk-rev b{font-weight:800;text-align:right}
+.tk-rev .tot b{font-size:15px}
+
+/* ---- portfolio ---- */
+.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--mk-line);
+  border-radius:11px;overflow:hidden;margin:0 14px 14px}
+.pf-s{background:var(--mk-card);padding:9px 10px}
+.pf-s span{display:block;font-size:8.5px;font-weight:700;letter-spacing:.7px;color:var(--mk-ink-3);text-transform:uppercase}
+.pf-s b{display:block;font-size:13px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-s b.up{color:var(--mk-green)} .pf-s b.down{color:var(--mk-red)}
+.pf-row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--mk-line);
+  cursor:pointer;position:relative}
+.pf-row .bar{position:absolute;left:0;top:0;bottom:0;width:3px}
+.pf-row .who{flex:1;min-width:0}
+.pf-row .nm{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-row .sb{font-size:10.5px;color:var(--mk-ink-3);font-weight:600;margin-top:2px}
+.pf-row .chip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;border:1px solid var(--mk-line);
+  border-radius:6px;padding:2px 5px;margin:4px 4px 0 0;color:var(--mk-ink-2)}
+.pf-row .chip.short{color:var(--mk-red);border-color:rgba(255,75,75,.35)}
+.pf-row .chip.long{color:var(--mk-green);border-color:rgba(43,224,107,.35)}
+.pf-row .vals{flex:none;text-align:right}
+.pf-row .v{font-size:13.5px;font-weight:800}
+.pf-row .pl{font-size:11.5px;font-weight:700;margin-top:2px}
+.pf-row .pp{font-size:10px;font-weight:600;color:var(--mk-ink-3);margin-top:1px}
+.pf-row .pp.up{color:var(--mk-green)} .pf-row .pp.down{color:var(--mk-red)}
+.pf-row.closed{opacity:.82}
+.pf-row .cancel{font-size:11px;font-weight:700;color:var(--mk-red);cursor:pointer;
+  border:1px solid rgba(255,75,75,.3);border-radius:8px;padding:6px 10px}
 
 </style>
 </head>
@@ -8752,6 +8825,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     drop: svg('<path d="M4 7 10 13l4-4 6 6"/><path d="M20 15v-4h-4"/>'),
     rocket: svg('<path d="M5 15c-1 2-1 5-1 5s3 0 5-1"/><path d="M9 13a12 12 0 0 1 9-9 12 12 0 0 1-9 9Z"/><path d="m9 13 2 2"/>'),
     star: svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+    starFill: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
     trend: svg('<path d="M3 17 9 11l4 4 8-8"/><path d="M17 7h4v4"/>'),
     movers: svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20v-3"/>'),
     sliders: svg('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
@@ -9337,6 +9411,323 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return NFL_PLAYERS.filter((p) => p.sproj > 60 && SKILL.includes(p.pos)).sort((a, b) => b.sproj - a.sproj).slice(0, limit);
   }
 
+  // js/markets/ledger.js
+  var ledger_exports = {};
+  __export(ledger_exports, {
+    ACTIONS: () => ACTIONS,
+    START_CASH: () => START_CASH,
+    accountSummary: () => accountSummary,
+    acct: () => acct,
+    bindQuoteStats: () => bindQuoteStats,
+    cancelOrder: () => cancelOrder,
+    closedRows: () => closedRows,
+    markPrice: () => markPrice,
+    placeOrder: () => placeOrder,
+    playerExposure: () => playerExposure,
+    playerSide: () => playerSide,
+    positionFor: () => positionFor,
+    positionRows: () => positionRows,
+    positions: () => positions,
+    positionsForPlayer: () => positionsForPlayer,
+    resetLedger: () => resetLedger,
+    saveLedger: () => saveLedger,
+    settlePositions: () => settlePositions,
+    sweepResting: () => sweepResting,
+    validate: () => validate,
+    workingOrders: () => workingOrders
+  });
+  var START_CASH = 25e3;
+  var KEY = "arc_ledger_v1";
+  function load2() {
+    try {
+      return JSON.parse(localStorage.getItem(KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  var acct = load2();
+  acct.cash = acct.cash == null ? START_CASH : acct.cash;
+  acct.deposits = acct.deposits == null ? START_CASH : acct.deposits;
+  acct.positions = acct.positions || {};
+  acct.orders = acct.orders || [];
+  acct.fills = acct.fills || [];
+  acct.closed = acct.closed || [];
+  acct.settled = acct.settled || [];
+  acct.realized = acct.realized || 0;
+  function saveLedger() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(acct));
+    } catch (e) {
+    }
+  }
+  function positionFor(sym) {
+    return acct.positions[sym] || null;
+  }
+  function positions() {
+    return Object.values(acct.positions).filter((p) => Math.abs(p.qty) >= MIN_QTY);
+  }
+  function positionsForPlayer(playerId) {
+    return positions().filter((p) => p.playerId === playerId);
+  }
+  function playerSide(playerId) {
+    let net = 0;
+    positionsForPlayer(playerId).forEach((p) => {
+      net += p.qty;
+    });
+    if (net >= MIN_QTY) return "long";
+    if (net <= -MIN_QTY) return "short";
+    return null;
+  }
+  function playerExposure(playerId) {
+    return roundQty(positionsForPlayer(playerId).reduce((n, p) => n + p.qty, 0));
+  }
+  var ACTIONS = {
+    buy: { side: "buy", dir: 1, opens: "long", label: "Buy" },
+    sell: { side: "sell", dir: -1, closes: "long", label: "Sell" },
+    short: { side: "sell", dir: -1, opens: "short", label: "Short" },
+    cover: { side: "buy", dir: 1, closes: "short", label: "Cover" }
+  };
+  function validate({ action, sym, qty, type, limit }) {
+    const a = ACTIONS[action];
+    if (!a) return { ok: false, reason: "Unknown order type" };
+    const q = roundQty(qty);
+    if (!(q >= MIN_QTY)) return { ok: false, reason: `Minimum size is ${MIN_QTY} shares` };
+    if (type === "limit" && !(limit > 0)) return { ok: false, reason: "Enter a limit price" };
+    const { playerId, term } = parseSymbol(sym);
+    if (!termAvailable(playerId, term))
+      return { ok: false, reason: "That contract length is not offered for this player" };
+    const pos = positionFor(sym);
+    const held = pos ? pos.qty : 0;
+    const side = playerSide(playerId);
+    if (a.closes === "long") {
+      if (held < MIN_QTY) return { ok: false, reason: "You have no shares of this contract to sell" };
+      if (q > held + 1e-9) return { ok: false, reason: `You only hold ${held} shares` };
+    }
+    if (a.closes === "short") {
+      if (held > -MIN_QTY) return { ok: false, reason: "You have no short position to cover" };
+      if (q > -held + 1e-9) return { ok: false, reason: `Your short is ${roundQty(-held)} shares` };
+    }
+    if (a.opens === "long" && side === "short")
+      return { ok: false, reason: "You are short this player \u2014 cover that position before going long" };
+    if (a.opens === "short" && side === "long")
+      return { ok: false, reason: "You are long this player \u2014 sell those shares before going short" };
+    if (a.side === "buy" && type === "limit") {
+      const cost = q * limit;
+      if (cost > acct.cash + 1e-9)
+        return { ok: false, reason: `Not enough cash \u2014 that order needs ${cost.toFixed(2)}` };
+    }
+    return { ok: true };
+  }
+  function applyFill(sym, action, qty, px) {
+    const a = ACTIONS[action];
+    const { playerId, term } = parseSymbol(sym);
+    const signed2 = a.dir * qty;
+    const pos = acct.positions[sym] || (acct.positions[sym] = { sym, playerId, term, qty: 0, avg: 0, opened: Date.now(), startSeason: SEASON });
+    const before = pos.qty;
+    const after = roundQty(before + signed2);
+    const cash = -a.dir * qty * px;
+    let bookedPl = 0;
+    if (before === 0 || Math.sign(before) === Math.sign(signed2)) {
+      const tot = Math.abs(before) + qty;
+      pos.avg = round2((Math.abs(before) * pos.avg + qty * px) / (tot || 1));
+    } else {
+      const closedQty = Math.min(qty, Math.abs(before));
+      const perShare = before > 0 ? px - pos.avg : pos.avg - px;
+      bookedPl = round2(perShare * closedQty);
+      acct.realized = round2((acct.realized || 0) + bookedPl);
+      pos.realized = round2((pos.realized || 0) + bookedPl);
+    }
+    pos.qty = after;
+    acct.cash = round2(acct.cash + cash);
+    acct.fills.push({ ts: Date.now(), sym, action, qty: roundQty(qty), px: round2(px), pl: bookedPl });
+    if (acct.fills.length > 500) acct.fills.splice(0, acct.fills.length - 500);
+    if (Math.abs(after) < MIN_QTY) {
+      acct.closed.unshift({
+        ts: Date.now(),
+        sym,
+        playerId: pos.playerId,
+        term: pos.term,
+        opened: pos.opened,
+        avg: pos.avg,
+        exit: round2(px),
+        qty: roundQty(Math.abs(before)),
+        side: before > 0 ? "long" : "short",
+        pl: round2(pos.realized || bookedPl),
+        reason: "closed"
+      });
+      if (acct.closed.length > 200) acct.closed.length = 200;
+      delete acct.positions[sym];
+    }
+    return pos;
+  }
+  var seq = 1;
+  function placeOrder({ action, sym, qty, type = "market", limit = null, who = "user" }) {
+    const v = validate({ action, sym, qty, type, limit });
+    if (!v.ok) return { ok: false, reason: v.reason };
+    const a = ACTIONS[action];
+    const res = getEngine().submit({ sym, side: a.side, qty: roundQty(qty), type, limit, who });
+    if (res.status === "rejected")
+      return { ok: false, reason: res.reason || "Order rejected" };
+    const order = {
+      id: "ord" + seq++ + "-" + Date.now().toString(36),
+      ts: Date.now(),
+      action,
+      sym,
+      type,
+      limit: limit ? round2(limit) : null,
+      qty: roundQty(qty),
+      filled: res.filled || 0,
+      avg: res.avg || 0,
+      status: res.status,
+      restingId: res.resting ? res.resting.id : null
+    };
+    if (res.filled >= MIN_QTY) applyFill(sym, action, res.filled, res.avg);
+    acct.orders.unshift(order);
+    if (acct.orders.length > 200) acct.orders.length = 200;
+    saveLedger();
+    return { ok: true, order, fills: res.fills || [] };
+  }
+  function workingOrders() {
+    return acct.orders.filter((o) => o.status === "resting" || o.status === "partial");
+  }
+  function cancelOrder(id) {
+    const o = acct.orders.find((x) => x.id === id);
+    if (!o) return false;
+    if (o.restingId) getEngine().cancel(o.sym, o.restingId);
+    o.status = "cancelled";
+    saveLedger();
+    return true;
+  }
+  function sweepResting() {
+    let touched = false;
+    workingOrders().forEach((o) => {
+      const remaining = roundQty(o.qty - o.filled);
+      if (remaining < MIN_QTY) {
+        o.status = "filled";
+        return;
+      }
+      const a = ACTIONS[o.action];
+      const q = getEngine().quote(o.sym);
+      if (!q) return;
+      const px = a.side === "buy" ? q.ask != null ? q.ask : q.mid : q.bid != null ? q.bid : q.mid;
+      const hits = a.side === "buy" ? px <= o.limit + 1e-9 : px >= o.limit - 1e-9;
+      if (!hits) return;
+      const v = validate({ action: o.action, sym: o.sym, qty: remaining, type: "market" });
+      if (!v.ok) {
+        o.status = "cancelled";
+        o.reason = v.reason;
+        touched = true;
+        return;
+      }
+      const res = getEngine().submit({ sym: o.sym, side: a.side, qty: remaining, type: "market", who: "user" });
+      if (res.filled >= MIN_QTY) {
+        applyFill(o.sym, o.action, res.filled, res.avg);
+        o.filled = roundQty(o.filled + res.filled);
+        o.avg = res.avg;
+        o.status = o.filled >= o.qty - 1e-9 ? "filled" : "partial";
+        touched = true;
+      }
+    });
+    if (touched) saveLedger();
+    return touched;
+  }
+  function markPrice(sym) {
+    const q = getEngine().quote(sym);
+    return q ? q.last != null ? q.last : q.mid : 0;
+  }
+  function positionRows() {
+    return positions().map((p) => {
+      const px = markPrice(p.sym);
+      const value = round2(p.qty * px);
+      const cost = round2(p.qty * p.avg);
+      const { playerId, term } = parseSymbol(p.sym);
+      const q = statsFn ? statsFn(playerId, term) : null;
+      const dayPl = q ? round2(p.qty * q.dayChange) : 0;
+      return {
+        ...p,
+        px,
+        value,
+        cost,
+        side: p.qty < 0 ? "short" : "long",
+        dayPl,
+        dayPct: q ? q.dayPct : 0,
+        pl: round2(value - cost),
+        plPct: cost ? round2((value - cost) / Math.abs(cost) * 100) : 0
+      };
+    });
+  }
+  var statsFn = null;
+  function bindQuoteStats(fn) {
+    statsFn = fn;
+  }
+  function accountSummary() {
+    const rows2 = positionRows();
+    const long = rows2.filter((r) => r.qty > 0).reduce((n, r) => n + r.value, 0);
+    const short = rows2.filter((r) => r.qty < 0).reduce((n, r) => n + r.value, 0);
+    const unrealized = rows2.reduce((n, r) => n + r.pl, 0);
+    const cost = rows2.reduce((n, r) => n + Math.abs(r.cost), 0);
+    const equity = acct.cash + long + short;
+    const deposits = acct.deposits || START_CASH;
+    const dayChange = rows2.reduce((n, r) => n + r.dayPl, 0);
+    const buyingPower = round2(Math.max(0, acct.cash + short));
+    return {
+      cash: round2(acct.cash),
+      rows: rows2,
+      longValue: round2(long),
+      shortValue: round2(short),
+      costBasis: round2(cost),
+      equity: round2(equity),
+      buyingPower,
+      unrealized: round2(unrealized),
+      realized: round2(acct.realized || 0),
+      totalReturn: round2(equity - deposits),
+      totalReturnPct: deposits ? round2((equity - deposits) / deposits * 100) : 0,
+      dayChange: round2(dayChange),
+      dayPct: equity - dayChange ? round2(dayChange / (equity - dayChange) * 100) : 0,
+      deposits: round2(deposits),
+      openCount: rows2.length,
+      closed: acct.closed,
+      settled: acct.settled
+    };
+  }
+  function closedRows() {
+    return acct.closed.concat(acct.settled.map((s) => ({ ...s, reason: s.reason || "settled" }))).sort((a, b) => b.ts - a.ts);
+  }
+  function settlePositions(sym, settleValue, reason) {
+    const pos = positionFor(sym);
+    if (!pos) return null;
+    const perShare = pos.qty > 0 ? settleValue - pos.avg : pos.avg - settleValue;
+    const pl = round2(perShare * Math.abs(pos.qty));
+    acct.cash = round2(acct.cash + pos.qty * settleValue);
+    acct.realized = round2((acct.realized || 0) + pl);
+    acct.settled.unshift({
+      ts: Date.now(),
+      sym,
+      qty: pos.qty,
+      avg: pos.avg,
+      settleValue: round2(settleValue),
+      pl,
+      reason
+    });
+    delete acct.positions[sym];
+    acct.orders.forEach((o) => {
+      if (o.sym === sym && (o.status === "resting" || o.status === "partial")) o.status = "void";
+    });
+    saveLedger();
+    return { sym, pl, reason };
+  }
+  function resetLedger() {
+    acct.cash = START_CASH;
+    acct.deposits = START_CASH;
+    acct.positions = {};
+    acct.orders = [];
+    acct.fills = [];
+    acct.closed = [];
+    acct.settled = [];
+    acct.realized = 0;
+    saveLedger();
+  }
+
   // js/markets/quotes.js
   var DAY = 864e5;
   var live = {};
@@ -9437,6 +9828,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       engine: eng.kind
     };
   }
+  bindQuoteStats(quoteStats);
   function marketTotals() {
     const eng = getEngine();
     let trades = 0, vol = 0, buy = 0, sell = 0;
@@ -9597,100 +9989,199 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var portfolio_exports = {};
   __export(portfolio_exports, {
     mkCycleSort: () => mkCycleSort,
+    mkResetAccount: () => mkResetAccount,
     mkTab: () => mkTab,
     renderPortfolio: () => renderPortfolio
   });
   var tab = "holdings";
   var sortKey = "value";
   var TABS2 = [
-    ["holdings", "Holdings", ICON.bag],
+    ["holdings", "Positions", ICON.bag],
     ["watchlist", "Watchlist", ICON.star],
-    ["news", "News", ICON.news],
+    ["orders", "Orders", ICON.sliders],
     ["history", "History", ICON.history]
   ];
   function sortRows(rows2) {
     const by = {
-      value: (a, b) => b.value - a.value,
-      change: (a, b) => b.dayChange - a.dayChange,
-      price: (a, b) => b.price - a.price,
-      name: (a, b) => a.name.localeCompare(b.name)
+      value: (a, b) => Math.abs(b.value) - Math.abs(a.value),
+      change: (a, b) => b.dayPl - a.dayPl,
+      pl: (a, b) => b.pl - a.pl,
+      name: (a, b) => nameOf(a).localeCompare(nameOf(b))
     };
     return [...rows2].sort(by[sortKey] || by.value);
   }
-  function body(pf) {
+  function nameOf(r) {
+    const p = BY_ID[r.playerId];
+    return p ? p.name : r.playerId;
+  }
+  function pctSigned(pct, amount) {
+    const neg = (amount != null ? amount : pct) < 0;
+    return `${neg ? "-" : "+"}${Math.abs(pct).toFixed(2)}%`;
+  }
+  function positionCard(r) {
+    const p = BY_ID[r.playerId];
+    if (!p) return "";
+    const t = TERM_BY_KEY[r.term];
+    const d = dirClass(r.pl);
+    return `<div class="pf-row" onclick="mkOpenPlayer('${r.playerId}')">
+    <div class="bar" style="background:${p.color}"></div>
+    ${face(p)}
+    <div class="who">
+      <div class="nm">${esc2(p.name)}</div>
+      <div class="sb">${esc2(p.pos)} &middot; ${esc2(p.tm)} &middot; ${esc2(t ? t.short : r.term)}</div>
+      <span class="chip ${r.side}">${r.side === "short" ? "SHORT " : ""}${Math.abs(r.qty)} sh</span>
+      <span class="chip">avg ${money(r.avg)}</span>
+    </div>
+    <div class="vals">
+      <div class="v">${money(Math.abs(r.value))}</div>
+      <div class="pl ${d}">${tri(r.pl)} ${signed(r.pl)}</div>
+      <div class="pp ${d}">${pctSigned(r.plPct, r.pl)}</div>
+    </div>
+  </div>`;
+  }
+  function closedCard(c) {
+    const p = BY_ID[c.playerId];
+    const d = dirClass(c.pl);
+    const when = new Date(c.ts).toLocaleDateString(void 0, { month: "short", day: "numeric" });
+    const why = c.reason === "expiry" ? "Settled \xB7 expired" : c.reason === "retired" ? "Settled \xB7 retired" : c.reason === "settled" ? "Settled" : "Closed";
+    return `<div class="pf-row closed"${p ? ` onclick="mkOpenPlayer('${c.playerId}')"` : ""}>
+    <div class="bar" style="background:${p ? p.color : "#5A6675"}"></div>
+    ${p ? face(p) : '<div class="face">\u2014</div>'}
+    <div class="who">
+      <div class="nm">${esc2(p ? p.name : c.playerId)}</div>
+      <div class="sb">${why} &middot; ${when}</div>
+      <span class="chip ${c.side}">${c.side === "short" ? "SHORT " : ""}${Math.abs(c.qty)} sh</span>
+      <span class="chip">${money(c.avg)} \u2192 ${money(c.exit != null ? c.exit : c.settleValue)}</span>
+    </div>
+    <div class="vals">
+      <div class="pl ${d}">${signed(c.pl)}</div>
+      <div class="pp">realized</div>
+    </div>
+  </div>`;
+  }
+  function body(a) {
     if (tab === "holdings") {
+      if (!a.rows.length) {
+        return empty(
+          ICON.bag,
+          "No open positions",
+          "Open the Market tab, pick a player and tap Buy. Positions appear here immediately and revalue as the market moves."
+        );
+      }
       return `<div class="mk-hcount">
-        <span class="n">${pf.rows.length} Holdings</span>
-        <span class="mk-sort" onclick="mkCycleSort()">${ICON.sliders} Sort by ${ICON.chevron}</span>
+        <span class="n">${a.rows.length} position${a.rows.length === 1 ? "" : "s"}</span>
+        <span class="mk-sort" onclick="mkCycleSort()">${ICON.sliders} Sort by ${sortKey} ${ICON.chevron}</span>
       </div>
-      <div class="mk-th">
-        <span style="flex:1">PLAYER</span>
-        <span style="min-width:54px;text-align:right;margin-right:7px">PRICE</span>
-        <span style="min-width:78px;text-align:right">TODAY'S CHANGE</span>
-      </div>
-      ${sortRows(pf.rows).map(holdingRow).join("")}`;
+      ${sortRows(a.rows).map(positionCard).join("")}`;
     }
     if (tab === "watchlist") {
       const rows2 = watchRows();
-      return rows2.length ? `<div class="mk-hcount"><span class="n">${rows2.length} Watching</span></div>
-         ${rows2.map(marketRow).join("")}` : empty(
+      return rows2.length ? `<div class="mk-hcount"><span class="n">${rows2.length} watching</span></div>
+         ${rows2.map((r) => marketRow(r)).join("")}` : empty(
         ICON.star,
         "Nothing on your watchlist",
-        "Tap the star on any player in the Market tab to follow their price here."
+        "Tap the star beside any player\u2019s name to follow their price here."
       );
     }
-    if (tab === "news") {
-      return empty(
-        ICON.news,
-        "No news in this prototype",
-        "Player news would land here. It is deliberately empty rather than filled with invented headlines about real players."
-      );
+    if (tab === "orders") {
+      const working = workingOrders();
+      if (!working.length) {
+        return empty(
+          ICON.sliders,
+          "No working orders",
+          "Limit orders that have not filled yet wait here until the market reaches your price."
+        );
+      }
+      return working.map((o) => {
+        const p = BY_ID[o.sym.split("@")[0]];
+        return `<div class="pf-row">
+        <div class="bar" style="background:${p ? p.color : "#5A6675"}"></div>
+        ${p ? face(p) : ""}
+        <div class="who">
+          <div class="nm">${esc2(p ? p.name : o.sym)}</div>
+          <div class="sb">${esc2(o.action.toUpperCase())} ${o.qty} @ ${money(o.limit)}
+            ${o.filled ? `&middot; ${o.filled} filled` : ""}</div>
+        </div>
+        <div class="vals"><div class="cancel" onclick="event.stopPropagation();mkCancelOrder('${o.id}')">Cancel</div></div>
+      </div>`;
+      }).join("");
     }
-    return empty(
+    const closed = closedRows();
+    return closed.length ? `<div class="mk-hcount"><span class="n">${closed.length} closed</span>
+         <span class="mk-sort">Realized ${signed(a.realized)}</span></div>
+       ${closed.map(closedCard).join("")}` : empty(
       ICON.history,
-      "No trades yet",
-      "Arc Markets is a concept. The first build is free to play, with no real money \u2014 your play-money trade history would appear here."
+      "No closed positions yet",
+      "When you close a position \u2014 or a contract settles \u2014 it moves here with its realized profit or loss."
     );
+  }
+  function valueSeries(a) {
+    const n = 40, out = [];
+    const start = a.equity - a.dayChange;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      out.push(start + a.dayChange * t);
+    }
+    out[n - 1] = a.equity;
+    const lo = Math.min(...out), hi = Math.max(...out), span = hi - lo || 1;
+    return out.map((v) => Math.round((v - lo) / span * 100) / 100);
   }
   function renderPortfolio() {
     const el = document.getElementById("mkPortfolio");
     if (!el) return;
-    const pf = portfolio();
-    const d = dirClass(pf.dayChange);
-    const color = pf.dayChange < 0 ? "#FF4B4B" : "#2BE06B";
+    const a = accountSummary();
+    const d = dirClass(a.dayChange);
+    const color = a.dayChange < 0 ? "#FF4B4B" : "#2BE06B";
+    const stat = (lb, val, cls) => `<div class="pf-s"><span>${lb}</span><b class="${cls || ""}">${val}</b></div>`;
     el.innerHTML = `
     <div class="mk-ptop">
       <h1>Portfolio</h1>
-      <span class="mk-range" onclick="mkToast('Range switching is not wired up in this prototype')">
-        Today ${ICON.chevron}</span>
+      <span class="mk-range" onclick="mkResetAccount()">${ICON.history} Reset</span>
     </div>
 
     <div class="mk-val">
       <div class="l">
-        <div class="k">PORTFOLIO VALUE</div>
-        <div class="v">${money(pf.value)}</div>
-        <div class="c ${d}">${tri(pf.dayChange)} ${signed(pf.dayChange)}
-          (${pctText(Math.abs(pf.dayPct))}) <em>today</em></div>
+        <div class="k">TOTAL VALUE</div>
+        <div class="v">${money(a.equity)}</div>
+        <div class="c ${d}">${tri(a.dayChange)} ${signed(a.dayChange)}
+          (${pctSigned(a.dayPct, a.dayChange)}) <em>today</em></div>
       </div>
-      <div class="g">${spark(pf.series, color, { w: 150, h: 82, fill: true, id: "pf" })}</div>
+      <div class="g">${spark(valueSeries(a), color, { w: 150, h: 82, fill: true, id: "pf" })}</div>
+    </div>
+
+    <div class="pf-stats">
+      ${stat("Cash", money(a.cash))}
+      ${stat("Buying power", money(a.buyingPower))}
+      ${stat("Positions", money(a.longValue + a.shortValue))}
+      ${stat("Total return", signed(a.totalReturn), dirClass(a.totalReturn))}
+      ${stat("Return %", pctSigned(a.totalReturnPct, a.totalReturn), dirClass(a.totalReturn))}
+      ${stat("Cost basis", money(a.costBasis))}
+      ${stat("Unrealized", signed(a.unrealized), dirClass(a.unrealized))}
+      ${stat("Realized", signed(a.realized), dirClass(a.realized))}
+      ${stat("Open", String(a.openCount))}
     </div>
 
     <div class="mk-tabs">
       ${TABS2.map(([k, lb, ic]) => `<div class="mk-tab${tab === k ? " on" : ""}" onclick="mkTab('${k}')">
-        ${ic}${lb}${k === "news" ? '<span class="nd"></span>' : ""}</div>`).join("")}
+        ${ic}${lb}</div>`).join("")}
     </div>
 
-    ${body(pf)}`;
+    ${body(a)}`;
   }
   function mkTab(k) {
     tab = k;
     renderPortfolio();
   }
   function mkCycleSort() {
-    const order = ["value", "change", "price", "name"];
+    const order = ["value", "change", "pl", "name"];
     sortKey = order[(order.indexOf(sortKey) + 1) % order.length];
     renderPortfolio();
-    window.mkToast && window.mkToast("Sorted by " + sortKey);
+  }
+  function mkResetAccount() {
+    if (!window.confirm(`Reset the account? This clears every position, order and all trade history, and returns the balance to ${money(START_CASH)}.`)) return;
+    resetLedger();
+    renderPortfolio();
+    window.mkToast && window.mkToast("Account reset");
   }
 
   // js/markets/charts.js
@@ -10120,12 +10611,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     closeMarkets: () => closeMarkets,
     initMarkets: () => initMarkets2,
     mkAbout: () => mkAbout,
+    mkBeginTrade: () => mkBeginTrade,
     mkBumpQty: () => mkBumpQty,
     mkCancelOrder: () => mkCancelOrder,
     mkCloseSheet: () => mkCloseSheet,
+    mkCloseTrade: () => mkCloseTrade,
     mkOpenPlayer: () => mkOpenPlayer,
     mkRange: () => mkRange,
     mkRefreshPlayer: () => mkRefreshPlayer,
+    mkReview: () => mkReview,
     mkSetEngine: () => mkSetEngine,
     mkSubmitTicket: () => mkSubmitTicket,
     mkTicketSet: () => mkTicketSet,
@@ -10139,279 +10633,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/markets/trade.js
   var trade_exports = {};
   __export(trade_exports, {
+    beginTrade: () => beginTrade,
     bumpQty: () => bumpQty,
     cancelWorking: () => cancelWorking,
+    closeTrade: () => closeTrade,
     marketInfoHTML: () => marketInfoHTML,
     openTicket: () => openTicket,
     setTicket: () => setTicket,
     submitTicket: () => submitTicket,
     ticket: () => ticket,
-    ticketHTML: () => ticketHTML
+    ticketHTML: () => ticketHTML,
+    toggleReview: () => toggleReview
   });
-
-  // js/markets/ledger.js
-  var ledger_exports = {};
-  __export(ledger_exports, {
-    ACTIONS: () => ACTIONS,
-    START_CASH: () => START_CASH,
-    accountSummary: () => accountSummary,
-    acct: () => acct,
-    cancelOrder: () => cancelOrder,
-    markPrice: () => markPrice,
-    placeOrder: () => placeOrder,
-    playerExposure: () => playerExposure,
-    playerSide: () => playerSide,
-    positionFor: () => positionFor,
-    positionRows: () => positionRows,
-    positions: () => positions,
-    positionsForPlayer: () => positionsForPlayer,
-    resetLedger: () => resetLedger,
-    saveLedger: () => saveLedger,
-    settlePositions: () => settlePositions,
-    sweepResting: () => sweepResting,
-    validate: () => validate,
-    workingOrders: () => workingOrders
-  });
-  var START_CASH = 25e3;
-  var KEY = "arc_ledger_v1";
-  function load2() {
-    try {
-      return JSON.parse(localStorage.getItem(KEY)) || {};
-    } catch (e) {
-      return {};
-    }
-  }
-  var acct = load2();
-  acct.cash = acct.cash == null ? START_CASH : acct.cash;
-  acct.positions = acct.positions || {};
-  acct.orders = acct.orders || [];
-  acct.fills = acct.fills || [];
-  acct.settled = acct.settled || [];
-  function saveLedger() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(acct));
-    } catch (e) {
-    }
-  }
-  function positionFor(sym) {
-    return acct.positions[sym] || null;
-  }
-  function positions() {
-    return Object.values(acct.positions).filter((p) => Math.abs(p.qty) >= MIN_QTY);
-  }
-  function positionsForPlayer(playerId) {
-    return positions().filter((p) => p.playerId === playerId);
-  }
-  function playerSide(playerId) {
-    let net = 0;
-    positionsForPlayer(playerId).forEach((p) => {
-      net += p.qty;
-    });
-    if (net >= MIN_QTY) return "long";
-    if (net <= -MIN_QTY) return "short";
-    return null;
-  }
-  function playerExposure(playerId) {
-    return roundQty(positionsForPlayer(playerId).reduce((n, p) => n + p.qty, 0));
-  }
-  var ACTIONS = {
-    buy: { side: "buy", dir: 1, opens: "long", label: "Buy" },
-    sell: { side: "sell", dir: -1, closes: "long", label: "Sell" },
-    short: { side: "sell", dir: -1, opens: "short", label: "Short" },
-    cover: { side: "buy", dir: 1, closes: "short", label: "Cover" }
-  };
-  function validate({ action, sym, qty, type, limit }) {
-    const a = ACTIONS[action];
-    if (!a) return { ok: false, reason: "Unknown order type" };
-    const q = roundQty(qty);
-    if (!(q >= MIN_QTY)) return { ok: false, reason: `Minimum size is ${MIN_QTY} shares` };
-    if (type === "limit" && !(limit > 0)) return { ok: false, reason: "Enter a limit price" };
-    const { playerId, term } = parseSymbol(sym);
-    if (!termAvailable(playerId, term))
-      return { ok: false, reason: "That contract length is not offered for this player" };
-    const pos = positionFor(sym);
-    const held = pos ? pos.qty : 0;
-    const side = playerSide(playerId);
-    if (a.closes === "long") {
-      if (held < MIN_QTY) return { ok: false, reason: "You have no shares of this contract to sell" };
-      if (q > held + 1e-9) return { ok: false, reason: `You only hold ${held} shares` };
-    }
-    if (a.closes === "short") {
-      if (held > -MIN_QTY) return { ok: false, reason: "You have no short position to cover" };
-      if (q > -held + 1e-9) return { ok: false, reason: `Your short is ${roundQty(-held)} shares` };
-    }
-    if (a.opens === "long" && side === "short")
-      return { ok: false, reason: "You are short this player \u2014 cover that position before going long" };
-    if (a.opens === "short" && side === "long")
-      return { ok: false, reason: "You are long this player \u2014 sell those shares before going short" };
-    if (a.side === "buy" && type === "limit") {
-      const cost = q * limit;
-      if (cost > acct.cash + 1e-9)
-        return { ok: false, reason: `Not enough cash \u2014 that order needs ${cost.toFixed(2)}` };
-    }
-    return { ok: true };
-  }
-  function applyFill(sym, action, qty, px) {
-    const a = ACTIONS[action];
-    const { playerId, term } = parseSymbol(sym);
-    const signed2 = a.dir * qty;
-    const pos = acct.positions[sym] || (acct.positions[sym] = { sym, playerId, term, qty: 0, avg: 0, opened: Date.now(), startSeason: SEASON });
-    const before = pos.qty;
-    const after = roundQty(before + signed2);
-    const cash = -a.dir * qty * px;
-    if (before === 0 || Math.sign(before) === Math.sign(signed2)) {
-      const tot = Math.abs(before) + qty;
-      pos.avg = round2((Math.abs(before) * pos.avg + qty * px) / (tot || 1));
-    } else {
-      const closedQty = Math.min(qty, Math.abs(before));
-      const perShare = before > 0 ? px - pos.avg : pos.avg - px;
-      acct.realized = round2((acct.realized || 0) + perShare * closedQty);
-    }
-    pos.qty = after;
-    acct.cash = round2(acct.cash + cash);
-    acct.fills.push({ ts: Date.now(), sym, action, qty: roundQty(qty), px: round2(px) });
-    if (acct.fills.length > 500) acct.fills.splice(0, acct.fills.length - 500);
-    if (Math.abs(after) < MIN_QTY) delete acct.positions[sym];
-    return pos;
-  }
-  var seq = 1;
-  function placeOrder({ action, sym, qty, type = "market", limit = null, who = "user" }) {
-    const v = validate({ action, sym, qty, type, limit });
-    if (!v.ok) return { ok: false, reason: v.reason };
-    const a = ACTIONS[action];
-    const res = getEngine().submit({ sym, side: a.side, qty: roundQty(qty), type, limit, who });
-    if (res.status === "rejected")
-      return { ok: false, reason: res.reason || "Order rejected" };
-    const order = {
-      id: "ord" + seq++ + "-" + Date.now().toString(36),
-      ts: Date.now(),
-      action,
-      sym,
-      type,
-      limit: limit ? round2(limit) : null,
-      qty: roundQty(qty),
-      filled: res.filled || 0,
-      avg: res.avg || 0,
-      status: res.status,
-      restingId: res.resting ? res.resting.id : null
-    };
-    if (res.filled >= MIN_QTY) applyFill(sym, action, res.filled, res.avg);
-    acct.orders.unshift(order);
-    if (acct.orders.length > 200) acct.orders.length = 200;
-    saveLedger();
-    return { ok: true, order, fills: res.fills || [] };
-  }
-  function workingOrders() {
-    return acct.orders.filter((o) => o.status === "resting" || o.status === "partial");
-  }
-  function cancelOrder(id) {
-    const o = acct.orders.find((x) => x.id === id);
-    if (!o) return false;
-    if (o.restingId) getEngine().cancel(o.sym, o.restingId);
-    o.status = "cancelled";
-    saveLedger();
-    return true;
-  }
-  function sweepResting() {
-    let touched = false;
-    workingOrders().forEach((o) => {
-      const remaining = roundQty(o.qty - o.filled);
-      if (remaining < MIN_QTY) {
-        o.status = "filled";
-        return;
-      }
-      const a = ACTIONS[o.action];
-      const q = getEngine().quote(o.sym);
-      if (!q) return;
-      const px = a.side === "buy" ? q.ask != null ? q.ask : q.mid : q.bid != null ? q.bid : q.mid;
-      const hits = a.side === "buy" ? px <= o.limit + 1e-9 : px >= o.limit - 1e-9;
-      if (!hits) return;
-      const v = validate({ action: o.action, sym: o.sym, qty: remaining, type: "market" });
-      if (!v.ok) {
-        o.status = "cancelled";
-        o.reason = v.reason;
-        touched = true;
-        return;
-      }
-      const res = getEngine().submit({ sym: o.sym, side: a.side, qty: remaining, type: "market", who: "user" });
-      if (res.filled >= MIN_QTY) {
-        applyFill(o.sym, o.action, res.filled, res.avg);
-        o.filled = roundQty(o.filled + res.filled);
-        o.avg = res.avg;
-        o.status = o.filled >= o.qty - 1e-9 ? "filled" : "partial";
-        touched = true;
-      }
-    });
-    if (touched) saveLedger();
-    return touched;
-  }
-  function markPrice(sym) {
-    const q = getEngine().quote(sym);
-    return q ? q.last != null ? q.last : q.mid : 0;
-  }
-  function positionRows() {
-    return positions().map((p) => {
-      const px = markPrice(p.sym);
-      const value = round2(p.qty * px);
-      const cost = round2(p.qty * p.avg);
-      return {
-        ...p,
-        px,
-        value,
-        cost,
-        side: p.qty < 0 ? "short" : "long",
-        pl: round2(value - cost),
-        plPct: cost ? round2((value - cost) / Math.abs(cost) * 100) : 0
-      };
-    });
-  }
-  function accountSummary() {
-    const rows2 = positionRows();
-    const long = rows2.filter((r) => r.qty > 0).reduce((n, r) => n + r.value, 0);
-    const short = rows2.filter((r) => r.qty < 0).reduce((n, r) => n + r.value, 0);
-    const unrealized = rows2.reduce((n, r) => n + r.pl, 0);
-    return {
-      cash: round2(acct.cash),
-      rows: rows2,
-      longValue: round2(long),
-      shortValue: round2(short),
-      equity: round2(acct.cash + long + short),
-      unrealized: round2(unrealized),
-      realized: round2(acct.realized || 0)
-    };
-  }
-  function settlePositions(sym, settleValue, reason) {
-    const pos = positionFor(sym);
-    if (!pos) return null;
-    const perShare = pos.qty > 0 ? settleValue - pos.avg : pos.avg - settleValue;
-    const pl = round2(perShare * Math.abs(pos.qty));
-    acct.cash = round2(acct.cash + pos.qty * settleValue);
-    acct.realized = round2((acct.realized || 0) + pl);
-    acct.settled.unshift({
-      ts: Date.now(),
-      sym,
-      qty: pos.qty,
-      avg: pos.avg,
-      settleValue: round2(settleValue),
-      pl,
-      reason
-    });
-    delete acct.positions[sym];
-    acct.orders.forEach((o) => {
-      if (o.sym === sym && (o.status === "resting" || o.status === "partial")) o.status = "void";
-    });
-    saveLedger();
-    return { sym, pl, reason };
-  }
-  function resetLedger() {
-    acct.cash = START_CASH;
-    acct.positions = {};
-    acct.orders = [];
-    acct.fills = [];
-    acct.settled = [];
-    acct.realized = 0;
-    saveLedger();
-  }
 
   // js/markets/projections.js
   var projections_exports = {};
@@ -10623,17 +10856,39 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     action: "buy",
     type: "market",
     qty: 1,
-    limit: null
+    limit: null,
+    open: false,
+    review: false
   };
   function openTicket(playerId, term) {
     ticket.playerId = playerId;
     ticket.term = term || DEFAULT_TERM;
-    const side = playerSide(playerId);
-    ticket.action = side === "short" ? "cover" : "buy";
+    ticket.action = playerSide(playerId) === "short" ? "cover" : "buy";
     ticket.type = "market";
     ticket.qty = 1;
     ticket.limit = null;
-    return ticketHTML();
+    ticket.open = false;
+    ticket.review = false;
+    return "";
+  }
+  function beginTrade(playerId, intent, term) {
+    const side = playerSide(playerId);
+    if (ticket.playerId !== playerId) openTicket(playerId, term);
+    if (term) ticket.term = term;
+    ticket.action = intent === "sell" ? side === "short" ? "cover" : "sell" : side === "short" ? "cover" : "buy";
+    ticket.open = true;
+    ticket.review = false;
+    ticket.qty = 1;
+    if (window.mkRefreshPlayer) window.mkRefreshPlayer(playerId);
+  }
+  function closeTrade() {
+    ticket.open = false;
+    ticket.review = false;
+    if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
+  }
+  function toggleReview(on) {
+    ticket.review = !!on;
+    repaintTicket();
   }
   function setTicket(field, value) {
     if (field === "qty") ticket.qty = Math.max(0, parseFloat(value) || 0);
@@ -10670,6 +10925,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const a = ACTIONS[o.action];
     toast3(o.status === "resting" ? `${a.label} order resting at ${money(o.limit)}` : `${a.label} ${o.filled} @ ${money(o.avg)}`);
     ticket.qty = 1;
+    ticket.open = false;
+    ticket.review = false;
     if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
     return res;
   }
@@ -10678,37 +10935,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (window.mkToast) window.mkToast("Order cancelled");
     if (window.mkRefreshPlayer) window.mkRefreshPlayer(ticket.playerId);
   }
-  var ACTION_ORDER = ["buy", "sell", "short", "cover"];
+  function padActions() {
+    const side = playerSide(ticket.playerId);
+    if (ticket.action === "sell" || ticket.action === "cover") {
+      return side === "short" ? ["cover"] : ["sell"];
+    }
+    return side === "long" ? ["buy"] : side === "short" ? ["cover"] : ["buy", "short"];
+  }
   function ticketHTML() {
+    if (!ticket.open) return "";
     const p = BY_ID[ticket.playerId];
     if (!p) return "";
     const sym = symbolFor(ticket.playerId, ticket.term);
     const q = quoteStats(ticket.playerId, ticket.term);
     const pos = positionFor(sym);
-    const side = playerSide(ticket.playerId);
+    const a = ACTIONS[ticket.action];
     const acctSum = accountSummary();
-    const terms = termsFor(ticket.playerId);
-    const termRow = `<div class="tk-terms">${terms.map((t) => `
-    <div class="tk-term${t.key === ticket.term ? " on" : ""}" onclick="mkTicketSet('term','${t.key}')">
-      <b>${t.short}</b><span>${esc2(t.label)}</span></div>`).join("")}
-    ${!isTop100(ticket.playerId) ? `<div class="tk-term off" title="Top 100 only">
-      <b>5Y</b><span>Top 100</span></div>` : ""}
-  </div>`;
-    const probe = (a) => validate({
-      action: a,
-      sym,
-      qty: Math.max(ticket.qty, MIN_QTY),
-      type: ticket.type,
-      limit: ticket.limit
-    });
-    const actions = ACTION_ORDER.map((a) => {
-      const v = probe(a);
-      const on = a === ticket.action;
-      return `<div class="tk-act ${a}${on ? " on" : ""}${v.ok ? "" : " off"}"
-      ${v.ok ? `onclick="mkTicketSet('action','${a}')"` : `onclick="mkToast('${esc2(v.reason)}')"`}
-      >${ACTIONS[a].label}</div>`;
-    }).join("");
-    const est = ticket.type === "limit" && ticket.limit ? ticket.limit : ACTIONS[ticket.action].side === "buy" ? q.ask || q.price : q.bid || q.price;
+    const buying = a.side === "buy";
+    const est = ticket.type === "limit" && ticket.limit ? ticket.limit : buying ? q.ask || q.price : q.bid || q.price;
     const cost = (ticket.qty || 0) * (est || 0);
     const check = validate({
       action: ticket.action,
@@ -10717,41 +10961,63 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       type: ticket.type,
       limit: ticket.limit
     });
-    const posLine = pos ? `<div class="tk-pos ${pos.qty < 0 ? "short" : "long"}">
-      ${pos.qty < 0 ? "SHORT" : "LONG"} ${Math.abs(pos.qty)} shares @ ${money(pos.avg)}</div>` : "";
-    const hedgeNote = side ? `<div class="tk-note">You are <b>${side}</b> this player. Positions in the
-      opposite direction are blocked across every contract length until this one is closed.</div>` : "";
-    const working = workingOrders().filter((o) => o.sym === sym);
-    const workRows = working.length ? `<div class="tk-work">
-    <div class="tk-work-h">WORKING ORDERS</div>
-    ${working.map((o) => `<div class="tk-work-r">
-      <span>${ACTIONS[o.action].label} ${o.qty}${o.filled ? ` (${o.filled} filled)` : ""} @ ${money(o.limit)}</span>
-      <span class="x" onclick="mkCancelOrder('${o.id}')">Cancel</span></div>`).join("")}
-  </div>` : "";
+    const acts = padActions();
+    const actionRow = acts.length > 1 ? `<div class="tk-acts">${acts.map((k) => `<div class="tk-act ${k}${k === ticket.action ? " on" : ""}"
+      onclick="mkTicketSet('action','${k}')">${ACTIONS[k].label}</div>`).join("")}</div>` : "";
+    const terms = termsFor(ticket.playerId);
+    const termRow = `<div class="tk-terms">${terms.map((t) => `
+    <div class="tk-term${t.key === ticket.term ? " on" : ""}" onclick="mkTicketSet('term','${t.key}')">
+      <b>${t.short}</b><span>${esc2(t.label)}</span></div>`).join("")}
+    ${!isTop100(ticket.playerId) ? `<div class="tk-term off" title="Five-year contracts are Top 100 only">
+      <b>5Y</b><span>Top 100</span></div>` : ""}
+  </div>`;
+    if (ticket.review) {
+      return `<div class="tk">
+      <div class="tk-h"><span>REVIEW ORDER</span>
+        <span class="tk-x" onclick="mkReview(0)">Edit</span></div>
+      <div class="tk-rev">
+        <div><span>Action</span><b>${a.label}</b></div>
+        <div><span>Contract</span><b>${esc2(p.name)} \xB7 ${esc2((TERM_BY_KEY[ticket.term] || {}).short || "")}</b></div>
+        <div><span>Order type</span><b>${ticket.type === "limit" ? "Limit" : "Market"}</b></div>
+        <div><span>Quantity</span><b>${ticket.qty} ${ticket.qty === 1 ? "share" : "shares"}</b></div>
+        <div><span>${ticket.type === "limit" ? "Limit price" : "Est. price"}</span><b>${money(est || 0)}</b></div>
+        <div class="tot"><span>${buying ? "Estimated cost" : "Estimated proceeds"}</span><b>${money(cost)}</b></div>
+      </div>
+      <div class="tk-go ${check.ok ? "" : "off"}"
+        onclick="${check.ok ? "mkSubmitTicket()" : `mkToast('${esc2(check.reason)}')`}">
+        Place ${a.label.toLowerCase()} order</div>
+      ${check.ok ? "" : `<div class="tk-err">${esc2(check.reason)}</div>`}
+      <div class="tk-cancel" onclick="mkCloseTrade()">Cancel</div>
+    </div>`;
+    }
     return `
     <div class="tk">
       <div class="tk-h">
-        <span>TRADE</span>
-        <span class="tk-cash">Cash ${money(acctSum.cash)}</span>
+        <span>${a.label.toUpperCase()} ${esc2(p.short || p.name)}</span>
+        <span class="tk-x" onclick="mkCloseTrade()">&#10005;</span>
       </div>
       ${termRow}
-      ${posLine}
-      <div class="tk-acts">${actions}</div>
+      ${pos ? `<div class="tk-pos ${pos.qty < 0 ? "short" : "long"}">
+        ${pos.qty < 0 ? "SHORT" : "LONG"} ${Math.abs(pos.qty)} shares @ ${money(pos.avg)}</div>` : ""}
+      ${actionRow}
       <div class="tk-seg">
-        <div class="sg${ticket.type === "market" ? " on" : ""}" onclick="mkTicketSet('type','market')">Market</div>
-        <div class="sg${ticket.type === "limit" ? " on" : ""}" onclick="mkTicketSet('type','limit')">Limit</div>
+        <div class="sg${ticket.type === "market" ? " on" : ""}" onclick="mkTicketSet('type','market')">
+          Market ${buying ? "buy" : a.label.toLowerCase()}</div>
+        <div class="sg${ticket.type === "limit" ? " on" : ""}" onclick="mkTicketSet('type','limit')">
+          Limit ${buying ? "buy" : a.label.toLowerCase()}</div>
       </div>
       <div class="tk-field">
-        <label>Shares</label>
+        <label>Quantity <em>fractional shares welcome</em></label>
         <div class="tk-qty">
-          <span class="b" onclick="mkBumpQty(-1)">\u2212</span>
+          <span class="b" onclick="mkBumpQty(-1)">&minus;</span>
           <input type="number" step="0.001" min="0" inputmode="decimal" value="${ticket.qty}"
-            onchange="mkTicketSet('qty',this.value)" oninput="mkTicketSet('qty',this.value)">
+            onchange="mkTicketSet('qty',this.value)">
           <span class="b" onclick="mkBumpQty(1)">+</span>
         </div>
       </div>
       <div class="tk-chips">
-        ${[0.25, 0.5, 1, 5, 10].map((n) => `<span onclick="mkTicketSet('qty',${n})">${n}</span>`).join("")}
+        ${(buying ? [0.25, 0.5, 1, 5, 10] : sellChips(pos)).map((n) => `<span onclick="mkTicketSet('qty',${n})">${n}</span>`).join("")}
+        ${!buying && pos ? `<span onclick="mkTicketSet('qty',${Math.abs(pos.qty)})">All</span>` : ""}
       </div>
       ${ticket.type === "limit" ? `<div class="tk-field">
         <label>Limit price</label>
@@ -10760,17 +11026,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           onchange="mkTicketSet('limit',this.value)">
       </div>` : ""}
       <div class="tk-sum">
-        <span>${ticket.type === "limit" ? "Limit" : "Est. price"}</span><b>${money(est || 0)}</b>
-        <span>${ACTIONS[ticket.action].side === "buy" ? "Est. cost" : "Est. proceeds"}</span><b>${money(cost)}</b>
+        <span>${ticket.type === "limit" ? "Limit price" : "Est. price"}</span><b>${money(est || 0)}</b>
+        <span>${buying ? "Estimated cost" : "Estimated proceeds"}</span><b>${money(cost)}</b>
+        <span>${buying ? "Buying power" : "Cash after"}</span><b>${money(buying ? acctSum.buyingPower : acctSum.cash + cost)}</b>
       </div>
       <div class="tk-go ${check.ok ? "" : "off"}"
-        onclick="${check.ok ? "mkSubmitTicket()" : `mkToast('${esc2(check.reason)}')`}">
-        ${ACTIONS[ticket.action].label} ${ticket.qty || 0} ${ticket.qty === 1 ? "share" : "shares"}
-      </div>
+        onclick="${check.ok ? "mkReview(1)" : `mkToast('${esc2(check.reason)}')`}">Review order</div>
       ${check.ok ? "" : `<div class="tk-err">${esc2(check.reason)}</div>`}
-      ${hedgeNote}
-      ${workRows}
     </div>`;
+  }
+  function sellChips(pos) {
+    const held = pos ? Math.abs(pos.qty) : 1;
+    return [0.25, 0.5, 1, Math.round(held * 0.5 * 1e3) / 1e3].filter((n, i, a) => n > 0 && n <= held && a.indexOf(n) === i);
   }
   function marketInfoHTML(playerId, term) {
     const p = BY_ID[playerId];
@@ -10991,6 +11258,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function mkToggleWatch(id, el) {
     const on = toggleWatch(id);
     if (el) el.classList.toggle("on", on);
+    if (openId === id) mkRefreshPlayer(id);
     mkToast(on ? "Added to watchlist" : "Removed from watchlist");
   }
   function openSheet(title, html) {
@@ -11006,7 +11274,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!p) return;
     openId = id;
     openTicket(id, ticket.playerId === id ? ticket.term : DEFAULT_TERM);
-    openSheet(esc2(p.name), playerSheetHTML(p));
+    openSheet("", playerSheetHTML(p));
   }
   function mkRefreshPlayer(id) {
     if (!openId || id && id !== openId) return;
@@ -11021,39 +11289,58 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const d = dirClass(q.dayPct);
     const t = TERM_BY_KEY[term] || TERM_BY_KEY[DEFAULT_TERM];
     const pos = positionFor(symbolFor(p.id, term));
+    const side = playerSide(p.id);
+    const watched = isWatched(p.id);
     return `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div class="pg-head">
       ${face(p)}
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;color:var(--mk-ink-3);font-weight:700">
-          ${esc2(p.tm)} &middot; ${esc2(p.posRank)} &middot; ${esc2(t.short)}</div>
-        <div style="font-size:24px;font-weight:800;margin-top:3px">${money(q.price)}</div>
-        <div class="${d}" style="font-size:12.5px;font-weight:700;margin-top:2px">
-          ${tri(q.dayPct)} ${money(q.dayChange)} (${pctText(Math.abs(q.dayPct))}) today</div>
+      <div class="pg-id">
+        <div class="pg-nm">
+          <span>${esc2(p.name)}</span>
+          <span class="pg-star${watched ? " on" : ""}" role="button"
+            aria-label="${watched ? "Remove from watchlist" : "Add to watchlist"}"
+            aria-pressed="${watched}" onclick="mkToggleWatch('${p.id}')">${watched ? ICON.starFill : ICON.star}</span>
+        </div>
+        <div class="pg-sub">${esc2(p.posRank)} &middot; ${esc2(p.tm)}</div>
       </div>
-      <div class="mk-live"><span class="dot"></span>24/7</div>
     </div>
 
-    ${pos ? `<div class="mk-settle" style="margin-bottom:8px">${ICON.bag}<span>You are
-      <b>${pos.qty < 0 ? "short" : "long"} ${Math.abs(pos.qty)} shares</b> at an average of
-      <b>${money(pos.avg)}</b>.</span></div>` : ""}
+    <div class="pg-px">
+      <div class="v">${money(q.price)}</div>
+      <div class="c ${d}">${tri(q.dayPct)} ${money(q.dayChange)}
+        (${pctText(Math.abs(q.dayPct))}) <em>today</em></div>
+    </div>
 
-    <div id="mkCharts">${playerCharts(p, pxRange, term)}</div>
+    ${pos ? `<div class="pg-pos ${pos.qty < 0 ? "short" : "long"}">
+      <span>${pos.qty < 0 ? "Short" : "Holding"} <b>${Math.abs(pos.qty)}</b> shares
+        &middot; avg ${money(pos.avg)}</span>
+      <b class="${dirClass(pos.qty * q.price - pos.qty * pos.avg)}">${signed(
+      Math.round((pos.qty * q.price - pos.qty * pos.avg) * 100) / 100
+    )}</b>
+    </div>` : ""}
 
-    <h4>MARKET</h4>
-    ${marketInfoHTML(p.id, term)}
+    <div class="pg-actions">
+      <div class="pg-buy" onclick="mkBeginTrade('${p.id}','buy')">
+        ${side === "short" ? "Cover" : "Buy"} ${esc2(p.short || p.name)}</div>
+      ${pos ? `<div class="pg-sell" onclick="mkBeginTrade('${p.id}','sell')">
+        ${side === "short" ? "Add to short" : "Sell"}</div>` : ""}
+    </div>
 
     <div id="mkTicket">${ticketHTML()}</div>
 
+    <div id="mkCharts">${playerCharts(p, pxRange, term)}</div>
+
+    <h4>MARKET STATISTICS</h4>
+    ${marketInfoHTML(p.id, term)}
+
+    <h4>CONTRACT</h4>
     <div class="mk-settle">${ICON.info}<span>${esc2(t.desc)} Settles at
       <b>${POINTS_PER_DOLLAR} points per $1</b>, immediately on expiry or if the player retires.
       NFL trades, releases and signings do not affect the contract.</span></div>
 
-    <div style="display:flex;gap:9px;margin-top:14px">
-      <div class="mk-pill${isWatched(p.id) ? " on" : ""}" style="flex:1;justify-content:center"
-        onclick="mkToggleWatch('${p.id}');mkRefreshPlayer('${p.id}')">${ICON.star} Watch</div>
-      <div class="mk-pill" style="flex:1;justify-content:center;background:var(--mk-blue);
-        border-color:var(--mk-blue);color:#fff" onclick="mkAbout()">${ICON.info} How this works</div>
+    <div style="margin-top:12px">
+      <div class="mk-pill" style="justify-content:center" onclick="mkAbout()">
+        ${ICON.info} How this works</div>
     </div>`;
   }
   function mkRange(id, key) {
@@ -11107,6 +11394,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function mkCancelOrder(id) {
     cancelWorking(id);
+  }
+  function mkBeginTrade(id, intent) {
+    beginTrade(id, intent);
+  }
+  function mkCloseTrade() {
+    closeTrade();
+  }
+  function mkReview(on) {
+    toggleReview(+on === 1);
   }
   function mkSetEngine(kind) {
     setEngine(kind);

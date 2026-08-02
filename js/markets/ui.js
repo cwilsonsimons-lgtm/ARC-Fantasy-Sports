@@ -22,6 +22,8 @@ export const ICON = {
   drop:    svg('<path d="M4 7 10 13l4-4 6 6"/><path d="M20 15v-4h-4"/>'),
   rocket:  svg('<path d="M5 15c-1 2-1 5-1 5s3 0 5-1"/><path d="M9 13a12 12 0 0 1 9-9 12 12 0 0 1-9 9Z"/><path d="m9 13 2 2"/>'),
   star:    svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+  starFill: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"'
+    + ' stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
   trend:   svg('<path d="M3 17 9 11l4 4 8-8"/><path d="M17 7h4v4"/>'),
   movers:  svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20v-3"/>'),
   sliders: svg('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),

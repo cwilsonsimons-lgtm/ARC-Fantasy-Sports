@@ -24,10 +24,13 @@ function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } ca
 
 export const acct = load();
 acct.cash = acct.cash == null ? START_CASH : acct.cash;
+acct.deposits = acct.deposits == null ? START_CASH : acct.deposits;  // basis for total return
 acct.positions = acct.positions || {};   // sym -> {sym, qty, avg, opened, term, playerId}
 acct.orders = acct.orders || [];         // working + historical orders
 acct.fills = acct.fills || [];           // the user's own tape
-acct.settled = acct.settled || [];       // closed-out contracts
+acct.closed = acct.closed || [];         // positions closed by trading out of them
+acct.settled = acct.settled || [];       // contracts closed by expiry or retirement
+acct.realized = acct.realized || 0;
 
 export function saveLedger() {
   try { localStorage.setItem(KEY, JSON.stringify(acct)); } catch (e) { /* quota */ }
@@ -115,19 +118,33 @@ function applyFill(sym, action, qty, px) {
   const cash = -a.dir * qty * px;             // buying spends, selling receives
 
   // average cost only resets when exposure grows in the direction already held
+  let bookedPl = 0;
   if (before === 0 || Math.sign(before) === Math.sign(signed)) {
     const tot = Math.abs(before) + qty;
     pos.avg = round2((Math.abs(before) * pos.avg + qty * px) / (tot || 1));
   } else {
     const closedQty = Math.min(qty, Math.abs(before));
     const perShare = before > 0 ? px - pos.avg : pos.avg - px;
-    acct.realized = round2((acct.realized || 0) + perShare * closedQty);
+    bookedPl = round2(perShare * closedQty);
+    acct.realized = round2((acct.realized || 0) + bookedPl);
+    pos.realized = round2((pos.realized || 0) + bookedPl);
   }
   pos.qty = after;
   acct.cash = round2(acct.cash + cash);
-  acct.fills.push({ ts: Date.now(), sym, action, qty: roundQty(qty), px: round2(px) });
+  acct.fills.push({ ts: Date.now(), sym, action, qty: roundQty(qty), px: round2(px), pl: bookedPl });
   if (acct.fills.length > 500) acct.fills.splice(0, acct.fills.length - 500);
-  if (Math.abs(after) < MIN_QTY) delete acct.positions[sym];
+  // A position traded flat becomes a closed position, kept for the Portfolio's
+  // history — realized P&L would otherwise only exist as an account total.
+  if (Math.abs(after) < MIN_QTY) {
+    acct.closed.unshift({
+      ts: Date.now(), sym, playerId: pos.playerId, term: pos.term,
+      opened: pos.opened, avg: pos.avg, exit: round2(px),
+      qty: roundQty(Math.abs(before)), side: before > 0 ? 'long' : 'short',
+      pl: round2(pos.realized || bookedPl), reason: 'closed',
+    });
+    if (acct.closed.length > 200) acct.closed.length = 200;
+    delete acct.positions[sym];
+  }
   return pos;
 }
 
@@ -213,22 +230,55 @@ export function positionRows() {
     const px = markPrice(p.sym);
     const value = round2(p.qty * px);
     const cost = round2(p.qty * p.avg);
+    const { playerId, term } = parseSymbol(p.sym);
+    const q = statsFn ? statsFn(playerId, term) : null;
+    // a position's day move is its size times the contract's day move
+    const dayPl = q ? round2(p.qty * q.dayChange) : 0;
     return { ...p, px, value, cost, side: p.qty < 0 ? 'short' : 'long',
+             dayPl, dayPct: q ? q.dayPct : 0,
              pl: round2(value - cost),
              plPct: cost ? round2(((value - cost) / Math.abs(cost)) * 100) : 0 };
   });
 }
+// quotes.js imports the ledger, so it is injected rather than imported back.
+let statsFn = null;
+export function bindQuoteStats(fn) { statsFn = fn; }
+/**
+ * Everything the Portfolio screen displays, derived from real positions at the
+ * current market price. Recomputed on every read, so it tracks the tape.
+ */
 export function accountSummary() {
   const rows = positionRows();
   const long = rows.filter(r => r.qty > 0).reduce((n, r) => n + r.value, 0);
   const short = rows.filter(r => r.qty < 0).reduce((n, r) => n + r.value, 0);
   const unrealized = rows.reduce((n, r) => n + r.pl, 0);
+  const cost = rows.reduce((n, r) => n + Math.abs(r.cost), 0);
+  const equity = acct.cash + long + short;
+  const deposits = acct.deposits || START_CASH;
+  const dayChange = rows.reduce((n, r) => n + r.dayPl, 0);
+  // Shorts tie up collateral rather than freeing cash, so buying power is cash
+  // less the value of what would have to be bought back.
+  const buyingPower = round2(Math.max(0, acct.cash + short));
   return {
     cash: round2(acct.cash), rows,
     longValue: round2(long), shortValue: round2(short),
-    equity: round2(acct.cash + long + short),
+    costBasis: round2(cost),
+    equity: round2(equity),
+    buyingPower,
     unrealized: round2(unrealized), realized: round2(acct.realized || 0),
+    totalReturn: round2(equity - deposits),
+    totalReturnPct: deposits ? round2(((equity - deposits) / deposits) * 100) : 0,
+    dayChange: round2(dayChange),
+    dayPct: equity - dayChange ? round2((dayChange / (equity - dayChange)) * 100) : 0,
+    deposits: round2(deposits),
+    openCount: rows.length,
+    closed: acct.closed, settled: acct.settled,
   };
+}
+/** Open + closed, newest first — the Portfolio's history tab. */
+export function closedRows() {
+  return acct.closed.concat(acct.settled.map(s => ({ ...s, reason: s.reason || 'settled' })))
+    .sort((a, b) => b.ts - a.ts);
 }
 
 // ---------------------------------------------------------------- settlement
@@ -252,8 +302,10 @@ export function settlePositions(sym, settleValue, reason) {
   return { sym, pl, reason };
 }
 
+/** Explicit user/administrator reset — the only thing that clears holdings. */
 export function resetLedger() {
-  acct.cash = START_CASH; acct.positions = {}; acct.orders = []; acct.fills = [];
-  acct.settled = []; acct.realized = 0;
+  acct.cash = START_CASH; acct.deposits = START_CASH;
+  acct.positions = {}; acct.orders = []; acct.fills = [];
+  acct.closed = []; acct.settled = []; acct.realized = 0;
   saveLedger();
 }

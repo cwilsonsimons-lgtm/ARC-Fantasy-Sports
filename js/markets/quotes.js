@@ -8,6 +8,7 @@
 // Nothing here decides a price either — it only reads the tape.
 import { getEngine, round2 } from './engine.js';
 import { DEFAULT_TERM, parseSymbol, symbolFor } from './contracts.js';
+import { bindQuoteStats } from './ledger.js';
 
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 
@@ -110,6 +111,10 @@ export function quoteStats(playerId, term) {
     engine: eng.kind,
   };
 }
+
+// The ledger values positions at the current market, but quotes.js imports the
+// ledger, so the dependency is inverted here rather than made circular.
+bindQuoteStats(quoteStats);
 
 /** Market-wide session numbers for the strip at the top of the Market screen. */
 export function marketTotals() {
