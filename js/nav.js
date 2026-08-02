@@ -8,6 +8,9 @@ import { currentViewName, renderTeam } from './team.js';
 export function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===name));
   document.querySelector('.shift').classList.toggle('stage-on', name==='matchup');
+  // The hub sits above league scope: `.leaguebar` and `.tabs` are league chrome
+  // and must not render there.
+  document.body.classList.toggle('hub', name==='home');
 }
 // Before the draft, the first tab is Draft instead of Matchup. Standings reads "League".
 export function preDraft(){return !draftDone();}
@@ -39,7 +42,7 @@ export function showLeagueView(){
 }
 
 // VS gesture: double-tap OR long-press -> all matchups (re-bound each render)
-export function goLeague(){showLeagueView();toast('All league matchups — tap any to open');}
+export function goLeague(){showLeagueView();}
 export function bindVs(el){
   if(!el)return;
   el.addEventListener('dblclick',goLeague);

@@ -103,7 +103,7 @@ export function renderPlayer(key){
   const nickBanner=nick?`<div class="pc-nick">“${nick}”</div>`:'';
   const mine=isMyPlayer(key);
   const editHint=mine?`<div class="pc-edit" onclick="openTeam('${MY_TEAM}')">
-      ${ICON_CAM}<div class="t"><b>CUSTOMIZE THIS CARD</b><br>${photo?'Update':'Add'} the PNG photo${nick?'':' & a nickname'} on your Team screen</div><div style="color:var(--ink-3)">›</div></div>`:'';
+      ${ICON_CAM}<div class="t"></div><div style="color:var(--ink-3)">›</div></div>`:'';
   const isFA=!mine&&faOpen()&&freeAgents('ALL').some(q=>pKeyOf(q)===key||q.n===name);
   const canTake=!mine&&canDraftNow(p.id);
   const dropBtn=mine?`<div class="pc-drop" onclick="confirmDrop('${esc(key)}')">Drop ${last} from roster</div>`

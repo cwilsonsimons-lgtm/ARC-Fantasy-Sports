@@ -1,7 +1,11 @@
 import { S } from './state.js';
 import { T } from './data/teams.js';
+import { chatUnread } from './chat.js';
+import { activeLeague } from './leagues.js';
 import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
+import { unreadNotifs } from './notifs.js';
+import { escHtml } from './panel.js';
 import { TABS } from './nav.js';
 import { isCommish, renderSettings } from './settings.js';
 import { processImage, saveStore, store } from './store.js';
@@ -16,7 +20,10 @@ export function pctColor(mine,theirs){return mine>theirs?'var(--green)':mine<the
 // full-bleed matchup stage: league chrome + MATCHUP/TEAM/STANDINGS nav + battling logos + scores, all over the backdrop
 export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
   opts=opts||{};
-  const a=T[aKey],x=T[xKey];
+  // `opts.teams` lets a seeded league draw the same stage from its own team map.
+  // Defaulting to T keeps every existing caller unchanged.
+  const TM=opts.teams||T;
+  const a=TM[aKey],x=TM[xKey];
   const bdrop=backdropFor(aKey,xKey);
   const bg=bdrop?`<div class="ms-bg" style="background-image:url('${bdrop}')"></div>`:`<div class="ms-field"></div>`;
   const hasOwn=!!(store.backdrops&&store.backdrops[gameKey(aKey,xKey)]);
@@ -37,22 +44,30 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
     ${bg}<div class="ms-scrim"></div>
     <div class="sh-glowL"></div><div class="sh-glowR"></div>
     <div class="ms-chrome">
-      <div class="ms-ic" onclick="toast('League messages')" style="position:relative">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
-        <span class="ms-badge">2</span>
+      <div class="ms-chrome-l">
+        ${opts.seeded?'':`<div class="ms-ic" onclick="openChat()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+          ${chatUnread()?`<span class="ms-badge">${chatUnread()}</span>`:''}
+        </div>`}
+        <div class="ms-ic" onclick="openNotifs()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15V10a6 6 0 1 0-12 0v5l-2 3h16Z"/><path d="M10 21h4"/></svg>
+          ${unreadNotifs()?`<span class="ms-badge">${unreadNotifs()}</span>`:''}
+        </div>
       </div>
-      <div class="ms-title" onclick="toast('Switch league')">
+      <div class="ms-title" onclick="goHome()">
         <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
-        <div><div class="nm">City Boys Dynasty <span class="chev">▾</span></div><div class="wk">WEEK ${S.week}</div></div>
+        <div><div class="nm">${escHtml(activeLeague().name)} <span class="chev">▾</span></div><div class="wk">${opts.weekLabel||('WEEK '+S.week)}</div></div>
       </div>
       <div class="ms-ic" onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
     </div>
     <div class="ms-nav">
-      ${TABS().map(t=>t.k==='matchup'
-        ?`<div class="ms-tab on">${t.lb}</div>`
-        :`<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join('')}
+      ${opts.seeded
+        ?['Matchup','Team','League'].map((lb,i)=>`<div class="ms-tab${i===0?' on':''}">${lb}</div>`).join('')
+        :TABS().map(t=>t.k==='matchup'
+          ?`<div class="ms-tab on">${t.lb}</div>`
+          :`<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join('')}
     </div>
-    <div class="ms-tools">${pill}<div style="flex:1"></div>${rm}<div class="sh-cam" onclick="pickGameBackdrop('${aKey}','${xKey}')" title="Change background">${ICON_CAM}</div></div>
+    <div class="ms-tools">${pill}<div style="flex:1"></div>${opts.seeded?'':`${rm}<div class="sh-cam" onclick="pickGameBackdrop('${aKey}','${xKey}')">${ICON_CAM}</div>`}</div>
     <div class="ms-arena">
       <div class="ms-side L">
         ${logo(a)}
@@ -78,7 +93,8 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
 // stadium hero used by All Matchups list + detail view (compact battling-logos card)
 export function stadiumHeroHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
   opts=opts||{};
-  const a=T[aKey],x=T[xKey];
+  const TM=opts.teams||T;
+  const a=TM[aKey],x=TM[xKey];
   const bdrop=backdropFor(aKey,xKey);
   const bg=bdrop
     ? `<div class="sh-bg" style="background-image:url('${bdrop}')"></div><div class="sh-scrim"></div>`

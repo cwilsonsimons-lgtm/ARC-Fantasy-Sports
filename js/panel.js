@@ -224,7 +224,7 @@ export function renderPanel(key){
   } else {
     const lb=RAIL.find(r=>r.k===key).lb;
     p.innerHTML=`<div class="panel-hd"><span class="d"></span>${lb} <span class="wk">· Week ${S.week}</span></div>
-      <div class="empty">The <b style="color:#93A0B0">${lb}</b> panel would load here.<br>Send me the ${lb} data and I'll fill it like Trending.</div>`;
+      <div class="empty">—</div>`;
   }
 }
 // rail

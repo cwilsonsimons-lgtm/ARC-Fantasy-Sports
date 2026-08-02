@@ -8,6 +8,10 @@ export const S = {
   games: [],
   lineupSlots: null,        // filled in by store.js at load, from buildSlots()
   teamBackView: 'matchup',
+  seededBack: null,          // which seeded league a read-only roster came from
+  chatThread: null,          // team key when the chat is filtered to one manager
+  chatBackView: null,
+  notifBackView: null,
   currentPlayerName: null,
   pidx: null,               // player index cache; null means "rebuild on next read"
   trendPos: 'ALL',

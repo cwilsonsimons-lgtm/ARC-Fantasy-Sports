@@ -8,6 +8,7 @@ import { BENCH, IR, LINEUP, SLOTS, SLOT_ORDER, TAXI, buildSlots, saveStore, stor
 import { ICON_STAR, ICON_UP, ICON_X } from './team.js';
 import { escHtml } from './panel.js';
 import { MY_TEAM, T } from './data/teams.js';
+import { NOTIF_TYPES, notifPrefs } from './notifs.js';
 
 // ---- who may change what ----
 // Everyone in the league can read every setting. Only the commissioner can
@@ -242,7 +243,21 @@ export function commishCards(){
     </div>`;
 }
 
-export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
+export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups'],['notifs','Alerts']];
+// Notification preferences are personal, not league policy: they never leave
+// this device and the commissioner has no say in them, so they skip `guard()`.
+export function notifCards(){
+  const p=notifPrefs();
+  return `<div class="set-card">
+    <div class="set-title">Notifications</div>
+    ${NOTIF_TYPES.map(([k,lb])=>`<div class="set-row">
+      <div class="set-lb">${lb}</div>
+      <div class="set-ctls">
+        <div class="set-tg${p[k]?' on':''}" onclick="setNotifPref('${k}',${p[k]?0:1})"><i></i></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
 export function setTabs(){
   return isCommish()?BASE_SET_TABS.concat([['commish','★ Commissioner']]):BASE_SET_TABS;
 }
@@ -271,17 +286,17 @@ export function renderSettings(){
     </div>
     <div class="set-card">
       <div class="set-title">Per-game backgrounds</div>
-      <div class="set-note">Open any matchup — yours, or tap a game in All Matchups — and use the camera on the stadium banner to set a background for just that game.</div>
+      <div class="set-note">${perGame} set.</div>
     </div>`;
   const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),
-    matchups:backdropCards,commish:commishCards()};
+    matchups:backdropCards,notifs:notifCards(),commish:commishCards()};
   const cm=commishTeam();
   const sub=isCommish()
     ? `${ICON_STAR} Commissioner · City Boys Dynasty`
     : `City Boys Dynasty · Commissioner ${escHtml(cm.mgr)}`;
   // Members get the whole of Settings, read-only. Say so once, at the top,
   // rather than leaving them to work it out from greyed-out controls.
-  const banner=isCommish()?'':`
+  const banner=(isCommish()||setTab==='notifs')?'':`
     <div class="set-ro">
       <div class="set-ro-t">${previewAsMember?'Previewing as a league member':'View only'}</div>
       <div class="set-ro-s">${previewAsMember

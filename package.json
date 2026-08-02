@@ -9,7 +9,8 @@
     "build": "node tools/build.mjs",
     "snapshot": "node tools/snapshot.mjs http://127.0.0.1:8080/index.html snapshots",
     "pixel-diff": "node tools/pixel-diff.mjs",
-    "check:markets": "node tools/markets-check.mjs"
+    "check:markets": "node tools/markets-check.mjs",
+    "check:hub": "node tools/hub-check.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

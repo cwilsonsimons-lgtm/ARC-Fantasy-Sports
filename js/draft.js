@@ -6,6 +6,7 @@ import { MY_TEAM } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
 import { invalidateRosters } from './freeagency.js';
 import { renderTabs, showTab, toast } from './nav.js';
+import { notifyDraftClock } from './notifs.js';
 import { currentRail, renderPanel } from './panel.js';
 import { BENCH, IR, LINEUP, TAXI, saveStore, store } from './store.js';
 import { refreshApp } from './team.js';
@@ -58,6 +59,7 @@ export function commitPick(id,opts){
   store.draft.picks.push({id,ts:o.ts||null,ms:o.ms==null?null:o.ms,auto:!!o.auto,react:{}});
   _taken=null;saveStore();
   if(draftDone()){applyDraftToRosters();renderTabs();invalidateRosters();renderPanel(currentRail);}
+  notifyDraftClock();   // the clock moving is the trigger; the generator dedupes
   return true;
 }
 // When the user's turn began, so a submitted pick can be timed for the clutch

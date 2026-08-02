@@ -82,8 +82,8 @@ export function openSwap(i){
   swapIdx=i;const slot=r.slot,cur=r.a;
   const open=[],locked=[];
   BENCH.forEach((br,j)=>{const p=br.a;if(!p||p.fa||!slotAllows(slot,p.pos))return;(isLocked(p)?locked:open).push({p,j});});
-  let body=`<div class="swap-cur">${cur?`Sit <b>${cur.n}</b> · start`:`Fill <b>${slot}</b> ·`} a ${SLOT_ELIG[slot].join('/')} from your bench</div>`;
-  if(!open.length&&!locked.length) body+=`<div class="swap-empty">No eligible bench players for this slot.<br>Open the ☰ menu → <b>Available</b> to add a free agent.</div>`;
+  let body=`<div class="swap-cur">${cur?`<b>${cur.n}</b>`:`<b>${slot}</b>`} · ${SLOT_ELIG[slot].join('/')}</div>`;
+  if(!open.length&&!locked.length) body+=`<div class="swap-empty">—</div>`;
   body+=open.map(({p,j})=>`<div class="swap-row" onclick="doSwap(${i},${j})">
     <div class="swap-pos">${p.pos}</div>
     <div class="swap-nm"><div class="n">${p.n}${p.tag?` <span class="tag">${p.tag}</span>`:''}</div><div class="m">${p.tm}${p.bye?` (${p.bye})`:''} · ${p.g||'—'}</div></div>
@@ -104,8 +104,8 @@ export function openBenchSwap(j){
   swapIdx=null;
   const open=[],locked=[];
   LINEUP.forEach((r,i)=>{if(!slotAllows(r.slot,p.pos))return;(r.a&&isLocked(r.a)?locked:open).push({r,i});});
-  let body=`<div class="swap-cur">Start <b>${p.n}</b> · pick a ${p.pos}-eligible slot</div>`;
-  if(!open.length&&!locked.length) body+=`<div class="swap-empty">No starting slot accepts a ${p.pos}.</div>`;
+  let body=`<div class="swap-cur"><b>${p.n}</b> · ${p.pos}</div>`;
+  if(!open.length&&!locked.length) body+=`<div class="swap-empty">—</div>`;
   body+=open.map(({r,i})=>`<div class="swap-row" onclick="doSwap(${i},${j})">
     <div class="swap-pos">${r.slot}</div>
     <div class="swap-nm"><div class="n">${r.a?r.a.n:'Empty'}</div><div class="m">${r.a?`${r.a.pos} · ${r.a.tm} · sits`:'Open slot'}</div></div>

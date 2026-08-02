@@ -1,0 +1,32 @@
+/* ===== NOTIFICATION CENTER =====
+   The only surface for anything the clock drives. Nothing else in the app
+   carries a waiver banner or a recap ribbon. */
+.nt-hd{display:flex;align-items:center;gap:10px;padding:2px 0 12px;border-bottom:1px solid var(--line-soft)}
+.nt-back{width:30px;height:30px;border-radius:9px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
+.nt-back svg{width:16px;height:16px}
+.nt-title{flex:1;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;
+  text-transform:uppercase;letter-spacing:.4px}
+.nt-clear{flex:none;font-size:10px;font-weight:700;color:var(--violet);cursor:pointer;letter-spacing:.3px}
+
+.nt-list{display:flex;flex-direction:column;gap:8px;padding-top:12px}
+.nt{display:flex;gap:11px;align-items:flex-start;background:var(--card);border:1px solid var(--line-soft);
+  border-radius:14px;padding:11px 12px;cursor:pointer;transition:border-color .15s}
+.nt.un{border-color:rgba(124,92,255,.42);background:linear-gradient(90deg,rgba(124,92,255,.07),var(--card))}
+.nt-ic{flex:none;width:30px;height:30px;border-radius:9px;background:var(--card-2);border:1px solid var(--line);
+  display:grid;place-items:center;color:var(--ink-2)}
+.nt.un .nt-ic{color:var(--violet);border-color:rgba(124,92,255,.4)}
+.nt-ic svg{width:16px;height:16px}
+.nt-b{flex:1;min-width:0}
+.nt-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:.3px;
+  line-height:1.25}
+.nt-s{font-size:11px;color:var(--ink-2);font-weight:500;line-height:1.45;margin-top:3px}
+.nt-m{font-size:9px;color:var(--ink-3);font-weight:600;margin-top:5px}
+
+/* per-type toggles in Settings ▸ Alerts */
+.set-tg{width:42px;height:24px;border-radius:12px;background:var(--card-2);border:1px solid var(--line);
+  position:relative;cursor:pointer;flex:none;transition:background .18s,border-color .18s}
+.set-tg i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--ink-3);
+  transition:transform .18s,background .18s}
+.set-tg.on{background:var(--violet-soft);border-color:rgba(124,92,255,.6)}
+.set-tg.on i{transform:translateX(18px);background:var(--violet)}

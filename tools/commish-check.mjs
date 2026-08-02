@@ -15,6 +15,7 @@ const snap = () => p.evaluate(`(()=>{
   const q = s => [...document.querySelectorAll(s)];
   return {
     tabs: q('.set-tab').map(e => e.textContent.trim()),
+    activeTab: (document.querySelector('.set-tab.on') || {}).textContent || null,
     ctls: q('#settingsBody .set-ctl').length,
     disabled: q('#settingsBody .set-ctl:disabled').length,
     btns: q('#settingsBody .set-btn').map(e => e.textContent.trim()),
@@ -81,7 +82,9 @@ console.log('--- role handed to Barzal ---');
 s = await snap(); console.log(JSON.stringify(s));
 ok('commish stored', (await p.evaluate(`LG().commish`)) === 'barzal');
 ok('tab gone', !s.tabs.some(t=>/Commissioner/.test(t)));
-ok('bounced to General', s.tabs.length === 4);
+// The tab list is not a fixed length — Alerts is a personal tab that everyone
+// sees — so assert the fallback itself rather than counting tabs.
+ok('bounced to General', s.activeTab === 'General');
 ok('every control disabled', s.ctls > 0 && s.disabled === s.ctls);
 ok('banner names the commissioner', /Only Luke/.test(await p.evaluate(`document.querySelector('.set-ro-s').textContent`)));
 ok('no take-it-back button', !(await p.evaluate(`!!document.querySelector('.set-ro-btn')`)));

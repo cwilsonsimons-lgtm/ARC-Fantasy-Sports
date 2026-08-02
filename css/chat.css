@@ -1,0 +1,160 @@
+/* ===== CHAT =====
+   League chat and a one-to-one thread are the same surface; the thread is the
+   league filtered to two people. Trades render inline here rather than in a
+   trade tab, because the negotiation is the conversation. */
+.ch-hd{display:flex;align-items:center;gap:10px;padding:2px 0 12px;border-bottom:1px solid var(--line-soft)}
+.ch-back{width:30px;height:30px;border-radius:9px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
+.ch-back svg{width:16px;height:16px}
+.ch-bd{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px}
+.ch-bd img{width:100%;height:100%;object-fit:cover}
+.ch-id{flex:1;min-width:0}
+.ch-nm{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;
+  text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-sub{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:2px}
+.ch-act{width:32px;height:32px;border-radius:10px;background:var(--violet-soft);border:1px solid rgba(124,92,255,.5);
+  display:grid;place-items:center;cursor:pointer;color:var(--violet);flex:none}
+.ch-act svg{width:17px;height:17px}
+
+/* the compose bar is docked, not sticky: `.scroll` already pads for the bottom
+   nav, and a sticky footer inside it parks halfway up the log */
+.ch-log{display:flex;flex-direction:column;gap:14px;padding:14px 0 74px}
+.cm{display:flex;gap:8px;align-items:flex-start}
+.cm.own{flex-direction:row-reverse}
+.cm-bd{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;cursor:pointer;margin-top:2px}
+.cm-bd img{width:100%;height:100%;object-fit:cover}
+.cm-body{max-width:82%;min-width:0}
+.cm.own .cm-body{margin-left:auto}
+.cm-who{font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.2px}
+.cm-bub{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:9px 12px;
+  font-size:13px;line-height:1.45;color:var(--ink);word-wrap:break-word;-webkit-user-select:text;user-select:text}
+.cm.own .cm-bub{background:var(--violet-soft);border-color:rgba(124,92,255,.4)}
+.cm-ts{font-size:9px;color:var(--ink-3);font-weight:600;margin-top:4px}
+.cm.own .cm-ts{text-align:right}
+.cm-sys{text-align:center;font-size:11px;color:var(--ink-3);font-weight:600;line-height:1.5}
+
+.ch-compose{position:absolute;left:0;right:0;bottom:var(--navh,84px);z-index:40;display:flex;gap:8px;
+  align-items:center;padding:10px 16px 12px;background:rgba(9,12,18,.97);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line)}
+.ch-compose input{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:20px;
+  padding:10px 14px;color:var(--ink);font-family:inherit;font-size:13px;outline:none;
+  -webkit-user-select:text;user-select:text}
+.ch-compose input:focus{border-color:rgba(124,92,255,.55)}
+.ch-send{width:38px;height:38px;border-radius:50%;background:var(--violet);display:grid;place-items:center;
+  cursor:pointer;color:#fff;flex:none}
+.ch-send svg{width:17px;height:17px}
+
+/* ===== TRADE CARD ===== */
+.tc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.tc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tc-st{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:9px;letter-spacing:1px;
+  text-transform:uppercase;padding:3px 8px;border-radius:6px;border:1px solid}
+.tc-st.prop{color:var(--violet);border-color:rgba(124,92,255,.5);background:rgba(124,92,255,.12)}
+.tc-st.cnt{color:#E6A85A;border-color:rgba(230,168,90,.5);background:rgba(230,168,90,.12)}
+.tc-st.acc{color:var(--green);border-color:rgba(140,224,74,.5);background:rgba(140,224,74,.12)}
+.tc-st.dec{color:var(--red);border-color:rgba(240,69,62,.5);background:rgba(240,69,62,.12)}
+.tc-st.exp{color:var(--ink-3);border-color:var(--line)}
+.tc-ts{font-size:9px;color:var(--ink-3);font-weight:600}
+
+.tc-side{padding:7px 0}
+.tc-team{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.tc-bd{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:none;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:10px}
+.tc-bd img{width:100%;height:100%;object-fit:cover}
+.tc-tn{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;
+  letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-dir{font-size:9px;color:var(--ink-3);font-weight:600;flex:none}
+.tc-assets{display:flex;flex-wrap:wrap;gap:6px}
+.tc-none{font-size:11px;color:var(--ink-3)}
+.tc-swap{display:grid;place-items:center;color:var(--ink-3);border-top:1px solid var(--line-soft);
+  border-bottom:1px solid var(--line-soft);padding:6px 0}
+.tc-swap svg{width:15px;height:15px}
+.tc-note{margin-top:10px;background:var(--card-2);border-left:2px solid var(--violet);border-radius:0 8px 8px 0;
+  padding:8px 10px;font-size:12px;line-height:1.45;color:var(--ink-2);-webkit-user-select:text;user-select:text}
+.tc-acts{display:flex;gap:7px;margin-top:11px}
+.tc-btn{flex:1;text-align:center;padding:9px 0;border-radius:10px;background:var(--card-2);border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;letter-spacing:.6px;
+  text-transform:uppercase;cursor:pointer;color:var(--ink-2)}
+.tc-btn.acc{color:var(--green);border-color:rgba(140,224,74,.45)}
+.tc-btn.dec{color:var(--red);border-color:rgba(240,69,62,.45)}
+
+/* ===== ASSET CHIP =====
+   One chip everywhere an asset appears, so a condition written in the builder
+   follows the pick onto the card and into any later counter. */
+.as{display:inline-flex;align-items:center;gap:6px;background:var(--card-2);border:1px solid var(--line);
+  border-radius:9px;padding:4px 8px 4px 5px;max-width:100%;min-width:0}
+.as.on{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.12)}
+.as-face{width:20px;height:20px;border-radius:6px;overflow:hidden;flex:none;background:#0d1118;
+  display:grid;place-items:center;font-size:8px;font-weight:700;color:var(--ink-3)}
+.as-face img{width:100%;height:100%;object-fit:cover}
+.as-ic{width:20px;height:20px;border-radius:6px;flex:none;display:grid;place-items:center;
+  background:rgba(124,92,255,.15);color:var(--violet);font-size:11px}
+.as-nm{font-size:11.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-mt{font-size:9px;color:var(--ink-3);font-weight:700;flex:none}
+.as-cond{font-size:8.5px;font-weight:700;color:#E6A85A;background:rgba(230,168,90,.14);
+  border-radius:5px;padding:2px 5px;white-space:nowrap;flex:none}
+
+/* ===== POLL ===== */
+.pl{margin-top:8px;background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px;text-align:left}
+.pl-q{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;
+  letter-spacing:.4px;margin-bottom:9px;color:var(--ink)}
+.pl-opt{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:6px;
+  cursor:pointer;overflow:hidden}
+.pl-opt:last-child{margin-bottom:0}
+.pl-opt.on{border-color:rgba(124,92,255,.6)}
+.pl-opt i{position:absolute;inset:0 auto 0 0;background:rgba(124,92,255,.18);transition:width .3s}
+.pl-opt.on i{background:rgba(124,92,255,.32)}
+.pl-lb{position:relative;font-size:11.5px;font-weight:600;color:var(--ink);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pl-n{position:relative;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+  font-weight:700;color:var(--ink-2);flex:none}
+
+/* ===== TRADE BUILDER ===== */
+.tb-hd{display:flex;align-items:center;gap:10px;padding:2px 0 12px;border-bottom:1px solid var(--line-soft)}
+.tb-back{width:30px;height:30px;border-radius:9px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
+.tb-back svg{width:16px;height:16px}
+.tb-title{flex:1;min-width:0;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;
+  text-transform:uppercase;letter-spacing:.3px;line-height:1.3}
+.tb-title span{color:var(--ink-3);margin:0 3px}
+.tb-send{flex:none;padding:8px 14px;border-radius:10px;background:var(--violet);color:#fff;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;letter-spacing:.8px;text-transform:uppercase}
+
+.tb-cols{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 0 96px}
+.tb-col{min-width:0}
+.tb-ch{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;
+  letter-spacing:.4px;padding:0 2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-list{display:flex;flex-direction:column;gap:6px}
+.tb-row{display:flex;align-items:center;gap:6px;cursor:pointer;min-width:0}
+.tb-row .as{flex:1;min-width:0}
+.tb-v{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;font-weight:700;
+  color:var(--ink-3);flex:none;width:30px;text-align:right}
+.tb-cond{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
+  background:rgba(230,168,90,.15);color:#E6A85A;font-size:12px;cursor:pointer}
+
+/* the evaluator is docked, so it is readable while assets are still moving */
+.tb-eval{position:absolute;left:0;right:0;bottom:var(--navh,84px);z-index:40;background:rgba(9,12,18,.97);
+  backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:11px 16px 13px}
+.tb-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.tb-bar i{display:block;height:100%;transition:width .25s}
+.tb-eval.green .tb-bar i{background:var(--green)}
+.tb-eval.yellow .tb-bar i{background:#E6A85A}
+.tb-eval.red .tb-bar i{background:var(--red)}
+.tb-eval.flat .tb-bar i{background:var(--ink-3)}
+.tb-nums{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.tb-nums span{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:700;
+  color:var(--ink-2);flex:none}
+.tb-nums b{flex:1;text-align:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+.tb-eval.green .tb-nums b{color:var(--green)}
+.tb-eval.yellow .tb-nums b{color:#E6A85A}
+.tb-eval.red .tb-nums b{color:var(--red)}
+.tb-eval.flat .tb-nums b{color:var(--ink-3)}
+
+/* condition + note sheets */
+.cond-row{display:flex;gap:8px;padding:0 16px 10px}
+.cond-row .set-ctl{flex:1;width:100%}
+.cond-btns{display:flex;gap:8px;padding:4px 16px 18px}

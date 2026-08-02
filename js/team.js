@@ -83,12 +83,18 @@ export function teamHead(t,own){
       <span class="tv-mini-btn" onclick="document.getElementById('logoInput').click()">${ICON_UP} Upload logo</span>
     </div>
     ${fontDropdownHTML(t)}`:'';
-  const ownTag=own?`<div class="tv-own-tag">${ICON_STAR} Your team · tap fields to edit</div>`:'';
+  const ownTag=own?`<div class="tv-own-tag">${ICON_STAR}</div>`:'';
+  // Another manager's team is the one place a one-to-one thread starts. There
+  // is no DM list to find them in — you open the team, then you open the thread.
+  const msgBtn=own?'':`<div class="tv-msg" onclick="openThread('${currentTeamKey}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+    </div>`;
   return `<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
       <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} · ${t.rec} · #${t.rk}</div>${ownTag}</div>
+      ${msgBtn}
     </div>
     ${editRow}
   </div>`;
@@ -142,6 +148,8 @@ export function openTeam(key){
 }
 export function teamBack(){fontMenuOpen=false;
   const v=S.teamBackView;
+  // a roster reached from a seeded league returns to that league, not to yours
+  if(v==='seeded'&&S.seededBack&&window.openLeague){window.openLeague(S.seededBack);return;}
   if(v==='league')showLeagueView();
   else if(v==='standings')showTab('standings');
   else if(v==='detail'){showView('detail');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('scroll').scrollTop=0;}

@@ -1,0 +1,72 @@
+/* ===== HOME HUB =====
+   The root view. It sits above league scope, so the league bar and the league
+   tabs are hidden here — the league's name only appears once you are inside
+   one. */
+body.hub .leaguebar,
+body.hub .tabs{display:none}
+
+.leaguebar .lb-r{display:flex;align-items:center;gap:7px}
+.hubback{width:32px;height:32px;border-radius:10px;background:var(--card);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
+.hubback svg{width:17px;height:17px}
+.leaguebar .msg{width:32px;height:32px}
+.leaguebar .burger{width:32px;height:32px}
+
+.hb-list{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.hb-row{position:relative;display:flex;align-items:center;gap:11px;background:var(--card);
+  border:1px solid var(--line-soft);border-radius:18px;padding:12px 13px;cursor:pointer;
+  transition:border-color .15s,transform .12s;touch-action:pan-y}
+.hb-row:active{transform:scale(.995)}
+.hb-list.hb-reorder .hb-row{transition:transform .16s cubic-bezier(.4,0,.2,1)}
+.hb-row.hb-drag{z-index:5;transition:none;border-color:rgba(124,92,255,.6);
+  box-shadow:0 14px 34px rgba(0,0,0,.55)}
+
+.hb-grip{flex:none;width:20px;height:34px;display:grid;place-items:center;color:var(--ink-3);
+  cursor:grab;touch-action:none}
+.hb-grip svg{width:18px;height:18px}
+.hb-crest{flex:none;width:42px;height:42px;border-radius:13px;border:1.5px solid;overflow:hidden;
+  display:grid;place-items:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:17px}
+.hb-crest img{width:100%;height:100%;object-fit:cover}
+
+.hb-id{flex:1;min-width:0}
+.hb-nm{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;letter-spacing:.3px;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.hb-st{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.hb-score{flex:none;text-align:right;min-width:0;max-width:112px}
+.hb-line{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;
+  color:var(--ink);white-space:nowrap;line-height:1.1}
+.hb-line span{color:var(--ink-3);margin:0 3px;font-weight:600}
+.hb-line.up{color:var(--green)}
+.hb-line.down{color:var(--red)}
+.hb-opp{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-pct{flex:none;width:44px;text-align:center;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:10px;font-weight:700;color:var(--ink-2);background:var(--card-2);border:1px solid var(--line);
+  border-radius:8px;padding:5px 0}
+.hb-pct.up{color:var(--green);border-color:rgba(140,224,74,.35)}
+.hb-pct.down{color:var(--red);border-color:rgba(240,69,62,.35)}
+
+.hb-clock{flex:none;display:flex;gap:5px}
+.hb-cd{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;font-weight:700;
+  color:var(--ink-3);background:var(--card-2);border:1px solid var(--line);border-radius:8px;
+  padding:5px 6px;min-width:30px;text-align:center}
+.hb-cd b{display:block;font-size:13px;color:var(--ink);font-weight:700;line-height:1.1}
+
+/* the stage chrome grew a second icon on the left */
+.ms-chrome-l{display:flex;align-items:center;gap:7px}
+
+/* A seeded league is read-only, so the controls that write to the real league's
+   state — the week stepper and the All Matchups drill-in — do not belong to it. */
+body.seeded .view[data-view="matchup"] .mrow,
+body.seeded #userRewind,
+body.seeded #lbChat,
+body.seeded #mActivity{display:none}
+
+/* message another manager, from their team screen */
+.tv-msg{flex:none;width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.07);
+  border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+.tv-msg svg{width:18px;height:18px}
+.tv-own-tag{display:flex;align-items:center;color:var(--green);margin-top:4px}
+.tv-own-tag svg{width:13px;height:13px}

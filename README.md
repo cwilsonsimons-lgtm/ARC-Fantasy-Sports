@@ -29,6 +29,74 @@ the browser's default serif and the whole app changed character. Every family
 now carries a fallback too, so a miss degrades to a condensed sans rather than
 Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
 
+## The league hub
+
+The app opens on a **hub** (`data-view="home"`), not inside a league. The hub sits
+above league scope, so `.leaguebar` and `.tabs` — which are league chrome — do not
+render there at all; `body.hub` hides them.
+
+`js/leagues.js` holds the four leagues. City Boys Dynasty is the real one: its
+teams are `T`, its roster is the live `LINEUP`, its draft is the draft room, and
+`openLeague('cbd')` puts you exactly where the app used to start. It carries no
+fixed status — `leagueStatus()` derives it from `draftDone()`, so it reads
+pre-draft (and counts down) until you draft, then flips to active with a live
+score.
+
+The other three are **seeded**: their own teams, records and scores, rendered
+read-only. They reuse the same renderers rather than copies of them —
+`stadiumStageHTML` and `stadiumHeroHTML` take an `opts.teams` map that defaults
+to `T`, so one edit still changes every matchup surface at once. Nothing a
+seeded league draws writes back. Two leaks were caught here and are now asserted
+against: assigning `S.week` from a seeded league moved the real league's week,
+and the shared `#userHero`/`#userLineup` containers kept seeded markup after
+returning, because `showTab` only re-renders team and draft.
+
+Rows reorder by drag handle (pointer events, not HTML5 drag — that never fires
+on touch) and persist to `store.leagueOrder`.
+
+## Chat owns trades
+
+There is no DM inbox and no trade tab. `store.chat[leagueId]` is one log; a
+message with a `to` belongs to a one-to-one thread, one without it is league-wide,
+and `renderChat()` draws both. A thread starts from the other manager's team
+screen — that is the only entry point, by design.
+
+Trades render as cards inside that log, with Accept / Counter / Decline. A
+counter reopens the builder pre-filled from the recipient's seat and carries an
+optional note, so the "add a second and a fourth" round-trip stays in the app.
+Accepting posts a system message and auto-attaches a *who won this trade* poll.
+
+**Draft picks are assets**, not an afterthought: they sit in the same columns as
+players and can carry a condition (`{trigger, value, upgradeTo}`) — a 2nd that
+becomes a 1st if the acquiring team reaches the championship. Picks only;
+a conditional player would be a rules bug rather than a feature. A condition is
+stored against the pick in `store.pickConds`, not against the card, so it follows
+the pick everywhere it appears afterward. `assetChipHTML()` is the single chip
+used by the builder and by every trade card, which is what makes that true.
+
+The evaluator strip docks to the bottom of the builder and reads from
+`js/values.js` — a static, local KeepTradeCut-style table, with an ADP curve
+behind it so all ~900 players have a number rather than a hole. A conditional
+pick prices between what it is and what it becomes.
+
+## Notifications
+
+`store.notifs`, a bell in `.leaguebar`, and `data-view="notifs"`. This is the
+*only* surface for anything the clock drives — there are deliberately no waiver
+banners, recap ribbons or dashboard strips anywhere else, and `hub-check`
+asserts their absence on every visible view.
+
+Generators read the device clock and dedupe through a key, which is what keeps
+"one notification per waiver window" honest across reloads. Claims open when the
+previous batch processed rather than 24 hours before the next one — otherwise
+the window is a sliver and the centre reads empty most of the week. Waiver
+timestamps are dated as well as local: a window that opens and closes on the same
+weekday renders as the same instant twice without the date.
+
+Per-type toggles live in Settings ▸ Alerts. They are personal, never league
+policy, so they skip the commissioner `guard()` — which is why the settings tab
+list is no longer a fixed length.
+
 ## Arc Markets
 
 The **Markets** item in the bottom nav opens Arc Markets — a separate section, not
@@ -52,7 +120,8 @@ stable across reloads and screenshots.
 Deliberately *not* faked: the News and History tabs are empty states rather than
 invented headlines about real players.
 
-`npm run check:markets` drives the section through 23 interaction checks. Several
+`npm run check:markets` drives the section through 23 interaction checks. The
+hub, chat and notification surfaces have their own 62 in `npm run check:hub`. Several
 assert *geometry*, not just DOM, because both bugs found here were invisible to
 content assertions: a body state class that collided with the sheet element's own
 class (applying `position:absolute; transform:translateY(102%)` to `<body>` and
