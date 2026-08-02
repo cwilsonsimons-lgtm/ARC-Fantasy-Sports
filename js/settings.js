@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { DRAFT_ORDER, slotAllows } from './clock.js';
-import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.js';
+import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS, curLeague, curLeagueName } from './data/league-config.js';
 import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
 import { preDraft, showView, toast, toggleDrawer } from './nav.js';
@@ -67,12 +67,16 @@ export function setRow(label,ctl){return `<div class="set-row"><div class="set-l
 export function rangeOpts(a,b,fmt){const o=[];for(let i=a;i<=b;i++)o.push([i,fmt?fmt(i):String(i)]);return o;}
 export function leagueCards(){
   const L=LG();
-  const teamOpts=[8,10,12,14,16].map(n=>[n,n+' teams']);
+  // include the league's own size even when it is not a preset (custom sizes
+  // arrive via the Create League wizard)
+  const sizes=[4,6,8,10,12,14,16];
+  if(sizes.indexOf(+L.teams)<0){sizes.push(+L.teams);sizes.sort((a,b)=>a-b);}
+  const teamOpts=sizes.map(n=>[n,n+' teams']);
   const waiverRows=L.waiver==='faab'
     ? setRow('Waiver budget',setNum('faabBudget',L.faabBudget,1,1000))+
       setRow('Minimum bid',setNum('faabMin',L.faabMin,0,Math.max(1,L.faabBudget)))
     : '';
-  const sizeNote=+L.teams!==10
+  const sizeNote=(!curLeague()&&+L.teams!==10)
     ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season — ${L.teams} takes effect at the next draft.</div>`
     : '';
   return `
@@ -178,7 +182,12 @@ export function draftCards(){
       ${setRow('Pause draft at',setSel('draftPauseHour',rangeOpts(0,23,hourLabel),L.draftPauseHour,1))}
       ${setRow('Resume draft at',setSel('draftResumeHour',rangeOpts(0,23,hourLabel),L.draftResumeHour,1))}
     </div>`:'';
-  const orderBtns=isCommish()?`<div class="set-btns" style="margin-top:12px">
+  // a created league has no members yet, so there is no order to arrange
+  const scratch=!!curLeague();
+  const orderBody=scratch
+    ? `<div class="set-note" style="margin-top:8px">The order appears here once all ${L.teams} managers have joined the league.</div>`
+    : draftOrderList();
+  const orderBtns=(!scratch&&isCommish())?`<div class="set-btns" style="margin-top:12px">
       <div class="set-btn" onclick="randomizeDraftOrder()">Randomize order</div>
       <div class="set-btn" onclick="resetDraftOrder()">${ICON_X} Reset to default order</div>
     </div>`:'';
@@ -197,13 +206,13 @@ export function draftCards(){
     </div>
     ${pauseCard}
     <div class="set-card">
-      <div class="set-title">Draft Order <span class="c">${draftOrderKeys().length} TEAMS</span></div>
+      <div class="set-title">Draft Order <span class="c">${scratch?L.teams:draftOrderKeys().length} TEAMS</span></div>
       <div class="set-note">${L.draftType==='snake'
         ? 'Snake reverses this order every round.'
         : L.draftType==='linear'
         ? 'Linear keeps this order the same every round.'
         : 'Nomination order for the auction.'}</div>
-      ${draftOrderList()}
+      ${orderBody}
       ${orderBtns}
     </div>`;
 }
@@ -250,7 +259,11 @@ export function applyRosterShape(){
 export function setSlot(key,val){
   if(!guard()){renderSettings();return;}
   SLOTS()[key]=Math.max(0,Math.min(20,Math.round(+val)||0));
-  saveStore();applyRosterShape();renderSettings();
+  saveStore();
+  // reshaping live rosters only makes sense for the playable league; a created
+  // league has no rosters yet, its slots are just numbers
+  if(!curLeague())applyRosterShape();
+  renderSettings();
 }
 export function slotSel(key,cur,max){
   return `<select class="set-ctl"${ro()} onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0,max),cur)}</select>`;
@@ -285,7 +298,10 @@ export function scoreNum(key){
 }
 export function resetScoring(){
   if(!guard())return;
-  store.scoring=Object.assign({},SCORING_DEFAULTS);saveStore();renderSettings();
+  const c=curLeague();
+  if(c)c.scoring=Object.assign({},SCORING_DEFAULTS);
+  else store.scoring=Object.assign({},SCORING_DEFAULTS);
+  saveStore();renderSettings();
 }
 export function scoringCard(title,rows){
   return `<div class="set-card"><div class="set-title">${title}</div>
@@ -307,6 +323,7 @@ export function scoringCards(){
 // ---- commissioner ----
 export function setCommish(key){
   if(!guard()){renderSettings();return;}
+  if(curLeague())return;   // a created league has nobody to hand the role to yet
   if(!T[key]||key===commishKey()){renderSettings();return;}
   // Handing it to someone else is one-way: the moment it lands you are a
   // member, and members cannot set the commissioner. Say so before it happens.
@@ -324,20 +341,27 @@ function applyCommish(key){
   if(!ownsCommish())setTab='general';
   saveStore();renderSettings();
   toast(key===MY_TEAM?'You are the commissioner'
-    :`${T[key].mgr} is now the commissioner of City Boys Dynasty`);
+    :`${T[key].mgr} is now the commissioner of ${curLeagueName()}`);
 }
 // Deliberately thin for now - the tab exists, is commissioner-only, and holds
 // the two controls that have to live somewhere. The rest is still to be spec'd.
 export function commishCards(){
   const opts=Object.keys(T).map(k=>[k,`${T[k].mgr} · ${T[k].n}`]);
-  return `
+  // In a created league you are the only member, so the role cannot move yet.
+  const roleCard=curLeague()?`
+    <div class="set-card">
+      <div class="set-title">Role</div>
+      <div class="set-note">You created ${escHtml(curLeagueName())}, so the commissioner role is yours.
+        It can be handed over once other managers join.</div>
+    </div>`:`
     <div class="set-card">
       <div class="set-title">Role</div>
       <div class="set-note">The commissioner is the only member who can change league settings.
         Everyone else sees them, read-only.</div>
       ${setRow('Commissioner',
         `<select class="set-ctl" onchange="setCommish(this.value)">${optList(opts,commishKey())}</select>`)}
-    </div>
+    </div>`;
+  const previewCard=curLeague()?'':`
     <div class="set-card">
       <div class="set-title">Preview</div>
       <div class="set-note">See Settings the way the other nine managers see them. This only changes
@@ -345,7 +369,10 @@ export function commishCards(){
       <div class="set-btns">
         <div class="set-btn" onclick="togglePreviewAsMember()">View as a league member</div>
       </div>
-    </div>
+    </div>`;
+  return `
+    ${roleCard}
+    ${previewCard}
     <div class="set-card">
       <div class="set-title">More to come</div>
       <div class="set-note">Commissioner-only tools land here.</div>
@@ -362,7 +389,8 @@ export function setSetTab(k){
   setTab=k;renderSettings();document.getElementById('scroll').scrollTop=0;
 }
 export function renderSettings(){
-  const bl=document.getElementById('setBackLb');if(bl)bl.textContent=preDraft()?'Draft':'Matchup';
+  const bl=document.getElementById('setBackLb');
+  if(bl)bl.textContent=curLeague()?'League Home':(preDraft()?'Draft':'Matchup');
   const has=!!store.globalBackdrop;
   const perGame=Object.keys(store.backdrops||{}).length;
   const preview=has
@@ -386,9 +414,10 @@ export function renderSettings(){
   const bodies={general:leagueCards(),draft:draftCards(),roster:rosterCards(),scoring:scoringCards(),
     matchups:backdropCards,commish:commishCards()};
   const cm=commishTeam();
+  const lgName=escHtml(curLeagueName());
   const sub=isCommish()
-    ? `${ICON_STAR} Commissioner · City Boys Dynasty`
-    : `City Boys Dynasty · Commissioner ${escHtml(cm.mgr)}`;
+    ? `${ICON_STAR} Commissioner · ${lgName}`
+    : `${lgName} · Commissioner ${escHtml(cm.mgr)}`;
   // Members get the whole of Settings, read-only. Say so once, at the top,
   // rather than leaving them to work it out from greyed-out controls.
   const banner=isCommish()?'':`

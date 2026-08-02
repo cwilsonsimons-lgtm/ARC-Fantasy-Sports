@@ -25,7 +25,18 @@ export const LEAGUE_DEFAULTS={
   draftOrder:null          // array of team keys; null = fall back to the league's default order
 };
 
-export function LG(){return store.league;}
+// ---------- MULTI-LEAGUE ----------
+// City Boys Dynasty is the playable league and keeps living at
+// store.league / store.scoring / store.slots. Leagues created in-app are full
+// settings objects (league + scoring + slots) with no season data behind them
+// yet; while one of them is "current", LG()/SC()/SLOTS() serve its objects so
+// the whole Settings page just works against the new league.
+export function allLeagues(){return store.leagues=store.leagues||[];}
+export function findLeague(id){return allLeagues().find(l=>l.id===id)||null;}
+export function curLeague(){return store.curLeagueId?findLeague(store.curLeagueId):null;}
+export function curLeagueName(){const c=curLeague();return c?c.name:'City Boys Dynasty';}
+
+export function LG(){const c=curLeague();return c?c.league:store.league;}
 
 // ---------- SCORING ----------
 export const SCORING_DEFAULTS={
@@ -35,10 +46,15 @@ export const SCORING_DEFAULTS={
   fumLost:-2, fumTD:6, krTD:6, prTD:6
 };
 
-export function SC(){return store.scoring;}
+export function SC(){const c=curLeague();return c?c.scoring:store.scoring;}
 // Ran at top level in the original single-file script. main.js calls it
 // during boot so it keeps its original position in the startup order.
 export function initLeagueConfig(){
 store.league=Object.assign({},LEAGUE_DEFAULTS,store.league||{});
 store.scoring=Object.assign({},SCORING_DEFAULTS,store.scoring||{});
+// created leagues pick up any settings added since they were made
+allLeagues().forEach(l=>{
+  l.league=Object.assign({},LEAGUE_DEFAULTS,l.league||{});
+  l.scoring=Object.assign({},SCORING_DEFAULTS,l.scoring||{});
+});
 }

@@ -26,6 +26,7 @@ import * as m20 from './week.js';
 import * as m21 from './nav.js';
 import * as m22 from './draft-meta.js';
 import * as m23 from './draft-room.js';
+import * as m24 from './leagues.js';
 // Arc Markets: a separate section, imported last so it layers on top.
 import * as mk0 from './markets/data.js';
 import * as mk1 from './markets/ui.js';
@@ -39,7 +40,7 @@ import * as mk5 from './markets/index.js';
 // original file, so re-export the same surface here. Narrowing this to an
 // explicit handler list is the natural next cleanup.
 Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
-  m22, m23,
+  m22, m23, m24,
   mh,
   mk0, mk1, mk2, mk3, mk4, mk5);
 

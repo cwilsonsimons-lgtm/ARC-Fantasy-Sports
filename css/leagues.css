@@ -1,0 +1,100 @@
+/* ===== LEAGUES: selector, create-league wizard, league home ===== */
+
+/* ---- selector ---- */
+.lg-card{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line-soft);
+  border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer}
+.lg-card:active{opacity:.88}
+.lg-crest{flex:none;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px}
+.lg-info{flex:1;min-width:0}
+.lg-name{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-meta{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.lg-sub{font-size:11px;color:var(--ink-3);margin-top:2px}
+.lg-cur{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--violet);border:1px solid var(--violet);border-radius:7px;padding:3px 7px}
+.lg-new{background:transparent;border:1.5px dashed var(--line)}
+.lg-new .lg-crest.lg-plus{border:1.5px dashed var(--violet);color:var(--violet);background:var(--violet-soft);font-size:24px;font-weight:500}
+
+/* ---- wizard chrome ---- */
+.wiz-top{display:flex;align-items:center;gap:12px;margin:8px 2px 12px}
+.wiz-x{flex:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:11px;
+  background:var(--card);color:var(--ink-2);cursor:pointer}
+.wiz-x svg{width:15px;height:15px}
+.wiz-x:active{opacity:.8}
+.wiz-step{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;
+  letter-spacing:1.2px;color:var(--ink-3);margin-top:3px}
+.wiz-prog{display:flex;gap:5px;margin:0 2px 18px}
+.wiz-seg{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.wiz-seg.on{background:var(--violet)}
+.wiz-q{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px;letter-spacing:.3px;
+  text-transform:uppercase;margin:0 2px 6px}
+.wiz-s{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:0 2px 14px}
+.wiz-note{font-size:11.5px;color:var(--ink-3);line-height:1.5;margin:12px 2px 0}
+.wiz-sub-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.3px;
+  text-transform:uppercase;color:var(--ink-3);margin:0 2px 8px}
+.wiz-save{text-align:center;font-size:10.5px;color:var(--ink-3);margin-top:12px;padding-bottom:8px}
+
+/* ---- inputs ---- */
+.wiz-input{width:100%;background:#0A0E15;border:1px solid var(--line);border-radius:13px;color:var(--ink);
+  font-family:'Barlow',system-ui,sans-serif;font-size:16px;font-weight:600;padding:13px 15px;outline:none;
+  -webkit-user-select:text;user-select:text}
+.wiz-input:focus{border-color:var(--violet)}
+.wiz-input::placeholder{color:var(--ink-3);font-weight:500}
+.wiz-input.num{margin-top:10px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+.wiz-input.num::-webkit-outer-spin-button,.wiz-input.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.wiz-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.wiz-chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:11.5px;color:var(--ink-2);cursor:pointer}
+.wiz-chip:active{border-color:var(--violet);color:var(--violet)}
+
+/* ---- option cards ---- */
+.opt-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:10px;cursor:pointer}
+.opt-card:active{opacity:.9}
+.opt-card.on{border-color:var(--violet);background:var(--violet-soft)}
+.opt-card.sm{padding:11px 13px;margin-bottom:8px}
+.opt-t{display:flex;align-items:center;gap:9px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:14px;letter-spacing:.4px;text-transform:uppercase}
+.opt-radio{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.opt-card.on .opt-radio{border-color:var(--violet);background:radial-gradient(circle,var(--violet) 0 4.5px,transparent 5px)}
+.opt-d{font-size:12px;color:var(--ink-2);line-height:1.5;margin:5px 0 0 24px}
+.sub-opts{border-left:2px solid var(--line-soft);margin:2px 0 12px 8px;padding:4px 0 0 12px}
+
+/* ---- size grid ---- */
+.size-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.size-cell{padding:12px 0 10px;text-align:center;border:1px solid var(--line);border-radius:12px;cursor:pointer;
+  background:var(--card);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:17px;color:var(--ink-2)}
+.size-cell .s{display:block;font-size:8px;color:var(--ink-3);letter-spacing:1px;margin-top:2px;font-weight:500}
+.size-cell.on{border-color:var(--violet);background:var(--violet-soft);color:#fff}
+
+/* ---- footer ---- */
+.wiz-foot{display:flex;gap:10px;margin-top:18px}
+.wiz-btn{flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;
+  padding:13px;cursor:pointer;color:var(--ink);background:var(--card-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:1px;text-transform:uppercase}
+.wiz-btn.primary{background:var(--violet);border-color:var(--violet);color:#fff;flex:1.6}
+.wiz-btn.off{opacity:.38}
+.wiz-btn:active{opacity:.85}
+
+/* ---- review ---- */
+.rev-card{padding:6px 16px}
+.rev-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line-soft);cursor:pointer}
+.rev-row:last-child{border-bottom:0}
+.rev-lb{flex:none;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3)}
+.rev-val{flex:1;text-align:right;font-size:13px;font-weight:600;color:var(--ink);min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rev-edit{flex:none;color:var(--ink-3);font-size:16px;line-height:1}
+.wiz-comm{border-color:var(--violet)}
+.wiz-comm .opt-t{color:var(--violet)}
+.wiz-comm .opt-d{margin-left:0;margin-top:6px}
+
+/* ---- league home ---- */
+.lh-hero{text-align:center;padding:20px 0 6px;margin-bottom:12px}
+.lh-crest{width:76px;height:76px;margin:0 auto 13px;border-radius:22px;display:grid;place-items:center;border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:34px}
+.lh-name{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:23px;letter-spacing:.4px;text-transform:uppercase}
+.lh-comm{display:inline-block;margin-top:7px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10.5px;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--violet);border:1px solid var(--violet);border-radius:8px;padding:4px 9px}
+.lh-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:11px}
+.lh-chip{font-size:10.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--card)}
+.lh-val{flex:none;font-size:12.5px;font-weight:600;color:var(--ink)}

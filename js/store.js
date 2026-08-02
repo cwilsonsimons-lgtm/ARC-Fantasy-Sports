@@ -61,7 +61,13 @@ export const SLOT_DEFAULTS={QB:1,RB:2,WR:3,TE:1,FLEX:1,SFLX:0,bench:7,ir:2,taxi:
 
 
 
-export function SLOTS(){return store.slots;}
+// Serve the current created league's roster shape when one is open (see the
+// MULTI-LEAGUE note in data/league-config.js). Looked up by id here rather than
+// imported, to keep store.js free of module cycles.
+export function SLOTS(){
+  const id=store.curLeagueId,l=id&&(store.leagues||[]).find(x=>x.id===id);
+  return (l&&l.slots)||store.slots;
+}
 export function buildSlots(){
   const S=SLOTS(),out=[];
   SLOT_ORDER.forEach(k=>{for(let i=0;i<Math.max(0,+S[k]||0);i++)out.push(k);});
@@ -77,7 +83,12 @@ export const TAXI   = [];
 // Ran at top level in the original single-file script. main.js calls it
 // during boot so it keeps its original position in the startup order.
 export function initStore(){
+// Gameplay data (rosters, matchups, the draft) belongs to City Boys Dynasty,
+// so every boot lands there; created leagues are reopened from the selector.
+store.curLeagueId=null;
 store.draft=store.draft||{picks:[]};
+store.leagues=store.leagues||[];
+store.leagues.forEach(l=>{l.slots=Object.assign({},SLOT_DEFAULTS,l.slots||{});});
 if(store.team&&store.team.font)T[MY_TEAM].font=store.team.font;
 store.backdrops=store.backdrops||{};  // per-game: {gameKey: dataURL}
 if(store.backdrop){store.globalBackdrop=store.globalBackdrop||store.backdrop;delete store.backdrop;}  // migrate old single backdrop

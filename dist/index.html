@@ -756,6 +756,108 @@ input.set-ctl.set-date::-webkit-calendar-picker-indicator{filter:invert(.7);curs
 .do-btn:active{opacity:.8}
 .do-btn.off{opacity:.32;pointer-events:none}
 
+/* css/leagues.css */
+/* ===== LEAGUES: selector, create-league wizard, league home ===== */
+
+/* ---- selector ---- */
+.lg-card{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line-soft);
+  border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer}
+.lg-card:active{opacity:.88}
+.lg-crest{flex:none;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px}
+.lg-info{flex:1;min-width:0}
+.lg-name{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-meta{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.lg-sub{font-size:11px;color:var(--ink-3);margin-top:2px}
+.lg-cur{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--violet);border:1px solid var(--violet);border-radius:7px;padding:3px 7px}
+.lg-new{background:transparent;border:1.5px dashed var(--line)}
+.lg-new .lg-crest.lg-plus{border:1.5px dashed var(--violet);color:var(--violet);background:var(--violet-soft);font-size:24px;font-weight:500}
+
+/* ---- wizard chrome ---- */
+.wiz-top{display:flex;align-items:center;gap:12px;margin:8px 2px 12px}
+.wiz-x{flex:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:11px;
+  background:var(--card);color:var(--ink-2);cursor:pointer}
+.wiz-x svg{width:15px;height:15px}
+.wiz-x:active{opacity:.8}
+.wiz-step{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;
+  letter-spacing:1.2px;color:var(--ink-3);margin-top:3px}
+.wiz-prog{display:flex;gap:5px;margin:0 2px 18px}
+.wiz-seg{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.wiz-seg.on{background:var(--violet)}
+.wiz-q{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px;letter-spacing:.3px;
+  text-transform:uppercase;margin:0 2px 6px}
+.wiz-s{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin:0 2px 14px}
+.wiz-note{font-size:11.5px;color:var(--ink-3);line-height:1.5;margin:12px 2px 0}
+.wiz-sub-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.3px;
+  text-transform:uppercase;color:var(--ink-3);margin:0 2px 8px}
+.wiz-save{text-align:center;font-size:10.5px;color:var(--ink-3);margin-top:12px;padding-bottom:8px}
+
+/* ---- inputs ---- */
+.wiz-input{width:100%;background:#0A0E15;border:1px solid var(--line);border-radius:13px;color:var(--ink);
+  font-family:'Barlow',system-ui,sans-serif;font-size:16px;font-weight:600;padding:13px 15px;outline:none;
+  -webkit-user-select:text;user-select:text}
+.wiz-input:focus{border-color:var(--violet)}
+.wiz-input::placeholder{color:var(--ink-3);font-weight:500}
+.wiz-input.num{margin-top:10px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+.wiz-input.num::-webkit-outer-spin-button,.wiz-input.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.wiz-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.wiz-chip{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:11.5px;color:var(--ink-2);cursor:pointer}
+.wiz-chip:active{border-color:var(--violet);color:var(--violet)}
+
+/* ---- option cards ---- */
+.opt-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:10px;cursor:pointer}
+.opt-card:active{opacity:.9}
+.opt-card.on{border-color:var(--violet);background:var(--violet-soft)}
+.opt-card.sm{padding:11px 13px;margin-bottom:8px}
+.opt-t{display:flex;align-items:center;gap:9px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:14px;letter-spacing:.4px;text-transform:uppercase}
+.opt-radio{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.opt-card.on .opt-radio{border-color:var(--violet);background:radial-gradient(circle,var(--violet) 0 4.5px,transparent 5px)}
+.opt-d{font-size:12px;color:var(--ink-2);line-height:1.5;margin:5px 0 0 24px}
+.sub-opts{border-left:2px solid var(--line-soft);margin:2px 0 12px 8px;padding:4px 0 0 12px}
+
+/* ---- size grid ---- */
+.size-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.size-cell{padding:12px 0 10px;text-align:center;border:1px solid var(--line);border-radius:12px;cursor:pointer;
+  background:var(--card);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:17px;color:var(--ink-2)}
+.size-cell .s{display:block;font-size:8px;color:var(--ink-3);letter-spacing:1px;margin-top:2px;font-weight:500}
+.size-cell.on{border-color:var(--violet);background:var(--violet-soft);color:#fff}
+
+/* ---- footer ---- */
+.wiz-foot{display:flex;gap:10px;margin-top:18px}
+.wiz-btn{flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;
+  padding:13px;cursor:pointer;color:var(--ink);background:var(--card-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:1px;text-transform:uppercase}
+.wiz-btn.primary{background:var(--violet);border-color:var(--violet);color:#fff;flex:1.6}
+.wiz-btn.off{opacity:.38}
+.wiz-btn:active{opacity:.85}
+
+/* ---- review ---- */
+.rev-card{padding:6px 16px}
+.rev-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line-soft);cursor:pointer}
+.rev-row:last-child{border-bottom:0}
+.rev-lb{flex:none;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3)}
+.rev-val{flex:1;text-align:right;font-size:13px;font-weight:600;color:var(--ink);min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rev-edit{flex:none;color:var(--ink-3);font-size:16px;line-height:1}
+.wiz-comm{border-color:var(--violet)}
+.wiz-comm .opt-t{color:var(--violet)}
+.wiz-comm .opt-d{margin-left:0;margin-top:6px}
+
+/* ---- league home ---- */
+.lh-hero{text-align:center;padding:20px 0 6px;margin-bottom:12px}
+.lh-crest{width:76px;height:76px;margin:0 auto 13px;border-radius:22px;display:grid;place-items:center;border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:34px}
+.lh-name{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:23px;letter-spacing:.4px;text-transform:uppercase}
+.lh-comm{display:inline-block;margin-top:7px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10.5px;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--violet);border:1px solid var(--violet);border-radius:8px;padding:4px 9px}
+.lh-badges{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:11px}
+.lh-chip{font-size:10.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-2);
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--card)}
+.lh-val{flex:none;font-size:12.5px;font-weight:600;color:var(--ink)}
+
 /* css/player.css */
 /* ===== PLAYER CARD ===== */
 .pc{padding-bottom:8px}
@@ -1466,11 +1568,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
         <span class="b">2</span>
       </div>
-      <div class="league-id" onclick="toast('Switch league')">
+      <div class="league-id" onclick="openLeagues()">
         <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
         <div>
-          <div class="nm">City Boys Dynasty <span class="chev">▼</span></div>
-          <div class="wk">WEEK 8</div>
+          <div class="nm"><span id="lbName">City Boys Dynasty</span> <span class="chev">▼</span></div>
+          <div class="wk" id="lbWeek">WEEK 8</div>
         </div>
       </div>
       <div class="burger" onclick="toggleDrawer()">
@@ -1559,12 +1661,33 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       </div>
 
       <div class="view" data-view="settings">
-        <div class="back" onclick="showTab(homeTab())">
+        <div class="back" onclick="settingsBack()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
           <span id="setBackLb">Matchup</span>
         </div>
         <div id="settingsBody"></div>
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
+      </div>
+
+      <!-- ===== LEAGUES: selector / create wizard / league home ===== -->
+      <div class="view" data-view="leagues">
+        <div class="back" onclick="showTab(homeTab())">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </div>
+        <div id="leaguesBody"></div>
+      </div>
+
+      <div class="view" data-view="createLeague">
+        <div id="createLeagueBody"></div>
+      </div>
+
+      <div class="view" data-view="leagueHome">
+        <div class="back" onclick="openLeagues()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Leagues
+        </div>
+        <div id="leagueHomeBody"></div>
       </div>
 
       <!-- ===== PLAYER CARD VIEW ===== -->
@@ -1830,7 +1953,8 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   var SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SFLX"];
   var SLOT_DEFAULTS = { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, SFLX: 0, bench: 7, ir: 2, taxi: 2 };
   function SLOTS() {
-    return store.slots;
+    const id = store.curLeagueId, l = id && (store.leagues || []).find((x) => x.id === id);
+    return l && l.slots || store.slots;
   }
   function buildSlots() {
     const S2 = SLOTS(), out = [];
@@ -1844,7 +1968,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   var IR = [];
   var TAXI = [];
   function initStore2() {
+    store.curLeagueId = null;
     store.draft = store.draft || { picks: [] };
+    store.leagues = store.leagues || [];
+    store.leagues.forEach((l) => {
+      l.slots = Object.assign({}, SLOT_DEFAULTS, l.slots || {});
+    });
     if (store.team && store.team.font) T[MY_TEAM].font = store.team.font;
     store.backdrops = store.backdrops || {};
     if (store.backdrop) {
@@ -1882,6 +2011,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     LG: () => LG,
     SC: () => SC,
     SCORING_DEFAULTS: () => SCORING_DEFAULTS,
+    allLeagues: () => allLeagues,
+    curLeague: () => curLeague,
+    curLeagueName: () => curLeagueName,
+    findLeague: () => findLeague,
     initLeagueConfig: () => initLeagueConfig2
   });
   var LEAGUE_DEFAULTS = {
@@ -1924,8 +2057,22 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     draftOrder: null
     // array of team keys; null = fall back to the league's default order
   };
+  function allLeagues() {
+    return store.leagues = store.leagues || [];
+  }
+  function findLeague(id) {
+    return allLeagues().find((l) => l.id === id) || null;
+  }
+  function curLeague() {
+    return store.curLeagueId ? findLeague(store.curLeagueId) : null;
+  }
+  function curLeagueName() {
+    const c = curLeague();
+    return c ? c.name : "City Boys Dynasty";
+  }
   function LG() {
-    return store.league;
+    const c = curLeague();
+    return c ? c.league : store.league;
   }
   var SCORING_DEFAULTS = {
     passYd: 0.04,
@@ -1947,11 +2094,16 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     prTD: 6
   };
   function SC() {
-    return store.scoring;
+    const c = curLeague();
+    return c ? c.scoring : store.scoring;
   }
   function initLeagueConfig2() {
     store.league = Object.assign({}, LEAGUE_DEFAULTS, store.league || {});
     store.scoring = Object.assign({}, SCORING_DEFAULTS, store.scoring || {});
+    allLeagues().forEach((l) => {
+      l.league = Object.assign({}, LEAGUE_DEFAULTS, l.league || {});
+      l.scoring = Object.assign({}, SCORING_DEFAULTS, l.scoring || {});
+    });
   }
 
   // js/data/nfl-teams.js
@@ -5372,9 +5524,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function leagueCards() {
     const L = LG();
-    const teamOpts = [8, 10, 12, 14, 16].map((n) => [n, n + " teams"]);
+    const sizes = [4, 6, 8, 10, 12, 14, 16];
+    if (sizes.indexOf(+L.teams) < 0) {
+      sizes.push(+L.teams);
+      sizes.sort((a, b) => a - b);
+    }
+    const teamOpts = sizes.map((n) => [n, n + " teams"]);
     const waiverRows = L.waiver === "faab" ? setRow("Waiver budget", setNum("faabBudget", L.faabBudget, 1, 1e3)) + setRow("Minimum bid", setNum("faabMin", L.faabMin, 0, Math.max(1, L.faabBudget))) : "";
-    const sizeNote = +L.teams !== 10 ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season \u2014 ${L.teams} takes effect at the next draft.</div>` : "";
+    const sizeNote = !curLeague() && +L.teams !== 10 ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season \u2014 ${L.teams} takes effect at the next draft.</div>` : "";
     return `
     <div class="set-card">
       <div class="set-title">General</div>
@@ -5496,7 +5653,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${setRow("Pause draft at", setSel("draftPauseHour", rangeOpts(0, 23, hourLabel), L.draftPauseHour, 1))}
       ${setRow("Resume draft at", setSel("draftResumeHour", rangeOpts(0, 23, hourLabel), L.draftResumeHour, 1))}
     </div>` : "";
-    const orderBtns = isCommish() ? `<div class="set-btns" style="margin-top:12px">
+    const scratch = !!curLeague();
+    const orderBody = scratch ? `<div class="set-note" style="margin-top:8px">The order appears here once all ${L.teams} managers have joined the league.</div>` : draftOrderList();
+    const orderBtns = !scratch && isCommish() ? `<div class="set-btns" style="margin-top:12px">
       <div class="set-btn" onclick="randomizeDraftOrder()">Randomize order</div>
       <div class="set-btn" onclick="resetDraftOrder()">${ICON_X} Reset to default order</div>
     </div>` : "";
@@ -5515,9 +5674,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     </div>
     ${pauseCard}
     <div class="set-card">
-      <div class="set-title">Draft Order <span class="c">${draftOrderKeys().length} TEAMS</span></div>
+      <div class="set-title">Draft Order <span class="c">${scratch ? L.teams : draftOrderKeys().length} TEAMS</span></div>
       <div class="set-note">${L.draftType === "snake" ? "Snake reverses this order every round." : L.draftType === "linear" ? "Linear keeps this order the same every round." : "Nomination order for the auction."}</div>
-      ${draftOrderList()}
+      ${orderBody}
       ${orderBtns}
     </div>`;
   }
@@ -5593,7 +5752,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     SLOTS()[key] = Math.max(0, Math.min(20, Math.round(+val) || 0));
     saveStore();
-    applyRosterShape();
+    if (!curLeague()) applyRosterShape();
     renderSettings();
   }
   function slotSel(key, cur, max) {
@@ -5633,7 +5792,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function resetScoring() {
     if (!guard()) return;
-    store.scoring = Object.assign({}, SCORING_DEFAULTS);
+    const c = curLeague();
+    if (c) c.scoring = Object.assign({}, SCORING_DEFAULTS);
+    else store.scoring = Object.assign({}, SCORING_DEFAULTS);
     saveStore();
     renderSettings();
   }
@@ -5671,6 +5832,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       renderSettings();
       return;
     }
+    if (curLeague()) return;
     if (!T[key] || key === commishKey()) {
       renderSettings();
       return;
@@ -5692,11 +5854,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!ownsCommish()) setTab = "general";
     saveStore();
     renderSettings();
-    toast2(key === MY_TEAM ? "You are the commissioner" : `${T[key].mgr} is now the commissioner of City Boys Dynasty`);
+    toast2(key === MY_TEAM ? "You are the commissioner" : `${T[key].mgr} is now the commissioner of ${curLeagueName()}`);
   }
   function commishCards() {
     const opts = Object.keys(T).map((k) => [k, `${T[k].mgr} \xB7 ${T[k].n}`]);
-    return `
+    const roleCard = curLeague() ? `
+    <div class="set-card">
+      <div class="set-title">Role</div>
+      <div class="set-note">You created ${escHtml(curLeagueName())}, so the commissioner role is yours.
+        It can be handed over once other managers join.</div>
+    </div>` : `
     <div class="set-card">
       <div class="set-title">Role</div>
       <div class="set-note">The commissioner is the only member who can change league settings.
@@ -5705,7 +5872,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       "Commissioner",
       `<select class="set-ctl" onchange="setCommish(this.value)">${optList(opts, commishKey())}</select>`
     )}
-    </div>
+    </div>`;
+    const previewCard = curLeague() ? "" : `
     <div class="set-card">
       <div class="set-title">Preview</div>
       <div class="set-note">See Settings the way the other nine managers see them. This only changes
@@ -5713,7 +5881,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="set-btns">
         <div class="set-btn" onclick="togglePreviewAsMember()">View as a league member</div>
       </div>
-    </div>
+    </div>`;
+    return `
+    ${roleCard}
+    ${previewCard}
     <div class="set-card">
       <div class="set-title">More to come</div>
       <div class="set-note">Commissioner-only tools land here.</div>
@@ -5732,7 +5903,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function renderSettings() {
     const bl = document.getElementById("setBackLb");
-    if (bl) bl.textContent = preDraft() ? "Draft" : "Matchup";
+    if (bl) bl.textContent = curLeague() ? "League Home" : preDraft() ? "Draft" : "Matchup";
     const has = !!store.globalBackdrop;
     const perGame = Object.keys(store.backdrops || {}).length;
     const preview = has ? `<div class="set-preview" style="background-image:url('${store.globalBackdrop}')"></div>` : `<div class="set-preview none">Default stadium field</div>`;
@@ -5760,7 +5931,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       commish: commishCards()
     };
     const cm = commishTeam();
-    const sub = isCommish() ? `${ICON_STAR} Commissioner \xB7 City Boys Dynasty` : `City Boys Dynasty \xB7 Commissioner ${escHtml(cm.mgr)}`;
+    const lgName = escHtml(curLeagueName());
+    const sub = isCommish() ? `${ICON_STAR} Commissioner \xB7 ${lgName}` : `${lgName} \xB7 Commissioner ${escHtml(cm.mgr)}`;
     const banner = isCommish() ? "" : `
     <div class="set-ro">
       <div class="set-ro-t">${previewAsMember ? "Previewing as a league member" : "View only"}</div>
@@ -7421,6 +7593,481 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     document.getElementById("scroll").scrollTop = 0;
   }
 
+  // js/leagues.js
+  var leagues_exports = {};
+  __export(leagues_exports, {
+    SIZE_MAX: () => SIZE_MAX,
+    SIZE_MIN: () => SIZE_MIN,
+    SIZE_PRESETS: () => SIZE_PRESETS,
+    WIZ_TOTAL: () => WIZ_TOTAL,
+    openCreateLeague: () => openCreateLeague,
+    openLeagueHome: () => openLeagueHome,
+    openLeagues: () => openLeagues,
+    renderLeagues: () => renderLeagues,
+    renderWizard: () => renderWizard,
+    settingsBack: () => settingsBack,
+    switchLeague: () => switchLeague,
+    syncLeaguebar: () => syncLeaguebar,
+    wiz: () => wiz,
+    wizBack: () => wizBack,
+    wizCreate: () => wizCreate,
+    wizCustom: () => wizCustom,
+    wizGo: () => wizGo,
+    wizName: () => wizName,
+    wizNext: () => wizNext,
+    wizPick: () => wizPick,
+    wizPickCopy: () => wizPickCopy
+  });
+  var HOME_NAME = "City Boys Dynasty";
+  var TYPE_LABEL = { redraft: "Redraft", keeper: "Keeper", dynasty: "Dynasty" };
+  var DRAFT_LABEL = { snake: "Snake", linear: "Linear", auction: "Auction" };
+  var CREST_COLS = ["#8CE04A", "#5AA9E6", "#C77DFF", "#E6A85A", "#5AE6B5", "#E65A7A", "#7D9BFF", "#E6D15A"];
+  function crestCol(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = h * 31 + name.charCodeAt(i) >>> 0;
+    return CREST_COLS[h % CREST_COLS.length];
+  }
+  function crest(name, cls) {
+    const c = crestCol(name);
+    return `<div class="${cls}" style="color:${c};background:${c}22;border-color:${c}55">${escHtml((name.trim()[0] || "?").toUpperCase())}</div>`;
+  }
+  function clearTabs() {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+  }
+  function landOn(view2) {
+    showView(view2);
+    clearTabs();
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function syncLeaguebar() {
+    const n = document.getElementById("lbName"), w = document.getElementById("lbWeek"), c = curLeague();
+    if (n) n.textContent = c ? c.name : HOME_NAME;
+    if (w) w.textContent = c ? "PREDRAFT" : "WEEK " + S.week;
+  }
+  function settingsBack() {
+    if (curLeague()) openLeagueHome();
+    else showTab2(homeTab2());
+  }
+  function openLeagues() {
+    renderLeagues();
+    landOn("leagues");
+  }
+  function renderLeagues() {
+    const cur = curLeague();
+    const home = store.league || LEAGUE_DEFAULTS;
+    const homeRole = home.commish === MY_TEAM ? "Commissioner" : "Member";
+    const cards = [`
+    <div class="lg-card" onclick="switchLeague('')">
+      ${crest(HOME_NAME, "lg-crest")}
+      <div class="lg-info">
+        <div class="lg-name">${HOME_NAME}</div>
+        <div class="lg-meta">${TYPE_LABEL[home.type] || "Dynasty"} \xB7 ${home.teams} teams \xB7 ${homeRole}</div>
+      </div>
+      ${cur ? "" : '<div class="lg-cur">Current</div>'}
+    </div>`].concat(allLeagues().map((l) => `
+    <div class="lg-card" onclick="openLeagueHome('${l.id}')">
+      ${crest(l.name, "lg-crest")}
+      <div class="lg-info">
+        <div class="lg-name">${escHtml(l.name)}</div>
+        <div class="lg-meta">${TYPE_LABEL[l.league.type] || ""} \xB7 ${l.league.teams} teams \xB7 Commissioner</div>
+        <div class="lg-sub">Awaiting draft</div>
+      </div>
+      ${cur && cur.id === l.id ? '<div class="lg-cur">Current</div>' : ""}
+    </div>`));
+    const w = store.createLeague;
+    const createSub = w && (w.step > 0 || w.name && w.name.trim()) ? `Resume setup \xB7 Step ${Math.min(w.step + 1, WIZ_TOTAL)} of ${WIZ_TOTAL}` : "Start a new league \u2014 you will be the commissioner";
+    document.getElementById("leaguesBody").innerHTML = `
+    <div class="set-h">Your Leagues</div>
+    <div class="set-sub">Tap a league to open it</div>
+    ${cards.join("")}
+    <div class="lg-card lg-new" onclick="openCreateLeague()">
+      <div class="lg-crest lg-plus">+</div>
+      <div class="lg-info">
+        <div class="lg-name">Create League</div>
+        <div class="lg-sub">${createSub}</div>
+      </div>
+    </div>`;
+  }
+  function switchLeague(id) {
+    store.curLeagueId = id || null;
+    saveStore();
+    syncLeaguebar();
+    if (!id) {
+      showTab2(homeTab2());
+      return;
+    }
+    openLeagueHome();
+  }
+  var WIZ_TOTAL = 6;
+  var WIZ_BLANK = { step: 0, name: "", source: null, copyFrom: null, type: null, startup: "all", size: 10, custom: "", draftType: null };
+  function wiz() {
+    return store.createLeague = store.createLeague || Object.assign({}, WIZ_BLANK);
+  }
+  function wsave() {
+    saveStore();
+  }
+  var SIZE_PRESETS = [4, 6, 8, 10, 12, 14, 16];
+  var SIZE_MIN = 4;
+  var SIZE_MAX = 32;
+  function wizTeams() {
+    const w = wiz();
+    return w.size === "custom" ? Math.round(+w.custom) : +w.size;
+  }
+  function memberLeagues() {
+    return [{ id: "home", name: HOME_NAME, league: store.league, scoring: store.scoring, slots: store.slots }].concat(allLeagues());
+  }
+  function stepValid(i) {
+    const w = wiz();
+    switch (i) {
+      case 0:
+        return !!w.name.trim();
+      case 1:
+        return w.source === "default" || w.source === "copy" && !!w.copyFrom;
+      case 2:
+        return !!w.type;
+      case 3: {
+        const t = wizTeams();
+        return isFinite(t) && t >= SIZE_MIN && t <= SIZE_MAX;
+      }
+      case 4:
+        return !!w.draftType;
+      default:
+        return true;
+    }
+  }
+  function stepBlocker(i) {
+    switch (i) {
+      case 0:
+        return "Give the league a name first";
+      case 1:
+        return wiz().source === "copy" ? "Pick which league to copy" : "Choose how to start the settings";
+      case 2:
+        return "Pick a league type";
+      case 3:
+        return `Team count must be ${SIZE_MIN}\u2013${SIZE_MAX}`;
+      case 4:
+        return "Pick a draft type";
+      default:
+        return "";
+    }
+  }
+  function wizPick(k, v) {
+    const w = wiz();
+    w[k] = v;
+    if (k === "source" && v === "default") w.copyFrom = null;
+    wsave();
+    renderWizard();
+  }
+  function wizPickCopy(id) {
+    const w = wiz();
+    w.source = "copy";
+    w.copyFrom = id;
+    const src = id === "home" ? store.league : (findLeague(id) || {}).league;
+    if (src) {
+      w.type = src.type;
+      w.draftType = src.draftType || "snake";
+      w.size = SIZE_PRESETS.indexOf(+src.teams) > -1 ? +src.teams : "custom";
+      w.custom = String(src.teams);
+      if (src.type === "dynasty") w.startup = src.draftPool === "rookies" ? "rookies" : "all";
+    }
+    wsave();
+    renderWizard();
+  }
+  function wizName(v) {
+    wiz().name = v;
+    wsave();
+    wizSyncNext();
+  }
+  function wizCustom(v) {
+    wiz().custom = v;
+    wsave();
+    wizSyncNext();
+    const o = document.getElementById("wizOdd");
+    if (o) o.innerHTML = oddNote();
+  }
+  function wizSyncNext() {
+    const b = document.getElementById("wizNext");
+    if (b) b.classList.toggle("off", !stepValid(wiz().step));
+  }
+  function wizGo(i) {
+    const w = wiz();
+    w.step = Math.max(0, Math.min(WIZ_TOTAL - 1, i));
+    wsave();
+    renderWizard();
+  }
+  function wizNext() {
+    const w = wiz();
+    if (!stepValid(w.step)) {
+      toast2(stepBlocker(w.step));
+      return;
+    }
+    if (w.step >= WIZ_TOTAL - 1) return;
+    w.step++;
+    wsave();
+    renderWizard();
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function wizBack() {
+    const w = wiz();
+    if (w.step === 0) {
+      openLeagues();
+      return;
+    }
+    w.step--;
+    wsave();
+    renderWizard();
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function openCreateLeague() {
+    renderWizard();
+    landOn("createLeague");
+  }
+  function optCard(on, click, title, desc) {
+    return `<div class="opt-card${on ? " on" : ""}" onclick="${click}">
+    <div class="opt-t"><span class="opt-radio"></span>${title}</div>
+    ${desc ? `<div class="opt-d">${desc}</div>` : ""}
+  </div>`;
+  }
+  function stepName() {
+    const w = wiz();
+    const chips = ["City Boys Dynasty II", "Family Football League", "Work Fantasy League"].map((n) => `<div class="wiz-chip" onclick="wizName('${n}');document.getElementById('wizNameIn').value='${n}'">${n}</div>`).join("");
+    return `
+    <div class="wiz-q">Name your league</div>
+    <div class="wiz-s">This is what everyone sees at the top of the app. You can rename it later in League Settings.</div>
+    <input id="wizNameIn" class="wiz-input" type="text" maxlength="40" placeholder="League name"
+      value="${escAttr(w.name)}" oninput="wizName(this.value)">
+    <div class="wiz-chips">${chips}</div>
+    <div class="wiz-note">You will automatically be the commissioner of this league.</div>`;
+  }
+  function stepSource() {
+    const w = wiz();
+    const copyList = w.source === "copy" ? `<div class="sub-opts">${memberLeagues().map((l) => `
+    <div class="opt-card sm${w.copyFrom === l.id ? " on" : ""}" onclick="wizPickCopy('${l.id}')">
+      <div class="opt-t"><span class="opt-radio"></span>${escHtml(l.name)}</div>
+      <div class="opt-d">${TYPE_LABEL[l.league.type] || ""} \xB7 ${l.league.teams} teams \xB7 ${DRAFT_LABEL[l.league.draftType] || "Snake"} draft</div>
+    </div>`).join("")}
+    <div class="wiz-note">Copies every setting \u2014 rosters, scoring, draft, waivers, trades and the rest. All of it stays editable.</div>
+  </div>` : "";
+    return `
+    <div class="wiz-q">Starting settings</div>
+    <div class="wiz-s">How should this league be configured to begin with?</div>
+    ${optCard(
+      w.source === "copy",
+      "wizPick('source','copy')",
+      "Copy an existing league",
+      "Start from the settings of a league you are already in."
+    )}
+    ${copyList}
+    ${optCard(
+      w.source === "default",
+      "wizPick('source','default')",
+      "Start from default",
+      "Use the standard settings. Fine-tune everything later in League Settings."
+    )}`;
+  }
+  function stepType() {
+    const w = wiz();
+    const startup = w.type === "dynasty" ? `<div class="sub-opts">
+    <div class="wiz-sub-h">Startup draft</div>
+    <div class="opt-card sm${w.startup === "rookies" ? " on" : ""}" onclick="wizPick('startup','rookies')">
+      <div class="opt-t"><span class="opt-radio"></span>Rookie only startup draft</div>
+      <div class="opt-d">Only this year's rookie class is in the startup draft.</div>
+    </div>
+    <div class="opt-card sm${w.startup !== "rookies" ? " on" : ""}" onclick="wizPick('startup','all')">
+      <div class="opt-t"><span class="opt-radio"></span>Veteran + rookie startup draft</div>
+      <div class="opt-d">Every NFL player is in the startup draft.</div>
+    </div>
+  </div>` : "";
+    return `
+    <div class="wiz-q">What kind of league is this?</div>
+    ${optCard(
+      w.type === "redraft",
+      "wizPick('type','redraft')",
+      "Redraft",
+      "Every season starts completely fresh \u2014 a full draft every year, no players carry over."
+    )}
+    ${optCard(
+      w.type === "keeper",
+      "wizPick('type','keeper')",
+      "Keeper",
+      "A new draft every season, but each team keeps a set number of players first. Everyone else returns to the pool. The keeper count is set in League Settings."
+    )}
+    ${optCard(
+      w.type === "dynasty",
+      "wizPick('type','dynasty')",
+      "Dynasty",
+      "Teams own their players year over year. Players stay rostered until they are traded, dropped or retired."
+    )}
+    ${startup}`;
+  }
+  function stepSize() {
+    const w = wiz();
+    const cells = SIZE_PRESETS.map((n) => `<div class="size-cell${w.size === n ? " on" : ""}" onclick="wizPick('size',${n})">${n}<span class="s">TEAMS</span></div>`).join("") + `<div class="size-cell${w.size === "custom" ? " on" : ""}" onclick="wizPick('size','custom')">\u270E<span class="s">CUSTOM</span></div>`;
+    const custom = w.size === "custom" ? `
+    <input class="wiz-input num" type="number" inputmode="numeric" min="${SIZE_MIN}" max="${SIZE_MAX}"
+      placeholder="Number of teams (${SIZE_MIN}\u2013${SIZE_MAX})" value="${escAttr(w.custom)}" oninput="wizCustom(this.value)">` : "";
+    return `
+    <div class="wiz-q">How many teams?</div>
+    <div class="wiz-s">Including yours. This can change later, up until the draft.</div>
+    <div class="size-grid">${cells}</div>
+    ${custom}<div id="wizOdd">${oddNote()}</div>`;
+  }
+  function oddNote() {
+    const t = wizTeams();
+    return isFinite(t) && t >= SIZE_MIN && t <= SIZE_MAX && t % 2 === 1 ? '<div class="wiz-note">Odd team counts mean one team sits on a bye each week.</div>' : "";
+  }
+  function stepDraft() {
+    const w = wiz();
+    return `
+    <div class="wiz-q">How will you draft?</div>
+    ${optCard(
+      w.draftType === "snake",
+      "wizPick('draftType','snake')",
+      "Snake draft",
+      "Draft order reverses every round."
+    )}
+    ${optCard(
+      w.draftType === "linear",
+      "wizPick('draftType','linear')",
+      "Linear draft",
+      "The same order is used every round."
+    )}
+    ${optCard(
+      w.draftType === "auction",
+      "wizPick('draftType','auction')",
+      "Auction draft",
+      "Managers bid on players using a league budget."
+    )}`;
+  }
+  function stepReview() {
+    const w = wiz();
+    const srcLabel = w.source === "default" ? "Default settings" : `Copied from ${escHtml((memberLeagues().find((l) => l.id === w.copyFrom) || {}).name || "?")}`;
+    const typeLabel = (TYPE_LABEL[w.type] || "") + (w.type === "dynasty" ? ` \xB7 ${w.startup === "rookies" ? "Rookie only" : "Veteran + rookie"} startup` : "");
+    const rows2 = [
+      ["League name", escHtml(w.name.trim()), 0],
+      ["Starting settings", srcLabel, 1],
+      ["League type", typeLabel, 2],
+      ["Teams", String(wizTeams()), 3],
+      ["Draft type", DRAFT_LABEL[w.draftType] || "", 4]
+    ].map((r) => `<div class="rev-row" onclick="wizGo(${r[2]})">
+      <div class="rev-lb">${r[0]}</div><div class="rev-val">${r[1]}</div><div class="rev-edit">\u203A</div>
+    </div>`).join("");
+    return `
+    <div class="wiz-q">Review &amp; create</div>
+    <div class="wiz-s">Tap any line to change it.</div>
+    <div class="set-card rev-card">${rows2}</div>
+    <div class="set-card wiz-comm">
+      <div class="opt-t">\u2605 You'll be the commissioner</div>
+      <div class="opt-d">As the league creator you take the commissioner role automatically. Scoring, rosters,
+        waivers, playoffs and every other setting are yours to configure in League Settings.</div>
+    </div>`;
+  }
+  function renderWizard() {
+    const w = wiz();
+    const bodies = [stepName, stepSource, stepType, stepSize, stepDraft, stepReview];
+    const segs = Array.from({ length: WIZ_TOTAL }, (_, i) => `<div class="wiz-seg${i <= w.step ? " on" : ""}"></div>`).join("");
+    const last = w.step === WIZ_TOTAL - 1;
+    const next = last ? `<div class="wiz-btn primary" onclick="wizCreate()">Create League</div>` : `<div id="wizNext" class="wiz-btn primary${stepValid(w.step) ? "" : " off"}" onclick="wizNext()">Next</div>`;
+    document.getElementById("createLeagueBody").innerHTML = `
+    <div class="wiz-top">
+      <div class="wiz-x" onclick="openLeagues()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <div>
+        <div class="set-h" style="margin:0">Create League</div>
+        <div class="wiz-step">STEP ${w.step + 1} OF ${WIZ_TOTAL}</div>
+      </div>
+    </div>
+    <div class="wiz-prog">${segs}</div>
+    ${bodies[w.step]()}
+    <div class="wiz-foot">
+      <div class="wiz-btn" onclick="wizBack()">${w.step === 0 ? "Cancel" : "Back"}</div>
+      ${next}
+    </div>
+    <div class="wiz-save">Progress saves automatically</div>`;
+  }
+  function wizCreate() {
+    const w = wiz();
+    for (let i = 0; i < WIZ_TOTAL - 1; i++) {
+      if (!stepValid(i)) {
+        w.step = i;
+        wsave();
+        renderWizard();
+        toast2(stepBlocker(i));
+        return;
+      }
+    }
+    const cp = (o) => JSON.parse(JSON.stringify(o || {}));
+    const src = w.source === "copy" ? w.copyFrom === "home" ? { league: store.league, scoring: store.scoring, slots: store.slots } : findLeague(w.copyFrom) : null;
+    const league = Object.assign({}, LEAGUE_DEFAULTS, src ? cp(src.league) : {});
+    const scoring = Object.assign({}, SCORING_DEFAULTS, src ? cp(src.scoring) : {});
+    const slots = Object.assign({}, SLOT_DEFAULTS, src ? cp(src.slots) : {});
+    league.type = w.type;
+    league.teams = wizTeams();
+    league.draftType = w.draftType;
+    if (w.type === "dynasty") league.draftPool = w.startup === "rookies" ? "rookies" : "all";
+    league.commish = MY_TEAM;
+    league.draftOrder = null;
+    const id = "lg" + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36);
+    allLeagues().push({ id, name: w.name.trim(), created: Date.now(), league, scoring, slots });
+    delete store.createLeague;
+    store.curLeagueId = id;
+    saveStore();
+    syncLeaguebar();
+    openLeagueHome();
+    toast2("League created \u2014 you are the commissioner");
+  }
+  function openLeagueHome(id) {
+    if (id) {
+      store.curLeagueId = id;
+      saveStore();
+    }
+    const l = curLeague();
+    if (!l) {
+      openLeagues();
+      return;
+    }
+    syncLeaguebar();
+    renderLeagueHome(l);
+    landOn("leagueHome");
+  }
+  function renderLeagueHome(l) {
+    const L = l.league;
+    const chips = [TYPE_LABEL[L.type], `${L.teams} teams`, `${DRAFT_LABEL[L.draftType] || "Snake"} draft`];
+    if (L.type === "dynasty") chips.push(L.draftPool === "rookies" ? "Rookie startup" : "Vet + rookie startup");
+    const when = L.draftDate ? /* @__PURE__ */ new Date(L.draftDate + "T" + (L.draftTime || "19:00")) : null;
+    const whenTxt = when && !isNaN(when) ? when.toLocaleDateString(void 0, { weekday: "short", month: "short", day: "numeric" }) + " \xB7 " + when.toLocaleTimeString(void 0, { hour: "numeric", minute: "2-digit" }) : "Not scheduled yet";
+    document.getElementById("leagueHomeBody").innerHTML = `
+    <div class="lh-hero">
+      ${crest(l.name, "lh-crest")}
+      <div class="lh-name">${escHtml(l.name)}</div>
+      <div class="lh-comm">\u2605 You are the commissioner</div>
+      <div class="lh-badges">${chips.map((c) => `<div class="lh-chip">${c}</div>`).join("")}</div>
+    </div>
+    <div class="set-card">
+      <div class="set-title">Draft</div>
+      ${["Scheduled for", "Format", "Rounds"].map((lb, i) => `<div class="set-row">
+        <div class="set-lb">${lb}</div>
+        <div class="lh-val">${[whenTxt, (DRAFT_LABEL[L.draftType] || "Snake") + " \xB7 " + secShort(L.draftPickSec) + " per pick", L.draftRounds][i]}</div>
+      </div>`).join("")}
+      <div class="set-note" style="margin-top:9px">The draft room opens once every team has joined.</div>
+    </div>
+    <div class="set-card">
+      <div class="set-title">Teams <span class="c">1 OF ${L.teams} JOINED</span></div>
+      <div class="set-note">You're in as commissioner. Manager invites aren't wired up in this prototype yet \u2014
+        the other ${L.teams - 1} spots stay open for now.</div>
+    </div>
+    <div class="set-btns">
+      <div class="set-btn primary" onclick="openSettings()">League Settings</div>
+      <div class="set-btn" onclick="openLeagues()">Switch league</div>
+    </div>`;
+  }
+  function secShort(s) {
+    s = +s || 90;
+    return s < 60 ? s + "s" : s < 3600 ? s / 60 + " min" : s / 3600 + " hr";
+  }
+
   // js/markets/data.js
   var data_exports = {};
   __export(data_exports, {
@@ -8507,6 +9154,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     nav_exports,
     draft_meta_exports,
     draft_room_exports,
+    leagues_exports,
     nfl_history_exports,
     data_exports,
     ui_exports,

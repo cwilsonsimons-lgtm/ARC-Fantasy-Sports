@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/week.css">
   <link rel="stylesheet" href="css/hero.css">
   <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/leagues.css">
   <link rel="stylesheet" href="css/player.css">
   <link rel="stylesheet" href="css/sheets.css">
   <link rel="stylesheet" href="css/lineup.css">
@@ -43,11 +44,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
         <span class="b">2</span>
       </div>
-      <div class="league-id" onclick="toast('Switch league')">
+      <div class="league-id" onclick="openLeagues()">
         <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
         <div>
-          <div class="nm">City Boys Dynasty <span class="chev">▼</span></div>
-          <div class="wk">WEEK 8</div>
+          <div class="nm"><span id="lbName">City Boys Dynasty</span> <span class="chev">▼</span></div>
+          <div class="wk" id="lbWeek">WEEK 8</div>
         </div>
       </div>
       <div class="burger" onclick="toggleDrawer()">
@@ -136,12 +137,33 @@
       </div>
 
       <div class="view" data-view="settings">
-        <div class="back" onclick="showTab(homeTab())">
+        <div class="back" onclick="settingsBack()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
           <span id="setBackLb">Matchup</span>
         </div>
         <div id="settingsBody"></div>
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
+      </div>
+
+      <!-- ===== LEAGUES: selector / create wizard / league home ===== -->
+      <div class="view" data-view="leagues">
+        <div class="back" onclick="showTab(homeTab())">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </div>
+        <div id="leaguesBody"></div>
+      </div>
+
+      <div class="view" data-view="createLeague">
+        <div id="createLeagueBody"></div>
+      </div>
+
+      <div class="view" data-view="leagueHome">
+        <div class="back" onclick="openLeagues()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Leagues
+        </div>
+        <div id="leagueHomeBody"></div>
       </div>
 
       <!-- ===== PLAYER CARD VIEW ===== -->
