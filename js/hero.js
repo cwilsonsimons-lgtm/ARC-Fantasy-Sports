@@ -61,11 +61,9 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
       <div class="ms-ic" onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
     </div>
     <div class="ms-nav">
-      ${opts.seeded
-        ?['Matchup','Team','League'].map((lb,i)=>`<div class="ms-tab${i===0?' on':''}">${lb}</div>`).join('')
-        :TABS().map(t=>t.k==='matchup'
-          ?`<div class="ms-tab on">${t.lb}</div>`
-          :`<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join('')}
+      ${TABS().map((t,i)=>(i===0
+        ?`<div class="ms-tab on">${t.lb}</div>`
+        :`<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`)).join('')}
     </div>
     <div class="ms-tools">${pill}<div style="flex:1"></div>${opts.seeded?'':`${rm}<div class="sh-cam" onclick="pickGameBackdrop('${aKey}','${xKey}')">${ICON_CAM}</div>`}</div>
     <div class="ms-arena">

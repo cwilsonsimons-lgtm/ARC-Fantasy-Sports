@@ -5,7 +5,7 @@ import { stadiumHeroHTML } from './hero.js';
 import { renderUserMatchup } from './matchup.js';
 import { showTab } from './nav.js';
 import { pKeyOf } from './player.js';
-import { BENCH, GAMES, IR, LINEUP, TAXI, markInner } from './store.js';
+import { BENCH, GAMES, IR, LINEUP, TAXI, markInner, saveStore, store } from './store.js';
 import { esc } from './team.js';
 // esc() escapes for inline JS handlers; team names rendered as text need
 // HTML escaping instead, or an apostrophe shows up as \'
@@ -106,12 +106,50 @@ export function fullStartersHTML(opts){
 export function detailStartersHTML(){return fullStartersHTML();}
 
 // deterministic pseudo-schedule so each week shows different matchups
-export function scheduleForWeek(week){
+export function generatedWeek(week){
   const ids=Object.keys(T),n=ids.length,arr=ids.slice(1),r=(week-1)%(n-1);
   const rotated=arr.map((_,i)=>arr[((i-r)%arr.length+arr.length)%arr.length]);
   const circle=[ids[0],...rotated],pairs=[];
   for(let i=0;i<n/2;i++)pairs.push([circle[i],circle[n-1-i]]);
   return pairs;
+}
+/**
+ * The commissioner can rewrite any week. Overrides are stored per league per
+ * week and the generated circle stays the fallback, so "reset" is a delete
+ * rather than a regeneration — the schedule can always get back to neutral.
+ *
+ *   store.schedule[leagueId][week] = [[a,x],…]
+ */
+export function scheduleBag(){
+  if(!store.schedule)store.schedule={};
+  const lid=(store.activeLeague||'cbd');
+  if(!store.schedule[lid])store.schedule[lid]={};
+  return store.schedule[lid];
+}
+export function scheduleForWeek(week){
+  const ov=scheduleBag()[week];
+  return (ov&&ov.length)?ov.map(p=>p.slice()):generatedWeek(week);
+}
+export function weekPairs(week){return scheduleForWeek(week);}
+export function hasOverride(week){const o=scheduleBag()[week];return !!(o&&o.length);}
+/** Move `team` into pair `idx`, slot `side`; whoever it displaces takes its old
+ *  seat, so the week always stays a complete set of pairings. */
+export function setPairing(week,idx,side,team){
+  const pairs=scheduleForWeek(week);
+  let fromIdx=-1,fromSide=0;
+  pairs.forEach((p,i)=>p.forEach((k,j)=>{if(k===team){fromIdx=i;fromSide=j;}}));
+  if(fromIdx<0||!pairs[idx])return;
+  const displaced=pairs[idx][side];
+  pairs[idx][side]=team;
+  pairs[fromIdx][fromSide]=displaced;
+  scheduleBag()[week]=pairs;
+  saveStore();
+}
+export function clearWeekOverride(week){delete scheduleBag()[week];saveStore();}
+export function resetSchedule(){
+  const bag=scheduleBag();
+  Object.keys(bag).forEach(k=>delete bag[k]);
+  saveStore();
 }
 export function seededScore(week,key){
   if(week>LIVE_WEEK)return 0;   // preseason / upcoming: nothing played yet

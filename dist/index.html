@@ -1353,6 +1353,40 @@ body.forming .tabs{display:none}
 .rc-who .n{font-size:13px;font-weight:700}
 .rc-who .m{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:1px}
 
+/* season schedule editor */
+.sch-week .set-title .c{font-size:8.5px;color:var(--accent);letter-spacing:1px;margin-left:6px}
+.sch-reset{float:right;font-size:10px;font-weight:700;color:var(--red);cursor:pointer;letter-spacing:.3px}
+.sch-pair{display:flex;align-items:center;gap:7px;padding:6px 0;border-top:1px solid var(--line-soft)}
+.sch-sel{flex:1;min-width:0;height:34px;border-radius:9px;border:1px solid var(--line);
+  background:var(--card-2);color:var(--ink);font-family:inherit;font-size:11.5px;font-weight:600;
+  padding:0 7px;outline:none}
+.sch-v{flex:none;font-size:9px;color:var(--ink-3);font-weight:700}
+
+/* kart week board */
+.kt-top{display:flex;gap:8px;margin:12px 0 4px}
+.kt-top .kt-place{flex:1;border:1px solid var(--line);border-radius:13px;background:var(--card-2);
+  padding:10px 8px;text-align:center}
+.kt-place .k{display:block;font-size:8.5px;font-weight:800;letter-spacing:.9px;color:var(--ink-3)}
+.kt-place b{display:block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:19px;margin-top:3px}
+.kt{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.kt-row{display:flex;align-items:center;gap:9px;padding:10px 12px;border-top:1px solid var(--line-soft);
+  cursor:pointer}
+.kt-row:first-child{border-top:none}
+.kt-row.me{background:linear-gradient(90deg,rgba(var(--accent-rgb),.09),transparent)}
+.kt-p{flex:none;width:20px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:15px;color:var(--ink-3);text-align:center}
+.kt-row.pod .kt-p{color:var(--accent)}
+.kt-bd{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:none;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px}
+.kt-nm{flex:1;min-width:0}
+.kt-nm .n{--tn-size:13px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kt-nm .m{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
+.kt-sc{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  font-weight:700;color:var(--ink-2);width:52px;text-align:right}
+.kt-earn{flex:none;width:36px;text-align:right;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:700;font-size:14px;color:var(--accent)}
+
 /* css/chat.css */
 /* ===== CHAT =====
    League chat and a one-to-one thread are the same surface; the thread is the
@@ -2063,7 +2097,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
         <div id="userHero"></div>
         <div class="rewind" id="userRewind"></div>
         <div class="mrow" style="margin-top:12px">
-          <div class="allbtn" onclick="showLeagueView()">
+          <div class="allbtn" id="mAllBtn" onclick="showLeagueView()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="6.5" rx="2"/><rect x="3" y="13" width="18" height="6.5" rx="2"/></svg>
             All Matchups
           </div>
@@ -2514,6 +2548,14 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     // days a dropped player sits on waivers (0 = none)
     tradeDeadline: 11,
     // week number, 0 = no deadline
+    standings: "record",
+    // record | table (3 for a win) | kart (finish order)
+    playoffStart: 15,
+    // first week of the bracket
+    playoffTeams: 6,
+    playoffWeeks: 1,
+    // weeks per round
+    playoffSeeding: "record",
     commish: "pandas"
     // team key that owns the commissioner role
   };
@@ -3501,6 +3543,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     hydrateRosters: () => hydrateRosters,
     kickCT: () => kickCT,
     kickOrd: () => kickOrd,
+    migratePlayerLeagues: () => migratePlayerLeagues2,
     migratePlayerStore: () => migratePlayerStore2,
     pkey: () => pkey,
     weekGame: () => weekGame
@@ -3518,6 +3561,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     headshotFor: () => headshotFor,
     initials: () => initials,
     isMyPlayer: () => isMyPlayer,
+    leaguePlayers: () => leaguePlayers,
     openPlayer: () => openPlayer,
     order: () => order,
     pIdx: () => pIdx,
@@ -3526,6 +3570,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     playerBackView: () => playerBackView,
     playerNick: () => playerNick,
     playerPhoto: () => playerPhoto,
+    playerRec: () => playerRec,
     posColor: () => posColor,
     posMatch: () => posMatch,
     posRankNo: () => posRankNo,
@@ -3955,21 +4000,28 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     MINW: () => MINW,
     _legacyBench: () => _legacyBench,
     badge: () => badge,
+    clearWeekOverride: () => clearWeekOverride,
     detailStartersHTML: () => detailStartersHTML,
     fullStartersHTML: () => fullStartersHTML,
     gameClock: () => gameClock,
+    generatedWeek: () => generatedWeek,
     getGames: () => getGames,
+    hasOverride: () => hasOverride,
     hhRow: () => hhRow,
     lineupRow: () => lineupRow,
     openMyMatchup: () => openMyMatchup,
     renderLeagueBody: () => renderLeagueBody,
     renderStandingsMatchups: () => renderStandingsMatchups,
     reserveSection: () => reserveSection,
+    resetSchedule: () => resetSchedule,
+    scheduleBag: () => scheduleBag,
     scheduleForWeek: () => scheduleForWeek,
     scoreCell: () => scoreCell,
     seasonTotals: () => seasonTotals,
     seededScore: () => seededScore,
-    sideCell: () => sideCell
+    setPairing: () => setPairing,
+    sideCell: () => sideCell,
+    weekPairs: () => weekPairs
   });
 
   // js/hero.js
@@ -4055,6 +4107,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     goLeague: () => goLeague,
     homeTab: () => homeTab2,
     ht: () => ht,
+    kartMode: () => kartMode,
     preDraft: () => preDraft,
     renderTabs: () => renderTabs2,
     showLeagueView: () => showLeagueView,
@@ -4065,7 +4118,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   });
   function showView2(name) {
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
-    document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
+    const lg = activeLeague2();
+    const stage = name === "matchup" && !(lg && lg.real && kartMode());
+    document.querySelector(".shift").classList.toggle("stage-on", stage);
     document.body.classList.toggle("hub", name === "home");
     if (name !== "wait") document.body.classList.remove("forming");
   }
@@ -4073,7 +4128,14 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     return !draftDone();
   }
   function TABS() {
-    return preDraft() ? [{ k: "draft", lb: "Draft" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }] : [{ k: "matchup", lb: "Matchup" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }];
+    const lg = activeLeague2();
+    if (lg && !lg.real && !lg.created)
+      return [{ k: "s_matchup", lb: "Matchup" }, { k: "s_team", lb: "Team" }, { k: "s_league", lb: "League" }];
+    const first = preDraft() ? { k: "draft", lb: "Draft" } : { k: "matchup", lb: kartMode() ? "Week" : "Matchup" };
+    return [first, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }];
+  }
+  function kartMode() {
+    return (LG().standings || "record") === "kart";
   }
   function homeTab2() {
     return preDraft() ? "draft" : "matchup";
@@ -4085,6 +4147,10 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     el.innerHTML = TABS().map((t) => `<div class="tab${t.k === cur ? " on" : ""}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join("");
   }
   function showTab(name) {
+    if (name.indexOf("s_") === 0) {
+      if (window.seededTab) window.seededTab(name.slice(2));
+      return;
+    }
     if (name === "team") {
       renderTeam(MY_TEAM);
       S.teamBackView = homeTab2();
@@ -4401,173 +4467,17 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
   }
 
-  // js/matchup.js
-  function renderUserMatchup() {
-    const live = S.week === LIVE_WEEK;
-    if (live) recomputeLT();
-    const uHero = document.getElementById("userHero"), uRw = document.getElementById("userRewind"), uLine = document.getElementById("userLineup");
-    let aK, xK, as, xs, aw, xw, ap = null, xp = null;
-    if (live) {
-      aK = "pandas";
-      xK = "radiator";
-      as = LT.a;
-      xs = LT.x;
-      aw = LT.aw;
-      xw = LT.xw;
-      ap = LT.ap;
-      xp = LT.xp;
-    } else {
-      const g = S.games.find((x) => x.me);
-      aK = g.a;
-      xK = g.x;
-      as = g.as;
-      xs = g.xs;
-      aw = g.aw;
-      xw = g.xw;
-      if (g.x === "pandas") {
-        aK = g.x;
-        xK = g.a;
-        as = g.xs;
-        xs = g.as;
-        aw = g.xw;
-        xw = g.aw;
-      }
-      if (S.week > LIVE_WEEK) {
-        ap = LINEUP.reduce((n, r) => n + (r.a ? r.a.proj : 0), 0);
-        xp = LINEUP.reduce((n, r) => n + (r.x ? r.x.proj : 0), 0);
-        if (ap || xp) {
-          aw = Math.max(1, Math.min(99, Math.round(50 + (ap - xp) * 1.3)));
-          xw = 100 - aw;
-        }
-      }
-    }
-    const sk = live ? simKick() : null;
-    const phase = live ? sk < 0 ? "pre" : !isFinite(sk) ? "final" : "live" : null;
-    const canRewind = S.week >= MINW;
-    uHero.className = "";
-    uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null });
-    bindVs(uHero.querySelector("[data-vs]"));
-    if (canRewind) {
-      buildRewind(uRw, as, xs);
-      syncRewind("userRewind");
-    } else {
-      rwOpen.userRewind = false;
-      uRw.style.display = "none";
-    }
-    if (live) {
-      uLine.innerHTML = phaseStepperHTML() + fullStartersHTML({ phased: true, editable: true });
-    } else if (S.week > LIVE_WEEK && S.week === MINW) {
-      uLine.innerHTML = fullStartersHTML({ phased: false, editable: true });
-    } else {
-      const g = S.games.find((x) => x.me), idx = S.games.indexOf(g);
-      const note = S.week < LIVE_WEEK ? "Final result \xB7 open for Rewind" : "Scheduled \xB7 projections only";
-      uLine.innerHTML = `<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>
-      <div class="t"><div class="a">View Full Matchup</div><div class="b">${note}</div></div><div class="arr">\u203A</div></div>`;
-    }
-  }
-  function phaseStepperHTML() {
-    const stops = simStops(), i = store.simIdx, sk = simKick();
-    const atStart = i <= -1, atEnd = i >= stops.length;
-    const locked = LINEUP.reduce((n, r) => n + (isLocked(r.a) ? 1 : 0), 0);
-    const sub = i < 0 ? "Lineups open \xB7 swap freely before kickoff" : !isFinite(sk) ? "All games final" : `${locked} of ${LINEUP.length} starters locked`;
-    return `<div class="phasebar">
-    <div class="ph-ar ${atStart ? "dis" : ""}" onclick="stepSim(-1)">\u2039</div>
-    <div class="ph-mid"><div class="ph-lbl">${ordLabel(sk)}</div><div class="ph-sub">${sub}</div></div>
-    <div class="ph-ar ${atEnd ? "dis" : ""}" onclick="stepSim(1)">\u203A</div>
-  </div>`;
-  }
-  function stepSim(d) {
-    const stops = simStops();
-    let i = store.simIdx + d;
-    i = Math.max(-1, Math.min(stops.length, i));
-    store.simIdx = i;
-    saveStore();
-    recomputeLT();
-    renderWeek2();
-  }
-  var swapIdx = null;
-  function openSwap(i) {
-    const r = LINEUP[i];
-    if (!r) return;
-    if (r.a && isLocked(r.a)) {
-      toast("Locked \u2014 game already started");
-      return;
-    }
-    swapIdx = i;
-    const slot = r.slot, cur = r.a;
-    const open = [], locked = [];
-    BENCH.forEach((br, j) => {
-      const p = br.a;
-      if (!p || p.fa || !slotAllows(slot, p.pos)) return;
-      (isLocked(p) ? locked : open).push({ p, j });
-    });
-    let body2 = `<div class="swap-cur">${cur ? `<b>${cur.n}</b>` : `<b>${slot}</b>`} \xB7 ${SLOT_ELIG[slot].join("/")}</div>`;
-    if (!open.length && !locked.length) body2 += `<div class="swap-empty">\u2014</div>`;
-    body2 += open.map(({ p, j }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
-    <div class="swap-pos">${p.pos}</div>
-    <div class="swap-nm"><div class="n">${p.n}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}</div><div class="m">${p.tm}${p.bye ? ` (${p.bye})` : ""} \xB7 ${p.g || "\u2014"}</div></div>
-    <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
-    body2 += locked.map(({ p }) => `<div class="swap-row dis">
-    <div class="swap-pos">${p.pos}</div>
-    <div class="swap-nm"><div class="n">${p.n}</div><div class="m">Locked \xB7 ${p.g}</div></div>
-    <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
-    document.getElementById("swapTitle").textContent = cur ? `Swap ${slot}` : `Fill ${slot}`;
-    document.getElementById("swapBody").innerHTML = body2;
-    document.getElementById("swapScrim").classList.add("show");
-    document.getElementById("swapSheet").classList.add("show");
-  }
-  function openBenchSwap(j) {
-    const p = BENCH[j] && BENCH[j].a;
-    if (!p) return;
-    if (isLocked(p)) {
-      toast("Locked \u2014 game already started");
-      return;
-    }
-    swapIdx = null;
-    const open = [], locked = [];
-    LINEUP.forEach((r, i) => {
-      if (!slotAllows(r.slot, p.pos)) return;
-      (r.a && isLocked(r.a) ? locked : open).push({ r, i });
-    });
-    let body2 = `<div class="swap-cur"><b>${p.n}</b> \xB7 ${p.pos}</div>`;
-    if (!open.length && !locked.length) body2 += `<div class="swap-empty">\u2014</div>`;
-    body2 += open.map(({ r, i }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
-    <div class="swap-pos">${r.slot}</div>
-    <div class="swap-nm"><div class="n">${r.a ? r.a.n : "Empty"}</div><div class="m">${r.a ? `${r.a.pos} \xB7 ${r.a.tm} \xB7 sits` : "Open slot"}</div></div>
-    <div class="swap-pts">${r.a ? r.a.proj.toFixed(1) : "\u2014"}</div></div>`).join("");
-    body2 += locked.map(({ r }) => `<div class="swap-row dis">
-    <div class="swap-pos">${r.slot}</div>
-    <div class="swap-nm"><div class="n">${r.a.n}</div><div class="m">Locked \xB7 ${r.a.g}</div></div>
-    <div class="swap-pts">${r.a.proj.toFixed(1)}</div></div>`).join("");
-    document.getElementById("swapTitle").textContent = `Start ${p.pos}`;
-    document.getElementById("swapBody").innerHTML = body2;
-    document.getElementById("swapScrim").classList.add("show");
-    document.getElementById("swapSheet").classList.add("show");
-  }
-  function closeSwap() {
-    document.getElementById("swapScrim").classList.remove("show");
-    document.getElementById("swapSheet").classList.remove("show");
-    swapIdx = null;
-  }
-  function doSwap(i, j) {
-    const starter = LINEUP[i].a, benchP = BENCH[j].a;
-    if (!benchP) return;
-    if (starter && isLocked(starter) || isLocked(benchP)) {
-      toast("Locked \u2014 game already started");
-      closeSwap();
-      return;
-    }
-    LINEUP[i].a = benchP;
-    BENCH[j].a = starter || null;
-    S.pidx = null;
-    invalidateRosters();
-    persistRoster();
-    closeSwap();
-    recomputeLT();
-    renderWeek2();
-    toast(`${benchP.n} is now starting`);
-  }
+  // js/kart.js
+  var kart_exports = {};
+  __export(kart_exports, {
+    fieldSize: () => fieldSize,
+    kartOn: () => kartOn,
+    kartTable: () => kartTable,
+    renderKartStandings: () => renderKartStandings,
+    renderKartWeek: () => renderKartWeek,
+    weekBoard: () => weekBoard,
+    weekScore: () => weekScore
+  });
 
   // js/panel.js
   var panel_exports = {};
@@ -5852,6 +5762,265 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (draftPicks().length) applyDraftToRosters();
     hydrateRosters(S.week);
     renderPanel("leaders");
+  }
+
+  // js/kart.js
+  function kartOn() {
+    return (LG().standings || "record") === "kart";
+  }
+  function fieldSize() {
+    return Object.keys(T).length;
+  }
+  function weekScore(key, week) {
+    if (week === LIVE_WEEK && key === MY_TEAM) return LT.a;
+    return seededScore(week, key);
+  }
+  function weekBoard(week) {
+    const n = fieldSize();
+    return Object.keys(T).map((k) => ({ k, pts: weekScore(k, week) })).sort((a, b) => b.pts - a.pts).map((r, i) => ({ ...r, place: i + 1, earned: Math.max(1, n - i) }));
+  }
+  function kartTable() {
+    const totals = {};
+    Object.keys(T).forEach((k) => {
+      totals[k] = { k, pts: 0, wins: 0, best: null, scored: 0 };
+    });
+    for (let w = MINW; w <= LIVE_WEEK; w++) {
+      weekBoard(w).forEach((r) => {
+        const t = totals[r.k];
+        t.pts += r.earned;
+        t.scored += r.pts;
+        if (r.place === 1) t.wins++;
+        if (t.best == null || r.place < t.best) t.best = r.place;
+      });
+    }
+    return Object.values(totals).map((t) => ({ ...t, scored: Math.round(t.scored * 10) / 10 })).sort((a, b) => b.pts - a.pts || b.scored - a.scored);
+  }
+  function renderKartWeek() {
+    const week = S.week, board = weekBoard(week), played = week <= LIVE_WEEK;
+    const all = document.getElementById("mAllBtn");
+    if (all) all.style.display = "none";
+    const hero = document.getElementById("userHero");
+    hero.className = "";
+    hero.innerHTML = "";
+    document.getElementById("userRewind").style.display = "none";
+    const mine = board.find((r) => r.k === MY_TEAM) || { place: "\u2014", earned: 0, pts: 0 };
+    document.getElementById("userLineup").innerHTML = `
+    <div class="kt-top">
+      <div class="kt-place"><span class="k">YOUR FINISH</span><b>${played ? ordinal(mine.place) : "\u2014"}</b></div>
+      <div class="kt-place"><span class="k">POINTS</span><b>${played ? mine.earned : 0}</b></div>
+      <div class="kt-place"><span class="k">SCORED</span><b>${(mine.pts || 0).toFixed(1)}</b></div>
+    </div>
+    <div class="hd"><span>Week ${week} \xB7 Finish order</span></div>
+    <div class="kt">${board.map((r) => {
+      const t = T[r.k], me = r.k === MY_TEAM;
+      return `<div class="kt-row${me ? " me" : ""}${r.place <= 3 ? " pod" : ""}" onclick="openTeam('${r.k}')">
+        <span class="kt-p">${r.place}</span>
+        ${badge(t, "kt-bd")}
+        <div class="kt-nm"><div class="n tf-${r.k}">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
+        <span class="kt-sc">${r.pts.toFixed(1)}</span>
+        <span class="kt-earn">${played ? "+" + r.earned : "\u2014"}</span>
+      </div>`;
+    }).join("")}</div>`;
+  }
+  function ordinal(n) {
+    if (typeof n !== "number") return n;
+    const s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+  function renderKartStandings() {
+    const rows2 = kartTable();
+    const head = `<div class="stand-row head">
+    <div class="stand-c1">TEAM</div>
+    <span class="st-c rec">WINS</span>
+    <span class="st-c pf">SCORED</span>
+    <span class="st-c df">PTS</span>
+  </div>`;
+    document.getElementById("standBody").innerHTML = head + rows2.map((r, i) => {
+      const t = T[r.k], me = r.k === MY_TEAM;
+      return `<div class="stand-row ${me ? "me" : ""}">
+      <div class="stand-c1">
+        <span class="stand-rk">${i + 1}</span>${badge(t, "stand-bd")}
+        <div class="stand-nm"><div class="n tf-${r.k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${r.k}')">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
+      </div>
+      <span class="st-c rec">${r.wins}</span>
+      <span class="st-c pf">${r.scored.toFixed(1)}</span>
+      <span class="st-c df"><b>${r.pts}</b></span>
+    </div>`;
+    }).join("");
+  }
+
+  // js/matchup.js
+  function renderUserMatchup() {
+    if (kartOn()) {
+      renderKartWeek();
+      return;
+    }
+    const all = document.getElementById("mAllBtn");
+    if (all) all.style.display = "";
+    const live = S.week === LIVE_WEEK;
+    if (live) recomputeLT();
+    const uHero = document.getElementById("userHero"), uRw = document.getElementById("userRewind"), uLine = document.getElementById("userLineup");
+    let aK, xK, as, xs, aw, xw, ap = null, xp = null;
+    if (live) {
+      aK = "pandas";
+      xK = "radiator";
+      as = LT.a;
+      xs = LT.x;
+      aw = LT.aw;
+      xw = LT.xw;
+      ap = LT.ap;
+      xp = LT.xp;
+    } else {
+      const g = S.games.find((x) => x.me);
+      aK = g.a;
+      xK = g.x;
+      as = g.as;
+      xs = g.xs;
+      aw = g.aw;
+      xw = g.xw;
+      if (g.x === "pandas") {
+        aK = g.x;
+        xK = g.a;
+        as = g.xs;
+        xs = g.as;
+        aw = g.xw;
+        xw = g.aw;
+      }
+      if (S.week > LIVE_WEEK) {
+        ap = LINEUP.reduce((n, r) => n + (r.a ? r.a.proj : 0), 0);
+        xp = LINEUP.reduce((n, r) => n + (r.x ? r.x.proj : 0), 0);
+        if (ap || xp) {
+          aw = Math.max(1, Math.min(99, Math.round(50 + (ap - xp) * 1.3)));
+          xw = 100 - aw;
+        }
+      }
+    }
+    const sk = live ? simKick() : null;
+    const phase = live ? sk < 0 ? "pre" : !isFinite(sk) ? "final" : "live" : null;
+    const canRewind = S.week >= MINW;
+    uHero.className = "";
+    uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null });
+    bindVs(uHero.querySelector("[data-vs]"));
+    if (canRewind) {
+      buildRewind(uRw, as, xs);
+      syncRewind("userRewind");
+    } else {
+      rwOpen.userRewind = false;
+      uRw.style.display = "none";
+    }
+    if (live) {
+      uLine.innerHTML = phaseStepperHTML() + fullStartersHTML({ phased: true, editable: true });
+    } else if (S.week > LIVE_WEEK && S.week === MINW) {
+      uLine.innerHTML = fullStartersHTML({ phased: false, editable: true });
+    } else {
+      const g = S.games.find((x) => x.me), idx = S.games.indexOf(g);
+      const note = S.week < LIVE_WEEK ? "Final result \xB7 open for Rewind" : "Scheduled \xB7 projections only";
+      uLine.innerHTML = `<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>
+      <div class="t"><div class="a">View Full Matchup</div><div class="b">${note}</div></div><div class="arr">\u203A</div></div>`;
+    }
+  }
+  function phaseStepperHTML() {
+    const stops = simStops(), i = store.simIdx, sk = simKick();
+    const atStart = i <= -1, atEnd = i >= stops.length;
+    const locked = LINEUP.reduce((n, r) => n + (isLocked(r.a) ? 1 : 0), 0);
+    const sub = i < 0 ? "Lineups open \xB7 swap freely before kickoff" : !isFinite(sk) ? "All games final" : `${locked} of ${LINEUP.length} starters locked`;
+    return `<div class="phasebar">
+    <div class="ph-ar ${atStart ? "dis" : ""}" onclick="stepSim(-1)">\u2039</div>
+    <div class="ph-mid"><div class="ph-lbl">${ordLabel(sk)}</div><div class="ph-sub">${sub}</div></div>
+    <div class="ph-ar ${atEnd ? "dis" : ""}" onclick="stepSim(1)">\u203A</div>
+  </div>`;
+  }
+  function stepSim(d) {
+    const stops = simStops();
+    let i = store.simIdx + d;
+    i = Math.max(-1, Math.min(stops.length, i));
+    store.simIdx = i;
+    saveStore();
+    recomputeLT();
+    renderWeek2();
+  }
+  var swapIdx = null;
+  function openSwap(i) {
+    const r = LINEUP[i];
+    if (!r) return;
+    if (r.a && isLocked(r.a)) {
+      toast("Locked \u2014 game already started");
+      return;
+    }
+    swapIdx = i;
+    const slot = r.slot, cur = r.a;
+    const open = [], locked = [];
+    BENCH.forEach((br, j) => {
+      const p = br.a;
+      if (!p || p.fa || !slotAllows(slot, p.pos)) return;
+      (isLocked(p) ? locked : open).push({ p, j });
+    });
+    let body2 = `<div class="swap-cur">${cur ? `<b>${cur.n}</b>` : `<b>${slot}</b>`} \xB7 ${SLOT_ELIG[slot].join("/")}</div>`;
+    if (!open.length && !locked.length) body2 += `<div class="swap-empty">\u2014</div>`;
+    body2 += open.map(({ p, j }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
+    <div class="swap-pos">${p.pos}</div>
+    <div class="swap-nm"><div class="n">${p.n}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}</div><div class="m">${p.tm}${p.bye ? ` (${p.bye})` : ""} \xB7 ${p.g || "\u2014"}</div></div>
+    <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
+    body2 += locked.map(({ p }) => `<div class="swap-row dis">
+    <div class="swap-pos">${p.pos}</div>
+    <div class="swap-nm"><div class="n">${p.n}</div><div class="m">Locked \xB7 ${p.g}</div></div>
+    <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
+    document.getElementById("swapTitle").textContent = cur ? `Swap ${slot}` : `Fill ${slot}`;
+    document.getElementById("swapBody").innerHTML = body2;
+    document.getElementById("swapScrim").classList.add("show");
+    document.getElementById("swapSheet").classList.add("show");
+  }
+  function openBenchSwap(j) {
+    const p = BENCH[j] && BENCH[j].a;
+    if (!p) return;
+    if (isLocked(p)) {
+      toast("Locked \u2014 game already started");
+      return;
+    }
+    swapIdx = null;
+    const open = [], locked = [];
+    LINEUP.forEach((r, i) => {
+      if (!slotAllows(r.slot, p.pos)) return;
+      (r.a && isLocked(r.a) ? locked : open).push({ r, i });
+    });
+    let body2 = `<div class="swap-cur"><b>${p.n}</b> \xB7 ${p.pos}</div>`;
+    if (!open.length && !locked.length) body2 += `<div class="swap-empty">\u2014</div>`;
+    body2 += open.map(({ r, i }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
+    <div class="swap-pos">${r.slot}</div>
+    <div class="swap-nm"><div class="n">${r.a ? r.a.n : "Empty"}</div><div class="m">${r.a ? `${r.a.pos} \xB7 ${r.a.tm} \xB7 sits` : "Open slot"}</div></div>
+    <div class="swap-pts">${r.a ? r.a.proj.toFixed(1) : "\u2014"}</div></div>`).join("");
+    body2 += locked.map(({ r }) => `<div class="swap-row dis">
+    <div class="swap-pos">${r.slot}</div>
+    <div class="swap-nm"><div class="n">${r.a.n}</div><div class="m">Locked \xB7 ${r.a.g}</div></div>
+    <div class="swap-pts">${r.a.proj.toFixed(1)}</div></div>`).join("");
+    document.getElementById("swapTitle").textContent = `Start ${p.pos}`;
+    document.getElementById("swapBody").innerHTML = body2;
+    document.getElementById("swapScrim").classList.add("show");
+    document.getElementById("swapSheet").classList.add("show");
+  }
+  function closeSwap() {
+    document.getElementById("swapScrim").classList.remove("show");
+    document.getElementById("swapSheet").classList.remove("show");
+    swapIdx = null;
+  }
+  function doSwap(i, j) {
+    const starter = LINEUP[i].a, benchP = BENCH[j].a;
+    if (!benchP) return;
+    if (starter && isLocked(starter) || isLocked(benchP)) {
+      toast("Locked \u2014 game already started");
+      closeSwap();
+      return;
+    }
+    LINEUP[i].a = benchP;
+    BENCH[j].a = starter || null;
+    S.pidx = null;
+    invalidateRosters();
+    persistRoster();
+    closeSwap();
+    recomputeLT();
+    renderWeek2();
+    toast(`${benchP.n} is now starting`);
   }
 
   // js/week.js
@@ -7238,6 +7407,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     optList: () => optList,
     ownsCommish: () => ownsCommish,
     pickLeagueLogo: () => pickLeagueLogo,
+    playoffCards: () => playoffCards,
     previewAsMember: () => previewAsMember,
     rangeOpts: () => rangeOpts,
     renderSettings: () => renderSettings,
@@ -7245,6 +7415,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     resetScoring: () => resetScoring,
     resizeRows: () => resizeRows,
     rosterCards: () => rosterCards,
+    scheduleCards: () => scheduleCards,
     scoreNum: () => scoreNum,
     scoringCard: () => scoringCard,
     scoringCards: () => scoringCards,
@@ -7301,7 +7472,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     LG()[key] = num ? +val : val;
     saveStore();
-    if (key === "standings") renderStandings2();
+    if (key === "standings") {
+      renderStandings2();
+      renderUserMatchup();
+      renderTabs2();
+    }
     renderSettings();
   }
   function setLeagueNum(key, val, min, max) {
@@ -7340,7 +7515,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${setRow("League type", setSel("type", [["redraft", "Redraft"], ["keeper", "Keeper"], ["dynasty", "Dynasty"]], L.type))}
       ${setRow("Teams", setSel("teams", teamOpts, L.teams, 1))}
       ${setRow("Lineup type", setSel("lineup", [["classic", "Classic"], ["bestball", "Best ball"]], L.lineup))}
-      ${setRow("Standings", setSel("standings", [["record", "Win-loss record"], ["table", "Table \xB7 3 points a win"]], L.standings || "record"))}
+      ${setRow("Standings", setSel("standings", [["record", "Win-loss record"], ["table", "Table \xB7 3 points a win"], ["kart", "Kart \xB7 finish order"]], L.standings || "record"))}
       ${sizeNote}
     </div>
     <div class="set-card">
@@ -7395,6 +7570,30 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveStore();
     renderSettings();
     if (window.renderHome) window.renderHome();
+  }
+  function scheduleCards() {
+    if (kartOn()) return `<div class="set-card"><div class="set-title">Schedule</div>
+    <div class="set-note">Kart scoring ranks the whole league each week, so there are no pairings.</div></div>`;
+    const keys = Object.keys(T);
+    const weeks = [];
+    for (let w = MINW; w <= MAXW; w++) {
+      const pairs = weekPairs(w);
+      const rows2 = pairs.map((p, i) => `<div class="sch-pair">
+      ${[0, 1].map((side) => `<select class="sch-sel"${ro()} onchange="setPairing(${w},${i},${side},this.value);renderSettings()">
+        ${keys.map((k) => `<option value="${k}"${p[side] === k ? " selected" : ""}>${escHtml(T[k].n)}</option>`).join("")}
+      </select>${side === 0 ? '<span class="sch-v">v</span>' : ""}`).join("")}
+    </div>`).join("");
+      weeks.push(`<div class="set-card sch-week">
+      <div class="set-title">Week ${w}${hasOverride(w) ? ' <span class="c">EDITED</span>' : ""}
+        ${isCommish() && hasOverride(w) ? `<span class="sch-reset" onclick="clearWeekOverride(${w});renderSettings()">Reset</span>` : ""}</div>
+      ${rows2}
+    </div>`);
+    }
+    return `<div class="set-card">
+      <div class="set-title">Season Schedule</div>
+      <div class="set-note">${Object.keys(scheduleBag()).length} week(s) edited.</div>
+      ${isCommish() ? `<div class="set-btns"><div class="set-btn" onclick="resetSchedule();renderSettings()">${ICON_X} Reset every week</div></div>` : ""}
+    </div>${weeks.join("")}`;
   }
   var SLOT_LABEL = { QB: "QB", RB: "RB", WR: "WR", TE: "TE", FLEX: "FLEX", SFLX: "SFLX" };
   var SLOT_ELIG_TXT = {
@@ -7594,7 +7793,34 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="set-note">Commissioner-only tools land here.</div>
     </div>`;
   }
-  var BASE_SET_TABS = [["general", "General"], ["roster", "Roster"], ["scoring", "Scoring"], ["matchups", "Matchups"], ["notifs", "Alerts"]];
+  var BASE_SET_TABS = [
+    ["general", "General"],
+    ["roster", "Roster"],
+    ["scoring", "Scoring"],
+    ["playoffs", "Playoffs"],
+    ["schedule", "Schedule"],
+    ["matchups", "Matchups"],
+    ["notifs", "Alerts"]
+  ];
+  function playoffCards() {
+    const L = LG(), teams = +L.teams || 10;
+    const sizes = [2, 4, 6, 8, 10, 12].filter((n) => n <= teams).map((n) => [n, n + " teams"]);
+    const seeding = [
+      ["record", "Record, then points for"],
+      ["points", "Points for only"],
+      ["h2h", "Head-to-head, then record"]
+    ];
+    const rounds = Math.max(1, Math.ceil(Math.log2(Math.max(2, +L.playoffTeams || 6))));
+    const ends = (+L.playoffStart || 15) + rounds * (+L.playoffWeeks || 1) - 1;
+    return `<div class="set-card">
+    <div class="set-title">Playoffs</div>
+    ${setRow("Start week", setSel("playoffStart", rangeOpts(MINW + 1, MAXW, (w) => "Week " + w), L.playoffStart || 15, 1))}
+    ${setRow("Teams in the bracket", setSel("playoffTeams", sizes, L.playoffTeams || 6, 1))}
+    ${setRow("Weeks per round", setSel("playoffWeeks", [[1, "1 week"], [2, "2 weeks"]], L.playoffWeeks || 1, 1))}
+    ${setRow("Seeding", setSel("playoffSeeding", seeding, L.playoffSeeding || "record"))}
+    <div class="set-note" style="margin-top:11px">${rounds} round${rounds > 1 ? "s" : ""} \xB7 ends week ${Math.min(MAXW, ends)}</div>
+  </div>`;
+  }
   function notifCards() {
     const p = notifPrefs();
     return `<div class="set-card">
@@ -7642,6 +7868,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       general: leagueCards(),
       roster: rosterCards(),
       scoring: scoringCards(),
+      playoffs: playoffCards(),
+      schedule: scheduleCards(),
       matchups: backdropCards,
       notifs: notifCards(),
       commish: commishCards()
@@ -7719,7 +7947,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-ic" onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
     </div>
     <div class="ms-nav">
-      ${opts.seeded ? ["Matchup", "Team", "League"].map((lb, i) => `<div class="ms-tab${i === 0 ? " on" : ""}">${lb}</div>`).join("") : TABS().map((t) => t.k === "matchup" ? `<div class="ms-tab on">${t.lb}</div>` : `<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join("")}
+      ${TABS().map((t, i) => i === 0 ? `<div class="ms-tab on">${t.lb}</div>` : `<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join("")}
     </div>
     <div class="ms-tools">${pill}<div style="flex:1"></div>${opts.seeded ? "" : `${rm}<div class="sh-cam" onclick="pickGameBackdrop('${aKey}','${xKey}')">${ICON_CAM}</div>`}</div>
     <div class="ms-arena">
@@ -7920,12 +8148,54 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function detailStartersHTML() {
     return fullStartersHTML();
   }
-  function scheduleForWeek(week) {
+  function generatedWeek(week) {
     const ids = Object.keys(T), n = ids.length, arr = ids.slice(1), r = (week - 1) % (n - 1);
     const rotated = arr.map((_, i) => arr[((i - r) % arr.length + arr.length) % arr.length]);
     const circle = [ids[0], ...rotated], pairs = [];
     for (let i = 0; i < n / 2; i++) pairs.push([circle[i], circle[n - 1 - i]]);
     return pairs;
+  }
+  function scheduleBag() {
+    if (!store.schedule) store.schedule = {};
+    const lid = store.activeLeague || "cbd";
+    if (!store.schedule[lid]) store.schedule[lid] = {};
+    return store.schedule[lid];
+  }
+  function scheduleForWeek(week) {
+    const ov = scheduleBag()[week];
+    return ov && ov.length ? ov.map((p) => p.slice()) : generatedWeek(week);
+  }
+  function weekPairs(week) {
+    return scheduleForWeek(week);
+  }
+  function hasOverride(week) {
+    const o = scheduleBag()[week];
+    return !!(o && o.length);
+  }
+  function setPairing(week, idx, side, team) {
+    const pairs = scheduleForWeek(week);
+    let fromIdx = -1, fromSide = 0;
+    pairs.forEach((p, i) => p.forEach((k, j) => {
+      if (k === team) {
+        fromIdx = i;
+        fromSide = j;
+      }
+    }));
+    if (fromIdx < 0 || !pairs[idx]) return;
+    const displaced = pairs[idx][side];
+    pairs[idx][side] = team;
+    pairs[fromIdx][fromSide] = displaced;
+    scheduleBag()[week] = pairs;
+    saveStore();
+  }
+  function clearWeekOverride(week) {
+    delete scheduleBag()[week];
+    saveStore();
+  }
+  function resetSchedule() {
+    const bag = scheduleBag();
+    Object.keys(bag).forEach((k) => delete bag[k]);
+    saveStore();
   }
   function seededScore(week, key) {
     if (week > LIVE_WEEK) return 0;
@@ -8099,12 +8369,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${editRow}
   </div>`;
   }
-  function teamRow(p, own) {
+  function teamRow(p, own, opts) {
+    opts = opts || {};
+    const canDrop = own && opts.drop !== false;
     const cam = own ? `<span class="cam">${ICON_CAM}</span>` : "";
     const faceClick = own ? `onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"` : "";
     const slot = p.slot && p.slot !== p.pos ? `<span class="slot">${p.slot}</span> \xB7 ` : "";
     const nick = own ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">` : playerNick(p.n) ? `<div class="tv-nick">\u201C${playerNick(p.n)}\u201D</div>` : "";
-    const rt = own ? `<div class="tv-rt"><div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>
+    const rt = canDrop ? `<div class="tv-rt"><div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>
         <span class="tv-drop" onclick="event.stopPropagation();confirmDrop('${esc(pKeyOf(p))}')">Drop</span></div>` : `<div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>`;
     return `<div class="tv-row" onclick="openPlayer('${esc(pKeyOf(p))}')">
     <div class="tv-face${own ? " editable" : ""}" ${faceClick}>${faceInner(pKeyOf(p))}${cam}</div>
@@ -8165,15 +8437,22 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!f || !photoTargetName) return;
     const n = photoTargetName;
     processImage(f, 600, "image/jpeg", 0.82, (url) => {
-      store.players[pkey(n)] = Object.assign(store.players[pkey(n)] || {}, { photo: url });
+      const bag = leaguePlayers();
+      bag[pkey(n)] = Object.assign(bag[pkey(n)] || {}, { photo: url });
       saveStore();
-      renderTeam(currentTeamKey);
+      refreshAfterPhoto();
     });
   }
   function setNick(name, val) {
-    const k = pkey(name);
-    store.players[k] = Object.assign(store.players[k] || {}, { nick: (val || "").trim() });
+    const k = pkey(name), bag = leaguePlayers();
+    bag[k] = Object.assign(bag[k] || {}, { nick: (val || "").trim() });
     saveStore();
+  }
+  function refreshAfterPhoto() {
+    S.pidx = null;
+    if (window.currentSeededTeam && window.currentSeededTeam.id)
+      window.openSeededTeam(window.currentSeededTeam.id, window.currentSeededTeam.key);
+    else renderTeam(currentTeamKey);
   }
   function onLogo(input) {
     const f = input.files && input.files[0];
@@ -8970,12 +9249,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function posRankNo(n, pos) {
     return 1 + seedHash(n + pos) % 36;
   }
+  function leaguePlayers(id) {
+    const lid = id || activeLeagueId();
+    if (!store.players) store.players = {};
+    if (!store.players[lid]) store.players[lid] = {};
+    return store.players[lid];
+  }
+  function playerRec(name) {
+    return leaguePlayers()[pkey(name)] || null;
+  }
   function playerPhoto(name) {
-    const r = store.players[pkey(name)];
+    const r = playerRec(name);
     return r && r.photo || null;
   }
   function playerNick(name) {
-    const r = store.players[pkey(name)];
+    const r = playerRec(name);
     return r && r.nick || "";
   }
   function faceInner(key) {
@@ -9215,7 +9503,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }).join("");
   }
   function renderStandings2() {
-    if ((LG().standings || "record") === "table") {
+    const mode = LG().standings || "record";
+    if (mode === "kart") {
+      renderKartStandings();
+      return;
+    }
+    if (mode === "table") {
       renderTableStandings();
       return;
     }
@@ -9337,6 +9630,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     store.pkeyv = 2;
     saveStore();
   }
+  function migratePlayerLeagues2() {
+    if (store.pkeyv3) return;
+    const flat = store.players || {};
+    const looksNested = Object.keys(flat).every((k) => flat[k] && typeof flat[k] === "object" && !("photo" in flat[k]) && !("nick" in flat[k]));
+    store.players = Object.keys(flat).length && !looksNested ? { cbd: flat } : looksNested ? flat : {};
+    store.pkeyv3 = 1;
+    saveStore();
+  }
 
   // js/detail.js
   var detail_exports = {};
@@ -9360,14 +9661,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var home_exports = {};
   __export(home_exports, {
     copyInvite: () => copyInvite,
+    currentSeededTeam: () => currentSeededTeam,
     initHome: () => initHome2,
     openInvite: () => openInvite,
     openSeededTeam: () => openSeededTeam,
     renderHome: () => renderHome2,
     renderSeededLeague: () => renderSeededLeague,
+    renderSeededStandings: () => renderSeededStandings,
     renderWaitRoom: () => renderWaitRoom,
     seededGames: () => seededGames,
     seededRoster: () => seededRoster,
+    seededTab: () => seededTab,
     simulateJoin: () => simulateJoin,
     startCreatedDraft: () => startCreatedDraft
   });
@@ -9383,6 +9687,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     WHEN_LABEL: () => WHEN_LABEL,
     WIZ_TOTAL: () => WIZ_TOTAL,
     inviteLink: () => inviteLink,
+    newTeam: () => newTeam,
     openCreateLeague: () => openCreateLeague,
     renderWizard: () => renderWizard,
     stepValid: () => stepValid,
@@ -9688,6 +9993,74 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${next}
     </div>`;
   }
+  var TEAM_NAMES = [
+    "Gridiron Club",
+    "Fourth And Long",
+    "Play Action",
+    "Red Zone Co",
+    "Two Minute Drill",
+    "Hail Mary FC",
+    "Blitz Package",
+    "Pylon Society",
+    "Audible",
+    "Screen Game",
+    "Trench Warfare",
+    "Zone Read",
+    "Cover Two",
+    "Flea Flicker",
+    "Wildcat Formation",
+    "Onside Kick"
+  ];
+  var TEAM_MGRS = [
+    "You",
+    "Alex",
+    "Sam",
+    "Jordan",
+    "Casey",
+    "Riley",
+    "Morgan",
+    "Avery",
+    "Quinn",
+    "Rowan",
+    "Emery",
+    "Skyler",
+    "Dakota",
+    "Reese",
+    "Finley",
+    "Harper"
+  ];
+  var TEAM_COLORS = [
+    ["#329F5B", "#16281C"],
+    ["#5AA9E6", "#132a3d"],
+    ["#F05D5E", "#2E1718"],
+    ["#C77DFF", "#26163d"],
+    ["#E6D15A", "#3a3512"],
+    ["#4EC9A5", "#0f3329"],
+    ["#E65A7A", "#3d1622"],
+    ["#7D9BFF", "#151f3d"],
+    ["#FF9E5A", "#3d2412"],
+    ["#5AE6B5", "#123329"],
+    ["#B0BCC9", "#242c33"],
+    ["#E6A85A", "#33270f"],
+    ["#8FD14F", "#1e3312"],
+    ["#6BD5E1", "#123033"],
+    ["#D98CFF", "#2b1a3d"],
+    ["#F58A8A", "#3a1c1c"]
+  ];
+  function newTeam(i, mgr) {
+    const [c, bg] = TEAM_COLORS[i % TEAM_COLORS.length];
+    const n = TEAM_NAMES[i % TEAM_NAMES.length];
+    return {
+      key: "t" + i,
+      n,
+      mgr: mgr || TEAM_MGRS[i % TEAM_MGRS.length],
+      rec: "0-0",
+      rk: i + 1,
+      c,
+      bg,
+      mono: n.charAt(0).toUpperCase()
+    };
+  }
   function inviteToken() {
     return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
   }
@@ -9717,12 +10090,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (w.type === "dynasty") league.draftPool = w.startup === "rookies" ? "rookies" : "all";
     league.commish = MY_TEAM;
     const id = "lg" + Date.now().toString(36);
+    const teams = [newTeam(0, "You")];
     myLeagues().push({
       id,
       name: w.name.trim(),
       created: Date.now(),
       invite: inviteToken(),
       joined: 1,
+      teams,
       league,
       scoring,
       slots
@@ -9749,7 +10124,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const st = leagueStatus(lg), bits = [typeLabel(lg), lg.teamCount + " teams"];
     if (st === "forming") bits.push("Forming");
     else if (st === "predraft") bits.push("Pre-draft");
-    else if (st === "complete") bits.push(lg.placed ? ordinal(lg.placed) + " place" : "Final");
+    else if (st === "complete") bits.push(lg.placed ? ordinal2(lg.placed) + " place" : "Final");
     else bits.push("Week " + leagueWeek(lg));
     return bits.join(" \xB7 ");
   }
@@ -9757,7 +10132,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const joined = lg.rec && lg.rec.joined || 1;
     return `<div class="hb-join"><b>${joined}</b><span>of ${lg.teamCount}</span></div>`;
   }
-  function ordinal(n) {
+  function ordinal2(n) {
     const s = ["th", "st", "nd", "rd"], v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   }
@@ -9912,8 +10287,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     return h >>> 0;
   }
-  function renderSeededLeague(lg) {
-    const teams = teamsOf(lg), sc = leagueScore(lg), st = leagueStatus(lg);
+  function seededTab(which) {
+    const lg = activeLeague2();
+    if (!lg || lg.real || lg.created) return;
+    S.seededTab = which;
+    if (which === "team") openSeededTeam(lg.id, myKeyOf(lg));
+    else if (which === "league") renderSeededStandings(lg);
+    else renderSeededLeague(lg);
+    renderTabs2("s_" + which);
+  }
+  function seededHeader(lg) {
+    const sc = leagueScore(lg), st = leagueStatus(lg);
     const wkLabel = st === "predraft" ? "PRE-DRAFT" : st === "complete" ? "FINAL" : "WEEK " + leagueWeek(lg);
     const phase = st === "complete" ? "final" : st === "predraft" ? "pre" : "live";
     const hero = document.getElementById("userHero");
@@ -9927,9 +10311,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       100 - sc.mw,
       null,
       null,
-      { teams, seeded: true, phase, weekLabel: wkLabel }
+      { teams: teamsOf(lg), seeded: true, phase, weekLabel: wkLabel }
     );
     document.getElementById("userRewind").style.display = "none";
+    return { sc, st, wkLabel };
+  }
+  function renderSeededLeague(lg) {
+    const { st, wkLabel } = seededHeader(lg);
+    const teams = teamsOf(lg);
     const games = seededGames(lg).slice(1);
     const cards = games.map((g) => `<div class="lg-hero" onclick="openSeededTeam('${lg.id}','${g.a}')">
     ${stadiumHeroHTML(
@@ -9944,32 +10333,43 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       { teams, compact: true, status: { cls: st === "complete" ? "final" : "live", txt: st === "complete" ? "FINAL" : "LIVE" } }
     )}
   </div>`).join("");
+    document.getElementById("userLineup").innerHTML = `<div class="hd" style="margin-top:14px"><span>${wkLabel === "FINAL" ? "Final Week" : "Week " + leagueWeek(lg)} \xB7 All Matchups</span></div>
+     ${cards}`;
+    document.body.classList.add("seeded");
+    showView2("matchup");
+    document.getElementById("scroll").scrollTop = 0;
+  }
+  function renderSeededStandings(lg) {
+    const teams = teamsOf(lg), me = myKeyOf(lg);
     const rows2 = Object.keys(teams).map((k) => {
-      const t = teams[k], me = k === myKeyOf(lg);
-      return `<div class="stand-row ${me ? "me" : ""}" onclick="openSeededTeam('${lg.id}','${k}')">
+      const t = teams[k], mine = k === me;
+      return `<div class="stand-row ${mine ? "me" : ""}" onclick="openSeededTeam('${lg.id}','${k}')">
       <div class="stand-c1">
         <span class="stand-rk">${t.rk}</span>
         <span class="stand-bd" style="background:${t.bg};color:${t.c}">${t.mono}</span>
-        <div class="stand-nm"><div class="n ${me ? "me" : ""}" style="color:${t.c}">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
+        <div class="stand-nm"><div class="n ${mine ? "me" : ""}" style="color:${t.c}">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
       </div>
       <span class="st-c rec">${t.rec}</span>
     </div>`;
     }).join("");
-    document.getElementById("userLineup").innerHTML = `<div class="hd" style="margin-top:14px"><span>${wkLabel === "FINAL" ? "Final Week" : "Week " + leagueWeek(lg)} \xB7 All Matchups</span></div>
-     ${cards}
-     <div class="hd"><span>League Standings</span></div>
-     <div class="stand">${rows2}</div>`;
-    showView2("matchup");
+    document.getElementById("standBody").innerHTML = rows2;
+    document.getElementById("standMatchups").innerHTML = "";
+    document.body.classList.add("seeded");
+    showView2("standings");
     document.getElementById("scroll").scrollTop = 0;
   }
+  var currentSeededTeam = { id: null, key: null };
   function openSeededTeam(lgId, key) {
     const lg = orderedLeagues().find((l) => l.id === lgId);
     if (!lg) return;
     const t = teamsOf(lg)[key];
     if (!t) return;
+    currentSeededTeam = { id: lgId, key };
     S.teamBackView = "seeded";
     S.seededBack = lg.id;
+    S.seededTab = "team";
     document.getElementById("teamBackLabel").textContent = lg.name;
+    const own = key === myKeyOf(lg);
     const roster = seededRoster(lg, key);
     let body2 = `<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
@@ -9982,16 +10382,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ["STARTERS", "BENCH"].forEach((gp) => {
       const list = roster.filter((p) => p.group === gp);
       if (!list.length) return;
-      body2 += `<div class="tv-sec-hd">${gp}</div><div class="tv-roster">` + list.map((p) => `
-      <div class="tv-row">
-        <div class="tv-pinfo"><div class="tv-pn">${escHtml(p.n)}</div>
-          <div class="tv-pmeta">${p.pos} \xB7 ${p.tm}</div></div>
-        <div class="tv-pts">${p.proj.toFixed(1)}</div>
-      </div>`).join("") + `</div>`;
+      body2 += `<div class="tv-sec-hd">${gp}</div><div class="tv-roster">` + list.map((p) => teamRow(p, own, { drop: false })).join("") + `</div>`;
     });
+    body2 += `<input type="file" accept="image/*" class="hidden-file" id="playerPhotoInput" onchange="onPlayerPhoto(this)">`;
     document.getElementById("teamBody").innerHTML = body2;
+    document.body.classList.add("seeded");
     showView2("team");
-    document.querySelectorAll(".tab").forEach((t2) => t2.classList.remove("on"));
+    renderTabs2("s_team");
     document.getElementById("scroll").scrollTop = 0;
   }
   function renderWaitRoom(id) {
@@ -10011,14 +10408,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div class="wiz-btn primary${full ? "" : " off"}" onclick="startCreatedDraft('${rec.id}')">Start draft</div>
       </div>
     </div>
-    <div class="hd"><span>Managers</span></div>
-    <div class="rc">${Array.from({ length: need }, (_, i) => `
-      <div class="rc-row${i < joined ? "" : " open"}">
+    <div class="hd"><span>Teams</span></div>
+    <div class="rc">${Array.from({ length: need }, (_, i) => {
+      const tm = (rec.teams || [])[i];
+      return `<div class="rc-row${tm ? "" : " open"}">
         <span class="rc-n">${i + 1}</span>
-        <span class="rc-tick">${i < joined ? "\u2713" : "\u2014"}</span>
-        <div class="rc-who"><div class="n">${i === 0 ? "You" : i < joined ? "Joined" : "Open"}</div>
-          ${i === 0 ? '<div class="m">Commissioner</div>' : ""}</div>
-      </div>`).join("")}</div>`;
+        <span class="rc-tick"${tm ? ` style="background:${tm.bg};color:${tm.c};border-color:${tm.c}"` : ""}>${tm ? tm.mono : "\u2014"}</span>
+        <div class="rc-who"><div class="n"${tm ? ` style="color:${tm.c}"` : ""}>${tm ? escHtml(tm.n) : "Open seat"}</div>
+          <div class="m">${tm ? escHtml(tm.mgr) + (i === 0 ? " \xB7 Commissioner" : "") : ""}</div></div>
+      </div>`;
+    }).join("")}</div>`;
     document.body.classList.remove("seeded");
     document.body.classList.add("forming");
     showView2("wait");
@@ -10055,7 +10454,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function simulateJoin(id) {
     const rec = myLeagues().find((l) => l.id === id);
     if (!rec) return;
-    rec.joined = Math.min(+rec.league.teams, (rec.joined || 1) + 1);
+    const cap = +rec.league.teams;
+    if ((rec.joined || 1) >= cap) return;
+    rec.teams = rec.teams || [];
+    rec.teams.push(newTeam(rec.teams.length));
+    rec.joined = rec.teams.length;
     saveStore();
     document.getElementById("condScrim").classList.remove("show");
     document.getElementById("condSheet").classList.remove("show");
@@ -11595,6 +11998,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     chat_exports,
     home_exports,
     create_exports,
+    kart_exports,
     data_exports,
     ui_exports,
     market_exports,
@@ -11615,6 +12019,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   applyStoredRoster();
   renderWeek();
   migratePlayerStore();
+  migratePlayerLeagues();
   applyTeamFonts();
   initLeagues();
   initHome();

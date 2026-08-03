@@ -42,8 +42,10 @@ fixed status — `leagueStatus()` derives it from `draftDone()`, so it reads
 pre-draft (and counts down) until you draft, then flips to active with a live
 score.
 
-The other three are **seeded**: their own teams, records and scores, rendered
-read-only. They reuse the same renderers rather than copies of them —
+The other three are **seeded**: their own teams, records and scores. Their
+rosters take photos and nicknames like any other league (see below); what they
+do not carry is the live roster machinery, so nothing they draw writes back into
+City Boys Dynasty. They reuse the same renderers rather than copies of them —
 `stadiumStageHTML` and `stadiumHeroHTML` take an `opts.teams` map that defaults
 to `T`, so one edit still changes every matchup surface at once. Nothing a
 seeded league draws writes back. Two leaks were caught here and are now asserted
@@ -78,6 +80,63 @@ and **table standings** — 3 for a win, 1 for a draw, sorted on points then
 difference, switchable in Settings ▸ General. Odd-team rotating byes and
 mid-season start are not; they change the schedule engine and were left out of
 this pass. Sleeper import is untouched.
+
+## Per-league everything
+
+Player photos and nicknames are **per league**: `store.players[leagueId][key]`.
+A photo set in one league is that league's joke; the same player wears his
+normal headshot everywhere else, and every league can name him whatever it
+likes. `migratePlayerLeagues()` lifts the old flat bag under `cbd`, since that
+was the only league that could have written to it.
+
+Which means every league needs somewhere to set them, so **Team and League work
+in all of them**. They used to be inert labels painted on the stadium stage —
+that is why they were unreachable outside City Boys Dynasty. They route through
+`showTab` now, with an `s_` prefix picking the seeded renderers, so one call
+handles both kinds.
+
+A seeded roster is editable for photos and nicknames but **not** for Drop:
+dropping reaches into the real `LINEUP`, so offering it on another league's
+roster would cut the player from City Boys Dynasty instead. `teamRow` takes
+`{drop:false}` for exactly that reason.
+
+## Scoring modes
+
+Three, in Settings ▸ General:
+
+- **Record** — win-loss, the original.
+- **Table** — 3 for a win, 1 for a draw, sorted on points then difference.
+- **Kart** — no schedule at all. Everyone starts their best team, the week is
+  ranked on points scored, and finishing position pays season points: first
+  takes as many as there are teams, second one fewer, down to one.
+
+Kart is the one that changes structure rather than presentation. `js/kart.js`
+never consults `scheduleForWeek` because in that mode there is no pairing to
+consult. The first tab becomes **Week** — a ranked board with what each finish
+earned — and the League tab becomes the cumulative season table. Two things
+follow from having no stadium stage to draw: the matchup view must *not* enter
+stage mode, or the league bar and tabs vanish with nothing replacing them, and
+the All Matchups button hides, because there are none.
+
+Switching mode repaints the standings, the matchup and the tab strip. None of
+them repaint on their own when Settings changes underneath them.
+
+## Playoffs and the schedule
+
+Settings ▸ **Playoffs** sets the start week, bracket size, weeks per round and
+seeding rule, and derives the round count and end week from them.
+
+Settings ▸ **Schedule** is the commissioner's full-season editor: every week,
+every pairing, each side a dropdown. Editing one is a *swap* — whoever is
+displaced takes the seat the incoming team left — so a week can never end up
+with a team playing twice or not at all. Overrides live in
+`store.schedule[leagueId][week]` and the generated circle stays the fallback, so
+Reset is a delete rather than a regeneration. Kart scoring has no pairings, and
+the tab says so instead of offering controls that do nothing.
+
+Joining a created league **assigns a team** — name, colour, crest letter,
+manager — and that team is what owns the roster and the picks. Seats are not
+placeholders waiting to be filled in later.
 
 ## Logos
 

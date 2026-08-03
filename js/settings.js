@@ -3,13 +3,16 @@ import { slotAllows } from './clock.js';
 import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.js';
 import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
-import { preDraft, showView, toast, toggleDrawer } from './nav.js';
+import { preDraft, renderTabs, showView, toast, toggleDrawer } from './nav.js';
+import { renderUserMatchup } from './matchup.js';
 import { BENCH, IR, LINEUP, SLOTS, SLOT_ORDER, TAXI, buildSlots, processImage, saveStore, store } from './store.js';
 import { ICON_STAR, ICON_UP, ICON_X } from './team.js';
 import { escHtml } from './panel.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { NOTIF_TYPES, notifPrefs } from './notifs.js';
 import { renderStandings } from './player.js';
+import { kartOn } from './kart.js';
+import { clearWeekOverride, hasOverride, resetSchedule, scheduleBag, setPairing, weekPairs } from './lineup.js';
 import { activeLeague } from './leagues.js';
 
 // ---- who may change what ----
@@ -49,9 +52,10 @@ export function setLeague(key,val,num){
   if(!guard()){renderSettings();return;}
   LG()[key]=num?+val:val;
   saveStore();
-  // Switching standings mode swaps the whole table, and the standings view is
-  // not repainted by opening Settings, so it has to be told.
-  if(key==='standings')renderStandings();
+  // Switching standings mode swaps the whole table *and* the first tab — kart
+  // scoring replaces the matchup with a weekly board. Neither view repaints on
+  // its own when Settings changes underneath them, so both are told.
+  if(key==='standings'){renderStandings();renderUserMatchup();renderTabs();}
   renderSettings();
 }
 export function setLeagueNum(key,val,min,max){
@@ -89,7 +93,7 @@ export function leagueCards(){
       ${setRow('League type',setSel('type',[['redraft','Redraft'],['keeper','Keeper'],['dynasty','Dynasty']],L.type))}
       ${setRow('Teams',setSel('teams',teamOpts,L.teams,1))}
       ${setRow('Lineup type',setSel('lineup',[['classic','Classic'],['bestball','Best ball']],L.lineup))}
-      ${setRow('Standings',setSel('standings',[['record','Win-loss record'],['table','Table · 3 points a win']],L.standings||'record'))}
+      ${setRow('Standings',setSel('standings',[['record','Win-loss record'],['table','Table · 3 points a win'],['kart','Kart · finish order']],L.standings||'record'))}
       ${sizeNote}
     </div>
     <div class="set-card">
@@ -144,6 +148,33 @@ export function clearLeagueLogo(){
   if(store.leagueLogos)delete store.leagueLogos[activeLeague().id];
   saveStore();renderSettings();
   if(window.renderHome)window.renderHome();
+}
+
+/** Full-season editor: every week, every pairing, each one swappable. Kart
+ *  scoring has no schedule to edit, so the tab says so and stops. */
+export function scheduleCards(){
+  if(kartOn())return `<div class="set-card"><div class="set-title">Schedule</div>
+    <div class="set-note">Kart scoring ranks the whole league each week, so there are no pairings.</div></div>`;
+  const keys=Object.keys(T);
+  const weeks=[];
+  for(let w=MINW;w<=MAXW;w++){
+    const pairs=weekPairs(w);
+    const rows=pairs.map((p,i)=>`<div class="sch-pair">
+      ${[0,1].map(side=>`<select class="sch-sel"${ro()} onchange="setPairing(${w},${i},${side},this.value);renderSettings()">
+        ${keys.map(k=>`<option value="${k}"${p[side]===k?' selected':''}>${escHtml(T[k].n)}</option>`).join('')}
+      </select>${side===0?'<span class="sch-v">v</span>':''}`).join('')}
+    </div>`).join('');
+    weeks.push(`<div class="set-card sch-week">
+      <div class="set-title">Week ${w}${hasOverride(w)?' <span class="c">EDITED</span>':''}
+        ${isCommish()&&hasOverride(w)?`<span class="sch-reset" onclick="clearWeekOverride(${w});renderSettings()">Reset</span>`:''}</div>
+      ${rows}
+    </div>`);
+  }
+  return `<div class="set-card">
+      <div class="set-title">Season Schedule</div>
+      <div class="set-note">${Object.keys(scheduleBag()).length} week(s) edited.</div>
+      ${isCommish()?`<div class="set-btns"><div class="set-btn" onclick="resetSchedule();renderSettings()">${ICON_X} Reset every week</div></div>`:''}
+    </div>${weeks.join('')}`;
 }
 
 // ---- roster shape ----
@@ -291,7 +322,27 @@ export function commishCards(){
     </div>`;
 }
 
-export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups'],['notifs','Alerts']];
+export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],
+  ['playoffs','Playoffs'],['schedule','Schedule'],['matchups','Matchups'],['notifs','Alerts']];
+
+/** When the playoffs start, who is in them, how long a round lasts, and how the
+ *  bracket is seeded. */
+export function playoffCards(){
+  const L=LG(),teams=+L.teams||10;
+  const sizes=[2,4,6,8,10,12].filter(n=>n<=teams).map(n=>[n,n+' teams']);
+  const seeding=[['record','Record, then points for'],['points','Points for only'],
+                 ['h2h','Head-to-head, then record']];
+  const rounds=Math.max(1,Math.ceil(Math.log2(Math.max(2,+L.playoffTeams||6))));
+  const ends=(+L.playoffStart||15)+rounds*(+L.playoffWeeks||1)-1;
+  return `<div class="set-card">
+    <div class="set-title">Playoffs</div>
+    ${setRow('Start week',setSel('playoffStart',rangeOpts(MINW+1,MAXW,w=>'Week '+w),L.playoffStart||15,1))}
+    ${setRow('Teams in the bracket',setSel('playoffTeams',sizes,L.playoffTeams||6,1))}
+    ${setRow('Weeks per round',setSel('playoffWeeks',[[1,'1 week'],[2,'2 weeks']],L.playoffWeeks||1,1))}
+    ${setRow('Seeding',setSel('playoffSeeding',seeding,L.playoffSeeding||'record'))}
+    <div class="set-note" style="margin-top:11px">${rounds} round${rounds>1?'s':''} · ends week ${Math.min(MAXW,ends)}</div>
+  </div>`;
+}
 // Notification preferences are personal, not league policy: they never leave
 // this device and the commissioner has no say in them, so they skip `guard()`.
 export function notifCards(){
@@ -337,6 +388,7 @@ export function renderSettings(){
       <div class="set-note">${perGame} set.</div>
     </div>`;
   const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),
+    playoffs:playoffCards(),schedule:scheduleCards(),
     matchups:backdropCards,notifs:notifCards(),commish:commishCards()};
   const cm=commishTeam();
   const sub=isCommish()

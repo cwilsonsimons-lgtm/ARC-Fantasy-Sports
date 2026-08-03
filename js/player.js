@@ -6,6 +6,8 @@ import { MY_TEAM, T } from './data/teams.js';
 import { canDraftNow, faOpen, freeAgents, isRostered } from './freeagency.js';
 import { badge, seasonTotals } from './lineup.js';
 import { LG } from './data/league-config.js';
+import { activeLeagueId } from './leagues.js';
+import { renderKartStandings } from './kart.js';
 import { showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { BENCH, LINEUP, TAXI, store } from './store.js';
 import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
@@ -16,9 +18,20 @@ export function posColor(pos){return POSCOLOR[pos]||'#7C5CFF';}
 export function seedHash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 export function rostPct(n){return 40+seedHash(n+'r')%60;}
 export function posRankNo(n,pos){return 1+seedHash(n+pos)%36;}
-// global (by player name) so the custom photo/nickname shows anywhere this player appears
-export function playerPhoto(name){const r=store.players[pkey(name)];return (r&&r.photo)||null;}
-export function playerNick(name){const r=store.players[pkey(name)];return (r&&r.nick)||'';}
+// Per league, not global. A photo or nickname is a piece of that league's
+// culture — the same player wears his normal headshot everywhere else, and
+// every league can name him whatever it likes without arguing with the others.
+//
+//   store.players[leagueId][playerKey] = {photo, nick}
+export function leaguePlayers(id){
+  const lid=id||activeLeagueId();
+  if(!store.players)store.players={};
+  if(!store.players[lid])store.players[lid]={};
+  return store.players[lid];
+}
+export function playerRec(name){return leaguePlayers()[pkey(name)]||null;}
+export function playerPhoto(name){const r=playerRec(name);return (r&&r.photo)||null;}
+export function playerNick(name){const r=playerRec(name);return (r&&r.nick)||'';}
 export function faceInner(key){
   const src=playerPhoto(key)||headshotFor(key);
   const rec=pIdx()[key];
@@ -194,7 +207,9 @@ export function renderTableStandings(){
   }).join('');
 }
 export function renderStandings(){
-  if((LG().standings||'record')==='table'){renderTableStandings();return;}
+  const mode=LG().standings||'record';
+  if(mode==='kart'){renderKartStandings();return;}
+  if(mode==='table'){renderTableStandings();return;}
   const col = k => `<span class="st-c ${k}">`;
   const head = `<div class="stand-row head">
     <div class="stand-c1">TEAM</div>

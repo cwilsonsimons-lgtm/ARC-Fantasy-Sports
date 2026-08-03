@@ -128,3 +128,37 @@ body.forming .tabs{display:none}
 .rc-who{flex:1;min-width:0}
 .rc-who .n{font-size:13px;font-weight:700}
 .rc-who .m{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:1px}
+
+/* season schedule editor */
+.sch-week .set-title .c{font-size:8.5px;color:var(--accent);letter-spacing:1px;margin-left:6px}
+.sch-reset{float:right;font-size:10px;font-weight:700;color:var(--red);cursor:pointer;letter-spacing:.3px}
+.sch-pair{display:flex;align-items:center;gap:7px;padding:6px 0;border-top:1px solid var(--line-soft)}
+.sch-sel{flex:1;min-width:0;height:34px;border-radius:9px;border:1px solid var(--line);
+  background:var(--card-2);color:var(--ink);font-family:inherit;font-size:11.5px;font-weight:600;
+  padding:0 7px;outline:none}
+.sch-v{flex:none;font-size:9px;color:var(--ink-3);font-weight:700}
+
+/* kart week board */
+.kt-top{display:flex;gap:8px;margin:12px 0 4px}
+.kt-top .kt-place{flex:1;border:1px solid var(--line);border-radius:13px;background:var(--card-2);
+  padding:10px 8px;text-align:center}
+.kt-place .k{display:block;font-size:8.5px;font-weight:800;letter-spacing:.9px;color:var(--ink-3)}
+.kt-place b{display:block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:19px;margin-top:3px}
+.kt{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.kt-row{display:flex;align-items:center;gap:9px;padding:10px 12px;border-top:1px solid var(--line-soft);
+  cursor:pointer}
+.kt-row:first-child{border-top:none}
+.kt-row.me{background:linear-gradient(90deg,rgba(var(--accent-rgb),.09),transparent)}
+.kt-p{flex:none;width:20px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:15px;color:var(--ink-3);text-align:center}
+.kt-row.pod .kt-p{color:var(--accent)}
+.kt-bd{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:none;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px}
+.kt-nm{flex:1;min-width:0}
+.kt-nm .n{--tn-size:13px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kt-nm .m{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
+.kt-sc{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  font-weight:700;color:var(--ink-2);width:52px;text-align:right}
+.kt-earn{flex:none;width:36px;text-align:right;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:700;font-size:14px;color:var(--accent)}

@@ -7,9 +7,14 @@ import { bindVs, toast } from './nav.js';
 import { buildRewind, rwOpen, syncRewind } from './rewind.js';
 import { BENCH, LINEUP, saveStore, store } from './store.js';
 import { renderWeek } from './week.js';
+import { kartOn, renderKartWeek } from './kart.js';
 
 // ---------- USER MATCHUP (week aware) ----------
 export function renderUserMatchup(){
+  // Mario Kart scoring has no opponent, so there is no matchup to draw.
+  if(kartOn()){renderKartWeek();return;}
+  const all=document.getElementById('mAllBtn');
+  if(all)all.style.display='';
   const live=S.week===LIVE_WEEK;
   if(live)recomputeLT();
   const uHero=document.getElementById('userHero'),uRw=document.getElementById('userRewind'),uLine=document.getElementById('userLineup');

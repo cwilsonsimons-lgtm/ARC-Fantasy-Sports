@@ -52,3 +52,14 @@ export function migratePlayerStore(){
   });
   store.players=out;store.pkeyv=2;saveStore();
 }
+/** v2 kept one bag for every league. v3 gives each league its own, and the
+ *  existing one is City Boys Dynasty's because that is the only league that
+ *  could have written to it. */
+export function migratePlayerLeagues(){
+  if(store.pkeyv3)return;
+  const flat=store.players||{};
+  const looksNested=Object.keys(flat).every(k=>flat[k]&&typeof flat[k]==='object'
+    &&!('photo' in flat[k])&&!('nick' in flat[k]));
+  store.players=(Object.keys(flat).length&&!looksNested)?{cbd:flat}:(looksNested?flat:{});
+  store.pkeyv3=1;saveStore();
+}

@@ -37,7 +37,7 @@ export function processImage(file,maxDim,mime,quality,cb){
   r.onerror=()=>{};
   r.readAsDataURL(file);
 }
-export let store=loadStore(); store.team=store.team||{}; store.players=store.players||{};
+export let store=loadStore(); store.team=store.team||{}; store.players=store.players||{};   // {leagueId:{playerKey:{photo,nick}}}
 
 
 

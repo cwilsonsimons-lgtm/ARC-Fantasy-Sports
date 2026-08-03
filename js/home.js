@@ -4,10 +4,12 @@ import { seededPts } from './panel.js';
 import { stadiumHeroHTML, stadiumStageHTML } from './hero.js';
 import { countdownParts, draftAt, leagueMark, leagueScore, leagueStatus, leagueWeek,
          myKeyOf, myLeagues, openLeague, orderedLeagues, setLeagueOrder, teamsOf } from './leagues.js';
-import { inviteLink } from './create.js';
+import { inviteLink, newTeam } from './create.js';
 import { escHtml } from './panel.js';
 import { markInner, saveStore, store } from './store.js';
-import { showView, toast } from './nav.js';
+import { renderTabs, showView, toast } from './nav.js';
+import { activeLeague } from './leagues.js';
+import { teamRow } from './team.js';
 
 // ======================= HOME HUB =======================
 // The root view, above league scope. It carries no league chrome of its own —
@@ -173,51 +175,80 @@ export function seededGames(lg){
 }
 function hash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 
-export function renderSeededLeague(lg){
-  const teams=teamsOf(lg),sc=leagueScore(lg),st=leagueStatus(lg);
+// Seeded leagues get the same three tabs the real one has. They used to be
+// inert labels on the stage, which is why Team and League were unreachable
+// anywhere except City Boys Dynasty.
+export function seededTab(which){
+  const lg=activeLeague();
+  if(!lg||lg.real||lg.created)return;
+  S.seededTab=which;
+  if(which==='team')openSeededTeam(lg.id,myKeyOf(lg));
+  else if(which==='league')renderSeededStandings(lg);
+  else renderSeededLeague(lg);
+  renderTabs('s_'+which);
+}
+
+function seededHeader(lg){
+  const sc=leagueScore(lg),st=leagueStatus(lg);
   const wkLabel=st==='predraft'?'PRE-DRAFT':st==='complete'?'FINAL':'WEEK '+leagueWeek(lg);
   const phase=st==='complete'?'final':st==='predraft'?'pre':'live';
   const hero=document.getElementById('userHero');
   hero.className='';
   hero.innerHTML=stadiumStageHTML(sc.me,sc.opp,sc.ms,sc.os,sc.mw,100-sc.mw,null,null,
-    {teams,seeded:true,phase,weekLabel:wkLabel});
+    {teams:teamsOf(lg),seeded:true,phase,weekLabel:wkLabel});
   document.getElementById('userRewind').style.display='none';
+  return {sc,st,wkLabel};
+}
 
+export function renderSeededLeague(lg){
+  const {st,wkLabel}=seededHeader(lg);
+  const teams=teamsOf(lg);
   const games=seededGames(lg).slice(1);
   const cards=games.map(g=>`<div class="lg-hero" onclick="openSeededTeam('${lg.id}','${g.a}')">
     ${stadiumHeroHTML(g.a,g.x,g.as,g.xs,g.aw,g.xw,null,null,
       {teams,compact:true,status:{cls:st==='complete'?'final':'live',txt:st==='complete'?'FINAL':'LIVE'}})}
   </div>`).join('');
-
-  const rows=Object.keys(teams).map(k=>{
-    const t=teams[k],me=k===myKeyOf(lg);
-    return `<div class="stand-row ${me?'me':''}" onclick="openSeededTeam('${lg.id}','${k}')">
-      <div class="stand-c1">
-        <span class="stand-rk">${t.rk}</span>
-        <span class="stand-bd" style="background:${t.bg};color:${t.c}">${t.mono}</span>
-        <div class="stand-nm"><div class="n ${me?'me':''}" style="color:${t.c}">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
-      </div>
-      <span class="st-c rec">${t.rec}</span>
-    </div>`;
-  }).join('');
-
   document.getElementById('userLineup').innerHTML=
     `<div class="hd" style="margin-top:14px"><span>${wkLabel==='FINAL'?'Final Week':'Week '+leagueWeek(lg)} · All Matchups</span></div>
-     ${cards}
-     <div class="hd"><span>League Standings</span></div>
-     <div class="stand">${rows}</div>`;
-
+     ${cards}`;
+  document.body.classList.add('seeded');
   showView('matchup');
   document.getElementById('scroll').scrollTop=0;
 }
 
-/** Read-only roster for a seeded league, drawn in the existing team view. */
+/** The League tab inside a seeded league: its own standings. */
+export function renderSeededStandings(lg){
+  const teams=teamsOf(lg),me=myKeyOf(lg);
+  const rows=Object.keys(teams).map(k=>{
+    const t=teams[k],mine=k===me;
+    return `<div class="stand-row ${mine?'me':''}" onclick="openSeededTeam('${lg.id}','${k}')">
+      <div class="stand-c1">
+        <span class="stand-rk">${t.rk}</span>
+        <span class="stand-bd" style="background:${t.bg};color:${t.c}">${t.mono}</span>
+        <div class="stand-nm"><div class="n ${mine?'me':''}" style="color:${t.c}">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
+      </div>
+      <span class="st-c rec">${t.rec}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('standBody').innerHTML=rows;
+  document.getElementById('standMatchups').innerHTML='';
+  document.body.classList.add('seeded');
+  showView('standings');
+  document.getElementById('scroll').scrollTop=0;
+}
+
+/** A seeded roster, editable: photos and nicknames are per league now, so every
+ *  league can dress its own players without touching anyone else's. */
+export let currentSeededTeam={id:null,key:null};
 export function openSeededTeam(lgId,key){
   const lg=orderedLeagues().find(l=>l.id===lgId);if(!lg)return;
   const t=teamsOf(lg)[key];if(!t)return;
+  currentSeededTeam={id:lgId,key};
   S.teamBackView='seeded';
   S.seededBack=lg.id;
+  S.seededTab='team';
   document.getElementById('teamBackLabel').textContent=lg.name;
+  const own=key===myKeyOf(lg);
   const roster=seededRoster(lg,key);
   let body=`<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
@@ -229,16 +260,14 @@ export function openSeededTeam(lgId,key){
   </div>`;
   ['STARTERS','BENCH'].forEach(gp=>{
     const list=roster.filter(p=>p.group===gp);if(!list.length)return;
-    body+=`<div class="tv-sec-hd">${gp}</div><div class="tv-roster">`+list.map(p=>`
-      <div class="tv-row">
-        <div class="tv-pinfo"><div class="tv-pn">${escHtml(p.n)}</div>
-          <div class="tv-pmeta">${p.pos} · ${p.tm}</div></div>
-        <div class="tv-pts">${p.proj.toFixed(1)}</div>
-      </div>`).join('')+`</div>`;
+    body+=`<div class="tv-sec-hd">${gp}</div><div class="tv-roster">`
+      +list.map(p=>teamRow(p,own,{drop:false})).join('')+`</div>`;
   });
+  body+=`<input type="file" accept="image/*" class="hidden-file" id="playerPhotoInput" onchange="onPlayerPhoto(this)">`;
   document.getElementById('teamBody').innerHTML=body;
+  document.body.classList.add('seeded');
   showView('team');
-  document.querySelectorAll('.tab').forEach(t2=>t2.classList.remove('on'));
+  renderTabs('s_team');
   document.getElementById('scroll').scrollTop=0;
 }
 
@@ -265,14 +294,15 @@ export function renderWaitRoom(id){
         <div class="wiz-btn primary${full?'':' off'}" onclick="startCreatedDraft('${rec.id}')">Start draft</div>
       </div>
     </div>
-    <div class="hd"><span>Managers</span></div>
-    <div class="rc">${Array.from({length:need},(_,i)=>`
-      <div class="rc-row${i<joined?'':' open'}">
+    <div class="hd"><span>Teams</span></div>
+    <div class="rc">${Array.from({length:need},(_,i)=>{
+      const tm=(rec.teams||[])[i];
+      return `<div class="rc-row${tm?'':' open'}">
         <span class="rc-n">${i+1}</span>
-        <span class="rc-tick">${i<joined?'✓':'—'}</span>
-        <div class="rc-who"><div class="n">${i===0?'You':(i<joined?'Joined':'Open')}</div>
-          ${i===0?'<div class="m">Commissioner</div>':''}</div>
-      </div>`).join('')}</div>`;
+        <span class="rc-tick"${tm?` style="background:${tm.bg};color:${tm.c};border-color:${tm.c}"`:''}>${tm?tm.mono:'—'}</span>
+        <div class="rc-who"><div class="n"${tm?` style="color:${tm.c}"`:''}>${tm?escHtml(tm.n):'Open seat'}</div>
+          <div class="m">${tm?escHtml(tm.mgr)+(i===0?' · Commissioner':''):''}</div></div>
+      </div>`;}).join('')}</div>`;
   document.body.classList.remove('seeded');
   document.body.classList.add('forming');
   showView('wait');
@@ -302,7 +332,12 @@ export function copyInvite(){
 /** There is no server, so joining is the one thing that has to be faked. */
 export function simulateJoin(id){
   const rec=myLeagues().find(l=>l.id===id);if(!rec)return;
-  rec.joined=Math.min(+rec.league.teams,(rec.joined||1)+1);
+  const cap=+rec.league.teams;
+  if((rec.joined||1)>=cap)return;
+  // a manager who joins is given a team, and that team owns their roster and picks
+  rec.teams=rec.teams||[];
+  rec.teams.push(newTeam(rec.teams.length));
+  rec.joined=rec.teams.length;
   saveStore();
   document.getElementById('condScrim').classList.remove('show');
   document.getElementById('condSheet').classList.remove('show');

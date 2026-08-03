@@ -12,6 +12,11 @@ export const LEAGUE_DEFAULTS={
   waiverHour:2,          // 24h clock, league time (2 = 2 AM)
   waiverPeriod:2,        // days a dropped player sits on waivers (0 = none)
   tradeDeadline:11,      // week number, 0 = no deadline
+  standings:'record',    // record | table (3 for a win) | kart (finish order)
+  playoffStart:15,       // first week of the bracket
+  playoffTeams:6,
+  playoffWeeks:1,        // weeks per round
+  playoffSeeding:'record',
   commish:'pandas'       // team key that owns the commissioner role
 };
 

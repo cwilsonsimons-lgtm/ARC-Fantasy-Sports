@@ -9,7 +9,7 @@ import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { renderTabs, showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { seededPts } from './panel.js';
-import { faceInner, pKeyOf, playerNick, renderStandings } from './player.js';
+import { faceInner, leaguePlayers, pKeyOf, playerNick, renderStandings } from './player.js';
 import { BENCH, LINEUP, TAXI, processImage, saveStore, store } from './store.js';
 
 // ---------- TEAM SCREEN ----------
@@ -99,7 +99,13 @@ export function teamHead(t,own){
     ${editRow}
   </div>`;
 }
-export function teamRow(p,own){
+/** `opts.drop` is off for a seeded league: photos and nicknames are per-league
+ *  and safe to edit anywhere, but Drop reaches into the real LINEUP, so
+ *  offering it on another league's roster would cut a player from City Boys
+ *  Dynasty instead. */
+export function teamRow(p,own,opts){
+  opts=opts||{};
+  const canDrop=own&&opts.drop!==false;
   const cam=own?`<span class="cam">${ICON_CAM}</span>`:'';
   const faceClick=own?`onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"`:'';
   // FLEX is worth calling out; "QB · QB" is not
@@ -107,7 +113,7 @@ export function teamRow(p,own){
   const nick=own
     ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">`
     : (playerNick(p.n)?`<div class="tv-nick">“${playerNick(p.n)}”</div>`:'');
-  const rt=own
+  const rt=canDrop
     ? `<div class="tv-rt"><div class="tv-pts">${(p.proj||0).toFixed(1)}</div>
         <span class="tv-drop" onclick="event.stopPropagation();confirmDrop('${esc(pKeyOf(p))}')">Drop</span></div>`
     : `<div class="tv-pts">${(p.proj||0).toFixed(1)}</div>`;
@@ -160,9 +166,24 @@ export function pickPhoto(key){photoTargetName=key;document.getElementById('play
 export function onPlayerPhoto(input){
   const f=input.files&&input.files[0];if(!f||!photoTargetName)return;
   const n=photoTargetName;
-  processImage(f,600,'image/jpeg',0.82,(url)=>{store.players[pkey(n)]=Object.assign(store.players[pkey(n)]||{},{photo:url});saveStore();renderTeam(currentTeamKey);});
+  processImage(f,600,'image/jpeg',0.82,(url)=>{
+    const bag=leaguePlayers();
+    bag[pkey(n)]=Object.assign(bag[pkey(n)]||{},{photo:url});
+    saveStore();refreshAfterPhoto();
+  });
 }
-export function setNick(name,val){const k=pkey(name);store.players[k]=Object.assign(store.players[k]||{},{nick:(val||'').trim()});saveStore();}
+export function setNick(name,val){
+  const k=pkey(name),bag=leaguePlayers();
+  bag[k]=Object.assign(bag[k]||{},{nick:(val||'').trim()});
+  saveStore();
+}
+/** A photo can be set from the real team screen or a seeded one; repaint whichever. */
+function refreshAfterPhoto(){
+  S.pidx=null;
+  if(window.currentSeededTeam&&window.currentSeededTeam.id)
+    window.openSeededTeam(window.currentSeededTeam.id,window.currentSeededTeam.key);
+  else renderTeam(currentTeamKey);
+}
 export function onLogo(input){
   const f=input.files&&input.files[0];if(!f)return;
   processImage(f,256,'image/png',0.92,(url)=>{store.team.logo=url;T[MY_TEAM].logo=url;saveStore();renderTeam(MY_TEAM);refreshApp();});

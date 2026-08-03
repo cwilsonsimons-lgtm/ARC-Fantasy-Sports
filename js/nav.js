@@ -3,11 +3,19 @@ import { MY_TEAM } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
 import { draftDone } from './draft.js';
 import { currentViewName, renderTeam } from './team.js';
+import { activeLeague } from './leagues.js';
+import { LG } from './data/league-config.js';
 
 // ---------- NAV / TABS / DRAWER ----------
 export function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===name));
-  document.querySelector('.shift').classList.toggle('stage-on', name==='matchup');
+  // Stage mode hides the league bar and tabs in favour of the full-bleed
+  // stadium. Kart scoring draws no stadium — there is no opponent — so the real
+  // league keeps its normal chrome there, or the tab strip would vanish with
+  // nothing replacing it. Seeded leagues still draw a stage, so they keep it.
+  const lg=activeLeague();
+  const stage=name==='matchup'&&!(lg&&lg.real&&kartMode());
+  document.querySelector('.shift').classList.toggle('stage-on', stage);
   // The hub sits above league scope: `.leaguebar` and `.tabs` are league chrome
   // and must not render there.
   document.body.classList.toggle('hub', name==='home');
@@ -16,9 +24,23 @@ export function showView(name){
 }
 // Before the draft, the first tab is Draft instead of Matchup. Standings reads "League".
 export function preDraft(){return !draftDone();}
-export function TABS(){return preDraft()
-  ? [{k:'draft',lb:'Draft'},{k:'team',lb:'Team'},{k:'standings',lb:'League'}]
-  : [{k:'matchup',lb:'Matchup'},{k:'team',lb:'Team'},{k:'standings',lb:'League'}];}
+/**
+ * A seeded league gets the same three tabs, routed through `s_` keys so one
+ * `showTab` handles both kinds. They used to be inert labels on the stage,
+ * which is why Team and League were unreachable outside City Boys Dynasty.
+ *
+ * Mario Kart scoring has no opponent, so the first tab reads Week and shows the
+ * weekly leaderboard instead of a head-to-head.
+ */
+export function TABS(){
+  const lg=activeLeague();
+  if(lg&&!lg.real&&!lg.created)
+    return [{k:'s_matchup',lb:'Matchup'},{k:'s_team',lb:'Team'},{k:'s_league',lb:'League'}];
+  const first=preDraft()?{k:'draft',lb:'Draft'}
+    :{k:'matchup',lb:kartMode()?'Week':'Matchup'};
+  return [first,{k:'team',lb:'Team'},{k:'standings',lb:'League'}];
+}
+export function kartMode(){return (LG().standings||'record')==='kart';}
 export function homeTab(){return preDraft()?'draft':'matchup';}
 export function renderTabs(active){
   const el=document.getElementById('tabs');if(!el)return;
@@ -26,6 +48,8 @@ export function renderTabs(active){
   el.innerHTML=TABS().map(t=>`<div class="tab${t.k===cur?' on':''}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join('');
 }
 export function showTab(name){
+  // seeded leagues route through the same call; the `s_` prefix picks the league
+  if(name.indexOf('s_')===0){if(window.seededTab)window.seededTab(name.slice(2));return;}
   if(name==='team'){renderTeam(MY_TEAM);S.teamBackView=homeTab();}
   if(name==='draft')renderDraft();
   renderTabs(name);

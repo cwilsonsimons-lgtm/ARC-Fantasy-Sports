@@ -245,6 +245,26 @@ export function renderWizard(){
     </div>`;
 }
 
+// A joining manager is given a team, and that team is what owns their roster
+// and their picks — the seat is not a placeholder that gets filled in later.
+const TEAM_NAMES=['Gridiron Club','Fourth And Long','Play Action','Red Zone Co',
+  'Two Minute Drill','Hail Mary FC','Blitz Package','Pylon Society','Audible',
+  'Screen Game','Trench Warfare','Zone Read','Cover Two','Flea Flicker',
+  'Wildcat Formation','Onside Kick'];
+const TEAM_MGRS=['You','Alex','Sam','Jordan','Casey','Riley','Morgan','Avery',
+  'Quinn','Rowan','Emery','Skyler','Dakota','Reese','Finley','Harper'];
+const TEAM_COLORS=[['#329F5B','#16281C'],['#5AA9E6','#132a3d'],['#F05D5E','#2E1718'],
+  ['#C77DFF','#26163d'],['#E6D15A','#3a3512'],['#4EC9A5','#0f3329'],['#E65A7A','#3d1622'],
+  ['#7D9BFF','#151f3d'],['#FF9E5A','#3d2412'],['#5AE6B5','#123329'],['#B0BCC9','#242c33'],
+  ['#E6A85A','#33270f'],['#8FD14F','#1e3312'],['#6BD5E1','#123033'],['#D98CFF','#2b1a3d'],
+  ['#F58A8A','#3a1c1c']];
+export function newTeam(i,mgr){
+  const [c,bg]=TEAM_COLORS[i%TEAM_COLORS.length];
+  const n=TEAM_NAMES[i%TEAM_NAMES.length];
+  return {key:'t'+i,n,mgr:mgr||TEAM_MGRS[i%TEAM_MGRS.length],rec:'0-0',rk:i+1,c,bg,
+          mono:n.charAt(0).toUpperCase()};
+}
+
 /** A token the invite link is built from. Stable per league, once created. */
 function inviteToken(){
   return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -270,8 +290,10 @@ export function wizCreate(){
   if(w.type==='dynasty')league.draftPool=w.startup==='rookies'?'rookies':'all';
   league.commish=MY_TEAM;
   const id='lg'+Date.now().toString(36);
+  // The commissioner takes seat one straight away; the rest fill as people join.
+  const teams=[newTeam(0,'You')];
   myLeagues().push({id,name:w.name.trim(),created:Date.now(),invite:inviteToken(),
-                    joined:1,league,scoring,slots});
+                    joined:1,teams,league,scoring,slots});
   delete store.createLeague;
   if(!store.leagueOrder)store.leagueOrder=[];
   store.leagueOrder.push(id);

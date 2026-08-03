@@ -86,8 +86,31 @@ ok('seeded league draws its own teams',
   await page.$eval('#userHero', e => /Rondo|Pylon/.test(e.textContent)));
 ok('seeded league does not leak the real league',
   !(await page.$eval('#userHero', e => /UGF Pandas/.test(e.textContent))));
-ok('seeded league renders standings',
-  await page.$eval('#userLineup', e => e.querySelectorAll('.stand-row').length >= 8));
+// Team and League used to be inert labels on the stage — unreachable outside
+// City Boys Dynasty. They route through the same showTab now.
+ok('seeded league lists the other matchups',
+  await page.$eval('#userLineup', e => e.querySelectorAll('.lg-hero').length >= 3));
+await page.evaluate(() => window.showTab('s_league'));
+await page.waitForTimeout(250);
+ok('League tab works in a seeded league',
+  await view() === 'standings'
+  && await page.$eval('#standBody', e => e.querySelectorAll('.stand-row').length >= 8));
+ok('and shows that league, not the real one',
+  await page.$eval('#standBody', e => /Rondo|Pylon/.test(e.textContent)
+    && !/UGF Pandas/.test(e.textContent)));
+await page.evaluate(() => window.showTab('s_team'));
+await page.waitForTimeout(250);
+ok('Team tab works in a seeded league',
+  await view() === 'team' && await page.$eval('#teamBody', e => /Rondo/.test(e.textContent)));
+ok('and its roster is editable there',
+  (await page.$$('#teamBody .tv-face.editable')).length > 0
+  && (await page.$$('#teamBody .tv-nick-input')).length > 0);
+// Drop reaches into the real LINEUP, so offering it here would cut the player
+// from City Boys Dynasty rather than from the league you are looking at.
+ok('but Drop is not offered in another league',
+  (await page.$$('#teamBody .tv-drop')).length === 0);
+await page.evaluate(() => window.showTab('s_matchup'));
+await page.waitForTimeout(250);
 ok('seeded league hides the real week stepper',
   !(await page.$eval('.view[data-view="matchup"] .mrow', e => getComputedStyle(e).display !== 'none')));
 
@@ -188,6 +211,142 @@ ok('joins fill the roll call',
   await page.$eval('.dr-wait-s', e => /12 of 12/.test(e.textContent)));
 ok('start draft unlocks when full',
   !(await page.$eval('.wiz-btn.primary', e => e.classList.contains('off'))));
+
+console.log('\nper-league player photos');
+ok('a photo set in one league does not follow the player',
+  await page.evaluate(() => {
+    const px='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    window.openLeague('cbd');
+    const key = window.MARKET ? null : null;
+    const id = Object.keys(window.NFL_BY_ID)[0];
+    window.leaguePlayers('cbd')[id] = { photo: px, nick: 'Cbd Only' };
+    const inCbd = window.playerPhoto(id);
+    window.openLeague('sunday');
+    const inOther = window.playerPhoto(id);
+    window.openLeague('cbd');
+    return !!inCbd && !inOther;
+  }));
+ok('nicknames scope the same way',
+  await page.evaluate(() => {
+    const id = Object.keys(window.NFL_BY_ID)[0];
+    const a = window.playerNick(id);
+    window.openLeague('sunday');
+    const b = window.playerNick(id);
+    window.openLeague('cbd');
+    return a === 'Cbd Only' && b === '';
+  }));
+ok('each league keeps its own bag',
+  await page.evaluate(() => !!window.store.players.cbd && !window.store.players.cbd.photo));
+
+console.log('\nMario Kart scoring');
+// Before the draft the first tab is Draft whatever the scoring is, so a league
+// has to be past it for the Week board to be the thing on show.
+await page.evaluate(() => { window.autoDraftAll(); window.setLeague('standings', 'kart'); });
+await page.waitForTimeout(400);
+ok('the first tab becomes Week',
+  await page.evaluate(() => window.TABS()[0].lb === 'Week'));
+await page.evaluate(() => window.showTab('matchup'));
+await page.waitForTimeout(250);
+ok('no head-to-head is drawn', (await page.$$('#userHero .mstage')).length === 0);
+// The stage is what hides the league bar and tabs. With no stage there has to
+// be chrome, or the tab strip vanishes with nothing replacing it.
+ok('kart mode keeps the league bar and tabs', await vis('.leaguebar') && await vis('.tabs'));
+ok('and drops All Matchups, which it has none of',
+  !(await page.$eval('#mAllBtn', e => getComputedStyle(e).display !== 'none')));
+ok('the week is a ranked board', (await page.$$('.kt-row')).length === 10);
+ok('finish order pays X, X-1, X-2…',
+  await page.evaluate(() => {
+    const b = window.weekBoard(1), n = window.fieldSize();
+    return b[0].earned === n && b[1].earned === n - 1 && b[n - 1].earned === 1
+      && b.every((r, i) => i === 0 || b[i - 1].pts >= r.pts);
+  }));
+ok('season points accumulate off finishes',
+  await page.evaluate(() => {
+    const t = window.kartTable();
+    return t.length === 10 && t.every((r, i) => i === 0 || t[i - 1].pts >= r.pts)
+      && t.reduce((n, r) => n + r.pts, 0) > 0;
+  }));
+await page.evaluate(() => window.showTab('standings'));
+await page.waitForTimeout(200);
+ok('the League tab is the season table',
+  await page.$eval('#standBody', e => /PTS/.test(e.textContent) && /SCORED/.test(e.textContent)));
+ok('kart mode has no schedule to edit',
+  await page.evaluate(() => { window.openSettings(); window.setSetTab('schedule');
+    return /no pairings/i.test(document.getElementById('settingsBody').textContent); }));
+await page.evaluate(() => { window.setLeague('standings', 'record'); });
+await page.waitForTimeout(200);
+
+console.log('\nplayoffs and the schedule editor');
+await page.evaluate(() => { window.openSettings(); window.setSetTab('playoffs'); });
+await page.waitForTimeout(200);
+ok('playoffs tab exists',
+  await page.$eval('#settingsBody', e => /Start week/.test(e.textContent)
+    && /Teams in the bracket/.test(e.textContent) && /Weeks per round/.test(e.textContent)
+    && /Seeding/.test(e.textContent)));
+ok('rounds are derived from the bracket size',
+  await page.evaluate(() => {
+    window.setLeague('playoffTeams', 8, 1); window.setSetTab('playoffs');
+    return /3 rounds/.test(document.getElementById('settingsBody').textContent);
+  }));
+await page.evaluate(() => window.setSetTab('schedule'));
+await page.waitForTimeout(250);
+ok('schedule editor lists every week',
+  (await page.$$('.sch-week')).length === 14);
+ok('a week starts on the generated schedule',
+  await page.evaluate(() => !window.hasOverride(3)));
+const swapped = await page.evaluate(() => {
+  const before = window.weekPairs(3).map(p => p.join('/'));
+  const other = window.weekPairs(3)[1][0];
+  window.setPairing(3, 0, 0, other);
+  const after = window.weekPairs(3).map(p => p.join('/'));
+  return { before, after, over: window.hasOverride(3), n: window.weekPairs(3).length };
+});
+ok('editing a pairing swaps rather than duplicates',
+  swapped.over && swapped.n === 5
+  && new Set(swapped.after.join('/').split('/')).size === 10
+  && swapped.before.join() !== swapped.after.join(), swapped);
+ok('the edit reaches the actual schedule',
+  await page.evaluate(() => {
+    const pairs = window.scheduleForWeek(3).map(p => p.join('/')).join();
+    return pairs === window.weekPairs(3).map(p => p.join('/')).join();
+  }));
+ok('reset puts the generated week back',
+  await page.evaluate(() => {
+    window.clearWeekOverride(3);
+    return !window.hasOverride(3)
+      && window.weekPairs(3).map(p => p.join('/')).join()
+         === window.generatedWeek(3).map(p => p.join('/')).join();
+  }));
+
+console.log('\njoins assign teams');
+// This league was already filled by the invite section, so assert the shape
+// rather than a count: one team per joined manager, all distinct, all real.
+const jid = await page.evaluate(() => window.myLeagues()[0].id);
+ok('the commissioner holds seat one',
+  await page.evaluate(id => {
+    const r = window.myLeagues().find(l => l.id === id);
+    return !!r.teams && r.teams[0].mgr === 'You';
+  }, jid));
+ok('every join produced a real team, not a placeholder',
+  await page.evaluate(id => {
+    const r = window.myLeagues().find(l => l.id === id);
+    return r.teams.length === r.joined
+      && r.teams.every(t => t.n && t.c && t.bg && t.key && t.mgr)
+      && new Set(r.teams.map(t => t.key)).size === r.teams.length;
+  }, jid));
+ok('a full league stops taking joins',
+  await page.evaluate(id => {
+    const r = window.myLeagues().find(l => l.id === id);
+    const before = r.teams.length;
+    window.simulateJoin(id);
+    return r.teams.length === before && before === +r.league.teams;
+  }, jid));
+await page.evaluate(id => window.openLeague(id), jid);
+await page.waitForTimeout(250);
+ok('the roll call shows team names',
+  await page.$eval('#waitBody', e => /Gridiron Club/.test(e.textContent)));
+await page.evaluate(() => window.openLeague('cbd'));
+await page.waitForTimeout(250);
 
 console.log('\ntable standings');
 await page.evaluate(() => { window.openLeague('cbd'); });
