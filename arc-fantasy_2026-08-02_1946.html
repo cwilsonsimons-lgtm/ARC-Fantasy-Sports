@@ -1387,6 +1387,89 @@ body.forming .tabs{display:none}
 .kt-earn{flex:none;width:36px;text-align:right;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
   font-weight:700;font-size:14px;color:var(--accent)}
 
+/* css/scoring.css */
+/* ===== SCORING SETTINGS =====
+   Every element here is built from the catalog in js/data/scoring-rules.js —
+   the tab strip, the cards, the search results and the favourites list. */
+
+/* horizontally scrollable category strip, Sleeper-style */
+.sc-tabs{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:2px 0 12px;
+  -webkit-overflow-scrolling:touch}
+.sc-tabs::-webkit-scrollbar{display:none}
+.sc-tab{flex:none;padding:8px 14px;border-radius:11px;background:var(--card);border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;
+  letter-spacing:.7px;text-transform:uppercase;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.sc-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.sc-search{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:0 12px;height:42px;
+  border-radius:13px;border:1px solid var(--line);background:var(--card)}
+.sc-search svg{width:16px;height:16px;color:var(--ink-3);flex:none}
+.sc-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);
+  font-family:inherit;font-size:13.5px;font-weight:600;-webkit-user-select:text;user-select:text}
+.sc-search .x{color:var(--ink-3);font-size:13px;cursor:pointer;flex:none;padding:4px}
+
+.sc-presets{display:flex;flex-wrap:wrap;gap:7px}
+.sc-preset{padding:8px 13px;border-radius:11px;background:var(--card-2);border:1px solid var(--line);
+  font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.sc-preset.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+.sc-card{padding-bottom:6px}
+.sc-where{font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:8px}
+.sc-count{font-size:11px;font-weight:700;color:var(--accent);padding:0 2px 8px}
+.sc-none{padding:26px 12px;text-align:center;font-size:12.5px;color:var(--ink-3)}
+
+/* one rule: label + star + info on the left, the control on the right */
+.sc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;
+  border-top:1px solid var(--line-soft)}
+.sc-row:first-of-type{border-top:none}
+.sc-lb{flex:1;min-width:0;display:flex;align-items:center;gap:7px}
+.sc-name{font-size:12.5px;font-weight:600;color:var(--ink);min-width:0}
+.sc-star{flex:none;font-size:13px;line-height:1;color:var(--ink-3);cursor:pointer}
+.sc-star.on{color:var(--accent)}
+.sc-info{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:9px;font-weight:800;font-style:italic;
+  color:var(--ink-3);cursor:pointer;line-height:1}
+.sc-info.on{border-color:var(--accent);color:var(--accent)}
+.sc-row.fav .sc-name{color:var(--ink)}
+
+.sc-in{flex:none;width:76px;height:34px;border-radius:10px;border:1px solid var(--line);
+  background:var(--card-2);color:var(--ink);text-align:right;padding:0 9px;outline:none;
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:700;
+  -webkit-user-select:text;user-select:text}
+.sc-in:focus{border-color:var(--accent)}
+.sc-in:disabled{opacity:.5}
+.sc-in::-webkit-outer-spin-button,.sc-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+/* "1 point every N yards (+0.0x per yard)" */
+.sc-yard{flex:none;text-align:right}
+.sc-yardline{font-size:11.5px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.sc-in.yd{width:56px;height:30px;margin:0 4px;font-size:12.5px;text-align:center}
+.sc-per{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;
+  font-weight:700;color:var(--accent);margin-top:3px}
+
+.sc-tip{flex:0 0 100%;background:var(--card-2);border-left:2px solid var(--accent);border-radius:0 8px 8px 0;
+  padding:8px 10px;margin-top:4px;font-size:11.5px;line-height:1.5;color:var(--ink-2);
+  -webkit-user-select:text;user-select:text}
+
+/* The live example, scored by the same engine the app uses. It sticks to the
+   bottom of the scroller, so it has to be opaque — a gradient let the rows
+   behind it read straight through. The fade sits above it instead.
+   The scroller keeps a nav bar's worth of bottom padding, and a sticky child
+   stops at that edge — which would leave a band of rows showing between the
+   two. The negative offset takes it down behind the nav; the matching bottom
+   padding keeps its own text above it. */
+.sc-prev{position:sticky;bottom:calc(-1 * var(--navh));margin:14px -16px 0;
+  padding:11px 16px calc(var(--navh) + 13px);
+  background:var(--bg);border-top:1px solid var(--line)}
+.sc-prev::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:20px;
+  background:linear-gradient(180deg,transparent,var(--bg));pointer-events:none}
+.sc-prev-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  font-size:11px;font-weight:600;color:var(--ink-3)}
+.sc-prev-h b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-size:19px;color:var(--accent)}
+.sc-prev-l{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;font-size:10px;color:var(--ink-3)}
+.sc-prev-l b{color:var(--ink-2);font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+
 /* css/chat.css */
 /* ===== CHAT =====
    League chat and a one-to-one thread are the same surface; the thread is the
@@ -7412,19 +7495,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     rangeOpts: () => rangeOpts,
     renderSettings: () => renderSettings,
     reseat: () => reseat,
-    resetScoring: () => resetScoring,
     resizeRows: () => resizeRows,
     rosterCards: () => rosterCards,
     scheduleCards: () => scheduleCards,
-    scoreNum: () => scoreNum,
-    scoringCard: () => scoringCard,
-    scoringCards: () => scoringCards,
     setCommish: () => setCommish,
     setLeague: () => setLeague,
     setLeagueNum: () => setLeagueNum,
     setNum: () => setNum,
     setRow: () => setRow,
-    setScoring: () => setScoring,
     setSel: () => setSel,
     setSetTab: () => setSetTab,
     setSlot: () => setSlot,
@@ -7434,6 +7512,942 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     starterCount: () => starterCount,
     togglePreviewAsMember: () => togglePreviewAsMember
   });
+
+  // js/scoring-ui.js
+  var scoring_ui_exports = {};
+  __export(scoring_ui_exports, {
+    clearScoringSearch: () => clearScoringSearch,
+    pickPreset: () => pickPreset,
+    renderScoringBody: () => renderScoringBody,
+    resetScoring: () => resetScoring,
+    scoringCards: () => scoringCards,
+    scoringSearch: () => scoringSearch,
+    setRuleValue: () => setRuleValue,
+    setScoringTab: () => setScoringTab,
+    setYardRule: () => setYardRule,
+    toggleScoringFav: () => toggleScoringFav,
+    toggleTip: () => toggleTip
+  });
+
+  // js/data/scoring-rules.js
+  var scoring_rules_exports = {};
+  __export(scoring_rules_exports, {
+    ALL_RULES: () => ALL_RULES,
+    RULE_BY_KEY: () => RULE_BY_KEY,
+    SCORING_CATEGORIES: () => SCORING_CATEGORIES,
+    YARD_STEP: () => YARD_STEP,
+    isYardRule: () => isYardRule,
+    perYardFromYards: () => perYardFromYards,
+    yardsPerPoint: () => yardsPerPoint
+  });
+  var YARD_STEP = 0.01;
+  var SCORING_CATEGORIES = [
+    // ---------------------------------------------------------------- passing
+    { id: "pass", lb: "Passing", groups: [
+      { lb: "Yardage", rules: [
+        {
+          k: "passYd",
+          lb: "Passing Yards",
+          per: "yd",
+          help: "Every passing yard the quarterback throws for. Set as 1 point per N yards; 25 is the common default."
+        }
+      ] },
+      { lb: "Touchdowns", rules: [
+        { k: "passTD", lb: "Passing TD", help: "A touchdown pass, at any distance." }
+      ] },
+      { lb: "First Downs", rules: [
+        { k: "passFD", lb: "Passing First Down", help: "A completion that moves the chains. Awarded on top of the yardage." }
+      ] },
+      { lb: "Conversions", rules: [
+        { k: "pass2pt", lb: "2 Point Conversion", help: "A successful two-point conversion pass." }
+      ] },
+      { lb: "Turnovers", rules: [
+        { k: "passInt", lb: "Pass Intercepted", help: "Thrown interception. Usually negative." },
+        { k: "passPick6", lb: "Pick Six Thrown", help: "An interception returned for a touchdown. Stacks with Pass Intercepted." }
+      ] },
+      { lb: "Efficiency", rules: [
+        { k: "passComp", lb: "Pass Completed", help: "Every completion. Small values here reward accuracy over volume." },
+        { k: "passInc", lb: "Incomplete Pass", help: "Every incompletion. Usually negative if used at all." },
+        { k: "passAtt", lb: "Pass Attempts", help: "Every attempt, complete or not." },
+        { k: "passSacked", lb: "QB Sacked", help: "Each time the quarterback is sacked." }
+      ] },
+      { lb: "Bonuses", rules: [
+        { k: "passCmp40", lb: "40+ Yard Completion Bonus", help: "Once per completion of 40 yards or more, on top of the yardage." },
+        { k: "passTD40", lb: "40+ Yard Passing TD Bonus", help: "Once per touchdown pass of 40 yards or more." },
+        { k: "passTD50", lb: "50+ Yard Passing TD Bonus", help: "Once per touchdown pass of 50 yards or more. Stacks with the 40+ bonus unless you set that to 0." }
+      ] }
+    ] },
+    // ---------------------------------------------------------------- rushing
+    { id: "rush", lb: "Rushing", groups: [
+      { lb: "Yardage", rules: [
+        {
+          k: "rushYd",
+          lb: "Rushing Yards",
+          per: "yd",
+          help: "Every rushing yard. Set as 1 point per N yards; 10 is the common default."
+        }
+      ] },
+      { lb: "Touchdowns", rules: [{ k: "rushTD", lb: "Rushing TD", help: "A rushing touchdown, at any distance." }] },
+      { lb: "First Downs", rules: [{ k: "rushFD", lb: "Rushing First Down", help: "A carry that moves the chains." }] },
+      { lb: "Conversions", rules: [{ k: "rush2pt", lb: "2 Point Conversion", help: "A successful two-point conversion run." }] },
+      { lb: "Attempts", rules: [{ k: "rushAtt", lb: "Rush Attempts", help: "Every carry, regardless of result. Rewards volume." }] },
+      { lb: "Bonuses", rules: [
+        { k: "rush40", lb: "40+ Yard Rush Bonus", help: "Once per carry of 40 yards or more." },
+        { k: "rushTD40", lb: "40+ Yard Rush TD Bonus", help: "Once per rushing touchdown of 40 yards or more." },
+        { k: "rushTD50", lb: "50+ Yard Rush TD Bonus", help: "Once per rushing touchdown of 50 yards or more." }
+      ] }
+    ] },
+    // -------------------------------------------------------------- receiving
+    { id: "rec", lb: "Receiving", groups: [
+      { lb: "Base", rules: [
+        { k: "rec", lb: "Reception", help: "Every catch. 1 is full PPR, 0.5 is half, 0 is standard." },
+        { k: "recYd", lb: "Receiving Yards", per: "yd", help: "Every receiving yard. 10 yards per point is the common default." },
+        { k: "recTD", lb: "Receiving TD", help: "A receiving touchdown, at any distance." },
+        { k: "recFD", lb: "Receiving First Down", help: "A catch that moves the chains." },
+        { k: "rec2pt", lb: "2 Point Conversion", help: "A caught two-point conversion." }
+      ] },
+      { lb: "Reception Distance Bonuses", rules: [
+        { k: "recB0", lb: "0-4 Yard Reception Bonus", help: "Per catch gaining 0 to 4 yards." },
+        { k: "recB5", lb: "5-9 Yard Reception Bonus", help: "Per catch gaining 5 to 9 yards." },
+        { k: "recB10", lb: "10-19 Yard Reception Bonus", help: "Per catch gaining 10 to 19 yards." },
+        { k: "recB20", lb: "20-29 Yard Reception Bonus", help: "Per catch gaining 20 to 29 yards." },
+        { k: "recB30", lb: "30-39 Yard Reception Bonus", help: "Per catch gaining 30 to 39 yards." },
+        { k: "recB40", lb: "40+ Yard Reception Bonus", help: "Per catch gaining 40 yards or more." }
+      ] },
+      { lb: "Touchdown Bonuses", rules: [
+        { k: "recTD40", lb: "40+ Yard Reception TD Bonus", help: "Once per receiving touchdown of 40 yards or more." },
+        { k: "recTD50", lb: "50+ Yard Reception TD Bonus", help: "Once per receiving touchdown of 50 yards or more." }
+      ] },
+      { lb: "Position Reception Bonuses", rules: [
+        { k: "recRB", lb: "Reception Bonus - RB", help: "Extra per catch when the receiver is a running back. Stacks with Reception." },
+        { k: "recWR", lb: "Reception Bonus - WR", help: "Extra per catch when the receiver is a wide receiver." },
+        { k: "recTE", lb: "Reception Bonus - TE", help: "Extra per catch when the receiver is a tight end. The usual TE premium." }
+      ] }
+    ] },
+    // ---------------------------------------------------------------- kicking
+    { id: "kick", lb: "Kicking", groups: [
+      { lb: "Field Goals", rules: [
+        { k: "fgMade", lb: "FG Made", help: "Every made field goal, before any distance band is applied." },
+        { k: "fg0", lb: "FG Made (0-19)", help: "Additional for a make from inside 20 yards." },
+        { k: "fg20", lb: "FG Made (20-29)", help: "Additional for a make from 20 to 29 yards." },
+        { k: "fg30", lb: "FG Made (30-39)", help: "Additional for a make from 30 to 39 yards." },
+        { k: "fg40", lb: "FG Made (40-49)", help: "Additional for a make from 40 to 49 yards." },
+        { k: "fg50_59", lb: "FG Made (50-59)", help: "Additional for a make from 50 to 59 yards." },
+        { k: "fg50", lb: "FG Made (50+)", help: "Additional for any make of 50 yards or more. Use this or the 50-59/60+ pair, not both." },
+        { k: "fg60", lb: "FG Made (60+)", help: "Additional for a make from 60 yards or more." },
+        { k: "fgYd", lb: "Points Per FG Yard", per: "yd", help: "Per yard of every made field goal. Distance scoring without bands." },
+        { k: "fgYd30", lb: "Points Per FG Yard Over 30", per: "yd", help: "Per yard beyond 30 on a made field goal. A 45-yarder counts 15 yards." }
+      ] },
+      { lb: "Extra Points", rules: [{ k: "patMade", lb: "PAT Made", help: "Every made extra point." }] },
+      { lb: "Misses", rules: [
+        { k: "fgMiss", lb: "FG Missed", help: "Every missed field goal, before any distance band." },
+        { k: "fgM0", lb: "FG Missed (0-19)", help: "Additional for a miss from inside 20 yards." },
+        { k: "fgM20", lb: "FG Missed (20-29)", help: "Additional for a miss from 20 to 29 yards." },
+        { k: "fgM30", lb: "FG Missed (30-39)", help: "Additional for a miss from 30 to 39 yards." },
+        { k: "fgM40", lb: "FG Missed (40-49)", help: "Additional for a miss from 40 to 49 yards." },
+        { k: "fgM50_59", lb: "FG Missed (50-59)", help: "Additional for a miss from 50 to 59 yards." },
+        { k: "fgM50", lb: "FG Missed (50+)", help: "Additional for any miss of 50 yards or more." },
+        { k: "fgM60", lb: "FG Missed (60+)", help: "Additional for a miss from 60 yards or more." },
+        { k: "patMiss", lb: "PAT Missed", help: "Every missed extra point." }
+      ] }
+    ] },
+    // ----------------------------------------------------------- team defense
+    { id: "def", lb: "Team Defense", groups: [
+      { lb: "Touchdowns", rules: [{ k: "defTD", lb: "Defense TD", help: "Any defensive score: interception, fumble or blocked kick returned in." }] },
+      { lb: "Points Allowed", rules: [
+        { k: "pa0", lb: "Points Allowed 0", help: "A shutout: the defence gave up no points at all." },
+        { k: "pa1", lb: "Points Allowed 1-6", help: "The unit allows 1 to 6 points." },
+        { k: "pa7", lb: "Points Allowed 7-13", help: "The unit allows 7 to 13 points." },
+        { k: "pa14", lb: "Points Allowed 14-20", help: "The unit allows 14 to 20 points." },
+        { k: "pa21", lb: "Points Allowed 21-27", help: "The unit allows 21 to 27 points." },
+        { k: "pa28", lb: "Points Allowed 28-34", help: "The unit allows 28 to 34 points." },
+        { k: "pa35", lb: "Points Allowed 35+", help: "The unit allows 35 or more. Usually negative." },
+        { k: "paPer", lb: "Points Per Point Allowed", help: "Applied per point conceded, instead of the bands above. Usually negative." }
+      ] },
+      { lb: "Total Yards Allowed", rules: [
+        { k: "ya0", lb: "Less Than 100", help: "Total yards allowed under 100." },
+        { k: "ya100", lb: "100-199", help: "Total yards allowed 100 to 199." },
+        { k: "ya200", lb: "200-299", help: "Total yards allowed 200 to 299." },
+        { k: "ya300", lb: "300-349", help: "Total yards allowed 300 to 349." },
+        { k: "ya350", lb: "350-399", help: "Total yards allowed 350 to 399." },
+        { k: "ya400", lb: "400-449", help: "Total yards allowed 400 to 449." },
+        { k: "ya450", lb: "450-499", help: "Total yards allowed 450 to 499." },
+        { k: "ya500", lb: "500-549", help: "Total yards allowed 500 to 549." },
+        { k: "ya550", lb: "550+", help: "Total yards allowed 550 or more." },
+        { k: "yaPer", lb: "Points Per Yard Allowed", per: "yd", help: "Applied per yard conceded, instead of the bands above." }
+      ] },
+      { lb: "Defensive Stops", rules: [
+        { k: "def3out", lb: "3 and Out", help: "A drive forced to punt after three plays." },
+        { k: "def4th", lb: "4th Down Stop", help: "A fourth-down attempt stopped short." }
+      ] },
+      { lb: "Pressure", rules: [
+        { k: "defSack", lb: "Sack", help: "Every team sack." },
+        { k: "defSackYd", lb: "Sack Yards", per: "yd", help: "Per yard lost on sacks." },
+        { k: "defQBHit", lb: "Hit on QB", help: "Every recorded quarterback hit." }
+      ] },
+      { lb: "Turnovers", rules: [
+        { k: "defInt", lb: "Interception", help: "Every interception by the unit." },
+        { k: "defIntYd", lb: "INT Return Yards", per: "yd", help: "Per yard of interception returns." },
+        { k: "defFF", lb: "Forced Fumble", help: "Every fumble forced, recovered or not." },
+        { k: "defFR", lb: "Fumble Recovery", help: "Every fumble recovered." },
+        { k: "defFRYd", lb: "Fumble Return Yards", per: "yd", help: "Per yard of fumble returns." }
+      ] },
+      { lb: "Tackles", rules: [
+        { k: "defTkl", lb: "Tackle", help: "Any tackle, solo or assisted." },
+        { k: "defSolo", lb: "Solo Tackle", help: "Unassisted tackles only." },
+        { k: "defAst", lb: "Assisted Tackle", help: "Assists only." },
+        { k: "defTFL", lb: "Tackle For Loss", help: "A tackle behind the line of scrimmage." }
+      ] },
+      { lb: "Miscellaneous", rules: [
+        { k: "defSafety", lb: "Safety", help: "Every safety." },
+        { k: "defBlk", lb: "Blocked Kick", help: "A blocked punt, field goal or extra point." },
+        { k: "defPunt", lb: "Forced Punt", help: "Every drive that ends in a punt." },
+        { k: "defPD", lb: "Pass Defended", help: "Every pass broken up." },
+        { k: "def2ptRet", lb: "2 Point Conversion Returns", help: "A failed conversion returned the other way for two." },
+        { k: "defFGRetYd", lb: "Missed FG Return Yards", per: "yd", help: "Per yard returning a missed field goal." },
+        { k: "defBlkRetYd", lb: "Blocked Kick Return Yards", per: "yd", help: "Per yard returning a blocked kick." }
+      ] }
+    ] },
+    // -------------------------------------------------- special teams defense
+    { id: "std", lb: "ST Defense", groups: [
+      { lb: "Special Teams Defense", rules: [
+        { k: "stTD", lb: "Special Teams TD", help: "A kick or punt returned for a score by the unit." },
+        { k: "stFF", lb: "Special Teams Forced Fumble", help: "A fumble forced on a return." },
+        { k: "stFR", lb: "Special Teams Fumble Recovery", help: "A fumble recovered on a return." },
+        { k: "stSolo", lb: "Special Teams Solo Tackle", help: "An unassisted tackle in coverage." },
+        { k: "stPRYd", lb: "Punt Return Yards", per: "yd", help: "Per yard of punt returns by the unit." },
+        { k: "stKRYd", lb: "Kick Return Yards", per: "yd", help: "Per yard of kick returns by the unit." }
+      ] }
+    ] },
+    // --------------------------------------------------- special teams player
+    { id: "stp", lb: "ST Player", groups: [
+      { lb: "Special Teams Player", rules: [
+        { k: "stpTD", lb: "Special Teams Player TD", help: "A return touchdown credited to the individual returner." },
+        { k: "stpFF", lb: "Special Teams Player Forced Fumble", help: "A fumble the player forces on special teams." },
+        { k: "stpFR", lb: "Special Teams Player Fumble Recovery", help: "A fumble the player recovers on special teams." },
+        { k: "stpSolo", lb: "Special Teams Player Solo Tackle", help: "An unassisted special teams tackle by the player." },
+        { k: "stpPRYd", lb: "Player Punt Return Yards", per: "yd", help: "Per punt return yard by the player." },
+        { k: "stpKRYd", lb: "Player Kick Return Yards", per: "yd", help: "Per kick return yard by the player." }
+      ] }
+    ] },
+    // -------------------------------------------------------------------- IDP
+    { id: "idp", lb: "IDP", groups: [
+      { lb: "Touchdowns", rules: [{ k: "idpTD", lb: "IDP TD", help: "A defensive touchdown credited to the individual player." }] },
+      { lb: "Sacks", rules: [
+        { k: "idpSack", lb: "Sack", help: "Every sack by the player. Half-sacks count 0.5." },
+        { k: "idpSackYd", lb: "Sack Yards", per: "yd", help: "Per yard lost on the player\u2019s sacks." },
+        { k: "idpQBHit", lb: "Hit on QB", help: "Every quarterback hit by the player." }
+      ] },
+      { lb: "Tackles", rules: [
+        { k: "idpTkl", lb: "Tackle", help: "Any tackle, solo or assisted." },
+        { k: "idpSolo", lb: "Solo Tackle", help: "Unassisted tackles only." },
+        { k: "idpAst", lb: "Assisted Tackle", help: "Assists only." },
+        { k: "idpTFL", lb: "Tackle For Loss", help: "A tackle behind the line of scrimmage." }
+      ] },
+      { lb: "Turnovers", rules: [
+        { k: "idpInt", lb: "Interception", help: "Every interception by the player." },
+        { k: "idpIntYd", lb: "INT Return Yards", per: "yd", help: "Per yard of the player\u2019s interception returns." },
+        { k: "idpFF", lb: "Forced Fumble", help: "Every fumble the player forces." },
+        { k: "idpFR", lb: "Fumble Recovery", help: "Every fumble the player recovers." },
+        { k: "idpFRYd", lb: "Fumble Return Yards", per: "yd", help: "Per yard of the player\u2019s fumble returns." }
+      ] },
+      { lb: "Miscellaneous", rules: [
+        { k: "idpPD", lb: "Pass Defended", help: "Every pass the player breaks up." },
+        { k: "idpSafety", lb: "Safety", help: "Every safety the player records." },
+        { k: "idpBlk", lb: "Blocked Punt / PAT / FG", help: "Any kick the player blocks." }
+      ] },
+      { lb: "IDP Bonuses", rules: [
+        { k: "idpB10Tkl", lb: "10+ Tackle Bonus", help: "Once, when the player finishes with 10 or more tackles." },
+        { k: "idpB2Sack", lb: "2+ Sack Bonus", help: "Once, at two or more sacks." },
+        { k: "idpB3PD", lb: "3+ Pass Defended Bonus", help: "Once, at three or more passes defended." },
+        { k: "idpBInt50", lb: "50+ Yard Interception Return TD Bonus", help: "Once per pick six of 50 yards or more." },
+        { k: "idpBFum50", lb: "50+ Yard Fumble Return TD Bonus", help: "Once per fumble return touchdown of 50 yards or more." }
+      ] }
+    ] },
+    // ---------------------------------------------------------------- general
+    { id: "misc", lb: "Misc", groups: [
+      { lb: "Miscellaneous", rules: [
+        { k: "fum", lb: "Fumble", help: "Every fumble, recovered by either side." },
+        { k: "fumLost", lb: "Fumble Lost", help: "A fumble the other team recovers. Stacks with Fumble." },
+        { k: "fumTD", lb: "Fumble Recovery TD", help: "An offensive player recovering a fumble in the end zone." }
+      ] }
+    ] },
+    // ---------------------------------------------------------------- bonuses
+    { id: "bonus", lb: "Bonuses", groups: [
+      { lb: "Yardage Bonuses", rules: [
+        { k: "bRush100", lb: "100-199 Yard Rushing Game", help: "Once, for finishing the week with 100 to 199 rushing yards." },
+        { k: "bRush200", lb: "200+ Yard Rushing Game", help: "Once, at 200 or more rushing yards." },
+        { k: "bRec100", lb: "100-199 Yard Receiving Game", help: "Once, for 100 to 199 receiving yards." },
+        { k: "bRec200", lb: "200+ Yard Receiving Game", help: "Once, at 200 or more receiving yards." },
+        { k: "bPass300", lb: "300-399 Yard Passing Game", help: "Once, for 300 to 399 passing yards." },
+        { k: "bPass400", lb: "400+ Yard Passing Game", help: "Once, at 400 or more passing yards." },
+        { k: "bComb100", lb: "100-199 Combined Rush + Receiving", help: "Once, for 100 to 199 rushing and receiving yards together." },
+        { k: "bComb200", lb: "200+ Combined Rush + Receiving", help: "Once, at 200 or more combined." }
+      ] },
+      { lb: "Usage Bonuses", rules: [
+        { k: "bComp25", lb: "25+ Pass Completions", help: "Once, at 25 or more completions." },
+        { k: "bCarry20", lb: "20+ Carries", help: "Once, at 20 or more carries." }
+      ] },
+      { lb: "First Down Bonuses", rules: [
+        { k: "fdQB", lb: "First Down Bonus - QB", help: "Extra per first down when the player is a quarterback." },
+        { k: "fdRB", lb: "First Down Bonus - RB", help: "Extra per first down when the player is a running back." },
+        { k: "fdWR", lb: "First Down Bonus - WR", help: "Extra per first down when the player is a wide receiver." },
+        { k: "fdTE", lb: "First Down Bonus - TE", help: "Extra per first down when the player is a tight end." }
+      ] }
+    ] }
+  ];
+  var RULE_BY_KEY = {};
+  var ALL_RULES = [];
+  SCORING_CATEGORIES.forEach((cat) => cat.groups.forEach((g) => g.rules.forEach((r) => {
+    const rule = Object.assign({ cat: cat.id, catLb: cat.lb, group: g.lb, step: r.per === "yd" ? YARD_STEP : 0.01 }, r);
+    RULE_BY_KEY[r.k] = rule;
+    ALL_RULES.push(rule);
+  })));
+  function isYardRule(k) {
+    const r = RULE_BY_KEY[k];
+    return !!(r && r.per === "yd");
+  }
+  function yardsPerPoint(v) {
+    const n = Math.abs(+v || 0);
+    return n ? Math.round(1 / n * 100) / 100 : 0;
+  }
+  function perYardFromYards(y) {
+    const n = Math.abs(+y || 0);
+    return n ? Math.round(1 / n * 1e4) / 1e4 : 0;
+  }
+
+  // js/data/scoring-presets.js
+  var scoring_presets_exports = {};
+  __export(scoring_presets_exports, {
+    DEFAULT_PRESET: () => DEFAULT_PRESET,
+    PRESET_BY_ID: () => PRESET_BY_ID,
+    SCORING_PRESETS: () => SCORING_PRESETS,
+    presetValues: () => presetValues
+  });
+  var BASE_OFFENCE = {
+    passYd: 0.04,
+    passTD: 4,
+    passInt: -2,
+    pass2pt: 2,
+    rushYd: 0.1,
+    rushTD: 6,
+    rush2pt: 2,
+    recYd: 0.1,
+    recTD: 6,
+    rec2pt: 2,
+    fumLost: -2,
+    fumTD: 6,
+    patMade: 1,
+    patMiss: -1,
+    defTD: 6,
+    defSack: 1,
+    defInt: 2,
+    defFR: 2,
+    defSafety: 2,
+    defBlk: 2,
+    stTD: 6,
+    stpTD: 6
+  };
+  var SCORING_PRESETS = [
+    { id: "sleeper", lb: "Sleeper", values: Object.assign({}, BASE_OFFENCE, {
+      rec: 1,
+      // full PPR by default
+      fgMade: 3,
+      fg40: 1,
+      fg50: 2,
+      // 3 base, +1 at 40s, +2 at 50+
+      fgMiss: -1,
+      pa0: 10,
+      pa1: 7,
+      pa7: 4,
+      pa14: 1,
+      pa21: 0,
+      pa28: -1,
+      pa35: -4
+    }) },
+    { id: "espn", lb: "ESPN", values: Object.assign({}, BASE_OFFENCE, {
+      rec: 0,
+      // ESPN standard is non-PPR
+      passInt: -2,
+      fg0: 3,
+      fg20: 3,
+      fg30: 3,
+      fg40: 4,
+      fg50: 5,
+      fg60: 5,
+      fgM0: -4,
+      fgM20: -3,
+      fgM30: -2,
+      pa0: 5,
+      pa1: 4,
+      pa7: 3,
+      pa14: 1,
+      pa21: 0,
+      pa28: -1,
+      pa35: -3,
+      ya0: 5,
+      ya100: 3,
+      ya200: 2,
+      ya300: 0,
+      ya350: -1,
+      ya400: -3,
+      ya450: -5,
+      ya500: -6,
+      ya550: -7,
+      defSack: 2,
+      defInt: 2,
+      defFR: 2
+    }) },
+    { id: "yahoo", lb: "Yahoo", values: Object.assign({}, BASE_OFFENCE, {
+      rec: 0.5,
+      // Yahoo's default is half PPR
+      passYd: 0.04,
+      passTD: 4,
+      passInt: -1,
+      fgMade: 3,
+      fg0: 3,
+      fg20: 3,
+      fg30: 3,
+      fg40: 4,
+      fg50: 5,
+      patMade: 1,
+      pa0: 10,
+      pa1: 7,
+      pa7: 4,
+      pa14: 1,
+      pa21: 0,
+      pa28: -1,
+      pa35: -4,
+      defSack: 1,
+      defInt: 2,
+      defFR: 2,
+      defTD: 6,
+      defSafety: 2,
+      defBlk: 2,
+      stpKRYd: 0,
+      stpPRYd: 0
+    }) },
+    { id: "nfl", lb: "NFL Fantasy", values: Object.assign({}, BASE_OFFENCE, {
+      rec: 0.5,
+      passTD: 4,
+      passInt: -2,
+      fgMade: 3,
+      fg50: 5,
+      fg40: 4,
+      patMade: 1,
+      pa0: 10,
+      pa1: 7,
+      pa7: 4,
+      pa14: 1,
+      pa21: 0,
+      pa28: -1,
+      pa35: -4,
+      defSack: 1,
+      defInt: 2,
+      defFR: 2,
+      stpKRYd: 0.04,
+      stpPRYd: 0.04
+    }) },
+    { id: "cbs", lb: "CBS Sports", values: Object.assign({}, BASE_OFFENCE, {
+      rec: 0,
+      passYd: 0.04,
+      passTD: 4,
+      passInt: -1,
+      bPass300: 3,
+      bRush100: 3,
+      bRec100: 3,
+      // CBS leans on yardage milestones
+      fgMade: 3,
+      fg40: 1,
+      fg50: 2,
+      pa0: 10,
+      pa1: 7,
+      pa7: 4,
+      pa14: 1,
+      pa21: 0,
+      pa28: -1,
+      pa35: -4,
+      defSack: 1,
+      defInt: 2,
+      defFR: 2
+    }) }
+  ];
+  var PRESET_BY_ID = {};
+  SCORING_PRESETS.forEach((p) => PRESET_BY_ID[p.id] = p);
+  var DEFAULT_PRESET = "sleeper";
+  function presetValues(id) {
+    const p = PRESET_BY_ID[id] || PRESET_BY_ID[DEFAULT_PRESET];
+    const out = {};
+    ALL_RULES.forEach((r) => {
+      out[r.k] = 0;
+    });
+    Object.keys(p.values).forEach((k) => {
+      if (k in out) out[k] = p.values[k];
+    });
+    return out;
+  }
+
+  // js/scoring.js
+  var scoring_exports = {};
+  __export(scoring_exports, {
+    activePreset: () => activePreset,
+    applyPreset: () => applyPreset,
+    favourites: () => favourites,
+    isDirty: () => isDirty,
+    isFav: () => isFav,
+    resetScoringToPreset: () => resetScoringToPreset,
+    scorePlayer: () => scorePlayer,
+    scoreStats: () => scoreStats,
+    scoreValue: () => scoreValue,
+    scoringBag: () => scoringBag,
+    searchRules: () => searchRules,
+    setScoreValue: () => setScoreValue,
+    statLineFor: () => statLineFor,
+    toggleFav: () => toggleFav
+  });
+  function scoringBag(id) {
+    const lid = id || activeLeagueId();
+    if (!store.scoringByLeague) store.scoringByLeague = {};
+    if (!store.scoringByLeague[lid]) {
+      const mine = myLeagues().find((l) => l.id === lid);
+      store.scoringByLeague[lid] = Object.assign(
+        presetValues(DEFAULT_PRESET),
+        mine && mine.scoring || {}
+      );
+      if (!store.scoringPreset) store.scoringPreset = {};
+      if (!store.scoringPreset[lid]) store.scoringPreset[lid] = DEFAULT_PRESET;
+      saveStore();
+    }
+    return store.scoringByLeague[lid];
+  }
+  function scoreValue(k) {
+    const v = scoringBag()[k];
+    return typeof v === "number" ? v : 0;
+  }
+  function setScoreValue(k, v) {
+    if (!isCommish() || !RULE_BY_KEY[k]) return;
+    const n = Math.round((+v || 0) * 1e4) / 1e4;
+    scoringBag()[k] = Math.max(-100, Math.min(100, n));
+    saveStore();
+  }
+  function activePreset() {
+    const lid = activeLeagueId();
+    return (store.scoringPreset || {})[lid] || DEFAULT_PRESET;
+  }
+  function applyPreset(id) {
+    if (!isCommish()) return;
+    const lid = activeLeagueId();
+    store.scoringByLeague = store.scoringByLeague || {};
+    store.scoringPreset = store.scoringPreset || {};
+    store.scoringByLeague[lid] = presetValues(id);
+    store.scoringPreset[lid] = id;
+    saveStore();
+  }
+  function resetScoringToPreset() {
+    applyPreset(activePreset());
+  }
+  function isDirty() {
+    const base = presetValues(activePreset()), cur = scoringBag();
+    return ALL_RULES.some((r) => (cur[r.k] || 0) !== (base[r.k] || 0));
+  }
+  function favourites() {
+    if (!store.scoringFavs) store.scoringFavs = [];
+    return store.scoringFavs;
+  }
+  function isFav(k) {
+    return favourites().indexOf(k) > -1;
+  }
+  function toggleFav(k) {
+    const f = favourites(), i = f.indexOf(k);
+    if (i > -1) f.splice(i, 1);
+    else f.push(k);
+    saveStore();
+  }
+  function searchRules(q) {
+    q = (q || "").trim().toLowerCase();
+    if (!q) return null;
+    return ALL_RULES.filter((r) => r.lb.toLowerCase().includes(q) || r.catLb.toLowerCase().includes(q) || r.group.toLowerCase().includes(q) || (r.help || "").toLowerCase().includes(q));
+  }
+  function scoreStats(stats, opts) {
+    opts = opts || {};
+    const bag = opts.scoring || scoringBag();
+    const pos = opts.pos || null;
+    let total = 0;
+    const lines = [];
+    ALL_RULES.forEach((r) => {
+      const n = +stats[r.k] || 0;
+      if (!n) return;
+      const v = +bag[r.k] || 0;
+      if (!v) return;
+      const pts = n * v;
+      total += pts;
+      lines.push({ k: r.k, lb: r.lb, n, v, pts: Math.round(pts * 100) / 100 });
+    });
+    const posRec = { RB: "recRB", WR: "recWR", TE: "recTE" }[pos];
+    if (posRec && stats.rec) {
+      const v = +bag[posRec] || 0;
+      if (v) {
+        const pts = stats.rec * v;
+        total += pts;
+        lines.push({ k: posRec, lb: RULE_BY_KEY[posRec].lb, n: stats.rec, v, pts: Math.round(pts * 100) / 100 });
+      }
+    }
+    const posFD = { QB: "fdQB", RB: "fdRB", WR: "fdWR", TE: "fdTE" }[pos];
+    const fdCount = (+stats.passFD || 0) + (+stats.rushFD || 0) + (+stats.recFD || 0);
+    if (posFD && fdCount) {
+      const v = +bag[posFD] || 0;
+      if (v) {
+        const pts = fdCount * v;
+        total += pts;
+        lines.push({ k: posFD, lb: RULE_BY_KEY[posFD].lb, n: fdCount, v, pts: Math.round(pts * 100) / 100 });
+      }
+    }
+    return { total: Math.round(total * 100) / 100, lines };
+  }
+  function statLineFor(p, week) {
+    const key = p && (p.id || p.n) || "";
+    let h = 2166136261;
+    const s = key + "#" + (week || 1);
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const r = (n) => ((h = Math.imul(h ^ h >>> 15, 2246822507)) >>> 0) % n;
+    const proj = Math.max(0, +p.proj || 0);
+    const pos = p.pos || "WR";
+    const out = {};
+    if (pos === "QB") {
+      out.passYd = Math.round(proj * 11 + r(60));
+      out.passTD = Math.round(proj / 9);
+      out.passComp = Math.round(out.passYd / 11);
+      out.passAtt = out.passComp + 8 + r(8);
+      out.passInc = out.passAtt - out.passComp;
+      out.passInt = r(10) < 4 ? 1 : 0;
+      out.passFD = Math.round(out.passComp * 0.45);
+      out.rushYd = r(30);
+      out.rushAtt = 2 + r(4);
+      out.passSacked = r(4);
+      if (out.passYd >= 400) out.bPass400 = 1;
+      else if (out.passYd >= 300) out.bPass300 = 1;
+      if (out.passComp >= 25) out.bComp25 = 1;
+    } else if (pos === "RB") {
+      out.rushYd = Math.round(proj * 4.5 + r(25));
+      out.rushAtt = Math.round(out.rushYd / 4.3) + 1;
+      out.rushTD = r(10) < 5 ? 1 : 0;
+      out.rec = 1 + r(5);
+      out.recYd = out.rec * (5 + r(7));
+      out.rushFD = Math.round(out.rushAtt * 0.22);
+      out.recFD = Math.round(out.rec * 0.5);
+      if (out.rushYd >= 200) out.bRush200 = 1;
+      else if (out.rushYd >= 100) out.bRush100 = 1;
+      if (out.rushAtt >= 20) out.bCarry20 = 1;
+    } else {
+      out.rec = Math.max(1, Math.round(proj / 3));
+      out.recYd = Math.round(proj * 6 + r(20));
+      out.recTD = r(10) < 4 ? 1 : 0;
+      out.recFD = Math.round(out.rec * 0.6);
+      if (out.recYd >= 200) out.bRec200 = 1;
+      else if (out.recYd >= 100) out.bRec100 = 1;
+    }
+    const comb = (out.rushYd || 0) + (out.recYd || 0);
+    if (pos !== "QB") {
+      if (comb >= 200) out.bComb200 = 1;
+      else if (comb >= 100) out.bComb100 = 1;
+    }
+    if (r(20) === 0) {
+      out.fum = 1;
+      out.fumLost = 1;
+    }
+    return out;
+  }
+  function scorePlayer(p, week) {
+    return scoreStats(statLineFor(p, week), { pos: p && p.pos });
+  }
+
+  // js/scoring-ui.js
+  var tab = "pass";
+  var query = "";
+  var openTip = null;
+  function setScoringTab(k) {
+    tab = k;
+    query = "";
+    renderScoringBody();
+  }
+  function scoringSearch(v) {
+    query = v;
+    const el = document.getElementById("scList");
+    if (el) el.innerHTML = listHTML();
+    else renderScoringBody();
+  }
+  function clearScoringSearch() {
+    query = "";
+    renderScoringBody();
+  }
+  function toggleTip(k) {
+    openTip = openTip === k ? null : k;
+    renderScoringBody();
+  }
+  function toggleScoringFav(k) {
+    toggleFav(k);
+    renderScoringBody();
+  }
+  function pickPreset(id) {
+    if (!isCommish()) return;
+    applyPreset(id);
+    renderScoringBody();
+  }
+  function resetScoring() {
+    if (!isCommish()) return;
+    resetScoringToPreset();
+    renderScoringBody();
+  }
+  function setYardRule(k, yards) {
+    if (!isCommish()) return;
+    setScoreValue(k, perYardFromYards(yards));
+    renderScoringBody();
+  }
+  function setRuleValue(k, v) {
+    if (!isCommish()) return;
+    setScoreValue(k, v);
+    renderScoringBody();
+  }
+  function ro() {
+    return isCommish() ? "" : " disabled";
+  }
+  function ruleRow(r) {
+    const v = scoreValue(r.k);
+    const fav = isFav(r.k);
+    const tip = openTip === r.k;
+    const input = isYardRule(r.k) ? `<div class="sc-yard">
+         <div class="sc-yardline">1 point every
+           <input class="sc-in yd" type="number" inputmode="decimal" step="1" min="0"
+             value="${yardsPerPoint(v) || ""}"${ro()}
+             onchange="setYardRule('${r.k}',this.value)"> yards</div>
+         <div class="sc-per">${v ? (v > 0 ? "+" : "") + v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "") : "0"} per yard</div>
+       </div>` : `<input class="sc-in" type="number" inputmode="decimal" step="${r.step}"
+         value="${v}"${ro()} onchange="setRuleValue('${r.k}',this.value)">`;
+    return `<div class="sc-row${fav ? " fav" : ""}" data-rule="${r.k}">
+    <div class="sc-lb">
+      <span class="sc-star${fav ? " on" : ""}" onclick="toggleScoringFav('${r.k}')">${fav ? "\u2605" : "\u2606"}</span>
+      <span class="sc-name">${escHtml(r.lb)}</span>
+      <span class="sc-info${tip ? " on" : ""}" onclick="toggleTip('${r.k}')">i</span>
+    </div>
+    ${input}
+    ${tip ? `<div class="sc-tip">${escHtml(r.help || "")}</div>` : ""}
+  </div>`;
+  }
+  function groupCard(lb, rules) {
+    return `<div class="set-card sc-card">
+    <div class="set-title">${escHtml(lb)}</div>
+    ${rules.map(ruleRow).join("")}
+  </div>`;
+  }
+  function listHTML() {
+    const hits = searchRules(query);
+    if (hits) {
+      if (!hits.length) return `<div class="sc-none">No setting matches \u201C${escHtml(query.trim())}\u201D</div>`;
+      return `<div class="sc-count">${hits.length} setting${hits.length > 1 ? "s" : ""}</div>` + hits.map((r) => `<div class="set-card sc-card">
+        <div class="sc-where">${escHtml(r.catLb)} \xB7 ${escHtml(r.group)}</div>
+        ${ruleRow(r)}
+      </div>`).join("");
+    }
+    if (tab === "fav") {
+      const favs = favourites().map((k) => RULE_BY_KEY[k]).filter(Boolean);
+      if (!favs.length) return `<div class="sc-none">Nothing starred yet</div>`;
+      return favs.map((r) => `<div class="set-card sc-card">
+      <div class="sc-where">${escHtml(r.catLb)} \xB7 ${escHtml(r.group)}</div>
+      ${ruleRow(r)}
+    </div>`).join("");
+    }
+    const cat = SCORING_CATEGORIES.find((c) => c.id === tab) || SCORING_CATEGORIES[0];
+    return cat.groups.map((g) => groupCard(g.lb, g.rules)).join("");
+  }
+  var SAMPLES = {
+    pass: {
+      who: "Sample QB",
+      pos: "QB",
+      line: "24/35, 287 yds, 2 TD, 1 INT",
+      stats: {
+        passYd: 287,
+        passTD: 2,
+        passInt: 1,
+        passComp: 24,
+        passAtt: 35,
+        passInc: 11,
+        passFD: 13,
+        passSacked: 2,
+        passCmp40: 1
+      }
+    },
+    rush: {
+      who: "Sample RB",
+      pos: "RB",
+      line: "19 car, 104 yds, 1 TD",
+      stats: { rushYd: 104, rushAtt: 19, rushTD: 1, rushFD: 5 }
+    },
+    rec: {
+      who: "Sample WR",
+      pos: "WR",
+      line: "7 rec, 98 yds, 1 TD",
+      stats: { rec: 7, recYd: 98, recTD: 1, recFD: 5, recB5: 2, recB10: 3, recB20: 1, recB40: 1 }
+    },
+    kick: {
+      who: "Sample K",
+      pos: "K",
+      line: "3/4 FG, 3 PAT",
+      stats: {
+        fgMade: 3,
+        fg20: 1,
+        fg40: 1,
+        fg50: 1,
+        fg50_59: 1,
+        fgYd: 127,
+        fgYd30: 37,
+        patMade: 3,
+        fgMiss: 1,
+        fgM40: 1
+      }
+    },
+    def: {
+      who: "Sample DEF",
+      pos: "DEF",
+      line: "13 allowed, 3 sacks, 2 TO",
+      stats: {
+        pa7: 1,
+        ya300: 1,
+        defSack: 3,
+        defSackYd: 19,
+        defInt: 1,
+        defIntYd: 12,
+        defFR: 1,
+        defFF: 1,
+        defTkl: 58,
+        defSolo: 38,
+        defAst: 20,
+        defTFL: 5,
+        defQBHit: 7,
+        defPD: 6,
+        defPunt: 5,
+        def3out: 3,
+        def4th: 1,
+        paPer: 13,
+        yaPer: 318
+      }
+    },
+    std: {
+      who: "Sample DEF",
+      pos: "DEF",
+      line: "4 returns, 96 yds",
+      stats: { stPRYd: 31, stKRYd: 65, stSolo: 3, stFF: 1 }
+    },
+    stp: {
+      who: "Sample RET",
+      pos: "WR",
+      line: "4 returns, 96 yds, 1 TD",
+      stats: { stpTD: 1, stpPRYd: 31, stpKRYd: 65, stpSolo: 2 }
+    },
+    idp: {
+      who: "Sample LB",
+      pos: "LB",
+      line: "11 tackles, 1.5 sacks, 1 INT",
+      stats: {
+        idpTkl: 11,
+        idpSolo: 8,
+        idpAst: 3,
+        idpSack: 1.5,
+        idpSackYd: 11,
+        idpQBHit: 3,
+        idpTFL: 2,
+        idpInt: 1,
+        idpIntYd: 14,
+        idpPD: 3,
+        idpFF: 1,
+        idpB10Tkl: 1,
+        idpB3PD: 1
+      }
+    },
+    misc: {
+      who: "Sample RB",
+      pos: "RB",
+      line: "1 fumble lost",
+      stats: { rushYd: 64, rushAtt: 14, fum: 1, fumLost: 1 }
+    },
+    bonus: {
+      who: "Sample RB",
+      pos: "RB",
+      line: "21 car, 128 yds, 5 rec, 44 yds",
+      stats: {
+        rushYd: 128,
+        rushAtt: 21,
+        rec: 5,
+        recYd: 44,
+        rushFD: 6,
+        recFD: 3,
+        bRush100: 1,
+        bComb100: 1,
+        bCarry20: 1
+      }
+    }
+  };
+  function previewHTML() {
+    const s = SAMPLES[tab] || SAMPLES.rec;
+    const out = scoreStats(s.stats, { pos: s.pos });
+    const top = out.lines.slice().sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 4);
+    return `<div class="sc-prev">
+    <div class="sc-prev-h"><span>${escHtml(s.who)} \xB7 ${escHtml(s.line)}</span>
+      <b>${out.total.toFixed(2)}</b></div>
+    <div class="sc-prev-l">${top.map((l) => `<span>${escHtml(l.lb)} <b>${l.pts > 0 ? "+" : ""}${l.pts}</b></span>`).join("")}</div>
+  </div>`;
+  }
+  function renderScoringBody() {
+    const el = document.getElementById("scoringBody");
+    if (!el) return;
+    const tabs = [{ id: "fav", lb: "\u2605" }].concat(SCORING_CATEGORIES.map((c) => ({ id: c.id, lb: c.lb })));
+    const preset = activePreset();
+    el.innerHTML = `
+    <div class="set-card">
+      <div class="set-title">Preset</div>
+      <div class="sc-presets">
+        ${SCORING_PRESETS.map((p) => `<div class="sc-preset${preset === p.id ? " on" : ""}"
+          onclick="pickPreset('${p.id}')">${escHtml(p.lb)}</div>`).join("")}
+      </div>
+      ${isCommish() ? `<div class="set-btns">
+        <div class="set-btn" onclick="resetScoring()">${ICON_X} Reset scoring${isDirty() ? "" : ""}</div>
+      </div>` : ""}
+      ${isDirty() ? `<div class="set-note" style="margin-top:9px">Edited from ${escHtml((SCORING_PRESETS.find((p) => p.id === preset) || {}).lb || "")}.</div>` : ""}
+    </div>
+
+    <div class="sc-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+      <input id="scSearch" type="search" autocomplete="off" autocapitalize="off" spellcheck="false"
+        value="${escHtml(query)}" oninput="scoringSearch(this.value)">
+      ${query ? `<span class="x" onclick="clearScoringSearch()">&#10005;</span>` : ""}
+    </div>
+
+    <div class="sc-tabs">${tabs.map((t) => `<div class="sc-tab${!query && tab === t.id ? " on" : ""}" onclick="setScoringTab('${t.id}')">${escHtml(t.lb)}</div>`).join("")}</div>
+
+    <div id="scList">${listHTML()}</div>
+    ${previewHTML()}`;
+    const strip = el.querySelector(".sc-tabs"), on = el.querySelector(".sc-tab.on");
+    if (strip && on) {
+      const l = on.offsetLeft, r = l + on.offsetWidth;
+      if (l < strip.scrollLeft) strip.scrollLeft = Math.max(0, l - 12);
+      else if (r > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = r - strip.clientWidth + 12;
+    }
+    if (query) {
+      const i = document.getElementById("scSearch");
+      if (i) {
+        i.focus();
+        i.setSelectionRange(i.value.length, i.value.length);
+      }
+    }
+  }
+  function scoringCards() {
+    setTimeout(renderScoringBody, 0);
+    return `<div id="scoringBody"></div>`;
+  }
+
+  // js/settings.js
   var previewAsMember = false;
   function commishKey() {
     return LG().commish || MY_TEAM;
@@ -7458,7 +8472,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     toast(previewAsMember ? "Read-only preview \u2014 turn it off in the Commissioner tab" : `Only the commissioner (${commishTeam().mgr}) can change league settings`);
     return false;
   }
-  function ro() {
+  function ro2() {
     return isCommish() ? "" : " disabled";
   }
   var WDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -7488,10 +8502,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return opts.map((o) => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${o[1]}</option>`).join("");
   }
   function setSel(key, opts, cur, num) {
-    return `<select class="set-ctl"${ro()} onchange="setLeague('${key}',this.value,${num ? 1 : 0})">${optList(opts, cur)}</select>`;
+    return `<select class="set-ctl"${ro2()} onchange="setLeague('${key}',this.value,${num ? 1 : 0})">${optList(opts, cur)}</select>`;
   }
   function setNum(key, cur, min, max) {
-    return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"${ro()}
+    return `<input class="set-ctl" type="number" inputmode="numeric" min="${min}" max="${max}" value="${cur}"${ro2()}
     onchange="setLeagueNum('${key}',this.value,${min},${max})">`;
   }
   function setRow(label, ctl) {
@@ -7579,7 +8593,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     for (let w = MINW; w <= MAXW; w++) {
       const pairs = weekPairs(w);
       const rows2 = pairs.map((p, i) => `<div class="sch-pair">
-      ${[0, 1].map((side) => `<select class="sch-sel"${ro()} onchange="setPairing(${w},${i},${side},this.value);renderSettings()">
+      ${[0, 1].map((side) => `<select class="sch-sel"${ro2()} onchange="setPairing(${w},${i},${side},this.value);renderSettings()">
         ${keys.map((k) => `<option value="${k}"${p[side] === k ? " selected" : ""}>${escHtml(T[k].n)}</option>`).join("")}
       </select>${side === 0 ? '<span class="sch-v">v</span>' : ""}`).join("")}
     </div>`).join("");
@@ -7671,7 +8685,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     renderSettings();
   }
   function slotSel(key, cur, max) {
-    return `<select class="set-ctl"${ro()} onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0, max), cur)}</select>`;
+    return `<select class="set-ctl"${ro2()} onchange="setSlot('${key}',this.value)">${optList(rangeOpts(0, max), cur)}</select>`;
   }
   function rosterCards() {
     const S2 = SLOTS();
@@ -7689,56 +8703,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${setRow("IR spots", slotSel("ir", S2.ir, 6))}
       ${setRow("Taxi squad spots", slotSel("taxi", S2.taxi, 6))}
     </div>`;
-  }
-  function setScoring(key, val) {
-    if (!guard()) {
-      renderSettings();
-      return;
-    }
-    let v = parseFloat(val);
-    if (!isFinite(v)) v = SCORING_DEFAULTS[key];
-    SC()[key] = Math.max(-100, Math.min(100, Math.round(v * 100) / 100));
-    saveStore();
-    renderSettings();
-  }
-  function scoreNum(key) {
-    return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"${ro()}
-    onchange="setScoring('${key}',this.value)">`;
-  }
-  function resetScoring() {
-    if (!guard()) return;
-    store.scoring = Object.assign({}, SCORING_DEFAULTS);
-    saveStore();
-    renderSettings();
-  }
-  function scoringCard(title, rows2) {
-    return `<div class="set-card"><div class="set-title">${title}</div>
-    ${rows2.map((r) => setRow(r[1], scoreNum(r[0]))).join("")}</div>`;
-  }
-  function scoringCards() {
-    return scoringCard("Passing", [
-      ["passYd", "Yards per point"],
-      ["passTD", "Touchdown"],
-      ["passInt", "Interception"],
-      ["pass2pt", "2-point conversion"],
-      ["passComp", "Completion"]
-    ]) + scoringCard("Rushing", [
-      ["rushYd", "Yards per point"],
-      ["rushTD", "Touchdown"],
-      ["rushAtt", "Attempt"],
-      ["rush2pt", "2-point conversion"]
-    ]) + scoringCard("Receiving", [
-      ["rec", "Reception"],
-      ["recYd", "Yards per point"],
-      ["recTD", "Touchdown"],
-      ["rec2pt", "2-point conversion"]
-    ]) + scoringCard("Miscellaneous", [
-      ["fumLost", "Fumble lost"],
-      ["fumTD", "Fumble recovery TD"],
-      ["krTD", "Kick return TD"],
-      ["prTD", "Punt return TD"]
-    ]) + (isCommish() ? `<div class="set-card"><div class="set-btns">
-        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>` : "");
   }
   function setCommish(key) {
     if (!guard()) {
@@ -11006,7 +11970,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   });
   var filter = "All";
   var sortDesc = true;
-  var query = "";
+  var query2 = "";
   var searchOn = false;
   var thumbMode = () => THUMBS.some((t) => t[0] === mkStore.thumb) ? mkStore.thumb : "price";
   function highlight(kind, p) {
@@ -11081,9 +12045,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (filter === "All" || ["QB", "RB", "WR", "TE"].includes(filter)) {
       list = [...list].sort((a, b) => sortDesc ? b.price - a.price : a.price - b.price);
     }
-    list = list.filter((p) => matches(p, query));
+    list = list.filter((p) => matches(p, query2));
     if (!list.length) {
-      return `<div class="mk-empty">${ICON.search}<div class="t">${query ? "No contract matches " + esc2(query.trim()) : "Nothing here"}</div><div class="s"></div></div>`;
+      return `<div class="mk-empty">${ICON.search}<div class="t">${query2 ? "No contract matches " + esc2(query2.trim()) : "Nothing here"}</div><div class="s"></div></div>`;
     }
     const mode = thumbMode();
     return list.map((p) => marketRow(p, mode)).join("");
@@ -11106,7 +12070,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${searchOn ? `<div class="mk-search">
       ${ICON.search}
       <input id="mkSearchInput" type="search" autocomplete="off" autocapitalize="off"
-        spellcheck="false" value="${esc2(query)}" oninput="mkSearch(this.value)">
+        spellcheck="false" value="${esc2(query2)}" oninput="mkSearch(this.value)">
       <span class="x" onclick="mkSearchClose()">&#10005;</span>
     </div>` : ""}
 
@@ -11152,7 +12116,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     renderMarket();
   }
   function mkSearch(v) {
-    query = v;
+    query2 = v;
     const el = document.getElementById("mkRows");
     if (el) el.innerHTML = rows();
     else renderMarket();
@@ -11165,7 +12129,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function mkSearchClose() {
     searchOn = false;
-    query = "";
+    query2 = "";
     renderMarket();
   }
 
@@ -11327,7 +12291,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
 
   // js/markets/portfolio.js
-  var tab = "holdings";
+  var tab2 = "holdings";
   var sortKey = "value";
   var TABS2 = [
     ["holdings", "Holdings", ICON.bag],
@@ -11351,7 +12315,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return [...rows2].sort(by[sortKey] || by.value);
   }
   function body(pf) {
-    if (tab === "holdings") {
+    if (tab2 === "holdings") {
       if (!pf.rows.length) return empty(ICON.bag, "No open positions", "");
       return `<div class="mk-hcount">
         <span class="n">${pf.rows.length} Positions</span>
@@ -11366,7 +12330,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       </div>
       ${sortRows(pf.rows).map(holdingRow).join("")}`;
     }
-    if (tab === "history") {
+    if (tab2 === "history") {
       const log = orders();
       if (!log.length) return empty(ICON.history, "No trades yet", "");
       return `<div class="mk-hcount"><span class="n">${log.length} Fills</span></div>
@@ -11380,7 +12344,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         </div>`;
       }).join("")}`;
     }
-    if (tab === "watchlist") {
+    if (tab2 === "watchlist") {
       const rows2 = watchRows();
       return rows2.length ? `<div class="mk-hcount"><span class="n">${rows2.length} Watching</span></div>
          ${rows2.map(marketRow).join("")}` : empty(
@@ -11389,7 +12353,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         "Tap the star on any player in the Market tab to follow their price here."
       );
     }
-    if (tab === "news") {
+    if (tab2 === "news") {
       return empty(
         ICON.news,
         "No news in this prototype",
@@ -11428,14 +12392,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     </div>
 
     <div class="mk-tabs">
-      ${TABS2.map(([k, lb, ic]) => `<div class="mk-tab${tab === k ? " on" : ""}" onclick="mkTab('${k}')">
+      ${TABS2.map(([k, lb, ic]) => `<div class="mk-tab${tab2 === k ? " on" : ""}" onclick="mkTab('${k}')">
         ${ic}${lb}${k === "news" ? '<span class="nd"></span>' : ""}</div>`).join("")}
     </div>
 
     ${body(pf)}`;
   }
   function mkTab(k) {
-    tab = k;
+    tab2 = k;
     renderPortfolio();
   }
   function mkSortBy(k) {
@@ -11999,6 +12963,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     home_exports,
     create_exports,
     kart_exports,
+    scoring_rules_exports,
+    scoring_presets_exports,
+    scoring_exports,
+    scoring_ui_exports,
     data_exports,
     ui_exports,
     market_exports,

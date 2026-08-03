@@ -1,0 +1,81 @@
+/* ===== SCORING SETTINGS =====
+   Every element here is built from the catalog in js/data/scoring-rules.js —
+   the tab strip, the cards, the search results and the favourites list. */
+
+/* horizontally scrollable category strip, Sleeper-style */
+.sc-tabs{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:2px 0 12px;
+  -webkit-overflow-scrolling:touch}
+.sc-tabs::-webkit-scrollbar{display:none}
+.sc-tab{flex:none;padding:8px 14px;border-radius:11px;background:var(--card);border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11.5px;
+  letter-spacing:.7px;text-transform:uppercase;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.sc-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.sc-search{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:0 12px;height:42px;
+  border-radius:13px;border:1px solid var(--line);background:var(--card)}
+.sc-search svg{width:16px;height:16px;color:var(--ink-3);flex:none}
+.sc-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--ink);
+  font-family:inherit;font-size:13.5px;font-weight:600;-webkit-user-select:text;user-select:text}
+.sc-search .x{color:var(--ink-3);font-size:13px;cursor:pointer;flex:none;padding:4px}
+
+.sc-presets{display:flex;flex-wrap:wrap;gap:7px}
+.sc-preset{padding:8px 13px;border-radius:11px;background:var(--card-2);border:1px solid var(--line);
+  font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.sc-preset.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+.sc-card{padding-bottom:6px}
+.sc-where{font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:8px}
+.sc-count{font-size:11px;font-weight:700;color:var(--accent);padding:0 2px 8px}
+.sc-none{padding:26px 12px;text-align:center;font-size:12.5px;color:var(--ink-3)}
+
+/* one rule: label + star + info on the left, the control on the right */
+.sc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;
+  border-top:1px solid var(--line-soft)}
+.sc-row:first-of-type{border-top:none}
+.sc-lb{flex:1;min-width:0;display:flex;align-items:center;gap:7px}
+.sc-name{font-size:12.5px;font-weight:600;color:var(--ink);min-width:0}
+.sc-star{flex:none;font-size:13px;line-height:1;color:var(--ink-3);cursor:pointer}
+.sc-star.on{color:var(--accent)}
+.sc-info{flex:none;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:9px;font-weight:800;font-style:italic;
+  color:var(--ink-3);cursor:pointer;line-height:1}
+.sc-info.on{border-color:var(--accent);color:var(--accent)}
+.sc-row.fav .sc-name{color:var(--ink)}
+
+.sc-in{flex:none;width:76px;height:34px;border-radius:10px;border:1px solid var(--line);
+  background:var(--card-2);color:var(--ink);text-align:right;padding:0 9px;outline:none;
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:700;
+  -webkit-user-select:text;user-select:text}
+.sc-in:focus{border-color:var(--accent)}
+.sc-in:disabled{opacity:.5}
+.sc-in::-webkit-outer-spin-button,.sc-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+/* "1 point every N yards (+0.0x per yard)" */
+.sc-yard{flex:none;text-align:right}
+.sc-yardline{font-size:11.5px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.sc-in.yd{width:56px;height:30px;margin:0 4px;font-size:12.5px;text-align:center}
+.sc-per{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;
+  font-weight:700;color:var(--accent);margin-top:3px}
+
+.sc-tip{flex:0 0 100%;background:var(--card-2);border-left:2px solid var(--accent);border-radius:0 8px 8px 0;
+  padding:8px 10px;margin-top:4px;font-size:11.5px;line-height:1.5;color:var(--ink-2);
+  -webkit-user-select:text;user-select:text}
+
+/* The live example, scored by the same engine the app uses. It sticks to the
+   bottom of the scroller, so it has to be opaque — a gradient let the rows
+   behind it read straight through. The fade sits above it instead.
+   The scroller keeps a nav bar's worth of bottom padding, and a sticky child
+   stops at that edge — which would leave a band of rows showing between the
+   two. The negative offset takes it down behind the nav; the matching bottom
+   padding keeps its own text above it. */
+.sc-prev{position:sticky;bottom:calc(-1 * var(--navh));margin:14px -16px 0;
+  padding:11px 16px calc(var(--navh) + 13px);
+  background:var(--bg);border-top:1px solid var(--line)}
+.sc-prev::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:20px;
+  background:linear-gradient(180deg,transparent,var(--bg));pointer-events:none}
+.sc-prev-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  font-size:11px;font-weight:600;color:var(--ink-3)}
+.sc-prev-h b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-size:19px;color:var(--accent)}
+.sc-prev-l{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;font-size:10px;color:var(--ink-3)}
+.sc-prev-l b{color:var(--ink-2);font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}

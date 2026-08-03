@@ -11,7 +11,8 @@
     "pixel-diff": "node tools/pixel-diff.mjs",
     "check:markets": "node tools/markets-check.mjs",
     "check:hub": "node tools/hub-check.mjs",
-    "check:orders": "node tools/orders-check.mjs"
+    "check:orders": "node tools/orders-check.mjs",
+    "check:scoring": "node tools/scoring-check.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

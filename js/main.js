@@ -35,6 +35,10 @@ import * as h4 from './chat.js';
 import * as h5 from './home.js';
 import * as h6 from './create.js';
 import * as h7 from './kart.js';
+import * as h8 from './data/scoring-rules.js';
+import * as h9 from './data/scoring-presets.js';
+import * as h10 from './scoring.js';
+import * as h11 from './scoring-ui.js';
 // Arc Markets: a separate section, imported last so it layers on top.
 import * as mk0 from './markets/data.js';
 import * as mk1 from './markets/ui.js';
@@ -53,7 +57,7 @@ import * as mk5 from './markets/index.js';
 Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
   m22, m23,
   mh,
-  h0, h1, h2, h3, h4, h5, h6, h7,
+  h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11,
   mk0, mk1, mk2, mk3, mk4, mk5, mk6, mk7, mk8);
 
 // Startup, in the order these ran in the original script.

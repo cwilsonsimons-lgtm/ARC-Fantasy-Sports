@@ -100,6 +100,58 @@ dropping reaches into the real `LINEUP`, so offering it on another league's
 roster would cut the player from City Boys Dynasty instead. `teamRow` takes
 `{drop:false}` for exactly that reason.
 
+## Scoring
+
+The rules are **data**, not code. `js/data/scoring-rules.js` holds one row per
+scoring rule — 146 of them across Passing, Rushing, Receiving, Kicking, Team
+Defense, ST Defense, ST Player, IDP, Misc and Bonuses:
+
+```js
+{k:'passYd', lb:'Passing Yards', per:'yd', help:'…'}
+```
+
+`k` is both the storage key and the stat key. Everything downstream is derived
+from that catalog and nothing else:
+
+- **the engine** (`js/scoring.js`) walks `ALL_RULES`, looks each key up in the
+  stat line and multiplies by whatever the league has stored;
+- **the UI** (`js/scoring-ui.js`) builds its tab strip, its cards, its search
+  index and its favourites list the same way;
+- **presets** (`js/data/scoring-presets.js`) are keyed by it;
+- **search** matches label, category, group *and* help text, so "shutout" finds
+  Points Allowed 0 even though the word is not in its name.
+
+So adding a rule is adding one row. No engine change, no UI change — which is
+the whole reason the schema is data. `tools/scoring-check.mjs` asserts exactly
+that: it pushes a fake rule into the catalog at runtime and checks that it
+scores.
+
+**No point value appears anywhere except in a preset.** The engine holds none,
+and neither does the UI. Values live in the store, per league, under
+`store.scoringByLeague[leagueId]` — this prototype has no database, and the
+guarded localStorage wrapper is the persistence layer. Scoring is per league
+for the same reason photos, nicknames, logos and the schedule are.
+
+Five presets ship: Sleeper, ESPN, Yahoo, NFL Fantasy and CBS Sports, each
+reproducing that platform's *standard default* league. `presetValues()`
+zero-fills every catalog key before applying the preset's own, so a preset can
+never silently inherit a value from whatever was set before it — the check
+covers that too. **Reset** restores the preset the league is on, not a global
+default.
+
+Yard rules are stored per-yard but entered the way people talk about them:
+**1 point every N yards**, with the resulting `+0.04 per yard` shown underneath.
+`perYardFromYards()` and `yardsPerPoint()` are inverses of each other.
+
+Every row carries an `i` that opens its own explanation, and a star that files
+it on the ★ tab. Under the list sits a live example — a representative week for
+whichever category you are on, scored by the same `scoreStats()` the app uses,
+so an edit shows its effect immediately.
+
+Writes are commissioner-only, gated in `setScoreValue` and `applyPreset`
+themselves rather than in the UI wrappers, so a stray inline `onclick` cannot
+get round them.
+
 ## Scoring modes
 
 Three, in Settings ▸ General:
@@ -253,7 +305,8 @@ invented headlines about real players.
 `npm run check:markets` drives the section through 23 interaction checks, and
 `npm run check:orders` adds 45 for the order book, net positioning, portfolio
 independence and the universe. The hub, chat and notification surfaces have
-their own 62 in `npm run check:hub`. Several
+their own 116 in `npm run check:hub`, and scoring 38 in
+`npm run check:scoring`. Several
 assert *geometry*, not just DOM, because both bugs found here were invisible to
 content assertions: a body state class that collided with the sheet element's own
 class (applying `position:absolute; transform:translateY(102%)` to `<body>` and

@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { slotAllows } from './clock.js';
-import { LEAGUE_DEFAULTS, LG, SC, SCORING_DEFAULTS } from './data/league-config.js';
+import { LEAGUE_DEFAULTS, LG } from './data/league-config.js';
 import { invalidateRosters, openConfirm, persistRoster, refreshRosterViews } from './freeagency.js';
 import { MAXW, MINW } from './lineup.js';
 import { preDraft, renderTabs, showView, toast, toggleDrawer } from './nav.js';
@@ -12,6 +12,7 @@ import { MY_TEAM, T } from './data/teams.js';
 import { NOTIF_TYPES, notifPrefs } from './notifs.js';
 import { renderStandings } from './player.js';
 import { kartOn } from './kart.js';
+import { scoringCards } from './scoring-ui.js';
 import { clearWeekOverride, hasOverride, resetSchedule, scheduleBag, setPairing, weekPairs } from './lineup.js';
 import { activeLeague } from './leagues.js';
 
@@ -242,37 +243,9 @@ export function rosterCards(){
     </div>`;
 }
 // ---- scoring ----
-export function setScoring(key,val){
-  if(!guard()){renderSettings();return;}
-  let v=parseFloat(val);
-  if(!isFinite(v))v=SCORING_DEFAULTS[key];
-  SC()[key]=Math.max(-100,Math.min(100,Math.round(v*100)/100));
-  saveStore();renderSettings();
-}
-export function scoreNum(key){
-  return `<input class="set-ctl" type="number" step="0.01" inputmode="decimal" value="${SC()[key]}"${ro()}
-    onchange="setScoring('${key}',this.value)">`;
-}
-export function resetScoring(){
-  if(!guard())return;
-  store.scoring=Object.assign({},SCORING_DEFAULTS);saveStore();renderSettings();
-}
-export function scoringCard(title,rows){
-  return `<div class="set-card"><div class="set-title">${title}</div>
-    ${rows.map(r=>setRow(r[1],scoreNum(r[0]))).join('')}</div>`;
-}
-export function scoringCards(){
-  return scoringCard('Passing',[['passYd','Yards per point'],['passTD','Touchdown'],['passInt','Interception'],
-      ['pass2pt','2-point conversion'],['passComp','Completion']])
-    +scoringCard('Rushing',[['rushYd','Yards per point'],['rushTD','Touchdown'],
-      ['rushAtt','Attempt'],['rush2pt','2-point conversion']])
-    +scoringCard('Receiving',[['rec','Reception'],['recYd','Yards per point'],['recTD','Touchdown'],
-      ['rec2pt','2-point conversion']])
-    +scoringCard('Miscellaneous',[['fumLost','Fumble lost'],['fumTD','Fumble recovery TD'],
-      ['krTD','Kick return TD'],['prTD','Punt return TD']])
-    +(isCommish()?`<div class="set-card"><div class="set-btns">
-        <div class="set-btn" onclick="resetScoring()">${ICON_X} Restore default scoring</div></div></div>`:'');
-}
+// Scoring moved out to js/scoring-ui.js, which builds itself from the catalog
+// in js/data/scoring-rules.js. The old block here held eighteen hardcoded keys
+// and their labels in the same function that rendered them.
 
 // ---- commissioner ----
 export function setCommish(key){

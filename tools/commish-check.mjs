@@ -16,8 +16,10 @@ const snap = () => p.evaluate(`(()=>{
   return {
     tabs: q('.set-tab').map(e => e.textContent.trim()),
     activeTab: (document.querySelector('.set-tab.on') || {}).textContent || null,
-    ctls: q('#settingsBody .set-ctl').length,
-    disabled: q('#settingsBody .set-ctl:disabled').length,
+    // scoring draws its own inputs (.sc-in); count them too or that tab passes
+    // the "all disabled" assertion by having nothing to disable
+    ctls: q('#settingsBody .set-ctl, #settingsBody .sc-in').length,
+    disabled: q('#settingsBody .set-ctl:disabled, #settingsBody .sc-in:disabled').length,
     btns: q('#settingsBody .set-btn').map(e => e.textContent.trim()),
     banner: (document.querySelector('.set-ro-t') || {}).textContent || null,
     sub: document.querySelector('.set-sub').textContent.trim(),
@@ -57,14 +59,19 @@ await p.evaluate(`setSetTab('general')`); await p.waitForTimeout(150);
 const before = await p.evaluate(`LG().type`);
 await p.evaluate(`setLeague('type','redraft')`); await p.waitForTimeout(150);
 ok('setLeague blocked', (await p.evaluate(`LG().type`)) === before);
-const sc = await p.evaluate(`SC().rec`);
-await p.evaluate(`setScoring('rec','0.5')`); await p.waitForTimeout(150);
-ok('setScoring blocked', (await p.evaluate(`SC().rec`)) === sc);
+const sc = await p.evaluate(`scoreValue('rec')`);
+await p.evaluate(`setRuleValue('rec','0.25')`); await p.waitForTimeout(150);
+ok('setRuleValue blocked', (await p.evaluate(`scoreValue('rec')`)) === sc);
+// the store writer itself is gated, not just the handler above it
+await p.evaluate(`setScoreValue('rec',0.25)`); await p.waitForTimeout(50);
+ok('setScoreValue blocked', (await p.evaluate(`scoreValue('rec')`)) === sc);
+await p.evaluate(`applyPreset('espn')`); await p.waitForTimeout(50);
+ok('applyPreset blocked', (await p.evaluate(`scoreValue('rec')`)) === sc);
 const bench = await p.evaluate(`SLOTS().bench`);
 await p.evaluate(`setSlot('bench','3')`); await p.waitForTimeout(150);
 ok('setSlot blocked', (await p.evaluate(`SLOTS().bench`)) === bench);
 await p.evaluate(`resetScoring()`); await p.waitForTimeout(150);
-ok('resetScoring blocked', (await p.evaluate(`SC().rec`)) === sc);
+ok('resetScoring blocked', (await p.evaluate(`scoreValue('rec')`)) === sc);
 await p.evaluate(`clearAllBackdrops()`); await p.waitForTimeout(150);
 ok('setCommish blocked from member view', (await p.evaluate(`(setCommish('barzal'), LG().commish)`)) === 'pandas');
 
