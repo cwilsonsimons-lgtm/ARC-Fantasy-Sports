@@ -154,6 +154,23 @@ the score, and re-measures after swapping in the longest and shortest team names
 in the league. A crest that is correct in the markup but anchored to the wrong
 box passes a content assertion and fails these.
 
+### Team names are never cut off
+
+They used to run through one line with an ellipsis, so half the league read as
+`RADIATOR SPRIN…` on every card. They now wrap, and `overflow-wrap:anywhere` also
+shrinks the element's min-content width, so even an unbroken 30-character word
+fits its column instead of spilling out of it.
+
+`fitTeamNames()` then keeps a wrapped name from becoming a five-line tower by
+stepping the type down until it sits in three lines or fewer, and squares the two
+sides of a card off to the taller of the pair so the records and win % underneath
+stay level. It measures rather than deriving a size from the length of the name,
+because the thirteen team typefaces differ by more than 2x in width per
+character — a name that fits on one line in Oswald needs three in Press Start 2P.
+A hidden view measures as zero, so `showView()` re-fits whatever just became
+visible. The check drives 6 names × 13 typefaces and asserts the rendered text
+still equals the name that was set.
+
 ## The trade block
 
 Listing a player and saying what you want back are one action, not two. The

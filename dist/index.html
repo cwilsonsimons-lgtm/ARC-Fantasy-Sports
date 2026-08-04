@@ -538,8 +538,9 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .sm-bd{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:9px;flex:none}
 .sm-bd img{width:100%;height:100%;object-fit:cover}
+/* wraps rather than eliding, for the same reason the stadium cards do */
 .sm-nm{--tn-size:11.5px;flex:1;min-width:0;line-height:1.25;color:var(--ink-2);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  white-space:normal;overflow-wrap:anywhere}
 .sm-pt{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;color:var(--ink-3)}
 .sm-tr.w .sm-nm{color:var(--ink)}
 .sm-tr.w .sm-pt{color:var(--green)}
@@ -946,8 +947,16 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .sh-logo.bare img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6))}
 .ms-side.L .sh-logo.bare,.ms-side.R .sh-logo.bare,
 .sh-side.L .sh-logo.bare,.sh-side.R .sh-logo.bare{transform:none}
+/* A team's name is never cut off on a matchup. It wraps instead of eliding, and
+   `overflow-wrap:anywhere` also shrinks the element's min-content width, so even
+   a single unbroken 30-character word fits the column rather than spilling out
+   of it. fitTeamNames() in js/hero.js then steps the type down until the name
+   sits in three lines or fewer, and squares the two sides off so the records and
+   win % underneath stay on the same line as each other. */
 .sh-tn{--tn-size:13px;line-height:1.15;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  width:100%;min-width:0;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7);
+  white-space:normal;overflow-wrap:anywhere;hyphens:none;
+  display:grid;place-items:center}
 .sh-rec{font-size:10px;color:rgba(255,255,255,.78);font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 /* the record is a link into the team's season, wherever it appears */
 .rec-tap{cursor:pointer;border-bottom:1px dotted;padding-bottom:1px}
@@ -3541,10 +3550,13 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   // js/hero.js
   var hero_exports = {};
   __export(hero_exports, {
+    TN_FLOOR: () => TN_FLOOR,
+    TN_LINES: () => TN_LINES,
     backdropFor: () => backdropFor,
     backdropTargetKey: () => backdropTargetKey,
     clearAllBackdrops: () => clearAllBackdrops,
     clearLeagueLogo: () => clearLeagueLogo,
+    fitTeamNames: () => fitTeamNames,
     gameKey: () => gameKey,
     leagueLogoHTML: () => leagueLogoHTML,
     onBackdrop: () => onBackdrop,
@@ -4672,6 +4684,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function showView(name) {
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
     document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
+    fitTeamNames(document.querySelector(".view.on"));
   }
   function preDraft() {
     return !draftDone();
@@ -5597,6 +5610,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     uHero.className = "";
     uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null });
     bindVs(uHero.querySelector("[data-vs]"));
+    fitTeamNames(uHero);
     if (canRewind) {
       buildRewind(uRw, as, xs);
       syncRewind("userRewind");
@@ -6162,6 +6176,34 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
   </div>`;
   }
+  var TN_LINES = 3;
+  var TN_FLOOR = 7;
+  function fitTeamNames(root) {
+    (root || document).querySelectorAll(".sh-arena,.ms-arena").forEach((arena) => {
+      const names = [...arena.querySelectorAll(".sh-tn")];
+      names.forEach((el) => {
+        el.style.minHeight = "";
+        el.style.removeProperty("--tn-size");
+        let size = parseFloat(getComputedStyle(el).getPropertyValue("--tn-size")) || 13;
+        for (let i = 0; i < 24; i++) {
+          const cs = getComputedStyle(el);
+          const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.15;
+          if (!lh || el.scrollHeight <= lh * TN_LINES + 1) break;
+          size -= 0.5;
+          if (size < TN_FLOOR) {
+            size = TN_FLOOR;
+            el.style.setProperty("--tn-size", size + "px");
+            break;
+          }
+          el.style.setProperty("--tn-size", size + "px");
+        }
+      });
+      const tall = names.reduce((m, el) => Math.max(m, el.scrollHeight), 0);
+      if (tall) names.forEach((el) => {
+        el.style.minHeight = tall + "px";
+      });
+    });
+  }
   function recHTML(key) {
     const t = T[key];
     return `<div class="sh-rec">${t.mgr} \xB7 <span class="rec-tap"
@@ -6497,7 +6539,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }).join("");
   }
   function renderLeagueBody() {
-    document.getElementById("leagueBody").innerHTML = S.games.map((g, i) => {
+    const body2 = document.getElementById("leagueBody");
+    body2.innerHTML = S.games.map((g, i) => {
       const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
       const status = g.status === "live" ? { cls: "live", txt: "LIVE" } : g.status === "final" ? { cls: "final", txt: "FINAL" } : { cls: "sched", txt: "UPCOMING" };
       const ap = g.me ? LT.ap : null, xp = g.me ? LT.xp : null;
@@ -6505,6 +6548,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${stadiumHeroHTML(g.a, g.x, g.as, g.xs, g.aw, g.xw, ap, xp, { compact: true, status })}
     </div>`;
     }).join("");
+    fitTeamNames(body2);
   }
   function openMyMatchup() {
     renderUserMatchup();
@@ -7818,6 +7862,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const dh = document.getElementById("detailHero");
     dh.className = "";
     dh.innerHTML = stadiumHeroHTML(g.a, g.x, g.as, g.xs, g.aw, g.xw, null, null, { editBackdrop: true, rewind: "detailRewind" });
+    fitTeamNames(dh);
     buildRewind(document.getElementById("detailRewind"), g.as, g.xs);
     syncRewind("detailRewind");
     document.getElementById("detailStarters").innerHTML = medianStripHTML(g.a, g.x, S.week) + detailStartersHTML();

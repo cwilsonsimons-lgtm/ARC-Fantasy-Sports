@@ -38,6 +38,43 @@ export function leagueLogoHTML(){
       <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
   </div>`;
 }
+// ---- team names always fit ----
+//
+// The names used to run through a single line with an ellipsis, so half the
+// league read as "RADIATOR SPRIN…" on every card. They now wrap (see .sh-tn),
+// which alone guarantees nothing is cut off; this pass keeps that from turning
+// into a five-line tower by stepping the type down until the name sits in three
+// lines or fewer.
+//
+// Measured rather than derived from the length of the name, because the thirteen
+// team typefaces run at wildly different widths per character - Press Start 2P
+// is more than twice the width of Oswald at the same height, and a name that
+// fits on one line in one face needs three in another.
+//
+// The two names on a card are then squared off to the taller of the pair, so the
+// record and win % underneath stay level across the matchup.
+export const TN_LINES=3, TN_FLOOR=7;
+export function fitTeamNames(root){
+  (root||document).querySelectorAll('.sh-arena,.ms-arena').forEach(arena=>{
+    const names=[...arena.querySelectorAll('.sh-tn')];
+    names.forEach(el=>{
+      el.style.minHeight='';
+      el.style.removeProperty('--tn-size');
+      let size=parseFloat(getComputedStyle(el).getPropertyValue('--tn-size'))||13;
+      for(let i=0;i<24;i++){
+        const cs=getComputedStyle(el);
+        const lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.15;
+        if(!lh||el.scrollHeight<=lh*TN_LINES+1)break;
+        size-=0.5;
+        if(size<TN_FLOOR){size=TN_FLOOR;el.style.setProperty('--tn-size',size+'px');break;}
+        el.style.setProperty('--tn-size',size+'px');
+      }
+    });
+    const tall=names.reduce((m,el)=>Math.max(m,el.scrollHeight),0);
+    if(tall)names.forEach(el=>{el.style.minHeight=tall+'px';});
+  });
+}
+
 // A team's record opens their season: every week, the opponent, and how the
 // running record got where it is.
 export function recHTML(key){

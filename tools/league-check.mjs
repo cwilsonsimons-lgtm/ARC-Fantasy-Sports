@@ -78,6 +78,54 @@ ok(`independent of team-name length (${shift.short.toFixed(1)} vs ${shift.long.t
    Math.abs(shift.short - shift.long) < 1);
 if (shots[0]) await p.screenshot({ path: shots[0] });
 
+// --------------------------------------------------- team names always fit
+// Nothing on a matchup may be cut off. Checked as rendered text against the
+// name that was set, plus the geometry, across the worst names and every one of
+// the thirteen team typefaces - the faces differ by more than 2x in width per
+// character, so a name that fits in one clips in another.
+const NAMES = ['Radiator Springs', "Mike Vick's Dog House", 'Seriously Step Burrow',
+  'The Absolutely Enormous Team Name', 'Supercalifragilisticexpialidocious', 'A'];
+const fitCheck = await ev(`(()=>{
+  const was = { n: T.radiator.n, f: T.radiator.font };
+  const names = ${JSON.stringify(NAMES)};
+  const fonts = TEAM_FONTS.map(f => f.k);
+  const bad = [];
+  let maxLines = 0, maxSize = 0, minSize = 99;
+  showView('matchup');
+  names.forEach(n => fonts.forEach(f => {
+    T.radiator.n = n; T.radiator.font = f; applyTeamFonts(); renderUserMatchup();
+    const el = document.querySelector('.mstage .ms-side.R .sh-tn');
+    const cs = getComputedStyle(el);
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.15;
+    const lines = Math.round(el.scrollHeight / lh);
+    const size = parseFloat(cs.fontSize);
+    maxLines = Math.max(maxLines, lines);
+    maxSize = Math.max(maxSize, size); minSize = Math.min(minSize, size);
+    const shown = el.textContent.trim();
+    const clippedX = el.scrollWidth > el.clientWidth + 1;
+    const clippedY = el.scrollHeight > el.getBoundingClientRect().height + 1;
+    const spills = el.getBoundingClientRect().right >
+      document.querySelector('.mstage').getBoundingClientRect().right + 1;
+    if (shown !== n || clippedX || clippedY || spills || cs.textOverflow === 'ellipsis')
+      bad.push({ n, f, shown, clippedX, clippedY, spills, lines, size });
+  }));
+  // both sides of a card end up the same height, so records stay level
+  T.radiator.n = 'The Absolutely Enormous Team Name'; T.radiator.font = 'oswald';
+  applyTeamFonts(); renderUserMatchup();
+  const sides = [...document.querySelectorAll('.mstage .sh-tn')].map(e => e.getBoundingClientRect());
+  const recs = [...document.querySelectorAll('.mstage .sh-rec')].map(e => e.getBoundingClientRect().top);
+  const level = Math.abs(recs[0] - recs[1]) < 1 && Math.abs(sides[0].height - sides[1].height) < 1;
+  T.radiator.n = was.n; T.radiator.font = was.f; applyTeamFonts(); renderUserMatchup();
+  return { bad, cases: names.length * fonts.length, maxLines, maxSize, minSize, level };
+})()`);
+console.log('    ' + JSON.stringify({ cases: fitCheck.cases, bad: fitCheck.bad.length,
+  maxLines: fitCheck.maxLines, size: [fitCheck.minSize, fitCheck.maxSize] }));
+if (fitCheck.bad.length) console.log('    ' + JSON.stringify(fitCheck.bad.slice(0, 4)));
+ok(`no team name is cut off (${fitCheck.cases} name/typeface combinations)`, fitCheck.bad.length === 0);
+ok(`long names wrap instead, within ${fitCheck.maxLines} lines`, fitCheck.maxLines <= 3);
+ok('the type steps down to make them fit', fitCheck.minSize < fitCheck.maxSize);
+ok('both sides square off, so the records stay level', fitCheck.level);
+
 // ---------------------------------------------------------------- 30 serial
 const serial = await ev(`(()=>{ openPlayer(Object.keys(pIdx())[0]);
   return document.getElementById('playerBody').textContent; })()`);

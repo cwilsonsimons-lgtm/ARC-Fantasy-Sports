@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { LT, SLOT_ELIG, isLocked, ordLabel, recomputeLT, simKick, simStops, slotAllows } from './clock.js';
 import { invalidateRosters, persistRoster } from './freeagency.js';
-import { stadiumStageHTML } from './hero.js';
+import { fitTeamNames, stadiumStageHTML } from './hero.js';
 import { LIVE_WEEK, MINW, fullStartersHTML } from './lineup.js';
 import { medianStripHTML } from './median.js';
 import { bindVs, toast } from './nav.js';
@@ -39,6 +39,7 @@ export function renderUserMatchup(){
   uHero.className='';
   uHero.innerHTML=stadiumStageHTML(aK,xK,as,xs,aw,xw,ap,xp,{phase:phase,rewind:canRewind?'userRewind':null});
   bindVs(uHero.querySelector('[data-vs]'));
+  fitTeamNames(uHero);
 
   // Rewind: no button — tapping either win% number or the win bar in the hero reveals it
   if(canRewind){ buildRewind(uRw,as,xs); syncRewind('userRewind'); }

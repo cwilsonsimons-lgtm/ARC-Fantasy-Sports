@@ -1,6 +1,7 @@
 import { S } from './state.js';
 import { MY_TEAM } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
+import { fitTeamNames } from './hero.js';
 import { draftDone } from './draft.js';
 import { currentViewName, renderTeam } from './team.js';
 
@@ -8,6 +9,9 @@ import { currentViewName, renderTeam } from './team.js';
 export function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===name));
   document.querySelector('.shift').classList.toggle('stage-on', name==='matchup');
+  // A hidden view measures as zero, so a hero rendered while its view was off
+  // screen never got its team names fitted. Re-fit whatever just became visible.
+  fitTeamNames(document.querySelector('.view.on'));
 }
 // Before the draft, the first tab is Draft instead of Matchup. Standings reads "League".
 export function preDraft(){return !draftDone();}

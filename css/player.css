@@ -91,8 +91,16 @@
 .sh-logo.bare img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6))}
 .ms-side.L .sh-logo.bare,.ms-side.R .sh-logo.bare,
 .sh-side.L .sh-logo.bare,.sh-side.R .sh-logo.bare{transform:none}
+/* A team's name is never cut off on a matchup. It wraps instead of eliding, and
+   `overflow-wrap:anywhere` also shrinks the element's min-content width, so even
+   a single unbroken 30-character word fits the column rather than spilling out
+   of it. fitTeamNames() in js/hero.js then steps the type down until the name
+   sits in three lines or fewer, and squares the two sides off so the records and
+   win % underneath stay on the same line as each other. */
 .sh-tn{--tn-size:13px;line-height:1.15;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  width:100%;min-width:0;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7);
+  white-space:normal;overflow-wrap:anywhere;hyphens:none;
+  display:grid;place-items:center}
 .sh-rec{font-size:10px;color:rgba(255,255,255,.78);font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 /* the record is a link into the team's season, wherever it appears */
 .rec-tap{cursor:pointer;border-bottom:1px dotted;padding-bottom:1px}

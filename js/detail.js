@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { stadiumHeroHTML } from './hero.js';
+import { fitTeamNames, stadiumHeroHTML } from './hero.js';
 import { detailStartersHTML } from './lineup.js';
 import { medianStripHTML } from './median.js';
 import { showView } from './nav.js';
@@ -10,6 +10,7 @@ export function openDetail(i){
   const g=S.games[i];
   const dh=document.getElementById('detailHero');dh.className='';
   dh.innerHTML=stadiumHeroHTML(g.a,g.x,g.as,g.xs,g.aw,g.xw,null,null,{editBackdrop:true,rewind:'detailRewind'});
+  fitTeamNames(dh);
   buildRewind(document.getElementById('detailRewind'),g.as,g.xs);
   syncRewind('detailRewind');
   document.getElementById('detailStarters').innerHTML=

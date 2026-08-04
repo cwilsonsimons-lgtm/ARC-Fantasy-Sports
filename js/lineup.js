@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { ICON_LOCK, ICON_SWAP, LT, isLocked, onField, pLive, simKick } from './clock.js';
 import { T } from './data/teams.js';
-import { stadiumHeroHTML } from './hero.js';
+import { fitTeamNames, stadiumHeroHTML } from './hero.js';
 import { renderUserMatchup } from './matchup.js';
 import { showTab } from './nav.js';
 import { pKeyOf } from './player.js';
@@ -181,7 +181,8 @@ export function renderStandingsMatchups(){
   }).join('');
 }
 export function renderLeagueBody(){
-  document.getElementById('leagueBody').innerHTML = S.games.map((g,i)=>{
+  const body=document.getElementById('leagueBody');
+  body.innerHTML = S.games.map((g,i)=>{
     const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
     const status = g.status==='live'?{cls:'live',txt:'LIVE'}
                  : g.status==='final'?{cls:'final',txt:'FINAL'}
@@ -191,6 +192,7 @@ export function renderLeagueBody(){
       ${stadiumHeroHTML(g.a,g.x,g.as,g.xs,g.aw,g.xw,ap,xp,{compact:true,status:status})}
     </div>`;
   }).join('');
+  fitTeamNames(body);
 }
 // tapping your own game in All Matchups behaves exactly like tapping the Matchup tab
 // (keeps your compact/full choice, seg toggle, rewind, etc.)
