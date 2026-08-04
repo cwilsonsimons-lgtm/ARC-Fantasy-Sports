@@ -5,12 +5,20 @@ draft room, free agency, and a simulated live-scoring week clock.
 
 ## Running it
 
-**Just want to look at it?** Open `dist/index.html` — it is the whole app in one
-self-contained file, so double-clicking it works. Rebuild it with `npm run build`
-after changing anything under `css/` or `js/`.
+**Open the newest `arc-fantasy_<date>_<time>.html` in the repo root.** That is the
+live app: one self-contained file, so double-clicking it works.
 
-**Working on the code?** The source is plain ES modules, which browsers refuse to
-load over `file://`, so it needs to be served:
+> **Where the source lives.** Since `3b28a07` every change has shipped as a new
+> dated snapshot in the root, and `js/` + `css/` + `dist/index.html` have not
+> been updated alongside them. Those directories are now roughly twenty commits
+> behind and do **not** contain chat, trades, waivers, the commissioner tools,
+> multi-league, the scoring engine, or anything else added after that commit.
+> Read and edit the newest snapshot; treat `js/` as historical until someone
+> splits the bundle back out. The checks under `tools/` still target the old
+> modular build, so they do not cover the snapshot either.
+
+**Working on the modular source (historical).** It is plain ES modules, which
+browsers refuse to load over `file://`, so it needs to be served:
 
 ```
 npm start          # serves the repo at http://127.0.0.1:8080
