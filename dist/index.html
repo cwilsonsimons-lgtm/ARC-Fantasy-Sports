@@ -297,10 +297,12 @@ body.open .scrim{opacity:1;pointer-events:auto}
   background:rgba(140,224,74,.16);border:1px solid rgba(140,224,74,.4);border-radius:6px;padding:3px 7px}
 .ms-live .pulse{width:6px;height:6px}
 .ms-arena{position:relative;z-index:3;display:flex;align-items:flex-start;padding:6px 12px 4px}
-.ms-side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
+/* z-index 2 on the sides, 1 on the centre column: see css/hero.css for the
+   full layer order the league logo sits at the bottom of */
+.ms-side{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
 .ms-side.L .sh-logo{transform:rotate(-11deg)}
 .ms-side.R .sh-logo{transform:rotate(11deg)}
-.ms-center{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 0;cursor:pointer}
+.ms-center{position:relative;z-index:1;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 0;cursor:pointer}
 
 .hd{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:2px;text-transform:uppercase;
   color:var(--ink-3);margin:16px 2px 10px;display:flex;align-items:center;justify-content:space-between}
@@ -388,6 +390,28 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .rw-r2 .ev .me{color:var(--green)}
 .rw-r2 .ev .opp{color:var(--red)}
 .rw-empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
+
+/* ===== LEAGUE MEDIAN =====
+   Both of the week's results, for both teams: the head-to-head one the card
+   already shows, and the one against the league median. Only rendered when the
+   commissioner has the setting on. */
+.med-strip{margin-top:12px;border:1px solid var(--line-soft);border-radius:16px;
+  background:var(--card);padding:12px 14px 11px}
+.med-hd{display:flex;align-items:baseline;justify-content:space-between;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.4px;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:9px}
+.med-hd b{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;color:var(--ink);letter-spacing:0}
+.med-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line-soft)}
+.med-tn{--tn-size:12.5px;flex:1;min-width:0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.med-pts{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12.5px;color:var(--ink-2)}
+.med-res{flex:none;width:38px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.med-res small{font-size:7.5px;letter-spacing:.8px;color:var(--ink-3);font-weight:700}
+.med-chip{font-style:normal;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;
+  width:22px;height:19px;border-radius:6px;display:grid;place-items:center;border:1px solid var(--line)}
+.med-chip.w{color:var(--green);border-color:rgba(140,224,74,.5);background:rgba(140,224,74,.12)}
+.med-chip.l{color:var(--red);border-color:rgba(240,69,62,.5);background:rgba(240,69,62,.12)}
+.med-chip.t,.med-chip.none{color:var(--ink-3)}
+.med-note{font-size:10.5px;line-height:1.5;color:var(--ink-3);margin-top:9px}
 
 /* starters */
 .starters{margin-top:12px;border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
@@ -485,6 +509,7 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .st-c{flex:none;text-align:right;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;
   color:var(--ink-2);padding:9px 6px}
 .st-c.rec{width:52px;color:var(--ink)}
+.st-c.med{width:56px;color:var(--ink-3)}
 .st-c.pf,.st-c.pa{width:66px}
 .st-c.df{width:70px;padding-right:12px}
 .st-c.df.pos{color:var(--green)}
@@ -608,6 +633,57 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .cf-btn:active{opacity:.85}
 .hidden-file{display:none}
 
+/* css/schedule.css */
+/* ===== TEAM SCHEDULE =====
+   Opened by tapping a record. One row per week: opponent, result, score,
+   weekly points and the running record — the working behind the W-L. */
+.sc-head{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:20px;
+  background:linear-gradient(180deg,#101725,#0B111B);padding:16px;margin-top:6px}
+.sc-crest{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;overflow:hidden;flex:none;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px}
+.sc-crest img{width:100%;height:100%;object-fit:cover}
+.sc-id{flex:1;min-width:0}
+.sc-name{--tn-size:20px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-sub{font-size:12px;color:var(--ink-2);font-weight:600;margin-top:4px}
+.sc-split{display:flex;gap:8px;margin-top:10px}
+.sc-split span{flex:1;border:1px solid var(--line-soft);border-radius:12px;background:var(--card-2);
+  padding:9px 11px;font-size:10.5px;color:var(--ink-3);font-weight:600}
+.sc-split b{display:block;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:15px;color:var(--ink);margin-top:3px}
+.sc-hd{display:flex;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9px;
+  letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);margin:16px 4px 7px}
+.sc-hd span:nth-child(1){width:34px;flex:none}
+.sc-hd span:nth-child(2){flex:1}
+.sc-hd span:nth-child(3){width:92px;flex:none}
+.sc-hd span:nth-child(4){width:62px;flex:none;text-align:right}
+.sc-list{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.sc-row{display:flex;align-items:center;gap:9px;padding:9px 10px;border-top:1px solid var(--line-soft)}
+.sc-row:first-child{border-top:none}
+.sc-row.now{background:rgba(124,92,255,.08)}
+.sc-wk{width:34px;flex:none;text-align:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:8.5px;letter-spacing:.8px;color:var(--ink-3);line-height:1.2}
+.sc-wk b{display:block;font-size:15px;color:var(--ink-2)}
+.sc-opp{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.sc-bd{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px}
+.sc-bd img{width:100%;height:100%;object-fit:cover}
+.sc-oppid{min-width:0}
+.sc-vs{font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-tn{--tn-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-res{width:92px;flex:none}
+.sc-verdict{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3)}
+.sc-verdict.w{color:var(--green)}
+.sc-verdict.l{color:var(--red)}
+.sc-score{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  color:var(--ink-2);font-weight:700;margin-top:2px}
+.sc-med{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--ink-3);font-weight:600;margin-top:4px}
+.sc-med .med-chip{width:18px;height:16px;font-size:9.5px}
+.sc-run{width:62px;flex:none;text-align:right}
+.sc-pts{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:13px;color:var(--ink)}
+.sc-rec{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--ink-3);margin-top:2px}
+.sc-note{font-size:11px;line-height:1.5;color:var(--ink-3);margin:11px 4px 0}
+
 /* css/week.css */
 /* week switcher + all matchups */
 .mrow{display:flex;align-items:center;gap:10px;margin:2px 0 2px}
@@ -680,6 +756,41 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .sh-cams .sh-cam{position:static}
 .sh-cams .sh-cam.rm{background:rgba(240,69,62,.5);border-color:rgba(240,69,62,.7)}
 
+/* ===== LEAGUE LOGO =====
+   The centrepiece of the matchup: dead centre, behind VS and the score, in
+   front of nothing but the backdrop.
+
+   It is anchored to the centre column rather than to the card, because that
+   column is the one element whose midline cannot move. It sits between two
+   `flex:1` sides, so it grows symmetrically about its own centre — the logo
+   therefore stays on the card's exact midline no matter how long the team
+   names run, how big the team logos are, or how wide the score gets. 50%/50%
+   with a −50%/−50% translate then centres it in both axes, whatever its own
+   dimensions.
+
+   Layer order is fixed by the three z-indexes below and nothing else:
+     backdrop (0–1) → league logo (0 inside the centre column)
+     → VS + score (1) → team logos, names, records, win % (sides, 2).
+   The sides outrank the centre column, so the logo can never come over a
+   team's artwork or text even when the artwork is wide. */
+.sh-league{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:0;
+  width:132px;height:132px;display:grid;place-items:center;pointer-events:none;
+  /* feather the rim so the edge of the artwork never fights the team names */
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 52%,rgba(0,0,0,.5) 74%,transparent 92%);
+  mask-image:radial-gradient(circle at 50% 50%,#000 52%,rgba(0,0,0,.5) 74%,transparent 92%)}
+.sh-league img{width:100%;height:100%;object-fit:contain;opacity:.58;
+  filter:drop-shadow(0 4px 14px rgba(0,0,0,.55))}
+/* a soft well in the middle of the artwork, so the score reads over any logo.
+   It is part of the logo layer, so it stays under the text like the rest of it. */
+.sh-league::after{content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,rgba(6,9,14,.52) 0 30%,transparent 64%)}
+.sh-league.def::after{background:none}
+.sh-league.def{opacity:.24;color:#fff}
+.sh-league.def svg{width:100%;height:100%}
+.sh.compact .sh-league{width:96px;height:96px}
+/* the stage runs wider than a card, so the crest can read a little larger */
+.mstage .sh-league{width:150px;height:150px}
+
 /* css/settings.css */
 /* ===== SETTINGS ===== */
 .set-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:.5px;margin:8px 2px 2px}
@@ -692,6 +803,14 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .set-preview{height:120px;border-radius:12px;margin:12px 0;background-size:cover;background-position:center;border:1px solid var(--line)}
 .set-preview.none{display:grid;place-items:center;color:var(--ink-3);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;
   letter-spacing:1px;text-transform:uppercase;background:linear-gradient(180deg,#17532c,#0b3018 68%,#071b0e)}
+/* league logo preview */
+.set-crestrow{display:flex;align-items:center;gap:14px;margin:12px 0}
+.set-crest{width:76px;height:76px;border-radius:18px;flex:none;display:grid;place-items:center;overflow:hidden;
+  border:1px solid var(--line);background:linear-gradient(180deg,#101725,#0B111B)}
+.set-crest img{width:100%;height:100%;object-fit:contain}
+.set-crest.none{color:var(--ink-3)}
+.set-crest.none svg{width:44px;height:44px}
+.set-crestnote{flex:1;min-width:0;font-size:12px;color:var(--ink-3);line-height:1.45}
 .set-tabs{display:flex;gap:6px;margin:0 2px 14px;overflow-x:auto;scrollbar-width:none}
 .set-tabs::-webkit-scrollbar{display:none}
 .set-tab{flex:none;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);
@@ -761,12 +880,63 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .pc-week .k{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3)}
 .pc-week .g{font-size:12px;color:var(--ink-2);font-weight:600;margin-top:3px}
 .pc-week .p{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:22px}
+/* ===== TRADE BLOCK =====
+   The ask is part of the listing, so the card carries both: what they are on
+   the block for, and the button that opened the question in the first place. */
+.pc-block-add{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;
+  border:1px solid rgba(230,168,90,.55);border-radius:12px;padding:12px;cursor:pointer;
+  color:#E6A85A;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;
+  letter-spacing:1px;text-transform:uppercase;background:rgba(230,168,90,.08)}
+.pc-block-add svg{width:16px;height:16px}
+.pc-block-add:active{opacity:.8}
+.pc-block{margin-top:12px;border:1px solid rgba(230,168,90,.45);border-left:3px solid #E6A85A;
+  border-radius:12px;background:rgba(230,168,90,.08);padding:12px 14px}
+.pc-block-hd{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:1.2px;text-transform:uppercase;color:#E6A85A}
+.pc-block-want{font-size:13.5px;color:var(--ink);font-weight:600;margin-top:5px;line-height:1.35}
+.pc-block-want .k{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);
+  font-weight:700;margin-right:5px}
+.pc-block-want i{color:var(--ink-3);font-weight:500}
+.pc-block-acts{display:flex;gap:16px;margin-top:9px}
+.pc-block-acts span{font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer;
+  border-bottom:1px dotted var(--ink-3)}
+.pc-block-acts span:active{opacity:.6}
+/* the Looking For sheet */
+.tb-sub{font-size:13px;color:var(--ink-2);line-height:1.45;margin-bottom:12px}
+.tb-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px}
+.tb-chip{border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--ink-2);background:var(--card-2)}
+.tb-chip.on{border-color:#E6A85A;color:#E6A85A;background:rgba(230,168,90,.12)}
+.tb-input{width:100%;background:#0A0E15;border:1px solid var(--line);border-radius:11px;color:var(--ink);
+  font-size:14px;font-weight:600;padding:12px;outline:none}
+.tb-input:focus{border-color:#E6A85A}
+.tb-input::placeholder{color:var(--ink-3);font-weight:500}
+.tb-btns{display:flex;gap:8px;margin-top:12px}
+.tb-btn{flex:1;text-align:center;padding:12px 6px;border-radius:11px;border:1px solid var(--line);
+  background:var(--card-2);cursor:pointer;color:var(--ink-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+.tb-btn.go{border-color:#E6A85A;color:#0B0906;background:#E6A85A}
+.tb-btn:active{opacity:.85}
+.tb-note{font-size:11px;color:var(--ink-3);margin-top:11px;line-height:1.5}
+/* the Trades rail */
+.tb-row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line-soft);cursor:pointer}
+.tb-face{width:32px;height:32px;border-radius:50%;overflow:hidden;background:linear-gradient(155deg,#243247,#141b28);
+  border:1px solid var(--line);flex:none;display:grid;place-items:center;font-size:10px;color:var(--ink-3);font-weight:700}
+.tb-face img{width:100%;height:100%;object-fit:cover}
+.tb-info{flex:1;min-width:0}
+.tb-nm{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-mt{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
+.tb-want{flex:none;max-width:112px;text-align:right;font-size:11px;font-weight:700;color:#E6A85A;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-want i{color:var(--ink-3);font-weight:500}
+
 .pc-edit{display:flex;align-items:center;gap:10px;margin-top:12px;background:var(--violet-soft);border:1px solid rgba(124,92,255,.4);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--ink)}
 .pc-edit svg{width:18px;height:18px;color:var(--violet);flex:none}
 .pc-edit .t{flex:1;font-size:12px;line-height:1.4}
 .pc-edit .t b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;letter-spacing:.5px}
 .sh-arena{position:relative;z-index:3;display:flex;align-items:flex-start;padding:18px 12px 8px}
-.sh-side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
+/* z-index 2: the team's own artwork and text always paints over the league logo */
+.sh-side{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
 .sh-logo{width:78px;height:78px;border-radius:18px;display:grid;place-items:center;overflow:hidden;flex:none;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:34px;box-shadow:0 9px 22px rgba(0,0,0,.55)}
 .sh-side.L .sh-logo{transform:rotate(-11deg)}
@@ -779,10 +949,16 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .sh-tn{--tn-size:13px;line-height:1.15;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7)}
 .sh-rec{font-size:10px;color:rgba(255,255,255,.78);font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+/* the record is a link into the team's season, wherever it appears */
+.rec-tap{cursor:pointer;border-bottom:1px dotted;padding-bottom:1px}
+.rec-tap:active{opacity:.6}
 .sh-pct{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;text-shadow:0 1px 5px rgba(0,0,0,.8)}
-.sh-center{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 4px 0;cursor:pointer}
+/* z-index 1: over the league logo (0), under the team sides (2) */
+.sh-center{position:relative;z-index:1;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 4px 0;cursor:pointer}
+.sh-vs,.sh-score,.sh-proj{position:relative;z-index:1}
 .sh-vs{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.6);letter-spacing:1px;
-  border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:1px 8px;margin-bottom:7px}
+  border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:1px 8px;margin-bottom:7px;
+  background:rgba(8,12,18,.34)}
 .sh-score{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:26px;line-height:1;white-space:nowrap;color:#fff;text-shadow:0 2px 9px rgba(0,0,0,.7)}
 .sh-score span{color:rgba(255,255,255,.5);margin:0 5px}
 .sh-proj{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;color:rgba(255,255,255,.72);margin-top:6px;white-space:nowrap;letter-spacing:.4px;text-shadow:0 1px 4px rgba(0,0,0,.7)}
@@ -902,8 +1078,20 @@ body.open .drawer{transform:translateX(0)}
 .dr-clock .who{display:flex;align-items:center;gap:10px;margin-top:8px}
 .dr-crest{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;overflow:hidden;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:16px;flex:none}
-.dr-clock .nm{--tn-size:16px;line-height:1.2}
+.dr-who{flex:1;min-width:0}
+.dr-clock .nm{--tn-size:16px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-clock .pk{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  font-weight:700;color:var(--ink-2);margin-top:2px}
 .dr-clock .sub{font-size:10.5px;color:var(--ink-3);font-weight:600}
+/* the countdown, on the card rather than over the board column */
+.dr-timer{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-weight:700;font-size:30px;line-height:1;letter-spacing:-.5px;color:var(--violet);
+  background:rgba(124,92,255,.14);border:1px solid rgba(124,92,255,.45);border-radius:12px;
+  padding:9px 11px;font-variant-numeric:tabular-nums}
+.dr-clock.mine .dr-timer{color:var(--green);background:rgba(140,224,74,.14);border-color:rgba(140,224,74,.5)}
+.dr-timer.low{color:var(--red);background:rgba(240,69,62,.16);border-color:rgba(240,69,62,.6);
+  animation:drtick 1s steps(1,end) infinite}
+@keyframes drtick{0%,100%{opacity:1}50%{opacity:.55}}
 .dr-acts{display:flex;gap:7px;margin-top:12px}
 .dr-btn{flex:1;text-align:center;padding:9px 6px;border-radius:11px;border:1px solid var(--line);background:var(--card);
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
@@ -963,10 +1151,6 @@ body.open .drawer{transform:translateX(0)}
 .dg-crest img{width:100%;height:100%;object-fit:cover}
 .dg-mgr{font-size:9.5px;font-weight:700;color:var(--ink-2);max-width:80px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
-.dg-timer{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
-  color:var(--violet);background:rgba(124,92,255,.16);border:1px solid rgba(124,92,255,.5);
-  border-radius:6px;padding:1px 5px;margin-bottom:1px}
-.dg-timer.low{color:var(--red);background:rgba(240,69,62,.16);border-color:rgba(240,69,62,.55)}
 
 .dg-cell{flex:none;width:88px;min-height:58px;padding:5px 6px 4px;
   border-left:1px solid rgba(0,0,0,.35);border-top:1px solid rgba(0,0,0,.3);
@@ -1528,6 +1712,15 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         <div id="teamBody"></div>
       </div>
 
+      <!-- ===== TEAM SCHEDULE VIEW ===== -->
+      <div class="view" data-view="schedule">
+        <div class="back" onclick="scheduleBack()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          <span id="schedBackLabel">Back</span>
+        </div>
+        <div id="scheduleBody"></div>
+      </div>
+
       <!-- ===== SETTINGS VIEW ===== -->
       <!-- ===== DRAFT VIEW ===== -->
       <div class="view" data-view="draft">
@@ -1542,6 +1735,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
         </div>
         <div id="settingsBody"></div>
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
+        <input type="file" accept="image/*" class="hidden-file" id="leagueLogoInput" onchange="onLeagueLogo(this)">
       </div>
 
       <!-- ===== PLAYER CARD VIEW ===== -->
@@ -1588,6 +1782,12 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   <div class="sheet" id="drSheet">
     <div class="sheet-h" id="drSheetTitle">Pick</div>
     <div id="drSheetBody"></div>
+  </div>
+
+  <div class="sheet-scrim" id="tbScrim" onclick="closeTradeBlockSheet()"></div>
+  <div class="sheet" id="tbSheet">
+    <div class="sheet-h" id="tbTitle">Looking For</div>
+    <div id="tbBody"></div>
   </div>
 
   <div class="sheet-scrim" id="confirmScrim" onclick="closeConfirm()"></div>
@@ -1729,6 +1929,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     lineupSlots: null,
     // filled in by store.js at load, from buildSlots()
     teamBackView: "matchup",
+    scheduleBackView: "matchup",
     currentPlayerName: null,
     pidx: null,
     // player index cache; null means "rebuild on next read"
@@ -1879,6 +2080,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     // days a dropped player sits on waivers (0 = none)
     tradeDeadline: 11,
     // week number, 0 = no deadline
+    median: 0,
+    // league median scoring: 0 off, 1 on (off for every existing league)
+    logo: null,
+    // league logo data URL, drawn behind the VS on every matchup
     commish: "pandas"
     // team key that owns the commissioner role
   };
@@ -3339,12 +3544,17 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     backdropFor: () => backdropFor,
     backdropTargetKey: () => backdropTargetKey,
     clearAllBackdrops: () => clearAllBackdrops,
+    clearLeagueLogo: () => clearLeagueLogo,
     gameKey: () => gameKey,
+    leagueLogoHTML: () => leagueLogoHTML,
     onBackdrop: () => onBackdrop,
     onGlobalBackdrop: () => onGlobalBackdrop,
+    onLeagueLogo: () => onLeagueLogo,
     pctColor: () => pctColor,
     pickGameBackdrop: () => pickGameBackdrop,
     pickGlobalBackdrop: () => pickGlobalBackdrop,
+    pickLeagueLogo: () => pickLeagueLogo,
+    recHTML: () => recHTML,
     refreshMatchups: () => refreshMatchups,
     removeGameBackdrop: () => removeGameBackdrop,
     stadiumHeroHTML: () => stadiumHeroHTML,
@@ -3364,344 +3574,22 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     swapIdx: () => swapIdx
   });
 
-  // js/nav.js
-  var nav_exports = {};
-  __export(nav_exports, {
-    TABS: () => TABS,
-    bindVs: () => bindVs,
-    goLeague: () => goLeague,
-    homeTab: () => homeTab2,
-    ht: () => ht,
-    preDraft: () => preDraft,
-    renderTabs: () => renderTabs2,
-    showLeagueView: () => showLeagueView,
-    showTab: () => showTab2,
-    showView: () => showView,
-    toast: () => toast2,
-    toggleDrawer: () => toggleDrawer
-  });
-  function showView(name) {
-    document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
-    document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
-  }
-  function preDraft() {
-    return !draftDone();
-  }
-  function TABS() {
-    return preDraft() ? [{ k: "draft", lb: "Draft" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }] : [{ k: "matchup", lb: "Matchup" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }];
-  }
-  function homeTab2() {
-    return preDraft() ? "draft" : "matchup";
-  }
-  function renderTabs2(active) {
-    const el = document.getElementById("tabs");
-    if (!el) return;
-    const cur = active || currentViewName();
-    el.innerHTML = TABS().map((t) => `<div class="tab${t.k === cur ? " on" : ""}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join("");
-  }
-  function showTab2(name) {
-    if (name === "team") {
-      renderTeam(MY_TEAM);
-      S.teamBackView = homeTab2();
-    }
-    if (name === "draft") renderDraft();
-    renderTabs2(name);
-    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === name));
-    showView(name);
-    document.getElementById("scroll").scrollTop = 0;
-    if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function toggleDrawer() {
-    document.body.classList.toggle("open");
-  }
-  function showLeagueView() {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-    showView("league");
-    document.getElementById("scroll").scrollTop = 0;
-    if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function goLeague() {
-    showLeagueView();
-    toast2("All league matchups \u2014 tap any to open");
-  }
-  function bindVs(el) {
-    if (!el) return;
-    el.addEventListener("dblclick", goLeague);
-    let t;
-    const s = () => {
-      clearTimeout(t);
-      t = setTimeout(goLeague, 500);
-    };
-    const e = () => clearTimeout(t);
-    el.addEventListener("mousedown", s);
-    el.addEventListener("mouseup", e);
-    el.addEventListener("mouseleave", e);
-    el.addEventListener("touchstart", s, { passive: true });
-    el.addEventListener("touchmove", e, { passive: true });
-    el.addEventListener("touchend", e);
-    el.addEventListener("touchcancel", e);
-  }
-  var ht;
-  function toast2(m) {
-    const h = document.getElementById("hint");
-    h.textContent = m;
-    h.classList.add("show");
-    clearTimeout(ht);
-    ht = setTimeout(() => h.classList.remove("show"), 1600);
-  }
-
-  // js/rewind.js
-  var rewind_exports = {};
-  __export(rewind_exports, {
-    buildRewind: () => buildRewind,
-    rewindSeries: () => rewindSeries,
-    rwOpen: () => rwOpen,
-    syncRewind: () => syncRewind,
-    toggleRewind: () => toggleRewind
-  });
-  var SAMPLE_MIN = 10;
-  var GAME_MIN = 200;
-  var DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-  var absMin = (ord) => Math.floor(ord / 2e3) * 1440 + ord % 2e3;
-  function slotLabel(abs) {
-    const day = Math.floor(abs / 1440), mins = (abs % 1440 + 1440) % 1440;
-    let h = Math.floor(mins / 60);
-    const ap = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    return `${DAYS[(day + 4) % 7]} ${h}${ap}`;
-  }
-  function clockLabel(abs) {
-    const day = Math.floor(abs / 1440), mins = (abs % 1440 + 1440) % 1440;
-    let h = Math.floor(mins / 60);
-    const m = mins % 60;
-    const ap = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    return `${DAYS[(day + 4) % 7]} ${h}:${String(m).padStart(2, "0")} ${ap}`;
-  }
-  function jumpsFor(name) {
-    let h = 2166136261;
-    for (let i = 0; i < name.length; i++) {
-      h ^= name.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    const r = () => (h = Math.imul(h ^ h >>> 15, h | 1) >>> 0) / 4294967296;
-    const n = 2 + Math.floor(r() * 3);
-    const at = Array.from({ length: n }, () => 0.08 + r() * 0.86).sort((a, b) => a - b);
-    const w = at.map(() => 0.4 + r());
-    const tot = w.reduce((s, v) => s + v, 0);
-    return at.map((f, i) => ({ at: f, share: w[i] / tot }));
-  }
-  var TOL = 0.5 / GAME_MIN;
-  function accrued(total, name, f) {
-    if (f <= 0) return 0;
-    if (f >= 1) return total;
-    let got = 0;
-    for (const j of jumpsFor(name)) if (f >= j.at - TOL) got += j.share;
-    return total * got;
-  }
-  var TD_PTS = 6;
-  function touchdowns(A, X) {
-    const out = [];
-    const add = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
-      const pts = Math.round(p.total * j.share * 10) / 10;
-      if (pts < TD_PTS) return;
-      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
-    }));
-    add(A, "a");
-    add(X, "x");
-    return out.sort((a, b) => a.t - b.t);
-  }
-  function liveWindows(kicks) {
-    const spans = kicks.map((k) => [k, k + GAME_MIN]).sort((a, b) => a[0] - b[0]);
-    const out = [];
-    spans.forEach((sp) => {
-      const last = out[out.length - 1];
-      if (last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
-      else out.push([sp[0], sp[1]]);
-    });
-    return out;
-  }
-  function rewindSeries() {
-    const rows2 = LINEUP.filter((r) => r.a || r.x);
-    if (!rows2.length) return [];
-    const ords = [];
-    rows2.forEach((r) => ["a", "x"].forEach((s) => {
-      const o = r[s] ? pOrd(r[s]) : null;
-      if (o != null && isFinite(o)) ords.push(o);
-    }));
-    if (!ords.length) return [];
-    const windows = liveWindows(ords.map(absMin));
-    const side = (s) => rows2.map((r) => {
-      const p = r[s];
-      if (!p || !isFinite(pOrd(p))) return null;
-      return { name: p.n, total: pLive(p.proj, p.n), proj: p.proj, kick: absMin(pOrd(p)) };
-    }).filter(Boolean);
-    const A = side("a"), X = side("x");
-    const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
-    const expect = (list, t) => list.reduce((n, p) => {
-      const f = (t - p.kick) / GAME_MIN;
-      const done = Math.max(0, Math.min(1, f));
-      return n + (f >= 1 ? p.total : accrued(p.total, p.name, f) + p.proj * (1 - done));
-    }, 0);
-    const remain = (list, t) => list.reduce((n, p) => {
-      const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
-      return n + p.proj * (1 - done);
-    }, 0);
-    const plays = touchdowns(A, X);
-    const out = [];
-    windows.forEach(([ws, we], w) => {
-      const times = /* @__PURE__ */ new Set();
-      for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
-      plays.forEach((e) => {
-        if (e.t >= ws && e.t <= we) times.add(e.t);
-      });
-      [...times].sort((p, q) => p - q).forEach((t) => {
-        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side }));
-        const a = sum(A, t), x = sum(X, t);
-        const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
-        out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev });
-      });
-    });
-    return out;
-  }
-  var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  var W = 320;
-  var H = 150;
-  var PADL = 4;
-  var PADR = 4;
-  function buildRewind(el, aFinal, xFinal) {
-    const pts = rewindSeries();
-    if (!pts.length) {
-      el.innerHTML = `<div class="rw-empty">No games to replay yet</div>`;
-      return;
-    }
-    const n = pts.length;
-    const X = (i) => PADL + i / (n - 1) * (W - PADL - PADR);
-    const Y = (w) => H - w / 100 * H;
-    const line = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.win).toFixed(1)}`).join(" ");
-    const area = `${PADL},${Y(50)} ${line} ${X(n - 1).toFixed(1)},${Y(50)}`;
-    const scored = pts.map((p, i) => p.ev.length ? `<circle class="rw-td ${p.ev[0].side === "a" ? "me" : "opp"}"
-         cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.8"/>` : "").join("");
-    const marks = [];
-    let lastW = null;
-    pts.forEach((p, i) => {
-      if (p.w === lastW) return;
-      lastW = p.w;
-      const x = X(i);
-      const prev = marks[marks.length - 1];
-      marks.push({ x, lb: !prev || x - prev.x > 34 ? slotLabel(p.abs) : "" });
-    });
-    el.innerHTML = `
-    <div class="rw-head">
-      <span class="rw-title">WIN PROBABILITY</span>
-      <span class="rw-legend"><i class="me"></i>You<i class="opp"></i>Opponent</span>
-    </div>
-    <div class="rw-chart">
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="rw-svg">
-        <defs>
-          <!-- one gradient, hard stop at the midline: green while you lead,
-               red once you trail, so the side is readable without a legend -->
-          <linearGradient id="rwFill" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">
-            <stop offset="0"   stop-color="#8CE04A" stop-opacity=".48"/>
-            <stop offset="0.5" stop-color="#8CE04A" stop-opacity=".04"/>
-            <stop offset="0.5" stop-color="#F0453E" stop-opacity=".04"/>
-            <stop offset="1"   stop-color="#F0453E" stop-opacity=".48"/>
-          </linearGradient>
-        </defs>
-        ${marks.map((m) => `<line class="rw-grid" x1="${m.x.toFixed(1)}" y1="0" x2="${m.x.toFixed(1)}" y2="${H}"/>`).join("")}
-        <polygon class="rw-area" points="${area}" fill="url(#rwFill)"/>
-        <line class="rw-mid" x1="0" y1="${Y(50)}" x2="${W}" y2="${Y(50)}"/>
-        <polyline class="rw-line" points="${line}"/>
-        ${scored}
-        <line class="rw-cursor" x1="0" y1="0" x2="0" y2="${H}"/>
-        <circle class="rw-dot" cx="0" cy="0" r="4"/>
-      </svg>
-      <div class="rw-y"><span>100</span><span>50</span><span>100</span></div>
-      <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%">${m.lb}</span>`).join("")}</div>
-    </div>
-    <div class="rw-read">
-      <div class="rw-r1"><span class="t"></span><span class="w"></span></div>
-      <div class="rw-r2"><span class="sc"></span><span class="ev"></span></div>
-    </div>`;
-    const svg2 = el.querySelector(".rw-svg");
-    const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
-    const rT = el.querySelector(".rw-r1 .t"), rW = el.querySelector(".rw-r1 .w");
-    const rS = el.querySelector(".rw-r2 .sc"), rE = el.querySelector(".rw-r2 .ev");
-    function show(i) {
-      i = Math.max(0, Math.min(n - 1, i));
-      const p = pts[i], x = X(i), y = Y(p.win);
-      cur.setAttribute("x1", x);
-      cur.setAttribute("x2", x);
-      dot.setAttribute("cx", x);
-      dot.setAttribute("cy", y);
-      rT.textContent = clockLabel(p.abs);
-      rW.textContent = p.win + "% win";
-      rW.className = "w " + (p.win >= 50 ? "up" : "dn");
-      rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
-      rE.innerHTML = p.ev.map(
-        (e) => `<span class="${e.side === "a" ? "me" : "opp"}">${escName(e.name)} TD +${e.pts.toFixed(1)}</span>`
-      ).join("");
-    }
-    show(n - 1);
-    let drag = false;
-    const at = (e) => {
-      const r = svg2.getBoundingClientRect();
-      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-      show(Math.round(cx / r.width * (n - 1)));
-    };
-    const move = (e) => {
-      if (drag) {
-        at(e);
-        e.preventDefault();
-      }
-    };
-    const down = (e) => {
-      drag = true;
-      at(e);
-    };
-    const up = () => {
-      drag = false;
-    };
-    if (el._rwAbort) el._rwAbort.abort();
-    const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
-    el._rwAbort = ac;
-    const sig = ac ? { signal: ac.signal } : {};
-    const sigP = ac ? { passive: false, signal: ac.signal } : { passive: false };
-    svg2.addEventListener("mousedown", down, sig);
-    window.addEventListener("mousemove", move, sig);
-    window.addEventListener("mouseup", up, sig);
-    svg2.addEventListener("touchstart", down, sigP);
-    window.addEventListener("touchmove", move, sigP);
-    window.addEventListener("touchend", up, sig);
-  }
-  var rwOpen = {};
-  function toggleRewind(id) {
-    const rw = document.getElementById(id);
-    if (!rw) return;
-    const open = !rwOpen[id];
-    rwOpen[id] = open;
-    rw.style.display = open ? "block" : "none";
-    document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
-    if (open && rw.scrollIntoView) rw.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }
-  function syncRewind(id) {
-    const rw = document.getElementById(id);
-    if (!rw) return;
-    const open = !!rwOpen[id];
-    rw.style.display = open ? "block" : "none";
-    document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
-  }
-
-  // js/week.js
-  var week_exports = {};
-  __export(week_exports, {
-    buildWeekGrid: () => buildWeekGrid,
-    closeWeekPicker: () => closeWeekPicker,
-    openWeekPicker: () => openWeekPicker,
-    pickWeek: () => pickWeek,
-    pickerTarget: () => pickerTarget,
-    renderWeek: () => renderWeek2,
-    stepWeek: () => stepWeek
+  // js/median.js
+  var median_exports = {};
+  __export(median_exports, {
+    fmtRecord: () => fmtRecord,
+    leagueMedian: () => leagueMedian,
+    medianOn: () => medianOn,
+    medianStripHTML: () => medianStripHTML,
+    playedScores: () => playedScores,
+    recLabel: () => recLabel,
+    resultLabel: () => resultLabel,
+    runningRecords: () => runningRecords,
+    teamRecord: () => teamRecord,
+    teamSchedule: () => teamSchedule,
+    weekPlayed: () => weekPlayed,
+    weekResult: () => weekResult,
+    weekScores: () => weekScores
   });
 
   // js/panel.js
@@ -4743,6 +4631,248 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return !pos || pos === "ALL" ? rows2 : rows2.filter((r) => r.pos === pos);
   }
 
+  // js/tradeblock.js
+  var tradeblock_exports = {};
+  __export(tradeblock_exports, {
+    LOOKING_FOR: () => LOOKING_FOR,
+    addToTradeBlock: () => addToTradeBlock,
+    blockEntry: () => blockEntry,
+    blockKeys: () => blockKeys,
+    blockWant: () => blockWant,
+    closeTradeBlockSheet: () => closeTradeBlockSheet,
+    dropFromBlock: () => dropFromBlock,
+    onBlock: () => onBlock,
+    openLookingFor: () => openLookingFor,
+    pickLookingFor: () => pickLookingFor,
+    removeFromBlock: () => removeFromBlock,
+    renderTradeBlockPanel: () => renderTradeBlockPanel,
+    saveLookingFor: () => saveLookingFor,
+    skipLookingFor: () => skipLookingFor,
+    tradeBlock: () => tradeBlock,
+    tradeBlockCardHTML: () => tradeBlockCardHTML,
+    tradeBlockListHTML: () => tradeBlockListHTML
+  });
+
+  // js/nav.js
+  var nav_exports = {};
+  __export(nav_exports, {
+    TABS: () => TABS,
+    bindVs: () => bindVs,
+    goLeague: () => goLeague,
+    homeTab: () => homeTab2,
+    ht: () => ht,
+    preDraft: () => preDraft,
+    renderTabs: () => renderTabs2,
+    showLeagueView: () => showLeagueView,
+    showTab: () => showTab2,
+    showView: () => showView,
+    toast: () => toast2,
+    toggleDrawer: () => toggleDrawer
+  });
+  function showView(name) {
+    document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.dataset.view === name));
+    document.querySelector(".shift").classList.toggle("stage-on", name === "matchup");
+  }
+  function preDraft() {
+    return !draftDone();
+  }
+  function TABS() {
+    return preDraft() ? [{ k: "draft", lb: "Draft" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }] : [{ k: "matchup", lb: "Matchup" }, { k: "team", lb: "Team" }, { k: "standings", lb: "League" }];
+  }
+  function homeTab2() {
+    return preDraft() ? "draft" : "matchup";
+  }
+  function renderTabs2(active) {
+    const el = document.getElementById("tabs");
+    if (!el) return;
+    const cur = active || currentViewName();
+    el.innerHTML = TABS().map((t) => `<div class="tab${t.k === cur ? " on" : ""}" data-tab="${t.k}" onclick="showTab('${t.k}')">${t.lb}</div>`).join("");
+  }
+  function showTab2(name) {
+    if (name === "team") {
+      renderTeam(MY_TEAM);
+      S.teamBackView = homeTab2();
+    }
+    if (name === "draft") renderDraft();
+    renderTabs2(name);
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === name));
+    showView(name);
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function toggleDrawer() {
+    document.body.classList.toggle("open");
+  }
+  function showLeagueView() {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    showView("league");
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function goLeague() {
+    showLeagueView();
+    toast2("All league matchups \u2014 tap any to open");
+  }
+  function bindVs(el) {
+    if (!el) return;
+    el.addEventListener("dblclick", goLeague);
+    let t;
+    const s = () => {
+      clearTimeout(t);
+      t = setTimeout(goLeague, 500);
+    };
+    const e = () => clearTimeout(t);
+    el.addEventListener("mousedown", s);
+    el.addEventListener("mouseup", e);
+    el.addEventListener("mouseleave", e);
+    el.addEventListener("touchstart", s, { passive: true });
+    el.addEventListener("touchmove", e, { passive: true });
+    el.addEventListener("touchend", e);
+    el.addEventListener("touchcancel", e);
+  }
+  var ht;
+  function toast2(m) {
+    const h = document.getElementById("hint");
+    h.textContent = m;
+    h.classList.add("show");
+    clearTimeout(ht);
+    ht = setTimeout(() => h.classList.remove("show"), 1600);
+  }
+
+  // js/tradeblock.js
+  var LOOKING_FOR = ["Young WR", "RB Depth", "2028 1st", "Veteran QB", "Best Offer"];
+  function tradeBlock() {
+    store.tradeBlock = store.tradeBlock || {};
+    return store.tradeBlock;
+  }
+  function blockEntry(key) {
+    return tradeBlock()[key] || null;
+  }
+  function onBlock(key) {
+    return !!blockEntry(key);
+  }
+  function blockKeys() {
+    return Object.keys(tradeBlock());
+  }
+  function blockWant(key) {
+    const e = blockEntry(key);
+    return e && e.want || "";
+  }
+  var pendingKey = null;
+  function addToTradeBlock(key) {
+    if (!key) return;
+    const b = tradeBlock();
+    if (!b[key]) b[key] = { want: "", team: MY_TEAM, ts: Date.now() };
+    saveStore();
+    openLookingFor(key);
+  }
+  function openLookingFor(key) {
+    pendingKey = key;
+    const p = findPlayer(key), name = p.full && p.full !== p.n ? p.full : p.n || key;
+    const cur = blockWant(key);
+    document.getElementById("tbTitle").textContent = "Looking For";
+    document.getElementById("tbBody").innerHTML = `
+    <div class="tb-sub"><b>${escHtml(name)}</b> is on the trade block. What are you looking for?</div>
+    <div class="tb-chips">${LOOKING_FOR.map((v) => `<div class="tb-chip${v === cur ? " on" : ""}" onclick="pickLookingFor('${esc(v)}')">${escHtml(v)}</div>`).join("")}</div>
+    <input id="tbInput" class="tb-input" maxlength="48" value="${escAttr(cur)}"
+      placeholder="Or type it \u2014 e.g. 2027 2nd + WR3" onkeydown="if(event.key==='Enter')saveLookingFor()">
+    <div class="tb-btns">
+      <div class="tb-btn" onclick="skipLookingFor()">Skip for now</div>
+      <div class="tb-btn go" onclick="saveLookingFor()">Save</div>
+    </div>
+    <div class="tb-note">Whatever you write shows up whenever anyone taps this player.</div>`;
+    document.getElementById("tbScrim").classList.add("show");
+    document.getElementById("tbSheet").classList.add("show");
+  }
+  function pickLookingFor(v) {
+    const i = document.getElementById("tbInput");
+    if (i) i.value = v;
+    document.querySelectorAll("#tbBody .tb-chip").forEach((el) => el.classList.toggle("on", el.textContent.trim() === v));
+  }
+  function saveLookingFor() {
+    const key = pendingKey;
+    if (!key) return;
+    const i = document.getElementById("tbInput");
+    const want = (i && i.value || "").trim();
+    const e = tradeBlock()[key];
+    if (e) {
+      e.want = want;
+      e.ts = Date.now();
+      saveStore();
+    }
+    closeTradeBlockSheet();
+    refreshBlockViews(key);
+    toast2(want ? `Listed \u2014 looking for ${want}` : "Added to the trade block");
+  }
+  function skipLookingFor() {
+    const key = pendingKey;
+    closeTradeBlockSheet();
+    refreshBlockViews(key);
+    toast2("Added to the trade block");
+  }
+  function closeTradeBlockSheet() {
+    pendingKey = null;
+    document.getElementById("tbScrim").classList.remove("show");
+    document.getElementById("tbSheet").classList.remove("show");
+  }
+  function removeFromBlock(key) {
+    delete tradeBlock()[key];
+    saveStore();
+    refreshBlockViews(key);
+    toast2("Removed from the trade block");
+  }
+  function dropFromBlock(key) {
+    if (!key || !tradeBlock()[key]) return;
+    delete tradeBlock()[key];
+    saveStore();
+  }
+  function refreshBlockViews(key) {
+    const pv = document.querySelector('.view[data-view="player"]');
+    if (pv && pv.classList.contains("on") && key) renderPlayer(key);
+    const rail = document.querySelector(".rail-item.on");
+    if (rail && rail.dataset.rail === "trades") renderTradeBlockPanel();
+  }
+  function tradeBlockCardHTML(key, mine) {
+    if (!onBlock(key))
+      return mine ? `<div class="pc-block-add" onclick="addToTradeBlock('${esc(key)}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>
+      Add to Trade Block</div>` : "";
+    const want = blockWant(key);
+    const e = blockEntry(key), t = T[e && e.team || MY_TEAM] || T[MY_TEAM];
+    return `<div class="pc-block">
+    <div class="pc-block-hd">On the trade block \xB7 ${escHtml(t.mgr)}</div>
+    <div class="pc-block-want">${want ? `<span class="k">Looking for</span> ${escHtml(want)}` : `<span class="k">Looking for</span> <i>Open to offers</i>`}</div>
+    ${mine ? `<div class="pc-block-acts">
+      <span onclick="openLookingFor('${esc(key)}')">${want ? "Edit" : "Add"} what you want</span>
+      <span onclick="removeFromBlock('${esc(key)}')">Remove</span>
+    </div>` : ""}
+  </div>`;
+  }
+  function tradeBlockListHTML() {
+    const keys = blockKeys();
+    if (!keys.length)
+      return `<div class="empty">Nobody is on the block yet.<br>
+      Open a player on your roster and tap <b style="color:#93A0B0">Add to Trade Block</b>.</div>`;
+    return keys.map((key) => {
+      const p = findPlayer(key), want = blockWant(key);
+      return `<div class="tb-row" onclick="openPlayer('${esc(key)}')">
+      <span class="tb-face">${faceInner(key)}</span>
+      <div class="tb-info">
+        <div class="tb-nm">${escHtml(p.full && p.full !== p.n ? p.full : p.n || key)}</div>
+        <div class="tb-mt"><span class="pos ${p.pos}">${p.pos || "\u2014"}</span> \xB7 ${escHtml(p.tm || "")}</div>
+      </div>
+      <div class="tb-want">${want ? escHtml(want) : "<i>Open to offers</i>"}</div>
+    </div>`;
+    }).join("");
+  }
+  function renderTradeBlockPanel() {
+    const el = document.getElementById("panel");
+    if (!el) return;
+    el.innerHTML = `<div class="panel-hd"><span class="d"></span>Trade Block
+      <span class="wk">\xB7 ${blockKeys().length} listed</span></div>
+    <div id="panelList">${tradeBlockListHTML()}</div>`;
+  }
+
   // js/panel.js
   var panelQ = { leaders: "", trending: "", available: "" };
   var PANEL_CAP = 100;
@@ -4969,6 +5099,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       renderTrending();
     } else if (key === "available") {
       renderAvailable();
+    } else if (key === "trades") {
+      renderTradeBlockPanel();
     } else {
       const lb = RAIL.find((r) => r.k === key).lb;
       p.innerHTML = `<div class="panel-hd"><span class="d"></span>${lb} <span class="wk">\xB7 Week ${S.week}</span></div>
@@ -4989,7 +5121,386 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     renderPanel("leaders");
   }
 
+  // js/median.js
+  function medianOn() {
+    return !!+LG().median;
+  }
+  function weekScores(week) {
+    const out = {};
+    getGames(week).forEach((g) => {
+      out[g.a] = +g.as;
+      out[g.x] = +g.xs;
+    });
+    return out;
+  }
+  function gamePlayed(g) {
+    return g.status !== "sched" && (+g.as > 0 || +g.xs > 0);
+  }
+  function playedScores(week) {
+    const out = {};
+    getGames(week).forEach((g) => {
+      if (gamePlayed(g)) {
+        out[g.a] = +g.as;
+        out[g.x] = +g.xs;
+      }
+    });
+    return out;
+  }
+  function weekPlayed(week) {
+    return Object.keys(playedScores(week)).length > 0;
+  }
+  function leagueMedian(week) {
+    const v = Object.values(playedScores(week)).sort((a, b) => a - b), n = v.length;
+    if (!n) return 0;
+    const m = n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2;
+    return Math.round(m * 10) / 10;
+  }
+  var resultLabel = { W: "Won", L: "Lost", T: "Tied" };
+  function verdict(mine, theirs) {
+    return mine > theirs ? "W" : mine < theirs ? "L" : "T";
+  }
+  function weekResult(key, week) {
+    const g = getGames(week).find((x) => x.a === key || x.x === key);
+    if (!g) return null;
+    const home = g.a === key;
+    const pts = +(home ? g.as : g.xs), oppPts = +(home ? g.xs : g.as);
+    const played = gamePlayed(g);
+    const med = leagueMedian(week);
+    return {
+      week,
+      opp: home ? g.x : g.a,
+      pts,
+      oppPts,
+      played,
+      h2h: played ? verdict(pts, oppPts) : null,
+      median: med,
+      // a team is only measured against the median once their own game has been
+      // played - before that there is no score of theirs to measure
+      med: played ? verdict(pts, med) : null
+    };
+  }
+  function teamSchedule(key) {
+    const out = [];
+    for (let w = MINW; w <= MAXW; w++) {
+      const r = weekResult(key, w);
+      if (r) out.push(r);
+    }
+    return out;
+  }
+  function teamRecord(key, opts) {
+    opts = opts || {};
+    const rec = { w: 0, l: 0, t: 0 };
+    const add = (v) => {
+      if (v === "W") rec.w++;
+      else if (v === "L") rec.l++;
+      else if (v === "T") rec.t++;
+    };
+    teamSchedule(key).forEach((r) => {
+      if (!opts.medianOnly) add(r.h2h);
+      if (medianOn() && !opts.h2hOnly) add(r.med);
+    });
+    return rec;
+  }
+  function fmtRecord(rec) {
+    return `${rec.w}-${rec.l}${rec.t ? "-" + rec.t : ""}`;
+  }
+  function recLabel(key) {
+    const t = T[key];
+    if (!t) return "0-0";
+    return fmtRecord(teamRecord(key));
+  }
+  function medChip(v) {
+    return v ? `<i class="med-chip ${v.toLowerCase()}">${v}</i>` : `<i class="med-chip none">\u2014</i>`;
+  }
+  function medRow(key, week) {
+    const r = weekResult(key, week);
+    if (!r) return "";
+    const t = T[key];
+    return `<div class="med-row">
+    <span class="med-tn tf-${key}" style="color:${t.c}">${escHtml(t.n)}</span>
+    <span class="med-pts">${r.pts.toFixed(1)}</span>
+    <span class="med-res">${medChip(r.h2h)}<small>H2H</small></span>
+    <span class="med-res">${medChip(r.med)}<small>MED</small></span>
+  </div>`;
+  }
+  function medianStripHTML(aKey, xKey, week) {
+    if (!medianOn()) return "";
+    const med = leagueMedian(week), played = weekPlayed(week);
+    return `<div class="med-strip">
+    <div class="med-hd"><span>League Median \xB7 Week ${week}</span>
+      <b>${played ? med.toFixed(1) : "\u2014"}</b></div>
+    ${medRow(aKey, week)}${medRow(xKey, week)}
+    <div class="med-note">${played ? "Every team also plays the league median this week \u2014 above it is a second win, below it a second loss." : "The median is set once the week is scored. Both results then count toward the standings."}</div>
+  </div>`;
+  }
+  function runningRecords(key) {
+    const rec = { w: 0, l: 0, t: 0 }, out = [];
+    const add = (v) => {
+      if (v === "W") rec.w++;
+      else if (v === "L") rec.l++;
+      else if (v === "T") rec.t++;
+    };
+    teamSchedule(key).forEach((r) => {
+      add(r.h2h);
+      if (medianOn()) add(r.med);
+      out.push({ ...r, record: r.h2h || r.med ? fmtRecord(rec) : null });
+    });
+    return out;
+  }
+
+  // js/rewind.js
+  var rewind_exports = {};
+  __export(rewind_exports, {
+    buildRewind: () => buildRewind,
+    rewindSeries: () => rewindSeries,
+    rwOpen: () => rwOpen,
+    syncRewind: () => syncRewind,
+    toggleRewind: () => toggleRewind
+  });
+  var SAMPLE_MIN = 10;
+  var GAME_MIN = 200;
+  var DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  var absMin = (ord) => Math.floor(ord / 2e3) * 1440 + ord % 2e3;
+  function slotLabel(abs) {
+    const day = Math.floor(abs / 1440), mins = (abs % 1440 + 1440) % 1440;
+    let h = Math.floor(mins / 60);
+    const ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${DAYS[(day + 4) % 7]} ${h}${ap}`;
+  }
+  function clockLabel(abs) {
+    const day = Math.floor(abs / 1440), mins = (abs % 1440 + 1440) % 1440;
+    let h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${DAYS[(day + 4) % 7]} ${h}:${String(m).padStart(2, "0")} ${ap}`;
+  }
+  function jumpsFor(name) {
+    let h = 2166136261;
+    for (let i = 0; i < name.length; i++) {
+      h ^= name.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const r = () => (h = Math.imul(h ^ h >>> 15, h | 1) >>> 0) / 4294967296;
+    const n = 2 + Math.floor(r() * 3);
+    const at = Array.from({ length: n }, () => 0.08 + r() * 0.86).sort((a, b) => a - b);
+    const w = at.map(() => 0.4 + r());
+    const tot = w.reduce((s, v) => s + v, 0);
+    return at.map((f, i) => ({ at: f, share: w[i] / tot }));
+  }
+  var TOL = 0.5 / GAME_MIN;
+  function accrued(total, name, f) {
+    if (f <= 0) return 0;
+    if (f >= 1) return total;
+    let got = 0;
+    for (const j of jumpsFor(name)) if (f >= j.at - TOL) got += j.share;
+    return total * got;
+  }
+  var TD_PTS = 6;
+  function touchdowns(A, X) {
+    const out = [];
+    const add = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
+      const pts = Math.round(p.total * j.share * 10) / 10;
+      if (pts < TD_PTS) return;
+      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
+    }));
+    add(A, "a");
+    add(X, "x");
+    return out.sort((a, b) => a.t - b.t);
+  }
+  function liveWindows(kicks) {
+    const spans = kicks.map((k) => [k, k + GAME_MIN]).sort((a, b) => a[0] - b[0]);
+    const out = [];
+    spans.forEach((sp) => {
+      const last = out[out.length - 1];
+      if (last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
+      else out.push([sp[0], sp[1]]);
+    });
+    return out;
+  }
+  function rewindSeries() {
+    const rows2 = LINEUP.filter((r) => r.a || r.x);
+    if (!rows2.length) return [];
+    const ords = [];
+    rows2.forEach((r) => ["a", "x"].forEach((s) => {
+      const o = r[s] ? pOrd(r[s]) : null;
+      if (o != null && isFinite(o)) ords.push(o);
+    }));
+    if (!ords.length) return [];
+    const windows = liveWindows(ords.map(absMin));
+    const side = (s) => rows2.map((r) => {
+      const p = r[s];
+      if (!p || !isFinite(pOrd(p))) return null;
+      return { name: p.n, total: pLive(p.proj, p.n), proj: p.proj, kick: absMin(pOrd(p)) };
+    }).filter(Boolean);
+    const A = side("a"), X = side("x");
+    const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
+    const expect = (list, t) => list.reduce((n, p) => {
+      const f = (t - p.kick) / GAME_MIN;
+      const done = Math.max(0, Math.min(1, f));
+      return n + (f >= 1 ? p.total : accrued(p.total, p.name, f) + p.proj * (1 - done));
+    }, 0);
+    const remain = (list, t) => list.reduce((n, p) => {
+      const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
+      return n + p.proj * (1 - done);
+    }, 0);
+    const plays = touchdowns(A, X);
+    const out = [];
+    windows.forEach(([ws, we], w) => {
+      const times = /* @__PURE__ */ new Set();
+      for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
+      plays.forEach((e) => {
+        if (e.t >= ws && e.t <= we) times.add(e.t);
+      });
+      [...times].sort((p, q) => p - q).forEach((t) => {
+        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side }));
+        const a = sum(A, t), x = sum(X, t);
+        const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
+        out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev });
+      });
+    });
+    return out;
+  }
+  var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  var W = 320;
+  var H = 150;
+  var PADL = 4;
+  var PADR = 4;
+  function buildRewind(el, aFinal, xFinal) {
+    const pts = rewindSeries();
+    if (!pts.length) {
+      el.innerHTML = `<div class="rw-empty">No games to replay yet</div>`;
+      return;
+    }
+    const n = pts.length;
+    const X = (i) => PADL + i / (n - 1) * (W - PADL - PADR);
+    const Y = (w) => H - w / 100 * H;
+    const line = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.win).toFixed(1)}`).join(" ");
+    const area = `${PADL},${Y(50)} ${line} ${X(n - 1).toFixed(1)},${Y(50)}`;
+    const scored = pts.map((p, i) => p.ev.length ? `<circle class="rw-td ${p.ev[0].side === "a" ? "me" : "opp"}"
+         cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.8"/>` : "").join("");
+    const marks = [];
+    let lastW = null;
+    pts.forEach((p, i) => {
+      if (p.w === lastW) return;
+      lastW = p.w;
+      const x = X(i);
+      const prev = marks[marks.length - 1];
+      marks.push({ x, lb: !prev || x - prev.x > 34 ? slotLabel(p.abs) : "" });
+    });
+    el.innerHTML = `
+    <div class="rw-head">
+      <span class="rw-title">WIN PROBABILITY</span>
+      <span class="rw-legend"><i class="me"></i>You<i class="opp"></i>Opponent</span>
+    </div>
+    <div class="rw-chart">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="rw-svg">
+        <defs>
+          <!-- one gradient, hard stop at the midline: green while you lead,
+               red once you trail, so the side is readable without a legend -->
+          <linearGradient id="rwFill" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">
+            <stop offset="0"   stop-color="#8CE04A" stop-opacity=".48"/>
+            <stop offset="0.5" stop-color="#8CE04A" stop-opacity=".04"/>
+            <stop offset="0.5" stop-color="#F0453E" stop-opacity=".04"/>
+            <stop offset="1"   stop-color="#F0453E" stop-opacity=".48"/>
+          </linearGradient>
+        </defs>
+        ${marks.map((m) => `<line class="rw-grid" x1="${m.x.toFixed(1)}" y1="0" x2="${m.x.toFixed(1)}" y2="${H}"/>`).join("")}
+        <polygon class="rw-area" points="${area}" fill="url(#rwFill)"/>
+        <line class="rw-mid" x1="0" y1="${Y(50)}" x2="${W}" y2="${Y(50)}"/>
+        <polyline class="rw-line" points="${line}"/>
+        ${scored}
+        <line class="rw-cursor" x1="0" y1="0" x2="0" y2="${H}"/>
+        <circle class="rw-dot" cx="0" cy="0" r="4"/>
+      </svg>
+      <div class="rw-y"><span>100</span><span>50</span><span>100</span></div>
+      <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%">${m.lb}</span>`).join("")}</div>
+    </div>
+    <div class="rw-read">
+      <div class="rw-r1"><span class="t"></span><span class="w"></span></div>
+      <div class="rw-r2"><span class="sc"></span><span class="ev"></span></div>
+    </div>`;
+    const svg2 = el.querySelector(".rw-svg");
+    const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
+    const rT = el.querySelector(".rw-r1 .t"), rW = el.querySelector(".rw-r1 .w");
+    const rS = el.querySelector(".rw-r2 .sc"), rE = el.querySelector(".rw-r2 .ev");
+    function show(i) {
+      i = Math.max(0, Math.min(n - 1, i));
+      const p = pts[i], x = X(i), y = Y(p.win);
+      cur.setAttribute("x1", x);
+      cur.setAttribute("x2", x);
+      dot.setAttribute("cx", x);
+      dot.setAttribute("cy", y);
+      rT.textContent = clockLabel(p.abs);
+      rW.textContent = p.win + "% win";
+      rW.className = "w " + (p.win >= 50 ? "up" : "dn");
+      rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
+      rE.innerHTML = p.ev.map(
+        (e) => `<span class="${e.side === "a" ? "me" : "opp"}">${escName(e.name)} TD +${e.pts.toFixed(1)}</span>`
+      ).join("");
+    }
+    show(n - 1);
+    let drag = false;
+    const at = (e) => {
+      const r = svg2.getBoundingClientRect();
+      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      show(Math.round(cx / r.width * (n - 1)));
+    };
+    const move = (e) => {
+      if (drag) {
+        at(e);
+        e.preventDefault();
+      }
+    };
+    const down = (e) => {
+      drag = true;
+      at(e);
+    };
+    const up = () => {
+      drag = false;
+    };
+    if (el._rwAbort) el._rwAbort.abort();
+    const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+    el._rwAbort = ac;
+    const sig = ac ? { signal: ac.signal } : {};
+    const sigP = ac ? { passive: false, signal: ac.signal } : { passive: false };
+    svg2.addEventListener("mousedown", down, sig);
+    window.addEventListener("mousemove", move, sig);
+    window.addEventListener("mouseup", up, sig);
+    svg2.addEventListener("touchstart", down, sigP);
+    window.addEventListener("touchmove", move, sigP);
+    window.addEventListener("touchend", up, sig);
+  }
+  var rwOpen = {};
+  function toggleRewind(id) {
+    const rw = document.getElementById(id);
+    if (!rw) return;
+    const open = !rwOpen[id];
+    rwOpen[id] = open;
+    rw.style.display = open ? "block" : "none";
+    document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
+    if (open && rw.scrollIntoView) rw.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  function syncRewind(id) {
+    const rw = document.getElementById(id);
+    if (!rw) return;
+    const open = !!rwOpen[id];
+    rw.style.display = open ? "block" : "none";
+    document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
+  }
+
   // js/week.js
+  var week_exports = {};
+  __export(week_exports, {
+    buildWeekGrid: () => buildWeekGrid,
+    closeWeekPicker: () => closeWeekPicker,
+    openWeekPicker: () => openWeekPicker,
+    pickWeek: () => pickWeek,
+    pickerTarget: () => pickerTarget,
+    renderWeek: () => renderWeek2,
+    stepWeek: () => stepWeek
+  });
   function renderWeek2() {
     S.week = Math.max(MINW, Math.min(MAXW, S.week));
     recomputeLT();
@@ -5093,14 +5604,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       rwOpen.userRewind = false;
       uRw.style.display = "none";
     }
+    const med = medianStripHTML(aK, xK, S.week);
     if (live) {
-      uLine.innerHTML = phaseStepperHTML() + fullStartersHTML({ phased: true, editable: true });
+      uLine.innerHTML = med + phaseStepperHTML() + fullStartersHTML({ phased: true, editable: true });
     } else if (S.week > LIVE_WEEK && S.week === MINW) {
-      uLine.innerHTML = fullStartersHTML({ phased: false, editable: true });
+      uLine.innerHTML = med + fullStartersHTML({ phased: false, editable: true });
     } else {
       const g = S.games.find((x) => x.me), idx = S.games.indexOf(g);
       const note = S.week < LIVE_WEEK ? "Final result \xB7 open for Rewind" : "Scheduled \xB7 projections only";
-      uLine.innerHTML = `<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
+      uLine.innerHTML = med + `<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>
       <div class="t"><div class="a">View Full Matchup</div><div class="b">${note}</div></div><div class="arr">\u203A</div></div>`;
     }
@@ -5223,6 +5735,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     hourLabel: () => hourLabel,
     isCommish: () => isCommish,
     leagueCards: () => leagueCards,
+    leagueLogoCard: () => leagueLogoCard,
     openSettings: () => openSettings,
     optList: () => optList,
     ownsCommish: () => ownsCommish,
@@ -5289,6 +5802,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     LG()[key] = num ? +val : val;
     saveStore();
+    if (key === "median") refreshRosterViews();
     renderSettings();
   }
   function setLeagueNum(key, val, min, max) {
@@ -5319,13 +5833,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const teamOpts = [8, 10, 12, 14, 16].map((n) => [n, n + " teams"]);
     const waiverRows = L.waiver === "faab" ? setRow("Waiver budget", setNum("faabBudget", L.faabBudget, 1, 1e3)) + setRow("Minimum bid", setNum("faabMin", L.faabMin, 0, Math.max(1, L.faabBudget))) : "";
     const sizeNote = +L.teams !== 10 ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season \u2014 ${L.teams} takes effect at the next draft.</div>` : "";
+    const medNote = +L.median ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">Every team plays two opponents a week \u2014 their matchup, and the league median. Records count both, and each matchup shows both results.</div>` : `<div class="set-note" style="margin-top:11px">Off: one result a week, from the scheduled matchup only.</div>`;
     return `
     <div class="set-card">
       <div class="set-title">General</div>
       ${setRow("League type", setSel("type", [["redraft", "Redraft"], ["keeper", "Keeper"], ["dynasty", "Dynasty"]], L.type))}
       ${setRow("Teams", setSel("teams", teamOpts, L.teams, 1))}
       ${setRow("Lineup type", setSel("lineup", [["classic", "Classic"], ["bestball", "Best ball"]], L.lineup))}
+      ${setRow(
+      'League median<span class="s">A second win or loss each week, against the league median score</span>',
+      setSel("median", [[0, "Off"], [1, "On"]], +L.median ? 1 : 0, 1)
+    )}
       ${sizeNote}
+      ${medNote}
     </div>
     <div class="set-card">
       <div class="set-title">Waivers</div>
@@ -5540,6 +6060,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="set-note">Commissioner-only tools land here.</div>
     </div>`;
   }
+  function leagueLogoCard() {
+    const src = LG().logo;
+    const prev = src ? `<div class="set-crest"><img src="${src}" alt=""></div>` : `<div class="set-crest none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>`;
+    return `<div class="set-card">
+    <div class="set-title">League Logo</div>
+    <div class="set-note">Sits at the centre of every matchup \u2014 behind the VS and the score, in front of nothing but the background. PNGs keep their transparency.</div>
+    <div class="set-crestrow">${prev}
+      <div class="set-crestnote">${src ? "Your league logo" : "Default shield \u2014 no logo uploaded"}</div>
+    </div>
+    ${isCommish() ? `<div class="set-btns">
+      <div class="set-btn primary" onclick="pickLeagueLogo()">${ICON_UP} ${src ? "Change" : "Upload"} league logo</div>
+      ${src ? `<div class="set-btn" onclick="clearLeagueLogo()">${ICON_X} Remove logo</div>` : ""}
+    </div>` : ""}
+  </div>`;
+  }
   var BASE_SET_TABS = [["general", "General"], ["roster", "Roster"], ["scoring", "Scoring"], ["matchups", "Matchups"]];
   function setTabs() {
     return isCommish() ? BASE_SET_TABS.concat([["commish", "\u2605 Commissioner"]]) : BASE_SET_TABS;
@@ -5571,7 +6109,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="set-card">
       <div class="set-title">Per-game backgrounds</div>
       <div class="set-note">Open any matchup \u2014 yours, or tap a game in All Matchups \u2014 and use the camera on the stadium banner to set a background for just that game.</div>
-    </div>`;
+    </div>
+    ${leagueLogoCard()}`;
     const bodies = {
       general: leagueCards(),
       roster: rosterCards(),
@@ -5615,6 +6154,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function pctColor(mine, theirs) {
     return mine > theirs ? "var(--green)" : mine < theirs ? "var(--red)" : "var(--ink-3)";
   }
+  function leagueLogoHTML() {
+    const src = LG().logo;
+    if (src) return `<div class="sh-league" aria-hidden="true"><img src="${src}" alt=""></div>`;
+    return `<div class="sh-league def" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35">
+      <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+  </div>`;
+  }
+  function recHTML(key) {
+    const t = T[key];
+    return `<div class="sh-rec">${t.mgr} \xB7 <span class="rec-tap"
+    onclick="event.stopPropagation();openSchedule('${key}')">${recLabel(key)}</span></div>`;
+  }
   function stadiumStageHTML(aKey, xKey, as, xs, aw, xw, ap, xp, opts) {
     opts = opts || {};
     const a = T[aKey], x = T[xKey];
@@ -5652,10 +6204,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" onclick="openTeam('${aKey}')">${a.n}</div>
-        <div class="sh-rec">${a.mgr} \xB7 ${a.rec}</div>
+        ${recHTML(aKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(aw, xw)}"${wc}>${aw}%</div>
       </div>
       <div class="ms-center" data-vs>
+        ${leagueLogoHTML()}
         <div class="sh-vs">VS</div>
         <div class="sh-score">${as.toFixed(1)}<span>\u2013</span>${xs.toFixed(1)}</div>
         ${proj}
@@ -5663,7 +6216,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" onclick="openTeam('${xKey}')">${x.n}</div>
-        <div class="sh-rec">${x.mgr} \xB7 ${x.rec}</div>
+        ${recHTML(xKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(xw, aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -5697,10 +6250,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="sh-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" ${nameClick(aKey)}>${a.n}</div>
-        <div class="sh-rec">${a.mgr} \xB7 ${a.rec}</div>
+        ${recHTML(aKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(aw, xw)}"${wc}>${aw}%</div>
       </div>
       <div class="sh-center" ${opts.tapHint ? "data-vs" : ""}>
+        ${leagueLogoHTML()}
         <div class="sh-vs">VS</div>
         <div class="sh-score">${as.toFixed(1)}<span>\u2013</span>${xs.toFixed(1)}</div>
         ${proj}
@@ -5708,7 +6262,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="sh-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" ${nameClick(xKey)}>${x.n}</div>
-        <div class="sh-rec">${x.mgr} \xB7 ${x.rec}</div>
+        ${recHTML(xKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(xw, aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -5754,6 +6308,27 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!isCommish()) return;
     delete store.globalBackdrop;
     store.backdrops = {};
+    saveStore();
+    refreshMatchups();
+    renderSettings();
+  }
+  function pickLeagueLogo() {
+    if (!isCommish()) return;
+    document.getElementById("leagueLogoInput").click();
+  }
+  function onLeagueLogo(input) {
+    const f = input.files && input.files[0];
+    if (!f || !isCommish()) return;
+    processImage(f, 256, "image/png", 0.92, (url) => {
+      LG().logo = url;
+      saveStore();
+      refreshMatchups();
+      renderSettings();
+    });
+  }
+  function clearLeagueLogo() {
+    if (!isCommish()) return;
+    LG().logo = null;
     saveStore();
     refreshMatchups();
     renderSettings();
@@ -6015,7 +6590,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
-      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7 ${t.rec} \xB7 #${t.rk}</div>${ownTag}</div>
+      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7
+        <span class="rec-tap" onclick="openSchedule('${currentTeamKey}')">${recLabel(currentTeamKey)}</span>
+        \xB7 #${t.rk}</div>${ownTag}</div>
     </div>
     ${editRow}
   </div>`;
@@ -6301,14 +6878,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
   }
   function paintClock() {
-    const el = document.getElementById("dgTimer");
+    const el = document.getElementById("drTimer");
     if (!el) {
       stopDraftClock();
       return;
     }
     const left = Math.max(0, Math.round((deadline - Date.now()) / 1e3));
+    const m = String(Math.floor(left / 60)).padStart(2, "0");
     const s = String(left % 60).padStart(2, "0");
-    el.innerHTML = `<span>${Math.floor(left / 60)}:${s}</span>`;
+    el.innerHTML = `<span>${m}:${s}</span>`;
     el.classList.toggle("low", left <= 10);
   }
 
@@ -6365,7 +6943,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${DRAFT_ORDER.map((k) => {
       const t = T[k], live = k === clockTeam;
       return `<div class="dg-th${k === MY_TEAM ? " me" : ""}${live ? " clock" : ""}">
-        ${live ? `<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec > 0 ? "" : ""}<span>1:30</span></div>` : ""}
         <div class="dg-crest" style="background:${t.bg};color:${t.c}">${markInner(t)}</div>
         <div class="dg-mgr">${esc(t.mgr)}</div>
       </div>`;
@@ -6457,10 +7034,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     } else {
       const m = pickMeta(i), t = T[m.team];
       head = `<div class="dr-clock${mine ? " mine" : ""}">
-      <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} \xB7 PICK ${m.pick} \xB7 #${i + 1} OVERALL</div>
+      <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} \xB7 #${i + 1} OVERALL</div>
       <div class="who">
         <div class="dr-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
-        <div><div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div><div class="sub">${mine ? "You are on the clock" : t.mgr + " is on the clock"}</div></div>
+        <div class="dr-who">
+          <div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div>
+          <div class="pk">Pick ${m.round}.${String(m.pick).padStart(2, "0")}</div>
+          <div class="sub">${mine ? "You are on the clock" : t.mgr + " is on the clock"}</div>
+        </div>
+        <div class="dr-timer" id="drTimer"><span>1:30</span></div>
       </div>
       <div class="dr-acts">
         ${mine ? "" : `<div class="dr-btn go" onclick="simToMyPick()">Sim to my pick</div>`}
@@ -6798,6 +7380,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       }
     }));
     if (!found) return;
+    dropFromBlock(key);
     S.pidx = null;
     invalidateRosters();
     persistRoster();
@@ -7038,7 +7621,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const last = parts.length > 1 ? parts.slice(1).join(" ") : parts[0];
     const rec = NFL_BY_ID[p.id] || null;
     const jersey = rec && rec.num ? rec.num : seedHash(name) % 99 + 1;
-    const cardNo = String(1 + seedHash(String(key) + "c") % 500).padStart(3, "0");
     const live = pLive(p.proj || 0, name);
     const shot = photo || headshotFor(key);
     const hero = shot ? `<img class="pc-img" src="${shot}" alt="" loading="lazy">` : `<div class="pc-noimg">${initials(name)}</div>`;
@@ -7063,7 +7645,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         ${nickBanner}
         <div class="pc-name"><div class="pc-first">${first}</div><div class="pc-last">${last}</div></div>
       </div>
-      <div class="pc-strip"><span>CARD <b>#${cardNo}</b> / 500</span><span>CITY BOYS DYNASTY \xB7 <b>'25</b></span></div>
+      <div class="pc-strip"><span>CITY BOYS DYNASTY \xB7 <b>'25</b></span></div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj || 0).toFixed(1)}</div><div class="l">Proj</div></div>
         <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
@@ -7074,6 +7656,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div><div class="k">This Week</div><div class="g">${p.g || "Scheduled"}</div></div>
         <div class="p" style="color:${ac}">${(p.proj || 0).toFixed(1)}</div>
       </div>
+      ${tradeBlockCardHTML(key, mine)}
       ${editHint}
       ${dropBtn}
     </div>`;
@@ -7104,10 +7687,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   var order = Object.keys(T).sort((a, b) => T[a].rk - T[b].rk);
   function renderStandings2() {
-    const col = (k) => `<span class="st-c ${k}">`;
+    const med = medianOn();
     const head = `<div class="stand-row head">
     <div class="stand-c1">TEAM</div>
     <span class="st-c rec">W-L</span>
+    ${med ? '<span class="st-c med">MED</span>' : ""}
     <span class="st-c pf">PF</span>
     <span class="st-c pa">PA</span>
     <span class="st-c df">DIFF</span>
@@ -7120,7 +7704,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <span class="stand-rk">${t.rk}</span>${badge(t, "stand-bd")}
         <div class="stand-nm"><div class="n tf-${k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
       </div>
-      <span class="st-c rec">${t.rec}</span>
+      <span class="st-c rec"><span class="rec-tap" onclick="openSchedule('${k}')">${recLabel(k)}</span></span>
+      ${med ? `<span class="st-c med">${fmtRecord(teamRecord(k, { medianOnly: true }))}</span>` : ""}
       <span class="st-c pf">${tot.pf.toFixed(1)}</span>
       <span class="st-c pa">${tot.pa.toFixed(1)}</span>
       <span class="st-c df ${diff > 0 ? "pos" : diff < 0 ? "neg" : ""}">${diff > 0 ? "+" : ""}${diff.toFixed(1)}</span>
@@ -7235,10 +7820,92 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     dh.innerHTML = stadiumHeroHTML(g.a, g.x, g.as, g.xs, g.aw, g.xw, null, null, { editBackdrop: true, rewind: "detailRewind" });
     buildRewind(document.getElementById("detailRewind"), g.as, g.xs);
     syncRewind("detailRewind");
-    document.getElementById("detailStarters").innerHTML = detailStartersHTML();
+    document.getElementById("detailStarters").innerHTML = medianStripHTML(g.a, g.x, S.week) + detailStartersHTML();
     showView("detail");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
+  }
+
+  // js/schedule.js
+  var schedule_exports = {};
+  __export(schedule_exports, {
+    openSchedule: () => openSchedule,
+    renderSchedule: () => renderSchedule,
+    scheduleBack: () => scheduleBack,
+    scheduleKey: () => scheduleKey
+  });
+  var scheduleKey = null;
+  function weekRow(r) {
+    const opp = T[r.opp] || { n: "\u2014", mgr: "\u2014", c: "var(--ink-3)", bg: "#151b26", mono: "?" };
+    const live = r.week === LIVE_WEEK && !r.played;
+    const cls = r.h2h === "W" ? "w" : r.h2h === "L" ? "l" : "";
+    const score = r.played ? `${r.pts.toFixed(1)}\u2013${r.oppPts.toFixed(1)}` : "\u2014";
+    const verdict2 = r.played ? resultLabel[r.h2h] : live ? "In progress" : "Scheduled";
+    const med = medianOn() ? `<div class="sc-med">Median ${r.median ? r.median.toFixed(1) : "\u2014"}
+        <i class="med-chip ${r.med ? r.med.toLowerCase() : "none"}">${r.med || "\u2014"}</i></div>` : "";
+    return `<div class="sc-row${r.week === S.week ? " now" : ""}">
+    <div class="sc-wk">WK<b>${r.week}</b></div>
+    <div class="sc-opp">
+      <span class="sc-bd" style="background:${opp.bg};color:${opp.c}">${markInner(opp)}</span>
+      <div class="sc-oppid">
+        <div class="sc-vs">vs ${escHtml(opp.mgr)}</div>
+        <div class="sc-tn tf-${r.opp}" style="color:${opp.c}">${escHtml(opp.n)}</div>
+      </div>
+    </div>
+    <div class="sc-res">
+      <div class="sc-verdict ${cls}">${verdict2}</div>
+      <div class="sc-score">${score}</div>
+      ${med}
+    </div>
+    <div class="sc-run">
+      <div class="sc-pts">${r.played ? r.pts.toFixed(1) : "\u2014"}</div>
+      <div class="sc-rec">${r.record || "\u2014"}</div>
+    </div>
+  </div>`;
+  }
+  function renderSchedule(key) {
+    scheduleKey = key;
+    const t = T[key];
+    if (!t) return;
+    const rows2 = runningRecords(key);
+    const h2h = teamRecord(key, { h2hOnly: true }), med = teamRecord(key, { medianOnly: true });
+    const split = medianOn() ? `<div class="sc-split"><span>Head to head <b>${fmtRecord(h2h)}</b></span>
+       <span>League median <b>${fmtRecord(med)}</b></span></div>` : "";
+    document.getElementById("scheduleBody").innerHTML = `
+    <div class="sc-head">
+      <div class="sc-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
+      <div class="sc-id">
+        <div class="sc-name tf-${key}" style="color:${t.c}">${escHtml(t.n)}</div>
+        <div class="sc-sub">${escHtml(t.mgr)} \xB7 ${recLabel(key)} \xB7 #${t.rk}</div>
+      </div>
+    </div>
+    ${split}
+    <div class="sc-hd"><span>Week</span><span>Opponent</span><span>Result</span><span>Pts \xB7 Rec</span></div>
+    <div class="sc-list">${rows2.map(weekRow).join("")}</div>
+    <div class="sc-note">${medianOn() ? "Two results a week: the head-to-head game, and the league median. The running record counts both." : "One result a week. Turn on League Median in Settings \u25B8 General to play the league as a second opponent."}</div>`;
+  }
+  function openSchedule(key) {
+    if (!T[key]) return;
+    const cur = currentViewName();
+    if (cur !== "schedule") S.scheduleBackView = cur;
+    const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup", team: "Team" }[S.scheduleBackView] || "Matchup";
+    document.getElementById("schedBackLabel").textContent = lbl;
+    renderSchedule(key);
+    showView("schedule");
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function scheduleBack() {
+    const v = S.scheduleBackView;
+    if (v === "league") showLeagueView();
+    else if (v === "standings") showTab2("standings");
+    else if (v === "team") showView("team");
+    else if (v === "detail") {
+      showView("detail");
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+      document.getElementById("scroll").scrollTop = 0;
+    } else showTab2("matchup");
   }
 
   // js/markets/data.js
@@ -8312,6 +8979,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     nfl_index_exports,
     clock_exports,
     lineup_exports,
+    median_exports,
     hero_exports,
     settings_exports,
     team_exports,
@@ -8327,6 +8995,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     nav_exports,
     draft_meta_exports,
     draft_room_exports,
+    schedule_exports,
+    tradeblock_exports,
     nfl_history_exports,
     data_exports,
     ui_exports,

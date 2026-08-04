@@ -31,10 +31,12 @@
   background:rgba(140,224,74,.16);border:1px solid rgba(140,224,74,.4);border-radius:6px;padding:3px 7px}
 .ms-live .pulse{width:6px;height:6px}
 .ms-arena{position:relative;z-index:3;display:flex;align-items:flex-start;padding:6px 12px 4px}
-.ms-side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
+/* z-index 2 on the sides, 1 on the centre column: see css/hero.css for the
+   full layer order the league logo sits at the bottom of */
+.ms-side{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
 .ms-side.L .sh-logo{transform:rotate(-11deg)}
 .ms-side.R .sh-logo{transform:rotate(11deg)}
-.ms-center{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 0;cursor:pointer}
+.ms-center{position:relative;z-index:1;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 0;cursor:pointer}
 
 .hd{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:2px;text-transform:uppercase;
   color:var(--ink-3);margin:16px 2px 10px;display:flex;align-items:center;justify-content:space-between}
@@ -122,6 +124,28 @@
 .rw-r2 .ev .me{color:var(--green)}
 .rw-r2 .ev .opp{color:var(--red)}
 .rw-empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
+
+/* ===== LEAGUE MEDIAN =====
+   Both of the week's results, for both teams: the head-to-head one the card
+   already shows, and the one against the league median. Only rendered when the
+   commissioner has the setting on. */
+.med-strip{margin-top:12px;border:1px solid var(--line-soft);border-radius:16px;
+  background:var(--card);padding:12px 14px 11px}
+.med-hd{display:flex;align-items:baseline;justify-content:space-between;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.4px;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:9px}
+.med-hd b{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;color:var(--ink);letter-spacing:0}
+.med-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line-soft)}
+.med-tn{--tn-size:12.5px;flex:1;min-width:0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.med-pts{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12.5px;color:var(--ink-2)}
+.med-res{flex:none;width:38px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.med-res small{font-size:7.5px;letter-spacing:.8px;color:var(--ink-3);font-weight:700}
+.med-chip{font-style:normal;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;
+  width:22px;height:19px;border-radius:6px;display:grid;place-items:center;border:1px solid var(--line)}
+.med-chip.w{color:var(--green);border-color:rgba(140,224,74,.5);background:rgba(140,224,74,.12)}
+.med-chip.l{color:var(--red);border-color:rgba(240,69,62,.5);background:rgba(240,69,62,.12)}
+.med-chip.t,.med-chip.none{color:var(--ink-3)}
+.med-note{font-size:10.5px;line-height:1.5;color:var(--ink-3);margin-top:9px}
 
 /* starters */
 .starters{margin-top:12px;border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}

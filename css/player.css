@@ -25,12 +25,63 @@
 .pc-week .k{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3)}
 .pc-week .g{font-size:12px;color:var(--ink-2);font-weight:600;margin-top:3px}
 .pc-week .p{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:22px}
+/* ===== TRADE BLOCK =====
+   The ask is part of the listing, so the card carries both: what they are on
+   the block for, and the button that opened the question in the first place. */
+.pc-block-add{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;
+  border:1px solid rgba(230,168,90,.55);border-radius:12px;padding:12px;cursor:pointer;
+  color:#E6A85A;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;
+  letter-spacing:1px;text-transform:uppercase;background:rgba(230,168,90,.08)}
+.pc-block-add svg{width:16px;height:16px}
+.pc-block-add:active{opacity:.8}
+.pc-block{margin-top:12px;border:1px solid rgba(230,168,90,.45);border-left:3px solid #E6A85A;
+  border-radius:12px;background:rgba(230,168,90,.08);padding:12px 14px}
+.pc-block-hd{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:1.2px;text-transform:uppercase;color:#E6A85A}
+.pc-block-want{font-size:13.5px;color:var(--ink);font-weight:600;margin-top:5px;line-height:1.35}
+.pc-block-want .k{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);
+  font-weight:700;margin-right:5px}
+.pc-block-want i{color:var(--ink-3);font-weight:500}
+.pc-block-acts{display:flex;gap:16px;margin-top:9px}
+.pc-block-acts span{font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer;
+  border-bottom:1px dotted var(--ink-3)}
+.pc-block-acts span:active{opacity:.6}
+/* the Looking For sheet */
+.tb-sub{font-size:13px;color:var(--ink-2);line-height:1.45;margin-bottom:12px}
+.tb-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px}
+.tb-chip{border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--ink-2);background:var(--card-2)}
+.tb-chip.on{border-color:#E6A85A;color:#E6A85A;background:rgba(230,168,90,.12)}
+.tb-input{width:100%;background:#0A0E15;border:1px solid var(--line);border-radius:11px;color:var(--ink);
+  font-size:14px;font-weight:600;padding:12px;outline:none}
+.tb-input:focus{border-color:#E6A85A}
+.tb-input::placeholder{color:var(--ink-3);font-weight:500}
+.tb-btns{display:flex;gap:8px;margin-top:12px}
+.tb-btn{flex:1;text-align:center;padding:12px 6px;border-radius:11px;border:1px solid var(--line);
+  background:var(--card-2);cursor:pointer;color:var(--ink-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+.tb-btn.go{border-color:#E6A85A;color:#0B0906;background:#E6A85A}
+.tb-btn:active{opacity:.85}
+.tb-note{font-size:11px;color:var(--ink-3);margin-top:11px;line-height:1.5}
+/* the Trades rail */
+.tb-row{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line-soft);cursor:pointer}
+.tb-face{width:32px;height:32px;border-radius:50%;overflow:hidden;background:linear-gradient(155deg,#243247,#141b28);
+  border:1px solid var(--line);flex:none;display:grid;place-items:center;font-size:10px;color:var(--ink-3);font-weight:700}
+.tb-face img{width:100%;height:100%;object-fit:cover}
+.tb-info{flex:1;min-width:0}
+.tb-nm{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-mt{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
+.tb-want{flex:none;max-width:112px;text-align:right;font-size:11px;font-weight:700;color:#E6A85A;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-want i{color:var(--ink-3);font-weight:500}
+
 .pc-edit{display:flex;align-items:center;gap:10px;margin-top:12px;background:var(--violet-soft);border:1px solid rgba(124,92,255,.4);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--ink)}
 .pc-edit svg{width:18px;height:18px;color:var(--violet);flex:none}
 .pc-edit .t{flex:1;font-size:12px;line-height:1.4}
 .pc-edit .t b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;letter-spacing:.5px}
 .sh-arena{position:relative;z-index:3;display:flex;align-items:flex-start;padding:18px 12px 8px}
-.sh-side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
+/* z-index 2: the team's own artwork and text always paints over the league logo */
+.sh-side{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
 .sh-logo{width:78px;height:78px;border-radius:18px;display:grid;place-items:center;overflow:hidden;flex:none;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:34px;box-shadow:0 9px 22px rgba(0,0,0,.55)}
 .sh-side.L .sh-logo{transform:rotate(-11deg)}
@@ -43,10 +94,16 @@
 .sh-tn{--tn-size:13px;line-height:1.15;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7)}
 .sh-rec{font-size:10px;color:rgba(255,255,255,.78);font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+/* the record is a link into the team's season, wherever it appears */
+.rec-tap{cursor:pointer;border-bottom:1px dotted;padding-bottom:1px}
+.rec-tap:active{opacity:.6}
 .sh-pct{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;text-shadow:0 1px 5px rgba(0,0,0,.8)}
-.sh-center{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 4px 0;cursor:pointer}
+/* z-index 1: over the league logo (0), under the team sides (2) */
+.sh-center{position:relative;z-index:1;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 4px 0;cursor:pointer}
+.sh-vs,.sh-score,.sh-proj{position:relative;z-index:1}
 .sh-vs{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.6);letter-spacing:1px;
-  border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:1px 8px;margin-bottom:7px}
+  border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:1px 8px;margin-bottom:7px;
+  background:rgba(8,12,18,.34)}
 .sh-score{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:26px;line-height:1;white-space:nowrap;color:#fff;text-shadow:0 2px 9px rgba(0,0,0,.7)}
 .sh-score span{color:rgba(255,255,255,.5);margin:0 5px}
 .sh-proj{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;color:rgba(255,255,255,.72);margin-top:6px;white-space:nowrap;letter-spacing:.4px;text-shadow:0 1px 4px rgba(0,0,0,.7)}

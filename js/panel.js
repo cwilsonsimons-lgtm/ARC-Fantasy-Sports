@@ -8,6 +8,7 @@ import { availableListHTML, faOpen, isRostered, renderAvailable } from './freeag
 import { LIVE_WEEK, MAXW, MINW } from './lineup.js';
 import { faceInner, pKeyOf, posMatch } from './player.js';
 import { esc } from './team.js';
+import { renderTradeBlockPanel } from './tradeblock.js';
 
 // ---- shared panel search (Leaders / Trending / Available) ----
 export const panelQ={leaders:'',trending:'',available:''};
@@ -221,6 +222,8 @@ export function renderPanel(key){
     renderTrending();
   } else if(key==='available'){
     renderAvailable();
+  } else if(key==='trades'){
+    renderTradeBlockPanel();
   } else {
     const lb=RAIL.find(r=>r.k===key).lb;
     p.innerHTML=`<div class="panel-hd"><span class="d"></span>${lb} <span class="wk">· Week ${S.week}</span></div>

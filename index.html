@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/matchup.css">
   <link rel="stylesheet" href="css/league.css">
   <link rel="stylesheet" href="css/team.css">
+  <link rel="stylesheet" href="css/schedule.css">
   <link rel="stylesheet" href="css/week.css">
   <link rel="stylesheet" href="css/hero.css">
   <link rel="stylesheet" href="css/settings.css">
@@ -128,6 +129,15 @@
         <div id="teamBody"></div>
       </div>
 
+      <!-- ===== TEAM SCHEDULE VIEW ===== -->
+      <div class="view" data-view="schedule">
+        <div class="back" onclick="scheduleBack()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          <span id="schedBackLabel">Back</span>
+        </div>
+        <div id="scheduleBody"></div>
+      </div>
+
       <!-- ===== SETTINGS VIEW ===== -->
       <!-- ===== DRAFT VIEW ===== -->
       <div class="view" data-view="draft">
@@ -142,6 +152,7 @@
         </div>
         <div id="settingsBody"></div>
         <input type="file" accept="image/*" class="hidden-file" id="globalBackdropInput" onchange="onGlobalBackdrop(this)">
+        <input type="file" accept="image/*" class="hidden-file" id="leagueLogoInput" onchange="onLeagueLogo(this)">
       </div>
 
       <!-- ===== PLAYER CARD VIEW ===== -->
@@ -188,6 +199,12 @@
   <div class="sheet" id="drSheet">
     <div class="sheet-h" id="drSheetTitle">Pick</div>
     <div id="drSheetBody"></div>
+  </div>
+
+  <div class="sheet-scrim" id="tbScrim" onclick="closeTradeBlockSheet()"></div>
+  <div class="sheet" id="tbSheet">
+    <div class="sheet-h" id="tbTitle">Looking For</div>
+    <div id="tbBody"></div>
   </div>
 
   <div class="sheet-scrim" id="confirmScrim" onclick="closeConfirm()"></div>

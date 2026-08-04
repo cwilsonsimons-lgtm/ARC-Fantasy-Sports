@@ -23,3 +23,38 @@
 .sh-cams{position:absolute;right:11px;top:11px;z-index:5;display:flex;gap:7px}
 .sh-cams .sh-cam{position:static}
 .sh-cams .sh-cam.rm{background:rgba(240,69,62,.5);border-color:rgba(240,69,62,.7)}
+
+/* ===== LEAGUE LOGO =====
+   The centrepiece of the matchup: dead centre, behind VS and the score, in
+   front of nothing but the backdrop.
+
+   It is anchored to the centre column rather than to the card, because that
+   column is the one element whose midline cannot move. It sits between two
+   `flex:1` sides, so it grows symmetrically about its own centre — the logo
+   therefore stays on the card's exact midline no matter how long the team
+   names run, how big the team logos are, or how wide the score gets. 50%/50%
+   with a −50%/−50% translate then centres it in both axes, whatever its own
+   dimensions.
+
+   Layer order is fixed by the three z-indexes below and nothing else:
+     backdrop (0–1) → league logo (0 inside the centre column)
+     → VS + score (1) → team logos, names, records, win % (sides, 2).
+   The sides outrank the centre column, so the logo can never come over a
+   team's artwork or text even when the artwork is wide. */
+.sh-league{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:0;
+  width:132px;height:132px;display:grid;place-items:center;pointer-events:none;
+  /* feather the rim so the edge of the artwork never fights the team names */
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 52%,rgba(0,0,0,.5) 74%,transparent 92%);
+  mask-image:radial-gradient(circle at 50% 50%,#000 52%,rgba(0,0,0,.5) 74%,transparent 92%)}
+.sh-league img{width:100%;height:100%;object-fit:contain;opacity:.58;
+  filter:drop-shadow(0 4px 14px rgba(0,0,0,.55))}
+/* a soft well in the middle of the artwork, so the score reads over any logo.
+   It is part of the logo layer, so it stays under the text like the rest of it. */
+.sh-league::after{content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,rgba(6,9,14,.52) 0 30%,transparent 64%)}
+.sh-league.def::after{background:none}
+.sh-league.def{opacity:.24;color:#fff}
+.sh-league.def svg{width:100%;height:100%}
+.sh.compact .sh-league{width:96px;height:96px}
+/* the stage runs wider than a card, so the crest can read a little larger */
+.mstage .sh-league{width:150px;height:150px}

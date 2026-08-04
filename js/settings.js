@@ -46,6 +46,8 @@ export function setLeague(key,val,num){
   if(!guard()){renderSettings();return;}
   LG()[key]=num?+val:val;
   saveStore();
+  // the median changes every record and every matchup page, not just this screen
+  if(key==='median')refreshRosterViews();
   renderSettings();
 }
 export function setLeagueNum(key,val,min,max){
@@ -75,13 +77,22 @@ export function leagueCards(){
   const sizeNote=+L.teams!==10
     ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">City Boys Dynasty is playing 10 teams this season — ${L.teams} takes effect at the next draft.</div>`
     : '';
+  // League median: a second, league-wide opponent every week. Off unless the
+  // commissioner turns it on, which is also what every league saved before the
+  // setting existed loads as.
+  const medNote=+L.median
+    ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">Every team plays two opponents a week — their matchup, and the league median. Records count both, and each matchup shows both results.</div>`
+    : `<div class="set-note" style="margin-top:11px">Off: one result a week, from the scheduled matchup only.</div>`;
   return `
     <div class="set-card">
       <div class="set-title">General</div>
       ${setRow('League type',setSel('type',[['redraft','Redraft'],['keeper','Keeper'],['dynasty','Dynasty']],L.type))}
       ${setRow('Teams',setSel('teams',teamOpts,L.teams,1))}
       ${setRow('Lineup type',setSel('lineup',[['classic','Classic'],['bestball','Best ball']],L.lineup))}
+      ${setRow('League median<span class="s">A second win or loss each week, against the league median score</span>',
+        setSel('median',[[0,'Off'],[1,'On']],+L.median?1:0,1))}
       ${sizeNote}
+      ${medNote}
     </div>
     <div class="set-card">
       <div class="set-title">Waivers</div>
@@ -242,6 +253,31 @@ export function commishCards(){
     </div>`;
 }
 
+// ---- league logo ----
+// Drawn at the centre of every matchup card and the full matchup screen, behind
+// the VS and the score. A league that has not uploaded one falls back to the
+// shield in the header, so the centre of a matchup is never empty.
+export function leagueLogoCard(){
+  const src=LG().logo;
+  const prev=src
+    ? `<div class="set-crest"><img src="${src}" alt=""></div>`
+    : `<div class="set-crest none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>`;
+  return `<div class="set-card">
+    <div class="set-title">League Logo</div>
+    <div class="set-note">Sits at the centre of every matchup — behind the VS and the score, in front of nothing but the background. PNGs keep their transparency.</div>
+    <div class="set-crestrow">${prev}
+      <div class="set-crestnote">${src?'Your league logo':'Default shield — no logo uploaded'}</div>
+    </div>
+    ${isCommish()?`<div class="set-btns">
+      <div class="set-btn primary" onclick="pickLeagueLogo()">${ICON_UP} ${src?'Change':'Upload'} league logo</div>
+      ${src?`<div class="set-btn" onclick="clearLeagueLogo()">${ICON_X} Remove logo</div>`:''}
+    </div>`:''}
+  </div>`;
+}
+
 export const BASE_SET_TABS=[['general','General'],['roster','Roster'],['scoring','Scoring'],['matchups','Matchups']];
 export function setTabs(){
   return isCommish()?BASE_SET_TABS.concat([['commish','★ Commissioner']]):BASE_SET_TABS;
@@ -272,7 +308,8 @@ export function renderSettings(){
     <div class="set-card">
       <div class="set-title">Per-game backgrounds</div>
       <div class="set-note">Open any matchup — yours, or tap a game in All Matchups — and use the camera on the stadium banner to set a background for just that game.</div>
-    </div>`;
+    </div>
+    ${leagueLogoCard()}`;
   const bodies={general:leagueCards(),roster:rosterCards(),scoring:scoringCards(),
     matchups:backdropCards,commish:commishCards()};
   const cm=commishTeam();

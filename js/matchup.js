@@ -3,6 +3,7 @@ import { LT, SLOT_ELIG, isLocked, ordLabel, recomputeLT, simKick, simStops, slot
 import { invalidateRosters, persistRoster } from './freeagency.js';
 import { stadiumStageHTML } from './hero.js';
 import { LIVE_WEEK, MINW, fullStartersHTML } from './lineup.js';
+import { medianStripHTML } from './median.js';
 import { bindVs, toast } from './nav.js';
 import { buildRewind, rwOpen, syncRewind } from './rewind.js';
 import { BENCH, LINEUP, saveStore, store } from './store.js';
@@ -43,16 +44,17 @@ export function renderUserMatchup(){
   if(canRewind){ buildRewind(uRw,as,xs); syncRewind('userRewind'); }
   else { rwOpen.userRewind=false; uRw.style.display='none'; }
 
-  // lineup
-  if(live){uLine.innerHTML=phaseStepperHTML()+fullStartersHTML({phased:true,editable:true});}
+  // lineup, under both of the week's results when the league plays the median
+  const med=medianStripHTML(aK,xK,S.week);
+  if(live){uLine.innerHTML=med+phaseStepperHTML()+fullStartersHTML({phased:true,editable:true});}
   else if(S.week>LIVE_WEEK&&S.week===MINW){
     // preseason: the Week 1 matchup is the landing screen, slots sit empty until the draft
-    uLine.innerHTML=fullStartersHTML({phased:false,editable:true});
+    uLine.innerHTML=med+fullStartersHTML({phased:false,editable:true});
   }
   else{
     const g=S.games.find(x=>x.me),idx=S.games.indexOf(g);
     const note=S.week<LIVE_WEEK?'Final result · open for Rewind':'Scheduled · projections only';
-    uLine.innerHTML=`<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
+    uLine.innerHTML=med+`<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>
       <div class="t"><div class="a">View Full Matchup</div><div class="b">${note}</div></div><div class="arr">›</div></div>`;
   }

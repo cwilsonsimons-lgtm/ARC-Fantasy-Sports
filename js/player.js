@@ -5,9 +5,11 @@ import { NFL_BY_ID, NFL_BY_NAME } from './data/nfl-players.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { canDraftNow, faOpen, freeAgents, isRostered } from './freeagency.js';
 import { badge, seasonTotals } from './lineup.js';
+import { fmtRecord, medianOn, recLabel, teamRecord } from './median.js';
 import { showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { BENCH, LINEUP, TAXI, store } from './store.js';
 import { ICON_CAM, collectSide, currentViewName, esc } from './team.js';
+import { tradeBlockCardHTML } from './tradeblock.js';
 
 // ---------- PLAYER CARD ----------
 export const POSCOLOR={QB:'#E65A9B',RB:'#4EC9A5',WR:'#5AA9E6',TE:'#E6A85A',K:'#C77DFF',DEF:'#8899A6'};
@@ -96,7 +98,6 @@ export function renderPlayer(key){
   const last=parts.length>1?parts.slice(1).join(' '):parts[0];
   const rec=NFL_BY_ID[p.id]||null;
   const jersey=(rec&&rec.num)?rec.num:(seedHash(name)%99)+1;
-  const cardNo=String(1+seedHash(String(key)+'c')%500).padStart(3,'0');
   const live=pLive(p.proj||0,name);
   const shot=photo||headshotFor(key);
   const hero=shot?`<img class="pc-img" src="${shot}" alt="" loading="lazy">`:`<div class="pc-noimg">${initials(name)}</div>`;
@@ -123,7 +124,7 @@ export function renderPlayer(key){
         ${nickBanner}
         <div class="pc-name"><div class="pc-first">${first}</div><div class="pc-last">${last}</div></div>
       </div>
-      <div class="pc-strip"><span>CARD <b>#${cardNo}</b> / 500</span><span>CITY BOYS DYNASTY · <b>'25</b></span></div>
+      <div class="pc-strip"><span>CITY BOYS DYNASTY · <b>'25</b></span></div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj||0).toFixed(1)}</div><div class="l">Proj</div></div>
         <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
@@ -134,6 +135,7 @@ export function renderPlayer(key){
         <div><div class="k">This Week</div><div class="g">${p.g||'Scheduled'}</div></div>
         <div class="p" style="color:${ac}">${(p.proj||0).toFixed(1)}</div>
       </div>
+      ${tradeBlockCardHTML(key,mine)}
       ${editHint}
       ${dropBtn}
     </div>`;
@@ -163,10 +165,13 @@ export function playerBack(){
 // standings
 export const order=Object.keys(T).sort((a,b)=>T[a].rk-T[b].rk);
 export function renderStandings(){
-  const col = k => `<span class="st-c ${k}">`;
+  // With the median on, the W-L column counts both results and a MED column
+  // breaks out the half that came from the league rather than the schedule.
+  const med=medianOn();
   const head = `<div class="stand-row head">
     <div class="stand-c1">TEAM</div>
     <span class="st-c rec">W-L</span>
+    ${med?'<span class="st-c med">MED</span>':''}
     <span class="st-c pf">PF</span>
     <span class="st-c pa">PA</span>
     <span class="st-c df">DIFF</span>
@@ -179,7 +184,8 @@ export function renderStandings(){
         <span class="stand-rk">${t.rk}</span>${badge(t,'stand-bd')}
         <div class="stand-nm"><div class="n tf-${k} ${me?'me':''}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
       </div>
-      <span class="st-c rec">${t.rec}</span>
+      <span class="st-c rec"><span class="rec-tap" onclick="openSchedule('${k}')">${recLabel(k)}</span></span>
+      ${med?`<span class="st-c med">${fmtRecord(teamRecord(k,{medianOnly:true}))}</span>`:''}
       <span class="st-c pf">${tot.pf.toFixed(1)}</span>
       <span class="st-c pa">${tot.pa.toFixed(1)}</span>
       <span class="st-c df ${diff>0?'pos':diff<0?'neg':''}">${diff>0?'+':''}${diff.toFixed(1)}</span>

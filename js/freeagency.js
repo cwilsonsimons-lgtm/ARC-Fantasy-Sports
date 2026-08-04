@@ -11,6 +11,7 @@ import { PANEL_CAP, currentRail, matchQ, noHits, paintPanelList, panelQ, pillsHT
 import { faceInner, pIdx, pKeyOf, posMatch, renderPlayer, renderStandings } from './player.js';
 import { BENCH, LINEUP, TAXI, saveStore, store } from './store.js';
 import { collectSide, currentTeamKey, esc, renderTeam } from './team.js';
+import { dropFromBlock } from './tradeblock.js';
 
 // ===== ADD / CUT (free agency) =====
 // persist my full a-side roster (survives swaps, adds, and cuts) as player objects
@@ -95,6 +96,7 @@ export function cutPlayer(key){
   let found=false;
   [LINEUP,BENCH,TAXI].forEach(A=>A.forEach(r=>{if(hit(r)){r.a=null;found=true;}}));
   if(!found)return;
+  dropFromBlock(key);   // no shopping a player you no longer own
   S.pidx=null;invalidateRosters();persistRoster();
   refreshRosterViews();
   toast(`${name} dropped to free agency`);

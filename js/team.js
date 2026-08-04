@@ -6,6 +6,7 @@ import { mkPlayer, teamRosterIds } from './draft.js';
 import { FONT_BY_KEY, MY_TEAM, T, TEAM_FONTS, applyTeamFonts } from './data/teams.js';
 import { renderDraft } from './draft-ui.js';
 import { renderLeagueBody } from './lineup.js';
+import { recLabel } from './median.js';
 import { renderUserMatchup } from './matchup.js';
 import { renderTabs, showLeagueView, showTab, showView, toggleDrawer } from './nav.js';
 import { seededPts } from './panel.js';
@@ -88,7 +89,9 @@ export function teamHead(t,own){
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
-      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} · ${t.rec} · #${t.rk}</div>${ownTag}</div>
+      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} ·
+        <span class="rec-tap" onclick="openSchedule('${currentTeamKey}')">${recLabel(currentTeamKey)}</span>
+        · #${t.rk}</div>${ownTag}</div>
     </div>
     ${editRow}
   </div>`;

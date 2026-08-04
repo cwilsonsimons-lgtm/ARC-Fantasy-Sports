@@ -52,7 +52,10 @@ stable across reloads and screenshots.
 Deliberately *not* faked: the News and History tabs are empty states rather than
 invented headlines about real players.
 
-`npm run check:markets` drives the section through 23 interaction checks. Several
+`npm run check:league` drives the median, the league logo's geometry and
+stacking, the draft clock, the trade block and the schedule through 40 checks
+against `dist/index.html`. `npm run check:markets` drives the Markets section
+through 23 interaction checks. Several
 assert *geometry*, not just DOM, because both bugs found here were invisible to
 content assertions: a body state class that collided with the sheet element's own
 class (applying `position:absolute; transform:translateY(102%)` to `<body>` and
@@ -94,14 +97,86 @@ Nine values are rebound from a module other than the one that declared them.
 An imported binding is read-only in ES modules, so those live as properties on
 a single exported `S` object. Everything else stays module-local.
 
+## League median scoring
+
+**Settings ▸ General ▸ League median.** Off by default, and off for every league
+saved before the setting existed — `LEAGUE_DEFAULTS` carries `median:0`, and
+`initLeagueConfig()` already merges defaults under the stored league, so an old
+save migrates by simply not having the key.
+
+With it on, every team plays two opponents a week: the one on their schedule and
+the league itself. Score above the median and you bank a second win; below it, a
+second loss. A matchup page then shows both results for both teams, the standings
+count both in the W-L column and break the median half out into its own, and a
+team's schedule lists the median result beside each week's game.
+
+`js/median.js` derives all of it and stores none of it. Records are computed from
+the same scores the matchup cards draw, so turning the setting on or off re-reads
+the season rather than rewriting it — which is what makes it safe to toggle
+mid-season. Two details that only show up in a part-played week:
+
+- The median is taken over the scores that **exist**. A game still to be played
+  is not a zero; counting it as one drags the median to the floor and hands a
+  free win to everyone who has kicked off.
+- A team is measured against the median only once **their own** game is played.
+  Otherwise a team sitting at 0.0 before kickoff ties a zero median and banks a
+  result it never played for.
+
+## The league logo
+
+The centrepiece of every matchup card and of the full matchup screen: dead
+centre, behind the VS and the score, in front of nothing but the backdrop.
+Uploaded in **Settings ▸ Matchups ▸ League Logo**; a league that has not uploaded
+one falls back to the shield from the header, so the centre is never empty.
+
+It is a child of the **centre column**, not of the card, because that column is
+the one element in the arena whose midline cannot move: it sits between two
+`flex:1` sides, so it grows symmetrically about its own centre. The logo
+therefore stays on the card's exact midline however long the team names run,
+whatever size the team logos are, and however wide the score gets. Anchoring it
+to the card — or worse, to the stage, which also carries the header and the nav —
+is what previously put the crest off to one side and up over the team logos.
+
+Layer order is fixed by three z-indexes and nothing else:
+
+```
+backdrop  →  league logo  →  VS + score  →  team logos, names, records, win %
+   0–1            0                1                     2
+```
+
+The sides outrank the centre column, so the logo cannot come over a team's own
+artwork or text even when the artwork is wide. A radial mask feathers the rim and
+a soft well in the middle keeps the score legible over any uploaded image.
+
+`tools/league-check.mjs` asserts the geometry rather than the DOM — it measures
+the distance between the logo's centre and the centres of the card, the VS and
+the score, and re-measures after swapping in the longest and shortest team names
+in the league. A crest that is correct in the markup but anchored to the wrong
+box passes a content assertion and fails these.
+
+## The trade block
+
+Listing a player and saying what you want back are one action, not two. The
+**Looking For** sheet opens the moment a player is added, because that is the
+only moment the owner is actually thinking about the trade; asking them to find a
+second screen afterwards is how trade blocks end up as a wall of names with no
+context. Five presets, a free-text field, and a Skip that still lists the player.
+The answer shows on the player's card whenever anyone taps them, is editable from
+there, and the Trades rail lists everyone currently on the block. Dropping a
+player takes them off it.
+
 ## The draft room
 
 Sleeper's layout on purpose: owners across, rounds down, snaking, the whole
 draft visible, tiles tinted by position. Density is deliberately unchanged — the
 additions are metadata and history, not a new interface.
 
-**On the clock** — the owner's column carries a timer above it, a tinted header
-and a soft pulse on the pending cell. Nothing moves; it just becomes obvious.
+**On the clock** — the countdown lives in the Current Pick card, not over the
+board: owner, `Pick 1.04`, and the time left, with the clock the loudest thing on
+the card because it is the only part that is moving. It reads `mm:ss` with both
+halves padded so it never changes width as it runs down. The board keeps its
+tinted header and the soft pulse on the pending cell, so it still says whose turn
+it is without a second timer.
 
 **Badges** sit tiny in a tile corner and are configurable per league in
 `draft-meta.js`: auto pick, clutch (submitted under a threshold, default 5s),

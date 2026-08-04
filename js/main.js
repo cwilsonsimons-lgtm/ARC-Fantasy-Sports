@@ -11,6 +11,7 @@ import * as m6 from './data/nfl-index.js';
 import * as mh from './data/nfl-history.js';
 import * as m7 from './clock.js';
 import * as m8 from './lineup.js';
+import * as md from './median.js';
 import * as m9 from './hero.js';
 import * as m10 from './settings.js';
 import * as m11 from './team.js';
@@ -26,6 +27,8 @@ import * as m20 from './week.js';
 import * as m21 from './nav.js';
 import * as m22 from './draft-meta.js';
 import * as m23 from './draft-room.js';
+import * as m24 from './schedule.js';
+import * as m25 from './tradeblock.js';
 // Arc Markets: a separate section, imported last so it layers on top.
 import * as mk0 from './markets/data.js';
 import * as mk1 from './markets/ui.js';
@@ -38,8 +41,8 @@ import * as mk5 from './markets/index.js';
 // resolve against the global scope. Every top-level name was a global in the
 // original file, so re-export the same surface here. Narrowing this to an
 // explicit handler list is the natural next cleanup.
-Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
-  m22, m23,
+Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, md, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
+  m22, m23, m24, m25,
   mh,
   mk0, mk1, mk2, mk3, mk4, mk5);
 

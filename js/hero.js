@@ -1,8 +1,10 @@
 import { S } from './state.js';
+import { LG } from './data/league-config.js';
 import { T } from './data/teams.js';
 import { renderLeagueBody } from './lineup.js';
 import { renderUserMatchup } from './matchup.js';
 import { TABS } from './nav.js';
+import { recLabel } from './median.js';
 import { isCommish, renderSettings } from './settings.js';
 import { processImage, saveStore, store } from './store.js';
 import { ICON_CAM, ICON_X } from './team.js';
@@ -13,6 +15,36 @@ export function gameKey(a,x){return [a,x].sort().join('__');}
 export function backdropFor(a,x){return (store.backdrops&&store.backdrops[gameKey(a,x)])||store.globalBackdrop||null;}
 // win% color: projected winner = green, projected loser = red, dead-even = neutral
 export function pctColor(mine,theirs){return mine>theirs?'var(--green)':mine<theirs?'var(--red)':'var(--ink-3)';}
+
+// ---- the league logo, at the centre of every matchup ----
+//
+// It is a child of the centre column, not of the card: that column is the only
+// element in the arena whose horizontal centre is fixed. It sits between two
+// `flex:1` sides, so it stays on the card's midline however long the team names
+// run, whatever size the team logos are, and however wide the score gets - the
+// column grows symmetrically around its own centre. Anchoring to the card (or
+// to the stage, which also carries the header and the nav) is what put the
+// crest off to one side and up over the team logos.
+//
+// The stacking order is set here and nowhere else:
+//   backdrop → league logo → VS + score → team logos, names, records, win %.
+// The sides carry a higher z-index than the centre column, so nothing the
+// league logo does can reach over a team's own artwork or text.
+export function leagueLogoHTML(){
+  const src=LG().logo;
+  if(src)return `<div class="sh-league" aria-hidden="true"><img src="${src}" alt=""></div>`;
+  return `<div class="sh-league def" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35">
+      <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+  </div>`;
+}
+// A team's record opens their season: every week, the opponent, and how the
+// running record got where it is.
+export function recHTML(key){
+  const t=T[key];
+  return `<div class="sh-rec">${t.mgr} · <span class="rec-tap"
+    onclick="event.stopPropagation();openSchedule('${key}')">${recLabel(key)}</span></div>`;
+}
 // full-bleed matchup stage: league chrome + MATCHUP/TEAM/STANDINGS nav + battling logos + scores, all over the backdrop
 export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
   opts=opts||{};
@@ -57,10 +89,11 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
       <div class="ms-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" onclick="openTeam('${aKey}')">${a.n}</div>
-        <div class="sh-rec">${a.mgr} · ${a.rec}</div>
+        ${recHTML(aKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(aw,xw)}"${wc}>${aw}%</div>
       </div>
       <div class="ms-center" data-vs>
+        ${leagueLogoHTML()}
         <div class="sh-vs">VS</div>
         <div class="sh-score">${as.toFixed(1)}<span>–</span>${xs.toFixed(1)}</div>
         ${proj}
@@ -68,7 +101,7 @@ export function stadiumStageHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
       <div class="ms-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" onclick="openTeam('${xKey}')">${x.n}</div>
-        <div class="sh-rec">${x.mgr} · ${x.rec}</div>
+        ${recHTML(xKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(xw,aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -107,10 +140,11 @@ export function stadiumHeroHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
       <div class="sh-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" ${nameClick(aKey)}>${a.n}</div>
-        <div class="sh-rec">${a.mgr} · ${a.rec}</div>
+        ${recHTML(aKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(aw,xw)}"${wc}>${aw}%</div>
       </div>
       <div class="sh-center" ${opts.tapHint?'data-vs':''}>
+        ${leagueLogoHTML()}
         <div class="sh-vs">VS</div>
         <div class="sh-score">${as.toFixed(1)}<span>–</span>${xs.toFixed(1)}</div>
         ${proj}
@@ -118,7 +152,7 @@ export function stadiumHeroHTML(aKey,xKey,as,xs,aw,xw,ap,xp,opts){
       <div class="sh-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" ${nameClick(xKey)}>${x.n}</div>
-        <div class="sh-rec">${x.mgr} · ${x.rec}</div>
+        ${recHTML(xKey)}
         <div class="sh-pct${tw}" style="color:${pctColor(xw,aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -146,5 +180,19 @@ export function onGlobalBackdrop(input){
 export function clearAllBackdrops(){
   if(!isCommish())return;
   delete store.globalBackdrop;store.backdrops={};saveStore();refreshMatchups();renderSettings();
+}
+// commissioner: the league logo drawn at the centre of every matchup. PNG, so an
+// uploaded crest keeps its transparency over the backdrop.
+export function pickLeagueLogo(){
+  if(!isCommish())return;
+  document.getElementById('leagueLogoInput').click();
+}
+export function onLeagueLogo(input){
+  const f=input.files&&input.files[0];if(!f||!isCommish())return;
+  processImage(f,256,'image/png',0.92,(url)=>{LG().logo=url;saveStore();refreshMatchups();renderSettings();});
+}
+export function clearLeagueLogo(){
+  if(!isCommish())return;
+  LG().logo=null;saveStore();refreshMatchups();renderSettings();
 }
 export function refreshMatchups(){renderLeagueBody();renderUserMatchup();}

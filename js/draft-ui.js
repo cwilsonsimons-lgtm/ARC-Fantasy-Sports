@@ -4,7 +4,7 @@ import { NFL_BY_ID } from './data/nfl-players.js';
 import { byeFor } from './data/nfl-index.js';
 import { MY_TEAM, T } from './data/teams.js';
 import { draftBoard, draftDone, draftPicks, pickAt, myTurn, onClockIdx, pickMeta, teamRosterIds } from './draft.js';
-import { pickBadges, reactionTally, reactionsOpen, seedReactions, draftCfg } from './draft-meta.js';
+import { pickBadges, reactionTally, reactionsOpen, seedReactions } from './draft-meta.js';
 import { bindDraftTiles, startDraftClock } from './draft-room.js';
 import { preDraft, showTab } from './nav.js';
 import { PANEL_CAP, escAttr, matchQ, pillsHTML } from './panel.js';
@@ -50,12 +50,14 @@ export function draftGridHTML(){
   const picks = draftPicks(), onClock = onClockIdx(), n = DRAFT_ORDER.length;
   const clockTeam = draftDone() ? null : pickMeta(onClock).team;
 
+  // The countdown used to sit up here, over the on-clock owner's column. It now
+  // lives in the Current Pick card, where the eye already is; the column keeps
+  // its tint so the board still says whose turn it is.
   const head = `<div class="dg-row dg-head">
     <div class="dg-rd"></div>
     ${DRAFT_ORDER.map(k=>{
       const t=T[k], live = k===clockTeam;
       return `<div class="dg-th${k===MY_TEAM?' me':''}${live?' clock':''}">
-        ${live?`<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec>0?'':''}<span>1:30</span></div>`:''}
         <div class="dg-crest" style="background:${t.bg};color:${t.c}">${markInner(t)}</div>
         <div class="dg-mgr">${esc(t.mgr)}</div>
       </div>`;
@@ -148,11 +150,18 @@ export function renderDraft(){
       <div class="dr-acts"><div class="dr-btn warn" onclick="resetDraft()">Reset draft</div></div>`;
   } else {
     const m=pickMeta(i),t=T[m.team];
+    // Current Pick: who, which pick, and how long they have left. The clock is
+    // the biggest thing on the card because it is the only part that is moving.
     head=`<div class="dr-clock${mine?' mine':''}">
-      <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} · PICK ${m.pick} · #${i+1} OVERALL</div>
+      <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} · #${i+1} OVERALL</div>
       <div class="who">
         <div class="dr-crest" style="background:linear-gradient(155deg,${t.bg},#0d1108);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
-        <div><div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div><div class="sub">${mine?'You are on the clock':t.mgr+' is on the clock'}</div></div>
+        <div class="dr-who">
+          <div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div>
+          <div class="pk">Pick ${m.round}.${String(m.pick).padStart(2,'0')}</div>
+          <div class="sub">${mine?'You are on the clock':t.mgr+' is on the clock'}</div>
+        </div>
+        <div class="dr-timer" id="drTimer"><span>1:30</span></div>
       </div>
       <div class="dr-acts">
         ${mine?'':`<div class="dr-btn go" onclick="simToMyPick()">Sim to my pick</div>`}

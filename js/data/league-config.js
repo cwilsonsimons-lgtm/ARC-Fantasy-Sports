@@ -12,6 +12,8 @@ export const LEAGUE_DEFAULTS={
   waiverHour:2,          // 24h clock, league time (2 = 2 AM)
   waiverPeriod:2,        // days a dropped player sits on waivers (0 = none)
   tradeDeadline:11,      // week number, 0 = no deadline
+  median:0,              // league median scoring: 0 off, 1 on (off for every existing league)
+  logo:null,             // league logo data URL, drawn behind the VS on every matchup
   commish:'pandas'       // team key that owns the commissioner role
 };
 

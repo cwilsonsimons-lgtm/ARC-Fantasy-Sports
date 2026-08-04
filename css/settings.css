@@ -9,6 +9,14 @@
 .set-preview{height:120px;border-radius:12px;margin:12px 0;background-size:cover;background-position:center;border:1px solid var(--line)}
 .set-preview.none{display:grid;place-items:center;color:var(--ink-3);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12px;
   letter-spacing:1px;text-transform:uppercase;background:linear-gradient(180deg,#17532c,#0b3018 68%,#071b0e)}
+/* league logo preview */
+.set-crestrow{display:flex;align-items:center;gap:14px;margin:12px 0}
+.set-crest{width:76px;height:76px;border-radius:18px;flex:none;display:grid;place-items:center;overflow:hidden;
+  border:1px solid var(--line);background:linear-gradient(180deg,#101725,#0B111B)}
+.set-crest img{width:100%;height:100%;object-fit:contain}
+.set-crest.none{color:var(--ink-3)}
+.set-crest.none svg{width:44px;height:44px}
+.set-crestnote{flex:1;min-width:0;font-size:12px;color:var(--ink-3);line-height:1.45}
 .set-tabs{display:flex;gap:6px;margin:0 2px 14px;overflow-x:auto;scrollbar-width:none}
 .set-tabs::-webkit-scrollbar{display:none}
 .set-tab{flex:none;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);

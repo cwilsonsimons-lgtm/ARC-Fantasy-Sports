@@ -8,6 +8,7 @@ export const S = {
   games: [],
   lineupSlots: null,        // filled in by store.js at load, from buildSlots()
   teamBackView: 'matchup',
+  scheduleBackView: 'matchup',
   currentPlayerName: null,
   pidx: null,               // player index cache; null means "rebuild on next read"
   trendPos: 'ALL',

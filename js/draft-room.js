@@ -153,11 +153,15 @@ export function startDraftClock(){
   tick = setInterval(paintClock, 1000);
 }
 export function stopDraftClock(){ if(tick){ clearInterval(tick); tick = null; } }
+// The clock reads mm:ss with both halves padded, so it never changes width as
+// it runs down - at the size it is drawn on the Current Pick card, a digit
+// appearing or disappearing would shift the whole card.
 function paintClock(){
-  const el = document.getElementById('dgTimer');
+  const el = document.getElementById('drTimer');
   if(!el){ stopDraftClock(); return; }
   const left = Math.max(0, Math.round((deadline - Date.now())/1000));
+  const m = String(Math.floor(left/60)).padStart(2,'0');
   const s = String(left % 60).padStart(2,'0');
-  el.innerHTML = `<span>${Math.floor(left/60)}:${s}</span>`;
+  el.innerHTML = `<span>${m}:${s}</span>`;
   el.classList.toggle('low', left <= 10);
 }
