@@ -3,6 +3,13 @@
 Fantasy football league app prototype — matchups, standings, rosters, a mock
 draft room, free agency, and a simulated live-scoring week clock.
 
+> **This repo is a subset of the app.** The full design lives in the reference
+> build at `prototypes/1stPrototype.html`, which additionally covers the league
+> hub, the create-league wizard, chat, trades, waivers, the scoring editor,
+> notifications, commissioner tools and Markets trading.
+> `docs/APP-SCOPE.md` maps what is here versus what is only there — read it
+> before deciding a feature does not exist.
+
 ## Running it
 
 **Just want to look at it?** Open `dist/index.html` — it is the whole app in one
