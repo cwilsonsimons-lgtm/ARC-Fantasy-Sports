@@ -274,6 +274,17 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .tab.on::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
   width:5px;height:5px;border-radius:50%;background:var(--accent)}
 
+/* The header and the tabs are the only chrome pinned above the content, so they
+   are what makes the top of the screen read as nothing but menus. They fold away
+   as soon as you scroll into the content and come back the moment you scroll
+   back up, which is where you look for them anyway. */
+.shift > .leaguebar, .shift > .tabs{overflow:hidden;
+  transition:max-height .26s cubic-bezier(.4,0,.2,1), opacity .18s ease, padding .26s cubic-bezier(.4,0,.2,1)}
+.shift > .leaguebar{max-height:60px}
+.shift > .tabs{max-height:56px}
+.shift.chrome-hide > .leaguebar,
+.shift.chrome-hide > .tabs{max-height:0;opacity:0;padding-top:0;padding-bottom:0;border-bottom-color:transparent}
+
 .scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:96px;scrollbar-width:none}
 .scroll::-webkit-scrollbar{display:none}
 .view{display:none;padding:14px 16px 0}
@@ -1028,17 +1039,19 @@ body.open .drawer{transform:translateX(0)}
 
 /* css/draft.css */
 /* ===== DRAFT ROOM ===== */
-.dr-clock{border:1px solid var(--line-soft);border-radius:16px;background:var(--card-2);padding:14px 15px;margin-bottom:12px;position:relative;overflow:hidden}
+.dr-clock{border:1px solid var(--line-soft);border-radius:16px;background:var(--card-2);padding:11px 13px;margin-bottom:10px;position:relative;overflow:hidden}
 .dr-clock.mine{border-color:var(--green);box-shadow:0 0 0 1px rgba(var(--green-rgb),.25) inset}
 .dr-clock .rd{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--ink-3);letter-spacing:1px;font-weight:700}
-.dr-clock .who{display:flex;align-items:center;gap:10px;margin-top:8px}
+.dr-clock .who{display:flex;align-items:center;gap:10px;margin-top:6px}
 .dr-crest{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;overflow:hidden;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:16px;flex:none}
 .dr-clock .nm{--tn-size:16px;line-height:1.2}
 .dr-clock .sub{font-size:10.5px;color:var(--ink-3);font-weight:600}
-.dr-acts{display:flex;gap:7px;margin-top:12px}
-.dr-btn{flex:1;text-align:center;padding:9px 6px;border-radius:11px;border:1px solid var(--line);background:var(--card);
-  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
+.dr-acts{display:flex;gap:7px;margin-top:9px}
+/* nowrap keeps these one line tall — wrapped labels made the on-clock card
+   stand taller than the draft board it sits above */
+.dr-btn{flex:1;text-align:center;padding:8px 6px;border-radius:11px;border:1px solid var(--line);background:var(--card);white-space:nowrap;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
 .dr-btn:active{background:rgba(255,255,255,.06)}
 .dr-btn.go{border-color:var(--green);color:var(--green);background:rgba(var(--green-rgb),.1)}
 .dr-btn.warn{border-color:rgba(var(--red-rgb),.5);color:var(--red)}
@@ -1382,6 +1395,8 @@ body.seeded .view[data-view="matchup"] .mrow,
 body.seeded #userRewind,
 body.seeded #lbChat,
 body.seeded #mActivity{display:none}
+/* a seeded league sits at a fixed week, so the stepper has nothing to step */
+body.seeded .view[data-view="standings"] .wsw{display:none}
 
 /* message another manager, from their team screen */
 .tv-msg{flex:none;width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.07);
@@ -1389,6 +1404,14 @@ body.seeded #mActivity{display:none}
 .tv-msg svg{width:18px;height:18px}
 .tv-own-tag{display:flex;align-items:center;color:var(--green);margin-top:4px}
 .tv-own-tag svg{width:13px;height:13px}
+
+/* customisation lives behind this, so viewing a team shows the team, not the controls */
+.tv-editbtn{flex:none;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;
+  border-radius:9px;background:rgba(255,255,255,.07);border:1px solid var(--line);cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-2);transition:background .15s,color .15s,border-color .15s}
+.tv-editbtn svg{width:13px;height:13px}
+.tv-editbtn.on{background:rgba(50,159,91,.16);border-color:var(--green);color:var(--green)}
 
 /* css/create.css */
 /* ===== CREATE LEAGUE =====
@@ -4659,6 +4682,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const lg = activeLeague2();
     const stage = name === "matchup" && !(lg && lg.real && kartMode());
     document.querySelector(".shift").classList.toggle("stage-on", stage);
+    // every view opens at the top, so it opens with its chrome showing
+    document.querySelector(".shift").classList.remove("chrome-hide");
     document.body.classList.toggle("hub", name === "home");
     if (name !== "wait") document.body.classList.remove("forming");
   }
@@ -11409,6 +11434,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var ICON_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/></svg>';
   var ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 15v4h16v-4"/></svg>';
   var ICON_STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.9 1-5.8-4.3-4.1 5.9-.9z"/></svg>';
+  var ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  var teamEditOpen = false;
+  function toggleTeamEdit() {
+    teamEditOpen = !teamEditOpen;
+    fontMenuOpen = false;
+    renderTeam(currentTeamKey);
+  }
+  window.toggleTeamEdit = toggleTeamEdit;
   var currentTeamKey = null;
   var photoTargetName = null;
   function esc(s) {
@@ -11436,16 +11469,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return rosterFor(side === "x" ? sides[1] : sides[0]);
   }
   function teamHead(t, own) {
+    // Customisation stays behind the Edit button. Viewing your own team should
+    // show it as you styled it, not the controls that got it that way.
+    const editing = own && teamEditOpen;
     const crestInner = t.logo ? `<img src="${t.logo}" alt="" style="width:100%;height:100%;object-fit:cover">` : t.mono;
-    const logoCam = own ? `<span class="cam" onclick="document.getElementById('logoInput').click()">${ICON_CAM}</span>` : "";
-    const nameBlock = own ? `<input class="tv-name-input" value="${esc(t.n)}" maxlength="30" onchange="setTeamName(this.value)">` : `<div class="tv-name tf-${currentTeamKey}" style="color:${t.c}">${t.n}</div>`;
-    const editRow = own ? `
+    const logoCam = editing ? `<span class="cam" onclick="document.getElementById('logoInput').click()">${ICON_CAM}</span>` : "";
+    const nameBlock = editing ? `<input class="tv-name-input" value="${esc(t.n)}" maxlength="30" onchange="setTeamName(this.value)">` : `<div class="tv-name tf-${currentTeamKey}" style="color:${t.c}">${t.n}</div>`;
+    const editRow = editing ? `
     <div class="tv-edit-row">
       <span class="tv-swatch">Primary <input type="color" value="${t.c}" onchange="setColor('c',this.value)"></span>
       <span class="tv-swatch">Backdrop <input type="color" value="${t.bg}" onchange="setColor('bg',this.value)"></span>
       <span class="tv-mini-btn" onclick="document.getElementById('logoInput').click()">${ICON_UP} Upload logo</span>
     </div>
     ${fontDropdownHTML(t)}` : "";
+    const editBtn = own ? `<div class="tv-editbtn${editing ? " on" : ""}" onclick="toggleTeamEdit()">${editing ? "Done" : ICON_PENCIL + " Edit"}</div>` : "";
     const ownTag = own ? `<div class="tv-own-tag">${ICON_STAR}</div>` : "";
     const msgBtn = own ? "" : `<div class="tv-msg" onclick="openThread('${currentTeamKey}')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
@@ -11455,7 +11492,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
       <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7 ${t.rec} \xB7 #${t.rk}</div>${ownTag}</div>
-      ${msgBtn}
+      ${editBtn}${msgBtn}
     </div>
     ${editRow}
   </div>`;
@@ -11463,13 +11500,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function teamRow(p, own, opts) {
     opts = opts || {};
     const canDrop = own && opts.drop !== false;
-    const cam = own ? `<span class="cam">${ICON_CAM}</span>` : "";
+    // photo and nickname are customisation, so they follow the Edit button;
+    // dropping a player is roster management and stays available while viewing
+    const editing = own && teamEditOpen;
+    const cam = editing ? `<span class="cam">${ICON_CAM}</span>` : "";
     // the clear badge only appears once this league actually holds an override,
     // so a default photo never offers a remove that would do nothing
-    const rmPhoto = own && playerPhoto(pKeyOf(p)) ? `<span class="uncam" title="Remove custom photo" onclick="event.stopPropagation();confirmRemovePhoto('${esc(pKeyOf(p))}')">${ICON_X}</span>` : "";
-    const faceClick = own ? `onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"` : "";
+    const rmPhoto = editing && playerPhoto(pKeyOf(p)) ? `<span class="uncam" title="Remove custom photo" onclick="event.stopPropagation();confirmRemovePhoto('${esc(pKeyOf(p))}')">${ICON_X}</span>` : "";
+    const faceClick = editing ? `onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"` : "";
     const slot = p.slot && p.slot !== p.pos ? `<span class="slot">${p.slot}</span> \xB7 ` : "";
-    const nick = own ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">` : playerNick(pKeyOf(p)) ? `<div class="tv-nick">\u201C${playerNick(pKeyOf(p))}\u201D</div>` : "";
+    const nick = editing ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">` : playerNick(pKeyOf(p)) ? `<div class="tv-nick">\u201C${playerNick(pKeyOf(p))}\u201D</div>` : "";
     const rt = canDrop ? `<div class="tv-rt"><div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>
         <span class="tv-drop" onclick="event.stopPropagation();confirmDrop('${esc(pKeyOf(p))}')">Drop</span></div>` : `<div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>`;
     return `<div class="tv-row" onclick="openPlayer('${esc(pKeyOf(p))}')">
@@ -11506,6 +11546,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (cur !== "team") S.teamBackView = cur;
     const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup" }[S.teamBackView] || "Matchup";
     setBackLabel(lbl);
+    teamEditOpen = false;
     renderTeam(key);
     showView2("team");
     document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === "team" && key === MY_TEAM));
@@ -12106,7 +12147,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       </div>
       <div class="dr-acts">
         ${mine ? "" : `<div class="dr-btn go" onclick="simToMyPick()">Sim to my pick</div>`}
-        <div class="dr-btn" onclick="autoDraftAll()">Auto-draft rest</div>
+        <div class="dr-btn" onclick="autoDraftAll()">Auto-draft</div>
         ${isCommish() ? `<div class="dr-btn warn" onclick="confirmResetDraft()">Reset</div>` : ""}
       </div></div>`;
     }
@@ -12574,10 +12615,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const r = playerRec(name);
     return r && r.nick || "";
   }
+  // Headshots come off the network. When one does not arrive — offline, a slow
+  // guest network, a dead URL — the <img> is swapped for the same initials a
+  // player with no headshot at all would show, rather than left as a broken
+  // image icon. Arc Markets already does this in its own face(); this brings
+  // the fantasy side in line.
+  function faceFallback(img) {
+    img.replaceWith(document.createTextNode(img.getAttribute("data-ini") || ""));
+  }
+  window.faceFallback = faceFallback;
   function faceInner(key) {
     const src = playerPhoto(key) || headshotFor(key);
     const rec = pIdx()[key];
-    return src ? `<img src="${src}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : initials(rec && rec.n || key);
+    const ini = initials(rec && rec.n || key);
+    return src ? `<img src="${src}" alt="" loading="lazy" data-ini="${escAttr(ini)}" onerror="faceFallback(this)" style="width:100%;height:100%;object-fit:cover">` : ini;
   }
   function headshotFor(key) {
     if (NFL_BY_ID[key]) return NFL_BY_ID[key].hs || "";
@@ -13765,25 +13816,73 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     document.getElementById("userRewind").style.display = "none";
     return { sc, st, wkLabel };
   }
+  // Opening a league should answer "how am I doing?" without another tap, so the
+  // matchup lands on this week's player-by-player scoring. The rest of the
+  // league's games moved to the League tab, where someone asking about them is
+  // already looking.
+  var SEEDED_SLOTS = ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX"];
+  var FLEX_OK = { RB: 1, WR: 1, TE: 1 };
+  function seededLineup(lg, key) {
+    const all = seededRoster(lg, key), bag = {};
+    all.forEach((p) => (bag[p.pos] = bag[p.pos] || []).push(p));
+    const used = {};
+    const take = (list) => {
+      const p = (list || []).find((q) => !used[q.id]);
+      if (p) used[p.id] = 1;
+      return p || null;
+    };
+    return SEEDED_SLOTS.map((slot) => {
+      const from = slot === "FLEX" ? Object.keys(FLEX_OK) : [slot];
+      for (const pos of from) {
+        const p = take(bag[pos]);
+        if (p) return { slot, p };
+      }
+      // a seeded roster is a stride through the pool, so it can come up short at
+      // a position; start anyone left rather than show a hole in the lineup
+      return { slot, p: take(all) };
+    });
+  }
+  // The headline score is generated independently of the roster, so the rows are
+  // scaled to add up to it. A lineup that does not sum to the score on the same
+  // screen reads as a bug to anyone who checks.
+  function scaleTo(rows2, total) {
+    const sum = rows2.reduce((n, r) => n + (r.p ? r.p.proj : 0), 0);
+    const f = sum > 0 ? total / sum : 0;
+    rows2.forEach((r) => {
+      if (r.p) r.p.pts = Math.round(r.p.proj * f * 10) / 10;
+    });
+    return rows2;
+  }
+  function seededScoreCell(p) {
+    return p ? `<div class="st-pts">${(p.pts != null ? p.pts : p.proj).toFixed(1)}</div>` : `<div class="st-pts">—</div>`;
+  }
+  function seededHHRows(lg, sc) {
+    const mine = scaleTo(seededLineup(lg, sc.me), sc.ms);
+    const theirs = scaleTo(seededLineup(lg, sc.opp), sc.os);
+    return mine.map((r, i) => {
+      const x = theirs[i] ? theirs[i].p : null;
+      return `<div class="st-row">
+      <div class="st-side">${sideCell(r.p)}</div>
+      ${seededScoreCell(r.p)}
+      <div class="st-pos">${r.slot}</div>
+      ${seededScoreCell(x)}
+      <div class="st-side opp">${sideCell(x)}</div>
+    </div>`;
+    }).join("");
+  }
   function renderSeededLeague(lg) {
-    const { st, wkLabel } = seededHeader(lg);
+    const { sc, st } = seededHeader(lg);
     const teams = teamsOf(lg);
-    const games = seededGames(lg).slice(1);
-    const cards = games.map((g) => `<div class="lg-hero" onclick="openSeededTeam('${lg.id}','${g.a}')">
-    ${stadiumHeroHTML(
-      g.a,
-      g.x,
-      g.as,
-      g.xs,
-      g.aw,
-      g.xw,
-      null,
-      null,
-      { teams, compact: true, status: { cls: st === "complete" ? "final" : "live", txt: st === "complete" ? "FINAL" : "LIVE" } }
-    )}
-  </div>`).join("");
-    document.getElementById("userLineup").innerHTML = `<div class="hd" style="margin-top:14px"><span>${wkLabel === "FINAL" ? "Final Week" : "Week " + leagueWeek(lg)} \xB7 All Matchups</span></div>
-     ${cards}`;
+    const label = st === "complete" ? "Final" : st === "predraft" ? "Projected" : "Live";
+    document.getElementById("userLineup").innerHTML = `<div class="starters" style="margin-top:14px">
+      <div class="st-hd"><span class="g">Starters</span><span>${label}</span></div>
+      ${seededHHRows(lg, sc)}
+    </div>
+    <div class="activity" style="margin-top:12px" onclick="seededTab('league')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="6.5" rx="2"/><rect x="3" y="13" width="18" height="6.5" rx="2"/></svg>
+      <div class="t"><div class="a">All Matchups</div><div class="b">${escHtml(teams[sc.me] ? "Every game in " + lg.name : lg.name)}</div></div>
+      <div class="arr">›</div>
+    </div>`;
     document.body.classList.add("seeded");
     showView2("matchup");
     document.getElementById("scroll").scrollTop = 0;
@@ -13802,7 +13901,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     </div>`;
     }).join("");
     document.getElementById("standBody").innerHTML = rows2;
-    document.getElementById("standMatchups").innerHTML = "";
+    // the other games moved here off the matchup tab
+    const st = leagueStatus(lg);
+    // a seeded league sits at its own week, which the global week stepper does
+    // not drive — label it from the league rather than from S.week
+    const stv = document.querySelector('.view[data-view="standings"]');
+    stv.querySelectorAll("[data-weeklabel]").forEach((el) => {
+      el.textContent = st === "complete" ? "Final Week" : st === "predraft" ? "Preseason" : "Week " + leagueWeek(lg);
+    });
+    document.getElementById("standMatchups").innerHTML = seededGames(lg).map((g) => `<div class="lg-hero" onclick="openSeededTeam('${lg.id}','${g.a}')">
+    ${stadiumHeroHTML(g.a, g.x, g.as, g.xs, g.aw, g.xw, null, null, {
+      teams,
+      compact: true,
+      status: { cls: st === "complete" ? "final" : "live", txt: st === "complete" ? "FINAL" : "LIVE" }
+    })}
+  </div>`).join("");
     document.body.classList.add("seeded");
     showView2("standings");
     document.getElementById("scroll").scrollTop = 0;
@@ -15494,6 +15607,31 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   paintChatBadges();
   showView("home");
   renderHome();
+
+  // Fold the pinned chrome away while you read. Direction-based rather than
+  // position-based: scrolling down into the content hides the header and tabs,
+  // any scroll up brings them straight back, and the top of a view always keeps
+  // them. The drawer holds them open, since it shifts the whole app sideways and
+  // a header collapsing mid-slide reads as a glitch.
+  (() => {
+    const sc = document.getElementById("scroll"), shift = document.querySelector(".shift");
+    if (!sc || !shift) return;
+    let last = 0, queued = false;
+    const apply = () => {
+      queued = false;
+      const y = sc.scrollTop, d = y - last;
+      if (document.body.classList.contains("open") || y < 40) shift.classList.remove("chrome-hide");
+      else if (d > 5) shift.classList.add("chrome-hide");
+      else if (d < -5) shift.classList.remove("chrome-hide");
+      last = y;
+    };
+    sc.addEventListener("scroll", () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(apply);
+      }
+    }, { passive: true });
+  })();
 })();
 
 </script>
