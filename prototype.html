@@ -1528,7 +1528,18 @@ body.seeded #standWkHd{display:none}
 .tv-msg{flex:none;width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.07);
   border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
 .tv-msg svg{width:18px;height:18px}
-.tv-own-tag{display:flex;align-items:center;color:var(--green);margin-top:4px}
+/* gate for the roster's edit controls, on your own team only */
+.tv-editbtn{flex:none;display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 13px;border-radius:11px;
+  background:rgba(255,255,255,.07);border:1px solid var(--line);cursor:pointer;user-select:none;color:var(--ink-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.2px;text-transform:uppercase}
+.tv-editbtn svg{width:14px;height:14px}
+.tv-editbtn:active{border-color:var(--accent)}
+.tv-editbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+/* while editing, the header carries a visible frame so the mode is obvious */
+.tv-head.editing{outline:1px solid rgba(var(--accent-rgb),.45);outline-offset:-1px}
+/* the earlier rule shapes this as a pill; keep it inline so this one does not
+   stretch it into a full-width bar under the team name */
+.tv-own-tag{display:inline-flex;align-items:center;color:var(--green);margin-top:4px}
 .tv-own-tag svg{width:13px;height:13px}
 
 /* css/create.css */
@@ -4839,6 +4850,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     setTeamFont: () => setTeamFont,
     setTeamName: () => setTeamName,
     teamBack: () => teamBack,
+    toggleTeamEdit: () => toggleTeamEdit,
+    teamEditing: () => teamEditing,
     teamHead: () => teamHead,
     teamRow: () => teamRow,
     toggleFontMenu: () => toggleFontMenu
@@ -5049,6 +5062,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       return;
     }
     if (name === "team") {
+      endTeamEdit();
       renderTeam(MY_TEAM);
       S.teamBackView = homeTab2();
     }
@@ -12311,6 +12325,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var ICON_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/></svg>';
   var ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 15v4h16v-4"/></svg>';
   var ICON_STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.9 1-5.8-4.3-4.1 5.9-.9z"/></svg>';
+  var ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m14 6 4 4"/></svg>';
   var currentTeamKey = null;
   var photoTargetName = null;
   function esc(s) {
@@ -12337,11 +12352,28 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const sides = liveSides();
     return rosterFor(side === "x" ? sides[1] : sides[0]);
   }
-  function teamHead(t, own) {
+  // Your own team used to open straight into edit mode: the name and every
+  // nickname were text inputs, the crest and each face carried a camera badge,
+  // and every row offered Drop. That is a lot of chrome to read a roster
+  // through, and a lot to tap by accident. The controls now sit behind Edit,
+  // so the tab reads as your team until you say otherwise.
+  var teamEditing = false;
+  function toggleTeamEdit() {
+    teamEditing = !teamEditing;
+    fontMenuOpen = false;
+    if (currentTeamKey) renderTeam(currentTeamKey);
+  }
+  // Edit mode is per-visit, not sticky — arriving at a team should never find
+  // the roster already open for changes.
+  function endTeamEdit() {
+    teamEditing = false;
+    fontMenuOpen = false;
+  }
+  function teamHead(t, own, edit) {
     const crestInner = t.logo ? `<img src="${t.logo}" alt="" style="width:100%;height:100%;object-fit:cover">` : t.mono;
-    const logoCam = own ? `<span class="cam" onclick="document.getElementById('logoInput').click()">${ICON_CAM}</span>` : "";
-    const nameBlock = own ? `<input class="tv-name-input" value="${esc(t.n)}" maxlength="30" onchange="setTeamName(this.value)">` : `<div class="tv-name tf-${currentTeamKey}" style="color:${t.c}">${t.n}</div>`;
-    const editRow = own ? `
+    const logoCam = edit ? `<span class="cam" onclick="document.getElementById('logoInput').click()">${ICON_CAM}</span>` : "";
+    const nameBlock = edit ? `<input class="tv-name-input" value="${esc(t.n)}" maxlength="30" onchange="setTeamName(this.value)">` : `<div class="tv-name tf-${currentTeamKey}" style="color:${t.c}">${t.n}</div>`;
+    const editRow = edit ? `
     <div class="tv-edit-row">
       <span class="tv-swatch">Primary <input type="color" value="${t.c}" onchange="setColor('c',this.value)"></span>
       <span class="tv-swatch">Backdrop <input type="color" value="${t.bg}" onchange="setColor('bg',this.value)"></span>
@@ -12352,30 +12384,35 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const msgBtn = own ? "" : `<div class="tv-msg" onclick="openThread('${currentTeamKey}')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
     </div>`;
-    return `<div class="tv-head">
+    const editBtn = own ? `<div class="tv-editbtn${edit ? " on" : ""}" onclick="toggleTeamEdit()">${edit ? "Done" : ICON_PENCIL + " Edit"}</div>` : "";
+    return `<div class="tv-head${edit ? " editing" : ""}">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
       <div class="tv-idwrap">${nameBlock}<div class="tv-sub" onclick="openTeamSchedule('${currentTeamKey}')">${t.mgr} \xB7 ${recordText(currentTeamKey)} \xB7 #${t.rk}</div>${ownTag}</div>
-      ${msgBtn}
+      ${msgBtn}${editBtn}
     </div>
     ${editRow}
   </div>`;
   }
+  // `edit` gates everything that changes a player; `own` still decides whether
+  // this is your roster at all. The seeded-league preview passes neither, so it
+  // stays read-only the way its disabled Drop already implied.
   function teamRow(p, own, opts) {
     opts = opts || {};
-    const canDrop = own && opts.drop !== false;
-    const cam = own ? `<span class="cam">${ICON_CAM}</span>` : "";
+    const edit = !!opts.edit;
+    const canDrop = edit && opts.drop !== false;
+    const cam = edit ? `<span class="cam">${ICON_CAM}</span>` : "";
     // the clear badge only appears once this league actually holds an override,
     // so a default photo never offers a remove that would do nothing
-    const rmPhoto = own && playerPhoto(pKeyOf(p)) ? `<span class="uncam" title="Remove custom photo" onclick="event.stopPropagation();confirmRemovePhoto('${esc(pKeyOf(p))}')">${ICON_X}</span>` : "";
-    const faceClick = own ? `onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"` : "";
+    const rmPhoto = edit && playerPhoto(pKeyOf(p)) ? `<span class="uncam" title="Remove custom photo" onclick="event.stopPropagation();confirmRemovePhoto('${esc(pKeyOf(p))}')">${ICON_X}</span>` : "";
+    const faceClick = edit ? `onclick="event.stopPropagation();pickPhoto('${esc(pKeyOf(p))}')"` : "";
     const slot = p.slot && p.slot !== p.pos ? `<span class="slot">${p.slot}</span> \xB7 ` : "";
-    const nick = own ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">` : playerNick(pKeyOf(p)) ? `<div class="tv-nick">\u201C${playerNick(pKeyOf(p))}\u201D</div>` : "";
+    const nick = edit ? `<input class="tv-nick-input" placeholder="add nickname" value="${esc(playerNick(pKeyOf(p)))}" onclick="event.stopPropagation()" onchange="setNick('${esc(pKeyOf(p))}',this.value)">` : playerNick(pKeyOf(p)) ? `<div class="tv-nick">\u201C${playerNick(pKeyOf(p))}\u201D</div>` : "";
     const rt = canDrop ? `<div class="tv-rt"><div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>
         <span class="tv-drop" onclick="event.stopPropagation();confirmDrop('${esc(pKeyOf(p))}')">Drop</span></div>` : `<div class="tv-pts">${(p.proj || 0).toFixed(1)}</div>`;
     return `<div class="tv-row" onclick="openPlayer('${esc(pKeyOf(p))}')">
-    <div class="tv-face${own ? " editable" : ""}" ${faceClick}>${faceInner(pKeyOf(p))}${cam}${rmPhoto}</div>
+    <div class="tv-face${edit ? " editable" : ""}" ${faceClick}>${faceInner(pKeyOf(p))}${cam}${rmPhoto}</div>
     <div class="tv-pinfo">
       <div class="tv-pn">${p.n}</div>
       ${nick}
@@ -12387,11 +12424,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function renderTeam(key) {
     currentTeamKey = key;
     const t = T[key], own = key === MY_TEAM, roster = rosterFor(key);
-    let body2 = teamHead(t, own);
+    // another manager's team is never editable, whatever the toggle says
+    const edit = own && teamEditing;
+    let body2 = teamHead(t, own, edit);
     ["STARTERS", "BENCH", "TAXI SQUAD"].forEach((gp) => {
       const list = roster.filter((p) => p.group === gp);
       if (!list.length) return;
-      body2 += `<div class="tv-sec-hd">${gp}</div><div class="tv-roster">${list.map((p) => teamRow(p, own)).join("")}</div>`;
+      body2 += `<div class="tv-sec-hd">${gp}</div><div class="tv-roster">${list.map((p) => teamRow(p, own, { edit })).join("")}</div>`;
     });
     const picks = picksFor(key);
     if (picks.length) body2 += `<div class="tv-sec-hd">Draft Picks</div><div class="tv-picks">` + picks.map((pk) => `<div class="tv-pick">
@@ -12404,6 +12443,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function openTeam(key) {
     if (!T[key]) return;
+    endTeamEdit();
     const cur = currentViewName();
     if (cur !== "team") S.teamBackView = cur;
     const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup" }[S.teamBackView] || "Matchup";
@@ -12415,7 +12455,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (document.body.classList.contains("open")) toggleDrawer();
   }
   function teamBack() {
-    fontMenuOpen = false;
+    endTeamEdit();
     const v = S.teamBackView;
     if (v === "seeded" && S.seededBack && window.openLeague) {
       window.openLeague(S.seededBack);
