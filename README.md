@@ -19,19 +19,20 @@ npm start          # serves the repo at http://127.0.0.1:8080
 No framework and no runtime dependencies; `esbuild` is only used to produce the
 single-file build, and `playwright` only for the verification harness.
 
-## prototype-v1.html
+## prototype.html
 
-`prototype-v1.html` is a standalone single-file prototype, kept verbatim as the
-working reference for the next round of features. Do not confuse it with
-`dist/index.html`: that one is a *build output* of `css/` + `js/` and gets
-overwritten by `npm run build`, whereas this one is hand-authored source that
-nothing generates and nothing regenerates.
+`prototype.html` is a standalone single-file prototype, kept verbatim as the
+working reference for the next round of features (from the `arcfantasy` export of
+2026-08-10). Do not confuse it with `dist/index.html`: that one is a *build
+output* of `css/` + `js/` and gets overwritten by `npm run build`, whereas this
+one is hand-authored source that nothing generates and nothing regenerates.
 
 It is ahead of the modular source. Alongside the screens that exist under `js/`,
 it carries whole areas that have no module yet — trades (with conditional picks,
 counters and league votes), the waiver wire and claim processing, league chat,
 notifications, commissioner roster tools, custom scoring rules, draft history and
-a transaction log.
+a transaction log. It also has league archive, restore and scheduled deletion,
+per-team schedule views, sortable standings, median scoring and playoff finishes.
 
 Open it directly in a browser; it needs no server and no build step. Team logos
 are the one thing it pulls from the network (`static.www.nfl.com`), so those

@@ -495,7 +495,7 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .stand-rk{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;color:var(--ink-3);width:14px;flex:none}
 .stand-bd{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;flex:none}
 .stand-nm{flex:1;min-width:0}
-.stand-nm .n{--tn-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stand-nm .n{--tn-size:12px;line-height:1.2;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .stand-nm .n.me{color:var(--accent)}
 .stand-nm .m{font-size:9.5px;color:var(--ink-3);font-weight:600}
 .st-c{flex:none;text-align:right;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;
@@ -505,6 +505,10 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .st-c.df{width:70px;padding-right:12px}
 .st-c.df.pos{color:var(--green)}
 .st-c.df.neg{color:var(--red)}
+.stand-row.head .st-c.sortable,.stand-row.head .stand-c1.sortable{cursor:pointer;user-select:none}
+.stand-row.head .st-c.sortable:active,.stand-row.head .stand-c1.sortable:active{color:var(--ink)}
+.stand-row.head .on{color:var(--accent)}
+.so-cv{font-size:7px;margin-left:3px;opacity:.9}
 
 /* detail back */
 .back{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:600;font-size:13px;
@@ -529,12 +533,39 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .sm-bd{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:9px;flex:none}
 .sm-bd img{width:100%;height:100%;object-fit:cover}
-.sm-nm{--tn-size:11.5px;flex:1;min-width:0;line-height:1.25;color:var(--ink-2);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sm-nm{--tn-size:11.5px;flex:0 1 auto;min-width:0;line-height:1.25;color:var(--ink-2);
+  white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.sm-gap{flex:1;min-width:4px}
 .sm-pt{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;color:var(--ink-3)}
 .sm-tr.w .sm-nm{color:var(--ink)}
 .sm-tr.w .sm-pt{color:var(--green)}
 .sm-arr{flex:none;color:var(--ink-3);font-size:15px;padding-right:2px}
+.sh-seed{font-weight:800;color:var(--ink-2)}
+.sm-seed{flex:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:9px;
+  letter-spacing:.4px;color:var(--ink-3);background:var(--card);border:1px solid var(--line-soft);
+  border-radius:5px;padding:1px 4px;line-height:1.3}
+.sm-rec{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+  font-size:9.5px;color:var(--ink-3);letter-spacing:-.2px}
+.sm-tr.w .sm-rec{color:var(--ink-2)}
+/* Win-projection bar under both team names on every matchup card: the left
+   team's share is painted in its own colour, the remainder in the opponent's,
+   so the split reads without needing the numbers. */
+.sm-proj{display:flex;align-items:center;gap:6px;margin:5px 0 1px}
+.sm-proj .p{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-weight:700;font-size:9px;color:var(--ink-3);width:26px}
+.sm-proj .p.r{text-align:right}
+.sm-bar{flex:1;min-width:0;height:4px;border-radius:2px;overflow:hidden;background:var(--xc,rgba(255,255,255,.16))}
+.sm-bar i{display:block;height:100%;background:var(--ac,var(--accent))}
+
+/* Week dropdown that replaced the full-width stepper at the top of the League
+   tab -- it sits inline in the section heading it filters. */
+.wkhd>span{display:flex;align-items:center;gap:8px;min-width:0}
+.wkdd{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);
+  border-radius:9px;padding:4px 9px;color:var(--ink);cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:1.4px;text-transform:uppercase}
+.wkdd .cv{font-size:8px;color:var(--ink-3)}
+.wkdd:active{border-color:var(--accent);color:var(--accent)}
 
 /* css/team.css */
 /* ===== TEAM view ===== */
@@ -549,7 +580,7 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .tv-crest .cam svg{width:12px;height:12px;color:#fff}
 .tv-idwrap{flex:1;min-width:0}
 .tv-name{--tn-size:22px;line-height:1.15;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .tv-fontsel{margin-top:10px}
 .fs-btn{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);
   border-radius:11px;background:var(--card-2);cursor:pointer}
@@ -799,12 +830,20 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
   letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3)}
 .pw-tot{font-size:15px;color:var(--ink);letter-spacing:.4px}
 .pw-tot i{font-style:normal;font-size:9px;color:var(--ink-3);letter-spacing:1px}
-.pw-key{display:grid;grid-template-columns:1fr 62px 58px;gap:8px;padding:0 15px 6px;
+.pw-key{display:grid;grid-template-columns:34px 1fr 44px 50px;gap:8px;padding:0 15px 6px;
   font-size:8.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3)}
-.pw-key span:not(:first-child){text-align:right}
-.pw-row{display:grid;grid-template-columns:1fr 62px 58px;gap:8px;align-items:center;
+.pw-key span:nth-child(n+3){text-align:right}
+.pw-row{display:grid;grid-template-columns:34px 1fr 44px 50px;gap:8px;align-items:center;
   padding:8px 15px;border-top:1px solid var(--line-soft)}
-.pw-w{font-size:12px;font-weight:600;color:var(--ink-2)}
+.pw-w{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12px;font-weight:700;color:var(--ink-2)}
+/* opponent then the stat line, on one line, clipped rather than wrapped so
+   every row keeps the same height while scrolling */
+.pw-g{min-width:0;display:flex;align-items:baseline;gap:7px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pw-g b{flex:none;font-size:11.5px;font-weight:700;color:var(--ink-2)}
+.pw-g span{min-width:0;overflow:hidden;text-overflow:ellipsis;
+  font-size:10px;font-weight:600;color:var(--ink-3)}
 .pw-f{text-align:right;font-size:11px;font-weight:700;color:var(--accent)}
 .pw-f .bye{color:var(--ink-3);font-weight:600}
 .pw-p{text-align:right;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
@@ -827,7 +866,7 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .ms-side.L .sh-logo.bare,.ms-side.R .sh-logo.bare,
 .sh-side.L .sh-logo.bare,.sh-side.R .sh-logo.bare{transform:none}
 .sh-tn{--tn-size:13px;line-height:1.15;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;width:100%;cursor:pointer;margin-top:7px;text-shadow:0 1px 6px rgba(0,0,0,.7)}
 .sh-rec{font-size:10px;color:rgba(255,255,255,.78);font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 .sh-pct{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;text-shadow:0 1px 5px rgba(0,0,0,.8)}
 .sh-center{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 4px 0;cursor:pointer}
@@ -838,37 +877,69 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
    and is masked at the edges so the team names and records either side stay
    readable where it reaches them. It stays under the text in the stacking
    order and ignores pointer events, so tapping the centre still opens Rewind. */
+/* League crest, centred on the arena itself rather than on the score column.
+   The score column is a flex item whose position moves with how wide each
+   team's name renders, so anchoring here is what makes the crest sit at the
+   true middle no matter the names, the team logos or the width of the score.
+
+   Layer order is fixed and deliberate:
+     0  the crest
+     1  VS and the score
+     2  team logos, names, records, win% — everything else
+   The crest is painted first and never covers anything above it. */
 .lg-wm{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:min(212px,52vw);height:min(212px,52vw);pointer-events:none;z-index:0;
+  width:min(190px,46vw);height:min(190px,46vw);pointer-events:none;z-index:0;
   display:grid;place-items:center;
-  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 54%,rgba(0,0,0,.55) 72%,transparent 88%);
-  mask-image:radial-gradient(circle at 50% 50%,#000 54%,rgba(0,0,0,.55) 72%,transparent 88%)}
-.lg-wm img{width:100%;height:100%;object-fit:contain;opacity:.92;
+  /* only the very edge is feathered: a tight mask clipped wide, rectangular
+     artwork. The crest is behind everything now, so this is softening, not
+     protection. */
+  -webkit-mask-image:radial-gradient(closest-side,#000 82%,rgba(0,0,0,.6) 94%,transparent 100%);
+  mask-image:radial-gradient(closest-side,#000 82%,rgba(0,0,0,.6) 94%,transparent 100%)}
+/* object-fit keeps square, circular and rectangular artwork centred in the
+   same box, so no logo shape shifts the optical centre */
+.lg-wm img{width:100%;height:100%;object-fit:contain;object-position:center;opacity:.92;
   filter:drop-shadow(0 6px 22px rgba(0,0,0,.55))}
 /* default mark: the header shield carrying the league initial */
-.lg-wm.def{color:rgba(255,255,255,.34)}
-.lg-wm.def svg{position:absolute;width:100%;height:100%}
+.lg-wm.def{color:rgba(255,255,255,.3)}
+.lg-wm.def svg{position:absolute;top:0;left:0;width:100%;height:100%}
 .lg-wm.def span{position:relative;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
-  font-weight:700;font-size:min(62px,15vw);line-height:1;color:rgba(255,255,255,.42);
+  font-weight:700;font-size:min(56px,14vw);line-height:1;color:rgba(255,255,255,.38);
   margin-top:-4px}
 /* the compact cards in All Matchups get a proportionally smaller crest */
-.sh.compact .lg-wm{width:min(120px,30vw);height:min(120px,30vw)}
-.sh.compact .lg-wm.def span{font-size:min(34px,9vw)}
-/* a readability floor for whatever sits over the crest */
-.ms-center>.sh-vs,.sh-center>.sh-vs{background:rgba(10,8,9,.34);backdrop-filter:blur(2px)}
-.ms-center>.sh-score,.sh-center>.sh-score,
-.ms-center>.sh-proj,.sh-center>.sh-proj{text-shadow:0 2px 10px rgba(0,0,0,.92),0 0 22px rgba(0,0,0,.75)}
-.ms-side .sh-tn,.ms-side .sh-rec,.sh-side .sh-tn,.sh-side .sh-rec{position:relative;z-index:2;
-  text-shadow:0 1px 8px rgba(0,0,0,.9)}
+.sh.compact .lg-wm{width:min(104px,26vw);height:min(104px,26vw)}
+.sh.compact .lg-wm.def span{font-size:min(30px,8vw)}
+/* middle layer: VS and the score sit over the crest */
+.ms-center,.sh-center{z-index:1}
+.ms-center>.sh-sbox,.sh-center>.sh-sbox{text-shadow:0 2px 10px rgba(0,0,0,.9)}
+/* top layer: every team element paints in front of the crest, always */
+.ms-side,.sh-side{position:relative;z-index:2}
 /* keep the readable layer above the watermark */
-.ms-center>.sh-vs,.ms-center>.sh-score,.ms-center>.sh-proj,
-.sh-center>.sh-vs,.sh-center>.sh-score,.sh-center>.sh-proj{position:relative;z-index:1}
+.ms-center>.sh-vs,.ms-center>.sh-sbox,
+.sh-center>.sh-vs,.sh-center>.sh-sbox{position:relative;z-index:1}
 .sh-vs{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;color:rgba(255,255,255,.6);letter-spacing:1px;
   border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:1px 8px;margin-bottom:7px}
 .sh-score{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:26px;line-height:1;white-space:nowrap;color:#fff;text-shadow:0 2px 9px rgba(0,0,0,.7)}
 .sh-score span{color:rgba(255,255,255,.5);margin:0 5px}
 .sh-proj{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;color:rgba(255,255,255,.72);margin-top:6px;white-space:nowrap;letter-spacing:.4px;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 .sh-proj b{color:#fff}
+/* the score panel */
+.sh-sbox{display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:rgba(8,6,7,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;
+  padding:7px 14px 8px;box-shadow:0 6px 18px rgba(0,0,0,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.sh-sbox .sb-lb{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:8px;
+  letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7);line-height:1.2;white-space:nowrap}
+.sh-sbox .sb-lb.sub{color:rgba(255,255,255,.55)}
+.sh-sbox .sh-score{font-size:31px;margin-top:1px}
+.sh-sbox .sh-proj{margin-top:1px;font-size:11px;color:rgba(255,255,255,.9)}
+.sh-sbox .sb-rule{width:100%;height:1px;background:rgba(255,255,255,.14);margin:5px 0 3px}
+.sh.compact .sh-sbox{padding:5px 10px 6px;border-radius:11px}
+.sh.compact .sh-sbox .sh-score{font-size:23px}
+.sh.compact .sh-sbox .sb-lb{font-size:7px;letter-spacing:1.1px}
+.sh.compact .sh-sbox .sh-proj{font-size:9.5px}
+@media (max-width:380px){
+  .sh-sbox{padding:6px 10px 7px}
+  .sh-sbox .sh-score{font-size:27px}
+}
 .sh-winbar{position:relative;z-index:3;height:5px;margin:2px 12px 12px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}
 .sh-winbar i{display:block;height:100%;background:var(--ac)}
 /* win% bar + numbers reveal the Rewind timeline */
@@ -988,6 +1059,10 @@ body.open .drawer{transform:translateX(0)}
   font-size:11px;font-weight:600;color:var(--accent)}
 .tbk-w i{font-style:normal;cursor:pointer;opacity:.7;font-size:10px}
 .tbk-none{font-size:11.5px;color:var(--ink-3);font-style:italic}
+.tbk-sugg{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 9px}
+.tbk-sugg span{padding:6px 11px;border-radius:10px;border:1px dashed var(--line);
+  font-size:11px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.tbk-sugg span:active{border-color:var(--accent);color:var(--accent)}
 .tbk-add{display:flex;gap:6px;margin-top:9px}
 .tbk-add input{flex:1;min-width:0;height:32px;border-radius:9px;border:1px solid var(--line);
   background:var(--card-2);color:var(--ink);padding:0 10px;outline:none;font-family:inherit;
@@ -998,7 +1073,7 @@ body.open .drawer{transform:translateX(0)}
 .tbk-off{margin-top:10px;text-align:center;font-size:10.5px;font-weight:700;color:var(--red);cursor:pointer}
 .tbk-tr{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:12px;
   border:1px solid var(--line);background:var(--card);margin-bottom:7px;cursor:pointer}
-.tbk-tt{flex:1;min-width:0;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbk-tt{flex:1;min-width:0;font-size:11.5px;font-weight:600;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .tbk-tt span{color:var(--ink-3);margin:0 3px}
 .tbk-ts{flex:none;font-size:8.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3)}
 .tbk-ts.proposed{color:var(--accent)}
@@ -1030,12 +1105,23 @@ body.open .drawer{transform:translateX(0)}
 /* ===== DRAFT ROOM ===== */
 .dr-clock{border:1px solid var(--line-soft);border-radius:16px;background:var(--card-2);padding:14px 15px;margin-bottom:12px;position:relative;overflow:hidden}
 .dr-clock.mine{border-color:var(--green);box-shadow:0 0 0 1px rgba(var(--green-rgb),.25) inset}
+.dr-clock.tap{cursor:pointer}
+.dr-clock.tap:active{background:rgba(255,255,255,.05)}
 .dr-clock .rd{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--ink-3);letter-spacing:1px;font-weight:700}
 .dr-clock .who{display:flex;align-items:center;gap:10px;margin-top:8px}
 .dr-crest{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;overflow:hidden;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:16px;flex:none}
 .dr-clock .nm{--tn-size:16px;line-height:1.2}
 .dr-clock .sub{font-size:10.5px;color:var(--ink-3);font-weight:600}
+.dr-whoid{flex:1;min-width:0}
+/* the pick countdown, sized to be one of the card's primary elements */
+.dr-timer{flex:none;min-width:82px;text-align:right;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:30px;line-height:1;letter-spacing:.5px;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.dr-timer.low{color:var(--red)}
+.dr-clock.mine .dr-timer{color:var(--green)}
+.dr-clock.mine .dr-timer.low{color:var(--red)}
 .dr-acts{display:flex;gap:7px;margin-top:12px}
 .dr-btn{flex:1;text-align:center;padding:9px 6px;border-radius:11px;border:1px solid var(--line);background:var(--card);
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
@@ -1109,12 +1195,13 @@ body.open .drawer{transform:translateX(0)}
   border:1px solid var(--line);flex:none;display:grid;place-items:center;font-size:10px;color:var(--ink-3);font-weight:700}
 .dr-face img{width:100%;height:100%;object-fit:cover}
 .dr-info{flex:1;min-width:0}
-.dr-nm{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dr-mt{font-size:9.5px;color:var(--ink-3);font-weight:600}
+.dr-nm{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the meta line must not wrap either: it would change row height mid-scroll */
+.dr-mt{font-size:10px;color:var(--ink-3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dr-pick{display:flex;align-items:center;gap:9px;padding:7px 6px;border-bottom:1px solid var(--line-soft)}
 .dr-pick .no{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;color:var(--ink-3);width:34px;flex:none;font-weight:700}
 .dr-pick .pn{flex:1;min-width:0;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dr-pick .tn{--tn-size:10px;flex:none;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-pick .tn{--tn-size:10px;flex:none;max-width:120px;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .dr-pick.me{background:rgba(var(--green-rgb),.07)}
 .dr-done{border:1px solid var(--green);border-radius:14px;background:rgba(var(--green-rgb),.08);padding:13px;text-align:center;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:12px}
@@ -1326,8 +1413,20 @@ body.hub .tabs{display:none}
 
 .leaguebar .lb-r{display:flex;align-items:center;gap:7px}
 .hubback{width:32px;height:32px;border-radius:10px;background:var(--card);border:1px solid var(--line);
+  padding:0;font:inherit;-webkit-appearance:none;appearance:none;
   display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
 .hubback svg{width:17px;height:17px}
+/* Hidden outright rather than made invisible: on a tab destination the row
+   then starts with the league selector, which is the arrangement the Team and
+   League tabs already used and the one the app now uses everywhere. */
+.hubback.hide{display:none}
+/* Player cards, settings, transactions and notifications are drill-downs, so
+   they show the back chevron alone -- no tab strip, no league chrome. */
+body.subview .tabs{display:none}
+body.subview .leaguebar .league-id,
+body.subview .leaguebar .lb-r{display:none}
+body.subview .leaguebar{justify-content:flex-start;padding-bottom:11px}
+body.subview .hubback{width:36px;height:36px}
 .leaguebar .msg{width:32px;height:32px}
 .leaguebar .burger{width:32px;height:32px}
 
@@ -1349,7 +1448,7 @@ body.hub .tabs{display:none}
 
 .hb-id{flex:1;min-width:0}
 .hb-nm{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;letter-spacing:.3px;
-  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+  text-transform:uppercase;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.15}
 .hb-st{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -1375,13 +1474,18 @@ body.hub .tabs{display:none}
 
 /* the stage chrome grew a second icon on the left */
 .ms-chrome-l{display:flex;align-items:center;gap:7px}
+.ms-chrome-r{display:flex;align-items:center;gap:7px;flex:none}
+.ms-chrome .ms-title{flex:1;min-width:0;justify-content:flex-start}
+.ms-chrome .ms-title .wk{text-align:left}
+.leaguebar .league-id{flex:1;min-width:0}
 
 /* A seeded league is read-only, so the controls that write to the real league's
    state — the week stepper and the All Matchups drill-in — do not belong to it. */
 body.seeded .view[data-view="matchup"] .mrow,
 body.seeded #userRewind,
 body.seeded #lbChat,
-body.seeded #mActivity{display:none}
+body.seeded #mActivity,
+body.seeded #standWkHd{display:none}
 
 /* message another manager, from their team screen */
 .tv-msg{flex:none;width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.07);
@@ -1491,6 +1595,49 @@ body.seeded #mActivity{display:none}
 .dr-wait-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:19px;
   letter-spacing:.4px;text-transform:uppercase}
 .dr-wait-s{font-size:12px;color:var(--ink-2);margin-top:4px}
+/* ===== archive + danger zone ===== */
+.hb-sec{display:flex;align-items:center;gap:8px;margin:20px 2px 9px;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:1.3px;text-transform:uppercase;color:var(--ink-3)}
+.hb-sec span{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px}
+.hb-sec i{margin-left:auto;font-style:normal;font-size:14px}
+.hb-sec.danger{color:var(--red);cursor:default}
+.hb-row.arch,.hb-row.doom{display:flex;align-items:center;gap:11px;padding:11px 13px;
+  border:1px solid var(--line);border-radius:14px;background:var(--card);margin-bottom:8px}
+.hb-row.arch{opacity:.75}
+.hb-row.doom{border-color:rgba(var(--red-rgb),.45)}
+.hb-mark{width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;
+  overflow:hidden;background:var(--card-2);border:1px solid var(--line);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;color:var(--ink-2)}
+.hb-mark img{width:100%;height:100%;object-fit:contain}
+.hb-st.warn{color:var(--red)}
+.hb-acts{display:flex;gap:6px;flex:none}
+.hb-act{flex:none;padding:7px 11px;border-radius:10px;border:1px solid var(--line);
+  font-size:10.5px;font-weight:700;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.hb-act.danger{border-color:rgba(var(--red-rgb),.5);color:var(--red)}
+.set-card.dz{border-color:rgba(var(--red-rgb),.4)}
+.dz-t{color:var(--red)}
+.set-btn.warn{border-color:rgba(var(--red-rgb),.5);color:var(--red)}
+.dz-list{margin:4px 0 12px;padding-left:18px;font-size:11.5px;color:var(--ink-2);line-height:1.7}
+.dz-name{margin:2px 0 9px;padding:9px 12px;border-radius:10px;background:var(--card-2);
+  border:1px solid var(--line);font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12.5px;font-weight:700;color:var(--ink);-webkit-user-select:all;user-select:all}
+.dz-ack{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:11px;
+  border:1px solid var(--line);background:var(--card-2);cursor:pointer;font-size:12px;
+  color:var(--ink-2);margin-bottom:4px}
+.dz-ack .box{flex:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line);
+  display:grid;place-items:center;margin-top:1px}
+.dz-ack.on .box{border-color:var(--red);background:var(--red)}
+.dz-ack.on .box::after{content:"\2713";color:#fff;font-size:11px;font-weight:800}
+.dz-hold{position:relative;overflow:hidden;height:48px;border-radius:13px;display:grid;place-items:center;
+  border:1.5px solid var(--red);color:var(--red);cursor:pointer;-webkit-user-select:none;user-select:none;
+  touch-action:none;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;
+  font-size:13px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px}
+.dz-hold i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(var(--red-rgb),.32)}
+.dz-hold span{position:relative}
+.dz-hold.holding{background:rgba(var(--red-rgb),.08)}
+.dr-wait-why{margin-top:11px;font-size:11px;color:var(--ink-3);text-align:center;line-height:1.45}
+.dr-wait-why.ok{color:var(--green)}
 .dr-wait-bar{height:6px;border-radius:3px;background:var(--line-soft);margin:12px 8px 10px;overflow:hidden}
 .dr-wait-bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .3s}
 .stand-row.dim{opacity:.42}
@@ -1556,6 +1703,45 @@ body.forming .tabs{display:none}
 .pb-teams{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .pb-teams div{font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pb-teams b{color:var(--accent);font-weight:800;margin-right:3px}
+/* median result badges under a team on the matchup */
+.sh-res{display:flex;gap:4px;justify-content:center;margin-top:3px;position:relative;z-index:2}
+.rb{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8px;
+  font-weight:700;letter-spacing:.3px;padding:2px 5px;border-radius:6px;
+  background:rgba(0,0,0,.45);border:1px solid var(--line)}
+.rb.W{color:var(--green);border-color:rgba(var(--green-rgb),.5)}
+.rb.L{color:var(--red);border-color:rgba(var(--red-rgb),.5)}
+.rb.T{color:var(--ink-3)}
+/* a record is tappable wherever it appears */
+.sh-rec,.st-c.rec,.tv-sub{cursor:pointer}
+/* team schedule page */
+.ts-head{display:flex;align-items:center;gap:11px;padding:2px 0 14px}
+.ts-crest{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;overflow:hidden;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:18px;flex:none}
+.ts-id{flex:1;min-width:0}
+.ts-nm{--tn-size:18px;line-height:1.15}
+.ts-mgr{font-size:11px;color:var(--ink-3);font-weight:600;margin-top:2px}
+.ts-pf{flex:none;text-align:right}
+.ts-pf span{display:block;font-size:8.5px;font-weight:800;letter-spacing:.9px;color:var(--ink-3)}
+.ts-pf b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-size:17px}
+.ts-key{display:grid;grid-template-columns:58px 1fr 52px 54px;gap:8px;padding:0 2px 6px;
+  font-size:8.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3)}
+.ts-key span:nth-child(n+3){text-align:right}
+.ts-row{display:grid;grid-template-columns:58px 1fr 52px 54px;gap:8px;align-items:center;
+  padding:9px 2px;border-top:1px solid var(--line-soft)}
+.ts-row.up{opacity:.55}
+.ts-wk{font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.ts-opp{font-size:12.5px;font-weight:600}
+.ts-sub{font-size:10px;color:var(--ink-3);font-weight:600;margin-top:2px}
+.ts-res{font-weight:800}
+.ts-res.W{color:var(--green)}
+.ts-res.L{color:var(--red)}
+.ts-res.T{color:var(--ink-3)}
+.ts-med{margin-left:6px}
+.ts-med.W{color:var(--green)}
+.ts-med.L{color:var(--red)}
+.ts-sc{text-align:right;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:14px}
+.ts-rec{text-align:right;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px;font-weight:700;color:var(--ink-2)}
 /* league history + draft history */
 .lh-top{display:flex;gap:9px;margin:2px 0 4px}
 .lh-w{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 11px}
@@ -1608,7 +1794,7 @@ body.forming .tabs{display:none}
 .kt-bd{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:none;overflow:hidden;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px}
 .kt-nm{flex:1;min-width:0}
-.kt-nm .n{--tn-size:13px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kt-nm .n{--tn-size:13px;font-size:13px;font-weight:700;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 .kt-nm .m{font-size:9.5px;color:var(--ink-3);font-weight:600;margin-top:1px}
 .kt-sc{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
   font-weight:700;color:var(--ink-2);width:52px;text-align:right}
@@ -1859,6 +2045,71 @@ body.forming .tabs{display:none}
 .cond-row{display:flex;gap:8px;padding:0 16px 10px}
 .cond-row .set-ctl{flex:1;width:100%}
 .cond-btns{display:flex;gap:8px;padding:4px 16px 18px}
+/* ---- conditional-pick builder -------------------------------------------
+   Built from the controls the settings screens already use (.set-ctl, .tc-btn)
+   inside the existing bottom sheet, so it reads as the same app. Everything is
+   at least 34px tall for a thumb. */
+.cond-seg-wrap{display:flex;gap:8px;padding:2px 16px 10px}
+#condSheet .set-ctl,#condSheet input.set-ctl{max-width:none;width:100%;text-align:left}
+#condSheet input[type=number].set-ctl{text-align:center}
+#condSheet select.set-ctl{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 15px,calc(100% - 9px) 15px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:26px}
+.cond-seg{flex:1;padding:10px 6px;border-radius:11px;background:var(--card-2);border:1px solid var(--line);
+  color:var(--ink-2);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;
+  letter-spacing:.8px;text-transform:uppercase;cursor:pointer;min-height:42px}
+.cond-seg.on{background:var(--accent-soft);border-color:rgba(var(--accent-rgb),.55);color:var(--accent)}
+.cond-lb{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9px;letter-spacing:1.4px;
+  text-transform:uppercase;color:var(--ink-3);padding:8px 16px 5px}
+.cond-row.two{gap:8px}
+.cond-hint{margin:0 16px 9px;font-size:10.5px;line-height:1.45;color:var(--ink-3)}
+.cond-f{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.cond-f>span{font-size:9.5px;color:var(--ink-3);font-weight:600}
+.cond-f .set-ctl{width:100%}
+.cp-list{max-height:168px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 16px 4px;
+  border:1px solid var(--line-soft);border-radius:11px;background:#141113}
+.cp-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line-soft);cursor:pointer;min-height:38px}
+.cp-row:last-child{border-bottom:0}
+.cp-row.on{background:var(--accent-soft)}
+.cp-face{width:26px;height:26px;border-radius:8px;overflow:hidden;flex:none;display:grid;place-items:center;background:var(--card)}
+.cp-face img{width:100%;height:100%;object-fit:cover}
+.cp-nm{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.cp-mt{flex:none;font-size:9px;color:var(--ink-3);font-weight:600;display:flex;align-items:center;gap:4px}
+.cp-pt{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;color:var(--ink-2)}
+.cp-pt i{font-style:normal;font-size:8px;color:var(--ink-3)}
+.cp-none{padding:14px 12px;font-size:11.5px;color:var(--ink-3);text-align:center}
+.cond-opts{display:flex;flex-direction:column;gap:6px;padding:0 16px 6px}
+.cond-opt{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:11px;background:var(--card-2);
+  border:1px solid var(--line);cursor:pointer;color:var(--ink-2);font-family:inherit;min-height:44px}
+.cond-opt.on{background:var(--accent-soft);border-color:rgba(var(--accent-rgb),.55)}
+.cond-opt b{display:block;font-size:12.5px;color:var(--ink);font-weight:700}
+.cond-opt.on b{color:var(--accent)}
+.cond-opt span{display:block;font-size:10px;color:var(--ink-3);margin-top:2px}
+.cond-ctx{margin:2px 16px 6px;padding:9px 10px;border-radius:11px;background:#141113;border:1px solid var(--line-soft)}
+.cond-ctx .cc-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:8.5px;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.cond-ctx .cc-g{display:flex;gap:8px}
+.cond-ctx .cc-g>div{flex:1;min-width:0}
+.cond-ctx .cc-g b{display:block;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:14px;font-weight:700;color:var(--ink)}
+.cond-ctx .cc-g span{display:block;font-size:8.5px;color:var(--ink-3);line-height:1.3;margin-top:2px;overflow-wrap:anywhere}
+.cond-verdict{margin:0 16px 6px;padding:8px 10px;border-radius:11px;border:1px solid var(--line-soft);background:var(--card-2)}
+.cond-verdict b{display:block;font-size:11.5px}
+.cond-verdict span{display:block;font-size:10px;color:var(--ink-3);margin-top:2px}
+.cond-verdict.easy b{color:var(--green)}
+.cond-verdict.mid b{color:var(--ink)}
+.cond-verdict.hard b{color:var(--red)}
+.cond-sum{margin:8px 16px 4px;padding:10px 11px;border-radius:11px;background:var(--accent-soft);
+  border:1px solid rgba(var(--accent-rgb),.35);font-size:12px;line-height:1.4;color:var(--ink)}
+.cond-warn{margin:0 16px 4px;font-size:10.5px;color:var(--red);padding:4px 2px}
+.cond-warn.legacy{color:var(--ink-3)}
+.cond-pick-on{margin:0 16px 4px;font-size:10.5px;color:var(--ink-3);padding:2px}
+.cond-pick-on b{color:var(--ink)}
+.cond-btns .tc-btn{font-family:inherit;font-size:12.5px;font-weight:600}
+.cond-btns .tc-btn.off{opacity:.45}
+#condSheet{max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* a staged pick with a condition wraps its summary onto its own line */
+.as-pick.cond{flex-wrap:wrap}
+.as-pick.cond .as-cond{flex-basis:100%;white-space:normal;overflow:visible;text-overflow:clip;margin-top:2px}
 
 /* css/notifs.css */
 /* ===== NOTIFICATION CENTER =====
@@ -1909,7 +2160,7 @@ body.forming .tabs{display:none}
 .tx-ts{font-size:9px;color:var(--ink-3);font-weight:600}
 .tx-line{display:flex;align-items:flex-start;gap:8px;padding:4px 0}
 .tx-who{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;
-  letter-spacing:.3px;flex:none;width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-top:4px}
+  letter-spacing:.3px;flex:none;width:92px;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;padding-top:4px}
 .tx-chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
 .tx-kind.waiver{color:var(--accent);border-color:rgba(var(--accent-rgb),.3)}
 .tx-kind.commish{color:#E6D15A;border-color:rgba(230,209,90,.4)}
@@ -2471,9 +2722,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   <!-- SHIFTABLE -->
   <div class="shift">
     <div class="leaguebar">
-      <div class="hubback" onclick="headerBack()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-      </div>
+      <button type="button" class="hubback" onclick="headerBack()" aria-label="Back" title="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
       <div class="league-id" onclick="goHome()">
         <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
         <div>
@@ -2566,12 +2817,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 
       <!-- ===== STANDINGS VIEW ===== -->
       <div class="view" data-view="standings">
-        <div class="wsw center">
-          <div class="ar" data-step="-1" onclick="stepWeek(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg></div>
-          <div class="wk" onclick="openWeekPicker()"><span data-weeklabel>Week 8</span><span class="cv">▼</span></div>
-          <div class="ar" data-step="1" onclick="stepWeek(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></div>
-        </div>
-        <div class="hd"><span><span data-weeklabel>Week 8</span> &middot; Matchups</span></div>
+        <div class="hd wkhd" id="standWkHd" style="margin-top:14px"><span><span class="wkdd" onclick="openWeekPicker()"><span data-weeklabel>Week 8</span><span class="cv">▼</span></span>&middot; Matchups</span></div>
         <div class="sm-wrap" id="standMatchups"></div>
         <div class="hd"><span>League Standings</span></div>
         <div class="stand" id="standBody"></div>
@@ -2604,6 +2850,11 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       <!-- ===== TRANSACTION LOG ===== -->
       <div class="view" data-view="log">
         <div id="logBody"></div>
+      </div>
+
+      <!-- ===== TEAM SCHEDULE (opened from a record) ===== -->
+      <div class="view" data-view="tsched">
+        <div id="tschedBody"></div>
       </div>
 
       <!-- ===== PLAYER CARD VIEW ===== -->
@@ -4066,12 +4317,27 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     posRankFor: () => posRankFor,
     posRankNo: () => posRankNo,
     renderPlayer: () => renderPlayer,
+    leagueMedianOn: () => leagueMedianOn,
+    openTeamSchedule: () => openTeamSchedule,
+    recordText: () => recordText,
     renderStandings: () => renderStandings2,
+    sortStandings: () => sortStandings,
+    standOrder: () => standOrder,
+    standSortValue: () => standSortValue,
+    renderTeamSchedule: () => renderTeamSchedule,
+    resultBadges: () => resultBadges,
+    teamRecord: () => teamRecord,
+    tschedBackFn: () => tschedBackFn,
+    weekMedian: () => weekMedian,
+    weekPointsOf: () => weekPointsOf,
+    weekResult: () => weekResult,
     renderTableStandings: () => renderTableStandings,
     rostPct: () => rostPct,
     seedHash: () => seedHash,
     tableRow: () => tableRow,
     weekFinish: () => weekFinish,
+    weekOpp: () => weekOpp,
+    weekStatLine: () => weekStatLine,
     weeklyLogHTML: () => weeklyLogHTML,
     trendRow: () => trendRow
   });
@@ -4340,7 +4606,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     paintDraftBoard: () => paintDraftBoard,
     recentPicksHTML: () => recentPicksHTML,
     renderDraft: () => renderDraft,
-    setDraftPos: () => setDraftPos
+    openPickPool: () => openPickPool,
+    setDraftPos: () => setDraftPos,
+    takePlayer: () => takePlayer
   });
 
   // js/draft-meta.js
@@ -4617,12 +4885,32 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     allLeagues: () => allLeagues,
     countdownParts: () => countdownParts,
     draftAt: () => draftAt,
+    DEL: () => DEL,
+    archiveLeague: () => archiveLeague,
+    confirmDeleteNow: () => confirmDeleteNow,
+    delAck: () => delAck,
+    delStep: () => delStep,
+    delType: () => delType,
+    deleteDaysLeft: () => deleteDaysLeft,
+    deleteNow: () => deleteNow,
     goHome: () => goHome,
     headerBack: () => headerBack,
+    isArchived: () => isArchived,
+    leagueFlag: () => leagueFlag,
+    leagueFlags: () => leagueFlags,
+    isPendingDelete: () => isPendingDelete,
+    purgedLeagues: () => purgedLeagues,
+    openDeleteLeague: () => openDeleteLeague,
+    purgeLeague: () => purgeLeague,
+    restoreLeague: () => restoreLeague,
+    scheduleDelete: () => scheduleDelete,
+    sweepDeletions: () => sweepDeletions,
+    toggleArchivedOpen: () => toggleArchivedOpen,
     inRealLeague: () => inRealLeague,
     initLeagues: () => initLeagues2,
     leagueById: () => leagueById,
     setBackLabel: () => setBackLabel,
+    syncBackButton: () => syncBackButton,
     leagueMark: () => leagueMark,
     leagueScore: () => leagueScore,
     leagueStatus: () => leagueStatus,
@@ -4660,7 +4948,21 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const stage = name === "matchup" && !(lg && lg.real && kartMode());
     document.querySelector(".shift").classList.toggle("stage-on", stage);
     document.body.classList.toggle("hub", name === "home");
+    document.body.classList.toggle("subview", SUBVIEWS.indexOf(name) > -1);
     if (name !== "wait") document.body.classList.remove("forming");
+    syncBackButton(name);
+  }
+  // The tab strip already navigates between its own destinations, and home is
+  // the root, so a back chevron on any of those is a second control for
+  // something the tabs do. Hide it there; show it on drill-downs only.
+  var SUBVIEWS = ["player", "settings", "log", "notifs"];
+  function syncBackButton(name) {
+    const b = document.querySelector(".hubback");
+    if (!b) return;
+    const view = name || currentViewName();
+    const isTab = TABS().some((t) => t.k === view) || view === "home" || view === "wait";
+    b.classList.toggle("hide", isTab);
+    if (SUBVIEWS.indexOf(view) > -1) b.classList.remove("hide");
   }
   function preDraft() {
     return !draftDone();
@@ -5051,6 +5353,10 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     selectBlockPlayer: () => selectBlockPlayer,
     startTrade: () => startTrade,
     submitWant: () => submitWant,
+    addPromptWant: () => addPromptWant,
+    promptBlockWants: () => promptBlockWants,
+    promptWantsHTML: () => promptWantsHTML,
+    removePromptWant: () => removePromptWant,
     toggleTradeBlock: () => toggleTradeBlock,
     tradeBlockBag: () => tradeBlockBag,
     wantKey: () => wantKey,
@@ -6313,18 +6619,65 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function toggleTradeBlock(key) {
     if (!ownsBlockPlayer(key)) { toast("Only the owner can list that player"); return; }
     const bag = tradeBlockBag(), k = pkey(key);
-    if (bag[k]) delete bag[k];
-    else bag[k] = { wants: [], listedAt: Date.now() };
+    const adding = !bag[k];
+    if (adding) bag[k] = { wants: [], listedAt: Date.now() };
+    else delete bag[k];
     saveStore();
-    if (tradeSel === key && !bag[k]) tradeSel = null;
+    if (tradeSel === key && !adding) tradeSel = null;
     renderPanel("trades");
     refreshPlayerArt();
+    // asking here is the whole point: the owner is already thinking about the
+    // player, and it saves a trip to another screen to say what they want back
+    if (adding) promptBlockWants(key);
+  }
+  var WANT_SUGGESTIONS = ["Young WR", "RB depth", "2028 1st", "Veteran QB", "Best offer"];
+  function promptBlockWants(key) {
+    if (!ownsBlockPlayer(key)) return;
+    const rec = pIdx()[pkey(key)] || NFL_BY_ID[pkey(key)] || {};
+    const nm = rec.full || rec.n || key;
+    document.getElementById("confirmTitle").textContent = `Looking for \u2014 ${nm}`;
+    document.getElementById("confirmBody").innerHTML = `
+    <div class="cf-msg">${escHtml(nm)} is on the trade block. Say what you want back so the
+      league knows before they ask. Tap a suggestion or type your own \u2014 you can skip and add
+      it later from the Trades panel.</div>
+    <div class="tbk-sugg">${WANT_SUGGESTIONS.map((v) => `<span onclick="addPromptWant('${esc(key)}','${esc(v)}')">${escHtml(v)}</span>`).join("")}</div>
+    <div id="promptWants">${promptWantsHTML(key)}</div>
+    <div class="tbk-add">
+      <input id="promptWantInput" type="text" maxlength="60" placeholder="Anything else\u2026"
+        onkeydown="if(event.key==='Enter')addPromptWant('${esc(key)}',this.value,this)">
+      <span onclick="addPromptWant('${esc(key)}',document.getElementById('promptWantInput').value,document.getElementById('promptWantInput'))">Add</span>
+    </div>
+    <div class="cf-btns">
+      <div class="cf-btn cancel" onclick="closeConfirm()">Skip for now</div>
+      <div class="cf-btn" style="border-color:var(--green);color:var(--green)" onclick="closeConfirm()">Done</div>
+    </div>`;
+    document.getElementById("confirmScrim").classList.add("show");
+    document.getElementById("confirmSheet").classList.add("show");
+  }
+  function promptWantsHTML(key) {
+    const wants = blockWants(key);
+    if (!wants.length) return `<div class="tbk-none">Nothing added yet \u2014 skipping is fine.</div>`;
+    return `<div class="tbk-wants">${wants.map((w, i) => `<span class="tbk-w">${escHtml(w)}
+      <i onclick="removePromptWant('${esc(key)}',${i})">\u2715</i></span>`).join("")}</div>`;
+  }
+  function addPromptWant(key, txt, el) {
+    addBlockWant(key, txt);
+    if (el) el.value = "";
+    const box = document.getElementById("promptWants");
+    if (box) box.innerHTML = promptWantsHTML(key);
+  }
+  function removePromptWant(key, i) {
+    removeBlockWant(key, i);
+    const box = document.getElementById("promptWants");
+    if (box) box.innerHTML = promptWantsHTML(key);
   }
   function addBlockWant(key, txt) {
     txt = (txt || "").trim();
     if (!txt || !ownsBlockPlayer(key)) return;
     const bag = tradeBlockBag(), k = pkey(key);
     if (!bag[k]) bag[k] = { wants: [], listedAt: Date.now() };
+    // ignore a duplicate rather than listing the same thing twice
+    if ((bag[k].wants || []).indexOf(txt.slice(0, 60)) > -1) return;
     bag[k].wants = (bag[k].wants || []).concat([txt.slice(0, 60)]);
     saveStore();
     renderPanel("trades");
@@ -6897,15 +7250,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       type: rec.league.type,
       teamCount: +rec.league.teams,
       week: 1,
-      status: "forming",
+      // a league sits in the wait room only until its draft is started; once
+      // the commissioner starts it, it stops routing there
+      status: rec.startedAt ? "predraft" : "forming",
       myTeamKey: null,
       real: false,
-      created: true,
+      created: !rec.startedAt,
+      started: !!rec.startedAt,
       rec
     };
   }
+  function purgedLeagues() {
+    if (!store.purged) store.purged = [];
+    return store.purged;
+  }
   function allLeagues() {
-    return LEAGUES.concat(myLeagues().map(asLeague));
+    const gone = purgedLeagues();
+    return LEAGUES.concat(myLeagues().map(asLeague)).filter((l) => gone.indexOf(l.id) < 0);
   }
   function leagueById(id) {
     if (LEAGUE_BY_ID[id]) return LEAGUE_BY_ID[id];
@@ -7034,6 +7395,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (document.body.classList.contains("open")) toggleDrawer();
       return;
     }
+    // started but not one of the seeded preview leagues: its draft is the only
+    // screen it has real data for
+    if (lg.started) {
+      showTab("draft");
+      if (document.body.classList.contains("open")) toggleDrawer();
+      return;
+    }
     if (lg.real) {
       renderWeek2();
       showTab(homeTab2());
@@ -7052,7 +7420,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     team: () => teamBack(),
     player: () => playerBack(),
     log: () => logBack(),
-    settings: () => showTab(homeTab()),
+    settings: () => showTab(homeTab2()),
+    notifs: () => backFromNotifs(),
+    tsched: () => tschedBackFn(),
     draft: () => preDraft() ? goHome() : showTab("matchup")
   };
   function headerBack() {
@@ -7101,7 +7471,29 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var trade_exports = {};
   __export(trade_exports, {
     TB: () => TB,
-    TRIGGERS: () => TRIGGERS,
+    PLAYOFF_STEPS: () => PLAYOFF_STEPS,
+    COND_KINDS: () => COND_KINDS,
+    SCORE_SCOPES: () => SCORE_SCOPES,
+    normalizeCond: () => normalizeCond,
+    condBag: () => condBag,
+    pickCond: () => pickCond,
+    condValid: () => condValid,
+    condSummary: () => condSummary,
+    condSentence: () => condSentence,
+    condProgress: () => condProgress,
+    evalCond: () => evalCond,
+    playoffFinishOf: () => playoffFinishOf,
+    scoringContext: () => scoringContext,
+    thresholdVerdict: () => thresholdVerdict,
+    leagueScorers: () => leagueScorers,
+    invalidateScorers: () => invalidateScorers,
+    setCondKind: () => setCondKind,
+    setCondField: () => setCondField,
+    condSearchInput: () => condSearchInput,
+    renderCond: () => renderCond,
+    nflName: () => nflName,
+    nflById: () => nflById,
+    shortName: () => shortName,
     assetChipHTML: () => assetChipHTML,
     assetId: () => assetId,
     buildTrade: () => buildTrade,
@@ -7124,7 +7516,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveCond: () => saveCond,
     sendNote: () => sendNote,
     submitTrade: () => submitTrade,
-    syncCond: () => syncCond,
     toggleAsset: () => toggleAsset,
     triggerLabel: () => triggerLabel
   });
@@ -7345,9 +7736,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const base = PICK_BASE[pk.round] || 300;
     const yrs = Math.max(0, (pk.year || CURRENT_YEAR) - CURRENT_YEAR);
     const v = Math.round(base * Math.pow(0.86, yrs));
-    if (pk.cond && pk.cond.upgradeTo) {
-      const up = PICK_BASE[+pk.cond.upgradeTo] || base;
-      const odds = { playoffs: 0.55, championship: 0.25, points_threshold: 0.4 }[pk.cond.trigger] || 0.35;
+    const c = normalizeCond(pk.cond);
+    if (c && c.upgradeTo) {
+      const up = PICK_BASE[+c.upgradeTo] || base;
+      const odds = c.kind === "playoff"
+        ? { miss: 0.45, make: 0.55, advance: 0.32, final: 0.2, win: 0.1 }[c.playoff] || 0.35
+        : 0.4;
       return Math.round(v + (Math.round(up * Math.pow(0.86, yrs)) - v) * odds);
     }
     return v;
@@ -7370,16 +7764,173 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 
   // js/trade.js
   var TB = null;
-  var TRIGGERS = [
-    ["playoffs", "makes the playoffs"],
-    ["championship", "makes the championship"],
-    ["points_threshold", "scores over"]
+  // ---- conditional pick model -------------------------------------------
+  // A condition is one of two kinds. A player condition names the player whose
+  // production decides it, the week the count starts from, whether it counts a
+  // running total or a single week, and the threshold. A playoff condition
+  // names how far the team has to go. Both carry the round the pick becomes.
+  //
+  // Legacy shape (trigger: playoffs | championship | points_threshold, value,
+  // upgradeTo) predates this and is migrated on read, never in place, so a
+  // trade saved by an older build still displays and still opens for editing.
+  var PLAYOFF_STEPS = [
+    ["miss", "misses the playoffs", "Misses playoffs"],
+    ["make", "reaches the playoffs", "Makes playoffs"],
+    ["advance", "wins its first playoff matchup", "Wins first round"],
+    ["final", "reaches the championship", "Reaches championship"],
+    ["win", "wins the championship", "Wins championship"]
   ];
-  function triggerLabel(c) {
+  var COND_KINDS = [["player", "Player performance"], ["playoff", "Playoff finish"]];
+  // A condition stores whatever identifier the roster carries -- a gsis id when
+  // there is one, the name otherwise -- so both resolve back to a player here.
+  function nflById(id) {
+    if (!id) return null;
+    if (NFL_BY_ID[id]) return NFL_BY_ID[id];
+    return NFL_PLAYERS.find((q) => q.n === id || q.full === id) || null;
+  }
+  function nflName(id) {
+    const p = nflById(id);
+    return p ? p.full || p.n : String(id || "");
+  }
+  function shortName(full) {
+    const parts = String(full || "").trim().split(/\s+/);
+    if (parts.length < 2) return parts[0] || "";
+    return parts[0][0] + ". " + parts.slice(1).join(" ");
+  }
+  var SCORE_SCOPES = [
+    ["total", "Scores over \u2014 running total"],
+    ["week", "Scores over \u2014 in a single week"]
+  ];
+  function playoffStep(v) {
+    return PLAYOFF_STEPS.find((x) => x[0] === v) || PLAYOFF_STEPS[1];
+  }
+  // Reading a condition always goes through here, so old records and new ones
+  // are the same shape everywhere downstream.
+  function normalizeCond(c) {
+    if (!c) return null;
+    if (c.kind === "player" || c.kind === "playoff") {
+      const isPlayer = c.kind === "player";
+      return {
+        kind: c.kind,
+        playerId: isPlayer ? c.playerId || null : null,
+        playerName: isPlayer ? c.playerName || null : null,
+        startWeek: isPlayer ? c.startWeek == null ? MINW : +c.startWeek : MINW,
+        scope: isPlayer ? c.scope === "week" ? "week" : "total" : "total",
+        value: isPlayer ? c.value == null ? null : +c.value : null,
+        playoff: isPlayer ? null : c.playoff || null,
+        upgradeTo: +c.upgradeTo || null,
+        legacy: !!c.legacy,
+        status: c.status || "pending"
+      };
+    }
+    const up = +c.upgradeTo || null;
+    if (c.trigger === "playoffs") return { kind: "playoff", playoff: "make", upgradeTo: up, legacy: true, status: c.status || "pending", playerId: null, playerName: null, startWeek: MINW, scope: "total", value: null };
+    if (c.trigger === "championship") return { kind: "playoff", playoff: "final", upgradeTo: up, legacy: true, status: c.status || "pending", playerId: null, playerName: null, startWeek: MINW, scope: "total", value: null };
+    // an old points threshold had no player attached: keep the number, mark it
+    // legacy, and let the editor require a player before it can be re-saved
+    return { kind: "player", playerId: null, playerName: null, startWeek: MINW, scope: "total", value: c.value == null ? null : +c.value, playoff: null, upgradeTo: up, legacy: true, status: c.status || "pending" };
+  }
+  function condValid(c) {
+    c = normalizeCond(c);
+    if (!c) return { ok: false, why: "No condition set." };
+    if (!c.upgradeTo) return { ok: false, why: "Choose the round this pick becomes." };
+    if (c.kind === "playoff") {
+      if (!c.playoff || !PLAYOFF_STEPS.some((x) => x[0] === c.playoff)) return { ok: false, why: "Choose a playoff result." };
+      return { ok: true };
+    }
+    if (!c.playerId) return { ok: false, why: "Choose the player this depends on." };
+    if (!(c.value > 0) || !isFinite(c.value)) return { ok: false, why: "Enter a points threshold above zero." };
+    if (!(c.startWeek >= MINW && c.startWeek <= MAXW)) return { ok: false, why: "Choose a starting week." };
+    return { ok: true };
+  }
+  function condPlayerLabel(c) {
+    if (c.playerId) return c.playerName || shortName(nflName(c.playerId));
+    return "Unset player";
+  }
+  // Full sentence, used in the builder so the user reads back what they set.
+  function condSentence(c, pickText) {
+    c = normalizeCond(c);
     if (!c) return "";
-    const t = (TRIGGERS.find((x) => x[0] === c.trigger) || [])[1] || c.trigger;
-    const val = c.trigger === "points_threshold" ? ` ${c.value || 0}` : "";
-    return `${ordRound(c.upgradeTo)} if ${t}${val}`;
+    const becomes = pickText ? `, ${pickText} becomes a ${ordRound(c.upgradeTo)} round pick` : "";
+    if (c.kind === "playoff") {
+      return `If the team ${playoffStep(c.playoff)[1]}${becomes}.`;
+    }
+    if (!c.playerId) return "Choose a player and a points threshold to finish this condition.";
+    const who = nflName(c.playerId);
+    const val = c.value == null ? "—" : c.value;
+    if (c.scope === "week") {
+      return `If ${who} scores over ${val} fantasy points in any single week from Week ${c.startWeek} onward${becomes}.`;
+    }
+    return `If ${who} scores over ${val} total fantasy points from Week ${c.startWeek} onward${becomes}.`;
+  }
+  // Short form for the chip on a staged asset and on a posted trade card, so a
+  // condition can be read without reopening the builder.
+  function condSummary(c) {
+    c = normalizeCond(c);
+    if (!c) return "";
+    if (c.kind === "playoff") return playoffStep(c.playoff)[2];
+    const val = c.value == null ? "?" : c.value;
+    const who = condPlayerLabel(c);
+    return c.scope === "week" ? `${who} ${val}+ pts in a week` : `${who} ${val}+ pts from Wk ${c.startWeek}`;
+  }
+  function triggerLabel(c) {
+    c = normalizeCond(c);
+    if (!c) return "";
+    return `${ordRound(c.upgradeTo)} if ${condSummary(c)}`;
+  }
+  // ---- evaluation --------------------------------------------------------
+  // Conditions are data, so they can be checked. Player conditions run off the
+  // same wkPts() the player card and the leaders board use; playoff conditions
+  // read the league's own bracket size and seeding.
+  function condProgress(c) {
+    c = normalizeCond(c);
+    if (!c || c.kind !== "player" || !c.playerId) return null;
+    const p = nflById(c.playerId);
+    if (!p) return null;
+    let total = 0, best = 0, weeks = 0;
+    for (let w = Math.max(MINW, c.startWeek); w <= Math.min(MAXW, LIVE_WEEK); w++) {
+      const v = wkPts(p, w);
+      if (v == null) continue;
+      total += v;
+      best = Math.max(best, v);
+      weeks++;
+    }
+    total = Math.round(total * 10) / 10;
+    best = Math.round(best * 10) / 10;
+    return { total, best, weeks, have: c.scope === "week" ? best : total };
+  }
+  function evalCond(c, teamKey) {
+    c = normalizeCond(c);
+    if (!c) return { state: "none", text: "" };
+    if (c.kind === "playoff") {
+      const fin = playoffFinishOf(teamKey);
+      if (fin == null) return { state: "pending", text: "Playoffs have not been played." };
+      const need = PLAYOFF_STEPS.findIndex((x) => x[0] === c.playoff);
+      const met = c.playoff === "miss" ? fin === 0 : fin >= need;
+      return { state: met ? "met" : "missed", text: met ? "Condition met." : "Condition not met." };
+    }
+    const pr = condProgress(c);
+    if (!pr) return { state: "pending", text: "Waiting on a player." };
+    const met = c.value != null && pr.have > c.value;
+    const left = c.value == null ? 0 : Math.round((c.value - pr.have) * 10) / 10;
+    return {
+      state: met ? "met" : "pending",
+      have: pr.have,
+      need: c.value,
+      text: met ? `Met — ${pr.have} pts` : `${pr.have} of ${c.value} pts (${left} to go)`
+    };
+  }
+  // How far a team went, on the same 0-4 scale the condition list uses. Only
+  // the seeding is known before the bracket is played, so anything past
+  // "made the playoffs" reports as undecided.
+  function playoffFinishOf(key) {
+    if (!key || !T[key]) return null;
+    const n = Math.max(2, +LG().playoffTeams || 6);
+    const seeds = playoffSeeds();
+    const at = seeds.indexOf(key);
+    if (at === -1) return null;
+    if (LIVE_WEEK < (+LG().playoffStart || MAXW)) return at < n ? 1 : 0;
+    return at < n ? 1 : 0;
   }
   function ordRound(r) {
     r = +r || 1;
@@ -7397,11 +7948,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     opts = opts || {};
     const rm = opts.onRemove ? ` onclick="${opts.onRemove}"` : "";
     if (a.kind === "pick") {
-      const c = a.pick.cond || pickCond(pickId(a.pick));
-      return `<span class="as as-pick${opts.on ? " on" : ""}"${rm}>
+      const c = normalizeCond(a.pick.cond || pickCond(pickId(a.pick)));
+      return `<span class="as as-pick${opts.on ? " on" : ""}${c ? " cond" : ""}"${rm}>
       <span class="as-ic">\u25A6</span>
       <span class="as-nm">${escHtml(pickLabel(a.pick, opts.holder))}</span>
-      ${c ? `<span class="as-cond">${escHtml(triggerLabel(c))}</span>` : ""}
+      ${c ? `<span class="as-cond">\u2301 ${escHtml(ordRound(c.upgradeTo))} if ${escHtml(condSummary(c))}</span>` : ""}
     </span>`;
     }
     const p = a.player || {};
@@ -7568,56 +8119,233 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveStore();
     openChat();
   }
+  // ---- the conditional-pick builder --------------------------------------
+  // A working copy of the condition lives in CONDW while the sheet is open, so
+  // every control edits one object and the summary can repaint on each change.
+  // Nothing is written back to the trade until Save passes validation.
   var condTarget = null;
+  var CONDW = null;
+  var condSearch = "";
+  function condPickText() {
+    if (!condTarget) return "";
+    const side = condTarget.which === "give" ? TB.give : TB.get;
+    const a = side.find((x) => assetId(x) === condTarget.id);
+    return a ? pickLabel(a.pick, condTarget.which === "give" ? TB.from : TB.to) : "";
+  }
   function openCond(which, id) {
     const side = which === "give" ? TB.give : TB.get;
     const a = side.find((x) => assetId(x) === id);
     if (!a || a.kind !== "pick") return;
     condTarget = { which, id };
-    const c = a.pick.cond || { trigger: "playoffs", value: 1500, upgradeTo: Math.max(1, (+a.pick.round || 2) - 1) };
+    condSearch = "";
+    CONDW = normalizeCond(a.pick.cond) || {
+      kind: "player", playerId: null, playerName: null, startWeek: MINW,
+      scope: "total", value: 100, playoff: null,
+      upgradeTo: Math.max(1, (+a.pick.round || 2) - 1), legacy: false, status: "pending"
+    };
+    if (CONDW.kind === "player" && !CONDW.value) CONDW.value = 100;
     document.getElementById("condTitle").textContent = pickLabel(a.pick, which === "give" ? TB.from : TB.to);
-    document.getElementById("condBody").innerHTML = `
-    <div class="cond-row">
-      <select id="condTrig" class="set-ctl" onchange="syncCond()">
-        ${TRIGGERS.map((t) => `<option value="${t[0]}"${c.trigger === t[0] ? " selected" : ""}>${t[1]}</option>`).join("")}
-      </select>
-    </div>
-    <div class="cond-row" id="condValRow" style="display:${c.trigger === "points_threshold" ? "flex" : "none"}">
-      <input id="condVal" class="set-ctl" type="number" value="${c.value || 1500}">
-    </div>
-    <div class="cond-row">
-      <select id="condUp" class="set-ctl">
-        ${[1, 2, 3, 4].map((r) => `<option value="${r}"${+c.upgradeTo === r ? " selected" : ""}>becomes a ${ordRound(r)}</option>`).join("")}
-      </select>
-    </div>
-    <div class="cond-btns">
-      <div class="tc-btn dec" onclick="clearCond()">Remove</div>
-      <div class="tc-btn acc" onclick="saveCond()">Save</div>
-    </div>`;
+    renderCond();
     document.getElementById("condScrim").classList.add("show");
     document.getElementById("condSheet").classList.add("show");
   }
-  function syncCond() {
-    const t = document.getElementById("condTrig").value;
-    document.getElementById("condValRow").style.display = t === "points_threshold" ? "flex" : "none";
+  function setCondKind(k) {
+    if (!CONDW) return;
+    CONDW.kind = k;
+    if (k === "playoff" && !CONDW.playoff) CONDW.playoff = "make";
+    if (k === "player" && !CONDW.value) CONDW.value = 100;
+    renderCond();
+  }
+  function setCondField(f, v) {
+    if (!CONDW) return;
+    if (f === "value" || f === "startWeek" || f === "upgradeTo") v = v === "" ? null : +v;
+    CONDW[f] = v;
+    if (f === "playerId") {
+      CONDW.playerName = v ? shortName(nflName(v)) : null;
+      CONDW.legacy = false;
+      condSearch = "";
+    }
+    renderCond();
+  }
+  function condSearchInput(v) {
+    condSearch = v || "";
+    renderCondPlayers();
+  }
+  // Everyone rostered in this league, which is the pool a condition realistically
+  // names. Season points come from the same wkPts() the player card uses.
+  function leagueScorers() {
+    const out = [], seen = {};
+    Object.keys(T).forEach((k) => {
+      (rosterFor(k) || []).forEach((p) => {
+        const id = p.id || p.n;
+        if (!id || seen[id]) return;
+        seen[id] = 1;
+        const total = seasonPts(p);
+        const weeks = [];
+        for (let w = MINW; w <= Math.min(MAXW, LIVE_WEEK); w++) {
+          const v = wkPts(p, w);
+          if (v != null) weeks.push(v);
+        }
+        const played = weeks.length;
+        out.push({
+          id: p.id || null, name: p.full || p.n, pos: p.pos, tm: p.tm, team: k,
+          total: total == null ? 0 : total,
+          best: played ? Math.round(Math.max.apply(null, weeks) * 10) / 10 : 0,
+          avg: played ? Math.round((total || 0) / played * 10) / 10 : 0,
+          played
+        });
+      });
+    });
+    return out.sort((a, b) => b.total - a.total);
+  }
+  var _scorerCache = null;
+  function scorers() {
+    if (!_scorerCache) _scorerCache = leagueScorers();
+    return _scorerCache;
+  }
+  function invalidateScorers() {
+    _scorerCache = null;
+  }
+  // Real reference points so a threshold can be judged. Every number here comes
+  // out of the league's own rosters and the app's existing scoring.
+  function scoringContext() {
+    const list = scorers();
+    if (!list.length) return null;
+    const byAvg = list.slice().sort((a, b) => b.avg - a.avg);
+    const byBest = list.slice().sort((a, b) => b.best - a.best);
+    return {
+      leader: list[0],
+      bestAvg: byAvg[0],
+      bestWeek: byBest[0],
+      weeksPlayed: Math.min(MAXW, LIVE_WEEK) - MINW + 1
+    };
+  }
+  function scorerById(id) {
+    return scorers().find((x) => x.id === id || x.name === id) || null;
+  }
+  // Plain-language read on whether the number the user typed is reachable,
+  // measured against that player's own rate over the weeks the condition covers.
+  function thresholdVerdict(c) {
+    c = normalizeCond(c);
+    if (!c || c.kind !== "player" || !c.playerId || !(c.value > 0)) return null;
+    const sc = scorerById(c.playerId);
+    if (!sc || !sc.played) return null;
+    const weeksLeft = Math.max(1, MAXW - Math.max(MINW, c.startWeek) + 1);
+    const pace = c.scope === "week" ? sc.avg : Math.round(sc.avg * weeksLeft * 10) / 10;
+    const ratio = pace ? c.value / pace : 99;
+    let tone = "mid", line = "";
+    if (ratio <= 0.6) { tone = "easy"; line = "Very likely — well inside their usual pace."; }
+    else if (ratio <= 0.95) { tone = "easy"; line = "Likely — a bit under their pace."; }
+    else if (ratio <= 1.25) { tone = "mid"; line = "A close call — right around their pace."; }
+    else if (ratio <= 2) { tone = "hard"; line = "A stretch — well above their pace."; }
+    else { tone = "hard"; line = "Extremely unlikely at their current rate."; }
+    return {
+      tone, line, pace, ratio,
+      detail: c.scope === "week"
+        ? `${sc.name} averages ${sc.avg} pts a week (best ${sc.best}).`
+        : `${sc.name} averages ${sc.avg} pts a week, about ${pace} over Weeks ${Math.max(MINW, c.startWeek)}–${MAXW}.`
+    };
+  }
+  function renderCondPlayers() {
+    const el = document.getElementById("condPlayers");
+    if (!el || !CONDW) return;
+    const q = condSearch.trim().toLowerCase();
+    const hit = (x) => !q || x.name.toLowerCase().indexOf(q) > -1 || (x.pos || "").toLowerCase() === q || (x.tm || "").toLowerCase() === q;
+    // the chosen player stays at the top of the list, so the selection is
+    // visible without scrolling back through the pool
+    const chosen = CONDW.playerId ? scorers().filter((x) => (x.id || x.name) === CONDW.playerId) : [];
+    const list = chosen.concat(scorers().filter((x) => hit(x) && (x.id || x.name) !== CONDW.playerId)).slice(0, 40);
+    el.innerHTML = list.length ? list.map((x) => `<div class="cp-row${CONDW.playerId === x.id ? " on" : ""}" onclick="setCondField('playerId','${esc(x.id || x.name)}')">
+    <span class="cp-face">${faceInner(x.id || x.name)}</span>
+    <span class="cp-nm">${escHtml(x.name)}</span>
+    <span class="cp-mt"><span class="pos ${x.pos}">${escHtml(x.pos || "")}</span> ${escHtml(x.tm || "")}</span>
+    <span class="cp-pt">${x.avg} <i>ppg</i></span>
+  </div>`).join("") : `<div class="cp-none">No player matches “${escHtml(condSearch)}”.</div>`;
+  }
+  function renderCond() {
+    const body = document.getElementById("condBody");
+    if (!body || !CONDW) return;
+    const c = CONDW, v = condValid(c);
+    const ctx = scoringContext();
+    const verdict = thresholdVerdict(c);
+    const kindBtns = COND_KINDS.map((k) => `<button type="button" class="cond-seg${c.kind === k[0] ? " on" : ""}" onclick="setCondKind('${k[0]}')">${k[1]}</button>`).join("");
+    const playerBlock = `
+    <div class="cond-lb">Player</div>
+    <div class="cond-row">
+      <input id="condSearch" class="set-ctl" type="text" placeholder="Search players…" value="${escHtml(condSearch)}"
+        oninput="condSearchInput(this.value)" autocomplete="off">
+    </div>
+    ${c.playerId ? `<div class="cond-pick-on">Selected: <b>${escHtml(nflName(c.playerId))}</b></div>` : `<div class="cond-warn">Choose the player this pick depends on.</div>`}
+    <div class="cp-list" id="condPlayers"></div>
+    <div class="cond-lb">Condition</div>
+    <div class="cond-row">
+      <select class="set-ctl" onchange="setCondField('scope',this.value)">
+        ${SCORE_SCOPES.map((o) => `<option value="${o[0]}"${c.scope === o[0] ? " selected" : ""}>${o[1]}</option>`).join("")}
+      </select>
+    </div>
+    <div class="cond-hint">${c.scope === "week" ? `Counts the player's best single week from Week ${c.startWeek} onward \u2014 not a running total.` : `Counts every point the player scores from Week ${c.startWeek} through Week ${MAXW}, added up \u2014 not one week's score.`}</div>
+    <div class="cond-row two">
+      <label class="cond-f"><span>Starting week</span>
+        <select class="set-ctl" onchange="setCondField('startWeek',this.value)">
+          ${Array.from({ length: MAXW - MINW + 1 }, (_, i) => MINW + i).map((w) => `<option value="${w}"${+c.startWeek === w ? " selected" : ""}>Week ${w}</option>`).join("")}
+        </select></label>
+      <label class="cond-f"><span>Points threshold</span>
+        <input class="set-ctl" type="number" min="1" step="1" inputmode="numeric" value="${c.value == null ? "" : c.value}"
+          oninput="setCondField('value',this.value)"></label>
+    </div>
+    ${ctx ? `<div class="cond-ctx">
+      <div class="cc-h">League scoring through Week ${Math.min(MAXW, LIVE_WEEK)}</div>
+      <div class="cc-g">
+        <div><b>${ctx.leader.total}</b><span>${escHtml(shortName(ctx.leader.name))} — most points</span></div>
+        <div><b>${ctx.bestAvg.avg}</b><span>${escHtml(shortName(ctx.bestAvg.name))} — best average</span></div>
+        <div><b>${ctx.bestWeek.best}</b><span>${escHtml(shortName(ctx.bestWeek.name))} — best week</span></div>
+      </div>
+    </div>` : ""}
+    ${verdict ? `<div class="cond-verdict ${verdict.tone}"><b>${escHtml(verdict.line)}</b><span>${escHtml(verdict.detail)}</span></div>` : ""}`;
+    const playoffBlock = `
+    <div class="cond-lb">Playoff result</div>
+    <div class="cond-opts">
+      ${PLAYOFF_STEPS.map((o) => `<button type="button" class="cond-opt${c.playoff === o[0] ? " on" : ""}" onclick="setCondField('playoff','${o[0]}')">
+        <b>${o[2]}</b><span>Team ${o[1]}</span></button>`).join("")}
+    </div>`;
+    body.innerHTML = `
+    <div class="cond-seg-wrap">${kindBtns}</div>
+    ${c.legacy ? `<div class="cond-warn legacy">Saved on an older version — finish the details below to update it.</div>` : ""}
+    ${c.kind === "player" ? playerBlock : playoffBlock}
+    <div class="cond-lb">If the condition is met</div>
+    <div class="cond-row">
+      <select class="set-ctl" onchange="setCondField('upgradeTo',this.value)">
+        ${[1, 2, 3, 4].map((r) => `<option value="${r}"${+c.upgradeTo === r ? " selected" : ""}>Becomes a ${ordRound(r)} round pick</option>`).join("")}
+      </select>
+    </div>
+    <div class="cond-sum" id="condSummary">${escHtml(condSentence(c, condPickText()))}</div>
+    ${v.ok ? "" : `<div class="cond-warn" id="condWhy">${escHtml(v.why)}</div>`}
+    <div class="cond-btns">
+      <button type="button" class="tc-btn dec" onclick="clearCond()">Remove</button>
+      <button type="button" class="tc-btn acc${v.ok ? "" : " off"}" onclick="saveCond()">Save condition</button>
+    </div>`;
+    if (c.kind === "player") renderCondPlayers();
   }
   function closeCond() {
     document.getElementById("condScrim").classList.remove("show");
     document.getElementById("condSheet").classList.remove("show");
     condTarget = null;
+    CONDW = null;
   }
   function saveCond() {
-    if (!condTarget) return;
+    if (!condTarget || !CONDW) return;
+    const v = condValid(CONDW);
+    if (!v.ok) {
+      renderCond();
+      return;
+    }
     const side = condTarget.which === "give" ? TB.give : TB.get;
     const a = side.find((x) => assetId(x) === condTarget.id);
     if (!a) {
       closeCond();
       return;
     }
-    const trigger = document.getElementById("condTrig").value;
-    const upgradeTo = +document.getElementById("condUp").value;
-    const value = trigger === "points_threshold" ? +document.getElementById("condVal").value : null;
-    a.pick.cond = { trigger, value, upgradeTo };
+    a.pick.cond = normalizeCond(CONDW);
     closeCond();
     renderTrade();
   }
@@ -9264,9 +9992,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (a.kind !== "pick") return;
       const id = pickId(a.pick);
       bag[id] = dest;
-      const c = a.pick.cond;
+      const c = normalizeCond(a.pick.cond);
       if (!c) return;
-      conds[id] = { pickId: id, trigger: c.trigger, value: c.value == null ? null : c.value, upgradeTo: +c.upgradeTo || null, status: "pending", setBy: owner, setAt: now };
+      conds[id] = Object.assign({}, c, { pickId: id, setBy: owner, setAt: now, status: c.status || "pending" });
     });
     settle(tr.give, from, to);
     settle(tr.get, to, from);
@@ -10446,6 +11174,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${setRow("Teams", setSel("teams", teamOpts, L.teams, 1))}
       ${setRow("Lineup type", setSel("lineup", [["classic", "Classic"], ["bestball", "Best ball"]], L.lineup))}
       ${setRow("Standings", setSel("standings", [["record", "Win-loss record"], ["table", "Table \xB7 3 points a win"], ["kart", "Kart \xB7 finish order"]], L.standings || "record"))}
+      ${setRow("League median", `<div class="set-tg${L.median ? " on" : ""}"
+        onclick="${isCommish() ? "setLeague('median'," + (L.median ? 0 : 1) + ",1);renderSettings()" : ""}"><i></i></div>`)}
+      <div class="sch-hint">${L.median
+        ? "On \u2014 every week counts twice: the head-to-head result, plus a win or loss against the league's median score."
+        : "Off \u2014 each week counts once, from the head-to-head result only."}</div>
       ${sizeNote}
     </div>
     <div class="set-card">
@@ -10710,7 +11443,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="set-title">Draft</div>
       <div class="set-note">${pickCount()} of ${DRAFT_TOTAL} picks made \xB7 ${draftHistory().length} archived draft${draftHistory().length === 1 ? "" : "s"}.
         Timer, draft kind and past drafts live under <b>Draft History</b>.</div>
-    </div>`;
+    </div>
+    ${dangerZoneCard()}`;
   }
   var BASE_SET_TABS = [
     ["general", "General"],
@@ -10915,6 +11649,35 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 
     return setup + seedCard + pairCard + bracket;
   }
+  // Archiving sits above the line as the recommended action; deleting sits
+  // below it, in a zone that looks like what it is.
+  function dangerZoneCard() {
+    const id = activeLeagueId(), lg = leagueById(id);
+    const pend = isPendingDelete(id);
+    return `<div class="set-card">
+    <div class="set-title">Archive</div>
+    <div class="set-note">Archiving takes ${escHtml(lg.name)} off the active leagues list and keeps
+      every roster, trade, draft and result. You can restore it whenever you like. This is the
+      recommended way to put a league away.</div>
+    ${isCommish() ? `<div class="set-btns">
+      <div class="set-btn" onclick="archiveLeague('${id}')">Archive league</div>
+    </div>` : ""}
+  </div>
+  <div class="set-card dz">
+    <div class="set-title dz-t">Danger zone</div>
+    ${pend ? `<div class="set-note">This league is scheduled for deletion in
+        <b>${deleteDaysLeft(id)} day${deleteDaysLeft(id) === 1 ? "" : "s"}</b>.</div>
+      <div class="set-btns">
+        <div class="set-btn" onclick="restoreLeague('${id}')">Restore</div>
+        <div class="set-btn warn" onclick="confirmDeleteNow('${id}')">Delete immediately</div>
+      </div>`
+      : `<div class="set-note">Deleting removes the league and everything associated with it.
+        There is a thirty-day recovery window before it becomes permanent.</div>
+      ${isCommish() ? `<div class="set-btns">
+        <div class="set-btn warn" onclick="openDeleteLeague('${id}')">Delete league\u2026</div>
+      </div>` : `<div class="set-note">Only the commissioner can delete a league.</div>`}`}
+  </div>`;
+  }
   function notifCards() {
     const p = notifPrefs();
     return `<div class="set-card">
@@ -11005,6 +11768,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function pctColor(mine, theirs) {
     return mine > theirs ? "var(--green)" : mine < theirs ? "var(--red)" : "var(--ink-3)";
   }
+  // Actual and projected scores were easy to skim past against the field art,
+  // so they get their own panel: a darker, slightly blurred card with a label
+  // over each number. Deliberately translucent -- the league crest still reads
+  // through it -- and scoped to the score block, not the whole hero.
+  function scoreLabel(opts) {
+    const st = opts && opts.status ? String(opts.status.txt || "").toUpperCase() : "";
+    if (st.indexOf("FINAL") > -1) return "Final Score";
+    if (opts && opts.phase === "final") return "Final Score";
+    return "Actual Score";
+  }
+  function scoreBoxHTML(as, xs, proj, opts) {
+    return `<div class="sh-sbox">
+    <div class="sb-lb">${scoreLabel(opts)}</div>
+    <div class="sh-score">${(+as).toFixed(1)}<span>\u2013</span>${(+xs).toFixed(1)}</div>
+    ${proj ? `<div class="sb-rule"></div>${proj}` : ""}
+  </div>`;
+  }
   function stadiumStageHTML(aKey, xKey, as, xs, aw, xw, ap, xp, opts) {
     opts = opts || {};
     const TM = opts.teams || T;
@@ -11015,7 +11795,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rm = hasOwn ? `<div class="sh-cam rm" onclick="event.stopPropagation();removeGameBackdrop('${aKey}','${xKey}')" title="Remove background">${ICON_X}</div>` : "";
     const phase = opts.phase || (opts.live ? "live" : null);
     const pill = phase === "pre" ? `<div class="ms-live pre"><span class="dot"></span>PREGAME</div>` : phase === "final" ? `<div class="ms-live final">FINAL</div>` : phase === "live" ? `<div class="ms-live"><span class="pulse"></span>LIVE</div>` : "";
-    const proj = ap != null && xp != null ? `<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
+    const proj = ap != null && xp != null ? `<div class="sb-lb sub">Projected Score</div><div class="sh-proj"><b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
     const logo = (t) => t.logo ? `<div class="sh-logo bare"><img src="${t.logo}" alt=""></div>` : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
     const rwId = opts.rewind || null;
     const wc = rwId ? ` data-rw="${rwId}" onclick="event.stopPropagation();toggleRewind('${rwId}')"` : "";
@@ -11025,7 +11805,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${bg}<div class="ms-scrim"></div>
     <div class="sh-glowL"></div><div class="sh-glowR"></div>
     <div class="ms-chrome">
-      <div class="ms-chrome-l">
+      <div class="ms-title" onclick="goHome()">
+        <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+        <div><div class="nm">${escHtml(activeLeague2().name)} <span class="chev">\u25BE</span></div><div class="wk">${opts.weekLabel || "WEEK " + S.week}</div></div>
+      </div>
+      <div class="ms-chrome-r">
         ${opts.seeded ? "" : `<div class="ms-ic" onclick="openChat()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
           ${chatUnread() ? `<span class="ms-badge">${chatUnread()}</span>` : ""}
@@ -11034,12 +11818,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15V10a6 6 0 1 0-12 0v5l-2 3h16Z"/><path d="M10 21h4"/></svg>
           ${unreadNotifs() ? `<span class="ms-badge">${unreadNotifs()}</span>` : ""}
         </div>
+        <div class="ms-ic" onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
       </div>
-      <div class="ms-title" onclick="goHome()">
-        <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
-        <div><div class="nm">${escHtml(activeLeague2().name)} <span class="chev">\u25BE</span></div><div class="wk">${opts.weekLabel || "WEEK " + S.week}</div></div>
-      </div>
-      <div class="ms-ic" onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
     </div>
     <div class="ms-nav">
       ${TABS().map((t, i) => i === 0 ? `<div class="ms-tab on">${t.lb}</div>` : `<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join("")}
@@ -11049,19 +11829,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" onclick="openTeam('${aKey}')">${a.n}</div>
-        <div class="sh-rec">${a.mgr} \xB7 ${a.rec}</div>
+        <div class="sh-rec" onclick="event.stopPropagation();openTeamSchedule('${aKey}')">${a.mgr} \xB7 <b class="sh-seed">#${a.rk}</b> \xB7 ${recordText(aKey)}</div>
+        ${resultBadges(aKey, S.week)}
         <div class="sh-pct${tw}" style="color:${pctColor(aw, xw)}"${wc}>${aw}%</div>
       </div>
       <div class="ms-center" data-vs>
         ${leagueWatermarkHTML()}
         <div class="sh-vs">VS</div>
-        <div class="sh-score">${as.toFixed(1)}<span>\u2013</span>${xs.toFixed(1)}</div>
-        ${proj}
+        ${scoreBoxHTML(as, xs, proj, opts)}
       </div>
       <div class="ms-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" onclick="openTeam('${xKey}')">${x.n}</div>
-        <div class="sh-rec">${x.mgr} \xB7 ${x.rec}</div>
+        <div class="sh-rec" onclick="event.stopPropagation();openTeamSchedule('${xKey}')">${x.mgr} \xB7 <b class="sh-seed">#${x.rk}</b> \xB7 ${recordText(xKey)}</div>
+        ${resultBadges(xKey, S.week)}
         <div class="sh-pct${tw}" style="color:${pctColor(xw, aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -11081,7 +11862,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       cam = `<div class="sh-cams">${rm}<div class="sh-cam" onclick="event.stopPropagation();pickGameBackdrop('${aKey}','${xKey}')" title="Change background">${ICON_CAM}</div></div>`;
     }
     const status = opts.status ? `<div class="sh-status ${opts.status.cls}">${opts.status.cls === "live" ? '<span class="pulse" style="width:6px;height:6px"></span>' : ""}${opts.status.txt}</div>` : "";
-    const proj = ap != null && xp != null ? `<div class="sh-proj">PROJ <b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
+    const proj = ap != null && xp != null ? `<div class="sb-lb sub">Projected Score</div><div class="sh-proj"><b>${ap.toFixed(1)}</b> \u2013 <b>${xp.toFixed(1)}</b></div>` : "";
     const logo = (t) => t.logo ? `<div class="sh-logo bare"><img src="${t.logo}" alt=""></div>` : `<div class="sh-logo" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${t.mono}</div>`;
     const nameClick = (k) => `onclick="event.stopPropagation();openTeam('${k}')"`;
     const rwId = opts.rewind || null;
@@ -11096,19 +11877,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="sh-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" ${nameClick(aKey)}>${a.n}</div>
-        <div class="sh-rec">${a.mgr} \xB7 ${a.rec}</div>
+        <div class="sh-rec" onclick="event.stopPropagation();openTeamSchedule('${aKey}')">${a.mgr} \xB7 <b class="sh-seed">#${a.rk}</b> \xB7 ${recordText(aKey)}</div>
+        ${resultBadges(aKey, S.week)}
         <div class="sh-pct${tw}" style="color:${pctColor(aw, xw)}"${wc}>${aw}%</div>
       </div>
       <div class="sh-center" ${opts.tapHint ? "data-vs" : ""}>
         ${leagueWatermarkHTML()}
         <div class="sh-vs">VS</div>
-        <div class="sh-score">${as.toFixed(1)}<span>\u2013</span>${xs.toFixed(1)}</div>
-        ${proj}
+        ${scoreBoxHTML(as, xs, proj, opts)}
       </div>
       <div class="sh-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" ${nameClick(xKey)}>${x.n}</div>
-        <div class="sh-rec">${x.mgr} \xB7 ${x.rec}</div>
+        <div class="sh-rec" onclick="event.stopPropagation();openTeamSchedule('${xKey}')">${x.mgr} \xB7 <b class="sh-seed">#${x.rk}</b> \xB7 ${recordText(xKey)}</div>
+        ${resultBadges(xKey, S.week)}
         <div class="sh-pct${tw}" style="color:${pctColor(xw, aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -11376,13 +12158,22 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const row = (k, score, win) => `<div class="sm-tr${win ? " w" : ""}">
       ${badge(T[k], "sm-bd")}
       <div class="sm-nm tf-${k}">${escHtml(T[k].n)}</div>
+      <span class="sm-seed">#${T[k].rk}</span>
+      <span class="sm-rec" onclick="event.stopPropagation();openTeamSchedule('${k}')">${recordText(k)}</span>
+      <span class="sm-gap"></span>
       <div class="sm-pt">${(+score).toFixed(1)}</div>
     </div>`;
+      const aw = Math.max(0, Math.min(100, +g.aw || 0)), xw = 100 - aw;
       return `<div class="sm-card${g.me ? " me" : ""}" onclick="${openClick}">
       <div class="sm-st ${st.c}">${st.t}</div>
       <div class="sm-teams">
         ${row(g.a, g.as, played && g.as > g.xs)}
         ${row(g.x, g.xs, played && g.xs > g.as)}
+        <div class="sm-proj" style="--ac:${T[g.a].c};--xc:${T[g.x].c}">
+          <span class="p" style="color:${T[g.a].c}">${aw}%</span>
+          <span class="sm-bar"><i style="width:${aw}%"></i></span>
+          <span class="p r" style="color:${T[g.x].c}">${xw}%</span>
+        </div>
       </div>
       <div class="sm-arr">&rsaquo;</div>
     </div>`;
@@ -11454,7 +12245,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
-      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7 ${t.rec} \xB7 #${t.rk}</div>${ownTag}</div>
+      <div class="tv-idwrap">${nameBlock}<div class="tv-sub" onclick="openTeamSchedule('${currentTeamKey}')">${t.mgr} \xB7 ${recordText(currentTeamKey)} \xB7 #${t.rk}</div>${ownTag}</div>
       ${msgBtn}
     </div>
     ${editRow}
@@ -11846,8 +12637,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       return;
     }
     const left = Math.max(0, Math.round((deadline - Date.now()) / 1e3));
-    const s = String(left % 60).padStart(2, "0");
-    el.innerHTML = `<span>${Math.floor(left / 60)}:${s}</span>`;
+    const mm = String(Math.floor(left / 60)).padStart(2, "0");
+    const ss = String(left % 60).padStart(2, "0");
+    el.innerHTML = `<span>${mm}:${ss}</span>`;
     el.classList.toggle("low", left <= 10);
   }
 
@@ -11856,6 +12648,33 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var draftQ = "";
   function openDraft() {
     showTab("draft");
+  }
+  // Jump straight from the Current Pick card into the pool: switch to the
+  // Available tab, bring it into view and focus the search box, so a pick can
+  // be made without any further navigation.
+  function openPickPool() {
+    if (!myTurn() && !isCommish()) return;
+    setDraftTab("available");
+    const w = document.getElementById("draftSearchWrap");
+    if (w && !w.classList.contains("on")) w.classList.add("on");
+    const tabs = document.querySelector("#draftBody .dr-tabs");
+    if (tabs) tabs.scrollIntoView({ block: "start" });
+    const i = document.getElementById("draftSearch");
+    if (i) i.focus();
+  }
+  // The row action does the right thing for whoever is looking: the owner on
+  // the clock drafts, and a commissioner assigns the player to whichever pick
+  // is on the clock. Both land on the same slot, so no extra navigation.
+  function takePlayer(id) {
+    if (myTurn()) { draftPlayer(id); return; }
+    if (!isCommish()) { toast("Not your pick"); return; }
+    const at = onClockIdx();
+    if (at >= DRAFT_TOTAL) { toast("The draft is complete"); return; }
+    if (assignPickAt(at, id)) {
+      runAutoPicks();
+      renderDraft();
+      refreshApp();
+    }
   }
   function setDraftPos(pl) {
     draftPos = pl;
@@ -11915,7 +12734,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${DRAFT_ORDER.map((k) => {
       const t = T[k], live = k === clockTeam;
       return `<div class="dg-th${k === MY_TEAM ? " me" : ""}${live ? " clock" : ""}">
-        ${live ? `<div class="dg-timer" id="dgTimer">${draftCfg().clutchSec > 0 ? "" : ""}<span>1:30</span></div>` : ""}
         <div class="dg-crest" style="background:${t.bg};color:${t.c}">${markInner(t)}</div>
         <div class="dg-mgr">${esc(t.mgr)}</div>
       </div>`;
@@ -11963,11 +12781,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return list.slice(0, PANEL_CAP).map((p, i) => {
       const bye = byeFor(p.tm);
       return `<div class="dr-row" onclick="openPlayer('${esc(p.id)}')">
-    <span class="dr-take${mine ? "" : " off"}" onclick="event.stopPropagation();draftPlayer('${p.id}')">Draft</span>
+    <span class="dr-take${mine || isCommish() ? "" : " off"}" onclick="event.stopPropagation();takePlayer('${p.id}')">${mine ? "Draft" : isCommish() ? "Assign" : "Draft"}</span>
     <span class="dr-rk">${i + 1}</span>
     <div class="dr-info">
-      <div class="dr-nm">${p.full}</div>
-      <div class="dr-mt"><i class="dr-dot" style="background:${posColor(p.pos)}"></i>${p.pos} - ${p.tm}${bye ? ` (${bye})` : ""}${ageBit(p)}</div>
+      <div class="dr-nm" title="${escAttr(p.full)}">${escHtml(p.full)}</div>
+      <div class="dr-mt"><i class="dr-dot" style="background:${posColor(p.pos)}"></i>${p.pos} \u2022 ${escHtml(p.tm || "FA")} \u2022 ${bye ? "Bye " + bye : "No bye"}${ageBit(p)}</div>
     </div>
     <span class="dr-col"><b>ADP</b>${p.adp < 999 ? p.adp : "\u2014"}</span>
     <span class="dr-col"><b>PTS</b>${p.sproj.toFixed(1)}</span>
@@ -12057,7 +12875,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <span class="dr-slotk${bench ? " bn" : ""}">${sl}</span>
       <div class="dr-info">
         <div class="dr-nm">${p ? p.full : "Empty"}</div>
-        ${p ? `<div class="dr-mt"><i class="dr-dot" style="background:${posColor(p.pos)}"></i>${p.pos} - ${p.tm}${bye ? ` (${bye})` : ""}${ageBit(p)}</div>` : `<div class="dr-mt">Not drafted yet</div>`}
+        ${p ? `<div class="dr-mt"><i class="dr-dot" style="background:${posColor(p.pos)}"></i>${p.pos} \u2022 ${escHtml(p.tm || "FA")} \u2022 ${bye ? "Bye " + bye : "No bye"}${ageBit(p)}</div>` : `<div class="dr-mt">Not drafted yet</div>`}
       </div>
       ${p ? `<span class="dr-col"><b>ADP</b>${p.adp < 999 ? p.adp : "\u2014"}</span>
       <span class="dr-col"><b>PTS</b>${p.sproj.toFixed(1)}</span>` : `<span class="dr-col"></span><span class="dr-col"></span>`}
@@ -12098,11 +12916,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${isCommish() ? `<div class="dr-acts"><div class="dr-btn warn" onclick="confirmResetDraft()">Reset draft</div></div>` : ""}`;
     } else {
       const m = pickMeta(i), t = T[m.team];
-      head = `<div class="dr-clock${mine ? " mine" : ""}">
-      <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} \xB7 PICK ${m.pick} \xB7 #${i + 1} OVERALL</div>
+      head = `<div class="dr-clock${mine ? " mine" : ""}${mine || isCommish() ? " tap" : ""}"
+        ${mine || isCommish() ? `onclick="openPickPool()" title="Pick for this slot"` : ""}>
+      <div class="rd">ROUND ${m.round} OF ${DRAFT_ROUNDS} \xB7 #${i + 1} OVERALL</div>
       <div class="who">
         <div class="dr-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
-        <div><div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div><div class="sub">${mine ? "You are on the clock" : t.mgr + " is on the clock"}</div></div>
+        <div class="dr-whoid">
+          <div class="nm tf-${m.team}" style="color:${t.c}">${t.n}</div>
+          <div class="sub">${escHtml(t.mgr)} \xB7 Pick ${m.round}.${String(m.pick).padStart(2, "0")}</div>
+        </div>
+        <div class="dr-timer" id="dgTimer"><span>\u2014:\u2014\u2014</span></div>
       </div>
       <div class="dr-acts">
         ${mine ? "" : `<div class="dr-btn go" onclick="simToMyPick()">Sim to my pick</div>`}
@@ -12747,7 +13570,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const last = parts.length > 1 ? parts.slice(1).join(" ") : parts[0];
     const rec = NFL_BY_ID[p.id] || null;
     const jersey = rec && rec.num ? rec.num : seedHash(name) % 99 + 1;
-    const cardNo = String(1 + seedHash(String(key) + "c") % 500).padStart(3, "0");
     const live = pLive(p.proj || 0, name);
     const shot = photo || headshotFor(key);
     const hero = shot ? `<img class="pc-img" src="${shot}" alt="" loading="lazy">` : `<div class="pc-noimg">${initials(name)}</div>`;
@@ -12785,7 +13607,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div class="pc-name"><div class="pc-first">${first}</div>
           <div class="pc-lastrow"><div class="pc-last">${last}</div>${nameActs}</div></div>
       </div>
-      <div class="pc-strip"><span>CARD <b>#${cardNo}</b> / 500</span><span>CITY BOYS DYNASTY \xB7 <b>'25</b></span></div>
+      <div class="pc-strip"><span>${escHtml(activeLeague2().name)}</span><span>${CURRENT_YEAR} SEASON</span></div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj || 0).toFixed(1)}</div><div class="l">Proj</div></div>
         <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
@@ -12828,6 +13650,41 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // One row per week of the fantasy season. Played weeks carry the score and the
   // positional finish; weeks that have not kicked off carry the projection and
   // no finish, because a finish for an unplayed week would be invented.
+  // "@ HOU" / "vs BUF" — just the side and the opponent, no kickoff time; the
+  // week column already says when.
+  function weekOpp(tm, wk) {
+    if (!tm || tm === "FA") return "";
+    const g = weekGame(tm, wk);
+    if (!g) return byeFor(tm) === +wk ? "BYE" : "\u2014";
+    return (g.home ? "vs " : "@ ") + g.opp;
+  }
+  // A compact stat line per position, from the same generator the scoring
+  // preview uses. Kept to the numbers that decide a fantasy week so the whole
+  // row stays on one line.
+  function weekStatLine(p, w) {
+    if (byeFor(p.tm) === +w) return "";
+    const st = statLineFor(p, w), pos = p.pos, out = [];
+    const add = (v, lb) => { if (v) out.push(v + lb); };
+    if (pos === "QB") {
+      if (st.passComp || st.passAtt) out.push(`${st.passComp || 0}/${st.passAtt || 0}`);
+      add(st.passYd, " pass");
+      add(st.passTD, " TD");
+      add(st.passInt, " INT");
+      add(st.rushYd, " rush");
+    } else if (pos === "RB") {
+      add(st.rushAtt, " car");
+      add(st.rushYd, " rush");
+      add(st.rushTD, " TD");
+      add(st.rec, " rec");
+      add(st.recYd, " yd");
+    } else {
+      add(st.rec, " rec");
+      add(st.recYd, " yd");
+      add(st.recTD, " TD");
+    }
+    if (st.fumLost) out.push("1 FUM");
+    return out.join(" \u00B7 ");
+  }
   function weeklyLogHTML(p) {
     const rows = [];
     for (let w = MINW; w <= MAXW; w++) {
@@ -12836,8 +13693,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const played = pts != null;
       const fin = played && !bye ? weekFinish(p, w) : null;
       const val = played ? pts.toFixed(1) : wkProj(p, w).toFixed(1);
+      const line = played ? weekStatLine(p, w) : "";
       rows.push(`<div class="pw-row${played ? "" : " up"}">
-      <span class="pw-w">Week ${w}</span>
+      <span class="pw-w">${w}</span>
+      <span class="pw-g">
+        <b>${escHtml(weekOpp(p.tm, w))}</b>${line ? `<span>${escHtml(line)}</span>` : ""}
+      </span>
       <span class="pw-f">${bye ? '<span class="bye">BYE</span>' : fin ? escHtml(fin) : ""}</span>
       <span class="pw-p">${val}</span>
     </div>`);
@@ -12846,7 +13707,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return `<div class="pw">
     <div class="pw-hd"><span>By week</span>
       <span class="pw-tot">${total == null ? "\u2014" : total.toFixed(1)} <i>season</i></span></div>
-    <div class="pw-key"><span>Week</span><span>Finish</span><span>Pts</span></div>
+    <div class="pw-key"><span>Week</span><span>Opponent</span><span>Fin</span><span>Pts</span></div>
     ${rows.join("")}
     <div class="pw-note">Weeks that have not kicked off show this week's projection.</div>
   </div>`;
@@ -12903,6 +13764,174 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     </div>`;
     }).join("");
   }
+  // ---- results, records and the league median -----------------------------
+  // Records used to be the literal string on each team ("0-0"), so the
+  // standings never reflected anything that happened. They are derived here
+  // from the same weekly scores the rest of the app shows, which is also what
+  // League Median needs: with it on, a week is worth two results instead of
+  // one — the head-to-head, plus a result against the league's median score.
+  function leagueMedianOn() {
+    return !!LG().median;
+  }
+  function weekPointsOf(key, week) {
+    if (week === LIVE_WEEK && key === MY_TEAM) return LT.a;
+    return seededScore(week, key);
+  }
+  function weekMedian(week) {
+    const vals = Object.keys(T).map((k) => weekPointsOf(k, week)).sort((a, b) => a - b);
+    const n = vals.length;
+    if (!n) return 0;
+    const m = n % 2 ? vals[(n - 1) / 2] : (vals[n / 2 - 1] + vals[n / 2]) / 2;
+    return Math.round(m * 10) / 10;
+  }
+  // null while a week has not been played, so nothing counts a result early
+  function weekResult(key, week) {
+    if (+week > LIVE_WEEK || +week < MINW) return null;
+    const pair = weekPairs(week).find((p) => p.indexOf(key) > -1);
+    const opp = pair ? (pair[0] === key ? pair[1] : pair[0]) : null;
+    const pts = weekPointsOf(key, week);
+    const oppPts = opp ? weekPointsOf(opp, week) : null;
+    const cmp = (a, b) => a > b ? "W" : a < b ? "L" : "T";
+    const med = weekMedian(week);
+    return {
+      week: +week, opp, pts, oppPts, med,
+      h2h: oppPts == null ? null : cmp(pts, oppPts),
+      median: cmp(pts, med)
+    };
+  }
+  function teamRecord(key) {
+    let w = 0, l = 0, t = 0;
+    const add = (r) => { if (r === "W") w++; else if (r === "L") l++; else if (r === "T") t++; };
+    for (let k = MINW; k <= Math.min(MAXW, LIVE_WEEK); k++) {
+      const r = weekResult(key, k);
+      if (!r) continue;
+      add(r.h2h);
+      if (leagueMedianOn()) add(r.median);
+    }
+    return { w, l, t };
+  }
+  function recordText(key) {
+    const r = teamRecord(key);
+    return r.t ? `${r.w}-${r.l}-${r.t}` : `${r.w}-${r.l}`;
+  }
+  // the two badges a matchup shows for a team once median scoring is on
+  function resultBadges(key, week) {
+    if (!leagueMedianOn()) return "";
+    const r = weekResult(key, week);
+    if (!r || !r.h2h) return "";
+    const chip = (lb, v) => `<span class="rb ${v}">${lb} ${v}</span>`;
+    return `<div class="sh-res">${chip("H2H", r.h2h)}${chip("MED", r.median)}</div>`;
+  }
+  // ---- 29: how a record was earned -----------------------------------------
+  // Reached by tapping a record anywhere it appears. Each played week lists the
+  // opponent, the result, both scores and the record as it stood after that
+  // week, so the number at the top can be read back week by week. With League
+  // Median on, the median result is listed alongside the head-to-head one and
+  // the running record counts both.
+  var tschedTeam = null, tschedBack = "matchup";
+  function openTeamSchedule(key) {
+    if (!T[key]) return;
+    tschedTeam = key;
+    const cur = currentViewName();
+    if (cur !== "tsched") tschedBack = cur;
+    renderTeamSchedule();
+    showView2("tsched");
+    setBackLabel(T[key].n);
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    const sc = document.getElementById("scroll");
+    if (sc) sc.scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function tschedBackFn() {
+    const v = tschedBack;
+    if (v === "standings") showTab("standings");
+    else if (v === "league") showLeagueView();
+    else if (v === "team") showView2("team");
+    else if (v === "detail") showView2("detail");
+    else showTab("matchup");
+  }
+  function renderTeamSchedule() {
+    const key = tschedTeam, t = T[key];
+    if (!t) return;
+    const med = leagueMedianOn();
+    let w = 0, l = 0, ti = 0;
+    const rows = [];
+    for (let k = MINW; k <= MAXW; k++) {
+      const r = weekResult(key, k);
+      if (!r) {
+        // upcoming: show who it is against, with no result
+        const pair = weekPairs(k).find((p) => p.indexOf(key) > -1);
+        const opp = pair ? (pair[0] === key ? pair[1] : pair[0]) : null;
+        rows.push(`<div class="ts-row up">
+        <div class="ts-wk">Week ${k}</div>
+        <div class="ts-mid"><div class="ts-opp">vs ${escHtml(opp ? T[opp].mgr : "\u2014")}</div>
+          <div class="ts-sub">Upcoming</div></div>
+        <div class="ts-sc">\u2014</div>
+        <div class="ts-rec">\u2014</div>
+      </div>`);
+        continue;
+      }
+      const bump = (x) => { if (x === "W") w++; else if (x === "L") l++; else if (x === "T") ti++; };
+      bump(r.h2h);
+      if (med) bump(r.median);
+      const word = { W: "Won", L: "Lost", T: "Tied" }[r.h2h] || "\u2014";
+      const medLine = med
+        ? `<span class="ts-med ${r.median}">Median ${{ W: "win", L: "loss", T: "tie" }[r.median]} \u00B7 ${r.med.toFixed(1)}</span>`
+        : "";
+      rows.push(`<div class="ts-row">
+      <div class="ts-wk">Week ${r.week}</div>
+      <div class="ts-mid">
+        <div class="ts-opp">vs ${escHtml(r.opp ? T[r.opp].mgr : "\u2014")}</div>
+        <div class="ts-sub"><span class="ts-res ${r.h2h}">${word}</span> ${r.pts.toFixed(1)}\u2013${r.oppPts == null ? "\u2014" : r.oppPts.toFixed(1)} ${medLine}</div>
+      </div>
+      <div class="ts-sc">${r.pts.toFixed(1)}</div>
+      <div class="ts-rec">${ti ? `${w}-${l}-${ti}` : `${w}-${l}`}</div>
+    </div>`);
+    }
+    const tot = seasonTotals(key);
+    document.getElementById("tschedBody").innerHTML = `
+    <div class="ts-head">
+      <div class="ts-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</div>
+      <div class="ts-id">
+        <div class="ts-nm tf-${key}" style="color:${t.c}">${escHtml(t.n)}</div>
+        <div class="ts-mgr">${escHtml(t.mgr)} \u00B7 ${recordText(key)}${med ? " \u00B7 median scoring" : ""}</div>
+      </div>
+      <div class="ts-pf"><span>PF</span><b>${tot.pf.toFixed(1)}</b></div>
+    </div>
+    <div class="ts-key"><span>Week</span><span>Result</span><span>Pts</span><span>Record</span></div>
+    ${rows.join("")}
+    ${med ? `<div class="set-note" style="margin-top:12px">League median is on, so each played week contributes two results \u2014 the head-to-head and the median \u2014 and the running record counts both.</div>` : ""}`;
+  }
+  // Standings sorting. Seed order is the default; tapping PF, PA or DIFF sorts
+  // by that column (first tap = best first), and tapping the active column
+  // again flips the direction. Purely a view concern, so it is not persisted.
+  var standSort = { key: "rk", dir: 1 };
+  function standSortValue(k, key) {
+    const tot = seasonTotals(k);
+    if (key === "pf") return tot.pf;
+    if (key === "pa") return tot.pa;
+    if (key === "df") return Math.round((tot.pf - tot.pa) * 10) / 10;
+    const r = teamRecord(k);
+    if (key === "rec") return r.w + r.t * 0.5;
+    return T[k].rk;
+  }
+  function sortStandings(key) {
+    if (standSort.key === key) standSort.dir = -standSort.dir;
+    else standSort = { key, dir: key === "rk" ? 1 : -1 };
+    renderStandings2();
+  }
+  function standOrder() {
+    const key = standSort.key, dir = standSort.dir;
+    return order.slice().sort((a, b) => {
+      const d = (standSortValue(a, key) - standSortValue(b, key)) * dir;
+      return d || T[a].rk - T[b].rk;
+    });
+  }
+  function standHeadCell(key, label, cls) {
+    const on = standSort.key === key;
+    const cv = on ? `<span class="so-cv">${standSort.dir > 0 ? "\u25B2" : "\u25BC"}</span>` : "";
+    return `<span class="st-c ${cls || key} sortable${on ? " on" : ""}" onclick="sortStandings('${key}')">${label}${cv}</span>`;
+  }
   function renderStandings2() {
     const mode = LG().standings || "record";
     if (mode === "kart") {
@@ -12913,15 +13942,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       renderTableStandings();
       return;
     }
-    const col = (k) => `<span class="st-c ${k}">`;
+    const seedOn = standSort.key === "rk";
+    const seedCv = seedOn ? `<span class="so-cv">${standSort.dir > 0 ? "\u25B2" : "\u25BC"}</span>` : "";
     const head = `<div class="stand-row head">
-    <div class="stand-c1">TEAM</div>
-    <span class="st-c rec">W-L</span>
-    <span class="st-c pf">PF</span>
-    <span class="st-c pa">PA</span>
-    <span class="st-c df">DIFF</span>
+    <div class="stand-c1 sortable${seedOn ? " on" : ""}" onclick="sortStandings('rk')">TEAM${seedCv}</div>
+    ${standHeadCell("rec", "W-L")}
+    ${standHeadCell("pf", "PF")}
+    ${standHeadCell("pa", "PA")}
+    ${standHeadCell("df", "DIFF")}
   </div>`;
-    document.getElementById("standBody").innerHTML = head + order.map((k) => {
+    document.getElementById("standBody").innerHTML = head + standOrder().map((k) => {
       const t = T[k], me = k === MY_TEAM, tot = seasonTotals(k);
       const diff = Math.round((tot.pf - tot.pa) * 10) / 10;
       return `<div class="stand-row ${me ? "me" : ""}">
@@ -12929,7 +13959,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <span class="stand-rk">${t.rk}</span>${badge(t, "stand-bd")}
         <div class="stand-nm"><div class="n tf-${k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
       </div>
-      <span class="st-c rec">${t.rec}</span>
+      <span class="st-c rec" onclick="event.stopPropagation();openTeamSchedule('${k}')">${recordText(k)}</span>
       <span class="st-c pf">${tot.pf.toFixed(1)}</span>
       <span class="st-c pa">${tot.pa.toFixed(1)}</span>
       <span class="st-c df ${diff > 0 ? "pos" : diff < 0 ? "neg" : ""}">${diff > 0 ? "+" : ""}${diff.toFixed(1)}</span>
@@ -13122,7 +14152,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     seededRoster: () => seededRoster,
     seededTab: () => seededTab,
     simulateJoin: () => simulateJoin,
-    startCreatedDraft: () => startCreatedDraft
+    startCreatedDraft: () => startCreatedDraft,
+    startDraftBlocker: () => startDraftBlocker
   });
 
   // js/create.js
@@ -13602,6 +14633,39 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   </div>
   <div class="hb-pct${lead}">${sc.mw}%</div>`;
   }
+  var archivedOpen = false;
+  function toggleArchivedOpen() {
+    archivedOpen = !archivedOpen;
+    renderHome2();
+  }
+  function archRowHTML(lg) {
+    const mk = leagueMark(lg);
+    return `<div class="hb-row arch" data-league="${lg.id}">
+    <div class="hb-mark">${mk.logo ? `<img src="${mk.logo}" alt="">` : escHtml(mk.mono)}</div>
+    <div class="hb-id"><div class="hb-nm">${escHtml(lg.name)}</div>
+      <div class="hb-st">Archived \u00B7 history kept</div></div>
+    <div class="hb-act" onclick="event.stopPropagation();restoreLeague('${lg.id}')">Restore</div>
+  </div>`;
+  }
+  function doomRowHTML(lg) {
+    const d = deleteDaysLeft(lg.id);
+    const mk = leagueMark(lg);
+    return `<div class="hb-row doom" data-league="${lg.id}">
+    <div class="hb-mark">${mk.logo ? `<img src="${mk.logo}" alt="">` : escHtml(mk.mono)}</div>
+    <div class="hb-id"><div class="hb-nm">${escHtml(lg.name)}</div>
+      <div class="hb-st warn">Scheduled for deletion in ${d} day${d === 1 ? "" : "s"}</div></div>
+    <div class="hb-acts">
+      <div class="hb-act" onclick="event.stopPropagation();restoreLeague('${lg.id}')">Restore</div>
+      <div class="hb-act danger" onclick="event.stopPropagation();confirmDeleteNow('${lg.id}')">Delete now</div>
+    </div>
+  </div>`;
+  }
+  function confirmDeleteNow(id) {
+    const nm = (leagueById(id) || {}).name || "League";
+    openConfirm("Delete immediately?",
+      `${escHtml(nm)} and everything it owns is removed right now, skipping the rest of the recovery window. This cannot be undone.`,
+      () => deleteNow(id), "Delete now");
+  }
   function rowHTML(lg) {
     const mk = leagueMark(lg), teams = teamsOf(lg), me = teams && teams[myKeyOf(lg)];
     const tint = me ? me.c : "var(--accent)", bgc = me ? me.bg : "#171429";
@@ -13617,17 +14681,227 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${right}
   </div>`;
   }
+  // ---- 32: archive, and a deletion that is hard to do by accident ---------
+  // Archiving is the recommended action and is fully reversible: the league
+  // drops off the active list and keeps every byte of its history. Deleting is
+  // deliberate — four gates, then a thirty-day window during which it can still
+  // be pulled back.
+  function leagueFlags() {
+    if (!store.leagueFlags) store.leagueFlags = {};
+    return store.leagueFlags;
+  }
+  function leagueFlag(id) {
+    const f = leagueFlags();
+    if (!f[id]) f[id] = {};
+    return f[id];
+  }
+  function isArchived(id) {
+    return !!leagueFlag(id).archived;
+  }
+  function deleteDueAt(id) {
+    return +leagueFlag(id).deleteAt || 0;
+  }
+  function isPendingDelete(id) {
+    return deleteDueAt(id) > 0;
+  }
+  function deleteDaysLeft(id) {
+    const at = deleteDueAt(id);
+    if (!at) return 0;
+    return Math.max(0, Math.ceil((at - Date.now()) / 864e5));
+  }
+  // a league must always remain, or the app has nothing to open
+  function liveLeagueCount() {
+    return allLeagues().filter((l) => !isArchived(l.id) && !isPendingDelete(l.id)).length;
+  }
+  function archiveLeague(id) {
+    if (liveLeagueCount() <= 1 && !isArchived(id)) { toast("This is your only active league"); return false; }
+    leagueFlag(id).archived = Date.now();
+    if (store.activeLeague === id) store.activeLeague = (allLeagues().find((l) => !isArchived(l.id) && !isPendingDelete(l.id)) || { id: "cbd" }).id;
+    saveStore();
+    toast("League archived \u2014 its history is kept");
+    goHome();
+    return true;
+  }
+  function restoreLeague(id) {
+    const f = leagueFlag(id);
+    delete f.archived;
+    delete f.deleteAt;
+    saveStore();
+    toast("League restored");
+    if (window.renderHome) window.renderHome();
+    return true;
+  }
+  function scheduleDelete(id) {
+    if (liveLeagueCount() <= 1 && !isArchived(id) && !isPendingDelete(id)) {
+      toast("This is your only active league");
+      return false;
+    }
+    leagueFlag(id).deleteAt = Date.now() + 30 * 864e5;
+    if (store.activeLeague === id) store.activeLeague = (allLeagues().find((l) => !isArchived(l.id) && !isPendingDelete(l.id)) || { id: "cbd" }).id;
+    saveStore();
+    goHome();
+    return true;
+  }
+  // Everything the league owns, in one place, so a purge leaves nothing behind.
+  var LEAGUE_BAGS = ["rosters", "chat", "chatSeen", "draftHistory", "picks", "conds", "claims",
+    "waivers", "waived", "players", "tradeBlock", "seasons", "scoringByLeague", "scoringPreset",
+    "schedules", "scores", "draftAt", "notifs"];
+  function purgeLeague(id) {
+    LEAGUE_BAGS.forEach((b) => { if (store[b] && store[b][id]) delete store[b][id]; });
+    if (store.leagueLogos) delete store.leagueLogos[id];
+    if (store.myLeagues) store.myLeagues = store.myLeagues.filter((l) => l.id !== id);
+    if (store.leagueOrder) store.leagueOrder = store.leagueOrder.filter((k) => k !== id);
+    // seeded leagues live in a constant, so the id has to be remembered as gone
+    if (purgedLeagues().indexOf(id) < 0) purgedLeagues().push(id);
+    delete leagueFlags()[id];
+    if (store.activeLeague === id) store.activeLeague = (allLeagues()[0] || { id: "cbd" }).id;
+    saveStore();
+  }
+  function deleteNow(id) {
+    const nm = (leagueById(id) || {}).name || "League";
+    purgeLeague(id);
+    toast(`${nm} deleted`);
+    goHome();
+  }
+  // run at boot: anything past its thirty days goes for good
+  function sweepDeletions() {
+    const f = leagueFlags(), now = Date.now();
+    Object.keys(f).forEach((id) => {
+      if (f[id].deleteAt && f[id].deleteAt <= now) purgeLeague(id);
+    });
+  }
+
+  // ---- the four-gate delete sheet ----
+  var DEL = { id: null, step: 1, typed: "", ack: false, held: 0 };
+  function openDeleteLeague(id) {
+    DEL = { id, step: 1, typed: "", ack: false, held: 0 };
+    renderDeleteStep();
+    document.getElementById("confirmScrim").classList.add("show");
+    document.getElementById("confirmSheet").classList.add("show");
+  }
+  function delStep(n) {
+    DEL.step = n;
+    renderDeleteStep();
+  }
+  function delType(v) {
+    DEL.typed = v;
+    const btn = document.getElementById("delStep2Go");
+    if (btn) btn.classList.toggle("off", v.trim() !== (leagueById(DEL.id) || {}).name);
+  }
+  function delAck(el) {
+    DEL.ack = !DEL.ack;
+    if (el) el.classList.toggle("on", DEL.ack);
+    const btn = document.getElementById("delStep3Go");
+    if (btn) btn.classList.toggle("off", !DEL.ack);
+  }
+  function renderDeleteStep() {
+    const lg = leagueById(DEL.id) || {}, nm = lg.name || "League";
+    const t = document.getElementById("confirmTitle");
+    const b = document.getElementById("confirmBody");
+    if (!t || !b) return;
+    t.textContent = `Delete ${nm} \u00B7 step ${DEL.step} of 4`;
+    if (DEL.step === 1) {
+      b.innerHTML = `<div class="cf-msg">Deleting <b>${escHtml(nm)}</b> permanently removes everything
+        it owns. Archiving keeps all of this and can be undone at any time.</div>
+      <ul class="dz-list">
+        <li>The league and its settings</li><li>Every roster</li><li>Every trade</li>
+        <li>Every matchup and result</li><li>Every draft and its picks</li>
+        <li>League and draft history</li><li>Custom logos and player photos</li>
+        <li>Everything else associated with the league</li>
+      </ul>
+      <div class="cf-btns">
+        <div class="cf-btn cancel" onclick="closeConfirm()">Cancel</div>
+        <div class="cf-btn danger" onclick="delStep(2)">I still want to delete</div>
+      </div>`;
+      return;
+    }
+    if (DEL.step === 2) {
+      b.innerHTML = `<div class="cf-msg">Type the league name exactly to continue.</div>
+      <div class="dz-name">${escHtml(nm)}</div>
+      <div class="tbk-add"><input id="delName" type="text" autocomplete="off" spellcheck="false"
+        placeholder="League name" value="${escAttr(DEL.typed)}" oninput="delType(this.value)"></div>
+      <div class="cf-btns">
+        <div class="cf-btn cancel" onclick="closeConfirm()">Cancel</div>
+        <div class="cf-btn danger${DEL.typed.trim() === nm ? "" : " off"}" id="delStep2Go"
+          onclick="if(DEL.typed.trim()===${JSON.stringify(nm)})delStep(3)">Continue</div>
+      </div>`;
+      const i = document.getElementById("delName");
+      if (i) i.focus();
+      return;
+    }
+    if (DEL.step === 3) {
+      b.innerHTML = `<div class="cf-msg">One last acknowledgement.</div>
+      <div class="dz-ack${DEL.ack ? " on" : ""}" onclick="delAck(this)">
+        <span class="box"></span><span>I understand this action cannot be undone.</span>
+      </div>
+      <div class="cf-btns">
+        <div class="cf-btn cancel" onclick="closeConfirm()">Cancel</div>
+        <div class="cf-btn danger${DEL.ack ? "" : " off"}" id="delStep3Go"
+          onclick="if(DEL.ack)delStep(4)">Continue</div>
+      </div>`;
+      return;
+    }
+    b.innerHTML = `<div class="cf-msg">Press and hold for three seconds. Let go early and nothing happens.</div>
+    <div class="dz-hold" id="delHold"><i></i><span>Delete forever</span></div>
+    <div class="cf-btns"><div class="cf-btn cancel" onclick="closeConfirm()">Cancel</div></div>`;
+    bindHold();
+  }
+  var holdTimer = null, holdRaf = null;
+  function bindHold() {
+    const el = document.getElementById("delHold");
+    if (!el) return;
+    const bar = el.querySelector("i");
+    const stop = () => {
+      clearTimeout(holdTimer); cancelAnimationFrame(holdRaf);
+      holdTimer = holdRaf = null;
+      el.classList.remove("holding");
+      bar.style.width = "0%";
+    };
+    const start = (e) => {
+      if (e && e.preventDefault) e.preventDefault();
+      if (holdTimer) return;
+      const t0 = Date.now();
+      el.classList.add("holding");
+      const step = () => {
+        const p = Math.min(1, (Date.now() - t0) / 3e3);
+        bar.style.width = p * 100 + "%";
+        if (p < 1) holdRaf = requestAnimationFrame(step);
+      };
+      holdRaf = requestAnimationFrame(step);
+      holdTimer = setTimeout(() => { stop(); confirmScheduleDelete(); }, 3e3);
+    };
+    el.addEventListener("pointerdown", start);
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => el.addEventListener(ev, stop));
+  }
+  function confirmScheduleDelete() {
+    const id = DEL.id;
+    closeConfirm();
+    if (scheduleDelete(id)) toast("Scheduled for deletion in 30 days \u2014 restore any time");
+  }
   function renderHome2() {
     const el = document.getElementById("homeBody");
     if (!el) return;
     const w = store.createLeague;
     const resume = w && (w.step > 0 || (w.name || "").trim());
-    el.innerHTML = `<div class="hb-list" id="hbList">${orderedLeagues().map(rowHTML).join("")}</div>
+    const all = orderedLeagues();
+    const live = all.filter((l) => !isArchived(l.id) && !isPendingDelete(l.id));
+    const archived = all.filter((l) => isArchived(l.id) && !isPendingDelete(l.id));
+    const doomed = all.filter((l) => isPendingDelete(l.id));
+    const archSec = archived.length ? `
+    <div class="hb-sec" onclick="toggleArchivedOpen()">Archived leagues
+      <span>${archived.length}</span><i>${archivedOpen ? "\u2039" : "\u203A"}</i></div>
+    ${archivedOpen ? `<div class="hb-list arch">${archived.map(archRowHTML).join("")}</div>` : ""}` : "";
+    const delSec = doomed.length ? `
+    <div class="hb-sec danger">Scheduled for deletion <span>${doomed.length}</span></div>
+    <div class="hb-list">${doomed.map(doomRowHTML).join("")}</div>` : "";
+    el.innerHTML = `<div class="hb-list" id="hbList">${live.map(rowHTML).join("")}</div>
     <div class="hb-new" onclick="openCreateLeague()">
       <div class="hb-plus">+</div>
       <div class="hb-id"><div class="hb-nm">${resume ? "Resume setup" : "Create a league"}</div>
         ${resume ? `<div class="hb-st">${escHtml((w.name || "").trim() || "Untitled")} \xB7 step ${Math.min(w.step + 1, 6)} of 6</div>` : ""}</div>
-    </div>`;
+    </div>
+    ${archSec}
+    ${delSec}`;
     bindReorder(document.getElementById("hbList"));
     startClock();
   }
@@ -13846,7 +15120,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const need = +rec.league.teams, joined = rec.joined || 1;
     const pct = Math.round(joined / need * 100);
     const full = joined >= need;
-    const when = rec.league.draftWhen === "hourly" ? "Rolling hourly" : "Starts when the league fills";
+    const why = startDraftBlocker(rec);
+    const when = full
+      ? "Every seat filled \u2014 ready to draft"
+      : rec.league.draftWhen === "hourly" ? "Rolling hourly" : "Starts when the league fills";
     document.getElementById("waitBody").innerHTML = `
     <div class="dr-wait">
       <div class="dr-wait-h">${escHtml(rec.name)}</div>
@@ -13854,8 +15131,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="dr-wait-bar"><i style="width:${pct}%"></i></div>
       <div class="wiz-foot" style="margin-top:14px">
         <div class="wiz-btn" onclick="openInvite('${rec.id}')">Invite</div>
-        <div class="wiz-btn primary${full ? "" : " off"}" onclick="startCreatedDraft('${rec.id}')">Start draft</div>
+        <div class="wiz-btn primary${why ? " off" : ""}" onclick="startCreatedDraft('${rec.id}')">Start draft</div>
       </div>
+      ${why ? `<div class="dr-wait-why">${escHtml(why)}</div>`
+            : `<div class="dr-wait-why ok">Nothing left to wait for \u2014 start whenever you are ready.</div>`}
     </div>
     <div class="hd"><span>Teams</span></div>
     <div class="rc">${Array.from({ length: need }, (_, i) => {
@@ -13913,11 +15192,47 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     document.getElementById("condSheet").classList.remove("show");
     renderWaitRoom(id);
   }
+  // Why a league cannot start yet, or null when it can. Kept separate from the
+  // button so the wait room can explain itself rather than just greying out.
+  function startDraftBlocker(rec) {
+    if (!rec) return "League not found";
+    if ((rec.league.commish || MY_TEAM) !== MY_TEAM) return "Only the commissioner can start the draft";
+    const need = +rec.league.teams, joined = rec.joined || 1;
+    if (joined < need) return `${need - joined} more manager${need - joined === 1 ? "" : "s"} still to join`;
+    if (joined > need) return "More managers have joined than the league has seats";
+    if (need < SIZE_MIN || need > SIZE_MAX) return `League size must be between ${SIZE_MIN} and ${SIZE_MAX} teams`;
+    if (need % 2 && !rec.league.median) return "An odd number of teams needs League Median or a bye each week";
+    if (!rec.league.draftType) return "Pick a draft type in league settings first";
+    if (!rec.league.type) return "Pick a league type in league settings first";
+    const rounds = buildSlotsFor(rec.league) ;
+    if (!rounds) return "Set a starting lineup before drafting";
+    return null;
+  }
+  // roster shape sanity: at least one starting slot configured
+  function buildSlotsFor(league) {
+    const sl = league.slots || SLOT_DEFAULTS;
+    return SLOT_ORDER.reduce((t, k) => t + (+sl[k] || 0), 0) > 0;
+  }
+  // No waiting period: the moment the seats are full and the settings check
+  // out, this starts the draft. draftWhen "hourly" only ever described when a
+  // league that is still filling would kick off on its own; a commissioner
+  // pressing the button overrides it.
   function startCreatedDraft(id) {
     const rec = myLeagues().find((l) => l.id === id);
-    if (!rec) return;
-    if ((rec.joined || 1) < +rec.league.teams) return;
-    toast("Draft opening");
+    const why = startDraftBlocker(rec);
+    if (why) { toast(why); return false; }
+    rec.startedAt = Date.now();
+    if (!store.draftAt) store.draftAt = {};
+    store.draftAt[rec.id] = rec.startedAt;
+    saveStore();
+    toast(`${rec.name} draft is open`);
+    document.body.classList.remove("forming");
+    store.activeLeague = rec.id;
+    saveStore();
+    stampLeagueBar2(leagueById(rec.id));
+    if (document.body.classList.contains("open")) toggleDrawer();
+    showTab("draft");
+    return true;
   }
   function initHome2() {
     store.leagueOrder = store.leagueOrder || [];
@@ -15486,6 +16801,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   migratePlayerLeagues();
   applyTeamFonts();
   initLeagues();
+  sweepDeletions();
   initHome();
   initChat();
   initNotifs();
