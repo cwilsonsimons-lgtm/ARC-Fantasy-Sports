@@ -1,0 +1,179 @@
+/* WWE 2K Universe dashboard.
+ *
+ * Standalone: it borrows the palette and the embedded typefaces from the
+ * fantasy app but not css/base.css, which resets <body> into a centred phone
+ * frame. This is a desk tool, not a phone mock — it wants the whole window.
+ *
+ * The layout is a fixed header and a scrolling pane. Entry is the landing tab
+ * because that is what you open the page to do: type in a card after playing.
+ */
+:root{
+  --bg:#070A0F;--card:#111826;--card-2:#0E1420;--card-3:#0A101A;
+  --line:#1E2836;--line-soft:#161E2A;
+  --ink:#F3F6FA;--ink-2:#93A0B0;--ink-3:#5E6B7C;
+  --green:#8CE04A;--red:#F0453E;--violet:#7C5CFF;--violet-soft:#2A2350;
+  --gold:#E8B23A;--blue:#3B9BE8;
+  --raw:#C8102E;--smackdown:#0B7BD5;--nxt:#F5C518;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:'Barlow',system-ui,sans-serif;
+  font-size:14px;line-height:1.45;display:flex;flex-direction:column;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--blue)}
+
+/* ---------------------------------------------------------------- header */
+.top{display:flex;align-items:center;gap:18px;padding:14px 22px;border-bottom:1px solid var(--line);
+  background:var(--card-2);flex:none}
+.brandmark{font-family:'Oswald','Barlow Condensed',system-ui,sans-serif;font-weight:700;
+  font-size:19px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.brandmark em{font-style:normal;color:var(--red)}
+.top .meta{color:var(--ink-3);font-size:12px;letter-spacing:.04em;white-space:nowrap}
+.top .spacer{flex:1}
+.asof{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.asof input{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
+  padding:5px 8px;font-size:12px;color-scheme:dark}
+.asof button{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:11px;
+  text-decoration:underline;padding:2px}
+.asof.past input{border-color:var(--gold);color:var(--gold)}
+
+/* ---------------------------------------------------------------- tabs */
+.tabs{display:flex;gap:2px;padding:0 18px;border-bottom:1px solid var(--line);
+  background:var(--card-2);flex:none}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:11px 15px;
+  font-family:'Oswald','Barlow Condensed',system-ui,sans-serif;font-size:13px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink-2)}
+.tab.on{color:var(--ink);border-bottom-color:var(--red)}
+.tab .count{color:var(--ink-3);font-size:11px;margin-left:6px}
+
+/* ---------------------------------------------------------------- panes */
+.pane{flex:1;overflow-y:auto;padding:20px 22px 60px;display:none}
+.pane.on{display:block}
+.pane::-webkit-scrollbar{width:10px}
+.pane::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
+
+h2{font-family:'Oswald','Barlow Condensed',system-ui,sans-serif;font-weight:600;font-size:13px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:0 0 10px}
+h2 .sub{color:var(--ink-3);letter-spacing:.02em;text-transform:none;font-size:12px;
+  font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.grid{display:grid;gap:16px}
+.cols{display:grid;grid-template-columns:minmax(380px,1fr) minmax(380px,1.15fr);gap:18px;align-items:start}
+@media (max-width:980px){.cols{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card.flush{padding:0;overflow:hidden}
+
+/* ---------------------------------------------------------------- entry */
+.entry textarea{width:100%;min-height:210px;resize:vertical;background:var(--card-3);
+  border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);
+  font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;line-height:1.65;tab-size:2}
+.entry textarea:focus{outline:0;border-color:var(--violet)}
+.entry textarea::placeholder{color:var(--ink-3)}
+details.entry summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:9px}
+details.entry summary::-webkit-details-marker{display:none}
+details.entry summary::before{content:'▸';color:var(--ink-3);font-size:11px}
+details.entry[open] summary::before{content:'▾'}
+details.entry summary h2{margin:0}
+details.entry[open] summary{margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.btn{background:var(--violet);border:0;border-radius:8px;padding:9px 16px;font-weight:600;
+  font-size:13px;color:#fff;cursor:pointer}
+.btn:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--ink-2)}
+.btn.ghost:hover{border-color:var(--ink-3);color:var(--ink)}
+.btn.danger{background:none;border:1px solid var(--line);color:var(--red)}
+.hint{color:var(--ink-3);font-size:12px}
+kbd{background:var(--card-3);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+  font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-2)}
+
+.syntax{color:var(--ink-3);font-size:12px;line-height:1.8;margin-top:12px;
+  border-top:1px solid var(--line-soft);padding-top:11px}
+.syntax code{font-family:ui-monospace,monospace;color:var(--ink-2);background:var(--card-3);
+  border-radius:4px;padding:1px 5px}
+
+/* problems and previews */
+.msg{border-radius:9px;padding:10px 13px;font-size:13px;margin-bottom:12px}
+.msg.err{background:rgba(240,69,62,.09);border:1px solid rgba(240,69,62,.35);color:#FFB3B0}
+.msg.warn{background:rgba(232,178,58,.08);border:1px solid rgba(232,178,58,.3);color:#F0D08A}
+.msg.ok{background:rgba(140,224,74,.08);border:1px solid rgba(140,224,74,.3);color:#C6F09A}
+.msg ul{margin:6px 0 0 16px}
+.msg li{margin:2px 0}
+.msg code{font-family:ui-monospace,monospace;opacity:.85}
+
+/* ---------------------------------------------------------------- tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-family:'Oswald','Barlow Condensed',sans-serif;font-weight:500;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding:9px 12px;
+  border-bottom:1px solid var(--line);white-space:nowrap;background:var(--card-2)}
+td{padding:8px 12px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:rgba(255,255,255,.022)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.dim{color:var(--ink-3)}
+.mono{font-family:ui-monospace,monospace;font-size:12px;color:var(--ink-3)}
+.wname{font-weight:600;cursor:pointer}
+.wname:hover{color:var(--violet)}
+.empty{color:var(--ink-3);padding:16px 2px;font-size:13px}
+
+/* ---------------------------------------------------------------- chips */
+.chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;
+  letter-spacing:.03em;white-space:nowrap}
+.chip.brand{background:var(--card-3);border:1px solid var(--line);color:var(--ink-2)}
+.chip.title{background:rgba(232,178,58,.12);color:var(--gold);border:1px solid rgba(232,178,58,.3)}
+.chip.up{background:rgba(140,224,74,.12);color:var(--green)}
+.chip.down{background:rgba(240,69,62,.12);color:var(--red)}
+.chip.fa{background:rgba(147,160,176,.1);color:var(--ink-2)}
+.chip.hurt{background:rgba(240,69,62,.14);color:#FF9C97}
+.chip.new{background:var(--violet);color:#fff}
+.chip.group{background:var(--violet-soft);color:#B9A8FF}
+.chip+.chip{margin-left:4px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+
+/* ---------------------------------------------------------------- brands */
+.brandhead{display:flex;align-items:baseline;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--line);background:var(--card-2)}
+.brandhead .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:16px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase}
+.brandhead .ct{color:var(--ink-3);font-size:12px}
+.brandhead .bar{width:4px;align-self:stretch;border-radius:2px}
+
+/* ---------------------------------------------------------------- titles */
+.belts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.belt{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);
+  border-radius:10px;padding:12px 14px;cursor:pointer}
+.belt:hover{border-color:var(--line);background:var(--card-2)}
+.belt .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-2)}
+.belt .holder{font-size:17px;font-weight:600;margin:5px 0 6px}
+.belt .holder.vacant{color:var(--ink-3);font-style:italic;font-weight:400}
+.belt .facts{color:var(--ink-3);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
+
+/* ---------------------------------------------------------------- log */
+.logrow td{font-size:13px}
+.logrow.voided td{opacity:.42;text-decoration:line-through}
+.logrow.voided td.act{opacity:1;text-decoration:none}
+.act{white-space:nowrap;text-align:right}
+.linkbtn{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:12px;
+  text-decoration:underline;padding:2px 4px}
+.linkbtn:hover{color:var(--ink)}
+.linkbtn.warn:hover{color:var(--red)}
+
+/* ---------------------------------------------------------------- sheet */
+.scrim{position:fixed;inset:0;background:rgba(3,6,11,.72);display:none;z-index:100}
+.scrim.on{display:block}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,92vw);background:var(--card-2);
+  border-left:1px solid var(--line);z-index:101;transform:translateX(102%);
+  transition:transform .22s ease;display:flex;flex-direction:column}
+.sheet.on{transform:none}
+.sheet .head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.sheet .head h3{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:19px;font-weight:600;
+  letter-spacing:.06em;flex:1}
+.sheet .body{flex:1;overflow-y:auto;padding:16px 20px 40px}
+.sheet .x{background:none;border:0;color:var(--ink-3);font-size:22px;cursor:pointer;line-height:1}
+.sheet .x:hover{color:var(--ink)}
+.facts2{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px}
+.fact{background:var(--card-3);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+.fact .k{color:var(--ink-3);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.fact .v{font-size:16px;font-weight:600;margin-top:2px}

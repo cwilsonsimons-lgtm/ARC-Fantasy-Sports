@@ -4,9 +4,10 @@ Event-sourced store for a Universe mode save: wrestlers, brands, championships,
 tag teams and factions, plus every match, attack, promo, title change, injury,
 contract and transfer that happens to them.
 
-Data layer only — there is no UI yet. Everything below runs under Node through
-`tools/universe.mjs`, and the modules under `js/universe/` are DOM-free so the
-same code will drive a dashboard later.
+Two front ends over one data layer: the dashboard at `universe.html`
+(`dist/universe.html` to open without a server) and the CLI at
+`tools/universe.mjs`. `js/universe/` itself is DOM-free — it knows nothing about
+either.
 
 ```
 js/universe/
@@ -17,11 +18,20 @@ js/universe/
   roster.js    paste a roster, diff it, print who is on each brand
   card.js      type a show's card in shorthand
   util.js      name resolution and plain-text tables
+  seed-data.js generated from data/universe-seed.json for the browser build
+  ui/
+    app.js     boot, tabs, actions — the only file that touches storage
+    views.js   roster / titles / shows / log / sheets, projection in, HTML out
+    entry.js   the card and roster boxes, with live previews
+    dom.js     escaping, tables, delegated events
+universe.html  the dashboard page
 tools/
-  universe.mjs        the CLI
-  universe-check.mjs  108 checks, pure Node
+  universe.mjs           the CLI
+  universe-check.mjs     108 data-layer checks, pure Node
+  universe-ui-check.mjs  54 browser checks against the built page
+  build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
-  universe-seed.json  example seed
+  universe-seed.json     example seed
 ```
 
 ## The idea
@@ -280,6 +290,34 @@ node tools/universe.mjs card card.txt --dry    # always preview first
 node tools/universe.mjs card card.txt
 node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
+
+## Dashboard
+
+```
+npm start                    # then http://127.0.0.1:8080/universe.html
+npm run build                # then open dist/universe.html directly
+npm run check:universe-ui    # 54 browser checks
+```
+
+| Tab | What it does |
+| --- | --- |
+| Tonight | Type a card. The right-hand pane shows what the parser heard, updated on every keystroke; the save button stays disabled while anything is wrong. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> saves. |
+| Roster | Paste box (collapsed) over a table per brand, plus free agents and every team and faction. |
+| Titles | Every belt with holder, days, defenses and reign count. Click one for its lineage. |
+| Shows | Every saved card, newest first. |
+| Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
+
+The whole page is a function of the projection: an action appends to the log,
+then everything redraws. That is why fixing a result in the Log tab moves the
+records on the Roster tab and the holder on the Titles tab with no further
+work — there is no second copy of the truth to update.
+
+**State as of** in the header re-projects the entire page at a past date, using
+the same `project(store, {asOf})` the CLI uses.
+
+Storage is `localStorage` under `arc_universe_v1`, seeded from `seed-data.js` on
+first load. The fantasy app's keys are never read or written. If a write fails
+(quota, private mode) the page says so rather than pretending it saved.
 
 ## CLI
 

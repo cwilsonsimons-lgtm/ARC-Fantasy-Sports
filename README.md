@@ -63,27 +63,40 @@ working network sees it.
 
 ## WWE 2K Universe
 
-A second self-contained subsystem, and — for now — a data layer with no UI at
-all. It stores a WWE 2K Universe mode save as an event log: wrestlers, brands,
+A second self-contained app, on its own page: **`universe.html`** in source form,
+**`dist/universe.html`** as a single self-contained file you can double-click.
+It stores a WWE 2K Universe mode save as an event log — wrestlers, brands,
 championships, tag teams and factions, plus every match, attack, promo, title
 change, injury, contract and brand transfer that happens to them.
+
+Five tabs: **Tonight** (type a card, see it parsed as you type, save it),
+**Roster** (paste a roster, then who is on each brand), **Titles** (every belt
+and its full lineage), **Shows**, and **Log** (every event and correction, with
+one-click fixes). A date box in the header re-projects the whole page at any
+past date. Its storage key is `arc_universe_v1`; the fantasy app's keys are
+never touched.
 
 Nothing derived is persisted. Champions, brand rosters, win/loss records, title
 lineages, faction membership and feud heat are all folded out of the log on
 demand, so correcting a mistake is one append to a correction log and every
 downstream number recalculates on the next read:
 
+The same data layer also drives a CLI, which is how it was built and is still
+the fastest way to bulk-load or inspect a save:
+
 ```
 node tools/universe.mjs seed data/universe-seed.json --fresh
 node tools/universe.mjs roster roster.txt      # paste a roster, get a brand table
 node tools/universe.mjs card card.txt --dry    # type a show's card in shorthand
 node tools/universe.mjs amend ev_0081 winner="Gunther"
-npm run check:universe                         # 108 checks, pure Node
+
+npm run check:universe        # 108 data-layer checks, pure Node
+npm run check:universe-ui     # 54 browser checks against dist/universe.html
 ```
 
-`js/universe/` is DOM-free — the Node CLI and a future dashboard run the same
-code. Full schema, correction semantics, roster format and card grammar are in
-[docs/universe.md](docs/universe.md).
+`js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`
+is the dashboard on top of it. Full schema, correction semantics, roster format
+and card grammar are in [docs/universe.md](docs/universe.md).
 
 ## Layout
 

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WWE 2K Universe — Dashboard</title>
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/universe.css">
+</head>
+<body>
+
+<div class="top">
+  <div class="brandmark"><em>Universe</em> Dashboard</div>
+  <div class="meta"><span id="uName">Universe</span> · <span id="uMeta"></span></div>
+  <div class="spacer"></div>
+  <div class="asof" id="asOfWrap">
+    <label for="asOf">State as of</label>
+    <input type="date" id="asOf">
+    <button id="asOfNow" style="display:none">back to now</button>
+  </div>
+  <button class="linkbtn warn" id="reset">reset</button>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="pane on" id="pane-tonight"></div>
+<div class="pane" id="pane-roster"></div>
+<div class="pane" id="pane-titles"></div>
+<div class="pane" id="pane-shows"></div>
+<div class="pane" id="pane-log"></div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet">
+  <div class="head">
+    <h3 id="sheetTitle"></h3>
+    <button class="x" id="sheetClose" aria-label="Close">&#10005;</button>
+  </div>
+  <div class="body" id="sheetBody"></div>
+</aside>
+
+<script type="module" src="js/universe/ui/app.js"></script>
+</body>
+</html>
