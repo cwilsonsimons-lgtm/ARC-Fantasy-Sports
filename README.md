@@ -69,17 +69,24 @@ It stores a WWE 2K Universe mode save as an event log — wrestlers, brands,
 championships, tag teams and factions, plus every match, attack, promo, title
 change, injury, contract and brand transfer that happens to them.
 
-Five tabs: **Tonight** (type a card, see it parsed as you type, save it),
-**Roster** (paste a roster, then who is on each brand), **Titles** (every belt
-and its full lineage), **Shows**, and **Log** (every event and correction, with
-one-click fixes). A date box in the header re-projects the whole page at any
-past date. Its storage key is `arc_universe_v1`; the fantasy app's keys are
-never touched.
+Six tabs: **Tonight** (type a card, see it parsed as you type, save it — with
+active rivalries, alliances and open threads below), **Roster** (paste a roster,
+then who is on each brand), **Titles** (every belt, click through to its full
+lineage and title matches), **Threads** (questions the log has opened and not
+answered, oldest first), **Shows**, and **Log** (every event and correction,
+with one-click fixes). Clicking a wrestler opens their profile — record, reigns
+with day counts, rivalries, alliances and a full timeline. A date box in the
+header re-projects the whole page at any past date, decayed heat included. Its
+storage key is `arc_universe_v1`; the fantasy app's keys are never touched.
 
 Nothing derived is persisted. Champions, brand rosters, win/loss records, title
-lineages, faction membership and feud heat are all folded out of the log on
-demand, so correcting a mistake is one append to a correction log and every
-downstream number recalculates on the next read:
+lineages, faction membership, rivalry heat and the threads queue are all folded
+out of the log on demand, so correcting a mistake is one append to a correction
+log and every downstream number recalculates on the next read.
+
+Relationships are derived too, never entered: attacks and losses build rivalry,
+tag wins and saves build alliance, an attack spreads to the victim's tag partner
+and faction, and all of it decays with time unless new events keep it alive.
 
 The same data layer also drives a CLI, which is how it was built and is still
 the fastest way to bulk-load or inspect a save:
@@ -89,9 +96,11 @@ node tools/universe.mjs seed data/universe-seed.json --fresh
 node tools/universe.mjs roster roster.txt      # paste a roster, get a brand table
 node tools/universe.mjs card card.txt --dry    # type a show's card in shorthand
 node tools/universe.mjs amend ev_0081 winner="Gunther"
+node tools/universe.mjs threads                # what is still hanging
+node tools/universe.mjs heat                   # rivalries and alliances
 
-npm run check:universe        # 108 data-layer checks, pure Node
-npm run check:universe-ui     # 54 browser checks against dist/universe.html
+npm run check:universe        # 154 data-layer checks, pure Node
+npm run check:universe-ui     # 87 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

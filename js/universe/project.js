@@ -13,12 +13,23 @@
 // Pass `asOf` to stand at any point in history: `project(store, {asOf:'2026-01-01'})`
 // answers "who held the belt in January" with the same code path as "now".
 
-import { entityKind } from './schema.js';
+import { entityKind, HEAT } from './schema.js';
 
 const DAY = 86400000;
 export const days = (from, to) => Math.max(0, Math.round((new Date(to + 'T00:00:00Z') - new Date(from + 'T00:00:00Z')) / DAY));
 const feudKey = (a, b) => [a, b].sort().join('|');
 const todayISO = () => new Date().toISOString().slice(0, 10);
+
+// Relationships fade. A feud nobody has touched in three months is not a feud,
+// and the dashboard should stop shouting about it — but the events that built
+// it are still in the log and still count for the history.
+//
+// Each contribution decays from its own date, so this is a pure function of
+// (log, asOf). Nothing is recomputed on a timer and nothing goes stale: move
+// the as-of date back and the old heat comes back with it.
+export const HALF_LIFE = { rivalry: 60, alliance: 90 };   // days
+export const ACTIVE = { rivalry: 2, alliance: 2 };        // below this it is over
+const decay = (points, age, halfLife) => points * Math.pow(0.5, Math.max(0, age) / halfLife);
 
 export function project(store, { asOf = null } = {}) {
   const events = store.effectiveEvents({ asOf });
@@ -27,7 +38,11 @@ export function project(store, { asOf = null } = {}) {
   const state = {
     asOf: at,
     wrestlers: {}, brands: {}, championships: {}, groups: {},
-    shows: [], showsById: {}, feuds: {}, events,
+    shows: [], showsById: {}, events,
+    // Raw contributions, collected during the replay and totalled at the end so
+    // decay is measured from each one's own date.
+    ties: { rivalry: new Map(), alliance: new Map() },
+    rivalries: [], alliances: [], threadsById: {}, threads: [],
     counts: { events: events.length },
   };
 
@@ -52,7 +67,9 @@ export function project(store, { asOf = null } = {}) {
   });
   store.entitiesOf('championship').forEach(c => {
     state.championships[c.id] = {
-      ...c, holders: [], vacant: true, since: null, reigns: [], totalDefenses: 0, retired: !!c.retiredOn,
+      ...c, holders: [], interimHolders: [], vacant: true, since: null,
+      reigns: [], currentIndex: null, interimIndex: null,
+      totalDefenses: 0, retired: !!c.retiredOn,
     };
   });
   store.entitiesOf('group').forEach(g => {
@@ -75,14 +92,21 @@ export function project(store, { asOf = null } = {}) {
     });
     if (ev.showId && state.showsById[ev.showId]) state.showsById[ev.showId].segments.push(summarize(ev, state));
     (ev.effects || []).forEach(fx => applyEffect(state, fx, ev));
+    closeThreads(state, ev);
   });
 
   // ---------------------------------------------------------------- settle
   Object.values(state.championships).forEach(c => {
-    const cur = c.reigns[c.reigns.length - 1];
-    if (cur && !cur.to) cur.days = days(cur.from, at);
-    c.since = cur && !cur.to ? cur.from : null;
-    c.daysHeld = cur && !cur.to ? cur.days : 0;
+    c.reigns.forEach(r => { if (!r.to) r.days = days(r.from, at); });
+    const main = mainReign(c), interim = interimReign(c);
+    c.since = main ? main.from : null;
+    c.daysHeld = main ? main.days : 0;
+    c.defenses = main ? main.defenses : 0;
+    c.holders = main ? main.holders : [];
+    c.vacant = !main;
+    c.interimHolders = interim ? interim.holders : [];
+    c.interimSince = interim ? interim.from : null;
+    c.longestReign = c.reigns.reduce((best, r) => (!best || r.days > best.days ? r : best), null);
   });
 
   Object.values(state.wrestlers).forEach(w => {
@@ -102,8 +126,50 @@ export function project(store, { asOf = null } = {}) {
   });
 
   state.freeAgents = Object.values(state.wrestlers).filter(w => !w.brandId).map(w => w.id);
-  state.feuds = Object.values(state.feuds).sort((a, b) => b.heat - a.heat || (a.last < b.last ? 1 : -1));
   Object.values(state.brands).forEach(b => b.roster.sort((x, y) => state.wrestlers[x].name.localeCompare(state.wrestlers[y].name)));
+
+  // Relationships: total each pair's contributions, each decayed from its own
+  // date. A pair that has not been touched in months falls under the threshold
+  // and stops being called active, without anything being deleted.
+  const settleTies = (kind) => [...state.ties[kind].values()].map(t => {
+    const heat = t.hits.reduce((sum, x) => sum + decay(x.points, days(x.date, at), HALF_LIFE[kind]), 0);
+    const last = t.hits.reduce((m, x) => (x.date > m ? x.date : m), t.hits[0].date);
+    const why = {};
+    t.hits.forEach(x => { why[x.why || 'other'] = (why[x.why || 'other'] || 0) + 1; });
+    return {
+      a: t.a, b: t.b,
+      heat: Math.round(heat * 10) / 10,
+      peak: Math.round(t.hits.reduce((s, x) => s + x.points, 0) * 10) / 10,
+      meetings: t.hits.length, last, why,
+      active: heat >= ACTIVE[kind],
+      hits: t.hits,
+    };
+  }).sort((x, y) => y.heat - x.heat || (x.last < y.last ? 1 : -1));
+
+  state.rivalries = settleTies('rivalry');
+  state.alliances = settleTies('alliance');
+  state.feuds = state.rivalries;              // the name this used to go by
+
+  // Per-wrestler shortcuts, so a profile page does not scan every pair.
+  const attach = (list, field) => list.forEach(t => {
+    [[t.a, t.b], [t.b, t.a]].forEach(([self, other]) => {
+      const w = state.wrestlers[self];
+      if (w) w[field].push({ with: other, heat: t.heat, meetings: t.meetings, last: t.last, active: t.active, why: t.why });
+    });
+  });
+  Object.values(state.wrestlers).forEach(w => { w.rivals = []; w.allies = []; });
+  attach(state.rivalries, 'rivals');
+  attach(state.alliances, 'allies');
+
+  // Threads, oldest first — the queue is a nag list, and the oldest nag wins.
+  Object.values(state.threadsById).forEach(t => {
+    t.age = days(t.opened, t.closed || at);
+    t.stale = !t.closed && t.age > 60;
+  });
+  state.threads = Object.values(state.threadsById)
+    .filter(t => !t.closed)
+    .sort((a, b) => (a.opened < b.opened ? -1 : a.opened > b.opened ? 1 : 0));
+  state.threadsClosed = Object.values(state.threadsById).filter(t => t.closed);
 
   return state;
 }
@@ -140,9 +206,8 @@ function applyEffect(state, fx, ev) {
     case 'title.award': {
       const c = state.championships[fx.titleId];
       if (!c) break;
-      const cur = c.reigns[c.reigns.length - 1];
-      const same = cur && !cur.to && sameSet(cur.holders, fx.holders);
-      if (same) {
+      const cur = mainReign(c);
+      if (cur && sameSet(cur.holders, fx.holders)) {
         // The belt ends up where it already was — one continuous reign, not a
         // new one. This is the shape a corrected match takes: the event still
         // says "the title changed hands", but the replay knows better. If it
@@ -151,35 +216,54 @@ function applyEffect(state, fx, ev) {
         if (ev.type === 'match') { cur.defenses += 1; c.totalDefenses += 1; }
         break;
       }
-      if (cur && !cur.to) { cur.to = ev.date; cur.days = days(cur.from, ev.date); }
-      c.reigns.push({ holders: [...fx.holders], from: ev.date, to: null, days: 0, defenses: 0, reason: fx.reason || 'won', eventId: ev.id });
-      c.holders = [...fx.holders];
-      c.vacant = false;
-      fx.holders.forEach(h => {
-        const w = W(h);
-        if (w) w.titleHistory.push({ titleId: fx.titleId, from: ev.date, to: null, eventId: ev.id });
-      });
+      closeReign(state, c, cur, ev.date, 'lost');
+      openReign(state, c, fx.holders, ev, { reason: fx.reason || 'won' });
+      break;
+    }
+
+    // An interim reign runs alongside the real one rather than replacing it —
+    // that is the whole point of an interim belt. It gets its own row in the
+    // lineage and its own defense count, and the main reign keeps ticking.
+    case 'title.interim': {
+      const c = state.championships[fx.titleId];
+      if (!c) break;
+      const open = interimReign(c);
+      if (open && sameSet(open.holders, fx.holders)) { open.defenses += 1; c.totalDefenses += 1; break; }
+      closeReign(state, c, open, ev.date, 'lost');
+      openReign(state, c, fx.holders, ev, { reason: 'interim', interim: true });
+      break;
+    }
+
+    // Unification ends both runs and starts one undisputed reign.
+    case 'title.unify': {
+      const c = state.championships[fx.titleId];
+      if (!c) break;
+      closeReign(state, c, interimReign(c), ev.date, 'unified');
+      closeReign(state, c, mainReign(c), ev.date, 'unified');
+      openReign(state, c, fx.holders, ev, { reason: 'unified' });
       break;
     }
 
     case 'title.vacate': {
       const c = state.championships[fx.titleId];
       if (!c) break;
-      const cur = c.reigns[c.reigns.length - 1];
-      if (cur && !cur.to) {
-        cur.to = ev.date; cur.days = days(cur.from, ev.date); cur.endReason = fx.reason || 'vacated';
-        cur.holders.forEach(h => closeTitleHistory(W(h), fx.titleId, ev.date));
-      }
+      closeReign(state, c, mainReign(c), ev.date, fx.reason || 'vacated');
       c.holders = []; c.vacant = true;
-      if (fx.reason === 'retired') c.retired = true;
+      c.currentIndex = null;
+      if (fx.reason === 'retired') {
+        closeReign(state, c, interimReign(c), ev.date, 'retired');
+        c.retired = true;
+      }
       break;
     }
 
     case 'title.defense': {
       const c = state.championships[fx.titleId];
       if (!c) break;
-      const cur = c.reigns[c.reigns.length - 1];
-      if (cur && !cur.to) { cur.defenses += 1; c.totalDefenses += 1; }
+      // Defenses land on whichever reign the defending champion is holding.
+      const interim = interimReign(c);
+      const r = interim && sameSet(interim.holders, fx.holders) ? interim : mainReign(c);
+      if (r) { r.defenses += 1; c.totalDefenses += 1; }
       break;
     }
 
@@ -283,19 +367,176 @@ function applyEffect(state, fx, ev) {
       break;
     }
 
-    case 'feud.heat': {
-      // A feud is an unordered pair, so it is stored in a canonical order —
-      // otherwise "Cody vs Solo" and "Solo vs Cody" would drift apart depending
-      // on who happened to be the attacker.
-      const [a, b] = [fx.a, fx.b].sort();
-      const key = feudKey(a, b);
-      const f = state.feuds[key] || (state.feuds[key] = { a, b, heat: 0, meetings: 0, last: null });
-      f.heat += fx.points;
-      f.meetings += 1;
-      f.last = ev.date;
+    // 'feud.heat' is what this was called before rivalries and alliances were
+    // split apart; saves written back then still replay.
+    case 'feud.heat':
+    case 'rivalry.heat': {
+      // Turning on somebody you were standing beside is worth more than
+      // attacking a stranger — and only the replay knows who was standing where.
+      const betrayal = fx.why === 'attack' && shareGroup(state, fx.a, fx.b);
+      addTie(state, 'rivalry', fx.a, fx.b, betrayal ? HEAT.betrayal : fx.points, ev, betrayal ? 'betrayal' : fx.why);
+
+      // An attack is on everyone in the victim's corner, not just the victim.
+      if (fx.why === 'attack') {
+        groupmatesOf(state, fx.b).forEach(m => {
+          if (m === fx.a || m === fx.b) return;
+          addTie(state, 'rivalry', fx.a, m, fx.points * HEAT.spread, ev, 'their faction');
+        });
+      }
+      break;
+    }
+
+    case 'alliance.bond':
+      addTie(state, 'alliance', fx.a, fx.b, fx.points, ev, fx.why);
+      break;
+
+    case 'thread.open': {
+      // An attack on a stablemate is not an attack, it is a betrayal.
+      const turned = fx.threadKind === 'attack' && fx.subjects.length && fx.about
+        && shareGroup(state, fx.subjects[0], fx.about);
+      state.threadsById[fx.threadId] = {
+        id: fx.threadId, kind: turned ? 'betrayal' : fx.threadKind,
+        subjects: [...(fx.subjects || [])], about: fx.about || null,
+        text: fx.text || '', opened: ev.date, eventId: ev.id, showId: ev.showId || null,
+        closed: null, closedBy: null, closedWhy: null,
+      };
+      break;
+    }
+
+    case 'thread.close': {
+      if (fx.threadId) { shutThread(state, fx.threadId, ev, fx.why); break; }
+      if (fx.match) {
+        const t = openThreads(state).reverse().find(x => x.kind === fx.match.threadKind
+          && (!fx.match.subject || x.subjects.includes(fx.match.subject))
+          && (!fx.match.about || x.about === fx.match.about));
+        if (t) shutThread(state, t.id, ev, fx.why);
+      }
       break;
     }
   }
+}
+
+// ------------------------------------------------------------------ reigns
+
+const mainReign = c => (c.currentIndex != null && c.reigns[c.currentIndex] && !c.reigns[c.currentIndex].to ? c.reigns[c.currentIndex] : null);
+const interimReign = c => (c.interimIndex != null && c.reigns[c.interimIndex] && !c.reigns[c.interimIndex].to ? c.reigns[c.interimIndex] : null);
+
+function closeReign(state, c, reign, date, why) {
+  if (!reign) return;
+  reign.to = date;
+  reign.days = days(reign.from, date);
+  reign.endReason = why;
+  reign.holders.forEach(h => closeTitleHistory(state.wrestlers[h], c.id, date));
+  if (reign.interim) c.interimIndex = null; else c.currentIndex = null;
+}
+
+function openReign(state, c, holders, ev, { reason, interim = false }) {
+  c.reigns.push({
+    holders: [...holders], from: ev.date, to: null, days: 0, defenses: 0,
+    reason, interim, eventId: ev.id,
+  });
+  const i = c.reigns.length - 1;
+  if (interim) { c.interimIndex = i; c.interimHolders = [...holders]; }
+  else { c.currentIndex = i; c.holders = [...holders]; c.vacant = false; }
+  holders.forEach(h => {
+    const w = state.wrestlers[h];
+    if (w) w.titleHistory.push({ titleId: c.id, from: ev.date, to: null, interim, eventId: ev.id });
+  });
+}
+
+// ------------------------------------------------------------------ ties
+
+function addTie(state, kind, a, b, points, ev, why) {
+  if (!a || !b || a === b || !points) return;
+  const [x, y] = [a, b].sort();          // an unordered pair needs a canonical order
+  const key = feudKey(x, y);
+  const map = state.ties[kind];
+  if (!map.has(key)) map.set(key, { a: x, b: y, hits: [] });
+  map.get(key).hits.push({ points, date: ev.date, why, eventId: ev.id });
+}
+
+// Everyone currently sharing an active group with `ref` — their tag partner and
+// their faction, which is exactly who an attack on them also lands on.
+function groupmatesOf(state, ref) {
+  const out = new Set();
+  Object.values(state.groups).forEach(g => {
+    if (!g.active || !g.members.includes(ref)) return;
+    g.members.forEach(m => { if (m !== ref) out.add(m); });
+  });
+  return out;
+}
+const shareGroup = (state, a, b) => groupmatesOf(state, a).has(b);
+
+// ------------------------------------------------------------------ threads
+
+const openThreads = state => Object.values(state.threadsById).filter(t => !t.closed);
+
+function shutThread(state, id, ev, why) {
+  const t = state.threadsById[id];
+  if (!t || t.closed) return;
+  t.closed = ev.date;
+  t.closedBy = ev.id;
+  t.closedWhy = why || 'resolved';
+}
+
+// Threads that answer themselves. Called after every event: if what just
+// happened settles an open question, the queue should not still be asking it.
+function closeThreads(state, ev) {
+  const open = openThreads(state);
+  if (!open.length) return;
+
+  if (ev.type === 'match') {
+    const winners = ev.participants.filter(p => p.role === 'winner').map(p => p.ref);
+    const losers = ev.participants.filter(p => p.role === 'loser').map(p => p.ref);
+    const all = ev.participants.map(p => p.ref);
+    open.forEach(t => {
+      // Getting your hands on them in a match answers the beating.
+      if ((t.kind === 'attack' || t.kind === 'betrayal') && t.about
+        && t.subjects.some(s => winners.includes(s)) && losers.includes(t.about)) {
+        shutThread(state, t.id, ev, 'beat them');
+      }
+      // A betrayal is answered by facing anyone left in the group.
+      if (t.kind === 'betrayal' && t.about && state.groups[t.about]) {
+        const left = state.groups[t.about].members;
+        if (t.subjects.some(s => all.includes(s)) && left.some(m => all.includes(m))) {
+          shutThread(state, t.id, ev, 'settled in the ring');
+        }
+      }
+      // The promised shot happened.
+      if (t.kind === 'title-shot' && ev.data.titleId && ev.data.titleId === t.about
+        && t.subjects.some(s => all.includes(s))) {
+        shutThread(state, t.id, ev, 'got the match');
+      }
+    });
+  }
+
+  if (ev.type === 'attack') {
+    const attackers = ev.participants.filter(p => p.role === 'attacker').map(p => p.ref);
+    const victims = ev.participants.filter(p => p.role === 'victim').map(p => p.ref);
+    open.forEach(t => {
+      if ((t.kind === 'attack' || t.kind === 'betrayal') && t.about
+        && t.subjects.some(s => attackers.includes(s)) && victims.includes(t.about)) {
+        shutThread(state, t.id, ev, 'hit them back');
+      }
+    });
+  }
+
+  if (ev.type === 'injury.cleared') {
+    const back = ev.participants.map(p => p.ref);
+    open.forEach(t => {
+      if (t.kind === 'injury' && t.subjects.some(s => back.includes(s))) shutThread(state, t.id, ev, 'cleared to return');
+    });
+  }
+
+  (ev.effects || []).forEach(fx => {
+    if (fx.kind !== 'title.award' && fx.kind !== 'title.unify') return;
+    open.forEach(t => {
+      if (t.kind === 'vacant-title' && t.about === fx.titleId) shutThread(state, t.id, ev, 'new champion crowned');
+      if (t.kind === 'title-shot' && t.about === fx.titleId && t.subjects.some(s => fx.holders.includes(s))) {
+        shutThread(state, t.id, ev, 'won the belt');
+      }
+    });
+  });
 }
 
 function closeTitleHistory(w, titleId, date) {
@@ -332,8 +573,36 @@ function summarize(ev, state) {
   } else if (ev.type === 'promo') {
     const t = ev.participants.filter(p => p.role === 'target').map(p => nm(p.ref));
     out.text = `${ev.participants.filter(p => p.role === 'speaker').map(p => nm(p.ref)).join(' & ')} promo${t.length ? ` on ${t.join(' & ')}` : ''}`;
+  } else if (ev.type === 'save') {
+    const from = ev.participants.filter(p => p.role === 'attacker').map(p => nm(p.ref));
+    out.text = `${ev.participants.filter(p => p.role === 'subject').map(p => nm(p.ref)).join(' & ')} saves `
+      + `${ev.participants.filter(p => p.role === 'victim').map(p => nm(p.ref)).join(' & ')}`
+      + (from.length ? ` from ${from.join(' & ')}` : '');
+  } else if (ev.type === 'thread.open') {
+    out.text = `${ev.participants.map(p => nm(p.ref)).join(' & ')} — ${ev.data.text || 'unfinished business'}`;
+  } else if (ev.type === 'title.change') {
+    out.text = `${state.championships[ev.data.titleId] ? state.championships[ev.data.titleId].name : ev.data.titleId}`
+      + ` ${ev.data.reason || 'changed'}${ev.participants.length ? ` — ${ev.participants.map(p => nm(p.ref)).join(' & ')}` : ''}`;
   } else {
-    out.text = `${ev.type}: ${ev.participants.map(p => nm(p.ref)).join(', ')}`;
+    // The roster events read badly as "contract.signed: Jey Uso", and they are
+    // most of what a quiet wrestler's timeline is made of.
+    const who = ev.participants.map(p => nm(p.ref)).join(' & ');
+    const brand = id => (state.brands[id] ? state.brands[id].name : id);
+    const group = id => (state.groups[id] ? state.groups[id].name : id);
+    out.text = {
+      'alliance.formed': () => `${who} form ${group(ev.data.groupId)}`,
+      'alliance.broken': () => (ev.data.dissolve || !ev.participants.length
+        ? `${group(ev.data.groupId)} splits up`
+        : `${who} leaves ${group(ev.data.groupId)}`),
+      'contract.signed': () => `${who} signs with ${brand(ev.data.brandId)}`,
+      'contract.expired': () => `${who} becomes a free agent`,
+      'brand.transfer': () => `${who} moves to ${brand(ev.data.toBrandId)}${ev.data.reason ? ` (${ev.data.reason})` : ''}`,
+      'status.change': () => `${who} flagged ${ev.data.status}`,
+      injury: () => `${who} injured${ev.data.weeks ? ` — ${ev.data.weeks} weeks` : ''}${ev.data.description ? ` (${ev.data.description})` : ''}`,
+      'injury.cleared': () => `${who} cleared to return`,
+      'thread.resolved': () => `thread ${ev.data.threadId} resolved`,
+      show: () => `${ev.data.name}`,
+    }[ev.type]?.() || `${ev.type}: ${who}`;
   }
   return out;
 }
@@ -354,14 +623,18 @@ export function standings(state, brandId = null) {
     .sort((a, b) => b.record.w - a.record.w || b.winPct - a.winPct || a.name.localeCompare(b.name));
 }
 
+const nameOf = (state, id) => (state.wrestlers[id] ? state.wrestlers[id].name
+  : state.groups[id] ? state.groups[id].name
+  : state.championships[id] ? state.championships[id].name : id);
+
 export function champions(state) {
   return Object.values(state.championships)
     .filter(c => !c.retired)
     .map(c => ({
       titleId: c.id, name: c.name, brandId: c.brandId, vacant: c.vacant,
-      holders: c.holders.map(h => (state.wrestlers[h] ? state.wrestlers[h].name : h)),
-      since: c.since, days: c.daysHeld,
-      defenses: c.reigns.length ? c.reigns[c.reigns.length - 1].defenses : 0,
+      holders: c.holders.map(h => nameOf(state, h)),
+      interim: c.interimHolders.map(h => nameOf(state, h)),
+      since: c.since, days: c.daysHeld, defenses: c.defenses, reigns: c.reigns.length,
     }));
 }
 
@@ -370,9 +643,38 @@ export function titleLineage(state, titleId) {
   if (!c) return [];
   return c.reigns.map((r, i) => ({
     n: i + 1,
-    holders: r.holders.map(h => (state.wrestlers[h] ? state.wrestlers[h].name : h)),
-    from: r.from, to: r.to, days: r.days, defenses: r.defenses, reason: r.reason, endReason: r.endReason || null,
+    holders: r.holders.map(h => nameOf(state, h)),
+    from: r.from, to: r.to, days: r.days, defenses: r.defenses,
+    reason: r.reason, endReason: r.endReason || null, interim: !!r.interim,
+    current: !r.to, eventId: r.eventId,
   }));
+}
+
+// Every match this belt has been on the line for.
+export function titleMatches(state, titleId) {
+  return state.events
+    .filter(e => e.type === 'match' && e.data.titleId === titleId)
+    .map(e => ({ ...summarize(e, state), date: e.date, showId: e.showId }))
+    .reverse();
+}
+
+export const activeRivalries = (state, limit = 8) => state.rivalries.filter(r => r.active).slice(0, limit);
+export const activeAlliances = (state, limit = 8) => state.alliances.filter(r => r.active).slice(0, limit);
+export const threadQueue = state => state.threads;
+
+// A thread rendered for reading: names resolved, age in days.
+export function describeThread(state, t) {
+  const who = t.subjects.map(s => nameOf(state, s)).join(' & ');
+  const about = t.about ? nameOf(state, t.about) : null;
+  const line = {
+    attack: `${who} was attacked by ${about} and has not answered`,
+    betrayal: `${who} turned on ${about}`,
+    'title-shot': `${who} is owed a shot at the ${about}`,
+    'vacant-title': `The ${about} is vacant`,
+    injury: `${who} is on the shelf`,
+    promise: `${who}${about ? ` → ${about}` : ''}`,
+  }[t.kind] || `${who} — ${t.text}`;
+  return { ...t, who, aboutName: about, line };
 }
 
 export function injuryList(state) {

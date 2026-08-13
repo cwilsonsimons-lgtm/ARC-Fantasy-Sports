@@ -36,6 +36,10 @@ export const GROUP_KINDS = ['tagTeam', 'faction', 'alliance'];
 
 export const DIVISIONS = ['mens', 'womens', 'tag', 'mixed', 'unisex'];
 
+// How a belt can move. `interim` runs a parallel reign while the real champion
+// is out; `unified` ends it, merging the interim run into the main lineage.
+export const TITLE_REASONS = ['won', 'awarded', 'vacated', 'stripped', 'retired', 'interim', 'unified'];
+
 // How a match ended. Anything not in this list is kept as a free-text note.
 export const DECISIONS = ['pinfall', 'submission', 'dq', 'countout', 'ko', 'stoppage', 'draw', 'no contest'];
 
@@ -60,14 +64,38 @@ export const ROLES = [
 // growing the list.
 export const EFFECT_KINDS = [
   'record.win', 'record.loss', 'record.draw',
-  'title.award', 'title.vacate', 'title.defense',
+  'title.award', 'title.vacate', 'title.defense', 'title.interim', 'title.unify',
   'roster.brand', 'roster.status', 'roster.align',
   'contract.start', 'contract.end',
   'injury.start', 'injury.end',
   'group.form', 'group.join', 'group.leave', 'group.dissolve',
-  'feud.heat',
+  'rivalry.heat', 'alliance.bond',
+  'thread.open', 'thread.close',
   'show.open',
 ];
+
+// Relationship weights. Effects carry these numbers; the projector decays them
+// from each event's own date, so nothing needs recomputing when time passes.
+// A rivalry is an unordered pair — "Cody and Solo have heat" rather than "Cody
+// wants Solo". Directional heat would need two numbers per pair and, so far,
+// nothing in the dashboard would read the difference.
+export const HEAT = {
+  attack: 3,          // the loudest single act
+  betrayal: 5,        // turning on your own runs hotter than attacking a stranger
+  promo: 2,
+  match: 1.5,         // a decided match — somebody got beaten
+  draw: 0.75,         // nobody settled anything
+  title: 1,           // added on top when a belt is on the line
+  saveRival: 2,       // making the save earns you the attacker
+  spread: 0.35,       // fraction passed to the victim's partners and faction
+};
+
+export const BOND = {
+  formed: 4,
+  tagWin: 2,
+  tagLoss: 0.75,      // losing together still builds something
+  save: 3,
+};
 
 export const ENTITY_PREFIX = { wrestler: 'w', brand: 'b', championship: 'c', group: 'g' };
 
@@ -145,14 +173,30 @@ const sides = ev => {
 
 // Heat is the only thing attacks and promos leave behind. Without it those two
 // event types would be write-only — recorded but invisible to every view.
-const heat = (ev, points) => {
+//
+// Only the direct pair is emitted here. Spreading heat to the victim's partners
+// and faction is the projector's job, because who they were standing with is a
+// fact about the world at that moment, not about this event — and effects that
+// look at the world go stale the moment history is corrected.
+const heat = (ev, points, why) => {
   const s = sides(ev);
   const out = [];
   for (let i = 0; i < s.length; i++) {
     for (let j = i + 1; j < s.length; j++) {
       s[i].refs.forEach(a => s[j].refs.forEach(b => {
-        out.push({ kind: 'feud.heat', a, b, points });
+        out.push({ kind: 'rivalry.heat', a, b, points, why });
       }));
+    }
+  }
+  return out;
+};
+
+// Partners in the same corner build a bond.
+const bond = (refs, points, why) => {
+  const out = [];
+  for (let i = 0; i < refs.length; i++) {
+    for (let j = i + 1; j < refs.length; j++) {
+      out.push({ kind: 'alliance.bond', a: refs[i], b: refs[j], points, why });
     }
   }
   return out;
@@ -210,22 +254,35 @@ export const EVENT_TYPES = {
           vs: s.filter(o => o.side !== side).flatMap(o => o.refs),
           titleId, matchType: ev.data.matchType || null,
         }));
+        // Partners who went to war together come out of it closer.
+        if (refs.length > 1) out.push(...bond(refs, won ? BOND.tagWin : BOND.tagLoss, won ? 'tag win' : 'tag loss'));
       });
 
       // A title match either moves the belt or is a defense. Which one it is was
       // settled by the author at write time and recorded in data.titleChanged;
       // the effect merely states the outcome, so a replay after a correction
       // upstream still reads cleanly.
+      const winners = winSide ? s.find(x => x.side === winSide.side).refs : [];
       if (titleId && !drawn) {
-        if (ev.data.titleChanged) {
-          out.push({ kind: 'title.award', titleId, holders: winSide ? s.find(x => x.side === winSide.side).refs : [], reason: 'won' });
-        } else {
-          out.push({ kind: 'title.defense', titleId, holders: s.find(x => x.side === winSide.side).refs });
-        }
+        if (ev.data.unify) out.push({ kind: 'title.unify', titleId, holders: winners });
+        else if (ev.data.interim) out.push({ kind: 'title.interim', titleId, holders: winners, reason: 'won' });
+        else if (ev.data.titleChanged) out.push({ kind: 'title.award', titleId, holders: winners, reason: 'won' });
+        else out.push({ kind: 'title.defense', titleId, holders: winners });
       }
       if (titleId && drawn && ev.data.titleVacated) out.push({ kind: 'title.vacate', titleId, reason: ev.data.decision || 'draw' });
 
-      return out.concat(heat(ev, 1));
+      // Winning a number-one contender match is a promise the universe now owes
+      // you, so it opens a thread that stays open until you get the match.
+      if (ev.data.contender && winners.length) {
+        out.push({
+          kind: 'thread.open', threadId: `th_${ev.id}`, threadKind: 'title-shot',
+          subjects: winners, about: ev.data.contender === true ? titleId : ev.data.contender,
+          text: 'earned a title shot',
+        });
+      }
+
+      const points = (drawn ? HEAT.draw : HEAT.match) + (titleId ? HEAT.title : 0);
+      return out.concat(heat(ev, points, drawn ? 'draw' : 'match'));
     },
   },
 
@@ -243,8 +300,67 @@ export const EVENT_TYPES = {
       // attacker/victim already imply opposing corners; give them sides so the
       // shared heat helper can pair them up.
       const shaped = { participants: ev.participants.map(p => ({ ...p, side: p.role === 'attacker' ? 1 : 2 })) };
-      return heat(shaped, 3);
+      const victims = refsOf(ev, 'victim');
+      return [
+        ...heat(shaped, HEAT.attack, 'attack'),
+        // Being jumped is a question: does anyone answer it? The thread stays
+        // open until the victim hits back or the author waves it off.
+        {
+          kind: 'thread.open', threadId: `th_${ev.id}`, threadKind: 'attack',
+          subjects: victims, about: refsOf(ev, 'attacker')[0] || null,
+          text: 'attacked with no response yet',
+        },
+      ];
     },
+  },
+
+  // Somebody runs down to break up a beating. Costs one line to enter and is
+  // the cleanest signal in the whole model that two people are on the same side.
+  save: {
+    label: 'Save',
+    roles: ['subject', 'victim', 'attacker'],
+    required: [],
+    validate: ev => {
+      const e = [];
+      if (!refsOf(ev, 'subject').length) err(e, 'a save needs someone making it');
+      if (!refsOf(ev, 'victim').length) err(e, 'a save needs someone being saved');
+      return e;
+    },
+    effects: ev => {
+      const savers = refsOf(ev, 'subject');
+      const saved = refsOf(ev, 'victim');
+      const from = refsOf(ev, 'attacker');
+      const out = [];
+      savers.forEach(a => saved.forEach(b => out.push({ kind: 'alliance.bond', a, b, points: BOND.save, why: 'save' })));
+      savers.forEach(a => from.forEach(b => out.push({ kind: 'rivalry.heat', a, b, points: HEAT.saveRival, why: 'save' })));
+      // Making the save answers the beating it interrupted.
+      if (from.length) out.push({ kind: 'thread.close', match: { threadKind: 'attack', subject: saved[0], about: from[0] }, why: 'saved' });
+      return out;
+    },
+  },
+
+  // An explicit thread, for the ones no event implies — a promised title shot,
+  // a challenge issued, anything you want the queue to keep nagging you about.
+  'thread.open': {
+    label: 'Thread opened',
+    roles: ['subject', 'target'],
+    required: ['text'],
+    validate: ev => (ev.participants.length ? [] : ['a thread needs at least one wrestler']),
+    effects: ev => [{
+      kind: 'thread.open', threadId: `th_${ev.id}`,
+      threadKind: ev.data.threadKind || 'promise',
+      subjects: refsOf(ev, 'subject'),
+      about: ev.data.about || refsOf(ev, 'target')[0] || null,
+      text: ev.data.text,
+    }],
+  },
+
+  'thread.resolved': {
+    label: 'Thread resolved',
+    roles: ['subject'],
+    required: ['threadId'],
+    validate: () => [],
+    effects: ev => [{ kind: 'thread.close', threadId: ev.data.threadId, why: ev.data.reason || 'marked resolved' }],
   },
 
   promo: {
@@ -255,7 +371,7 @@ export const EVENT_TYPES = {
     effects: ev => {
       if (!refsOf(ev, 'target').length) return [];
       const shaped = { participants: ev.participants.map(p => ({ ...p, side: p.role === 'speaker' ? 1 : 2 })) };
-      return heat(shaped, 2);
+      return heat(shaped, HEAT.promo, 'promo');
     },
   },
 
@@ -292,6 +408,15 @@ export const EVENT_TYPES = {
       if (!leaving.length || ev.data.dissolve) {
         out.push({ kind: 'group.dissolve', groupId: ev.data.groupId, reason: ev.data.reason || null });
       }
+      // A walkout is unfinished business. Who it is against depends on who was
+      // left standing in the group, which only the replay knows.
+      if (leaving.length && ev.data.betrayal !== false) {
+        out.push({
+          kind: 'thread.open', threadId: `th_${ev.id}`, threadKind: 'betrayal',
+          subjects: leaving, about: ev.data.groupId,
+          text: ev.data.reason || 'walked out',
+        });
+      }
       return out;
     },
   },
@@ -304,17 +429,28 @@ export const EVENT_TYPES = {
       const e = [];
       const reason = ev.data.reason || 'won';
       const holders = refsOf(ev, 'champion');
-      if (!['won', 'awarded', 'vacated', 'stripped', 'retired'].includes(reason)) err(e, `unknown title change reason: ${reason}`);
-      if (['won', 'awarded'].includes(reason) && !holders.length) err(e, `a title ${reason} needs at least one champion participant`);
+      if (!TITLE_REASONS.includes(reason)) err(e, `unknown title change reason: ${reason} (want ${TITLE_REASONS.join(', ')})`);
+      if (['won', 'awarded', 'interim', 'unified'].includes(reason) && !holders.length) err(e, `a title ${reason} needs at least one champion participant`);
       return e;
     },
     effects: ev => {
       const reason = ev.data.reason || 'won';
       const holders = refsOf(ev, 'champion');
+      const titleId = ev.data.titleId;
+
       if (['vacated', 'stripped', 'retired'].includes(reason)) {
-        return [{ kind: 'title.vacate', titleId: ev.data.titleId, reason }];
+        return [
+          { kind: 'title.vacate', titleId, reason },
+          // An empty belt is the most open question there is.
+          ...(reason === 'retired' ? [] : [{
+            kind: 'thread.open', threadId: `th_${ev.id}`, threadKind: 'vacant-title',
+            subjects: [], about: titleId, text: `vacated — needs a new champion`,
+          }]),
+        ];
       }
-      return [{ kind: 'title.award', titleId: ev.data.titleId, holders, reason }];
+      if (reason === 'interim') return [{ kind: 'title.interim', titleId, holders, reason }];
+      if (reason === 'unified') return [{ kind: 'title.unify', titleId, holders }];
+      return [{ kind: 'title.award', titleId, holders, reason }];
     },
   },
 
@@ -323,10 +459,18 @@ export const EVENT_TYPES = {
     roles: ['subject'],
     required: [],
     validate: ev => (refsOf(ev, 'subject').length ? [] : ['an injury needs a subject']),
-    effects: ev => refsOf(ev, 'subject').flatMap(ref => [
-      { kind: 'injury.start', subject: ref, severity: ev.data.severity || null, weeks: ev.data.weeks || null, expectedReturn: ev.data.expectedReturn || null, description: ev.data.description || null },
-      { kind: 'roster.status', subject: ref, status: 'injured' },
-    ]),
+    effects: ev => [
+      ...refsOf(ev, 'subject').flatMap(ref => [
+        { kind: 'injury.start', subject: ref, severity: ev.data.severity || null, weeks: ev.data.weeks || null, expectedReturn: ev.data.expectedReturn || null, description: ev.data.description || null },
+        { kind: 'roster.status', subject: ref, status: 'injured' },
+      ]),
+      // Somebody is out. That is a booking problem until they are cleared.
+      {
+        kind: 'thread.open', threadId: `th_${ev.id}`, threadKind: 'injury',
+        subjects: refsOf(ev, 'subject'), about: null,
+        text: ev.data.description || (ev.data.weeks ? `out ${ev.data.weeks} weeks` : 'injured'),
+      },
+    ],
   },
 
   'injury.cleared': {

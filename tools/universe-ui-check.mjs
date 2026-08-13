@@ -42,7 +42,7 @@ const tab = id => `document.querySelector('[data-tab=${id}]').click()`;
 // ---------------------------------------------------------------- boot
 await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 53);
 await check('seed wrote events, not state', `UNIVERSE.store.stats().live > 60`, true);
-await check('tabs render', `document.querySelectorAll('.tab').length`, 5);
+await check('tabs render', `document.querySelectorAll('.tab').length`, 6);
 await check('lands on the entry tab', `document.querySelector('.tab.on').dataset.tab`, 'tonight');
 await check('card box is focused for typing', `document.activeElement.id`, 'cardText');
 
@@ -60,11 +60,12 @@ await check('roster shows a relegation flag', `document.querySelectorAll('#pane-
 await check('titles tab lists every belt', `${tab('titles')};
   document.querySelectorAll('.belt').length`, 10);
 await check('champion shown on the belt', `document.querySelector('.belt .holder').textContent.trim()`, 'Cody Rhodes');
-await check('belt opens its lineage', `document.querySelector('.belt').click();
-  document.querySelector('#sheet').classList.contains('on')`, true);
-await check('lineage sheet has the reign', `document.querySelectorAll('#sheetBody tbody tr').length`, 1);
-await check('escape closes the sheet', `document.getElementById('sheetClose').click();
-  document.querySelector('#sheet').classList.contains('on')`, false);
+await check('belt opens its own page', `document.querySelector('.belt').click();
+  document.querySelector('#pane-title').classList.contains('on')`, true);
+await check('title page names the belt', `document.querySelector('#pane-title .pagehead .nm').textContent`, 'WWE Championship');
+await check('title page lists the lineage', `document.querySelectorAll('#pane-title tbody tr').length`, 1);
+await check('and links back to the belts', `document.querySelector('#pane-title [data-tab=titles]').click();
+  document.querySelector('.tab.on').dataset.tab`, 'titles');
 
 // ---------------------------------------------------------------- card entry
 const CARD = `Monday Night Raw / 2026-08-17 / Raw
@@ -169,6 +170,97 @@ await check('re-pasting the same list is a no-op', `const t = document.getElemen
   t.dispatchEvent(new Event('input', {bubbles:true}));
   document.getElementById('rosterSave').disabled`, true);
 
+// ---------------------------------------------------------------- titles, threads, heat
+// Everything below covers a second card: an interim reign, a contender match,
+// a betrayal inside a faction, a save, and a vacated belt.
+const CARD2 = `SmackDown / 2026-08-21 / SmackDown
+Solo Sikoa d. Randy Orton — WWE Championship, interim
+LA Knight d. Kevin Owens, Drew McIntyre — contender, WWE Championship
+* Jacob Fatu attacks Jey Uso after the main event
+* Jimmy Uso saves Jey Uso from Jacob Fatu
+promise: Randy Orton — WWE Championship
+vacate: United States Championship`;
+
+await page.evaluate(tab('tonight'));
+await type(CARD2);
+await check('interim match reads as interim', `document.querySelector('#cardPreview tbody tr').textContent.includes('interim')`, true);
+await check('contender match is not a title match', `document.querySelectorAll('#cardPreview tbody tr')[1].textContent.includes('#1 contender')`, true);
+await check('save line parsed', `document.querySelectorAll('#cardPreview tbody tr')[3].textContent.includes('saves')`, true);
+await check('second card saves', `document.getElementById('cardSave').click();
+  UNIVERSE.app.state.shows.length`, 2);
+
+await check('interim champion shown on the belt', `${tab('titles')};
+  [...document.querySelectorAll('.belt')].find(b => b.textContent.includes('WWE Championship') &&
+    !b.textContent.includes('Tag')).querySelector('.interim').textContent.includes('Solo Sikoa')`, true);
+await check('the real champion still holds it', `UNIVERSE.app.state.championships['c:wwe-championship'].holders`, ['w:cody-rhodes']);
+await check('both reigns are open at once', `UNIVERSE.app.state.championships['c:wwe-championship'].reigns.filter(r => !r.to).length`, 2);
+await check('vacated belt reads vacant', `UNIVERSE.app.state.championships['c:united-states-championship'].vacant`, true);
+
+await check('title page shows the interim run', `[...document.querySelectorAll('.belt')]
+  .find(b => b.textContent.includes('WWE Championship') && !b.textContent.includes('Tag')).click();
+  document.querySelector('#pane-title').textContent.includes('interim')`, true);
+await check('title page lists its matches', `document.querySelectorAll('#pane-title table').length`, 2);
+
+// Relationships
+await check('attack spreads to the tag partner', `UNIVERSE.app.state.rivalries
+  .some(r => [r.a, r.b].includes('w:jimmy-uso') && [r.a, r.b].includes('w:jacob-fatu'))`, true);
+await check('the direct attack is hotter than the spread', `const R = UNIVERSE.app.state.rivalries;
+  const direct = R.find(r => [r.a,r.b].includes('w:jey-uso') && [r.a,r.b].includes('w:jacob-fatu'));
+  const spread = R.find(r => [r.a,r.b].includes('w:jimmy-uso') && [r.a,r.b].includes('w:jacob-fatu'));
+  direct.why.attack === 1 && spread.why['their faction'] === 1`, true);
+await check('the save built an alliance', `UNIVERSE.app.state.alliances
+  .find(r => [r.a,r.b].includes('w:jimmy-uso') && [r.a,r.b].includes('w:jey-uso')).heat >= 3`, true);
+await check('rivalries show on the dashboard', `${tab('tonight')};
+  document.querySelectorAll('#heatPanel table').length`, 3);
+await check('sorted hottest first', `[...document.querySelectorAll('#heatPanel table')[0]
+  .querySelectorAll('tbody tr')].map(r => +r.querySelectorAll('td')[1].textContent)`,
+  v => v.length > 1 && v.every((n, i) => i === 0 || v[i - 1] >= n));
+await check('heat decays with the as-of date', `const i = document.getElementById('asOf');
+  i.value = '2026-12-19'; i.dispatchEvent(new Event('change', {bubbles:true}));
+  UNIVERSE.app.state.rivalries.filter(r => r.active).length === 0`, true);
+await check('and comes back when you return', `document.getElementById('asOfNow').click();
+  UNIVERSE.app.state.rivalries.filter(r => r.active).length > 0`, true);
+
+// Threads
+await check('threads queue is populated', `${tab('threads')};
+  document.querySelectorAll('#pane-threads table')[0].querySelectorAll('tbody tr').length`, 4);
+await check('the save closed the attack thread', `UNIVERSE.app.state.threadsClosed
+  .some(t => t.kind === 'attack' && t.closedWhy === 'saved')`, true);
+await check('a vacant belt opens a thread', `UNIVERSE.app.state.threads
+  .some(t => t.kind === 'vacant-title' && t.about === 'c:united-states-championship')`, true);
+await check('a contender win owes a title shot', `UNIVERSE.app.state.threads
+  .some(t => t.kind === 'title-shot' && t.subjects.includes('w:la-knight'))`, true);
+await check('threads show how long they have been open', `document.querySelector('#pane-threads tbody tr')
+  .textContent.match(/\\d+d/) !== null`, true);
+await check('resolving one closes it', `document.querySelector('[data-resolve]').click();
+  document.querySelectorAll('#pane-threads table')[0].querySelectorAll('tbody tr').length`, 3);
+await check('and it is logged as an event', `UNIVERSE.store.effectiveEvents()
+  .filter(e => e.type === 'thread.resolved').length`, 1);
+await check('resolution dates after the show it closes', `const e = UNIVERSE.store.effectiveEvents()
+  .find(x => x.type === 'thread.resolved'); e.date >= '2026-08-21'`, true);
+
+// Wrestler page
+await check('clicking a name opens the profile', `${tab('roster')};
+  document.querySelector('#pane-roster .wname').click();
+  document.querySelector('#pane-wrestler').classList.contains('on')`, true);
+await check('profile shows a record', `document.querySelector('#pane-wrestler .facts2').textContent.includes('Record')`, true);
+await check('profile has rivalries and alliances', `document.querySelector('#pane-wrestler').textContent.includes('Rivalries')
+  && document.querySelector('#pane-wrestler').textContent.includes('Alliances')`, true);
+await check('champion profile lists reigns with days', `UNIVERSE.app.tab = 'wrestler';
+  UNIVERSE.app.detailId = 'w:cody-rhodes'; UNIVERSE.render();
+  document.querySelector('#pane-wrestler').textContent.includes('WWE Championship')`, true);
+await check('reign day count is shown', `
+  const w = UNIVERSE.app.state.wrestlers['w:cody-rhodes'], r = w.titleHistory[0];
+  const want = Math.round((new Date(UNIVERSE.app.state.asOf) - new Date(r.from)) / 86400000);
+  const t = [...document.querySelectorAll('#pane-wrestler table')]
+    .find(x => x.textContent.includes('WWE Championship'));
+  t.textContent.includes(String(want)) && want > 100`, true);
+await check('profile timeline lists appearances', `UNIVERSE.app.detailId = 'w:jey-uso'; UNIVERSE.render();
+  document.querySelectorAll('#pane-wrestler table').length >= 3`, true);
+await check('and a reign links to the belt page', `UNIVERSE.app.detailId = 'w:cody-rhodes'; UNIVERSE.render();
+  document.querySelector('#pane-wrestler [data-belt]').click();
+  document.querySelector('#pane-title .pagehead .nm').textContent`, 'WWE Championship');
+
 // Stills for eyeballing the result. snapshots/ is gitignored.
 await mkdir('snapshots', { recursive: true });
 await page.evaluate(tab('tonight'));
@@ -178,6 +270,10 @@ await page.evaluate(tab('roster'));
 await page.screenshot({ path: 'snapshots/universe-roster.png' });
 await page.evaluate(tab('titles'));
 await page.screenshot({ path: 'snapshots/universe-titles.png' });
+await page.evaluate(tab('threads'));
+await page.screenshot({ path: 'snapshots/universe-threads.png' });
+await page.evaluate(`UNIVERSE.app.tab='wrestler'; UNIVERSE.app.detailId='w:jey-uso'; UNIVERSE.render()`);
+await page.screenshot({ path: 'snapshots/universe-wrestler.png' });
 await browser.close();
 
 console.log(`\n${pass} passed, ${fail} failed, ${errors.length} page errors`);

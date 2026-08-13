@@ -228,6 +228,123 @@ check('entity edit shows in the projection', project(entityStore).wrestlers['w:g
 const badEntity = threw(() => entityStore.amendEntity('w:gunther', { gender: 'wrong' }));
 check('invalid entity edit refused', badEntity instanceof ValidationError, true);
 
+// ──────────────────────────────────────────────────────────────── titles
+section('titles: interim, vacating, unification');
+const s5 = fresh();
+const T = 'c:wwe-championship';
+const card5 = show => commitCard(s5, parseCard(show, s5));
+
+card5(`SmackDown / 2026-08-21 / SmackDown
+Solo Sikoa d. Randy Orton — WWE Championship, interim`);
+let p5 = project(s5);
+check('interim does not take the real belt', p5.championships[T].holders, ['w:cody-rhodes']);
+check('interim champion recorded', p5.championships[T].interimHolders, ['w:solo-sikoa']);
+check('two reigns run at once', p5.championships[T].reigns.filter(r => !r.to).length, 2);
+check('the real reign keeps counting', p5.championships[T].since, '2026-04-06');
+
+card5(`SmackDown / 2026-08-28 / SmackDown
+Solo Sikoa d. Jimmy Uso — WWE Championship, interim`);
+p5 = project(s5);
+check('interim defense lands on the interim reign', titleLineage(p5, T).find(r => r.interim).defenses, 1);
+check('and not on the real one', titleLineage(p5, T).find(r => !r.interim).defenses, 0);
+
+card5(`SmackDown / 2026-09-04 / SmackDown
+Solo Sikoa d. Cody Rhodes — WWE Championship, unify`);
+p5 = project(s5);
+check('unification ends both reigns', p5.championships[T].reigns.filter(r => !r.to).length, 1);
+check('and crowns one undisputed champion', p5.championships[T].holders, ['w:solo-sikoa']);
+check('no interim champion left', p5.championships[T].interimHolders, []);
+check('the interim run closed as unified', titleLineage(p5, T).find(r => r.interim).endReason, 'unified');
+check('lineage keeps all three rows', titleLineage(p5, T).length, 3);
+
+card5(`SmackDown / 2026-09-11 / SmackDown
+vacate: WWE Championship`);
+p5 = project(s5);
+check('vacating empties the belt', p5.championships[T].vacant, true);
+check('and closes the reign with its days', titleLineage(p5, T).slice(-1)[0].days, 7);
+check('a vacancy opens a thread', p5.threads.some(t => t.kind === 'vacant-title' && t.about === T), true);
+
+card5(`SmackDown / 2026-09-18 / SmackDown
+Randy Orton d. LA Knight — WWE Championship`);
+p5 = project(s5);
+check('a vacant belt is won, not taken', p5.championships[T].holders, ['w:randy-orton']);
+check('and that closes the vacancy thread', p5.threads.some(t => t.kind === 'vacant-title'), false);
+
+// ──────────────────────────────────────────────────────────────── relationships
+section('relationships');
+const s6 = fresh();
+commitCard(s6, parseCard(`SmackDown / 2026-08-21 / SmackDown
+* Jacob Fatu attacks Jey Uso after the main event
+* Jimmy Uso saves Jey Uso from Jacob Fatu`, s6));
+const p6 = project(s6, { asOf: '2026-08-22' });
+const pair = (list, x, y) => list.find(r => [r.a, r.b].includes(x) && [r.a, r.b].includes(y));
+
+check('an attack builds rivalry', pair(p6.rivalries, 'w:jacob-fatu', 'w:jey-uso').heat, h => h > 2.9 && h <= 3);
+check('it reaches the tag partner too', !!pair(p6.rivalries, 'w:jacob-fatu', 'w:jimmy-uso'), true);
+check('but only a fraction of it', pair(p6.rivalries, 'w:jacob-fatu', 'w:jimmy-uso').why['their faction'], 1);
+check('the spread is smaller than the direct hit',
+  pair(p6.rivalries, 'w:jacob-fatu', 'w:jey-uso').heat > pair(p6.rivalries, 'w:jacob-fatu', 'w:jimmy-uso').heat - 2, true);
+check('a save builds an alliance', pair(p6.alliances, 'w:jimmy-uso', 'w:jey-uso').why.save, 1);
+check('and earns the saver the attacker', pair(p6.rivalries, 'w:jimmy-uso', 'w:jacob-fatu').why.save, 1);
+
+const s6b = fresh();
+commitCard(s6b, parseCard(`SmackDown / 2026-08-21 / SmackDown
+* Solo Sikoa attacks Jacob Fatu`, s6b));
+const p6b = project(s6b, { asOf: '2026-08-22' });
+check('turning on a stablemate is a betrayal', pair(p6b.rivalries, 'w:solo-sikoa', 'w:jacob-fatu').why.betrayal, 1);
+check('and it runs hotter than a normal attack', pair(p6b.rivalries, 'w:solo-sikoa', 'w:jacob-fatu').heat > 4.5, true);
+check('the thread knows it too', p6b.threads.some(t => t.kind === 'betrayal'), true);
+check('it spreads to the rest of the faction', p6b.rivalries.filter(r => r.why['their faction']).length, 2);
+
+const s6c = fresh();
+commitCard(s6c, parseCard(`Raw / 2026-08-21 / Raw
+The War Raiders d. Alpha Academy (tag)`, s6c));
+check('tag partners build a bond by winning', pair(project(s6c).alliances, 'w:erik', 'w:ivar').why['tag win'], 1);
+check('the losing pair build a smaller one',
+  pair(project(s6c).alliances, 'w:chad-gable', 'w:ludwig-kaiser').heat < pair(project(s6c).alliances, 'w:erik', 'w:ivar').heat, true);
+
+const heatAt = d => pair(project(s6b, { asOf: d }).rivalries, 'w:solo-sikoa', 'w:jacob-fatu').heat;
+check('heat decays without new events', heatAt('2026-08-22') > heatAt('2026-10-21'), true);
+check('one half-life halves it', Math.abs(heatAt('2026-10-20') - heatAt('2026-08-21') / 2) < 0.2, true);
+check('a cold feud stops counting as active',
+  project(s6b, { asOf: '2027-02-01' }).rivalries.filter(r => r.active).length, 0);
+check('but the history is still there',
+  project(s6b, { asOf: '2027-02-01' }).rivalries.length > 0, true);
+check('rewinding brings the heat back', heatAt('2026-08-22') > 4.5, true);
+
+// ──────────────────────────────────────────────────────────────── threads
+section('threads');
+const s7 = fresh();
+commitCard(s7, parseCard(`Raw / 2026-08-21 / Raw
+* Bron Breakker attacks Sami Zayn after the main event
+Seth Rollins d. Sheamus — contender, World Heavyweight Championship
+promise: Sheamus — Intercontinental Championship
+injury: Damian Priest (6 weeks, knee)`, s7));
+let p7 = project(s7, { asOf: '2026-08-22' });
+check('an unanswered attack opens a thread', p7.threads.some(t => t.kind === 'attack' && t.about === 'w:bron-breakker'), true);
+check('a contender win opens a title shot', p7.threads.some(t => t.kind === 'title-shot' && t.subjects.includes('w:seth-rollins')), true);
+check('a promise opens one too', p7.threads.some(t => t.kind === 'title-shot' && t.subjects.includes('w:sheamus')), true);
+check('an injury opens one', p7.threads.some(t => t.kind === 'injury'), true);
+check('threads know how old they are', p7.threads[0].age, 1);
+
+commitCard(s7, parseCard(`Raw / 2026-09-01 / Raw
+Sami Zayn d. Bron Breakker
+Seth Rollins d. Gunther — World Heavyweight Championship
+cleared: Damian Priest`, s7));
+p7 = project(s7, { asOf: '2026-09-02' });
+check('beating them answers the attack', p7.threadsClosed.some(t => t.kind === 'attack' && t.closedWhy === 'beat them'), true);
+check('getting the match closes the shot', p7.threadsClosed.some(t => t.kind === 'title-shot' && t.subjects.includes('w:seth-rollins')), true);
+check('being cleared closes the injury', p7.threadsClosed.some(t => t.kind === 'injury' && t.closedWhy === 'cleared to return'), true);
+check('an unrelated promise stays open', p7.threads.some(t => t.subjects.includes('w:sheamus')), true);
+check('ages count to the close, not to now', p7.threadsClosed.find(t => t.kind === 'attack').age, 11);
+
+const stuck = p7.threads.find(t => t.subjects.includes('w:sheamus'));
+s7.append({ type: 'thread.resolved', date: '2026-09-02', participants: [], data: { threadId: stuck.id, reason: 'dropped it' } });
+check('marking one resolved closes it', project(s7, { asOf: '2026-09-03' }).threads.some(t => t.id === stuck.id), false);
+check('resolution is an ordinary event', s7.effectiveEvents().slice(-1)[0].type, 'thread.resolved');
+s7.voidEvent(s7.effectiveEvents().slice(-1)[0].id, 'changed my mind');
+check('voiding the resolution reopens the thread', project(s7, { asOf: '2026-09-03' }).threads.some(t => t.id === stuck.id), true);
+
 // ──────────────────────────────────────────────────────────────── time travel
 section('point in time');
 const p4 = project(s2, { asOf: '2026-08-16' });

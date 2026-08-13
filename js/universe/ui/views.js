@@ -5,7 +5,7 @@
 // down to — including when the header is set to a past date.
 
 import { h, table, chip, wlink, fmtDate, plural } from './dom.js';
-import { titleLineage, timelineFor, days } from '../project.js';
+import { titleLineage, titleMatches, timelineFor, days, describeThread, activeRivalries, activeAlliances } from '../project.js';
 
 const BRAND_COLOR = { 'b:raw': 'var(--raw)', 'b:smackdown': 'var(--smackdown)', 'b:nxt': 'var(--nxt)' };
 const brandColor = id => BRAND_COLOR[id] || 'var(--violet)';
@@ -96,12 +96,14 @@ export function titlesView(state) {
   const cards = belts.map(c => {
     const holders = c.holders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
     const reign = c.reigns[c.reigns.length - 1];
+    const interim = c.interimHolders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
     return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(c.brandId)}">
       <div class="nm">${h(c.name)}</div>
       <div class="holder${c.vacant ? ' vacant' : ''}">${c.vacant ? 'Vacant' : h(holders)}</div>
+      ${interim ? `<div class="interim">${chip('interim', 'new')} ${h(interim)}</div>` : ''}
       <div class="facts">
         <span>${brandName(state, c.brandId) || 'unbranded'}</span>
-        ${c.vacant ? '' : `<span>${c.daysHeld} days</span><span>${plural(reign ? reign.defenses : 0, 'defense')}</span>`}
+        ${c.vacant ? '' : `<span>${c.daysHeld} days</span><span>${plural(c.defenses, 'defense')}</span>`}
         <span>${plural(c.reigns.length, 'reign')}</span>
       </div>
     </div>`;
@@ -111,63 +113,215 @@ export function titlesView(state) {
     <div class="belts">${cards}</div>`;
 }
 
-export function lineageSheet(state, titleId) {
+// A belt's own page: who has it, everything that happened to it, in order.
+export function titlePage(state, titleId) {
   const c = state.championships[titleId];
-  const rows = titleLineage(state, titleId).slice().reverse();
-  return {
-    title: c.name,
-    body: `<div class="facts2">
-        <div class="fact"><div class="k">Holder</div><div class="v">${c.vacant ? 'Vacant' : h(c.holders.map(x => state.wrestlers[x] ? state.wrestlers[x].name : x).join(' & '))}</div></div>
-        <div class="fact"><div class="k">Days</div><div class="v">${c.daysHeld}</div></div>
-        <div class="fact"><div class="k">Reigns</div><div class="v">${c.reigns.length}</div></div>
-        <div class="fact"><div class="k">Defenses</div><div class="v">${c.totalDefenses}</div></div>
-      </div>
-      ${table(rows, [
-        { label: '#', num: true, get: r => r.n },
-        { label: 'Champion', get: r => h(r.holders.join(' & ')), html: true },
-        { label: 'Won', get: r => r.from },
-        { label: 'Lost', get: r => r.to || '—', dim: true },
-        { label: 'Days', num: true, get: r => r.days },
-        { label: 'Def.', num: true, get: r => r.defenses },
-      ], 'Never held.')}`,
-  };
+  if (!c) return '<div class="empty">No such championship.</div>';
+  const nm = id => (state.wrestlers[id] ? state.wrestlers[id].name : id);
+  const lineage = titleLineage(state, titleId).slice().reverse();
+  const matches = titleMatches(state, titleId);
+  const longest = c.longestReign;
+
+  const facts = [
+    ['Brand', brandName(state, c.brandId) || 'Unbranded'],
+    ['Division', c.division || '—'],
+    ['Reigns', c.reigns.length],
+    ['Defenses', c.totalDefenses],
+    ['Longest', longest ? `${longest.days}d` : '—'],
+  ].map(([k, v]) => `<div class="fact"><div class="k">${h(k)}</div><div class="v">${h(v)}</div></div>`).join('');
+
+  const holderLine = c.vacant
+    ? '<span class="vacant">Vacant</span>'
+    : `${c.holders.map(x => wlink(state.wrestlers[x] || { id: x, name: x })).join(' &amp; ')}
+       <span class="dim">· ${c.daysHeld} days · ${plural(c.defenses, 'defense')}</span>`;
+
+  const interimLine = c.interimHolders.length
+    ? `<div style="margin-top:6px">${chip('interim', 'new')}
+       ${c.interimHolders.map(x => wlink(state.wrestlers[x] || { id: x, name: x })).join(' &amp; ')}
+       <span class="dim">· since ${h(c.interimSince)}</span></div>` : '';
+
+  return `<div class="backrow">
+      <button class="linkbtn" data-tab="titles">← all championships</button>
+    </div>
+    <div class="pagehead" style="border-left-color:${brandColor(c.brandId)}">
+      <div class="nm">${h(c.name)}</div>
+      <div class="holder">${holderLine}</div>
+      ${interimLine}
+    </div>
+    <div class="facts2">${facts}</div>
+
+    <h2>Lineage <span class="sub">every reign, newest first · interim runs are marked</span></h2>
+    <div class="card flush">${table(lineage, [
+      { label: '#', num: true, get: r => r.n, dim: true },
+      { label: 'Champion', get: r => h(r.holders.join(' & ')) + (r.interim ? ' ' + chip('interim', 'new') : ''), html: true },
+      { label: 'Won', get: r => r.from },
+      { label: 'Lost', get: r => r.to || (r.current ? '<span class="dim">current</span>' : '—'), html: true },
+      { label: 'Days', num: true, get: r => r.days },
+      { label: 'Def.', num: true, get: r => r.defenses },
+      { label: 'How', get: r => [r.reason, r.endReason].filter(Boolean).join(' → '), dim: true },
+    ], 'Never held.')}</div>
+
+    <h2 style="margin-top:22px">Title matches <span class="sub">${plural(matches.length, 'match')}</span></h2>
+    <div class="card flush">${table(matches, [
+      { label: 'Date', get: m => m.date, dim: true },
+      { label: 'Match', get: m => m.text },
+      { label: 'Type', get: m => m.matchType || '', dim: true },
+      { label: '', get: m => (m.titleChanged ? chip('title change', 'new') : ''), html: true },
+    ], 'No matches for this belt yet.')}</div>`;
 }
 
 // ------------------------------------------------------------------ wrestler
 
-export function wrestlerSheet(state, id) {
+// The profile page: record, reigns with day counts, who they are with, who
+// they are against, and every event they appear in.
+export function wrestlerPage(state, id) {
   const w = state.wrestlers[id];
-  if (!w) return { title: 'Unknown', body: '<div class="empty">No such wrestler.</div>' };
-  const tl = timelineFor(state, id).slice(0, 40);
+  if (!w) return '<div class="empty">No such wrestler.</div>';
+  const nm = x => (state.wrestlers[x] ? state.wrestlers[x].name : x);
+  const tl = timelineFor(state, id);
 
   const facts = [
-    ['Brand', brandName(state, w.brandId) || 'Free agent'],
     ['Record', w.record.total ? `${w.record.w}-${w.record.l}-${w.record.d}` : '—'],
+    ['Win rate', w.record.total ? `${Math.round(w.winPct * 100)}%` : '—'],
     ['Streak', streakCell(w)],
+    ['Reigns', w.titleHistory.length],
     ['Appearances', w.appearances],
   ].map(([k, v]) => `<div class="fact"><div class="k">${h(k)}</div><div class="v">${h(v)}</div></div>`).join('');
 
-  const lines = [];
-  if (w.titles.length) lines.push(`Holding ${w.titles.map(t => h(state.championships[t].name)).join(', ')}`);
-  if (w.groups.length) lines.push(`Part of ${w.groups.map(g => h(state.groups[g].name)).join(', ')}`);
-  if (w.injury) lines.push(`Injured since ${w.injury.since}${w.injury.description ? ` — ${h(w.injury.description)}` : ''} (${days(w.injury.since, state.asOf)} days)`);
-  if (w.contract) lines.push(`Under contract since ${w.contract.since}${w.contract.expires ? `, expires ${w.contract.expires}` : ''}`);
-  else lines.push('No contract');
+  const reigns = w.titleHistory.slice().reverse().map(r => ({
+    ...r,
+    name: state.championships[r.titleId] ? state.championships[r.titleId].name : r.titleId,
+    dayCount: r.to ? r.days : days(r.from, state.asOf),
+  }));
 
-  return {
-    title: w.name,
-    body: `<div class="facts2">${facts}</div>
-      <div class="msg ok" style="background:none;border-color:var(--line);color:var(--ink-2)">
-        ${statusChip(w) || chip('active', 'brand')} ${lines.map(l => `<div style="margin-top:4px">${l}</div>`).join('')}
+  const tie = rows => table(rows, [
+    { label: 'Who', get: r => wlink(state.wrestlers[r.with] || { id: r.with, name: r.with }), html: true },
+    { label: 'Heat', num: true, get: r => r.heat },
+    { label: 'From', get: r => Object.entries(r.why).map(([k, n]) => `${k}${n > 1 ? ` ×${n}` : ''}`).join(', '), dim: true },
+    { label: 'Last', get: r => r.last, dim: true },
+    { label: '', get: r => (r.active ? '' : '<span class="dim">cooled off</span>'), html: true },
+  ], 'Nothing yet.');
+
+  const status = [
+    statusChip(w) || chip('active', 'brand'),
+    w.brandId ? chip(brandName(state, w.brandId), 'brand') : chip('free agent', 'fa'),
+    ...w.titles.map(t => chip(state.championships[t].name, 'title')),
+    ...w.groups.map(g => chip(state.groups[g].name, 'group')),
+  ].join(' ');
+
+  const notes = [];
+  if (w.injury) notes.push(`Injured since ${h(w.injury.since)}${w.injury.description ? ` — ${h(w.injury.description)}` : ''} (${days(w.injury.since, state.asOf)} days out)`);
+  if (w.contract) notes.push(`Under contract since ${h(w.contract.since)}${w.contract.expires ? `, expires ${h(w.contract.expires)}` : ''}`);
+  else notes.push('No contract — free agent');
+
+  const threads = state.threads.filter(t => t.subjects.includes(id) || t.about === id).map(t => describeThread(state, t));
+
+  return `<div class="backrow"><button class="linkbtn" data-tab="roster">← roster</button></div>
+    <div class="pagehead" style="border-left-color:${brandColor(w.brandId)}">
+      <div class="nm">${h(w.name)}</div>
+      <div class="holder">${status}</div>
+      <div class="dim" style="margin-top:6px">${notes.join(' · ')}</div>
+    </div>
+    <div class="facts2">${facts}</div>
+
+    <div class="cols">
+      <div>
+        <h2>Rivalries <span class="sub">built from attacks, losses and promos</span></h2>
+        <div class="card flush">${tie(w.rivals.slice(0, 8))}</div>
       </div>
-      <h2>Timeline <span class="sub">${plural(tl.length, 'segment')}, newest first</span></h2>
-      ${table(tl, [
-        { label: 'Date', get: r => r.date, dim: true },
-        { label: 'Type', get: r => r.type, dim: true },
-        { label: 'What', get: r => r.text },
-        { label: 'As', get: r => r.role, dim: true },
-      ], 'Has not appeared yet.')}`,
-  };
+      <div>
+        <h2>Alliances <span class="sub">built from tag wins and saves</span></h2>
+        <div class="card flush">${tie(w.allies.slice(0, 8))}</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:22px">Title reigns</h2>
+    <div class="card flush">${table(reigns, [
+      { label: 'Championship', get: r => `<span class="belt-link" data-belt="${h(r.titleId)}">${h(r.name)}</span>${r.interim ? ' ' + chip('interim', 'new') : ''}`, html: true },
+      { label: 'Won', get: r => r.from },
+      { label: 'Lost', get: r => r.to || '<span class="dim">current</span>', html: true },
+      { label: 'Days', num: true, get: r => r.dayCount },
+    ], 'Never held a championship.')}</div>
+
+    ${threads.length ? `<h2 style="margin-top:22px">Open threads</h2>
+      <div class="card flush">${table(threads, [
+        { label: 'Thread', get: t => h(t.line), html: true },
+        { label: 'Open', num: true, get: t => `${t.age}d` },
+      ])}</div>` : ''}
+
+    <h2 style="margin-top:22px">Timeline <span class="sub">${plural(tl.length, 'segment')}, newest first</span></h2>
+    <div class="card flush">${table(tl, [
+      { label: 'Date', get: r => r.date, dim: true },
+      { label: 'Type', get: r => r.type, dim: true },
+      { label: 'What', get: r => r.text },
+      { label: 'As', get: r => r.role, dim: true },
+      { label: '', get: r => `<button class="linkbtn" data-ev="${h(r.id)}">open</button>`, html: true },
+    ], 'Has not appeared yet.')}</div>`;
+}
+
+// ------------------------------------------------------------------ threads
+
+export function threadsView(state) {
+  const open = state.threads.map(t => describeThread(state, t));
+  const closed = state.threadsClosed.slice(-25).reverse().map(t => describeThread(state, t));
+
+  const kindChip = t => chip(t.kind.replace('-', ' '), t.kind === 'betrayal' ? 'down' : t.kind === 'title-shot' ? 'title' : t.kind === 'injury' ? 'hurt' : 'brand');
+
+  return `<h2>Open threads <span class="sub">oldest first — the longer one sits, the louder it is</span></h2>
+    <div class="card flush">${table(open.map(t => ({ ...t, _cls: t.stale ? 'stale' : '' })), [
+      { label: 'Kind', get: kindChip, html: true },
+      { label: 'Thread', get: t => h(t.line), html: true },
+      { label: 'Since', get: t => t.opened, dim: true },
+      { label: 'Open', num: true, get: t => `${t.age}d` },
+      { label: '', get: t => `<button class="linkbtn" data-resolve="${h(t.id)}">resolve</button>`, html: true },
+    ], 'Nothing hanging — every question the log opened has been answered.')}</div>
+
+    <h2 style="margin-top:22px">Recently closed <span class="sub">answered by an event, or marked resolved</span></h2>
+    <div class="card flush">${table(closed, [
+      { label: 'Kind', get: kindChip, html: true },
+      { label: 'Thread', get: t => h(t.line), html: true },
+      { label: 'Open for', num: true, get: t => `${t.age}d` },
+      { label: 'Closed by', get: t => t.closedWhy, dim: true },
+    ], 'Nothing closed yet.')}</div>`;
+}
+
+// ------------------------------------------------------------------ heat
+
+// The dashboard panel: who is feuding, who is together, hottest first.
+export function heatPanel(state) {
+  const nmw = id => wlink(state.wrestlers[id] || { id, name: id });
+  const rows = list => table(list, [
+    { label: 'Pair', get: r => `${nmw(r.a)} <span class="dim">vs</span> ${nmw(r.b)}`, html: true },
+    { label: 'Heat', num: true, get: r => r.heat },
+    { label: 'Meetings', num: true, get: r => r.meetings, dim: true },
+    { label: 'Last', get: r => r.last, dim: true },
+  ], 'Nothing running.');
+
+  const bonds = list => table(list, [
+    { label: 'Pair', get: r => `${nmw(r.a)} <span class="dim">&amp;</span> ${nmw(r.b)}`, html: true },
+    { label: 'Bond', num: true, get: r => r.heat },
+    { label: 'From', get: r => Object.keys(r.why).join(', '), dim: true },
+    { label: 'Last', get: r => r.last, dim: true },
+  ], 'Nothing running.');
+
+  const threads = state.threads.slice(0, 5).map(t => describeThread(state, t));
+
+  return `<div class="cols" style="margin-top:16px">
+    <div>
+      <h2>Active rivalries <span class="sub">heat decays without new events</span></h2>
+      <div class="card flush">${rows(activeRivalries(state, 8))}</div>
+    </div>
+    <div>
+      <h2>Active alliances</h2>
+      <div class="card flush">${bonds(activeAlliances(state, 6))}</div>
+      <h2 style="margin-top:16px">Oldest open threads
+        <span class="sub">${plural(state.threads.length, 'open')}</span></h2>
+      <div class="card flush">${table(threads, [
+        { label: 'Thread', get: t => h(t.line), html: true },
+        { label: 'Open', num: true, get: t => `${t.age}d` },
+      ], 'Nothing hanging.')}</div>
+    </div>
+  </div>`;
 }
 
 // ------------------------------------------------------------------ shows

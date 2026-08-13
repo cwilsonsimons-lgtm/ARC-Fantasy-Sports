@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // WWE 2K Universe — command line.
 //
-// The data layer has no UI yet, so this is how you drive it. Everything reads
-// and writes one JSON file (data/universe.json by default; --file or
-// UNIVERSE_FILE to point elsewhere).
+// The other front end. universe.html is the dashboard; this drives the same
+// data layer from a terminal, which is faster for bulk loading and better for
+// inspecting. Everything reads and writes one JSON file (data/universe.json by
+// default; --file or UNIVERSE_FILE to point elsewhere).
 //
 //   node tools/universe.mjs seed data/universe-seed.json --fresh
 //   node tools/universe.mjs roster roster.txt          # or - for stdin
@@ -23,7 +24,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 
 import { UniverseStore } from '../js/universe/store.js';
-import { project, champions, titleLineage, standings, injuryList, expiringContracts, timelineFor, days } from '../js/universe/project.js';
+import { project, champions, titleLineage, titleMatches, standings, injuryList, expiringContracts,
+  timelineFor, days, describeThread, activeRivalries, activeAlliances } from '../js/universe/project.js';
 import { seedFromJSON, exportSeed } from '../js/universe/seed.js';
 import { parseRoster, commitRoster, brandTable, importReport } from '../js/universe/roster.js';
 import { parseCard, commitCard, renderCard } from '../js/universe/card.js';
@@ -242,15 +244,94 @@ const commands = {
     }
     const hit = resolveName(buildIndex(store, 'championship'), positional[0]);
     if (!hit.ok) die(`unknown championship "${positional[0]}"${hit.candidates.length ? ` — did you mean ${hit.candidates.join(', ')}?` : ''}`);
+    const c = state.championships[hit.id];
     console.log(heading(`${hit.name} — lineage`));
+    console.log(`  ${c.vacant ? 'VACANT' : c.holders.map(x => nameOf(state, x)).join(' & ')}`
+      + `${c.vacant ? '' : ` · ${c.daysHeld} days · ${plural(c.defenses, 'defense')}`}`
+      + `${c.interimHolders.length ? `   (interim: ${c.interimHolders.map(x => nameOf(state, x)).join(' & ')} since ${c.interimSince})` : ''}`);
     console.log(table(titleLineage(state, hit.id), [
       { label: '#', align: 'right', get: r => r.n },
-      { label: 'Champion', get: r => r.holders.join(' & ') },
+      { label: 'Champion', get: r => r.holders.join(' & ') + (r.interim ? ' (interim)' : '') },
       { label: 'Won', get: r => r.from },
-      { label: 'Lost', get: r => r.to || '—' },
+      { label: 'Lost', get: r => r.to || (r.current ? 'current' : '—') },
       { label: 'Days', align: 'right', get: r => r.days },
       { label: 'Def.', align: 'right', get: r => r.defenses },
       { label: 'How', get: r => [r.reason, r.endReason].filter(Boolean).join(' → ') },
+    ], { indent: '  ' }));
+
+    const ms = titleMatches(state, hit.id);
+    if (ms.length) {
+      console.log(heading(`Title matches — ${plural(ms.length, 'match')}`));
+      console.log(table(ms, [
+        { label: 'Date', get: m => m.date },
+        { label: 'Match', get: m => m.text },
+        { label: '', get: m => (m.titleChanged ? 'title change' : '') },
+      ], { indent: '  ' }));
+    }
+  },
+
+  threads() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const open = state.threads.map(t => describeThread(state, t));
+    console.log(heading(`Open threads — ${plural(open.length, 'thread')}`, '═'));
+    console.log(table(open, [
+      { label: 'Id', get: t => t.id },
+      { label: 'Kind', get: t => t.kind },
+      { label: 'Thread', get: t => t.line },
+      { label: 'Since', get: t => t.opened },
+      { label: 'Open', align: 'right', get: t => `${t.age}d` },
+    ], { indent: '  ' }));
+
+    if (flags.all) {
+      const closed = state.threadsClosed.map(t => describeThread(state, t));
+      console.log(heading(`Closed — ${plural(closed.length, 'thread')}`));
+      console.log(table(closed, [
+        { label: 'Kind', get: t => t.kind },
+        { label: 'Thread', get: t => t.line },
+        { label: 'Open for', align: 'right', get: t => `${t.age}d` },
+        { label: 'Closed by', get: t => t.closedWhy },
+      ], { indent: '  ' }));
+    }
+  },
+
+  resolve() {
+    const store = openStore();
+    const id = positional.shift();
+    const state = project(store);
+    if (!state.threadsById[id]) die(`no such thread: ${id}\nrun: node tools/universe.mjs threads`);
+    // Date it after the newest event, or a resolution could land before the
+    // show that opened the thread and never close anything.
+    const last = store.doc.events.reduce((m, e) => (e.date > m ? e.date : m), new Date().toISOString().slice(0, 10));
+    const ev = store.append({
+      type: 'thread.resolved', date: flags.date || last, source: 'cli',
+      participants: [], data: { threadId: id, reason: positional.join(' ') || 'marked resolved' },
+    });
+    console.log(`${ev.id}: resolved ${id}`);
+  },
+
+  heat() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const limit = +(flags.limit || 12);
+
+    console.log(heading(`Rivalries — as of ${state.asOf}`, '═'));
+    console.log(table(state.rivalries.slice(0, limit), [
+      { label: 'Feud', get: r => `${nameOf(state, r.a)} / ${nameOf(state, r.b)}` },
+      { label: 'Heat', align: 'right', get: r => r.heat },
+      { label: 'Peak', align: 'right', get: r => r.peak },
+      { label: 'From', get: r => Object.entries(r.why).map(([k, n]) => `${k}${n > 1 ? `×${n}` : ''}`).join(', ') },
+      { label: 'Last', get: r => r.last },
+      { label: '', get: r => (r.active ? '' : 'cooled off') },
+    ], { indent: '  ' }));
+
+    console.log(heading('Alliances'));
+    console.log(table(state.alliances.slice(0, limit), [
+      { label: 'Pair', get: r => `${nameOf(state, r.a)} & ${nameOf(state, r.b)}` },
+      { label: 'Bond', align: 'right', get: r => r.heat },
+      { label: 'From', get: r => Object.entries(r.why).map(([k, n]) => `${k}${n > 1 ? `×${n}` : ''}`).join(', ') },
+      { label: 'Last', get: r => r.last },
+      { label: '', get: r => (r.active ? '' : 'cooled off') },
     ], { indent: '  ' }));
   },
 
@@ -267,6 +348,36 @@ const commands = {
     if (w.groups.length) console.log(`  groups: ${w.groups.map(g => state.groups[g].name).join(', ')}`);
     if (w.injury) console.log(`  injured since ${w.injury.since}${w.injury.description ? ` (${w.injury.description})` : ''}`);
     if (w.contract) console.log(`  contract since ${w.contract.since}${w.contract.expires ? `, expires ${w.contract.expires}` : ''}`);
+    const tie = (label, rows) => {
+      if (!rows.length) return;
+      console.log(heading(label));
+      console.log(table(rows.slice(0, 6), [
+        { label: 'Who', get: r => nameOf(state, r.with) },
+        { label: 'Heat', align: 'right', get: r => r.heat },
+        { label: 'From', get: r => Object.keys(r.why).join(', ') },
+        { label: 'Last', get: r => r.last },
+        { label: '', get: r => (r.active ? '' : 'cooled off') },
+      ], { indent: '  ' }));
+    };
+    tie('Rivalries', w.rivals);
+    tie('Alliances', w.allies);
+
+    const mine = state.threads.filter(t => t.subjects.includes(hit.id) || t.about === hit.id);
+    if (mine.length) {
+      console.log(heading('Open threads'));
+      mine.map(t => describeThread(state, t)).forEach(t => console.log(`  ${t.line}  (${t.age}d, ${t.id})`));
+    }
+
+    if (w.titleHistory.length) {
+      console.log(heading('Title reigns'));
+      console.log(table(w.titleHistory.slice().reverse(), [
+        { label: 'Championship', get: r => nameOf(state, r.titleId) + (r.interim ? ' (interim)' : '') },
+        { label: 'Won', get: r => r.from },
+        { label: 'Lost', get: r => r.to || 'current' },
+        { label: 'Days', align: 'right', get: r => (r.to ? r.days : days(r.from, state.asOf)) },
+      ], { indent: '  ' }));
+    }
+
     const tl = timelineFor(state, hit.id).slice(0, +(flags.limit || 15));
     console.log(heading('Recent'));
     console.log(table(tl, [
@@ -391,7 +502,10 @@ const commands = {
   show [showId]                          print a saved card (default: latest)
   shows                                  every show
   state [--as-of D] [--within N]         champions, records, injuries, contracts, feuds
-  titles [name]                          title lineage
+  titles [name]                          title lineage, reigns and title matches
+  threads [--all] [--as-of D]            open questions the log has not answered
+  resolve <threadId> [note]              mark one closed
+  heat [--limit N] [--as-of D]           rivalries and alliances, hottest first
   wrestler <name> [--limit N]            one wrestler's page
   log [--limit N] [--type T] [--all]     the event log
   event <id>                             one event and its corrections

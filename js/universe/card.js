@@ -35,6 +35,7 @@ import { project } from './project.js';
 const DEFEAT = /\s+(?:d\.|def\.|def|defeats?|defeated|beats?|beat|over|pins?|taps?|>)\s+/i;
 const VERSUS = /\s+(?:vs\.?|versus|v\.)\s+/i;
 const ATTACK = /\s+(?:attacks?|attacked|jumps?|jumped|assaults?|ambushes?|lays? out|beats? down|turns? on)\s+/i;
+const SAVE = /\s+(?:saves?|saved|makes? the save for|runs? out to help|rescues?)\s+/i;
 const PROMO = /\s+(?:cuts? a promo on|promo on|promo|calls? out|confronts?|interrupts?)\s*/i;
 const DATE_ANY = /\b(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/;
 
@@ -178,6 +179,26 @@ function parseHeader(line, idx, state) {
 function parseSegment(line, ctx) {
   const { corner, lineNo, raw, warn } = ctx;
 
+  // "Sami Zayn saves Jey Uso from Solo Sikoa" — checked before the attack verb,
+  // since a save line usually names the attack it broke up.
+  if (SAVE.test(line)) {
+    const [a, b] = line.split(SAVE);
+    const tail = trailing(b);
+    const from = /\s+from\s+/i.test(tail.body) ? tail.body.split(/\s+from\s+/i) : [tail.body, ''];
+    const saved = stripProse(from[0]);
+    const attacker = stripProse(from[1] || '');
+    return {
+      type: 'save',
+      participants: [
+        ...corner(stripProse(a).body, lineNo, raw).map(ref => ({ ref, role: 'subject' })),
+        ...corner(saved.body, lineNo, raw).map(ref => ({ ref, role: 'victim' })),
+        ...(attacker.body ? corner(attacker.body, lineNo, raw).map(ref => ({ ref, role: 'attacker' })) : []),
+      ],
+      data: { context: [tail.note, saved.prose].filter(Boolean).join(' · ') || null },
+      text: clean(line),
+    };
+  }
+
   if (ATTACK.test(line)) {
     const [a, b] = line.split(ATTACK);
     const tail = trailing(b);
@@ -231,11 +252,48 @@ function parseSegment(line, ctx) {
     return { type: 'injury.cleared', participants: refs.map(ref => ({ ref, role: 'subject' })), data: {}, text: clean(line) };
   }
 
-  const vac = /^vacate[ds]?\s*:?\s*(.+)$/i.exec(line);
+  const vac = /^(vacate[ds]?|strip(?:ped)?|retire[ds]?)\s*:?\s*(.+)$/i.exec(line);
   if (vac) {
-    const t = resolve(ctx.idx.championship, clean(vac[1]));
-    if (!t.ok) { warn(lineNo, raw, `unknown championship "${vac[1]}"`); return null; }
-    return { type: 'title.change', participants: [], data: { titleId: t.id, reason: 'vacated' }, text: clean(line) };
+    const t = resolve(ctx.idx.championship, clean(vac[2]));
+    if (!t.ok) { warn(lineNo, raw, `unknown championship "${vac[2]}"`); return null; }
+    const reason = /^strip/i.test(vac[1]) ? 'stripped' : /^retire/i.test(vac[1]) ? 'retired' : 'vacated';
+    return { type: 'title.change', participants: [], data: { titleId: t.id, reason }, text: clean(line) };
+  }
+
+  // "promise: Cody Rhodes — WWE Championship" opens a title-shot thread.
+  // The dash separates the wrestler from what they were promised, so these two
+  // deliberately skip trailing(), which would swallow the second half as a note.
+  const promise = /^promise[ds]?\s*:\s*(.+)$/i.exec(line);
+  if (promise) {
+    const parts = promise[1].split(/\s*[-–—>]+\s*|\s+for\s+the\s+|\s+at\s+the\s+/i).map(clean).filter(Boolean);
+    const who = corner(parts[0], lineNo, raw);
+    if (!who.length) return null;
+    const rest = parts.slice(1).join(' — ');
+    const belt = rest ? resolve(ctx.idx.championship, rest) : { ok: false };
+    return {
+      type: 'thread.open',
+      participants: who.map(ref => ({ ref, role: 'subject' })),
+      data: {
+        threadKind: belt.ok ? 'title-shot' : 'promise',
+        about: belt.ok ? belt.id : null,
+        text: belt.ok ? 'promised a title shot' : (rest || 'was promised something'),
+      },
+      text: clean(line),
+    };
+  }
+
+  // "thread: Jey Uso & Roman Reigns — the story is not over"
+  const thread = /^(?:thread|open)\s*:\s*(.+)$/i.exec(line);
+  if (thread) {
+    const parts = thread[1].split(/\s*[-–—]+\s*/).map(clean).filter(Boolean);
+    const who = corner(parts[0], lineNo, raw);
+    if (!who.length) return null;
+    return {
+      type: 'thread.open',
+      participants: who.map(ref => ({ ref, role: 'subject' })),
+      data: { threadKind: 'promise', text: parts.slice(1).join(' — ') || 'unfinished business' },
+      text: clean(line),
+    };
   }
 
   return null;
@@ -295,20 +353,34 @@ function parseMatch(line, ctx) {
   };
   if (mods.note) data.note = mods.note;
 
+  // A number-one contender match names the belt but is not for it. Move the
+  // title onto `contender` so the match does not read as a title match — it
+  // opens a title-shot thread instead.
+  if (mods.contender) {
+    data.contender = data.titleId || true;
+    data.titleId = null;
+  }
+
   // Did the belt move? The author's override wins; otherwise compare the
-  // winning corner against the current champions.
+  // winning corner against whoever is holding it — the interim champion when
+  // this is an interim match, the real one otherwise.
   if (data.titleId) {
     const champ = state.championships[data.titleId];
     const winners = participants.filter(p => p.role === 'winner').map(p => p.ref).sort();
+    if (mods.interim) data.interim = true;
+    if (mods.unify) data.unify = true;
+
     if (!winnerSide) {
       data.titleVacated = !!mods.vacated;
+    } else if (mods.unify) {
+      data.titleChanged = true;                       // unification always ends somewhere new
     } else if (mods.titleChanged != null) {
       data.titleChanged = mods.titleChanged;
     } else {
-      const held = [...(champ ? champ.holders : [])].sort();
+      const held = [...((champ ? (mods.interim ? champ.interimHolders : champ.holders) : []) || [])].sort();
       data.titleChanged = held.join() !== winners.join();
     }
-    if (data.titleChanged && champ && champ.holders.length === 0) data.newChampionOfVacant = true;
+    if (data.titleChanged && champ && !champ.holders.length && !mods.interim) data.newChampionOfVacant = true;
   }
 
   return { type: 'match', participants, data, text: clean(line) };
@@ -325,7 +397,10 @@ function trailing(text) {
 }
 
 function parseModifiers(note, idx, state) {
-  const out = { matchType: null, decision: null, titleId: null, titleChanged: null, vacated: false, note: null };
+  const out = {
+    matchType: null, decision: null, titleId: null, titleChanged: null,
+    vacated: false, interim: false, unify: false, contender: false, note: null,
+  };
   if (!note) return out;
   const leftovers = [];
 
@@ -336,6 +411,9 @@ function parseModifiers(note, idx, state) {
     if (/^(new champion|title change|new champ|and new)$/.test(n)) { out.titleChanged = true; return; }
     if (/^(retains?|retained|successful defense|defense|and still)$/.test(n)) { out.titleChanged = false; return; }
     if (/^(vacant|vacated|held up)$/.test(n)) { out.vacated = true; return; }
+    if (/^(interim|interim title|for the interim)$/.test(n)) { out.interim = true; return; }
+    if (/^(unify|unified|unification|winner takes all|undisputed)$/.test(n)) { out.unify = true; return; }
+    if (/^(contender|number one contender|no 1 contender|1 contender|top contender|eliminator)$/.test(n)) { out.contender = true; return; }
 
     const dec = DECISIONS.find(d => n === d || n === d.replace(/\s/g, ''));
     if (dec) { out.decision = dec; return; }
@@ -448,8 +526,22 @@ export function renderCard(parsed, store, state = null) {
         ? `${side(win.side)} def. ${nums.filter(n => n !== win.side).map(side).join(', ')}`
         : `${nums.map(side).join(' vs ')}`;
       const t = s.data.titleId ? (st.championships[s.data.titleId] || {}).name : null;
-      extra = [s.data.matchType, s.data.decision, t && `${t}${s.data.titleChanged ? ' — NEW CHAMPION' : s.data.titleVacated ? ' — VACATED' : ' (defense)'}`, s.data.note]
-        .filter(Boolean).join(' · ');
+      const belt = t && `${s.data.interim ? 'interim ' : ''}${t}${
+        s.data.unify ? ' — UNIFIED' : s.data.titleChanged ? ' — NEW CHAMPION' : s.data.titleVacated ? ' — VACATED' : ' (defense)'}`;
+      const shot = s.data.contender && `#1 contender${s.data.contender !== true && st.championships[s.data.contender] ? `: ${st.championships[s.data.contender].name}` : ''}`;
+      extra = [s.data.matchType, s.data.decision, belt, shot, s.data.note].filter(Boolean).join(' · ');
+    } else if (s.type === 'save') {
+      const from = s.participants.filter(p => p.role === 'attacker').map(p => nm(p.ref));
+      what = `${s.participants.filter(p => p.role === 'subject').map(p => nm(p.ref)).join(' & ')} saves `
+        + `${s.participants.filter(p => p.role === 'victim').map(p => nm(p.ref)).join(' & ')}`
+        + (from.length ? ` from ${from.join(' & ')}` : '');
+      extra = s.data.context || '';
+    } else if (s.type === 'thread.open') {
+      what = `${s.participants.map(p => nm(p.ref)).join(' & ')}`;
+      extra = `thread: ${s.data.text}${s.data.about && st.championships[s.data.about] ? ` (${st.championships[s.data.about].name})` : ''}`;
+    } else if (s.type === 'title.change') {
+      what = `${(st.championships[s.data.titleId] || {}).name || s.data.titleId}`;
+      extra = s.data.reason;
     } else if (s.type === 'attack') {
       what = `${s.participants.filter(p => p.role === 'attacker').map(p => nm(p.ref)).join(' & ')} attacks ${s.participants.filter(p => p.role === 'victim').map(p => nm(p.ref)).join(' & ')}`;
       extra = s.data.context || '';

@@ -86,13 +86,31 @@ export function cardPreview(store, state, text) {
         ? `<strong>${h(side(win.side))}</strong> def. ${h(nums.filter(n => n !== win.side).map(side).join(', '))}`
         : h(nums.map(side).join(' vs '));
       const t = s.data.titleId ? state.championships[s.data.titleId] : null;
+      const shot = s.data.contender && state.championships[s.data.contender];
       detail = [
         s.data.matchType ? h(s.data.matchType) : '',
         s.data.decision ? h(s.data.decision) : '',
+        s.data.interim ? chip('interim', 'new') : '',
         t ? chip(t.name.replace(/ Championship$/, ''), 'title') : '',
-        s.data.titleChanged ? chip('NEW CHAMPION', 'new') : (t ? '<span class="dim">defense</span>' : ''),
+        s.data.unify ? chip('UNIFIED', 'new')
+          : s.data.titleChanged ? chip('NEW CHAMPION', 'new')
+          : (t ? '<span class="dim">defense</span>' : ''),
+        s.data.contender ? `<span class="dim">#1 contender${shot ? `: ${h(shot.name)}` : ''}</span>` : '',
         s.data.note ? `<span class="dim">${h(s.data.note)}</span>` : '',
       ].filter(Boolean).join(' ');
+    } else if (s.type === 'save') {
+      const from = s.participants.filter(p => p.role === 'attacker').map(p => nm(p.ref));
+      what = `<strong>${h(s.participants.filter(p => p.role === 'subject').map(p => nm(p.ref)).join(' & '))}</strong> saves `
+        + `${h(s.participants.filter(p => p.role === 'victim').map(p => nm(p.ref)).join(' & '))}`
+        + (from.length ? ` from ${h(from.join(' & '))}` : '');
+      detail = h(s.data.context || '');
+    } else if (s.type === 'thread.open') {
+      what = h(s.participants.map(p => nm(p.ref)).join(' & '));
+      const about = s.data.about && state.championships[s.data.about];
+      detail = `${chip('thread', 'group')} ${h(s.data.text)}${about ? ` ${chip(about.name, 'title')}` : ''}`;
+    } else if (s.type === 'title.change') {
+      what = h((state.championships[s.data.titleId] || {}).name || s.data.titleId);
+      detail = chip(s.data.reason, s.data.reason === 'retired' ? 'down' : 'fa');
     } else if (s.type === 'attack') {
       what = `${h(s.participants.filter(p => p.role === 'attacker').map(p => nm(p.ref)).join(' & '))} attacks <strong>${h(s.participants.filter(p => p.role === 'victim').map(p => nm(p.ref)).join(' & '))}</strong>`;
       detail = h(s.data.context || '');

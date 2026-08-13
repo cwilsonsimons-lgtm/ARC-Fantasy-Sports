@@ -15,21 +15,35 @@ import { commitCard } from '../card.js';
 import { commitRoster } from '../roster.js';
 import { UNIVERSE_SEED } from '../seed-data.js';
 import { $, h, on, today, plural } from './dom.js';
-import { rosterView, titlesView, showsView, logView, wrestlerSheet, lineageSheet, eventSheet } from './views.js';
+import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage, threadsView, heatPanel } from './views.js';
 import { entryView, cardPreview, rosterImportPanel, rosterPreview } from './entry.js';
 
 const store = new UniverseStore({ adapter: localStorageAdapter() });
 if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
 
-const app = { tab: 'tonight', asOf: null, state: null, flash: null };
+// `tab` is whichever pane is showing. The two detail pages (a wrestler, a belt)
+// are panes too — they just are not in the tab bar, and carry an id.
+const app = { tab: 'tonight', detailId: null, asOf: null, state: null, flash: null };
 
 const TABS = [
   { id: 'tonight', label: 'Tonight' },
   { id: 'roster', label: 'Roster', count: s => Object.keys(s.wrestlers).length },
   { id: 'titles', label: 'Titles', count: s => Object.values(s.championships).filter(c => !c.retired).length },
+  { id: 'threads', label: 'Threads', count: s => s.threads.length },
   { id: 'shows', label: 'Shows', count: s => s.shows.length },
   { id: 'log', label: 'Log', count: s => s.events.length },
 ];
+const PANES = [...TABS.map(t => t.id), 'wrestler', 'title'];
+
+const go = (tab, detailId = null) => { app.tab = tab; app.detailId = detailId; closeSheet(); render(); };
+
+// The universe has its own clock: whatever the newest event is dated, or today
+// if that is later. A thread resolved "now" must not land before the show that
+// opened it, which is what using the wall clock would do.
+const universeNow = () => {
+  const last = store.doc.events.reduce((m, e) => (e.date > m ? e.date : m), '0000-00-00');
+  return last > today() ? last : today();
+};
 
 // ------------------------------------------------------------------ render
 
@@ -51,17 +65,21 @@ function render() {
   $('#asOfWrap').classList.toggle('past', !!app.asOf);
   $('#asOfNow').style.display = app.asOf ? '' : 'none';
 
-  TABS.forEach(t => $(`#pane-${t.id}`).classList.toggle('on', t.id === app.tab));
+  PANES.forEach(id => $(`#pane-${id}`).classList.toggle('on', id === app.tab));
 
   if (app.tab === 'tonight') {
-    // Rebuilding the pane would wipe what is being typed, so it is drawn once
-    // and only the preview is refreshed after that.
+    // Rebuilding the pane would wipe what is being typed, so the entry form is
+    // drawn once; only the preview and the heat panel below it are refreshed.
     if (!$('#cardText')) {
-      $('#pane-tonight').innerHTML = entryView();
+      $('#pane-tonight').innerHTML = entryView() + '<div id="heatPanel"></div>';
       $('#cardText').focus();
     }
     refreshCardPreview();
+    $('#heatPanel').innerHTML = heatPanel(s);
   }
+  if (app.tab === 'threads') $('#pane-threads').innerHTML = threadsView(s);
+  if (app.tab === 'wrestler') $('#pane-wrestler').innerHTML = wrestlerPage(s, app.detailId);
+  if (app.tab === 'title') $('#pane-title').innerHTML = titlePage(s, app.detailId);
   if (app.tab === 'roster') {
     const keep = $('#rosterText') ? $('#rosterText').value : '';
     const open = $('#rosterPanel') ? $('#rosterPanel').open : false;
@@ -150,10 +168,23 @@ function importRoster() {
 
 // ------------------------------------------------------------------ events
 
-on('click', '[data-tab]', (e, el) => { app.tab = el.dataset.tab; render(); });
-on('click', '[data-w]', (e, el) => openSheet(wrestlerSheet(app.state, el.dataset.w)));
-on('click', '[data-belt]', (e, el) => openSheet(lineageSheet(app.state, el.dataset.belt)));
+on('click', '[data-tab]', (e, el) => go(el.dataset.tab));
+on('click', '[data-w]', (e, el) => go('wrestler', el.dataset.w));
+on('click', '[data-belt]', (e, el) => go('title', el.dataset.belt));
 on('click', '[data-ev]', (e, el) => openSheet(eventSheet(store, app.state, el.dataset.ev)));
+
+// Mark a thread resolved. It is an event like anything else, so it lands in the
+// log, shows up in the correction trail, and can be voided if you change your
+// mind — rather than a flag flipped on a record somewhere.
+on('click', '[data-resolve]', (e, el) => {
+  store.append({
+    type: 'thread.resolved', date: universeNow(), source: 'dashboard',
+    participants: [], data: { threadId: el.dataset.resolve, reason: 'marked resolved' },
+  });
+  save();
+  flash('Thread resolved.');
+  render();
+});
 
 on('click', '[data-void]', (e, el) => {
   store.voidEvent(el.dataset.void, 'voided from the dashboard');

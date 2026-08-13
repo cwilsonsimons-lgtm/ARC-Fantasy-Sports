@@ -346,6 +346,24 @@ td.dim{color:var(--ink-3)}
 .belt .holder.vacant{color:var(--ink-3);font-style:italic;font-weight:400}
 .belt .facts{color:var(--ink-3);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
 
+.belt .interim{margin:-2px 0 6px;font-size:13px;color:var(--ink-2)}
+.belt-link{cursor:pointer;font-weight:600}
+.belt-link:hover{color:var(--gold)}
+
+/* ---------------------------------------------------------------- detail pages */
+.backrow{margin-bottom:12px}
+.pagehead{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--violet);
+  border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.pagehead .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:26px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase}
+.pagehead .holder{font-size:16px;margin-top:5px}
+.pagehead .holder .vacant{color:var(--ink-3);font-style:italic}
+.pagehead .dim{color:var(--ink-3);font-size:12px}
+
+/* threads */
+tr.stale td{background:rgba(232,178,58,.045)}
+tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
+
 /* ---------------------------------------------------------------- log */
 .logrow td{font-size:13px}
 .logrow.voided td{opacity:.42;text-decoration:line-through}
@@ -395,8 +413,11 @@ td.dim{color:var(--ink-3)}
 <div class="pane on" id="pane-tonight"></div>
 <div class="pane" id="pane-roster"></div>
 <div class="pane" id="pane-titles"></div>
+<div class="pane" id="pane-threads"></div>
 <div class="pane" id="pane-shows"></div>
 <div class="pane" id="pane-log"></div>
+<div class="pane" id="pane-wrestler"></div>
+<div class="pane" id="pane-title"></div>
 
 <div class="scrim" id="scrim"></div>
 <aside class="sheet" id="sheet">
@@ -415,6 +436,7 @@ td.dim{color:var(--ink-3)}
   var ALIGNMENTS = ["face", "heel", "tweener"];
   var GROUP_KINDS = ["tagTeam", "faction", "alliance"];
   var DIVISIONS = ["mens", "womens", "tag", "mixed", "unisex"];
+  var TITLE_REASONS = ["won", "awarded", "vacated", "stripped", "retired", "interim", "unified"];
   var DECISIONS = ["pinfall", "submission", "dq", "countout", "ko", "stoppage", "draw", "no contest"];
   var MATCH_TYPES = [
     "singles",
@@ -441,6 +463,30 @@ td.dim{color:var(--ink-3)}
     "casket",
     "ambulance"
   ];
+  var HEAT = {
+    attack: 3,
+    // the loudest single act
+    betrayal: 5,
+    // turning on your own runs hotter than attacking a stranger
+    promo: 2,
+    match: 1.5,
+    // a decided match — somebody got beaten
+    draw: 0.75,
+    // nobody settled anything
+    title: 1,
+    // added on top when a belt is on the line
+    saveRival: 2,
+    // making the save earns you the attacker
+    spread: 0.35
+    // fraction passed to the victim's partners and faction
+  };
+  var BOND = {
+    formed: 4,
+    tagWin: 2,
+    tagLoss: 0.75,
+    // losing together still builds something
+    save: 3
+  };
   var ENTITY_PREFIX = { wrestler: "w", brand: "b", championship: "c", group: "g" };
   function slug(s) {
     return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -494,14 +540,23 @@ td.dim{color:var(--ink-3)}
     });
     return [...by.entries()].sort((a, b) => a[0] - b[0]).map(([side, refs]) => ({ side, refs }));
   };
-  var heat = (ev, points) => {
+  var heat = (ev, points, why) => {
     const s = sides(ev);
     const out = [];
     for (let i = 0; i < s.length; i++) {
       for (let j = i + 1; j < s.length; j++) {
         s[i].refs.forEach((a) => s[j].refs.forEach((b) => {
-          out.push({ kind: "feud.heat", a, b, points });
+          out.push({ kind: "rivalry.heat", a, b, points, why });
         }));
+      }
+    }
+    return out;
+  };
+  var bond = (refs, points, why) => {
+    const out = [];
+    for (let i = 0; i < refs.length; i++) {
+      for (let j = i + 1; j < refs.length; j++) {
+        out.push({ kind: "alliance.bond", a: refs[i], b: refs[j], points, why });
       }
     }
     return out;
@@ -546,16 +601,28 @@ td.dim{color:var(--ink-3)}
             titleId,
             matchType: ev.data.matchType || null
           }));
+          if (refs.length > 1) out.push(...bond(refs, won ? BOND.tagWin : BOND.tagLoss, won ? "tag win" : "tag loss"));
         });
+        const winners = winSide ? s.find((x) => x.side === winSide.side).refs : [];
         if (titleId && !drawn) {
-          if (ev.data.titleChanged) {
-            out.push({ kind: "title.award", titleId, holders: winSide ? s.find((x) => x.side === winSide.side).refs : [], reason: "won" });
-          } else {
-            out.push({ kind: "title.defense", titleId, holders: s.find((x) => x.side === winSide.side).refs });
-          }
+          if (ev.data.unify) out.push({ kind: "title.unify", titleId, holders: winners });
+          else if (ev.data.interim) out.push({ kind: "title.interim", titleId, holders: winners, reason: "won" });
+          else if (ev.data.titleChanged) out.push({ kind: "title.award", titleId, holders: winners, reason: "won" });
+          else out.push({ kind: "title.defense", titleId, holders: winners });
         }
         if (titleId && drawn && ev.data.titleVacated) out.push({ kind: "title.vacate", titleId, reason: ev.data.decision || "draw" });
-        return out.concat(heat(ev, 1));
+        if (ev.data.contender && winners.length) {
+          out.push({
+            kind: "thread.open",
+            threadId: `th_${ev.id}`,
+            threadKind: "title-shot",
+            subjects: winners,
+            about: ev.data.contender === true ? titleId : ev.data.contender,
+            text: "earned a title shot"
+          });
+        }
+        const points = (drawn ? HEAT.draw : HEAT.match) + (titleId ? HEAT.title : 0);
+        return out.concat(heat(ev, points, drawn ? "draw" : "match"));
       }
     },
     attack: {
@@ -570,8 +637,67 @@ td.dim{color:var(--ink-3)}
       },
       effects: (ev) => {
         const shaped = { participants: ev.participants.map((p) => ({ ...p, side: p.role === "attacker" ? 1 : 2 })) };
-        return heat(shaped, 3);
+        const victims = refsOf(ev, "victim");
+        return [
+          ...heat(shaped, HEAT.attack, "attack"),
+          // Being jumped is a question: does anyone answer it? The thread stays
+          // open until the victim hits back or the author waves it off.
+          {
+            kind: "thread.open",
+            threadId: `th_${ev.id}`,
+            threadKind: "attack",
+            subjects: victims,
+            about: refsOf(ev, "attacker")[0] || null,
+            text: "attacked with no response yet"
+          }
+        ];
       }
+    },
+    // Somebody runs down to break up a beating. Costs one line to enter and is
+    // the cleanest signal in the whole model that two people are on the same side.
+    save: {
+      label: "Save",
+      roles: ["subject", "victim", "attacker"],
+      required: [],
+      validate: (ev) => {
+        const e = [];
+        if (!refsOf(ev, "subject").length) err(e, "a save needs someone making it");
+        if (!refsOf(ev, "victim").length) err(e, "a save needs someone being saved");
+        return e;
+      },
+      effects: (ev) => {
+        const savers = refsOf(ev, "subject");
+        const saved = refsOf(ev, "victim");
+        const from = refsOf(ev, "attacker");
+        const out = [];
+        savers.forEach((a) => saved.forEach((b) => out.push({ kind: "alliance.bond", a, b, points: BOND.save, why: "save" })));
+        savers.forEach((a) => from.forEach((b) => out.push({ kind: "rivalry.heat", a, b, points: HEAT.saveRival, why: "save" })));
+        if (from.length) out.push({ kind: "thread.close", match: { threadKind: "attack", subject: saved[0], about: from[0] }, why: "saved" });
+        return out;
+      }
+    },
+    // An explicit thread, for the ones no event implies — a promised title shot,
+    // a challenge issued, anything you want the queue to keep nagging you about.
+    "thread.open": {
+      label: "Thread opened",
+      roles: ["subject", "target"],
+      required: ["text"],
+      validate: (ev) => ev.participants.length ? [] : ["a thread needs at least one wrestler"],
+      effects: (ev) => [{
+        kind: "thread.open",
+        threadId: `th_${ev.id}`,
+        threadKind: ev.data.threadKind || "promise",
+        subjects: refsOf(ev, "subject"),
+        about: ev.data.about || refsOf(ev, "target")[0] || null,
+        text: ev.data.text
+      }]
+    },
+    "thread.resolved": {
+      label: "Thread resolved",
+      roles: ["subject"],
+      required: ["threadId"],
+      validate: () => [],
+      effects: (ev) => [{ kind: "thread.close", threadId: ev.data.threadId, why: ev.data.reason || "marked resolved" }]
     },
     promo: {
       label: "Promo",
@@ -581,7 +707,7 @@ td.dim{color:var(--ink-3)}
       effects: (ev) => {
         if (!refsOf(ev, "target").length) return [];
         const shaped = { participants: ev.participants.map((p) => ({ ...p, side: p.role === "speaker" ? 1 : 2 })) };
-        return heat(shaped, 2);
+        return heat(shaped, HEAT.promo, "promo");
       }
     },
     "alliance.formed": {
@@ -618,6 +744,16 @@ td.dim{color:var(--ink-3)}
         if (!leaving.length || ev.data.dissolve) {
           out.push({ kind: "group.dissolve", groupId: ev.data.groupId, reason: ev.data.reason || null });
         }
+        if (leaving.length && ev.data.betrayal !== false) {
+          out.push({
+            kind: "thread.open",
+            threadId: `th_${ev.id}`,
+            threadKind: "betrayal",
+            subjects: leaving,
+            about: ev.data.groupId,
+            text: ev.data.reason || "walked out"
+          });
+        }
         return out;
       }
     },
@@ -629,17 +765,31 @@ td.dim{color:var(--ink-3)}
         const e = [];
         const reason = ev.data.reason || "won";
         const holders = refsOf(ev, "champion");
-        if (!["won", "awarded", "vacated", "stripped", "retired"].includes(reason)) err(e, `unknown title change reason: ${reason}`);
-        if (["won", "awarded"].includes(reason) && !holders.length) err(e, `a title ${reason} needs at least one champion participant`);
+        if (!TITLE_REASONS.includes(reason)) err(e, `unknown title change reason: ${reason} (want ${TITLE_REASONS.join(", ")})`);
+        if (["won", "awarded", "interim", "unified"].includes(reason) && !holders.length) err(e, `a title ${reason} needs at least one champion participant`);
         return e;
       },
       effects: (ev) => {
         const reason = ev.data.reason || "won";
         const holders = refsOf(ev, "champion");
+        const titleId = ev.data.titleId;
         if (["vacated", "stripped", "retired"].includes(reason)) {
-          return [{ kind: "title.vacate", titleId: ev.data.titleId, reason }];
+          return [
+            { kind: "title.vacate", titleId, reason },
+            // An empty belt is the most open question there is.
+            ...reason === "retired" ? [] : [{
+              kind: "thread.open",
+              threadId: `th_${ev.id}`,
+              threadKind: "vacant-title",
+              subjects: [],
+              about: titleId,
+              text: `vacated \u2014 needs a new champion`
+            }]
+          ];
         }
-        return [{ kind: "title.award", titleId: ev.data.titleId, holders, reason }];
+        if (reason === "interim") return [{ kind: "title.interim", titleId, holders, reason }];
+        if (reason === "unified") return [{ kind: "title.unify", titleId, holders }];
+        return [{ kind: "title.award", titleId, holders, reason }];
       }
     },
     injury: {
@@ -647,10 +797,21 @@ td.dim{color:var(--ink-3)}
       roles: ["subject"],
       required: [],
       validate: (ev) => refsOf(ev, "subject").length ? [] : ["an injury needs a subject"],
-      effects: (ev) => refsOf(ev, "subject").flatMap((ref) => [
-        { kind: "injury.start", subject: ref, severity: ev.data.severity || null, weeks: ev.data.weeks || null, expectedReturn: ev.data.expectedReturn || null, description: ev.data.description || null },
-        { kind: "roster.status", subject: ref, status: "injured" }
-      ])
+      effects: (ev) => [
+        ...refsOf(ev, "subject").flatMap((ref) => [
+          { kind: "injury.start", subject: ref, severity: ev.data.severity || null, weeks: ev.data.weeks || null, expectedReturn: ev.data.expectedReturn || null, description: ev.data.description || null },
+          { kind: "roster.status", subject: ref, status: "injured" }
+        ]),
+        // Somebody is out. That is a booking problem until they are cleared.
+        {
+          kind: "thread.open",
+          threadId: `th_${ev.id}`,
+          threadKind: "injury",
+          subjects: refsOf(ev, "subject"),
+          about: null,
+          text: ev.data.description || (ev.data.weeks ? `out ${ev.data.weeks} weeks` : "injured")
+        }
+      ]
     },
     "injury.cleared": {
       label: "Injury cleared",
@@ -1099,6 +1260,9 @@ td.dim{color:var(--ink-3)}
   var days = (from, to) => Math.max(0, Math.round((/* @__PURE__ */ new Date(to + "T00:00:00Z") - /* @__PURE__ */ new Date(from + "T00:00:00Z")) / DAY));
   var feudKey = (a, b) => [a, b].sort().join("|");
   var todayISO = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  var HALF_LIFE = { rivalry: 60, alliance: 90 };
+  var ACTIVE = { rivalry: 2, alliance: 2 };
+  var decay = (points, age, halfLife) => points * Math.pow(0.5, Math.max(0, age) / halfLife);
   function project(store2, { asOf = null } = {}) {
     const events = store2.effectiveEvents({ asOf });
     const at = asOf || todayISO();
@@ -1110,8 +1274,14 @@ td.dim{color:var(--ink-3)}
       groups: {},
       shows: [],
       showsById: {},
-      feuds: {},
       events,
+      // Raw contributions, collected during the replay and totalled at the end so
+      // decay is measured from each one's own date.
+      ties: { rivalry: /* @__PURE__ */ new Map(), alliance: /* @__PURE__ */ new Map() },
+      rivalries: [],
+      alliances: [],
+      threadsById: {},
+      threads: [],
       counts: { events: events.length }
     };
     store2.entitiesOf("brand").forEach((b) => {
@@ -1146,9 +1316,12 @@ td.dim{color:var(--ink-3)}
       state.championships[c.id] = {
         ...c,
         holders: [],
+        interimHolders: [],
         vacant: true,
         since: null,
         reigns: [],
+        currentIndex: null,
+        interimIndex: null,
         totalDefenses: 0,
         retired: !!c.retiredOn
       };
@@ -1177,12 +1350,21 @@ td.dim{color:var(--ink-3)}
       });
       if (ev.showId && state.showsById[ev.showId]) state.showsById[ev.showId].segments.push(summarize(ev, state));
       (ev.effects || []).forEach((fx) => applyEffect(state, fx, ev));
+      closeThreads(state, ev);
     });
     Object.values(state.championships).forEach((c) => {
-      const cur = c.reigns[c.reigns.length - 1];
-      if (cur && !cur.to) cur.days = days(cur.from, at);
-      c.since = cur && !cur.to ? cur.from : null;
-      c.daysHeld = cur && !cur.to ? cur.days : 0;
+      c.reigns.forEach((r) => {
+        if (!r.to) r.days = days(r.from, at);
+      });
+      const main = mainReign(c), interim = interimReign(c);
+      c.since = main ? main.from : null;
+      c.daysHeld = main ? main.days : 0;
+      c.defenses = main ? main.defenses : 0;
+      c.holders = main ? main.holders : [];
+      c.vacant = !main;
+      c.interimHolders = interim ? interim.holders : [];
+      c.interimSince = interim ? interim.from : null;
+      c.longestReign = c.reigns.reduce((best, r) => !best || r.days > best.days ? r : best, null);
     });
     Object.values(state.wrestlers).forEach((w) => {
       if (w.brandId && state.brands[w.brandId]) state.brands[w.brandId].roster.push(w.id);
@@ -1199,8 +1381,47 @@ td.dim{color:var(--ink-3)}
       if (brand) brand.champions.push({ titleId: c.id, name: c.name, holders: c.holders });
     });
     state.freeAgents = Object.values(state.wrestlers).filter((w) => !w.brandId).map((w) => w.id);
-    state.feuds = Object.values(state.feuds).sort((a, b) => b.heat - a.heat || (a.last < b.last ? 1 : -1));
     Object.values(state.brands).forEach((b) => b.roster.sort((x, y) => state.wrestlers[x].name.localeCompare(state.wrestlers[y].name)));
+    const settleTies = (kind) => [...state.ties[kind].values()].map((t) => {
+      const heat2 = t.hits.reduce((sum, x) => sum + decay(x.points, days(x.date, at), HALF_LIFE[kind]), 0);
+      const last = t.hits.reduce((m, x) => x.date > m ? x.date : m, t.hits[0].date);
+      const why = {};
+      t.hits.forEach((x) => {
+        why[x.why || "other"] = (why[x.why || "other"] || 0) + 1;
+      });
+      return {
+        a: t.a,
+        b: t.b,
+        heat: Math.round(heat2 * 10) / 10,
+        peak: Math.round(t.hits.reduce((s, x) => s + x.points, 0) * 10) / 10,
+        meetings: t.hits.length,
+        last,
+        why,
+        active: heat2 >= ACTIVE[kind],
+        hits: t.hits
+      };
+    }).sort((x, y) => y.heat - x.heat || (x.last < y.last ? 1 : -1));
+    state.rivalries = settleTies("rivalry");
+    state.alliances = settleTies("alliance");
+    state.feuds = state.rivalries;
+    const attach = (list, field) => list.forEach((t) => {
+      [[t.a, t.b], [t.b, t.a]].forEach(([self, other]) => {
+        const w = state.wrestlers[self];
+        if (w) w[field].push({ with: other, heat: t.heat, meetings: t.meetings, last: t.last, active: t.active, why: t.why });
+      });
+    });
+    Object.values(state.wrestlers).forEach((w) => {
+      w.rivals = [];
+      w.allies = [];
+    });
+    attach(state.rivalries, "rivals");
+    attach(state.alliances, "allies");
+    Object.values(state.threadsById).forEach((t) => {
+      t.age = days(t.opened, t.closed || at);
+      t.stale = !t.closed && t.age > 60;
+    });
+    state.threads = Object.values(state.threadsById).filter((t) => !t.closed).sort((a, b) => a.opened < b.opened ? -1 : a.opened > b.opened ? 1 : 0);
+    state.threadsClosed = Object.values(state.threadsById).filter((t) => t.closed);
     return state;
   }
   function applyEffect(state, fx, ev) {
@@ -1227,49 +1448,63 @@ td.dim{color:var(--ink-3)}
       case "title.award": {
         const c = state.championships[fx.titleId];
         if (!c) break;
-        const cur = c.reigns[c.reigns.length - 1];
-        const same = cur && !cur.to && sameSet(cur.holders, fx.holders);
-        if (same) {
+        const cur = mainReign(c);
+        if (cur && sameSet(cur.holders, fx.holders)) {
           if (ev.type === "match") {
             cur.defenses += 1;
             c.totalDefenses += 1;
           }
           break;
         }
-        if (cur && !cur.to) {
-          cur.to = ev.date;
-          cur.days = days(cur.from, ev.date);
+        closeReign(state, c, cur, ev.date, "lost");
+        openReign(state, c, fx.holders, ev, { reason: fx.reason || "won" });
+        break;
+      }
+      // An interim reign runs alongside the real one rather than replacing it —
+      // that is the whole point of an interim belt. It gets its own row in the
+      // lineage and its own defense count, and the main reign keeps ticking.
+      case "title.interim": {
+        const c = state.championships[fx.titleId];
+        if (!c) break;
+        const open = interimReign(c);
+        if (open && sameSet(open.holders, fx.holders)) {
+          open.defenses += 1;
+          c.totalDefenses += 1;
+          break;
         }
-        c.reigns.push({ holders: [...fx.holders], from: ev.date, to: null, days: 0, defenses: 0, reason: fx.reason || "won", eventId: ev.id });
-        c.holders = [...fx.holders];
-        c.vacant = false;
-        fx.holders.forEach((h2) => {
-          const w = W(h2);
-          if (w) w.titleHistory.push({ titleId: fx.titleId, from: ev.date, to: null, eventId: ev.id });
-        });
+        closeReign(state, c, open, ev.date, "lost");
+        openReign(state, c, fx.holders, ev, { reason: "interim", interim: true });
+        break;
+      }
+      // Unification ends both runs and starts one undisputed reign.
+      case "title.unify": {
+        const c = state.championships[fx.titleId];
+        if (!c) break;
+        closeReign(state, c, interimReign(c), ev.date, "unified");
+        closeReign(state, c, mainReign(c), ev.date, "unified");
+        openReign(state, c, fx.holders, ev, { reason: "unified" });
         break;
       }
       case "title.vacate": {
         const c = state.championships[fx.titleId];
         if (!c) break;
-        const cur = c.reigns[c.reigns.length - 1];
-        if (cur && !cur.to) {
-          cur.to = ev.date;
-          cur.days = days(cur.from, ev.date);
-          cur.endReason = fx.reason || "vacated";
-          cur.holders.forEach((h2) => closeTitleHistory(W(h2), fx.titleId, ev.date));
-        }
+        closeReign(state, c, mainReign(c), ev.date, fx.reason || "vacated");
         c.holders = [];
         c.vacant = true;
-        if (fx.reason === "retired") c.retired = true;
+        c.currentIndex = null;
+        if (fx.reason === "retired") {
+          closeReign(state, c, interimReign(c), ev.date, "retired");
+          c.retired = true;
+        }
         break;
       }
       case "title.defense": {
         const c = state.championships[fx.titleId];
         if (!c) break;
-        const cur = c.reigns[c.reigns.length - 1];
-        if (cur && !cur.to) {
-          cur.defenses += 1;
+        const interim = interimReign(c);
+        const r = interim && sameSet(interim.holders, fx.holders) ? interim : mainReign(c);
+        if (r) {
+          r.defenses += 1;
           c.totalDefenses += 1;
         }
         break;
@@ -1376,16 +1611,162 @@ td.dim{color:var(--ink-3)}
         g.members = [];
         break;
       }
-      case "feud.heat": {
-        const [a, b] = [fx.a, fx.b].sort();
-        const key = feudKey(a, b);
-        const f = state.feuds[key] || (state.feuds[key] = { a, b, heat: 0, meetings: 0, last: null });
-        f.heat += fx.points;
-        f.meetings += 1;
-        f.last = ev.date;
+      // 'feud.heat' is what this was called before rivalries and alliances were
+      // split apart; saves written back then still replay.
+      case "feud.heat":
+      case "rivalry.heat": {
+        const betrayal = fx.why === "attack" && shareGroup(state, fx.a, fx.b);
+        addTie(state, "rivalry", fx.a, fx.b, betrayal ? HEAT.betrayal : fx.points, ev, betrayal ? "betrayal" : fx.why);
+        if (fx.why === "attack") {
+          groupmatesOf(state, fx.b).forEach((m) => {
+            if (m === fx.a || m === fx.b) return;
+            addTie(state, "rivalry", fx.a, m, fx.points * HEAT.spread, ev, "their faction");
+          });
+        }
+        break;
+      }
+      case "alliance.bond":
+        addTie(state, "alliance", fx.a, fx.b, fx.points, ev, fx.why);
+        break;
+      case "thread.open": {
+        const turned = fx.threadKind === "attack" && fx.subjects.length && fx.about && shareGroup(state, fx.subjects[0], fx.about);
+        state.threadsById[fx.threadId] = {
+          id: fx.threadId,
+          kind: turned ? "betrayal" : fx.threadKind,
+          subjects: [...fx.subjects || []],
+          about: fx.about || null,
+          text: fx.text || "",
+          opened: ev.date,
+          eventId: ev.id,
+          showId: ev.showId || null,
+          closed: null,
+          closedBy: null,
+          closedWhy: null
+        };
+        break;
+      }
+      case "thread.close": {
+        if (fx.threadId) {
+          shutThread(state, fx.threadId, ev, fx.why);
+          break;
+        }
+        if (fx.match) {
+          const t = openThreads(state).reverse().find((x) => x.kind === fx.match.threadKind && (!fx.match.subject || x.subjects.includes(fx.match.subject)) && (!fx.match.about || x.about === fx.match.about));
+          if (t) shutThread(state, t.id, ev, fx.why);
+        }
         break;
       }
     }
+  }
+  var mainReign = (c) => c.currentIndex != null && c.reigns[c.currentIndex] && !c.reigns[c.currentIndex].to ? c.reigns[c.currentIndex] : null;
+  var interimReign = (c) => c.interimIndex != null && c.reigns[c.interimIndex] && !c.reigns[c.interimIndex].to ? c.reigns[c.interimIndex] : null;
+  function closeReign(state, c, reign, date, why) {
+    if (!reign) return;
+    reign.to = date;
+    reign.days = days(reign.from, date);
+    reign.endReason = why;
+    reign.holders.forEach((h2) => closeTitleHistory(state.wrestlers[h2], c.id, date));
+    if (reign.interim) c.interimIndex = null;
+    else c.currentIndex = null;
+  }
+  function openReign(state, c, holders, ev, { reason, interim = false }) {
+    c.reigns.push({
+      holders: [...holders],
+      from: ev.date,
+      to: null,
+      days: 0,
+      defenses: 0,
+      reason,
+      interim,
+      eventId: ev.id
+    });
+    const i = c.reigns.length - 1;
+    if (interim) {
+      c.interimIndex = i;
+      c.interimHolders = [...holders];
+    } else {
+      c.currentIndex = i;
+      c.holders = [...holders];
+      c.vacant = false;
+    }
+    holders.forEach((h2) => {
+      const w = state.wrestlers[h2];
+      if (w) w.titleHistory.push({ titleId: c.id, from: ev.date, to: null, interim, eventId: ev.id });
+    });
+  }
+  function addTie(state, kind, a, b, points, ev, why) {
+    if (!a || !b || a === b || !points) return;
+    const [x, y] = [a, b].sort();
+    const key = feudKey(x, y);
+    const map = state.ties[kind];
+    if (!map.has(key)) map.set(key, { a: x, b: y, hits: [] });
+    map.get(key).hits.push({ points, date: ev.date, why, eventId: ev.id });
+  }
+  function groupmatesOf(state, ref) {
+    const out = /* @__PURE__ */ new Set();
+    Object.values(state.groups).forEach((g) => {
+      if (!g.active || !g.members.includes(ref)) return;
+      g.members.forEach((m) => {
+        if (m !== ref) out.add(m);
+      });
+    });
+    return out;
+  }
+  var shareGroup = (state, a, b) => groupmatesOf(state, a).has(b);
+  var openThreads = (state) => Object.values(state.threadsById).filter((t) => !t.closed);
+  function shutThread(state, id, ev, why) {
+    const t = state.threadsById[id];
+    if (!t || t.closed) return;
+    t.closed = ev.date;
+    t.closedBy = ev.id;
+    t.closedWhy = why || "resolved";
+  }
+  function closeThreads(state, ev) {
+    const open = openThreads(state);
+    if (!open.length) return;
+    if (ev.type === "match") {
+      const winners = ev.participants.filter((p) => p.role === "winner").map((p) => p.ref);
+      const losers = ev.participants.filter((p) => p.role === "loser").map((p) => p.ref);
+      const all = ev.participants.map((p) => p.ref);
+      open.forEach((t) => {
+        if ((t.kind === "attack" || t.kind === "betrayal") && t.about && t.subjects.some((s) => winners.includes(s)) && losers.includes(t.about)) {
+          shutThread(state, t.id, ev, "beat them");
+        }
+        if (t.kind === "betrayal" && t.about && state.groups[t.about]) {
+          const left = state.groups[t.about].members;
+          if (t.subjects.some((s) => all.includes(s)) && left.some((m) => all.includes(m))) {
+            shutThread(state, t.id, ev, "settled in the ring");
+          }
+        }
+        if (t.kind === "title-shot" && ev.data.titleId && ev.data.titleId === t.about && t.subjects.some((s) => all.includes(s))) {
+          shutThread(state, t.id, ev, "got the match");
+        }
+      });
+    }
+    if (ev.type === "attack") {
+      const attackers = ev.participants.filter((p) => p.role === "attacker").map((p) => p.ref);
+      const victims = ev.participants.filter((p) => p.role === "victim").map((p) => p.ref);
+      open.forEach((t) => {
+        if ((t.kind === "attack" || t.kind === "betrayal") && t.about && t.subjects.some((s) => attackers.includes(s)) && victims.includes(t.about)) {
+          shutThread(state, t.id, ev, "hit them back");
+        }
+      });
+    }
+    if (ev.type === "injury.cleared") {
+      const back = ev.participants.map((p) => p.ref);
+      open.forEach((t) => {
+        if (t.kind === "injury" && t.subjects.some((s) => back.includes(s))) shutThread(state, t.id, ev, "cleared to return");
+      });
+    }
+    (ev.effects || []).forEach((fx) => {
+      if (fx.kind !== "title.award" && fx.kind !== "title.unify") return;
+      open.forEach((t) => {
+        if (t.kind === "vacant-title" && t.about === fx.titleId) shutThread(state, t.id, ev, "new champion crowned");
+        if (t.kind === "title-shot" && t.about === fx.titleId && t.subjects.some((s) => fx.holders.includes(s))) {
+          shutThread(state, t.id, ev, "won the belt");
+        }
+      });
+    });
   }
   function closeTitleHistory(w, titleId, date) {
     if (!w) return;
@@ -1418,27 +1799,70 @@ td.dim{color:var(--ink-3)}
     } else if (ev.type === "promo") {
       const t = ev.participants.filter((p) => p.role === "target").map((p) => nm(p.ref));
       out.text = `${ev.participants.filter((p) => p.role === "speaker").map((p) => nm(p.ref)).join(" & ")} promo${t.length ? ` on ${t.join(" & ")}` : ""}`;
+    } else if (ev.type === "save") {
+      const from = ev.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref));
+      out.text = `${ev.participants.filter((p) => p.role === "subject").map((p) => nm(p.ref)).join(" & ")} saves ${ev.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & ")}` + (from.length ? ` from ${from.join(" & ")}` : "");
+    } else if (ev.type === "thread.open") {
+      out.text = `${ev.participants.map((p) => nm(p.ref)).join(" & ")} \u2014 ${ev.data.text || "unfinished business"}`;
+    } else if (ev.type === "title.change") {
+      out.text = `${state.championships[ev.data.titleId] ? state.championships[ev.data.titleId].name : ev.data.titleId} ${ev.data.reason || "changed"}${ev.participants.length ? ` \u2014 ${ev.participants.map((p) => nm(p.ref)).join(" & ")}` : ""}`;
     } else {
-      out.text = `${ev.type}: ${ev.participants.map((p) => nm(p.ref)).join(", ")}`;
+      const who = ev.participants.map((p) => nm(p.ref)).join(" & ");
+      const brand = (id) => state.brands[id] ? state.brands[id].name : id;
+      const group = (id) => state.groups[id] ? state.groups[id].name : id;
+      out.text = {
+        "alliance.formed": () => `${who} form ${group(ev.data.groupId)}`,
+        "alliance.broken": () => ev.data.dissolve || !ev.participants.length ? `${group(ev.data.groupId)} splits up` : `${who} leaves ${group(ev.data.groupId)}`,
+        "contract.signed": () => `${who} signs with ${brand(ev.data.brandId)}`,
+        "contract.expired": () => `${who} becomes a free agent`,
+        "brand.transfer": () => `${who} moves to ${brand(ev.data.toBrandId)}${ev.data.reason ? ` (${ev.data.reason})` : ""}`,
+        "status.change": () => `${who} flagged ${ev.data.status}`,
+        injury: () => `${who} injured${ev.data.weeks ? ` \u2014 ${ev.data.weeks} weeks` : ""}${ev.data.description ? ` (${ev.data.description})` : ""}`,
+        "injury.cleared": () => `${who} cleared to return`,
+        "thread.resolved": () => `thread ${ev.data.threadId} resolved`,
+        show: () => `${ev.data.name}`
+      }[ev.type]?.() || `${ev.type}: ${who}`;
     }
     return out;
   }
   function timelineFor(state, ref) {
     return state.events.filter((e) => e.participants.some((p) => p.ref === ref)).map((e) => ({ ...summarize(e, state), role: e.participants.find((p) => p.ref === ref).role })).reverse();
   }
+  var nameOf = (state, id) => state.wrestlers[id] ? state.wrestlers[id].name : state.groups[id] ? state.groups[id].name : state.championships[id] ? state.championships[id].name : id;
   function titleLineage(state, titleId) {
     const c = state.championships[titleId];
     if (!c) return [];
     return c.reigns.map((r, i) => ({
       n: i + 1,
-      holders: r.holders.map((h2) => state.wrestlers[h2] ? state.wrestlers[h2].name : h2),
+      holders: r.holders.map((h2) => nameOf(state, h2)),
       from: r.from,
       to: r.to,
       days: r.days,
       defenses: r.defenses,
       reason: r.reason,
-      endReason: r.endReason || null
+      endReason: r.endReason || null,
+      interim: !!r.interim,
+      current: !r.to,
+      eventId: r.eventId
     }));
+  }
+  function titleMatches(state, titleId) {
+    return state.events.filter((e) => e.type === "match" && e.data.titleId === titleId).map((e) => ({ ...summarize(e, state), date: e.date, showId: e.showId })).reverse();
+  }
+  var activeRivalries = (state, limit = 8) => state.rivalries.filter((r) => r.active).slice(0, limit);
+  var activeAlliances = (state, limit = 8) => state.alliances.filter((r) => r.active).slice(0, limit);
+  function describeThread(state, t) {
+    const who = t.subjects.map((s) => nameOf(state, s)).join(" & ");
+    const about = t.about ? nameOf(state, t.about) : null;
+    const line = {
+      attack: `${who} was attacked by ${about} and has not answered`,
+      betrayal: `${who} turned on ${about}`,
+      "title-shot": `${who} is owed a shot at the ${about}`,
+      "vacant-title": `The ${about} is vacant`,
+      injury: `${who} is on the shelf`,
+      promise: `${who}${about ? ` \u2192 ${about}` : ""}`
+    }[t.kind] || `${who} \u2014 ${t.text}`;
+    return { ...t, who, aboutName: about, line };
   }
 
   // js/universe/util.js
@@ -1674,6 +2098,7 @@ td.dim{color:var(--ink-3)}
   var DEFEAT = /\s+(?:d\.|def\.|def|defeats?|defeated|beats?|beat|over|pins?|taps?|>)\s+/i;
   var VERSUS = /\s+(?:vs\.?|versus|v\.)\s+/i;
   var ATTACK = /\s+(?:attacks?|attacked|jumps?|jumped|assaults?|ambushes?|lays? out|beats? down|turns? on)\s+/i;
+  var SAVE = /\s+(?:saves?|saved|makes? the save for|runs? out to help|rescues?)\s+/i;
   var PROMO = /\s+(?:cuts? a promo on|promo on|promo|calls? out|confronts?|interrupts?)\s*/i;
   var DATE_ANY = /\b(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/;
   var clean = (s) => String(s || "").trim().replace(/\s+/g, " ");
@@ -1791,6 +2216,23 @@ td.dim{color:var(--ink-3)}
   }
   function parseSegment(line, ctx) {
     const { corner, lineNo, raw, warn } = ctx;
+    if (SAVE.test(line)) {
+      const [a, b] = line.split(SAVE);
+      const tail = trailing(b);
+      const from = /\s+from\s+/i.test(tail.body) ? tail.body.split(/\s+from\s+/i) : [tail.body, ""];
+      const saved = stripProse(from[0]);
+      const attacker = stripProse(from[1] || "");
+      return {
+        type: "save",
+        participants: [
+          ...corner(stripProse(a).body, lineNo, raw).map((ref) => ({ ref, role: "subject" })),
+          ...corner(saved.body, lineNo, raw).map((ref) => ({ ref, role: "victim" })),
+          ...attacker.body ? corner(attacker.body, lineNo, raw).map((ref) => ({ ref, role: "attacker" })) : []
+        ],
+        data: { context: [tail.note, saved.prose].filter(Boolean).join(" \xB7 ") || null },
+        text: clean(line)
+      };
+    }
     if (ATTACK.test(line)) {
       const [a, b] = line.split(ATTACK);
       const tail = trailing(b);
@@ -1840,14 +2282,45 @@ td.dim{color:var(--ink-3)}
       if (!refs.length) return null;
       return { type: "injury.cleared", participants: refs.map((ref) => ({ ref, role: "subject" })), data: {}, text: clean(line) };
     }
-    const vac = /^vacate[ds]?\s*:?\s*(.+)$/i.exec(line);
+    const vac = /^(vacate[ds]?|strip(?:ped)?|retire[ds]?)\s*:?\s*(.+)$/i.exec(line);
     if (vac) {
-      const t = resolve(ctx.idx.championship, clean(vac[1]));
+      const t = resolve(ctx.idx.championship, clean(vac[2]));
       if (!t.ok) {
-        warn(lineNo, raw, `unknown championship "${vac[1]}"`);
+        warn(lineNo, raw, `unknown championship "${vac[2]}"`);
         return null;
       }
-      return { type: "title.change", participants: [], data: { titleId: t.id, reason: "vacated" }, text: clean(line) };
+      const reason = /^strip/i.test(vac[1]) ? "stripped" : /^retire/i.test(vac[1]) ? "retired" : "vacated";
+      return { type: "title.change", participants: [], data: { titleId: t.id, reason }, text: clean(line) };
+    }
+    const promise = /^promise[ds]?\s*:\s*(.+)$/i.exec(line);
+    if (promise) {
+      const parts = promise[1].split(/\s*[-–—>]+\s*|\s+for\s+the\s+|\s+at\s+the\s+/i).map(clean).filter(Boolean);
+      const who = corner(parts[0], lineNo, raw);
+      if (!who.length) return null;
+      const rest = parts.slice(1).join(" \u2014 ");
+      const belt = rest ? resolve(ctx.idx.championship, rest) : { ok: false };
+      return {
+        type: "thread.open",
+        participants: who.map((ref) => ({ ref, role: "subject" })),
+        data: {
+          threadKind: belt.ok ? "title-shot" : "promise",
+          about: belt.ok ? belt.id : null,
+          text: belt.ok ? "promised a title shot" : rest || "was promised something"
+        },
+        text: clean(line)
+      };
+    }
+    const thread = /^(?:thread|open)\s*:\s*(.+)$/i.exec(line);
+    if (thread) {
+      const parts = thread[1].split(/\s*[-–—]+\s*/).map(clean).filter(Boolean);
+      const who = corner(parts[0], lineNo, raw);
+      if (!who.length) return null;
+      return {
+        type: "thread.open",
+        participants: who.map((ref) => ({ ref, role: "subject" })),
+        data: { threadKind: "promise", text: parts.slice(1).join(" \u2014 ") || "unfinished business" },
+        text: clean(line)
+      };
     }
     return null;
   }
@@ -1904,18 +2377,26 @@ td.dim{color:var(--ink-3)}
       titleId: mods.titleId || null
     };
     if (mods.note) data.note = mods.note;
+    if (mods.contender) {
+      data.contender = data.titleId || true;
+      data.titleId = null;
+    }
     if (data.titleId) {
       const champ = state.championships[data.titleId];
       const winners = participants.filter((p) => p.role === "winner").map((p) => p.ref).sort();
+      if (mods.interim) data.interim = true;
+      if (mods.unify) data.unify = true;
       if (!winnerSide) {
         data.titleVacated = !!mods.vacated;
+      } else if (mods.unify) {
+        data.titleChanged = true;
       } else if (mods.titleChanged != null) {
         data.titleChanged = mods.titleChanged;
       } else {
-        const held = [...champ ? champ.holders : []].sort();
+        const held = [...(champ ? mods.interim ? champ.interimHolders : champ.holders : []) || []].sort();
         data.titleChanged = held.join() !== winners.join();
       }
-      if (data.titleChanged && champ && champ.holders.length === 0) data.newChampionOfVacant = true;
+      if (data.titleChanged && champ && !champ.holders.length && !mods.interim) data.newChampionOfVacant = true;
     }
     return { type: "match", participants, data, text: clean(line) };
   }
@@ -1933,7 +2414,17 @@ td.dim{color:var(--ink-3)}
     return { body: clean(body), note: clean(notes.join(", ")) || null };
   }
   function parseModifiers(note, idx, state) {
-    const out = { matchType: null, decision: null, titleId: null, titleChanged: null, vacated: false, note: null };
+    const out = {
+      matchType: null,
+      decision: null,
+      titleId: null,
+      titleChanged: null,
+      vacated: false,
+      interim: false,
+      unify: false,
+      contender: false,
+      note: null
+    };
     if (!note) return out;
     const leftovers = [];
     note.split(/\s*[,;]\s*/).map(clean).filter(Boolean).forEach((tok) => {
@@ -1950,6 +2441,18 @@ td.dim{color:var(--ink-3)}
       }
       if (/^(vacant|vacated|held up)$/.test(n)) {
         out.vacated = true;
+        return;
+      }
+      if (/^(interim|interim title|for the interim)$/.test(n)) {
+        out.interim = true;
+        return;
+      }
+      if (/^(unify|unified|unification|winner takes all|undisputed)$/.test(n)) {
+        out.unify = true;
+        return;
+      }
+      if (/^(contender|number one contender|no 1 contender|1 contender|top contender|eliminator)$/.test(n)) {
+        out.contender = true;
         return;
       }
       const dec = DECISIONS.find((d) => n === d || n === d.replace(/\s/g, ""));
@@ -3041,12 +3544,14 @@ td.dim{color:var(--ink-3)}
     const cards = belts.map((c) => {
       const holders = c.holders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
       const reign = c.reigns[c.reigns.length - 1];
+      const interim = c.interimHolders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
       return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(c.brandId)}">
       <div class="nm">${h(c.name)}</div>
       <div class="holder${c.vacant ? " vacant" : ""}">${c.vacant ? "Vacant" : h(holders)}</div>
+      ${interim ? `<div class="interim">${chip("interim", "new")} ${h(interim)}</div>` : ""}
       <div class="facts">
         <span>${brandName2(state, c.brandId) || "unbranded"}</span>
-        ${c.vacant ? "" : `<span>${c.daysHeld} days</span><span>${plural2(reign ? reign.defenses : 0, "defense")}</span>`}
+        ${c.vacant ? "" : `<span>${c.daysHeld} days</span><span>${plural2(c.defenses, "defense")}</span>`}
         <span>${plural2(c.reigns.length, "reign")}</span>
       </div>
     </div>`;
@@ -3054,57 +3559,183 @@ td.dim{color:var(--ink-3)}
     return `<h2>Championships <span class="sub">click a belt for its full lineage</span></h2>
     <div class="belts">${cards}</div>`;
   }
-  function lineageSheet(state, titleId) {
+  function titlePage(state, titleId) {
     const c = state.championships[titleId];
-    const rows = titleLineage(state, titleId).slice().reverse();
-    return {
-      title: c.name,
-      body: `<div class="facts2">
-        <div class="fact"><div class="k">Holder</div><div class="v">${c.vacant ? "Vacant" : h(c.holders.map((x) => state.wrestlers[x] ? state.wrestlers[x].name : x).join(" & "))}</div></div>
-        <div class="fact"><div class="k">Days</div><div class="v">${c.daysHeld}</div></div>
-        <div class="fact"><div class="k">Reigns</div><div class="v">${c.reigns.length}</div></div>
-        <div class="fact"><div class="k">Defenses</div><div class="v">${c.totalDefenses}</div></div>
-      </div>
-      ${table2(rows, [
-        { label: "#", num: true, get: (r) => r.n },
-        { label: "Champion", get: (r) => h(r.holders.join(" & ")), html: true },
-        { label: "Won", get: (r) => r.from },
-        { label: "Lost", get: (r) => r.to || "\u2014", dim: true },
-        { label: "Days", num: true, get: (r) => r.days },
-        { label: "Def.", num: true, get: (r) => r.defenses }
-      ], "Never held.")}`
-    };
-  }
-  function wrestlerSheet(state, id) {
-    const w = state.wrestlers[id];
-    if (!w) return { title: "Unknown", body: '<div class="empty">No such wrestler.</div>' };
-    const tl = timelineFor(state, id).slice(0, 40);
+    if (!c) return '<div class="empty">No such championship.</div>';
+    const nm = (id) => state.wrestlers[id] ? state.wrestlers[id].name : id;
+    const lineage = titleLineage(state, titleId).slice().reverse();
+    const matches = titleMatches(state, titleId);
+    const longest = c.longestReign;
     const facts = [
-      ["Brand", brandName2(state, w.brandId) || "Free agent"],
+      ["Brand", brandName2(state, c.brandId) || "Unbranded"],
+      ["Division", c.division || "\u2014"],
+      ["Reigns", c.reigns.length],
+      ["Defenses", c.totalDefenses],
+      ["Longest", longest ? `${longest.days}d` : "\u2014"]
+    ].map(([k, v]) => `<div class="fact"><div class="k">${h(k)}</div><div class="v">${h(v)}</div></div>`).join("");
+    const holderLine = c.vacant ? '<span class="vacant">Vacant</span>' : `${c.holders.map((x) => wlink(state.wrestlers[x] || { id: x, name: x })).join(" &amp; ")}
+       <span class="dim">\xB7 ${c.daysHeld} days \xB7 ${plural2(c.defenses, "defense")}</span>`;
+    const interimLine = c.interimHolders.length ? `<div style="margin-top:6px">${chip("interim", "new")}
+       ${c.interimHolders.map((x) => wlink(state.wrestlers[x] || { id: x, name: x })).join(" &amp; ")}
+       <span class="dim">\xB7 since ${h(c.interimSince)}</span></div>` : "";
+    return `<div class="backrow">
+      <button class="linkbtn" data-tab="titles">\u2190 all championships</button>
+    </div>
+    <div class="pagehead" style="border-left-color:${brandColor(c.brandId)}">
+      <div class="nm">${h(c.name)}</div>
+      <div class="holder">${holderLine}</div>
+      ${interimLine}
+    </div>
+    <div class="facts2">${facts}</div>
+
+    <h2>Lineage <span class="sub">every reign, newest first \xB7 interim runs are marked</span></h2>
+    <div class="card flush">${table2(lineage, [
+      { label: "#", num: true, get: (r) => r.n, dim: true },
+      { label: "Champion", get: (r) => h(r.holders.join(" & ")) + (r.interim ? " " + chip("interim", "new") : ""), html: true },
+      { label: "Won", get: (r) => r.from },
+      { label: "Lost", get: (r) => r.to || (r.current ? '<span class="dim">current</span>' : "\u2014"), html: true },
+      { label: "Days", num: true, get: (r) => r.days },
+      { label: "Def.", num: true, get: (r) => r.defenses },
+      { label: "How", get: (r) => [r.reason, r.endReason].filter(Boolean).join(" \u2192 "), dim: true }
+    ], "Never held.")}</div>
+
+    <h2 style="margin-top:22px">Title matches <span class="sub">${plural2(matches.length, "match")}</span></h2>
+    <div class="card flush">${table2(matches, [
+      { label: "Date", get: (m) => m.date, dim: true },
+      { label: "Match", get: (m) => m.text },
+      { label: "Type", get: (m) => m.matchType || "", dim: true },
+      { label: "", get: (m) => m.titleChanged ? chip("title change", "new") : "", html: true }
+    ], "No matches for this belt yet.")}</div>`;
+  }
+  function wrestlerPage(state, id) {
+    const w = state.wrestlers[id];
+    if (!w) return '<div class="empty">No such wrestler.</div>';
+    const nm = (x) => state.wrestlers[x] ? state.wrestlers[x].name : x;
+    const tl = timelineFor(state, id);
+    const facts = [
       ["Record", w.record.total ? `${w.record.w}-${w.record.l}-${w.record.d}` : "\u2014"],
+      ["Win rate", w.record.total ? `${Math.round(w.winPct * 100)}%` : "\u2014"],
       ["Streak", streakCell(w)],
+      ["Reigns", w.titleHistory.length],
       ["Appearances", w.appearances]
     ].map(([k, v]) => `<div class="fact"><div class="k">${h(k)}</div><div class="v">${h(v)}</div></div>`).join("");
-    const lines = [];
-    if (w.titles.length) lines.push(`Holding ${w.titles.map((t) => h(state.championships[t].name)).join(", ")}`);
-    if (w.groups.length) lines.push(`Part of ${w.groups.map((g) => h(state.groups[g].name)).join(", ")}`);
-    if (w.injury) lines.push(`Injured since ${w.injury.since}${w.injury.description ? ` \u2014 ${h(w.injury.description)}` : ""} (${days(w.injury.since, state.asOf)} days)`);
-    if (w.contract) lines.push(`Under contract since ${w.contract.since}${w.contract.expires ? `, expires ${w.contract.expires}` : ""}`);
-    else lines.push("No contract");
-    return {
-      title: w.name,
-      body: `<div class="facts2">${facts}</div>
-      <div class="msg ok" style="background:none;border-color:var(--line);color:var(--ink-2)">
-        ${statusChip(w) || chip("active", "brand")} ${lines.map((l) => `<div style="margin-top:4px">${l}</div>`).join("")}
+    const reigns = w.titleHistory.slice().reverse().map((r) => ({
+      ...r,
+      name: state.championships[r.titleId] ? state.championships[r.titleId].name : r.titleId,
+      dayCount: r.to ? r.days : days(r.from, state.asOf)
+    }));
+    const tie = (rows) => table2(rows, [
+      { label: "Who", get: (r) => wlink(state.wrestlers[r.with] || { id: r.with, name: r.with }), html: true },
+      { label: "Heat", num: true, get: (r) => r.heat },
+      { label: "From", get: (r) => Object.entries(r.why).map(([k, n]) => `${k}${n > 1 ? ` \xD7${n}` : ""}`).join(", "), dim: true },
+      { label: "Last", get: (r) => r.last, dim: true },
+      { label: "", get: (r) => r.active ? "" : '<span class="dim">cooled off</span>', html: true }
+    ], "Nothing yet.");
+    const status = [
+      statusChip(w) || chip("active", "brand"),
+      w.brandId ? chip(brandName2(state, w.brandId), "brand") : chip("free agent", "fa"),
+      ...w.titles.map((t) => chip(state.championships[t].name, "title")),
+      ...w.groups.map((g) => chip(state.groups[g].name, "group"))
+    ].join(" ");
+    const notes = [];
+    if (w.injury) notes.push(`Injured since ${h(w.injury.since)}${w.injury.description ? ` \u2014 ${h(w.injury.description)}` : ""} (${days(w.injury.since, state.asOf)} days out)`);
+    if (w.contract) notes.push(`Under contract since ${h(w.contract.since)}${w.contract.expires ? `, expires ${h(w.contract.expires)}` : ""}`);
+    else notes.push("No contract \u2014 free agent");
+    const threads = state.threads.filter((t) => t.subjects.includes(id) || t.about === id).map((t) => describeThread(state, t));
+    return `<div class="backrow"><button class="linkbtn" data-tab="roster">\u2190 roster</button></div>
+    <div class="pagehead" style="border-left-color:${brandColor(w.brandId)}">
+      <div class="nm">${h(w.name)}</div>
+      <div class="holder">${status}</div>
+      <div class="dim" style="margin-top:6px">${notes.join(" \xB7 ")}</div>
+    </div>
+    <div class="facts2">${facts}</div>
+
+    <div class="cols">
+      <div>
+        <h2>Rivalries <span class="sub">built from attacks, losses and promos</span></h2>
+        <div class="card flush">${tie(w.rivals.slice(0, 8))}</div>
       </div>
-      <h2>Timeline <span class="sub">${plural2(tl.length, "segment")}, newest first</span></h2>
-      ${table2(tl, [
-        { label: "Date", get: (r) => r.date, dim: true },
-        { label: "Type", get: (r) => r.type, dim: true },
-        { label: "What", get: (r) => r.text },
-        { label: "As", get: (r) => r.role, dim: true }
-      ], "Has not appeared yet.")}`
-    };
+      <div>
+        <h2>Alliances <span class="sub">built from tag wins and saves</span></h2>
+        <div class="card flush">${tie(w.allies.slice(0, 8))}</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:22px">Title reigns</h2>
+    <div class="card flush">${table2(reigns, [
+      { label: "Championship", get: (r) => `<span class="belt-link" data-belt="${h(r.titleId)}">${h(r.name)}</span>${r.interim ? " " + chip("interim", "new") : ""}`, html: true },
+      { label: "Won", get: (r) => r.from },
+      { label: "Lost", get: (r) => r.to || '<span class="dim">current</span>', html: true },
+      { label: "Days", num: true, get: (r) => r.dayCount }
+    ], "Never held a championship.")}</div>
+
+    ${threads.length ? `<h2 style="margin-top:22px">Open threads</h2>
+      <div class="card flush">${table2(threads, [
+      { label: "Thread", get: (t) => h(t.line), html: true },
+      { label: "Open", num: true, get: (t) => `${t.age}d` }
+    ])}</div>` : ""}
+
+    <h2 style="margin-top:22px">Timeline <span class="sub">${plural2(tl.length, "segment")}, newest first</span></h2>
+    <div class="card flush">${table2(tl, [
+      { label: "Date", get: (r) => r.date, dim: true },
+      { label: "Type", get: (r) => r.type, dim: true },
+      { label: "What", get: (r) => r.text },
+      { label: "As", get: (r) => r.role, dim: true },
+      { label: "", get: (r) => `<button class="linkbtn" data-ev="${h(r.id)}">open</button>`, html: true }
+    ], "Has not appeared yet.")}</div>`;
+  }
+  function threadsView(state) {
+    const open = state.threads.map((t) => describeThread(state, t));
+    const closed = state.threadsClosed.slice(-25).reverse().map((t) => describeThread(state, t));
+    const kindChip = (t) => chip(t.kind.replace("-", " "), t.kind === "betrayal" ? "down" : t.kind === "title-shot" ? "title" : t.kind === "injury" ? "hurt" : "brand");
+    return `<h2>Open threads <span class="sub">oldest first \u2014 the longer one sits, the louder it is</span></h2>
+    <div class="card flush">${table2(open.map((t) => ({ ...t, _cls: t.stale ? "stale" : "" })), [
+      { label: "Kind", get: kindChip, html: true },
+      { label: "Thread", get: (t) => h(t.line), html: true },
+      { label: "Since", get: (t) => t.opened, dim: true },
+      { label: "Open", num: true, get: (t) => `${t.age}d` },
+      { label: "", get: (t) => `<button class="linkbtn" data-resolve="${h(t.id)}">resolve</button>`, html: true }
+    ], "Nothing hanging \u2014 every question the log opened has been answered.")}</div>
+
+    <h2 style="margin-top:22px">Recently closed <span class="sub">answered by an event, or marked resolved</span></h2>
+    <div class="card flush">${table2(closed, [
+      { label: "Kind", get: kindChip, html: true },
+      { label: "Thread", get: (t) => h(t.line), html: true },
+      { label: "Open for", num: true, get: (t) => `${t.age}d` },
+      { label: "Closed by", get: (t) => t.closedWhy, dim: true }
+    ], "Nothing closed yet.")}</div>`;
+  }
+  function heatPanel(state) {
+    const nmw = (id) => wlink(state.wrestlers[id] || { id, name: id });
+    const rows = (list) => table2(list, [
+      { label: "Pair", get: (r) => `${nmw(r.a)} <span class="dim">vs</span> ${nmw(r.b)}`, html: true },
+      { label: "Heat", num: true, get: (r) => r.heat },
+      { label: "Meetings", num: true, get: (r) => r.meetings, dim: true },
+      { label: "Last", get: (r) => r.last, dim: true }
+    ], "Nothing running.");
+    const bonds = (list) => table2(list, [
+      { label: "Pair", get: (r) => `${nmw(r.a)} <span class="dim">&amp;</span> ${nmw(r.b)}`, html: true },
+      { label: "Bond", num: true, get: (r) => r.heat },
+      { label: "From", get: (r) => Object.keys(r.why).join(", "), dim: true },
+      { label: "Last", get: (r) => r.last, dim: true }
+    ], "Nothing running.");
+    const threads = state.threads.slice(0, 5).map((t) => describeThread(state, t));
+    return `<div class="cols" style="margin-top:16px">
+    <div>
+      <h2>Active rivalries <span class="sub">heat decays without new events</span></h2>
+      <div class="card flush">${rows(activeRivalries(state, 8))}</div>
+    </div>
+    <div>
+      <h2>Active alliances</h2>
+      <div class="card flush">${bonds(activeAlliances(state, 6))}</div>
+      <h2 style="margin-top:16px">Oldest open threads
+        <span class="sub">${plural2(state.threads.length, "open")}</span></h2>
+      <div class="card flush">${table2(threads, [
+      { label: "Thread", get: (t) => h(t.line), html: true },
+      { label: "Open", num: true, get: (t) => `${t.age}d` }
+    ], "Nothing hanging.")}</div>
+    </div>
+  </div>`;
   }
   function showsView(state) {
     if (!state.shows.length) return '<div class="empty">No shows yet \u2014 enter a card on the Tonight tab.</div>';
@@ -3124,12 +3755,12 @@ td.dim{color:var(--ink-3)}
   }
   function logView(store2, state, { limit = 120 } = {}) {
     const rows = store2.effectiveEvents({ includeVoided: true }).slice(-limit).reverse();
-    const nameOf = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : state.championships[ref] ? state.championships[ref].name : ref;
+    const nameOf2 = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : state.championships[ref] ? state.championships[ref].name : ref;
     const body = table2(rows.map((e) => ({ ...e, _cls: `logrow${e.voided ? " voided" : ""}` })), [
       { label: "Id", get: (e) => `<span class="mono">${h(e.id)}</span>`, html: true },
       { label: "Date", get: (e) => e.date, dim: true },
       { label: "Type", get: (e) => e.type },
-      { label: "Who", get: (e) => h(e.participants.map((p) => nameOf(p.ref)).join(", ")), html: true },
+      { label: "Who", get: (e) => h(e.participants.map((p) => nameOf2(p.ref)).join(", ")), html: true },
       { label: "Note", get: (e) => h([e.amended ? `amended \xD7${e.amended}` : "", e.note].filter(Boolean).join(" \xB7 ")), html: true },
       {
         label: "",
@@ -3155,7 +3786,7 @@ td.dim{color:var(--ink-3)}
     if (!raw) return { title: "Unknown", body: '<div class="empty">No such event.</div>' };
     const ev = store2.applied(raw);
     const voided = store2.isVoided(id);
-    const nameOf = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : ref;
+    const nameOf2 = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : ref;
     const sides2 = [...new Set(ev.participants.map((p) => p.side).filter((s) => s != null))].sort();
     const fixer = ev.type === "match" && sides2.length > 1 ? `
     <h2>Wrong result?</h2>
@@ -3163,7 +3794,7 @@ td.dim{color:var(--ink-3)}
       const refs = ev.participants.filter((p) => p.side === s);
       const isWinner = refs.some((p) => p.role === "winner");
       return `<button class="btn ${isWinner ? "" : "ghost"}" data-winner="${h(id)}:${s}"${isWinner ? " disabled" : ""}>
-        ${isWinner ? "\u2713 " : ""}${h(refs.map((p) => nameOf(p.ref)).join(" & "))}</button>`;
+        ${isWinner ? "\u2713 " : ""}${h(refs.map((p) => nameOf2(p.ref)).join(" & "))}</button>`;
     }).join("")}</div>
     <div class="hint" style="margin-top:6px">Picking a different corner writes a correction \u2014 records, streaks and title reigns all recalculate.</div>` : "";
     const cx = store2.historyOf(id);
@@ -3179,14 +3810,14 @@ td.dim{color:var(--ink-3)}
       ${fixer}
       <h2 style="margin-top:18px">Participants</h2>
       ${table2(ev.participants, [
-        { label: "Who", get: (p) => h(nameOf(p.ref)), html: true },
+        { label: "Who", get: (p) => h(nameOf2(p.ref)), html: true },
         { label: "Role", get: (p) => p.role, dim: true },
         { label: "Side", num: true, get: (p) => p.side == null ? "\u2014" : p.side, dim: true }
       ], "Nobody.")}
       <h2 style="margin-top:18px">Effects <span class="sub">what this event asserts</span></h2>
       ${table2(ev.effects, [
         { label: "Kind", get: (f) => f.kind },
-        { label: "Detail", get: (f) => Object.entries(f).filter(([k]) => k !== "kind").map(([k, v]) => `${k}=${Array.isArray(v) ? v.map(nameOf).join("+") : state.wrestlers[v] ? nameOf(v) : v}`).join("  "), dim: true }
+        { label: "Detail", get: (f) => Object.entries(f).filter(([k]) => k !== "kind").map(([k, v]) => `${k}=${Array.isArray(v) ? v.map(nameOf2).join("+") : state.wrestlers[v] ? nameOf2(v) : v}`).join("  "), dim: true }
       ], "No effects.")}
       ${cx.length ? `<h2 style="margin-top:18px">Corrections</h2>${table2(cx, [
         { label: "Id", get: (c) => c.id },
@@ -3267,13 +3898,27 @@ The War Raiders = Erik & Ivar`;
         const win = s.participants.find((p) => p.role === "winner");
         what = win ? `<strong>${h(side(win.side))}</strong> def. ${h(nums.filter((n) => n !== win.side).map(side).join(", "))}` : h(nums.map(side).join(" vs "));
         const t = s.data.titleId ? state.championships[s.data.titleId] : null;
+        const shot = s.data.contender && state.championships[s.data.contender];
         detail = [
           s.data.matchType ? h(s.data.matchType) : "",
           s.data.decision ? h(s.data.decision) : "",
+          s.data.interim ? chip("interim", "new") : "",
           t ? chip(t.name.replace(/ Championship$/, ""), "title") : "",
-          s.data.titleChanged ? chip("NEW CHAMPION", "new") : t ? '<span class="dim">defense</span>' : "",
+          s.data.unify ? chip("UNIFIED", "new") : s.data.titleChanged ? chip("NEW CHAMPION", "new") : t ? '<span class="dim">defense</span>' : "",
+          s.data.contender ? `<span class="dim">#1 contender${shot ? `: ${h(shot.name)}` : ""}</span>` : "",
           s.data.note ? `<span class="dim">${h(s.data.note)}</span>` : ""
         ].filter(Boolean).join(" ");
+      } else if (s.type === "save") {
+        const from = s.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref));
+        what = `<strong>${h(s.participants.filter((p) => p.role === "subject").map((p) => nm(p.ref)).join(" & "))}</strong> saves ${h(s.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & "))}` + (from.length ? ` from ${h(from.join(" & "))}` : "");
+        detail = h(s.data.context || "");
+      } else if (s.type === "thread.open") {
+        what = h(s.participants.map((p) => nm(p.ref)).join(" & "));
+        const about = s.data.about && state.championships[s.data.about];
+        detail = `${chip("thread", "group")} ${h(s.data.text)}${about ? ` ${chip(about.name, "title")}` : ""}`;
+      } else if (s.type === "title.change") {
+        what = h((state.championships[s.data.titleId] || {}).name || s.data.titleId);
+        detail = chip(s.data.reason, s.data.reason === "retired" ? "down" : "fa");
       } else if (s.type === "attack") {
         what = `${h(s.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref)).join(" & "))} attacks <strong>${h(s.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & "))}</strong>`;
         detail = h(s.data.context || "");
@@ -3363,14 +4008,26 @@ The War Raiders = Erik & Ivar`;
   // js/universe/ui/app.js
   var store = new UniverseStore({ adapter: localStorageAdapter() });
   if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
-  var app = { tab: "tonight", asOf: null, state: null, flash: null };
+  var app = { tab: "tonight", detailId: null, asOf: null, state: null, flash: null };
   var TABS = [
     { id: "tonight", label: "Tonight" },
     { id: "roster", label: "Roster", count: (s) => Object.keys(s.wrestlers).length },
     { id: "titles", label: "Titles", count: (s) => Object.values(s.championships).filter((c) => !c.retired).length },
+    { id: "threads", label: "Threads", count: (s) => s.threads.length },
     { id: "shows", label: "Shows", count: (s) => s.shows.length },
     { id: "log", label: "Log", count: (s) => s.events.length }
   ];
+  var PANES = [...TABS.map((t) => t.id), "wrestler", "title"];
+  var go = (tab, detailId = null) => {
+    app.tab = tab;
+    app.detailId = detailId;
+    closeSheet();
+    render();
+  };
+  var universeNow = () => {
+    const last = store.doc.events.reduce((m, e) => e.date > m ? e.date : m, "0000-00-00");
+    return last > today() ? last : today();
+  };
   function render() {
     app.state = project(store, { asOf: app.asOf });
     const s = app.state;
@@ -3381,14 +4038,18 @@ The War Raiders = Erik & Ivar`;
     asOf.value = app.asOf || "";
     $("#asOfWrap").classList.toggle("past", !!app.asOf);
     $("#asOfNow").style.display = app.asOf ? "" : "none";
-    TABS.forEach((t) => $(`#pane-${t.id}`).classList.toggle("on", t.id === app.tab));
+    PANES.forEach((id) => $(`#pane-${id}`).classList.toggle("on", id === app.tab));
     if (app.tab === "tonight") {
       if (!$("#cardText")) {
-        $("#pane-tonight").innerHTML = entryView();
+        $("#pane-tonight").innerHTML = entryView() + '<div id="heatPanel"></div>';
         $("#cardText").focus();
       }
       refreshCardPreview();
+      $("#heatPanel").innerHTML = heatPanel(s);
     }
+    if (app.tab === "threads") $("#pane-threads").innerHTML = threadsView(s);
+    if (app.tab === "wrestler") $("#pane-wrestler").innerHTML = wrestlerPage(s, app.detailId);
+    if (app.tab === "title") $("#pane-title").innerHTML = titlePage(s, app.detailId);
     if (app.tab === "roster") {
       const keep = $("#rosterText") ? $("#rosterText").value : "";
       const open = $("#rosterPanel") ? $("#rosterPanel").open : false;
@@ -3468,13 +4129,22 @@ The War Raiders = Erik & Ivar`;
     }
     render();
   }
-  on("click", "[data-tab]", (e, el) => {
-    app.tab = el.dataset.tab;
+  on("click", "[data-tab]", (e, el) => go(el.dataset.tab));
+  on("click", "[data-w]", (e, el) => go("wrestler", el.dataset.w));
+  on("click", "[data-belt]", (e, el) => go("title", el.dataset.belt));
+  on("click", "[data-ev]", (e, el) => openSheet(eventSheet(store, app.state, el.dataset.ev)));
+  on("click", "[data-resolve]", (e, el) => {
+    store.append({
+      type: "thread.resolved",
+      date: universeNow(),
+      source: "dashboard",
+      participants: [],
+      data: { threadId: el.dataset.resolve, reason: "marked resolved" }
+    });
+    save();
+    flash("Thread resolved.");
     render();
   });
-  on("click", "[data-w]", (e, el) => openSheet(wrestlerSheet(app.state, el.dataset.w)));
-  on("click", "[data-belt]", (e, el) => openSheet(lineageSheet(app.state, el.dataset.belt)));
-  on("click", "[data-ev]", (e, el) => openSheet(eventSheet(store, app.state, el.dataset.ev)));
   on("click", "[data-void]", (e, el) => {
     store.voidEvent(el.dataset.void, "voided from the dashboard");
     save();

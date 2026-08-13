@@ -21,14 +21,14 @@ js/universe/
   seed-data.js generated from data/universe-seed.json for the browser build
   ui/
     app.js     boot, tabs, actions — the only file that touches storage
-    views.js   roster / titles / shows / log / sheets, projection in, HTML out
+    views.js   roster, belts, threads, profiles, log — projection in, HTML out
     entry.js   the card and roster boxes, with live previews
     dom.js     escaping, tables, delegated events
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     108 data-layer checks, pure Node
-  universe-ui-check.mjs  54 browser checks against the built page
+  universe-check.mjs     154 data-layer checks, pure Node
+  universe-ui-check.mjs  87 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -105,23 +105,30 @@ stay in the order they were typed.
 | Type | Participants | Key `data` | Effects |
 | --- | --- | --- | --- |
 | `show` | — | name, brandId | `show.open` |
-| `match` | competitor / winner / loser | matchType, decision, titleId, titleChanged | `record.*`, `title.award` or `title.defense`, `feud.heat` |
-| `attack` | attacker, victim | context | `feud.heat` |
-| `promo` | speaker, target | topic | `feud.heat` |
+| `match` | competitor / winner / loser | matchType, decision, titleId, titleChanged, interim, unify, contender | `record.*`, `title.award` / `defense` / `interim` / `unify`, `alliance.bond`, `rivalry.heat`, `thread.open` |
+| `attack` | attacker, victim | context | `rivalry.heat`, `thread.open` |
+| `promo` | speaker, target | topic | `rivalry.heat` |
+| `save` | subject, victim, attacker | context | `alliance.bond`, `rivalry.heat`, `thread.close` |
 | `alliance.formed` | member, leader | groupId, groupKind, name | `group.form`, `group.join` |
-| `alliance.broken` | member | groupId, dissolve | `group.leave`, `group.dissolve` |
-| `title.change` | champion | titleId, reason (`won`/`awarded`/`vacated`/`stripped`/`retired`) | `title.award` or `title.vacate` |
-| `injury` | subject | severity, weeks, expectedReturn | `injury.start`, `roster.status` |
+| `alliance.broken` | member | groupId, dissolve | `group.leave`, `group.dissolve`, `thread.open` |
+| `title.change` | champion | titleId, reason | `title.award` / `vacate` / `interim` / `unify` |
+| `injury` | subject | severity, weeks, expectedReturn | `injury.start`, `roster.status`, `thread.open` |
 | `injury.cleared` | subject | status | `injury.end`, `roster.status` |
 | `contract.signed` | subject | brandId, expires, terms | `contract.start`, `roster.brand`, `roster.status` |
 | `contract.expired` | subject | reason, released | `contract.end`, `roster.brand`, `roster.status` |
 | `brand.transfer` | subject | toBrandId, reason, status | `roster.brand` |
 | `status.change` | subject | status, reason | `roster.status` |
+| `thread.open` | subject, target | threadKind, about, text | `thread.open` |
+| `thread.resolved` | — | threadId, reason | `thread.close` |
 
-The four beyond the original brief — `show`, `injury.cleared`, `status.change`
-and the vacate path on `title.change` — exist because the log would otherwise
-have no way to end an injury, clear a promotion flag, group a card, or empty a
-belt.
+`title.change` reasons: `won`, `awarded`, `vacated`, `stripped`, `retired`,
+`interim`, `unified`.
+
+Everything beyond the original brief — `show`, `injury.cleared`,
+`status.change`, `save`, the two `thread.*` types, and the vacate path on
+`title.change` — exists because the log would otherwise have no way to end an
+injury, clear a promotion flag, group a card, credit a run-in, close a question,
+or empty a belt.
 
 A title won in a match is **not** also written as a separate `title.change`. The
 match already carries the `title.award` effect, so correcting the winner moves
@@ -135,12 +142,88 @@ that still reads `promotion`, and the import would never settle.
 ### Effects
 
 `record.win` `record.loss` `record.draw` · `title.award` `title.vacate`
-`title.defense` · `roster.brand` `roster.status` `roster.align` ·
-`contract.start` `contract.end` · `injury.start` `injury.end` · `group.form`
-`group.join` `group.leave` `group.dissolve` · `feud.heat` · `show.open`
+`title.defense` `title.interim` `title.unify` · `roster.brand` `roster.status`
+`roster.align` · `contract.start` `contract.end` · `injury.start` `injury.end` ·
+`group.form` `group.join` `group.leave` `group.dissolve` · `rivalry.heat`
+`alliance.bond` · `thread.open` `thread.close` · `show.open`
 
 `project.js` has one handler per kind, so adding an event type usually means
-reusing these rather than growing the list.
+reusing these rather than growing the list. (`feud.heat` is the old name for
+`rivalry.heat`; the projector still accepts it so saves written before the
+rename replay unchanged.)
+
+## Championships
+
+A belt carries a brand, a division and a lineage. Winning one closes the
+previous reign with its day count and opens a new one — that is a plain
+consequence of `title.award`, so it happens the same way whether the belt moved
+in a match, was awarded off-screen, or moved because you *corrected* a match
+you had entered wrong.
+
+**Vacating** (`vacate:`, `strip:`, `retire:` on a card) closes the reign and
+leaves the belt empty. It also opens a thread, because a vacant belt is the most
+open question there is; crowning the next champion closes it.
+
+**Interim titles** run a *parallel* reign rather than a second belt. Both the
+real reign and the interim reign are open at once, each with its own defense
+count, and both appear in the lineage marked accordingly. Defenses land on
+whichever reign the defending champion holds. Unification (`unify`) closes both
+and opens one undisputed reign, so the interim run stays in the history with
+`endReason: unified` instead of being erased.
+
+A **number-one contender** match (`contender`) names a belt without being for
+it: the title moves to `data.contender`, the match is not a title match, and the
+winner is owed a shot — which the threads queue then tracks.
+
+## Relationships
+
+Derived, never entered. Every tie is the sum of its contributions, each decayed
+from its own date:
+
+    heat = Σ points × 0.5 ^ (age_in_days / half_life)
+
+| Builds rivalry | | Builds alliance | |
+| --- | --- | --- | --- |
+| attack | 3 | alliance formed | 4 |
+| betrayal (attacking a stablemate) | 5 | tag win | 2 |
+| promo | 2 | tag loss | 0.75 |
+| decided match | 1.5 | save | 3 |
+| draw | 0.75 | | |
+| title on the line | +1 | | |
+| making a save (vs the attacker) | 2 | | |
+
+Half-lives are 60 days for rivalry and 90 for alliance; below a heat of 2 a tie
+stops counting as `active` but keeps its history. Because decay is measured
+against the projection's `asOf`, moving the date box back in the dashboard shows
+the heat as it stood then — nothing is recomputed on a timer.
+
+**Propagation.** An attack also lands on the victim's tag partner and faction
+members, at `0.35` of the direct weight. This is done in the projector, not in
+the effect, because who someone was standing with is a fact about the world at
+that moment — an effect that baked it in would be wrong as soon as an earlier
+event was corrected. The same lookup is what turns an attack on a stablemate
+into a betrayal.
+
+## Threads
+
+The queue of questions the log has opened and not answered. Threads are derived,
+with stable ids (`th_<opening event id>`), so voiding the event that opened one
+removes it.
+
+| Opens | Closes when |
+| --- | --- |
+| an attack | the victim beats or attacks them back, or someone makes the save |
+| a betrayal (`alliance.broken`, or attacking a stablemate) | the two meet in a match |
+| a contender win, or `promise:` | they get the match, or win the belt |
+| a vacated belt | a new champion is crowned |
+| an injury | `cleared:` |
+| `thread:` — anything you want to track | you mark it resolved |
+
+Marking one resolved appends a `thread.resolved` event rather than flipping a
+flag, so it sits in the log, and voiding that event reopens the thread.
+
+    node tools/universe.mjs threads
+    node tools/universe.mjs resolve th_ev_0073 "dropped it"
 
 ## Corrections
 
@@ -275,6 +358,10 @@ injury: Sami Zayn (6 weeks, knee)
 | `,` | another corner — triple threat or worse |
 | `(...)` or after a dash | stipulation, finish, title, free note |
 | `*` | a non-match segment |
+| `interim` / `unify` / `contender` | modifiers on a title match |
+| `X saves Y from Z` | a run-in |
+| `vacate:` `strip:` `retire:` `cleared:` | one-line title and injury changes |
+| `promise:` `thread:` | open a thread by hand |
 
 Names are matched loosely — id, full name, alias, surname, prefix, substring —
 and stop at the first rung that gives exactly one answer. Two answers is an
@@ -296,16 +383,21 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 54 browser checks
+npm run check:universe-ui    # 87 browser checks
 ```
 
 | Tab | What it does |
 | --- | --- |
-| Tonight | Type a card. The right-hand pane shows what the parser heard, updated on every keystroke; the save button stays disabled while anything is wrong. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> saves. |
+| Tonight | Type a card. The right-hand pane shows what the parser heard, updated on every keystroke; the save button stays disabled while anything is wrong. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> saves. Below it: active rivalries, active alliances and the oldest open threads. |
 | Roster | Paste box (collapsed) over a table per brand, plus free agents and every team and faction. |
-| Titles | Every belt with holder, days, defenses and reign count. Click one for its lineage. |
+| Titles | Every belt with holder, interim holder, days, defenses and reign count. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
+| Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
 | Shows | Every saved card, newest first. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
+
+Clicking any wrestler's name opens their profile: record, win rate, streak,
+title reigns with day counts, rivalries and alliances sorted by heat, open
+threads they are part of, and a timeline of every event they appear in.
 
 The whole page is a function of the projection: an action appends to the log,
 then everything redraws. That is why fixing a result in the Log tab moves the
@@ -323,7 +415,8 @@ first load. The fantasy app's keys are never read or written. If a write fails
 
 ```
 init | seed | roster | brands | card | show | shows | state | titles | wrestler
-log | event | amend | void | restore | corrections | check | export
+threads | resolve | heat | log | event | amend | void | restore | corrections
+check | export
 ```
 
 `--file PATH` (or `UNIVERSE_FILE`) chooses the save file; default

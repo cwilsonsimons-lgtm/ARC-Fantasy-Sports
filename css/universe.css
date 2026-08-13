@@ -150,6 +150,24 @@ td.dim{color:var(--ink-3)}
 .belt .holder.vacant{color:var(--ink-3);font-style:italic;font-weight:400}
 .belt .facts{color:var(--ink-3);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
 
+.belt .interim{margin:-2px 0 6px;font-size:13px;color:var(--ink-2)}
+.belt-link{cursor:pointer;font-weight:600}
+.belt-link:hover{color:var(--gold)}
+
+/* ---------------------------------------------------------------- detail pages */
+.backrow{margin-bottom:12px}
+.pagehead{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--violet);
+  border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.pagehead .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:26px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase}
+.pagehead .holder{font-size:16px;margin-top:5px}
+.pagehead .holder .vacant{color:var(--ink-3);font-style:italic}
+.pagehead .dim{color:var(--ink-3);font-size:12px}
+
+/* threads */
+tr.stale td{background:rgba(232,178,58,.045)}
+tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
+
 /* ---------------------------------------------------------------- log */
 .logrow td{font-size:13px}
 .logrow.voided td{opacity:.42;text-decoration:line-through}
