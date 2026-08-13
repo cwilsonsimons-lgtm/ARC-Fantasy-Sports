@@ -61,6 +61,30 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## WWE 2K Universe
+
+A second self-contained subsystem, and — for now — a data layer with no UI at
+all. It stores a WWE 2K Universe mode save as an event log: wrestlers, brands,
+championships, tag teams and factions, plus every match, attack, promo, title
+change, injury, contract and brand transfer that happens to them.
+
+Nothing derived is persisted. Champions, brand rosters, win/loss records, title
+lineages, faction membership and feud heat are all folded out of the log on
+demand, so correcting a mistake is one append to a correction log and every
+downstream number recalculates on the next read:
+
+```
+node tools/universe.mjs seed data/universe-seed.json --fresh
+node tools/universe.mjs roster roster.txt      # paste a roster, get a brand table
+node tools/universe.mjs card card.txt --dry    # type a show's card in shorthand
+node tools/universe.mjs amend ev_0081 winner="Gunther"
+npm run check:universe                         # 108 checks, pure Node
+```
+
+`js/universe/` is DOM-free — the Node CLI and a future dashboard run the same
+code. Full schema, correction semantics, roster format and card grammar are in
+[docs/universe.md](docs/universe.md).
+
 ## Layout
 
 ```
