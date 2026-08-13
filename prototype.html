@@ -501,10 +501,31 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .st-c{flex:none;text-align:right;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:12px;
   color:var(--ink-2);padding:9px 6px}
 .st-c.rec{width:52px;color:var(--ink)}
-.st-c.pf,.st-c.pa{width:66px}
-.st-c.df{width:70px;padding-right:12px}
+.st-c.pf,.st-c.pa,.st-c.ppg,.st-c.hi,.st-c.lo{width:66px}
+.st-c.strk{width:48px}
+.st-c.strk.W{color:var(--green)}
+.st-c.strk.L{color:var(--red)}
+.st-c.df{width:70px}
 .st-c.df.pos{color:var(--green)}
 .st-c.df.neg{color:var(--red)}
+.stand-row .st-c:last-child{padding-right:12px}
+/* expanded: tighten everything so as many of the extra columns as possible are
+   on screen at once, rather than parked off the right edge */
+.stand.wide .stand-c1{width:150px;gap:7px;padding:9px 8px 9px 10px}
+.stand.wide .stand-nm .n{--tn-size:11.5px}
+.stand.wide .stand-nm .m{font-size:9px}
+.stand.wide .st-c{width:52px;font-size:11px;padding:9px 4px}
+.stand.wide .st-c.rec{width:50px}
+.stand.wide .st-c.strk{width:42px}
+.stand.wide .st-c.df{width:58px}
+/* "More stats" reveals the columns the league tab does not lead with */
+.stand-more{display:flex;align-items:center;gap:4px;letter-spacing:1px;font-size:9.5px;
+  color:var(--ink-3);cursor:pointer;user-select:none;padding:3px 2px}
+.stand-more:active{color:var(--ink-2)}
+.stand-more.on{color:var(--accent)}
+.stand-more.hide{display:none}
+.stand-more .sm-cv{display:inline-block;font-size:13px;line-height:1;transition:transform .18s ease}
+.stand-more.on .sm-cv{transform:rotate(90deg)}
 .stand-row.head .st-c.sortable,.stand-row.head .stand-c1.sortable{cursor:pointer;user-select:none}
 .stand-row.head .st-c.sortable:active,.stand-row.head .stand-c1.sortable:active{color:var(--ink)}
 .stand-row.head .on{color:var(--accent)}
@@ -1172,6 +1193,22 @@ body.open .drawer{transform:translateX(0)}
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10.5px;
   letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3)}
 .dr-subhd span{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px}
+/* Rosters tab: one collapsible card per team, the draft read by roster */
+.dr-team{border:1px solid var(--line-soft);border-radius:14px;margin-bottom:8px;overflow:hidden}
+.dr-team.me{border-color:rgba(var(--accent-rgb),.45)}
+.dr-team-h{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;background:var(--card-2)}
+.dr-team-h:active{background:rgba(255,255,255,.04)}
+.dr-team.me .dr-team-h{background:linear-gradient(90deg,rgba(var(--accent-rgb),.10),var(--card-2))}
+.dr-team-cv{flex:none;width:14px;color:var(--ink-3);font-size:15px;line-height:1;transition:transform .18s ease}
+.dr-team-cv.on{transform:rotate(90deg)}
+.dr-crest.sm{width:30px;height:30px;border-radius:9px;font-size:11px}
+.dr-team-id{flex:1;min-width:0}
+.dr-team-id .nm{--tn-size:12.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dr-team-id .sub{font-size:9.5px;color:var(--ink-3);font-weight:600}
+.dr-team-c{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:10.5px;font-weight:700;color:var(--ink-3)}
+.dr-team-b{padding:2px 11px 6px}
+.dr-team-b .dr-row:last-child{border-bottom:none}
 /* position filter row: search button then pills carrying roster counts */
 .dpills{display:flex;align-items:center;gap:6px;margin:0 0 8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .dpills::-webkit-scrollbar{display:none}
@@ -2266,6 +2303,17 @@ body.forming .tabs{display:none}
 .cm-hd{font-size:9.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-3);padding:7px 2px 5px;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600}
 .cm-empty{padding:20px 0;text-align:center;color:var(--ink-3);font-size:12px}
+/* one assign list covers free agents and rostered players, so the row has to
+   say who holds a player and the pills have to narrow a much larger pool */
+.cm-pills{display:flex;gap:6px;margin:9px 0 8px;overflow-x:auto;scrollbar-width:none}
+.cm-pills::-webkit-scrollbar{display:none}
+.cm-pill{flex:none;padding:5px 11px;border-radius:999px;border:1px solid var(--line-soft);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.8px;
+  color:var(--ink-3);cursor:pointer;user-select:none}
+.cm-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.cm-own{color:var(--ink-2)}
+.cm-own.fa{color:var(--green)}
+.cm-note{font-size:10px;color:var(--ink-3);padding:7px 2px 0;line-height:1.4}
 
 .tv-picks{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
 .tv-pick{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;
@@ -2819,7 +2867,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       <div class="view" data-view="standings">
         <div class="hd wkhd" id="standWkHd" style="margin-top:14px"><span><span class="wkdd" onclick="openWeekPicker()"><span data-weeklabel>Week 8</span><span class="cv">▼</span></span>&middot; Matchups</span></div>
         <div class="sm-wrap" id="standMatchups"></div>
-        <div class="hd"><span>League Standings</span></div>
+        <div class="hd"><span>League Standings</span>
+          <div class="stand-more" id="standMore" onclick="toggleStandCols()"><span class="sm-lb">More stats</span><span class="sm-cv">›</span></div>
+        </div>
         <div class="stand" id="standBody"></div>
       </div>
 
@@ -4324,6 +4374,10 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     sortStandings: () => sortStandings,
     standOrder: () => standOrder,
     standSortValue: () => standSortValue,
+    toggleStandCols: () => toggleStandCols,
+    teamStreak: () => teamStreak,
+    streakText: () => streakText,
+    teamSplits: () => teamSplits,
     renderTeamSchedule: () => renderTeamSchedule,
     resultBadges: () => resultBadges,
     teamRecord: () => teamRecord,
@@ -4599,6 +4653,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     draftTabsHTML: () => draftTabsHTML,
     toggleDraftSearch: () => toggleDraftSearch,
     setDraftTab: () => setDraftTab,
+    toggleDraftRoster: () => toggleDraftRoster,
+    allRostersHTML: () => allRostersHTML,
+    teamDraftPicks: () => teamDraftPicks,
     draftQ: () => draftQ,
     myDraftSlotsHTML: () => myDraftSlotsHTML,
     onDraftSearch: () => onDraftSearch,
@@ -7533,6 +7590,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     cmPickTeam: () => cmPickTeam,
     cmSetOther: () => cmSetOther,
     cmSetQ: () => cmSetQ,
+    cmSetPos: () => cmSetPos,
+    cmAssignPool: () => cmAssignPool,
     cmToggle: () => cmToggle,
     commishMovePick: () => commishMovePick,
     commishMovePlayer: () => commishMovePlayer,
@@ -8468,16 +8527,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function movePlayerTo(key, to) {
     const from = holderOf(key);
     if (from === to) return null;
+    const landing = to && T[to] ? to : null;
+    // Check the destination before disturbing the source. Lifting first and
+    // putting back on failure only works while the source has a free bench
+    // seat: a starter lifted off a full roster could not be re-seated, and the
+    // player was dropped from the league instead of the move being refused.
+    if (landing && benchSpace(landing) < 1) {
+      toast(rosterFullMsg(landing));
+      return null;
+    }
     let p = from ? liftPlayer(from, key) : null;
     if (!p) {
       const src = NFL_BY_ID[key];
       p = src ? hydratePlayer(mkPlayer(src), S.week) : null;
     }
     if (!p) return null;
-    const landing = to && T[to] ? to : null;
     if (landing) {
       if (!seatPlayer(landing, p)) {
-        // put them back where they came from and refuse the move
         if (from) seatPlayer(from, p);
         toast(rosterFullMsg(landing));
         return null;
@@ -8522,15 +8588,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     toast(`${pickLabel(pk, to)} → ${T[to].n}`);
   }
 
+  // One "assign players" path rather than separate free-agent and take-from-a-
+  // roster actions. A commissioner moving a player thinks about the player, not
+  // about who currently holds them, and movePlayerTo already lifts from
+  // whatever roster the player is on — the split was only ever in the menu.
   var CM_ACTIONS = [
-    ["addPlayers", "Add player(s)"],
+    ["addPlayers", "Assign player(s) to this team"],
     ["addPicks", "Add pick(s)"],
     ["sendPlayers", "Send players to another roster"],
     ["sendPicks", "Send picks to another roster"],
-    ["takePlayers", "Add players from another roster"],
     ["switchPlayers", "Switch players with another roster"]
   ];
-  var CM = { step: "idle", team: null, action: null, other: null, mine: {}, theirs: {}, q: "" };
+  var CM = { step: "idle", team: null, action: null, other: null, mine: {}, theirs: {}, q: "", pos: "ALL" };
   function cmOtherKey() {
     if (!CM.other || !T[CM.other] || CM.other === CM.team) CM.other = Object.keys(T).find((k) => k !== CM.team) || null;
     return CM.other;
@@ -8539,6 +8608,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     CM.mine = {};
     CM.theirs = {};
     CM.q = "";
+    CM.pos = "ALL";
   }
   function cmOpenRosters() {
     CM.step = "teams";
@@ -8575,6 +8645,49 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     CM.q = (v || "").trim();
     renderSettings();
   }
+  function cmSetPos(p) {
+    CM.pos = p;
+    renderSettings();
+  }
+  // Every player in the league's universe, whoever holds them. Ordered by draft
+  // value so the names a commissioner reaches for are at the top, and capped
+  // because the pool is the whole player index — search and the position pills
+  // are how you get past the cap.
+  var CM_POS = ["ALL", "QB", "RB", "WR", "TE", "FLEX"];
+  var CM_POOL_MAX = 60;
+  function cmAssignPool() {
+    const q = CM.q.toLowerCase(), pos = CM.pos || "ALL";
+    const seen = /* @__PURE__ */ new Set(), out = [];
+    const ranked = POOL.slice().sort((a, b) => (a.adp || 999) - (b.adp || 999));
+    for (const p of ranked) {
+      const k = pKeyOf(p);
+      if (!p.n || !k || seen.has(k)) continue;
+      seen.add(k);
+      if (pos !== "ALL" && !posMatch(p.pos, pos)) continue;
+      if (q && (p.full || p.n).toLowerCase().indexOf(q) < 0) continue;
+      const holder = holderOf(k);
+      if (holder === CM.team) continue;
+      out.push({ k, n: p.n, pos: p.pos, tm: p.tm, holder });
+      if (out.length >= CM_POOL_MAX) break;
+    }
+    return out;
+  }
+  function cmPosPills() {
+    return `<div class="cm-pills">${CM_POS.map((p) =>
+      `<div class="cm-pill${p === (CM.pos || "ALL") ? " on" : ""}" onclick="cmSetPos('${p}')">${p}</div>`).join("")}</div>`;
+  }
+  // The owner is shown on the row itself, which is what lets one list stand in
+  // for the old "free agent" and "on another roster" lists.
+  function cmAssignRow(e) {
+    const on = CM.mine[e.k];
+    const owner = e.holder && T[e.holder]
+      ? `<span class="cm-own">${escHtml(T[e.holder].n)}</span>`
+      : `<span class="cm-own fa">Free agent</span>`;
+    return `<div class="cm-row${on ? " on" : ""}" onclick="cmToggle('${esc(e.k)}','mine',this)">
+    <span class="cm-box">✓</span>
+    <div class="cm-info"><div class="n">${escHtml(e.n)}</div><div class="m">${escHtml(e.pos)} · ${escHtml(e.tm)} · ${owner}</div></div>
+  </div>`;
+  }
   function cmToggle(id, side, el) {
     const bag = side === "theirs" ? CM.theirs : CM.mine;
     if (bag[id]) delete bag[id];
@@ -8605,9 +8718,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     else if (CM.action === "sendPicks") mine.forEach((id) => {
       if (movePickTo(id, other)) n++;
-    });
-    else if (CM.action === "takePlayers") mine.forEach((id) => {
-      if (movePlayerTo(id, team)) n++;
     });
     else if (CM.action === "switchPlayers") {
       const out = mine.map((id) => liftPlayer(team, id)).filter(Boolean);
@@ -8667,9 +8777,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function cmActionBody() {
     const team = CM.team, other = cmOtherKey();
     if (CM.action === "addPlayers") {
-      const q = CM.q.toLowerCase();
-      const pool = freeAgents("ALL").filter((p) => !q || (p.full || p.n).toLowerCase().indexOf(q) > -1).slice(0, 40);
-      return setRow("Search", `<input class="set-ctl" type="text" value="${esc(CM.q)}" onchange="cmSetQ(this.value)">`) + `<div class="cm-list">${pool.length ? pool.map((p) => cmRow(pKeyOf(p), "mine", p.n, `${p.pos} \xB7 ${p.tm}`)).join("") : `<div class="cm-empty">—</div>`}</div>` + cmApplyBar(`Add to ${T[team].n}`);
+      const pool = cmAssignPool();
+      return setRow("Search", `<input class="set-ctl" type="text" value="${esc(CM.q)}" onchange="cmSetQ(this.value)">`) +
+        cmPosPills() +
+        `<div class="cm-list">${pool.length ? pool.map(cmAssignRow).join("") : `<div class="cm-empty">—</div>`}</div>` +
+        (pool.length >= CM_POOL_MAX ? `<div class="cm-note">Showing the top ${CM_POOL_MAX} by draft value — search to narrow.</div>` : "") +
+        cmApplyBar(`Assign to ${T[team].n}`);
     }
     if (CM.action === "addPicks") {
       const rows2 = Object.keys(T).filter((k) => k !== team).map((k) => {
@@ -8683,8 +8796,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       return cmOtherSelect("Send to") + `<div class="cm-list">${cmPlayerRows(team, "mine")}</div>` + cmApplyBar(`Send to ${T[other].n}`);
     if (CM.action === "sendPicks")
       return cmOtherSelect("Send to") + `<div class="cm-list">${cmPickRows(team, "mine")}</div>` + cmApplyBar(`Send to ${T[other].n}`);
-    if (CM.action === "takePlayers")
-      return cmOtherSelect("Take from") + `<div class="cm-list">${cmPlayerRows(other, "mine")}</div>` + cmApplyBar(`Add to ${T[team].n}`);
     if (CM.action === "switchPlayers")
       return cmOtherSelect("Switch with") + `<div class="cm-two">
       <div><div class="cm-hd">${escHtml(T[team].n)}</div><div class="cm-list">${cmPlayerRows(team, "mine")}</div></div>
@@ -12793,9 +12904,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }).join("");
   }
   var draftTab = "available";
-  var DRAFT_TABS = [["available", "Available"], ["team", "My Roster"]];
+  var DRAFT_TABS = [["available", "Available"], ["team", "My Roster"], ["rosters", "Rosters"]];
   function draftTabCount(k) {
-    return k === "team" ? `${teamRosterIds(MY_TEAM).length}/${DRAFT_ROUNDS}` : `${draftBoard().length}`;
+    if (k === "team") return `${teamRosterIds(MY_TEAM).length}/${DRAFT_ROUNDS}`;
+    if (k === "rosters") return `${DRAFT_ORDER.length}`;
+    return `${draftBoard().length}`;
   }
   function draftTabsHTML() {
     return `<div class="dr-tabs">${DRAFT_TABS.map((t) => `<div class="dr-tab${t[0] === draftTab ? " on" : ""}" data-dtab="${t[0]}"
@@ -12803,6 +12916,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function draftTabHTML() {
     if (draftTab === "team") return myDraftSlotsHTML();
+    if (draftTab === "rosters") return allRostersHTML();
     return `<div id="draftSearchWrap" class="dr-search${draftQ ? " on" : ""}"><div class="psearch">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
       <input id="draftSearch" type="search" autocomplete="off" autocapitalize="off" spellcheck="false"
@@ -12892,6 +13006,65 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       bench.forEach((p) => rows2.push(row("BN", p, true)));
     }
     return rows2.join("");
+  }
+  // ---- every team's draft, not just yours ---------------------------------
+  // The board grid shows the order picks came in; this reads the same picks the
+  // other way, grouped by the roster they landed on, so you can see what the
+  // room is building. Collapsed by default apart from your own team, since a
+  // twelve-team league is a lot of rows to scroll past.
+  var draftRosterOpen = {};
+  function draftRosterIsOpen(k) {
+    return draftRosterOpen[k] === void 0 ? k === MY_TEAM : !!draftRosterOpen[k];
+  }
+  function toggleDraftRoster(k) {
+    draftRosterOpen[k] = !draftRosterIsOpen(k);
+    const el = document.getElementById("draftTabBody");
+    if (el) el.innerHTML = draftTabHTML();
+  }
+  function teamDraftPicks(key) {
+    const picks = draftPicks(), out = [];
+    for (let i = 0; i < DRAFT_TOTAL; i++) {
+      const r = picks[i];
+      if (r && r.id && teamOnPick(i) === key) {
+        const m = pickMeta(i), p = NFL_BY_ID[r.id];
+        if (p) out.push({ p, round: m.round, pick: m.pick });
+      }
+    }
+    return out;
+  }
+  function draftPosSummary(list) {
+    const c = {};
+    list.forEach((e) => { c[e.p.pos] = (c[e.p.pos] || 0) + 1; });
+    const parts = ["QB", "RB", "WR", "TE"].filter((k) => c[k]).map((k) => `${k}${c[k]}`);
+    return parts.length ? parts.join(" · ") : "No picks yet";
+  }
+  function allRostersHTML() {
+    return DRAFT_ORDER.map((k) => {
+      const t = T[k], list = teamDraftPicks(k), open = draftRosterIsOpen(k);
+      const rows2 = list.length
+        ? list.map((e) => `<div class="dr-row roster" onclick="openPlayer('${esc(e.p.id)}')">
+        <span class="dr-slotk">${e.round}.${String(e.pick).padStart(2, "0")}</span>
+        <div class="dr-info">
+          <div class="dr-nm">${escHtml(e.p.full)}</div>
+          <div class="dr-mt"><i class="dr-dot" style="background:${posColor(e.p.pos)}"></i>${e.p.pos} • ${escHtml(e.p.tm || "FA")}${ageBit(e.p)}</div>
+        </div>
+        <span class="dr-col"><b>ADP</b>${e.p.adp < 999 ? e.p.adp : "—"}</span>
+        <span class="dr-col"><b>PTS</b>${e.p.sproj.toFixed(1)}</span>
+      </div>`).join("")
+        : `<div class="cm-empty">No picks yet</div>`;
+      return `<div class="dr-team${k === MY_TEAM ? " me" : ""}">
+      <div class="dr-team-h" onclick="toggleDraftRoster('${k}')">
+        <span class="dr-team-cv${open ? " on" : ""}">›</span>
+        <span class="dr-crest sm" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${markInner(t)}</span>
+        <div class="dr-team-id">
+          <div class="nm tf-${k}" style="color:${t.c}">${escHtml(t.n)}</div>
+          <div class="sub">${escHtml(draftPosSummary(list))}</div>
+        </div>
+        <span class="dr-team-c">${list.length}/${DRAFT_ROUNDS}</span>
+      </div>
+      ${open ? `<div class="dr-team-b">${rows2}</div>` : ""}
+    </div>`;
+    }).join("");
   }
   function recentPicksHTML() {
     const ps = draftPicks();
@@ -13814,6 +13987,49 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const r = teamRecord(key);
     return r.t ? `${r.w}-${r.l}-${r.t}` : `${r.w}-${r.l}`;
   }
+  // Streak reads the played weeks backwards and stops at the first result that
+  // breaks the run. Head-to-head only, even with League Median on: a week worth
+  // two results would make "W3" ambiguous about how many weeks it covers, and a
+  // streak is read as a count of weeks.
+  function teamStreak(key) {
+    let kind = null, n = 0;
+    for (let k = Math.min(MAXW, LIVE_WEEK); k >= MINW; k--) {
+      const r = weekResult(key, k);
+      if (!r || !r.h2h) continue;
+      if (kind === null) kind = r.h2h;
+      else if (r.h2h !== kind) break;
+      n++;
+    }
+    return kind ? { kind, n } : null;
+  }
+  function streakText(key) {
+    const s = teamStreak(key);
+    return s ? `${s.kind}${s.n}` : "—";
+  }
+  // Sorts wins above ties above losses, then by run length, so a longer streak
+  // outranks a shorter one of the same kind and W1 still outranks T4.
+  function streakRank(key) {
+    const s = teamStreak(key);
+    if (!s) return 0;
+    return ({ W: 1, T: 0, L: -1 })[s.kind] * s.n;
+  }
+  // Per-week spread over the weeks a team actually played, so a bye or an
+  // unplayed week never drags an average down.
+  function teamSplits(key) {
+    const pts = [];
+    for (let k = MINW; k <= Math.min(MAXW, LIVE_WEEK); k++) {
+      const r = weekResult(key, k);
+      if (r) pts.push(r.pts);
+    }
+    if (!pts.length) return { gp: 0, ppg: 0, hi: 0, lo: 0 };
+    const sum = pts.reduce((a, b) => a + b, 0);
+    return {
+      gp: pts.length,
+      ppg: Math.round(sum / pts.length * 10) / 10,
+      hi: Math.max.apply(null, pts),
+      lo: Math.min.apply(null, pts)
+    };
+  }
   // the two badges a matchup shows for a team once median scoring is on
   function resultBadges(key, week) {
     if (!leagueMedianOn()) return "";
@@ -13906,14 +14122,53 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // by that column (first tap = best first), and tapping the active column
   // again flips the direction. Purely a view concern, so it is not persisted.
   var standSort = { key: "rk", dir: 1 };
+  // The league tab leads with streak, record and points for; the rest of the
+  // columns live behind the chevron next to the heading rather than making
+  // every reader scroll a nine-column table sideways to find the record.
+  var standExpanded = false;
+  // only nudge on the tap that expands, never on the repaints that follow
+  var standScrollPending = false;
+  function toggleStandCols() {
+    standExpanded = !standExpanded;
+    standScrollPending = standExpanded;
+    // a hidden column cannot show which way it is sorting, so fall back to seed
+    if (!standExpanded && STAND_EXTRA.some((c) => c[0] === standSort.key)) standSort = { key: "rk", dir: 1 };
+    renderStandings2();
+  }
+  var STAND_BASE = [["strk", "STRK"], ["rec", "W-L"], ["pf", "PF"]];
+  var STAND_EXTRA = [["pa", "PA"], ["df", "DIFF"], ["ppg", "PPG"], ["hi", "HIGH"], ["lo", "LOW"]];
+  function standCols() {
+    return standExpanded ? STAND_BASE.concat(STAND_EXTRA) : STAND_BASE;
+  }
   function standSortValue(k, key) {
     const tot = seasonTotals(k);
     if (key === "pf") return tot.pf;
     if (key === "pa") return tot.pa;
     if (key === "df") return Math.round((tot.pf - tot.pa) * 10) / 10;
+    if (key === "strk") return streakRank(k);
+    if (key === "ppg" || key === "hi" || key === "lo") return teamSplits(k)[key];
     const r = teamRecord(k);
     if (key === "rec") return r.w + r.t * 0.5;
     return T[k].rk;
+  }
+  function standCell(key, k) {
+    const tot = seasonTotals(k);
+    if (key === "rec") return `<span class="st-c rec" onclick="event.stopPropagation();openTeamSchedule('${k}')">${recordText(k)}</span>`;
+    if (key === "strk") {
+      const s = teamStreak(k);
+      return `<span class="st-c strk${s ? " " + s.kind : ""}">${streakText(k)}</span>`;
+    }
+    if (key === "pf") return `<span class="st-c pf">${tot.pf.toFixed(1)}</span>`;
+    if (key === "pa") return `<span class="st-c pa">${tot.pa.toFixed(1)}</span>`;
+    if (key === "df") {
+      const diff = Math.round((tot.pf - tot.pa) * 10) / 10;
+      return `<span class="st-c df ${diff > 0 ? "pos" : diff < 0 ? "neg" : ""}">${diff > 0 ? "+" : ""}${diff.toFixed(1)}</span>`;
+    }
+    const sp = teamSplits(k);
+    if (key === "ppg") return `<span class="st-c ppg">${sp.gp ? sp.ppg.toFixed(1) : "—"}</span>`;
+    if (key === "hi") return `<span class="st-c hi">${sp.gp ? sp.hi.toFixed(1) : "—"}</span>`;
+    if (key === "lo") return `<span class="st-c lo">${sp.gp ? sp.lo.toFixed(1) : "—"}</span>`;
+    return "";
   }
   function sortStandings(key) {
     if (standSort.key === key) standSort.dir = -standSort.dir;
@@ -13936,35 +14191,60 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const mode = LG().standings || "record";
     if (mode === "kart") {
       renderKartStandings();
+      paintStandToggle();
       return;
     }
     if (mode === "table") {
       renderTableStandings();
+      paintStandToggle();
       return;
     }
     const seedOn = standSort.key === "rk";
     const seedCv = seedOn ? `<span class="so-cv">${standSort.dir > 0 ? "\u25B2" : "\u25BC"}</span>` : "";
+    const cols = standCols();
     const head = `<div class="stand-row head">
     <div class="stand-c1 sortable${seedOn ? " on" : ""}" onclick="sortStandings('rk')">TEAM${seedCv}</div>
-    ${standHeadCell("rec", "W-L")}
-    ${standHeadCell("pf", "PF")}
-    ${standHeadCell("pa", "PA")}
-    ${standHeadCell("df", "DIFF")}
+    ${cols.map((c) => standHeadCell(c[0], c[1])).join("")}
   </div>`;
     document.getElementById("standBody").innerHTML = head + standOrder().map((k) => {
-      const t = T[k], me = k === MY_TEAM, tot = seasonTotals(k);
-      const diff = Math.round((tot.pf - tot.pa) * 10) / 10;
+      const t = T[k], me = k === MY_TEAM;
       return `<div class="stand-row ${me ? "me" : ""}">
       <div class="stand-c1">
         <span class="stand-rk">${t.rk}</span>${badge(t, "stand-bd")}
         <div class="stand-nm"><div class="n tf-${k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
       </div>
-      <span class="st-c rec" onclick="event.stopPropagation();openTeamSchedule('${k}')">${recordText(k)}</span>
-      <span class="st-c pf">${tot.pf.toFixed(1)}</span>
-      <span class="st-c pa">${tot.pa.toFixed(1)}</span>
-      <span class="st-c df ${diff > 0 ? "pos" : diff < 0 ? "neg" : ""}">${diff > 0 ? "+" : ""}${diff.toFixed(1)}</span>
+      ${cols.map((c) => standCell(c[0], k)).join("")}
     </div>`;
     }).join("");
+    // Nine columns cannot fit a phone, so expanding tightens every column to
+    // fit as many as possible and then nudges the table across to the first new
+    // one. Without the nudge, "More stats" looks like it did nothing — the new
+    // columns are simply off the right edge. The team column is sticky, so the
+    // names stay put while the stats move under them.
+    const box = document.getElementById("standBody");
+    box.classList.toggle("wide", standExpanded);
+    if (standExpanded && standScrollPending) {
+      const first = box.querySelector(".stand-row.head .st-c.pa");
+      const pin = box.querySelector(".stand-row.head .stand-c1");
+      // land the first extra column flush against the pinned team column, so
+      // nothing ends up half-swallowed by it mid-scroll
+      if (first && pin) box.scrollTo({ left: Math.max(0, first.offsetLeft - pin.offsetWidth), behavior: "smooth" });
+    } else if (!standExpanded) box.scrollTo({ left: 0, behavior: "smooth" });
+    standScrollPending = false;
+    paintStandToggle();
+  }
+  // The chevron lives in the heading, so it has to be repainted whenever the
+  // table is, and it is only meaningful for the table-shaped standings modes.
+  function paintStandToggle() {
+    const el = document.getElementById("standMore");
+    if (!el) return;
+    // kart and table modes carry their own fixed columns, so there is nothing
+    // extra to reveal in either
+    const usable = (LG().standings || "record") === "record";
+    el.classList.toggle("hide", !usable);
+    el.classList.toggle("on", standExpanded && usable);
+    const lb = el.querySelector(".sm-lb");
+    if (lb) lb.textContent = standExpanded ? "Less" : "More stats";
   }
   function posMatch(pos, f) {
     if (f === "ALL") return true;
