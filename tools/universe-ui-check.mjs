@@ -801,6 +801,38 @@ await check('and the weekly nights are filtered with it',
   `[...new Set([...document.querySelectorAll('.cal .cdue')].map(e => e.textContent))]`, ['SmackDown']);
 await page.evaluate(`document.querySelector('[data-calbrand]').click()`);
 
+// Where the universe starts. The game opens Universe mode in the first week of
+// May, so that is one click — and picking it only re-numbers the grid.
+await check('the start panel says where day 1 is', `${tab('calendar')};
+  document.querySelector('#startPanel summary').textContent.includes('day 1 of cycle 1 is')`, true);
+await check('the seed already starts in the first week of May',
+  `UNIVERSE.store.doc.calendar.start`, '2026-05-04');
+await check('a May preset is offered per year', `[...document.querySelectorAll('[data-startpick]')]
+  .map(b => b.textContent.trim())`, t => t.length >= 3 && t.every(x => x.startsWith('May')));
+await check('picking one previews it without writing', `
+  document.querySelectorAll('[data-startpick]')[2].click();
+  [document.getElementById('calStart').value, UNIVERSE.store.doc.calendar.start]`,
+  v => v[0] !== v[1] && v[1] === '2026-05-04');
+await check('and says where today would land',
+  `document.getElementById('startPreview').textContent.replace(/\\s+/g, ' ')`,
+  t => /that would make day 1 of cycle 1/i.test(t) && /cycle -?\d+, day \d+/i.test(t));
+await check('cancelling puts it back', `document.getElementById('calStartReset').click();
+  document.getElementById('calStart').value`, '2026-05-04');
+await check('setting a date moves day 1', `
+  const box = document.getElementById('calStart');
+  box.value = '2027-05-03';
+  box.dispatchEvent(new Event('change', { bubbles: true }));
+  document.getElementById('calStartSave').click();
+  UNIVERSE.store.doc.calendar.start`, '2027-05-03');
+await check('and the grid is renumbered from it', `${tab('calendar')};
+  document.querySelector('#startPanel summary').textContent.includes('3 May 2027')`, true);
+await check('while the log keeps its own dates',
+  `UNIVERSE.store.effectiveEvents()[0].date`, d => d.startsWith('2026-'));
+await check('putting it back is one click', `
+  [...document.querySelectorAll('[data-startpick]')].find(b => b.textContent.trim() === 'May 2026').click();
+  document.getElementById('calStartSave').click();
+  UNIVERSE.store.doc.calendar.start`, '2026-05-04');
+
 // §41: Last Stand is an ordinary PLE carrying a rule.
 await check('a PLE can carry a universe rule', `document.querySelector('[data-editple="new:24"]').click();
   document.getElementById('pfName').value = 'Bound for Glory';
@@ -851,7 +883,8 @@ await page.evaluate(tab('prompts'));
 await page.screenshot({ path: 'snapshots/universe-prompts.png' });
 await page.evaluate(tab('import'));
 await page.screenshot({ path: 'snapshots/universe-import.png' });
-await page.evaluate(`UNIVERSE.app.tab = 'calendar'; UNIVERSE.app.cycle = null; UNIVERSE.app.pleEdit = null; UNIVERSE.render()`);
+await page.evaluate(`UNIVERSE.app.tab = 'calendar'; UNIVERSE.app.cycle = null; UNIVERSE.app.pleEdit = null;
+  UNIVERSE.app.startOpen = true; UNIVERSE.render()`);
 await page.screenshot({ path: 'snapshots/universe-calendar.png', fullPage: true });
 await page.evaluate(`UNIVERSE.app.tab = 'show';
   UNIVERSE.app.detailId = UNIVERSE.app.state.shows.find(s => s.ple === 'wrestlemania').id; UNIVERSE.render()`);

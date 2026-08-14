@@ -26,6 +26,7 @@ import { recordMatch } from '../laststand.js';
 import { checkBrand } from '../pyramid.js';
 import { saveChampionship, retireChampionship, deleteChampionship, defaultTeamSize } from '../championships.js';
 import { savePLE, movePLE, deletePLE } from '../ples.js';
+import { setCalendarStart, firstWeekOfMay } from '../calendar.js';
 import { buildPrompt, entryPrompt } from '../prompts.js';
 import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
 import { SHOW_DAYS } from '../schema.js';
@@ -46,6 +47,8 @@ const app = {
   cycle: null,                      // which 28-day cycle the calendar is showing
   calBrand: null,                    // brand filter on the calendar
   pleEdit: null,                     // PLE id being edited, 'new', or 'new:<day>'
+  startPick: null,                   // a start date being considered, not yet set
+  startOpen: false,
 
   shots: [], activeShot: 0, shotKind: 'card',
   rosterAddOnly: false,             // a deliberately partial paste
@@ -135,6 +138,7 @@ function render() {
   });
   if (app.tab === 'calendar') $('#pane-calendar').innerHTML = calendarView(s, {
     cycle: app.cycle, brandId: app.calBrand, editingPLE: app.pleEdit,
+    startPick: app.startPick, startOpen: app.startOpen || !!app.startPick,
   });
   if (app.tab === 'show') $('#pane-show').innerHTML = showPage(s, app.detailId);
   if (app.tab === 'shows') $('#pane-shows').innerHTML = showsView(s);
@@ -337,6 +341,25 @@ on('click', '[data-savebrand]', (e, el) => {
   }
   render();
 });
+
+// ------------------------------------------------------------------ when it starts
+// Day 1 of cycle 1. Picking it is a preview first: the panel says where today
+// and every card already played would land before anything is written.
+
+on('click', '[data-startpick]', (e, el) => { app.startPick = el.dataset.startpick; app.startOpen = true; render(); });
+on('change', '#calStart', (e, el) => { app.startPick = el.value || null; app.startOpen = true; render(); });
+on('click', '#calStartReset', () => { app.startPick = null; render(); });
+on('click', '#calStartSave', () => {
+  const iso = ($('#calStart') && $('#calStart').value) || app.startPick;
+  try {
+    setCalendarStart(store, iso);
+    app.startPick = null;
+    app.cycle = null;                 // the numbering just changed under us
+    flash(`Day 1 of cycle 1 is now ${h(iso)}.`);
+  } catch (err) { flash(h(err.message), 'err'); }
+  render();
+});
+on('toggle', '#startPanel', (e, el) => { app.startOpen = el.open; });
 
 // ------------------------------------------------------------------ PLEs
 // Where a PLE sits on the 28-day cycle is the user's decision and nothing

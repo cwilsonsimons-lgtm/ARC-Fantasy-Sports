@@ -79,7 +79,9 @@ add, rename, move between shows, retire or delete them, and mark any belt as one
 whose champion is called up a tier at the offseason.
 
 The universe runs on a repeating **28-day cycle** — four weeks of seven days,
-days 1 to 28 — rather than real-world months. Weekly shows repeat on a night;
+days 1 to 28 — rather than real-world months, and **you pick where day 1 is**.
+The game opens Universe mode in the first week of May, so that year's first
+Monday is one click; the shipped seed already starts on Monday 4 May 2026. Weekly shows repeat on a night;
 **PLEs are yours to place**, assigned to one brand, several or all of them, and
 dragged to any day whenever you like. Last Stand is a PLE like any other with a
 rule attached, so you can call yours Bound for Glory and put it on day 24.
@@ -175,8 +177,8 @@ node tools/universe.mjs ple "Survivor Series" --day 21 --brands "Raw, SmackDown"
 node tools/universe.mjs show sh_0088          # one card, and what it changed
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 510 data-layer checks, pure Node
-npm run check:universe-ui     # 260 browser checks against dist/universe.html
+npm run check:universe        # 531 data-layer checks, pure Node
+npm run check:universe-ui     # 270 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

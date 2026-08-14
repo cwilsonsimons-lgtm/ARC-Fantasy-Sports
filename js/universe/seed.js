@@ -15,6 +15,7 @@
 import { UniverseStore, ValidationError } from './store.js';
 import { entityId, isDate } from './schema.js';
 import { project } from './project.js';
+import { slotOfBrand } from './calendar.js';
 import { buildIndex, resolve } from './util.js';
 
 const arr = v => (v == null ? [] : Array.isArray(v) ? v : [v]);
@@ -227,7 +228,15 @@ export function exportSeed(store, state = null) {
   return {
     name: store.doc.meta.name,
     startDate: store.doc.meta.startDate || null,
-    brands: store.entitiesOf('brand').map(b => ({ name: b.name, color: b.color || undefined })),
+    // Day 1 of cycle 1, and the shows' nights, so an exported universe comes
+    // back on the same calendar rather than being re-anchored on its first event.
+    calendar: { start: (store.doc.calendar || {}).start || null },
+    brands: store.entitiesOf('brand').map(b => ({
+      name: b.name, color: b.color || undefined, tier: b.tier || undefined,
+      // The night as a slot in the cycle's week, derived if the record only
+      // carries a weekday name, so an export is never ambiguous.
+      slot: slotOfBrand(b) || undefined, day: b.day || undefined,
+    })),
     championships: store.entitiesOf('championship').map(c => ({ name: c.name, brand: c.brandId ? name(c.brandId) : undefined, division: c.division })),
     wrestlers: Object.values(st.wrestlers).map(w => ({
       name: w.name, gender: w.gender || undefined, brand: w.brandId ? name(w.brandId) : undefined,
@@ -235,6 +244,11 @@ export function exportSeed(store, state = null) {
     })),
     tagTeams: groups.filter(g => g.kind === 'tagTeam' && g.active).map(g => ({ name: g.name, members: g.members.map(name), brand: g.brandId ? name(g.brandId) : undefined })),
     factions: groups.filter(g => g.kind === 'faction' && g.active).map(g => ({ name: g.name, members: g.members.map(name), leader: g.leaderId ? name(g.leaderId) : undefined })),
+    ples: store.entitiesOf('ple').map(p => ({
+      name: p.name, day: p.day, brands: (p.brandIds || []).map(name),
+      logo: p.logo || undefined, description: p.description || undefined,
+      type: p.type || undefined, special: p.special || undefined,
+    })),
     titleHolders: champs.filter(c => !c.vacant).map(c => ({ title: c.name, holders: c.holders.map(name), since: c.since })),
   };
 }

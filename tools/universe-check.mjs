@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 
 import { UniverseStore, memoryAdapter, ValidationError } from '../js/universe/store.js';
 import { project, champions, titleLineage, standings, movementsFor } from '../js/universe/project.js';
-import { seedFromJSON } from '../js/universe/seed.js';
+import { seedFromJSON, exportSeed } from '../js/universe/seed.js';
 import { parseRoster, commitRoster } from '../js/universe/roster.js';
 import { parseCard, commitCard, setTitleOutcome } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
@@ -25,7 +25,8 @@ import { candidates, eligibleOpponents, checkPairing, recordMatch, lastStandBoar
 import { beltsByBrand, beltCard, checkChampionship, saveChampionship, retireChampionship,
   deleteChampionship, beltUsage, autoPromoteDefault, defaultTeamSize } from '../js/universe/championships.js';
 import { cycleGrid, cyclesWithShows, weeklySchedule, brandsOnSlot, slotOfBrand, cardOf,
-  cardText as cardAsText, cycleText, cycleOf, dateOf, weekOfDay,
+  cardText as cardAsText, cycleText, cycleOf, dateOf, weekOfDay, weekdayName,
+  calendarStart, setCalendarStart, startPreview, firstWeekOfMay,
   CYCLE_DAYS, CYCLE_WEEKS, WEEK_DAYS } from '../js/universe/calendar.js';
 import { allPLEs, pleCard, plesOnDay, plesForBrand, pleBySpecial, checkPLE, savePLE,
   movePLE, deletePLE, orderProblems, scheduleText } from '../js/universe/ples.js';
@@ -434,7 +435,8 @@ Ivy Nile d. Becky Lynch
 Seth Rollins d. Sami Zayn`);
 let p8 = project(s8, { asOf: '2027-01-13' });
 check('one season until a Last Stand', seasons(p8).length, 1);
-check('it starts at the universe start date', currentSeason(p8).from, '2026-06-01');
+// The game opens Universe mode in the first week of May, and so does the seed.
+check('it starts at the universe start date', currentSeason(p8).from, '2026-05-04');
 check('and has no WrestleMania yet', currentSeason(p8).wrestlemania, null);
 check('standings count wins in the window', standingsFor(p8, { from: '2026-06-01' }).find(r => r.id === 'w:ivy-nile').points, 3);
 check('and are sorted by points', standingsFor(p8, { from: '2026-06-01' })[0].points, 3);
@@ -1024,6 +1026,64 @@ check('voiding a match takes it off the night', cardOf(pCal3, nightId).segments.
 check('and off the tally', cycleGrid(pCal3, 1).counts.matches, 2);
 check('and the title change with it',
   cardOf(pCal3, nightId).changes.some(c => c.kind === 'title'), false);
+
+// The universe starts where the user says. The game opens Universe mode in the
+// first week of May, so that is what the presets offer — but any date works,
+// and picking one only changes which day of the cycle a date lands on.
+section('when the universe starts');
+{
+  const s = fresh();
+  check('the seed starts in the first week of May', s.doc.calendar.start, '2026-05-04');
+  check('which is a Monday', weekdayName(s.doc.calendar.start), 'Monday');
+  check('the preset finds it for any year',
+    [2025, 2026, 2027, 2028].map(firstWeekOfMay), ['2025-05-05', '2026-05-04', '2027-05-03', '2028-05-01']);
+  check('and it is always a Monday in the first week',
+    [2025, 2026, 2027, 2028, 2029, 2030].every(y => weekdayName(firstWeekOfMay(y)) === 'Monday'
+      && Number(firstWeekOfMay(y).slice(8)) <= 7), true);
+
+  commitCard(s, parseCard('Raw / 2026-05-04 / Raw\nSeth Rollins d. Sami Zayn', s));
+  commitCard(s, parseCard('SmackDown / 2026-06-05 / SmackDown\nCody Rhodes d. Solo Sikoa', s));
+  let st = project(s, { asOf: '2026-06-10' });
+  check('day 1 of cycle 1 is the start date', cycleOf(st, '2026-05-04'), { cycle: 1, day: 1, week: 1 });
+  check('a card a month later lands where it falls',
+    (({ cycle, day }) => [cycle, day])(cycleOf(st, '2026-06-05')), [2, 5]);
+
+  // Moving the start moves the grid, not the history.
+  const before = st.events.map(e => e.date).join(',');
+  const preview = startPreview(st, '2026-06-01');
+  check('a start date can be previewed before it is set', preview.now.cycle, 1);
+  // Which is exactly what the preview is for: this start is *after* a card that
+  // has already been played, so that card falls into an earlier cycle.
+  check('showing where the cards would land', preview.cards.map(c => c.cycle), [0, 1]);
+  check('so picking a start after your history is visible before you commit',
+    preview.cycles, [0, 1]);
+  check('and nothing was written by looking', s.doc.calendar.start, '2026-05-04');
+
+  setCalendarStart(s, '2026-06-01');
+  st = project(s, { asOf: '2026-06-10' });
+  check('setting it moves day 1', calendarStart(st), '2026-06-01');
+  check('so the same card is on a different day of the cycle',
+    (({ cycle, day }) => [cycle, day])(cycleOf(st, '2026-06-05')), [1, 5]);
+  check('the events themselves never moved', st.events.map(e => e.date).join(','), before);
+  check('a date before the start is an earlier cycle', cycleOf(st, '2026-05-04').cycle, 0);
+  check('a date is refused if it is not one', !!threw(() => setCalendarStart(s, 'may')), true);
+
+  setCalendarStart(s, firstWeekOfMay(2026));
+  check('and it can be put back in one call', project(s).calendar.start, '2026-05-04');
+
+  // An exported universe comes back on the same calendar rather than being
+  // re-anchored on whatever its first event happens to be.
+  savePLE(s, project(s), { name: 'Survivor Series', day: 21, brandIds: ['b:raw', 'b:smackdown'] });
+  const out = exportSeed(s);
+  check('an export carries the start date', out.calendar.start, '2026-05-04');
+  check('and the shows\' nights', out.brands.find(b => b.name === 'Raw').slot, 1);
+  check('and the PLE schedule', out.ples.map(p => [p.name, p.day, p.brands.join('+')]),
+    [['Survivor Series', 21, 'Raw+SmackDown']]);
+  const back = seedFromJSON(out, { store: new UniverseStore({ adapter: memoryAdapter() }) }).store;
+  check('reseeding puts them back', [back.doc.calendar.start, back.entitiesOf('ple').length], ['2026-05-04', 1]);
+  check('with the brands still attached',
+    project(back).ples['p:survivor-series'].brandIds, ['b:raw', 'b:smackdown']);
+}
 
 // ──────────────────────────────────────────────────────────────── PLEs
 // A PLE is a thing that exists with a place on the cycle, assigned to as many

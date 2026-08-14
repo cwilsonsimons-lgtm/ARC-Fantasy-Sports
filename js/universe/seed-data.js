@@ -4,7 +4,10 @@
 // ships as a module. Edit the JSON and re-run the generator.
 export const UNIVERSE_SEED = {
   "name": "Universe 2026",
-  "startDate": "2026-06-01",
+  "startDate": "2026-05-04",
+  "calendar": {
+    "start": "2026-05-04"
+  },
   "brands": [
     {
       "name": "Raw",
@@ -12,7 +15,8 @@ export const UNIVERSE_SEED = {
       "color": "#C8102E",
       "logo": "🔴",
       "tier": 1,
-      "day": "Monday"
+      "day": "Monday",
+      "slot": 1
     },
     {
       "name": "SmackDown",
@@ -20,7 +24,8 @@ export const UNIVERSE_SEED = {
       "color": "#0B7BD5",
       "logo": "🔵",
       "tier": 1,
-      "day": "Friday"
+      "day": "Friday",
+      "slot": 5
     },
     {
       "name": "Dynamite",
@@ -28,7 +33,8 @@ export const UNIVERSE_SEED = {
       "color": "#E8B23A",
       "logo": "⚡",
       "tier": 1,
-      "day": "Wednesday"
+      "day": "Wednesday",
+      "slot": 3
     },
     {
       "name": "NXT",
@@ -36,7 +42,8 @@ export const UNIVERSE_SEED = {
       "color": "#7C5CFF",
       "logo": "🟣",
       "tier": 2,
-      "day": "Tuesday"
+      "day": "Tuesday",
+      "slot": 2
     },
     {
       "name": "Evolve",
@@ -45,6 +52,7 @@ export const UNIVERSE_SEED = {
       "logo": "🟢",
       "tier": 3,
       "day": "Thursday",
+      "slot": 4,
       "parent": "NXT"
     }
   ],

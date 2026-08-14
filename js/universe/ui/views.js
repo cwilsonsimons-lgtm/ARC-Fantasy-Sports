@@ -10,7 +10,8 @@ import { currentSeason, seasons, brandStandings, nextStep, PHASES, PHASE_LABEL }
 import { tiers, brandCard, pyramidText, destination, canBePromoted } from '../pyramid.js';
 import { lastStandBoard, eligibleOpponents, checkPairing } from '../laststand.js';
 import { cycleGrid, cyclesWithShows, weeklySchedule, cardOf, currentCycle, dateOf,
-  weekOfDay, slotOfBrand, CYCLE_DAYS } from '../calendar.js';
+  weekOfDay, slotOfBrand, calendarStart, startPreview, firstWeekOfMay, weekdayName,
+  CYCLE_DAYS } from '../calendar.js';
 import { allPLEs, pleCard, orderProblems, SPECIAL_LABEL, SPECIAL_SHORT } from '../ples.js';
 import { beltsByBrand, beltCard, autoPromoteDefault, defaultTeamSize, DIVISION_LABEL } from '../championships.js';
 import { SHOW_DAYS, DIVISIONS, PLE_SPECIALS } from '../schema.js';
@@ -1070,6 +1071,8 @@ export function calendarView(state, ui = {}) {
       <span class="hint">Drag a PLE onto any day to move it — its brands come with it.
         The cycle repeats: weekly shows sit on a night, PLEs sit where you put them.</span>
     </div>
+
+    ${startPanel(state, ui)}
     ${editing ? pleForm(state, editing) : ''}
     ${problems.length ? `<div class="msg warn" style="margin-top:12px">
       ${problems.map(p => h(p.message)).join('<br>')}</div>` : ''}
@@ -1107,6 +1110,47 @@ export function calendarView(state, ui = {}) {
           ${h(dateOf(state, grid.cycle, 1))}.</div>
       </div>
     </div>`;
+}
+
+// fmtDate abbreviates the weekday; here the full name is worth the space.
+const longDate = iso => `${weekdayName(iso)}, ${fmtDate(iso).replace(/^\w+,\s*/, '')}`;
+
+// Where the universe begins: day 1 of cycle 1. The game opens Universe mode in
+// the first week of May, so that year's first Monday is one click — but any date
+// works, because this is the one number the whole grid is measured from.
+function startPanel(state, ui = {}) {
+  const start = calendarStart(state);
+  const picked = ui.startPick || start;
+  const preview = startPreview(state, picked);
+  const year = Number(start.slice(0, 4));
+  const years = [year - 1, year, year + 1, year + 2];
+
+  return `<details class="card entry" id="startPanel" style="margin-top:14px"${ui.startOpen ? ' open' : ''}>
+    <summary><h2>When the universe starts
+      <span class="sub">day 1 of cycle 1 is ${h(longDate(start))}</span></h2></summary>
+    <div class="row" style="margin-top:8px">
+      <label class="opt">Day 1 <input type="date" id="calStart" value="${h(picked)}"></label>
+      <button class="btn" id="calStartSave">Set the start</button>
+      ${picked !== start ? '<button class="btn ghost" id="calStartReset">Cancel</button>' : ''}
+    </div>
+    <div class="row" style="margin-top:6px">
+      <span class="hint">The game starts Universe mode in the first week of May:</span>
+      ${years.map(y => `<button class="linkbtn${firstWeekOfMay(y) === picked ? ' strong' : ''}"
+        data-startpick="${h(firstWeekOfMay(y))}">May ${y}</button>`).join('')}
+    </div>
+    <div class="hint" style="margin-top:8px" id="startPreview">
+      ${picked === start ? 'Right now' : 'That would make'} day 1 of cycle 1
+      <strong>${h(longDate(picked))}</strong>, putting today on
+      <strong>cycle ${preview.now.cycle}, day ${preview.now.day}</strong>.
+      ${preview.now.cycle < 1 ? '<strong class="warn">That start is after today</strong>, so today would land before cycle 1. ' : ''}
+      ${preview.cards.length
+        ? `Your ${plural(preview.cards.length, 'card')} would sit in
+           ${preview.cycles[0] === preview.cycles[1] ? `cycle ${preview.cycles[0]}` : `cycles ${preview.cycles[0]} to ${preview.cycles[1]}`}
+           — the first, ${h(preview.first.name)}, on cycle ${preview.first.cycle} day ${preview.first.day}.`
+        : 'Nothing has been played yet, so nothing moves.'}
+      Dates on the log never change; only which day of the cycle they land on does.
+    </div>
+  </details>`;
 }
 
 // Create or edit one PLE. `id` is a PLE id, 'new', or 'new:<day>' when the +

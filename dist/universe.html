@@ -2250,6 +2250,203 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   }
   var plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 
+  // js/universe/calendar.js
+  var MS_DAY = 864e5;
+  var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var SLOT_WEEKDAY = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  var pad2 = (n) => String(n).padStart(2, "0");
+  var utc = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00Z`);
+  var isoOf = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  var shiftDays = (iso, n) => isoOf(new Date(utc(iso).getTime() + n * MS_DAY));
+  var daysBetween = (a, b) => Math.round((utc(b).getTime() - utc(a).getTime()) / MS_DAY);
+  var weekdayName = (iso) => WEEKDAYS[utc(iso).getUTCDay()];
+  var weekOfDay = (day) => Math.floor((Number(day) - 1) / WEEK_DAYS) + 1;
+  var slotOfDay = (day) => (Number(day) - 1) % WEEK_DAYS + 1;
+  var dayLabel = (day) => `Day ${day} \xB7 week ${weekOfDay(day)}`;
+  function firstWeekOfMay(year) {
+    const first = `${year}-05-01`;
+    const dow = utc(first).getUTCDay();
+    return shiftDays(first, (8 - (dow || 7)) % 7);
+  }
+  function startPreview(state, iso) {
+    const at = { ...state, calendar: { ...state.calendar || {}, start: iso } };
+    const cards = state.shows.map((sh) => ({ ...cycleOf(at, sh.date), name: sh.name, date: sh.date }));
+    const now = cycleOf(at, state.asOf);
+    return {
+      start: iso,
+      weekday: weekdayName(iso),
+      now,
+      cards,
+      first: cards[0] || null,
+      last: cards[cards.length - 1] || null,
+      cycles: cards.length ? [Math.min(...cards.map((c) => c.cycle)), Math.max(...cards.map((c) => c.cycle))] : null
+    };
+  }
+  function setCalendarStart(store2, iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso)) || Number.isNaN(utc(iso).getTime())) {
+      const e = new Error(`that is not a date: ${iso}`);
+      e.errors = [e.message];
+      throw e;
+    }
+    store2.doc.calendar = { ...store2.doc.calendar || { cycleDays: CYCLE_DAYS }, start: iso };
+    store2.save();
+    return iso;
+  }
+  function calendarStart(state) {
+    const set = state.calendar && state.calendar.start;
+    if (set) return set;
+    if (state.startDate) return state.startDate;
+    const first = state.events.length ? state.events[0].date : null;
+    return first || state.asOf;
+  }
+  function cycleOf(state, iso) {
+    const n = daysBetween(calendarStart(state), iso);
+    const cycle = Math.floor(n / CYCLE_DAYS) + 1;
+    const day = (n % CYCLE_DAYS + CYCLE_DAYS) % CYCLE_DAYS + 1;
+    return { cycle, day, week: weekOfDay(day) };
+  }
+  var dateOf = (state, cycle, day) => shiftDays(calendarStart(state), (Number(cycle) - 1) * CYCLE_DAYS + (Number(day) - 1));
+  var currentCycle = (state) => cycleOf(state, state.asOf).cycle;
+  function slotOfBrand(brand2) {
+    if (!brand2) return null;
+    if (brand2.slot != null && brand2.slot !== "") return Number(brand2.slot);
+    const i = SLOT_WEEKDAY.indexOf(brand2.day);
+    return i < 0 ? null : i + 1;
+  }
+  function brandsOnSlot(state, slot) {
+    return Object.values(state.brands).filter((b) => slotOfBrand(b) === Number(slot)).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
+  }
+  function weeklySchedule(state) {
+    return Array.from({ length: WEEK_DAYS }, (_, i) => ({
+      slot: i + 1,
+      weekday: SLOT_WEEKDAY[i],
+      brands: brandsOnSlot(state, i + 1).map((b) => ({
+        id: b.id,
+        name: b.name,
+        color: b.color || null,
+        tier: b.tier || 1
+      }))
+    }));
+  }
+  var showCell = (state, s) => ({
+    id: s.id,
+    name: s.name,
+    date: s.date,
+    ple: s.ple || null,
+    brandId: s.brandId || null,
+    brandName: s.brandId && state.brands[s.brandId] ? state.brands[s.brandId].name : null,
+    color: s.brandId && state.brands[s.brandId] && state.brands[s.brandId].color || null,
+    segments: s.segments.length,
+    matches: s.segments.filter((g) => g.type === "match").length
+  });
+  function showsOn(state, date) {
+    return state.shows.filter((s) => s.date === date).map((s) => showCell(state, s));
+  }
+  function cycleGrid(state, cycle, { brandId = null, ples = [] } = {}) {
+    const n = Number(cycle);
+    const today2 = cycleOf(state, state.asOf);
+    const weeks = [];
+    for (let w = 0; w < CYCLE_WEEKS; w++) {
+      const row = [];
+      for (let d = 1; d <= WEEK_DAYS; d++) {
+        const day = w * WEEK_DAYS + d;
+        const date = dateOf(state, n, day);
+        const shows = showsOn(state, date);
+        const onDay = ples.filter((p) => p.day === day);
+        const booked = new Set(shows.map((s) => s.brandId));
+        const weekly = brandsOnSlot(state, slotOfDay(day)).filter((b) => !booked.has(b.id)).map((b) => ({ id: b.id, name: b.name, color: b.color || null }));
+        const keep = (p) => !brandId || (p.brandIds || []).includes(brandId);
+        const showKeep = (s) => !brandId || s.brandId === brandId || onDay.some((p) => (p.brandIds || []).includes(brandId) && sameName(p.name, s.name));
+        row.push({
+          day,
+          week: w + 1,
+          slot: slotOfDay(day),
+          date,
+          weekday: weekdayName(date),
+          isToday: today2.cycle === n && today2.day === day,
+          past: date < state.asOf,
+          shows: shows.filter(showKeep),
+          weekly: brandId ? weekly.filter((b) => b.id === brandId) : weekly,
+          ples: onDay.filter(keep)
+        });
+      }
+      weeks.push(row);
+    }
+    const flat = weeks.flat();
+    return {
+      cycle: n,
+      weeks,
+      from: dateOf(state, n, 1),
+      to: dateOf(state, n, CYCLE_DAYS),
+      isCurrent: today2.cycle === n,
+      counts: {
+        shows: flat.reduce((t, c) => t + c.shows.length, 0),
+        matches: flat.reduce((t, c) => t + c.shows.reduce((m, s) => m + s.matches, 0), 0),
+        ples: flat.reduce((t, c) => t + c.ples.length, 0)
+      }
+    };
+  }
+  var sameName = (a, b) => String(a).toLowerCase().trim() === String(b).toLowerCase().trim();
+  function cyclesWithShows(state) {
+    const by = /* @__PURE__ */ new Map();
+    state.shows.forEach((s) => {
+      const { cycle } = cycleOf(state, s.date);
+      if (!by.has(cycle)) by.set(cycle, { cycle, shows: 0, matches: 0, ples: [] });
+      const row = by.get(cycle);
+      row.shows += 1;
+      row.matches += s.segments.filter((g) => g.type === "match").length;
+      if (s.ple) row.ples.push(s.name);
+    });
+    return [...by.values()].sort((a, b) => b.cycle - a.cycle);
+  }
+  var nameOf2 = (state, ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : state.championships[ref] ? state.championships[ref].name : ref;
+  function changesOn(state, events) {
+    const out = [];
+    const add = (kind, text, eventId) => out.push({ kind, text, eventId });
+    events.forEach((e) => (e.effects || []).forEach((fx) => {
+      const belt = fx.titleId && state.championships[fx.titleId] ? state.championships[fx.titleId].name : fx.titleId;
+      const who = (list) => (list || []).map((r) => nameOf2(state, r)).join(" & ");
+      if (fx.kind === "title.award") add("title", `${belt} \u2014 new champion: ${who(fx.holders)}`, e.id);
+      else if (fx.kind === "title.interim") add("title", `${belt} \u2014 interim champion: ${who(fx.holders)}`, e.id);
+      else if (fx.kind === "title.unify") add("title", `${belt} unified \u2014 ${who(fx.holders)}`, e.id);
+      else if (fx.kind === "title.vacate") add("title", `${belt} vacated (${fx.reason || "vacated"})`, e.id);
+      else if (fx.kind === "roster.brand") {
+        const to = state.brands[fx.brandId] ? state.brands[fx.brandId].name : fx.brandId;
+        add("roster", `${nameOf2(state, fx.subject)} moves to ${to}${fx.reason ? ` (${fx.reason})` : ""}`, e.id);
+      } else if (fx.kind === "injury.start") {
+        add("injury", `${nameOf2(state, fx.subject)} injured${fx.weeks ? ` \u2014 ${fx.weeks} weeks` : ""}`, e.id);
+      } else if (fx.kind === "injury.end") add("injury", `${nameOf2(state, fx.subject)} cleared to return`, e.id);
+      else if (fx.kind === "group.form") {
+        add("group", `${fx.name || (state.groups[fx.groupId] ? state.groups[fx.groupId].name : "a new group")} forms`, e.id);
+      } else if (fx.kind === "group.dissolve") {
+        add("group", `${state.groups[fx.groupId] ? state.groups[fx.groupId].name : fx.groupId} splits up`, e.id);
+      }
+    }));
+    return out;
+  }
+  function cardOf(state, showId) {
+    const show = state.showsById[showId];
+    if (!show) return null;
+    const events = state.events.filter((e) => e.showId === showId);
+    const idx = state.shows.findIndex((s) => s.id === showId);
+    const at = cycleOf(state, show.date);
+    return {
+      ...show,
+      cycle: at.cycle,
+      day: at.day,
+      week: at.week,
+      dayLabel: dayLabel(at.day),
+      weekday: weekdayName(show.date),
+      brandName: show.brandId && state.brands[show.brandId] ? state.brands[show.brandId].name : null,
+      color: show.brandId && state.brands[show.brandId] && state.brands[show.brandId].color || null,
+      matches: show.segments.filter((g) => g.type === "match").length,
+      changes: changesOn(state, events),
+      // Chronological neighbours, so a card can be paged through like a diary.
+      prev: idx > 0 ? state.shows[idx - 1].id : null,
+      next: idx >= 0 && idx < state.shows.length - 1 ? state.shows[idx + 1].id : null
+    };
+  }
+
   // js/universe/seed.js
   var arr = (v) => v == null ? [] : Array.isArray(v) ? v : [v];
   function seedFromJSON(doc, { store: store2 = null, adapter = null, startDate = null } = {}) {
@@ -2891,15 +3088,15 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   function parseDate(text, fallbackYear = (/* @__PURE__ */ new Date()).getFullYear()) {
     const t = clean(text);
     let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
-    if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+    if (m) return `${m[1]}-${pad22(m[2])}-${pad22(m[3])}`;
     m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/.exec(t);
     if (m) {
       const y = m[3] ? m[3].length === 2 ? `20${m[3]}` : m[3] : String(fallbackYear);
-      return `${y}-${pad2(m[1])}-${pad2(m[2])}`;
+      return `${y}-${pad22(m[1])}-${pad22(m[2])}`;
     }
     return null;
   }
-  var pad2 = (n) => String(n).padStart(2, "0");
+  var pad22 = (n) => String(n).padStart(2, "0");
   function parseCard(text, store2, { date = null, brandId = null, showName = null } = {}) {
     const state = project(store2);
     const idx = {
@@ -3799,7 +3996,10 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   // js/universe/seed-data.js
   var UNIVERSE_SEED = {
     "name": "Universe 2026",
-    "startDate": "2026-06-01",
+    "startDate": "2026-05-04",
+    "calendar": {
+      "start": "2026-05-04"
+    },
     "brands": [
       {
         "name": "Raw",
@@ -3807,7 +4007,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "color": "#C8102E",
         "logo": "\u{1F534}",
         "tier": 1,
-        "day": "Monday"
+        "day": "Monday",
+        "slot": 1
       },
       {
         "name": "SmackDown",
@@ -3815,7 +4016,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "color": "#0B7BD5",
         "logo": "\u{1F535}",
         "tier": 1,
-        "day": "Friday"
+        "day": "Friday",
+        "slot": 5
       },
       {
         "name": "Dynamite",
@@ -3823,7 +4025,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "color": "#E8B23A",
         "logo": "\u26A1",
         "tier": 1,
-        "day": "Wednesday"
+        "day": "Wednesday",
+        "slot": 3
       },
       {
         "name": "NXT",
@@ -3831,7 +4034,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "color": "#7C5CFF",
         "logo": "\u{1F7E3}",
         "tier": 2,
-        "day": "Tuesday"
+        "day": "Tuesday",
+        "slot": 2
       },
       {
         "name": "Evolve",
@@ -3840,6 +4044,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "logo": "\u{1F7E2}",
         "tier": 3,
         "day": "Thursday",
+        "slot": 4,
         "parent": "NXT"
       }
     ],
@@ -4713,174 +4918,6 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       })),
       open: proposal.groups.filter((g) => !g.resolved),
       settled: proposal.groups.filter((g) => g.resolved)
-    };
-  }
-
-  // js/universe/calendar.js
-  var MS_DAY = 864e5;
-  var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  var SLOT_WEEKDAY = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  var pad3 = (n) => String(n).padStart(2, "0");
-  var utc = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00Z`);
-  var isoOf = (d) => `${d.getUTCFullYear()}-${pad3(d.getUTCMonth() + 1)}-${pad3(d.getUTCDate())}`;
-  var shiftDays = (iso, n) => isoOf(new Date(utc(iso).getTime() + n * MS_DAY));
-  var daysBetween = (a, b) => Math.round((utc(b).getTime() - utc(a).getTime()) / MS_DAY);
-  var weekdayName = (iso) => WEEKDAYS[utc(iso).getUTCDay()];
-  var weekOfDay = (day) => Math.floor((Number(day) - 1) / WEEK_DAYS) + 1;
-  var slotOfDay = (day) => (Number(day) - 1) % WEEK_DAYS + 1;
-  var dayLabel = (day) => `Day ${day} \xB7 week ${weekOfDay(day)}`;
-  function calendarStart(state) {
-    const set = state.calendar && state.calendar.start;
-    if (set) return set;
-    if (state.startDate) return state.startDate;
-    const first = state.events.length ? state.events[0].date : null;
-    return first || state.asOf;
-  }
-  function cycleOf(state, iso) {
-    const n = daysBetween(calendarStart(state), iso);
-    const cycle = Math.floor(n / CYCLE_DAYS) + 1;
-    const day = (n % CYCLE_DAYS + CYCLE_DAYS) % CYCLE_DAYS + 1;
-    return { cycle, day, week: weekOfDay(day) };
-  }
-  var dateOf = (state, cycle, day) => shiftDays(calendarStart(state), (Number(cycle) - 1) * CYCLE_DAYS + (Number(day) - 1));
-  var currentCycle = (state) => cycleOf(state, state.asOf).cycle;
-  function slotOfBrand(brand2) {
-    if (!brand2) return null;
-    if (brand2.slot != null && brand2.slot !== "") return Number(brand2.slot);
-    const i = SLOT_WEEKDAY.indexOf(brand2.day);
-    return i < 0 ? null : i + 1;
-  }
-  function brandsOnSlot(state, slot) {
-    return Object.values(state.brands).filter((b) => slotOfBrand(b) === Number(slot)).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
-  }
-  function weeklySchedule(state) {
-    return Array.from({ length: WEEK_DAYS }, (_, i) => ({
-      slot: i + 1,
-      weekday: SLOT_WEEKDAY[i],
-      brands: brandsOnSlot(state, i + 1).map((b) => ({
-        id: b.id,
-        name: b.name,
-        color: b.color || null,
-        tier: b.tier || 1
-      }))
-    }));
-  }
-  var showCell = (state, s) => ({
-    id: s.id,
-    name: s.name,
-    date: s.date,
-    ple: s.ple || null,
-    brandId: s.brandId || null,
-    brandName: s.brandId && state.brands[s.brandId] ? state.brands[s.brandId].name : null,
-    color: s.brandId && state.brands[s.brandId] && state.brands[s.brandId].color || null,
-    segments: s.segments.length,
-    matches: s.segments.filter((g) => g.type === "match").length
-  });
-  function showsOn(state, date) {
-    return state.shows.filter((s) => s.date === date).map((s) => showCell(state, s));
-  }
-  function cycleGrid(state, cycle, { brandId = null, ples = [] } = {}) {
-    const n = Number(cycle);
-    const today2 = cycleOf(state, state.asOf);
-    const weeks = [];
-    for (let w = 0; w < CYCLE_WEEKS; w++) {
-      const row = [];
-      for (let d = 1; d <= WEEK_DAYS; d++) {
-        const day = w * WEEK_DAYS + d;
-        const date = dateOf(state, n, day);
-        const shows = showsOn(state, date);
-        const onDay = ples.filter((p) => p.day === day);
-        const booked = new Set(shows.map((s) => s.brandId));
-        const weekly = brandsOnSlot(state, slotOfDay(day)).filter((b) => !booked.has(b.id)).map((b) => ({ id: b.id, name: b.name, color: b.color || null }));
-        const keep = (p) => !brandId || (p.brandIds || []).includes(brandId);
-        const showKeep = (s) => !brandId || s.brandId === brandId || onDay.some((p) => (p.brandIds || []).includes(brandId) && sameName(p.name, s.name));
-        row.push({
-          day,
-          week: w + 1,
-          slot: slotOfDay(day),
-          date,
-          weekday: weekdayName(date),
-          isToday: today2.cycle === n && today2.day === day,
-          past: date < state.asOf,
-          shows: shows.filter(showKeep),
-          weekly: brandId ? weekly.filter((b) => b.id === brandId) : weekly,
-          ples: onDay.filter(keep)
-        });
-      }
-      weeks.push(row);
-    }
-    const flat = weeks.flat();
-    return {
-      cycle: n,
-      weeks,
-      from: dateOf(state, n, 1),
-      to: dateOf(state, n, CYCLE_DAYS),
-      isCurrent: today2.cycle === n,
-      counts: {
-        shows: flat.reduce((t, c) => t + c.shows.length, 0),
-        matches: flat.reduce((t, c) => t + c.shows.reduce((m, s) => m + s.matches, 0), 0),
-        ples: flat.reduce((t, c) => t + c.ples.length, 0)
-      }
-    };
-  }
-  var sameName = (a, b) => String(a).toLowerCase().trim() === String(b).toLowerCase().trim();
-  function cyclesWithShows(state) {
-    const by = /* @__PURE__ */ new Map();
-    state.shows.forEach((s) => {
-      const { cycle } = cycleOf(state, s.date);
-      if (!by.has(cycle)) by.set(cycle, { cycle, shows: 0, matches: 0, ples: [] });
-      const row = by.get(cycle);
-      row.shows += 1;
-      row.matches += s.segments.filter((g) => g.type === "match").length;
-      if (s.ple) row.ples.push(s.name);
-    });
-    return [...by.values()].sort((a, b) => b.cycle - a.cycle);
-  }
-  var nameOf2 = (state, ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : state.championships[ref] ? state.championships[ref].name : ref;
-  function changesOn(state, events) {
-    const out = [];
-    const add = (kind, text, eventId) => out.push({ kind, text, eventId });
-    events.forEach((e) => (e.effects || []).forEach((fx) => {
-      const belt = fx.titleId && state.championships[fx.titleId] ? state.championships[fx.titleId].name : fx.titleId;
-      const who = (list) => (list || []).map((r) => nameOf2(state, r)).join(" & ");
-      if (fx.kind === "title.award") add("title", `${belt} \u2014 new champion: ${who(fx.holders)}`, e.id);
-      else if (fx.kind === "title.interim") add("title", `${belt} \u2014 interim champion: ${who(fx.holders)}`, e.id);
-      else if (fx.kind === "title.unify") add("title", `${belt} unified \u2014 ${who(fx.holders)}`, e.id);
-      else if (fx.kind === "title.vacate") add("title", `${belt} vacated (${fx.reason || "vacated"})`, e.id);
-      else if (fx.kind === "roster.brand") {
-        const to = state.brands[fx.brandId] ? state.brands[fx.brandId].name : fx.brandId;
-        add("roster", `${nameOf2(state, fx.subject)} moves to ${to}${fx.reason ? ` (${fx.reason})` : ""}`, e.id);
-      } else if (fx.kind === "injury.start") {
-        add("injury", `${nameOf2(state, fx.subject)} injured${fx.weeks ? ` \u2014 ${fx.weeks} weeks` : ""}`, e.id);
-      } else if (fx.kind === "injury.end") add("injury", `${nameOf2(state, fx.subject)} cleared to return`, e.id);
-      else if (fx.kind === "group.form") {
-        add("group", `${fx.name || (state.groups[fx.groupId] ? state.groups[fx.groupId].name : "a new group")} forms`, e.id);
-      } else if (fx.kind === "group.dissolve") {
-        add("group", `${state.groups[fx.groupId] ? state.groups[fx.groupId].name : fx.groupId} splits up`, e.id);
-      }
-    }));
-    return out;
-  }
-  function cardOf(state, showId) {
-    const show = state.showsById[showId];
-    if (!show) return null;
-    const events = state.events.filter((e) => e.showId === showId);
-    const idx = state.shows.findIndex((s) => s.id === showId);
-    const at = cycleOf(state, show.date);
-    return {
-      ...show,
-      cycle: at.cycle,
-      day: at.day,
-      week: at.week,
-      dayLabel: dayLabel(at.day),
-      weekday: weekdayName(show.date),
-      brandName: show.brandId && state.brands[show.brandId] ? state.brands[show.brandId].name : null,
-      color: show.brandId && state.brands[show.brandId] && state.brands[show.brandId].color || null,
-      matches: show.segments.filter((g) => g.type === "match").length,
-      changes: changesOn(state, events),
-      // Chronological neighbours, so a card can be paged through like a diary.
-      prev: idx > 0 ? state.shows[idx - 1].id : null,
-      next: idx >= 0 && idx < state.shows.length - 1 ? state.shows[idx + 1].id : null
     };
   }
 
@@ -5995,6 +6032,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       <span class="hint">Drag a PLE onto any day to move it \u2014 its brands come with it.
         The cycle repeats: weekly shows sit on a night, PLEs sit where you put them.</span>
     </div>
+
+    ${startPanel(state, ui)}
     ${editing ? pleForm(state, editing) : ""}
     ${problems.length ? `<div class="msg warn" style="margin-top:12px">
       ${problems.map((p) => h(p.message)).join("<br>")}</div>` : ""}
@@ -6030,6 +6069,38 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
           ${h(dateOf(state, grid.cycle, 1))}.</div>
       </div>
     </div>`;
+  }
+  var longDate = (iso) => `${weekdayName(iso)}, ${fmtDate(iso).replace(/^\w+,\s*/, "")}`;
+  function startPanel(state, ui = {}) {
+    const start = calendarStart(state);
+    const picked = ui.startPick || start;
+    const preview = startPreview(state, picked);
+    const year = Number(start.slice(0, 4));
+    const years = [year - 1, year, year + 1, year + 2];
+    return `<details class="card entry" id="startPanel" style="margin-top:14px"${ui.startOpen ? " open" : ""}>
+    <summary><h2>When the universe starts
+      <span class="sub">day 1 of cycle 1 is ${h(longDate(start))}</span></h2></summary>
+    <div class="row" style="margin-top:8px">
+      <label class="opt">Day 1 <input type="date" id="calStart" value="${h(picked)}"></label>
+      <button class="btn" id="calStartSave">Set the start</button>
+      ${picked !== start ? '<button class="btn ghost" id="calStartReset">Cancel</button>' : ""}
+    </div>
+    <div class="row" style="margin-top:6px">
+      <span class="hint">The game starts Universe mode in the first week of May:</span>
+      ${years.map((y) => `<button class="linkbtn${firstWeekOfMay(y) === picked ? " strong" : ""}"
+        data-startpick="${h(firstWeekOfMay(y))}">May ${y}</button>`).join("")}
+    </div>
+    <div class="hint" style="margin-top:8px" id="startPreview">
+      ${picked === start ? "Right now" : "That would make"} day 1 of cycle 1
+      <strong>${h(longDate(picked))}</strong>, putting today on
+      <strong>cycle ${preview.now.cycle}, day ${preview.now.day}</strong>.
+      ${preview.now.cycle < 1 ? '<strong class="warn">That start is after today</strong>, so today would land before cycle 1. ' : ""}
+      ${preview.cards.length ? `Your ${plural2(preview.cards.length, "card")} would sit in
+           ${preview.cycles[0] === preview.cycles[1] ? `cycle ${preview.cycles[0]}` : `cycles ${preview.cycles[0]} to ${preview.cycles[1]}`}
+           \u2014 the first, ${h(preview.first.name)}, on cycle ${preview.first.cycle} day ${preview.first.day}.` : "Nothing has been played yet, so nothing moves."}
+      Dates on the log never change; only which day of the cycle they land on does.
+    </div>
+  </details>`;
   }
   function pleForm(state, id) {
     const isNew = id === "new" || id.startsWith("new:");
@@ -6963,6 +7034,9 @@ no explanation, no code fences.`;
     // brand filter on the calendar
     pleEdit: null,
     // PLE id being edited, 'new', or 'new:<day>'
+    startPick: null,
+    // a start date being considered, not yet set
+    startOpen: false,
     shots: [],
     activeShot: 0,
     shotKind: "card",
@@ -7052,7 +7126,9 @@ no explanation, no code fences.`;
     if (app.tab === "calendar") $("#pane-calendar").innerHTML = calendarView(s, {
       cycle: app.cycle,
       brandId: app.calBrand,
-      editingPLE: app.pleEdit
+      editingPLE: app.pleEdit,
+      startPick: app.startPick,
+      startOpen: app.startOpen || !!app.startPick
     });
     if (app.tab === "show") $("#pane-show").innerHTML = showPage(s, app.detailId);
     if (app.tab === "shows") $("#pane-shows").innerHTML = showsView(s);
@@ -7265,6 +7341,35 @@ no explanation, no code fences.`;
       flash(h(err2.errors ? err2.errors.join("; ") : err2.message), "err");
     }
     render();
+  });
+  on("click", "[data-startpick]", (e, el) => {
+    app.startPick = el.dataset.startpick;
+    app.startOpen = true;
+    render();
+  });
+  on("change", "#calStart", (e, el) => {
+    app.startPick = el.value || null;
+    app.startOpen = true;
+    render();
+  });
+  on("click", "#calStartReset", () => {
+    app.startPick = null;
+    render();
+  });
+  on("click", "#calStartSave", () => {
+    const iso = $("#calStart") && $("#calStart").value || app.startPick;
+    try {
+      setCalendarStart(store, iso);
+      app.startPick = null;
+      app.cycle = null;
+      flash(`Day 1 of cycle 1 is now ${h(iso)}.`);
+    } catch (err2) {
+      flash(h(err2.message), "err");
+    }
+    render();
+  });
+  on("toggle", "#startPanel", (e, el) => {
+    app.startOpen = el.open;
   });
   on("click", "[data-editple]", (e, el) => {
     app.pleEdit = el.dataset.editple || null;

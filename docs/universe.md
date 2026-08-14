@@ -37,8 +37,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     510 data-layer checks, pure Node
-  universe-ui-check.mjs  260 browser checks against the built page
+  universe-check.mjs     531 data-layer checks, pure Node
+  universe-ui-check.mjs  270 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -533,7 +533,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 260 browser checks
+npm run check:universe-ui    # 270 browser checks
 ```
 
 | Tab | What it does |
@@ -590,12 +590,33 @@ Underneath, events still carry real ISO dates — reign day counts, rivalry deca
 and "state as of" all need a real timeline, and a second clock would be one more
 thing to keep in step. So the cycle is a **lens**: an anchor date is day 1 of
 cycle 1, and `cycleOf(state, date)` maps any date to `(cycle, day, week)`. Cards
-you have already played land on the day they fall on. The anchor lives in
-`doc.calendar.start` and defaults to the first thing that ever happened.
+you have already played land on the day they fall on.
 
-    node tools/universe.mjs calendar              # this cycle
+### Where it starts
+
+Day 1 of cycle 1 is **yours to pick**, and it is the one number the whole grid is
+measured from. The game opens Universe mode in the first week of May, so that is
+what the presets offer — the first Monday in May of any year, one click — but any
+date works.
+
+The shipped seed starts on **Monday 4 May 2026**, so a new save already sits
+where the game puts you.
+
+Picking a date is a **preview first**: the panel says where today would land and
+which cycles the cards you have already played would fall into, before anything
+is written. Setting it changes nothing but the numbering — the log keeps its own
+dates, and a date earlier than the start you chose simply lands in an earlier
+cycle (which the preview will show you as cycle 0 or below, rather than
+pretending otherwise).
+
+The anchor lives in `doc.calendar.start`, travels with an export, and defaults to
+the first thing that ever happened if a save has never set one.
+
+    node tools/universe.mjs calendar                    # this cycle
     node tools/universe.mjs calendar --cycle 3
-    node tools/universe.mjs show sh_0088          # one card, and what it changed
+    node tools/universe.mjs calendar --start "may 2027" # the game's own answer
+    node tools/universe.mjs calendar --start 2027-01-04 # or any date at all
+    node tools/universe.mjs show sh_0088                # one card, and what it changed
 
 ### PLEs
 
@@ -904,5 +925,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 510 checks, no browser, no network
+npm run check:universe     # 531 checks, no browser, no network
 ```

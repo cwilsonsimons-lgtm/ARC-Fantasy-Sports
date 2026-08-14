@@ -44,6 +44,46 @@ export const weekOfDay = day => Math.floor((Number(day) - 1) / WEEK_DAYS) + 1;
 export const slotOfDay = day => ((Number(day) - 1) % WEEK_DAYS) + 1;
 export const dayLabel = day => `Day ${day} · week ${weekOfDay(day)}`;
 
+// ------------------------------------------------------------------ where it starts
+
+// The game opens Universe mode in the first week of May, so that is what this
+// offers: the first Monday in May of a given year. Nothing forces it — it is a
+// convenience for the common answer, and any date can be the start instead.
+export function firstWeekOfMay(year) {
+  const first = `${year}-05-01`;
+  const dow = utc(first).getUTCDay();             // 0 Sun … 6 Sat
+  return shiftDays(first, (8 - (dow || 7)) % 7);  // forward to Monday
+}
+
+// What picking a start date would mean, worked out before anything is written:
+// where day 1 lands, and where the cards already played end up on the new grid.
+export function startPreview(state, iso) {
+  const at = { ...state, calendar: { ...(state.calendar || {}), start: iso } };
+  const cards = state.shows.map(sh => ({ ...cycleOf(at, sh.date), name: sh.name, date: sh.date }));
+  const now = cycleOf(at, state.asOf);
+  return {
+    start: iso,
+    weekday: weekdayName(iso),
+    now,
+    cards,
+    first: cards[0] || null,
+    last: cards[cards.length - 1] || null,
+    cycles: cards.length ? [Math.min(...cards.map(c => c.cycle)), Math.max(...cards.map(c => c.cycle))] : null,
+  };
+}
+
+// Day 1 of cycle 1. The only thing this writes; every date reads through it.
+export function setCalendarStart(store, iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso)) || Number.isNaN(utc(iso).getTime())) {
+    const e = new Error(`that is not a date: ${iso}`);
+    e.errors = [e.message];
+    throw e;
+  }
+  store.doc.calendar = { ...(store.doc.calendar || { cycleDays: CYCLE_DAYS }), start: iso };
+  store.save();
+  return iso;
+}
+
 // ------------------------------------------------------------------ the anchor
 
 // Day 1 of cycle 1. Taken from the save if it has one, otherwise the first

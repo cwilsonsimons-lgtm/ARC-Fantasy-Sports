@@ -38,7 +38,8 @@ import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { lastStandBoard } from '../js/universe/laststand.js';
 import { beltsByBrand, saveChampionship, retireChampionship, deleteChampionship,
   autoPromoteDefault, DIVISION_LABEL } from '../js/universe/championships.js';
-import { cycleText, cardText, cyclesWithShows, weeklySchedule, currentCycle, cycleOf } from '../js/universe/calendar.js';
+import { cycleText, cardText, cyclesWithShows, weeklySchedule, currentCycle, cycleOf,
+  calendarStart, setCalendarStart, startPreview, firstWeekOfMay, weekdayName } from '../js/universe/calendar.js';
 import { allPLEs, savePLE, movePLE, deletePLE, orderProblems, scheduleText, SPECIAL_SHORT } from '../js/universe/ples.js';
 
 // ------------------------------------------------------------------ args
@@ -177,11 +178,31 @@ const commands = {
 
   calendar() {
     const store = openStore();
-    const state = project(store, { asOf: flags['as-of'] || null });
-    const cycle = flags.cycle ? Number(flags.cycle) : currentCycle(state);
-    if (!Number.isInteger(cycle) || cycle < 1) die(`--cycle wants a whole number, got: ${flags.cycle}`);
+    let state = project(store, { asOf: flags['as-of'] || null });
+
+    // Where the universe begins. `--start may 2027` is the game's own answer.
+    if (flags.start) {
+      const m = /^(?:may\s+)?(\d{4})$/i.exec(String(flags.start).trim());
+      const iso = m ? firstWeekOfMay(Number(m[1])) : String(flags.start).trim();
+      const before = startPreview(state, iso);
+      setCalendarStart(store, iso);
+      state = project(store, { asOf: flags['as-of'] || null });
+      console.log(`day 1 of cycle 1 is now ${weekdayName(iso)} ${iso}`);
+      console.log(`  today is cycle ${before.now.cycle}, day ${before.now.day}`
+        + `${before.cycles ? ` · ${plural(before.cards.length, 'card')} across cycles ${before.cycles[0]}–${before.cycles[1]}` : ''}`);
+      // A start later than the save's own history is legal but rarely meant.
+      if (before.now.cycle < 1) console.log('  note: that start is after today, so today lands before cycle 1');
+    }
+
+    // Only a typed --cycle is validated. A computed one can legitimately be
+    // zero or negative: that is what a date before day 1 of cycle 1 means.
+    if (flags.cycle !== undefined && !Number.isInteger(Number(flags.cycle))) {
+      die(`--cycle wants a whole number, got: ${flags.cycle}`);
+    }
+    const cycle = flags.cycle !== undefined ? Number(flags.cycle) : currentCycle(state);
 
     console.log(heading('The 28-day cycle', '═'));
+    console.log(`Day 1 of cycle 1: ${weekdayName(calendarStart(state))} ${calendarStart(state)}`);
     console.log(cycleText(state, cycle, { width: +(flags.width || 17), ples: allPLEs(state) }));
 
     console.log(heading('The week'));
@@ -855,7 +876,7 @@ const commands = {
   roster <file|-> [--dry] [--add-only]   sync one brand's roster from a paste
   brands [--as-of D]                     who is on each brand
   card <file|-> [--dry] [--date D]       enter a show's card
-  calendar [--cycle N]                   the 28-day cycle, the week, cycles on record
+  calendar [--cycle N] [--start DATE]    the 28-day cycle; --start "may 2027" sets day 1
   ples                                   every PLE on the cycle
   ple "<name>" [--day N] [--brands "A, B"|all] [--special lastStand] [--delete]
                                          create, edit or move one PLE

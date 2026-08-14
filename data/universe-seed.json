@@ -1,6 +1,9 @@
 {
   "name": "Universe 2026",
-  "startDate": "2026-06-01",
+  "startDate": "2026-05-04",
+  "calendar": {
+    "start": "2026-05-04"
+  },
   "_comment": "Seed files are written in names, not ids. Everything here becomes founding EVENTS (contracts, alliances), not initial state. NOTE: no titleHolders — every championship in a new save starts VACANT, and a title's history begins the first time somebody wins it in your booking. Add a titleHolders array here only if you deliberately want a save to start mid-reign. The NXT titles carry autoPromote: holding one after WrestleMania is itself a call-up, so the champion joins the main-roster draft pool without a Last Stand match. Evolve titles deliberately do not.",
   "brands": [
     {
@@ -9,7 +12,8 @@
       "color": "#C8102E",
       "logo": "🔴",
       "tier": 1,
-      "day": "Monday"
+      "day": "Monday",
+      "slot": 1
     },
     {
       "name": "SmackDown",
@@ -17,7 +21,8 @@
       "color": "#0B7BD5",
       "logo": "🔵",
       "tier": 1,
-      "day": "Friday"
+      "day": "Friday",
+      "slot": 5
     },
     {
       "name": "Dynamite",
@@ -25,7 +30,8 @@
       "color": "#E8B23A",
       "logo": "⚡",
       "tier": 1,
-      "day": "Wednesday"
+      "day": "Wednesday",
+      "slot": 3
     },
     {
       "name": "NXT",
@@ -33,7 +39,8 @@
       "color": "#7C5CFF",
       "logo": "🟣",
       "tier": 2,
-      "day": "Tuesday"
+      "day": "Tuesday",
+      "slot": 2
     },
     {
       "name": "Evolve",
@@ -42,6 +49,7 @@
       "logo": "🟢",
       "tier": 3,
       "day": "Thursday",
+      "slot": 4,
       "parent": "NXT"
     }
   ],
