@@ -181,7 +181,14 @@ export function parseRoster(text, store, { defaultStatus = 'active' } = {}) {
 
 // Diff the parsed roster against current state and write only what differs.
 // Returns the events written (or that *would* be written, with dryRun).
-export function commitRoster(store, parsed, { date = new Date().toISOString().slice(0, 10), dryRun = false } = {}) {
+export function commitRoster(store, parsed, {
+  date = new Date().toISOString().slice(0, 10),
+  dryRun = false,
+  // A paste is a brand's roster, not a list of additions to it — see the
+  // brand sync below. `addOnly` turns that off for a deliberately partial
+  // paste (half a division, one call-up you typed by hand).
+  addOnly = false,
+} = {}) {
   if (parsed.errors.length) {
     const e = new Error(`roster has ${plural(parsed.errors.length, 'error')} — nothing was imported`);
     e.errors = parsed.errors;
@@ -191,7 +198,10 @@ export function commitRoster(store, parsed, { date = new Date().toISOString().sl
   const before = project(store);
   const created = { wrestlers: [], groups: [] };
   const events = [];
-  const summary = { added: [], moved: [], flagged: [], unchanged: [], groupsFormed: [], groupsChanged: [] };
+  const summary = { added: [], moved: [], flagged: [], unchanged: [], left: [], brands: [], groupsFormed: [], groupsChanged: [] };
+  // Everyone the paste names, however they were spelled — the brand sync below
+  // needs to know who was accounted for.
+  const named = new Set();
 
   // -- wrestlers -----------------------------------------------------------
   parsed.wrestlers.forEach(r => {
@@ -203,6 +213,7 @@ export function commitRoster(store, parsed, { date = new Date().toISOString().sl
       const rec = { name: r.name, gender: r.gender || undefined, alignment: r.alignment || undefined, overall: r.overall || undefined };
       const id = entityId('wrestler', r.name);
       if (!dryRun) store.addEntity('wrestler', rec, { upsert: true });
+      named.add(id);
       created.wrestlers.push({ id, ...rec, brandId: r.brandId, status: r.status });
       summary.added.push({ id, name: r.name, brandId: r.brandId, brandName: brandName(before, r.brandId), status: r.status });
 
@@ -224,6 +235,7 @@ export function commitRoster(store, parsed, { date = new Date().toISOString().sl
     }
 
     const id = hit.id;
+    named.add(id);
     let touched = false;
 
     // Registry facts (gender, alignment) are corrections, not events — they
@@ -274,6 +286,38 @@ export function commitRoster(store, parsed, { date = new Date().toISOString().sl
     }
 
     if (!touched && !Object.keys(patch).length) summary.unchanged.push({ id, name: existing.name });
+  });
+
+  // -- the brands this paste speaks for ------------------------------------
+  // Rosters are pasted one brand at a time, and a brand's paste *is* that
+  // brand's roster: anybody on it who is not in the paste has left. Only the
+  // brands the paste actually names are claimed — the ones it says nothing
+  // about are left exactly as they were, because saying nothing is not the
+  // same as saying "empty".
+  //
+  // Where they go is deliberately vague: off the brand and into free agency,
+  // because one brand's list cannot say whether somebody was released or has
+  // turned up on another brand. Paste that brand next and they sign there.
+  const spokenFor = [...new Set(parsed.wrestlers.filter(w => w.brandId).map(w => w.brandId))];
+  spokenFor.forEach(brandId => {
+    const brand = before.brands[brandId];
+    if (!brand) return;
+    const listed = parsed.wrestlers.filter(w => w.brandId === brandId).length;
+    const leaving = addOnly ? [] : brand.roster.filter(id => !named.has(id));
+    summary.brands.push({ id: brandId, name: brand.name, listed, had: brand.roster.length, leaving: leaving.length });
+
+    leaving.forEach(id => {
+      events.push({
+        type: 'contract.expired', date, source: 'roster-import',
+        participants: [{ ref: id, role: 'subject' }],
+        data: { reason: `not on the pasted ${brand.name} roster`, released: false },
+        note: 'roster import',
+      });
+      summary.left.push({
+        id, name: before.wrestlers[id] ? before.wrestlers[id].name : id,
+        from: brandId, fromName: brand.name,
+      });
+    });
   });
 
   // -- groups --------------------------------------------------------------
@@ -405,6 +449,7 @@ export function importReport(result) {
   list('Added', summary.added, r => `${r.name}${r.brandName ? ` (${r.brandName})` : ' (free agent)'}`);
   list('Moved', summary.moved, r => `${r.name}: ${r.fromName || 'free agent'} → ${r.toName} [${r.reason}]`);
   list('Flagged', summary.flagged, r => `${r.name} ${r.from} → ${r.to}`);
+  list('Off the roster', summary.left, r => `${r.name} (was ${r.fromName}) → free agent`);
   list('Groups formed', summary.groupsFormed, r => r.name);
   list('Groups changed', summary.groupsChanged, r => `${r.name} (+${r.joined}/-${r.left})`);
   if (summary.unchanged.length) bits.push(`Unchanged: ${summary.unchanged.length}`);

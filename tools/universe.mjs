@@ -42,7 +42,7 @@ import { monthText, cardText, monthsWithShows, weeklySchedule, monthKey } from '
 
 const argv = process.argv.slice(2);
 const cmd = argv.shift();
-const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit', 'board'];
+const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit', 'board', 'add-only'];
 const flags = {};
 const positional = [];
 for (let i = 0; i < argv.length; i++) {
@@ -124,7 +124,12 @@ const commands = {
     problems(parsed.warnings, 'Warnings');
 
     const date = flags.date || new Date().toISOString().slice(0, 10);
-    const result = commitRoster(store, parsed, { date, dryRun: !!flags.dry });
+    const result = commitRoster(store, parsed, { date, dryRun: !!flags.dry, addOnly: !!flags['add-only'] });
+    // The paste is the brand's roster, so say what that was taken to mean.
+    result.summary.brands.forEach(b => console.log(flags['add-only']
+      ? `${b.name}: ${plural(b.listed, 'name')} added to the ${b.had} already there (--add-only)`
+      : `${b.name}: read as the full roster — ${plural(b.listed, 'name')} listed, ${b.had} before`
+        + `${b.leaving ? `, ${b.leaving} coming off` : ''}`));
     console.log(`\n${flags.dry ? '(dry run) ' : ''}${importReport(result)}`);
     if (!flags.dry) console.log(brandTable(project(store)));
   },
@@ -702,7 +707,7 @@ const commands = {
 
   init [--name N] [--force]              start an empty universe
   seed <seed.json> [--fresh]             load brands/roster/titles as founding events
-  roster <file|-> [--date D] [--dry]     import or re-sync a pasted roster
+  roster <file|-> [--dry] [--add-only]   sync one brand's roster from a paste
   brands [--as-of D]                     who is on each brand
   card <file|-> [--dry] [--date D]       enter a show's card
   calendar [--month YYYY-MM]             the month grid, the week, months on record

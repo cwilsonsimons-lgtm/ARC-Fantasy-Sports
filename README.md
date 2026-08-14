@@ -96,7 +96,10 @@ Twelve tabs:
 
 - **Tonight** — type a card, see it parsed as you type, save it. Active
   rivalries, alliances and the oldest open threads sit underneath.
-- **Roster** — paste a roster, then who is on each brand.
+- **Roster** — paste a brand's roster and it becomes that brand's roster:
+  newcomers sign, movers transfer, and anybody missing comes off into free
+  agency. The preview names them before you save; brands you don't paste are
+  untouched.
 - **Pyramid** — the tier diagram, and the form that creates or edits a show:
   name, logo, colour, show day, tier, and who it develops for.
 - **Titles** — every belt, click through to its full lineage and title matches.
@@ -144,7 +147,7 @@ the fastest way to bulk-load or inspect a save:
 
 ```
 node tools/universe.mjs seed data/universe-seed.json --fresh
-node tools/universe.mjs roster roster.txt      # paste a roster, get a brand table
+node tools/universe.mjs roster raw.txt        # sync one brand's roster from a paste
 node tools/universe.mjs card card.txt --dry    # type a show's card in shorthand
 node tools/universe.mjs amend ev_0081 winner="Gunther"
 node tools/universe.mjs threads                # what is still hanging
@@ -159,8 +162,8 @@ node tools/universe.mjs calendar --month 2027-04  # a month grid, and the week
 node tools/universe.mjs show sh_0088          # one card, and what it changed
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 410 data-layer checks, pure Node
-npm run check:universe-ui     # 223 browser checks against dist/universe.html
+npm run check:universe        # 418 data-layer checks, pure Node
+npm run check:universe-ui     # 228 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

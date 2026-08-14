@@ -41,6 +41,7 @@ const app = {
   month: null,                      // which month the calendar is showing
 
   shots: [], activeShot: 0, shotKind: 'card',
+  rosterAddOnly: false,             // a deliberately partial paste
 };
 
 const TABS = [
@@ -119,7 +120,7 @@ function render() {
   if (app.tab === 'roster') {
     const keep = $('#rosterText') ? $('#rosterText').value : '';
     const open = $('#rosterPanel') ? $('#rosterPanel').open : false;
-    $('#pane-roster').innerHTML = rosterImportPanel(open || !!keep) + rosterView(s);
+    $('#pane-roster').innerHTML = rosterImportPanel(open || !!keep, { addOnly: app.rosterAddOnly }) + rosterView(s);
     if (keep) { $('#rosterText').value = keep; refreshRosterPreview(); }
   }
   if (app.tab === 'titles') $('#pane-titles').innerHTML = titlesView(s);
@@ -155,7 +156,7 @@ function refreshCardPreview() {
 function refreshRosterPreview() {
   const box = $('#rosterText');
   if (!box) return;
-  const out = rosterPreview(store, app.state, box.value);
+  const out = rosterPreview(store, app.state, box.value, { addOnly: app.rosterAddOnly });
   $('#rosterPreview').innerHTML = out.html;
   $('#rosterSave').disabled = !out.ok;
   app.pendingRoster = out.ok ? out.parsed : null;
@@ -193,7 +194,7 @@ function saveCard() {
 function importRoster() {
   if (!app.pendingRoster) return;
   try {
-    const res = commitRoster(store, app.pendingRoster, { date: today() });
+    const res = commitRoster(store, app.pendingRoster, { date: today(), addOnly: app.rosterAddOnly });
     save();
     $('#rosterText').value = '';
     app.pendingRoster = null;
@@ -271,6 +272,7 @@ on('click', '#cardSave', saveCard);
 on('click', '#rosterSave', importRoster);
 on('click', '#cardClear', () => { $('#cardText').value = ''; refreshCardPreview(); });
 on('click', '#rosterClear', () => { $('#rosterText').value = ''; refreshRosterPreview(); });
+on('change', '#rosterAddOnly', (e, el) => { app.rosterAddOnly = el.checked; refreshRosterPreview(); });
 
 on('change', '#asOf', (e, el) => { app.asOf = el.value || null; render(); });
 on('click', '#asOfNow', () => { app.asOf = null; render(); });

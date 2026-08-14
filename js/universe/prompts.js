@@ -81,6 +81,9 @@ Wrestler Name, gender, status
 
 Rules:
 - put a brand on its own line, then everyone on it underneath
+- list a brand's roster in FULL. The import treats your list as that brand's
+  whole roster, so anybody you leave out comes off it. If you only know part of
+  a brand, say so rather than guessing, and leave the brand out entirely
 - gender is m or f
 - status is one of: active, relegation, promotion, free agent, injured
 - if no status is shown, write active

@@ -130,7 +130,25 @@ check('existing wrestler moved brand', p1.wrestlers['w:trick-williams'].brandId,
 check('move was written as a transfer', c1.events.some(e => e.type === 'brand.transfer'), true);
 check('flag change written', p1.wrestlers['w:carmelo-hayes'].status, 'relegation-flagged');
 check('flag clear written', p1.wrestlers['w:ivy-nile'].status, 'active');
-check('untouched wrestler keeps their brand', p1.wrestlers['w:liv-morgan'].brandId, 'b:raw');
+// A paste is that brand's roster, not a list of additions to it: a Raw name
+// missing from a Raw paste has left Raw. Where they went is deliberately not
+// guessed — one brand's list cannot tell a release from a jump to SmackDown.
+check('a name missing from their brand’s paste comes off it', p1.wrestlers['w:liv-morgan'].brandId, null);
+check('and waits in free agency', p1.wrestlers['w:liv-morgan'].status, 'free agent');
+check('written as a contract ending',
+  c1.events.some(e => e.type === 'contract.expired' && e.participants[0].ref === 'w:liv-morgan'), true);
+check('the report says who came off', c1.summary.left.map(r => r.fromName).every(n => n === 'Raw' || n === 'SmackDown'), true);
+check('and what the paste was read as covering',
+  c1.summary.brands.map(b => b.name).sort(), ['Raw', 'SmackDown']);
+// Brands the paste says nothing about are not being described, so they stand.
+check('a brand the paste never names is untouched', p1.wrestlers['w:swerve-strickland'].brandId, 'b:dynamite');
+
+// The escape hatch, for a paste that is deliberately partial.
+const sAdd = fresh();
+commitRoster(sAdd, parseRoster(paste, sAdd), { date: '2026-08-14', addOnly: true });
+const pAdd = project(sAdd);
+check('--add-only leaves the rest of the brand alone', pAdd.wrestlers['w:liv-morgan'].brandId, 'b:raw');
+check('while still writing the paste', pAdd.wrestlers['w:trick-williams'].brandId, 'b:raw');
 check('new group formed', p1.groups['g:the-vipers'].members.length, 2);
 
 const again = commitRoster(s1, parseRoster(paste, s1), { date: '2026-08-14' });
@@ -931,6 +949,7 @@ check('the format prompt teaches the shorthand', entryPrompt(p9, 'card').include
 check('and names every wrestler by hand', entryPrompt(p9, 'card').includes('Cody Rhodes'), true);
 check('and every belt', entryPrompt(p9, 'card').includes('WWE Championship'), true);
 check('and forbids inventing people', /never invent a wrestler/i.test(entryPrompt(p9, 'card')), true);
+check('the roster prompt asks for the whole brand', /in FULL/.test(entryPrompt(p9, 'roster')), true);
 check('the roster one is a different shape', entryPrompt(p9, 'roster').includes('one wrestler per line'), true);
 check('both format prompts are registered', PROMPTS.filter(p => /format$/.test(p.id)).length, 2);
 

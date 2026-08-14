@@ -156,21 +156,25 @@ export function cardPreview(store, state, text) {
 
 // Collapsed by default: the tables are what you open this tab to read, and the
 // paste box is what you use once after a draft.
-export function rosterImportPanel(open = false) {
+export function rosterImportPanel(open = false, { addOnly = false } = {}) {
   return `<details class="card entry" id="rosterPanel" style="margin-bottom:16px"${open ? ' open' : ''}>
-    <summary><h2>Paste a roster <span class="sub">re-pasting the same list writes nothing — it syncs, it does not duplicate</span></h2></summary>
+    <summary><h2>Paste a roster <span class="sub">one brand at a time — the paste becomes that brand's roster</span></h2></summary>
     <textarea id="rosterText" spellcheck="false" placeholder="${h(ROSTER_PLACEHOLDER)}"></textarea>
     <div class="row">
       <button class="btn" id="rosterSave" disabled>Import roster</button>
       <button class="btn ghost" id="rosterClear">Clear</button>
       <button class="btn ghost" id="rosterPrompt" title="Copies a prompt telling an AI exactly what format to write in">Copy AI prompt</button>
-      <span class="hint">Brand, gender and status in any order. A brand on its own line applies to everyone under it.</span>
+      <label class="opt inline" title="For a deliberately partial paste — half a division, one call-up">
+        <input type="checkbox" id="rosterAddOnly"${addOnly ? ' checked' : ''}> only add and update</label>
+      <span class="hint">Brand, gender and status in any order; a brand on its own line applies to everyone under it.
+        Whoever is on that brand and <em>not</em> in the paste comes off it — the preview names them first.
+        Brands you do not paste are untouched.</span>
     </div>
     <div id="rosterPreview"></div>
   </details>`;
 }
 
-export function rosterPreview(store, state, text) {
+export function rosterPreview(store, state, text, { addOnly = false } = {}) {
   if (!String(text || '').trim()) return { html: '', ok: false };
 
   const parsed = parseRoster(text, store);
@@ -184,7 +188,7 @@ export function rosterPreview(store, state, text) {
 
   // A dry run answers the only question that matters: what changes?
   let dry;
-  try { dry = commitRoster(store, parsed, { date: today(), dryRun: true }); }
+  try { dry = commitRoster(store, parsed, { date: today(), dryRun: true, addOnly }); }
   catch (e) { return { ok: false, parsed, html: `<div class="msg err" style="margin-top:12px">${h(e.message)}</div>` }; }
 
   const s = dry.summary;
@@ -193,6 +197,9 @@ export function rosterPreview(store, state, text) {
   add('Added', s.added, r => `${h(r.name)} <span class="dim">${h(r.brandName || 'free agent')}</span>`);
   add('Moved', s.moved, r => `${h(r.name)} <span class="dim">${h(r.fromName || 'free agent')} → ${h(r.toName)}</span>`);
   add('Flagged', s.flagged, r => `${h(r.name)} <span class="dim">${h(r.to)}</span>`);
+  // The one that can surprise: a paste is the brand's roster, so anybody on it
+  // who is missing comes off. Never let that happen silently.
+  add('Come off the brand', s.left, r => `${h(r.name)} <span class="dim">was ${h(r.fromName)}</span>`);
   add('Teams formed', s.groupsFormed, r => h(r.name));
   add('Teams changed', s.groupsChanged, r => `${h(r.name)} <span class="dim">+${r.joined}/−${r.left}</span>`);
 
@@ -204,11 +211,23 @@ export function rosterPreview(store, state, text) {
     return { ok: false, parsed, html: `${warn}<div class="msg ok" style="margin-top:10px">Read ${plural(parsed.wrestlers.length, 'wrestler')} — everything already matches. Nothing to write.</div>` };
   }
 
+  // What this paste is claiming to be, brand by brand, so the scope of the
+  // sync is on screen before anything is written.
+  const scope = !s.brands.length ? ''
+    : addOnly
+    ? `<div class="dim" style="margin-top:6px">Adding to
+        ${s.brands.map(b => `<strong>${h(b.name)}</strong>`).join(', ')} only — nobody comes off.</div>`
+    : `<div class="dim" style="margin-top:6px">Read as the full roster of
+        ${s.brands.map(b => `<strong>${h(b.name)}</strong> (${b.listed} listed${
+          b.leaving ? `, ${b.leaving} coming off` : ''})`).join(', ')}.
+        Other brands are untouched.</div>`;
+
   return {
     ok: true, parsed,
     html: `${warn}<div class="msg ok" style="margin-top:10px">
       <strong>${plural(dry.events.length, 'event')} will be written</strong>
       <ul>${bits.join('')}</ul>
+      ${scope}
       ${s.unchanged.length ? `<div class="dim" style="margin-top:6px">${s.unchanged.length} unchanged</div>` : ''}
     </div>`,
   };

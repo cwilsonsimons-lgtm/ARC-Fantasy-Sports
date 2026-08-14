@@ -186,18 +186,33 @@ await check('the saved show is still there', `UNIVERSE.app.state.shows.length`, 
 await check('fantasy app storage untouched', `localStorage.getItem('cbd_team_v1')`, null);
 
 // ---------------------------------------------------------------- roster import
+// A paste is that brand's roster, so a two-name Raw paste means Raw has two
+// names on it. The preview has to say so before anything is written.
+const PARTIAL = 'RAW\\nAlba Fyre, f, active\\nSeth Rollins, m, active';
 await check('roster paste previews the diff', `${tab('roster')};
   const t = document.getElementById('rosterText');
-  t.value = 'RAW\\nAlba Fyre, f, active\\nSeth Rollins, m, active';
+  t.value = '${PARTIAL}';
   t.dispatchEvent(new Event('input', {bubbles:true}));
   document.querySelector('#rosterPreview .msg.ok').textContent.includes('Alba Fyre')`, true);
+await check('and warns who would come off the brand',
+  `document.querySelector('#rosterPreview').textContent.includes('Come off the brand')`, true);
+await check('saying what the paste was read as',
+  `document.querySelector('#rosterPreview').textContent.includes('Read as the full roster of')`, true);
+
+// The escape hatch, for a paste that is deliberately partial.
+await check('only-add turns the sweep off', `document.getElementById('rosterAddOnly').click();
+  document.querySelector('#rosterPreview').textContent.includes('Come off the brand')`, false);
+await check('and says so instead',
+  `document.querySelector('#rosterPreview').textContent.includes('nobody comes off')`, true);
 await check('import writes only the difference', `document.getElementById('rosterSave').click();
   UNIVERSE.store.stats().wrestlers`, 80);
 await check('the new signing is on the brand', `UNIVERSE.app.state.brands['b:raw'].roster.includes('w:alba-fyre')`, true);
+await check('and nobody was swept off it', `UNIVERSE.app.state.brands['b:raw'].roster.includes('w:gunther')`, true);
 await check('re-pasting the same list is a no-op', `const t = document.getElementById('rosterText');
-  t.value = 'RAW\\nAlba Fyre, f, active\\nSeth Rollins, m, active';
+  t.value = '${PARTIAL}';
   t.dispatchEvent(new Event('input', {bubbles:true}));
   document.getElementById('rosterSave').disabled`, true);
+await page.evaluate(`document.getElementById('rosterAddOnly').click()`);
 
 // ---------------------------------------------------------------- titles, threads, heat
 // Everything below covers a second card: an interim reign, a contender match,

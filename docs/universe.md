@@ -35,8 +35,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     410 data-layer checks, pure Node
-  universe-ui-check.mjs  223 browser checks against the built page
+  universe-check.mjs     418 data-layer checks, pure Node
+  universe-ui-check.mjs  228 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -404,12 +404,25 @@ new, a `brand.transfer` for someone who moved, a `status.change` for a new flag.
 Pasting the same roster twice writes nothing the second time, so it is safe to
 re-paste the whole list after every draft.
 
-A partial paste only touches the people in it; nobody is removed for being
-absent. Pasting Raw alone therefore leaves anybody who *was* on Raw still on
-Raw — one brand's list cannot tell you whether a missing name was released or
-just moved to SmackDown, and guessing would silently wipe careers. Paste the
-other brands too and everyone lands where they belong. Gender and alignment are
-registry facts, so they are written as entity corrections rather than events.
+**A paste is one brand's roster, not a list of additions to it.** Rosters are
+read off the game one brand at a time, so a Raw paste says *this is Raw*:
+anybody on Raw who is not in it has left, and comes off the brand into free
+agency. Where they actually went is deliberately not guessed — one brand's list
+cannot tell a release from a jump to SmackDown — so they wait as free agents
+until the paste that claims them. Paste the other brands next and everyone lands
+where they belong.
+
+Only the brands the paste **names** are claimed. Saying nothing about NXT is not
+the same as saying NXT is empty, so a Raw paste leaves every other brand exactly
+as it was. The report and the preview both say which brands were read as
+complete, and name everybody coming off before anything is written.
+
+For a deliberately partial paste — half a division, one call-up typed by hand —
+tick **only add and update** beside the box (`--add-only` on the CLI) and
+nobody is taken off.
+
+Gender and alignment are registry facts, so they are written as entity
+corrections rather than events.
 
 **Groups are synced the same way**, and the three cases are kept apart:
 
@@ -431,8 +444,9 @@ in a group, it does not tell a story about somebody turning. Type it on a card
 when you want the thread.
 
 ```
-node tools/universe.mjs roster roster.txt --dry     # preview
-node tools/universe.mjs roster roster.txt
+node tools/universe.mjs roster raw.txt --dry        # preview: who joins, who comes off
+node tools/universe.mjs roster raw.txt              # one brand at a time
+node tools/universe.mjs roster callup.txt --add-only
 node tools/universe.mjs brands
 ```
 
@@ -483,7 +497,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 223 browser checks
+npm run check:universe-ui    # 228 browser checks
 ```
 
 | Tab | What it does |
@@ -798,5 +812,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 410 checks, no browser, no network
+npm run check:universe     # 418 checks, no browser, no network
 ```

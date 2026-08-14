@@ -394,6 +394,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 
 /* ---------------------------------------------------------------- season */
 .opt{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.opt.inline{display:inline-flex;cursor:pointer;white-space:nowrap}
+.opt.inline input[type=checkbox]{width:14px;height:14px;padding:0;accent-color:var(--violet);cursor:pointer}
 .opt select,.opt input{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
   padding:6px 9px;font-size:13px;color:var(--ink)}
 .opt select:focus,.opt input:focus{outline:0;border-color:var(--violet)}
@@ -3484,7 +3486,14 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     });
     return { wrestlers, groups, errors, warnings, sectionLabel };
   }
-  function commitRoster(store2, parsed, { date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), dryRun = false } = {}) {
+  function commitRoster(store2, parsed, {
+    date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
+    dryRun = false,
+    // A paste is a brand's roster, not a list of additions to it — see the
+    // brand sync below. `addOnly` turns that off for a deliberately partial
+    // paste (half a division, one call-up you typed by hand).
+    addOnly = false
+  } = {}) {
     if (parsed.errors.length) {
       const e = new Error(`roster has ${plural(parsed.errors.length, "error")} \u2014 nothing was imported`);
       e.errors = parsed.errors;
@@ -3493,7 +3502,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     const before = project(store2);
     const created = { wrestlers: [], groups: [] };
     const events = [];
-    const summary = { added: [], moved: [], flagged: [], unchanged: [], groupsFormed: [], groupsChanged: [] };
+    const summary = { added: [], moved: [], flagged: [], unchanged: [], left: [], brands: [], groupsFormed: [], groupsChanged: [] };
+    const named = /* @__PURE__ */ new Set();
     parsed.wrestlers.forEach((r) => {
       const idx = buildIndex(store2, "wrestler");
       const hit = resolve(idx, r.name);
@@ -3502,6 +3512,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         const rec = { name: r.name, gender: r.gender || void 0, alignment: r.alignment || void 0, overall: r.overall || void 0 };
         const id2 = entityId("wrestler", r.name);
         if (!dryRun) store2.addEntity("wrestler", rec, { upsert: true });
+        named.add(id2);
         created.wrestlers.push({ id: id2, ...rec, brandId: r.brandId, status: r.status });
         summary.added.push({ id: id2, name: r.name, brandId: r.brandId, brandName: brandName(before, r.brandId), status: r.status });
         if (r.brandId) {
@@ -3525,6 +3536,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         return;
       }
       const id = hit.id;
+      named.add(id);
       let touched = false;
       const patch = {};
       if (r.gender && r.gender !== existing.gender) patch.gender = r.gender;
@@ -3574,6 +3586,30 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         touched = true;
       }
       if (!touched && !Object.keys(patch).length) summary.unchanged.push({ id, name: existing.name });
+    });
+    const spokenFor = [...new Set(parsed.wrestlers.filter((w) => w.brandId).map((w) => w.brandId))];
+    spokenFor.forEach((brandId) => {
+      const brand2 = before.brands[brandId];
+      if (!brand2) return;
+      const listed = parsed.wrestlers.filter((w) => w.brandId === brandId).length;
+      const leaving = addOnly ? [] : brand2.roster.filter((id) => !named.has(id));
+      summary.brands.push({ id: brandId, name: brand2.name, listed, had: brand2.roster.length, leaving: leaving.length });
+      leaving.forEach((id) => {
+        events.push({
+          type: "contract.expired",
+          date,
+          source: "roster-import",
+          participants: [{ ref: id, role: "subject" }],
+          data: { reason: `not on the pasted ${brand2.name} roster`, released: false },
+          note: "roster import"
+        });
+        summary.left.push({
+          id,
+          name: before.wrestlers[id] ? before.wrestlers[id].name : id,
+          from: brandId,
+          fromName: brand2.name
+        });
+      });
     });
     parsed.groups.forEach((g) => {
       const wIdx = buildIndex(store2, "wrestler");
@@ -5728,20 +5764,24 @@ The War Raiders = Erik & Ivar`;
       ])}`
     };
   }
-  function rosterImportPanel(open = false) {
+  function rosterImportPanel(open = false, { addOnly = false } = {}) {
     return `<details class="card entry" id="rosterPanel" style="margin-bottom:16px"${open ? " open" : ""}>
-    <summary><h2>Paste a roster <span class="sub">re-pasting the same list writes nothing \u2014 it syncs, it does not duplicate</span></h2></summary>
+    <summary><h2>Paste a roster <span class="sub">one brand at a time \u2014 the paste becomes that brand's roster</span></h2></summary>
     <textarea id="rosterText" spellcheck="false" placeholder="${h(ROSTER_PLACEHOLDER)}"></textarea>
     <div class="row">
       <button class="btn" id="rosterSave" disabled>Import roster</button>
       <button class="btn ghost" id="rosterClear">Clear</button>
       <button class="btn ghost" id="rosterPrompt" title="Copies a prompt telling an AI exactly what format to write in">Copy AI prompt</button>
-      <span class="hint">Brand, gender and status in any order. A brand on its own line applies to everyone under it.</span>
+      <label class="opt inline" title="For a deliberately partial paste \u2014 half a division, one call-up">
+        <input type="checkbox" id="rosterAddOnly"${addOnly ? " checked" : ""}> only add and update</label>
+      <span class="hint">Brand, gender and status in any order; a brand on its own line applies to everyone under it.
+        Whoever is on that brand and <em>not</em> in the paste comes off it \u2014 the preview names them first.
+        Brands you do not paste are untouched.</span>
     </div>
     <div id="rosterPreview"></div>
   </details>`;
   }
-  function rosterPreview(store2, state, text) {
+  function rosterPreview(store2, state, text, { addOnly = false } = {}) {
     if (!String(text || "").trim()) return { html: "", ok: false };
     const parsed = parseRoster(text, store2);
     if (parsed.errors.length) {
@@ -5754,7 +5794,7 @@ The War Raiders = Erik & Ivar`;
     }
     let dry;
     try {
-      dry = commitRoster(store2, parsed, { date: today(), dryRun: true });
+      dry = commitRoster(store2, parsed, { date: today(), dryRun: true, addOnly });
     } catch (e) {
       return { ok: false, parsed, html: `<div class="msg err" style="margin-top:12px">${h(e.message)}</div>` };
     }
@@ -5766,6 +5806,7 @@ The War Raiders = Erik & Ivar`;
     add("Added", s.added, (r) => `${h(r.name)} <span class="dim">${h(r.brandName || "free agent")}</span>`);
     add("Moved", s.moved, (r) => `${h(r.name)} <span class="dim">${h(r.fromName || "free agent")} \u2192 ${h(r.toName)}</span>`);
     add("Flagged", s.flagged, (r) => `${h(r.name)} <span class="dim">${h(r.to)}</span>`);
+    add("Come off the brand", s.left, (r) => `${h(r.name)} <span class="dim">was ${h(r.fromName)}</span>`);
     add("Teams formed", s.groupsFormed, (r) => h(r.name));
     add("Teams changed", s.groupsChanged, (r) => `${h(r.name)} <span class="dim">+${r.joined}/\u2212${r.left}</span>`);
     const warn = parsed.warnings.length ? `<div class="msg warn" style="margin-top:10px"><strong>${plural2(parsed.warnings.length, "warning")}</strong>
@@ -5773,12 +5814,17 @@ The War Raiders = Erik & Ivar`;
     if (!bits.length) {
       return { ok: false, parsed, html: `${warn}<div class="msg ok" style="margin-top:10px">Read ${plural2(parsed.wrestlers.length, "wrestler")} \u2014 everything already matches. Nothing to write.</div>` };
     }
+    const scope = !s.brands.length ? "" : addOnly ? `<div class="dim" style="margin-top:6px">Adding to
+        ${s.brands.map((b) => `<strong>${h(b.name)}</strong>`).join(", ")} only \u2014 nobody comes off.</div>` : `<div class="dim" style="margin-top:6px">Read as the full roster of
+        ${s.brands.map((b) => `<strong>${h(b.name)}</strong> (${b.listed} listed${b.leaving ? `, ${b.leaving} coming off` : ""})`).join(", ")}.
+        Other brands are untouched.</div>`;
     return {
       ok: true,
       parsed,
       html: `${warn}<div class="msg ok" style="margin-top:10px">
       <strong>${plural2(dry.events.length, "event")} will be written</strong>
       <ul>${bits.join("")}</ul>
+      ${scope}
       ${s.unchanged.length ? `<div class="dim" style="margin-top:6px">${s.unchanged.length} unchanged</div>` : ""}
     </div>`
     };
@@ -5833,6 +5879,9 @@ Wrestler Name, gender, status
 
 Rules:
 - put a brand on its own line, then everyone on it underneath
+- list a brand's roster in FULL. The import treats your list as that brand's
+  whole roster, so anybody you leave out comes off it. If you only know part of
+  a brand, say so rather than guessing, and leave the brand out entirely
 - gender is m or f
 - status is one of: active, relegation, promotion, free agent, injured
 - if no status is shown, write active
@@ -6394,7 +6443,9 @@ no explanation, no code fences.`;
     // which month the calendar is showing
     shots: [],
     activeShot: 0,
-    shotKind: "card"
+    shotKind: "card",
+    rosterAddOnly: false
+    // a deliberately partial paste
   };
   var TABS = [
     { id: "tonight", label: "Tonight" },
@@ -6466,7 +6517,7 @@ no explanation, no code fences.`;
     if (app.tab === "roster") {
       const keep = $("#rosterText") ? $("#rosterText").value : "";
       const open = $("#rosterPanel") ? $("#rosterPanel").open : false;
-      $("#pane-roster").innerHTML = rosterImportPanel(open || !!keep) + rosterView(s);
+      $("#pane-roster").innerHTML = rosterImportPanel(open || !!keep, { addOnly: app.rosterAddOnly }) + rosterView(s);
       if (keep) {
         $("#rosterText").value = keep;
         refreshRosterPreview();
@@ -6503,7 +6554,7 @@ no explanation, no code fences.`;
   function refreshRosterPreview() {
     const box = $("#rosterText");
     if (!box) return;
-    const out = rosterPreview(store, app.state, box.value);
+    const out = rosterPreview(store, app.state, box.value, { addOnly: app.rosterAddOnly });
     $("#rosterPreview").innerHTML = out.html;
     $("#rosterSave").disabled = !out.ok;
     app.pendingRoster = out.ok ? out.parsed : null;
@@ -6534,7 +6585,7 @@ no explanation, no code fences.`;
   function importRoster() {
     if (!app.pendingRoster) return;
     try {
-      const res = commitRoster(store, app.pendingRoster, { date: today() });
+      const res = commitRoster(store, app.pendingRoster, { date: today(), addOnly: app.rosterAddOnly });
       save();
       $("#rosterText").value = "";
       app.pendingRoster = null;
@@ -6622,6 +6673,10 @@ no explanation, no code fences.`;
   });
   on("click", "#rosterClear", () => {
     $("#rosterText").value = "";
+    refreshRosterPreview();
+  });
+  on("change", "#rosterAddOnly", (e, el) => {
+    app.rosterAddOnly = el.checked;
     refreshRosterPreview();
   });
   on("change", "#asOf", (e, el) => {

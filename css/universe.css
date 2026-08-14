@@ -198,6 +198,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 
 /* ---------------------------------------------------------------- season */
 .opt{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.opt.inline{display:inline-flex;cursor:pointer;white-space:nowrap}
+.opt.inline input[type=checkbox]{width:14px;height:14px;padding:0;accent-color:var(--violet);cursor:pointer}
 .opt select,.opt input{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
   padding:6px 9px;font-size:13px;color:var(--ink)}
 .opt select:focus,.opt input:focus{outline:0;border-color:var(--violet)}
