@@ -19,6 +19,7 @@ js/universe/
   draft.js     the annual draft — order, board, commit
   season.js    season windows, standings, promotion and relegation
   laststand.js the Last Stand board — candidates, legal pairings, recording
+  calendar.js  the month grid, the weekly nights, one card read back
   prompts.js   copy-paste prompts with state embedded
   ingest.js    screenshots in — transcription prompt, optional vision call
   roster.js    paste a roster, diff it, print who is on each brand
@@ -34,8 +35,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     370 data-layer checks, pure Node
-  universe-ui-check.mjs  200 browser checks against the built page
+  universe-check.mjs     402 data-layer checks, pure Node
+  universe-ui-check.mjs  223 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -455,7 +456,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 200 browser checks
+npm run check:universe-ui    # 223 browser checks
 ```
 
 | Tab | What it does |
@@ -466,8 +467,9 @@ npm run check:universe-ui    # 200 browser checks
 | Titles | Every belt with holder, interim holder, days, defenses and reign count. Belts flagged `autoPromote` say so. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
 | Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
 | Season | The calendar with the current phase lit, standings per brand, the promotion and relegation lists, the Last Stand competitions, the draft board, and every season on record. |
+| Calendar | A month at a time: which night each show runs (off the brand records), every card on its date, and the months on record to jump back through. Click a night to read the card. |
 | Last Stand | The offseason board: the pyramid with candidate counts, rosters by tier, automatic call-ups, promotion and relegation candidates in separate tables, a match maker that cannot make an illegal match, what is still to settle, results, and the roster movements they caused. |
-| Shows | Every saved card, newest first. |
+| Shows | Every saved card, newest first — an index; click one to read the night. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
 | Prompts | Five copy-paste prompts with the current state embedded. |
 | Import | Drop screenshots of a card or a roster and turn them into events. |
@@ -488,6 +490,34 @@ the same `project(store, {asOf})` the CLI uses.
 Storage is `localStorage` under `arc_universe_v1`, seeded from `seed-data.js` on
 first load. The fantasy app's keys are never read or written. If a write fails
 (quota, private mode) the page says so rather than pretending it saved.
+
+## The calendar
+
+Two questions, one tab.
+
+**What night is what?** Every brand carries a `day` — `Raw` is a Monday because
+the brand record says `"day": "Monday"`, not because anything in the code knows
+what Raw is. So the week fills itself in from the pyramid: create a Saturday
+show and Saturdays start showing it. A night with a card saved shows the card;
+a night without one shows a faint reminder of whose night it is. The Calendar
+tab's *The week* table is the same read, seven rows deep.
+
+**What happened?** Every saved card sits on its date. Click it and you get the
+night in full: the segments in the order you typed them, the winner in bold with
+every name linked to their profile, the belt linked to its lineage, and
+underneath, **what changed** — belts, brand moves, injuries, groups forming and
+splitting. That list is read off the events' `effects`, so it is what the log
+actually did: void the main event and it drops out of both the card and the
+tally, without anything having to be recalculated.
+
+Cards page to their neighbours (`← previous show` / `next show →`), so a year
+can be read like a diary. Under the grid, **every month on record** lists each
+month that has a card in it with its show and match counts, which is the fastest
+way back to something you can only half remember.
+
+    node tools/universe.mjs calendar                  # this month
+    node tools/universe.mjs calendar --month 2027-04  # any month
+    node tools/universe.mjs show sh_0088              # one card, and what it changed
 
 ## The year
 
@@ -741,5 +771,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 370 checks, no browser, no network
+npm run check:universe     # 402 checks, no browser, no network
 ```

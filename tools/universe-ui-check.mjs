@@ -42,7 +42,7 @@ const tab = id => `document.querySelector('[data-tab=${id}]').click()`;
 // ---------------------------------------------------------------- boot
 await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 79);
 await check('seed wrote events, not state', `UNIVERSE.store.stats().live > 60`, true);
-await check('tabs render', `document.querySelectorAll('.tab').length`, 11);
+await check('tabs render', `document.querySelectorAll('.tab').length`, 12);
 await check('lands on the entry tab', `document.querySelector('.tab.on').dataset.tab`, 'tonight');
 await check('card box is focused for typing', `document.activeElement.id`, 'cardText');
 
@@ -122,8 +122,16 @@ await check('saving writes the card', `document.getElementById('cardSave').click
 await check('box is cleared for the next show', `document.getElementById('cardText').value`, '');
 await check('and it says what was saved', `!!document.querySelector('#pane-tonight .msg.ok')`, true);
 await check('show appears on the shows tab', `${tab('shows')};
-  document.querySelectorAll('#pane-shows .card').length`, 1);
-await check('with every segment on the card', `document.querySelectorAll('#pane-shows tbody tr').length`, 4);
+  document.querySelectorAll('#pane-shows tbody tr').length`, 1);
+await check('the index counts its matches', `document.querySelectorAll('#pane-shows tbody td')[3].textContent`, '3');
+await check('clicking it opens the card', `document.querySelector('#pane-shows [data-show]').click();
+  document.querySelector('#pane-show .pagehead .nm').textContent.trim()`, 'Monday Night Raw');
+await check('with every segment on it',
+  `document.querySelectorAll('#pane-show table')[0].querySelectorAll('tbody tr').length`, 4);
+await check('the winner is linked, not just printed',
+  `document.querySelector('#pane-show tbody [data-w]').textContent`, 'Damian Priest');
+await check('and what the night changed is listed',
+  `[...document.querySelectorAll('#pane-show tbody tr')].some(r => r.textContent.includes('new champion: Damian Priest'))`, true);
 
 // ---------------------------------------------------------------- the fold
 await check('title moved to the new champion', `${tab('titles')};
@@ -627,6 +635,50 @@ await check('the wrestler carries it in their history', `
   document.querySelector('#pane-wrestler').textContent
     .includes('moves to ' + UNIVERSE.app.state.brands[window.__to].name)`, true);
 
+// ---------------------------------------------------------------- calendar
+// The month the card was booked in. Nothing here types a date into the page —
+// the calendar is asked to show August 2026 and has to find the show itself.
+await check('calendar opens on a month', `${tab('calendar')};
+  !!document.querySelector('.cal')`, true);
+await check('the week has seven columns', `document.querySelectorAll('.cdow div').length`, 7);
+await check('jumping to a month works', `document.querySelector('[data-month="2026-08"]').click();
+  document.querySelector('.calname').textContent`, 'August 2026');
+await check('the saved card sits on its day', `[...document.querySelectorAll('.cday')]
+  .filter(d => [...d.querySelectorAll('.cshow .nm')].some(x => x.textContent === 'Monday Night Raw'))
+  .map(d => d.querySelector('.n').textContent)`, ['17']);
+await check('and names the show', `document.querySelector('.cshow .nm').textContent`, 'Monday Night Raw');
+await check('with its match count', `document.querySelector('.cshow .ct').textContent`, '3 matches');
+// WrestleMania 43 was booked in April 2027 by the season tests above.
+await check('a PLE is marked apart from a weekly show', `document.querySelector('[data-month="2027-04"]').click();
+  [...document.querySelectorAll('.cday.ple .cshow .nm')].map(e => e.textContent)`,
+  n => n.includes('WrestleMania 43'));
+await check('and that day says which PLE it was', `[...document.querySelectorAll('#pane-calendar tbody tr')]
+  .some(r => r.textContent.includes('WrestleMania 43'))`, true);
+await check('back to the month with the weekly card', `document.querySelector('[data-month="2026-08"]').click();
+  document.querySelector('.calname').textContent`, 'August 2026');
+await check('the month counts what is in it',
+  `document.querySelector('.calcount').textContent.includes('matches')`, true);
+
+// Weekly nights come off the brand records, not a hardcoded list.
+await check('Mondays are marked as Raw nights', `[...document.querySelectorAll('.cday')]
+  .filter(d => [...d.querySelectorAll('.cdue')].some(x => x.textContent === 'Raw')).length`, n => n >= 4);
+await check('the night a card was entered shows the card, not a reminder',
+  `[...document.querySelectorAll('.cday')].find(d => d.querySelector('.cshow'))
+    .querySelectorAll('.cdue').length`, 0);
+await check('the week table reads the brand records', `[...document.querySelectorAll('#pane-calendar tbody tr')]
+  .filter(r => r.textContent.startsWith('Monday')).map(r => r.textContent.replace('Monday', ''))`, ['Raw']);
+await check('a night nobody runs is dark', `[...document.querySelectorAll('#pane-calendar tbody tr')]
+  .some(r => r.textContent.includes('dark'))`, true);
+
+await check('a day opens the card it holds', `document.querySelector('.cshow').click();
+  document.querySelector('#pane-show .pagehead .nm').textContent.trim()`, 'Monday Night Raw');
+await check('the card names the night', `document.querySelector('#pane-show .holder').textContent.includes('Monday')`, true);
+await check('every month with a card is listed to jump back to', `${tab('calendar')};
+  [...document.querySelectorAll('#pane-calendar [data-month]')].map(b => b.dataset.month).includes('2026-08')`, true);
+await check('moving a month changes the heading', `document.querySelector('[data-month="2026-09"]').click();
+  document.querySelector('.calname').textContent`, 'September 2026');
+await check('and that month is empty', `document.querySelectorAll('#pane-calendar .cshow').length`, 0);
+
 // Stills for eyeballing the result. snapshots/ is gitignored.
 await mkdir('snapshots', { recursive: true });
 await page.evaluate(tab('tonight'));
@@ -648,6 +700,11 @@ await page.evaluate(tab('prompts'));
 await page.screenshot({ path: 'snapshots/universe-prompts.png' });
 await page.evaluate(tab('import'));
 await page.screenshot({ path: 'snapshots/universe-import.png' });
+await page.evaluate(`UNIVERSE.app.month = '2027-04'; UNIVERSE.app.tab = 'calendar'; UNIVERSE.render()`);
+await page.screenshot({ path: 'snapshots/universe-calendar.png' });
+await page.evaluate(`UNIVERSE.app.tab = 'show';
+  UNIVERSE.app.detailId = UNIVERSE.app.state.shows.find(s => s.ple === 'wrestlemania').id; UNIVERSE.render()`);
+await page.screenshot({ path: 'snapshots/universe-show.png' });
 await browser.close();
 
 console.log(`\n${pass} passed, ${fail} failed, ${errors.length} page errors`);

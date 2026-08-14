@@ -9,6 +9,7 @@ import { titleLineage, titleMatches, timelineFor, movementsFor, days, describeTh
 import { currentSeason, seasons, brandStandings, nextStep, PHASES, PHASE_LABEL } from '../season.js';
 import { tiers, brandCard, pyramidText, destination } from '../pyramid.js';
 import { lastStandBoard, eligibleOpponents, checkPairing } from '../laststand.js';
+import { calendarMonth, monthsWithShows, weeklySchedule, cardOf, monthKey } from '../calendar.js';
 import { SHOW_DAYS } from '../schema.js';
 
 // The colour comes off the brand record, because a user who creates WCW picks
@@ -834,19 +835,147 @@ export function heatPanel(state) {
 
 export function showsView(state) {
   if (!state.shows.length) return '<div class="empty">No shows yet — enter a card on the Tonight tab.</div>';
-  return [...state.shows].reverse().map(s => `<div class="card flush" style="margin-bottom:16px">
-      <div class="brandhead">
-        <div class="bar" style="background:${brandColor(state, s.brandId)}"></div>
-        <div class="nm">${h(s.name)}</div>
-        <div class="ct">${fmtDate(s.date)} · ${brandName(state, s.brandId) || 'no brand'} · ${plural(s.segments.length, 'segment')}</div>
+  return `<h2>Every card <span class="sub">newest first · click one to read the night</span></h2>
+    <div class="card flush">${table([...state.shows].reverse(), [
+      { label: 'Date', get: s => fmtDate(s.date), dim: true },
+      { label: 'Show', get: s => `<button class="linkbtn strong" data-show="${h(s.id)}">${h(s.name)}</button>`
+        + (s.ple ? ` ${chip(s.ple === 'lastStand' ? 'Last Stand' : s.ple, 'ple')}` : ''), html: true },
+      { label: 'Brand', get: s => brandName(state, s.brandId) || '—', dim: true },
+      { label: 'Matches', num: true, get: s => s.segments.filter(g => g.type === 'match').length },
+      { label: 'Segments', num: true, get: s => s.segments.length, dim: true },
+    ], 'No shows yet.')}</div>`;
+}
+
+// ------------------------------------------------------------------ calendar
+
+// A match with the names as links. The segment carries the sides as refs
+// precisely so this can be built without re-parsing the text.
+function segmentLine(state, g) {
+  const corner = refs => refs.map(r => (state.wrestlers[r] ? wlink(state.wrestlers[r])
+    : `<strong>${h(state.groups[r] ? state.groups[r].name : r)}</strong>`)).join(' &amp; ');
+
+  if (g.type !== 'match' || !g.sides) return h(g.text);
+
+  const win = g.sides.find(s => s.side === g.winnerSide);
+  const rest = g.sides.filter(s => s.side !== g.winnerSide);
+  const body = win
+    ? `${corner(win.refs)} <span class="beat">def.</span> ${rest.map(s => corner(s.refs)).join(', ')}`
+    : `${g.sides.map(s => corner(s.refs)).join(' <span class="beat">vs</span> ')}`;
+
+  const marks = [
+    g.titleId && state.championships[g.titleId]
+      ? `<button class="linkbtn" data-belt="${h(g.titleId)}">${h(state.championships[g.titleId].name)}</button>` : '',
+    g.titleChanged ? chip('new champion', 'new') : '',
+    g.matchType && g.matchType !== 'singles' ? `<span class="dim">${h(g.matchType)}</span>` : '',
+    g.decision ? `<span class="dim">${h(g.decision)}</span>` : '',
+  ].filter(Boolean).join(' · ');
+
+  return body + (marks ? `<div class="segmeta">${marks}</div>` : '');
+}
+
+// One night: the card in the order it was typed, and what it changed.
+export function showPage(state, showId) {
+  const card = cardOf(state, showId);
+  if (!card) return '<div class="empty">No such show.</div>';
+
+  const changeChip = k => chip(k, k === 'title' ? 'title' : k === 'roster' ? 'up' : k === 'injury' ? 'hurt' : 'group');
+
+  return `<div class="backrow">
+      <button class="linkbtn" data-tab="calendar">← calendar</button>
+      <button class="linkbtn" data-tab="shows">all cards</button>
+      ${card.prev ? `<button class="linkbtn" data-show="${h(card.prev)}">← previous show</button>` : ''}
+      ${card.next ? `<button class="linkbtn" data-show="${h(card.next)}">next show →</button>` : ''}
+    </div>
+    <div class="pagehead" style="border-left-color:${card.color || 'var(--violet)'}">
+      <div class="nm">${h(card.name)} ${card.ple ? chip(card.ple === 'lastStand' ? 'Last Stand' : card.ple, 'ple') : ''}</div>
+      <div class="holder"><span class="dim">${h(card.weekday)}, ${fmtDate(card.date).replace(/^\w+,\s*/, '')}
+        · ${h(card.brandName || 'no brand')} · ${plural(card.matches, 'match', 'matches')}</span></div>
+    </div>
+
+    <h2>The card <span class="sub">in the order it was typed</span></h2>
+    <div class="card flush">${table(card.segments, [
+      { label: '#', num: true, get: g => g.order || '', dim: true },
+      { label: 'Type', get: g => chip(g.type, g.type === 'match' ? 'title' : 'group'), html: true },
+      { label: 'Segment', get: g => segmentLine(state, g), html: true },
+      { label: '', get: g => `<button class="linkbtn" data-ev="${h(g.id)}">open</button>`, html: true },
+    ], 'Empty card.')}</div>
+
+    <h2 style="margin-top:22px">What changed <span class="sub">read off the effects, so a void removes it</span></h2>
+    <div class="card flush">${table(card.changes, [
+      { label: 'Kind', get: c => changeChip(c.kind), html: true },
+      { label: 'What', get: c => h(c.text), html: true },
+      { label: '', get: c => `<button class="linkbtn" data-ev="${h(c.eventId)}">open</button>`, html: true },
+    ], 'Nothing on this card moved a belt, a brand or a body.')}</div>`;
+}
+
+// The month grid. Weekly show nights come off the brand records, so the week
+// fills itself in from whatever shows the user created.
+export function calendarView(state, ui = {}) {
+  const key = ui.month || monthKey(state.asOf);
+  const m = calendarMonth(state, key);
+  const index = monthsWithShows(state);
+
+  const cell = d => {
+    const cls = ['cday', d.inMonth ? '' : 'out', d.isToday ? 'today' : '',
+      d.shows.length ? 'booked' : '', d.ples.length ? 'ple' : ''].filter(Boolean).join(' ');
+    const shows = d.shows.map(s => `<button class="cshow" data-show="${h(s.id)}"
+        style="--bc:${s.color || 'var(--violet)'}" title="${h(s.name)} — ${plural(s.matches, 'match', 'matches')}">
+        <span class="nm">${h(s.name)}</span>
+        <span class="ct">${s.matches ? plural(s.matches, 'match', 'matches') : `${s.segments} seg`}</span>
+      </button>`).join('');
+    // A weekly night with no card is a reminder, not a record.
+    const due = d.scheduled.map(b => `<span class="cdue" style="--bc:${b.color || 'var(--ink-3)'}">${h(b.name)}</span>`).join('');
+    return `<div class="${cls}"><div class="n">${d.dayNum}</div>${shows}${due}</div>`;
+  };
+
+  const week = wk => `<div class="cweek">${wk.map(cell).join('')}</div>`;
+
+  return `<div class="calhead">
+      <button class="btn ghost" data-month="${h(m.prev)}">←</button>
+      <h2 class="calname">${h(m.label)}</h2>
+      <button class="btn ghost" data-month="${h(m.next)}">→</button>
+      <input type="month" id="calJump" value="${h(m.key)}">
+      <button class="linkbtn" data-month="${h(monthKey(state.asOf))}">today</button>
+      <div class="spacer"></div>
+      <div class="calcount">${plural(m.counts.shows, 'show')} · ${plural(m.counts.matches, 'match', 'matches')}${
+        m.counts.ples ? ` · ${plural(m.counts.ples, 'PLE')}` : ''}</div>
+    </div>
+
+    <div class="cal">
+      <div class="cdow">${m.weekdayNames.map(d => `<div>${h(d)}</div>`).join('')}</div>
+      ${m.weeks.map(week).join('')}
+    </div>
+
+    <div class="cols" style="margin-top:20px">
+      <div>
+        <h2>This month's cards <span class="sub">click one to read the night back</span></h2>
+        <div class="card flush">${table(m.shows, [
+          { label: 'Date', get: s => fmtDate(s.date), dim: true },
+          { label: 'Show', get: s => `<button class="linkbtn strong" data-show="${h(s.id)}">${h(s.name)}</button>`, html: true },
+          { label: 'Brand', get: s => s.brandName || '—', dim: true },
+          { label: 'Matches', num: true, get: s => s.matches },
+        ], 'Nothing was booked this month.')}</div>
+
+        <h2 style="margin-top:22px">Every month on record <span class="sub">jump back</span></h2>
+        <div class="card flush">${table(index, [
+          { label: 'Month', get: r => `<button class="linkbtn${r.key === m.key ? ' strong' : ''}" data-month="${h(r.key)}">${h(r.label)}</button>`, html: true },
+          { label: 'Shows', num: true, get: r => r.shows },
+          { label: 'Matches', num: true, get: r => r.matches },
+          { label: 'PLEs', get: r => h(r.ples.join(', ')), dim: true },
+        ], 'No shows yet.')}</div>
       </div>
-      ${table(s.segments, [
-        { label: '#', num: true, get: g => g.order || '' },
-        { label: 'Type', get: g => g.type, dim: true },
-        { label: 'Segment', get: g => g.text },
-        { label: 'Id', get: g => `<span class="mono">${h(g.id)}</span>`, html: true },
-      ], 'Empty card.')}
-    </div>`).join('');
+      <div>
+        <h2>The week <span class="sub">each show's night comes off its brand record</span></h2>
+        <div class="card flush">${table(weeklySchedule(state), [
+          { label: 'Night', get: r => r.weekday },
+          { label: 'Shows', get: r => (r.brands.length
+            ? r.brands.map(b => `<span class="cdue" style="--bc:${b.color || 'var(--ink-3)'}">${h(b.name)}</span>`).join('')
+            : '<span class="dim">dark</span>'), html: true },
+        ])}</div>
+        <div class="hint" style="margin-top:10px">Set a show's night on the
+          <button class="linkbtn" data-tab="brands">Pyramid</button> tab.</div>
+      </div>
+    </div>`;
 }
 
 // ------------------------------------------------------------------ log

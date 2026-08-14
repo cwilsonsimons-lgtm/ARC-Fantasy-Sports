@@ -305,3 +305,44 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .bracket.promotion .bmeta{color:#A8D98A}
 .bracket ol{list-style:none;margin:8px 0 0;padding:0}
 .bracket li{font-size:13px;padding:3px 0;border-top:1px solid var(--line-soft)}
+
+/* ---------------------------------------------------------------- month grid */
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.calhead .calname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:20px;
+  letter-spacing:.06em;text-transform:uppercase;min-width:190px}
+.calhead .spacer{flex:1}
+.calhead input[type=month]{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
+  padding:5px 8px;font-size:12px;color-scheme:dark}
+.calcount{color:var(--ink-3);font-size:12px}
+
+.cal{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.cdow{display:grid;grid-template-columns:repeat(7,1fr);background:var(--card-2);
+  border-bottom:1px solid var(--line)}
+.cdow div{padding:7px 10px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.cweek{display:grid;grid-template-columns:repeat(7,1fr)}
+.cweek+.cweek{border-top:1px solid var(--line-soft)}
+.cday{min-height:96px;padding:6px 7px;border-right:1px solid var(--line-soft);display:flex;
+  flex-direction:column;gap:4px}
+.cday:last-child{border-right:0}
+.cday .n{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cday.out{background:var(--card-3)}
+.cday.out .n{color:var(--ink-3);opacity:.5}
+.cday.today{background:rgba(124,92,255,.07)}
+.cday.today .n{color:var(--violet);font-weight:700}
+.cday.ple{background:rgba(232,178,58,.06)}
+
+.cshow{display:block;width:100%;text-align:left;background:var(--card-2);border:0;
+  border-left:3px solid var(--bc);border-radius:5px;padding:4px 7px;cursor:pointer}
+.cshow:hover{background:var(--card-3)}
+.cshow .nm{display:block;font-size:12px;font-weight:600;line-height:1.25}
+.cshow .ct{display:block;font-size:10px;color:var(--ink-3)}
+.cday.ple .cshow{border-left-color:var(--gold)}
+
+.cdue{display:inline-block;align-self:flex-start;font-size:10px;color:var(--ink-3);
+  border-left:2px solid var(--bc);padding:1px 5px;background:var(--card-3);
+  border-radius:0 4px 4px 0;margin-right:3px}
+
+.chip.ple{background:rgba(232,178,58,.14);color:var(--gold);border:1px solid rgba(232,178,58,.3)}
+.linkbtn.strong{color:var(--ink);font-weight:600;font-size:13px}
+.beat{color:var(--ink-3);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:0 2px}
+.segmeta{margin-top:2px;font-size:11px;color:var(--ink-3)}

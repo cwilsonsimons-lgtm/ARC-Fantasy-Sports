@@ -22,6 +22,8 @@ import { parseCard, commitCard, setTitleOutcome } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
 import { tiers, tierOf, destination, pyramidText, checkBrand, autoPromotions } from '../js/universe/pyramid.js';
 import { candidates, eligibleOpponents, checkPairing, recordMatch, lastStandBoard } from '../js/universe/laststand.js';
+import { calendarMonth, monthsWithShows, weeklySchedule, brandsOnWeekday, cardOf,
+  cardText as cardAsText, monthText, shiftMonths, weekdayName } from '../js/universe/calendar.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
   proposeLastStand, lastStandCard, nextStep, PHASES } from '../js/universe/season.js';
@@ -784,6 +786,85 @@ sAP.addEntity('championship', { ...sAP.getEntity(nxtBelt.id), autoPromote: false
 check('clearing the flag ends the call-up',
   autoPromotions(project(sAP, { asOf: '2028-04-04' })).length, 0);
 
+
+// ──────────────────────────────────────────────────────────────── calendar
+// Two questions: what night is a show on, and what happened on it. The first is
+// read off the brand records — nothing here knows Raw is a Monday.
+section('the calendar');
+const sCal = fresh();
+commitCard(sCal, parseCard(`Monday Night Raw / 2026-08-17 / Raw
+Damian Priest d. Gunther — World Heavyweight Championship, steel cage
+Rhea Ripley d. Liv Morgan (submission)
+* Solo Sikoa attacks Cody Rhodes after the main event`, sCal));
+commitCard(sCal, parseCard('SmackDown / 2026-08-21 / SmackDown\nCody Rhodes d. Solo Sikoa', sCal));
+const pCal = project(sCal, { asOf: '2026-08-31' });
+
+check('the show sits on its date', weekdayName('2026-08-17'), 'Monday');
+check('a month knows what is in it',
+  [calendarMonth(pCal, '2026-08').counts.shows, calendarMonth(pCal, '2026-08').counts.matches], [2, 3]);
+check('an empty month is still a grid', calendarMonth(pCal, '2026-09').weeks.every(w => w.length === 7), true);
+check('the grid starts on a Sunday', calendarMonth(pCal, '2026-08').weeks[0][0].weekday, 'Sunday');
+check('days outside the month are marked',
+  calendarMonth(pCal, '2026-08').weeks[0].filter(d => !d.inMonth).length > 0, true);
+check('every day of the month appears once', (() => {
+  const seen = calendarMonth(pCal, '2026-08').weeks.flat().filter(d => d.inMonth).map(d => d.date);
+  return [seen.length, new Set(seen).size];
+})(), [31, 31]);
+
+const aug = calendarMonth(pCal, '2026-08');
+const day17 = aug.weeks.flat().find(d => d.date === '2026-08-17');
+check('the night is on its day', day17.shows.map(s => s.name), ['Monday Night Raw']);
+check('with its match count', day17.shows[0].matches, 2);
+check('and nothing else that Monday', day17.scheduled.length, 0);
+
+// The weekly rhythm comes out of the brand records, so a user's own show works.
+check('Raw runs on Mondays', brandsOnWeekday(pCal, 'Monday').map(b => b.name), ['Raw']);
+const mon24 = aug.weeks.flat().find(d => d.date === '2026-08-24');
+check('an unbooked Monday still says Raw is due', mon24.scheduled.map(b => b.name), ['Raw']);
+check('the seeded pyramid runs Monday to Friday',
+  weeklySchedule(pCal).filter(r => r.brands.length).map(r => r.weekday),
+  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+check('a night nobody runs is empty', weeklySchedule(pCal).find(r => r.weekday === 'Sunday').brands, []);
+check('the week covers seven nights', weeklySchedule(pCal).length, 7);
+
+// A brand invented by the user takes its night with it.
+sCal.addEntity('brand', { name: 'WCW', tier: 2, day: 'Saturday', color: '#C0392B' }, { id: 'b:wcw', upsert: true });
+const pCal2 = project(sCal, { asOf: '2026-08-31' });
+check('a new show claims its own night', brandsOnWeekday(pCal2, 'Saturday').map(b => b.name), ['WCW']);
+check('and shows up on every one of them',
+  calendarMonth(pCal2, '2026-08').weeks.flat().filter(d => d.inMonth
+    && d.scheduled.some(b => b.name === 'WCW')).length, 5);
+
+// Reading a night back.
+const nightId = pCal.shows[0].id;
+const night = cardOf(pCal, nightId);
+check('a night reads back in order', night.segments.map(g => g.type), ['match', 'match', 'attack']);
+check('the main event knows who won', night.segments[0].winnerSide, 1);
+check('and carries the refs, not just the text',
+  night.segments[0].sides.flatMap(s => s.refs).includes('w:damian-priest'), true);
+check('the night lists what it changed',
+  night.changes.filter(c => c.kind === 'title').map(c => c.text),
+  ['World Heavyweight Championship — new champion: Damian Priest']);
+check('cards page to their neighbours', [night.prev, !!night.next], [null, true]);
+check('as text, it is the night', cardAsText(pCal, nightId).includes('Damian Priest def. Gunther'), true);
+check('with what changed under it', cardAsText(pCal, nightId).includes('What changed'), true);
+check('a month prints as a grid', monthText(pCal, '2026-08').includes('August 2026'), true);
+check('with the show on it', monthText(pCal, '2026-08', { width: 22 }).includes('Monday Night Raw'), true);
+check('and the nights nothing was booked', monthText(pCal, '2026-08').includes('(Raw)'), true);
+
+check('the index lists months that have cards', monthsWithShows(pCal).map(r => r.key), ['2026-08']);
+check('with the matches counted', monthsWithShows(pCal)[0].matches, 3);
+check('month arithmetic crosses the year', [shiftMonths('2026-12', 1), shiftMonths('2026-01', -1)],
+  ['2027-01', '2025-12']);
+
+// Voiding the main event takes it off the night — the calendar is a read of the
+// log like everything else, not a second record of what was booked.
+sCal.voidEvent(night.segments[0].id, 'never happened');
+const pCal3 = project(sCal, { asOf: '2026-08-31' });
+check('voiding a match takes it off the night', cardOf(pCal3, nightId).segments.length, 2);
+check('and off the tally', calendarMonth(pCal3, '2026-08').counts.matches, 2);
+check('and the title change with it',
+  cardOf(pCal3, nightId).changes.some(c => c.kind === 'title'), false);
 
 // ──────────────────────────────────────────────────────────────── prompts
 section('prompt export');

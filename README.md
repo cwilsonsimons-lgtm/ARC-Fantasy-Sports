@@ -92,7 +92,7 @@ match hands them back. A championship can also carry `autoPromote`, which sends
 its holder up a tier without a match at all — a field on the belt, set on the
 two NXT titles in the shipped seed, so nothing in the code names NXT.
 
-Eleven tabs:
+Twelve tabs:
 
 - **Tonight** — type a card, see it parsed as you type, save it. Active
   rivalries, alliances and the oldest open threads sit underneath.
@@ -107,6 +107,10 @@ Eleven tabs:
   rosters by tier, automatic call-ups, promotion and relegation candidates in
   separate tables, the constrained match maker, results, and every roster
   movement they caused.
+- **Calendar** — a month at a time: which night each show runs (read off the
+  brand records, so your own Saturday show claims Saturdays), every card on its
+  date, and every month on record to jump back through. Click a night to read
+  the card: the segments in order, names linked, and what the night changed.
 - **Shows** and **Log** — every card saved, every event and correction, with
   one-click fixes.
 - **Prompts** — copy-paste prompts for another AI, state already embedded. The
@@ -151,10 +155,12 @@ node tools/universe.mjs season                 # standings for the year
 node tools/universe.mjs draft --tier 1         # the annual draft
 node tools/universe.mjs flags --commit         # promotion and relegation lists
 node tools/universe.mjs laststand --board     # the Last Stand board in a terminal
+node tools/universe.mjs calendar --month 2027-04  # a month grid, and the week
+node tools/universe.mjs show sh_0088          # one card, and what it changed
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 370 data-layer checks, pure Node
-npm run check:universe-ui     # 200 browser checks against dist/universe.html
+npm run check:universe        # 402 data-layer checks, pure Node
+npm run check:universe-ui     # 223 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

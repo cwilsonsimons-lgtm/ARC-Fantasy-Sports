@@ -554,11 +554,16 @@ function summarize(ev, state) {
   const nm = ref => (state.wrestlers[ref] ? state.wrestlers[ref].name : (state.groups[ref] ? state.groups[ref].name : ref));
   const side = n => ev.participants.filter(p => p.side === n).map(p => p.ref).map(nm).join(' & ');
   const out = { id: ev.id, type: ev.type, date: ev.date, order: ev.cardOrder, note: ev.note };
+  // The refs as well as the text, so a view can link the names rather than
+  // print them. `text` stays the plain-language version everything else uses.
+  out.refs = ev.participants.map(p => p.ref);
 
   if (ev.type === 'match') {
     const winner = ev.participants.find(p => p.role === 'winner');
     const nums = [...new Set(ev.participants.map(p => p.side))].sort();
     const corners = nums.map(side);
+    out.sides = nums.map(n => ({ side: n, refs: ev.participants.filter(p => p.side === n).map(p => p.ref) }));
+    out.winnerSide = winner ? winner.side : null;
     out.matchType = ev.data.matchType || 'singles';
     out.titleId = ev.data.titleId || null;
     out.titleChanged = !!ev.data.titleChanged;

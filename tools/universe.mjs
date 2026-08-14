@@ -36,6 +36,7 @@ import { buildPrompt, PROMPTS } from '../js/universe/prompts.js';
 import { tiers, brandCard, pyramidText, checkBrand } from '../js/universe/pyramid.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { lastStandBoard } from '../js/universe/laststand.js';
+import { monthText, cardText, monthsWithShows, weeklySchedule, monthKey } from '../js/universe/calendar.js';
 
 // ------------------------------------------------------------------ args
 
@@ -158,7 +159,38 @@ const commands = {
         { label: 'Segment', get: g => g.text },
         { label: 'Event', get: g => g.id },
       ], { indent: '  ' }));
+      // What the night moved, so reading a card back does not mean reading the
+      // whole log to work out what it did.
+      const changes = cardText(state, s.id).split('What changed:')[1];
+      if (changes) console.log(`  What changed:${changes}`);
     });
+  },
+
+  calendar() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const key = flags.month || monthKey(state.asOf);
+    if (!/^\d{4}-\d{2}$/.test(key)) die(`--month wants YYYY-MM, got: ${key}`);
+
+    console.log(heading(`Calendar`, '═'));
+    console.log(monthText(state, key, { width: +(flags.width || 17) }));
+
+    console.log(heading('The week'));
+    console.log(table(weeklySchedule(state).filter(r => r.brands.length), [
+      { label: 'Night', get: r => r.weekday },
+      { label: 'Shows', get: r => r.brands.map(b => b.name).join(', ') },
+    ], { indent: '  ' }));
+
+    const index = monthsWithShows(state);
+    if (index.length) {
+      console.log(heading('Months on record'));
+      console.log(table(index.slice(0, 24), [
+        { label: 'Month', get: r => r.label },
+        { label: 'Shows', align: 'right', get: r => r.shows },
+        { label: 'Matches', align: 'right', get: r => r.matches },
+        { label: 'PLEs', get: r => r.ples.join(', ') },
+      ], { indent: '  ' }));
+    }
   },
 
   shows() {
@@ -673,6 +705,7 @@ const commands = {
   roster <file|-> [--date D] [--dry]     import or re-sync a pasted roster
   brands [--as-of D]                     who is on each brand
   card <file|-> [--dry] [--date D]       enter a show's card
+  calendar [--month YYYY-MM]             the month grid, the week, months on record
   show [showId]                          print a saved card (default: latest)
   shows                                  every show
   state [--as-of D] [--within N]         champions, records, injuries, contracts, feuds

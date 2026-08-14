@@ -17,7 +17,7 @@ import { UNIVERSE_SEED } from '../seed-data.js';
 import { $, h, on, today, plural } from './dom.js';
 import { buildIndex, resolve as resolveName } from '../util.js';
 import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage,
-  threadsView, heatPanel, seasonView, brandsView, lastStandView } from './views.js';
+  threadsView, heatPanel, seasonView, brandsView, lastStandView, calendarView, showPage } from './views.js';
 import { entryView, cardPreview, rosterImportPanel, rosterPreview } from './entry.js';
 import { promptsView, importView, copyText } from './tools.js';
 import { proposeFlags, commitFlags, proposeLastStand, lastStandCard } from '../season.js';
@@ -38,6 +38,8 @@ const app = {
   brandEdit: null,                  // brand id being edited, or 'new'
   pick: {},                         // the Last Stand match maker's selection
   prompt: { id: 'next' },
+  month: null,                      // which month the calendar is showing
+
   shots: [], activeShot: 0, shotKind: 'card',
 };
 
@@ -49,12 +51,13 @@ const TABS = [
   { id: 'threads', label: 'Threads', count: s => s.threads.length },
   { id: 'season', label: 'Season' },
   { id: 'laststand', label: 'Last Stand' },
+  { id: 'calendar', label: 'Calendar' },
   { id: 'shows', label: 'Shows', count: s => s.shows.length },
   { id: 'log', label: 'Log', count: s => s.events.length },
   { id: 'prompts', label: 'Prompts' },
   { id: 'import', label: 'Import' },
 ];
-const PANES = [...TABS.map(t => t.id), 'wrestler', 'title'];
+const PANES = [...TABS.map(t => t.id), 'wrestler', 'title', 'show'];
 
 const go = (tab, detailId = null) => { app.tab = tab; app.detailId = detailId; closeSheet(); render(); };
 
@@ -120,6 +123,8 @@ function render() {
     if (keep) { $('#rosterText').value = keep; refreshRosterPreview(); }
   }
   if (app.tab === 'titles') $('#pane-titles').innerHTML = titlesView(s);
+  if (app.tab === 'calendar') $('#pane-calendar').innerHTML = calendarView(s, { month: app.month });
+  if (app.tab === 'show') $('#pane-show').innerHTML = showPage(s, app.detailId);
   if (app.tab === 'shows') $('#pane-shows').innerHTML = showsView(s);
   if (app.tab === 'log') $('#pane-log').innerHTML = logView(store, s);
 
@@ -204,6 +209,9 @@ function importRoster() {
 on('click', '[data-tab]', (e, el) => go(el.dataset.tab));
 on('click', '[data-w]', (e, el) => go('wrestler', el.dataset.w));
 on('click', '[data-belt]', (e, el) => go('title', el.dataset.belt));
+on('click', '[data-show]', (e, el) => go('show', el.dataset.show));
+on('click', '[data-month]', (e, el) => { app.month = el.dataset.month; go('calendar'); });
+on('change', '#calJump', (e, el) => { if (el.value) { app.month = el.value; render(); } });
 on('click', '[data-ev]', (e, el) => openSheet(eventSheet(store, app.state, el.dataset.ev)));
 
 // Mark a thread resolved. It is an event like anything else, so it lands in the
