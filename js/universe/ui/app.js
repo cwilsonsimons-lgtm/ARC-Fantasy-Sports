@@ -15,23 +15,36 @@ import { commitCard } from '../card.js';
 import { commitRoster } from '../roster.js';
 import { UNIVERSE_SEED } from '../seed-data.js';
 import { $, h, on, today, plural } from './dom.js';
-import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage, threadsView, heatPanel } from './views.js';
+import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage,
+  threadsView, heatPanel, seasonView } from './views.js';
 import { entryView, cardPreview, rosterImportPanel, rosterPreview } from './entry.js';
+import { promptsView, importView, copyText } from './tools.js';
+import { proposeFlags, commitFlags, proposeLastStand, lastStandCard } from '../season.js';
+import { buildPrompt } from '../prompts.js';
+import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
 
 const store = new UniverseStore({ adapter: localStorageAdapter() });
 if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
 
 // `tab` is whichever pane is showing. The two detail pages (a wrestler, a belt)
 // are panes too — they just are not in the tab bar, and carry an id.
-const app = { tab: 'tonight', detailId: null, asOf: null, state: null, flash: null };
+const app = {
+  tab: 'tonight', detailId: null, asOf: null, state: null, flash: null,
+  season: {},                       // { proposal, lastStand } — unsaved working state
+  prompt: { id: 'next' },
+  shots: [], activeShot: 0, shotKind: 'card',
+};
 
 const TABS = [
   { id: 'tonight', label: 'Tonight' },
   { id: 'roster', label: 'Roster', count: s => Object.keys(s.wrestlers).length },
   { id: 'titles', label: 'Titles', count: s => Object.values(s.championships).filter(c => !c.retired).length },
   { id: 'threads', label: 'Threads', count: s => s.threads.length },
+  { id: 'season', label: 'Season' },
   { id: 'shows', label: 'Shows', count: s => s.shows.length },
   { id: 'log', label: 'Log', count: s => s.events.length },
+  { id: 'prompts', label: 'Prompts' },
+  { id: 'import', label: 'Import' },
 ];
 const PANES = [...TABS.map(t => t.id), 'wrestler', 'title'];
 
@@ -78,6 +91,13 @@ function render() {
     $('#heatPanel').innerHTML = heatPanel(s);
   }
   if (app.tab === 'threads') $('#pane-threads').innerHTML = threadsView(s);
+  if (app.tab === 'season') $('#pane-season').innerHTML = seasonView(s, { proposal: app.season.proposal, lastStand: app.season.lastStand });
+  if (app.tab === 'prompts') { $('#pane-prompts').innerHTML = promptsView(s, app.prompt); refreshPrompt(); }
+  if (app.tab === 'import') {
+    const keep = $('#shotText') ? $('#shotText').value : (app.shotText || '');
+    $('#pane-import').innerHTML = importView(s, { shots: app.shots, active: app.activeShot, kind: app.shotKind });
+    if (keep) { $('#shotText').value = keep; refreshShotPreview(); }
+  }
   if (app.tab === 'wrestler') $('#pane-wrestler').innerHTML = wrestlerPage(s, app.detailId);
   if (app.tab === 'title') $('#pane-title').innerHTML = titlePage(s, app.detailId);
   if (app.tab === 'roster') {
@@ -222,6 +242,8 @@ document.addEventListener('keydown', e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'cardText') refreshCardPreview();
   if (e.target.id === 'rosterText') refreshRosterPreview();
+  if (e.target.id === 'shotText') refreshShotPreview();
+  if (e.target.id === 'promptPle') { app.prompt.ple = e.target.value; refreshPrompt(); }
 });
 
 on('click', '#cardSave', saveCard);
@@ -240,6 +262,162 @@ on('click', '#reset', () => {
   app.tab = 'tonight';
   flash('Universe reset to the seed roster.');
   render();
+});
+
+// ------------------------------------------------------------------ season
+
+on('click', '#flagsPropose', () => {
+  app.season.proposal = proposeFlags(app.state);
+  app.season.lastStand = null;
+  render();
+});
+on('click', '#flagsCancel', () => { app.season.proposal = null; render(); });
+on('click', '#flagsCommit', () => {
+  const res = commitFlags(store, app.season.proposal || [], { date: universeNow() });
+  save();
+  app.season.proposal = null;
+  flash(`${plural(res.written, 'name')} flagged. Book Last Stand when you are ready.`);
+  render();
+});
+on('click', '#lastStandPropose', () => {
+  const proposal = proposeLastStand(app.state);
+  if (!proposal.matches.length) {
+    flash('Nothing to book — nobody is carrying a flag, or there is only one name per gender on a list.', 'warn');
+    render();
+    return;
+  }
+  app.season.lastStand = lastStandCard(app.state, proposal, { date: universeNow() });
+  if (proposal.unpaired.length) {
+    flash(`${proposal.unpaired.map(w => h(w.name)).join(', ')} had nobody to face and was left off the card.`, 'warn');
+  }
+  render();
+});
+on('click', '#lastStandCopy', async () => {
+  flash(await copyText(app.season.lastStand) ? 'Card copied.' : 'Could not reach the clipboard.', 'ok');
+  render();
+});
+on('click', '#lastStandUse', () => {
+  const text = app.season.lastStand;
+  app.season.lastStand = null;
+  go('tonight');
+  $('#cardText').value = text;
+  refreshCardPreview();
+  $('#cardText').focus();
+});
+
+// ------------------------------------------------------------------ prompts
+
+function refreshPrompt() {
+  const box = $('#promptText');
+  if (!box) return;
+  const opts = {
+    showId: app.prompt.showId || (app.state.shows.length ? app.state.shows[app.state.shows.length - 1].id : null),
+    brandId: app.prompt.brandId || null,
+    ple: app.prompt.ple || undefined,
+  };
+  const text = buildPrompt(app.prompt.id, app.state, opts);
+  box.value = text;
+  $('#promptSize').textContent = `${text.length.toLocaleString()} characters`;
+}
+
+on('click', '[data-prompt]', (e, el) => { app.prompt = { ...app.prompt, id: el.dataset.prompt }; render(); });
+on('change', '#promptShow', (e, el) => { app.prompt.showId = el.value; refreshPrompt(); });
+on('change', '#promptBrand', (e, el) => { app.prompt.brandId = el.value || null; refreshPrompt(); });
+on('click', '#promptCopy', async () => {
+  const ok = await copyText($('#promptText').value);
+  $('#promptSize').textContent = ok ? 'copied to clipboard' : 'could not reach the clipboard — select the text and copy';
+});
+
+// ------------------------------------------------------------------ import
+
+function refreshShotPreview() {
+  const box = $('#shotText');
+  if (!box) return;
+  const text = cleanReply(box.value);
+  app.shotText = box.value;
+  const kind = detectKind(text) || app.shotKind;
+  const out = kind === 'roster' ? rosterPreview(store, app.state, text) : cardPreview(store, app.state, text);
+  $('#shotPreview').innerHTML = out.html || '';
+  $('#shotUse').disabled = !out.ok;
+  app.shotParsed = out.ok ? { kind, text } : null;
+  $('#shotStatus').textContent = text ? `reads as a ${kind === 'roster' ? 'roster' : 'show card'}` : '';
+}
+
+const addShots = files => {
+  [...files].filter(f => /^image\//.test(f.type)).forEach(f => {
+    const r = new FileReader();
+    r.onload = () => {
+      app.shots.push({ name: f.name, dataUrl: r.result });
+      app.activeShot = app.shots.length - 1;
+      render();
+    };
+    r.readAsDataURL(f);
+  });
+};
+
+on('click', '#shotPick', () => $('#shotFile').click());
+document.addEventListener('change', e => { if (e.target.id === 'shotFile') addShots(e.target.files); });
+on('click', '[data-shot]', (e, el) => { app.activeShot = +el.dataset.shot; render(); });
+on('change', '#shotKind', (e, el) => { app.shotKind = el.value; });
+
+document.addEventListener('dragover', e => {
+  if (!$('#drop')) return;
+  e.preventDefault();
+  $('#drop').classList.add('over');
+});
+document.addEventListener('dragleave', e => { if ($('#drop') && e.target === $('#drop')) $('#drop').classList.remove('over'); });
+document.addEventListener('drop', e => {
+  if (!$('#drop')) return;
+  e.preventDefault();
+  $('#drop').classList.remove('over');
+  if (e.dataTransfer && e.dataTransfer.files) addShots(e.dataTransfer.files);
+});
+
+on('click', '#shotPrompt', async () => {
+  const ok = await copyText(transcriptionPrompt(app.state, app.shotKind));
+  $('#shotStatus').textContent = ok
+    ? 'prompt copied — paste it into your AI along with the screenshot, then paste the reply below'
+    : 'could not reach the clipboard';
+});
+
+on('click', '#shotRead', async () => {
+  const shot = app.shots[app.activeShot];
+  if (!shot) return;
+  const btn = $('#shotRead');
+  btn.disabled = true;
+  $('#shotStatus').textContent = 'reading the screenshot…';
+  try {
+    const out = await ingestScreenshot(app.state, { dataUrl: shot.dataUrl, kind: app.shotKind });
+    $('#shotText').value = out.text;
+    refreshShotPreview();
+  } catch (err) {
+    $('#shotStatus').textContent = `could not read it: ${err.message}`;
+  }
+  btn.disabled = false;
+});
+
+on('click', '#apiSave', () => {
+  setKey($('#apiKey').value.trim());
+  flash(hasKey() ? 'Key saved in this browser. Screenshots will be read automatically.' : 'Key removed.');
+  render();
+});
+on('click', '#apiClear', () => { setKey(''); flash('Key removed.'); render(); });
+on('click', '#shotClear', () => { $('#shotText').value = ''; app.shotText = ''; refreshShotPreview(); });
+
+on('click', '#shotUse', () => {
+  if (!app.shotParsed) return;
+  const { kind, text } = app.shotParsed;
+  app.shotText = '';
+  go(kind === 'roster' ? 'roster' : 'tonight');
+  if (kind === 'roster') {
+    $('#rosterPanel').open = true;
+    $('#rosterText').value = text;
+    refreshRosterPreview();
+  } else {
+    $('#cardText').value = text;
+    refreshCardPreview();
+    $('#cardText').focus();
+  }
 });
 
 render();

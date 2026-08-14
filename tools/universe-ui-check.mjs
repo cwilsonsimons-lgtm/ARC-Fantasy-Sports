@@ -42,7 +42,7 @@ const tab = id => `document.querySelector('[data-tab=${id}]').click()`;
 // ---------------------------------------------------------------- boot
 await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 53);
 await check('seed wrote events, not state', `UNIVERSE.store.stats().live > 60`, true);
-await check('tabs render', `document.querySelectorAll('.tab').length`, 6);
+await check('tabs render', `document.querySelectorAll('.tab').length`, 9);
 await check('lands on the entry tab', `document.querySelector('.tab.on').dataset.tab`, 'tonight');
 await check('card box is focused for typing', `document.activeElement.id`, 'cardText');
 
@@ -261,6 +261,125 @@ await check('and a reign links to the belt page', `UNIVERSE.app.detailId = 'w:co
   document.querySelector('#pane-wrestler [data-belt]').click();
   document.querySelector('#pane-title .pagehead .nm').textContent`, 'WWE Championship');
 
+// ---------------------------------------------------------------- season
+await check('season tab shows standings', `${tab('season')};
+  document.querySelectorAll('#pane-season .brandhead').length`, 3);
+await check('season 1 is in progress', `document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 1');
+await check('no WrestleMania yet', `document.querySelector('#pane-season .pagehead').textContent
+  .includes('has not happened yet')`, true);
+
+await page.evaluate(tab('tonight'));
+await type(`WrestleMania 43 / 2027-04-04 / Raw
+Cody Rhodes d. Roman Reigns — WWE Championship`);
+await check('WrestleMania is recognised from the name', `document.getElementById('cardSave').click();
+  UNIVERSE.app.state.shows.slice(-1)[0].ple`, 'wrestlemania');
+await check('and the season knows', `${tab('season')};
+  document.querySelector('#pane-season .pagehead').textContent.includes('lists are due')`, true);
+
+await check('working out the lists proposes names', `document.getElementById('flagsPropose').click();
+  document.querySelectorAll('#pane-season table')[0].querySelectorAll('tbody tr').length > 4`, true);
+await check('nothing is written until confirmed', `UNIVERSE.store.effectiveEvents()
+  .filter(e => e.source === 'season').length`, 0);
+await check('champions are not on the relegation list', `[...document.querySelectorAll('#pane-season table')[0]
+  .querySelectorAll('tbody tr')].filter(r => r.textContent.includes('relegation'))
+  .every(r => !r.textContent.includes('Cody Rhodes'))`, true);
+await check('confirming writes the flags', `document.getElementById('flagsCommit').click();
+  UNIVERSE.store.effectiveEvents().filter(e => e.source === 'season').length > 4`, true);
+await check('and the roster shows them', `Object.values(UNIVERSE.app.state.wrestlers)
+  .filter(w => /flagged$/.test(w.status)).length > 4`, true);
+
+await check('booking Last Stand writes a card', `document.getElementById('lastStandPropose').click();
+  document.getElementById('lastStandText').value.split('\\n').filter(l => / vs /.test(l)).length`, 4);
+await check('with relegation and promotion matches', `const t = document.getElementById('lastStandText').value;
+  t.includes('relegation') && t.includes('promotion')`, true);
+await check('sending it lands in the entry box', `document.getElementById('lastStandUse').click();
+  document.querySelector('.tab.on').dataset.tab === 'tonight'
+  && document.getElementById('cardText').value.includes('Last Stand')`, true);
+
+await check('playing it moves wrestlers between brands', `
+  const box = document.getElementById('cardText');
+  box.value = box.value.split('\\n').map(l => l.replace(' vs ', ' d. ')).join('\\n');
+  box.dispatchEvent(new Event('input', {bubbles:true}));
+  new Promise(r => setTimeout(() => {
+    const before = JSON.parse(JSON.stringify(UNIVERSE.app.state.wrestlers));
+    document.getElementById('cardSave').click();
+    const after = UNIVERSE.app.state.wrestlers;
+    r(Object.keys(after).filter(id => after[id].brandId !== before[id].brandId).length);
+  }, 200))`, n => n >= 4);
+await check('and clears the flags of everyone who fought', `${tab('season')};
+  document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 2');
+
+// ---------------------------------------------------------------- prompts
+await check('prompts tab offers three', `${tab('prompts')};
+  document.querySelectorAll('.promptcard').length`, 3);
+await check('what-happens-next is the default', `document.querySelector('.promptcard.on').dataset.prompt`, 'next');
+await check('and it is built from the queue', `document.getElementById('promptText').value.includes('OPEN THREADS')`, true);
+await check('recap embeds a real card', `document.querySelector('[data-prompt=recap]').click();
+  const v = document.getElementById('promptText').value;
+  v.includes('CARD, IN ORDER') && v.includes('d.')`, true);
+await check('picking a show changes the prompt', `const sel = document.getElementById('promptShow');
+  const before = document.getElementById('promptText').value;
+  sel.value = sel.options[sel.options.length - 1].value;
+  sel.dispatchEvent(new Event('change', {bubbles:true}));
+  document.getElementById('promptText').value !== before`, true);
+await check('contender report embeds standings', `document.querySelector('[data-prompt=contenders]').click();
+  const v = document.getElementById('promptText').value;
+  v.includes('SEASON STANDINGS') && v.includes('RIVALRY HEAT') && v.includes('CHAMPIONS')`, true);
+await check('the event name is editable', `const i = document.getElementById('promptPle');
+  i.value = 'SummerSlam'; i.dispatchEvent(new Event('input', {bubbles:true}));
+  document.getElementById('promptText').value.includes('SummerSlam')`, true);
+await check('copy reports what happened', `document.getElementById('promptCopy').click();
+  new Promise(r => setTimeout(() => r(/copied|clipboard/.test(document.getElementById('promptSize').textContent)), 200))`, true);
+
+// ---------------------------------------------------------------- import
+await check('import tab has a drop zone', `${tab('import')}; !!document.getElementById('drop')`, true);
+await check('with no key it offers the paste route', `!!document.getElementById('shotPrompt')
+  && !document.getElementById('shotRead')`, true);
+await check('pasting a transcription previews it', `const t = document.getElementById('shotText');
+  t.value = '\`\`\`\\nRaw / 2027-05-02 / Raw\\nSeth Rollins d. Sami Zayn\\n\`\`\`';
+  t.dispatchEvent(new Event('input', {bubbles:true}));
+  document.querySelectorAll('#shotPreview tbody tr').length`, 1);
+await check('code fences do not reach the parser', `document.getElementById('shotStatus').textContent`,
+  s => /show card/.test(s));
+await check('use-this sends it to the entry box', `document.getElementById('shotUse').click();
+  document.querySelector('.tab.on').dataset.tab === 'tonight'
+  && document.getElementById('cardText').value.includes('Seth Rollins')`, true);
+await check('a roster transcription goes the other way', `${tab('import')};
+  const t = document.getElementById('shotText');
+  t.value = 'RAW\\nAxiom, m, active\\nSeth Rollins, m, active';
+  t.dispatchEvent(new Event('input', {bubbles:true}));
+  document.getElementById('shotStatus').textContent`, s => /roster/.test(s));
+await check('and lands in the roster box', `document.getElementById('shotUse').click();
+  document.querySelector('.tab.on').dataset.tab === 'roster'
+  && document.getElementById('rosterText').value.includes('Axiom')`, true);
+
+// The direct-read path, with fetch stubbed: no key of ours, no network, but the
+// request shape and the round trip into the preview are real.
+await check('saving a key switches to automatic', `${tab('import')};
+  document.getElementById('apiKey').value = 'test-key-123';
+  document.getElementById('apiSave').click();
+  !!document.getElementById('shotRead')`, true);
+await check('the key is stored under its own key', `localStorage.getItem('arc_universe_key_v1')`, 'test-key-123');
+await check('reading a screenshot fills the box', `
+  window.__req = null;
+  window.fetch = async (url, opts) => { window.__req = { url, opts, body: JSON.parse(opts.body) };
+    return { ok: true, json: async () => ({ content: [{ type: 'text',
+      text: 'Raw / 2027-05-09 / Raw\\nGunther d. Sheamus' }] }) }; };
+  UNIVERSE.app.shots.push({ name: 'shot.png', dataUrl: 'data:image/png;base64,AAAA' });
+  UNIVERSE.app.activeShot = 0; UNIVERSE.render();
+  document.getElementById('shotRead').click();
+  new Promise(r => setTimeout(() => r(document.getElementById('shotText').value), 400))`,
+  'Raw / 2027-05-09 / Raw\nGunther d. Sheamus');
+await check('it sent the image and the prompt', `[window.__req.url,
+  window.__req.body.messages[0].content[0].type,
+  window.__req.body.messages[0].content[1].text.includes('Winner d. Loser')]`,
+  ['https://api.anthropic.com/v1/messages', 'image', true]);
+await check('with the browser opt-in header', `window.__req.opts.headers['anthropic-dangerous-direct-browser-access']`, 'true');
+await check('and the read result previews like anything else', `
+  document.querySelectorAll('#shotPreview tbody tr').length`, 1);
+await check('removing the key goes back to paste', `document.getElementById('apiClear').click();
+  !!document.getElementById('shotPrompt') && localStorage.getItem('arc_universe_key_v1')`, null);
+
 // Stills for eyeballing the result. snapshots/ is gitignored.
 await mkdir('snapshots', { recursive: true });
 await page.evaluate(tab('tonight'));
@@ -274,6 +393,12 @@ await page.evaluate(tab('threads'));
 await page.screenshot({ path: 'snapshots/universe-threads.png' });
 await page.evaluate(`UNIVERSE.app.tab='wrestler'; UNIVERSE.app.detailId='w:jey-uso'; UNIVERSE.render()`);
 await page.screenshot({ path: 'snapshots/universe-wrestler.png' });
+await page.evaluate(tab('season'));
+await page.screenshot({ path: 'snapshots/universe-season.png' });
+await page.evaluate(tab('prompts'));
+await page.screenshot({ path: 'snapshots/universe-prompts.png' });
+await page.evaluate(tab('import'));
+await page.screenshot({ path: 'snapshots/universe-import.png' });
 await browser.close();
 
 console.log(`\n${pass} passed, ${fail} failed, ${errors.length} page errors`);

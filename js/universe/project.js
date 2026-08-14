@@ -37,8 +37,9 @@ export function project(store, { asOf = null } = {}) {
 
   const state = {
     asOf: at,
+    startDate: store.doc.meta.startDate || null,
     wrestlers: {}, brands: {}, championships: {}, groups: {},
-    shows: [], showsById: {}, events,
+    shows: [], showsById: {}, ples: [], events,
     // Raw contributions, collected during the replay and totalled at the end so
     // decay is measured from each one's own date.
     ties: { rivalry: new Map(), alliance: new Map() },
@@ -184,9 +185,10 @@ function applyEffect(state, fx, ev) {
   const W = ref => state.wrestlers[ref];
   switch (fx.kind) {
     case 'show.open': {
-      const show = { id: fx.showId, name: fx.name, date: ev.date, brandId: fx.brandId, segments: [] };
+      const show = { id: fx.showId, name: fx.name, date: ev.date, brandId: fx.brandId, ple: fx.ple || null, segments: [] };
       state.shows.push(show);
       state.showsById[show.id] = show;
+      if (show.ple) state.ples.push({ kind: show.ple, date: ev.date, showId: show.id, name: show.name });
       break;
     }
 

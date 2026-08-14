@@ -69,15 +69,24 @@ It stores a WWE 2K Universe mode save as an event log — wrestlers, brands,
 championships, tag teams and factions, plus every match, attack, promo, title
 change, injury, contract and brand transfer that happens to them.
 
-Six tabs: **Tonight** (type a card, see it parsed as you type, save it — with
-active rivalries, alliances and open threads below), **Roster** (paste a roster,
-then who is on each brand), **Titles** (every belt, click through to its full
-lineage and title matches), **Threads** (questions the log has opened and not
-answered, oldest first), **Shows**, and **Log** (every event and correction,
-with one-click fixes). Clicking a wrestler opens their profile — record, reigns
-with day counts, rivalries, alliances and a full timeline. A date box in the
-header re-projects the whole page at any past date, decayed heat included. Its
-storage key is `arc_universe_v1`; the fantasy app's keys are never touched.
+Nine tabs:
+
+- **Tonight** — type a card, see it parsed as you type, save it. Active
+  rivalries, alliances and the oldest open threads sit underneath.
+- **Roster** — paste a roster, then who is on each brand.
+- **Titles** — every belt, click through to its full lineage and title matches.
+- **Threads** — questions the log has opened and not answered, oldest first.
+- **Season** — standings, the promotion and relegation lists, and a one-click
+  Last Stand card.
+- **Shows** and **Log** — every card saved, every event and correction, with
+  one-click fixes.
+- **Prompts** — copy-paste prompts for another AI, state already embedded.
+- **Import** — drop a screenshot of a card or a roster and turn it into events.
+
+Clicking a wrestler anywhere opens their profile: record, reigns with day
+counts, rivalries, alliances and a full timeline. A date box in the header
+re-projects the whole page at any past date, decayed heat included. Its storage
+key is `arc_universe_v1`; the fantasy app's keys are never touched.
 
 Nothing derived is persisted. Champions, brand rosters, win/loss records, title
 lineages, faction membership, rivalry heat and the threads queue are all folded
@@ -98,9 +107,12 @@ node tools/universe.mjs card card.txt --dry    # type a show's card in shorthand
 node tools/universe.mjs amend ev_0081 winner="Gunther"
 node tools/universe.mjs threads                # what is still hanging
 node tools/universe.mjs heat                   # rivalries and alliances
+node tools/universe.mjs season                 # standings for the year
+node tools/universe.mjs flags --commit         # promotion and relegation lists
+node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 154 data-layer checks, pure Node
-npm run check:universe-ui     # 87 browser checks against dist/universe.html
+npm run check:universe        # 224 data-layer checks, pure Node
+npm run check:universe-ui     # 124 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

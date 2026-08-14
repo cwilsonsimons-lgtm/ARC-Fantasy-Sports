@@ -40,6 +40,15 @@ export const DIVISIONS = ['mens', 'womens', 'tag', 'mixed', 'unisex'];
 // is out; `unified` ends it, merging the interim run into the main lineage.
 export const TITLE_REASONS = ['won', 'awarded', 'vacated', 'stripped', 'retired', 'interim', 'unified'];
 
+// Premium live events the season system cares about. WrestleMania closes the
+// year's booking and triggers the flagging; Last Stand is where the flagged
+// names settle it. Everything else is just a show with a big name.
+export const PLES = ['wrestlemania', 'lastStand', 'royalRumble', 'summerslam', 'survivorSeries', 'moneyInTheBank', 'other'];
+
+// What a Last Stand match is playing for. The loser of a relegation match goes
+// down; the winner of a promotion match goes up.
+export const STAKES = ['relegation', 'promotion'];
+
 // How a match ended. Anything not in this list is kept as a free-text note.
 export const DECISIONS = ['pinfall', 'submission', 'dq', 'countout', 'ko', 'stoppage', 'draw', 'no contest'];
 
@@ -215,8 +224,11 @@ export const EVENT_TYPES = {
     label: 'Show',
     roles: ['subject'],
     required: ['name'],
-    validate: () => [],
-    effects: ev => [{ kind: 'show.open', showId: ev.id, name: ev.data.name, brandId: ev.data.brandId || null }],
+    validate: ev => (ev.data.ple && !PLES.includes(ev.data.ple) ? [`unknown premium live event: ${ev.data.ple}`] : []),
+    effects: ev => [{
+      kind: 'show.open', showId: ev.id, name: ev.data.name,
+      brandId: ev.data.brandId || null, ple: ev.data.ple || null,
+    }],
   },
 
   match: {
@@ -270,6 +282,20 @@ export const EVENT_TYPES = {
         else out.push({ kind: 'title.defense', titleId, holders: winners });
       }
       if (titleId && drawn && ev.data.titleVacated) out.push({ kind: 'title.vacate', titleId, reason: ev.data.decision || 'draw' });
+
+      // Last Stand: the match that moves someone between brands. Which way it
+      // moves them, and to which brand, was settled by the author at write time
+      // (card.js reads the flags and the roster sizes) — so this stays a pure
+      // statement of outcome and survives any correction upstream.
+      if (ev.data.stakes && !drawn) {
+        const losers = s.filter(x => x.side !== winSide.side).flatMap(x => x.refs);
+        const moved = ev.data.stakes === 'relegation' ? losers : winners;
+        moved.forEach(ref => out.push({
+          kind: 'roster.brand', subject: ref, brandId: ev.data.toBrandId || null, reason: ev.data.stakes,
+        }));
+        // Everyone in the match walks out unflagged: it has been settled.
+        [...winners, ...losers].forEach(ref => out.push({ kind: 'roster.status', subject: ref, status: 'active' }));
+      }
 
       // Winning a number-one contender match is a promise the universe now owes
       // you, so it opens a thread that stays open until you get the match.

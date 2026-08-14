@@ -31,12 +31,15 @@
 import { MATCH_TYPES, DECISIONS, entityId } from './schema.js';
 import { buildIndex, resolve, norm, table, heading } from './util.js';
 import { project } from './project.js';
+import { destinationFor } from './season.js';
 
 const DEFEAT = /\s+(?:d\.|def\.|def|defeats?|defeated|beats?|beat|over|pins?|taps?|>)\s+/i;
 const VERSUS = /\s+(?:vs\.?|versus|v\.)\s+/i;
 const ATTACK = /\s+(?:attacks?|attacked|jumps?|jumped|assaults?|ambushes?|lays? out|beats? down|turns? on)\s+/i;
 const SAVE = /\s+(?:saves?|saved|makes? the save for|runs? out to help|rescues?)\s+/i;
-const PROMO = /\s+(?:cuts? a promo on|promo on|promo|calls? out|confronts?|interrupts?)\s*/i;
+// `promo\b` matters: without the boundary this matches inside "promotion", and
+// a Last Stand line reading "— promotion to Raw" gets torn in half.
+const PROMO = /\s+(?:cuts? a promo on|promo on|promo\b|calls? out|confronts?|interrupts?)\s*/i;
 const DATE_ANY = /\b(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/;
 
 const clean = s => String(s || '').trim().replace(/\s+/g, ' ');
@@ -80,7 +83,7 @@ export function parseCard(text, store, { date = null, brandId = null, showName =
   };
 
   const errors = [], warnings = [];
-  const show = { name: showName, date, brandId, note: '' };
+  const show = { name: showName, date, brandId, ple: null, note: '' };
   const segments = [];
   const lines = String(text || '').split(/\r?\n/);
   let headerSeen = false;
@@ -132,6 +135,7 @@ export function parseCard(text, store, { date = null, brandId = null, showName =
         show.name = show.name || parsed.name;
         show.date = show.date || parsed.date;
         show.brandId = show.brandId || parsed.brandId;
+        show.ple = show.ple || parsed.ple;
         return;
       }
     }
@@ -144,7 +148,7 @@ export function parseCard(text, store, { date = null, brandId = null, showName =
 
     // -- matches -------------------------------------------------------------
     if (DEFEAT.test(line) || VERSUS.test(line)) {
-      const m = parseMatch(line, { corner, idx, state, lineNo, raw, fail, warn });
+      const m = parseMatch(line, { corner, idx, state, lineNo, raw, fail, warn, show });
       if (m) segments.push(m);
       return;
     }
@@ -158,6 +162,18 @@ export function parseCard(text, store, { date = null, brandId = null, showName =
   return { show, segments, errors, warnings };
 }
 
+// The premium live events the season system watches for. Recognised from the
+// show's name, so "WrestleMania 43" needs no extra marker — you type the card
+// the way you would write it down.
+const PLE_NAMES = [
+  [/wrestle\s*mania|wm\s*\d/i, 'wrestlemania'],
+  [/last\s*stand/i, 'lastStand'],
+  [/royal\s*rumble/i, 'royalRumble'],
+  [/summer\s*slam/i, 'summerslam'],
+  [/survivor\s*series/i, 'survivorSeries'],
+  [/money\s*in\s*the\s*bank|mitb/i, 'moneyInTheBank'],
+];
+
 // "Raw / 2026-08-17 / Raw", "Monday Night Raw — 2026-08-17", "8/17 Raw"
 function parseHeader(line, idx, state) {
   const dateHit = DATE_ANY.exec(line);
@@ -166,14 +182,17 @@ function parseHeader(line, idx, state) {
   if (!date) return null;
   const rest = line.replace(dateHit[0], ' ').replace(/^\s*show\s*:/i, ' ');
   const parts = rest.split(/\s*[\/|,]\s*|\s+[-–—]+\s+/).map(clean).filter(Boolean);
-  let brandId = null, name = null;
+  let brandId = null, name = null, ple = null;
   parts.forEach(p => {
+    const marked = /^ple\s*:\s*(.+)$/i.exec(p);
+    if (marked) { ple = clean(marked[1]); return; }
     const b = resolve(idx.brand, p);
     if (b.ok && !brandId) brandId = b.id;
     else if (!name) name = p;
   });
   if (!name && brandId) name = state.brands[brandId] ? state.brands[brandId].name : null;
-  return { name, date, brandId };
+  if (!ple && name) { const hit = PLE_NAMES.find(([re]) => re.test(name)); if (hit) ple = hit[1]; }
+  return { name, date, brandId, ple };
 }
 
 function parseSegment(line, ctx) {
@@ -214,7 +233,10 @@ function parseSegment(line, ctx) {
     };
   }
 
-  if (PROMO.test(line) || /^promo\s*:/i.test(line)) {
+  // A match line can carry loose promo words in its modifiers ("— promotion to
+  // Raw", "confronts" in a note), so a line that already has a result verb is
+  // never a promo.
+  if ((PROMO.test(line) && !DEFEAT.test(line) && !VERSUS.test(line)) || /^promo\s*:/i.test(line)) {
     const body = line.replace(/^promo\s*:\s*/i, '');
     const [a, b = ''] = body.split(PROMO);
     const tail = trailing(b);
@@ -353,6 +375,22 @@ function parseMatch(line, ctx) {
   };
   if (mods.note) data.note = mods.note;
 
+  // Last Stand stakes. On a show tagged lastStand the flags alone are enough —
+  // if everyone in the match is carrying the same one, that is what it is for —
+  // so the usual line needs no modifier at all. The destination brand is worked
+  // out here, at write time, and stored on the event.
+  const wrestlers = participants.map(p => state.wrestlers[p.ref]).filter(Boolean);
+  let stakes = mods.stakes;
+  if (!stakes && ctx.show && ctx.show.ple === 'lastStand' && wrestlers.length) {
+    const flags = new Set(wrestlers.map(w => w.status));
+    if (flags.size === 1 && flags.has('relegation-flagged')) stakes = 'relegation';
+    if (flags.size === 1 && flags.has('promotion-flagged')) stakes = 'promotion';
+  }
+  if (stakes) {
+    data.stakes = stakes;
+    data.toBrandId = mods.toBrandId || destinationFor(state, stakes, wrestlers);
+  }
+
   // A number-one contender match names the belt but is not for it. Move the
   // title onto `contender` so the match does not read as a title match — it
   // opens a title-shot thread instead.
@@ -399,7 +437,8 @@ function trailing(text) {
 function parseModifiers(note, idx, state) {
   const out = {
     matchType: null, decision: null, titleId: null, titleChanged: null,
-    vacated: false, interim: false, unify: false, contender: false, note: null,
+    vacated: false, interim: false, unify: false, contender: false,
+    stakes: null, toBrandId: null, note: null,
   };
   if (!note) return out;
   const leftovers = [];
@@ -414,6 +453,18 @@ function parseModifiers(note, idx, state) {
     if (/^(interim|interim title|for the interim)$/.test(n)) { out.interim = true; return; }
     if (/^(unify|unified|unification|winner takes all|undisputed)$/.test(n)) { out.unify = true; return; }
     if (/^(contender|number one contender|no 1 contender|1 contender|top contender|eliminator)$/.test(n)) { out.contender = true; return; }
+    if (/^(relegation|relegation match|demotion|drop match)$/.test(n)) { out.stakes = 'relegation'; return; }
+    if (/^(promotion|promotion match|call ?up)$/.test(n)) { out.stakes = 'promotion'; return; }
+    const bound = /^(?:relegation|promotion)?\s*to\s+(.+)$/i.exec(tok);
+    if (bound) {
+      const b = resolve(idx.brand, clean(bound[1]));
+      if (b.ok) {
+        out.toBrandId = b.id;
+        if (/^promotion/i.test(tok)) out.stakes = 'promotion';
+        if (/^relegation/i.test(tok)) out.stakes = 'relegation';
+        return;
+      }
+    }
 
     const dec = DECISIONS.find(d => n === d || n === d.replace(/\s/g, ''));
     if (dec) { out.decision = dec; return; }
@@ -480,7 +531,7 @@ export function commitCard(store, parsed, { dryRun = false, source = 'card-entry
   const showEvent = {
     id: nextId('show'), type: 'show', date: show.date, source,
     participants: [], note: show.note || '',
-    data: { name: show.name, brandId: show.brandId || null },
+    data: { name: show.name, brandId: show.brandId || null, ple: show.ple || null },
   };
   const showId = showEvent.id;
   const batch = [showEvent];

@@ -6,6 +6,7 @@
 
 import { h, table, chip, wlink, fmtDate, plural } from './dom.js';
 import { titleLineage, titleMatches, timelineFor, days, describeThread, activeRivalries, activeAlliances } from '../project.js';
+import { currentSeason, brandStandings } from '../season.js';
 
 const BRAND_COLOR = { 'b:raw': 'var(--raw)', 'b:smackdown': 'var(--smackdown)', 'b:nxt': 'var(--nxt)' };
 const brandColor = id => BRAND_COLOR[id] || 'var(--violet)';
@@ -283,6 +284,87 @@ export function threadsView(state) {
       { label: 'Open for', num: true, get: t => `${t.age}d` },
       { label: 'Closed by', get: t => t.closedWhy, dim: true },
     ], 'Nothing closed yet.')}</div>`;
+}
+
+// ------------------------------------------------------------------ season
+
+export function seasonView(state, ui = {}) {
+  const season = currentSeason(state);
+  const tables = brandStandings(state, season);
+  const flagged = Object.values(state.wrestlers).filter(w => /flagged$/.test(w.status));
+  const wm = season.wrestlemania;
+  const proposal = ui.proposal || null;
+
+  const standings = tables.map(b => `<div class="card flush">
+      <div class="brandhead">
+        <div class="bar" style="background:${brandColor(b.id)}"></div>
+        <div class="nm">${h(b.name)}</div>
+        <div class="ct">${(b.tier || 1) > 1 ? 'development' : 'main roster'} · ${plural(b.table.length, 'wrestler')}</div>
+      </div>
+      ${table(b.table, [
+        { label: 'Wrestler', get: r => wlink(state.wrestlers[r.id]), html: true },
+        { label: 'G', get: r => (r.gender === 'female' ? 'F' : r.gender === 'male' ? 'M' : '?'), dim: true },
+        { label: 'W-L-D', num: true, get: r => `${r.w}-${r.l}-${r.d}` },
+        { label: 'Pts', num: true, get: r => r.points },
+        { label: 'Title matches', num: true, get: r => r.titleMatches || '', dim: true },
+        { label: '', get: r => statusChip(state.wrestlers[r.id]), html: true },
+      ], 'Nobody on this brand.')}
+    </div>`).join('');
+
+  const flagBlock = flagged.length ? `
+    <h2 style="margin-top:22px">On the lists <span class="sub">${plural(flagged.length, 'name')}</span></h2>
+    <div class="card flush">${table(flagged, [
+      { label: 'Wrestler', get: w => wlink(w), html: true },
+      { label: 'Brand', get: w => brandName(state, w.brandId) || '—', dim: true },
+      { label: 'G', get: w => (w.gender === 'female' ? 'F' : 'M'), dim: true },
+      { label: 'List', get: w => statusChip(w), html: true },
+    ])}</div>` : '';
+
+  const proposalBlock = proposal ? `
+    <h2 style="margin-top:22px">Proposed lists <span class="sub">nothing is written until you confirm</span></h2>
+    <div class="card flush">${table(proposal, [
+      { label: 'Wrestler', get: p => h(p.name), html: true },
+      { label: 'From', get: p => p.fromName, dim: true },
+      { label: 'G', get: p => (p.gender === 'female' ? 'F' : 'M'), dim: true },
+      { label: 'List', get: p => chip(p.flag === 'relegation-flagged' ? '↓ relegation' : '↑ promotion', p.flag === 'relegation-flagged' ? 'down' : 'up'), html: true },
+      { label: 'Record', get: p => p.record, dim: true },
+      { label: 'Why', get: p => p.why, dim: true },
+      { label: '', get: p => (p.alreadyFlagged ? '<span class="dim">already flagged</span>' : ''), html: true },
+    ])}</div>
+    <div class="row"><button class="btn" id="flagsCommit">Write ${plural(proposal.filter(p => !p.alreadyFlagged).length, 'flag')}</button>
+      <button class="btn ghost" id="flagsCancel">Cancel</button></div>` : '';
+
+  const card = ui.lastStand ? `
+    <h2 style="margin-top:22px">Last Stand card <span class="sub">relegation faces relegation, promotion faces promotion, same gender</span></h2>
+    <div class="card entry">
+      <textarea id="lastStandText" spellcheck="false" style="min-height:150px" readonly>${h(ui.lastStand)}</textarea>
+      <div class="row">
+        <button class="btn" id="lastStandUse">Send to the entry box</button>
+        <button class="btn ghost" id="lastStandCopy">Copy</button>
+        <span class="hint">The loser of a relegation match goes down; the winner of a promotion match goes up.</span>
+      </div>
+    </div>` : '';
+
+  return `<div class="pagehead" style="border-left-color:var(--gold)">
+      <div class="nm">Season ${season.n}</div>
+      <div class="holder">${h(season.from)} → ${season.to ? h(season.to) : 'in progress'}</div>
+      <div class="dim" style="margin-top:6px">
+        ${wm ? `WrestleMania was ${h(wm.date)} — the lists are due` : 'WrestleMania has not happened yet this season'}
+        · ${plural(state.shows.length, 'show')} logged
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:0">
+      <button class="btn${wm && !flagged.length ? '' : ' ghost'}" id="flagsPropose">Work out the lists</button>
+      <button class="btn ghost" id="lastStandPropose"${flagged.length ? '' : ' disabled'}>Book Last Stand</button>
+      <span class="hint">Champions are never relegated.</span>
+    </div>
+    ${proposalBlock}
+    ${card}
+    ${flagBlock}
+
+    <h2 style="margin-top:22px">Standings <span class="sub">wins this season — 3 points a win, 1 a draw</span></h2>
+    <div class="grid">${standings}</div>`;
 }
 
 // ------------------------------------------------------------------ heat

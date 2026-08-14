@@ -30,12 +30,15 @@ import { seedFromJSON, exportSeed } from '../js/universe/seed.js';
 import { parseRoster, commitRoster, brandTable, importReport } from '../js/universe/roster.js';
 import { parseCard, commitCard, renderCard } from '../js/universe/card.js';
 import { buildIndex, resolve as resolveName, table, heading, plural } from '../js/universe/util.js';
+import { currentSeason, seasons, brandStandings, proposeFlags, commitFlags,
+  proposeLastStand, lastStandCard } from '../js/universe/season.js';
+import { buildPrompt, PROMPTS } from '../js/universe/prompts.js';
 
 // ------------------------------------------------------------------ args
 
 const argv = process.argv.slice(2);
 const cmd = argv.shift();
-const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed'];
+const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit'];
 const flags = {};
 const positional = [];
 for (let i = 0; i < argv.length; i++) {
@@ -310,6 +313,82 @@ const commands = {
     console.log(`${ev.id}: resolved ${id}`);
   },
 
+  season() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const season = currentSeason(state);
+
+    console.log(heading(`Season ${season.n} — ${season.from} → ${season.to || 'in progress'}`, '═'));
+    console.log(`  ${season.wrestlemania ? `WrestleMania was ${season.wrestlemania.date} — the lists are due` : 'WrestleMania has not happened yet'}`
+      + `  ·  ${plural(seasons(state).length, 'season')} on record`);
+
+    brandStandings(state, season).forEach(b => {
+      console.log(heading(`${b.name}  —  ${(b.tier || 1) > 1 ? 'development' : 'main roster'}`));
+      console.log(table(b.table, [
+        { label: 'Wrestler', get: r => r.name },
+        { label: 'G', get: r => (r.gender === 'female' ? 'F' : r.gender === 'male' ? 'M' : '?') },
+        { label: 'W-L-D', align: 'right', get: r => `${r.w}-${r.l}-${r.d}` },
+        { label: 'Pts', align: 'right', get: r => r.points },
+        { label: 'Title', align: 'right', get: r => r.titleMatches || '' },
+        { label: '', get: r => (/flagged$/.test(state.wrestlers[r.id].status) ? state.wrestlers[r.id].status.replace('-flagged', '') : '') },
+      ], { indent: '  ' }));
+    });
+  },
+
+  flags() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const proposals = proposeFlags(state);
+
+    console.log(heading('Proposed lists', '═'));
+    console.log(table(proposals, [
+      { label: 'Wrestler', get: p => p.name },
+      { label: 'From', get: p => p.fromName },
+      { label: 'G', get: p => (p.gender === 'female' ? 'F' : 'M') },
+      { label: 'List', get: p => (p.flag === 'relegation-flagged' ? '↓ relegation' : '↑ promotion') },
+      { label: 'Record', align: 'right', get: p => p.record },
+      { label: 'Why', get: p => p.why },
+      { label: '', get: p => (p.alreadyFlagged ? 'already flagged' : '') },
+    ], { indent: '  ' }));
+
+    if (!flags.commit) { console.log(`\n(nothing written — re-run with --commit)`); return; }
+    const last = store.doc.events.reduce((m, e) => (e.date > m ? e.date : m), new Date().toISOString().slice(0, 10));
+    const res = commitFlags(store, proposals, { date: flags.date || last });
+    console.log(`\n${plural(res.written, 'flag')} written`);
+  },
+
+  laststand() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const proposal = proposeLastStand(state);
+    if (!proposal.matches.length) die('nobody is carrying a flag — run: node tools/universe.mjs flags --commit');
+
+    const last = store.doc.events.reduce((m, e) => (e.date > m ? e.date : m), new Date().toISOString().slice(0, 10));
+    console.log(lastStandCard(state, proposal, { date: flags.date || last }));
+    if (proposal.unpaired.length) {
+      console.error(`\n# ${proposal.unpaired.map(w => w.name).join(', ')} had nobody to face and was left off`);
+    }
+  },
+
+  prompt() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const id = positional[0];
+    if (!id) die(`which prompt?\n  ${PROMPTS.map(p => `${p.id.padEnd(12)} ${p.blurb}`).join('\n  ')}`);
+    if (!PROMPTS.some(p => p.id === id)) die(`unknown prompt: ${id} (want ${PROMPTS.map(p => p.id).join(', ')})`);
+
+    let showId = flags.show;
+    if (id === 'recap' && !showId) showId = state.shows.length ? state.shows[state.shows.length - 1].id : null;
+    let brandId = null;
+    if (flags.brand) {
+      const hit = resolveName(buildIndex(store, 'brand'), flags.brand);
+      if (!hit.ok) die(`unknown brand: ${flags.brand}`);
+      brandId = hit.id;
+    }
+    // Straight to stdout so it can be piped: `... prompt next | pbcopy`
+    console.log(buildPrompt(id, state, { showId, brandId, ple: flags.ple }));
+  },
+
   heat() {
     const store = openStore();
     const state = project(store, { asOf: flags['as-of'] || null });
@@ -503,6 +582,10 @@ const commands = {
   shows                                  every show
   state [--as-of D] [--within N]         champions, records, injuries, contracts, feuds
   titles [name]                          title lineage, reigns and title matches
+  season [--as-of D]                     standings and where the year has got to
+  flags [--commit] [--date D]            work out the promotion/relegation lists
+  laststand [--date D]                   print the Last Stand card to fill in
+  prompt <recap|contenders|next>         a prompt with state embedded, to stdout
   threads [--all] [--as-of D]            open questions the log has not answered
   resolve <threadId> [note]              mark one closed
   heat [--limit N] [--as-of D]           rivalries and alliances, hottest first

@@ -15,6 +15,9 @@ js/universe/
   store.js     the three logs, append / amend / void, storage adapters
   project.js   the fold — replays events into current state
   seed.js      load a universe from JSON
+  season.js    season windows, standings, promotion and relegation
+  prompts.js   copy-paste prompts with state embedded
+  ingest.js    screenshots in — transcription prompt, optional vision call
   roster.js    paste a roster, diff it, print who is on each brand
   card.js      type a show's card in shorthand
   util.js      name resolution and plain-text tables
@@ -24,11 +27,12 @@ js/universe/
     views.js   roster, belts, threads, profiles, log — projection in, HTML out
     entry.js   the card and roster boxes, with live previews
     dom.js     escaping, tables, delegated events
+    tools.js   the prompt and import panels, and the clipboard
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     154 data-layer checks, pure Node
-  universe-ui-check.mjs  87 browser checks against the built page
+  universe-check.mjs     224 data-layer checks, pure Node
+  universe-ui-check.mjs  124 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -104,8 +108,8 @@ stay in the order they were typed.
 
 | Type | Participants | Key `data` | Effects |
 | --- | --- | --- | --- |
-| `show` | — | name, brandId | `show.open` |
-| `match` | competitor / winner / loser | matchType, decision, titleId, titleChanged, interim, unify, contender | `record.*`, `title.award` / `defense` / `interim` / `unify`, `alliance.bond`, `rivalry.heat`, `thread.open` |
+| `show` | — | name, brandId, ple (`wrestlemania`, `lastStand`, …) | `show.open` |
+| `match` | competitor / winner / loser | matchType, decision, titleId, titleChanged, interim, unify, contender, stakes, toBrandId | `record.*`, `title.award` / `defense` / `interim` / `unify`, `alliance.bond`, `rivalry.heat`, `thread.open` |
 | `attack` | attacker, victim | context | `rivalry.heat`, `thread.open` |
 | `promo` | speaker, target | topic | `rivalry.heat` |
 | `save` | subject, victim, attacker | context | `alliance.bond`, `rivalry.heat`, `thread.close` |
@@ -383,7 +387,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 87 browser checks
+npm run check:universe-ui    # 124 browser checks
 ```
 
 | Tab | What it does |
@@ -392,8 +396,11 @@ npm run check:universe-ui    # 87 browser checks
 | Roster | Paste box (collapsed) over a table per brand, plus free agents and every team and faction. |
 | Titles | Every belt with holder, interim holder, days, defenses and reign count. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
 | Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
+| Season | Standings per brand for the season in progress, the promotion and relegation lists, and a one-click Last Stand card. |
 | Shows | Every saved card, newest first. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
+| Prompts | Three copy-paste prompts with the current state embedded. |
+| Import | Drop screenshots of a card or a roster and turn them into events. |
 
 Clicking any wrestler's name opens their profile: record, win rate, streak,
 title reigns with day counts, rivalries and alliances sorted by heat, open
@@ -411,12 +418,107 @@ Storage is `localStorage` under `arc_universe_v1`, seeded from `seed-data.js` on
 first load. The fantasy app's keys are never read or written. If a write fails
 (quota, private mode) the page says so rather than pretending it saved.
 
+## Seasons, promotion and relegation
+
+A season runs **from one Last Stand to the next**, because Last Stand is where
+the brand moves happen. Before the first one, the season starts at the
+universe's start date. Seasons are derived from the log like everything else —
+there is no season record to keep in step, and voiding a Last Stand merges the
+two seasons either side of it back into one.
+
+    ... regular shows ...   WrestleMania  →  the lists go up
+                            Last Stand    →  flagged names fight, brands change
+                            next season
+
+Both are recognised from the show's name, so `WrestleMania 43 / 2027-04-04 / Raw`
+needs no extra marker (`PLE: lastStand` in the header forces it).
+
+**Standings** are win totals inside the season window — 3 points a win, 1 a
+draw — ordered by points, then win rate, then matches wrestled. That last
+tiebreak matters: among a group all sitting on zero, the one who was barely
+booked sinks to the bottom rather than whoever comes last alphabetically.
+
+**The lists.** After WrestleMania, `proposeFlags` takes the bottom of each main
+brand and the top of the development brand, **per gender**, because the matches
+are gender-segregated. Champions are never on the relegation list — holding a
+belt is the one thing that keeps you up. Nothing is written until you confirm:
+flagging is a booking decision, so the proposal is shown first and then written
+as ordinary `status.change` events.
+
+**Last Stand.** `proposeLastStand` pairs the flagged names off — relegation
+faces relegation, promotion faces promotion, never across genders — and hands
+back the card in the entry shorthand for you to paste, play, and fill in the
+winners. Someone with no opponent is reported, not quietly dropped.
+
+Playing it moves people. On a show tagged `lastStand`, a match between two
+wrestlers carrying the same flag needs no modifier at all — the flags are the
+stipulation. The loser of a relegation match goes down; the winner of a
+promotion match goes up; everyone who fought walks out unflagged. As with title
+changes, the *destination* is worked out at write time and stored on the event,
+so the effects stay pure and survive corrections.
+
+    node tools/universe.mjs season
+    node tools/universe.mjs flags --commit
+    node tools/universe.mjs laststand > card.txt
+
+## Prompt export
+
+Three prompts, each with the current state already embedded so you never
+re-explain your universe to another AI:
+
+| Prompt | Carries |
+| --- | --- |
+| `recap` | one show's full card in order, what changed, who holds what |
+| `contenders` | champions, season standings, rivalry heat, title shots owed |
+| `next` | the open threads queue, grouped by kind, oldest first |
+
+Plain text, not markdown or JSON — both survive a copy worse than lines do. Each
+is a pure function of a projection, so a prompt generated with the header date
+set to last month describes the universe as it was then. The dashboard's Prompts
+tab copies to the clipboard; the CLI writes to stdout so it can be piped.
+
+    node tools/universe.mjs prompt contenders --brand Raw --ple "SummerSlam"
+    node tools/universe.mjs prompt recap --show sh_0080 | pbcopy
+
+## Screenshots in
+
+Drop a screenshot of a card or a roster page on the Import tab. Two routes, both
+ending in the same place — the ordinary card or roster box, with the ordinary
+preview and the ordinary save button. **A screenshot is never trusted straight
+into the log.**
+
+**Bridge (default, no key, works offline).** The page builds a transcription
+prompt with your roster names and championship names embedded — the single
+biggest source of "unknown name" errors otherwise — and asks for the answer in
+the card shorthand. Copy it, paste it into whatever AI you already use along
+with the screenshot, paste the reply back. Code fences and "Here's the card:"
+preambles are stripped, and the reply is routed to the card box or the roster
+box by what it looks like.
+
+**Direct (opt-in).** With an Anthropic API key the page sends the image itself
+and fills the box for you, so dropping a screenshot is the whole interaction.
+The key is stored in this browser's `localStorage` under `arc_universe_key_v1`
+and is sent from the page to `api.anthropic.com` with the
+`anthropic-dangerous-direct-browser-access` header — which means anyone with
+access to the browser profile can read it. That is why it is opt-in and off by
+default.
+
+*Verification note:* the request shape, the error paths and the round trip into
+the preview are all covered by checks with `fetch` stubbed — but the live call
+has never been made, because there was no key to test with. If the first real
+screenshot comes back with an API error, that is the place to look.
+
+**Not attempted: local OCR.** A bundled engine would be megabytes of WASM
+against this repo's no-runtime-dependencies rule, and stylised game UI is
+exactly what generic OCR is worst at. Getting it quietly wrong would be worse
+than asking.
+
 ## CLI
 
 ```
 init | seed | roster | brands | card | show | shows | state | titles | wrestler
-threads | resolve | heat | log | event | amend | void | restore | corrections
-check | export
+threads | resolve | heat | season | flags | laststand | prompt
+log | event | amend | void | restore | corrections | check | export
 ```
 
 `--file PATH` (or `UNIVERSE_FILE`) chooses the save file; default

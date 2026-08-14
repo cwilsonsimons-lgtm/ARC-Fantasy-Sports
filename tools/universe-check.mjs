@@ -20,6 +20,10 @@ import { seedFromJSON } from '../js/universe/seed.js';
 import { parseRoster, commitRoster } from '../js/universe/roster.js';
 import { parseCard, commitCard } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
+import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
+  proposeLastStand, lastStandCard } from '../js/universe/season.js';
+import { recapPrompt, contenderPrompt, nextPrompt, PROMPTS, buildPrompt } from '../js/universe/prompts.js';
+import { cleanReply, detectKind, transcriptionPrompt, readScreenshot } from '../js/universe/ingest.js';
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -344,6 +348,155 @@ check('marking one resolved closes it', project(s7, { asOf: '2026-09-03' }).thre
 check('resolution is an ordinary event', s7.effectiveEvents().slice(-1)[0].type, 'thread.resolved');
 s7.voidEvent(s7.effectiveEvents().slice(-1)[0].id, 'changed my mind');
 check('voiding the resolution reopens the thread', project(s7, { asOf: '2026-09-03' }).threads.some(t => t.id === stuck.id), true);
+
+// ──────────────────────────────────────────────────────────────── season
+section('season, promotion and relegation');
+const s8 = fresh();
+const play = text => commitCard(s8, parseCard(text, s8));
+
+play(`Raw / 2027-01-12 / Raw
+Ivy Nile d. Becky Lynch
+Seth Rollins d. Sami Zayn`);
+let p8 = project(s8, { asOf: '2027-01-13' });
+check('one season until a Last Stand', seasons(p8).length, 1);
+check('it starts at the universe start date', currentSeason(p8).from, '2026-06-01');
+check('and has no WrestleMania yet', currentSeason(p8).wrestlemania, null);
+check('standings count wins in the window', standingsFor(p8, { from: '2026-06-01' }).find(r => r.id === 'w:ivy-nile').points, 3);
+check('and are sorted by points', standingsFor(p8, { from: '2026-06-01' })[0].points, 3);
+
+play(`WrestleMania 43 / 2027-04-04 / Raw
+Cody Rhodes d. Roman Reigns — WWE Championship`);
+p8 = project(s8, { asOf: '2027-04-05' });
+check('WrestleMania is recognised by name', currentSeason(p8).wrestlemania.date, '2027-04-04');
+check('a PLE is marked on the show', p8.shows.find(s => s.date === '2027-04-04').ple, 'wrestlemania');
+
+const flags = proposeFlags(p8);
+check('two relegation names per gender', flags.filter(f => f.flag === 'relegation-flagged' && f.gender === 'male').length, 2);
+check('one from each main brand', new Set(flags.filter(f => f.flag === 'relegation-flagged').map(f => f.from)).size, 2);
+check('two promotion names per gender', flags.filter(f => f.flag === 'promotion-flagged' && f.gender === 'female').length, 2);
+check('promotion comes from development', new Set(flags.filter(f => f.flag === 'promotion-flagged').map(f => f.from)), s => [...s][0] === 'b:nxt');
+check('champions are never relegated', flags.some(f => f.flag === 'relegation-flagged'
+  && Object.values(p8.championships).some(c => c.holders.includes(f.id))), false);
+check('the least-booked sink to the bottom', flags.find(f => f.flag === 'relegation-flagged').why.includes('no matches'), true);
+
+commitFlags(s8, flags, { date: '2027-04-05' });
+p8 = project(s8, { asOf: '2027-04-06' });
+check('flags are written as events', s8.effectiveEvents().filter(e => e.source === 'season').length, flags.length);
+check('and show on the roster', flags.every(f => /flagged$/.test(p8.wrestlers[f.id].status)), true);
+check('re-proposing writes nothing new', proposeFlags(p8).every(f => f.alreadyFlagged), true);
+
+const stand = proposeLastStand(p8);
+check('flagged names are paired off', stand.matches.length, 4);
+// The seed already carries two flagged names, so two of the four pools are odd.
+check('an odd one out is reported, not dropped', stand.unpaired.length, 2);
+check('and never silently paired across genders', stand.unpaired.every(w => /flagged$/.test(w.status)), true);
+check('never across genders', stand.matches.every(m => m.a.gender === m.b.gender), true);
+check('relegation faces relegation', stand.matches.filter(m => m.stakes === 'relegation')
+  .every(m => m.a.status === 'relegation-flagged' && m.b.status === 'relegation-flagged'), true);
+check('promotion faces promotion', stand.matches.filter(m => m.stakes === 'promotion')
+  .every(m => m.a.status === 'promotion-flagged' && m.b.status === 'promotion-flagged'), true);
+check('relegation drops to development', stand.matches.find(m => m.stakes === 'relegation').toBrandId, 'b:nxt');
+check('promotion rises to a main brand', stand.matches.find(m => m.stakes === 'promotion').toBrandId, b => b !== 'b:nxt');
+
+const cardText = lastStandCard(p8, stand, { date: '2027-04-25' });
+check('the card is written in the entry shorthand', cardText.split('\n')[0], 'Last Stand / 2027-04-25');
+check('with a line per match', cardText.split('\n').filter(l => / vs /.test(l)).length, 4);
+
+const played = cardText.split('\n').map(l => l.replace(' vs ', ' d. ')).join('\n');
+const lastStandParsed = parseCard(played, s8);
+check('and parses back with no errors', lastStandParsed.errors.length, 0);
+check('stakes are inferred from the flags alone', lastStandParsed.segments.every(sg => sg.data.stakes), true);
+commitCard(s8, lastStandParsed);
+
+const p8b = project(s8, { asOf: '2027-04-26' });
+const rel = stand.matches.find(m => m.stakes === 'relegation');
+const pro = stand.matches.find(m => m.stakes === 'promotion');
+check('the loser of a relegation match goes down', p8b.wrestlers[rel.b.id].brandId, 'b:nxt');
+check('the winner stays up', p8b.wrestlers[rel.a.id].brandId, rel.a.brandId);
+check('the winner of a promotion match goes up', p8b.wrestlers[pro.a.id].brandId, b => b !== 'b:nxt');
+check('the loser stays in development', p8b.wrestlers[pro.b.id].brandId, 'b:nxt');
+check('everyone who fought walks out unflagged',
+  stand.matches.flatMap(m => [m.a.id, m.b.id]).every(id => p8b.wrestlers[id].status === 'active'), true);
+check('and whoever had no opponent stays on the list',
+  stand.unpaired.every(w => /flagged$/.test(p8b.wrestlers[w.id].status)), true);
+check('Last Stand closes the season', seasons(p8b).length, 2);
+check('and the next one starts the day after', currentSeason(p8b).from, '2027-04-26');
+check('voiding it merges the seasons back', (() => {
+  const showEv = s8.effectiveEvents().find(e => e.type === 'show' && e.data.ple === 'lastStand');
+  s8.voidEvent(showEv.id, 'test');
+  const n = seasons(project(s8, { asOf: '2027-04-26' })).length;
+  s8.restoreEvent(showEv.id, 'test');
+  return n;
+})(), 1);
+
+// ──────────────────────────────────────────────────────────────── prompts
+section('prompt export');
+const p9 = project(s8, { asOf: '2027-04-26' });
+const recap = recapPrompt(p9, p9.shows.find(s => s.ple === 'wrestlemania').id);
+check('recap names the show', recap.includes('WrestleMania 43'), true);
+check('recap lists the card in order', recap.includes('1. [match]'), true);
+check('recap embeds who holds what', recap.includes('WWE Championship'), true);
+check('recap tells the model not to invent', /do not invent/i.test(recap), true);
+
+const contenders = contenderPrompt(p9, {});
+check('contender report has standings', contenders.includes('SEASON STANDINGS'), true);
+check('contender report has rivalry heat', contenders.includes('RIVALRY HEAT'), true);
+check('contender report names champions', contenders.includes('CHAMPIONS'), true);
+
+const next = nextPrompt(p9);
+check('what-happens-next uses the queue', next.includes('OPEN THREADS'), true);
+check('and only the open ones', next.includes('open ') && !next.includes('closed'), true);
+check('every prompt is plain text', [recap, contenders, next].every(t => !/[<>{}]/.test(t.slice(0, 200))), true);
+check('three prompts are registered', PROMPTS.length, 3);
+check('and each builds from an id', PROMPTS.every(p => buildPrompt(p.id, p9, { showId: p9.shows[0].id }).length > 200), true);
+
+// ──────────────────────────────────────────────────────────────── screenshots
+section('screenshot ingest');
+check('code fences are stripped', cleanReply('Here is the card:\n```\nRaw / 2026-08-17 / Raw\n```'), 'Raw / 2026-08-17 / Raw');
+check('preambles are stripped', cleanReply("Sure! Here's the transcription\nCody Rhodes d. Randy Orton"), 'Cody Rhodes d. Randy Orton');
+check('a card is recognised', detectKind('Raw / 2026-08-17 / Raw\nCody Rhodes d. Randy Orton'), 'card');
+check('a roster is recognised', detectKind('RAW\nCody Rhodes, m, active\nRhea Ripley, f, active'), 'roster');
+check('nothing is recognised as nothing', detectKind(''), null);
+
+const tp = transcriptionPrompt(p9, 'card');
+check('the prompt teaches the shorthand', tp.includes('Winner d. Loser'), true);
+check('and embeds the roster spellings', tp.includes('Cody Rhodes'), true);
+check('and the championship names', tp.includes('WWE Championship'), true);
+check('the roster prompt is different', transcriptionPrompt(p9, 'roster').includes('one wrestler per line'), true);
+
+// The API path, exercised without a key or a network: a stub captures the
+// request so the shape is checked, not just the happy return value.
+let captured = null;
+const stubFetch = async (url, opts) => {
+  captured = { url, opts, body: JSON.parse(opts.body) };
+  return { ok: true, json: async () => ({ content: [{ type: 'text', text: '```\nRaw / 2026-08-17 / Raw\nCody Rhodes d. Randy Orton\n```' }] }) };
+};
+const shot = await readScreenshot({
+  dataUrl: 'data:image/png;base64,AAAA', prompt: 'read this',
+  apiKey: 'test-key', fetchImpl: stubFetch,
+});
+check('it posts to the messages endpoint', captured.url, 'https://api.anthropic.com/v1/messages');
+check('with the key in the header', captured.opts.headers['x-api-key'], 'test-key');
+check('and the browser opt-in header', captured.opts.headers['anthropic-dangerous-direct-browser-access'], 'true');
+check('the image is sent as base64', captured.body.messages[0].content[0].source.type, 'base64');
+check('with its media type', captured.body.messages[0].content[0].source.media_type, 'image/png');
+check('and the prompt alongside it', captured.body.messages[0].content[1].text, 'read this');
+check('the reply comes back cleaned', shot.text, 'Raw / 2026-08-17 / Raw\nCody Rhodes d. Randy Orton');
+
+const noKey = await readScreenshot({ dataUrl: 'data:image/png;base64,AAAA', apiKey: '', fetchImpl: stubFetch }).catch(e => e);
+check('no key is a clear error, not a crash', /no API key/.test(noKey.message), true);
+const badImage = await readScreenshot({ dataUrl: 'not-an-image', apiKey: 'k', fetchImpl: stubFetch }).catch(e => e);
+check('a bad image is refused', /does not look like an image/.test(badImage.message), true);
+const apiErr = await readScreenshot({
+  dataUrl: 'data:image/png;base64,AAAA', apiKey: 'k',
+  fetchImpl: async () => ({ ok: false, status: 401, text: async () => 'unauthorized' }),
+}).catch(e => e);
+check('an API failure is reported, not swallowed', /401/.test(apiErr.message), true);
+
+// The whole point: a transcription flows into the ordinary parser.
+const fromShot = parseCard(cleanReply(shot.text), s8);
+check('a transcribed card parses like a typed one', fromShot.errors.length, 0);
+check('and produces a real segment', fromShot.segments[0].participants.length, 2);
 
 // ──────────────────────────────────────────────────────────────── time travel
 section('point in time');

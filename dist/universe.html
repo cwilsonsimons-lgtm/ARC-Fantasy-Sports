@@ -392,6 +392,44 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .fact .k{color:var(--ink-3);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
 .fact .v{font-size:16px;font-weight:600;margin-top:2px}
 
+/* ---------------------------------------------------------------- season */
+.opt{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.opt select,.opt input{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
+  padding:6px 9px;font-size:13px;color:var(--ink)}
+.opt select:focus,.opt input:focus{outline:0;border-color:var(--violet)}
+
+/* ---------------------------------------------------------------- prompts */
+.promptrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.promptcard{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;cursor:pointer;color:var(--ink)}
+.promptcard:hover{border-color:var(--ink-3)}
+.promptcard.on{border-color:var(--violet);background:var(--violet-soft)}
+.promptcard .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.08em;
+  text-transform:uppercase}
+.promptcard .bl{color:var(--ink-3);font-size:12px;margin-top:4px}
+#promptText{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;line-height:1.6}
+
+/* ---------------------------------------------------------------- import */
+.drop{border:2px dashed var(--line);border-radius:11px;padding:26px 18px;text-align:center;
+  transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--violet);background:var(--violet-soft)}
+.drop .big{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:16px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-2)}
+.shots{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.shot{width:120px;cursor:pointer;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  background:var(--card-3)}
+.shot.on{border-color:var(--violet)}
+.shot img{width:100%;height:74px;object-fit:cover;display:block}
+.shot figcaption{font-size:10px;color:var(--ink-3);padding:4px 6px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.keybox{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
+.keybox summary{cursor:pointer;font-size:12px;color:var(--ink-3);list-style:none}
+.keybox summary::-webkit-details-marker{display:none}
+.keybox summary::before{content:'▸ ';color:var(--ink-3)}
+.keybox[open] summary::before{content:'▾ '}
+.keybox code{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-2)}
+#shotText{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -414,6 +452,9 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 <div class="pane" id="pane-roster"></div>
 <div class="pane" id="pane-titles"></div>
 <div class="pane" id="pane-threads"></div>
+<div class="pane" id="pane-season"></div>
+<div class="pane" id="pane-prompts"></div>
+<div class="pane" id="pane-import"></div>
 <div class="pane" id="pane-shows"></div>
 <div class="pane" id="pane-log"></div>
 <div class="pane" id="pane-wrestler"></div>
@@ -437,6 +478,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   var GROUP_KINDS = ["tagTeam", "faction", "alliance"];
   var DIVISIONS = ["mens", "womens", "tag", "mixed", "unisex"];
   var TITLE_REASONS = ["won", "awarded", "vacated", "stripped", "retired", "interim", "unified"];
+  var PLES = ["wrestlemania", "lastStand", "royalRumble", "summerslam", "survivorSeries", "moneyInTheBank", "other"];
   var DECISIONS = ["pinfall", "submission", "dq", "countout", "ko", "stoppage", "draw", "no contest"];
   var MATCH_TYPES = [
     "singles",
@@ -566,8 +608,14 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       label: "Show",
       roles: ["subject"],
       required: ["name"],
-      validate: () => [],
-      effects: (ev) => [{ kind: "show.open", showId: ev.id, name: ev.data.name, brandId: ev.data.brandId || null }]
+      validate: (ev) => ev.data.ple && !PLES.includes(ev.data.ple) ? [`unknown premium live event: ${ev.data.ple}`] : [],
+      effects: (ev) => [{
+        kind: "show.open",
+        showId: ev.id,
+        name: ev.data.name,
+        brandId: ev.data.brandId || null,
+        ple: ev.data.ple || null
+      }]
     },
     match: {
       label: "Match",
@@ -611,6 +659,17 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
           else out.push({ kind: "title.defense", titleId, holders: winners });
         }
         if (titleId && drawn && ev.data.titleVacated) out.push({ kind: "title.vacate", titleId, reason: ev.data.decision || "draw" });
+        if (ev.data.stakes && !drawn) {
+          const losers = s.filter((x) => x.side !== winSide.side).flatMap((x) => x.refs);
+          const moved = ev.data.stakes === "relegation" ? losers : winners;
+          moved.forEach((ref) => out.push({
+            kind: "roster.brand",
+            subject: ref,
+            brandId: ev.data.toBrandId || null,
+            reason: ev.data.stakes
+          }));
+          [...winners, ...losers].forEach((ref) => out.push({ kind: "roster.status", subject: ref, status: "active" }));
+        }
         if (ev.data.contender && winners.length) {
           out.push({
             kind: "thread.open",
@@ -1268,12 +1327,14 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     const at = asOf || todayISO();
     const state = {
       asOf: at,
+      startDate: store2.doc.meta.startDate || null,
       wrestlers: {},
       brands: {},
       championships: {},
       groups: {},
       shows: [],
       showsById: {},
+      ples: [],
       events,
       // Raw contributions, collected during the replay and totalled at the end so
       // decay is measured from each one's own date.
@@ -1377,8 +1438,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         const w = state.wrestlers[h2];
         if (w && !w.titles.includes(c.id)) w.titles.push(c.id);
       });
-      const brand = c.brandId && state.brands[c.brandId];
-      if (brand) brand.champions.push({ titleId: c.id, name: c.name, holders: c.holders });
+      const brand2 = c.brandId && state.brands[c.brandId];
+      if (brand2) brand2.champions.push({ titleId: c.id, name: c.name, holders: c.holders });
     });
     state.freeAgents = Object.values(state.wrestlers).filter((w) => !w.brandId).map((w) => w.id);
     Object.values(state.brands).forEach((b) => b.roster.sort((x, y) => state.wrestlers[x].name.localeCompare(state.wrestlers[y].name)));
@@ -1428,9 +1489,10 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     const W = (ref) => state.wrestlers[ref];
     switch (fx.kind) {
       case "show.open": {
-        const show = { id: fx.showId, name: fx.name, date: ev.date, brandId: fx.brandId, segments: [] };
+        const show = { id: fx.showId, name: fx.name, date: ev.date, brandId: fx.brandId, ple: fx.ple || null, segments: [] };
         state.shows.push(show);
         state.showsById[show.id] = show;
+        if (show.ple) state.ples.push({ kind: show.ple, date: ev.date, showId: show.id, name: show.name });
         break;
       }
       case "record.win":
@@ -1778,8 +1840,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   }
   var sameSet = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
   function summarize(ev, state) {
-    const nm = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : ref;
-    const side = (n) => ev.participants.filter((p) => p.side === n).map((p) => p.ref).map(nm).join(" & ");
+    const nm2 = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : ref;
+    const side = (n) => ev.participants.filter((p) => p.side === n).map((p) => p.ref).map(nm2).join(" & ");
     const out = { id: ev.id, type: ev.type, date: ev.date, order: ev.cardOrder, note: ev.note };
     if (ev.type === "match") {
       const winner = ev.participants.find((p) => p.role === "winner");
@@ -1795,27 +1857,27 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         out.text += ` \u2014 ${state.championships[out.titleId].name}${out.titleChanged ? " (NEW CHAMPION)" : ""}`;
       }
     } else if (ev.type === "attack") {
-      out.text = `${ev.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref)).join(" & ")} attacks ${ev.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & ")}`;
+      out.text = `${ev.participants.filter((p) => p.role === "attacker").map((p) => nm2(p.ref)).join(" & ")} attacks ${ev.participants.filter((p) => p.role === "victim").map((p) => nm2(p.ref)).join(" & ")}`;
     } else if (ev.type === "promo") {
-      const t = ev.participants.filter((p) => p.role === "target").map((p) => nm(p.ref));
-      out.text = `${ev.participants.filter((p) => p.role === "speaker").map((p) => nm(p.ref)).join(" & ")} promo${t.length ? ` on ${t.join(" & ")}` : ""}`;
+      const t = ev.participants.filter((p) => p.role === "target").map((p) => nm2(p.ref));
+      out.text = `${ev.participants.filter((p) => p.role === "speaker").map((p) => nm2(p.ref)).join(" & ")} promo${t.length ? ` on ${t.join(" & ")}` : ""}`;
     } else if (ev.type === "save") {
-      const from = ev.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref));
-      out.text = `${ev.participants.filter((p) => p.role === "subject").map((p) => nm(p.ref)).join(" & ")} saves ${ev.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & ")}` + (from.length ? ` from ${from.join(" & ")}` : "");
+      const from = ev.participants.filter((p) => p.role === "attacker").map((p) => nm2(p.ref));
+      out.text = `${ev.participants.filter((p) => p.role === "subject").map((p) => nm2(p.ref)).join(" & ")} saves ${ev.participants.filter((p) => p.role === "victim").map((p) => nm2(p.ref)).join(" & ")}` + (from.length ? ` from ${from.join(" & ")}` : "");
     } else if (ev.type === "thread.open") {
-      out.text = `${ev.participants.map((p) => nm(p.ref)).join(" & ")} \u2014 ${ev.data.text || "unfinished business"}`;
+      out.text = `${ev.participants.map((p) => nm2(p.ref)).join(" & ")} \u2014 ${ev.data.text || "unfinished business"}`;
     } else if (ev.type === "title.change") {
-      out.text = `${state.championships[ev.data.titleId] ? state.championships[ev.data.titleId].name : ev.data.titleId} ${ev.data.reason || "changed"}${ev.participants.length ? ` \u2014 ${ev.participants.map((p) => nm(p.ref)).join(" & ")}` : ""}`;
+      out.text = `${state.championships[ev.data.titleId] ? state.championships[ev.data.titleId].name : ev.data.titleId} ${ev.data.reason || "changed"}${ev.participants.length ? ` \u2014 ${ev.participants.map((p) => nm2(p.ref)).join(" & ")}` : ""}`;
     } else {
-      const who = ev.participants.map((p) => nm(p.ref)).join(" & ");
-      const brand = (id) => state.brands[id] ? state.brands[id].name : id;
+      const who = ev.participants.map((p) => nm2(p.ref)).join(" & ");
+      const brand2 = (id) => state.brands[id] ? state.brands[id].name : id;
       const group = (id) => state.groups[id] ? state.groups[id].name : id;
       out.text = {
         "alliance.formed": () => `${who} form ${group(ev.data.groupId)}`,
         "alliance.broken": () => ev.data.dissolve || !ev.participants.length ? `${group(ev.data.groupId)} splits up` : `${who} leaves ${group(ev.data.groupId)}`,
-        "contract.signed": () => `${who} signs with ${brand(ev.data.brandId)}`,
+        "contract.signed": () => `${who} signs with ${brand2(ev.data.brandId)}`,
         "contract.expired": () => `${who} becomes a free agent`,
-        "brand.transfer": () => `${who} moves to ${brand(ev.data.toBrandId)}${ev.data.reason ? ` (${ev.data.reason})` : ""}`,
+        "brand.transfer": () => `${who} moves to ${brand2(ev.data.toBrandId)}${ev.data.reason ? ` (${ev.data.reason})` : ""}`,
         "status.change": () => `${who} flagged ${ev.data.status}`,
         injury: () => `${who} injured${ev.data.weeks ? ` \u2014 ${ev.data.weeks} weeks` : ""}${ev.data.description ? ` (${ev.data.description})` : ""}`,
         "injury.cleared": () => `${who} cleared to return`,
@@ -1936,9 +1998,9 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     };
     arr(doc.championships).forEach((c) => {
       const rec = typeof c === "string" ? { name: c } : { ...c };
-      const brand = rec.brand || rec.brandId;
+      const brand2 = rec.brand || rec.brandId;
       delete rec.brand;
-      rec.brandId = brandRef(brand, `championship "${rec.name}"`);
+      rec.brandId = brandRef(brand2, `championship "${rec.name}"`);
       rec.division = rec.division || (rec.teamSize > 1 ? "tag" : "unisex");
       try {
         s.addEntity("championship", rec, { upsert: true });
@@ -2094,12 +2156,209 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   }
   var msg = (e) => e.errors ? e.errors.join("; ") : e.message;
 
+  // js/universe/season.js
+  var DEFAULTS = {
+    relegatePerBrand: 1,
+    // per gender, per main brand
+    promotePerGender: 2
+    // from development — they face each other, so two
+  };
+  var isMain = (b) => (b.tier || 1) === 1;
+  var isDev = (b) => (b.tier || 1) > 1;
+  function seasons(state) {
+    const stands = state.ples.filter((p) => p.kind === "lastStand").sort((a, b) => a.date < b.date ? -1 : 1);
+    const manias = state.ples.filter((p) => p.kind === "wrestlemania");
+    const start = state.startDate || (state.events.length ? state.events[0].date : state.asOf);
+    const bounds = [];
+    let from = start;
+    stands.forEach((s) => {
+      bounds.push({ from, to: s.date, closedBy: s });
+      from = nextDay(s.date);
+    });
+    bounds.push({ from, to: null, closedBy: null });
+    return bounds.map((b, i) => ({
+      n: i + 1,
+      from: b.from,
+      to: b.to,
+      current: !b.to,
+      lastStand: b.closedBy || null,
+      // The WrestleMania inside this window, if it has happened yet.
+      wrestlemania: manias.find((m) => m.date >= b.from && (!b.to || m.date <= b.to)) || null
+    }));
+  }
+  var currentSeason = (state) => seasons(state).slice(-1)[0];
+  var nextDay = (iso) => {
+    const d = /* @__PURE__ */ new Date(iso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+  function standingsFor(state, { from, to = null, brandId = null } = {}) {
+    const tally = {};
+    const bump = (ref, key) => {
+      if (!state.wrestlers[ref]) return;
+      const t = tally[ref] || (tally[ref] = { id: ref, name: state.wrestlers[ref].name, w: 0, l: 0, d: 0, matches: 0, titleMatches: 0 });
+      t[key] += 1;
+      t.matches += 1;
+    };
+    state.events.forEach((ev) => {
+      if (ev.type !== "match") return;
+      if (ev.date < from) return;
+      if (to && ev.date > to) return;
+      (ev.effects || []).forEach((fx) => {
+        if (fx.kind === "record.win") bump(fx.subject, "w");
+        else if (fx.kind === "record.loss") bump(fx.subject, "l");
+        else if (fx.kind === "record.draw") bump(fx.subject, "d");
+        if (fx.titleId && tally[fx.subject]) tally[fx.subject].titleMatches += 1;
+      });
+    });
+    return Object.values(tally).map((t) => ({
+      ...t,
+      brandId: state.wrestlers[t.id].brandId,
+      gender: state.wrestlers[t.id].gender,
+      points: t.w * 3 + t.d,
+      winPct: t.matches ? t.w / t.matches : 0
+    })).filter((t) => brandId ? t.brandId === brandId : true).sort((a, b) => b.points - a.points || b.winPct - a.winPct || b.matches - a.matches || a.name.localeCompare(b.name));
+  }
+  function brandStandings(state, season = null) {
+    const s = season || currentSeason(state);
+    const rows = standingsFor(state, { from: s.from, to: s.to });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return Object.values(state.brands).map((b) => ({
+      ...b,
+      season: s,
+      table: b.roster.map((id) => byId.get(id) || {
+        id,
+        name: state.wrestlers[id].name,
+        w: 0,
+        l: 0,
+        d: 0,
+        matches: 0,
+        titleMatches: 0,
+        brandId: b.id,
+        gender: state.wrestlers[id].gender,
+        points: 0,
+        winPct: 0
+      }).sort((a, b2) => b2.points - a.points || b2.winPct - a.winPct || b2.matches - a.matches || a.name.localeCompare(b2.name))
+    }));
+  }
+  var championSet = (state) => {
+    const set = /* @__PURE__ */ new Set();
+    Object.values(state.championships).forEach((c) => {
+      c.holders.forEach((h2) => set.add(h2));
+      c.interimHolders.forEach((h2) => set.add(h2));
+    });
+    return set;
+  };
+  function proposeFlags(state, opts = {}) {
+    const { relegatePerBrand, promotePerGender } = { ...DEFAULTS, ...opts };
+    const season = opts.season || currentSeason(state);
+    const champs = championSet(state);
+    const standings = brandStandings(state, season);
+    const genders = ["male", "female"];
+    const out = [];
+    standings.filter((b) => isMain(b)).forEach((b) => {
+      genders.forEach((g) => {
+        const eligible = b.table.filter((r) => r.gender === g && !champs.has(r.id));
+        eligible.slice(-relegatePerBrand).forEach((r) => out.push({
+          id: r.id,
+          name: r.name,
+          gender: g,
+          flag: "relegation-flagged",
+          from: b.id,
+          fromName: b.name,
+          points: r.points,
+          record: `${r.w}-${r.l}-${r.d}`,
+          why: `bottom of ${b.name}${r.matches ? "" : " (no matches all season)"}`
+        }));
+      });
+    });
+    standings.filter((b) => isDev(b)).forEach((b) => {
+      genders.forEach((g) => {
+        const eligible = b.table.filter((r) => r.gender === g);
+        eligible.slice(0, promotePerGender).forEach((r) => out.push({
+          id: r.id,
+          name: r.name,
+          gender: g,
+          flag: "promotion-flagged",
+          from: b.id,
+          fromName: b.name,
+          points: r.points,
+          record: `${r.w}-${r.l}-${r.d}`,
+          why: `top of ${b.name}`
+        }));
+      });
+    });
+    return out.map((p) => ({ ...p, alreadyFlagged: state.wrestlers[p.id].status === p.flag }));
+  }
+  function commitFlags(store2, proposals, { date, dryRun = false } = {}) {
+    const events = proposals.filter((p) => !p.alreadyFlagged).map((p) => ({
+      type: "status.change",
+      date,
+      source: "season",
+      participants: [{ ref: p.id, role: "subject" }],
+      data: { status: p.flag, reason: p.why },
+      note: `${p.flag === "relegation-flagged" ? "relegation" : "promotion"} list`
+    }));
+    if (dryRun || !events.length) return { events, written: 0 };
+    const written = store2.appendBatch(events);
+    store2.save();
+    return { events: written, written: written.length };
+  }
+  function proposeLastStand(state, opts = {}) {
+    const flagged = (flag) => Object.values(state.wrestlers).filter((w) => w.status === flag);
+    const matches = [];
+    ["relegation-flagged", "promotion-flagged"].forEach((flag) => {
+      const stakes = flag === "relegation-flagged" ? "relegation" : "promotion";
+      ["male", "female"].forEach((gender) => {
+        const pool = flagged(flag).filter((w) => w.gender === gender);
+        for (let i = 0; i + 1 < pool.length; i += 2) {
+          matches.push({
+            stakes,
+            gender,
+            a: pool[i],
+            b: pool[i + 1],
+            toBrandId: destinationFor(state, stakes, [pool[i], pool[i + 1]])
+          });
+        }
+        if (pool.length % 2 === 1) {
+          matches.push({ stakes, gender, unpaired: pool[pool.length - 1] });
+        }
+      });
+    });
+    return {
+      matches: matches.filter((m) => !m.unpaired),
+      unpaired: matches.filter((m) => m.unpaired).map((m) => m.unpaired),
+      date: opts.date || null
+    };
+  }
+  function destinationFor(state, stakes, wrestlers = []) {
+    const brands = Object.values(state.brands);
+    if (stakes === "relegation") {
+      const dev = brands.filter(isDev).sort((a, b) => a.roster.length - b.roster.length);
+      return dev.length ? dev[0].id : null;
+    }
+    const from = new Set(wrestlers.map((w) => w.brandId));
+    const main = brands.filter((b) => isMain(b) && !from.has(b.id)).sort((a, b) => a.roster.length - b.roster.length);
+    return main.length ? main[0].id : (brands.filter(isMain)[0] || {}).id || null;
+  }
+  function lastStandCard(state, proposal, { name = "Last Stand", date, brandId = null } = {}) {
+    const lines = [
+      `${name} / ${date || proposal.date || state.asOf}${brandId && state.brands[brandId] ? ` / ${state.brands[brandId].name}` : ""}`,
+      '// replace "vs" with "d." once you have played each one \u2014 winner on the left'
+    ];
+    proposal.matches.forEach((m) => {
+      const to = state.brands[m.toBrandId] ? state.brands[m.toBrandId].name : "?";
+      lines.push(`${m.a.name} vs ${m.b.name} \u2014 ${m.stakes}${m.stakes === "promotion" ? ` to ${to}` : ""}`);
+    });
+    return lines.join("\n");
+  }
+
   // js/universe/card.js
   var DEFEAT = /\s+(?:d\.|def\.|def|defeats?|defeated|beats?|beat|over|pins?|taps?|>)\s+/i;
   var VERSUS = /\s+(?:vs\.?|versus|v\.)\s+/i;
   var ATTACK = /\s+(?:attacks?|attacked|jumps?|jumped|assaults?|ambushes?|lays? out|beats? down|turns? on)\s+/i;
   var SAVE = /\s+(?:saves?|saved|makes? the save for|runs? out to help|rescues?)\s+/i;
-  var PROMO = /\s+(?:cuts? a promo on|promo on|promo|calls? out|confronts?|interrupts?)\s*/i;
+  var PROMO = /\s+(?:cuts? a promo on|promo on|promo\b|calls? out|confronts?|interrupts?)\s*/i;
   var DATE_ANY = /\b(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/;
   var clean = (s) => String(s || "").trim().replace(/\s+/g, " ");
   var PROSE = /\s+(?:after|before|during|later|then|backstage|post-?match|pre-?show|to close|to open|in the|on the|at the)\b.*$/i;
@@ -2129,7 +2388,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       championship: buildIndex(store2, "championship")
     };
     const errors = [], warnings = [];
-    const show = { name: showName, date, brandId, note: "" };
+    const show = { name: showName, date, brandId, ple: null, note: "" };
     const segments = [];
     const lines = String(text || "").split(/\r?\n/);
     let headerSeen = false;
@@ -2137,27 +2396,27 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     const warn = (lineNo, line, message) => warnings.push({ lineNo, line, message });
     const corner = (text2, lineNo, line) => {
       const refs = [];
-      splitPartners(text2).forEach((nm) => {
-        const w = resolve(idx.wrestler, nm);
+      splitPartners(text2).forEach((nm2) => {
+        const w = resolve(idx.wrestler, nm2);
         if (w.ok) {
           refs.push(w.id);
           return;
         }
         if (w.reason === "ambiguous") {
-          fail(lineNo, line, `"${nm}" matches ${w.candidates.join(", ")} \u2014 type more of the name`);
+          fail(lineNo, line, `"${nm2}" matches ${w.candidates.join(", ")} \u2014 type more of the name`);
           return;
         }
-        const g = resolve(idx.group, nm);
+        const g = resolve(idx.group, nm2);
         if (g.ok) {
           const members = (state.groups[g.id] || {}).members || [];
           if (members.length) {
             members.forEach((m) => refs.push(m));
             return;
           }
-          fail(lineNo, line, `"${nm}" is a group with no current members`);
+          fail(lineNo, line, `"${nm2}" is a group with no current members`);
           return;
         }
-        fail(lineNo, line, w.reason === "ambiguous" ? `"${nm}" matches ${w.candidates.join(", ")} \u2014 type more of the name` : `unknown name "${nm}"${w.candidates && w.candidates.length ? ` (did you mean ${w.candidates.join(", ")}?)` : ""}`);
+        fail(lineNo, line, w.reason === "ambiguous" ? `"${nm2}" matches ${w.candidates.join(", ")} \u2014 type more of the name` : `unknown name "${nm2}"${w.candidates && w.candidates.length ? ` (did you mean ${w.candidates.join(", ")}?)` : ""}`);
       });
       return refs;
     };
@@ -2175,6 +2434,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
           show.name = show.name || parsed.name;
           show.date = show.date || parsed.date;
           show.brandId = show.brandId || parsed.brandId;
+          show.ple = show.ple || parsed.ple;
           return;
         }
       }
@@ -2188,7 +2448,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         return;
       }
       if (DEFEAT.test(line) || VERSUS.test(line)) {
-        const m = parseMatch(line, { corner, idx, state, lineNo, raw, fail, warn });
+        const m = parseMatch(line, { corner, idx, state, lineNo, raw, fail, warn, show });
         if (m) segments.push(m);
         return;
       }
@@ -2198,6 +2458,14 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     if (!show.name) show.name = show.brandId && state.brands[show.brandId] ? state.brands[show.brandId].name : "Show";
     return { show, segments, errors, warnings };
   }
+  var PLE_NAMES = [
+    [/wrestle\s*mania|wm\s*\d/i, "wrestlemania"],
+    [/last\s*stand/i, "lastStand"],
+    [/royal\s*rumble/i, "royalRumble"],
+    [/summer\s*slam/i, "summerslam"],
+    [/survivor\s*series/i, "survivorSeries"],
+    [/money\s*in\s*the\s*bank|mitb/i, "moneyInTheBank"]
+  ];
   function parseHeader(line, idx, state) {
     const dateHit = DATE_ANY.exec(line);
     if (!dateHit) return null;
@@ -2205,14 +2473,23 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     if (!date) return null;
     const rest = line.replace(dateHit[0], " ").replace(/^\s*show\s*:/i, " ");
     const parts = rest.split(/\s*[\/|,]\s*|\s+[-–—]+\s+/).map(clean).filter(Boolean);
-    let brandId = null, name = null;
+    let brandId = null, name = null, ple = null;
     parts.forEach((p) => {
+      const marked = /^ple\s*:\s*(.+)$/i.exec(p);
+      if (marked) {
+        ple = clean(marked[1]);
+        return;
+      }
       const b = resolve(idx.brand, p);
       if (b.ok && !brandId) brandId = b.id;
       else if (!name) name = p;
     });
     if (!name && brandId) name = state.brands[brandId] ? state.brands[brandId].name : null;
-    return { name, date, brandId };
+    if (!ple && name) {
+      const hit = PLE_NAMES.find(([re]) => re.test(name));
+      if (hit) ple = hit[1];
+    }
+    return { name, date, brandId, ple };
   }
   function parseSegment(line, ctx) {
     const { corner, lineNo, raw, warn } = ctx;
@@ -2247,7 +2524,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         text: clean(line)
       };
     }
-    if (PROMO.test(line) || /^promo\s*:/i.test(line)) {
+    if (PROMO.test(line) && !DEFEAT.test(line) && !VERSUS.test(line) || /^promo\s*:/i.test(line)) {
       const body = line.replace(/^promo\s*:\s*/i, "");
       const [a, b = ""] = body.split(PROMO);
       const tail = trailing(b);
@@ -2377,6 +2654,17 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       titleId: mods.titleId || null
     };
     if (mods.note) data.note = mods.note;
+    const wrestlers = participants.map((p) => state.wrestlers[p.ref]).filter(Boolean);
+    let stakes = mods.stakes;
+    if (!stakes && ctx.show && ctx.show.ple === "lastStand" && wrestlers.length) {
+      const flags = new Set(wrestlers.map((w) => w.status));
+      if (flags.size === 1 && flags.has("relegation-flagged")) stakes = "relegation";
+      if (flags.size === 1 && flags.has("promotion-flagged")) stakes = "promotion";
+    }
+    if (stakes) {
+      data.stakes = stakes;
+      data.toBrandId = mods.toBrandId || destinationFor(state, stakes, wrestlers);
+    }
     if (mods.contender) {
       data.contender = data.titleId || true;
       data.titleId = null;
@@ -2423,6 +2711,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       interim: false,
       unify: false,
       contender: false,
+      stakes: null,
+      toBrandId: null,
       note: null
     };
     if (!note) return out;
@@ -2454,6 +2744,24 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       if (/^(contender|number one contender|no 1 contender|1 contender|top contender|eliminator)$/.test(n)) {
         out.contender = true;
         return;
+      }
+      if (/^(relegation|relegation match|demotion|drop match)$/.test(n)) {
+        out.stakes = "relegation";
+        return;
+      }
+      if (/^(promotion|promotion match|call ?up)$/.test(n)) {
+        out.stakes = "promotion";
+        return;
+      }
+      const bound = /^(?:relegation|promotion)?\s*to\s+(.+)$/i.exec(tok);
+      if (bound) {
+        const b = resolve(idx.brand, clean(bound[1]));
+        if (b.ok) {
+          out.toBrandId = b.id;
+          if (/^promotion/i.test(tok)) out.stakes = "promotion";
+          if (/^relegation/i.test(tok)) out.stakes = "relegation";
+          return;
+        }
       }
       const dec = DECISIONS.find((d) => n === d || n === d.replace(/\s/g, ""));
       if (dec) {
@@ -2530,7 +2838,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       source,
       participants: [],
       note: show.note || "",
-      data: { name: show.name, brandId: show.brandId || null }
+      data: { name: show.name, brandId: show.brandId || null, ple: show.ple || null }
     };
     const showId = showEvent.id;
     const batch = [showEvent];
@@ -3562,7 +3870,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   function titlePage(state, titleId) {
     const c = state.championships[titleId];
     if (!c) return '<div class="empty">No such championship.</div>';
-    const nm = (id) => state.wrestlers[id] ? state.wrestlers[id].name : id;
+    const nm2 = (id) => state.wrestlers[id] ? state.wrestlers[id].name : id;
     const lineage = titleLineage(state, titleId).slice().reverse();
     const matches = titleMatches(state, titleId);
     const longest = c.longestReign;
@@ -3610,7 +3918,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   function wrestlerPage(state, id) {
     const w = state.wrestlers[id];
     if (!w) return '<div class="empty">No such wrestler.</div>';
-    const nm = (x) => state.wrestlers[x] ? state.wrestlers[x].name : x;
+    const nm2 = (x) => state.wrestlers[x] ? state.wrestlers[x].name : x;
     const tl = timelineFor(state, id);
     const facts = [
       ["Record", w.record.total ? `${w.record.w}-${w.record.l}-${w.record.d}` : "\u2014"],
@@ -3704,6 +4012,79 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       { label: "Open for", num: true, get: (t) => `${t.age}d` },
       { label: "Closed by", get: (t) => t.closedWhy, dim: true }
     ], "Nothing closed yet.")}</div>`;
+  }
+  function seasonView(state, ui = {}) {
+    const season = currentSeason(state);
+    const tables = brandStandings(state, season);
+    const flagged = Object.values(state.wrestlers).filter((w) => /flagged$/.test(w.status));
+    const wm = season.wrestlemania;
+    const proposal = ui.proposal || null;
+    const standings = tables.map((b) => `<div class="card flush">
+      <div class="brandhead">
+        <div class="bar" style="background:${brandColor(b.id)}"></div>
+        <div class="nm">${h(b.name)}</div>
+        <div class="ct">${(b.tier || 1) > 1 ? "development" : "main roster"} \xB7 ${plural2(b.table.length, "wrestler")}</div>
+      </div>
+      ${table2(b.table, [
+      { label: "Wrestler", get: (r) => wlink(state.wrestlers[r.id]), html: true },
+      { label: "G", get: (r) => r.gender === "female" ? "F" : r.gender === "male" ? "M" : "?", dim: true },
+      { label: "W-L-D", num: true, get: (r) => `${r.w}-${r.l}-${r.d}` },
+      { label: "Pts", num: true, get: (r) => r.points },
+      { label: "Title matches", num: true, get: (r) => r.titleMatches || "", dim: true },
+      { label: "", get: (r) => statusChip(state.wrestlers[r.id]), html: true }
+    ], "Nobody on this brand.")}
+    </div>`).join("");
+    const flagBlock = flagged.length ? `
+    <h2 style="margin-top:22px">On the lists <span class="sub">${plural2(flagged.length, "name")}</span></h2>
+    <div class="card flush">${table2(flagged, [
+      { label: "Wrestler", get: (w) => wlink(w), html: true },
+      { label: "Brand", get: (w) => brandName2(state, w.brandId) || "\u2014", dim: true },
+      { label: "G", get: (w) => w.gender === "female" ? "F" : "M", dim: true },
+      { label: "List", get: (w) => statusChip(w), html: true }
+    ])}</div>` : "";
+    const proposalBlock = proposal ? `
+    <h2 style="margin-top:22px">Proposed lists <span class="sub">nothing is written until you confirm</span></h2>
+    <div class="card flush">${table2(proposal, [
+      { label: "Wrestler", get: (p) => h(p.name), html: true },
+      { label: "From", get: (p) => p.fromName, dim: true },
+      { label: "G", get: (p) => p.gender === "female" ? "F" : "M", dim: true },
+      { label: "List", get: (p) => chip(p.flag === "relegation-flagged" ? "\u2193 relegation" : "\u2191 promotion", p.flag === "relegation-flagged" ? "down" : "up"), html: true },
+      { label: "Record", get: (p) => p.record, dim: true },
+      { label: "Why", get: (p) => p.why, dim: true },
+      { label: "", get: (p) => p.alreadyFlagged ? '<span class="dim">already flagged</span>' : "", html: true }
+    ])}</div>
+    <div class="row"><button class="btn" id="flagsCommit">Write ${plural2(proposal.filter((p) => !p.alreadyFlagged).length, "flag")}</button>
+      <button class="btn ghost" id="flagsCancel">Cancel</button></div>` : "";
+    const card = ui.lastStand ? `
+    <h2 style="margin-top:22px">Last Stand card <span class="sub">relegation faces relegation, promotion faces promotion, same gender</span></h2>
+    <div class="card entry">
+      <textarea id="lastStandText" spellcheck="false" style="min-height:150px" readonly>${h(ui.lastStand)}</textarea>
+      <div class="row">
+        <button class="btn" id="lastStandUse">Send to the entry box</button>
+        <button class="btn ghost" id="lastStandCopy">Copy</button>
+        <span class="hint">The loser of a relegation match goes down; the winner of a promotion match goes up.</span>
+      </div>
+    </div>` : "";
+    return `<div class="pagehead" style="border-left-color:var(--gold)">
+      <div class="nm">Season ${season.n}</div>
+      <div class="holder">${h(season.from)} \u2192 ${season.to ? h(season.to) : "in progress"}</div>
+      <div class="dim" style="margin-top:6px">
+        ${wm ? `WrestleMania was ${h(wm.date)} \u2014 the lists are due` : "WrestleMania has not happened yet this season"}
+        \xB7 ${plural2(state.shows.length, "show")} logged
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:0">
+      <button class="btn${wm && !flagged.length ? "" : " ghost"}" id="flagsPropose">Work out the lists</button>
+      <button class="btn ghost" id="lastStandPropose"${flagged.length ? "" : " disabled"}>Book Last Stand</button>
+      <span class="hint">Champions are never relegated.</span>
+    </div>
+    ${proposalBlock}
+    ${card}
+    ${flagBlock}
+
+    <h2 style="margin-top:22px">Standings <span class="sub">wins this season \u2014 3 points a win, 1 a draw</span></h2>
+    <div class="grid">${standings}</div>`;
   }
   function heatPanel(state) {
     const nmw = (id) => wlink(state.wrestlers[id] || { id, name: id });
@@ -3889,9 +4270,9 @@ The War Raiders = Erik & Ivar`;
         <ul>${parsed.errors.map((e) => `<li>line ${e.lineNo}: ${h(e.message)}${e.line ? ` <code>${h(e.line.trim())}</code>` : ""}</li>`).join("")}</ul></div>`
       };
     }
-    const nm = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : ref;
+    const nm2 = (ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : ref;
     const rows = parsed.segments.map((s, i) => {
-      const side = (n) => s.participants.filter((p) => p.side === n).map((p) => nm(p.ref)).join(" & ");
+      const side = (n) => s.participants.filter((p) => p.side === n).map((p) => nm2(p.ref)).join(" & ");
       let what = "", detail = "";
       if (s.type === "match") {
         const nums = [...new Set(s.participants.map((p) => p.side))].sort();
@@ -3909,25 +4290,25 @@ The War Raiders = Erik & Ivar`;
           s.data.note ? `<span class="dim">${h(s.data.note)}</span>` : ""
         ].filter(Boolean).join(" ");
       } else if (s.type === "save") {
-        const from = s.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref));
-        what = `<strong>${h(s.participants.filter((p) => p.role === "subject").map((p) => nm(p.ref)).join(" & "))}</strong> saves ${h(s.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & "))}` + (from.length ? ` from ${h(from.join(" & "))}` : "");
+        const from = s.participants.filter((p) => p.role === "attacker").map((p) => nm2(p.ref));
+        what = `<strong>${h(s.participants.filter((p) => p.role === "subject").map((p) => nm2(p.ref)).join(" & "))}</strong> saves ${h(s.participants.filter((p) => p.role === "victim").map((p) => nm2(p.ref)).join(" & "))}` + (from.length ? ` from ${h(from.join(" & "))}` : "");
         detail = h(s.data.context || "");
       } else if (s.type === "thread.open") {
-        what = h(s.participants.map((p) => nm(p.ref)).join(" & "));
+        what = h(s.participants.map((p) => nm2(p.ref)).join(" & "));
         const about = s.data.about && state.championships[s.data.about];
         detail = `${chip("thread", "group")} ${h(s.data.text)}${about ? ` ${chip(about.name, "title")}` : ""}`;
       } else if (s.type === "title.change") {
         what = h((state.championships[s.data.titleId] || {}).name || s.data.titleId);
         detail = chip(s.data.reason, s.data.reason === "retired" ? "down" : "fa");
       } else if (s.type === "attack") {
-        what = `${h(s.participants.filter((p) => p.role === "attacker").map((p) => nm(p.ref)).join(" & "))} attacks <strong>${h(s.participants.filter((p) => p.role === "victim").map((p) => nm(p.ref)).join(" & "))}</strong>`;
+        what = `${h(s.participants.filter((p) => p.role === "attacker").map((p) => nm2(p.ref)).join(" & "))} attacks <strong>${h(s.participants.filter((p) => p.role === "victim").map((p) => nm2(p.ref)).join(" & "))}</strong>`;
         detail = h(s.data.context || "");
       } else if (s.type === "promo") {
-        const t = s.participants.filter((p) => p.role === "target").map((p) => nm(p.ref));
-        what = `${h(s.participants.filter((p) => p.role === "speaker").map((p) => nm(p.ref)).join(" & "))} promo${t.length ? ` on ${h(t.join(" & "))}` : ""}`;
+        const t = s.participants.filter((p) => p.role === "target").map((p) => nm2(p.ref));
+        what = `${h(s.participants.filter((p) => p.role === "speaker").map((p) => nm2(p.ref)).join(" & "))} promo${t.length ? ` on ${h(t.join(" & "))}` : ""}`;
         detail = h(s.data.topic || "");
       } else {
-        what = h(s.participants.map((p) => nm(p.ref)).join(", "));
+        what = h(s.participants.map((p) => nm2(p.ref)).join(", "));
         detail = h(s.data.description || s.data.weeks ? `${s.data.weeks || ""} ${s.data.description || ""}`.trim() : "");
       }
       return { n: i + 1, type: s.type, what, detail };
@@ -4005,17 +4386,448 @@ The War Raiders = Erik & Ivar`;
     };
   }
 
+  // js/universe/prompts.js
+  var nm = (state, id) => state.wrestlers[id] ? state.wrestlers[id].name : state.groups[id] ? state.groups[id].name : state.championships[id] ? state.championships[id].name : id;
+  var brand = (state, id) => state.brands[id] ? state.brands[id].name : null;
+  var bullets = (rows) => rows.map((r) => `- ${r}`).join("\n");
+  function titleBlock(state) {
+    return Object.values(state.championships).filter((c) => !c.retired).map((c) => {
+      const who = c.vacant ? "VACANT" : c.holders.map((x) => nm(state, x)).join(" & ");
+      const interim = c.interimHolders.length ? `, interim champion ${c.interimHolders.map((x) => nm(state, x)).join(" & ")}` : "";
+      return `- ${c.name} (${brand(state, c.brandId) || "unbranded"}): ${who}` + (c.vacant ? "" : ` \u2014 ${c.daysHeld} days, ${c.defenses} defence${c.defenses === 1 ? "" : "s"}`) + interim;
+    }).join("\n");
+  }
+  function rivalryBlock(state, limit = 8) {
+    const rows = activeRivalries(state, limit);
+    if (!rows.length) return "None running hot right now.";
+    return bullets(rows.map((r) => `${nm(state, r.a)} vs ${nm(state, r.b)} \u2014 heat ${r.heat}, ${r.meetings} meeting${r.meetings === 1 ? "" : "s"}, last ${r.last} (${Object.keys(r.why).join(", ")})`));
+  }
+  function recapPrompt(state, showId) {
+    const show = state.showsById[showId] || state.shows[state.shows.length - 1];
+    if (!show) return "No shows have been saved yet.";
+    const changes = [];
+    state.events.filter((e) => e.showId === show.id).forEach((e) => {
+      (e.effects || []).forEach((fx) => {
+        if (fx.kind === "title.award") changes.push(`${fx.holders.map((x) => nm(state, x)).join(" & ")} won the ${nm(state, fx.titleId)}`);
+        if (fx.kind === "title.interim") changes.push(`${fx.holders.map((x) => nm(state, x)).join(" & ")} became interim ${nm(state, fx.titleId)} champion`);
+        if (fx.kind === "title.unify") changes.push(`${fx.holders.map((x) => nm(state, x)).join(" & ")} unified the ${nm(state, fx.titleId)}`);
+        if (fx.kind === "title.vacate") changes.push(`the ${nm(state, fx.titleId)} was ${fx.reason}`);
+        if (fx.kind === "roster.brand" && fx.reason === "relegation") changes.push(`${nm(state, fx.subject)} was relegated to ${brand(state, fx.brandId)}`);
+        if (fx.kind === "roster.brand" && fx.reason === "promotion") changes.push(`${nm(state, fx.subject)} was promoted to ${brand(state, fx.brandId)}`);
+        if (fx.kind === "injury.start") changes.push(`${nm(state, fx.subject)} was injured${fx.weeks ? ` (out ${fx.weeks} weeks)` : ""}`);
+      });
+    });
+    return `You are writing a recap of a professional wrestling show for a fan site.
+
+SHOW
+${show.name} \u2014 ${show.date}${brand(state, show.brandId) ? ` \u2014 ${brand(state, show.brandId)} brand` : ""}
+
+CARD, IN ORDER
+${show.segments.map((s, i) => `${i + 1}. [${s.type}] ${s.text}`).join("\n")}
+
+WHAT CHANGED
+${changes.length ? bullets(changes) : "- No title or roster changes."}
+
+STANDING GOING IN
+${titleBlock(state)}
+
+LIVE RIVALRIES
+${rivalryBlock(state, 6)}
+
+TASK
+Write a 400-600 word recap in the voice of a wrestling news site. Cover every
+segment in card order, call the main event by name, and give the biggest moment
+its own paragraph. Use only the results above \u2014 do not invent finishes, run-ins,
+injuries or title changes that are not listed. Where a match has no stated
+finish, describe the outcome without inventing how it ended.`;
+  }
+  function contenderPrompt(state, { brandId = null, ple = "the next premium live event" } = {}) {
+    const season = currentSeason(state);
+    const tables = brandStandings(state, season).filter((b) => brandId ? b.id === brandId : true).map((b) => {
+      const rows = b.table.filter((r) => r.matches > 0).slice(0, 10);
+      return `${b.name} (season ${season.n}, from ${season.from})
+` + (rows.length ? rows.map((r, i) => `  ${i + 1}. ${r.name} \u2014 ${r.w}-${r.l}-${r.d}, ${r.points} pts${r.titleMatches ? `, ${r.titleMatches} title matches` : ""}`).join("\n") : "  (nobody has wrestled yet this season)");
+    }).join("\n\n");
+    const owed = state.threads.filter((t) => t.kind === "title-shot").map((t) => `- ${t.subjects.map((x) => nm(state, x)).join(" & ")} is owed a shot at the ${nm(state, t.about)} (${t.age} days)`);
+    return `You are the booking committee for a professional wrestling promotion,
+deciding the card for ${ple}.
+
+CHAMPIONS
+${titleBlock(state)}
+
+SEASON STANDINGS
+${tables}
+
+RIVALRY HEAT \u2014 the hottest running stories
+${rivalryBlock(state, 10)}
+
+ALLIANCES
+${activeAlliances(state, 6).map((r) => `- ${nm(state, r.a)} & ${nm(state, r.b)} \u2014 strength ${r.heat}`).join("\n") || "- None."}
+
+TITLE SHOTS ALREADY OWED
+${owed.length ? owed.join("\n") : "- None outstanding."}
+
+TASK
+Recommend the card for ${ple}. For every title, name the challenger you would
+book and justify it in two sentences using the standings and the rivalry heat
+above. Flag any champion who has no credible challenger. Suggest one match that
+pays off a rivalry with no title attached. Only use wrestlers who appear above.`;
+  }
+  function nextPrompt(state, { limit = 12 } = {}) {
+    const threads = state.threads.slice(0, limit).map((t) => describeThread(state, t));
+    const grouped = {};
+    threads.forEach((t) => {
+      (grouped[t.kind] = grouped[t.kind] || []).push(t);
+    });
+    const block = Object.entries(grouped).map(
+      ([kind, rows]) => `${kind.toUpperCase().replace("-", " ")}
+` + rows.map((t) => `- ${t.line} \u2014 open ${t.age} days (since ${t.opened})`).join("\n")
+    ).join("\n\n");
+    return `You are the head writer for a professional wrestling promotion. These
+are the loose ends currently hanging in the storyline \u2014 questions the shows have
+asked and not yet answered, oldest first.
+
+OPEN THREADS
+${block || "- Nothing is hanging. Every question has been answered."}
+
+WHO HOLDS WHAT
+${titleBlock(state)}
+
+RIVALRY HEAT
+${rivalryBlock(state, 8)}
+
+TASK
+For each open thread, propose the next beat: what happens on the next show to
+move it forward, and what it is building to. Say which threads should be paid
+off soon and which should be left to breathe. If two threads should be merged
+into one story, say so. Keep each answer to three sentences. Do not introduce
+wrestlers who do not appear above.`;
+  }
+  var PROMPTS = [
+    {
+      id: "recap",
+      label: "Show recap",
+      blurb: "The full card and results of a show, ready to be written up.",
+      needs: "show",
+      build: (state, opts) => recapPrompt(state, opts.showId)
+    },
+    {
+      id: "contenders",
+      label: "Contender report",
+      blurb: "Standings, champions and rivalry heat, for booking the next PLE.",
+      needs: "ple",
+      build: (state, opts) => contenderPrompt(state, opts)
+    },
+    {
+      id: "next",
+      label: "What happens next",
+      blurb: "Every open thread, oldest first, with what it is waiting on.",
+      needs: null,
+      build: (state, opts) => nextPrompt(state, opts)
+    }
+  ];
+  var buildPrompt = (id, state, opts = {}) => {
+    const p = PROMPTS.find((x) => x.id === id);
+    return p ? p.build(state, opts) : "";
+  };
+
+  // js/universe/ingest.js
+  var API_URL = "https://api.anthropic.com/v1/messages";
+  var DEFAULT_MODEL = "claude-sonnet-5";
+  var KEY_STORE = "arc_universe_key_v1";
+  var CARD_RULES = `Answer in this shorthand, one segment per line, nothing else:
+
+Show Name / YYYY-MM-DD / Brand
+Winner d. Loser \u2014 stipulation, Championship Name
+Partner & Partner d. Partner & Partner (tag)
+A d. B, C \u2014 triple threat
+A vs B (draw)
+* Attacker attacks Victim after the match
+* Saver saves Victim from Attacker
+Speaker promo on Target
+injury: Name (6 weeks, knee)
+
+Rules:
+- the winner always goes on the left of "d."
+- "&" joins partners in one corner; "," separates opposing corners
+- put the stipulation, the finish (pinfall, submission, dq, countout) and the
+  championship after a dash or in brackets
+- if a title changed hands, just name the belt \u2014 do not write "new champion"
+- use "vs" only when there was no winner`;
+  var ROSTER_RULES = `Answer as one wrestler per line, nothing else:
+
+BRAND NAME
+Wrestler Name, gender, status
+
+Rules:
+- put a brand on its own line, then everyone on it underneath
+- gender is m or f
+- status is one of: active, relegation, promotion, free agent, injured
+- if the screenshot does not show a status, write active
+- for tag teams or factions, add a section at the end:
+  Tag Teams
+  Team Name = Member One & Member Two`;
+  function rosterHint(state, limit = 220) {
+    const names = Object.values(state.wrestlers).map((w) => w.name).slice(0, limit);
+    const belts = Object.values(state.championships).filter((c) => !c.retired).map((c) => c.name);
+    return `Known wrestlers (use these exact spellings where they match):
+${names.join(", ")}
+
+Known championships:
+${belts.join(", ")}`;
+  }
+  function transcriptionPrompt(state, kind = "card") {
+    const isRoster = kind === "roster";
+    return `Read this screenshot from WWE 2K Universe mode and transcribe ${isRoster ? "the roster it shows" : "the show card and results it shows"}.
+
+${isRoster ? ROSTER_RULES : CARD_RULES}
+
+${rosterHint(state)}
+
+Transcribe only what is visible. If a name is cut off or unreadable, leave that
+line out rather than guessing. Output the lines and nothing else \u2014 no preamble,
+no explanation, no code fences.`;
+  }
+  function cleanReply(text) {
+    let out = String(text || "").trim();
+    const fenced = out.match(/```(?:[a-z]*)\n([\s\S]*?)```/i);
+    if (fenced) out = fenced[1];
+    return out.split(/\r?\n/).filter((l) => !/^\s*(here('s| is)|sure|of course|transcription|i've|i have)\b/i.test(l)).join("\n").trim();
+  }
+  function detectKind(text) {
+    const lines = String(text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return null;
+    const matchy = lines.filter((l) => /\s(?:d\.|def\.|defeats?|beat|vs)\s/i.test(l)).length;
+    const rostery = lines.filter((l) => /,\s*(m|f|male|female)\b/i.test(l)).length;
+    if (matchy > rostery) return "card";
+    if (rostery > 0) return "roster";
+    return matchy ? "card" : null;
+  }
+  var hasKey = () => {
+    try {
+      return !!localStorage.getItem(KEY_STORE);
+    } catch (e) {
+      return false;
+    }
+  };
+  var getKey = () => {
+    try {
+      return localStorage.getItem(KEY_STORE) || "";
+    } catch (e) {
+      return "";
+    }
+  };
+  var setKey = (k) => {
+    try {
+      k ? localStorage.setItem(KEY_STORE, k) : localStorage.removeItem(KEY_STORE);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+  var splitDataUrl = (dataUrl) => {
+    const m = /^data:([^;,]+);base64,(.*)$/s.exec(String(dataUrl || ""));
+    if (!m) throw new Error("that does not look like an image");
+    return { mediaType: m[1], data: m[2] };
+  };
+  async function readScreenshot({
+    dataUrl,
+    prompt,
+    apiKey = getKey(),
+    model = DEFAULT_MODEL,
+    fetchImpl = typeof fetch !== "undefined" ? fetch : null,
+    maxTokens = 2e3
+  } = {}) {
+    if (!apiKey) throw new Error("no API key set \u2014 use the copy-paste route, or add a key in Import \u25B8 settings");
+    if (!fetchImpl) throw new Error("no fetch available in this environment");
+    const { mediaType, data } = splitDataUrl(dataUrl);
+    const res = await fetchImpl(API_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        // Anthropic blocks browser calls unless this opt-in header is present.
+        // It is opt-in because it means the key lives in the page.
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data } },
+            { type: "text", text: prompt }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`the API said ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+    }
+    const json = await res.json();
+    const text = (json.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
+    if (!text) throw new Error("the model returned nothing to read");
+    return { text: cleanReply(text), raw: json };
+  }
+  async function ingestScreenshot(state, { dataUrl, kind = "card", ...opts } = {}) {
+    const { text } = await readScreenshot({ dataUrl, prompt: transcriptionPrompt(state, kind), ...opts });
+    return { text, kind: detectKind(text) || kind };
+  }
+
+  // js/universe/ui/tools.js
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) {
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+  function promptsView(state, sel = {}) {
+    const id = sel.id || "next";
+    const spec = PROMPTS.find((p) => p.id === id) || PROMPTS[2];
+    const cards = PROMPTS.map((p) => `<button class="promptcard${p.id === id ? " on" : ""}" data-prompt="${h(p.id)}">
+      <div class="nm">${h(p.label)}</div>
+      <div class="bl">${h(p.blurb)}</div>
+    </button>`).join("");
+    let options = "";
+    if (spec.needs === "show") {
+      const shows = [...state.shows].reverse();
+      options = `<label class="opt">Show
+      <select id="promptShow">${shows.map((s) => `<option value="${h(s.id)}"${s.id === sel.showId ? " selected" : ""}>${h(s.name)} \u2014 ${h(s.date)}</option>`).join("")}</select>
+    </label>`;
+    }
+    if (spec.needs === "ple") {
+      options = `<label class="opt">Brand
+        <select id="promptBrand">
+          <option value="">All brands</option>
+          ${Object.values(state.brands).map((b) => `<option value="${h(b.id)}"${b.id === sel.brandId ? " selected" : ""}>${h(b.name)}</option>`).join("")}
+        </select>
+      </label>
+      <label class="opt">Event
+        <input id="promptPle" type="text" value="${h(sel.ple || "the next premium live event")}">
+      </label>`;
+    }
+    return `<h2>Prompt export <span class="sub">current state already embedded \u2014 copy and paste into any AI</span></h2>
+    <div class="promptrow">${cards}</div>
+    <div class="card entry" style="margin-top:14px">
+      <div class="row" style="margin-top:0">${options}
+        <button class="btn" id="promptCopy">Copy to clipboard</button>
+        <span class="hint" id="promptSize"></span>
+      </div>
+      <textarea id="promptText" spellcheck="false" style="min-height:340px" readonly></textarea>
+    </div>`;
+  }
+  function importView(state, ui = {}) {
+    const key = hasKey();
+    const shots = ui.shots || [];
+    const thumbs = shots.length ? `<div class="shots">${shots.map((s, i) => `
+    <figure class="shot${i === ui.active ? " on" : ""}" data-shot="${i}">
+      <img src="${s.dataUrl}" alt="">
+      <figcaption>${h(s.name)}</figcaption>
+    </figure>`).join("")}</div>` : "";
+    return `<h2>Screenshots in <span class="sub">drop a card or a roster page \u2014 it lands in the normal box, with the normal preview</span></h2>
+
+    <div class="cols">
+      <div>
+        <div class="card">
+          <div id="drop" class="drop">
+            <input type="file" id="shotFile" accept="image/*" multiple hidden>
+            <div class="big">Drop screenshots here</div>
+            <div class="hint">or <button class="linkbtn" id="shotPick">choose files</button> \u2014 PNG or JPG, several at once</div>
+          </div>
+          ${thumbs}
+          <div class="row">
+            <label class="opt">This is a
+              <select id="shotKind">
+                <option value="card"${ui.kind === "roster" ? "" : " selected"}>show card</option>
+                <option value="roster"${ui.kind === "roster" ? " selected" : ""}>roster page</option>
+              </select>
+            </label>
+            ${key ? `<button class="btn" id="shotRead"${shots.length ? "" : " disabled"}>Read screenshot</button>` : `<button class="btn ghost" id="shotPrompt"${shots.length ? "" : " disabled"}>Copy transcription prompt</button>`}
+          </div>
+          ${key ? "" : `<div class="syntax">
+            No API key set, so this uses the copy-paste route: copy the prompt, paste it
+            into whatever AI you already use <em>along with the screenshot</em>, then paste
+            the reply into the box on the right. Works offline and with no key.
+          </div>`}
+          <details class="keybox">
+            <summary>${key ? "API key is set" : "Read screenshots automatically"}</summary>
+            <div class="hint" style="margin:8px 0">
+              With an Anthropic API key the page reads the screenshot itself and fills the box.
+              The key is stored in this browser's localStorage under <code>arc_universe_key_v1</code>
+              and is sent straight to api.anthropic.com from this page \u2014 anyone with access to
+              this browser profile can read it. Leave it empty to keep using the copy-paste route.
+            </div>
+            <div class="row">
+              <input type="password" id="apiKey" placeholder="sk-ant-..." value="${h(getKey())}" style="flex:1;min-width:220px">
+              <button class="btn ghost" id="apiSave">Save key</button>
+              ${key ? '<button class="btn danger" id="apiClear">Remove</button>' : ""}
+            </div>
+            <div class="hint" style="margin-top:6px">Model: <code>${h(DEFAULT_MODEL)}</code></div>
+          </details>
+        </div>
+      </div>
+
+      <div>
+        <div class="card entry">
+          <h2>Transcription <span class="sub">paste the reply here, or let the key fill it</span></h2>
+          <textarea id="shotText" spellcheck="false" style="min-height:200px"
+            placeholder="Raw / 2026-08-17 / Raw&#10;Damian Priest d. Gunther \u2014 World Heavyweight Championship&#10;..."></textarea>
+          <div class="row">
+            <button class="btn" id="shotUse" disabled>Use this</button>
+            <button class="btn ghost" id="shotClear">Clear</button>
+            <span class="hint" id="shotStatus"></span>
+          </div>
+          <div id="shotPreview"></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   // js/universe/ui/app.js
   var store = new UniverseStore({ adapter: localStorageAdapter() });
   if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
-  var app = { tab: "tonight", detailId: null, asOf: null, state: null, flash: null };
+  var app = {
+    tab: "tonight",
+    detailId: null,
+    asOf: null,
+    state: null,
+    flash: null,
+    season: {},
+    // { proposal, lastStand } — unsaved working state
+    prompt: { id: "next" },
+    shots: [],
+    activeShot: 0,
+    shotKind: "card"
+  };
   var TABS = [
     { id: "tonight", label: "Tonight" },
     { id: "roster", label: "Roster", count: (s) => Object.keys(s.wrestlers).length },
     { id: "titles", label: "Titles", count: (s) => Object.values(s.championships).filter((c) => !c.retired).length },
     { id: "threads", label: "Threads", count: (s) => s.threads.length },
+    { id: "season", label: "Season" },
     { id: "shows", label: "Shows", count: (s) => s.shows.length },
-    { id: "log", label: "Log", count: (s) => s.events.length }
+    { id: "log", label: "Log", count: (s) => s.events.length },
+    { id: "prompts", label: "Prompts" },
+    { id: "import", label: "Import" }
   ];
   var PANES = [...TABS.map((t) => t.id), "wrestler", "title"];
   var go = (tab, detailId = null) => {
@@ -4048,6 +4860,19 @@ The War Raiders = Erik & Ivar`;
       $("#heatPanel").innerHTML = heatPanel(s);
     }
     if (app.tab === "threads") $("#pane-threads").innerHTML = threadsView(s);
+    if (app.tab === "season") $("#pane-season").innerHTML = seasonView(s, { proposal: app.season.proposal, lastStand: app.season.lastStand });
+    if (app.tab === "prompts") {
+      $("#pane-prompts").innerHTML = promptsView(s, app.prompt);
+      refreshPrompt();
+    }
+    if (app.tab === "import") {
+      const keep = $("#shotText") ? $("#shotText").value : app.shotText || "";
+      $("#pane-import").innerHTML = importView(s, { shots: app.shots, active: app.activeShot, kind: app.shotKind });
+      if (keep) {
+        $("#shotText").value = keep;
+        refreshShotPreview();
+      }
+    }
     if (app.tab === "wrestler") $("#pane-wrestler").innerHTML = wrestlerPage(s, app.detailId);
     if (app.tab === "title") $("#pane-title").innerHTML = titlePage(s, app.detailId);
     if (app.tab === "roster") {
@@ -4182,6 +5007,11 @@ The War Raiders = Erik & Ivar`;
   document.addEventListener("input", (e) => {
     if (e.target.id === "cardText") refreshCardPreview();
     if (e.target.id === "rosterText") refreshRosterPreview();
+    if (e.target.id === "shotText") refreshShotPreview();
+    if (e.target.id === "promptPle") {
+      app.prompt.ple = e.target.value;
+      refreshPrompt();
+    }
   });
   on("click", "#cardSave", saveCard);
   on("click", "#rosterSave", importRoster);
@@ -4209,6 +5039,172 @@ The War Raiders = Erik & Ivar`;
     app.tab = "tonight";
     flash("Universe reset to the seed roster.");
     render();
+  });
+  on("click", "#flagsPropose", () => {
+    app.season.proposal = proposeFlags(app.state);
+    app.season.lastStand = null;
+    render();
+  });
+  on("click", "#flagsCancel", () => {
+    app.season.proposal = null;
+    render();
+  });
+  on("click", "#flagsCommit", () => {
+    const res = commitFlags(store, app.season.proposal || [], { date: universeNow() });
+    save();
+    app.season.proposal = null;
+    flash(`${plural2(res.written, "name")} flagged. Book Last Stand when you are ready.`);
+    render();
+  });
+  on("click", "#lastStandPropose", () => {
+    const proposal = proposeLastStand(app.state);
+    if (!proposal.matches.length) {
+      flash("Nothing to book \u2014 nobody is carrying a flag, or there is only one name per gender on a list.", "warn");
+      render();
+      return;
+    }
+    app.season.lastStand = lastStandCard(app.state, proposal, { date: universeNow() });
+    if (proposal.unpaired.length) {
+      flash(`${proposal.unpaired.map((w) => h(w.name)).join(", ")} had nobody to face and was left off the card.`, "warn");
+    }
+    render();
+  });
+  on("click", "#lastStandCopy", async () => {
+    flash(await copyText(app.season.lastStand) ? "Card copied." : "Could not reach the clipboard.", "ok");
+    render();
+  });
+  on("click", "#lastStandUse", () => {
+    const text = app.season.lastStand;
+    app.season.lastStand = null;
+    go("tonight");
+    $("#cardText").value = text;
+    refreshCardPreview();
+    $("#cardText").focus();
+  });
+  function refreshPrompt() {
+    const box = $("#promptText");
+    if (!box) return;
+    const opts = {
+      showId: app.prompt.showId || (app.state.shows.length ? app.state.shows[app.state.shows.length - 1].id : null),
+      brandId: app.prompt.brandId || null,
+      ple: app.prompt.ple || void 0
+    };
+    const text = buildPrompt(app.prompt.id, app.state, opts);
+    box.value = text;
+    $("#promptSize").textContent = `${text.length.toLocaleString()} characters`;
+  }
+  on("click", "[data-prompt]", (e, el) => {
+    app.prompt = { ...app.prompt, id: el.dataset.prompt };
+    render();
+  });
+  on("change", "#promptShow", (e, el) => {
+    app.prompt.showId = el.value;
+    refreshPrompt();
+  });
+  on("change", "#promptBrand", (e, el) => {
+    app.prompt.brandId = el.value || null;
+    refreshPrompt();
+  });
+  on("click", "#promptCopy", async () => {
+    const ok = await copyText($("#promptText").value);
+    $("#promptSize").textContent = ok ? "copied to clipboard" : "could not reach the clipboard \u2014 select the text and copy";
+  });
+  function refreshShotPreview() {
+    const box = $("#shotText");
+    if (!box) return;
+    const text = cleanReply(box.value);
+    app.shotText = box.value;
+    const kind = detectKind(text) || app.shotKind;
+    const out = kind === "roster" ? rosterPreview(store, app.state, text) : cardPreview(store, app.state, text);
+    $("#shotPreview").innerHTML = out.html || "";
+    $("#shotUse").disabled = !out.ok;
+    app.shotParsed = out.ok ? { kind, text } : null;
+    $("#shotStatus").textContent = text ? `reads as a ${kind === "roster" ? "roster" : "show card"}` : "";
+  }
+  var addShots = (files) => {
+    [...files].filter((f) => /^image\//.test(f.type)).forEach((f) => {
+      const r = new FileReader();
+      r.onload = () => {
+        app.shots.push({ name: f.name, dataUrl: r.result });
+        app.activeShot = app.shots.length - 1;
+        render();
+      };
+      r.readAsDataURL(f);
+    });
+  };
+  on("click", "#shotPick", () => $("#shotFile").click());
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "shotFile") addShots(e.target.files);
+  });
+  on("click", "[data-shot]", (e, el) => {
+    app.activeShot = +el.dataset.shot;
+    render();
+  });
+  on("change", "#shotKind", (e, el) => {
+    app.shotKind = el.value;
+  });
+  document.addEventListener("dragover", (e) => {
+    if (!$("#drop")) return;
+    e.preventDefault();
+    $("#drop").classList.add("over");
+  });
+  document.addEventListener("dragleave", (e) => {
+    if ($("#drop") && e.target === $("#drop")) $("#drop").classList.remove("over");
+  });
+  document.addEventListener("drop", (e) => {
+    if (!$("#drop")) return;
+    e.preventDefault();
+    $("#drop").classList.remove("over");
+    if (e.dataTransfer && e.dataTransfer.files) addShots(e.dataTransfer.files);
+  });
+  on("click", "#shotPrompt", async () => {
+    const ok = await copyText(transcriptionPrompt(app.state, app.shotKind));
+    $("#shotStatus").textContent = ok ? "prompt copied \u2014 paste it into your AI along with the screenshot, then paste the reply below" : "could not reach the clipboard";
+  });
+  on("click", "#shotRead", async () => {
+    const shot = app.shots[app.activeShot];
+    if (!shot) return;
+    const btn = $("#shotRead");
+    btn.disabled = true;
+    $("#shotStatus").textContent = "reading the screenshot\u2026";
+    try {
+      const out = await ingestScreenshot(app.state, { dataUrl: shot.dataUrl, kind: app.shotKind });
+      $("#shotText").value = out.text;
+      refreshShotPreview();
+    } catch (err2) {
+      $("#shotStatus").textContent = `could not read it: ${err2.message}`;
+    }
+    btn.disabled = false;
+  });
+  on("click", "#apiSave", () => {
+    setKey($("#apiKey").value.trim());
+    flash(hasKey() ? "Key saved in this browser. Screenshots will be read automatically." : "Key removed.");
+    render();
+  });
+  on("click", "#apiClear", () => {
+    setKey("");
+    flash("Key removed.");
+    render();
+  });
+  on("click", "#shotClear", () => {
+    $("#shotText").value = "";
+    app.shotText = "";
+    refreshShotPreview();
+  });
+  on("click", "#shotUse", () => {
+    if (!app.shotParsed) return;
+    const { kind, text } = app.shotParsed;
+    app.shotText = "";
+    go(kind === "roster" ? "roster" : "tonight");
+    if (kind === "roster") {
+      $("#rosterPanel").open = true;
+      $("#rosterText").value = text;
+      refreshRosterPreview();
+    } else {
+      $("#cardText").value = text;
+      refreshCardPreview();
+      $("#cardText").focus();
+    }
   });
   render();
   window.UNIVERSE = { store, app, render, project };
