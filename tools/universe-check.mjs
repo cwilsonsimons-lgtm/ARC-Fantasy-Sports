@@ -24,8 +24,11 @@ import { tiers, tierOf, destination, pyramidText, checkBrand, autoPromotions } f
 import { candidates, eligibleOpponents, checkPairing, recordMatch, lastStandBoard } from '../js/universe/laststand.js';
 import { beltsByBrand, beltCard, checkChampionship, saveChampionship, retireChampionship,
   deleteChampionship, beltUsage, autoPromoteDefault, defaultTeamSize } from '../js/universe/championships.js';
-import { calendarMonth, monthsWithShows, weeklySchedule, brandsOnWeekday, cardOf,
-  cardText as cardAsText, monthText, shiftMonths, weekdayName } from '../js/universe/calendar.js';
+import { cycleGrid, cyclesWithShows, weeklySchedule, brandsOnSlot, slotOfBrand, cardOf,
+  cardText as cardAsText, cycleText, cycleOf, dateOf, weekOfDay,
+  CYCLE_DAYS, CYCLE_WEEKS, WEEK_DAYS } from '../js/universe/calendar.js';
+import { allPLEs, pleCard, plesOnDay, plesForBrand, pleBySpecial, checkPLE, savePLE,
+  movePLE, deletePLE, orderProblems, scheduleText } from '../js/universe/ples.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
   proposeLastStand, lastStandCard, nextStep, PHASES } from '../js/universe/season.js';
@@ -935,83 +938,244 @@ check('clearing the flag ends the call-up',
 
 
 // ──────────────────────────────────────────────────────────────── calendar
-// Two questions: what night is a show on, and what happened on it. The first is
-// read off the brand records — nothing here knows Raw is a Monday.
-section('the calendar');
+// The universe runs on a repeating 28-day cycle — four weeks of seven days,
+// no real-world months. Weekly shows sit on a slot inside the week; PLEs sit
+// on a day and are moved by the user, never by the code.
+section('the 28-day cycle');
 const sCal = fresh();
 commitCard(sCal, parseCard(`Monday Night Raw / 2026-08-17 / Raw
 Damian Priest d. Gunther — World Heavyweight Championship, steel cage
 Rhea Ripley d. Liv Morgan (submission)
 * Solo Sikoa attacks Cody Rhodes after the main event`, sCal));
 commitCard(sCal, parseCard('SmackDown / 2026-08-21 / SmackDown\nCody Rhodes d. Solo Sikoa', sCal));
-const pCal = project(sCal, { asOf: '2026-08-31' });
+sCal.doc.calendar.start = '2026-08-17';
+const pCal = project(sCal, { asOf: '2026-09-10' });
 
-check('the show sits on its date', weekdayName('2026-08-17'), 'Monday');
-check('a month knows what is in it',
-  [calendarMonth(pCal, '2026-08').counts.shows, calendarMonth(pCal, '2026-08').counts.matches], [2, 3]);
-check('an empty month is still a grid', calendarMonth(pCal, '2026-09').weeks.every(w => w.length === 7), true);
-check('the grid starts on a Sunday', calendarMonth(pCal, '2026-08').weeks[0][0].weekday, 'Sunday');
-check('days outside the month are marked',
-  calendarMonth(pCal, '2026-08').weeks[0].filter(d => !d.inMonth).length > 0, true);
-check('every day of the month appears once', (() => {
-  const seen = calendarMonth(pCal, '2026-08').weeks.flat().filter(d => d.inMonth).map(d => d.date);
-  return [seen.length, new Set(seen).size];
-})(), [31, 31]);
+check('a cycle is four weeks of seven days',
+  [CYCLE_DAYS, CYCLE_WEEKS, WEEK_DAYS], [28, 4, 7]);
+check('the grid draws all 28 days', cycleGrid(pCal, 1).weeks.flat().length, 28);
+check('as four rows of seven', cycleGrid(pCal, 1).weeks.map(w => w.length), [7, 7, 7, 7]);
+check('numbered 1 to 28', (() => {
+  const days = cycleGrid(pCal, 1).weeks.flat().map(d => d.day);
+  return [days[0], days[27], new Set(days).size];
+})(), [1, 28, 28]);
+check('week 1 is days 1-7', cycleGrid(pCal, 1).weeks[0].map(d => d.day), [1, 2, 3, 4, 5, 6, 7]);
+check('week 4 is days 22-28', cycleGrid(pCal, 1).weeks[3].map(d => d.day), [22, 23, 24, 25, 26, 27, 28]);
+check('day 8 is in week 2', weekOfDay(8), 2);
+check('day 28 is in week 4', weekOfDay(28), 4);
+check('the anchor is day 1 of cycle 1', cycleOf(pCal, '2026-08-17'), { cycle: 1, day: 1, week: 1 });
+check('and day 29 rolls into the next cycle', cycleOf(pCal, '2026-09-14'), { cycle: 2, day: 1, week: 1 });
+check('a day maps back to a date', dateOf(pCal, 1, 5), '2026-08-21');
+check('no month is involved anywhere', /month/i.test(cycleText(pCal, 1)), false);
 
-const aug = calendarMonth(pCal, '2026-08');
-const day17 = aug.weeks.flat().find(d => d.date === '2026-08-17');
-check('the night is on its day', day17.shows.map(s => s.name), ['Monday Night Raw']);
-check('with its match count', day17.shows[0].matches, 2);
-check('and nothing else that Monday', day17.scheduled.length, 0);
-
-// The weekly rhythm comes out of the brand records, so a user's own show works.
-check('Raw runs on Mondays', brandsOnWeekday(pCal, 'Monday').map(b => b.name), ['Raw']);
-const mon24 = aug.weeks.flat().find(d => d.date === '2026-08-24');
-check('an unbooked Monday still says Raw is due', mon24.scheduled.map(b => b.name), ['Raw']);
-check('the seeded pyramid runs Monday to Friday',
-  weeklySchedule(pCal).filter(r => r.brands.length).map(r => r.weekday),
-  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
-check('a night nobody runs is empty', weeklySchedule(pCal).find(r => r.weekday === 'Sunday').brands, []);
-check('the week covers seven nights', weeklySchedule(pCal).length, 7);
+// Weekly shows repeat inside the week: a slot-1 show runs on 1, 8, 15 and 22.
+check('a brand runs on a slot in the week', slotOfBrand(pCal.brands['b:raw']), 1);
+check('read off a weekday name when that is all there is', slotOfBrand({ day: 'Friday' }), 5);
+check('and a slot beats the old weekday field', slotOfBrand({ day: 'Friday', slot: 2 }), 2);
+check('the weekly pattern has seven rows', weeklySchedule(pCal).length, 7);
+check('Raw is on the first night', brandsOnSlot(pCal, 1).map(b => b.name), ['Raw']);
+check('a slot nobody runs is empty', brandsOnSlot(pCal, 6), []);
+check('a weekly show recurs every week of the cycle',
+  cycleGrid(pCal, 1).weeks.flat().filter(d => d.weekly.some(b => b.name === 'Raw')).map(d => d.day),
+  [8, 15, 22]);   // day 1 ran a real card, so it shows the card instead
+check('the night a card was played shows the card, not the reminder',
+  cycleGrid(pCal, 1).weeks.flat().find(d => d.day === 1).weekly.length, 0);
+check('and the card is on its day',
+  cycleGrid(pCal, 1).weeks.flat().find(d => d.day === 1).shows.map(s => s.name), ['Monday Night Raw']);
+check('with its match count',
+  cycleGrid(pCal, 1).weeks.flat().find(d => d.day === 1).shows[0].matches, 2);
+check('the cycle counts what is in it',
+  [cycleGrid(pCal, 1).counts.shows, cycleGrid(pCal, 1).counts.matches], [2, 3]);
 
 // A brand invented by the user takes its night with it.
-sCal.addEntity('brand', { name: 'WCW', tier: 2, day: 'Saturday', color: '#C0392B' }, { id: 'b:wcw', upsert: true });
-const pCal2 = project(sCal, { asOf: '2026-08-31' });
-check('a new show claims its own night', brandsOnWeekday(pCal2, 'Saturday').map(b => b.name), ['WCW']);
-check('and shows up on every one of them',
-  calendarMonth(pCal2, '2026-08').weeks.flat().filter(d => d.inMonth
-    && d.scheduled.some(b => b.name === 'WCW')).length, 5);
+sCal.addEntity('brand', { name: 'WCW', tier: 2, slot: 6, color: '#C0392B' }, { id: 'b:wcw', upsert: true });
+const pCal2 = project(sCal, { asOf: '2026-09-10' });
+check('a new show claims its own night', brandsOnSlot(pCal2, 6).map(b => b.name), ['WCW']);
+check('on every week of the cycle',
+  cycleGrid(pCal2, 1).weeks.flat().filter(d => d.weekly.some(b => b.name === 'WCW')).map(d => d.day),
+  [6, 13, 20, 27]);
 
 // Reading a night back.
 const nightId = pCal.shows[0].id;
 const night = cardOf(pCal, nightId);
+check('a night knows where it sits on the cycle', [night.cycle, night.day, night.week], [1, 1, 1]);
 check('a night reads back in order', night.segments.map(g => g.type), ['match', 'match', 'attack']);
 check('the main event knows who won', night.segments[0].winnerSide, 1);
 check('and carries the refs, not just the text',
-  night.segments[0].sides.flatMap(s => s.refs).includes('w:damian-priest'), true);
+  night.segments[0].sides.flatMap(x => x.refs).includes('w:damian-priest'), true);
 check('the night lists what it changed',
   night.changes.filter(c => c.kind === 'title').map(c => c.text),
   ['World Heavyweight Championship — new champion: Damian Priest']);
 check('cards page to their neighbours', [night.prev, !!night.next], [null, true]);
 check('as text, it is the night', cardAsText(pCal, nightId).includes('Damian Priest def. Gunther'), true);
 check('with what changed under it', cardAsText(pCal, nightId).includes('What changed'), true);
-check('a month prints as a grid', monthText(pCal, '2026-08').includes('August 2026'), true);
-check('with the show on it', monthText(pCal, '2026-08', { width: 22 }).includes('Monday Night Raw'), true);
-check('and the nights nothing was booked', monthText(pCal, '2026-08').includes('(Raw)'), true);
+check('a cycle prints as four weeks', (cycleText(pCal, 1).match(/^Week \d/gm) || []).length, 4);
+check('with the card on it', cycleText(pCal, 1, { width: 22 }).includes('Monday Night Raw'), true);
+check('and the nights nothing was booked', cycleText(pCal, 1).includes('(Raw)'), true);
 
-check('the index lists months that have cards', monthsWithShows(pCal).map(r => r.key), ['2026-08']);
-check('with the matches counted', monthsWithShows(pCal)[0].matches, 3);
-check('month arithmetic crosses the year', [shiftMonths('2026-12', 1), shiftMonths('2026-01', -1)],
-  ['2027-01', '2025-12']);
+check('the index lists cycles that have cards', cyclesWithShows(pCal).map(r => r.cycle), [1]);
+check('with the matches counted', cyclesWithShows(pCal)[0].matches, 3);
 
 // Voiding the main event takes it off the night — the calendar is a read of the
 // log like everything else, not a second record of what was booked.
 sCal.voidEvent(night.segments[0].id, 'never happened');
-const pCal3 = project(sCal, { asOf: '2026-08-31' });
+const pCal3 = project(sCal, { asOf: '2026-09-10' });
 check('voiding a match takes it off the night', cardOf(pCal3, nightId).segments.length, 2);
-check('and off the tally', calendarMonth(pCal3, '2026-08').counts.matches, 2);
+check('and off the tally', cycleGrid(pCal3, 1).counts.matches, 2);
 check('and the title change with it',
   cardOf(pCal3, nightId).changes.some(c => c.kind === 'title'), false);
+
+// ──────────────────────────────────────────────────────────────── PLEs
+// A PLE is a thing that exists with a place on the cycle, assigned to as many
+// brands as the user likes, and moved whenever they like.
+section('PLEs on the cycle');
+{
+const sPle = fresh();
+sPle.doc.calendar.start = '2026-08-17';
+let pPle = project(sPle);
+
+check('a new universe has an empty schedule', allPLEs(pPle).length, 0);
+check('and nothing is pre-placed for you', scheduleText(pPle).includes('empty'), true);
+
+const svs = savePLE(sPle, pPle, {
+  name: 'Survivor Series', day: 21, type: 'ple',
+  brandIds: ['b:raw', 'b:smackdown'], description: 'the one with the teams',
+});
+pPle = project(sPle);
+check('a PLE lands on the day it was given', pPle.ples[svs.id].day, 21);
+check('in the right week', pleCard(pPle, pPle.ples[svs.id]).week, 3);
+check('with every brand assigned to it',
+  pleCard(pPle, pPle.ples[svs.id]).brandNames, ['Raw', 'SmackDown']);
+check('and reads as a line under its name',
+  pleCard(pPle, pPle.ples[svs.id]).brandLine, 'Raw + SmackDown');
+
+// Any combination of brands, with no limit.
+const onlyRaw = savePLE(sPle, project(sPle), { name: 'Raw Exclusive', day: 4, brandIds: ['b:raw'] });
+const everyBrand = savePLE(sPle, project(sPle), {
+  name: 'Everybody Show', day: 27,
+  brandIds: Object.keys(project(sPle).brands),
+});
+pPle = project(sPle);
+check('a PLE can belong to one brand', pleCard(pPle, pPle.ples[onlyRaw.id]).brandNames, ['Raw']);
+check('or to every brand there is', pleCard(pPle, pPle.ples[everyBrand.id]).brands.length, 5);
+check('nothing caps how many brands take part',
+  pleCard(pPle, pPle.ples[everyBrand.id]).brandIds.length, Object.keys(pPle.brands).length);
+
+// The brand list is whatever the universe has — invent a show and it is offered.
+sPle.addEntity('brand', { name: 'WCW', tier: 2, slot: 6 }, { id: 'b:wcw', upsert: true });
+const withWcw = savePLE(sPle, project(sPle), { name: 'Starrcade', day: 25, brandIds: ['b:wcw'] });
+pPle = project(sPle);
+check('a brand invented today can host a PLE',
+  pleCard(pPle, pPle.ples[withWcw.id]).brandNames, ['WCW']);
+
+// Moving. The day changes; nothing else does.
+const shifted = movePLE(sPle, pPle, svs.id, 14);
+pPle = project(sPle);
+check('moving a PLE changes its day', [shifted.from, pPle.ples[svs.id].day], [21, 14]);
+check('and its week follows', pleCard(pPle, pPle.ples[svs.id]).week, 2);
+check('but the brands are untouched',
+  pleCard(pPle, pPle.ples[svs.id]).brandNames, ['Raw', 'SmackDown']);
+check('a day outside the cycle is refused',
+  /between 1 and 28/.test(threw(() => movePLE(sPle, pPle, svs.id, 29)).message), true);
+check('and so is day zero',
+  !!threw(() => movePLE(sPle, pPle, svs.id, 0)), true);
+
+// Several on one day is ordinary, not an error.
+savePLE(sPle, project(sPle), { name: 'Double Header', day: 14, brandIds: ['b:dynamite'] });
+pPle = project(sPle);
+check('two PLEs can share a day', plesOnDay(pPle, 14).map(p => p.name), ['Double Header', 'Survivor Series']);
+check('and the grid carries both',
+  cycleGrid(pPle, 1, { ples: allPLEs(pPle) }).weeks[1].find(d => d.day === 14).ples.length, 2);
+
+// §39: filtering by brand.
+check('filtering a brand finds its PLEs',
+  plesForBrand(pPle, 'b:raw').map(p => p.name).sort(), ['Everybody Show', 'Raw Exclusive', 'Survivor Series']);
+check('a shared PLE shows under either brand',
+  plesForBrand(pPle, 'b:smackdown').some(p => p.name === 'Survivor Series'), true);
+check('and not under a brand it does not include',
+  plesForBrand(pPle, 'b:dynamite').some(p => p.name === 'Survivor Series'), false);
+check('the grid filters with it', (() => {
+  const g = cycleGrid(pPle, 1, { brandId: 'b:dynamite', ples: allPLEs(pPle) });
+  return g.weeks.flat().flatMap(d => d.ples.map(p => p.name)).sort();
+})(), ['Double Header', 'Everybody Show']);
+check('and filters the weekly shows too', (() => {
+  const g = cycleGrid(pPle, 1, { brandId: 'b:raw', ples: allPLEs(pPle) });
+  return [...new Set(g.weeks.flat().flatMap(d => d.weekly.map(b => b.name)))];
+})(), ['Raw']);
+
+// Validation.
+const pleErr = (rec, id) => checkPLE(project(sPle), rec, { id: id || null }).errors;
+check('a PLE needs a name', pleErr({ name: '', day: 3 }).length > 0, true);
+check('and a day on the cycle', /between 1 and 28/.test(pleErr({ name: 'Nowhere', day: 40 })[0]), true);
+check('two PLEs cannot share a name',
+  /already a PLE/.test(pleErr({ name: 'Survivor Series', day: 3 })[0]), true);
+check('an unknown brand is refused', /unknown brand/.test(pleErr({ name: 'Ghost', day: 3, brandIds: ['b:nope'] })[0]), true);
+check('a PLE with no brands is allowed, with a note',
+  checkPLE(project(sPle), { name: 'Unassigned', day: 3 }).warnings.length, 1);
+
+// §41: the special three are ordinary PLEs carrying a rule.
+const maniaPle = savePLE(sPle, project(sPle), { name: 'WrestleMania', day: 7, type: 'special', special: 'wrestlemania', brandIds: ['b:raw', 'b:smackdown'] });
+const lastStandPle = savePLE(sPle, project(sPle), { name: 'Last Stand', day: 17, type: 'special', special: 'lastStand', brandIds: ['b:raw', 'b:nxt'] });
+pPle = project(sPle);
+check('Last Stand is a PLE like any other', !!pPle.ples[lastStandPle.id], true);
+check('with a place on the cycle', pPle.ples[lastStandPle.id].day, 17);
+check('and brands of its own', pleCard(pPle, pPle.ples[lastStandPle.id]).brandNames, ['Raw', 'NXT']);
+check('the rule it carries is a field', pPle.ples[lastStandPle.id].special, 'lastStand');
+check('found by the rule, not by its name', pleBySpecial(pPle, 'lastStand').id, lastStandPle.id);
+check('so a user can name it anything', (() => {
+  savePLE(sPle, project(sPle), { name: 'Bound for Glory', day: 19, type: 'special', special: 'draft' });
+  return pleBySpecial(project(sPle), 'draft').name;
+})(), 'Bound for Glory');
+check('two events cannot carry the same rule',
+  /already your lastStand/.test(pleErr({ name: 'Another One', day: 9, type: 'special', special: 'lastStand' })[0]), true);
+check('a special needs a known rule',
+  /has to be one of/.test(pleErr({ name: 'Mystery', day: 9, type: 'special', special: 'xmas' })[0]), true);
+
+// §42: ordering is knowledge, not a schedule. Out of order is a note.
+check('the offseason order is understood', orderProblems(project(sPle)).length, 0);
+movePLE(sPle, project(sPle), lastStandPle.id, 3);
+check('and a Last Stand before WrestleMania is flagged',
+  orderProblems(project(sPle)).some(p => /Last Stand/.test(p.message)), true);
+check('but nothing was moved for the user', project(sPle).ples[lastStandPle.id].day, 3);
+movePLE(sPle, project(sPle), lastStandPle.id, 17);
+check('a missing special is reported too',
+  orderProblems(project(fresh())).filter(p => p.missing).length, 3);
+
+// Deleting.
+const doomed = savePLE(sPle, project(sPle), { name: 'Delete Me', day: 2 });
+deletePLE(sPle, project(sPle), doomed.id);
+check('a PLE can be deleted', !!project(sPle).ples[doomed.id], false);
+check('the schedule prints in day order',
+  scheduleText(project(sPle)).split('\n').map(l => Number(l.match(/Day\s+(\d+)/)[1])),
+  d => d.every((x, i) => i === 0 || x >= d[i - 1]));
+}
+
+// A card named after a PLE the user scheduled takes that PLE's rule, so the
+// season machinery follows the schedule rather than a list of famous names.
+section('the schedule meets the card');
+{
+  const s = fresh();
+  savePLE(s, project(s), { name: 'Bound for Glory', day: 24, type: 'special', special: 'lastStand', brandIds: ['b:raw'] });
+  savePLE(s, project(s), { name: 'Clash of Champions', day: 10, brandIds: ['b:raw'] });
+  const asRule = parseCard('Bound for Glory / 2027-04-18 / Raw\nSeth Rollins d. Sami Zayn', s);
+  check('a card named after a special PLE carries its rule', asRule.show.ple, 'lastStand');
+  const withYear = parseCard('Bound for Glory 2027 / 2027-04-18 / Raw\nSeth Rollins d. Sami Zayn', s);
+  check('even with a year on the end', withYear.show.ple, 'lastStand');
+  const plain = parseCard('Clash of Champions / 2027-03-01 / Raw\nSeth Rollins d. Sami Zayn', s);
+  check('an ordinary PLE is still a PLE', plain.show.ple, 'other');
+  const weekly = parseCard('Monday Night Raw / 2027-03-08 / Raw\nSeth Rollins d. Sami Zayn', s);
+  check('and a weekly show is not one at all', weekly.show.ple, null);
+  check('the built-in names still work without a schedule',
+    parseCard('WrestleMania 44 / 2028-04-02 / Raw\nCody Rhodes d. Roman Reigns', fresh()).show.ple, 'wrestlemania');
+
+  // Playing it drives the season exactly as before.
+  commitCard(s, parseCard('WrestleMania 44 / 2028-04-02 / Raw\nCody Rhodes d. Roman Reigns', s));
+  commitCard(s, parseCard('Bound for Glory / 2028-04-24 / Raw\nSeth Rollins d. Sami Zayn', s));
+  const st = project(s, { asOf: '2028-04-25' });
+  check('so the season reaches the draft phase', currentSeason(st).phase, 'draft');
+  check('and the Last Stand date is the card that was played',
+    currentSeason(st).lastStand.date, '2028-04-24');
+}
 
 // ──────────────────────────────────────────────────────────────── prompts
 section('prompt export');

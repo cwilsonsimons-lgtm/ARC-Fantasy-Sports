@@ -45,6 +45,23 @@ export const TITLE_REASONS = ['won', 'awarded', 'vacated', 'stripped', 'retired'
 // names settle it. Everything else is just a show with a big name.
 export const PLES = ['wrestlemania', 'lastStand', 'draft', 'royalRumble', 'summerslam', 'survivorSeries', 'moneyInTheBank', 'other'];
 
+// The universe runs on a repeating 28-day cycle: four weeks of seven days, and
+// no real-world months. Weekly shows sit on a slot inside the week (1-7, so a
+// show on slot 2 runs on days 2, 9, 16 and 23); PLEs sit on a day (1-28) and
+// can be moved to any other.
+export const CYCLE_DAYS = 28;
+export const WEEK_DAYS = 7;
+export const CYCLE_WEEKS = CYCLE_DAYS / WEEK_DAYS;
+
+// A PLE is either an ordinary big show or one the universe's own rules hang off
+// — the offseason three. `special` is what those rules read; it is never
+// inferred from a name, so "Bound for Glory" can be the user's Last Stand.
+export const PLE_TYPES = ['ple', 'special'];
+export const PLE_SPECIALS = ['wrestlemania', 'lastStand', 'draft'];
+// The sequence those three run in. Order is knowledge, not a schedule: nothing
+// here says which day any of them lands on.
+export const SPECIAL_ORDER = ['wrestlemania', 'lastStand', 'draft'];
+
 // What a Last Stand match is playing for. The loser of a relegation match goes
 // down a tier; the winner of a promotion match goes up one.
 export const STAKES = ['relegation', 'promotion'];
@@ -110,7 +127,7 @@ export const BOND = {
   save: 3,
 };
 
-export const ENTITY_PREFIX = { wrestler: 'w', brand: 'b', championship: 'c', group: 'g' };
+export const ENTITY_PREFIX = { wrestler: 'w', brand: 'b', championship: 'c', group: 'g', ple: 'p' };
 
 // ------------------------------------------------------------------ ids
 
@@ -160,7 +177,7 @@ export const ENTITY_SPECS = {
   brand: {
     fields: {
       name: 'string', abbr: 'string?', color: 'string?', logo: 'string?',
-      tier: 'number?', day: 'string?', parentId: 'ref?', note: 'string?',
+      tier: 'number?', day: 'string?', slot: 'number?', parentId: 'ref?', note: 'string?',
     },
     required: ['name'],
   },
@@ -180,9 +197,20 @@ export const ENTITY_SPECS = {
     fields: { name: 'string', kind: 'enum:GROUP_KINDS', memberIds: 'array?', leaderId: 'ref?', brandId: 'ref?', formedOn: 'date?', note: 'string?' },
     required: ['name', 'kind'],
   },
+  // A premium live event as a thing that exists, with a place on the 28-day
+  // cycle. `brandIds` is a list because a PLE belongs to as many shows as the
+  // user says — one, several, or all of them — and a single `brandId` would
+  // make Survivor Series impossible to describe.
+  ple: {
+    fields: {
+      name: 'string', day: 'number', brandIds: 'array?', logo: 'string?', color: 'string?',
+      description: 'string?', type: 'enum:PLE_TYPES', special: 'string?', note: 'string?',
+    },
+    required: ['name', 'day'],
+  },
 };
 
-export const ENUMS = { GENDERS, STATUSES, ALIGNMENTS, GROUP_KINDS, DIVISIONS, DECISIONS };
+export const ENUMS = { GENDERS, STATUSES, ALIGNMENTS, GROUP_KINDS, DIVISIONS, DECISIONS, PLE_TYPES };
 
 // ------------------------------------------------------------------ helpers
 

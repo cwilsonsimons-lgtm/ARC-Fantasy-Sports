@@ -504,41 +504,66 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .bracket ol{list-style:none;margin:8px 0 0;padding:0}
 .bracket li{font-size:13px;padding:3px 0;border-top:1px solid var(--line-soft)}
 
-/* ---------------------------------------------------------------- month grid */
-.calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+/* ---------------------------------------------------------------- the 28-day cycle */
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .calhead .calname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:20px;
-  letter-spacing:.06em;text-transform:uppercase;min-width:190px}
+  letter-spacing:.06em;text-transform:uppercase;min-width:110px}
 .calhead .spacer{flex:1}
-.calhead input[type=month]{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
-  padding:5px 8px;font-size:12px;color-scheme:dark}
+.calhead select{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
+  padding:5px 8px;font-size:12px}
 .calcount{color:var(--ink-3);font-size:12px}
 
-.cal{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
-.cdow{display:grid;grid-template-columns:repeat(7,1fr);background:var(--card-2);
-  border-bottom:1px solid var(--line)}
-.cdow div{padding:7px 10px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.cal{display:flex;flex-direction:column;gap:12px}
+.cweekwrap{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.cweeklabel{padding:6px 12px;background:var(--card-2);border-bottom:1px solid var(--line);
+  font-family:'Oswald','Barlow Condensed',sans-serif;font-size:12px;letter-spacing:.09em;
+  text-transform:uppercase}
+.cweeklabel .dim{letter-spacing:.02em;text-transform:none;margin-left:6px}
 .cweek{display:grid;grid-template-columns:repeat(7,1fr)}
-.cweek+.cweek{border-top:1px solid var(--line-soft)}
-.cday{min-height:96px;padding:6px 7px;border-right:1px solid var(--line-soft);display:flex;
+.cday{min-height:104px;padding:6px 7px;border-right:1px solid var(--line-soft);display:flex;
   flex-direction:column;gap:4px}
 .cday:last-child{border-right:0}
-.cday .n{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.cday.out{background:var(--card-3)}
-.cday.out .n{color:var(--ink-3);opacity:.5}
+.cday .n{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.cday .addple{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:14px;
+  line-height:1;padding:0 3px;opacity:0}
+.cday:hover .addple{opacity:1}
+.cday .addple:hover{color:var(--gold)}
 .cday.today{background:rgba(124,92,255,.07)}
 .cday.today .n{color:var(--violet);font-weight:700}
-.cday.ple{background:rgba(232,178,58,.06)}
+.cday.ple{background:rgba(232,178,58,.05)}
+.cday.dropping{background:rgba(124,92,255,.18);outline:1px dashed var(--violet);outline-offset:-3px}
+
+/* A PLE is deliberately louder than a weekly show: name, then its brands. */
+.cple{background:var(--card-2);border-left:3px solid var(--bc);border-radius:5px;
+  padding:4px 7px;cursor:grab;user-select:none}
+.cple:hover{background:var(--card-3)}
+.cple.dragging{opacity:.45}
+.cple .nm{display:block;font-family:'Oswald','Barlow Condensed',sans-serif;font-size:13px;
+  letter-spacing:.04em;text-transform:uppercase;line-height:1.2;color:var(--gold)}
+.cple .br{display:block;font-size:10px;letter-spacing:.06em;color:var(--ink-2);margin-top:1px}
+.cple .br em{color:var(--ink-3);font-style:italic;letter-spacing:0}
+.cple .rule{display:inline-block;margin-top:2px;font-size:9px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--violet)}
+.cple.special{border-left-color:var(--violet)}
 
 .cshow{display:block;width:100%;text-align:left;background:var(--card-2);border:0;
   border-left:3px solid var(--bc);border-radius:5px;padding:4px 7px;cursor:pointer}
 .cshow:hover{background:var(--card-3)}
 .cshow .nm{display:block;font-size:12px;font-weight:600;line-height:1.25}
 .cshow .ct{display:block;font-size:10px;color:var(--ink-3)}
-.cday.ple .cshow{border-left-color:var(--gold)}
 
 .cdue{display:inline-block;align-self:flex-start;font-size:10px;color:var(--ink-3);
   border-left:2px solid var(--bc);padding:1px 5px;background:var(--card-3);
   border-radius:0 4px 4px 0;margin-right:3px}
+
+/* brand pickers on the PLE form */
+.brandpicks{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.brandpick{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;
+  background:var(--card-3);border:1px solid var(--line);border-left:3px solid var(--bc);
+  border-radius:7px;padding:5px 10px}
+.brandpick.on{background:var(--card-2);border-color:var(--violet)}
+.brandpick input{accent-color:var(--violet);width:13px;height:13px;cursor:pointer}
 
 .chip.ple{background:rgba(232,178,58,.14);color:var(--gold);border:1px solid rgba(232,178,58,.3)}
 .linkbtn.strong{color:var(--ink);font-weight:600;font-size:13px}
@@ -612,6 +637,12 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   var DIVISIONS = ["mens", "womens", "tag", "mixed", "unisex"];
   var TITLE_REASONS = ["won", "awarded", "vacated", "stripped", "retired", "interim", "unified"];
   var PLES = ["wrestlemania", "lastStand", "draft", "royalRumble", "summerslam", "survivorSeries", "moneyInTheBank", "other"];
+  var CYCLE_DAYS = 28;
+  var WEEK_DAYS = 7;
+  var CYCLE_WEEKS = CYCLE_DAYS / WEEK_DAYS;
+  var PLE_TYPES = ["ple", "special"];
+  var PLE_SPECIALS = ["wrestlemania", "lastStand", "draft"];
+  var SPECIAL_ORDER = ["wrestlemania", "lastStand", "draft"];
   var SHOW_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   var DECISIONS = ["pinfall", "submission", "dq", "countout", "ko", "stoppage", "draw", "no contest"];
   var MATCH_TYPES = [
@@ -663,7 +694,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     // losing together still builds something
     save: 3
   };
-  var ENTITY_PREFIX = { wrestler: "w", brand: "b", championship: "c", group: "g" };
+  var ENTITY_PREFIX = { wrestler: "w", brand: "b", championship: "c", group: "g", ple: "p" };
   function slug(s) {
     return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   }
@@ -700,6 +731,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         logo: "string?",
         tier: "number?",
         day: "string?",
+        slot: "number?",
         parentId: "ref?",
         note: "string?"
       },
@@ -726,9 +758,27 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     group: {
       fields: { name: "string", kind: "enum:GROUP_KINDS", memberIds: "array?", leaderId: "ref?", brandId: "ref?", formedOn: "date?", note: "string?" },
       required: ["name", "kind"]
+    },
+    // A premium live event as a thing that exists, with a place on the 28-day
+    // cycle. `brandIds` is a list because a PLE belongs to as many shows as the
+    // user says — one, several, or all of them — and a single `brandId` would
+    // make Survivor Series impossible to describe.
+    ple: {
+      fields: {
+        name: "string",
+        day: "number",
+        brandIds: "array?",
+        logo: "string?",
+        color: "string?",
+        description: "string?",
+        type: "enum:PLE_TYPES",
+        special: "string?",
+        note: "string?"
+      },
+      required: ["name", "day"]
     }
   };
-  var ENUMS = { GENDERS, STATUSES, ALIGNMENTS, GROUP_KINDS, DIVISIONS, DECISIONS };
+  var ENUMS = { GENDERS, STATUSES, ALIGNMENTS, GROUP_KINDS, DIVISIONS, DECISIONS, PLE_TYPES };
   var err = (list, msg2) => {
     list.push(msg2);
     return list;
@@ -1168,13 +1218,16 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   // js/universe/store.js
   var SCHEMA_VERSION = 1;
   var STORE_KEY = "arc_universe_v1";
-  var KINDS = { wrestler: "wrestlers", brand: "brands", championship: "championships", group: "groups" };
+  var KINDS = { wrestler: "wrestlers", brand: "brands", championship: "championships", group: "groups", ple: "ples" };
   var clone = (o) => JSON.parse(JSON.stringify(o));
   var nowISO = () => (/* @__PURE__ */ new Date()).toISOString();
   function emptyDoc(name = "Universe") {
     return {
       meta: { version: SCHEMA_VERSION, name, seq: 0, cxSeq: 0, createdAt: nowISO(), updatedAt: nowISO() },
-      entities: { wrestlers: {}, brands: {}, championships: {}, groups: {} },
+      // A new save opens on a clean 28-day cycle with nothing on it: the calendar
+      // is a structure, the schedule is the user's.
+      calendar: { start: null, cycleDays: 28 },
+      entities: { wrestlers: {}, brands: {}, championships: {}, groups: {}, ples: {} },
       events: [],
       corrections: []
     };
@@ -1502,6 +1555,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     Object.values(KINDS).forEach((b) => {
       doc.entities[b] = doc.entities[b] || {};
     });
+    doc.calendar = { cycleDays: 28, start: null, ...doc.calendar || {} };
     doc.events = doc.events || [];
     doc.corrections = doc.corrections || [];
     return doc;
@@ -1525,10 +1579,16 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       brands: {},
       championships: {},
       groups: {},
+      ples: {},
+      // The 28-day cycle's anchor. A structure, not a schedule: what sits on it
+      // comes from the PLE entities and the brands' weekly slots.
+      calendar: { ...store2.doc.calendar || { cycleDays: 28, start: null } },
       shows: [],
       showsById: {},
-      ples: [],
       events,
+      // PLE *shows* that were actually played, in order — the season machinery
+      // reads these. Distinct from `ples`, which is the schedule.
+      pleShows: [],
       // Raw contributions, collected during the replay and totalled at the end so
       // decay is measured from each one's own date.
       ties: { rivalry: /* @__PURE__ */ new Map(), alliance: /* @__PURE__ */ new Map() },
@@ -1579,6 +1639,9 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         totalDefenses: 0,
         retired: !!c.retiredOn
       };
+    });
+    store2.entitiesOf("ple").forEach((p) => {
+      state.ples[p.id] = { ...p };
     });
     store2.entitiesOf("group").forEach((g) => {
       state.groups[g.id] = {
@@ -1685,7 +1748,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         const show = { id: fx.showId, name: fx.name, date: ev.date, brandId: fx.brandId, ple: fx.ple || null, segments: [] };
         state.shows.push(show);
         state.showsById[show.id] = show;
-        if (show.ple) state.ples.push({ kind: show.ple, date: ev.date, showId: show.id, name: show.name });
+        if (show.ple) state.pleShows.push({ kind: show.ple, date: ev.date, showId: show.id, name: show.name });
         break;
       }
       case "record.win":
@@ -2279,6 +2342,19 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         errors.push(msg(e));
       }
     };
+    arr(doc.ples).forEach((p) => {
+      const rec = typeof p === "string" ? { name: p, day: 1 } : { ...p };
+      const brands = arr(rec.brands || rec.brandIds);
+      delete rec.brands;
+      rec.brandIds = brands.map((b) => brandRef(b, `PLE "${rec.name}"`)).filter(Boolean);
+      rec.type = rec.special ? "special" : rec.type || "ple";
+      try {
+        s.addEntity("ple", rec, { upsert: true });
+      } catch (e) {
+        errors.push(msg(e));
+      }
+    });
+    if (doc.calendar && doc.calendar.start) s.doc.calendar.start = doc.calendar.start;
     arr(doc.tagTeams).forEach((g) => addGroup(g, "tagTeam"));
     arr(doc.factions).forEach((g) => addGroup(g, "faction"));
     arr(doc.groups).forEach((g) => addGroup(g, g.kind || "alliance"));
@@ -2517,7 +2593,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     complete: "Complete"
   };
   function seasons(state) {
-    const ples = state.ples.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const ples = state.pleShows.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     const start = state.startDate || (state.events.length ? state.events[0].date : state.asOf);
     const out = [];
     let open = { from: start, wrestlemania: null, lastStand: null, draft: null };
@@ -2931,6 +3007,11 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       else if (!name) name = p;
     });
     if (!name && brandId) name = state.brands[brandId] ? state.brands[brandId].name : null;
+    if (!ple && name && state && state.ples) {
+      const norm2 = (x) => String(x).toLowerCase().replace(/\s+/g, " ").trim();
+      const own = Object.values(state.ples).find((p) => norm2(p.name) === norm2(name) || norm2(name).startsWith(`${norm2(p.name)} `));
+      if (own) ple = own.special || "other";
+    }
     if (!ple && name) {
       const hit = PLE_NAMES.find(([re]) => re.test(name));
       if (hit) ple = hit[1];
@@ -4638,45 +4719,45 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   // js/universe/calendar.js
   var MS_DAY = 864e5;
   var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  var MONTHS = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ];
+  var SLOT_WEEKDAY = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   var pad3 = (n) => String(n).padStart(2, "0");
   var utc = (iso) => /* @__PURE__ */ new Date(`${iso}T00:00:00Z`);
   var isoOf = (d) => `${d.getUTCFullYear()}-${pad3(d.getUTCMonth() + 1)}-${pad3(d.getUTCDate())}`;
-  var weekdayOf = (iso) => utc(iso).getUTCDay();
-  var weekdayName = (iso) => WEEKDAYS[weekdayOf(iso)];
-  var monthKey = (iso) => iso.slice(0, 7);
   var shiftDays = (iso, n) => isoOf(new Date(utc(iso).getTime() + n * MS_DAY));
-  function monthLabel(key) {
-    const [y, m] = key.split("-").map(Number);
-    return `${MONTHS[m - 1]} ${y}`;
+  var daysBetween = (a, b) => Math.round((utc(b).getTime() - utc(a).getTime()) / MS_DAY);
+  var weekdayName = (iso) => WEEKDAYS[utc(iso).getUTCDay()];
+  var weekOfDay = (day) => Math.floor((Number(day) - 1) / WEEK_DAYS) + 1;
+  var slotOfDay = (day) => (Number(day) - 1) % WEEK_DAYS + 1;
+  var dayLabel = (day) => `Day ${day} \xB7 week ${weekOfDay(day)}`;
+  function calendarStart(state) {
+    const set = state.calendar && state.calendar.start;
+    if (set) return set;
+    if (state.startDate) return state.startDate;
+    const first = state.events.length ? state.events[0].date : null;
+    return first || state.asOf;
   }
-  function shiftMonths(key, n) {
-    const [y, m] = key.split("-").map(Number);
-    const total = y * 12 + (m - 1) + n;
-    return `${Math.floor(total / 12)}-${pad3(total % 12 + 1)}`;
+  function cycleOf(state, iso) {
+    const n = daysBetween(calendarStart(state), iso);
+    const cycle = Math.floor(n / CYCLE_DAYS) + 1;
+    const day = (n % CYCLE_DAYS + CYCLE_DAYS) % CYCLE_DAYS + 1;
+    return { cycle, day, week: weekOfDay(day) };
   }
-  function brandsOnWeekday(state, weekday) {
-    const name = typeof weekday === "number" ? WEEKDAYS[weekday] : weekday;
-    return Object.values(state.brands).filter((b) => b.day === name).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
+  var dateOf = (state, cycle, day) => shiftDays(calendarStart(state), (Number(cycle) - 1) * CYCLE_DAYS + (Number(day) - 1));
+  var currentCycle = (state) => cycleOf(state, state.asOf).cycle;
+  function slotOfBrand(brand2) {
+    if (!brand2) return null;
+    if (brand2.slot != null && brand2.slot !== "") return Number(brand2.slot);
+    const i = SLOT_WEEKDAY.indexOf(brand2.day);
+    return i < 0 ? null : i + 1;
+  }
+  function brandsOnSlot(state, slot) {
+    return Object.values(state.brands).filter((b) => slotOfBrand(b) === Number(slot)).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
   }
   function weeklySchedule(state) {
-    return WEEKDAYS.map((name, i) => ({
-      weekday: name,
-      index: i,
-      brands: brandsOnWeekday(state, i).map((b) => ({
+    return Array.from({ length: WEEK_DAYS }, (_, i) => ({
+      slot: i + 1,
+      weekday: SLOT_WEEKDAY[i],
+      brands: brandsOnSlot(state, i + 1).map((b) => ({
         id: b.id,
         name: b.name,
         color: b.color || null,
@@ -4698,64 +4779,62 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   function showsOn(state, date) {
     return state.shows.filter((s) => s.date === date).map((s) => showCell(state, s));
   }
-  function calendarMonth(state, key, { weekStart = 0 } = {}) {
-    const [year, month] = key.split("-").map(Number);
-    const first = `${year}-${pad3(month)}-01`;
-    const lead = (weekdayOf(first) - weekStart + 7) % 7;
-    const start = shiftDays(first, -lead);
-    const today2 = state.asOf;
+  function cycleGrid(state, cycle, { brandId = null, ples = [] } = {}) {
+    const n = Number(cycle);
+    const today2 = cycleOf(state, state.asOf);
     const weeks = [];
-    let cursor = start;
-    for (let w = 0; w < 6; w++) {
+    for (let w = 0; w < CYCLE_WEEKS; w++) {
       const row = [];
-      for (let d = 0; d < 7; d++) {
-        const shows2 = showsOn(state, cursor);
-        const booked = new Set(shows2.map((s) => s.brandId));
+      for (let d = 1; d <= WEEK_DAYS; d++) {
+        const day = w * WEEK_DAYS + d;
+        const date = dateOf(state, n, day);
+        const shows = showsOn(state, date);
+        const onDay = ples.filter((p) => p.day === day);
+        const booked = new Set(shows.map((s) => s.brandId));
+        const weekly = brandsOnSlot(state, slotOfDay(day)).filter((b) => !booked.has(b.id)).map((b) => ({ id: b.id, name: b.name, color: b.color || null }));
+        const keep = (p) => !brandId || (p.brandIds || []).includes(brandId);
+        const showKeep = (s) => !brandId || s.brandId === brandId || onDay.some((p) => (p.brandIds || []).includes(brandId) && sameName(p.name, s.name));
         row.push({
-          date: cursor,
-          dayNum: Number(cursor.slice(8)),
-          weekday: weekdayName(cursor),
-          inMonth: monthKey(cursor) === key,
-          isToday: cursor === today2,
-          past: cursor < today2,
-          shows: shows2,
-          scheduled: brandsOnWeekday(state, weekdayOf(cursor)).filter((b) => !booked.has(b.id)).map((b) => ({ id: b.id, name: b.name, color: b.color || null })),
-          ples: shows2.filter((s) => s.ple).map((s) => s.ple)
+          day,
+          week: w + 1,
+          slot: slotOfDay(day),
+          date,
+          weekday: weekdayName(date),
+          isToday: today2.cycle === n && today2.day === day,
+          past: date < state.asOf,
+          shows: shows.filter(showKeep),
+          weekly: brandId ? weekly.filter((b) => b.id === brandId) : weekly,
+          ples: onDay.filter(keep)
         });
-        cursor = shiftDays(cursor, 1);
       }
       weeks.push(row);
-      if (monthKey(cursor) !== key && w >= 4) break;
     }
-    const shows = state.shows.filter((s) => monthKey(s.date) === key).map((s) => showCell(state, s));
+    const flat = weeks.flat();
     return {
-      key,
-      year,
-      month,
-      label: monthLabel(key),
-      prev: shiftMonths(key, -1),
-      next: shiftMonths(key, 1),
-      weekdayNames: WEEKDAYS.map((_, i) => WEEKDAYS[(i + weekStart) % 7]),
+      cycle: n,
       weeks,
-      shows,
+      from: dateOf(state, n, 1),
+      to: dateOf(state, n, CYCLE_DAYS),
+      isCurrent: today2.cycle === n,
       counts: {
-        shows: shows.length,
-        matches: shows.reduce((n, s) => n + s.matches, 0),
-        ples: shows.filter((s) => s.ple).length
+        shows: flat.reduce((t, c) => t + c.shows.length, 0),
+        matches: flat.reduce((t, c) => t + c.shows.reduce((m, s) => m + s.matches, 0), 0),
+        ples: flat.reduce((t, c) => t + c.ples.length, 0)
       }
     };
   }
-  function monthsWithShows(state) {
+  var sameName = (a, b) => String(a).toLowerCase().trim() === String(b).toLowerCase().trim();
+  function cyclesWithShows(state) {
     const by = /* @__PURE__ */ new Map();
     state.shows.forEach((s) => {
-      const k = monthKey(s.date);
-      if (!by.has(k)) by.set(k, { key: k, label: monthLabel(k), shows: 0, matches: 0, ples: [] });
-      const row = by.get(k);
+      const { cycle } = cycleOf(state, s.date);
+      if (!by.has(cycle)) by.set(cycle, { cycle, shows: 0, matches: 0, ples: [] });
+      const row = by.get(cycle);
       row.shows += 1;
       row.matches += s.segments.filter((g) => g.type === "match").length;
       if (s.ple) row.ples.push(s.name);
     });
-    return [...by.values()].sort((a, b) => b.key.localeCompare(a.key));
+    return [...by.values()].sort((a, b) => b.cycle - a.cycle);
   }
   var nameOf2 = (state, ref) => state.wrestlers[ref] ? state.wrestlers[ref].name : state.groups[ref] ? state.groups[ref].name : state.championships[ref] ? state.championships[ref].name : ref;
   function changesOn(state, events) {
@@ -4787,8 +4866,13 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     if (!show) return null;
     const events = state.events.filter((e) => e.showId === showId);
     const idx = state.shows.findIndex((s) => s.id === showId);
+    const at = cycleOf(state, show.date);
     return {
       ...show,
+      cycle: at.cycle,
+      day: at.day,
+      week: at.week,
+      dayLabel: dayLabel(at.day),
       weekday: weekdayName(show.date),
       brandName: show.brandId && state.brands[show.brandId] ? state.brands[show.brandId].name : null,
       color: show.brandId && state.brands[show.brandId] && state.brands[show.brandId].color || null,
@@ -4798,6 +4882,130 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       prev: idx > 0 ? state.shows[idx - 1].id : null,
       next: idx >= 0 && idx < state.shows.length - 1 ? state.shows[idx + 1].id : null
     };
+  }
+
+  // js/universe/ples.js
+  var SPECIAL_SHORT = { wrestlemania: "WrestleMania", lastStand: "Last Stand", draft: "Draft" };
+  var SPECIAL_LABEL = {
+    wrestlemania: "WrestleMania \u2014 ends the season",
+    lastStand: "Last Stand \u2014 settles promotion and relegation",
+    draft: "Draft \u2014 reshuffles each tier, and opens the new season"
+  };
+  var brandsOf = (state, rec) => (rec.brandIds || []).map((id) => state.brands[id]).filter(Boolean);
+  function pleCard(state, rec) {
+    const brands = brandsOf(state, rec);
+    return {
+      ...rec,
+      day: Number(rec.day),
+      week: weekOfDay(Number(rec.day)),
+      dayLabel: dayLabel(Number(rec.day)),
+      brands,
+      brandNames: brands.map((b) => b.name),
+      // "RAW + SMACKDOWN", or an honest blank rather than a guess.
+      brandLine: brands.length ? brands.map((b) => b.name).join(" + ") : null,
+      color: rec.color || brands.length === 1 && brands[0].color || null,
+      isSpecial: rec.type === "special" && !!rec.special
+    };
+  }
+  function allPLEs(state) {
+    return Object.values(state.ples || {}).map((p) => pleCard(state, p)).sort((a, b) => a.day - b.day || a.name.localeCompare(b.name));
+  }
+  var pleBySpecial = (state, special) => allPLEs(state).find((p) => p.type === "special" && p.special === special) || null;
+  function checkPLE(state, rec, { id = null } = {}) {
+    const errors = [];
+    const warnings = [];
+    const name = String(rec.name || "").trim();
+    const day = Number(rec.day);
+    if (!name) errors.push("a PLE needs a name");
+    if (!Number.isInteger(day) || day < 1 || day > CYCLE_DAYS) errors.push(`the day has to be between 1 and ${CYCLE_DAYS}`);
+    if (rec.type && !PLE_TYPES.includes(rec.type)) errors.push(`unknown PLE type: ${rec.type}`);
+    if (rec.type === "special" && !PLE_SPECIALS.includes(rec.special)) {
+      errors.push(`a special event has to be one of: ${PLE_SPECIALS.join(", ")}`);
+    }
+    if (rec.special && rec.type !== "special") errors.push("give it the special type, or clear the rule it carries");
+    (rec.brandIds || []).forEach((b) => {
+      if (!state.brands[b]) errors.push(`unknown brand: ${b}`);
+    });
+    const clash = Object.values(state.ples || {}).find((p) => p.id !== id && p.name.toLowerCase() === name.toLowerCase());
+    if (clash) errors.push(`there is already a PLE called ${clash.name}`);
+    if (rec.type === "special" && rec.special) {
+      const taken = Object.values(state.ples || {}).find((p) => p.id !== id && p.type === "special" && p.special === rec.special);
+      if (taken) errors.push(`${taken.name} is already your ${rec.special} \u2014 one event carries each rule`);
+    }
+    if (!(rec.brandIds || []).length) warnings.push("no brands assigned \u2014 nobody is on this show yet");
+    return { errors, warnings };
+  }
+  function orderProblems(state) {
+    const placed = SPECIAL_ORDER.map((k) => ({ key: k, ple: pleBySpecial(state, k) })).filter((x) => x.ple);
+    const out = [];
+    for (let i = 1; i < placed.length; i++) {
+      const prev = placed[i - 1], cur = placed[i];
+      if (cur.ple.day <= prev.ple.day) {
+        out.push({
+          after: cur.key,
+          before: prev.key,
+          message: `${cur.ple.name} (day ${cur.ple.day}) is scheduled on or before ${prev.ple.name} (day ${prev.ple.day}), but ${cur.key} comes after ${prev.key} \u2014 fine if they are in different cycles, worth a look if not.`
+        });
+      }
+    }
+    SPECIAL_ORDER.forEach((k) => {
+      if (!pleBySpecial(state, k)) out.push({ missing: k, message: `nothing is set as your ${k} yet` });
+    });
+    return out;
+  }
+  var cleanRec = (rec) => ({
+    name: String(rec.name).trim(),
+    day: Number(rec.day),
+    brandIds: [...new Set(rec.brandIds || [])],
+    logo: rec.logo || void 0,
+    color: rec.color || void 0,
+    description: rec.description || void 0,
+    type: rec.type === "special" ? "special" : "ple",
+    special: rec.type === "special" ? rec.special : void 0,
+    note: rec.note || void 0
+  });
+  function savePLE(store2, state, rec, { id = null } = {}) {
+    const { errors, warnings } = checkPLE(state, rec, { id });
+    if (errors.length) {
+      const e = new Error(errors[0]);
+      e.errors = errors;
+      throw e;
+    }
+    const clean2 = cleanRec(rec);
+    if (id) {
+      store2.amendEntity(id, {
+        ...clean2,
+        logo: clean2.logo || null,
+        color: clean2.color || null,
+        description: clean2.description || null,
+        special: clean2.special || null
+      }, "PLE edited");
+      store2.save();
+      return { id, created: false, warnings };
+    }
+    const made = store2.addEntity("ple", clean2, { id: entityId("ple", clean2.name) });
+    store2.save();
+    return { id: made.id, created: true, warnings };
+  }
+  function movePLE(store2, state, id, day) {
+    const rec = state.ples[id];
+    if (!rec) throw new Error("no such PLE");
+    const to = Number(day);
+    if (!Number.isInteger(to) || to < 1 || to > CYCLE_DAYS) {
+      const e = new Error(`the day has to be between 1 and ${CYCLE_DAYS}`);
+      e.errors = [e.message];
+      throw e;
+    }
+    store2.amendEntity(id, { day: to }, `moved to day ${to}`);
+    store2.save();
+    return { id, from: rec.day, to, brandIds: rec.brandIds || [] };
+  }
+  function deletePLE(store2, state, id) {
+    const rec = state.ples[id];
+    if (!rec) throw new Error("no such PLE");
+    store2.removeEntity(id, "PLE deleted");
+    store2.save();
+    return { id, name: rec.name };
   }
 
   // js/universe/championships.js
@@ -5312,10 +5520,10 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       ${field("Logo", `<input id="bfLogo" type="text" value="${h(b.logo || "")}" placeholder="\u26A1" maxlength="4">`, "an emoji or a character")}
       ${field("Colour", `<input id="bfColor" type="color" value="${h(b.color || "#7C5CFF")}">`)}
       ${field("Tier", `<input id="bfTier" type="number" min="1" step="1" value="${h(b.tier == null ? 1 : b.tier)}">`, "1 is the top of the pyramid")}
-      ${field("Show day", `<select id="bfDay">
-          <option value="">\u2014</option>
-          ${SHOW_DAYS.map((d) => `<option value="${d}"${b.day === d ? " selected" : ""}>${d}</option>`).join("")}
-        </select>`)}
+      ${field("Show night", `<select id="bfDay">
+          <option value="">\u2014 dark \u2014</option>
+          ${SHOW_DAYS.map((d, i) => `<option value="${i + 1}"${slotOfBrand(b) === i + 1 ? " selected" : ""}>Day ${i + 1} \u2014 ${d}</option>`).join("")}
+        </select>`, "repeats every week of the 28-day cycle")}
       ${field("Develops for", `<select id="bfParent">
           <option value="">\u2014 the tier above in general \u2014</option>
           ${parents.map((p) => `<option value="${h(p.id)}"${b.parentId === p.id ? " selected" : ""}>${h(p.name)} (tier ${p.tier == null ? 1 : p.tier})</option>`).join("")}
@@ -5723,69 +5931,153 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     ], "Nothing on this card moved a belt, a brand or a body.")}</div>`;
   }
   function calendarView(state, ui = {}) {
-    const key = ui.month || monthKey(state.asOf);
-    const m = calendarMonth(state, key);
-    const index = monthsWithShows(state);
+    const cycle = ui.cycle || currentCycle(state);
+    const filter = ui.brandId || null;
+    const ples = allPLEs(state);
+    const grid = cycleGrid(state, cycle, { brandId: filter, ples });
+    const index = cyclesWithShows(state);
+    const editing = ui.editingPLE || null;
+    const problems = orderProblems(state).filter((p) => !p.missing);
+    const pleChip = (p) => `<div class="cple${p.isSpecial ? " special" : ""}" draggable="true"
+      data-ple="${h(p.id)}" style="--bc:${p.color || "var(--gold)"}" title="${h(p.description || p.name)}">
+      <span class="nm">${p.logo ? `${h(p.logo)} ` : ""}${h(p.name)}</span>
+      <span class="br">${p.brandLine ? h(p.brandLine.toUpperCase()) : "<em>no brands yet</em>"}</span>
+      ${p.isSpecial ? `<span class="rule">${h(SPECIAL_SHORT[p.special] || p.special)}</span>` : ""}
+    </div>`;
     const cell = (d) => {
       const cls = [
         "cday",
-        d.inMonth ? "" : "out",
         d.isToday ? "today" : "",
         d.shows.length ? "booked" : "",
         d.ples.length ? "ple" : ""
       ].filter(Boolean).join(" ");
-      const shows = d.shows.map((s) => `<button class="cshow" data-show="${h(s.id)}"
-        style="--bc:${s.color || "var(--violet)"}" title="${h(s.name)} \u2014 ${plural2(s.matches, "match", "matches")}">
-        <span class="nm">${h(s.name)}</span>
-        <span class="ct">${s.matches ? plural2(s.matches, "match", "matches") : `${s.segments} seg`}</span>
-      </button>`).join("");
-      const due = d.scheduled.map((b) => `<span class="cdue" style="--bc:${b.color || "var(--ink-3)"}">${h(b.name)}</span>`).join("");
-      return `<div class="${cls}"><div class="n">${d.dayNum}</div>${shows}${due}</div>`;
+      return `<div class="${cls}" data-day="${d.day}">
+      <div class="n"><span>Day ${d.day}</span>
+        <button class="addple" data-editple="new:${d.day}" title="Add a PLE on day ${d.day}">+</button></div>
+      ${d.ples.map(pleChip).join("")}
+      ${d.shows.map((sh) => `<button class="cshow" data-show="${h(sh.id)}"
+          style="--bc:${sh.color || "var(--violet)"}" title="${h(sh.name)}">
+          <span class="nm">${h(sh.name)}</span>
+          <span class="ct">${sh.matches ? plural2(sh.matches, "match", "matches") : `${sh.segments} seg`}</span>
+        </button>`).join("")}
+      ${d.weekly.map((b) => `<span class="cdue" style="--bc:${b.color || "var(--ink-3)"}">${h(b.name)}</span>`).join("")}
+    </div>`;
     };
-    const week = (wk) => `<div class="cweek">${wk.map(cell).join("")}</div>`;
+    const weeks = grid.weeks.map((wk, i) => `<div class="cweekwrap">
+      <div class="cweeklabel">Week ${i + 1} <span class="dim">days ${wk[0].day}\u2013${wk[6].day}</span></div>
+      <div class="cweek">${wk.map(cell).join("")}</div>
+    </div>`).join("");
     return `<div class="calhead">
-      <button class="btn ghost" data-month="${h(m.prev)}">\u2190</button>
-      <h2 class="calname">${h(m.label)}</h2>
-      <button class="btn ghost" data-month="${h(m.next)}">\u2192</button>
-      <input type="month" id="calJump" value="${h(m.key)}">
-      <button class="linkbtn" data-month="${h(monthKey(state.asOf))}">today</button>
+      <button class="btn ghost" data-cycle="${grid.cycle - 1}"${grid.cycle <= 1 ? " disabled" : ""}>\u2190</button>
+      <h2 class="calname">Cycle ${grid.cycle}</h2>
+      <button class="btn ghost" data-cycle="${grid.cycle + 1}">\u2192</button>
+      <span class="dim">${h(grid.from)} \u2192 ${h(grid.to)}</span>
+      ${grid.isCurrent ? "" : `<button class="linkbtn" data-cycle="${currentCycle(state)}">now</button>`}
       <div class="spacer"></div>
-      <div class="calcount">${plural2(m.counts.shows, "show")} \xB7 ${plural2(m.counts.matches, "match", "matches")}${m.counts.ples ? ` \xB7 ${plural2(m.counts.ples, "PLE")}` : ""}</div>
+      <label class="opt inline">Show
+        <select id="calBrand">
+          <option value="">every brand</option>
+          ${Object.values(state.brands).map((b) => `<option value="${h(b.id)}"${filter === b.id ? " selected" : ""}>${h(b.name)}</option>`).join("")}
+        </select>
+      </label>
+      <div class="calcount">${plural2(grid.counts.ples, "PLE")} \xB7 ${plural2(grid.counts.shows, "card")}
+        \xB7 ${plural2(grid.counts.matches, "match", "matches")}</div>
     </div>
 
-    <div class="cal">
-      <div class="cdow">${m.weekdayNames.map((d) => `<div>${h(d)}</div>`).join("")}</div>
-      ${m.weeks.map(week).join("")}
+    ${filter ? `<div class="msg warn" style="margin-bottom:10px">Filtered to
+      <strong>${h(state.brands[filter].name)}</strong> \u2014 its weekly nights, its cards, and every PLE it takes part in.
+      <button class="linkbtn" data-calbrand="">show every brand</button></div>` : ""}
+
+    <div class="cal">${weeks}</div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn" data-editple="new">New PLE</button>
+      <span class="hint">Drag a PLE onto any day to move it \u2014 its brands come with it.
+        The cycle repeats: weekly shows sit on a night, PLEs sit where you put them.</span>
     </div>
+    ${editing ? pleForm(state, editing) : ""}
+    ${problems.length ? `<div class="msg warn" style="margin-top:12px">
+      ${problems.map((p) => h(p.message)).join("<br>")}</div>` : ""}
 
     <div class="cols" style="margin-top:20px">
       <div>
-        <h2>This month's cards <span class="sub">click one to read the night back</span></h2>
-        <div class="card flush">${table2(m.shows, [
-      { label: "Date", get: (s) => fmtDate(s.date), dim: true },
-      { label: "Show", get: (s) => `<button class="linkbtn strong" data-show="${h(s.id)}">${h(s.name)}</button>`, html: true },
-      { label: "Brand", get: (s) => s.brandName || "\u2014", dim: true },
-      { label: "Matches", num: true, get: (s) => s.matches }
-    ], "Nothing was booked this month.")}</div>
+        <h2>The schedule <span class="sub">every PLE on the cycle \xB7 edit to move it or change its brands</span></h2>
+        <div class="card flush">${table2(ples, [
+      { label: "Day", num: true, get: (p) => p.day },
+      { label: "Week", num: true, get: (p) => p.week, dim: true },
+      { label: "PLE", get: (p) => `<strong>${h(p.name)}</strong>${p.isSpecial ? ` ${chip(SPECIAL_SHORT[p.special] || p.special, "new")}` : ""}`, html: true },
+      { label: "Brands", get: (p) => p.brandLine ? h(p.brandLine) : '<span class="dim">none</span>', html: true },
+      { label: "", get: (p) => `<button class="linkbtn" data-editple="${h(p.id)}">edit</button>`, html: true }
+    ], "Nothing scheduled yet \u2014 the cycle is yours to fill.")}</div>
 
-        <h2 style="margin-top:22px">Every month on record <span class="sub">jump back</span></h2>
+        <h2 style="margin-top:22px">Cycles on record <span class="sub">jump back</span></h2>
         <div class="card flush">${table2(index, [
-      { label: "Month", get: (r) => `<button class="linkbtn${r.key === m.key ? " strong" : ""}" data-month="${h(r.key)}">${h(r.label)}</button>`, html: true },
-      { label: "Shows", num: true, get: (r) => r.shows },
+      { label: "Cycle", get: (r) => `<button class="linkbtn${r.cycle === grid.cycle ? " strong" : ""}" data-cycle="${r.cycle}">Cycle ${r.cycle}</button>`, html: true },
+      { label: "Cards", num: true, get: (r) => r.shows },
       { label: "Matches", num: true, get: (r) => r.matches },
       { label: "PLEs", get: (r) => h(r.ples.join(", ")), dim: true }
-    ], "No shows yet.")}</div>
+    ], "No cards yet.")}</div>
       </div>
       <div>
-        <h2>The week <span class="sub">each show's night comes off its brand record</span></h2>
+        <h2>The week <span class="sub">a weekly show repeats on its night, every week of the cycle</span></h2>
         <div class="card flush">${table2(weeklySchedule(state), [
-      { label: "Night", get: (r) => r.weekday },
+      { label: "Night", get: (r) => `Day ${r.slot}` },
+      { label: "Also", get: (r) => r.weekday, dim: true },
       { label: "Shows", get: (r) => r.brands.length ? r.brands.map((b) => `<span class="cdue" style="--bc:${b.color || "var(--ink-3)"}">${h(b.name)}</span>`).join("") : '<span class="dim">dark</span>', html: true }
     ])}</div>
         <div class="hint" style="margin-top:10px">Set a show's night on the
-          <button class="linkbtn" data-tab="brands">Pyramid</button> tab.</div>
+          <button class="linkbtn" data-tab="brands">Pyramid</button> tab. Day 1 of the cycle is
+          ${h(dateOf(state, grid.cycle, 1))}.</div>
       </div>
     </div>`;
+  }
+  function pleForm(state, id) {
+    const isNew = id === "new" || id.startsWith("new:");
+    const presetDay = id.startsWith("new:") ? Number(id.slice(4)) : 1;
+    const p = isNew ? { day: presetDay, type: "ple", brandIds: [] } : state.ples[id] ? pleCard(state, state.ples[id]) : {};
+    const brands = Object.values(state.brands).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
+    const picked = new Set(p.brandIds || []);
+    const field = (label, input, hint = "") => `<label class="opt col"><span>${h(label)}</span>${input}${hint ? `<em class="hint">${h(hint)}</em>` : ""}</label>`;
+    return `<div class="card" id="pleForm" style="margin:16px 0">
+    <h2>${isNew ? "New PLE" : `Edit ${h(p.name)}`}</h2>
+    <div class="formgrid">
+      ${field("Name", `<input id="pfName" type="text" value="${h(p.name || "")}" placeholder="Survivor Series">`)}
+      ${field("Logo", `<input id="pfLogo" type="text" value="${h(p.logo || "")}" placeholder="\u{1F3C6}" maxlength="4">`, "an emoji or a character")}
+      ${field("Colour", `<input id="pfColor" type="color" value="${h(p.color || "#E8B23A")}">`)}
+      ${field("Day", `<select id="pfDay">
+          ${Array.from({ length: CYCLE_DAYS }, (_, i) => i + 1).map((d) => `<option value="${d}"${Number(p.day) === d ? " selected" : ""}>Day ${d} \u2014 week ${weekOfDay(d)}</option>`).join("")}
+        </select>`, "move it any time \u2014 nothing is fixed")}
+      ${field("Kind", `<select id="pfType">
+          <option value="ple"${p.type !== "special" ? " selected" : ""}>a regular PLE</option>
+          <option value="special"${p.type === "special" ? " selected" : ""}>a special universe event</option>
+        </select>`)}
+      ${field("Rule it carries", `<select id="pfSpecial">
+          <option value="">\u2014</option>
+          ${PLE_SPECIALS.map((k) => `<option value="${k}"${p.special === k ? " selected" : ""}>${h(SPECIAL_LABEL[k])}</option>`).join("")}
+        </select>`, "only for a special event")}
+    </div>
+    <label class="opt col" style="margin-top:8px"><span>Description</span>
+      <input id="pfDesc" type="text" value="${h(p.description || "")}" placeholder="the one with the teams"></label>
+
+    <div style="margin-top:12px">
+      <span class="opt">Brands taking part <em class="hint">as many as you like \u2014 one, several, or all of them</em></span>
+      <div class="brandpicks">
+        ${brands.map((b) => `<label class="brandpick${picked.has(b.id) ? " on" : ""}" style="--bc:${b.color || "var(--violet)"}">
+          <input type="checkbox" class="pfBrand" value="${h(b.id)}"${picked.has(b.id) ? " checked" : ""}>
+          ${h(b.name)}</label>`).join("")}
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="linkbtn" id="pfAll">all brands</button>
+        <button class="linkbtn" id="pfNone">none</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn" data-saveple="${h(id)}">${isNew ? "Create PLE" : "Save changes"}</button>
+      <button class="btn ghost" data-editple="">Cancel</button>
+      ${isNew ? "" : `<button class="btn danger" data-deleteple="${h(id)}">Delete</button>`}
+    </div>
+  </div>`;
   }
   function logView(store2, state, { limit = 120 } = {}) {
     const rows = store2.effectiveEvents({ includeVoided: true }).slice(-limit).reverse();
@@ -6665,8 +6957,12 @@ no explanation, no code fences.`;
     pick: {},
     // the Last Stand match maker's selection
     prompt: { id: "next" },
-    month: null,
-    // which month the calendar is showing
+    cycle: null,
+    // which 28-day cycle the calendar is showing
+    calBrand: null,
+    // brand filter on the calendar
+    pleEdit: null,
+    // PLE id being edited, 'new', or 'new:<day>'
     shots: [],
     activeShot: 0,
     shotKind: "card",
@@ -6753,7 +7049,11 @@ no explanation, no code fences.`;
       editingBelt: app.beltEdit,
       showRetired: app.showRetiredBelts
     });
-    if (app.tab === "calendar") $("#pane-calendar").innerHTML = calendarView(s, { month: app.month });
+    if (app.tab === "calendar") $("#pane-calendar").innerHTML = calendarView(s, {
+      cycle: app.cycle,
+      brandId: app.calBrand,
+      editingPLE: app.pleEdit
+    });
     if (app.tab === "show") $("#pane-show").innerHTML = showPage(s, app.detailId);
     if (app.tab === "shows") $("#pane-shows").innerHTML = showsView(s);
     if (app.tab === "log") $("#pane-log").innerHTML = logView(store, s);
@@ -6830,15 +7130,17 @@ no explanation, no code fences.`;
     if (!e.target.closest("[data-editbelt]")) go("title", el.dataset.belt);
   });
   on("click", "[data-show]", (e, el) => go("show", el.dataset.show));
-  on("click", "[data-month]", (e, el) => {
-    app.month = el.dataset.month;
+  on("click", "[data-cycle]", (e, el) => {
+    app.cycle = Number(el.dataset.cycle);
     go("calendar");
   });
-  on("change", "#calJump", (e, el) => {
-    if (el.value) {
-      app.month = el.value;
-      render();
-    }
+  on("change", "#calBrand", (e, el) => {
+    app.calBrand = el.value || null;
+    render();
+  });
+  on("click", "[data-calbrand]", (e, el) => {
+    app.calBrand = el.dataset.calbrand || null;
+    render();
   });
   on("click", "[data-ev]", (e, el) => openSheet(eventSheet(store, app.state, el.dataset.ev)));
   on("click", "[data-resolve]", (e, el) => {
@@ -6941,7 +7243,10 @@ no explanation, no code fences.`;
       // Not `Number(x) || 1` — that quietly turns a typed 0 into a valid tier 1
       // instead of refusing it, and the whole point of checkBrand is to say no.
       tier: $("#bfTier").value === "" ? 1 : Number($("#bfTier").value),
-      day: $("#bfDay").value || void 0,
+      // The night is a slot in the cycle's week (1-7). The old weekday name is
+      // kept in step so anything still reading it agrees with the picker.
+      slot: $("#bfDay").value === "" ? null : Number($("#bfDay").value),
+      day: $("#bfDay").value === "" ? null : SHOW_DAYS[Number($("#bfDay").value) - 1],
       parentId: $("#bfParent").value || void 0
     };
     const problems = checkBrand(app.state, rec, { id: id === "new" ? null : id });
@@ -6961,6 +7266,92 @@ no explanation, no code fences.`;
     }
     render();
   });
+  on("click", "[data-editple]", (e, el) => {
+    app.pleEdit = el.dataset.editple || null;
+    if (app.pleEdit) go("calendar");
+    else render();
+    const form = $("#pleForm");
+    if (form) {
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+      $("#pfName").focus();
+    }
+  });
+  on("click", "#pfAll", () => {
+    document.querySelectorAll(".pfBrand").forEach((b) => {
+      b.checked = true;
+    });
+  });
+  on("click", "#pfNone", () => {
+    document.querySelectorAll(".pfBrand").forEach((b) => {
+      b.checked = false;
+    });
+  });
+  var pleFromForm = () => ({
+    name: $("#pfName").value.trim(),
+    day: Number($("#pfDay").value),
+    logo: $("#pfLogo").value.trim(),
+    color: $("#pfColor").value,
+    description: $("#pfDesc").value.trim(),
+    type: $("#pfType").value,
+    special: $("#pfType").value === "special" ? $("#pfSpecial").value || null : null,
+    brandIds: [...document.querySelectorAll(".pfBrand")].filter((b) => b.checked).map((b) => b.value)
+  });
+  on("click", "[data-saveple]", (e, el) => {
+    const id = el.dataset.saveple;
+    const isNew = id === "new" || id.startsWith("new:");
+    const rec = pleFromForm();
+    try {
+      const res = savePLE(store, app.state, rec, { id: isNew ? null : id });
+      app.pleEdit = null;
+      flash(`${h(rec.name)} ${res.created ? "created" : "saved"} \u2014 day ${rec.day}${res.warnings.length ? `. ${h(res.warnings[0])}` : ""}`, res.warnings.length ? "warn" : "ok");
+      render();
+    } catch (err2) {
+      flash(h(err2.message), "err");
+      render();
+    }
+  });
+  on("click", "[data-deleteple]", (e, el) => {
+    const p = app.state.ples[el.dataset.deleteple];
+    if (!p || !confirm(`Delete ${p.name}? The cards you have already played keep their dates.`)) return;
+    deletePLE(store, app.state, p.id);
+    app.pleEdit = null;
+    flash(`${h(p.name)} deleted.`);
+    render();
+  });
+  var dragging = null;
+  on("dragstart", "[data-ple]", (e, el) => {
+    dragging = el.dataset.ple;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", dragging);
+    el.classList.add("dragging");
+  });
+  on("dragend", "[data-ple]", (e, el) => {
+    el.classList.remove("dragging");
+    dragging = null;
+  });
+  on("dragover", "[data-day]", (e, el) => {
+    e.preventDefault();
+    el.classList.add("dropping");
+  });
+  on("dragleave", "[data-day]", (e, el) => el.classList.remove("dropping"));
+  on("drop", "[data-day]", (e, el) => {
+    e.preventDefault();
+    el.classList.remove("dropping");
+    const id = dragging || e.dataTransfer && e.dataTransfer.getData("text/plain");
+    if (!id || !app.state.ples[id]) return;
+    movePLEto(id, Number(el.dataset.day));
+  });
+  function movePLEto(id, day) {
+    const before = app.state.ples[id];
+    if (!before || Number(before.day) === day) return;
+    try {
+      const res = movePLE(store, app.state, id, day);
+      flash(`${h(before.name)} moved to day ${res.to}${res.brandIds.length ? " \u2014 brands unchanged" : ""}.`);
+    } catch (err2) {
+      flash(h(err2.message), "err");
+    }
+    render();
+  }
   on("click", "[data-editbelt]", (e, el) => {
     app.beltEdit = el.dataset.editbelt || null;
     if (app.beltEdit) go("titles");

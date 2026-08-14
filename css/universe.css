@@ -308,41 +308,66 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .bracket ol{list-style:none;margin:8px 0 0;padding:0}
 .bracket li{font-size:13px;padding:3px 0;border-top:1px solid var(--line-soft)}
 
-/* ---------------------------------------------------------------- month grid */
-.calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+/* ---------------------------------------------------------------- the 28-day cycle */
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .calhead .calname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:20px;
-  letter-spacing:.06em;text-transform:uppercase;min-width:190px}
+  letter-spacing:.06em;text-transform:uppercase;min-width:110px}
 .calhead .spacer{flex:1}
-.calhead input[type=month]{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
-  padding:5px 8px;font-size:12px;color-scheme:dark}
+.calhead select{background:var(--card-3);border:1px solid var(--line);border-radius:7px;
+  padding:5px 8px;font-size:12px}
 .calcount{color:var(--ink-3);font-size:12px}
 
-.cal{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
-.cdow{display:grid;grid-template-columns:repeat(7,1fr);background:var(--card-2);
-  border-bottom:1px solid var(--line)}
-.cdow div{padding:7px 10px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.cal{display:flex;flex-direction:column;gap:12px}
+.cweekwrap{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.cweeklabel{padding:6px 12px;background:var(--card-2);border-bottom:1px solid var(--line);
+  font-family:'Oswald','Barlow Condensed',sans-serif;font-size:12px;letter-spacing:.09em;
+  text-transform:uppercase}
+.cweeklabel .dim{letter-spacing:.02em;text-transform:none;margin-left:6px}
 .cweek{display:grid;grid-template-columns:repeat(7,1fr)}
-.cweek+.cweek{border-top:1px solid var(--line-soft)}
-.cday{min-height:96px;padding:6px 7px;border-right:1px solid var(--line-soft);display:flex;
+.cday{min-height:104px;padding:6px 7px;border-right:1px solid var(--line-soft);display:flex;
   flex-direction:column;gap:4px}
 .cday:last-child{border-right:0}
-.cday .n{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.cday.out{background:var(--card-3)}
-.cday.out .n{color:var(--ink-3);opacity:.5}
+.cday .n{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.cday .addple{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:14px;
+  line-height:1;padding:0 3px;opacity:0}
+.cday:hover .addple{opacity:1}
+.cday .addple:hover{color:var(--gold)}
 .cday.today{background:rgba(124,92,255,.07)}
 .cday.today .n{color:var(--violet);font-weight:700}
-.cday.ple{background:rgba(232,178,58,.06)}
+.cday.ple{background:rgba(232,178,58,.05)}
+.cday.dropping{background:rgba(124,92,255,.18);outline:1px dashed var(--violet);outline-offset:-3px}
+
+/* A PLE is deliberately louder than a weekly show: name, then its brands. */
+.cple{background:var(--card-2);border-left:3px solid var(--bc);border-radius:5px;
+  padding:4px 7px;cursor:grab;user-select:none}
+.cple:hover{background:var(--card-3)}
+.cple.dragging{opacity:.45}
+.cple .nm{display:block;font-family:'Oswald','Barlow Condensed',sans-serif;font-size:13px;
+  letter-spacing:.04em;text-transform:uppercase;line-height:1.2;color:var(--gold)}
+.cple .br{display:block;font-size:10px;letter-spacing:.06em;color:var(--ink-2);margin-top:1px}
+.cple .br em{color:var(--ink-3);font-style:italic;letter-spacing:0}
+.cple .rule{display:inline-block;margin-top:2px;font-size:9px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--violet)}
+.cple.special{border-left-color:var(--violet)}
 
 .cshow{display:block;width:100%;text-align:left;background:var(--card-2);border:0;
   border-left:3px solid var(--bc);border-radius:5px;padding:4px 7px;cursor:pointer}
 .cshow:hover{background:var(--card-3)}
 .cshow .nm{display:block;font-size:12px;font-weight:600;line-height:1.25}
 .cshow .ct{display:block;font-size:10px;color:var(--ink-3)}
-.cday.ple .cshow{border-left-color:var(--gold)}
 
 .cdue{display:inline-block;align-self:flex-start;font-size:10px;color:var(--ink-3);
   border-left:2px solid var(--bc);padding:1px 5px;background:var(--card-3);
   border-radius:0 4px 4px 0;margin-right:3px}
+
+/* brand pickers on the PLE form */
+.brandpicks{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.brandpick{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;
+  background:var(--card-3);border:1px solid var(--line);border-left:3px solid var(--bc);
+  border-radius:7px;padding:5px 10px}
+.brandpick.on{background:var(--card-2);border-color:var(--violet)}
+.brandpick input{accent-color:var(--violet);width:13px;height:13px;cursor:pointer}
 
 .chip.ple{background:rgba(232,178,58,.14);color:var(--gold);border:1px solid rgba(232,178,58,.3)}
 .linkbtn.strong{color:var(--ink);font-weight:600;font-size:13px}

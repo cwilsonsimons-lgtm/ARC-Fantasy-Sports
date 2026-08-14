@@ -38,7 +38,8 @@ import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { lastStandBoard } from '../js/universe/laststand.js';
 import { beltsByBrand, saveChampionship, retireChampionship, deleteChampionship,
   autoPromoteDefault, DIVISION_LABEL } from '../js/universe/championships.js';
-import { monthText, cardText, monthsWithShows, weeklySchedule, monthKey } from '../js/universe/calendar.js';
+import { cycleText, cardText, cyclesWithShows, weeklySchedule, currentCycle, cycleOf } from '../js/universe/calendar.js';
+import { allPLEs, savePLE, movePLE, deletePLE, orderProblems, scheduleText, SPECIAL_SHORT } from '../js/universe/ples.js';
 
 // ------------------------------------------------------------------ args
 
@@ -177,28 +178,99 @@ const commands = {
   calendar() {
     const store = openStore();
     const state = project(store, { asOf: flags['as-of'] || null });
-    const key = flags.month || monthKey(state.asOf);
-    if (!/^\d{4}-\d{2}$/.test(key)) die(`--month wants YYYY-MM, got: ${key}`);
+    const cycle = flags.cycle ? Number(flags.cycle) : currentCycle(state);
+    if (!Number.isInteger(cycle) || cycle < 1) die(`--cycle wants a whole number, got: ${flags.cycle}`);
 
-    console.log(heading(`Calendar`, '═'));
-    console.log(monthText(state, key, { width: +(flags.width || 17) }));
+    console.log(heading('The 28-day cycle', '═'));
+    console.log(cycleText(state, cycle, { width: +(flags.width || 17), ples: allPLEs(state) }));
 
     console.log(heading('The week'));
     console.log(table(weeklySchedule(state).filter(r => r.brands.length), [
-      { label: 'Night', get: r => r.weekday },
+      { label: 'Night', get: r => `Day ${r.slot}` },
+      { label: 'Also', get: r => r.weekday },
       { label: 'Shows', get: r => r.brands.map(b => b.name).join(', ') },
     ], { indent: '  ' }));
 
-    const index = monthsWithShows(state);
+    const index = cyclesWithShows(state);
     if (index.length) {
-      console.log(heading('Months on record'));
+      console.log(heading('Cycles on record'));
       console.log(table(index.slice(0, 24), [
-        { label: 'Month', get: r => r.label },
-        { label: 'Shows', align: 'right', get: r => r.shows },
+        { label: 'Cycle', align: 'right', get: r => r.cycle },
+        { label: 'Cards', align: 'right', get: r => r.shows },
         { label: 'Matches', align: 'right', get: r => r.matches },
         { label: 'PLEs', get: r => r.ples.join(', ') },
       ], { indent: '  ' }));
     }
+  },
+
+  ples() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const list = allPLEs(state);
+    console.log(heading('The schedule', '═'));
+    console.log(table(list, [
+      { label: 'Day', align: 'right', get: p => p.day },
+      { label: 'Week', align: 'right', get: p => p.week },
+      { label: 'PLE', get: p => p.name },
+      { label: 'Brands', get: p => p.brandLine || '—' },
+      { label: 'Rule', get: p => (p.isSpecial ? SPECIAL_SHORT[p.special] || p.special : '') },
+    ], { indent: '  ' }));
+    orderProblems(state).forEach(x => console.log(`  note: ${x.message}`));
+  },
+
+  // Create, edit or move one PLE. Nothing here decides a day for you.
+  ple() {
+    const store = openStore();
+    const state = project(store);
+    const name = positional[0];
+    if (!name) die('which PLE? e.g. node tools/universe.mjs ple "Survivor Series" --day 21 --brands "Raw, SmackDown"');
+
+    const hit = resolveName(buildIndex(store, 'ple'), name);
+    const existing = hit.ok ? state.ples[hit.id] : null;
+
+    if (flags.delete) {
+      if (!existing) die(`no PLE: ${name}`);
+      deletePLE(store, state, existing.id);
+      console.log(`deleted ${existing.name}`);
+      return;
+    }
+    // Moving is its own path so it can say what it did *not* change.
+    if (existing && flags.day !== undefined && Object.keys(flags).every(k => ['day', 'file'].includes(k))) {
+      const res = movePLE(store, state, existing.id, Number(flags.day));
+      console.log(`${existing.name}: day ${res.from} → day ${res.to}`);
+      console.log(`  brands unchanged: ${(res.brandIds.map(b => state.brands[b] ? state.brands[b].name : b).join(' + ')) || 'none'}`);
+      return;
+    }
+
+    let brandIds = existing ? (existing.brandIds || []) : [];
+    if (flags.brands !== undefined) {
+      brandIds = String(flags.brands === true ? '' : flags.brands)
+        .split(',').map(x => x.trim()).filter(Boolean)
+        .map(x => {
+          if (/^all$/i.test(x)) return null;
+          const b = resolveName(buildIndex(store, 'brand'), x);
+          if (!b.ok) die(`unknown brand: ${x}`);
+          return b.id;
+        });
+      if (brandIds.includes(null)) brandIds = Object.keys(state.brands);
+    }
+
+    const rec = {
+      name: existing ? (flags.name || existing.name) : name,
+      day: flags.day !== undefined ? Number(flags.day) : (existing ? existing.day : 1),
+      brandIds,
+      logo: flags.logo || (existing ? existing.logo : undefined),
+      description: flags.description || (existing ? existing.description : undefined),
+      type: flags.special ? 'special' : (existing ? existing.type : 'ple'),
+      special: flags.special ? String(flags.special) : (existing ? existing.special : undefined),
+    };
+
+    const res = savePLE(store, state, rec, { id: existing ? existing.id : null });
+    const after = project(store).ples[res.id];
+    console.log(`${res.created ? 'created' : 'updated'} ${after.name} [${res.id}]`);
+    console.log(`  day ${after.day} · ${(after.brandIds || []).map(b => state.brands[b] ? state.brands[b].name : b).join(' + ') || 'no brands'}`
+      + `${after.special ? ` · ${SPECIAL_SHORT[after.special] || after.special}` : ''}`);
+    res.warnings.forEach(w => console.log(`  note: ${w}`));
   },
 
   shows() {
@@ -783,7 +855,10 @@ const commands = {
   roster <file|-> [--dry] [--add-only]   sync one brand's roster from a paste
   brands [--as-of D]                     who is on each brand
   card <file|-> [--dry] [--date D]       enter a show's card
-  calendar [--month YYYY-MM]             the month grid, the week, months on record
+  calendar [--cycle N]                   the 28-day cycle, the week, cycles on record
+  ples                                   every PLE on the cycle
+  ple "<name>" [--day N] [--brands "A, B"|all] [--special lastStand] [--delete]
+                                         create, edit or move one PLE
   show [showId]                          print a saved card (default: latest)
   shows                                  every show
   state [--as-of D] [--within N]         champions, records, injuries, contracts, feuds

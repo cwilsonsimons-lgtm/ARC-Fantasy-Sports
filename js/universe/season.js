@@ -64,7 +64,7 @@ export const PHASE_LABEL = {
 
 // Every season boundary in the log, oldest first.
 export function seasons(state) {
-  const ples = state.ples.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const ples = state.pleShows.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const start = state.startDate || (state.events.length ? state.events[0].date : state.asOf);
 
   const out = [];

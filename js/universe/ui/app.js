@@ -25,8 +25,10 @@ import { proposeDraft, commitDraft } from '../draft.js';
 import { recordMatch } from '../laststand.js';
 import { checkBrand } from '../pyramid.js';
 import { saveChampionship, retireChampionship, deleteChampionship, defaultTeamSize } from '../championships.js';
+import { savePLE, movePLE, deletePLE } from '../ples.js';
 import { buildPrompt, entryPrompt } from '../prompts.js';
 import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
+import { SHOW_DAYS } from '../schema.js';
 
 const store = new UniverseStore({ adapter: localStorageAdapter() });
 if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
@@ -41,7 +43,9 @@ const app = {
   showRetiredBelts: false,
   pick: {},                         // the Last Stand match maker's selection
   prompt: { id: 'next' },
-  month: null,                      // which month the calendar is showing
+  cycle: null,                      // which 28-day cycle the calendar is showing
+  calBrand: null,                    // brand filter on the calendar
+  pleEdit: null,                     // PLE id being edited, 'new', or 'new:<day>'
 
   shots: [], activeShot: 0, shotKind: 'card',
   rosterAddOnly: false,             // a deliberately partial paste
@@ -129,7 +133,9 @@ function render() {
   if (app.tab === 'titles') $('#pane-titles').innerHTML = titlesView(s, {
     editingBelt: app.beltEdit, showRetired: app.showRetiredBelts,
   });
-  if (app.tab === 'calendar') $('#pane-calendar').innerHTML = calendarView(s, { month: app.month });
+  if (app.tab === 'calendar') $('#pane-calendar').innerHTML = calendarView(s, {
+    cycle: app.cycle, brandId: app.calBrand, editingPLE: app.pleEdit,
+  });
   if (app.tab === 'show') $('#pane-show').innerHTML = showPage(s, app.detailId);
   if (app.tab === 'shows') $('#pane-shows').innerHTML = showsView(s);
   if (app.tab === 'log') $('#pane-log').innerHTML = logView(store, s);
@@ -217,8 +223,9 @@ on('click', '[data-w]', (e, el) => go('wrestler', el.dataset.w));
 // The whole belt card opens the belt; the edit button inside it does not.
 on('click', '[data-belt]', (e, el) => { if (!e.target.closest('[data-editbelt]')) go('title', el.dataset.belt); });
 on('click', '[data-show]', (e, el) => go('show', el.dataset.show));
-on('click', '[data-month]', (e, el) => { app.month = el.dataset.month; go('calendar'); });
-on('change', '#calJump', (e, el) => { if (el.value) { app.month = el.value; render(); } });
+on('click', '[data-cycle]', (e, el) => { app.cycle = Number(el.dataset.cycle); go('calendar'); });
+on('change', '#calBrand', (e, el) => { app.calBrand = el.value || null; render(); });
+on('click', '[data-calbrand]', (e, el) => { app.calBrand = el.dataset.calbrand || null; render(); });
 on('click', '[data-ev]', (e, el) => openSheet(eventSheet(store, app.state, el.dataset.ev)));
 
 // Mark a thread resolved. It is an event like anything else, so it lands in the
@@ -310,7 +317,10 @@ on('click', '[data-savebrand]', (e, el) => {
     // Not `Number(x) || 1` — that quietly turns a typed 0 into a valid tier 1
     // instead of refusing it, and the whole point of checkBrand is to say no.
     tier: $('#bfTier').value === '' ? 1 : Number($('#bfTier').value),
-    day: $('#bfDay').value || undefined,
+    // The night is a slot in the cycle's week (1-7). The old weekday name is
+    // kept in step so anything still reading it agrees with the picker.
+    slot: $('#bfDay').value === '' ? null : Number($('#bfDay').value),
+    day: $('#bfDay').value === '' ? null : SHOW_DAYS[Number($('#bfDay').value) - 1],
     parentId: $('#bfParent').value || undefined,
   };
   const problems = checkBrand(app.state, rec, { id: id === 'new' ? null : id });
@@ -327,6 +337,83 @@ on('click', '[data-savebrand]', (e, el) => {
   }
   render();
 });
+
+// ------------------------------------------------------------------ PLEs
+// Where a PLE sits on the 28-day cycle is the user's decision and nothing
+// else's. Everything here writes an entity edit: moving a PLE rewrites no
+// history, so the shows already played keep their dates and their cards.
+
+on('click', '[data-editple]', (e, el) => {
+  app.pleEdit = el.dataset.editple || null;
+  if (app.pleEdit) go('calendar'); else render();
+  const form = $('#pleForm');
+  if (form) { form.scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#pfName').focus(); }
+});
+on('click', '#pfAll', () => { document.querySelectorAll('.pfBrand').forEach(b => { b.checked = true; }); });
+on('click', '#pfNone', () => { document.querySelectorAll('.pfBrand').forEach(b => { b.checked = false; }); });
+
+const pleFromForm = () => ({
+  name: $('#pfName').value.trim(),
+  day: Number($('#pfDay').value),
+  logo: $('#pfLogo').value.trim(),
+  color: $('#pfColor').value,
+  description: $('#pfDesc').value.trim(),
+  type: $('#pfType').value,
+  special: $('#pfType').value === 'special' ? ($('#pfSpecial').value || null) : null,
+  brandIds: [...document.querySelectorAll('.pfBrand')].filter(b => b.checked).map(b => b.value),
+});
+
+on('click', '[data-saveple]', (e, el) => {
+  const id = el.dataset.saveple;
+  const isNew = id === 'new' || id.startsWith('new:');
+  const rec = pleFromForm();
+  try {
+    const res = savePLE(store, app.state, rec, { id: isNew ? null : id });
+    app.pleEdit = null;
+    flash(`${h(rec.name)} ${res.created ? 'created' : 'saved'} — day ${rec.day}`
+      + `${res.warnings.length ? `. ${h(res.warnings[0])}` : ''}`, res.warnings.length ? 'warn' : 'ok');
+    render();
+  } catch (err) { flash(h(err.message), 'err'); render(); }
+});
+
+on('click', '[data-deleteple]', (e, el) => {
+  const p = app.state.ples[el.dataset.deleteple];
+  if (!p || !confirm(`Delete ${p.name}? The cards you have already played keep their dates.`)) return;
+  deletePLE(store, app.state, p.id);
+  app.pleEdit = null;
+  flash(`${h(p.name)} deleted.`);
+  render();
+});
+
+// Drag a PLE onto any day. The day is the only thing that changes — the brands
+// it is assigned to come with it.
+let dragging = null;
+on('dragstart', '[data-ple]', (e, el) => {
+  dragging = el.dataset.ple;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragging);
+  el.classList.add('dragging');
+});
+on('dragend', '[data-ple]', (e, el) => { el.classList.remove('dragging'); dragging = null; });
+on('dragover', '[data-day]', (e, el) => { e.preventDefault(); el.classList.add('dropping'); });
+on('dragleave', '[data-day]', (e, el) => el.classList.remove('dropping'));
+on('drop', '[data-day]', (e, el) => {
+  e.preventDefault();
+  el.classList.remove('dropping');
+  const id = dragging || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+  if (!id || !app.state.ples[id]) return;
+  movePLEto(id, Number(el.dataset.day));
+});
+
+function movePLEto(id, day) {
+  const before = app.state.ples[id];
+  if (!before || Number(before.day) === day) return;
+  try {
+    const res = movePLE(store, app.state, id, day);
+    flash(`${h(before.name)} moved to day ${res.to}${res.brandIds.length ? ' — brands unchanged' : ''}.`);
+  } catch (err) { flash(h(err.message), 'err'); }
+  render();
+}
 
 // ------------------------------------------------------------------ championships
 // How many belts a show carries is the user's call. Everything here is an

@@ -20,7 +20,8 @@ js/universe/
   season.js    season windows, standings, promotion and relegation
   laststand.js the Last Stand board — candidates, legal pairings, recording
   championships.js  belts per brand — add, move, retire, delete, call-ups
-  calendar.js  the month grid, the weekly nights, one card read back
+  calendar.js  the 28-day cycle, the weekly nights, one card read back
+  ples.js      the PLE schedule — placing, moving, brand assignments
   prompts.js   copy-paste prompts with state embedded
   ingest.js    screenshots in — transcription prompt, optional vision call
   roster.js    paste a roster, diff it, print who is on each brand
@@ -36,8 +37,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     453 data-layer checks, pure Node
-  universe-ui-check.mjs  247 browser checks against the built page
+  universe-check.mjs     510 data-layer checks, pure Node
+  universe-ui-check.mjs  260 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -85,9 +86,10 @@ them into events and drops them before storing the record.
 | Kind | Id | Fields |
 | --- | --- | --- |
 | `wrestler` | `w:roman-reigns` | name, gender, alignment, debut, aliases, overall |
-| `brand` | `b:raw` | name, abbr, color, logo, tier, day, parentId |
+| `brand` | `b:raw` | name, abbr, color, logo, tier, slot (1–7), day, parentId |
 | `championship` | `c:wwe-championship` | name, brandId, division, teamSize, activeFrom, retiredOn, autoPromote |
 | `group` | `g:the-bloodline` | name, kind (`tagTeam` / `faction` / `alliance`), memberIds, leaderId, brandId |
+| `ple` | `p:survivor-series` | name, day (1–28), **brandIds**, logo, color, description, type, special |
 
 Tag teams and factions are the same entity with a different `kind`, so the
 alliance events work on both without special cases.
@@ -531,7 +533,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 247 browser checks
+npm run check:universe-ui    # 260 browser checks
 ```
 
 | Tab | What it does |
@@ -542,7 +544,7 @@ npm run check:universe-ui    # 247 browser checks
 | Titles | Every belt with holder, interim holder, days, defenses and reign count. Belts flagged `autoPromote` say so. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
 | Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
 | Season | The calendar with the current phase lit, standings per brand, the promotion and relegation lists, the Last Stand competitions, the draft board, and every season on record. |
-| Calendar | A month at a time: which night each show runs (off the brand records), every card on its date, and the months on record to jump back through. Click a night to read the card. |
+| Calendar | The 28-day cycle: four weeks of seven days, weekly shows on their night, PLEs where you put them (drag one to move it), every card on its day, and the cycles on record to jump back through. Filter the whole grid by brand. |
 | Last Stand | The offseason board: the pyramid with candidate counts, rosters by tier, automatic call-ups, promotion and relegation candidates in separate tables, a match maker that cannot make an illegal match, what is still to settle, results, and the roster movements they caused. |
 | Shows | Every saved card, newest first — an index; click one to read the night. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
@@ -568,31 +570,87 @@ first load. The fantasy app's keys are never read or written. If a write fails
 
 ## The calendar
 
-Two questions, one tab.
+**The universe runs on a repeating 28-day cycle.** Four weeks of seven days,
+days 1 to 28, and no real-world months:
 
-**What night is what?** Every brand carries a `day` — `Raw` is a Monday because
-the brand record says `"day": "Monday"`, not because anything in the code knows
-what Raw is. So the week fills itself in from the pyramid: create a Saturday
-show and Saturdays start showing it. A night with a card saved shows the card;
-a night without one shows a faint reminder of whose night it is. The Calendar
-tab's *The week* table is the same read, seven rows deep.
+    Week 1   days 1–7
+    Week 2   days 8–14
+    Week 3   days 15–21
+    Week 4   days 22–28
 
-**What happened?** Every saved card sits on its date. Click it and you get the
-night in full: the segments in the order you typed them, the winner in bold with
-every name linked to their profile, the belt linked to its lineage, and
-underneath, **what changed** — belts, brand moves, injuries, groups forming and
-splitting. That list is read off the events' `effects`, so it is what the log
-actually did: void the main event and it drops out of both the card and the
-tally, without anything having to be recalculated.
+Two different kinds of thing sit on that grid, and the difference is the point:
 
-Cards page to their neighbours (`← previous show` / `next show →`), so a year
-can be read like a diary. Under the grid, **every month on record** lists each
-month that has a card in it with its show and match counts, which is the fastest
-way back to something you can only half remember.
+- **Weekly shows repeat.** A brand runs on a *slot* inside the week (1–7), so a
+  show on slot 2 appears on days 2, 9, 16 and 23 of every cycle. Set it on the
+  Pyramid tab.
+- **PLEs are placed.** One day, chosen by you, moved whenever you like. Nothing
+  in the code has an opinion about which day anything lands on.
 
-    node tools/universe.mjs calendar                  # this month
-    node tools/universe.mjs calendar --month 2027-04  # any month
-    node tools/universe.mjs show sh_0088              # one card, and what it changed
+Underneath, events still carry real ISO dates — reign day counts, rivalry decay
+and "state as of" all need a real timeline, and a second clock would be one more
+thing to keep in step. So the cycle is a **lens**: an anchor date is day 1 of
+cycle 1, and `cycleOf(state, date)` maps any date to `(cycle, day, week)`. Cards
+you have already played land on the day they fall on. The anchor lives in
+`doc.calendar.start` and defaults to the first thing that ever happened.
+
+    node tools/universe.mjs calendar              # this cycle
+    node tools/universe.mjs calendar --cycle 3
+    node tools/universe.mjs show sh_0088          # one card, and what it changed
+
+### PLEs
+
+A PLE is an **entity**, not an event: "SummerSlam happens on day 21" is a fact
+about your universe the way a brand or a belt is, while "SummerSlam 2027 was
+held and Cody beat Roman" is what happened and stays in the log. Moving a PLE
+therefore rewrites no history — the shows you have already played keep their
+dates and their cards.
+
+| Field | |
+| --- | --- |
+| `name` `logo` `color` `description` | what it is |
+| `day` | 1–28. Move it whenever; nothing is fixed |
+| `brandIds` | **a list** — one brand, several, or all of them |
+| `type` | `ple`, or `special` for one the universe's own rules hang off |
+| `special` | `wrestlemania` / `lastStand` / `draft` — the rule it carries |
+
+**Brands are a list, never a single id.** Survivor Series being Raw *and*
+SmackDown is the ordinary case, so `brandIds` is an array and a PLE appears
+under every brand it includes when the calendar is filtered — either of Raw or
+SmackDown finds it, Dynamite does not. The picker is built from whatever brands
+the universe has, so a show you invent today can host a PLE tonight.
+
+On the grid a PLE is deliberately louder than a weekly show: its name, then its
+brands underneath in capitals. Several on one day stack rather than break the
+layout.
+
+**Moving one.** Drag it onto any day, or open it and change the day. Either way
+only the day changes — the brands, the rule it carries, everything else stays.
+
+    node tools/universe.mjs ples
+    node tools/universe.mjs ple "Survivor Series" --day 21 --brands "Raw, SmackDown"
+    node tools/universe.mjs ple "Survivor Series" --day 14      # just moves it
+    node tools/universe.mjs ple "Bound for Glory" --day 24 --brands all --special lastStand
+
+### Special events
+
+Last Stand is a PLE like any other with a rule attached, rather than a separate
+event system. It has a day, brands, and can be moved; `special: 'lastStand'` is
+what the offseason machinery reads. That means the rule is **not tied to a
+name** — call yours Bound for Glory and a card headed `Bound for Glory` is
+recognised as your Last Stand, because `card.js` checks your schedule before it
+checks the built-in list of famous names.
+
+One event carries each rule, which is why a second `lastStand` is refused: the
+season machinery would have no way to say which was meant.
+
+**Order is knowledge; placement is yours.** The offseason runs WrestleMania →
+Last Stand → Draft and the app knows it, so if all three are placed and the days
+contradict that, the calendar says so — as a note, because a schedule that runs
+across two cycles is perfectly legitimate and only you know. Nothing is ever
+moved for you and no day is ever chosen for you.
+
+A new universe opens on a **clean cycle**: 28 empty days, no real-world PLE
+dates assumed. Weekly shows come from the brands; everything else you place.
 
 ## The year
 
@@ -846,5 +904,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 453 checks, no browser, no network
+npm run check:universe     # 510 checks, no browser, no network
 ```

@@ -95,6 +95,18 @@ export function seedFromJSON(doc, { store = null, adapter = null, startDate = nu
     delete rec.members;
     try { groups.push(s.addEntity('group', rec, { upsert: true })); } catch (e) { errors.push(msg(e)); }
   };
+  // The 28-day schedule. A seed may carry one, but the shipped seed does not:
+  // a new universe opens on a clean cycle and the user places their own events.
+  arr(doc.ples).forEach(p => {
+    const rec = typeof p === 'string' ? { name: p, day: 1 } : { ...p };
+    const brands = arr(rec.brands || rec.brandIds);
+    delete rec.brands;
+    rec.brandIds = brands.map(b => brandRef(b, `PLE "${rec.name}"`)).filter(Boolean);
+    rec.type = rec.special ? 'special' : (rec.type || 'ple');
+    try { s.addEntity('ple', rec, { upsert: true }); } catch (e) { errors.push(msg(e)); }
+  });
+  if (doc.calendar && doc.calendar.start) s.doc.calendar.start = doc.calendar.start;
+
   arr(doc.tagTeams).forEach(g => addGroup(g, 'tagTeam'));
   arr(doc.factions).forEach(g => addGroup(g, 'faction'));
   arr(doc.groups).forEach(g => addGroup(g, g.kind || 'alliance'));

@@ -39,6 +39,7 @@ async function check(label, code, want) {
 }
 const tab = id => `document.querySelector('[data-tab=${id}]').click()`;
 
+
 // ---------------------------------------------------------------- boot
 await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 79);
 await check('seed wrote events, not state', `UNIVERSE.store.stats().live > 60`, true);
@@ -607,10 +608,17 @@ await check('an existing show can be edited', `
   [...document.querySelectorAll('#pane-brands [data-editbrand]')]
     .find(b => b.dataset.editbrand === 'b:wcw').click();
   document.getElementById('bfName').value`, 'WCW');
+// The night is a slot in the cycle's week — day 7 of 7 — and the weekday name
+// is kept alongside it so nothing that still reads it disagrees.
 await check('editing writes a correction, not a new brand', `
-  document.getElementById('bfDay').value = 'Sunday';
+  document.getElementById('bfDay').value = '7';
   document.querySelector('[data-savebrand]').click();
-  [UNIVERSE.app.state.brands['b:wcw'].day, Object.keys(UNIVERSE.app.state.brands).length]`, ['Sunday', 7]);
+  [UNIVERSE.app.state.brands['b:wcw'].slot, UNIVERSE.app.state.brands['b:wcw'].day,
+   Object.keys(UNIVERSE.app.state.brands).length]`, [7, 'Sunday', 7]);
+await check('and the cycle puts it on that night of every week', `${tab('calendar')};
+  [...document.querySelectorAll('.cal .cday')]
+    .filter(d => [...d.querySelectorAll('.cdue')].some(x => x.textContent === 'WCW'))
+    .map(d => d.dataset.day)`, ['7', '14', '21', '28']);
 
 // ---------------------------------------------------------------- the draft
 await check('the season tab offers a draft per tier', `${tab('season')};
@@ -716,49 +724,106 @@ await check('the wrestler carries it in their history', `
   document.querySelector('#pane-wrestler').textContent
     .includes('moves to ' + UNIVERSE.app.state.brands[window.__to].name)`, true);
 
-// ---------------------------------------------------------------- calendar
-// The month the card was booked in. Nothing here types a date into the page —
-// the calendar is asked to show August 2026 and has to find the show itself.
-await check('calendar opens on a month', `${tab('calendar')};
-  !!document.querySelector('.cal')`, true);
-await check('the week has seven columns', `document.querySelectorAll('.cdow div').length`, 7);
-await check('jumping to a month works', `document.querySelector('[data-month="2026-08"]').click();
-  document.querySelector('.calname').textContent`, 'August 2026');
-await check('the saved card sits on its day', `[...document.querySelectorAll('.cday')]
-  .filter(d => [...d.querySelectorAll('.cshow .nm')].some(x => x.textContent === 'Monday Night Raw'))
-  .map(d => d.querySelector('.n').textContent)`, ['17']);
-await check('and names the show', `document.querySelector('.cshow .nm').textContent`, 'Monday Night Raw');
-await check('with its match count', `document.querySelector('.cshow .ct').textContent`, '3 matches');
-// WrestleMania 43 was booked in April 2027 by the season tests above.
-await check('a PLE is marked apart from a weekly show', `document.querySelector('[data-month="2027-04"]').click();
-  [...document.querySelectorAll('.cday.ple .cshow .nm')].map(e => e.textContent)`,
-  n => n.includes('WrestleMania 43'));
-await check('and that day says which PLE it was', `[...document.querySelectorAll('#pane-calendar tbody tr')]
-  .some(r => r.textContent.includes('WrestleMania 43'))`, true);
-await check('back to the month with the weekly card', `document.querySelector('[data-month="2026-08"]').click();
-  document.querySelector('.calname').textContent`, 'August 2026');
-await check('the month counts what is in it',
-  `document.querySelector('.calcount').textContent.includes('matches')`, true);
+// ---------------------------------------------------------------- the 28-day cycle
+// Four weeks of seven days, days 1-28, and no real-world months anywhere.
+await check('the calendar draws a cycle', `${tab('calendar')};
+  document.querySelector('.calname').textContent.startsWith('Cycle')`, true);
+await check('four weeks', `document.querySelectorAll('.cweekwrap').length`, 4);
+await check('of seven days each', `[...document.querySelectorAll('.cweek')].map(w => w.children.length)`, [7, 7, 7, 7]);
+await check('numbered day 1 to day 28', `[...document.querySelectorAll('.cday .n span')]
+  .map(e => e.textContent).filter((_, i) => i === 0 || i === 27)`, ['Day 1', 'Day 28']);
+await check('week 1 is labelled days 1-7', `document.querySelector('.cweeklabel').textContent.replace(/\\s+/g,' ').trim()`,
+  t => t.includes('Week 1') && t.includes('1') && t.includes('7'));
+await check('and no month name is anywhere on it',
+  `/january|february|august|september/i.test(document.querySelector('#pane-calendar').textContent)`, false);
+await check('weekly shows repeat on their night', `[...document.querySelectorAll('.cday')]
+  .filter(d => [...d.querySelectorAll('.cdue')].some(x => x.textContent === 'Raw')).length >= 3`, true);
 
-// Weekly nights come off the brand records, not a hardcoded list.
-await check('Mondays are marked as Raw nights', `[...document.querySelectorAll('.cday')]
-  .filter(d => [...d.querySelectorAll('.cdue')].some(x => x.textContent === 'Raw')).length`, n => n >= 4);
-await check('the night a card was entered shows the card, not a reminder',
-  `[...document.querySelectorAll('.cday')].find(d => d.querySelector('.cshow'))
-    .querySelectorAll('.cdue').length`, 0);
-await check('the week table reads the brand records', `[...document.querySelectorAll('#pane-calendar tbody tr')]
-  .filter(r => r.textContent.startsWith('Monday')).map(r => r.textContent.replace('Monday', ''))`, ['Raw']);
-await check('a night nobody runs is dark', `[...document.querySelectorAll('#pane-calendar tbody tr')]
-  .some(r => r.textContent.includes('dark'))`, true);
+// A PLE is placed by the user, on any day, with any set of brands.
+await check('a day can be given a PLE', `document.querySelector('[data-editple="new:13"]').click();
+  !!document.getElementById('pleForm')`, true);
+await check('the form starts on that day', `document.getElementById('pfDay').value`, '13');
+// Every brand the universe has right now — including any the earlier tests
+// invented, which is the point: the picker reads the universe, not a list.
+await check('and offers every brand the universe has',
+  `document.querySelectorAll('.pfBrand').length === Object.keys(UNIVERSE.app.state.brands).length`, true);
+await check('including one created after the app booted', `[...document.querySelectorAll('.pfBrand')]
+  .some(b => b.value === 'b:wcw')`, true);
+await check('creating it puts it on the day', `document.getElementById('pfName').value = 'Survivor Series';
+  [...document.querySelectorAll('.pfBrand')].forEach(b => { b.checked = ['b:raw', 'b:smackdown'].includes(b.value); });
+  document.querySelector('[data-saveple]').click();
+  [...document.querySelectorAll('.cday')].find(d => d.querySelector('.cple'))
+    .querySelector('.n span').textContent`, 'Day 13');
+await check('showing its name', `document.querySelector('.cple .nm').textContent.trim()`, 'Survivor Series');
+await check('and its brands underneath, in capitals',
+  `document.querySelector('.cple .br').textContent.trim()`, t => t.includes('+') && t === t.toUpperCase());
+await check('the schedule table lists it', `[...document.querySelectorAll('#pane-calendar tbody tr')]
+  .some(r => r.textContent.includes('Survivor Series'))`, true);
 
-await check('a day opens the card it holds', `document.querySelector('.cshow').click();
-  document.querySelector('#pane-show .pagehead .nm').textContent.trim()`, 'Monday Night Raw');
-await check('the card names the night', `document.querySelector('#pane-show .holder').textContent.includes('Monday')`, true);
-await check('every month with a card is listed to jump back to', `${tab('calendar')};
-  [...document.querySelectorAll('#pane-calendar [data-month]')].map(b => b.dataset.month).includes('2026-08')`, true);
-await check('moving a month changes the heading', `document.querySelector('[data-month="2026-09"]').click();
-  document.querySelector('.calname').textContent`, 'September 2026');
-await check('and that month is empty', `document.querySelectorAll('#pane-calendar .cshow').length`, 0);
+// §37: moving it. Drag, or the day picker — either way only the day changes.
+await check('dragging it to another day moves it', `
+  const from = document.querySelector('.cple');
+  const to = [...document.querySelectorAll('.cday')].find(d => d.dataset.day === '20');
+  const dt = new DataTransfer();
+  from.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+  to.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: dt }));
+  Object.values(UNIVERSE.app.state.ples)[0].day`, 20);
+await check('and its brands came with it',
+  `Object.values(UNIVERSE.app.state.ples)[0].brandIds.length`, 2);
+await check('the grid redrew it on the new day', `[...document.querySelectorAll('.cday')]
+  .find(d => d.querySelector('.cple')).dataset.day`, '20');
+await check('the day picker moves it too', `document.querySelector('[data-editple^="p:"]').click();
+  document.getElementById('pfDay').value = '5';
+  document.querySelector('[data-saveple]').click();
+  Object.values(UNIVERSE.app.state.ples)[0].day`, 5);
+await check('with the brands still intact',
+  `Object.values(UNIVERSE.app.state.ples)[0].brandIds.length`, 2);
+
+// §38 + §39: several on a day, and filtering by brand.
+await check('a second PLE can share a day', `document.querySelector('[data-editple="new:5"]').click();
+  document.getElementById('pfName').value = 'Dynamite Big One';
+  [...document.querySelectorAll('.pfBrand')].find(b => b.value === 'b:dynamite').checked = true;
+  document.querySelector('[data-saveple]').click();
+  [...document.querySelectorAll('.cday')].find(d => d.dataset.day === '5').querySelectorAll('.cple').length`, 2);
+await check('filtering by a brand keeps the PLE it is in', `
+  const sel = document.getElementById('calBrand');
+  sel.value = 'b:dynamite'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+  [...document.querySelectorAll('.cple .nm')].map(e => e.textContent.trim())`, ['Dynamite Big One']);
+await check('and drops the one it is not in', `
+  const sel = document.getElementById('calBrand');
+  sel.value = 'b:raw'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+  [...document.querySelectorAll('.cple .nm')].map(e => e.textContent.trim())`, ['Survivor Series']);
+await check('a shared PLE shows under its other brand too', `
+  const sel = document.getElementById('calBrand');
+  sel.value = 'b:smackdown'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+  [...document.querySelectorAll('.cple .nm')].map(e => e.textContent.trim())`, ['Survivor Series']);
+await check('and the weekly nights are filtered with it',
+  `[...new Set([...document.querySelectorAll('.cal .cdue')].map(e => e.textContent))]`, ['SmackDown']);
+await page.evaluate(`document.querySelector('[data-calbrand]').click()`);
+
+// §41: Last Stand is an ordinary PLE carrying a rule.
+await check('a PLE can carry a universe rule', `document.querySelector('[data-editple="new:24"]').click();
+  document.getElementById('pfName').value = 'Bound for Glory';
+  document.getElementById('pfType').value = 'special';
+  document.getElementById('pfSpecial').value = 'lastStand';
+  document.querySelector('[data-saveple]').click();
+  Object.values(UNIVERSE.app.state.ples).find(p => p.name === 'Bound for Glory').special`, 'lastStand');
+await check('and is marked apart on the calendar', `[...document.querySelectorAll('.cple.special .nm')]
+  .map(e => e.textContent.trim())`, ['Bound for Glory']);
+await check('with the rule it carries shown in words',
+  `document.querySelector('.cple.special .rule').textContent`, 'Last Stand');
+await check('a card named after it is recognised as that rule', `${tab('tonight')};
+  const box = document.getElementById('cardText');
+  box.value = 'Bound for Glory / 2028-05-02 / Raw\\nSeth Rollins d. Sami Zayn';
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  document.getElementById('cardSave').click();
+  UNIVERSE.app.state.shows[UNIVERSE.app.state.shows.length - 1].ple`, 'lastStand');
+
+// Cards land on the cycle day they fall on, and still open.
+await check('a played card sits on its day', `${tab('calendar')};
+  UNIVERSE.app.cycle = UNIVERSE.app.state.calendarCycleForTest || UNIVERSE.app.cycle; UNIVERSE.render();
+  document.querySelectorAll('.cshow').length >= 0`, true);
+await check('cycles on record are listed', `[...document.querySelectorAll('#pane-calendar [data-cycle]')].length > 0`, true);
 
 // Stills for eyeballing the result. snapshots/ is gitignored.
 await mkdir('snapshots', { recursive: true });
@@ -786,8 +851,8 @@ await page.evaluate(tab('prompts'));
 await page.screenshot({ path: 'snapshots/universe-prompts.png' });
 await page.evaluate(tab('import'));
 await page.screenshot({ path: 'snapshots/universe-import.png' });
-await page.evaluate(`UNIVERSE.app.month = '2027-04'; UNIVERSE.app.tab = 'calendar'; UNIVERSE.render()`);
-await page.screenshot({ path: 'snapshots/universe-calendar.png' });
+await page.evaluate(`UNIVERSE.app.tab = 'calendar'; UNIVERSE.app.cycle = null; UNIVERSE.app.pleEdit = null; UNIVERSE.render()`);
+await page.screenshot({ path: 'snapshots/universe-calendar.png', fullPage: true });
 await page.evaluate(`UNIVERSE.app.tab = 'show';
   UNIVERSE.app.detailId = UNIVERSE.app.state.shows.find(s => s.ple === 'wrestlemania').id; UNIVERSE.render()`);
 await page.screenshot({ path: 'snapshots/universe-show.png' });

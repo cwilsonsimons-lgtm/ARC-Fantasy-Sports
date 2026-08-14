@@ -38,8 +38,14 @@ export function project(store, { asOf = null } = {}) {
   const state = {
     asOf: at,
     startDate: store.doc.meta.startDate || null,
-    wrestlers: {}, brands: {}, championships: {}, groups: {},
-    shows: [], showsById: {}, ples: [], events,
+    wrestlers: {}, brands: {}, championships: {}, groups: {}, ples: {},
+    // The 28-day cycle's anchor. A structure, not a schedule: what sits on it
+    // comes from the PLE entities and the brands' weekly slots.
+    calendar: { ...(store.doc.calendar || { cycleDays: 28, start: null }) },
+    shows: [], showsById: {}, events,
+    // PLE *shows* that were actually played, in order — the season machinery
+    // reads these. Distinct from `ples`, which is the schedule.
+    pleShows: [],
     // Raw contributions, collected during the replay and totalled at the end so
     // decay is measured from each one's own date.
     ties: { rivalry: new Map(), alliance: new Map() },
@@ -73,6 +79,9 @@ export function project(store, { asOf = null } = {}) {
       totalDefenses: 0, retired: !!c.retiredOn,
     };
   });
+  // PLEs are pure registry: where a show sits on the cycle is a fact about the
+  // universe, not something that happened, so nothing in the log moves it.
+  store.entitiesOf('ple').forEach(p => { state.ples[p.id] = { ...p }; });
   store.entitiesOf('group').forEach(g => {
     state.groups[g.id] = {
       ...g, members: [...(g.memberIds || [])], active: false, formedOn: g.formedOn || null, brokenOn: null, history: [],
@@ -188,7 +197,7 @@ function applyEffect(state, fx, ev) {
       const show = { id: fx.showId, name: fx.name, date: ev.date, brandId: fx.brandId, ple: fx.ple || null, segments: [] };
       state.shows.push(show);
       state.showsById[show.id] = show;
-      if (show.ple) state.ples.push({ kind: show.ple, date: ev.date, showId: show.id, name: show.name });
+      if (show.ple) state.pleShows.push({ kind: show.ple, date: ev.date, showId: show.id, name: show.name });
       break;
     }
 

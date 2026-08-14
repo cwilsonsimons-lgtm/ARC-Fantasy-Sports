@@ -25,14 +25,17 @@ import { EVENT_TYPES, validateEvent, validateEntity, deriveEffects, entityId, en
 export const SCHEMA_VERSION = 1;
 export const STORE_KEY = 'arc_universe_v1';
 
-const KINDS = { wrestler: 'wrestlers', brand: 'brands', championship: 'championships', group: 'groups' };
+const KINDS = { wrestler: 'wrestlers', brand: 'brands', championship: 'championships', group: 'groups', ple: 'ples' };
 const clone = o => JSON.parse(JSON.stringify(o));
 const nowISO = () => new Date().toISOString();
 
 export function emptyDoc(name = 'Universe') {
   return {
     meta: { version: SCHEMA_VERSION, name, seq: 0, cxSeq: 0, createdAt: nowISO(), updatedAt: nowISO() },
-    entities: { wrestlers: {}, brands: {}, championships: {}, groups: {} },
+    // A new save opens on a clean 28-day cycle with nothing on it: the calendar
+    // is a structure, the schedule is the user's.
+    calendar: { start: null, cycleDays: 28 },
+    entities: { wrestlers: {}, brands: {}, championships: {}, groups: {}, ples: {} },
     events: [],
     corrections: [],
   };
@@ -370,6 +373,9 @@ function migrate(doc) {
   doc.meta.cxSeq = doc.meta.cxSeq || 0;
   doc.entities = doc.entities || {};
   Object.values(KINDS).forEach(b => { doc.entities[b] = doc.entities[b] || {}; });
+  // A save written before the 28-day cycle existed simply has not anchored it
+  // yet; calendar.js picks the anchor off the log the first time it is asked.
+  doc.calendar = { cycleDays: 28, start: null, ...(doc.calendar || {}) };
   doc.events = doc.events || [];
   doc.corrections = doc.corrections || [];
   return doc;

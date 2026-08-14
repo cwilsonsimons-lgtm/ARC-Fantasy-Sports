@@ -78,6 +78,12 @@ the first time you crown someone. How many belts a show carries is yours to set:
 add, rename, move between shows, retire or delete them, and mark any belt as one
 whose champion is called up a tier at the offseason.
 
+The universe runs on a repeating **28-day cycle** — four weeks of seven days,
+days 1 to 28 — rather than real-world months. Weekly shows repeat on a night;
+**PLEs are yours to place**, assigned to one brand, several or all of them, and
+dragged to any day whenever you like. Last Stand is a PLE like any other with a
+rule attached, so you can call yours Bound for Glory and put it on day 24.
+
 The year runs **WrestleMania → Last Stand → Draft → new season**, and the app
 always knows which phase it is in — every past season keeps its dates and can be
 read back. At Last Stand, promotion and relegation are **separate competitions
@@ -114,10 +120,11 @@ Twelve tabs:
   rosters by tier, automatic call-ups, promotion and relegation candidates in
   separate tables, the constrained match maker, results, and every roster
   movement they caused.
-- **Calendar** — a month at a time: which night each show runs (read off the
-  brand records, so your own Saturday show claims Saturdays), every card on its
-  date, and every month on record to jump back through. Click a night to read
-  the card: the segments in order, names linked, and what the night changed.
+- **Calendar** — the universe's own **28-day cycle**: four weeks of seven days,
+  no real-world months. Weekly shows repeat on their night; PLEs sit wherever
+  you put them and **drag onto any day** to move. Each PLE shows its name with
+  its brands underneath, several can share a day, and the whole grid filters by
+  brand. Cards you've played land on their day — click one to read the night.
 - **Shows** and **Log** — every card saved, every event and correction, with
   one-click fixes.
 - **Prompts** — copy-paste prompts for another AI, state already embedded. The
@@ -163,12 +170,13 @@ node tools/universe.mjs season                 # standings for the year
 node tools/universe.mjs draft --tier 1         # the annual draft
 node tools/universe.mjs flags --commit         # promotion and relegation lists
 node tools/universe.mjs laststand --board     # the Last Stand board in a terminal
-node tools/universe.mjs calendar --month 2027-04  # a month grid, and the week
+node tools/universe.mjs calendar               # the 28-day cycle, and the week
+node tools/universe.mjs ple "Survivor Series" --day 21 --brands "Raw, SmackDown"
 node tools/universe.mjs show sh_0088          # one card, and what it changed
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 453 data-layer checks, pure Node
-npm run check:universe-ui     # 247 browser checks against dist/universe.html
+npm run check:universe        # 510 data-layer checks, pure Node
+npm run check:universe-ui     # 260 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

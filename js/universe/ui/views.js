@@ -9,9 +9,11 @@ import { titleLineage, titleMatches, timelineFor, movementsFor, days, describeTh
 import { currentSeason, seasons, brandStandings, nextStep, PHASES, PHASE_LABEL } from '../season.js';
 import { tiers, brandCard, pyramidText, destination, canBePromoted } from '../pyramid.js';
 import { lastStandBoard, eligibleOpponents, checkPairing } from '../laststand.js';
-import { calendarMonth, monthsWithShows, weeklySchedule, cardOf, monthKey } from '../calendar.js';
+import { cycleGrid, cyclesWithShows, weeklySchedule, cardOf, currentCycle, dateOf,
+  weekOfDay, slotOfBrand, CYCLE_DAYS } from '../calendar.js';
+import { allPLEs, pleCard, orderProblems, SPECIAL_LABEL, SPECIAL_SHORT } from '../ples.js';
 import { beltsByBrand, beltCard, autoPromoteDefault, defaultTeamSize, DIVISION_LABEL } from '../championships.js';
-import { SHOW_DAYS, DIVISIONS } from '../schema.js';
+import { SHOW_DAYS, DIVISIONS, PLE_SPECIALS } from '../schema.js';
 
 // The colour comes off the brand record, because a user who creates WCW picks
 // its colour in the form — there is no table of known brands to look it up in.
@@ -492,10 +494,10 @@ function brandForm(state, id) {
       ${field('Logo', `<input id="bfLogo" type="text" value="${h(b.logo || '')}" placeholder="⚡" maxlength="4">`, 'an emoji or a character')}
       ${field('Colour', `<input id="bfColor" type="color" value="${h(b.color || '#7C5CFF')}">`)}
       ${field('Tier', `<input id="bfTier" type="number" min="1" step="1" value="${h(b.tier == null ? 1 : b.tier)}">`, '1 is the top of the pyramid')}
-      ${field('Show day', `<select id="bfDay">
-          <option value="">—</option>
-          ${SHOW_DAYS.map(d => `<option value="${d}"${b.day === d ? ' selected' : ''}>${d}</option>`).join('')}
-        </select>`)}
+      ${field('Show night', `<select id="bfDay">
+          <option value="">— dark —</option>
+          ${SHOW_DAYS.map((d, i) => `<option value="${i + 1}"${slotOfBrand(b) === i + 1 ? ' selected' : ''}>Day ${i + 1} — ${d}</option>`).join('')}
+        </select>`, 'repeats every week of the 28-day cycle')}
       ${field('Develops for', `<select id="bfParent">
           <option value="">— the tier above in general —</option>
           ${parents.map(p => `<option value="${h(p.id)}"${b.parentId === p.id ? ' selected' : ''}>${h(p.name)} (tier ${p.tier == null ? 1 : p.tier})</option>`).join('')}
@@ -1000,74 +1002,169 @@ export function showPage(state, showId) {
     ], 'Nothing on this card moved a belt, a brand or a body.')}</div>`;
 }
 
-// The month grid. Weekly show nights come off the brand records, so the week
-// fills itself in from whatever shows the user created.
+// The 28-day cycle: four weeks of seven days, and no real-world months. Weekly
+// shows repeat on their slot; PLEs sit where the user put them and can be
+// dragged to another day.
 export function calendarView(state, ui = {}) {
-  const key = ui.month || monthKey(state.asOf);
-  const m = calendarMonth(state, key);
-  const index = monthsWithShows(state);
+  const cycle = ui.cycle || currentCycle(state);
+  const filter = ui.brandId || null;
+  const ples = allPLEs(state);
+  const grid = cycleGrid(state, cycle, { brandId: filter, ples });
+  const index = cyclesWithShows(state);
+  const editing = ui.editingPLE || null;              // ple id, 'new', or 'new:<day>'
+  const problems = orderProblems(state).filter(p => !p.missing);
+
+  const pleChip = p => `<div class="cple${p.isSpecial ? ' special' : ''}" draggable="true"
+      data-ple="${h(p.id)}" style="--bc:${p.color || 'var(--gold)'}" title="${h(p.description || p.name)}">
+      <span class="nm">${p.logo ? `${h(p.logo)} ` : ''}${h(p.name)}</span>
+      <span class="br">${p.brandLine ? h(p.brandLine.toUpperCase()) : '<em>no brands yet</em>'}</span>
+      ${p.isSpecial ? `<span class="rule">${h(SPECIAL_SHORT[p.special] || p.special)}</span>` : ''}
+    </div>`;
 
   const cell = d => {
-    const cls = ['cday', d.inMonth ? '' : 'out', d.isToday ? 'today' : '',
-      d.shows.length ? 'booked' : '', d.ples.length ? 'ple' : ''].filter(Boolean).join(' ');
-    const shows = d.shows.map(s => `<button class="cshow" data-show="${h(s.id)}"
-        style="--bc:${s.color || 'var(--violet)'}" title="${h(s.name)} — ${plural(s.matches, 'match', 'matches')}">
-        <span class="nm">${h(s.name)}</span>
-        <span class="ct">${s.matches ? plural(s.matches, 'match', 'matches') : `${s.segments} seg`}</span>
-      </button>`).join('');
-    // A weekly night with no card is a reminder, not a record.
-    const due = d.scheduled.map(b => `<span class="cdue" style="--bc:${b.color || 'var(--ink-3)'}">${h(b.name)}</span>`).join('');
-    return `<div class="${cls}"><div class="n">${d.dayNum}</div>${shows}${due}</div>`;
+    const cls = ['cday', d.isToday ? 'today' : '', d.shows.length ? 'booked' : '',
+      d.ples.length ? 'ple' : ''].filter(Boolean).join(' ');
+    return `<div class="${cls}" data-day="${d.day}">
+      <div class="n"><span>Day ${d.day}</span>
+        <button class="addple" data-editple="new:${d.day}" title="Add a PLE on day ${d.day}">+</button></div>
+      ${d.ples.map(pleChip).join('')}
+      ${d.shows.map(sh => `<button class="cshow" data-show="${h(sh.id)}"
+          style="--bc:${sh.color || 'var(--violet)'}" title="${h(sh.name)}">
+          <span class="nm">${h(sh.name)}</span>
+          <span class="ct">${sh.matches ? plural(sh.matches, 'match', 'matches') : `${sh.segments} seg`}</span>
+        </button>`).join('')}
+      ${d.weekly.map(b => `<span class="cdue" style="--bc:${b.color || 'var(--ink-3)'}">${h(b.name)}</span>`).join('')}
+    </div>`;
   };
 
-  const week = wk => `<div class="cweek">${wk.map(cell).join('')}</div>`;
+  const weeks = grid.weeks.map((wk, i) => `<div class="cweekwrap">
+      <div class="cweeklabel">Week ${i + 1} <span class="dim">days ${wk[0].day}–${wk[6].day}</span></div>
+      <div class="cweek">${wk.map(cell).join('')}</div>
+    </div>`).join('');
 
   return `<div class="calhead">
-      <button class="btn ghost" data-month="${h(m.prev)}">←</button>
-      <h2 class="calname">${h(m.label)}</h2>
-      <button class="btn ghost" data-month="${h(m.next)}">→</button>
-      <input type="month" id="calJump" value="${h(m.key)}">
-      <button class="linkbtn" data-month="${h(monthKey(state.asOf))}">today</button>
+      <button class="btn ghost" data-cycle="${grid.cycle - 1}"${grid.cycle <= 1 ? ' disabled' : ''}>←</button>
+      <h2 class="calname">Cycle ${grid.cycle}</h2>
+      <button class="btn ghost" data-cycle="${grid.cycle + 1}">→</button>
+      <span class="dim">${h(grid.from)} → ${h(grid.to)}</span>
+      ${grid.isCurrent ? '' : `<button class="linkbtn" data-cycle="${currentCycle(state)}">now</button>`}
       <div class="spacer"></div>
-      <div class="calcount">${plural(m.counts.shows, 'show')} · ${plural(m.counts.matches, 'match', 'matches')}${
-        m.counts.ples ? ` · ${plural(m.counts.ples, 'PLE')}` : ''}</div>
+      <label class="opt inline">Show
+        <select id="calBrand">
+          <option value="">every brand</option>
+          ${Object.values(state.brands).map(b => `<option value="${h(b.id)}"${filter === b.id ? ' selected' : ''}>${h(b.name)}</option>`).join('')}
+        </select>
+      </label>
+      <div class="calcount">${plural(grid.counts.ples, 'PLE')} · ${plural(grid.counts.shows, 'card')}
+        · ${plural(grid.counts.matches, 'match', 'matches')}</div>
     </div>
 
-    <div class="cal">
-      <div class="cdow">${m.weekdayNames.map(d => `<div>${h(d)}</div>`).join('')}</div>
-      ${m.weeks.map(week).join('')}
+    ${filter ? `<div class="msg warn" style="margin-bottom:10px">Filtered to
+      <strong>${h(state.brands[filter].name)}</strong> — its weekly nights, its cards, and every PLE it takes part in.
+      <button class="linkbtn" data-calbrand="">show every brand</button></div>` : ''}
+
+    <div class="cal">${weeks}</div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn" data-editple="new">New PLE</button>
+      <span class="hint">Drag a PLE onto any day to move it — its brands come with it.
+        The cycle repeats: weekly shows sit on a night, PLEs sit where you put them.</span>
     </div>
+    ${editing ? pleForm(state, editing) : ''}
+    ${problems.length ? `<div class="msg warn" style="margin-top:12px">
+      ${problems.map(p => h(p.message)).join('<br>')}</div>` : ''}
 
     <div class="cols" style="margin-top:20px">
       <div>
-        <h2>This month's cards <span class="sub">click one to read the night back</span></h2>
-        <div class="card flush">${table(m.shows, [
-          { label: 'Date', get: s => fmtDate(s.date), dim: true },
-          { label: 'Show', get: s => `<button class="linkbtn strong" data-show="${h(s.id)}">${h(s.name)}</button>`, html: true },
-          { label: 'Brand', get: s => s.brandName || '—', dim: true },
-          { label: 'Matches', num: true, get: s => s.matches },
-        ], 'Nothing was booked this month.')}</div>
+        <h2>The schedule <span class="sub">every PLE on the cycle · edit to move it or change its brands</span></h2>
+        <div class="card flush">${table(ples, [
+          { label: 'Day', num: true, get: p => p.day },
+          { label: 'Week', num: true, get: p => p.week, dim: true },
+          { label: 'PLE', get: p => `<strong>${h(p.name)}</strong>${p.isSpecial ? ` ${chip(SPECIAL_SHORT[p.special] || p.special, 'new')}` : ''}`, html: true },
+          { label: 'Brands', get: p => (p.brandLine ? h(p.brandLine) : '<span class="dim">none</span>'), html: true },
+          { label: '', get: p => `<button class="linkbtn" data-editple="${h(p.id)}">edit</button>`, html: true },
+        ], 'Nothing scheduled yet — the cycle is yours to fill.')}</div>
 
-        <h2 style="margin-top:22px">Every month on record <span class="sub">jump back</span></h2>
+        <h2 style="margin-top:22px">Cycles on record <span class="sub">jump back</span></h2>
         <div class="card flush">${table(index, [
-          { label: 'Month', get: r => `<button class="linkbtn${r.key === m.key ? ' strong' : ''}" data-month="${h(r.key)}">${h(r.label)}</button>`, html: true },
-          { label: 'Shows', num: true, get: r => r.shows },
+          { label: 'Cycle', get: r => `<button class="linkbtn${r.cycle === grid.cycle ? ' strong' : ''}" data-cycle="${r.cycle}">Cycle ${r.cycle}</button>`, html: true },
+          { label: 'Cards', num: true, get: r => r.shows },
           { label: 'Matches', num: true, get: r => r.matches },
           { label: 'PLEs', get: r => h(r.ples.join(', ')), dim: true },
-        ], 'No shows yet.')}</div>
+        ], 'No cards yet.')}</div>
       </div>
       <div>
-        <h2>The week <span class="sub">each show's night comes off its brand record</span></h2>
+        <h2>The week <span class="sub">a weekly show repeats on its night, every week of the cycle</span></h2>
         <div class="card flush">${table(weeklySchedule(state), [
-          { label: 'Night', get: r => r.weekday },
+          { label: 'Night', get: r => `Day ${r.slot}`, },
+          { label: 'Also', get: r => r.weekday, dim: true },
           { label: 'Shows', get: r => (r.brands.length
             ? r.brands.map(b => `<span class="cdue" style="--bc:${b.color || 'var(--ink-3)'}">${h(b.name)}</span>`).join('')
             : '<span class="dim">dark</span>'), html: true },
         ])}</div>
         <div class="hint" style="margin-top:10px">Set a show's night on the
-          <button class="linkbtn" data-tab="brands">Pyramid</button> tab.</div>
+          <button class="linkbtn" data-tab="brands">Pyramid</button> tab. Day 1 of the cycle is
+          ${h(dateOf(state, grid.cycle, 1))}.</div>
       </div>
     </div>`;
+}
+
+// Create or edit one PLE. `id` is a PLE id, 'new', or 'new:<day>' when the +
+// on a day was used.
+function pleForm(state, id) {
+  const isNew = id === 'new' || id.startsWith('new:');
+  const presetDay = id.startsWith('new:') ? Number(id.slice(4)) : 1;
+  const p = isNew
+    ? { day: presetDay, type: 'ple', brandIds: [] }
+    : (state.ples[id] ? pleCard(state, state.ples[id]) : {});
+  const brands = Object.values(state.brands)
+    .sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
+  const picked = new Set(p.brandIds || []);
+
+  const field = (label, input, hint = '') =>
+    `<label class="opt col"><span>${h(label)}</span>${input}${hint ? `<em class="hint">${h(hint)}</em>` : ''}</label>`;
+
+  return `<div class="card" id="pleForm" style="margin:16px 0">
+    <h2>${isNew ? 'New PLE' : `Edit ${h(p.name)}`}</h2>
+    <div class="formgrid">
+      ${field('Name', `<input id="pfName" type="text" value="${h(p.name || '')}" placeholder="Survivor Series">`)}
+      ${field('Logo', `<input id="pfLogo" type="text" value="${h(p.logo || '')}" placeholder="🏆" maxlength="4">`, 'an emoji or a character')}
+      ${field('Colour', `<input id="pfColor" type="color" value="${h(p.color || '#E8B23A')}">`)}
+      ${field('Day', `<select id="pfDay">
+          ${Array.from({ length: CYCLE_DAYS }, (_, i) => i + 1).map(d =>
+            `<option value="${d}"${Number(p.day) === d ? ' selected' : ''}>Day ${d} — week ${weekOfDay(d)}</option>`).join('')}
+        </select>`, 'move it any time — nothing is fixed')}
+      ${field('Kind', `<select id="pfType">
+          <option value="ple"${p.type !== 'special' ? ' selected' : ''}>a regular PLE</option>
+          <option value="special"${p.type === 'special' ? ' selected' : ''}>a special universe event</option>
+        </select>`)}
+      ${field('Rule it carries', `<select id="pfSpecial">
+          <option value="">—</option>
+          ${PLE_SPECIALS.map(k => `<option value="${k}"${p.special === k ? ' selected' : ''}>${h(SPECIAL_LABEL[k])}</option>`).join('')}
+        </select>`, 'only for a special event')}
+    </div>
+    <label class="opt col" style="margin-top:8px"><span>Description</span>
+      <input id="pfDesc" type="text" value="${h(p.description || '')}" placeholder="the one with the teams"></label>
+
+    <div style="margin-top:12px">
+      <span class="opt">Brands taking part <em class="hint">as many as you like — one, several, or all of them</em></span>
+      <div class="brandpicks">
+        ${brands.map(b => `<label class="brandpick${picked.has(b.id) ? ' on' : ''}" style="--bc:${b.color || 'var(--violet)'}">
+          <input type="checkbox" class="pfBrand" value="${h(b.id)}"${picked.has(b.id) ? ' checked' : ''}>
+          ${h(b.name)}</label>`).join('')}
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="linkbtn" id="pfAll">all brands</button>
+        <button class="linkbtn" id="pfNone">none</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn" data-saveple="${h(id)}">${isNew ? 'Create PLE' : 'Save changes'}</button>
+      <button class="btn ghost" data-editple="">Cancel</button>
+      ${isNew ? '' : `<button class="btn danger" data-deleteple="${h(id)}">Delete</button>`}
+    </div>
+  </div>`;
 }
 
 // ------------------------------------------------------------------ log

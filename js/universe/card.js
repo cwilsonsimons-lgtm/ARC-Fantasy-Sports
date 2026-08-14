@@ -192,6 +192,15 @@ function parseHeader(line, idx, state) {
     else if (!name) name = p;
   });
   if (!name && brandId) name = state.brands[brandId] ? state.brands[brandId].name : null;
+  // The user's own schedule comes first: if this card's name is a PLE they
+  // created, it is that PLE — including the rule it carries, so "Bound for
+  // Glory" can be their Last Stand without the parser knowing the phrase.
+  if (!ple && name && state && state.ples) {
+    const norm = x => String(x).toLowerCase().replace(/\s+/g, ' ').trim();
+    const own = Object.values(state.ples).find(p => norm(p.name) === norm(name)
+      || norm(name).startsWith(`${norm(p.name)} `));
+    if (own) ple = own.special || 'other';
+  }
   if (!ple && name) { const hit = PLE_NAMES.find(([re]) => re.test(name)); if (hit) ple = hit[1]; }
   return { name, date, brandId, ple };
 }
