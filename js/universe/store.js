@@ -136,6 +136,25 @@ export class UniverseStore {
     return cx;
   }
 
+  // Removing an entity is only ever right for one that nothing points at — a
+  // belt created by mistake, a brand nobody was signed to. Anything the log has
+  // touched must stay, or the log would refer to something that never existed.
+  // Callers decide what "touched" means for their kind; this enforces the floor.
+  removeEntity(id, note = '') {
+    const rec = this.getEntity(id);
+    if (!rec) throw new ValidationError([`no such entity: ${id}`], 'correction');
+    const used = this.doc.events.find(e =>
+      e.participants.some(p => p.ref === id)
+      || Object.values(e.data || {}).includes(id)
+      || (e.effects || []).some(fx => Object.values(fx).includes(id)));
+    if (used) throw new ValidationError([`${id} is referenced by ${used.id} — it cannot be removed`], 'entity');
+
+    delete this.bucket(entityKind(id))[id];
+    const cx = this.logCorrection({ target: 'entity', targetId: id, op: 'remove', patch: rec, note });
+    this.touch();
+    return cx;
+  }
+
   // -- events --------------------------------------------------------------
 
   // Turn loose input into a full event envelope. Shared by append() and by the
@@ -299,6 +318,8 @@ export class UniverseStore {
       validateEvent(ev, known).forEach(m => problems.push({ level: 'error', id: ev.id, message: m }));
     });
     this.doc.corrections.forEach(c => {
+      // A removal is the one correction whose target is *meant* to be gone.
+      if (c.op === 'remove') return;
       const exists = c.target === 'event' ? !!this.getEvent(c.targetId) : !!this.getEntity(c.targetId);
       if (!exists) problems.push({ level: 'error', id: c.id, message: `correction targets missing ${c.target} ${c.targetId}` });
     });

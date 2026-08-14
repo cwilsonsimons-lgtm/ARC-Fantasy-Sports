@@ -66,7 +66,8 @@ await check('every belt starts VACANT', `[...document.querySelectorAll('.belt .h
 await check('and says so in those words', `document.querySelector('.belt .holder').textContent.trim()`, 'VACANT');
 await check('with no reign history at all', `Object.values(UNIVERSE.app.state.championships)
   .every(c => c.reigns.length === 0)`, true);
-await check('belt opens its own page', `document.querySelector('.belt').click();
+await check('belt opens its own page', `[...document.querySelectorAll('.belt')]
+  .find(b => b.querySelector('.nm').textContent.trim() === 'WWE Championship').click();
   document.querySelector('#pane-title').classList.contains('on')`, true);
 await check('title page names the belt', `document.querySelector('#pane-title .pagehead .nm').textContent`, 'WWE Championship');
 await check('title page shows an empty lineage', `document.querySelector('#pane-title').textContent.includes('Never held')`, true);
@@ -85,6 +86,66 @@ await check('naming where they land', `document.querySelector('#pane-title').tex
 await check('an ordinary belt is not marked', `${tab('titles')};
   [...document.querySelectorAll('.belt')].find(e => e.querySelector('.nm').textContent === 'WWE Championship')
     .textContent.includes('calls up')`, false);
+
+// ---------------------------------------------------------------- belts per brand
+// How many championships a show carries is the user's call, and the call-up
+// rule travels with the belt rather than with the name "NXT".
+await check('belts are grouped by show', `${tab('titles')};
+  [...document.querySelectorAll('.bghead .nm')].map(e => e.textContent)`,
+  ['Dynamite', 'Raw', 'SmackDown', 'NXT', 'Evolve']);
+await check('each show says how many it carries', `document.querySelector('.bghead .ct').textContent.includes('championship')`, true);
+await check('NXT says how many of them call people up', `[...document.querySelectorAll('.bghead')]
+  .find(e => e.querySelector('.nm').textContent === 'NXT').textContent.includes('2 calls up')`, true);
+
+await check('a show can be given another belt', `[...document.querySelectorAll('.bghead')]
+  .find(e => e.querySelector('.nm').textContent === 'NXT').querySelector('[data-editbelt]').click();
+  !!document.getElementById('beltForm')`, true);
+await check('the form starts on that show', `document.getElementById('tfBrand').value`, 'b:nxt');
+await check('and inherits the call-up rule', `document.getElementById('tfAuto').checked`, true);
+await check('saying where its champion would go',
+  `document.getElementById('beltForm').textContent.includes('draft pool')`, true);
+await check('a blank name is refused', `document.querySelector('[data-savebelt]').click();
+  !!document.querySelector('#pane-titles .msg.err')`, true);
+await check('a duplicate name is refused too', `document.getElementById('tfName').value = 'WWE Championship';
+  document.querySelector('[data-savebelt]').click();
+  document.querySelector('#pane-titles .msg.err').textContent.includes('already a championship')`, true);
+
+await check('creating it adds it to that show', `[...document.querySelectorAll('.bghead')]
+    .find(e => e.querySelector('.nm').textContent === 'NXT').querySelector('[data-editbelt]').click();
+  document.getElementById('tfName').value = 'NXT North American Championship';
+  document.querySelector('[data-savebelt]').click();
+  [...document.querySelectorAll('.bghead')]
+    .find(e => e.querySelector('.nm').textContent === 'NXT').textContent.includes('3 championships')`, true);
+await check('it starts vacant like every other belt', `[...document.querySelectorAll('.belt')]
+  .find(b => b.querySelector('.nm').textContent.includes('North American'))
+  .querySelector('.holder').textContent.trim()`, 'VACANT');
+await check('and is marked as calling its champion up', `[...document.querySelectorAll('.belt')]
+  .find(b => b.querySelector('.nm').textContent.includes('North American')).textContent.includes('calls up')`, true);
+await check('the data model carries the flag, not the code',
+  `UNIVERSE.app.state.championships['c:nxt-north-american-championship'].autoPromote`, true);
+
+await check('a belt can be moved to another show', `[...document.querySelectorAll('.belt')]
+    .find(b => b.querySelector('.nm').textContent.includes('North American'))
+    .querySelector('[data-editbelt]').click();
+  document.getElementById('tfBrand').value = 'b:raw';
+  document.getElementById('tfAuto').checked = false;
+  document.querySelector('[data-savebelt]').click();
+  UNIVERSE.app.state.championships['c:nxt-north-american-championship'].brandId`, 'b:raw');
+await check('so Raw now carries five', `[...document.querySelectorAll('.bghead')]
+  .find(e => e.querySelector('.nm').textContent === 'Raw').textContent.includes('5 championships')`, true);
+await check('and NXT is back to two', `[...document.querySelectorAll('.bghead')]
+  .find(e => e.querySelector('.nm').textContent === 'NXT').textContent.includes('2 championships')`, true);
+
+// A belt nothing has touched can go; one with a history is retired instead.
+await check('an untouched belt offers deletion', `[...document.querySelectorAll('.belt')]
+    .find(b => b.querySelector('.nm').textContent.includes('North American'))
+    .querySelector('[data-editbelt]').click();
+  !!document.querySelector('[data-deletebelt]')`, true);
+await page.evaluate(`window.confirm = () => true`);
+await check('deleting it takes it off the show', `document.querySelector('[data-deletebelt]').click();
+  !!UNIVERSE.app.state.championships['c:nxt-north-american-championship']`, false);
+await check('and Raw is back to four', `[...document.querySelectorAll('.bghead')]
+  .find(e => e.querySelector('.nm').textContent === 'Raw').textContent.includes('4 championships')`, true);
 
 // ---------------------------------------------------------------- card entry
 const CARD = `Monday Night Raw / 2026-08-17 / Raw
@@ -136,8 +197,10 @@ await check('and what the night changed is listed',
 // ---------------------------------------------------------------- the fold
 await check('title moved to the new champion', `${tab('titles')};
   [...document.querySelectorAll('.belt')].find(b => b.textContent.includes('World Heavyweight')).querySelector('.holder').textContent.trim()`, 'Damian Priest');
-await check('the tag belts were won from vacant', `[...document.querySelectorAll('.belt')]
-  .find(b => b.textContent.includes('World Tag Team')).textContent.includes('Erik')`, true);
+await check('the tag belts were won from vacant', `${tab('titles')};
+  [...document.querySelectorAll('.belt')]
+    .find(b => b.querySelector('.nm').textContent.trim() === 'World Tag Team Championship')
+    .textContent.includes('Erik')`, true);
 await check('a title history begins on the first win', `UNIVERSE.app.state
   .championships['c:world-tag-team-championship'].reigns.length`, 1);
 await check('records show on the roster', `${tab('roster')};
@@ -149,16 +212,19 @@ await check('log lists the new events', `${tab('log')};
 await check('opening a match shows both corners', `[...document.querySelectorAll('[data-ev]')]
   .find(b => b.closest('tr').textContent.includes('Gunther')).click();
   document.querySelectorAll('#sheetBody [data-winner]').length`, 2);
+// Counted by target rather than in total: editing a belt logs a correction too,
+// and this is about the one the click just made.
 await check('correcting the result is one click', `[...document.querySelectorAll('#sheetBody [data-winner]')]
   .find(b => !b.disabled).click();
-  UNIVERSE.store.doc.corrections.length`, 1);
+  UNIVERSE.store.doc.corrections.filter(c => c.target === 'event').length`, 1);
 await check('the title goes back with it', `${tab('titles')};
   [...document.querySelectorAll('.belt')].find(b => b.textContent.includes('World Heavyweight')).querySelector('.holder').textContent.trim()`, 'Gunther');
 await check('the loser record follows', `UNIVERSE.app.state.wrestlers['w:damian-priest'].record`,
   r => r.w === 0 && r.l === 1);
 await check('the reign is continuous again', `UNIVERSE.app.state.championships['c:world-heavyweight-championship'].reigns.length`, 1);
 await check('and the correction is logged', `${tab('log')};
-  document.querySelectorAll('#pane-log table')[1].querySelectorAll('tbody tr').length`, 1);
+  [...document.querySelectorAll('#pane-log table')[1].querySelectorAll('tbody tr')]
+    .filter(r => r.textContent.includes('amend') && r.textContent.includes('ev_')).length`, 1);
 
 await check('voiding an event greys it out', `document.querySelector('[data-void]').click();
   document.querySelectorAll('#pane-log .logrow.voided').length`, 1);
@@ -703,6 +769,11 @@ await page.evaluate(tab('roster'));
 await page.screenshot({ path: 'snapshots/universe-roster.png' });
 await page.evaluate(tab('titles'));
 await page.screenshot({ path: 'snapshots/universe-titles.png' });
+await page.evaluate(`[...document.querySelectorAll('.bghead')]
+  .find(e => e.querySelector('.nm').textContent === 'NXT').querySelector('[data-editbelt]').click()`);
+await page.waitForTimeout(500);
+await page.screenshot({ path: 'snapshots/universe-belt-form.png' });
+await page.evaluate(`UNIVERSE.app.beltEdit = null; UNIVERSE.render()`);
 await page.evaluate(tab('brands'));
 await page.screenshot({ path: 'snapshots/universe-pyramid.png' });
 await page.evaluate(tab('threads'));

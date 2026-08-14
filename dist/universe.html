@@ -545,6 +545,20 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .beat{color:var(--ink-3);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:0 2px}
 .segmeta{margin-top:2px;font-size:11px;color:var(--ink-3)}
 
+/* ---------------------------------------------------------------- belts by brand */
+.beltgroup{margin-bottom:18px}
+.bghead{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--card-2);
+  border:1px solid var(--line);border-left:3px solid var(--bc);border-radius:9px;margin-bottom:9px}
+.bghead .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:15px;letter-spacing:.08em;
+  text-transform:uppercase}
+.bghead .ct{color:var(--ink-3);font-size:12px;flex:1}
+.btn.small{padding:3px 10px;font-size:12px}
+.belt.on{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet)}
+.belt.retired{opacity:.55}
+.belt .beltname{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.belt .beltname:hover{color:var(--gold)}
+.belt>.linkbtn{align-self:flex-start;margin-top:4px}
+
 </style>
 </head>
 <body>
@@ -1264,6 +1278,20 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       this.touch();
       return cx;
     }
+    // Removing an entity is only ever right for one that nothing points at — a
+    // belt created by mistake, a brand nobody was signed to. Anything the log has
+    // touched must stay, or the log would refer to something that never existed.
+    // Callers decide what "touched" means for their kind; this enforces the floor.
+    removeEntity(id, note = "") {
+      const rec = this.getEntity(id);
+      if (!rec) throw new ValidationError([`no such entity: ${id}`], "correction");
+      const used = this.doc.events.find((e) => e.participants.some((p) => p.ref === id) || Object.values(e.data || {}).includes(id) || (e.effects || []).some((fx) => Object.values(fx).includes(id)));
+      if (used) throw new ValidationError([`${id} is referenced by ${used.id} \u2014 it cannot be removed`], "entity");
+      delete this.bucket(entityKind(id))[id];
+      const cx = this.logCorrection({ target: "entity", targetId: id, op: "remove", patch: rec, note });
+      this.touch();
+      return cx;
+    }
     // -- events --------------------------------------------------------------
     // Turn loose input into a full event envelope. Shared by append() and by the
     // amend path, which is what keeps effects in step with corrected data.
@@ -1424,6 +1452,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         validateEvent(ev, known).forEach((m) => problems.push({ level: "error", id: ev.id, message: m }));
       });
       this.doc.corrections.forEach((c) => {
+        if (c.op === "remove") return;
         const exists = c.target === "event" ? !!this.getEvent(c.targetId) : !!this.getEntity(c.targetId);
         if (!exists) problems.push({ level: "error", id: c.id, message: `correction targets missing ${c.target} ${c.targetId}` });
       });
@@ -4771,6 +4800,133 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     };
   }
 
+  // js/universe/championships.js
+  var DIVISION_LABEL = {
+    mens: "men's",
+    womens: "women's",
+    tag: "tag team",
+    mixed: "mixed tag",
+    unisex: "unisex"
+  };
+  var defaultTeamSize = (division) => division === "tag" || division === "mixed" ? 2 : 1;
+  function checkChampionship(state, rec, { id = null } = {}) {
+    const errors = [];
+    const name = String(rec.name || "").trim();
+    if (!name) errors.push("a championship needs a name");
+    if (rec.division && !DIVISIONS.includes(rec.division)) errors.push(`unknown division: ${rec.division}`);
+    if (rec.brandId && !state.brands[rec.brandId]) errors.push("that brand does not exist");
+    if (rec.teamSize != null && (!Number.isFinite(Number(rec.teamSize)) || Number(rec.teamSize) < 1)) {
+      errors.push("team size must be 1 or more");
+    }
+    const clash = Object.values(state.championships).find((c) => c.id !== id && c.name.toLowerCase() === name.toLowerCase());
+    if (clash) errors.push(`there is already a championship called ${clash.name}`);
+    if (rec.autoPromote) {
+      if (!rec.brandId) errors.push("a belt with no brand cannot call anybody up \u2014 give it a show first");
+      else if (!canBePromoted(state, rec.brandId)) {
+        errors.push(`${state.brands[rec.brandId].name} is on the top tier, so its champion has nowhere to be called up to`);
+      }
+    }
+    return errors;
+  }
+  function beltUsage(state, id) {
+    const events = state.events.filter((e) => e.data.titleId === id || e.data.contender === id || (e.effects || []).some((fx) => fx.titleId === id));
+    const belt = state.championships[id];
+    return {
+      events: events.length,
+      reigns: belt ? belt.reigns.length : 0,
+      firstDate: events.length ? events[0].date : null,
+      deletable: !events.length && !(belt && belt.reigns.length)
+    };
+  }
+  function beltCard(state, id) {
+    const c = state.championships[id];
+    if (!c) return null;
+    const usage = beltUsage(state, id);
+    const up = c.brandId && canBePromoted(state, c.brandId) ? destination(state, c.brandId, "promotion") : null;
+    return {
+      ...c,
+      brandName: c.brandId && state.brands[c.brandId] ? state.brands[c.brandId].name : null,
+      tier: c.brandId ? tierOf(state, c.brandId) : null,
+      divisionLabel: DIVISION_LABEL[c.division] || c.division || "\u2014",
+      usage,
+      promotesTo: up,
+      promotesToName: up && state.brands[up] ? state.brands[up].name : null
+    };
+  }
+  function beltsByBrand(state, { includeRetired = false } = {}) {
+    const belts = Object.values(state.championships).filter((c) => includeRetired || !c.retired).map((c) => beltCard(state, c.id));
+    const rows = Object.values(state.brands).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name)).map((b) => ({
+      id: b.id,
+      name: b.name,
+      color: b.color || null,
+      tier: b.tier || 1,
+      belts: belts.filter((c) => c.brandId === b.id).sort(sortBelts),
+      autoPromotes: belts.filter((c) => c.brandId === b.id && c.autoPromote).length
+    }));
+    const loose = belts.filter((c) => !c.brandId || !state.brands[c.brandId]).sort(sortBelts);
+    if (loose.length) rows.push({ id: null, name: "Unbranded", color: null, tier: null, belts: loose, autoPromotes: 0 });
+    return rows.map((r) => ({ ...r, count: r.belts.length }));
+  }
+  var DIV_ORDER = ["mens", "unisex", "womens", "tag", "mixed"];
+  var worldish = (c) => /world|universal|undisputed/i.test(c.name) || /^(wwe|aew|nxt|tna) championship$/i.test(c.name);
+  function sortBelts(a, b) {
+    if (worldish(a) !== worldish(b)) return worldish(a) ? -1 : 1;
+    const da = DIV_ORDER.indexOf(a.division), db = DIV_ORDER.indexOf(b.division);
+    if (da !== db) return (da < 0 ? 99 : da) - (db < 0 ? 99 : db);
+    return a.name.localeCompare(b.name);
+  }
+  var autoPromoteDefault = (state, brandId) => !!brandId && canBePromoted(state, brandId) && Object.values(state.championships).some((c) => c.brandId === brandId && c.autoPromote && !c.retired);
+  function saveChampionship(store2, state, rec, { id = null } = {}) {
+    const errors = checkChampionship(state, rec, { id });
+    if (errors.length) {
+      const e = new Error(errors[0]);
+      e.errors = errors;
+      throw e;
+    }
+    const clean2 = {
+      name: String(rec.name).trim(),
+      brandId: rec.brandId || void 0,
+      division: rec.division || "mens",
+      teamSize: Number(rec.teamSize) || defaultTeamSize(rec.division || "mens"),
+      autoPromote: rec.autoPromote ? true : void 0,
+      activeFrom: rec.activeFrom || void 0,
+      retiredOn: rec.retiredOn || void 0,
+      note: rec.note || void 0
+    };
+    if (id) {
+      const before = store2.getEntity(id);
+      store2.amendEntity(id, {
+        ...clean2,
+        brandId: clean2.brandId || null,
+        autoPromote: !!rec.autoPromote,
+        retiredOn: clean2.retiredOn || null
+      }, "championship edited");
+      store2.save();
+      return { id, created: false, before };
+    }
+    const made = store2.addEntity("championship", clean2);
+    store2.save();
+    return { id: made.id, created: true, before: null };
+  }
+  function retireChampionship(store2, state, id, { on: on2 = null, undo = false } = {}) {
+    const c = state.championships[id];
+    if (!c) throw new Error("no such championship");
+    store2.amendEntity(id, { retiredOn: undo ? null : on2 || state.asOf }, undo ? "championship unretired" : "championship retired");
+    store2.save();
+    return { id, retired: !undo };
+  }
+  function deleteChampionship(store2, state, id) {
+    const usage = beltUsage(state, id);
+    if (!usage.deletable) {
+      const e = new Error(`${state.championships[id].name} has been defended ${usage.events} times \u2014 retire it instead of deleting it`);
+      e.errors = [e.message];
+      throw e;
+    }
+    store2.removeEntity(id, "championship deleted \u2014 never contested");
+    store2.save();
+    return { id, deleted: true };
+  }
+
   // js/universe/ui/views.js
   var brandColor = (state, id) => state.brands[id] && state.brands[id].color || "var(--violet)";
   var brandName2 = (state, id) => id && state.brands[id] ? state.brands[id].name : null;
@@ -4836,27 +4992,93 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   </div>`;
     return `<div class="grid">${brands}${faCard}${groupCard}</div>`;
   }
-  function titlesView(state) {
-    const belts = Object.values(state.championships).filter((c) => !c.retired);
-    if (!belts.length) return '<div class="empty">No championships.</div>';
-    const cards = belts.map((c) => {
-      const holders = c.holders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
-      const reign = c.reigns[c.reigns.length - 1];
-      const interim = c.interimHolders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
-      return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(state, c.brandId)}">
-      <div class="nm">${h(c.name)}</div>
-      <div class="holder${c.vacant ? " vacant" : ""}">${c.vacant ? "VACANT" : h(holders)}</div>
-      ${interim ? `<div class="interim">${chip("interim", "new")} ${h(interim)}</div>` : ""}
-      <div class="facts">
-        <span>${brandName2(state, c.brandId) || "unbranded"}</span>
-        ${c.vacant ? "" : `<span>${c.daysHeld} days</span><span>${plural2(c.defenses, "defense")}</span>`}
-        <span>${c.reigns.length ? plural2(c.reigns.length, "reign") : "never held"}</span>
-        ${c.autoPromote ? `<span title="the holder is called up without a Last Stand match">${chip("calls up", "up")}</span>` : ""}
+  function titlesView(state, ui = {}) {
+    const editing = ui.editingBelt || null;
+    const rows = beltsByBrand(state, { includeRetired: !!ui.showRetired });
+    const groups = rows.map((r) => `<div class="beltgroup">
+      <div class="bghead" style="--bc:${r.color || "var(--ink-3)"}">
+        <div class="nm">${h(r.name)}</div>
+        <div class="ct">${plural2(r.count, "championship")}${r.tier ? ` \xB7 tier ${r.tier}` : ""}${r.autoPromotes ? ` \xB7 ${r.autoPromotes} calls up` : ""}</div>
+        ${r.id ? `<button class="btn ghost small" data-editbelt="new:${h(r.id)}">+ add</button>` : ""}
       </div>
-    </div>`;
-    }).join("");
-    return `<h2>Championships <span class="sub">click a belt for its full lineage</span></h2>
-    <div class="belts">${cards}</div>`;
+      <div class="belts">${r.belts.map((c) => beltCardHtml(state, c, editing)).join("") || '<div class="empty">No championships on this show yet.</div>'}</div>
+    </div>`).join("");
+    return `<h2>Championships <span class="sub">click a belt for its lineage \xB7 edit to move, rename or retire it</span></h2>
+    ${groups}
+    <div class="row" style="margin-top:14px">
+      <button class="btn" data-editbelt="new">New championship</button>
+      <label class="opt inline"><input type="checkbox" id="beltShowRetired"${ui.showRetired ? " checked" : ""}> show retired</label>
+      <span class="hint">Every show carries as many belts as you give it. A belt whose holder is
+        called up at the offseason is a setting on the belt, not a rule about NXT.</span>
+    </div>
+    ${editing ? beltForm(state, editing) : ""}`;
+  }
+  function beltCardHtml(state, c, editing) {
+    const holders = c.holders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
+    const interim = c.interimHolders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
+    return `<div class="belt${editing === c.id ? " on" : ""}${c.retired ? " retired" : ""}"
+      data-belt="${h(c.id)}" style="border-left-color:${brandColor(state, c.brandId)}">
+    <div class="nm">${h(c.name)}</div>
+    <div class="holder${c.vacant ? " vacant" : ""}">${c.vacant ? "VACANT" : h(holders)}</div>
+    ${interim ? `<div class="interim">${chip("interim", "new")} ${h(interim)}</div>` : ""}
+    <div class="facts">
+      <span>${h(c.divisionLabel)}</span>
+      ${c.vacant ? "" : `<span>${c.daysHeld} days</span><span>${plural2(c.defenses, "defense")}</span>`}
+      <span>${c.reigns.length ? plural2(c.reigns.length, "reign") : "never held"}</span>
+      ${c.autoPromote ? `<span title="the holder is called up to ${h(c.promotesToName || "the tier above")} without a Last Stand match">${chip("calls up", "up")}</span>` : ""}
+      ${c.retired ? chip("retired", "fa") : ""}
+    </div>
+    <button class="linkbtn" data-editbelt="${h(c.id)}">edit</button>
+  </div>`;
+  }
+  function promotionMap(state) {
+    const out = {};
+    Object.values(state.brands).forEach((b) => {
+      if (!canBePromoted(state, b.id)) return;
+      const to = destination(state, b.id, "promotion");
+      if (to && state.brands[to]) out[b.id] = state.brands[to].name;
+    });
+    return out;
+  }
+  function callUpHint(state, brandId) {
+    const to = promotionMap(state)[brandId];
+    const from = brandId && state.brands[brandId] ? state.brands[brandId].name : null;
+    return to ? `${h(from)} champions would go into the ${h(to)} draft pool.` : "Only a belt on a show with a tier above it can call anybody up.";
+  }
+  function beltForm(state, id) {
+    const isNew = id === "new" || id.startsWith("new:");
+    const presetBrand = id.startsWith("new:") ? id.slice(4) : null;
+    const c = isNew ? { brandId: presetBrand, division: "mens", autoPromote: autoPromoteDefault(state, presetBrand) } : beltCard(state, id) || {};
+    const brands = Object.values(state.brands).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
+    const usage = isNew ? { deletable: true, events: 0 } : c.usage;
+    const field = (label, input, hint = "") => `<label class="opt col"><span>${h(label)}</span>${input}${hint ? `<em class="hint">${h(hint)}</em>` : ""}</label>`;
+    return `<div class="card" id="beltForm" style="margin:16px 0">
+    <h2>${isNew ? "New championship" : `Edit ${h(c.name)}`}</h2>
+    <div class="formgrid">
+      ${field("Name", `<input id="tfName" type="text" value="${h(c.name || "")}" placeholder="NXT North American Championship">`)}
+      ${field("Show", `<select id="tfBrand">
+          <option value="">\u2014 unbranded \u2014</option>
+          ${brands.map((b) => `<option value="${h(b.id)}"${c.brandId === b.id ? " selected" : ""}>${h(b.name)} (tier ${b.tier == null ? 1 : b.tier})</option>`).join("")}
+        </select>`)}
+      ${field("Division", `<select id="tfDivision">
+          ${DIVISIONS.map((d) => `<option value="${d}"${(c.division || "mens") === d ? " selected" : ""}>${h(DIVISION_LABEL[d] || d)}</option>`).join("")}
+        </select>`, "tag divisions are held by a team")}
+      ${field("Held by", `<input id="tfTeamSize" type="number" min="1" step="1" value="${h(c.teamSize || defaultTeamSize(c.division || "mens"))}">`, "how many people hold it at once")}
+    </div>
+    <label class="opt inline" style="margin-top:4px">
+      <input type="checkbox" id="tfAuto"${c.autoPromote ? " checked" : ""}>
+      whoever holds this at the offseason is called up a tier \u2014 no Last Stand match
+    </label>
+    <div class="hint" style="margin-top:6px" id="tfAutoHint"
+         data-dest="${h(JSON.stringify(promotionMap(state)))}">${callUpHint(state, c.brandId)}</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" data-savebelt="${h(id)}">${isNew ? "Create championship" : "Save changes"}</button>
+      <button class="btn ghost" data-editbelt="">Cancel</button>
+      ${isNew ? "" : c.retired ? `<button class="btn ghost" data-unretirebelt="${h(id)}">Bring it back</button>` : `<button class="btn ghost" data-retirebelt="${h(id)}">Retire</button>`}
+      ${!isNew && usage.deletable ? `<button class="btn danger" data-deletebelt="${h(id)}">Delete</button>
+           <span class="hint">Never contested, so there is no history to lose.</span>` : !isNew ? `<span class="hint">Contested ${plural2(usage.events, "time")} \u2014 retiring keeps the lineage; deleting is not offered.</span>` : ""}
+    </div>
+  </div>`;
   }
   function titlePage(state, titleId) {
     const c = state.championships[titleId];
@@ -4893,6 +5115,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     </div>`;
     return `<div class="backrow">
       <button class="linkbtn" data-tab="titles">\u2190 all championships</button>
+      <button class="linkbtn" data-editbelt="${h(c.id)}">edit this belt</button>
     </div>
     <div class="pagehead" style="border-left-color:${brandColor(state, c.brandId)}">
       <div class="nm">${h(c.name)}</div>
@@ -6436,6 +6659,9 @@ no explanation, no code fences.`;
     // { proposal, lastStand, draft } — unsaved working state
     brandEdit: null,
     // brand id being edited, or 'new'
+    beltEdit: null,
+    // belt id being edited, 'new', or 'new:<brandId>'
+    showRetiredBelts: false,
     pick: {},
     // the Last Stand match maker's selection
     prompt: { id: "next" },
@@ -6523,7 +6749,10 @@ no explanation, no code fences.`;
         refreshRosterPreview();
       }
     }
-    if (app.tab === "titles") $("#pane-titles").innerHTML = titlesView(s);
+    if (app.tab === "titles") $("#pane-titles").innerHTML = titlesView(s, {
+      editingBelt: app.beltEdit,
+      showRetired: app.showRetiredBelts
+    });
     if (app.tab === "calendar") $("#pane-calendar").innerHTML = calendarView(s, { month: app.month });
     if (app.tab === "show") $("#pane-show").innerHTML = showPage(s, app.detailId);
     if (app.tab === "shows") $("#pane-shows").innerHTML = showsView(s);
@@ -6597,7 +6826,9 @@ no explanation, no code fences.`;
   }
   on("click", "[data-tab]", (e, el) => go(el.dataset.tab));
   on("click", "[data-w]", (e, el) => go("wrestler", el.dataset.w));
-  on("click", "[data-belt]", (e, el) => go("title", el.dataset.belt));
+  on("click", "[data-belt]", (e, el) => {
+    if (!e.target.closest("[data-editbelt]")) go("title", el.dataset.belt);
+  });
   on("click", "[data-show]", (e, el) => go("show", el.dataset.show));
   on("click", "[data-month]", (e, el) => {
     app.month = el.dataset.month;
@@ -6727,6 +6958,80 @@ no explanation, no code fences.`;
       flash(`${h(rec.name)} saved. The pyramid, the lists and the draft all read it straight away.`);
     } catch (err2) {
       flash(h(err2.errors ? err2.errors.join("; ") : err2.message), "err");
+    }
+    render();
+  });
+  on("click", "[data-editbelt]", (e, el) => {
+    app.beltEdit = el.dataset.editbelt || null;
+    if (app.beltEdit) go("titles");
+    else render();
+    const form = $("#beltForm");
+    if (form) {
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+      $("#tfName").focus();
+    }
+  });
+  on("change", "#beltShowRetired", (e, el) => {
+    app.showRetiredBelts = el.checked;
+    render();
+  });
+  on("change", "#tfDivision", (e, el) => {
+    const size = $("#tfTeamSize");
+    if (size && !size.dataset.touched) size.value = defaultTeamSize(el.value);
+  });
+  on("input", "#tfTeamSize", (e, el) => {
+    el.dataset.touched = "1";
+  });
+  on("change", "#tfBrand", (e, el) => {
+    const hint = $("#tfAutoHint");
+    if (!hint) return;
+    const dest = JSON.parse(hint.dataset.dest || "{}")[el.value];
+    const from = app.state.brands[el.value];
+    hint.textContent = dest ? `${from.name} champions would go into the ${dest} draft pool.` : "Only a belt on a show with a tier above it can call anybody up.";
+  });
+  on("click", "[data-savebelt]", (e, el) => {
+    const id = el.dataset.savebelt;
+    const isNew = id === "new" || id.startsWith("new:");
+    const rec = {
+      name: $("#tfName").value.trim(),
+      brandId: $("#tfBrand").value || null,
+      division: $("#tfDivision").value,
+      teamSize: $("#tfTeamSize").value === "" ? null : Number($("#tfTeamSize").value),
+      autoPromote: $("#tfAuto").checked
+    };
+    try {
+      const res = saveChampionship(store, app.state, rec, { id: isNew ? null : id });
+      app.beltEdit = null;
+      flash(`${h(rec.name)} ${res.created ? "created" : "saved"}${rec.autoPromote ? " \u2014 its champion is called up at the offseason" : ""}.`);
+      render();
+    } catch (err2) {
+      flash(h(err2.message), "err");
+      render();
+    }
+  });
+  on("click", "[data-retirebelt]", (e, el) => {
+    const c = app.state.championships[el.dataset.retirebelt];
+    if (!confirm(`Retire the ${c.name}? The lineage is kept \u2014 it just comes off the active list.`)) return;
+    retireChampionship(store, app.state, c.id, { on: universeNow() });
+    app.beltEdit = null;
+    flash(`${h(c.name)} retired.`);
+    render();
+  });
+  on("click", "[data-unretirebelt]", (e, el) => {
+    const c = app.state.championships[el.dataset.unretirebelt];
+    retireChampionship(store, app.state, c.id, { undo: true });
+    flash(`${h(c.name)} is active again.`);
+    render();
+  });
+  on("click", "[data-deletebelt]", (e, el) => {
+    const c = app.state.championships[el.dataset.deletebelt];
+    if (!confirm(`Delete the ${c.name}? It has never been contested, so nothing is lost.`)) return;
+    try {
+      deleteChampionship(store, app.state, c.id);
+      app.beltEdit = null;
+      flash(`${h(c.name)} deleted.`);
+    } catch (err2) {
+      flash(h(err2.message), "err");
     }
     render();
   });

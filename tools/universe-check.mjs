@@ -22,6 +22,8 @@ import { parseCard, commitCard, setTitleOutcome } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
 import { tiers, tierOf, destination, pyramidText, checkBrand, autoPromotions } from '../js/universe/pyramid.js';
 import { candidates, eligibleOpponents, checkPairing, recordMatch, lastStandBoard } from '../js/universe/laststand.js';
+import { beltsByBrand, beltCard, checkChampionship, saveChampionship, retireChampionship,
+  deleteChampionship, beltUsage, autoPromoteDefault, defaultTeamSize } from '../js/universe/championships.js';
 import { calendarMonth, monthsWithShows, weeklySchedule, brandsOnWeekday, cardOf,
   cardText as cardAsText, monthText, shiftMonths, weekdayName } from '../js/universe/calendar.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
@@ -813,6 +815,95 @@ const pDv = project(sL, { asOf: '2028-04-25' });
 check('voiding a Last Stand match undoes the move', pDv.wrestlers[opps[0].id].brandId, 'b:raw');
 check('and clears it from the transaction history',
   movementsFor(pDv, opps[0].id).some(m => m.reason === 'relegation'), false);
+
+// ──────────────────────────────────────────────────────────────── championships
+// How many belts a show carries is the user's call, and the call-up rule is a
+// field on the belt — so a second NXT title behaves like the first.
+section('championships per brand');
+const sT = fresh();
+let pT = project(sT);
+check('belts are grouped by the show that carries them',
+  beltsByBrand(pT).filter(r => r.id).map(r => `${r.name}:${r.count}`),
+  ['Dynamite:3', 'Raw:4', 'SmackDown:4', 'NXT:2', 'Evolve:2']);
+check('and a brand knows how many of them call people up',
+  beltsByBrand(pT).find(r => r.name === 'NXT').autoPromotes, 2);
+
+// Adding one.
+const made = saveChampionship(sT, pT, {
+  name: 'NXT North American Championship', brandId: 'b:nxt', division: 'mens', autoPromote: true,
+});
+pT = project(sT);
+check('a new belt lands on its show', pT.championships[made.id].brandId, 'b:nxt');
+check('NXT now carries three', beltsByBrand(pT).find(r => r.name === 'NXT').count, 3);
+check('a new belt starts vacant, like every other', pT.championships[made.id].vacant, true);
+check('with no history at all', pT.championships[made.id].reigns.length, 0);
+check('and it calls its champion up too', autoPromotions(pT).length === 0 && !!pT.championships[made.id].autoPromote, true);
+
+// The rule follows the belt, not the brand name: crown someone and they are
+// called up without a Last Stand match.
+commitCard(sT, parseCard(`WrestleMania 44 / 2028-04-02 / NXT
+Je'Von Evans d. Ethan Page — NXT North American Championship`, sT));
+pT = project(sT, { asOf: '2028-04-03' });
+check('a belt the user added calls its champion up',
+  autoPromotions(pT).map(a => a.name), ["Je'Von Evans"]);
+check('into the tier above', tierOf(pT, autoPromotions(pT)[0].to), 1);
+
+// A second belt on a brand that already calls people up should default to
+// doing the same — otherwise the rule quietly stops applying as you add belts.
+check('a new NXT belt inherits the call-up by default', autoPromoteDefault(pT, 'b:nxt'), true);
+check('a Raw belt does not', autoPromoteDefault(pT, 'b:raw'), false);
+check('nor does one on the bottom rung', autoPromoteDefault(pT, 'b:evolve'), false);
+
+// Validation.
+const beltErr = (rec, id) => checkChampionship(pT, rec, { id: id || null });
+check('a belt needs a name', beltErr({ name: '' }).length > 0, true);
+check('two belts cannot share a name',
+  /already a championship/.test(beltErr({ name: 'WWE Championship' })[0]), true);
+check('renaming a belt to its own name is fine',
+  beltErr({ name: 'WWE Championship' }, 'c:wwe-championship'), []);
+check('a call-up needs somewhere to go',
+  /nowhere to be called up/.test(beltErr({ name: 'Raw Invitational', brandId: 'b:raw', autoPromote: true })[0]), true);
+check('and needs a show at all',
+  /give it a show/.test(beltErr({ name: 'Floating Belt', autoPromote: true })[0]), true);
+check('an unknown division is refused',
+  /unknown division/.test(beltErr({ name: 'Hardcore Title', division: 'hardcore' })[0]), true);
+check('tag belts are held by two by default', defaultTeamSize('tag'), 2);
+
+// Editing: a belt can move show, and moving it moves what the brand carries.
+saveChampionship(sT, pT, { ...pT.championships[made.id], brandId: 'b:evolve', autoPromote: false }, { id: made.id });
+pT = project(sT);
+check('a belt can be moved to another show', pT.championships[made.id].brandId, 'b:evolve');
+check('the old show carries one fewer', beltsByBrand(pT).find(r => r.name === 'NXT').count, 2);
+check('and the new one carries it', beltsByBrand(pT).find(r => r.name === 'Evolve').count, 3);
+check('its reign came with it', pT.championships[made.id].reigns.length, 1);
+
+// Retiring keeps the history; deleting is only for a belt that never happened.
+check('a contested belt cannot be deleted', beltUsage(pT, made.id).deletable, false);
+check('deleting one refuses, and says to retire instead',
+  /retire it instead/.test(threw(() => deleteChampionship(sT, pT, made.id)).message), true);
+retireChampionship(sT, pT, made.id, { on: '2028-05-01' });
+pT = project(sT);
+check('retiring takes it off the active list',
+  beltsByBrand(pT).find(r => r.name === 'Evolve').count, 2);
+check('but keeps every reign', pT.championships[made.id].reigns.length, 1);
+check('and it is still there when you ask for retired belts',
+  beltsByBrand(pT, { includeRetired: true }).find(r => r.name === 'Evolve').count, 3);
+retireChampionship(sT, pT, made.id, { undo: true });
+check('bringing it back is one edit', project(sT).championships[made.id].retired, false);
+
+const spare = saveChampionship(sT, project(sT), { name: 'Typo Championship', brandId: 'b:raw' });
+check('a belt nothing has touched can be deleted', beltUsage(project(sT), spare.id).deletable, true);
+deleteChampionship(sT, project(sT), spare.id);
+check('and it goes', !!project(sT).championships[spare.id], false);
+check('leaving a note in the correction log',
+  sT.doc.corrections.filter(c => c.op === 'remove').length, 1);
+check('the store still passes its integrity pass', sT.check().filter(p => p.level === 'error').length, 0);
+// The guard is on the store, not just the championship helper: anything the
+// log points at stays, whatever kind it is.
+check('an entity the log points at cannot be removed',
+  /referenced by/.test(threw(() => sT.removeEntity(made.id)).message), true);
+check('nor can a wrestler who has wrestled',
+  /referenced by/.test(threw(() => sT.removeEntity('w:ethan-page')).message), true);
 
 // ──────────────────────────────────────────────────────────────── automatic promotion
 // The designation lives on the championship, not in the code: nothing here

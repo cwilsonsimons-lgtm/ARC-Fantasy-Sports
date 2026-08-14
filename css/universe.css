@@ -348,3 +348,17 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .linkbtn.strong{color:var(--ink);font-weight:600;font-size:13px}
 .beat{color:var(--ink-3);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:0 2px}
 .segmeta{margin-top:2px;font-size:11px;color:var(--ink-3)}
+
+/* ---------------------------------------------------------------- belts by brand */
+.beltgroup{margin-bottom:18px}
+.bghead{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--card-2);
+  border:1px solid var(--line);border-left:3px solid var(--bc);border-radius:9px;margin-bottom:9px}
+.bghead .nm{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:15px;letter-spacing:.08em;
+  text-transform:uppercase}
+.bghead .ct{color:var(--ink-3);font-size:12px;flex:1}
+.btn.small{padding:3px 10px;font-size:12px}
+.belt.on{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet)}
+.belt.retired{opacity:.55}
+.belt .beltname{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.belt .beltname:hover{color:var(--gold)}
+.belt>.linkbtn{align-self:flex-start;margin-top:4px}

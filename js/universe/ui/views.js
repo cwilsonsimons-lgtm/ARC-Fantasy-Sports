@@ -7,10 +7,11 @@
 import { h, table, chip, wlink, fmtDate, plural } from './dom.js';
 import { titleLineage, titleMatches, timelineFor, movementsFor, days, describeThread, activeRivalries, activeAlliances } from '../project.js';
 import { currentSeason, seasons, brandStandings, nextStep, PHASES, PHASE_LABEL } from '../season.js';
-import { tiers, brandCard, pyramidText, destination } from '../pyramid.js';
+import { tiers, brandCard, pyramidText, destination, canBePromoted } from '../pyramid.js';
 import { lastStandBoard, eligibleOpponents, checkPairing } from '../laststand.js';
 import { calendarMonth, monthsWithShows, weeklySchedule, cardOf, monthKey } from '../calendar.js';
-import { SHOW_DAYS } from '../schema.js';
+import { beltsByBrand, beltCard, autoPromoteDefault, defaultTeamSize, DIVISION_LABEL } from '../championships.js';
+import { SHOW_DAYS, DIVISIONS } from '../schema.js';
 
 // The colour comes off the brand record, because a user who creates WCW picks
 // its colour in the form — there is no table of known brands to look it up in.
@@ -95,29 +96,119 @@ export function rosterView(state) {
 
 // ------------------------------------------------------------------ titles
 
-export function titlesView(state) {
-  const belts = Object.values(state.championships).filter(c => !c.retired);
-  if (!belts.length) return '<div class="empty">No championships.</div>';
+// How many belts each show carries, and the form that changes it. Grouped by
+// brand because "how many championships does NXT have" is the question being
+// asked, and a flat list of fifteen belts does not answer it.
+export function titlesView(state, ui = {}) {
+  const editing = ui.editingBelt || null;            // belt id, 'new', or 'new:b:raw'
+  const rows = beltsByBrand(state, { includeRetired: !!ui.showRetired });
 
-  const cards = belts.map(c => {
-    const holders = c.holders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
-    const reign = c.reigns[c.reigns.length - 1];
-    const interim = c.interimHolders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
-    return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(state, c.brandId)}">
-      <div class="nm">${h(c.name)}</div>
-      <div class="holder${c.vacant ? ' vacant' : ''}">${c.vacant ? 'VACANT' : h(holders)}</div>
-      ${interim ? `<div class="interim">${chip('interim', 'new')} ${h(interim)}</div>` : ''}
-      <div class="facts">
-        <span>${brandName(state, c.brandId) || 'unbranded'}</span>
-        ${c.vacant ? '' : `<span>${c.daysHeld} days</span><span>${plural(c.defenses, 'defense')}</span>`}
-        <span>${c.reigns.length ? plural(c.reigns.length, 'reign') : 'never held'}</span>
-        ${c.autoPromote ? `<span title="the holder is called up without a Last Stand match">${chip('calls up', 'up')}</span>` : ''}
+  const groups = rows.map(r => `<div class="beltgroup">
+      <div class="bghead" style="--bc:${r.color || 'var(--ink-3)'}">
+        <div class="nm">${h(r.name)}</div>
+        <div class="ct">${plural(r.count, 'championship')}${r.tier ? ` · tier ${r.tier}` : ''}${
+          r.autoPromotes ? ` · ${r.autoPromotes} calls up` : ''}</div>
+        ${r.id ? `<button class="btn ghost small" data-editbelt="new:${h(r.id)}">+ add</button>` : ''}
       </div>
-    </div>`;
-  }).join('');
+      <div class="belts">${r.belts.map(c => beltCardHtml(state, c, editing)).join('')
+        || '<div class="empty">No championships on this show yet.</div>'}</div>
+    </div>`).join('');
 
-  return `<h2>Championships <span class="sub">click a belt for its full lineage</span></h2>
-    <div class="belts">${cards}</div>`;
+  return `<h2>Championships <span class="sub">click a belt for its lineage · edit to move, rename or retire it</span></h2>
+    ${groups}
+    <div class="row" style="margin-top:14px">
+      <button class="btn" data-editbelt="new">New championship</button>
+      <label class="opt inline"><input type="checkbox" id="beltShowRetired"${ui.showRetired ? ' checked' : ''}> show retired</label>
+      <span class="hint">Every show carries as many belts as you give it. A belt whose holder is
+        called up at the offseason is a setting on the belt, not a rule about NXT.</span>
+    </div>
+    ${editing ? beltForm(state, editing) : ''}`;
+}
+
+function beltCardHtml(state, c, editing) {
+  const holders = c.holders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
+  const interim = c.interimHolders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
+  return `<div class="belt${editing === c.id ? ' on' : ''}${c.retired ? ' retired' : ''}"
+      data-belt="${h(c.id)}" style="border-left-color:${brandColor(state, c.brandId)}">
+    <div class="nm">${h(c.name)}</div>
+    <div class="holder${c.vacant ? ' vacant' : ''}">${c.vacant ? 'VACANT' : h(holders)}</div>
+    ${interim ? `<div class="interim">${chip('interim', 'new')} ${h(interim)}</div>` : ''}
+    <div class="facts">
+      <span>${h(c.divisionLabel)}</span>
+      ${c.vacant ? '' : `<span>${c.daysHeld} days</span><span>${plural(c.defenses, 'defense')}</span>`}
+      <span>${c.reigns.length ? plural(c.reigns.length, 'reign') : 'never held'}</span>
+      ${c.autoPromote ? `<span title="the holder is called up to ${h(c.promotesToName || 'the tier above')} without a Last Stand match">${chip('calls up', 'up')}</span>` : ''}
+      ${c.retired ? chip('retired', 'fa') : ''}
+    </div>
+    <button class="linkbtn" data-editbelt="${h(c.id)}">edit</button>
+  </div>`;
+}
+
+// Where each brand's champions would be called up to, so the form can say it
+// for whichever show is picked without a re-render eating what you have typed.
+function promotionMap(state) {
+  const out = {};
+  Object.values(state.brands).forEach(b => {
+    if (!canBePromoted(state, b.id)) return;
+    const to = destination(state, b.id, 'promotion');
+    if (to && state.brands[to]) out[b.id] = state.brands[to].name;
+  });
+  return out;
+}
+
+export function callUpHint(state, brandId) {
+  const to = promotionMap(state)[brandId];
+  const from = brandId && state.brands[brandId] ? state.brands[brandId].name : null;
+  return to
+    ? `${h(from)} champions would go into the ${h(to)} draft pool.`
+    : 'Only a belt on a show with a tier above it can call anybody up.';
+}
+
+// Create or edit one belt. `id` is a belt id, 'new', or 'new:<brandId>' when
+// the + on a brand's row was used.
+function beltForm(state, id) {
+  const isNew = id === 'new' || id.startsWith('new:');
+  const presetBrand = id.startsWith('new:') ? id.slice(4) : null;
+  const c = isNew
+    ? { brandId: presetBrand, division: 'mens', autoPromote: autoPromoteDefault(state, presetBrand) }
+    : (beltCard(state, id) || {});
+  const brands = Object.values(state.brands).sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name));
+  const usage = isNew ? { deletable: true, events: 0 } : c.usage;
+
+  const field = (label, input, hint = '') =>
+    `<label class="opt col"><span>${h(label)}</span>${input}${hint ? `<em class="hint">${h(hint)}</em>` : ''}</label>`;
+
+  return `<div class="card" id="beltForm" style="margin:16px 0">
+    <h2>${isNew ? 'New championship' : `Edit ${h(c.name)}`}</h2>
+    <div class="formgrid">
+      ${field('Name', `<input id="tfName" type="text" value="${h(c.name || '')}" placeholder="NXT North American Championship">`)}
+      ${field('Show', `<select id="tfBrand">
+          <option value="">— unbranded —</option>
+          ${brands.map(b => `<option value="${h(b.id)}"${c.brandId === b.id ? ' selected' : ''}>${h(b.name)} (tier ${b.tier == null ? 1 : b.tier})</option>`).join('')}
+        </select>`)}
+      ${field('Division', `<select id="tfDivision">
+          ${DIVISIONS.map(d => `<option value="${d}"${(c.division || 'mens') === d ? ' selected' : ''}>${h(DIVISION_LABEL[d] || d)}</option>`).join('')}
+        </select>`, 'tag divisions are held by a team')}
+      ${field('Held by', `<input id="tfTeamSize" type="number" min="1" step="1" value="${h(c.teamSize || defaultTeamSize(c.division || 'mens'))}">`, 'how many people hold it at once')}
+    </div>
+    <label class="opt inline" style="margin-top:4px">
+      <input type="checkbox" id="tfAuto"${c.autoPromote ? ' checked' : ''}>
+      whoever holds this at the offseason is called up a tier — no Last Stand match
+    </label>
+    <div class="hint" style="margin-top:6px" id="tfAutoHint"
+         data-dest="${h(JSON.stringify(promotionMap(state)))}">${callUpHint(state, c.brandId)}</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" data-savebelt="${h(id)}">${isNew ? 'Create championship' : 'Save changes'}</button>
+      <button class="btn ghost" data-editbelt="">Cancel</button>
+      ${isNew ? '' : (c.retired
+        ? `<button class="btn ghost" data-unretirebelt="${h(id)}">Bring it back</button>`
+        : `<button class="btn ghost" data-retirebelt="${h(id)}">Retire</button>`)}
+      ${!isNew && usage.deletable
+        ? `<button class="btn danger" data-deletebelt="${h(id)}">Delete</button>
+           <span class="hint">Never contested, so there is no history to lose.</span>`
+        : (!isNew ? `<span class="hint">Contested ${plural(usage.events, 'time')} — retiring keeps the lineage; deleting is not offered.</span>` : '')}
+    </div>
+  </div>`;
 }
 
 // A belt's own page: who has it, everything that happened to it, in order.
@@ -167,6 +258,7 @@ export function titlePage(state, titleId) {
 
   return `<div class="backrow">
       <button class="linkbtn" data-tab="titles">← all championships</button>
+      <button class="linkbtn" data-editbelt="${h(c.id)}">edit this belt</button>
     </div>
     <div class="pagehead" style="border-left-color:${brandColor(state, c.brandId)}">
       <div class="nm">${h(c.name)}</div>

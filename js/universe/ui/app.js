@@ -24,6 +24,7 @@ import { proposeFlags, commitFlags, proposeLastStand, lastStandCard } from '../s
 import { proposeDraft, commitDraft } from '../draft.js';
 import { recordMatch } from '../laststand.js';
 import { checkBrand } from '../pyramid.js';
+import { saveChampionship, retireChampionship, deleteChampionship, defaultTeamSize } from '../championships.js';
 import { buildPrompt, entryPrompt } from '../prompts.js';
 import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
 
@@ -36,6 +37,8 @@ const app = {
   tab: 'tonight', detailId: null, asOf: null, state: null, flash: null,
   season: {},                       // { proposal, lastStand, draft } — unsaved working state
   brandEdit: null,                  // brand id being edited, or 'new'
+  beltEdit: null,                   // belt id being edited, 'new', or 'new:<brandId>'
+  showRetiredBelts: false,
   pick: {},                         // the Last Stand match maker's selection
   prompt: { id: 'next' },
   month: null,                      // which month the calendar is showing
@@ -123,7 +126,9 @@ function render() {
     $('#pane-roster').innerHTML = rosterImportPanel(open || !!keep, { addOnly: app.rosterAddOnly }) + rosterView(s);
     if (keep) { $('#rosterText').value = keep; refreshRosterPreview(); }
   }
-  if (app.tab === 'titles') $('#pane-titles').innerHTML = titlesView(s);
+  if (app.tab === 'titles') $('#pane-titles').innerHTML = titlesView(s, {
+    editingBelt: app.beltEdit, showRetired: app.showRetiredBelts,
+  });
   if (app.tab === 'calendar') $('#pane-calendar').innerHTML = calendarView(s, { month: app.month });
   if (app.tab === 'show') $('#pane-show').innerHTML = showPage(s, app.detailId);
   if (app.tab === 'shows') $('#pane-shows').innerHTML = showsView(s);
@@ -209,7 +214,8 @@ function importRoster() {
 
 on('click', '[data-tab]', (e, el) => go(el.dataset.tab));
 on('click', '[data-w]', (e, el) => go('wrestler', el.dataset.w));
-on('click', '[data-belt]', (e, el) => go('title', el.dataset.belt));
+// The whole belt card opens the belt; the edit button inside it does not.
+on('click', '[data-belt]', (e, el) => { if (!e.target.closest('[data-editbelt]')) go('title', el.dataset.belt); });
 on('click', '[data-show]', (e, el) => go('show', el.dataset.show));
 on('click', '[data-month]', (e, el) => { app.month = el.dataset.month; go('calendar'); });
 on('change', '#calJump', (e, el) => { if (el.value) { app.month = el.value; render(); } });
@@ -319,6 +325,78 @@ on('click', '[data-savebrand]', (e, el) => {
   } catch (err) {
     flash(h(err.errors ? err.errors.join('; ') : err.message), 'err');
   }
+  render();
+});
+
+// ------------------------------------------------------------------ championships
+// How many belts a show carries is the user's call. Everything here is an
+// entity edit — who *holds* a belt stays in the log, on the belt's own page.
+
+on('click', '[data-editbelt]', (e, el) => {
+  app.beltEdit = el.dataset.editbelt || null;
+  if (app.beltEdit) go('titles'); else render();
+  // The form is below every belt on the page, so take the user to it.
+  const form = $('#beltForm');
+  if (form) { form.scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#tfName').focus(); }
+});
+on('change', '#beltShowRetired', (e, el) => { app.showRetiredBelts = el.checked; render(); });
+// Switching division re-guesses the team size, unless it has been typed over.
+on('change', '#tfDivision', (e, el) => {
+  const size = $('#tfTeamSize');
+  if (size && !size.dataset.touched) size.value = defaultTeamSize(el.value);
+});
+on('input', '#tfTeamSize', (e, el) => { el.dataset.touched = '1'; });
+// Picking a different show changes where its champion would be called up to.
+on('change', '#tfBrand', (e, el) => {
+  const hint = $('#tfAutoHint');
+  if (!hint) return;
+  const dest = JSON.parse(hint.dataset.dest || '{}')[el.value];
+  const from = app.state.brands[el.value];
+  hint.textContent = dest
+    ? `${from.name} champions would go into the ${dest} draft pool.`
+    : 'Only a belt on a show with a tier above it can call anybody up.';
+});
+
+on('click', '[data-savebelt]', (e, el) => {
+  const id = el.dataset.savebelt;
+  const isNew = id === 'new' || id.startsWith('new:');
+  const rec = {
+    name: $('#tfName').value.trim(),
+    brandId: $('#tfBrand').value || null,
+    division: $('#tfDivision').value,
+    teamSize: $('#tfTeamSize').value === '' ? null : Number($('#tfTeamSize').value),
+    autoPromote: $('#tfAuto').checked,
+  };
+  try {
+    const res = saveChampionship(store, app.state, rec, { id: isNew ? null : id });
+    app.beltEdit = null;
+    flash(`${h(rec.name)} ${res.created ? 'created' : 'saved'}${rec.autoPromote ? ' — its champion is called up at the offseason' : ''}.`);
+    render();
+  } catch (err) { flash(h(err.message), 'err'); render(); }
+});
+
+on('click', '[data-retirebelt]', (e, el) => {
+  const c = app.state.championships[el.dataset.retirebelt];
+  if (!confirm(`Retire the ${c.name}? The lineage is kept — it just comes off the active list.`)) return;
+  retireChampionship(store, app.state, c.id, { on: universeNow() });
+  app.beltEdit = null;
+  flash(`${h(c.name)} retired.`);
+  render();
+});
+on('click', '[data-unretirebelt]', (e, el) => {
+  const c = app.state.championships[el.dataset.unretirebelt];
+  retireChampionship(store, app.state, c.id, { undo: true });
+  flash(`${h(c.name)} is active again.`);
+  render();
+});
+on('click', '[data-deletebelt]', (e, el) => {
+  const c = app.state.championships[el.dataset.deletebelt];
+  if (!confirm(`Delete the ${c.name}? It has never been contested, so nothing is lost.`)) return;
+  try {
+    deleteChampionship(store, app.state, c.id);
+    app.beltEdit = null;
+    flash(`${h(c.name)} deleted.`);
+  } catch (err) { flash(h(err.message), 'err'); }
   render();
 });
 

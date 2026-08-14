@@ -36,13 +36,16 @@ import { buildPrompt, PROMPTS } from '../js/universe/prompts.js';
 import { tiers, brandCard, pyramidText, checkBrand } from '../js/universe/pyramid.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { lastStandBoard } from '../js/universe/laststand.js';
+import { beltsByBrand, saveChampionship, retireChampionship, deleteChampionship,
+  autoPromoteDefault, DIVISION_LABEL } from '../js/universe/championships.js';
 import { monthText, cardText, monthsWithShows, weeklySchedule, monthKey } from '../js/universe/calendar.js';
 
 // ------------------------------------------------------------------ args
 
 const argv = process.argv.slice(2);
 const cmd = argv.shift();
-const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit', 'board', 'add-only'];
+const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit', 'board', 'add-only',
+  'auto-promote', 'no-auto-promote', 'retire', 'unretire', 'delete', 'retired'];
 const flags = {};
 const positional = [];
 for (let i = 0; i < argv.length; i++) {
@@ -502,6 +505,76 @@ const commands = {
     }
   },
 
+  belts() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    beltsByBrand(state, { includeRetired: !!flags.retired }).forEach(r => {
+      console.log(heading(`${r.name} — ${plural(r.count, 'championship')}`
+        + `${r.autoPromotes ? ` · ${r.autoPromotes} calls up` : ''}`));
+      console.log(table(r.belts, [
+        { label: 'Championship', get: c => c.name },
+        { label: 'Division', get: c => c.divisionLabel },
+        { label: 'Holder', get: c => (c.vacant ? 'VACANT' : c.holders.map(x => nameOf(state, x)).join(' & ')) },
+        { label: 'Reigns', align: 'right', get: c => c.reigns.length },
+        { label: '', get: c => [c.autoPromote ? `↑ calls up to ${c.promotesToName}` : '', c.retired ? 'retired' : ''].filter(Boolean).join(' · ') },
+      ], { indent: '  ' }));
+    });
+  },
+
+  // Create or edit one belt. The same command does both, like `brand`.
+  belt() {
+    const store = openStore();
+    const state = project(store);
+    const name = positional[0];
+    if (!name) die('which championship? e.g. node tools/universe.mjs belt "NXT North American Championship" --brand NXT');
+
+    const hit = resolveName(buildIndex(store, 'championship'), name);
+    const existing = hit.ok ? state.championships[hit.id] : null;
+
+    if (flags.delete) {
+      if (!existing) die(`no championship: ${name}`);
+      deleteChampionship(store, state, existing.id);
+      console.log(`deleted ${existing.name}`);
+      return;
+    }
+    if (flags.retire || flags.unretire) {
+      if (!existing) die(`no championship: ${name}`);
+      retireChampionship(store, state, existing.id, { undo: !!flags.unretire, on: flags.date || null });
+      console.log(`${existing.name} ${flags.unretire ? 'is active again' : 'retired'}`);
+      return;
+    }
+
+    let brandId = existing ? existing.brandId : null;
+    if (flags.brand !== undefined) {
+      if (flags.brand === '' || flags.brand === true) brandId = null;
+      else {
+        const b = resolveName(buildIndex(store, 'brand'), flags.brand);
+        if (!b.ok) die(`unknown brand: ${flags.brand}`);
+        brandId = b.id;
+      }
+    }
+
+    const auto = flags['auto-promote'] ? true
+      : flags['no-auto-promote'] ? false
+      : existing ? !!existing.autoPromote : autoPromoteDefault(state, brandId);
+
+    const rec = {
+      name: existing ? (flags.name || existing.name) : name,
+      brandId,
+      division: flags.division || (existing ? existing.division : 'mens'),
+      teamSize: flags['team-size'] ? Number(flags['team-size']) : (existing ? existing.teamSize : null),
+      autoPromote: auto,
+      retiredOn: existing ? existing.retiredOn : null,
+    };
+
+    const res = saveChampionship(store, state, rec, { id: existing ? existing.id : null });
+    const after = project(store).championships[res.id];
+    console.log(`${res.created ? 'created' : 'updated'} ${after.name} [${res.id}]`);
+    console.log(`  ${DIVISION_LABEL[after.division] || after.division} · `
+      + `${after.brandId && state.brands[after.brandId] ? state.brands[after.brandId].name : 'unbranded'}`
+      + `${after.autoPromote ? ' · champion is called up at the offseason' : ''}`);
+  },
+
   prompt() {
     const store = openStore();
     const state = project(store, { asOf: flags['as-of'] || null });
@@ -715,6 +788,9 @@ const commands = {
   shows                                  every show
   state [--as-of D] [--within N]         champions, records, injuries, contracts, feuds
   titles [name]                          title lineage, reigns and title matches
+  belts [--retired]                      how many championships each show carries
+  belt "<name>" [--brand B] [--division D] [--auto-promote|--no-auto-promote]
+       [--retire|--unretire|--delete]    create or edit one championship
   pyramid [--as-of D]                    the brand pyramid, tier by tier
   brand "<name>" [--tier N] [--day D]    create or edit a show
   draft [--tier N] [--commit]            the annual draft for one tier

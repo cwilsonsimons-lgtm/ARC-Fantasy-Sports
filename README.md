@@ -74,7 +74,9 @@ the brand record, so the default `Raw | SmackDown | Dynamite ↓ NXT ↓ Evolve`
 just what the seed file says. Add a show on tier 4 and the old bottom rung starts
 relegating into it; nothing in the code names a brand. **Every championship in a
 new save starts VACANT** — no champion is assumed, and a belt's history begins
-the first time you crown someone.
+the first time you crown someone. How many belts a show carries is yours to set:
+add, rename, move between shows, retire or delete them, and mark any belt as one
+whose champion is called up a tier at the offseason.
 
 The year runs **WrestleMania → Last Stand → Draft → new season**, and the app
 always knows which phase it is in — every past season keeps its dates and can be
@@ -102,7 +104,9 @@ Twelve tabs:
   untouched.
 - **Pyramid** — the tier diagram, and the form that creates or edits a show:
   name, logo, colour, show day, tier, and who it develops for.
-- **Titles** — every belt, click through to its full lineage and title matches.
+- **Titles** — every belt grouped under the show that carries it, with **+ add**
+  to give a show another one, and edit to rename, move, retire or delete it.
+  Click a belt for its full lineage and title matches.
 - **Threads** — questions the log has opened and not answered, oldest first.
 - **Season** — standings, the promotion and relegation lists, a one-click Last
   Stand card, and the draft board for each tier.
@@ -154,6 +158,7 @@ node tools/universe.mjs threads                # what is still hanging
 node tools/universe.mjs heat                   # rivalries and alliances
 node tools/universe.mjs pyramid                # the brand pyramid, tier by tier
 node tools/universe.mjs brand "WCW" --tier 2   # create or edit a show
+node tools/universe.mjs belts                 # how many belts each show carries
 node tools/universe.mjs season                 # standings for the year
 node tools/universe.mjs draft --tier 1         # the annual draft
 node tools/universe.mjs flags --commit         # promotion and relegation lists
@@ -162,8 +167,8 @@ node tools/universe.mjs calendar --month 2027-04  # a month grid, and the week
 node tools/universe.mjs show sh_0088          # one card, and what it changed
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 418 data-layer checks, pure Node
-npm run check:universe-ui     # 228 browser checks against dist/universe.html
+npm run check:universe        # 453 data-layer checks, pure Node
+npm run check:universe-ui     # 247 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

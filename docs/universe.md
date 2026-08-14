@@ -19,6 +19,7 @@ js/universe/
   draft.js     the annual draft — order, board, commit
   season.js    season windows, standings, promotion and relegation
   laststand.js the Last Stand board — candidates, legal pairings, recording
+  championships.js  belts per brand — add, move, retire, delete, call-ups
   calendar.js  the month grid, the weekly nights, one card read back
   prompts.js   copy-paste prompts with state embedded
   ingest.js    screenshots in — transcription prompt, optional vision call
@@ -35,8 +36,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     418 data-layer checks, pure Node
-  universe-ui-check.mjs  228 browser checks against the built page
+  universe-check.mjs     453 data-layer checks, pure Node
+  universe-ui-check.mjs  247 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -202,6 +203,9 @@ same rung or below, which would let movement loop.
 
     node tools/universe.mjs pyramid
     node tools/universe.mjs brand "WCW" --tier 2 --day Saturday --color '#C0392B'
+    node tools/universe.mjs belts                    # how many each show carries
+    node tools/universe.mjs belt "NXT North American Championship" --brand NXT
+    node tools/universe.mjs belt "Hardcore Championship" --retire
 
 ## Championships
 
@@ -245,9 +249,39 @@ whichever reign the defending champion holds. Unification (`unify`) closes both
 and opens one undisputed reign, so the interim run stays in the history with
 `endReason: unified` instead of being erased.
 
+### How many belts a show carries
+
+Up to you, per show. The Titles tab groups every belt under the brand that
+carries it, each row saying how many it has and how many of them call their
+champion up, with **+ add** to give that show another. A brand with none says so
+rather than being left out — "none" is a legitimate answer, and one you may be
+about to change.
+
+| Doing | What it writes |
+| --- | --- |
+| adding a belt | a new `championship` entity — vacant, no history |
+| renaming, moving show, changing division | an entity correction |
+| retiring | `retiredOn` — off the active list, lineage kept |
+| deleting | removes the entity, and only when nothing in the log mentions it |
+
+**Retiring and deleting are different things and the UI offers whichever fits.**
+A belt that has ever been contested keeps its lineage, because that lineage is
+somebody's career; deleting is offered only for a belt the log has never
+touched, which is the one you created by mistake five seconds ago. The store
+enforces the floor: `removeEntity` refuses anything an event points at, whatever
+kind it is.
+
+Belts sort world titles first, then by division, so a show's row reads the way a
+title screen does rather than in creation order.
+
 **`autoPromote`** marks a belt whose holder is called up a tier without having
 to win a Last Stand match — see [Automatic promotion](#automatic-promotion). It
 is a field on the belt precisely so that no rule in the code has to name NXT.
+A new belt on a show whose other belts already call people up **inherits that by
+default**, so adding a second NXT title does not quietly opt it out of the rule
+the first one follows. The form says where that show's champions would land
+before you save it, and refuses the flag on a top-tier belt, which has nowhere
+to call anybody up to.
 
 A **number-one contender** match (`contender`) names a belt without being for
 it: the title moves to `data.contender`, the match is not a title match, and the
@@ -497,7 +531,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 228 browser checks
+npm run check:universe-ui    # 247 browser checks
 ```
 
 | Tab | What it does |
@@ -812,5 +846,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 418 checks, no browser, no network
+npm run check:universe     # 453 checks, no browser, no network
 ```
