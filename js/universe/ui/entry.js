@@ -45,6 +45,7 @@ export function entryView() {
       <div class="row">
         <button class="btn" id="cardSave" disabled>Save card</button>
         <button class="btn ghost" id="cardClear">Clear</button>
+        <button class="btn ghost" id="cardPrompt" title="Copies a prompt telling an AI exactly what format to write in">Copy AI prompt</button>
         <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> saves</span>
       </div>
       <div class="syntax">
@@ -87,14 +88,19 @@ export function cardPreview(store, state, text) {
         : h(nums.map(side).join(' vs '));
       const t = s.data.titleId ? state.championships[s.data.titleId] : null;
       const shot = s.data.contender && state.championships[s.data.contender];
+      // The belt outcome is a button, not a verdict: click it to flip the line
+      // between a title change and a defense before anything is saved.
+      const outcome = t && !s.data.unify
+        ? `<button class="chiplink" data-titletoggle="${s.lineNo}" data-want="${s.data.titleChanged ? 'retain' : 'change'}"
+             title="Click to make this a ${s.data.titleChanged ? 'successful defense' : 'title change'}">${
+            s.data.titleChanged ? chip('NEW CHAMPION', 'new') : '<span class="dim">defense ⇄</span>'}</button>`
+        : (s.data.unify ? chip('UNIFIED', 'new') : '');
       detail = [
         s.data.matchType ? h(s.data.matchType) : '',
         s.data.decision ? h(s.data.decision) : '',
         s.data.interim ? chip('interim', 'new') : '',
         t ? chip(t.name.replace(/ Championship$/, ''), 'title') : '',
-        s.data.unify ? chip('UNIFIED', 'new')
-          : s.data.titleChanged ? chip('NEW CHAMPION', 'new')
-          : (t ? '<span class="dim">defense</span>' : ''),
+        outcome,
         s.data.contender ? `<span class="dim">#1 contender${shot ? `: ${h(shot.name)}` : ''}</span>` : '',
         s.data.note ? `<span class="dim">${h(s.data.note)}</span>` : '',
       ].filter(Boolean).join(' ');
@@ -157,6 +163,7 @@ export function rosterImportPanel(open = false) {
     <div class="row">
       <button class="btn" id="rosterSave" disabled>Import roster</button>
       <button class="btn ghost" id="rosterClear">Clear</button>
+      <button class="btn ghost" id="rosterPrompt" title="Copies a prompt telling an AI exactly what format to write in">Copy AI prompt</button>
       <span class="hint">Brand, gender and status in any order. A brand on its own line applies to everyone under it.</span>
     </div>
     <div id="rosterPreview"></div>

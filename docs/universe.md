@@ -31,8 +31,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     224 data-layer checks, pure Node
-  universe-ui-check.mjs  124 browser checks against the built page
+  universe-check.mjs     242 data-layer checks, pure Node
+  universe-ui-check.mjs  145 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -163,6 +163,19 @@ previous reign with its day count and opens a new one — that is a plain
 consequence of `title.award`, so it happens the same way whether the belt moved
 in a match, was awarded off-screen, or moved because you *corrected* a match
 you had entered wrong.
+
+**Choosing the champion.** Two places, because there are two situations:
+
+- *In the card preview*, a title match shows its outcome as a **button**, not a
+  verdict. The default is inferred from who won — right nearly always — and one
+  click flips it. Clicking rewrites the line itself (`(new champion)` /
+  `(retains)`), so the override is visible in what you typed, survives the next
+  keystroke, and is not hidden in some toggle you will forget about.
+- *On a belt's page*, **Set the champion** names a holder outright with no match
+  at all — for when the game handed a belt over off-screen, or the seed guessed
+  wrong. Two names joined with `&` for a tag title, plus **Set interim** and
+  **Vacate**. It writes an ordinary `title.change`, so the previous reign closes
+  with its day count and voiding the event hands the belt straight back.
 
 **Vacating** (`vacate:`, `strip:`, `retire:` on a card) closes the reign and
 leaves the belt empty. It also opens a thread, because a vacant belt is the most
@@ -387,7 +400,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 124 browser checks
+npm run check:universe-ui    # 145 browser checks
 ```
 
 | Tab | What it does |
@@ -399,7 +412,7 @@ npm run check:universe-ui    # 124 browser checks
 | Season | Standings per brand for the season in progress, the promotion and relegation lists, and a one-click Last Stand card. |
 | Shows | Every saved card, newest first. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
-| Prompts | Three copy-paste prompts with the current state embedded. |
+| Prompts | Five copy-paste prompts with the current state embedded. |
 | Import | Drop screenshots of a card or a roster and turn them into events. |
 
 Clicking any wrestler's name opens their profile: record, win rate, streak,
@@ -463,14 +476,24 @@ so the effects stay pure and survive corrections.
 
 ## Prompt export
 
-Three prompts, each with the current state already embedded so you never
+Five prompts, each with the current state already embedded so you never
 re-explain your universe to another AI:
 
 | Prompt | Carries |
 | --- | --- |
+| `card-format` | the card shorthand, every brand, belt and wrestler name |
+| `roster-format` | the roster shorthand, same name list |
 | `recap` | one show's full card in order, what changed, who holds what |
 | `contenders` | champions, season standings, rivalry heat, title shots owed |
 | `next` | the open threads queue, grouped by kind, oldest first |
+
+The two **format** prompts have a **Copy AI prompt** button sitting next to the
+paste box they belong to, since that is where you want them. They tell the model
+exactly what to produce — the syntax, the real names, and "never invent a
+wrestler who is not on the list" — so whatever comes back pastes straight in and
+parses. They work three ways: attach a screenshot and it transcribes, describe
+the show and it writes it out, or ask it to book a card and it invents one using
+only your roster.
 
 Plain text, not markdown or JSON — both survive a copy worse than lines do. Each
 is a pure function of a projection, so a prompt generated with the header date

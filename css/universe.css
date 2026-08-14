@@ -233,3 +233,6 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .keybox[open] summary::before{content:'▾ '}
 .keybox code{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-2)}
 #shotText{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;line-height:1.6}
+.chiplink{background:none;border:0;padding:0;cursor:pointer;font:inherit}
+.chiplink:hover .chip{filter:brightness(1.2)}
+.chiplink:hover .dim{color:var(--ink-2)}

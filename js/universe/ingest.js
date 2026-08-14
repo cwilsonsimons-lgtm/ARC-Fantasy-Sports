@@ -24,55 +24,17 @@
 // what generic OCR is worst at. Getting it wrong quietly would be worse than
 // asking.
 
+import { CARD_RULES, ROSTER_RULES, knownNames } from './prompts.js';
+
 const API_URL = 'https://api.anthropic.com/v1/messages';
 export const DEFAULT_MODEL = 'claude-sonnet-5';
 export const KEY_STORE = 'arc_universe_key_v1';
 
 // ------------------------------------------------------------------ prompts
 
-const CARD_RULES = `Answer in this shorthand, one segment per line, nothing else:
-
-Show Name / YYYY-MM-DD / Brand
-Winner d. Loser — stipulation, Championship Name
-Partner & Partner d. Partner & Partner (tag)
-A d. B, C — triple threat
-A vs B (draw)
-* Attacker attacks Victim after the match
-* Saver saves Victim from Attacker
-Speaker promo on Target
-injury: Name (6 weeks, knee)
-
-Rules:
-- the winner always goes on the left of "d."
-- "&" joins partners in one corner; "," separates opposing corners
-- put the stipulation, the finish (pinfall, submission, dq, countout) and the
-  championship after a dash or in brackets
-- if a title changed hands, just name the belt — do not write "new champion"
-- use "vs" only when there was no winner`;
-
-const ROSTER_RULES = `Answer as one wrestler per line, nothing else:
-
-BRAND NAME
-Wrestler Name, gender, status
-
-Rules:
-- put a brand on its own line, then everyone on it underneath
-- gender is m or f
-- status is one of: active, relegation, promotion, free agent, injured
-- if the screenshot does not show a status, write active
-- for tag teams or factions, add a section at the end:
-  Tag Teams
-  Team Name = Member One & Member Two`;
-
-// The roster is embedded so spellings come back matching what is already in the
-// store — the single biggest source of "unknown name" errors otherwise.
-function rosterHint(state, limit = 220) {
-  const names = Object.values(state.wrestlers).map(w => w.name).slice(0, limit);
-  const belts = Object.values(state.championships).filter(c => !c.retired).map(c => c.name);
-  return `Known wrestlers (use these exact spellings where they match):\n${names.join(', ')}\n\n`
-    + `Known championships:\n${belts.join(', ')}`;
-}
-
+// The format rules live in prompts.js, because the paste boxes need the same
+// paragraph — "write me a card in this format" and "read this screenshot and
+// write it in this format" differ only in the sentence around them.
 export function transcriptionPrompt(state, kind = 'card') {
   const isRoster = kind === 'roster';
   return `Read this screenshot from WWE 2K Universe mode and transcribe ${
@@ -80,7 +42,7 @@ export function transcriptionPrompt(state, kind = 'card') {
 
 ${isRoster ? ROSTER_RULES : CARD_RULES}
 
-${rosterHint(state)}
+${knownNames(state)}
 
 Transcribe only what is visible. If a name is cut off or unreadable, leave that
 line out rather than guessing. Output the lines and nothing else — no preamble,

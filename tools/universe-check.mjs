@@ -18,11 +18,11 @@ import { UniverseStore, memoryAdapter, ValidationError } from '../js/universe/st
 import { project, champions, titleLineage, standings } from '../js/universe/project.js';
 import { seedFromJSON } from '../js/universe/seed.js';
 import { parseRoster, commitRoster } from '../js/universe/roster.js';
-import { parseCard, commitCard } from '../js/universe/card.js';
+import { parseCard, commitCard, setTitleOutcome } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
 import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
   proposeLastStand, lastStandCard } from '../js/universe/season.js';
-import { recapPrompt, contenderPrompt, nextPrompt, PROMPTS, buildPrompt } from '../js/universe/prompts.js';
+import { recapPrompt, contenderPrompt, nextPrompt, entryPrompt, PROMPTS, buildPrompt } from '../js/universe/prompts.js';
 import { cleanReply, detectKind, transcriptionPrompt, readScreenshot } from '../js/universe/ingest.js';
 
 let pass = 0, fail = 0;
@@ -447,8 +447,45 @@ const next = nextPrompt(p9);
 check('what-happens-next uses the queue', next.includes('OPEN THREADS'), true);
 check('and only the open ones', next.includes('open ') && !next.includes('closed'), true);
 check('every prompt is plain text', [recap, contenders, next].every(t => !/[<>{}]/.test(t.slice(0, 200))), true);
-check('three prompts are registered', PROMPTS.length, 3);
+check('five prompts are registered', PROMPTS.length, 5);
 check('and each builds from an id', PROMPTS.every(p => buildPrompt(p.id, p9, { showId: p9.shows[0].id }).length > 200), true);
+
+// ──────────────────────────────────────────────────────────────── choosing the champion
+section('choosing the champion');
+check('the format prompt teaches the shorthand', entryPrompt(p9, 'card').includes('Winner d. Loser'), true);
+check('and names every wrestler by hand', entryPrompt(p9, 'card').includes('Cody Rhodes'), true);
+check('and every belt', entryPrompt(p9, 'card').includes('WWE Championship'), true);
+check('and forbids inventing people', /never invent a wrestler/i.test(entryPrompt(p9, 'card')), true);
+check('the roster one is a different shape', entryPrompt(p9, 'roster').includes('one wrestler per line'), true);
+check('both format prompts are registered', PROMPTS.filter(p => /format$/.test(p.id)).length, 2);
+
+const lineIn = 'Damian Priest d. Gunther — World Heavyweight Championship';
+check('an outcome can be forced onto a line', setTitleOutcome(lineIn, 'retain'), `${lineIn} (retains)`);
+check('and flipped back', setTitleOutcome(setTitleOutcome(lineIn, 'retain'), 'change'), `${lineIn} (new champion)`);
+check('without stacking up', setTitleOutcome(setTitleOutcome(setTitleOutcome(lineIn, 'retain'), 'change'), 'retain'), `${lineIn} (retains)`);
+check('an existing modifier is replaced, not appended',
+  setTitleOutcome(`${lineIn}, new champion`, 'retain'), `${lineIn} (retains)`);
+
+const s10 = fresh();
+const forced = parseCard(`Raw / 2026-09-01 / Raw\n${setTitleOutcome(lineIn, 'retain')}`, s10);
+check('the forced outcome survives the parser', forced.segments[0].data.titleChanged, false);
+commitCard(s10, forced);
+check('and the belt does not move', project(s10).championships['c:world-heavyweight-championship'].holders, ['w:gunther']);
+check('but the win still counts', project(s10).wrestlers['w:damian-priest'].record.w, 1);
+check('and it is scored as a defense', titleLineage(project(s10), 'c:world-heavyweight-championship')[0].defenses, 1);
+
+// Setting a champion outright, with no match at all.
+const s11 = fresh();
+s11.append({
+  type: 'title.change', date: '2026-09-01', participants: [{ ref: 'w:sami-zayn', role: 'champion' }],
+  data: { titleId: 'c:intercontinental-championship', reason: 'awarded' },
+});
+let p11 = project(s11);
+check('a champion can just be named', p11.championships['c:intercontinental-championship'].holders, ['w:sami-zayn']);
+check('the previous reign closes with its days', titleLineage(p11, 'c:intercontinental-championship')[0].days, 203);
+check('and nobody had to wrestle', p11.wrestlers['w:sami-zayn'].record.total, 0);
+s11.voidEvent(s11.effectiveEvents().slice(-1)[0].id, 'undo');
+check('voiding it hands the belt back', project(s11).championships['c:intercontinental-championship'].holders, ['w:bron-breakker']);
 
 // ──────────────────────────────────────────────────────────────── screenshots
 section('screenshot ingest');

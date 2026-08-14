@@ -144,12 +144,12 @@ export function parseCard(text, store, { date = null, brandId = null, showName =
 
     // -- non-match segments -------------------------------------------------
     const seg = parseSegment(line, { corner, idx, lineNo, raw, fail, warn });
-    if (seg) { segments.push(seg); return; }
+    if (seg) { segments.push({ ...seg, lineNo }); return; }
 
     // -- matches -------------------------------------------------------------
     if (DEFEAT.test(line) || VERSUS.test(line)) {
       const m = parseMatch(line, { corner, idx, state, lineNo, raw, fail, warn, show });
-      if (m) segments.push(m);
+      if (m) segments.push({ ...m, lineNo });
       return;
     }
 
@@ -510,6 +510,20 @@ function severityOf(note) {
   if (/major|severe|surgery|torn|acl|out for the year/.test(n)) return 'major';
   if (/minor|tweak|bruise/.test(n)) return 'minor';
   return null;
+}
+
+// Rewrite one line to force a title outcome. Whether a belt changed hands is
+// inferred from who won, which is right nearly always and wrong exactly when
+// the game did something the log has not caught up with. Rather than hold that
+// decision in some hidden toggle, the override is written into the line itself:
+// visible, editable, and it survives the next keystroke like anything else you
+// typed.
+export function setTitleOutcome(line, want) {
+  const stripped = String(line || '')
+    .replace(/\s*\((?:new champion|retains?|retained|and new|and still|defense)\)/gi, '')
+    .replace(/\s*,\s*(?:new champion|retains?|retained|and new|and still)\b/gi, '')
+    .trimEnd();
+  return `${stripped} (${want === 'change' ? 'new champion' : 'retains'})`;
 }
 
 // ------------------------------------------------------------------ commit

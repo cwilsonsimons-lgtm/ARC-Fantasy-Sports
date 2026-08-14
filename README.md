@@ -80,7 +80,10 @@ Nine tabs:
   Last Stand card.
 - **Shows** and **Log** — every card saved, every event and correction, with
   one-click fixes.
-- **Prompts** — copy-paste prompts for another AI, state already embedded.
+- **Prompts** — copy-paste prompts for another AI, state already embedded. The
+  two format prompts also have a **Copy AI prompt** button beside the card and
+  roster paste boxes: they tell the model the exact syntax and your real names,
+  so what comes back pastes straight in.
 - **Import** — drop a screenshot of a card or a roster and turn it into events.
 
 Clicking a wrestler anywhere opens their profile: record, reigns with day
@@ -92,6 +95,11 @@ Nothing derived is persisted. Champions, brand rosters, win/loss records, title
 lineages, faction membership, rivalry heat and the threads queue are all folded
 out of the log on demand, so correcting a mistake is one append to a correction
 log and every downstream number recalculates on the next read.
+
+Inference is never the last word. A title match's outcome is a button in the
+preview — one click flips it between a title change and a defense, by rewriting
+the line so the override is visible — and any belt's page can name a champion
+outright with no match at all.
 
 Relationships are derived too, never entered: attacks and losses build rivalry,
 tag wins and saves build alliance, an attack spreads to the victim's tag partner
@@ -111,8 +119,8 @@ node tools/universe.mjs season                 # standings for the year
 node tools/universe.mjs flags --commit         # promotion and relegation lists
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 224 data-layer checks, pure Node
-npm run check:universe-ui     # 124 browser checks against dist/universe.html
+npm run check:universe        # 242 data-layer checks, pure Node
+npm run check:universe-ui     # 145 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

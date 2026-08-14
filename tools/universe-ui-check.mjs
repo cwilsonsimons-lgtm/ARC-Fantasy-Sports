@@ -310,10 +310,18 @@ await check('and clears the flags of everyone who fought', `${tab('season')};
   document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 2');
 
 // ---------------------------------------------------------------- prompts
-await check('prompts tab offers three', `${tab('prompts')};
-  document.querySelectorAll('.promptcard').length`, 3);
+await check('prompts tab offers five', `${tab('prompts')};
+  document.querySelectorAll('.promptcard').length`, 5);
 await check('what-happens-next is the default', `document.querySelector('.promptcard.on').dataset.prompt`, 'next');
 await check('and it is built from the queue', `document.getElementById('promptText').value.includes('OPEN THREADS')`, true);
+await check('the card format prompt teaches the syntax', `document.querySelector('[data-prompt=card-format]').click();
+  const v = document.getElementById('promptText').value;
+  v.includes('Winner d. Loser') && v.includes('Cody Rhodes') && v.includes('WWE Championship')`, true);
+await check('and tells it not to invent names', `/never invent a wrestler/i
+  .test(document.getElementById('promptText').value)`, true);
+await check('the roster format prompt is different', `document.querySelector('[data-prompt=roster-format]').click();
+  document.getElementById('promptText').value.includes('one wrestler per line')`, true);
+
 await check('recap embeds a real card', `document.querySelector('[data-prompt=recap]').click();
   const v = document.getElementById('promptText').value;
   v.includes('CARD, IN ORDER') && v.includes('d.')`, true);
@@ -330,6 +338,61 @@ await check('the event name is editable', `const i = document.getElementById('pr
   document.getElementById('promptText').value.includes('SummerSlam')`, true);
 await check('copy reports what happened', `document.getElementById('promptCopy').click();
   new Promise(r => setTimeout(() => r(/copied|clipboard/.test(document.getElementById('promptSize').textContent)), 200))`, true);
+
+// ---------------------------------------------------------------- format prompts by the boxes
+await check('the card box has its own prompt button', `${tab('tonight')};
+  !!document.getElementById('cardPrompt')`, true);
+await check('the roster box has one too', `${tab('roster')};
+  document.getElementById('rosterPanel').open = true;
+  !!document.getElementById('rosterPrompt')`, true);
+
+// ---------------------------------------------------------------- choosing the champion
+await page.evaluate(tab('tonight'));
+await type('Raw / 2027-05-16 / Raw\nDamian Priest d. Gunther — World Heavyweight Championship');
+await check('a title match reads as a change by default',
+  `!!document.querySelector('#cardPreview .chip.new')`, true);
+await check('the outcome is a button, not a verdict', `!!document.querySelector('[data-titletoggle]')`, true);
+await check('clicking it rewrites the line', `document.querySelector('[data-titletoggle]').click();
+  document.getElementById('cardText').value.includes('(retains)')`, true);
+await check('and the preview follows', `new Promise(r => setTimeout(() =>
+  r(document.querySelector('#cardPreview').textContent.includes('defense')), 200))`, true);
+await check('clicking back flips it again', `document.querySelector('[data-titletoggle]').click();
+  new Promise(r => setTimeout(() => r([
+    document.getElementById('cardText').value.includes('(new champion)'),
+    !document.getElementById('cardText').value.includes('(retains)'),
+  ]), 200))`, [true, true]);
+await check('saving honours the choice', `document.querySelector('[data-titletoggle]').click();
+  new Promise(r => setTimeout(() => { document.getElementById('cardSave').click();
+    r(UNIVERSE.app.state.championships['c:world-heavyweight-championship'].holders); }, 250))`,
+  h => h.length === 1 && h[0] !== 'w:damian-priest');
+
+await check('a belt page can set its champion', `${tab('titles')};
+  [...document.querySelectorAll('.belt')].find(b => b.textContent.includes('Intercontinental')).click();
+  !!document.getElementById('champName')`, true);
+await check('typing a name and setting it moves the belt', `
+  document.getElementById('champName').value = 'Sami Zayn';
+  document.querySelector('[data-setchamp][data-reason=awarded]').click();
+  UNIVERSE.app.state.championships['c:intercontinental-championship'].holders`, ['w:sami-zayn']);
+await check('it is an ordinary event in the log', `UNIVERSE.store.effectiveEvents().slice(-1)[0].type`, 'title.change');
+await check('so the previous reign closed properly', `UNIVERSE.app.state.championships['c:intercontinental-championship'].reigns.length`, 2);
+await check('a bad name is refused, not guessed', `
+  document.getElementById('champName').value = 'Someone Fake';
+  document.querySelector('[data-setchamp][data-reason=awarded]').click();
+  !!document.querySelector('#pane-title .msg.err')`, true);
+await check('an interim champion can be set too', `
+  document.getElementById('champName').value = 'Bron Breakker';
+  document.querySelector('[data-setchamp][data-reason=interim]').click();
+  UNIVERSE.app.state.championships['c:intercontinental-championship'].interimHolders`, ['w:bron-breakker']);
+await check('and the real champion still holds it', `
+  UNIVERSE.app.state.championships['c:intercontinental-championship'].holders`, ['w:sami-zayn']);
+await check('vacating empties it', `document.querySelector('[data-vacate]').click();
+  UNIVERSE.app.state.championships['c:intercontinental-championship'].vacant`, true);
+await check('which opens a thread', `UNIVERSE.app.state.threads
+  .some(t => t.kind === 'vacant-title' && t.about === 'c:intercontinental-championship')`, true);
+await check('and voiding that undoes it', `
+  const ev = UNIVERSE.store.effectiveEvents().filter(e => e.type === 'title.change').slice(-1)[0];
+  UNIVERSE.store.voidEvent(ev.id, 'test'); UNIVERSE.render();
+  UNIVERSE.app.state.championships['c:intercontinental-championship'].holders`, ['w:sami-zayn']);
 
 // ---------------------------------------------------------------- import
 await check('import tab has a drop zone', `${tab('import')}; !!document.getElementById('drop')`, true);

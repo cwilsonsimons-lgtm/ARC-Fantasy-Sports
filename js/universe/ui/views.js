@@ -141,6 +141,24 @@ export function titlePage(state, titleId) {
        ${c.interimHolders.map(x => wlink(state.wrestlers[x] || { id: x, name: x })).join(' &amp; ')}
        <span class="dim">· since ${h(c.interimSince)}</span></div>` : '';
 
+  // Who holds a belt is a decision, not only a consequence. Booking a match is
+  // the usual way it moves, but sometimes the game handed it over off-screen, or
+  // the seed guessed wrong, and there should be a way to just say so.
+  const setter = `<div class="card" style="margin-bottom:16px">
+      <h2>Set the champion <span class="sub">writes a title change dated ${h(state.asOf)} — no match needed</span></h2>
+      <div class="row" style="margin-top:0">
+        <input type="text" id="champName" placeholder="${c.division === 'tag' ? 'Name &amp; Name' : 'Wrestler name'}"
+          style="flex:1;min-width:200px" value="">
+        <button class="btn" data-setchamp="${h(c.id)}" data-reason="awarded">Set champion</button>
+        <button class="btn ghost" data-setchamp="${h(c.id)}" data-reason="interim">Set interim</button>
+        ${c.vacant ? '' : `<button class="btn danger" data-vacate="${h(c.id)}">Vacate</button>`}
+      </div>
+      <div class="hint" style="margin-top:8px">
+        ${c.division === 'tag' ? 'Two names joined with &amp; for a tag title. ' : ''}Everything downstream
+        recalculates, and the change lands in the log where it can be voided like anything else.
+      </div>
+    </div>`;
+
   return `<div class="backrow">
       <button class="linkbtn" data-tab="titles">← all championships</button>
     </div>
@@ -150,6 +168,7 @@ export function titlePage(state, titleId) {
       ${interimLine}
     </div>
     <div class="facts2">${facts}</div>
+    ${setter}
 
     <h2>Lineage <span class="sub">every reign, newest first · interim runs are marked</span></h2>
     <div class="card flush">${table(lineage, [

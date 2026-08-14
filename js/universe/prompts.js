@@ -41,6 +41,89 @@ function rivalryBlock(state, limit = 8) {
     + `${r.meetings} meeting${r.meetings === 1 ? '' : 's'}, last ${r.last} (${Object.keys(r.why).join(', ')})`));
 }
 
+// ------------------------------------------------------------------ format
+//
+// The rules that describe the entry shorthand. These sit here rather than in
+// ingest.js because two different jobs need the same paragraph: "read this
+// screenshot and write it like this" and "write me a card in this format".
+
+export const CARD_RULES = `Answer in this shorthand, one segment per line, nothing else:
+
+Show Name / YYYY-MM-DD / Brand
+Winner d. Loser — stipulation, Championship Name
+Partner & Partner d. Partner & Partner (tag)
+A d. B, C — triple threat
+A vs B (draw)
+* Attacker attacks Victim after the match
+* Saver saves Victim from Attacker
+Speaker promo on Target
+injury: Name (6 weeks, knee)
+promise: Name — Championship Name
+vacate: Championship Name
+
+Rules:
+- the first line is the show: name, date, brand, separated by "/"
+- the winner always goes on the left of "d."
+- "&" joins partners in one corner; "," separates opposing corners
+- put the stipulation, the finish (pinfall, submission, dq, countout) and the
+  championship after a dash or in brackets
+- if a title changed hands, just name the belt — do not write "new champion",
+  that is worked out from who won
+- write "(retains)" only if the champion won but you want it stated
+- use "vs" only when there was no winner, and give a finish like (draw) or (dq)
+- lines starting with "*" are non-match segments
+- never invent a wrestler who is not on the list below`;
+
+export const ROSTER_RULES = `Answer as one wrestler per line, nothing else:
+
+BRAND NAME
+Wrestler Name, gender, status
+
+Rules:
+- put a brand on its own line, then everyone on it underneath
+- gender is m or f
+- status is one of: active, relegation, promotion, free agent, injured
+- if no status is shown, write active
+- put free agents under a "Free Agents" heading
+- for tag teams or factions, add a section at the end:
+  Tag Teams
+  Team Name = Member One & Member Two
+  Factions
+  Faction Name = One & Two & Three`;
+
+// Everything the model needs to write names the parser will recognise.
+export function knownNames(state, limit = 260) {
+  const names = Object.values(state.wrestlers).map(w => w.name).slice(0, limit);
+  const belts = Object.values(state.championships).filter(c => !c.retired).map(c => c.name);
+  const brands = Object.values(state.brands).map(b => b.name);
+  return `Brands: ${brands.join(', ')}\n\n`
+    + `Championships: ${belts.join(', ')}\n\n`
+    + `Wrestlers (use these exact spellings):\n${names.join(', ')}`;
+}
+
+// The prompt that sits beside the paste boxes. It tells the model exactly what
+// to produce, so whatever comes back can be pasted straight in.
+export function entryPrompt(state, kind = 'card') {
+  const isRoster = kind === 'roster';
+  return `I am keeping a WWE 2K Universe mode save in a tool that reads a specific
+plain-text format. I need you to give me ${isRoster ? 'a roster' : 'a show card'} in exactly that format.
+
+${isRoster ? ROSTER_RULES : CARD_RULES}
+
+${knownNames(state)}
+
+${isRoster
+    ? `If I give you a screenshot of a roster page, transcribe it. If I describe a
+roster instead, write it out. Either way: only the lines, no preamble, no
+explanation, no code fences, no markdown.`
+    : `If I give you a screenshot of a results screen, transcribe it. If I describe
+what happened on the show, write it out. If I ask you to book a card, invent it
+using only the wrestlers listed above. Either way: only the lines, no preamble,
+no explanation, no code fences, no markdown.
+
+Today's universe date is ${state.asOf}.`}`;
+}
+
 // ------------------------------------------------------------------ recap
 
 export function recapPrompt(state, showId) {
@@ -162,6 +245,18 @@ wrestlers who do not appear above.`;
 // ------------------------------------------------------------------ registry
 
 export const PROMPTS = [
+  {
+    id: 'card-format', label: 'Write me a card',
+    blurb: 'The card format, the roster and the belts — for an AI to fill in.',
+    needs: null,
+    build: state => entryPrompt(state, 'card'),
+  },
+  {
+    id: 'roster-format', label: 'Write me a roster',
+    blurb: 'The roster format with every brand and name the parser knows.',
+    needs: null,
+    build: state => entryPrompt(state, 'roster'),
+  },
   {
     id: 'recap', label: 'Show recap',
     blurb: 'The full card and results of a show, ready to be written up.',

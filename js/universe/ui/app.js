@@ -11,16 +11,17 @@
 import { UniverseStore, localStorageAdapter } from '../store.js';
 import { project } from '../project.js';
 import { seedFromJSON } from '../seed.js';
-import { commitCard } from '../card.js';
+import { commitCard, setTitleOutcome } from '../card.js';
 import { commitRoster } from '../roster.js';
 import { UNIVERSE_SEED } from '../seed-data.js';
 import { $, h, on, today, plural } from './dom.js';
+import { buildIndex, resolve as resolveName } from '../util.js';
 import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage,
   threadsView, heatPanel, seasonView } from './views.js';
 import { entryView, cardPreview, rosterImportPanel, rosterPreview } from './entry.js';
 import { promptsView, importView, copyText } from './tools.js';
 import { proposeFlags, commitFlags, proposeLastStand, lastStandCard } from '../season.js';
-import { buildPrompt } from '../prompts.js';
+import { buildPrompt, entryPrompt } from '../prompts.js';
 import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
 
 const store = new UniverseStore({ adapter: localStorageAdapter() });
@@ -261,6 +262,77 @@ on('click', '#reset', () => {
   save();
   app.tab = 'tonight';
   flash('Universe reset to the seed roster.');
+  render();
+});
+
+// ------------------------------------------------------------------ format prompts
+
+const copyEntryPrompt = async (kind, statusEl) => {
+  const ok = await copyText(entryPrompt(app.state, kind));
+  const el = $(statusEl);
+  if (el) el.textContent = ok
+    ? 'prompt copied — paste it into any AI, with a screenshot or a description'
+    : 'could not reach the clipboard';
+  if (!el) flash(ok ? 'Prompt copied — paste it into any AI, with a screenshot or a description.' : 'Could not reach the clipboard.', ok ? 'ok' : 'warn');
+  if (!el) render();
+};
+on('click', '#cardPrompt', () => copyEntryPrompt('card', null));
+on('click', '#rosterPrompt', () => copyEntryPrompt('roster', null));
+
+// Flip a title match between "the belt moved" and "the champion retained" by
+// rewriting the line, so the override is visible in the text you typed.
+on('click', '[data-titletoggle]', (e, el) => {
+  const box = $('#cardText');
+  if (!box) return;
+  const lineNo = +el.dataset.titletoggle;
+  const lines = box.value.split('\n');
+  if (!lines[lineNo - 1]) return;
+  lines[lineNo - 1] = setTitleOutcome(lines[lineNo - 1], el.dataset.want);
+  box.value = lines.join('\n');
+  refreshCardPreview();
+});
+
+// ------------------------------------------------------------------ champions
+
+// Resolve "Cody Rhodes" or "Johnny Gargano & Tommaso Ciampa" to entity ids.
+function resolveNames(text) {
+  const idx = buildIndex(store, 'wrestler');
+  const names = String(text || '').split(/\s*[&+,]\s*|\s+and\s+/i).map(s => s.trim()).filter(Boolean);
+  const ids = [], bad = [];
+  names.forEach(n => {
+    const hit = resolveName(idx, n);
+    if (hit.ok) ids.push(hit.id);
+    else bad.push(hit.reason === 'ambiguous' ? `"${n}" matches ${hit.candidates.join(', ')}` : `no wrestler called "${n}"`);
+  });
+  return { ids, bad };
+}
+
+on('click', '[data-setchamp]', (e, el) => {
+  const titleId = el.dataset.setchamp;
+  const input = $('#champName');
+  const { ids, bad } = resolveNames(input ? input.value : '');
+  if (bad.length) { flash(bad.map(h).join('; '), 'err'); render(); return; }
+  if (!ids.length) { flash('Type a name first — or two names joined with &amp; for a tag title.', 'warn'); render(); return; }
+  store.append({
+    type: 'title.change', date: universeNow(), source: 'dashboard',
+    participants: ids.map(ref => ({ ref, role: 'champion' })),
+    data: { titleId, reason: el.dataset.reason },
+    note: 'set from the dashboard',
+  });
+  save();
+  flash(`${ids.map(i => h(app.state.wrestlers[i].name)).join(' &amp; ')} is now the ${
+    el.dataset.reason === 'interim' ? 'interim ' : ''}champion.`);
+  render();
+});
+
+on('click', '[data-vacate]', (e, el) => {
+  store.append({
+    type: 'title.change', date: universeNow(), source: 'dashboard',
+    participants: [], data: { titleId: el.dataset.vacate, reason: 'vacated' },
+    note: 'vacated from the dashboard',
+  });
+  save();
+  flash('Title vacated. That opens a thread until somebody wins it.');
   render();
 });
 
