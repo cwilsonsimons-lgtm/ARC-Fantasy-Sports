@@ -69,15 +69,28 @@ It stores a WWE 2K Universe mode save as an event log — wrestlers, brands,
 championships, tag teams and factions, plus every match, attack, promo, title
 change, injury, contract and brand transfer that happens to them.
 
-Nine tabs:
+It is organised around a **customisable brand pyramid** — tiers are numbers on
+the brand record, so the default `Raw | SmackDown | Dynamite ↓ NXT ↓ Evolve` is
+just what the seed file says. Add a show on tier 4 and the old bottom rung starts
+relegating into it; nothing in the code names a brand. **Every championship in a
+new save starts VACANT** — no champion is assumed, and a belt's history begins
+the first time you crown someone.
+
+The year runs **WrestleMania → Last Stand → Draft**: WrestleMania puts the
+promotion and relegation lists up, Last Stand is where those names fight for the
+move, and the draft reshuffles each tier afterwards.
+
+Ten tabs:
 
 - **Tonight** — type a card, see it parsed as you type, save it. Active
   rivalries, alliances and the oldest open threads sit underneath.
 - **Roster** — paste a roster, then who is on each brand.
+- **Pyramid** — the tier diagram, and the form that creates or edits a show:
+  name, logo, colour, show day, tier, and who it develops for.
 - **Titles** — every belt, click through to its full lineage and title matches.
 - **Threads** — questions the log has opened and not answered, oldest first.
-- **Season** — standings, the promotion and relegation lists, and a one-click
-  Last Stand card.
+- **Season** — standings, the promotion and relegation lists, a one-click Last
+  Stand card, and the draft board for each tier.
 - **Shows** and **Log** — every card saved, every event and correction, with
   one-click fixes.
 - **Prompts** — copy-paste prompts for another AI, state already embedded. The
@@ -115,12 +128,15 @@ node tools/universe.mjs card card.txt --dry    # type a show's card in shorthand
 node tools/universe.mjs amend ev_0081 winner="Gunther"
 node tools/universe.mjs threads                # what is still hanging
 node tools/universe.mjs heat                   # rivalries and alliances
+node tools/universe.mjs pyramid                # the brand pyramid, tier by tier
+node tools/universe.mjs brand "WCW" --tier 2   # create or edit a show
 node tools/universe.mjs season                 # standings for the year
+node tools/universe.mjs draft --tier 1         # the annual draft
 node tools/universe.mjs flags --commit         # promotion and relegation lists
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 242 data-layer checks, pure Node
-npm run check:universe-ui     # 145 browser checks against dist/universe.html
+npm run check:universe        # 291 data-layer checks, pure Node
+npm run check:universe-ui     # 170 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

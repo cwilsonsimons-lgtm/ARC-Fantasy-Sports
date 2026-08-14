@@ -15,6 +15,8 @@ js/universe/
   store.js     the three logs, append / amend / void, storage adapters
   project.js   the fold — replays events into current state
   seed.js      load a universe from JSON
+  pyramid.js   tiers, what is above and below a brand, where movement lands
+  draft.js     the annual draft — order, board, commit
   season.js    season windows, standings, promotion and relegation
   prompts.js   copy-paste prompts with state embedded
   ingest.js    screenshots in — transcription prompt, optional vision call
@@ -31,8 +33,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     242 data-layer checks, pure Node
-  universe-ui-check.mjs  145 browser checks against the built page
+  universe-check.mjs     291 data-layer checks, pure Node
+  universe-ui-check.mjs  170 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -80,7 +82,7 @@ them into events and drops them before storing the record.
 | Kind | Id | Fields |
 | --- | --- | --- |
 | `wrestler` | `w:roman-reigns` | name, gender, alignment, debut, aliases, overall |
-| `brand` | `b:raw` | name, color, tier |
+| `brand` | `b:raw` | name, abbr, color, logo, tier, day, parentId |
 | `championship` | `c:wwe-championship` | name, brandId, division, teamSize, activeFrom, retiredOn |
 | `group` | `g:the-bloodline` | name, kind (`tagTeam` / `faction` / `alliance`), memberIds, leaderId, brandId |
 
@@ -156,7 +158,55 @@ reusing these rather than growing the list. (`feud.heat` is the old name for
 `rivalry.heat`; the projector still accepts it so saves written before the
 rename replay unchanged.)
 
+## The pyramid
+
+A universe is a stack of tiers, not a hardcoded Raw/SmackDown/NXT. `tier` is an
+ordinary number on the brand record — 1 is the top, there is no maximum, and
+several brands share a rung. The default seed is:
+
+    Raw | SmackDown | Dynamite  ↓  NXT  ↓  Evolve
+
+but that is only what the seed file says. Another save can run
+
+    Raw | SmackDown  ↓  NXT | WCW  ↓  Evolve
+
+and a third can have six rungs. **Nothing in the code names a brand.** Promotion,
+relegation, Last Stand pairing and the draft all ask `pyramid.js` what is above
+or below a brand and act on the answer, which is why adding a tier 4 makes the
+old bottom rung start relegating with no code change.
+
+| Field | What it does |
+| --- | --- |
+| `tier` | which rung, 1 at the top. Numbers need not be consecutive |
+| `parentId` | optional "develops for" link — send Evolve's promotions to NXT specifically |
+| `day`, `logo`, `color`, `abbr` | how the show presents itself |
+
+Movement resolves in this order: the parent link if it points the right way, then
+a brand on the neighbouring tier that names this one as its parent, then the
+thinnest roster on that tier — which keeps rosters from drifting apart over a few
+seasons. A tier-1 brand has nowhere to be promoted to and the bottom rung has
+nowhere to be relegated to, and both return null rather than inventing a
+destination.
+
+The **Pyramid** tab draws it, and creating or editing a show there is a form:
+name, short name, logo, colour, tier, show day, and who it develops for. Invalid
+shapes are refused with a reason — tier 0, a nameless show, or a parent on the
+same rung or below, which would let movement loop.
+
+    node tools/universe.mjs pyramid
+    node tools/universe.mjs brand "WCW" --tier 2 --day Saturday --color '#C0392B'
+
 ## Championships
+
+**Every championship in a new save is VACANT.** Nothing is pre-assigned from
+real-world champions, on any brand or any tier, and a belt's history begins the
+first time somebody wins it inside your save — so reign 1 of the WWE
+Championship is whoever *you* crowned. A championship created later starts
+vacant too, because a belt only has a holder once a `title.award` effect has put
+one there. The UI says `VACANT` rather than trying to show a champion.
+
+(A seed file may still include a `titleHolders` block if you deliberately want a
+save to start mid-reign. The shipped seed has none.)
 
 A belt carries a brand, a division and a lineage. Winning one closes the
 previous reign with its day count and opens a new one — that is a plain
@@ -400,16 +450,17 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 145 browser checks
+npm run check:universe-ui    # 170 browser checks
 ```
 
 | Tab | What it does |
 | --- | --- |
 | Tonight | Type a card. The right-hand pane shows what the parser heard, updated on every keystroke; the save button stays disabled while anything is wrong. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> saves. Below it: active rivalries, active alliances and the oldest open threads. |
 | Roster | Paste box (collapsed) over a table per brand, plus free agents and every team and faction. |
+| Pyramid | The tier diagram, and the form that creates or edits a show. |
 | Titles | Every belt with holder, interim holder, days, defenses and reign count. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
 | Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
-| Season | Standings per brand for the season in progress, the promotion and relegation lists, and a one-click Last Stand card. |
+| Season | Standings per brand for the season in progress, the promotion and relegation lists, a one-click Last Stand card, and the draft board for each tier. |
 | Shows | Every saved card, newest first. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
 | Prompts | Five copy-paste prompts with the current state embedded. |
@@ -451,9 +502,19 @@ draw — ordered by points, then win rate, then matches wrestled. That last
 tiebreak matters: among a group all sitting on zero, the one who was barely
 booked sinks to the bottom rather than whoever comes last alphabetically.
 
-**The lists.** After WrestleMania, `proposeFlags` takes the bottom of each main
-brand and the top of the development brand, **per gender**, because the matches
-are gender-segregated. Champions are never on the relegation list — holding a
+**The lists.** After WrestleMania, `proposeFlags` reads the pyramid: every brand
+with a rung beneath it puts its bottom names on the relegation list, every brand
+with a rung above it puts its top names on the promotion list, **per gender**,
+because the matches are. On a three-tier pyramid the middle rung does both — NXT
+names go up to tier 1 and down to Evolve in the same year.
+
+The lists are then **balanced to an even number** per tier, per gender, per
+direction. These names exist to face each other, so an odd list leaves somebody
+with no opponent, and pairing across a tier or a gender would change what the
+match is for. Where a tier has several brands the safest name is spared; where it
+has only one there is nobody to spare against, so the next name down is called up
+instead. Without this a three-brand tier flags three per gender and one of them
+always has nobody to fight. Champions are never on the relegation list — holding a
 belt is the one thing that keeps you up. Nothing is written until you confirm:
 flagging is a booking decision, so the proposal is shown first and then written
 as ordinary `status.change` events.
@@ -473,6 +534,36 @@ so the effects stay pure and survive corrections.
     node tools/universe.mjs season
     node tools/universe.mjs flags --commit
     node tools/universe.mjs laststand > card.txt
+
+## The annual draft
+
+The year ends **WrestleMania → Last Stand → Draft**. Last Stand settles who moves
+*between* tiers; the draft reshuffles everyone *within* one, so the brands on
+each rung re-pick their rosters from the pool already on that rung. Free agents
+join the top tier's pool.
+
+Order is reverse season standings — worst year picks first — and it snakes, so
+the first brand does not take every round's best available. Two defaults, both
+overridable:
+
+- **protectChampions** — a champion stays on the brand that owns their belt.
+  Splitting a belt from its holder makes a mess of the title's brand and nobody
+  books it on purpose.
+- **keepTeams** — picking somebody in an active tag team brings their partners
+  with them. Drafting half a tag team is almost always a mistake, not a choice.
+
+Everything is a proposal until you press the button, and committing writes
+ordinary `brand.transfer` events (or `contract.signed` for someone picked out of
+free agency, who has no brand to transfer *from*). So a draft can be voided pick
+by pick like any other history. Only wrestlers who actually change brand are
+written.
+
+A draft is deliberately **not** idempotent the way a roster paste is — it
+reallocates a whole tier, so running it again is a different, equally valid
+shuffle.
+
+    node tools/universe.mjs draft --tier 1
+    node tools/universe.mjs draft --tier 1 --commit
 
 ## Prompt export
 
@@ -539,8 +630,8 @@ than asking.
 ## CLI
 
 ```
-init | seed | roster | brands | card | show | shows | state | titles | wrestler
-threads | resolve | heat | season | flags | laststand | prompt
+init | seed | roster | brands | pyramid | brand | card | show | shows | state
+titles | wrestler | threads | resolve | heat | season | flags | laststand | draft | prompt
 log | event | amend | void | restore | corrections | check | export
 ```
 

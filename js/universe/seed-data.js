@@ -8,18 +8,44 @@ export const UNIVERSE_SEED = {
   "brands": [
     {
       "name": "Raw",
-      "color": "#c8102e",
-      "tier": 1
+      "abbr": "RAW",
+      "color": "#C8102E",
+      "logo": "🔴",
+      "tier": 1,
+      "day": "Monday"
     },
     {
       "name": "SmackDown",
-      "color": "#0b7bd5",
-      "tier": 1
+      "abbr": "SD",
+      "color": "#0B7BD5",
+      "logo": "🔵",
+      "tier": 1,
+      "day": "Friday"
+    },
+    {
+      "name": "Dynamite",
+      "abbr": "DYN",
+      "color": "#E8B23A",
+      "logo": "⚡",
+      "tier": 1,
+      "day": "Wednesday"
     },
     {
       "name": "NXT",
-      "color": "#f5c518",
-      "tier": 2
+      "abbr": "NXT",
+      "color": "#7C5CFF",
+      "logo": "🟣",
+      "tier": 2,
+      "day": "Tuesday"
+    },
+    {
+      "name": "Evolve",
+      "abbr": "EVO",
+      "color": "#3FBF8F",
+      "logo": "🟢",
+      "tier": 3,
+      "day": "Thursday",
+      "parent": "NXT"
     }
   ],
   "championships": [
@@ -66,6 +92,22 @@ export const UNIVERSE_SEED = {
       "teamSize": 2
     },
     {
+      "name": "AEW World Championship",
+      "brand": "Dynamite",
+      "division": "mens"
+    },
+    {
+      "name": "AEW Women's World Championship",
+      "brand": "Dynamite",
+      "division": "womens"
+    },
+    {
+      "name": "AEW World Tag Team Championship",
+      "brand": "Dynamite",
+      "division": "tag",
+      "teamSize": 2
+    },
+    {
       "name": "NXT Championship",
       "brand": "NXT",
       "division": "mens"
@@ -73,6 +115,16 @@ export const UNIVERSE_SEED = {
     {
       "name": "NXT Women's Championship",
       "brand": "NXT",
+      "division": "womens"
+    },
+    {
+      "name": "Evolve Championship",
+      "brand": "Evolve",
+      "division": "mens"
+    },
+    {
+      "name": "Evolve Women's Championship",
+      "brand": "Evolve",
       "division": "womens"
     }
   ],
@@ -195,8 +247,7 @@ export const UNIVERSE_SEED = {
       "name": "Ivy Nile",
       "brand": "Raw",
       "gender": "female",
-      "alignment": "face",
-      "status": "relegation-flagged"
+      "alignment": "face"
     },
     {
       "name": "Cody Rhodes",
@@ -340,8 +391,7 @@ export const UNIVERSE_SEED = {
       "name": "Trick Williams",
       "brand": "NXT",
       "gender": "male",
-      "alignment": "face",
-      "status": "promotion-flagged"
+      "alignment": "face"
     },
     {
       "name": "Ethan Page",
@@ -400,6 +450,162 @@ export const UNIVERSE_SEED = {
       "name": "Shayna Baszler",
       "gender": "female",
       "status": "free agent"
+    },
+    {
+      "name": "Jon Moxley",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Swerve Strickland",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Will Ospreay",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kazuchika Okada",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "MJF",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Adam Page",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Darby Allin",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Orange Cassidy",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Claudio Castagnoli",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Wheeler Yuta",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Konosuke Takeshita",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Ricochet",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Toni Storm",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Mercedes Mone",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Jamie Hayter",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Willow Nightingale",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Kris Statlander",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Julia Hart",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Bryce Donovan",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Cutler James",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Jackson Drake",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kale Dixon",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Sean Legters",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kendal Grey",
+      "brand": "Evolve",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Layla Diggs",
+      "brand": "Evolve",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Wendy Choo",
+      "brand": "Evolve",
+      "gender": "female",
+      "alignment": "heel"
     }
   ],
   "tagTeams": [
@@ -433,6 +639,14 @@ export const UNIVERSE_SEED = {
         "Ludwig Kaiser"
       ],
       "brand": "Raw"
+    },
+    {
+      "name": "The Blackpool Combat Club",
+      "members": [
+        "Claudio Castagnoli",
+        "Wheeler Yuta"
+      ],
+      "brand": "Dynamite"
     }
   ],
   "factions": [
@@ -459,80 +673,6 @@ export const UNIVERSE_SEED = {
       ],
       "leader": "Finn Bálor",
       "brand": "Raw"
-    }
-  ],
-  "titleHolders": [
-    {
-      "title": "WWE Championship",
-      "holders": [
-        "Cody Rhodes"
-      ],
-      "since": "2026-04-06"
-    },
-    {
-      "title": "World Heavyweight Championship",
-      "holders": [
-        "Gunther"
-      ],
-      "since": "2026-01-27"
-    },
-    {
-      "title": "Intercontinental Championship",
-      "holders": [
-        "Bron Breakker"
-      ],
-      "since": "2026-02-10"
-    },
-    {
-      "title": "United States Championship",
-      "holders": [
-        "LA Knight"
-      ],
-      "since": "2026-03-02"
-    },
-    {
-      "title": "Women's World Championship",
-      "holders": [
-        "Liv Morgan"
-      ],
-      "since": "2026-01-13"
-    },
-    {
-      "title": "WWE Women's Championship",
-      "holders": [
-        "Nia Jax"
-      ],
-      "since": "2026-05-04"
-    },
-    {
-      "title": "World Tag Team Championship",
-      "holders": [
-        "Erik",
-        "Ivar"
-      ],
-      "since": "2026-03-17"
-    },
-    {
-      "title": "WWE Tag Team Championship",
-      "holders": [
-        "Johnny Gargano",
-        "Tommaso Ciampa"
-      ],
-      "since": "2026-04-21"
-    },
-    {
-      "title": "NXT Championship",
-      "holders": [
-        "Trick Williams"
-      ],
-      "since": "2026-02-24"
-    },
-    {
-      "title": "NXT Women's Championship",
-      "holders": [
-        "Giulia"
-      ],
-      "since": "2026-05-11"
     }
   ],
   "events": [

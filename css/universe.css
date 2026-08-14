@@ -236,3 +236,47 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .chiplink{background:none;border:0;padding:0;cursor:pointer;font:inherit}
 .chiplink:hover .chip{filter:brightness(1.2)}
 .chiplink:hover .dim{color:var(--ink-2)}
+
+/* ---------------------------------------------------------------- pyramid */
+.pyramid{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:16px}
+.rung{display:flex;align-items:stretch;gap:14px;width:100%;justify-content:center}
+.rungmeta{align-self:center;text-align:right;min-width:120px}
+.rungmeta .tiernum{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:13px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.rungmeta .tierlabel{color:var(--ink-3);font-size:11px}
+.rungbrands{display:flex;gap:12px;flex-wrap:wrap;flex:1}
+.rungarrow{color:var(--ink-3);font-size:18px;line-height:1}
+.brandcard{text-align:left;background:var(--card);border:1px solid var(--line);
+  border-top:3px solid var(--bc);border-radius:11px;padding:11px 14px;min-width:210px;
+  cursor:pointer;color:var(--ink)}
+.brandcard:hover{border-color:var(--ink-3)}
+.brandcard.on{border-color:var(--violet)}
+.bhead{display:flex;align-items:baseline;gap:7px}
+.blogo{font-size:15px}
+.bname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:16px;letter-spacing:.06em;
+  text-transform:uppercase}
+.babbr{color:var(--ink-3);font-size:11px;letter-spacing:.08em}
+.bfacts{display:flex;gap:11px;color:var(--ink-3);font-size:12px;margin-top:4px;flex-wrap:wrap}
+.bmoves{display:flex;gap:11px;font-size:11px;margin-top:6px;flex-wrap:wrap}
+.bmoves .up{color:var(--green)}
+.bmoves .down{color:var(--red)}
+.bparent{color:var(--ink-3);font-size:11px;margin-top:5px;font-style:italic}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:6px}
+.opt.col{flex-direction:column;align-items:stretch;gap:4px}
+.opt.col>span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.opt.col em{font-style:normal;font-size:11px}
+.opt input[type=color]{padding:2px;height:32px;width:100%;background:var(--card-3)}
+
+/* ---------------------------------------------------------------- draft */
+.draftgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.draftcol{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--bc);
+  border-radius:11px;overflow:hidden}
+.draftcol h3{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.08em;
+  text-transform:uppercase;padding:10px 13px;background:var(--card-2);border-bottom:1px solid var(--line)}
+.draftcol h3 small{color:var(--ink-3);font-size:11px;letter-spacing:.02em;text-transform:none;margin-left:6px}
+.draftcol ol{list-style:none;margin:0;padding:6px 0}
+.draftcol li{display:flex;align-items:baseline;gap:8px;padding:4px 13px;font-size:13px}
+.draftcol li .rd{color:var(--ink-3);font-size:11px;min-width:22px;font-variant-numeric:tabular-nums}
+.draftcol li.protected{color:var(--gold)}
+.draftcol li.team .nm::after{content:' ⛓';color:var(--ink-3);font-size:10px}
+.draftcol li.moved .nm{font-weight:600}

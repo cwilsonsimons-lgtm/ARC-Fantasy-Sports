@@ -33,6 +33,8 @@ import { buildIndex, resolve as resolveName, table, heading, plural } from '../j
 import { currentSeason, seasons, brandStandings, proposeFlags, commitFlags,
   proposeLastStand, lastStandCard } from '../js/universe/season.js';
 import { buildPrompt, PROMPTS } from '../js/universe/prompts.js';
+import { tiers, brandCard, pyramidText, checkBrand } from '../js/universe/pyramid.js';
+import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 
 // ------------------------------------------------------------------ args
 
@@ -313,6 +315,77 @@ const commands = {
     console.log(`${ev.id}: resolved ${id}`);
   },
 
+  pyramid() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    console.log(heading('The pyramid', '═'));
+    console.log(`  ${pyramidText(state)}\n`);
+    tiers(state).forEach(t => {
+      console.log(heading(`Tier ${t.tier} — ${t.label}`));
+      console.log(table(t.brands.map(b => brandCard(state, b.id)), [
+        { label: 'Show', get: b => `${b.logo || '·'} ${b.name}` },
+        { label: 'Day', get: b => b.day || '—' },
+        { label: 'Roster', align: 'right', get: b => b.size },
+        { label: 'Titles', align: 'right', get: b => b.championships.length },
+        { label: 'Promotes to', get: b => (b.promotesTo ? state.brands[b.promotesTo].name : '—') },
+        { label: 'Relegates to', get: b => (b.relegatesTo ? state.brands[b.relegatesTo].name : '—') },
+        { label: 'Develops for', get: b => (b.parent ? b.parent.name : '') },
+      ], { indent: '  ' }));
+    });
+  },
+
+  brand() {
+    const store = openStore();
+    const state = project(store);
+    const name = positional.join(' ');
+    if (!name) die('usage: brand "<name>" [--tier N] [--day Monday] [--color #fff] [--logo x] [--parent "<brand>"]');
+
+    const hit = resolveName(buildIndex(store, 'brand'), name);
+    const rec = {};
+    if (flags.tier != null && flags.tier !== true) rec.tier = Number(flags.tier);
+    if (flags.day) rec.day = flags.day;
+    if (flags.color) rec.color = flags.color;
+    if (flags.logo) rec.logo = flags.logo;
+    if (flags.abbr) rec.abbr = flags.abbr;
+    if (flags.parent) {
+      const up = resolveName(buildIndex(store, 'brand'), flags.parent);
+      if (!up.ok) die(`unknown parent brand: ${flags.parent}`);
+      rec.parentId = up.id;
+    }
+
+    if (hit.ok) {
+      const problems = checkBrand(state, { ...state.brands[hit.id], ...rec }, { id: hit.id });
+      if (problems.length) die(problems.join('\n'));
+      store.amendEntity(hit.id, rec, 'edited from the cli');
+      console.log(`updated ${hit.name}`);
+    } else {
+      const full = { name, tier: 1, ...rec };
+      const problems = checkBrand(state, full);
+      if (problems.length) die(problems.join('\n'));
+      store.addEntity('brand', full);
+      console.log(`created ${name} on tier ${full.tier}`);
+    }
+    console.log(`\n  ${pyramidText(project(store))}`);
+  },
+
+  draft() {
+    const store = openStore();
+    const state = project(store, { asOf: flags['as-of'] || null });
+    const tier = flags.tier != null && flags.tier !== true ? Number(flags.tier) : (tiers(state)[0] || {}).tier;
+    const proposal = proposeDraft(state, { tier });
+    if (!proposal.picks.length) die(proposal.why || `nothing to draft on tier ${tier}`);
+
+    console.log(draftText(state, proposal));
+    if (!flags.commit) {
+      const moving = proposal.picks.filter(p => p.from !== p.brandId).length;
+      console.log(`\n(${plural(moving, 'wrestler')} would change brand — re-run with --commit)`);
+      return;
+    }
+    const last = store.doc.events.reduce((m, e) => (e.date > m ? e.date : m), new Date().toISOString().slice(0, 10));
+    const res = commitDraft(store, proposal, { date: flags.date || last, state });
+    console.log(`\n${plural(res.written, 'move')} written`);
+  },
+
   season() {
     const store = openStore();
     const state = project(store, { asOf: flags['as-of'] || null });
@@ -582,6 +655,9 @@ const commands = {
   shows                                  every show
   state [--as-of D] [--within N]         champions, records, injuries, contracts, feuds
   titles [name]                          title lineage, reigns and title matches
+  pyramid [--as-of D]                    the brand pyramid, tier by tier
+  brand "<name>" [--tier N] [--day D]    create or edit a show
+  draft [--tier N] [--commit]            the annual draft for one tier
   season [--as-of D]                     standings and where the year has got to
   flags [--commit] [--date D]            work out the promotion/relegation lists
   laststand [--date D]                   print the Last Stand card to fill in

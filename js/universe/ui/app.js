@@ -17,10 +17,12 @@ import { UNIVERSE_SEED } from '../seed-data.js';
 import { $, h, on, today, plural } from './dom.js';
 import { buildIndex, resolve as resolveName } from '../util.js';
 import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage,
-  threadsView, heatPanel, seasonView } from './views.js';
+  threadsView, heatPanel, seasonView, brandsView } from './views.js';
 import { entryView, cardPreview, rosterImportPanel, rosterPreview } from './entry.js';
 import { promptsView, importView, copyText } from './tools.js';
 import { proposeFlags, commitFlags, proposeLastStand, lastStandCard } from '../season.js';
+import { proposeDraft, commitDraft } from '../draft.js';
+import { checkBrand } from '../pyramid.js';
 import { buildPrompt, entryPrompt } from '../prompts.js';
 import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
 
@@ -31,7 +33,8 @@ if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
 // are panes too — they just are not in the tab bar, and carry an id.
 const app = {
   tab: 'tonight', detailId: null, asOf: null, state: null, flash: null,
-  season: {},                       // { proposal, lastStand } — unsaved working state
+  season: {},                       // { proposal, lastStand, draft } — unsaved working state
+  brandEdit: null,                  // brand id being edited, or 'new'
   prompt: { id: 'next' },
   shots: [], activeShot: 0, shotKind: 'card',
 };
@@ -39,6 +42,7 @@ const app = {
 const TABS = [
   { id: 'tonight', label: 'Tonight' },
   { id: 'roster', label: 'Roster', count: s => Object.keys(s.wrestlers).length },
+  { id: 'brands', label: 'Pyramid', count: s => Object.keys(s.brands).length },
   { id: 'titles', label: 'Titles', count: s => Object.values(s.championships).filter(c => !c.retired).length },
   { id: 'threads', label: 'Threads', count: s => s.threads.length },
   { id: 'season', label: 'Season' },
@@ -92,7 +96,10 @@ function render() {
     $('#heatPanel').innerHTML = heatPanel(s);
   }
   if (app.tab === 'threads') $('#pane-threads').innerHTML = threadsView(s);
-  if (app.tab === 'season') $('#pane-season').innerHTML = seasonView(s, { proposal: app.season.proposal, lastStand: app.season.lastStand });
+  if (app.tab === 'season') $('#pane-season').innerHTML = seasonView(s, {
+    proposal: app.season.proposal, lastStand: app.season.lastStand, draft: app.season.draft,
+  });
+  if (app.tab === 'brands') $('#pane-brands').innerHTML = brandsView(s, { editing: app.brandEdit });
   if (app.tab === 'prompts') { $('#pane-prompts').innerHTML = promptsView(s, app.prompt); refreshPrompt(); }
   if (app.tab === 'import') {
     const keep = $('#shotText') ? $('#shotText').value : (app.shotText || '');
@@ -262,6 +269,58 @@ on('click', '#reset', () => {
   save();
   app.tab = 'tonight';
   flash('Universe reset to the seed roster.');
+  render();
+});
+
+// ------------------------------------------------------------------ shows
+
+on('click', '[data-editbrand]', (e, el) => {
+  app.brandEdit = el.dataset.editbrand || null;
+  render();
+});
+
+on('click', '[data-savebrand]', (e, el) => {
+  const id = el.dataset.savebrand;
+  const rec = {
+    name: $('#bfName').value.trim(),
+    abbr: $('#bfAbbr').value.trim() || undefined,
+    logo: $('#bfLogo').value.trim() || undefined,
+    color: $('#bfColor').value,
+    // Not `Number(x) || 1` — that quietly turns a typed 0 into a valid tier 1
+    // instead of refusing it, and the whole point of checkBrand is to say no.
+    tier: $('#bfTier').value === '' ? 1 : Number($('#bfTier').value),
+    day: $('#bfDay').value || undefined,
+    parentId: $('#bfParent').value || undefined,
+  };
+  const problems = checkBrand(app.state, rec, { id: id === 'new' ? null : id });
+  if (problems.length) { flash(problems.map(h).join('; '), 'err'); render(); return; }
+
+  try {
+    if (id === 'new') store.addEntity('brand', rec, { upsert: false });
+    else store.amendEntity(id, rec, 'edited from the dashboard');
+    save();
+    app.brandEdit = null;
+    flash(`${h(rec.name)} saved. The pyramid, the lists and the draft all read it straight away.`);
+  } catch (err) {
+    flash(h(err.errors ? err.errors.join('; ') : err.message), 'err');
+  }
+  render();
+});
+
+// ------------------------------------------------------------------ draft
+
+on('click', '[data-draftpropose]', (e, el) => {
+  app.season.draft = proposeDraft(app.state, { tier: Number(el.dataset.draftpropose) });
+  app.season.proposal = null;
+  app.season.lastStand = null;
+  render();
+});
+on('click', '[data-draftcancel]', () => { app.season.draft = null; render(); });
+on('click', '[data-draftcommit]', () => {
+  const res = commitDraft(store, app.season.draft, { date: universeNow(), state: app.state });
+  save();
+  app.season.draft = null;
+  flash(`Draft run — ${plural(res.written, 'wrestler')} changed brand.`);
   render();
 });
 

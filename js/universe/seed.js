@@ -29,12 +29,29 @@ export function seedFromJSON(doc, { store = null, adapter = null, startDate = nu
   s.doc.meta.startDate = start;
 
   // -- registry ------------------------------------------------------------
+  // Brands go in without their parent links, because a parent may appear later
+  // in the file than the brand that names it. The links are resolved in a second
+  // pass once every brand exists.
   arr(doc.brands).forEach(b => {
-    const rec = typeof b === 'string' ? { name: b } : b;
+    const rec = typeof b === 'string' ? { name: b } : { ...b };
+    delete rec.parent;
+    delete rec.parentId;
+    if (rec.tier != null) rec.tier = Number(rec.tier);
     try { s.addEntity('brand', rec, { upsert: true }); } catch (e) { errors.push(msg(e)); }
   });
 
   const brandIdx = buildIndex(s, 'brand');
+
+  arr(doc.brands).forEach(b => {
+    if (typeof b === 'string') return;
+    const parent = b.parent || b.parentId;
+    if (!parent) return;
+    const self = resolve(brandIdx, b.name);
+    const up = resolve(brandIdx, parent);
+    if (!self.ok) return;
+    if (!up.ok) { errors.push(`brand "${b.name}": unknown parent brand "${parent}"`); return; }
+    s.bucket('brand')[self.id].parentId = up.id;
+  });
   const brandRef = (name, where) => {
     if (name == null || name === '') return null;
     const r = resolve(brandIdx, name);

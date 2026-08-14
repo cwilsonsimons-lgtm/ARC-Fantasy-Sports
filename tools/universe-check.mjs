@@ -20,6 +20,8 @@ import { seedFromJSON } from '../js/universe/seed.js';
 import { parseRoster, commitRoster } from '../js/universe/roster.js';
 import { parseCard, commitCard, setTitleOutcome } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
+import { tiers, tierOf, destination, pyramidText, checkBrand } from '../js/universe/pyramid.js';
+import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
   proposeLastStand, lastStandCard } from '../js/universe/season.js';
 import { recapPrompt, contenderPrompt, nextPrompt, entryPrompt, PROMPTS, buildPrompt } from '../js/universe/prompts.js';
@@ -43,24 +45,29 @@ const fresh = () => seedFromJSON(seedDoc, { store: new UniverseStore({ adapter: 
 section('seeding');
 const s0 = fresh();
 const st0 = s0.stats();
-check('wrestlers seeded', st0.wrestlers, 53);
-check('brands seeded', st0.brands, 3);
-check('championships seeded', st0.championships, 10);
-check('groups seeded', st0.groups, 6);
+check('wrestlers seeded', st0.wrestlers, 79);
+check('brands seeded', st0.brands, 5);
+check('championships seeded', st0.championships, 15);
+check('groups seeded', st0.groups, 7);
 check('seed writes founding events, not state', st0.live > 60, true);
-check('every wrestler on a brand got a contract', st0.byType['contract.signed'], 51);
-check('title holders became title.change events', st0.byType['title.change'], 10);
+check('every wrestler on a brand got a contract', st0.byType['contract.signed'], 77);
+// A brand-new save crowns nobody. Championships exist, and every one of them is
+// vacant until the user books somebody into it.
+check('seeding awards no championships', st0.byType['title.change'], undefined);
 check('registry holds no derived state', 'status' in (s0.getEntity('w:cody-rhodes') || {}), false);
 check('seed file passes integrity check', s0.check().filter(p => p.level === 'error').length, 0);
 
 const p0 = project(s0);
-check('champion projected from founding event', p0.championships['c:wwe-championship'].holders, ['w:cody-rhodes']);
-check('tag champions are a pair', p0.championships['c:world-tag-team-championship'].holders.length, 2);
+check('every belt starts vacant', Object.values(p0.championships).every(c => c.vacant), true);
+check('and with no holders at all', p0.championships['c:world-tag-team-championship'].holders, []);
 check('brand roster folds out of contracts', p0.brands['b:raw'].roster.length, 19);
+check('the pyramid seeds three tiers', tiers(p0).map(t => t.brands.length), [3, 1, 1]);
+check('with the top tier equal', tiers(p0)[0].brands.map(b => b.name), ['Dynamite', 'Raw', 'SmackDown']);
 check('free agents have no brand', p0.freeAgents.includes('w:braun-strowman'), true);
 check('faction membership projected', p0.groups['g:the-bloodline'].members.length, 4);
 check('wrestler carries their group', p0.wrestlers['w:solo-sikoa'].groups, ['g:the-bloodline']);
-check('seeded reign is dated before the universe', p0.championships['c:world-heavyweight-championship'].since, '2026-01-27');
+check('a title history starts empty', Object.values(p0.championships).every(c => c.reigns.length === 0), true);
+check('so nobody is listed as a champion', Object.values(p0.wrestlers).every(w => !w.titles.length), true);
 
 // ──────────────────────────────────────────────────────────────── validation
 section('validation');
@@ -156,7 +163,7 @@ check('stipulation read', k2.segments[0].data.matchType, 'steel cage');
 check('first names resolve', k2.segments[2].participants.map(p => p.ref), ['w:rhea-ripley', 'w:liv-morgan']);
 check('decision read', k2.segments[2].data.decision, 'submission');
 check('title change inferred', k2.segments[0].data.titleChanged, true);
-check('title defense inferred', k2.segments[1].data.titleChanged, false);
+check('a vacant belt is won, not defended', k2.segments[1].data.titleChanged, true);
 check('no-winner match kept', k2.segments[4].participants.every(p => p.role === 'competitor'), true);
 check('attack prose is not a name', k2.segments[5].participants.length, 2);
 check('attack context kept', k2.segments[5].data.context, 'after the main event');
@@ -168,8 +175,8 @@ const p2 = project(s2);
 check('card saved as one show plus segments', saved.written, 9);
 check('show groups its segments', p2.showsById[saved.showId].segments.length, 8);
 check('title changed hands', p2.championships['c:world-heavyweight-championship'].holders, ['w:damian-priest']);
-check('previous reign closed with a length', titleLineage(p2, 'c:world-heavyweight-championship')[0].days, 202);
-check('title defense counted', titleLineage(p2, 'c:world-tag-team-championship')[0].defenses, 1);
+check('the first reign starts the history', titleLineage(p2, 'c:world-heavyweight-championship').length, 1);
+check('the tag belts found their first champions', p2.championships['c:world-tag-team-championship'].holders.length, 2);
 check('winner record updated', p2.wrestlers['w:damian-priest'].record, { w: 1, l: 0, d: 0, total: 1 });
 check('loser record updated', p2.wrestlers['w:gunther'].record.l, 1);
 check('draw counted for both', [p2.wrestlers['w:becky-lynch'].record.d, p2.wrestlers['w:ivy-nile'].record.d], [1, 1]);
@@ -201,14 +208,15 @@ check('amended winner flips the other record', p3.wrestlers['w:gunther'].record.
 check('streak recalculated', p3.wrestlers['w:damian-priest'].streak, { type: 'l', n: 1 });
 check('title stays with the real winner', p3.championships['c:world-heavyweight-championship'].holders, ['w:gunther']);
 check('no phantom reign left behind', titleLineage(p3, 'c:world-heavyweight-championship').length, 1);
-check('corrected match counts as a defense', titleLineage(p3, 'c:world-heavyweight-championship')[0].defenses, 1);
+check('and the corrected winner holds it instead', titleLineage(p3, 'c:world-heavyweight-championship')[0].holders, ['Gunther']);
 check('correction is logged with its note', s3.historyOf(titleMatch.id)[0].note, 'misread the result screen');
 check('original event is untouched in the log', s3.getEvent(titleMatch.id).participants.find(p => p.ref === 'w:damian-priest').role, 'winner');
 
 s3.voidEvent(titleMatch.id, 'this match never happened');
 const p3b = project(s3);
 check('voided match leaves the projection', p3b.wrestlers['w:gunther'].record.w, 0);
-check('voided title match restores the old reign', p3b.championships['c:world-heavyweight-championship'].holders, ['w:gunther']);
+check('voiding the match empties the belt again', p3b.championships['c:world-heavyweight-championship'].vacant, true);
+check('and erases the reign from the history', p3b.championships['c:world-heavyweight-championship'].reigns.length, 0);
 check('voided event stays in the raw log', !!s3.getEvent(titleMatch.id), true);
 check('voided event visible with includeVoided', s3.effectiveEvents({ includeVoided: true }).find(e => e.id === titleMatch.id).voided, true);
 
@@ -238,16 +246,19 @@ const s5 = fresh();
 const T = 'c:wwe-championship';
 const card5 = show => commitCard(s5, parseCard(show, s5));
 
+// Crown someone first: an interim reign only means anything alongside a real one.
+card5(`SmackDown / 2026-08-14 / SmackDown
+Cody Rhodes d. Randy Orton — WWE Championship`);
 card5(`SmackDown / 2026-08-21 / SmackDown
-Solo Sikoa d. Randy Orton — WWE Championship, interim`);
+Solo Sikoa d. Jimmy Uso — WWE Championship, interim`);
 let p5 = project(s5);
 check('interim does not take the real belt', p5.championships[T].holders, ['w:cody-rhodes']);
 check('interim champion recorded', p5.championships[T].interimHolders, ['w:solo-sikoa']);
 check('two reigns run at once', p5.championships[T].reigns.filter(r => !r.to).length, 2);
-check('the real reign keeps counting', p5.championships[T].since, '2026-04-06');
+check('the real reign keeps counting', p5.championships[T].since, '2026-08-14');
 
 card5(`SmackDown / 2026-08-28 / SmackDown
-Solo Sikoa d. Jimmy Uso — WWE Championship, interim`);
+Solo Sikoa d. LA Knight — WWE Championship, interim`);
 p5 = project(s5);
 check('interim defense lands on the interim reign', titleLineage(p5, T).find(r => r.interim).defenses, 1);
 check('and not on the real one', titleLineage(p5, T).find(r => !r.interim).defenses, 0);
@@ -259,7 +270,7 @@ check('unification ends both reigns', p5.championships[T].reigns.filter(r => !r.
 check('and crowns one undisputed champion', p5.championships[T].holders, ['w:solo-sikoa']);
 check('no interim champion left', p5.championships[T].interimHolders, []);
 check('the interim run closed as unified', titleLineage(p5, T).find(r => r.interim).endReason, 'unified');
-check('lineage keeps all three rows', titleLineage(p5, T).length, 3);
+check('lineage keeps every row', titleLineage(p5, T).length, 3);
 
 card5(`SmackDown / 2026-09-11 / SmackDown
 vacate: WWE Championship`);
@@ -371,10 +382,20 @@ check('WrestleMania is recognised by name', currentSeason(p8).wrestlemania.date,
 check('a PLE is marked on the show', p8.shows.find(s => s.date === '2027-04-04').ple, 'wrestlemania');
 
 const flags = proposeFlags(p8);
-check('two relegation names per gender', flags.filter(f => f.flag === 'relegation-flagged' && f.gender === 'male').length, 2);
-check('one from each main brand', new Set(flags.filter(f => f.flag === 'relegation-flagged').map(f => f.from)).size, 2);
-check('two promotion names per gender', flags.filter(f => f.flag === 'promotion-flagged' && f.gender === 'female').length, 2);
-check('promotion comes from development', new Set(flags.filter(f => f.flag === 'promotion-flagged').map(f => f.from)), s => [...s][0] === 'b:nxt');
+// Three tiers, so the middle rung does both: NXT names go up to tier 1 and
+// down to Evolve in the same year. Nothing in the rule mentions a brand.
+check('the top tier only relegates', flags.filter(f => f.tier === 1).every(f => f.flag === 'relegation-flagged'), true);
+check('the bottom tier only promotes', flags.filter(f => f.tier === 3).every(f => f.flag === 'promotion-flagged'), true);
+check('the middle tier does both', new Set(flags.filter(f => f.tier === 2).map(f => f.flag)).size, 2);
+check('relegation names head one rung down', flags.filter(f => f.flag === 'relegation-flagged' && f.tier === 1)
+  .every(f => f.toward === 'b:nxt'), true);
+check('promotion names head one rung up', flags.filter(f => f.flag === 'promotion-flagged' && f.tier === 3)
+  .every(f => f.toward === 'b:nxt'), true);
+check('every list is even, so everyone has an opponent', (() => {
+  const groups = {};
+  flags.forEach(f => { const k = `${f.tier}|${f.gender}|${f.flag}`; groups[k] = (groups[k] || 0) + 1; });
+  return Object.values(groups).every(n => n % 2 === 0);
+})(), true);
 check('champions are never relegated', flags.some(f => f.flag === 'relegation-flagged'
   && Object.values(p8.championships).some(c => c.holders.includes(f.id))), false);
 check('the least-booked sink to the bottom', flags.find(f => f.flag === 'relegation-flagged').why.includes('no matches'), true);
@@ -386,10 +407,11 @@ check('and show on the roster', flags.every(f => /flagged$/.test(p8.wrestlers[f.
 check('re-proposing writes nothing new', proposeFlags(p8).every(f => f.alreadyFlagged), true);
 
 const stand = proposeLastStand(p8);
-check('flagged names are paired off', stand.matches.length, 4);
-// The seed already carries two flagged names, so two of the four pools are odd.
-check('an odd one out is reported, not dropped', stand.unpaired.length, 2);
-check('and never silently paired across genders', stand.unpaired.every(w => /flagged$/.test(w.status)), true);
+check('flagged names are paired off', stand.matches.length, 8);
+check('with nobody left over', stand.unpaired.length, 0);
+check('never across genders', stand.matches.every(m => m.a.gender === m.b.gender), true);
+check('and never across tiers', stand.matches.every(m =>
+  tierOf(p8, m.a.brandId) === tierOf(p8, m.b.brandId)), true);
 check('never across genders', stand.matches.every(m => m.a.gender === m.b.gender), true);
 check('relegation faces relegation', stand.matches.filter(m => m.stakes === 'relegation')
   .every(m => m.a.status === 'relegation-flagged' && m.b.status === 'relegation-flagged'), true);
@@ -400,7 +422,7 @@ check('promotion rises to a main brand', stand.matches.find(m => m.stakes === 'p
 
 const cardText = lastStandCard(p8, stand, { date: '2027-04-25' });
 check('the card is written in the entry shorthand', cardText.split('\n')[0], 'Last Stand / 2027-04-25');
-check('with a line per match', cardText.split('\n').filter(l => / vs /.test(l)).length, 4);
+check('with a line per match', cardText.split('\n').filter(l => / vs /.test(l)).length, 8);
 
 const played = cardText.split('\n').map(l => l.replace(' vs ', ' d. ')).join('\n');
 const lastStandParsed = parseCard(played, s8);
@@ -428,6 +450,106 @@ check('voiding it merges the seasons back', (() => {
   s8.restoreEvent(showEv.id, 'test');
   return n;
 })(), 1);
+
+// ──────────────────────────────────────────────────────────────── the pyramid
+section('the pyramid');
+const sP = fresh();
+let pP = project(sP);
+check('drawn the way the brief drew it', pyramidText(pP), 'Dynamite | Raw | SmackDown ↓ NXT ↓ Evolve');
+check('the top tier is labelled', tiers(pP)[0].label, 'Main roster');
+check('and the bottom one too', tiers(pP)[2].label, 'Lower developmental');
+check('a tier-1 brand cannot be promoted off the top', destination(pP, 'b:raw', 'promotion'), null);
+check('a bottom brand cannot be relegated out', destination(pP, 'b:evolve', 'relegation'), null);
+check('relegation drops exactly one rung', destination(pP, 'b:raw', 'relegation'), 'b:nxt');
+check('and again from the middle', destination(pP, 'b:nxt', 'relegation'), 'b:evolve');
+check('the parent link steers promotion', destination(pP, 'b:evolve', 'promotion'), 'b:nxt');
+check('promotion without a parent picks the thinnest roster',
+  destination(pP, 'b:nxt', 'promotion'), b => ['b:raw', 'b:smackdown', 'b:dynamite'].includes(b));
+
+// Nothing above named a brand — so a different shape should just work.
+sP.addEntity('brand', { name: 'WCW', tier: 2, color: '#C0392B', day: 'Saturday' });
+sP.addEntity('brand', { name: 'Deep South', tier: 4, color: '#555', parentId: 'b:evolve' });
+pP = project(sP);
+check('a new show joins its tier', tiers(pP).map(t => t.brands.length), [3, 2, 1, 1]);
+check('and a fourth tier is just another rung', tiers(pP)[3].brands[0].name, 'Deep South');
+check('the new tier promotes into the one above', destination(pP, 'b:deep-south', 'promotion'), 'b:evolve');
+check('and Evolve now relegates into it', destination(pP, 'b:evolve', 'relegation'), 'b:deep-south');
+check('WCW sits level with NXT', tierOf(pP, 'b:wcw'), tierOf(pP, 'b:nxt'));
+check('the drawing keeps up', pyramidText(pP), 'Dynamite | Raw | SmackDown ↓ NXT | WCW ↓ Evolve ↓ Deep South');
+
+check('a tier below zero is refused', checkBrand(pP, { name: 'X', tier: 0 }).length, 1);
+check('a nameless show is refused', checkBrand(pP, { name: '  ', tier: 2 }).length, 1);
+check('a parent on the same tier is refused',
+  /cannot be the parent/.test(checkBrand(pP, { name: 'X', tier: 2, parentId: 'b:wcw' })[0] || ''), true);
+check('a parent further down is refused', checkBrand(pP, { name: 'X', tier: 1, parentId: 'b:nxt' }).length, 1);
+check('a parent above is fine', checkBrand(pP, { name: 'X', tier: 3, parentId: 'b:nxt' }).length, 0);
+
+// The lists follow the new shape without a line of code knowing about WCW.
+commitCard(sP, parseCard(`WrestleMania 44 / 2028-04-02 / Raw
+Cody Rhodes d. Roman Reigns — WWE Championship`, sP));
+const flagsP = proposeFlags(project(sP, { asOf: '2028-04-03' }));
+// Evolve was the bottom rung a moment ago and only promoted. Adding a tier
+// beneath it means it now relegates as well — with no code change anywhere.
+check('a brand that gained a rung below it starts relegating',
+  new Set(flagsP.filter(f => f.tier === 3).map(f => f.flag)).size, 2);
+check('and still promotes',
+  flagsP.some(f => f.tier === 3 && f.flag === 'promotion-flagged'), true);
+check('an empty new brand flags nobody', flagsP.filter(f => f.tier === 4).length, 0);
+
+// ──────────────────────────────────────────────────────────────── the draft
+section('the annual draft');
+const sD = fresh();
+commitCard(sD, parseCard(`Raw / 2027-02-01 / Raw
+Seth Rollins d. Sami Zayn
+Gunther d. Sheamus — World Heavyweight Championship`, sD));
+commitCard(sD, parseCard(`WrestleMania 43 / 2027-04-04 / Raw
+Cody Rhodes d. Roman Reigns — WWE Championship`, sD));
+const pD = project(sD, { asOf: '2027-04-26' });
+const d1 = proposeDraft(pD, { tier: 1 });
+
+check('the draft covers one tier at a time', d1.tier, 1);
+check('every brand on the tier picks', d1.order.length, 3);
+check('weakest season picks first', d1.order[0].points <= d1.order[d1.order.length - 1].points, true);
+check('and it snakes', (() => {
+  const r1 = d1.picks.filter(p => p.round === 1 && !p.team).map(p => p.brandName);
+  const r2 = d1.picks.filter(p => p.round === 2 && !p.team).map(p => p.brandName);
+  return r1[0] === r2[r2.length - 1];
+})(), true);
+check('champions are protected, not drafted', d1.protected.some(w => w.id === 'w:cody-rhodes'), true);
+check('and they stay with the brand that owns the belt',
+  d1.protected.find(w => w.id === 'w:cody-rhodes').brandId, 'b:smackdown');
+check('a protected champion is out of the pool', d1.picks.some(p => p.wrestlerId === 'w:cody-rhodes'), false);
+check('everybody else is in it', d1.picks.length + d1.protected.length,
+  Object.values(pD.wrestlers).filter(w => (w.brandId && tierOf(pD, w.brandId) === 1) || (!w.brandId && w.status !== 'released')).length);
+check('nobody is drafted twice', new Set(d1.picks.map(p => p.wrestlerId)).size, d1.picks.length);
+check('a lower tier drafts on its own', proposeDraft(pD, { tier: 2 }).order.length, 0);
+check('and one brand on a tier is no draft at all', proposeDraft(pD, { tier: 2 }).picks.length, 0);
+
+const moved = d1.picks.filter(p => p.from !== p.brandId);
+const dres = commitDraft(sD, d1, { date: '2027-05-02', state: pD });
+check('only the moves are written', dres.written, moved.length);
+const pD2 = project(sD, { asOf: '2027-05-03' });
+check('and everyone landed where they were picked',
+  d1.picks.every(p => pD2.wrestlers[p.wrestlerId].brandId === p.brandId), true);
+check('the protected champion did not move', pD2.wrestlers['w:cody-rhodes'].brandId, 'b:smackdown');
+check('a drafted free agent gets signed, not transferred',
+  sD.effectiveEvents().filter(e => e.source === 'draft' && e.type === 'contract.signed').length,
+  d1.picks.filter(p => !p.from).length);
+// A draft is not idempotent the way a roster paste is — it reallocates the
+// whole tier, so running it again is a different (equally valid) shuffle. What
+// it does promise is that a pick which does not move anybody costs nothing.
+check('a pick that stays put writes nothing',
+  commitDraft(sD, { picks: d1.picks.filter(p => p.from === p.brandId) }, { date: '2027-05-02', dryRun: true }).events.length, 0);
+check('so voiding a pick hands that wrestler back', (() => {
+  const ev = sD.effectiveEvents().find(e => e.source === 'draft' && e.type === 'brand.transfer');
+  const was = ev.data.fromBrandId;
+  sD.voidEvent(ev.id, 'test');
+  const back = project(sD, { asOf: '2027-05-03' }).wrestlers[ev.participants[0].ref].brandId;
+  sD.restoreEvent(ev.id, 'test');
+  return back === was;
+})(), true);
+check('the board reads as a board', draftText(pD, d1).includes('weakest season first'), true);
+
 
 // ──────────────────────────────────────────────────────────────── prompts
 section('prompt export');
@@ -467,12 +589,15 @@ check('an existing modifier is replaced, not appended',
   setTitleOutcome(`${lineIn}, new champion`, 'retain'), `${lineIn} (retains)`);
 
 const s10 = fresh();
+// Crown Gunther first, so "retains" has something to retain.
+commitCard(s10, parseCard('Raw / 2026-08-25 / Raw\nGunther d. Sheamus — World Heavyweight Championship', s10));
 const forced = parseCard(`Raw / 2026-09-01 / Raw\n${setTitleOutcome(lineIn, 'retain')}`, s10);
 check('the forced outcome survives the parser', forced.segments[0].data.titleChanged, false);
 commitCard(s10, forced);
 check('and the belt does not move', project(s10).championships['c:world-heavyweight-championship'].holders, ['w:gunther']);
 check('but the win still counts', project(s10).wrestlers['w:damian-priest'].record.w, 1);
 check('and it is scored as a defense', titleLineage(project(s10), 'c:world-heavyweight-championship')[0].defenses, 1);
+check('with the reign unbroken', titleLineage(project(s10), 'c:world-heavyweight-championship').length, 1);
 
 // Setting a champion outright, with no match at all.
 const s11 = fresh();
@@ -482,10 +607,10 @@ s11.append({
 });
 let p11 = project(s11);
 check('a champion can just be named', p11.championships['c:intercontinental-championship'].holders, ['w:sami-zayn']);
-check('the previous reign closes with its days', titleLineage(p11, 'c:intercontinental-championship')[0].days, 203);
+check('and it is the belt\'s first reign', titleLineage(p11, 'c:intercontinental-championship').length, 1);
 check('and nobody had to wrestle', p11.wrestlers['w:sami-zayn'].record.total, 0);
 s11.voidEvent(s11.effectiveEvents().slice(-1)[0].id, 'undo');
-check('voiding it hands the belt back', project(s11).championships['c:intercontinental-championship'].holders, ['w:bron-breakker']);
+check('voiding it empties the belt again', project(s11).championships['c:intercontinental-championship'].vacant, true);
 
 // ──────────────────────────────────────────────────────────────── screenshots
 section('screenshot ingest');
@@ -538,7 +663,7 @@ check('and produces a real segment', fromShot.segments[0].participants.length, 2
 // ──────────────────────────────────────────────────────────────── time travel
 section('point in time');
 const p4 = project(s2, { asOf: '2026-08-16' });
-check('as-of before the show: old champion', p4.championships['c:world-heavyweight-championship'].holders, ['w:gunther']);
+check('as-of before the show: still vacant', p4.championships['c:world-heavyweight-championship'].vacant, true);
 check('as-of before the show: no records yet', p4.wrestlers['w:damian-priest'].record.total, 0);
 check('as-of after the show: new champion', project(s2, { asOf: '2026-08-18' }).championships['c:world-heavyweight-championship'].holders, ['w:damian-priest']);
 check('reign length measured to the as-of date', project(s2, { asOf: '2026-08-27' }).championships['c:world-heavyweight-championship'].daysHeld, 10);

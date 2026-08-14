@@ -40,30 +40,36 @@ async function check(label, code, want) {
 const tab = id => `document.querySelector('[data-tab=${id}]').click()`;
 
 // ---------------------------------------------------------------- boot
-await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 53);
+await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 79);
 await check('seed wrote events, not state', `UNIVERSE.store.stats().live > 60`, true);
-await check('tabs render', `document.querySelectorAll('.tab').length`, 9);
+await check('tabs render', `document.querySelectorAll('.tab').length`, 10);
 await check('lands on the entry tab', `document.querySelector('.tab.on').dataset.tab`, 'tonight');
 await check('card box is focused for typing', `document.activeElement.id`, 'cardText');
 
 // ---------------------------------------------------------------- roster
 await check('roster tab draws a table per brand', `${tab('roster')};
-  document.querySelectorAll('#pane-roster table').length`, 5);
+  document.querySelectorAll('#pane-roster table').length`, 7);
 await check('Raw roster is populated', `[...document.querySelectorAll('#pane-roster .brandhead')]
   .map(e => e.querySelector('.nm').textContent)`, r => r[0] === 'Raw');
 await check('free agents are listed apart', `[...document.querySelectorAll('#pane-roster .brandhead .nm')]
   .map(e => e.textContent).includes('Free agents')`, true);
-await check('roster shows title chips', `document.querySelectorAll('#pane-roster .chip.title').length > 8`, true);
-await check('roster shows a relegation flag', `document.querySelectorAll('#pane-roster .chip.down').length`, 1);
+// A brand-new save has no champions and nobody flagged: both are things that
+// only happen once you book them.
+await check('nobody holds a belt on a new save', `document.querySelectorAll('#pane-roster .chip.title').length`, 0);
+await check('and nobody is flagged', `document.querySelectorAll('#pane-roster .chip.down, #pane-roster .chip.up').length`, 0);
 
 // ---------------------------------------------------------------- titles
 await check('titles tab lists every belt', `${tab('titles')};
-  document.querySelectorAll('.belt').length`, 10);
-await check('champion shown on the belt', `document.querySelector('.belt .holder').textContent.trim()`, 'Cody Rhodes');
+  document.querySelectorAll('.belt').length`, 15);
+await check('every belt starts VACANT', `[...document.querySelectorAll('.belt .holder')]
+  .every(e => e.textContent.trim() === 'VACANT')`, true);
+await check('and says so in those words', `document.querySelector('.belt .holder').textContent.trim()`, 'VACANT');
+await check('with no reign history at all', `Object.values(UNIVERSE.app.state.championships)
+  .every(c => c.reigns.length === 0)`, true);
 await check('belt opens its own page', `document.querySelector('.belt').click();
   document.querySelector('#pane-title').classList.contains('on')`, true);
 await check('title page names the belt', `document.querySelector('#pane-title .pagehead .nm').textContent`, 'WWE Championship');
-await check('title page lists the lineage', `document.querySelectorAll('#pane-title tbody tr').length`, 1);
+await check('title page shows an empty lineage', `document.querySelector('#pane-title').textContent.includes('Never held')`, true);
 await check('and links back to the belts', `document.querySelector('#pane-title [data-tab=titles]').click();
   document.querySelector('.tab.on').dataset.tab`, 'titles');
 
@@ -109,8 +115,10 @@ await check('with every segment on the card', `document.querySelectorAll('#pane-
 // ---------------------------------------------------------------- the fold
 await check('title moved to the new champion', `${tab('titles')};
   [...document.querySelectorAll('.belt')].find(b => b.textContent.includes('World Heavyweight')).querySelector('.holder').textContent.trim()`, 'Damian Priest');
-await check('defense counted on the tag belts', `[...document.querySelectorAll('.belt')]
-  .find(b => b.textContent.includes('World Tag Team')).textContent.includes('1 defense')`, true);
+await check('the tag belts were won from vacant', `[...document.querySelectorAll('.belt')]
+  .find(b => b.textContent.includes('World Tag Team')).textContent.includes('Erik')`, true);
+await check('a title history begins on the first win', `UNIVERSE.app.state
+  .championships['c:world-tag-team-championship'].reigns.length`, 1);
 await check('records show on the roster', `${tab('roster')};
   UNIVERSE.app.state.wrestlers['w:damian-priest'].record.w`, 1);
 
@@ -152,7 +160,7 @@ await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(400);
 await check('reload keeps every event', `UNIVERSE.store.stats().live`, beforeReload.events);
 await check('reload keeps every correction', `UNIVERSE.store.doc.corrections.length`, beforeReload.cx);
-await check('and does not re-seed on top', `UNIVERSE.store.stats().wrestlers`, 53);
+await check('and does not re-seed on top', `UNIVERSE.store.stats().wrestlers`, 79);
 await check('the saved show is still there', `UNIVERSE.app.state.shows.length`, 1);
 await check('fantasy app storage untouched', `localStorage.getItem('cbd_team_v1')`, null);
 
@@ -163,7 +171,7 @@ await check('roster paste previews the diff', `${tab('roster')};
   t.dispatchEvent(new Event('input', {bubbles:true}));
   document.querySelector('#rosterPreview .msg.ok').textContent.includes('Alba Fyre')`, true);
 await check('import writes only the difference', `document.getElementById('rosterSave').click();
-  UNIVERSE.store.stats().wrestlers`, 54);
+  UNIVERSE.store.stats().wrestlers`, 80);
 await check('the new signing is on the brand', `UNIVERSE.app.state.brands['b:raw'].roster.includes('w:alba-fyre')`, true);
 await check('re-pasting the same list is a no-op', `const t = document.getElementById('rosterText');
   t.value = 'RAW\\nAlba Fyre, f, active\\nSeth Rollins, m, active';
@@ -174,6 +182,7 @@ await check('re-pasting the same list is a no-op', `const t = document.getElemen
 // Everything below covers a second card: an interim reign, a contender match,
 // a betrayal inside a faction, a save, and a vacated belt.
 const CARD2 = `SmackDown / 2026-08-21 / SmackDown
+Cody Rhodes d. Roman Reigns — WWE Championship
 Solo Sikoa d. Randy Orton — WWE Championship, interim
 LA Knight d. Kevin Owens, Drew McIntyre — contender, WWE Championship
 * Jacob Fatu attacks Jey Uso after the main event
@@ -183,9 +192,10 @@ vacate: United States Championship`;
 
 await page.evaluate(tab('tonight'));
 await type(CARD2);
-await check('interim match reads as interim', `document.querySelector('#cardPreview tbody tr').textContent.includes('interim')`, true);
-await check('contender match is not a title match', `document.querySelectorAll('#cardPreview tbody tr')[1].textContent.includes('#1 contender')`, true);
-await check('save line parsed', `document.querySelectorAll('#cardPreview tbody tr')[3].textContent.includes('saves')`, true);
+await check('a vacant belt is won outright', `document.querySelectorAll('#cardPreview tbody tr')[0].textContent.includes('NEW CHAMPION')`, true);
+await check('interim match reads as interim', `document.querySelectorAll('#cardPreview tbody tr')[1].textContent.includes('interim')`, true);
+await check('contender match is not a title match', `document.querySelectorAll('#cardPreview tbody tr')[2].textContent.includes('#1 contender')`, true);
+await check('save line parsed', `document.querySelectorAll('#cardPreview tbody tr')[4].textContent.includes('saves')`, true);
 await check('second card saves', `document.getElementById('cardSave').click();
   UNIVERSE.app.state.shows.length`, 2);
 
@@ -200,6 +210,7 @@ await check('title page shows the interim run', `[...document.querySelectorAll('
   .find(b => b.textContent.includes('WWE Championship') && !b.textContent.includes('Tag')).click();
   document.querySelector('#pane-title').textContent.includes('interim')`, true);
 await check('title page lists its matches', `document.querySelectorAll('#pane-title table').length`, 2);
+await check('and the lineage now has rows', `document.querySelectorAll('#pane-title tbody tr').length > 1`, true);
 
 // Relationships
 await check('attack spreads to the tag partner', `UNIVERSE.app.state.rivalries
@@ -249,12 +260,11 @@ await check('profile has rivalries and alliances', `document.querySelector('#pan
 await check('champion profile lists reigns with days', `UNIVERSE.app.tab = 'wrestler';
   UNIVERSE.app.detailId = 'w:cody-rhodes'; UNIVERSE.render();
   document.querySelector('#pane-wrestler').textContent.includes('WWE Championship')`, true);
-await check('reign day count is shown', `
+await check('the reign row shows when it started', `
   const w = UNIVERSE.app.state.wrestlers['w:cody-rhodes'], r = w.titleHistory[0];
-  const want = Math.round((new Date(UNIVERSE.app.state.asOf) - new Date(r.from)) / 86400000);
   const t = [...document.querySelectorAll('#pane-wrestler table')]
     .find(x => x.textContent.includes('WWE Championship'));
-  t.textContent.includes(String(want)) && want > 100`, true);
+  !!r && t.textContent.includes(r.from)`, true);
 await check('profile timeline lists appearances', `UNIVERSE.app.detailId = 'w:jey-uso'; UNIVERSE.render();
   document.querySelectorAll('#pane-wrestler table').length >= 3`, true);
 await check('and a reign links to the belt page', `UNIVERSE.app.detailId = 'w:cody-rhodes'; UNIVERSE.render();
@@ -263,7 +273,7 @@ await check('and a reign links to the belt page', `UNIVERSE.app.detailId = 'w:co
 
 // ---------------------------------------------------------------- season
 await check('season tab shows standings', `${tab('season')};
-  document.querySelectorAll('#pane-season .brandhead').length`, 3);
+  document.querySelectorAll('#pane-season .brandhead').length`, 5);
 await check('season 1 is in progress', `document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 1');
 await check('no WrestleMania yet', `document.querySelector('#pane-season .pagehead').textContent
   .includes('has not happened yet')`, true);
@@ -289,7 +299,7 @@ await check('and the roster shows them', `Object.values(UNIVERSE.app.state.wrest
   .filter(w => /flagged$/.test(w.status)).length > 4`, true);
 
 await check('booking Last Stand writes a card', `document.getElementById('lastStandPropose').click();
-  document.getElementById('lastStandText').value.split('\\n').filter(l => / vs /.test(l)).length`, 4);
+  document.getElementById('lastStandText').value.split('\\n').filter(l => / vs /.test(l)).length`, 8);
 await check('with relegation and promotion matches', `const t = document.getElementById('lastStandText').value;
   t.includes('relegation') && t.includes('promotion')`, true);
 await check('sending it lands in the entry box', `document.getElementById('lastStandUse').click();
@@ -374,7 +384,7 @@ await check('typing a name and setting it moves the belt', `
   document.querySelector('[data-setchamp][data-reason=awarded]').click();
   UNIVERSE.app.state.championships['c:intercontinental-championship'].holders`, ['w:sami-zayn']);
 await check('it is an ordinary event in the log', `UNIVERSE.store.effectiveEvents().slice(-1)[0].type`, 'title.change');
-await check('so the previous reign closed properly', `UNIVERSE.app.state.championships['c:intercontinental-championship'].reigns.length`, 2);
+await check(`it starts the belt's history`, `UNIVERSE.app.state.championships['c:intercontinental-championship'].reigns.length`, 1);
 await check('a bad name is refused, not guessed', `
   document.getElementById('champName').value = 'Someone Fake';
   document.querySelector('[data-setchamp][data-reason=awarded]').click();
@@ -443,6 +453,74 @@ await check('and the read result previews like anything else', `
 await check('removing the key goes back to paste', `document.getElementById('apiClear').click();
   !!document.getElementById('shotPrompt') && localStorage.getItem('arc_universe_key_v1')`, null);
 
+
+// ---------------------------------------------------------------- the pyramid
+await check('the pyramid tab draws every rung', `${tab('brands')};
+  document.querySelectorAll('#pane-brands .rung').length`, 3);
+await check('with the top tier abreast', `document.querySelectorAll('#pane-brands .rung')[0]
+  .querySelectorAll('.brandcard').length`, 3);
+await check('and arrows between the rungs', `document.querySelectorAll('#pane-brands .rungarrow').length`, 2);
+await check('a card says where its people go', `document.querySelector('#pane-brands .brandcard .bmoves')
+  .textContent.includes('NXT')`, true);
+await check('a new show can be created', `document.querySelector('[data-editbrand=new]').click();
+  !!document.getElementById('bfName')`, true);
+await check('creating one adds a rung', `
+  document.getElementById('bfName').value = 'WCW';
+  document.getElementById('bfTier').value = '2';
+  document.getElementById('bfDay').value = 'Saturday';
+  document.getElementById('bfColor').value = '#c0392b';
+  document.querySelector('[data-savebrand]').click();
+  UNIVERSE.app.state.brands['b:wcw'].tier`, 2);
+await check('it sits level with the brand already there', `
+  document.querySelectorAll('#pane-brands .rung')[1].querySelectorAll('.brandcard').length`, 2);
+await check('a fourth tier grows the pyramid', `
+  document.querySelector('[data-editbrand=new]').click();
+  document.getElementById('bfName').value = 'Deep South';
+  document.getElementById('bfTier').value = '4';
+  document.querySelector('[data-savebrand]').click();
+  document.querySelectorAll('#pane-brands .rung').length`, 4);
+await check('and Evolve now has somewhere to relegate to', `
+  [...document.querySelectorAll('#pane-brands .brandcard')]
+    .find(c => c.querySelector('.bname').textContent === 'Evolve')
+    .querySelector('.bmoves').textContent.includes('Deep South')`, true);
+await check('a bad tier is refused with a reason', `
+  document.querySelector('[data-editbrand=new]').click();
+  document.getElementById('bfName').value = 'Nope';
+  document.getElementById('bfTier').value = '0';
+  document.querySelector('[data-savebrand]').click();
+  document.querySelector('#pane-brands .msg.err').textContent.includes('tier')`, true);
+await check('and nothing was created', `!UNIVERSE.app.state.brands['b:nope']`, true);
+await check('an existing show can be edited', `
+  [...document.querySelectorAll('#pane-brands [data-editbrand]')]
+    .find(b => b.dataset.editbrand === 'b:wcw').click();
+  document.getElementById('bfName').value`, 'WCW');
+await check('editing writes a correction, not a new brand', `
+  document.getElementById('bfDay').value = 'Sunday';
+  document.querySelector('[data-savebrand]').click();
+  [UNIVERSE.app.state.brands['b:wcw'].day, Object.keys(UNIVERSE.app.state.brands).length]`, ['Sunday', 7]);
+
+// ---------------------------------------------------------------- the draft
+await check('the season tab offers a draft per tier', `${tab('season')};
+  document.querySelectorAll('[data-draftpropose]').length`, 2);
+await check('proposing one lays out a board', `document.querySelector('[data-draftpropose]').click();
+  document.querySelectorAll('#pane-season .draftcol').length`, 3);
+await check('weakest brand picks first', `document.querySelector('#pane-season .msg.ok')
+  .textContent.includes('weakest season first')`, true);
+await check('champions are shown as protected', `
+  document.querySelectorAll('#pane-season .draftcol li.protected').length > 0`, true);
+await check('running it moves people', `
+  const before = JSON.parse(JSON.stringify(UNIVERSE.app.state.wrestlers));
+  document.querySelector('[data-draftcommit]').click();
+  Object.keys(UNIVERSE.app.state.wrestlers)
+    .filter(id => UNIVERSE.app.state.wrestlers[id].brandId !== before[id].brandId).length > 3`, true);
+await check('and every move is in the log', `UNIVERSE.store.effectiveEvents()
+  .filter(e => e.source === 'draft').length > 3`, true);
+await check('a drafted wrestler kept their belt', `
+  Object.values(UNIVERSE.app.state.championships)
+    .filter(c => !c.vacant)
+    .every(c => c.holders.every(hh => UNIVERSE.app.state.wrestlers[hh].brandId === c.brandId
+      || !c.brandId))`, true);
+
 // Stills for eyeballing the result. snapshots/ is gitignored.
 await mkdir('snapshots', { recursive: true });
 await page.evaluate(tab('tonight'));
@@ -452,6 +530,8 @@ await page.evaluate(tab('roster'));
 await page.screenshot({ path: 'snapshots/universe-roster.png' });
 await page.evaluate(tab('titles'));
 await page.screenshot({ path: 'snapshots/universe-titles.png' });
+await page.evaluate(tab('brands'));
+await page.screenshot({ path: 'snapshots/universe-pyramid.png' });
 await page.evaluate(tab('threads'));
 await page.screenshot({ path: 'snapshots/universe-threads.png' });
 await page.evaluate(`UNIVERSE.app.tab='wrestler'; UNIVERSE.app.detailId='w:jey-uso'; UNIVERSE.render()`);

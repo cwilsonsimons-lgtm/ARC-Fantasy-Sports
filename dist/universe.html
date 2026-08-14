@@ -433,6 +433,50 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .chiplink:hover .chip{filter:brightness(1.2)}
 .chiplink:hover .dim{color:var(--ink-2)}
 
+/* ---------------------------------------------------------------- pyramid */
+.pyramid{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:16px}
+.rung{display:flex;align-items:stretch;gap:14px;width:100%;justify-content:center}
+.rungmeta{align-self:center;text-align:right;min-width:120px}
+.rungmeta .tiernum{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:13px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.rungmeta .tierlabel{color:var(--ink-3);font-size:11px}
+.rungbrands{display:flex;gap:12px;flex-wrap:wrap;flex:1}
+.rungarrow{color:var(--ink-3);font-size:18px;line-height:1}
+.brandcard{text-align:left;background:var(--card);border:1px solid var(--line);
+  border-top:3px solid var(--bc);border-radius:11px;padding:11px 14px;min-width:210px;
+  cursor:pointer;color:var(--ink)}
+.brandcard:hover{border-color:var(--ink-3)}
+.brandcard.on{border-color:var(--violet)}
+.bhead{display:flex;align-items:baseline;gap:7px}
+.blogo{font-size:15px}
+.bname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:16px;letter-spacing:.06em;
+  text-transform:uppercase}
+.babbr{color:var(--ink-3);font-size:11px;letter-spacing:.08em}
+.bfacts{display:flex;gap:11px;color:var(--ink-3);font-size:12px;margin-top:4px;flex-wrap:wrap}
+.bmoves{display:flex;gap:11px;font-size:11px;margin-top:6px;flex-wrap:wrap}
+.bmoves .up{color:var(--green)}
+.bmoves .down{color:var(--red)}
+.bparent{color:var(--ink-3);font-size:11px;margin-top:5px;font-style:italic}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:6px}
+.opt.col{flex-direction:column;align-items:stretch;gap:4px}
+.opt.col>span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.opt.col em{font-style:normal;font-size:11px}
+.opt input[type=color]{padding:2px;height:32px;width:100%;background:var(--card-3)}
+
+/* ---------------------------------------------------------------- draft */
+.draftgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.draftcol{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--bc);
+  border-radius:11px;overflow:hidden}
+.draftcol h3{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.08em;
+  text-transform:uppercase;padding:10px 13px;background:var(--card-2);border-bottom:1px solid var(--line)}
+.draftcol h3 small{color:var(--ink-3);font-size:11px;letter-spacing:.02em;text-transform:none;margin-left:6px}
+.draftcol ol{list-style:none;margin:0;padding:6px 0}
+.draftcol li{display:flex;align-items:baseline;gap:8px;padding:4px 13px;font-size:13px}
+.draftcol li .rd{color:var(--ink-3);font-size:11px;min-width:22px;font-variant-numeric:tabular-nums}
+.draftcol li.protected{color:var(--gold)}
+.draftcol li.team .nm::after{content:' ⛓';color:var(--ink-3);font-size:10px}
+.draftcol li.moved .nm{font-weight:600}
+
 </style>
 </head>
 <body>
@@ -453,6 +497,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 
 <div class="pane on" id="pane-tonight"></div>
 <div class="pane" id="pane-roster"></div>
+<div class="pane" id="pane-brands"></div>
 <div class="pane" id="pane-titles"></div>
 <div class="pane" id="pane-threads"></div>
 <div class="pane" id="pane-season"></div>
@@ -481,7 +526,8 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   var GROUP_KINDS = ["tagTeam", "faction", "alliance"];
   var DIVISIONS = ["mens", "womens", "tag", "mixed", "unisex"];
   var TITLE_REASONS = ["won", "awarded", "vacated", "stripped", "retired", "interim", "unified"];
-  var PLES = ["wrestlemania", "lastStand", "royalRumble", "summerslam", "survivorSeries", "moneyInTheBank", "other"];
+  var PLES = ["wrestlemania", "lastStand", "draft", "royalRumble", "summerslam", "survivorSeries", "moneyInTheBank", "other"];
+  var SHOW_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   var DECISIONS = ["pinfall", "submission", "dq", "countout", "ko", "stoppage", "draw", "no contest"];
   var MATCH_TYPES = [
     "singles",
@@ -557,8 +603,21 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       fields: { name: "string", gender: "enum:GENDERS", alignment: "enum:ALIGNMENTS", debut: "date?", aliases: "array?", overall: "number?", note: "string?" },
       required: ["name"]
     },
+    // A brand is a show *and* a rung on the pyramid. `tier` is an ordinary number
+    // — 1 is the top, and there is no maximum, so a universe can be two rungs deep
+    // or six. `parentId` is the optional "develops for" link: an Evolve that feeds
+    // NXT specifically rather than the tier above in general.
     brand: {
-      fields: { name: "string", color: "string?", tier: "number?", note: "string?" },
+      fields: {
+        name: "string",
+        abbr: "string?",
+        color: "string?",
+        logo: "string?",
+        tier: "number?",
+        day: "string?",
+        parentId: "ref?",
+        note: "string?"
+      },
       required: ["name"]
     },
     championship: {
@@ -1982,7 +2041,10 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     s.doc.meta.name = doc.name || s.doc.meta.name;
     s.doc.meta.startDate = start;
     arr(doc.brands).forEach((b) => {
-      const rec = typeof b === "string" ? { name: b } : b;
+      const rec = typeof b === "string" ? { name: b } : { ...b };
+      delete rec.parent;
+      delete rec.parentId;
+      if (rec.tier != null) rec.tier = Number(rec.tier);
       try {
         s.addEntity("brand", rec, { upsert: true });
       } catch (e) {
@@ -1990,6 +2052,19 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       }
     });
     const brandIdx = buildIndex(s, "brand");
+    arr(doc.brands).forEach((b) => {
+      if (typeof b === "string") return;
+      const parent = b.parent || b.parentId;
+      if (!parent) return;
+      const self = resolve(brandIdx, b.name);
+      const up = resolve(brandIdx, parent);
+      if (!self.ok) return;
+      if (!up.ok) {
+        errors.push(`brand "${b.name}": unknown parent brand "${parent}"`);
+        return;
+      }
+      s.bucket("brand")[self.id].parentId = up.id;
+    });
     const brandRef = (name, where) => {
       if (name == null || name === "") return null;
       const r = resolve(brandIdx, name);
@@ -2159,15 +2234,96 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   }
   var msg = (e) => e.errors ? e.errors.join("; ") : e.message;
 
+  // js/universe/pyramid.js
+  var tierOfBrand = (b) => Number.isFinite(b.tier) ? b.tier : 1;
+  function tiers(state) {
+    const byTier = /* @__PURE__ */ new Map();
+    Object.values(state.brands).forEach((b) => {
+      const t = tierOfBrand(b);
+      if (!byTier.has(t)) byTier.set(t, []);
+      byTier.get(t).push(b);
+    });
+    return [...byTier.entries()].sort((a, b) => a[0] - b[0]).map(([tier, brands], i, all) => ({
+      tier,
+      brands: brands.sort((x, y) => x.name.localeCompare(y.name)),
+      depth: i + 1,
+      isTop: i === 0,
+      isBottom: i === all.length - 1,
+      label: i === 0 ? "Main roster" : i === all.length - 1 && all.length > 2 ? "Lower developmental" : "Developmental"
+    }));
+  }
+  var tierOf = (state, brandId) => state.brands[brandId] ? tierOfBrand(state.brands[brandId]) : null;
+  var brandsInTier = (state, tier) => Object.values(state.brands).filter((b) => tierOfBrand(b) === tier);
+  var ladder = (state) => tiers(state).map((t) => t.tier);
+  function tierAbove(state, brandId) {
+    const rungs = ladder(state);
+    const i = rungs.indexOf(tierOf(state, brandId));
+    return i > 0 ? rungs[i - 1] : null;
+  }
+  function tierBelow(state, brandId) {
+    const rungs = ladder(state);
+    const i = rungs.indexOf(tierOf(state, brandId));
+    return i >= 0 && i < rungs.length - 1 ? rungs[i + 1] : null;
+  }
+  var canBePromoted = (state, brandId) => tierAbove(state, brandId) !== null;
+  var canBeRelegated = (state, brandId) => tierBelow(state, brandId) !== null;
+  function destination(state, brandId, direction) {
+    const brand2 = state.brands[brandId];
+    if (!brand2) return null;
+    const wantTier = direction === "promotion" ? tierAbove(state, brandId) : tierBelow(state, brandId);
+    if (wantTier == null) return null;
+    const candidates = brandsInTier(state, wantTier);
+    if (!candidates.length) return null;
+    if (direction === "promotion" && brand2.parentId) {
+      const parent = candidates.find((b) => b.id === brand2.parentId);
+      if (parent) return parent.id;
+    }
+    if (direction === "relegation") {
+      const child = candidates.find((b) => b.parentId === brandId);
+      if (child) return child.id;
+    }
+    return candidates.slice().sort((a, b) => (a.roster || []).length - (b.roster || []).length || a.name.localeCompare(b.name))[0].id;
+  }
+  function pyramidText(state, { sep = " | ", down = " \u2193 " } = {}) {
+    return tiers(state).map((t) => t.brands.map((b) => b.name).join(sep)).join(down);
+  }
+  function brandCard(state, brandId) {
+    const b = state.brands[brandId];
+    if (!b) return null;
+    const up = tierAbove(state, brandId);
+    const down = tierBelow(state, brandId);
+    return {
+      ...b,
+      tier: tierOfBrand(b),
+      parent: b.parentId && state.brands[b.parentId] ? state.brands[b.parentId] : null,
+      children: Object.values(state.brands).filter((x) => x.parentId === brandId),
+      promotesTo: up == null ? null : destination(state, brandId, "promotion"),
+      relegatesTo: down == null ? null : destination(state, brandId, "relegation"),
+      championships: Object.values(state.championships).filter((c) => c.brandId === brandId && !c.retired),
+      size: (b.roster || []).length
+    };
+  }
+  function checkBrand(state, rec, { id = null } = {}) {
+    const errors = [];
+    const tier = Number(rec.tier == null ? 1 : rec.tier);
+    if (!Number.isFinite(tier) || tier < 1) errors.push("tier must be a whole number, 1 or higher");
+    if (rec.parentId) {
+      const parent = state.brands[rec.parentId];
+      if (!parent) errors.push("the parent brand does not exist");
+      else if (tierOfBrand(parent) >= tier) errors.push(`${parent.name} is on tier ${tierOfBrand(parent)}, so it cannot be the parent of a tier ${tier} brand`);
+      else if (id && rec.parentId === id) errors.push("a brand cannot be its own parent");
+    }
+    if (!String(rec.name || "").trim()) errors.push("a brand needs a name");
+    return errors;
+  }
+
   // js/universe/season.js
   var DEFAULTS = {
     relegatePerBrand: 1,
-    // per gender, per main brand
-    promotePerGender: 2
-    // from development — they face each other, so two
+    // per gender, per brand that has a tier below it
+    promotePerBrand: 2
+    // per gender, per brand that has a tier above it
   };
-  var isMain = (b) => (b.tier || 1) === 1;
-  var isDev = (b) => (b.tier || 1) > 1;
   function seasons(state) {
     const stands = state.ples.filter((p) => p.kind === "lastStand").sort((a, b) => a.date < b.date ? -1 : 1);
     const manias = state.ples.filter((p) => p.kind === "wrestlemania");
@@ -2253,43 +2409,61 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     return set;
   };
   function proposeFlags(state, opts = {}) {
-    const { relegatePerBrand, promotePerGender } = { ...DEFAULTS, ...opts };
+    const { relegatePerBrand, promotePerBrand } = { ...DEFAULTS, ...opts };
     const season = opts.season || currentSeason(state);
     const champs = championSet(state);
     const standings = brandStandings(state, season);
     const genders = ["male", "female"];
-    const out = [];
-    standings.filter((b) => isMain(b)).forEach((b) => {
-      genders.forEach((g) => {
-        const eligible = b.table.filter((r) => r.gender === g && !champs.has(r.id));
-        eligible.slice(-relegatePerBrand).forEach((r) => out.push({
-          id: r.id,
-          name: r.name,
-          gender: g,
-          flag: "relegation-flagged",
-          from: b.id,
-          fromName: b.name,
-          points: r.points,
-          record: `${r.w}-${r.l}-${r.d}`,
-          why: `bottom of ${b.name}${r.matches ? "" : " (no matches all season)"}`
-        }));
+    const groups = /* @__PURE__ */ new Map();
+    const key = (tier, gender, flag) => `${tier}|${gender}|${flag}`;
+    standings.forEach((b) => {
+      const tier = tierOf(state, b.id);
+      [
+        ["relegation-flagged", canBeRelegated(state, b.id), relegatePerBrand],
+        ["promotion-flagged", canBePromoted(state, b.id), promotePerBrand]
+      ].forEach(([flag, allowed, perBrand]) => {
+        if (!allowed) return;
+        const relegation = flag === "relegation-flagged";
+        genders.forEach((g) => {
+          const ordered = b.table.filter((r) => r.gender === g && !(relegation && champs.has(r.id)));
+          const queue = relegation ? ordered.slice().reverse() : ordered;
+          const row = (r) => ({
+            id: r.id,
+            name: r.name,
+            gender: g,
+            flag,
+            from: b.id,
+            fromName: b.name,
+            tier,
+            toward: destination(state, b.id, relegation ? "relegation" : "promotion"),
+            points: r.points,
+            record: `${r.w}-${r.l}-${r.d}`,
+            why: relegation ? `bottom of ${b.name}${r.matches ? "" : " (no matches all season)"}` : `top of ${b.name}`
+          });
+          const k = key(tier, g, flag);
+          if (!groups.has(k)) groups.set(k, { picked: [], bench: [], brands: /* @__PURE__ */ new Set() });
+          const grp = groups.get(k);
+          grp.brands.add(b.id);
+          queue.slice(0, perBrand).forEach((r) => grp.picked.push(row(r)));
+          queue.slice(perBrand).forEach((r) => grp.bench.push(row(r)));
+        });
       });
     });
-    standings.filter((b) => isDev(b)).forEach((b) => {
-      genders.forEach((g) => {
-        const eligible = b.table.filter((r) => r.gender === g);
-        eligible.slice(0, promotePerGender).forEach((r) => out.push({
-          id: r.id,
-          name: r.name,
-          gender: g,
-          flag: "promotion-flagged",
-          from: b.id,
-          fromName: b.name,
-          points: r.points,
-          record: `${r.w}-${r.l}-${r.d}`,
-          why: `top of ${b.name}`
-        }));
-      });
+    const out = [];
+    groups.forEach((grp) => {
+      const picked = grp.picked.slice();
+      if (picked.length % 2 === 1) {
+        if (grp.brands.size > 1) {
+          const relegation = picked[0].flag === "relegation-flagged";
+          picked.sort((a, b) => relegation ? a.points - b.points : b.points - a.points);
+          picked.pop();
+        } else if (grp.bench.length) {
+          picked.push(grp.bench[0]);
+        } else {
+          picked.pop();
+        }
+      }
+      out.push(...picked);
     });
     return out.map((p) => ({ ...p, alreadyFlagged: state.wrestlers[p.id].status === p.flag }));
   }
@@ -2308,41 +2482,32 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     return { events: written, written: written.length };
   }
   function proposeLastStand(state, opts = {}) {
-    const flagged = (flag) => Object.values(state.wrestlers).filter((w) => w.status === flag);
-    const matches = [];
-    ["relegation-flagged", "promotion-flagged"].forEach((flag) => {
-      const stakes = flag === "relegation-flagged" ? "relegation" : "promotion";
-      ["male", "female"].forEach((gender) => {
-        const pool = flagged(flag).filter((w) => w.gender === gender);
-        for (let i = 0; i + 1 < pool.length; i += 2) {
-          matches.push({
-            stakes,
-            gender,
-            a: pool[i],
-            b: pool[i + 1],
-            toBrandId: destinationFor(state, stakes, [pool[i], pool[i + 1]])
-          });
-        }
-        if (pool.length % 2 === 1) {
-          matches.push({ stakes, gender, unpaired: pool[pool.length - 1] });
-        }
+    const matches = [], unpaired = [];
+    tiers(state).forEach(({ tier }) => {
+      ["relegation-flagged", "promotion-flagged"].forEach((flag) => {
+        const stakes = flag === "relegation-flagged" ? "relegation" : "promotion";
+        ["male", "female"].forEach((gender) => {
+          const pool = Object.values(state.wrestlers).filter((w) => w.status === flag && w.gender === gender && tierOf(state, w.brandId) === tier);
+          for (let i = 0; i + 1 < pool.length; i += 2) {
+            matches.push({
+              stakes,
+              gender,
+              tier,
+              a: pool[i],
+              b: pool[i + 1],
+              toBrandId: destination(state, pool[i].brandId, stakes)
+            });
+          }
+          if (pool.length % 2 === 1) unpaired.push(pool[pool.length - 1]);
+        });
       });
     });
-    return {
-      matches: matches.filter((m) => !m.unpaired),
-      unpaired: matches.filter((m) => m.unpaired).map((m) => m.unpaired),
-      date: opts.date || null
-    };
+    return { matches, unpaired, date: opts.date || null };
   }
   function destinationFor(state, stakes, wrestlers = []) {
-    const brands = Object.values(state.brands);
-    if (stakes === "relegation") {
-      const dev = brands.filter(isDev).sort((a, b) => a.roster.length - b.roster.length);
-      return dev.length ? dev[0].id : null;
-    }
-    const from = new Set(wrestlers.map((w) => w.brandId));
-    const main = brands.filter((b) => isMain(b) && !from.has(b.id)).sort((a, b) => a.roster.length - b.roster.length);
-    return main.length ? main[0].id : (brands.filter(isMain)[0] || {}).id || null;
+    const from = wrestlers.map((w) => w.brandId).find(Boolean);
+    if (!from) return null;
+    return destination(state, from, stakes);
   }
   function lastStandCard(state, proposal, { name = "Last Stand", date, brandId = null } = {}) {
     const lines = [
@@ -2351,7 +2516,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     ];
     proposal.matches.forEach((m) => {
       const to = state.brands[m.toBrandId] ? state.brands[m.toBrandId].name : "?";
-      lines.push(`${m.a.name} vs ${m.b.name} \u2014 ${m.stakes}${m.stakes === "promotion" ? ` to ${to}` : ""}`);
+      lines.push(`${m.a.name} vs ${m.b.name} \u2014 ${m.stakes} to ${to}`);
     });
     return lines.join("\n");
   }
@@ -3207,18 +3372,44 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     "brands": [
       {
         "name": "Raw",
-        "color": "#c8102e",
-        "tier": 1
+        "abbr": "RAW",
+        "color": "#C8102E",
+        "logo": "\u{1F534}",
+        "tier": 1,
+        "day": "Monday"
       },
       {
         "name": "SmackDown",
-        "color": "#0b7bd5",
-        "tier": 1
+        "abbr": "SD",
+        "color": "#0B7BD5",
+        "logo": "\u{1F535}",
+        "tier": 1,
+        "day": "Friday"
+      },
+      {
+        "name": "Dynamite",
+        "abbr": "DYN",
+        "color": "#E8B23A",
+        "logo": "\u26A1",
+        "tier": 1,
+        "day": "Wednesday"
       },
       {
         "name": "NXT",
-        "color": "#f5c518",
-        "tier": 2
+        "abbr": "NXT",
+        "color": "#7C5CFF",
+        "logo": "\u{1F7E3}",
+        "tier": 2,
+        "day": "Tuesday"
+      },
+      {
+        "name": "Evolve",
+        "abbr": "EVO",
+        "color": "#3FBF8F",
+        "logo": "\u{1F7E2}",
+        "tier": 3,
+        "day": "Thursday",
+        "parent": "NXT"
       }
     ],
     "championships": [
@@ -3265,6 +3456,22 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "teamSize": 2
       },
       {
+        "name": "AEW World Championship",
+        "brand": "Dynamite",
+        "division": "mens"
+      },
+      {
+        "name": "AEW Women's World Championship",
+        "brand": "Dynamite",
+        "division": "womens"
+      },
+      {
+        "name": "AEW World Tag Team Championship",
+        "brand": "Dynamite",
+        "division": "tag",
+        "teamSize": 2
+      },
+      {
         "name": "NXT Championship",
         "brand": "NXT",
         "division": "mens"
@@ -3272,6 +3479,16 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       {
         "name": "NXT Women's Championship",
         "brand": "NXT",
+        "division": "womens"
+      },
+      {
+        "name": "Evolve Championship",
+        "brand": "Evolve",
+        "division": "mens"
+      },
+      {
+        "name": "Evolve Women's Championship",
+        "brand": "Evolve",
         "division": "womens"
       }
     ],
@@ -3394,8 +3611,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "name": "Ivy Nile",
         "brand": "Raw",
         "gender": "female",
-        "alignment": "face",
-        "status": "relegation-flagged"
+        "alignment": "face"
       },
       {
         "name": "Cody Rhodes",
@@ -3539,8 +3755,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "name": "Trick Williams",
         "brand": "NXT",
         "gender": "male",
-        "alignment": "face",
-        "status": "promotion-flagged"
+        "alignment": "face"
       },
       {
         "name": "Ethan Page",
@@ -3599,6 +3814,162 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         "name": "Shayna Baszler",
         "gender": "female",
         "status": "free agent"
+      },
+      {
+        "name": "Jon Moxley",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Swerve Strickland",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Will Ospreay",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Kazuchika Okada",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "MJF",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Adam Page",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Darby Allin",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Orange Cassidy",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Claudio Castagnoli",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Wheeler Yuta",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Konosuke Takeshita",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Ricochet",
+        "brand": "Dynamite",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Toni Storm",
+        "brand": "Dynamite",
+        "gender": "female",
+        "alignment": "face"
+      },
+      {
+        "name": "Mercedes Mone",
+        "brand": "Dynamite",
+        "gender": "female",
+        "alignment": "heel"
+      },
+      {
+        "name": "Jamie Hayter",
+        "brand": "Dynamite",
+        "gender": "female",
+        "alignment": "face"
+      },
+      {
+        "name": "Willow Nightingale",
+        "brand": "Dynamite",
+        "gender": "female",
+        "alignment": "face"
+      },
+      {
+        "name": "Kris Statlander",
+        "brand": "Dynamite",
+        "gender": "female",
+        "alignment": "face"
+      },
+      {
+        "name": "Julia Hart",
+        "brand": "Dynamite",
+        "gender": "female",
+        "alignment": "heel"
+      },
+      {
+        "name": "Bryce Donovan",
+        "brand": "Evolve",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Cutler James",
+        "brand": "Evolve",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Jackson Drake",
+        "brand": "Evolve",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Kale Dixon",
+        "brand": "Evolve",
+        "gender": "male",
+        "alignment": "heel"
+      },
+      {
+        "name": "Sean Legters",
+        "brand": "Evolve",
+        "gender": "male",
+        "alignment": "face"
+      },
+      {
+        "name": "Kendal Grey",
+        "brand": "Evolve",
+        "gender": "female",
+        "alignment": "face"
+      },
+      {
+        "name": "Layla Diggs",
+        "brand": "Evolve",
+        "gender": "female",
+        "alignment": "face"
+      },
+      {
+        "name": "Wendy Choo",
+        "brand": "Evolve",
+        "gender": "female",
+        "alignment": "heel"
       }
     ],
     "tagTeams": [
@@ -3632,6 +4003,14 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
           "Ludwig Kaiser"
         ],
         "brand": "Raw"
+      },
+      {
+        "name": "The Blackpool Combat Club",
+        "members": [
+          "Claudio Castagnoli",
+          "Wheeler Yuta"
+        ],
+        "brand": "Dynamite"
       }
     ],
     "factions": [
@@ -3658,80 +4037,6 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
         ],
         "leader": "Finn B\xE1lor",
         "brand": "Raw"
-      }
-    ],
-    "titleHolders": [
-      {
-        "title": "WWE Championship",
-        "holders": [
-          "Cody Rhodes"
-        ],
-        "since": "2026-04-06"
-      },
-      {
-        "title": "World Heavyweight Championship",
-        "holders": [
-          "Gunther"
-        ],
-        "since": "2026-01-27"
-      },
-      {
-        "title": "Intercontinental Championship",
-        "holders": [
-          "Bron Breakker"
-        ],
-        "since": "2026-02-10"
-      },
-      {
-        "title": "United States Championship",
-        "holders": [
-          "LA Knight"
-        ],
-        "since": "2026-03-02"
-      },
-      {
-        "title": "Women's World Championship",
-        "holders": [
-          "Liv Morgan"
-        ],
-        "since": "2026-01-13"
-      },
-      {
-        "title": "WWE Women's Championship",
-        "holders": [
-          "Nia Jax"
-        ],
-        "since": "2026-05-04"
-      },
-      {
-        "title": "World Tag Team Championship",
-        "holders": [
-          "Erik",
-          "Ivar"
-        ],
-        "since": "2026-03-17"
-      },
-      {
-        "title": "WWE Tag Team Championship",
-        "holders": [
-          "Johnny Gargano",
-          "Tommaso Ciampa"
-        ],
-        "since": "2026-04-21"
-      },
-      {
-        "title": "NXT Championship",
-        "holders": [
-          "Trick Williams"
-        ],
-        "since": "2026-02-24"
-      },
-      {
-        "title": "NXT Women's Championship",
-        "holders": [
-          "Giulia"
-        ],
-        "since": "2026-05-11"
       }
     ],
     "events": [
@@ -3788,8 +4093,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   var wlink = (w) => `<span class="wname" data-w="${h(w.id)}">${h(w.name)}</span>`;
 
   // js/universe/ui/views.js
-  var BRAND_COLOR = { "b:raw": "var(--raw)", "b:smackdown": "var(--smackdown)", "b:nxt": "var(--nxt)" };
-  var brandColor = (id) => BRAND_COLOR[id] || "var(--violet)";
+  var brandColor = (state, id) => state.brands[id] && state.brands[id].color || "var(--violet)";
   var brandName2 = (state, id) => id && state.brands[id] ? state.brands[id].name : null;
   var genderMark = (g) => g === "female" ? "F" : g === "male" ? "M" : g ? "\xB7" : "?";
   function statusChip(w) {
@@ -3820,7 +4124,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       const f = roster.filter((w) => w.gender === "female").length;
       return `<div class="card flush">
       <div class="brandhead">
-        <div class="bar" style="background:${brandColor(b.id)}"></div>
+        <div class="bar" style="background:${brandColor(state, b.id)}"></div>
         <div class="nm">${h(b.name)}</div>
         <div class="ct">${plural2(roster.length, "wrestler")} \xB7 ${m}M / ${f}F \xB7 ${plural2(b.champions.length, "title")}</div>
       </div>
@@ -3860,14 +4164,14 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       const holders = c.holders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
       const reign = c.reigns[c.reigns.length - 1];
       const interim = c.interimHolders.map((id) => state.wrestlers[id] ? state.wrestlers[id].name : id).join(" & ");
-      return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(c.brandId)}">
+      return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(state, c.brandId)}">
       <div class="nm">${h(c.name)}</div>
-      <div class="holder${c.vacant ? " vacant" : ""}">${c.vacant ? "Vacant" : h(holders)}</div>
+      <div class="holder${c.vacant ? " vacant" : ""}">${c.vacant ? "VACANT" : h(holders)}</div>
       ${interim ? `<div class="interim">${chip("interim", "new")} ${h(interim)}</div>` : ""}
       <div class="facts">
         <span>${brandName2(state, c.brandId) || "unbranded"}</span>
         ${c.vacant ? "" : `<span>${c.daysHeld} days</span><span>${plural2(c.defenses, "defense")}</span>`}
-        <span>${plural2(c.reigns.length, "reign")}</span>
+        <span>${c.reigns.length ? plural2(c.reigns.length, "reign") : "never held"}</span>
       </div>
     </div>`;
     }).join("");
@@ -3888,7 +4192,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       ["Defenses", c.totalDefenses],
       ["Longest", longest ? `${longest.days}d` : "\u2014"]
     ].map(([k, v]) => `<div class="fact"><div class="k">${h(k)}</div><div class="v">${h(v)}</div></div>`).join("");
-    const holderLine = c.vacant ? '<span class="vacant">Vacant</span>' : `${c.holders.map((x) => wlink(state.wrestlers[x] || { id: x, name: x })).join(" &amp; ")}
+    const holderLine = c.vacant ? '<span class="vacant">VACANT</span>' : `${c.holders.map((x) => wlink(state.wrestlers[x] || { id: x, name: x })).join(" &amp; ")}
        <span class="dim">\xB7 ${c.daysHeld} days \xB7 ${plural2(c.defenses, "defense")}</span>`;
     const interimLine = c.interimHolders.length ? `<div style="margin-top:6px">${chip("interim", "new")}
        ${c.interimHolders.map((x) => wlink(state.wrestlers[x] || { id: x, name: x })).join(" &amp; ")}
@@ -3910,7 +4214,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     return `<div class="backrow">
       <button class="linkbtn" data-tab="titles">\u2190 all championships</button>
     </div>
-    <div class="pagehead" style="border-left-color:${brandColor(c.brandId)}">
+    <div class="pagehead" style="border-left-color:${brandColor(state, c.brandId)}">
       <div class="nm">${h(c.name)}</div>
       <div class="holder">${holderLine}</div>
       ${interimLine}
@@ -3973,7 +4277,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     else notes.push("No contract \u2014 free agent");
     const threads = state.threads.filter((t) => t.subjects.includes(id) || t.about === id).map((t) => describeThread(state, t));
     return `<div class="backrow"><button class="linkbtn" data-tab="roster">\u2190 roster</button></div>
-    <div class="pagehead" style="border-left-color:${brandColor(w.brandId)}">
+    <div class="pagehead" style="border-left-color:${brandColor(state, w.brandId)}">
       <div class="nm">${h(w.name)}</div>
       <div class="holder">${status}</div>
       <div class="dim" style="margin-top:6px">${notes.join(" \xB7 ")}</div>
@@ -4035,6 +4339,94 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       { label: "Closed by", get: (t) => t.closedWhy, dim: true }
     ], "Nothing closed yet.")}</div>`;
   }
+  function brandsView(state, ui = {}) {
+    const rows = tiers(state);
+    const editing = ui.editing || null;
+    const rungs = rows.map((t, i) => `
+    <div class="rung">
+      <div class="rungmeta">
+        <div class="tiernum">Tier ${t.tier}</div>
+        <div class="tierlabel">${h(t.label)}</div>
+      </div>
+      <div class="rungbrands">
+        ${t.brands.map((b) => {
+      const card = brandCard(state, b.id);
+      const belts = card.championships.length;
+      return `<button class="brandcard${editing === b.id ? " on" : ""}" data-editbrand="${h(b.id)}"
+              style="--bc:${h(b.color || "var(--violet)")}">
+            <div class="bhead">
+              <span class="blogo">${h(b.logo || "\u25CF")}</span>
+              <span class="bname">${h(b.name)}</span>
+              ${b.abbr ? `<span class="babbr">${h(b.abbr)}</span>` : ""}
+            </div>
+            <div class="bfacts">
+              ${b.day ? `<span>${h(b.day)}s</span>` : '<span class="dim">no show day</span>'}
+              <span>${plural2(card.size, "wrestler")}</span>
+              <span>${plural2(belts, "title")}</span>
+            </div>
+            <div class="bmoves">
+              ${card.promotesTo ? `<span class="up">\u2191 ${h(state.brands[card.promotesTo].name)}</span>` : '<span class="dim">top of the pyramid</span>'}
+              ${card.relegatesTo ? `<span class="down">\u2193 ${h(state.brands[card.relegatesTo].name)}</span>` : '<span class="dim">bottom</span>'}
+            </div>
+            ${card.parent ? `<div class="bparent">develops for ${h(card.parent.name)}</div>` : ""}
+          </button>`;
+    }).join("")}
+      </div>
+    </div>
+    ${i < rows.length - 1 ? '<div class="rungarrow">\u2193</div>' : ""}`).join("");
+    return `<h2>The pyramid <span class="sub">${h(pyramidText(state))}</span></h2>
+    <div class="pyramid">${rungs}</div>
+    <div class="row">
+      <button class="btn" data-editbrand="new">New show</button>
+      <span class="hint">Tiers are just numbers \u2014 add a tier 4 and the pyramid grows a rung.
+        Promotion, relegation and the draft all read this, never a brand name.</span>
+    </div>
+    ${editing ? brandForm(state, editing) : ""}
+    ${brandTable(state)}`;
+  }
+  function brandForm(state, id) {
+    const b = id === "new" ? { tier: (tiers(state).slice(-1)[0] || { tier: 0 }).tier + 1 } : state.brands[id] || {};
+    const isNew = id === "new";
+    const parents = Object.values(state.brands).filter((x) => x.id !== id);
+    const field = (label, input, hint = "") => `<label class="opt col"><span>${h(label)}</span>${input}${hint ? `<em class="hint">${h(hint)}</em>` : ""}</label>`;
+    return `<div class="card" id="brandForm" style="margin:16px 0">
+    <h2>${isNew ? "New show" : `Edit ${h(b.name)}`}</h2>
+    <div class="formgrid">
+      ${field("Name", `<input id="bfName" type="text" value="${h(b.name || "")}" placeholder="Dynamite">`)}
+      ${field("Short name", `<input id="bfAbbr" type="text" value="${h(b.abbr || "")}" placeholder="DYN">`)}
+      ${field("Logo", `<input id="bfLogo" type="text" value="${h(b.logo || "")}" placeholder="\u26A1" maxlength="4">`, "an emoji or a character")}
+      ${field("Colour", `<input id="bfColor" type="color" value="${h(b.color || "#7C5CFF")}">`)}
+      ${field("Tier", `<input id="bfTier" type="number" min="1" step="1" value="${h(b.tier == null ? 1 : b.tier)}">`, "1 is the top of the pyramid")}
+      ${field("Show day", `<select id="bfDay">
+          <option value="">\u2014</option>
+          ${SHOW_DAYS.map((d) => `<option value="${d}"${b.day === d ? " selected" : ""}>${d}</option>`).join("")}
+        </select>`)}
+      ${field("Develops for", `<select id="bfParent">
+          <option value="">\u2014 the tier above in general \u2014</option>
+          ${parents.map((p) => `<option value="${h(p.id)}"${b.parentId === p.id ? " selected" : ""}>${h(p.name)} (tier ${p.tier == null ? 1 : p.tier})</option>`).join("")}
+        </select>`, "optional: send promotions to one brand")}
+    </div>
+    <div class="row">
+      <button class="btn" data-savebrand="${h(id)}">${isNew ? "Create show" : "Save changes"}</button>
+      <button class="btn ghost" data-editbrand="">Cancel</button>
+      ${isNew ? "" : `<span class="hint">Championships and roster are managed from the belt pages and the roster import.</span>`}
+    </div>
+  </div>`;
+  }
+  function brandTable(state) {
+    const rows = Object.values(state.brands).map((b) => brandCard(state, b.id)).sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+    return `<h2 style="margin-top:22px">Every show</h2>
+    <div class="card flush">${table2(rows, [
+      { label: "Show", get: (b) => `<span class="blogo">${h(b.logo || "\u25CF")}</span> <strong>${h(b.name)}</strong>`, html: true },
+      { label: "Tier", num: true, get: (b) => b.tier },
+      { label: "Day", get: (b) => b.day || "\u2014", dim: true },
+      { label: "Roster", num: true, get: (b) => b.size },
+      { label: "Titles", get: (b) => b.championships.map((c) => chip(c.name.replace(/ Championship$/, ""), "title")).join(" ") || '<span class="dim">none</span>', html: true },
+      { label: "Promotes to", get: (b) => b.promotesTo ? h(state.brands[b.promotesTo].name) : "\u2014", dim: true },
+      { label: "Relegates to", get: (b) => b.relegatesTo ? h(state.brands[b.relegatesTo].name) : "\u2014", dim: true },
+      { label: "", get: (b) => `<button class="linkbtn" data-editbrand="${h(b.id)}">edit</button>`, html: true }
+    ], "No shows yet.")}</div>`;
+  }
   function seasonView(state, ui = {}) {
     const season = currentSeason(state);
     const tables = brandStandings(state, season);
@@ -4043,7 +4435,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     const proposal = ui.proposal || null;
     const standings = tables.map((b) => `<div class="card flush">
       <div class="brandhead">
-        <div class="bar" style="background:${brandColor(b.id)}"></div>
+        <div class="bar" style="background:${brandColor(state, b.id)}"></div>
         <div class="nm">${h(b.name)}</div>
         <div class="ct">${(b.tier || 1) > 1 ? "development" : "main roster"} \xB7 ${plural2(b.table.length, "wrestler")}</div>
       </div>
@@ -4099,14 +4491,51 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     <div class="row" style="margin-top:0">
       <button class="btn${wm && !flagged.length ? "" : " ghost"}" id="flagsPropose">Work out the lists</button>
       <button class="btn ghost" id="lastStandPropose"${flagged.length ? "" : " disabled"}>Book Last Stand</button>
-      <span class="hint">Champions are never relegated.</span>
+      ${tiers(state).map((t) => t.brands.length > 1 ? `<button class="btn ghost" data-draftpropose="${t.tier}">Draft tier ${t.tier}</button>` : "").join("")}
+      <span class="hint">Champions are never relegated. The year runs WrestleMania \u2192 Last Stand \u2192 Draft.</span>
     </div>
+    ${ui.draft ? draftView(state, ui.draft) : ""}
     ${proposalBlock}
     ${card}
     ${flagBlock}
 
     <h2 style="margin-top:22px">Standings <span class="sub">wins this season \u2014 3 points a win, 1 a draw</span></h2>
     <div class="grid">${standings}</div>`;
+  }
+  function draftView(state, proposal) {
+    if (!proposal) return "";
+    if (!proposal.picks.length && !proposal.protected.length) {
+      return `<div class="msg warn">${h(proposal.why || "Nothing to draft on this tier.")}</div>`;
+    }
+    const cols = proposal.order.map((o) => {
+      const held = proposal.protected.filter((w) => w.brandId === o.brandId);
+      const picks = proposal.picks.filter((p) => p.brandId === o.brandId);
+      return `<div class="draftcol" style="--bc:${brandColor(state, o.brandId)}">
+      <h3>${h(o.name)} <small>${plural2(held.length + picks.length, "name")}</small></h3>
+      <ol>
+        ${held.map((w) => `<li class="protected"><span class="rd">\u2014</span>
+            <span class="nm">${h(w.name)}</span> <span class="hint">champion</span></li>`).join("")}
+        ${picks.map((p) => `<li class="${p.team ? "team " : ""}${p.from !== p.brandId ? "moved" : ""}">
+            <span class="rd">${p.round}.</span>
+            <span class="nm">${h(p.name)}</span>
+            ${p.from === p.brandId ? '<span class="hint">stays</span>' : `<span class="hint">from ${h(state.brands[p.from] ? state.brands[p.from].name : "free agency")}</span>`}
+          </li>`).join("")}
+      </ol>
+    </div>`;
+    }).join("");
+    const moving = proposal.picks.filter((p) => p.from !== p.brandId).length;
+    return `<div class="msg ok">
+      <strong>Tier ${proposal.tier}</strong> \xB7 order ${h(proposal.order.map((o) => o.name).join(" \u2192 "))}
+      (weakest season first, snaking) \xB7 ${plural2(proposal.rounds, "round")} \xB7
+      <strong>${plural2(moving, "wrestler")}</strong> would change brand
+      ${proposal.protected.length ? ` \xB7 ${plural2(proposal.protected.length, "champion")} protected` : ""}
+    </div>
+    <div class="draftgrid">${cols}</div>
+    <div class="row">
+      <button class="btn" data-draftcommit="${proposal.tier}">Run the draft</button>
+      <button class="btn ghost" data-draftcancel="1">Cancel</button>
+      <span class="hint">Only the ${plural2(moving, "move")} get written \u2014 anyone staying put costs nothing.</span>
+    </div>`;
   }
   function heatPanel(state) {
     const nmw = (id) => wlink(state.wrestlers[id] || { id, name: id });
@@ -4144,7 +4573,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     if (!state.shows.length) return '<div class="empty">No shows yet \u2014 enter a card on the Tonight tab.</div>';
     return [...state.shows].reverse().map((s) => `<div class="card flush" style="margin-bottom:16px">
       <div class="brandhead">
-        <div class="bar" style="background:${brandColor(s.brandId)}"></div>
+        <div class="bar" style="background:${brandColor(state, s.brandId)}"></div>
         <div class="nm">${h(s.name)}</div>
         <div class="ct">${fmtDate(s.date)} \xB7 ${brandName2(state, s.brandId) || "no brand"} \xB7 ${plural2(s.segments.length, "segment")}</div>
       </div>
@@ -4872,6 +5301,134 @@ no explanation, no code fences.`;
     </div>`;
   }
 
+  // js/universe/draft.js
+  var DRAFT_DEFAULTS = { protectChampions: true, keepTeams: true };
+  function championHome(state) {
+    const home = /* @__PURE__ */ new Map();
+    Object.values(state.championships).forEach((c) => {
+      if (!c.brandId || c.retired) return;
+      [...c.holders, ...c.interimHolders].forEach((h2) => {
+        if (!home.has(h2)) home.set(h2, c.brandId);
+      });
+    });
+    return home;
+  }
+  function activePartners(state, ref) {
+    const out = /* @__PURE__ */ new Set();
+    Object.values(state.groups).forEach((g) => {
+      if (!g.active || g.kind !== "tagTeam" || !g.members.includes(ref)) return;
+      g.members.forEach((m) => {
+        if (m !== ref) out.add(m);
+      });
+    });
+    return [...out];
+  }
+  function proposeDraft(state, opts = {}) {
+    const { protectChampions, keepTeams } = { ...DRAFT_DEFAULTS, ...opts };
+    const season = opts.season || currentSeason(state);
+    const tier = opts.tier == null ? (tiers(state)[0] || {}).tier : opts.tier;
+    const brands = (tiers(state).find((t) => t.tier === tier) || { brands: [] }).brands;
+    if (brands.length < 2) {
+      return { tier, order: [], picks: [], pool: [], protected: [], why: "a draft needs at least two brands on the tier" };
+    }
+    const form = new Map(standingsFor(state, { from: season.from, to: season.to }).map((r) => [r.id, r]));
+    const score = (id) => form.get(id) ? form.get(id).points : 0;
+    const rank = (a, b) => score(b.id) - score(a.id) || ((form.get(b.id) || {}).winPct || 0) - ((form.get(a.id) || {}).winPct || 0) || a.name.localeCompare(b.name);
+    const isTop = tiers(state)[0] && tiers(state)[0].tier === tier;
+    const roster = Object.values(state.wrestlers).filter((w) => w.brandId && tierOf(state, w.brandId) === tier || isTop && !w.brandId && w.status !== "released");
+    const home = protectChampions ? championHome(state) : /* @__PURE__ */ new Map();
+    const held = [];
+    const pool = [];
+    roster.forEach((w) => {
+      const brandOfBelt = home.get(w.id);
+      if (brandOfBelt && brands.some((b) => b.id === brandOfBelt)) {
+        held.push({ ...w, brandId: brandOfBelt, why: "champion \u2014 stays with the belt" });
+      } else pool.push(w);
+    });
+    pool.sort(rank);
+    const order = brands.slice().sort((a, b) => {
+      const pa = (a.roster || []).reduce((n, id) => n + score(id), 0);
+      const pb = (b.roster || []).reduce((n, id) => n + score(id), 0);
+      return pa - pb || a.name.localeCompare(b.name);
+    }).map((b) => ({
+      brandId: b.id,
+      name: b.name,
+      points: (b.roster || []).reduce((n, id) => n + score(id), 0),
+      protectedCount: held.filter((x) => x.brandId === b.id).length
+    }));
+    const picks = [];
+    const taken = new Set(held.map((w) => w.id));
+    const remaining = () => pool.filter((w) => !taken.has(w.id));
+    let round = 1;
+    while (remaining().length) {
+      const sweep = round % 2 ? order : order.slice().reverse();
+      let movedThisRound = false;
+      for (const slot of sweep) {
+        const next = remaining()[0];
+        if (!next) break;
+        taken.add(next.id);
+        picks.push({
+          round,
+          pick: picks.length + 1,
+          brandId: slot.brandId,
+          brandName: slot.name,
+          wrestlerId: next.id,
+          name: next.name,
+          gender: next.gender,
+          from: next.brandId,
+          points: score(next.id),
+          withTeam: []
+        });
+        movedThisRound = true;
+        if (keepTeams) {
+          activePartners(state, next.id).forEach((pid) => {
+            const partner = pool.find((w) => w.id === pid && !taken.has(pid));
+            if (!partner) return;
+            taken.add(pid);
+            picks[picks.length - 1].withTeam.push({ id: pid, name: partner.name });
+            picks.push({
+              round,
+              pick: picks.length + 1,
+              brandId: slot.brandId,
+              brandName: slot.name,
+              wrestlerId: pid,
+              name: partner.name,
+              gender: partner.gender,
+              from: partner.brandId,
+              points: score(pid),
+              team: true,
+              withTeam: []
+            });
+          });
+        }
+      }
+      if (!movedThisRound) break;
+      round += 1;
+    }
+    return { tier, order, picks, pool, protected: held, rounds: round - 1, season };
+  }
+  function commitDraft(store2, proposal, { date, dryRun = false, state = null } = {}) {
+    const picks = (proposal.picks || []).filter((p) => p.from !== p.brandId);
+    const events = picks.map((p) => ({
+      type: "brand.transfer",
+      date,
+      source: "draft",
+      participants: [{ ref: p.wrestlerId, role: "subject" }],
+      data: { toBrandId: p.brandId, fromBrandId: p.from || null, reason: "draft", status: "active" },
+      note: `drafted by ${p.brandName}, round ${p.round}`
+    }));
+    const signed = state ? picks.filter((p) => !p.from).map((p) => p.wrestlerId) : [];
+    events.forEach((e, i) => {
+      if (!signed.includes(picks[i].wrestlerId)) return;
+      e.type = "contract.signed";
+      e.data = { brandId: picks[i].brandId, status: "active" };
+    });
+    if (dryRun || !events.length) return { events, written: 0, moved: picks.length };
+    const written = store2.appendBatch(events);
+    store2.save();
+    return { events: written, written: written.length, moved: picks.length };
+  }
+
   // js/universe/ui/app.js
   var store = new UniverseStore({ adapter: localStorageAdapter() });
   if (!store.doc.events.length) seedFromJSON(UNIVERSE_SEED, { store });
@@ -4882,7 +5439,9 @@ no explanation, no code fences.`;
     state: null,
     flash: null,
     season: {},
-    // { proposal, lastStand } — unsaved working state
+    // { proposal, lastStand, draft } — unsaved working state
+    brandEdit: null,
+    // brand id being edited, or 'new'
     prompt: { id: "next" },
     shots: [],
     activeShot: 0,
@@ -4891,6 +5450,7 @@ no explanation, no code fences.`;
   var TABS = [
     { id: "tonight", label: "Tonight" },
     { id: "roster", label: "Roster", count: (s) => Object.keys(s.wrestlers).length },
+    { id: "brands", label: "Pyramid", count: (s) => Object.keys(s.brands).length },
     { id: "titles", label: "Titles", count: (s) => Object.values(s.championships).filter((c) => !c.retired).length },
     { id: "threads", label: "Threads", count: (s) => s.threads.length },
     { id: "season", label: "Season" },
@@ -4930,7 +5490,12 @@ no explanation, no code fences.`;
       $("#heatPanel").innerHTML = heatPanel(s);
     }
     if (app.tab === "threads") $("#pane-threads").innerHTML = threadsView(s);
-    if (app.tab === "season") $("#pane-season").innerHTML = seasonView(s, { proposal: app.season.proposal, lastStand: app.season.lastStand });
+    if (app.tab === "season") $("#pane-season").innerHTML = seasonView(s, {
+      proposal: app.season.proposal,
+      lastStand: app.season.lastStand,
+      draft: app.season.draft
+    });
+    if (app.tab === "brands") $("#pane-brands").innerHTML = brandsView(s, { editing: app.brandEdit });
     if (app.tab === "prompts") {
       $("#pane-prompts").innerHTML = promptsView(s, app.prompt);
       refreshPrompt();
@@ -5108,6 +5673,57 @@ no explanation, no code fences.`;
     save();
     app.tab = "tonight";
     flash("Universe reset to the seed roster.");
+    render();
+  });
+  on("click", "[data-editbrand]", (e, el) => {
+    app.brandEdit = el.dataset.editbrand || null;
+    render();
+  });
+  on("click", "[data-savebrand]", (e, el) => {
+    const id = el.dataset.savebrand;
+    const rec = {
+      name: $("#bfName").value.trim(),
+      abbr: $("#bfAbbr").value.trim() || void 0,
+      logo: $("#bfLogo").value.trim() || void 0,
+      color: $("#bfColor").value,
+      // Not `Number(x) || 1` — that quietly turns a typed 0 into a valid tier 1
+      // instead of refusing it, and the whole point of checkBrand is to say no.
+      tier: $("#bfTier").value === "" ? 1 : Number($("#bfTier").value),
+      day: $("#bfDay").value || void 0,
+      parentId: $("#bfParent").value || void 0
+    };
+    const problems = checkBrand(app.state, rec, { id: id === "new" ? null : id });
+    if (problems.length) {
+      flash(problems.map(h).join("; "), "err");
+      render();
+      return;
+    }
+    try {
+      if (id === "new") store.addEntity("brand", rec, { upsert: false });
+      else store.amendEntity(id, rec, "edited from the dashboard");
+      save();
+      app.brandEdit = null;
+      flash(`${h(rec.name)} saved. The pyramid, the lists and the draft all read it straight away.`);
+    } catch (err2) {
+      flash(h(err2.errors ? err2.errors.join("; ") : err2.message), "err");
+    }
+    render();
+  });
+  on("click", "[data-draftpropose]", (e, el) => {
+    app.season.draft = proposeDraft(app.state, { tier: Number(el.dataset.draftpropose) });
+    app.season.proposal = null;
+    app.season.lastStand = null;
+    render();
+  });
+  on("click", "[data-draftcancel]", () => {
+    app.season.draft = null;
+    render();
+  });
+  on("click", "[data-draftcommit]", () => {
+    const res = commitDraft(store, app.season.draft, { date: universeNow(), state: app.state });
+    save();
+    app.season.draft = null;
+    flash(`Draft run \u2014 ${plural2(res.written, "wrestler")} changed brand.`);
     render();
   });
   var copyEntryPrompt = async (kind, statusEl) => {

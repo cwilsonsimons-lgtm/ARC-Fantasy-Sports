@@ -1,121 +1,694 @@
 {
   "name": "Universe 2026",
   "startDate": "2026-06-01",
-
-  "_comment": "Seed files are written in names, not ids — seed.js resolves them. Everything here becomes founding EVENTS (contracts, alliances, title awards), not initial state, so day one is ordinary history you can correct like any other.",
-
+  "_comment": "Seed files are written in names, not ids. Everything here becomes founding EVENTS (contracts, alliances), not initial state. NOTE: no titleHolders — every championship in a new save starts VACANT, and a title's history begins the first time somebody wins it in your booking. Add a titleHolders array here only if you deliberately want a save to start mid-reign.",
   "brands": [
-    { "name": "Raw", "color": "#c8102e", "tier": 1 },
-    { "name": "SmackDown", "color": "#0b7bd5", "tier": 1 },
-    { "name": "NXT", "color": "#f5c518", "tier": 2 }
+    {
+      "name": "Raw",
+      "abbr": "RAW",
+      "color": "#C8102E",
+      "logo": "🔴",
+      "tier": 1,
+      "day": "Monday"
+    },
+    {
+      "name": "SmackDown",
+      "abbr": "SD",
+      "color": "#0B7BD5",
+      "logo": "🔵",
+      "tier": 1,
+      "day": "Friday"
+    },
+    {
+      "name": "Dynamite",
+      "abbr": "DYN",
+      "color": "#E8B23A",
+      "logo": "⚡",
+      "tier": 1,
+      "day": "Wednesday"
+    },
+    {
+      "name": "NXT",
+      "abbr": "NXT",
+      "color": "#7C5CFF",
+      "logo": "🟣",
+      "tier": 2,
+      "day": "Tuesday"
+    },
+    {
+      "name": "Evolve",
+      "abbr": "EVO",
+      "color": "#3FBF8F",
+      "logo": "🟢",
+      "tier": 3,
+      "day": "Thursday",
+      "parent": "NXT"
+    }
   ],
-
   "championships": [
-    { "name": "WWE Championship", "brand": "SmackDown", "division": "mens" },
-    { "name": "World Heavyweight Championship", "brand": "Raw", "division": "mens" },
-    { "name": "Intercontinental Championship", "brand": "Raw", "division": "mens" },
-    { "name": "United States Championship", "brand": "SmackDown", "division": "mens" },
-    { "name": "Women's World Championship", "brand": "Raw", "division": "womens" },
-    { "name": "WWE Women's Championship", "brand": "SmackDown", "division": "womens" },
-    { "name": "World Tag Team Championship", "brand": "Raw", "division": "tag", "teamSize": 2 },
-    { "name": "WWE Tag Team Championship", "brand": "SmackDown", "division": "tag", "teamSize": 2 },
-    { "name": "NXT Championship", "brand": "NXT", "division": "mens" },
-    { "name": "NXT Women's Championship", "brand": "NXT", "division": "womens" }
+    {
+      "name": "WWE Championship",
+      "brand": "SmackDown",
+      "division": "mens"
+    },
+    {
+      "name": "World Heavyweight Championship",
+      "brand": "Raw",
+      "division": "mens"
+    },
+    {
+      "name": "Intercontinental Championship",
+      "brand": "Raw",
+      "division": "mens"
+    },
+    {
+      "name": "United States Championship",
+      "brand": "SmackDown",
+      "division": "mens"
+    },
+    {
+      "name": "Women's World Championship",
+      "brand": "Raw",
+      "division": "womens"
+    },
+    {
+      "name": "WWE Women's Championship",
+      "brand": "SmackDown",
+      "division": "womens"
+    },
+    {
+      "name": "World Tag Team Championship",
+      "brand": "Raw",
+      "division": "tag",
+      "teamSize": 2
+    },
+    {
+      "name": "WWE Tag Team Championship",
+      "brand": "SmackDown",
+      "division": "tag",
+      "teamSize": 2
+    },
+    {
+      "name": "AEW World Championship",
+      "brand": "Dynamite",
+      "division": "mens"
+    },
+    {
+      "name": "AEW Women's World Championship",
+      "brand": "Dynamite",
+      "division": "womens"
+    },
+    {
+      "name": "AEW World Tag Team Championship",
+      "brand": "Dynamite",
+      "division": "tag",
+      "teamSize": 2
+    },
+    {
+      "name": "NXT Championship",
+      "brand": "NXT",
+      "division": "mens"
+    },
+    {
+      "name": "NXT Women's Championship",
+      "brand": "NXT",
+      "division": "womens"
+    },
+    {
+      "name": "Evolve Championship",
+      "brand": "Evolve",
+      "division": "mens"
+    },
+    {
+      "name": "Evolve Women's Championship",
+      "brand": "Evolve",
+      "division": "womens"
+    }
   ],
-
   "wrestlers": [
-    { "name": "Seth Rollins", "brand": "Raw", "gender": "male", "alignment": "heel" },
-    { "name": "Gunther", "brand": "Raw", "gender": "male", "alignment": "heel" },
-    { "name": "Finn Bálor", "brand": "Raw", "gender": "male", "alignment": "heel", "aliases": ["Finn Balor"] },
-    { "name": "JD McDonagh", "brand": "Raw", "gender": "male", "alignment": "heel" },
-    { "name": "Dominik Mysterio", "brand": "Raw", "gender": "male", "alignment": "heel", "aliases": ["Dirty Dom"] },
-    { "name": "Damian Priest", "brand": "Raw", "gender": "male", "alignment": "face" },
-    { "name": "Bron Breakker", "brand": "Raw", "gender": "male", "alignment": "heel" },
-    { "name": "Sami Zayn", "brand": "Raw", "gender": "male", "alignment": "face" },
-    { "name": "Sheamus", "brand": "Raw", "gender": "male", "alignment": "face" },
-    { "name": "Ludwig Kaiser", "brand": "Raw", "gender": "male", "alignment": "heel" },
-    { "name": "Chad Gable", "brand": "Raw", "gender": "male", "alignment": "heel" },
-    { "name": "Jey Uso", "brand": "Raw", "gender": "male", "alignment": "face" },
-    { "name": "Erik", "brand": "Raw", "gender": "male", "alignment": "face" },
-    { "name": "Ivar", "brand": "Raw", "gender": "male", "alignment": "face" },
-    { "name": "Rhea Ripley", "brand": "Raw", "gender": "female", "alignment": "face" },
-    { "name": "Liv Morgan", "brand": "Raw", "gender": "female", "alignment": "heel" },
-    { "name": "Raquel Rodriguez", "brand": "Raw", "gender": "female", "alignment": "heel" },
-    { "name": "Becky Lynch", "brand": "Raw", "gender": "female", "alignment": "face" },
-    { "name": "Ivy Nile", "brand": "Raw", "gender": "female", "alignment": "face", "status": "relegation-flagged" },
-
-    { "name": "Cody Rhodes", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "Roman Reigns", "brand": "SmackDown", "gender": "male", "alignment": "tweener" },
-    { "name": "Solo Sikoa", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "Jacob Fatu", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "Tama Tonga", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "Tonga Loa", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "Jimmy Uso", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "Randy Orton", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "LA Knight", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "Kevin Owens", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "Drew McIntyre", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "AJ Styles", "brand": "SmackDown", "gender": "male", "alignment": "tweener" },
-    { "name": "Carmelo Hayes", "brand": "SmackDown", "gender": "male", "alignment": "heel" },
-    { "name": "Andrade", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "Johnny Gargano", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "Tommaso Ciampa", "brand": "SmackDown", "gender": "male", "alignment": "face" },
-    { "name": "Bianca Belair", "brand": "SmackDown", "gender": "female", "alignment": "face" },
-    { "name": "Jade Cargill", "brand": "SmackDown", "gender": "female", "alignment": "face" },
-    { "name": "Tiffany Stratton", "brand": "SmackDown", "gender": "female", "alignment": "heel" },
-    { "name": "Nia Jax", "brand": "SmackDown", "gender": "female", "alignment": "heel" },
-    { "name": "Naomi", "brand": "SmackDown", "gender": "female", "alignment": "face" },
-    { "name": "Chelsea Green", "brand": "SmackDown", "gender": "female", "alignment": "heel" },
-    { "name": "Piper Niven", "brand": "SmackDown", "gender": "female", "alignment": "heel" },
-
-    { "name": "Trick Williams", "brand": "NXT", "gender": "male", "alignment": "face", "status": "promotion-flagged" },
-    { "name": "Ethan Page", "brand": "NXT", "gender": "male", "alignment": "heel" },
-    { "name": "Oba Femi", "brand": "NXT", "gender": "male", "alignment": "heel" },
-    { "name": "Je'Von Evans", "brand": "NXT", "gender": "male", "alignment": "face" },
-    { "name": "Lexis King", "brand": "NXT", "gender": "male", "alignment": "heel" },
-    { "name": "Roxanne Perez", "brand": "NXT", "gender": "female", "alignment": "heel" },
-    { "name": "Giulia", "brand": "NXT", "gender": "female", "alignment": "heel" },
-    { "name": "Stephanie Vaquer", "brand": "NXT", "gender": "female", "alignment": "face" },
-    { "name": "Kelani Jordan", "brand": "NXT", "gender": "female", "alignment": "face" },
-
-    { "name": "Braun Strowman", "gender": "male", "status": "free agent" },
-    { "name": "Shayna Baszler", "gender": "female", "status": "free agent" }
+    {
+      "name": "Seth Rollins",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Gunther",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Finn Bálor",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel",
+      "aliases": [
+        "Finn Balor"
+      ]
+    },
+    {
+      "name": "JD McDonagh",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Dominik Mysterio",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel",
+      "aliases": [
+        "Dirty Dom"
+      ]
+    },
+    {
+      "name": "Damian Priest",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Bron Breakker",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Sami Zayn",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Sheamus",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Ludwig Kaiser",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Chad Gable",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Jey Uso",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Erik",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Ivar",
+      "brand": "Raw",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Rhea Ripley",
+      "brand": "Raw",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Liv Morgan",
+      "brand": "Raw",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Raquel Rodriguez",
+      "brand": "Raw",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Becky Lynch",
+      "brand": "Raw",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Ivy Nile",
+      "brand": "Raw",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Cody Rhodes",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Roman Reigns",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "tweener"
+    },
+    {
+      "name": "Solo Sikoa",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Jacob Fatu",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Tama Tonga",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Tonga Loa",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Jimmy Uso",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Randy Orton",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "LA Knight",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kevin Owens",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Drew McIntyre",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "AJ Styles",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "tweener"
+    },
+    {
+      "name": "Carmelo Hayes",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Andrade",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Johnny Gargano",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Tommaso Ciampa",
+      "brand": "SmackDown",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Bianca Belair",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Jade Cargill",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Tiffany Stratton",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Nia Jax",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Naomi",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Chelsea Green",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Piper Niven",
+      "brand": "SmackDown",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Trick Williams",
+      "brand": "NXT",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Ethan Page",
+      "brand": "NXT",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Oba Femi",
+      "brand": "NXT",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Je'Von Evans",
+      "brand": "NXT",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Lexis King",
+      "brand": "NXT",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Roxanne Perez",
+      "brand": "NXT",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Giulia",
+      "brand": "NXT",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Stephanie Vaquer",
+      "brand": "NXT",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Kelani Jordan",
+      "brand": "NXT",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Braun Strowman",
+      "gender": "male",
+      "status": "free agent"
+    },
+    {
+      "name": "Shayna Baszler",
+      "gender": "female",
+      "status": "free agent"
+    },
+    {
+      "name": "Jon Moxley",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Swerve Strickland",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Will Ospreay",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kazuchika Okada",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "MJF",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Adam Page",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Darby Allin",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Orange Cassidy",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Claudio Castagnoli",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Wheeler Yuta",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Konosuke Takeshita",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Ricochet",
+      "brand": "Dynamite",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Toni Storm",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Mercedes Mone",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Jamie Hayter",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Willow Nightingale",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Kris Statlander",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Julia Hart",
+      "brand": "Dynamite",
+      "gender": "female",
+      "alignment": "heel"
+    },
+    {
+      "name": "Bryce Donovan",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Cutler James",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Jackson Drake",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kale Dixon",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "heel"
+    },
+    {
+      "name": "Sean Legters",
+      "brand": "Evolve",
+      "gender": "male",
+      "alignment": "face"
+    },
+    {
+      "name": "Kendal Grey",
+      "brand": "Evolve",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Layla Diggs",
+      "brand": "Evolve",
+      "gender": "female",
+      "alignment": "face"
+    },
+    {
+      "name": "Wendy Choo",
+      "brand": "Evolve",
+      "gender": "female",
+      "alignment": "heel"
+    }
   ],
-
   "tagTeams": [
-    { "name": "The War Raiders", "members": ["Erik", "Ivar"], "brand": "Raw" },
-    { "name": "#DIY", "members": ["Johnny Gargano", "Tommaso Ciampa"], "brand": "SmackDown" },
-    { "name": "The Usos", "members": ["Jimmy Uso", "Jey Uso"] },
-    { "name": "Alpha Academy", "members": ["Chad Gable", "Ludwig Kaiser"], "brand": "Raw" }
+    {
+      "name": "The War Raiders",
+      "members": [
+        "Erik",
+        "Ivar"
+      ],
+      "brand": "Raw"
+    },
+    {
+      "name": "#DIY",
+      "members": [
+        "Johnny Gargano",
+        "Tommaso Ciampa"
+      ],
+      "brand": "SmackDown"
+    },
+    {
+      "name": "The Usos",
+      "members": [
+        "Jimmy Uso",
+        "Jey Uso"
+      ]
+    },
+    {
+      "name": "Alpha Academy",
+      "members": [
+        "Chad Gable",
+        "Ludwig Kaiser"
+      ],
+      "brand": "Raw"
+    },
+    {
+      "name": "The Blackpool Combat Club",
+      "members": [
+        "Claudio Castagnoli",
+        "Wheeler Yuta"
+      ],
+      "brand": "Dynamite"
+    }
   ],
-
   "factions": [
-    { "name": "The Bloodline", "members": ["Solo Sikoa", "Jacob Fatu", "Tama Tonga", "Tonga Loa"], "leader": "Solo Sikoa", "brand": "SmackDown", "formedOn": "2026-05-04" },
-    { "name": "The Judgment Day", "members": ["Finn Bálor", "JD McDonagh", "Dominik Mysterio", "Liv Morgan", "Raquel Rodriguez"], "leader": "Finn Bálor", "brand": "Raw" }
+    {
+      "name": "The Bloodline",
+      "members": [
+        "Solo Sikoa",
+        "Jacob Fatu",
+        "Tama Tonga",
+        "Tonga Loa"
+      ],
+      "leader": "Solo Sikoa",
+      "brand": "SmackDown",
+      "formedOn": "2026-05-04"
+    },
+    {
+      "name": "The Judgment Day",
+      "members": [
+        "Finn Bálor",
+        "JD McDonagh",
+        "Dominik Mysterio",
+        "Liv Morgan",
+        "Raquel Rodriguez"
+      ],
+      "leader": "Finn Bálor",
+      "brand": "Raw"
+    }
   ],
-
-  "titleHolders": [
-    { "title": "WWE Championship", "holders": ["Cody Rhodes"], "since": "2026-04-06" },
-    { "title": "World Heavyweight Championship", "holders": ["Gunther"], "since": "2026-01-27" },
-    { "title": "Intercontinental Championship", "holders": ["Bron Breakker"], "since": "2026-02-10" },
-    { "title": "United States Championship", "holders": ["LA Knight"], "since": "2026-03-02" },
-    { "title": "Women's World Championship", "holders": ["Liv Morgan"], "since": "2026-01-13" },
-    { "title": "WWE Women's Championship", "holders": ["Nia Jax"], "since": "2026-05-04" },
-    { "title": "World Tag Team Championship", "holders": ["Erik", "Ivar"], "since": "2026-03-17" },
-    { "title": "WWE Tag Team Championship", "holders": ["Johnny Gargano", "Tommaso Ciampa"], "since": "2026-04-21" },
-    { "title": "NXT Championship", "holders": ["Trick Williams"], "since": "2026-02-24" },
-    { "title": "NXT Women's Championship", "holders": ["Giulia"], "since": "2026-05-11" }
-  ],
-
   "events": [
     {
       "type": "promo",
       "date": "2026-06-01",
       "participants": [
-        { "ref": "Cody Rhodes", "role": "speaker" },
-        { "ref": "Roman Reigns", "role": "target" }
+        {
+          "ref": "Cody Rhodes",
+          "role": "speaker"
+        },
+        {
+          "ref": "Roman Reigns",
+          "role": "target"
+        }
       ],
-      "data": { "topic": "opens the universe" },
+      "data": {
+        "topic": "opens the universe"
+      },
       "note": "example of hand-authored history in a seed file"
     }
   ]

@@ -43,11 +43,15 @@ export const TITLE_REASONS = ['won', 'awarded', 'vacated', 'stripped', 'retired'
 // Premium live events the season system cares about. WrestleMania closes the
 // year's booking and triggers the flagging; Last Stand is where the flagged
 // names settle it. Everything else is just a show with a big name.
-export const PLES = ['wrestlemania', 'lastStand', 'royalRumble', 'summerslam', 'survivorSeries', 'moneyInTheBank', 'other'];
+export const PLES = ['wrestlemania', 'lastStand', 'draft', 'royalRumble', 'summerslam', 'survivorSeries', 'moneyInTheBank', 'other'];
 
 // What a Last Stand match is playing for. The loser of a relegation match goes
-// down; the winner of a promotion match goes up.
+// down a tier; the winner of a promotion match goes up one.
 export const STAKES = ['relegation', 'promotion'];
+
+// Days a brand can air on. Free text is allowed too — this is only what the
+// pickers offer.
+export const SHOW_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // How a match ended. Anything not in this list is kept as a free-text note.
 export const DECISIONS = ['pinfall', 'submission', 'dq', 'countout', 'ko', 'stoppage', 'draw', 'no contest'];
@@ -149,8 +153,15 @@ export const ENTITY_SPECS = {
     fields: { name: 'string', gender: 'enum:GENDERS', alignment: 'enum:ALIGNMENTS', debut: 'date?', aliases: 'array?', overall: 'number?', note: 'string?' },
     required: ['name'],
   },
+  // A brand is a show *and* a rung on the pyramid. `tier` is an ordinary number
+  // — 1 is the top, and there is no maximum, so a universe can be two rungs deep
+  // or six. `parentId` is the optional "develops for" link: an Evolve that feeds
+  // NXT specifically rather than the tier above in general.
   brand: {
-    fields: { name: 'string', color: 'string?', tier: 'number?', note: 'string?' },
+    fields: {
+      name: 'string', abbr: 'string?', color: 'string?', logo: 'string?',
+      tier: 'number?', day: 'string?', parentId: 'ref?', note: 'string?',
+    },
     required: ['name'],
   },
   championship: {

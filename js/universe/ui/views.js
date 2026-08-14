@@ -7,9 +7,12 @@
 import { h, table, chip, wlink, fmtDate, plural } from './dom.js';
 import { titleLineage, titleMatches, timelineFor, days, describeThread, activeRivalries, activeAlliances } from '../project.js';
 import { currentSeason, brandStandings } from '../season.js';
+import { tiers, brandCard, pyramidText } from '../pyramid.js';
+import { SHOW_DAYS } from '../schema.js';
 
-const BRAND_COLOR = { 'b:raw': 'var(--raw)', 'b:smackdown': 'var(--smackdown)', 'b:nxt': 'var(--nxt)' };
-const brandColor = id => BRAND_COLOR[id] || 'var(--violet)';
+// The colour comes off the brand record, because a user who creates WCW picks
+// its colour in the form — there is no table of known brands to look it up in.
+const brandColor = (state, id) => (state.brands[id] && state.brands[id].color) || 'var(--violet)';
 const brandName = (state, id) => (id && state.brands[id] ? state.brands[id].name : null);
 
 const genderMark = g => (g === 'female' ? 'F' : g === 'male' ? 'M' : g ? '·' : '?');
@@ -51,7 +54,7 @@ export function rosterView(state) {
     const f = roster.filter(w => w.gender === 'female').length;
     return `<div class="card flush">
       <div class="brandhead">
-        <div class="bar" style="background:${brandColor(b.id)}"></div>
+        <div class="bar" style="background:${brandColor(state, b.id)}"></div>
         <div class="nm">${h(b.name)}</div>
         <div class="ct">${plural(roster.length, 'wrestler')} · ${m}M / ${f}F · ${plural(b.champions.length, 'title')}</div>
       </div>
@@ -98,14 +101,14 @@ export function titlesView(state) {
     const holders = c.holders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
     const reign = c.reigns[c.reigns.length - 1];
     const interim = c.interimHolders.map(id => (state.wrestlers[id] ? state.wrestlers[id].name : id)).join(' & ');
-    return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(c.brandId)}">
+    return `<div class="belt" data-belt="${h(c.id)}" style="border-left-color:${brandColor(state, c.brandId)}">
       <div class="nm">${h(c.name)}</div>
-      <div class="holder${c.vacant ? ' vacant' : ''}">${c.vacant ? 'Vacant' : h(holders)}</div>
+      <div class="holder${c.vacant ? ' vacant' : ''}">${c.vacant ? 'VACANT' : h(holders)}</div>
       ${interim ? `<div class="interim">${chip('interim', 'new')} ${h(interim)}</div>` : ''}
       <div class="facts">
         <span>${brandName(state, c.brandId) || 'unbranded'}</span>
         ${c.vacant ? '' : `<span>${c.daysHeld} days</span><span>${plural(c.defenses, 'defense')}</span>`}
-        <span>${plural(c.reigns.length, 'reign')}</span>
+        <span>${c.reigns.length ? plural(c.reigns.length, 'reign') : 'never held'}</span>
       </div>
     </div>`;
   }).join('');
@@ -132,7 +135,7 @@ export function titlePage(state, titleId) {
   ].map(([k, v]) => `<div class="fact"><div class="k">${h(k)}</div><div class="v">${h(v)}</div></div>`).join('');
 
   const holderLine = c.vacant
-    ? '<span class="vacant">Vacant</span>'
+    ? '<span class="vacant">VACANT</span>'
     : `${c.holders.map(x => wlink(state.wrestlers[x] || { id: x, name: x })).join(' &amp; ')}
        <span class="dim">· ${c.daysHeld} days · ${plural(c.defenses, 'defense')}</span>`;
 
@@ -162,7 +165,7 @@ export function titlePage(state, titleId) {
   return `<div class="backrow">
       <button class="linkbtn" data-tab="titles">← all championships</button>
     </div>
-    <div class="pagehead" style="border-left-color:${brandColor(c.brandId)}">
+    <div class="pagehead" style="border-left-color:${brandColor(state, c.brandId)}">
       <div class="nm">${h(c.name)}</div>
       <div class="holder">${holderLine}</div>
       ${interimLine}
@@ -237,7 +240,7 @@ export function wrestlerPage(state, id) {
   const threads = state.threads.filter(t => t.subjects.includes(id) || t.about === id).map(t => describeThread(state, t));
 
   return `<div class="backrow"><button class="linkbtn" data-tab="roster">← roster</button></div>
-    <div class="pagehead" style="border-left-color:${brandColor(w.brandId)}">
+    <div class="pagehead" style="border-left-color:${brandColor(state, w.brandId)}">
       <div class="nm">${h(w.name)}</div>
       <div class="holder">${status}</div>
       <div class="dim" style="margin-top:6px">${notes.join(' · ')}</div>
@@ -305,6 +308,116 @@ export function threadsView(state) {
     ], 'Nothing closed yet.')}</div>`;
 }
 
+// ------------------------------------------------------------------ pyramid
+
+// The shape of the universe, drawn as it reads:
+//
+//     Raw | SmackDown | Dynamite
+//               ↓
+//              NXT
+//               ↓
+//             Evolve
+//
+// Every rung is derived from the `tier` number on each brand, so a save with
+// six tiers draws six rows and one with two draws two. Nothing here knows the
+// name of a single brand.
+export function brandsView(state, ui = {}) {
+  const rows = tiers(state);
+  const editing = ui.editing || null;      // brand id, or 'new'
+
+  const rungs = rows.map((t, i) => `
+    <div class="rung">
+      <div class="rungmeta">
+        <div class="tiernum">Tier ${t.tier}</div>
+        <div class="tierlabel">${h(t.label)}</div>
+      </div>
+      <div class="rungbrands">
+        ${t.brands.map(b => {
+          const card = brandCard(state, b.id);
+          const belts = card.championships.length;
+          return `<button class="brandcard${editing === b.id ? ' on' : ''}" data-editbrand="${h(b.id)}"
+              style="--bc:${h(b.color || 'var(--violet)')}">
+            <div class="bhead">
+              <span class="blogo">${h(b.logo || '●')}</span>
+              <span class="bname">${h(b.name)}</span>
+              ${b.abbr ? `<span class="babbr">${h(b.abbr)}</span>` : ''}
+            </div>
+            <div class="bfacts">
+              ${b.day ? `<span>${h(b.day)}s</span>` : '<span class="dim">no show day</span>'}
+              <span>${plural(card.size, 'wrestler')}</span>
+              <span>${plural(belts, 'title')}</span>
+            </div>
+            <div class="bmoves">
+              ${card.promotesTo ? `<span class="up">↑ ${h(state.brands[card.promotesTo].name)}</span>` : '<span class="dim">top of the pyramid</span>'}
+              ${card.relegatesTo ? `<span class="down">↓ ${h(state.brands[card.relegatesTo].name)}</span>` : '<span class="dim">bottom</span>'}
+            </div>
+            ${card.parent ? `<div class="bparent">develops for ${h(card.parent.name)}</div>` : ''}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    ${i < rows.length - 1 ? '<div class="rungarrow">↓</div>' : ''}`).join('');
+
+  return `<h2>The pyramid <span class="sub">${h(pyramidText(state))}</span></h2>
+    <div class="pyramid">${rungs}</div>
+    <div class="row">
+      <button class="btn" data-editbrand="new">New show</button>
+      <span class="hint">Tiers are just numbers — add a tier 4 and the pyramid grows a rung.
+        Promotion, relegation and the draft all read this, never a brand name.</span>
+    </div>
+    ${editing ? brandForm(state, editing) : ''}
+    ${brandTable(state)}`;
+}
+
+function brandForm(state, id) {
+  const b = id === 'new' ? { tier: (tiers(state).slice(-1)[0] || { tier: 0 }).tier + 1 } : (state.brands[id] || {});
+  const isNew = id === 'new';
+  const parents = Object.values(state.brands).filter(x => x.id !== id);
+
+  const field = (label, input, hint = '') =>
+    `<label class="opt col"><span>${h(label)}</span>${input}${hint ? `<em class="hint">${h(hint)}</em>` : ''}</label>`;
+
+  return `<div class="card" id="brandForm" style="margin:16px 0">
+    <h2>${isNew ? 'New show' : `Edit ${h(b.name)}`}</h2>
+    <div class="formgrid">
+      ${field('Name', `<input id="bfName" type="text" value="${h(b.name || '')}" placeholder="Dynamite">`)}
+      ${field('Short name', `<input id="bfAbbr" type="text" value="${h(b.abbr || '')}" placeholder="DYN">`)}
+      ${field('Logo', `<input id="bfLogo" type="text" value="${h(b.logo || '')}" placeholder="⚡" maxlength="4">`, 'an emoji or a character')}
+      ${field('Colour', `<input id="bfColor" type="color" value="${h(b.color || '#7C5CFF')}">`)}
+      ${field('Tier', `<input id="bfTier" type="number" min="1" step="1" value="${h(b.tier == null ? 1 : b.tier)}">`, '1 is the top of the pyramid')}
+      ${field('Show day', `<select id="bfDay">
+          <option value="">—</option>
+          ${SHOW_DAYS.map(d => `<option value="${d}"${b.day === d ? ' selected' : ''}>${d}</option>`).join('')}
+        </select>`)}
+      ${field('Develops for', `<select id="bfParent">
+          <option value="">— the tier above in general —</option>
+          ${parents.map(p => `<option value="${h(p.id)}"${b.parentId === p.id ? ' selected' : ''}>${h(p.name)} (tier ${p.tier == null ? 1 : p.tier})</option>`).join('')}
+        </select>`, 'optional: send promotions to one brand')}
+    </div>
+    <div class="row">
+      <button class="btn" data-savebrand="${h(id)}">${isNew ? 'Create show' : 'Save changes'}</button>
+      <button class="btn ghost" data-editbrand="">Cancel</button>
+      ${isNew ? '' : `<span class="hint">Championships and roster are managed from the belt pages and the roster import.</span>`}
+    </div>
+  </div>`;
+}
+
+function brandTable(state) {
+  const rows = Object.values(state.brands).map(b => brandCard(state, b.id))
+    .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+  return `<h2 style="margin-top:22px">Every show</h2>
+    <div class="card flush">${table(rows, [
+      { label: 'Show', get: b => `<span class="blogo">${h(b.logo || '●')}</span> <strong>${h(b.name)}</strong>`, html: true },
+      { label: 'Tier', num: true, get: b => b.tier },
+      { label: 'Day', get: b => b.day || '—', dim: true },
+      { label: 'Roster', num: true, get: b => b.size },
+      { label: 'Titles', get: b => b.championships.map(c => chip(c.name.replace(/ Championship$/, ''), 'title')).join(' ') || '<span class="dim">none</span>', html: true },
+      { label: 'Promotes to', get: b => (b.promotesTo ? h(state.brands[b.promotesTo].name) : '—'), dim: true },
+      { label: 'Relegates to', get: b => (b.relegatesTo ? h(state.brands[b.relegatesTo].name) : '—'), dim: true },
+      { label: '', get: b => `<button class="linkbtn" data-editbrand="${h(b.id)}">edit</button>`, html: true },
+    ], 'No shows yet.')}</div>`;
+}
+
 // ------------------------------------------------------------------ season
 
 export function seasonView(state, ui = {}) {
@@ -316,7 +429,7 @@ export function seasonView(state, ui = {}) {
 
   const standings = tables.map(b => `<div class="card flush">
       <div class="brandhead">
-        <div class="bar" style="background:${brandColor(b.id)}"></div>
+        <div class="bar" style="background:${brandColor(state, b.id)}"></div>
         <div class="nm">${h(b.name)}</div>
         <div class="ct">${(b.tier || 1) > 1 ? 'development' : 'main roster'} · ${plural(b.table.length, 'wrestler')}</div>
       </div>
@@ -376,14 +489,61 @@ export function seasonView(state, ui = {}) {
     <div class="row" style="margin-top:0">
       <button class="btn${wm && !flagged.length ? '' : ' ghost'}" id="flagsPropose">Work out the lists</button>
       <button class="btn ghost" id="lastStandPropose"${flagged.length ? '' : ' disabled'}>Book Last Stand</button>
-      <span class="hint">Champions are never relegated.</span>
+      ${tiers(state).map(t => (t.brands.length > 1
+        ? `<button class="btn ghost" data-draftpropose="${t.tier}">Draft tier ${t.tier}</button>` : '')).join('')}
+      <span class="hint">Champions are never relegated. The year runs WrestleMania → Last Stand → Draft.</span>
     </div>
+    ${ui.draft ? draftView(state, ui.draft) : ''}
     ${proposalBlock}
     ${card}
     ${flagBlock}
 
     <h2 style="margin-top:22px">Standings <span class="sub">wins this season — 3 points a win, 1 a draw</span></h2>
     <div class="grid">${standings}</div>`;
+}
+
+// ------------------------------------------------------------------ draft
+
+// The draft board: one column per brand, picks in order, snaking. Champions sit
+// at the top of their column greyed as protected, and a name dragged along by a
+// tag partner is marked, so you can see why a column filled up the way it did.
+export function draftView(state, proposal) {
+  if (!proposal) return '';
+  if (!proposal.picks.length && !proposal.protected.length) {
+    return `<div class="msg warn">${h(proposal.why || 'Nothing to draft on this tier.')}</div>`;
+  }
+
+  const cols = proposal.order.map(o => {
+    const held = proposal.protected.filter(w => w.brandId === o.brandId);
+    const picks = proposal.picks.filter(p => p.brandId === o.brandId);
+    return `<div class="draftcol" style="--bc:${brandColor(state, o.brandId)}">
+      <h3>${h(o.name)} <small>${plural(held.length + picks.length, 'name')}</small></h3>
+      <ol>
+        ${held.map(w => `<li class="protected"><span class="rd">—</span>
+            <span class="nm">${h(w.name)}</span> <span class="hint">champion</span></li>`).join('')}
+        ${picks.map(p => `<li class="${p.team ? 'team ' : ''}${p.from !== p.brandId ? 'moved' : ''}">
+            <span class="rd">${p.round}.</span>
+            <span class="nm">${h(p.name)}</span>
+            ${p.from === p.brandId ? '<span class="hint">stays</span>'
+              : `<span class="hint">from ${h(state.brands[p.from] ? state.brands[p.from].name : 'free agency')}</span>`}
+          </li>`).join('')}
+      </ol>
+    </div>`;
+  }).join('');
+
+  const moving = proposal.picks.filter(p => p.from !== p.brandId).length;
+  return `<div class="msg ok">
+      <strong>Tier ${proposal.tier}</strong> · order ${h(proposal.order.map(o => o.name).join(' → '))}
+      (weakest season first, snaking) · ${plural(proposal.rounds, 'round')} ·
+      <strong>${plural(moving, 'wrestler')}</strong> would change brand
+      ${proposal.protected.length ? ` · ${plural(proposal.protected.length, 'champion')} protected` : ''}
+    </div>
+    <div class="draftgrid">${cols}</div>
+    <div class="row">
+      <button class="btn" data-draftcommit="${proposal.tier}">Run the draft</button>
+      <button class="btn ghost" data-draftcancel="1">Cancel</button>
+      <span class="hint">Only the ${plural(moving, 'move')} get written — anyone staying put costs nothing.</span>
+    </div>`;
 }
 
 // ------------------------------------------------------------------ heat
@@ -431,7 +591,7 @@ export function showsView(state) {
   if (!state.shows.length) return '<div class="empty">No shows yet — enter a card on the Tonight tab.</div>';
   return [...state.shows].reverse().map(s => `<div class="card flush" style="margin-bottom:16px">
       <div class="brandhead">
-        <div class="bar" style="background:${brandColor(s.brandId)}"></div>
+        <div class="bar" style="background:${brandColor(state, s.brandId)}"></div>
         <div class="nm">${h(s.name)}</div>
         <div class="ct">${fmtDate(s.date)} · ${brandName(state, s.brandId) || 'no brand'} · ${plural(s.segments.length, 'segment')}</div>
       </div>
