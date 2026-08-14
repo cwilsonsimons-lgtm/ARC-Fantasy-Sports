@@ -116,6 +116,33 @@ export function brandCard(state, brandId) {
   };
 }
 
+// The one exception to Last Stand. Holding a belt marked `autoPromote` after
+// WrestleMania is itself the call-up: the champion joins the draft pool for the
+// tier above without having to win a promotion match. It is a flag on the
+// championship rather than a hardcoded belt name, so a custom pyramid can put
+// the designation wherever it belongs — and an Evolve title deliberately does
+// not carry it, because Evolve talent is meant to come up through NXT.
+export function autoPromotions(state) {
+  const out = [];
+  Object.values(state.championships).forEach(c => {
+    if (!c.autoPromote || c.retired || !c.brandId) return;
+    if (!canBePromoted(state, c.brandId)) return;          // already at the top
+    const to = destination(state, c.brandId, 'promotion');
+    [...c.holders, ...c.interimHolders].forEach(id => {
+      const w = state.wrestlers[id];
+      if (!w || out.some(x => x.id === id)) return;
+      out.push({
+        id, name: w.name, gender: w.gender,
+        from: w.brandId, fromName: state.brands[w.brandId] ? state.brands[w.brandId].name : null,
+        to, toName: state.brands[to] ? state.brands[to].name : null,
+        titleId: c.id, titleName: c.name,
+        why: `${c.name} — automatic call-up`,
+      });
+    });
+  });
+  return out;
+}
+
 // Validation for a brand about to be written. Tier numbers must be positive,
 // and a parent link has to point at a brand nearer the top — otherwise the
 // pyramid stops being a pyramid and movement can loop.

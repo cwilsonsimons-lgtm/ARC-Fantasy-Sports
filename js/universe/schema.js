@@ -164,8 +164,16 @@ export const ENTITY_SPECS = {
     },
     required: ['name'],
   },
+  // `autoPromote` is the one exception to Last Stand: holding this belt after
+  // WrestleMania is itself a call-up, so the champion goes into the draft pool
+  // for the tier above without having to win a promotion match. It is a field
+  // rather than a hardcoded "NXT Championship" so a custom pyramid can put the
+  // designation on whichever belt plays that role.
   championship: {
-    fields: { name: 'string', brandId: 'ref?', division: 'enum:DIVISIONS', teamSize: 'number?', activeFrom: 'date?', retiredOn: 'date?', note: 'string?' },
+    fields: {
+      name: 'string', brandId: 'ref?', division: 'enum:DIVISIONS', teamSize: 'number?',
+      activeFrom: 'date?', retiredOn: 'date?', autoPromote: 'boolean?', note: 'string?',
+    },
     required: ['name'],
   },
   group: {
@@ -638,6 +646,7 @@ export function validateEntity(kind, rec) {
     } else if (t === 'date' && !isDate(v)) err(e, `${kind}.${field}: bad date ${JSON.stringify(v)}`);
     else if (t === 'number' && typeof v !== 'number') err(e, `${kind}.${field}: expected a number`);
     else if (t === 'array' && !Array.isArray(v)) err(e, `${kind}.${field}: expected an array`);
+    else if (t === 'boolean' && typeof v !== 'boolean') err(e, `${kind}.${field}: expected true or false`);
   });
   return e;
 }

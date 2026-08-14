@@ -17,11 +17,12 @@ import { UNIVERSE_SEED } from '../seed-data.js';
 import { $, h, on, today, plural } from './dom.js';
 import { buildIndex, resolve as resolveName } from '../util.js';
 import { rosterView, titlesView, showsView, logView, eventSheet, wrestlerPage, titlePage,
-  threadsView, heatPanel, seasonView, brandsView } from './views.js';
+  threadsView, heatPanel, seasonView, brandsView, lastStandView } from './views.js';
 import { entryView, cardPreview, rosterImportPanel, rosterPreview } from './entry.js';
 import { promptsView, importView, copyText } from './tools.js';
 import { proposeFlags, commitFlags, proposeLastStand, lastStandCard } from '../season.js';
 import { proposeDraft, commitDraft } from '../draft.js';
+import { recordMatch } from '../laststand.js';
 import { checkBrand } from '../pyramid.js';
 import { buildPrompt, entryPrompt } from '../prompts.js';
 import { transcriptionPrompt, ingestScreenshot, detectKind, cleanReply, setKey, hasKey } from '../ingest.js';
@@ -35,6 +36,7 @@ const app = {
   tab: 'tonight', detailId: null, asOf: null, state: null, flash: null,
   season: {},                       // { proposal, lastStand, draft } — unsaved working state
   brandEdit: null,                  // brand id being edited, or 'new'
+  pick: {},                         // the Last Stand match maker's selection
   prompt: { id: 'next' },
   shots: [], activeShot: 0, shotKind: 'card',
 };
@@ -46,6 +48,7 @@ const TABS = [
   { id: 'titles', label: 'Titles', count: s => Object.values(s.championships).filter(c => !c.retired).length },
   { id: 'threads', label: 'Threads', count: s => s.threads.length },
   { id: 'season', label: 'Season' },
+  { id: 'laststand', label: 'Last Stand' },
   { id: 'shows', label: 'Shows', count: s => s.shows.length },
   { id: 'log', label: 'Log', count: s => s.events.length },
   { id: 'prompts', label: 'Prompts' },
@@ -101,6 +104,7 @@ function render() {
     lastStandProposal: app.season.lastStandProposal, draft: app.season.draft,
   });
   if (app.tab === 'brands') $('#pane-brands').innerHTML = brandsView(s, { editing: app.brandEdit });
+  if (app.tab === 'laststand') $('#pane-laststand').innerHTML = lastStandView(s, { pick: app.pick });
   if (app.tab === 'prompts') { $('#pane-prompts').innerHTML = promptsView(s, app.prompt); refreshPrompt(); }
   if (app.tab === 'import') {
     const keep = $('#shotText') ? $('#shotText').value : (app.shotText || '');
@@ -302,6 +306,30 @@ on('click', '[data-savebrand]', (e, el) => {
     save();
     app.brandEdit = null;
     flash(`${h(rec.name)} saved. The pyramid, the lists and the draft all read it straight away.`);
+  } catch (err) {
+    flash(h(err.errors ? err.errors.join('; ') : err.message), 'err');
+  }
+  render();
+});
+
+// ------------------------------------------------------------------ Last Stand
+
+on('change', '#lsA', (e, el) => { app.pick = { aId: el.value, date: app.pick.date }; render(); });
+on('change', '#lsB', (e, el) => { app.pick = { ...app.pick, bId: el.value, winnerId: null }; render(); });
+on('change', '#lsWinner', (e, el) => { app.pick = { ...app.pick, winnerId: el.value }; render(); });
+on('change', '#lsDate', (e, el) => { app.pick = { ...app.pick, date: el.value }; });
+on('click', '#lsClear', () => { app.pick = {}; render(); });
+
+on('click', '#lsRecord', () => {
+  const { aId, bId, winnerId, date } = app.pick;
+  try {
+    const res = recordMatch(store, app.state, { aId, bId, winnerId, date: date || universeNow() });
+    save();
+    app.pick = { date };
+    const moved = res.stakes
+      ? `${h(app.state.wrestlers[res.stakes === 'relegation' ? res.loserId : res.winnerId].name)} moves to ${h((app.state.brands[res.to] || {}).name || '')}`
+      : 'a qualifier — nobody moved, but the loser is out of the running';
+    flash(`Recorded. ${moved}.`);
   } catch (err) {
     flash(h(err.errors ? err.errors.join('; ') : err.message), 'err');
   }

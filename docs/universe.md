@@ -18,6 +18,7 @@ js/universe/
   pyramid.js   tiers, what is above and below a brand, where movement lands
   draft.js     the annual draft — order, board, commit
   season.js    season windows, standings, promotion and relegation
+  laststand.js the Last Stand board — candidates, legal pairings, recording
   prompts.js   copy-paste prompts with state embedded
   ingest.js    screenshots in — transcription prompt, optional vision call
   roster.js    paste a roster, diff it, print who is on each brand
@@ -33,8 +34,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     331 data-layer checks, pure Node
-  universe-ui-check.mjs  180 browser checks against the built page
+  universe-check.mjs     370 data-layer checks, pure Node
+  universe-ui-check.mjs  200 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -83,7 +84,7 @@ them into events and drops them before storing the record.
 | --- | --- | --- |
 | `wrestler` | `w:roman-reigns` | name, gender, alignment, debut, aliases, overall |
 | `brand` | `b:raw` | name, abbr, color, logo, tier, day, parentId |
-| `championship` | `c:wwe-championship` | name, brandId, division, teamSize, activeFrom, retiredOn |
+| `championship` | `c:wwe-championship` | name, brandId, division, teamSize, activeFrom, retiredOn, autoPromote |
 | `group` | `g:the-bloodline` | name, kind (`tagTeam` / `faction` / `alliance`), memberIds, leaderId, brandId |
 
 Tag teams and factions are the same entity with a different `kind`, so the
@@ -237,6 +238,10 @@ count, and both appear in the lineage marked accordingly. Defenses land on
 whichever reign the defending champion holds. Unification (`unify`) closes both
 and opens one undisputed reign, so the interim run stays in the history with
 `endReason: unified` instead of being erased.
+
+**`autoPromote`** marks a belt whose holder is called up a tier without having
+to win a Last Stand match — see [Automatic promotion](#automatic-promotion). It
+is a field on the belt precisely so that no rule in the code has to name NXT.
 
 A **number-one contender** match (`contender`) names a belt without being for
 it: the title moves to `data.contender`, the match is not a title match, and the
@@ -450,7 +455,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 180 browser checks
+npm run check:universe-ui    # 200 browser checks
 ```
 
 | Tab | What it does |
@@ -458,9 +463,10 @@ npm run check:universe-ui    # 180 browser checks
 | Tonight | Type a card. The right-hand pane shows what the parser heard, updated on every keystroke; the save button stays disabled while anything is wrong. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> saves. Below it: active rivalries, active alliances and the oldest open threads. |
 | Roster | Paste box (collapsed) over a table per brand, plus free agents and every team and faction. |
 | Pyramid | The tier diagram, and the form that creates or edits a show. |
-| Titles | Every belt with holder, interim holder, days, defenses and reign count. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
+| Titles | Every belt with holder, interim holder, days, defenses and reign count. Belts flagged `autoPromote` say so. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
 | Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
 | Season | The calendar with the current phase lit, standings per brand, the promotion and relegation lists, the Last Stand competitions, the draft board, and every season on record. |
+| Last Stand | The offseason board: the pyramid with candidate counts, rosters by tier, automatic call-ups, promotion and relegation candidates in separate tables, a match maker that cannot make an illegal match, what is still to settle, results, and the roster movements they caused. |
 | Shows | Every saved card, newest first. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
 | Prompts | Five copy-paste prompts with the current state embedded. |
@@ -468,7 +474,8 @@ npm run check:universe-ui    # 180 browser checks
 
 Clicking any wrestler's name opens their profile: record, win rate, streak,
 title reigns with day counts, rivalries and alliances sorted by heat, open
-threads they are part of, and a timeline of every event they appear in.
+threads they are part of, every brand their career has passed through and why,
+and a timeline of every event they appear in.
 
 The whole page is a function of the projection: an action appends to the log,
 then everything redraws. That is why fixing a result in the Log tab moves the
@@ -573,8 +580,62 @@ so the effects stay pure and survive corrections.
 
     node tools/universe.mjs season          # phase, calendar, seasons on record
     node tools/universe.mjs flags --commit
+    node tools/universe.mjs laststand --board   # the whole board, as the tab draws it
     node tools/universe.mjs laststand > card.txt
     node tools/universe.mjs draft --tier 1 --commit
+
+### The Last Stand tab
+
+Its own tab, because the offseason is the one week where everything is happening
+at once. Top to bottom: the pyramid with a candidate count on every brand, the
+rosters by tier, the automatic call-ups, **promotion candidates and relegation
+candidates in two separate tables**, the match maker, what is still to settle,
+the results so far, and every roster movement they have produced.
+
+The two lists never share a table. They are separate competitions, and reading
+them as one list is exactly how an illegal pairing gets booked.
+
+**The match maker cannot make an illegal match.** Pick the first name and the
+second picker is rebuilt from `eligibleOpponents` — which is the rule itself:
+
+| Picking | Offers |
+| --- | --- |
+| a relegation candidate | other candidates **on the same brand**, same gender |
+| a promotion candidate | other candidates chasing **the same spot**, same gender |
+
+So Raw vs SmackDown, Raw vs NXT, NXT vs Evolve and candidate vs non-candidate
+are not refused — they are never offered. `checkPairing` states the same rule as
+a guard for anything that arrives another way (a CLI card, a pasted line), and
+its errors say *why*: "relegation is settled inside one show — Seth Rollins is on
+Raw and Tommaso Ciampa is on SmackDown". An intergender pairing is the one thing
+that warns rather than blocks: strange booking, not broken booking.
+
+Entering the winner does the rest. `recordMatch` works out whether this match
+decides the group or is a qualifier, writes it onto this year's Last Stand show
+(opening one if there isn't one), and the roster movement follows as an ordinary
+effect. Which means it is in the wrestler's history like any other transfer, and
+**voiding the match hands them back** — there is no separate "movements" store to
+keep in step.
+
+Every profile page carries a **Roster movements** table: every brand that career
+has passed through, with the date, where they came from, and why — signed,
+drafted, promoted, relegated, released. `movementsFor(state, ref)` reads it off
+the `roster.brand` effects rather than the events, because a Last Stand movement
+is a consequence of a *match*, not a transfer event of its own.
+
+### Automatic promotion
+
+A championship can carry `autoPromote: true`. Its holder goes into the draft pool
+one tier up **without wrestling a Last Stand match** — the belt already settled
+it. They are left off the promotion list (nothing to fight for), and the draft
+pools them with the tier they are joining.
+
+It is a field on the championship, not a rule in the code: the shipped seed sets
+it on the NXT Championship and NXT Women's Championship and nothing else, so
+Evolve's champions still have to earn it. Clear the flag and the call-up stops;
+set it on some other belt in some other pyramid and that belt calls people up
+instead. A belt on the top tier never triggers one, because there is nowhere
+above it to go.
 
 ## The annual draft
 
@@ -680,5 +741,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 108 checks, no browser, no network
+npm run check:universe     # 370 checks, no browser, no network
 ```

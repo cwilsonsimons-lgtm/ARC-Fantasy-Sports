@@ -23,7 +23,7 @@
 //                     partners come with them — drafting half of a tag team is
 //                     almost always a mistake rather than a choice
 
-import { tiers, tierOf } from './pyramid.js';
+import { tiers, tierOf, autoPromotions } from './pyramid.js';
 import { currentSeason, standingsFor } from './season.js';
 
 export const DRAFT_DEFAULTS = { protectChampions: true, keepTeams: true };
@@ -70,6 +70,14 @@ export function proposeDraft(state, opts = {}) {
   const isTop = tiers(state)[0] && tiers(state)[0].tier === tier;
   const roster = Object.values(state.wrestlers).filter(w =>
     (w.brandId && tierOf(state, w.brandId) === tier) || (isTop && !w.brandId && w.status !== 'released'));
+
+  // Automatic call-ups from the rung below join this tier's pool without having
+  // won a Last Stand match — that is the whole point of the designation. They
+  // are drafted like anybody else, and the pick is what actually moves them.
+  const calledUp = autoPromotions(state)
+    .filter(a => tierOf(state, a.to) === tier && !roster.some(w => w.id === a.id))
+    .map(a => ({ ...state.wrestlers[a.id], calledUp: a }));
+  roster.push(...calledUp);
 
   const home = protectChampions ? championHome(state) : new Map();
   const held = [];

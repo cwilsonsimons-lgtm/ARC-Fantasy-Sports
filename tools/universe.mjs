@@ -35,12 +35,13 @@ import { currentSeason, seasons, brandStandings, proposeFlags, commitFlags,
 import { buildPrompt, PROMPTS } from '../js/universe/prompts.js';
 import { tiers, brandCard, pyramidText, checkBrand } from '../js/universe/pyramid.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
+import { lastStandBoard } from '../js/universe/laststand.js';
 
 // ------------------------------------------------------------------ args
 
 const argv = process.argv.slice(2);
 const cmd = argv.shift();
-const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit'];
+const BOOLEAN_FLAGS = ['dry', 'fresh', 'force', 'all', 'seed', 'commit', 'board'];
 const flags = {};
 const positional = [];
 for (let i = 0; i < argv.length; i++) {
@@ -448,6 +449,8 @@ const commands = {
   laststand() {
     const store = openStore();
     const state = project(store, { asOf: flags['as-of'] || null });
+    if (flags.board) return printLastStandBoard(state);
+
     const proposal = proposeLastStand(state);
     if (!proposal.matches.length) die('nobody is carrying a flag — run: node tools/universe.mjs flags --commit');
 
@@ -679,7 +682,7 @@ const commands = {
   draft [--tier N] [--commit]            the annual draft for one tier
   season [--as-of D]                     standings and where the year has got to
   flags [--commit] [--date D]            work out the promotion/relegation lists
-  laststand [--date D]                   print the Last Stand card to fill in
+  laststand [--date D] [--board]         the Last Stand card, or the whole board
   prompt <recap|contenders|next>         a prompt with state embedded, to stdout
   threads [--all] [--as-of D]            open questions the log has not answered
   resolve <threadId> [note]              mark one closed
@@ -700,6 +703,71 @@ Global: --file PATH (or UNIVERSE_FILE) chooses the save file.`);
 const nameOf = (state, ref) => (state.wrestlers[ref] ? state.wrestlers[ref].name
   : state.groups[ref] ? state.groups[ref].name
   : state.championships[ref] ? state.championships[ref].name : ref);
+
+// The dashboard's Last Stand tab, in a terminal. Promotion and relegation stay
+// visibly apart here for the same reason they do on the page: they are separate
+// competitions, and reading them as one list is how illegal pairings get booked.
+function printLastStandBoard(state) {
+  const b = lastStandBoard(state);
+
+  console.log(heading(`Last Stand — season ${b.season.n} (${b.season.phaseLabel})`, '═'));
+  console.log(`  ${pyramidText(state)}`);
+
+  if (b.auto.length) {
+    console.log(heading('Automatic call-ups — champions who skip the match'));
+    console.log(table(b.auto, [
+      { label: 'Wrestler', get: a => a.name },
+      { label: 'Holding', get: a => a.titleName },
+      { label: 'From', get: a => a.fromName || '—' },
+      { label: 'Into', get: a => `${a.toName} draft pool` },
+    ], { indent: '  ' }));
+  }
+
+  const cands = (rows, label) => {
+    console.log(heading(label));
+    if (!rows.length) { console.log('  nobody'); return; }
+    console.log(table(rows, [
+      { label: 'Wrestler', get: r => r.name },
+      { label: 'G', get: r => (r.gender === 'female' ? 'F' : r.gender === 'male' ? 'M' : '?') },
+      { label: 'Brand', get: r => r.brandName },
+      { label: label[0] === '↑' ? 'Up to' : 'Down to', get: r => r.toName || '—' },
+      { label: '', get: r => (r.automatic ? 'automatic' : '') },
+    ], { indent: '  ' }));
+  };
+  cands(b.candidates.promotion, '↑ Promotion candidates');
+  cands(b.candidates.relegation, '↓ Relegation candidates');
+
+  if (b.open.length) {
+    console.log(heading('Still to settle'));
+    b.open.forEach(g => console.log(`  ${g.direction === 'relegation' ? '↓' : '↑'} ${g.brandName}`
+      + ` ${g.gender === 'female' ? 'women' : 'men'} → ${g.toBrandName || '—'}`
+      + ` — round ${g.round}, ${plural(g.standing.length, 'name')} standing,`
+      + ` ${plural(g.matches.length, 'match', 'matches')} to book${g.decides ? '' : ' (qualifiers — nobody moves)'}`));
+    console.log(`\n  card: node tools/universe.mjs laststand`);
+  }
+
+  if (b.played.length) {
+    console.log(heading('Results'));
+    console.log(table(b.played, [
+      { label: 'Date', get: m => m.date },
+      { label: 'Winner', get: m => m.winner },
+      { label: 'Loser', get: m => m.loser },
+      { label: 'For', get: m => (m.stakes ? `${m.stakes} — ${m.toName}` : `${m.qualifier} qualifier`) },
+    ], { indent: '  ' }));
+  }
+
+  if (b.movements.length) {
+    console.log(heading('Roster movements'));
+    console.log(table(b.movements, [
+      { label: 'Date', get: m => m.date },
+      { label: 'Wrestler', get: m => m.name },
+      { label: 'Moves to', get: m => m.toName },
+      { label: 'Why', get: m => m.reason },
+    ], { indent: '  ' }));
+  } else if (b.played.length) {
+    console.log('\n  nobody has moved yet — those were qualifiers');
+  }
+}
 
 const fn = commands[cmd] || (cmd === '-h' || cmd === '--help' || !cmd ? commands.help : null);
 if (!fn) die(`unknown command: ${cmd}\nrun: node tools/universe.mjs help`);

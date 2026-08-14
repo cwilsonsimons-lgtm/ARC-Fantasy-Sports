@@ -619,6 +619,35 @@ export function timelineFor(state, ref) {
     .reverse();
 }
 
+// Every brand a wrestler has moved between, and why. The movement itself is
+// usually an *effect* of something else — a Last Stand match, a draft pick, a
+// contract — so a plain timeline shows the match and not the transfer. This
+// reads the effects instead, which is what makes it a roster transaction
+// history rather than a list of matches.
+export function movementsFor(state, ref) {
+  const out = [];
+  state.events.forEach(e => {
+    (e.effects || []).forEach(fx => {
+      if (fx.subject !== ref) return;
+      if (fx.kind === 'roster.brand') {
+        out.push({
+          date: e.date, eventId: e.id, kind: 'brand',
+          to: fx.brandId, toName: fx.brandId && state.brands[fx.brandId] ? state.brands[fx.brandId].name : 'free agency',
+          reason: fx.reason || (e.type === 'contract.signed' ? 'signed' : e.type === 'contract.expired' ? 'released' : 'moved'),
+          showId: e.showId || null,
+        });
+      } else if (fx.kind === 'contract.end') {
+        out.push({ date: e.date, eventId: e.id, kind: 'contract', to: null, toName: 'free agency', reason: fx.reason || 'contract ended' });
+      }
+    });
+  });
+  // Collapse the pair a contract expiry writes (brand cleared + contract ended)
+  // into one row, since they are one thing happening.
+  return out.filter((m, i) => !(m.kind === 'contract' && out[i - 1] && out[i - 1].eventId === m.eventId))
+    .map((m, i, all) => ({ ...m, from: i ? all[i - 1].toName : null }))
+    .reverse();
+}
+
 export function standings(state, brandId = null) {
   return Object.values(state.wrestlers)
     .filter(w => (brandId ? w.brandId === brandId : true) && w.record.total > 0)

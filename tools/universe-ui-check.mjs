@@ -42,7 +42,7 @@ const tab = id => `document.querySelector('[data-tab=${id}]').click()`;
 // ---------------------------------------------------------------- boot
 await check('seeds itself on first load', `UNIVERSE.store.stats().wrestlers`, 79);
 await check('seed wrote events, not state', `UNIVERSE.store.stats().live > 60`, true);
-await check('tabs render', `document.querySelectorAll('.tab').length`, 10);
+await check('tabs render', `document.querySelectorAll('.tab').length`, 11);
 await check('lands on the entry tab', `document.querySelector('.tab.on').dataset.tab`, 'tonight');
 await check('card box is focused for typing', `document.activeElement.id`, 'cardText');
 
@@ -72,6 +72,19 @@ await check('title page names the belt', `document.querySelector('#pane-title .p
 await check('title page shows an empty lineage', `document.querySelector('#pane-title').textContent.includes('Never held')`, true);
 await check('and links back to the belts', `document.querySelector('#pane-title [data-tab=titles]').click();
   document.querySelector('.tab.on').dataset.tab`, 'titles');
+
+// The belt that calls its holder up a tier is marked as such, on both views —
+// it is a field on the championship, so the page has to read it, not assume it.
+await check('a belt that calls its holder up says so', `[...document.querySelectorAll('.belt')]
+  .filter(e => e.textContent.includes('calls up')).map(e => e.querySelector('.nm').textContent)`,
+  ['NXT Championship', "NXT Women's Championship"]);
+await check('and explains it on the belt page', `[...document.querySelectorAll('.belt')]
+  .find(e => e.textContent.includes('calls up')).click();
+  document.querySelector('#pane-title').textContent.includes('no Last Stand match')`, true);
+await check('naming where they land', `document.querySelector('#pane-title').textContent.includes('draft pool')`, true);
+await check('an ordinary belt is not marked', `${tab('titles')};
+  [...document.querySelectorAll('.belt')].find(e => e.querySelector('.nm').textContent === 'WWE Championship')
+    .textContent.includes('calls up')`, false);
 
 // ---------------------------------------------------------------- card entry
 const CARD = `Monday Night Raw / 2026-08-17 / Raw
@@ -541,6 +554,78 @@ await check('a drafted wrestler kept their belt', `
     .filter(c => !c.vacant)
     .every(c => c.holders.every(hh => UNIVERSE.app.state.wrestlers[hh].brandId === c.brandId
       || !c.brandId))`, true);
+
+
+// ---------------------------------------------------------------- Last Stand dashboard
+// The season checks above already ran a Last Stand and a draft, so the flags are
+// all cleared. Start another year to have candidates to work with.
+await page.evaluate(tab('tonight'));
+await type('WrestleMania 44 / 2028-04-02 / Raw\nCody Rhodes d. Roman Reigns — WWE Championship');
+await page.evaluate(`document.getElementById('cardSave').click()`);
+await page.waitForTimeout(200);
+await page.evaluate(`${tab('season')}; document.getElementById('flagsPropose').click()`);
+await page.waitForTimeout(150);
+await page.evaluate(`document.getElementById('flagsCommit').click()`);
+await page.waitForTimeout(200);
+await check('a fresh year has candidates again', `Object.values(UNIVERSE.app.state.wrestlers)
+  .filter(w => /flagged$/.test(w.status)).length > 4`, true);
+
+await check('the dashboard draws the pyramid', `${tab('laststand')};
+  document.querySelectorAll('#pane-laststand .rung').length`, 4);
+await check('promotion and relegation are kept apart', `
+  const h2 = [...document.querySelectorAll('#pane-laststand h2')].map(x => x.textContent);
+  [h2.some(t => /Up for promotion/.test(t)), h2.some(t => /Up for relegation/.test(t))]`, [true, true]);
+await check('the relegation list is populated', `
+  const cols = document.querySelectorAll('#pane-laststand .cols .card')[1];
+  cols.querySelectorAll('tbody tr').length > 0`, true);
+await check('the match maker offers candidates', `
+  document.querySelectorAll('#lsA option').length > 2`, true);
+await check('the opponent picker starts empty', `document.getElementById('lsB').disabled`, true);
+
+// Pick a Raw relegation candidate; the opponent list must contain only the
+// other Raw relegation candidates of the same gender.
+await check('picking one filters the other', `
+  const rel = Object.values(UNIVERSE.app.state.wrestlers)
+    .filter(w => w.status === 'relegation-flagged' && w.brandId === 'b:raw' && w.gender === 'male');
+  const sel = document.getElementById('lsA');
+  sel.value = rel[0].id; sel.dispatchEvent(new Event('change', {bubbles:true}));
+  const opts = [...document.querySelectorAll('#lsB option')].slice(1).map(o => o.value);
+  window.__rel = rel.map(r => r.id);
+  opts.every(id => UNIVERSE.app.state.wrestlers[id].brandId === 'b:raw'
+    && UNIVERSE.app.state.wrestlers[id].status === 'relegation-flagged')`, true);
+await check('and never offers another brand', `
+  [...document.querySelectorAll('#lsB option')].slice(1)
+    .every(o => UNIVERSE.app.state.wrestlers[o.value].brandId === 'b:raw')`, true);
+await check('nor anyone up for promotion', `
+  [...document.querySelectorAll('#lsB option')].slice(1)
+    .every(o => UNIVERSE.app.state.wrestlers[o.value].status !== 'promotion-flagged')`, true);
+await check('it spells out what is at stake', `
+  const b = document.getElementById('lsB');
+  b.value = window.__rel[1]; b.dispatchEvent(new Event('change', {bubbles:true}));
+  document.querySelector('#pane-laststand .msg.ok').textContent.includes('drops to')`, true);
+await check('recording needs a winner first', `document.getElementById('lsRecord').disabled`, true);
+// The destination is whatever the pyramid says, not a hardcoded NXT — the
+// earlier checks added an empty WCW on the same tier, and the thinnest roster
+// wins the tie-break.
+await check('recording it moves the loser down a rung', `
+  const w = document.getElementById('lsWinner');
+  w.value = window.__rel[0]; w.dispatchEvent(new Event('change', {bubbles:true}));
+  document.getElementById('lsRecord').click();
+  const st = UNIVERSE.app.state;
+  window.__to = st.wrestlers[window.__rel[1]].brandId;
+  [st.wrestlers[window.__rel[0]].brandId, st.brands[window.__to].tier]`, ['b:raw', 2]);
+await check('and clears both flags', `
+  window.__rel.every(id => UNIVERSE.app.state.wrestlers[id].status === 'active')`, true);
+await check('the movement is listed', `
+  document.querySelector('#pane-laststand').textContent.includes('Roster movements')
+  && [...document.querySelectorAll('#pane-laststand tbody tr')]
+    .some(r => r.textContent.includes('relegation'))`, true);
+await check('and it is a real event in the log', `UNIVERSE.store.effectiveEvents()
+  .filter(e => e.source === 'last-stand').length`, n => n >= 2);
+await check('the wrestler carries it in their history', `
+  UNIVERSE.app.tab = 'wrestler'; UNIVERSE.app.detailId = window.__rel[1]; UNIVERSE.render();
+  document.querySelector('#pane-wrestler').textContent
+    .includes('moves to ' + UNIVERSE.app.state.brands[window.__to].name)`, true);
 
 // Stills for eyeballing the result. snapshots/ is gitignored.
 await mkdir('snapshots', { recursive: true });

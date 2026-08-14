@@ -25,7 +25,7 @@
 // because the matches are. Champions are never relegated — holding a belt is the
 // one thing that keeps you up.
 
-import { tiers, tierOf, canBePromoted, canBeRelegated, destination } from './pyramid.js';
+import { tiers, tierOf, canBePromoted, canBeRelegated, destination, autoPromotions } from './pyramid.js';
 
 export const DEFAULTS = {
   // Per brand, per gender, per direction. Two candidates and one spot is the
@@ -214,6 +214,10 @@ export function proposeFlags(state, opts = {}) {
   const genders = ['male', 'female'];
   const out = [];
   const skipped = [];
+  // A champion whose belt carries the automatic call-up is already going up, so
+  // they are not also a promotion candidate — putting them in a promotion match
+  // would be asking them to win a spot they already have.
+  const automatic = new Set(autoPromotions(state).map(a => a.id));
 
   // Every brand with a rung beneath it can relegate, every brand with a rung
   // above it can promote, and on a three-tier pyramid the middle does both. The
@@ -232,7 +236,9 @@ export function proposeFlags(state, opts = {}) {
       genders.forEach(g => {
         // Worst-first for relegation, best-first for promotion. A champion is
         // never a relegation candidate — holding a belt is what keeps you up.
-        const ordered = b.table.filter(r => r.gender === g && !(relegation && champs.has(r.id)));
+        const ordered = b.table.filter(r => r.gender === g
+          && !(relegation && champs.has(r.id))
+          && !(!relegation && automatic.has(r.id)));
         const queue = relegation ? ordered.slice().reverse() : ordered;
         const picked = queue.slice(0, candidatesPerBrand);
 

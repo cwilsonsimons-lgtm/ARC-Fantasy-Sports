@@ -15,12 +15,13 @@
 import { readFileSync } from 'node:fs';
 
 import { UniverseStore, memoryAdapter, ValidationError } from '../js/universe/store.js';
-import { project, champions, titleLineage, standings } from '../js/universe/project.js';
+import { project, champions, titleLineage, standings, movementsFor } from '../js/universe/project.js';
 import { seedFromJSON } from '../js/universe/seed.js';
 import { parseRoster, commitRoster } from '../js/universe/roster.js';
 import { parseCard, commitCard, setTitleOutcome } from '../js/universe/card.js';
 import { resolve, buildIndex } from '../js/universe/util.js';
-import { tiers, tierOf, destination, pyramidText, checkBrand } from '../js/universe/pyramid.js';
+import { tiers, tierOf, destination, pyramidText, checkBrand, autoPromotions } from '../js/universe/pyramid.js';
+import { candidates, eligibleOpponents, checkPairing, recordMatch, lastStandBoard } from '../js/universe/laststand.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
   proposeLastStand, lastStandCard, nextStep, PHASES } from '../js/universe/season.js';
@@ -667,6 +668,121 @@ check('the bye is not matched outside the group',
 // A brand with only one eligible name is reported, never left flagged forever.
 const solo = proposeFlags(project(fresh()), { candidatesPerBrand: 99 });
 check('a group that cannot make a match is skipped', Array.isArray(solo.skipped), true);
+
+// ──────────────────────────────────────────────────────────────── the dashboard
+// The pairing rules are the reason this file exists, so they are asserted from
+// the data layer as well as through the page: an illegal pairing must be
+// impossible to *offer*, and impossible to *record* if it arrives another way.
+section('Last Stand dashboard');
+const sL = fresh();
+commitCard(sL, parseCard('WrestleMania 44 / 2028-04-02 / Raw\nCody Rhodes d. Roman Reigns', sL));
+commitFlags(sL, proposeFlags(project(sL, { asOf: '2028-04-03' })), { date: '2028-04-03' });
+let pL = project(sL, { asOf: '2028-04-04' });
+
+check('the board opens in the Last Stand phase', lastStandBoard(pL).phase, 'lastStand');
+const cL = candidates(pL);
+check('the two lists are separate', [cL.promotion.every(r => r.direction === 'promotion'),
+  cL.relegation.every(r => r.direction === 'relegation')], [true, true]);
+check('a relegation candidate knows where they would drop to',
+  cL.relegation.every(r => r.toName && tierOf(pL, r.to) > r.tier), true);
+check('a promotion candidate knows what they are climbing to',
+  cL.promotion.every(r => r.toName && tierOf(pL, r.to) < r.tier), true);
+
+const relRaw = cL.relegation.find(r => r.brandId === 'b:raw' && r.gender === 'male');
+const relSd = cL.relegation.find(r => r.brandId === 'b:smackdown' && r.gender === 'male');
+const promoNxt = cL.promotion.find(r => r.brandId === 'b:nxt' && r.gender === 'male');
+const opps = eligibleOpponents(pL, relRaw.id);
+check('the picker only offers the same brand', opps.every(w => w.brandId === 'b:raw'), true);
+check('and only relegation candidates', opps.every(w => w.status === 'relegation-flagged'), true);
+check('never a promotion candidate', opps.some(w => w.id === promoNxt.id), false);
+check('never someone from another brand', opps.some(w => w.id === relSd.id), false);
+check('never themselves', opps.some(w => w.id === relRaw.id), false);
+
+check('Raw vs SmackDown is refused',
+  checkPairing(pL, relRaw.id, relSd.id).errors.length > 0, true);
+check('relegation vs promotion is refused',
+  /separate competitions/.test(checkPairing(pL, relRaw.id, promoNxt.id).errors[0]), true);
+check('an unflagged wrestler is refused',
+  /not up for/.test(checkPairing(pL, relRaw.id, 'w:gunther').errors[0] || ''), true);
+check('a legal pairing passes', checkPairing(pL, relRaw.id, opps[0].id).errors, []);
+check('an intergender pairing warns rather than blocks', (() => {
+  const her = cL.relegation.find(r => r.brandId === 'b:raw' && r.gender === 'female');
+  const c = checkPairing(pL, relRaw.id, her.id);
+  return [c.errors.length, c.warnings.length];
+})(), [0, 1]);
+
+// Two Evolve names chase the same NXT spot; two NXT names chase a tier-1 spot.
+// They are different competitions even though both are "promotion".
+const promoEvolve = cL.promotion.find(r => r.brandId === 'b:evolve' && r.gender === 'male');
+check('promotion is grouped by the spot being chased',
+  checkPairing(pL, promoNxt.id, promoEvolve.id).errors.length > 0, true);
+check('two names chasing the same spot are allowed',
+  checkPairing(pL, promoEvolve.id, eligibleOpponents(pL, promoEvolve.id)[0].id).errors, []);
+
+// Recording one, and what it leaves behind.
+const rec = recordMatch(sL, pL, { aId: relRaw.id, bId: opps[0].id, winnerId: relRaw.id, date: '2028-04-24' });
+pL = project(sL, { asOf: '2028-04-25' });
+check('recording opens a Last Stand show', pL.showsById[rec.showId].ple, 'lastStand');
+check('the loser drops a tier', tierOf(pL, pL.wrestlers[opps[0].id].brandId), 2);
+check('the winner stays put', pL.wrestlers[relRaw.id].brandId, 'b:raw');
+check('and both walk out unflagged',
+  [pL.wrestlers[relRaw.id].status, pL.wrestlers[opps[0].id].status], ['active', 'active']);
+check('the movement lands in the transaction history',
+  movementsFor(pL, opps[0].id)[0].reason, 'relegation');
+check('with where they came from', movementsFor(pL, opps[0].id)[0].from, 'Raw');
+check('an illegal pairing cannot be recorded either',
+  !!threw(() => recordMatch(sL, pL, { aId: relSd.id, bId: relRaw.id, winnerId: relSd.id, date: '2028-04-24' })), true);
+check('a second match joins the same show',
+  recordMatch(sL, pL, { aId: relSd.id, bId: eligibleOpponents(pL, relSd.id)[0].id,
+    winnerId: relSd.id, date: '2028-04-24' }).showId, rec.showId);
+
+pL = project(sL, { asOf: '2028-04-25' });
+const board = lastStandBoard(pL);
+// Last Stand has been wrestled by now, so the year has moved on to the draft.
+check('the board reports the phase', board.phase, 'draft');
+check('the board separates the two lists',
+  [Array.isArray(board.candidates.promotion), Array.isArray(board.candidates.relegation)], [true, true]);
+check('played matches are on the board', board.played.length, 2);
+check('so are the movements they caused', board.movements.length, 2);
+check('and the rosters by tier', board.tiers.every(t => t.brands.every(b => Array.isArray(b.roster))), true);
+check('settled groups leave the still-to-settle list',
+  board.open.some(g => g.brandId === 'b:raw' && g.gender === 'male' && g.direction === 'relegation'), false);
+
+// Voiding the match hands the movement back — the dashboard writes ordinary
+// history, not a special case.
+sL.voidEvent(rec.events[rec.events.length - 1].id, 'mis-entered');
+const pDv = project(sL, { asOf: '2028-04-25' });
+check('voiding a Last Stand match undoes the move', pDv.wrestlers[opps[0].id].brandId, 'b:raw');
+check('and clears it from the transaction history',
+  movementsFor(pDv, opps[0].id).some(m => m.reason === 'relegation'), false);
+
+// ──────────────────────────────────────────────────────────────── automatic promotion
+// The designation lives on the championship, not in the code: nothing here
+// names NXT, and turning the flag off turns the call-up off.
+section('automatic champion promotion');
+const sAP = fresh();
+commitCard(sAP, parseCard(`WrestleMania 44 / 2028-04-02 / NXT
+Oba Femi d. Trick Williams — NXT Championship`, sAP));
+let pAP = project(sAP, { asOf: '2028-04-03' });
+const autoA = autoPromotions(pAP);
+check('the champion of a flagged belt goes up automatically',
+  autoA.map(a => a.name), ['Oba Femi']);
+check('into the tier above', tierOf(pAP, autoA[0].to), 1);
+check('and it says why', /automatic call-up/.test(autoA[0].why), true);
+check('a belt on the bottom rung never triggers one',
+  Object.values(pAP.championships).some(c => c.autoPromote && tierOf(pAP, c.brandId) === 3
+    && autoA.some(a => a.titleId === c.id)), false);
+check('the draft pools them without a Last Stand match',
+  proposeDraft(pAP, { tier: 1 }).picks.some(p => p.wrestlerId === autoA[0].id), true);
+check('and they are not asked to fight for it',
+  proposeFlags(pAP).some(f => f.id === autoA[0].id && f.flag === 'promotion-flagged'), false);
+
+// Turn the designation off and the same champion is an ordinary wrestler.
+const nxtBelt = Object.values(project(sAP).championships).find(c => c.autoPromote && c.id === autoA[0].titleId);
+sAP.addEntity('championship', { ...sAP.getEntity(nxtBelt.id), autoPromote: false },
+  { id: nxtBelt.id, upsert: true });
+check('clearing the flag ends the call-up',
+  autoPromotions(project(sAP, { asOf: '2028-04-04' })).length, 0);
 
 
 // ──────────────────────────────────────────────────────────────── prompts

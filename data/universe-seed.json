@@ -1,7 +1,7 @@
 {
   "name": "Universe 2026",
   "startDate": "2026-06-01",
-  "_comment": "Seed files are written in names, not ids. Everything here becomes founding EVENTS (contracts, alliances), not initial state. NOTE: no titleHolders — every championship in a new save starts VACANT, and a title's history begins the first time somebody wins it in your booking. Add a titleHolders array here only if you deliberately want a save to start mid-reign.",
+  "_comment": "Seed files are written in names, not ids. Everything here becomes founding EVENTS (contracts, alliances), not initial state. NOTE: no titleHolders — every championship in a new save starts VACANT, and a title's history begins the first time somebody wins it in your booking. Add a titleHolders array here only if you deliberately want a save to start mid-reign. The NXT titles carry autoPromote: holding one after WrestleMania is itself a call-up, so the champion joins the main-roster draft pool without a Last Stand match. Evolve titles deliberately do not.",
   "brands": [
     {
       "name": "Raw",
@@ -107,12 +107,14 @@
     {
       "name": "NXT Championship",
       "brand": "NXT",
-      "division": "mens"
+      "division": "mens",
+      "autoPromote": true
     },
     {
       "name": "NXT Women's Championship",
       "brand": "NXT",
-      "division": "womens"
+      "division": "womens",
+      "autoPromote": true
     },
     {
       "name": "Evolve Championship",

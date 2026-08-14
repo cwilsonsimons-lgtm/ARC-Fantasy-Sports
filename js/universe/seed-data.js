@@ -110,12 +110,14 @@ export const UNIVERSE_SEED = {
     {
       "name": "NXT Championship",
       "brand": "NXT",
-      "division": "mens"
+      "division": "mens",
+      "autoPromote": true
     },
     {
       "name": "NXT Women's Championship",
       "brand": "NXT",
-      "division": "womens"
+      "division": "womens",
+      "autoPromote": true
     },
     {
       "name": "Evolve Championship",

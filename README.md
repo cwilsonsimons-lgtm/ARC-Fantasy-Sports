@@ -83,7 +83,16 @@ settled inside a single show**: a Raw name fighting relegation faces another Raw
 name, because the Raw spot is what is at stake. Four candidates for one spot
 becomes a bracket, and a qualifier round moves nobody.
 
-Ten tabs:
+Last Stand gets its own tab, and its match maker **cannot make an illegal
+match** — pick one name and the second picker is rebuilt from who is legally
+allowed to face them, so Raw vs SmackDown or candidate vs bystander is never
+offered rather than merely refused. Enter the winner and the roster movement
+follows; it lands in that wrestler's permanent movement history, and voiding the
+match hands them back. A championship can also carry `autoPromote`, which sends
+its holder up a tier without a match at all — a field on the belt, set on the
+two NXT titles in the shipped seed, so nothing in the code names NXT.
+
+Eleven tabs:
 
 - **Tonight** — type a card, see it parsed as you type, save it. Active
   rivalries, alliances and the oldest open threads sit underneath.
@@ -94,6 +103,10 @@ Ten tabs:
 - **Threads** — questions the log has opened and not answered, oldest first.
 - **Season** — standings, the promotion and relegation lists, a one-click Last
   Stand card, and the draft board for each tier.
+- **Last Stand** — the offseason board: the pyramid with candidate counts,
+  rosters by tier, automatic call-ups, promotion and relegation candidates in
+  separate tables, the constrained match maker, results, and every roster
+  movement they caused.
 - **Shows** and **Log** — every card saved, every event and correction, with
   one-click fixes.
 - **Prompts** — copy-paste prompts for another AI, state already embedded. The
@@ -103,7 +116,8 @@ Ten tabs:
 - **Import** — drop a screenshot of a card or a roster and turn it into events.
 
 Clicking a wrestler anywhere opens their profile: record, reigns with day
-counts, rivalries, alliances and a full timeline. A date box in the header
+counts, rivalries, alliances, every brand their career has passed through and
+why, and a full timeline. A date box in the header
 re-projects the whole page at any past date, decayed heat included. Its storage
 key is `arc_universe_v1`; the fantasy app's keys are never touched.
 
@@ -136,10 +150,11 @@ node tools/universe.mjs brand "WCW" --tier 2   # create or edit a show
 node tools/universe.mjs season                 # standings for the year
 node tools/universe.mjs draft --tier 1         # the annual draft
 node tools/universe.mjs flags --commit         # promotion and relegation lists
+node tools/universe.mjs laststand --board     # the Last Stand board in a terminal
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 331 data-layer checks, pure Node
-npm run check:universe-ui     # 180 browser checks against dist/universe.html
+npm run check:universe        # 370 data-layer checks, pure Node
+npm run check:universe-ui     # 200 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`
