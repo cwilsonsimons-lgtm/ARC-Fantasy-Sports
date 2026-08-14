@@ -136,6 +136,44 @@ check('new group formed', p1.groups['g:the-vipers'].members.length, 2);
 const again = commitRoster(s1, parseRoster(paste, s1), { date: '2026-08-14' });
 check('re-importing the same paste is a no-op', again.written, 0);
 
+// A faction gaining one member is one member joining, not a broken event. The
+// two-member rule is about *forming* a group; The Judgment Day signing a fifth
+// is an ordinary Tuesday, and this used to refuse the whole paste.
+const s1b = fresh();
+const jd = () => project(s1b).groups['g:the-judgment-day'];
+const before1b = jd().members.length;
+const grow = commitRoster(s1b, parseRoster(`Raw
+${jd().members.map(m => `${project(s1b).wrestlers[m].name}, m, active`).join('\n')}
+Bron Breakker, m, active
+
+Factions
+The Judgment Day = ${[...jd().members.map(m => project(s1b).wrestlers[m].name), 'Bron Breakker'].join(' & ')}
+`, s1b), { date: '2026-08-14' });
+check('one wrestler can join a group that exists', grow.written > 0, true);
+check('written as a join, not a second forming',
+  grow.events.filter(e => e.type === 'alliance.formed').every(e => e.data.join === true), true);
+check('and the group gains exactly them', jd().members.length, before1b + 1);
+check('without restating when it formed', jd().history.filter(x => x.what === 'formed').length, 1);
+
+// Replacing a line-up wholesale is a re-form, not a group folding: the paste
+// still lists the group, so it must not end up dissolved and empty.
+const s1c = fresh();
+const swap = commitRoster(s1c, parseRoster(`Raw
+Otis, m, active
+Akira Tozawa, m, active
+
+Tag Teams
+Alpha Academy = Otis & Akira Tozawa
+`, s1c), { date: '2026-08-14' });
+const aa = project(s1c).groups['g:alpha-academy'];
+check('a replaced line-up keeps the group alive', aa.active, true);
+check('with the pasted members', aa.members.map(m => project(s1c).wrestlers[m].name), ['Otis', 'Akira Tozawa']);
+check('and it re-forms rather than gaining members',
+  swap.events.filter(e => e.type === 'alliance.formed').every(e => !e.data.join), true);
+// A paste states who is in a group. It is not a storyline about somebody
+// turning, so it must not fill the threads queue with betrayals.
+check('a paste never invents a betrayal', project(s1c).threads.filter(t => t.kind === 'betrayal').length, 0);
+
 const dupes = parseRoster('RAW\nSeth Rollins, m\nSeth Rollins, m\n', s1);
 check('duplicate line rejected', /duplicate/.test(dupes.errors[0].message), true);
 const ghostTeam = parseRoster('Tag Teams\nThe Nobodies = Someone Fake & Cody Rhodes\n', s1);

@@ -434,18 +434,31 @@ export const EVENT_TYPES = {
     label: 'Alliance formed',
     roles: ['member', 'leader'],
     required: ['groupId'],
+    // Two things wear this type: a group coming into existence, and somebody
+    // walking into one that already exists. `data.join` says which — and one
+    // person joining The Judgment Day is an ordinary Tuesday, not a broken
+    // event, so the two-member rule only applies to the first case.
     validate: ev => {
       const e = [];
-      if (ev.participants.length < 2) err(e, 'an alliance needs at least two members');
+      if (ev.data.join) {
+        if (!ev.participants.length) err(e, 'nobody is joining');
+      } else if (ev.participants.length < 2) {
+        err(e, 'an alliance needs at least two members (set join for somebody joining one that already exists)');
+      }
       if (ev.data.groupKind && !GROUP_KINDS.includes(ev.data.groupKind)) err(e, `unknown group kind: ${ev.data.groupKind}`);
       return e;
     },
     effects: ev => {
-      const out = [{
-        kind: 'group.form', groupId: ev.data.groupId,
-        name: ev.data.name || null, groupKind: ev.data.groupKind || 'alliance',
-        leaderId: refsOf(ev, 'leader')[0] || null, brandId: ev.data.brandId || null,
-      }];
+      const out = [];
+      // A join must not re-form the group: forming restates its name, its kind
+      // and its founding date, and would quietly revive one that had split up.
+      if (!ev.data.join) {
+        out.push({
+          kind: 'group.form', groupId: ev.data.groupId,
+          name: ev.data.name || null, groupKind: ev.data.groupKind || 'alliance',
+          leaderId: refsOf(ev, 'leader')[0] || null, brandId: ev.data.brandId || null,
+        });
+      }
       ev.participants.forEach(p => out.push({ kind: 'group.join', groupId: ev.data.groupId, subject: p.ref }));
       return out;
     },

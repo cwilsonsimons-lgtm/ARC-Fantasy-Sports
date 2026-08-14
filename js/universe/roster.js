@@ -309,14 +309,32 @@ export function commitRoster(store, parsed, { date = new Date().toISOString().sl
       events.push({
         type: 'alliance.broken', date, source: 'roster-import',
         participants: gone.map(m => ({ ref: m, role: 'member' })),
-        data: { groupId: gid, reason: 'roster import', dissolve: gone.length === now.size },
+        data: {
+          groupId: gid, reason: 'roster import',
+          // The paste still lists this group, so it only folds if nobody is
+          // left in it afterwards.
+          dissolve: gone.length === now.size && !joined.length,
+          // And a corrected line-up is not a walkout: a paste states who is in
+          // the group, it does not tell a story about somebody turning. Type a
+          // card if you want the betrayal.
+          betrayal: false,
+        },
       });
     }
     if (joined.length) {
+      // A group that had split up — or that this very paste just emptied —
+      // re-forms with its whole line-up; one that is already going simply gains
+      // a member. Writing the second as a forming event would restate the
+      // group's founding every time somebody joined.
+      const reform = !existing.active || gone.length === now.size;
       events.push({
         type: 'alliance.formed', date, source: 'roster-import',
-        participants: joined.map(m => ({ ref: m, role: 'member' })),
-        data: { groupId: gid, groupKind: existing.kind, name: existing.name, brandId: g.brandId || existing.brandId || null },
+        participants: (reform ? memberIds : joined).map(m => ({ ref: m, role: 'member' })),
+        data: {
+          groupId: gid, groupKind: existing.kind, name: existing.name,
+          brandId: g.brandId || existing.brandId || null,
+          ...(reform ? {} : { join: true }),
+        },
       });
     }
     if (gone.length || joined.length) summary.groupsChanged.push({ id: gid, name: existing.name, joined: joined.length, left: gone.length });

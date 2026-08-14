@@ -923,21 +923,32 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       label: "Alliance formed",
       roles: ["member", "leader"],
       required: ["groupId"],
+      // Two things wear this type: a group coming into existence, and somebody
+      // walking into one that already exists. `data.join` says which — and one
+      // person joining The Judgment Day is an ordinary Tuesday, not a broken
+      // event, so the two-member rule only applies to the first case.
       validate: (ev) => {
         const e = [];
-        if (ev.participants.length < 2) err(e, "an alliance needs at least two members");
+        if (ev.data.join) {
+          if (!ev.participants.length) err(e, "nobody is joining");
+        } else if (ev.participants.length < 2) {
+          err(e, "an alliance needs at least two members (set join for somebody joining one that already exists)");
+        }
         if (ev.data.groupKind && !GROUP_KINDS.includes(ev.data.groupKind)) err(e, `unknown group kind: ${ev.data.groupKind}`);
         return e;
       },
       effects: (ev) => {
-        const out = [{
-          kind: "group.form",
-          groupId: ev.data.groupId,
-          name: ev.data.name || null,
-          groupKind: ev.data.groupKind || "alliance",
-          leaderId: refsOf(ev, "leader")[0] || null,
-          brandId: ev.data.brandId || null
-        }];
+        const out = [];
+        if (!ev.data.join) {
+          out.push({
+            kind: "group.form",
+            groupId: ev.data.groupId,
+            name: ev.data.name || null,
+            groupKind: ev.data.groupKind || "alliance",
+            leaderId: refsOf(ev, "leader")[0] || null,
+            brandId: ev.data.brandId || null
+          });
+        }
         ev.participants.forEach((p) => out.push({ kind: "group.join", groupId: ev.data.groupId, subject: p.ref }));
         return out;
       }
@@ -3598,16 +3609,33 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
           date,
           source: "roster-import",
           participants: gone.map((m) => ({ ref: m, role: "member" })),
-          data: { groupId: gid, reason: "roster import", dissolve: gone.length === now.size }
+          data: {
+            groupId: gid,
+            reason: "roster import",
+            // The paste still lists this group, so it only folds if nobody is
+            // left in it afterwards.
+            dissolve: gone.length === now.size && !joined.length,
+            // And a corrected line-up is not a walkout: a paste states who is in
+            // the group, it does not tell a story about somebody turning. Type a
+            // card if you want the betrayal.
+            betrayal: false
+          }
         });
       }
       if (joined.length) {
+        const reform = !existing.active || gone.length === now.size;
         events.push({
           type: "alliance.formed",
           date,
           source: "roster-import",
-          participants: joined.map((m) => ({ ref: m, role: "member" })),
-          data: { groupId: gid, groupKind: existing.kind, name: existing.name, brandId: g.brandId || existing.brandId || null }
+          participants: (reform ? memberIds : joined).map((m) => ({ ref: m, role: "member" })),
+          data: {
+            groupId: gid,
+            groupKind: existing.kind,
+            name: existing.name,
+            brandId: g.brandId || existing.brandId || null,
+            ...reform ? {} : { join: true }
+          }
         });
       }
       if (gone.length || joined.length) summary.groupsChanged.push({ id: gid, name: existing.name, joined: joined.length, left: gone.length });

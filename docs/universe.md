@@ -35,7 +35,7 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     402 data-layer checks, pure Node
+  universe-check.mjs     410 data-layer checks, pure Node
   universe-ui-check.mjs  223 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
@@ -117,8 +117,8 @@ stay in the order they were typed.
 | `attack` | attacker, victim | context | `rivalry.heat`, `thread.open` |
 | `promo` | speaker, target | topic | `rivalry.heat` |
 | `save` | subject, victim, attacker | context | `alliance.bond`, `rivalry.heat`, `thread.close` |
-| `alliance.formed` | member, leader | groupId, groupKind, name | `group.form`, `group.join` |
-| `alliance.broken` | member | groupId, dissolve | `group.leave`, `group.dissolve`, `thread.open` |
+| `alliance.formed` | member, leader | groupId, groupKind, name, join | `group.form`, `group.join` |
+| `alliance.broken` | member | groupId, dissolve, betrayal | `group.leave`, `group.dissolve`, `thread.open` |
 | `title.change` | champion | titleId, reason | `title.award` / `vacate` / `interim` / `unify` |
 | `injury` | subject | severity, weeks, expectedReturn | `injury.start`, `roster.status`, `thread.open` |
 | `injury.cleared` | subject | status | `injury.end`, `roster.status` |
@@ -142,6 +142,11 @@ A title won in a match is **not** also written as a separate `title.change`. The
 match already carries the `title.award` effect, so correcting the winner moves
 the reign with it; a second linked event would survive that correction and leave
 the belt on the wrong wrestler. `title.change` is for changes outside a match.
+
+`alliance.formed` with `data.join` is somebody walking into a group that already
+exists: one name is enough, and it writes `group.join` **without** `group.form`,
+so joining does not restate the group's founding or revive one that had split
+up. Without the flag it is a group coming into existence, which needs two.
 
 `brand.transfer` does not touch the roster flag unless `data.status` says so. A
 promotion that auto-cleared the promotion flag would fight a re-pasted roster
@@ -400,8 +405,30 @@ Pasting the same roster twice writes nothing the second time, so it is safe to
 re-paste the whole list after every draft.
 
 A partial paste only touches the people in it; nobody is removed for being
-absent. Gender and alignment are registry facts, so they are written as entity
-corrections rather than events.
+absent. Pasting Raw alone therefore leaves anybody who *was* on Raw still on
+Raw — one brand's list cannot tell you whether a missing name was released or
+just moved to SmackDown, and guessing would silently wipe careers. Paste the
+other brands too and everyone lands where they belong. Gender and alignment are
+registry facts, so they are written as entity corrections rather than events.
+
+**Groups are synced the same way**, and the three cases are kept apart:
+
+| The paste says | What is written |
+| --- | --- |
+| a group that does not exist | `alliance.formed` — the group forms |
+| a group that exists, with a new name in it | `alliance.formed` with `join`, for that person alone |
+| a group that exists, minus somebody | `alliance.broken` for the leaver |
+
+That middle row is why `alliance.formed` carries a `join` flag: forming a group
+needs two people, but *joining* one is a single name, and the event that says
+"Bron Breakker is in The Judgment Day now" must not also restate when the group
+formed or revive one that had split up. A wholesale line-up change — everyone
+out, new people in — is a re-form rather than a fold, so the group stays alive
+with the members you pasted.
+
+A departure written by an import is never a **betrayal**: a paste states who is
+in a group, it does not tell a story about somebody turning. Type it on a card
+when you want the thread.
 
 ```
 node tools/universe.mjs roster roster.txt --dry     # preview
@@ -771,5 +798,5 @@ log | event | amend | void | restore | corrections | check | export
 `data/universe.json`, which is gitignored as user data.
 
 ```
-npm run check:universe     # 402 checks, no browser, no network
+npm run check:universe     # 410 checks, no browser, no network
 ```

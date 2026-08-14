@@ -159,7 +159,7 @@ node tools/universe.mjs calendar --month 2027-04  # a month grid, and the week
 node tools/universe.mjs show sh_0088          # one card, and what it changed
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 402 data-layer checks, pure Node
+npm run check:universe        # 410 data-layer checks, pure Node
 npm run check:universe-ui     # 223 browser checks against dist/universe.html
 ```
 
