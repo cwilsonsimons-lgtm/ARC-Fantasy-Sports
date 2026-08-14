@@ -33,8 +33,8 @@ js/universe/
 universe.html  the dashboard page
 tools/
   universe.mjs           the CLI
-  universe-check.mjs     291 data-layer checks, pure Node
-  universe-ui-check.mjs  170 browser checks against the built page
+  universe-check.mjs     331 data-layer checks, pure Node
+  universe-ui-check.mjs  180 browser checks against the built page
   build-universe-seed.mjs regenerates seed-data.js from the JSON
 data/
   universe-seed.json     example seed
@@ -450,7 +450,7 @@ node tools/universe.mjs card -                 # paste, then ctrl-D
 ```
 npm start                    # then http://127.0.0.1:8080/universe.html
 npm run build                # then open dist/universe.html directly
-npm run check:universe-ui    # 170 browser checks
+npm run check:universe-ui    # 180 browser checks
 ```
 
 | Tab | What it does |
@@ -460,7 +460,7 @@ npm run check:universe-ui    # 170 browser checks
 | Pyramid | The tier diagram, and the form that creates or edits a show. |
 | Titles | Every belt with holder, interim holder, days, defenses and reign count. Click one for its own page: full lineage with day counts, interim runs marked, and every match it has been on the line for. |
 | Threads | Open questions, oldest first, with how long each has been sitting. Resolve one and it appends an event. Recently closed threads underneath, with what closed them. |
-| Season | Standings per brand for the season in progress, the promotion and relegation lists, a one-click Last Stand card, and the draft board for each tier. |
+| Season | The calendar with the current phase lit, standings per brand, the promotion and relegation lists, the Last Stand competitions, the draft board, and every season on record. |
 | Shows | Every saved card, newest first. |
 | Log | Every event and every correction. Open a match to fix a wrong result; void or restore anything. |
 | Prompts | Five copy-paste prompts with the current state embedded. |
@@ -482,20 +482,38 @@ Storage is `localStorage` under `arc_universe_v1`, seeded from `seed-data.js` on
 first load. The fantasy app's keys are never read or written. If a write fails
 (quota, private mode) the page says so rather than pretending it saved.
 
-## Seasons, promotion and relegation
+## The year
 
-A season runs **from one Last Stand to the next**, because Last Stand is where
-the brand moves happen. Before the first one, the season starts at the
-universe's start date. Seasons are derived from the log like everything else —
-there is no season record to keep in step, and voiding a Last Stand merges the
-two seasons either side of it back into one.
+    regular season ...  WrestleMania  →  Last Stand  →  Draft  →  new season
 
-    ... regular shows ...   WrestleMania  →  the lists go up
-                            Last Stand    →  flagged names fight, brands change
-                            next season
+WrestleMania ends the wrestling season and opens the offseason. Last Stand
+settles who moves between tiers. The Draft reshuffles what is left, and **the
+season closes when the Draft does**, so the next year opens with the rosters the
+draft produced.
 
-Both are recognised from the show's name, so `WrestleMania 43 / 2027-04-04 / Raw`
-needs no extra marker (`PLE: lastStand` in the header forces it).
+Each PLE is recognised from the show's name, so `WrestleMania 43 / 2027-04-04 /
+Raw` needs no extra marker (`PLE: lastStand` in the header forces it).
+
+The app always knows which phase it is in, and so does every past year:
+
+| Phase | Means |
+| --- | --- |
+| `regular` | before WrestleMania — book the season |
+| `wrestlemania` | WrestleMania has happened; the lists are due |
+| `lastStand` | the lists are up; Last Stand settles them |
+| `draft` | Last Stand is done; the draft is next |
+| `newSeason` | the draft closed the year; nothing booked yet |
+| `complete` | a finished season, kept on record |
+
+Phases are **derived**, not stored: `seasons(state)` walks the PLE markers in the
+log and hands back every year with its WrestleMania, Last Stand and Draft dates
+and the phase it reached. Historical seasons read back the same way the current
+one does, and voiding the draft merges the two years either side of it back into
+one. A save that never runs a draft is not stuck in an endless year either — a
+Last Stand followed by another WrestleMania closes the season too.
+
+The Season tab draws the calendar with the current phase lit and says what to do
+next; the CLI prints the same line.
 
 **Standings** are win totals inside the season window — 3 points a win, 1 a
 draw — ordered by points, then win rate, then matches wrestled. That last
@@ -504,25 +522,47 @@ booked sinks to the bottom rather than whoever comes last alphabetically.
 
 **The lists.** After WrestleMania, `proposeFlags` reads the pyramid: every brand
 with a rung beneath it puts its bottom names on the relegation list, every brand
-with a rung above it puts its top names on the promotion list, **per gender**,
-because the matches are. On a three-tier pyramid the middle rung does both — NXT
-names go up to tier 1 and down to Evolve in the same year.
+with a rung above it puts its top names on the promotion list, **per brand and
+per gender**, because that is the shape of the competition. On a three-tier
+pyramid the middle rung does both — NXT names go up to tier 1 and down to Evolve
+in the same year.
 
-The lists are then **balanced to an even number** per tier, per gender, per
-direction. These names exist to face each other, so an odd list leaves somebody
-with no opponent, and pairing across a tier or a gender would change what the
-match is for. Where a tier has several brands the safest name is spared; where it
-has only one there is nobody to spare against, so the next name down is called up
-instead. Without this a three-brand tier flags three per gender and one of them
-always has nobody to fight. Champions are never on the relegation list — holding a
+A group with only one eligible name is **skipped and reported**, not flagged:
+one name alone has nobody to face, and flagging them would leave a marker that
+nothing could ever clear. Champions are never on the relegation list — holding a
 belt is the one thing that keeps you up. Nothing is written until you confirm:
 flagging is a booking decision, so the proposal is shown first and then written
 as ordinary `status.change` events.
 
-**Last Stand.** `proposeLastStand` pairs the flagged names off — relegation
-faces relegation, promotion faces promotion, never across genders — and hands
-back the card in the entry shorthand for you to paste, play, and fill in the
-winners. Someone with no opponent is reported, not quietly dropped.
+## Last Stand
+
+**Promotion and relegation are separate competitions, and each is settled inside
+a single show.** The unit is a *group*: one brand, one gender, one direction.
+
+- A Raw name fighting relegation faces another **Raw** name, because what is at
+  stake is the Raw spot. They never face a SmackDown name, and never a promotion
+  candidate.
+- Two Evolve names up for promotion face each other; the winner goes up to NXT,
+  the loser stays.
+- Nothing here names a brand or a tier — the groups come out of the pyramid, so
+  the same code settles Raw↔NXT and Evolve↔Deep South.
+
+**Brackets.** A group has `spots` (default 1) and as many candidates as you set
+(`candidatesPerBrand`, default 2). Two candidates and one spot is one match. Four
+candidates and one spot is a bracket: two qualifiers, then a final between the
+two who are still in it — for relegation that means the two *losers* meet, and
+the loser of that goes down. An odd group gives somebody a bye into the next
+round rather than matching them outside their own competition.
+
+A qualifier **moves nobody** — a semi-final must not relegate anyone. It does
+clear the flag of whoever is out of the running (the winner of a relegation
+qualifier is safe), so nobody carries a marker into next year that nothing can
+remove. Only the deciding round carries `stakes`, and the generated card spells
+that out per line: `— relegation to NXT` versus `— relegation qualifier`.
+
+`proposeLastStand` is re-runnable: it reads the rounds already wrestled this
+year, works out who is still standing, and hands back the *next* round. Book it,
+enter the results, press it again.
 
 Playing it moves people. On a show tagged `lastStand`, a match between two
 wrestlers carrying the same flag needs no modifier at all — the flags are the
@@ -531,9 +571,10 @@ promotion match goes up; everyone who fought walks out unflagged. As with title
 changes, the *destination* is worked out at write time and stored on the event,
 so the effects stay pure and survive corrections.
 
-    node tools/universe.mjs season
+    node tools/universe.mjs season          # phase, calendar, seasons on record
     node tools/universe.mjs flags --commit
     node tools/universe.mjs laststand > card.txt
+    node tools/universe.mjs draft --tier 1 --commit
 
 ## The annual draft
 

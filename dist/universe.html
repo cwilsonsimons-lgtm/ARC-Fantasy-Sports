@@ -477,6 +477,31 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .draftcol li.team .nm::after{content:' ⛓';color:var(--ink-3);font-size:10px}
 .draftcol li.moved .nm{font-weight:600}
 
+/* ---------------------------------------------------------------- calendar */
+.phases{display:flex;align-items:stretch;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.phase{flex:1;min-width:110px;background:var(--card);border:1px solid var(--line);
+  border-radius:9px;padding:9px 12px;opacity:.55}
+.phase.done{opacity:.8;border-color:var(--line)}
+.phase.on{opacity:1;border-color:var(--gold);background:var(--card-2)}
+.phase .pname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:12px;
+  letter-spacing:.09em;text-transform:uppercase}
+.phase.on .pname{color:var(--gold)}
+.phase .pwhen{color:var(--ink-3);font-size:11px;margin-top:2px}
+.parrow{align-self:center;color:var(--ink-3);font-size:13px}
+
+/* ---------------------------------------------------------------- brackets */
+.bracketgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.bracket{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--bc);
+  border-radius:10px;padding:10px 13px}
+.bracket h3{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.07em;
+  text-transform:uppercase}
+.bracket h3 small{color:var(--ink-3);font-size:11px;letter-spacing:.02em;text-transform:none;margin-left:6px}
+.bracket .bmeta{color:var(--ink-3);font-size:11px;margin-top:3px}
+.bracket.relegation .bmeta{color:#E39A96}
+.bracket.promotion .bmeta{color:#A8D98A}
+.bracket ol{list-style:none;margin:8px 0 0;padding:0}
+.bracket li{font-size:13px;padding:3px 0;border-top:1px solid var(--line-soft)}
+
 </style>
 </head>
 <body>
@@ -731,6 +756,11 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
             reason: ev.data.stakes
           }));
           [...winners, ...losers].forEach((ref) => out.push({ kind: "roster.status", subject: ref, status: "active" }));
+        }
+        if (ev.data.qualifier && typeof ev.data.qualifier === "string" && !drawn) {
+          const losers = s.filter((x) => x.side !== winSide.side).flatMap((x) => x.refs);
+          const settled = ev.data.qualifier === "relegation" ? winners : losers;
+          settled.forEach((ref) => out.push({ kind: "roster.status", subject: ref, status: "active" }));
         }
         if (ev.data.contender && winners.length) {
           out.push({
@@ -2319,31 +2349,73 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 
   // js/universe/season.js
   var DEFAULTS = {
-    relegatePerBrand: 1,
-    // per gender, per brand that has a tier below it
-    promotePerBrand: 2
-    // per gender, per brand that has a tier above it
+    // Per brand, per gender, per direction. Two candidates and one spot is the
+    // brief's own example: two Evolve names face each other, the winner goes up.
+    // Raise candidates to four and the group becomes a bracket — semi-finals and
+    // a final — with nothing else changing.
+    candidatesPerBrand: 2,
+    spots: 1
+  };
+  var PHASES = ["regular", "wrestlemania", "lastStand", "draft", "newSeason"];
+  var PHASE_LABEL = {
+    regular: "Regular season",
+    wrestlemania: "WrestleMania",
+    lastStand: "Last Stand",
+    draft: "Draft",
+    newSeason: "New season",
+    complete: "Complete"
   };
   function seasons(state) {
-    const stands = state.ples.filter((p) => p.kind === "lastStand").sort((a, b) => a.date < b.date ? -1 : 1);
-    const manias = state.ples.filter((p) => p.kind === "wrestlemania");
+    const ples = state.ples.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     const start = state.startDate || (state.events.length ? state.events[0].date : state.asOf);
-    const bounds = [];
-    let from = start;
-    stands.forEach((s) => {
-      bounds.push({ from, to: s.date, closedBy: s });
-      from = nextDay(s.date);
+    const out = [];
+    let open = { from: start, wrestlemania: null, lastStand: null, draft: null };
+    const close = (to, closedBy) => {
+      out.push({ ...open, to, closedBy });
+      open = { from: nextDay(to), wrestlemania: null, lastStand: null, draft: null };
+    };
+    ples.forEach((p) => {
+      if (p.kind === "wrestlemania") {
+        if (open.wrestlemania && open.lastStand) close(open.lastStand.date, "lastStand");
+        open.wrestlemania = open.wrestlemania || p;
+      } else if (p.kind === "lastStand") {
+        open.lastStand = open.lastStand || p;
+      } else if (p.kind === "draft") {
+        open.draft = p;
+        close(p.date, "draft");
+      }
     });
-    bounds.push({ from, to: null, closedBy: null });
-    return bounds.map((b, i) => ({
-      n: i + 1,
-      from: b.from,
-      to: b.to,
-      current: !b.to,
-      lastStand: b.closedBy || null,
-      // The WrestleMania inside this window, if it has happened yet.
-      wrestlemania: manias.find((m) => m.date >= b.from && (!b.to || m.date <= b.to)) || null
-    }));
+    out.push({ ...open, to: null, closedBy: null });
+    return out.map((b, i, all) => {
+      const season = { ...b, n: i + 1, current: !b.to };
+      season.phase = phaseFor(state, season, all[i - 1]);
+      season.phaseLabel = PHASE_LABEL[season.phase];
+      return season;
+    });
+  }
+  function phaseFor(state, season, previous) {
+    if (season.to) return "complete";
+    if (!season.wrestlemania) {
+      const bookedSince = state.shows.some((sh) => sh.date >= season.from);
+      if (previous && previous.closedBy === "draft" && !bookedSince) return "newSeason";
+      return "regular";
+    }
+    if (!season.lastStand) {
+      const flagged = Object.values(state.wrestlers).some((w) => /flagged$/.test(w.status));
+      return flagged ? "lastStand" : "wrestlemania";
+    }
+    return "draft";
+  }
+  function nextStep(state, season = null) {
+    const s = season || currentSeason(state);
+    return {
+      regular: { do: "Book the season", then: "WrestleMania ends it" },
+      wrestlemania: { do: "Work out the promotion and relegation lists", then: "Last Stand settles them" },
+      lastStand: { do: "Book Last Stand", then: "the Draft follows" },
+      draft: { do: "Run the Draft, tier by tier", then: "the new season begins" },
+      newSeason: { do: "Book the first show of the year", then: "the regular season is under way" },
+      complete: { do: "Nothing \u2014 this year is done", then: "" }
+    }[s.phase];
   }
   var currentSeason = (state) => seasons(state).slice(-1)[0];
   var nextDay = (iso) => {
@@ -2409,25 +2481,37 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     return set;
   };
   function proposeFlags(state, opts = {}) {
-    const { relegatePerBrand, promotePerBrand } = { ...DEFAULTS, ...opts };
+    const { candidatesPerBrand } = { ...DEFAULTS, ...opts };
     const season = opts.season || currentSeason(state);
     const champs = championSet(state);
     const standings = brandStandings(state, season);
     const genders = ["male", "female"];
-    const groups = /* @__PURE__ */ new Map();
-    const key = (tier, gender, flag) => `${tier}|${gender}|${flag}`;
+    const out = [];
+    const skipped = [];
     standings.forEach((b) => {
       const tier = tierOf(state, b.id);
       [
-        ["relegation-flagged", canBeRelegated(state, b.id), relegatePerBrand],
-        ["promotion-flagged", canBePromoted(state, b.id), promotePerBrand]
-      ].forEach(([flag, allowed, perBrand]) => {
+        ["relegation-flagged", canBeRelegated(state, b.id)],
+        ["promotion-flagged", canBePromoted(state, b.id)]
+      ].forEach(([flag, allowed]) => {
         if (!allowed) return;
         const relegation = flag === "relegation-flagged";
         genders.forEach((g) => {
           const ordered = b.table.filter((r) => r.gender === g && !(relegation && champs.has(r.id)));
           const queue = relegation ? ordered.slice().reverse() : ordered;
-          const row = (r) => ({
+          const picked = queue.slice(0, candidatesPerBrand);
+          if (picked.length < 2) {
+            if (picked.length) skipped.push({
+              brandId: b.id,
+              brandName: b.name,
+              gender: g,
+              flag,
+              tier,
+              why: `only ${picked.length} eligible on ${b.name}`
+            });
+            return;
+          }
+          picked.forEach((r) => out.push({
             id: r.id,
             name: r.name,
             gender: g,
@@ -2439,33 +2523,13 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
             points: r.points,
             record: `${r.w}-${r.l}-${r.d}`,
             why: relegation ? `bottom of ${b.name}${r.matches ? "" : " (no matches all season)"}` : `top of ${b.name}`
-          });
-          const k = key(tier, g, flag);
-          if (!groups.has(k)) groups.set(k, { picked: [], bench: [], brands: /* @__PURE__ */ new Set() });
-          const grp = groups.get(k);
-          grp.brands.add(b.id);
-          queue.slice(0, perBrand).forEach((r) => grp.picked.push(row(r)));
-          queue.slice(perBrand).forEach((r) => grp.bench.push(row(r)));
+          }));
         });
       });
     });
-    const out = [];
-    groups.forEach((grp) => {
-      const picked = grp.picked.slice();
-      if (picked.length % 2 === 1) {
-        if (grp.brands.size > 1) {
-          const relegation = picked[0].flag === "relegation-flagged";
-          picked.sort((a, b) => relegation ? a.points - b.points : b.points - a.points);
-          picked.pop();
-        } else if (grp.bench.length) {
-          picked.push(grp.bench[0]);
-        } else {
-          picked.pop();
-        }
-      }
-      out.push(...picked);
-    });
-    return out.map((p) => ({ ...p, alreadyFlagged: state.wrestlers[p.id].status === p.flag }));
+    const proposals = out.map((p) => ({ ...p, alreadyFlagged: state.wrestlers[p.id].status === p.flag }));
+    proposals.skipped = skipped;
+    return proposals;
   }
   function commitFlags(store2, proposals, { date, dryRun = false } = {}) {
     const events = proposals.filter((p) => !p.alreadyFlagged).map((p) => ({
@@ -2482,27 +2546,84 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     return { events: written, written: written.length };
   }
   function proposeLastStand(state, opts = {}) {
-    const matches = [], unpaired = [];
-    tiers(state).forEach(({ tier }) => {
-      ["relegation-flagged", "promotion-flagged"].forEach((flag) => {
-        const stakes = flag === "relegation-flagged" ? "relegation" : "promotion";
-        ["male", "female"].forEach((gender) => {
-          const pool = Object.values(state.wrestlers).filter((w) => w.status === flag && w.gender === gender && tierOf(state, w.brandId) === tier);
-          for (let i = 0; i + 1 < pool.length; i += 2) {
-            matches.push({
-              stakes,
-              gender,
-              tier,
-              a: pool[i],
-              b: pool[i + 1],
-              toBrandId: destination(state, pool[i].brandId, stakes)
-            });
-          }
-          if (pool.length % 2 === 1) unpaired.push(pool[pool.length - 1]);
-        });
-      });
+    const { spots } = { ...DEFAULTS, ...opts };
+    const season = opts.season || currentSeason(state);
+    const groups = [];
+    const byGroup = /* @__PURE__ */ new Map();
+    Object.values(state.wrestlers).forEach((w) => {
+      if (!/flagged$/.test(w.status) || !w.brandId) return;
+      const key = `${w.brandId}|${w.gender}|${w.status}`;
+      if (!byGroup.has(key)) byGroup.set(key, []);
+      byGroup.get(key).push(w);
     });
-    return { matches, unpaired, date: opts.date || null };
+    const played = state.events.filter((e) => e.type === "match" && e.date >= season.from && state.showsById[e.showId] && state.showsById[e.showId].ple === "lastStand");
+    byGroup.forEach((candidates, key) => {
+      const [brandId, gender, flag] = key.split("|");
+      const direction = flag === "relegation-flagged" ? "relegation" : "promotion";
+      const toBrandId = destination(state, brandId, direction);
+      let standing = candidates.slice();
+      let roundsPlayed = 0;
+      played.forEach((ev) => {
+        const involved = ev.participants.filter((p) => standing.some((w) => w.id === p.ref));
+        if (involved.length < 2) return;
+        const gone = ev.participants.filter((p) => p.role === (direction === "promotion" ? "loser" : "winner")).map((p) => p.ref);
+        const before = standing.length;
+        standing = standing.filter((w) => !gone.includes(w.id));
+        if (standing.length !== before) roundsPlayed += 1;
+      });
+      const group = {
+        brandId,
+        brandName: state.brands[brandId] ? state.brands[brandId].name : brandId,
+        tier: tierOf(state, brandId),
+        gender,
+        direction,
+        flag,
+        spots,
+        toBrandId,
+        toBrandName: state.brands[toBrandId] ? state.brands[toBrandId].name : null,
+        candidates,
+        standing,
+        matches: [],
+        resolved: false,
+        bye: null,
+        decides: false,
+        round: roundsPlayed + 1
+      };
+      if (standing.length <= spots) {
+        group.resolved = true;
+        group.outcome = standing;
+        groups.push(group);
+        return;
+      }
+      const pool = standing.slice();
+      if (pool.length % 2 === 1) group.bye = pool.pop();
+      group.decides = Math.ceil(standing.length / 2) <= spots;
+      for (let i = 0; i + 1 < pool.length; i += 2) {
+        group.matches.push({
+          a: pool[i],
+          b: pool[i + 1],
+          direction,
+          gender,
+          tier: group.tier,
+          brandId,
+          brandName: group.brandName,
+          stakes: group.decides ? direction : null,
+          toBrandId,
+          toBrandName: group.toBrandName,
+          round: group.round
+        });
+      }
+      groups.push(group);
+    });
+    groups.sort((a, b) => a.tier - b.tier || a.brandName.localeCompare(b.brandName) || a.direction.localeCompare(b.direction) || a.gender.localeCompare(b.gender));
+    return {
+      groups,
+      matches: groups.flatMap((g) => g.matches),
+      resolved: groups.filter((g) => g.resolved),
+      byes: groups.filter((g) => g.bye).map((g) => ({ ...g.bye, brandName: g.brandName, direction: g.direction })),
+      unpaired: [],
+      date: opts.date || null
+    };
   }
   function destinationFor(state, stakes, wrestlers = []) {
     const from = wrestlers.map((w) => w.brandId).find(Boolean);
@@ -2514,9 +2635,13 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       `${name} / ${date || proposal.date || state.asOf}${brandId && state.brands[brandId] ? ` / ${state.brands[brandId].name}` : ""}`,
       '// replace "vs" with "d." once you have played each one \u2014 winner on the left'
     ];
-    proposal.matches.forEach((m) => {
-      const to = state.brands[m.toBrandId] ? state.brands[m.toBrandId].name : "?";
-      lines.push(`${m.a.name} vs ${m.b.name} \u2014 ${m.stakes} to ${to}`);
+    proposal.groups.forEach((g) => {
+      if (!g.matches.length) return;
+      lines.push(`// ${g.brandName} ${g.direction} (${g.gender}) \u2014 ${g.decides ? g.direction === "relegation" ? `decides it: the loser drops to ${g.toBrandName}` : `decides it: the winner goes up to ${g.toBrandName}` : `round ${g.round}, nobody moves yet`}`);
+      g.matches.forEach((m) => lines.push(
+        `${m.a.name} vs ${m.b.name} \u2014 ${m.stakes ? `${m.direction} to ${m.toBrandName}` : `${m.direction} qualifier`}`
+      ));
+      if (g.bye) lines.push(`// ${g.bye.name} has a bye into the next round`);
     });
     return lines.join("\n");
   }
@@ -2629,6 +2754,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
   var PLE_NAMES = [
     [/wrestle\s*mania|wm\s*\d/i, "wrestlemania"],
     [/last\s*stand/i, "lastStand"],
+    [/\bdrafts?\b/i, "draft"],
     [/royal\s*rumble/i, "royalRumble"],
     [/summer\s*slam/i, "summerslam"],
     [/survivor\s*series/i, "survivorSeries"],
@@ -2823,15 +2949,26 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     };
     if (mods.note) data.note = mods.note;
     const wrestlers = participants.map((p) => state.wrestlers[p.ref]).filter(Boolean);
-    let stakes = mods.stakes;
-    if (!stakes && ctx.show && ctx.show.ple === "lastStand" && wrestlers.length) {
+    let stakes = mods.qualifier ? null : mods.stakes;
+    if (!stakes && !mods.qualifier && ctx.show && ctx.show.ple === "lastStand" && wrestlers.length) {
       const flags = new Set(wrestlers.map((w) => w.status));
-      if (flags.size === 1 && flags.has("relegation-flagged")) stakes = "relegation";
-      if (flags.size === 1 && flags.has("promotion-flagged")) stakes = "promotion";
+      const brands = new Set(wrestlers.map((w) => w.brandId));
+      const genders = new Set(wrestlers.map((w) => w.gender));
+      if (flags.size === 1 && brands.size === 1 && genders.size === 1) {
+        const [flag] = [...flags];
+        const group = Object.values(state.wrestlers).filter((w) => w.status === flag && w.brandId === wrestlers[0].brandId && w.gender === wrestlers[0].gender);
+        if (/flagged$/.test(flag) && group.length === wrestlers.length) {
+          stakes = flag === "relegation-flagged" ? "relegation" : "promotion";
+        }
+      }
     }
     if (stakes) {
       data.stakes = stakes;
       data.toBrandId = mods.toBrandId || destinationFor(state, stakes, wrestlers);
+    }
+    if (mods.qualifier) {
+      const flags = new Set(wrestlers.map((w) => w.status));
+      data.qualifier = typeof mods.qualifier === "string" ? mods.qualifier : flags.size === 1 && flags.has("relegation-flagged") ? "relegation" : flags.size === 1 && flags.has("promotion-flagged") ? "promotion" : true;
     }
     if (mods.contender) {
       data.contender = data.titleId || true;
@@ -2881,6 +3018,7 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       contender: false,
       stakes: null,
       toBrandId: null,
+      qualifier: false,
       note: null
     };
     if (!note) return out;
@@ -2911,6 +3049,15 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       }
       if (/^(contender|number one contender|no 1 contender|1 contender|top contender|eliminator)$/.test(n)) {
         out.contender = true;
+        return;
+      }
+      const q = /^(relegation|promotion) qualifier$/.exec(n);
+      if (q) {
+        out.qualifier = q[1];
+        return;
+      }
+      if (/^qualifier$/.test(n)) {
+        out.qualifier = true;
         return;
       }
       if (/^(relegation|relegation match|demotion|drop match)$/.test(n)) {
@@ -4428,16 +4575,27 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
     ], "No shows yet.")}</div>`;
   }
   function seasonView(state, ui = {}) {
+    const all = seasons(state);
     const season = currentSeason(state);
     const tables = brandStandings(state, season);
     const flagged = Object.values(state.wrestlers).filter((w) => /flagged$/.test(w.status));
-    const wm = season.wrestlemania;
     const proposal = ui.proposal || null;
+    const step = nextStep(state, season);
+    const marks = { wrestlemania: season.wrestlemania, lastStand: season.lastStand, draft: season.draft };
+    const timeline = `<div class="phases">${PHASES.map((ph) => {
+      const done = ph === "regular" ? !!season.wrestlemania : ph === "newSeason" ? false : !!marks[ph];
+      const on2 = season.phase === ph;
+      const when = marks[ph] ? marks[ph].date : null;
+      return `<div class="phase${on2 ? " on" : ""}${done ? " done" : ""}">
+      <div class="pname">${h(PHASE_LABEL[ph])}</div>
+      <div class="pwhen">${when ? h(when) : on2 ? "now" : "\u2014"}</div>
+    </div>`;
+    }).join('<div class="parrow">\u2192</div>')}</div>`;
     const standings = tables.map((b) => `<div class="card flush">
       <div class="brandhead">
         <div class="bar" style="background:${brandColor(state, b.id)}"></div>
         <div class="nm">${h(b.name)}</div>
-        <div class="ct">${(b.tier || 1) > 1 ? "development" : "main roster"} \xB7 ${plural2(b.table.length, "wrestler")}</div>
+        <div class="ct">${(b.tier || 1) > 1 ? `tier ${b.tier}` : "main roster"} \xB7 ${plural2(b.table.length, "wrestler")}</div>
       </div>
       ${table2(b.table, [
       { label: "Wrestler", get: (r) => wlink(state.wrestlers[r.id]), html: true },
@@ -4448,56 +4606,79 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
       { label: "", get: (r) => statusChip(state.wrestlers[r.id]), html: true }
     ], "Nobody on this brand.")}
     </div>`).join("");
-    const flagBlock = flagged.length ? `
-    <h2 style="margin-top:22px">On the lists <span class="sub">${plural2(flagged.length, "name")}</span></h2>
-    <div class="card flush">${table2(flagged, [
-      { label: "Wrestler", get: (w) => wlink(w), html: true },
-      { label: "Brand", get: (w) => brandName2(state, w.brandId) || "\u2014", dim: true },
-      { label: "G", get: (w) => w.gender === "female" ? "F" : "M", dim: true },
-      { label: "List", get: (w) => statusChip(w), html: true }
-    ])}</div>` : "";
     const proposalBlock = proposal ? `
     <h2 style="margin-top:22px">Proposed lists <span class="sub">nothing is written until you confirm</span></h2>
     <div class="card flush">${table2(proposal, [
       { label: "Wrestler", get: (p) => h(p.name), html: true },
-      { label: "From", get: (p) => p.fromName, dim: true },
+      { label: "Show", get: (p) => p.fromName, dim: true },
       { label: "G", get: (p) => p.gender === "female" ? "F" : "M", dim: true },
       { label: "List", get: (p) => chip(p.flag === "relegation-flagged" ? "\u2193 relegation" : "\u2191 promotion", p.flag === "relegation-flagged" ? "down" : "up"), html: true },
+      { label: "At stake", get: (p) => p.toward && state.brands[p.toward] ? state.brands[p.toward].name : "\u2014", dim: true },
       { label: "Record", get: (p) => p.record, dim: true },
-      { label: "Why", get: (p) => p.why, dim: true },
-      { label: "", get: (p) => p.alreadyFlagged ? '<span class="dim">already flagged</span>' : "", html: true }
+      { label: "Why", get: (p) => p.why, dim: true }
     ])}</div>
+    ${(proposal.skipped || []).length ? `<div class="msg warn">
+      ${proposal.skipped.map((sk) => `${h(sk.brandName)} ${h(sk.flag.replace("-flagged", ""))} (${h(sk.gender)}): ${h(sk.why)} \u2014 no match, so nobody is flagged`).join("<br>")}
+    </div>` : ""}
     <div class="row"><button class="btn" id="flagsCommit">Write ${plural2(proposal.filter((p) => !p.alreadyFlagged).length, "flag")}</button>
       <button class="btn ghost" id="flagsCancel">Cancel</button></div>` : "";
-    const card = ui.lastStand ? `
-    <h2 style="margin-top:22px">Last Stand card <span class="sub">relegation faces relegation, promotion faces promotion, same gender</span></h2>
-    <div class="card entry">
-      <textarea id="lastStandText" spellcheck="false" style="min-height:150px" readonly>${h(ui.lastStand)}</textarea>
+    const ls = ui.lastStandProposal;
+    const bracket = ls ? `
+    <h2 style="margin-top:22px">Last Stand <span class="sub">promotion and relegation are separate competitions, decided inside each show</span></h2>
+    <div class="bracketgrid">${ls.groups.map((g) => `
+      <div class="bracket ${g.direction}" style="--bc:${brandColor(state, g.brandId)}">
+        <h3>${h(g.brandName)} <small>${g.direction} \xB7 ${g.gender === "female" ? "women" : "men"}</small></h3>
+        <div class="bmeta">${g.resolved ? `settled \u2014 ${h((g.outcome || []).map((w) => w.name).join(", "))} ${g.direction === "relegation" ? `drops to ${h(g.toBrandName)}` : `goes up to ${h(g.toBrandName)}`}` : g.decides ? `round ${g.round} decides it: ${g.direction === "relegation" ? `the loser drops to ${h(g.toBrandName)}` : `the winner goes up to ${h(g.toBrandName)}`}` : `round ${g.round} \u2014 qualifier, nobody moves yet`}</div>
+        <ol>${g.matches.map((m) => `<li>${h(m.a.name)} <span class="dim">vs</span> ${h(m.b.name)}</li>`).join("") || '<li class="dim">no match to book</li>'}</ol>
+        ${g.bye ? `<div class="bmeta dim">${h(g.bye.name)} has a bye into the next round</div>` : ""}
+      </div>`).join("")}</div>
+    <div class="card entry" style="margin-top:14px">
+      <textarea id="lastStandText" spellcheck="false" style="min-height:160px" readonly>${h(ui.lastStand || "")}</textarea>
       <div class="row">
         <button class="btn" id="lastStandUse">Send to the entry box</button>
         <button class="btn ghost" id="lastStandCopy">Copy</button>
-        <span class="hint">The loser of a relegation match goes down; the winner of a promotion match goes up.</span>
+        <button class="btn ghost" id="lastStandCancel">Close</button>
+        <span class="hint">Enter the results, then press Book Last Stand again for the next round.</span>
       </div>
     </div>` : "";
+    const history = all.length > 1 ? `
+    <h2 style="margin-top:22px">Seasons <span class="sub">every year on record</span></h2>
+    <div class="card flush">${table2(all.slice().reverse(), [
+      { label: "Season", num: true, get: (x) => x.n },
+      { label: "From", get: (x) => x.from },
+      { label: "To", get: (x) => x.to || "\u2014", dim: true },
+      { label: "WrestleMania", get: (x) => x.wrestlemania ? x.wrestlemania.date : "\u2014", dim: true },
+      { label: "Last Stand", get: (x) => x.lastStand ? x.lastStand.date : "\u2014", dim: true },
+      { label: "Draft", get: (x) => x.draft ? x.draft.date : "\u2014", dim: true },
+      { label: "Phase", get: (x) => chip(x.phaseLabel, x.current ? "new" : "brand"), html: true }
+    ])}</div>` : "";
     return `<div class="pagehead" style="border-left-color:var(--gold)">
-      <div class="nm">Season ${season.n}</div>
+      <div class="nm">Season ${season.n} \u2014 ${h(season.phaseLabel)}</div>
       <div class="holder">${h(season.from)} \u2192 ${season.to ? h(season.to) : "in progress"}</div>
-      <div class="dim" style="margin-top:6px">
-        ${wm ? `WrestleMania was ${h(wm.date)} \u2014 the lists are due` : "WrestleMania has not happened yet this season"}
-        \xB7 ${plural2(state.shows.length, "show")} logged
-      </div>
+      <div class="dim" style="margin-top:6px"><strong>Next:</strong> ${h(step.do)}${step.then ? ` \u2014 then ${h(step.then)}` : ""}</div>
     </div>
 
+    ${timeline}
+
     <div class="row" style="margin-top:0">
-      <button class="btn${wm && !flagged.length ? "" : " ghost"}" id="flagsPropose">Work out the lists</button>
-      <button class="btn ghost" id="lastStandPropose"${flagged.length ? "" : " disabled"}>Book Last Stand</button>
-      ${tiers(state).map((t) => t.brands.length > 1 ? `<button class="btn ghost" data-draftpropose="${t.tier}">Draft tier ${t.tier}</button>` : "").join("")}
-      <span class="hint">Champions are never relegated. The year runs WrestleMania \u2192 Last Stand \u2192 Draft.</span>
+      <button class="btn${season.phase === "wrestlemania" ? "" : " ghost"}" id="flagsPropose">Work out the lists</button>
+      <button class="btn${season.phase === "lastStand" ? "" : " ghost"}" id="lastStandPropose"${flagged.length ? "" : " disabled"}>Book Last Stand</button>
+      ${tiers(state).map((t) => t.brands.length > 1 ? `<button class="btn${season.phase === "draft" ? "" : " ghost"}" data-draftpropose="${t.tier}">Draft tier ${t.tier}</button>` : "").join("")}
+      <span class="hint">Champions are never relegated.</span>
     </div>
-    ${ui.draft ? draftView(state, ui.draft) : ""}
     ${proposalBlock}
-    ${card}
-    ${flagBlock}
+    ${bracket}
+    ${ui.draft ? draftView(state, ui.draft) : ""}
+
+    ${flagged.length ? `<h2 style="margin-top:22px">On the lists <span class="sub">${plural2(flagged.length, "name")}</span></h2>
+      <div class="card flush">${table2(flagged, [
+      { label: "Wrestler", get: (w) => wlink(w), html: true },
+      { label: "Show", get: (w) => brandName2(state, w.brandId) || "\u2014", dim: true },
+      { label: "G", get: (w) => w.gender === "female" ? "F" : "M", dim: true },
+      { label: "List", get: (w) => statusChip(w), html: true }
+    ])}</div>` : ""}
+
+    ${history}
 
     <h2 style="margin-top:22px">Standings <span class="sub">wins this season \u2014 3 points a win, 1 a draw</span></h2>
     <div class="grid">${standings}</div>`;
@@ -5493,6 +5674,7 @@ no explanation, no code fences.`;
     if (app.tab === "season") $("#pane-season").innerHTML = seasonView(s, {
       proposal: app.season.proposal,
       lastStand: app.season.lastStand,
+      lastStandProposal: app.season.lastStandProposal,
       draft: app.season.draft
     });
     if (app.tab === "brands") $("#pane-brands").innerHTML = brandsView(s, { editing: app.brandEdit });
@@ -5814,14 +5996,18 @@ no explanation, no code fences.`;
   on("click", "#lastStandPropose", () => {
     const proposal = proposeLastStand(app.state);
     if (!proposal.matches.length) {
-      flash("Nothing to book \u2014 nobody is carrying a flag, or there is only one name per gender on a list.", "warn");
+      flash(proposal.resolved.length ? "Every competition has been settled \u2014 the draft is next." : "Nothing to book: nobody is carrying a flag.", "warn");
       render();
       return;
     }
+    app.season.lastStandProposal = proposal;
     app.season.lastStand = lastStandCard(app.state, proposal, { date: universeNow() });
-    if (proposal.unpaired.length) {
-      flash(`${proposal.unpaired.map((w) => h(w.name)).join(", ")} had nobody to face and was left off the card.`, "warn");
-    }
+    app.season.draft = null;
+    render();
+  });
+  on("click", "#lastStandCancel", () => {
+    app.season.lastStand = null;
+    app.season.lastStandProposal = null;
     render();
   });
   on("click", "#lastStandCopy", async () => {
@@ -5831,6 +6017,7 @@ no explanation, no code fences.`;
   on("click", "#lastStandUse", () => {
     const text = app.season.lastStand;
     app.season.lastStand = null;
+    app.season.lastStandProposal = null;
     go("tonight");
     $("#cardText").value = text;
     refreshCardPreview();

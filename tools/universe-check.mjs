@@ -23,7 +23,7 @@ import { resolve, buildIndex } from '../js/universe/util.js';
 import { tiers, tierOf, destination, pyramidText, checkBrand } from '../js/universe/pyramid.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
 import { seasons, currentSeason, standingsFor, proposeFlags, commitFlags,
-  proposeLastStand, lastStandCard } from '../js/universe/season.js';
+  proposeLastStand, lastStandCard, nextStep, PHASES } from '../js/universe/season.js';
 import { recapPrompt, contenderPrompt, nextPrompt, entryPrompt, PROMPTS, buildPrompt } from '../js/universe/prompts.js';
 import { cleanReply, detectKind, transcriptionPrompt, readScreenshot } from '../js/universe/ingest.js';
 
@@ -407,7 +407,19 @@ check('and show on the roster', flags.every(f => /flagged$/.test(p8.wrestlers[f.
 check('re-proposing writes nothing new', proposeFlags(p8).every(f => f.alreadyFlagged), true);
 
 const stand = proposeLastStand(p8);
-check('flagged names are paired off', stand.matches.length, 8);
+check('one competition per brand, gender and direction', stand.groups.length, 12);
+check('and one match in each', stand.matches.length, 12);
+// The rule the brief is most explicit about: relegation is settled inside a
+// show. A Raw name never faces a SmackDown name for a Raw spot.
+check('relegation never crosses a brand', stand.groups.filter(g => g.direction === 'relegation')
+  .every(g => g.matches.every(m => m.a.brandId === m.b.brandId && m.a.brandId === g.brandId)), true);
+check('promotion never crosses a brand either', stand.groups.filter(g => g.direction === 'promotion')
+  .every(g => g.matches.every(m => m.a.brandId === m.b.brandId)), true);
+check('and the two never meet', stand.matches.every(m =>
+  m.a.status === m.b.status), true);
+check('every match names where the mover lands', stand.matches.every(m => !!m.toBrandId), true);
+check('relegation heads down a rung', stand.groups.filter(g => g.direction === 'relegation' && g.tier === 1)
+  .every(g => g.toBrandId === 'b:nxt'), true);
 check('with nobody left over', stand.unpaired.length, 0);
 check('never across genders', stand.matches.every(m => m.a.gender === m.b.gender), true);
 check('and never across tiers', stand.matches.every(m =>
@@ -422,7 +434,7 @@ check('promotion rises to a main brand', stand.matches.find(m => m.stakes === 'p
 
 const cardText = lastStandCard(p8, stand, { date: '2027-04-25' });
 check('the card is written in the entry shorthand', cardText.split('\n')[0], 'Last Stand / 2027-04-25');
-check('with a line per match', cardText.split('\n').filter(l => / vs /.test(l)).length, 8);
+check('with a line per match', cardText.split('\n').filter(l => / vs /.test(l)).length, 12);
 
 const played = cardText.split('\n').map(l => l.replace(' vs ', ' d. ')).join('\n');
 const lastStandParsed = parseCard(played, s8);
@@ -441,12 +453,20 @@ check('everyone who fought walks out unflagged',
   stand.matches.flatMap(m => [m.a.id, m.b.id]).every(id => p8b.wrestlers[id].status === 'active'), true);
 check('and whoever had no opponent stays on the list',
   stand.unpaired.every(w => /flagged$/.test(p8b.wrestlers[w.id].status)), true);
-check('Last Stand closes the season', seasons(p8b).length, 2);
-check('and the next one starts the day after', currentSeason(p8b).from, '2027-04-26');
-check('voiding it merges the seasons back', (() => {
-  const showEv = s8.effectiveEvents().find(e => e.type === 'show' && e.data.ple === 'lastStand');
+// Last Stand does not end the year — the Draft does.
+check('Last Stand hands over to the draft', currentSeason(p8b).phase, 'draft');
+check('and the season is still open', seasons(p8b).length, 1);
+commitCard(s8, parseCard(`WWE Draft / 2027-05-02 / Raw
+Seth Rollins d. Sami Zayn`, s8));
+const p8c = project(s8, { asOf: '2027-05-03' });
+check('the draft closes it', seasons(p8c).length, 2);
+check('and the next one starts the day after', currentSeason(p8c).from, '2027-05-03');
+check('the new year opens in its own phase', currentSeason(p8c).phase, 'newSeason');
+check('the closed season keeps every marker', seasons(p8c)[0].wrestlemania.date, '2027-04-04');
+check('voiding the draft merges the seasons back', (() => {
+  const showEv = s8.effectiveEvents().find(e => e.type === 'show' && e.data.ple === 'draft');
   s8.voidEvent(showEv.id, 'test');
-  const n = seasons(project(s8, { asOf: '2027-04-26' })).length;
+  const n = seasons(project(s8, { asOf: '2027-05-03' })).length;
   s8.restoreEvent(showEv.id, 'test');
   return n;
 })(), 1);
@@ -549,6 +569,104 @@ check('so voiding a pick hands that wrestler back', (() => {
   return back === was;
 })(), true);
 check('the board reads as a board', draftText(pD, d1).includes('weakest season first'), true);
+
+
+
+// ──────────────────────────────────────────────────────────────── the calendar
+section('the annual calendar');
+const sC = fresh();
+const showC = (name, date) => commitCard(sC, parseCard(`${name} / ${date} / Raw
+Seth Rollins d. Sami Zayn`, sC));
+const phaseNow = () => currentSeason(project(sC, { asOf: '2027-12-31' })).phase;
+
+check('a new universe starts in the regular season', phaseNow(), 'regular');
+showC('Raw', '2027-01-12');
+check('and stays there while shows are booked', phaseNow(), 'regular');
+showC('WrestleMania 43', '2027-04-04');
+check('WrestleMania ends the wrestling season', phaseNow(), 'wrestlemania');
+commitFlags(sC, proposeFlags(project(sC, { asOf: '2027-04-05' })), { date: '2027-04-05' });
+check('putting the lists up moves it to Last Stand', phaseNow(), 'lastStand');
+showC('Last Stand', '2027-04-25');
+check('Last Stand hands over to the draft', phaseNow(), 'draft');
+showC('WWE Draft', '2027-05-02');
+check('and the draft opens the new season', phaseNow(), 'newSeason');
+showC('Raw', '2027-05-09');
+check('which becomes a regular season once booked', phaseNow(), 'regular');
+
+const pC = project(sC, { asOf: '2027-12-31' });
+check('two seasons on record', seasons(pC).length, 2);
+check('the old one is complete', seasons(pC)[0].phase, 'complete');
+check('and can still be read back', [seasons(pC)[0].wrestlemania.date, seasons(pC)[0].lastStand.date, seasons(pC)[0].draft.date],
+  ['2027-04-04', '2027-04-25', '2027-05-02']);
+check('each season knows what comes next', nextStep(pC).do, s => /book/i.test(s));
+check('the phase list is the order of the year', PHASES,
+  ['regular', 'wrestlemania', 'lastStand', 'draft', 'newSeason']);
+
+// A save that skips the draft is not stuck in one endless year.
+const sC2 = fresh();
+const showC2 = (name, date) => commitCard(sC2, parseCard(`${name} / ${date} / Raw
+Seth Rollins d. Sami Zayn`, sC2));
+showC2('WrestleMania 43', '2027-04-04');
+showC2('Last Stand', '2027-04-25');
+showC2('WrestleMania 44', '2028-04-02');
+check('a skipped draft still rolls the year over', seasons(project(sC2, { asOf: '2028-05-01' })).length, 2);
+check('closing at the Last Stand instead', seasons(project(sC2, { asOf: '2028-05-01' }))[0].closedBy, 'lastStand');
+
+// ──────────────────────────────────────────────────────────────── brackets
+section('Last Stand brackets');
+const sB = fresh();
+commitCard(sB, parseCard(`WrestleMania 43 / 2027-04-04 / Raw
+Cody Rhodes d. Roman Reigns — WWE Championship`, sB));
+commitFlags(sB, proposeFlags(project(sB, { asOf: '2027-04-05' }), { candidatesPerBrand: 4 }), { date: '2027-04-05' });
+let pB = project(sB, { asOf: '2027-04-06' });
+let g = proposeLastStand(pB).groups.find(x => x.brandId === 'b:raw' && x.gender === 'male' && x.direction === 'relegation');
+
+check('four candidates make a bracket', g.candidates.length, 4);
+check('round one is a qualifier', g.decides, false);
+check('with two matches', g.matches.length, 2);
+check('and no stakes on them', g.matches.every(m => !m.stakes), true);
+
+const round1 = `Last Stand / 2027-04-25 / Raw\n` +
+  g.matches.map(m => `${m.a.name} d. ${m.b.name} — relegation qualifier`).join('\n');
+const parsedR1 = parseCard(round1, sB);
+check('a qualifier line carries no stakes', parsedR1.segments.every(x => !x.data.stakes), true);
+commitCard(sB, parsedR1);
+pB = project(sB, { asOf: '2027-04-26' });
+check('so nobody moved after round one',
+  g.matches.every(m => pB.wrestlers[m.b.id].brandId === 'b:raw'), true);
+
+g = proposeLastStand(pB).groups.find(x => x.brandId === 'b:raw' && x.gender === 'male' && x.direction === 'relegation');
+check('the losers carry on to round two', g.standing.length, 2);
+check('which decides it', g.decides, true);
+check('as one match', g.matches.length, 1);
+const final = g.matches[0];
+commitCard(sB, parseCard(`Last Stand II / 2027-04-26 / Raw
+${final.a.name} d. ${final.b.name} — relegation to NXT`, sB));
+const pB2 = project(sB, { asOf: '2027-04-27' });
+check('the loser of the final goes down', pB2.wrestlers[final.b.id].brandId, 'b:nxt');
+check('the winner stays up', pB2.wrestlers[final.a.id].brandId, 'b:raw');
+check('and everyone walks out unflagged',
+  g.candidates.every(w => pB2.wrestlers[w.id].status === 'active'), true);
+check('the competition reports itself settled',
+  proposeLastStand(pB2).groups.filter(x => x.brandId === 'b:raw' && x.gender === 'male'
+    && x.direction === 'relegation').length, 0);
+
+// An odd group takes a bye rather than being matched outside itself.
+const sB3 = fresh();
+commitFlags(sB3, [
+  { id: 'w:sheamus', flag: 'relegation-flagged', why: 'test' },
+  { id: 'w:sami-zayn', flag: 'relegation-flagged', why: 'test' },
+  { id: 'w:chad-gable', flag: 'relegation-flagged', why: 'test' },
+], { date: '2027-04-05' });
+const gB3 = proposeLastStand(project(sB3, { asOf: '2027-04-06' }))
+  .groups.find(x => x.brandId === 'b:raw' && x.gender === 'male');
+check('three candidates give one match and a bye', [gB3.matches.length, !!gB3.bye], [1, true]);
+check('the bye is not matched outside the group',
+  gB3.matches.every(m => m.a.brandId === 'b:raw' && m.b.brandId === 'b:raw'), true);
+
+// A brand with only one eligible name is reported, never left flagged forever.
+const solo = proposeFlags(project(fresh()), { candidatesPerBrand: 99 });
+check('a group that cannot make a match is skipped', Array.isArray(solo.skipped), true);
 
 
 // ──────────────────────────────────────────────────────────────── prompts

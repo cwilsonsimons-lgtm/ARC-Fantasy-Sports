@@ -76,9 +76,12 @@ relegating into it; nothing in the code names a brand. **Every championship in a
 new save starts VACANT** — no champion is assumed, and a belt's history begins
 the first time you crown someone.
 
-The year runs **WrestleMania → Last Stand → Draft**: WrestleMania puts the
-promotion and relegation lists up, Last Stand is where those names fight for the
-move, and the draft reshuffles each tier afterwards.
+The year runs **WrestleMania → Last Stand → Draft → new season**, and the app
+always knows which phase it is in — every past season keeps its dates and can be
+read back. At Last Stand, promotion and relegation are **separate competitions
+settled inside a single show**: a Raw name fighting relegation faces another Raw
+name, because the Raw spot is what is at stake. Four candidates for one spot
+becomes a bracket, and a qualifier round moves nobody.
 
 Ten tabs:
 
@@ -135,8 +138,8 @@ node tools/universe.mjs draft --tier 1         # the annual draft
 node tools/universe.mjs flags --commit         # promotion and relegation lists
 node tools/universe.mjs prompt contenders      # a prompt with state embedded
 
-npm run check:universe        # 291 data-layer checks, pure Node
-npm run check:universe-ui     # 170 browser checks against dist/universe.html
+npm run check:universe        # 331 data-layer checks, pure Node
+npm run check:universe-ui     # 180 browser checks against dist/universe.html
 ```
 
 `js/universe/` is DOM-free and knows nothing about the page; `js/universe/ui/`

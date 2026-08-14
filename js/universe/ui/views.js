@@ -6,7 +6,7 @@
 
 import { h, table, chip, wlink, fmtDate, plural } from './dom.js';
 import { titleLineage, titleMatches, timelineFor, days, describeThread, activeRivalries, activeAlliances } from '../project.js';
-import { currentSeason, brandStandings } from '../season.js';
+import { currentSeason, seasons, brandStandings, nextStep, PHASES, PHASE_LABEL } from '../season.js';
 import { tiers, brandCard, pyramidText } from '../pyramid.js';
 import { SHOW_DAYS } from '../schema.js';
 
@@ -421,17 +421,33 @@ function brandTable(state) {
 // ------------------------------------------------------------------ season
 
 export function seasonView(state, ui = {}) {
+  const all = seasons(state);
   const season = currentSeason(state);
   const tables = brandStandings(state, season);
   const flagged = Object.values(state.wrestlers).filter(w => /flagged$/.test(w.status));
-  const wm = season.wrestlemania;
   const proposal = ui.proposal || null;
+  const step = nextStep(state, season);
+
+  // The year in order, with the current phase lit. Every marker is a date from
+  // the log — there is no calendar stored anywhere.
+  const marks = { wrestlemania: season.wrestlemania, lastStand: season.lastStand, draft: season.draft };
+  const timeline = `<div class="phases">${PHASES.map(ph => {
+    const done = ph === 'regular' ? !!season.wrestlemania
+      : ph === 'newSeason' ? false
+      : !!marks[ph];
+    const on = season.phase === ph;
+    const when = marks[ph] ? marks[ph].date : null;
+    return `<div class="phase${on ? ' on' : ''}${done ? ' done' : ''}">
+      <div class="pname">${h(PHASE_LABEL[ph])}</div>
+      <div class="pwhen">${when ? h(when) : on ? 'now' : '—'}</div>
+    </div>`;
+  }).join('<div class="parrow">→</div>')}</div>`;
 
   const standings = tables.map(b => `<div class="card flush">
       <div class="brandhead">
         <div class="bar" style="background:${brandColor(state, b.id)}"></div>
         <div class="nm">${h(b.name)}</div>
-        <div class="ct">${(b.tier || 1) > 1 ? 'development' : 'main roster'} · ${plural(b.table.length, 'wrestler')}</div>
+        <div class="ct">${(b.tier || 1) > 1 ? `tier ${b.tier}` : 'main roster'} · ${plural(b.table.length, 'wrestler')}</div>
       </div>
       ${table(b.table, [
         { label: 'Wrestler', get: r => wlink(state.wrestlers[r.id]), html: true },
@@ -443,60 +459,91 @@ export function seasonView(state, ui = {}) {
       ], 'Nobody on this brand.')}
     </div>`).join('');
 
-  const flagBlock = flagged.length ? `
-    <h2 style="margin-top:22px">On the lists <span class="sub">${plural(flagged.length, 'name')}</span></h2>
-    <div class="card flush">${table(flagged, [
-      { label: 'Wrestler', get: w => wlink(w), html: true },
-      { label: 'Brand', get: w => brandName(state, w.brandId) || '—', dim: true },
-      { label: 'G', get: w => (w.gender === 'female' ? 'F' : 'M'), dim: true },
-      { label: 'List', get: w => statusChip(w), html: true },
-    ])}</div>` : '';
-
   const proposalBlock = proposal ? `
     <h2 style="margin-top:22px">Proposed lists <span class="sub">nothing is written until you confirm</span></h2>
     <div class="card flush">${table(proposal, [
       { label: 'Wrestler', get: p => h(p.name), html: true },
-      { label: 'From', get: p => p.fromName, dim: true },
+      { label: 'Show', get: p => p.fromName, dim: true },
       { label: 'G', get: p => (p.gender === 'female' ? 'F' : 'M'), dim: true },
       { label: 'List', get: p => chip(p.flag === 'relegation-flagged' ? '↓ relegation' : '↑ promotion', p.flag === 'relegation-flagged' ? 'down' : 'up'), html: true },
+      { label: 'At stake', get: p => (p.toward && state.brands[p.toward] ? state.brands[p.toward].name : '—'), dim: true },
       { label: 'Record', get: p => p.record, dim: true },
       { label: 'Why', get: p => p.why, dim: true },
-      { label: '', get: p => (p.alreadyFlagged ? '<span class="dim">already flagged</span>' : ''), html: true },
     ])}</div>
+    ${(proposal.skipped || []).length ? `<div class="msg warn">
+      ${proposal.skipped.map(sk => `${h(sk.brandName)} ${h(sk.flag.replace('-flagged', ''))} (${h(sk.gender)}): ${h(sk.why)} — no match, so nobody is flagged`).join('<br>')}
+    </div>` : ''}
     <div class="row"><button class="btn" id="flagsCommit">Write ${plural(proposal.filter(p => !p.alreadyFlagged).length, 'flag')}</button>
       <button class="btn ghost" id="flagsCancel">Cancel</button></div>` : '';
 
-  const card = ui.lastStand ? `
-    <h2 style="margin-top:22px">Last Stand card <span class="sub">relegation faces relegation, promotion faces promotion, same gender</span></h2>
-    <div class="card entry">
-      <textarea id="lastStandText" spellcheck="false" style="min-height:150px" readonly>${h(ui.lastStand)}</textarea>
+  // Last Stand, as competitions rather than a list of matches: one block per
+  // brand, per gender, per direction, because that is the unit that settles a
+  // single spot.
+  const ls = ui.lastStandProposal;
+  const bracket = ls ? `
+    <h2 style="margin-top:22px">Last Stand <span class="sub">promotion and relegation are separate competitions, decided inside each show</span></h2>
+    <div class="bracketgrid">${ls.groups.map(g => `
+      <div class="bracket ${g.direction}" style="--bc:${brandColor(state, g.brandId)}">
+        <h3>${h(g.brandName)} <small>${g.direction} · ${g.gender === 'female' ? 'women' : 'men'}</small></h3>
+        <div class="bmeta">${g.resolved
+          ? `settled — ${h((g.outcome || []).map(w => w.name).join(', '))} ${g.direction === 'relegation' ? `drops to ${h(g.toBrandName)}` : `goes up to ${h(g.toBrandName)}`}`
+          : g.decides
+            ? `round ${g.round} decides it: ${g.direction === 'relegation' ? `the loser drops to ${h(g.toBrandName)}` : `the winner goes up to ${h(g.toBrandName)}`}`
+            : `round ${g.round} — qualifier, nobody moves yet`}</div>
+        <ol>${g.matches.map(m => `<li>${h(m.a.name)} <span class="dim">vs</span> ${h(m.b.name)}</li>`).join('')
+          || '<li class="dim">no match to book</li>'}</ol>
+        ${g.bye ? `<div class="bmeta dim">${h(g.bye.name)} has a bye into the next round</div>` : ''}
+      </div>`).join('')}</div>
+    <div class="card entry" style="margin-top:14px">
+      <textarea id="lastStandText" spellcheck="false" style="min-height:160px" readonly>${h(ui.lastStand || '')}</textarea>
       <div class="row">
         <button class="btn" id="lastStandUse">Send to the entry box</button>
         <button class="btn ghost" id="lastStandCopy">Copy</button>
-        <span class="hint">The loser of a relegation match goes down; the winner of a promotion match goes up.</span>
+        <button class="btn ghost" id="lastStandCancel">Close</button>
+        <span class="hint">Enter the results, then press Book Last Stand again for the next round.</span>
       </div>
     </div>` : '';
 
+  const history = all.length > 1 ? `
+    <h2 style="margin-top:22px">Seasons <span class="sub">every year on record</span></h2>
+    <div class="card flush">${table(all.slice().reverse(), [
+      { label: 'Season', num: true, get: x => x.n },
+      { label: 'From', get: x => x.from },
+      { label: 'To', get: x => x.to || '—', dim: true },
+      { label: 'WrestleMania', get: x => (x.wrestlemania ? x.wrestlemania.date : '—'), dim: true },
+      { label: 'Last Stand', get: x => (x.lastStand ? x.lastStand.date : '—'), dim: true },
+      { label: 'Draft', get: x => (x.draft ? x.draft.date : '—'), dim: true },
+      { label: 'Phase', get: x => chip(x.phaseLabel, x.current ? 'new' : 'brand'), html: true },
+    ])}</div>` : '';
+
   return `<div class="pagehead" style="border-left-color:var(--gold)">
-      <div class="nm">Season ${season.n}</div>
+      <div class="nm">Season ${season.n} — ${h(season.phaseLabel)}</div>
       <div class="holder">${h(season.from)} → ${season.to ? h(season.to) : 'in progress'}</div>
-      <div class="dim" style="margin-top:6px">
-        ${wm ? `WrestleMania was ${h(wm.date)} — the lists are due` : 'WrestleMania has not happened yet this season'}
-        · ${plural(state.shows.length, 'show')} logged
-      </div>
+      <div class="dim" style="margin-top:6px"><strong>Next:</strong> ${h(step.do)}${step.then ? ` — then ${h(step.then)}` : ''}</div>
     </div>
 
+    ${timeline}
+
     <div class="row" style="margin-top:0">
-      <button class="btn${wm && !flagged.length ? '' : ' ghost'}" id="flagsPropose">Work out the lists</button>
-      <button class="btn ghost" id="lastStandPropose"${flagged.length ? '' : ' disabled'}>Book Last Stand</button>
+      <button class="btn${season.phase === 'wrestlemania' ? '' : ' ghost'}" id="flagsPropose">Work out the lists</button>
+      <button class="btn${season.phase === 'lastStand' ? '' : ' ghost'}" id="lastStandPropose"${flagged.length ? '' : ' disabled'}>Book Last Stand</button>
       ${tiers(state).map(t => (t.brands.length > 1
-        ? `<button class="btn ghost" data-draftpropose="${t.tier}">Draft tier ${t.tier}</button>` : '')).join('')}
-      <span class="hint">Champions are never relegated. The year runs WrestleMania → Last Stand → Draft.</span>
+        ? `<button class="btn${season.phase === 'draft' ? '' : ' ghost'}" data-draftpropose="${t.tier}">Draft tier ${t.tier}</button>` : '')).join('')}
+      <span class="hint">Champions are never relegated.</span>
     </div>
-    ${ui.draft ? draftView(state, ui.draft) : ''}
     ${proposalBlock}
-    ${card}
-    ${flagBlock}
+    ${bracket}
+    ${ui.draft ? draftView(state, ui.draft) : ''}
+
+    ${flagged.length ? `<h2 style="margin-top:22px">On the lists <span class="sub">${plural(flagged.length, 'name')}</span></h2>
+      <div class="card flush">${table(flagged, [
+        { label: 'Wrestler', get: w => wlink(w), html: true },
+        { label: 'Show', get: w => brandName(state, w.brandId) || '—', dim: true },
+        { label: 'G', get: w => (w.gender === 'female' ? 'F' : 'M'), dim: true },
+        { label: 'List', get: w => statusChip(w), html: true },
+      ])}</div>` : ''}
+
+    ${history}
 
     <h2 style="margin-top:22px">Standings <span class="sub">wins this season — 3 points a win, 1 a draw</span></h2>
     <div class="grid">${standings}</div>`;

@@ -97,7 +97,8 @@ function render() {
   }
   if (app.tab === 'threads') $('#pane-threads').innerHTML = threadsView(s);
   if (app.tab === 'season') $('#pane-season').innerHTML = seasonView(s, {
-    proposal: app.season.proposal, lastStand: app.season.lastStand, draft: app.season.draft,
+    proposal: app.season.proposal, lastStand: app.season.lastStand,
+    lastStandProposal: app.season.lastStandProposal, draft: app.season.draft,
   });
   if (app.tab === 'brands') $('#pane-brands').innerHTML = brandsView(s, { editing: app.brandEdit });
   if (app.tab === 'prompts') { $('#pane-prompts').innerHTML = promptsView(s, app.prompt); refreshPrompt(); }
@@ -413,14 +414,20 @@ on('click', '#flagsCommit', () => {
 on('click', '#lastStandPropose', () => {
   const proposal = proposeLastStand(app.state);
   if (!proposal.matches.length) {
-    flash('Nothing to book — nobody is carrying a flag, or there is only one name per gender on a list.', 'warn');
+    flash(proposal.resolved.length
+      ? 'Every competition has been settled — the draft is next.'
+      : 'Nothing to book: nobody is carrying a flag.', 'warn');
     render();
     return;
   }
+  app.season.lastStandProposal = proposal;
   app.season.lastStand = lastStandCard(app.state, proposal, { date: universeNow() });
-  if (proposal.unpaired.length) {
-    flash(`${proposal.unpaired.map(w => h(w.name)).join(', ')} had nobody to face and was left off the card.`, 'warn');
-  }
+  app.season.draft = null;
+  render();
+});
+on('click', '#lastStandCancel', () => {
+  app.season.lastStand = null;
+  app.season.lastStandProposal = null;
   render();
 });
 on('click', '#lastStandCopy', async () => {
@@ -430,6 +437,7 @@ on('click', '#lastStandCopy', async () => {
 on('click', '#lastStandUse', () => {
   const text = app.season.lastStand;
   app.season.lastStand = null;
+  app.season.lastStandProposal = null;
   go('tonight');
   $('#cardText').value = text;
   refreshCardPreview();

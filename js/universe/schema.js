@@ -308,6 +308,16 @@ export const EVENT_TYPES = {
         [...winners, ...losers].forEach(ref => out.push({ kind: 'roster.status', subject: ref, status: 'active' }));
       }
 
+      // A Last Stand qualifier moves nobody, but half the group is now out of
+      // the running: the winner of a relegation qualifier is safe, the loser of
+      // a promotion qualifier is done. Clearing their flag here is what stops a
+      // survivor carrying a marker into next year that nothing can remove.
+      if (ev.data.qualifier && typeof ev.data.qualifier === 'string' && !drawn) {
+        const losers = s.filter(x => x.side !== winSide.side).flatMap(x => x.refs);
+        const settled = ev.data.qualifier === 'relegation' ? winners : losers;
+        settled.forEach(ref => out.push({ kind: 'roster.status', subject: ref, status: 'active' }));
+      }
+
       // Winning a number-one contender match is a promise the universe now owes
       // you, so it opens a thread that stays open until you get the match.
       if (ev.data.contender && winners.length) {

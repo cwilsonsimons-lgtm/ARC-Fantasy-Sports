@@ -168,6 +168,7 @@ export function parseCard(text, store, { date = null, brandId = null, showName =
 const PLE_NAMES = [
   [/wrestle\s*mania|wm\s*\d/i, 'wrestlemania'],
   [/last\s*stand/i, 'lastStand'],
+  [/\bdrafts?\b/i, 'draft'],
   [/royal\s*rumble/i, 'royalRumble'],
   [/summer\s*slam/i, 'summerslam'],
   [/survivor\s*series/i, 'survivorSeries'],
@@ -380,15 +381,38 @@ function parseMatch(line, ctx) {
   // so the usual line needs no modifier at all. The destination brand is worked
   // out here, at write time, and stored on the event.
   const wrestlers = participants.map(p => state.wrestlers[p.ref]).filter(Boolean);
-  let stakes = mods.stakes;
-  if (!stakes && ctx.show && ctx.show.ple === 'lastStand' && wrestlers.length) {
+  let stakes = mods.qualifier ? null : mods.stakes;
+  if (!stakes && !mods.qualifier && ctx.show && ctx.show.ple === 'lastStand' && wrestlers.length) {
     const flags = new Set(wrestlers.map(w => w.status));
-    if (flags.size === 1 && flags.has('relegation-flagged')) stakes = 'relegation';
-    if (flags.size === 1 && flags.has('promotion-flagged')) stakes = 'promotion';
+    const brands = new Set(wrestlers.map(w => w.brandId));
+    const genders = new Set(wrestlers.map(w => w.gender));
+    // Only infer when this one match settles the whole group: same brand, same
+    // gender, same flag, and nobody else on that brand carrying it. In a bigger
+    // bracket a semi-final looks identical from the line alone, and guessing
+    // there would relegate somebody two rounds early — so the generated card
+    // spells the stakes out and the inference stays out of it.
+    if (flags.size === 1 && brands.size === 1 && genders.size === 1) {
+      const [flag] = [...flags];
+      const group = Object.values(state.wrestlers).filter(w =>
+        w.status === flag && w.brandId === wrestlers[0].brandId && w.gender === wrestlers[0].gender);
+      if (/flagged$/.test(flag) && group.length === wrestlers.length) {
+        stakes = flag === 'relegation-flagged' ? 'relegation' : 'promotion';
+      }
+    }
   }
   if (stakes) {
     data.stakes = stakes;
     data.toBrandId = mods.toBrandId || destinationFor(state, stakes, wrestlers);
+  }
+  if (mods.qualifier) {
+    // A qualifier moves nobody between brands, but it does settle half the
+    // group: the winner of a relegation qualifier is safe, the loser of a
+    // promotion qualifier is out of the running, and either way their flag
+    // should come off rather than following them into next year.
+    const flags = new Set(wrestlers.map(w => w.status));
+    data.qualifier = typeof mods.qualifier === 'string' ? mods.qualifier
+      : flags.size === 1 && flags.has('relegation-flagged') ? 'relegation'
+      : flags.size === 1 && flags.has('promotion-flagged') ? 'promotion' : true;
   }
 
   // A number-one contender match names the belt but is not for it. Move the
@@ -438,7 +462,7 @@ function parseModifiers(note, idx, state) {
   const out = {
     matchType: null, decision: null, titleId: null, titleChanged: null,
     vacated: false, interim: false, unify: false, contender: false,
-    stakes: null, toBrandId: null, note: null,
+    stakes: null, toBrandId: null, qualifier: false, note: null,
   };
   if (!note) return out;
   const leftovers = [];
@@ -453,6 +477,13 @@ function parseModifiers(note, idx, state) {
     if (/^(interim|interim title|for the interim)$/.test(n)) { out.interim = true; return; }
     if (/^(unify|unified|unification|winner takes all|undisputed)$/.test(n)) { out.unify = true; return; }
     if (/^(contender|number one contender|no 1 contender|1 contender|top contender|eliminator)$/.test(n)) { out.contender = true; return; }
+    // A qualifier is a Last Stand round that settles nothing yet — a semi-final
+    // must not relegate anybody, so it carries the word but not the stakes.
+    // The direction matters even on a qualifier: it says which corner is now
+    // out of the running and can have their flag cleared.
+    const q = /^(relegation|promotion) qualifier$/.exec(n);
+    if (q) { out.qualifier = q[1]; return; }
+    if (/^qualifier$/.test(n)) { out.qualifier = true; return; }
     if (/^(relegation|relegation match|demotion|drop match)$/.test(n)) { out.stakes = 'relegation'; return; }
     if (/^(promotion|promotion match|call ?up)$/.test(n)) { out.stakes = 'promotion'; return; }
     const bound = /^(?:relegation|promotion)?\s*to\s+(.+)$/i.exec(tok);

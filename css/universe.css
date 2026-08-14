@@ -280,3 +280,28 @@ tr.stale td:first-child{box-shadow:inset 2px 0 0 var(--gold)}
 .draftcol li.protected{color:var(--gold)}
 .draftcol li.team .nm::after{content:' ⛓';color:var(--ink-3);font-size:10px}
 .draftcol li.moved .nm{font-weight:600}
+
+/* ---------------------------------------------------------------- calendar */
+.phases{display:flex;align-items:stretch;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.phase{flex:1;min-width:110px;background:var(--card);border:1px solid var(--line);
+  border-radius:9px;padding:9px 12px;opacity:.55}
+.phase.done{opacity:.8;border-color:var(--line)}
+.phase.on{opacity:1;border-color:var(--gold);background:var(--card-2)}
+.phase .pname{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:12px;
+  letter-spacing:.09em;text-transform:uppercase}
+.phase.on .pname{color:var(--gold)}
+.phase .pwhen{color:var(--ink-3);font-size:11px;margin-top:2px}
+.parrow{align-self:center;color:var(--ink-3);font-size:13px}
+
+/* ---------------------------------------------------------------- brackets */
+.bracketgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.bracket{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--bc);
+  border-radius:10px;padding:10px 13px}
+.bracket h3{font-family:'Oswald','Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.07em;
+  text-transform:uppercase}
+.bracket h3 small{color:var(--ink-3);font-size:11px;letter-spacing:.02em;text-transform:none;margin-left:6px}
+.bracket .bmeta{color:var(--ink-3);font-size:11px;margin-top:3px}
+.bracket.relegation .bmeta{color:#E39A96}
+.bracket.promotion .bmeta{color:#A8D98A}
+.bracket ol{list-style:none;margin:8px 0 0;padding:0}
+.bracket li{font-size:13px;padding:3px 0;border-top:1px solid var(--line-soft)}

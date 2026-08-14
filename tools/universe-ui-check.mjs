@@ -274,17 +274,19 @@ await check('and a reign links to the belt page', `UNIVERSE.app.detailId = 'w:co
 // ---------------------------------------------------------------- season
 await check('season tab shows standings', `${tab('season')};
   document.querySelectorAll('#pane-season .brandhead').length`, 5);
-await check('season 1 is in progress', `document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 1');
-await check('no WrestleMania yet', `document.querySelector('#pane-season .pagehead').textContent
-  .includes('has not happened yet')`, true);
+await check('season 1 is in progress', `document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 1 — Regular season');
+await check('the calendar shows every phase', `document.querySelectorAll('#pane-season .phase').length`, 5);
+await check('with the regular season lit', `document.querySelector('#pane-season .phase.on .pname').textContent`, 'Regular season');
+await check('and says what to do next', `document.querySelector('#pane-season .pagehead').textContent
+  .includes('Next:')`, true);
 
 await page.evaluate(tab('tonight'));
 await type(`WrestleMania 43 / 2027-04-04 / Raw
 Cody Rhodes d. Roman Reigns — WWE Championship`);
 await check('WrestleMania is recognised from the name', `document.getElementById('cardSave').click();
   UNIVERSE.app.state.shows.slice(-1)[0].ple`, 'wrestlemania');
-await check('and the season knows', `${tab('season')};
-  document.querySelector('#pane-season .pagehead').textContent.includes('lists are due')`, true);
+await check('and the calendar moves on', `${tab('season')};
+  document.querySelector('#pane-season .phase.on .pname').textContent`, 'WrestleMania');
 
 await check('working out the lists proposes names', `document.getElementById('flagsPropose').click();
   document.querySelectorAll('#pane-season table')[0].querySelectorAll('tbody tr').length > 4`, true);
@@ -298,8 +300,15 @@ await check('confirming writes the flags', `document.getElementById('flagsCommit
 await check('and the roster shows them', `Object.values(UNIVERSE.app.state.wrestlers)
   .filter(w => /flagged$/.test(w.status)).length > 4`, true);
 
-await check('booking Last Stand writes a card', `document.getElementById('lastStandPropose').click();
-  document.getElementById('lastStandText').value.split('\\n').filter(l => / vs /.test(l)).length`, 8);
+await check('the lists move it to Last Stand', `document.querySelector('#pane-season .phase.on .pname').textContent`, 'Last Stand');
+await check('booking Last Stand lays out the competitions', `document.getElementById('lastStandPropose').click();
+  document.querySelectorAll('#pane-season .bracket').length`, 12);
+await check('relegation is settled inside one show', `[...document.querySelectorAll('#pane-season .bracket.relegation')]
+  .every(b => b.querySelector('.bmeta').textContent.includes('drops to'))`, true);
+await check('and promotion is a separate competition', `
+  document.querySelectorAll('#pane-season .bracket.promotion').length`, 4);
+await check('with a card to match', `document.getElementById('lastStandText').value
+  .split('\\n').filter(l => / vs /.test(l)).length`, 12);
 await check('with relegation and promotion matches', `const t = document.getElementById('lastStandText').value;
   t.includes('relegation') && t.includes('promotion')`, true);
 await check('sending it lands in the entry box', `document.getElementById('lastStandUse').click();
@@ -316,8 +325,10 @@ await check('playing it moves wrestlers between brands', `
     const after = UNIVERSE.app.state.wrestlers;
     r(Object.keys(after).filter(id => after[id].brandId !== before[id].brandId).length);
   }, 200))`, n => n >= 4);
-await check('and clears the flags of everyone who fought', `${tab('season')};
-  document.querySelector('#pane-season .pagehead .nm').textContent`, 'Season 2');
+await check('Last Stand hands over to the draft', `${tab('season')};
+  document.querySelector('#pane-season .phase.on .pname').textContent`, 'Draft');
+await check('and everyone who fought is unflagged', `
+  Object.values(UNIVERSE.app.state.wrestlers).filter(w => /flagged$/.test(w.status)).length`, 0);
 
 // ---------------------------------------------------------------- prompts
 await check('prompts tab offers five', `${tab('prompts')};
@@ -515,6 +526,16 @@ await check('running it moves people', `
     .filter(id => UNIVERSE.app.state.wrestlers[id].brandId !== before[id].brandId).length > 3`, true);
 await check('and every move is in the log', `UNIVERSE.store.effectiveEvents()
   .filter(e => e.source === 'draft').length > 3`, true);
+await check('a draft show closes the year', `${tab('tonight')};
+  const box = document.getElementById('cardText');
+  box.value = 'WWE Draft / 2027-06-06 / Raw\\nSeth Rollins d. Sami Zayn';
+  box.dispatchEvent(new Event('input', {bubbles:true}));
+  new Promise(r => setTimeout(() => { document.getElementById('cardSave').click();
+    r(UNIVERSE.app.state.shows.slice(-1)[0].ple); }, 250))`, 'draft');
+await check('and the new season opens', `${tab('season')};
+  document.querySelector('#pane-season .phase.on .pname').textContent`, 'New season');
+await check('with the old one kept on record', `
+  document.querySelectorAll('#pane-season table')[0].querySelectorAll('tbody tr').length`, 2);
 await check('a drafted wrestler kept their belt', `
   Object.values(UNIVERSE.app.state.championships)
     .filter(c => !c.vacant)

@@ -28,36 +28,110 @@
 import { tiers, tierOf, canBePromoted, canBeRelegated, destination } from './pyramid.js';
 
 export const DEFAULTS = {
-  relegatePerBrand: 1,      // per gender, per brand that has a tier below it
-  promotePerBrand: 2,       // per gender, per brand that has a tier above it
+  // Per brand, per gender, per direction. Two candidates and one spot is the
+  // brief's own example: two Evolve names face each other, the winner goes up.
+  // Raise candidates to four and the group becomes a bracket — semi-finals and
+  // a final — with nothing else changing.
+  candidatesPerBrand: 2,
+  spots: 1,
 };
 
 // ------------------------------------------------------------------ windows
 
+// The year, in order:
+//
+//     regular season ... WrestleMania → Last Stand → Draft → new season
+//
+// WrestleMania ends the wrestling season and starts the offseason; Last Stand
+// settles who moves between tiers; the Draft reshuffles what is left; and the
+// season closes when the Draft does, so the next one opens with the rosters the
+// draft produced.
+//
+// A save that never runs a draft is not left stuck in one endless year: a
+// Last Stand followed by another WrestleMania closes the season too. Everything
+// is derived from the PLE markers on shows, so a season's whole shape — and
+// every past season's — comes out of the log with nothing stored.
+export const PHASES = ['regular', 'wrestlemania', 'lastStand', 'draft', 'newSeason'];
+
+export const PHASE_LABEL = {
+  regular: 'Regular season',
+  wrestlemania: 'WrestleMania',
+  lastStand: 'Last Stand',
+  draft: 'Draft',
+  newSeason: 'New season',
+  complete: 'Complete',
+};
+
 // Every season boundary in the log, oldest first.
 export function seasons(state) {
-  const stands = state.ples.filter(p => p.kind === 'lastStand').sort((a, b) => (a.date < b.date ? -1 : 1));
-  const manias = state.ples.filter(p => p.kind === 'wrestlemania');
+  const ples = state.ples.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const start = state.startDate || (state.events.length ? state.events[0].date : state.asOf);
 
-  const bounds = [];
-  let from = start;
-  stands.forEach(s => { bounds.push({ from, to: s.date, closedBy: s }); from = nextDay(s.date); });
-  bounds.push({ from, to: null, closedBy: null });          // the season in progress
+  const out = [];
+  let open = { from: start, wrestlemania: null, lastStand: null, draft: null };
 
-  return bounds.map((b, i) => ({
-    n: i + 1,
-    from: b.from,
-    to: b.to,
-    current: !b.to,
-    lastStand: b.closedBy || null,
-    // The WrestleMania inside this window, if it has happened yet.
-    wrestlemania: manias.find(m => m.date >= b.from && (!b.to || m.date <= b.to)) || null,
-  }));
+  const close = (to, closedBy) => {
+    out.push({ ...open, to, closedBy });
+    open = { from: nextDay(to), wrestlemania: null, lastStand: null, draft: null };
+  };
+
+  ples.forEach(p => {
+    if (p.kind === 'wrestlemania') {
+      // A second WrestleMania with no draft in between still means a new year.
+      if (open.wrestlemania && open.lastStand) close(open.lastStand.date, 'lastStand');
+      open.wrestlemania = open.wrestlemania || p;
+    } else if (p.kind === 'lastStand') {
+      open.lastStand = open.lastStand || p;
+    } else if (p.kind === 'draft') {
+      open.draft = p;
+      close(p.date, 'draft');
+    }
+  });
+  out.push({ ...open, to: null, closedBy: null });
+
+  return out.map((b, i, all) => {
+    const season = { ...b, n: i + 1, current: !b.to };
+    season.phase = phaseFor(state, season, all[i - 1]);
+    season.phaseLabel = PHASE_LABEL[season.phase];
+    return season;
+  });
+}
+
+// Which part of the year this season is in. A finished season is 'complete';
+// the one in progress walks regular → wrestlemania → lastStand → draft, and
+// sits in 'newSeason' until the first show of the year is booked.
+function phaseFor(state, season, previous) {
+  if (season.to) return 'complete';
+  if (!season.wrestlemania) {
+    const bookedSince = state.shows.some(sh => sh.date >= season.from);
+    // Straight out of a draft with nothing booked yet: the new year has not
+    // actually started, it has only been set up.
+    if (previous && previous.closedBy === 'draft' && !bookedSince) return 'newSeason';
+    return 'regular';
+  }
+  if (!season.lastStand) {
+    const flagged = Object.values(state.wrestlers).some(w => /flagged$/.test(w.status));
+    return flagged ? 'lastStand' : 'wrestlemania';
+  }
+  return 'draft';
+}
+
+// What the app is waiting for next, in words — the Season tab reads this out.
+export function nextStep(state, season = null) {
+  const s = season || currentSeason(state);
+  return {
+    regular: { do: 'Book the season', then: 'WrestleMania ends it' },
+    wrestlemania: { do: 'Work out the promotion and relegation lists', then: 'Last Stand settles them' },
+    lastStand: { do: 'Book Last Stand', then: 'the Draft follows' },
+    draft: { do: 'Run the Draft, tier by tier', then: 'the new season begins' },
+    newSeason: { do: 'Book the first show of the year', then: 'the regular season is under way' },
+    complete: { do: 'Nothing — this year is done', then: '' },
+  }[s.phase];
 }
 
 export const currentSeason = state => seasons(state).slice(-1)[0];
 export const seasonAt = (state, date) => seasons(state).find(s => date >= s.from && (!s.to || date <= s.to)) || currentSeason(state);
+export const phaseOf = state => currentSeason(state).phase;
 
 const nextDay = iso => {
   const d = new Date(iso + 'T00:00:00Z');
@@ -133,37 +207,46 @@ const championSet = state => {
 // Who should go on each list. Returns proposals, not events — flagging is a
 // booking decision, so it is shown first and written only when confirmed.
 export function proposeFlags(state, opts = {}) {
-  const { relegatePerBrand, promotePerBrand } = { ...DEFAULTS, ...opts };
+  const { candidatesPerBrand } = { ...DEFAULTS, ...opts };
   const season = opts.season || currentSeason(state);
   const champs = championSet(state);
   const standings = brandStandings(state, season);
   const genders = ['male', 'female'];
+  const out = [];
+  const skipped = [];
 
-  // Selection is per brand, as the rule says: the bottom of each brand goes on
-  // the relegation list, the top of each on the promotion list. Every brand with
-  // a rung beneath it can relegate and every brand with a rung above it can
-  // promote, so the middle of a three-tier pyramid does both. No brand is named
-  // anywhere in here — it all comes from the pyramid.
-  const groups = new Map();     // tier|gender|flag  ->  { picked, bench }
-  const key = (tier, gender, flag) => `${tier}|${gender}|${flag}`;
-
+  // Every brand with a rung beneath it can relegate, every brand with a rung
+  // above it can promote, and on a three-tier pyramid the middle does both. The
+  // groups are per brand and are never merged: a Raw name fighting relegation
+  // faces another Raw name, because what is at stake is the Raw spot. No brand
+  // is named anywhere in here — it all comes off the pyramid.
   standings.forEach(b => {
     const tier = tierOf(state, b.id);
     [
-      ['relegation-flagged', canBeRelegated(state, b.id), relegatePerBrand],
-      ['promotion-flagged', canBePromoted(state, b.id), promotePerBrand],
-    ].forEach(([flag, allowed, perBrand]) => {
+      ['relegation-flagged', canBeRelegated(state, b.id)],
+      ['promotion-flagged', canBePromoted(state, b.id)],
+    ].forEach(([flag, allowed]) => {
       if (!allowed) return;
       const relegation = flag === 'relegation-flagged';
 
       genders.forEach(g => {
-        // Worst-first for relegation, best-first for promotion. Champions are
-        // never candidates for relegation — holding a belt is what keeps you up.
-        const ordered = b.table
-          .filter(r => r.gender === g && !(relegation && champs.has(r.id)));
+        // Worst-first for relegation, best-first for promotion. A champion is
+        // never a relegation candidate — holding a belt is what keeps you up.
+        const ordered = b.table.filter(r => r.gender === g && !(relegation && champs.has(r.id)));
         const queue = relegation ? ordered.slice().reverse() : ordered;
+        const picked = queue.slice(0, candidatesPerBrand);
 
-        const row = r => ({
+        // One name alone has nobody to face, and flagging them would leave a
+        // marker that nothing can ever clear. Say so instead.
+        if (picked.length < 2) {
+          if (picked.length) skipped.push({
+            brandId: b.id, brandName: b.name, gender: g, flag, tier,
+            why: `only ${picked.length} eligible on ${b.name}`,
+          });
+          return;
+        }
+
+        picked.forEach(r => out.push({
           id: r.id, name: r.name, gender: g, flag,
           from: b.id, fromName: b.name, tier,
           toward: destination(state, b.id, relegation ? 'relegation' : 'promotion'),
@@ -171,45 +254,14 @@ export function proposeFlags(state, opts = {}) {
           why: relegation
             ? `bottom of ${b.name}${r.matches ? '' : ' (no matches all season)'}`
             : `top of ${b.name}`,
-        });
-
-        const k = key(tier, g, flag);
-        if (!groups.has(k)) groups.set(k, { picked: [], bench: [], brands: new Set() });
-        const grp = groups.get(k);
-        grp.brands.add(b.id);
-        queue.slice(0, perBrand).forEach(r => grp.picked.push(row(r)));
-        queue.slice(perBrand).forEach(r => grp.bench.push(row(r)));
+        }));
       });
     });
   });
 
-  // Balancing. These names exist to face each other at Last Stand, so an odd
-  // list leaves somebody with no opponent — and pairing them across a tier or a
-  // gender would change what the match is for. So an odd list is evened out:
-  // where a tier has several brands, the safest name is spared; where a tier has
-  // only one brand there is nobody to spare against, so the next name down is
-  // called up instead. Without this a three-brand tier flags three per gender
-  // and one of them always has nobody to fight.
-  const out = [];
-  groups.forEach(grp => {
-    const picked = grp.picked.slice();
-    if (picked.length % 2 === 1) {
-      if (grp.brands.size > 1) {
-        // Spare the one with the weakest claim to being there.
-        const relegation = picked[0].flag === 'relegation-flagged';
-        picked.sort((a, b) => (relegation ? a.points - b.points : b.points - a.points));
-        picked.pop();
-      } else if (grp.bench.length) {
-        picked.push(grp.bench[0]);
-      } else {
-        picked.pop();                      // nobody left to call up
-      }
-    }
-    out.push(...picked);
-  });
-
-  // Anyone already carrying the flag they would be given needs no event.
-  return out.map(p => ({ ...p, alreadyFlagged: state.wrestlers[p.id].status === p.flag }));
+  const proposals = out.map(p => ({ ...p, alreadyFlagged: state.wrestlers[p.id].status === p.flag }));
+  proposals.skipped = skipped;
+  return proposals;
 }
 
 // Turn accepted proposals into events.
@@ -232,33 +284,96 @@ export function commitFlags(store, proposals, { date, dryRun = false } = {}) {
 // promotion, and never across genders — so the pairings are built per gender
 // out of each list separately.
 export function proposeLastStand(state, opts = {}) {
-  const matches = [], unpaired = [];
+  const { spots } = { ...DEFAULTS, ...opts };
+  const season = opts.season || currentSeason(state);
+  const groups = [];
 
-  // Flagged names only face others going the same way, from the same rung of
-  // the pyramid, and of the same gender. Pairing a Raw name against an NXT name
-  // in a relegation match would be two different stakes in one match.
-  tiers(state).forEach(({ tier }) => {
-    ['relegation-flagged', 'promotion-flagged'].forEach(flag => {
-      const stakes = flag === 'relegation-flagged' ? 'relegation' : 'promotion';
-      ['male', 'female'].forEach(gender => {
-        const pool = Object.values(state.wrestlers).filter(w =>
-          w.status === flag && w.gender === gender && tierOf(state, w.brandId) === tier);
-
-        for (let i = 0; i + 1 < pool.length; i += 2) {
-          matches.push({
-            stakes, gender, tier,
-            a: pool[i], b: pool[i + 1],
-            toBrandId: destination(state, pool[i].brandId, stakes),
-          });
-        }
-        // An odd one out is reported rather than quietly dropped or paired
-        // across a boundary that would change what the match means.
-        if (pool.length % 2 === 1) unpaired.push(pool[pool.length - 1]);
-      });
-    });
+  // Who is flagged, grouped by brand + gender + direction. Those three together
+  // are the competition: a Raw relegation group settles the Raw spot, and its
+  // members never meet a SmackDown name or a promotion candidate.
+  const byGroup = new Map();
+  Object.values(state.wrestlers).forEach(w => {
+    if (!/flagged$/.test(w.status) || !w.brandId) return;
+    const key = `${w.brandId}|${w.gender}|${w.status}`;
+    if (!byGroup.has(key)) byGroup.set(key, []);
+    byGroup.get(key).push(w);
   });
 
-  return { matches, unpaired, date: opts.date || null };
+  // Rounds already wrestled this year, so a bracket is picked up where it was
+  // left rather than re-booked from the top.
+  const played = state.events.filter(e =>
+    e.type === 'match' && e.date >= season.from
+    && state.showsById[e.showId] && state.showsById[e.showId].ple === 'lastStand');
+
+  byGroup.forEach((candidates, key) => {
+    const [brandId, gender, flag] = key.split('|');
+    const direction = flag === 'relegation-flagged' ? 'relegation' : 'promotion';
+    const toBrandId = destination(state, brandId, direction);
+
+    // Walk the rounds already played. For promotion the losers drop out of the
+    // running; for relegation the winners are safe and drop out, and whoever is
+    // left is still in danger.
+    let standing = candidates.slice();
+    let roundsPlayed = 0;
+    played.forEach(ev => {
+      const involved = ev.participants.filter(p => standing.some(w => w.id === p.ref));
+      if (involved.length < 2) return;
+      const gone = ev.participants
+        .filter(p => p.role === (direction === 'promotion' ? 'loser' : 'winner'))
+        .map(p => p.ref);
+      const before = standing.length;
+      standing = standing.filter(w => !gone.includes(w.id));
+      if (standing.length !== before) roundsPlayed += 1;
+    });
+
+    const group = {
+      brandId, brandName: state.brands[brandId] ? state.brands[brandId].name : brandId,
+      tier: tierOf(state, brandId), gender, direction, flag, spots, toBrandId,
+      toBrandName: state.brands[toBrandId] ? state.brands[toBrandId].name : null,
+      candidates, standing, matches: [], resolved: false, bye: null, decides: false,
+      round: roundsPlayed + 1,
+    };
+
+    if (standing.length <= spots) {
+      group.resolved = true;              // nobody left to beat: it has settled
+      group.outcome = standing;
+      groups.push(group);
+      return;
+    }
+
+    // Pair the survivors. An odd one out takes a bye into the next round rather
+    // than being dropped, or matched outside their own group.
+    const pool = standing.slice();
+    if (pool.length % 2 === 1) group.bye = pool.pop();
+
+    // This round decides it when the survivors it leaves are exactly the number
+    // of spots. Otherwise it is a qualifier and moves nobody — which is why a
+    // semi-final does not relegate anybody.
+    group.decides = Math.ceil(standing.length / 2) <= spots;
+
+    for (let i = 0; i + 1 < pool.length; i += 2) {
+      group.matches.push({
+        a: pool[i], b: pool[i + 1],
+        direction, gender, tier: group.tier, brandId, brandName: group.brandName,
+        stakes: group.decides ? direction : null,
+        toBrandId, toBrandName: group.toBrandName,
+        round: group.round,
+      });
+    }
+    groups.push(group);
+  });
+
+  groups.sort((a, b) => a.tier - b.tier || a.brandName.localeCompare(b.brandName)
+    || a.direction.localeCompare(b.direction) || a.gender.localeCompare(b.gender));
+
+  return {
+    groups,
+    matches: groups.flatMap(g => g.matches),
+    resolved: groups.filter(g => g.resolved),
+    byes: groups.filter(g => g.bye).map(g => ({ ...g.bye, brandName: g.brandName, direction: g.direction })),
+    unpaired: [],
+    date: opts.date || null,
+  };
 }
 
 // Where the moved wrestler lands — one rung up or down from wherever they
@@ -277,10 +392,19 @@ export function lastStandCard(state, proposal, { name = 'Last Stand', date, bran
     `${name} / ${date || proposal.date || state.asOf}${brandId && state.brands[brandId] ? ` / ${state.brands[brandId].name}` : ''}`,
     '// replace "vs" with "d." once you have played each one — winner on the left',
   ];
-  proposal.matches.forEach(m => {
-    const to = state.brands[m.toBrandId] ? state.brands[m.toBrandId].name : '?';
-    lines.push(`${m.a.name} vs ${m.b.name} — ${m.stakes} to ${to}`);
+
+  proposal.groups.forEach(g => {
+    if (!g.matches.length) return;
+    lines.push(`// ${g.brandName} ${g.direction} (${g.gender}) — ${g.decides
+      ? g.direction === 'relegation'
+        ? `decides it: the loser drops to ${g.toBrandName}`
+        : `decides it: the winner goes up to ${g.toBrandName}`
+      : `round ${g.round}, nobody moves yet`}`);
+    g.matches.forEach(m => lines.push(
+      `${m.a.name} vs ${m.b.name} — ${m.stakes ? `${m.direction} to ${m.toBrandName}` : `${m.direction} qualifier`}`));
+    if (g.bye) lines.push(`// ${g.bye.name} has a bye into the next round`);
   });
+
   return lines.join('\n');
 }
 

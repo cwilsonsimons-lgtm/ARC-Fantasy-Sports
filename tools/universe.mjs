@@ -31,7 +31,7 @@ import { parseRoster, commitRoster, brandTable, importReport } from '../js/unive
 import { parseCard, commitCard, renderCard } from '../js/universe/card.js';
 import { buildIndex, resolve as resolveName, table, heading, plural } from '../js/universe/util.js';
 import { currentSeason, seasons, brandStandings, proposeFlags, commitFlags,
-  proposeLastStand, lastStandCard } from '../js/universe/season.js';
+  proposeLastStand, lastStandCard, nextStep, PHASES, PHASE_LABEL } from '../js/universe/season.js';
 import { buildPrompt, PROMPTS } from '../js/universe/prompts.js';
 import { tiers, brandCard, pyramidText, checkBrand } from '../js/universe/pyramid.js';
 import { proposeDraft, commitDraft, draftText } from '../js/universe/draft.js';
@@ -391,9 +391,24 @@ const commands = {
     const state = project(store, { asOf: flags['as-of'] || null });
     const season = currentSeason(state);
 
-    console.log(heading(`Season ${season.n} — ${season.from} → ${season.to || 'in progress'}`, '═'));
-    console.log(`  ${season.wrestlemania ? `WrestleMania was ${season.wrestlemania.date} — the lists are due` : 'WrestleMania has not happened yet'}`
-      + `  ·  ${plural(seasons(state).length, 'season')} on record`);
+    const step = nextStep(state, season);
+    console.log(heading(`Season ${season.n} — ${season.phaseLabel}`, '═'));
+    console.log(`  ${season.from} → ${season.to || 'in progress'}`);
+    console.log('  ' + PHASES.map(ph => (ph === season.phase ? `[${PHASE_LABEL[ph]}]` : PHASE_LABEL[ph])).join('  →  '));
+    console.log(`  next: ${step.do}${step.then ? ` — then ${step.then}` : ''}`);
+
+    if (seasons(state).length > 1) {
+      console.log(heading('Seasons on record'));
+      console.log(table(seasons(state).slice().reverse(), [
+        { label: '#', align: 'right', get: x => x.n },
+        { label: 'From', get: x => x.from },
+        { label: 'To', get: x => x.to || '—' },
+        { label: 'WrestleMania', get: x => (x.wrestlemania ? x.wrestlemania.date : '—') },
+        { label: 'Last Stand', get: x => (x.lastStand ? x.lastStand.date : '—') },
+        { label: 'Draft', get: x => (x.draft ? x.draft.date : '—') },
+        { label: 'Phase', get: x => x.phaseLabel },
+      ], { indent: '  ' }));
+    }
 
     brandStandings(state, season).forEach(b => {
       console.log(heading(`${b.name}  —  ${(b.tier || 1) > 1 ? 'development' : 'main roster'}`));
@@ -438,8 +453,12 @@ const commands = {
 
     const last = store.doc.events.reduce((m, e) => (e.date > m ? e.date : m), new Date().toISOString().slice(0, 10));
     console.log(lastStandCard(state, proposal, { date: flags.date || last }));
-    if (proposal.unpaired.length) {
-      console.error(`\n# ${proposal.unpaired.map(w => w.name).join(', ')} had nobody to face and was left off`);
+    if (proposal.resolved.length) {
+      console.error(`\n# settled already: ${proposal.resolved.map(g =>
+        `${g.brandName} ${g.direction} (${g.gender})`).join(', ')}`);
+    }
+    if (proposal.byes.length) {
+      console.error(`# byes into the next round: ${proposal.byes.map(w => w.name).join(', ')}`);
     }
   },
 
