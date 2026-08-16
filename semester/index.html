@@ -215,6 +215,8 @@ input[type=text],input[type=number],input[type=date],input[type=time],input[type
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:.75}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pair > *{min-width:0}
 
 /* ---------- chips / pills ---------- */
 .chip{
@@ -341,16 +343,19 @@ dialog form{display:contents}
 
 /* ---------- import preview ---------- */
 .preview-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;padding-right:4px}
-.preview-row{display:grid;grid-template-columns:1fr 120px 175px 32px;gap:6px;align-items:center}
+.preview-row{display:grid;grid-template-columns:1fr 120px 175px 74px 32px;gap:6px;align-items:center}
+.preview-meta{font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+.preview-row > *{min-width:0}
 .preview-row.skipped{opacity:.4}
 .preview-row.skipped input,.preview-row.skipped select{text-decoration:line-through}
 .preview-row input,.preview-row select{font-size:13px;padding:5px 7px}
 @media (max-width:640px){
-  .preview-row{grid-template-columns:1fr 32px;grid-template-areas:"title drop" "course course" "due due"}
+  .preview-row{grid-template-columns:1fr auto 32px;grid-template-areas:"title meta drop" "course course course" "due due due"}
   .preview-row > :nth-child(1){grid-area:title}
   .preview-row > :nth-child(2){grid-area:course}
   .preview-row > :nth-child(3){grid-area:due}
-  .preview-row > :nth-child(4){grid-area:drop}
+  .preview-row > :nth-child(4){grid-area:meta}
+  .preview-row > :nth-child(5){grid-area:drop}
 }
 #pasteDialog{width:min(760px,96vw)}
 
@@ -533,7 +538,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
           <label class="field"><span>Term ends</span><input type="date" id="termEnd"></label>
           <label class="field"><span>Study cap / day (hrs)</span><input type="number" id="dailyCap" min="1" max="12" step="0.5"></label>
           <label class="field"><span>Study window</span>
-            <div style="display:flex;gap:6px"><input type="time" id="dayStart"><input type="time" id="dayEnd"></div>
+            <div class="pair"><input type="time" id="dayStart"><input type="time" id="dayEnd"></div>
           </label>
         </div>
         <div class="btn-row">
@@ -736,6 +741,8 @@ function priority(t){
   return urgency * (1 + weight/12) * size;
 }
 
+const PLAN_HORIZON = 21;   // days the planner reasons about; past that, deadlines are not yet actionable
+
 /* ---------------- study planner ----------------
    Walks the next 14 days. For each day it works out the free windows between
    classes inside the study window, then fills them — earliest first — with the
@@ -750,7 +757,7 @@ function buildPlan(){
   const nowMin = new Date().getHours()*60 + new Date().getMinutes();
 
   const days = [];
-  for(let i=0;i<14;i++){
+  for(let i=0;i<PLAN_HORIZON;i++){
     const date = addDays(today,i);
     const dow = date.getDay();
     const busy = [];
@@ -775,9 +782,16 @@ function buildPlan(){
     .sort((a,b) => a.due - b.due || priority(b.t) - priority(a.t));
 
   for(const item of queue){
+    // Don't drag December's reading into August. Each task opens a window just
+    // wide enough to finish it comfortably, so near work fills the near days and
+    // only genuinely large jobs reach back this far.
+    const lead = Math.max(3, Math.ceil(item.left / cap) + 2);
+    const earliest = addDays(startOfDay(item.due), -lead);
+
     for(const day of days){
       if(item.left <= 0.01) break;
       if(day.date > startOfDay(item.due)) break;         // past the deadline
+      if(day.date < earliest) continue;                  // too early to be worth starting
       if(day.used >= cap) continue;
       const sameDay = +day.date === +startOfDay(item.due);
       for(const win of day.free){
@@ -795,7 +809,12 @@ function buildPlan(){
     }
   }
 
-  const risk = queue.filter(x => x.left > 0.24).map(x => ({ task:x.t, shortBy:x.left }));
+  // Only work whose deadline falls inside the horizon can be judged at risk;
+  // anything later simply has not had its turn yet.
+  const lastDay = days[days.length-1].date;
+  const risk = queue
+    .filter(x => x.left > 0.24 && startOfDay(x.due) <= lastDay)
+    .map(x => ({ task:x.t, shortBy:x.left }));
   return { days, risk };
 }
 
@@ -812,12 +831,24 @@ function courseGrade(course){
   });
   const graded = cats.filter(x => x.pct !== null);
   const gradedWeight = graded.reduce((a,x)=>a+(Number(x.cat.weight)||0),0);
-  const current = gradedWeight>0
-    ? graded.reduce((a,x)=>a + x.pct*(Number(x.cat.weight)||0), 0) / gradedWeight
-    : null;
+  const totalWeight = (course.categories||[]).reduce((a,k)=>a+(Number(k.weight)||0),0);
+
+  let current = null, mode = 'weighted';
+  if(gradedWeight > 0){
+    current = graded.reduce((a,x)=>a + x.pct*(Number(x.cat.weight)||0), 0) / gradedWeight;
+  } else if(graded.length || totalWeight === 0){
+    // No weights entered yet (a fresh Canvas import, or a points-graded course):
+    // fall back to straight points earned over points possible.
+    const scored = state.tasks.filter(t => t.courseId===course.id &&
+      t.score!=='' && t.score!=null && Number(t.outOf)>0);
+    const earned = scored.reduce((a,t)=>a+Number(t.score),0);
+    const possible = scored.reduce((a,t)=>a+Number(t.outOf),0);
+    current = possible>0 ? earned/possible*100 : null;
+    mode = 'points';
+  }
   const remainingWeight = cats.filter(x => x.pct === null || x.pending > 0)
     .reduce((a,x)=>a + (x.pct === null ? (Number(x.cat.weight)||0) : 0), 0);
-  return { cats, current, gradedWeight, remainingWeight };
+  return { cats, current, gradedWeight, remainingWeight, totalWeight, mode };
 }
 function letter(pct){
   if(pct==null) return '—';
@@ -1120,7 +1151,11 @@ function renderGrades(){
       ? (target - earnedSoFar) / (g.remainingWeight/100)
       : null;
     let verdict;
-    if(g.current == null){
+    if(g.totalWeight === 0){
+      verdict = g.current == null
+        ? `<span class="verdict">Weights not set.</span> <span style="color:var(--muted)">Add each category's share of the grade from the syllabus — then a score on any task starts the projection.</span>`
+        : `<span class="verdict">${g.current.toFixed(1)}% on points so far.</span> <span style="color:var(--muted)">Add the syllabus weights above to project what you need on what is left.</span>`;
+    } else if(g.current == null){
       verdict = `<span class="verdict">No scores yet.</span> <span style="color:var(--muted)">Enter a score on any task to start tracking.</span>`;
     } else if(need == null){
       verdict = `<span class="verdict">All categories graded.</span> <span style="color:var(--muted)">Final standing: ${g.current.toFixed(1)}%.</span>`;
@@ -1621,6 +1656,129 @@ function textRows(text){
   return rows;
 }
 
+/* ---------------- Canvas List View paste ----------------
+   The dashboard's list view is not one item per line: the date sits on a
+   heading, the course on the line above, and each item is spread over a title
+   link, a points line and a "DUE:" line. So read it as a stream with state —
+   current date, current course — rather than line by line.
+
+   An item without a DUE line is an announcement, not work, and is dropped.
+--------------------------------------------------------- */
+const LIST_KIND = {assignments:'Assignments', quizzes:'Quizzes', discussion_topics:'Discussions'};
+
+function titleCaseShouty(s){
+  if(/[a-z]/.test(s)) return s;                                    // already mixed case: leave it
+  const small = /^(a|an|and|as|at|but|by|for|in|of|on|or|the|to|vs?)$/i;
+  return s.toLowerCase().split(/(\s+|[-/])/).map((w,i) =>
+    !w.trim() || (i > 0 && small.test(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)
+  ).join('');
+}
+function courseFromHeading(text, canvasId){
+  let t = text.replace(/\s*\([^)]*\)\s*$/,'').trim();              // drop "(FALL 2026 1)"
+  const codeM = t.match(/^([A-Za-z]{2,5})\s*-?\s*(\d{3,4}[A-Za-z]?)\b/);
+  const code = codeM ? `${codeM[1].toUpperCase()} ${codeM[2]}` : '';
+  let name = t.replace(/^.*?\bSECTION\b\s*\S*\s*[-–—:]\s*/i,'');   // drop "RESM 4050 SECTION 401 - "
+  if(name === t && codeM) name = t.slice(codeM[0].length).replace(/^[\s-–—:]+/,'');
+  name = titleCaseShouty(name.trim()) || code;
+  return { canvasId, code, name };
+}
+function parseClock(s){
+  const m = String(s).match(/(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/i);
+  if(m){
+    let hh = +m[1] % 12; if(m[3].toLowerCase() === 'p') hh += 12;
+    return {hh, mi: m[2] ? +m[2] : 0};
+  }
+  const t = String(s).match(/(\d{1,2}):(\d{2})/);
+  return t ? {hh:+t[1], mi:+t[2]} : {hh:23, mi:59};
+}
+/** Canvas knows the points; it has no idea of the hours. Guess, then let them edit. */
+function guessEst(title, kind, points){
+  const n = String(title).toLowerCase();
+  if(/\bexam\b|\bmidterm\b|\bfinal\b/.test(n)) return 4;
+  if(/\bproject\b|report|paper|presentation|budget/.test(n)) return 3;
+  if(kind === 'Quizzes' || /\bquiz\b/.test(n)) return 1;
+  if(kind === 'Discussions' || /discussion|introduce/.test(n)) return 1;
+  return Number(points) >= 100 ? 3 : 1.5;
+}
+
+function listViewRows(text){
+  const rows = [];
+  let curDate = null, curCourse = null, item = null;
+  const flush = () => { if(item && item.due) rows.push(item); item = null; };
+
+  for(const raw of text.split(/\r?\n/)){
+    const line = raw.trim();
+    if(!line) continue;
+
+    const link = line.match(/\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/);
+    if(link){
+      const label = link[1].trim(), url = link[2];
+      const itemUrl = url.match(/\/courses\/(\d+)\/(assignments|quizzes|discussion_topics)\/(\d+)/);
+      if(itemUrl){
+        flush();
+        const [, courseId, kindKey, itemId] = itemUrl;
+        item = {
+          title: label,
+          code: curCourse && String(curCourse.canvasId) === courseId ? curCourse.code : '',
+          courseName: curCourse && String(curCourse.canvasId) === courseId ? curCourse.name : '',
+          canvasCourseId: courseId,
+          assignmentId: kindKey === 'assignments' ? itemId : null,   // only real assignment ids
+          kind: LIST_KIND[kindKey] || '',
+          due: null, points: null, url
+        };
+        continue;
+      }
+      const courseUrl = url.match(/\/courses\/(\d+)\/?$/);
+      if(courseUrl){ flush(); curCourse = courseFromHeading(label, courseUrl[1]); continue; }
+      continue;
+    }
+
+    if(/^\d+\.\s*$/.test(line) || /^\*\s/.test(line)) continue;      // stray "2." and "* Graded"
+
+    const pts = line.match(/^(\d+(?:\.\d+)?)\s*(?:PTS?|POINTS?)\b/i);
+    if(pts && item){ item.points = Number(pts[1]); continue; }
+
+    const due = line.match(/^DUE:?\s*(.+)$/i);
+    if(due && item){
+      const withDate = findDate(due[1]);                             // some views repeat the date here
+      if(withDate) item.due = withDate.stamp;
+      else if(curDate){
+        const {hh, mi} = parseClock(due[1]);
+        item.due = `${curDate}T${pad(hh)}:${pad(mi)}`;
+      }
+      continue;
+    }
+
+    // A date heading: no link, short, and nothing to do with an item's fields.
+    if(line.length <= 80 && !/^DUE/i.test(line)){
+      if(/^today\b/i.test(line)){ flush(); curDate = ymd(new Date()); continue; }
+      if(/^tomorrow\b/i.test(line) && !findDate(line)){ flush(); curDate = ymd(addDays(new Date(),1)); continue; }
+      const d = findDate(line);
+      if(d && !/\d+\s*(pts?|points?)/i.test(line)){ flush(); curDate = d.stamp.slice(0,10); continue; }
+    }
+  }
+  flush();
+
+  const seen = new Set();
+  return rows.filter(r => {
+    const key = r.url || (r.title + r.due);
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(r => ({
+    title: r.title,
+    due: r.due,
+    code: r.code,
+    courseName: r.courseName,
+    canvasCourseId: r.canvasCourseId,
+    assignmentId: r.assignmentId,
+    catName: r.kind,                                   // becomes a grade category
+    outOf: r.points,
+    est: guessEst(r.title, r.kind, r.points),
+    url: r.url
+  }));
+}
+
 /* ---------------- commit ---------------- */
 function commitRows(rows){
   let added = 0, updated = 0, newCourses = 0;
@@ -1634,11 +1792,23 @@ function commitRows(rows){
       if(!r.code) continue;                        // nothing to file it under
       course = {
         id:uid(), canvasId: r.canvasCourseId ? Number(r.canvasCourseId) : undefined,
-        name:r.code, code:r.code, instructor:'', credits:3,
+        name:r.courseName || r.code, code:r.code, instructor:'', credits:3,
         colorIndex: state.courses.length % PALETTE.length, meetings:[], categories:[]
       };
       state.courses.push(course); newCourses++;
     }
+
+    /* The list view sorts work into Assignments / Quizzes / Discussions. That is
+       not the syllabus's own weighting, but it is a real grouping — seed the
+       categories from it at weight 0 so the Grades tab has rows to fill in. */
+    let catId = '';
+    if(r.catName){
+      course.categories = course.categories || [];
+      let cat = course.categories.find(k => k.name === r.catName);
+      if(!cat){ cat = {id:uid(), name:r.catName, weight:0}; course.categories.push(cat); }
+      catId = cat.id;
+    }
+
     const existing = state.tasks.find(t =>
       (r.assignmentId && String(t.canvasId) === r.assignmentId) ||
       (t.courseId === course.id && t.title === r.title));
@@ -1646,16 +1816,30 @@ function commitRows(rows){
       existing.title = r.title;
       existing.due = r.due;                        // due dates move; that is the point of re-importing
       if(r.assignmentId) existing.canvasId = Number(r.assignmentId);
+      if(r.outOf != null && existing.outOf == null) existing.outOf = r.outOf;
+      if(!existing.catId && catId) existing.catId = catId;
+      if(r.url && !existing.url) existing.url = r.url;
       updated++;
     } else {
       state.tasks.push({
         id:uid(), canvasId: r.assignmentId ? Number(r.assignmentId) : undefined,
-        courseId:course.id, catId:'', title:r.title, due:r.due,
-        est:2, score:null, outOf:null, status:'todo', notes:''
+        courseId:course.id, catId, title:r.title, due:r.due,
+        est: r.est != null ? r.est : 2,
+        score:null, outOf: r.outOf != null ? r.outOf : null,
+        status:'todo', notes:'', url: r.url || ''
       });
       added++;
     }
   }
+  // Stretch the term to cover what just arrived, so the header and its progress
+  // bar mean something straight after an import.
+  const dues = state.tasks.map(t => t.due).filter(Boolean).sort();
+  if(dues.length){
+    const first = dues[0].slice(0,10), last = dues[dues.length-1].slice(0,10), today = ymd(new Date());
+    if(!state.settings.termStart || state.settings.termStart > first) state.settings.termStart = first < today ? first : today;
+    if(!state.settings.termEnd || state.settings.termEnd < last) state.settings.termEnd = last;
+  }
+
   save(); renderAll();
   return {added, updated, newCourses};
 }
@@ -1691,7 +1875,13 @@ function analyzePaste(text){
       'or paste the text inside it.';
     return;
   }
-  const rows = /BEGIN:VEVENT/i.test(trimmed) ? icsRows(trimmed) : textRows(trimmed);
+  let rows;
+  if(/BEGIN:VEVENT/i.test(trimmed)) rows = icsRows(trimmed);
+  else {
+    // The dashboard list view links every item back to /courses/<id>/…
+    rows = /\/courses\/\d+\/(assignments|quizzes|discussion_topics)\//.test(trimmed) ? listViewRows(trimmed) : [];
+    if(!rows.length) rows = textRows(trimmed);
+  }
   if(!rows.length){
     $('#pasteNote').textContent = 'No dated items found in that. Each line needs a date — "Problem set 6 CHEM 232 Aug 20 11:59pm".';
     return;
@@ -1726,6 +1916,7 @@ function renderPreview(){
         ${state.courses.map(c=>`<option value="${c.id}" ${r.courseId===c.id?'selected':''}>${esc(c.code||c.name)}</option>`).join('')}
       </select>
       <input type="datetime-local" data-p="due" value="${esc(r.due)}" aria-label="Due">
+      <span class="preview-meta mono">${r.outOf!=null?`${r.outOf} pts`:''}${r.est!=null?` · ${r.est}h`:''}</span>
       <button class="btn ghost danger" data-action="preview-skip" aria-label="${r.skip?'Restore':'Drop'} this row">${r.skip?'↩':'✕'}</button>
     </div>`).join('');
 }
@@ -1750,7 +1941,10 @@ $('#pasteConfirm').addEventListener('click', () => {
   alert(`Imported ${res.added} new item${res.added===1?'':'s'}` +
         (res.updated ? `, updated ${res.updated}` : '') +
         (res.newCourses ? `, created ${res.newCourses} course${res.newCourses===1?'':'s'}` : '') +
-        `.\n\nCanvas does not publish class meeting times or grade weights — add those under Courses and the Week and Grades tabs come alive.`);
+        `.\n\nTwo things Canvas never publishes, both under Courses:\n` +
+        `• class meeting times — the Week tab schedules study blocks around them\n` +
+        `• what each category is worth on the syllabus — the Grades tab needs it to project a target\n\n` +
+        `The hour estimates are guesses. Correct any that matter and the plan re-flows.`);
 });
 
 function readCalendarFile(file){

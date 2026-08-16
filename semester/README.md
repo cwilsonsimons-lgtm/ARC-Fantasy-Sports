@@ -28,13 +28,19 @@ shows up everywhere it matters.
 
 ## The planner
 
-`buildPlan()` walks the next 14 days. For each day it subtracts class meetings
+`buildPlan()` walks the next 21 days. For each day it subtracts class meetings
 from the study window to get free gaps, then fills them earliest-first with the
 tasks that are due soonest — never scheduling a task past its own due date, in
 sittings of at most 2.5 hours, with a 15-minute break between them, and never
-more than the daily cap. Anything that cannot fit before its deadline comes back
+more than the daily cap. Each task also gets a start window of
+`max(3, hours/cap + 2)` days before it is due, so a discussion post due in
+December is not dragged into August while a large project still starts early
+enough to finish.
+
+Anything due inside the horizon that cannot fit before its deadline comes back
 as **at risk**, which is the useful part: it says a week ahead that six classes
-do not fit into the days left, while there is still time to do something about it.
+do not fit into the days left, while there is still time to do something about
+it. Work due beyond the horizon is never flagged — it has not had its turn yet.
 
 Keyboard: `1`–`5` switch tabs, `n` adds work.
 
@@ -55,9 +61,16 @@ Grades tabs run on.
 
 - the contents of your Canvas calendar feed (`.ics`) — pasted as text, or the
   file dropped anywhere on the page;
-- a plain list copied off the Canvas dashboard, a course page, or a syllabus:
-  one item per line, each with a date. `Problem set 6 CHEM 232 Aug 20 11:59pm`
-  and `Quiz 4 [MATH 221] due 8/24 at 10:00 AM` both read correctly.
+- **the Canvas dashboard in List View**, selected and copied wholesale — the
+  format where a date heads each section and every item spreads over a title
+  link, a `20 PTS` line and a `DUE: 11:59 PM` line. That one is read with a
+  stateful parser that tracks the current date and course, so it also picks up
+  **points possible** (they land in the score's "out of") and sorts work into
+  Assignments / Quizzes / Discussions categories. Announcements have no due
+  line and are dropped;
+- a plain list copied off a course page or a syllabus: one item per line, each
+  with a date. `Problem set 6 CHEM 232 Aug 20 11:59pm` and
+  `Quiz 4 [MATH 221] due 8/24 at 10:00 AM` both read correctly.
 
 Everything lands in a **preview** first, one row per item, where the title,
 course and due date can each be corrected or the row dropped. Nothing is written
