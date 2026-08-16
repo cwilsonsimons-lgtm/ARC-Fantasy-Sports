@@ -578,6 +578,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
       <p style="margin:0;color:var(--muted);font-size:13px">
         Check the guesses — fix a title, put it under the right course, correct a due date, or drop the row.
       </p>
+      <div id="pasteNote2" style="font-size:13px;color:var(--warn)"></div>
       <div id="pastePreview" class="preview-list"></div>
     </div>
   </div>
@@ -1650,7 +1651,11 @@ function textRows(text){
       .replace(/\s+/g,' ')
       .replace(/^[\s,:–—-]+|[\s,:–—-]+$/g,'')
       .trim();
-    if(!title) continue;
+    // A bare date heading ("Tuesday, August 18") leaves nothing but the weekday
+    // behind. That is a heading, not an assignment.
+    if(!title || title.length < 3) continue;
+    if(DAY_WORDS.test(title) || /^(today|tomorrow|nothing planned)/i.test(title)) continue;
+    if(/^(to|through|[-–—])\b/i.test(title)) continue;                // "August 25 to August 29"
     rows.push({ title, due: found.stamp, code, assignmentId:null, canvasCourseId:null });
   }
   return rows;
@@ -1701,10 +1706,23 @@ function guessEst(title, kind, points){
   return Number(points) >= 100 ? 3 : 1.5;
 }
 
+const KIND_WORDS = /\b(ASSIGNMENT|QUIZ|DISCUSSION|ANNOUNCEMENT|PAGE|EVENT|CALENDAR EVENT)S?\s*$/i;
+const KIND_FROM_WORD = {ASSIGNMENT:'Assignments', QUIZ:'Quizzes', DISCUSSION:'Discussions'};
+const DAY_WORDS = /^(mon|tues|wednes|thurs|fri|satur|sun)day\b/i;
+
 function listViewRows(text){
   const rows = [];
   let curDate = null, curCourse = null, item = null;
-  const flush = () => { if(item && item.due) rows.push(item); item = null; };
+  let expectTitle = null, expectWord = '';                  // set by a "… ASSIGNMENT" line
+  let undated = 0;
+  listViewRows.undated = 0;
+  const flush = () => {
+    if(item){
+      if(item.due) rows.push(item);
+      else if(item.kind) undated++;      // real work with no date — an announcement has no kind
+    }
+    item = null;
+  };
 
   for(const raw of text.split(/\r?\n/)){
     const line = raw.trim();
@@ -1716,20 +1734,22 @@ function listViewRows(text){
       const itemUrl = url.match(/\/courses\/(\d+)\/(assignments|quizzes|discussion_topics)\/(\d+)/);
       if(itemUrl){
         flush();
+        const wasAnnouncement = expectWord === 'ANNOUNCEMENT';
+        expectTitle = null; expectWord = '';                 // the link is the title
         const [, courseId, kindKey, itemId] = itemUrl;
         item = {
           title: label,
-          code: curCourse && String(curCourse.canvasId) === courseId ? curCourse.code : '',
-          courseName: curCourse && String(curCourse.canvasId) === courseId ? curCourse.name : '',
+          code: curCourse && (!curCourse.canvasId || String(curCourse.canvasId) === courseId) ? curCourse.code : '',
+          courseName: curCourse && (!curCourse.canvasId || String(curCourse.canvasId) === courseId) ? curCourse.name : '',
           canvasCourseId: courseId,
           assignmentId: kindKey === 'assignments' ? itemId : null,   // only real assignment ids
-          kind: LIST_KIND[kindKey] || '',
+          kind: wasAnnouncement ? '' : (LIST_KIND[kindKey] || ''),
           due: null, points: null, url
         };
         continue;
       }
       const courseUrl = url.match(/\/courses\/(\d+)\/?$/);
-      if(courseUrl){ flush(); curCourse = courseFromHeading(label, courseUrl[1]); continue; }
+      if(courseUrl){ flush(); expectTitle = null; expectWord = ''; curCourse = courseFromHeading(label, courseUrl[1]); continue; }
       continue;
     }
 
@@ -1749,15 +1769,55 @@ function listViewRows(text){
       continue;
     }
 
+    /* ---- plain-text clipboard ----
+       Copying the page gives text with no links: the row-type line leads and the
+       title is the line after it. These two branches sit below the points and due
+       handling so a "20 PTS" line can never be mistaken for a title. ---- */
+    const kindLine = line.match(KIND_WORDS);
+    // A row-type line is the course heading plus the type, so it must carry a
+    // course code — otherwise "Module 1: Quiz" (a real assignment title) would be
+    // mistaken for one, and the line below it would become the title.
+    const hasCourseCode = /\b[A-Za-z]{2,5}\s?-?\s?\d{3,4}[A-Za-z]?\b/.test(line) || /\bSECTION\b/i.test(line);
+    if(kindLine && hasCourseCode && line.length > 12){
+      flush();
+      const heading = line.replace(/^\d+\.\s*/,'').replace(KIND_WORDS,'').trim();
+      if(heading){
+        const derived = courseFromHeading(heading, null);
+        // The heading link above carries the Canvas id; this line repeats the
+        // same course as plain text, so do not throw that id away.
+        if(curCourse && curCourse.canvasId && normCode(curCourse.code) === normCode(derived.code)){
+          derived.canvasId = curCourse.canvasId;
+        }
+        curCourse = derived;
+      }
+      expectWord = kindLine[1].toUpperCase();
+      expectTitle = KIND_FROM_WORD[expectWord] || '';
+      continue;
+    }
+    if(expectTitle !== null){
+      if(DAY_WORDS.test(line) || /^(today|tomorrow|nothing planned)/i.test(line)){
+        expectTitle = null;                                  // the section ended without an item
+      } else {
+        item = {
+          title: line, code: curCourse ? curCourse.code : '', courseName: curCourse ? curCourse.name : '',
+          canvasCourseId: null, assignmentId: null, kind: expectTitle, due: null, points: null, url: ''
+        };
+        expectTitle = null;
+        continue;
+      }
+    }
+
     // A date heading: no link, short, and nothing to do with an item's fields.
     if(line.length <= 80 && !/^DUE/i.test(line)){
-      if(/^today\b/i.test(line)){ flush(); curDate = ymd(new Date()); continue; }
-      if(/^tomorrow\b/i.test(line) && !findDate(line)){ flush(); curDate = ymd(addDays(new Date(),1)); continue; }
+      if(/^today\b/i.test(line)){ flush(); expectTitle = null; curDate = ymd(new Date()); continue; }
+      if(/^tomorrow\b/i.test(line) && !findDate(line)){ flush(); expectTitle = null; curDate = ymd(addDays(new Date(),1)); continue; }
       const d = findDate(line);
-      if(d && !/\d+\s*(pts?|points?)/i.test(line)){ flush(); curDate = d.stamp.slice(0,10); continue; }
+      if(d && !/\d+\s*(pts?|points?)/i.test(line)){ flush(); expectTitle = null; curDate = d.stamp.slice(0,10); continue; }
     }
+    if(/^nothing planned/i.test(line)){ flush(); expectTitle = null; continue; }
   }
   flush();
+  listViewRows.undated = undated;
 
   const seen = new Set();
   return rows.filter(r => {
@@ -1785,6 +1845,7 @@ function commitRows(rows){
   for(const r of rows){
     if(r.skip) continue;
     let course =
+      (r.courseId && state.courses.find(c => c.id === r.courseId)) ||     // what the preview says
       (r.canvasCourseId && state.courses.find(c => String(c.canvasId) === r.canvasCourseId)) ||
       (r.code && state.courses.find(c => normCode(c.code) === normCode(r.code))) ||
       (r.code && state.courses.find(c => normCode(c.name) === normCode(r.code))) || null;
@@ -1867,7 +1928,10 @@ function openPaste(){
   $('#pasteInput').focus();
 }
 function analyzePaste(text){
+  // Prefer the HTML flavour of the paste when it carried more (links, ids).
+  if(pastedRich && /\/courses\/\d+/.test(pastedRich)) text = pastedRich;
   const trimmed = text.trim();
+  listViewRows.undated = 0;
   if(!trimmed){ $('#pasteNote').textContent = 'Nothing pasted yet.'; return; }
   if(/^(webcal|https?):\/\/\S+$/i.test(trimmed)){
     $('#pasteNote').innerHTML = 'That is the feed <em>link</em>. Canvas will not let a web page read it directly, ' +
@@ -1878,17 +1942,25 @@ function analyzePaste(text){
   let rows;
   if(/BEGIN:VEVENT/i.test(trimmed)) rows = icsRows(trimmed);
   else {
-    // The dashboard list view links every item back to /courses/<id>/…
-    rows = /\/courses\/\d+\/(assignments|quizzes|discussion_topics)\//.test(trimmed) ? listViewRows(trimmed) : [];
+    // The list view is recognisable either by its item links or, when the paste
+    // is plain text, by its DUE / PTS / row-type lines.
+    const looksLikeList =
+      /\/courses\/\d+\/(assignments|quizzes|discussion_topics)\//.test(trimmed) ||
+      (/^\s*DUE:/im.test(trimmed) && /^\s*\d+\s*PTS?\b/im.test(trimmed)) ||
+      /\b(ASSIGNMENT|QUIZ|DISCUSSION|ANNOUNCEMENT)\s*$/im.test(trimmed);
+    rows = looksLikeList ? listViewRows(trimmed) : [];
     if(!rows.length) rows = textRows(trimmed);
   }
   if(!rows.length){
     $('#pasteNote').textContent = 'No dated items found in that. Each line needs a date — "Problem set 6 CHEM 232 Aug 20 11:59pm".';
     return;
   }
-  showPreview(rows);
+  showPreview(rows, listViewRows.undated
+    ? `${listViewRows.undated} item${listViewRows.undated===1?'':'s'} had no date heading above them and were left out — copy from the top of the list to include them.`
+    : '');
 }
-function showPreview(rows){
+function showPreview(rows, note){
+  $('#pasteNote2').textContent = note || '';
   pasteRows = rows.map(r => {
     const guess =
       (r.canvasCourseId && state.courses.find(c => String(c.canvasId) === r.canvasCourseId)) ||
@@ -1927,7 +1999,34 @@ $('#pastePreview').addEventListener('change', e => {
   if(field) r[field] = e.target.value;
   if(field === 'courseId') renderPreview();
 });
-$('#pasteInput').addEventListener('paste', () => setTimeout(() => analyzePaste($('#pasteInput').value), 0));
+/* A copied web page arrives on the clipboard twice: as plain text, and as HTML.
+   The textarea only ever receives the plain text, which throws away the links —
+   and with them each item's Canvas id. Read the HTML flavour when it is there,
+   turn its anchors back into text, and parse that instead. */
+function clipboardHtmlToText(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,style,head').forEach(n => n.remove());
+  doc.querySelectorAll('a[href]').forEach(a => {
+    const label = (a.textContent||'').replace(/\s+/g,' ').trim();
+    if(label) a.replaceWith(doc.createTextNode(`[${label}](${a.getAttribute('href')})`));
+  });
+  doc.querySelectorAll('br').forEach(b => b.replaceWith(doc.createTextNode('\n')));
+  doc.querySelectorAll('li,p,div,tr,section,article,header,h1,h2,h3,h4,h5,h6')
+     .forEach(el => el.appendChild(doc.createTextNode('\n')));
+  return (doc.body ? doc.body.textContent : '')
+    .replace(/ /g,' ').replace(/[ \t]+/g,' ')
+    .replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+let pastedRich = '';                       // HTML-derived text for the current paste
+$('#pasteInput').addEventListener('paste', e => {
+  pastedRich = '';
+  const html = e.clipboardData && e.clipboardData.getData('text/html');
+  if(html){
+    try{ pastedRich = clipboardHtmlToText(html); }catch(err){ pastedRich = ''; }
+  }
+  setTimeout(() => analyzePaste($('#pasteInput').value), 0);
+});
+$('#pasteInput').addEventListener('input', () => { pastedRich = ''; });
 $('#pasteRead').addEventListener('click', () => analyzePaste($('#pasteInput').value));
 $('#pasteBack').addEventListener('click', () => {
   $('#pasteStep1').style.display = ''; $('#pasteStep2').style.display = 'none';
