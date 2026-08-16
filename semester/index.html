@@ -522,6 +522,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
           </label>
         </div>
         <div class="btn-row">
+          <button class="btn" data-action="import-ics">Import Canvas calendar (.ics)</button>
           <button class="btn" data-action="export">Export backup (.json)</button>
           <button class="btn" data-action="import">Import backup</button>
           <button class="btn" data-action="sample">Load example semester</button>
@@ -855,6 +856,7 @@ function taskRow(t){
         ${hoursLeft(t)?`<span class="mono">${hoursLeft(t)}h left</span>`:''}
         ${t.status==='doing'?'<span class="chip state-soon">in progress</span>':''}
         ${score}
+        ${t.url?`<a href="${esc(t.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none">Canvas ↗</a>`:''}
       </div>
     </div>
     <div class="right">
@@ -1319,6 +1321,7 @@ document.addEventListener('click', e => {
 
     case 'export': doExport(); break;
     case 'import': doImport(); break;
+    case 'import-ics': doImportICS(); break;
     case 'sample': loadSample(); break;
     case 'wipe':
       if(confirm('Erase all courses, tasks and settings from this browser?')){
@@ -1418,6 +1421,121 @@ function doImport(){
         save(); renderAll(); setView('today');
       }catch(err){ alert("That file could not be read: "+err.message); }
     };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+
+/* ---------------- Canvas calendar (.ics) import ----------------
+   Canvas hands every student a calendar feed (Calendar → Calendar Feed).
+   The browser cannot fetch it directly — Canvas serves no CORS headers, so the
+   response is refused — but the downloaded .ics file parses perfectly well here.
+   Assignments carry their Canvas assignment id, which is the same key
+   canvas-sync.mjs uses, so the two importers update each other's rows instead
+   of duplicating them.
+------------------------------------------------------------------ */
+function parseICS(text){
+  const unfolded = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').replace(/\n[ \t]/g,'');
+  const events = [];
+  let cur = null;
+  for(const line of unfolded.split('\n')){
+    if(line === 'BEGIN:VEVENT'){ cur = {}; continue; }
+    if(line === 'END:VEVENT'){ if(cur) events.push(cur); cur = null; continue; }
+    if(!cur) continue;
+    const i = line.indexOf(':');
+    if(i < 0) continue;
+    const params = line.slice(0,i), value = line.slice(i+1);
+    const key = params.split(';')[0].toUpperCase();
+    cur[key] = value;
+    cur['params:'+key] = params;
+  }
+  return events;
+}
+function icsUnescape(s){
+  return String(s||'').replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1').trim();
+}
+/** 20260820T235900Z (UTC) · 20260820T235900 (local) · 20260820 (all-day → 23:59). */
+function icsToStamp(value){
+  if(!value) return null;
+  const m = String(value).match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/);
+  if(!m) return null;
+  const [,y,mo,d,h,mi,,z] = m;
+  let dt;
+  if(h == null) dt = new Date(+y, +mo-1, +d, 23, 59);
+  else if(z) dt = new Date(Date.UTC(+y, +mo-1, +d, +h, +mi));
+  else dt = new Date(+y, +mo-1, +d, +h, +mi);
+  if(isNaN(dt)) return null;
+  return `${ymd(dt)}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+const normCode = s => String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+
+function importICS(text){
+  const events = parseICS(text);
+  const rows = [];
+  for(const ev of events){
+    const uidRaw = ev.UID || '';
+    const url = ev.URL || '';
+    const isAssignment = /assignment/i.test(uidRaw) || /\/assignments\/\d+/.test(url);
+    if(!isAssignment) continue;                    // lectures and personal events are not work
+    const due = icsToStamp(ev.DTSTART) || icsToStamp(ev.DTEND);
+    if(!due) continue;
+    const summary = icsUnescape(ev.SUMMARY);
+    const bracket = summary.match(/\s*\[([^\]]+)\]\s*$/);
+    const title = bracket ? summary.slice(0, bracket.index).trim() : summary;
+    const assignmentId =
+      (uidRaw.match(/assignment[-_](\d+)/i) || url.match(/\/assignments\/(\d+)/) || [])[1] || null;
+    const canvasCourseId = (url.match(/\/courses\/(\d+)/) || [])[1] || null;
+    rows.push({ title, due, code: bracket ? bracket[1].trim() : '', assignmentId, canvasCourseId });
+  }
+  if(!rows.length){
+    alert('No assignments found in that file. Use the link from Canvas → Calendar → Calendar Feed (it ends in .ics).');
+    return;
+  }
+
+  let added = 0, updated = 0, newCourses = 0;
+  for(const r of rows){
+    let course =
+      (r.canvasCourseId && state.courses.find(c => String(c.canvasId) === r.canvasCourseId)) ||
+      (r.code && state.courses.find(c => normCode(c.code) === normCode(r.code))) ||
+      (r.code && state.courses.find(c => normCode(c.name) === normCode(r.code))) || null;
+    if(!course){
+      if(!r.code) continue;                        // nothing to file it under
+      course = {
+        id:uid(), canvasId: r.canvasCourseId ? Number(r.canvasCourseId) : undefined,
+        name:r.code, code:r.code, instructor:'', credits:3,
+        colorIndex: state.courses.length % PALETTE.length, meetings:[], categories:[]
+      };
+      state.courses.push(course); newCourses++;
+    }
+    const existing = state.tasks.find(t =>
+      (r.assignmentId && String(t.canvasId) === r.assignmentId) ||
+      (t.courseId === course.id && t.title === r.title));
+    if(existing){
+      existing.title = r.title;
+      existing.due = r.due;                        // due dates move; that is the point of re-importing
+      if(r.assignmentId) existing.canvasId = Number(r.assignmentId);
+      updated++;
+    } else {
+      state.tasks.push({
+        id:uid(), canvasId: r.assignmentId ? Number(r.assignmentId) : undefined,
+        courseId:course.id, catId:'', title:r.title, due:r.due,
+        est:2, score:null, outOf:null, status:'todo', notes:''
+      });
+      added++;
+    }
+  }
+  save(); renderAll(); setView('today');
+  alert(`Canvas import: ${added} new, ${updated} updated` +
+        (newCourses ? `, ${newCourses} course(s) created` : '') +
+        `.\n\nCanvas does not publish class meeting times or grade weights — add those in Courses, and the schedule and Grades tabs come alive.`);
+}
+function doImportICS(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.ics,text/calendar';
+  inp.onchange = () => {
+    const f = inp.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = () => { try{ importICS(String(r.result)); }catch(err){ alert('That calendar file could not be read: '+err.message); } };
     r.readAsText(f);
   };
   inp.click();

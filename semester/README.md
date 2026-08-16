@@ -37,3 +37,49 @@ as **at risk**, which is the useful part: it says a week ahead that six classes
 do not fit into the days left, while there is still time to do something about it.
 
 Keyboard: `1`–`5` switch tabs, `n` adds work.
+
+## Getting work in from Canvas
+
+A web page cannot call the Canvas API directly: Canvas serves no CORS headers,
+so the browser refuses the response no matter what token you hold. Both routes
+below therefore go around that rather than through it. Neither sends your data
+anywhere — the sync script talks only to Canvas and writes a local file.
+
+Canvas never publishes **class meeting times**, and the calendar feed carries no
+**grade weights**. Those two stay manual, and they are what the schedule and
+Grades tabs run on.
+
+### 1. Calendar feed — no token, ~30 seconds
+
+1. Canvas → **Calendar** → **Calendar Feed** (bottom right) → copy the link.
+2. Paste it in a browser tab and save the `.ics` file it downloads.
+3. Ledger → **Courses** → **Import Canvas calendar (.ics)**.
+
+Brings in every assignment with a due date, filed under the course code in the
+event title, creating any course it has not seen. Re-import whenever a professor
+moves a deadline — rows are matched on the Canvas assignment id, so they update
+in place and your hours, notes and status survive. Grades do not come through
+this route.
+
+### 2. API sync — needs an access token, brings grades
+
+```
+node semester/tools/canvas-sync.mjs \
+  --host unt.instructure.com \
+  --token "1234~your-token" \
+  --term Fall \
+  --in  ~/Downloads/semester-ledger-2026-08-16.json \
+  --out ~/Downloads/semester-canvas.json
+```
+
+Token: Canvas → **Account** → **Settings** → **+ New Access Token**. Some schools
+disable student tokens; if the button is not there, use the calendar feed.
+Requires Node 18+ (for `fetch`), no npm install.
+
+This pulls courses, assignment groups **with their syllabus weights**, every
+assignment, and your scores — then writes a backup file you load through
+**Import backup**. Pass your current export as `--in` and the sync keeps
+everything Canvas does not know: meeting times, colours, hour estimates, notes,
+grade targets, and any course or task you added by hand. `--dry-run` prints the
+summary without writing. Courses graded on raw points (all group weights zero)
+get weights derived from points possible.
