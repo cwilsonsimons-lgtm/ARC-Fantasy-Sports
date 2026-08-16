@@ -49,17 +49,28 @@ Canvas never publishes **class meeting times**, and the calendar feed carries no
 **grade weights**. Those two stay manual, and they are what the schedule and
 Grades tabs run on.
 
-### 1. Calendar feed — no token, ~30 seconds
+### 1. Paste or drop — no token, ~30 seconds
 
-1. Canvas → **Calendar** → **Calendar Feed** (bottom right) → copy the link.
-2. Paste it in a browser tab and save the `.ics` file it downloads.
-3. Ledger → **Courses** → **Import Canvas calendar (.ics)**.
+**Courses → Paste from Canvas** takes anything with dates in it:
 
-Brings in every assignment with a due date, filed under the course code in the
-event title, creating any course it has not seen. Re-import whenever a professor
-moves a deadline — rows are matched on the Canvas assignment id, so they update
-in place and your hours, notes and status survive. Grades do not come through
-this route.
+- the contents of your Canvas calendar feed (`.ics`) — pasted as text, or the
+  file dropped anywhere on the page;
+- a plain list copied off the Canvas dashboard, a course page, or a syllabus:
+  one item per line, each with a date. `Problem set 6 CHEM 232 Aug 20 11:59pm`
+  and `Quiz 4 [MATH 221] due 8/24 at 10:00 AM` both read correctly.
+
+Everything lands in a **preview** first, one row per item, where the title,
+course and due date can each be corrected or the row dropped. Nothing is written
+until that is approved — a fuzzy parser you cannot check is worse than typing.
+
+Getting the feed: Canvas → **Calendar** → **Calendar Feed** (bottom right).
+The link itself cannot be fetched by the page (no CORS), so open it in a tab,
+let the browser download the `.ics`, and drop that in.
+
+Course codes are matched to courses you already have; an unrecognised code
+creates a course. Items keep their Canvas assignment id where one is available,
+so re-importing a moved deadline updates the row in place and your hour
+estimates, notes and status survive. Grades do not come through this route.
 
 ### 2. API sync — needs an access token, brings grades
 

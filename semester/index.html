@@ -339,6 +339,21 @@ dialog form{display:contents}
 .dialog-body{padding:16px;display:flex;flex-direction:column;gap:12px}
 .dialog-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
 
+/* ---------- import preview ---------- */
+.preview-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;padding-right:4px}
+.preview-row{display:grid;grid-template-columns:1fr 120px 175px 32px;gap:6px;align-items:center}
+.preview-row.skipped{opacity:.4}
+.preview-row.skipped input,.preview-row.skipped select{text-decoration:line-through}
+.preview-row input,.preview-row select{font-size:13px;padding:5px 7px}
+@media (max-width:640px){
+  .preview-row{grid-template-columns:1fr 32px;grid-template-areas:"title drop" "course course" "due due"}
+  .preview-row > :nth-child(1){grid-area:title}
+  .preview-row > :nth-child(2){grid-area:course}
+  .preview-row > :nth-child(3){grid-area:due}
+  .preview-row > :nth-child(4){grid-area:drop}
+}
+#pasteDialog{width:min(760px,96vw)}
+
 /* ---------- misc ---------- */
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .toolbar select,.toolbar input{width:auto}
@@ -522,7 +537,8 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
           </label>
         </div>
         <div class="btn-row">
-          <button class="btn" data-action="import-ics">Import Canvas calendar (.ics)</button>
+          <button class="btn" data-action="paste-canvas">Paste from Canvas</button>
+          <button class="btn" data-action="import-ics">Import .ics file</button>
           <button class="btn" data-action="export">Export backup (.json)</button>
           <button class="btn" data-action="import">Import backup</button>
           <button class="btn" data-action="sample">Load example semester</button>
@@ -540,6 +556,33 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
 <footer class="appfoot">
   Semester Ledger — one entry per assignment does four jobs: a to-do, a calendar block, a study plan, and a grade.
 </footer>
+
+<!-- ============ PASTE FROM CANVAS ============ -->
+<dialog id="pasteDialog">
+  <div class="card-head"><h2>Bring in work from Canvas</h2><span class="hint" id="pasteCount"></span></div>
+  <div class="dialog-body">
+    <div id="pasteStep1" style="display:flex;flex-direction:column;gap:10px">
+      <p style="margin:0;color:var(--muted);font-size:13.5px">
+        Paste your Canvas calendar feed, or a copied list of assignments — one per line, each with a date.
+        You can also drop the <b>.ics</b> file anywhere on this page. Nothing is saved until you approve the preview.
+      </p>
+      <textarea id="pasteInput" rows="8" placeholder="Problem set 6 [CHEM 232] Aug 20 11:59pm&#10;Midterm 2 MATH 221 8/26 10:00am"></textarea>
+      <div id="pasteNote" style="font-size:13px;color:var(--warn)"></div>
+    </div>
+    <div id="pasteStep2" style="display:none;flex-direction:column;gap:8px">
+      <p style="margin:0;color:var(--muted);font-size:13px">
+        Check the guesses — fix a title, put it under the right course, correct a due date, or drop the row.
+      </p>
+      <div id="pastePreview" class="preview-list"></div>
+    </div>
+  </div>
+  <div class="dialog-foot">
+    <button class="btn ghost" id="pasteBack" type="button" style="display:none">Back</button>
+    <button class="btn" type="button" data-close>Cancel</button>
+    <button class="btn" id="pasteRead" type="button">Read it</button>
+    <button class="btn primary" id="pasteConfirm" type="button" style="display:none">Add</button>
+  </div>
+</dialog>
 
 <!-- ============ TASK DIALOG ============ -->
 <dialog id="taskDialog">
@@ -828,6 +871,7 @@ function renderOnboard(){
       and folded into your running grade.</p>
       <div class="btn-row" style="justify-content:center">
         <button class="btn primary" data-action="go-courses">Add my courses</button>
+        <button class="btn" data-action="paste-canvas">Paste from Canvas</button>
         <button class="btn" data-action="sample">Load an example semester</button>
       </div>
     </div></div>`;
@@ -1322,6 +1366,11 @@ document.addEventListener('click', e => {
     case 'export': doExport(); break;
     case 'import': doImport(); break;
     case 'import-ics': doImportICS(); break;
+    case 'paste-canvas': openPaste(); break;
+    case 'preview-skip': {
+      const i = Number(btn.closest('[data-i]').dataset.i);
+      pasteRows[i].skip = !pasteRows[i].skip; renderPreview(); break;
+    }
     case 'sample': loadSample(); break;
     case 'wipe':
       if(confirm('Erase all courses, tasks and settings from this browser?')){
@@ -1469,7 +1518,7 @@ function icsToStamp(value){
 }
 const normCode = s => String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 
-function importICS(text){
+function icsRows(text){
   const events = parseICS(text);
   const rows = [];
   for(const ev of events){
@@ -1487,13 +1536,96 @@ function importICS(text){
     const canvasCourseId = (url.match(/\/courses\/(\d+)/) || [])[1] || null;
     rows.push({ title, due, code: bracket ? bracket[1].trim() : '', assignmentId, canvasCourseId });
   }
-  if(!rows.length){
-    alert('No assignments found in that file. Use the link from Canvas → Calendar → Calendar Feed (it ends in .ics).');
-    return;
-  }
+  return rows;
+}
 
+/* ---------------- plain-text paste ----------------
+   What comes off the Canvas dashboard or a copied calendar is not a format,
+   it is a jumble: one line per item, a course code somewhere, a date somewhere.
+   Read every line that carries a date and let the student correct the guesses
+   in the preview — hence no clever inference beyond what a person can check.
+--------------------------------------------------- */
+const MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+
+/** Pick the year that puts a month/day near the current term rather than 8 months off. */
+function inferYear(month, day){
+  const now = new Date();
+  let best = null;
+  for(const y of [now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1]){
+    const cand = new Date(y, month, day);
+    const days = (cand - startOfDay(now)) / 86400000;
+    const score = days >= -45 && days <= 320 ? Math.abs(days) : 1000 + Math.abs(days);
+    if(!best || score < best.score) best = {y, score};
+  }
+  return best.y;
+}
+function findDate(line){
+  let m, month, day, year = null, start, end;
+  if((m = line.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:\s*,?\s*(\d{4}))?/i))){
+    month = MONTHS[m[1].toLowerCase()]; day = +m[2]; year = m[3] ? +m[3] : null;
+    start = m.index; end = m.index + m[0].length;
+  } else if((m = line.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))){
+    month = +m[1]-1; day = +m[2];
+    year = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : null;
+    start = m.index; end = m.index + m[0].length;
+  } else return null;
+  if(month == null || month > 11 || day < 1 || day > 31) return null;
+  if(year == null) year = inferYear(month, day);
+
+  // A time, if there is one, follows the date far more often than it precedes it.
+  let hh = 23, mi = 59;
+  const after = line.slice(end);
+  let t = after.match(/\b(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/i) || line.match(/\b(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?/i);
+  if(t){
+    hh = +t[1] % 12; mi = t[2] ? +t[2] : 0;
+    if(t[3].toLowerCase() === 'p') hh += 12;
+    if(after.includes(t[0])) end += after.indexOf(t[0]) + t[0].length;
+  } else if((t = after.match(/\b(\d{1,2}):(\d{2})\b/))){
+    hh = +t[1]; mi = +t[2];
+    end += after.indexOf(t[0]) + t[0].length;
+  }
+  const dt = new Date(year, month, day, hh, mi);
+  if(isNaN(dt)) return null;
+  return { stamp:`${ymd(dt)}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`, start, end };
+}
+function textRows(text){
+  const rows = [];
+  for(const raw of text.split(/[\n\r]+/)){
+    // Canvas's list view prefixes a row-type label, set off by a separator or a
+    // wide gap. Require that separator: "Quiz 4" is a title, "Quiz — 4" is a label.
+    const line = raw.replace(/\t/g,'   ')
+      .replace(/^\s*(assignment|quiz|discussion|event|announcement|to\s?do)\s*(?:[:—–|-]\s*| {2,})/i,'')
+      .replace(/\s+/g,' ').trim();
+    if(!line || line.length > 300) continue;
+    const found = findDate(line);
+    if(!found) continue;
+
+    const bracket = line.match(/\[([^\]]+)\]/);
+    const codeMatch = line.match(/\b([A-Za-z]{2,5})\s?-?\s?(\d{3,4}[A-Za-z]?)\b/);
+    const code = bracket ? bracket[1].trim() : (codeMatch ? `${codeMatch[1].toUpperCase()} ${codeMatch[2]}` : '');
+
+    // Clean only the seam left by lifting the date out — filler words elsewhere
+    // belong to the title ("Read by Friday" keeps its "by").
+    const before = line.slice(0, found.start).replace(/[\s:—–-]*\b(due|due date|closes|opens|at|by|on)\b[\s:,—–-]*$/i,' ');
+    const after = line.slice(found.end).replace(/^[\s:,—–-]*\b(at|by|on|due)\b\s*/i,' ');
+    let title = (before + ' ' + after).replace(/\[[^\]]*\]/g,' ');
+    if(codeMatch && !bracket) title = title.replace(codeMatch[0], ' ');
+    title = title
+      .replace(/[·|•;]+/g,' ')
+      .replace(/\s+/g,' ')
+      .replace(/^[\s,:–—-]+|[\s,:–—-]+$/g,'')
+      .trim();
+    if(!title) continue;
+    rows.push({ title, due: found.stamp, code, assignmentId:null, canvasCourseId:null });
+  }
+  return rows;
+}
+
+/* ---------------- commit ---------------- */
+function commitRows(rows){
   let added = 0, updated = 0, newCourses = 0;
   for(const r of rows){
+    if(r.skip) continue;
     let course =
       (r.canvasCourseId && state.courses.find(c => String(c.canvasId) === r.canvasCourseId)) ||
       (r.code && state.courses.find(c => normCode(c.code) === normCode(r.code))) ||
@@ -1524,22 +1656,124 @@ function importICS(text){
       added++;
     }
   }
-  save(); renderAll(); setView('today');
-  alert(`Canvas import: ${added} new, ${updated} updated` +
-        (newCourses ? `, ${newCourses} course(s) created` : '') +
-        `.\n\nCanvas does not publish class meeting times or grade weights — add those in Courses, and the schedule and Grades tabs come alive.`);
+  save(); renderAll();
+  return {added, updated, newCourses};
+}
+
+/* ---------------- paste / drop flow ----------------
+   One entry point for everything that arrives from Canvas: pasted calendar
+   text, a pasted dashboard list, or a dropped .ics file. Parsed rows always
+   go through the preview — a fuzzy parser you cannot check before it writes
+   is worse than typing the assignments by hand.
+--------------------------------------------------- */
+let pasteRows = [];
+const pasteDlg = $('#pasteDialog');
+pasteDlg.addEventListener('click', e => { if(e.target.matches('[data-close]')) pasteDlg.close(); });
+
+function openPaste(){
+  pasteRows = [];
+  $('#pasteInput').value = '';
+  $('#pasteStep1').style.display = '';
+  $('#pasteStep2').style.display = 'none';
+  $('#pasteConfirm').style.display = 'none';
+  $('#pasteBack').style.display = 'none';
+  $('#pasteRead').style.display = '';
+  $('#pasteNote').textContent = '';
+  pasteDlg.showModal();
+  $('#pasteInput').focus();
+}
+function analyzePaste(text){
+  const trimmed = text.trim();
+  if(!trimmed){ $('#pasteNote').textContent = 'Nothing pasted yet.'; return; }
+  if(/^(webcal|https?):\/\/\S+$/i.test(trimmed)){
+    $('#pasteNote').innerHTML = 'That is the feed <em>link</em>. Canvas will not let a web page read it directly, ' +
+      'so open the link in a new tab first — your browser downloads a <b>.ics</b> file — then drop that file here ' +
+      'or paste the text inside it.';
+    return;
+  }
+  const rows = /BEGIN:VEVENT/i.test(trimmed) ? icsRows(trimmed) : textRows(trimmed);
+  if(!rows.length){
+    $('#pasteNote').textContent = 'No dated items found in that. Each line needs a date — "Problem set 6 CHEM 232 Aug 20 11:59pm".';
+    return;
+  }
+  showPreview(rows);
+}
+function showPreview(rows){
+  pasteRows = rows.map(r => {
+    const guess =
+      (r.canvasCourseId && state.courses.find(c => String(c.canvasId) === r.canvasCourseId)) ||
+      (r.code && state.courses.find(c => normCode(c.code) === normCode(r.code))) ||
+      (r.code && state.courses.find(c => normCode(c.name) === normCode(r.code))) || null;
+    return Object.assign({}, r, { courseId: guess ? guess.id : '', skip:false });
+  });
+  $('#pasteStep1').style.display = 'none';
+  $('#pasteStep2').style.display = '';
+  $('#pasteConfirm').style.display = '';
+  $('#pasteBack').style.display = '';
+  $('#pasteRead').style.display = 'none';
+  renderPreview();
+}
+function renderPreview(){
+  const live = pasteRows.filter(r => !r.skip).length;
+  $('#pasteCount').textContent = `${live} item${live===1?'':'s'} ready`;
+  $('#pasteConfirm').textContent = `Add ${live} item${live===1?'':'s'}`;
+  $('#pasteConfirm').disabled = live === 0;
+  $('#pastePreview').innerHTML = pasteRows.map((r,i) => `
+    <div class="preview-row ${r.skip?'skipped':''}" data-i="${i}">
+      <input type="text" data-p="title" value="${esc(r.title)}" aria-label="Title">
+      <select data-p="courseId" aria-label="Course">
+        <option value="">${r.code ? `+ new: ${esc(r.code)}` : '— pick a course —'}</option>
+        ${state.courses.map(c=>`<option value="${c.id}" ${r.courseId===c.id?'selected':''}>${esc(c.code||c.name)}</option>`).join('')}
+      </select>
+      <input type="datetime-local" data-p="due" value="${esc(r.due)}" aria-label="Due">
+      <button class="btn ghost danger" data-action="preview-skip" aria-label="${r.skip?'Restore':'Drop'} this row">${r.skip?'↩':'✕'}</button>
+    </div>`).join('');
+}
+$('#pastePreview').addEventListener('change', e => {
+  const row = e.target.closest('[data-i]'); if(!row) return;
+  const r = pasteRows[Number(row.dataset.i)];
+  const field = e.target.dataset.p;
+  if(field) r[field] = e.target.value;
+  if(field === 'courseId') renderPreview();
+});
+$('#pasteInput').addEventListener('paste', () => setTimeout(() => analyzePaste($('#pasteInput').value), 0));
+$('#pasteRead').addEventListener('click', () => analyzePaste($('#pasteInput').value));
+$('#pasteBack').addEventListener('click', () => {
+  $('#pasteStep1').style.display = ''; $('#pasteStep2').style.display = 'none';
+  $('#pasteConfirm').style.display = 'none'; $('#pasteBack').style.display = 'none';
+  $('#pasteRead').style.display = ''; $('#pasteNote').textContent = '';
+});
+$('#pasteConfirm').addEventListener('click', () => {
+  const res = commitRows(pasteRows);
+  pasteDlg.close();
+  setView('today');
+  alert(`Imported ${res.added} new item${res.added===1?'':'s'}` +
+        (res.updated ? `, updated ${res.updated}` : '') +
+        (res.newCourses ? `, created ${res.newCourses} course${res.newCourses===1?'':'s'}` : '') +
+        `.\n\nCanvas does not publish class meeting times or grade weights — add those under Courses and the Week and Grades tabs come alive.`);
+});
+
+function readCalendarFile(file){
+  const r = new FileReader();
+  r.onload = () => {
+    if(!pasteDlg.open) openPaste();
+    $('#pasteInput').value = String(r.result).slice(0, 400000);
+    analyzePaste($('#pasteInput').value);
+  };
+  r.readAsText(file);
 }
 function doImportICS(){
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.ics,text/calendar';
-  inp.onchange = () => {
-    const f = inp.files[0]; if(!f) return;
-    const r = new FileReader();
-    r.onload = () => { try{ importICS(String(r.result)); }catch(err){ alert('That calendar file could not be read: '+err.message); } };
-    r.readAsText(f);
-  };
+  inp.type = 'file'; inp.accept = '.ics,text/calendar,text/plain';
+  inp.onchange = () => { if(inp.files[0]) readCalendarFile(inp.files[0]); };
   inp.click();
 }
+/* Dropping the .ics anywhere on the page is the shortest path of all. */
+['dragover','drop'].forEach(type => window.addEventListener(type, e => {
+  if(!e.dataTransfer || !Array.from(e.dataTransfer.types||[]).includes('Files')) return;
+  e.preventDefault();
+  if(type === 'drop' && e.dataTransfer.files[0]) readCalendarFile(e.dataTransfer.files[0]);
+}));
 
 /* --- example data --- */
 function loadSample(){
@@ -1610,7 +1844,7 @@ function loadSample(){
 
 /* --- keyboard --- */
 document.addEventListener('keydown', e => {
-  if(e.target.matches('input,textarea,select') || dlg.open) return;
+  if(e.target.matches('input,textarea,select') || dlg.open || pasteDlg.open) return;
   if(e.key === 'n'){ e.preventDefault(); if(state.courses.length) openTask(null); }
   const map = {'1':'today','2':'week','3':'work','4':'grades','5':'courses'};
   if(map[e.key]) setView(map[e.key]);
