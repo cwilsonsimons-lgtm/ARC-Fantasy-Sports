@@ -23,8 +23,60 @@ shows up everywhere it matters.
 - **Work** — every assignment, filterable by course and status.
 - **Grades** — weighted categories per the syllabus, the running course grade,
   and what average the remaining work needs to hit a target.
+- **Notes** — paste a class transcript, your lecture notes, or a textbook
+  chapter; see below.
 - **Courses** — the setup: meeting times, colours, grade weights, term dates,
-  daily study cap, and the study window (default 08:00–22:00).
+  daily study cap, the study window (default 08:00–22:00), and **other
+  commitments** — a job, practice, games. Commitments are busy time: the planner
+  studies around them exactly as it does around classes.
+
+## Pasting a class schedule
+
+The same **Paste from Canvas** box takes a registrar schedule — day headings,
+a start time, a `RESM 4180 Credit` line, `Room:` and `Status:`. It creates the
+weekly meetings rather than assignments. Registrar schedules rarely print end
+times, so they are guessed from the pattern (Tue/Thu 80 minutes, MWF 50, evening
+blocks 2h50) and every row is editable in the preview. One class listed twice at
+the same hour in two rooms is merged into a single meeting holding both rooms.
+Waitlisted rows come in flagged.
+
+## Notes
+
+**No AI runs here.** A published web page has no model access, so nothing in
+this tab pretends to understand what you pasted. It counts words, ranks the
+sentences carrying the most of the note's own vocabulary, and pattern-matches
+the things that go missing in a wall of transcript. Every panel says where its
+contents came from, and **Copy for an AI summary** puts the note on your
+clipboard with a prompt attached, for when you do want a written summary from a
+model.
+
+What it pulls out:
+
+- **Key points** — extractive: the highest-scoring sentences, in original order.
+  Timestamps and speaker labels are stripped first, and auto-caption runs with no
+  full stops are broken up so one 900-character "sentence" cannot swallow the
+  summary.
+- **Said it would be on the test** — sentences matching "on the exam", "know the
+  difference", "make sure you know" and friends. The highest-value line in any
+  transcript is usually one of these.
+- **Definitions** — "X is defined as…", "X refers to…", and the plainer textbook
+  form "Centralization is the concentration of…".
+- **Sounded like work** — sentences with a doing-verb and a date or a "by
+  Friday". Each one has **+ Add as work**, which opens the task form pre-filled
+  with the sentence, the note's course and the detected date.
+- **Terms that keep coming up**, and for a textbook, **by section** — headings
+  are detected and each section keeps its own key points.
+
+Notes and assignments find each other in both directions: a note lists the
+assignments it looks relevant to, and opening any assignment shows the notes
+worth reading first. Relevance is shared vocabulary — the assignment's title
+words weigh most, a note in the same course counts for more than one from
+another class, and a single shared word is treated as coincidence rather than a
+match. Each suggestion shows the words that caused it.
+
+Everything lives in `localStorage`, so a long textbook paste can fill the
+browser's quota. When that happens the tool says the change was not saved
+instead of losing it quietly.
 
 ## The planner
 

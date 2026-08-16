@@ -297,6 +297,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;
   background:var(--c-soft);border-left:3px solid var(--c);color:var(--c-ink);font-size:11.5px;line-height:1.25;
 }
 .block b{display:block;font-weight:600;font-size:12px}
+.block.commitment{
+  background:repeating-linear-gradient(135deg,var(--surface-2),var(--surface-2) 6px,transparent 6px,transparent 12px);
+  border-left:3px solid var(--line-strong);color:var(--muted);
+}
 .block.study{
   background:transparent;border:1px dashed var(--line-strong);border-left:3px dashed var(--c);
   color:var(--ink-2);
@@ -340,6 +344,40 @@ dialog .card-head{border-bottom:1px solid var(--line)}
 dialog form{display:contents}
 .dialog-body{padding:16px;display:flex;flex-direction:column;gap:12px}
 .dialog-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+
+/* ---------- notes ---------- */
+.notes-layout{display:grid;grid-template-columns:280px 1fr;min-height:420px}
+@media (max-width:820px){.notes-layout{grid-template-columns:1fr}}
+.note-list{border-right:1px solid var(--line);max-height:70vh;overflow-y:auto}
+@media (max-width:820px){.note-list{border-right:none;border-bottom:1px solid var(--line);max-height:230px}}
+.note-item{padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;position:relative}
+.note-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,transparent)}
+.note-item:hover{background:var(--surface-2)}
+.note-item[aria-current="true"]{background:var(--accent-soft)}
+.note-item .t{font-weight:600;font-size:14px;line-height:1.3}
+.note-item .s{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.note-detail{padding:18px;max-height:70vh;overflow-y:auto}
+.note-detail h3{font-size:19px;margin-bottom:4px}
+.note-block{margin-top:20px}
+.note-block > .eyebrow{display:block;margin-bottom:8px}
+.note-points{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:14px}
+.note-points li{line-height:1.45}
+.def{padding:9px 11px;border-left:2px solid var(--accent);background:var(--surface-2);border-radius:0 6px 6px 0;margin-bottom:8px;font-size:13.5px}
+.def b{color:var(--accent-ink)}
+.action-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.action-row:last-child{border-bottom:none}
+.action-row .grow{flex:1}
+.terms{display:flex;flex-wrap:wrap;gap:6px}
+.note-term{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--ink-2)}
+.note-raw{margin-top:20px}
+.note-raw summary{cursor:pointer;color:var(--muted);font-size:12.5px;font-family:'Oswald',sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.note-raw pre{white-space:pre-wrap;font-family:'Barlow',sans-serif;font-size:13.5px;color:var(--ink-2);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:340px;overflow:auto;margin-top:10px}
+.related{display:flex;flex-direction:column;gap:6px}
+.related a,.related div.rel{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink);text-decoration:none;
+  padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2)}
+.rel-why{margin-left:auto;font-size:11px;color:var(--muted)}
+#noteDialog{width:min(720px,96vw)}
 
 /* ---------- import preview ---------- */
 .preview-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;padding-right:4px}
@@ -398,6 +436,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
       <button class="tab" role="tab" data-view="week" aria-selected="false">Week</button>
       <button class="tab" role="tab" data-view="work" aria-selected="false">Work</button>
       <button class="tab" role="tab" data-view="grades" aria-selected="false">Grades</button>
+      <button class="tab" role="tab" data-view="notes" aria-selected="false">Notes</button>
       <button class="tab" role="tab" data-view="courses" aria-selected="false">Courses</button>
     </nav>
   </div>
@@ -517,6 +556,24 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
     </div>
   </section>
 
+  <!-- ============ NOTES ============ -->
+  <section class="view" id="view-notes">
+    <div class="card">
+      <div class="card-head">
+        <h2>Notes</h2>
+        <div class="toolbar">
+          <input type="text" id="noteSearch" placeholder="Search every note" style="width:200px">
+          <select id="noteCourseFilter" aria-label="Filter by course"><option value="">All courses</option></select>
+          <button class="btn primary" data-action="new-note">Paste a note</button>
+        </div>
+      </div>
+      <div class="notes-layout">
+        <div class="note-list" id="noteList"></div>
+        <div class="note-detail" id="noteDetail"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ COURSES ============ -->
   <section class="view" id="view-courses">
     <div class="card">
@@ -528,6 +585,20 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
         </div>
       </div>
       <div id="courseEditors"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Other commitments</h2>
+        <button class="btn" data-action="add-commitment">Add a commitment</button>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+        <p style="margin:0;color:var(--muted);font-size:12.5px">
+          Anything that owns hours without being a class — a job, practice, games, a standing drive home.
+          The planner treats these as busy and studies around them.
+        </p>
+        <div class="meetings" id="commitmentRows"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -590,6 +661,36 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
   </div>
 </dialog>
 
+<!-- ============ NOTE DIALOG ============ -->
+<dialog id="noteDialog">
+  <form method="dialog" id="noteForm">
+    <div class="card-head"><h2 id="noteDialogTitle">Paste a note</h2></div>
+    <div class="dialog-body">
+      <div class="form-grid">
+        <label class="field"><span>Course</span><select id="nCourse"></select></label>
+        <label class="field"><span>Kind</span>
+          <select id="nKind">
+            <option value="transcript">Class transcript</option>
+            <option value="lecture">Lecture notes</option>
+            <option value="textbook">Textbook / reading</option>
+            <option value="other">Something else</option>
+          </select>
+        </label>
+        <label class="field"><span>Date</span><input type="date" id="nDate"></label>
+      </div>
+      <label class="field"><span>Title</span><input type="text" id="nTitle" placeholder="Week 3 — asset management"></label>
+      <label class="field"><span>Paste it here</span>
+        <textarea id="nBody" rows="12" placeholder="Paste the whole transcript, lecture notes or textbook chapter. Nothing is sent anywhere — it stays in this browser."></textarea>
+      </label>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn danger" type="button" id="nDelete">Delete</button>
+      <button class="btn" type="button" data-close>Cancel</button>
+      <button class="btn primary" type="submit">Save note</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- ============ TASK DIALOG ============ -->
 <dialog id="taskDialog">
   <form method="dialog" id="taskForm">
@@ -613,6 +714,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
         </label>
       </div>
       <label class="field"><span>Notes</span><textarea id="tNotes" rows="2" placeholder="Chapters 4–6, submit on Canvas"></textarea></label>
+      <div id="tRelated"></div>
     </div>
     <div class="dialog-foot">
       <button class="btn danger" type="button" id="tDelete">Delete</button>
@@ -653,6 +755,8 @@ function blankState(){
   return {
     courses: [],
     tasks: [],
+    commitments: [],
+    notes: [],
     settings: {
       termStart: `${y}-08-25`, termEnd: `${y}-12-12`,
       dailyCap: 4, dayStart: '08:00', dayEnd: '22:00', target: 90
@@ -664,12 +768,27 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(!raw) return blankState();
     const s = JSON.parse(raw);
-    return Object.assign(blankState(), s, {settings:Object.assign(blankState().settings, s.settings||{})});
+    return Object.assign(blankState(), s, {
+      commitments: s.commitments || [],
+      notes: s.notes || [],
+      settings: Object.assign(blankState().settings, s.settings||{})
+    });
   }catch(e){ return blankState(); }
 }
+let saveWarned = false;
 function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify(state)); }
-  catch(e){ console.warn('Could not save', e); }
+  try{
+    localStorage.setItem(KEY, JSON.stringify(state));
+    saveWarned = false;
+  }catch(e){
+    console.warn('Could not save', e);
+    if(!saveWarned){
+      saveWarned = true;
+      alert('This browser is out of room for the Ledger, so the last change was NOT saved.\n\n' +
+            'Long textbook pastes are usually the cause. Trim or delete a few notes, then export a backup ' +
+            'from Courses to keep what you have.');
+    }
+  }
 }
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -765,6 +884,10 @@ function buildPlan(){
     state.courses.forEach(c => (c.meetings||[]).forEach(m => {
       if(Number(m.day) === dow && m.start && m.end) busy.push([minutes(m.start), minutes(m.end)]);
     }));
+    // Practice, shifts, games: hours that are spoken for even though no one grades them.
+    (state.commitments||[]).forEach(k => {
+      if(Number(k.day) === dow && k.start && k.end) busy.push([minutes(k.start), minutes(k.end)]);
+    });
     // A due date eats the time right before it, so treat submissions as busy too.
     busy.sort((a,b)=>a[0]-b[0]);
     let cursor = i===0 ? Math.max(winStart, Math.ceil(nowMin/15)*15) : winStart;
@@ -868,6 +991,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g, m => (
 
 function renderAll(){
   renderHeader();
+  renderNotes();
   renderToday();
   renderWeek();
   renderWork();
@@ -1062,6 +1186,12 @@ function renderWeek(){
       blocks.push(`<div class="block" style="${courseVarsDarkAware(c)};top:${(s-winStart)*pxPerMin}px;height:${Math.max(20,(e-s)*pxPerMin)}px">
         <b>${esc(c.code||c.name)}</b>${fmtTime(s)}${m.where?' · '+esc(m.where):''}</div>`);
     }));
+    (state.commitments||[]).forEach(k => {
+      if(Number(k.day) !== dow || !k.start || !k.end) return;
+      const s2 = minutes(k.start), e2 = minutes(k.end);
+      blocks.push(`<div class="block commitment" style="top:${(s2-winStart)*pxPerMin}px;height:${Math.max(20,(e2-s2)*pxPerMin)}px">
+        <b>${esc(k.name||'Busy')}</b>${fmtTime(s2)}–${fmtTime(e2)}</div>`);
+    });
     const day = planByDay[key];
     if(day) day.blocks.forEach(b => {
       const c = courseById(b.courseId);
@@ -1201,6 +1331,337 @@ function renderGrades(){
   }).join('');
 }
 
+/* =========================================================================
+   Notes — mechanical extraction, not an AI summary.
+
+   A published web page cannot call a model, so nothing here pretends to
+   understand the text. It counts words, ranks sentences that carry the most of
+   the note's own vocabulary, and pattern-matches the three things a student
+   actually loses in a wall of transcript: what was assigned, what a term means,
+   and what has a date on it. Every panel says where its contents came from.
+   ========================================================================= */
+const STOPWORDS = new Set(('a about above after again against all am an and any are as at be because been before being ' +
+  'below between both but by can cannot could did do does doing down during each few for from further had has have ' +
+  'having he her here hers him his how i if in into is it its itself just like me more most my no nor not of off on ' +
+  'once only or other our out over own same she should so some such than that the their them then there these they ' +
+  'this those through to too under until up very was we were what when where which while who whom why will with you ' +
+  'your yeah okay ok right gonna kind sort really actually basically going get got go know think thing things lot ' +
+  'well say says said see look looking want need make made take let us also one two three first second next last ' +
+  'day week today tomorrow guys everybody everyone class').split(' '));
+
+const CUE = /\b(exam|test|quiz|midterm|final|grade|graded|due|deadline|assignment|homework|project|paper|chapter|read|rubric|important|remember|note that|key|main point|focus on|make sure|required|will be on)\b/i;
+const DO_WORDS = /\b(due|submit|turn in|hand in|upload|post|reply|read|complete|finish|bring|study|review|prepare|sign up|register|watch|email|meet|practice|opens?|closes?|starts?|begins?|available|attempts?|hand back|assigned)\b/i;
+const WHEN_WORDS = /\b(by|before|next class|tonight|tomorrow|this week|next week|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
+
+/** Transcripts arrive full of timestamps and speaker labels; strip the scaffolding. */
+function cleanNoteText(text){
+  return String(text||'')
+    .replace(/\r/g,'')
+    .split('\n')
+    .map(l => l
+      .replace(/^\s*\[?\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\]?\s*(-->\s*\d{1,2}:\d{2}(:\d{2})?(\.\d+)?)?\s*/,'')
+      .replace(/^\s*\d+\s*$/,'')
+      .replace(/^\s*(speaker\s*\d+|professor|instructor|student|teacher|dr\.?\s+\w+|prof\.?\s+\w+)\s*:\s*/i,''))
+    .join('\n');
+}
+function sentencesOf(text){
+  const out = [];
+  for(const chunk of cleanNoteText(text).split(/\n{2,}|\n(?=[A-Z0-9])/)){
+    const flat = chunk.replace(/\s+/g,' ').trim();
+    if(!flat) continue;
+    for(let s of flat.split(/(?<=[.!?])\s+(?=[A-Z0-9"'])/)){
+      s = s.trim();
+      if(!s) continue;
+      // Auto-captions often have no full stops at all. Break the runs up so one
+      // 900-character "sentence" cannot swallow the whole summary.
+      if(s.length > 320){
+        let buf = '';
+        for(const part of s.split(/,\s+|\s+(?:and then|and so|so then|but then|because)\s+/i)){
+          buf = buf ? buf + ', ' + part : part;
+          if(buf.length > 140){ out.push(buf.trim()); buf = ''; }
+        }
+        if(buf.trim()) out.push(buf.trim());
+      } else out.push(s);
+    }
+  }
+  return out.filter(s => s.length >= 15);
+}
+function wordsOf(s){
+  return (String(s).toLowerCase().match(/[a-z][a-z'-]{2,}/g) || []).filter(w => !STOPWORDS.has(w));
+}
+function termCounts(sentences){
+  const f = new Map();
+  sentences.forEach(s => wordsOf(s).forEach(w => f.set(w, (f.get(w)||0) + 1)));
+  return f;
+}
+
+function extractDefinitions(sentences){
+  const defs = [];
+  for(const s of sentences){
+    let m = s.match(/^(.{2,60}?)\s+(?:is|are)\s+(?:defined as|called|known as|referred to as)\s+(.{8,240})/i)
+         || s.match(/^(.{2,60}?)\s+refers? to\s+(.{8,240})/i)
+         // "Centralization is the concentration of…" — a textbook definition in
+         // plain clothes. Kept narrow: a short capitalised subject, then "is the".
+         || s.match(/^([A-Z][A-Za-z-]+(?:\s+[a-z-]+){0,3})\s+(?:is|are)\s+((?:the|a|an)\s+.{12,240})/)
+         || s.match(/^(.{2,50}?)\s*[:—–-]\s+(.{15,240})$/);
+    if(m && !/^(and|but|so|then|now|that|this|there|it)\b/i.test(m[1].trim())){
+      const term = m[1].replace(/^(the|a|an)\s+/i,'').trim();
+      if(term.length >= 3 && term.split(' ').length <= 6) defs.push({ term, text: s });
+    }
+    if(defs.length >= 12) break;
+  }
+  return defs;
+}
+const EXAM_HINT = /\b(on the (exam|test|quiz)|will be tested|exam question|test question|know the difference|make sure you know|you'll need to know|expect(ed)? to know|worth (a lot|points)|study this|comes? up on the)\b/i;
+function extractExamHints(sentences){
+  return sentences.filter(s => EXAM_HINT.test(s)).slice(0,8);
+}
+function extractActions(sentences){
+  const out = [];
+  for(const s of sentences){
+    if(!DO_WORDS.test(s)) continue;
+    const when = findDate(s);
+    if(!when && !WHEN_WORDS.test(s) && !/\bdue\b/i.test(s)) continue;
+    out.push({ text: s, due: when ? when.stamp : null });
+    if(out.length >= 15) break;
+  }
+  return out;
+}
+function keyPoints(sentences, freq, limit){
+  const scored = sentences.map((s, i) => {
+    const ws = wordsOf(s);
+    if(!ws.length) return {i, s, score:0};
+    const uniq = new Set(ws);
+    let score = 0;
+    uniq.forEach(w => { score += freq.get(w) || 0; });
+    score /= Math.sqrt(ws.length) || 1;
+    if(CUE.test(s)) score *= 1.6;
+    if(i < 3) score *= 1.15;                       // openings usually frame the session
+    if(s.length < 45) score *= 0.7;
+    return {i, s, score};
+  });
+  return scored.sort((a,b) => b.score - a.score)
+    .slice(0, limit)
+    .sort((a,b) => a.i - b.i)
+    .map(x => x.s);
+}
+/** Textbooks come in sections; keep that shape rather than flattening a chapter. */
+function splitSections(text){
+  const lines = cleanNoteText(text).split('\n');
+  const sections = [];
+  let cur = { title:'', lines:[] };
+  const isHeading = l => {
+    const t = l.trim();
+    if(!t || t.length > 80) return false;
+    if(/^(chapter|section|part|unit|module|lesson)\s+\d+/i.test(t)) return true;
+    if(/^\d+(\.\d+)*\s+[A-Z]/.test(t)) return true;
+    if(/^[A-Z][A-Za-z0-9 ,'&/-]{3,60}$/.test(t) && !/[.!?]$/.test(t) && t.split(' ').length <= 9) return true;
+    return false;
+  };
+  lines.forEach(l => {
+    if(isHeading(l)){
+      if(cur.lines.length) sections.push(cur);
+      cur = { title: l.trim(), lines: [] };
+    } else cur.lines.push(l);
+  });
+  if(cur.lines.length) sections.push(cur);
+  return sections.filter(s => s.lines.join(' ').trim().length > 120);
+}
+
+function analyseNote(note){
+  const body = note.body || '';
+  const sentences = sentencesOf(body);
+  const freq = termCounts(sentences);
+  const words = sentences.reduce((a,s)=>a+wordsOf(s).length, 0);
+  const limit = Math.max(5, Math.min(14, Math.round(sentences.length / 4)));
+  const terms = [...freq.entries()]
+    .filter(([w,n]) => n >= 2 && w.length > 3)
+    .sort((a,b) => b[1]-a[1]).slice(0,14).map(([w,n]) => ({w, n}));
+
+  const sections = note.kind === 'textbook'
+    ? splitSections(body).slice(0,20).map(sec => {
+        const ss = sentencesOf(sec.lines.join('\n'));
+        return { title: sec.title, points: keyPoints(ss, termCounts(ss), 3) };
+      }).filter(sec => sec.points.length)
+    : [];
+
+  return {
+    sentences: sentences.length, words,
+    points: keyPoints(sentences, freq, limit),
+    examHints: extractExamHints(sentences),
+    definitions: extractDefinitions(sentences),
+    actions: extractActions(sentences),
+    terms, sections
+  };
+}
+
+/* Relevance between a note and a piece of work: shared vocabulary, with the
+   assignment's own title words counting for much more than background chatter. */
+function noteTaskScore(note, task){
+  const course = courseById(task.courseId);
+  const titleWords = new Set(wordsOf(task.title));
+  const catName = taskCategory(task);
+  if(catName) wordsOf(catName.name).forEach(w => titleWords.add(w));
+  if(!titleWords.size) return 0;
+
+  const noteWords = new Map();
+  wordsOf(note.title || '').forEach(w => noteWords.set(w, (noteWords.get(w)||0) + 3));
+  wordsOf(note.body || '').forEach(w => noteWords.set(w, (noteWords.get(w)||0) + 1));
+  if(!noteWords.size) return 0;
+
+  let hits = 0;
+  const shared = [];
+  titleWords.forEach(w => {
+    const n = noteWords.get(w) || 0;
+    if(n){ hits += Math.min(n, 8); shared.push({w, n}); }
+  });
+  const matched = shared.length;
+  if(matched < 2 && titleWords.size > 2) return {score:0, shared:[]};   // one shared word is coincidence
+  if(!matched) return {score:0, shared:[]};
+  let score = (matched / titleWords.size) * Math.log2(1 + hits);
+  if(note.courseId && note.courseId === task.courseId) score *= 2.2;    // same class matters most
+  else score *= 0.6;
+  return { score, shared: shared.sort((a,b)=>b.n-a.n).slice(0,3).map(x=>x.w) };
+}
+function notesForTask(task, min){
+  return (state.notes||[])
+    .map(n => Object.assign({note:n}, noteTaskScore(n, task)))
+    .filter(x => x.score >= (min == null ? 0.9 : min))
+    .sort((a,b) => b.score - a.score)
+    .slice(0,4);
+}
+function tasksForNote(note){
+  return state.tasks
+    .map(t => Object.assign({task:t}, noteTaskScore(note, t)))
+    .filter(x => x.score >= 0.9)
+    .sort((a,b) => b.score - a.score)
+    .slice(0,5);
+}
+
+/** Name an untitled note from its own opening line, cut on a word. */
+function autoTitle(body){
+  const first = (cleanNoteText(body).split('\n').find(l => l.trim().length > 3) || 'Untitled note').trim();
+  if(first.length <= 64) return first;
+  return first.slice(0, 64).replace(/\s+\S*$/, '') + '…';
+}
+
+/* ---- NOTES view ---- */
+let selectedNote = null;
+function renderNotes(){
+  const sel = $('#noteCourseFilter'), keep = sel.value;
+  sel.innerHTML = `<option value="">All courses</option>` +
+    state.courses.map(c=>`<option value="${c.id}">${esc(c.code||c.name)}</option>`).join('');
+  sel.value = keep;
+
+  const q = ($('#noteSearch').value || '').toLowerCase().trim();
+  const courseFilter = sel.value;
+  let list = (state.notes||[]).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  if(courseFilter) list = list.filter(n => n.courseId === courseFilter);
+  if(q) list = list.filter(n => (n.title||'').toLowerCase().includes(q) || (n.body||'').toLowerCase().includes(q));
+
+  if(selectedNote && !list.some(n => n.id === selectedNote)) selectedNote = null;
+  if(!selectedNote && list.length) selectedNote = list[0].id;
+
+  $('#noteList').innerHTML = list.length ? list.map(n => {
+    const c = courseById(n.courseId);
+    return `<div class="note-item" data-note="${n.id}" aria-current="${n.id===selectedNote}" style="${courseVarsDarkAware(c)}">
+      <div class="t">${esc(n.title || 'Untitled note')}</div>
+      <div class="s">
+        ${c?`<span class="chip course"><span class="dot"></span>${esc(c.code||c.name)}</span>`:''}
+        <span>${esc(NOTE_KINDS[n.kind] || 'Note')}</span>
+        ${n.date?`<span class="mono">${esc(n.date)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">${q||courseFilter?'Nothing matches.':'No notes yet.'}</div>`;
+
+  renderNoteDetail();
+}
+const NOTE_KINDS = {transcript:'Class transcript', lecture:'Lecture notes', textbook:'Textbook', other:'Note'};
+
+function renderNoteDetail(){
+  const el = $('#noteDetail');
+  const note = (state.notes||[]).find(n => n.id === selectedNote);
+  if(!note){
+    el.innerHTML = `<div class="empty" style="padding:40px 16px">
+      Paste a class transcript, your lecture notes, or a textbook chapter.<br>
+      This page pulls out the key points, the definitions, and anything that sounded like an assignment.</div>`;
+    return;
+  }
+  const a = analyseNote(note);
+  const c = courseById(note.courseId);
+  const related = tasksForNote(note);
+
+  el.innerHTML = `
+    <div style="${courseVarsDarkAware(c)}">
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <h3>${esc(note.title || 'Untitled note')}</h3>
+          <div class="s" style="font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            ${c?`<span class="chip course"><span class="dot"></span>${esc(c.code||c.name)}</span>`:''}
+            <span>${esc(NOTE_KINDS[note.kind]||'Note')}</span>
+            ${note.date?`<span class="mono">${esc(note.date)}</span>`:''}
+            <span class="mono">${a.words} words</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" data-action="copy-note">Copy for an AI summary</button>
+          <button class="btn" data-action="edit-note">Edit</button>
+        </div>
+      </div>
+
+      ${a.points.length ? `<div class="note-block">
+        <span class="eyebrow">Key points · the sentences carrying the most of this note's own vocabulary</span>
+        <ul class="note-points">${a.points.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>
+      </div>` : ''}
+
+      ${a.sections.length ? `<div class="note-block">
+        <span class="eyebrow">By section</span>
+        ${a.sections.map(sec=>`<div style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:14px">${esc(sec.title||'Section')}</div>
+          <ul class="note-points" style="margin-top:5px">${sec.points.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>
+        </div>`).join('')}
+      </div>` : ''}
+
+      ${a.examHints.length ? `<div class="note-block">
+        <span class="eyebrow">Said it would be on the test</span>
+        <ul class="note-points">${a.examHints.map(h=>`<li>${esc(h)}</li>`).join('')}</ul>
+      </div>` : ''}
+
+      ${a.definitions.length ? `<div class="note-block">
+        <span class="eyebrow">Definitions found</span>
+        ${a.definitions.map(d=>`<div class="def"><b>${esc(d.term)}</b> — ${esc(d.text)}</div>`).join('')}
+      </div>` : ''}
+
+      ${a.actions.length ? `<div class="note-block">
+        <span class="eyebrow">Sounded like work · check each one before adding it</span>
+        ${a.actions.map((x,i)=>`<div class="action-row">
+          <div class="grow">${esc(x.text)}${x.due?` <span class="chip state-soon mono">${esc(x.due.slice(0,10))}</span>`:''}</div>
+          <button class="btn ghost" data-action="action-to-task" data-i="${i}">+ Add as work</button>
+        </div>`).join('')}
+      </div>` : ''}
+
+      ${a.terms.length ? `<div class="note-block">
+        <span class="eyebrow">Terms that keep coming up</span>
+        <div class="terms">${a.terms.map(t=>`<span class="note-term">${esc(t.w)} <span class="mono" style="color:var(--muted)">${t.n}</span></span>`).join('')}</div>
+      </div>` : ''}
+
+      ${related.length ? `<div class="note-block">
+        <span class="eyebrow">Assignments this note looks relevant to</span>
+        <div class="related">${related.map(r=>`<div class="rel" data-task="${r.task.id}" data-action="edit">
+          <span class="chip course"><span class="dot"></span>${esc((courseById(r.task.courseId)||{}).code||'')}</span>
+          <span>${esc(r.task.title)}</span>
+          <span class="rel-why">${esc(r.shared.join(' · '))}</span>
+        </div>`).join('')}</div>
+      </div>` : ''}
+
+      <details class="note-raw">
+        <summary>Full text</summary>
+        <pre>${esc(note.body || '')}</pre>
+      </details>
+    </div>`;
+  el.dataset.actions = JSON.stringify(a.actions);
+}
+
 /* ---- COURSES ---- */
 function renderCourses(){
   const s = state.settings;
@@ -1209,6 +1670,17 @@ function renderCourses(){
   $('#dailyCap').value = s.dailyCap;
   $('#dayStart').value = s.dayStart;
   $('#dayEnd').value = s.dayEnd;
+
+  $('#commitmentRows').innerHTML = (state.commitments||[]).length
+    ? state.commitments.map((k,i)=>`
+      <div class="meeting" data-commitment="${i}" style="grid-template-columns:1fr 110px 110px 110px 32px">
+        <input type="text" data-f="name" value="${esc(k.name||'')}" placeholder="Softball games">
+        <select data-f="day">${DAYS.map((d,di)=>`<option value="${di}" ${Number(k.day)===di?'selected':''}>${d}</option>`).join('')}</select>
+        <input type="time" data-f="start" value="${esc(k.start||'')}">
+        <input type="time" data-f="end" value="${esc(k.end||'')}">
+        <button class="btn ghost danger" data-action="del-commitment" aria-label="Remove commitment">✕</button>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px">Nothing yet.</div>';
 
   $('#courseEditors').innerHTML = state.courses.length ? state.courses.map((c,idx)=>`
     <div class="course-edit" data-course="${c.id}" style="${courseVarsDarkAware(c)}">
@@ -1300,8 +1772,22 @@ function openTask(task){
   $('#tOut').value = t.outOf != null ? t.outOf : '';
   $('#tStatus').value = t.status || 'todo';
   $('#tNotes').value = t.notes || '';
+  renderTaskRelatedNotes(task);
   dlg.showModal();
   $('#tTitle').focus();
+}
+/** Which of your notes look useful for this assignment. */
+function renderTaskRelatedNotes(task){
+  const box = $('#tRelated');
+  if(!task || !(state.notes||[]).length){ box.innerHTML = ''; return; }
+  const hits = notesForTask(task);
+  box.innerHTML = hits.length ? `
+    <span class="eyebrow" style="display:block;margin-bottom:6px">Your notes that look relevant</span>
+    <div class="related">${hits.map(h=>`
+      <div class="rel" data-action="open-note" data-note="${h.note.id}">
+        <span>${esc(h.note.title||'Untitled note')}</span>
+        <span class="rel-why">${esc(h.shared.join(' · '))}</span>
+      </div>`).join('')}</div>` : '';
 }
 $('#tCourse').addEventListener('change', e => fillCategorySelect(e.target.value, ''));
 $('#taskForm').addEventListener('submit', e => {
@@ -1332,6 +1818,63 @@ $('#tDelete').addEventListener('click', () => {
 });
 dlg.addEventListener('click', e => { if(e.target.matches('[data-close]')) dlg.close(); });
 
+/* --- notes: dialog, selection, extraction actions --- */
+const noteDlg = $('#noteDialog');
+noteDlg.addEventListener('click', e => { if(e.target.matches('[data-close]')) noteDlg.close(); });
+let editingNote = null;
+
+function openNote(note){
+  editingNote = note ? note.id : null;
+  $('#noteDialogTitle').textContent = note ? 'Edit note' : 'Paste a note';
+  $('#nDelete').style.display = note ? '' : 'none';
+  $('#nCourse').innerHTML = `<option value="">No course</option>` +
+    state.courses.map(c=>`<option value="${c.id}">${esc(c.code||c.name)}</option>`).join('');
+  const n = note || {};
+  $('#nCourse').value = n.courseId || '';
+  $('#nKind').value = n.kind || 'transcript';
+  $('#nDate').value = n.date || ymd(new Date());
+  $('#nTitle').value = n.title || '';
+  $('#nBody').value = n.body || '';
+  noteDlg.showModal();
+  (note ? $('#nTitle') : $('#nBody')).focus();
+}
+$('#noteForm').addEventListener('submit', () => {
+  const body = $('#nBody').value;
+  const data = {
+    courseId: $('#nCourse').value,
+    kind: $('#nKind').value,
+    date: $('#nDate').value,
+    // An untitled note is the norm when you paste and run; name it from its own
+    // first line so the list stays readable.
+    title: $('#nTitle').value.trim() || autoTitle(body),
+    body
+  };
+  if(editingNote) Object.assign((state.notes||[]).find(n=>n.id===editingNote), data);
+  else {
+    const n = Object.assign({id:uid()}, data);
+    (state.notes = state.notes||[]).push(n);
+    selectedNote = n.id;
+  }
+  save(); renderNotes();
+});
+$('#nDelete').addEventListener('click', () => {
+  if(editingNote && confirm('Delete this note?')){
+    state.notes = state.notes.filter(n => n.id !== editingNote);
+    selectedNote = null;
+    save(); renderNotes();
+  }
+  noteDlg.close();
+});
+$('#noteList').addEventListener('click', e => {
+  const item = e.target.closest('[data-note]');
+  if(!item) return;
+  selectedNote = item.dataset.note;
+  renderNotes();
+  $('#noteDetail').scrollTop = 0;
+});
+$('#noteSearch').addEventListener('input', renderNotes);
+$('#noteCourseFilter').addEventListener('change', renderNotes);
+
 /* --- global click handling --- */
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
@@ -1343,6 +1886,38 @@ document.addEventListener('click', e => {
   const course = courseEl ? courseById(courseEl.dataset.course) : null;
 
   switch(action){
+    case 'new-note': openNote(null); break;
+    case 'open-note':
+      dlg.close();
+      selectedNote = btn.dataset.note;
+      setView('notes'); renderNotes();
+      break;
+    case 'edit-note': openNote((state.notes||[]).find(n=>n.id===selectedNote)); break;
+    case 'copy-note': {
+      const note = (state.notes||[]).find(n=>n.id===selectedNote);
+      if(!note) break;
+      const c = courseById(note.courseId);
+      const text = `Summarise these ${NOTE_KINDS[note.kind]||'notes'} for ${c?c.code+' — '+c.name:'my class'}` +
+        `${note.date?' ('+note.date+')':''}. Give me the main ideas, anything that sounded like an assignment ` +
+        `or exam hint, and the terms worth knowing.\n\n---\n${note.body}`;
+      navigator.clipboard.writeText(text)
+        .then(()=>flash(btn,'Copied'))
+        .catch(()=>alert('Could not reach the clipboard. Open Full text below and copy it by hand.'));
+      break;
+    }
+    case 'action-to-task': {
+      const note = (state.notes||[]).find(n=>n.id===selectedNote);
+      const actions = JSON.parse($('#noteDetail').dataset.actions || '[]');
+      const a = actions[Number(btn.dataset.i)];
+      if(!a || !note) break;
+      if(!state.courses.length){ alert('Add a course first.'); break; }
+      openTask(null);
+      $('#tTitle').value = a.text.length > 90 ? a.text.slice(0,87) + '…' : a.text;
+      if(note.courseId){ $('#tCourse').value = note.courseId; fillCategorySelect(note.courseId, ''); }
+      if(a.due) $('#tDue').value = a.due;
+      $('#tNotes').value = `From your note: ${note.title||''}`;
+      break;
+    }
     case 'new-task':
       if(!state.courses.length){ alert('Add a course first — Courses tab.'); setView('courses'); return; }
       openTask(null); break;
@@ -1397,6 +1972,15 @@ document.addEventListener('click', e => {
       const ki = Number(btn.closest('[data-k]').dataset.k);
       course.categories.splice(ki,1); save(); renderAll(); break;
     }
+    case 'add-commitment':
+      readCommitments();
+      (state.commitments = state.commitments||[]).push({name:'', day:4, start:'18:30', end:'22:00'});
+      save(); renderCourses(); break;
+    case 'del-commitment': {
+      readCommitments();
+      state.commitments.splice(Number(btn.closest('[data-commitment]').dataset.commitment),1);
+      save(); renderAll(); break;
+    }
     case 'save-courses': readCourseEditors(); save(); renderAll(); flash(btn,'Saved'); break;
 
     case 'export': doExport(); break;
@@ -1419,6 +2003,20 @@ function flash(btn, msg){
   const old = btn.textContent; btn.textContent = msg;
   setTimeout(()=>{ btn.textContent = old; }, 1200);
 }
+
+function readCommitments(){
+  $$('#commitmentRows [data-commitment]').forEach(el => {
+    const k = state.commitments[Number(el.dataset.commitment)];
+    if(!k) return;
+    el.querySelectorAll('[data-f]').forEach(inp => {
+      k[inp.dataset.f] = inp.dataset.f === 'day' ? Number(inp.value) : inp.value;
+    });
+  });
+}
+$('#commitmentRows').addEventListener('change', () => {
+  readCommitments(); save();
+  renderToday(); renderWeek();
+});
 
 /* Read every course editor field back into state (called before any mutation
    so in-progress typing is never thrown away by a re-render). */
@@ -1839,6 +2437,90 @@ function listViewRows(text){
   }));
 }
 
+/* ---------------- class schedule paste ----------------
+   A registrar schedule reads: a day heading, then per class a start time, a
+   "RESM 4180 Credit" line, a room and a status. End times are rarely printed,
+   so they are guessed from the meeting pattern and stay editable in the preview.
+------------------------------------------------------- */
+function defaultClassEnd(startMin, dow){
+  if(startMin >= 17*60) return startMin + 170;              // evening block
+  return startMin + (dow === 2 || dow === 4 ? 80 : 50);     // Tue/Thu long, MWF short
+}
+function scheduleRows(text){
+  const rows = [];
+  let dow = null, pending = null;
+  const flush = () => {
+    if(pending && pending.code && pending.start != null && pending.day != null) rows.push(pending);
+    pending = null;
+  };
+  for(const raw of text.split(/\r?\n/)){
+    const line = raw.replace(/\s+/g,' ').trim();
+    if(!line) continue;
+
+    const dayHead = line.match(/^(mon|tues|wednes|thurs|fri|satur|sun)day\b/i);
+    if(dayHead && line.length <= 40){
+      flush();
+      dow = ['sun','mon','tues','wednes','thurs','fri','satur'].indexOf(dayHead[1].toLowerCase());
+      continue;
+    }
+    const time = line.match(/^(\d{1,2}):(\d{2})\s*([ap])\.?m\.?$/i);
+    if(time){
+      flush();
+      let hh = +time[1] % 12; if(time[3].toLowerCase() === 'p') hh += 12;
+      pending = { day: dow, start: hh*60 + +time[2], code:'', where:'', status:'' };
+      continue;
+    }
+    if(!pending) continue;
+
+    const room = line.match(/^room:?\s*(.+)$/i);
+    if(room){ pending.where = room[1].replace(/\s{2,}/g,' ').trim(); continue; }
+    const status = line.match(/^status:?\s*(.+)$/i);
+    if(status){ pending.status = status[1].trim(); continue; }
+
+    const code = line.match(/\b([A-Za-z]{2,5})\s?-?\s?(\d{3,4}[A-Za-z]?)\b/);
+    if(code && !pending.code) pending.code = `${code[1].toUpperCase()} ${code[2]}`;
+  }
+  flush();
+
+  // One class listed twice at the same hour is one class in two rooms, not two.
+  const merged = [];
+  for(const r of rows){
+    const twin = merged.find(m => m.code === r.code && m.day === r.day && m.start === r.start);
+    if(twin){
+      if(r.where && !twin.where.includes(r.where)) twin.where += ` / ${r.where}`;
+      continue;
+    }
+    merged.push(Object.assign({}, r, {
+      end: defaultClassEnd(r.start, r.day),
+      waitlisted: /wait/i.test(r.status)
+    }));
+  }
+  return merged.map(r => ({
+    kind:'meeting', code:r.code, day:r.day,
+    start: hhmm(r.start), end: hhmm(r.end), where:r.where, status:r.status, waitlisted:r.waitlisted
+  }));
+}
+
+function commitMeetings(rows){
+  let added = 0, newCourses = 0;
+  for(const r of rows){
+    if(r.skip) continue;
+    let course = (r.courseId && state.courses.find(c => c.id === r.courseId)) ||
+                 state.courses.find(c => normCode(c.code) === normCode(r.code));
+    if(!course){
+      course = { id:uid(), name:r.code, code:r.code, instructor:'', credits:3,
+                 colorIndex: state.courses.length % PALETTE.length, meetings:[], categories:[] };
+      state.courses.push(course); newCourses++;
+    }
+    course.meetings = course.meetings || [];
+    const dup = course.meetings.find(m => Number(m.day) === Number(r.day) && m.start === r.start);
+    if(dup){ dup.end = r.end; dup.where = r.where; }
+    else { course.meetings.push({day:Number(r.day), start:r.start, end:r.end, where:r.where}); added++; }
+  }
+  save(); renderAll();
+  return {added, newCourses};
+}
+
 /* ---------------- commit ---------------- */
 function commitRows(rows){
   let added = 0, updated = 0, newCourses = 0;
@@ -1912,6 +2594,7 @@ function commitRows(rows){
    is worse than typing the assignments by hand.
 --------------------------------------------------- */
 let pasteRows = [];
+let previewKind = 'work';
 const pasteDlg = $('#pasteDialog');
 pasteDlg.addEventListener('click', e => { if(e.target.matches('[data-close]')) pasteDlg.close(); });
 
@@ -1939,6 +2622,15 @@ function analyzePaste(text){
       'or paste the text inside it.';
     return;
   }
+  // A class schedule (times + Room: + Status:) is a different animal from work.
+  if(/^\s*room:/im.test(trimmed) && /^\s*\d{1,2}:\d{2}\s*[ap]\.?m/im.test(trimmed)){
+    const meetings = scheduleRows(trimmed);
+    if(meetings.length){
+      showPreview(meetings, `${meetings.length} class meeting${meetings.length===1?'':'s'} — end times are guessed from the pattern, so check them.`);
+      return;
+    }
+  }
+
   let rows;
   if(/BEGIN:VEVENT/i.test(trimmed)) rows = icsRows(trimmed);
   else {
@@ -1961,6 +2653,7 @@ function analyzePaste(text){
 }
 function showPreview(rows, note){
   $('#pasteNote2').textContent = note || '';
+  previewKind = rows.length && rows[0].kind === 'meeting' ? 'meeting' : 'work';
   pasteRows = rows.map(r => {
     const guess =
       (r.canvasCourseId && state.courses.find(c => String(c.canvasId) === r.canvasCourseId)) ||
@@ -1977,9 +2670,28 @@ function showPreview(rows, note){
 }
 function renderPreview(){
   const live = pasteRows.filter(r => !r.skip).length;
-  $('#pasteCount').textContent = `${live} item${live===1?'':'s'} ready`;
-  $('#pasteConfirm').textContent = `Add ${live} item${live===1?'':'s'}`;
+  const noun = previewKind === 'meeting' ? 'class meeting' : 'item';
+  $('#pasteCount').textContent = `${live} ${noun}${live===1?'':'s'} ready`;
+  $('#pasteConfirm').textContent = `Add ${live} ${noun}${live===1?'':'s'}`;
   $('#pasteConfirm').disabled = live === 0;
+  if(previewKind === 'meeting'){
+    $('#pastePreview').innerHTML = pasteRows.map((r,i) => `
+      <div class="preview-row meeting ${r.skip?'skipped':''}" data-i="${i}">
+        <select data-p="courseId" aria-label="Course">
+          <option value="">${r.code ? `+ new: ${esc(r.code)}` : '— pick a course —'}</option>
+          ${state.courses.map(c=>`<option value="${c.id}" ${r.courseId===c.id?'selected':''}>${esc(c.code||c.name)}</option>`).join('')}
+        </select>
+        <select data-p="day" aria-label="Day">
+          ${DAYS.map((d,di)=>`<option value="${di}" ${Number(r.day)===di?'selected':''}>${d}</option>`).join('')}
+        </select>
+        <input type="time" data-p="start" value="${esc(r.start)}" aria-label="Starts">
+        <input type="time" data-p="end" value="${esc(r.end)}" aria-label="Ends">
+        <input type="text" data-p="where" value="${esc(r.where||'')}" placeholder="Room" aria-label="Room">
+        <span class="preview-meta">${r.waitlisted?'waitlisted':''}</span>
+        <button class="btn ghost danger" data-action="preview-skip" aria-label="${r.skip?'Restore':'Drop'} this row">${r.skip?'↩':'✕'}</button>
+      </div>`).join('');
+    return;
+  }
   $('#pastePreview').innerHTML = pasteRows.map((r,i) => `
     <div class="preview-row ${r.skip?'skipped':''}" data-i="${i}">
       <input type="text" data-p="title" value="${esc(r.title)}" aria-label="Title">
@@ -2034,6 +2746,16 @@ $('#pasteBack').addEventListener('click', () => {
   $('#pasteRead').style.display = ''; $('#pasteNote').textContent = '';
 });
 $('#pasteConfirm').addEventListener('click', () => {
+  if(previewKind === 'meeting'){
+    const r = commitMeetings(pasteRows);
+    pasteDlg.close();
+    setView('week');
+    alert(`Added ${r.added} class meeting${r.added===1?'':'s'}` +
+          (r.newCourses ? `, created ${r.newCourses} course${r.newCourses===1?'':'s'}` : '') +
+          `.\n\nStudy blocks now fit around your classes. Anything else that owns your week — a job, ` +
+          `practice, games — goes under Courses → Other commitments.`);
+    return;
+  }
   const res = commitRows(pasteRows);
   pasteDlg.close();
   setView('today');
@@ -2139,7 +2861,7 @@ function loadSample(){
 document.addEventListener('keydown', e => {
   if(e.target.matches('input,textarea,select') || dlg.open || pasteDlg.open) return;
   if(e.key === 'n'){ e.preventDefault(); if(state.courses.length) openTask(null); }
-  const map = {'1':'today','2':'week','3':'work','4':'grades','5':'courses'};
+  const map = {'1':'today','2':'week','3':'work','4':'grades','5':'notes','6':'courses'};
   if(map[e.key]) setView(map[e.key]);
 });
 
