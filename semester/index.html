@@ -162,6 +162,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .wordmark h1{font-size:22px;letter-spacing:.02em;text-transform:uppercase}
 .wordmark .term{font-size:12px;color:var(--muted)}
 .tabs{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+#pasteTop{white-space:nowrap}
+@media (max-width:520px){#pasteTop{width:100%;justify-content:center}}
 .tab{
   background:none;border:1px solid transparent;border-radius:999px;
   padding:6px 14px;cursor:pointer;color:var(--muted);
@@ -439,6 +441,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
       <button class="tab" role="tab" data-view="notes" aria-selected="false">Notes</button>
       <button class="tab" role="tab" data-view="courses" aria-selected="false">Courses</button>
     </nav>
+    <button class="btn primary" data-action="paste-canvas" id="pasteTop">Paste from Canvas</button>
   </div>
   <div class="progressbar" title="Term progress"><span id="termProgress" style="width:0"></span></div>
 </header>
@@ -463,7 +466,10 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
         <div class="card">
           <div class="card-head">
             <h2>Due in the next 10 days</h2>
-            <button class="btn primary" data-action="new-task">Add work</button>
+            <div class="btn-row">
+              <button class="btn" data-action="paste-canvas">Paste from Canvas</button>
+              <button class="btn primary" data-action="new-task">Add work</button>
+            </div>
           </div>
           <div class="rows" id="dueSoon"></div>
         </div>
@@ -495,6 +501,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
       <div class="card-head">
         <h2>Week of <span id="weekLabel" class="mono"></span></h2>
         <div class="btn-row">
+          <button class="btn" data-action="paste-canvas">Paste class schedule</button>
           <button class="btn ghost" data-action="week-prev">&larr; Prev</button>
           <button class="btn ghost" data-action="week-today">This week</button>
           <button class="btn ghost" data-action="week-next">Next &rarr;</button>
@@ -536,6 +543,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
             <option value="course">By course</option>
             <option value="weight">By weight</option>
           </select>
+          <button class="btn" data-action="paste-canvas">Paste from Canvas</button>
           <button class="btn primary" data-action="new-task">Add work</button>
         </div>
       </div>
@@ -580,6 +588,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
       <div class="card-head">
         <h2>Courses</h2>
         <div class="btn-row">
+          <button class="btn" data-action="paste-canvas">Paste from Canvas</button>
           <button class="btn" data-action="add-course">Add course</button>
           <button class="btn primary" data-action="save-courses">Save changes</button>
         </div>
@@ -639,8 +648,10 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
   <div class="dialog-body">
     <div id="pasteStep1" style="display:flex;flex-direction:column;gap:10px">
       <p style="margin:0;color:var(--muted);font-size:13.5px">
-        Paste your Canvas calendar feed, or a copied list of assignments — one per line, each with a date.
-        You can also drop the <b>.ics</b> file anywhere on this page. Nothing is saved until you approve the preview.
+        Three things go in here, and it works out which is which:
+        your <b>Canvas dashboard list view</b> (select the page and copy), your <b>calendar feed</b>
+        (paste the .ics text, or drop the file anywhere on this page), or your <b>class schedule</b>
+        from the registrar. Nothing is saved until you approve the preview.
       </p>
       <textarea id="pasteInput" rows="8" placeholder="Problem set 6 [CHEM 232] Aug 20 11:59pm&#10;Midterm 2 MATH 221 8/26 10:00am"></textarea>
       <div id="pasteNote" style="font-size:13px;color:var(--warn)"></div>
