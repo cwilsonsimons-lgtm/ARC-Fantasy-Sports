@@ -380,6 +380,9 @@ dialog form{display:contents}
   padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2)}
 .rel-why{margin-left:auto;font-size:11px;color:var(--muted)}
 #noteDialog{width:min(720px,96vw)}
+#promptDialog{width:min(760px,96vw)}
+#promptDialog .dialog-body{max-height:74vh;overflow-y:auto}
+#pOut{background:var(--surface-2);line-height:1.5}
 
 /* ---------- import preview ---------- */
 .preview-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;padding-right:4px}
@@ -672,6 +675,78 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
   </div>
 </dialog>
 
+<!-- ============ PROMPT BUILDER ============ -->
+<dialog id="promptDialog">
+  <div class="card-head">
+    <h2>Build a prompt for this assignment</h2>
+    <span class="hint" id="promptFor"></span>
+  </div>
+  <div class="dialog-body">
+    <p style="margin:0;color:var(--muted);font-size:13px">
+      Fill in what you know — the more of the real assignment text you paste, the less the AI has to invent.
+      What you enter is saved with the assignment, so you can come back and rebuild it.
+    </p>
+
+    <div class="form-grid">
+      <label class="field"><span>What you want</span>
+        <select id="pMode">
+          <option value="coach">Explain it &amp; coach me through</option>
+          <option value="outline">Outline and plan it</option>
+          <option value="draft">Draft it with me</option>
+          <option value="review">Review what I wrote</option>
+          <option value="study">Quiz me / study for it</option>
+        </select>
+      </label>
+      <label class="field"><span>Deliverable</span>
+        <input type="text" id="pKind" placeholder="discussion post, essay, problem set…">
+      </label>
+      <label class="field"><span>Length</span>
+        <input type="text" id="pLength" placeholder="300 words, 2 pages, 5 slides">
+      </label>
+      <label class="field"><span>Citation style</span>
+        <input type="text" id="pFormat" placeholder="APA 7, none stated">
+      </label>
+    </div>
+
+    <label class="field"><span>What the assignment says — paste it from Canvas</span>
+      <textarea id="pInstructions" rows="4" placeholder="The full prompt your professor wrote."></textarea></label>
+    <label class="field"><span>Rubric or how it's graded</span>
+      <textarea id="pRubric" rows="3" placeholder="Paste the rubric rows and point values if there are any."></textarea></label>
+    <label class="field"><span>What you already have</span>
+      <textarea id="pHave" rows="3" placeholder="Your thesis, an outline, a rough draft, or the two ideas you're stuck between."></textarea></label>
+
+    <div class="form-grid">
+      <label class="field"><span>Sources you must use</span>
+        <input type="text" id="pSources" placeholder="Hurd ch. 4, two peer-reviewed articles">
+      </label>
+      <label class="field"><span>Your class's AI policy</span>
+        <select id="pPolicy">
+          <option value="">Not stated</option>
+          <option value="allowed">Allowed</option>
+          <option value="cite">Allowed if I disclose or cite it</option>
+          <option value="brainstorm">Brainstorming and outlining only</option>
+          <option value="none">Not allowed for this work</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="field" id="pNotesWrap" style="display:none;flex-direction:row;align-items:center;gap:8px">
+      <input type="checkbox" id="pNotes" checked style="width:auto">
+      <span style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink-2)" id="pNotesLabel"></span>
+    </label>
+
+    <div>
+      <span class="eyebrow" style="display:block;margin-bottom:6px">Your prompt</span>
+      <textarea id="pOut" rows="12" class="mono" style="font-size:12.5px"></textarea>
+    </div>
+  </div>
+  <div class="dialog-foot">
+    <button class="btn" type="button" data-close>Close</button>
+    <button class="btn" type="button" id="pRebuild">Rebuild</button>
+    <button class="btn primary" type="button" id="pCopy">Copy prompt</button>
+  </div>
+</dialog>
+
 <!-- ============ NOTE DIALOG ============ -->
 <dialog id="noteDialog">
   <form method="dialog" id="noteForm">
@@ -729,6 +804,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
     </div>
     <div class="dialog-foot">
       <button class="btn danger" type="button" id="tDelete">Delete</button>
+      <button class="btn" type="button" id="tPrompt">Build an AI prompt</button>
       <button class="btn" type="button" data-close>Cancel</button>
       <button class="btn primary" type="submit">Save</button>
     </div>
@@ -1072,6 +1148,7 @@ function taskRow(t){
     </div>
     <div class="right">
       <div class="due"><b>${due?fmtDate(due):''}</b><span class="chip ${cls}">${txt}</span></div>
+      <button class="btn ghost" data-action="prompt" aria-label="Build an AI prompt for this">Prompt</button>
       <button class="btn ghost" data-action="edit" aria-label="Edit">Edit</button>
     </div>
   </div>`;
@@ -1111,6 +1188,7 @@ function renderToday(){
         <div style="font-weight:600">${esc(t.title)}</div>
         <div class="why">${esc(why)}</div>
       </div>
+      <button class="btn ghost" data-action="prompt" data-task="${t.id}">Prompt</button>
       <button class="btn ghost" data-action="edit" data-task="${t.id}">Open</button>
     </div>`;
   }).join('')}</div>` : `<div class="empty">Nothing outstanding. Add work, or enjoy it.</div>`;
@@ -1820,6 +1898,13 @@ $('#taskForm').addEventListener('submit', e => {
   }
   save(); renderAll();
 });
+$('#tPrompt').addEventListener('click', () => {
+  const t = ui.editingTask ? state.tasks.find(x => x.id === ui.editingTask) : null;
+  if(!t){ alert('Save the assignment first, then build a prompt for it.'); return; }
+  t.notes = $('#tNotes').value;
+  dlg.close();
+  openPromptBuilder(t);
+});
 $('#tDelete').addEventListener('click', () => {
   if(ui.editingTask && confirm('Delete this task?')){
     state.tasks = state.tasks.filter(t=>t.id!==ui.editingTask);
@@ -1886,6 +1971,154 @@ $('#noteList').addEventListener('click', e => {
 $('#noteSearch').addEventListener('input', renderNotes);
 $('#noteCourseFilter').addEventListener('change', renderNotes);
 
+/* =========================================================================
+   Prompt builder — turn everything the Ledger already knows about a piece of
+   work into a prompt worth pasting. The value is not the wording; it is that
+   the course, the weight, the rubric, the deadline, what you already have and
+   the relevant lines from your own notes all arrive in one place, so the model
+   is not guessing at the assignment.
+   ========================================================================= */
+const promptDlg = $('#promptDialog');
+promptDlg.addEventListener('click', e => { if(e.target.matches('[data-close]')) promptDlg.close(); });
+let promptTask = null;
+
+const MODE_ASK = {
+  coach: `Explain what this assignment is actually asking for in plain terms, then walk me through how to\n` +
+         `approach it, one step at a time. Do not write it for me — ask me the questions that get me there,\n` +
+         `and tell me when an answer of mine is thin.`,
+  outline: `Give me a working outline: the structure, what argument or content belongs in each part, and for\n` +
+           `each section a note on what I have to supply myself. Flag the parts that will carry the most marks.`,
+  draft: `Work through a draft with me. Start with the outline, then take it section by section and stop after\n` +
+         `each one so I can react and put it in my own words. Mark anything I need to verify, cite, or replace\n` +
+         `with something from my own class — do not invent sources, quotes, or data.`,
+  review: `Review what I have written against the rubric above. Tell me what is missing, what is weak, and what\n` +
+          `would move it up a grade band, pointing at specific lines. Do not rewrite it for me.`,
+  study: `Build me a study plan for this and then quiz me, one question at a time, waiting for my answer before\n` +
+         `the next. Mix recall questions with the kind of applied question this assessment is likely to ask.`
+};
+const POLICY_LINE = {
+  allowed: 'My professor allows AI on this work.',
+  cite: 'My professor allows AI here as long as I disclose or cite the use — remind me what to disclose at the end.',
+  brainstorm: 'My professor allows AI for brainstorming and outlining only, so help me think and plan, but the writing has to be mine — do not produce submittable prose.',
+  none: 'My professor does not allow AI on this work, so treat this as tutoring only: explain, question me, and check my understanding. Do not produce any text I could hand in.',
+  '': 'My professor has not stated an AI policy for this work, so keep it to help I could defend as my own understanding.'
+};
+
+function openPromptBuilder(task){
+  promptTask = task;
+  const c = courseById(task.courseId);
+  const b = task.brief || {};
+  $('#promptFor').textContent = `${c ? (c.code || c.name) + ' · ' : ''}${task.title}`;
+  $('#pMode').value = b.mode || 'coach';
+  $('#pKind').value = b.kind || guessKind(task);
+  $('#pLength').value = b.length || '';
+  $('#pFormat').value = b.format || '';
+  $('#pInstructions').value = b.instructions || '';
+  $('#pRubric').value = b.rubric || '';
+  $('#pHave').value = b.have || '';
+  $('#pSources').value = b.sources || '';
+  $('#pPolicy').value = b.policy || (c && c.aiPolicy) || '';
+
+  const hits = notesForTask(task);
+  $('#pNotesWrap').style.display = hits.length ? 'flex' : 'none';
+  $('#pNotesLabel').textContent = hits.length
+    ? `Include key points from ${hits.length} note${hits.length===1?'':'s'} of yours (${hits.map(h=>h.note.title||'untitled').join(', ').slice(0,80)})`
+    : '';
+  $('#pNotes').checked = b.useNotes !== false;
+  buildPrompt();
+  promptDlg.showModal();
+}
+function guessKind(task){
+  const n = (task.title || '').toLowerCase();
+  const cat = (taskCategory(task) || {}).name || '';
+  if(/discussion|respond|reply|introduce/.test(n) || /discussion/i.test(cat)) return 'discussion post';
+  if(/quiz|exam|midterm|final/.test(n) || /quiz|exam/i.test(cat)) return 'quiz or exam';
+  if(/paper|essay|report/.test(n)) return 'paper';
+  if(/presentation|slides|speech/.test(n)) return 'presentation';
+  if(/lab/.test(n)) return 'lab report';
+  if(/problem set|homework|module/.test(n)) return 'homework';
+  return 'assignment';
+}
+function readBrief(){
+  return {
+    mode: $('#pMode').value, kind: $('#pKind').value.trim(), length: $('#pLength').value.trim(),
+    format: $('#pFormat').value.trim(), instructions: $('#pInstructions').value.trim(),
+    rubric: $('#pRubric').value.trim(), have: $('#pHave').value.trim(),
+    sources: $('#pSources').value.trim(), policy: $('#pPolicy').value, useNotes: $('#pNotes').checked
+  };
+}
+function buildPrompt(){
+  if(!promptTask) return;
+  const b = readBrief();
+  const t = promptTask;
+  const c = courseById(t.courseId);
+  const cat = taskCategory(t);
+  const due = t.due ? parseLocal(t.due) : null;
+
+  const facts = [];
+  if(c) facts.push(`Course: ${[c.code, c.name].filter(Boolean).join(' — ')}`);
+  facts.push(`Assignment: ${t.title}`);
+  if(b.kind) facts.push(`Type: ${b.kind}`);
+  if(due) facts.push(`Due: ${fmtDate(due)} at ${fmtTime(due.getHours()*60 + due.getMinutes())} (${relDue(due)})`);
+  if(t.outOf) facts.push(`Worth: ${t.outOf} points${cat ? ` in "${cat.name}"${cat.weight ? `, ${cat.weight}% of the course grade` : ''}` : ''}`);
+  else if(cat && cat.weight) facts.push(`Category: ${cat.name} — ${cat.weight}% of the course grade`);
+  if(b.length) facts.push(`Length: ${b.length}`);
+  if(b.format) facts.push(`Format / citations: ${b.format}`);
+  if(b.sources) facts.push(`Sources I have to use: ${b.sources}`);
+
+  const parts = [];
+  parts.push(`I am a university student. Help me with the assignment below.`);
+  parts.push(`\nTHE ASSIGNMENT\n${facts.map(f => '- ' + f).join('\n')}`);
+  if(b.instructions) parts.push(`\nWHAT MY PROFESSOR ASKED FOR (their words)\n${b.instructions}`);
+  if(t.notes) parts.push(`\nMY OWN NOTE ON IT\n${t.notes}`);
+  if(b.rubric) parts.push(`\nHOW IT IS GRADED\n${b.rubric}`);
+  if(b.have) parts.push(`\nWHAT I ALREADY HAVE\n${b.have}`);
+
+  if(b.useNotes){
+    const hits = notesForTask(t);
+    const chunks = [];
+    hits.forEach(h => {
+      const a = analyseNote(h.note);
+      // Exam hints lead, then key points — the same sentence can be both, so dedupe.
+      const seen = new Set();
+      const bits = [...a.examHints, ...a.points].filter(x => {
+        const k = x.toLowerCase().replace(/[^a-z0-9]/g,'');
+        if(seen.has(k)) return false;
+        seen.add(k); return true;
+      }).slice(0, 6);
+      if(bits.length) chunks.push(`From "${h.note.title || 'my notes'}"${h.note.date ? ` (${h.note.date})` : ''}:\n` +
+        bits.map(x => '- ' + x).join('\n'));
+      if(a.definitions.length) chunks.push(`Definitions from that note:\n` +
+        a.definitions.slice(0,4).map(d => `- ${d.term}: ${d.text}`).join('\n'));
+    });
+    if(chunks.length) parts.push(`\nFROM MY CLASS NOTES — use this course's own language and examples\n${chunks.join('\n\n')}`);
+  }
+
+  parts.push(`\nWHAT I WANT FROM YOU\n${MODE_ASK[b.mode] || MODE_ASK.coach}`);
+  parts.push(`\nGROUND RULES\n- ${POLICY_LINE[b.policy] || POLICY_LINE['']}\n` +
+             `- If something essential is missing, ask me up to three questions before you start.\n` +
+             `- Stay inside what my course actually covered where you can; say so when you go beyond it.\n` +
+             `- Keep it in plain language, and mark anything you are unsure about rather than smoothing over it.`);
+
+  $('#pOut').value = parts.join('\n');
+}
+['#pMode','#pKind','#pLength','#pFormat','#pInstructions','#pRubric','#pHave','#pSources','#pPolicy','#pNotes']
+  .forEach(sel => $(sel).addEventListener('input', buildPrompt));
+$('#pPolicy').addEventListener('change', buildPrompt);
+$('#pMode').addEventListener('change', buildPrompt);
+$('#pRebuild').addEventListener('click', buildPrompt);
+$('#pCopy').addEventListener('click', () => {
+  buildPrompt();
+  const brief = readBrief();
+  promptTask.brief = brief;
+  const c = courseById(promptTask.courseId);
+  if(c && brief.policy) c.aiPolicy = brief.policy;      // the policy is the course's, not the task's
+  save();
+  navigator.clipboard.writeText($('#pOut').value)
+    .then(() => flash($('#pCopy'), 'Copied — saved'))
+    .catch(() => { $('#pOut').select(); alert('Could not reach the clipboard — the prompt is selected, copy it by hand.'); });
+});
+
 /* --- global click handling --- */
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
@@ -1933,6 +2166,11 @@ document.addEventListener('click', e => {
       if(!state.courses.length){ alert('Add a course first — Courses tab.'); setView('courses'); return; }
       openTask(null); break;
     case 'edit': openTask(state.tasks.find(t=>t.id===taskId)); break;
+    case 'prompt': {
+      const t = state.tasks.find(t => t.id === taskId);
+      if(t) openPromptBuilder(t);
+      break;
+    }
     case 'toggle': {
       const t = state.tasks.find(t=>t.id===taskId);
       t.status = isDone(t) ? 'todo' : 'done';

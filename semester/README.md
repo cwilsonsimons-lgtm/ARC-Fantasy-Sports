@@ -74,6 +74,27 @@ words weigh most, a note in the same course counts for more than one from
 another class, and a single shared word is treated as coincidence rather than a
 match. Each suggestion shows the words that caused it.
 
+## Prompt builder
+
+Every assignment has a **Prompt** button (on the row, in the focus list, and in
+the assignment form). It opens a builder that assembles a prompt for whichever
+AI you use, out of what the Ledger already knows — course, title, due date,
+points, category weight, your own note on it — plus what you paste in: the
+professor's actual wording, the rubric, the length, the citation style, the
+sources you must use, and what you already have. Where the assignment has
+related notes, their key points, exam hints and definitions go in too, so the
+model answers in your course's own language instead of generic textbook prose.
+
+Five modes change the ask at the end: explain and coach, outline, draft with me,
+review what I wrote, quiz me. There is also a per-course **AI policy** field —
+not stated, allowed, allowed with disclosure, brainstorming only, not allowed —
+which writes a matching ground rule into the prompt. Policies vary by professor
+and by assignment, and a prompt that states the constraint gets better-aimed
+help than one that does not; the setting is remembered per course.
+
+Everything typed into the builder is saved on the assignment, so reopening it
+rebuilds the prompt rather than starting over.
+
 Everything lives in `localStorage`, so a long textbook paste can fill the
 browser's quota. When that happens the tool says the change was not saved
 instead of losing it quietly.
