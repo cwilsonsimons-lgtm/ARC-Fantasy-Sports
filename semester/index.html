@@ -452,6 +452,7 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
 <main>
   <!-- ============ TODAY ============ -->
   <section class="view active" id="view-today">
+    <div id="restoreSlot"></div>
     <div id="onboardSlot"></div>
 
     <div class="stat-row" id="statRow"></div>
@@ -627,14 +628,16 @@ footer.appfoot{max-width:1160px;margin:0 auto;padding:0 20px 40px;color:var(--mu
         <div class="btn-row">
           <button class="btn" data-action="paste-canvas">Paste from Canvas</button>
           <button class="btn" data-action="import-ics">Import .ics file</button>
+          <button class="btn primary" data-action="export-html">Save a copy with my data (.html)</button>
           <button class="btn" data-action="export">Export backup (.json)</button>
           <button class="btn" data-action="import">Import backup</button>
           <button class="btn" data-action="sample">Load example semester</button>
           <button class="btn danger" data-action="wipe">Erase everything</button>
         </div>
         <p style="margin:0;color:var(--muted);font-size:12.5px">
-          Everything lives in this browser only (localStorage) — nothing is uploaded. Export a backup before
-          switching browsers or clearing history.
+          Everything lives in this browser only (localStorage) — nothing is uploaded, and the data is tied to the
+          browser rather than to the file. <b>Save a copy with my data</b> writes a new .html file with this
+          semester baked inside it: open that file anywhere and it starts up with everything already in place.
         </p>
       </div>
     </div>
@@ -833,6 +836,9 @@ const PALETTE = [
 ];
 const DARK_SOFT = 0.22; // how much course hue to mix into dark surfaces
 
+// Declared before the call: load() sets these, so a declaration below it would
+// hoist as `var` and then clobber the answer on its own initialiser line.
+let seedAvailable = false, seededFromFile = false;
 let state = load();
 let ui = { view:'today', weekOffset:0, editingTask:null, filterCourse:'', filterStatus:'open', sortBy:'due' };
 
@@ -851,16 +857,24 @@ function blankState(){
   };
 }
 function load(){
+  const seed = (typeof window !== 'undefined' && window.__LEDGER_SEED__) || null;
   try{
     const raw = localStorage.getItem(KEY);
+    // A file saved with "Save a copy with my data" carries its own contents.
+    // It seeds an empty browser; where this browser already holds a semester,
+    // that one stands and the file's copy is offered as a restore instead.
+    if(!raw && seed){ seededFromFile = true; return hydrate(seed); }
+    if(raw && seed) seedAvailable = true;
     if(!raw) return blankState();
-    const s = JSON.parse(raw);
-    return Object.assign(blankState(), s, {
-      commitments: s.commitments || [],
-      notes: s.notes || [],
-      settings: Object.assign(blankState().settings, s.settings||{})
-    });
-  }catch(e){ return blankState(); }
+    return hydrate(JSON.parse(raw));
+  }catch(e){ return seed ? hydrate(seed) : blankState(); }
+}
+function hydrate(s){
+  return Object.assign(blankState(), s, {
+    commitments: s.commitments || [],
+    notes: s.notes || [],
+    settings: Object.assign(blankState().settings, s.settings||{})
+  });
 }
 let saveWarned = false;
 function save(){
@@ -1157,6 +1171,14 @@ function taskRow(t){
 /* ---- TODAY ---- */
 function renderToday(){
   renderOnboard();
+  const slot = $('#restoreSlot');
+  slot.innerHTML = seedAvailable ? `
+    <div class="notice" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span style="flex:1">This file was saved with a semester inside it, and this browser already has one of its own.
+      Yours is what you are looking at.</span>
+      <button class="btn" data-action="restore-seed">Use the file's copy</button>
+      <button class="btn ghost" data-action="dismiss-restore">Keep mine</button>
+    </div>` : '';
   const now = new Date();
   $('#todayDate').textContent = now.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
 
@@ -2233,6 +2255,16 @@ document.addEventListener('click', e => {
     case 'save-courses': readCourseEditors(); save(); renderAll(); flash(btn,'Saved'); break;
 
     case 'export': doExport(); break;
+    case 'export-html': doExportHtml(); break;
+    case 'restore-seed':
+      if(confirm('Replace what is in this browser with the copy saved inside this file?')){
+        state = hydrate(window.__LEDGER_SEED__);
+        seedAvailable = false;
+        save(); renderAll(); setView('today');
+      }
+      break;
+    case 'dismiss-restore':
+      seedAvailable = false; renderToday(); break;
     case 'import': doImport(); break;
     case 'import-ics': doImportICS(); break;
     case 'paste-canvas': openPaste(); break;
@@ -2339,6 +2371,59 @@ async function doExport(){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
 }
+/* Write out a copy of this whole page with the current semester baked into it:
+   one file that is both the app and the backup, openable offline by double-click. */
+const DYNAMIC = ['#statRow','#focusList','#dueSoon','#todayClasses','#loadBars','#schedGrid','#planList',
+  '#workList','#gradesGrid','#courseEditors','#commitmentRows','#noteList','#noteDetail','#pastePreview',
+  '#onboardSlot','#tRelated','#restoreSlot'];
+function buildSelfContainedHtml(){
+  const root = document.documentElement.cloneNode(true);
+  DYNAMIC.forEach(sel => { const el = root.querySelector(sel); if(el) el.innerHTML = ''; });
+  root.querySelectorAll('dialog').forEach(d => d.removeAttribute('open'));
+  // The clone carries whatever tab was open when it was saved; a file should
+  // always open on Today.
+  root.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-today'));
+  root.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.view === 'today')));
+  root.querySelectorAll('textarea').forEach(t => { t.textContent = ''; t.removeAttribute('value'); });
+  root.querySelectorAll('input').forEach(i => {
+    if(i.type === 'checkbox' || i.type === 'radio') i.removeAttribute('checked'); else i.removeAttribute('value');
+  });
+  root.querySelectorAll('option[selected]').forEach(o => o.removeAttribute('selected'));
+
+  const seed = document.createElement('script');
+  // A closing script tag inside the data would end this one early; escape the
+  // angle bracket so the seed survives serialisation.
+  seed.textContent = 'window.__LEDGER_SEED__ = ' + JSON.stringify(state).replace(/</g, '\\u003c') + ';';
+  const body = root.querySelector('body');
+  if(body) body.insertBefore(seed, body.firstChild);
+  else root.insertBefore(seed, root.firstChild);
+  return '<!doctype html>\n<html lang="en">\n' + root.innerHTML + '\n</html>';
+}
+async function doExportHtml(){
+  const html = buildSelfContainedHtml();
+  const filename = `semester-ledger-${ymd(new Date())}.html`;
+  const api = (window.claude && typeof window.claude.use === 'function')
+    ? await window.claude.use('downloads').catch(()=>null) : null;
+  if(api){
+    try{
+      await api.save({filename, data:html});
+      return;
+    }catch(err){
+      if(err && err.code === 'declined') return;
+      alert(`This viewer will not hand over an .html file (${(err && err.code) || 'unavailable'}).\n\n` +
+            `Use "Export backup (.json)" instead — it carries exactly the same data, and any copy of the ` +
+            `Ledger can import it.`);
+      return;
+    }
+  }
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+
 function doImport(){
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'application/json';
@@ -3115,6 +3200,9 @@ document.addEventListener('keydown', e => {
 });
 
 renderAll();
+// A file opened for the first time keeps what it carried, so a later edit is a
+// change to that semester rather than a fresh start.
+if(seededFromFile) save();
 // Keep "now" markers honest without a heavy timer.
 setInterval(() => { if(ui.view==='today') renderToday(); if(ui.view==='week') renderWeek(); }, 60000);
 </script>

@@ -4,10 +4,19 @@ A single-file semester planner for a heavy course load. Unrelated to the fantasy
 app in this repo — it just lives here so it is version-controlled somewhere.
 
 Open `semester/index.html` in any browser; that one file is the whole thing
-(fonts included as base64, no network, no build step, no dependencies). Data is
-stored in `localStorage` under `semester_ledger_v1`, so it stays on the machine
-that entered it. Export a JSON backup from the Courses tab before switching
-browsers or clearing history.
+(fonts included as base64, no network, no build step, no dependencies).
+
+Data is stored in `localStorage` under `semester_ledger_v1` — which belongs to
+the browser, not to the file. Copying `index.html` to another machine therefore
+copies the app and none of the semester. Two ways out, both under **Courses**:
+
+- **Save a copy with my data (.html)** writes a *new* HTML file with the current
+  semester serialised into it. Open that file anywhere and it starts up with
+  everything already in place — one file that is both the app and the backup.
+  A file opened in a browser that already holds its own semester keeps the
+  browser's copy and offers the file's as a restore instead of overwriting.
+- **Export backup (.json)** for the data alone, which any copy of the Ledger can
+  import.
 
 ## The idea
 
