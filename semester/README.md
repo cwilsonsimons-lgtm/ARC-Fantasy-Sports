@@ -124,7 +124,7 @@ as **at risk**, which is the useful part: it says a week ahead that six classes
 do not fit into the days left, while there is still time to do something about
 it. Work due beyond the horizon is never flagged — it has not had its turn yet.
 
-Keyboard: `1`–`5` switch tabs, `n` adds work.
+Keyboard: `1`–`6` switch tabs, `n` adds work.
 
 ## Getting work in from Canvas
 
