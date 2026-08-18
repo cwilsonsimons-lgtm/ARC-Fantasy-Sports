@@ -3,7 +3,7 @@
 // the layout is a property of the template rather than of any one matchup.
 
 import { qs, el, clear, toast, pickFile, field, select, num, text, color, btn } from './ui.js';
-import { state, save, tpl, games, newTemplate, makeSlot, TOKENS, FONTS } from './store.js';
+import { state, save, tpl, games, newTemplate, makeSlot, preset, LAYOUTS, TOKENS, FONTS } from './store.js';
 import { putAsset, dropAsset, IMG, newId } from './assets.js';
 import { draw, context } from './render.js';
 
@@ -22,6 +22,19 @@ export function initEditor(notify) {
   qs('#edDelete').addEventListener('click', () => removeTemplate());
   qs('#edBg').addEventListener('click', () => loadBackground());
   qs('#edFit').addEventListener('click', () => fitToImage());
+  const lay = qs('#edLayout');
+  lay.append(el('option', { value: '' }, 'Apply layout…'));
+  LAYOUTS.forEach(([k, lb]) => lay.append(el('option', { value: k }, lb)));
+  lay.addEventListener('change', e => {
+    const kind = e.target.value;
+    e.target.value = '';
+    if (!kind) return;
+    if (!confirm('Replace this template\'s slots with the stock layout? Anything you have moved or restyled here is lost.')) return;
+    current().slots = preset(kind);
+    sel = '';
+    save(); onChange(); paintEditor();
+    toast('Layout applied — drag from here');
+  });
   qs('#edAddText').addEventListener('click', () => addSlot('text'));
   qs('#edAddImage').addEventListener('click', () => addSlot('image'));
   qs('#edBoxes').addEventListener('change', e => qs('#edOverlay').classList.toggle('hide', !e.target.checked));
@@ -49,13 +62,25 @@ export function paintEditor() {
   state.templates.forEach(x => pick.append(el('option', { value: x.id, selected: x.id === t.id },
     x.name + (x.id === state.defaultTpl ? '  (default)' : ''))));
   pick.value = t.id;
-  qs('#edSize').textContent = `${t.w} x ${t.h}px` + (t.bg ? '' : '  ·  no background image yet');
+  qs('#edSize').textContent = `${t.w} x ${t.h}px` +
+    (t.bg ? '' : '  ·  no background image yet') + '  ·  ' + clearMargins(t);
   qs('#edDelete').disabled = state.templates.length < 2;
 
   draw(qs('#edCanvas'), { tplId: t.id, game: sample(), week: state.week });
   paintBoxes();
   paintList();
   paintProps();
+}
+
+// How much of each edge no slot touches - the room left for player cutouts
+// dropped on in another app. Shown in the footer so it is never a guess.
+function clearMargins(t) {
+  const live = t.slots.filter(s => !s.hidden);
+  if (!live.length) return 'whole canvas clear';
+  const left = Math.min(...live.map(s => s.x));
+  const right = 1 - Math.max(...live.map(s => s.x + s.w));
+  const px = f => Math.round(Math.max(0, f) * t.w);
+  return `clear for photos: ${px(left)}px left, ${px(right)}px right`;
 }
 
 // ---------- templates ----------

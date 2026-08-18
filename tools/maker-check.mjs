@@ -145,7 +145,9 @@ await check('a very long name shrinks to fit',
   soloInk('nameA', 'The Mike Vick Memorial Dog House Appreciation Society'), r => r && r.fits === true);
 await check('a wrapped note stays in its box', soloInk('noteA'), r => r && r.fits === true);
 await check('the wrapped note fills its box', soloInk('noteA'), r => r && r.rows > 40);
-await check('a short name does not overfill', soloInk('nameA'), r => r && r.fill <= 100);
+// Auto-fit should use the box, not render timidly small in it. A width-bound
+// name lands at ~100% plus the outline, which draws outward from the glyph.
+await check('a name fills its box', soloInk('nameA'), r => r && r.fill >= 50 && r.fill <= 108);
 
 await check('hidden slots draw nothing',
   `(()=>{const t=MK.tpl(MK.state.defaultTpl);
@@ -179,8 +181,10 @@ await check('mirror puts B opposite A', `(async () => {
 })()`, true);
 
 await check('dragging a slot moves it', `(async () => {
-  const before = MK.tpl(MK.state.editTpl).slots.find(s => s.id === 'nameA').x;
-  const box = document.querySelector('#edOverlay .sbox');
+  const slots = MK.tpl(MK.state.editTpl).slots;
+  const i = slots.findIndex(s => s.id === 'nameA');
+  const before = slots[i].x;
+  const box = document.querySelectorAll('#edOverlay .sbox')[i];
   const r = box.getBoundingClientRect();
   const opts = { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 1 };
   box.dispatchEvent(new PointerEvent('pointerdown', opts));

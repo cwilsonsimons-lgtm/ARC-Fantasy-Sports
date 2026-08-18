@@ -77,6 +77,15 @@ puts the same thing in the same place. Because the coordinates are fractions,
 the same layout survives a background swap, so the Thanksgiving and Christmas
 versions are `Duplicate` plus a new picture rather than a rebuild.
 
+The default layout keeps everything in a column down the **middle** of the
+screen, both teams mirrored about the centre line, because the player cutouts
+are added afterwards in another app and need the outer quarter of each side
+clear. The stage footer reports exactly how much room is left — `clear for
+photos: 510px left, 510px right` — recomputed from the live slots, so it is
+never a guess. `Apply layout` swaps the whole template between that, a
+scoreboard shape (names on the wings, numbers stacked in the centre) and a
+wings shape (each team down its own side, middle left open).
+
 A **team** carries its logo, its typeface and its two colours. Slots ask for
 those by role — `Team colour`, `Team's own typeface` — so a team that changes
 its name or its font changes on every screen at once.

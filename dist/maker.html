@@ -395,6 +395,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       <div class="spacer"></div>
       <button class="btn" id="edBg">Background image…</button>
       <button class="btn" id="edFit">Fit size to image</button>
+      <select id="edLayout" title="Replace this template's slots with a stock layout"></select>
     </div>
     <div class="editor">
       <div class="stage-wrap">
@@ -764,9 +765,14 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     hidden: false
   }, o);
   var makeSlot = slot;
+  var LAYOUTS = [
+    ["center", "Centre column \u2014 sides clear for player photos"],
+    ["scoreboard", "Names on the wings, numbers stacked in the centre"],
+    ["wings", "Everything stacked down each side"]
+  ];
   function preset(kind) {
-    if (kind === "split") return [
-      // Everything for a team stacked down its own half, as in the collage screens.
+    if (kind === "wings") return [
+      // Everything for a team stacked down its own half; the middle stays open.
       slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.045, y: 0.045, w: 0.16, h: 0.22 }),
       slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.795, y: 0.045, w: 0.16, h: 0.22 }),
       slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.02, y: 0.4, w: 0.46, h: 0.1, size: 0.1, stroke: 4e-3 }),
@@ -778,10 +784,12 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.03, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, stroke: 3e-3 }),
       slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.53, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, stroke: 3e-3 }),
       slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.1, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
-      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.6, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true })
+      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.6, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
+      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.03, w: 0.3, h: 0.06, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
     ];
-    return [
-      // Names on the wings, the numbers stacked in a centre column.
+    if (kind === "scoreboard") return [
+      // Names on the wings, the numbers stacked in a centre column - the shape of
+      // a scoreboard background that already has plates in its corners.
       slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.015, y: 0.045, w: 0.3, h: 0.075, size: 0.055 }),
       slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.685, y: 0.045, w: 0.3, h: 0.075, size: 0.055 }),
       slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.055, y: 0.165, w: 0.22, h: 0.26 }),
@@ -793,10 +801,27 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.035, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, stroke: 2e-3 }),
       slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.705, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, stroke: 2e-3 }),
       slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.395, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
-      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.505, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true })
+      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.505, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
+      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.9, w: 0.3, h: 0.06, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
+    ];
+    return [
+      slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.27, y: 0.115, w: 0.165, h: 0.175 }),
+      slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.565, y: 0.115, w: 0.165, h: 0.175 }),
+      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.255, y: 0.315, w: 0.195, h: 0.085, size: 0.062, stroke: 35e-4 }),
+      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.55, y: 0.315, w: 0.195, h: 0.085, size: 0.062, stroke: 35e-4 }),
+      slot({ id: "vs", label: "VS", side: "", text: "VS", x: 0.45, y: 0.315, w: 0.1, h: 0.085, font: "anton", color: "#ffffff", stroke: 4e-3 }),
+      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.255, y: 0.415, w: 0.195, h: 0.075, font: "anton", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.55, y: 0.415, w: 0.195, h: 0.075, font: "anton", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.255, y: 0.5, w: 0.195, h: 0.055, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
+      slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.55, y: 0.5, w: 0.195, h: 0.055, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.255, y: 0.575, w: 0.195, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, stroke: 25e-4 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.55, y: 0.575, w: 0.195, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, stroke: 25e-4 }),
+      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.255, y: 0.225, w: 0.195, h: 0.085, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
+      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.55, y: 0.225, w: 0.195, h: 0.085, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
+      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.045, w: 0.3, h: 0.055, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
     ];
   }
-  function newTemplate(name = "New template", kind = "scoreboard") {
+  function newTemplate(name = "New template", kind = "center") {
     return { id: newId("tpl"), name, bg: "", bgColor: "#0b1220", w: 2e3, h: 1300, slots: preset(kind) };
   }
   function seedTeams() {
@@ -831,7 +856,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     Object.assign(state, saved || {});
     if (!state.teams || !state.teams.length) state.teams = seedTeams();
     if (!state.templates || !state.templates.length) {
-      const a = newTemplate("Default", "scoreboard");
+      const a = newTemplate("Default", "center");
       state.templates = [a];
       state.defaultTpl = a.id;
     }
@@ -1201,6 +1226,21 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     qs("#edDelete").addEventListener("click", () => removeTemplate());
     qs("#edBg").addEventListener("click", () => loadBackground());
     qs("#edFit").addEventListener("click", () => fitToImage());
+    const lay = qs("#edLayout");
+    lay.append(el("option", { value: "" }, "Apply layout\u2026"));
+    LAYOUTS.forEach(([k, lb]) => lay.append(el("option", { value: k }, lb)));
+    lay.addEventListener("change", (e) => {
+      const kind = e.target.value;
+      e.target.value = "";
+      if (!kind) return;
+      if (!confirm("Replace this template's slots with the stock layout? Anything you have moved or restyled here is lost.")) return;
+      current().slots = preset(kind);
+      sel = "";
+      save();
+      onChange();
+      paintEditor();
+      toast("Layout applied \u2014 drag from here");
+    });
     qs("#edAddText").addEventListener("click", () => addSlot("text"));
     qs("#edAddImage").addEventListener("click", () => addSlot("image"));
     qs("#edBoxes").addEventListener("change", (e) => qs("#edOverlay").classList.toggle("hide", !e.target.checked));
@@ -1232,12 +1272,20 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       x.name + (x.id === state.defaultTpl ? "  (default)" : "")
     )));
     pick.value = t.id;
-    qs("#edSize").textContent = `${t.w} x ${t.h}px` + (t.bg ? "" : "  \xB7  no background image yet");
+    qs("#edSize").textContent = `${t.w} x ${t.h}px` + (t.bg ? "" : "  \xB7  no background image yet") + "  \xB7  " + clearMargins(t);
     qs("#edDelete").disabled = state.templates.length < 2;
     draw(qs("#edCanvas"), { tplId: t.id, game: sample(), week: state.week });
     paintBoxes();
     paintList();
     paintProps();
+  }
+  function clearMargins(t) {
+    const live = t.slots.filter((s) => !s.hidden);
+    if (!live.length) return "whole canvas clear";
+    const left = Math.min(...live.map((s) => s.x));
+    const right = 1 - Math.max(...live.map((s) => s.x + s.w));
+    const px = (f) => Math.round(Math.max(0, f) * t.w);
+    return `clear for photos: ${px(left)}px left, ${px(right)}px right`;
   }
   function addTemplate() {
     const name = prompt("Name this template", "Holiday") || "Untitled";

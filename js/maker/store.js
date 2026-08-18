@@ -50,11 +50,18 @@ const slot = (o) => Object.assign({
 
 export const makeSlot = slot;
 
-// Two starting layouts. Both are only a starting point - the editor drags them
-// onto whatever background you actually load.
+// Three starting layouts. All three are only a starting point - the editor
+// drags them onto whatever background you actually load, and `Apply layout`
+// swaps between them.
+export const LAYOUTS = [
+  ['center',     'Centre column — sides clear for player photos'],
+  ['scoreboard', 'Names on the wings, numbers stacked in the centre'],
+  ['wings',      'Everything stacked down each side'],
+];
+
 export function preset(kind) {
-  if (kind === 'split') return [
-    // Everything for a team stacked down its own half, as in the collage screens.
+  if (kind === 'wings') return [
+    // Everything for a team stacked down its own half; the middle stays open.
     slot({ id:'logoA', label:'Logo A',   kind:'image', side:'a', x:.045, y:.045, w:.16, h:.22 }),
     slot({ id:'logoB', label:'Logo B',   kind:'image', side:'b', x:.795, y:.045, w:.16, h:.22 }),
     slot({ id:'nameA', label:'Name A',   side:'a', text:'{{team}}', x:.02, y:.40, w:.46, h:.10, size:.10, stroke:.004 }),
@@ -67,9 +74,12 @@ export function preset(kind) {
     slot({ id:'noteB', label:'Note B',   side:'b', text:'{{note}}', x:.53, y:.645, w:.44, h:.20, font:'oswald', color:'#ffffff', size:.055, wrap:true, stroke:.003 }),
     slot({ id:'scoreA',label:'Score A',  side:'a', text:'{{score}}', x:.10, y:.30, w:.30, h:.09, font:'anton', color:'#ffffff', stroke:.004, hidden:true }),
     slot({ id:'scoreB',label:'Score B',  side:'b', text:'{{score}}', x:.60, y:.30, w:.30, h:.09, font:'anton', color:'#ffffff', stroke:.004, hidden:true }),
+    slot({ id:'week',  label:'Week',     side:'',  text:'WEEK {{week}}', x:.35, y:.03, w:.30, h:.06, font:'anton', color:'#ffffff', stroke:.003, hidden:true }),
   ];
-  return [
-    // Names on the wings, the numbers stacked in a centre column.
+
+  if (kind === 'scoreboard') return [
+    // Names on the wings, the numbers stacked in a centre column - the shape of
+    // a scoreboard background that already has plates in its corners.
     slot({ id:'nameA', label:'Name A',   side:'a', text:'{{team}}', x:.015, y:.045, w:.30, h:.075, size:.055 }),
     slot({ id:'nameB', label:'Name B',   side:'b', text:'{{team}}', x:.685, y:.045, w:.30, h:.075, size:.055 }),
     slot({ id:'logoA', label:'Logo A',   kind:'image', side:'a', x:.055, y:.165, w:.22, h:.26 }),
@@ -82,10 +92,32 @@ export function preset(kind) {
     slot({ id:'noteB', label:'Note B',   side:'b', text:'{{note}}', x:.705, y:.470, w:.26, h:.18, font:'oswald', color:'#ffffff', size:.038, wrap:true, stroke:.002 }),
     slot({ id:'scoreA',label:'Score A',  side:'a', text:'{{score}}', x:.395, y:.545, w:.10, h:.08, font:'anton', color:'team', stroke:.003, hidden:true }),
     slot({ id:'scoreB',label:'Score B',  side:'b', text:'{{score}}', x:.505, y:.545, w:.10, h:.08, font:'anton', color:'team', stroke:.003, hidden:true }),
+    slot({ id:'week',  label:'Week',     side:'',  text:'WEEK {{week}}', x:.35, y:.90, w:.30, h:.06, font:'anton', color:'#ffffff', stroke:.003, hidden:true }),
+  ];
+
+  // Default. Both teams sit in a column down the middle of the screen, which
+  // leaves the outer quarter of each side completely clear - that is where the
+  // player cutouts get dropped in afterwards, and nothing here may collide
+  // with them. A runs 25.5%-45% across, B is its mirror, VS holds the gutter.
+  return [
+    slot({ id:'logoA', label:'Logo A',   kind:'image', side:'a', x:.270, y:.115, w:.165, h:.175 }),
+    slot({ id:'logoB', label:'Logo B',   kind:'image', side:'b', x:.565, y:.115, w:.165, h:.175 }),
+    slot({ id:'nameA', label:'Name A',   side:'a', text:'{{team}}', x:.255, y:.315, w:.195, h:.085, size:.062, stroke:.0035 }),
+    slot({ id:'nameB', label:'Name B',   side:'b', text:'{{team}}', x:.550, y:.315, w:.195, h:.085, size:.062, stroke:.0035 }),
+    slot({ id:'vs',    label:'VS',       side:'',  text:'VS', x:.450, y:.315, w:.10, h:.085, font:'anton', color:'#ffffff', stroke:.004 }),
+    slot({ id:'recA',  label:'Record A', side:'a', text:'{{record}}', x:.255, y:.415, w:.195, h:.075, font:'anton', color:'#ffffff', stroke:.003 }),
+    slot({ id:'recB',  label:'Record B', side:'b', text:'{{record}}', x:.550, y:.415, w:.195, h:.075, font:'anton', color:'#ffffff', stroke:.003 }),
+    slot({ id:'ppgA',  label:'PPG A',    side:'a', text:'PPG: {{ppg}}', x:.255, y:.500, w:.195, h:.055, font:'oswald', color:'#ffffff', stroke:.0025 }),
+    slot({ id:'ppgB',  label:'PPG B',    side:'b', text:'PPG: {{ppg}}', x:.550, y:.500, w:.195, h:.055, font:'oswald', color:'#ffffff', stroke:.0025 }),
+    slot({ id:'noteA', label:'Note A',   side:'a', text:'{{note}}', x:.255, y:.575, w:.195, h:.22, font:'oswald', color:'#ffffff', size:.042, wrap:true, stroke:.0025 }),
+    slot({ id:'noteB', label:'Note B',   side:'b', text:'{{note}}', x:.550, y:.575, w:.195, h:.22, font:'oswald', color:'#ffffff', size:.042, wrap:true, stroke:.0025 }),
+    slot({ id:'scoreA',label:'Score A',  side:'a', text:'{{score}}', x:.255, y:.225, w:.195, h:.085, font:'anton', color:'team', stroke:.0035, hidden:true }),
+    slot({ id:'scoreB',label:'Score B',  side:'b', text:'{{score}}', x:.550, y:.225, w:.195, h:.085, font:'anton', color:'team', stroke:.0035, hidden:true }),
+    slot({ id:'week',  label:'Week',     side:'',  text:'WEEK {{week}}', x:.35, y:.045, w:.30, h:.055, font:'anton', color:'#ffffff', stroke:.003, hidden:true }),
   ];
 }
 
-export function newTemplate(name = 'New template', kind = 'scoreboard') {
+export function newTemplate(name = 'New template', kind = 'center') {
   return { id: newId('tpl'), name, bg: '', bgColor: '#0b1220', w: 2000, h: 1300, slots: preset(kind) };
 }
 
@@ -108,7 +140,7 @@ export function load() {
   Object.assign(state, saved || {});
   if (!state.teams || !state.teams.length) state.teams = seedTeams();
   if (!state.templates || !state.templates.length) {
-    const a = newTemplate('Default', 'scoreboard');
+    const a = newTemplate('Default', 'center');
     state.templates = [a];
     state.defaultTpl = a.id;
   }
