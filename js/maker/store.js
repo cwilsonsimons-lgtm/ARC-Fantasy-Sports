@@ -131,7 +131,7 @@ function seedTeams() {
 
 export const state = {
   v: 1, year: new Date().getFullYear(), week: 1, weeks: 14,
-  teams: [], templates: [], defaultTpl: '', schedule: {}, fonts: [],
+  teams: [], templates: [], defaultTpl: '', schedule: {}, fonts: [], photos: [],
 };
 
 export function load() {
@@ -147,6 +147,12 @@ export function load() {
   if (!state.templates.some(t => t.id === state.defaultTpl)) state.defaultTpl = state.templates[0].id;
   state.schedule = state.schedule || {};
   state.fonts = state.fonts || [];
+  // Imported background photos are a library shared by every template, so one
+  // import covers the plain, Thanksgiving and Christmas versions alike.
+  state.photos = state.photos || [];
+  state.templates.forEach(t => {
+    if (t.bg && !state.photos.some(p => p.id === t.bg)) state.photos.push({ id: t.bg, name: t.name });
+  });
   return state;
 }
 

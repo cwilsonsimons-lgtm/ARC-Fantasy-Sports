@@ -86,6 +86,25 @@ never a guess. `Apply layout` swaps the whole template between that, a
 scoreboard shape (names on the wings, numbers stacked in the centre) and a
 wings shape (each team down its own side, middle left open).
 
+**Backgrounds are a library.** `Import photos…` on the Template tab takes any
+number of images at once, or drop them straight onto the canvas, or paste one.
+They land in a strip of thumbnails shared by every template, so importing a
+photo once covers the plain, Thanksgiving and Christmas versions — clicking a
+thumbnail swaps the background under the slots without disturbing them, and the
+canvas resizes to the photo so exports come out at its own resolution.
+
+Two imports used to fail without saying anything, and both are worth knowing
+about because neither looks like an error:
+
+- **HEIC.** iPhones shoot HEIC by default and no browser decodes one in an
+  `<img>`. The file was stored, `decode()` rejected, and the background silently
+  never drew. Undecodable files are now refused with what to do about it
+  (Settings → Camera → Formats → Most Compatible).
+- **No IndexedDB.** With the image store denied — Firefox and Safari on a
+  `file://` page, or any private window — the whole import rejected and nothing
+  happened at all. Assets now fall back to memory, so an import works for the
+  session and the tool says it will not survive a reload.
+
 A **team** carries its logo, its typeface and its two colours. Slots ask for
 those by role — `Team colour`, `Team's own typeface` — so a team that changes
 its name or its font changes on every screen at once.
@@ -139,7 +158,7 @@ list — the tab bar stopped responding, and only in the built file. They are
 `fillText` runs, canvas draws the fallback and never redraws. Every face is
 requested up front in `js/maker/main.js` before the first draw.
 
-`npm run check:maker` runs 32 checks against the built file. Several read
+`npm run check:maker` runs 38 checks against the built file. Several read
 pixels rather than the DOM, because what goes wrong in a layout tool is
 geometry: they draw a slot on its own, diff it against the same template with
 everything hidden, and assert the ink landed inside the box it was positioned

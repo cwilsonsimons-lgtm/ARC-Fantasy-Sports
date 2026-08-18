@@ -226,6 +226,7 @@ p{margin:0 0 10px}
 
 main{flex:1;min-height:0;position:relative}
 #edTpl{max-width:300px}
+#edLayout{max-width:340px}
 .slotlist li>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pane{display:none;position:absolute;inset:0;overflow:auto;padding:16px}
 .pane.on{display:block}
@@ -301,6 +302,24 @@ input[type=checkbox]{accent-color:var(--acc)}
   font:11px/1.4 'JetBrains Mono',monospace;color:var(--acc);cursor:pointer}
 .tok:hover{border-color:var(--acc)}
 .sect{border-top:1px solid var(--line);margin:12px 0 10px;padding-top:10px}
+
+/* ---- background photo library ---- */
+.bgbar{display:flex;gap:8px;align-items:center;overflow-x:auto;padding:0 0 12px;min-height:76px}
+.bgtile{position:relative;flex:0 0 auto;width:104px;height:64px;border-radius:8px;overflow:hidden;
+  border:2px solid var(--line);background:#0e141b;cursor:pointer}
+.bgtile img{width:100%;height:100%;object-fit:cover;display:block}
+.bgtile:hover{border-color:var(--acc)}
+.bgtile.on{border-color:var(--go)}
+.bgtile .x{position:absolute;top:2px;right:2px;width:18px;height:18px;border:0;border-radius:50%;
+  background:#000a;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:none;padding:0}
+.bgtile:hover .x{display:block}
+.bgtile .nm{position:absolute;left:0;right:0;bottom:0;background:#000b;font-size:9px;padding:2px 4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.bgtile.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border-style:dashed;color:var(--dim);font-size:11px;text-align:center;line-height:1.25;padding:4px}
+.bgtile.add b{font-weight:600;color:var(--ink)}
+.bgtile.add i{font-style:normal;font-size:9px;opacity:.75}
+.stage.drop{outline:3px dashed var(--go);outline-offset:-6px}
 
 /* ---- teams ---- */
 .teamgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
@@ -393,10 +412,11 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       <button class="btn" id="edDefault">Set as default</button>
       <button class="btn warn" id="edDelete">Delete</button>
       <div class="spacer"></div>
-      <button class="btn" id="edBg">Background image…</button>
+      <button class="btn go" id="edBg">Import photos…</button>
       <button class="btn" id="edFit">Fit size to image</button>
       <select id="edLayout" title="Replace this template's slots with a stock layout"></select>
     </div>
+    <div class="bgbar" id="edBgBar"></div>
     <div class="editor">
       <div class="stage-wrap">
         <div class="stage" id="edStage">
@@ -487,12 +507,15 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   var IMG = /* @__PURE__ */ new Map();
   var URLS = /* @__PURE__ */ new Map();
   var db = null;
+  var mem = null;
+  var persistent = () => !!db;
   function open() {
     return new Promise((res, rej) => {
       const req = indexedDB.open(DB_NAME, 1);
       req.onupgradeneeded = () => req.result.createObjectStore(STORE);
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error);
+      req.onblocked = () => rej(new Error("blocked"));
     });
   }
   function tx(mode, fn) {
@@ -503,11 +526,20 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       t.onerror = () => rej(t.error);
     });
   }
+  var get = (id) => db ? tx("readonly", (s) => s.get(id)) : Promise.resolve(mem.get(id));
+  var keys = () => db ? tx("readonly", (s) => s.getAllKeys()) : Promise.resolve([...mem.keys()]);
+  var put = (id, rec) => db ? tx("readwrite", (s) => s.put(rec, id)) : (mem.set(id, rec), Promise.resolve());
+  var del = (id) => db ? tx("readwrite", (s) => s.delete(id)) : (mem.delete(id), Promise.resolve());
   async function initAssets() {
-    db = await open();
-    const all = await tx("readonly", (s) => s.getAllKeys());
+    try {
+      db = await open();
+    } catch {
+      db = null;
+      mem = /* @__PURE__ */ new Map();
+    }
+    const all = await keys().catch(() => []);
     await Promise.all((all || []).map(async (id) => {
-      const rec = await tx("readonly", (s) => s.get(id));
+      const rec = await get(id);
       if (rec) await adopt(id, rec);
     }));
   }
@@ -519,20 +551,23 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
         const face = new FontFace(fontFamily(id), await blob.arrayBuffer());
         await face.load();
         document.fonts.add(face);
+        return true;
       } catch {
+        return false;
       }
-      return;
     }
     const url = URL.createObjectURL(blob);
-    URLS.set(id, url);
     const img = new Image();
     img.src = url;
     try {
       await img.decode();
     } catch {
-      return;
+      URL.revokeObjectURL(url);
+      return false;
     }
+    URLS.set(id, url);
     IMG.set(id, img);
+    return true;
   }
   function fontFamily(id) {
     return "cbfmk-" + id;
@@ -540,23 +575,30 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   function newId(prefix) {
     return prefix + "-" + Math.random().toString(36).slice(2, 9);
   }
+  var UNREADABLE = (file) => new Error(/heic|heif/i.test(file.type + " " + (file.name || "")) ? `${file.name || "That photo"} is a HEIC \u2014 browsers cannot read those. On iPhone: Settings \u2192 Camera \u2192 Formats \u2192 Most Compatible, or share it as a JPEG.` : `${file.name || "That file"} could not be read as an image.`);
   async function putAsset(file, kind = "image") {
     const id = newId(kind === "font" ? "fnt" : "img");
     const blob = kind === "image" ? await shrink(file) : file;
-    await tx("readwrite", (s) => s.put({ blob, kind, name: file.name || "" }, id));
-    await adopt(id, { blob, kind });
+    const rec = { blob, kind, name: file.name || "" };
+    const ok = await adopt(id, rec);
+    if (!ok) throw kind === "font" ? new Error(`${file.name || "That file"} is not a font this browser can load.`) : UNREADABLE(file);
+    try {
+      await put(id, rec);
+    } catch {
+    }
     return id;
   }
   async function dropAsset(id) {
-    if (!db || !id) return;
-    await tx("readwrite", (s) => s.delete(id));
+    if (!id) return;
+    await del(id).catch(() => {
+    });
     const url = URLS.get(id);
     if (url) URL.revokeObjectURL(url);
     URLS.delete(id);
     IMG.delete(id);
   }
   async function assetDataURL(id) {
-    const rec = await tx("readonly", (s) => s.get(id));
+    const rec = await get(id).catch(() => null);
     if (!rec) return null;
     const blob = rec.blob || rec;
     return await new Promise((res) => {
@@ -565,10 +607,12 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       r.readAsDataURL(blob);
     });
   }
-  async function restoreAsset(id, dataURL, kind) {
+  async function restoreAsset(id, dataURL, kind, name = "") {
     const blob = await (await fetch(dataURL)).blob();
-    await tx("readwrite", (s) => s.put({ blob, kind, name: "" }, id));
-    await adopt(id, { blob, kind });
+    const rec = { blob, kind, name };
+    await adopt(id, rec);
+    await put(id, rec).catch(() => {
+    });
     return id;
   }
   var MAX_EDGE = 2400;
@@ -844,7 +888,8 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     templates: [],
     defaultTpl: "",
     schedule: {},
-    fonts: []
+    fonts: [],
+    photos: []
   };
   function load() {
     let saved = null;
@@ -863,6 +908,10 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     if (!state.templates.some((t) => t.id === state.defaultTpl)) state.defaultTpl = state.templates[0].id;
     state.schedule = state.schedule || {};
     state.fonts = state.fonts || [];
+    state.photos = state.photos || [];
+    state.templates.forEach((t) => {
+      if (t.bg && !state.photos.some((p) => p.id === t.bg)) state.photos.push({ id: t.bg, name: t.name });
+    });
     return state;
   }
   var pending = 0;
@@ -1224,7 +1273,11 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       paintEditor();
     });
     qs("#edDelete").addEventListener("click", () => removeTemplate());
-    qs("#edBg").addEventListener("click", () => loadBackground());
+    qs("#edBg").addEventListener("click", async () => {
+      const files = await pickFile("image/*", true);
+      if (files && files.length) importPhotos(files);
+    });
+    wireDrops();
     qs("#edFit").addEventListener("click", () => fitToImage());
     const lay = qs("#edLayout");
     lay.append(el("option", { value: "" }, "Apply layout\u2026"));
@@ -1274,6 +1327,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     pick.value = t.id;
     qs("#edSize").textContent = `${t.w} x ${t.h}px` + (t.bg ? "" : "  \xB7  no background image yet") + "  \xB7  " + clearMargins(t);
     qs("#edDelete").disabled = state.templates.length < 2;
+    paintPhotos();
     draw(qs("#edCanvas"), { tplId: t.id, game: sample(), week: state.week });
     paintBoxes();
     paintList();
@@ -1310,7 +1364,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     save();
     onChange();
     paintEditor();
-    toast("Duplicated \u2014 load its background");
+    toast("Duplicated \u2014 pick its background from the strip");
   }
   function renameTemplate() {
     const t = current();
@@ -1326,7 +1380,6 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     const t = current();
     if (state.templates.length < 2) return;
     if (!confirm(`Delete the "${t.name}" template?`)) return;
-    if (t.bg) dropAsset(t.bg);
     state.templates = state.templates.filter((x) => x.id !== t.id);
     if (state.defaultTpl === t.id) state.defaultTpl = state.templates[0].id;
     state.editTpl = state.templates[0].id;
@@ -1334,15 +1387,103 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     onChange();
     paintEditor();
   }
-  async function loadBackground() {
-    const file = await pickFile("image/*");
-    if (!file) return;
+  async function importPhotos(files) {
+    const list = [...files].filter((f) => /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|avif|heic|heif)$/i.test(f.name || ""));
+    if (!list.length) return toast("Those are not image files");
+    let first = "", failed = [];
+    for (const file of list) {
+      try {
+        const id = await putAsset(file);
+        state.photos.push({ id, name: (file.name || "photo").replace(/\.[^.]+$/, "") });
+        if (!first) first = id;
+      } catch (e) {
+        failed.push(e.message);
+      }
+    }
+    if (first) setBackground(first, true);
+    save();
+    onChange();
+    paintEditor();
+    if (failed.length) toast(failed[0]);
+    else toast(list.length > 1 ? `Imported ${list.length} photos` : "Background set");
+  }
+  function setBackground(id, silent) {
     const t = current();
-    const old = t.bg;
-    t.bg = await putAsset(file);
-    if (old) dropAsset(old);
-    fitToImage();
-    toast("Background set");
+    t.bg = id;
+    const img = IMG.get(id);
+    if (img) {
+      t.w = img.naturalWidth;
+      t.h = img.naturalHeight;
+    }
+    save();
+    onChange();
+    paintEditor();
+    if (!silent) toast("Background set");
+  }
+  function wireDrops() {
+    const stage = qs("#edStage");
+    ["dragenter", "dragover"].forEach((ev) => stage.addEventListener(ev, (e) => {
+      e.preventDefault();
+      stage.classList.add("drop");
+    }));
+    ["dragleave", "drop"].forEach((ev) => stage.addEventListener(ev, (e) => {
+      e.preventDefault();
+      if (ev === "dragleave" && stage.contains(e.relatedTarget)) return;
+      stage.classList.remove("drop");
+    }));
+    stage.addEventListener("drop", (e) => {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length) importPhotos(files);
+    });
+    document.addEventListener("paste", (e) => {
+      if (!qs("#pane-template").classList.contains("on")) return;
+      const files = [...e.clipboardData ? e.clipboardData.files : []];
+      if (files.length) {
+        e.preventDefault();
+        importPhotos(files);
+      }
+    });
+  }
+  function paintPhotos() {
+    const bar = clear(qs("#edBgBar"));
+    const t = current();
+    bar.append(el("div", {
+      class: "bgtile add",
+      title: "Import background photos",
+      onclick: async () => {
+        const files = await pickFile("image/*", true);
+        if (files && files.length) importPhotos(files);
+      }
+    }, el("b", {}, "\uFF0B Import photos"), el("i", {}, "or drop / paste")));
+    state.photos.forEach((p) => {
+      const url = URLS.get(p.id);
+      bar.append(el(
+        "div",
+        {
+          class: "bgtile" + (t.bg === p.id ? " on" : ""),
+          title: p.name + (t.bg === p.id ? " (in use here)" : " \u2014 click to use"),
+          onclick: () => setBackground(p.id)
+        },
+        url ? el("img", { src: url, alt: "" }) : el("div", { class: "nm" }, "unreadable"),
+        el("span", { class: "nm" }, p.name),
+        el("button", {
+          class: "x",
+          title: "Remove from the library",
+          onclick: (e) => {
+            e.stopPropagation();
+            if (!confirm(`Remove "${p.name}" from the photo library?`)) return;
+            state.photos = state.photos.filter((x) => x.id !== p.id);
+            state.templates.forEach((x) => {
+              if (x.bg === p.id) x.bg = "";
+            });
+            dropAsset(p.id);
+            save();
+            onChange();
+            paintEditor();
+          }
+        }, "\xD7")
+      ));
+    });
   }
   function fitToImage() {
     const t = current();
@@ -1771,9 +1912,14 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
         onclick: async () => {
           const file = await pickFile("image/*");
           if (!file) return;
-          const old = t.logo;
-          t.logo = await putAsset(file);
-          if (old) dropAsset(old);
+          let id;
+          try {
+            id = await putAsset(file);
+          } catch (e) {
+            return toast(e.message);
+          }
+          if (t.logo) dropAsset(t.logo);
+          t.logo = id;
           save();
           onChange2();
           paintTeams();
@@ -2147,7 +2293,12 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   async function addFont() {
     const file = await pickFile(".ttf,.otf,.woff,.woff2,font/*");
     if (!file) return;
-    const id = await putAsset(file, "font");
+    let id;
+    try {
+      id = await putAsset(file, "font");
+    } catch (e) {
+      return toast(e.message);
+    }
     state.fonts.push({ id, name: file.name.replace(/\.[^.]+$/, "") });
     save();
     onChange4();
@@ -2158,6 +2309,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     const ids = /* @__PURE__ */ new Set();
     state.teams.forEach((t) => t.logo && ids.add(t.logo));
     state.templates.forEach((t) => t.bg && ids.add(t.bg));
+    (state.photos || []).forEach((p) => ids.add(p.id));
     (state.fonts || []).forEach((f) => ids.add(f.id));
     return [...ids];
   }
@@ -2188,7 +2340,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     if (!confirm("Restoring replaces everything currently in the tool. Continue?")) return;
     toast("Restoring\u2026");
     for (const [id, rec] of Object.entries(data.assets || {})) {
-      await restoreAsset(id, rec.data, rec.kind || "image");
+      await restoreAsset(id, rec.data, rec.kind || "image", rec.name || "");
     }
     Object.keys(state).forEach((k) => delete state[k]);
     Object.assign(state, data.state);
@@ -2243,12 +2395,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     if (name === "data") paintData();
   }
   async function boot() {
-    let stored = true;
-    try {
-      await initAssets();
-    } catch {
-      stored = false;
-    }
+    await initAssets();
     load();
     if (!state.editTpl || !state.templates.some((t) => t.id === state.editTpl)) state.editTpl = state.defaultTpl;
     await preloadFonts();
@@ -2279,7 +2426,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     paintEditor();
     refresh();
     showPane(state.pane || "screens");
-    if (!stored) toast("This browser will not keep logos or backgrounds from a file:// page \u2014 run npm start and open http://127.0.0.1:8080/maker.html");
+    if (!persistent()) toast("This browser will not store images from a file:// page \u2014 photos work now but are gone on reload. Chrome or Edge keeps them, or run npm start.");
     Object.assign(window, {
       MK: {
         state,

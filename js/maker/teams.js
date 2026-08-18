@@ -47,9 +47,10 @@ export function paintTeams() {
       onclick: async () => {
         const file = await pickFile('image/*');
         if (!file) return;
-        const old = t.logo;
-        t.logo = await putAsset(file);
-        if (old) dropAsset(old);
+        let id;
+        try { id = await putAsset(file); } catch (e) { return toast(e.message); }
+        if (t.logo) dropAsset(t.logo);
+        t.logo = id;
         save(); onChange(); paintTeams();
         toast('Logo set for ' + t.name);
       },

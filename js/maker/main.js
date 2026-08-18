@@ -7,7 +7,7 @@
 // it silently uses the fallback and never redraws - so every face is requested
 // up front rather than left to load on first use.
 
-import { initAssets } from './assets.js';
+import { initAssets, persistent } from './assets.js';
 import { qs, qsa, el, toast } from './ui.js';
 import { state, load, save, tpl, newGame, FONTS } from './store.js';
 import { weekNumbers, stats, roundRobin } from './standings.js';
@@ -67,11 +67,10 @@ function showPane(name) {
 }
 
 async function boot() {
-  // Firefox and Safari refuse IndexedDB on file:// origins. Losing the image
-  // store is worth a warning, not a blank page - everything else still works,
-  // and serving the folder (npm start) fixes it.
-  let stored = true;
-  try { await initAssets(); } catch { stored = false; }
+  // Firefox and Safari refuse IndexedDB on file:// origins, and private windows
+  // can refuse it anywhere. Imports still work in that case - they are held in
+  // memory for the session - so this is a warning, not a failure.
+  await initAssets();
   load();
   if (!state.editTpl || !state.templates.some(t => t.id === state.editTpl)) state.editTpl = state.defaultTpl;
   await preloadFonts();
@@ -101,7 +100,7 @@ async function boot() {
   paintEditor();
   refresh();
   showPane(state.pane || 'screens');
-  if (!stored) toast('This browser will not keep logos or backgrounds from a file:// page — run npm start and open http://127.0.0.1:8080/maker.html');
+  if (!persistent()) toast('This browser will not store images from a file:// page — photos work now but are gone on reload. Chrome or Edge keeps them, or run npm start.');
 
   // Handy from the console and from the check harness.
   Object.assign(window, {

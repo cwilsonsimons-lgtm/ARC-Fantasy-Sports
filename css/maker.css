@@ -30,6 +30,7 @@ p{margin:0 0 10px}
 
 main{flex:1;min-height:0;position:relative}
 #edTpl{max-width:300px}
+#edLayout{max-width:340px}
 .slotlist li>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pane{display:none;position:absolute;inset:0;overflow:auto;padding:16px}
 .pane.on{display:block}
@@ -105,6 +106,24 @@ input[type=checkbox]{accent-color:var(--acc)}
   font:11px/1.4 'JetBrains Mono',monospace;color:var(--acc);cursor:pointer}
 .tok:hover{border-color:var(--acc)}
 .sect{border-top:1px solid var(--line);margin:12px 0 10px;padding-top:10px}
+
+/* ---- background photo library ---- */
+.bgbar{display:flex;gap:8px;align-items:center;overflow-x:auto;padding:0 0 12px;min-height:76px}
+.bgtile{position:relative;flex:0 0 auto;width:104px;height:64px;border-radius:8px;overflow:hidden;
+  border:2px solid var(--line);background:#0e141b;cursor:pointer}
+.bgtile img{width:100%;height:100%;object-fit:cover;display:block}
+.bgtile:hover{border-color:var(--acc)}
+.bgtile.on{border-color:var(--go)}
+.bgtile .x{position:absolute;top:2px;right:2px;width:18px;height:18px;border:0;border-radius:50%;
+  background:#000a;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:none;padding:0}
+.bgtile:hover .x{display:block}
+.bgtile .nm{position:absolute;left:0;right:0;bottom:0;background:#000b;font-size:9px;padding:2px 4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.bgtile.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border-style:dashed;color:var(--dim);font-size:11px;text-align:center;line-height:1.25;padding:4px}
+.bgtile.add b{font-weight:600;color:var(--ink)}
+.bgtile.add i{font-style:normal;font-size:9px;opacity:.75}
+.stage.drop{outline:3px dashed var(--go);outline-offset:-6px}
 
 /* ---- teams ---- */
 .teamgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}

@@ -194,6 +194,52 @@ await check('dragging a slot moves it', `(async () => {
   return after > before;
 })()`, true);
 
+console.log('\n-- background photos --');
+// Importing a photo used to fail two ways without saying anything: a file the
+// browser cannot decode (every iPhone HEIC) was stored and then never drawn,
+// and with IndexedDB denied the whole import rejected silently.
+const drop = (name, type, bytes) => `(async () => {
+  const dt = new DataTransfer();
+  dt.items.add(new File([new Uint8Array(${JSON.stringify(bytes)})], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} }));
+  document.getElementById('edStage').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
+  await new Promise(r => setTimeout(r, 700));
+  return { photos: MK.state.photos.length, toast: document.getElementById('toast').textContent };
+})()`;
+
+await page.evaluate(`MK.showPane('template')`);
+await page.waitForTimeout(300);
+const before = await page.evaluate('MK.state.photos.length');
+
+await check('a real photo dropped on the canvas', `(async () => {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 400;
+  const x = c.getContext('2d'); x.fillStyle = '#247'; x.fillRect(0, 0, 640, 400);
+  const png = await new Promise(r => c.toBlob(r, 'image/png'));
+  const dt = new DataTransfer();
+  dt.items.add(new File([png], 'stadium.png', { type: 'image/png' }));
+  document.getElementById('edStage').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
+  await new Promise(r => setTimeout(r, 800));
+  const t = MK.tpl(MK.state.editTpl);
+  return { inLibrary: MK.state.photos.some(p => p.name === 'stadium'),
+           onTemplate: MK.state.photos.at(-1).id === t.bg,
+           sized: t.w === 640 && t.h === 400 };
+})()`, r => r && r.inLibrary && r.onTemplate && r.sized);
+
+await check('a photo the browser cannot read is explained',
+  drop('IMG_4821.HEIC', 'image/heic', [0, 0, 0, 24, 102, 116, 121, 112, 104, 101, 105, 99]),
+  r => r && /HEIC/.test(r.toast) && r.photos === before + 1);
+await check('a non-image is turned away',
+  drop('notes.txt', 'text/plain', [104, 105]),
+  r => r && /not image files/.test(r.toast) && r.photos === before + 1);
+await check('thumbnail per library photo',
+  `[document.querySelectorAll('#edBgBar .bgtile').length, MK.state.photos.length + 1]`,
+  r => Array.isArray(r) && r[0] === r[1]);
+await check('a thumbnail swaps the background', `(async () => {
+  const first = MK.state.photos[0].id;
+  document.querySelectorAll('#edBgBar .bgtile')[1].click();
+  await new Promise(r => setTimeout(r, 400));
+  return MK.tpl(MK.state.editTpl).bg === first;
+})()`, true);
+
 console.log('\n-- persistence --');
 const movedX = await page.evaluate(`MK.tpl(MK.state.editTpl).slots.find(s => s.id === 'nameA').x`);
 await page.waitForTimeout(300);
@@ -202,6 +248,8 @@ await page.waitForFunction('window.MK && MK.state.teams.length', null, { timeout
 await check('slot positions survive a reload',
   `MK.tpl(MK.state.editTpl).slots.find(s => s.id === 'nameA').x`, x => Math.abs(x - movedX) < 1e-9);
 await check('scores survive a reload', `MK.stats(2).rows.get(MK.state.teams[0].id).record`, '1-1');
+await check('imported photos survive a reload',
+  `MK.state.photos.filter(p => document.createElement('img') && p.name).length`, n => n >= 1);
 
 console.log('\n-- screens --');
 await page.evaluate(`MK.showPane('screens')`);

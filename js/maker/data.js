@@ -43,7 +43,8 @@ export function paintData() {
 async function addFont() {
   const file = await pickFile('.ttf,.otf,.woff,.woff2,font/*');
   if (!file) return;
-  const id = await putAsset(file, 'font');
+  let id;
+  try { id = await putAsset(file, 'font'); } catch (e) { return toast(e.message); }
   state.fonts.push({ id, name: file.name.replace(/\.[^.]+$/, '') });
   save(); onChange(); paintData();
   toast('Font added — pick it on a team or a slot');
@@ -54,6 +55,7 @@ function usedAssets() {
   const ids = new Set();
   state.teams.forEach(t => t.logo && ids.add(t.logo));
   state.templates.forEach(t => t.bg && ids.add(t.bg));
+  (state.photos || []).forEach(p => ids.add(p.id));
   (state.fonts || []).forEach(f => ids.add(f.id));
   return [...ids];
 }
@@ -81,7 +83,7 @@ async function importAll() {
 
   toast('Restoring…');
   for (const [id, rec] of Object.entries(data.assets || {})) {
-    await restoreAsset(id, rec.data, rec.kind || 'image');
+    await restoreAsset(id, rec.data, rec.kind || 'image', rec.name || '');
   }
   Object.keys(state).forEach(k => delete state[k]);
   Object.assign(state, data.state);

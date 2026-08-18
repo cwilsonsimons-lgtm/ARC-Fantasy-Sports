@@ -4,7 +4,7 @@
 
 import { qs, el, clear, toast, pickFile, field, select, num, text, color, btn } from './ui.js';
 import { state, save, tpl, games, newTemplate, makeSlot, preset, LAYOUTS, TOKENS, FONTS } from './store.js';
-import { putAsset, dropAsset, IMG, newId } from './assets.js';
+import { putAsset, dropAsset, IMG, URLS, newId } from './assets.js';
 import { draw, context } from './render.js';
 
 let sel = '';          // selected slot id
@@ -20,7 +20,11 @@ export function initEditor(notify) {
     state.defaultTpl = current().id; save(); toast('Default template set'); onChange(); paintEditor();
   });
   qs('#edDelete').addEventListener('click', () => removeTemplate());
-  qs('#edBg').addEventListener('click', () => loadBackground());
+  qs('#edBg').addEventListener('click', async () => {
+    const files = await pickFile('image/*', true);
+    if (files && files.length) importPhotos(files);
+  });
+  wireDrops();
   qs('#edFit').addEventListener('click', () => fitToImage());
   const lay = qs('#edLayout');
   lay.append(el('option', { value: '' }, 'Apply layout…'));
@@ -66,6 +70,7 @@ export function paintEditor() {
     (t.bg ? '' : '  ·  no background image yet') + '  ·  ' + clearMargins(t);
   qs('#edDelete').disabled = state.templates.length < 2;
 
+  paintPhotos();
   draw(qs('#edCanvas'), { tplId: t.id, game: sample(), week: state.week });
   paintBoxes();
   paintList();
@@ -94,8 +99,8 @@ function addTemplate() {
   save(); onChange(); paintEditor();
 }
 
-// Duplicating keeps the slots and drops the background, which is the common
-// case: the Thanksgiving screen is the same layout on a different picture.
+// Duplicating keeps the slots and the background; swapping the picture is one
+// click on the photo strip, which is the usual next move for a holiday version.
 function dupTemplate() {
   const t = current();
   const copy = JSON.parse(JSON.stringify(t));
@@ -105,7 +110,7 @@ function dupTemplate() {
   state.templates.push(copy);
   state.editTpl = copy.id;
   save(); onChange(); paintEditor();
-  toast('Duplicated — load its background');
+  toast('Duplicated — pick its background from the strip');
 }
 
 function renameTemplate() {
@@ -118,22 +123,101 @@ function removeTemplate() {
   const t = current();
   if (state.templates.length < 2) return;
   if (!confirm(`Delete the "${t.name}" template?`)) return;
-  if (t.bg) dropAsset(t.bg);
   state.templates = state.templates.filter(x => x.id !== t.id);
   if (state.defaultTpl === t.id) state.defaultTpl = state.templates[0].id;
   state.editTpl = state.templates[0].id;
   save(); onChange(); paintEditor();
 }
 
-async function loadBackground() {
-  const file = await pickFile('image/*');
-  if (!file) return;
+// ---------- background photos ----------
+
+// Imports go into a library shared by every template rather than straight onto
+// the one being edited: the same photo usually wants to be the background of
+// more than one template, and re-uploading it each time stores it twice.
+export async function importPhotos(files) {
+  const list = [...files].filter(f => /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|avif|heic|heif)$/i.test(f.name || ''));
+  if (!list.length) return toast('Those are not image files');
+  let first = '', failed = [];
+  for (const file of list) {
+    try {
+      const id = await putAsset(file);
+      state.photos.push({ id, name: (file.name || 'photo').replace(/\.[^.]+$/, '') });
+      if (!first) first = id;
+    } catch (e) {
+      failed.push(e.message);
+    }
+  }
+  if (first) setBackground(first, true);
+  save(); onChange(); paintEditor();
+  if (failed.length) toast(failed[0]);
+  else toast(list.length > 1 ? `Imported ${list.length} photos` : 'Background set');
+}
+
+function setBackground(id, silent) {
   const t = current();
-  const old = t.bg;
-  t.bg = await putAsset(file);
-  if (old) dropAsset(old);
-  fitToImage();
-  toast('Background set');
+  t.bg = id;
+  const img = IMG.get(id);
+  if (img) { t.w = img.naturalWidth; t.h = img.naturalHeight; }
+  save(); onChange(); paintEditor();
+  if (!silent) toast('Background set');
+}
+
+// Dropping a photo onto the canvas, or pasting one, is how anyone actually
+// expects to do this - the file picker is the fallback, not the main route.
+function wireDrops() {
+  const stage = qs('#edStage');
+  ['dragenter', 'dragover'].forEach(ev => stage.addEventListener(ev, e => {
+    e.preventDefault();
+    stage.classList.add('drop');
+  }));
+  ['dragleave', 'drop'].forEach(ev => stage.addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'dragleave' && stage.contains(e.relatedTarget)) return;
+    stage.classList.remove('drop');
+  }));
+  stage.addEventListener('drop', e => {
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) importPhotos(files);
+  });
+  document.addEventListener('paste', e => {
+    if (!qs('#pane-template').classList.contains('on')) return;
+    const files = [...(e.clipboardData ? e.clipboardData.files : [])];
+    if (files.length) { e.preventDefault(); importPhotos(files); }
+  });
+}
+
+function paintPhotos() {
+  const bar = clear(qs('#edBgBar'));
+  const t = current();
+  bar.append(el('div', {
+    class: 'bgtile add', title: 'Import background photos',
+    onclick: async () => {
+      const files = await pickFile('image/*', true);
+      if (files && files.length) importPhotos(files);
+    },
+  }, el('b', {}, '＋ Import photos'), el('i', {}, 'or drop / paste')));
+
+  state.photos.forEach(p => {
+    const url = URLS.get(p.id);
+    bar.append(el('div', {
+      class: 'bgtile' + (t.bg === p.id ? ' on' : ''),
+      title: p.name + (t.bg === p.id ? ' (in use here)' : ' — click to use'),
+      onclick: () => setBackground(p.id),
+    },
+      url ? el('img', { src: url, alt: '' }) : el('div', { class: 'nm' }, 'unreadable'),
+      el('span', { class: 'nm' }, p.name),
+      el('button', {
+        class: 'x', title: 'Remove from the library',
+        onclick: e => {
+          e.stopPropagation();
+          if (!confirm(`Remove "${p.name}" from the photo library?`)) return;
+          state.photos = state.photos.filter(x => x.id !== p.id);
+          state.templates.forEach(x => { if (x.bg === p.id) x.bg = ''; });
+          dropAsset(p.id);
+          save(); onChange(); paintEditor();
+        },
+      }, '\u00d7')));
+  });
 }
 
 // Match the canvas to the picture so nothing is cropped and the export comes
