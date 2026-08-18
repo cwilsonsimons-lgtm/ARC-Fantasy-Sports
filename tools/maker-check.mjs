@@ -145,9 +145,40 @@ await check('a very long name shrinks to fit',
   soloInk('nameA', 'The Mike Vick Memorial Dog House Appreciation Society'), r => r && r.fits === true);
 await check('a wrapped note stays in its box', soloInk('noteA'), r => r && r.fits === true);
 await check('the wrapped note fills its box', soloInk('noteA'), r => r && r.rows > 40);
-// Auto-fit should use the box, not render timidly small in it. A width-bound
-// name lands at ~100% plus the outline, which draws outward from the glyph.
-await check('a name fills its box', soloInk('nameA'), r => r && r.fill >= 50 && r.fill <= 108);
+// The guarantee the whole tool rests on: whatever the names are, both sides
+// come out at one size and every screen puts them on the same line.
+await check('both names, one size, one line', `(() => {
+  const t = MK.tpl(MK.state.defaultTpl);
+  const seen = [];
+  for (const g of [MK.state.schedule[1][0], MK.state.schedule[1][1], MK.state.schedule[2][0]]) {
+    const trace = {};
+    MK.draw(document.createElement('canvas'), { tplId: t.id, game: g, week: 3, scale: 1, trace });
+    seen.push(trace);
+  }
+  const same = xs => Math.max(...xs) - Math.min(...xs) < 0.01;
+  return {
+    pairedOnAScreen: seen.every(tr => Math.abs(tr.nameA.cap - tr.nameB.cap) < 0.01),
+    nameBaseline: same(seen.flatMap(tr => [tr.nameA.baseline, tr.nameB.baseline])),
+    recordSize: same(seen.flatMap(tr => [tr.recA.cap, tr.recB.cap])),
+    recordBaseline: same(seen.flatMap(tr => [tr.recA.baseline, tr.recB.baseline])),
+    ppgSize: same(seen.flatMap(tr => [tr.ppgA.cap, tr.ppgB.cap])),
+  };
+})()`, r => r && r.pairedOnAScreen && r.nameBaseline && r.recordSize && r.recordBaseline && r.ppgSize);
+
+// A record must not resize as the season goes on: 3-2 and 12-11 are sized
+// against 88-88, so they come out identical.
+await check('a record is the same size all season', `(() => {
+  const t = MK.tpl(MK.state.defaultTpl);
+  const g = MK.state.schedule[1][0];
+  const read = () => { const tr = {}; MK.draw(document.createElement('canvas'),
+    { tplId: t.id, game: g, week: 3, scale: 1, trace: tr }); return tr.recA; };
+  const early = read();
+  const row = MK.stats(2).rows.get(g.a);
+  const keep = row.record; row.record = '12-11';
+  const later = read();
+  row.record = keep;
+  return Math.abs(early.cap - later.cap) < 0.01 && Math.abs(early.baseline - later.baseline) < 0.01;
+})()`, true);
 
 await check('hidden slots draw nothing',
   `(()=>{const t=MK.tpl(MK.state.defaultTpl);

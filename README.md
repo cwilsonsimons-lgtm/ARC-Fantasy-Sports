@@ -121,9 +121,46 @@ computed through the week before the one being drawn. "Records include this
 week's results" flips that for a recap screen, which is also when the `{{score}}`
 slots have anything to show.
 
-**Type fits itself.** Every text slot has a maximum size and shrinks until it
-fits its box, so a 52-character team name and "Pandas" both stay inside the same
-plate. Notes wrap and shrink together.
+### Nothing moves
+
+The point of the tool is that a screen made in week 14 lines up with one made in
+week 1, so no value is ever measured on its own. Three things were letting the
+type drift, and all three are fixed:
+
+**Text was sized to whatever it happened to hold.** A slot now has a *sizing*
+mode. `Match both teams` (the default) sizes against the longer of the two names
+on the screen, so both sides come out at one size. `Same size on every screen`
+sizes against the longest name in the league — identical everywhere, at the cost
+of sizing for the worst case. `Fit each value on its own` is the old behaviour
+and is what wrapped blurbs use, since free text has no worst case.
+
+Numbers never measure their own value under either locked mode: a record is
+sized against `88-88` and a score against `888.88`, because 8 is the widest
+glyph in almost every face. So a record does not change size when a team goes
+from 3-2 to 12-4.
+
+**The baseline came from the glyphs in the string.** `actualBoundingBoxAscent`
+describes the letters actually being drawn, so `PPG: --` sat higher than
+`PPG: 162.93`, and a name without a descender sat higher than one with a `g` in
+it. Text is now anchored on the *capitals* of its face, and a locked slot is
+laid out against the size it was asked for rather than the size it came out at
+— so a screen whose names happen to fit larger still puts its baseline on the
+same line as every other screen.
+
+Matching pixel size is not matching visual size when every team picks its own
+typeface: Bungee at 60px towers over Oswald at 60px. Slots that inherit the
+team's face are matched on **cap height**, so the two names on a screen are the
+same size to the eye and sit on one line even in two different faces.
+
+**Outline and shadow were sized against the canvas.** Both are stored as a
+fraction of canvas height so a template keeps one look at any resolution, but a
+name that shrank to fit a long string got a 39px blur around an 8px letter and
+vanished into its own halo. Both are now capped against the type size being
+drawn.
+
+The properties panel reports what a slot actually comes out at —
+`Renders at 38px capitals` — which is the number you want when deciding whether
+a box is too narrow for the mode you picked.
 
 **Mirror** copies a slot's geometry across the centre line onto its opposite
 number. Symmetry is the thing the eye catches on these graphics, and matching
@@ -158,11 +195,13 @@ list — the tab bar stopped responding, and only in the built file. They are
 `fillText` runs, canvas draws the fallback and never redraws. Every face is
 requested up front in `js/maker/main.js` before the first draw.
 
-`npm run check:maker` runs 38 checks against the built file. Several read
+`npm run check:maker` runs 39 checks against the built file. Several read
 pixels rather than the DOM, because what goes wrong in a layout tool is
 geometry: they draw a slot on its own, diff it against the same template with
 everything hidden, and assert the ink landed inside the box it was positioned
-in — including with a team name long enough to force a shrink.
+in — including with a team name long enough to force a shrink. Two more read the
+renderer's own trace to assert the guarantee directly: both names on a screen at
+one size on one baseline, and a record the same size at 3-2 and at 12-11.
 
 ## Layout
 

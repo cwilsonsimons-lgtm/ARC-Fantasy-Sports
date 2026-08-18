@@ -700,8 +700,8 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       hint ? el("span", { class: "fld-h" }, hint) : null
     );
   }
-  function select(options, value2, onchange) {
-    const s = el("select", { onchange: (e) => onchange(e.target.value) });
+  function select(options, value2, onchange, attrs = {}) {
+    const s = el("select", Object.assign({ onchange: (e) => onchange(e.target.value) }, attrs));
     options.forEach(([v, l]) => s.append(el("option", { value: v, selected: String(v) === String(value2) }, l)));
     s.value = value2;
     return s;
@@ -806,7 +806,9 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     caps: false,
     opacity: 1,
     rotate: 0,
-    hidden: false
+    hidden: false,
+    sizing: "pair"
+    // pair | league | off — see sizingOf() in render.js
   }, o);
   var makeSlot = slot;
   var LAYOUTS = [
@@ -825,8 +827,8 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.52, y: 0.505, w: 0.46, h: 0.065, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
       slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.02, y: 0.575, w: 0.46, h: 0.06, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
       slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.52, y: 0.575, w: 0.46, h: 0.06, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.03, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, stroke: 3e-3 }),
-      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.53, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, stroke: 3e-3 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.03, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, sizing: "off", stroke: 3e-3 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.53, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, sizing: "off", stroke: 3e-3 }),
       slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.1, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
       slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.6, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
       slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.03, w: 0.3, h: 0.06, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
@@ -842,8 +844,8 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.507, y: 0.3, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
       slot({ id: "ppgA", label: "PPG A", side: "a", text: "{{ppg}}", x: 0.405, y: 0.41, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
       slot({ id: "ppgB", label: "PPG B", side: "b", text: "{{ppg}}", x: 0.507, y: 0.41, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
-      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.035, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, stroke: 2e-3 }),
-      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.705, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, stroke: 2e-3 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.035, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, sizing: "off", stroke: 2e-3 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.705, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, sizing: "off", stroke: 2e-3 }),
       slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.395, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
       slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.505, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
       slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.9, w: 0.3, h: 0.06, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
@@ -851,15 +853,15 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     return [
       slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.27, y: 0.115, w: 0.165, h: 0.175 }),
       slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.565, y: 0.115, w: 0.165, h: 0.175 }),
-      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.255, y: 0.315, w: 0.195, h: 0.085, size: 0.062, stroke: 35e-4 }),
-      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.55, y: 0.315, w: 0.195, h: 0.085, size: 0.062, stroke: 35e-4 }),
-      slot({ id: "vs", label: "VS", side: "", text: "VS", x: 0.45, y: 0.315, w: 0.1, h: 0.085, font: "anton", color: "#ffffff", stroke: 4e-3 }),
+      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.2, y: 0.31, w: 0.27, h: 0.095, size: 0.085, stroke: 35e-4 }),
+      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.53, y: 0.31, w: 0.27, h: 0.095, size: 0.085, stroke: 35e-4 }),
+      slot({ id: "vs", label: "VS", side: "", text: "VS", x: 0.47, y: 0.31, w: 0.06, h: 0.095, font: "anton", color: "#ffffff", stroke: 4e-3 }),
       slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.255, y: 0.415, w: 0.195, h: 0.075, font: "anton", color: "#ffffff", stroke: 3e-3 }),
       slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.55, y: 0.415, w: 0.195, h: 0.075, font: "anton", color: "#ffffff", stroke: 3e-3 }),
       slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.255, y: 0.5, w: 0.195, h: 0.055, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
       slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.55, y: 0.5, w: 0.195, h: 0.055, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
-      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.255, y: 0.575, w: 0.195, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, stroke: 25e-4 }),
-      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.55, y: 0.575, w: 0.195, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, stroke: 25e-4 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.21, y: 0.575, w: 0.25, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, sizing: "off", stroke: 25e-4 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.54, y: 0.575, w: 0.25, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, sizing: "off", stroke: 25e-4 }),
       slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.255, y: 0.225, w: 0.195, h: 0.085, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
       slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.55, y: 0.225, w: 0.195, h: 0.085, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
       slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.045, w: 0.3, h: 0.055, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
@@ -1030,6 +1032,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       week,
       year: state.year,
       game,
+      all: s.rows,
       a: team(game && game.a),
       b: team(game && game.b),
       sa: of(game && game.a),
@@ -1077,6 +1080,41 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   function resolve(text2, side, c) {
     return String(text2 || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => value(k.toLowerCase(), side, c));
   }
+  var sizingOf = (slot2) => slot2.sizing || (slot2.lock === false ? "off" : "pair");
+  var WIDEST = {
+    record: "88-88",
+    ppg: "888.88",
+    pf: "8888.88",
+    pa: "8888.88",
+    score: "888.88",
+    rank: "88",
+    streak: "W88",
+    week: "88",
+    year: "8888"
+  };
+  function longestName(c, mode) {
+    if (mode === "league") {
+      return state.teams.reduce((best, t) => (t.name || "").length > best.length ? t.name : best, "");
+    }
+    const a = c.a && c.a.name || "", b = c.b && c.b.name || "";
+    return a.length >= b.length ? a : b;
+  }
+  function longestMgr(c, mode) {
+    if (mode === "league") {
+      return state.teams.reduce((best, t) => (t.mgr || "").length > best.length ? t.mgr : best, "");
+    }
+    const a = c.a && c.a.mgr || "", b = c.b && c.b.mgr || "";
+    return a.length >= b.length ? a : b;
+  }
+  function gauge(text2, side, c, mode) {
+    return String(text2 || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => {
+      const key = k.toLowerCase();
+      if (key === "team" || key === "opp") return longestName(c, mode);
+      if (key === "manager") return longestMgr(c, mode);
+      if (key === "note") return value(key, side, c);
+      return WIDEST[key] != null ? WIDEST[key] : value(key, side, c);
+    });
+  }
   function faceOf(slot2, t) {
     const key = slot2.font === "team" ? t && t.font || "oswald" : slot2.font;
     if (String(key).startsWith("custom:")) {
@@ -1108,7 +1146,45 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     });
     return out.length ? out : [""];
   }
-  function fit(ctx, text2, face, slot2, W, H, boxW, boxH) {
+  var CAP = /* @__PURE__ */ new Map();
+  function capUnit(ctx, face) {
+    const key = face.ff + "|" + face.w;
+    if (CAP.has(key)) return CAP.get(key);
+    setFont(ctx, face, 100);
+    const m = ctx.measureText("H");
+    const u = (m.actualBoundingBoxAscent || 72) / 100;
+    CAP.set(key, u);
+    return u;
+  }
+  function facesFor(slot2, c, mode) {
+    if (slot2.font !== "team") return [faceOf(slot2, null)];
+    const teams = mode === "league" ? state.teams : [c.a, c.b].filter(Boolean);
+    const seen = /* @__PURE__ */ new Set(), out = [];
+    teams.forEach((t) => {
+      const f = faceOf(slot2, t);
+      const k = f.ff + "|" + f.w;
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(f);
+      }
+    });
+    return out.length ? out : [faceOf(slot2, null)];
+  }
+  function lockedCap(ctx, slot2, c, H, b, mode) {
+    const g = gauge(slot2.text, slot2.side, c, mode);
+    let cap = slot2.size * H * 0.72;
+    facesFor(slot2, c, mode).forEach((face) => {
+      const u = capUnit(ctx, face);
+      const str = slot2.caps || face.tt === "uppercase" ? g.toUpperCase() : g;
+      setFont(ctx, face, 100);
+      const w100 = ctx.measureText(str).width;
+      let px = slot2.size * H * (face.sc || 1);
+      if (w100 > 0) px = Math.min(px, b.w * 100 / w100);
+      cap = Math.min(cap, px * u);
+    });
+    return Math.max(2, Math.min(cap, b.h * 0.92));
+  }
+  function fitLoose(ctx, text2, face, slot2, H, boxW, boxH) {
     let px = Math.max(4, slot2.size * H * (face.sc || 1));
     if (!slot2.wrap) {
       setFont(ctx, face, px);
@@ -1122,9 +1198,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     for (let i = 0; i < 24; i++) {
       setFont(ctx, face, px);
       lines = wrapLines(ctx, text2, boxW);
-      const wide = lines.some((l) => ctx.measureText(l).width > boxW);
-      const tall = lines.length * px * LH > boxH;
-      if (!wide && !tall) break;
+      if (!lines.some((l) => ctx.measureText(l).width > boxW) && lines.length * px * LH <= boxH) break;
       px *= 0.93;
       if (px < 4) break;
     }
@@ -1134,7 +1208,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   function box(slot2, W, H) {
     return { x: slot2.x * W, y: slot2.y * H, w: slot2.w * W, h: slot2.h * H };
   }
-  function shade(ctx, slot2, H) {
+  function shade(ctx, slot2, H, px) {
     if (!slot2.shadow) {
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
@@ -1142,38 +1216,59 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       return;
     }
     ctx.shadowColor = slot2.shadowColor || "#000";
-    ctx.shadowBlur = slot2.shadow * H * 0.12;
-    ctx.shadowOffsetY = slot2.shadow * H * 0.03;
+    ctx.shadowBlur = Math.min(slot2.shadow * H * 0.12, px * 0.7);
+    ctx.shadowOffsetY = Math.min(slot2.shadow * H * 0.03, px * 0.2);
   }
+  var strokeWidth = (slot2, H, px) => Math.min(slot2.stroke * H * 2, px * 0.22);
   function colorOf(slot2, t) {
     if (slot2.color === "team") return t && t.color || "#ffffff";
     if (slot2.color === "accent") return t && t.accent || "#ffffff";
     return slot2.color || "#ffffff";
   }
-  function drawText(ctx, slot2, c, W, H) {
+  function drawText(ctx, slot2, c, W, H, trace) {
     const t = slot2.side === "b" ? c.b : slot2.side === "a" ? c.a : null;
     let text2 = resolve(slot2.text, slot2.side, c);
     const face = faceOf(slot2, t);
     if (slot2.caps || face.tt === "uppercase") text2 = text2.toUpperCase();
     if (!text2.trim()) return;
     const b = box(slot2, W, H);
-    const { lines, px } = fit(ctx, text2, face, slot2, W, H, b.w, b.h);
-    const m = ctx.measureText(lines[0] || "H");
-    const asc = m.actualBoundingBoxAscent || px * 0.75;
-    const desc = m.actualBoundingBoxDescent || px * 0.22;
-    const blockH = (lines.length - 1) * px * LH + asc + desc;
+    const mode = slot2.wrap ? "off" : sizingOf(slot2);
+    const locked = mode !== "off";
+    let px, lines;
+    if (locked) {
+      px = lockedCap(ctx, slot2, c, H, b, mode) / capUnit(ctx, face);
+      setFont(ctx, face, px);
+      const w = ctx.measureText(text2).width;
+      if (w > b.w) {
+        px *= b.w / w;
+        setFont(ctx, face, px);
+      }
+      lines = [text2];
+    } else {
+      ({ lines, px } = fitLoose(ctx, text2, face, slot2, H, b.w, b.h));
+    }
+    const capH = px * capUnit(ctx, face);
+    const refCap = locked ? Math.min(slot2.size * H * 0.72, b.h * 0.92) : capH;
+    const blockH = (lines.length - 1) * px * LH + refCap;
     const top = b.y + (b.h - blockH) * (slot2.valign === "top" ? 0 : slot2.valign === "bottom" ? 1 : 0.5);
     ctx.textAlign = slot2.align;
     ctx.textBaseline = "alphabetic";
     const ax = slot2.align === "left" ? b.x : slot2.align === "right" ? b.x + b.w : b.x + b.w / 2;
+    if (trace) trace[slot2.id] = {
+      px: +px.toFixed(2),
+      cap: +capH.toFixed(2),
+      baseline: +(top + refCap).toFixed(2),
+      lines: lines.length,
+      mode
+    };
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
     lines.forEach((line, i) => {
-      const y = top + asc + i * px * LH;
+      const y = top + refCap + i * px * LH;
       ctx.save();
-      shade(ctx, slot2, H);
+      shade(ctx, slot2, H, px);
       if (slot2.stroke > 0) {
-        ctx.lineWidth = slot2.stroke * H * 2;
+        ctx.lineWidth = strokeWidth(slot2, H, px);
         ctx.strokeStyle = slot2.strokeColor || "#000";
         ctx.strokeText(line, ax, y);
         ctx.shadowColor = "transparent";
@@ -1194,7 +1289,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     const w = img.naturalWidth * k, h = img.naturalHeight * k;
     const x = b.x + (b.w - w) * (slot2.align === "left" ? 0 : slot2.align === "right" ? 1 : 0.5);
     const y = b.y + (b.h - h) * (slot2.valign === "top" ? 0 : slot2.valign === "bottom" ? 1 : 0.5);
-    shade(ctx, slot2, H);
+    shade(ctx, slot2, H, Math.min(w, h));
     ctx.drawImage(img, x, y, w, h);
     ctx.shadowColor = "transparent";
   }
@@ -1243,7 +1338,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
         ctx.translate(-(b.x + b.w / 2), -(b.y + b.h / 2));
       }
       if (slot2.kind === "image") drawImage(ctx, slot2, c, W, H);
-      else drawText(ctx, slot2, c, W, H);
+      else drawText(ctx, slot2, c, W, H, opts2.trace);
       ctx.restore();
     });
     return canvas;
@@ -1409,16 +1504,21 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   }
   function setBackground(id, silent) {
     const t = current();
-    t.bg = id;
+    const first = !t.bg;
     const img = IMG.get(id);
-    if (img) {
+    t.bg = id;
+    if (img && first) {
       t.w = img.naturalWidth;
       t.h = img.naturalHeight;
     }
     save();
     onChange();
     paintEditor();
-    if (!silent) toast("Background set");
+    if (silent) return;
+    const ratio = img ? img.naturalWidth / img.naturalHeight : 0;
+    if (!first && ratio && Math.abs(ratio - t.w / t.h) > 0.02)
+      toast(`Background set \u2014 that photo is a different shape, so it is cropped to ${t.w}x${t.h}. "Fit size to image" resizes the canvas to it instead.`);
+    else toast("Background set");
   }
   function wireDrops() {
     const stage = qs("#edStage");
@@ -1703,6 +1803,14 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     paintEditor();
     toast(other ? "Mirrored onto " + (target.label || "the other side") : "Mirrored copy added");
   }
+  function sizeReadout(slot2) {
+    const t = current();
+    const trace = {};
+    draw(document.createElement("canvas"), { tplId: t.id, game: sample(), week: state.week, scale: 1, trace });
+    const r = trace[slot2.id];
+    if (!r) return "Nothing to draw here yet.";
+    return `Renders at ${Math.round(r.cap)}px capitals` + (r.mode === "league" ? " on every screen in the league." : r.mode === "pair" ? " \u2014 both sides of this screen match." : " for this value.");
+  }
   function paintProps() {
     const box2 = clear(qs("#edProps"));
     const s = slotOf(sel);
@@ -1811,6 +1919,27 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
           upd();
         } }), "ALL CAPS")
       ));
+      const modes = [
+        ["pair", "Match both teams on the screen"],
+        ["league", "Same size on every screen"],
+        ["off", "Fit each value on its own"]
+      ];
+      const mode = s.wrap ? "off" : s.sizing || (s.lock === false ? "off" : "pair");
+      box2.append(field("Sizing", select(
+        modes,
+        mode,
+        (v) => {
+          s.sizing = v;
+          upd();
+        },
+        s.wrap ? { disabled: true } : {}
+      )));
+      box2.append(el("span", { class: "fld-h", style: "display:block" }, sizeReadout(s)));
+      box2.append(el("span", { class: "fld-h", style: "display:block" }, s.wrap ? "Wrapped text has no worst case, so it always sizes to itself." : {
+        pair: "Both sides come out one size, as large as the box allows. Numbers are sized for 88-88 so they never resize.",
+        league: "Sized for the longest name in the league \u2014 identical on every screen, every week.",
+        off: "Sizes to whatever it holds, so it changes size from team to team."
+      }[mode]));
     }
     box2.append(el("div", { class: "sect" }));
     box2.append(field("Align", el(

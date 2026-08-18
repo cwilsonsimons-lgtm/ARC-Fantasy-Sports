@@ -58,8 +58,8 @@ export function field(label, control, hint) {
     hint ? el('span', { class: 'fld-h' }, hint) : null);
 }
 
-export function select(options, value, onchange) {
-  const s = el('select', { onchange: e => onchange(e.target.value) });
+export function select(options, value, onchange, attrs = {}) {
+  const s = el('select', Object.assign({ onchange: e => onchange(e.target.value) }, attrs));
   options.forEach(([v, l]) => s.append(el('option', { value: v, selected: String(v) === String(value) }, l)));
   s.value = value;
   return s;

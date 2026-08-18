@@ -155,11 +155,20 @@ export async function importPhotos(files) {
 
 function setBackground(id, silent) {
   const t = current();
-  t.bg = id;
+  const first = !t.bg;
   const img = IMG.get(id);
-  if (img) { t.w = img.naturalWidth; t.h = img.naturalHeight; }
+  t.bg = id;
+  // Resizing the canvas to each new photo moved every slot relative to the art
+  // whenever the shapes differed. The first photo sets the canvas; after that
+  // the template keeps its size and the photo is cropped to cover it, so the
+  // layout stays exactly where it was put. `Fit size to image` still overrides.
+  if (img && first) { t.w = img.naturalWidth; t.h = img.naturalHeight; }
   save(); onChange(); paintEditor();
-  if (!silent) toast('Background set');
+  if (silent) return;
+  const ratio = img ? img.naturalWidth / img.naturalHeight : 0;
+  if (!first && ratio && Math.abs(ratio - t.w / t.h) > 0.02)
+    toast(`Background set — that photo is a different shape, so it is cropped to ${t.w}x${t.h}. "Fit size to image" resizes the canvas to it instead.`);
+  else toast('Background set');
 }
 
 // Dropping a photo onto the canvas, or pasting one, is how anyone actually
@@ -396,6 +405,19 @@ function mirror(s) {
   toast(other ? 'Mirrored onto ' + (target.label || 'the other side') : 'Mirrored copy added');
 }
 
+// What the slot actually comes out at, which is the number you want when
+// deciding whether a box is too narrow for the sizing mode you picked.
+function sizeReadout(slot) {
+  const t = current();
+  const trace = {};
+  draw(document.createElement('canvas'), { tplId: t.id, game: sample(), week: state.week, scale: 1, trace });
+  const r = trace[slot.id];
+  if (!r) return 'Nothing to draw here yet.';
+  return `Renders at ${Math.round(r.cap)}px capitals` +
+    (r.mode === 'league' ? ' on every screen in the league.' :
+     r.mode === 'pair' ? ' — both sides of this screen match.' : ' for this value.');
+}
+
 // ---------- properties ----------
 
 function paintProps() {
@@ -442,6 +464,22 @@ function paintProps() {
     box.append(el('div', { class: 'row' },
       el('label', { class: 'chk' }, el('input', { type: 'checkbox', checked: s.wrap, onchange: e => { s.wrap = e.target.checked; upd(); } }), 'Wrap lines'),
       el('label', { class: 'chk' }, el('input', { type: 'checkbox', checked: s.caps, onchange: e => { s.caps = e.target.checked; upd(); } }), 'ALL CAPS')));
+    const modes = [
+      ['pair',   'Match both teams on the screen'],
+      ['league', 'Same size on every screen'],
+      ['off',    'Fit each value on its own'],
+    ];
+    const mode = s.wrap ? 'off' : (s.sizing || (s.lock === false ? 'off' : 'pair'));
+    box.append(field('Sizing', select(modes, mode, v => { s.sizing = v; upd(); },
+      s.wrap ? { disabled: true } : {})));
+    box.append(el('span', { class: 'fld-h', style: 'display:block' }, sizeReadout(s)));
+    box.append(el('span', { class: 'fld-h', style: 'display:block' }, s.wrap
+      ? 'Wrapped text has no worst case, so it always sizes to itself.'
+      : {
+          pair:   'Both sides come out one size, as large as the box allows. Numbers are sized for 88-88 so they never resize.',
+          league: 'Sized for the longest name in the league — identical on every screen, every week.',
+          off:    'Sizes to whatever it holds, so it changes size from team to team.',
+        }[mode]));
   }
 
   box.append(el('div', { class: 'sect' }));
