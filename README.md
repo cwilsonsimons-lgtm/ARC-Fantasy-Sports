@@ -61,6 +61,81 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## Matchup screen maker
+
+`maker.html` is a separate tool, not a screen in the app: it builds the weekly
+matchup graphics that get posted to the league chat. Open `dist/maker.html` by
+double-clicking, or serve the repo and open
+`http://127.0.0.1:8080/maker.html`.
+
+The idea is that nothing about a screen's layout is decided per matchup. A
+**template** is a background image plus a set of **slots** — one for each name,
+logo, record, average and blurb — and every slot's position is stored as a
+fraction of the canvas rather than in pixels. Position them once by dragging
+them onto your background; every screen built from that template afterwards
+puts the same thing in the same place. Because the coordinates are fractions,
+the same layout survives a background swap, so the Thanksgiving and Christmas
+versions are `Duplicate` plus a new picture rather than a rebuild.
+
+A **team** carries its logo, its typeface and its two colours. Slots ask for
+those by role — `Team colour`, `Team's own typeface` — so a team that changes
+its name or its font changes on every screen at once.
+
+Text is written with tokens: `{{team}}`, `{{record}}`, `{{ppg}}`, `{{note}}`,
+`{{score}}`, `{{rank}}` and the rest, resolved against whichever side the slot
+belongs to. Type a final score on the **Scores** tab and every record, average
+and standing recomputes from the results table — there is no second place to
+update, and correcting a score typed wrong in week 3 corrects every screen made
+after it.
+
+Records shown on a preview are the records the teams *walk in with*: stats are
+computed through the week before the one being drawn. "Records include this
+week's results" flips that for a recap screen, which is also when the `{{score}}`
+slots have anything to show.
+
+**Type fits itself.** Every text slot has a maximum size and shrinks until it
+fits its box, so a 52-character team name and "Pandas" both stay inside the same
+plate. Notes wrap and shrink together.
+
+**Mirror** copies a slot's geometry across the centre line onto its opposite
+number. Symmetry is the thing the eye catches on these graphics, and matching
+two boxes by hand never quite lands.
+
+Export writes a PNG at the template's own resolution — the preview is the same
+renderer at a smaller scale, not an approximation of it. `Copy` puts the image
+straight on the clipboard for pasting into a chat.
+
+### Where the data lives
+
+The JSON — teams, slots, schedule, scores — is in `localStorage`. Images and
+uploaded fonts are not: ten logos and a few full-bleed backgrounds run past the
+5 MB quota on their own, and a quota error there loses the whole save rather
+than one picture. Those live in IndexedDB, and the state only carries asset ids.
+`Data → Download backup` is the only copy that survives clearing site data or
+moving to another machine; it inlines every image as a data URL.
+
+Chrome and Edge allow IndexedDB on `file://` pages; Firefox and Safari do not.
+Opening `dist/maker.html` there still works but forgets logos, so the tool says
+so and points at `npm start`.
+
+### Two traps worth knowing
+
+**`$$` did not survive bundling.** The UI helpers were originally `$` and `$$`;
+esbuild emitted both as `var $` in `dist/maker.html`, so every `$$` call in the
+built file silently became `querySelector` and returned one element instead of a
+list — the tab bar stopped responding, and only in the built file. They are
+`qs`/`qsa` now.
+
+**Canvas has no `font-display: swap`.** If a webfont is not loaded when
+`fillText` runs, canvas draws the fallback and never redraws. Every face is
+requested up front in `js/maker/main.js` before the first draw.
+
+`npm run check:maker` runs 32 checks against the built file. Several read
+pixels rather than the DOM, because what goes wrong in a layout tool is
+geometry: they draw a slot on its own, diff it against the same template with
+everything hidden, and assert the ink landed inside the box it was positioned
+in — including with a team name long enough to force a shrink.
+
 ## Layout
 
 ```
@@ -72,7 +147,9 @@ js/
   store.js      localStorage persistence, roster rows, image downscaling
   data/         teams, league config, NFL player/schedule/colour tables
   markets/      Arc Markets — self-contained, see above
+  maker/        the matchup screen maker, entry js/maker/main.js
   *.js          one module per screen or subsystem
+maker.html      the screen maker's own page
 tools/          dev server and the verification harness
 ```
 
@@ -167,6 +244,8 @@ diffed against itself exactly.
 npm start                                     # in one shell
 npm run snapshot                              # dumps DOM for 32 interactions
 node tools/pixel-diff.mjs <url-a> <url-b>     # screenshot comparison
+npm run check:markets                         # Arc Markets interactions
+npm run check:maker                           # the matchup screen maker
 ```
 
 `tools/snapshot.mjs` drives the app through every view and writes the resulting

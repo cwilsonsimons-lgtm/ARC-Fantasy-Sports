@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>City Boys — Matchup Screen Maker</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/maker.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">Matchup Screens</div>
+  <div class="topbar">
+    <label class="pill">Season <input id="topYear" type="number" step="1"></label>
+    <label class="pill">Week <select id="topWeek"></select></label>
+    <label class="pill">Template <select id="topTpl"></select></label>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn go" id="btnExportAll">Export week</button>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab on" data-pane="screens">Screens</button>
+  <button class="tab" data-pane="template">Template</button>
+  <button class="tab" data-pane="teams">Teams</button>
+  <button class="tab" data-pane="scores">Scores</button>
+  <button class="tab" data-pane="standings">Standings</button>
+  <button class="tab" data-pane="data">Data</button>
+</nav>
+
+<main>
+  <section class="pane on" id="pane-screens">
+    <div class="pane-head">
+      <h2>Week <span id="scrWeek">1</span> screens</h2>
+      <label class="chk"><input type="checkbox" id="scrIncl"> Records include this week's results</label>
+      <div class="spacer"></div>
+      <span class="muted" id="scrCount"></span>
+    </div>
+    <div class="grid" id="screenGrid"></div>
+  </section>
+
+  <section class="pane" id="pane-template">
+    <div class="pane-head">
+      <select id="edTpl"></select>
+      <button class="btn" id="edNew">New</button>
+      <button class="btn" id="edDup">Duplicate</button>
+      <button class="btn" id="edRename">Rename</button>
+      <button class="btn" id="edDefault">Set as default</button>
+      <button class="btn warn" id="edDelete">Delete</button>
+      <div class="spacer"></div>
+      <button class="btn" id="edBg">Background image…</button>
+      <button class="btn" id="edFit">Fit size to image</button>
+    </div>
+    <div class="editor">
+      <div class="stage-wrap">
+        <div class="stage" id="edStage">
+          <canvas id="edCanvas"></canvas>
+          <div class="overlay" id="edOverlay"></div>
+        </div>
+        <div class="stage-foot">
+          <span class="muted" id="edSize"></span>
+          <span class="spacer"></span>
+          <label class="chk"><input type="checkbox" id="edSnap" checked> Snap</label>
+          <label class="chk"><input type="checkbox" id="edBoxes" checked> Show slot boxes</label>
+        </div>
+      </div>
+      <aside class="props">
+        <div class="props-head">
+          <strong>Slots</strong>
+          <span class="spacer"></span>
+          <button class="btn sm" id="edAddText">+ Text</button>
+          <button class="btn sm" id="edAddImage">+ Logo</button>
+        </div>
+        <ul class="slotlist" id="edSlots"></ul>
+        <div id="edProps"></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="pane" id="pane-teams">
+    <div class="pane-head">
+      <h2>Teams</h2>
+      <div class="spacer"></div>
+      <button class="btn" id="teamAdd">Add team</button>
+    </div>
+    <div class="teamgrid" id="teamGrid"></div>
+  </section>
+
+  <section class="pane" id="pane-scores">
+    <div class="pane-head">
+      <h2>Week <span id="scWeek">1</span> results</h2>
+      <div class="spacer"></div>
+      <button class="btn" id="scAdd">Add matchup</button>
+      <button class="btn" id="scGen">Generate season schedule…</button>
+    </div>
+    <div id="scList" class="scores"></div>
+  </section>
+
+  <section class="pane" id="pane-standings">
+    <div class="pane-head">
+      <h2>Standings</h2>
+      <label class="chk"><input type="checkbox" id="stIncl" checked> Through current week</label>
+      <div class="spacer"></div>
+      <button class="btn" id="stCopy">Copy as text</button>
+    </div>
+    <div id="stTable"></div>
+  </section>
+
+  <section class="pane" id="pane-data">
+    <div class="pane-head"><h2>Data</h2></div>
+    <div class="cards">
+      <div class="card">
+        <h3>Backup</h3>
+        <p class="muted">Everything — teams, logos, backgrounds, fonts, every score — in one file.
+          Images live in the browser's database, so this is the only copy that survives clearing site data.</p>
+        <button class="btn go" id="dataExport">Download backup</button>
+        <button class="btn" id="dataImport">Restore from backup…</button>
+      </div>
+      <div class="card">
+        <h3>Custom fonts</h3>
+        <p class="muted">Upload a .ttf, .otf or .woff2 and it joins the typeface list for every team and slot.</p>
+        <button class="btn" id="fontAdd">Add font…</button>
+        <ul class="fontlist" id="fontList"></ul>
+      </div>
+      <div class="card">
+        <h3>Season</h3>
+        <label class="fld"><span class="fld-l">Regular season weeks</span>
+          <input id="dataWeeks" type="number" min="1" max="30" step="1"></label>
+        <button class="btn warn" id="dataReset">Reset everything</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<script type="module" src="js/maker/main.js"></script>
+</body>
+</html>
