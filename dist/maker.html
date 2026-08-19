@@ -283,6 +283,21 @@ input[type=checkbox]{accent-color:var(--acc)}
 .sbox .h.ne{right:-5px;top:-5px;cursor:nesw-resize}
 .sbox .h.sw{left:-5px;bottom:-5px;cursor:nesw-resize}
 .sbox .h.se{right:-5px;bottom:-5px;cursor:nwse-resize}
+
+/* A text slot is a baseline, not a box: the rule is where the type sits, the
+   band above it is the cap height it always draws at. */
+.sline{position:absolute;cursor:move;border-bottom:1px solid rgba(90,169,230,.6)}
+.sline:hover{border-bottom-color:var(--acc);background:rgba(90,169,230,.08)}
+.sline.sel{border-bottom:2px solid var(--go);background:rgba(62,207,142,.10)}
+.sline .tag{position:absolute;top:-17px;left:0;background:var(--go);color:#04120c;
+  font:600 10px/1 'Oswald',sans-serif;letter-spacing:.5px;padding:3px 5px;border-radius:3px;
+  white-space:nowrap;text-transform:uppercase;display:none}
+.sline.sel .tag{display:block}
+.sline .h{position:absolute;width:9px;height:9px;background:var(--go);border-radius:2px;display:none}
+.sline.sel .h{display:block}
+.sline .h.w{left:-5px;bottom:-5px;cursor:ew-resize}
+.sline .h.e{right:-5px;bottom:-5px;cursor:ew-resize}
+.sline .h.n{left:calc(50% - 4px);top:-5px;cursor:ns-resize}
 .guide{position:absolute;background:var(--acc);opacity:.8;pointer-events:none}
 .stage-foot{display:flex;align-items:center;gap:12px;padding:8px 2px}
 
@@ -427,7 +442,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
           <span class="muted" id="edSize"></span>
           <span class="spacer"></span>
           <label class="chk"><input type="checkbox" id="edSnap" checked> Snap</label>
-          <label class="chk"><input type="checkbox" id="edBoxes" checked> Show slot boxes</label>
+          <label class="chk"><input type="checkbox" id="edBoxes" checked> Show guides</label>
         </div>
       </div>
       <aside class="props">
@@ -786,16 +801,16 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     kind: "text",
     side: "a",
     text: "{{team}}",
-    x: 0.1,
-    y: 0.1,
-    w: 0.2,
+    x: 0.5,
+    y: 0.5,
+    w: 0.25,
     h: 0.08,
     align: "center",
     valign: "middle",
     font: "team",
     // 'team' = whatever typeface that team picked
-    size: 0.06,
-    // cap, as a fraction of canvas height; shrinks to fit
+    size: 0.05,
+    // cap height, as a fraction of canvas height. Fixed.
     color: "team",
     // 'team' = the team's colour
     stroke: 0,
@@ -803,12 +818,11 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     shadow: 0.25,
     shadowColor: "#000000",
     wrap: false,
+    maxLines: 0,
     caps: false,
     opacity: 1,
     rotate: 0,
-    hidden: false,
-    sizing: "pair"
-    // pair | league | off — see sizingOf() in render.js
+    hidden: false
   }, o);
   var makeSlot = slot;
   var LAYOUTS = [
@@ -818,53 +832,53 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   ];
   function preset(kind) {
     if (kind === "wings") return [
-      // Everything for a team stacked down its own half; the middle stays open.
+      // Everything for a team down its own half; the middle stays open.
       slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.045, y: 0.045, w: 0.16, h: 0.22 }),
       slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.795, y: 0.045, w: 0.16, h: 0.22 }),
-      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.02, y: 0.4, w: 0.46, h: 0.1, size: 0.1, stroke: 4e-3 }),
-      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.52, y: 0.4, w: 0.46, h: 0.1, size: 0.1, stroke: 4e-3 }),
-      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.02, y: 0.505, w: 0.46, h: 0.065, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.52, y: 0.505, w: 0.46, h: 0.065, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.02, y: 0.575, w: 0.46, h: 0.06, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.52, y: 0.575, w: 0.46, h: 0.06, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.03, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, sizing: "off", stroke: 3e-3 }),
-      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.53, y: 0.645, w: 0.44, h: 0.2, font: "oswald", color: "#ffffff", size: 0.055, wrap: true, sizing: "off", stroke: 3e-3 }),
-      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.1, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
-      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.6, y: 0.3, w: 0.3, h: 0.09, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
-      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.03, w: 0.3, h: 0.06, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
+      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.25, y: 0.46, w: 0.44, size: 0.062, wrap: true, maxLines: 2, h: 0.16, stroke: 4e-3 }),
+      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.75, y: 0.46, w: 0.44, size: 0.062, wrap: true, maxLines: 2, h: 0.16, stroke: 4e-3 }),
+      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.25, y: 0.565, w: 0.44, size: 0.05, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.75, y: 0.565, w: 0.44, size: 0.05, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.25, y: 0.635, w: 0.44, size: 0.042, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.75, y: 0.635, w: 0.44, size: 0.042, font: "oswald", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.25, y: 0.705, w: 0.42, size: 0.034, h: 0.2, font: "oswald", color: "#ffffff", wrap: true, maxLines: 4, stroke: 25e-4 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.75, y: 0.705, w: 0.42, size: 0.034, h: 0.2, font: "oswald", color: "#ffffff", wrap: true, maxLines: 4, stroke: 25e-4 }),
+      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.25, y: 0.36, w: 0.3, size: 0.055, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
+      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.75, y: 0.36, w: 0.3, size: 0.055, font: "anton", color: "#ffffff", stroke: 4e-3, hidden: true }),
+      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.5, y: 0.08, w: 0.3, size: 0.04, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
     ];
     if (kind === "scoreboard") return [
-      // Names on the wings, the numbers stacked in a centre column - the shape of
-      // a scoreboard background that already has plates in its corners.
-      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.015, y: 0.045, w: 0.3, h: 0.075, size: 0.055 }),
-      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.685, y: 0.045, w: 0.3, h: 0.075, size: 0.055 }),
+      // Names on the wings, the numbers on two lines down the centre - the shape
+      // of a background that already has plates in its corners.
+      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.165, y: 0.105, w: 0.29, size: 0.038 }),
+      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.835, y: 0.105, w: 0.29, size: 0.038 }),
       slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.055, y: 0.165, w: 0.22, h: 0.26 }),
       slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.725, y: 0.165, w: 0.22, h: 0.26 }),
-      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.405, y: 0.3, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
-      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.507, y: 0.3, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
-      slot({ id: "ppgA", label: "PPG A", side: "a", text: "{{ppg}}", x: 0.405, y: 0.41, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
-      slot({ id: "ppgB", label: "PPG B", side: "b", text: "{{ppg}}", x: 0.507, y: 0.41, w: 0.088, h: 0.055, font: "jet", color: "#ffffff", shadow: 0 }),
-      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.035, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, sizing: "off", stroke: 2e-3 }),
-      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.705, y: 0.47, w: 0.26, h: 0.18, font: "oswald", color: "#ffffff", size: 0.038, wrap: true, sizing: "off", stroke: 2e-3 }),
-      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.395, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
-      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.505, y: 0.545, w: 0.1, h: 0.08, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
-      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.9, w: 0.3, h: 0.06, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
+      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.449, y: 0.345, w: 0.085, size: 0.038, font: "jet", color: "#ffffff", shadow: 0 }),
+      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.551, y: 0.345, w: 0.085, size: 0.038, font: "jet", color: "#ffffff", shadow: 0 }),
+      slot({ id: "ppgA", label: "PPG A", side: "a", text: "{{ppg}}", x: 0.449, y: 0.455, w: 0.085, size: 0.034, font: "jet", color: "#ffffff", shadow: 0 }),
+      slot({ id: "ppgB", label: "PPG B", side: "b", text: "{{ppg}}", x: 0.551, y: 0.455, w: 0.085, size: 0.034, font: "jet", color: "#ffffff", shadow: 0 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.165, y: 0.505, w: 0.26, size: 0.028, h: 0.18, font: "oswald", color: "#ffffff", wrap: true, maxLines: 4, stroke: 2e-3 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.835, y: 0.505, w: 0.26, size: 0.028, h: 0.18, font: "oswald", color: "#ffffff", wrap: true, maxLines: 4, stroke: 2e-3 }),
+      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.449, y: 0.6, w: 0.1, size: 0.05, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
+      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.551, y: 0.6, w: 0.1, size: 0.05, font: "anton", color: "team", stroke: 3e-3, hidden: true }),
+      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.5, y: 0.94, w: 0.3, size: 0.035, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
     ];
     return [
-      slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.27, y: 0.115, w: 0.165, h: 0.175 }),
-      slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.565, y: 0.115, w: 0.165, h: 0.175 }),
-      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.2, y: 0.31, w: 0.27, h: 0.095, size: 0.085, stroke: 35e-4 }),
-      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.53, y: 0.31, w: 0.27, h: 0.095, size: 0.085, stroke: 35e-4 }),
-      slot({ id: "vs", label: "VS", side: "", text: "VS", x: 0.47, y: 0.31, w: 0.06, h: 0.095, font: "anton", color: "#ffffff", stroke: 4e-3 }),
-      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.255, y: 0.415, w: 0.195, h: 0.075, font: "anton", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.55, y: 0.415, w: 0.195, h: 0.075, font: "anton", color: "#ffffff", stroke: 3e-3 }),
-      slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.255, y: 0.5, w: 0.195, h: 0.055, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
-      slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.55, y: 0.5, w: 0.195, h: 0.055, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
-      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.21, y: 0.575, w: 0.25, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, sizing: "off", stroke: 25e-4 }),
-      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.54, y: 0.575, w: 0.25, h: 0.22, font: "oswald", color: "#ffffff", size: 0.042, wrap: true, sizing: "off", stroke: 25e-4 }),
-      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.255, y: 0.225, w: 0.195, h: 0.085, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
-      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.55, y: 0.225, w: 0.195, h: 0.085, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
-      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.35, y: 0.045, w: 0.3, h: 0.055, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
+      slot({ id: "logoA", label: "Logo A", kind: "image", side: "a", x: 0.27, y: 0.1, w: 0.165, h: 0.175 }),
+      slot({ id: "logoB", label: "Logo B", kind: "image", side: "b", x: 0.565, y: 0.1, w: 0.165, h: 0.175 }),
+      slot({ id: "nameA", label: "Name A", side: "a", text: "{{team}}", x: 0.335, y: 0.355, w: 0.27, size: 0.055, wrap: true, maxLines: 2, h: 0.13, stroke: 35e-4 }),
+      slot({ id: "nameB", label: "Name B", side: "b", text: "{{team}}", x: 0.665, y: 0.355, w: 0.27, size: 0.055, wrap: true, maxLines: 2, h: 0.13, stroke: 35e-4 }),
+      slot({ id: "vs", label: "VS", side: "", text: "VS", x: 0.5, y: 0.355, w: 0.06, size: 0.045, font: "anton", color: "#ffffff", stroke: 4e-3 }),
+      slot({ id: "recA", label: "Record A", side: "a", text: "{{record}}", x: 0.335, y: 0.52, w: 0.22, size: 0.055, font: "anton", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "recB", label: "Record B", side: "b", text: "{{record}}", x: 0.665, y: 0.52, w: 0.22, size: 0.055, font: "anton", color: "#ffffff", stroke: 3e-3 }),
+      slot({ id: "ppgA", label: "PPG A", side: "a", text: "PPG: {{ppg}}", x: 0.335, y: 0.585, w: 0.25, size: 0.038, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
+      slot({ id: "ppgB", label: "PPG B", side: "b", text: "PPG: {{ppg}}", x: 0.665, y: 0.585, w: 0.25, size: 0.038, font: "oswald", color: "#ffffff", stroke: 25e-4 }),
+      slot({ id: "noteA", label: "Note A", side: "a", text: "{{note}}", x: 0.335, y: 0.66, w: 0.25, size: 0.03, h: 0.2, font: "oswald", color: "#ffffff", wrap: true, maxLines: 4, stroke: 25e-4 }),
+      slot({ id: "noteB", label: "Note B", side: "b", text: "{{note}}", x: 0.665, y: 0.66, w: 0.25, size: 0.03, h: 0.2, font: "oswald", color: "#ffffff", wrap: true, maxLines: 4, stroke: 25e-4 }),
+      slot({ id: "scoreA", label: "Score A", side: "a", text: "{{score}}", x: 0.335, y: 0.295, w: 0.22, size: 0.055, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
+      slot({ id: "scoreB", label: "Score B", side: "b", text: "{{score}}", x: 0.665, y: 0.295, w: 0.22, size: 0.055, font: "anton", color: "team", stroke: 35e-4, hidden: true }),
+      slot({ id: "week", label: "Week", side: "", text: "WEEK {{week}}", x: 0.5, y: 0.085, w: 0.3, size: 0.035, font: "anton", color: "#ffffff", stroke: 3e-3, hidden: true })
     ];
   }
   function newTemplate(name = "New template", kind = "center") {
@@ -882,7 +896,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     }));
   }
   var state = {
-    v: 1,
+    v: 2,
     year: (/* @__PURE__ */ new Date()).getFullYear(),
     week: 1,
     weeks: 14,
@@ -908,6 +922,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       state.defaultTpl = a.id;
     }
     if (!state.templates.some((t) => t.id === state.defaultTpl)) state.defaultTpl = state.templates[0].id;
+    migrateSlots();
     state.schedule = state.schedule || {};
     state.fonts = state.fonts || [];
     state.photos = state.photos || [];
@@ -915,6 +930,20 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       if (t.bg && !state.photos.some((p) => p.id === t.bg)) state.photos.push({ id: t.bg, name: t.name });
     });
     return state;
+  }
+  function migrateSlots() {
+    if (state.v >= 2) return;
+    state.templates.forEach((t) => t.slots.forEach((s) => {
+      if (s.kind === "image") return;
+      const capFrac = Math.min((s.size || 0.05) * 0.72, (s.h || 0.08) * 0.92);
+      const vf = s.valign === "top" ? 0 : s.valign === "bottom" ? 1 : 0.5;
+      s.y = s.y + (s.h - capFrac) * vf + capFrac;
+      s.x = s.align === "left" ? s.x : s.align === "right" ? s.x + s.w : s.x + s.w / 2;
+      s.size = capFrac;
+      delete s.sizing;
+      delete s.lock;
+    }));
+    state.v = 2;
   }
   var pending = 0;
   function save() {
@@ -1080,41 +1109,6 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   function resolve(text2, side, c) {
     return String(text2 || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => value(k.toLowerCase(), side, c));
   }
-  var sizingOf = (slot2) => slot2.sizing || (slot2.lock === false ? "off" : "pair");
-  var WIDEST = {
-    record: "88-88",
-    ppg: "888.88",
-    pf: "8888.88",
-    pa: "8888.88",
-    score: "888.88",
-    rank: "88",
-    streak: "W88",
-    week: "88",
-    year: "8888"
-  };
-  function longestName(c, mode) {
-    if (mode === "league") {
-      return state.teams.reduce((best, t) => (t.name || "").length > best.length ? t.name : best, "");
-    }
-    const a = c.a && c.a.name || "", b = c.b && c.b.name || "";
-    return a.length >= b.length ? a : b;
-  }
-  function longestMgr(c, mode) {
-    if (mode === "league") {
-      return state.teams.reduce((best, t) => (t.mgr || "").length > best.length ? t.mgr : best, "");
-    }
-    const a = c.a && c.a.mgr || "", b = c.b && c.b.mgr || "";
-    return a.length >= b.length ? a : b;
-  }
-  function gauge(text2, side, c, mode) {
-    return String(text2 || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => {
-      const key = k.toLowerCase();
-      if (key === "team" || key === "opp") return longestName(c, mode);
-      if (key === "manager") return longestMgr(c, mode);
-      if (key === "note") return value(key, side, c);
-      return WIDEST[key] != null ? WIDEST[key] : value(key, side, c);
-    });
-  }
   function faceOf(slot2, t) {
     const key = slot2.font === "team" ? t && t.font || "oswald" : slot2.font;
     if (String(key).startsWith("custom:")) {
@@ -1146,6 +1140,37 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     });
     return out.length ? out : [""];
   }
+  function wrapTo(ctx, text2, maxW, maxLines) {
+    const lines = wrapLines(ctx, text2, maxW);
+    if (!maxLines || lines.length <= maxLines) return lines;
+    const words = text2.split(/\s+/).filter(Boolean);
+    if (words.length <= maxLines) return words;
+    const w = words.map((x) => ctx.measureText(x).width);
+    const space = ctx.measureText(" ").width;
+    const width = (i, j) => w.slice(i, j).reduce((a, b) => a + b, 0) + space * (j - i - 1);
+    const memo = /* @__PURE__ */ new Map();
+    const best = (i, k) => {
+      if (k === 1) return { max: width(i, words.length), cuts: [] };
+      const key = i + ":" + k;
+      if (memo.has(key)) return memo.get(key);
+      let out2 = null;
+      for (let j = i + 1; j <= words.length - (k - 1); j++) {
+        const rest = best(j, k - 1);
+        const max = Math.max(width(i, j), rest.max);
+        if (!out2 || max < out2.max) out2 = { max, cuts: [j].concat(rest.cuts) };
+      }
+      memo.set(key, out2);
+      return out2;
+    };
+    const cuts = best(0, Math.min(maxLines, words.length)).cuts.concat(words.length);
+    const out = [];
+    let from = 0;
+    cuts.forEach((c) => {
+      out.push(words.slice(from, c).join(" "));
+      from = c;
+    });
+    return out;
+  }
   var CAP = /* @__PURE__ */ new Map();
   function capUnit(ctx, face) {
     const key = face.ff + "|" + face.w;
@@ -1155,55 +1180,6 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     const u = (m.actualBoundingBoxAscent || 72) / 100;
     CAP.set(key, u);
     return u;
-  }
-  function facesFor(slot2, c, mode) {
-    if (slot2.font !== "team") return [faceOf(slot2, null)];
-    const teams = mode === "league" ? state.teams : [c.a, c.b].filter(Boolean);
-    const seen = /* @__PURE__ */ new Set(), out = [];
-    teams.forEach((t) => {
-      const f = faceOf(slot2, t);
-      const k = f.ff + "|" + f.w;
-      if (!seen.has(k)) {
-        seen.add(k);
-        out.push(f);
-      }
-    });
-    return out.length ? out : [faceOf(slot2, null)];
-  }
-  function lockedCap(ctx, slot2, c, H, b, mode) {
-    const g = gauge(slot2.text, slot2.side, c, mode);
-    let cap = slot2.size * H * 0.72;
-    facesFor(slot2, c, mode).forEach((face) => {
-      const u = capUnit(ctx, face);
-      const str = slot2.caps || face.tt === "uppercase" ? g.toUpperCase() : g;
-      setFont(ctx, face, 100);
-      const w100 = ctx.measureText(str).width;
-      let px = slot2.size * H * (face.sc || 1);
-      if (w100 > 0) px = Math.min(px, b.w * 100 / w100);
-      cap = Math.min(cap, px * u);
-    });
-    return Math.max(2, Math.min(cap, b.h * 0.92));
-  }
-  function fitLoose(ctx, text2, face, slot2, H, boxW, boxH) {
-    let px = Math.max(4, slot2.size * H * (face.sc || 1));
-    if (!slot2.wrap) {
-      setFont(ctx, face, px);
-      const w = ctx.measureText(text2).width;
-      if (w > boxW) px *= boxW / w;
-      px = Math.min(px, boxH / 1.02);
-      setFont(ctx, face, px);
-      return { lines: [text2], px };
-    }
-    let lines = [];
-    for (let i = 0; i < 24; i++) {
-      setFont(ctx, face, px);
-      lines = wrapLines(ctx, text2, boxW);
-      if (!lines.some((l) => ctx.measureText(l).width > boxW) && lines.length * px * LH <= boxH) break;
-      px *= 0.93;
-      if (px < 4) break;
-    }
-    setFont(ctx, face, px);
-    return { lines, px };
   }
   function box(slot2, W, H) {
     return { x: slot2.x * W, y: slot2.y * H, w: slot2.w * W, h: slot2.h * H };
@@ -1225,58 +1201,57 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     if (slot2.color === "accent") return t && t.accent || "#ffffff";
     return slot2.color || "#ffffff";
   }
+  var SQUEEZE_FLOOR = 0.5;
   function drawText(ctx, slot2, c, W, H, trace) {
     const t = slot2.side === "b" ? c.b : slot2.side === "a" ? c.a : null;
     let text2 = resolve(slot2.text, slot2.side, c);
     const face = faceOf(slot2, t);
     if (slot2.caps || face.tt === "uppercase") text2 = text2.toUpperCase();
     if (!text2.trim()) return;
-    const b = box(slot2, W, H);
-    const mode = slot2.wrap ? "off" : sizingOf(slot2);
-    const locked = mode !== "off";
-    let px, lines;
-    if (locked) {
-      px = lockedCap(ctx, slot2, c, H, b, mode) / capUnit(ctx, face);
-      setFont(ctx, face, px);
-      const w = ctx.measureText(text2).width;
-      if (w > b.w) {
-        px *= b.w / w;
+    const cap = slot2.size * H;
+    let px = cap / capUnit(ctx, face);
+    setFont(ctx, face, px);
+    const span = slot2.w * W;
+    const ax = slot2.x * W;
+    const baseline = slot2.y * H;
+    const lineH = px * LH;
+    let lines = slot2.wrap ? wrapTo(ctx, text2, span, slot2.maxLines || 0) : [text2];
+    let squeeze = 1;
+    const widest = () => lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+    if (widest() > span) {
+      squeeze = Math.max(SQUEEZE_FLOOR, span / widest());
+      if (widest() * squeeze > span + 0.5) {
+        px *= span / (widest() * squeeze);
         setFont(ctx, face, px);
+        if (slot2.wrap) lines = wrapTo(ctx, text2, span / squeeze, slot2.maxLines || 0);
       }
-      lines = [text2];
-    } else {
-      ({ lines, px } = fitLoose(ctx, text2, face, slot2, H, b.w, b.h));
     }
-    const capH = px * capUnit(ctx, face);
-    const refCap = locked ? Math.min(slot2.size * H * 0.72, b.h * 0.92) : capH;
-    const blockH = (lines.length - 1) * px * LH + refCap;
-    const top = b.y + (b.h - blockH) * (slot2.valign === "top" ? 0 : slot2.valign === "bottom" ? 1 : 0.5);
+    if (trace) trace[slot2.id] = {
+      cap: +(px * capUnit(ctx, face)).toFixed(2),
+      px: +px.toFixed(2),
+      baseline: +baseline.toFixed(2),
+      squeeze: +squeeze.toFixed(3),
+      lines: lines.length
+    };
     ctx.textAlign = slot2.align;
     ctx.textBaseline = "alphabetic";
-    const ax = slot2.align === "left" ? b.x : slot2.align === "right" ? b.x + b.w : b.x + b.w / 2;
-    if (trace) trace[slot2.id] = {
-      px: +px.toFixed(2),
-      cap: +capH.toFixed(2),
-      baseline: +(top + refCap).toFixed(2),
-      lines: lines.length,
-      mode
-    };
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
     lines.forEach((line, i) => {
-      const y = top + refCap + i * px * LH;
       ctx.save();
+      ctx.translate(ax, baseline + i * lineH);
+      if (squeeze !== 1) ctx.scale(squeeze, 1);
       shade(ctx, slot2, H, px);
       if (slot2.stroke > 0) {
-        ctx.lineWidth = strokeWidth(slot2, H, px);
+        ctx.lineWidth = strokeWidth(slot2, H, px) / squeeze;
         ctx.strokeStyle = slot2.strokeColor || "#000";
-        ctx.strokeText(line, ax, y);
+        ctx.strokeText(line, 0, 0);
         ctx.shadowColor = "transparent";
         ctx.shadowBlur = 0;
         ctx.shadowOffsetY = 0;
       }
       ctx.fillStyle = colorOf(slot2, t);
-      ctx.fillText(line, ax, y);
+      ctx.fillText(line, 0, 0);
       ctx.restore();
     });
   }
@@ -1428,11 +1403,16 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     paintList();
     paintProps();
   }
+  function extent(s) {
+    if (s.kind === "image" || s.align === "left") return [s.x, s.x + s.w];
+    if (s.align === "right") return [s.x - s.w, s.x];
+    return [s.x - s.w / 2, s.x + s.w / 2];
+  }
   function clearMargins(t) {
     const live = t.slots.filter((s) => !s.hidden);
     if (!live.length) return "whole canvas clear";
-    const left = Math.min(...live.map((s) => s.x));
-    const right = 1 - Math.max(...live.map((s) => s.x + s.w));
+    const left = Math.min(...live.map((s) => extent(s)[0]));
+    const right = 1 - Math.max(...live.map((s) => extent(s)[1]));
     const px = (f) => Math.round(Math.max(0, f) * t.w);
     return `clear for photos: ${px(left)}px left, ${px(right)}px right`;
   }
@@ -1644,30 +1624,55 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   function paintBoxes() {
     const ov = clear(qs("#edOverlay"));
     current().slots.forEach((s) => {
-      const b = el(
+      const [l, r] = extent(s);
+      const on = s.id === sel;
+      const b = s.kind === "image" ? el(
         "div",
         {
-          class: "sbox" + (s.id === sel ? " sel" : ""),
-          style: `left:${s.x * 100}%;top:${s.y * 100}%;width:${s.w * 100}%;height:${s.h * 100}%`,
-          title: s.label || s.kind
+          class: "sbox" + (on ? " sel" : ""),
+          style: `left:${l * 100}%;top:${s.y * 100}%;width:${s.w * 100}%;height:${s.h * 100}%`,
+          title: s.label || "Logo"
         },
-        el("span", { class: "tag" }, s.label || s.kind),
+        el("span", { class: "tag" }, s.label || "Logo"),
         ...["nw", "ne", "sw", "se"].map((h) => el("i", { class: "h " + h, "data-h": h }))
+      ) : el(
+        "div",
+        {
+          class: "sline" + (on ? " sel" : ""),
+          style: `left:${l * 100}%;width:${(r - l) * 100}%;top:${(s.y - s.size) * 100}%;height:${s.size * 100}%`,
+          title: s.label || s.text
+        },
+        el("span", { class: "tag" }, s.label || s.text),
+        el("i", { class: "h w", "data-h": "w" }),
+        el("i", { class: "h e", "data-h": "e" }),
+        el("i", { class: "h n", "data-h": "n" })
       );
       b.addEventListener("pointerdown", (e) => startDrag(e, s, b));
       ov.append(b);
     });
+  }
+  function place(node, s) {
+    const [l, r] = extent(s);
+    node.style.left = l * 100 + "%";
+    node.style.width = (r - l) * 100 + "%";
+    if (s.kind === "image") {
+      node.style.top = s.y * 100 + "%";
+      node.style.height = s.h * 100 + "%";
+    } else {
+      node.style.top = (s.y - s.size) * 100 + "%";
+      node.style.height = s.size * 100 + "%";
+    }
   }
   function startDrag(e, s, node) {
     e.preventDefault();
     sel = s.id;
     paintList();
     paintProps();
-    document.querySelectorAll(".sbox.sel").forEach((n) => n.classList.remove("sel"));
+    document.querySelectorAll(".sbox.sel,.sline.sel").forEach((n) => n.classList.remove("sel"));
     node.classList.add("sel");
     const stage = qs("#edStage").getBoundingClientRect();
     const handle = e.target.dataset ? e.target.dataset.h : "";
-    const from = { x: s.x, y: s.y, w: s.w, h: s.h };
+    const from = { x: s.x, y: s.y, w: s.w, h: s.h, size: s.size };
     const ox = e.clientX, oy = e.clientY;
     node.setPointerCapture(e.pointerId);
     const move = (ev) => {
@@ -1677,21 +1682,25 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
         if (Math.abs(dx) > Math.abs(dy)) dy = 0;
         else dx = 0;
       }
-      if (handle) {
+      if (handle && s.kind === "image") {
         const west = handle[1] === "w", north = handle[0] === "n";
         s.w = Math.max(0.02, from.w + (west ? -dx : dx));
         s.h = Math.max(0.02, from.h + (north ? -dy : dy));
         if (west) s.x = from.x + from.w - s.w;
         if (north) s.y = from.y + from.h - s.h;
+      } else if (handle === "w" || handle === "e") {
+        const grow = handle === "e" ? dx : -dx;
+        s.w = Math.max(0.02, from.w + (s.align === "center" ? grow * 2 : grow));
+        if (s.align === "left" && handle === "w") s.x = from.x + dx;
+        if (s.align === "right" && handle === "e") s.x = from.x + dx;
+      } else if (handle === "n") {
+        s.size = Math.max(8e-3, from.size - dy);
       } else {
         s.x = from.x + dx;
         s.y = from.y + dy;
         if (qs("#edSnap").checked && !ev.altKey) snap(s);
       }
-      node.style.left = s.x * 100 + "%";
-      node.style.top = s.y * 100 + "%";
-      node.style.width = s.w * 100 + "%";
-      node.style.height = s.h * 100 + "%";
+      place(node, s);
       repaintCanvas();
     };
     const up = () => {
@@ -1707,11 +1716,16 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
   var TOL = 6e-3;
   function snap(s) {
     document.querySelectorAll(".guide").forEach((g) => g.remove());
-    const xs = [0, 0.5 - s.w / 2, 1 - s.w], ys = [0, 0.5 - s.h / 2, 1 - s.h];
+    const xs = [0.5], ys = [];
     current().slots.forEach((o) => {
       if (o.id === s.id) return;
-      xs.push(o.x, o.x + o.w - s.w, o.x + (o.w - s.w) / 2);
-      ys.push(o.y, o.y + o.h - s.h, o.y + (o.h - s.h) / 2);
+      if (o.kind === "image") {
+        ys.push(o.y, o.y + o.h);
+        xs.push(o.x, o.x + o.w);
+        return;
+      }
+      ys.push(o.y, o.y - o.size);
+      xs.push(o.x, 1 - o.x);
     });
     const hit = (v, list) => list.find((t) => Math.abs(v - t) < TOL);
     const nx = hit(s.x, xs), ny = hit(s.y, ys);
@@ -1780,7 +1794,7 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
       y: s.y,
       w: s.w,
       h: s.h,
-      x: 1 - s.x - s.w,
+      x: s.kind === "image" ? 1 - s.x - s.w : 1 - s.x,
       size: s.size,
       font: s.font,
       color: s.color,
@@ -1809,7 +1823,8 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
     draw(document.createElement("canvas"), { tplId: t.id, game: sample(), week: state.week, scale: 1, trace });
     const r = trace[slot2.id];
     if (!r) return "Nothing to draw here yet.";
-    return `Renders at ${Math.round(r.cap)}px capitals` + (r.mode === "league" ? " on every screen in the league." : r.mode === "pair" ? " \u2014 both sides of this screen match." : " for this value.");
+    const pct = Math.round(r.squeeze * 100);
+    return `${Math.round(r.cap)}px capitals on the baseline` + (pct < 100 ? `, condensed to ${pct}% for this value.` : ".");
   }
   function paintProps() {
     const box2 = clear(qs("#edProps"));
@@ -1859,12 +1874,12 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
         upd();
       })));
       box2.append(field(
-        "Max size",
+        "Cap height",
         num(Math.round(s.size * t.h), 1, (v) => {
           s.size = v / t.h;
           upd();
         }),
-        "px \u2014 shrinks automatically to fit the box"
+        "px \u2014 fixed. Long values condense sideways rather than shrink."
       ));
       const colorKind = s.color === "team" ? "team" : s.color === "accent" ? "accent" : "fixed";
       box2.append(field("Colour", el(
@@ -1919,65 +1934,93 @@ td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right
           upd();
         } }), "ALL CAPS")
       ));
-      const modes = [
-        ["pair", "Match both teams on the screen"],
-        ["league", "Same size on every screen"],
-        ["off", "Fit each value on its own"]
-      ];
-      const mode = s.wrap ? "off" : s.sizing || (s.lock === false ? "off" : "pair");
-      box2.append(field("Sizing", select(
-        modes,
-        mode,
-        (v) => {
-          s.sizing = v;
-          upd();
-        },
-        s.wrap ? { disabled: true } : {}
-      )));
       box2.append(el("span", { class: "fld-h", style: "display:block" }, sizeReadout(s)));
-      box2.append(el("span", { class: "fld-h", style: "display:block" }, s.wrap ? "Wrapped text has no worst case, so it always sizes to itself." : {
-        pair: "Both sides come out one size, as large as the box allows. Numbers are sized for 88-88 so they never resize.",
-        league: "Sized for the longest name in the league \u2014 identical on every screen, every week.",
-        off: "Sizes to whatever it holds, so it changes size from team to team."
-      }[mode]));
     }
     box2.append(el("div", { class: "sect" }));
-    box2.append(field("Align", el(
-      "div",
-      { class: "row" },
-      select([["left", "Left"], ["center", "Centre"], ["right", "Right"]], s.align, (v) => {
-        s.align = v;
-        upd();
-      }),
-      select([["top", "Top"], ["middle", "Middle"], ["bottom", "Bottom"]], s.valign, (v) => {
-        s.valign = v;
-        upd();
-      })
-    )));
-    box2.append(field("Position", el(
-      "div",
-      { class: "row" },
-      num(Math.round(s.x * t.w), 1, (v) => {
+    if (s.kind === "image") {
+      box2.append(field("Align", el(
+        "div",
+        { class: "row" },
+        select([["left", "Left"], ["center", "Centre"], ["right", "Right"]], s.align, (v) => {
+          s.align = v;
+          upd();
+        }),
+        select([["top", "Top"], ["middle", "Middle"], ["bottom", "Bottom"]], s.valign, (v) => {
+          s.valign = v;
+          upd();
+        })
+      )));
+      box2.append(field("Position", el(
+        "div",
+        { class: "row" },
+        num(Math.round(s.x * t.w), 1, (v) => {
+          s.x = v / t.w;
+          upd();
+        }),
+        num(Math.round(s.y * t.h), 1, (v) => {
+          s.y = v / t.h;
+          upd();
+        })
+      )));
+      box2.append(field("Size", el(
+        "div",
+        { class: "row" },
+        num(Math.round(s.w * t.w), 1, (v) => {
+          s.w = v / t.w;
+          upd();
+        }),
+        num(Math.round(s.h * t.h), 1, (v) => {
+          s.h = v / t.h;
+          upd();
+        })
+      )));
+    } else {
+      box2.append(field("Aligns", select(
+        [["left", "Left of the anchor"], ["center", "Centred on it"], ["right", "Right of it"]],
+        s.align,
+        (v) => {
+          s.align = v;
+          upd();
+        }
+      )));
+      box2.append(field("Anchor x", num(Math.round(s.x * t.w), 1, (v) => {
         s.x = v / t.w;
         upd();
-      }),
-      num(Math.round(s.y * t.h), 1, (v) => {
-        s.y = v / t.h;
-        upd();
-      })
-    )));
-    box2.append(field("Size", el(
-      "div",
-      { class: "row" },
-      num(Math.round(s.w * t.w), 1, (v) => {
-        s.w = v / t.w;
-        upd();
-      }),
-      num(Math.round(s.h * t.h), 1, (v) => {
-        s.h = v / t.h;
-        upd();
-      })
-    )));
+      }), "px across"));
+      box2.append(field(
+        "Baseline y",
+        num(Math.round(s.y * t.h), 1, (v) => {
+          s.y = v / t.h;
+          upd();
+        }),
+        "px down \u2014 the line the type sits on, the same on every screen"
+      ));
+      box2.append(field(
+        "Room",
+        num(Math.round(s.w * t.w), 1, (v) => {
+          s.w = v / t.w;
+          upd();
+        }),
+        "px before it condenses"
+      ));
+      if (s.wrap) box2.append(field(
+        "Max lines",
+        num(s.maxLines || 0, 1, (v) => {
+          s.maxLines = Math.max(0, v | 0);
+          upd();
+        }),
+        "0 for no limit \u2014 a limit stops long values growing into the row below"
+      ));
+      const pair = current().slots.find((o) => o.id !== s.id && o.kind === "text" && (o.label || "").replace(/\s*[AB]$/i, "") === (s.label || "").replace(/\s*[AB]$/i, ""));
+      if (pair && (Math.abs(pair.y - s.y) > 1e-9 || Math.abs(pair.size - s.size) > 1e-9)) {
+        box2.append(btn(`Line up with ${pair.label || "the other side"}`, () => {
+          s.y = pair.y;
+          s.size = pair.size;
+          save();
+          paintEditor();
+        }, "sm"));
+      }
+    }
     box2.append(field("Rotate", num(s.rotate || 0, 1, (v) => {
       s.rotate = v || 0;
       upd();

@@ -123,48 +123,55 @@ slots have anything to show.
 
 ### Nothing moves
 
-The point of the tool is that a screen made in week 14 lines up with one made in
-week 1, so no value is ever measured on its own. Three things were letting the
-type drift, and all three are fixed:
+A screen made in week 14 has to line up with one made in week 1, and the two
+sides of a screen have to line up with each other. The first version fitted text
+*into a box*, which cannot do that: the size a value came out at depended on the
+value, so a record changed size when a team went from 3-2 to 12-4, and two team
+names on one screen came out at two sizes on two lines.
 
-**Text was sized to whatever it happened to hold.** A slot now has a *sizing*
-mode. `Match both teams` (the default) sizes against the longer of the two names
-on the screen, so both sides come out at one size. `Same size on every screen`
-sizes against the longest name in the league — identical everywhere, at the cost
-of sizing for the worst case. `Fit each value on its own` is the old behaviour
-and is what wrapped blurbs use, since free text has no worst case.
+**A text slot is not a box.** It is a baseline, an anchor and a cap height, and
+all three are fixed:
 
-Numbers never measure their own value under either locked mode: a record is
-sized against `88-88` and a score against `888.88`, because 8 is the widest
-glyph in almost every face. So a record does not change size when a team goes
-from 3-2 to 12-4.
+```
+y     the baseline the type sits on          ← identical on every screen
+x     the point it aligns to                 ← left, centred or right of it
+size  the cap height it always draws at      ← never derived from the value
+w     how much room it has before condensing
+```
 
-**The baseline came from the glyphs in the string.** `actualBoundingBoxAscent`
-describes the letters actually being drawn, so `PPG: --` sat higher than
-`PPG: 162.93`, and a name without a descender sat higher than one with a `g` in
-it. Text is now anchored on the *capitals* of its face, and a locked slot is
-laid out against the size it was asked for rather than the size it came out at
-— so a screen whose names happen to fit larger still puts its baseline on the
-same line as every other screen.
+Nothing about the value is allowed to change the size. A value too wide for its
+room is **condensed horizontally** instead — which shortens it without moving
+the baseline or changing the cap height — down to half width before it gives up
+and scales, which in practice means a name nobody has. Wrapped slots hold to a
+line limit, and the line split is chosen to make the *widest* line as narrow as
+possible, since that line is what sets the condense: greedy filling put
+"SERIOUSLY STEP" on one line and "BURROW" on the next, which needed far more
+squeeze than the balanced split does.
 
-Matching pixel size is not matching visual size when every team picks its own
-typeface: Bungee at 60px towers over Oswald at 60px. Slots that inherit the
-team's face are matched on **cap height**, so the two names on a screen are the
-same size to the eye and sit on one line even in two different faces.
+Two more things had to be right for a fixed baseline to actually hold still:
 
-**Outline and shadow were sized against the canvas.** Both are stored as a
-fraction of canvas height so a template keeps one look at any resolution, but a
-name that shrank to fit a long string got a 39px blur around an 8px letter and
-vanished into its own halo. Both are now capped against the type size being
-drawn.
+**Anchor on the capitals, not on the glyphs.** `actualBoundingBoxAscent`
+describes the letters in this particular string, so `PPG: --` sat higher than
+`PPG: 162.93`, and a name without a descender sat higher than one with a `g`.
+Cap height comes from the face, not the string.
 
-The properties panel reports what a slot actually comes out at —
-`Renders at 38px capitals` — which is the number you want when deciding whether
-a box is too narrow for the mode you picked.
+**Cap height, not pixel size, across typefaces.** Bungee at 60px towers over
+Oswald at 60px, so a slot that inherits each team's own face is set by the cap
+height it should draw at and the px is whatever that face needs to hit it.
 
-**Mirror** copies a slot's geometry across the centre line onto its opposite
-number. Symmetry is the thing the eye catches on these graphics, and matching
-two boxes by hand never quite lands.
+**Outline and shadow are capped against the type.** Both are stored as a
+fraction of canvas height so a template keeps one look at any resolution, but on
+their own that gave a 39px blur around a small line, which vanished into its own
+halo.
+
+The editor draws text slots as their baseline — a rule under the type, with the
+cap band shown on the selected one — rather than as a rectangle, and dragging
+snaps a baseline onto any other slot's baseline, which is what makes records
+line up with records. The properties panel reports what a slot comes out at:
+`72px capitals on the baseline, condensed to 82% for this value`.
+
+`Line up with Record B` appears on a slot whose opposite number sits on a
+different line, and sets both to match.
 
 Export writes a PNG at the template's own resolution — the preview is the same
 renderer at a smaller scale, not an approximation of it. `Copy` puts the image
@@ -195,13 +202,14 @@ list — the tab bar stopped responding, and only in the built file. They are
 `fillText` runs, canvas draws the fallback and never redraws. Every face is
 requested up front in `js/maker/main.js` before the first draw.
 
-`npm run check:maker` runs 39 checks against the built file. Several read
+`npm run check:maker` runs 41 checks against the built file. Several read
 pixels rather than the DOM, because what goes wrong in a layout tool is
 geometry: they draw a slot on its own, diff it against the same template with
 everything hidden, and assert the ink landed inside the box it was positioned
-in — including with a team name long enough to force a shrink. Two more read the
-renderer's own trace to assert the guarantee directly: both names on a screen at
-one size on one baseline, and a record the same size at 3-2 and at 12-11.
+in, and that it sits on the baseline the slot names. Two more read the
+renderer's own trace to assert the guarantee outright: every slot in every
+matchup of a week at the same size on the same line, and a record the same size
+at 3-2 and at 12-11.
 
 ## Layout
 

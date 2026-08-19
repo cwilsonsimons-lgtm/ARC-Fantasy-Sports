@@ -59,53 +59,6 @@ export function resolve(text, side, c) {
   return String(text || '').replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => value(k.toLowerCase(), side, c));
 }
 
-// What a slot is sized against. The point is that the answer does not change
-// from screen to screen, so a value is never measured on its own:
-//
-//   pair   - the wider of the two teams on this screen, so both sides come out
-//            at one size and as large as the box allows. The default.
-//   league - the longest name in the league, so every screen in every week is
-//            identical. Absolute, at the cost of sizing for the worst case.
-//   off    - measure the actual string. Only sensible for a wrapped blurb,
-//            which has no worst case to measure.
-//
-// Numbers never use the actual value under pair or league: a record is sized
-// against 88-88 and a score against 888.88, because 8 is the widest glyph in
-// almost every face. So a record does not resize when a team goes from 3-2 to
-// 12-4, and week 14 lines up with week 1.
-export const sizingOf = slot => slot.sizing || (slot.lock === false ? 'off' : 'pair');
-
-const WIDEST = {
-  record: '88-88', ppg: '888.88', pf: '8888.88', pa: '8888.88', score: '888.88',
-  rank: '88', streak: 'W88', week: '88', year: '8888',
-};
-
-function longestName(c, mode) {
-  if (mode === 'league') {
-    return state.teams.reduce((best, t) => (t.name || '').length > best.length ? t.name : best, '');
-  }
-  const a = (c.a && c.a.name) || '', b = (c.b && c.b.name) || '';
-  return a.length >= b.length ? a : b;
-}
-
-function longestMgr(c, mode) {
-  if (mode === 'league') {
-    return state.teams.reduce((best, t) => (t.mgr || '').length > best.length ? t.mgr : best, '');
-  }
-  const a = (c.a && c.a.mgr) || '', b = (c.b && c.b.mgr) || '';
-  return a.length >= b.length ? a : b;
-}
-
-function gauge(text, side, c, mode) {
-  return String(text || '').replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => {
-    const key = k.toLowerCase();
-    if (key === 'team' || key === 'opp') return longestName(c, mode);
-    if (key === 'manager') return longestMgr(c, mode);
-    if (key === 'note') return value(key, side, c);   // free text has no worst case
-    return WIDEST[key] != null ? WIDEST[key] : value(key, side, c);
-  });
-}
-
 // ---------- type ----------
 
 function faceOf(slot, t) {
@@ -141,6 +94,45 @@ function wrapLines(ctx, text, maxW) {
   return out.length ? out : [''];
 }
 
+// A slot occupies a fixed number of lines or fewer, so a long team name cannot
+// grow downwards into the row beneath it. Past the limit the words are split
+// across the lines available and the block condenses to fit - and the split is
+// chosen to make the *widest* line as narrow as possible, because that line is
+// what sets the condense. Greedy filling put "SERIOUSLY STEP" on one line and
+// "BURROW" on the next, which needed more squeeze than the balanced split does.
+function wrapTo(ctx, text, maxW, maxLines) {
+  const lines = wrapLines(ctx, text, maxW);
+  if (!maxLines || lines.length <= maxLines) return lines;
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= maxLines) return words;
+
+  const w = words.map(x => ctx.measureText(x).width);
+  const space = ctx.measureText(' ').width;
+  const width = (i, j) => w.slice(i, j).reduce((a, b) => a + b, 0) + space * (j - i - 1);
+
+  // best[i][k] = the narrowest possible widest-line for words[i..] over k lines
+  const memo = new Map();
+  const best = (i, k) => {
+    if (k === 1) return { max: width(i, words.length), cuts: [] };
+    const key = i + ':' + k;
+    if (memo.has(key)) return memo.get(key);
+    let out = null;
+    for (let j = i + 1; j <= words.length - (k - 1); j++) {
+      const rest = best(j, k - 1);
+      const max = Math.max(width(i, j), rest.max);
+      if (!out || max < out.max) out = { max, cuts: [j].concat(rest.cuts) };
+    }
+    memo.set(key, out);
+    return out;
+  };
+
+  const cuts = best(0, Math.min(maxLines, words.length)).cuts.concat(words.length);
+  const out = [];
+  let from = 0;
+  cuts.forEach(c => { out.push(words.slice(from, c).join(' ')); from = c; });
+  return out;
+}
+
 // Cap height per 1px of font size. Two faces at the same px are not the same
 // size on the page - Bungee towers over Oswald - so a slot that inherits each
 // team's own typeface has to be matched on cap height, not on px, or the names
@@ -156,61 +148,6 @@ function capUnit(ctx, face) {
   return u;
 }
 
-// Every face this slot might be drawn in - both sides of this screen, or every
-// team in the league when the size has to hold across all of them.
-function facesFor(slot, c, mode) {
-  if (slot.font !== 'team') return [faceOf(slot, null)];
-  const teams = mode === 'league' ? state.teams : [c.a, c.b].filter(Boolean);
-  const seen = new Set(), out = [];
-  teams.forEach(t => {
-    const f = faceOf(slot, t);
-    const k = f.ff + '|' + f.w;
-    if (!seen.has(k)) { seen.add(k); out.push(f); }
-  });
-  return out.length ? out : [faceOf(slot, null)];
-}
-
-// The one cap height this slot uses on every screen: the largest that fits the
-// box for the widest value the slot could ever hold, in the least economical
-// face any team has picked. Deterministic, so week 1 and week 14 match.
-function lockedCap(ctx, slot, c, H, b, mode) {
-  const g = gauge(slot.text, slot.side, c, mode);
-  let cap = slot.size * H * 0.72;
-  facesFor(slot, c, mode).forEach(face => {
-    const u = capUnit(ctx, face);
-    const str = slot.caps || face.tt === 'uppercase' ? g.toUpperCase() : g;
-    setFont(ctx, face, 100);
-    const w100 = ctx.measureText(str).width;
-    let px = slot.size * H * (face.sc || 1);
-    if (w100 > 0) px = Math.min(px, b.w * 100 / w100);
-    cap = Math.min(cap, px * u);
-  });
-  return Math.max(2, Math.min(cap, b.h * 0.92));
-}
-
-// Unlocked: size to the string in front of us, which is what a note wants.
-function fitLoose(ctx, text, face, slot, H, boxW, boxH) {
-  let px = Math.max(4, slot.size * H * (face.sc || 1));
-  if (!slot.wrap) {
-    setFont(ctx, face, px);
-    const w = ctx.measureText(text).width;
-    if (w > boxW) px *= boxW / w;
-    px = Math.min(px, boxH / 1.02);
-    setFont(ctx, face, px);
-    return { lines: [text], px };
-  }
-  let lines = [];
-  for (let i = 0; i < 24; i++) {
-    setFont(ctx, face, px);
-    lines = wrapLines(ctx, text, boxW);
-    if (!lines.some(l => ctx.measureText(l).width > boxW) && lines.length * px * LH <= boxH) break;
-    px *= 0.93;
-    if (px < 4) break;
-  }
-  setFont(ctx, face, px);
-  return { lines, px };
-}
-
 // ---------- slots ----------
 
 function box(slot, W, H) {
@@ -219,9 +156,8 @@ function box(slot, W, H) {
 
 // Outline and shadow are set as a fraction of the canvas so a template keeps
 // one look at any resolution - but they also have to stay in proportion to the
-// type. At the canvas figure alone, a name that shrank to fit a long string got
-// a 39px blur around an 8px letter and disappeared into its own halo, so both
-// are capped against the size actually being drawn.
+// type, or a small line gets a 39px blur around an 8px letter and disappears
+// into its own halo.
 function shade(ctx, slot, H, px) {
   if (!slot.shadow) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; return; }
   ctx.shadowColor = slot.shadowColor || '#000';
@@ -237,6 +173,17 @@ function colorOf(slot, t) {
   return slot.color || '#ffffff';
 }
 
+// A text slot is not a box. It is a baseline at slot.y, an anchor at slot.x,
+// and one cap height, and all three are fixed - so a record is drawn at the
+// same size on the same line whatever it says, and every record on every screen
+// lands on top of the last one.
+//
+// Nothing about the value is allowed to change the size. A string too wide for
+// its span is condensed horizontally instead, which shortens it without moving
+// the baseline or changing the cap height. Only past the condense floor does it
+// give up and scale down, which in practice means a name nobody has.
+const SQUEEZE_FLOOR = 0.5;
+
 function drawText(ctx, slot, c, W, H, trace) {
   const t = slot.side === 'b' ? c.b : slot.side === 'a' ? c.a : null;
   let text = resolve(slot.text, slot.side, c);
@@ -244,60 +191,54 @@ function drawText(ctx, slot, c, W, H, trace) {
   if (slot.caps || face.tt === 'uppercase') text = text.toUpperCase();
   if (!text.trim()) return;
 
-  const b = box(slot, W, H);
-  // A wrapped blurb has no worst case to measure, so it always sizes to itself.
-  const mode = slot.wrap ? 'off' : sizingOf(slot);
-  const locked = mode !== 'off';
-  let px, lines;
-  if (locked) {
-    px = lockedCap(ctx, slot, c, H, b, mode) / capUnit(ctx, face);
-    setFont(ctx, face, px);
-    const w = ctx.measureText(text).width;
-    if (w > b.w) { px *= b.w / w; setFont(ctx, face, px); }   // safety, never spills
-    lines = [text];
-  } else {
-    ({ lines, px } = fitLoose(ctx, text, face, slot, H, b.w, b.h));
+  const cap = slot.size * H;                     // the cap height, exactly
+  let px = cap / capUnit(ctx, face);             // whatever px that face needs
+  setFont(ctx, face, px);
+
+  const span = slot.w * W;
+  const ax = slot.x * W;
+  const baseline = slot.y * H;
+  const lineH = px * LH;
+
+  let lines = slot.wrap ? wrapTo(ctx, text, span, slot.maxLines || 0) : [text];
+  let squeeze = 1;
+  const widest = () => lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+  if (widest() > span) {
+    squeeze = Math.max(SQUEEZE_FLOOR, span / widest());
+    if (widest() * squeeze > span + 0.5) {
+      // Past the floor. Scale down as a last resort and say so in the trace.
+      px *= span / (widest() * squeeze);
+      setFont(ctx, face, px);
+      if (slot.wrap) lines = wrapTo(ctx, text, span / squeeze, slot.maxLines || 0);
+    }
   }
 
-  // Anchor on the capitals, not on the glyphs in this particular string:
-  // actualBoundingBox* made "PPG: --" sit higher than "PPG: 162.93", and a name
-  // without a descender sit higher than one with a g in it.
-  //
-  // A locked slot is laid out against the size it was *asked* for rather than
-  // the size it came out at, so a screen whose names happen to fit larger still
-  // puts its baseline on exactly the same line as every other screen.
-  const capH = px * capUnit(ctx, face);
-  const refCap = locked ? Math.min(slot.size * H * 0.72, b.h * 0.92) : capH;
-  const blockH = (lines.length - 1) * px * LH + refCap;
-  const top = b.y + (b.h - blockH) * (slot.valign === 'top' ? 0 : slot.valign === 'bottom' ? 1 : 0.5);
+  if (trace) trace[slot.id] = {
+    cap: +(px * capUnit(ctx, face)).toFixed(2), px: +px.toFixed(2),
+    baseline: +baseline.toFixed(2), squeeze: +squeeze.toFixed(3), lines: lines.length,
+  };
 
   ctx.textAlign = slot.align;
   ctx.textBaseline = 'alphabetic';
-  const ax = slot.align === 'left' ? b.x : slot.align === 'right' ? b.x + b.w : b.x + b.w / 2;
-
-  // The whole promise of the tool is that this number is the same on every
-  // screen, so make it readable rather than something you can only see.
-  if (trace) trace[slot.id] = { px: +px.toFixed(2), cap: +capH.toFixed(2),
-    baseline: +(top + refCap).toFixed(2), lines: lines.length, mode };
-
   ctx.lineJoin = 'round';
   ctx.miterLimit = 2;
+
   lines.forEach((line, i) => {
-    const y = top + refCap + i * px * LH;
     ctx.save();
-    // The shadow belongs to whatever is outermost: the outline if there is one,
-    // otherwise the fill. Casting it from both doubles it into a smear.
+    // Condensing is done about the anchor, so left/centre/right stays put.
+    ctx.translate(ax, baseline + i * lineH);
+    if (squeeze !== 1) ctx.scale(squeeze, 1);
     shade(ctx, slot, H, px);
     if (slot.stroke > 0) {
-      ctx.lineWidth = strokeWidth(slot, H, px);
+      ctx.lineWidth = strokeWidth(slot, H, px) / squeeze;
       ctx.strokeStyle = slot.strokeColor || '#000';
-      ctx.strokeText(line, ax, y);
+      ctx.strokeText(line, 0, 0);
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
     }
     ctx.fillStyle = colorOf(slot, t);
-    ctx.fillText(line, ax, y);
+    ctx.fillText(line, 0, 0);
     ctx.restore();
   });
 }

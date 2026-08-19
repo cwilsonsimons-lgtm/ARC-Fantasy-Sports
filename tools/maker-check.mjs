@@ -114,8 +114,8 @@ await check('preview scale keeps the aspect',
      MK.draw(c,{tplId:t.id,game:MK.state.schedule[3][0],week:3,scale:.25});
      return Math.abs(c.width/c.height - t.w/t.h) < .01;})()`, true);
 
-// Draw one slot on its own and prove the ink lands inside it. A 60-character
-// team name in a plate sized for "UGF Pandas" is the case that has to shrink.
+// Draw one slot on its own and prove the ink lands where the slot says: inside
+// the horizontal room it was given, and sitting on its baseline.
 const soloInk = (slotId, name) => `(() => {
   const t = MK.tpl(MK.state.defaultTpl);
   const keep = t.slots.map(s => s.hidden);
@@ -127,46 +127,51 @@ const soloInk = (slotId, name) => `(() => {
   MK.draw(bare, opts);
   const one = document.createElement('canvas');
   t.slots.forEach(s => { s.hidden = s.id !== '${slotId}'; });
-  MK.draw(one, opts);
+  const trace = {};
+  MK.draw(one, Object.assign({ trace }, opts));
   const ink = (${INK})(one, bare);
   const s = t.slots.find(x => x.id === '${slotId}');
   t.slots.forEach((x, i) => { x.hidden = keep[i]; });
   team.name = oldName;
   if (!ink) return 'no ink';
-  const pad = 0.006;  // outline and shadow legitimately bleed past the box
-  return { fits: ink.x >= s.x - pad && ink.r <= s.x + s.w + pad &&
-                 ink.y >= s.y - pad && ink.b <= s.y + s.h + pad,
-           fill: Math.round((ink.r - ink.x) / s.w * 100),
-           rows: Math.round((ink.b - ink.y) / (s.h) * 100) };
+  const l = s.align === 'left' ? s.x : s.align === 'right' ? s.x - s.w : s.x - s.w / 2;
+  const pad = 0.006;   // outline and shadow legitimately bleed past the type
+  const r = trace['${slotId}'];
+  return {
+    inRoom: ink.x >= l - pad && ink.r <= l + s.w + pad,
+    onBaseline: Math.abs(ink.b * ${'`${t.h}`'} - (r.baseline + (r.lines - 1) * r.px * 1.14)) < r.px * 0.45,
+    fill: Math.round((ink.r - ink.x) / s.w * 100),
+    lines: r.lines, squeeze: r.squeeze,
+  };
 })()`;
 
-await check('a name stays inside its plate', soloInk('nameA'), r => r && r.fits === true);
-await check('a very long name shrinks to fit',
-  soloInk('nameA', 'The Mike Vick Memorial Dog House Appreciation Society'), r => r && r.fits === true);
-await check('a wrapped note stays in its box', soloInk('noteA'), r => r && r.fits === true);
-await check('the wrapped note fills its box', soloInk('noteA'), r => r && r.rows > 40);
-// The guarantee the whole tool rests on: whatever the names are, both sides
-// come out at one size and every screen puts them on the same line.
-await check('both names, one size, one line', `(() => {
-  const t = MK.tpl(MK.state.defaultTpl);
-  const seen = [];
-  for (const g of [MK.state.schedule[1][0], MK.state.schedule[1][1], MK.state.schedule[2][0]]) {
-    const trace = {};
-    MK.draw(document.createElement('canvas'), { tplId: t.id, game: g, week: 3, scale: 1, trace });
-    seen.push(trace);
-  }
-  const same = xs => Math.max(...xs) - Math.min(...xs) < 0.01;
-  return {
-    pairedOnAScreen: seen.every(tr => Math.abs(tr.nameA.cap - tr.nameB.cap) < 0.01),
-    nameBaseline: same(seen.flatMap(tr => [tr.nameA.baseline, tr.nameB.baseline])),
-    recordSize: same(seen.flatMap(tr => [tr.recA.cap, tr.recB.cap])),
-    recordBaseline: same(seen.flatMap(tr => [tr.recA.baseline, tr.recB.baseline])),
-    ppgSize: same(seen.flatMap(tr => [tr.ppgA.cap, tr.ppgB.cap])),
-  };
-})()`, r => r && r.pairedOnAScreen && r.nameBaseline && r.recordSize && r.recordBaseline && r.ppgSize);
+await check('a name sits in its room', soloInk('nameA'), r => r && r.inRoom === true);
+await check('a name sits on its baseline', soloInk('nameA'), r => r && r.onBaseline === true);
+await check('a very long name condenses, not shrinks',
+  soloInk('nameA', 'The Mike Vick Memorial Dog House Appreciation Society'),
+  r => r && r.inRoom === true && r.squeeze < 1);
+await check('a long name is held to its line limit',
+  soloInk('nameA', 'The Mike Vick Memorial Dog House Appreciation Society'),
+  r => r && r.lines <= 2);
+await check('a wrapped note stays in its room', soloInk('noteA'), r => r && r.inRoom === true);
 
-// A record must not resize as the season goes on: 3-2 and 12-11 are sized
-// against 88-88, so they come out identical.
+// The guarantee, measured the way the user sees it: draw every matchup in the
+// week and demand that each slot came out at the same size on the same line.
+await check('every slot identical on every screen', `(() => {
+  const t = MK.tpl(MK.state.defaultTpl);
+  const rows = {};
+  MK.state.schedule[1].concat(MK.state.schedule[2]).forEach(g => {
+    const tr = {};
+    MK.draw(document.createElement('canvas'), { tplId: t.id, game: g, week: 3, scale: 1, trace: tr });
+    Object.entries(tr).forEach(([id, v]) => { (rows[id] = rows[id] || []).push(v); });
+  });
+  const moved = Object.entries(rows).filter(([, list]) =>
+    Math.max(...list.map(v => v.baseline)) - Math.min(...list.map(v => v.baseline)) > 0.001 ||
+    Math.max(...list.map(v => v.cap)) - Math.min(...list.map(v => v.cap)) > 0.001);
+  return { slots: Object.keys(rows).length, moved: moved.map(m => m[0]) };
+})()`, r => r && r.slots >= 6 && r.moved.length === 0);
+
+// A record must not resize as the season goes on.
 await check('a record is the same size all season', `(() => {
   const t = MK.tpl(MK.state.defaultTpl);
   const g = MK.state.schedule[1][0];
@@ -177,7 +182,7 @@ await check('a record is the same size all season', `(() => {
   const keep = row.record; row.record = '12-11';
   const later = read();
   row.record = keep;
-  return Math.abs(early.cap - later.cap) < 0.01 && Math.abs(early.baseline - later.baseline) < 0.01;
+  return Math.abs(early.cap - later.cap) < 0.001 && Math.abs(early.baseline - later.baseline) < 0.001;
 })()`, true);
 
 await check('hidden slots draw nothing',
@@ -194,9 +199,14 @@ await check('hidden slots draw nothing',
 console.log('\n-- editor --');
 await page.evaluate(`MK.showPane('template')`);
 await page.waitForTimeout(400);
-await check('a slot box per slot',
-  `[document.querySelectorAll('#edOverlay .sbox').length, MK.tpl(MK.state.editTpl).slots.length]`,
+await check('a handle per slot',
+  `[document.querySelectorAll('#edOverlay .sbox, #edOverlay .sline').length,
+    MK.tpl(MK.state.editTpl).slots.length]`,
   r => Array.isArray(r) && r[0] === r[1]);
+await check('text slots show a baseline, not a box',
+  `[document.querySelectorAll('#edOverlay .sline').length,
+    MK.tpl(MK.state.editTpl).slots.filter(s => s.kind !== 'image').length]`,
+  r => Array.isArray(r) && r[0] === r[1] && r[0] > 0);
 await check('slot list renders', `document.querySelectorAll('#edSlots li').length`, n => n >= 12);
 
 // Mirroring is the whole reason these screens look symmetrical.
@@ -208,14 +218,14 @@ await check('mirror puts B opposite A', `(async () => {
   [...document.querySelectorAll('#edSlots li')].find(li => li.textContent.includes('Name A')).click();
   [...document.querySelectorAll('#edProps .btn')].find(b => /Mirror/.test(b.textContent)).click();
   const b = MK.tpl(MK.state.editTpl).slots.find(s => s.id === 'nameB');
-  return Math.abs(b.x - (1 - a.x - a.w)) < 1e-9;
+  return Math.abs(b.x - (1 - a.x)) < 1e-9 && Math.abs(b.y - a.y) < 1e-9;
 })()`, true);
 
 await check('dragging a slot moves it', `(async () => {
   const slots = MK.tpl(MK.state.editTpl).slots;
   const i = slots.findIndex(s => s.id === 'nameA');
   const before = slots[i].x;
-  const box = document.querySelectorAll('#edOverlay .sbox')[i];
+  const box = document.querySelectorAll('#edOverlay .sbox, #edOverlay .sline')[i];
   const r = box.getBoundingClientRect();
   const opts = { bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 1 };
   box.dispatchEvent(new PointerEvent('pointerdown', opts));

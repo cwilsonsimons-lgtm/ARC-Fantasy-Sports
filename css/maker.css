@@ -87,6 +87,21 @@ input[type=checkbox]{accent-color:var(--acc)}
 .sbox .h.ne{right:-5px;top:-5px;cursor:nesw-resize}
 .sbox .h.sw{left:-5px;bottom:-5px;cursor:nesw-resize}
 .sbox .h.se{right:-5px;bottom:-5px;cursor:nwse-resize}
+
+/* A text slot is a baseline, not a box: the rule is where the type sits, the
+   band above it is the cap height it always draws at. */
+.sline{position:absolute;cursor:move;border-bottom:1px solid rgba(90,169,230,.6)}
+.sline:hover{border-bottom-color:var(--acc);background:rgba(90,169,230,.08)}
+.sline.sel{border-bottom:2px solid var(--go);background:rgba(62,207,142,.10)}
+.sline .tag{position:absolute;top:-17px;left:0;background:var(--go);color:#04120c;
+  font:600 10px/1 'Oswald',sans-serif;letter-spacing:.5px;padding:3px 5px;border-radius:3px;
+  white-space:nowrap;text-transform:uppercase;display:none}
+.sline.sel .tag{display:block}
+.sline .h{position:absolute;width:9px;height:9px;background:var(--go);border-radius:2px;display:none}
+.sline.sel .h{display:block}
+.sline .h.w{left:-5px;bottom:-5px;cursor:ew-resize}
+.sline .h.e{right:-5px;bottom:-5px;cursor:ew-resize}
+.sline .h.n{left:calc(50% - 4px);top:-5px;cursor:ns-resize}
 .guide{position:absolute;background:var(--acc);opacity:.8;pointer-events:none}
 .stage-foot{display:flex;align-items:center;gap:12px;padding:8px 2px}
 

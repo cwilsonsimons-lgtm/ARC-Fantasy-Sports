@@ -77,13 +77,21 @@ export function paintEditor() {
   paintProps();
 }
 
+// A text slot is an anchor, not a box, so its horizontal reach depends on how
+// it aligns to that anchor.
+export function extent(s) {
+  if (s.kind === 'image' || s.align === 'left') return [s.x, s.x + s.w];
+  if (s.align === 'right') return [s.x - s.w, s.x];
+  return [s.x - s.w / 2, s.x + s.w / 2];
+}
+
 // How much of each edge no slot touches - the room left for player cutouts
 // dropped on in another app. Shown in the footer so it is never a guess.
 function clearMargins(t) {
   const live = t.slots.filter(s => !s.hidden);
   if (!live.length) return 'whole canvas clear';
-  const left = Math.min(...live.map(s => s.x));
-  const right = 1 - Math.max(...live.map(s => s.x + s.w));
+  const left = Math.min(...live.map(s => extent(s)[0]));
+  const right = 1 - Math.max(...live.map(s => extent(s)[1]));
   const px = f => Math.round(Math.max(0, f) * t.w);
   return `clear for photos: ${px(left)}px left, ${px(right)}px right`;
 }
@@ -274,27 +282,54 @@ function paintList() {
 function paintBoxes() {
   const ov = clear(qs('#edOverlay'));
   current().slots.forEach(s => {
-    const b = el('div', {
-      class: 'sbox' + (s.id === sel ? ' sel' : ''),
-      style: `left:${s.x * 100}%;top:${s.y * 100}%;width:${s.w * 100}%;height:${s.h * 100}%`,
-      title: s.label || s.kind,
-    }, el('span', { class: 'tag' }, s.label || s.kind),
-       ...['nw', 'ne', 'sw', 'se'].map(h => el('i', { class: 'h ' + h, 'data-h': h })));
+    const [l, r] = extent(s);
+    const on = s.id === sel;
+    const b = s.kind === 'image'
+      ? el('div', {
+          class: 'sbox' + (on ? ' sel' : ''),
+          style: `left:${l * 100}%;top:${s.y * 100}%;width:${s.w * 100}%;height:${s.h * 100}%`,
+          title: s.label || 'Logo',
+        }, el('span', { class: 'tag' }, s.label || 'Logo'),
+           ...['nw', 'ne', 'sw', 'se'].map(h => el('i', { class: 'h ' + h, 'data-h': h })))
+      // Text has no box to show. The rule is the baseline it always sits on;
+      // the band above it is the cap height it always draws at.
+      : el('div', {
+          class: 'sline' + (on ? ' sel' : ''),
+          style: `left:${l * 100}%;width:${(r - l) * 100}%;` +
+                 `top:${(s.y - s.size) * 100}%;height:${s.size * 100}%`,
+          title: s.label || s.text,
+        }, el('span', { class: 'tag' }, s.label || s.text),
+           el('i', { class: 'h w', 'data-h': 'w' }),
+           el('i', { class: 'h e', 'data-h': 'e' }),
+           el('i', { class: 'h n', 'data-h': 'n' }));
     b.addEventListener('pointerdown', e => startDrag(e, s, b));
     ov.append(b);
   });
+}
+
+function place(node, s) {
+  const [l, r] = extent(s);
+  node.style.left = l * 100 + '%';
+  node.style.width = (r - l) * 100 + '%';
+  if (s.kind === 'image') {
+    node.style.top = s.y * 100 + '%';
+    node.style.height = s.h * 100 + '%';
+  } else {
+    node.style.top = (s.y - s.size) * 100 + '%';
+    node.style.height = s.size * 100 + '%';
+  }
 }
 
 function startDrag(e, s, node) {
   e.preventDefault();
   sel = s.id;
   paintList(); paintProps();
-  document.querySelectorAll('.sbox.sel').forEach(n => n.classList.remove('sel'));
+  document.querySelectorAll('.sbox.sel,.sline.sel').forEach(n => n.classList.remove('sel'));
   node.classList.add('sel');
 
   const stage = qs('#edStage').getBoundingClientRect();
   const handle = e.target.dataset ? e.target.dataset.h : '';
-  const from = { x: s.x, y: s.y, w: s.w, h: s.h };
+  const from = { x: s.x, y: s.y, w: s.w, h: s.h, size: s.size };
   const ox = e.clientX, oy = e.clientY;
   node.setPointerCapture(e.pointerId);
 
@@ -302,19 +337,26 @@ function startDrag(e, s, node) {
     let dx = (ev.clientX - ox) / stage.width;
     let dy = (ev.clientY - oy) / stage.height;
     if (ev.shiftKey && !handle) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
-    if (handle) {
+    if (handle && s.kind === 'image') {
       const west = handle[1] === 'w', north = handle[0] === 'n';
       s.w = Math.max(.02, from.w + (west ? -dx : dx));
       s.h = Math.max(.02, from.h + (north ? -dy : dy));
       if (west) s.x = from.x + from.w - s.w;
       if (north) s.y = from.y + from.h - s.h;
+    } else if (handle === 'w' || handle === 'e') {
+      // The ends set how much room the text has before it condenses.
+      const grow = handle === 'e' ? dx : -dx;
+      s.w = Math.max(.02, from.w + (s.align === 'center' ? grow * 2 : grow));
+      if (s.align === 'left' && handle === 'w') s.x = from.x + dx;
+      if (s.align === 'right' && handle === 'e') s.x = from.x + dx;
+    } else if (handle === 'n') {
+      s.size = Math.max(.008, from.size - dy);      // cap height, dragged directly
     } else {
       s.x = from.x + dx;
       s.y = from.y + dy;
       if (qs('#edSnap').checked && !ev.altKey) snap(s);
     }
-    node.style.left = s.x * 100 + '%'; node.style.top = s.y * 100 + '%';
-    node.style.width = s.w * 100 + '%'; node.style.height = s.h * 100 + '%';
+    place(node, s);
     repaintCanvas();
   };
   const up = () => {
@@ -327,16 +369,18 @@ function startDrag(e, s, node) {
   node.addEventListener('pointerup', up);
 }
 
-// Snap to the canvas centre and edges, and to any other slot's edges - the
-// symmetry in these graphics is the thing the eye notices when it is off.
+// Snapping is what makes records line up with records: a baseline drops onto
+// another slot's baseline, and an anchor onto the centre line or onto the
+// mirror of the slot on the other side.
 const TOL = .006;
 function snap(s) {
   document.querySelectorAll('.guide').forEach(g => g.remove());
-  const xs = [0, .5 - s.w / 2, 1 - s.w], ys = [0, .5 - s.h / 2, 1 - s.h];
+  const xs = [.5], ys = [];
   current().slots.forEach(o => {
     if (o.id === s.id) return;
-    xs.push(o.x, o.x + o.w - s.w, o.x + (o.w - s.w) / 2);
-    ys.push(o.y, o.y + o.h - s.h, o.y + (o.h - s.h) / 2);
+    if (o.kind === 'image') { ys.push(o.y, o.y + o.h); xs.push(o.x, o.x + o.w); return; }
+    ys.push(o.y, o.y - o.size);        // its baseline, and its cap line
+    xs.push(o.x, 1 - o.x);             // its anchor, and the mirror of it
   });
   const hit = (v, list) => list.find(t => Math.abs(v - t) < TOL);
   const nx = hit(s.x, xs), ny = hit(s.y, ys);
@@ -393,7 +437,7 @@ function mirror(s) {
   });
   Object.assign(target, {
     y: s.y, w: s.w, h: s.h,
-    x: 1 - s.x - s.w,
+    x: s.kind === 'image' ? 1 - s.x - s.w : 1 - s.x,
     size: s.size, font: s.font, color: s.color, stroke: s.stroke, strokeColor: s.strokeColor,
     shadow: s.shadow, shadowColor: s.shadowColor, wrap: s.wrap, caps: s.caps,
     align: s.align === 'left' ? 'right' : s.align === 'right' ? 'left' : 'center',
@@ -413,9 +457,9 @@ function sizeReadout(slot) {
   draw(document.createElement('canvas'), { tplId: t.id, game: sample(), week: state.week, scale: 1, trace });
   const r = trace[slot.id];
   if (!r) return 'Nothing to draw here yet.';
-  return `Renders at ${Math.round(r.cap)}px capitals` +
-    (r.mode === 'league' ? ' on every screen in the league.' :
-     r.mode === 'pair' ? ' — both sides of this screen match.' : ' for this value.');
+  const pct = Math.round(r.squeeze * 100);
+  return `${Math.round(r.cap)}px capitals on the baseline` +
+    (pct < 100 ? `, condensed to ${pct}% for this value.` : '.');
 }
 
 // ---------- properties ----------
@@ -445,8 +489,8 @@ function paintProps() {
       .concat(FONTS.map(f => [f.k, f.lb]))
       .concat((state.fonts || []).map(f => ['custom:' + f.id, f.name + ' (yours)']));
     box.append(field('Typeface', select(fonts, s.font, v => { s.font = v; upd(); })));
-    box.append(field('Max size', num(Math.round(s.size * t.h), 1, v => { s.size = v / t.h; upd(); }),
-      'px — shrinks automatically to fit the box'));
+    box.append(field('Cap height', num(Math.round(s.size * t.h), 1, v => { s.size = v / t.h; upd(); }),
+      'px — fixed. Long values condense sideways rather than shrink.'));
 
     const colorKind = s.color === 'team' ? 'team' : s.color === 'accent' ? 'accent' : 'fixed';
     box.append(field('Colour', el('div', { class: 'row' },
@@ -464,34 +508,38 @@ function paintProps() {
     box.append(el('div', { class: 'row' },
       el('label', { class: 'chk' }, el('input', { type: 'checkbox', checked: s.wrap, onchange: e => { s.wrap = e.target.checked; upd(); } }), 'Wrap lines'),
       el('label', { class: 'chk' }, el('input', { type: 'checkbox', checked: s.caps, onchange: e => { s.caps = e.target.checked; upd(); } }), 'ALL CAPS')));
-    const modes = [
-      ['pair',   'Match both teams on the screen'],
-      ['league', 'Same size on every screen'],
-      ['off',    'Fit each value on its own'],
-    ];
-    const mode = s.wrap ? 'off' : (s.sizing || (s.lock === false ? 'off' : 'pair'));
-    box.append(field('Sizing', select(modes, mode, v => { s.sizing = v; upd(); },
-      s.wrap ? { disabled: true } : {})));
     box.append(el('span', { class: 'fld-h', style: 'display:block' }, sizeReadout(s)));
-    box.append(el('span', { class: 'fld-h', style: 'display:block' }, s.wrap
-      ? 'Wrapped text has no worst case, so it always sizes to itself.'
-      : {
-          pair:   'Both sides come out one size, as large as the box allows. Numbers are sized for 88-88 so they never resize.',
-          league: 'Sized for the longest name in the league — identical on every screen, every week.',
-          off:    'Sizes to whatever it holds, so it changes size from team to team.',
-        }[mode]));
   }
 
   box.append(el('div', { class: 'sect' }));
-  box.append(field('Align', el('div', { class: 'row' },
-    select([['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], s.align, v => { s.align = v; upd(); }),
-    select([['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']], s.valign, v => { s.valign = v; upd(); }))));
-  box.append(field('Position', el('div', { class: 'row' },
-    num(Math.round(s.x * t.w), 1, v => { s.x = v / t.w; upd(); }),
-    num(Math.round(s.y * t.h), 1, v => { s.y = v / t.h; upd(); }))));
-  box.append(field('Size', el('div', { class: 'row' },
-    num(Math.round(s.w * t.w), 1, v => { s.w = v / t.w; upd(); }),
-    num(Math.round(s.h * t.h), 1, v => { s.h = v / t.h; upd(); }))));
+  if (s.kind === 'image') {
+    box.append(field('Align', el('div', { class: 'row' },
+      select([['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], s.align, v => { s.align = v; upd(); }),
+      select([['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']], s.valign, v => { s.valign = v; upd(); }))));
+    box.append(field('Position', el('div', { class: 'row' },
+      num(Math.round(s.x * t.w), 1, v => { s.x = v / t.w; upd(); }),
+      num(Math.round(s.y * t.h), 1, v => { s.y = v / t.h; upd(); }))));
+    box.append(field('Size', el('div', { class: 'row' },
+      num(Math.round(s.w * t.w), 1, v => { s.w = v / t.w; upd(); }),
+      num(Math.round(s.h * t.h), 1, v => { s.h = v / t.h; upd(); }))));
+  } else {
+    box.append(field('Aligns', select([['left', 'Left of the anchor'], ['center', 'Centred on it'], ['right', 'Right of it']],
+      s.align, v => { s.align = v; upd(); })));
+    box.append(field('Anchor x', num(Math.round(s.x * t.w), 1, v => { s.x = v / t.w; upd(); }), 'px across'));
+    box.append(field('Baseline y', num(Math.round(s.y * t.h), 1, v => { s.y = v / t.h; upd(); }),
+      'px down — the line the type sits on, the same on every screen'));
+    box.append(field('Room', num(Math.round(s.w * t.w), 1, v => { s.w = v / t.w; upd(); }),
+      'px before it condenses'));
+    if (s.wrap) box.append(field('Max lines', num(s.maxLines || 0, 1, v => { s.maxLines = Math.max(0, v | 0); upd(); }),
+      '0 for no limit — a limit stops long values growing into the row below'));
+    const pair = current().slots.find(o => o.id !== s.id && o.kind === 'text' &&
+      (o.label || '').replace(/\s*[AB]$/i, '') === (s.label || '').replace(/\s*[AB]$/i, ''));
+    if (pair && (Math.abs(pair.y - s.y) > 1e-9 || Math.abs(pair.size - s.size) > 1e-9)) {
+      box.append(btn(`Line up with ${pair.label || 'the other side'}`, () => {
+        s.y = pair.y; s.size = pair.size; save(); paintEditor();
+      }, 'sm'));
+    }
+  }
   box.append(field('Rotate', num(s.rotate || 0, 1, v => { s.rotate = v || 0; upd(); }), 'degrees'));
   box.append(field('Opacity', num(Math.round((s.opacity == null ? 1 : s.opacity) * 100), 5, v => { s.opacity = v / 100; upd(); }), '%'));
 
