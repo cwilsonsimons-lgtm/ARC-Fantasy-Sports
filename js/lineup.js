@@ -1,7 +1,6 @@
 import { S } from './state.js';
 import { ICON_LOCK, ICON_SWAP, LT, isLocked, onField, pLive, simKick } from './clock.js';
 import { T } from './data/teams.js';
-import { MAXW, MINW, scheduleForWeek } from './data/schedule.js';
 import { stadiumHeroHTML } from './hero.js';
 import { renderUserMatchup } from './matchup.js';
 import { showTab } from './nav.js';
@@ -21,11 +20,7 @@ export const badge=(t,cls)=>`<span class="${cls}" style="background:${t.bg};colo
 // `week === LIVE_WEEK` was never true and the whole live-scoring path was
 // unreachable: the hero showed 0.0-0.0 no matter how far the game clock was
 // stepped, and the Rewind scrubber interpolated between zeroes.
-export const LIVE_WEEK=1;
-// Week count and the round-robin itself live in data/schedule.js, which the
-// matchup-graphic builder also reads. Re-exported here so every existing
-// importer keeps getting them from lineup.js.
-export { MINW, MAXW, scheduleForWeek };
+export const LIVE_WEEK=1, MINW=1, MAXW=14;
 
 
 export function gameClock(name){
@@ -110,6 +105,14 @@ export function fullStartersHTML(opts){
 // detail view (drilled in from All Matchups) shows the exact same body as the Matchup tab
 export function detailStartersHTML(){return fullStartersHTML();}
 
+// deterministic pseudo-schedule so each week shows different matchups
+export function scheduleForWeek(week){
+  const ids=Object.keys(T),n=ids.length,arr=ids.slice(1),r=(week-1)%(n-1);
+  const rotated=arr.map((_,i)=>arr[((i-r)%arr.length+arr.length)%arr.length]);
+  const circle=[ids[0],...rotated],pairs=[];
+  for(let i=0;i<n/2;i++)pairs.push([circle[i],circle[n-1-i]]);
+  return pairs;
+}
 export function seededScore(week,key){
   if(week>LIVE_WEEK)return 0;   // preseason / upcoming: nothing played yet
   let h=2166136261;const s=key+'#'+week;

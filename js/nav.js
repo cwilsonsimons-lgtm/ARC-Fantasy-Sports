@@ -50,11 +50,6 @@ export function bindVs(el){
   el.addEventListener('touchend',e);el.addEventListener('touchcancel',e);
 }
 
-// The matchup-graphic builder is its own page, not a screen in here: it is a
-// commissioner's desk tool that wants a mouse and a big canvas. The rail links
-// out to it, and it links back.
-export function openBuilder(){location.href='builder.html';}
-
 export let ht;
 export function toast(m){const h=document.getElementById('hint');h.textContent=m;h.classList.add('show');
   clearTimeout(ht);ht=setTimeout(()=>h.classList.remove('show'),1600);}

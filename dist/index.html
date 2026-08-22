@@ -3057,7 +3057,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     { k: "trades", lb: "Trades", ic: '<path d="M7 8h13l-3-3M17 16H4l3 3"/>' },
     { k: "scores", lb: "Scores", ic: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14"/>' },
     { k: "news", lb: "News", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h7M7 12h10M7 16h6"/>' },
-    { k: "graphics", lb: "Graphics", action: "openBuilder()", ic: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m6 16 4-4 3 3 2-2 3 3"/><circle cx="9" cy="9.5" r="1.4"/>' },
     { k: "settings", lb: "Settings", action: "openSettings()", ic: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>' }
   ];
   function initClock2() {
@@ -3334,17 +3333,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     sideCell: () => sideCell
   });
 
-  // js/data/schedule.js
-  var MINW = 1;
-  var MAXW = 14;
-  function scheduleForWeek(week) {
-    const ids = Object.keys(T), n = ids.length, arr = ids.slice(1), r = (week - 1) % (n - 1);
-    const rotated = arr.map((_, i) => arr[((i - r) % arr.length + arr.length) % arr.length]);
-    const circle = [ids[0], ...rotated], pairs = [];
-    for (let i = 0; i < n / 2; i++) pairs.push([circle[i], circle[n - 1 - i]]);
-    return pairs;
-  }
-
   // js/hero.js
   var hero_exports = {};
   __export(hero_exports, {
@@ -3384,7 +3372,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     goLeague: () => goLeague,
     homeTab: () => homeTab2,
     ht: () => ht,
-    openBuilder: () => openBuilder,
     preDraft: () => preDraft,
     renderTabs: () => renderTabs2,
     showLeagueView: () => showLeagueView,
@@ -3453,9 +3440,6 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     el.addEventListener("touchmove", e, { passive: true });
     el.addEventListener("touchend", e);
     el.addEventListener("touchcancel", e);
-  }
-  function openBuilder() {
-    location.href = "builder.html";
   }
   var ht;
   function toast2(m) {
@@ -5782,6 +5766,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/lineup.js
   var badge = (t, cls) => `<span class="${cls}" style="background:${t.bg};color:${t.c};overflow:hidden">${markInner(t)}</span>`;
   var LIVE_WEEK = 1;
+  var MINW = 1;
+  var MAXW = 14;
   function gameClock(name) {
     if (onField(name) === "off") return "Final";
     let h = 0;
@@ -5858,6 +5844,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function detailStartersHTML() {
     return fullStartersHTML();
+  }
+  function scheduleForWeek(week) {
+    const ids = Object.keys(T), n = ids.length, arr = ids.slice(1), r = (week - 1) % (n - 1);
+    const rotated = arr.map((_, i) => arr[((i - r) % arr.length + arr.length) % arr.length]);
+    const circle = [ids[0], ...rotated], pairs = [];
+    for (let i = 0; i < n / 2; i++) pairs.push([circle[i], circle[n - 1 - i]]);
+    return pairs;
   }
   function seededScore(week, key) {
     if (week > LIVE_WEEK) return 0;

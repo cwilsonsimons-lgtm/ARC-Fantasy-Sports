@@ -6,8 +6,7 @@ draft room, free agency, and a simulated live-scoring week clock.
 ## Running it
 
 **Just want to look at it?** Open `dist/index.html` — it is the whole app in one
-self-contained file, so double-clicking it works. `dist/builder.html` is the
-matchup-graphic builder, built the same way. Rebuild both with `npm run build`
+self-contained file, so double-clicking it works. Rebuild it with `npm run build`
 after changing anything under `css/` or `js/`.
 
 **Working on the code?** The source is plain ES modules, which browsers refuse to
@@ -29,62 +28,6 @@ every `font-family:'Oswald'` rule (78 of them, none with a fallback) dropped to
 the browser's default serif and the whole app changed character. Every family
 now carries a fallback too, so a miss degrades to a condensed sans rather than
 Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
-
-## The matchup builder
-
-`builder.html` is the one screen here that is not a phone: a commissioner's desk
-tool that turns a week's matchup into a shareable PNG. It is reached from
-**Graphics** in the app's rail, and links back.
-
-Pick two teams and it fills in the rest — names, colours and each manager's
-typeface come from `js/data/teams.js`, records and averages from the scores
-entered on its Scores tab, and the schedule from the same round-robin the app
-plays out. Upload team logos, a league logo, a background and player cut-outs;
-drag them around; export at 2x.
-
-Three decisions worth knowing:
-
-**It shares the league's identity, not its data.** The teams, colours, faces and
-schedule are the app's. The scores are the builder's own, in its own
-`localStorage` keys (`cbd_builder_*`), because they are real results someone
-types in rather than the app's seeded hashes. Clearing one does not touch the
-other. The one crossover is the user's own crest: a logo uploaded in the app
-(`store.team.logo`) shows up here as that team's starting art.
-
-**Records include the league median** — top half of the week picks up an extra
-win, bottom half an extra loss. That is how this league runs, and the median
-record is the thing people argue about, so it is the number on the graphic. A
-game counts only once *both* scores are entered; half a result is not a result.
-
-**The caption suggestions are computed, not written.** Streaks, weekly scoring
-rank, PPG rank, record against the median and one-score games all come out of the
-entered scores, so a suggestion can never claim something that did not happen.
-Last season's receipts are the one hard-coded list — `HISTORY_LINES` in
-`js/builder/data.js` — and they are offered in a fixed order rather than shuffled,
-because nothing else in this project uses `Math.random` and a shuffled list makes
-two runs of the snapshot harness disagree.
-
-It does not use the app's `window` bridge. The app drives itself through inline
-`onclick="..."` attributes for historical reasons; this page is new code, so
-handlers are delegated from `data-act` / `data-in` attributes on one listener and
-nothing is exported onto `window`.
-
-Everything is drawn on one `<canvas>`, which means none of it is in the DOM:
-`npm run check:builder` drives 22 checks, several of which read pixels back out of
-the canvas to prove a crest, a name plate or a caption actually landed. It also
-asserts that typing in a score field keeps focus — the panel is rebuilt from state
-on most changes, and rebuilding an `<input>` mid-keystroke drops the cursor and,
-on a phone, closes the keyboard.
-
-The typefaces are the league's own 13 (`TEAM_FONTS`), all embedded in
-`css/fonts.css`. Canvas measures text against whatever face is loaded *at the
-moment it draws*, so a graphic painted before the fonts arrive keeps the
-fallback's line breaks; `js/builder/main.js` draws once for responsiveness and
-again after `document.fonts.ready`.
-
-A team with no uploaded logo still gets a crest: its monogram on its own colours,
-the same badge the app draws, so a graphic is worth making before anyone has got
-round to uploading art.
 
 ## Arc Markets
 
@@ -121,8 +64,7 @@ working network sees it.
 ## Layout
 
 ```
-index.html      the app — markup only
-builder.html    the matchup-graphic builder — markup only
+index.html      markup only
 css/            one stylesheet per screen area, linked in cascade order
 js/
   main.js       entry point: module order, window bridge, boot sequence
@@ -130,9 +72,8 @@ js/
   store.js      localStorage persistence, roster rows, image downscaling
   data/         teams, league config, NFL player/schedule/colour tables
   markets/      Arc Markets — self-contained, see above
-  builder/      the matchup-graphic builder (builder.html), see above
   *.js          one module per screen or subsystem
-tools/          dev server and the verification harnesses
+tools/          dev server and the verification harness
 ```
 
 ### How startup works
