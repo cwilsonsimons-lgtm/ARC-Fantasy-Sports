@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>City Boys Dynasty — Matchup Builder</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/builder.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><span class="mark">⚔</span> CITY BOYS DYNASTY <span class="sub">MATCHUP BUILDER</span></div>
+  <div class="topright">
+    <span id="saveNote"></span>
+    <a class="btn" href="index.html">Open the app</a>
+    <button class="btn primary" id="exportBtn" data-act="export">EXPORT PNG</button>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button class="tab on" data-tab="graphic">GRAPHIC</button>
+  <button class="tab" data-tab="scores">SCORES</button>
+  <button class="tab" data-tab="schedule">SCHEDULE</button>
+  <button class="tab" data-tab="teams">TEAMS</button>
+</nav>
+
+<main id="panel"></main>
+<div id="modal" hidden></div>
+
+<script type="module" src="js/builder/main.js"></script>
+</body>
+</html>

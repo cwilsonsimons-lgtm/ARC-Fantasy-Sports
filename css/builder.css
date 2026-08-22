@@ -1,0 +1,112 @@
+/* The matchup builder (builder.html).
+   A desk tool, not a phone screen: it is the one part of this project meant to
+   be used on a laptop with a mouse, so it lays out wide and does not pretend to
+   be inside the phone frame. It still shares the app's palette and typefaces. */
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  min-height:100vh;background:#14161c;color:#f2f2f5;
+  font-family:'Barlow','Oswald',system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+
+/* ---------- chrome ---------- */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 16px;background:#0c0e13;border-bottom:2px solid #c9a227;flex-wrap:wrap;
+}
+.brand{font-weight:700;font-size:20px;letter-spacing:1.5px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand .mark{color:#c9a227}
+.brand .sub{font-size:12px;letter-spacing:3px;color:#8b8f9c;font-weight:600}
+.topright{display:flex;align-items:center;gap:10px}
+#saveNote{font-size:13px;color:#3ddc84}
+#saveNote.warn{color:#ffb35c}
+
+.tabs{display:flex;gap:4px;padding:8px 16px 0;background:#0c0e13;overflow-x:auto}
+.tab{
+  background:none;color:#8b8f9c;border:none;border-bottom:3px solid transparent;
+  padding:8px 14px;font:inherit;font-weight:700;font-size:15px;letter-spacing:2px;cursor:pointer;white-space:nowrap;
+}
+.tab.on{color:#ffd964;border-bottom-color:#c9a227}
+
+/* ---------- layout ---------- */
+.main{display:flex;flex-wrap:wrap;gap:16px;padding:16px;align-items:flex-start;justify-content:center}
+.stage-wrap{flex:1 1 620px;max-width:1000px;min-width:300px}
+.side{flex:1 1 300px;max-width:400px;min-width:280px;display:flex;flex-direction:column;gap:12px}
+.page{display:flex;flex-direction:column;gap:10px;padding:16px;max-width:660px;width:100%;margin:0 auto}
+
+#stage{
+  width:100%;height:auto;display:block;border-radius:10px;background:#000;
+  box-shadow:0 10px 40px rgba(0,0,0,.6);touch-action:none;cursor:grab;
+}
+.picker{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.vs{color:#8b8f9c;font-weight:700}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.bar{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:6px}
+
+.card{background:#1a1d25;border:1px solid #2a2f3c;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.card-t{font-weight:700;letter-spacing:2px;font-size:14px;color:#c9a227;text-transform:uppercase}
+.card-t.small{font-size:12px}
+.hint{font-size:14px;color:#8b8f9c;margin-top:4px;line-height:1.4}
+.side-name{font-size:13px;font-weight:700}
+
+/* ---------- controls ---------- */
+.in{
+  background:#10131a;border:1px solid #343a48;border-radius:6px;color:#f2f2f5;
+  padding:9px 10px;font:inherit;font-size:15px;width:100%;flex:1 1 120px;min-width:0;
+}
+.in.auto{flex:0 0 auto;width:auto}
+.in.num{flex:0 0 88px;width:88px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:14px}
+.in.tall{min-height:58px;resize:vertical}
+select.in{cursor:pointer}
+.swatch{width:38px;height:34px;border:none;background:none;padding:0;cursor:pointer;flex:none}
+
+.btn{
+  background:#1e222c;color:#f2f2f5;border:1px solid #343a48;border-radius:6px;
+  padding:9px 12px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;text-decoration:none;text-align:center;
+}
+.btn:hover{border-color:#4a5164}
+.btn.primary{background:#c9a227;color:#14161c;border-color:#c9a227;font-weight:700;letter-spacing:1.5px}
+.btn.small{padding:6px 10px;font-size:13px}
+.btn.danger{color:#ff7a7a}
+.btn.danger.armed{background:#3a1518;border-color:#ff7a7a}
+.btn.file{border-style:dashed;border-color:#4a5164;flex:1 1 auto}
+.btn.file input{display:none}
+.btn.line{text-align:left;font-weight:400;line-height:1.35;font-size:13px;border-color:#4a5164}
+
+.chip{
+  background:#1e222c;color:#f2f2f5;border:1px solid #343a48;border-radius:999px;
+  padding:7px 14px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;
+}
+.chip.on{background:#242015;border-color:#c9a227;color:#ffd964}
+
+/* ---------- scores & teams ---------- */
+.score-row{display:flex;gap:8px;align-items:center}
+.score-name{flex:1 1 0;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score-name.right{text-align:right}
+.stand-row{display:flex;gap:10px;align-items:center;font-size:15px;padding:3px 0}
+.stand-row .rk{width:20px;color:#8b8f9c;font-size:13px;text-align:right}
+.mono{font-family:'JetBrains Mono',monospace;font-size:13px}
+.mono.dim{color:#8b8f9c}
+.crest{width:44px;height:44px;object-fit:contain;border-radius:6px;background:#10131a;flex:none}
+.crest.empty{
+  display:flex;align-items:center;justify-content:center;
+  border:1px dashed #4a5164;color:#4a5164;font-weight:700;
+}
+.preview{font-size:24px;text-shadow:2px 2px 0 #000;line-height:1.2;word-break:break-word}
+.players{border-top:1px solid #2a2f3c;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+
+/* ---------- export modal ---------- */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+#modal[hidden]{display:none}
+.modal-in{background:#1a1d25;border:1px solid #343a48;border-radius:12px;padding:16px;max-width:760px;width:100%;display:flex;flex-direction:column;gap:10px}
+.modal-t{font-weight:700;font-size:18px;letter-spacing:1px}
+.modal-in img{width:100%;border-radius:8px;border:1px solid #343a48}
+
+@media (max-width:640px){
+  .brand{font-size:16px}
+  .in{font-size:16px}   /* iOS zooms the page in on anything smaller */
+}
