@@ -20,22 +20,48 @@ const FONTS = [
   "UnifrakturMaguntia",
   "Orbitron",
   "Rye",
+  "Smokum",
+  "Special Elite",
+  "Anton",
 ];
 
 const FONT_LINK =
-  "https://fonts.googleapis.com/css2?family=Bangers&family=Bungee&family=Black+Ops+One&family=Titan+One&family=Pacifico&family=Lobster&family=UnifrakturMaguntia&family=Orbitron&family=Rye&family=Barlow+Condensed:wght@400;600;700&display=swap";
+  "https://fonts.googleapis.com/css2?family=Bangers&family=Bungee&family=Black+Ops+One&family=Titan+One&family=Pacifico&family=Lobster&family=UnifrakturMaguntia&family=Orbitron&family=Rye&family=Smokum&family=Special+Elite&family=Anton&family=Barlow+Condensed:wght@400;600;700&display=swap";
+
+// Managers picked their own typefaces. Three of them name a face that is on
+// Google Fonts and simply loads: Smokum, Special Elite, Pacifico.
+//
+// The rest name commercial Bitstream/ITC faces that cannot be shipped with this
+// file — American Text BT, ITC Machine, Big Limbo BT, Sonic XAD BT, Rosella,
+// Faltura Guerra. Each of those sits on the closest free face for now, so the
+// graphic still reads the way it was meant to, and the moment someone uploads
+// the real file (Teams ▸ Custom fonts) it can be picked instead. `wanted` is
+// what they actually asked for; it is what the upload should be named.
+const FONT_WISHLIST = {
+  horns:   { manager: "Mason",   wanted: "Smokum",              using: "Smokum" },
+  barzal:  { manager: "Luke",    wanted: "Special Elite",       using: "Special Elite" },
+  romo:    { manager: "Benton",  wanted: "Pacifico",            using: "Pacifico" },
+  dones:   { manager: "Wilson",  wanted: "AmericanText BT",     using: "UnifrakturMaguntia" },
+  saquon:  { manager: "Cam",     wanted: "Machine",             using: "Anton" },
+  vick:    { manager: "Seabass", wanted: "Big Limbo BT",        using: "Titan One" },
+  dakyard: { manager: "Jake",    wanted: "Sonic XAD BT XBold",  using: "Orbitron" },
+  burrow:  { manager: "Jarren",  wanted: "Rosella",             using: "Lobster" },
+  diggin:  { manager: "Jatin",   wanted: "Faltura Guerra",      using: "Titan One" },
+};
+
+const CUSTOM_FONTS_KEY = "cityboys-fonts-v1";   // { family: dataURL }
 
 const DEFAULT_TEAMS = [
   { id: "diggin", name: "Diggin In Boutte", color: "#ff8c42", font: "Titan One" },
-  { id: "horns", name: "Texas Longhorns", color: "#e06e1f", font: "Rye" },
+  { id: "horns", name: "Texas Longhorns", color: "#e06e1f", font: "Smokum" },
   { id: "brady", name: "Brady Bunch", color: "#ffd9a0", font: "Bungee" },
-  { id: "burrow", name: "Seriously Step Burrow", color: "#f26522", font: "Bangers" },
-  { id: "barzal", name: "Barzal's Balls", color: "#4da6ff", font: "Titan One" },
-  { id: "dakyard", name: "Dakyard Football", color: "#6b7bff", font: "Bungee" },
-  { id: "vick", name: "Mike Vick's Dog House", color: "#3ec9a7", font: "Lobster" },
+  { id: "burrow", name: "Seriously Step Burrow", color: "#f26522", font: "Lobster" },
+  { id: "barzal", name: "Barzal's Balls", color: "#4da6ff", font: "Special Elite" },
+  { id: "dakyard", name: "Dakyard Football", color: "#6b7bff", font: "Orbitron" },
+  { id: "vick", name: "Mike Vick's Dog House", color: "#3ec9a7", font: "Titan One" },
   { id: "romo", name: "Romosexual", color: "#ff5fb0", font: "Pacifico" },
   { id: "dones", name: "One & Dones", color: "#ffd200", font: "UnifrakturMaguntia" },
-  { id: "saquon", name: "Saquon My Balls", color: "#3ddc84", font: "Bungee" },
+  { id: "saquon", name: "Saquon My Balls", color: "#3ddc84", font: "Anton" },
 ];
 
 const DEFAULT_WEEK_COUNT = 14;
@@ -823,6 +849,78 @@ export default function CityBoysBuilder() {
     const t = setTimeout(() => setFontTick((x) => x + 1), 1800);
     return () => clearTimeout(t);
   }, []);
+
+  // ---------- custom fonts ----------
+  // The faces most managers picked are commercial and cannot ship with this
+  // file, so they get uploaded instead: drop the .ttf/.otf/.woff2 you own in and
+  // it registers as a real family, joins every font dropdown, and draws on the
+  // canvas like any other. Stored as data URLs alongside the logos.
+  const [customFonts, setCustomFonts] = useState([]);   // [family]
+  const customFontsRef = useRef({});                    // family -> dataURL
+
+  const registerFont = async (family, url) => {
+    try {
+      const face = new FontFace(family, `url(${url})`);
+      await face.load();
+      document.fonts.add(face);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      let bundle = null;
+      try {
+        const r = await window.storage.get(CUSTOM_FONTS_KEY);
+        if (r?.value) bundle = JSON.parse(r.value);
+      } catch (e) {}
+      if (!bundle) return;
+      customFontsRef.current = bundle;
+      const loaded = [];
+      for (const family of Object.keys(bundle)) {
+        if (await registerFont(family, bundle[family])) loaded.push(family);
+      }
+      setCustomFonts(loaded);
+      setFontTick((t) => t + 1);
+    })();
+  }, []);
+
+  // Name the family after the file, so "Big Limbo BT.otf" becomes "Big Limbo BT"
+  // and matches what the manager actually asked for.
+  const uploadFont = (file) => {
+    const family = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+    const r = new FileReader();
+    r.onload = async () => {
+      const url = String(r.result);
+      if (!(await registerFont(family, url))) {
+        setSaveNote("That file isn't a font the browser can read");
+        return;
+      }
+      customFontsRef.current[family] = url;
+      setCustomFonts((f) => (f.includes(family) ? f : [...f, family]));
+      setFontTick((t) => t + 1);
+      try {
+        await window.storage.set(CUSTOM_FONTS_KEY, JSON.stringify(customFontsRef.current));
+        setSaveNote(`${family} installed`);
+        setTimeout(() => setSaveNote(""), 2000);
+      } catch (e) {
+        setSaveNote("Font saved for this session — storage is full");
+      }
+    };
+    r.readAsDataURL(file);
+  };
+
+  const removeFont = async (family) => {
+    delete customFontsRef.current[family];
+    setCustomFonts((f) => f.filter((x) => x !== family));
+    try {
+      await window.storage.set(CUSTOM_FONTS_KEY, JSON.stringify(customFontsRef.current));
+    } catch (e) {}
+  };
+
+  const allFonts = [...FONTS, ...customFonts];
 
   // ---------- load saved league ----------
   useEffect(() => {
@@ -2082,6 +2180,41 @@ export default function CityBoysBuilder() {
       {/* ================= TEAMS ================= */}
       {tab === "teams" && (
         <div style={S.page}>
+          <div style={S.card}>
+            <div style={S.cardTitle}>CUSTOM FONTS</div>
+            <div style={{ fontSize: 13, color: "#8b8f9c", lineHeight: 1.4 }}>
+              Upload a .ttf, .otf or .woff2 you own and it joins every font list below.
+              The family is named after the file, so save it as the font's real name.
+            </div>
+            {customFonts.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {customFonts.map((f) => (
+                  <div key={f} style={S.row}>
+                    <span style={{ flex: 1, fontFamily: `"${f}"`, fontSize: 20 }}>{f}</span>
+                    <button
+                      style={{ ...S.layerBtn, padding: "6px 10px", fontSize: 13, color: "#ff7a7a" }}
+                      onClick={() => removeFont(f)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label style={{ ...S.fileBtn, ...S.fileBtnAccent }}>
+              + Upload a font file
+              <input
+                type="file"
+                accept=".ttf,.otf,.woff,.woff2,font/*"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  Array.from(e.target.files || []).forEach(uploadFont);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
           {league.teams.map((t) => (
             <div key={t.id} style={{ ...S.card, borderLeft: `4px solid ${t.color}` }}>
               <div style={S.row}>
@@ -2120,7 +2253,7 @@ export default function CityBoysBuilder() {
                       .catch(() => {});
                   }}
                 >
-                  {FONTS.map((f) => (
+                  {allFonts.map((f) => (
                     <option key={f} value={f} style={{ fontFamily: `"${f}"` }}>
                       {f}
                     </option>
@@ -2142,6 +2275,15 @@ export default function CityBoysBuilder() {
               >
                 {t.name}
               </div>
+              {FONT_WISHLIST[t.id] && FONT_WISHLIST[t.id].wanted !== t.font && (
+                <div style={{ fontSize: 12, color: "#8b8f9c" }}>
+                  {FONT_WISHLIST[t.id].manager} asked for{" "}
+                  <span style={{ color: "#ffd964" }}>{FONT_WISHLIST[t.id].wanted}</span> —
+                  {customFonts.includes(FONT_WISHLIST[t.id].wanted)
+                    ? " uploaded, pick it above."
+                    : " not a free face, so this is a stand-in. Upload the file to use the real one."}
+                </div>
+              )}
 
               {/* player library */}
               <div style={{ borderTop: "1px solid #2a2f3c", paddingTop: 8 }}>
