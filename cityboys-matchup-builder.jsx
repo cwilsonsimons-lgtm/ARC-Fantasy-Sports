@@ -126,6 +126,101 @@ const HISTORY_LINES = {
 
 const ord = (n) => (n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`);
 
+// ---------- StatsDeck import ----------
+// A league export dropped in on the Schedule tab. The page can't call StatsDeck
+// itself — it's a static file — so the flow is: ask StatsDeck for the league,
+// save the JSON, import it here. Shape:
+//
+//   { season, teams:[{id|name|manager}], weeks:[{week, games:[{home,away,
+//     homeScore,awayScore,final}]}], facts:{teamId:[caption lines]} }
+//
+// Nothing is required except `weeks`. Anything missing is simply not imported,
+// so a mid-season export with three weeks of results fills three weeks.
+const normalize = (s) =>
+  String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+// Match an exported team onto one of ours: explicit id first, then team name,
+// then manager. Names get typed differently in every platform, so this is
+// deliberately forgiving rather than exact.
+function resolveTeam(entry, teams, byManager) {
+  if (!entry) return "";
+  if (typeof entry === "string") {
+    const direct = teams.find((t) => t.id === entry);
+    if (direct) return direct.id;
+    const named = teams.find((t) => normalize(t.name) === normalize(entry));
+    if (named) return named.id;
+    const mgr = byManager[normalize(entry)];
+    return mgr || "";
+  }
+  if (entry.id && teams.some((t) => t.id === entry.id)) return entry.id;
+  const named = teams.find((t) => normalize(t.name) === normalize(entry.name));
+  if (named) return named.id;
+  return byManager[normalize(entry.manager)] || "";
+}
+
+// Who owns which team. The schedule comment above is the source of truth, so
+// an export that only names managers still lands on the right teams.
+const MANAGERS = {
+  wilson: "dones", luke: "barzal", jake: "dakyard", seabass: "vick", manas: "brady",
+  jatin: "diggin", jarren: "burrow", cam: "saquon", mason: "horns", benton: "romo",
+};
+
+const numOrBlank = (v) =>
+  v === null || v === undefined || v === "" || isNaN(parseFloat(v)) ? "" : String(v);
+
+// Fold an export into a league, returning the new league and a tally to show.
+// Entered captions survive: they are the one thing here nobody else can supply.
+function mergeLeagueData(lg, data) {
+  const stats = { weeks: 0, games: 0, scores: 0, facts: 0, unmatched: [] };
+  const weeks = Array.isArray(data && data.weeks) ? data.weeks : [];
+  const next = structuredClone(lg);
+
+  weeks.forEach((wk) => {
+    const wi = (wk.week || 0) - 1;
+    if (wi < 0) return;
+    while (next.weeks.length <= wi) next.weeks.push(emptyWeek());
+    const games = Array.isArray(wk.games) ? wk.games : [];
+    let touched = false;
+    games.forEach((g, gi) => {
+      if (gi >= next.weeks[wi].length) next.weeks[wi].push({ a: "", b: "", sa: "", sb: "", ba: "", bb: "" });
+      const a = resolveTeam(g.home ?? g.a, next.teams, MANAGERS);
+      const b = resolveTeam(g.away ?? g.b, next.teams, MANAGERS);
+      if (!a || !b) {
+        stats.unmatched.push(`${JSON.stringify(g.home ?? g.a)} vs ${JSON.stringify(g.away ?? g.b)}`);
+        return;
+      }
+      const slot = next.weeks[wi][gi];
+      const sameTeams = (slot.a === a && slot.b === b) || (slot.a === b && slot.b === a);
+      const sa = numOrBlank(g.homeScore ?? g.sa);
+      const sb = numOrBlank(g.awayScore ?? g.sb);
+      next.weeks[wi][gi] = {
+        a, b,
+        sa: sa || (sameTeams ? slot.sa : ""),
+        sb: sb || (sameTeams ? slot.sb : ""),
+        // captions are hand-written; an import never wipes them
+        ba: sameTeams ? slot.ba : "",
+        bb: sameTeams ? slot.bb : "",
+      };
+      stats.games++;
+      if (sa && sb) stats.scores++;
+      touched = true;
+    });
+    if (touched) stats.weeks++;
+  });
+
+  if (data && data.facts) {
+    next.facts = { ...(next.facts || {}) };
+    Object.keys(data.facts).forEach((key) => {
+      const id = resolveTeam(key, next.teams, MANAGERS);
+      const lines = (data.facts[key] || []).filter((x) => typeof x === "string" && x.trim());
+      if (!id || !lines.length) return;
+      next.facts[id] = lines;
+      stats.facts += lines.length;
+    });
+  }
+  return { league: next, stats };
+}
+
 // ---------- layout constants for the graphic ----------
 const PLATE = { y: 22, h: 74, leftX: 24, leftW: 500, rightX: 846, rightW: 500 };
 const COL = { x: 568, y: 186, w: 234, h: 562 };
@@ -669,6 +764,39 @@ export default function CityBoysBuilder() {
     setSaveNote("2026 schedule loaded");
     setTimeout(() => setSaveNote(""), 2000);
   };
+
+  // Import a StatsDeck league export: schedule, results and caption facts.
+  const [importNote, setImportNote] = useState("");
+  const importLeagueData = (text) => {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      setImportNote("That file isn't valid JSON.");
+      return;
+    }
+    if (!data || !Array.isArray(data.weeks) || !data.weeks.length) {
+      setImportNote("No weeks in that file — expected { weeks: [ { week, games } ] }.");
+      return;
+    }
+    const { league: merged, stats } = mergeLeagueData(league, data);
+    setLeague(merged);
+    persistLeague(merged);
+    const bits = [
+      `${stats.games} matchups across ${stats.weeks} weeks`,
+      stats.scores ? `${stats.scores} finals` : "no scores yet",
+    ];
+    if (stats.facts) bits.push(`${stats.facts} caption lines`);
+    if (stats.unmatched.length) bits.push(`${stats.unmatched.length} teams not recognised`);
+    setImportNote("Imported " + bits.join(", ") + ".");
+  };
+
+  const importLeagueFile = (file) => {
+    const r = new FileReader();
+    r.onload = () => importLeagueData(String(r.result));
+    r.onerror = () => setImportNote("Couldn't read that file.");
+    r.readAsText(file);
+  };
   const [layers, setLayers] = useState([]);
   const [selId, setSelId] = useState(null);
   const [fontTick, setFontTick] = useState(0);
@@ -949,9 +1077,13 @@ export default function CityBoysBuilder() {
       else if (cw >= 2 && cl === 0)
         out.push(`(${cw}-0 in games decided by less than 10)`);
     }
+    // Imported StatsDeck facts sit between this season's computed lines and last
+    // season's receipts: they are about this year, so they beat the history, but
+    // anything derived from an actual entered score is still the better line.
+    out.push(...((league.facts && league.facts[tid]) || []));
     const hist = [...(HISTORY_LINES[tid] || [])].sort(() => Math.random() - 0.5);
     out.push(...hist);
-    return out.slice(0, 4);
+    return out.slice(0, 6);
   };
 
   const fmtRecord = (s) =>
@@ -1867,9 +1999,30 @@ export default function CityBoysBuilder() {
       {/* ================= SCHEDULE ================= */}
       {tab === "schedule" && (
         <div style={S.page}>
-          <button style={{ ...S.exportBtn, alignSelf: "flex-start" }} onClick={loadSeasonSchedule}>
-            LOAD 2026 SCHEDULE
-          </button>
+          <div style={S.row}>
+            <button style={{ ...S.exportBtn, alignSelf: "flex-start" }} onClick={loadSeasonSchedule}>
+              LOAD 2026 SCHEDULE
+            </button>
+            <label style={{ ...S.fileBtn, flex: "none" }}>
+              IMPORT LEAGUE DATA
+              <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  if (e.target.files?.length) importLeagueFile(e.target.files[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          <div style={{ fontSize: 13, color: importNote ? "#3ddc84" : "#8b8f9c", lineHeight: 1.4 }}>
+            {importNote ||
+              "Ask StatsDeck for the league export, save the JSON, then import it here — " +
+              "schedule, final scores and caption facts all land in one go. Scores you have " +
+              "already typed stay unless the import has a real result for that game, and your " +
+              "captions are never overwritten."}
+          </div>
           <div style={S.pickerRow}>
             <select
               style={{ ...S.input, width: "auto" }}

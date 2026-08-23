@@ -1,0 +1,38 @@
+{
+  "_note": "SAMPLE FILE — invented numbers, not real results. Fixture for tools/builder-import-check.mjs and a shape reference for a StatsDeck export.",
+  "season": 2026,
+  "scoring": "PPR",
+  "teams": [
+    { "id": "dones", "name": "One & Dones", "manager": "Wilson" },
+    { "id": "dakyard", "name": "Dakyard Football", "manager": "Jake" }
+  ],
+  "weeks": [
+    {
+      "week": 1,
+      "games": [
+        { "home": "dones", "away": "dakyard", "homeScore": 131.4, "awayScore": 98.2, "final": true },
+        { "home": "Barzal's Balls", "away": "Brady Bunch", "homeScore": 145.0, "awayScore": 130.7, "final": true },
+        { "home": "Seabass", "away": "Jarren", "homeScore": 88.4, "awayScore": 101.1, "final": true },
+        { "home": "diggin", "away": "horns", "homeScore": 160.2, "awayScore": 159.9, "final": true },
+        { "home": "saquon", "away": "romo", "homeScore": 77.3, "awayScore": 112.6, "final": true }
+      ]
+    },
+    {
+      "week": 2,
+      "games": [
+        { "home": "dones", "away": "vick" },
+        { "home": "barzal", "away": "burrow" },
+        { "home": "dakyard", "away": "brady" },
+        { "home": "diggin", "away": "romo" },
+        { "home": "saquon", "away": "horns" }
+      ]
+    }
+  ],
+  "facts": {
+    "dones": [
+      "(Most points in the league through Week 1)",
+      "(Left 41.2 on the bench in the opener)"
+    ],
+    "Jake": ["(Lost the opener despite the 3rd-highest score of the week)"]
+  }
+}
