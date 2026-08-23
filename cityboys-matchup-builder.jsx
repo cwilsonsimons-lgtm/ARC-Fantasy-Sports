@@ -2060,38 +2060,6 @@ export default function CityBoysBuilder() {
             </div>
 
             <div style={S.card}>
-              <div style={S.cardTitle}>LAYOUT & COLOURS</div>
-              <Slider label="Name plate width" k="plateW" min={260} max={plateWMax} />
-              <Slider label="Name plate height" k="plateH" min={48} max={140} />
-              <Slider label="Name plate top" k="plateY" min={0} max={220} />
-              <Slider label="Name plate edge gap" k="plateInset" min={0} max={160} />
-              <Slider label="Stat column width" k="colW" min={160} max={420} />
-              <Slider label="Stat column height" k="colH" min={260} max={colHMax} />
-              <Slider label="Stat column top" k="colY" min={40} max={colYMax} />
-              <Slider label="League logo width" k="logoW" min={80} max={logoWMax} />
-              <Slider label="League logo height" k="logoH" min={70} max={320} />
-              <Slider label="League logo top" k="logoY" min={40} max={300} />
-              <Slider label="Team colour tint" k="tint" min={0} max={100} suffix="%" />
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={layout.logoFrame !== false}
-                  onChange={(e) => setLayout("logoFrame", e.target.checked)}
-                  style={{ accentColor: "#c9a227" }}
-                />
-                Frame the league logo
-              </label>
-              <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
-                Every frame is drawn in the two teams' colours, and the tint washes the
-                stadium the same way — left team's colour on the left, right team's on the
-                right. Sizes save with the league, so every graphic keeps them.
-              </div>
-              <button style={{ ...S.layerBtn, alignSelf: "flex-start" }} onClick={resetLayout}>
-                Reset layout
-              </button>
-            </div>
-
-            <div style={S.card}>
               <div style={S.cardTitle}>BOX LABELS & OVERRIDES</div>
               <div style={S.row}>
                 <input
@@ -2143,6 +2111,38 @@ export default function CityBoysBuilder() {
                   Reset to auto values
                 </button>
               )}
+            </div>
+
+            <div style={S.card}>
+              <div style={S.cardTitle}>LAYOUT & COLOURS</div>
+              <Slider label="Name plate width" k="plateW" min={260} max={plateWMax} />
+              <Slider label="Name plate height" k="plateH" min={48} max={140} />
+              <Slider label="Name plate top" k="plateY" min={0} max={220} />
+              <Slider label="Name plate edge gap" k="plateInset" min={0} max={160} />
+              <Slider label="Stat column width" k="colW" min={160} max={420} />
+              <Slider label="Stat column height" k="colH" min={260} max={colHMax} />
+              <Slider label="Stat column top" k="colY" min={40} max={colYMax} />
+              <Slider label="League logo width" k="logoW" min={80} max={logoWMax} />
+              <Slider label="League logo height" k="logoH" min={70} max={320} />
+              <Slider label="League logo top" k="logoY" min={40} max={300} />
+              <Slider label="Team colour tint" k="tint" min={0} max={100} suffix="%" />
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={layout.logoFrame !== false}
+                  onChange={(e) => setLayout("logoFrame", e.target.checked)}
+                  style={{ accentColor: "#c9a227" }}
+                />
+                Frame the league logo
+              </label>
+              <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
+                Every frame is drawn in the two teams' colours, and the tint washes the
+                stadium the same way — left team's colour on the left, right team's on the
+                right. Sizes save with the league, so every graphic keeps them.
+              </div>
+              <button style={{ ...S.layerBtn, alignSelf: "flex-start" }} onClick={resetLayout}>
+                Reset layout
+              </button>
             </div>
 
             <div style={S.card}>
