@@ -248,9 +248,48 @@ function mergeLeagueData(lg, data) {
 }
 
 // ---------- layout constants for the graphic ----------
-const PLATE = { y: 22, h: 74, leftX: 24, leftW: 500, rightX: 846, rightW: 500 };
-const COL = { x: 568, y: 186, w: 234, h: 562 };
-const LOGO = { cx: W / 2, cy: 96, maxW: 176, maxH: 158 };
+// Everything on the graphic is placed off these numbers, and every one of them
+// is adjustable on the Graphic tab (Layout & colours) and saved with the league.
+// Positions stay derived rather than stored — the plates hang off the edges and
+// the column off the centre line, so widening one keeps it centred instead of
+// drifting.
+const DEFAULT_LAYOUT = {
+  plateW: 500,     // team name plate
+  plateH: 74,
+  plateY: 22,
+  plateInset: 24,  // gap from the canvas edge
+  colW: 234,       // centre stat column
+  colH: 562,
+  colY: 186,
+  logoW: 176,      // league logo box
+  logoH: 158,
+  logoY: 96,
+  tint: 55,        // how strongly the team colours wash the background, 0-100
+  logoFrame: true, // draw the chamfered frame around the league logo
+};
+
+function layoutGeometry(layout) {
+  const L = { ...DEFAULT_LAYOUT, ...(layout || {}) };
+  return {
+    PLATE: {
+      y: L.plateY, h: L.plateH,
+      leftX: L.plateInset, leftW: L.plateW,
+      rightX: W - L.plateInset - L.plateW, rightW: L.plateW,
+    },
+    COL: { x: (W - L.colW) / 2, y: L.colY, w: L.colW, h: L.colH },
+    LOGO: { cx: W / 2, cy: L.logoY, maxW: L.logoW, maxH: L.logoH },
+    tint: Math.max(0, Math.min(100, L.tint)) / 100,
+    logoFrame: L.logoFrame !== false,
+  };
+}
+
+// The two team colours, left to right, for anything that spans the graphic.
+function teamGradient(ctx, x0, y0, x1, y1, sides) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, sides[0].color);
+  g.addColorStop(1, sides[1].color);
+  return g;
+}
 
 let _id = 1;
 const nid = () => _id++;
@@ -268,6 +307,7 @@ const freshLeague = () => ({
   teams: DEFAULT_TEAMS.map((t) => ({ ...t })),
   weeks: Array.from({ length: DEFAULT_WEEK_COUNT }, emptyWeek),
   logoSlots: structuredClone(DEFAULT_SLOTS),
+  layout: { ...DEFAULT_LAYOUT },
 });
 
 // ---------- canvas helpers ----------
@@ -321,6 +361,40 @@ function strokedText(ctx, text, x, y, fill, strokeWidth, strokeColor = "#000") {
   ctx.fillText(text, x, y);
 }
 
+// 0-1 opacity as the two hex digits canvas colour strings want
+const alphaHex = (a) =>
+  Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, "0");
+
+// Each team's colour bleeding in from its own side, meeting in the middle.
+// Screened rather than painted over, so the crowd and the field stay visible
+// underneath instead of being flooded.
+function drawTeamWash(ctx, sides, tint) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const left = ctx.createLinearGradient(0, 0, W * 0.62, 0);
+  left.addColorStop(0, sides[0].color + alphaHex(0.5 * tint));
+  left.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = left;
+  ctx.fillRect(0, 0, W, H);
+  const right = ctx.createLinearGradient(W, 0, W * 0.38, 0);
+  right.addColorStop(0, sides[1].color + alphaHex(0.5 * tint));
+  right.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = right;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // a low glow along the field so the colour reaches the grass too
+  ctx.save();
+  ctx.globalCompositeOperation = "overlay";
+  const floor = ctx.createLinearGradient(0, H * 0.6, W, H);
+  floor.addColorStop(0, sides[0].color + alphaHex(0.42 * tint));
+  floor.addColorStop(0.5, "rgba(0,0,0,0)");
+  floor.addColorStop(1, sides[1].color + alphaHex(0.42 * tint));
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, H * 0.58, W, H * 0.42);
+  ctx.restore();
+}
+
 // seeded rng so the background doesn't shimmer on every redraw
 function mulberry32(seed) {
   let a = seed;
@@ -333,7 +407,10 @@ function mulberry32(seed) {
   };
 }
 
-function drawStadiumBg(ctx, theme = "classic") {
+// `sides` and `tint` colour the stadium itself: the light beams take each
+// team's colour, and a wash pulls the left half toward one and the right half
+// toward the other. Tint 0 leaves the painted stadium exactly as it was.
+function drawStadiumBg(ctx, theme = "classic", sides = null, tint = 0) {
   const rnd = mulberry32(
     theme === "halloween" ? 13 : theme === "thanksgiving" ? 77 : theme === "christmas" ? 99 : 42
   );
@@ -374,9 +451,12 @@ function drawStadiumBg(ctx, theme = "classic") {
   };
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  for (const [bx, col] of beamSets[theme] || beamSets.classic) {
+  const beams = beamSets[theme] || beamSets.classic;
+  for (const [bx, col] of beams) {
+    // rigs on the left burn the left team's colour, the right the right's
+    const teamCol = sides && tint > 0 ? sides[bx < W / 2 ? 0 : 1].color : null;
     const g = ctx.createRadialGradient(bx, -60, 10, bx, -60, 560);
-    g.addColorStop(0, col + "55");
+    g.addColorStop(0, (teamCol || col) + alphaHex(teamCol ? 0.33 + tint * 0.42 : 0.33));
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
@@ -505,6 +585,8 @@ function drawStadiumBg(ctx, theme = "classic") {
     ctx.globalAlpha = 1;
   }
 
+  if (sides && tint > 0) drawTeamWash(ctx, sides, tint);
+
   // vignette
   const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95);
   vg.addColorStop(0, "rgba(0,0,0,0)");
@@ -516,6 +598,7 @@ function drawStadiumBg(ctx, theme = "classic") {
 function drawGraphic(ctx, state, opts = {}) {
   const { bgImg, leagueLogoImg, layers, sides, selId } = state;
   const showUi = !opts.export;
+  const { PLATE, COL, LOGO, tint, logoFrame } = layoutGeometry(state.layout);
 
   ctx.clearRect(0, 0, W, H);
 
@@ -526,8 +609,11 @@ function drawGraphic(ctx, state, opts = {}) {
     ctx.drawImage(bgImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.fillRect(0, 0, W, H);
+    // an uploaded photo gets the same team wash as the painted stadium, so the
+    // two backgrounds sit in the same world
+    if (tint > 0) drawTeamWash(ctx, sides, tint);
   } else {
-    drawStadiumBg(ctx, state.theme || "classic");
+    drawStadiumBg(ctx, state.theme || "classic", sides, tint);
   }
 
   for (const L of layers) {
@@ -580,13 +666,13 @@ function drawGraphic(ctx, state, opts = {}) {
   ctx.fill();
   ctx.restore();
   chamferPath(ctx, COL.x, COL.y, COL.w, COL.h, 16);
-  const metal = ctx.createLinearGradient(COL.x, COL.y, COL.x + COL.w, COL.y + COL.h);
-  metal.addColorStop(0, "#e8e8ee");
-  metal.addColorStop(0.5, "#8a8fa0");
-  metal.addColorStop(1, "#e0e0ea");
-  ctx.strokeStyle = metal;
+  ctx.strokeStyle = teamGradient(ctx, COL.x, COL.y, COL.x + COL.w, COL.y + COL.h, sides);
   ctx.lineWidth = 3;
+  ctx.save();
+  ctx.shadowColor = sides[0].color;
+  ctx.shadowBlur = 12;
   ctx.stroke();
+  ctx.restore();
 
   const pad = 14;
   const innerX = COL.x + pad;
@@ -699,7 +785,25 @@ function drawGraphic(ctx, state, opts = {}) {
   plate(PLATE.leftX, PLATE.leftW, sides[0]);
   plate(PLATE.rightX, PLATE.rightW, sides[1]);
 
-  // league logo
+  // league logo — the frame is drawn first so the art sits inside it
+  if (logoFrame) {
+    ctx.save();
+    chamferPath(ctx, LOGO.cx - LOGO.maxW / 2, LOGO.cy - LOGO.maxH / 2, LOGO.maxW, LOGO.maxH, 18);
+    const inner = ctx.createLinearGradient(0, LOGO.cy - LOGO.maxH / 2, 0, LOGO.cy + LOGO.maxH / 2);
+    inner.addColorStop(0, "rgba(6,8,14,0.72)");
+    inner.addColorStop(1, "rgba(14,18,30,0.72)");
+    ctx.fillStyle = inner;
+    ctx.fill();
+    ctx.strokeStyle = teamGradient(
+      ctx, LOGO.cx - LOGO.maxW / 2, LOGO.cy, LOGO.cx + LOGO.maxW / 2, LOGO.cy, sides
+    );
+    ctx.lineWidth = 3;
+    ctx.shadowColor = sides[1].color;
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (leagueLogoImg) {
     const s = Math.min(LOGO.maxW / leagueLogoImg.width, LOGO.maxH / leagueLogoImg.height);
     const dw = leagueLogoImg.width * s;
@@ -714,7 +818,7 @@ function drawGraphic(ctx, state, opts = {}) {
     ctx.setLineDash([6, 5]);
     ctx.strokeStyle = "rgba(255,255,255,0.4)";
     ctx.lineWidth = 2;
-    ctx.strokeRect(LOGO.cx - 70, LOGO.cy - 60, 140, 120);
+    ctx.strokeRect(LOGO.cx - LOGO.maxW / 2, LOGO.cy - LOGO.maxH / 2, LOGO.maxW, LOGO.maxH);
     ctx.setLineDash([]);
     ctx.fillStyle = "rgba(255,255,255,0.55)";
     ctx.font = '600 16px "Barlow Condensed"';
@@ -936,6 +1040,7 @@ export default function CityBoysBuilder() {
         /* first run — nothing saved yet */
       }
       if (!loaded.logoSlots) loaded.logoSlots = structuredClone(DEFAULT_SLOTS);
+      loaded.layout = { ...DEFAULT_LAYOUT, ...(loaded.layout || {}) };
       // migrate right-side logo slot if saved on the old narrower canvas
       const savedW = loaded.canvasW || 1170;
       if (savedW !== W && loaded.logoSlots?.b) {
@@ -1080,6 +1185,35 @@ export default function CityBoysBuilder() {
   };
 
   const teamById = (id) => league.teams.find((t) => t.id === id);
+
+  // ---------- layout ----------
+  const layout = { ...DEFAULT_LAYOUT, ...(league.layout || {}) };
+  const setLayout = (key, value) =>
+    updateLeague((lg) => {
+      lg.layout = { ...DEFAULT_LAYOUT, ...(lg.layout || {}), [key]: value };
+      return lg;
+    });
+  const resetLayout = () =>
+    updateLeague((lg) => {
+      lg.layout = { ...DEFAULT_LAYOUT };
+      return lg;
+    });
+
+  // The name plates and the league logo share the top band. Rather than letting
+  // them overlap and look broken, each slider stops where the other begins.
+  const TOP_GAP = 16;
+  const plateWMax = Math.max(
+    260,
+    Math.floor((W - 2 * layout.plateInset - layout.logoW - TOP_GAP) / 2)
+  );
+  const logoWMax = Math.max(
+    80,
+    W - 2 * (layout.plateInset + layout.plateW) - TOP_GAP
+  );
+  // and the column has to end before the bottom edge, wherever it starts
+  const BOTTOM_GAP = 12;
+  const colHMax = Math.max(260, H - layout.colY - BOTTOM_GAP);
+  const colYMax = Math.max(40, H - layout.colH - BOTTOM_GAP);
 
   // ---------- roast suggestion engine ----------
   const gameLog = (tid) => {
@@ -1237,6 +1371,7 @@ export default function CityBoysBuilder() {
     layers,
     sides,
     selId,
+    layout: league.layout,
     theme: effectiveTheme,
     labels: [label1, label2],
   };
@@ -1663,6 +1798,29 @@ export default function CityBoysBuilder() {
     </label>
   );
 
+  // Sliders write straight through to the league on every move, so the canvas
+  // tracks the drag and the size is saved the moment you let go.
+  const Slider = ({ label, k, min, max, step = 1, suffix = "px" }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+        <span style={{ color: "#c9c9d2" }}>{label}</span>
+        <span style={{ color: "#8b8f9c" }}>
+          {layout[k]}
+          {suffix}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={layout[k]}
+        onChange={(e) => setLayout(k, Number(e.target.value))}
+        style={{ width: "100%", accentColor: "#c9a227" }}
+      />
+    </div>
+  );
+
   const TabBtn = ({ id, label }) => (
     <button
       style={{ ...S.tabBtn, ...(tab === id ? S.tabBtnActive : {}) }}
@@ -1899,6 +2057,38 @@ export default function CityBoysBuilder() {
                   ))}
                 </div>
               ))}
+            </div>
+
+            <div style={S.card}>
+              <div style={S.cardTitle}>LAYOUT & COLOURS</div>
+              <Slider label="Name plate width" k="plateW" min={260} max={plateWMax} />
+              <Slider label="Name plate height" k="plateH" min={48} max={140} />
+              <Slider label="Name plate top" k="plateY" min={0} max={220} />
+              <Slider label="Name plate edge gap" k="plateInset" min={0} max={160} />
+              <Slider label="Stat column width" k="colW" min={160} max={420} />
+              <Slider label="Stat column height" k="colH" min={260} max={colHMax} />
+              <Slider label="Stat column top" k="colY" min={40} max={colYMax} />
+              <Slider label="League logo width" k="logoW" min={80} max={logoWMax} />
+              <Slider label="League logo height" k="logoH" min={70} max={320} />
+              <Slider label="League logo top" k="logoY" min={40} max={300} />
+              <Slider label="Team colour tint" k="tint" min={0} max={100} suffix="%" />
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={layout.logoFrame !== false}
+                  onChange={(e) => setLayout("logoFrame", e.target.checked)}
+                  style={{ accentColor: "#c9a227" }}
+                />
+                Frame the league logo
+              </label>
+              <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
+                Every frame is drawn in the two teams' colours, and the tint washes the
+                stadium the same way — left team's colour on the left, right team's on the
+                right. Sizes save with the league, so every graphic keeps them.
+              </div>
+              <button style={{ ...S.layerBtn, alignSelf: "flex-start" }} onClick={resetLayout}>
+                Reset layout
+              </button>
             </div>
 
             <div style={S.card}>
