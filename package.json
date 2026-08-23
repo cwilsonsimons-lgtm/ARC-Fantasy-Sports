@@ -7,12 +7,15 @@
   "scripts": {
     "start": "node tools/serve.mjs . 8080",
     "build": "node tools/build.mjs",
+    "build:builder": "node tools/build-builder.mjs",
     "snapshot": "node tools/snapshot.mjs http://127.0.0.1:8080/index.html snapshots",
     "pixel-diff": "node tools/pixel-diff.mjs",
     "check:markets": "node tools/markets-check.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
-    "playwright": "^1.62.0"
+    "playwright": "^1.62.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }
