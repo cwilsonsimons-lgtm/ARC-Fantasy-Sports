@@ -266,6 +266,13 @@ const DEFAULT_LAYOUT = {
   logoY: 96,
   tint: 55,        // how strongly the team colours wash the background, 0-100
   logoFrame: true, // draw the chamfered frame around the league logo
+  // Type sizes. Each is a starting point, not a fixed size: the fitter still
+  // shrinks anything too long for its box, so raising these makes short text
+  // bigger without letting "Seriously Step Burrow" spill out of its plate.
+  nameSize: 46,    // team name on the plate
+  labelSize: 17,   // RECORD / AVERAGE POINTS
+  valueSize: 22,   // the numbers in the cells
+  captionSize: 19, // trash talk
 };
 
 function layoutGeometry(layout) {
@@ -280,6 +287,12 @@ function layoutGeometry(layout) {
     LOGO: { cx: W / 2, cy: L.logoY, maxW: L.logoW, maxH: L.logoH },
     tint: Math.max(0, Math.min(100, L.tint)) / 100,
     logoFrame: L.logoFrame !== false,
+    type: {
+      name: L.nameSize,
+      label: L.labelSize,
+      value: L.valueSize,
+      caption: L.captionSize,
+    },
   };
 }
 
@@ -598,7 +611,7 @@ function drawStadiumBg(ctx, theme = "classic", sides = null, tint = 0) {
 function drawGraphic(ctx, state, opts = {}) {
   const { bgImg, leagueLogoImg, layers, sides, selId } = state;
   const showUi = !opts.export;
-  const { PLATE, COL, LOGO, tint, logoFrame } = layoutGeometry(state.layout);
+  const { PLATE, COL, LOGO, tint, logoFrame, type } = layoutGeometry(state.layout);
 
   ctx.clearRect(0, 0, W, H);
 
@@ -681,17 +694,18 @@ function drawGraphic(ctx, state, opts = {}) {
 
   const sectionLabel = (label) => {
     const txt = label.toUpperCase();
-    const size = fitFontSize(ctx, txt, "Orbitron", "700", COL.w - 24, 17, 10);
+    const size = fitFontSize(ctx, txt, "Orbitron", "700", COL.w - 24, type.label, 10);
     ctx.font = `700 ${size}px "Orbitron"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     strokedText(ctx, txt, W / 2, cy, "#ffffff", 4);
-    cy += 24;
+    cy += size + 7;
   };
 
   const valueCells = (v1, v2) => {
     const cellW = (innerW - 10) / 2;
-    const cellH = 46;
+    // the cell is sized off its type, so bigger numbers get a bigger box
+    const cellH = Math.round(type.value * 2.1);
     const cells = [
       { x: innerX, v: v1, c: sides[0].color },
       { x: innerX + cellW + 10, v: v2, c: sides[1].color },
@@ -707,7 +721,7 @@ function drawGraphic(ctx, state, opts = {}) {
       ctx.shadowBlur = 10;
       ctx.stroke();
       ctx.restore();
-      const size = fitFontSize(ctx, cell.v, "Orbitron", "700", cellW - 12, 22, 11);
+      const size = fitFontSize(ctx, cell.v, "Orbitron", "700", cellW - 12, type.value, 11);
       ctx.font = `700 ${size}px "Orbitron"`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -731,12 +745,15 @@ function drawGraphic(ctx, state, opts = {}) {
   ctx.stroke();
   cy += 8;
 
-  const remaining = COL.y + COL.h - cy - 12;
+  // Bigger labels and cells push the divider down. If they have eaten the
+  // column there is nothing left to write the trash talk in, and drawing it
+  // anyway would run it out of the bottom of the box.
+  const remaining = Math.max(0, COL.y + COL.h - cy - 12);
   const half = remaining / 2;
   const drawBlurb = (side, topY, availH) => {
     ctx.fillStyle = side.color;
     ctx.fillRect(W / 2 - 22, topY, 44, 4);
-    let size = 19;
+    let size = type.caption;
     let lines = [];
     while (size >= 11) {
       ctx.font = `700 ${size}px "Orbitron"`;
@@ -752,8 +769,10 @@ function drawGraphic(ctx, state, opts = {}) {
       ty += size + 7;
     }
   };
-  drawBlurb(sides[0], cy, half);
-  drawBlurb(sides[1], cy + half + 4, half);
+  if (half >= 24) {
+    drawBlurb(sides[0], cy, half);
+    drawBlurb(sides[1], cy + half + 4, half);
+  }
 
   // team name plates
   const plate = (x, w, side) => {
@@ -776,7 +795,7 @@ function drawGraphic(ctx, state, opts = {}) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    const size = fitFontSize(ctx, side.name, side.font, "400", w - 44, 46, 18);
+    const size = fitFontSize(ctx, side.name, side.font, "400", w - 44, type.name, 18);
     ctx.font = `400 ${size}px "${side.font}"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1214,6 +1233,22 @@ export default function CityBoysBuilder() {
   const BOTTOM_GAP = 12;
   const colHMax = Math.max(260, H - layout.colY - BOTTOM_GAP);
   const colYMax = Math.max(40, H - layout.colH - BOTTOM_GAP);
+
+  // The stat block — two labels and two rows of cells — is drawn from the top of
+  // the column down, and its height is entirely a function of its type sizes:
+  //   26 top + 2×(label + 7) + 2×(cell + 20) + 8 divider, where cell = value×2.1
+  // Left alone it will happily run out of the bottom of a short column, so each
+  // type slider stops where the other type and the column height leave it.
+  const STAT_BLOCK_CHROME = 88;
+  const cellFor = (value) => Math.round(value * 2.1);
+  const labelSizeMax = Math.max(
+    10,
+    Math.min(44, Math.floor((layout.colH - STAT_BLOCK_CHROME - 2 * cellFor(layout.valueSize)) / 2))
+  );
+  const valueSizeMax = Math.max(
+    12,
+    Math.min(56, Math.floor((layout.colH - STAT_BLOCK_CHROME - 2 * layout.labelSize) / 2 / 2.1))
+  );
 
   // ---------- roast suggestion engine ----------
   const gameLog = (tid) => {
@@ -2115,16 +2150,30 @@ export default function CityBoysBuilder() {
 
             <div style={S.card}>
               <div style={S.cardTitle}>LAYOUT & COLOURS</div>
-              <Slider label="Name plate width" k="plateW" min={260} max={plateWMax} />
-              <Slider label="Name plate height" k="plateH" min={48} max={140} />
+              <Slider label="Name plate width" k="plateW" min={200} max={plateWMax} />
+              <Slider label="Name plate height" k="plateH" min={48} max={220} />
               <Slider label="Name plate top" k="plateY" min={0} max={220} />
               <Slider label="Name plate edge gap" k="plateInset" min={0} max={160} />
-              <Slider label="Stat column width" k="colW" min={160} max={420} />
+              <Slider label="Stat column width" k="colW" min={160} max={560} />
               <Slider label="Stat column height" k="colH" min={260} max={colHMax} />
               <Slider label="Stat column top" k="colY" min={40} max={colYMax} />
               <Slider label="League logo width" k="logoW" min={80} max={logoWMax} />
-              <Slider label="League logo height" k="logoH" min={70} max={320} />
+              <Slider label="League logo height" k="logoH" min={70} max={420} />
               <Slider label="League logo top" k="logoY" min={40} max={300} />
+              <div style={{ borderTop: "1px solid #2a2f3c", paddingTop: 8, marginTop: 2 }}>
+                <div style={{ ...S.cardTitle, fontSize: 12 }}>TEXT SIZE</div>
+              </div>
+              <Slider label="Team name" k="nameSize" min={24} max={110} />
+              <Slider label="Box labels" k="labelSize" min={10} max={labelSizeMax} />
+              <Slider label="Record & average" k="valueSize" min={12} max={valueSizeMax} />
+              <Slider label="Trash talk" k="captionSize" min={10} max={44} />
+              <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
+                These set the biggest a piece of text may be. Anything too long for its
+                box still shrinks to fit, so a long team name will not spill out.
+              </div>
+              <div style={{ borderTop: "1px solid #2a2f3c", paddingTop: 8, marginTop: 2 }}>
+                <div style={{ ...S.cardTitle, fontSize: 12 }}>BACKGROUND</div>
+              </div>
               <Slider label="Team colour tint" k="tint" min={0} max={100} suffix="%" />
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
                 <input
