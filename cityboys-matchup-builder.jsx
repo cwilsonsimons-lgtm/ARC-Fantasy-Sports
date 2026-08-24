@@ -51,6 +51,18 @@ const FONT_WISHLIST = {
 
 const CUSTOM_FONTS_KEY = "cityboys-fonts-v1";   // { family: dataURL }
 
+// "Save as default" keeps the whole look of the graphic you are on, so the next
+// one starts there instead of at the shipped numbers. It is everything that is
+// about format rather than about this particular matchup: the box sizes and type
+// sizes, the tint, the two box labels, the background theme, and where the team
+// logos sit. Not the teams, scores or trash talk — those change every week.
+const capturePreset = (lg, extras) => ({
+  savedAt: new Date().toISOString().slice(0, 10),
+  layout: { ...DEFAULT_LAYOUT, ...(lg.layout || {}) },
+  logoSlots: structuredClone(lg.logoSlots || DEFAULT_SLOTS),
+  ...extras,
+});
+
 const DEFAULT_TEAMS = [
   { id: "diggin", name: "Diggin In Boutte", color: "#ff8c42", font: "Titan One" },
   { id: "horns", name: "Texas Longhorns", color: "#e06e1f", font: "Smokum" },
@@ -1138,6 +1150,16 @@ export default function CityBoysBuilder() {
       }
       if (!loaded.logoSlots) loaded.logoSlots = structuredClone(DEFAULT_SLOTS);
       loaded.layout = { ...DEFAULT_LAYOUT, ...(loaded.layout || {}) };
+      // The layout itself is league data and has already come back with the save.
+      // The labels and the theme are not — they live in component state, so a
+      // saved default is where they come back from.
+      if (loaded.preset) {
+        if (loaded.preset.labels) {
+          setLabel1(loaded.preset.labels[0] || "Record");
+          setLabel2(loaded.preset.labels[1] || "Average Points");
+        }
+        if (loaded.preset.theme) setTheme(loaded.preset.theme);
+      }
       // migrate right-side logo slot if saved on the old narrower canvas
       const savedW = loaded.canvasW || 1170;
       if (savedW !== W && loaded.logoSlots?.b) {
@@ -1315,6 +1337,53 @@ export default function CityBoysBuilder() {
   const resetLayout = () =>
     updateLeague((lg) => {
       lg.layout = { ...DEFAULT_LAYOUT, linkSizes: (lg.layout || {}).linkSizes || false };
+      return lg;
+    });
+
+  // ---------- saved default ----------
+  const preset = league.preset || null;
+
+  const saveAsDefault = () => {
+    updateLeague((lg) => {
+      lg.preset = capturePreset(lg, { labels: [label1, label2], theme });
+      return lg;
+    });
+    setSaveNote("Saved as your default");
+    setTimeout(() => setSaveNote(""), 2200);
+  };
+
+  // Put the graphic back to that default. Everything the preset covers comes
+  // back at once, including the logo spots, so the layers on screen are re-laid
+  // rather than left sitting at last week's positions.
+  const applyDefault = () => {
+    if (!preset) return;
+    updateLeague((lg) => {
+      lg.layout = clampLayout(preset.layout);
+      lg.logoSlots = structuredClone(preset.logoSlots || lg.logoSlots || DEFAULT_SLOTS);
+      return lg;
+    });
+    if (preset.labels) {
+      setLabel1(preset.labels[0] || "Record");
+      setLabel2(preset.labels[1] || "Average Points");
+    }
+    if (preset.theme) setTheme(preset.theme);
+    setLayers((ls) =>
+      ls.map((L) => {
+        const slot =
+          L.role === "logoA" ? (preset.logoSlots || DEFAULT_SLOTS).a
+          : L.role === "logoB" ? (preset.logoSlots || DEFAULT_SLOTS).b
+          : null;
+        if (!slot || !L.img) return L;
+        return { ...L, x: slot.x, y: slot.y, scale: slot.box / Math.max(L.img.width, L.img.height) };
+      })
+    );
+    setSaveNote("Back to your default");
+    setTimeout(() => setSaveNote(""), 1800);
+  };
+
+  const clearDefault = () =>
+    updateLeague((lg) => {
+      delete lg.preset;
       return lg;
     });
 
@@ -2289,9 +2358,37 @@ export default function CityBoysBuilder() {
                 stadium the same way — left team's colour on the left, right team's on the
                 right. Sizes save with the league, so every graphic keeps them.
               </div>
-              <button style={{ ...S.layerBtn, alignSelf: "flex-start" }} onClick={resetLayout}>
-                Reset layout
-              </button>
+              <div style={{ borderTop: "1px solid #2a2f3c", paddingTop: 8, marginTop: 2 }}>
+                <div style={{ ...S.cardTitle, fontSize: 12 }}>DEFAULT FORMAT</div>
+              </div>
+              <div style={S.row}>
+                <button
+                  style={{ ...S.fileBtn, ...S.fileBtnAccent, cursor: "pointer" }}
+                  onClick={saveAsDefault}
+                >
+                  Save this as my default
+                </button>
+              </div>
+              <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
+                {preset
+                  ? `Every graphic starts from your default (saved ${preset.savedAt}) — sizes, text, tint, box labels, theme and logo spots. Change any of it for one graphic without touching the default.`
+                  : "Set the sizes, text, tint, labels and logo spots how you want them once, then save. Every graphic after that starts there instead of at the built-in sizes."}
+              </div>
+              <div style={S.row}>
+                {preset && (
+                  <button style={S.layerBtn} onClick={applyDefault}>
+                    Back to my default
+                  </button>
+                )}
+                <button style={S.layerBtn} onClick={resetLayout}>
+                  Built-in sizes
+                </button>
+                {preset && (
+                  <button style={{ ...S.layerBtn, color: "#ff7a7a" }} onClick={clearDefault}>
+                    Forget default
+                  </button>
+                )}
+              </div>
             </div>
 
             <div style={S.card}>
