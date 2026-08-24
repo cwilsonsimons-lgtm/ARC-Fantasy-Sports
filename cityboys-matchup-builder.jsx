@@ -273,6 +273,7 @@ const DEFAULT_LAYOUT = {
   labelSize: 17,   // RECORD / AVERAGE POINTS
   valueSize: 22,   // the numbers in the cells
   captionSize: 19, // trash talk
+  linkSizes: false, // move one size slider, the rest follow in proportion
 };
 
 function layoutGeometry(layout) {
@@ -294,6 +295,79 @@ function layoutGeometry(layout) {
       caption: L.captionSize,
     },
   };
+}
+
+// What each slider may be set to, and which of them count as a "size" for the
+// purposes of scaling everything together.
+const LAYOUT_LIMITS = {
+  plateW: { min: 200, max: 620 },
+  plateH: { min: 48, max: 220 },
+  plateY: { min: 0, max: 220 },
+  plateInset: { min: 0, max: 160 },
+  colW: { min: 160, max: 560 },
+  colH: { min: 260, max: 720 },
+  colY: { min: 40, max: 420 },
+  logoW: { min: 80, max: 420 },
+  logoH: { min: 70, max: 420 },
+  logoY: { min: 40, max: 300 },
+  nameSize: { min: 24, max: 110 },
+  labelSize: { min: 10, max: 44 },
+  valueSize: { min: 12, max: 56 },
+  captionSize: { min: 10, max: 44 },
+  tint: { min: 0, max: 100 },
+};
+
+// Positions are deliberately not in here: when everything scales, the boxes get
+// bigger where they already sit rather than marching toward the edges.
+const SIZE_KEYS = [
+  "plateW", "plateH", "colW", "colH", "logoW", "logoH",
+  "nameSize", "labelSize", "valueSize", "captionSize",
+];
+
+const TOP_GAP = 16;      // between a name plate and the league logo box
+const BOTTOM_GAP = 12;   // between the stat column and the canvas edge
+// The stat block is drawn from the top of the column down, and its height is
+// entirely a function of its two type sizes:
+//   26 top + 2×(label + 7) + 2×(cell + 20) + 8 divider, where cell = value×2.1
+const STAT_BLOCK_CHROME = 88;
+const cellFor = (value) => Math.round(value * 2.1);
+
+// The ceiling on a slider given everything else currently set. Four of these are
+// not fixed numbers: the plates and the logo box share the top band, the column
+// has to end before the bottom edge, and the two type sizes share the column.
+function limitFor(key, l) {
+  const lim = LAYOUT_LIMITS[key] || { min: 0, max: 9999 };
+  const cap = (v) => Math.max(lim.min, Math.min(lim.max, Math.floor(v)));
+  switch (key) {
+    case "plateW": return cap((W - 2 * l.plateInset - l.logoW - TOP_GAP) / 2);
+    case "logoW": return cap(W - 2 * (l.plateInset + l.plateW) - TOP_GAP);
+    case "colH": return cap(H - l.colY - BOTTOM_GAP);
+    case "colY": return cap(H - l.colH - BOTTOM_GAP);
+    case "labelSize": return cap((l.colH - STAT_BLOCK_CHROME - 2 * cellFor(l.valueSize)) / 2);
+    case "valueSize": return cap((l.colH - STAT_BLOCK_CHROME - 2 * l.labelSize) / 2 / 2.1);
+    default: return lim.max;
+  }
+}
+
+// Bring a whole layout inside those rules. A single slider can't leave it out of
+// bounds, but scaling everything at once moves several interdependent values in
+// one go, so the result gets checked rather than trusted.
+function clampLayout(next) {
+  const l = { ...DEFAULT_LAYOUT, ...next };
+  Object.keys(LAYOUT_LIMITS).forEach((k) => {
+    const lim = LAYOUT_LIMITS[k];
+    l[k] = Math.max(lim.min, Math.min(lim.max, Math.round(l[k])));
+  });
+  // Sizes give way, never positions. Clamping colY here instead would let a
+  // scaled-up column haul its own top up the canvas and into the name plates,
+  // which is exactly what the caption on the option promises will not happen.
+  // colY is held in range by its own slider ceiling instead.
+  l.colH = Math.min(l.colH, limitFor("colH", l));
+  l.plateW = Math.min(l.plateW, limitFor("plateW", l));
+  l.logoW = Math.min(l.logoW, limitFor("logoW", l));
+  l.valueSize = Math.min(l.valueSize, limitFor("valueSize", l));
+  l.labelSize = Math.min(l.labelSize, limitFor("labelSize", l));
+  return l;
 }
 
 // The two team colours, left to right, for anything that spans the graphic.
@@ -667,6 +741,52 @@ function drawGraphic(ctx, state, opts = {}) {
     }
   }
 
+  // The league logo goes on before the stat column, not after. The two boxes
+  // overlap once either is scaled up, and a logo box drawn last lands on top of
+  // RECORD and the numbers; this way it tucks behind the column instead.
+  // league logo — the frame is drawn first so the art sits inside it
+  if (logoFrame) {
+    ctx.save();
+    chamferPath(ctx, LOGO.cx - LOGO.maxW / 2, LOGO.cy - LOGO.maxH / 2, LOGO.maxW, LOGO.maxH, 18);
+    const inner = ctx.createLinearGradient(0, LOGO.cy - LOGO.maxH / 2, 0, LOGO.cy + LOGO.maxH / 2);
+    inner.addColorStop(0, "rgba(6,8,14,0.72)");
+    inner.addColorStop(1, "rgba(14,18,30,0.72)");
+    ctx.fillStyle = inner;
+    ctx.fill();
+    ctx.strokeStyle = teamGradient(
+      ctx, LOGO.cx - LOGO.maxW / 2, LOGO.cy, LOGO.cx + LOGO.maxW / 2, LOGO.cy, sides
+    );
+    ctx.lineWidth = 3;
+    ctx.shadowColor = sides[1].color;
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (leagueLogoImg) {
+    const s = Math.min(LOGO.maxW / leagueLogoImg.width, LOGO.maxH / leagueLogoImg.height);
+    const dw = leagueLogoImg.width * s;
+    const dh = leagueLogoImg.height * s;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.6)";
+    ctx.shadowBlur = 16;
+    ctx.drawImage(leagueLogoImg, LOGO.cx - dw / 2, LOGO.cy - dh / 2, dw, dh);
+    ctx.restore();
+  } else if (showUi) {
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(LOGO.cx - LOGO.maxW / 2, LOGO.cy - LOGO.maxH / 2, LOGO.maxW, LOGO.maxH);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = '600 16px "Barlow Condensed"';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("LEAGUE LOGO", LOGO.cx, LOGO.cy);
+    ctx.restore();
+  }
+
   // center column
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.6)";
@@ -804,48 +924,6 @@ function drawGraphic(ctx, state, opts = {}) {
   plate(PLATE.leftX, PLATE.leftW, sides[0]);
   plate(PLATE.rightX, PLATE.rightW, sides[1]);
 
-  // league logo — the frame is drawn first so the art sits inside it
-  if (logoFrame) {
-    ctx.save();
-    chamferPath(ctx, LOGO.cx - LOGO.maxW / 2, LOGO.cy - LOGO.maxH / 2, LOGO.maxW, LOGO.maxH, 18);
-    const inner = ctx.createLinearGradient(0, LOGO.cy - LOGO.maxH / 2, 0, LOGO.cy + LOGO.maxH / 2);
-    inner.addColorStop(0, "rgba(6,8,14,0.72)");
-    inner.addColorStop(1, "rgba(14,18,30,0.72)");
-    ctx.fillStyle = inner;
-    ctx.fill();
-    ctx.strokeStyle = teamGradient(
-      ctx, LOGO.cx - LOGO.maxW / 2, LOGO.cy, LOGO.cx + LOGO.maxW / 2, LOGO.cy, sides
-    );
-    ctx.lineWidth = 3;
-    ctx.shadowColor = sides[1].color;
-    ctx.shadowBlur = 14;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  if (leagueLogoImg) {
-    const s = Math.min(LOGO.maxW / leagueLogoImg.width, LOGO.maxH / leagueLogoImg.height);
-    const dw = leagueLogoImg.width * s;
-    const dh = leagueLogoImg.height * s;
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.6)";
-    ctx.shadowBlur = 16;
-    ctx.drawImage(leagueLogoImg, LOGO.cx - dw / 2, LOGO.cy - dh / 2, dw, dh);
-    ctx.restore();
-  } else if (showUi) {
-    ctx.save();
-    ctx.setLineDash([6, 5]);
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(LOGO.cx - LOGO.maxW / 2, LOGO.cy - LOGO.maxH / 2, LOGO.maxW, LOGO.maxH);
-    ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = '600 16px "Barlow Condensed"';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("LEAGUE LOGO", LOGO.cx, LOGO.cy);
-    ctx.restore();
-  }
 }
 
 // dataURL → Image
@@ -1207,48 +1285,43 @@ export default function CityBoysBuilder() {
 
   // ---------- layout ----------
   const layout = { ...DEFAULT_LAYOUT, ...(league.layout || {}) };
+
+  // Scaling everything together works off a snapshot taken when the drag starts,
+  // not off the live values. Multiplying the current numbers on every one of the
+  // hundred change events a drag fires would round them adrift, and a value that
+  // hit its ceiling would never come back down on the way out.
+  const linkBase = useRef(null);
+  const beginLayoutDrag = () => {
+    linkBase.current = { ...DEFAULT_LAYOUT, ...(league.layout || {}) };
+  };
+
   const setLayout = (key, value) =>
     updateLeague((lg) => {
-      lg.layout = { ...DEFAULT_LAYOUT, ...(lg.layout || {}), [key]: value };
+      const current = { ...DEFAULT_LAYOUT, ...(lg.layout || {}) };
+      let next = { ...current, [key]: value };
+
+      if (current.linkSizes && SIZE_KEYS.indexOf(key) > -1) {
+        const base = linkBase.current || current;
+        const from = base[key] || current[key];
+        const ratio = from ? value / from : 1;
+        SIZE_KEYS.forEach((k) => {
+          next[k] = k === key ? value : Math.round((base[k] || current[k]) * ratio);
+        });
+      }
+      lg.layout = clampLayout(next);
       return lg;
     });
+
   const resetLayout = () =>
     updateLeague((lg) => {
-      lg.layout = { ...DEFAULT_LAYOUT };
+      lg.layout = { ...DEFAULT_LAYOUT, linkSizes: (lg.layout || {}).linkSizes || false };
       return lg;
     });
 
-  // The name plates and the league logo share the top band. Rather than letting
-  // them overlap and look broken, each slider stops where the other begins.
-  const TOP_GAP = 16;
-  const plateWMax = Math.max(
-    260,
-    Math.floor((W - 2 * layout.plateInset - layout.logoW - TOP_GAP) / 2)
-  );
-  const logoWMax = Math.max(
-    80,
-    W - 2 * (layout.plateInset + layout.plateW) - TOP_GAP
-  );
-  // and the column has to end before the bottom edge, wherever it starts
-  const BOTTOM_GAP = 12;
-  const colHMax = Math.max(260, H - layout.colY - BOTTOM_GAP);
-  const colYMax = Math.max(40, H - layout.colH - BOTTOM_GAP);
-
-  // The stat block — two labels and two rows of cells — is drawn from the top of
-  // the column down, and its height is entirely a function of its type sizes:
-  //   26 top + 2×(label + 7) + 2×(cell + 20) + 8 divider, where cell = value×2.1
-  // Left alone it will happily run out of the bottom of a short column, so each
-  // type slider stops where the other type and the column height leave it.
-  const STAT_BLOCK_CHROME = 88;
-  const cellFor = (value) => Math.round(value * 2.1);
-  const labelSizeMax = Math.max(
-    10,
-    Math.min(44, Math.floor((layout.colH - STAT_BLOCK_CHROME - 2 * cellFor(layout.valueSize)) / 2))
-  );
-  const valueSizeMax = Math.max(
-    12,
-    Math.min(56, Math.floor((layout.colH - STAT_BLOCK_CHROME - 2 * layout.labelSize) / 2 / 2.1))
-  );
+  // Sliders stop where the shared rules say they stop — the plates and the logo
+  // box share the top band, the column has to end before the bottom edge, and
+  // the two type sizes share the column between them.
+  const maxOf = (key) => limitFor(key, layout);
 
   // ---------- roast suggestion engine ----------
   const gameLog = (tid) => {
@@ -1834,8 +1907,10 @@ export default function CityBoysBuilder() {
   );
 
   // Sliders write straight through to the league on every move, so the canvas
-  // tracks the drag and the size is saved the moment you let go.
-  const Slider = ({ label, k, min, max, step = 1, suffix = "px" }) => (
+  // tracks the drag and the size is saved the moment you let go. The pointer and
+  // focus handlers snapshot the layout first, which is what "scale together"
+  // measures its ratio against.
+  const Slider = ({ label, k, suffix = "px" }) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
         <span style={{ color: "#c9c9d2" }}>{label}</span>
@@ -1846,10 +1921,12 @@ export default function CityBoysBuilder() {
       </div>
       <input
         type="range"
-        min={min}
-        max={max}
-        step={step}
+        min={LAYOUT_LIMITS[k].min}
+        max={maxOf(k)}
+        step={1}
         value={layout[k]}
+        onPointerDown={beginLayoutDrag}
+        onFocus={beginLayoutDrag}
         onChange={(e) => setLayout(k, Number(e.target.value))}
         style={{ width: "100%", accentColor: "#c9a227" }}
       />
@@ -2150,23 +2227,46 @@ export default function CityBoysBuilder() {
 
             <div style={S.card}>
               <div style={S.cardTitle}>LAYOUT & COLOURS</div>
-              <Slider label="Name plate width" k="plateW" min={200} max={plateWMax} />
-              <Slider label="Name plate height" k="plateH" min={48} max={220} />
-              <Slider label="Name plate top" k="plateY" min={0} max={220} />
-              <Slider label="Name plate edge gap" k="plateInset" min={0} max={160} />
-              <Slider label="Stat column width" k="colW" min={160} max={560} />
-              <Slider label="Stat column height" k="colH" min={260} max={colHMax} />
-              <Slider label="Stat column top" k="colY" min={40} max={colYMax} />
-              <Slider label="League logo width" k="logoW" min={80} max={logoWMax} />
-              <Slider label="League logo height" k="logoH" min={70} max={420} />
-              <Slider label="League logo top" k="logoY" min={40} max={300} />
+              <label
+                style={{
+                  display: "flex", gap: 8, alignItems: "center", fontSize: 14,
+                  background: layout.linkSizes ? "#242015" : "transparent",
+                  border: `1px solid ${layout.linkSizes ? "#c9a227" : "#2a2f3c"}`,
+                  borderRadius: 6, padding: "8px 10px",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!layout.linkSizes}
+                  onChange={(e) => setLayout("linkSizes", e.target.checked)}
+                  style={{ accentColor: "#c9a227" }}
+                />
+                <span style={{ color: layout.linkSizes ? "#ffd964" : "#f2f2f5" }}>
+                  Scale boxes and text together
+                </span>
+              </label>
+              <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
+                {layout.linkSizes
+                  ? "Moving any size slider resizes everything else by the same proportion, so the graphic keeps its shape. Positions and tint stay where they are."
+                  : "Each slider moves its own box on its own."}
+              </div>
+              <Slider label="Name plate width" k="plateW" />
+              <Slider label="Name plate height" k="plateH" />
+              <Slider label="Name plate top" k="plateY" />
+              <Slider label="Name plate edge gap" k="plateInset" />
+              <Slider label="Stat column width" k="colW" />
+              <Slider label="Stat column height" k="colH" />
+              <Slider label="Stat column top" k="colY" />
+              <Slider label="League logo width" k="logoW" />
+              <Slider label="League logo height" k="logoH" />
+              <Slider label="League logo top" k="logoY" />
               <div style={{ borderTop: "1px solid #2a2f3c", paddingTop: 8, marginTop: 2 }}>
                 <div style={{ ...S.cardTitle, fontSize: 12 }}>TEXT SIZE</div>
               </div>
-              <Slider label="Team name" k="nameSize" min={24} max={110} />
-              <Slider label="Box labels" k="labelSize" min={10} max={labelSizeMax} />
-              <Slider label="Record & average" k="valueSize" min={12} max={valueSizeMax} />
-              <Slider label="Trash talk" k="captionSize" min={10} max={44} />
+              <Slider label="Team name" k="nameSize" />
+              <Slider label="Box labels" k="labelSize" />
+              <Slider label="Record & average" k="valueSize" />
+              <Slider label="Trash talk" k="captionSize" />
               <div style={{ fontSize: 12, color: "#8b8f9c", lineHeight: 1.4 }}>
                 These set the biggest a piece of text may be. Anything too long for its
                 box still shrinks to fit, so a long team name will not spill out.
