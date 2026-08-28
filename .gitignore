@@ -4,3 +4,4 @@ snapshots/
 .DS_Store
 __pycache__/
 *.pyc
+review/prompt.md

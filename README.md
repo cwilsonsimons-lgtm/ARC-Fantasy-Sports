@@ -193,6 +193,44 @@ If a view still reports a difference, capture it *in isolation* before believing
 it. Differences that appear only partway through the scripted sequence have so
 far always been sequencing artifacts rather than real regressions.
 
+## Reviewing stories against the meetings
+
+`review/` is not part of the app. It builds one prompt out of the voice memos
+recorded in planning meetings and the stories written from them, so an AI can
+tell you what the stories are missing and where they've grown past what anyone
+actually asked for.
+
+```
+review/memos/     one transcript per meeting, named by date
+review/stories/   one story per file
+review/rubric.md  the dos and don'ts the review has to follow
+npm run prompt    -> review/prompt.md, paste that in as one message
+```
+
+The premise is that the memos are the evidence and the stories are only a claim
+about it, so the review runs in both directions: per story, is anything unstated
+or bundled together; and across the memos, was anything decided in a meeting
+that no story covers. That second pass is the one that catches the expensive
+misses, and it is the reason the memos go in whole rather than summarised.
+
+**Transcripts, not recordings.** Copy the text out of Voice Memos (iOS 18+
+transcribes on device) or Otter, Granola, Zoom — whatever you record with.
+Dropping an `.m4a` in gets a message telling you to do that, not a crash.
+Subtitle exports (`.vtt`, `.srt`) are fine as they are: cue numbers, timecodes
+and the duplicate lines rolling captions leave behind are stripped before the
+prompt is built, which is worth roughly a third of the transcript in tokens.
+A leading clock is only stripped when most lines carry one, so prose that
+mentions the 10:30 kickoff keeps it.
+
+Don't tidy a transcript up before filing it. The rambling is what the review
+reads for intent, and editing it is exactly where you'd remove the decision you
+forgot to write down.
+
+`npm run prompt:example` prints the whole thing built from a worked example in
+`review/examples/` — two memos that contradict each other on purpose, and one
+story that is over-scoped and missing its states — so you can see the shape of
+the prompt, and what the review should catch, before you have memos of your own.
+
 ## Where this came from
 
 This started as a single 3,679-line HTML file. `tools/split.py` is the one-time
