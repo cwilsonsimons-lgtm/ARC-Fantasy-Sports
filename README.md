@@ -206,6 +206,61 @@ The market universe is unaffected: it ranks on **actual 2024 production**, not
 projections, so a 2026 rookie cannot enter it. `markets-check`, `charts-check`,
 `history-check` and `commish-check` all still pass against the rebuilt bundle.
 
+## Storage
+
+Uploading pictures used to stop the app saving anything at all — importing a
+league, switching the team you were trading with, any change — each failure
+showing *"Storage is full or unavailable — try removing some uploaded photos or
+backgrounds."*
+
+The cause was one localStorage key. `cbd_team_v1` held both a 135 KB backdrop
+and the fact that you had opened a trade, and the whole key was rewritten on
+every change. So the two were coupled: fill the roughly 5 MB an origin gets with
+pictures, and nothing else could be written either. Measured, it took **38
+backdrops**, and once past that `saveStore()` returned false while the app
+carried on — memory said one thing and disk another, so the change was lost at
+the next reload without anything saying so.
+
+**Pictures now live in their own key, under their own budget.**
+
+- `cbd_images_v1` holds every uploaded picture; `cbd_team_v1` holds only state.
+  `saveStore()` lifts the pictures out before writing and puts them straight
+  back, so the rest of the app still reads `store.globalBackdrop` and
+  `rec.photo` exactly as before — the split does not exist above that layer.
+- **A 3 MB budget** on pictures, so however many are uploaded the state always
+  has room. Over budget, the least recently touched is dropped and the app says
+  so, rather than everything silently failing.
+- **A per-upload cap**, applied by re-encoding: quality first, dimensions
+  second, never the mime type — a logo converted to JPEG would lose its
+  transparency and show as a black box on the crest behind it. Backdrops get
+  110 KB, logos 64 KB, player photos 40 KB. A realistic photo encodes to ~75 KB
+  at full size, so the cap is a rail that normal uploads never touch.
+- **Player photos are stored at 384px**, down from 600px. They render in a
+  circle a few dozen pixels across.
+
+Old saves need no migration step: their pictures are still inside the state blob
+where `loadStore()` finds them, and the first save lifts them out. `store.players`
+is keyed by player id in older saves and by league id in newer ones, and both
+shapes are read, using the same test `migratePlayerLeagues()` applies.
+
+The warning text was also wrong. It blamed photos for every failure including
+the ones photos had nothing to do with, and told you to delete things that were
+not the problem. There are now three messages: the state could not be saved, a
+picture could not be saved but everything else was, and an old picture was
+dropped to make room.
+
+### Verifying it
+
+```
+node tools/storage-check.mjs [path-to-html]     # 21 checks
+```
+
+It fills storage with backdrops and then asserts the reported symptoms are gone:
+an ordinary change still saves, disk agrees with memory, a league import still
+persists, and pictures survive a reload. It also forces the real failure path —
+by making the state itself oversized, since merely stuffing the origin no longer
+breaks anything, which is the point — and checks the message that comes back.
+
 ## Layout
 
 ```

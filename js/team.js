@@ -152,12 +152,12 @@ export function pickPhoto(key){photoTargetName=key;document.getElementById('play
 export function onPlayerPhoto(input){
   const f=input.files&&input.files[0];if(!f||!photoTargetName)return;
   const n=photoTargetName;
-  processImage(f,600,'image/jpeg',0.82,(url)=>{store.players[pkey(n)]=Object.assign(store.players[pkey(n)]||{},{photo:url});saveStore();renderTeam(currentTeamKey);});
+  processImage(f,384,'image/jpeg',0.82,(url)=>{store.players[pkey(n)]=Object.assign(store.players[pkey(n)]||{},{photo:url});saveStore();renderTeam(currentTeamKey);},40*1024);
 }
 export function setNick(name,val){const k=pkey(name);store.players[k]=Object.assign(store.players[k]||{},{nick:(val||'').trim()});saveStore();}
 export function onLogo(input){
   const f=input.files&&input.files[0];if(!f)return;
-  processImage(f,256,'image/png',0.92,(url)=>{store.team.logo=url;T[MY_TEAM].logo=url;saveStore();renderTeam(MY_TEAM);refreshApp();});
+  processImage(f,256,'image/png',0.92,(url)=>{store.team.logo=url;T[MY_TEAM].logo=url;saveStore();renderTeam(MY_TEAM);refreshApp();},64*1024);
 }
 export function setTeamName(val){val=(val||'').trim()||T[MY_TEAM].n;store.team.name=val;T[MY_TEAM].n=val;saveStore();document.querySelector('.tv-sub');refreshApp();}
 export function setColor(kind,val){store.team[kind]=val;T[MY_TEAM][kind]=val;saveStore();renderTeam(MY_TEAM);refreshApp();}

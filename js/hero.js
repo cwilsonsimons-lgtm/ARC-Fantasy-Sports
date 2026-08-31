@@ -130,7 +130,7 @@ export let backdropTargetKey=null;
 export function pickGameBackdrop(a,x){backdropTargetKey=gameKey(a,x);document.getElementById('backdropInput').click();}
 export function onBackdrop(input){
   const f=input.files&&input.files[0];if(!f||!backdropTargetKey)return;
-  processImage(f,900,'image/jpeg',0.8,(url)=>{store.backdrops[backdropTargetKey]=url;saveStore();refreshMatchups();});
+  processImage(f,900,'image/jpeg',0.8,(url)=>{store.backdrops[backdropTargetKey]=url;saveStore();refreshMatchups();},110*1024);
 }
 export function removeGameBackdrop(a,x){const k=gameKey(a,x);if(store.backdrops)delete store.backdrops[k];saveStore();refreshMatchups();}
 // commissioner: one backdrop for every matchup at once (Settings). These reach
@@ -141,7 +141,7 @@ export function pickGlobalBackdrop(){
 }
 export function onGlobalBackdrop(input){
   const f=input.files&&input.files[0];if(!f||!isCommish())return;
-  processImage(f,900,'image/jpeg',0.8,(url)=>{store.globalBackdrop=url;store.backdrops={};saveStore();refreshMatchups();renderSettings();});
+  processImage(f,900,'image/jpeg',0.8,(url)=>{store.globalBackdrop=url;store.backdrops={};saveStore();refreshMatchups();renderSettings();},110*1024);
 }
 export function clearAllBackdrops(){
   if(!isCommish())return;
