@@ -2022,6 +2022,123 @@ body.forming .tabs{display:none}
 .tv-pick:first-child{border-top:none}
 .tv-pick .tv-pts{flex:none}
 
+/* css/import.css */
+/* ===== IMPORT FROM SLEEPER =====
+   Its own path off the hub rather than a branch of the create wizard: an import
+   already knows the league's name, size, type and scoring, so walking the
+   wizard would be asking questions the answers are already in hand for.
+   Chrome is borrowed from the wizard (.wiz-input, .wiz-btn, .wiz-foot) so the
+   two read as the same app. */
+
+/* the hub entry, sitting under "Create a league" */
+.hb-imp{display:flex;align-items:center;gap:11px;margin-top:8px;padding:14px 13px;cursor:pointer;
+  border:1.5px solid var(--line);border-radius:18px;background:var(--card)}
+.hb-imp:active{opacity:.85}
+.hb-imp-ic{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+  border:1.5px solid var(--line);background:var(--card-2);color:var(--ink-2)}
+.hb-imp-ic svg{width:19px;height:19px}
+.hb-imp .hb-nm{color:var(--ink)}
+
+/* A league the app did not simulate has no week-by-week matchup board, so the
+   standings screen drops the week picker and the matchups heading rather than
+   leaving them stranded above nothing — reading "Week 1" over a league whose
+   header says Week 14. body.seeded is set for exactly these leagues, so the
+   real league restores both on its own. */
+body.seeded .view[data-view="standings"] > .wsw,
+body.seeded #standMatchHd,
+body.seeded #standMatchups{display:none}
+
+/* the tag on a league that arrived from somewhere else */
+.hb-src{flex:none;align-self:center;margin-left:6px;padding:3px 7px;border-radius:6px;
+  background:var(--card-2);border:1px solid var(--line);color:var(--ink-3);
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:8px;font-weight:700;letter-spacing:.9px}
+
+/* ---- chrome ---- */
+.imp-top{display:flex;align-items:center;gap:12px;margin:8px 2px 14px}
+.imp-lede{font-size:13px;color:var(--ink-2);line-height:1.55;margin:0 2px 20px}
+.imp-q{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:16px;
+  letter-spacing:.4px;text-transform:uppercase;margin:22px 2px 10px}
+.imp-fine{font-size:11px;color:var(--ink-3);line-height:1.55;margin:10px 2px 0}
+
+.imp-note{margin:14px 0 0;padding:11px 13px;border-radius:12px;font-size:11.5px;line-height:1.5;
+  border:1px solid var(--line);background:var(--card);color:var(--ink-2)}
+.imp-note.warn{border-color:rgba(230,168,90,.45);background:rgba(230,168,90,.07);color:#E6C08A}
+
+.imp-busy{display:flex;align-items:center;justify-content:center;gap:10px;margin:26px 0;
+  font-size:12.5px;color:var(--ink-2)}
+.imp-spin{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);
+  border-top-color:var(--accent);animation:imp-turn .7s linear infinite}
+@keyframes imp-turn{to{transform:rotate(360deg)}}
+
+/* ---- who you are on Sleeper ---- */
+.imp-who{display:flex;align-items:center;gap:9px;margin:0 2px 14px;font-size:12px;color:var(--ink-2)}
+.imp-who b{color:var(--ink)}
+.imp-who-a{flex:none;width:26px;height:26px;border-radius:9px;display:grid;place-items:center;
+  background:var(--accent-soft);border:1px solid rgba(var(--accent-rgb),.5);color:var(--accent);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px}
+
+/* ---- the league list ---- */
+.imp-lg{display:flex;align-items:center;gap:11px;padding:12px 13px;margin-bottom:8px;cursor:pointer;
+  background:var(--card);border:1px solid var(--line);border-radius:14px}
+.imp-lg:active{border-color:var(--accent)}
+.imp-lg-c{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;
+  background:var(--card-2);border:1px solid var(--line);color:var(--ink-2);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:16px}
+.imp-lg-id{flex:1;min-width:0}
+.imp-lg-n{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:14.5px;
+  letter-spacing:.3px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-lg-s{font-size:11px;color:var(--ink-3);margin-top:2px}
+.imp-lg-x{flex:none;width:15px;height:15px;color:var(--ink-3)}
+
+/* ---- what came across ---- */
+.imp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 4px}
+.imp-stat{text-align:center;padding:12px 0 10px;background:var(--card);border:1px solid var(--line);
+  border-radius:13px}
+.imp-stat b{display:block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;
+  font-size:21px;color:var(--accent);line-height:1}
+.imp-stat span{display:block;font-size:9px;color:var(--ink-3);letter-spacing:1px;font-weight:700;
+  text-transform:uppercase;margin-top:4px}
+
+/* ---- which team is yours ---- */
+.imp-tms{max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.imp-tm{display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;
+  border-bottom:1px solid var(--line-soft)}
+.imp-tm:last-child{border-bottom:0}
+.imp-tm.on{background:var(--accent-soft)}
+.imp-tm-c{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px}
+.imp-tm-id{flex:1;min-width:0}
+.imp-tm-n{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:13.5px;
+  letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-tm-s{font-size:10.5px;color:var(--ink-3);margin-top:1px}
+.imp-radio{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.imp-tm.on .imp-radio{border-color:var(--accent);
+  background:radial-gradient(circle,var(--accent) 0 4.5px,transparent 5px)}
+
+/* ---- the honest checklist ---- */
+.imp-checks{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2px 13px}
+.imp-ck{display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid var(--line-soft)}
+.imp-ck:last-child{border-bottom:0}
+.imp-ck-i{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;
+  background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700}
+.imp-ck.off .imp-ck-i{background:var(--card-2);color:var(--ink-3)}
+.imp-ck-l{flex:1;font-size:12.5px;color:var(--ink);min-width:0}
+.imp-ck.off .imp-ck-l{color:var(--ink-3)}
+.imp-ck-d{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:10px;color:var(--ink-3);text-align:right}
+
+/* ---- done ---- */
+.imp-done{text-align:center;padding:38px 6px 0}
+.imp-done-tick{width:58px;height:58px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;
+  background:var(--accent-soft);border:1.5px solid rgba(var(--accent-rgb),.6);color:var(--accent);
+  font-size:26px;font-weight:700}
+.imp-done-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:21px;
+  letter-spacing:.4px;text-transform:uppercase}
+.imp-done-s{font-size:12.5px;color:var(--ink-2);margin-top:6px}
+.imp-done .wiz-foot{max-width:220px;margin:22px auto 0}
+
 /* css/markets.css */
 /* ===== ARC MARKETS =====
    A separate surface from the fantasy app: its own palette (a darker step of the same four colours),
@@ -2508,6 +2625,11 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
         <div id="createBody"></div>
       </div>
 
+      <!-- ===== IMPORT FROM SLEEPER ===== -->
+      <div class="view" data-view="import">
+        <div id="importBody"></div>
+      </div>
+
       <!-- ===== WAITING ROOM (a league still filling up) ===== -->
       <div class="view" data-view="wait">
         <div id="waitBody"></div>
@@ -2571,7 +2693,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
           <div class="wk" onclick="openWeekPicker()"><span data-weeklabel>Week 8</span><span class="cv">▼</span></div>
           <div class="ar" data-step="1" onclick="stepWeek(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></div>
         </div>
-        <div class="hd"><span><span data-weeklabel>Week 8</span> &middot; Matchups</span></div>
+        <div class="hd" id="standMatchHd"><span><span data-weeklabel>Week 8</span> &middot; Matchups</span></div>
         <div class="sm-wrap" id="standMatchups"></div>
         <div class="hd"><span>League Standings</span></div>
         <div class="stand" id="standBody"></div>
@@ -4659,7 +4781,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const lg = activeLeague2();
     const stage = name === "matchup" && !(lg && lg.real && kartMode());
     document.querySelector(".shift").classList.toggle("stage-on", stage);
-    document.body.classList.toggle("hub", name === "home");
+    // Import is a hub-level flow, not something inside a league, so it drops the
+    // league bar and the league's tab strip the same way the hub does.
+    document.body.classList.toggle("hub", name === "home" || name === "import");
     if (name !== "wait") document.body.classList.remove("forming");
   }
   function preDraft() {
@@ -6966,6 +7090,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return me ? me.c : "var(--accent)";
   }
   function leagueScore(lg) {
+    if (lg.imported) return importedScore(lg);
     const teams = teamsOf(lg), me = myKeyOf(lg), opp = lg.opp;
     if (lg.real) {
       const g = (S.games || []).find((x) => x.me);
@@ -8614,7 +8739,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/log.js
   var TX_LABEL = { trade: "Trade", draft: "Draft", add: "Add", drop: "Drop", waiver: "Waiver", commish: "Commissioner" };
   function txLog(id) {
-    const lid = id || rosterLeagueId();
+    // An imported league keeps its own log; every other non-real league falls
+    // back to the seeded one, which is what rosterLeagueId() answers.
+    const act = store.activeLeague;
+    const lid = id || (act && LEAGUE_BY_ID[act] && LEAGUE_BY_ID[act].imported ? act : rosterLeagueId());
     if (!store.transactions) store.transactions = {};
     if (!store.transactions[lid]) store.transactions[lid] = [];
     return store.transactions[lid];
@@ -8640,7 +8768,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function txLine(key, list) {
     if (!list || !list.length) return "";
-    const t = T[key] || {};
+    // Team keys resolve against whichever league is open, so an imported
+    // league's log shows its own team names rather than raw roster keys.
+    const t = (teamsOf(activeLeague2()) || {})[key] || T[key] || {};
     return `<div class="tx-line">
     <span class="tx-who" style="color:${t.c || "var(--ink-2)"}">${escHtml(t.n || key)}</span>
     <span class="tx-chips">${list.map((a) => assetChipHTML(a, { holder: key })).join("")}</span>
@@ -13614,6 +13744,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="hb-nm">${escHtml(lg.name)}</div>
       <div class="hb-st">${escHtml(statusLine(lg))}</div>
     </div>
+    ${lg.imported ? `<span class="hb-src">${lg.source === "demo" ? "DEMO" : "SLEEPER"}</span>` : ""}
     ${right}
   </div>`;
   }
@@ -13627,6 +13758,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="hb-plus">+</div>
       <div class="hb-id"><div class="hb-nm">${resume ? "Resume setup" : "Create a league"}</div>
         ${resume ? `<div class="hb-st">${escHtml((w.name || "").trim() || "Untitled")} \xB7 step ${Math.min(w.step + 1, 6)} of 6</div>` : ""}</div>
+    </div>
+    <div class="hb-imp" onclick="openImport()">
+      <div class="hb-imp-ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
+      </div>
+      <div class="hb-id"><div class="hb-nm">Import a league</div>
+        <div class="hb-st">Bring one across from Sleeper</div></div>
     </div>`;
     bindReorder(document.getElementById("hbList"));
     startClock();
@@ -13699,6 +13837,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }, 3e4);
   }
   function seededRoster(lg, key) {
+    const brought = importedRoster(lg, key);
+    if (brought) return brought;
     const keys = Object.keys(teamsOf(lg)), k = keys.length || 1;
     const ti = Math.max(0, keys.indexOf(key)), out = [];
     for (let i = ti; i < POOL.length && out.length < 14; i += k) {
@@ -15417,6 +15557,849 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     initOrders();
   }
 
+
+  // js/import-sleeper.js
+  //
+  // Bring a league across from Sleeper.
+  //
+  // Sleeper publishes a read-only HTTP API with no key and no OAuth, so the
+  // import is a plain fetch: username -> leagues -> rosters, users, scoring and
+  // transactions. Nothing is written back and nothing stays in sync; this
+  // produces a snapshot, and the UI says so.
+  //
+  // Because there is no login, Sleeper will not tell us *which* manager is
+  // using the app. The owner_id on a roster identifies the team, so the match
+  // is made for the user and shown for confirmation rather than assumed.
+  //
+  // Every path ends in buildImport(): the live payload and the demo payload are
+  // both Sleeper-shaped, so the fallback exercises the same mapping code and
+  // shows the same honest report about what did and did not come across.
+  var import_sleeper_exports = {};
+  __export(import_sleeper_exports, {
+    impState: () => impState,
+    buildImport: () => buildImport,
+    importBack: () => importBack,
+    importFind: () => importFind,
+    importFinish: () => importFinish,
+    importPickLeague: () => importPickLeague,
+    importPickTeam: () => importPickTeam,
+    importRun: () => importRun,
+    importSetUser: () => importSetUser,
+    importedRoster: () => importedRoster,
+    importedScore: () => importedScore,
+    initImported: () => initImported,
+    openImport: () => openImport,
+    renderImport: () => renderImport,
+    sleeperDemo: () => sleeperDemo,
+    useDemo: () => useDemo
+  });
+  var SLEEPER_API = "https://api.sleeper.app/v1";
+  var SLEEPER_AV = "https://sleepercdn.com/avatars/thumbs/";
+  var IMPORT_TIMEOUT = 12e3;
+
+  // Sleeper's scoring keys against this app's rule catalog. The catalog was
+  // modelled on Sleeper's own settings screen, so most of it is a rename. Keys
+  // absent here are reported to the user rather than dropped silently.
+  var SLEEPER_SCORING = {
+    pass_yd: "passYd", pass_td: "passTD", pass_2pt: "pass2pt", pass_int: "passInt",
+    pass_cmp: "passComp", pass_inc: "passInc", pass_att: "passAtt", pass_sack: "passSacked",
+    pass_fd: "passFD", pass_int_td: "passPick6", pass_cmp_40p: "passCmp40",
+    pass_td_40p: "passTD40", pass_td_50p: "passTD50",
+    rush_yd: "rushYd", rush_td: "rushTD", rush_2pt: "rush2pt", rush_att: "rushAtt",
+    rush_fd: "rushFD", rush_40p: "rush40", rush_td_40p: "rushTD40", rush_td_50p: "rushTD50",
+    rec: "rec", rec_yd: "recYd", rec_td: "recTD", rec_2pt: "rec2pt", rec_fd: "recFD",
+    rec_0_4: "recB0", rec_5_9: "recB5", rec_10_19: "recB10", rec_20_29: "recB20",
+    rec_30_39: "recB30", rec_40p: "recB40", rec_td_40p: "recTD40", rec_td_50p: "recTD50",
+    bonus_rec_rb: "recRB", bonus_rec_wr: "recWR", bonus_rec_te: "recTE",
+    fgm: "fgMade", fgm_0_19: "fg0", fgm_20_29: "fg20", fgm_30_39: "fg30",
+    fgm_40_49: "fg40", fgm_50p: "fg50", fgm_yds: "fgYd", fgm_yds_over_30: "fgYd30",
+    xpm: "patMade", fgmiss: "fgMiss", fgmiss_0_19: "fgM0", fgmiss_20_29: "fgM20",
+    fgmiss_30_39: "fgM30", fgmiss_40_49: "fgM40", fgmiss_50p: "fgM50", xpmiss: "patMiss",
+    def_td: "defTD", pts_allow_0: "pa0", pts_allow_1_6: "pa1", pts_allow_7_13: "pa7",
+    pts_allow_14_20: "pa14", pts_allow_21_27: "pa21", pts_allow_28_34: "pa28",
+    pts_allow_35p: "pa35", pts_allow: "paPer",
+    yds_allow_0_100: "ya0", yds_allow_100_199: "ya100", yds_allow_200_299: "ya200",
+    yds_allow_300_349: "ya300", yds_allow_350_399: "ya350", yds_allow_400_449: "ya400",
+    yds_allow_450_499: "ya450", yds_allow_500_549: "ya500", yds_allow_550p: "ya550",
+    yds_allow: "yaPer",
+    def_3_and_out: "def3out", def_4_and_stop: "def4th", sack: "defSack", sack_yd: "defSackYd",
+    qb_hit: "defQBHit", int: "defInt", int_ret_yd: "defIntYd", ff: "defFF",
+    fum_rec: "defFR", fum_rec_yd: "defFRYd", tkl: "defTkl", tkl_solo: "defSolo",
+    tkl_ast: "defAst", tkl_loss: "defTFL", safe: "defSafety", blk_kick: "defBlk",
+    def_forced_punts: "defPunt", def_pass_def: "defPD", def_2pt: "def2ptRet",
+    fg_ret_yd: "defFGRetYd", blk_kick_ret_yd: "defBlkRetYd",
+    st_td: "stTD", st_ff: "stFF", st_fum_rec: "stFR", st_tkl_solo: "stSolo",
+    pr_yd: "stPRYd", kr_yd: "stKRYd",
+    idp_def_td: "idpTD", idp_sack: "idpSack", idp_sack_yd: "idpSackYd",
+    idp_qb_hit: "idpQBHit", idp_tkl: "idpTkl", idp_tkl_solo: "idpSolo",
+    idp_tkl_ast: "idpAst", idp_tkl_loss: "idpTFL", idp_int: "idpInt",
+    idp_int_ret_yd: "idpIntYd", idp_ff: "idpFF", idp_fum_rec: "idpFR",
+    idp_fum_rec_yd: "idpFRYd", idp_pass_def: "idpPD", idp_safe: "idpSafety",
+    idp_blk_kick: "idpBlk",
+    fum: "fum", fum_lost: "fumLost", fum_rec_td: "fumTD",
+    bonus_rush_yd_100: "bRush100", bonus_rush_yd_200: "bRush200",
+    bonus_rec_yd_100: "bRec100", bonus_rec_yd_200: "bRec200",
+    bonus_pass_yd_300: "bPass300", bonus_pass_yd_400: "bPass400",
+    bonus_fd_qb: "fdQB", bonus_fd_rb: "fdRB", bonus_fd_wr: "fdWR", bonus_fd_te: "fdTE"
+  };
+
+  // Sleeper carries a few abbreviations this app spells differently, plus the
+  // relocated franchises that still appear on older rosters.
+  var SLEEPER_TM = {
+    LAR: "LA", STL: "LA", OAK: "LV", SD: "LAC", JAC: "JAX",
+    WSH: "WAS", ARZ: "ARI", BLT: "BAL", CLV: "CLE", HST: "HOU"
+  };
+  var SLEEPER_SLOT = {
+    SUPER_FLEX: "SFLX", REC_FLEX: "FLEX", WRRB_FLEX: "FLEX", WRRB_WRT: "FLEX",
+    FLEX_IDP: "FLEX", IDP_FLEX: "FLEX"
+  };
+
+  var IMP = null;
+  function impState() {
+    if (!IMP) IMP = {
+      step: 0, name: "", user: null, leagues: [], picked: null,
+      built: null, teamKey: null, busy: "", err: "", demo: false, season: ""
+    };
+    return IMP;
+  }
+
+  // Reset in place. The state object is handed out by impState(), and callers
+  // that already hold it must see the reset rather than a stale copy.
+  function impReset() {
+    const s = impState();
+    Object.keys(s).forEach((k) => delete s[k]);
+    Object.assign(s, {
+      step: 0, name: "", user: null, leagues: [], picked: null,
+      built: null, teamKey: null, busy: "", err: "", demo: false, season: ""
+    });
+    return s;
+  }
+
+  // ---- fetching -----------------------------------------------------------
+
+  // Failures are tagged with whether Sleeper actually answered. A 404 for a
+  // username that does not exist is a real answer and belongs on screen; only a
+  // connection that never landed — offline, blocked by CORS, timed out — is
+  // grounds for falling back to demo data.
+  function sleeperGet(path) {
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = setTimeout(() => ctl && ctl.abort(), IMPORT_TIMEOUT);
+    return fetch(SLEEPER_API + path, ctl ? { signal: ctl.signal } : {}).then((r) => {
+      if (!r.ok) {
+        const e = new Error("HTTP " + r.status);
+        e.reachable = true;
+        e.status = r.status;
+        throw e;
+      }
+      return r.json();
+    }).finally(() => clearTimeout(timer));
+  }
+
+  // The player dictionary is the one heavy call — every roster is a list of
+  // Sleeper ids and nothing else, so names cannot be resolved without it.
+  // Sleeper asks for it at most once a day; it is held in memory for the
+  // session rather than written to localStorage, which it would not fit in.
+  var PLAYER_DICT = null;
+  function sleeperPlayers() {
+    if (PLAYER_DICT) return Promise.resolve(PLAYER_DICT);
+    return sleeperGet("/players/nfl").then((d) => (PLAYER_DICT = d || {}));
+  }
+
+  // ---- mapping ------------------------------------------------------------
+
+  function normName(s) {
+    return String(s || "").toLowerCase()
+      .replace(/[^a-z ]/g, "")
+      .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, "")
+      .replace(/\s+/g, " ").trim();
+  }
+  var FULL_INDEX = null;
+  function fullIndex() {
+    if (FULL_INDEX) return FULL_INDEX;
+    FULL_INDEX = {};
+    NFL_PLAYERS.forEach((p) => {
+      const k = normName(p.full);
+      (FULL_INDEX[k] = FULL_INDEX[k] || []).push(p);
+    });
+    return FULL_INDEX;
+  }
+  function fixTm(t) {
+    return SLEEPER_TM[t] || t || "FA";
+  }
+  function shortName(full) {
+    const bits = String(full || "").trim().split(/\s+/);
+    return bits.length < 2 ? full || "" : bits[0].charAt(0) + ". " + bits.slice(1).join(" ");
+  }
+  function localPlayer(full, pos, tm) {
+    const list = fullIndex()[normName(full)] || [];
+    if (!list.length) return null;
+    if (list.length === 1) return list[0];
+    return list.find((p) => p.pos === pos && p.tm === tm) || list.find((p) => p.pos === pos) || list[0];
+  }
+
+  // One roster row. A player this app does not carry still comes across — name,
+  // position and team are all in the Sleeper payload — it just arrives without
+  // a headshot or a projection, and is counted as unmatched in the report.
+  function playerRow(pid, dict, slot, group, miss) {
+    const sp = dict[pid] || null;
+    const pos = sp ? sp.position || (sp.fantasy_positions || [])[0] || "" : "";
+    const tm = sp ? fixTm(sp.team) : "FA";
+    const full = !sp ? "Player " + pid : pos === "DEF" ? (sp.last_name || sp.first_name || pid) + " D/ST" : ((sp.first_name || "") + " " + (sp.last_name || "")).trim();
+    const loc = pos && pos !== "DEF" && pos !== "K" ? localPlayer(full, pos, tm) : null;
+    if (!loc && miss) miss.push({ n: full, pos: pos || "?" });
+    return {
+      id: loc ? loc.id : null,
+      n: loc ? loc.n : shortName(full),
+      full,
+      pos: pos || "?",
+      tm: loc ? loc.tm : tm,
+      proj: loc ? Math.round(loc.sproj / 17 * 10) / 10 : 0,
+      slot: slot || null,
+      group,
+      matched: !!loc
+    };
+  }
+
+  function buildRoster(r, positions, dict, miss) {
+    const slots = (positions || []).filter((p) => p !== "BN" && p !== "IR" && p !== "TAXI");
+    const starters = r.starters || [], all = r.players || [];
+    const seen = {}, rows = [];
+    starters.forEach((pid, i) => {
+      if (!pid || pid === "0") return;
+      seen[pid] = 1;
+      const raw = slots[i] || "";
+      rows.push(playerRow(pid, dict, SLEEPER_SLOT[raw] || raw, "STARTERS", miss));
+    });
+    all.forEach((pid) => {
+      if (seen[pid]) return;
+      rows.push(playerRow(pid, dict, null, "BENCH", miss));
+    });
+    return rows;
+  }
+
+  function fptsOf(r) {
+    const s = r.settings || {};
+    return +((s.fpts || 0) + (s.fpts_decimal || 0) / 100).toFixed(2);
+  }
+
+  function buildTeams(users, rosters) {
+    const byOwner = {};
+    (users || []).forEach((u) => byOwner[u.user_id] = u);
+    const order = (rosters || []).slice().sort((a, b) => {
+      const aw = (a.settings || {}).wins || 0, bw = (b.settings || {}).wins || 0;
+      return bw - aw || fptsOf(b) - fptsOf(a);
+    });
+    const teams = {};
+    order.forEach((r, i) => {
+      const u = byOwner[r.owner_id] || {};
+      const nm = (u.metadata && u.metadata.team_name) || u.display_name || "Team " + r.roster_id;
+      const s = r.settings || {};
+      const [c, bg] = TEAM_COLORS[i % TEAM_COLORS.length];
+      teams["sl" + r.roster_id] = {
+        n: nm,
+        mgr: u.display_name || "—",
+        rec: (s.wins || 0) + "-" + (s.losses || 0) + (s.ties ? "-" + s.ties : ""),
+        rk: i + 1,
+        c, bg,
+        mono: nm.replace(/[^A-Za-z]/g, "").charAt(0).toUpperCase() || "?",
+        font: "oswald",
+        pf: fptsOf(r),
+        owner: r.owner_id || null
+      };
+    });
+    return teams;
+  }
+
+  // Every rule starts at zero and only what Sleeper actually sends is applied.
+  // Seeding from a preset instead would invent scoring the league does not use.
+  function buildScoring(ss) {
+    const values = {}, missed = [];
+    ALL_RULES.forEach((r) => values[r.k] = 0);
+    Object.keys(ss || {}).forEach((k) => {
+      const target = SLEEPER_SCORING[k];
+      if (target && RULE_BY_KEY[target]) values[target] = +ss[k] || 0;
+      else if (+ss[k]) missed.push(k);
+    });
+    return { values, missed };
+  }
+
+  function assetOf(pid, dict) {
+    const row = playerRow(pid, dict, null, "BENCH", null);
+    return { kind: "player", player: { id: row.id, n: row.n, pos: row.pos, tm: row.tm } };
+  }
+
+  function buildTx(list, dict) {
+    const out = [];
+    (list || []).forEach((t) => {
+      if (t.status && t.status !== "complete") return;
+      const ids = t.roster_ids || [], adds = t.adds || {}, drops = t.drops || {};
+      const ts = t.status_updated || t.created || null;
+      if (t.type === "trade" && ids.length > 1) {
+        const a = ids[0], b = ids[1], give = [], get = [];
+        Object.keys(adds).forEach((pid) => {
+          if (adds[pid] === b) give.push(assetOf(pid, dict));
+          else if (adds[pid] === a) get.push(assetOf(pid, dict));
+        });
+        if (!give.length && !get.length) return;
+        out.push({ type: "trade", teams: ["sl" + a, "sl" + b], assets: { give, get }, ts });
+        return;
+      }
+      const team = ids[0];
+      if (team === undefined) return;
+      const get = Object.keys(adds).map((pid) => assetOf(pid, dict));
+      const give = Object.keys(drops).map((pid) => assetOf(pid, dict));
+      if (!get.length && !give.length) return;
+      out.push({
+        type: t.type === "waiver" ? "waiver" : get.length ? "add" : "drop",
+        teams: ["sl" + team],
+        assets: { give, get },
+        bid: (t.settings || {}).waiver_bid != null ? t.settings.waiver_bid : null,
+        ts
+      });
+    });
+    return out;
+  }
+
+  // The whole transform. Takes a Sleeper-shaped payload — live or demo — and
+  // returns everything the app needs plus an honest account of the gaps.
+  function buildImport(raw) {
+    const lg = raw.league || {}, st = lg.settings || {};
+    const dict = raw.players || {};
+    const teams = buildTeams(raw.users, raw.rosters);
+    const positions = lg.roster_positions || [];
+    const miss = [];
+    const rosters = {};
+    let rowCount = 0;
+    (raw.rosters || []).forEach((r) => {
+      const rows = buildRoster(r, positions, dict, miss);
+      rosters["sl" + r.roster_id] = rows;
+      rowCount += rows.length;
+    });
+    const scoring = buildScoring(lg.scoring_settings);
+    const tx = buildTx(raw.transactions, dict);
+    const count = (p) => positions.filter((x) => x === p).length;
+    const slots = {
+      QB: count("QB"), RB: count("RB"), WR: count("WR"), TE: count("TE"),
+      FLEX: count("FLEX") + count("REC_FLEX") + count("WRRB_FLEX"),
+      SFLX: count("SUPER_FLEX"),
+      bench: count("BN"), ir: count("IR"), taxi: count("TAXI")
+    };
+    const mine = (raw.rosters || []).find((r) => raw.user && r.owner_id === raw.user.user_id);
+    return {
+      name: lg.name || "Imported league",
+      season: lg.season || "",
+      week: Math.max(1, +raw.week || +st.leg || 1),
+      dynasty: st.type === 2,
+      status: lg.status === "complete" ? "complete" : lg.status === "pre_draft" ? "predraft" : "active",
+      teams, rosters, slots, tx,
+      scoring: scoring.values,
+      missedScoring: scoring.missed,
+      unmatched: miss,
+      rowCount,
+      myKey: mine ? "sl" + mine.roster_id : Object.keys(teams)[0] || null,
+      avatar: lg.avatar || null
+    };
+  }
+
+  // ---- storing ------------------------------------------------------------
+
+  function importedBag() {
+    if (!store.imported) store.imported = [];
+    return store.imported;
+  }
+
+  // An imported league is registered in the same table as the seeded demo
+  // leagues, so every screen that already works for those — the hub row, the
+  // standings, the team sheet — works for it with no further wiring.
+  function registerImported(rec) {
+    const lg = {
+      id: rec.id,
+      name: rec.name,
+      logo: rec.avatar ? SLEEPER_AV + rec.avatar : null,
+      type: rec.dynasty ? "dynasty" : "redraft",
+      teamCount: Object.keys(rec.teams).length,
+      week: rec.week,
+      status: rec.status,
+      myTeamKey: rec.myKey,
+      teams: rec.teams,
+      opp: rec.opp || null,
+      real: false,
+      imported: true,
+      source: rec.demo ? "demo" : "sleeper"
+    };
+    if (LEAGUE_BY_ID[lg.id]) {
+      const i = LEAGUES.findIndex((l) => l.id === lg.id);
+      if (i >= 0) LEAGUES[i] = lg;
+    } else LEAGUES.push(lg);
+    LEAGUE_BY_ID[lg.id] = lg;
+    return lg;
+  }
+
+  function initImported() {
+    importedBag().forEach(registerImported);
+  }
+
+  function importedRoster(lg, key) {
+    if (!lg || !lg.imported) return null;
+    const rec = importedBag().find((r) => r.id === lg.id);
+    const rows = rec && rec.rosters && rec.rosters[key];
+    return rows && rows.length ? rows : null;
+  }
+
+  // Real season points, not a seeded hash. The opponent is the next team on the
+  // standings, which is a stand-in: a week-by-week schedule would need the
+  // matchups endpoint for every week of the season.
+  function importedScore(lg) {
+    if (!lg || !lg.imported) return null;
+    const teams = lg.teams || {}, keys = Object.keys(teams), me = lg.myTeamKey;
+    if (!me || !teams[me]) return null;
+    const opp = lg.opp && teams[lg.opp] ? lg.opp : keys.find((k) => k !== me);
+    if (!opp) return null;
+    const games = Math.max(1, (+String(teams[me].rec).split("-")[0] || 0) + (+String(teams[me].rec).split("-")[1] || 0));
+    const per = (t) => Math.round((t.pf || 0) / games * 10) / 10;
+    const ms = per(teams[me]), os = per(teams[opp]);
+    const rem = leagueStatus(lg) === "complete" ? 0 : Math.max(0, 180 - (ms + os) / 2);
+    return { me, opp, ms, os, mw: winProbability(ms - os, rem), teams };
+  }
+
+  function saveImported(built, demo) {
+    const id = "sl" + Date.now().toString(36);
+    const keys = Object.keys(built.teams);
+    const me = built.myKey && built.teams[built.myKey] ? built.myKey : keys[0];
+    const rec = {
+      id,
+      name: built.name,
+      dynasty: built.dynasty,
+      status: built.status,
+      week: built.week,
+      season: built.season,
+      teams: built.teams,
+      rosters: built.rosters,
+      myKey: me,
+      opp: keys.find((k) => k !== me) || null,
+      avatar: demo ? null : built.avatar,
+      demo: !!demo,
+      at: Date.now()
+    };
+    importedBag().push(rec);
+    store.scoringByLeague = store.scoringByLeague || {};
+    store.scoringByLeague[id] = built.scoring;
+    store.transactions = store.transactions || {};
+    store.transactions[id] = built.tx.map((t, i) => Object.assign({ id: "si" + i }, t));
+    store.leagueOrder = store.leagueOrder || [];
+    store.leagueOrder.unshift(id);
+    saveStore();
+    registerImported(rec);
+    return id;
+  }
+
+  // ---- demo payload -------------------------------------------------------
+
+  // Sleeper-shaped, so it runs through buildImport() unchanged. Rosters are
+  // drawn from this app's own player table so most rows match, with a kicker
+  // and a defence on each squad that deliberately do not — those positions are
+  // genuinely absent here, and the report should say so rather than hide it.
+  var DEMO_TEAMS = [
+    ["Gridiron Dynasty", "mikeD"], ["Purple Reign", "sarahk"], ["Fourth And Long", "tommyb"],
+    ["The Audible", "jroth"], ["Zero RB Truthers", "chuckw"], ["Blind Side", "amara"],
+    ["Play Action", "devonp"], ["Hail Mary Inc", "lucasz"], ["Red Zone Rats", "priyan"],
+    ["Cover Two", "benq"], ["Snap Judgment", "kaim"], ["Garbage Time", "nataliev"]
+  ];
+  var DEMO_KDEF = [
+    ["K", "Brandon", "Aubrey", "DAL"], ["K", "Harrison", "Butker", "KC"],
+    ["K", "Justin", "Tucker", "BAL"], ["K", "Jake", "Elliott", "PHI"],
+    ["DEF", "Philadelphia", "Eagles", "PHI"], ["DEF", "Baltimore", "Ravens", "BAL"],
+    ["DEF", "Denver", "Broncos", "DEN"], ["DEF", "Pittsburgh", "Steelers", "PIT"]
+  ];
+  function sleeperDemo() {
+    const dict = {}, rosters = [], users = [];
+    const pool = NFL_PLAYERS.slice().sort((a, b) => (b.sproj || 0) - (a.sproj || 0));
+    DEMO_KDEF.forEach((k, i) => {
+      const id = k[0] === "DEF" ? k[3] : "kk" + i;
+      dict[id] = { player_id: id, position: k[0], first_name: k[1], last_name: k[2], team: k[3] };
+    });
+    const positions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "K", "DEF",
+      "BN", "BN", "BN", "BN", "BN", "BN", "IR"];
+    DEMO_TEAMS.forEach((t, i) => {
+      const uid = "u" + (100 + i);
+      users.push({ user_id: uid, display_name: t[1], avatar: null, metadata: { team_name: t[0] } });
+      const picks = [];
+      // Snake through the ranked pool so each squad gets a plausible spread.
+      for (let r = 0; r < 13; r++) {
+        const slot = r % 2 ? DEMO_TEAMS.length - 1 - i : i;
+        const p = pool[r * DEMO_TEAMS.length + slot];
+        if (p) picks.push(p);
+      }
+      picks.forEach((p) => {
+        dict[p.id] = {
+          player_id: p.id, position: p.pos, team: p.tm,
+          first_name: p.full.split(" ")[0],
+          last_name: p.full.split(" ").slice(1).join(" ")
+        };
+      });
+      const qb = picks.find((p) => p.pos === "QB");
+      const rb = picks.filter((p) => p.pos === "RB");
+      const wr = picks.filter((p) => p.pos === "WR");
+      const te = picks.find((p) => p.pos === "TE");
+      const flex = picks.find((p) => (p.pos === "RB" || p.pos === "WR") && p !== rb[0] && p !== rb[1] && p !== wr[0] && p !== wr[1]);
+      const kick = DEMO_KDEF[i % 4], def = DEMO_KDEF[4 + i % 4];
+      const starters = [
+        qb && qb.id, rb[0] && rb[0].id, rb[1] && rb[1].id,
+        wr[0] && wr[0].id, wr[1] && wr[1].id, te && te.id,
+        flex && flex.id, "kk" + (i % 4), def[3]
+      ].map((x) => x || "0");
+      const wins = 11 - i, losses = 13 - wins;
+      rosters.push({
+        roster_id: i + 1,
+        owner_id: uid,
+        starters,
+        players: picks.map((p) => p.id).concat(["kk" + (i % 4), def[3]]),
+        settings: { wins, losses, ties: 0, fpts: 1180 - i * 37, fpts_decimal: 42 }
+      });
+    });
+    const tx = [
+      {
+        type: "trade", status: "complete", roster_ids: [1, 4], status_updated: Date.now() - 864e5 * 3,
+        adds: { [rosters[0].players[2]]: 4, [rosters[3].players[1]]: 1 }, drops: null
+      },
+      {
+        type: "waiver", status: "complete", roster_ids: [6], status_updated: Date.now() - 864e5 * 5,
+        adds: { [rosters[5].players[9]]: 6 }, drops: { [rosters[5].players[11]]: 6 },
+        settings: { waiver_bid: 17 }
+      },
+      {
+        type: "free_agent", status: "complete", roster_ids: [2], status_updated: Date.now() - 864e5 * 6,
+        adds: { [rosters[1].players[10]]: 2 }, drops: null
+      }
+    ];
+    return {
+      user: { user_id: "u100", display_name: "mikeD", avatar: null },
+      week: 14,
+      league: {
+        league_id: "demo", name: "Sleeper Demo League", season: "2025", status: "in_season",
+        total_rosters: DEMO_TEAMS.length, roster_positions: positions, avatar: null,
+        settings: { type: 2, leg: 14 },
+        scoring_settings: {
+          pass_yd: 0.04, pass_td: 4, pass_int: -2, pass_2pt: 2,
+          rush_yd: 0.1, rush_td: 6, rush_2pt: 2,
+          rec: 0.5, rec_yd: 0.1, rec_td: 6, rec_2pt: 2, bonus_rec_te: 0.5,
+          fum_lost: -2, fgm: 3, fgm_40_49: 4, fgm_50p: 5, xpm: 1, fgmiss: -1,
+          def_td: 6, sack: 1, int: 2, fum_rec: 2, safe: 2, blk_kick: 2,
+          pts_allow_0: 10, pts_allow_1_6: 7, pts_allow_7_13: 4, pts_allow_14_20: 1,
+          pts_allow_21_27: 0, pts_allow_28_34: -1, pts_allow_35p: -4,
+          bonus_rush_yd_100: 3, bonus_rec_yd_100: 3,
+          // Two rules with no counterpart in this app's catalog, kept so the
+          // report has something real to disclose.
+          st_tkl_solo_bonus: 1, def_st_td: 6
+        }
+      },
+      users, rosters, transactions: tx, players: dict
+    };
+  }
+
+  // ---- flow ---------------------------------------------------------------
+
+  function openImport() {
+    impReset();
+    renderImport();
+    showView2("import");
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+
+  function importBack() {
+    const s = impState();
+    if (s.busy) return;
+    if (s.step === 0) return goHome();
+    s.step = s.step === 3 ? 1 : s.step - 1;
+    renderImport();
+  }
+
+  function importSetUser(v) {
+    impState().name = v;
+    const btn = document.getElementById("impGo");
+    if (btn) btn.classList.toggle("off", !String(v || "").trim());
+  }
+
+  function useDemo(why) {
+    const s = impState();
+    const raw = sleeperDemo();
+    s.demo = true;
+    s.err = why || "";
+    s.user = raw.user;
+    s.season = raw.league.season;
+    s.leagues = [{
+      league_id: "demo", name: raw.league.name, season: raw.league.season,
+      total_rosters: raw.league.total_rosters, settings: raw.league.settings,
+      status: raw.league.status, avatar: null
+    }];
+    s.step = 1;
+  }
+
+  function importFind() {
+    const s = impState();
+    const name = String(s.name || "").trim();
+    if (!name || s.busy) {
+      if (!name) toast("Enter your Sleeper username");
+      return;
+    }
+    s.busy = "Looking up " + name + "…";
+    s.err = "";
+    renderImport();
+    Promise.resolve().then(() => sleeperGet("/state/nfl").catch(() => ({ season: String((/* @__PURE__ */ new Date()).getFullYear()) })))
+      .then((state) => {
+        s.season = state.season;
+        s.week = state.week;
+        return sleeperGet("/user/" + encodeURIComponent(name));
+      })
+      .then((user) => {
+        // Sleeper answers an unknown username with null under a 200, so an
+        // empty body is a "no such user", not a broken connection.
+        if (!user || !user.user_id) {
+          const e = new Error("no such user");
+          e.reachable = true;
+          e.status = 404;
+          throw e;
+        }
+        s.user = user;
+        return sleeperGet("/user/" + user.user_id + "/leagues/nfl/" + s.season);
+      })
+      .then((leagues) => {
+        s.demo = false;
+        s.leagues = leagues || [];
+        s.step = 1;
+        if (!s.leagues.length) s.err = "No NFL leagues on that account for " + s.season + ".";
+      })
+      .catch((e) => {
+        if (e && e.reachable) {
+          // Sleeper answered; the account is simply not there. Say so and stay
+          // put rather than quietly showing data from somewhere else.
+          s.err = e.status === 404 ? "No Sleeper account called \u201C" + name + "\u201D." : "Sleeper returned an error (" + (e.status || "?") + "). Try again shortly.";
+          s.step = 0;
+          return;
+        }
+        useDemo("Could not reach Sleeper. Showing a demo league instead \u2014 the screens are real, the data is not.");
+      })
+      .then(() => {
+        s.busy = "";
+        renderImport();
+      });
+  }
+
+  function importPickLeague(id) {
+    const s = impState();
+    if (s.busy) return;
+    const meta = s.leagues.find((l) => l.league_id === id);
+    if (!meta) return;
+    s.picked = meta;
+    s.busy = "Reading " + (meta.name || "league") + "…";
+    renderImport();
+    const finish = (raw) => {
+      s.built = buildImport(raw);
+      s.teamKey = s.built.myKey;
+      s.step = 2;
+      s.busy = "";
+      renderImport();
+    };
+    if (s.demo) {
+      const raw = sleeperDemo();
+      setTimeout(() => finish(raw), 420);
+      return;
+    }
+    const lid = meta.league_id;
+    Promise.all([
+      sleeperGet("/league/" + lid),
+      sleeperGet("/league/" + lid + "/users"),
+      sleeperGet("/league/" + lid + "/rosters"),
+      sleeperPlayers()
+    ]).then(([league, users, rosters, players]) => {
+      const wk = Math.max(1, +s.week || +(league.settings || {}).leg || 1);
+      // A handful of recent weeks is enough to fill the log without a request
+      // per week of the season.
+      const weeks = [];
+      for (let w = Math.max(1, wk - 4); w <= wk; w++) weeks.push(w);
+      return Promise.all(weeks.map((w) => sleeperGet("/league/" + lid + "/transactions/" + w).catch(() => [])))
+        .then((chunks) => finish({
+          user: s.user, league, users, rosters, players, week: wk,
+          transactions: chunks.reduce((a, b) => a.concat(b || []), [])
+        }));
+    }).catch(() => {
+      s.busy = "";
+      s.err = "That league could not be read. It may be private or mid-migration.";
+      renderImport();
+    });
+  }
+
+  function importPickTeam(key) {
+    const s = impState();
+    s.teamKey = key;
+    renderImport();
+  }
+
+  function importRun() {
+    const s = impState();
+    if (!s.built || s.busy) return;
+    s.busy = "Importing…";
+    renderImport();
+    setTimeout(() => {
+      s.built.myKey = s.teamKey || s.built.myKey;
+      s.newId = saveImported(s.built, s.demo);
+      s.step = 3;
+      s.busy = "";
+      renderImport();
+    }, 500);
+  }
+
+  function importFinish() {
+    const s = impState();
+    const id = s.newId;
+    impReset();
+    if (id) openLeague(id);
+    else goHome();
+  }
+
+  // ---- rendering ----------------------------------------------------------
+
+  function impHead(title, sub) {
+    return `<div class="imp-top">
+    <div class="wiz-x" onclick="importBack()" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg>
+    </div>
+    <div>
+      <div class="set-h" style="margin:0">${escHtml(title)}</div>
+      <div class="wiz-step">${escHtml(sub)}</div>
+    </div>
+  </div>`;
+  }
+
+  function impNote(kind, text) {
+    return `<div class="imp-note ${kind}">${escHtml(text)}</div>`;
+  }
+
+  function impBusy(label) {
+    return `<div class="imp-busy"><span class="imp-spin"></span>${escHtml(label)}</div>`;
+  }
+
+  function stepUser() {
+    const s = impState();
+    return impHead("Import from Sleeper", "STEP 1 OF 3") + `
+    <div class="imp-lede">Bring a league across with its teams, rosters, records,
+      scoring rules and recent transactions.</div>
+    <div class="imp-q">Your Sleeper username</div>
+    <input id="impUser" class="wiz-input" type="text" maxlength="40" autocapitalize="off"
+      autocorrect="off" spellcheck="false" placeholder="username"
+      value="${escAttr(s.name)}" oninput="importSetUser(this.value)"
+      onkeydown="if(event.key==='Enter')importFind()">
+    <div class="imp-fine">Sleeper's API is read-only and public, so no password is
+      needed — and nothing is ever written back to Sleeper. This makes a copy;
+      the two leagues do not stay in sync.</div>
+    ${s.err ? impNote("warn", s.err) : ""}
+    ${s.busy ? impBusy(s.busy) : `<div class="wiz-foot">
+      <div class="wiz-btn" onclick="goHome()">Cancel</div>
+      <div id="impGo" class="wiz-btn primary${String(s.name || "").trim() ? "" : " off"}"
+        onclick="importFind()">Find my leagues</div>
+    </div>`}`;
+  }
+
+  function stepLeagues() {
+    const s = impState();
+    const rows = s.leagues.map((l) => {
+      const st = l.settings || {};
+      const bits = [st.type === 2 ? "Dynasty" : "Redraft", (l.total_rosters || "?") + " teams", l.season || ""];
+      return `<div class="imp-lg" onclick="importPickLeague('${escAttr(l.league_id)}')">
+      <div class="imp-lg-c">${escHtml((l.name || "?").charAt(0).toUpperCase())}</div>
+      <div class="imp-lg-id">
+        <div class="imp-lg-n">${escHtml(l.name || "Untitled")}</div>
+        <div class="imp-lg-s">${escHtml(bits.filter(Boolean).join(" \xB7 "))}</div>
+      </div>
+      <svg class="imp-lg-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+    </div>`;
+    }).join("");
+    const who = s.user ? s.user.display_name : "";
+    return impHead("Pick a league", "STEP 2 OF 3") + `
+    ${s.demo ? impNote("warn", s.err || "Demo data — not a real Sleeper account.") : ""}
+    ${who ? `<div class="imp-who"><span class="imp-who-a">${escHtml(who.charAt(0).toUpperCase())}</span>
+      <span>Signed in as <b>${escHtml(who)}</b>${s.season ? " \xB7 " + escHtml(s.season) : ""}</span></div>` : ""}
+    ${s.busy ? impBusy(s.busy) : rows || impNote("warn", s.err || "No leagues found.")}
+    ${s.busy ? "" : `<div class="wiz-foot"><div class="wiz-btn" onclick="importBack()">Back</div></div>`}`;
+  }
+
+  function stepConfirm() {
+    const s = impState();
+    const b = s.built;
+    if (!b) return stepLeagues();
+    const rows = Object.keys(b.teams).map((k) => {
+      const t = b.teams[k], on = k === s.teamKey;
+      const n = (b.rosters[k] || []).length;
+      return `<div class="imp-tm${on ? " on" : ""}" onclick="importPickTeam('${k}')">
+      <span class="imp-tm-c" style="background:${t.bg};color:${t.c}">${escHtml(t.mono)}</span>
+      <div class="imp-tm-id">
+        <div class="imp-tm-n" style="color:${t.c}">${escHtml(t.n)}</div>
+        <div class="imp-tm-s">${escHtml(t.mgr)} \xB7 ${escHtml(t.rec)} \xB7 ${n} players</div>
+      </div>
+      <span class="imp-radio"></span>
+    </div>`;
+    }).join("");
+    const matched = b.rowCount - b.unmatched.length;
+    return impHead(b.name, "STEP 3 OF 3") + `
+    ${s.demo ? impNote("warn", "Demo data — not a real Sleeper league.") : ""}
+    <div class="imp-stats">
+      <div class="imp-stat"><b>${Object.keys(b.teams).length}</b><span>teams</span></div>
+      <div class="imp-stat"><b>${b.rowCount}</b><span>players</span></div>
+      <div class="imp-stat"><b>${b.tx.length}</b><span>moves</span></div>
+    </div>
+    <div class="imp-q">Which team is yours?</div>
+    <div class="imp-fine">Sleeper's API has no login, so it cannot confirm who is
+      using the app. This is our best match from the league's owner ids.</div>
+    <div class="imp-tms">${rows}</div>
+    <div class="imp-q">What comes across</div>
+    <div class="imp-checks">
+      ${checkRow(true, "Teams, managers and records", Object.keys(b.teams).length + " teams")}
+      ${checkRow(matched > 0, "Rosters", matched + " of " + b.rowCount + " players matched")}
+      ${checkRow(true, "Scoring rules", Object.keys(b.scoring).filter((k) => b.scoring[k]).length + " rules set")}
+      ${checkRow(b.tx.length > 0, "Trades and waivers", b.tx.length + " recent moves")}
+    </div>
+    ${b.unmatched.length ? impNote("warn", b.unmatched.length + " players are not in this app's player table — mostly kickers and defences. They still come across, without a headshot or projection.") : ""}
+    ${b.missedScoring.length ? impNote("warn", "Scoring rules with no equivalent here, left out: " + b.missedScoring.join(", ")) : ""}
+    ${s.busy ? impBusy(s.busy) : `<div class="wiz-foot">
+      <div class="wiz-btn" onclick="importBack()">Back</div>
+      <div class="wiz-btn primary" onclick="importRun()">Import league</div>
+    </div>`}`;
+  }
+
+  function checkRow(ok, label, detail) {
+    return `<div class="imp-ck${ok ? "" : " off"}">
+    <span class="imp-ck-i">${ok ? "✓" : "–"}</span>
+    <span class="imp-ck-l">${escHtml(label)}</span>
+    <span class="imp-ck-d">${escHtml(detail)}</span>
+  </div>`;
+  }
+
+  function stepDone() {
+    const s = impState();
+    const b = s.built || {};
+    const t = (b.teams || {})[s.teamKey] || {};
+    return `<div class="imp-done">
+    <div class="imp-done-tick">✓</div>
+    <div class="imp-done-h">${escHtml(b.name || "League")} imported</div>
+    <div class="imp-done-s">You are ${escHtml(t.n || "—")}${t.rec ? " \xB7 " + escHtml(t.rec) : ""}</div>
+    ${s.demo ? impNote("warn", "This was demo data, not a real Sleeper league.") : ""}
+    <div class="imp-fine" style="text-align:center">A snapshot, not a live link. Changes
+      made in Sleeper from here on will not appear.</div>
+    <div class="wiz-foot" style="justify-content:center">
+      <div class="wiz-btn primary" onclick="importFinish()">Open league</div>
+    </div>
+  </div>`;
+  }
+
+  function renderImport() {
+    const el = document.getElementById("importBody");
+    if (!el) return;
+    const s = impState();
+    el.innerHTML = s.step === 0 ? stepUser() : s.step === 1 ? stepLeagues() : s.step === 2 ? stepConfirm() : stepDone();
+  }
+
   // js/main.js
   Object.assign(
     window,
@@ -15469,7 +16452,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     markets_exports,
     universe_exports,
     orders_exports,
-    ticket_exports
+    ticket_exports,
+    import_sleeper_exports
   );
   initStore();
   migrateRosters();
@@ -15487,6 +16471,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   applyTeamFonts();
   initLeagues();
   initHome();
+  initImported();
   initChat();
   initNotifs();
   renderTabs(homeTab());

@@ -61,6 +61,70 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## Importing from Sleeper
+
+The hub offers **Import a league** beside *Create a league*. Importing is not
+creating — the name, size, type and scoring all come out of Sleeper — so it is
+its own path rather than a branch of the six-step wizard.
+
+Sleeper publishes a read-only HTTP API with no key and no OAuth, so the import
+is a plain `fetch`: username → leagues → league, users, rosters, scoring and
+recent transactions. Nothing is written back and nothing stays in sync, which
+the UI says on both the first screen and the last.
+
+**Three things follow from the API having no login**, and each is handled rather
+than hidden:
+
+1. **Sleeper will not say who is using the app.** A roster's `owner_id` names
+   the team, so the match is made and then shown for confirmation — *"which team
+   is yours?"* — instead of being assumed.
+2. **A bad username is an answer, not a failure.** `sleeperGet()` tags an error
+   with whether Sleeper actually responded. A 404 says *"No Sleeper account
+   called X"* and stays put; only a request that never landed — offline, CORS,
+   timeout — falls back to demo data, and the fallback says so on every screen
+   it touches.
+3. **Rosters are lists of Sleeper ids and nothing else**, so names cannot be
+   resolved without `/v1/players/nfl`. It is several megabytes and Sleeper asks
+   for it at most once a day, so it is fetched only during a live import and
+   held in memory for the session — it would not fit in `localStorage`.
+
+**What comes across:** teams, managers, records and points for; rosters with
+their starting slots; scoring rules; and trades, waivers and adds from the last
+five weeks. The confirmation screen reports the gaps instead of papering over
+them — how many players matched, and which scoring rules had no equivalent here.
+
+**What does not:** `js/data/nfl-players.js` carries 895 players and no kickers
+or defences, so those rows come across from Sleeper's own payload with a name,
+position and team but no headshot or projection, and are counted as unmatched.
+Sleeper's scoring keys map nearly one-to-one onto `js/data/scoring-rules.js` —
+that catalog was modelled on Sleeper's own settings screen — and every rule
+starts at zero so only what the league actually scores is set. Seeding from a
+preset instead would invent scoring the league does not use.
+
+An imported league is registered in the same table as the seeded demo leagues,
+so the hub row, the standings and the team sheet work with no further wiring;
+`seededRoster()` and `leagueScore()` return real data instead of a seeded hash
+when the league is an imported one.
+
+### Verifying it
+
+```
+node tools/import-check.mjs [path-to-html]      # 48 checks
+```
+
+Sleeper is unreachable from a sandbox, so the first pass exercises the demo
+fallback — which is the point, since the fallback runs the same `buildImport()`
+transform as a live import. The second pass serves the page a **stand-in
+Sleeper**: Playwright fulfils `api.sleeper.app` from fixtures, so the app's own
+fetch code runs unchanged against Sleeper-shaped JSON. That is what proves the
+live branch works. A third pass returns 404 to prove a mistyped username does
+not quietly become demo data.
+
+**One thing is still unverified:** whether `api.sleeper.app` sends permissive
+CORS headers. If it does, this works from the browser with no backend at all. If
+it does not, a small proxy is needed and the import falls back to demo data
+until one exists. It could not be tested from the sandbox this was built in.
+
 ## Layout
 
 ```
