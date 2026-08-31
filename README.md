@@ -125,6 +125,87 @@ CORS headers. If it does, this works from the browser with no backend at all. If
 it does not, a small proxy is needed and the import falls back to demo data
 until one exists. It could not be tested from the sandbox this was built in.
 
+## The rookie class
+
+The player table's own note explains how its numbers are made:
+
+    proj/ADP are modelled from 2025 PPR production regressed toward positional
+    means; ADP is value-over-replacement for a 10-team QB/2RB/3WR/TE/FLEX league.
+
+A rookie has no prior NFL production, so that model had no input for one and
+fell back to the positional mean. The result: **216 rookies sharing three
+projections between them** — 45.9 for every WR and RB, 34.4 for every TE, 57.4
+for every QB — and an ADP tail sorted by player id. Every screen that ranks by
+projection or ADP therefore piled the whole rookie class into one indistinct
+block below the veterans, so a genuine first-round pick sat behind three hundred
+veterans next to a camp body. The rookies were in the pool; nothing could tell
+them apart.
+
+The signal that replaces prior production for a rookie is **draft capital**.
+`tools/rookie-projections.py` reads where each rookie was actually taken and
+what rookies taken in that range have actually scored:
+
+```
+python3 tools/rookie-projections.py                        # report only
+python3 tools/rookie-projections.py --apply                # write the table
+python3 tools/rookie-projections.py --apply --file js/data/nfl-players.js
+```
+
+Both sources are [nflverse](https://github.com/nflverse/nflverse-data) and both
+join on `gsis_id`, which the table's first column already holds: `players.csv`
+for draft round and pick, and `player_stats_season_YYYY.csv` for 2019–2024
+production. Keeping only seasons that are a player's rookie season gives **536
+real rookie seasons**, which are fit per position to a decay in draft pick:
+
+| pos | drafted rookies observed | pick 1 | pick 32 | pick 100 | undrafted |
+|-----|--------------------------|--------|---------|----------|-----------|
+| QB  | 47  | 212.4 | 106.6 | 43.0 | 38.5 |
+| RB  | 107 | 190.7 | 182.2 | 73.1 | 26.0 |
+| WR  | 162 | 198.2 | 137.7 | 61.0 | 18.0 |
+| TE  | 75  | 93.1  | 93.1  | 35.9 | 9.5  |
+
+Nothing is invented: a rookie's projection is the fitted average of what real
+rookies drafted at that slot really scored. Two details keep the fit honest:
+
+- **The top of the draft is thin** — one rookie RB has gone inside the top ten
+  in six years — so an exponential extrapolates hard there. The curve is capped
+  at the 90th percentile of what rookies at that position have actually scored.
+  It binds on 3 of 73 drafted rookies, so it is a rail rather than a flattener.
+- **Undrafted is a category, not a point on the curve.** The 143 rookies with no
+  draft pick get the observed undrafted average instead, and share it — which is
+  what being undrafted means.
+
+Of the class, **73 match a real draft pick**; the best now drafts at ADP 29 with
+198 projected points instead of 45.9 at the back of the board, and six sit
+inside the top 100. Rookies carry an `R` badge on the draft board, the available
+list and the trending panel.
+
+**ADP is re-derived, not reranked.** Veterans keep the order the table already
+gives them — a full rerank would churn every ADP in the app for no reason. Each
+rookie is placed against veterans *at its own position*, directly ahead of the
+first one it outprojects. Slotting them by a refitted value-over-replacement
+instead put rookies a few places wrong (Makai Lemon ahead of Justin Jefferson on
+a lower projection), because the stored board is not quite the VOR this script
+would compute and a rookie judged on one rule cannot be inserted into an order
+built on another. Within a position no rule is needed: more projected points is
+simply better. `tools/rookie-check.mjs` asserts there are zero such inversions
+anywhere in the pool.
+
+Fixed alongside: a dynasty startup can be set to a **rookie-only draft**, and the
+create wizard had been storing that choice all along with nothing reading it.
+`draftBoard()` now honours it, which covers the board, the search and the bots'
+auto-picks in one place, and it refuses to return an empty board.
+
+### Verifying it
+
+```
+node tools/rookie-check.mjs [path-to-html]        # 18 checks
+```
+
+The market universe is unaffected: it ranks on **actual 2024 production**, not
+projections, so a 2026 rookie cannot enter it. `markets-check`, `charts-check`,
+`history-check` and `commish-check` all still pass against the rebuilt bundle.
+
 ## Layout
 
 ```
