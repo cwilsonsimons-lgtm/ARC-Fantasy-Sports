@@ -205,16 +205,17 @@ let state = {
 let openDay = null, addMode = 'spent', schedKind = 'sub';
 
 /* ---------- storage: Claude's artifact store, else this browser ---------- */
-let saveMode = 'none', lastSaved = null, dbDoc = null, writing = false;
+let saveMode = 'none', lastSaved = null, dbDoc = null, writing = false, localOk = false;
+let wTimer = null, wQueued = false, wBusy = false, wFailed = false;
 
 function boot(){
   // read this browser first so the page is never sitting blank
   try{
     const t='__t'; localStorage.setItem(t,'1'); localStorage.removeItem(t);
-    saveMode='local';
+    localOk = true; saveMode='local';
     const v = localStorage.getItem(KEY);
     if(v) adopt(JSON.parse(v));
-  }catch(e){ saveMode='none'; }
+  }catch(e){ localOk = false; saveMode='none'; }
   render();
   connect();
 }
@@ -228,10 +229,10 @@ async function connect(){
   if(!cap) return;
   try{
     const doc = cap.doc(DOC);
-    const snap = await doc.get();
+    const snap = await withTimeout(doc.get(), 10000);
     if(snap && snap.exists) adopt(snap.data());
     dbDoc = doc; saveMode = 'cloud';
-    if(!(snap && snap.exists)){ writing = true; await doc.set(strip(state)); writing = false; }
+    if(!(snap && snap.exists)) save();   // seed it through the normal write queue
     render();
     doc.onSnapshot(s=>{
       if (!s || !s.exists || s.hasPendingWrites || writing) return;
@@ -259,32 +260,59 @@ function adopt(raw){
 }
 function strip(s){ return JSON.parse(JSON.stringify(s)); }
 
-async function save(){
+/* Saving never blocks the screen. Callers change state, call save(), and
+   render immediately; the write is coalesced and runs on its own. A store
+   that hangs can slow the save, never the app. */
+function save(){
+  wQueued = true;
+  if(wTimer) return;
+  wTimer = setTimeout(flush, 100);
+}
+function withTimeout(pr, ms){
+  return Promise.race([pr, new Promise((_,rej)=>setTimeout(()=>rej(new Error('storage timed out')), ms))]);
+}
+async function flush(){
+  wTimer = null;
+  if(wBusy){ save(); return; }        // a write is in flight; try again after it
+  if(!wQueued) return;
+  wQueued = false; wBusy = true;
+  const payload = strip(state);
+  let landed = false;
+  if(localOk){
+    try{ localStorage.setItem(KEY, JSON.stringify(payload)); landed = true; }catch(e){}
+  }
   try{
     if(saveMode==='cloud' && dbDoc){
       writing = true;
-      await dbDoc.set(strip(state));
-      writing = false;
+      await withTimeout(dbDoc.set(payload), 10000);
+    } else if(!landed){
+      throw new Error('no storage available');
     }
-    else if(saveMode==='local'){ localStorage.setItem(KEY, JSON.stringify(state)); }
-    else { throw new Error('no storage available'); }
-    lastSaved = new Date();
-    flagSave(true);
+    lastSaved = new Date(); wFailed = false;
   }catch(e){
-    writing = false;
     console.error('Could not save', e);
-    flagSave(false);
+    wFailed = true;
+  }finally{
+    writing = false; wBusy = false;
+    flagSave();
+    if(wQueued) save();
   }
 }
-function flagSave(ok){
+function flagSave(){
   const el = document.getElementById('saveState');
   if(!el) return;
-  if(ok){
+  if(wFailed && localOk){
+    el.textContent = "Saved on this device only — Claude's storage isn't answering.";
+    el.style.color = 'var(--amber)';
+  } else if(wFailed || saveMode==='none'){
+    el.textContent = "Not saving — storage is blocked here. Your entries will vanish when you close the tab.";
+    el.style.color = 'var(--debit)';
+  } else if(lastSaved){
     el.textContent = 'Saved ' + lastSaved.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
     el.style.color = 'var(--credit)';
   } else {
-    el.textContent = "Not saving — storage is blocked here. Your entries will vanish when you close the tab.";
-    el.style.color = 'var(--debit)';
+    el.textContent = 'Saving is on';
+    el.style.color = 'var(--muted)';
   }
 }
 
@@ -492,10 +520,10 @@ function render(){
     + '<div class="cats"><h2>Where it went</h2>'+cats+'</div>'
 
     + '<div class="foot">'+plural(state.purchases.length,'entry','entries')+' logged · '+plural(state.sched.length,'repeating charge','repeating charges')+''
-    + '<div id="saveState" style="margin-top:4px">'
-    + (saveMode==='none' ? "Not saving — storage is blocked here. Your entries will vanish when you close the tab."
-       : (lastSaved ? 'Saved ' + lastSaved.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : 'Saving is on'))
-    + '</div><button id="reset" style="margin-top:6px">Clear everything and start over</button></div>';
+    + '<div id="saveState" style="margin-top:4px"></div>'
+    + '<button id="reset" style="margin-top:6px">Clear everything and start over</button></div>';
+
+  flagSave();
 
   document.querySelectorAll('.day[data-day]').forEach(el=> el.onclick = ()=> openSheet(+el.dataset.day));
   document.querySelectorAll('[data-plan]').forEach(el=>
@@ -504,7 +532,7 @@ function render(){
   document.getElementById('balBtn').onclick = openSettings;
   document.getElementById('reset').onclick = async ()=>{
     if(!confirm('Delete every entry for September?')) return;
-    state.purchases=[]; await save(); render();
+    state.purchases=[]; save(); render();
   };
 }
 function plural(n,one,many){ return n+' '+(n===1?one:many); }
@@ -565,7 +593,7 @@ function openSettings(){
     state.payDays = document.getElementById('s_paydays').value.split(',')
       .map(x=>parseInt(x.trim())).filter(x=>x>=1&&x<=30);
     state.cushion = parseFloat(document.getElementById('s_cushion').value)||0;
-    await save(); closeSheet(); render();
+    save(); closeSheet(); render();
   };
 }
 
@@ -614,6 +642,7 @@ function drawSheet(){
         : '<select id="cat">'+CATS.map(c=>'<option value="'+c.id+'">'+c.label+'</option>').join('')+'</select>')
     + '</div>'
     + '<input id="name" type="text" placeholder="'+(isBill?'What is the charge?':'What is it?')+'" style="margin-top:8px">'
+    + '<div class="note" id="addErr" style="color:var(--debit);display:none"></div>'
     + '<button class="btn" id="add">'+(isBill?'Put it on the '+ord(day):(addMode==='planned'?'Add to the plan':'Log it'))+'</button>'
     + '<h3 style="font-size:15px;margin:20px 0 0">On this day</h3>'
     + logged;
@@ -624,25 +653,32 @@ function drawSheet(){
   document.querySelectorAll('[data-quick]').forEach(el=> el.onclick = ()=>{
     const m = MEALS[el.dataset.quick]; addPurchase(m.name, m.cost, 'food');
   });
-  document.getElementById('add').onclick = async ()=>{
+  document.getElementById('add').onclick = ()=>{
+    const err = document.getElementById('addErr');
     const a = parseFloat(document.getElementById('amt').value);
-    if(!a||a<=0){ document.getElementById('amt').focus(); return; }
+    if(!isFinite(a) || a<=0){
+      err.textContent = a<0 ? 'Amounts go in as positive dollars.' : 'Put the amount in first — how much was it?';
+      err.style.display = 'block';
+      document.getElementById('amt').focus();
+      return;
+    }
+    err.style.display = 'none';
     const nm = document.getElementById('name').value.trim();
     if(isBill){
       schedKind = document.getElementById('kind').value==='bill' ? 'bill' : 'sub';
       state.sched.push({id:newId(), day:openDay, label:nm||(schedKind==='bill'?'Installment':'Subscription'), amt:a, kind:schedKind});
-      await save(); render(); drawSheet();
+      save(); render(); drawSheet();
     } else {
       addPurchase(nm||'Purchase', a, document.getElementById('cat').value);
     }
   };
   document.querySelectorAll('[data-del]').forEach(el=> el.onclick = async ()=>{
     state.purchases = state.purchases.filter(x=>x.id!==el.dataset.del);
-    await save(); render(); drawSheet();
+    save(); render(); drawSheet();
   });
   document.querySelectorAll('[data-delsched]').forEach(el=> el.onclick = async ()=>{
     state.sched = state.sched.filter(x=>x.id!==el.dataset.delsched);
-    await save(); render(); drawSheet();
+    save(); render(); drawSheet();
   });
 }
 function entryRow(label,sub,amt,inbound,delId){
@@ -661,9 +697,9 @@ function closeSheet(){
   document.getElementById('bg').classList.remove('on');
   openDay = null;
 }
-async function addPurchase(name, amt, cat){
+function addPurchase(name, amt, cat){
   state.purchases.push({ id:newId(), day:openDay, name, amt, cat, planned: addMode==='planned' });
-  await save(); render(); drawSheet();
+  save(); render(); drawSheet();
 }
 document.getElementById('bg').onclick = closeSheet;
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSheet(); });
@@ -690,7 +726,7 @@ async function ensureSample(){
 }
 
 function note(text){ pending.push(text); }
-async function commit(){ await save(); render(); }
+function commit(){ save(); render(); }
 
 const TOOLS = [
 {
@@ -712,7 +748,7 @@ const TOOLS = [
     const e = {id:newId(), day, name:String(i.name||'Purchase').slice(0,40), amt, cat, planned};
     state.purchases.push(e);
     note((planned?'Planned ':'Logged ')+e.name+' — '+money(amt)+' on the '+ord(day));
-    await commit();
+    commit();
     return 'Added id '+e.id+': '+e.name+' '+money(amt)+' on day '+day+(planned?' (planned)':'');
   }
 },
@@ -726,14 +762,14 @@ const TOOLS = [
     if(p){
       state.purchases = state.purchases.filter(x=>x.id!==id);
       note('Removed '+p.name+' — '+money(p.amt)+' from the '+ord(p.day));
-      await commit();
+      commit();
       return 'Removed purchase '+p.name;
     }
     const s = state.sched.find(x=>x.id===id);
     if(s){
       state.sched = state.sched.filter(x=>x.id!==id);
       note('Took '+s.label+' — '+money(s.amt)+' off the '+ord(s.day));
-      await commit();
+      commit();
       return 'Removed repeating charge '+s.label;
     }
     throw new Error('no entry with id '+id);
@@ -751,7 +787,7 @@ const TOOLS = [
     if(!it) throw new Error('no entry with id '+id);
     const was = it.day; it.day = day;
     note('Moved '+(it.name||it.label)+' from the '+ord(was)+' to the '+ord(day));
-    await commit();
+    commit();
     return 'Moved to day '+day;
   }
 },
@@ -777,7 +813,7 @@ const TOOLS = [
       if(i.amount != null && isFinite(Number(i.amount))) s.amt = Math.abs(Number(i.amount));
       if(i.kind==='bill'||i.kind==='sub') s.kind = i.kind;
       note('Updated '+s.label+' — '+money(s.amt)+(was!==day?', now on the '+ord(day):' on the '+ord(day)));
-      await commit();
+      commit();
       return 'Updated '+s.label+' on day '+day;
     }
     const amt = Math.abs(Number(i.amount));
@@ -785,7 +821,7 @@ const TOOLS = [
     s = {id:newId(), day, label:String(i.label||'Charge').slice(0,40), amt, kind: i.kind==='bill'?'bill':'sub'};
     state.sched.push(s);
     note('Added '+s.label+' — '+money(amt)+' on the '+ord(day));
-    await commit();
+    commit();
     return 'Added id '+s.id+': '+s.label+' on day '+day;
   }
 },
@@ -824,7 +860,7 @@ const TOOLS = [
     if(typeof i.assume_meals === 'boolean'){ state.autoMeals = i.assume_meals; note(i.assume_meals?'Assuming meals out again':'No longer assuming meals out'); n++; }
     if(i.cushion != null && isFinite(Number(i.cushion))){ state.cushion = Math.abs(Number(i.cushion)); note('Cushion set to '+money0(state.cushion)); n++; }
     if(!n) throw new Error('nothing to change — pass at least one field');
-    await commit();
+    commit();
     return 'Updated. Balance '+money(state.balance)+', in the account now '+money(balanceNow())+', free per day '+money(allowance().perDay);
   }
 }];
@@ -929,7 +965,7 @@ function paintChat(){
     const b = bubbles[+el.dataset.undo];
     if(!b || !b.undo) return;
     state = b.undo; b.undo = null;
-    await save(); render(); paintChat();
+    save(); render(); paintChat();
   });
 }
 
