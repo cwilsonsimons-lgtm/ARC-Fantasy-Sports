@@ -1,0 +1,1010 @@
+<title>September Ledger</title>
+<style>
+  :root{
+    --ink:#12271F; --ink-soft:#2E4A3E; --paper:#E9E4D4; --paper-lit:#F3EFE2;
+    --rule:#BFB7A0; --rule-soft:#D5CDB8; --debit:#A83220; --credit:#2C6B4C;
+    --amber:#C98A22; --muted:#6B7A70;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:16px; line-height:1.45; padding:20px 16px 104px;
+    max-width:560px; margin:0 auto; font-variant-numeric:tabular-nums;
+  }
+  h1,h2,h3{font-family:Georgia,"Iowan Old Style",serif;font-weight:600;margin:0}
+  h1{font-size:28px;letter-spacing:-.4px;line-height:1.1}
+  h2{font-size:19px;margin-bottom:10px}
+  .sub{color:var(--muted);font-size:14px;margin-top:4px}
+  .link{background:none;border:0;padding:0;font:inherit;font-size:inherit;color:var(--ink-soft);text-decoration:underline;cursor:pointer}
+
+  .hero{border-top:2px solid var(--ink);padding-top:14px;margin-bottom:8px}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .edit-btn{background:transparent;border:1px solid var(--rule);color:var(--ink);font:inherit;font-size:13px;padding:7px 11px;cursor:pointer;white-space:nowrap}
+
+  .figure{padding:16px 0 14px}
+  .figure + .figure{border-top:1px solid var(--rule-soft)}
+  .fig-label{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  .big{font-family:Georgia,"Iowan Old Style",serif;font-size:50px;line-height:1;margin:8px 0 6px;letter-spacing:-1px}
+  .big.second{font-size:34px;letter-spacing:-.5px}
+  .big.over{color:var(--debit)}
+  .fig-note{font-size:13.5px;color:var(--muted);line-height:1.5;max-width:44ch}
+  .fig-note b{color:var(--ink-soft);font-weight:600}
+
+  .today-line{margin-top:10px}
+  .today-line .tl-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}
+  .tl-bar{height:6px;background:var(--paper-lit);border:1px solid var(--rule-soft);margin-top:5px}
+  .tl-bar span{display:block;height:100%;background:var(--ink-soft)}
+  .tl-bar span.over{background:var(--debit)}
+
+  .split{display:flex;gap:18px;margin-top:4px;padding-top:12px;border-top:1px solid var(--rule-soft)}
+  .split div{flex:1}
+  .split b{font-family:Georgia,serif;font-size:19px;font-weight:600;display:block}
+  .split small{color:var(--muted);font-size:12.5px;line-height:1.3;display:block;margin-top:2px}
+  .split b.over{color:var(--debit)}
+  .bar{display:flex;height:16px;background:var(--paper-lit);border:1px solid var(--rule);margin-top:16px;overflow:hidden}
+  .bar span{display:block;height:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:13px;color:var(--ink-soft)}
+  .legend i{display:inline-block;width:9px;height:9px;margin-right:5px}
+
+  .warn{background:#F6E3DE;border:1px solid var(--debit);color:#7A2416;padding:11px 12px;font-size:14px;margin-top:16px;line-height:1.45}
+
+  .plan-switch{display:flex;margin:22px 0 8px;border:1px solid var(--ink)}
+  .plan-switch button{flex:1;padding:11px 8px;background:transparent;border:0;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;border-right:1px solid var(--ink)}
+  .plan-switch button:last-child{border-right:0}
+  .plan-switch button[aria-pressed="true"]{background:var(--ink);color:var(--paper-lit)}
+
+  .cal{margin-top:26px}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;color:var(--muted);margin-bottom:4px}
+  .dow div{text-align:center}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .day{aspect-ratio:1/1.2;background:var(--paper-lit);border:1px solid var(--rule-soft);padding:3px 2px 2px;font-size:11px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;overflow:hidden;color:var(--ink);font-family:inherit}
+  .day.blank{background:transparent;border:0;cursor:default}
+  .day.past{opacity:.55}
+  .day .n{font-weight:600;font-size:12px}
+  .day.today{border:2px solid var(--amber);opacity:1}
+  .day.neg{background:#F6E3DE}
+  .day .spent{color:var(--debit);font-size:10px;line-height:1.1}
+  .day .planned{color:var(--muted);font-size:9px;line-height:1.1;text-align:center}
+  .day .bal{font-size:9px;color:var(--ink-soft);line-height:1.1;margin-top:auto}
+  .day .bal.neg{color:var(--debit);font-weight:600}
+  .marks{display:flex;gap:2px;height:6px}
+  .marks i{width:5px;height:5px;border-radius:50%}
+  .m-sub{background:var(--amber)} .m-pay{background:var(--credit)} .m-bill{background:var(--debit)}
+
+  .cats{margin-top:30px}
+  .cat{border-bottom:1px solid var(--rule-soft);padding:11px 0}
+  .cat-top{display:flex;justify-content:space-between;align-items:baseline;font-size:15px}
+  .cat-top span{color:var(--muted);font-size:13px}
+  .cat-bar{height:5px;background:var(--paper-lit);border:1px solid var(--rule-soft);margin-top:6px}
+  .cat-bar span{display:block;height:100%}
+
+  .askbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--paper);border-top:2px solid var(--ink);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+  .askbar button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--ink);color:var(--paper-lit);border:0;font:inherit;font-size:15px;padding:12px 14px;cursor:pointer;text-align:left}
+  .askbar button span{color:#C9D6CE;font-size:13px}
+
+  .sheet-bg{position:fixed;inset:0;background:rgba(18,39,31,.45);display:none;z-index:20}
+  .sheet-bg.on{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--paper-lit);border-top:2px solid var(--ink);padding:18px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;display:none;max-width:560px;margin:0 auto}
+  .sheet.on{display:block}
+  .sheet.chat{display:none;flex-direction:column;height:88vh;overflow:hidden;padding-bottom:0}
+  .sheet.chat.on{display:flex}
+  .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px}
+  .x{background:none;border:0;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px}
+  .quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
+  .quick button{padding:11px 8px;background:var(--paper);border:1px solid var(--rule);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
+  .quick button b{display:block;font-weight:600}
+  .quick button em{font-style:normal;color:var(--muted);font-size:12px}
+  .row{display:flex;gap:8px;margin-top:10px}
+  label.f{display:block;margin-top:14px;font-size:13.5px;color:var(--ink-soft)}
+  label.f input{margin-top:5px}
+  input,select,textarea{font:inherit;font-size:16px;padding:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);width:100%;border-radius:0}
+  .toggle{display:flex;margin-top:10px;border:1px solid var(--rule)}
+  .toggle button{flex:1;padding:10px;background:var(--paper);border:0;border-right:1px solid var(--rule);font:inherit;font-size:14px;color:var(--ink);cursor:pointer}
+  .toggle button:last-child{border-right:0}
+  .toggle button[aria-pressed="true"]{background:var(--ink);color:var(--paper-lit)}
+  .btn{width:100%;padding:13px;margin-top:12px;background:var(--ink);color:var(--paper-lit);border:0;font:inherit;font-size:16px;cursor:pointer}
+  .btn[disabled]{opacity:.5;cursor:default}
+  .entry{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule-soft);font-size:14px;gap:8px}
+  .entry small{color:var(--muted);display:block;font-size:12px}
+  .entry button{background:none;border:0;color:var(--debit);font-size:18px;cursor:pointer;padding:0 6px}
+  .pill{display:inline-block;border:1px solid var(--amber);color:var(--amber);font-size:10.5px;padding:0 5px;margin-left:5px;vertical-align:1px}
+  .empty{color:var(--muted);font-size:14px;padding:10px 0}
+  .note{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
+  .foot button{background:none;border:0;color:var(--debit);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:0}
+  .loading{padding:40px 0;text-align:center;color:var(--muted)}
+
+  .chat-log{flex:1;overflow-y:auto;margin:0 -16px;padding:0 16px 8px;display:flex;flex-direction:column;gap:14px}
+  .msg{font-size:14.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+  .msg.you{align-self:flex-end;max-width:85%;background:var(--ink);color:var(--paper-lit);padding:9px 12px}
+  .msg.led{align-self:flex-start;max-width:92%;border-left:2px solid var(--rule);padding:1px 0 1px 11px;color:var(--ink)}
+  .msg.led.thinking{color:var(--muted);font-style:italic}
+  .msg.led.err{border-left-color:var(--debit);color:var(--debit)}
+  .posted{margin-top:9px;border:1px solid var(--rule-soft);background:var(--paper);padding:8px 10px;font-size:12.5px;color:var(--ink-soft)}
+  .posted div{padding:1px 0}
+  .posted .t{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .posted button{background:none;border:0;padding:4px 0 0;font:inherit;font-size:12.5px;color:var(--debit);text-decoration:underline;cursor:pointer}
+  .chat-chips{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 4px}
+  .chat-chips button{background:var(--paper);border:1px solid var(--rule);color:var(--ink-soft);font:inherit;font-size:12.5px;padding:6px 9px;cursor:pointer}
+  .chat-form{display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--rule);margin:0 -16px;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:var(--paper-lit)}
+  .chat-form textarea{flex:1;resize:none;height:44px;max-height:120px;line-height:1.35;padding:11px 10px}
+  .chat-form button{background:var(--ink);color:var(--paper-lit);border:0;font:inherit;font-size:14px;padding:12px 15px;cursor:pointer;white-space:nowrap}
+  .chat-form button.stop{background:var(--debit)}
+
+  @media (prefers-reduced-motion:no-preference){.sheet.on{animation:up .18s ease-out}}
+  @keyframes up{from{transform:translateY(14px)}to{transform:translateY(0)}}
+  :focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+</style>
+
+<div id="app" class="loading">Loading your ledger…</div>
+
+<div class="askbar">
+  <button id="askBtn">Ask the ledger <span>money questions, calendar edits →</span></button>
+</div>
+
+<div class="sheet-bg" id="bg"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+<div class="sheet chat" id="chatSheet" role="dialog" aria-modal="true" aria-label="Ask the ledger"></div>
+
+<script>
+const KEY = 'wilson-budget-sept2026';
+const DOC = 'budget/sept2026';
+
+const PLANS = {
+  comfortable: { food:437, save:100, skip:[] },
+  aggressive:  { food:337, save:200, skip:[1,3] }
+};
+const MEALS = {
+  canes:  { name:"Cane's",     cost:13.63 },
+  cfa:    { name:'CFA Frisco', cost:12.81 },
+  cfaUNT: { name:'CFA campus', cost:14.97 },
+  mcd:    { name:"McDonald's", cost:11.36 },
+  sonic:  { name:'Sonic',      cost:6.00  }
+};
+const DAYS = 30, FIRST_DOW = 2;   // Sept 2026: 30 days, 1st is a Tuesday
+const DOWNAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+const SEED_SCHED = [
+  {id:'s-apple',  day:1,  label:'Apple Music',        amt:6.99,  kind:'sub'},
+  {id:'s-yt',     day:5,  label:'YouTube',            amt:15.99, kind:'sub'},
+  {id:'s-capcut', day:5,  label:'CapCut',             amt:10,    kind:'sub'},
+  {id:'s-gpt',    day:8,  label:'ChatGPT',            amt:8.51,  kind:'sub'},
+  {id:'s-claude', day:14, label:'Claude',             amt:20,    kind:'sub'},
+  {id:'b-pp1',    day:10, label:'PayPal installment', amt:57.55, kind:'bill'},
+  {id:'b-pp2',    day:24, label:'PayPal installment', amt:57.55, kind:'bill'}
+];
+
+const CATS = [
+  {id:'food',  label:'Fast food',      color:'#A83220'},
+  {id:'subs',  label:'Subscriptions',  color:'#C98A22'},
+  {id:'games', label:'Games',          color:'#2C6B4C'},
+  {id:'bills', label:'Installment',    color:'#7A5230'},
+  {id:'extras',label:'Everything else',color:'#4A6B7A'}
+];
+const FOOD_ONLY_BUDGET = {games:0, extras:100};
+
+const now = new Date();
+const isSept = now.getFullYear()===2026 && now.getMonth()===8;
+const todayN = isSept ? now.getDate() : 0;
+
+let state = {
+  plan:'comfortable',
+  purchases:[],
+  balance:0,
+  balanceDay: todayN || 1,
+  gift:500, giftDay:1,
+  paycheck:170, payDays:[11,25],
+  autoMeals:true,
+  cushion:null,
+  sched: SEED_SCHED.map(s=>Object.assign({},s))
+};
+let openDay = null, addMode = 'spent', schedKind = 'sub';
+
+/* ---------- storage: Claude's artifact store, else this browser ---------- */
+let saveMode = 'none', lastSaved = null, dbDoc = null, writing = false;
+
+function boot(){
+  // read this browser first so the page is never sitting blank
+  try{
+    const t='__t'; localStorage.setItem(t,'1'); localStorage.removeItem(t);
+    saveMode='local';
+    const v = localStorage.getItem(KEY);
+    if(v) adopt(JSON.parse(v));
+  }catch(e){ saveMode='none'; }
+  render();
+  connect();
+}
+
+// upgrade to Claude's store if this page is open inside Claude
+async function connect(){
+  let cap = null;
+  try{
+    if (window.claude && typeof window.claude.use === 'function') cap = await window.claude.use('db');
+  }catch(e){ cap = null; }
+  if(!cap) return;
+  try{
+    const doc = cap.doc(DOC);
+    const snap = await doc.get();
+    if(snap && snap.exists) adopt(snap.data());
+    dbDoc = doc; saveMode = 'cloud';
+    if(!(snap && snap.exists)){ writing = true; await doc.set(strip(state)); writing = false; }
+    render();
+    doc.onSnapshot(s=>{
+      if (!s || !s.exists || s.hasPendingWrites || writing) return;
+      if (JSON.stringify(s.data()) === JSON.stringify(strip(state))) return;
+      adopt(s.data()); render();
+    }, ()=>{});
+  }catch(e){ writing = false; dbDoc = null; }
+}
+
+/* accepts both the old shape (startBalance, no sched) and the current one */
+function adopt(raw){
+  if(!raw || typeof raw !== 'object') return;
+  const s = Object.assign({}, raw);
+  if (s.startBalance !== undefined && s.balance === undefined){
+    s.balance = s.startBalance;
+    s.balanceDay = 0;              // an opening balance, before day 1
+  }
+  delete s.startBalance;
+  state = Object.assign(state, s);
+  if(!Array.isArray(state.sched) || !state.sched.length) state.sched = SEED_SCHED.map(x=>Object.assign({},x));
+  if(!Array.isArray(state.purchases)) state.purchases = [];
+  if(!Array.isArray(state.payDays)) state.payDays = [];
+  state.sched.forEach(x=>{ x.day=clampDay(x.day); x.amt=Math.abs(+x.amt)||0; x.kind = x.kind==='bill'?'bill':'sub'; });
+  state.purchases.forEach(p=>{ p.day=clampDay(p.day); p.amt=Math.abs(+p.amt)||0; if(!catOk(p.cat)) p.cat='extras'; });
+}
+function strip(s){ return JSON.parse(JSON.stringify(s)); }
+
+async function save(){
+  try{
+    if(saveMode==='cloud' && dbDoc){
+      writing = true;
+      await dbDoc.set(strip(state));
+      writing = false;
+    }
+    else if(saveMode==='local'){ localStorage.setItem(KEY, JSON.stringify(state)); }
+    else { throw new Error('no storage available'); }
+    lastSaved = new Date();
+    flagSave(true);
+  }catch(e){
+    writing = false;
+    console.error('Could not save', e);
+    flagSave(false);
+  }
+}
+function flagSave(ok){
+  const el = document.getElementById('saveState');
+  if(!el) return;
+  if(ok){
+    el.textContent = 'Saved ' + lastSaved.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+    el.style.color = 'var(--credit)';
+  } else {
+    el.textContent = "Not saving — storage is blocked here. Your entries will vanish when you close the tab.";
+    el.style.color = 'var(--debit)';
+  }
+}
+
+/* ---------------------------- the numbers ---------------------------- */
+function money(n){ return (n<0?'−$':'$') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function money0(n){ return (n<0?'−$':'$') + Math.round(Math.abs(n)).toLocaleString('en-US'); }
+function ord(d){ const s=['th','st','nd','rd'], v=d%100; return d+(s[(v-20)%10]||s[v]||s[0]); }
+function clampDay(d){ d = parseInt(d,10); return isFinite(d) ? Math.min(DAYS, Math.max(1,d)) : 1; }
+function catOk(c){ return CATS.some(x=>x.id===c); }
+function newId(){ return String(Date.now().toString(36)) + Math.random().toString(36).slice(2,6); }
+
+function anchorDay(){ const a = parseInt(state.balanceDay,10); return isFinite(a) ? Math.min(DAYS, Math.max(0,a)) : 0; }
+function cushion(){ return state.cushion==null ? PLANS[state.plan].save : Math.abs(+state.cushion)||0; }
+function isFuture(d){ return !isSept || d >= todayN; }
+function schedOn(d){ return state.sched.filter(x=>x.day===d); }
+function dayPurchases(d){ return state.purchases.filter(x=>x.day===d); }
+
+function plannedMeal(day){
+  const dow = (FIRST_DOW + day - 1) % 7;
+  if (PLANS[state.plan].skip.includes(dow)) return null;
+  if (dow === 2) return MEALS.cfaUNT;
+  return (day % 2 === 0) ? MEALS.canes : MEALS.cfa;
+}
+function autoMealFor(d){
+  if(!state.autoMeals || !isFuture(d)) return 0;
+  if(dayPurchases(d).some(x=>x.cat==='food')) return 0;
+  const m = plannedMeal(d);
+  return m ? m.cost : 0;
+}
+
+/* net change on one day. real=true counts only what has actually happened:
+   no assumed meals, no purchases you have merely planned. */
+function netFor(d, real){
+  let n = 0;
+  if(d===state.giftDay) n += state.gift;
+  if(state.payDays.includes(d)) n += state.paycheck;
+  schedOn(d).forEach(s=> n -= s.amt);
+  dayPurchases(d).forEach(p=>{ if(!(real && p.planned)) n -= p.amt; });
+  if(!real) n -= autoMealFor(d);
+  return n;
+}
+
+/* balance at the end of every day, anchored on the balance you recorded
+   (which is read as the start of its day) and walked both directions */
+function forecast(){
+  const rows = new Array(DAYS).fill(0);
+  const a = Math.max(1, anchorDay());
+  let bal = state.balance;
+  for(let d=a; d<=DAYS; d++){ bal += netFor(d,false); rows[d-1] = bal; }
+  bal = state.balance;
+  for(let d=a-1; d>=1; d--){ rows[d-1] = bal; bal -= netFor(d,false); }
+  return rows;
+}
+
+/* what is in the account at this moment */
+function balanceNow(){
+  if(todayN < 1) return state.balance;
+  let bal = state.balance;
+  for(let d=Math.max(1,anchorDay()); d<=Math.min(todayN,DAYS); d++) bal += netFor(d,true);
+  return bal;
+}
+
+/* what is free to spend, per day, across the days that are left */
+function allowance(){
+  const t = Math.max(1, Math.min(todayN||1, DAYS));
+  const started = todayN >= 1;
+  const daysLeft = Math.max(1, DAYS - t + 1);
+  let incoming = 0, fixed = 0, earmarked = 0;
+
+  if(started) dayPurchases(t).forEach(p=>{ if(p.planned) earmarked += p.amt; });
+  for(let d = started ? t+1 : 1; d<=DAYS; d++){
+    if(d===state.giftDay) incoming += state.gift;
+    if(state.payDays.includes(d)) incoming += state.paycheck;
+    schedOn(d).forEach(s=> fixed += s.amt);
+    dayPurchases(d).forEach(p=> earmarked += p.amt);
+  }
+  const free = balanceNow() + incoming - fixed - earmarked - cushion();
+  return { perDay: free/daysLeft, free, daysLeft, incoming, fixed, earmarked, target:cushion() };
+}
+function spentToday(){
+  if(todayN<1 || todayN>DAYS) return 0;
+  return dayPurchases(todayN).filter(p=>!p.planned).reduce((s,p)=>s+p.amt,0);
+}
+function schedTotal(kind, pastOnly){
+  return state.sched.filter(x=>x.kind===kind && (!pastOnly || x.day <= (todayN||0)))
+                    .reduce((s,x)=>s+x.amt,0);
+}
+function spentBy(c){
+  let s = state.purchases.filter(x=>x.cat===c && !x.planned).reduce((a,x)=>a+x.amt,0);
+  if(c==='subs')  s += schedTotal('sub', true);
+  if(c==='bills') s += schedTotal('bill', true);
+  return s;
+}
+function budgetFor(c){
+  if(c==='food')  return PLANS[state.plan].food;
+  if(c==='subs')  return schedTotal('sub', false);
+  if(c==='bills') return schedTotal('bill', false);
+  return FOOD_ONLY_BUDGET[c] || 0;
+}
+function totalSpent(){ return state.purchases.filter(x=>!x.planned).reduce((s,x)=>s+x.amt,0) + schedTotal('sub',true) + schedTotal('bill',true); }
+
+/* ------------------------------ the page ------------------------------ */
+function render(){
+  const fc = forecast();
+  const endBal = fc[DAYS-1];
+  const lowest = Math.min.apply(null, fc);
+  const lowDay = fc.indexOf(lowest)+1;
+  const now$ = balanceNow();
+  const al = allowance();
+  const today$ = spentToday();
+  const income = state.balance + state.gift + state.paycheck*state.payDays.length;
+
+  let bar='';
+  CATS.forEach(c=>{
+    const w = Math.min(100,(spentBy(c.id)/Math.max(income,1))*100);
+    if(w>0) bar += '<span style="width:'+w+'%;background:'+c.color+'"></span>';
+  });
+
+  let warn = '';
+  if(now$ < 0)
+    warn = '<div class="warn">Your account is showing '+money(now$)+'. Nothing else should go out until money lands.</div>';
+  else if(al.perDay < 0)
+    warn = '<div class="warn">There is no room left: what is already committed for the rest of September runs '+money(-al.free)+' past what you have. Cut something planned, or lower the cushion.</div>';
+  else if(lowest < 0)
+    warn = '<div class="warn">This plan runs you dry around the '+ord(lowDay)+' — projected '+money(lowest)+'. Move something later or spend less before then.</div>';
+  else if(endBal < al.target)
+    warn = '<div class="warn">You would finish with '+money(endBal)+', short of your '+money0(al.target)+' cushion by '+money(al.target-endBal)+'.</div>';
+
+  let cal='';
+  for(let i=0;i<FIRST_DOW;i++) cal += '<div class="day blank"></div>';
+  for(let d=1; d<=DAYS; d++){
+    const pur = dayPurchases(d);
+    const daySpent = pur.reduce((s,x)=>s+x.amt,0) + autoMealFor(d);
+    const meal = plannedMeal(d);
+    let marks='';
+    if(schedOn(d).some(s=>s.kind==='sub'))  marks += '<i class="m-sub"></i>';
+    if(schedOn(d).some(s=>s.kind==='bill')) marks += '<i class="m-bill"></i>';
+    if(d===state.giftDay || state.payDays.includes(d)) marks += '<i class="m-pay"></i>';
+    const b = fc[d-1];
+    cal += '<button class="day'+(todayN===d?' today':'')+(todayN&&d<todayN?' past':'')+(b<0?' neg':'')+'" data-day="'+d+'">'
+      + '<span class="n">'+d+'</span>'
+      + '<span class="marks">'+marks+'</span>'
+      + (daySpent ? '<span class="spent">'+money0(daySpent)+'</span>'
+                  : meal ? '<span class="planned">'+esc(meal.name.split(' ')[0])+'</span>' : '')
+      + '<span class="bal'+(b<0?' neg':'')+'">'+money0(b)+'</span></button>';
+  }
+
+  let cats='';
+  CATS.forEach(c=>{
+    const s = spentBy(c.id), bd = budgetFor(c.id);
+    const pct = bd ? Math.min(100,(s/bd)*100) : (s>0?100:0);
+    cats += '<div class="cat"><div class="cat-top"><b>'+c.label+'</b>'
+      + '<span>'+money(s)+(bd?' of '+money0(bd):'')+'</span></div>'
+      + '<div class="cat-bar"><span style="width:'+pct+'%;background:'+(bd&&s>bd?'#A83220':c.color)+'"></span></div></div>';
+  });
+
+  const asOf = anchorDay()===0 ? 'the start of the month' : 'the start of the '+ord(anchorDay());
+  const dayWord = al.daysLeft===1 ? 'today, the last day' : 'each of the '+al.daysLeft+' days left';
+  const todayPct = al.perDay>0 ? Math.min(100,(today$/al.perDay)*100) : (today$>0?100:0);
+
+  const app = document.getElementById('app');
+  app.className='';
+  app.innerHTML =
+    '<div class="hero">'
+    + '<div class="hero-top"><div><h1>September 2026</h1>'
+    + '<div class="sub">'+(todayN? DOWNAMES[(FIRST_DOW+todayN-1)%7]+' the '+ord(todayN) : 'not started yet')+' · '+money0(income)+' to work with</div></div>'
+    + '<button class="edit-btn" id="editBtn">Edit month</button></div>'
+
+    + '<div class="figure"><div class="fig-label">In the account right now</div>'
+    + '<div class="big'+(now$<0?' over':'')+'">'+money(now$)+'</div>'
+    + '<div class="fig-note">Carried from the '+money(state.balance)+' you recorded at '+asOf
+    + ', through every real charge and deposit since. <button class="link" id="balBtn">Update the balance</button></div></div>'
+
+    + '<div class="figure"><div class="fig-label">Free to spend</div>'
+    + '<div class="big second'+(al.perDay<0?' over':'')+'">'+money(al.perDay)+'</div>'
+    + '<div class="fig-note">for '+dayWord+' — that is '+money0(al.free)+' loose, after <b>'+money0(al.fixed)+'</b> of bills and subscriptions still to come, <b>'+money0(al.incoming)+'</b> landing'
+    + (al.earmarked>0 ? ', <b>'+money0(al.earmarked)+'</b> already promised to things you planned' : '')
+    + ', and a <b>'+money0(al.target)+'</b> cushion to finish the month on.</div>'
+    + (todayN ? '<div class="today-line"><div class="tl-top"><span>Spent today</span><span>'+money(today$)+' of '+money(Math.max(al.perDay,0))+'</span></div>'
+        + '<div class="tl-bar"><span class="'+(today$>al.perDay?'over':'')+'" style="width:'+todayPct+'%"></span></div></div>' : '')
+    + '</div>'
+
+    + '<div class="split">'
+    + '<div><b class="'+(endBal<0?'over':'')+'">'+money0(endBal)+'</b><small>left on the 30th, if the plan holds</small></div>'
+    + '<div><b class="'+(lowest<0?'over':'')+'">'+money0(lowest)+'</b><small>lowest point, the '+ord(lowDay)+'</small></div>'
+    + '<div><b>'+money0(totalSpent())+'</b><small>gone so far this month</small></div></div>'
+    + '<div class="bar">'+bar+'</div>'
+    + '<div class="legend">'+CATS.map(c=>'<span><i style="background:'+c.color+'"></i>'+c.label+'</span>').join('')+'</div>'
+    + warn
+    + '</div>'
+
+    + '<div class="plan-switch" role="group" aria-label="Budget plan">'
+    + '<button data-plan="comfortable" aria-pressed="'+(state.plan==='comfortable')+'">Comfortable · 7 meals/wk</button>'
+    + '<button data-plan="aggressive" aria-pressed="'+(state.plan==='aggressive')+'">Aggressive · 5 meals/wk</button></div>'
+
+    + '<div class="cal"><h2>The month</h2>'
+    + '<div class="dow"><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div></div>'
+    + '<div class="grid">'+cal+'</div>'
+    + '<div class="legend" style="margin-top:12px">'
+    + '<span><i style="background:#2C6B4C;border-radius:50%"></i>money in</span>'
+    + '<span><i style="background:#C98A22;border-radius:50%"></i>subscription</span>'
+    + '<span><i style="background:#A83220;border-radius:50%"></i>installment</span></div>'
+    + '<div class="note">The small number on each day is what you would have left after it. Tap a day to log spending, plan something, or put a bill on it.</div></div>'
+
+    + '<div class="cats"><h2>Where it went</h2>'+cats+'</div>'
+
+    + '<div class="foot">'+plural(state.purchases.length,'entry','entries')+' logged · '+plural(state.sched.length,'repeating charge','repeating charges')+''
+    + '<div id="saveState" style="margin-top:4px">'
+    + (saveMode==='none' ? "Not saving — storage is blocked here. Your entries will vanish when you close the tab."
+       : (lastSaved ? 'Saved ' + lastSaved.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : 'Saving is on'))
+    + '</div><button id="reset" style="margin-top:6px">Clear everything and start over</button></div>';
+
+  document.querySelectorAll('.day[data-day]').forEach(el=> el.onclick = ()=> openSheet(+el.dataset.day));
+  document.querySelectorAll('[data-plan]').forEach(el=>
+    el.onclick = ()=>{ state.plan = el.dataset.plan; save(); render(); });
+  document.getElementById('editBtn').onclick = openSettings;
+  document.getElementById('balBtn').onclick = openSettings;
+  document.getElementById('reset').onclick = async ()=>{
+    if(!confirm('Delete every entry for September?')) return;
+    state.purchases=[]; await save(); render();
+  };
+}
+function plural(n,one,many){ return n+' '+(n===1?one:many); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ------------------------------ sheets ------------------------------ */
+function openSettings(){
+  openDay = null;
+  document.getElementById('sheet').innerHTML =
+    '<div class="sheet-head"><h2>Edit the month</h2><button class="x" id="close" aria-label="Close">×</button></div>'
+    + '<label class="f">What your account holds'
+    + '<input id="s_bal" type="number" inputmode="decimal" step="0.01" value="'+state.balance+'"></label>'
+    + '<label class="f">Read as the start of which day (1–30)'
+    + '<input id="s_balday" type="number" min="0" max="30" value="'+anchorDay()+'"></label>'
+    + '<div class="note" id="balPreview"></div>'
+    + '<label class="f">Monthly gift from mom'
+    + '<input id="s_gift" type="number" inputmode="decimal" step="0.01" value="'+state.gift+'"></label>'
+    + '<label class="f">Day it lands'
+    + '<input id="s_giftday" type="number" min="1" max="30" value="'+state.giftDay+'"></label>'
+    + '<label class="f">Each Lids paycheck (estimate)'
+    + '<input id="s_pay" type="number" inputmode="decimal" step="0.01" value="'+state.paycheck+'"></label>'
+    + '<label class="f">Payday dates, comma separated'
+    + '<input id="s_paydays" type="text" value="'+state.payDays.join(', ')+'"></label>'
+    + '<label class="f">Cushion to finish the month with'
+    + '<input id="s_cushion" type="number" inputmode="decimal" step="1" value="'+cushion()+'"></label>'
+    + '<div class="note" style="margin-top:16px">Count planned meals in the forecast?</div>'
+    + '<div class="toggle">'
+    + '<button data-meals="1" aria-pressed="'+state.autoMeals+'">Yes, assume I eat out</button>'
+    + '<button data-meals="0" aria-pressed="'+(!state.autoMeals)+'">No, only what I log</button></div>'
+    + '<button class="btn" id="saveSettings">Save month</button>';
+  showSheet('sheet');
+  document.getElementById('close').onclick = closeSheet;
+  document.querySelectorAll('[data-meals]').forEach(el=> el.onclick = ()=>{
+    state.autoMeals = el.dataset.meals==='1'; save(); openSettings();
+  });
+
+  const preview = ()=>{
+    const b = parseFloat(document.getElementById('s_bal').value)||0;
+    const d = Math.min(30,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
+    const keep = {balance:state.balance, balanceDay:state.balanceDay};
+    state.balance = b; state.balanceDay = d;
+    const n = balanceNow();
+    state.balance = keep.balance; state.balanceDay = keep.balanceDay;
+    document.getElementById('balPreview').textContent =
+      todayN ? 'That leaves ' + money(n) + ' in the account right now, once everything logged since is taken off. Use 0 for a balance from before the 1st.'
+             : 'September has not started, so this is your opening balance.';
+  };
+  preview();
+  document.getElementById('s_bal').oninput = preview;
+  document.getElementById('s_balday').oninput = preview;
+
+  document.getElementById('saveSettings').onclick = async ()=>{
+    state.balance = parseFloat(document.getElementById('s_bal').value)||0;
+    state.balanceDay = Math.min(30,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
+    state.gift = parseFloat(document.getElementById('s_gift').value)||0;
+    state.giftDay = clampDay(document.getElementById('s_giftday').value);
+    state.paycheck = parseFloat(document.getElementById('s_pay').value)||0;
+    state.payDays = document.getElementById('s_paydays').value.split(',')
+      .map(x=>parseInt(x.trim())).filter(x=>x>=1&&x<=30);
+    state.cushion = parseFloat(document.getElementById('s_cushion').value)||0;
+    await save(); closeSheet(); render();
+  };
+}
+
+function openSheet(day){
+  openDay = day; addMode = isFuture(day) ? 'planned' : 'spent';
+  drawSheet();
+}
+function drawSheet(){
+  const day = openDay, fc = forecast();
+  const meal = plannedMeal(day);
+  const pur = dayPurchases(day);
+  const dow = DOWNAMES[(FIRST_DOW+day-1)%7];
+  const bal = fc[day-1];
+
+  let sched = '';
+  if(day===state.giftDay) sched += entryRow("Mom's gift",'money in',state.gift,true);
+  if(state.payDays.includes(day)) sched += entryRow('Lids paycheck','money in',state.paycheck,true);
+  schedOn(day).forEach(s=>
+    sched += entryRow(s.label, s.kind==='bill'?'installment':'subscription', s.amt, false, s.id));
+  const am = autoMealFor(day);
+  if(am) sched += entryRow(meal.name,'assumed meal, not logged',am,false);
+
+  const logged = pur.length
+    ? pur.map(x=>'<div class="entry"><div>'+esc(x.name)+(x.planned?'<span class="pill">planned</span>':'')
+        + '<small>'+CATS.find(c=>c.id===x.cat).label+'</small></div>'
+        + '<div>'+money(x.amt)+' <button data-del="'+x.id+'" aria-label="Delete">×</button></div></div>').join('')
+    : '<div class="empty">Nothing logged yet.</div>';
+
+  const isBill = addMode==='bill';
+  document.getElementById('sheet').innerHTML =
+    '<div class="sheet-head"><div><h2>'+dow+' the '+day+'</h2>'
+    + '<div class="sub" style="color:'+(bal<0?'var(--debit)':'var(--muted)')+'">'+money(bal)+' left after this day</div></div>'
+    + '<button class="x" id="close" aria-label="Close">×</button></div>'
+    + sched
+    + '<h3 style="font-size:15px;margin:18px 0 0">Add something</h3>'
+    + '<div class="toggle">'
+    + '<button data-mode="spent" aria-pressed="'+(addMode==='spent')+'">Already spent</button>'
+    + '<button data-mode="planned" aria-pressed="'+(addMode==='planned')+'">Planning to</button>'
+    + '<button data-mode="bill" aria-pressed="'+isBill+'">Repeats</button></div>'
+    + (isBill ? '' : '<div class="quick">'
+        + Object.keys(MEALS).map(k=>'<button data-quick="'+k+'"><b>'+esc(MEALS[k].name)+'</b><em>'+money(MEALS[k].cost)+'</em></button>').join('')
+        + '</div>')
+    + '<div class="row"><input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="Amount">'
+    + (isBill
+        ? '<select id="kind"><option value="sub">Subscription</option><option value="bill" '+(schedKind==='bill'?'selected':'')+'>Installment</option></select>'
+        : '<select id="cat">'+CATS.map(c=>'<option value="'+c.id+'">'+c.label+'</option>').join('')+'</select>')
+    + '</div>'
+    + '<input id="name" type="text" placeholder="'+(isBill?'What is the charge?':'What is it?')+'" style="margin-top:8px">'
+    + '<button class="btn" id="add">'+(isBill?'Put it on the '+ord(day):(addMode==='planned'?'Add to the plan':'Log it'))+'</button>'
+    + '<h3 style="font-size:15px;margin:20px 0 0">On this day</h3>'
+    + logged;
+
+  showSheet('sheet');
+  document.getElementById('close').onclick = closeSheet;
+  document.querySelectorAll('[data-mode]').forEach(el=> el.onclick = ()=>{ addMode = el.dataset.mode; drawSheet(); });
+  document.querySelectorAll('[data-quick]').forEach(el=> el.onclick = ()=>{
+    const m = MEALS[el.dataset.quick]; addPurchase(m.name, m.cost, 'food');
+  });
+  document.getElementById('add').onclick = async ()=>{
+    const a = parseFloat(document.getElementById('amt').value);
+    if(!a||a<=0){ document.getElementById('amt').focus(); return; }
+    const nm = document.getElementById('name').value.trim();
+    if(isBill){
+      schedKind = document.getElementById('kind').value==='bill' ? 'bill' : 'sub';
+      state.sched.push({id:newId(), day:openDay, label:nm||(schedKind==='bill'?'Installment':'Subscription'), amt:a, kind:schedKind});
+      await save(); render(); drawSheet();
+    } else {
+      addPurchase(nm||'Purchase', a, document.getElementById('cat').value);
+    }
+  };
+  document.querySelectorAll('[data-del]').forEach(el=> el.onclick = async ()=>{
+    state.purchases = state.purchases.filter(x=>x.id!==el.dataset.del);
+    await save(); render(); drawSheet();
+  });
+  document.querySelectorAll('[data-delsched]').forEach(el=> el.onclick = async ()=>{
+    state.sched = state.sched.filter(x=>x.id!==el.dataset.delsched);
+    await save(); render(); drawSheet();
+  });
+}
+function entryRow(label,sub,amt,inbound,delId){
+  return '<div class="entry"><div>'+esc(label)+'<small>'+sub+'</small></div>'
+    + '<div style="color:'+(inbound?'var(--credit)':'var(--debit)')+'">'+(inbound?'+':'−')+money(amt)
+    + (delId?' <button data-delsched="'+delId+'" aria-label="Remove">×</button>':'')
+    + '</div></div>';
+}
+function showSheet(id){
+  document.getElementById(id).classList.add('on');
+  document.getElementById('bg').classList.add('on');
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('on');
+  document.getElementById('chatSheet').classList.remove('on');
+  document.getElementById('bg').classList.remove('on');
+  openDay = null;
+}
+async function addPurchase(name, amt, cat){
+  state.purchases.push({ id:newId(), day:openDay, name, amt, cat, planned: addMode==='planned' });
+  await save(); render(); drawSheet();
+}
+document.getElementById('bg').onclick = closeSheet;
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSheet(); });
+
+/* --------------------------- ask the ledger --------------------------- */
+let sampleFn = null, sampleTried = false, canTools = false;
+let chat = [];          // turns sent to Claude
+let bubbles = [];       // what is drawn in the sheet
+let pending = [];       // changes made during the turn in flight
+let ctl = null, busy = false;
+
+async function ensureSample(){
+  if(sampleTried) return sampleFn;
+  sampleTried = true;
+  try{
+    if(!(window.claude && typeof window.claude.use === 'function')) return null;
+    sampleFn = await window.claude.use('sample');
+    if(sampleFn){
+      const lim = await sampleFn.limits().catch(()=>null);
+      canTools = !!(lim && lim.tools);
+    }
+  }catch(e){ sampleFn = null; }
+  return sampleFn;
+}
+
+function note(text){ pending.push(text); }
+async function commit(){ await save(); render(); }
+
+const TOOLS = [
+{
+  name:'log_entry',
+  description:'Put a purchase on a day of September. Use planned=true for something he intends to buy but has not yet, planned=false for money already gone. Returns the new entry id.',
+  inputSchema:{type:'object',properties:{
+    day:{type:'integer',description:'Day of September, 1-30'},
+    name:{type:'string',description:'Short label, e.g. "Cane\'s"'},
+    amount:{type:'number',description:'Dollars, positive'},
+    category:{type:'string',enum:['food','subs','games','bills','extras']},
+    planned:{type:'boolean',description:'true = intends to spend it, false = already spent'}
+  },required:['day','name','amount','category']},
+  async execute(i){
+    const day = clampDay(i.day);
+    const amt = Math.abs(Number(i.amount));
+    if(!isFinite(amt) || amt<=0) throw new Error('amount must be a positive number of dollars');
+    const cat = catOk(i.category) ? i.category : 'extras';
+    const planned = i.planned === true || i.planned === 'true';
+    const e = {id:newId(), day, name:String(i.name||'Purchase').slice(0,40), amt, cat, planned};
+    state.purchases.push(e);
+    note((planned?'Planned ':'Logged ')+e.name+' — '+money(amt)+' on the '+ord(day));
+    await commit();
+    return 'Added id '+e.id+': '+e.name+' '+money(amt)+' on day '+day+(planned?' (planned)':'');
+  }
+},
+{
+  name:'remove_entry',
+  description:'Delete one entry by its id — either a logged/planned purchase or a repeating charge (subscription or installment). Ids are listed in the ledger snapshot.',
+  inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id']},
+  async execute(i){
+    const id = String(i.id||'');
+    const p = state.purchases.find(x=>x.id===id);
+    if(p){
+      state.purchases = state.purchases.filter(x=>x.id!==id);
+      note('Removed '+p.name+' — '+money(p.amt)+' from the '+ord(p.day));
+      await commit();
+      return 'Removed purchase '+p.name;
+    }
+    const s = state.sched.find(x=>x.id===id);
+    if(s){
+      state.sched = state.sched.filter(x=>x.id!==id);
+      note('Took '+s.label+' — '+money(s.amt)+' off the '+ord(s.day));
+      await commit();
+      return 'Removed repeating charge '+s.label;
+    }
+    throw new Error('no entry with id '+id);
+  }
+},
+{
+  name:'move_entry',
+  description:'Move an existing entry (a purchase or a repeating charge) to a different day of September, by id.',
+  inputSchema:{type:'object',properties:{
+    id:{type:'string'}, day:{type:'integer',description:'Day to move it to, 1-30'}
+  },required:['id','day']},
+  async execute(i){
+    const id = String(i.id||''), day = clampDay(i.day);
+    const it = state.purchases.find(x=>x.id===id) || state.sched.find(x=>x.id===id);
+    if(!it) throw new Error('no entry with id '+id);
+    const was = it.day; it.day = day;
+    note('Moved '+(it.name||it.label)+' from the '+ord(was)+' to the '+ord(day));
+    await commit();
+    return 'Moved to day '+day;
+  }
+},
+{
+  name:'set_repeating',
+  description:'Add or change a repeating charge on a day: a subscription (kind "sub") or an installment/bill (kind "bill"). Pass an existing id to change one, or leave id out to add a new one.',
+  inputSchema:{type:'object',properties:{
+    id:{type:'string',description:'Existing charge id, to change it'},
+    day:{type:'integer',description:'Day of September, 1-30'},
+    label:{type:'string'},
+    amount:{type:'number'},
+    kind:{type:'string',enum:['sub','bill']}
+  },required:['day']},
+  async execute(i){
+    const day = clampDay(i.day);
+    const id = i.id ? String(i.id) : null;
+    let s = id ? state.sched.find(x=>x.id===id) : null;
+    if(id && !s) throw new Error('no repeating charge with id '+id);
+    if(s){
+      const was = s.day;
+      s.day = day;
+      if(i.label) s.label = String(i.label).slice(0,40);
+      if(i.amount != null && isFinite(Number(i.amount))) s.amt = Math.abs(Number(i.amount));
+      if(i.kind==='bill'||i.kind==='sub') s.kind = i.kind;
+      note('Updated '+s.label+' — '+money(s.amt)+(was!==day?', now on the '+ord(day):' on the '+ord(day)));
+      await commit();
+      return 'Updated '+s.label+' on day '+day;
+    }
+    const amt = Math.abs(Number(i.amount));
+    if(!isFinite(amt) || amt<=0) throw new Error('a new repeating charge needs a positive amount');
+    s = {id:newId(), day, label:String(i.label||'Charge').slice(0,40), amt, kind: i.kind==='bill'?'bill':'sub'};
+    state.sched.push(s);
+    note('Added '+s.label+' — '+money(amt)+' on the '+ord(day));
+    await commit();
+    return 'Added id '+s.id+': '+s.label+' on day '+day;
+  }
+},
+{
+  name:'set_money',
+  description:'Change the month settings: account balance and the day it was true, mom\'s gift, paycheck size and paydays, which plan is active, whether meals are assumed, and the cushion to end the month with. Only pass the fields being changed.',
+  inputSchema:{type:'object',properties:{
+    balance:{type:'number',description:'What the account holds'},
+    balance_day:{type:'integer',description:'Day that balance was true, read as the start of that day; 0 means before the 1st'},
+    gift:{type:'number'}, gift_day:{type:'integer'},
+    paycheck:{type:'number'},
+    pay_days:{type:'array',items:{type:'integer'},description:'Days paychecks land'},
+    plan:{type:'string',enum:['comfortable','aggressive']},
+    assume_meals:{type:'boolean'},
+    cushion:{type:'number',description:'Dollars to finish the month with'}
+  }},
+  async execute(i){
+    let n = 0;
+    if(i.balance != null && isFinite(Number(i.balance))){
+      state.balance = Number(i.balance);
+      state.balanceDay = (i.balance_day != null && isFinite(Number(i.balance_day)))
+        ? Math.min(DAYS,Math.max(0,parseInt(i.balance_day,10))) : (todayN||0);
+      note('Balance set to '+money(state.balance)+' as of the start of the '+ord(state.balanceDay||1)); n++;
+    } else if(i.balance_day != null && isFinite(Number(i.balance_day))){
+      state.balanceDay = Math.min(DAYS,Math.max(0,parseInt(i.balance_day,10)));
+      note('Balance now read as of the start of the '+ord(state.balanceDay||1)); n++;
+    }
+    if(i.gift != null && isFinite(Number(i.gift))){ state.gift = Math.abs(Number(i.gift)); note("Mom's gift set to "+money(state.gift)); n++; }
+    if(i.gift_day != null){ state.giftDay = clampDay(i.gift_day); note("Mom's gift moved to the "+ord(state.giftDay)); n++; }
+    if(i.paycheck != null && isFinite(Number(i.paycheck))){ state.paycheck = Math.abs(Number(i.paycheck)); note('Paycheck set to '+money(state.paycheck)); n++; }
+    if(Array.isArray(i.pay_days)){
+      const d = i.pay_days.map(x=>parseInt(x,10)).filter(x=>x>=1&&x<=DAYS);
+      if(d.length){ state.payDays = d; note('Paydays set to the '+d.map(ord).join(' and the ')); n++; }
+    }
+    if(i.plan==='comfortable'||i.plan==='aggressive'){ state.plan = i.plan; note('Switched to the '+i.plan+' plan'); n++; }
+    if(typeof i.assume_meals === 'boolean'){ state.autoMeals = i.assume_meals; note(i.assume_meals?'Assuming meals out again':'No longer assuming meals out'); n++; }
+    if(i.cushion != null && isFinite(Number(i.cushion))){ state.cushion = Math.abs(Number(i.cushion)); note('Cushion set to '+money0(state.cushion)); n++; }
+    if(!n) throw new Error('nothing to change — pass at least one field');
+    await commit();
+    return 'Updated. Balance '+money(state.balance)+', in the account now '+money(balanceNow())+', free per day '+money(allowance().perDay);
+  }
+}];
+
+/* the whole ledger, in words, sent fresh with every question */
+function snapshot(){
+  const al = allowance(), fc = forecast();
+  const lowest = Math.min.apply(null, fc), lowDay = fc.indexOf(lowest)+1;
+  const L = [];
+  L.push('LEDGER — September 2026 (30 days, the 1st is a Tuesday).');
+  L.push('Today is '+(todayN ? DOWNAMES[(FIRST_DOW+todayN-1)%7]+' September '+todayN : 'outside September')+'.');
+  L.push('In the account right now: '+money(balanceNow())+' (recorded balance '+money(state.balance)+' as of the start of the '+ord(anchorDay()||1)+').');
+  L.push('Free to spend: '+money(al.perDay)+' a day across '+al.daysLeft+' days left. That is '+money(al.free)+' loose after '
+    + money(al.fixed)+' of bills and subscriptions still to come, '+money(al.incoming)+' of income still to land, '
+    + money(al.earmarked)+' already promised to planned purchases, and a '+money(al.target)+' cushion to end the month on.');
+  L.push('Projected on the 30th: '+money(fc[DAYS-1])+'. Lowest point: '+money(lowest)+' on the '+ord(lowDay)+'.');
+  L.push('Spent today: '+money(spentToday())+'. Spent this month: '+money(totalSpent())+'.');
+  L.push('Plan: '+state.plan+' ('+(state.plan==='comfortable'?'7':'5')+' meals a week, '+money0(PLANS[state.plan].food)+' food budget). Assumed meals: '+(state.autoMeals?'on':'off')+'.');
+  L.push('Income: mom sends '+money(state.gift)+' on the '+ord(state.giftDay)+'; Lids pays '+money(state.paycheck)+' on the '+state.payDays.map(ord).join(' and the ')+'.');
+  L.push('');
+  L.push('REPEATING CHARGES (id · day · label · amount · kind):');
+  state.sched.slice().sort((a,b)=>a.day-b.day).forEach(s=>
+    L.push('  '+s.id+' · '+s.day+' · '+s.label+' · '+money(s.amt)+' · '+(s.kind==='bill'?'installment':'subscription')));
+  L.push('');
+  L.push('ENTRIES (id · day · name · amount · category · spent|planned):');
+  if(!state.purchases.length) L.push('  none yet');
+  state.purchases.slice().sort((a,b)=>a.day-b.day).forEach(p=>
+    L.push('  '+p.id+' · '+p.day+' · '+p.name+' · '+money(p.amt)+' · '+p.cat+' · '+(p.planned?'planned':'spent')));
+  L.push('');
+  L.push('USUAL MEAL PRICES: '+Object.keys(MEALS).map(k=>MEALS[k].name+' '+money(MEALS[k].cost)).join(', ')+'.');
+  return L.join('\n');
+}
+
+function rulesTurn(){
+  return 'You are the assistant inside Chris\'s September budget ledger — a single-month spending app he keeps on his phone. '
+  + 'Answer his questions about his money and, when he asks for a change, make it with the tools instead of telling him how.\n\n'
+  + 'How to answer: two or three sentences, plain and direct, like a friend who can see the numbers. No headings, no bullet lists '
+  + 'unless he asks for a list, no markdown bold. Lead with the number he asked for. Never invent figures — every number you need is below, '
+  + 'or comes back from a tool. Dollars to the cent when it matters, rounded when it does not.\n\n'
+  + 'Judgement: "can I afford X" means compare X against the free-to-spend-per-day figure and what it does to the projected balance on the 30th '
+  + 'and the lowest point. Say plainly when something breaks the cushion or runs him negative. If he asks you to change something that would '
+  + 'run him dry, make the change he asked for and say what it costs him.\n\n'
+  + 'Changes: days are 1-30 of September 2026. Categories are food, subs, games, bills, extras. Use log_entry for a purchase, '
+  + 'set_repeating for a subscription or installment, move_entry and remove_entry by the ids listed below, set_money for balance, income, '
+  + 'plan, cushion. Confirm what you changed in your reply — he sees the calendar update behind this sheet. Ask first only if the request is '
+  + 'genuinely ambiguous about which entry or which day.\n\n'
+  + snapshot();
+}
+
+const CHIPS = [
+  'How much can I spend today?',
+  'Can I afford a $60 game this week?',
+  'Log Cane\'s for today',
+  'Move my Claude subscription to the 20th'
+];
+
+function buildChat(){
+  const sheet = document.getElementById('chatSheet');
+  sheet.innerHTML =
+    '<div class="sheet-head"><div><h2>Ask the ledger</h2>'
+    + '<div class="sub">It can see every number on this page — and change the calendar.</div></div>'
+    + '<button class="x" id="chatClose" aria-label="Close">×</button></div>'
+    + '<div class="chat-log" id="chatLog"></div>'
+    + '<form class="chat-form" id="chatForm">'
+    + '<textarea id="chatIn" rows="1" placeholder="Ask about your money…" aria-label="Your question"></textarea>'
+    + '<button type="submit" id="chatSend">Ask</button></form>';
+  document.getElementById('chatClose').onclick = closeSheet;
+  document.getElementById('chatForm').onsubmit = e=>{ e.preventDefault(); busy ? stopChat() : sendChat(); };
+  const box = document.getElementById('chatIn');
+  box.oninput = ()=>{ box.style.height='44px'; box.style.height=Math.min(120,box.scrollHeight)+'px'; };
+  box.onkeydown = e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); if(!busy) sendChat(); } };
+  paintChat();
+}
+
+function paintChat(){
+  const log = document.getElementById('chatLog');
+  if(!log) return;
+  let html = '';
+  bubbles.forEach((b,idx)=>{
+    if(b.who==='you'){ html += '<div class="msg you">'+esc(b.text)+'</div>'; return; }
+    const cls = 'msg led' + (b.thinking?' thinking':'') + (b.err?' err':'');
+    html += '<div class="'+cls+'">' + esc(b.thinking ? 'Reading your ledger…' : b.text);
+    if(b.changes && b.changes.length){
+      html += '<div class="posted"><div class="t">Posted to the ledger</div>'
+           + b.changes.map(c=>'<div>· '+esc(c)+'</div>').join('')
+           + (b.undo ? '<button data-undo="'+idx+'">Undo these changes</button>' : '<div style="color:var(--muted);padding-top:4px">Undone</div>')
+           + '</div>';
+    }
+    html += '</div>';
+  });
+  if(!bubbles.length){
+    html = '<div class="msg led">Ask me anything about September — what is left, what you can spend today, whether something fits. '
+      + 'I can also log a purchase, move a bill, or change your paydays.</div>'
+      + '<div class="chat-chips">'+CHIPS.map((c,i)=>'<button data-chip="'+i+'">'+esc(c)+'</button>').join('')+'</div>';
+  }
+  log.innerHTML = html;
+  log.scrollTop = log.scrollHeight;
+  log.querySelectorAll('[data-chip]').forEach(el=> el.onclick = ()=>{
+    document.getElementById('chatIn').value = CHIPS[+el.dataset.chip]; sendChat();
+  });
+  log.querySelectorAll('[data-undo]').forEach(el=> el.onclick = async ()=>{
+    const b = bubbles[+el.dataset.undo];
+    if(!b || !b.undo) return;
+    state = b.undo; b.undo = null;
+    await save(); render(); paintChat();
+  });
+}
+
+function errCopy(code){
+  switch(code){
+    case 'not_granted':    return 'You turned this down, so I cannot read the ledger for you. Reload the page to be asked again.';
+    case 'rate_limited':   return 'Too many questions at once — give it a minute and ask again.';
+    case 'prompt_too_large': return 'This ledger has grown too big to send in one piece. Clear out some old entries and try again.';
+    case 'session_expired': return 'Your Claude session expired. Sign in again and reload.';
+    case 'invalid_json':   return 'That answer came back garbled. Ask again.';
+    default:               return 'That did not go through. Try asking again.';
+  }
+}
+
+async function sendChat(){
+  if(busy) return;
+  const box = document.getElementById('chatIn');
+  const q = box.value.trim();
+  if(!q) return;
+  box.value=''; box.style.height='44px';
+
+  bubbles.push({who:'you', text:q});
+  const bub = {who:'ledger', text:'', thinking:true, changes:[]};
+  bubbles.push(bub);
+  paintChat();
+
+  const s = await ensureSample();
+  if(!s){
+    bub.thinking=false; bub.err=true;
+    bub.text = 'The assistant only runs while this ledger is open inside Claude. Everything else on the page works as usual.';
+    paintChat(); return;
+  }
+
+  const before = strip(state);
+  pending = [];
+  busy = true;
+  const send = document.getElementById('chatSend');
+  send.textContent = 'Stop'; send.classList.add('stop');
+  ctl = new AbortController();
+
+  chat.push({role:'user', content:q});
+  const turns = [{role:'user', content:rulesTurn()}].concat(chat.slice(-14));
+  const opts = { modelTier:'quick', cache:false, signal:ctl.signal,
+                 onText:({text})=>{ bub.thinking=false; bub.text=text; paintChat(); } };
+  if(canTools) opts.tools = TOOLS;
+
+  try{
+    const r = await s(turns, opts);
+    bub.text = r.text;
+    chat.push({role:'assistant', content:r.text});
+    if(r.truncated) bub.text += '\n\n(cut short — ask for less at a time)';
+  }catch(e){
+    if(e && e.code==='cancelled'){
+      bub.text = (e.text || '') + (e.text ? '\n\n(stopped)' : 'Stopped.');
+    } else {
+      bub.text = e && e.text ? e.text + '\n\n' + errCopy(e && e.code) : errCopy(e && e.code);
+      bub.err = !(e && e.text);
+    }
+    chat.pop();
+  }
+  bub.thinking = false;
+  if(pending.length){ bub.changes = pending.slice(); bub.undo = before; }
+  pending = [];
+  busy = false; ctl = null;
+  send.textContent = 'Ask'; send.classList.remove('stop');
+  paintChat(); render();
+}
+function stopChat(){ if(ctl) ctl.abort(); }
+
+document.getElementById('askBtn').onclick = ()=>{
+  buildChat();
+  showSheet('chatSheet');
+  const box = document.getElementById('chatIn');
+  if(box && window.matchMedia('(min-width:600px)').matches) box.focus();
+};
+
+boot();
+</script>
