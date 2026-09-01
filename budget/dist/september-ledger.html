@@ -52,6 +52,7 @@
   .split b{font-family:Georgia,serif;font-size:19px;font-weight:600;display:block}
   .split small{color:var(--muted);font-size:12.5px;line-height:1.3;display:block;margin-top:2px}
   .split b.over{color:var(--debit)}
+  .split b.up{color:var(--credit)}
   .bar{display:flex;height:16px;background:var(--paper-lit);border:1px solid var(--rule);margin-top:16px;overflow:hidden}
   .bar span{display:block;height:100%}
   .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:13px;color:var(--ink-soft)}
@@ -75,6 +76,7 @@
   .day.today{border:2px solid var(--amber);opacity:1}
   .day.neg{background:#F6E3DE}
   .day .spent{color:var(--debit);font-size:10px;line-height:1.1}
+  .day .earned{color:var(--credit);font-size:10px;line-height:1.1;font-weight:600}
   .day .planned{color:var(--muted);font-size:9px;line-height:1.1;text-align:center}
   .day .bal{font-size:9px;color:var(--ink-soft);line-height:1.1;margin-top:auto}
   .day .bal.neg{color:var(--debit);font-weight:600}
@@ -107,6 +109,19 @@
   .quick button{padding:11px 8px;background:var(--paper);border:1px solid var(--rule);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
   .quick button b{display:block;font-weight:600}
   .quick button em{font-style:normal;color:var(--muted);font-size:12px}
+  .quick button.newq{border-style:dashed;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;text-align:center}
+  .quick.editing button{border-color:var(--debit);color:var(--debit)}
+  .quick.editing button em{color:var(--debit)}
+  .quick.editing button.newq{border-color:var(--ink);color:var(--ink);border-style:solid}
+  .qedit{border:1px solid var(--rule);background:var(--paper);padding:11px 12px;margin-bottom:12px}
+
+  .inc-head{display:grid;grid-template-columns:56px 1fr 88px 26px;gap:6px;margin-top:12px;
+    font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .inc-row{display:grid;grid-template-columns:56px 1fr 88px 26px;gap:6px;align-items:center;margin-top:6px}
+  .inc-row input{padding:9px 7px;font-size:15px}
+  .inc-row button{background:none;border:0;color:var(--debit);font-size:19px;cursor:pointer;padding:0}
+  .addrow{width:100%;margin-top:8px;padding:10px;background:var(--paper);border:1px dashed var(--rule);
+    font:inherit;font-size:14px;color:var(--ink-soft);cursor:pointer}
   .row{display:flex;gap:8px;margin-top:10px}
   label.f{display:block;margin-top:14px;font-size:13.5px;color:var(--ink-soft)}
   label.f input{margin-top:5px}
@@ -187,6 +202,14 @@ const SEED_SCHED = [
   {id:'b-pp2',    day:24, label:'PayPal installment', amt:57.55, kind:'bill'}
 ];
 
+const SEED_INCOME = [
+  {id:'i-gift', day:1,  label:"Mom's gift",    amt:500},
+  {id:'i-pay1', day:11, label:'Lids paycheck', amt:170},
+  {id:'i-pay2', day:25, label:'Lids paycheck', amt:170}
+];
+const SEED_QUICK = Object.keys(MEALS).map((k,n)=>
+  ({id:'q-'+k, name:MEALS[k].name, amt:MEALS[k].cost, cat:'food', dir:'out'}));
+
 const CATS = [
   {id:'food',  label:'Fast food',      color:'#A83220'},
   {id:'subs',  label:'Subscriptions',  color:'#C98A22'},
@@ -202,16 +225,16 @@ const todayN = isSept ? now.getDate() : 0;
 
 let state = {
   plan:'comfortable',
-  purchases:[],
+  purchases:[],            // one-offs, money out or in
   balance:0,
   balanceDay: todayN || 1,
-  gift:500, giftDay:1,
-  paycheck:170, payDays:[11,25],
+  income: SEED_INCOME.map(s=>Object.assign({},s)),   // scheduled money in
+  sched: SEED_SCHED.map(s=>Object.assign({},s)),     // scheduled money out
+  quick: SEED_QUICK.map(s=>Object.assign({},s)),     // the one-tap buttons
   autoMeals:true,
-  cushion:null,
-  sched: SEED_SCHED.map(s=>Object.assign({},s))
+  cushion:null
 };
-let openDay = null, addMode = 'spent', schedKind = 'sub';
+let openDay = null, addDir = 'out', addWhen = 'spent', schedKind = 'sub', quickEdit = false;
 
 /* ---------- storage: Claude's artifact store, else this browser ---------- */
 let saveMode = 'none', lastSaved = null, dbDoc = null, writing = false, localOk = false;
@@ -266,11 +289,29 @@ function adopt(raw){
   }
   delete s.startBalance;
   state = Object.assign(state, s);
+
   if(!Array.isArray(state.sched) || !state.sched.length) state.sched = SEED_SCHED.map(x=>Object.assign({},x));
   if(!Array.isArray(state.purchases)) state.purchases = [];
-  if(!Array.isArray(state.payDays)) state.payDays = [];
+  if(!Array.isArray(state.quick)) state.quick = SEED_QUICK.map(x=>Object.assign({},x));
+
+  // one flat gift + one paycheck figure became editable income lines
+  if(!Array.isArray(state.income) || !state.income.length){
+    const inc = [];
+    if(+raw.gift) inc.push({id:'i-gift', day:clampDay(raw.giftDay||1), label:"Mom's gift", amt:Math.abs(+raw.gift)});
+    (Array.isArray(raw.payDays)?raw.payDays:[]).forEach((d,n)=>
+      inc.push({id:'i-pay'+(n+1), day:clampDay(d), label:'Lids paycheck', amt:Math.abs(+raw.paycheck)||0}));
+    state.income = inc.length ? inc : SEED_INCOME.map(x=>Object.assign({},x));
+  }
+  ['gift','giftDay','paycheck','payDays'].forEach(k=> delete state[k]);
+
   state.sched.forEach(x=>{ x.day=clampDay(x.day); x.amt=Math.abs(+x.amt)||0; x.kind = x.kind==='bill'?'bill':'sub'; });
-  state.purchases.forEach(p=>{ p.day=clampDay(p.day); p.amt=Math.abs(+p.amt)||0; if(!catOk(p.cat)) p.cat='extras'; });
+  state.income.forEach(x=>{ x.day=clampDay(x.day); x.amt=Math.abs(+x.amt)||0; x.label=String(x.label||'Money in'); });
+  state.quick.forEach(x=>{ x.amt=Math.abs(+x.amt)||0; x.dir = x.dir==='in'?'in':'out'; if(x.dir==='out' && !catOk(x.cat)) x.cat='extras'; });
+  state.purchases.forEach(p=>{
+    p.day=clampDay(p.day); p.amt=Math.abs(+p.amt)||0;
+    p.dir = p.dir==='in' ? 'in' : 'out';
+    if(p.dir==='out' && !catOk(p.cat)) p.cat='extras';
+  });
 }
 function strip(s){ return JSON.parse(JSON.stringify(s)); }
 
@@ -342,7 +383,11 @@ function anchorDay(){ const a = parseInt(state.balanceDay,10); return isFinite(a
 function cushion(){ return state.cushion==null ? PLANS[state.plan].save : Math.abs(+state.cushion)||0; }
 function isFuture(d){ return !isSept || d >= todayN; }
 function schedOn(d){ return state.sched.filter(x=>x.day===d); }
+function incomeOn(d){ return state.income.filter(x=>x.day===d); }
 function dayPurchases(d){ return state.purchases.filter(x=>x.day===d); }
+function isIn(p){ return p.dir === 'in'; }
+function catLabel(id){ const c = CATS.find(x=>x.id===id); return c ? c.label : 'Money in'; }
+function incomeTotal(){ return state.income.reduce((s,x)=>s+x.amt,0); }
 
 function plannedMeal(day){
   const dow = (FIRST_DOW + day - 1) % 7;
@@ -352,7 +397,7 @@ function plannedMeal(day){
 }
 function autoMealFor(d){
   if(!state.autoMeals || !isFuture(d)) return 0;
-  if(dayPurchases(d).some(x=>x.cat==='food')) return 0;
+  if(dayPurchases(d).some(x=>x.cat==='food' && !isIn(x))) return 0;
   const m = plannedMeal(d);
   return m ? m.cost : 0;
 }
@@ -361,10 +406,9 @@ function autoMealFor(d){
    no assumed meals, no purchases you have merely planned. */
 function netFor(d, real){
   let n = 0;
-  if(d===state.giftDay) n += state.gift;
-  if(state.payDays.includes(d)) n += state.paycheck;
+  incomeOn(d).forEach(i=> n += i.amt);
   schedOn(d).forEach(s=> n -= s.amt);
-  dayPurchases(d).forEach(p=>{ if(!(real && p.planned)) n -= p.amt; });
+  dayPurchases(d).forEach(p=>{ if(!(real && p.planned)) n += isIn(p) ? p.amt : -p.amt; });
   if(!real) n -= autoMealFor(d);
   return n;
 }
@@ -396,26 +440,30 @@ function allowance(){
   const daysLeft = Math.max(1, DAYS - t + 1);
   let incoming = 0, fixed = 0, earmarked = 0;
 
-  if(started) dayPurchases(t).forEach(p=>{ if(p.planned) earmarked += p.amt; });
+  if(started) dayPurchases(t).forEach(p=>{ if(p.planned) (isIn(p) ? incoming += p.amt : earmarked += p.amt); });
   for(let d = started ? t+1 : 1; d<=DAYS; d++){
-    if(d===state.giftDay) incoming += state.gift;
-    if(state.payDays.includes(d)) incoming += state.paycheck;
+    incomeOn(d).forEach(i=> incoming += i.amt);
     schedOn(d).forEach(s=> fixed += s.amt);
-    dayPurchases(d).forEach(p=> earmarked += p.amt);
+    dayPurchases(d).forEach(p=> isIn(p) ? incoming += p.amt : earmarked += p.amt);
   }
   const free = balanceNow() + incoming - fixed - earmarked - cushion();
   return { perDay: free/daysLeft, free, daysLeft, incoming, fixed, earmarked, target:cushion() };
 }
 function spentToday(){
   if(todayN<1 || todayN>DAYS) return 0;
-  return dayPurchases(todayN).filter(p=>!p.planned).reduce((s,p)=>s+p.amt,0);
+  return dayPurchases(todayN).filter(p=>!p.planned && !isIn(p)).reduce((s,p)=>s+p.amt,0);
+}
+function earnedToday(){
+  if(todayN<1 || todayN>DAYS) return 0;
+  return dayPurchases(todayN).filter(p=>!p.planned && isIn(p)).reduce((s,p)=>s+p.amt,0)
+       + incomeOn(todayN).reduce((s,i)=>s+i.amt,0);
 }
 function schedTotal(kind, pastOnly){
   return state.sched.filter(x=>x.kind===kind && (!pastOnly || x.day <= (todayN||0)))
                     .reduce((s,x)=>s+x.amt,0);
 }
 function spentBy(c){
-  let s = state.purchases.filter(x=>x.cat===c && !x.planned).reduce((a,x)=>a+x.amt,0);
+  let s = state.purchases.filter(x=>x.cat===c && !x.planned && !isIn(x)).reduce((a,x)=>a+x.amt,0);
   if(c==='subs')  s += schedTotal('sub', true);
   if(c==='bills') s += schedTotal('bill', true);
   return s;
@@ -426,7 +474,11 @@ function budgetFor(c){
   if(c==='bills') return schedTotal('bill', false);
   return FOOD_ONLY_BUDGET[c] || 0;
 }
-function totalSpent(){ return state.purchases.filter(x=>!x.planned).reduce((s,x)=>s+x.amt,0) + schedTotal('sub',true) + schedTotal('bill',true); }
+function totalSpent(){ return state.purchases.filter(x=>!x.planned && !isIn(x)).reduce((s,x)=>s+x.amt,0) + schedTotal('sub',true) + schedTotal('bill',true); }
+function totalIn(){
+  return state.purchases.filter(x=>!x.planned && isIn(x)).reduce((s,x)=>s+x.amt,0)
+       + state.income.filter(i=>i.day <= (todayN||0)).reduce((s,i)=>s+i.amt,0);
+}
 
 /* ------------------------------ the page ------------------------------ */
 function render(){
@@ -437,7 +489,7 @@ function render(){
   const now$ = balanceNow();
   const al = allowance();
   const today$ = spentToday();
-  const income = state.balance + state.gift + state.paycheck*state.payDays.length;
+  const income = state.balance + incomeTotal();
 
   let bar='';
   CATS.forEach(c=>{
@@ -459,18 +511,22 @@ function render(){
   for(let i=0;i<FIRST_DOW;i++) cal += '<div class="day blank"></div>';
   for(let d=1; d<=DAYS; d++){
     const pur = dayPurchases(d);
-    const daySpent = pur.reduce((s,x)=>s+x.amt,0) + autoMealFor(d);
+    const dayOut = pur.filter(x=>!isIn(x)).reduce((s,x)=>s+x.amt,0) + autoMealFor(d);
+    const dayIn  = pur.filter(isIn).reduce((s,x)=>s+x.amt,0);
     const meal = plannedMeal(d);
     let marks='';
     if(schedOn(d).some(s=>s.kind==='sub'))  marks += '<i class="m-sub"></i>';
     if(schedOn(d).some(s=>s.kind==='bill')) marks += '<i class="m-bill"></i>';
-    if(d===state.giftDay || state.payDays.includes(d)) marks += '<i class="m-pay"></i>';
+    if(incomeOn(d).length || dayIn > 0) marks += '<i class="m-pay"></i>';
     const b = fc[d-1];
+    // a day that took in more than it let out reads as a gain, not a spend
+    const fig = dayIn > 0
+      ? '<span class="'+(dayIn>=dayOut?'earned':'spent')+'">'+(dayIn>=dayOut?'+':'')+money0(dayIn-dayOut)+'</span>'
+      : (dayOut ? '<span class="spent">'+money0(dayOut)+'</span>' : '');
     cal += '<button class="day'+(todayN===d?' today':'')+(todayN&&d<todayN?' past':'')+(b<0?' neg':'')+'" data-day="'+d+'">'
       + '<span class="n">'+d+'</span>'
       + '<span class="marks">'+marks+'</span>'
-      + (daySpent ? '<span class="spent">'+money0(daySpent)+'</span>'
-                  : meal ? '<span class="planned">'+esc(meal.name.split(' ')[0])+'</span>' : '')
+      + (fig || (meal ? '<span class="planned">'+esc(meal.name.split(' ')[0])+'</span>' : ''))
       + '<span class="bal'+(b<0?' neg':'')+'">'+money0(b)+'</span></button>';
   }
 
@@ -510,9 +566,10 @@ function render(){
     + '</div>'
 
     + '<div class="split">'
-    + '<div><b class="'+(endBal<0?'over':'')+'">'+money0(endBal)+'</b><small>left on the 30th, if the plan holds</small></div>'
+    + '<div><b class="'+(endBal<0?'over':'')+'">'+money0(endBal)+'</b><small>left on the 30th</small></div>'
     + '<div><b class="'+(lowest<0?'over':'')+'">'+money0(lowest)+'</b><small>lowest point, the '+ord(lowDay)+'</small></div>'
-    + '<div><b>'+money0(totalSpent())+'</b><small>gone so far this month</small></div></div>'
+    + '<div><b class="up">'+money0(totalIn())+'</b><small>come in so far</small></div>'
+    + '<div><b>'+money0(totalSpent())+'</b><small>gone so far</small></div></div>'
     + '<div class="bar">'+bar+'</div>'
     + '<div class="legend">'+CATS.map(c=>'<span><i style="background:'+c.color+'"></i>'+c.label+'</span>').join('')+'</div>'
     + warn
@@ -562,14 +619,21 @@ function openSettings(){
     + '<label class="f">Read as the start of which day (1–30)'
     + '<input id="s_balday" type="number" min="0" max="30" value="'+anchorDay()+'"></label>'
     + '<div class="note" id="balPreview"></div>'
-    + '<label class="f">Monthly gift from mom'
-    + '<input id="s_gift" type="number" inputmode="decimal" step="0.01" value="'+state.gift+'"></label>'
-    + '<label class="f">Day it lands'
-    + '<input id="s_giftday" type="number" min="1" max="30" value="'+state.giftDay+'"></label>'
-    + '<label class="f">Each Lids paycheck (estimate)'
-    + '<input id="s_pay" type="number" inputmode="decimal" step="0.01" value="'+state.paycheck+'"></label>'
-    + '<label class="f">Payday dates, comma separated'
-    + '<input id="s_paydays" type="text" value="'+state.payDays.join(', ')+'"></label>'
+    + '<h3 style="font-size:15px;margin:22px 0 0">Money coming in</h3>'
+    + '<div class="note" style="margin-top:4px">Every payday carries its own amount — change one without touching the rest.</div>'
+    + '<div class="inc-head"><span>Day</span><span>What it is</span><span>Amount</span><span></span></div>'
+    + '<div id="incRows">'
+    + state.income.slice().sort((a,b)=>a.day-b.day).map(i=>incRow(i)).join('')
+    + '</div>'
+    + '<button class="addrow" id="incAdd">＋ Add another one</button>'
+
+    + '<h3 style="font-size:15px;margin:24px 0 0">Quick buttons</h3>'
+    + '<div class="note" style="margin-top:4px">'
+    + (state.quick.length ? 'Tap × to drop one. New ones are made on a day, under ＋ New button.'
+                          : 'None yet — make them on a day, under ＋ New button.')+'</div>'
+    + state.quick.map(q=>'<div class="entry"><div>'+esc(q.name)+'<small>'+(q.dir==='in'?'money in':catLabel(q.cat))+'</small></div>'
+        + '<div>'+(q.dir==='in'?'+':'')+money(q.amt)+' <button data-delq="'+q.id+'" aria-label="Remove">×</button></div></div>').join('')
+
     + '<label class="f">Cushion to finish the month with'
     + '<input id="s_cushion" type="number" inputmode="decimal" step="1" value="'+cushion()+'"></label>'
     + '<div class="note" style="margin-top:16px">Count planned meals in the forecast?</div>'
@@ -598,21 +662,54 @@ function openSettings(){
   document.getElementById('s_bal').oninput = preview;
   document.getElementById('s_balday').oninput = preview;
 
-  document.getElementById('saveSettings').onclick = async ()=>{
+  const wire = ()=>{
+    document.querySelectorAll('[data-delinc]').forEach(el=> el.onclick = ()=>{
+      readIncome();
+      state.income = state.income.filter(x=>x.id!==el.dataset.delinc);
+      save(); openSettings();
+    });
+    document.querySelectorAll('[data-delq]').forEach(el=> el.onclick = ()=>{
+      readIncome();
+      state.quick = state.quick.filter(x=>x.id!==el.dataset.delq);
+      save(); openSettings();
+    });
+  };
+  wire();
+  document.getElementById('incAdd').onclick = ()=>{
+    readIncome();
+    state.income.push({id:newId(), day: todayN||1, label:'Paycheck', amt:0});
+    save(); openSettings();
+  };
+  document.getElementById('saveSettings').onclick = ()=>{
     state.balance = parseFloat(document.getElementById('s_bal').value)||0;
     state.balanceDay = Math.min(30,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
-    state.gift = parseFloat(document.getElementById('s_gift').value)||0;
-    state.giftDay = clampDay(document.getElementById('s_giftday').value);
-    state.paycheck = parseFloat(document.getElementById('s_pay').value)||0;
-    state.payDays = document.getElementById('s_paydays').value.split(',')
-      .map(x=>parseInt(x.trim())).filter(x=>x>=1&&x<=30);
+    readIncome();
     state.cushion = parseFloat(document.getElementById('s_cushion').value)||0;
     save(); closeSheet(); render();
   };
 }
 
+function incRow(i){
+  return '<div class="inc-row" data-inc="'+i.id+'">'
+    + '<input type="number" min="1" max="30" value="'+i.day+'" data-f="day" aria-label="Day">'
+    + '<input type="text" value="'+esc(i.label).replace(/"/g,'&quot;')+'" data-f="label" aria-label="What it is">'
+    + '<input type="number" inputmode="decimal" step="0.01" value="'+i.amt+'" data-f="amt" aria-label="Amount">'
+    + '<button data-delinc="'+i.id+'" aria-label="Remove">×</button></div>';
+}
+/* pull whatever is typed in the income rows back into state before redrawing */
+function readIncome(){
+  document.querySelectorAll('.inc-row').forEach(r=>{
+    const it = state.income.find(x=>x.id===r.dataset.inc);
+    if(!it) return;
+    it.day   = clampDay(r.querySelector('[data-f="day"]').value);
+    it.label = r.querySelector('[data-f="label"]').value.trim().slice(0,32) || 'Money in';
+    it.amt   = Math.abs(parseFloat(r.querySelector('[data-f="amt"]').value)) || 0;
+  });
+}
+
 function openSheet(day){
-  openDay = day; addMode = isFuture(day) ? 'planned' : 'spent';
+  openDay = day; addDir = 'out'; quickEdit = false;
+  addWhen = isFuture(day) ? 'planned' : 'spent';
   drawSheet();
 }
 function drawSheet(){
@@ -623,20 +720,21 @@ function drawSheet(){
   const bal = fc[day-1];
 
   let sched = '';
-  if(day===state.giftDay) sched += entryRow("Mom's gift",'money in',state.gift,true);
-  if(state.payDays.includes(day)) sched += entryRow('Lids paycheck','money in',state.paycheck,true);
+  incomeOn(day).forEach(i=> sched += entryRow(i.label,'expected in',i.amt,true,i.id));
   schedOn(day).forEach(s=>
     sched += entryRow(s.label, s.kind==='bill'?'installment':'subscription', s.amt, false, s.id));
   const am = autoMealFor(day);
   if(am) sched += entryRow(meal.name,'assumed meal, not logged',am,false);
 
   const logged = pur.length
-    ? pur.map(x=>'<div class="entry"><div>'+esc(x.name)+(x.planned?'<span class="pill">planned</span>':'')
-        + '<small>'+CATS.find(c=>c.id===x.cat).label+'</small></div>'
-        + '<div>'+money(x.amt)+' <button data-del="'+x.id+'" aria-label="Delete">×</button></div></div>').join('')
+    ? pur.map(x=>'<div class="entry"><div>'+esc(x.name)+(x.planned?'<span class="pill">'+(isIn(x)?'expected':'planned')+'</span>':'')
+        + '<small>'+catLabel(x.cat)+'</small></div>'
+        + '<div style="color:'+(isIn(x)?'var(--credit)':'var(--ink)')+'">'+(isIn(x)?'+':'')+money(x.amt)
+        + ' <button data-del="'+x.id+'" aria-label="Delete">×</button></div></div>').join('')
     : '<div class="empty">Nothing logged yet.</div>';
 
-  const isBill = addMode==='bill';
+  const isBill = addDir==='bill', isIncome = addDir==='in';
+  const tiles = state.quick.filter(q=> isIncome ? q.dir==='in' : q.dir!=='in');
   document.getElementById('sheet').innerHTML =
     '<div class="sheet-head"><div><h2>'+dow+' the '+day+'</h2>'
     + '<div class="sub" style="color:'+(bal<0?'var(--debit)':'var(--muted)')+'">'+money(bal)+' left after this day</div></div>'
@@ -644,29 +742,56 @@ function drawSheet(){
     + sched
     + '<h3 style="font-size:15px;margin:18px 0 0">Add something</h3>'
     + '<div class="toggle">'
-    + '<button data-mode="spent" aria-pressed="'+(addMode==='spent')+'">Already spent</button>'
-    + '<button data-mode="planned" aria-pressed="'+(addMode==='planned')+'">Planning to</button>'
-    + '<button data-mode="bill" aria-pressed="'+isBill+'">Repeats</button></div>'
-    + (isBill ? '' : '<div class="quick">'
-        + Object.keys(MEALS).map(k=>'<button data-quick="'+k+'"><b>'+esc(MEALS[k].name)+'</b><em>'+money(MEALS[k].cost)+'</em></button>').join('')
-        + '</div>')
+    + '<button data-dir="out" aria-pressed="'+(addDir==='out')+'">Money out</button>'
+    + '<button data-dir="in" aria-pressed="'+isIncome+'">Money in</button>'
+    + '<button data-dir="bill" aria-pressed="'+isBill+'">Repeats</button></div>'
+    + (isBill ? '' : '<div class="toggle">'
+        + '<button data-when="spent" aria-pressed="'+(addWhen==='spent')+'">'+(isIncome?'Already got it':'Already spent')+'</button>'
+        + '<button data-when="planned" aria-pressed="'+(addWhen==='planned')+'">'+(isIncome?'Expecting it':'Planning to')+'</button></div>')
+    + (isBill ? '' : '<div class="quick'+(quickEdit?' editing':'')+'">'
+        + tiles.map(q=>'<button data-quick="'+q.id+'"><b>'+esc(q.name)+'</b><em>'+(q.dir==='in'?'+':'')+money(q.amt)+'</em></button>').join('')
+        + '<button class="newq" data-quicknew="1">'+(quickEdit?'Done editing':'＋ New button')+'</button></div>')
+    + (isBill || !quickEdit ? '' :
+        '<div class="qedit"><div class="note" style="margin-top:0">Tap a button above to delete it, or make a new one here.</div>'
+        + '<div class="row"><input id="qname" type="text" placeholder="Name, e.g. Whataburger">'
+        + '<input id="qamt" type="number" inputmode="decimal" step="0.01" placeholder="Amount" style="max-width:120px"></div>'
+        + '<button class="btn" id="qadd" style="margin-top:8px">Save this button</button></div>')
     + '<div class="row"><input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="Amount">'
     + (isBill
         ? '<select id="kind"><option value="sub">Subscription</option><option value="bill" '+(schedKind==='bill'?'selected':'')+'>Installment</option></select>'
+        : isIncome ? ''
         : '<select id="cat">'+CATS.map(c=>'<option value="'+c.id+'">'+c.label+'</option>').join('')+'</select>')
     + '</div>'
-    + '<input id="name" type="text" placeholder="'+(isBill?'What is the charge?':'What is it?')+'" style="margin-top:8px">'
+    + '<input id="name" type="text" placeholder="'+(isBill?'What is the charge?':isIncome?'Where is it from?':'What is it?')+'" style="margin-top:8px">'
     + '<div class="note" id="addErr" style="color:var(--debit);display:none"></div>'
-    + '<button class="btn" id="add">'+(isBill?'Put it on the '+ord(day):(addMode==='planned'?'Add to the plan':'Log it'))+'</button>'
+    + '<button class="btn" id="add">'+(isBill ? 'Put it on the '+ord(day)
+        : isIncome ? (addWhen==='planned'?'Add what you expect':'Log the money in')
+        : (addWhen==='planned'?'Add to the plan':'Log it'))+'</button>'
     + '<h3 style="font-size:15px;margin:20px 0 0">On this day</h3>'
     + logged;
 
   showSheet('sheet');
   document.getElementById('close').onclick = closeSheet;
-  document.querySelectorAll('[data-mode]').forEach(el=> el.onclick = ()=>{ addMode = el.dataset.mode; drawSheet(); });
+  document.querySelectorAll('[data-dir]').forEach(el=> el.onclick = ()=>{ addDir = el.dataset.dir; drawSheet(); });
+  document.querySelectorAll('[data-when]').forEach(el=> el.onclick = ()=>{ addWhen = el.dataset.when; drawSheet(); });
+  document.querySelectorAll('[data-quicknew]').forEach(el=> el.onclick = ()=>{ quickEdit = !quickEdit; drawSheet(); });
   document.querySelectorAll('[data-quick]').forEach(el=> el.onclick = ()=>{
-    const m = MEALS[el.dataset.quick]; addPurchase(m.name, m.cost, 'food');
+    const q = state.quick.find(x=>x.id===el.dataset.quick);
+    if(!q) return;
+    if(quickEdit){ state.quick = state.quick.filter(x=>x.id!==q.id); save(); drawSheet(); return; }
+    addPurchase(q.name, q.amt, q.cat, q.dir);
   });
+  const qadd = document.getElementById('qadd');
+  if(qadd) qadd.onclick = ()=>{
+    const nm = document.getElementById('qname').value.trim();
+    const a  = parseFloat(document.getElementById('qamt').value);
+    if(!nm || !isFinite(a) || a<=0){ document.getElementById(nm?'qamt':'qname').focus(); return; }
+    const sel = document.getElementById('cat');
+    state.quick.push({id:newId(), name:nm.slice(0,24), amt:a,
+      cat: isIncome ? 'income' : (sel ? sel.value : 'extras'),
+      dir: isIncome ? 'in' : 'out'});
+    quickEdit = false; save(); drawSheet();
+  };
   document.getElementById('add').onclick = ()=>{
     const err = document.getElementById('addErr');
     const a = parseFloat(document.getElementById('amt').value);
@@ -682,16 +807,20 @@ function drawSheet(){
       schedKind = document.getElementById('kind').value==='bill' ? 'bill' : 'sub';
       state.sched.push({id:newId(), day:openDay, label:nm||(schedKind==='bill'?'Installment':'Subscription'), amt:a, kind:schedKind});
       save(); render(); drawSheet();
+    } else if(isIncome){
+      addPurchase(nm||'Money in', a, 'income', 'in');
     } else {
-      addPurchase(nm||'Purchase', a, document.getElementById('cat').value);
+      addPurchase(nm||'Purchase', a, document.getElementById('cat').value, 'out');
     }
   };
   document.querySelectorAll('[data-del]').forEach(el=> el.onclick = async ()=>{
     state.purchases = state.purchases.filter(x=>x.id!==el.dataset.del);
     save(); render(); drawSheet();
   });
-  document.querySelectorAll('[data-delsched]').forEach(el=> el.onclick = async ()=>{
-    state.sched = state.sched.filter(x=>x.id!==el.dataset.delsched);
+  document.querySelectorAll('[data-delsched]').forEach(el=> el.onclick = ()=>{
+    const id = el.dataset.delsched;
+    state.sched  = state.sched.filter(x=>x.id!==id);
+    state.income = state.income.filter(x=>x.id!==id);
     save(); render(); drawSheet();
   });
 }
@@ -711,8 +840,9 @@ function closeSheet(){
   document.getElementById('bg').classList.remove('on');
   openDay = null;
 }
-function addPurchase(name, amt, cat){
-  state.purchases.push({ id:newId(), day:openDay, name, amt, cat, planned: addMode==='planned' });
+function addPurchase(name, amt, cat, dir){
+  state.purchases.push({ id:newId(), day:openDay, name, amt, cat,
+    dir: dir==='in' ? 'in' : 'out', planned: addWhen==='planned' });
   save(); render(); drawSheet();
 }
 document.getElementById('bg').onclick = closeSheet;
@@ -745,30 +875,33 @@ function commit(){ save(); render(); }
 const TOOLS = [
 {
   name:'log_entry',
-  description:'Put a purchase on a day of September. Use planned=true for something he intends to buy but has not yet, planned=false for money already gone. Returns the new entry id.',
+  description:'Put a one-off entry on a day of September — money out (a purchase) or money in (a shift, a gift, something sold). Use planned=true for something not yet done, false for money that has already moved. Returns the new entry id.',
   inputSchema:{type:'object',properties:{
     day:{type:'integer',description:'Day of September, 1-30'},
-    name:{type:'string',description:'Short label, e.g. "Cane\'s"'},
-    amount:{type:'number',description:'Dollars, positive'},
-    category:{type:'string',enum:['food','subs','games','bills','extras']},
-    planned:{type:'boolean',description:'true = intends to spend it, false = already spent'}
-  },required:['day','name','amount','category']},
+    name:{type:'string',description:'Short label, e.g. "Cane\'s" or "Sold my old cleats"'},
+    amount:{type:'number',description:'Dollars, always positive — direction says which way it goes'},
+    direction:{type:'string',enum:['out','in'],description:'out = spent, in = received. Defaults to out.'},
+    category:{type:'string',enum:['food','subs','games','bills','extras'],description:'Spending bucket; ignored for money in'},
+    planned:{type:'boolean',description:'true = expected but not yet real, false = already happened'}
+  },required:['day','name','amount']},
   async execute(i){
     const day = clampDay(i.day);
     const amt = Math.abs(Number(i.amount));
     if(!isFinite(amt) || amt<=0) throw new Error('amount must be a positive number of dollars');
-    const cat = catOk(i.category) ? i.category : 'extras';
+    const dir = i.direction === 'in' ? 'in' : 'out';
+    const cat = dir==='in' ? 'income' : (catOk(i.category) ? i.category : 'extras');
     const planned = i.planned === true || i.planned === 'true';
-    const e = {id:newId(), day, name:String(i.name||'Purchase').slice(0,40), amt, cat, planned};
+    const e = {id:newId(), day, name:String(i.name||(dir==='in'?'Money in':'Purchase')).slice(0,40), amt, cat, dir, planned};
     state.purchases.push(e);
-    note((planned?'Planned ':'Logged ')+e.name+' — '+money(amt)+' on the '+ord(day));
+    note((dir==='in' ? (planned?'Expecting ':'Logged money in — ') : (planned?'Planned ':'Logged '))
+      + e.name+' — '+(dir==='in'?'+':'')+money(amt)+' on the '+ord(day));
     commit();
-    return 'Added id '+e.id+': '+e.name+' '+money(amt)+' on day '+day+(planned?' (planned)':'');
+    return 'Added id '+e.id+': '+e.name+' '+(dir==='in'?'+':'-')+money(amt)+' on day '+day+(planned?' (not yet real)':'');
   }
 },
 {
   name:'remove_entry',
-  description:'Delete one entry by its id — either a logged/planned purchase or a repeating charge (subscription or installment). Ids are listed in the ledger snapshot.',
+  description:'Delete one entry by its id — a one-off entry, a repeating charge, or a scheduled income line. Ids are listed in the ledger snapshot.',
   inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id']},
   async execute(i){
     const id = String(i.id||'');
@@ -786,18 +919,25 @@ const TOOLS = [
       commit();
       return 'Removed repeating charge '+s.label;
     }
+    const inc = state.income.find(x=>x.id===id);
+    if(inc){
+      state.income = state.income.filter(x=>x.id!==id);
+      note('Took '+inc.label+' — +'+money(inc.amt)+' off the '+ord(inc.day));
+      commit();
+      return 'Removed income line '+inc.label;
+    }
     throw new Error('no entry with id '+id);
   }
 },
 {
   name:'move_entry',
-  description:'Move an existing entry (a purchase or a repeating charge) to a different day of September, by id.',
+  description:'Move an existing entry (a one-off, a repeating charge, or an income line) to a different day of September, by id.',
   inputSchema:{type:'object',properties:{
     id:{type:'string'}, day:{type:'integer',description:'Day to move it to, 1-30'}
   },required:['id','day']},
   async execute(i){
     const id = String(i.id||''), day = clampDay(i.day);
-    const it = state.purchases.find(x=>x.id===id) || state.sched.find(x=>x.id===id);
+    const it = state.purchases.find(x=>x.id===id) || state.sched.find(x=>x.id===id) || state.income.find(x=>x.id===id);
     if(!it) throw new Error('no entry with id '+id);
     const was = it.day; it.day = day;
     note('Moved '+(it.name||it.label)+' from the '+ord(was)+' to the '+ord(day));
@@ -806,48 +946,57 @@ const TOOLS = [
   }
 },
 {
-  name:'set_repeating',
-  description:'Add or change a repeating charge on a day: a subscription (kind "sub") or an installment/bill (kind "bill"). Pass an existing id to change one, or leave id out to add a new one.',
+  name:'set_scheduled',
+  description:'Add or change something scheduled on a day: a subscription (kind "sub"), an installment or bill (kind "bill"), or money coming in such as a paycheck (kind "income"). Pass an existing id to change just that line — this is how one paycheck gets a different amount without touching the others — or leave id out to add a new one.',
   inputSchema:{type:'object',properties:{
-    id:{type:'string',description:'Existing charge id, to change it'},
+    id:{type:'string',description:'Existing id, to change that one line'},
     day:{type:'integer',description:'Day of September, 1-30'},
     label:{type:'string'},
-    amount:{type:'number'},
-    kind:{type:'string',enum:['sub','bill']}
+    amount:{type:'number',description:'Dollars, positive'},
+    kind:{type:'string',enum:['sub','bill','income']}
   },required:['day']},
   async execute(i){
     const day = clampDay(i.day);
     const id = i.id ? String(i.id) : null;
-    let s = id ? state.sched.find(x=>x.id===id) : null;
-    if(id && !s) throw new Error('no repeating charge with id '+id);
-    if(s){
-      const was = s.day;
-      s.day = day;
-      if(i.label) s.label = String(i.label).slice(0,40);
-      if(i.amount != null && isFinite(Number(i.amount))) s.amt = Math.abs(Number(i.amount));
-      if(i.kind==='bill'||i.kind==='sub') s.kind = i.kind;
-      note('Updated '+s.label+' — '+money(s.amt)+(was!==day?', now on the '+ord(day):' on the '+ord(day)));
+    let it = null, isInc = false;
+    if(id){
+      it = state.sched.find(x=>x.id===id);
+      if(!it){ it = state.income.find(x=>x.id===id); isInc = !!it; }
+      if(!it) throw new Error('nothing scheduled with id '+id);
+    }
+    if(it){
+      const was = it.day, wasAmt = it.amt;
+      it.day = day;
+      if(i.label) it.label = String(i.label).slice(0,40);
+      if(i.amount != null && isFinite(Number(i.amount))) it.amt = Math.abs(Number(i.amount));
+      if(!isInc && (i.kind==='bill'||i.kind==='sub')) it.kind = i.kind;
+      note('Updated '+it.label+' — '+(isInc?'+':'')+money(it.amt)
+        + (was!==day ? ', now on the '+ord(day) : ' on the '+ord(day))
+        + (wasAmt!==it.amt ? ' (was '+money(wasAmt)+')' : ''));
       commit();
-      return 'Updated '+s.label+' on day '+day;
+      return 'Updated '+it.label+': '+money(it.amt)+' on day '+day;
     }
     const amt = Math.abs(Number(i.amount));
-    if(!isFinite(amt) || amt<=0) throw new Error('a new repeating charge needs a positive amount');
-    s = {id:newId(), day, label:String(i.label||'Charge').slice(0,40), amt, kind: i.kind==='bill'?'bill':'sub'};
-    state.sched.push(s);
-    note('Added '+s.label+' — '+money(amt)+' on the '+ord(day));
+    if(!isFinite(amt) || amt<=0) throw new Error('a new scheduled line needs a positive amount');
+    if(i.kind==='income'){
+      it = {id:newId(), day, label:String(i.label||'Money in').slice(0,40), amt};
+      state.income.push(it);
+      note('Added '+it.label+' — +'+money(amt)+' on the '+ord(day));
+    } else {
+      it = {id:newId(), day, label:String(i.label||'Charge').slice(0,40), amt, kind: i.kind==='bill'?'bill':'sub'};
+      state.sched.push(it);
+      note('Added '+it.label+' — '+money(amt)+' on the '+ord(day));
+    }
     commit();
-    return 'Added id '+s.id+': '+s.label+' on day '+day;
+    return 'Added id '+it.id+': '+it.label+' on day '+day;
   }
 },
 {
   name:'set_money',
-  description:'Change the month settings: account balance and the day it was true, mom\'s gift, paycheck size and paydays, which plan is active, whether meals are assumed, and the cushion to end the month with. Only pass the fields being changed.',
+  description:'Change the month settings: the account balance and the day it was true, which plan is active, whether meals are assumed, and the cushion to end the month with. Paychecks and other money coming in are separate lines — use set_scheduled with kind "income" for those.',
   inputSchema:{type:'object',properties:{
     balance:{type:'number',description:'What the account holds'},
     balance_day:{type:'integer',description:'Day that balance was true, read as the start of that day; 0 means before the 1st'},
-    gift:{type:'number'}, gift_day:{type:'integer'},
-    paycheck:{type:'number'},
-    pay_days:{type:'array',items:{type:'integer'},description:'Days paychecks land'},
     plan:{type:'string',enum:['comfortable','aggressive']},
     assume_meals:{type:'boolean'},
     cushion:{type:'number',description:'Dollars to finish the month with'}
@@ -862,13 +1011,6 @@ const TOOLS = [
     } else if(i.balance_day != null && isFinite(Number(i.balance_day))){
       state.balanceDay = Math.min(DAYS,Math.max(0,parseInt(i.balance_day,10)));
       note('Balance now read as of the start of the '+ord(state.balanceDay||1)); n++;
-    }
-    if(i.gift != null && isFinite(Number(i.gift))){ state.gift = Math.abs(Number(i.gift)); note("Mom's gift set to "+money(state.gift)); n++; }
-    if(i.gift_day != null){ state.giftDay = clampDay(i.gift_day); note("Mom's gift moved to the "+ord(state.giftDay)); n++; }
-    if(i.paycheck != null && isFinite(Number(i.paycheck))){ state.paycheck = Math.abs(Number(i.paycheck)); note('Paycheck set to '+money(state.paycheck)); n++; }
-    if(Array.isArray(i.pay_days)){
-      const d = i.pay_days.map(x=>parseInt(x,10)).filter(x=>x>=1&&x<=DAYS);
-      if(d.length){ state.payDays = d; note('Paydays set to the '+d.map(ord).join(' and the ')); n++; }
     }
     if(i.plan==='comfortable'||i.plan==='aggressive'){ state.plan = i.plan; note('Switched to the '+i.plan+' plan'); n++; }
     if(typeof i.assume_meals === 'boolean'){ state.autoMeals = i.assume_meals; note(i.assume_meals?'Assuming meals out again':'No longer assuming meals out'); n++; }
@@ -893,18 +1035,24 @@ function snapshot(){
   L.push('Projected on the 30th: '+money(fc[DAYS-1])+'. Lowest point: '+money(lowest)+' on the '+ord(lowDay)+'.');
   L.push('Spent today: '+money(spentToday())+'. Spent this month: '+money(totalSpent())+'.');
   L.push('Plan: '+state.plan+' ('+(state.plan==='comfortable'?'7':'5')+' meals a week, '+money0(PLANS[state.plan].food)+' food budget). Assumed meals: '+(state.autoMeals?'on':'off')+'.');
-  L.push('Income: mom sends '+money(state.gift)+' on the '+ord(state.giftDay)+'; Lids pays '+money(state.paycheck)+' on the '+state.payDays.map(ord).join(' and the ')+'.');
+  L.push('Money in this month: '+money(incomeTotal())+' across '+state.income.length+' scheduled lines; '+money(totalIn())+' of it has landed.');
+  L.push('');
+  L.push('SCHEDULED MONEY IN (id · day · label · amount) — each line holds its own amount:');
+  if(!state.income.length) L.push('  none');
+  state.income.slice().sort((a,b)=>a.day-b.day).forEach(i=>
+    L.push('  '+i.id+' · '+i.day+' · '+i.label+' · +'+money(i.amt)));
   L.push('');
   L.push('REPEATING CHARGES (id · day · label · amount · kind):');
   state.sched.slice().sort((a,b)=>a.day-b.day).forEach(s=>
     L.push('  '+s.id+' · '+s.day+' · '+s.label+' · '+money(s.amt)+' · '+(s.kind==='bill'?'installment':'subscription')));
   L.push('');
-  L.push('ENTRIES (id · day · name · amount · category · spent|planned):');
+  L.push('ONE-OFF ENTRIES (id · day · name · amount · category · direction · real|not yet):');
   if(!state.purchases.length) L.push('  none yet');
   state.purchases.slice().sort((a,b)=>a.day-b.day).forEach(p=>
-    L.push('  '+p.id+' · '+p.day+' · '+p.name+' · '+money(p.amt)+' · '+p.cat+' · '+(p.planned?'planned':'spent')));
+    L.push('  '+p.id+' · '+p.day+' · '+p.name+' · '+(isIn(p)?'+':'-')+money(p.amt)+' · '+p.cat
+      + ' · '+(isIn(p)?'money in':'money out')+' · '+(p.planned?'not yet':'real')));
   L.push('');
-  L.push('USUAL MEAL PRICES: '+Object.keys(MEALS).map(k=>MEALS[k].name+' '+money(MEALS[k].cost)).join(', ')+'.');
+  L.push('QUICK BUTTONS: '+(state.quick.length ? state.quick.map(q=>q.name+' '+(q.dir==='in'?'+':'')+money(q.amt)).join(', ') : 'none')+'.');
   return L.join('\n');
 }
 
@@ -917,9 +1065,12 @@ function rulesTurn(){
   + 'Judgement: "can I afford X" means compare X against the free-to-spend-per-day figure and what it does to the projected balance on the 30th '
   + 'and the lowest point. Say plainly when something breaks the cushion or runs him negative. If he asks you to change something that would '
   + 'run him dry, make the change he asked for and say what it costs him.\n\n'
-  + 'Changes: days are 1-30 of September 2026. Categories are food, subs, games, bills, extras. Use log_entry for a purchase, '
-  + 'set_repeating for a subscription or installment, move_entry and remove_entry by the ids listed below, set_money for balance, income, '
-  + 'plan, cushion. Confirm what you changed in your reply — he sees the calendar update behind this sheet. Ask first only if the request is '
+  + 'Changes: days are 1-30 of September 2026. Categories are food, subs, games, bills, extras. Use log_entry for a one-off, money out '
+  + 'or money in (direction "in" for a shift he picked up, a gift, something he sold), '
+  + 'set_scheduled for a subscription, an installment, or money that lands such as a paycheck (kind "income"), move_entry and '
+  + 'remove_entry by the ids listed below, set_money for balance, plan and cushion. Paychecks vary — each income line holds its own '
+  + 'amount, so "my check was only 140 this time" means set_scheduled on that one line\'s id, never all of them. '
+  + 'Confirm what you changed in your reply — he sees the calendar update behind this sheet. Ask first only if the request is '
   + 'genuinely ambiguous about which entry or which day.\n\n'
   + snapshot();
 }
