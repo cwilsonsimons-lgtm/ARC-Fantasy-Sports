@@ -111,7 +111,7 @@ const reloaded = await ev(`(() => {
 console.log('   ', JSON.stringify(reloaded));
 check('it is still on the hub after reload', reloaded.imported === true);
 check('it sits at the top of the hub', reloaded.first && reloaded.first.startsWith('sl'), reloaded.first);
-check('it is tagged as imported', reloaded.tag === 'DEMO', String(reloaded.tag));
+check('demo data stays labelled as demo', reloaded.tag === 'DEMO', String(reloaded.tag));
 check('its roster survived', reloaded.roster > 10, `${reloaded.roster}`);
 
 console.log('\nthe rest of the app still works');

@@ -93,6 +93,58 @@ their starting slots; scoring rules; and trades, waivers and adds from the last
 five weeks. The confirmation screen reports the gaps instead of papering over
 them — how many players matched, and which scoring rules had no equivalent here.
 
+**An imported league is then an ordinary league of the app's own.** Not a
+snapshot of someone else's — there is nothing to re-import and nothing to keep
+in step. It has its own teams, roster, scoring, settings and week; you set
+lineups, add free agents, trade and run waivers in it exactly as in the league
+the app ships with, and the importing manager is its commissioner. Only the
+demo-data league keeps a badge, because mistaking that for real is a hazard;
+a real imported league carries no permanent mark of where it came from.
+
+### How one app became many leagues
+
+The app was written around a single real league. `T`, `MY_TEAM`, `DRAFT_ORDER`
+and `store.league` / `.scoring` / `.slots` are all singular, and around 175 call
+sites read them directly. Threading a league id through every one of those would
+have been a rewrite, so instead **each league keeps its own workspace and the
+active one is swapped into place when it is opened** (`js/spaces.js`). `T` is
+emptied and refilled rather than replaced, because no call site holds a
+reference to it beyond `T[key]`; `MY_TEAM`, `DRAFT_ORDER` and `DRAFT_TOTAL` are
+plain vars and are reassigned.
+
+Most state needed no change at all — rosters, transactions, waivers, chat,
+scoring and player photos were already keyed by league id. **`rosterLeagueId()`
+returning `"cbd"` for anything that was not the demo league was the single gate
+holding all of it shut.** What did need work was everything that had quietly
+assumed there was only ever one league:
+
+- **`"pandas"` was hardcoded** in the schedule generator and the matchup hero,
+  where the code meant "my team".
+- **The standings order was frozen at load** from the demo league's table, so
+  another league's keys were not in it and `T[k]` came back undefined.
+- **`LIVE_WEEK` was a constant 1.** An imported league arrives mid-season, and
+  every week before its own would otherwise score zero, so "now" is per-league.
+  It still answers 1 for the demo league, so nothing there moved.
+- **The hub draws every league at once**, but only the open one has a running
+  lineup. Rows for the others were showing the open league's score and borrowing
+  its team colours; each league now remembers where it last stood.
+- **The bench had to be resized to what actually arrived.** Kickers and defences
+  come across on the bench — the app's lineup has no slot for them and its
+  player table carries neither — which pushed squads over their own limit, so
+  no one could be signed until the roster could hold them.
+
+### Verifying it
+
+```
+node tools/native-check.mjs [path-to-html]      # 29 checks
+```
+
+It imports a league and then does what a manager does — swaps a starter, signs a
+free agent, changes a league setting — and checks each takes and survives a
+reload. It also asserts the demo league is **unchanged** by the swap: its teams,
+my team, draft order and settings all come back, and none of the other league's
+leak into it.
+
 **What does not:** `js/data/nfl-players.js` carries 895 players and no kickers
 or defences, so those rows come across from Sleeper's own payload with a name,
 position and team but no headshot or projection, and are counted as unmatched.

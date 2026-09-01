@@ -2048,11 +2048,15 @@ body.seeded .view[data-view="standings"] > .wsw,
 body.seeded #standMatchHd,
 body.seeded #standMatchups{display:none}
 
-/* the tag on a league that arrived from somewhere else */
-.hb-src{flex:none;align-self:center;margin-left:6px;padding:3px 7px;border-radius:6px;
+/* Marks a league built from demo data. An imported league carries no such tag:
+   once it is here it is an ordinary league of the app's own, and a permanent
+   badge would say otherwise. This rides inside the status line rather than
+   beside the title, where it took width from a row already carrying a crest, a
+   score and a win chip and squeezed long names down to a couple of letters. */
+.hb-src{display:inline-block;margin-right:6px;padding:1px 5px;border-radius:5px;vertical-align:1px;
   background:var(--card-2);border:1px solid var(--line);color:var(--ink-3);
   font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:8px;font-weight:700;letter-spacing:.9px}
+  font-size:7.5px;font-weight:700;letter-spacing:.8px}
 
 /* ---- chrome ---- */
 .imp-top{display:flex;align-items:center;gap:12px;margin:8px 2px 14px}
@@ -4350,7 +4354,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     isMyPlayer: () => isMyPlayer,
     leaguePlayers: () => leaguePlayers,
     openPlayer: () => openPlayer,
-    order: () => order,
+    standingsOrder: () => standingsOrder,
     ownershipHTML: () => ownershipHTML,
     ownershipOf: () => ownershipOf,
     pIdx: () => pIdx,
@@ -6470,13 +6474,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return Math.round(base * (0.74 + (h >>> 0) % 54 / 100) * 10) / 10;
   }
   function wkPts(p, w) {
-    if (+w > LIVE_WEEK) return null;
+    if (+w > liveWeek()) return null;
     if (byeFor(p.tm) === +w) return 0;
     return pLive(wkProj(p, w), p.full || p.n || "");
   }
   function seasonPts(p) {
     let t = 0, any = false;
-    for (let w = MINW; w <= MAXW && w <= LIVE_WEEK; w++) {
+    for (let w = MINW; w <= MAXW && w <= liveWeek(); w++) {
       const v = wkPts(p, w);
       if (v != null) {
         t += v;
@@ -6769,7 +6773,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return Object.keys(T).length;
   }
   function weekScore(key, week) {
-    if (week === LIVE_WEEK && key === MY_TEAM) return LT.a;
+    if (week === liveWeek() && key === MY_TEAM) return LT.a;
     return seededScore(week, key);
   }
   function weekBoard(week) {
@@ -6781,7 +6785,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     Object.keys(T).forEach((k) => {
       totals[k] = { k, pts: 0, wins: 0, best: null, scored: 0 };
     });
-    for (let w = MINW; w <= LIVE_WEEK; w++) {
+    for (let w = MINW; w <= liveWeek(); w++) {
       weekBoard(w).forEach((r) => {
         const t = totals[r.k];
         t.pts += r.earned;
@@ -6793,7 +6797,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return Object.values(totals).map((t) => ({ ...t, scored: Math.round(t.scored * 10) / 10 })).sort((a, b) => b.pts - a.pts || b.scored - a.scored);
   }
   function renderKartWeek() {
-    const week = S.week, board = weekBoard(week), played = week <= LIVE_WEEK;
+    const week = S.week, board = weekBoard(week), played = week <= liveWeek();
     const all = document.getElementById("mAllBtn");
     if (all) all.style.display = "none";
     const hero = document.getElementById("userHero");
@@ -6854,7 +6858,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     const all = document.getElementById("mAllBtn");
     if (all) all.style.display = "";
-    const live = S.week === LIVE_WEEK;
+    const live = S.week === liveWeek() && activeSpaceId === "cbd";
     if (live) recomputeLT();
     const uHero = document.getElementById("userHero"), uRw = document.getElementById("userRewind"), uLine = document.getElementById("userLineup");
     let aK, xK, as, xs, aw, xw, ap = null, xp = null;
@@ -6875,7 +6879,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       xs = g.xs;
       aw = g.aw;
       xw = g.xw;
-      if (g.x === "pandas") {
+      if (g.x === MY_TEAM) {
         aK = g.x;
         xK = g.a;
         as = g.xs;
@@ -6883,7 +6887,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         aw = g.xw;
         xw = g.aw;
       }
-      if (S.week > LIVE_WEEK) {
+      if (S.week > liveWeek()) {
         const sum = (key) => starterPlayers(key).reduce((n, p) => n + p.proj, 0);
         ap = sum(aK);
         xp = sum(xK);
@@ -6908,11 +6912,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     if (live) {
       uLine.innerHTML = phaseStepperHTML() + fullStartersHTML(aK, xK, { phased: true, editable: true });
-    } else if (S.week > LIVE_WEEK && S.week === MINW) {
+    } else if (S.week > liveWeek() && S.week === MINW) {
       uLine.innerHTML = fullStartersHTML(aK, xK, { phased: false, editable: true });
     } else {
       const g = S.games.find((x) => x.me), idx = S.games.indexOf(g);
-      const note = S.week < LIVE_WEEK ? "Final result \xB7 open for Rewind" : "Scheduled \xB7 projections only";
+      const note = S.week < liveWeek() ? "Final result \xB7 open for Rewind" : "Scheduled \xB7 projections only";
       uLine.innerHTML = `<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>
       <div class="t"><div class="a">View Full Matchup</div><div class="b">${note}</div></div><div class="arr">\u203A</div></div>`;
@@ -7048,8 +7052,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function buildWeekGrid() {
     const cur = pickerTarget === "leader" ? S.leaderWeek : S.week;
     document.getElementById("weekGrid").innerHTML = Array.from({ length: MAXW - MINW + 1 }, (_, k) => {
-      const w = MINW + k, sub = w < LIVE_WEEK ? "FINAL" : w === LIVE_WEEK ? "LIVE" : "UPCOMING";
-      return `<div class="wcell ${w === cur ? "on" : ""} ${w === LIVE_WEEK && w !== cur ? "now" : ""}" onclick="pickWeek(${w})">${w}<span class="s">${sub}</span></div>`;
+      const w = MINW + k, sub = w < liveWeek() ? "FINAL" : w === liveWeek() ? "LIVE" : "UPCOMING";
+      return `<div class="wcell ${w === cur ? "on" : ""} ${w === liveWeek() && w !== cur ? "now" : ""}" onclick="pickWeek(${w})">${w}<span class="s">${sub}</span></div>`;
     }).join("");
   }
   function openWeekPicker(target) {
@@ -7224,14 +7228,27 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function leagueStatus(lg) {
     if (lg.created) return "forming";
+    // An imported league is playing from the moment it lands — it has no draft
+    // to wait on, and draftDone() answers for the open league rather than this
+    // one, which is the wrong question when the hub is drawing every row.
+    if (lg.imported) return lg.status || "active";
     if (!lg.real) return lg.status;
     return draftDone() ? "active" : "predraft";
   }
   function leagueWeek(lg) {
-    return lg.real ? S.week : lg.week;
+    if (!lg.real) return lg.week;
+    // Only the open league's week lives in session state; the rest is read
+    // back out of each league's own workspace.
+    if (lg.id === activeSpaceId) return S.week;
+    const sp = (store.spaces || {})[lg.id];
+    return sp && sp.week || lg.week || S.week;
   }
   function teamsOf(lg) {
-    return lg.real ? T : lg.teams;
+    if (!lg.real) return lg.teams;
+    // T holds whichever league is open. Every other row on the hub has to be
+    // drawn from its own table, or it borrows the open league's teams.
+    if (lg.id === activeSpaceId) return T;
+    return spaceTeams(lg.id);
   }
   function myKeyOf(lg) {
     return lg.myTeamKey;
@@ -7267,7 +7284,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return me ? me.c : "var(--accent)";
   }
   function leagueScore(lg) {
-    if (lg.imported) return importedScore(lg);
+    // Only the open league has a live lineup and a running clock. Any other one
+    // reports what it last stood at, and falls back to its season record if it
+    // has not been opened yet.
+    if (lg.real && lg.id !== activeSpaceId) {
+      const sp = (store.spaces || {})[lg.id];
+      const teams = teamsOf(lg);
+      if (sp && sp.score && teams[sp.score.me] && teams[sp.score.opp]) {
+        return Object.assign({}, sp.score, { teams });
+      }
+      return lg.imported ? importedScore(lg) : null;
+    }
     const teams = teamsOf(lg), me = myKeyOf(lg), opp = lg.opp;
     if (lg.real) {
       const g = (S.games || []).find((x) => x.me);
@@ -7326,6 +7353,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function openLeague(id) {
     const lg = leagueById(id);
+    // A real league brings its own teams, settings and rosters with it; this is
+    // what makes an imported league behave like the one the app shipped with.
+    if (lg.real) activateLeague(lg.id);
     store.activeLeague = lg.id;
     saveStore();
     document.body.classList.remove("hub");
@@ -9132,7 +9162,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       }
       const d = /* @__PURE__ */ new Date();
       if (d.getDay() === 2) {
-        const wk = Math.max(1, LIVE_WEEK);
+        const wk = Math.max(1, liveWeek());
         pushNotif({
           type: "recap",
           key: `recap:${lg.id}:${weekStamp(d)}`,
@@ -10813,7 +10843,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // result can still be corrected, which is why scores stay editable on every
   // week while the pairing controls disappear.
   function weekLocked(w) {
-    return +w <= LIVE_WEEK;
+    return +w <= liveWeek();
   }
   function swapHomeAway(week, idx) {
     if (!isCommish() || weekLocked(week)) return;
@@ -11039,7 +11069,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const saved = Array.isArray(L.playoffSeedOrder) ? L.playoffSeedOrder.filter((k) => T[k]) : [];
     const seen = new Set(saved);
     // standings order fills anything the saved list does not cover
-    return saved.concat(order.filter((k) => !seen.has(k))).slice(0, keys.length);
+    return saved.concat(standingsOrder().filter((k) => !seen.has(k))).slice(0, keys.length);
   }
   function setSeedTeam(i, key) {
     if (!isCommish() || !T[key]) return;
@@ -11620,7 +11650,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function seededScore(week, key) {
     const ov = scoreOverride(week, key);
     if (ov != null) return ov;
-    if (week > LIVE_WEEK) return 0;
+    if (week > liveWeek()) return 0;
     let h = 2166136261;
     const s = key + "#" + week;
     for (let i = 0; i < s.length; i++) {
@@ -11630,7 +11660,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return Math.round((85 + (h >>> 0) % 700 / 10) * 10) / 10;
   }
   function getGames(week) {
-    if (week === LIVE_WEEK) return GAMES.map((g) => {
+    // GAMES and the live ticker are the demo league's own; every other league
+    // generates its week the way every other week is generated.
+    if (week === liveWeek() && activeSpaceId === "cbd") return GAMES.map((g) => {
       const base = { ...g, status: g.live ? "live" : "final" };
       if (g.me) {
         base.as = LT.a;
@@ -11651,13 +11683,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     const games = scheduleForWeek(week).map(([k1, k2]) => {
       let a = k1, x = k2;
-      if (k2 === "pandas") {
+      if (k2 === MY_TEAM) {
         a = k2;
         x = k1;
       }
       const as = seededScore(week, a), xs = seededScore(week, x);
       const aw = as || xs ? Math.max(1, Math.min(99, Math.round(50 + (as - xs) * 1.3))) : 50;
-      return { a, x, as, xs, aw, xw: 100 - aw, me: a === "pandas" || x === "pandas", status: week < LIVE_WEEK ? "final" : "sched" };
+      return { a, x, as, xs, aw, xw: 100 - aw, me: a === MY_TEAM || x === MY_TEAM, status: week < liveWeek() ? "final" : "sched" };
     });
     games.sort((p, q) => (q.me ? 1 : 0) - (p.me ? 1 : 0));
     return games;
@@ -12447,6 +12479,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return DRAFT_TOTAL;
   }
   function draftDone() {
+    // An imported league arrives with full rosters, so there is no draft to
+    // run and every screen that waits on one should treat it as finished.
+    const lg = LEAGUE_BY_ID[activeSpaceId];
+    if (lg && lg.imported) return true;
     return firstOpenPick() >= DRAFT_TOTAL;
   }
   function teamOnPick(i) {
@@ -13190,7 +13226,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       document.getElementById("scroll").scrollTop = 0;
     } else showTab("matchup");
   }
-  var order = Object.keys(T).sort((a, b) => T[a].rk - T[b].rk);
+  // Read from T each time rather than frozen at load: the open league's teams
+  // are what belong in its standings, and they change when leagues do.
+  function standingsOrder() {
+    return Object.keys(T).sort((a, b) => (T[a].rk || 0) - (T[b].rk || 0));
+  }
   function tableRow(k) {
     const rec = String(T[k].rec || "0-0").split("-").map((n) => +n || 0);
     const w = rec[0] || 0, l = rec[1] || 0, d = rec[2] || 0;
@@ -13198,7 +13238,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return { k, w, l, d, pts: w * 3 + d, gd: Math.round((tot.pf - tot.pa) * 10) / 10, pf: tot.pf };
   }
   function renderTableStandings() {
-    const rows2 = order.map(tableRow).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.pf - a.pf);
+    const rows2 = standingsOrder().map(tableRow).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.pf - a.pf);
     const head = `<div class="stand-row head">
     <div class="stand-c1">TEAM</div>
     <span class="st-c rec">W-D-L</span>
@@ -13236,7 +13276,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <span class="st-c pa">PA</span>
     <span class="st-c df">DIFF</span>
   </div>`;
-    document.getElementById("standBody").innerHTML = head + order.map((k) => {
+    document.getElementById("standBody").innerHTML = head + standingsOrder().map((k) => {
       const t = T[k], me = k === MY_TEAM, tot = seasonTotals(k);
       const diff = Math.round((tot.pf - tot.pa) * 10) / 10;
       return `<div class="stand-row ${me ? "me" : ""}">
@@ -13927,9 +13967,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="hb-crest" style="background:linear-gradient(155deg,${bgc},#0b0e14);border-color:${tint};color:${tint}">${markInner(mk)}</div>
     <div class="hb-id">
       <div class="hb-nm">${escHtml(lg.name)}</div>
-      <div class="hb-st">${escHtml(statusLine(lg))}</div>
+      <div class="hb-st">${lg.source === "demo" ? `<span class="hb-src">DEMO</span>` : ""}${escHtml(statusLine(lg))}</div>
     </div>
-    ${lg.imported ? `<span class="hb-src">${lg.source === "demo" ? "DEMO" : "SLEEPER"}</span>` : ""}
     ${right}
   </div>`;
   }
@@ -14022,8 +14061,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }, 3e4);
   }
   function seededRoster(lg, key) {
-    const brought = importedRoster(lg, key);
-    if (brought) return brought;
     const keys = Object.keys(teamsOf(lg)), k = keys.length || 1;
     const ti = Math.max(0, keys.indexOf(key)), out = [];
     for (let i = ti; i < POOL.length && out.length < 14; i += k) {
@@ -16088,6 +16125,62 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 
   // ---- storing ------------------------------------------------------------
 
+  // Turn the imported rows into the app's own roster shape, so from here the
+  // league is read by exactly the code that reads the one the app shipped with
+  // — lineups, trades, waivers and the team sheet all included.
+  //
+  // Kickers and defences come across on the bench: the app's lineup has no slot
+  // for them and its player table carries neither, so a K slot would be one
+  // nothing could ever fill. Nothing is lost, and the import report says so.
+  function importPlayer(row) {
+    const local = row.id && NFL_BY_ID[row.id];
+    if (local) return mkPlayer(local);
+    return { id: null, n: row.n, full: row.full || row.n, pos: row.pos, tm: row.tm, num: "", exp: 0, hs: "", proj: row.proj || 0 };
+  }
+
+  function nativeRosters(built) {
+    const slots = built.slots, order = [];
+    SLOT_ORDER.forEach((k) => {
+      for (let i = 0; i < Math.max(0, +slots[k] || 0); i++) order.push(k);
+    });
+    const out = {};
+    Object.keys(built.rosters).forEach((key) => {
+      const rows = built.rosters[key] || [], used = {};
+      const starters = order.map((slot) => ({ slot, player: null }));
+      const take = (slot, startersOnly) => {
+        for (let i = 0; i < rows.length; i++) {
+          if (used[i]) continue;
+          if (startersOnly && rows[i].group !== "STARTERS") continue;
+          if (!slotAllows(slot, rows[i].pos)) continue;
+          used[i] = true;
+          return importPlayer(rows[i]);
+        }
+        return null;
+      };
+      // Whoever started in Sleeper starts here, then any slot still empty takes
+      // the best body left rather than being left blank.
+      starters.forEach((s) => s.player = take(s.slot, true));
+      starters.forEach((s) => {
+        if (!s.player) s.player = take(s.slot, false);
+      });
+      const bench = [];
+      rows.forEach((r, i) => {
+        if (!used[i]) bench.push(importPlayer(r));
+      });
+      out[key] = { starters, bench, taxi: blankRows(slots.taxi), ir: blankRows(slots.ir) };
+    });
+    // The bench has to hold whatever the app's lineup could not seat — the
+    // kickers and defences among them — or the roster arrives already over its
+    // own limit and the league cannot sign anyone. It is sized to the fullest
+    // squad plus the room Sleeper allowed, so there is somewhere to add.
+    const deepest = Object.keys(out).reduce((n, k) => Math.max(n, out[k].bench.length), 0);
+    slots.bench = Math.max(+slots.bench || 0, deepest);
+    Object.keys(out).forEach((k) => {
+      while (out[k].bench.length < slots.bench) out[k].bench.push(null);
+    });
+    return out;
+  }
+
   function importedBag() {
     if (!store.imported) store.imported = [];
     return store.imported;
@@ -16108,7 +16201,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       myTeamKey: rec.myKey,
       teams: rec.teams,
       opp: rec.opp || null,
-      real: false,
+      // Real, in the sense the app means it: its own teams, rosters, scoring
+      // and settings, driven by the same machinery as the league the app
+      // shipped with. `imported` only records where it came from.
+      real: true,
       imported: true,
       source: rec.demo ? "demo" : "sleeper"
     };
@@ -16173,6 +16269,26 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     store.transactions[id] = built.tx.map((t, i) => Object.assign({ id: "si" + i }, t));
     store.leagueOrder = store.leagueOrder || [];
     store.leagueOrder.unshift(id);
+
+    // Everything below is what makes it a league of the app's own rather than a
+    // record of someone else's: rosters in the native shape, a workspace of its
+    // own settings, and the importing manager as its commissioner.
+    store.rosters = store.rosters || {};
+    store.rosters[id] = nativeRosters(built);
+    store.spaces = store.spaces || {};
+    store.spaces[id] = {
+      league: Object.assign({}, LEAGUE_DEFAULTS, {
+        type: built.dynasty ? "dynasty" : "redraft",
+        teams: keys.length,
+        commish: me
+      }),
+      scoring: built.scoring,
+      slots: built.slots,
+      team: {},
+      draft: { picks: [] },
+      week: Math.max(1, Math.min(14, +built.week || 1))
+    };
+
     saveStore();
     registerImported(rec);
     return id;
@@ -16470,15 +16586,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const s = impState();
     return impHead("Import from Sleeper", "STEP 1 OF 3") + `
     <div class="imp-lede">Bring a league across with its teams, rosters, records,
-      scoring rules and recent transactions.</div>
+      scoring rules and recent transactions. It becomes your league here — set
+      lineups, trade and run waivers in the app from then on.</div>
     <div class="imp-q">Your Sleeper username</div>
     <input id="impUser" class="wiz-input" type="text" maxlength="40" autocapitalize="off"
       autocorrect="off" spellcheck="false" placeholder="username"
       value="${escAttr(s.name)}" oninput="importSetUser(this.value)"
       onkeydown="if(event.key==='Enter')importFind()">
     <div class="imp-fine">Sleeper's API is read-only and public, so no password is
-      needed — and nothing is ever written back to Sleeper. This makes a copy;
-      the two leagues do not stay in sync.</div>
+      needed, and nothing is ever written back. This is a handover rather than a
+      link: once the league is here it runs on its own, and there is nothing to
+      re-import or keep in step.</div>
     ${s.err ? impNote("warn", s.err) : ""}
     ${s.busy ? impBusy(s.busy) : `<div class="wiz-foot">
       <div class="wiz-btn" onclick="goHome()">Cancel</div>
@@ -16544,8 +16662,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${checkRow(matched > 0, "Rosters", matched + " of " + b.rowCount + " players matched")}
       ${checkRow(true, "Scoring rules", Object.keys(b.scoring).filter((k) => b.scoring[k]).length + " rules set")}
       ${checkRow(b.tx.length > 0, "Trades and waivers", b.tx.length + " recent moves")}
+      ${checkRow(true, "Yours to run from here", "lineups, trades, waivers")}
     </div>
-    ${b.unmatched.length ? impNote("warn", b.unmatched.length + " players are not in this app's player table — mostly kickers and defences. They still come across, without a headshot or projection.") : ""}
+    ${b.unmatched.length ? impNote("warn", b.unmatched.length + " players are not in this app's player table — mostly kickers and defences, which this app's lineup has no slot for. They come across on the bench, without a headshot or projection.") : ""}
     ${b.missedScoring.length ? impNote("warn", "Scoring rules with no equivalent here, left out: " + b.missedScoring.join(", ")) : ""}
     ${s.busy ? impBusy(s.busy) : `<div class="wiz-foot">
       <div class="wiz-btn" onclick="importBack()">Back</div>
@@ -16570,8 +16689,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="imp-done-h">${escHtml(b.name || "League")} imported</div>
     <div class="imp-done-s">You are ${escHtml(t.n || "—")}${t.rec ? " \xB7 " + escHtml(t.rec) : ""}</div>
     ${s.demo ? impNote("warn", "This was demo data, not a real Sleeper league.") : ""}
-    <div class="imp-fine" style="text-align:center">A snapshot, not a live link. Changes
-      made in Sleeper from here on will not appear.</div>
+    <div class="imp-fine" style="text-align:center">It is an ordinary league of yours
+      now, no different from one started here. Set your lineup, make trades, pick up
+      free agents — Sleeper is not involved from this point.</div>
     <div class="wiz-foot" style="justify-content:center">
       <div class="wiz-btn primary" onclick="importFinish()">Open league</div>
     </div>
@@ -16583,6 +16703,187 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!el) return;
     const s = impState();
     el.innerHTML = s.step === 0 ? stepUser() : s.step === 1 ? stepLeagues() : s.step === 2 ? stepConfirm() : stepDone();
+  }
+
+
+  // js/spaces.js
+  //
+  // One workspace per league.
+  //
+  // The app was written around a single real league. `T`, `MY_TEAM`,
+  // `DRAFT_ORDER` and `store.league` / `.scoring` / `.slots` are all singular,
+  // and around 175 call sites read them directly. Threading a league id through
+  // every one of those would be a rewrite of the whole app, so instead each
+  // league keeps its own copy of that state and the active one is swapped into
+  // place when the league is opened.
+  //
+  // `T` is emptied and refilled rather than replaced, because the call sites
+  // hold no reference to it beyond `T[key]`; `MY_TEAM`, `DRAFT_ORDER` and
+  // `DRAFT_TOTAL` are plain vars and are simply reassigned. Everything already
+  // keyed by league id — rosters, transactions, waivers, chat, scoring, player
+  // photos — needed no change at all; `rosterLeagueId()` forcing "cbd" for any
+  // league that was not the demo one was the gate holding all of it shut.
+  var space_exports = {};
+  __export(space_exports, {
+    activateLeague: () => activateLeague,
+    spaceInfo: () => spaceInfo,
+    captureSpace: () => captureSpace,
+    initSpaces: () => initSpaces,
+    liveWeek: () => liveWeek,
+    spaceOf: () => spaceOf
+  });
+
+  var T_BASE = null;
+  var MY_TEAM_BASE = MY_TEAM;
+  var DRAFT_ORDER_BASE = DRAFT_ORDER.slice();
+  var activeSpaceId = "cbd";
+
+  // What the app currently has swapped in. Exported because the bindings
+  // themselves cannot be: Object.assign copies a getter's value once, at boot,
+  // so window.activeSpaceId would answer "cbd" forever.
+  function spaceInfo() {
+    return {
+      id: activeSpaceId,
+      my: MY_TEAM,
+      week: S.week,
+      teams: Object.keys(T).length,
+      order: DRAFT_ORDER.join(","),
+      total: DRAFT_TOTAL,
+      liveWeek: liveWeek()
+    };
+  }
+
+  function leagueSpaces() {
+    if (!store.spaces) store.spaces = {};
+    return store.spaces;
+  }
+  function spaceOf(lid) {
+    const bag = leagueSpaces();
+    if (!bag[lid]) bag[lid] = {};
+    return bag[lid];
+  }
+  function importedRec(lid) {
+    return (store.imported || []).find((r) => r.id === lid) || null;
+  }
+  function clone(v) {
+    return JSON.parse(JSON.stringify(v));
+  }
+
+  // The demo league's table is the one declared in js/data/teams.js; an
+  // imported league brings its own, built from the Sleeper rosters.
+  function spaceTeams(lid) {
+    const rec = importedRec(lid);
+    return clone(rec ? rec.teams : T_BASE);
+  }
+  function spaceMyTeam(lid) {
+    const rec = importedRec(lid);
+    return rec && rec.myKey && rec.teams[rec.myKey] ? rec.myKey : MY_TEAM_BASE;
+  }
+  function spaceDraftOrder(lid) {
+    const rec = importedRec(lid);
+    return rec ? Object.keys(rec.teams) : DRAFT_ORDER_BASE.slice();
+  }
+
+  // Team edits — a renamed team, an uploaded crest, a chosen typeface — are
+  // stored per league and re-applied whenever that league is opened, the way
+  // initStore() applied them for the one league that used to exist.
+  function applyTeamOverrides() {
+    const o = store.team || {}, t = T[MY_TEAM];
+    if (!t) return;
+    if (o.name) t.n = o.name;
+    if (o.c) t.c = o.c;
+    if (o.bg) t.bg = o.bg;
+    if (o.logo) t.logo = o.logo;
+    if (o.font) t.font = o.font;
+  }
+
+  // Hold on to whatever the open league's config has become before leaving it.
+  function captureSpace() {
+    const sp = spaceOf(activeSpaceId);
+    sp.league = store.league;
+    sp.scoring = store.scoring;
+    sp.slots = store.slots;
+    sp.team = store.team;
+    sp.draft = store.draft;
+    sp.week = S.week;
+    // The hub shows a score for every league, but only the open one has a
+    // running lineup; the rest are drawn from what was last seen here.
+    const g = (S.games || []).find((x) => x.me);
+    if (g) {
+      const mine = g.a === MY_TEAM;
+      sp.score = {
+        me: MY_TEAM,
+        opp: mine ? g.x : g.a,
+        ms: mine ? g.as : g.xs,
+        os: mine ? g.xs : g.as,
+        mw: mine ? g.aw : g.xw
+      };
+    }
+  }
+
+  function activateLeague(lid, opts) {
+    opts = opts || {};
+    if (!lid) return;
+    if (lid === activeSpaceId && !opts.force) return;
+    if (T_BASE) captureSpace();
+
+    const sp = spaceOf(lid);
+    const rec = importedRec(lid);
+    // A league opened for the first time starts from its imported settings
+    // where it has them, and from the app's defaults where it does not.
+    store.league = sp.league || (rec && rec.league) || Object.assign({}, LEAGUE_DEFAULTS, lid === "cbd" ? store.league || {} : {});
+    store.scoring = sp.scoring || (rec && rec.scoring) || Object.assign({}, SCORING_DEFAULTS, lid === "cbd" ? store.scoring || {} : {});
+    store.slots = sp.slots || (rec && rec.slots) || Object.assign({}, SLOT_DEFAULTS, lid === "cbd" ? store.slots || {} : {});
+    store.team = sp.team || {};
+    // Each league drafts separately, so store.draft travels with the rest of
+    // the workspace rather than being shared.
+    store.draft = sp.draft || { picks: [] };
+    // An imported league opens where its season actually is rather than at
+    // week one, and each league remembers the week you last looked at.
+    const wk = sp.week || (rec && rec.week) || S.week;
+    S.week = Math.max(1, Math.min(14, +wk || 1));
+
+    const teams = spaceTeams(lid);
+    Object.keys(T).forEach((k) => delete T[k]);
+    Object.assign(T, teams);
+    MY_TEAM = spaceMyTeam(lid);
+    DRAFT_ORDER = spaceDraftOrder(lid);
+    DRAFT_TOTAL = DRAFT_ROUNDS * DRAFT_ORDER.length;
+
+    activeSpaceId = lid;
+    store.activeLeague = lid;
+    captureSpace();
+    applyTeamOverrides();
+
+    S.lineupSlots = buildSlots();
+    S.pidx = null;
+    Object.keys(ROSTERS).forEach((k) => delete ROSTERS[k]);
+    if (!opts.boot) {
+      rosterBag();
+      applyStoredRoster();
+      applyTeamFonts();
+      saveStore();
+    }
+  }
+
+  // Which week each league is actually up to. The demo league is played from
+  // week one; an imported league arrives mid-season, and everything before that
+  // week is finished rather than yet to come. liveWeek() is 1, so this changes
+  // nothing for the league the app shipped with.
+  function liveWeek() {
+    const rec = importedRec(activeSpaceId);
+    return rec ? Math.max(1, Math.min(14, +rec.week || 1)) : LIVE_WEEK;
+  }
+
+  function initSpaces() {
+    T_BASE = clone(T);
+    MY_TEAM_BASE = MY_TEAM;
+    DRAFT_ORDER_BASE = DRAFT_ORDER.slice();
+    // Whatever league was open last time comes back open, with its own teams
+    // and settings in place before anything reads them.
+    const want = store.activeLeague || "cbd";
+    const known = want === "cbd" || importedRec(want);
+    activateLeague(known ? want : "cbd", { boot: true, force: true });
   }
 
   // js/main.js
@@ -16638,13 +16939,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     universe_exports,
     orders_exports,
     ticket_exports,
-    import_sleeper_exports
+    import_sleeper_exports,
+    space_exports
   );
+  initImported();
+  initSpaces();
   initStore();
   migrateRosters();
   migrateDraft();
   migrateTrades();
   initLeagueConfig();
+  // initStore() and initLeagueConfig() normalise these into fresh objects, so
+  // the active league's workspace has to take the new ones.
+  captureSpace();
   initClock();
   renderStandings();
   initPanel();
@@ -16656,7 +16963,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   applyTeamFonts();
   initLeagues();
   initHome();
-  initImported();
   initChat();
   initNotifs();
   renderTabs(homeTab());
