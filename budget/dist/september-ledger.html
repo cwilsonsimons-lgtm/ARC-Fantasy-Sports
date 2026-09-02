@@ -522,10 +522,12 @@ function render(){
     if(schedOn(d).some(s=>s.kind==='bill')) marks += '<i class="m-bill"></i>';
     if(incomeOn(d).length || dayIn > 0) marks += '<i class="m-pay"></i>';
     const b = fc[d-1];
-    // a day that took in more than it let out reads as a gain, not a spend
-    const fig = dayIn > 0
-      ? '<span class="'+(dayIn>=dayOut?'earned':'spent')+'">'+(dayIn>=dayOut?'+':'')+money0(dayIn-dayOut)+'</span>'
-      : (dayOut ? '<span class="spent">'+money0(dayOut)+'</span>' : '');
+    // what this day does to the money, all in: money out reads negative, a gain reads +.
+    // it is the same figure the running balance below steps by.
+    const net = netFor(d,false);
+    const moved = dayIn || dayOut || schedOn(d).length || incomeOn(d).length;
+    const netCls = net > 0 ? 'earned' : net < 0 ? 'spent' : 'planned';
+    const fig = moved ? '<span class="'+netCls+'">'+(net>0?'+':'')+money0(net)+'</span>' : '';
     cal += '<button class="day'+(todayN===d?' today':'')+(todayN&&d<todayN?' past':'')+(b<0?' neg':'')+'" data-day="'+d+'">'
       + '<span class="n">'+d+'</span>'
       + '<span class="marks">'+marks+'</span>'
@@ -589,7 +591,7 @@ function render(){
     + '<span><i style="background:#2C6B4C;border-radius:50%"></i>money in</span>'
     + '<span><i style="background:#C98A22;border-radius:50%"></i>subscription</span>'
     + '<span><i style="background:#A83220;border-radius:50%"></i>installment</span></div>'
-    + '<div class="note">The small number on each day is what you would have left after it. Tap a day to log spending, plan something, or put a bill on it.</div></div>'
+    + '<div class="note">Each day shows what it does to your money — red for a day that takes, green for one that gives — and under it what you would have left. Tap a day to log spending, plan something, or put a bill on it.</div></div>'
 
     + '<div class="cats"><h2>Where it went</h2>'+cats+'</div>'
 
