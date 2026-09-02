@@ -61,6 +61,57 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## MLS League Office
+
+`mls/index.html` is a second self-contained page, unrelated to the football
+app: it tracks a FIFA/EA FC MLS career-mode league against its own house rules.
+Open it directly — no build step, no server, no imports from `js/`.
+
+It does three jobs, one per tab:
+
+**Squad.** A registered-squad table (name, age, nationality, role, wage, MLS
+regen) checked live against the franchise's quotas — the $175K wage cap rising
+$5K a season, the 35-player limit, at least 18 North Americans, and the
+per-franchise South America / Europe / Rest-of-world ceilings. Nationalities map
+to zones by confederation, so CONCACAF counts as North America.
+
+The interesting part is the exemption slots — New York's +3 Italians, Canada's
++3 French speakers, Texas's +2 Spain and +1 France, and so on. Slots are filled
+*eagerly* and pressure-first: each slot goes to the matching player whose zone
+sits furthest over its cap. Filling them lazily would be just as legal and much
+less useful — three Italians left uncounted make Europe read 5/5 when five
+places are actually free. Slots are never spent on a North American, because
+that zone is a floor rather than a ceiling and exempting one would quietly cost
+the squad an 18th.
+
+**Transfers.** Window allowances (3 starters + 3 bench in summer, 1 + 1 in
+January), the one decline a season, and the point where three starters out
+makes declines free again. The offer desk takes four answers — player, role,
+buying club's country, window — and returns the ruling: must accept, may
+decline, not transferable, or a genuine rule collision that needs a league call.
+Recording a sale drops the player from the registered squad so the compliance
+panel stays honest.
+
+**Draft.** Months scouted set the round (7–9 → 1st, 4–6 → 2nd, 1–3 → 3rd). Pick
+entitlements roll forward across seasons, because an extra pick in a round costs
+the next round this season *and* the same round next season; a best player sold
+to a top-five country adds a free third-rounder. Seasons are walked in order
+from the first, since each one's debts are the next one's starting position.
+
+The Rulebook tab carries the rules as written plus every reading the engine
+acts on — what "over 32" means, which caps an exempt slot relieves, what happens
+when a mandatory sale lands in a full window. The franchise quota table there is
+generated from the same `FRANCHISES` object the engine enforces, so it cannot
+drift.
+
+State lives in one `localStorage` key (`mls_league_office_v1`) and moves between
+browsers as copy-and-paste JSON rather than a file download — artifact viewers
+have downloads blocked, and the clipboard works everywhere.
+
+Fonts come from Google here rather than being embedded as they are in the
+football app; every family carries a real fallback stack, so the page holds its
+shape offline.
+
 ## Layout
 
 ```

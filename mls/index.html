@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLS League Office</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* ---------- tokens: light is the base, both dark states redefine only these ---------- */
+:root{
+  --paper:#E9ECF1; --surface:#FFFFFF; --surface-2:#F4F6FA; --sunk:#E4E8EF;
+  --ink:#0D1319; --ink-2:#4E5A67; --ink-3:#7C8896;
+  --line:#D3DAE4; --line-2:#E6EAF1;
+  --accent:#1E3FB4; --accent-ink:#FFFFFF; --accent-soft:#E1E7F9;
+  --ok:#0B7550;   --ok-soft:#DCEFE7;   --ok-line:#9BD1BB;
+  --warn:#8A5B00; --warn-soft:#F6EBD3; --warn-line:#DCBC77;
+  --bad:#AF2A24;  --bad-soft:#F8E2E0;  --bad-line:#E7A7A2;
+  --shadow:0 1px 2px rgba(13,19,25,.05),0 10px 30px rgba(13,19,25,.06);
+  --f-display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0A0E13; --surface:#141A21; --surface-2:#10161C; --sunk:#1C242D;
+    --ink:#E7EDF3; --ink-2:#9AA7B4; --ink-3:#6B7885;
+    --line:#242F3A; --line-2:#1A222B;
+    --accent:#87A0FF; --accent-ink:#0A0E13; --accent-soft:#1A2447;
+    --ok:#4FC694;   --ok-soft:#0F3128;   --ok-line:#1F5C48;
+    --warn:#E1A947; --warn-soft:#33270F; --warn-line:#63491A;
+    --bad:#FF8079;  --bad-soft:#371A18;  --bad-line:#6B2E29;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0A0E13; --surface:#141A21; --surface-2:#10161C; --sunk:#1C242D;
+  --ink:#E7EDF3; --ink-2:#9AA7B4; --ink-3:#6B7885;
+  --line:#242F3A; --line-2:#1A222B;
+  --accent:#87A0FF; --accent-ink:#0A0E13; --accent-soft:#1A2447;
+  --ok:#4FC694;   --ok-soft:#0F3128;   --ok-line:#1F5C48;
+  --warn:#E1A947; --warn-soft:#33270F; --warn-line:#63491A;
+  --bad:#FF8079;  --bad-soft:#371A18;  --bad-line:#6B2E29;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);font-size:14px;line-height:1.5;
+  font-feature-settings:"ss01";-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+h1,h2,h3{margin:0;font-family:var(--f-display);text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--ink-3)}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:10px clamp(12px,3vw,28px)}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.crest{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;
+  font-family:var(--f-display);font-weight:800;font-size:15px;letter-spacing:-.02em;
+  color:#fff;background:var(--crest,#1E3FB4);flex:none}
+.brand b{display:block;font-family:var(--f-display);font-weight:800;font-size:15px;
+  text-transform:uppercase;letter-spacing:.04em;line-height:1.1}
+.brand span{display:block;font-family:var(--f-mono);font-size:10px;color:var(--ink-3);
+  letter-spacing:.1em;text-transform:uppercase}
+
+.ctl{display:flex;align-items:center;gap:6px}
+.ctl>label{font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3)}
+select,input[type=text],input[type=number],textarea{
+  background:var(--surface-2);border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;font-size:13px;min-width:0}
+select{padding-right:22px}
+.season{display:flex;align-items:center;border:1px solid var(--line);border-radius:7px;
+  background:var(--surface-2);overflow:hidden}
+.season button{width:26px;height:30px;color:var(--ink-2);font-size:14px;line-height:1}
+.season button:hover{background:var(--sunk);color:var(--ink)}
+.season b{font-family:var(--f-mono);font-size:13px;padding:0 4px;min-width:52px;text-align:center}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:2px;overflow-x:auto;background:var(--surface);
+  border-bottom:1px solid var(--line);padding:0 clamp(12px,3vw,28px);
+  position:sticky;top:57px;z-index:19}
+.tab{padding:10px 14px 9px;font-family:var(--f-display);font-weight:600;font-size:13px;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);
+  border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ---------- shell ---------- */
+main{padding:clamp(14px,2.5vw,26px) clamp(12px,3vw,28px) 60px;
+  max-width:1320px;margin:0 auto}
+.split{display:grid;gap:20px;align-items:start}
+@media (min-width:960px){.split{grid-template-columns:minmax(0,1fr) 350px}
+  .split>.rail{position:sticky;top:104px}}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow)}
+.card>header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding:13px 16px;border-bottom:1px solid var(--line-2)}
+.card>header h2{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.card>header .note{font-size:12px;color:var(--ink-3);margin-left:auto}
+.pad{padding:16px}
+.stack{display:flex;flex-direction:column;gap:20px}
+
+/* ---------- registration rail (the stamped document) ---------- */
+.rail{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  position:relative;box-shadow:var(--shadow)}
+.rail::before{content:"";position:absolute;inset:4px;border:1px solid var(--line-2);
+  border-radius:8px;pointer-events:none}
+.rail>*{position:relative}
+.verdict{padding:18px 16px 14px;text-align:center;border-bottom:1px solid var(--line-2)}
+.stamp{display:inline-block;margin-top:8px;padding:7px 16px;border:2px solid currentColor;
+  border-radius:4px;transform:rotate(-2.2deg);
+  font-family:var(--f-display);font-weight:800;font-size:17px;
+  text-transform:uppercase;letter-spacing:.06em}
+.stamp.ok{color:var(--ok);background:var(--ok-soft)}
+.stamp.warn{color:var(--warn);background:var(--warn-soft)}
+.stamp.bad{color:var(--bad);background:var(--bad-soft)}
+.verdict .sub{margin-top:9px;font-size:12px;color:var(--ink-2)}
+
+.rule{display:grid;grid-template-columns:38px minmax(0,1fr) auto;
+  gap:3px 10px;padding:11px 14px;border-top:1px solid var(--line-2);align-items:center}
+.rule:first-of-type{border-top:none}
+.rule .code{font-family:var(--f-mono);font-size:10px;color:var(--ink-3);letter-spacing:.04em}
+.rule .name{font-size:13px;font-weight:500}
+.rule .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;
+  font-size:12.5px;font-weight:500;text-align:right}
+.rule .bar{grid-column:2/-1;height:4px;border-radius:2px;background:var(--sunk);overflow:hidden}
+.rule .bar i{display:block;height:100%;border-radius:2px;transition:width .25s ease}
+.rule .why{grid-column:2/-1;font-size:11.5px;color:var(--ink-3)}
+.rule.is-ok .bar i{background:var(--ok)}
+.rule.is-warn .bar i{background:var(--warn)}
+.rule.is-bad .bar i{background:var(--bad)}
+.rule.is-bad .val{color:var(--bad)}
+.rule.is-warn .val{color:var(--warn)}
+
+.chip{display:inline-block;font-family:var(--f-mono);font-size:9.5px;font-weight:500;
+  text-transform:uppercase;letter-spacing:.09em;padding:3px 7px;border-radius:999px;
+  border:1px solid var(--line);color:var(--ink-2);background:var(--surface-2);white-space:nowrap}
+.chip.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok-line)}
+.chip.warn{color:var(--warn);background:var(--warn-soft);border-color:var(--warn-line)}
+.chip.bad{color:var(--bad);background:var(--bad-soft);border-color:var(--bad-line)}
+.chip.accent{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th{font-family:var(--f-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--ink-3);text-align:left;font-weight:500;
+  padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
+  position:sticky;top:0;background:var(--surface)}
+td{padding:5px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:hover{background:var(--surface-2)}
+tr.flagged td{background:var(--bad-soft)}
+td input[type=text],td input[type=number]{background:transparent;border:1px solid transparent;
+  border-radius:6px;padding:5px 6px;width:100%}
+td input:hover{border-color:var(--line-2)}
+td input:focus{background:var(--surface);border-color:var(--accent);outline:none}
+td select{background:transparent;border:1px solid transparent;padding:5px 4px}
+td select:hover{border-color:var(--line-2)}
+.w-num{width:72px}.w-age{width:64px}.w-wage{width:100px}
+td.num input{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.rm{width:26px;height:26px;border-radius:6px;color:var(--ink-3);font-size:15px;line-height:1}
+.rm:hover{background:var(--bad-soft);color:var(--bad)}
+.reg{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;color:var(--ink-2)}
+.reg.x{color:var(--bad);font-weight:600}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;
+  vertical-align:1px}
+.r-NA{background:#2E6FD8}.r-SA{background:#D8892E}.r-EU{background:#7B4FD0}
+.r-OT{background:#2E9D8A}.r-XX{background:var(--bad)}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:8px;
+  border:1px solid var(--line);background:var(--surface-2);
+  font-family:var(--f-display);font-weight:600;font-size:12px;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.quiet{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.quiet:hover{background:var(--surface-2);color:var(--ink)}
+.btn.danger:hover{border-color:var(--bad-line);background:var(--bad-soft);color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* ---------- forms ---------- */
+.grid-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>span{font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--ink-3)}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.check input{width:15px;height:15px;accent-color:var(--accent);flex:none}
+
+/* ---------- verdict panel on the transfer desk ---------- */
+.ruling{border:1px solid var(--line);border-left-width:4px;border-radius:10px;
+  padding:14px 16px;background:var(--surface-2)}
+.ruling h3{font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.ruling.must{border-left-color:var(--bad)}    .ruling.must h3{color:var(--bad)}
+.ruling.may{border-left-color:var(--ok)}      .ruling.may h3{color:var(--ok)}
+.ruling.block{border-left-color:var(--ink-3)} .ruling.block h3{color:var(--ink-2)}
+.ruling.conflict{border-left-color:var(--warn)} .ruling.conflict h3{color:var(--warn)}
+.ruling ul{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:5px;
+  font-size:13px;color:var(--ink-2)}
+.ruling li::marker{color:var(--ink-3)}
+
+/* ---------- quota tiles ---------- */
+.quotas{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
+.quota{border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:var(--surface-2)}
+.quota .k{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3)}
+.quota .v{font-family:var(--f-display);font-weight:800;font-size:24px;
+  font-variant-numeric:tabular-nums;line-height:1.15;margin-top:3px}
+.quota .v small{font-size:14px;font-weight:600;color:var(--ink-3)}
+.quota.full .v{color:var(--bad)}
+.quota.edge .v{color:var(--warn)}
+
+/* ---------- ledger / lists ---------- */
+.ledger{display:flex;flex-direction:column;gap:8px}
+.entry{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 11px;
+  align-items:center;border:1px solid var(--line-2);border-radius:9px;padding:10px 12px;
+  background:var(--surface-2)}
+.entry .who{font-weight:600;font-size:13.5px}
+.entry .meta{grid-column:2/3;font-size:11.5px;color:var(--ink-3)}
+.entry .tag{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;padding:3px 7px;border-radius:5px;grid-row:span 2}
+.entry .tag.out{background:var(--accent-soft);color:var(--accent)}
+.entry .tag.dec{background:var(--sunk);color:var(--ink-2)}
+.empty{padding:22px 16px;text-align:center;color:var(--ink-3);font-size:13px;
+  border:1px dashed var(--line);border-radius:10px}
+
+/* ---------- draft ---------- */
+.rounds{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.round{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--surface-2)}
+.round>h3{padding:9px 12px;background:var(--surface);border-bottom:1px solid var(--line-2);
+  font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.round .body{padding:12px;display:flex;flex-direction:column;gap:9px}
+.tally{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tally .n{font-family:var(--f-display);font-weight:800;font-size:26px;
+  font-variant-numeric:tabular-nums;line-height:1}
+.tally .n.over{color:var(--bad)}
+.steps{display:flex;align-items:center;gap:0;border:1px solid var(--line);
+  border-radius:7px;overflow:hidden;background:var(--surface)}
+.steps button{width:28px;height:28px;color:var(--ink-2)}
+.steps button:hover{background:var(--sunk);color:var(--ink)}
+.steps b{font-family:var(--f-mono);font-size:13px;min-width:26px;text-align:center}
+.line{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.line b{font-family:var(--f-mono);font-weight:500}
+.line.debt{color:var(--bad)}
+.line.gain{color:var(--ok)}
+.hr{height:1px;background:var(--line-2)}
+
+/* ---------- rulebook ---------- */
+.book{max-width:70ch;display:flex;flex-direction:column;gap:26px}
+.book section{display:flex;flex-direction:column;gap:9px}
+.book h3{font-size:13px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;
+  color:var(--accent);padding-bottom:6px;border-bottom:1px solid var(--line-2)}
+.book ul{margin:0;padding-left:19px;display:flex;flex-direction:column;gap:6px;color:var(--ink-2)}
+.book li strong{color:var(--ink);font-weight:600}
+.book .call{border-left:3px solid var(--warn);background:var(--warn-soft);
+  padding:11px 14px;border-radius:0 8px 8px 0;font-size:13px;color:var(--ink-2)}
+.book .call b{color:var(--ink);display:block;margin-bottom:3px;
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase}
+
+/* ---------- banner ---------- */
+.banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid var(--warn-line);background:var(--warn-soft);color:var(--ink-2);
+  border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:18px}
+.banner b{color:var(--ink)}
+.banner .btn{margin-left:auto}
+
+textarea{width:100%;min-height:130px;font-family:var(--f-mono);font-size:11.5px;resize:vertical}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="crest" id="crest">NY</div>
+    <div>
+      <b>League Office</b>
+      <span id="brandsub">Registration &amp; transfers</span>
+    </div>
+  </div>
+  <div class="ctl">
+    <label for="franchise">Franchise</label>
+    <select id="franchise"></select>
+  </div>
+  <div class="ctl">
+    <label for="seasonval">Season</label>
+    <div class="season">
+      <button type="button" data-act="season" data-d="-1" aria-label="Previous season">&#8722;</button>
+      <b id="seasonval" class="mono">1</b>
+      <button type="button" data-act="season" data-d="1" aria-label="Next season">+</button>
+    </div>
+  </div>
+  <button class="btn quiet" type="button" data-act="theme" id="themebtn" aria-label="Switch theme">Theme</button>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button class="tab" role="tab" data-tab="squad" aria-selected="true">Squad</button>
+  <button class="tab" role="tab" data-tab="transfers" aria-selected="false">Transfers</button>
+  <button class="tab" role="tab" data-tab="draft" aria-selected="false">Draft</button>
+  <button class="tab" role="tab" data-tab="rules" aria-selected="false">Rulebook</button>
+</nav>
+
+<main>
+  <div class="banner" id="samplebanner" hidden>
+    <span><b>This is a sample squad</b> &mdash; it is here so the tool opens with something working. Clear it and enter your own.</span>
+    <button class="btn danger" type="button" data-act="clearsample">Clear sample</button>
+  </div>
+
+  <!-- ============================== SQUAD ============================== -->
+  <section id="panel-squad" class="split">
+    <div class="stack">
+      <div class="card">
+        <header>
+          <h2>Registered squad</h2>
+          <span class="note" id="squadnote"></span>
+        </header>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th class="w-age">Age</th>
+                <th>Nationality</th>
+                <th>Zone</th>
+                <th>Role</th>
+                <th class="w-wage">Wage</th>
+                <th title="Regen of a player who played in MLS">Regen</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="squadbody"></tbody>
+          </table>
+        </div>
+        <div class="pad row" style="border-top:1px solid var(--line-2)">
+          <button class="btn primary" type="button" data-act="addplayer">Add player</button>
+          <button class="btn quiet" type="button" data-act="sortsquad">Sort by role</button>
+          <button class="btn quiet danger" type="button" data-act="clearsquad">Empty squad</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <header><h2>Save &amp; share</h2>
+          <span class="note">Everything lives in this browser only</span></header>
+        <div class="pad" style="display:flex;flex-direction:column;gap:11px">
+          <div class="row">
+            <button class="btn" type="button" data-act="copyjson">Copy league file</button>
+            <button class="btn" type="button" data-act="showpaste">Paste a league file</button>
+            <span class="mono" id="copystate" style="font-size:11.5px;color:var(--ink-3)"></span>
+          </div>
+          <div id="pastebox" hidden style="display:flex;flex-direction:column;gap:9px">
+            <textarea id="pastejson" placeholder="Paste the copied league file here" spellcheck="false"></textarea>
+            <div class="row">
+              <button class="btn primary" type="button" data-act="loadjson">Load it</button>
+              <button class="btn quiet" type="button" data-act="hidepaste">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="rail" id="rail" aria-live="polite"></aside>
+  </section>
+
+  <!-- ============================ TRANSFERS ============================ -->
+  <section id="panel-transfers" class="stack" hidden>
+    <div class="card">
+      <header><h2>Window quotas</h2>
+        <span class="note" id="quotanote"></span></header>
+      <div class="pad"><div class="quotas" id="quotas"></div></div>
+    </div>
+
+    <div class="split">
+      <div class="card">
+        <header><h2>Offer on the desk</h2>
+          <span class="note">Answer four things, get the ruling</span></header>
+        <div class="pad" style="display:flex;flex-direction:column;gap:15px">
+          <div class="grid-form">
+            <label class="field"><span>Player</span>
+              <select id="o-player"></select></label>
+            <label class="field"><span>Squad role</span>
+              <select id="o-role">
+                <option value="starter">Starter</option>
+                <option value="bench">Bench / reserve</option>
+              </select></label>
+            <label class="field"><span>Buying club's country</span>
+              <input type="text" id="o-nat" list="natlist" placeholder="e.g. Italy"></label>
+            <label class="field"><span>Window</span>
+              <select id="o-window">
+                <option value="summer">Summer</option>
+                <option value="january">January</option>
+              </select></label>
+          </div>
+          <div class="row" style="gap:18px">
+            <label class="check"><input type="checkbox" id="o-clause"> Player is activating a release clause</label>
+            <label class="check"><input type="checkbox" id="o-best"> This is your best player</label>
+          </div>
+          <div id="ruling"></div>
+          <div class="row">
+            <button class="btn primary" type="button" data-act="record" data-kind="out">Record as sold</button>
+            <button class="btn" type="button" data-act="record" data-kind="declined">Record as declined</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <header><h2>Season <span id="ledgerseason" class="mono">1</span> ledger</h2></header>
+          <div class="pad"><div class="ledger" id="ledger"></div></div>
+        </div>
+        <div class="card">
+          <header><h2>Free to sell</h2>
+            <span class="note">Age 33+ or an MLS regen</span></header>
+          <div class="pad"><div id="eligible"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== DRAFT ============================== -->
+  <section id="panel-draft" class="stack" hidden>
+    <div class="card">
+      <header><h2>Pick ledger &mdash; season <span id="draftseason" class="mono">1</span></h2>
+        <span class="note" id="draftnote"></span></header>
+      <div class="pad"><div class="rounds" id="rounds"></div></div>
+    </div>
+
+    <div class="card">
+      <header><h2>Scouting board</h2>
+        <span class="note">Months scouted set the round</span></header>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Prospect</th><th>Position</th><th>Nationality</th>
+              <th class="w-num">Months</th><th>Worth</th><th></th></tr>
+          </thead>
+          <tbody id="prospectbody"></tbody>
+        </table>
+      </div>
+      <div class="pad row" style="border-top:1px solid var(--line-2)">
+        <button class="btn primary" type="button" data-act="addprospect">Add prospect</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= RULEBOOK ============================ -->
+  <section id="panel-rules" hidden>
+    <div class="book" id="book"></div>
+  </section>
+</main>
+
+<datalist id="natlist"></datalist>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Nationality table.  name|zone|flags  — pipe-delimited like the rest of
+   this repo's data files.  Zones follow confederation, not geography, so
+   Suriname and Guyana sit in North America where CONCACAF puts them.
+   Flags: c Canada · m Mexico · s Spanish-speaking · f French-speaking
+          k UK · e England · i Italy · p Spain · r France
+   ===================================================================== */
+var NATIONS = [
+"United States|NA|","Canada|NA|cf","Mexico|NA|ms","Costa Rica|NA|s","Panama|NA|s",
+"Honduras|NA|s","Guatemala|NA|s","El Salvador|NA|s","Nicaragua|NA|s","Belize|NA|",
+"Jamaica|NA|","Haiti|NA|f","Trinidad and Tobago|NA|","Cuba|NA|s","Dominican Republic|NA|s",
+"Puerto Rico|NA|s","Curaçao|NA|","Guadeloupe|NA|f","Martinique|NA|f","Grenada|NA|",
+"Saint Kitts and Nevis|NA|","Guyana|NA|","Suriname|NA|","Bermuda|NA|",
+"Argentina|SA|s","Brazil|SA|","Uruguay|SA|s","Colombia|SA|s","Chile|SA|s","Peru|SA|s",
+"Ecuador|SA|s","Paraguay|SA|s","Bolivia|SA|s","Venezuela|SA|s",
+"England|EU|ke","Scotland|EU|k","Wales|EU|k","Northern Ireland|EU|k","Republic of Ireland|EU|",
+"France|EU|fr","Spain|EU|sp","Italy|EU|i","Germany|EU|","Portugal|EU|","Netherlands|EU|",
+"Belgium|EU|f","Switzerland|EU|f","Austria|EU|","Denmark|EU|","Sweden|EU|","Norway|EU|",
+"Finland|EU|","Iceland|EU|","Poland|EU|","Czechia|EU|","Slovakia|EU|","Hungary|EU|",
+"Romania|EU|","Bulgaria|EU|","Croatia|EU|","Serbia|EU|","Slovenia|EU|",
+"Bosnia and Herzegovina|EU|","North Macedonia|EU|","Montenegro|EU|","Albania|EU|",
+"Greece|EU|","Türkiye|EU|","Ukraine|EU|","Russia|EU|","Belarus|EU|","Georgia|EU|",
+"Armenia|EU|","Israel|EU|","Kosovo|EU|","Luxembourg|EU|f","Moldova|EU|","Latvia|EU|",
+"Lithuania|EU|","Estonia|EU|","Cyprus|EU|","Malta|EU|",
+"Senegal|OT|f","Ivory Coast|OT|f","Cameroon|OT|f","Morocco|OT|f","Algeria|OT|f",
+"Tunisia|OT|f","Nigeria|OT|","Ghana|OT|","Mali|OT|f","Guinea|OT|f","Burkina Faso|OT|f",
+"DR Congo|OT|f","Congo|OT|f","Gabon|OT|f","Togo|OT|f","Benin|OT|f","Egypt|OT|",
+"South Africa|OT|","Zambia|OT|","Kenya|OT|","Angola|OT|","Cape Verde|OT|",
+"Guinea-Bissau|OT|","Mozambique|OT|","Madagascar|OT|f","Niger|OT|f","Chad|OT|f",
+"Mauritania|OT|f","Comoros|OT|f","Burundi|OT|f","Rwanda|OT|f","Equatorial Guinea|OT|s",
+"Sierra Leone|OT|","Liberia|OT|","Gambia|OT|","Uganda|OT|","Tanzania|OT|",
+"Japan|OT|","South Korea|OT|","China|OT|","Australia|OT|","New Zealand|OT|","Iran|OT|",
+"Iraq|OT|","Saudi Arabia|OT|","Qatar|OT|","United Arab Emirates|OT|","Uzbekistan|OT|",
+"India|OT|","Indonesia|OT|","Thailand|OT|","Vietnam|OT|","Philippines|OT|","Malaysia|OT|",
+"Jordan|OT|","Lebanon|OT|","Syria|OT|","Kuwait|OT|","Oman|OT|","Palestine|OT|",
+"Kazakhstan|OT|","New Caledonia|OT|f","Tahiti|OT|f","Fiji|OT|","Papua New Guinea|OT|"
+];
+
+var NAT = {};                                  // name -> {zone, flags}
+NATIONS.forEach(function(row){
+  var p = row.split("|");
+  NAT[p[0]] = { name:p[0], zone:p[1], flags:p[2] || "" };
+});
+function has(nat, flag){ var n = NAT[nat]; return !!n && n.flags.indexOf(flag) > -1; }
+function zoneOf(nat){ return NAT[nat] ? NAT[nat].zone : "XX"; }
+
+var ZONE_NAME = { NA:"North America", SA:"South America", EU:"Europe", OT:"Other", XX:"Unknown" };
+
+var TOP5 = ["England","Italy","Spain","Germany","France"];
+
+/* =====================================================================
+   Franchises.  naMin/saMax/euMax/otMax come straight from the rules; subs
+   are the "at least N from country X" clauses inside the North America
+   allowance; exempt slots take a player out of whichever capped zone they
+   sit in (see the Rulebook tab for why it is read that way).
+   ===================================================================== */
+function flagged(f){ return function(p){ return has(p.nat, f); }; }
+function named(n){ return function(p){ return p.nat === n; }; }
+
+var FRANCHISES = {
+  league:  { label:"League default", mark:"LG", hue:"#1E3FB4",
+             naMin:18, saMax:7, euMax:5, otMax:5, subs:[], exempt:[] },
+  newyork: { label:"New York", mark:"NY", hue:"#152C6B",
+             naMin:18, saMax:5, euMax:5, otMax:5, subs:[],
+             exempt:[{ label:"Italian", slots:3, test:named("Italy") }] },
+  canada:  { label:"Canada", mark:"CA", hue:"#B4262C",
+             naMin:18, saMax:5, euMax:7, otMax:5,
+             subs:[{ label:"Canadian", min:10, test:flagged("c") }],
+             exempt:[{ label:"French-speaking", slots:3, test:flagged("f") }] },
+  mexico:  { label:"Mexico", mark:"MX", hue:"#0E6B3C",
+             naMin:18, saMax:8, euMax:5, otMax:5,
+             subs:[{ label:"Mexican", min:12, test:flagged("m") }],
+             exempt:[{ label:"Spanish-speaking", slots:5, test:flagged("s") }] },
+  mass:    { label:"Massachusetts", mark:"MA", hue:"#0B5D8C",
+             naMin:18, saMax:5, euMax:7, otMax:5, subs:[],
+             exempt:[{ label:"English", slots:3, test:named("England") }] },
+  colonies:{ label:"13 OG Colonies", mark:"13", hue:"#6B4A17",
+             naMin:18, saMax:5, euMax:5, otMax:3, subs:[],
+             exempt:[{ label:"UK", slots:2, test:flagged("k") }] },
+  texas:   { label:"Texas", mark:"TX", hue:"#8C2130",
+             naMin:18, saMax:8, euMax:5, otMax:3,
+             subs:[{ label:"Mexican", min:6, test:flagged("m") }],
+             exempt:[{ label:"Spanish", slots:2, test:named("Spain") },
+                     { label:"French", slots:1, test:named("France") }] },
+  florida: { label:"Florida", mark:"FL", hue:"#C05A12",
+             naMin:18, saMax:7, euMax:5, otMax:5, subs:[],
+             exempt:[{ label:"Spanish-speaking", slots:5, test:flagged("s") }] }
+};
+
+var WAGE_BASE = 175000, WAGE_STEP = 5000, SQUAD_MAX = 35;
+function wageCap(season){ return WAGE_BASE + WAGE_STEP * (season - 1); }
+
+/* Window allowances: how many may leave, by role, per window. */
+var WINDOW = { summer:{ starter:3, bench:3, label:"Summer" },
+               january:{ starter:1, bench:1, label:"January" } };
+
+/* ------------------------------- sample ------------------------------ */
+function sample(){
+  var rows = [
+    ["Everett Nash",29,"United States","starter",7200,0],
+    ["Dario Bellini",27,"Italy","starter",9800,0],
+    ["Kwame Osei-Bright",25,"Ghana","starter",6400,0],
+    ["Tomás Herrera",24,"Mexico","starter",5900,0],
+    ["Callum Reid",31,"Canada","starter",5200,0],
+    ["Matteo Ferrucci",26,"Italy","starter",10400,0],
+    ["Julián Arce",23,"Argentina","starter",16800,0],
+    ["Bram de Vries",28,"Netherlands","starter",8800,0],
+    ["Isaiah Cordell",22,"United States","starter",4300,0],
+    ["Nico Barreto",26,"Uruguay","starter",21500,0],
+    ["Seydou Traoré",24,"Mali","starter",7600,0],
+    ["Adam Fitzgibbon",33,"Republic of Ireland","bench",3900,0],
+    ["Luca Sartori",30,"Italy","bench",6100,1],
+    ["Owen Marchetti",21,"United States","bench",2600,0],
+    ["Diego Salas",28,"Costa Rica","bench",4400,0],
+    ["Felipe Duarte",25,"Brazil","bench",8300,0],
+    ["Kai Lindqvist",27,"Sweden","bench",7100,0],
+    ["Marcus Ainsley",34,"United States","bench",3300,0],
+    ["Jonah Whitfield",19,"United States","reserve",1200,0],
+    ["Elias Moreau",20,"Canada","reserve",1500,0],
+    ["Rafael Quintero",23,"Colombia","reserve",3800,0],
+    ["Tyler Okonjo",18,"United States","reserve",900,0],
+    ["Andre Beaulieu",22,"Canada","reserve",1800,0],
+    ["Santiago Vela",21,"Mexico","reserve",2200,0],
+    ["Peter Halvorsen",24,"Norway","reserve",5200,0],
+    ["Malik Grier",20,"United States","reserve",1400,0],
+    ["Cody Beaumont",19,"United States","reserve",1100,0],
+    ["Hugo Delacroix",26,"Haiti","reserve",3100,0],
+    ["Sam Rutherford",32,"United States","reserve",4600,1],
+    ["Damian Cruz",21,"Puerto Rico","reserve",1700,0],
+    ["Noah Kingsley",23,"Jamaica","reserve",2400,0],
+    ["Bryce Toledo",20,"United States","reserve",1300,0],
+    ["Ari Weissman",25,"Israel","reserve",3600,0],
+    ["Kenji Sakamoto",27,"Japan","reserve",5400,0]
+  ];
+  return {
+    sample: true,
+    franchise: "newyork",
+    season: 1,
+    squad: rows.map(function(r, i){
+      return { id:"p" + i, name:r[0], age:r[1], nat:r[2], role:r[3], wage:r[4], regen:!!r[5] };
+    }),
+    moves: [
+      { id:"m1", season:1, window:"summer", action:"out", name:"Vincent Amara",
+        role:"starter", nat:"Spain", clause:false, best:true },
+      { id:"m2", season:1, window:"summer", action:"out", name:"Grant Delaney",
+        role:"bench", nat:"Netherlands", clause:false, best:false },
+      { id:"m3", season:1, window:"summer", action:"declined", name:"Rui Baptista",
+        role:"bench", nat:"Portugal", clause:false, best:false }
+    ],
+    prospects: [
+      { id:"s1", season:1, name:"Andrés Fuentes", pos:"ST", nat:"Colombia", months:8 },
+      { id:"s2", season:1, name:"Théo Marchal",  pos:"CM", nat:"France",   months:5 },
+      { id:"s3", season:1, name:"Wyatt Corrigan",     pos:"CB", nat:"United States", months:2 }
+    ],
+    draft: { "1": { used:{ "1":1, "2":1, "3":1 } } }
+  };
+}
+
+/* ============================== state ============================== */
+var KEY = "mls_league_office_v1";
+var S;
+try { S = JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ S = null; }
+if (!S || !S.squad) S = sample();
+S.draft = S.draft || {};
+S.moves = S.moves || [];
+S.prospects = S.prospects || [];
+
+var tab = "squad";
+var uid = 0;
+function nextId(p){ return p + Date.now().toString(36) + (uid++).toString(36); }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+function fr(){ return FRANCHISES[S.franchise] || FRANCHISES.league; }
+
+var money = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD", maximumFractionDigits:0 });
+function esc(s){ return String(s == null ? "" : s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function $(id){ return document.getElementById(id); }
+function pct(n, d){ return d <= 0 ? 0 : Math.max(0, Math.min(100, n / d * 100)); }
+
+/* ======================================================================
+   The compliance engine.
+
+   Exemption slots are filled eagerly and pressure-first: each slot goes to
+   the matching player whose zone is furthest over its cap.  Filling them
+   eagerly is what makes the readout honest — three Italians parked in New
+   York's Italian slots means the Europe row shows the five places actually
+   left, not five places already spent.  Players in North America are never
+   pulled into a slot: NA is a floor, not a ceiling, so exempting one would
+   quietly cost the squad an 18th North American.
+   ====================================================================== */
+function audit(){
+  var L = fr(), squad = S.squad;
+  var caps = { SA:L.saMax, EU:L.euMax, OT:L.otMax };
+  var count = { NA:0, SA:0, EU:0, OT:0, XX:0 };
+  squad.forEach(function(p){ count[zoneOf(p.nat)]++; });
+
+  var exemptOf = {};                       // player id -> exemption label
+  var used = L.exempt.map(function(){ return 0; });
+
+  L.exempt.forEach(function(ex, i){
+    for (var slot = 0; slot < ex.slots; slot++){
+      var best = null, bestPressure = -Infinity;
+      for (var j = 0; j < squad.length; j++){
+        var p = squad[j], z = zoneOf(p.nat);
+        if (exemptOf[p.id] || z === "NA" || z === "XX" || !ex.test(p)) continue;
+        var pressure = count[z] - caps[z];
+        if (pressure > bestPressure){ bestPressure = pressure; best = p; }
+      }
+      if (!best) break;
+      exemptOf[best.id] = ex.label;
+      count[zoneOf(best.nat)]--;
+      used[i]++;
+    }
+  });
+
+  var wages = squad.reduce(function(a, p){ return a + (Number(p.wage) || 0); }, 0);
+  var cap = wageCap(S.season);
+  var rows = [];
+
+  function maxRow(code, name, value, limit, unit, why){
+    rows.push({ code:code, name:name, value:value, limit:limit, unit:unit || "", why:why,
+      state: value > limit ? "bad" : (value === limit ? "warn" : "ok"),
+      text: value > limit ? (fmtN(value - limit, unit) + " over") :
+            (value === limit ? "At limit" : (fmtN(limit - value, unit) + " free")) });
+  }
+  function minRow(code, name, value, floor, why){
+    rows.push({ code:code, name:name, value:value, limit:floor, unit:"", why:why,
+      state: value < floor ? "bad" : (value === floor ? "warn" : "ok"),
+      text: value < floor ? ((floor - value) + " short") :
+            (value === floor ? "At minimum" : ("+" + (value - floor))) });
+  }
+  function fmtN(n, unit){ return unit === "$" ? money.format(n) : String(n); }
+
+  maxRow("R-01", "Squad size", squad.length, SQUAD_MAX, "", "35 registered players");
+  maxRow("R-02", "Total wages", wages, cap, "$",
+         money.format(WAGE_BASE) + " + " + money.format(WAGE_STEP) + " a season");
+  minRow("R-03", "North America", count.NA, L.naMin, "At least " + L.naMin + " North American");
+  L.subs.forEach(function(sub, i){
+    var n = squad.filter(function(p){ return sub.test(p); }).length;
+    minRow("R-03" + "abc".charAt(i), "└ " + sub.label, n, sub.min,
+           "Inside the North America allowance");
+  });
+  maxRow("R-04", "South America", count.SA, L.saMax, "", "At most " + L.saMax);
+  maxRow("R-05", "Europe", count.EU, L.euMax, "", "At most " + L.euMax +
+         (L.exempt.length ? ", exempt slots excluded" : ""));
+  maxRow("R-06", "Rest of world", count.OT, L.otMax, "", "At most " + L.otMax);
+  L.exempt.forEach(function(ex, i){
+    rows.push({ code:"R-07" + (L.exempt.length > 1 ? "abc".charAt(i) : ""),
+      name: ex.label + " slots", value:used[i], limit:ex.slots, unit:"",
+      why:"Do not count toward the zone caps",
+      state:"ok", text: used[i] + " of " + ex.slots + " used", soft:true });
+  });
+
+  var breaches = rows.filter(function(r){ return r.state === "bad"; }).length;
+  return { rows:rows, count:count, wages:wages, cap:cap, exemptOf:exemptOf,
+           breaches:breaches, unknown:count.XX };
+}
+
+/* ============================ squad table =========================== */
+var ROLES = [["starter","Starter"],["bench","Bench"],["reserve","Reserve"]];
+
+function renderSquad(){
+  var body = $("squadbody"), html = "";
+  S.squad.forEach(function(p, i){
+    var z = zoneOf(p.nat);
+    html +=
+      '<tr data-i="' + i + '"' + (z === "XX" ? ' class="flagged"' : '') + '>' +
+      '<td><input type="text" data-f="name" value="' + esc(p.name) + '" placeholder="Name"></td>' +
+      '<td class="num"><input type="number" data-f="age" min="15" max="45" value="' + esc(p.age) + '"></td>' +
+      '<td><input type="text" data-f="nat" list="natlist" value="' + esc(p.nat) + '" placeholder="Nationality"></td>' +
+      '<td><span class="reg' + (z === "XX" ? " x" : "") + '" data-z><i class="dot r-' + z + '"></i>' + z + '</span></td>' +
+      '<td><select data-f="role">' + ROLES.map(function(r){
+          return '<option value="' + r[0] + '"' + (p.role === r[0] ? " selected" : "") + '>' + r[1] + '</option>';
+        }).join("") + '</select></td>' +
+      '<td class="num"><input type="number" data-f="wage" min="0" step="100" value="' + esc(p.wage) + '"></td>' +
+      '<td style="text-align:center"><input type="checkbox" data-f="regen"' + (p.regen ? " checked" : "") + '></td>' +
+      '<td><button class="rm" type="button" data-act="rmplayer" data-i="' + i + '" aria-label="Remove ' + esc(p.name) + '">&times;</button></td>' +
+      '</tr>';
+  });
+  body.innerHTML = html || '<tr><td colspan="8"><div class="empty">No players registered. Add one to start checking the squad against the rules.</div></td></tr>';
+  $("squadnote").textContent = S.squad.length + " registered · " + fr().label;
+}
+
+/* =========================== the status rail ======================== */
+function renderRail(){
+  var a = audit(), L = fr();
+  var stampClass = a.breaches ? "bad" : (a.rows.some(function(r){ return r.state === "warn"; }) ? "warn" : "ok");
+  var stampText = a.breaches ? (a.breaches + (a.breaches === 1 ? " breach" : " breaches")) :
+                  (stampClass === "warn" ? "At the limit" : "Compliant");
+  var sub = a.breaches
+    ? "This squad cannot be registered as it stands."
+    : (stampClass === "warn" ? "Legal, but with no room left in one or more rules."
+                             : "Every rule has room to spare.");
+  if (a.unknown) sub = a.unknown + " player" + (a.unknown === 1 ? " has" : "s have") +
+                       " a nationality the office does not recognise — they count toward nothing.";
+
+  var html =
+    '<div class="verdict">' +
+      '<div class="eyebrow">Registration status</div>' +
+      '<div class="stamp ' + stampClass + '">' + stampText + '</div>' +
+      '<div class="sub">' + esc(sub) + '</div>' +
+    '</div>';
+
+  a.rows.forEach(function(r){
+    var val = r.unit === "$"
+      ? money.format(r.value) + " / " + money.format(r.limit)
+      : r.value + " / " + r.limit;
+    html +=
+      '<div class="rule is-' + r.state + '">' +
+        '<span class="code">' + r.code + '</span>' +
+        '<span class="name">' + esc(r.name) + '</span>' +
+        '<span class="val">' + val + '</span>' +
+        '<span class="bar"><i style="width:' + pct(r.value, r.limit).toFixed(1) + '%"></i></span>' +
+        '<span class="why">' + esc(r.why) + ' · <span class="mono">' + esc(r.text) + '</span></span>' +
+      '</div>';
+  });
+
+  html += '<div class="rule"><span class="code"></span><span class="why" style="grid-column:1/-1">' +
+          'Season ' + S.season + ' wage cap: <span class="mono">' + money.format(a.cap) + '</span>' +
+          '</span></div>';
+
+  $("rail").innerHTML = html;
+}
+
+/* ======================================================================
+   Transfers
+   ====================================================================== */
+function isTop5(nat){ return TOP5.indexOf(nat) > -1; }
+function seasonMoves(){ return S.moves.filter(function(m){ return m.season === S.season; }); }
+
+function windowStats(){
+  var ms = seasonMoves();
+  function n(win, role){
+    return ms.filter(function(m){
+      return m.action === "out" && m.window === win && m.role === role;
+    }).length;
+  }
+  return {
+    summer:{ starter:n("summer","starter"), bench:n("summer","bench") },
+    january:{ starter:n("january","starter"), bench:n("january","bench") },
+    startersOut: ms.filter(function(m){ return m.action === "out" && m.role === "starter"; }).length,
+    declines: ms.filter(function(m){ return m.action === "declined"; }).length
+  };
+}
+
+function offer(){
+  var sel = $("o-player").value;
+  var p = sel === "" ? null : S.squad[Number(sel)];
+  return {
+    player: p,
+    name: p ? p.name : "Unlisted player",
+    role: $("o-role").value,
+    nat: $("o-nat").value.trim(),
+    window: $("o-window").value,
+    clause: $("o-clause").checked,
+    best: $("o-best").checked
+  };
+}
+
+/* The ruling.  Order matters: eligibility gates everything, then the window
+   allowance, then whether the offer is one the rules make mandatory, and
+   only then the decline budget. */
+function judge(o){
+  var st = windowStats(), w = WINDOW[o.window];
+  var allowed = w[o.role], taken = st[o.window][o.role];
+  var top5 = isTop5(o.nat);
+  var known = !!NAT[o.nat];
+  var eligible = o.player ? (Number(o.player.age) > 32 || !!o.player.regen) : null;
+  var why = [];
+
+  if (o.nat && !known) why.push("“" + o.nat + "” is not on the office's country list — check the spelling, the top-five test may be wrong.");
+
+  if (eligible === false){
+    why.push(o.player.name + " is " + o.player.age + " and not marked as an MLS regen, so Strict Transfer Rules should never have produced this offer.");
+    why.push("Only players over 32, and regens of players who played in MLS, may be sold.");
+    return { k:"block", head:"Not transferable", why:why };
+  }
+  if (eligible === null) why.push("No squad player selected, so the over-32 / MLS-regen test was not run.");
+
+  var mandatory = o.clause || top5;
+  if (o.clause) why.push("A release clause the player wants activated must be accepted. No exceptions.");
+  else if (top5) why.push(o.nat + " is one of the top five countries (England, Italy, Spain, Germany, France) — the offer must be accepted.");
+
+  if (taken >= allowed){
+    var full = "The " + w.label + " window already has " + taken + " of " + allowed + " " +
+               (o.role === "starter" ? "starter" : "bench") + " sale" + (allowed === 1 ? "" : "s") + " on the books.";
+    if (mandatory){
+      why.unshift(full);
+      why.push("Two rules collide here: the sale is mandatory but the window is spent. Take it to the league.");
+      return { k:"conflict", head:"Needs a league call", why:why };
+    }
+    why.unshift(full);
+    return { k:"block", head:"Window is full", why:why };
+  }
+  why.push("This would be " + (taken + 1) + " of " + allowed + " " +
+           (o.role === "starter" ? "starters" : "bench players") + " out in the " + w.label + " window.");
+
+  if (mandatory) return { k:"must", head:"Must accept", why:why };
+
+  if (st.startersOut >= 3){
+    why.push("Three starters have already gone this season, so offers from outside the top five can be turned down freely.");
+    return { k:"may", head:"Free to decline", why:why };
+  }
+  if (st.declines < 1){
+    why.push("Your one decline for season " + S.season + " is still unused — this would spend it.");
+    why.push("It opens back up once three starters have been transferred out.");
+    return { k:"may", head:"May decline — costs your one", why:why };
+  }
+  why.push("You have already declined once this season and only " + st.startersOut +
+           " of 3 starters have left, so the decline budget is spent.");
+  return { k:"must", head:"Must accept", why:why };
+}
+
+function renderRuling(){
+  var r = judge(offer());
+  $("ruling").innerHTML =
+    '<div class="ruling ' + r.k + '">' +
+      '<h3>' + esc(r.head) + '</h3>' +
+      '<ul>' + r.why.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("") + '</ul>' +
+    '</div>';
+}
+
+function renderTransfers(){
+  var st = windowStats(), tiles = [
+    ["Summer · starters out", st.summer.starter, 3],
+    ["Summer · bench out",    st.summer.bench,   3],
+    ["January · starters out",st.january.starter,1],
+    ["January · bench out",   st.january.bench,  1],
+    ["Declines used",         st.declines,       1],
+    ["Starters out this season", st.startersOut, 3]
+  ];
+  $("quotas").innerHTML = tiles.map(function(t){
+    var cls = t[1] > t[2] ? "full" : (t[1] === t[2] ? "edge" : "");
+    return '<div class="quota ' + cls + '"><div class="k">' + esc(t[0]) + '</div>' +
+           '<div class="v">' + t[1] + ' <small>/ ' + t[2] + '</small></div></div>';
+  }).join("");
+  $("quotanote").textContent = st.startersOut >= 3
+    ? "Three starters gone — declines are now free outside the top five"
+    : "One decline a season until three starters have gone";
+
+  var ms = seasonMoves();
+  $("ledgerseason").textContent = S.season;
+  $("ledger").innerHTML = ms.length ? ms.map(function(m, i){
+    var idx = S.moves.indexOf(m);
+    var bits = [WINDOW[m.window].label, m.role === "starter" ? "Starter" : "Bench",
+                m.nat + (isTop5(m.nat) ? " · top five" : "")];
+    if (m.clause) bits.push("release clause");
+    if (m.best) bits.push("best player");
+    return '<div class="entry">' +
+      '<span class="tag ' + (m.action === "out" ? "out" : "dec") + '">' +
+        (m.action === "out" ? "Sold" : "Declined") + '</span>' +
+      '<span class="who">' + esc(m.name) + '</span>' +
+      '<button class="rm" type="button" data-act="rmmove" data-i="' + idx + '" aria-label="Remove entry">&times;</button>' +
+      '<span class="meta">' + esc(bits.join(" · ")) + '</span>' +
+      '</div>';
+  }).join("") : '<div class="empty">Nothing recorded for season ' + S.season + ' yet.</div>';
+
+  var free = S.squad.filter(function(p){ return Number(p.age) > 32 || p.regen; });
+  $("eligible").innerHTML = free.length
+    ? '<div class="row" style="gap:6px">' + free.map(function(p){
+        return '<span class="chip ' + (p.role === "starter" ? "accent" : "") + '">' +
+               esc(p.name) + " · " + p.age + (p.regen ? " · regen" : "") + '</span>';
+      }).join("") + '</div>'
+    : '<div class="empty">Nobody in the squad is over 32 or marked as an MLS regen, so nobody can be sold.</div>';
+}
+
+/* ======================================================================
+   Draft
+   ====================================================================== */
+function freeThirds(season){
+  return S.moves.filter(function(m){
+    return m.season === season && m.action === "out" && m.best && isTop5(m.nat);
+  }).length;
+}
+function usedIn(season){
+  var d = S.draft[String(season)] || {};
+  var u = d.used || {};
+  return { 1:Number(u[1]) || 0, 2:Number(u[2]) || 0, 3:Number(u[3]) || 0 };
+}
+
+/* Entitlements roll forward: an extra pick in round R costs the next round
+   this season and the same round next season, so seasons have to be walked
+   in order from the first. */
+function draftLedger(season){
+  var carried = { 1:0, 2:0, 3:0 }, out = null;
+  for (var s = 1; s <= season; s++){
+    var used = usedIn(s), free = freeThirds(s), ent = {}, extra = {};
+    ent[1] = Math.max(0, 1 - carried[1]);
+    extra[1] = Math.max(0, used[1] - ent[1]);
+    ent[2] = Math.max(0, 1 - extra[1] - carried[2]);
+    extra[2] = Math.max(0, used[2] - ent[2]);
+    ent[3] = Math.max(0, 1 + free - extra[2] - carried[3]);
+    extra[3] = Math.max(0, used[3] - ent[3]);
+    out = { used:used, ent:ent, extra:extra, free:free, carried:carried };
+    carried = extra;
+  }
+  return out;
+}
+
+function roundOf(months){
+  months = Number(months) || 0;
+  if (months >= 7) return 1;
+  if (months >= 4) return 2;
+  if (months >= 1) return 3;
+  return 0;
+}
+
+function renderDraft(){
+  var d = draftLedger(S.season);
+  $("draftseason").textContent = S.season;
+  $("draftnote").textContent = d.free
+    ? d.free + " free third-rounder" + (d.free === 1 ? "" : "s") + " awarded for a best player sold to the top five"
+    : "One pick a round";
+
+  var prospects = S.prospects.filter(function(p){ return p.season === S.season; });
+  var byRound = { 1:0, 2:0, 3:0 };
+  prospects.forEach(function(p){ var r = roundOf(p.months); if (r) byRound[r]++; });
+
+  $("rounds").innerHTML = [1,2,3].map(function(r){
+    var ent = d.ent[r], used = d.used[r], extra = d.extra[r];
+    var lines = ['<div class="line"><span>Base</span><b>1</b></div>'];
+    if (r === 3 && d.free) lines.push('<div class="line gain"><span>Best player to top five</span><b>+' + d.free + '</b></div>');
+    if (r === 2 && d.extra[1]) lines.push('<div class="line debt"><span>Extra taken in round 1</span><b>&minus;' + d.extra[1] + '</b></div>');
+    if (r === 3 && d.extra[2]) lines.push('<div class="line debt"><span>Extra taken in round 2</span><b>&minus;' + d.extra[2] + '</b></div>');
+    if (d.carried[r]) lines.push('<div class="line debt"><span>Owed from season ' + (S.season - 1) + '</span><b>&minus;' + d.carried[r] + '</b></div>');
+    lines.push('<div class="hr"></div>');
+    lines.push('<div class="line"><span>Prospects worth this round</span><b>' + byRound[r] + '</b></div>');
+    if (extra){
+      lines.push('<div class="line debt"><span>Costs next season’s round ' + r + '</span><b>&minus;' + extra + '</b></div>');
+      if (r < 3) lines.push('<div class="line debt"><span>Costs this season’s round ' + (r + 1) + '</span><b>&minus;' + extra + '</b></div>');
+      else lines.push('<div class="line debt"><span>No round 4 to forfeit &mdash; league call</span><b>?</b></div>');
+    }
+    return '<div class="round">' +
+      '<h3><span>Round ' + r + '</span>' +
+        '<span class="chip ' + (extra ? "bad" : (used === ent ? "warn" : "ok")) + '">' +
+          (extra ? extra + " extra" : (ent - used) + " left") + '</span></h3>' +
+      '<div class="body">' +
+        '<div class="tally">' +
+          '<span class="n' + (extra ? " over" : "") + '">' + used + '<span style="font-size:15px;color:var(--ink-3)"> / ' + ent + '</span></span>' +
+          '<span class="steps">' +
+            '<button type="button" data-act="pick" data-r="' + r + '" data-d="-1" aria-label="One fewer pick in round ' + r + '">&#8722;</button>' +
+            '<b>' + used + '</b>' +
+            '<button type="button" data-act="pick" data-r="' + r + '" data-d="1" aria-label="One more pick in round ' + r + '">+</button>' +
+          '</span>' +
+        '</div>' + lines.join("") +
+      '</div></div>';
+  }).join("");
+
+  var body = $("prospectbody");
+  body.innerHTML = prospects.length ? prospects.map(function(p){
+    var i = S.prospects.indexOf(p), r = roundOf(p.months);
+    var worth = r ? "Round " + r : "Not scouted";
+    var note = Number(p.months) > 9 ? " (past 9 months)" : "";
+    return '<tr data-pi="' + i + '">' +
+      '<td><input type="text" data-pf="name" value="' + esc(p.name) + '" placeholder="Name"></td>' +
+      '<td><input type="text" data-pf="pos" value="' + esc(p.pos) + '" placeholder="ST"></td>' +
+      '<td><input type="text" data-pf="nat" list="natlist" value="' + esc(p.nat) + '"></td>' +
+      '<td class="num"><input type="number" data-pf="months" min="0" max="24" value="' + esc(p.months) + '"></td>' +
+      '<td><span class="chip ' + (r ? "accent" : "") + '">' + worth + esc(note) + '</span></td>' +
+      '<td><button class="rm" type="button" data-act="rmprospect" data-i="' + i + '" aria-label="Remove prospect">&times;</button></td>' +
+      '</tr>';
+  }).join("") : '<tr><td colspan="6"><div class="empty">No prospects scouted for season ' + S.season + '. Add one and the months set the round.</div></td></tr>';
+}
+
+/* ======================================================================
+   Rulebook — the rules as written, plus the readings the tool acts on.
+   The franchise table is generated from FRANCHISES so it can never drift
+   away from the engine that enforces it.
+   ====================================================================== */
+function renderBook(){
+  var order = ["league","newyork","canada","mexico","mass","colonies","texas","florida"];
+  var table =
+    '<div class="scroll"><table><thead><tr>' +
+      '<th>Franchise</th><th>N. America</th><th>S. America</th><th>Europe</th>' +
+      '<th>Other</th><th>Exempt slots</th></tr></thead><tbody>' +
+    order.map(function(k){
+      var f = FRANCHISES[k];
+      var na = "≥ " + f.naMin + (f.subs.length ? " (≥ " + f.subs.map(function(s){
+        return s.min + " " + s.label; }).join(", ") + ")" : "");
+      var ex = f.exempt.length ? f.exempt.map(function(e){
+        return "+" + e.slots + " " + e.label; }).join(", ") : "—";
+      return '<tr><td><b>' + esc(f.label) + '</b></td><td class="mono">' + esc(na) +
+        '</td><td class="mono">≤ ' + f.saMax + '</td><td class="mono">≤ ' + f.euMax +
+        '</td><td class="mono">≤ ' + f.otMax + '</td><td>' + esc(ex) + '</td></tr>';
+    }).join("") + '</tbody></table></div>';
+
+  $("book").innerHTML =
+  '<section><h3>Offers you receive</h3><ul>' +
+    '<li>An offer from a <strong>top-five country</strong> — England, Italy, Spain, Germany, France — must be accepted.</li>' +
+    '<li>A <strong>release clause</strong> the player wants activated must be accepted.</li>' +
+    '<li>You may <strong>decline one transfer a season</strong> until three starters have been transferred out.</li>' +
+    '<li>Once three starters have gone in a season, offers from <strong>outside the top five</strong> can be declined freely.</li>' +
+  '</ul></section>' +
+
+  '<section><h3>Who may be sold</h3><ul>' +
+    '<li><strong>Strict Transfer Rules must be on.</strong></li>' +
+    '<li>Any player <strong>over 32</strong>.</li>' +
+    '<li>A <strong>regen</strong> of a player who played in MLS.</li>' +
+  '</ul>' +
+  '<ul><li><strong>Summer window:</strong> 3 starters and 3 bench players.</li>' +
+    '<li><strong>January window:</strong> 1 starter and 1 bench player.</li></ul></section>' +
+
+  '<section><h3>The draft</h3><ul>' +
+    '<li>Scouted <strong>7–9 months</strong> → first-rounder. <strong>4–6</strong> → second. <strong>1–3</strong> → third.</li>' +
+    '<li><strong>One pick per round.</strong></li>' +
+    '<li>If your best player was transferred to a top-five country, you are awarded a <strong>free third-round pick</strong>.</li>' +
+    '<li>To take <strong>more than one pick in a round</strong>, give up the next round’s pick and that round’s pick next year.</li>' +
+  '</ul></section>' +
+
+  '<section><h3>Squad rules — every franchise</h3><ul>' +
+    '<li><strong>' + money.format(WAGE_BASE) + ' total squad wages</strong>, rising ' +
+      money.format(WAGE_STEP) + ' every season. Season ' + S.season + ': <strong>' +
+      money.format(wageCap(S.season)) + '</strong>.</li>' +
+    '<li><strong>' + SQUAD_MAX + ' players</strong> maximum.</li>' +
+    '<li>Zone quotas vary by franchise — the table below.</li>' +
+  '</ul></section>' +
+
+  '<section><h3>Franchise quotas</h3>' + table + '</section>' +
+
+  '<section><h3>How the office reads the grey areas</h3>' +
+    '<div class="call"><b>Exempt slots</b>An exempt player stops counting toward whichever capped zone they belong to. ' +
+      'Mexico’s rule says so outright (“doesn’t count for Europe / SA”) and most others say “doesn’t count for Europe”; ' +
+      'Massachusetts’s +3 England carries no note and is treated the same way. Exempt slots are never spent on a North ' +
+      'American — that zone is a floor, not a ceiling, and exempting one would quietly cost you an 18th.</div>' +
+    '<div class="call"><b>The one decline</b>Top-five offers are mandatory with no exception written, so the single ' +
+      'seasonal decline can only ever be spent on an offer from outside the top five.</div>' +
+    '<div class="call"><b>Over 32</b>Read as 33 and older.</div>' +
+    '<div class="call"><b>Reserves</b>The windows allocate starters and bench players only, so a reserve sale is ' +
+      'counted against the bench allowance.</div>' +
+    '<div class="call"><b>A mandatory sale into a full window</b>Two rules genuinely collide. The tool flags it as a ' +
+      'league call rather than picking a side for you.</div>' +
+    '<div class="call"><b>Zones</b>Follow the confederation, not the map: CONCACAF is North America, which puts ' +
+      'Suriname and Guyana there.</div>' +
+    '<div class="call"><b>Wages and squad size</b>Only the league default and Florida restate the cap and the ' +
+      '35-player limit; they are applied to every franchise.</div>' +
+    '<div class="call"><b>An extra third-round pick</b>There is no round 4 to forfeit, so only next season’s ' +
+      'third-rounder is taken. Flagged for a league call.</div>' +
+    '<div class="call"><b>Scouting past 9 months</b>Treated as a first-rounder — the table stops at 9.</div>' +
+  '</section>';
+}
+
+/* ======================================================================
+   Boot and wiring
+   ====================================================================== */
+function fillSelects(){
+  $("franchise").innerHTML = Object.keys(FRANCHISES).map(function(k){
+    return '<option value="' + k + '"' + (S.franchise === k ? " selected" : "") + '>' +
+           esc(FRANCHISES[k].label) + '</option>';
+  }).join("");
+  $("natlist").innerHTML = NATIONS.map(function(r){
+    return '<option value="' + esc(r.split("|")[0]) + '"></option>';
+  }).join("");
+}
+function fillPlayerSelect(){
+  var sel = $("o-player"), keep = sel.value;
+  sel.innerHTML = S.squad.map(function(p, i){
+    return '<option value="' + i + '">' + esc(p.name) + " · " + p.age +
+           (p.regen ? " · regen" : "") + '</option>';
+  }).join("") + '<option value="">Someone not in the squad</option>';
+  if (keep !== "" && S.squad[Number(keep)]) sel.value = keep;
+  else {
+    /* Open on somebody who can actually be sold — a ruling of "not
+       transferable" is a poor first thing for the desk to say. */
+    var first = S.squad.findIndex(function(p){ return Number(p.age) > 32 || p.regen; });
+    sel.value = S.squad.length ? String(first > -1 ? first : 0) : "";
+  }
+  syncRole();
+}
+function syncRole(){
+  var v = $("o-player").value;
+  if (v === "") return;
+  var p = S.squad[Number(v)];
+  if (p) $("o-role").value = p.role === "starter" ? "starter" : "bench";
+}
+
+function chrome(){
+  var f = fr();
+  var crest = $("crest");
+  crest.textContent = f.mark;
+  crest.style.setProperty("--crest", f.hue);
+  $("brandsub").textContent = f.label + " · season " + S.season;
+  $("seasonval").textContent = S.season;
+  $("samplebanner").hidden = !S.sample;
+}
+
+function refresh(){
+  chrome();
+  renderRail();
+  renderTransfers();
+  renderRuling();
+  renderDraft();
+  renderBook();
+  save();
+}
+function rebuild(){ renderSquad(); fillPlayerSelect(); refresh(); }
+
+function showTab(name){
+  tab = name;
+  ["squad","transfers","draft","rules"].forEach(function(t){
+    $("panel-" + t).hidden = t !== name;
+  });
+  document.querySelectorAll(".tab").forEach(function(b){
+    b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  });
+  if (name === "transfers") fillPlayerSelect();
+}
+
+/* ------------------------------ theme ------------------------------ */
+var THEMES = ["auto","light","dark"];
+function setTheme(t){
+  if (t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  $("themebtn").textContent = t === "auto" ? "Theme: auto" : (t === "light" ? "Theme: light" : "Theme: dark");
+  try { localStorage.setItem("mls_theme", t); } catch(e){}
+}
+var savedTheme = "auto";
+try { savedTheme = localStorage.getItem("mls_theme") || "auto"; } catch(e){}
+
+/* ---------------------------- interaction --------------------------- */
+document.addEventListener("click", function(e){
+  var t = e.target.closest("[data-act], .tab");
+  if (!t) return;
+  if (t.classList.contains("tab")){ showTab(t.dataset.tab); return; }
+  var act = t.dataset.act, i;
+
+  if (act === "season"){
+    S.season = Math.max(1, S.season + Number(t.dataset.d));
+    rebuild();
+  }
+  else if (act === "theme"){
+    savedTheme = THEMES[(THEMES.indexOf(savedTheme) + 1) % 3];
+    setTheme(savedTheme);
+  }
+  else if (act === "addplayer"){
+    S.squad.push({ id:nextId("p"), name:"", age:24, nat:"United States", role:"reserve", wage:0, regen:false });
+    S.sample = false;
+    rebuild();
+    var last = $("squadbody").querySelector("tr:last-child input");
+    if (last) last.focus();
+  }
+  else if (act === "rmplayer"){ S.squad.splice(Number(t.dataset.i), 1); S.sample = false; rebuild(); }
+  else if (act === "sortsquad"){
+    var rank = { starter:0, bench:1, reserve:2 };
+    S.squad.sort(function(a, b){ return (rank[a.role] - rank[b.role]) || a.name.localeCompare(b.name); });
+    rebuild();
+  }
+  else if (act === "clearsquad"){ S.squad = []; S.sample = false; rebuild(); }
+  else if (act === "clearsample"){
+    S = { sample:false, franchise:S.franchise, season:1, squad:[], moves:[], prospects:[], draft:{} };
+    fillSelects(); rebuild();
+  }
+  else if (act === "record"){
+    var o = offer();
+    if (!o.nat){ $("o-nat").focus(); return; }
+    S.moves.push({ id:nextId("m"), season:S.season, window:o.window,
+      action:t.dataset.kind, name:o.name, role:o.role, nat:o.nat,
+      clause:o.clause, best:o.best });
+    if (t.dataset.kind === "out" && o.player){
+      var at = S.squad.indexOf(o.player);
+      if (at > -1) S.squad.splice(at, 1);
+    }
+    S.sample = false;
+    rebuild();
+  }
+  else if (act === "rmmove"){ S.moves.splice(Number(t.dataset.i), 1); refresh(); }
+  else if (act === "pick"){
+    var r = t.dataset.r, key = String(S.season);
+    S.draft[key] = S.draft[key] || { used:{} };
+    var cur = Number(S.draft[key].used[r]) || 0;
+    S.draft[key].used[r] = Math.max(0, cur + Number(t.dataset.d));
+    S.sample = false;
+    refresh();
+  }
+  else if (act === "addprospect"){
+    S.prospects.push({ id:nextId("s"), season:S.season, name:"", pos:"", nat:"United States", months:1 });
+    S.sample = false;
+    refresh();
+  }
+  else if (act === "rmprospect"){ S.prospects.splice(Number(t.dataset.i), 1); refresh(); }
+  else if (act === "copyjson"){
+    var text = JSON.stringify(S);
+    var done = function(ok){ $("copystate").textContent = ok ? "Copied." : "Copy failed — use the paste box."; };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(false); });
+    else done(false);
+  }
+  else if (act === "showpaste"){ $("pastebox").hidden = false; $("pastejson").focus(); }
+  else if (act === "hidepaste"){ $("pastebox").hidden = true; $("copystate").textContent = ""; }
+  else if (act === "loadjson"){
+    try {
+      var next = JSON.parse($("pastejson").value);
+      if (!next || !Array.isArray(next.squad)) throw new Error("no squad");
+      S = next;
+      S.draft = S.draft || {}; S.moves = S.moves || []; S.prospects = S.prospects || [];
+      S.season = Number(S.season) || 1;
+      $("pastebox").hidden = true;
+      $("copystate").textContent = "Loaded.";
+      fillSelects(); rebuild();
+    } catch(err){
+      $("copystate").textContent = "That is not a league file — nothing was changed.";
+    }
+  }
+});
+
+/* Squad edits repaint the rail only, so typing never loses the caret. */
+function editSquad(e){
+  var tr = e.target.closest("tr[data-i]");
+  if (!tr) return;
+  var p = S.squad[Number(tr.dataset.i)], f = e.target.dataset.f;
+  if (!p || !f) return;
+  if (f === "regen") p.regen = e.target.checked;
+  else if (f === "age" || f === "wage") p[f] = Number(e.target.value) || 0;
+  else p[f] = e.target.value;
+  if (f === "nat"){
+    var z = zoneOf(p.nat), cell = tr.querySelector("[data-z]");
+    cell.innerHTML = '<i class="dot r-' + z + '"></i>' + z;
+    cell.className = "reg" + (z === "XX" ? " x" : "");
+    tr.classList.toggle("flagged", z === "XX");
+  }
+  S.sample = false;
+  $("samplebanner").hidden = true;
+  renderRail();
+  save();
+}
+$("squadbody").addEventListener("input", editSquad);
+$("squadbody").addEventListener("change", editSquad);
+
+$("prospectbody").addEventListener("input", function(e){
+  var tr = e.target.closest("tr[data-pi]");
+  if (!tr) return;
+  var p = S.prospects[Number(tr.dataset.pi)], f = e.target.dataset.pf;
+  if (!p || !f) return;
+  p[f] = f === "months" ? (Number(e.target.value) || 0) : e.target.value;
+  S.sample = false;
+  save();
+  if (f === "months") renderDraft();
+});
+
+$("franchise").addEventListener("change", function(){ S.franchise = this.value; rebuild(); });
+["o-player","o-role","o-nat","o-window","o-clause","o-best"].forEach(function(id){
+  $(id).addEventListener("input", function(){
+    if (id === "o-player") syncRole();
+    renderRuling();
+  });
+  $(id).addEventListener("change", function(){
+    if (id === "o-player") syncRole();
+    renderRuling();
+  });
+});
+
+/* ------------------------------- go -------------------------------- */
+setTheme(savedTheme);
+fillSelects();
+$("o-nat").value = "Italy";
+renderSquad();
+fillPlayerSelect();
+refresh();
+showTab("squad");
+})();
+</script>
+</body>
+</html>
