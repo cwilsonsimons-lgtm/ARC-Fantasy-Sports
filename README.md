@@ -313,6 +313,41 @@ persists, and pictures survive a reload. It also forces the real failure path �
 by making the state itself oversized, since merely stuffing the origin no longer
 breaks anything, which is the point — and checks the message that comes back.
 
+## Viewing it on a phone
+
+```
+node tools/artifact.mjs        # writes prototype/artifact.html
+```
+
+`prototype/app.html` is a complete document — doctype, `<html>`, `<head>`,
+`<body>`. An Artifact supplies all of that itself and wraps whatever it is
+given, so publishing the document as-is would nest one inside another. The tool
+strips the shell and keeps the title, the styles and the body.
+
+It anchors on document positions rather than matching the tags: the stylesheet
+carries CSS comments that mention `<body>`, and a regex for the body tag finds
+one of those first and swallows the tail of the stylesheet with it.
+
+The app already renders full-bleed below 440px — `@media (max-width:440px)`
+drops the bezel, the notch and the fake status bar, and hands the safe-area
+insets to the nav — so a phone gets the app itself rather than a picture of a
+phone.
+
+**Two things the Artifact sandbox blocks**, both of which degrade the way they
+already should:
+
+- **Headshots come from nfl.com**, which its CSP does not allow, so faces fall
+  back to initials. `faceInner()` now renders that fallback on an image error
+  rather than leaving an empty square — the market rows had always done this,
+  and every other face does it now too. The typefaces are base64 in the
+  stylesheet, so type is unaffected.
+- **`api.sleeper.app` is blocked**, so a live import cannot reach Sleeper and
+  falls back to the demo league, which the import screens say plainly. The
+  standalone file still imports for real.
+
+Everything else — storage, imports of the demo league, the draft, Markets —
+works in the published page exactly as it does locally.
+
 ## Layout
 
 ```
