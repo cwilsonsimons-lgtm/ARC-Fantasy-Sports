@@ -90,3 +90,9 @@ button { font: inherit; }
 .onair { border: 1px solid var(--accent); padding: 14px; margin-bottom: 20px; }
 .onair .label { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); }
 .onair .title { font-size: 20px; font-weight: 600; margin: 4px 0; }
+
+/* Narrow screens: let wide tables scroll rather than crushing the columns. */
+@media (max-width: 600px) {
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+  .view { padding: 14px; }
+}

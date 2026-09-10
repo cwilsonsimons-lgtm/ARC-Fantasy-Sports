@@ -31,8 +31,16 @@ function render() {
 const state = load();
 if (isLive(state.broadcast)) route = 'live'; // a refresh mid-show lands back at Gorilla
 
-document.getElementById('reset').addEventListener('click', () => {
-  if (confirm('Reset the roster and card back to the starting data?')) resetAll();
+// Two-click confirm rather than window.confirm(), which some embedded contexts block.
+const resetBtn = document.getElementById('reset');
+let resetArmed = false;
+resetBtn.addEventListener('click', () => {
+  if (!resetArmed) {
+    resetArmed = true;
+    resetBtn.textContent = 'Click again to confirm reset';
+    return;
+  }
+  resetAll();
 });
 
 subscribe(render);
