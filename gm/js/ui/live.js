@@ -20,6 +20,9 @@ const INCIDENT_TYPES = new Set(['attack', 'argument', 'save', 'escalation', 'hes
 const MOTIVE_LINE = {
   alliance: 'They have stood together before.',
   faction: 'You go after one of them, you go after all of them.',
+  partner: 'That is their tag partner on the floor.',
+  mentor: 'One of them brought the other one up.',
+  love: 'Everybody in the building knows what those two are.',
   debt: 'That debt has been sitting there a while.',
   revenge: 'Nothing to do with the victim. Everything to do with who was swinging.',
   morality: 'No reason beyond it being wrong.',
@@ -498,10 +501,17 @@ export function journalText(state, entry, items = state.show.items) {
   }
   if (entry.type === 'hated-booking') {
     const who = nameOf(state.wrestlers, entry.data.wrestlerId);
-    return `${who} was put in a ${matchType(entry.data.matchTypeId).name.toLowerCase()} and did not hide what he thought of it.`;
+    return `${who} was put in a ${matchType(entry.data.matchTypeId).name.toLowerCase()} and did not hide what they thought of it.`;
   }
   if (entry.type === 'grudges-formed') {
     return `${nameList(state, entry.data.wrestlerIds)} stopped assuming the omission is an accident.`;
+  }
+  if (entry.type === 'noticed') {
+    const who = nameOf(state.wrestlers, entry.data.wrestlerId);
+    const them = nameOf(state.wrestlers, entry.data.targetId);
+    return entry.data.reason === 'title'
+      ? `${who} watched ${them} get handed a championship and counted the years.`
+      : `${who} noticed exactly whose night that main event was.`;
   }
 
   const item = items.find(candidate => candidate.id === entry.itemId) || null;

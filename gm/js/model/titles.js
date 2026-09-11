@@ -7,6 +7,7 @@
 import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
 import { nextId } from '../ids.js';
+import { remember } from './memory.js';
 import { BASE_TITLES, UNLOCKABLE_TITLES, SLOT_THRESHOLDS, titleTemplate } from '../data/titles.js';
 
 function createTitle(template, championIds, week) {
@@ -165,7 +166,7 @@ export function settleTitleMatch(state, title, winnerIds, at = 0) {
 
   if (held) {
     title.defenses += 1;
-    for (const id of winnerIds) bump(state, id, title.tier === 'major' ? 5 : 3);
+    for (const id of winnerIds) bump(state, id, title.tier === 'major' ? 5 : 3, 'defended');
     state.journal.push(createEntry({
       week: state.week, at, type: 'title-defended',
       data: { titleId: title.id, championIds: [...winnerIds] },
@@ -182,8 +183,8 @@ export function settleTitleMatch(state, title, winnerIds, at = 0) {
   title.lineage.push({ championIds: [...winnerIds], wonWeek: state.week, lostWeek: null, defenses: 0 });
 
   // Winning one of these is the best night of somebody's year. Losing it is not.
-  for (const id of winnerIds) bump(state, id, weight);
-  for (const id of formerIds) bump(state, id, -weight);
+  for (const id of winnerIds) bump(state, id, weight, 'won');
+  for (const id of formerIds) bump(state, id, -weight, 'lost');
 
   state.journal.push(createEntry({
     week: state.week, at, type: 'title-change',
@@ -192,15 +193,13 @@ export function settleTitleMatch(state, title, winnerIds, at = 0) {
   return { changed: true, title, formerIds };
 }
 
-function bump(state, wrestlerId, amount) {
-  const wrestler = byId(state.wrestlers, wrestlerId);
-  if (!wrestler) return;
-  wrestler.morale = Math.max(0, Math.min(100, Math.round(wrestler.morale + amount)));
+function bump(state, wrestlerId, amount, detail) {
+  remember(state, wrestlerId, { source: 'title', weight: amount, detail });
 }
 
 // Being champion is worth something every week, quietly.
 export function championMorale(state) {
   for (const title of activeTitles(state)) {
-    for (const id of title.championIds) bump(state, id, 1);
+    for (const id of title.championIds) bump(state, id, 1, 'carrying-it');
   }
 }

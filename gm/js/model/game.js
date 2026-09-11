@@ -17,6 +17,7 @@ import { rngFor } from './random.js';
 import { maybePostMatchAttack, maybeBackstageArgument, resolveIncident } from './incidents.js';
 import { applyResponse, releaseSuspensions } from './discipline.js';
 import { createOpportunity, ageOpportunities } from './opportunities.js';
+import { fadeMemories, coolGrudges } from './memory.js';
 import { RESPONSES } from '../data/responses.js';
 import { createNetwork, awardTrust } from './network.js';
 import { seedTitles, titleById, settleTitleMatch, championMorale } from './titles.js';
@@ -218,6 +219,10 @@ export function advanceWeek(state) {
 
   state.week += 1;
   releaseSuspensions(state);
+  // Last week stops being the whole of what somebody thinks about. How much it
+  // stops being is a question about the person, not about the week.
+  fadeMemories(state);
+  coolGrudges(state);
   ageOpportunities(state);
   championMorale(state);
   state.breaches = 0;

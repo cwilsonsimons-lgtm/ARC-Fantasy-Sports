@@ -352,6 +352,58 @@ td .wlink { text-decoration-color: color-mix(in srgb, var(--muted) 55%, transpar
 }
 .rel-count { font: 11px/1 var(--mono); color: var(--muted); white-space: nowrap; }
 
+/* A typed relationship carries a name and a reason, so it stacks rather than
+   sitting on one line. */
+.relations li.relation { display: block; }
+.rel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.rel-type {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .09em;
+  white-space: nowrap;
+}
+.rel-good  { color: var(--good); }
+.rel-plain { color: var(--muted); }
+.rel-warn  { color: var(--amber); }
+.rel-bad   { color: var(--tally); }
+.rel-note { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* ---------- personality ---------- */
+.traits { list-style: none; margin: 0; padding: 0; }
+.traits li {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 5px 0; border-bottom: 1px solid var(--line-soft);
+}
+.trait-key {
+  font: 500 11px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted);
+}
+.trait-val { font-size: 13px; font-weight: 600; text-align: right; }
+.trait-known { color: var(--good); }
+.trait-impression { color: var(--amber); }
+.trait-ordinary { color: var(--muted); font-weight: 400; }
+
+/* ---------- what is on their mind ---------- */
+.feelings { list-style: none; margin: 0 0 4px; padding: 0; }
+.feelings li {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px;
+}
+.feel-key { color: var(--ink-dim); }
+.feel-val {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .09em;
+  text-align: right; white-space: nowrap;
+}
+.feel-good { color: var(--good); }
+.feel-bad { color: var(--tally); }
+
+.standing { margin-bottom: 4px; }
+.standing-line { font-size: 14px; margin: 0; }
+.standing-good  { color: var(--good); }
+.standing-fine  { color: var(--cool); }
+.standing-plain { color: var(--ink-dim); }
+.standing-warn  { color: var(--amber); }
+.standing-bad   { color: var(--tally); }
+.standing-note { font-size: 12px; margin: 4px 0 0; }
+
 @media (max-width: 680px) {
   .card-split { grid-template-columns: 1fr; gap: 0; }
   .overlay { padding: 14px 10px; }

@@ -7,12 +7,26 @@
 import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
 import { responseById, proportionality } from '../data/responses.js';
+import { trait, lean, scale } from './traits.js';
+import { remember } from './memory.js';
+import { alliesOf as tiedAllies } from './relationships.js';
 import { nextId } from '../ids.js';
 
 const MANAGEMENT = null; // a grudge with no target is a grudge against the office
 
-function nudge(wrestler, amount) {
-  wrestler.morale = Math.max(0, Math.min(100, Math.round(wrestler.morale + amount)));
+// A ruling is yours. It files under your name, which is what makes the GM
+// standing on somebody's card an account of your own decisions rather than a
+// mood reading.
+function ruling(state, wrestler, amount, detail) {
+  if (!wrestler) return;
+  remember(state, wrestler, { source: 'gm', weight: amount, detail });
+}
+
+// And what you did to their friend files under a heading of its own, because
+// "you punished me" and "you punished them" are different grievances.
+function onBehalfOf(state, wrestler, amount, targetId, detail) {
+  if (!wrestler) return;
+  remember(state, wrestler, { source: 'ally', weight: amount, targetId, detail });
 }
 
 function addGrudge(state, wrestler, targetId, type, data = {}) {
@@ -21,11 +35,16 @@ function addGrudge(state, wrestler, targetId, type, data = {}) {
   return true;
 }
 
+// Whether a hard call becomes a standing grievance against the office. Somebody
+// who respects the office takes the ruling; somebody who answers to nobody has
+// been waiting for a reason.
+function takesItPersonally(wrestler) {
+  return trait(wrestler, 'authority') < 62 + lean(wrestler, 'patience') * 12;
+}
+
 function alliesOf(state, wrestler) {
-  return Object.entries(wrestler.relationships || {})
-    .filter(([, rel]) => rel.segments >= 2)
-    .map(([id, rel]) => ({ ally: byId(state.wrestlers, id), weight: rel.segments }))
-    .filter(entry => entry.ally && entry.ally.status !== 'Unavailable');
+  return tiedAllies(state.wrestlers, wrestler)
+    .filter(entry => entry.ally.status !== 'Unavailable');
 }
 
 function enemiesOf(state, wrestler) {
@@ -58,52 +77,67 @@ export function applyResponse(state, incident, responseId) {
 
   // What the response does to the person it lands on.
   if (responseId === 'word') {
-    nudge(aggressor, 3);
+    ruling(state, aggressor, 3, 'word');
   } else if (responseId === 'mediate') {
-    // Two people who already wanted to fight, in one room. Sometimes it works.
-    const calmed = (aggressor.stats.professionalism + victim.stats.professionalism) / 2 >= 55;
-    nudge(aggressor, calmed ? 4 : -3);
-    nudge(victim, calmed ? 4 : -3);
+    // Two people who already wanted to fight, in one room. Whether it works is
+    // a question about both of them, not about the idea.
+    const calmed = (trait(aggressor, 'professionalism') + trait(victim, 'professionalism')) / 2
+      >= 55 - lean(aggressor, 'patience') * 10;
+    ruling(state, aggressor, calmed ? 4 : -3, 'mediate');
+    ruling(state, victim, calmed ? 4 : -3, 'mediate');
     outcome.mediationWorked = calmed;
   } else if (responseId === 'security') {
-    nudge(aggressor, -2);
+    ruling(state, aggressor, -2, 'security');
   } else if (responseId === 'warning') {
-    nudge(aggressor, -4);
+    ruling(state, aggressor, -4, 'warning');
   } else if (responseId === 'eject') {
-    nudge(aggressor, -9);
+    ruling(state, aggressor, -9, 'eject');
     outcome.pulled = pullFromShow(state, aggressor.id);
   } else if (response.suspendWeeks) {
-    nudge(aggressor, -8 - response.suspendWeeks * 3);
+    ruling(state, aggressor, -8 - response.suspendWeeks * 3, 'suspend');
     outcome.pulled = pullFromShow(state, aggressor.id);
     aggressor.status = 'Unavailable';
     aggressor.suspendedUntil = state.week + response.suspendWeeks;
     outcome.suspended = response.suspendWeeks;
   }
 
-  // A punishment the room reads as unfair is remembered as yours, not theirs.
+  // A punishment the room reads as unfair is remembered as yours, not theirs —
+  // though whether it becomes a standing grievance depends on what the person
+  // thinks of the office in the first place.
   if (read === 'harsh' && response.weight >= 2) {
-    addGrudge(state, aggressor, MANAGEMENT, 'punished', { responseId, severity: incident.severity });
+    if (takesItPersonally(aggressor)) {
+      addGrudge(state, aggressor, MANAGEMENT, 'punished', { responseId, severity: incident.severity });
+    }
     for (const { ally, weight } of alliesOf(state, aggressor)) {
-      nudge(ally, -Math.min(6, weight));
-      if (weight >= 4) addGrudge(state, ally, MANAGEMENT, 'punished', { onBehalfOf: aggressor.id });
+      // Loyalty is the trait that decides whether your treatment of somebody
+      // else is any of their business.
+      const felt = Math.min(6, weight) * scale(ally, 'loyalty', 0.8);
+      onBehalfOf(state, ally, -felt, aggressor.id, 'punished');
+      if (weight >= 4 && takesItPersonally(ally)) {
+        addGrudge(state, ally, MANAGEMENT, 'punished', { onBehalfOf: aggressor.id });
+      }
     }
   }
 
   // And one the room reads as nothing at all is remembered too.
   if (read === 'weak') {
-    nudge(victim, -4);
+    ruling(state, victim, -4, 'let-go');
     for (const wrestler of state.wrestlers) {
-      if (wrestler.status === 'Available' && wrestler.stats.professionalism > 70) nudge(wrestler, -1);
+      if (wrestler.status === 'Available' && trait(wrestler, 'professionalism') > 70) {
+        ruling(state, wrestler, -1, 'let-go');
+      }
     }
   }
 
   if (read === 'fair' && response.weight > 0) {
-    nudge(victim, 3);
+    ruling(state, victim, 3, 'backed-up');
   }
 
   // People who cannot stand the punished wrestler enjoy this.
   if (response.weight >= 3) {
-    for (const enemy of enemiesOf(state, aggressor)) nudge(enemy, 2);
+    for (const enemy of enemiesOf(state, aggressor)) {
+      remember(state, enemy, { source: 'peer', weight: 2, targetId: aggressor.id, detail: 'got-what-they-had-coming' });
+    }
   }
 
   state.gmRecord = state.gmRecord || { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 };

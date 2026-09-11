@@ -12,6 +12,7 @@
 // — it is not public, but it is still your word.
 import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
+import { remember } from './memory.js';
 import { runtimeFor } from './network.js';
 import { nextId } from '../ids.js';
 import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
@@ -162,8 +163,7 @@ export function setAdvertised(state, id, advertised) {
   if (advertised) {
     // Being announced is worth something on its own.
     for (const wrestlerId of entry.participants) {
-      const wrestler = byId(state.wrestlers, wrestlerId);
-      if (wrestler) wrestler.morale = Math.min(100, wrestler.morale + 3);
+      remember(state, wrestlerId, { source: 'gm', weight: 3, detail: 'advertised' });
     }
   }
   return entry;
@@ -179,7 +179,7 @@ export function tellWrestler(state, id, wrestlerId) {
   entry.told.push(wrestlerId);
   const wrestler = byId(state.wrestlers, wrestlerId);
   if (wrestler) {
-    wrestler.morale = Math.min(100, wrestler.morale + 5);
+    remember(state, wrestler, { source: 'gm', weight: 5, detail: 'told' });
     wrestler.weeksOffCard = 0; // they know they are not forgotten
   }
   return entry;
@@ -225,7 +225,13 @@ function breachFor(state, entry, reason) {
     const wrestler = byId(state.wrestlers, wrestlerId);
     if (!wrestler) continue;
     const wasTold = entry.told.includes(wrestlerId);
-    wrestler.morale = Math.max(0, wrestler.morale - (wasTold ? 11 : 6));
+    // Being told privately and then let down is worse than reading it on a
+    // poster, because you said it to their face.
+    remember(state, wrestler, {
+      source: 'gm',
+      weight: -(wasTold ? 11 : 6),
+      detail: wasTold ? 'told-then-dropped' : 'advertised-then-dropped',
+    });
     if (wasTold && !wrestler.grudges.some(g => g.type === 'broken-promise')) {
       wrestler.grudges.push({
         id: nextId('gr'), week: state.week, type: 'broken-promise', targetId: null,

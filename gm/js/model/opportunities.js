@@ -6,6 +6,7 @@
 // notices that nothing was ever done about it.
 import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
+import { remember } from './memory.js';
 import { nextId } from '../ids.js';
 
 const SHELF_LIFE = 3; // weeks before the heat is gone
@@ -59,8 +60,9 @@ export function dismissOpportunity(state, id) {
   const opportunity = takeOpportunity(state, id);
   if (!opportunity) return null;
   // Waving it away in front of the person who wanted it is not free.
-  const victim = byId(state.wrestlers, opportunity.victimId);
-  if (victim) victim.morale = Math.max(0, victim.morale - 3);
+  remember(state, opportunity.victimId, {
+    source: 'opportunity', weight: -3, targetId: opportunity.aggressorId, detail: 'dismissed',
+  });
   return opportunity;
 }
 
@@ -76,7 +78,12 @@ export function ageOpportunities(state) {
 
     const victim = byId(state.wrestlers, opportunity.victimId);
     if (victim) {
-      victim.morale = Math.max(0, victim.morale - (opportunity.promised ? 9 : 4));
+      remember(state, victim, {
+        source: 'opportunity',
+        weight: -(opportunity.promised ? 9 : 4),
+        targetId: opportunity.aggressorId,
+        detail: opportunity.promised ? 'promise-broken' : 'went-cold',
+      });
       if (opportunity.promised && !victim.grudges.some(g => g.type === 'broken-promise')) {
         victim.grudges.push({
           id: nextId('gr'), week: state.week, type: 'broken-promise', targetId: null,

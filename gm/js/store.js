@@ -10,6 +10,7 @@ import {
 } from './saves.js';
 import { TIERS } from './model/network.js';
 import { makeAirSchedule } from './model/calendar.js';
+import { TRAITS } from './model/traits.js';
 
 let state = null;
 let saveId = null;
@@ -129,6 +130,39 @@ function upgrade(saved) {
       }
     }
     saved.version = 12;
+  }
+
+  if (saved.version === 12) {
+    // Personality splits off from ability. Three traits were living in `stats`
+    // where they did not belong; they move across with their values intact
+    // rather than being rerolled, because a save's people should not change
+    // character on upgrade. The other eight start in the ordinary middle — a
+    // roster that has been played for forty weeks keeps its history, and the
+    // new dimensions simply begin as unremarkable.
+    for (const w of saved.wrestlers || []) {
+      const stats = w.stats || (w.stats = {});
+      w.traits = w.traits || {};
+      for (const { key } of TRAITS) {
+        if (Number.isFinite(w.traits[key])) continue;
+        w.traits[key] = Number.isFinite(stats[key]) ? stats[key] : 50;
+      }
+      delete stats.ambition;
+      delete stats.ego;
+      delete stats.professionalism;
+
+      // Morale exists; the account of it does not. Rather than invent memories
+      // for things that already happened, the ledger starts empty and the mood
+      // they already had becomes their natural level — so nobody's temper
+      // changes on upgrade, and everything from here on is measured from it.
+      if (!Array.isArray(w.memories)) w.memories = [];
+      if (!Number.isFinite(w.baseline)) w.baseline = Number.isFinite(w.morale) ? w.morale : 55;
+
+      for (const rel of Object.values(w.relationships || {})) {
+        if (rel.owed === undefined) rel.owed = 0;
+        if (rel.tie === undefined) rel.tie = null;
+      }
+    }
+    saved.version = 13;
   }
 
   return saved.version === STATE_VERSION ? saved : null;

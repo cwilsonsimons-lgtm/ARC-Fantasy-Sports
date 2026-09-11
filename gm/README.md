@@ -5,8 +5,9 @@ show. This is the first skeleton: view the roster, book a card, run the show
 segment by segment, face the network's verdict, advance the week.
 
 Simulated so far: who you used and who you left out, who beat whom, who keeps
-ending up in a ring together, and **who steps in when somebody gets jumped**.
-Not yet: championships, backstage incidents, or anything running long.
+ending up in a ring together, **who steps in when somebody gets jumped**, and
+**what everybody remembers about all of it**. Not yet: contracts, money, or
+anything running long.
 
 ## The weekly phase machine
 
@@ -32,8 +33,23 @@ Then open <http://127.0.0.1:8080/gm/>. Plain ES modules, no build step and no
 dependencies — the modules need an HTTP server only because browsers refuse to
 load them over `file://`.
 
-State is saved to `localStorage` under `wgm_v1`. "Reset prototype data" in the
-footer clears it and reseeds the roster.
+State is saved to `localStorage`: an index at `wgm_index_v1` and one key per
+save. "Delete all saves" in the footer clears the lot.
+
+```
+npm run check:gm               # both halves
+node tools/gm-check.mjs --model  # the simulation only, no browser
+```
+
+The check runs twice over because the two halves catch different things. It
+plays twelve seasons of forty weeks headlessly against the model and asserts on
+the distributions — that saves, hesitations and abandonments are all common
+outcomes, that morale settles in a spread rather than pinning at an end, and
+that **each of the eleven traits measurably changes an outcome**. Then it plays
+ten weeks in a real browser, opens a card, checks it at phone width, reloads,
+and forces an old save through the upgrade. Every crash this prototype has had
+was found by playing it, not by a staged test, so the second half drives the
+actual buttons.
 
 ## Layout
 
@@ -53,13 +69,14 @@ functions the buttons call, without going near the interface.
 
 | Object | Shape |
 | --- | --- |
-| Wrestler | `{ id, name, gender, alignment, status }` |
+| Wrestler | `{ id, name, gender, alignment, status, baseline, morale, stats, traits, memories[], grudges[], relationships }` |
 | ShowItem | `{ id, type, name, participants[], plannedMinutes }` |
 | Show | `{ id, name, runtimeMinutes, items[] }` |
 | Broadcast | `{ showId, status, results[] }` |
 | Journal entry | `{ id, week, at, type, itemId, data }` |
 | Grudge | `{ id, week, type, targetId, data }` |
-| Relationship | `wrestler.relationships[otherId] = { matches, segments }` |
+| Memory | `{ id, week, source, weight, targetId, detail, fade }` |
+| Relationship | `wrestler.relationships[otherId] = { matches, segments, owed, tie }` |
 
 Four decisions here exist for systems that do not exist yet:
 
@@ -99,11 +116,56 @@ when the week advances, so last week's record is still readable while the new
 card is being built. Memory that has to survive across weeks belongs on the
 wrestlers themselves, not here.
 
-## Morale and grudges
+## Memory is the spine
 
-Morale needs a cause, and there is no incident system yet, so nothing invents a
-grievance out of nothing. The one honest cause available is **who was booked and
-who was not**:
+Morale is **derived, not stored**:
+
+```
+morale = their natural level + everything they currently remember
+```
+
+Six files used to nudge `wrestler.morale` directly, which meant "why is this one
+furious" had no answer. Now every change goes through one call — `remember()` in
+`model/memory.js` — which files a memory carrying its own weight, and the number
+is recomputed from the memories. `wrestler.morale` still exists on the object
+because everything reads it and the save has to serialise, but it is a cached
+answer and never a source.
+
+That is not tidiness. A running total gets one thing badly wrong: **memories
+fade, and if the number they moved were kept, a wrestler would still be elated
+about a title they won two years ago**. Deriving it means people drift back
+toward who they are — their `baseline`, rolled at generation — the moment
+nothing is happening to them. A locker room with nothing going on is a quiet
+one, not a permanently delighted or permanently ruined one.
+
+Memories carry a **source**, which is what the card can name:
+
+| | |
+| --- | --- |
+| Opportunities | something you offered, or let go cold |
+| Television time | whether they were on, where, and for how long |
+| Wins and losses | the result, separately from the spot |
+| Championships | won, lost, defended, carried |
+| How you have treated them | your rulings, your word, and whether you use them |
+| How you have treated their friends | the same, landing at one remove |
+| The locker room | what other wrestlers did to them, and what they did back |
+
+**How fast a memory fades is a property of the person.** Good news decays at a
+flat rate; a grievance decays at a rate set by how vindictive they are — 0.72 a
+week for somebody who lets things go, 0.96 for somebody who does not. That decay
+is the whole reason a forty-week save is not a roster who all hate you for
+things that happened in week three.
+
+**Grudges expire too.** A memory is a feeling; a grudge is a position, and it
+outlives the feeling that caused it — but not forever. Each type has a lifespan
+(being abandoned lasts longest, a hated stipulation is effectively a standing
+objection) scaled again by vindictiveness. A grudge that is still being fed is
+refreshed when it is re-filed, so only the ones nobody has topped up go quiet.
+Being booked clears an `overlooked` grudge outright: you fixed it.
+
+## What a show does to the room
+
+The one thing a show can always say is **who was booked and who was not**:
 
 - Appeared — a small gain, more for main-eventing, more again per five minutes
   of airtime actually aired.
@@ -112,15 +174,25 @@ who was not**:
 - Injured or unavailable — exempt. They could not have been booked, so being
   left off is not a snub.
 
-One missed week is a slight. **Three in a row becomes a belief**, and that is
-when a grudge forms. That threshold is the whole point: repetition is what turns
-an event into a grievance that outlives the week it happened in.
+One missed week is a slight. **Several in a row becomes a belief**, and that is
+when a grudge forms — after how many depends on how patient the person is, from
+two weeks for somebody with none to five for somebody who will wait.
 
-Grudges are records, not strings: `{ id, week, type, targetId, data }`. Today
-every grudge is `type: 'overlooked'` with `targetId: null`, which means
-management — the GM. When incidents exist, `targetId` names a wrestler and the
-same list starts showing who is angry at whom. The sentence is composed at
-render time, so a grudge stays queryable and no prose is frozen into the save.
+Two more things happen every week, both of which are about somebody else:
+
+- **Wins and losses** are their own feeling, separate from the spot. Losing in
+  the main event is still losing, and a big ego feels it further.
+- **Somebody else's good night.** Whoever closed the show or won a belt becomes
+  an event for everybody who was counting. A jealous wrestler who was left off
+  while the main event went to a peer does not need to have been wronged to feel
+  wronged — this is the first thing in the game that happens to somebody
+  *because of what happened to somebody else*. Everybody past the threshold
+  feels it; only the two loudest reach you as a line in the journal.
+
+Grudges are records, not strings: `{ id, week, type, targetId, data }`. A
+`targetId` of `null` means management — the GM; otherwise it names a wrestler,
+and the same list shows who is angry at whom. The sentence is composed at render
+time, so a grudge stays queryable and no prose is frozen into the save.
 
 All numbers in `model/morale.js` are placeholder tuning, deliberately legible
 rather than balanced.
@@ -140,13 +212,49 @@ The player is told the executive's priorities, never their arithmetic.
 
 Any wrestler's name, anywhere in the app, opens their card. It holds what the GM
 could plausibly know: role, archetype, win-loss record, demeanour, a description
-you can edit, a photo you can add, and their top rivals and allies — each of
-which opens that wrestler's card in turn.
+you can edit, a photo you can add, their ability and their personality, what is
+currently on their mind, where you stand with them, and everybody in the
+building they have an opinion about — each of which opens that card in turn.
 
-**Rivals and allies are counted, not invented.** Two people who keep meeting in
-the ring become rivals; two who keep sharing a segment become allies. Both live
-in the same record and are written symmetrically. Some history is seeded so week
-one is not a blank slate.
+**What is on their mind** is the mood broken into its sources, in words rather
+than numbers: *Television time — the best thing going. How you have treated them
+— weighing on them.* It is the same data the number is made of, which is the
+point of deriving morale from memory in the first place.
+
+**Where you stand** is deliberately a different axis from the mood. A wrestler
+can be delighted with their year and still think you are a liar, so the standing
+reads only the memories that are *yours* — your rulings, your word, how you have
+treated their friends, and whether you use them — and it decays far more slowly
+than a mood does. What somebody thinks of the office is built over a season and
+does not reset because the last month was quiet. Somebody who respects the
+office takes a hard call better; somebody who answers to nobody takes it worse,
+and remembers it as yours.
+
+The main way that axis moves in an ordinary week is **the card going up**.
+Nobody forms a view of management during incidents; they form it every time they
+read down the card looking for their own name.
+
+### Relationships have types
+
+Two things feed a relationship, and they work differently.
+
+Most of it is **counted** off the card: people who keep meeting in the ring read
+as rivals, people who keep standing together read as allies, and the game works
+that out without being told. The rest is **named**, because it cannot be counted
+into existence — a tag team is not two people with a high segment count, and
+nobody is somebody's mentor because of arithmetic. Generation names a handful
+once (a tag team or two, a mentor and their student, sometimes two people whose
+lives are tangled up together, an old score from before you took the job, and
+the faction the cult leader has been building) and everything downstream reads
+the name.
+
+A named tie outranks anything the counts would have said, and it is its own
+stated reason when somebody runs in: *That is their tag partner on the floor.*
+Everything else falls out of counts, debts, grudges and how they actually feel
+about the person — tag partner, faction, brought them up, involved, bad blood,
+enemy, holds a grudge, owes them, rival, close ally, friendly, respects them,
+distrusts them, has worked with. Mentor and student are the one asymmetric tie:
+the same relationship seen from two ends.
 
 **Winners.** The world runs on hard kayfabe: wrestling is a real contest, so the
 GM books the match and the night decides the result. In-ring ability sets the
@@ -189,11 +297,25 @@ aptitude falls back to their general in-ring ability.
 Stats are 0-100 under the hood and are **never shown as numbers**. What the
 player gets is a reading that sharpens with familiarity:
 
-| Familiarity | Tier | Stats | Stipulations |
+| Familiarity | Ability | Personality | Stipulations |
 | --- | --- | --- | --- |
-| 0-24 | unread | "no read yet" | nothing |
-| 25-59 | impression | Below / About / Above average | what they like |
-| 60+ | known | Terrible … Elite | what they like **and** how good they are |
+| 0-24 | "no read yet" | nothing | nothing |
+| 25-41 | Below / About / Above average | nothing | what they like |
+| 42-59 | Below / About / Above average | high / average / low | what they like |
+| 60-79 | Terrible … Elite | high / average / low | what they like **and** how good they are |
+| 80+ | Terrible … Elite | "Enormous", "Forgets nothing", "Answers to nobody" | both |
+
+**Personality lags ability**, and deliberately. You can watch somebody wrestle
+once and have an opinion about how good they are. Working out whether they hold
+a grudge takes considerably longer, and you usually find out the hard way — so a
+wrestler can be a known quantity in the ring and still a stranger backstage,
+which is exactly the gap the game is about.
+
+A known read speaks each trait's own language rather than a generic scale:
+somebody's ego comes back as "Enormous", not "Elite". And **only the ends of a
+scale are coloured** — an ordinary patience is not something the player needs to
+see from across the room, and a card where all eleven lines shout is a card
+where none of them do.
 
 Taste and aptitude reveal at different tiers on purpose. What somebody likes is
 something they will tell you, so it surfaces the moment you have any read at
@@ -208,19 +330,39 @@ the roster you understand — and the one you ignore stays a guess.
 The word scale is centred so a middling value reads as middling. A scale where
 44 comes back as "Good" quietly tells the player everyone is fine.
 
-## Personality does something
+## Personality is not ability
 
-Each of the five stats has exactly one real effect today, so the roster reacts
-differently to identical treatment rather than carrying decorative numbers:
+They are separate because they behave differently. **Ability decides matches.
+Personality decides everything else.** So they live in separate places on the
+record — `stats` is what somebody can do, `traits` is who they are — and ego,
+ambition and professionalism, which had been filed under ability, moved across.
+
+Two abilities:
 
 - **In-ring** sets match odds.
-- **Ambition** multiplies how hard being left off lands.
-- **Ego** raises what the main event is worth and makes opening the show sting.
 - **Charisma** decides what they get out of microphone time.
-- **Professionalism** flattens every reaction in both directions.
 
-Two wrestlers left off the same show lose different amounts of morale. That is
-the whole personality system, in its smallest honest form.
+Eleven traits, each with at least one real effect somewhere. **A trait that only
+shows on a card is decoration**, so every one of them is verified against an
+outcome rather than asserted:
+
+| Trait | What it actually does |
+| --- | --- |
+| **Ego** | raises what the main event is worth, makes opening the show sting, makes the middle of the card read as a demotion for anyone who thinks they belong on top, and makes a loss land harder |
+| **Ambition** | multiplies how hard being left off lands; sends somebody who needs a chance into a brawl that might become one |
+| **Aggression** | raises the odds of putting hands on somebody after the bell |
+| **Patience** | lowers them; and decides how many empty weeks pass before a slight becomes a grudge |
+| **Professionalism** | flattens every reaction in both directions, prevents fights, and decides whether mediation works |
+| **Loyalty** | decides whether anybody else's trouble is their business — in a run-in, and when you punish their friend |
+| **Jealousy** | decides how much somebody else's main event or championship costs them |
+| **Courage** | answers fear of whoever is doing the beating |
+| **Respect for authority** | decides whether a hard call is taken as a ruling or held against the office |
+| **Vindictiveness** | sets how slowly a grievance fades and how long a position is held |
+| **Selfishness** | damps principle and loyalty; sharpens self-interest |
+
+Archetypes declare ranges for the traits they have a view on; anything they do
+not mention is rolled from the ordinary middle, so nobody has a trait sitting at
+a flat 50 pretending to be eleven dimensions when it is three.
 
 ## Reactions
 
@@ -249,12 +391,29 @@ Principle is not blind: almost nobody crosses the building out of simple decency
 for a heel who has it coming. So "nobody moved" is a situational story about who
 the victim is — get jumped as a hated heel and you find out how alone you are.
 
-Tuned against a few thousand simulated matches. Roughly a fifth of matches end
-in an attack; of those, saves, hesitations and abandonments are all common, and
-a full locker-room brawl happens in under one percent.
+**Reasons do not simply add up.** Somebody with five reasons to go was already
+going on the strength of the first one, so the pulls are sorted and each one
+after the strongest counts for less than the one above it. Without that, a
+locker room running for six months is one where the best-connected person has
+every motive at once and clears the line every single time — which is how "who
+steps in" stops being a question. History caps for the same reason: the
+twentieth match against somebody is not twice the grievance of the tenth.
 
-**Debt creates itself through play.** A save writes a favour onto the record, and
-that favour is a motive the next time the rescuer is the one in trouble.
+Tuned against several thousand simulated matches. Roughly a fifth of matches end
+in an attack; of those, saves, hesitations and abandonments run about 39/32/29,
+and a full locker-room brawl is rare.
+
+One thing the numbers deliberately allow: **the rate drifts upward across a
+save**. In week two nobody in this locker room owes anybody anything and people
+mostly stand and watch. By week thirty there are debts, factions and scores, and
+somebody usually goes. That arc is the relationships paying off, so it is left in
+rather than normalised away.
+
+**Debt creates itself through play, and is spent.** A save writes a favour onto
+the record, and that favour is a motive the next time the rescuer is the one in
+trouble. Making the save for somebody you owe settles it — otherwise favours
+only ever accumulate, and eventually everybody owes everybody and therefore
+everybody runs in.
 
 ## Championships
 

@@ -8,8 +8,13 @@ import { commit } from '../store.js';
 import { closeCard } from './card-state.js';
 import { byId } from '../model/wrestlers.js';
 import { bookable } from '../model/morale.js';
-import { STATS, statReading, knowledgeTier, knowledgeLabel, knowledgePercent } from '../model/stats.js';
-import { topRivals, topAllies } from '../model/relationships.js';
+import {
+  ABILITIES, statReading, traitReading, knowledgeTier, personalityTier,
+  knowledgeLabel, knowledgePercent,
+} from '../model/stats.js';
+import { TRAITS } from '../model/traits.js';
+import { moraleSources, gmStanding } from '../model/memory.js';
+import { relationshipsOf } from '../model/relationships.js';
 import { opinions, tasteReading, aptitudeReading } from '../model/match-types.js';
 import { winRate } from '../model/matches.js';
 import { moodWord, moodClass } from './mood.js';
@@ -32,16 +37,22 @@ export function renderCard(state, wrestlerId) {
         el('div', {},
           el('h4', { text: 'Your read' }),
           readPanel(w),
+          el('h4', { text: 'Ability' }),
+          abilityList(w),
+          el('h4', { text: 'Personality' }),
+          personalityList(w),
           el('h4', { text: 'Description' }),
           bioField(w)
         ),
         el('div', {},
+          el('h4', { text: 'Where you stand' }),
+          standingPanel(state, w),
+          el('h4', { text: 'What is on their mind' }),
+          feelingList(w),
           el('h4', { text: 'Stipulations' }),
           stipulationList(w),
-          el('h4', { text: 'Top rivals' }),
-          relationList(state, topRivals(state.wrestlers, w), ['match', 'matches'], 'No history in the ring with anyone yet.'),
-          el('h4', { text: 'Top allies' }),
-          relationList(state, topAllies(state.wrestlers, w), ['segment', 'segments'], 'Has not stood beside anyone yet.')
+          el('h4', { text: 'The locker room' }),
+          relationshipList(state, w)
         )
       )
     )
@@ -127,7 +138,6 @@ function loadPhoto(event, wrestlerId) {
 }
 
 function readPanel(w) {
-  const tier = knowledgeTier(w);
   const percent = knowledgePercent(w);
 
   return el('div', {},
@@ -136,27 +146,109 @@ function readPanel(w) {
       el('span', { class: 'read-pct', text: `${percent}%` })
     ),
     el('div', { class: 'read-bar' }, el('div', { class: 'read-fill', style: `width:${percent}%` })),
-    el('p', { class: 'read-note muted', text: readNote(tier) }),
-    el('ul', { class: 'stats' },
-      STATS.map(stat => {
-        const reading = statReading(w, stat.key);
-        return el('li', {},
-          el('span', { class: 'stat-key', text: stat.label }),
-          el('span', {
-            class: reading ? `stat-val stat-${tier}` : 'stat-val stat-unknown',
-            text: reading || 'no read yet',
-          }),
-          el('span', { class: 'stat-note', text: stat.note })
-        );
-      })
+    el('p', { class: 'read-note muted', text: readNote(knowledgeTier(w), personalityTier(w)) })
+  );
+}
+
+function readNote(ability, personality) {
+  if (ability === 'unread') return 'You have barely worked with them. Book them and you will learn.';
+  if (personality === 'unread') {
+    return 'You have a sense of what they can do. What they are like is another matter.';
+  }
+  if (personality === 'known') return 'Weeks around them have made this reliable.';
+  return 'You know the wrestler better than you know the person.';
+}
+
+// What they can do. Learned by watching them work, so it comes first and
+// sharpens fastest.
+function abilityList(w) {
+  const tier = knowledgeTier(w);
+  return el('ul', { class: 'stats' },
+    ABILITIES.map(stat => {
+      const reading = statReading(w, stat.key);
+      return el('li', {},
+        el('span', { class: 'stat-key', text: stat.label }),
+        el('span', {
+          class: reading ? `stat-val stat-${tier}` : 'stat-val stat-unknown',
+          text: reading || 'no read yet',
+        }),
+        el('span', { class: 'stat-note', text: stat.note })
+      );
+    })
+  );
+}
+
+// Who they are. Eleven dimensions is too many to read as a list of sentences,
+// so it is a grid — and the reading lags ability, because working somebody out
+// takes longer than watching them wrestle.
+function personalityList(w) {
+  const tier = personalityTier(w);
+  if (tier === 'unread') {
+    return el('p', { class: 'empty', text: 'A stranger. You have no idea what they are like to deal with.' });
+  }
+
+  return el('ul', { class: 'traits' },
+    TRAITS.map(spec => {
+      const reading = traitReading(w, spec.key);
+      return el('li', { title: spec.note },
+        el('span', { class: 'trait-key', text: spec.label }),
+        el('span', {
+          // Only the ends of a scale are coloured. Somebody's ordinary patience
+          // is not something the player needs to see from across the room.
+          class: reading.notable ? `trait-val trait-${tier}` : 'trait-val trait-ordinary',
+          text: reading.word,
+        })
+      );
+    })
+  );
+}
+
+// Morale is never a number. What it is made of, however, can be named — and
+// naming it is what turns a mood into something the player can act on.
+function feelingList(w) {
+  if (!bookable(w)) {
+    return el('p', { class: 'empty', text: 'Not in a position to have an opinion about the card.' });
+  }
+
+  const sources = moraleSources(w).slice(0, 5);
+  if (!sources.length) {
+    return el('p', { class: 'empty', text: 'Nothing either way. Nothing has happened to them yet.' });
+  }
+
+  return el('ul', { class: 'feelings' },
+    sources.map(source =>
+      el('li', {},
+        el('span', { class: 'feel-key', text: source.label }),
+        el('span', {
+          class: source.total > 0 ? 'feel-val feel-good' : 'feel-val feel-bad',
+          text: feelWord(source.total),
+        })
+      )
     )
   );
 }
 
-function readNote(tier) {
-  if (tier === 'known') return 'Weeks around them have made this reliable.';
-  if (tier === 'impression') return 'A rough sense only. Book them more and it will sharpen.';
-  return 'You have barely worked with them. Book them and you will learn.';
+// A direction and a size, in words. Six sources each showing a signed integer
+// would be a spreadsheet.
+function feelWord(total) {
+  const size = Math.abs(total);
+  const scale = size >= 16 ? 2 : size >= 6 ? 1 : 0;
+  return total > 0
+    ? ['a small plus', 'in your favour', 'the best thing going'][scale]
+    : ['a small minus', 'weighing on them', 'the whole problem'][scale];
+}
+
+// How they feel about you specifically, as distinct from how they feel. A
+// wrestler can be delighted with their year and still think you are a liar.
+function standingPanel(state, w) {
+  const standing = gmStanding(w, state.week);
+  const grudges = (w.grudges || []).filter(g => g.targetId === null).length;
+  return el('div', { class: 'standing' },
+    el('p', { class: `standing-line standing-${standing.tone}`, text: `${w.name} ${standing.phrase}.` }),
+    grudges
+      ? el('p', { class: 'muted standing-note', text: `${grudges} open ${grudges === 1 ? 'grievance' : 'grievances'} with the office.` })
+      : null
+  );
 }
 
 function bioField(w) {
@@ -201,14 +293,24 @@ function stipulationList(w) {
   );
 }
 
-function relationList(state, entries, [one, many], emptyText) {
-  if (!entries.length) return el('p', { class: 'empty', text: emptyText });
+// Not a rivals list and an allies list, but everyone they have an opinion
+// about, with the opinion named. A tag partner and a rival belong on the same
+// list because the question the player is asking is the same one: who does this
+// booking land on besides the two names in it?
+function relationshipList(state, w) {
+  const entries = relationshipsOf(state.wrestlers, w);
+  if (!entries.length) {
+    return el('p', { class: 'empty', text: 'Nobody here is anything to them yet.' });
+  }
 
   return el('ul', { class: 'relations' },
-    entries.map(({ wrestler, count }) =>
-      el('li', {},
-        wrestlerLink(state, wrestler.id),
-        el('span', { class: 'rel-count', text: `${count} ${count === 1 ? one : many}` })
+    entries.map(entry =>
+      el('li', { class: 'relation' },
+        el('div', { class: 'rel-head' },
+          wrestlerLink(state, entry.wrestler.id),
+          el('span', { class: `rel-type rel-${entry.tone}`, text: entry.label })
+        ),
+        el('span', { class: 'rel-note', text: entry.note })
       )
     )
   );

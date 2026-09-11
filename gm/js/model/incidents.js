@@ -11,6 +11,8 @@
 import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
 import { resolveReaction } from './reactions.js';
+import { trait, lean } from './traits.js';
+import { remember } from './memory.js';
 import { nextId } from '../ids.js';
 
 const BASE_CHANCE = 0.10;
@@ -20,12 +22,13 @@ const ARGUMENT_CHANCE = 0.14;
 
 function bond(wrestler, otherId) {
   if (!wrestler.relationships[otherId]) {
-    wrestler.relationships[otherId] = { matches: 0, segments: 0, owed: 0 };
+    wrestler.relationships[otherId] = { matches: 0, segments: 0, owed: 0, tie: null };
   }
   const rel = wrestler.relationships[otherId];
-  // Records written before debts existed have no `owed`, and `undefined + 1`
-  // is NaN, which would silently poison every later read of it.
+  // Records written before debts and ties existed have neither, and
+  // `undefined + 1` is NaN, which would silently poison every later read of it.
   if (rel.owed === undefined) rel.owed = 0;
+  if (rel.tie === undefined) rel.tie = null;
   return rel;
 }
 
@@ -39,8 +42,11 @@ function addGrudge(state, wrestler, targetId, type) {
   return true;
 }
 
-function nudge(wrestler, amount) {
-  wrestler.morale = Math.max(0, Math.min(100, Math.round(wrestler.morale + amount)));
+// Everything an incident does to somebody is something the locker room did to
+// them, so it all files under the same heading — and it all names the other
+// person, which is what lets the card say who they feel that way about.
+function felt(state, wrestler, amount, targetId, detail) {
+  remember(state, wrestler, { source: 'peer', weight: amount, targetId, detail });
 }
 
 // Who is likely to lose their temper after the bell. Sore losers mostly, but a
@@ -52,13 +58,18 @@ export function attackChance(state, item, result) {
   if (!winner || !loser) return 0;
 
   const history = bond(loser, winner.id);
-  let chance = BASE_CHANCE
+  // Aggression is who swings; professionalism is who does not. They are not the
+  // same trait, and somebody can be both — aggressive and disciplined is a
+  // wrestler who only goes when it is genuinely personal.
+  const chance = BASE_CHANCE
     + Math.min(0.14, history.matches * 0.02)
     + loser.grudges.filter(g => g.targetId === winner.id).length * 0.15
     + (loser.alignment === 'Heel' ? 0.08 : 0)
-    + (100 - loser.stats.professionalism) / 500;
+    + (100 - trait(loser, 'professionalism')) / 500
+    + lean(loser, 'aggression') * 0.12
+    - lean(loser, 'patience') * 0.06;
 
-  return Math.min(MAX_CHANCE, chance);
+  return Math.max(0, Math.min(MAX_CHANCE, chance));
 }
 
 export function maybePostMatchAttack(state, item, result, index, roll) {
@@ -122,13 +133,13 @@ export function resolveIncident(state, incident) {
 
   if (incident.kind === 'argument') {
     push('argument', { aggressorId: aggressor.id, victimId: victim.id });
-    nudge(victim, -2);
-    nudge(aggressor, -1);
+    felt(state, victim, -2, aggressor.id, 'argument');
+    felt(state, aggressor, -1, victim.id, 'argument');
     return { beats, severity: 'minor' };
   }
 
   push('attack', { aggressorId: aggressor.id, victimId: victim.id });
-  nudge(victim, -4);
+  felt(state, victim, -4, aggressor.id, 'attacked');
   bond(victim, aggressor.id).matches += 1;
   bond(aggressor, victim.id).matches += 1;
   addGrudge(state, victim, aggressor.id, 'attacked');
@@ -156,16 +167,22 @@ export function resolveIncident(state, incident) {
 
       // Standing beside somebody counts as standing beside them, and being
       // helped is remembered as a debt.
-      bond(currentVictim, saver.id).segments += 2;
-      bond(saver, currentVictim.id).segments += 2;
+      bond(currentVictim, saver.id).segments += 1;
+      bond(saver, currentVictim.id).segments += 1;
       bond(currentVictim, saver.id).owed += 1;
+
+      // And a debt that is repaid stops being owed. Without this, favours only
+      // ever accumulate, and a roster played for a year is one where everybody
+      // owes everybody and therefore everybody runs in.
+      const settled = bond(saver, currentVictim.id);
+      if (settled.owed > 0) settled.owed -= 1;
 
       bond(saver, currentAggressor.id).matches += 1;
       bond(currentAggressor, saver.id).matches += 1;
       addGrudge(state, currentAggressor, saver.id, 'attacked');
 
-      nudge(saver, 2);
-      nudge(currentVictim, 3);
+      felt(state, saver, 2, currentVictim.id, 'saved-them');
+      felt(state, currentVictim, 3, saver.id, 'was-saved');
 
       involved.add(saver.id);
       // The rescue is the next thing somebody has to have an opinion about:
@@ -181,15 +198,15 @@ export function resolveIncident(state, incident) {
       const waverer = hesitator.candidate;
       push('hesitation', { wrestlerId: waverer.id, victimId: currentVictim.id });
       // Worse than never moving. They were seen deciding.
-      nudge(currentVictim, -7);
-      nudge(waverer, -2);
+      felt(state, currentVictim, -7, waverer.id, 'abandoned');
+      felt(state, waverer, -2, currentVictim.id, 'hesitated');
       addGrudge(state, currentVictim, waverer.id, 'abandoned');
       break;
     }
 
     if (depth === 0) {
       push('nobody', { victimId: currentVictim.id });
-      nudge(currentVictim, -6);
+      felt(state, currentVictim, -6, null, 'nobody-came');
       // Being left there is one thing. Being left there by the person closest
       // to you is another, and that is the one that gets remembered.
       const closest = closestAvailableAlly(state, currentVictim, involved);
