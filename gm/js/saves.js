@@ -7,13 +7,14 @@
 import { resetIds, primeIds } from './ids.js';
 import { makeRng, randomSeed } from './model/random.js';
 import { generateRoster, generatePromotion } from './model/generate.js';
+import { makeAirSchedule } from './model/calendar.js';
 import { createGame } from './model/game.js';
 
 const INDEX_KEY = 'wgm_index_v1';
 const SAVE_PREFIX = 'wgm_save_';
 const LEGACY_KEY = 'wgm_v1';
 
-export const STATE_VERSION = 10;
+export const STATE_VERSION = 11;
 
 function read(key) {
   try {
@@ -65,8 +66,12 @@ export function createSave(seed = randomSeed()) {
   resetIds();
   const rng = makeRng(seed);
   const promotion = generatePromotion(rng);
+  const air = makeAirSchedule(rng);
   const wrestlers = generateRoster(rng);
-  const state = { version: STATE_VERSION, seed, rng: seed, ...createGame({ wrestlers, promotion }) };
+  const state = {
+    version: STATE_VERSION, seed, rng: seed,
+    ...createGame({ wrestlers, promotion, air }),
+  };
 
   const id = newId();
   write(saveKey(id), state);

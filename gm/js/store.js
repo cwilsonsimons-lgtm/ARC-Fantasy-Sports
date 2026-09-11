@@ -9,6 +9,7 @@ import {
   writeSave, setCurrent, deleteSave, deleteEverything, adoptLegacySave,
 } from './saves.js';
 import { TIERS } from './model/network.js';
+import { makeAirSchedule } from './model/calendar.js';
 
 let state = null;
 let saveId = null;
@@ -104,6 +105,17 @@ function upgrade(saved) {
     if (!saved.history) saved.history = [];
     if (saved.breaches === undefined) saved.breaches = 0;
     saved.version = 10;
+  }
+
+  if (saved.version === 10) {
+    // Weeks were only integers before this. Give older saves a first air date
+    // so their existing week numbers land on real days.
+    if (!saved.startDate) {
+      const air = makeAirSchedule(() => 0.2); // Tuesdays, for everything that came before
+      saved.startDate = air.startDate;
+      saved.airNight = air.airNight;
+    }
+    saved.version = 11;
   }
 
   return saved.version === STATE_VERSION ? saved : null;

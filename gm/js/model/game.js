@@ -27,11 +27,13 @@ import { createMatch, addItem, remainingMinutes } from './show.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
-export function createGame({ wrestlers, promotion }) {
+export function createGame({ wrestlers, promotion, air }) {
   return {
     week: 1,
     phase: PHASES.PREP,
     promotion,
+    startDate: air.startDate,
+    airNight: air.airNight,
     wrestlers,
     network: createNetwork(),
     show: createShow({ name: promotion.show }),

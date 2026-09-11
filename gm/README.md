@@ -258,6 +258,20 @@ that favour is a motive the next time the rescuer is the one in trouble.
 
 ## The calendar
 
+A real month grid. Weeks are integers underneath, but the player thinks in
+months and nights, so every save picks a **night of the week to air on** and a
+first air date, and week numbers map onto real days from there. All date
+arithmetic is in UTC — local time zones turn "the 3rd" into "the 2nd" for
+anyone west of Greenwich.
+
+Show nights are the only clickable days, and they all land in one column
+because the promotion airs on one night. A past night carries its grade, this
+week is outlined, and a future night shows how much is planned and how much of
+that is advertised. Clicking one opens it below the grid: a past night reads
+back its card and journal, a future night is where you plan, advertise and
+quietly tell people. On a phone the show names give way and the grid keeps its
+seven columns.
+
 Three things live in `model/calendar.js`: what already happened, what is
 planned, and the special events.
 

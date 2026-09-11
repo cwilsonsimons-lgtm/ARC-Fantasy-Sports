@@ -16,6 +16,72 @@ import { runtimeFor } from './network.js';
 import { nextId } from '../ids.js';
 import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
 
+// ---------- dates ----------
+//
+// A week was only ever an integer. A calendar needs real days, so a save picks
+// a night of the week to air on and a first air date, and every week number
+// maps onto a date from there. All arithmetic is in UTC: local time zones turn
+// "the 3rd" into "the 2nd" for anyone west of Greenwich.
+const START_YEAR = 2026;
+const AIR_NIGHTS = [1, 2, 3, 4, 5]; // Monday through Friday
+export const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+export function parseDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+export function toISO(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+export function addDays(date, days) {
+  return new Date(date.getTime() + days * 86400000);
+}
+
+export function sameDay(a, b) {
+  return a.getUTCFullYear() === b.getUTCFullYear()
+    && a.getUTCMonth() === b.getUTCMonth()
+    && a.getUTCDate() === b.getUTCDate();
+}
+
+// Picked per save, so two promotions do not run on the same night.
+export function makeAirSchedule(rng) {
+  const airNight = AIR_NIGHTS[Math.floor(rng() * AIR_NIGHTS.length)];
+  const first = new Date(Date.UTC(START_YEAR, 0, 1));
+  const shift = (airNight - first.getUTCDay() + 7) % 7;
+  return { airNight, startDate: toISO(addDays(first, shift)) };
+}
+
+export function dateForWeek(state, week) {
+  return addDays(parseDate(state.startDate), (week - 1) * 7);
+}
+
+// Null unless the date is an air night on or after the first show.
+export function weekForDate(state, date) {
+  const start = parseDate(state.startDate);
+  const days = Math.round((date.getTime() - start.getTime()) / 86400000);
+  if (days < 0 || days % 7 !== 0) return null;
+  return days / 7 + 1;
+}
+
+// Six weeks of cells at most, starting on the Sunday on or before the 1st, so
+// the grid is a real month rather than a list wearing a costume.
+export function monthGrid(year, month) {
+  const first = new Date(Date.UTC(year, month, 1));
+  const gridStart = addDays(first, -first.getUTCDay());
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const rows = Math.ceil((first.getUTCDay() + daysInMonth) / 7);
+
+  const cells = [];
+  for (let i = 0; i < rows * 7; i += 1) cells.push(addDays(gridStart, i));
+  return cells;
+}
+
 export const PPV_EVERY = 12;
 export const PPV_BONUS_MINUTES = 30;
 const HISTORY_LIMIT = 52;
