@@ -12,12 +12,18 @@ const BANDS = [
   [0, 'Furious', 'bad'],
 ];
 
+// Falls back to the bottom band rather than throwing, so one bad value can
+// never blank a whole screen.
+function band(wrestler) {
+  return BANDS.find(([floor]) => wrestler.morale >= floor) || BANDS[BANDS.length - 1];
+}
+
 export function moodWord(wrestler) {
-  return BANDS.find(([floor]) => wrestler.morale >= floor)[1];
+  return band(wrestler)[1];
 }
 
 export function moodClass(wrestler) {
-  return 'mood-' + BANDS.find(([floor]) => wrestler.morale >= floor)[2];
+  return 'mood-' + band(wrestler)[2];
 }
 
 // Unhappiest first — the ones a GM actually needs to look at.

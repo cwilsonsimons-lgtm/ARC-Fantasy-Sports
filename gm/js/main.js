@@ -5,6 +5,8 @@ import { renderNav } from './ui/nav.js';
 import { renderRoster } from './ui/roster.js';
 import { renderBooking } from './ui/booking.js';
 import { renderLive } from './ui/live.js';
+import { renderCard } from './ui/wrestler-card.js';
+import { openCardId, closeCard } from './ui/card-state.js';
 
 const navEl = document.getElementById('nav');
 const viewEl = document.getElementById('view');
@@ -29,8 +31,14 @@ function render() {
     route === 'live' ? renderLive(state, navigate) :
     renderRoster(state);
 
-  viewEl.replaceChildren(view);
+  const cardId = openCardId();
+  const card = cardId ? renderCard(state, cardId) : null;
+  viewEl.replaceChildren(...(card ? [view, card] : [view]));
 }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCard();
+});
 
 const state = load();
 // A refresh during or just after a show lands back where the action is.

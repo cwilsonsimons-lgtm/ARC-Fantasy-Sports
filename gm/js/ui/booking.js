@@ -6,7 +6,8 @@ import {
   bookedMinutes, remainingMinutes, isOverbooked,
 } from '../model/show.js';
 import { PHASES, canEditCard, startShow } from '../model/game.js';
-import { itemLabel, participantsLabel, typeLabel } from './labels.js';
+import { typeLabel } from './labels.js';
+import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { bookable } from '../model/morale.js';
 import { moodWord, moodClass } from './mood.js';
 
@@ -87,8 +88,8 @@ function cardTable(state, show, locked) {
     el('tr', {},
       el('td', { class: 'num', text: index + 1 }),
       el('td', { text: typeLabel(item) }),
-      el('td', { text: itemLabel(state, item) }),
-      el('td', { class: 'muted', text: participantsLabel(state, item) }),
+      el('td', {}, itemLabelNodes(state, item)),
+      el('td', { class: 'muted' }, participantLinks(state, item.participants)),
       el('td', { class: 'num' },
         el('input', {
           type: 'number', min: '1', value: item.plannedMinutes, disabled: locked,
@@ -151,7 +152,7 @@ function offTheCard(state) {
     el('ul', { class: 'moods compact' },
       idle.map(w =>
         el('li', {},
-          el('span', { class: 'mood-name', text: w.name }),
+          el('span', { class: 'mood-name' }, wrestlerLink(state, w.id)),
           el('span', { class: 'mood-arch', text: w.archetype }),
           el('span', { class: `mood-word ${moodClass(w)}`, text: moodWord(w) }),
           w.weeksOffCard > 0

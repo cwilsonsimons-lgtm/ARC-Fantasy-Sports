@@ -7,7 +7,8 @@ import { itemById } from '../model/show.js';
 import {
   currentItem, upcomingItems, airedItems, elapsedMinutes, remainingMinutes,
 } from '../model/broadcast.js';
-import { itemLabel, participantsLabel, typeLabel } from './labels.js';
+import { itemLabel, typeLabel } from './labels.js';
+import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { EXECUTIVE, reviewShow } from '../model/executives.js';
 import { withGrudges, bookable } from '../model/morale.js';
 import { moodWord, moodClass, byMood } from './mood.js';
@@ -35,8 +36,8 @@ function liveView(state) {
 
     el('div', { class: 'onair' },
       el('div', { class: 'label', text: 'On air now' }),
-      el('div', { class: 'title', text: itemLabel(state, item) }),
-      el('div', { class: 'muted', text: `${typeLabel(item)} · ${participantsLabel(state, item)}` }),
+      el('div', { class: 'title' }, itemLabelNodes(state, item)),
+      el('div', { class: 'muted' }, `${typeLabel(item)} · `, participantLinks(state, item.participants)),
       el('div', {}, 'Planned duration: ', el('b', { text: `${item.plannedMinutes} minutes` }))
     ),
 
@@ -69,8 +70,8 @@ function rundownTable(state, show, items) {
     el('tr', {},
       el('td', { class: 'num', text: show.items.indexOf(item) + 1 }),
       el('td', { text: typeLabel(item) }),
-      el('td', { text: itemLabel(state, item) }),
-      el('td', { class: 'muted', text: participantsLabel(state, item) }),
+      el('td', {}, itemLabelNodes(state, item)),
+      el('td', { class: 'muted' }, participantLinks(state, item.participants)),
       el('td', { class: 'num', text: `${item.plannedMinutes} min` })
     )
   );
@@ -100,7 +101,8 @@ function aftermathView(state) {
     el('tr', {},
       el('td', { class: 'num', text: index + 1 }),
       el('td', { text: item ? typeLabel(item) : '\u2014' }),
-      el('td', { text: item ? itemLabel(state, item) : '(removed item)' }),
+      el('td', {}, item ? itemLabelNodes(state, item) : '(removed item)'),
+      el('td', {}, result.winnerId ? wrestlerLink(state, result.winnerId) : el('span', { class: 'muted', text: '\u2014' })),
       el('td', { class: 'num', text: item ? `${item.plannedMinutes} min` : '\u2014' }),
       el('td', { class: 'num', text: `${result.actualMinutes} min` })
     )
@@ -145,6 +147,7 @@ function aftermathView(state) {
           el('th', { class: 'num', text: 'Pos' }),
           el('th', { text: 'Type' }),
           el('th', { text: 'Item' }),
+          el('th', { text: 'Winner' }),
           el('th', { class: 'num', text: 'Planned' }),
           el('th', { class: 'num', text: 'Actual' })
         )
@@ -211,7 +214,7 @@ function moodList(state) {
   return el('ul', { class: 'moods' },
     roster.map(w =>
       el('li', {},
-        el('span', { class: 'mood-name', text: w.name }),
+        el('span', { class: 'mood-name' }, wrestlerLink(state, w.id)),
         el('span', { class: 'mood-arch', text: w.archetype }),
         el('span', { class: `mood-word ${moodClass(w)}`, text: moodWord(w) }),
         w.grudges.length ? el('span', { class: 'chip chip-bad', text: 'grudge' }) : null,
@@ -232,7 +235,7 @@ function grudgeList(state) {
   return el('ul', { class: 'grudges' },
     holders.map(w =>
       el('li', {},
-        el('b', { text: w.name }),
+        wrestlerLink(state, w.id),
         ' \u2014 ',
         w.grudges.map(g => grudgeText(state, w, g)).join('; ')
       )
@@ -287,5 +290,8 @@ function journalText(state, entry) {
   const timing = actualMinutes === plannedMinutes
     ? `ran its planned ${plannedMinutes} minutes`
     : `planned for ${plannedMinutes}, ran ${actualMinutes}`;
-  return `${label} — ${timing}.`;
+  const won = entry.data.winnerId
+    ? ` ${nameOf(state.wrestlers, entry.data.winnerId)} went over.`
+    : '';
+  return `${label} — ${timing}.${won}`;
 }

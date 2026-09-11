@@ -4,8 +4,9 @@ The player is the kayfabe General Manager of a weekly wrestling television
 show. This is the first skeleton: view the roster, book a card, run the show
 segment by segment, face the network's verdict, advance the week.
 
-Simulated so far: **who you used and who you left out**. Not yet: relationships,
-incidents, factions, championships, or anything running long.
+Simulated so far: **who you used and who you left out**, who beat whom, and who
+keeps ending up in a ring together. Not yet: incidents, factions, championships,
+or anything running long.
 
 ## The weekly phase machine
 
@@ -57,6 +58,7 @@ functions the buttons call, without going near the interface.
 | Broadcast | `{ showId, status, results[] }` |
 | Journal entry | `{ id, week, at, type, itemId, data }` |
 | Grudge | `{ id, week, type, targetId, data }` |
+| Relationship | `wrestler.relationships[otherId] = { matches, segments }` |
 
 Four decisions here exist for systems that do not exist yet:
 
@@ -132,6 +134,56 @@ reading a locker room into optimising a meter.
 The same rule governs the network's verdict: `model/executives.js` returns
 verdicts (`'long'`, `'settled'`, `'thin'`), never the score behind the grade.
 The player is told the executive's priorities, never their arithmetic.
+
+## The wrestler card
+
+Any wrestler's name, anywhere in the app, opens their card. It holds what the GM
+could plausibly know: role, archetype, win-loss record, demeanour, a description
+you can edit, a photo you can add, and their top rivals and allies — each of
+which opens that wrestler's card in turn.
+
+**Rivals and allies are counted, not invented.** Two people who keep meeting in
+the ring become rivals; two who keep sharing a segment become allies. Both live
+in the same record and are written symmetrically. Some history is seeded so week
+one is not a blank slate.
+
+**Winners.** The world runs on hard kayfabe: wrestling is a real contest, so the
+GM books the match and the night decides the result. In-ring ability sets the
+odds, with a floor so nobody is ever a certainty. That is what makes a hidden
+stat worth learning. `model/matches.js` `decideWinner()` is the single function
+to change if the GM should pick winners instead.
+
+## Progressive revelation
+
+Stats are 0-100 under the hood and are **never shown as numbers**. What the
+player gets is a reading that sharpens with familiarity:
+
+| Familiarity | Tier | What the card says |
+| --- | --- | --- |
+| 0-24 | unread | "no read yet" |
+| 25-59 | impression | Below average / About average / Above average |
+| 60+ | known | Terrible / Poor / Average / Good / Excellent / Elite |
+
+Familiarity grows +2 a week for anyone on the roster and +7 more for anyone
+actually booked. You learn people by working with them, so the roster you use is
+the roster you understand — and the one you ignore stays a guess.
+
+The word scale is centred so a middling value reads as middling. A scale where
+44 comes back as "Good" quietly tells the player everyone is fine.
+
+## Personality does something
+
+Each of the five stats has exactly one real effect today, so the roster reacts
+differently to identical treatment rather than carrying decorative numbers:
+
+- **In-ring** sets match odds.
+- **Ambition** multiplies how hard being left off lands.
+- **Ego** raises what the main event is worth and makes opening the show sting.
+- **Charisma** decides what they get out of microphone time.
+- **Professionalism** flattens every reaction in both directions.
+
+Two wrestlers left off the same show lose different amounts of morale. That is
+the whole personality system, in its smallest honest form.
 
 ## Saves
 

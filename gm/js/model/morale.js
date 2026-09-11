@@ -16,6 +16,8 @@
 // balanced.
 import { airedItems, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
+import { growFamiliarity } from './stats.js';
+import { noteItem } from './relationships.js';
 import { nextId } from '../ids.js';
 
 const APPEARED_BASE = 2;
@@ -41,8 +43,10 @@ export function involvement(state) {
     if (!item) continue;
     const index = show.items.indexOf(item);
     for (const id of item.participants) {
-      const entry = byWrestler.get(id) || { minutes: 0, items: 0, mainEvent: false, opener: false };
+      const entry = byWrestler.get(id)
+        || { minutes: 0, segmentMinutes: 0, items: 0, mainEvent: false, opener: false };
       entry.minutes += result.actualMinutes;
+      if (item.type === 'segment') entry.segmentMinutes += result.actualMinutes;
       entry.items += 1;
       if (index === lastIndex) entry.mainEvent = true;
       if (index === 0) entry.opener = true;
@@ -57,27 +61,56 @@ function bookable(wrestler) {
 }
 
 function clamp(n) {
+  if (!Number.isFinite(n)) return 50;
   return Math.max(MORALE_MIN, Math.min(MORALE_MAX, Math.round(n)));
 }
 
 // Applied once, when the show comes off the air.
+// Half-range swing around the midpoint: 50 gives 0, 100 gives +size, 0 gives -size.
+function swing(value, size) {
+  return Math.round(((value - 50) / 50) * size);
+}
+
+// Professionalism flattens a reaction in both directions. A pro takes good news
+// and bad news at roughly the same temperature.
+function temper(wrestler, delta) {
+  const factor = 1 - (wrestler.stats.professionalism - 50) / 200; // 0.75x .. 1.25x
+  return Math.round(delta * factor);
+}
+
 export function settleShow(state) {
   const appearances = involvement(state);
   const at = elapsedMinutes(state.broadcast);
   const newGrudges = [];
 
+  // History first: who met whom in the ring, and who stood beside whom.
+  for (const { item } of airedItems(state.show, state.broadcast)) {
+    if (item) noteItem(state.wrestlers, item);
+  }
+
   for (const wrestler of state.wrestlers) {
     const used = appearances.get(wrestler.id);
+    // You learn people by being around them, and faster by working with them.
+    growFamiliarity(wrestler, Boolean(used));
 
     if (used) {
       wrestler.weeksOffCard = 0;
-      wrestler.morale = clamp(
-        wrestler.morale
-        + APPEARED_BASE
+      let delta = APPEARED_BASE
         + (used.mainEvent ? MAIN_EVENT_BONUS : 0)
         + (used.opener ? OPENER_BONUS : 0)
-        + Math.floor(used.minutes / MINUTES_PER_POINT)
-      );
+        + Math.floor(used.minutes / MINUTES_PER_POINT);
+
+      // Ego decides how much the size of the spot matters: the marquee slot is
+      // worth more to a big one, and opening the show stings.
+      if (used.mainEvent) delta += swing(wrestler.stats.ego, 3);
+      else if (used.opener) delta -= swing(wrestler.stats.ego, 2);
+
+      // Talkers get more out of microphone time than wrestlers do.
+      if (used.segmentMinutes) {
+        delta += Math.round((used.segmentMinutes / 10) * (wrestler.stats.charisma / 60));
+      }
+
+      wrestler.morale = clamp(wrestler.morale + temper(wrestler, delta));
       continue;
     }
 
@@ -86,7 +119,11 @@ export function settleShow(state) {
 
     wrestler.weeksOffCard += 1;
     const weeks = Math.min(wrestler.weeksOffCard, MISSED_WEEKS_CAP);
-    wrestler.morale = clamp(wrestler.morale - (MISSED_BASE + MISSED_PER_WEEK * weeks));
+    // Ambition decides how hard being overlooked lands. The same empty week is
+    // a shrug to one wrestler and an insult to another — this is the whole
+    // point of personality, in its smallest possible form.
+    const sting = -(MISSED_BASE + MISSED_PER_WEEK * weeks) * (0.5 + wrestler.stats.ambition / 100);
+    wrestler.morale = clamp(wrestler.morale + temper(wrestler, sting));
 
     if (wrestler.weeksOffCard >= GRUDGE_AT_WEEKS && !hasOverlookedGrudge(wrestler)) {
       wrestler.grudges.push({

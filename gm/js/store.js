@@ -8,7 +8,7 @@ import { primeIds } from './ids.js';
 import { createGame } from './model/game.js';
 
 const KEY = 'wgm_v1';
-const VERSION = 3;
+const VERSION = 4;
 
 let state = null;
 const listeners = new Set();
@@ -36,6 +36,21 @@ function migrate(saved) {
       if (!Array.isArray(w.grudges)) w.grudges = [];
     }
     saved.version = 3;
+  }
+
+  if (saved.version === 3) {
+    for (const w of saved.wrestlers || []) {
+      if (w.role === undefined) w.role = 'Midcard';
+      if (w.bio === undefined) w.bio = '';
+      if (w.photo === undefined) w.photo = null;
+      if (!w.stats) {
+        w.stats = { inRing: 50, charisma: 50, ambition: 50, ego: 50, professionalism: 50 };
+      }
+      if (!w.record) w.record = { wins: 0, losses: 0 };
+      if (w.familiarity === undefined) w.familiarity = 0;
+      if (!w.relationships) w.relationships = {};
+    }
+    saved.version = 4;
   }
   return saved;
 }

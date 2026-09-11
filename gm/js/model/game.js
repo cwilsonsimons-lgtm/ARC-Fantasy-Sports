@@ -13,6 +13,7 @@ import { createShow } from './show.js';
 import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
 import { settleShow } from './morale.js';
+import { decideWinner, applyOutcome } from './matches.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
@@ -50,12 +51,23 @@ export function completeSegment(state) {
   const result = completeCurrent(state.show, state.broadcast);
   const at = elapsedMinutes(state.broadcast);
 
+  // Matches are contests: the card says who meets, the night says who wins.
+  const winnerId = decideWinner(state.wrestlers, item);
+  if (winnerId) {
+    result.winnerId = winnerId;
+    applyOutcome(state.wrestlers, item, winnerId);
+  }
+
   state.journal.push(createEntry({
     week: state.week,
     at,
     type: 'segment-complete',
     itemId: item.id,
-    data: { plannedMinutes: item.plannedMinutes, actualMinutes: result.actualMinutes },
+    data: {
+      plannedMinutes: item.plannedMinutes,
+      actualMinutes: result.actualMinutes,
+      winnerId: winnerId || null,
+    },
   }));
 
   if (state.broadcast.status === 'complete') {

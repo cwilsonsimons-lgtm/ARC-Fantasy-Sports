@@ -2,15 +2,16 @@
 import { el } from './dom.js';
 import { moodWord, moodClass } from './mood.js';
 import { bookable } from '../model/morale.js';
+import { wrestlerLink } from './links.js';
 
 export function renderRoster(state) {
   const rows = state.wrestlers.map(w =>
     el('tr', {},
       el('td', {},
-        el('b', { text: w.name }),
-        el('span', { class: 'sub', text: w.archetype })
+        wrestlerLink(state, w.id),
+        el('span', { class: 'sub', text: `${w.archetype} · ${w.role}` })
       ),
-      el('td', { text: w.gender }),
+      el('td', { class: 'num', text: `${w.record.wins}–${w.record.losses}` }),
       el('td', { text: w.alignment }),
       el('td', { text: w.status }),
       el('td', {},
@@ -27,12 +28,12 @@ export function renderRoster(state) {
 
   return el('section', {},
     el('h2', { text: `Roster (${state.wrestlers.length})` }),
-    el('p', { class: 'muted', text: 'How people seem to you. There are no numbers here on purpose.' }),
+    el('p', { class: 'muted', text: 'Click any name to open their card. Demeanour is how they seem to you, never a number.' }),
     el('table', {},
       el('thead', {},
         el('tr', {},
           el('th', { text: 'Name' }),
-          el('th', { text: 'Gender' }),
+          el('th', { class: 'num', text: 'W–L' }),
           el('th', { text: 'Alignment' }),
           el('th', { text: 'Status' }),
           el('th', { text: 'Demeanour' }),
