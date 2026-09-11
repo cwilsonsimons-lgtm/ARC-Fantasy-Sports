@@ -3,8 +3,11 @@ import { el } from './dom.js';
 import { commit, notify } from '../store.js';
 import {
   addItem, createMatch, createSegment, removeItem, moveItem, setItemMinutes,
-  bookedMinutes, remainingMinutes, isOverbooked,
+  setItemMatchType, minimumMinutes, bookedMinutes, remainingMinutes, isOverbooked,
 } from '../model/show.js';
+import { MATCH_TYPES, matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
+import { tasteReading } from '../model/match-types.js';
+import { byId } from '../model/wrestlers.js';
 import { PHASES, canEditCard, startShow } from '../model/game.js';
 import { typeLabel } from './labels.js';
 import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
@@ -14,7 +17,7 @@ import { moodWord, moodClass } from './mood.js';
 // Half-typed form values live here rather than in game state, so a redraw
 // (triggered by any commit) does not wipe what the user is in the middle of.
 const draft = {
-  matchA: '', matchB: '', matchMinutes: 10, matchError: '',
+  matchA: '', matchB: '', matchMinutes: 10, matchError: '', matchTypeId: DEFAULT_MATCH_TYPE,
   segName: '', segParticipants: new Set(), segMinutes: 5, segError: '',
 };
 
@@ -87,12 +90,21 @@ function cardTable(state, show, locked) {
   const rows = show.items.map((item, index) =>
     el('tr', {},
       el('td', { class: 'num', text: index + 1 }),
-      el('td', { text: typeLabel(item) }),
+      el('td', {}, item.type === 'match'
+        ? el('select', {
+            class: 'stip',
+            disabled: locked,
+            onChange: e => commit(s => setItemMatchType(s.show, item.id, e.target.value)),
+          }, MATCH_TYPES.map(t => el('option', {
+            value: t.id, selected: t.id === item.matchType, text: t.name,
+          })))
+        : el('span', { text: typeLabel(item) })),
       el('td', {}, itemLabelNodes(state, item)),
       el('td', { class: 'muted' }, participantLinks(state, item.participants)),
       el('td', { class: 'num' },
         el('input', {
-          type: 'number', min: '1', value: item.plannedMinutes, disabled: locked,
+          type: 'number', min: String(minimumMinutes(item)), value: item.plannedMinutes, disabled: locked,
+          title: `Minimum ${minimumMinutes(item)} minutes`,
           onChange: e => commit(s => setItemMinutes(s.show, item.id, e.target.value)),
         })
       ),
@@ -186,22 +198,54 @@ function addMatchPanel(state) {
     el('div', { class: 'row' },
       el('div', { class: 'field' },
         el('label', { text: 'Wrestler A' }),
-        el('select', { onChange: e => { draft.matchA = e.target.value; } }, wrestlerOptions(state, draft.matchA))
+        el('select', { onChange: e => { draft.matchA = e.target.value; notify(); } }, wrestlerOptions(state, draft.matchA))
       ),
       el('div', { class: 'field' },
         el('label', { text: 'Wrestler B' }),
-        el('select', { onChange: e => { draft.matchB = e.target.value; } }, wrestlerOptions(state, draft.matchB))
+        el('select', { onChange: e => { draft.matchB = e.target.value; notify(); } }, wrestlerOptions(state, draft.matchB))
       ),
       el('div', { class: 'field' },
-        el('label', { text: 'Planned minutes' }),
+        el('label', { text: 'Stipulation' }),
+        el('select', {
+          onChange: e => { draft.matchTypeId = e.target.value; notify(); },
+        }, MATCH_TYPES.map(t => el('option', {
+          value: t.id, selected: t.id === draft.matchTypeId, text: t.name,
+        })))
+      ),
+      el('div', { class: 'field' },
+        el('label', { text: `Minutes (min ${matchType(draft.matchTypeId).minMinutes})` }),
         el('input', {
-          type: 'number', min: '1', value: draft.matchMinutes,
+          type: 'number', min: String(matchType(draft.matchTypeId).minMinutes), value: draft.matchMinutes,
           onChange: e => { draft.matchMinutes = e.target.value; },
         })
       ),
       el('button', { type: 'button', class: 'btn', text: 'Add match', onClick: addMatch })
     ),
+    el('p', { class: 'stip-note muted', text: matchType(draft.matchTypeId).note }),
+    stipulationRead(state),
     draft.matchError ? el('p', { class: 'over', text: draft.matchError }) : null
+  );
+}
+
+// What you know about how these two feel about this stipulation. This is the
+// whole decision: it is only visible for wrestlers you have a read on, so early
+// on you book blind and find out in the aftermath.
+function stipulationRead(state) {
+  const ids = [draft.matchA, draft.matchB].filter(Boolean);
+  if (!ids.length) return null;
+
+  return el('ul', { class: 'stip-read' },
+    ids.map(id => {
+      const w = byId(state.wrestlers, id);
+      if (!w) return null;
+      const reading = tasteReading(w, draft.matchTypeId);
+      return el('li', {},
+        el('span', { class: 'stip-who', text: w.name }),
+        reading
+          ? el('span', { class: `stip-taste taste-${reading.tone}`, text: reading.word })
+          : el('span', { class: 'stip-taste taste-plain', text: 'no read on this yet' })
+      );
+    })
   );
 }
 
@@ -217,7 +261,12 @@ function addMatch() {
     return;
   }
 
-  const match = { wrestlerAId: draft.matchA, wrestlerBId: draft.matchB, plannedMinutes: draft.matchMinutes };
+  const match = {
+    wrestlerAId: draft.matchA,
+    wrestlerBId: draft.matchB,
+    plannedMinutes: draft.matchMinutes,
+    matchTypeId: draft.matchTypeId,
+  };
   draft.matchA = '';
   draft.matchB = '';
   draft.matchError = '';

@@ -18,6 +18,7 @@
 // Position on the card is the index in `items`. It is not stored on the item,
 // so reordering can never leave two items claiming the same slot.
 import { nextId } from '../ids.js';
+import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
 
 export const DEFAULT_RUNTIME_MINUTES = 120;
 
@@ -25,13 +26,15 @@ export function createShow({ name = 'Weekly Show', runtimeMinutes = DEFAULT_RUNT
   return { id: nextId('show'), name, runtimeMinutes, items: [] };
 }
 
-export function createMatch({ wrestlerAId, wrestlerBId, plannedMinutes }) {
+export function createMatch({ wrestlerAId, wrestlerBId, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE }) {
+  const stipulation = matchType(matchTypeId);
   return {
     id: nextId('si'),
     type: 'match',
+    matchType: stipulation.id,
     name: '',
     participants: [wrestlerAId, wrestlerBId],
-    plannedMinutes: clampMinutes(plannedMinutes),
+    plannedMinutes: Math.max(stipulation.minMinutes, clampMinutes(plannedMinutes)),
   };
 }
 
@@ -70,8 +73,22 @@ export function moveItem(show, itemId, delta) {
 export function setItemMinutes(show, itemId, minutes) {
   const item = itemById(show, itemId);
   if (!item) return false;
-  item.plannedMinutes = clampMinutes(minutes);
+  item.plannedMinutes = Math.max(minimumMinutes(item), clampMinutes(minutes));
   return true;
+}
+
+// Changing the stipulation can raise the floor under the segment: you cannot
+// book a twenty-five minute Iron Man match into an eight minute slot.
+export function setItemMatchType(show, itemId, matchTypeId) {
+  const item = itemById(show, itemId);
+  if (!item || item.type !== 'match') return false;
+  item.matchType = matchType(matchTypeId).id;
+  item.plannedMinutes = Math.max(minimumMinutes(item), item.plannedMinutes);
+  return true;
+}
+
+export function minimumMinutes(item) {
+  return item.type === 'match' ? matchType(item.matchType).minMinutes : 1;
 }
 
 export function itemById(show, itemId) {

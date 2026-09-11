@@ -153,16 +153,52 @@ odds, with a floor so nobody is ever a certainty. That is what makes a hidden
 stat worth learning. `model/matches.js` `decideWinner()` is the single function
 to change if the GM should pick winners instead.
 
+## Match types
+
+Seven stipulations, from a plain singles match to an Iron Man that eats
+twenty-five minutes of your window. Each carries a minimum runtime, which is how
+stipulation reaches the show clock — picking one is a timing decision as well as
+a talent one.
+
+Every wrestler carries two separate hidden values per stipulation, and they are
+**deliberately uncorrelated**:
+
+| | |
+| --- | --- |
+| **taste** | do they want this match? drives morale, and grudges |
+| **aptitude** | are they any good at it? drives who wins |
+
+That gives four quadrants, and the interesting one is low taste with high
+aptitude — Marisol Reyes hates a steel cage and is excellent inside one. Book it
+and you win the match and lose the woman. All four are reachable in the seeded
+roster.
+
+Taste scales the whole booking rather than nudging it: someone who dreads the
+stipulation does not much enjoy the main event either, so the spot is worth a
+fraction of what it would have been, and then the stipulation lands on top. A
+wrestler put in a match they genuinely dread forms a grudge **immediately** —
+unlike being overlooked, that one does not need repeating to land.
+
+Preferences are stored sparsely. A wrestler only carries an entry for a
+stipulation they have an opinion about; anything absent is indifference, and
+aptitude falls back to their general in-ring ability.
+
 ## Progressive revelation
 
 Stats are 0-100 under the hood and are **never shown as numbers**. What the
 player gets is a reading that sharpens with familiarity:
 
-| Familiarity | Tier | What the card says |
-| --- | --- | --- |
-| 0-24 | unread | "no read yet" |
-| 25-59 | impression | Below average / About average / Above average |
-| 60+ | known | Terrible / Poor / Average / Good / Excellent / Elite |
+| Familiarity | Tier | Stats | Stipulations |
+| --- | --- | --- | --- |
+| 0-24 | unread | "no read yet" | nothing |
+| 25-59 | impression | Below / About / Above average | what they like |
+| 60+ | known | Terrible … Elite | what they like **and** how good they are |
+
+Taste and aptitude reveal at different tiers on purpose. What somebody likes is
+something they will tell you, so it surfaces the moment you have any read at
+all. How good they actually are is something you only learn by watching, so it
+takes a full read. The booking screen shows your read on both wrestlers as you
+pick a stipulation, so early on you book blind and find out in the aftermath.
 
 Familiarity grows +2 a week for anyone on the roster and +7 more for anyone
 actually booked. You learn people by working with them, so the roster you use is

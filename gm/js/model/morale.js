@@ -18,6 +18,7 @@ import { airedItems, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
 import { growFamiliarity } from './stats.js';
 import { noteItem } from './relationships.js';
+import { tasteOf } from './match-types.js';
 import { nextId } from '../ids.js';
 
 const APPEARED_BASE = 2;
@@ -28,6 +29,8 @@ const MISSED_BASE = 2;
 const MISSED_PER_WEEK = 2;
 const MISSED_WEEKS_CAP = 4;
 const GRUDGE_AT_WEEKS = 3;
+// Being put in a match you genuinely dread does not need repeating to land.
+const HATED_TASTE = 20;
 
 export const MORALE_MIN = 0;
 export const MORALE_MAX = 100;
@@ -44,9 +47,10 @@ export function involvement(state) {
     const index = show.items.indexOf(item);
     for (const id of item.participants) {
       const entry = byWrestler.get(id)
-        || { minutes: 0, segmentMinutes: 0, items: 0, mainEvent: false, opener: false };
+        || { minutes: 0, segmentMinutes: 0, items: 0, mainEvent: false, opener: false, stipulations: [] };
       entry.minutes += result.actualMinutes;
       if (item.type === 'segment') entry.segmentMinutes += result.actualMinutes;
+      else entry.stipulations.push(item.matchType);
       entry.items += 1;
       if (index === lastIndex) entry.mainEvent = true;
       if (index === 0) entry.opener = true;
@@ -82,6 +86,7 @@ export function settleShow(state) {
   const appearances = involvement(state);
   const at = elapsedMinutes(state.broadcast);
   const newGrudges = [];
+  const hatedBookings = [];
 
   // History first: who met whom in the ring, and who stood beside whom.
   for (const { item } of airedItems(state.show, state.broadcast)) {
@@ -108,6 +113,29 @@ export function settleShow(state) {
       // Talkers get more out of microphone time than wrestlers do.
       if (used.segmentMinutes) {
         delta += Math.round((used.segmentMinutes / 10) * (wrestler.stats.charisma / 60));
+      }
+
+      // What they were asked to do, not just how much of it. Getting the match
+      // you have been asking for is worth as much as the spot itself; being put
+      // in the one you dread costs more.
+      for (const stipulation of used.stipulations) {
+        const taste = tasteOf(wrestler, stipulation);
+        // Taste scales the whole booking rather than nudging it. A wrestler who
+        // dreads the stipulation does not enjoy the main event much either, so
+        // the spot is worth a fraction of what it would otherwise have been —
+        // and then the stipulation lands on top of that.
+        delta *= 0.5 + taste / 100;          // hated 0.5x, indifferent 1x, loved 1.5x
+        delta += Math.round((taste - 50) / 4); // and its own weight, -12 .. +12
+        if (taste < HATED_TASTE && !hasMatchGrudge(wrestler, stipulation)) {
+          wrestler.grudges.push({
+            id: nextId('gr'),
+            week: state.week,
+            type: 'hated-match',
+            targetId: null,
+            data: { matchTypeId: stipulation },
+          });
+          hatedBookings.push({ wrestlerId: wrestler.id, matchTypeId: stipulation });
+        }
       }
 
       wrestler.morale = clamp(wrestler.morale + temper(wrestler, delta));
@@ -139,6 +167,15 @@ export function settleShow(state) {
 
   // One entry, not one per wrestler. A dozen identical lines is the kind of
   // noise that makes a feed unreadable the moment the roster grows.
+  for (const booking of hatedBookings) {
+    state.journal.push(createEntry({
+      week: state.week,
+      at,
+      type: 'hated-booking',
+      data: booking,
+    }));
+  }
+
   if (newGrudges.length) {
     state.journal.push(createEntry({
       week: state.week,
@@ -147,6 +184,10 @@ export function settleShow(state) {
       data: { wrestlerIds: newGrudges },
     }));
   }
+}
+
+export function hasMatchGrudge(wrestler, matchTypeId) {
+  return wrestler.grudges.some(g => g.type === 'hated-match' && g.data.matchTypeId === matchTypeId);
 }
 
 export function hasOverlookedGrudge(wrestler) {

@@ -8,7 +8,7 @@ import { primeIds } from './ids.js';
 import { createGame } from './model/game.js';
 
 const KEY = 'wgm_v1';
-const VERSION = 4;
+const VERSION = 5;
 
 let state = null;
 const listeners = new Set();
@@ -51,6 +51,16 @@ function migrate(saved) {
       if (!w.relationships) w.relationships = {};
     }
     saved.version = 4;
+  }
+
+  if (saved.version === 4) {
+    for (const w of saved.wrestlers || []) {
+      if (!w.matchTypes) w.matchTypes = {};
+    }
+    for (const item of (saved.show && saved.show.items) || []) {
+      if (item.type === 'match' && !item.matchType) item.matchType = 'singles';
+    }
+    saved.version = 5;
   }
   return saved;
 }

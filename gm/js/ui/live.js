@@ -8,6 +8,7 @@ import {
   currentItem, upcomingItems, airedItems, elapsedMinutes, remainingMinutes,
 } from '../model/broadcast.js';
 import { itemLabel, typeLabel } from './labels.js';
+import { matchType } from '../data/match-types.js';
 import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { EXECUTIVE, reviewShow } from '../model/executives.js';
 import { withGrudges, bookable } from '../model/morale.js';
@@ -245,6 +246,10 @@ function grudgeList(state) {
 
 // Grudges store a type and a target, never a sentence. This writes the sentence.
 function grudgeText(state, wrestler, grudge) {
+  if (grudge.type === 'hated-match') {
+    const target = grudge.targetId ? nameOf(state.wrestlers, grudge.targetId) : 'management';
+    return `put in a ${matchType(grudge.data.matchTypeId).name.toLowerCase()} by ${target}`;
+  }
   if (grudge.type === 'overlooked') {
     const target = grudge.targetId ? nameOf(state.wrestlers, grudge.targetId) : 'management';
     return `overlooked ${grudge.data.weeks} weeks running, blames ${target}`;
@@ -280,6 +285,10 @@ function nameList(state, ids) {
 function journalText(state, entry) {
   if (entry.type === 'show-start') return 'The show goes on the air.';
   if (entry.type === 'show-end') return 'The broadcast ends.';
+  if (entry.type === 'hated-booking') {
+    const who = nameOf(state.wrestlers, entry.data.wrestlerId);
+    return `${who} was put in a ${matchType(entry.data.matchTypeId).name.toLowerCase()} and did not hide what he thought of it.`;
+  }
   if (entry.type === 'grudges-formed') {
     return `${nameList(state, entry.data.wrestlerIds)} stopped assuming the omission is an accident.`;
   }

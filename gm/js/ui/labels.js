@@ -1,6 +1,7 @@
 // Display strings. Names are looked up from the roster at render time rather
 // than copied onto show items, so ids stay the only link between the two.
 import { nameOf } from '../model/wrestlers.js';
+import { matchType } from '../data/match-types.js';
 
 export function itemLabel(state, item) {
   if (item.type === 'match') {
@@ -11,7 +12,7 @@ export function itemLabel(state, item) {
 }
 
 export function typeLabel(item) {
-  return item.type === 'match' ? 'Match' : 'Segment';
+  return item.type === 'match' ? matchType(item.matchType).name : 'Segment';
 }
 
 export function minutes(n) {

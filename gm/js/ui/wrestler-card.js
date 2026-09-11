@@ -10,6 +10,7 @@ import { byId } from '../model/wrestlers.js';
 import { bookable } from '../model/morale.js';
 import { STATS, statReading, knowledgeTier, knowledgeLabel, knowledgePercent } from '../model/stats.js';
 import { topRivals, topAllies } from '../model/relationships.js';
+import { opinions, tasteReading, aptitudeReading } from '../model/match-types.js';
 import { winRate } from '../model/matches.js';
 import { moodWord, moodClass } from './mood.js';
 import { wrestlerLink } from './links.js';
@@ -35,6 +36,8 @@ export function renderCard(state, wrestlerId) {
           bioField(w)
         ),
         el('div', {},
+          el('h4', { text: 'Stipulations' }),
+          stipulationList(w),
           el('h4', { text: 'Top rivals' }),
           relationList(state, topRivals(state.wrestlers, w), ['match', 'matches'], 'No history in the ring with anyone yet.'),
           el('h4', { text: 'Top allies' }),
@@ -167,6 +170,35 @@ function bioField(w) {
       commit(s => { byId(s.wrestlers, w.id).bio = text; });
     },
   });
+}
+
+// Taste surfaces as soon as you have any read at all — people tell you what
+// they like. Aptitude only appears once you know them, because that is
+// something you have to watch.
+function stipulationList(w) {
+  const tier = knowledgeTier(w);
+  if (tier === 'unread') {
+    return el('p', { class: 'empty', text: 'No idea what they will and will not work.' });
+  }
+
+  const entries = opinions(w);
+  if (!entries.length) {
+    return el('p', { class: 'empty', text: 'Takes whatever you give them.' });
+  }
+
+  return el('ul', { class: 'stips' },
+    entries.map(({ type, taste }) => {
+      const reading = tasteReading(w, type.id);
+      const skill = aptitudeReading(w, type.id);
+      return el('li', {},
+        el('span', { class: 'stip-name', text: type.name }),
+        el('span', { class: `stip-taste taste-${reading.tone}`, text: reading.word }),
+        skill
+          ? el('span', { class: 'stip-skill', text: skill })
+          : el('span', { class: 'stip-skill stip-skill-unknown', text: 'ability unknown' })
+      );
+    })
+  );
 }
 
 function relationList(state, entries, [one, many], emptyText) {

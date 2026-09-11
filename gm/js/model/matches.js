@@ -5,6 +5,7 @@
 // the rest is the night. That is what makes a hidden stat worth learning — and
 // it is the one function to change if the GM should pick winners instead.
 import { byId } from './wrestlers.js';
+import { aptitudeOf } from './match-types.js';
 
 const UPSET_FLOOR = 0.12; // nobody is ever a certainty
 
@@ -16,8 +17,10 @@ export function decideWinner(wrestlers, item, roll = Math.random()) {
   const b = byId(wrestlers, bId);
   if (!a || !b) return null;
 
-  const aPower = Math.max(1, a.stats.inRing);
-  const bPower = Math.max(1, b.stats.inRing);
+  // Aptitude in this stipulation, not general ability: a technician who is
+  // excellent inside a cage is favoured there whether or not she wants to be.
+  const aPower = Math.max(1, aptitudeOf(a, item.matchType));
+  const bPower = Math.max(1, aptitudeOf(b, item.matchType));
   let chanceA = aPower / (aPower + bPower);
   chanceA = Math.min(1 - UPSET_FLOOR, Math.max(UPSET_FLOOR, chanceA));
 
