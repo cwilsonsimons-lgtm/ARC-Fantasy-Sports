@@ -2,9 +2,10 @@
 import { el } from './dom.js';
 import { commit, notify } from '../store.js';
 import {
-  addItem, createMatch, createSegment, removeItem, moveItem, setItemMinutes,
+  addItem, createMatch, createTagMatch, createSegment, removeItem, moveItem, setItemMinutes,
   setItemMatchType, minimumMinutes, bookedMinutes, remainingMinutes, isOverbooked,
 } from '../model/show.js';
+import { titlesForMatch } from '../model/titles.js';
 import { MATCH_TYPES, matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
 import { tasteReading } from '../model/match-types.js';
 import { byId } from '../model/wrestlers.js';
@@ -20,7 +21,8 @@ import { nameOf } from '../model/wrestlers.js';
 // Half-typed form values live here rather than in game state, so a redraw
 // (triggered by any commit) does not wipe what the user is in the middle of.
 const draft = {
-  matchA: '', matchB: '', matchMinutes: 10, matchError: '', matchTypeId: DEFAULT_MATCH_TYPE,
+  matchA: '', matchB: '', matchMinutes: 10, matchError: '', matchTypeId: DEFAULT_MATCH_TYPE, matchTitle: '',
+  tagA1: '', tagA2: '', tagB1: '', tagB2: '', tagMinutes: 14, tagTitle: '', tagError: '',
   segName: '', segParticipants: new Set(), segMinutes: 5, segError: '',
 };
 
@@ -42,6 +44,7 @@ export function renderBooking(state, navigate) {
     opportunityPanel(state, locked),
     offTheCard(state),
     locked ? null : addMatchPanel(state),
+    locked ? null : addTagPanel(state),
     locked ? null : addSegmentPanel(state),
     el('div', {},
       el('button', {
@@ -276,6 +279,7 @@ function addMatchPanel(state) {
           onChange: e => { draft.matchMinutes = e.target.value; },
         })
       ),
+      titleField(state, [draft.matchA, draft.matchB], false, 'matchTitle'),
       el('button', { type: 'button', class: 'btn', text: 'Add match', onClick: addMatch })
     ),
     el('p', { class: 'stip-note muted', text: matchType(draft.matchTypeId).note }),
@@ -323,11 +327,90 @@ function addMatch() {
     wrestlerBId: draft.matchB,
     plannedMinutes: draft.matchMinutes,
     matchTypeId: draft.matchTypeId,
+    titleId: draft.matchTitle || null,
   };
   draft.matchA = '';
   draft.matchB = '';
+  draft.matchTitle = '';
   draft.matchError = '';
   commit(s => addItem(s.show, createMatch(match)));
+}
+
+// Only belts that could actually be on the line here: a tag title needs a tag
+// match, and a locked division needs everyone in it to belong to that division.
+function titleField(state, participantIds, isTag, key) {
+  const chosen = participantIds.filter(Boolean);
+  const options = chosen.length === (isTag ? 4 : 2)
+    ? titlesForMatch(state, chosen, isTag)
+    : [];
+
+  if (draft[key] && !options.some(t => t.id === draft[key])) draft[key] = '';
+
+  return el('div', { class: 'field' },
+    el('label', { text: 'Championship' }),
+    el('select', {
+      disabled: !options.length,
+      onChange: e => { draft[key] = e.target.value; },
+    },
+      el('option', { value: '', selected: !draft[key], text: options.length ? '— no title —' : '— none available —' }),
+      ...options.map(t => el('option', { value: t.id, selected: t.id === draft[key], text: t.name }))
+    )
+  );
+}
+
+function addTagPanel(state) {
+  const pick = (key, label) => el('div', { class: 'field' },
+    el('label', { text: label }),
+    el('select', { onChange: e => { draft[key] = e.target.value; notify(); } }, wrestlerOptions(state, draft[key]))
+  );
+
+  return el('div', { class: 'panel' },
+    el('h3', { text: 'Add tag match' }),
+    el('div', { class: 'row' },
+      pick('tagA1', 'Team one'),
+      pick('tagA2', 'and'),
+      pick('tagB1', 'Team two'),
+      pick('tagB2', 'and'),
+      el('div', { class: 'field' },
+        el('label', { text: 'Planned minutes' }),
+        el('input', {
+          type: 'number', min: '1', value: draft.tagMinutes,
+          onChange: e => { draft.tagMinutes = e.target.value; },
+        })
+      ),
+      titleField(state, [draft.tagA1, draft.tagA2, draft.tagB1, draft.tagB2], true, 'tagTitle'),
+      el('button', { type: 'button', class: 'btn', text: 'Add tag match', onClick: addTag })
+    ),
+    draft.tagError ? el('p', { class: 'over', text: draft.tagError }) : null
+  );
+}
+
+function addTag() {
+  const ids = [draft.tagA1, draft.tagA2, draft.tagB1, draft.tagB2];
+  if (ids.some(id => !id)) {
+    draft.tagError = 'Choose all four.';
+    notify();
+    return;
+  }
+  if (new Set(ids).size !== 4) {
+    draft.tagError = 'Nobody can be in this twice.';
+    notify();
+    return;
+  }
+
+  const match = {
+    teamA: [draft.tagA1, draft.tagA2],
+    teamB: [draft.tagB1, draft.tagB2],
+    plannedMinutes: draft.tagMinutes,
+    titleId: draft.tagTitle || null,
+  };
+  draft.tagA1 = '';
+  draft.tagA2 = '';
+  draft.tagB1 = '';
+  draft.tagB2 = '';
+  draft.tagTitle = '';
+  draft.tagError = '';
+  commit(s => addItem(s.show, createTagMatch(match)));
 }
 
 function addSegmentPanel(state) {

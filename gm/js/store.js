@@ -118,6 +118,19 @@ function upgrade(saved) {
     saved.version = 11;
   }
 
+  if (saved.version === 11) {
+    // Older saves get the three base belts, vacant — crowning them is the
+    // player's to do rather than something the upgrade decides for them.
+    if (!saved.titles) saved.titles = [];
+    for (const item of (saved.show && saved.show.items) || []) {
+      if (item.type === 'match') {
+        if (item.titleId === undefined) item.titleId = null;
+        if (item.tag === undefined) item.tag = false;
+      }
+    }
+    saved.version = 12;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

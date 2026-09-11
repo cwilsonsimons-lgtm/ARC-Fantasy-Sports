@@ -7,6 +7,7 @@ import { renderBooking } from './ui/booking.js';
 import { renderLive } from './ui/live.js';
 import { renderSaves } from './ui/saves.js';
 import { renderCalendar } from './ui/calendar.js';
+import { renderTitles } from './ui/titles.js';
 import { renderCard } from './ui/wrestler-card.js';
 import { openCardId, closeCard } from './ui/card-state.js';
 
@@ -37,6 +38,7 @@ function render() {
     !state ? renderSaves(state, navigate) :
     route === 'booking' ? renderBooking(state, navigate) :
     route === 'calendar' ? renderCalendar(state, navigate) :
+    route === 'titles' ? renderTitles(state) :
     route === 'live' ? renderLive(state, navigate) :
     renderRoster(state);
 

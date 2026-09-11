@@ -8,6 +8,7 @@ import {
 } from '../model/broadcast.js';
 import { itemLabel, typeLabel } from './labels.js';
 import { matchType } from '../data/match-types.js';
+import { titleById } from '../model/titles.js';
 import { SEVERITIES, responseById } from '../data/responses.js';
 import { gmReputation } from '../model/discipline.js';
 import { tierOf, nextTier } from '../model/network.js';
@@ -447,6 +448,23 @@ export function journalText(state, entry, items = state.show.items) {
       : '';
     const pulled = entry.data.pulled ? ` ${entry.data.pulled} booked segment${entry.data.pulled === 1 ? '' : 's'} came off the card.` : '';
     return `Your call: ${label}.${read}${pulled}`;
+  }
+  if (entry.type === 'title-change') {
+    const title = titleById(state, entry.data.titleId);
+    const winners = entry.data.championIds.map(id => nameOf(state.wrestlers, id)).join(' & ');
+    const former = (entry.data.formerIds || []).map(id => nameOf(state.wrestlers, id)).join(' & ');
+    return former
+      ? `${winners} took the ${title ? title.name : 'championship'} off ${former}.`
+      : `${winners} won the vacant ${title ? title.name : 'championship'}.`;
+  }
+  if (entry.type === 'title-defended') {
+    const title = titleById(state, entry.data.titleId);
+    const champs = entry.data.championIds.map(id => nameOf(state.wrestlers, id)).join(' & ');
+    return `${champs} held onto the ${title ? title.name : 'championship'}.`;
+  }
+  if (entry.type === 'title-created') {
+    const title = titleById(state, entry.data.titleId);
+    return `The network has sanctioned the ${title ? title.name : 'new championship'}. It starts vacant.`;
   }
   if (entry.type === 'breach') {
     const who = entry.data.participants.map(id => nameOf(state.wrestlers, id)).join(' vs. ');

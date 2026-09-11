@@ -8,6 +8,7 @@ export function renderNav(route, phase, navigate, hasSave) {
         ['booking', 'Booking'],
         ['live', phase === PHASES.AFTER ? 'Aftermath' : 'Live Show'],
         ['calendar', 'Calendar'],
+        ['titles', 'Titles'],
         ['saves', 'Saves'],
       ]
     : [['saves', 'Saves']];

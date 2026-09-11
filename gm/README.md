@@ -256,6 +256,36 @@ a full locker-room brawl happens in under one percent.
 **Debt creates itself through play.** A save writes a favour onto the record, and
 that favour is a motive the next time the rescuer is the one in trouble.
 
+## Championships
+
+Every promotion starts with three — a major men's, a major women's, and the tag
+titles — already held, because vacant belts on day one read as a promotion that
+has not started yet. Seeded champions are the best of their division and nobody
+holds two.
+
+**Everything here is optional.** Any belt can be retired, including the three
+you start with, and a promotion that never adds a fourth is a perfectly good
+promotion. Retiring closes the reign and vacates it; bringing it back brings it
+back vacant, because the lineage already ended.
+
+More are **sanctioned, not given**: the network opens a slot at 10, 22 and 34
+network trust, and the player picks which of the remaining belts to bring in. A
+new one starts vacant — somebody has to win it.
+
+A match can carry a title, and the picker only offers belts that could
+plausibly be on the line: a tag title needs a tag match, and a locked division
+needs everyone in the match to belong to it.
+
+**Tag matches** had to exist for the tag titles to mean anything. Matches were
+two participants; they are now two sides. `teamsOf()` in `model/matches.js` is
+the only place participants are split into teams, so the convention lives in one
+spot, and `decideWinner()` returns the winning *side* rather than one name.
+
+The morale swing on a title change scales with the belt — a major is worth 18
+either way, a secondary 11. That has to outweigh the ordinary lift of having
+been on the show, or a wrestler can lose a world title and finish the night
+happier than they started.
+
 ## The calendar
 
 A real month grid. Weeks are integers underneath, but the player thinks in

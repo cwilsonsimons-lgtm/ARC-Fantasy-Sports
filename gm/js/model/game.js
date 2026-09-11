@@ -19,6 +19,7 @@ import { applyResponse, releaseSuspensions } from './discipline.js';
 import { createOpportunity, ageOpportunities } from './opportunities.js';
 import { RESPONSES } from '../data/responses.js';
 import { createNetwork, awardTrust } from './network.js';
+import { seedTitles, titleById, settleTitleMatch, championMorale } from './titles.js';
 import {
   archiveWeek, loadScheduled, checkBreaches, runtimeForWeek, showNameFor, isPpvWeek,
 } from './calendar.js';
@@ -27,7 +28,7 @@ import { createMatch, addItem, remainingMinutes } from './show.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
-export function createGame({ wrestlers, promotion, air }) {
+export function createGame({ wrestlers, promotion, air, titles = [] }) {
   return {
     week: 1,
     phase: PHASES.PREP,
@@ -35,6 +36,7 @@ export function createGame({ wrestlers, promotion, air }) {
     startDate: air.startDate,
     airNight: air.airNight,
     wrestlers,
+    titles,
     network: createNetwork(),
     show: createShow({ name: promotion.show }),
     broadcast: null,
@@ -73,11 +75,17 @@ export function completeSegment(state) {
   const result = completeCurrent(state.show, state.broadcast);
   const at = elapsedMinutes(state.broadcast);
 
+  // One generator for the whole night, and its position lives on the save, so a
+  // show rolls the same way after a reload — results included, not just
+  // incidents.
+  const roll = rngFor(state);
+
   // Matches are contests: the card says who meets, the night says who wins.
-  const winnerId = decideWinner(state.wrestlers, item);
-  if (winnerId) {
-    result.winnerId = winnerId;
-    applyOutcome(state.wrestlers, item, winnerId);
+  const winnerIds = decideWinner(state.wrestlers, item, roll());
+  if (winnerIds.length) {
+    result.winnerIds = winnerIds;
+    result.winnerId = winnerIds[0]; // the side's first name, for anything reading one winner
+    applyOutcome(state.wrestlers, item, winnerIds);
   }
 
   state.journal.push(createEntry({
@@ -88,14 +96,22 @@ export function completeSegment(state) {
     data: {
       plannedMinutes: item.plannedMinutes,
       actualMinutes: result.actualMinutes,
-      winnerId: winnerId || null,
+      winnerId: result.winnerId || null,
+      winnerIds: result.winnerIds || null,
     },
   }));
+
+  // And if a belt was on the line, it may have just changed hands. Settled
+  // after the match is written down, so the journal reads in the order the
+  // night actually happened.
+  if (item.titleId && result.winnerIds) {
+    const title = titleById(state, item.titleId);
+    if (title) settleTitleMatch(state, title, result.winnerIds, at);
+  }
 
   // The bell rings, and then somebody decides what to do about it. The locker
   // room reacts on its own — that happens in the moment, not on the GM's word —
   // and then the situation is handed over.
-  const roll = rngFor(state);
   const incident = maybePostMatchAttack(state, item, result, state.show.items.indexOf(item), roll)
     || maybeBackstageArgument(state, roll);
 
@@ -203,6 +219,7 @@ export function advanceWeek(state) {
   state.week += 1;
   releaseSuspensions(state);
   ageOpportunities(state);
+  championMorale(state);
   state.breaches = 0;
 
   state.show = createShow({

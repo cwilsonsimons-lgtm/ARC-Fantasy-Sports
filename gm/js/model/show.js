@@ -27,16 +27,42 @@ export function createShow({ name = 'Weekly Show', runtimeMinutes = DEFAULT_RUNT
   return { id: nextId('show'), name, runtimeMinutes, items: [] };
 }
 
-export function createMatch({ wrestlerAId, wrestlerBId, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE }) {
+export function createMatch({ wrestlerAId, wrestlerBId, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE, titleId = null }) {
   const stipulation = matchType(matchTypeId);
   return {
     id: nextId('si'),
     type: 'match',
     matchType: stipulation.id,
     name: '',
+    tag: false,
+    titleId,
     participants: [wrestlerAId, wrestlerBId],
     plannedMinutes: Math.max(stipulation.minMinutes, clampMinutes(plannedMinutes)),
   };
+}
+
+// Four people, two teams. participants are [a1, a2, b1, b2] and the halves are
+// the teams — see teamsOf() in matches.js, which is the only place that splits
+// them, so the convention lives in one spot.
+export function createTagMatch({ teamA, teamB, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE, titleId = null }) {
+  const stipulation = matchType(matchTypeId);
+  return {
+    id: nextId('si'),
+    type: 'match',
+    matchType: stipulation.id,
+    name: '',
+    tag: true,
+    titleId,
+    participants: [...teamA, ...teamB],
+    plannedMinutes: Math.max(stipulation.minMinutes, clampMinutes(plannedMinutes)),
+  };
+}
+
+export function setItemTitle(show, itemId, titleId) {
+  const item = itemById(show, itemId);
+  if (!item || item.type !== 'match') return false;
+  item.titleId = titleId || null;
+  return true;
 }
 
 export function createSegment({ name, participants = [], plannedMinutes }) {
