@@ -18,7 +18,10 @@ import { maybePostMatchAttack, maybeBackstageArgument, resolveIncident } from '.
 import { applyResponse, releaseSuspensions } from './discipline.js';
 import { createOpportunity, ageOpportunities } from './opportunities.js';
 import { RESPONSES } from '../data/responses.js';
-import { createNetwork, runtimeFor, awardTrust } from './network.js';
+import { createNetwork, awardTrust } from './network.js';
+import {
+  archiveWeek, loadScheduled, checkBreaches, runtimeForWeek, showNameFor, isPpvWeek,
+} from './calendar.js';
 import { reviewShow } from './executives.js';
 import { createMatch, addItem, remainingMinutes } from './show.js';
 
@@ -37,6 +40,9 @@ export function createGame({ wrestlers, promotion }) {
     pendingIncident: null,
     lastReview: null,
     opportunities: [],
+    scheduled: [],
+    history: [],
+    breaches: 0,
     gmRecord: { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 },
   };
 }
@@ -162,12 +168,15 @@ function finishIfDone(state, at) {
   state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));
   // The locker room reacts once, when the show comes off the air.
   settleShow(state);
+  // Anything announced for tonight that did not happen is counted before the
+  // executives grade it, because it is the first thing they will mention.
+  checkBreaches(state);
 
   // And then the people upstairs decide whether you have earned more of their
   // airtime. Graded once and stored, so the post-show reads the same number it
-  // actually awarded.
+  // actually awarded. A special event counts double, in both directions.
   const review = reviewShow(state);
-  const award = awardTrust(state, review.grade);
+  const award = awardTrust(state, review.grade, isPpvWeek(state.week) ? 2 : 1);
   state.lastReview = { ...review, ...award };
   if (award.promoted) {
     state.journal.push(createEntry({
@@ -185,10 +194,22 @@ function finishIfDone(state, at) {
 // wrestlers themselves, not in here.
 export function advanceWeek(state) {
   if (state.phase !== PHASES.AFTER) return false;
+
+  // Keep the week before replacing it. This is the only place history is made.
+  archiveWeek(state);
+
   state.week += 1;
   releaseSuspensions(state);
   ageOpportunities(state);
-  state.show = createShow({ name: state.promotion.show, runtimeMinutes: runtimeFor(state) });
+  state.breaches = 0;
+
+  state.show = createShow({
+    name: showNameFor(state, state.week),
+    runtimeMinutes: runtimeForWeek(state, state.week),
+  });
+  // Whatever was planned for this week is already on the card.
+  loadScheduled(state);
+
   state.broadcast = null;
   state.phase = PHASES.PREP;
   return true;

@@ -32,12 +32,16 @@ export function reviewShow(state) {
   const share = roster ? used / roster : 0;
   const rosterUse = share >= 0.5 ? 'broad' : used >= 4 ? 'narrow' : 'thin';
 
-  const score =
-    (timing === 'on-time' ? 1 : timing === 'light' ? 0.5 : 0) +
-    (lockerRoom === 'settled' ? 1 : lockerRoom === 'restless' ? 0.5 : 0) +
-    (rosterUse === 'broad' ? 1 : rosterUse === 'narrow' ? 0.5 : 0);
+  // An advertised match that did not happen is the thing they notice first.
+  const breaches = state.breaches || 0;
+
+  const score = Math.max(0,
+    (timing === 'on-time' ? 1 : timing === 'light' ? 0.5 : 0)
+    + (lockerRoom === 'settled' ? 1 : lockerRoom === 'restless' ? 0.5 : 0)
+    + (rosterUse === 'broad' ? 1 : rosterUse === 'narrow' ? 0.5 : 0)
+    - breaches);
 
   const grade = score >= 2.5 ? 'A' : score >= 1.75 ? 'B' : score >= 1 ? 'C' : 'D';
 
-  return { grade, timing, over, lockerRoom, grudgeCount, rosterUse, used, roster, aired };
+  return { grade, timing, over, lockerRoom, grudgeCount, rosterUse, used, roster, aired, breaches };
 }

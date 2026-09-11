@@ -3,7 +3,6 @@
 import { el } from './dom.js';
 import { commit } from '../store.js';
 import { PHASES, completeSegment, advanceWeek, availableResponses, resolveIncidentResponse } from '../model/game.js';
-import { itemById } from '../model/show.js';
 import {
   currentItem, upcomingItems, airedItems, elapsedMinutes, remainingMinutes,
 } from '../model/broadcast.js';
@@ -280,6 +279,12 @@ function memoPanel(review) {
       : 'Your locker room is a mess, and people outside this building are starting to notice.'
   );
 
+  if (review.breaches > 0) {
+    lines.unshift(review.breaches === 1
+      ? 'A match I advertised did not happen. I had to explain that to people, which is your job, not mine.'
+      : `${review.breaches} advertised matches did not happen. I am not doing this again.`);
+  }
+
   if (review.grudgeCount > 0) {
     lines.push(review.grudgeCount === 1
       ? 'One of your people is carrying something into next week. Handle it before I have to.'
@@ -423,7 +428,11 @@ function nameList(state, ids) {
 }
 
 // Journal entries store references, not sentences. The wording lives here.
-function journalText(state, entry) {
+//
+// `items` is the pool those references point into. It defaults to tonight's
+// card, but an archived week keeps its own, and resolving last month's journal
+// against this week's card turns every line into "(removed item)".
+export function journalText(state, entry, items = state.show.items) {
   if (entry.type === 'show-start') return 'The show goes on the air.';
   if (entry.type === 'show-end') return 'The broadcast ends.';
   if (entry.type === 'argument') {
@@ -438,6 +447,12 @@ function journalText(state, entry) {
       : '';
     const pulled = entry.data.pulled ? ` ${entry.data.pulled} booked segment${entry.data.pulled === 1 ? '' : 's'} came off the card.` : '';
     return `Your call: ${label}.${read}${pulled}`;
+  }
+  if (entry.type === 'breach') {
+    const who = entry.data.participants.map(id => nameOf(state.wrestlers, id)).join(' vs. ');
+    return entry.data.advertised
+      ? `${who} was advertised and never happened.`
+      : `${who} was promised privately and never happened.`;
   }
   if (entry.type === 'window-extended') {
     return `The network has extended the show to ${entry.data.minutes} minutes.`;
@@ -471,7 +486,7 @@ function journalText(state, entry) {
     return `${nameList(state, entry.data.wrestlerIds)} stopped assuming the omission is an accident.`;
   }
 
-  const item = itemById(state.show, entry.itemId);
+  const item = items.find(candidate => candidate.id === entry.itemId) || null;
   const label = item ? itemLabel(state, item) : '(removed item)';
   const { plannedMinutes, actualMinutes } = entry.data;
   const timing = actualMinutes === plannedMinutes

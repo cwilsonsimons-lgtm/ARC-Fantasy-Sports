@@ -99,6 +99,13 @@ function upgrade(saved) {
     saved.version = 9;
   }
 
+  if (saved.version === 9) {
+    if (!saved.scheduled) saved.scheduled = [];
+    if (!saved.history) saved.history = [];
+    if (saved.breaches === undefined) saved.breaches = 0;
+    saved.version = 10;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

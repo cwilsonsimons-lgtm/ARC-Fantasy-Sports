@@ -38,8 +38,8 @@ export function nextTier(state) {
 
 // Called once, when the show comes off the air. Returns what changed so the
 // post-show can say it plainly.
-export function awardTrust(state, grade) {
-  const delta = AWARD[grade] !== undefined ? AWARD[grade] : 0;
+export function awardTrust(state, grade, multiplier = 1) {
+  const delta = (AWARD[grade] !== undefined ? AWARD[grade] : 0) * multiplier;
   const before = state.network.tier;
   const fromMinutes = TIERS[before].minutes;
 

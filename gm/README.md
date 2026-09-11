@@ -256,6 +256,37 @@ a full locker-room brawl happens in under one percent.
 **Debt creates itself through play.** A save writes a favour onto the record, and
 that favour is a motive the next time the rescuer is the one in trouble.
 
+## The calendar
+
+Three things live in `model/calendar.js`: what already happened, what is
+planned, and the special events.
+
+**History is kept.** Before this, the journal was cleared at the start of every
+show and the card was replaced every week, so a finished show left nothing
+behind. `archiveWeek()` snapshots the card, the results, the grade and the
+journal before the week turns, capped at a year so a season fits in a browser's
+storage.
+
+**Planned is not promised.** A planned match is a note to yourself and costs
+nothing to change. Three states, escalating:
+
+| | What it means | What it costs to break |
+| --- | --- | --- |
+| **Planned** | A note to yourself | Nothing |
+| **Told** | You let the wrestler know privately | Morale, and a broken-promise grudge |
+| **Advertised** | The audience knows. The network expects it. | All of that, plus a breach the executives lead their memo with |
+
+Advertising lifts the people in it immediately, and telling somebody lifts them
+more — it also resets their weeks-off-card counter, because they know they have
+not been forgotten. Both are your word, and both are checked when the show
+comes off the air: a scheduled item carries the same id onto the card, so
+delivery is a lookup rather than a guess.
+
+**Special events** land every twelve weeks, run thirty minutes longer than your
+current window, and count double for network trust in both directions. The
+planning horizon is eight weeks **plus the next special even when it sits
+beyond them** — a big show you cannot see coming is one you cannot book toward.
+
 ## The window is earned
 
 A new promotion gets **sixty minutes**. That is deliberately not enough: a
