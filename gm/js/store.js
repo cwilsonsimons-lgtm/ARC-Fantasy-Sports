@@ -8,7 +8,7 @@ import { primeIds } from './ids.js';
 import { createGame } from './model/game.js';
 
 const KEY = 'wgm_v1';
-const VERSION = 2;
+const VERSION = 3;
 
 let state = null;
 const listeners = new Set();
@@ -27,6 +27,16 @@ function migrate(saved) {
       : 'live';
     saved.version = 2;
   }
+
+  if (saved.version === 2) {
+    for (const w of saved.wrestlers || []) {
+      if (w.archetype === undefined) w.archetype = 'Roster member';
+      if (w.morale === undefined) w.morale = 55;
+      if (w.weeksOffCard === undefined) w.weeksOffCard = 0;
+      if (!Array.isArray(w.grudges)) w.grudges = [];
+    }
+    saved.version = 3;
+  }
   return saved;
 }
 
@@ -39,6 +49,9 @@ function collectIds(s) {
     for (const it of s.show.items || []) ids.push(it.id);
   }
   for (const entry of s.journal || []) ids.push(entry.id);
+  for (const w of s.wrestlers || []) {
+    for (const g of w.grudges || []) ids.push(g.id);
+  }
   return ids;
 }
 

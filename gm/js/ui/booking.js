@@ -7,6 +7,8 @@ import {
 } from '../model/show.js';
 import { PHASES, canEditCard, startShow } from '../model/game.js';
 import { itemLabel, participantsLabel, typeLabel } from './labels.js';
+import { bookable } from '../model/morale.js';
+import { moodWord, moodClass } from './mood.js';
 
 // Half-typed form values live here rather than in game state, so a redraw
 // (triggered by any commit) does not wipe what the user is in the middle of.
@@ -30,6 +32,7 @@ export function renderBooking(state, navigate) {
         })
       : null,
     cardTable(state, show, locked),
+    offTheCard(state),
     locked ? null : addMatchPanel(state),
     locked ? null : addSegmentPanel(state),
     el('div', {},
@@ -126,6 +129,40 @@ function cardTable(state, show, locked) {
       )
     ),
     el('tbody', {}, rows)
+  );
+}
+
+// Who is available and not booked. Being left off is the one thing in the game
+// today that actually moves morale, so the player has to be able to see it
+// before the show, not only learn about it afterwards.
+function offTheCard(state) {
+  const booked = new Set(state.show.items.flatMap(item => item.participants));
+  const idle = state.wrestlers.filter(w => bookable(w) && !booked.has(w.id));
+
+  if (!idle.length) {
+    return el('div', { class: 'panel' },
+      el('h3', { text: 'Off the card' }),
+      el('p', { class: 'empty', text: 'Everyone available is booked. Nobody is sitting at home this week.' })
+    );
+  }
+
+  return el('div', { class: 'panel' },
+    el('h3', { text: `Off the card (${idle.length})` }),
+    el('ul', { class: 'moods compact' },
+      idle.map(w =>
+        el('li', {},
+          el('span', { class: 'mood-name', text: w.name }),
+          el('span', { class: 'mood-arch', text: w.archetype }),
+          el('span', { class: `mood-word ${moodClass(w)}`, text: moodWord(w) }),
+          w.weeksOffCard > 0
+            ? el('span', {
+                class: w.weeksOffCard >= 2 ? 'chip chip-bad' : 'chip',
+                text: `missed ${w.weeksOffCard}`,
+              })
+            : null
+        )
+      )
+    )
   );
 }
 

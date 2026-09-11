@@ -2,8 +2,10 @@
 
 The player is the kayfabe General Manager of a weekly wrestling television
 show. This is the first skeleton: view the roster, book a card, run the show
-segment by segment, review it, advance the week. Nothing else is simulated yet
-— no morale, no relationships, no incidents.
+segment by segment, face the network's verdict, advance the week.
+
+Simulated so far: **who you used and who you left out**. Not yet: relationships,
+incidents, factions, championships, or anything running long.
 
 ## The weekly phase machine
 
@@ -54,6 +56,7 @@ functions the buttons call, without going near the interface.
 | Show | `{ id, name, runtimeMinutes, items[] }` |
 | Broadcast | `{ showId, status, results[] }` |
 | Journal entry | `{ id, week, at, type, itemId, data }` |
+| Grudge | `{ id, week, type, targetId, data }` |
 
 Four decisions here exist for systems that do not exist yet:
 
@@ -92,6 +95,43 @@ The journal is per-show and is cleared when the next show goes on the air, not
 when the week advances, so last week's record is still readable while the new
 card is being built. Memory that has to survive across weeks belongs on the
 wrestlers themselves, not here.
+
+## Morale and grudges
+
+Morale needs a cause, and there is no incident system yet, so nothing invents a
+grievance out of nothing. The one honest cause available is **who was booked and
+who was not**:
+
+- Appeared — a small gain, more for main-eventing, more again per five minutes
+  of airtime actually aired.
+- Did not appear, and could have been — a loss that **grows with each
+  consecutive week missed**.
+- Injured or unavailable — exempt. They could not have been booked, so being
+  left off is not a snub.
+
+One missed week is a slight. **Three in a row becomes a belief**, and that is
+when a grudge forms. That threshold is the whole point: repetition is what turns
+an event into a grievance that outlives the week it happened in.
+
+Grudges are records, not strings: `{ id, week, type, targetId, data }`. Today
+every grudge is `type: 'overlooked'` with `targetId: null`, which means
+management — the GM. When incidents exist, `targetId` names a wrestler and the
+same list starts showing who is angry at whom. The sentence is composed at
+render time, so a grudge stays queryable and no prose is frozen into the save.
+
+All numbers in `model/morale.js` are placeholder tuning, deliberately legible
+rather than balanced.
+
+## Demeanour, not digits
+
+Morale is a number under the hood and is **never shown as one** — not in a
+table, not as a bar, not on hover. The player gets a word (`Furious` …
+`Delighted`) and a colour, from `ui/mood.js`. Rendering the number would turn
+reading a locker room into optimising a meter.
+
+The same rule governs the network's verdict: `model/executives.js` returns
+verdicts (`'long'`, `'settled'`, `'thin'`), never the score behind the grade.
+The player is told the executive's priorities, never their arithmetic.
 
 ## Saves
 

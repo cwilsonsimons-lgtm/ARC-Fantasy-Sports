@@ -12,6 +12,7 @@ import { seedRoster } from '../data/roster-seed.js';
 import { createShow } from './show.js';
 import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
+import { settleShow } from './morale.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
@@ -59,6 +60,8 @@ export function completeSegment(state) {
 
   if (state.broadcast.status === 'complete') {
     state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));
+    // The locker room reacts once, when the show comes off the air.
+    settleShow(state);
     state.phase = PHASES.AFTER;
   }
   return result;
