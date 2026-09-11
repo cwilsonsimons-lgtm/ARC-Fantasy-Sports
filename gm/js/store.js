@@ -1,24 +1,22 @@
-// The single source of truth, and the only place that writes to storage.
+// The open save, and the only place that writes it.
 //
-// All game state is one serialisable object. Every mutation goes through
-// commit(), which runs the change, saves, then notifies subscribers. Future
-// systems (incidents, morale, messages from bosses) mutate through the same
-// door as the buttons do, so nothing has to be re-plumbed to add them.
-import { primeIds } from './ids.js';
-import { createGame } from './model/game.js';
-
-const KEY = 'wgm_v1';
-const VERSION = 5;
+// All game state is one serialisable object belonging to one save slot. Every
+// mutation goes through commit(), which runs the change, persists it and
+// notifies subscribers. Future systems mutate through the same door as the
+// buttons do.
+import {
+  STATE_VERSION, readIndex, listSaves, currentSaveId, createSave, loadSave,
+  writeSave, setCurrent, deleteSave, deleteEverything, adoptLegacySave,
+} from './saves.js';
 
 let state = null;
+let saveId = null;
 const listeners = new Set();
 
-function freshState() {
-  return { version: VERSION, ...createGame() };
-}
+// Upgrades a save written by an older build rather than discarding it.
+function upgrade(saved) {
+  if (!saved) return null;
 
-// Upgrade older saves in place rather than silently wiping the player's card.
-function migrate(saved) {
   if (saved.version === 1) {
     saved.week = 1;
     saved.journal = [];
@@ -43,9 +41,7 @@ function migrate(saved) {
       if (w.role === undefined) w.role = 'Midcard';
       if (w.bio === undefined) w.bio = '';
       if (w.photo === undefined) w.photo = null;
-      if (!w.stats) {
-        w.stats = { inRing: 50, charisma: 50, ambition: 50, ego: 50, professionalism: 50 };
-      }
+      if (!w.stats) w.stats = { inRing: 50, charisma: 50, ambition: 50, ego: 50, professionalism: 50 };
       if (!w.record) w.record = { wins: 0, losses: 0 };
       if (w.familiarity === undefined) w.familiarity = 0;
       if (!w.relationships) w.relationships = {};
@@ -62,46 +58,33 @@ function migrate(saved) {
     }
     saved.version = 5;
   }
-  return saved;
-}
 
-// Every id in the save, so the id counter resumes above the highest one used.
-function collectIds(s) {
-  const ids = [];
-  for (const w of s.wrestlers || []) ids.push(w.id);
-  if (s.show) {
-    ids.push(s.show.id);
-    for (const it of s.show.items || []) ids.push(it.id);
+  if (saved.version === 5) {
+    if (!saved.promotion) {
+      saved.promotion = {
+        promotion: 'Your first promotion',
+        show: (saved.show && saved.show.name) || 'Weekly Show',
+      };
+    }
+    saved.version = 6;
   }
-  for (const entry of s.journal || []) ids.push(entry.id);
-  for (const w of s.wrestlers || []) {
-    for (const g of w.grudges || []) ids.push(g.id);
-  }
-  return ids;
+
+  return saved.version === STATE_VERSION ? saved : null;
 }
 
 export function load() {
-  let saved = null;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) saved = JSON.parse(raw);
-  } catch {
-    saved = null; // corrupt or unavailable storage: start clean rather than fail
-  }
+  adoptLegacySave(upgrade);
 
-  const wasVersion = saved ? saved.version : null;
-  if (saved) saved = migrate(saved);
+  const index = readIndex();
+  if (!index.currentId) return null;
 
-  if (saved && saved.version === VERSION) {
-    primeIds(collectIds(saved));
-    state = saved;
-    // Write the upgrade back now. Otherwise a player who loads and makes no
-    // change leaves an old-shaped save on disk to be migrated again next time.
-    if (wasVersion !== VERSION) save();
-  } else {
-    state = freshState();
-    save();
-  }
+  const raw = loadSave(index.currentId);
+  const upgraded = upgrade(raw);
+  if (!upgraded) return null;
+
+  saveId = index.currentId;
+  state = upgraded;
+  if (raw && raw.version !== STATE_VERSION) writeSave(saveId, state);
   return state;
 }
 
@@ -109,12 +92,12 @@ export function getState() {
   return state;
 }
 
+export function getSaveId() {
+  return saveId;
+}
+
 export function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    // Storage full or blocked. The prototype keeps running in memory.
-  }
+  if (saveId) writeSave(saveId, state);
 }
 
 export function subscribe(fn) {
@@ -126,18 +109,52 @@ export function notify() {
   for (const fn of listeners) fn(state);
 }
 
-// The one write path. mutate(state) makes the change; commit persists and redraws.
+// The one write path.
 export function commit(mutate) {
   mutate(state);
   save();
   notify();
 }
 
-export function resetAll() {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    // ignore
+export function saves() {
+  return listSaves();
+}
+
+export function activeSaveId() {
+  return currentSaveId();
+}
+
+export function startNewSave() {
+  const created = createSave();
+  saveId = created.id;
+  state = created.state;
+  notify();
+  return created.id;
+}
+
+export function openSave(id) {
+  const raw = loadSave(id);
+  const upgraded = upgrade(raw);
+  if (!upgraded) return false;
+  setCurrent(id);
+  saveId = id;
+  state = upgraded;
+  if (raw.version !== STATE_VERSION) writeSave(saveId, state);
+  notify();
+  return true;
+}
+
+export function removeSave(id) {
+  const nextId = deleteSave(id);
+  if (saveId === id) {
+    saveId = null;
+    state = null;
+    if (nextId) openSave(nextId);
   }
+  notify();
+}
+
+export function resetAll() {
+  deleteEverything();
   location.reload();
 }

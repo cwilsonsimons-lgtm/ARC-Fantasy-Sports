@@ -8,7 +8,6 @@
 // future phase (the week between shows) slots in without every screen having
 // to re-derive where it is. The transitions below are the only places phase
 // changes, which keeps the machine in one readable file.
-import { seedRoster } from '../data/roster-seed.js';
 import { createShow } from './show.js';
 import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
@@ -17,12 +16,13 @@ import { decideWinner, applyOutcome } from './matches.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
-export function createGame() {
+export function createGame({ wrestlers, promotion }) {
   return {
     week: 1,
     phase: PHASES.PREP,
-    wrestlers: seedRoster(),
-    show: createShow({ name: 'Weekly Show' }),
+    promotion,
+    wrestlers,
+    show: createShow({ name: promotion.show }),
     broadcast: null,
     journal: [],
   };

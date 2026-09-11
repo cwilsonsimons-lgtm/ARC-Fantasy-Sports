@@ -5,6 +5,7 @@ import { renderNav } from './ui/nav.js';
 import { renderRoster } from './ui/roster.js';
 import { renderBooking } from './ui/booking.js';
 import { renderLive } from './ui/live.js';
+import { renderSaves } from './ui/saves.js';
 import { renderCard } from './ui/wrestler-card.js';
 import { openCardId, closeCard } from './ui/card-state.js';
 
@@ -23,10 +24,16 @@ function navigate(next) {
 
 function render() {
   const state = getState();
-  navEl.replaceChildren(...renderNav(route, state.phase, navigate));
-  phaseEl.replaceChildren(`Week ${state.week} · ${PHASE_LABEL[state.phase]}`);
+  if (!state) route = 'saves';
+
+  navEl.replaceChildren(...renderNav(route, state && state.phase, navigate, Boolean(state)));
+  phaseEl.replaceChildren(
+    state ? `${state.promotion.show} · Week ${state.week} · ${PHASE_LABEL[state.phase]}` : 'No save open'
+  );
 
   const view =
+    route === 'saves' ? renderSaves(state, navigate) :
+    !state ? renderSaves(state, navigate) :
     route === 'booking' ? renderBooking(state, navigate) :
     route === 'live' ? renderLive(state, navigate) :
     renderRoster(state);
@@ -41,8 +48,9 @@ document.addEventListener('keydown', e => {
 });
 
 const state = load();
+if (!state) route = 'saves';
 // A refresh during or just after a show lands back where the action is.
-if (state.phase !== PHASES.PREP) route = 'live';
+else if (state.phase !== PHASES.PREP) route = 'live';
 
 // Two-click confirm rather than window.confirm(), which some embedded contexts block.
 const resetBtn = document.getElementById('reset');
@@ -50,7 +58,7 @@ let resetArmed = false;
 resetBtn.addEventListener('click', () => {
   if (!resetArmed) {
     resetArmed = true;
-    resetBtn.textContent = 'Click again to confirm reset';
+    resetBtn.textContent = 'Click again to delete every save';
     return;
   }
   resetAll();

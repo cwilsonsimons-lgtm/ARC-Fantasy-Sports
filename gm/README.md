@@ -40,8 +40,9 @@ footer clears it and reseeds the roster.
 ```
 js/model/   game state and rules — no DOM, no storage
 js/ui/      the only code that touches the page
-js/store.js the single source of truth and the only writer to localStorage
-js/data/    seed data
+js/store.js the open save, and the only write path into it
+js/saves.js save slots, and the generator that builds a world
+js/data/    name pools, archetypes, match types
 ```
 
 `model/` never imports from `ui/`. That boundary is the point of the structure:
@@ -223,6 +224,42 @@ the whole personality system, in its smallest honest form.
 
 ## Saves
 
-One `localStorage` key, `wgm_v1`, holding a versioned state object. `load()`
-upgrades older saves in place rather than wiping them and writes the upgrade
-back immediately, so a save is never left half-shaped on disk.
+Each save is a separate world — its own promotion, its own roster, its own ids —
+under its own storage key, with an index at `wgm_index_v1` listing them and
+remembering which is open. Ids restart per save, so switching saves resets the
+counter before priming it from the save being opened.
+
+`store.js` upgrades a save written by an older build rather than discarding it,
+and writes the upgrade back immediately so nothing is left half-shaped on disk.
+A game played before saves existed lived under a single key; it is adopted as a
+slot rather than stranded.
+
+## Roster generation
+
+Every save generates its own roster from a seed, so no two promotions field the
+same people.
+
+**Archetypes are the authoring unit; trait values are the simulation unit.** An
+archetype (`data/archetypes.js`) declares stat *ranges*, the stipulations it has
+a view on, and a couple of bio openers. Generation rolls an individual inside
+those ranges and attaches a colour sentence from a shared pool, so two wrestlers
+built from the same template share a silhouette and nothing else — different
+name, different numbers, different opinions, different place in the social
+graph.
+
+Seventeen archetypes, sampled so each save omits some and doubles others rather
+than always fielding one of each. Monsters and cult leaders are capped at two
+between them: they punctuate a roster, they do not fill it.
+
+Each save also gets:
+
+- **14 to 18 wrestlers**, with first names and surnames both unique across the
+  roster.
+- **One or two people unavailable to you from day one**, so the card is short
+  before you have booked anything.
+- **History from before you took the job** — standing rivalries, a couple of
+  teams, and whatever the cult leader has been quietly building.
+- **A promotion and a show name**, which is what the save is called.
+
+Generation is seeded (`model/random.js`), so a roster is reproducible from its
+seed and a test can assert exact output.

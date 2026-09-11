@@ -385,3 +385,21 @@ td .wlink { text-decoration-color: color-mix(in srgb, var(--muted) 55%, transpar
   text-transform: uppercase; letter-spacing: .08em; color: var(--good);
 }
 .stip-skill-unknown { color: var(--muted); text-transform: none; letter-spacing: 0; font-style: italic; }
+
+/* ---------- saves ---------- */
+.saves { list-style: none; margin: 0 0 20px; padding: 0; }
+.save {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  justify-content: space-between;
+  padding: 13px 15px; margin-bottom: 8px; border-radius: 4px;
+  border: 1px solid var(--line); background: var(--panel);
+}
+.save.open { border-color: var(--cool); }
+.save-id { min-width: 0; }
+.save-name {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 3px;
+}
+.save-meta { font: 12px/1.4 var(--mono); color: var(--muted); }
+.save-actions { display: flex; gap: 6px; }
+.btn.danger { border-color: var(--tally); color: var(--tally); }

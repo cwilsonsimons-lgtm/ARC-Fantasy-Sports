@@ -6,6 +6,12 @@
 // these ids, so a wrestler or show item must keep the same id for its lifetime.
 let seq = 0;
 
+// Ids are per-save, so switching saves must start the counter over before the
+// new save's ids are primed in.
+export function resetIds() {
+  seq = 0;
+}
+
 // Called once at load with every id already present in the save, so a reload
 // never hands out an id that is already in use.
 export function primeIds(existingIds) {
