@@ -2,15 +2,17 @@
 // No simulation yet: every item takes exactly its planned time.
 import { el } from './dom.js';
 import { commit } from '../store.js';
-import { PHASES, completeSegment, advanceWeek } from '../model/game.js';
+import { PHASES, completeSegment, advanceWeek, availableResponses, resolveIncidentResponse } from '../model/game.js';
 import { itemById } from '../model/show.js';
 import {
   currentItem, upcomingItems, airedItems, elapsedMinutes, remainingMinutes,
 } from '../model/broadcast.js';
 import { itemLabel, typeLabel } from './labels.js';
 import { matchType } from '../data/match-types.js';
+import { SEVERITIES, responseById } from '../data/responses.js';
+import { gmReputation } from '../model/discipline.js';
 
-const INCIDENT_TYPES = new Set(['attack', 'save', 'escalation', 'hesitation', 'nobody']);
+const INCIDENT_TYPES = new Set(['attack', 'argument', 'save', 'escalation', 'hesitation', 'nobody', 'ruling']);
 
 // Why somebody went. The reason is the whole point — a save that just happens
 // is a dice roll, a save with a motive attached is a story.
@@ -50,12 +52,19 @@ function liveView(state) {
   return el('section', {},
     el('h2', { text: `Week ${state.week} — on the air` }),
 
-    el('div', { class: 'onair' },
-      el('div', { class: 'label', text: 'On air now' }),
-      el('div', { class: 'title' }, itemLabelNodes(state, item)),
-      el('div', { class: 'muted' }, `${typeLabel(item)} · `, participantLinks(state, item.participants)),
-      el('div', {}, 'Planned duration: ', el('b', { text: `${item.plannedMinutes} minutes` }))
-    ),
+    // An incident can fire off the last match of the night, which leaves the
+    // broadcast finished but the evening very much not.
+    item
+      ? el('div', { class: 'onair' },
+          el('div', { class: 'label', text: 'On air now' }),
+          el('div', { class: 'title' }, itemLabelNodes(state, item)),
+          el('div', { class: 'muted' }, `${typeLabel(item)} · `, participantLinks(state, item.participants)),
+          el('div', {}, 'Planned duration: ', el('b', { text: `${item.plannedMinutes} minutes` }))
+        )
+      : el('div', { class: 'onair onair-done' },
+          el('div', { class: 'label', text: 'Off the air' }),
+          el('div', { class: 'title', text: 'The broadcast is over. This is not.' })
+        ),
 
     el('div', { class: 'totals' },
       el('div', {}, 'Current Show Time: ', el('b', { text: `${elapsedMinutes(broadcast)} minutes` })),
@@ -67,12 +76,20 @@ function liveView(state) {
 
     left < 0 ? el('div', { class: 'notice warn', text: 'This show has run past its broadcast window.' }) : null,
 
-    el('p', {},
-      el('button', {
-        type: 'button', class: 'btn primary', text: 'Complete Segment',
-        onClick: () => commit(s => completeSegment(s)),
-      })
-    ),
+    decisionPanel(state),
+
+    item
+      ? el('p', {},
+          el('button', {
+            type: 'button', class: 'btn primary', text: 'Complete Segment',
+            disabled: Boolean(state.pendingIncident),
+            onClick: () => commit(s => completeSegment(s)),
+          }),
+          state.pendingIncident
+            ? el('span', { class: 'muted', text: '  The show is holding until you answer.' })
+            : null
+        )
+      : null,
 
     incidentPanel(state),
 
@@ -80,6 +97,38 @@ function liveView(state) {
     upcoming.length
       ? rundownTable(state, show, upcoming)
       : el('p', { class: 'empty', text: 'Nothing left after this. Completing it ends the show.' })
+  );
+}
+
+// The show stops and asks. An incident is a situation, not a verdict — what it
+// becomes is the GM's call, and the room will have an opinion about the call.
+function decisionPanel(state) {
+  const incident = state.pendingIncident;
+  if (!incident) return null;
+
+  const aggressor = nameOf(state.wrestlers, incident.aggressorId);
+  const victim = nameOf(state.wrestlers, incident.victimId);
+  const fill = text => text.replace('{aggressor}', aggressor).replace('{victim}', victim);
+
+  return el('div', { class: 'decision' },
+    el('div', { class: 'decision-head' },
+      el('span', { class: `sev sev-${incident.severity}`, text: SEVERITIES[incident.severity].label }),
+      el('span', { class: 'decision-what', text: 'What are you going to do about this?' })
+    ),
+    el('p', { class: 'decision-line', text: incident.kind === 'argument'
+      ? `${aggressor} and ${victim} went at it backstage.`
+      : `${aggressor} put hands on ${victim} after the bell.` }),
+    el('div', { class: 'options' },
+      availableResponses(state).map(response =>
+        el('button', {
+          type: 'button', class: 'option',
+          onClick: () => commit(s => resolveIncidentResponse(s, response.id)),
+        },
+          el('span', { class: 'option-label', text: fill(response.label) }),
+          el('span', { class: 'option-note', text: response.note })
+        )
+      )
+    )
   );
 }
 
@@ -154,6 +203,7 @@ function aftermathView(state) {
     ),
 
     memoPanel(review),
+    reputationPanel(state),
 
     el('h3', { text: 'The locker room' }),
     moodList(state),
@@ -243,6 +293,18 @@ function memoPanel(review) {
   );
 }
 
+// Nobody picks this at the start. It is what the room has decided you are,
+// from the pattern of calls you actually made.
+function reputationPanel(state) {
+  const reputation = gmReputation(state);
+  if (!reputation) return null;
+  return el('div', { class: 'reputation' },
+    el('span', { class: 'rep-label', text: 'They have you down as' }),
+    el('span', { class: 'rep-name', text: reputation.label }),
+    el('span', { class: 'rep-blurb', text: reputation.blurb })
+  );
+}
+
 // Demeanour, not digits: a word per wrestler, unhappiest first.
 function moodList(state) {
   const roster = byMood(state.wrestlers.filter(bookable));
@@ -281,6 +343,14 @@ function grudgeList(state) {
 
 // Grudges store a type and a target, never a sentence. This writes the sentence.
 function grudgeText(state, wrestler, grudge) {
+  if (grudge.type === 'punished') {
+    return grudge.data.onBehalfOf
+      ? `thinks you went too hard on ${nameOf(state.wrestlers, grudge.data.onBehalfOf)}`
+      : 'thinks your punishment did not fit what happened';
+  }
+  if (grudge.type === 'broken-promise') {
+    return 'was promised a match that never came';
+  }
   if (grudge.type === 'attacked') {
     return `jumped after the bell by ${nameOf(state.wrestlers, grudge.targetId)}`;
   }
@@ -326,6 +396,25 @@ function nameList(state, ids) {
 function journalText(state, entry) {
   if (entry.type === 'show-start') return 'The show goes on the air.';
   if (entry.type === 'show-end') return 'The broadcast ends.';
+  if (entry.type === 'argument') {
+    return `${nameOf(state.wrestlers, entry.data.aggressorId)} and ${nameOf(state.wrestlers, entry.data.victimId)} went at it backstage.`;
+  }
+  if (entry.type === 'ruling') {
+    const response = responseById(entry.data.responseId);
+    const who = nameOf(state.wrestlers, entry.data.aggressorId);
+    const label = response ? response.label.replace('{aggressor}', who) : 'A ruling was made';
+    const read = entry.data.read === 'harsh' ? ' The room thought that was heavy.'
+      : entry.data.read === 'weak' ? ' The room noticed you let it go.'
+      : '';
+    const pulled = entry.data.pulled ? ` ${entry.data.pulled} booked segment${entry.data.pulled === 1 ? '' : 's'} came off the card.` : '';
+    return `Your call: ${label}.${read}${pulled}`;
+  }
+  if (entry.type === 'promise-broken') {
+    return `${nameOf(state.wrestlers, entry.data.victimId)} never got the match you promised them.`;
+  }
+  if (entry.type === 'opportunity-cold') {
+    return `Whatever was brewing between ${nameOf(state.wrestlers, entry.data.victimId)} and ${nameOf(state.wrestlers, entry.data.aggressorId)} has gone cold.`;
+  }
   if (entry.type === 'attack') {
     return `${nameOf(state.wrestlers, entry.data.aggressorId)} jumped ${nameOf(state.wrestlers, entry.data.victimId)} after the bell.`;
   }

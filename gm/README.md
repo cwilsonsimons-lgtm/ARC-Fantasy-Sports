@@ -256,6 +256,43 @@ a full locker-room brawl happens in under one percent.
 **Debt creates itself through play.** A save writes a favour onto the record, and
 that favour is a motive the next time the rescuer is the one in trouble.
 
+## The show stops and asks
+
+An incident is a situation, not a verdict. The locker room reacts on its own —
+that happens in the moment — and then the show **holds** until the GM answers.
+Complete Segment is disabled until they do, and the pending incident lives on
+the save, so closing the tab does not get you out of it.
+
+Ten answers, from "let them settle it" to a month's suspension. Each carries a
+`weight`, and every incident carries a `severity`, and **the room judges the
+gap**:
+
+| | |
+| --- | --- |
+| **harsh** | response much heavier than what happened — the punished wrestler holds it against the office, and so do their close allies |
+| **fair** | it fit — the victim is satisfied |
+| **weak** | you let it go — the victim takes it badly and every professional on the roster notices |
+
+That comparison is why discipline is judgement rather than a button marked
+"harshest". A month off for a shouting match and a month off after a
+locker-room riot are the same click and completely different decisions.
+
+Ejections and suspensions **pull the wrestler off the rest of tonight**,
+including whatever they were booked for, so a heavy call costs you television.
+
+## Unfinished business
+
+Anything left unresolved becomes an opportunity on the booking screen: book it,
+or leave it. "Book it next week" records it as a **promise**, and a promise that
+goes unkept is a grudge. Everything goes cold after three weeks, and the person
+who was wronged notices that nothing was ever done.
+
+## GM reputation
+
+Nobody picks this at the start. `gmRecord` counts every call by how the room
+read it, and a pattern earns a name — The Disciplinarian, The Absentee, The
+Matchmaker, The Wild West GM, or an even hand. It shows on the post-show.
+
 ## Saves
 
 Each save is a separate world — its own promotion, its own roster, its own ids —

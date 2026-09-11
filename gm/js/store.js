@@ -76,6 +76,13 @@ function upgrade(saved) {
     saved.version = 7;
   }
 
+  if (saved.version === 7) {
+    if (saved.pendingIncident === undefined) saved.pendingIncident = null;
+    if (!saved.opportunities) saved.opportunities = [];
+    if (!saved.gmRecord) saved.gmRecord = { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 };
+    saved.version = 8;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

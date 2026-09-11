@@ -18,6 +18,7 @@
   --good: #5fb88a;
   --cool: #7fa9c4;
   --cool-dim: #1e2a33;
+  --clock-dim: #2a2314;
 
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -233,8 +234,10 @@ td input[type=number] {
   padding: 6px 0; border-bottom: 1px solid var(--line-soft);
   font-size: 14px; color: var(--ink-dim);
 }
-.journal .at {
-  display: inline-block; min-width: 58px;
+/* Shared by the journal and the live incident feed — scoping this to .journal
+   left the timestamps running straight into the text everywhere else. */
+.at {
+  display: inline-block; min-width: 58px; padding-right: 9px;
   font: 12px/1.5 var(--mono); font-variant-numeric: tabular-nums; color: var(--muted);
 }
 
@@ -415,3 +418,60 @@ td .wlink { text-decoration-color: color-mix(in srgb, var(--muted) 55%, transpar
 .beat-escalation { border-left-color: var(--amber); }
 .beat-hesitation { border-left-color: var(--muted); font-style: italic; }
 .beat-nobody { border-left-color: var(--muted); font-style: italic; }
+
+/* ---------- the show stops and asks ---------- */
+.decision {
+  border: 1px solid var(--amber); background: var(--clock-dim, #2a2314);
+  border-radius: 4px; padding: 15px 17px; margin-bottom: 18px;
+}
+.decision-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+.decision-what {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
+  color: var(--amber);
+}
+.decision-line { font-size: 17px; font-weight: 600; color: var(--ink); margin: 0 0 13px; max-width: none; }
+.sev {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  padding: 4px 7px; border-radius: 2px; border: 1px solid currentColor;
+}
+.sev-minor { color: var(--muted); }
+.sev-moderate { color: var(--cool); }
+.sev-major { color: var(--amber); }
+.sev-critical { color: var(--tally); }
+
+.options { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 7px; }
+.option {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  padding: 9px 11px; border-radius: 3px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--ink);
+  font: inherit;
+}
+.option:hover { border-color: var(--amber); }
+.option-label { font-size: 13px; font-weight: 600; }
+.option-note { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* ---------- unfinished business ---------- */
+.opps { list-style: none; margin: 0; padding: 0; }
+.opp {
+  display: flex; flex-wrap: wrap; gap: 9px; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--line-soft);
+}
+.opp:last-child { border-bottom: 0; }
+.opp-pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 15px; font-weight: 600; }
+.opp-why { font: 11px/1.5 var(--mono); color: var(--muted); margin-top: 2px; }
+.opp.promised .opp-pair { color: var(--tally); }
+
+/* ---------- what they have you down as ---------- */
+.reputation {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+  padding: 11px 14px; margin-bottom: 18px; border-radius: 4px;
+  border: 1px solid var(--line); border-left: 3px solid var(--cool); background: var(--panel);
+}
+.rep-label { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.rep-name { font-size: 16px; font-weight: 600; color: var(--cool); }
+.rep-blurb { font-size: 13px; color: var(--ink-dim); }
+.beat-argument { border-left-color: var(--cool); }
+.beat-ruling { border-left-color: var(--amber); }
+.onair-done { border-color: var(--line); background: var(--panel); }
+.onair-done .label { color: var(--muted); }
+.onair-done .label::before { animation: none; background: var(--muted); }

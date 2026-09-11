@@ -13,6 +13,8 @@ import { typeLabel } from './labels.js';
 import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { bookable } from '../model/morale.js';
 import { moodWord, moodClass } from './mood.js';
+import { listOpportunities, takeOpportunity, dismissOpportunity } from '../model/opportunities.js';
+import { nameOf } from '../model/wrestlers.js';
 
 // Half-typed form values live here rather than in game state, so a redraw
 // (triggered by any commit) does not wipe what the user is in the middle of.
@@ -36,6 +38,7 @@ export function renderBooking(state, navigate) {
         })
       : null,
     cardTable(state, show, locked),
+    opportunityPanel(state, locked),
     offTheCard(state),
     locked ? null : addMatchPanel(state),
     locked ? null : addSegmentPanel(state),
@@ -142,6 +145,53 @@ function cardTable(state, show, locked) {
       )
     ),
     el('tbody', {}, rows)
+  );
+}
+
+// Grievances you have not done anything with yet. Taking one puts the match on
+// the card; waving it away is also an answer, and the person who wanted it
+// knows which one you picked.
+function opportunityPanel(state, locked) {
+  const open = listOpportunities(state);
+  if (!open.length) return null;
+
+  return el('div', { class: 'panel' },
+    el('h3', { text: `Unfinished business (${open.length})` }),
+    el('ul', { class: 'opps' },
+      open.map(opportunity =>
+        el('li', { class: opportunity.promised ? 'opp promised' : 'opp' },
+          el('div', { class: 'opp-id' },
+            el('div', { class: 'opp-pair' },
+              nameOf(state.wrestlers, opportunity.aggressorId),
+              ' vs. ',
+              nameOf(state.wrestlers, opportunity.victimId),
+              opportunity.promised ? el('span', { class: 'chip chip-bad', text: 'promised' }) : null,
+              opportunity.repeats ? el('span', { class: 'chip', text: `${opportunity.repeats + 1}x` }) : null
+            ),
+            el('div', { class: 'opp-why', text: `From ${opportunity.reason}, week ${opportunity.week}. Goes cold after week ${opportunity.expiresWeek}.` })
+          ),
+          el('div', { class: 'save-actions' },
+            el('button', {
+              type: 'button', class: 'btn', text: 'Book it', disabled: locked,
+              onClick: () => commit(s => {
+                const taken = takeOpportunity(s, opportunity.id);
+                if (taken) {
+                  addItem(s.show, createMatch({
+                    wrestlerAId: taken.aggressorId,
+                    wrestlerBId: taken.victimId,
+                    plannedMinutes: 12,
+                  }));
+                }
+              }),
+            }),
+            el('button', {
+              type: 'button', class: 'btn', text: 'Leave it', disabled: locked,
+              onClick: () => commit(s => dismissOpportunity(s, opportunity.id)),
+            })
+          )
+        )
+      )
+    )
   );
 }
 

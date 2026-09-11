@@ -14,7 +14,11 @@ import { createEntry } from './journal.js';
 import { settleShow } from './morale.js';
 import { decideWinner, applyOutcome } from './matches.js';
 import { rngFor } from './random.js';
-import { maybePostMatchAttack, resolveIncident } from './incidents.js';
+import { maybePostMatchAttack, maybeBackstageArgument, resolveIncident } from './incidents.js';
+import { applyResponse, releaseSuspensions } from './discipline.js';
+import { createOpportunity, ageOpportunities } from './opportunities.js';
+import { RESPONSES } from '../data/responses.js';
+import { createMatch, addItem, remainingMinutes } from './show.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
@@ -27,6 +31,9 @@ export function createGame({ wrestlers, promotion }) {
     show: createShow({ name: promotion.show }),
     broadcast: null,
     journal: [],
+    pendingIncident: null,
+    opportunities: [],
+    gmRecord: { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 },
   };
 }
 
@@ -45,7 +52,8 @@ export function startShow(state) {
 }
 
 export function completeSegment(state) {
-  if (state.phase !== PHASES.LIVE) return null;
+  // The show does not move while something is waiting on the GM.
+  if (state.phase !== PHASES.LIVE || state.pendingIncident) return null;
 
   const item = currentItem(state.show, state.broadcast);
   if (!item) return null;
@@ -72,22 +80,85 @@ export function completeSegment(state) {
     },
   }));
 
-  // The bell rings, and then somebody decides what to do about it.
-  const incident = maybePostMatchAttack(
-    state, item, result, state.show.items.indexOf(item), rngFor(state)
-  );
+  // The bell rings, and then somebody decides what to do about it. The locker
+  // room reacts on its own — that happens in the moment, not on the GM's word —
+  // and then the situation is handed over.
+  const roll = rngFor(state);
+  const incident = maybePostMatchAttack(state, item, result, state.show.items.indexOf(item), roll)
+    || maybeBackstageArgument(state, roll);
+
   if (incident) {
     incident.at = at;
-    resolveIncident(state, incident);
+    const { severity } = resolveIncident(state, incident);
+    state.pendingIncident = { ...incident, severity };
+    return result; // the show holds here until the GM answers
   }
 
-  if (state.broadcast.status === 'complete') {
-    state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));
-    // The locker room reacts once, when the show comes off the air.
-    settleShow(state);
-    state.phase = PHASES.AFTER;
-  }
+  finishIfDone(state, at);
   return result;
+}
+
+// Which answers are on the table right now.
+export function availableResponses(state) {
+  if (!state.pendingIncident) return [];
+  const room = remainingMinutes(state.show, state.broadcast);
+  return RESPONSES.filter(response => !response.needsRuntime || room >= 10);
+}
+
+export function resolveIncidentResponse(state, responseId) {
+  const incident = state.pendingIncident;
+  if (!incident) return null;
+
+  const outcome = applyResponse(state, incident, responseId);
+  if (!outcome) return null;
+
+  if (responseId === 'bookTonight') {
+    outcome.booked = bookIncidentMatch(state, incident);
+  } else if (responseId === 'bookNext') {
+    outcome.opportunity = createOpportunity(state, {
+      aggressorId: incident.aggressorId,
+      victimId: incident.victimId,
+      reason: incident.kind === 'argument' ? 'a backstage argument' : 'a post-match attack',
+      promised: true,
+    });
+  } else if (!outcome.suspended && outcome.mediationWorked !== true) {
+    // Anything left unresolved is still sitting there to be used.
+    outcome.opportunity = createOpportunity(state, {
+      aggressorId: incident.aggressorId,
+      victimId: incident.victimId,
+      reason: incident.kind === 'argument' ? 'a backstage argument' : 'a post-match attack',
+    });
+  }
+
+  state.pendingIncident = null;
+  finishIfDone(state, incident.at || 0);
+  return outcome;
+}
+
+// Slotted in ahead of whatever was closing the show.
+function bookIncidentMatch(state, incident, minutes = 10) {
+  const item = createMatch({
+    wrestlerAId: incident.aggressorId,
+    wrestlerBId: incident.victimId,
+    plannedMinutes: minutes,
+  });
+  const aired = new Set(state.broadcast.results.map(r => r.itemId));
+  const remaining = state.show.items.filter(i => !aired.has(i.id));
+
+  if (remaining.length > 1) {
+    state.show.items.splice(state.show.items.indexOf(remaining[remaining.length - 1]), 0, item);
+  } else {
+    addItem(state.show, item);
+  }
+  return item;
+}
+
+function finishIfDone(state, at) {
+  if (currentItem(state.show, state.broadcast)) return;
+  state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));
+  // The locker room reacts once, when the show comes off the air.
+  settleShow(state);
+  state.phase = PHASES.AFTER;
 }
 
 // The journal is deliberately per-show: it is cleared when the next show goes
@@ -97,6 +168,8 @@ export function completeSegment(state) {
 export function advanceWeek(state) {
   if (state.phase !== PHASES.AFTER) return false;
   state.week += 1;
+  releaseSuspensions(state);
+  ageOpportunities(state);
   state.show = createShow({ name: 'Weekly Show' });
   state.broadcast = null;
   state.phase = PHASES.PREP;

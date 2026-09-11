@@ -16,6 +16,7 @@ import { nextId } from '../ids.js';
 const BASE_CHANCE = 0.10;
 const MAX_CHANCE = 0.55;
 const CHAIN_LIMIT = 3;
+const ARGUMENT_CHANCE = 0.14;
 
 function bond(wrestler, otherId) {
   if (!wrestler.relationships[otherId]) {
@@ -75,6 +76,36 @@ export function maybePostMatchAttack(state, item, result, index, roll) {
   return { id: nextId('inc'), itemId: item.id, aggressorId, victimId, index };
 }
 
+// Not everything is a beating. Two people who already cannot stand each other
+// crossing paths backstage is the small end of the scale, and the small end is
+// what makes an overreaction visible as one.
+export function maybeBackstageArgument(state, roll) {
+  if (roll() > ARGUMENT_CHANCE) return null;
+
+  const fit = state.wrestlers.filter(w => w.status === 'Available');
+  const pairs = [];
+  for (const wrestler of fit) {
+    for (const [otherId, rel] of Object.entries(wrestler.relationships || {})) {
+      const other = byId(state.wrestlers, otherId);
+      if (!other || other.status !== 'Available') continue;
+      const heat = rel.matches + wrestler.grudges.filter(g => g.targetId === otherId).length * 4;
+      if (heat >= 4) pairs.push({ aggressorId: wrestler.id, victimId: otherId, heat });
+    }
+  }
+  if (!pairs.length) return null;
+
+  pairs.sort((a, b) => b.heat - a.heat);
+  const chosen = pairs[Math.floor(roll() * Math.min(pairs.length, 5))] || pairs[0];
+  return {
+    id: nextId('inc'),
+    kind: 'argument',
+    itemId: null,
+    aggressorId: chosen.aggressorId,
+    victimId: chosen.victimId,
+    index: 0,
+  };
+}
+
 // Runs the whole chain and writes it into the journal as it goes.
 export function resolveIncident(state, incident) {
   const at = state.journal.length ? incident.at || 0 : 0;
@@ -88,6 +119,13 @@ export function resolveIncident(state, incident) {
   const victim = byId(state.wrestlers, incident.victimId);
   const aggressor = byId(state.wrestlers, incident.aggressorId);
   if (!victim || !aggressor) return beats;
+
+  if (incident.kind === 'argument') {
+    push('argument', { aggressorId: aggressor.id, victimId: victim.id });
+    nudge(victim, -2);
+    nudge(aggressor, -1);
+    return { beats, severity: 'minor' };
+  }
 
   push('attack', { aggressorId: aggressor.id, victimId: victim.id });
   nudge(victim, -4);
@@ -160,7 +198,16 @@ export function resolveIncident(state, incident) {
     break;
   }
 
-  return beats;
+  return { beats, severity: severityOf(beats) };
+}
+
+// How big a thing it turned into, which is what any response gets measured
+// against. One person swinging is not a riot.
+function severityOf(beats) {
+  const escalations = beats.filter(b => b.type === 'escalation').length;
+  if (escalations >= 1) return 'critical';
+  if (beats.some(b => b.type === 'save')) return 'major';
+  return 'moderate';
 }
 
 function closestAvailableAlly(state, wrestler, involved) {
