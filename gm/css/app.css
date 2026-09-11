@@ -4,6 +4,11 @@
    document, so every colour is painted explicitly. No network fonts: the rest
    of this repo is deliberately offline, so the type is system stacks. */
 :root {
+  /* Native controls — the booking screen's selects, its number fields, the
+     scrollbars — follow this. Without it a light OS paints white dropdowns into
+     a black monitor wall. */
+  color-scheme: dark;
+
   --bg: #14161a;
   --panel: #1b1e24;
   --raised: #232830;
