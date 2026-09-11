@@ -1,13 +1,14 @@
 import { el } from './dom.js';
+import { PHASES } from '../model/game.js';
 
-const TABS = [
-  ['roster', 'Roster'],
-  ['booking', 'Booking'],
-  ['live', 'Live Show'],
-];
+export function renderNav(route, phase, navigate) {
+  const tabs = [
+    ['roster', 'Roster'],
+    ['booking', 'Booking'],
+    ['live', phase === PHASES.AFTER ? 'Aftermath' : 'Live Show'],
+  ];
 
-export function renderNav(route, navigate) {
-  return TABS.map(([id, label]) =>
+  return tabs.map(([id, label]) =>
     el('button', {
       type: 'button',
       class: route === id ? 'on' : '',

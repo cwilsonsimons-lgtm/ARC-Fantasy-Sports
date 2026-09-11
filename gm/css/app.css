@@ -96,3 +96,17 @@ button { font: inherit; }
   table { display: block; overflow-x: auto; white-space: nowrap; }
   .view { padding: 14px; }
 }
+
+/* Week / phase indicator in the header. */
+.phase {
+  font-size: 13px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Show journal on the aftermath screen. */
+.journal { list-style: none; margin: 0 0 20px; padding: 0; }
+.journal li { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.journal .at {
+  display: inline-block; min-width: 62px;
+  color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums;
+}

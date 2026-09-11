@@ -5,22 +5,29 @@
 // systems (incidents, morale, messages from bosses) mutate through the same
 // door as the buttons do, so nothing has to be re-plumbed to add them.
 import { primeIds } from './ids.js';
-import { seedRoster } from './data/roster-seed.js';
-import { createShow } from './model/show.js';
+import { createGame } from './model/game.js';
 
 const KEY = 'wgm_v1';
-const VERSION = 1;
+const VERSION = 2;
 
 let state = null;
 const listeners = new Set();
 
 function freshState() {
-  return {
-    version: VERSION,
-    wrestlers: seedRoster(),
-    show: createShow({ name: 'Weekly Show' }),
-    broadcast: null,
-  };
+  return { version: VERSION, ...createGame() };
+}
+
+// Upgrade older saves in place rather than silently wiping the player's card.
+function migrate(saved) {
+  if (saved.version === 1) {
+    saved.week = 1;
+    saved.journal = [];
+    saved.phase = !saved.broadcast ? 'prep'
+      : saved.broadcast.status === 'complete' ? 'after'
+      : 'live';
+    saved.version = 2;
+  }
+  return saved;
 }
 
 // Every id in the save, so the id counter resumes above the highest one used.
@@ -31,6 +38,7 @@ function collectIds(s) {
     ids.push(s.show.id);
     for (const it of s.show.items || []) ids.push(it.id);
   }
+  for (const entry of s.journal || []) ids.push(entry.id);
   return ids;
 }
 
@@ -43,9 +51,15 @@ export function load() {
     saved = null; // corrupt or unavailable storage: start clean rather than fail
   }
 
+  const wasVersion = saved ? saved.version : null;
+  if (saved) saved = migrate(saved);
+
   if (saved && saved.version === VERSION) {
     primeIds(collectIds(saved));
     state = saved;
+    // Write the upgrade back now. Otherwise a player who loads and makes no
+    // change leaves an old-shaped save on disk to be migrated again next time.
+    if (wasVersion !== VERSION) save();
   } else {
     state = freshState();
     save();

@@ -5,7 +5,7 @@ import {
   addItem, createMatch, createSegment, removeItem, moveItem, setItemMinutes,
   bookedMinutes, remainingMinutes, isOverbooked,
 } from '../model/show.js';
-import { createBroadcast, isLive } from '../model/broadcast.js';
+import { PHASES, canEditCard, startShow } from '../model/game.js';
 import { itemLabel, participantsLabel, typeLabel } from './labels.js';
 
 // Half-typed form values live here rather than in game state, so a redraw
@@ -16,12 +16,12 @@ const draft = {
 };
 
 export function renderBooking(state, navigate) {
-  const { show, broadcast } = state;
-  const locked = isLive(broadcast);
+  const { show } = state;
+  const locked = !canEditCard(state);
 
   return el('section', {},
-    el('h2', { text: `Booking — ${show.name}` }),
-    locked ? liveNotice(navigate) : null,
+    el('h2', { text: `Week ${state.week} — Booking` }),
+    locked ? lockedNotice(state, navigate) : null,
     totals(show),
     isOverbooked(show)
       ? el('div', {
@@ -39,7 +39,7 @@ export function renderBooking(state, navigate) {
         text: 'Start Show',
         disabled: locked || show.items.length === 0,
         onClick: () => {
-          commit(s => { s.broadcast = createBroadcast(s.show); });
+          commit(s => startShow(s));
           navigate('live');
         },
       }),
@@ -50,10 +50,17 @@ export function renderBooking(state, navigate) {
   );
 }
 
-function liveNotice(navigate) {
+function lockedNotice(state, navigate) {
+  const onAir = state.phase === PHASES.LIVE;
   return el('div', { class: 'notice' },
-    'A show is currently on the air, so the card is locked. ',
-    el('button', { type: 'button', class: 'link', text: 'Go to the live show', onClick: () => navigate('live') })
+    onAir
+      ? 'A show is currently on the air, so the card is locked. '
+      : `Week ${state.week} is over. Advance the week to book the next show. `,
+    el('button', {
+      type: 'button', class: 'link',
+      text: onAir ? 'Go to the live show' : 'Go to the aftermath',
+      onClick: () => navigate('live'),
+    })
   );
 }
 
