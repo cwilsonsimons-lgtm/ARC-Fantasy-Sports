@@ -69,6 +69,13 @@ function upgrade(saved) {
     saved.version = 6;
   }
 
+  if (saved.version === 6) {
+    // The show's generator position, so incidents roll the same way after a
+    // reload instead of being re-rolled from scratch.
+    if (saved.rng === undefined) saved.rng = saved.seed || 20260101;
+    saved.version = 7;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 
@@ -79,12 +86,15 @@ export function load() {
   if (!index.currentId) return null;
 
   const raw = loadSave(index.currentId);
+  // upgrade() mutates in place, so the stored version has to be read first or
+  // the write-back below never fires and the save stays old on disk.
+  const wasVersion = raw ? raw.version : null;
   const upgraded = upgrade(raw);
   if (!upgraded) return null;
 
   saveId = index.currentId;
   state = upgraded;
-  if (raw && raw.version !== STATE_VERSION) writeSave(saveId, state);
+  if (wasVersion !== STATE_VERSION) writeSave(saveId, state);
   return state;
 }
 
@@ -134,12 +144,13 @@ export function startNewSave() {
 
 export function openSave(id) {
   const raw = loadSave(id);
+  const wasVersion = raw ? raw.version : null;
   const upgraded = upgrade(raw);
   if (!upgraded) return false;
   setCurrent(id);
   saveId = id;
   state = upgraded;
-  if (raw.version !== STATE_VERSION) writeSave(saveId, state);
+  if (wasVersion !== STATE_VERSION) writeSave(saveId, state);
   notify();
   return true;
 }

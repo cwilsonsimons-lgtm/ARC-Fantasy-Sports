@@ -13,6 +13,8 @@ import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from '.
 import { createEntry } from './journal.js';
 import { settleShow } from './morale.js';
 import { decideWinner, applyOutcome } from './matches.js';
+import { rngFor } from './random.js';
+import { maybePostMatchAttack, resolveIncident } from './incidents.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
@@ -69,6 +71,15 @@ export function completeSegment(state) {
       winnerId: winnerId || null,
     },
   }));
+
+  // The bell rings, and then somebody decides what to do about it.
+  const incident = maybePostMatchAttack(
+    state, item, result, state.show.items.indexOf(item), rngFor(state)
+  );
+  if (incident) {
+    incident.at = at;
+    resolveIncident(state, incident);
+  }
 
   if (state.broadcast.status === 'complete') {
     state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));

@@ -9,6 +9,21 @@ import {
 } from '../model/broadcast.js';
 import { itemLabel, typeLabel } from './labels.js';
 import { matchType } from '../data/match-types.js';
+
+const INCIDENT_TYPES = new Set(['attack', 'save', 'escalation', 'hesitation', 'nobody']);
+
+// Why somebody went. The reason is the whole point — a save that just happens
+// is a dice roll, a save with a motive attached is a story.
+const MOTIVE_LINE = {
+  alliance: 'They have stood together before.',
+  faction: 'You go after one of them, you go after all of them.',
+  debt: 'That debt has been sitting there a while.',
+  revenge: 'Nothing to do with the victim. Everything to do with who was swinging.',
+  morality: 'No reason beyond it being wrong.',
+  interest: 'They need that one upright later tonight.',
+  respect: 'They barely know them. They went anyway.',
+  ambition: 'A chance to be in something that matters.',
+};
 import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { EXECUTIVE, reviewShow } from '../model/executives.js';
 import { withGrudges, bookable } from '../model/morale.js';
@@ -59,10 +74,30 @@ function liveView(state) {
       })
     ),
 
+    incidentPanel(state),
+
     el('h3', { text: `Remaining rundown (${upcoming.length})` }),
     upcoming.length
       ? rundownTable(state, show, upcoming)
       : el('p', { class: 'empty', text: 'Nothing left after this. Completing it ends the show.' })
+  );
+}
+
+// What has kicked off tonight, as it happens, rather than only in the review.
+function incidentPanel(state) {
+  const beats = state.journal.filter(entry => INCIDENT_TYPES.has(entry.type));
+  if (!beats.length) return null;
+
+  return el('div', {},
+    el('h3', { text: 'Tonight so far' }),
+    el('ul', { class: 'incidents' },
+      beats.map(entry =>
+        el('li', { class: `beat beat-${entry.type}` },
+          el('span', { class: 'at', text: `${entry.at} min` }),
+          journalText(state, entry)
+        )
+      )
+    )
   );
 }
 
@@ -194,9 +229,9 @@ function memoPanel(review) {
   );
 
   if (review.grudgeCount > 0) {
-    lines.push(
-      `${review.grudgeCount} of your people are carrying something into next week. Handle it before I have to.`
-    );
+    lines.push(review.grudgeCount === 1
+      ? 'One of your people is carrying something into next week. Handle it before I have to.'
+      : `${review.grudgeCount} of your people are carrying something into next week. Handle it before I have to.`);
   }
 
   return el('div', { class: 'memo' },
@@ -246,6 +281,12 @@ function grudgeList(state) {
 
 // Grudges store a type and a target, never a sentence. This writes the sentence.
 function grudgeText(state, wrestler, grudge) {
+  if (grudge.type === 'attacked') {
+    return `jumped after the bell by ${nameOf(state.wrestlers, grudge.targetId)}`;
+  }
+  if (grudge.type === 'abandoned') {
+    return `left to it by ${nameOf(state.wrestlers, grudge.targetId)}`;
+  }
   if (grudge.type === 'hated-match') {
     const target = grudge.targetId ? nameOf(state.wrestlers, grudge.targetId) : 'management';
     return `put in a ${matchType(grudge.data.matchTypeId).name.toLowerCase()} by ${target}`;
@@ -285,6 +326,21 @@ function nameList(state, ids) {
 function journalText(state, entry) {
   if (entry.type === 'show-start') return 'The show goes on the air.';
   if (entry.type === 'show-end') return 'The broadcast ends.';
+  if (entry.type === 'attack') {
+    return `${nameOf(state.wrestlers, entry.data.aggressorId)} jumped ${nameOf(state.wrestlers, entry.data.victimId)} after the bell.`;
+  }
+  if (entry.type === 'save') {
+    return `${nameOf(state.wrestlers, entry.data.saverId)} came out to make the save. ${MOTIVE_LINE[entry.data.motive] || ''}`;
+  }
+  if (entry.type === 'escalation') {
+    return `${nameOf(state.wrestlers, entry.data.saverId)} piled in on ${nameOf(state.wrestlers, entry.data.aggressorId)}. ${MOTIVE_LINE[entry.data.motive] || ''}`;
+  }
+  if (entry.type === 'hesitation') {
+    return `${nameOf(state.wrestlers, entry.data.wrestlerId)} came out, stopped halfway, and went back. ${nameOf(state.wrestlers, entry.data.victimId)} saw all of it.`;
+  }
+  if (entry.type === 'nobody') {
+    return `Nobody moved. ${nameOf(state.wrestlers, entry.data.victimId)} took all of it alone.`;
+  }
   if (entry.type === 'hated-booking') {
     const who = nameOf(state.wrestlers, entry.data.wrestlerId);
     return `${who} was put in a ${matchType(entry.data.matchTypeId).name.toLowerCase()} and did not hide what he thought of it.`;

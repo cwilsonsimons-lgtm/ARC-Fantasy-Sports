@@ -42,3 +42,15 @@ export function sample(rng, list, n) {
 export function chance(rng, probability) {
   return rng() < probability;
 }
+
+// A generator whose position lives on the save, so a show rolls the same way
+// after a reload and a test can replay it exactly.
+export function rngFor(state) {
+  return function roll() {
+    state.rng = (state.rng + 0x6d2b79f5) >>> 0;
+    let t = state.rng;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}

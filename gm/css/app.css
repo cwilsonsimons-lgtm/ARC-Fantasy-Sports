@@ -403,3 +403,15 @@ td .wlink { text-decoration-color: color-mix(in srgb, var(--muted) 55%, transpar
 .save-meta { font: 12px/1.4 var(--mono); color: var(--muted); }
 .save-actions { display: flex; gap: 6px; }
 .btn.danger { border-color: var(--tally); color: var(--tally); }
+
+/* ---------- incidents ---------- */
+.incidents { list-style: none; margin: 0 0 20px; padding: 0; }
+.incidents li {
+  padding: 7px 0 7px 11px; border-bottom: 1px solid var(--line-soft);
+  border-left: 2px solid transparent; font-size: 14px; color: var(--ink-dim);
+}
+.beat-attack { border-left-color: var(--tally); }
+.beat-save { border-left-color: var(--good); }
+.beat-escalation { border-left-color: var(--amber); }
+.beat-hesitation { border-left-color: var(--muted); font-style: italic; }
+.beat-nobody { border-left-color: var(--muted); font-style: italic; }

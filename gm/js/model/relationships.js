@@ -13,9 +13,13 @@ import { byId } from './wrestlers.js';
 
 function pair(wrestler, otherId) {
   if (!wrestler.relationships[otherId]) {
-    wrestler.relationships[otherId] = { matches: 0, segments: 0 };
+    wrestler.relationships[otherId] = { matches: 0, segments: 0, owed: 0 };
   }
-  return wrestler.relationships[otherId];
+  const rel = wrestler.relationships[otherId];
+  // Records written before debts existed have no `owed`, and `undefined + 1`
+  // is NaN, which would silently poison every later read of it.
+  if (rel.owed === undefined) rel.owed = 0;
+  return rel;
 }
 
 export function note(wrestlers, aId, bId, kind) {

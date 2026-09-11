@@ -4,9 +4,9 @@ The player is the kayfabe General Manager of a weekly wrestling television
 show. This is the first skeleton: view the roster, book a card, run the show
 segment by segment, face the network's verdict, advance the week.
 
-Simulated so far: **who you used and who you left out**, who beat whom, and who
-keeps ending up in a ring together. Not yet: incidents, factions, championships,
-or anything running long.
+Simulated so far: who you used and who you left out, who beat whom, who keeps
+ending up in a ring together, and **who steps in when somebody gets jumped**.
+Not yet: championships, backstage incidents, or anything running long.
 
 ## The weekly phase machine
 
@@ -221,6 +221,40 @@ differently to identical treatment rather than carrying decorative numbers:
 
 Two wrestlers left off the same show lose different amounts of morale. That is
 the whole personality system, in its smallest honest form.
+
+## Reactions
+
+The engine underneath the whole locker room. Something happens to somebody, and
+every other wrestler in the building gets a look at it. Most do nothing. The
+ones who act do it for a reason, and **the reason is the point** — a save is
+never `IF face THEN save`.
+
+Each candidate's pull is a sum of competing motives:
+
+| Pulls | Deterrents |
+| --- | --- |
+| friendship, faction loyalty, a debt owed, hatred of the attacker, principle, self-interest, respect, ambition | fear of the attacker, spite toward the victim, having somewhere else to be |
+
+Clear the acting line and they go. Land in the band just below it and they come
+out, stop, and go back — which damages the relationship **far more** than never
+moving at all, and is remembered as its own grudge. Below that, nobody moves,
+and that is a result rather than the absence of one.
+
+**A reaction is itself an event.** When somebody makes the save, the attacker's
+people get their own look at it, each link in the chain harder to justify than
+the last. A two-person rivalry ends up with five wrestlers in it without anybody
+scripting that.
+
+Principle is not blind: almost nobody crosses the building out of simple decency
+for a heel who has it coming. So "nobody moved" is a situational story about who
+the victim is — get jumped as a hated heel and you find out how alone you are.
+
+Tuned against a few thousand simulated matches. Roughly a fifth of matches end
+in an attack; of those, saves, hesitations and abandonments are all common, and
+a full locker-room brawl happens in under one percent.
+
+**Debt creates itself through play.** A save writes a favour onto the record, and
+that favour is a motive the next time the rescuer is the one in trouble.
 
 ## Saves
 

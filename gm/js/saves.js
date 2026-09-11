@@ -13,7 +13,7 @@ const INDEX_KEY = 'wgm_index_v1';
 const SAVE_PREFIX = 'wgm_save_';
 const LEGACY_KEY = 'wgm_v1';
 
-export const STATE_VERSION = 6;
+export const STATE_VERSION = 7;
 
 function read(key) {
   try {
@@ -66,7 +66,7 @@ export function createSave(seed = randomSeed()) {
   const rng = makeRng(seed);
   const promotion = generatePromotion(rng);
   const wrestlers = generateRoster(rng);
-  const state = { version: STATE_VERSION, seed, ...createGame({ wrestlers, promotion }) };
+  const state = { version: STATE_VERSION, seed, rng: seed, ...createGame({ wrestlers, promotion }) };
 
   const id = newId();
   write(saveKey(id), state);
