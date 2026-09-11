@@ -18,6 +18,8 @@ import { maybePostMatchAttack, maybeBackstageArgument, resolveIncident } from '.
 import { applyResponse, releaseSuspensions } from './discipline.js';
 import { createOpportunity, ageOpportunities } from './opportunities.js';
 import { RESPONSES } from '../data/responses.js';
+import { createNetwork, runtimeFor, awardTrust } from './network.js';
+import { reviewShow } from './executives.js';
 import { createMatch, addItem, remainingMinutes } from './show.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
@@ -28,10 +30,12 @@ export function createGame({ wrestlers, promotion }) {
     phase: PHASES.PREP,
     promotion,
     wrestlers,
+    network: createNetwork(),
     show: createShow({ name: promotion.show }),
     broadcast: null,
     journal: [],
     pendingIncident: null,
+    lastReview: null,
     opportunities: [],
     gmRecord: { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 },
   };
@@ -158,6 +162,20 @@ function finishIfDone(state, at) {
   state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));
   // The locker room reacts once, when the show comes off the air.
   settleShow(state);
+
+  // And then the people upstairs decide whether you have earned more of their
+  // airtime. Graded once and stored, so the post-show reads the same number it
+  // actually awarded.
+  const review = reviewShow(state);
+  const award = awardTrust(state, review.grade);
+  state.lastReview = { ...review, ...award };
+  if (award.promoted) {
+    state.journal.push(createEntry({
+      week: state.week, at, type: 'window-extended',
+      data: { minutes: award.promoted.minutes },
+    }));
+  }
+
   state.phase = PHASES.AFTER;
 }
 
@@ -170,7 +188,7 @@ export function advanceWeek(state) {
   state.week += 1;
   releaseSuspensions(state);
   ageOpportunities(state);
-  state.show = createShow({ name: 'Weekly Show' });
+  state.show = createShow({ name: state.promotion.show, runtimeMinutes: runtimeFor(state) });
   state.broadcast = null;
   state.phase = PHASES.PREP;
   return true;

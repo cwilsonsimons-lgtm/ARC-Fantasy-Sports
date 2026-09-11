@@ -475,3 +475,20 @@ td .wlink { text-decoration-color: color-mix(in srgb, var(--muted) 55%, transpar
 .onair-done { border-color: var(--line); background: var(--panel); }
 .onair-done .label { color: var(--muted); }
 .onair-done .label::before { animation: none; background: var(--muted); }
+
+/* ---------- network trust ---------- */
+.network {
+  padding: 11px 14px; margin-bottom: 18px; border-radius: 4px;
+  border: 1px solid var(--line); border-left: 3px solid var(--amber); background: var(--panel);
+}
+.network.promoted { border-left-color: var(--good); }
+.net-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 5px; }
+.net-label { font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--amber); }
+.net-delta { font: 600 11px/1 var(--mono); color: var(--muted); }
+.net-delta.up { color: var(--good); }
+.net-delta.down { color: var(--tally); }
+.net-line { font-size: 13px; color: var(--ink-dim); margin: 0 0 8px; }
+.net-win { font-size: 15px; font-weight: 600; color: var(--good); margin: 0 0 8px; }
+.net-fill { height: 100%; background: var(--amber); }
+.network.promoted .net-fill { background: var(--good); }
+.net-note { font-size: 12px; margin: -8px 0 16px; }

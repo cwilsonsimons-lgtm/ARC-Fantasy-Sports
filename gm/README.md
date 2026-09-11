@@ -256,6 +256,35 @@ a full locker-room brawl happens in under one percent.
 **Debt creates itself through play.** A save writes a favour onto the record, and
 that favour is a motive the next time the rescuer is the one in trouble.
 
+## The window is earned
+
+A new promotion gets **sixty minutes**. That is deliberately not enough: a
+roster of fifteen and five slots means somebody sits at home in week one,
+before you have made a single mistake. The hour is what makes "choose who to
+disappoint" bite from the start rather than after the roster grows.
+
+Minutes come from the network, and the network pays on the executive's grade —
+A is worth +4 trust, B +2, C nothing, D costs 3.
+
+| Trust | Window |
+| --- | --- |
+| 0 | 60 minutes |
+| 6 | 75 minutes |
+| 15 | 90 minutes |
+| 27 | 105 minutes |
+| 42 | 120 minutes |
+
+Reaching two hours takes something like fifteen weeks of near-perfect grades.
+
+**A tier once reached is kept**; trust itself can fall, which stalls progress
+rather than reversing it. `keepTier` in `model/network.js` is the one line to
+flip if losing minutes after a bad run is the game you want — it is the more
+interesting version, and it is not what was asked for.
+
+The dead-air threshold scales with the window rather than being a flat number
+of minutes, because six minutes short is a rounding error on two hours and a
+tenth of an hour show.
+
 ## The show stops and asks
 
 An incident is a situation, not a verdict. The locker room reacts on its own —

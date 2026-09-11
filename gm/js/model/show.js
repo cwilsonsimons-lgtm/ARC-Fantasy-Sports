@@ -20,7 +20,8 @@
 import { nextId } from '../ids.js';
 import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
 
-export const DEFAULT_RUNTIME_MINUTES = 120;
+// An hour to start with. The window is earned — see model/network.js.
+export const DEFAULT_RUNTIME_MINUTES = 60;
 
 export function createShow({ name = 'Weekly Show', runtimeMinutes = DEFAULT_RUNTIME_MINUTES } = {}) {
   return { id: nextId('show'), name, runtimeMinutes, items: [] };

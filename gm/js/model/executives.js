@@ -10,12 +10,16 @@ import { averageMorale, withGrudges, appearedCount, bookableCount } from './mora
 
 export const EXECUTIVE = { name: 'Diane Petrosyan', role: 'Network' };
 
-const LIGHT_THRESHOLD = 5; // minutes under the window before it reads as dead air
+// Proportion of the window that can go unfilled before it reads as dead air.
+// A flat number of minutes does not survive the show changing length: six
+// minutes short is a rounding error on two hours and a tenth of an hour show.
+const LIGHT_SHARE = 0.1;
 
 export function reviewShow(state) {
   const aired = elapsedMinutes(state.broadcast);
   const over = aired - state.show.runtimeMinutes;
-  const timing = over > 0 ? 'long' : over < -LIGHT_THRESHOLD ? 'light' : 'on-time';
+  const lightAt = Math.round(state.show.runtimeMinutes * LIGHT_SHARE);
+  const timing = over > 0 ? 'long' : over < -lightAt ? 'light' : 'on-time';
 
   const average = averageMorale(state.wrestlers);
   const grudgeCount = withGrudges(state.wrestlers).length;

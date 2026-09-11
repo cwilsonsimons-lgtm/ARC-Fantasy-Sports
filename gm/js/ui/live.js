@@ -11,6 +11,7 @@ import { itemLabel, typeLabel } from './labels.js';
 import { matchType } from '../data/match-types.js';
 import { SEVERITIES, responseById } from '../data/responses.js';
 import { gmReputation } from '../model/discipline.js';
+import { tierOf, nextTier } from '../model/network.js';
 
 const INCIDENT_TYPES = new Set(['attack', 'argument', 'save', 'escalation', 'hesitation', 'nobody', 'ruling']);
 
@@ -203,6 +204,7 @@ function aftermathView(state) {
     ),
 
     memoPanel(review),
+    networkPanel(state),
     reputationPanel(state),
 
     el('h3', { text: 'The locker room' }),
@@ -292,6 +294,34 @@ function memoPanel(review) {
     lines.map(line => el('p', { text: `\u201c${line}\u201d` }))
   );
 }
+
+// The airtime you have earned, and what the next slice costs.
+function networkPanel(state) {
+  const award = state.lastReview || {};
+  const tier = tierOf(state);
+  const next = nextTier(state);
+  const trust = state.network.trust;
+  const floor = tier.trust;
+  const span = next ? Math.max(1, next.trust - floor) : 1;
+  const progress = next ? Math.min(100, Math.round(((trust - floor) / span) * 100)) : 100;
+
+  return el('div', { class: award.promoted ? 'network promoted' : 'network' },
+    el('div', { class: 'net-head' },
+      el('span', { class: 'net-label', text: 'Network' }),
+      el('span', {
+        class: award.delta > 0 ? 'net-delta up' : award.delta < 0 ? 'net-delta down' : 'net-delta',
+        text: award.delta === undefined ? '' : award.delta > 0 ? `trust +${award.delta}` : award.delta < 0 ? `trust ${award.delta}` : 'trust unchanged',
+      })
+    ),
+    award.promoted
+      ? el('p', { class: 'net-win', text: `They have given you ${award.promoted.minutes - award.fromMinutes} more minutes. Next week runs ${award.promoted.minutes}.` })
+      : el('p', { class: 'net-line', text: next
+          ? `${trust} of ${next.trust} toward ${next.minutes} minutes.`
+          : 'You have all the airtime they have to give.' }),
+    el('div', { class: 'read-bar' }, el('div', { class: 'net-fill', style: `width:${progress}%` }))
+  );
+}
+
 
 // Nobody picks this at the start. It is what the room has decided you are,
 // from the pattern of calls you actually made.
@@ -408,6 +438,9 @@ function journalText(state, entry) {
       : '';
     const pulled = entry.data.pulled ? ` ${entry.data.pulled} booked segment${entry.data.pulled === 1 ? '' : 's'} came off the card.` : '';
     return `Your call: ${label}.${read}${pulled}`;
+  }
+  if (entry.type === 'window-extended') {
+    return `The network has extended the show to ${entry.data.minutes} minutes.`;
   }
   if (entry.type === 'promise-broken') {
     return `${nameOf(state.wrestlers, entry.data.victimId)} never got the match you promised them.`;

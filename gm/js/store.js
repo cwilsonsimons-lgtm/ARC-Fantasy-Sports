@@ -8,6 +8,7 @@ import {
   STATE_VERSION, readIndex, listSaves, currentSaveId, createSave, loadSave,
   writeSave, setCurrent, deleteSave, deleteEverything, adoptLegacySave,
 } from './saves.js';
+import { TIERS } from './model/network.js';
 
 let state = null;
 let saveId = null;
@@ -81,6 +82,21 @@ function upgrade(saved) {
     if (!saved.opportunities) saved.opportunities = [];
     if (!saved.gmRecord) saved.gmRecord = { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 };
     saved.version = 8;
+  }
+
+  if (saved.version === 8) {
+    if (saved.lastReview === undefined) saved.lastReview = null;
+    if (!saved.network) {
+      // Existing saves keep the window they already had; the tier is read back
+      // out of it so nobody's two-hour show shrinks to an hour on upgrade.
+      const minutes = (saved.show && saved.show.runtimeMinutes) || 60;
+      let tier = 0;
+      for (let i = 0; i < TIERS.length; i += 1) {
+        if (TIERS[i].minutes <= minutes) tier = i;
+      }
+      saved.network = { trust: TIERS[tier].trust, tier };
+    }
+    saved.version = 9;
   }
 
   return saved.version === STATE_VERSION ? saved : null;

@@ -13,6 +13,7 @@ import { typeLabel } from './labels.js';
 import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { bookable } from '../model/morale.js';
 import { moodWord, moodClass } from './mood.js';
+import { tierOf, nextTier } from '../model/network.js';
 import { listOpportunities, takeOpportunity, dismissOpportunity } from '../model/opportunities.js';
 import { nameOf } from '../model/wrestlers.js';
 
@@ -30,7 +31,7 @@ export function renderBooking(state, navigate) {
   return el('section', {},
     el('h2', { text: `Week ${state.week} — Booking` }),
     locked ? lockedNotice(state, navigate) : null,
-    totals(show),
+    totals(state, show),
     isOverbooked(show)
       ? el('div', {
           class: 'notice warn',
@@ -74,14 +75,20 @@ function lockedNotice(state, navigate) {
   );
 }
 
-function totals(show) {
+function totals(state, show) {
   const left = remainingMinutes(show);
-  return el('div', { class: 'totals' },
-    el('div', {}, 'Show Length: ', el('b', { text: `${show.runtimeMinutes} minutes` })),
-    el('div', {}, 'Time Booked: ', el('b', { text: `${bookedMinutes(show)} minutes` })),
-    el('div', {}, 'Time Remaining: ',
-      el('b', { class: left < 0 ? 'over' : '', text: `${left} minutes` })
-    )
+  const next = nextTier(state);
+  return el('div', {},
+    el('div', { class: 'totals' },
+      el('div', {}, 'Show Length: ', el('b', { text: `${show.runtimeMinutes} minutes` })),
+      el('div', {}, 'Time Booked: ', el('b', { text: `${bookedMinutes(show)} minutes` })),
+      el('div', {}, 'Time Remaining: ',
+        el('b', { class: left < 0 ? 'over' : '', text: `${left} minutes` })
+      )
+    ),
+    el('p', { class: 'net-note muted', text: next
+      ? `${tierOf(state).label}. Network trust ${state.network.trust} of ${next.trust} toward ${next.minutes} minutes.`
+      : `${tierOf(state).label}. There is no more airtime to earn.` })
   );
 }
 
