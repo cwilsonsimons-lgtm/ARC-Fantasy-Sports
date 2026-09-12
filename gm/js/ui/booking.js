@@ -2,11 +2,14 @@
 import { el } from './dom.js';
 import { commit, notify } from '../store.js';
 import {
-  addItem, createMatch, createTagMatch, createSegment, removeItem, moveItem, setItemMinutes,
+  addItem, createMatch, createBout, createSegment, removeItem, moveItem, setItemMinutes,
   setItemMatchType, minimumMinutes, bookedMinutes, remainingMinutes, isOverbooked,
 } from '../model/show.js';
 import { titlesForMatch } from '../model/titles.js';
 import { MATCH_TYPES, matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
+import {
+  PRESETS, preset, shapeName, shapeMinutes, evenSides, MAX_SIDES, MAX_PER_SIDE,
+} from '../data/shapes.js';
 import { tasteReading } from '../model/match-types.js';
 import { byId } from '../model/wrestlers.js';
 import { PHASES, canEditCard, startShow } from '../model/game.js';
@@ -22,7 +25,18 @@ import { nameOf } from '../model/wrestlers.js';
 // (triggered by any commit) does not wipe what the user is in the middle of.
 const draft = {
   matchA: '', matchB: '', matchMinutes: 10, matchError: '', matchTypeId: DEFAULT_MATCH_TYPE, matchTitle: '',
-  tagA1: '', tagA2: '', tagB1: '', tagB2: '', tagMinutes: 14, tagTitle: '', tagError: '',
+  // The bigger-match builder. `slots` is a flat list of chosen ids in side
+  // order; `sides` says where the cuts are. A slot left empty simply shrinks
+  // that side, which is how a handicap match gets booked without a shape of
+  // its own.
+  shapeId: 'tag',
+  sides: [2, 2],
+  slots: [],
+  royal: new Set(),
+  boutTypeId: DEFAULT_MATCH_TYPE,
+  boutMinutes: '',
+  boutTitle: '',
+  boutError: '',
   segName: '', segParticipants: new Set(), segMinutes: 5, segError: '',
 };
 
@@ -44,7 +58,7 @@ export function renderBooking(state, navigate) {
     opportunityPanel(state, locked),
     offTheCard(state),
     locked ? null : addMatchPanel(state),
-    locked ? null : addTagPanel(state),
+    locked ? null : addBoutPanel(state),
     locked ? null : addSegmentPanel(state),
     el('div', {},
       el('button', {
@@ -279,7 +293,7 @@ function addMatchPanel(state) {
           onChange: e => { draft.matchMinutes = e.target.value; },
         })
       ),
-      titleField(state, [draft.matchA, draft.matchB], false, 'matchTitle'),
+      titleField(state, [draft.matchA, draft.matchB], [1, 1], 'matchTitle'),
       el('button', { type: 'button', class: 'btn', text: 'Add match', onClick: addMatch })
     ),
     el('p', { class: 'stip-note muted', text: matchType(draft.matchTypeId).note }),
@@ -338,10 +352,11 @@ function addMatch() {
 
 // Only belts that could actually be on the line here: a tag title needs a tag
 // match, and a locked division needs everyone in it to belong to that division.
-function titleField(state, participantIds, isTag, key) {
+function titleField(state, participantIds, sides, key) {
   const chosen = participantIds.filter(Boolean);
-  const options = chosen.length === (isTag ? 4 : 2)
-    ? titlesForMatch(state, chosen, isTag)
+  const total = (sides || []).reduce((sum, n) => sum + n, 0);
+  const options = chosen.length === total && total >= 2
+    ? titlesForMatch(state, chosen, sides)
     : [];
 
   if (draft[key] && !options.some(t => t.id === draft[key])) draft[key] = '';
@@ -358,59 +373,263 @@ function titleField(state, participantIds, isTag, key) {
   );
 }
 
-function addTagPanel(state) {
-  const pick = (key, label) => el('div', { class: 'field' },
-    el('label', { text: label }),
-    el('select', { onChange: e => { draft[key] = e.target.value; notify(); } }, wrestlerOptions(state, draft[key]))
-  );
+// Any shape bigger than one against one.
+//
+// A preset picks the arrangement, or "custom" takes two numbers and builds it;
+// a battle royal drops the slots entirely for a checklist, because the whole
+// point of one is that there is no limit. The name is derived and shown live,
+// so the player builds a shape and the game tells them what it is called —
+// including "Handicap", which is what you get by leaving a slot empty.
+function addBoutPanel(state) {
+  const chosen = preset(draft.shapeId);
+  const open = Boolean(chosen.open);
+  const sides = open ? null : draft.sides;
+  const ids = open ? [...draft.royal] : draft.slots.filter(Boolean);
+
+  const stipulation = open ? matchType('battle-royal') : matchType(draft.boutTypeId);
+  const shape = open
+    ? 'Battle Royal'
+    : shapeName(sidesFromSlots(), draft.boutTypeId) || 'Singles Match';
+  const floor = open
+    ? Math.max(stipulation.minMinutes, shapeMinutes(new Array(Math.max(2, ids.length)).fill(1), 'battle-royal'))
+    : Math.max(stipulation.minMinutes, shapeMinutes(sidesFromSlots(), draft.boutTypeId));
 
   return el('div', { class: 'panel' },
-    el('h3', { text: 'Add tag match' }),
+    el('h3', { text: 'Add a bigger match' }),
     el('div', { class: 'row' },
-      pick('tagA1', 'Team one'),
-      pick('tagA2', 'and'),
-      pick('tagB1', 'Team two'),
-      pick('tagB2', 'and'),
       el('div', { class: 'field' },
-        el('label', { text: 'Planned minutes' }),
+        el('label', { text: 'Shape' }),
+        el('select', { onChange: e => setShape(e.target.value) },
+          ...PRESETS.map(p => el('option', {
+            value: p.id, selected: p.id === draft.shapeId, text: p.label,
+          })),
+          el('option', { value: 'custom', selected: draft.shapeId === 'custom', text: 'Custom…' })
+        )
+      ),
+      draft.shapeId === 'custom' ? customFields() : null,
+      open
+        ? null
+        : el('div', { class: 'field' },
+            el('label', { text: 'Stipulation' }),
+            el('select', {
+              onChange: e => { draft.boutTypeId = e.target.value; notify(); },
+            }, MATCH_TYPES.filter(t => !t.open).map(t => el('option', {
+              value: t.id,
+              selected: t.id === draft.boutTypeId,
+              // In here "singles" means "no stipulation", and calling it a
+              // singles match while the shape says six-person tag reads as a
+              // contradiction.
+              text: t.id === 'singles' ? 'Standard rules' : t.name,
+            })))
+          ),
+      el('div', { class: 'field' },
+        el('label', { text: `Minutes (min ${floor})` }),
         el('input', {
-          type: 'number', min: '1', value: draft.tagMinutes,
-          onChange: e => { draft.tagMinutes = e.target.value; },
+          type: 'number', min: String(floor),
+          value: draft.boutMinutes === '' ? String(floor) : draft.boutMinutes,
+          onChange: e => { draft.boutMinutes = e.target.value; },
         })
       ),
-      titleField(state, [draft.tagA1, draft.tagA2, draft.tagB1, draft.tagB2], true, 'tagTitle'),
-      el('button', { type: 'button', class: 'btn', text: 'Add tag match', onClick: addTag })
+      titleField(state, ids, open ? new Array(ids.length).fill(1) : sidesFromSlots(), 'boutTitle'),
+      // Named for what it is about to make, so it is never the same button as
+      // the singles one above it.
+      el('button', {
+        type: 'button', class: 'btn',
+        text: `Add ${shape.toLowerCase()}`,
+        onClick: () => addBout(open),
+      })
     ),
-    draft.tagError ? el('p', { class: 'over', text: draft.tagError }) : null
+
+    el('p', { class: 'shape-read' },
+      el('span', { class: 'shape', text: shape }),
+      el('span', { class: 'muted', text: open
+        ? `  ${ids.length} selected. No limit — put the whole roster in it if you want.`
+        : `  ${ids.length} of ${sides.reduce((a, b) => a + b, 0)} chosen. Leave one empty for a handicap match.` })
+    ),
+    // The "singles" note is about a singles match, so it is the wrong thing to
+    // read under a six-person tag. The shape line above has already said what
+    // this is.
+    open || draft.boutTypeId !== 'singles'
+      ? el('p', { class: 'stip-note muted', text: stipulation.note })
+      : null,
+
+    open ? royalChecks(state) : slotFields(state),
+    draft.boutError ? el('p', { class: 'over', text: draft.boutError }) : null
   );
 }
 
-function addTag() {
-  const ids = [draft.tagA1, draft.tagA2, draft.tagB1, draft.tagB2];
-  if (ids.some(id => !id)) {
-    draft.tagError = 'Choose all four.';
-    notify();
-    return;
+function customFields() {
+  const field = (label, value, max, onSet) => el('div', { class: 'field' },
+    el('label', { text: label }),
+    el('input', {
+      type: 'number', min: '1', max: String(max), value: String(value),
+      onChange: e => onSet(Number(e.target.value)),
+    })
+  );
+  return [
+    field('Sides', draft.sides.length, MAX_SIDES, n => setSides(evenSides(n, draft.sides[0] || 1))),
+    field('Each', draft.sides[0] || 1, MAX_PER_SIDE, n => setSides(evenSides(draft.sides.length, n))),
+  ];
+}
+
+// One select per seat, grouped by side, with "vs." between the groups.
+function slotFields(state) {
+  const groups = [];
+  let at = 0;
+  draft.sides.forEach((size, sideIndex) => {
+    const seats = [];
+    for (let seat = 0; seat < size; seat += 1) {
+      const index = at + seat;
+      seats.push(el('select', {
+        onChange: e => { draft.slots[index] = e.target.value; notify(); },
+      }, wrestlerOptions(state, draft.slots[index] || '')));
+    }
+    at += size;
+    groups.push(el('div', { class: 'side' },
+      el('label', { text: draft.sides.length === 2 && size > 1 ? `Team ${sideIndex + 1}` : `Side ${sideIndex + 1}` }),
+      el('div', { class: 'side-seats' }, seats)
+    ));
+  });
+
+  const withVs = [];
+  groups.forEach((group, index) => {
+    if (index) withVs.push(el('span', { class: 'side-vs', text: 'vs.' }));
+    withVs.push(group);
+  });
+  // A row of one-person sides reads across, like the match does. Teams are too
+  // wide for that, so they stack with the "vs." between them where it belongs.
+  const teams = draft.sides.some(size => size > 1);
+  return el('div', { class: teams ? 'sides sides-stacked' : 'sides' }, withVs);
+}
+
+function royalChecks(state) {
+  const fit = state.wrestlers.filter(bookable);
+  return el('div', {},
+    el('div', { class: 'royal-tools' },
+      el('button', {
+        type: 'button', class: 'link',
+        text: 'Everyone available',
+        onClick: () => { draft.royal = new Set(fit.map(w => w.id)); notify(); },
+      }),
+      el('button', {
+        type: 'button', class: 'link',
+        text: 'Clear',
+        onClick: () => { draft.royal = new Set(); notify(); },
+      })
+    ),
+    el('div', { class: 'checklist checklist-wide' },
+      state.wrestlers.map(w =>
+        el('label', {},
+          el('input', {
+            type: 'checkbox',
+            checked: draft.royal.has(w.id),
+            disabled: !bookable(w),
+            onChange: e => {
+              if (e.target.checked) draft.royal.add(w.id);
+              else draft.royal.delete(w.id);
+              notify();
+            },
+          }),
+          ` ${w.name}`,
+          bookable(w) ? null : el('span', { class: 'muted', text: ` (${w.status})` })
+        )
+      )
+    )
+  );
+}
+
+// The sides as they actually stand, with empty seats removed — which is what
+// turns a 2 v 2 with one blank into a handicap match.
+function sidesFromSlots() {
+  const sides = [];
+  let at = 0;
+  for (const size of draft.sides) {
+    const filled = draft.slots.slice(at, at + size).filter(Boolean).length;
+    at += size;
+    if (filled) sides.push(filled);
   }
-  if (new Set(ids).size !== 4) {
-    draft.tagError = 'Nobody can be in this twice.';
+  return sides.length >= 2 ? sides : [1, 1];
+}
+
+function setShape(id) {
+  draft.shapeId = id;
+  draft.boutError = '';
+  draft.boutTitle = '';
+  draft.boutMinutes = '';
+  if (id === 'custom') {
+    draft.sides = evenSides(draft.sides.length, draft.sides[0] || 1);
+  } else {
+    const chosen = preset(id);
+    if (chosen.open) draft.slots = [];
+    else draft.sides = [...chosen.sides];
+  }
+  trimSlots();
+  notify();
+}
+
+function setSides(sides) {
+  draft.sides = sides;
+  draft.boutTitle = '';
+  draft.boutMinutes = '';
+  trimSlots();
+  notify();
+}
+
+function trimSlots() {
+  const total = draft.sides.reduce((sum, n) => sum + n, 0);
+  draft.slots.length = total;
+  for (let i = 0; i < total; i += 1) if (!draft.slots[i]) draft.slots[i] = '';
+}
+
+function addBout(open) {
+  const teams = [];
+  if (open) {
+    const ids = [...draft.royal];
+    if (ids.length < 3) {
+      draft.boutError = 'A battle royal needs at least three.';
+      notify();
+      return;
+    }
+    for (const id of ids) teams.push([id]);
+  } else {
+    let at = 0;
+    for (const size of draft.sides) {
+      const side = draft.slots.slice(at, at + size).filter(Boolean);
+      at += size;
+      if (side.length) teams.push(side);
+    }
+    if (teams.length < 2) {
+      draft.boutError = 'Two sides at the very least.';
+      notify();
+      return;
+    }
+  }
+
+  const flat = teams.flat();
+  if (new Set(flat).size !== flat.length) {
+    draft.boutError = 'Nobody can be in this twice.';
     notify();
     return;
   }
 
-  const match = {
-    teamA: [draft.tagA1, draft.tagA2],
-    teamB: [draft.tagB1, draft.tagB2],
-    plannedMinutes: draft.tagMinutes,
-    titleId: draft.tagTitle || null,
-  };
-  draft.tagA1 = '';
-  draft.tagA2 = '';
-  draft.tagB1 = '';
-  draft.tagB2 = '';
-  draft.tagTitle = '';
-  draft.tagError = '';
-  commit(s => addItem(s.show, createTagMatch(match)));
+  const bout = createBout({
+    teams,
+    matchTypeId: open ? 'battle-royal' : draft.boutTypeId,
+    plannedMinutes: Number(draft.boutMinutes) || 0,
+    titleId: draft.boutTitle || null,
+  });
+  if (!bout) {
+    draft.boutError = 'That is not a match yet.';
+    notify();
+    return;
+  }
+
+  draft.slots = draft.slots.map(() => '');
+  draft.royal = new Set();
+  draft.boutTitle = '';
+  draft.boutError = '';
+  draft.boutMinutes = '';
+  commit(s => addItem(s.show, bout));
 }
 
 function addSegmentPanel(state) {

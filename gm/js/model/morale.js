@@ -59,7 +59,7 @@ export function involvement(state) {
       const entry = byWrestler.get(id)
         || {
           minutes: 0, segmentMinutes: 0, items: 0, mainEvent: false, opener: false,
-          stipulations: [], wins: 0, losses: 0,
+          stipulations: [], wins: 0, losses: 0, alsoRan: 0,
         };
       entry.minutes += result.actualMinutes;
       if (item.type === 'segment') entry.segmentMinutes += result.actualMinutes;
@@ -69,7 +69,14 @@ export function involvement(state) {
       if (index === 0) entry.opener = true;
       if (item.type === 'match' && result.winnerIds && result.winnerIds.length) {
         if (result.winnerIds.includes(id)) entry.wins += 1;
-        else entry.losses += 1;
+        else if (!result.fallIds || !result.fallIds.length || result.fallIds.includes(id)) {
+          entry.losses += 1;
+        } else {
+          // In it, and did not win it. Nobody beat them, and it does not land
+          // like a defeat — which is the whole reason to book somebody into a
+          // fatal four-way rather than a singles match.
+          entry.alsoRan += 1;
+        }
       }
       byWrestler.set(id, entry);
     }
@@ -266,7 +273,7 @@ export function settleShow(state) {
 // Wins and losses, recorded as their own feeling. Ego makes a loss land harder;
 // a professional shrugs both off faster.
 function settleResult(state, wrestler, used) {
-  if (!used.wins && !used.losses) return;
+  if (!used.wins && !used.losses && !used.alsoRan) return;
 
   let delta = 0;
   if (used.wins) delta += used.wins * (WIN_VALUE + swing(trait(wrestler, 'ego'), 2));
@@ -274,6 +281,9 @@ function settleResult(state, wrestler, used) {
     const pride = 1 + lean(wrestler, 'ego') * 0.9 + lean(wrestler, 'ambition') * 0.3;
     delta -= used.losses * LOSS_VALUE * Math.max(0.4, pride);
   }
+  // Being in a multi-way and not winning it costs a fraction of a defeat: the
+  // ambitious ones still wanted it, and nobody beat them.
+  if (used.alsoRan) delta -= used.alsoRan * (0.5 + lean(wrestler, 'ambition') * 0.4);
   if (!Math.round(delta)) return;
 
   remember(state, wrestler, {

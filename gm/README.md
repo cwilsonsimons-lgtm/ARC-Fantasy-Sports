@@ -81,6 +81,7 @@ The bigger model files, roughly in the order the game reaches for them:
 | `game.js` | the phase machine, the only file that writes `phase` |
 | `memory.js` | morale, derived from what people remember |
 | `traits.js` | the eleven personality dimensions |
+| `matches.js` | who wins, and who the result goes against |
 | `backstage.js` | where the GM is, the clock, and whether they can see a thing |
 | `backstage-events.js` | what the building throws at them, and who it lands on |
 | `post-match.js` | what the bell produces |
@@ -98,7 +99,7 @@ functions the buttons call, without going near the interface.
 | Object | Shape |
 | --- | --- |
 | Wrestler | `{ id, name, gender, alignment, status, baseline, morale, stats, traits, memories[], grudges[], relationships }` |
-| ShowItem | `{ id, type, name, participants[], plannedMinutes }` |
+| ShowItem | `{ id, type, name, participants[], sides[], plannedMinutes }` |
 | Show | `{ id, name, runtimeMinutes, items[] }` |
 | Broadcast | `{ showId, status, results[] }` |
 | Journal entry | `{ id, week, at, type, itemId, data }` |
@@ -295,6 +296,100 @@ GM books the match and the night decides the result. In-ring ability sets the
 odds, with a floor so nobody is ever a certainty. That is what makes a hidden
 stat worth learning. `model/matches.js` `decideWinner()` is the single function
 to change if the GM should pick winners instead.
+
+## Any shape of match
+
+`participants` is the one list of who is in a match — everything from
+whereabouts to morale to threads reads it — and **`sides` says how that list
+divides**:
+
+| `sides` | |
+| --- | --- |
+| `[1, 1]` | a singles match |
+| `[2, 2]` | a tag match |
+| `[3, 3]` | a six-person tag |
+| `[4, 4]` | an eight-person tag |
+| `[2, 1]` | a handicap match |
+| `[1, 1, 1]` | a triple threat |
+| `[1, 1, 1, 1]` | a fatal four-way |
+| `[1] × 8` | an eight-way |
+| `[2, 2, 2]` | a three-way tag |
+| `[1] × 17` | a battle royal |
+
+One list and one description of how it is cut, rather than two lists that can
+disagree. A match used to carry a boolean `tag` and slice the participants at
+index two, which is exactly why nothing bigger than four people could exist.
+`teamsOf()` in `model/matches.js` is still the only place the sides are read
+back, so the convention lives in one spot.
+
+**The name is derived, never stored**, so a shape cannot be labelled one thing
+and behave as another — and a shape you did not plan still gets its right name.
+Leave one seat empty in a 2 v 2 and it is a Handicap match, because that is what
+unequal sides are.
+
+**Shape and stipulation are different things.** `sides` is the arrangement and
+`matchType` is the rules, so a Fatal Four-Way Ladder Match is both, and the
+label composes from the two. A battle royal is the one stipulation with no
+natural limit on how many can be in it.
+
+### What happens with more than two sides
+
+Two things stop being the same question the moment a third side exists: who won,
+and who the result goes against.
+
+**Only one side takes the fall.** In a multi-way the other losing sides did not
+win, which is a different thing and is not recorded as a defeat. Which side is
+covered is weighted *inversely* to ability, so the least able side is the
+likeliest — and never a certainty.
+
+That is the whole reason to book one. **A fatal four-way is how you use somebody
+without putting a loss on them**, which is exactly what multi-man matches are
+for in real booking, and it falls out of the model rather than needing a rule.
+Not winning still costs the ambitious ones something; it costs them a fraction
+of a defeat.
+
+A battle royal inverts it: nobody is pinned, so the name against the result is
+whoever was still standing at the end — the strongest of the ones who did not
+win.
+
+**Ability decides less as the ring fills up.** The winner is a weighted draw
+rather than a coin with a floor on it: `chaos` is how much the result stops
+being about who is better, and it rises with the number of sides. A battle royal
+declares its own, high. Eighteen people over the top rope is nearly a lottery,
+and it should be.
+
+**A singles belt can be defended in a fatal four-way or a battle royal**, and a
+tag belt cannot — because a title held by *n* people needs every side to be *n*
+people. That rule replaced a boolean comparison and got the multi-way case for
+free.
+
+### Booking one
+
+The singles panel stays, because most matches are one against one and it is two
+selects. Everything else goes through one builder: pick a shape (or *Custom*,
+which takes a number of sides and a number each), and it renders a select per
+seat, grouped by side with "vs." between the groups. The derived name updates as
+you build, so the game tells you what you have made.
+
+A battle royal drops the seats for a checklist of the whole roster with an
+*Everyone available* button, because the whole point of one is that there is no
+limit.
+
+Bodies take time to get in and out of a ring, so **a shape has its own runtime
+floor** — `3 + participants`, or `4 +` for a battle royal — taken against the
+stipulation's. A seventeen-person battle royal wants twenty-one minutes, which
+makes it a real claim on an hour show rather than a free spectacle.
+
+Two things turned out to be broken underneath this and both predate it:
+
+- **A scheduled match lost its shape.** `loadScheduled` copied participants and
+  not the arrangement, so a six-person tag you advertised weeks ahead arrived on
+  the card as a singles match between the first two names. The archive had the
+  same hole.
+- **`noteItem` recorded everyone in a match as everyone else's opponent.** Fixed
+  for tag matches in the last tier; it now splits by the real sides, which means
+  a battle royal correctly records that all seventeen of them met each other and
+  a six-person tag records two teams of three.
 
 ## Match types
 
@@ -601,9 +696,10 @@ plausibly be on the line: a tag title needs a tag match, and a locked division
 needs everyone in the match to belong to it.
 
 **Tag matches** had to exist for the tag titles to mean anything. Matches were
-two participants; they are now two sides. `teamsOf()` in `model/matches.js` is
-the only place participants are split into teams, so the convention lives in one
-spot, and `decideWinner()` returns the winning *side* rather than one name.
+two participants; they became two sides, and are now any number of sides of any
+size — see *Any shape of match*. `teamsOf()` in `model/matches.js` is the only
+place participants are split, so the convention lives in one spot, and
+`decideWinner()` returns the winning *side* rather than one name.
 
 The morale swing on a title change scales with the belt — a major is worth 18
 either way, a secondary 11. That has to outweigh the ordinary lift of having

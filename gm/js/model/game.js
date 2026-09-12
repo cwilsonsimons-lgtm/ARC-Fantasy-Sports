@@ -17,7 +17,7 @@ import { createShow } from './show.js';
 import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
 import { settleShow } from './morale.js';
-import { decideWinner, applyOutcome } from './matches.js';
+import { decideWinner, decideFall, applyOutcome, teamsOf } from './matches.js';
 import { rngFor } from './random.js';
 import { resolveIncident } from './incidents.js';
 import { resolvePostMatch } from './post-match.js';
@@ -212,12 +212,17 @@ export function completeSegment(state) {
   // incidents.
   const roll = rngFor(state);
 
-  // Matches are contests: the card says who meets, the night says who wins.
+  // Matches are contests: the card says who meets, the night says who wins —
+  // and then, separately, who the result goes against. In anything with more
+  // than two sides those are different questions, because only one person takes
+  // the fall and the rest merely did not win.
   const winnerIds = decideWinner(state.wrestlers, item, roll());
   if (winnerIds.length) {
+    const fallIds = decideFall(state.wrestlers, item, winnerIds, roll());
     result.winnerIds = winnerIds;
     result.winnerId = winnerIds[0]; // the side's first name, for anything reading one winner
-    applyOutcome(state.wrestlers, item, winnerIds);
+    result.fallIds = fallIds;
+    applyOutcome(state.wrestlers, item, winnerIds, fallIds);
   }
 
   state.journal.push(createEntry({
@@ -234,11 +239,16 @@ export function completeSegment(state) {
   }));
 
   // Two people having a match is the quietest thing that can go on a record,
-  // and the thing every feud is mostly made of.
-  if (item.type === 'match' && item.participants.length >= 2) {
-    for (let i = 0; i < item.participants.length; i += 1) {
-      for (let j = i + 1; j < item.participants.length; j += 1) {
-        noteThread(state, item.participants[i], item.participants[j], 'match', at);
+  // and the thing every feud is mostly made of. Only across sides: your own
+  // partner in a six-person tag is not somebody you had a match with, and a
+  // battle royal would otherwise file a hundred and fifty of these at once.
+  if (item.type === 'match') {
+    const sides = teamsOf(item);
+    for (let a = 0; a < sides.length; a += 1) {
+      for (let b = a + 1; b < sides.length; b += 1) {
+        for (const x of sides[a]) {
+          for (const y of sides[b]) noteThread(state, x, y, 'match', at);
+        }
       }
     }
   }

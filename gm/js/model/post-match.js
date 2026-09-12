@@ -149,9 +149,16 @@ function draw(state, context, roll) {
 export function resolvePostMatch(state, item, result, index, roll) {
   if (item.type !== 'match' || !result.winnerIds || !result.winnerIds.length) return null;
 
-  const [teamA, teamB] = teamsOf(item);
+  const sides = teamsOf(item);
   const winningSide = result.winnerIds;
-  const losingSide = (winningSide.includes(teamA[0]) ? teamB : teamA)
+  const winners = new Set(winningSide);
+
+  // Whoever the result went against, which in a multi-way is one specific
+  // person rather than everyone who did not win. They are the one with a
+  // problem, so they are the one the bell is about.
+  const losingSide = (result.fallIds && result.fallIds.length
+    ? result.fallIds
+    : (sides.find(side => !side.some(id => winners.has(id))) || []))
     .filter(id => byId(state.wrestlers, id));
   if (!losingSide.length) return null;
 
@@ -159,7 +166,9 @@ export function resolvePostMatch(state, item, result, index, roll) {
   const loser = byId(state.wrestlers, losingSide[0]);
   if (!winner || !loser) return null;
 
-  const involved = [...winningSide, ...losingSide];
+  // Everybody in it, not just the two the moment is about — a beatdown should
+  // not recruit somebody who was standing in the same match.
+  const involved = item.participants.slice();
   const kind = draw(state, { winner, loser, item, involved }, roll);
   if (!kind) return null;
 

@@ -19,6 +19,7 @@
 // so reordering can never leave two items claiming the same slot.
 import { nextId } from '../ids.js';
 import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
+import { shapeMinutes, totalIn } from '../data/shapes.js';
 
 // An hour to start with. The window is earned — see model/network.js.
 export const DEFAULT_RUNTIME_MINUTES = 60;
@@ -27,35 +28,39 @@ export function createShow({ name = 'Weekly Show', runtimeMinutes = DEFAULT_RUNT
   return { id: nextId('show'), name, runtimeMinutes, items: [] };
 }
 
-export function createMatch({ wrestlerAId, wrestlerBId, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE, titleId = null }) {
+// One builder for every shape, from a singles match to a twenty-person battle
+// royal. `teams` is a list of sides; the participants are the sides laid end to
+// end and `sides` records where the cuts are — see teamsOf() in matches.js,
+// which is the only place that reads them back.
+export function createBout({ teams, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE, titleId = null }) {
   const stipulation = matchType(matchTypeId);
+  const filled = (teams || [])
+    .map(side => (side || []).filter(Boolean))
+    .filter(side => side.length);
+  if (filled.length < 2) return null;
+
+  const sides = filled.map(side => side.length);
   return {
     id: nextId('si'),
     type: 'match',
     matchType: stipulation.id,
     name: '',
-    tag: false,
     titleId,
-    participants: [wrestlerAId, wrestlerBId],
-    plannedMinutes: Math.max(stipulation.minMinutes, clampMinutes(plannedMinutes)),
+    participants: filled.flat(),
+    sides,
+    plannedMinutes: Math.max(
+      stipulation.minMinutes,
+      shapeMinutes(sides, stipulation.id),
+      clampMinutes(plannedMinutes)
+    ),
   };
 }
 
-// Four people, two teams. participants are [a1, a2, b1, b2] and the halves are
-// the teams — see teamsOf() in matches.js, which is the only place that splits
-// them, so the convention lives in one spot.
-export function createTagMatch({ teamA, teamB, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE, titleId = null }) {
-  const stipulation = matchType(matchTypeId);
-  return {
-    id: nextId('si'),
-    type: 'match',
-    matchType: stipulation.id,
-    name: '',
-    tag: true,
-    titleId,
-    participants: [...teamA, ...teamB],
-    plannedMinutes: Math.max(stipulation.minMinutes, clampMinutes(plannedMinutes)),
-  };
+// The common case, kept for how often it is the only one wanted.
+export function createMatch({ wrestlerAId, wrestlerBId, plannedMinutes, matchTypeId = DEFAULT_MATCH_TYPE, titleId = null }) {
+  return createBout({
+    teams: [[wrestlerAId], [wrestlerBId]], plannedMinutes, matchTypeId, titleId,
+  });
 }
 
 export function setItemTitle(show, itemId, titleId) {
@@ -75,7 +80,10 @@ export function createSegment({ name, participants = [], plannedMinutes }) {
   };
 }
 
+// createBout returns null for anything that is not two sides yet, so the door
+// into the card has to say no rather than pushing a hole into it.
 export function addItem(show, item) {
+  if (!item) return null;
   show.items.push(item);
   return item;
 }
@@ -114,8 +122,14 @@ export function setItemMatchType(show, itemId, matchTypeId) {
   return true;
 }
 
+export { totalIn };
+
+// The floor under a slot: whichever is higher, what the stipulation needs or
+// what the number of bodies needs.
 export function minimumMinutes(item) {
-  return item.type === 'match' ? matchType(item.matchType).minMinutes : 1;
+  if (item.type !== 'match') return 1;
+  const sides = Array.isArray(item.sides) ? item.sides : [1, 1];
+  return Math.max(matchType(item.matchType).minMinutes, shapeMinutes(sides, item.matchType));
 }
 
 export function itemById(show, itemId) {

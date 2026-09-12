@@ -70,12 +70,17 @@ export function heldBy(state, wrestlerId) {
   return activeTitles(state).filter(t => t.championIds.includes(wrestlerId));
 }
 
-// Which belts could plausibly be on the line in this match. A tag title needs a
-// tag match, and a locked division needs everyone in it to belong to that
-// division.
-export function titlesForMatch(state, participantIds, isTag) {
+// Which belts could plausibly be on the line in this match.
+//
+// A belt held by two people needs every side to be a pair; a singles belt needs
+// every side to be one person — which means a singles title can now be defended
+// in a fatal four-way or a battle royal, because every side in one of those is
+// a single wrestler. A locked division needs everyone in the match to belong to
+// it.
+export function titlesForMatch(state, participantIds, sides) {
+  const shape = Array.isArray(sides) && sides.length >= 2 ? sides : [1, 1];
   return activeTitles(state).filter(title => {
-    if ((title.holders === 2) !== Boolean(isTag)) return false;
+    if (!shape.every(size => size === title.holders)) return false;
     if (!title.gender) return true;
     return participantIds.every(id => {
       const wrestler = byId(state.wrestlers, id);

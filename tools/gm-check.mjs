@@ -36,9 +36,12 @@ const mod = name => import(path.join(GM, name));
 const { makeRng } = await mod('model/random.js');
 const { generateRoster, generatePromotion } = await mod('model/generate.js');
 const { makeAirSchedule } = await mod('model/calendar.js');
-const { seedTitles } = await mod('model/titles.js');
+const titleModel = await mod('model/titles.js');
+const { seedTitles } = titleModel;
 const gameModel = await mod('model/game.js');
-const { createMatch, createTagMatch, createSegment, addItem, remainingMinutes } = await mod('model/show.js');
+const { createMatch, createBout, createSegment, addItem, remainingMinutes } = await mod('model/show.js');
+const { sidesOf } = await mod('model/matches.js');
+const { shapeName } = await mod('data/shapes.js');
 const { resetIds } = await mod('ids.js');
 const { bookable } = await mod('model/morale.js');
 const { trait, TRAITS } = await mod('model/traits.js');
@@ -54,7 +57,7 @@ function playSeason(seed) {
   resetIds();
   const rng = makeRng(seed);
   const state = {
-    version: 15, seed, rng: seed,
+    version: 16, seed, rng: seed,
     ...gameModel.createGame({
       wrestlers: generateRoster(rng),
       promotion: generatePromotion(rng),
@@ -73,7 +76,7 @@ function playSeason(seed) {
     'champion-challenge': 0,
   };
   const per = new Map(state.wrestlers.map(w => [w.id, { saves: 0, attacks: 0, envy: 0, brave: 0 }]));
-  const extra = { matches: 0, crews: 0, ties: [] };
+  const extra = { matches: 0, crews: 0, ties: [], shapes: new Map(), falls: [] };
   const ring = id => {
     const w = state.wrestlers.find(x => x.id === id);
     return w ? w.stats.inRing : 50;
@@ -94,15 +97,38 @@ function playSeason(seed) {
       if (draw < 0.16) {
         const ids = [...new Set([0, 1, 2].map(() => fit[Math.floor(pick() * fit.length)].id))];
         addItem(state.show, createSegment({ participants: ids, name: 'Promo', plannedMinutes: 8 }));
-      } else if (draw < 0.3) {
-        const four = [];
-        while (four.length < 4) {
-          const id = fit[Math.floor(pick() * fit.length)].id;
-          if (!four.includes(id)) four.push(id);
+      } else if (draw < 0.34) {
+        // Every shape the game can make, so none goes unexercised: tag matches
+        // of two to four a side, multi-ways of three to eight, the occasional
+        // handicap, and a battle royal with whoever is available.
+        const arrangements = [
+          [2, 2], [3, 3], [4, 4], [2, 2, 2], [2, 1], [3, 1],
+          [1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1],
+        ];
+        const royal = pick() < 0.12;
+        const sides = royal
+          ? new Array(Math.min(fit.length, 3 + Math.floor(pick() * 14))).fill(1)
+          : arrangements[Math.floor(pick() * arrangements.length)];
+        const wanted = sides.reduce((sum, n) => sum + n, 0);
+
+        if (fit.length >= wanted) {
+          const pool = [];
+          while (pool.length < wanted) {
+            const id = fit[Math.floor(pick() * fit.length)].id;
+            if (!pool.includes(id)) pool.push(id);
+          }
+          const teams = [];
+          let at = 0;
+          for (const size of sides) { teams.push(pool.slice(at, at + size)); at += size; }
+          const bout = createBout({
+            teams, matchTypeId: royal ? 'battle-royal' : 'singles', plannedMinutes: 0,
+          });
+          if (bout && addItem(state.show, bout)) {
+            const name = shapeName(bout.sides, bout.matchType) || 'Singles';
+            extra.shapes.set(name, (extra.shapes.get(name) || 0) + 1);
+          }
         }
-        addItem(state.show, createTagMatch({
-          teamA: four.slice(0, 2), teamB: four.slice(2), plannedMinutes: 14,
-        }));
       } else {
         const a = fit[Math.floor(pick() * fit.length)];
         const rest = fit.filter(w => w !== a);
@@ -147,6 +173,18 @@ function playSeason(seed) {
       if (entry.data && entry.data.withIds) extra.crews += 1;
       if (entry.type === 'tie-formed') extra.ties.push(entry.data.kind);
     }
+    // Every result, with the shape it came out of: who won, and how many the
+    // result actually went against.
+    for (const result of state.broadcast.results) {
+      const item = state.show.items.find(i => i.id === result.itemId);
+      if (!item || item.type !== 'match' || !result.winnerIds) continue;
+      extra.falls.push({
+        sides: sidesOf(item).length,
+        people: item.participants.length,
+        winners: result.winnerIds.length,
+        fell: (result.fallIds || []).length,
+      });
+    }
     extra.matches += state.broadcast.results.filter(result => {
       const item = state.show.items.find(i => i.id === result.itemId);
       return Boolean(item) && item.type === 'match';
@@ -166,6 +204,8 @@ const beats = {
 const rows = [];
 const morales = [];
 const ties = new Map();
+const shapes = new Map();
+const falls = [];
 let matchCount = 0;
 let crewCount = 0;
 let sound = true;
@@ -176,6 +216,8 @@ for (let run = 0; run < RUNS; run += 1) {
   matchCount += extra.matches;
   crewCount += extra.crews;
   for (const kind of extra.ties) ties.set(kind, (ties.get(kind) || 0) + 1);
+  for (const [shape, n] of extra.shapes) shapes.set(shape, (shapes.get(shape) || 0) + n);
+  falls.push(...extra.falls);
   for (const w of state.wrestlers) {
     morales.push(w.morale);
     if (!Number.isFinite(w.morale) || w.morale < 0 || w.morale > 100) sound = false;
@@ -246,6 +288,42 @@ check(seen.length >= 6, 'the bell produces most of its outcomes',
 // the game has to end up with feuds it can point at.
 check(ties.size > 0, 'ties form on their own',
   [...ties].map(([k, v]) => `${k}:${v}`).join(' ') || 'none formed');
+// ---- shapes ----
+//
+// Every arrangement has to be bookable, resolve to exactly one winning side,
+// and put the result against exactly one side — which is the whole point of a
+// multi-way: three people do not win it and only one of them loses it.
+check(shapes.size >= 8, 'every shape the game offers gets booked',
+  [...shapes].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(' '));
+check(shapes.has('Battle Royal'), 'battle royals happen', `${shapes.get('Battle Royal') || 0} of them`);
+check(shapes.has('Handicap'), 'a side can be outnumbered', `${shapes.get('Handicap') || 0} handicap matches`);
+
+const biggest = falls.reduce((most, f) => Math.max(most, f.people), 0);
+check(biggest >= 9, 'a match can hold more people than a tag match', `biggest held ${biggest}`);
+check(falls.every(f => f.winners >= 1), 'every match has a winning side');
+check(falls.every(f => f.fell >= 1), 'every result goes against somebody');
+// One *side* takes the fall, not one person — a three-way tag has two people
+// on the losing end of it. What has to hold is that fewer people were beaten
+// than failed to win, which is the whole point of booking a multi-way.
+const multiWay = falls.filter(f => f.sides > 2);
+check(multiWay.length > 0 && multiWay.every(f => f.fell < f.people - f.winners),
+  'in a multi-way, not winning is not the same as losing',
+  `${multiWay.length} multi-way results, fewer beaten than beaten-to-it`);
+
+// A singles belt in a ring of four is a real thing, and it falls out of the
+// shape model rather than needing a rule of its own.
+{
+  const probe = playSeason(999);
+  const belt = (probe.state.titles || []).find(t => t.holders === 1 && !t.gender);
+  const four = probe.state.wrestlers.slice(0, 4).map(w => w.id);
+  const asFourWay = titleModel.titlesForMatch(probe.state, four, [1, 1, 1, 1]);
+  const asTag = titleModel.titlesForMatch(probe.state, four, [2, 2]);
+  check(!belt || asFourWay.some(t => t.id === belt.id),
+    'a singles belt can be defended in a fatal four-way');
+  check(!asTag.some(t => t.holders === 1),
+    'and a singles belt cannot be defended in a tag match');
+}
+
 const inThreads = rows.filter(r => r.threads > 0).length;
 check(inThreads > rows.length * 0.1, 'the game notices feuds it can name',
   `${inThreads} of ${rows.length} wrestlers in a live thread`);
@@ -322,6 +400,8 @@ const PLAY_WEEKS = 10;
 let played = 0;
 let talked = 0;
 let walked = 0;
+let builtRoyal = 0;
+let builtFourWay = false;
 let spread = { placed: 0, rooms: 0, clock: 0 };
 for (let week = 1; week <= PLAY_WEEKS; week += 1) {
   await page.getByRole('button', { name: 'Booking', exact: true }).click();
@@ -348,6 +428,42 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
     await page.waitForTimeout(50);
     await page.getByRole('button', { name: 'Add match', exact: true }).click();
     await page.waitForTimeout(80);
+  }
+
+  // Drive the shape builder itself on a couple of weeks: the model is
+  // simulated to death above, but nothing there touches these controls.
+  if (week === 2 || week === 3) {
+    const builder = page.locator('.panel', { has: page.getByRole('heading', { name: 'Add a bigger match' }) });
+    const royal = week === 3;
+    await builder.locator('select').first().selectOption(royal ? 'royal' : 'fatal4');
+    await page.waitForTimeout(120);
+
+    if (royal) {
+      await builder.getByRole('button', { name: 'Everyone available' }).click();
+      await page.waitForTimeout(120);
+      const picked = await builder.locator('.checklist input:checked').count();
+      await builder.getByRole('button', { name: /^Add battle royal$/i }).click();
+      await page.waitForTimeout(150);
+      builtRoyal = picked;
+    } else {
+      // Four individual sides, one select each.
+      const seats = builder.locator('.sides select');
+      const free = await page.evaluate(() => {
+        const panel = [...document.querySelectorAll('.panel')]
+          .find(p => p.querySelector('h3')?.textContent.trim() === 'Add a bigger match');
+        return [...panel.querySelectorAll('.sides select')[0].options]
+          .filter(o => o.value && !/\(/.test(o.text))
+          .slice(0, 4)
+          .map(o => o.value);
+      });
+      for (let i = 0; i < Math.min(4, free.length); i += 1) {
+        await seats.nth(i).selectOption(free[i]);
+        await page.waitForTimeout(60);
+      }
+      await builder.getByRole('button', { name: /^Add fatal four-way$/i }).click();
+      await page.waitForTimeout(150);
+      builtFourWay = true;
+    }
   }
 
   const start = page.getByRole('button', { name: /^Start Show$/ }).first();
@@ -435,6 +551,20 @@ check(walked > 0, 'the GM can cross the building', `${walked} moves`);
 check(talked > 0, 'the GM can hear somebody out', `${talked} conversations`);
 
 // The nights just played, read back off the save.
+const archived = await page.evaluate(() => {
+  const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
+  const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
+  const items = [];
+  for (const week of [{ items: save.show.items }, ...(save.history || [])]) {
+    for (const item of week.items || []) {
+      if (item.type === 'match') items.push({ sides: item.sides, matchType: item.matchType, people: (item.participants || []).length });
+    }
+  }
+  return items;
+});
+const shapeNames = [...new Set(archived.map(i => shapeName(i.sides, i.matchType) || 'Singles'))];
+const biggestBout = archived.reduce((most, i) => Math.max(most, i.people), 0);
+
 const night = await page.evaluate(() => {
   const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
   const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
@@ -451,6 +581,10 @@ const night = await page.evaluate(() => {
     record: save.gmRecord,
   };
 });
+// Named on this side of the bridge: the shape names come from the model, which
+// the page does not have loaded.
+night.shapes = shapeNames;
+night.biggest = biggestBout;
 check(typeof night.location === 'string', 'the GM is somewhere specific', night.location);
 check(night.kinds.includes('moved'), 'moving about is recorded');
 check(night.kinds.includes('talked'), 'conversations are recorded');
@@ -468,6 +602,14 @@ const bellKinds = ['handshake', 'handshake-refused', 'stare-down', 'champion-cha
 const seenBell = bellKinds.filter(k => night.kinds.includes(k));
 check(seenBell.length >= 2, 'the bell produces moments in the browser too', seenBell.join(', '));
 check(night.threads > 0, 'the save is keeping threads', `${night.threads} pairs on the record`);
+
+// The shape builder, driven through its own controls.
+check(builtFourWay, 'a fatal four-way can be booked in the interface');
+check(builtRoyal >= 3, 'a battle royal takes the whole available roster', `${builtRoyal} selected`);
+check(night.shapes.includes('Fatal Four-Way'), 'the four-way reached the card', night.shapes.join(', '));
+check(night.shapes.includes('Battle Royal'), 'so did the battle royal', night.shapes.join(', '));
+check(night.biggest >= 4, 'and the card held a match bigger than a tag match',
+  `biggest was ${night.biggest} people`);
 
 await page.getByRole('button', { name: 'Roster', exact: true }).click();
 await page.waitForTimeout(200);
@@ -563,7 +705,7 @@ const migrated = await page.evaluate(() => {
       Object.values(w.relationships).every(r => Number.isFinite(r.teamed))),
   };
 });
-check(migrated.version === 15, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.version === 16, 'an older save is upgraded and written back', `version ${migrated.version}`);
 check(migrated.threads && migrated.teamed, 'an upgraded save can start noticing stories');
 check(migrated.backstage, 'an upgraded save gets a building to stand in');
 check(migrated.record, 'the existing record survives and gains the new counts');

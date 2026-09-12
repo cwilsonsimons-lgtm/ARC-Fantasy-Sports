@@ -17,6 +17,7 @@
 // exception: mentor and student are the same relationship seen from two ends.
 import { byId } from './wrestlers.js';
 import { feelingToward } from './memory.js';
+import { teamsOf } from './matches.js';
 
 // A named tie outranks anything the counts would have said.
 export const TIES = {
@@ -69,8 +70,12 @@ export function note(wrestlers, aId, bId, kind, amount = 1) {
 export function noteItem(wrestlers, item) {
   const ids = item.participants;
 
-  if (item.type === 'match' && item.tag && ids.length >= 4) {
-    const sides = [ids.slice(0, 2), ids.slice(2, 4)];
+  if (item.type === 'match') {
+    const sides = teamsOf(item);
+    // Same side is time spent together; across sides is a match against each
+    // other. Works the same for a tag team, a six-person tag and an
+    // eighteen-person battle royal, where every side is one wrestler and
+    // therefore everybody met everybody.
     for (const side of sides) {
       for (let i = 0; i < side.length; i += 1) {
         for (let j = i + 1; j < side.length; j += 1) {
@@ -79,16 +84,19 @@ export function noteItem(wrestlers, item) {
         }
       }
     }
-    for (const a of sides[0]) {
-      for (const b of sides[1]) note(wrestlers, a, b, 'matches');
+    for (let a = 0; a < sides.length; a += 1) {
+      for (let b = a + 1; b < sides.length; b += 1) {
+        for (const x of sides[a]) {
+          for (const y of sides[b]) note(wrestlers, x, y, 'matches');
+        }
+      }
     }
     return;
   }
 
-  const kind = item.type === 'match' ? 'matches' : 'segments';
   for (let i = 0; i < ids.length; i += 1) {
     for (let j = i + 1; j < ids.length; j += 1) {
-      note(wrestlers, ids[i], ids[j], kind);
+      note(wrestlers, ids[i], ids[j], 'segments');
     }
   }
 }

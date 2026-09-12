@@ -208,6 +208,31 @@ function upgrade(saved) {
     saved.version = 15;
   }
 
+  if (saved.version === 15) {
+    // Match shape moves off a boolean and onto the item. `tag` meant "slice the
+    // participants at index two", which is why nothing bigger than four people
+    // could exist; `sides` says how many are on each side, so any arrangement
+    // can. Everything that carries a card item gets the same treatment — the
+    // live show, the plans, and the archive — or a six-person tag in the
+    // history would read back as a singles match between the first two names.
+    const reshape = item => {
+      if (!item || item.type !== 'match') return;
+      if (!Array.isArray(item.sides) || item.sides.length < 2) {
+        item.sides = item.tag && (item.participants || []).length >= 4
+          ? [2, 2]
+          : [1, 1];
+      }
+      delete item.tag;
+    };
+
+    for (const item of (saved.show && saved.show.items) || []) reshape(item);
+    for (const entry of saved.scheduled || []) reshape(entry);
+    for (const week of saved.history || []) {
+      for (const item of week.items || []) reshape(item);
+    }
+    saved.version = 16;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

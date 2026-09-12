@@ -16,6 +16,7 @@ import { remember } from './memory.js';
 import { runtimeFor } from './network.js';
 import { nextId } from '../ids.js';
 import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
+import { shapeMinutes } from '../data/shapes.js';
 
 // ---------- dates ----------
 //
@@ -124,17 +125,35 @@ export function horizonWeeks(state) {
 
 // ---------- planning ----------
 
-export function scheduleMatch(state, { week, wrestlerAId, wrestlerBId, matchTypeId = DEFAULT_MATCH_TYPE, plannedMinutes = 12 }) {
+// Anything bookable can be planned, not only a singles match: `teams` is a list
+// of sides, exactly as it is for a card item, and the shape travels with the
+// plan so what is advertised is what turns up.
+export function scheduleMatch(state, {
+  week, teams, wrestlerAId, wrestlerBId,
+  matchTypeId = DEFAULT_MATCH_TYPE, plannedMinutes = 12,
+}) {
   state.scheduled = state.scheduled || [];
   const stipulation = matchType(matchTypeId);
+
+  const filled = (teams || [[wrestlerAId], [wrestlerBId]])
+    .map(side => (side || []).filter(Boolean))
+    .filter(side => side.length);
+  if (filled.length < 2) return null;
+
+  const sides = filled.map(side => side.length);
   const entry = {
     id: nextId('si'), // the same id it will carry onto the card, so delivery can be checked
     week,
     type: 'match',
     matchType: stipulation.id,
     name: '',
-    participants: [wrestlerAId, wrestlerBId],
-    plannedMinutes: Math.max(stipulation.minMinutes, plannedMinutes),
+    participants: filled.flat(),
+    sides,
+    plannedMinutes: Math.max(
+      stipulation.minMinutes,
+      shapeMinutes(sides, stipulation.id),
+      plannedMinutes
+    ),
     advertised: false,
     told: [],
   };
@@ -196,6 +215,9 @@ export function loadScheduled(state) {
       matchType: entry.matchType,
       name: entry.name,
       participants: [...entry.participants],
+      // The shape has to travel with it, or a six-person tag you advertised
+      // arrives on the card as a singles match between the first two names.
+      sides: Array.isArray(entry.sides) ? [...entry.sides] : undefined,
       plannedMinutes: entry.plannedMinutes,
       advertised: entry.advertised,
       told: [...entry.told],
@@ -269,6 +291,7 @@ export function archiveWeek(state) {
       matchType: item.matchType,
       name: item.name,
       participants: [...item.participants],
+      sides: Array.isArray(item.sides) ? [...item.sides] : undefined,
       plannedMinutes: item.plannedMinutes,
       advertised: Boolean(item.advertised),
     })),
