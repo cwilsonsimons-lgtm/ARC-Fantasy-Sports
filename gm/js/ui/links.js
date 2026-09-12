@@ -14,7 +14,10 @@ export function wrestlerLink(state, id) {
     type: 'button',
     class: 'wlink',
     text: nameOf(state.wrestlers, id),
-    onClick: () => openCard(id),
+    // A name is a link, not a row selection. Rows that do something when
+    // clicked — the booking roster picks people into the match being built —
+    // would otherwise fire as well, and one click would do two things.
+    onClick: e => { e.stopPropagation(); openCard(id); },
   });
 }
 

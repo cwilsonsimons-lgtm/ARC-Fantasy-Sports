@@ -1,29 +1,42 @@
-/* Backstage at a television show: a dark monitor wall, tally red for anything
-   on the air or going wrong, amber for the clock, and monospace everywhere a
-   number has to line up. Single theme on purpose — this is a game, not a
-   document, so every colour is painted explicitly. No network fonts: the rest
-   of this repo is deliberately offline, so the type is system stacks. */
+/* A management desk rather than a monitor wall: cool slate panels on a deep
+   navy ground, one saturated blue doing all the work of "this is live, this is
+   yours, this is the thing to press", and the signal colours kept for things
+   that are actually signals — green for available, amber for the clock, red for
+   anything on the air or going wrong.
+   Monospace everywhere a number has to line up.
+   Single theme on purpose: this is a game, not a document, so every colour is
+   painted explicitly. No network fonts — the rest of this repo is deliberately
+   offline, so the type is system stacks. */
 :root {
   /* Native controls — the booking screen's selects, its number fields, the
      scrollbars — follow this. Without it a light OS paints white dropdowns into
-     a black monitor wall. */
+     a dark page. */
   color-scheme: dark;
 
-  --bg: #14161a;
-  --panel: #1b1e24;
-  --raised: #232830;
-  --line: #2c313a;
-  --line-soft: #232830;
-  --ink: #e9e5dd;
-  --ink-dim: #b7b3ab;
-  --muted: #858d98;
-  --tally: #e8604f;
-  --tally-dim: #3a2320;
-  --amber: #dfa63c;
-  --good: #5fb88a;
-  --cool: #7fa9c4;
-  --cool-dim: #1e2a33;
-  --clock-dim: #2a2314;
+  --bg: #0d1219;
+  --panel: #151c28;
+  --panel-head: #19212e;
+  --raised: #1e2735;
+  --sunken: #101722;
+  --line: #26303f;
+  --line-soft: #1d2634;
+  --ink: #e9eef6;
+  --ink-dim: #a9b5c6;
+  --muted: #6d7b8e;
+
+  /* The accent. `--cool` is the readable blue for text and rules; `--accent` is
+     the fill, which needs its own ink because white on it is the point. */
+  --cool: #4f9fe8;
+  --cool-dim: #14222f;
+  --accent: #2272cf;
+  --accent-hi: #2f88ee;
+  --accent-ink: #f2f8ff;
+
+  --tally: #e4574c;
+  --tally-dim: #331d1c;
+  --amber: #e0a83c;
+  --good: #3fc77f;
+  --clock-dim: #2b2314;
 
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -40,45 +53,92 @@ body {
 }
 
 /* ---------- chrome ---------- */
+/* The bar reads as three things: who you are, where you are, and when it is. */
 .topbar {
-  display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center;
-  padding: 12px 20px;
-  background: var(--panel);
+  display: flex; flex-wrap: wrap; align-items: stretch;
+  background: var(--panel-head);
   border-bottom: 1px solid var(--line);
 }
-.topbar h1 { font-size: 16px; margin: 0; letter-spacing: .01em; }
-.tag {
-  font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
-  color: var(--muted); margin-left: 6px;
+.brand {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 12px 26px 12px 20px;
+  background: linear-gradient(180deg, #1b2432, #141b26);
+  border-right: 1px solid var(--line);
+}
+.brand-name {
+  font: 800 21px/1 var(--sans); letter-spacing: -.01em; color: var(--ink);
+  text-transform: uppercase;
+}
+.brand-sub {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .22em;
+  color: var(--muted); margin-top: 5px;
+}
+
+/* Tabs, not buttons: the active one is lit from the top edge, which is what
+   makes the row read as a place you are rather than a set of things to press.
+   Wraps, because the row outgrew a phone the moment a fifth tab landed. */
+.nav { display: flex; flex-wrap: wrap; align-items: stretch; flex: 1 1 auto; }
+.nav button {
+  position: relative; cursor: pointer;
+  font: 600 12px/1 var(--sans); text-transform: uppercase; letter-spacing: .09em;
+  padding: 0 22px; min-height: 58px;
+  background: transparent; color: var(--muted);
+  border: 0; border-right: 1px solid var(--line-soft);
+}
+.nav button:hover { color: var(--ink-dim); background: #1c2532; }
+.nav button.on {
+  color: var(--ink); background: #17212f;
+  box-shadow: inset 0 3px 0 var(--accent-hi), 0 0 22px -6px var(--accent);
+}
+
+.status-block {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-end;
+  gap: 4px; padding: 12px 20px; margin-left: auto; text-align: right;
 }
 .phase {
-  font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
-  color: var(--amber); margin-left: auto;
+  font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .13em;
+  color: var(--ink-dim);
 }
-.nav {
-  /* Wraps because the tab row outgrew a phone the moment a fifth tab landed. */
-  display: flex; flex-wrap: wrap; gap: 4px;
+.promo-line {
+  display: flex; align-items: center; gap: 9px;
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em;
+  color: var(--muted);
 }
-.nav button {
-  font: 500 13px/1 var(--sans); padding: 6px 13px; cursor: pointer;
-  background: transparent; color: var(--ink-dim);
-  border: 1px solid var(--line); border-radius: 3px;
+.promo-line::before {
+  content: ""; width: 18px; height: 2px; background: var(--accent-hi); border-radius: 1px;
 }
-.nav button:hover { color: var(--ink); border-color: var(--muted); }
-.nav button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-.view { padding: 22px 20px 40px; max-width: 1000px; }
+/* The booking floor wants every pixel — three panels side by side is the whole
+   point of it. Everything else is read rather than operated, so it keeps a
+   measure: a locker-room list stretched across two thousand pixels puts the
+   name and the thing it says about them at opposite ends of the desk. */
+.view { padding: 20px; max-width: 1480px; }
+.view > section { max-width: 1120px; }
+.view > section.wide { max-width: none; }
 .footer {
   padding: 14px 20px; border-top: 1px solid var(--line);
   color: var(--muted); font-size: 12px;
-  display: flex; gap: 16px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+}
+.footer-motto {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .16em;
+  color: #4a566a;
+}
+
+@media (max-width: 900px) {
+  .brand { padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--line); flex: 1 1 100%; }
+  .nav button { min-height: 46px; padding: 0 15px; }
+  .status-block { padding: 10px 16px; }
 }
 
 /* ---------- type ---------- */
-h2 { font-size: 20px; margin: 0 0 14px; letter-spacing: -.005em; }
+h2 {
+  font: 700 19px/1.15 var(--sans); text-transform: uppercase; letter-spacing: .02em;
+  margin: 0 0 14px;
+}
 h3 {
-  font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
-  color: var(--muted); margin: 26px 0 10px;
+  font: 700 12px/1 var(--sans); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--ink-dim); margin: 24px 0 10px;
 }
 p { margin: 0 0 12px; max-width: 70ch; }
 .muted { color: var(--muted); }
@@ -88,26 +148,53 @@ p { margin: 0 0 12px; max-width: 70ch; }
 
 /* ---------- tables ---------- */
 table { border-collapse: collapse; width: 100%; margin-bottom: 18px; }
-th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 th {
   font: 600 10px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .1em;
-  color: var(--muted); border-bottom-color: var(--line);
+  color: var(--muted); background: var(--sunken);
+  border-bottom-color: var(--line); position: sticky; top: 0; z-index: 1;
 }
 td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 th.num { text-align: right; }
-tbody tr:hover td { background: var(--panel); }
+tbody tr:hover td { background: #1a2330; }
+/* A row you have picked, wherever a screen lets you pick one. */
+tbody tr.on td, tbody tr.on:hover td {
+  background: var(--cool-dim);
+  box-shadow: inset 2px 0 0 var(--accent-hi);
+}
 
 /* ---------- controls ---------- */
 .btn {
-  font: 500 13px/1 var(--sans); padding: 7px 12px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font: 500 13px/1 var(--sans); padding: 9px 14px; cursor: pointer;
   background: var(--raised); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 3px;
+  border: 1px solid var(--line); border-radius: 4px;
 }
-.btn:hover:enabled { border-color: var(--muted); }
+.btn:hover:enabled { border-color: #3a4658; background: #242f3f; }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
-.btn.primary { background: var(--cool); border-color: var(--cool); color: #0e1419; font-weight: 600; }
-.btn.primary:hover:enabled { filter: brightness(1.08); }
-.btn.small { padding: 3px 8px; font-size: 12px; }
+.btn.primary {
+  background: var(--accent); border-color: var(--accent-hi); color: var(--accent-ink);
+  font-weight: 600; letter-spacing: .02em;
+}
+.btn.primary:hover:enabled { background: var(--accent-hi); border-color: var(--accent-hi); }
+/* The one button that ends the booking and starts the night. */
+.btn.go {
+  background: #1f8b52; border-color: #2ba863; color: #f1fff6;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+}
+.btn.go:hover:enabled { background: #25a260; border-color: #34bd74; }
+.btn.wide { text-transform: uppercase; letter-spacing: .08em; font-weight: 600; padding: 12px 16px; }
+.btn.small { padding: 4px 9px; font-size: 12px; }
+/* Square icon buttons, for a row of actions in a table. */
+.btn.icon {
+  width: 30px; height: 28px; padding: 0; font-size: 13px; line-height: 1;
+}
+.btn.icon.danger { color: var(--tally); border-color: #4a2724; background: #2a1a19; }
+.btn.icon.danger:hover:enabled { background: var(--tally); border-color: var(--tally); color: #fff; }
+/* A destructive button that has been armed and is waiting for the second click. */
+.btn.danger-armed {
+  background: var(--tally); border-color: var(--tally); color: #fff; font-weight: 600;
+}
 .link {
   background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
   color: var(--cool); text-decoration: underline;
@@ -115,17 +202,39 @@ tbody tr:hover td { background: var(--panel); }
 
 .panel {
   border: 1px solid var(--line); background: var(--panel);
-  padding: 14px 16px; margin-bottom: 18px; border-radius: 4px;
+  padding: 15px 17px; margin-bottom: 18px; border-radius: 6px;
 }
 .panel h3 { margin-top: 0; }
+
+/* A titled panel: a heading, a line of what it is for, then the body. The
+   subtitle is what stops a screen of six panels reading as six lists. */
+.card-panel {
+  display: flex; flex-direction: column; min-width: 0;
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
+}
+.card-panel > header {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: 4px 12px; padding: 15px 17px 13px; border-bottom: 1px solid var(--line-soft);
+}
+.card-panel h2 { margin: 0; }
+.card-panel .panel-sub {
+  flex: 1 1 100%; font-size: 12.5px; color: var(--muted); margin: 0;
+}
+.card-panel .panel-count {
+  font: 600 12px/1 var(--mono); color: var(--muted); white-space: nowrap;
+}
+.card-panel > .panel-body { padding: 15px 17px; min-width: 0; }
+.card-panel > .panel-body.flush { padding: 0; }
+.card-panel table { margin-bottom: 0; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
 .row > .btn { margin-top: 19px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
 .field select, .field input {
-  font: 13px/1.3 var(--sans); padding: 6px 7px; border-radius: 3px;
-  background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+  font: 13px/1.3 var(--sans); padding: 8px 9px; border-radius: 4px;
+  background: var(--sunken); color: var(--ink); border: 1px solid var(--line);
 }
+.field select:hover, .field input:hover { border-color: #354254; }
 .field input[type=number] { width: 84px; font-family: var(--mono); }
 input[type=number] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 td input[type=number] {
@@ -133,7 +242,7 @@ td input[type=number] {
   background: var(--bg); color: var(--ink); border: 1px solid var(--line);
 }
 .checklist {
-  border: 1px solid var(--line); background: var(--bg); border-radius: 3px;
+  border: 1px solid var(--line); background: var(--sunken); border-radius: 4px;
   max-height: 128px; overflow-y: auto; padding: 7px 9px; min-width: 210px;
 }
 .checklist label {
@@ -141,7 +250,7 @@ td input[type=number] {
   display: block; font: 13px/1.5 var(--sans); color: var(--ink-dim);
   text-transform: none; letter-spacing: 0;
 }
-:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
 
 /* ---------- readouts ---------- */
 .totals {
@@ -152,6 +261,25 @@ td input[type=number] {
 }
 .totals b { color: var(--ink); font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
 .totals b.over { color: var(--tally); }
+
+/* The clock, as a band across the foot of the booking screen. Three numbers,
+   spaced and ruled apart, because they are the three the player checks most. */
+.clockstrip {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-around;
+  gap: 12px 20px; padding: 18px 20px; margin-bottom: 16px;
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
+}
+.clockstrip > div {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+  flex: 1 1 180px; justify-content: center;
+}
+.clockstrip > div + div { border-left: 1px solid var(--line); }
+.clock-label { font-size: 14px; color: var(--ink-dim); }
+.clock-value {
+  font: 700 26px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.clock-value.left { color: var(--good); }
+.clock-value.over { color: var(--tally); }
 
 .notice {
   padding: 10px 13px; margin-bottom: 16px; border-radius: 4px;
@@ -551,7 +679,7 @@ td .wlink { text-decoration-color: color-mix(in srgb, var(--muted) 55%, transpar
 .net-win { font-size: 15px; font-weight: 600; color: var(--good); margin: 0 0 8px; }
 .net-fill { height: 100%; background: var(--amber); }
 .network.promoted .net-fill { background: var(--good); }
-.net-note { font-size: 12px; margin: -8px 0 16px; }
+.net-note { font-size: 12px; margin: 9px 0 16px; }
 
 /* ---------- calendar ---------- */
 .cal {
@@ -792,6 +920,18 @@ button.cal-day.airs:hover { border-color: var(--cool); }
 .beat-talked, .beat-moved { border-left-color: var(--line); color: var(--muted); }
 .beat-granted-leave { border-left-color: var(--amber); }
 
+/* The card is the most important table in the game, so at phone width it wraps
+   rather than scrolling sideways — reading a rundown should not need two hands.
+   Everything else keeps the global scroll behaviour. */
+@media (max-width: 600px) {
+  .cardlist { display: table; white-space: normal; }
+  .cardlist .who, .cardlist .what { white-space: normal; }
+  .cardlist td { padding: 9px 7px; }
+  .cardlist .pos { width: 26px; }
+  .cardlist .handles .btn { margin-left: 2px; }
+  .timebox { flex-direction: column; align-items: flex-end; gap: 1px; }
+}
+
 @media (max-width: 560px) {
   /* The name goes on its own line, and a full-width button centres its label
      unless told otherwise. */
@@ -881,3 +1021,133 @@ button.cal-day.airs:hover { border-color: var(--cool); }
   .sides { flex-direction: column; align-items: stretch; }
   .side-vs { padding: 0; }
 }
+
+/* ---------- the booking floor ---------- */
+/* Three panels side by side: who you have, what you are making, and what you
+   have made. The card gets the most room because it is the thing being built;
+   the roster is a reference you glance at, so it takes the least. */
+.floor {
+  display: grid; gap: 16px; margin-bottom: 16px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.35fr);
+  align-items: start;
+}
+@media (max-width: 1240px) {
+  .floor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .floor > .col-card { grid-column: 1 / -1; }
+}
+@media (max-width: 780px) {
+  .floor { grid-template-columns: minmax(0, 1fr); }
+  .floor > .col-card { grid-column: auto; }
+}
+
+/* A search field with the magnifier inside it. */
+.search {
+  display: flex; align-items: center; gap: 9px; margin: 0 17px 13px;
+  padding: 9px 11px; border-radius: 4px;
+  background: var(--sunken); border: 1px solid var(--line);
+}
+.search:focus-within { border-color: var(--accent-hi); }
+.search::before { content: "⌕"; font-size: 17px; line-height: 1; color: var(--muted); }
+.search input {
+  flex: 1 1 auto; min-width: 0; border: 0; background: none; color: var(--ink);
+  font: 13px/1.3 var(--sans); padding: 0;
+}
+.search input:focus { outline: none; }
+.search input::placeholder { color: #5a6779; }
+
+/* The roster list, scrollable so the panel does not set the page's height.
+   Rows are one line each on purpose: an archetype under every name doubled the
+   height and put half the roster below the fold, which is the opposite of what
+   a reference list is for. It is on the row's title instead, and on the card. */
+.roster-scroll {
+  max-height: 468px; overflow-y: auto;
+  border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;
+}
+.roster-scroll table { margin: 0; }
+.roster-scroll td { padding: 10px 12px; white-space: nowrap; }
+.pick-row { cursor: pointer; }
+.off-badge {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--amber); margin-left: 7px;
+}
+
+/* Sortable column headings. */
+.sorter {
+  display: inline-flex; align-items: baseline; gap: 6px; cursor: pointer;
+  background: none; border: 0; padding: 0; color: inherit; font: inherit;
+  text-transform: inherit; letter-spacing: inherit;
+}
+.sorter:hover { color: var(--ink-dim); }
+.sorter .arrow { font-size: 10px; color: #48556a; }
+.sorter.on { color: var(--ink); }
+.sorter.on .arrow { color: var(--accent-hi); }
+
+.status-good { color: var(--good); }
+.status-bad { color: var(--tally); }
+
+/* Which builder the middle panel is showing. */
+.segmented { display: flex; gap: 4px; margin-bottom: 16px; }
+.segmented button {
+  flex: 1 1 0; cursor: pointer; padding: 8px 6px; border-radius: 4px;
+  font: 600 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .07em;
+  background: var(--sunken); color: var(--muted); border: 1px solid var(--line);
+}
+.segmented button:hover { color: var(--ink-dim); }
+.segmented button.on {
+  background: var(--cool-dim); color: var(--ink); border-color: var(--accent);
+}
+
+/* Label on the left, control on the right — a form that reads as a list of
+   settings rather than a row of boxes. */
+.form-rows { display: flex; flex-direction: column; gap: 12px; }
+.form-row {
+  display: grid; grid-template-columns: minmax(96px, 0.55fr) minmax(0, 1fr);
+  gap: 6px 14px; align-items: center;
+}
+.form-row > label {
+  font: 500 12.5px/1.35 var(--sans); color: var(--ink-dim);
+}
+.form-row > label .hint { color: var(--muted); font-size: 11px; }
+.form-row select, .form-row input {
+  width: 100%; min-width: 0;
+  font: 13px/1.3 var(--sans); padding: 9px 10px; border-radius: 4px;
+  background: var(--sunken); color: var(--ink); border: 1px solid var(--line);
+}
+.form-row select:hover, .form-row input:hover { border-color: #354254; }
+.form-row .with-unit { display: flex; align-items: center; gap: 9px; }
+.form-row .with-unit input { width: 88px; flex: 0 0 auto; font-family: var(--mono); }
+.form-row .unit { font-size: 12px; color: var(--muted); }
+@media (max-width: 560px) {
+  .form-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The show card's own table: a number, what it is, how long, and the handles. */
+.cardlist { width: 100%; }
+.cardlist td { vertical-align: middle; }
+.cardlist .pos {
+  font: 700 15px/1 var(--mono); color: var(--muted); text-align: center; width: 46px;
+}
+.cardlist .what { font-size: 14px; }
+.cardlist .what strong { display: block; font-weight: 700; margin-bottom: 3px; }
+.cardlist .who { font-size: 13px; color: var(--ink-dim); }
+.cardlist .when { white-space: nowrap; }
+/* A value with a unit rather than a bare box, so the column reads as minutes
+   at a glance and still takes a new number. */
+.timebox { display: flex; align-items: baseline; gap: 6px; }
+.timebox input {
+  width: 52px; padding: 5px 6px; border-radius: 3px; text-align: right;
+  font: 600 13px/1 var(--mono); font-variant-numeric: tabular-nums;
+  background: var(--sunken); color: var(--ink); border: 1px solid var(--line);
+}
+.timebox input:hover:enabled { border-color: #354254; }
+.timebox .unit { font-size: 11px; color: var(--muted); }
+.cardlist .handles { white-space: nowrap; }
+.cardlist .handles .btn { margin-left: 4px; }
+.cardlist tr.dropped td { opacity: .45; }
+
+/* The bar the screen ends on. */
+.actionbar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end;
+  padding-top: 4px;
+}
+.actionbar .spacer { margin-right: auto; }

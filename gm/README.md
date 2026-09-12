@@ -229,6 +229,51 @@ time, so a grudge stays queryable and no prose is frozen into the save.
 All numbers in `model/morale.js` are placeholder tuning, deliberately legible
 rather than balanced.
 
+## The look
+
+A management desk rather than a monitor wall: cool slate panels on a deep navy
+ground, **one saturated blue** doing all the work of "this is live, this is
+yours, this is the thing to press", and the signal colours kept for things that
+are actually signals — green for available, amber for the clock, red for
+anything on the air or going wrong.
+
+Everything reads from tokens in `:root`, which is why the identity could change
+in one block rather than a thousand rules. `--cool` is the readable blue for
+text and rules; `--accent` is the fill, which needs its own ink because white on
+it is the point.
+
+The header is three things: who you are, where you are, and when it is. The
+wordmark sits in its own gradient block, the tabs are lit from the top edge
+rather than boxed — which makes the row read as a place you *are* rather than a
+set of things to press — and the right-hand block carries the week and the phase
+over the promotion's name.
+
+### The booking floor
+
+Three panels across: **who you have, what you are making, and what you have
+made.** The card gets the most room because it is the thing being built; the
+roster takes the least because it is a reference you glance at.
+
+The roster panel is new, and the point of it is that **clicking a row puts
+somebody in the match you are building** — into the next empty seat, whichever
+builder is open, and clicking them again takes them back out. Clicking their
+*name* still opens their card, as it does everywhere else, which is why
+`wrestlerLink` stops the click from reaching the row: otherwise one click did
+two things.
+
+Rows are one line each on purpose. An archetype under every name doubled the
+height and put half the roster below the fold, which is the opposite of what a
+reference list is for.
+
+The three builders — match, bigger match, segment — used to be three stacked
+panels. They are one panel with a segmented control now, which is both closer to
+the shape of the screen and less to scroll past.
+
+Only this screen takes the full width. Everything else is read rather than
+operated and keeps a measure, because a locker-room list stretched across two
+thousand pixels puts the name and the thing it says about them at opposite ends
+of the desk.
+
 ## Demeanour, not digits
 
 Morale is a number under the hood and is **never shown as one** — not in a

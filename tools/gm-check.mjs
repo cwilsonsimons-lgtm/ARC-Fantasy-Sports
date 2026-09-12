@@ -402,71 +402,90 @@ let talked = 0;
 let walked = 0;
 let builtRoyal = 0;
 let builtFourWay = false;
+let rosterPicks = 0;
+
+const bookPanel = page.locator('.col-book');
+const rosterPanel = page.locator('.col-roster');
+
+// Available wrestlers who are not already somewhere on the card. Read off the
+// rendered panels rather than the save, so the test sees what a player sees.
+async function freeNames(target) {
+  return target.evaluate(() => {
+    const onCard = new Set();
+    for (const link of document.querySelectorAll('.col-card .wlink')) {
+      onCard.add(link.textContent.trim());
+    }
+    const out = [];
+    for (const tr of document.querySelectorAll('.col-roster tbody tr.pick-row')) {
+      const name = tr.querySelector('.wlink')?.textContent.trim();
+      const status = tr.querySelector('.status-good');
+      if (name && status && !onCard.has(name)) out.push(name);
+    }
+    return out;
+  });
+}
 let spread = { placed: 0, rooms: 0, clock: 0 };
 for (let week = 1; week <= PLAY_WEEKS; week += 1) {
   await page.getByRole('button', { name: 'Booking', exact: true }).click();
   await page.waitForTimeout(120);
 
-  for (let i = 0; i < 5; i += 1) {
-    // textContent, not innerText: the panel headings are uppercased in CSS and
-    // innerText returns what is rendered.
-    const free = await page.evaluate(() => {
-      const booked = new Set([...document.querySelectorAll('table tbody tr td')]
-        .flatMap(td => td.textContent.split(/,| vs\.? |&/).map(s => s.trim())));
-      const panel = [...document.querySelectorAll('.panel')]
-        .find(p => p.querySelector('h3')?.textContent.trim() === 'Add match');
-      if (!panel) return null;
-      const opts = [...panel.querySelectorAll('select')[0].options]
-        .filter(o => o.value && !/\(/.test(o.text) && !booked.has(o.text));
-      return opts.length >= 2 ? [opts[0].value, opts[1].value] : null;
-    });
-    if (!free) break;
-    const selects = page.locator('.panel', { has: page.getByRole('heading', { name: 'Add match' }) }).locator('select');
-    await selects.nth(0).selectOption(free[0]);
-    await page.waitForTimeout(50);
-    await selects.nth(1).selectOption(free[1]);
-    await page.waitForTimeout(50);
-    await page.getByRole('button', { name: 'Add match', exact: true }).click();
-    await page.waitForTimeout(80);
-  }
-
-  // Drive the shape builder itself on a couple of weeks: the model is
-  // simulated to death above, but nothing there touches these controls.
+  // Drive the shape builder on a couple of weeks: the model is simulated to
+  // death above, but nothing there touches these controls.
   if (week === 2 || week === 3) {
-    const builder = page.locator('.panel', { has: page.getByRole('heading', { name: 'Add a bigger match' }) });
     const royal = week === 3;
-    await builder.locator('select').first().selectOption(royal ? 'royal' : 'fatal4');
+    await bookPanel.getByRole('button', { name: 'Bigger match', exact: true }).click();
+    await page.waitForTimeout(100);
+    await bookPanel.locator('.form-row select').first().selectOption(royal ? 'royal' : 'fatal4');
     await page.waitForTimeout(120);
 
     if (royal) {
-      await builder.getByRole('button', { name: 'Everyone available' }).click();
+      await bookPanel.getByRole('button', { name: 'Everyone available' }).click();
       await page.waitForTimeout(120);
-      const picked = await builder.locator('.checklist input:checked').count();
-      await builder.getByRole('button', { name: /^Add battle royal$/i }).click();
+      builtRoyal = await bookPanel.locator('.checklist input:checked').count();
+      await bookPanel.getByRole('button', { name: /Add battle royal$/i }).click();
       await page.waitForTimeout(150);
-      builtRoyal = picked;
     } else {
-      // Four individual sides, one select each.
-      const seats = builder.locator('.sides select');
-      const free = await page.evaluate(() => {
-        const panel = [...document.querySelectorAll('.panel')]
-          .find(p => p.querySelector('h3')?.textContent.trim() === 'Add a bigger match');
-        return [...panel.querySelectorAll('.sides select')[0].options]
-          .filter(o => o.value && !/\(/.test(o.text))
-          .slice(0, 4)
-          .map(o => o.value);
-      });
-      for (let i = 0; i < Math.min(4, free.length); i += 1) {
-        await seats.nth(i).selectOption(free[i]);
+      // Four individual sides. Filled from the roster, same as the rest.
+      const free = await freeNames(page);
+      for (const name of free.slice(0, 4)) {
+        await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
         await page.waitForTimeout(60);
       }
-      await builder.getByRole('button', { name: /^Add fatal four-way$/i }).click();
+      if (await page.locator('.overlay').count()) {
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(60);
+      }
+      await bookPanel.getByRole('button', { name: /Add fatal four-way$/i }).click();
       await page.waitForTimeout(150);
       builtFourWay = true;
     }
+    await bookPanel.getByRole('button', { name: 'Match', exact: true }).click();
+    await page.waitForTimeout(80);
   }
 
-  const start = page.getByRole('button', { name: /^Start Show$/ }).first();
+  // Four singles matches, booked by clicking rows in the roster panel — which
+  // is the interaction the layout is built around, so it is the one worth
+  // driving rather than reaching past into the selects.
+  await bookPanel.getByRole('button', { name: 'Match', exact: true }).click();
+  await page.waitForTimeout(80);
+
+  for (let i = 0; i < 5; i += 1) {
+    const free = await freeNames(page);
+    if (free.length < 2) break;
+    for (const name of free.slice(0, 2)) {
+      await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
+      await page.waitForTimeout(60);
+    }
+    if (await page.locator('.overlay').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(60);
+    }
+    await bookPanel.getByRole('button', { name: /Add match$/ }).click();
+    await page.waitForTimeout(90);
+    rosterPicks += 1;
+  }
+
+  const start = page.getByRole('button', { name: /Start show$/i }).first();
   if (!(await start.count()) || !(await start.isEnabled())) break;
   await start.click();
   await page.waitForTimeout(150);
@@ -549,6 +568,7 @@ check(played === PLAY_WEEKS, `${PLAY_WEEKS} weeks play through`, `got to ${playe
 check(errors.length === 0, 'no script errors while playing', errors[0] || '');
 check(walked > 0, 'the GM can cross the building', `${walked} moves`);
 check(talked > 0, 'the GM can hear somebody out', `${talked} conversations`);
+check(rosterPicks > 0, 'matches can be booked by clicking the roster', `${rosterPicks} booked that way`);
 
 // The nights just played, read back off the save.
 const archived = await page.evaluate(() => {

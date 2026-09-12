@@ -14,8 +14,9 @@ import { openCardId, closeCard } from './ui/card-state.js';
 const navEl = document.getElementById('nav');
 const viewEl = document.getElementById('view');
 const phaseEl = document.getElementById('phase');
+const promoEl = document.getElementById('promo');
 
-const PHASE_LABEL = { [PHASES.PREP]: 'Prep', [PHASES.LIVE]: 'On air', [PHASES.AFTER]: 'Aftermath' };
+const PHASE_LABEL = { [PHASES.PREP]: 'Booking', [PHASES.LIVE]: 'On air', [PHASES.AFTER]: 'Aftermath' };
 
 let route = 'roster';
 
@@ -29,9 +30,12 @@ function render() {
   if (!state) route = 'saves';
 
   navEl.replaceChildren(...renderNav(route, state && state.phase, navigate, Boolean(state)));
+  // Where you are in the season on the top line, whose promotion it is on the
+  // second. Two facts the player wants without looking for them.
   phaseEl.replaceChildren(
-    state ? `${state.promotion.show} · Week ${state.week} · ${PHASE_LABEL[state.phase]}` : 'No save open'
+    state ? `Week ${state.week} · ${PHASE_LABEL[state.phase]}` : 'No save open'
   );
+  promoEl.replaceChildren(state ? state.promotion.promotion : 'Open or start a save');
 
   const view =
     route === 'saves' ? renderSaves(state, navigate) :
