@@ -33,7 +33,11 @@ export const SOURCES = [
   { key: 'peer', label: 'The locker room' },
 ];
 
-const KEEP = 60;         // memories per wrestler before the oldest are dropped
+// Memories per wrestler before the ledger is trimmed. Raised once the backstage
+// layer started filing several a week: at the old ceiling a season's worth of
+// history was being evicted before it had a chance to fade, which quietly
+// undid the decay curve the whole system rests on.
+const KEEP = 90;
 const FADE_FLOOR = 0.08; // below this a memory has stopped mattering
 const DEFAULT_BASELINE = 55;
 
@@ -94,9 +98,21 @@ export function remember(state, wrestlerId, { source, weight, targetId = null, d
     fade: 1,
   };
   wrestler.memories.push(memory);
-  if (wrestler.memories.length > KEEP) wrestler.memories.splice(0, wrestler.memories.length - KEEP);
+  trim(wrestler);
   refreshMorale(wrestler);
   return memory;
+}
+
+// Trimmed by what still matters rather than by what is oldest. An old score
+// somebody is still carrying should outlive a trivial thing from last week, and
+// dropping by age does the opposite.
+function trim(wrestler) {
+  const over = wrestler.memories.length - KEEP;
+  if (over <= 0) return;
+  const ranked = [...wrestler.memories]
+    .sort((a, b) => Math.abs(a.weight * a.fade) - Math.abs(b.weight * b.fade));
+  const drop = new Set(ranked.slice(0, over));
+  wrestler.memories = wrestler.memories.filter(m => !drop.has(m));
 }
 
 // Called when the week turns. Good news fades at a steady rate; grievances fade

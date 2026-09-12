@@ -8,17 +8,27 @@
 // future phase (the week between shows) slots in without every screen having
 // to re-derive where it is. The transitions below are the only places phase
 // changes, which keeps the machine in one readable file.
+import { byId } from './wrestlers.js';
+import { nextId } from '../ids.js';
+import { remember, fadeMemories, coolGrudges } from './memory.js';
+import { growFamiliarity } from './stats.js';
 import { createShow } from './show.js';
 import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from './broadcast.js';
 import { createEntry } from './journal.js';
 import { settleShow } from './morale.js';
 import { decideWinner, applyOutcome } from './matches.js';
 import { rngFor } from './random.js';
-import { maybePostMatchAttack, maybeBackstageArgument, resolveIncident } from './incidents.js';
+import { maybePostMatchAttack, resolveIncident } from './incidents.js';
+import { troubleIn, drawIncident } from './backstage-events.js';
+import {
+  START_LOCATION, TALK_MINUTES, createClock, minutesLeft, canSpend, spend, nowAt,
+  placeEveryone, shuffleRooms, roomOf, peopleIn, visibility, resetSecurity, securityLeft,
+} from './backstage.js';
+import { walkMinutes, locationName } from '../data/locations.js';
 import { applyResponse, releaseSuspensions } from './discipline.js';
 import { createOpportunity, ageOpportunities } from './opportunities.js';
-import { fadeMemories, coolGrudges } from './memory.js';
 import { RESPONSES } from '../data/responses.js';
+import { hasTwoSides, incidentKind, carryOf, DEMANDS } from '../data/backstage.js';
 import { createNetwork, awardTrust } from './network.js';
 import { seedTitles, titleById, settleTitleMatch, championMorale } from './titles.js';
 import {
@@ -43,12 +53,21 @@ export function createGame({ wrestlers, promotion, air, titles = [] }) {
     broadcast: null,
     journal: [],
     pendingIncident: null,
+    alerts: [],
+    missed: [],
+    location: START_LOCATION,
+    whereabouts: {},
+    clock: null,
+    security: { used: 0 },
     lastReview: null,
     opportunities: [],
     scheduled: [],
     history: [],
     breaches: 0,
-    gmRecord: { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 },
+    gmRecord: {
+      harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0,
+      gaveIn: 0, delayed: 0, missed: 0,
+    },
   };
 }
 
@@ -63,7 +82,91 @@ export function startShow(state) {
   state.broadcast = createBroadcast(state.show);
   state.journal = [createEntry({ week: state.week, at: 0, type: 'show-start' })];
   state.phase = PHASES.LIVE;
+
+  // The GM starts at the curtain, because that is where you are when the show
+  // goes on the air. Everything after that is a choice.
+  const roll = rngFor(state);
+  state.location = START_LOCATION;
+  state.alerts = [];
+  state.missed = [];
+  resetSecurity(state);
+  state.sawYou = [];
+  state.spokenTo = [];
+  placeEveryone(state, roll);
+  openTheGap(state);
+  noteWhoSawYou(state);
   return true;
+}
+
+// The clock between segments is the segment itself: whatever is on air runs for
+// its planned time, and that is how long the GM has backstage before the next
+// one starts. Booking a card of five-minute matches is booking yourself a night
+// with no room to manage anybody.
+//
+// The trouble in the gap is decided here, up front, from how long the gap is —
+// not from what the GM does with it. Whether they spend the twenty minutes
+// walking to the car park or standing at the curtain, the same night happens;
+// all their choice changes is which of it they are in the room for.
+function openTheGap(state) {
+  const item = currentItem(state.show, state.broadcast);
+  const minutes = item ? item.plannedMinutes : 0;
+  state.clock = createClock(minutes);
+  state.clock.pending = item ? troubleIn(state, minutes, rngFor(state)) : [];
+}
+
+// Spend minutes, and let the night happen across them.
+//
+// Anybody standing where the GM is standing while it passes has seen them
+// tonight. That register is the reason walking the building is worth the
+// minutes even when nothing is going wrong: a locker room that never lays eyes
+// on you all night forms a view about that.
+function advanceClock(state, minutes) {
+  if (!state.clock) return 0;
+  noteWhoSawYou(state);
+  const taken = spend(state, minutes);
+  fireTrouble(state, state.clock.spent);
+  noteWhoSawYou(state);
+  return taken;
+}
+
+function noteWhoSawYou(state) {
+  state.sawYou = state.sawYou || [];
+  for (const wrestler of peopleIn(state, state.location)) {
+    if (!state.sawYou.includes(wrestler.id)) state.sawYou.push(wrestler.id);
+  }
+}
+
+// Applied once, when the show comes off the air. Being around is not a
+// favour — it is the job — so it is worth a little, and never being seen at all
+// is worth rather more in the other direction.
+function settlePresence(state) {
+  const seen = new Set(state.sawYou || []);
+  const spoken = new Set(state.spokenTo || []);
+  for (const wrestler of state.wrestlers) {
+    if (!roomOf(state, wrestler.id) && !seen.has(wrestler.id)) continue;
+    if (spoken.has(wrestler.id)) continue; // already paid for, and more
+    remember(state, wrestler, {
+      source: 'gm',
+      weight: seen.has(wrestler.id) ? 1 : -2,
+      detail: seen.has(wrestler.id) ? 'you-were-about' : 'never-saw-you',
+    });
+  }
+}
+
+// Everything scheduled for a minute we have now reached. One at a time: the
+// moment something needs an answer the GM stops walking, and the rest of the
+// gap is still waiting when they are done.
+function fireTrouble(state, upTo) {
+  const marks = (state.clock && state.clock.pending) || [];
+  while (marks.length && marks[0] <= upTo) {
+    marks.shift();
+    if (state.pendingIncident) return;
+    const incident = drawIncident(state, rngFor(state));
+    if (!incident) continue;
+    incident.at = nowAt(state);
+    raise(state, incident);
+    if (state.pendingIncident) return;
+  }
 }
 
 export function completeSegment(state) {
@@ -72,6 +175,22 @@ export function completeSegment(state) {
 
   const item = currentItem(state.show, state.broadcast);
   if (!item) return null;
+
+  // Whatever the GM did not spend, the night did. Anything still scheduled for
+  // this gap happens now, wherever they were standing while it did.
+  if (state.clock) {
+    state.clock.spent = state.clock.segmentMinutes;
+    fireTrouble(state, state.clock.segmentMinutes);
+    if (state.pendingIncident) return null; // it caught them before the bell
+  }
+
+  // Something in that gap can take the item off the card — somebody refusing to
+  // go out with nobody there to make them — and then there is no segment left
+  // to complete.
+  if (!currentItem(state.show, state.broadcast)) {
+    finishIfDone(state, elapsedMinutes(state.broadcast));
+    return null;
+  }
 
   const result = completeCurrent(state.show, state.broadcast);
   const at = elapsedMinutes(state.broadcast);
@@ -110,29 +229,235 @@ export function completeSegment(state) {
     if (title) settleTitleMatch(state, title, result.winnerIds, at);
   }
 
+  // Anything the GM could hear from the next room and never went to look at has
+  // run out of time. The night moved on without them.
+  closeAlerts(state, at);
+
   // The bell rings, and then somebody decides what to do about it. The locker
   // room reacts on its own — that happens in the moment, not on the GM's word —
   // and then the situation is handed over.
-  const incident = maybePostMatchAttack(state, item, result, state.show.items.indexOf(item), roll)
-    || maybeBackstageArgument(state, roll);
-
-  if (incident) {
-    incident.at = at;
-    const { severity } = resolveIncident(state, incident);
-    state.pendingIncident = { ...incident, severity };
-    return result; // the show holds here until the GM answers
+  const attack = maybePostMatchAttack(state, item, result, state.show.items.indexOf(item), roll);
+  if (attack) {
+    attack.at = at;
+    // It went out on television. Wherever the GM was standing, they know, and
+    // it is as much a broadcast problem as a backstage one — so this is the one
+    // kind of incident presence cannot make you miss.
+    attack.onCamera = true;
+    raise(state, attack);
   }
 
+  // The building rearranges between segments, and the next gap is however long
+  // the next thing on the card runs.
+  shuffleRooms(state, roll);
+  openTheGap(state);
+
+  // Anything put off comes back first, and comes back bigger.
+  if (!state.pendingIncident && (state.deferred || []).length) {
+    const back = state.deferred.shift();
+    back.at = at;
+    represent(state, back);
+  }
+
+  if (state.pendingIncident) return result; // the show holds until the GM answers
   finishIfDone(state, at);
   return result;
 }
 
-// Which answers are on the table right now.
-export function availableResponses(state) {
-  if (!state.pendingIncident) return [];
-  const room = remainingMinutes(state.show, state.broadcast);
-  return RESPONSES.filter(response => !response.needsRuntime || room >= 10);
+// ---------------------------------------------------------------- presence
+
+// An incident happens. Whether the GM finds out — and whether they get to rule
+// on it — is a question about where they were standing, and nothing else.
+function raise(state, incident) {
+  const { severity } = resolveIncident(state, incident);
+  const reach = incident.onCamera
+    ? 'witnessed'
+    : visibility(state, incident.locationId, carryOf(incident.kind));
+  const full = { ...incident, severity, reach };
+
+  if (reach === 'witnessed') {
+    state.pendingIncident = full;
+  } else if (reach === 'heard') {
+    state.alerts = state.alerts || [];
+    state.alerts.push(full);
+  } else {
+    missIt(state, full);
+  }
+  return full;
 }
+
+// Something already resolved, put in front of the GM again. It does not happen
+// twice — it is the same situation, still waiting, and where the GM is standing
+// now decides whether they see it this time either.
+function represent(state, incident) {
+  const locationId = incident.victimId === 'gm' ? state.location : incident.locationId;
+  const reach = visibility(state, locationId, carryOf(incident.kind));
+  const full = { ...incident, locationId, reach };
+
+  if (reach === 'witnessed') state.pendingIncident = full;
+  else if (reach === 'heard') (state.alerts = state.alerts || []).push(full);
+  else missIt(state, full);
+  return full;
+}
+
+// Nobody ruled on it. It still happened, everybody in it still remembers it,
+// and the fact that no answer came is its own answer.
+function missIt(state, incident) {
+  state.missed = state.missed || [];
+  state.missed.push(incident);
+  state.gmRecord.missed = (state.gmRecord.missed || 0) + 1;
+
+  state.journal.push(createEntry({
+    week: state.week, at: incident.at || 0, type: 'missed',
+    data: {
+      kind: incident.kind,
+      aggressorId: incident.aggressorId,
+      victimId: incident.victimId,
+      locationId: incident.locationId,
+      // Where you were instead. The aftermath is a great deal more useful when
+      // it can say that.
+      whereYouWere: state.location,
+    },
+  }));
+
+  // Somebody who came looking for you and did not find you takes that
+  // personally, and they are right to.
+  if (incident.victimId === 'gm') {
+    remember(state, incident.aggressorId, {
+      source: 'gm', weight: -5, detail: 'not-there',
+    });
+  }
+
+  if (incident.kind === 'walkout') walkOut(state, incident);
+  if (incident.kind === 'refusal') pullRefused(state, incident);
+}
+
+// Nobody got to the car park in time.
+const WALKOUT_WEEKS = 3;
+function walkOut(state, incident) {
+  const wrestler = byId(state.wrestlers, incident.aggressorId);
+  if (!wrestler) return;
+  wrestler.status = 'Unavailable';
+  wrestler.suspendedUntil = state.week + WALKOUT_WEEKS;
+  delete (state.whereabouts || {})[wrestler.id];
+  if (!wrestler.grudges.some(g => g.type === 'walked-out')) {
+    wrestler.grudges.push({
+      id: nextId('gr'), week: state.week, type: 'walked-out', targetId: null, data: {},
+    });
+  }
+  state.journal.push(createEntry({
+    week: state.week, at: incident.at || 0, type: 'walked-out',
+    data: { wrestlerId: wrestler.id, weeks: WALKOUT_WEEKS },
+  }));
+}
+
+// They would not go out and nobody was there to make them. The segment comes
+// off the card, which is minutes of nothing and a hole in the rundown.
+function pullRefused(state, incident) {
+  const aired = new Set(state.broadcast.results.map(r => r.itemId));
+  const item = state.show.items.find(i => i.id === incident.itemId && !aired.has(i.id));
+  if (!item) return;
+  state.show.items = state.show.items.filter(i => i !== item);
+  state.journal.push(createEntry({
+    week: state.week, at: incident.at || 0, type: 'pulled-item',
+    data: { wrestlerId: incident.aggressorId, participants: [...item.participants] },
+  }));
+  openTheGap(state);
+}
+
+// Alerts expire when the segment does. You had the length of a match to go and
+// look, and you spent it on something else.
+function closeAlerts(state, at) {
+  for (const alert of state.alerts || []) missIt(state, { ...alert, at });
+  state.alerts = [];
+}
+
+// ---------------------------------------------------------------- what you do
+
+// Crossing the building. The walk is the cost, and the night does not wait
+// while you are in the corridor.
+export function walkTo(state, locationId) {
+  if (state.phase !== PHASES.LIVE || state.pendingIncident) return null;
+  if (locationId === state.location) return null;
+
+  const minutes = walkMinutes(state.location, locationId);
+  if (!canSpend(state, minutes)) return null;
+
+  // Arrive first, then let the walk's worth of night land — so anything that
+  // happens on the way is judged against where they were going, not where they
+  // set off from.
+  state.location = locationId;
+  advanceClock(state, minutes);
+  state.journal.push(createEntry({
+    week: state.week, at: nowAt(state), type: 'moved', data: { locationId },
+  }));
+  return locationId;
+}
+
+// Going to look at whatever you could hear through the wall. You get to rule on
+// it, but you are arriving after the room has already made up its mind, and a
+// ruling that arrives late is worth less than one that arrives.
+export function goAndLook(state, alertId) {
+  if (state.phase !== PHASES.LIVE || state.pendingIncident) return null;
+  const alert = (state.alerts || []).find(a => a.id === alertId);
+  if (!alert) return null;
+
+  const minutes = walkMinutes(state.location, alert.locationId);
+  if (!canSpend(state, minutes)) return null;
+
+  state.location = alert.locationId;
+  state.alerts = state.alerts.filter(a => a !== alert);
+  spend(state, minutes); // the walk itself; the situation is already waiting
+  state.pendingIncident = { ...alert, reach: 'witnessed', late: true };
+  return state.pendingIncident;
+}
+
+// Finding somebody and hearing them out. Costs a couple of minutes, and buys
+// two things: they remember that you came looking, and you learn them faster
+// than you would by booking them. Once each per night — the second conversation
+// in an evening is not a conversation.
+export function talkTo(state, wrestlerId) {
+  if (state.phase !== PHASES.LIVE || state.pendingIncident) return null;
+  if (roomOf(state, wrestlerId) !== state.location) return null;
+
+  state.spokenTo = state.spokenTo || [];
+  if (state.spokenTo.includes(wrestlerId)) return null;
+  if (!canSpend(state, TALK_MINUTES)) return null;
+
+  const wrestler = byId(state.wrestlers, wrestlerId);
+  if (!wrestler) return null;
+
+  state.spokenTo.push(wrestlerId);
+  growFamiliarity(wrestler, true);
+  remember(state, wrestler, { source: 'gm', weight: 3, detail: 'sought-them-out' });
+  state.journal.push(createEntry({
+    week: state.week, at: nowAt(state), type: 'talked', data: { wrestlerId },
+  }));
+  advanceClock(state, TALK_MINUTES);
+  return wrestler;
+}
+
+// Which answers are on the table right now. Almost everything is always
+// offered, including every bad idea — the three exclusions would be nonsense
+// rather than merely unwise, and security is a pair of people rather than a
+// button.
+export function availableResponses(state) {
+  const incident = state.pendingIncident;
+  if (!incident) return [];
+  const room = remainingMinutes(state.show, state.broadcast);
+  const twoSided = hasTwoSides(incident);
+
+  return RESPONSES.filter(response => {
+    if (response.needsRuntime && room < 10) return false;
+    if (response.needsTwo && !twoSided) return false;
+    if (response.needsDemand && !incident.demand) return false;
+    if (response.id === 'security' && securityLeft(state) <= 0) return false;
+    return true;
+  });
+}
+
+// Putting something off does not make it smaller. It comes back after the next
+// segment, one step heavier, and wherever you are standing then.
+const WORSE = { minor: 'moderate', moderate: 'major', major: 'critical', critical: 'critical' };
 
 export function resolveIncidentResponse(state, responseId) {
   const incident = state.pendingIncident;
@@ -141,27 +466,96 @@ export function resolveIncidentResponse(state, responseId) {
   const outcome = applyResponse(state, incident, responseId);
   if (!outcome) return null;
 
-  if (responseId === 'bookTonight') {
+  const twoSided = hasTwoSides(incident);
+  const reason = incidentKind(incident.kind || 'attack').note;
+
+  if (responseId === 'delay') {
+    state.deferred = state.deferred || [];
+    state.deferred.push({
+      ...incident,
+      severity: WORSE[incident.severity] || 'moderate',
+      deferrals: (incident.deferrals || 0) + 1,
+      late: false,
+    });
+  } else if (responseId === 'giveIn') {
+    concede(state, incident);
+  } else if (responseId === 'bookTonight' && twoSided) {
     outcome.booked = bookIncidentMatch(state, incident);
-  } else if (responseId === 'bookNext') {
+  } else if (responseId === 'bookNext' && twoSided) {
     outcome.opportunity = createOpportunity(state, {
       aggressorId: incident.aggressorId,
       victimId: incident.victimId,
-      reason: incident.kind === 'argument' ? 'a backstage argument' : 'a post-match attack',
+      reason,
       promised: true,
     });
-  } else if (!outcome.suspended && outcome.mediationWorked !== true) {
+  } else if (twoSided && !outcome.suspended && outcome.mediationWorked !== true) {
     // Anything left unresolved is still sitting there to be used.
     outcome.opportunity = createOpportunity(state, {
       aggressorId: incident.aggressorId,
       victimId: incident.victimId,
-      reason: incident.kind === 'argument' ? 'a backstage argument' : 'a post-match attack',
+      reason,
     });
   }
 
   state.pendingIncident = null;
   finishIfDone(state, incident.at || 0);
   return outcome;
+}
+
+// Handing over what was asked for. Each demand has a shape, and giving in means
+// the shape happens — a promise you now have to keep, a spot somebody else no
+// longer has, or a wrestler you will not see for a while.
+const LEAVE_WEEKS = 8;
+function concede(state, incident) {
+  const wrestler = byId(state.wrestlers, incident.aggressorId);
+  if (!wrestler) return;
+
+  if (incident.demand === 'out') {
+    wrestler.status = 'Unavailable';
+    wrestler.suspendedUntil = state.week + LEAVE_WEEKS;
+    delete (state.whereabouts || {})[wrestler.id];
+    state.journal.push(createEntry({
+      week: state.week, at: incident.at || 0, type: 'granted-leave',
+      data: { wrestlerId: wrestler.id, weeks: LEAVE_WEEKS },
+    }));
+    return;
+  }
+
+  if (incident.demand === 'spot' && incident.itemId) {
+    // Moved down the card means moved later, past whatever was after it.
+    const index = state.show.items.findIndex(i => i.id === incident.itemId);
+    if (index >= 0 && index < state.show.items.length - 1) {
+      const [item] = state.show.items.splice(index, 1);
+      state.show.items.push(item);
+    }
+  }
+
+  if (incident.demand === 'airtime' || incident.demand === 'match' || incident.demand === 'title') {
+    // A promise with a name on it. Unkept, it is worse than never offered.
+    const other = hasTwoSides(incident) ? incident.victimId : pickOpponent(state, wrestler);
+    if (other) {
+      createOpportunity(state, {
+        aggressorId: wrestler.id,
+        victimId: other,
+        reason: DEMANDS[incident.demand] ? DEMANDS[incident.demand].label : 'what they asked for',
+        promised: true,
+      });
+    }
+  }
+}
+
+// Whoever they would most want across the ring, for a promise that needs an
+// opponent attached to it.
+function pickOpponent(state, wrestler) {
+  const grudge = (wrestler.grudges || []).find(g => g.targetId);
+  if (grudge) return grudge.targetId;
+  const ranked = Object.entries(wrestler.relationships || {})
+    .filter(([id]) => {
+      const other = byId(state.wrestlers, id);
+      return other && other.status === 'Available';
+    })
+    .sort((a, b) => b[1].matches - a[1].matches);
+  return ranked.length ? ranked[0][0] : null;
 }
 
 // Slotted in ahead of whatever was closing the show.
@@ -184,6 +578,14 @@ function bookIncidentMatch(state, incident, minutes = 10) {
 
 function finishIfDone(state, at) {
   if (currentItem(state.show, state.broadcast)) return;
+  // The building empties. Whatever you could still hear is now something that
+  // happened and nobody answered.
+  closeAlerts(state, at);
+  // Who laid eyes on you tonight, before the building empties and the answer
+  // stops being knowable.
+  noteWhoSawYou(state);
+  settlePresence(state);
+  state.clock = null;
   state.journal.push(createEntry({ week: state.week, at, type: 'show-end' }));
   // The locker room reacts once, when the show comes off the air.
   settleShow(state);
@@ -236,5 +638,16 @@ export function advanceWeek(state) {
 
   state.broadcast = null;
   state.phase = PHASES.PREP;
+
+  // The building is empty until the next show goes on the air.
+  state.location = START_LOCATION;
+  state.whereabouts = {};
+  state.clock = null;
+  state.alerts = [];
+  state.missed = [];
+  state.deferred = [];
+  state.spokenTo = [];
+  state.sawYou = [];
+  resetSecurity(state);
   return true;
 }

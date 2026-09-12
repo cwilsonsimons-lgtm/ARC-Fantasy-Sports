@@ -665,3 +665,138 @@ button.cal-day.airs:hover { border-color: var(--cool); }
 .choice-name { font-size: 15px; font-weight: 600; }
 .choice-note { font-size: 12px; color: var(--muted); max-width: 56ch; }
 .panel.slots { border-color: var(--amber); }
+
+/* ---------- backstage ---------- */
+/* The GM's own night, sitting under the one going out on television. Framed in
+   cool rather than tally: the show is the emergency, this is the job. */
+.backstage {
+  border: 1px solid var(--line); border-left: 3px solid var(--cool);
+  background: var(--panel); border-radius: 4px;
+  padding: 14px 16px; margin-bottom: 18px;
+}
+.bs-head {
+  display: flex; flex-wrap: wrap; gap: 10px 20px;
+  align-items: flex-start; justify-content: space-between;
+}
+.bs-label {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
+  color: var(--cool); margin-bottom: 5px;
+}
+.bs-room { font-size: 20px; font-weight: 600; color: var(--ink); }
+.bs-clock { display: flex; align-items: baseline; gap: 7px; }
+.bs-min {
+  font: 600 26px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--amber);
+}
+.bs-min-out { color: var(--muted); }
+.bs-min-note { font-size: 12px; color: var(--muted); }
+.bs-note { font-size: 13px; margin: 8px 0 4px; max-width: 70ch; }
+
+.bs-h {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
+  color: var(--muted); margin: 16px 0 7px;
+}
+
+.bs-alerts { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 2px; }
+.bs-alert {
+  display: flex; flex-wrap: wrap; gap: 9px; align-items: center; justify-content: space-between;
+  padding: 9px 11px; border-radius: 3px;
+  border: 1px solid var(--amber); background: var(--clock-dim);
+}
+.bs-alert-what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
+.bs-alert-tag {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--amber); white-space: nowrap;
+}
+
+.bs-people { list-style: none; margin: 0; padding: 0; }
+.bs-people li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px;
+}
+.bs-people li > :first-child { flex: 1 1 150px; min-width: 0; }
+.bs-mood {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  min-width: 88px;
+}
+.bs-spoken {
+  font: 11px/1 var(--mono); color: var(--muted); font-style: italic; white-space: nowrap;
+}
+
+.bs-travel { display: flex; flex-wrap: wrap; gap: 6px; }
+.bs-go {
+  display: flex; align-items: baseline; gap: 8px; cursor: pointer;
+  font: inherit; padding: 6px 10px; border-radius: 3px;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+}
+.bs-go:hover:enabled { border-color: var(--cool); }
+.bs-go:disabled { opacity: .35; cursor: not-allowed; }
+.bs-go-name { font-size: 13px; }
+.bs-go-min { font: 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bs-go-far .bs-go-min { color: var(--amber); }
+
+.bs-standing {
+  display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline;
+  margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.bs-auth { font-weight: 600; }
+.bs-good  { color: var(--good); }
+.bs-fine  { color: var(--cool); }
+.bs-plain { color: var(--ink-dim); }
+.bs-warn  { color: var(--amber); }
+.bs-bad   { color: var(--tally); }
+.bs-security { color: var(--muted); }
+.bs-security b { font-family: var(--mono); color: var(--ink); }
+
+/* ---------- the decision, with a place and a demand attached ---------- */
+.decision-kind {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--ink-dim);
+}
+.decision-where {
+  font: 11px/1 var(--mono); color: var(--muted);
+}
+.decision-demand { font-size: 14px; color: var(--amber); margin: -6px 0 12px; max-width: none; }
+.decision-late { font-size: 13px; color: var(--muted); font-style: italic; margin: -6px 0 12px; max-width: 70ch; }
+
+/* ---------- how the office is going ---------- */
+.office {
+  border: 1px solid var(--line); border-left: 3px solid var(--cool);
+  background: var(--panel); border-radius: 4px;
+  padding: 12px 15px; margin-bottom: 18px;
+}
+.office-row {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+  padding: 4px 0;
+}
+.office-label {
+  font: 500 10px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); min-width: 120px;
+}
+.office-read { font-size: 15px; font-weight: 600; }
+.office-good  { color: var(--good); }
+.office-fine  { color: var(--cool); }
+.office-plain { color: var(--ink-dim); }
+.office-warn  { color: var(--amber); }
+.office-bad   { color: var(--tally); }
+.office-missed { font-size: 13px; margin: 8px 0 0; color: var(--ink-dim); }
+.office-missed b { font-family: var(--mono); color: var(--tally); }
+
+.beat-missed { border-left-color: var(--tally); font-style: italic; }
+.beat-walked-out { border-left-color: var(--tally); }
+.beat-pulled-item { border-left-color: var(--tally); }
+.beat-brawl, .beat-ambush { border-left-color: var(--tally); }
+.beat-complaint, .beat-storm-in, .beat-confrontation { border-left-color: var(--amber); }
+.beat-refusal, .beat-walkout { border-left-color: var(--tally); }
+.beat-tag-dispute, .beat-faction-dispute { border-left-color: var(--cool); }
+.beat-talked, .beat-moved { border-left-color: var(--line); color: var(--muted); }
+.beat-granted-leave { border-left-color: var(--amber); }
+
+@media (max-width: 560px) {
+  /* The name goes on its own line, and a full-width button centres its label
+     unless told otherwise. */
+  .bs-people li > :first-child { flex-basis: 100%; text-align: left; }
+  .bs-mood { min-width: 0; }
+  .bs-room { font-size: 18px; }
+  .bs-min { font-size: 22px; }
+}

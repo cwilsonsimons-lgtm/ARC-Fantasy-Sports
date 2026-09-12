@@ -165,6 +165,29 @@ function upgrade(saved) {
     saved.version = 13;
   }
 
+  if (saved.version === 13) {
+    // The backstage layer. A save mid-show has nobody placed in the building
+    // and no clock, so the night it is in the middle of runs out its remaining
+    // segments with the GM at the curtain and everyone simply present — the
+    // reaction engine falls back to that when `whereabouts` is empty, which is
+    // exactly the pre-Tier-3 behaviour. The next show places everybody
+    // properly.
+    if (!saved.location) saved.location = 'gorilla';
+    if (!saved.whereabouts) saved.whereabouts = {};
+    if (saved.clock === undefined) saved.clock = null;
+    if (!Array.isArray(saved.alerts)) saved.alerts = [];
+    if (!Array.isArray(saved.missed)) saved.missed = [];
+    if (!Array.isArray(saved.deferred)) saved.deferred = [];
+    if (!Array.isArray(saved.spokenTo)) saved.spokenTo = [];
+    if (!saved.security) saved.security = { used: 0 };
+
+    saved.gmRecord = saved.gmRecord || {};
+    for (const key of ['harsh', 'weak', 'fair', 'ignored', 'booked', 'gaveIn', 'delayed', 'missed']) {
+      if (saved.gmRecord[key] === undefined) saved.gmRecord[key] = 0;
+    }
+    saved.version = 14;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

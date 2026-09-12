@@ -4,10 +4,14 @@ The player is the kayfabe General Manager of a weekly wrestling television
 show. This is the first skeleton: view the roster, book a card, run the show
 segment by segment, face the network's verdict, advance the week.
 
+You are also, all night, **standing somewhere specific** — and that decides
+what you see, who you can talk to, what you get to rule on, and what happens
+without you.
+
 Simulated so far: who you used and who you left out, who beat whom, who keeps
-ending up in a ring together, **who steps in when somebody gets jumped**, and
-**what everybody remembers about all of it**. Not yet: contracts, money, or
-anything running long.
+ending up in a ring together, **who steps in when somebody gets jumped**,
+**what everybody remembers about all of it**, and **which of it you were in the
+room for**. Not yet: contracts, money, or anything running long.
 
 ## The weekly phase machine
 
@@ -46,10 +50,17 @@ plays twelve seasons of forty weeks headlessly against the model and asserts on
 the distributions — that saves, hesitations and abandonments are all common
 outcomes, that morale settles in a spread rather than pinning at an end, and
 that **each of the eleven traits measurably changes an outcome**. Then it plays
-ten weeks in a real browser, opens a card, checks it at phone width, reloads,
-and forces an old save through the upgrade. Every crash this prototype has had
-was found by playing it, not by a staged test, so the second half drives the
-actual buttons.
+ten weeks in a real browser: books cards, crosses the building, hears people
+out, answers what it walks into, opens a wrestler card, checks the layout at
+phone width, reloads, and forces an old save through the upgrade. Every crash
+this prototype has had was found by playing it, not by a staged test, so the
+second half drives the actual buttons.
+
+Where a trait's effect is narrow, the check measures the mechanic rather than a
+proxy — vindictiveness against how much of a grievance somebody is *still
+carrying*, not how many rows their ledger has, because the row count saturates
+against its cap once a season is long enough and then it has stopped measuring
+anything.
 
 ## Layout
 
@@ -58,8 +69,21 @@ js/model/   game state and rules — no DOM, no storage
 js/ui/      the only code that touches the page
 js/store.js the open save, and the only write path into it
 js/saves.js save slots, and the generator that builds a world
-js/data/    name pools, archetypes, match types
+js/data/    name pools, archetypes, match types, the building, the catalogue
 ```
+
+The bigger model files, roughly in the order the game reaches for them:
+
+| | |
+| --- | --- |
+| `game.js` | the phase machine, the only file that writes `phase` |
+| `memory.js` | morale, derived from what people remember |
+| `traits.js` | the eleven personality dimensions |
+| `backstage.js` | where the GM is, the clock, and whether they can see a thing |
+| `backstage-events.js` | what the building throws at them, and who it lands on |
+| `incidents.js` | one resolver for every kind of incident |
+| `reactions.js` | who steps in, and why |
+| `discipline.js` | what the GM's answer does to everyone |
 
 `model/` never imports from `ui/`. That boundary is the point of the structure:
 a future backstage-incident system changes the show by calling the same model
@@ -76,6 +100,8 @@ functions the buttons call, without going near the interface.
 | Journal entry | `{ id, week, at, type, itemId, data }` |
 | Grudge | `{ id, week, type, targetId, data }` |
 | Memory | `{ id, week, source, weight, targetId, detail, fade }` |
+| Incident | `{ id, kind, aggressorId, victimId, locationId, severity, demand, reach }` |
+| Clock | `{ segmentMinutes, spent, pending: [minute] }` |
 | Relationship | `wrestler.relationships[otherId] = { matches, segments, owed, tie }` |
 
 Four decisions here exist for systems that do not exist yet:
@@ -519,6 +545,131 @@ The dead-air threshold scales with the window rather than being a flat number
 of minutes, because six minutes short is a rounding error on two hours and a
 tenth of an hour show.
 
+## The backstage layer
+
+This is the tier where it stops being a booking screen. The GM is a person in a
+building, and the building is ten rooms:
+
+```
+            Interview ── Production
+                 │            │
+Medical ── Locker room ── Hallways ── Gorilla
+                 │            │
+             Catering     GM office
+                              │
+                          Security ── Parking lot
+```
+
+Two minutes a corridor. The hallways are the hub — two minutes from the curtain,
+your office, the locker room and the truck, and the worst place in the building
+to be standing, because you see everything pass and control none of it. The car
+park is eight minutes from Gorilla, which is most of a match, and that is the
+whole reason presence is a decision.
+
+### The clock is the match
+
+However long the item on air runs is however long you have backstage before the
+next one starts. **Thinking is free; acting costs clock.** Reading the room,
+looking at who is where, weighing it up — none of that moves the clock. Walking
+does. Talking does.
+
+So a card of five-minute matches is a night with no room to manage anybody, and
+a twenty-minute main event buys you the walk to the car park and back. Booking
+and presence turn out to be the same decision seen from two ends, which is what
+makes the earned window worth more than minutes.
+
+The trouble in each gap is decided **up front, from how long the gap is** — not
+from what you do with it. Whether you spend the twenty minutes crossing the
+building or standing at the curtain, the same night happens. All your choice
+changes is which of it you are in the room for. (The first version tied
+incidents to the GM's own actions, which quietly made standing still the winning
+strategy. That is the opposite of the point, and the simulation caught it.)
+
+### Where everybody is
+
+Anyone in the next item is already at the curtain; anyone in the one on air is
+either out there or coming back through it. Everything else is a read on the
+person — the ones who want to be seen stand where they will be, the injured one
+is in medical, and somebody unhappy and out for themselves is sitting in their
+car, which is the furthest room from you and the point of it. Named ties pull
+people together, so a tag team is in the same room without either of them having
+chosen it separately. About a third of the room moves between segments.
+
+### Witnessed, heard, missed
+
+Three answers, and the middle one is the interesting one.
+
+| | |
+| --- | --- |
+| **Witnessed** | You are in the room. The show holds and asks you. |
+| **Heard** | Next door, or two rooms away if it is loud. You know something is going on and roughly where, but not what — and going to look costs the walk. |
+| **Missed** | You find out in the aftermath, or not at all. |
+
+**Everything resolves whether you are there or not.** The locker room reacts on
+its own, memories file, grudges form. You simply do not get to rule on it — and
+not having ruled on it is itself something the room notices. That is the
+difference between a game about presence and a game about menus.
+
+Going to look is not the same as being there: **a ruling that arrives late is
+worth half a ruling**, because the room had already worked out that nobody was
+coming. And an alert expires when the segment does. You had the length of a
+match to walk down the corridor and you spent it on something else.
+
+One exception, and it is a fair one: a post-match attack **went out on
+television**. Wherever you were standing, you know, and it is as much a
+broadcast problem as a backstage one — so that is the only kind of incident
+presence cannot make you miss.
+
+### What it costs to miss something
+
+Most misses cost you the ruling and a little standing. Two cost more:
+
+- **Somebody refusing to go out**, with nobody at the curtain to make them, takes
+  the segment off the card. Minutes of nothing, and a hole in the rundown the
+  executives lead with.
+- **Somebody walking out**, with nobody in the car park, means they drive off.
+  Three weeks, and they come back carrying it.
+
+### Talking to people
+
+Finding somebody and hearing them out costs two minutes and buys two things:
+they remember that you came looking, and you learn them faster than booking them
+would. Once each per night — the second conversation in an evening is not a
+conversation.
+
+And being *seen* counts on its own. Anybody who laid eyes on you tonight reads
+that as the job being done; anybody who never did forms a view about that.
+Touring the building is worth the minutes even when nothing is going wrong,
+which is what stops "stand at Gorilla all night" from being free.
+
+## Ten kinds of trouble
+
+Each kind finds its own people and its own room, and a kind with nobody to pick
+simply does not happen — which is what makes a settled roster genuinely quiet
+rather than uniformly noisy.
+
+| | Where | What it takes |
+| --- | --- | --- |
+| **Argument** | wherever two of them are | history, or a grudge |
+| **Brawl** | same | that, plus somebody who does not stop at shouting |
+| **Ambush** | wherever the victim is | a grudge, and the nerve to go looking |
+| **Attack** | on camera | the bell, and a sore loser |
+| **Complaint** | your office | unhappy and ambitious enough to ask |
+| **Storming in** | wherever you are | past asking |
+| **Confrontation** | wherever you are | a grievance with the office, said out loud |
+| **Refusing to go out** | the curtain | booked next, furious, and not professional enough to swallow it |
+| **Walking out** | the car park | furious, disloyal, and holding something against you |
+| **Tag team / faction falling out** | wherever they are | a named tie where one of them is doing much better than the other |
+
+Where it happens is not decoration. A confrontation in an empty office is a
+conversation; the same words in the locker room are an event, and everybody
+standing there files it. And the reaction engine only considers **who is
+actually near enough**: something on camera is on every monitor in the building
+so the whole roster can come through the curtain, but something in a corridor is
+seen by whoever is in that corridor and heard by the room next door, and that is
+the entire list. Which is why "nobody moved" is common backstage and rare on
+television, without either being a tuned number.
+
 ## The show stops and asks
 
 An incident is a situation, not a verdict. The locker room reacts on its own —
@@ -526,9 +677,9 @@ that happens in the moment — and then the show **holds** until the GM answers.
 Complete Segment is disabled until they do, and the pending incident lives on
 the save, so closing the tab does not get you out of it.
 
-Ten answers, from "let them settle it" to a month's suspension. Each carries a
-`weight`, and every incident carries a `severity`, and **the room judges the
-gap**:
+Fourteen answers, from "let them settle it" to an indefinite suspension. Each
+carries a `weight`, and every incident carries a `severity`, and **the room
+judges the gap**:
 
 | | |
 | --- | --- |
@@ -540,8 +691,71 @@ That comparison is why discipline is judgement rather than a button marked
 "harshest". A month off for a shouting match and a month off after a
 locker-room riot are the same click and completely different decisions.
 
-Ejections and suspensions **pull the wrestler off the rest of tonight**,
-including whatever they were booked for, so a heavy call costs you television.
+### The ladder
+
+Suspensions are a ladder rather than a set of buttons, so the rung you reached
+for is legible next to the ones you did not:
+
+| | |
+| --- | --- |
+| Sent home for the night | Off the rest of the card. Back next week. |
+| One week | They miss next week. |
+| Two weeks | Long enough that the card has to be rebuilt around it. |
+| One month | They will have time to think about you. |
+| **Indefinite** | No end date. **It does not run out — you end it, from the roster screen, or it does not end.** |
+
+Every other length expires on its own. That is exactly what makes the top rung
+different: an indefinitely suspended main eventer is a hole in your card every
+week until you decide otherwise, and the roster screen will keep saying so.
+
+Any suspension **pulls the wrestler off the rest of tonight**, including
+whatever they were booked for, so a heavy call costs you television.
+
+### The three ways of not deciding
+
+They are not the same failure, and the record counts them apart:
+
+- **Let them settle it.** A decision. The room saw you make it.
+- **Deal with it later.** A deferral. It comes back after the next segment, one
+  severity step heavier, and wherever you happen to be standing then.
+- **Give them what they want.** Solves this one completely, and tells the
+  building how to get what it wants. Everybody in the room watches you fold.
+
+Only demands can be conceded, and what conceding *does* depends on the demand: a
+promise you now have to keep, a spot somebody else no longer has, or a wrestler
+you will not see for eight weeks.
+
+**Security is two people for a whole building.** Sending them is spending them,
+and the next thing tonight finds out.
+
+## Authority, and what head office thinks
+
+Two standings, and they are not the same thing — a locker room can be terrified
+of you while head office remains unconvinced.
+
+**Authority** is whether your word carries. Built from the pattern of your
+rulings rather than a stat you spend: following through raises it, and the ways
+of avoiding a decision take it down — giving in hardest, then ignoring, then
+deferring, then not being in the room. It is expressed as a *share* of the calls
+that came your way rather than a running sum, so it converges on how you tend to
+be read instead of climbing forever, and a GM forty weeks in is not automatically
+worse than one four weeks in.
+
+It is not a penalty applied to a number. **It is a reason things happen**: low
+authority multiplies how often the building gives you trouble, and specifically
+how often somebody refuses to go out or walks to their car. The loop closes.
+
+Four ways of doing the job, over twenty-five simulated weeks each:
+
+| | Authority | Head office | Locker-room morale | Walkouts |
+| --- | --- | --- | --- | --- |
+| Always a formal warning | 69 | 67 | 45 | 1 |
+| Never leaves the curtain | 56 | 53 | **40** | 4 |
+| Walks the building, rules ad hoc | 54 | 54 | **48** | 0 |
+| Always gives in | **13** | **2** | 41 | **13** |
+
+Standing at Gorilla all night keeps your authority intact and costs you the
+locker room. Giving in costs you everything. Neither is a bug.
 
 ## Unfinished business
 

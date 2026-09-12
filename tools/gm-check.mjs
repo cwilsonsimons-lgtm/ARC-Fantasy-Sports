@@ -53,7 +53,7 @@ function playSeason(seed) {
   resetIds();
   const rng = makeRng(seed);
   const state = {
-    version: 13, seed, rng: seed,
+    version: 14, seed, rng: seed,
     ...gameModel.createGame({
       wrestlers: generateRoster(rng),
       promotion: generatePromotion(rng),
@@ -64,8 +64,15 @@ function playSeason(seed) {
   state.titles = seedTitles(state.wrestlers, rng);
 
   const pick = makeRng(seed ^ 0x5f5f);
-  const beats = { save: 0, hesitation: 0, nobody: 0, escalation: 0, attack: 0, noticed: 0 };
-  const per = new Map(state.wrestlers.map(w => [w.id, { saves: 0, attacks: 0, envy: 0 }]));
+  const beats = {
+    save: 0, hesitation: 0, nobody: 0, escalation: 0, noticed: 0,
+    attack: 0, brawl: 0, ambush: 0,
+  };
+  const per = new Map(state.wrestlers.map(w => [w.id, { saves: 0, attacks: 0, envy: 0, brave: 0 }]));
+  const ring = id => {
+    const w = state.wrestlers.find(x => x.id === id);
+    return w ? w.stats.inRing : 50;
+  };
 
   for (let week = 0; week < WEEKS; week += 1) {
     let guard = 0;
@@ -93,8 +100,18 @@ function playSeason(seed) {
 
     for (const entry of state.journal) {
       if (entry.type in beats) beats[entry.type] += 1;
-      if (entry.type === 'save' || entry.type === 'escalation') per.get(entry.data.saverId).saves += 1;
-      if (entry.type === 'attack') per.get(entry.data.aggressorId).attacks += 1;
+      if (entry.type === 'save' || entry.type === 'escalation') {
+        per.get(entry.data.saverId).saves += 1;
+        // Going in against somebody who can plainly handle you is the thing
+        // courage actually governs. Counting every save instead dilutes it with
+        // all the ones anybody would have made.
+        if (ring(entry.data.aggressorId) > ring(entry.data.saverId)) {
+          per.get(entry.data.saverId).brave += 1;
+        }
+      }
+      if (entry.type === 'attack' || entry.type === 'brawl' || entry.type === 'ambush') {
+        per.get(entry.data.aggressorId).attacks += 1;
+      }
       if (entry.type === 'noticed') per.get(entry.data.wrestlerId).envy += 1;
     }
     gameModel.advanceWeek(state);
@@ -102,7 +119,10 @@ function playSeason(seed) {
   return { state, beats, per };
 }
 
-const beats = { save: 0, hesitation: 0, nobody: 0, escalation: 0, attack: 0, noticed: 0 };
+const beats = {
+  save: 0, hesitation: 0, nobody: 0, escalation: 0, noticed: 0,
+  attack: 0, brawl: 0, ambush: 0,
+};
 const rows = [];
 const morales = [];
 let sound = true;
@@ -120,7 +140,12 @@ for (let run = 0; run < RUNS; run += 1) {
       t: Object.fromEntries(TRAITS.map(x => [x.key, trait(w, x.key)])),
       ...per.get(w.id),
       grudges: (w.grudges || []).length,
-      memories: (w.memories || []).length,
+      // What they are still carrying, not how many rows the ledger has — the
+      // row count saturates against the cap once a season is long enough, and
+      // then it has stopped measuring anything.
+      carrying: (w.memories || [])
+        .filter(m => m.weight < 0)
+        .reduce((sum, m) => sum + Math.abs(m.weight * m.fade), 0),
       standing: gmStandingValue(w, state.week),
       morale: w.morale,
     });
@@ -130,12 +155,16 @@ for (let run = 0; run < RUNS; run += 1) {
 console.log(`\n${RUNS} seasons of ${WEEKS} weeks, ${rows.length} wrestlers\n`);
 check(sound, 'every wrestler comes out of a season structurally sound');
 
-// The three outcomes of an attack should all be common. Any one of them
-// swallowing the others means the reaction engine has stopped asking a question.
-const share = key => beats[key] / Math.max(1, beats.attack);
+// The three outcomes of somebody being put hands on should all be common. Any
+// one of them swallowing the others means the reaction engine has stopped
+// asking a question. Counted across every kind that runs the chain, not only
+// the post-match attack — a backstage ambush is the same question asked in a
+// room with far fewer people in it to answer.
+const hands = beats.attack + beats.brawl + beats.ambush;
+const share = key => beats[key] / Math.max(1, hands);
 for (const key of ['save', 'hesitation', 'nobody']) {
   const pct = share(key);
-  check(pct >= 0.15 && pct <= 0.55, `"${key}" is a common outcome of an attack`, `${Math.round(pct * 100)}%`);
+  check(pct >= 0.12 && pct <= 0.6, `"${key}" is a common outcome when somebody gets jumped`, `${Math.round(pct * 100)}%`);
 }
 check(beats.escalation / Math.max(1, beats.save) < 0.5,
   'a locker-room brawl is the rare result, not the norm',
@@ -171,7 +200,7 @@ const EFFECTS = [
   ['patience', 'attacks', -1, 'so does patience'],
   ['jealousy', 'envy', 1, "jealousy notices somebody else's night"],
   ['vindictiveness', 'grudges', 1, 'vindictiveness holds a position longer'],
-  ['vindictiveness', 'memories', 1, 'and holds the memory behind it longer'],
+  ['vindictiveness', 'carrying', 1, 'and is still carrying more of what caused it'],
   ['authority', 'standing', 1, 'respect for the office softens your rulings'],
   ['ego', 'morale', -1, 'a big ego reads the same year worse'],
   ['ambition', 'morale', -1, 'and so does ambition'],
@@ -211,6 +240,9 @@ check(await page.getByRole('button', { name: 'Roster', exact: true }).count() > 
 
 const PLAY_WEEKS = 10;
 let played = 0;
+let talked = 0;
+let walked = 0;
+let spread = { placed: 0, rooms: 0, clock: 0 };
 for (let week = 1; week <= PLAY_WEEKS; week += 1) {
   await page.getByRole('button', { name: 'Booking', exact: true }).click();
   await page.waitForTimeout(120);
@@ -243,17 +275,69 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
   await start.click();
   await page.waitForTimeout(150);
 
-  for (let step = 0; step < 40; step += 1) {
+  // The building only holds people while a show is on, so this has to be read
+  // now rather than from the save after the week turns.
+  if (week === 1) {
+    spread = await page.evaluate(() => {
+      const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
+      const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
+      return {
+        placed: Object.keys(save.whereabouts || {}).length,
+        rooms: new Set(Object.values(save.whereabouts || {})).size,
+        clock: save.clock && save.clock.segmentMinutes,
+      };
+    });
+  }
+
+  for (let step = 0; step < 80; step += 1) {
+    // A stray click on a name opens a card, and a card over the page swallows
+    // every other click. Clear it before doing anything else.
+    if (await page.locator('.overlay').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(60);
+    }
+
     const answer = page.locator('.decision button').first();
     if (await answer.count() && await answer.isEnabled()) {
       await answer.click();
-      await page.waitForTimeout(100);
+      await page.waitForTimeout(80);
       continue;
     }
-    const next = page.getByRole('button', { name: /complete segment/i }).first();
+
+    // Anything audible from the next room is worth the walk.
+    const look = page.locator('.bs-alert button:not([disabled])').first();
+    if (await look.count()) {
+      await look.click();
+      await page.waitForTimeout(80);
+      continue;
+    }
+
+    // Spend some of the gap on the job. Alternate deliberately rather than
+    // always taking the first thing offered — talking is always available in a
+    // busy room, so a greedy loop would never once cross the building.
+    if (step % 2 === 0) {
+      const go = page.locator('.bs-go:not([disabled])');
+      const count = await go.count();
+      if (count) {
+        await go.nth(Math.min(count - 1, step % 4)).click();
+        await page.waitForTimeout(80);
+        walked += 1;
+        continue;
+      }
+    } else {
+      const talk = page.locator('.bs-people button.btn:not([disabled])').first();
+      if (await talk.count()) {
+        await talk.click();
+        await page.waitForTimeout(80);
+        talked += 1;
+        continue;
+      }
+    }
+
+    const next = page.getByRole('button', { name: /^(Complete Segment|Let it run)$/ }).first();
     if (await next.count() && await next.isEnabled()) {
       await next.click();
-      await page.waitForTimeout(100);
+      await page.waitForTimeout(90);
       continue;
     }
     break;
@@ -267,6 +351,34 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
 }
 check(played === PLAY_WEEKS, `${PLAY_WEEKS} weeks play through`, `got to ${played}`);
 check(errors.length === 0, 'no script errors while playing', errors[0] || '');
+check(walked > 0, 'the GM can cross the building', `${walked} moves`);
+check(talked > 0, 'the GM can hear somebody out', `${talked} conversations`);
+
+// The nights just played, read back off the save.
+const night = await page.evaluate(() => {
+  const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
+  const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
+  const kinds = new Set();
+  for (const week of [{ journal: save.journal }, ...(save.history || [])]) {
+    for (const entry of week.journal || []) kinds.add(entry.type);
+  }
+  return {
+    location: save.location,
+    placed: Object.keys(save.whereabouts || {}).length,
+    rooms: new Set(Object.values(save.whereabouts || {})).size,
+    kinds: [...kinds],
+    record: save.gmRecord,
+  };
+});
+check(typeof night.location === 'string', 'the GM is somewhere specific', night.location);
+check(night.kinds.includes('moved'), 'moving about is recorded');
+check(night.kinds.includes('talked'), 'conversations are recorded');
+const backstageKinds = ['argument', 'brawl', 'ambush', 'complaint', 'storm-in',
+  'confrontation', 'refusal', 'walkout', 'tag-dispute', 'faction-dispute'];
+const seenKinds = backstageKinds.filter(k => night.kinds.includes(k));
+check(seenKinds.length >= 2, 'the building produces more than one kind of trouble', seenKinds.join(', '));
+check(night.record && Number.isFinite(night.record.missed),
+  'the record counts what happened with nobody in the room', `missed ${night.record.missed}`);
 
 await page.getByRole('button', { name: 'Roster', exact: true }).click();
 await page.waitForTimeout(200);
@@ -310,6 +422,8 @@ check(stored.baseline, 'every saved wrestler has a natural level');
 check(stored.memories, 'memories are written to the save');
 check(stored.split, 'personality no longer sits in stats');
 check(stored.ties, 'named ties were seeded into the roster');
+check(spread.rooms >= 3, 'the roster is spread across the building', `${spread.rooms} rooms, ${spread.placed} people`);
+check(spread.clock > 0, 'the gap between segments is the segment', `${spread.clock} minutes`);
 
 await page.reload();
 await page.waitForTimeout(500);
@@ -325,6 +439,10 @@ await page.evaluate(() => {
   const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
   const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
   save.version = 12;
+  delete save.location; delete save.whereabouts; delete save.clock;
+  delete save.alerts; delete save.missed; delete save.deferred; delete save.spokenTo;
+  delete save.security;
+  save.gmRecord = { harsh: 1, weak: 0, fair: 2, ignored: 0, booked: 0 };
   for (const w of save.wrestlers) {
     w.stats = { inRing: w.stats.inRing, charisma: w.stats.charisma, ego: 77, ambition: 66, professionalism: 44 };
     delete w.traits; delete w.memories; delete w.baseline;
@@ -343,9 +461,15 @@ const migrated = await page.evaluate(() => {
     filled: save.wrestlers.every(w => Number.isFinite(w.traits.courage) && Number.isFinite(w.traits.loyalty)),
     baseline: save.wrestlers.every(w => Number.isFinite(w.baseline)),
     owed: save.wrestlers.every(w => Object.values(w.relationships).every(r => Number.isFinite(r.owed))),
+    backstage: typeof save.location === 'string' && Array.isArray(save.alerts)
+      && Array.isArray(save.missed) && Array.isArray(save.deferred),
+    record: Boolean(save.gmRecord) && Number.isFinite(save.gmRecord.gaveIn)
+      && Number.isFinite(save.gmRecord.missed) && save.gmRecord.fair === 2,
   };
 });
-check(migrated.version === 13, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.version === 14, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.backstage, 'an upgraded save gets a building to stand in');
+check(migrated.record, 'the existing record survives and gains the new counts');
 check(migrated.carried, 'the three moved traits keep their values');
 check(migrated.filled, 'the eight new traits are filled in');
 check(migrated.baseline, 'upgraded wrestlers get a natural level');

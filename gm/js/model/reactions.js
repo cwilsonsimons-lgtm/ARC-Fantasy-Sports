@@ -16,6 +16,8 @@
 // Nobody reacting is a result, not an absence of one.
 import { byId } from './wrestlers.js';
 import { trait, lean, scale } from './traits.js';
+import { roomOf } from './backstage.js';
+import { hops } from '../data/locations.js';
 
 // Tuned against several thousand simulated matches. The targets are that a save
 // is common but not automatic, that hesitating and nobody-moving are both real
@@ -27,8 +29,8 @@ import { trait, lean, scale } from './traits.js';
 // mostly stand and watch. By week thirty there are debts, factions and scores,
 // and somebody usually goes. That arc is the relationships paying off, so it is
 // left in rather than normalised away.
-export const ACT_AT = 32;
-export const HESITATE_AT = 24;
+export const ACT_AT = 29;
+export const HESITATE_AT = 22;
 const MAX_DEPTH = 3;
 const DEPTH_PENALTY = 14; // each link in a chain is much harder to justify than the last
 // History stops counting past a point. The twentieth match against somebody is
@@ -106,7 +108,7 @@ export function weigh(state, { victimId, aggressorId, fromIndex = 0 }, candidate
 
   // Loyalty decides whether anybody else's trouble is their business at all;
   // selfishness decides whether they would rather it were not.
-  const forOthers = scale(candidate, 'loyalty', 0.6) * (1 - lean(candidate, 'selfishness') * 0.4);
+  const forOthers = scale(candidate, 'loyalty', 0.8) * (1 - lean(candidate, 'selfishness') * 0.4);
 
   // A named tie — a tag partner, a faction, the one who brought them up, or
   // something more than that — outranks anything the counts would have said,
@@ -153,9 +155,18 @@ export function weigh(state, { victimId, aggressorId, fromIndex = 0 }, candidate
   // Fear of whoever is doing the beating, sharpened by a lack of
   // professionalism and answered by nerve. Courage is the trait that decides
   // whether the size of the other one is a reason to stay where you are.
-  let fear = Math.max(0, aggressor.stats.inRing - candidate.stats.inRing) / 4;
+  //
+  // The baseline matters: running into somebody else's fight is never free,
+  // even against a smaller opponent. Without it, fear is zero for anybody who
+  // outranks the aggressor and courage has nothing to push against in most of
+  // the situations where it should be the deciding trait.
+  const BASE_FEAR = 5;
+  let fear = BASE_FEAR + Math.max(0, aggressor.stats.inRing - candidate.stats.inRing) / 4;
   if (trait(candidate, 'professionalism') < 40) fear *= 1.6;
-  fear *= Math.max(0, 1 - lean(candidate, 'courage') * 0.8);
+  // Nought for somebody who walks into anything, double for somebody who does
+  // not. Courage is the only trait acting on this term, so it has to carry the
+  // full range or it is decoration.
+  fear *= Math.max(0, 1 - lean(candidate, 'courage'));
   // They think the victim has it coming, and how long they have thought it is
   // a matter of how long they hold things.
   const spite = ((candidate.alignment === 'Heel' ? Math.min(toVictim.matches, HISTORY_CAP) * 2 : 0)
@@ -173,22 +184,41 @@ export function weigh(state, { victimId, aggressorId, fromIndex = 0 }, candidate
   return { candidate, total, motive: pulls.length ? pulls[0].motive : 'morality' };
 }
 
-// Everyone who could plausibly see it: fit wrestlers who are not already in it.
-function candidates(state, involved) {
-  return state.wrestlers.filter(w => w.status === 'Available' && !involved.has(w.id));
+// Everyone who could plausibly see it.
+//
+// Where it happens changes who that is, and it changes it a lot. Something that
+// goes out on camera is on every monitor in the building, so the whole locker
+// room can come sprinting through the curtain. Something in a corridor is seen
+// by whoever is in that corridor and heard by the room next door, and that is
+// the entire list. It is why "nobody moved" is common backstage and rare on
+// television, without either being a tuned number.
+function candidates(state, involved, locationId) {
+  const pool = state.wrestlers.filter(w => w.status === 'Available' && !involved.has(w.id));
+  // Before the backstage layer places anybody — an old save mid-show, or a
+  // staged test — everybody is simply present.
+  if (!state.whereabouts || !locationId || locationId === 'gorilla') return pool;
+  return pool.filter(w => {
+    const room = roomOf(state, w.id);
+    return room && hops(room, locationId) <= 1;
+  });
 }
 
 // One pass: who acts, and who came out and thought better of it.
 export function resolveReaction(state, event, involved, depth = 0) {
   if (depth >= MAX_DEPTH) return { actor: null, hesitator: null };
 
-  const threshold = ACT_AT + depth * DEPTH_PENALTY;
-  const weighed = candidates(state, involved)
+  const weighed = candidates(state, involved, event.locationId)
     .map(candidate => weigh(state, event, candidate))
     .filter(Boolean)
     .sort((a, b) => b.total - a.total);
 
-  const actor = weighed.find(entry => entry.total >= threshold) || null;
+  // Each link in a chain is harder to justify than the last — but how much
+  // harder is a question about the person. Being the third one in is a matter
+  // of nerve more than of motive, so courage is what shortens that distance.
+  const barFor = candidate =>
+    ACT_AT + depth * DEPTH_PENALTY * (1 - lean(candidate, 'courage') * 0.4);
+
+  const actor = weighed.find(entry => entry.total >= barFor(entry.candidate)) || null;
   // The nearly-did is only interesting when nobody actually went.
   const hesitator = actor
     ? null

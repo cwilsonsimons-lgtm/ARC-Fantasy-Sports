@@ -7,6 +7,9 @@
 import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
 import { responseById, proportionality } from '../data/responses.js';
+import { DEMANDS } from '../data/backstage.js';
+import { witnesses } from './incidents.js';
+import { useSecurity, securityLeft } from './backstage.js';
 import { trait, lean, scale } from './traits.js';
 import { remember } from './memory.js';
 import { alliesOf as tiedAllies } from './relationships.js';
@@ -69,36 +72,58 @@ export function applyResponse(state, incident, responseId) {
   if (!response) return null;
 
   const aggressor = byId(state.wrestlers, incident.aggressorId);
-  const victim = byId(state.wrestlers, incident.victimId);
-  if (!aggressor || !victim) return null;
+  // A complaint, a confrontation or somebody refusing to go out has only one
+  // wrestler in it. The other side is you, and you do not have a morale score.
+  const victim = incident.victimId === 'gm' ? null : byId(state.wrestlers, incident.victimId);
+  if (!aggressor) return null;
 
   const read = proportionality(incident.severity, responseId);
-  const outcome = { responseId, read, pulled: [], opportunity: null, suspended: null };
+  const outcome = {
+    responseId, read, pulled: [], opportunity: null, suspended: null,
+    gaveIn: false, delayed: false,
+  };
+
+  // A ruling that arrives after the room has already made up its mind is worth
+  // a fraction of the same ruling made on the spot. Being late is not the same
+  // as being absent, but it is not the same as being there either.
+  const weightOf = amount => Math.round(amount * (incident.late ? 0.5 : 1));
 
   // What the response does to the person it lands on.
-  if (responseId === 'word') {
-    ruling(state, aggressor, 3, 'word');
+  if (responseId === 'delay') {
+    // Not a decision. A deferral, and they can tell the difference.
+    ruling(state, aggressor, -3, 'delayed');
+    outcome.delayed = true;
+  } else if (responseId === 'giveIn') {
+    // Solves this one completely and tells the building how to get what it
+    // wants. That second part is the price, and it is not paid tonight.
+    ruling(state, aggressor, 12, `gave-in:${incident.demand || 'demand'}`);
+    outcome.gaveIn = true;
+    outcome.demand = incident.demand || null;
+    for (const bystander of witnesses(state, incident)) {
+      remember(state, bystander, { source: 'gm', weight: -2, detail: 'watched-you-fold' });
+    }
+  } else if (responseId === 'word') {
+    ruling(state, aggressor, weightOf(3), 'word');
   } else if (responseId === 'mediate') {
     // Two people who already wanted to fight, in one room. Whether it works is
     // a question about both of them, not about the idea.
-    const calmed = (trait(aggressor, 'professionalism') + trait(victim, 'professionalism')) / 2
-      >= 55 - lean(aggressor, 'patience') * 10;
+    const calmed = victim
+      && (trait(aggressor, 'professionalism') + trait(victim, 'professionalism')) / 2
+        >= 55 - lean(aggressor, 'patience') * 10;
     ruling(state, aggressor, calmed ? 4 : -3, 'mediate');
-    ruling(state, victim, calmed ? 4 : -3, 'mediate');
-    outcome.mediationWorked = calmed;
+    if (victim) ruling(state, victim, calmed ? 4 : -3, 'mediate');
+    outcome.mediationWorked = Boolean(calmed);
   } else if (responseId === 'security') {
-    ruling(state, aggressor, -2, 'security');
+    // Security is two people for a whole building. Spending them here is
+    // spending them, and the next thing tonight will find out.
+    useSecurity(state);
+    ruling(state, aggressor, weightOf(-2), 'security');
+    outcome.securityLeft = securityLeft(state);
   } else if (responseId === 'warning') {
-    ruling(state, aggressor, -4, 'warning');
-  } else if (responseId === 'eject') {
-    ruling(state, aggressor, -9, 'eject');
+    ruling(state, aggressor, weightOf(-4), 'warning');
+  } else if (response.suspendWeeks !== undefined) {
+    outcome.suspended = applySuspension(state, aggressor, response.suspendWeeks, weightOf);
     outcome.pulled = pullFromShow(state, aggressor.id);
-  } else if (response.suspendWeeks) {
-    ruling(state, aggressor, -8 - response.suspendWeeks * 3, 'suspend');
-    outcome.pulled = pullFromShow(state, aggressor.id);
-    aggressor.status = 'Unavailable';
-    aggressor.suspendedUntil = state.week + response.suspendWeeks;
-    outcome.suspended = response.suspendWeeks;
   }
 
   // A punishment the room reads as unfair is remembered as yours, not theirs —
@@ -120,7 +145,7 @@ export function applyResponse(state, incident, responseId) {
   }
 
   // And one the room reads as nothing at all is remembered too.
-  if (read === 'weak') {
+  if (read === 'weak' && victim) {
     ruling(state, victim, -4, 'let-go');
     for (const wrestler of state.wrestlers) {
       if (wrestler.status === 'Available' && trait(wrestler, 'professionalism') > 70) {
@@ -129,7 +154,7 @@ export function applyResponse(state, incident, responseId) {
     }
   }
 
-  if (read === 'fair' && response.weight > 0) {
+  if (read === 'fair' && response.weight > 0 && victim) {
     ruling(state, victim, 3, 'backed-up');
   }
 
@@ -140,10 +165,19 @@ export function applyResponse(state, incident, responseId) {
     }
   }
 
-  state.gmRecord = state.gmRecord || { harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0 };
-  if (responseId === 'ignore') state.gmRecord.ignored += 1;
-  else state.gmRecord[read] += 1;
-  if (responseId === 'bookTonight' || responseId === 'bookNext') state.gmRecord.booked += 1;
+  state.gmRecord = state.gmRecord || {};
+  const record = state.gmRecord;
+  for (const key of ['harsh', 'weak', 'fair', 'ignored', 'booked', 'gaveIn', 'delayed', 'missed']) {
+    if (record[key] === undefined) record[key] = 0;
+  }
+  // The three ways of not making a call are counted apart from the calls,
+  // because authority reads them differently: letting it go, putting it off,
+  // and handing over what was asked for are not the same failure.
+  if (responseId === 'ignore') record.ignored += 1;
+  else if (responseId === 'delay') record.delayed += 1;
+  else if (responseId === 'giveIn') record.gaveIn += 1;
+  else record[read] += 1;
+  if (responseId === 'bookTonight' || responseId === 'bookNext') record.booked += 1;
 
   state.journal.push(createEntry({
     week: state.week,
@@ -153,7 +187,10 @@ export function applyResponse(state, incident, responseId) {
       responseId,
       read,
       aggressorId: aggressor.id,
-      victimId: victim.id,
+      victimId: victim ? victim.id : null,
+      kind: incident.kind || 'attack',
+      late: Boolean(incident.late),
+      demand: outcome.demand || null,
       pulled: outcome.pulled.length,
       suspended: outcome.suspended,
       mediationWorked: outcome.mediationWorked,
@@ -163,9 +200,49 @@ export function applyResponse(state, incident, responseId) {
   return outcome;
 }
 
+// The ladder, from sending somebody home for the night to telling them not to
+// come back until they hear from you. The gap between the rungs is the point:
+// every step up buys obedience and spends goodwill, and the room is watching
+// which rung you reach for.
+function applySuspension(state, wrestler, weeks, weightOf) {
+  if (weeks === 'indefinite') {
+    ruling(state, wrestler, weightOf(-26), 'suspend-indefinite');
+    wrestler.status = 'Unavailable';
+    wrestler.suspendedUntil = 'indefinite';
+    return 'indefinite';
+  }
+
+  if (!weeks) {
+    // Tonight only. They are out of the building and off the rest of the card.
+    ruling(state, wrestler, weightOf(-9), 'sent-home');
+    return 0;
+  }
+
+  ruling(state, wrestler, weightOf(-8 - weeks * 3), 'suspend');
+  wrestler.status = 'Unavailable';
+  wrestler.suspendedUntil = state.week + weeks;
+  return weeks;
+}
+
+// Bringing somebody back in. Only an indefinite suspension needs this — every
+// other length ends on its own — which is exactly what makes it different.
+export function reinstate(state, wrestlerId) {
+  const wrestler = byId(state.wrestlers, wrestlerId);
+  if (!wrestler || wrestler.suspendedUntil !== 'indefinite') return null;
+  wrestler.suspendedUntil = null;
+  wrestler.status = 'Available';
+  remember(state, wrestler, { source: 'gm', weight: 7, detail: 'brought-back' });
+  return wrestler;
+}
+
+export function indefinitelySuspended(state) {
+  return state.wrestlers.filter(w => w.suspendedUntil === 'indefinite');
+}
+
 // Suspensions end. Being suspended does not stop being remembered.
 export function releaseSuspensions(state) {
   for (const wrestler of state.wrestlers) {
+    if (wrestler.suspendedUntil === 'indefinite') continue; // ends when you say so
     if (wrestler.suspendedUntil && state.week >= wrestler.suspendedUntil) {
       wrestler.suspendedUntil = null;
       if (wrestler.status === 'Unavailable') wrestler.status = 'Available';

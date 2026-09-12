@@ -9,11 +9,30 @@ import {
 import { itemLabel, typeLabel } from './labels.js';
 import { matchType } from '../data/match-types.js';
 import { titleById } from '../model/titles.js';
-import { SEVERITIES, responseById } from '../data/responses.js';
+import { SEVERITIES, responseById, suspensionLabel } from '../data/responses.js';
 import { gmReputation } from '../model/discipline.js';
 import { tierOf, nextTier } from '../model/network.js';
+import { backstagePanel } from './backstage.js';
+import { incidentLine, demandLine } from './incident-text.js';
+import { hasTwoSides, incidentKind } from '../data/backstage.js';
+import { locationName, locationProse } from '../data/locations.js';
+import { authority, minutesLeft, whereYouAre } from '../model/backstage.js';
+import { bossView } from '../model/executives.js';
 
-const INCIDENT_TYPES = new Set(['attack', 'argument', 'save', 'escalation', 'hesitation', 'nobody', 'ruling']);
+// Kinds that read as a situation, all of which the interface words the same way
+// whether it is asking about one or recording it.
+const BACKSTAGE_KINDS = new Set([
+  'attack', 'brawl', 'ambush', 'argument', 'tag-dispute', 'faction-dispute',
+  'complaint', 'storm-in', 'confrontation', 'refusal', 'walkout',
+]);
+
+// Everything that belongs in the "tonight so far" feed rather than the rundown.
+const INCIDENT_TYPES = new Set([
+  'attack', 'brawl', 'ambush', 'argument', 'tag-dispute', 'faction-dispute',
+  'complaint', 'storm-in', 'confrontation', 'refusal', 'walkout',
+  'save', 'escalation', 'hesitation', 'nobody', 'ruling',
+  'missed', 'walked-out', 'pulled-item', 'granted-leave', 'talked', 'moved',
+]);
 
 // Why somebody went. The reason is the whole point — a save that just happens
 // is a dice roll, a save with a motive attached is a story.
@@ -82,16 +101,22 @@ function liveView(state) {
 
     decisionPanel(state),
 
+    // The night the GM is having, alongside the one going out on television.
+    item ? backstagePanel(state) : null,
+
     item
       ? el('p', {},
           el('button', {
-            type: 'button', class: 'btn primary', text: 'Complete Segment',
+            type: 'button', class: 'btn primary',
+            text: minutesLeft(state) > 0 ? 'Let it run' : 'Complete Segment',
             disabled: Boolean(state.pendingIncident),
             onClick: () => commit(s => completeSegment(s)),
           }),
           state.pendingIncident
             ? el('span', { class: 'muted', text: '  The show is holding until you answer.' })
-            : null
+            : minutesLeft(state) > 0
+              ? el('span', { class: 'muted', text: `  Gives up the ${minutesLeft(state)} minutes you have left backstage.` })
+              : null
         )
       : null,
 
@@ -111,17 +136,32 @@ function decisionPanel(state) {
   if (!incident) return null;
 
   const aggressor = nameOf(state.wrestlers, incident.aggressorId);
-  const victim = nameOf(state.wrestlers, incident.victimId);
+  const victim = hasTwoSides(incident) ? nameOf(state.wrestlers, incident.victimId) : 'you';
   const fill = text => text.replace('{aggressor}', aggressor).replace('{victim}', victim);
+  const kind = incidentKind(incident.kind || 'attack');
+  const severity = SEVERITIES[incident.severity] || SEVERITIES.moderate;
 
   return el('div', { class: 'decision' },
     el('div', { class: 'decision-head' },
-      el('span', { class: `sev sev-${incident.severity}`, text: SEVERITIES[incident.severity].label }),
+      el('span', { class: `sev sev-${incident.severity}`, text: severity.label }),
+      el('span', { class: 'decision-kind', text: kind.label }),
+      incident.locationId
+        ? el('span', { class: 'decision-where', text: locationName(incident.locationId) })
+        : null,
       el('span', { class: 'decision-what', text: 'What are you going to do about this?' })
     ),
-    el('p', { class: 'decision-line', text: incident.kind === 'argument'
-      ? `${aggressor} and ${victim} went at it backstage.`
-      : `${aggressor} put hands on ${victim} after the bell.` }),
+    el('p', { class: 'decision-line', text: incidentLine(state, incident.kind || 'attack', incident) }),
+    incident.demand
+      ? el('p', { class: 'decision-demand', text: demandLine(incident.demand) })
+      : null,
+    // Arriving after the room has made up its mind is not the same as being
+    // there, and the player should know that before they choose.
+    incident.late
+      ? el('p', { class: 'decision-late', text: 'You got here late. Whatever you decide now, they had already worked out that nobody was coming.' })
+      : null,
+    incident.deferrals
+      ? el('p', { class: 'decision-late', text: 'You put this off once already.' })
+      : null,
     el('div', { class: 'options' },
       availableResponses(state).map(response =>
         el('button', {
@@ -207,6 +247,7 @@ function aftermathView(state) {
     ),
 
     memoPanel(review),
+    officePanel(state, review),
     networkPanel(state),
     reputationPanel(state),
 
@@ -283,6 +324,12 @@ function memoPanel(review) {
       : 'Your locker room is a mess, and people outside this building are starting to notice.'
   );
 
+  if (review.backstage !== 'quiet') {
+    lines.unshift(review.backstage === 'noisy'
+      ? 'I hear things happened backstage that nobody dealt with. I would rather hear it from you than from them.'
+      : 'Your building was out of control tonight. Segments off the card, people walking out. Run it or I will find somebody who will.');
+  }
+
   if (review.breaches > 0) {
     lines.unshift(review.breaches === 1
       ? 'A match I advertised did not happen. I had to explain that to people, which is your job, not mine.'
@@ -334,6 +381,35 @@ function networkPanel(state) {
 
 // Nobody picks this at the start. It is what the room has decided you are,
 // from the pattern of calls you actually made.
+// Two standings that are about you rather than about the show: whether your
+// word carries in the building, and what head office makes of how you run it.
+// They move together but they are not the same thing — a locker room can be
+// terrified of you and head office still unconvinced.
+function officePanel(state, review) {
+  const office = authority(state);
+  const boss = bossView(state);
+  const missed = (state.missed || []).length;
+
+  return el('div', { class: 'office' },
+    el('div', { class: 'office-row' },
+      el('span', { class: 'office-label', text: 'Your authority' }),
+      el('span', { class: `office-read office-${office.tone}`, text: office.phrase })
+    ),
+    el('div', { class: 'office-row' },
+      el('span', { class: 'office-label', text: 'Head office' }),
+      el('span', { class: `office-read office-${boss.tone}`, text: boss.phrase })
+    ),
+    missed
+      ? el('p', { class: 'office-missed' },
+          el('b', { text: String(missed) }),
+          missed === 1
+            ? ' thing happened tonight with nobody in the room.'
+            : ' things happened tonight with nobody in the room.'
+        )
+      : el('p', { class: 'office-missed muted', text: 'Nothing happened tonight that you were not there for.' })
+  );
+}
+
 function reputationPanel(state) {
   const reputation = gmReputation(state);
   if (!reputation) return null;
@@ -450,7 +526,37 @@ export function journalText(state, entry, items = state.show.items) {
       : entry.data.read === 'weak' ? ' The room noticed you let it go.'
       : '';
     const pulled = entry.data.pulled ? ` ${entry.data.pulled} booked segment${entry.data.pulled === 1 ? '' : 's'} came off the card.` : '';
-    return `Your call: ${label}.${read}${pulled}`;
+    const late = entry.data.late ? ' You were not there when it started.' : '';
+    return `Your call: ${label}.${read}${pulled}${late}`;
+  }
+
+  // Everything that is a situation rather than a consequence reads the same way
+  // here as it did when you were asked about it.
+  if (BACKSTAGE_KINDS.has(entry.type)) {
+    return incidentLine(state, entry.type, entry.data);
+  }
+  if (entry.type === 'missed') {
+    const what = incidentLine(state, entry.data.kind, entry.data);
+    const where = entry.data.whereYouWere
+      ? ` You were in ${locationProse(entry.data.whereYouWere)}.`
+      : '';
+    return `${what} Nobody with any authority was there.${where}`;
+  }
+  if (entry.type === 'walked-out') {
+    return `${nameOf(state.wrestlers, entry.data.wrestlerId)} got in the car and drove off. Not expected back for ${entry.data.weeks} weeks.`;
+  }
+  if (entry.type === 'pulled-item') {
+    const who = entry.data.participants.map(id => nameOf(state.wrestlers, id)).join(' vs. ');
+    return `${who} came off the card. Nobody was at the curtain to make it happen.`;
+  }
+  if (entry.type === 'granted-leave') {
+    return `${nameOf(state.wrestlers, entry.data.wrestlerId)} asked to be let go and you agreed. ${entry.data.weeks} weeks.`;
+  }
+  if (entry.type === 'talked') {
+    return `You found ${nameOf(state.wrestlers, entry.data.wrestlerId)} and heard them out.`;
+  }
+  if (entry.type === 'moved') {
+    return `You headed for ${locationProse(entry.data.locationId)}.`;
   }
   if (entry.type === 'title-change') {
     const title = titleById(state, entry.data.titleId);

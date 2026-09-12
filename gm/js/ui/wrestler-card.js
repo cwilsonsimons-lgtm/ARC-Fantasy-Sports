@@ -15,6 +15,8 @@ import {
 import { TRAITS } from '../model/traits.js';
 import { moraleSources, gmStanding } from '../model/memory.js';
 import { relationshipsOf } from '../model/relationships.js';
+import { roomOf } from '../model/backstage.js';
+import { locationName } from '../data/locations.js';
 import { opinions, tasteReading, aptitudeReading } from '../model/match-types.js';
 import { winRate } from '../model/matches.js';
 import { moodWord, moodClass } from './mood.js';
@@ -72,7 +74,12 @@ function header(state, w) {
         bookable(w)
           ? el('span', { class: `chip ${moodClass(w)}`, text: moodWord(w) })
           : null,
-        w.grudges.length ? el('span', { class: 'chip chip-bad', text: 'grudge' }) : null
+        w.grudges.length ? el('span', { class: 'chip chip-bad', text: 'grudge' }) : null,
+        // Where they are right now, while a show is on. Knowing that somebody
+        // furious is sitting in the car park is the whole point of the map.
+        roomOf(state, w.id)
+          ? el('span', { class: 'chip', text: locationName(roomOf(state, w.id)) })
+          : null
       ),
       el('div', { class: 'record' },
         el('span', { class: 'record-num', text: `${w.record.wins}–${w.record.losses}` }),
