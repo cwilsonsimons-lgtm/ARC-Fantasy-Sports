@@ -13,7 +13,8 @@ import { SEVERITIES, responseById, suspensionLabel } from '../data/responses.js'
 import { gmReputation } from '../model/discipline.js';
 import { tierOf, nextTier } from '../model/network.js';
 import { backstagePanel } from './backstage.js';
-import { incidentLine, demandLine } from './incident-text.js';
+import { threadPanel } from './threads.js';
+import { incidentLine, demandLine, momentLine } from './incident-text.js';
 import { hasTwoSides, incidentKind } from '../data/backstage.js';
 import { locationName, locationProse } from '../data/locations.js';
 import { authority, minutesLeft, whereYouAre } from '../model/backstage.js';
@@ -24,14 +25,24 @@ import { bossView } from '../model/executives.js';
 const BACKSTAGE_KINDS = new Set([
   'attack', 'brawl', 'ambush', 'argument', 'tag-dispute', 'faction-dispute',
   'complaint', 'storm-in', 'confrontation', 'refusal', 'walkout',
+  'cheap-shot', 'submission-held', 'faction-beatdown',
+]);
+
+// And the things that only ever happen — nobody rules on a handshake.
+const MOMENT_KINDS = new Set([
+  'handshake', 'handshake-refused', 'stare-down', 'champion-challenge',
+  'broke-it-up', 'balked', 'tie-formed',
 ]);
 
 // Everything that belongs in the "tonight so far" feed rather than the rundown.
 const INCIDENT_TYPES = new Set([
   'attack', 'brawl', 'ambush', 'argument', 'tag-dispute', 'faction-dispute',
   'complaint', 'storm-in', 'confrontation', 'refusal', 'walkout',
-  'save', 'escalation', 'hesitation', 'nobody', 'ruling',
+  'cheap-shot', 'submission-held', 'faction-beatdown',
+  'handshake', 'handshake-refused', 'stare-down', 'champion-challenge',
+  'save', 'escalation', 'hesitation', 'nobody', 'balked', 'broke-it-up', 'ruling',
   'missed', 'walked-out', 'pulled-item', 'granted-leave', 'talked', 'moved',
+  'tie-formed',
 ]);
 
 // Why somebody went. The reason is the whole point — a save that just happens
@@ -253,6 +264,8 @@ function aftermathView(state) {
 
     el('h3', { text: 'The locker room' }),
     moodList(state),
+
+    threadPanel(state),
 
     el('div', { class: 'split' },
       el('div', {},
@@ -535,12 +548,16 @@ export function journalText(state, entry, items = state.show.items) {
   if (BACKSTAGE_KINDS.has(entry.type)) {
     return incidentLine(state, entry.type, entry.data);
   }
+  if (MOMENT_KINDS.has(entry.type)) {
+    return momentLine(state, entry.type, entry.data) || '';
+  }
   if (entry.type === 'missed') {
-    const what = incidentLine(state, entry.data.kind, entry.data);
+    // The line above this one already said what happened. Repeating it and then
+    // adding a clause read as the game saying the same thing twice.
     const where = entry.data.whereYouWere
       ? ` You were in ${locationProse(entry.data.whereYouWere)}.`
       : '';
-    return `${what} Nobody with any authority was there.${where}`;
+    return `Nobody with any authority was there for that.${where}`;
   }
   if (entry.type === 'walked-out') {
     return `${nameOf(state.wrestlers, entry.data.wrestlerId)} got in the car and drove off. Not expected back for ${entry.data.weeks} weeks.`;
@@ -593,11 +610,18 @@ export function journalText(state, entry, items = state.show.items) {
   if (entry.type === 'attack') {
     return `${nameOf(state.wrestlers, entry.data.aggressorId)} jumped ${nameOf(state.wrestlers, entry.data.victimId)} after the bell.`;
   }
-  if (entry.type === 'save') {
-    return `${nameOf(state.wrestlers, entry.data.saverId)} came out to make the save. ${MOTIVE_LINE[entry.data.motive] || ''}`;
-  }
-  if (entry.type === 'escalation') {
-    return `${nameOf(state.wrestlers, entry.data.saverId)} piled in on ${nameOf(state.wrestlers, entry.data.aggressorId)}. ${MOTIVE_LINE[entry.data.motive] || ''}`;
+  if (entry.type === 'save' || entry.type === 'escalation') {
+    const saver = nameOf(state.wrestlers, entry.data.saverId);
+    const withThem = (entry.data.withIds || []).map(id => nameOf(state.wrestlers, id));
+    // A faction does not send a representative, and the line should not read as
+    // though it did.
+    const company = withThem.length
+      ? ` ${withThem.join(' and ')} came with them.`
+      : '';
+    const why = MOTIVE_LINE[entry.data.motive] || '';
+    return entry.type === 'save'
+      ? `${saver} came out to make the save.${company} ${why}`
+      : `${saver} piled in on ${nameOf(state.wrestlers, entry.data.aggressorId)}.${company} ${why}`;
   }
   if (entry.type === 'hesitation') {
     return `${nameOf(state.wrestlers, entry.data.wrestlerId)} came out, stopped halfway, and went back. ${nameOf(state.wrestlers, entry.data.victimId)} saw all of it.`;

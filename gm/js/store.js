@@ -188,6 +188,26 @@ function upgrade(saved) {
     saved.version = 14;
   }
 
+  if (saved.version === 14) {
+    // Threads are a reading of what has already happened rather than a store of
+    // anything, so an upgraded save starts with none and builds them from the
+    // week it is upgraded on. The history is still in the archived journals;
+    // it simply is not retro-read, because a feud the game noticed halfway
+    // through is a stranger thing than one it started watching today.
+    if (!Array.isArray(saved.threads)) saved.threads = [];
+    for (const w of saved.wrestlers || []) {
+      if (w.injuredUntil === undefined) w.injuredUntil = null;
+      for (const rel of Object.values(w.relationships || {})) {
+        // Team-ups used to be filed as ordinary matches — your own tag partner
+        // read as a rival you kept meeting — so an existing save has no record
+        // of who partnered whom. It starts at nought and builds from here
+        // rather than being guessed at out of the archive.
+        if (rel.teamed === undefined) rel.teamed = 0;
+      }
+    }
+    saved.version = 15;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

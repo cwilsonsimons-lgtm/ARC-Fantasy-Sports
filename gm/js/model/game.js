@@ -11,6 +11,7 @@
 import { byId } from './wrestlers.js';
 import { nextId } from '../ids.js';
 import { remember, fadeMemories, coolGrudges } from './memory.js';
+import { formTies } from './relationships.js';
 import { growFamiliarity } from './stats.js';
 import { createShow } from './show.js';
 import { createBroadcast, completeCurrent, currentItem, elapsedMinutes } from './broadcast.js';
@@ -18,14 +19,16 @@ import { createEntry } from './journal.js';
 import { settleShow } from './morale.js';
 import { decideWinner, applyOutcome } from './matches.js';
 import { rngFor } from './random.js';
-import { maybePostMatchAttack, resolveIncident } from './incidents.js';
+import { resolveIncident } from './incidents.js';
+import { resolvePostMatch } from './post-match.js';
+import { noteThread, forgetColdThreads } from './threads.js';
 import { troubleIn, drawIncident } from './backstage-events.js';
 import {
   START_LOCATION, TALK_MINUTES, createClock, minutesLeft, canSpend, spend, nowAt,
   placeEveryone, shuffleRooms, roomOf, peopleIn, visibility, resetSecurity, securityLeft,
 } from './backstage.js';
 import { walkMinutes, locationName } from '../data/locations.js';
-import { applyResponse, releaseSuspensions } from './discipline.js';
+import { applyResponse, releaseSuspensions, healInjuries } from './discipline.js';
 import { createOpportunity, ageOpportunities } from './opportunities.js';
 import { RESPONSES } from '../data/responses.js';
 import { hasTwoSides, incidentKind, carryOf, DEMANDS } from '../data/backstage.js';
@@ -61,6 +64,7 @@ export function createGame({ wrestlers, promotion, air, titles = [] }) {
     security: { used: 0 },
     lastReview: null,
     opportunities: [],
+    threads: [],
     scheduled: [],
     history: [],
     breaches: 0,
@@ -80,7 +84,15 @@ export function canEditCard(state) {
 export function startShow(state) {
   if (state.phase !== PHASES.PREP || !state.show.items.length) return false;
   state.broadcast = createBroadcast(state.show);
-  state.journal = [createEntry({ week: state.week, at: 0, type: 'show-start' })];
+  // Things happen between shows — a promise goes cold, two people become a tag
+  // team — and they are filed with the new week's number. Wiping the journal
+  // wholesale here threw all of that away before anybody could read it, which
+  // made every between-weeks event invisible: it was written, archived nowhere,
+  // and gone. Keep this week's entries and start the night after them.
+  state.journal = [
+    ...state.journal.filter(entry => entry.week === state.week),
+    createEntry({ week: state.week, at: 0, type: 'show-start' }),
+  ];
   state.phase = PHASES.LIVE;
 
   // The GM starts at the curtain, because that is where you are when the show
@@ -221,6 +233,16 @@ export function completeSegment(state) {
     },
   }));
 
+  // Two people having a match is the quietest thing that can go on a record,
+  // and the thing every feud is mostly made of.
+  if (item.type === 'match' && item.participants.length >= 2) {
+    for (let i = 0; i < item.participants.length; i += 1) {
+      for (let j = i + 1; j < item.participants.length; j += 1) {
+        noteThread(state, item.participants[i], item.participants[j], 'match', at);
+      }
+    }
+  }
+
   // And if a belt was on the line, it may have just changed hands. Settled
   // after the match is written down, so the journal reads in the order the
   // night actually happened.
@@ -233,17 +255,17 @@ export function completeSegment(state) {
   // run out of time. The night moved on without them.
   closeAlerts(state, at);
 
-  // The bell rings, and then somebody decides what to do about it. The locker
-  // room reacts on its own — that happens in the moment, not on the GM's word —
-  // and then the situation is handed over.
-  const attack = maybePostMatchAttack(state, item, result, state.show.items.indexOf(item), roll);
-  if (attack) {
-    attack.at = at;
-    // It went out on television. Wherever the GM was standing, they know, and
-    // it is as much a broadcast problem as a backstage one — so this is the one
-    // kind of incident presence cannot make you miss.
-    attack.onCamera = true;
-    raise(state, attack);
+  // The bell rings, and the two of them are still standing there. Most of what
+  // can happen next is colour and settles itself; the ones where somebody gets
+  // hurt come back here to be handed over.
+  //
+  // All of it went out on television, so wherever the GM was standing they
+  // know — the one kind of incident presence cannot make you miss.
+  result.at = at;
+  const moment = resolvePostMatch(state, item, result, state.show.items.indexOf(item), roll);
+  if (moment && moment.incident) {
+    moment.incident.at = at;
+    raise(state, moment.incident);
   }
 
   // The building rearranges between segments, and the next gap is however long
@@ -621,12 +643,24 @@ export function advanceWeek(state) {
 
   state.week += 1;
   releaseSuspensions(state);
+  healInjuries(state);
   // Last week stops being the whole of what somebody thinks about. How much it
   // stops being is a question about the person, not about the week.
   fadeMemories(state);
   coolGrudges(state);
   ageOpportunities(state);
   championMorale(state);
+  forgetColdThreads(state);
+
+  // And then the locker room rearranges itself. People who keep turning up for
+  // each other become a unit, and people who cannot stand the same third person
+  // find they have something in common. Nobody booked any of it.
+  for (const tie of formTies(state)) {
+    state.journal.push(createEntry({
+      week: state.week, at: 0, type: 'tie-formed', data: tie,
+    }));
+  }
+
   state.breaches = 0;
 
   state.show = createShow({

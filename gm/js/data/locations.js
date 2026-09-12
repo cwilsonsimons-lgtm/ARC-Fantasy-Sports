@@ -74,7 +74,7 @@ export const LOCATIONS = [
     neighbours: ['locker'],
   },
   {
-    id: 'security', prose: 'the security desk', name: 'Security area', short: 'Security',
+    id: 'security', prose: 'the security area', name: 'Security area', short: 'Security',
     note: 'The desk by the loading door, and however many people you can actually call on.',
     sees: 'The doors. And whether anybody you sent for has been found.',
     neighbours: ['office', 'parking'],

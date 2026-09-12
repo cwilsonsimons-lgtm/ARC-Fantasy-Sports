@@ -15,6 +15,7 @@ import {
 import { TRAITS } from '../model/traits.js';
 import { moraleSources, gmStanding } from '../model/memory.js';
 import { relationshipsOf } from '../model/relationships.js';
+import { threadList } from './threads.js';
 import { roomOf } from '../model/backstage.js';
 import { locationName } from '../data/locations.js';
 import { opinions, tasteReading, aptitudeReading } from '../model/match-types.js';
@@ -53,6 +54,7 @@ export function renderCard(state, wrestlerId) {
           feelingList(w),
           el('h4', { text: 'Stipulations' }),
           stipulationList(w),
+          threadList(state, w.id),
           el('h4', { text: 'The locker room' }),
           relationshipList(state, w)
         )

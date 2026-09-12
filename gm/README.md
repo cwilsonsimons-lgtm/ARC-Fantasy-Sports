@@ -10,8 +10,10 @@ without you.
 
 Simulated so far: who you used and who you left out, who beat whom, who keeps
 ending up in a ring together, **who steps in when somebody gets jumped**,
-**what everybody remembers about all of it**, and **which of it you were in the
-room for**. Not yet: contracts, money, or anything running long.
+**what everybody remembers about all of it**, **which of it you were in the
+room for**, and **what all of that adds up to** — the game keeps a reading of
+its own feuds, and nobody wrote them. Not yet: contracts, money, or anything
+running long.
 
 ## The weekly phase machine
 
@@ -81,9 +83,11 @@ The bigger model files, roughly in the order the game reaches for them:
 | `traits.js` | the eleven personality dimensions |
 | `backstage.js` | where the GM is, the clock, and whether they can see a thing |
 | `backstage-events.js` | what the building throws at them, and who it lands on |
+| `post-match.js` | what the bell produces |
 | `incidents.js` | one resolver for every kind of incident |
-| `reactions.js` | who steps in, and why |
+| `reactions.js` | who steps in, who breaks it up, and who does not move |
 | `discipline.js` | what the GM's answer does to everyone |
+| `threads.js` | the feuds the game noticed, read back off everything above |
 
 `model/` never imports from `ui/`. That boundary is the point of the structure:
 a future backstage-incident system changes the show by calling the same model
@@ -100,9 +104,10 @@ functions the buttons call, without going near the interface.
 | Journal entry | `{ id, week, at, type, itemId, data }` |
 | Grudge | `{ id, week, type, targetId, data }` |
 | Memory | `{ id, week, source, weight, targetId, detail, fade }` |
+| Thread | `{ id, a, b, startedWeek, lastWeek, events: [{ week, type, at }] }` |
 | Incident | `{ id, kind, aggressorId, victimId, locationId, severity, demand, reach }` |
 | Clock | `{ segmentMinutes, spent, pending: [minute] }` |
-| Relationship | `wrestler.relationships[otherId] = { matches, segments, owed, tie }` |
+| Relationship | `wrestler.relationships[otherId] = { matches, segments, teamed, owed, tie }` |
 
 Four decisions here exist for systems that do not exist yet:
 
@@ -262,7 +267,7 @@ read down the card looking for their own name.
 
 ### Relationships have types
 
-Two things feed a relationship, and they work differently.
+Three things feed a relationship, and they work differently.
 
 Most of it is **counted** off the card: people who keep meeting in the ring read
 as rivals, people who keep standing together read as allies, and the game works
@@ -273,6 +278,9 @@ once (a tag team or two, a mentor and their student, sometimes two people whose
 lives are tangled up together, an old score from before you took the job, and
 the faction the cult leader has been building) and everything downstream reads
 the name.
+
+And some ties are **formed** — the game watches a pair turn up for each other
+often enough and names it without being asked. See *Ties form on their own*.
 
 A named tie outranks anything the counts would have said, and it is its own
 stated reason when somebody runs in: *That is their tag partner on the floor.*
@@ -440,6 +448,137 @@ the record, and that favour is a motive the next time the rescuer is the one in
 trouble. Making the save for somebody you owe settles it — otherwise favours
 only ever accumulate, and eventually everybody owes everybody and therefore
 everybody runs in.
+
+## The bell is a moment
+
+There used to be one question after a match — does the loser swing? — and one
+coin to flip for it. The bell is a better moment than that: two people have just
+had a match in front of an audience, and what they do in the ten seconds
+afterwards is the most legible thing either of them does all night.
+
+Eight outcomes, drawn from who those two specifically are. A weight of zero
+means it is not a thing these two would do, which keeps a handshake out of a
+blood feud and a faction beatdown out of a match between two loners.
+
+| | Who does it |
+| --- | --- |
+| **Handshake** | two professionals with nothing between them |
+| **Refused handshake** | one of them has the manners to offer; the other has the ego not to take it |
+| **Stare-down** | history, and neither of them willing to be the one who swings |
+| **Champion confrontation** | a champion in the building who was not in the match, and a plausible challenger who was |
+| **Cheap shot** | somebody with the aggression for one shot and not the nerve for the rest |
+| **Post-match attack** | a sore loser, or a winner making a point |
+| **Hold kept on** | only in a submission match, and only by somebody vindictive enough to make a point of it |
+| **Faction beatdown** | one of them has people in the back and the other does not |
+
+**Most matches still end with two people walking to the back**, which has to
+stay the commonest outcome or none of the others mean anything. About half
+produce something, and of those the majority are colour.
+
+That split matters: **only the four where somebody gets hurt stop the show.** A
+handshake files a memory each way and nudges the record; a stare-down leaves
+something on the table for next week; a champion walking down with a belt starts
+a thread. None of them halt the broadcast, because none of them are the GM's
+problem, and a show that paused for a handshake would teach the player to dread
+the bell.
+
+A hold kept on too long is the one that **injures somebody** — one to three
+weeks, which is a problem for the next few cards rather than the end of a run.
+Injuries end on their own; the only reason they sit apart from suspensions in
+the code is that one of them is something you did to somebody.
+
+## Five ways a reaction can go
+
+The engine underneath had three outcomes. It now has five, and four of them are
+somebody not helping.
+
+| | |
+| --- | --- |
+| **Somebody goes** | and whoever comes as a unit with *them* comes too — a faction does not send a representative and then wait to see how it goes |
+| **Somebody breaks it up** | no side to take. A pro with respect for the place walks between them, and it is over |
+| **Somebody hesitates** | came out, thought better of it, went back. Worse than never moving, because they were seen deciding |
+| **Somebody balks** | never moved at all — and their *reasons* were overwhelming. Nerve was the only thing that decided it |
+| **Nobody moves** | nobody had a reason, and the closest thing to a friend gets remembered for it |
+
+The last two are the same failure from different directions, and keeping them
+apart is why `weigh()` returns the pull and the deterrents separately instead of
+one number. A balk is rarer and lands harder, so a big enough pull beats
+somebody merely wavering.
+
+**Breaking it up is how a chain ends.** Before this, a chain stopped because a
+counter ran out; now the locker room contains somebody whose function is to be
+the adult, and it is a *race* rather than an override — a peacemaker heads off a
+wrestler who was only just about to pile in, but anybody with a real reason goes
+straight past them. Without that second half the adult in the room ended every
+chain at the first opportunity, and escalation went to exactly zero.
+
+Roughly: a save happens after a third of the times somebody gets jumped, and one
+save in ten turns into a chain. Somebody walks between them about as often.
+
+## Ties form on their own
+
+Generation names a handful of relationships at the start, and until this tier
+that was the whole list — everything afterwards was counts. But a pair who keep
+turning up for each other are not "two people with a high segment count". At
+some point they are a unit, and the game should be willing to say so.
+
+Three things happen when the week turns.
+
+**Shared enemies drift together.** Two people who both cannot stand the same
+third person find they have something in common. Nobody decided it; it is what
+happens in a locker room, and it is the quietest way a faction starts. Capped
+below the ally bar, because having the same problem with somebody is not by
+itself enough to make you a unit.
+
+**Closeness is scored, not checked.** `segments + teamed × 2 + owed × 4`, and
+past a threshold with warmth both ways the game names it — a tag team if they
+keep being booked as a team, allies if they have only ever stood beside each
+other. The first version wanted five shared segments *and* a debt *and* mutual
+warmth: three uncommon things at once, which is why nothing ever formed.
+
+**Three mutually tied people become a faction**, one at a time, because a roster
+of factions is a roster of nothing. The reaction engine then treats them as a
+unit, which is the whole difference between three allies and a faction that
+arrives together.
+
+Two bugs turned up here and both were older than this tier:
+
+- **Tag partners were being recorded as each other's opponents.** `noteItem` gave
+  `matches` to everyone in a match, so your own partner read as a rival you kept
+  meeting. Same side is time spent together now, and the team-up is counted
+  separately — two people booked as a team six times are a team, and nothing
+  else in the record says that as plainly.
+- **Everything that happened between shows was invisible.** `advanceWeek` files
+  its events with the new week's number, and `startShow` was clearing the
+  journal wholesale — so a tie forming, a promise going cold and an opportunity
+  going stale were all written and then thrown away before anybody could read
+  them. This week's entries survive into the night now.
+
+## What the game noticed
+
+Every tier underneath this produces events between two people: a match, an
+attack, a save, somebody standing there when they were needed. On their own they
+are a feed. Read together they are a feud, and nobody wrote it.
+
+A **thread** is a pair and their running record. It steers nothing — it is a
+*reading* of what has already happened, kept so the aftermath can say "this is
+building" without the player holding forty journal lines in their head. Each
+event carries a weight, and the ones that go the other way subtract: a handshake
+or a save quietens a thread rather than feeding it, so two people can stop being
+a feud without anything having to delete them.
+
+The panel names the sharpest thing in each, which is what the story is actually
+about: *three things between them, nothing for four weeks. Where it turned: one
+of them was left standing there alone.*
+
+Two labels were wrong on the first pass and both were the same mistake — a
+reading that says the same thing about everything says nothing. "The story of
+your show" went to five pairs at once, so it is now exclusive to the hottest
+thread and only when it has earned it; and "fourteen weeks of it" was true of
+almost every thread, so the line counts the events and their recency instead.
+The event cap had to go up too: pinned against a ceiling of twelve, every
+established pair reported "a dozen things" and the count stopped telling them
+apart — the same saturation that had already broken the memory ledger.
 
 ## Championships
 

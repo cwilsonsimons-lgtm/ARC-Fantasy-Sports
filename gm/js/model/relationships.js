@@ -6,7 +6,7 @@
 // become rivals; two people who keep standing together become allies. Nobody
 // declares that — it accumulates, and the player watches it happen.
 //
-//   wrestler.relationships[otherId] = { matches, segments, owed, tie }
+//   wrestler.relationships[otherId] = { matches, segments, teamed, owed, tie }
 //
 // The rest is *named*: a tag team, a faction, a mentor and their student, two
 // people whose lives are tangled up together, an old score from before the
@@ -25,40 +25,67 @@ export const TIES = {
   mentor: { label: 'Brought them up', tone: 'good', note: 'Their opinion of you carries weight with this one.' },
   student: { label: 'Came up under them', tone: 'good', note: 'Still looks to them.' },
   romance: { label: 'Involved', tone: 'good', note: 'Every booking involving either of them is heavier than it looks.' },
+  allies: { label: 'Allies', tone: 'good', note: 'This one built itself, out of who kept turning up for whom.' },
   'bad-blood': { label: 'Bad blood', tone: 'bad', note: 'Something from before you got here.' },
 };
 
-function pair(wrestler, otherId) {
+// Creates the record if it is not there, and returns it. Anything that writes
+// to a relationship goes through this, so a half-built record can never exist.
+export function ensurePair(wrestler, otherId) {
   if (!wrestler.relationships[otherId]) {
-    wrestler.relationships[otherId] = { matches: 0, segments: 0, owed: 0, tie: null };
+    wrestler.relationships[otherId] = { matches: 0, segments: 0, teamed: 0, owed: 0, tie: null };
   }
   const rel = wrestler.relationships[otherId];
-  // Records written before debts and ties existed have neither, and
-  // `undefined + 1` is NaN, which would silently poison every later read.
+  // Records written before debts, ties and team-ups existed have none of them,
+  // and `undefined + 1` is NaN, which would silently poison every later read.
   if (rel.owed === undefined) rel.owed = 0;
+  if (rel.teamed === undefined) rel.teamed = 0;
   if (rel.tie === undefined) rel.tie = null;
   return rel;
 }
 
 export function relationship(wrestler, otherId) {
   return (wrestler.relationships && wrestler.relationships[otherId])
-    || { matches: 0, segments: 0, owed: 0, tie: null };
+    || { matches: 0, segments: 0, teamed: 0, owed: 0, tie: null };
 }
 
-export function note(wrestlers, aId, bId, kind) {
+export function note(wrestlers, aId, bId, kind, amount = 1) {
   if (aId === bId) return;
   const a = byId(wrestlers, aId);
   const b = byId(wrestlers, bId);
   if (!a || !b) return;
-  pair(a, bId)[kind] += 1;
-  pair(b, aId)[kind] += 1;
+  ensurePair(a, bId)[kind] += amount;
+  ensurePair(b, aId)[kind] += amount;
 }
 
-// Record every pairing on a show item: opponents in a match, team-mates in a
-// segment.
+// Record every pairing on a show item.
+//
+// A tag match has to be split by side, and for a long time it was not: everyone
+// in the match was recorded as everyone else's opponent, which made your own
+// tag partner read as a rival you kept meeting. Same side is time spent
+// together, and the team-up is counted separately from ordinary shared
+// segments — two people booked as a team six times are a team, and nothing else
+// in the record says that as plainly.
 export function noteItem(wrestlers, item) {
-  const kind = item.type === 'match' ? 'matches' : 'segments';
   const ids = item.participants;
+
+  if (item.type === 'match' && item.tag && ids.length >= 4) {
+    const sides = [ids.slice(0, 2), ids.slice(2, 4)];
+    for (const side of sides) {
+      for (let i = 0; i < side.length; i += 1) {
+        for (let j = i + 1; j < side.length; j += 1) {
+          note(wrestlers, side[i], side[j], 'segments');
+          note(wrestlers, side[i], side[j], 'teamed');
+        }
+      }
+    }
+    for (const a of sides[0]) {
+      for (const b of sides[1]) note(wrestlers, a, b, 'matches');
+    }
+    return;
+  }
+
+  const kind = item.type === 'match' ? 'matches' : 'segments';
   for (let i = 0; i < ids.length; i += 1) {
     for (let j = i + 1; j < ids.length; j += 1) {
       note(wrestlers, ids[i], ids[j], kind);
@@ -175,6 +202,141 @@ export function topRivals(wrestlers, wrestler, limit = 3) {
 
 export function topAllies(wrestlers, wrestler, limit = 3) {
   return ranked(wrestlers, wrestler, 'segments', limit);
+}
+
+// ---------------------------------------------------------------- ties forming
+
+// Generation names a handful of ties at the start, and until now that was the
+// whole list — everything afterwards was counts. But a pair who keep turning up
+// for each other are not "two people with a high segment count"; at some point
+// they are a unit, and the game should be willing to say so.
+//
+// Three things happen when the week turns.
+// How close two people have to read before the game is willing to name it.
+//
+// Scored rather than a checklist, and that is the whole difference: the first
+// version wanted five shared segments *and* a debt *and* mutual warmth, which
+// is three uncommon things at once and therefore never happened. Several routes
+// lead to the same place now — being booked as a team, standing together, or
+// one of them turning up when it counted — because in a locker room they all do.
+const CLOSE_AT = 10;
+const TEAM_AT = 2;           // team-ups before "allies" is the wrong word for it
+const FACTION_TRIO = 3;      // mutually tied people before it is a faction
+// And how far shared enemies alone will take a pair. Deliberately below the
+// ally bar: having the same problem with somebody puts two people in the same
+// conversation, and it is not by itself enough to make them a unit.
+const DRIFT_CAP = 4;
+
+function grudgeTargets(wrestler) {
+  return new Set((wrestler.grudges || []).filter(g => g.targetId).map(g => g.targetId));
+}
+
+// Whether these two actually get on, as opposed to whether either of them is
+// carrying a filed grievance.
+//
+// Using the grudge list as a hard block looked right and was wrong: over a
+// season nearly every pair with enough shared history to qualify has also been
+// booked against each other and picked something up, so nothing ever formed.
+// What matters is the *balance* — somebody who turned up for you when it
+// counted has outweighed an old score, and the memory ledger already knows
+// that, so the question is asked of it rather than of a flag.
+function warmBothWays(a, b) {
+  return feelingToward(a, b.id) > 0 && feelingToward(b, a.id) > 0;
+}
+
+// How much of a unit two people read as. Every term is something that actually
+// happened between them.
+export function closeness(rel) {
+  return (rel.segments || 0)
+    + (rel.teamed || 0) * 2
+    + (rel.owed || 0) * 4;
+}
+
+// Called when the week turns. Returns what formed, for the journal — the point
+// of this tier is that the game tells the player about the stories it noticed
+// rather than quietly keeping them to itself.
+export function formTies(state) {
+  const formed = [];
+  drift(state);
+
+  for (const wrestler of state.wrestlers) {
+    for (const [otherId, rel] of Object.entries(wrestler.relationships || {})) {
+      if (rel.tie) continue;
+      const other = byId(state.wrestlers, otherId);
+      if (!other || !warmBothWays(wrestler, other)) continue;
+      if (closeness(rel) < CLOSE_AT) continue;
+
+      // A pair who keep being booked as a team are a team. A pair who have only
+      // ever stood beside each other are allies, which is a different thing and
+      // reads differently on the card.
+      const tie = (rel.teamed || 0) >= TEAM_AT ? 'tag-team' : 'allies';
+      ensurePair(wrestler, otherId).tie = tie;
+      ensurePair(other, wrestler.id).tie = tie;
+      formed.push({ kind: tie, ids: [wrestler.id, otherId] });
+    }
+  }
+
+  formed.push(...formFactions(state));
+  return formed;
+}
+
+// Two people who both cannot stand the same third person find they have
+// something in common. Nobody decided it; it is just what happens in a locker
+// room, and it is the quietest way a faction starts.
+function drift(state) {
+  for (let i = 0; i < state.wrestlers.length; i += 1) {
+    const a = state.wrestlers[i];
+    const aEnemies = grudgeTargets(a);
+    if (!aEnemies.size) continue;
+
+    for (let j = i + 1; j < state.wrestlers.length; j += 1) {
+      const b = state.wrestlers[j];
+      if (feelingToward(a, b.id) < 0 || feelingToward(b, a.id) < 0) continue;
+      const shared = [...grudgeTargets(b)].filter(id => aEnemies.has(id) && id !== a.id && id !== b.id);
+      if (!shared.length) continue;
+
+      const rel = ensurePair(a, b.id);
+      ensurePair(b, a.id);
+      // Only up to a point. Shared enemies bring people into the same
+      // conversation; they do not make anybody a tag team on their own.
+      if (rel.segments >= DRIFT_CAP) continue;
+      note(state.wrestlers, a.id, b.id, 'segments', 1);
+    }
+  }
+}
+
+// Three people tied to each other in a ring is not three friendships. Promoting
+// it says so, and the reaction engine then treats them as a unit — which is the
+// difference between three allies and a faction that arrives together.
+function formFactions(state) {
+  const formed = [];
+  const friendly = wrestler => Object.entries(wrestler.relationships || {})
+    .filter(([, rel]) => rel.tie === 'allies' || rel.tie === 'tag-team')
+    .map(([id]) => id);
+
+  for (const a of state.wrestlers) {
+    const aFriends = friendly(a);
+    if (aFriends.length < FACTION_TRIO - 1) continue;
+
+    for (let i = 0; i < aFriends.length; i += 1) {
+      for (let j = i + 1; j < aFriends.length; j += 1) {
+        const b = byId(state.wrestlers, aFriends[i]);
+        const c = byId(state.wrestlers, aFriends[j]);
+        if (!b || !c) continue;
+        // The third side has to exist too, or it is one person with two friends.
+        const bc = relationship(b, c.id);
+        if (bc.tie !== 'allies' && bc.tie !== 'tag-team') continue;
+
+        for (const [x, y] of [[a, b], [a, c], [b, c]]) {
+          ensurePair(x, y.id).tie = 'faction';
+          ensurePair(y, x.id).tie = 'faction';
+        }
+        formed.push({ kind: 'faction', ids: [a.id, b.id, c.id] });
+        return formed; // one at a time; a roster of factions is a roster of nothing
+      }
+    }
+  }
+  return formed;
 }
 
 // Whoever this wrestler would count as theirs, for anything that asks "who

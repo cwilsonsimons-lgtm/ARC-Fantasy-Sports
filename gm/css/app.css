@@ -800,3 +800,38 @@ button.cal-day.airs:hover { border-color: var(--cool); }
   .bs-room { font-size: 18px; }
   .bs-min { font-size: 22px; }
 }
+
+/* ---------- what the game noticed ---------- */
+.thread-note { font-size: 12px; font-style: italic; margin: -4px 0 10px; }
+.threads { list-style: none; margin: 0 0 18px; padding: 0; }
+.thread {
+  padding: 9px 0 9px 11px; margin-bottom: 2px;
+  border-left: 2px solid var(--line); border-bottom: 1px solid var(--line-soft);
+}
+.thread-head {
+  display: flex; flex-wrap: wrap; gap: 6px 12px;
+  align-items: baseline; justify-content: space-between;
+}
+.thread-pair { font-size: 15px; font-weight: 600; }
+.thread-temp {
+  font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+  white-space: nowrap;
+}
+.thread-plain { color: var(--muted); }
+.thread-warn  { color: var(--amber); }
+.thread-bad   { color: var(--tally); }
+.thread-why { display: block; font-size: 13px; color: var(--ink-dim); margin-top: 3px; }
+.threads-compact .thread { padding: 7px 0 7px 9px; }
+.threads-compact .thread-why { font-size: 12px; color: var(--muted); }
+
+/* The bell, and the ways a chain can end. */
+.beat-handshake { border-left-color: var(--good); }
+.beat-handshake-refused { border-left-color: var(--amber); }
+.beat-stare-down { border-left-color: var(--amber); }
+.beat-champion-challenge { border-left-color: var(--amber); }
+.beat-cheap-shot { border-left-color: var(--tally); }
+.beat-submission-held { border-left-color: var(--tally); }
+.beat-faction-beatdown { border-left-color: var(--tally); }
+.beat-broke-it-up { border-left-color: var(--cool); }
+.beat-balked { border-left-color: var(--muted); font-style: italic; }
+.beat-tie-formed { border-left-color: var(--good); }

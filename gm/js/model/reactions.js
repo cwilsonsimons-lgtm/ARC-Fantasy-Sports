@@ -32,7 +32,7 @@ import { hops } from '../data/locations.js';
 export const ACT_AT = 29;
 export const HESITATE_AT = 22;
 const MAX_DEPTH = 3;
-const DEPTH_PENALTY = 14; // each link in a chain is much harder to justify than the last
+const DEPTH_PENALTY = 11; // each link in a chain is harder to justify than the last
 // History stops counting past a point. The twentieth match against somebody is
 // not twice the grievance of the tenth, and without a ceiling a roster played
 // for a year turns into one where everybody runs in for everybody.
@@ -65,6 +65,7 @@ export const MOTIVES = {
 // tie itself.
 const TIE_MOTIVE = {
   'tag-team': { motive: 'partner', pull: 34 },
+  allies: { motive: 'alliance', pull: 30 },
   faction: { motive: 'faction', pull: 30 },
   romance: { motive: 'love', pull: 40 },
   mentor: { motive: 'mentor', pull: 28 },
@@ -180,8 +181,18 @@ export function weigh(state, { victimId, aggressorId, fromIndex = 0 }, candidate
   let total = 0;
   for (let i = 0; i < pulls.length; i += 1) total += pulls[i].value * CORROBORATION ** i;
 
-  total -= fear + spite + busy;
-  return { candidate, total, motive: pulls.length ? pulls[0].motive : 'morality' };
+  // Kept apart from the total on purpose. Somebody whose reasons were strong
+  // and whose nerve was not is a different story from somebody who had no
+  // reason at all, and the only way to tell them apart afterwards is to have
+  // not added them together in the first place.
+  const deterrent = fear + spite + busy;
+  return {
+    candidate,
+    total: total - deterrent,
+    pull: total,
+    deterrent,
+    motive: pulls.length ? pulls[0].motive : 'morality',
+  };
 }
 
 // Everyone who could plausibly see it.
@@ -203,11 +214,60 @@ function candidates(state, involved, locationId) {
   });
 }
 
-// One pass: who acts, and who came out and thought better of it.
-export function resolveReaction(state, event, involved, depth = 0) {
-  if (depth >= MAX_DEPTH) return { actor: null, hesitator: null };
+// Somebody who wades in to *stop* it rather than to take a side.
+//
+// This is how a chain ends without a counter running out. A pro with respect
+// for the place walks between them, and it is over — which is a far better
+// ending than a depth limit, and it means the locker room contains somebody
+// whose function is to be the adult.
+const PEACEMAKER_AT = 70;
+// How much of a reason the next one in needs before they get there first. A
+// peacemaker heads off somebody who was only just going to pile in; somebody
+// with a real score to settle goes straight past them.
+const PUSHES_PAST = 5;
+// How far past the acting line somebody's reasons have to be before standing
+// still is a story about them rather than about the situation.
+const BALK_AT = 6;
+const BALK_BEATS_WAVER = 8;
 
-  const weighed = candidates(state, involved, event.locationId)
+function peacemakerScore(candidate) {
+  return (trait(candidate, 'professionalism') + trait(candidate, 'authority')) / 2
+    - Math.max(0, lean(candidate, 'aggression')) * 20
+    - Math.max(0, -lean(candidate, 'courage')) * 25;
+}
+
+// Everyone arriving with the actor.
+//
+// The unit is *theirs*, not a property of who they are running out to help: a
+// faction does not send a representative and then wait to see how it goes. So
+// whoever comes as a unit with the person who went comes too, whether or not
+// they have ever spoken to the wrestler on the floor — which is exactly how a
+// two-person problem becomes a six-person one without anybody booking it.
+const CREW_TIES = new Set(['faction', 'tag-team']);
+const CREW_LIMIT = 2;
+
+function crewWith(state, actor, victimId, involved, locationId) {
+  return Object.entries(actor.relationships || {})
+    .filter(([id, rel]) => CREW_TIES.has(rel.tie) && id !== victimId && !involved.has(id))
+    .map(([id]) => byId(state.wrestlers, id))
+    .filter(other => other && other.status === 'Available' && inReach(state, other, locationId))
+    .slice(0, CREW_LIMIT);
+}
+
+function inReach(state, wrestler, locationId) {
+  if (!state.whereabouts || !locationId || locationId === 'gorilla') return true;
+  const room = roomOf(state, wrestler.id);
+  return Boolean(room) && hops(room, locationId) <= 1;
+}
+
+// One pass over the room. Five things can come out of it, and four of them are
+// somebody not helping.
+export function resolveReaction(state, event, involved, depth = 0) {
+  const empty = { actor: null, crew: [], hesitator: null, balker: null, peacemaker: null };
+  if (depth >= MAX_DEPTH) return empty;
+
+  const field = candidates(state, involved, event.locationId);
+  const weighed = field
     .map(candidate => weigh(state, event, candidate))
     .filter(Boolean)
     .sort((a, b) => b.total - a.total);
@@ -219,10 +279,50 @@ export function resolveReaction(state, event, involved, depth = 0) {
     ACT_AT + depth * DEPTH_PENALTY * (1 - lean(candidate, 'courage') * 0.4);
 
   const actor = weighed.find(entry => entry.total >= barFor(entry.candidate)) || null;
-  // The nearly-did is only interesting when nobody actually went.
-  const hesitator = actor
-    ? null
-    : weighed.find(entry => entry.total >= HESITATE_AT) || null;
 
-  return { actor, hesitator };
+  // Once it is more than two people the question stops being "whose side" and
+  // starts being "is anybody going to stop this".
+  //
+  // It is a race rather than an override. Somebody calm enough to walk between
+  // them heads off a wrestler who was only just about to pile in — but anybody
+  // with a real reason goes straight past, which is what keeps a genuine
+  // five-person chain possible instead of the adult in the room ending every
+  // one of them at the first opportunity.
+  if (depth >= 1) {
+    const margin = actor ? actor.total - barFor(actor.candidate) : Infinity;
+    if (margin < PUSHES_PAST) {
+      const calm = field
+        .map(candidate => ({ candidate, score: peacemakerScore(candidate) }))
+        .filter(entry => entry.score >= PEACEMAKER_AT)
+        .sort((a, b) => b.score - a.score)[0];
+      if (calm) return { ...empty, peacemaker: calm };
+    }
+  }
+
+  if (actor) {
+    return {
+      ...empty,
+      actor,
+      crew: crewWith(state, actor.candidate, event.victimId, involved, event.locationId),
+    };
+  }
+
+  // Two ways of not going, and they are different stories.
+  //
+  // A hesitator came out and thought better of it: their total landed just
+  // below the line. A balker never moved — their *reasons* were overwhelming
+  // and their nerve was the only thing that decided it, which is the quietest
+  // and worst thing in the game. That one is rarer and lands harder, so a big
+  // enough pull beats somebody merely wavering.
+  const hesitator = weighed.find(entry => entry.total >= HESITATE_AT) || null;
+  const balker = weighed.find(entry =>
+    entry.pull >= barFor(entry.candidate) + BALK_AT
+    && entry.total < HESITATE_AT
+    && lean(entry.candidate, 'courage') < 0) || null;
+
+  if (balker && (!hesitator || balker.pull >= hesitator.pull + BALK_BEATS_WAVER)) {
+    return { ...empty, balker };
+  }
+  if (hesitator) return { ...empty, hesitator };
+  return { ...empty, balker };
 }

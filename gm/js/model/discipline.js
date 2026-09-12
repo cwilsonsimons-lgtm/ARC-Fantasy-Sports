@@ -239,6 +239,18 @@ export function indefinitelySuspended(state) {
   return state.wrestlers.filter(w => w.suspendedUntil === 'indefinite');
 }
 
+// Injuries end too, and on their own. The only reason this sits apart from a
+// suspension is that one of them is something you did to somebody.
+export function healInjuries(state) {
+  for (const wrestler of state.wrestlers) {
+    if (!wrestler.injuredUntil) continue;
+    if (state.week < wrestler.injuredUntil) continue;
+    wrestler.injuredUntil = null;
+    if (wrestler.status === 'Injured') wrestler.status = 'Available';
+    remember(state, wrestler, { source: 'gm', weight: 2, detail: 'cleared-to-work' });
+  }
+}
+
 // Suspensions end. Being suspended does not stop being remembered.
 export function releaseSuspensions(state) {
   for (const wrestler of state.wrestlers) {

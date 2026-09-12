@@ -38,12 +38,13 @@ const { generateRoster, generatePromotion } = await mod('model/generate.js');
 const { makeAirSchedule } = await mod('model/calendar.js');
 const { seedTitles } = await mod('model/titles.js');
 const gameModel = await mod('model/game.js');
-const { createMatch, createSegment, addItem, remainingMinutes } = await mod('model/show.js');
+const { createMatch, createTagMatch, createSegment, addItem, remainingMinutes } = await mod('model/show.js');
 const { resetIds } = await mod('ids.js');
 const { bookable } = await mod('model/morale.js');
 const { trait, TRAITS } = await mod('model/traits.js');
 const { gmStandingValue } = await mod('model/memory.js');
 const { relationshipsOf } = await mod('model/relationships.js');
+const { threadsFor } = await mod('model/threads.js');
 
 const WEEKS = 40;
 const RUNS = 12;
@@ -53,7 +54,7 @@ function playSeason(seed) {
   resetIds();
   const rng = makeRng(seed);
   const state = {
-    version: 14, seed, rng: seed,
+    version: 15, seed, rng: seed,
     ...gameModel.createGame({
       wrestlers: generateRoster(rng),
       promotion: generatePromotion(rng),
@@ -65,26 +66,55 @@ function playSeason(seed) {
 
   const pick = makeRng(seed ^ 0x5f5f);
   const beats = {
-    save: 0, hesitation: 0, nobody: 0, escalation: 0, noticed: 0,
-    attack: 0, brawl: 0, ambush: 0,
+    save: 0, hesitation: 0, nobody: 0, balked: 0, escalation: 0,
+    'broke-it-up': 0, noticed: 0, 'tie-formed': 0,
+    attack: 0, brawl: 0, ambush: 0, 'cheap-shot': 0, 'submission-held': 0,
+    'faction-beatdown': 0, handshake: 0, 'handshake-refused': 0, 'stare-down': 0,
+    'champion-challenge': 0,
   };
   const per = new Map(state.wrestlers.map(w => [w.id, { saves: 0, attacks: 0, envy: 0, brave: 0 }]));
+  const extra = { matches: 0, crews: 0, ties: [] };
   const ring = id => {
     const w = state.wrestlers.find(x => x.id === id);
     return w ? w.stats.inRing : 50;
   };
 
   for (let week = 0; week < WEEKS; week += 1) {
+    // Booked the way a card actually gets booked: mostly singles, with tag
+    // matches and multi-person segments in the mix. That matters more than it
+    // looks — a card of nothing but one-on-one matches and solo promos never
+    // puts two people on the same side of anything, so relationships that are
+    // supposed to grow out of shared time have nothing to grow from.
     let guard = 0;
     while (remainingMinutes(state.show, state.broadcast) >= 12 && guard++ < 12) {
       const fit = state.wrestlers.filter(bookable);
-      if (fit.length < 2) break;
-      const a = fit[Math.floor(pick() * fit.length)];
-      const rest = fit.filter(w => w !== a);
-      const b = rest[Math.floor(pick() * rest.length)];
-      if (!a || !b) break;
-      if (pick() < 0.25) addItem(state.show, createSegment({ participants: [a.id], name: 'Promo', plannedMinutes: 6 }));
-      else addItem(state.show, createMatch({ wrestlerAId: a.id, wrestlerBId: b.id, plannedMinutes: 12 }));
+      if (fit.length < 4) break;
+      const draw = pick();
+
+      if (draw < 0.16) {
+        const ids = [...new Set([0, 1, 2].map(() => fit[Math.floor(pick() * fit.length)].id))];
+        addItem(state.show, createSegment({ participants: ids, name: 'Promo', plannedMinutes: 8 }));
+      } else if (draw < 0.3) {
+        const four = [];
+        while (four.length < 4) {
+          const id = fit[Math.floor(pick() * fit.length)].id;
+          if (!four.includes(id)) four.push(id);
+        }
+        addItem(state.show, createTagMatch({
+          teamA: four.slice(0, 2), teamB: four.slice(2), plannedMinutes: 14,
+        }));
+      } else {
+        const a = fit[Math.floor(pick() * fit.length)];
+        const rest = fit.filter(w => w !== a);
+        const b = rest[Math.floor(pick() * rest.length)];
+        if (!a || !b) break;
+        // With a stipulation some of the time, because two of the things the
+        // bell can produce only exist inside one.
+        const stipulation = draw < 0.42 ? 'submission' : draw < 0.5 ? 'hardcore' : 'singles';
+        addItem(state.show, createMatch({
+          wrestlerAId: a.id, wrestlerBId: b.id, plannedMinutes: 12, matchTypeId: stipulation,
+        }));
+      }
     }
     if (!state.show.items.length) { gameModel.advanceWeek(state); continue; }
 
@@ -113,23 +143,39 @@ function playSeason(seed) {
         per.get(entry.data.aggressorId).attacks += 1;
       }
       if (entry.type === 'noticed') per.get(entry.data.wrestlerId).envy += 1;
+      // A run-in with company: the faction arrived rather than sent somebody.
+      if (entry.data && entry.data.withIds) extra.crews += 1;
+      if (entry.type === 'tie-formed') extra.ties.push(entry.data.kind);
     }
+    extra.matches += state.broadcast.results.filter(result => {
+      const item = state.show.items.find(i => i.id === result.itemId);
+      return Boolean(item) && item.type === 'match';
+    }).length;
     gameModel.advanceWeek(state);
   }
-  return { state, beats, per };
+  return { state, beats, per, extra };
 }
 
 const beats = {
-  save: 0, hesitation: 0, nobody: 0, escalation: 0, noticed: 0,
-  attack: 0, brawl: 0, ambush: 0,
+  save: 0, hesitation: 0, nobody: 0, balked: 0, escalation: 0,
+  'broke-it-up': 0, noticed: 0, 'tie-formed': 0,
+  attack: 0, brawl: 0, ambush: 0, 'cheap-shot': 0, 'submission-held': 0,
+  'faction-beatdown': 0, handshake: 0, 'handshake-refused': 0, 'stare-down': 0,
+  'champion-challenge': 0,
 };
 const rows = [];
 const morales = [];
+const ties = new Map();
+let matchCount = 0;
+let crewCount = 0;
 let sound = true;
 
 for (let run = 0; run < RUNS; run += 1) {
-  const { state, beats: b, per } = playSeason(3000 + run * 104729);
+  const { state, beats: b, per, extra } = playSeason(3000 + run * 104729);
   for (const key of Object.keys(beats)) beats[key] += b[key];
+  matchCount += extra.matches;
+  crewCount += extra.crews;
+  for (const kind of extra.ties) ties.set(kind, (ties.get(kind) || 0) + 1);
   for (const w of state.wrestlers) {
     morales.push(w.morale);
     if (!Number.isFinite(w.morale) || w.morale < 0 || w.morale > 100) sound = false;
@@ -140,6 +186,7 @@ for (let run = 0; run < RUNS; run += 1) {
       t: Object.fromEntries(TRAITS.map(x => [x.key, trait(w, x.key)])),
       ...per.get(w.id),
       grudges: (w.grudges || []).length,
+      threads: threadsFor(state, w.id, 99).length,
       // What they are still carrying, not how many rows the ledger has — the
       // row count saturates against the cap once a season is long enough, and
       // then it has stopped measuring anything.
@@ -166,9 +213,42 @@ for (const key of ['save', 'hesitation', 'nobody']) {
   const pct = share(key);
   check(pct >= 0.12 && pct <= 0.6, `"${key}" is a common outcome when somebody gets jumped`, `${Math.round(pct * 100)}%`);
 }
-check(beats.escalation / Math.max(1, beats.save) < 0.5,
-  'a locker-room brawl is the rare result, not the norm',
+// A chain that never runs past one save is not a chain, and one that always
+// does is a riot. Both ends of that are failures, so the check wants a rate
+// rather than a ceiling.
+const chainRate = beats.escalation / Math.max(1, beats.save);
+check(chainRate > 0.02 && chainRate < 0.5,
+  'a save sometimes turns into a chain, and usually does not',
   `${beats.escalation} escalations from ${beats.save} saves`);
+check(beats['broke-it-up'] > 0,
+  'somebody sometimes walks between them and ends it',
+  `${beats['broke-it-up']} broken up`);
+check(beats.balked > 0,
+  'somebody with every reason sometimes does not move',
+  `${beats.balked} balked`);
+check(crewCount > 0, 'a faction sometimes arrives together', `${crewCount} run-ins with company`);
+
+// The bell has to be a moment with several possible outcomes — and most matches
+// still have to end with two people walking to the back, or none of the others
+// mean anything.
+const MOMENT_KINDS = ['handshake', 'handshake-refused', 'stare-down', 'champion-challenge',
+  'cheap-shot', 'attack', 'submission-held', 'faction-beatdown'];
+const moments = MOMENT_KINDS.reduce((sum, key) => sum + beats[key], 0);
+const momentRate = moments / Math.max(1, matchCount);
+check(momentRate > 0.2 && momentRate < 0.6,
+  'something happens after some matches and not most',
+  `${Math.round(momentRate * 100)}% of ${matchCount} matches`);
+const seen = MOMENT_KINDS.filter(key => beats[key] > 0);
+check(seen.length >= 6, 'the bell produces most of its outcomes',
+  seen.map(k => `${k}:${beats[k]}`).join(' '));
+
+// Relationships have to be able to become something the game will name, and
+// the game has to end up with feuds it can point at.
+check(ties.size > 0, 'ties form on their own',
+  [...ties].map(([k, v]) => `${k}:${v}`).join(' ') || 'none formed');
+const inThreads = rows.filter(r => r.threads > 0).length;
+check(inThreads > rows.length * 0.1, 'the game notices feuds it can name',
+  `${inThreads} of ${rows.length} wrestlers in a live thread`);
 
 // Morale should sit in a spread around the baselines, not pin at either end.
 morales.sort((a, b) => a - b);
@@ -367,6 +447,7 @@ const night = await page.evaluate(() => {
     placed: Object.keys(save.whereabouts || {}).length,
     rooms: new Set(Object.values(save.whereabouts || {})).size,
     kinds: [...kinds],
+    threads: (save.threads || []).length,
     record: save.gmRecord,
   };
 });
@@ -379,6 +460,14 @@ const seenKinds = backstageKinds.filter(k => night.kinds.includes(k));
 check(seenKinds.length >= 2, 'the building produces more than one kind of trouble', seenKinds.join(', '));
 check(night.record && Number.isFinite(night.record.missed),
   'the record counts what happened with nobody in the room', `missed ${night.record.missed}`);
+
+// The bell has to be doing something in the real thing too, not only in the
+// simulation — and the game has to be keeping a reading of it.
+const bellKinds = ['handshake', 'handshake-refused', 'stare-down', 'champion-challenge',
+  'cheap-shot', 'attack', 'submission-held', 'faction-beatdown'];
+const seenBell = bellKinds.filter(k => night.kinds.includes(k));
+check(seenBell.length >= 2, 'the bell produces moments in the browser too', seenBell.join(', '));
+check(night.threads > 0, 'the save is keeping threads', `${night.threads} pairs on the record`);
 
 await page.getByRole('button', { name: 'Roster', exact: true }).click();
 await page.waitForTimeout(200);
@@ -441,7 +530,11 @@ await page.evaluate(() => {
   save.version = 12;
   delete save.location; delete save.whereabouts; delete save.clock;
   delete save.alerts; delete save.missed; delete save.deferred; delete save.spokenTo;
-  delete save.security;
+  delete save.security; delete save.threads;
+  for (const w of save.wrestlers) {
+    delete w.injuredUntil;
+    for (const rel of Object.values(w.relationships)) delete rel.teamed;
+  }
   save.gmRecord = { harsh: 1, weak: 0, fair: 2, ignored: 0, booked: 0 };
   for (const w of save.wrestlers) {
     w.stats = { inRing: w.stats.inRing, charisma: w.stats.charisma, ego: 77, ambition: 66, professionalism: 44 };
@@ -465,9 +558,13 @@ const migrated = await page.evaluate(() => {
       && Array.isArray(save.missed) && Array.isArray(save.deferred),
     record: Boolean(save.gmRecord) && Number.isFinite(save.gmRecord.gaveIn)
       && Number.isFinite(save.gmRecord.missed) && save.gmRecord.fair === 2,
+    threads: Array.isArray(save.threads),
+    teamed: save.wrestlers.every(w =>
+      Object.values(w.relationships).every(r => Number.isFinite(r.teamed))),
   };
 });
-check(migrated.version === 14, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.version === 15, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.threads && migrated.teamed, 'an upgraded save can start noticing stories');
 check(migrated.backstage, 'an upgraded save gets a building to stand in');
 check(migrated.record, 'the existing record survives and gains the new counts');
 check(migrated.carried, 'the three moved traits keep their values');
