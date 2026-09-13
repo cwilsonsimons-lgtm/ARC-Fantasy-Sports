@@ -509,6 +509,75 @@ for (const [key, field, sign, why] of EFFECTS) {
   check(first.wrestlers.length === 21, 'the roster is the size asked for, less anybody cut',
     `${first.wrestlers.length} of 22`);
   check(first.wrestlers[0].name === 'Hollis Vane', 'an edited wrestler arrives edited');
+
+  // Full authorship: every stat and every trait, plus wrestlers who are not on
+  // the seed at all. This is what recreating somebody else's roster needs.
+  const authored = saves.createSave({
+    ...back,
+    rosterSize: 12,
+    dropped: [],
+    edits: {
+      0: {
+        name: 'Marcus Vane', archetype: 'Bloodline enforcer', role: 'Main event',
+        alignment: 'Heel', gender: 'Male', status: 'Available',
+        stats: { inRing: 94, charisma: 91 },
+        traits: { ego: 97, loyalty: 12, patience: 8 },
+        record: { wins: 61, losses: 4 },
+      },
+      1: { stats: { inRing: 88 } },
+    },
+    added: [
+      { name: 'Etta Roux', role: 'Upper card', alignment: 'Face',
+        archetype: 'Crowd favourite', stats: { inRing: 82, charisma: 90 } },
+      { name: 'Bram Kessel', role: 'Opener' },
+    ],
+  }).state;
+
+  const vane = authored.wrestlers.find(w => w.name === 'Marcus Vane');
+  check(Boolean(vane), 'a fully authored wrestler reaches the save');
+  check(vane && vane.stats.inRing === 94 && vane.stats.charisma === 91,
+    'with the ability that was written', vane ? `${vane.stats.inRing}/${vane.stats.charisma}` : '');
+  check(vane && vane.traits.ego === 97 && vane.traits.loyalty === 12,
+    'and the personality');
+  check(vane && vane.archetype === 'Bloodline enforcer',
+    'an archetype that is not one of the seventeen is still an archetype');
+  check(vane && Object.keys(vane.traits).length === 11,
+    'and the traits nobody wrote are still all there',
+    vane ? `${Object.keys(vane.traits).length} traits` : '');
+  check(vane && vane.record.wins === 61 && vane.record.losses === 4,
+    'a record can be written too');
+
+  // Authoring is knowing. Writing personality reveals the person; writing only
+  // ability reveals only the worker.
+  const stats = await mod('model/stats.js');
+  const abilityOnly = authored.wrestlers[1];
+  check(vane && stats.personalityTier(vane) === 'known',
+    'a wrestler whose personality you wrote is not a stranger');
+  check(stats.knowledgeTier(abilityOnly) === 'known'
+    && stats.personalityTier(abilityOnly) !== 'known',
+    'writing only their ability tells you only what they can do');
+
+  const roux = authored.wrestlers.find(w => w.name === 'Etta Roux');
+  check(Boolean(roux) && roux.stats.charisma === 90,
+    'a wrestler written from nothing joins the roster');
+  check(roux && Object.keys(roux.traits).length === 11 && roux.traits.ego === 50,
+    'built on a whole person, with the middle of every scale where nothing was said');
+  check(authored.wrestlers.length === 14,
+    'twelve rolled plus two written', `${authored.wrestlers.length} in the room`);
+  const ids = new Set(authored.wrestlers.map(w => w.id));
+  check(ids.size === authored.wrestlers.length, 'and nobody shares an id');
+
+  // Belts get called whatever the promotion calls them.
+  const renamed = saves.createSave({
+    ...back,
+    titles: ['world', 'tag'],
+    titleNames: { world: 'Undisputed Heavyweight Championship', tag: 'World Tag Team Titles' },
+  }).state;
+  check(renamed.titles.some(t => t.name === 'Undisputed Heavyweight Championship'),
+    'a championship can be called what you call it');
+  const worldBelt = renamed.titles.find(t => t.key === 'world');
+  check(worldBelt && worldBelt.holders === 1,
+    'and renaming it does not change what it is');
   check(first.titles.length === 4, 'and the belts chosen are on the wall', `${first.titles.length} belts`);
   check(titleModel.slotsUsed(first) === 0,
     'a belt the promotion opened with has not spent a sanctioned slot');
@@ -563,6 +632,12 @@ const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error' && !/favicon|status of 404/i.test(m.text())) errors.push(m.text()); });
 
+let editorRatings = 0;
+let writtenRows = 0;
+let customArchetype = false;
+let wroteFromNothing = false;
+let rosterRows = 0;
+
 console.log('');
 await page.goto(`http://127.0.0.1:${PORT}/gm/index.html`);
 await page.waitForTimeout(400);
@@ -584,7 +659,7 @@ check(Number(pointsAt12) === 31 && Number(pointsAt1) === 3,
   `level 1 → ${pointsAt1}, level 12 → ${pointsAt12}`);
 
 // A fourth belt, chosen rather than sanctioned.
-await page.locator('.belt-pick', { hasText: 'Television Championship' }).locator('input').check();
+await page.locator('.belt-pick', { hasText: 'Television Championship' }).locator('input[type="checkbox"]').check();
 await page.waitForTimeout(150);
 
 // And the code, which is the whole point of building one of these.
@@ -594,9 +669,44 @@ const madeCode = (await page.locator('.share-code').first().inputValue()).trim()
 check(madeCode.length > 8 && !/[^A-Za-z0-9_-]/.test(madeCode),
   'a promotion can be shared as a code', `${madeCode.length} characters`);
 
+// The editor: every stat, on a real wrestler, driven the way a player would.
+await page.getByRole('button', { name: 'Edit them one by one', exact: true }).click();
+await page.waitForTimeout(200);
+await page.locator('.setup-table tbody tr').first().getByRole('button', { name: 'Edit' }).click();
+await page.waitForTimeout(250);
+editorRatings = await page.locator('.editor .rating-row').count();
+
+await page.locator('.editor .rating-row', { hasText: 'In-ring' }).locator('.rating-num').fill('94');
+await page.locator('.editor .rating-row', { hasText: 'Ego' }).locator('.rating-num').fill('97');
+await page.waitForTimeout(200);
+writtenRows = await page.locator('.editor .rating-row.written').count();
+
+// An archetype that is not one of the seventeen.
+await page.locator('.editor select').last().selectOption({ label: 'Write your own...' });
+await page.waitForTimeout(150);
+customArchetype = await page.locator('.editor input[placeholder="Bloodline enforcer"]').count() > 0;
+
+await page.getByRole('button', { name: 'Done', exact: true }).click();
+await page.waitForTimeout(200);
+
+await page.getByRole('button', { name: 'Write one from nothing', exact: true }).click();
+await page.waitForTimeout(250);
+wroteFromNothing = await page.locator('.editor').count() > 0;
+await page.locator('.editor input[type="text"]').first().fill('Etta Roux');
+await page.getByRole('button', { name: 'Done', exact: true }).click();
+await page.waitForTimeout(200);
+rosterRows = await page.locator('.setup-table tbody tr').count();
+
 const promoName = await page.locator('.setup-panel input[type="text"]').first().inputValue();
 await page.getByRole('button', { name: 'Take the job', exact: true }).click();
 await page.waitForTimeout(400);
+check(editorRatings === 13, 'the editor offers every rating a wrestler has',
+  `${editorRatings} of 13`);
+check(writtenRows === 2, 'a written rating is marked as written', `${writtenRows} marked`);
+check(customArchetype, 'an archetype can be written rather than picked');
+check(wroteFromNothing, 'a wrestler can be written from nothing');
+check(rosterRows === 17, 'and joins the roster', `${rosterRows} rows`);
+
 check(await page.getByRole('button', { name: 'Roster', exact: true }).count() > 0, 'a new save opens onto the roster');
 check((await page.locator('#promo').textContent()).trim() === promoName.trim(),
   'the promotion is the one that was built', promoName);

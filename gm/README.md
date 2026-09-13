@@ -1068,6 +1068,46 @@ hand: name, role, alignment, or cut them entirely.
 
 Anything you do not set, the seed decides.
 
+### Writing a wrestler
+
+The roster table edits names, roles and alignments in place. **Edit** opens the
+whole person: name, gender, alignment, role, status, archetype, description,
+both abilities, all eleven personality traits and their record.
+
+Every rating is a slider and a box side by side. An empty box shows the rolled
+value as its placeholder and the word *rolled* beside it, so a blank reads as
+*this is what you will get* rather than as a missing answer. Write one and the
+row lights up with a **clear** link that hands it back to the seed. Nothing has
+to be filled in; the smallest useful edit is still just a name.
+
+**The archetype is a label.** Only its stat bands ever mattered, and those are
+spent the moment somebody is rolled — so *Write your own...* is not a lesser
+option. `Bloodline enforcer` is as real to the game as any of the seventeen.
+
+**Write one from nothing** adds a wrestler who is not on the seed at all. They
+are built on a whole person underneath, with the middle of every scale where
+nothing was said, so a hand-made wrestler still has eleven traits when only two
+of them were typed.
+
+### Authoring is knowing
+
+The game normally makes you learn people: ability sharpens with familiarity,
+personality lags behind it, and morale is never a number. A wrestler you wrote
+is exempt, because you invented them.
+
+It is split the same way the readings are. Write somebody's **ability** and you
+know what they can do from week one. Write their **personality** and you know
+the person. Write only their name and they are as much a stranger as anybody
+else. A half-authored roster has a texture worth having: the people you wrote,
+and the people you were given, and only one of those groups can surprise you.
+
+### Naming the belts
+
+Every championship you start with can be called whatever your promotion calls
+it. Only the name changes — how many people hold it and which division it locks
+stay with the template, so renaming the tag titles does not turn them into a
+singles belt.
+
 ### A promotion you can hand to somebody
 
 The setup encodes to a code you can paste to another player, and they get the
@@ -1078,6 +1118,10 @@ same arithmetic. Anything left at its default is dropped before encoding.
 
 A code from a future build, or one somebody has mangled, is refused with a
 sentence rather than crashing the screen it was pasted into.
+
+A roster written wrestler by wrestler does not compress into a seed, and the
+panel says how long the code has become — past a few thousand characters it
+tells you to save it to a file rather than paste it into a message.
 
 ## The money
 

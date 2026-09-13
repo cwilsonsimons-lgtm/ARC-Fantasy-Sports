@@ -4,7 +4,7 @@
 // own ids, kept under its own storage key. An index lists them and remembers
 // which one is open. The generator is seeded, so a save carries the seed that
 // produced its roster and could be rebuilt from it.
-import { resetIds, primeIds } from './ids.js';
+import { resetIds, primeIds, nextId } from './ids.js';
 import { makeRng, randomSeed } from './model/random.js';
 import { generateRoster, generatePromotion } from './model/generate.js';
 import { makeAirSchedule } from './model/calendar.js';
@@ -82,7 +82,7 @@ export function createSave(seedOrSetup = randomSeed()) {
   if (setup && setup.airNight) air.airNight = setup.airNight;
 
   const wrestlers = applyRosterEdits(generateRoster(rng, setup && setup.rosterSize), setup);
-  const titles = seedTitles(wrestlers, rng, setup && setup.titles);
+  const titles = seedTitles(wrestlers, rng, setup && setup.titles, setup && setup.titleNames);
 
   const state = {
     version: STATE_VERSION, seed, rng: seed,
@@ -113,25 +113,106 @@ export function createSave(seedOrSetup = randomSeed()) {
 // The edits a setup carries, applied on top of the generated roster. Dropping
 // somebody happens last so the indexes in `edits` still line up with what the
 // player was looking at when they made them.
+const PLAIN_FIELDS = ['name', 'gender', 'alignment', 'role', 'archetype', 'status', 'bio', 'photo'];
+
+// A wrestler you wrote is a wrestler you know. Ability reads at 60 and
+// personality at 80, so authoring either side hands over exactly the read you
+// would have earned for it and nothing more — write somebody's in-ring and you
+// know what they can do, not whether they hold a grudge.
+const KNOWN_ABILITY = 60;
+const KNOWN_FULLY = 100;
+
+function applyEdit(wrestler, edit) {
+  const next = { ...wrestler };
+  for (const field of PLAIN_FIELDS) {
+    if (edit[field] !== undefined && edit[field] !== '') next[field] = edit[field];
+  }
+  if (edit.stats) next.stats = { ...next.stats, ...numbersOnly(edit.stats) };
+  if (edit.traits) next.traits = { ...next.traits, ...numbersOnly(edit.traits) };
+  if (edit.record) {
+    next.record = {
+      wins: Number.isFinite(edit.record.wins) ? edit.record.wins : next.record.wins,
+      losses: Number.isFinite(edit.record.losses) ? edit.record.losses : next.record.losses,
+    };
+  }
+  // The archetype label is what the interface shows and what search matches;
+  // archetypeId only ever mattered at generation. So a hand-written archetype
+  // is a first-class one, and 'Bloodline enforcer' is as real as any of the
+  // seventeen.
+  if (edit.archetype) next.archetypeId = edit.archetypeId || null;
+
+  const wroteTraits = edit.traits && Object.keys(numbersOnly(edit.traits)).length;
+  const wroteStats = edit.stats && Object.keys(numbersOnly(edit.stats)).length;
+  if (wroteTraits) next.familiarity = KNOWN_FULLY;
+  else if (wroteStats) next.familiarity = Math.max(next.familiarity || 0, KNOWN_ABILITY);
+
+  if (next.baseline !== undefined) next.morale = next.baseline;
+  return next;
+}
+
+function numbersOnly(source) {
+  const out = {};
+  for (const [key, value] of Object.entries(source || {})) {
+    const n = Number(value);
+    if (Number.isFinite(n)) out[key] = Math.max(0, Math.min(99, Math.round(n)));
+  }
+  return out;
+}
+
 function applyRosterEdits(wrestlers, setup) {
   if (!setup) return wrestlers;
 
   const edited = wrestlers.map((wrestler, index) => {
     const edit = setup.edits && setup.edits[index];
-    if (!edit) return wrestler;
-    const next = { ...wrestler };
-    if (edit.name) next.name = edit.name;
-    if (edit.gender) next.gender = edit.gender;
-    if (edit.alignment) next.alignment = edit.alignment;
-    if (edit.role) next.role = edit.role;
-    if (edit.bio !== undefined) next.bio = edit.bio;
-    return next;
+    return edit ? applyEdit(wrestler, edit) : wrestler;
   });
 
   const dropped = new Set(setup.dropped || []);
-  const kept = edited.filter((_, index) => !dropped.has(index));
+  let kept = edited.filter((_, index) => !dropped.has(index));
+
+  // Wrestlers written from nothing rather than edited on top of a roll. They
+  // still need a whole person underneath them, so each one is built from the
+  // generator's own template and then overwritten — which is why a hand-made
+  // wrestler has eleven traits even when only two of them were typed in.
+  for (const written of setup.added || []) {
+    const base = kept[0] || edited[0];
+    if (!base) break;
+    kept.push({
+      ...applyEdit(blankFrom(base), written),
+      id: nextId('w'),
+      relationships: {},
+      memories: [],
+      grudges: [],
+    });
+  }
+
   // Never hand back an empty locker room, whatever the code asked for.
   return kept.length >= 4 ? kept : edited;
+}
+
+// A neutral person to write over: the generated one's shape, with the middle of
+// every scale and none of their history.
+function blankFrom(base) {
+  const traits = {};
+  for (const key of Object.keys(base.traits || {})) traits[key] = 50;
+  return {
+    ...base,
+    name: 'New wrestler',
+    bio: '',
+    photo: null,
+    status: 'Available',
+    archetype: 'Roster member',
+    archetypeId: null,
+    role: 'Midcard',
+    alignment: 'Neutral',
+    baseline: 55,
+    morale: 55,
+    familiarity: 0,
+    weeksOffCard: 0,
+    record: { wins: 0, losses: 0 },
+    stats: { inRing: 55, charisma: 55 },
+    traits,
+  };
 }
 
 export function loadSave(id) {

@@ -284,7 +284,32 @@ producing a 20KB code that looks broken.
 
 ---
 
-## 8. One tension worth naming
+## 8. Settled: authoring is knowing
+
+*This was an open question when the plan was written. It is built now, so it is
+a decision rather than a discussion.*
+
+The game deliberately does not show you what a wrestler is: ability arrives as
+a reading that sharpens with familiarity, personality lags behind it, and
+morale is never a number. Learning who these people are is a mechanic.
+
+Authoring hands you a form where you typed `ego: 97` yourself. The resolution
+is that **you invented them, so of course you know them** — and it is split the
+same way the readings are:
+
+| What you wrote | What you know from week one |
+|---|---|
+| Their ability | What they can do, and nothing else |
+| Their personality | The person |
+| Only their name | Nothing. They are a stranger like anybody else |
+
+A half-authored roster is the interesting case, and it falls out for free: the
+wrestlers you wrote and the wrestlers you were given, sitting in the same locker
+room, and only one of those groups can still surprise you.
+
+---
+
+## 8a. One tension worth naming
 
 The game deliberately does not show you what a wrestler is. Ability arrives as
 a *reading* that sharpens with familiarity; personality lags behind it; morale

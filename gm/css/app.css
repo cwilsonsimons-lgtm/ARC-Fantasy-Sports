@@ -1512,3 +1512,73 @@ button.cal-day.airs:hover { border-color: var(--cool); }
 @media (max-width: 640px) {
   .setup-table { display: block; overflow-x: auto; }
 }
+
+/* ── writing a wrestler ───────────────────────────────────────────────────
+   Every field, in one panel, with the rolled value shown beside every empty
+   box so a blank reads as "this is what you will get" rather than as a
+   missing answer. */
+
+.roster-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.arch-cell { position: relative; }
+.authored { margin-left: 6px; color: var(--cool); font-size: 11px; }
+.row-actions { display: flex; gap: 10px; white-space: nowrap; }
+.belt-rename {
+  width: calc(100% - 40px); margin: 0 9px 8px 31px;
+  font: 400 12px/1.4 var(--sans); padding: 5px 7px;
+}
+
+.editor {
+  max-width: 760px; width: 100%;
+  /* Thirteen ratings is taller than a laptop. The panel scrolls inside itself
+     so the name at the top and Done at the bottom are always both reachable. */
+  display: flex; flex-direction: column; max-height: calc(100vh - 56px);
+}
+.editor .editor-body { overflow-y: auto; min-height: 0; padding-right: 4px; }
+.editor .editor-head, .editor .editor-foot { flex: none; }
+.editor-head { padding: 4px 0 14px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.editor-head h3 { margin: 7px 0 4px; font: 700 21px/1.15 var(--sans); letter-spacing: -.01em; }
+.editor-head p { margin: 0; font-size: 12.5px; }
+.editor-body { display: flex; flex-direction: column; gap: 20px; padding-block: 16px; }
+.editor-section h4 {
+  margin: 0 0 4px; font: 600 10px/1.3 var(--mono); text-transform: uppercase;
+  letter-spacing: .16em; color: var(--ink-dim);
+}
+.editor-section .setup-note { margin-bottom: 10px; max-width: 62ch; }
+.editor-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 12px; margin-bottom: 12px;
+}
+.editor-section textarea {
+  width: 100%; font: 13px/1.5 var(--sans); padding: 8px 9px; border-radius: 4px;
+  background: var(--sunken); color: var(--ink); border: 1px solid var(--line); resize: vertical;
+}
+.editor-foot {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--line);
+}
+
+.ratings { display: flex; flex-direction: column; gap: 3px; }
+.ratings-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 3px 20px; }
+.rating-row {
+  display: grid; grid-template-columns: 116px 1fr 58px 46px;
+  gap: 10px; align-items: center; padding: 3px 5px; border-radius: 2px;
+}
+.rating-row:hover { background: var(--sunken); }
+.rating-row.written { background: color-mix(in srgb, var(--cool) 9%, transparent); }
+.rating-key { font: 500 12px/1.3 var(--sans); color: var(--ink-dim); cursor: help; }
+.rating-row.written .rating-key { color: var(--ink); font-weight: 600; }
+.rating-row input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
+.rating-num {
+  width: 100%; font: 600 12px/1.3 var(--mono); padding: 4px 6px; border-radius: 3px;
+  background: var(--sunken); color: var(--ink); border: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.rating-num::placeholder { color: var(--muted); font-weight: 400; }
+.rating-row > [hidden] { display: none; }
+.rating-src { font: 400 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.rating-clear { font-size: 10px; }
+
+@media (max-width: 560px) {
+  .rating-row { grid-template-columns: 96px 1fr 52px; }
+  .rating-src, .rating-clear { display: none; }
+}

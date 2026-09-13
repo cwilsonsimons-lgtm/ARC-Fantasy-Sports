@@ -20,6 +20,8 @@ import { generateRoster, generatePromotion } from '../model/generate.js';
 import { pointsEarnedBy } from '../model/progression.js';
 import { wageOf, wageBill, rightsFee, BASE_FEE, FEE_PER_MINUTE, money } from '../model/finance.js';
 import { UPGRADES } from '../data/upgrades.js';
+import { TRAITS, ABILITIES } from '../model/traits.js';
+import { ARCHETYPES } from '../data/archetypes.js';
 import { resetIds } from '../ids.js';
 
 const ALIGNMENTS = ['Face', 'Heel', 'Neutral'];
@@ -31,6 +33,8 @@ let shareCode = '';
 let importText = '';
 let importError = '';
 let openRoster = false;
+let editing = null;   // index into the preview, or 'added:N'
+const writingArchetype = new Set();   // keys whose archetype is being typed
 
 function randomSeed() {
   return Math.floor(Math.random() * 2 ** 31);
@@ -63,18 +67,40 @@ function rebuild() {
   const rng = makeRng(setup.seed);
   generatePromotion(rng);
   const roster = generateRoster(rng, setup.rosterSize);
+  const read = (wrestler, edit, key) => (edit[key] !== undefined && edit[key] !== '' ? edit[key] : wrestler[key]);
   preview = roster.map((wrestler, index) => {
     const edit = setup.edits[index] || {};
     return {
-      index,
+      key: index,
+      written: false,
       base: wrestler,
-      name: edit.name || wrestler.name,
-      gender: edit.gender || wrestler.gender,
-      alignment: edit.alignment || wrestler.alignment,
-      role: edit.role || wrestler.role,
+      edit,
+      name: read(wrestler, edit, 'name'),
+      gender: read(wrestler, edit, 'gender'),
+      alignment: read(wrestler, edit, 'alignment'),
+      role: read(wrestler, edit, 'role'),
+      archetype: read(wrestler, edit, 'archetype'),
       dropped: (setup.dropped || []).includes(index),
-      wage: wageOf({ ...wrestler, role: edit.role || wrestler.role }),
+      wage: wageOf({ ...wrestler, role: read(wrestler, edit, 'role') }),
     };
+  });
+
+  // Wrestlers written from nothing sit after the generated ones, keyed apart
+  // so an edit to one never lands on the other.
+  (setup.added || []).forEach((written, n) => {
+    preview.push({
+      key: `added:${n}`,
+      written: true,
+      base: null,
+      edit: written,
+      name: written.name || 'New wrestler',
+      gender: written.gender || 'Male',
+      alignment: written.alignment || 'Neutral',
+      role: written.role || 'Midcard',
+      archetype: written.archetype || 'Roster member',
+      dropped: false,
+      wage: wageOf({ role: written.role || 'Midcard', stats: written.stats || { inRing: 55 } }),
+    });
   });
   resetIds();
 }
@@ -83,13 +109,47 @@ function kept() {
   return preview.filter(p => !p.dropped);
 }
 
-function edit(index, field, value) {
-  setup.edits[index] = { ...(setup.edits[index] || {}), [field]: value };
+function bagFor(key) {
+  if (typeof key === 'string' && key.startsWith('added:')) {
+    const n = Number(key.slice(6));
+    setup.added[n] = setup.added[n] || {};
+    return setup.added[n];
+  }
+  setup.edits[key] = setup.edits[key] || {};
+  return setup.edits[key];
+}
+
+function edit(key, field, value) {
+  const bag = bagFor(key);
+  if (value === '' || value === null) delete bag[field];
+  else bag[field] = value;
   shareCode = '';
   rebuild();
   notify();
 }
 
+// Ability and personality live one level down, and a blank there means "you
+// decide" the same way a blank anywhere else does.
+//
+// This one deliberately does NOT redraw the screen. Rebuilding the page on
+// every commit tore the control out from under whoever was using it — a drag
+// lost the slider, and typing into a box replaced the box between the clearing
+// keystroke and the value. Rating rows repaint themselves instead, and the
+// rest of the screen catches up when the panel closes.
+function setRating(key, group, field, value) {
+  const bag = bagFor(key);
+  const box = { ...(bag[group] || {}) };
+  const n = Number(value);
+  if (value === '' || !Number.isFinite(n)) delete box[field];
+  else box[field] = Math.max(0, Math.min(99, Math.round(n)));
+  if (Object.keys(box).length) bag[group] = box;
+  else delete bag[group];
+  shareCode = '';
+}
+
+// The full redraw. Everything that changes the roster, the wage bill or the
+// share code goes through here; everything inside the editor deliberately does
+// not, because redrawing under somebody's cursor takes the control with it.
 function change(fn) {
   fn();
   shareCode = '';
@@ -128,7 +188,8 @@ export function renderSetup(state, navigate) {
       sharePanel()
     ),
 
-    rosterPanel()
+    rosterPanel(),
+    editing !== null ? editorOverlay() : null
   );
 }
 
@@ -223,10 +284,26 @@ function beltPanel() {
                 : [...setup.titles, title.key];
             }),
           }),
-          el('span', { class: 'belt-title', text: title.name }),
+          el('span', { class: 'belt-title', text: (setup.titleNames || {})[title.key] || title.name }),
           el('span', { class: 'belt-tag', text: title.holders === 2 ? 'tag' : (title.gender || 'open') })
         ),
-        title.note && !isBase ? el('p', { class: 'setup-note', text: title.note }) : null
+        // Call it whatever it is called. Only the name changes — how many
+        // people hold it and which division it locks stay with the template.
+        on
+          ? el('input', {
+              type: 'text', class: 'belt-rename', maxlength: '48',
+              placeholder: title.name,
+              value: (setup.titleNames || {})[title.key] || '',
+              onInput: e => {
+                setup.titleNames = setup.titleNames || {};
+                if (e.target.value) setup.titleNames[title.key] = e.target.value;
+                else delete setup.titleNames[title.key];
+                shareCode = '';
+              },
+              onChange: () => change(() => {}),
+            })
+          : null,
+        title.note && !isBase && !on ? el('p', { class: 'setup-note', text: title.note }) : null
       );
     })),
     el('p', { class: 'setup-note', text:
@@ -293,6 +370,16 @@ function sharePanel() {
           onClick: e => e.target.select(),
         })
       : null,
+    // A seed and a few tweaks is a line of text. A roster written wrestler by
+    // wrestler is not, and somebody about to paste one into a message should
+    // find that out here rather than in the message.
+    shareCode
+      ? el('p', { class: `setup-note${shareCode.length > 4000 ? ' over' : ''}`, text:
+          shareCode.length > 4000
+            ? `${shareCode.length} characters. That is a written roster rather than a seed — `
+              + 'save it to a file rather than pasting it into a chat.'
+            : `${shareCode.length} characters.` })
+      : null,
     el('div', { class: 'setup-import' },
       el('label', { class: 'lab', text: 'Or start from somebody else’s' }),
       el('textarea', {
@@ -358,11 +445,23 @@ function rosterPanel() {
           el('span', { class: 'unit num', text: `${setup.rosterSize} generated` })
         )
       ),
-      el('button', {
-        type: 'button', class: 'link',
-        text: openRoster ? 'Hide the roster' : 'Edit them one by one',
-        onClick: () => { openRoster = !openRoster; notify(); },
-      }),
+      el('div', { class: 'roster-tools' },
+        el('button', {
+          type: 'button', class: 'link',
+          text: openRoster ? 'Hide the roster' : 'Edit them one by one',
+          onClick: () => { openRoster = !openRoster; notify(); },
+        }),
+        el('button', {
+          type: 'button', class: 'btn', text: 'Write one from nothing',
+          title: 'A wrestler who is not on the seed at all. Everything about them is yours.',
+          onClick: () => change(() => {
+            setup.added = setup.added || [];
+            setup.added.push({ name: 'New wrestler' });
+            openRoster = true;
+            editing = `added:${setup.added.length - 1}`;
+          }),
+        })
+      ),
       openRoster ? rosterTable() : null
     )
   );
@@ -381,26 +480,261 @@ function rosterTable() {
     el('tbody', {}, preview.map(person => el('tr', { class: person.dropped ? 'dropped' : '' },
       el('td', {}, el('input', {
         type: 'text', class: 'cell-input', value: person.name, maxlength: '40',
-        onInput: e => { setup.edits[person.index] = { ...(setup.edits[person.index] || {}), name: e.target.value }; shareCode = ''; },
+        onInput: e => { bagFor(person.key).name = e.target.value; shareCode = ''; },
       })),
-      el('td', { class: 'muted', text: person.base.archetype }),
+      el('td', { class: 'muted arch-cell', text: person.archetype },
+        written(person) ? el('span', { class: 'authored', title: 'You wrote this one', text: '✎' }) : null),
       el('td', {}, el('select', {
-        onChange: e => edit(person.index, 'role', e.target.value),
+        onChange: e => edit(person.key, 'role', e.target.value),
       }, ROLES.map(role => el('option', { value: role, selected: role === person.role, text: role })))),
       el('td', {}, el('select', {
-        onChange: e => edit(person.index, 'alignment', e.target.value),
+        onChange: e => edit(person.key, 'alignment', e.target.value),
       }, ALIGNMENTS.map(a => el('option', { value: a, selected: a === person.alignment, text: a })))),
       el('td', { class: 'num', text: money(person.wage) }),
-      el('td', {}, el('button', {
-        type: 'button', class: 'link',
-        text: person.dropped ? 'Keep' : 'Cut',
-        onClick: () => change(() => {
-          const dropped = new Set(setup.dropped || []);
-          if (dropped.has(person.index)) dropped.delete(person.index);
-          else dropped.add(person.index);
-          setup.dropped = [...dropped];
+      el('td', { class: 'row-actions' },
+        el('button', {
+          type: 'button', class: 'link', text: 'Edit',
+          onClick: () => { editing = person.key; notify(); },
         }),
-      }))
+        el('button', {
+          type: 'button', class: 'link',
+          text: person.written ? 'Delete' : person.dropped ? 'Keep' : 'Cut',
+          onClick: () => change(() => {
+            if (person.written) {
+              setup.added.splice(Number(String(person.key).slice(6)), 1);
+              return;
+            }
+            const dropped = new Set(setup.dropped || []);
+            if (dropped.has(person.key)) dropped.delete(person.key);
+            else dropped.add(person.key);
+            setup.dropped = [...dropped];
+          }),
+        })
+      )
     )))
+  );
+}
+
+// Whether anything about this one was written rather than rolled.
+function written(person) {
+  return person.written || Object.keys(person.edit || {}).length > 0;
+}
+
+// ---------------------------------------------------------------- the editor
+
+// Everything about one wrestler, in one place. A field left blank is still the
+// generator's to decide, so the panel shows what it *would* be beside every
+// empty box — you are always looking at the wrestler you are about to get,
+// not at a form.
+function editorOverlay() {
+  const person = preview.find(p => p.key === editing);
+  if (!person) { editing = null; return null; }
+
+  return el('div', {
+    class: 'overlay',
+    onClick: e => { if (e.target.classList.contains('overlay')) { editing = null; notify(); } },
+  },
+    el('div', { class: 'card editor', role: 'dialog', 'aria-label': `Edit ${person.name}` },
+      el('button', {
+        type: 'button', class: 'card-close', text: '✕', title: 'Close',
+        onClick: () => { editing = null; notify(); },
+      }),
+      el('div', { class: 'editor-head' },
+        el('span', { class: 'lab', text: person.written ? 'Written from nothing' : 'Rolled from the seed' }),
+        el('h3', { text: person.name }),
+        el('p', { class: 'muted', text: person.written
+          ? 'Nothing here came from the seed. Anything you leave blank sits in the middle.'
+          : 'Anything you leave blank stays as the seed rolled it, shown in grey.' })
+      ),
+      el('div', { class: 'editor-body' },
+        identityBlock(person),
+        abilityBlock(person),
+        personalityBlock(person),
+        recordBlock(person)
+      ),
+      el('div', { class: 'editor-foot' },
+        el('button', {
+          type: 'button', class: 'link', text: 'Clear everything I wrote',
+          onClick: () => change(() => {
+            if (person.written) setup.added[Number(String(person.key).slice(6))] = { name: person.name };
+            else delete setup.edits[person.key];
+          }),
+        }),
+        el('button', {
+          type: 'button', class: 'btn primary', text: 'Done',
+          onClick: () => change(() => { editing = null; }),
+        })
+      )
+    )
+  );
+}
+
+function editorSection(title, note, ...body) {
+  return el('div', { class: 'editor-section' },
+    el('h4', { text: title }),
+    note ? el('p', { class: 'setup-note', text: note }) : null,
+    ...body
+  );
+}
+
+function identityBlock(person) {
+  const pick = (label, fieldName, options) => el('div', { class: 'setup-field' },
+    el('label', { class: 'lab', text: label }),
+    el('select', { onChange: e => edit(person.key, fieldName, e.target.value) },
+      options.map(value => el('option', {
+        value, selected: value === person[fieldName], text: value,
+      })))
+  );
+
+  const custom = writingArchetype.has(person.key)
+    || (person.archetype && !ARCHETYPES.some(a => a.label === person.archetype));
+
+  return editorSection('Who they are', null,
+    el('div', { class: 'editor-grid' },
+      el('div', { class: 'setup-field' },
+        el('label', { class: 'lab', text: 'Name' }),
+        el('input', {
+          type: 'text', value: person.name, maxlength: '40',
+          onInput: e => { bagFor(person.key).name = e.target.value; shareCode = ''; },
+        })
+      ),
+      pick('Gender', 'gender', ['Male', 'Female']),
+      pick('Alignment', 'alignment', ALIGNMENTS),
+      pick('Role', 'role', ROLES),
+      pick('Status', 'status', ['Available', 'Injured', 'Unavailable'])
+    ),
+    // The archetype is a label everywhere the game reads it — only its stat
+    // bands ever mattered, and those are spent the moment somebody is rolled.
+    // So anything you can type is as real as the seventeen.
+    el('div', { class: 'setup-field' },
+      el('label', { class: 'lab', text: 'Archetype' }),
+      el('select', {
+        onChange: e => {
+          if (e.target.value === '__custom') {
+            writingArchetype.add(person.key);
+            notify();
+            return;
+          }
+          writingArchetype.delete(person.key);
+          edit(person.key, 'archetype', e.target.value);
+        },
+      },
+        ARCHETYPES.map(a => el('option', {
+          value: a.label, selected: a.label === person.archetype, text: a.label,
+        })),
+        el('option', { value: '__custom', selected: custom, text: 'Write your own...' })
+      ),
+      custom
+        ? el('input', {
+            type: 'text', value: person.archetype, maxlength: '40',
+            placeholder: 'Bloodline enforcer',
+            onInput: e => { bagFor(person.key).archetype = e.target.value; shareCode = ''; },
+          })
+        : null,
+      el('p', { class: 'setup-note', text: 'Only the label reaches the game. Type whatever the character is.' })
+    ),
+    el('div', { class: 'setup-field' },
+      el('label', { class: 'lab', text: 'Description' }),
+      el('textarea', {
+        rows: 3, value: person.edit.bio !== undefined ? person.edit.bio : (person.base ? person.base.bio : ''),
+        placeholder: 'What is their deal?',
+        onInput: e => { bagFor(person.key).bio = e.target.value; shareCode = ''; },
+      })
+    )
+  );
+}
+
+// A 0-99 box that shows the rolled value as its placeholder, so an empty field
+// reads as "this is what you will get" rather than as a missing answer.
+function ratingRow(person, group, key, label, note) {
+  const rolled = person.base ? (person.base[group] || {})[key] : null;
+  const hasRoll = Number.isFinite(rolled);
+  const current = () => (bagFor(person.key)[group] || {})[key];
+
+  const box = el('input', {
+    type: 'number', class: 'rating-num', min: '0', max: '99',
+    placeholder: hasRoll ? String(rolled) : '',
+  });
+  const slider = el('input', { type: 'range', min: '0', max: '99' });
+  const source = el('span', { class: 'rating-src' });
+  const clear = el('button', {
+    type: 'button', class: 'link rating-clear', text: 'clear',
+    title: 'Hand it back to the seed',
+  });
+
+  function paint() {
+    const written = current();
+    const value = written !== undefined ? written : (hasRoll ? rolled : 50);
+    box.value = written !== undefined ? String(written) : '';
+    slider.value = String(value);
+    source.textContent = person.base ? 'rolled' : 'middle';
+    source.hidden = written !== undefined;
+    clear.hidden = written === undefined;
+    row.classList.toggle('written', written !== undefined);
+  }
+
+  const commit = value => { setRating(person.key, group, key, value); paint(); };
+
+  // Dragging writes the live figure into the box beside it and commits nothing
+  // until the drag is finished.
+  slider.addEventListener('input', e => { box.value = e.target.value; });
+  slider.addEventListener('change', e => commit(e.target.value));
+  // Committing as it is typed is only affordable because commits no longer
+  // redraw anything. It means a figure counts the moment it is entered rather
+  // than whenever the box happens to lose focus.
+  box.addEventListener('input', e => commit(e.target.value));
+  box.addEventListener('change', e => commit(e.target.value));
+  clear.addEventListener('click', () => commit(''));
+
+  const row = el('div', { class: 'rating-row' },
+    el('label', { class: 'rating-key', text: label, title: note || '' }),
+    slider, box, source, clear
+  );
+  paint();
+  return row;
+}
+
+function abilityBlock(person) {
+  return editorSection('What they can do',
+    'Ability decides matches. Write either one and you know what they can do from week one.',
+    el('div', { class: 'ratings' },
+      ABILITIES.map(stat => ratingRow(person, 'stats', stat.key, stat.label, stat.note))
+    )
+  );
+}
+
+function personalityBlock(person) {
+  return editorSection('Who they are backstage',
+    'Personality decides everything that is not a match. Write any of it and you '
+    + 'know the person, not just the worker.',
+    el('div', { class: 'ratings ratings-two' },
+      TRAITS.map(trait => ratingRow(person, 'traits', trait.key, trait.label, trait.note))
+    )
+  );
+}
+
+function recordBlock(person) {
+  const rec = person.edit.record || {};
+  const rolled = person.base ? person.base.record : { wins: 0, losses: 0 };
+  const box = (key, label) => el('div', { class: 'setup-field' },
+    el('label', { class: 'lab', text: label }),
+    el('input', {
+      type: 'number', min: '0', max: '999',
+      placeholder: String(rolled[key] || 0),
+      value: rec[key] !== undefined ? String(rec[key]) : '',
+      // Model only. Blurring this box to click Done must not delete Done.
+      onInput: e => {
+        const bag = bagFor(person.key);
+        const next = { ...(bag.record || {}) };
+        const n = Number(e.target.value);
+        if (e.target.value === '' || !Number.isFinite(n)) delete next[key];
+        else next[key] = Math.max(0, Math.min(999, Math.round(n)));
+        if (Object.keys(next).length) bag.record = next; else delete bag.record;
+        shareCode = '';
+      },
+    })
+  );
+  return editorSection('Record', 'Where they stand before your first show.',
+    el('div', { class: 'editor-grid' }, box('wins', 'Wins'), box('losses', 'Losses'))
   );
 }

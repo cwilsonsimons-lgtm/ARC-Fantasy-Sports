@@ -41,7 +41,7 @@ export function eligibleFor(wrestlers, title) {
 // `keys` names the belts this promotion starts with. They are all marked as
 // the promotion's own furniture rather than as sanctioned additions, so a
 // promotion that opens with five belts has not spent slots it never bought.
-export function seedTitles(wrestlers, rng, keys = null) {
+export function seedTitles(wrestlers, rng, keys = null, names = null) {
   const taken = new Set();
   const titles = [];
   const templates = keys
@@ -58,6 +58,7 @@ export function seedTitles(wrestlers, rng, keys = null) {
     champions.forEach(id => taken.add(id));
     const title = createTitle(template, champions, 1 - Math.floor(rng() * 12));
     title.base = true;
+    if (names && names[template.key]) title.name = names[template.key];
     titles.push(title);
   }
   return titles;

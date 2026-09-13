@@ -57,6 +57,11 @@ export function defaultSetup(seed) {
     // fields and a seed.
     edits: {},
     dropped: [],
+    // Wrestlers written from nothing rather than rolled and edited.
+    added: [],
+    // Belt renames, keyed by template key. A promotion recreating somebody
+    // else's is going to want its own names on the wall.
+    titleNames: {},
   };
 }
 
