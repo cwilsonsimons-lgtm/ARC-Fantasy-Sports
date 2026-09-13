@@ -38,11 +38,17 @@ export function eligibleFor(wrestlers, title) {
 
 // A new promotion already has champions. Vacant belts on day one read as a
 // promotion that has not started yet.
-export function seedTitles(wrestlers, rng) {
+// `keys` names the belts this promotion starts with. They are all marked as
+// the promotion's own furniture rather than as sanctioned additions, so a
+// promotion that opens with five belts has not spent slots it never bought.
+export function seedTitles(wrestlers, rng, keys = null) {
   const taken = new Set();
   const titles = [];
+  const templates = keys
+    ? keys.map(key => titleTemplate(key)).filter(Boolean)
+    : BASE_TITLES;
 
-  for (const template of BASE_TITLES) {
+  for (const template of templates) {
     const pool = wrestlers
       .filter(w => w.status === 'Available' && !taken.has(w.id) && (!template.gender || w.gender === template.gender))
       .sort((a, b) => rank(b) - rank(a));
@@ -50,7 +56,9 @@ export function seedTitles(wrestlers, rng) {
     const champions = pool.slice(0, template.holders).map(w => w.id);
     if (champions.length < template.holders) continue; // not enough of that division to crown one
     champions.forEach(id => taken.add(id));
-    titles.push(createTitle(template, champions, 1 - Math.floor(rng() * 12)));
+    const title = createTitle(template, champions, 1 - Math.floor(rng() * 12));
+    title.base = true;
+    titles.push(title);
   }
   return titles;
 }

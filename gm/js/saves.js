@@ -15,7 +15,7 @@ const INDEX_KEY = 'wgm_index_v1';
 const SAVE_PREFIX = 'wgm_save_';
 const LEGACY_KEY = 'wgm_v1';
 
-export const STATE_VERSION = 17;
+export const STATE_VERSION = 18;
 
 function read(key) {
   try {
@@ -63,16 +63,31 @@ export function currentSaveId() {
 
 // Builds a whole world: a promotion, a roster, and the history that existed
 // before the player took the job.
-export function createSave(seed = randomSeed()) {
+// `setup` is what the new-save screen produced, or null for a straight roll.
+// Everything it does not say is still decided by the seed, which is what keeps
+// a shared setup code short and what makes two people with the same code get
+// the same locker room.
+export function createSave(seedOrSetup = randomSeed()) {
+  const setup = typeof seedOrSetup === 'object' && seedOrSetup ? seedOrSetup : null;
+  const seed = setup ? setup.seed : seedOrSetup;
+
   resetIds();
   const rng = makeRng(seed);
-  const promotion = generatePromotion(rng);
+  const rolled = generatePromotion(rng);
   const air = makeAirSchedule(rng);
-  const wrestlers = generateRoster(rng);
-  const titles = seedTitles(wrestlers, rng);
+  const promotion = {
+    promotion: (setup && setup.promotion) || rolled.promotion,
+    show: (setup && setup.show) || rolled.show,
+  };
+  if (setup && setup.airNight) air.airNight = setup.airNight;
+
+  const wrestlers = applyRosterEdits(generateRoster(rng, setup && setup.rosterSize), setup);
+  const titles = seedTitles(wrestlers, rng, setup && setup.titles);
+
   const state = {
     version: STATE_VERSION, seed, rng: seed,
-    ...createGame({ wrestlers, promotion, air, titles }),
+    setup: setup ? { ...setup } : null,
+    ...createGame({ wrestlers, promotion, air, titles, setup }),
   };
 
   const id = newId();
@@ -93,6 +108,30 @@ export function createSave(seed = randomSeed()) {
   writeIndex(index);
 
   return { id, state };
+}
+
+// The edits a setup carries, applied on top of the generated roster. Dropping
+// somebody happens last so the indexes in `edits` still line up with what the
+// player was looking at when they made them.
+function applyRosterEdits(wrestlers, setup) {
+  if (!setup) return wrestlers;
+
+  const edited = wrestlers.map((wrestler, index) => {
+    const edit = setup.edits && setup.edits[index];
+    if (!edit) return wrestler;
+    const next = { ...wrestler };
+    if (edit.name) next.name = edit.name;
+    if (edit.gender) next.gender = edit.gender;
+    if (edit.alignment) next.alignment = edit.alignment;
+    if (edit.role) next.role = edit.role;
+    if (edit.bio !== undefined) next.bio = edit.bio;
+    return next;
+  });
+
+  const dropped = new Set(setup.dropped || []);
+  const kept = edited.filter((_, index) => !dropped.has(index));
+  // Never hand back an empty locker room, whatever the code asked for.
+  return kept.length >= 4 ? kept : edited;
 }
 
 export function loadSave(id) {

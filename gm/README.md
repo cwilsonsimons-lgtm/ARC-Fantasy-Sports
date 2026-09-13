@@ -1050,6 +1050,65 @@ Nobody picks this at the start. `gmRecord` counts every call by how the room
 read it, and a pattern earns a name — The Disciplinarian, The Absentee, The
 Matchmaker, The Wild West GM, or an even hand. It shows on the post-show.
 
+## Building a promotion
+
+A new save is a screen now, not a button. Everything on it is a decision about
+the job you are giving yourself, and every dial shows what it costs as you move
+it.
+
+**The promotion** — name, weekly show, air night. **The GM** — a starting level
+from 1 to 30, which pays out exactly the points that level would have earned
+and nothing else: no XP banked, no upgrades chosen, week one is still week one.
+It is a dial on how much of the board you begin with, and the screen says so
+rather than pretending otherwise. **Championships** — which of the six belts
+are already on the wall. A belt the promotion opened with is its own furniture
+and has not spent a sanctioned slot, so the Corporate branch still adds on top.
+**The money** — below. **The roster** — how many, and then each of them by
+hand: name, role, alignment, or cut them entirely.
+
+Anything you do not set, the seed decides.
+
+### A promotion you can hand to somebody
+
+The setup encodes to a code you can paste to another player, and they get the
+same locker room down to who is already injured. It stays short because it does
+not carry a roster — it carries the **seed**, plus the edits made on top of it.
+Two people with the same code generate the same twenty-four wrestlers from the
+same arithmetic. Anything left at its default is dropped before encoding.
+
+A code from a future build, or one somebody has mangled, is refused with a
+sentence rather than crashing the screen it was pasted into.
+
+## The money
+
+One page, and deliberately not an economy. There is no sponsorship, no gate, no
+merchandise, and signing somebody is not a thing you can do yet. What exists is
+the single loop that makes a starting budget mean anything: **the network pays
+for the minutes it gives you, the roster is paid whether or not you book them,
+and the difference lands every week.**
+
+That is enough to make two dials on the setup screen real:
+
+| Roster | Weekly wages | Net, on the hour |
+|---|---|---|
+| 10 | $34,288 | **+$31,712** |
+| 16 | $50,276 | +$15,724 |
+| 20 | $65,056 | +$944 |
+| 24 | $75,416 | **−$9,416** |
+| 28 | $90,360 | −$24,360 |
+
+Twenty is break-even on sixty minutes. Past that you are bleeding, and the way
+out is more television — which is earned, not bought. The same twenty-four
+wrestlers on ninety minutes make money.
+
+An injured wrestler is still paid. That is the point of a wage bill: the roster
+costs what it costs whether or not it is any use to you this week.
+
+Going overdrawn does not end anything. It reaches the one place it should:
+`bossView()` — head office's read of how you run the building — because an
+overdrawn promotion is one somebody upstairs is being asked about. Contracts,
+signings and wage negotiation belong to the Corporate and Negotiation branches.
+
 ## The GM board
 
 `gmReputation()` names the GM you turned out to be. The board is where you get

@@ -8,6 +8,7 @@
 import { elapsedMinutes } from './broadcast.js';
 import { averageMorale, withGrudges, appearedCount, bookableCount } from './morale.js';
 import { authorityValue } from './backstage.js';
+import { standingPenalty } from './finance.js';
 
 export const EXECUTIVE = { name: 'Diane Petrosyan', role: 'Network' };
 
@@ -85,8 +86,12 @@ export function bossView(state) {
   // Missing things is already in the authority figure, as a share of the calls
   // that came your way. Counting the raw number again here would mean a GM who
   // ran forty weeks was worse at the job than one who ran four.
+  // And the books. An overdrawn promotion is one somebody upstairs is being
+  // asked about, which is a different worry from a badly-run locker room and
+  // lands on the same read of you.
   const value = Math.max(0, Math.min(100,
-    authorityValue(state) - walkouts * 7 - (record.gaveIn || 0) * 1.5));
+    authorityValue(state) - walkouts * 7 - (record.gaveIn || 0) * 1.5
+    - standingPenalty(state)));
   const [, phrase, tone] = BOSS_VIEW.find(([floor]) => value >= floor);
   return { value: Math.round(value), phrase, tone, walkouts };
 }

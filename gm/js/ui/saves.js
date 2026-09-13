@@ -1,6 +1,7 @@
 // Save slots. Each one is a different promotion with a different roster.
 import { el } from './dom.js';
 import { saves, activeSaveId, startNewSave, openSave, removeSave, notify } from '../store.js';
+import { resetSetup } from './setup.js';
 
 let confirming = null;
 
@@ -16,10 +17,17 @@ export function renderSaves(state, navigate) {
       ? el('ul', { class: 'saves' }, list.map(entry => saveRow(entry, entry.id === current && state, navigate)))
       : el('p', { class: 'empty', text: 'No saves yet. Start one and see who turns up.' }),
 
-    el('button', {
-      type: 'button', class: 'btn primary', text: 'Start a new save',
-      onClick: () => { confirming = null; startNewSave(); navigate('roster'); },
-    })
+    el('div', { class: 'save-start' },
+      el('button', {
+        type: 'button', class: 'btn primary', text: 'Build a promotion',
+        onClick: () => { confirming = null; resetSetup(); navigate('setup'); },
+      }),
+      el('button', {
+        type: 'button', class: 'btn', text: 'Just roll one',
+        title: 'Skip the setup screen and take whatever the seed gives you.',
+        onClick: () => { confirming = null; startNewSave(); navigate('roster'); },
+      })
+    )
   );
 }
 

@@ -2113,6 +2113,36 @@ earned.
 record on the wrestler (`injuries: [{ week, weeks }]`) rather than only a
 current state, because Injury History had nothing to read otherwise.
 
+### Since batch one — the setup screen and money
+
+A new save is built rather than rolled. Two of its dials touch this document
+directly.
+
+**Starting GM level.** The setup screen offers levels 1–30 and pays out
+`pointsEarnedBy(level)` — the points that level would have earned — with no XP
+banked and nothing bought. It is a difficulty dial and the screen says so
+plainly: *"A high level is a board half filled in, which makes the early weeks
+easier — it does not hand you a promotion that has already been run."* This is
+the one place the tree's own rule (upgrades expand the game rather than remove
+its difficulty) is deliberately set aside, because the player is choosing it
+with their eyes open before the save exists.
+
+**Starting budget**, and with it a small money loop: the network pays per
+televised minute, the roster is paid whether or not it is booked, and the
+difference settles weekly. Twenty wrestlers is break-even on the hour. This
+makes the Corporate branch's broadcast ladder a financial goal as well as a
+creative one — the way out of a wage bill is more television — and gives the
+executive's roster-use verdict a second, harder edge.
+
+It also puts a floor under several upgrades in this document that assumed money
+existed. **Talent Budget**, **Poach**, **The Hot Free Agent**, **Loyalty
+Bonus**, **Contract Talks** and **The Feeder** all spend it. None of them are
+built; the account they will spend from now is.
+
+**Championships** chosen at setup are marked as the promotion's own furniture
+rather than as sanctioned additions, so opening with five belts does not spend
+slots the Corporate branch has not sold yet.
+
 ### Not built, and what each is waiting for
 
 | Waiting on | Upgrades |
@@ -2123,3 +2153,4 @@ current state, because Injury History had nothing to read otherwise.
 | **A request queue** | every Negotiation upgrade |
 | **Doctrine** | the doctrine bands draw on the board but nothing picks one yet |
 | **New actions on existing systems** | Send Word, Hold That Thought, Private Meeting, Promise Them Something, Make Your Case, and most of the Working tier |
+| **Contracts on top of the money loop** | Talent Budget, Poach, The Hot Free Agent, Loyalty Bonus, Contract Talks |

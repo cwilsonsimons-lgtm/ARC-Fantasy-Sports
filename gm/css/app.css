@@ -1153,6 +1153,12 @@ button.cal-day.airs:hover { border-color: var(--cool); }
 .actionbar .spacer { margin-right: auto; }
 
 
+/* The micro-label the board and the setup screen both hang facts under. */
+.lab {
+  display: block; font: 600 9px/1 var(--mono); text-transform: uppercase;
+  letter-spacing: .18em; color: var(--muted);
+}
+
 /* ── the GM board ─────────────────────────────────────────────────────────
    Seven lanes, four tiers, read bottom to top. The doctrine bands are the
    only thing that crosses lanes, which is why they are the only full-width
@@ -1407,4 +1413,102 @@ button.cal-day.airs:hover { border-color: var(--cool); }
 .nav button.has-points::after {
   content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 6px;
   border-radius: 50%; background: var(--cool); vertical-align: middle;
+}
+
+/* ── building a promotion ─────────────────────────────────────────────────
+   A form, but one where every field is a decision about the job you are
+   giving yourself, so each one shows what it costs as you move it. */
+
+.setup-head {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
+  justify-content: space-between; padding-block: 4px 18px;
+  border-bottom: 1px solid var(--line); margin-bottom: 18px;
+}
+.setup-head h2 { margin: 0 0 4px; }
+.setup-head p { margin: 0; max-width: 62ch; }
+.setup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.setup-grid {
+  columns: 3 272px; column-gap: 14px; margin-bottom: 14px;
+}
+.setup-grid > * { break-inside: avoid; margin-bottom: 14px; }
+.setup-panel .panel-body { display: flex; flex-direction: column; gap: 14px; }
+
+.setup-field { display: flex; flex-direction: column; gap: 6px; }
+.setup-field input[type="text"],
+.setup-field input[type="number"],
+.setup-field select { width: 100%; }
+.setup-field input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+.setup-note { margin: 0; font: 400 11.5px/1.5 var(--sans); color: var(--muted); }
+
+.setup-read {
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0;
+  border-top: 1px solid var(--line-soft); padding-top: 12px; align-items: baseline;
+}
+.setup-read dt {
+  font: 600 9px/1.5 var(--mono); text-transform: uppercase;
+  letter-spacing: .15em; color: var(--muted);
+}
+.setup-read dd {
+  margin: 0; text-align: right; font: 600 13px/1.4 var(--sans); color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.setup-read dd.big { font-size: 22px; color: var(--cool); }
+.setup-read dd.good { color: var(--good); }
+.setup-read dd.bad { color: var(--tally); }
+
+.belt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.belt-pick label {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 7px 9px; border-radius: 2px; border: 1px solid transparent;
+}
+.belt-pick label:hover { background: var(--sunken); }
+.belt-pick.on label { background: var(--sunken); border-color: var(--line); }
+.belt-pick input { accent-color: var(--accent); }
+.belt-title { flex: 1; font: 600 12.5px/1.3 var(--sans); color: var(--ink-dim); text-transform: none; letter-spacing: 0; }
+.belt-pick.on .belt-title { color: var(--ink); }
+.belt-tag {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em;
+  color: var(--muted); padding: 4px 6px; border: 1px solid var(--line); border-radius: 2px;
+}
+.belt-pick .setup-note { padding: 0 9px 4px 31px; text-transform: none; letter-spacing: 0; }
+
+.segmented.budget { flex-wrap: wrap; }
+
+.share-code {
+  width: 100%; font: 400 11px/1.5 var(--mono); color: var(--ink-dim);
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 2px;
+  padding: 8px 9px; resize: vertical; word-break: break-all;
+}
+.setup-import { display: flex; flex-direction: column; gap: 7px; border-top: 1px solid var(--line-soft); padding-top: 13px; }
+
+.setup-roster .panel-body { display: flex; flex-direction: column; gap: 12px; }
+.setup-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.setup-table th {
+  text-align: left; font: 600 9px/1.5 var(--mono); text-transform: uppercase;
+  letter-spacing: .14em; color: var(--muted); padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.setup-table th.num, .setup-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.setup-table td { padding: 4px 8px; border-bottom: 1px solid var(--line-soft); }
+.setup-table tr.dropped td { opacity: .4; }
+.setup-table tr.dropped .cell-input { text-decoration: line-through; }
+.cell-input {
+  width: 100%; min-width: 120px; background: transparent; border: 1px solid transparent;
+  color: var(--ink); font: 600 12.5px/1.4 var(--sans); padding: 4px 5px; border-radius: 2px;
+}
+.cell-input:hover { border-color: var(--line); }
+.cell-input:focus { border-color: var(--cool); background: var(--sunken); outline: none; }
+.setup-table select { font-size: 12px; padding: 3px 5px; }
+
+.save-start { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* The books, wherever they are shown. */
+.books { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
+.books-figure { font: 700 15px/1 var(--sans); font-variant-numeric: tabular-nums; }
+.books-figure.bad { color: var(--tally); }
+.books-figure.good { color: var(--good); }
+
+@media (max-width: 640px) {
+  .setup-table { display: block; overflow-x: auto; }
 }

@@ -272,6 +272,25 @@ function upgrade(saved) {
     saved.version = 17;
   }
 
+  if (saved.version === 17) {
+    // Money arrives. A save that has been running without it gets the budget a
+    // promotion of its size would plausibly still have — the opening figure
+    // less what it has been quietly not paying — floored so that nobody is
+    // handed a crisis they had no chance to avoid.
+    if (!saved.finance) {
+      const roster = (saved.wrestlers || []).length;
+      const opening = 120000 + roster * 9000;
+      saved.finance = { budget: opening, opening, weeks: [] };
+    }
+    // Belts that exist because the promotion has them, rather than because a
+    // slot was bought, so nobody loses a sanctioned slot to the new rule.
+    for (const title of saved.titles || []) {
+      if (title.base === undefined) title.base = true;
+    }
+    if (saved.setup === undefined) saved.setup = null;
+    saved.version = 18;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 
@@ -330,8 +349,8 @@ export function activeSaveId() {
   return currentSaveId();
 }
 
-export function startNewSave() {
-  const created = createSave();
+export function startNewSave(setup = undefined) {
+  const created = createSave(setup === undefined ? undefined : setup);
   saveId = created.id;
   state = created.state;
   notify();

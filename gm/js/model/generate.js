@@ -116,8 +116,12 @@ function buildTastes(rng, archetype) {
   return tastes;
 }
 
-export function generateRoster(rng) {
-  const size = range(rng, ROSTER_MIN, ROSTER_MAX);
+// `wanted` overrides the random size, for a setup screen that lets the player
+// say how many people they want to have to keep happy.
+export function generateRoster(rng, wanted = null) {
+  const size = wanted
+    ? Math.max(4, Math.round(wanted))
+    : range(rng, ROSTER_MIN, ROSTER_MAX);
   const archetypes = chooseArchetypes(rng, size);
   const usedNames = { first: new Set(), last: new Set(), full: new Set() };
 

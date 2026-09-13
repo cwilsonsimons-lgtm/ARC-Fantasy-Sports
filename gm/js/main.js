@@ -9,6 +9,7 @@ import { renderSaves } from './ui/saves.js';
 import { renderCalendar } from './ui/calendar.js';
 import { renderTitles } from './ui/titles.js';
 import { renderTree } from './ui/tree.js';
+import { renderSetup } from './ui/setup.js';
 import { renderCard } from './ui/wrestler-card.js';
 import { openCardId, closeCard } from './ui/card-state.js';
 
@@ -28,7 +29,7 @@ function navigate(next) {
 
 function render() {
   const state = getState();
-  if (!state) route = 'saves';
+  if (!state && route !== 'setup') route = 'saves';
 
   navEl.replaceChildren(...renderNav(route, state && state.phase, navigate, Boolean(state)));
   // Where you are in the season on the top line, whose promotion it is on the
@@ -48,6 +49,7 @@ function render() {
   }
 
   const view =
+    route === 'setup' ? renderSetup(state, navigate) :
     route === 'saves' ? renderSaves(state, navigate) :
     !state ? renderSaves(state, navigate) :
     route === 'booking' ? renderBooking(state, navigate) :

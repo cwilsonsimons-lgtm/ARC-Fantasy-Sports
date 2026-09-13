@@ -38,12 +38,27 @@ import {
   archiveWeek, loadScheduled, checkBreaches, runtimeForWeek, showNameFor, isPpvWeek,
 } from './calendar.js';
 import { reviewShow } from './executives.js';
-import { createProgression, xpForShow, awardXp } from './progression.js';
+import { createProgression, pointsEarnedBy, xpForShow, awardXp } from './progression.js';
+import { createFinance, settleWeek } from './finance.js';
 import { createMatch, addItem, remainingMinutes } from './show.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
-export function createGame({ wrestlers, promotion, air, titles = [] }) {
+// A GM who starts above level one starts with the points that level would have
+// paid out, and nothing else: no XP banked, no upgrades chosen, and week one is
+// still week one. It is a dial on how much of the board you begin with rather
+// than a fast-forward through the job.
+function startingProgression(setup) {
+  const gm = createProgression();
+  const level = setup && setup.level ? Math.max(1, Math.min(30, Math.round(setup.level))) : 1;
+  if (level > 1) {
+    gm.level = level;
+    gm.points = pointsEarnedBy(level);
+  }
+  return gm;
+}
+
+export function createGame({ wrestlers, promotion, air, titles = [], setup = null }) {
   return {
     week: 1,
     phase: PHASES.PREP,
@@ -73,7 +88,8 @@ export function createGame({ wrestlers, promotion, air, titles = [] }) {
       harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0,
       gaveIn: 0, delayed: 0, missed: 0,
     },
-    gm: createProgression(),
+    gm: startingProgression(setup),
+    finance: createFinance(setup ? setup.budget : undefined),
   };
 }
 
@@ -660,6 +676,10 @@ export function advanceWeek(state) {
   archiveWeek(state);
 
   state.week += 1;
+  // The network pays for the minutes it gave you and the roster is paid
+  // whether or not you used them. One line a week, and the only reason the
+  // budget on the setup screen means anything.
+  settleWeek(state);
   releaseSuspensions(state);
   healInjuries(state);
   // Last week stops being the whole of what somebody thinks about. How much it

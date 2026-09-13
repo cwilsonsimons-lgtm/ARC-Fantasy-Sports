@@ -461,6 +461,88 @@ for (const [key, field, sign, why] of EFFECTS) {
   }
 }
 
+// ---- building a promotion ----
+//
+// A setup is a starting position you can hand to somebody else, so the thing
+// worth testing is that it survives the round trip and that what it says
+// actually reaches the save.
+{
+  const setupData = await mod('data/setup.js');
+  const fin = await mod('model/finance.js');
+  const prog = await mod('model/progression.js');
+  const saves = await mod('saves.js');
+
+  // btoa/atob are browser globals; the encoder needs them here too.
+  globalThis.btoa ||= str => Buffer.from(str, 'binary').toString('base64');
+  globalThis.atob ||= str => Buffer.from(str, 'base64').toString('binary');
+
+  const plan = setupData.defaultSetup(90210);
+  plan.promotion = 'Meridian Championship Wrestling';
+  plan.show = 'Friday Night Meridian';
+  plan.level = 12;
+  plan.budget = 250000;
+  plan.rosterSize = 22;
+  plan.titles = ['world', 'womens', 'tag', 'television'];
+  plan.edits = { 0: { name: 'Hollis Vane', role: 'Main event' } };
+  plan.dropped = [3];
+
+  const code = setupData.encodeSetup(plan);
+  const back = setupData.decodeSetup(code);
+  check(Boolean(back), 'a setup survives being turned into a code');
+  check(back && back.seed === plan.seed && back.level === 12 && back.budget === 250000
+    && back.rosterSize === 22 && back.titles.length === 4
+    && back.edits[0].name === 'Hollis Vane' && back.dropped[0] === 3,
+    'and comes back with everything that was set');
+  check(setupData.decodeSetup('not a code at all') === null, 'a mangled code is refused, not obeyed');
+  check(setupData.decodeSetup(setupData.encodeSetup({ ...plan, level: 99 })) === null,
+    'and so is one asking for a level that does not exist');
+
+  // The same code twice is the same locker room, which is the only reason
+  // sharing one is worth anything.
+  const first = saves.createSave(back).state;
+  const second = saves.createSave(setupData.decodeSetup(code)).state;
+  check(first.wrestlers.map(w => w.name).join('|') === second.wrestlers.map(w => w.name).join('|'),
+    'two people who paste the same code get the same locker room',
+    `${first.wrestlers.length} wrestlers`);
+
+  check(first.promotion.promotion === 'Meridian Championship Wrestling', 'the name it was given reaches the save');
+  check(first.wrestlers.length === 21, 'the roster is the size asked for, less anybody cut',
+    `${first.wrestlers.length} of 22`);
+  check(first.wrestlers[0].name === 'Hollis Vane', 'an edited wrestler arrives edited');
+  check(first.titles.length === 4, 'and the belts chosen are on the wall', `${first.titles.length} belts`);
+  check(titleModel.slotsUsed(first) === 0,
+    'a belt the promotion opened with has not spent a sanctioned slot');
+
+  check(first.gm.level === 12 && first.gm.points === prog.pointsEarnedBy(12),
+    'a GM who starts at twelve starts with twelve levels of points', `${first.gm.points} points`);
+  check(first.gm.xp === 0 && first.gm.spent.length === 0,
+    'and with nothing bought and nothing banked');
+
+  // Money: the loop has to actually move, and the roster has to be what moves it.
+  check(fin.budgetOf(first) === 250000, 'the budget asked for is the budget in the account');
+  const small = saves.createSave({ ...back, rosterSize: 10, dropped: [] }).state;
+  check(fin.wageBill(small.wrestlers) < fin.wageBill(first.wrestlers),
+    'a smaller roster costs less to run',
+    `${fin.money(fin.wageBill(small.wrestlers))} against ${fin.money(fin.wageBill(first.wrestlers))}`);
+
+  const before = fin.budgetOf(first);
+  first.journal = [];
+  const moved = fin.settleWeek(first);
+  check(moved.fee > 0 && moved.wages > 0 && fin.budgetOf(first) === before + moved.net,
+    'the week settles and the balance moves', `${fin.money(moved.net)} a week`);
+  check((first.journal || []).some(e => e.type === 'books-settled'),
+    'and the books say so in the journal');
+
+  // Overdrawn is a thing head office notices, which is the only teeth the
+  // budget has until contracts exist.
+  const broke = saves.createSave({ ...back, budget: 0 }).state;
+  const clean = fin.standingPenalty(broke);
+  broke.finance.budget = -200000;
+  check(clean === 0 && fin.standingPenalty(broke) > 0,
+    'an overdrawn promotion is one head office is being asked about',
+    `${fin.standingPenalty(broke)} off their read of you`);
+}
+
 if (process.argv.includes('--model')) {
   console.log(failures.length ? `\n${failures.length} FAILING:\n- ${failures.join('\n- ')}` : '\nall green');
   process.exit(failures.length ? 1 : 0);
@@ -484,9 +566,40 @@ page.on('console', m => { if (m.type() === 'error' && !/favicon|status of 404/i.
 console.log('');
 await page.goto(`http://127.0.0.1:${PORT}/gm/index.html`);
 await page.waitForTimeout(400);
-await page.getByRole('button', { name: /new save|start a new save/i }).first().click();
-await page.waitForTimeout(300);
+// A promotion is built before it exists now, so the way in is the setup screen.
+await page.getByRole('button', { name: 'Build a promotion', exact: true }).click();
+await page.waitForTimeout(400);
+check(await page.locator('.setup-view').count() > 0, 'the new-save screen builds a promotion first');
+
+// The level dial has to pay out what the design says it pays out.
+const levelInput = page.locator('.setup-panel input[type="range"]').first();
+await levelInput.fill('12');
+await page.waitForTimeout(150);
+const pointsAt12 = await page.locator('.setup-read dd.big').first().textContent();
+await levelInput.fill('1');
+await page.waitForTimeout(150);
+const pointsAt1 = await page.locator('.setup-read dd.big').first().textContent();
+check(Number(pointsAt12) === 31 && Number(pointsAt1) === 3,
+  'the starting level pays out the points that level would have earned',
+  `level 1 → ${pointsAt1}, level 12 → ${pointsAt12}`);
+
+// A fourth belt, chosen rather than sanctioned.
+await page.locator('.belt-pick', { hasText: 'Television Championship' }).locator('input').check();
+await page.waitForTimeout(150);
+
+// And the code, which is the whole point of building one of these.
+await page.getByRole('button', { name: 'Make a code', exact: true }).click();
+await page.waitForTimeout(200);
+const madeCode = (await page.locator('.share-code').first().inputValue()).trim();
+check(madeCode.length > 8 && !/[^A-Za-z0-9_-]/.test(madeCode),
+  'a promotion can be shared as a code', `${madeCode.length} characters`);
+
+const promoName = await page.locator('.setup-panel input[type="text"]').first().inputValue();
+await page.getByRole('button', { name: 'Take the job', exact: true }).click();
+await page.waitForTimeout(400);
 check(await page.getByRole('button', { name: 'Roster', exact: true }).count() > 0, 'a new save opens onto the roster');
+check((await page.locator('#promo').textContent()).trim() === promoName.trim(),
+  'the promotion is the one that was built', promoName);
 
 const PLAY_WEEKS = 10;
 let played = 0;
@@ -558,11 +671,31 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
     unlockedAfter = await bookPanel.locator('.form-row select').first()
       .locator('option').allTextContents();
 
-    // Three names: two strangers filling one side of the tag, one filling the
-    // other so the shape is legal and the only thing left to object to is the
-    // pairing. The refusal has to arrive as a sentence naming them rather than
-    // a silent no-op.
-    const strangers = (await freeNames(page)).slice(0, 3);
+    // Two people the gate should refuse, plus one to fill the other side so the
+    // shape is legal and the pairing is the only thing left to object to.
+    // Picked by actually having no history rather than by taking the first two
+    // rows — the roster seeds a tag team and a mentor pair, and either would
+    // be a legal team and a silently passing test.
+    const free = await freeNames(page);
+    const strangers = await page.evaluate(names => {
+      const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
+      const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
+      const by = new Map(save.wrestlers.map(w => [w.name, w]));
+      const rapport = rel => !rel ? 0
+        : (rel.matches || 0) + (rel.segments || 0) + (rel.teamed || 0) * 2 + (rel.owed || 0) * 4;
+      for (let i = 0; i < names.length; i += 1) {
+        for (let j = i + 1; j < names.length; j += 1) {
+          const a = by.get(names[i]);
+          const b = by.get(names[j]);
+          if (!a || !b) continue;
+          const rel = a.relationships[b.id];
+          if (rel && (rel.tie || rapport(rel) >= 6)) continue;
+          const third = names.find(n => n !== names[i] && n !== names[j]);
+          if (third) return [names[i], names[j], third];
+        }
+      }
+      return names.slice(0, 3);
+    }, free);
     for (const name of strangers) {
       await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
       await page.waitForTimeout(60);
@@ -850,7 +983,7 @@ const migrated = await page.evaluate(() => {
       Object.values(w.relationships).every(r => Number.isFinite(r.teamed))),
   };
 });
-check(migrated.version === 17, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.version === 18, 'an older save is upgraded and written back', `version ${migrated.version}`);
 check(migrated.threads && migrated.teamed, 'an upgraded save can start noticing stories');
 check(migrated.backstage, 'an upgraded save gets a building to stand in');
 check(migrated.record, 'the existing record survives and gains the new counts');

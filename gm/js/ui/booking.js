@@ -18,6 +18,7 @@ import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { bookable } from '../model/morale.js';
 import { moodWord, moodClass } from './mood.js';
 import { tierOf, nextTier } from '../model/network.js';
+import { budgetOf, runway, wageBill, rightsFee, money } from '../model/finance.js';
 import {
   shapesFor, canBuildShapes, stipulationsFor, canCustomiseShape,
   teamRefusal, teamGateSay,
@@ -290,6 +291,25 @@ function cardPanel(state, show, locked) {
   );
 }
 
+// Said in weeks rather than in a balance, because weeks is the unit the
+// decision is made in: whether to carry a twenty-eight person roster is a
+// question about how long you can carry it.
+function moneyNote(state) {
+  const left = runway(state);
+  const wages = wageBill(state.wrestlers);
+  if (budgetOf(state) < 0) {
+    return el('p', { class: 'net-note over', text:
+      `Overdrawn. ${money(wageBill(state.wrestlers))} a week goes out and head office knows.` });
+  }
+  if (left === null) {
+    return el('p', { class: 'net-note muted', text:
+      `${money(rightsFee(state))} a week in, ${money(wages)} out. The books are fine.` });
+  }
+  return el('p', { class: `net-note ${left <= 4 ? 'over' : 'muted'}`, text:
+    `${money(wages)} a week in wages against ${money(rightsFee(state))} from the network. `
+    + `About ${left} week${left === 1 ? '' : 's'} of it left.` });
+}
+
 function clockStrip(state, show) {
   const left = remainingMinutes(show);
   const next = nextTier(state);
@@ -306,11 +326,21 @@ function clockStrip(state, show) {
       el('div', {},
         el('span', { class: 'clock-label', text: 'Time remaining' }),
         el('span', { class: `clock-value ${left < 0 ? 'over' : 'left'}`, text: `${left} min` })
+      ),
+      // The books sit next to the clock because they are the same kind of
+      // fact: a number that is going to run out, and how long you have.
+      el('div', {},
+        el('span', { class: 'clock-label', text: 'In the account' }),
+        el('span', {
+          class: `clock-value ${budgetOf(state) < 0 ? 'over' : 'left'}`,
+          text: money(budgetOf(state)),
+        })
       )
     ),
     el('p', { class: 'net-note muted', text: next
       ? `${tierOf(state).label}. Network trust ${state.network.trust} of ${next.trust} toward ${next.minutes} minutes.`
-      : `${tierOf(state).label}. There is no more airtime to earn.` })
+      : `${tierOf(state).label}. There is no more airtime to earn.` }),
+    moneyNote(state)
   );
 }
 
