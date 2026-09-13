@@ -43,7 +43,9 @@ function slotPanel(state) {
     return el('div', { class: 'panel' },
       el('h3', { text: 'Sanctioning' }),
       el('p', { class: 'muted', text: next
-        ? `The network will sanction another championship at ${next} network trust. You have ${state.network.trust}.`
+        ? next.trust > state.network.trust
+          ? `Another championship needs ${next.trust} network trust before head office will discuss it. You have ${state.network.trust}.`
+          : `Head office would sanction another. Buy ${next.name} on the Corporate branch — ${next.cost} point${next.cost === 1 ? '' : 's'}, GM level ${next.level}.`
         : 'The network has sanctioned everything it is going to.' })
     );
   }

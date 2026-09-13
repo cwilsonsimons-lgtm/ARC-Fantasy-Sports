@@ -1,14 +1,14 @@
 // Build the card for the next show: add, remove, reorder and retime items.
 import { el } from './dom.js';
-import { commit, notify } from '../store.js';
+import { commit, notify, getState } from '../store.js';
 import {
   addItem, createMatch, createBout, createSegment, removeItem, moveItem, setItemMinutes,
   setItemMatchType, minimumMinutes, bookedMinutes, remainingMinutes, isOverbooked,
 } from '../model/show.js';
 import { titlesForMatch } from '../model/titles.js';
-import { MATCH_TYPES, matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
+import { matchType, DEFAULT_MATCH_TYPE } from '../data/match-types.js';
 import {
-  PRESETS, preset, shapeName, shapeMinutes, evenSides, MAX_SIDES, MAX_PER_SIDE,
+  preset, shapeName, shapeMinutes, evenSides, MAX_SIDES, MAX_PER_SIDE,
 } from '../data/shapes.js';
 import { tasteReading } from '../model/match-types.js';
 import { byId } from '../model/wrestlers.js';
@@ -18,6 +18,10 @@ import { itemLabelNodes, participantLinks, wrestlerLink } from './links.js';
 import { bookable } from '../model/morale.js';
 import { moodWord, moodClass } from './mood.js';
 import { tierOf, nextTier } from '../model/network.js';
+import {
+  shapesFor, canBuildShapes, stipulationsFor, canCustomiseShape,
+  teamRefusal, teamGateSay,
+} from '../model/unlocks.js';
 import { listOpportunities, takeOpportunity, dismissOpportunity } from '../model/opportunities.js';
 import { nameOf } from '../model/wrestlers.js';
 
@@ -267,7 +271,7 @@ function builderPanel(state, locked) {
         }))
       ),
       draft.builder === 'match' ? matchForm(state)
-        : draft.builder === 'bout' ? boutForm(state)
+        : draft.builder === 'bout' ? (canBuildShapes(state) ? boutForm(state) : noShapes())
         : segmentForm(state)
     )
   );
@@ -487,7 +491,7 @@ function matchForm(state) {
       }, wrestlerOptions(state, draft.matchB))),
       row(['Stipulation', 'optional'], el('select', {
         onChange: e => { draft.matchTypeId = e.target.value; notify(); },
-      }, MATCH_TYPES.filter(t => !t.open).map(t => el('option', {
+      }, stipulationsFor(state).filter(t => !t.open).map(t => el('option', {
         value: t.id, selected: t.id === draft.matchTypeId,
         text: t.id === 'singles' ? 'None' : t.name,
       })))),
@@ -604,6 +608,14 @@ function titleSelect(state, participantIds, sides, key) {
 // so the player builds a shape and the game tells them what it is called —
 // including "Handicap", which is what you get by leaving a slot empty.
 function boutForm(state) {
+  // A locked preset can be left on the draft by a reload, or simply by being
+  // the default before anything on the branch is bought.
+  const available = shapesFor(state);
+  if (draft.shapeId !== 'custom' && !available.some(p => p.id === draft.shapeId)) {
+    draft.shapeId = available[0].id;
+    if (!available[0].open) draft.sides = [...available[0].sides];
+    trimSlots();
+  }
   const chosen = preset(draft.shapeId);
   const open = Boolean(chosen.open);
   const ids = open ? [...draft.royal] : draft.slots.filter(Boolean);
@@ -617,10 +629,12 @@ function boutForm(state) {
   return el('div', {},
     el('div', { class: 'form-rows' },
       row('Shape', el('select', { onChange: e => setShape(e.target.value) },
-        ...PRESETS.map(p => el('option', {
+        ...shapesFor(state).map(p => el('option', {
           value: p.id, selected: p.id === draft.shapeId, text: p.label,
         })),
-        el('option', { value: 'custom', selected: draft.shapeId === 'custom', text: 'Custom…' })
+        canCustomiseShape(state)
+          ? el('option', { value: 'custom', selected: draft.shapeId === 'custom', text: 'Custom…' })
+          : null
       )),
       draft.shapeId === 'custom' ? row('Sides', numberBox(
         draft.sides.length, MAX_SIDES, n => setSides(evenSides(n, draft.sides[0] || 1))
@@ -630,7 +644,7 @@ function boutForm(state) {
       )) : null,
       open ? null : row(['Stipulation', 'optional'], el('select', {
         onChange: e => { draft.boutTypeId = e.target.value; notify(); },
-      }, MATCH_TYPES.filter(t => !t.open).map(t => el('option', {
+      }, stipulationsFor(state).filter(t => !t.open).map(t => el('option', {
         value: t.id, selected: t.id === draft.boutTypeId,
         text: t.id === 'singles' ? 'None' : t.name,
       })))),
@@ -787,6 +801,15 @@ function trimSlots() {
   for (let i = 0; i < total; i += 1) if (!draft.slots[i]) draft.slots[i] = '';
 }
 
+// Before anything on the Booking branch is bought, one against one is the
+// whole vocabulary. Saying so is better than an empty select.
+function noShapes() {
+  return el('p', { class: 'muted form-note' },
+    'You can book a singles match and nothing else yet. Tag teams, triple '
+    + 'threats and everything past them are bought on the Booking branch of '
+    + 'the GM board.');
+}
+
 function addBout(open) {
   const teams = [];
   if (open) {
@@ -816,6 +839,19 @@ function addBout(open) {
     draft.boutError = 'Nobody can be in this twice.';
     notify();
     return;
+  }
+
+  // Two names on the same side is a tag team, and who you are allowed to make
+  // one out of is a Booking upgrade. The refusal names the pair, because
+  // "invalid team" is not something a GM would say.
+  const state = getState();
+  for (const side of teams) {
+    const refusal = teamRefusal(state, state.wrestlers, side);
+    if (refusal) {
+      draft.boutError = refusal;
+      notify();
+      return;
+    }
   }
 
   const bout = createBout({

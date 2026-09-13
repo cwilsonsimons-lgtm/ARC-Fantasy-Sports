@@ -10,10 +10,15 @@ import { byId } from '../model/wrestlers.js';
 import { bookable } from '../model/morale.js';
 import {
   ABILITIES, statReading, traitReading, knowledgeTier, personalityTier,
-  knowledgeLabel, knowledgePercent,
+  knowledgeLabel, knowledgePercent, TAPE_STUDY_BOOST,
 } from '../model/stats.js';
 import { TRAITS } from '../model/traits.js';
 import { moraleSources, gmStanding } from '../model/memory.js';
+import {
+  readsMemories, readsGrudgeSource, tracksWarnings, readsInjuries, studiesTape,
+} from '../model/unlocks.js';
+import { canCheck, backgroundCheck } from '../model/scouting.js';
+import { nameOf } from '../model/wrestlers.js';
 import { relationshipsOf } from '../model/relationships.js';
 import { threadList } from './threads.js';
 import { roomOf } from '../model/backstage.js';
@@ -41,7 +46,7 @@ export function renderCard(state, wrestlerId) {
           el('h4', { text: 'Your read' }),
           readPanel(w),
           el('h4', { text: 'Ability' }),
-          abilityList(w),
+          abilityList(state, w),
           el('h4', { text: 'Personality' }),
           personalityList(w),
           el('h4', { text: 'Description' }),
@@ -51,7 +56,9 @@ export function renderCard(state, wrestlerId) {
           el('h4', { text: 'Where you stand' }),
           standingPanel(state, w),
           el('h4', { text: 'What is on their mind' }),
-          feelingList(w),
+          feelingList(state, w),
+          readsInjuries(state) ? el('h4', { text: 'Injury history' }) : null,
+          readsInjuries(state) ? injuryList(state, w) : null,
           el('h4', { text: 'Stipulations' }),
           stipulationList(w),
           threadList(state, w.id),
@@ -170,11 +177,14 @@ function readNote(ability, personality) {
 
 // What they can do. Learned by watching them work, so it comes first and
 // sharpens fastest.
-function abilityList(w) {
-  const tier = knowledgeTier(w);
+function abilityList(state, w) {
+  // Tape is watched, not lived through. It sharpens what they can do and says
+  // nothing at all about what they are like.
+  const boost = studiesTape(state) ? TAPE_STUDY_BOOST : 0;
+  const tier = knowledgeTier(w, boost);
   return el('ul', { class: 'stats' },
     ABILITIES.map(stat => {
-      const reading = statReading(w, stat.key);
+      const reading = statReading(w, stat.key, boost);
       return el('li', {},
         el('span', { class: 'stat-key', text: stat.label }),
         el('span', {
@@ -214,9 +224,18 @@ function personalityList(w) {
 
 // Morale is never a number. What it is made of, however, can be named — and
 // naming it is what turns a mood into something the player can act on.
-function feelingList(w) {
+function feelingList(state, w) {
   if (!bookable(w)) {
     return el('p', { class: 'empty', text: 'Not in a position to have an opinion about the card.' });
+  }
+  // You can see the mood on somebody's face from across the room. Working out
+  // what it is *made of* is a conversation, and Know Your Locker Room is the
+  // upgrade that means you have had it.
+  if (!readsMemories(state)) {
+    return el('p', { class: 'empty' },
+      `You can see they are ${moodWord(w).toLowerCase()}. `,
+      el('span', { class: 'locked-note', text: 'Know Your Locker Room reads what is behind it.' })
+    );
   }
 
   const sources = moraleSources(w).slice(0, 5);
@@ -249,14 +268,77 @@ function feelWord(total) {
 
 // How they feel about you specifically, as distinct from how they feel. A
 // wrestler can be delighted with their year and still think you are a liar.
+const GRUDGE_ABOUT = {
+  'broken-promise': 'a promise you did not keep',
+  'walked-out': 'the night they left',
+  suspension: 'the suspension',
+  ejection: 'being sent home',
+  warning: 'the warning',
+  refused: 'being made to work',
+  ignored: 'being left to it',
+  overlooked: 'being left off the card',
+};
+
+function grudgeAbout(state, grudge) {
+  const about = GRUDGE_ABOUT[grudge.type] || grudge.type.replace(/-/g, ' ');
+  const target = grudge.targetId ? nameOf(state.wrestlers, grudge.targetId) : null;
+  return target ? `${about}, and ${target}` : about;
+}
+
 function standingPanel(state, w) {
   const standing = gmStanding(w, state.week);
-  const grudges = (w.grudges || []).filter(g => g.targetId === null).length;
+  const office = (w.grudges || []).filter(g => g.targetId === null);
+  const warnings = w.warnings || 0;
+
   return el('div', { class: 'standing' },
     el('p', { class: `standing-line standing-${standing.tone}`, text: `${w.name} ${standing.phrase}.` }),
-    grudges
-      ? el('p', { class: 'muted standing-note', text: `${grudges} open ${grudges === 1 ? 'grievance' : 'grievances'} with the office.` })
+    office.length && !readsGrudgeSource(state)
+      ? el('p', { class: 'muted standing-note' },
+          `${office.length} open ${office.length === 1 ? 'grievance' : 'grievances'} with the office. `,
+          el('span', { class: 'locked-note', text: 'Read The Grudge says what about.' }))
+      : null,
+    // What it is actually about, which is the difference between knowing
+    // somebody is angry and being able to do anything about it.
+    office.length && readsGrudgeSource(state)
+      ? el('ul', { class: 'grudge-list' },
+          office.map(g => el('li', {},
+            el('span', { class: 'grudge-about', text: grudgeAbout(state, g) }),
+            el('span', { class: 'grudge-week', text: `week ${g.week}` })
+          )))
+      : null,
+    // The file. Kept whether or not you can read it; Paper Trail is what makes
+    // it visible, and the third entry is what makes Dismissal possible.
+    tracksWarnings(state) && warnings
+      ? el('p', { class: 'muted standing-note', text:
+          `${warnings} formal ${warnings === 1 ? 'warning' : 'warnings'} on file.` })
+      : null,
+    canCheck(state)
+      ? el('button', {
+          type: 'button', class: 'link',
+          text: `Ask around about ${w.name.split(' ')[0]}`,
+          title: 'One a week. You learn what a season of working together would have taught you.',
+          onClick: () => commit(s => backgroundCheck(s, w.id)),
+        })
       : null
+  );
+}
+
+// Only ever shown with Injury History owned. An empty list is information too:
+// somebody who has never been hurt is somebody you can book harder.
+function injuryList(state, w) {
+  const injuries = w.injuries || [];
+  if (!injuries.length) {
+    return el('p', { class: 'empty', text: 'Never missed a week through injury.' });
+  }
+  const weeks = injuries.reduce((n, i) => n + i.weeks, 0);
+  return el('div', {},
+    el('ul', { class: 'injuries' },
+      injuries.slice(-5).reverse().map(i => el('li', {},
+        el('span', { class: 'injury-week', text: `Week ${i.week}` }),
+        el('span', { class: 'injury-len', text: `${i.weeks} week${i.weeks === 1 ? '' : 's'} out` })
+      ))),
+    el('p', { class: 'muted standing-note', text:
+      `${injuries.length} in all, ${weeks} weeks lost.` })
   );
 }
 

@@ -38,6 +38,7 @@ import {
   archiveWeek, loadScheduled, checkBreaches, runtimeForWeek, showNameFor, isPpvWeek,
 } from './calendar.js';
 import { reviewShow } from './executives.js';
+import { createProgression, xpForShow, awardXp } from './progression.js';
 import { createMatch, addItem, remainingMinutes } from './show.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
@@ -72,6 +73,7 @@ export function createGame({ wrestlers, promotion, air, titles = [] }) {
       harsh: 0, weak: 0, fair: 0, ignored: 0, booked: 0,
       gaveIn: 0, delayed: 0, missed: 0,
     },
+    gm: createProgression(),
   };
 }
 
@@ -631,6 +633,12 @@ function finishIfDone(state, at) {
   const review = reviewShow(state);
   const award = awardTrust(state, review.grade, isPpvWeek(state.week) ? 2 : 1);
   state.lastReview = { ...review, ...award };
+
+  // And what the night was worth to the GM personally, which is a different
+  // question from what it was worth to the network. Read off the journal so
+  // there is one source of truth for it.
+  const earned = xpForShow(state, review);
+  awardXp(state, earned.total, earned.lines);
   if (award.promoted) {
     state.journal.push(createEntry({
       week: state.week, at, type: 'window-extended',

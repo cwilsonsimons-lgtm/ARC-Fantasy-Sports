@@ -260,6 +260,20 @@ export function closeness(rel) {
     + (rel.owed || 0) * 4;
 }
 
+// Closeness asks whether two people are a unit. Rapport asks the softer
+// question the tag-team gate needs: do they know each other at all? Working
+// opposite somebody counts here and does not count above, which matters
+// because closeness only grows from standing on the same side — so gating a
+// first tag team on closeness would be asking a pair to team before they are
+// allowed to team.
+export function rapport(rel) {
+  if (!rel) return 0;
+  return (rel.matches || 0)
+    + (rel.segments || 0)
+    + (rel.teamed || 0) * 2
+    + (rel.owed || 0) * 4;
+}
+
 // Called when the week turns. Returns what formed, for the journal — the point
 // of this tier is that the game tells the player about the stories it noticed
 // rather than quietly keeping them to itself.

@@ -11,6 +11,7 @@ import {
 import { TIERS } from './model/network.js';
 import { makeAirSchedule } from './model/calendar.js';
 import { TRAITS } from './model/traits.js';
+import { pointsEarnedBy } from './model/progression.js';
 
 let state = null;
 let saveId = null;
@@ -231,6 +232,44 @@ function upgrade(saved) {
       for (const item of week.items || []) reshape(item);
     }
     saved.version = 16;
+  }
+
+  if (saved.version === 16) {
+    // The tree arrives, and it gates things that were free. Multi-person
+    // matches, stipulations and tag teams were all unrestricted, and taking
+    // them away from a GM who has been booking them for thirty weeks would be
+    // a bug wearing a design's clothes — so a save that predates the tree is
+    // handed every built Booking upgrade outright.
+    //
+    // The rest is invented as plausibly as it can be. A level is derived from
+    // weeks served, the points that level would have paid are credited, and
+    // the broadcast rungs and championship slots the save has already been
+    // promoted through are granted rather than sold back to them.
+    const weeks = Math.max(1, (saved.history || []).length || saved.week || 1);
+    const level = Math.max(1, Math.min(30, 1 + Math.floor(weeks / 4)));
+    const spent = [
+      'tag-team-wrestling', 'triple-threat', 'stipulation-submission-match',
+      'fatal-four-way', 'working-relationship',
+    ];
+
+    const tier = (saved.network && saved.network.tier) || 0;
+    if (tier >= 1) spent.push('expanded-broadcast-i');
+    if (tier >= 2) spent.push('expanded-broadcast-ii');
+    if ((saved.titles || []).length >= 4) spent.push('the-second-belt');
+
+    // Granted upgrades are a gift rather than a purchase, so the points the
+    // level would have paid are all still there to spend. A GM who has been
+    // doing the job for thirty weeks arrives with a board to fill in, not a
+    // bill for the things they were already doing.
+    saved.gm = {
+      level,
+      xp: 0,
+      points: pointsEarnedBy(level),
+      spent,
+      doctrines: [],
+      log: null,
+    };
+    saved.version = 17;
   }
 
   return saved.version === STATE_VERSION ? saved : null;

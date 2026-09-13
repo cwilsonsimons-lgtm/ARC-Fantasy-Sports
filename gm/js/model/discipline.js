@@ -120,6 +120,10 @@ export function applyResponse(state, incident, responseId) {
     ruling(state, aggressor, weightOf(-2), 'security');
     outcome.securityLeft = securityLeft(state);
   } else if (responseId === 'warning') {
+    // A warning is only a warning if somebody wrote it down. The count is kept
+    // whether or not Paper Trail is owned — the upgrade buys the ability to
+    // read the file, not the existence of one.
+    aggressor.warnings = (aggressor.warnings || 0) + 1;
     ruling(state, aggressor, weightOf(-4), 'warning');
   } else if (response.suspendWeeks !== undefined) {
     outcome.suspended = applySuspension(state, aggressor, response.suspendWeeks, weightOf);

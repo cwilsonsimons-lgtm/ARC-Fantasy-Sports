@@ -369,6 +369,98 @@ for (const [key, field, sign, why] of EFFECTS) {
   check(r * sign >= MIN_R, `${key} does something: ${why}`, `r=${r.toFixed(3)}`);
 }
 
+// ---- the GM board ----
+//
+// The tree is mostly gates, and a gate is worth testing in both directions:
+// the thing is unavailable, then you buy the thing, then it is available.
+{
+  const prog = await mod('model/progression.js');
+  const unlocks = await mod('model/unlocks.js');
+  const cat = await mod('data/upgrades.js');
+  const netw = await mod('model/network.js');
+
+  const catalogue = cat.UPGRADES;
+  check(catalogue.length === 113, 'the whole catalogue is on the board',
+    `${catalogue.length} upgrades, ${catalogue.reduce((n, u) => n + u.cost, 0)} points`);
+  check(catalogue.every(u => (u.requires || []).every(r => cat.upgrade(r))),
+    'every prerequisite names an upgrade that exists');
+  check(catalogue.every(u => (u.excludes || []).every(r => cat.upgrade(r))),
+    'and so does every exclusion');
+  // A built upgrade whose prerequisite is not built could never be bought.
+  const orphan = catalogue.filter(u => u.built && (u.requires || []).some(r => !cat.upgrade(r).built));
+  check(orphan.length === 0, 'nothing built is stranded behind something unbuilt',
+    orphan.map(u => u.name).join(', ') || 'none');
+
+  const fresh = playSeason(4242).state;
+  fresh.gm = prog.createProgression();
+
+  check(prog.progression(fresh).points === 3, 'a new GM starts with three points');
+  check(unlocks.shapesFor(fresh).length === 0, 'and cannot book anything but a singles match');
+  check(unlocks.stipulationsFor(fresh).length === 1, 'with no stipulation to put on it');
+  check(unlocks.broadcastMinutes(fresh) === 60, 'on an hour of television');
+  check(netw.runtimeFor(fresh) === 60, 'which is what the show is built against');
+
+  // Buying is the only way points leave the pool, and it obeys the gates.
+  check(!prog.canBuy(fresh, 'fatal-four-way'), 'a level-4 upgrade is out of reach at level 1');
+  check(prog.blockers(fresh, 'fatal-four-way').length >= 2,
+    'and the board can say exactly why', prog.blockers(fresh, 'fatal-four-way').map(b => b[0]).join(', '));
+  check(prog.buy(fresh, 'tag-team-wrestling'), 'a level-1 upgrade can be bought');
+  check(prog.progression(fresh).points === 2, 'and it costs what it says');
+  check(unlocks.shapesFor(fresh).some(p => p.id === 'tag'), 'tag team wrestling appears on the builder');
+  check(!prog.buy(fresh, 'tag-team-wrestling'), 'nothing can be bought twice');
+
+  // The broadcast ladder is trust to open and a point to take.
+  fresh.network.trust = 40;
+  check(!prog.canBuy(fresh, 'expanded-broadcast-ii'),
+    'ninety minutes needs the rung below it first');
+  prog.awardXp(fresh, 5000);
+  check(prog.progression(fresh).level > 1, 'XP levels a GM up', `level ${fresh.gm.level}`);
+  prog.buy(fresh, 'expanded-broadcast-i');
+  prog.buy(fresh, 'expanded-broadcast-ii');
+  check(unlocks.broadcastMinutes(fresh) === 90, 'and buying the rungs lengthens the show');
+  check(netw.awardTrust(fresh, 'A').promoted === null,
+    'trust on its own no longer promotes anybody');
+
+  // Championship slots the same way.
+  const before = titleModel.slotsEarned(fresh);
+  prog.buy(fresh, 'the-second-belt');
+  check(titleModel.slotsEarned(fresh) === before + 1, 'a belt bought is a belt sanctioned');
+
+  // XP is not mostly the grade. That is the whole design constraint, so it is
+  // worth a test rather than a comment.
+  const busy = playSeason(77).state;
+  busy.journal = [
+    { type: 'ruling', data: { read: 'fair' } },
+    { type: 'ruling', data: { read: 'fair' } },
+    { type: 'ruling', data: { read: 'harsh' } },
+    { type: 'tie-formed', data: {} },
+  ];
+  const earned = prog.xpForShow(busy, { grade: 'A', timing: 'on-time', rosterUse: 'broad', breaches: 0 });
+  const gradeShare = 30 / earned.total;
+  check(gradeShare < 0.2, 'the network grade is a small slice of a week',
+    `${Math.round(gradeShare * 100)}% of ${earned.total} XP`);
+  const quiet = prog.xpForShow(busy, { grade: 'D', timing: 'long', rosterUse: 'thin', breaches: 1 });
+  check(quiet.total > 0, 'and a bad night still teaches you something', `${quiet.total} XP`);
+  check(prog.awardXp(busy, -50).gained === 0, 'XP never goes backwards');
+
+  // The tag ladder relaxes, and refuses with a sentence rather than a boolean.
+  const pair = playSeason(31).state;
+  pair.gm = prog.createProgression();
+  prog.buy(pair, 'tag-team-wrestling');
+  const strangers = [pair.wrestlers[0].id, pair.wrestlers[1].id];
+  const refusal = unlocks.teamRefusal(pair, pair.wrestlers, strangers);
+  check(typeof refusal === 'string' || refusal === null,
+    'the tag gate answers in words, not a boolean');
+  // A seeded tag team is exactly who a level-1 GM is allowed to book.
+  const unit = pair.wrestlers.find(w =>
+    Object.values(w.relationships || {}).some(r => r.tie === 'tag-team'));
+  if (unit) {
+    const mate = Object.entries(unit.relationships).find(([, r]) => r.tie === 'tag-team')[0];
+    check(unlocks.teamRefusal(pair, pair.wrestlers, [unit.id, mate]) === null,
+      'a team that already exists can be booked from day one');
+  }
+}
+
 if (process.argv.includes('--model')) {
   console.log(failures.length ? `\n${failures.length} FAILING:\n- ${failures.join('\n- ')}` : '\nall green');
   process.exit(failures.length ? 1 : 0);
@@ -400,8 +492,13 @@ const PLAY_WEEKS = 10;
 let played = 0;
 let talked = 0;
 let walked = 0;
-let builtRoyal = 0;
-let builtFourWay = false;
+let lockedFirst = false;
+let boardDrawn = 0;
+let tracedTotal = '';
+let tracedLit = 0;
+let boughtOne = false;
+let unlockedAfter = [];
+let gateRefusal = '';
 let rosterPicks = 0;
 
 const bookPanel = page.locator('.col-book');
@@ -429,36 +526,55 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
   await page.getByRole('button', { name: 'Booking', exact: true }).click();
   await page.waitForTimeout(120);
 
-  // Drive the shape builder on a couple of weeks: the model is simulated to
-  // death above, but nothing there touches these controls.
-  if (week === 2 || week === 3) {
-    const royal = week === 3;
+  // Week 2 goes through the GM board, because every shape past one-on-one is
+  // something you now have to buy. The gate is worth driving in both
+  // directions: the builder says no, you buy the upgrade, the builder says yes.
+  if (week === 2) {
     await bookPanel.getByRole('button', { name: 'Bigger match', exact: true }).click();
-    await page.waitForTimeout(100);
-    await bookPanel.locator('.form-row select').first().selectOption(royal ? 'royal' : 'fatal4');
     await page.waitForTimeout(120);
+    lockedFirst = await bookPanel.locator('.form-note').count() > 0;
 
-    if (royal) {
-      await bookPanel.getByRole('button', { name: 'Everyone available' }).click();
-      await page.waitForTimeout(120);
-      builtRoyal = await bookPanel.locator('.checklist input:checked').count();
-      await bookPanel.getByRole('button', { name: /Add battle royal$/i }).click();
-      await page.waitForTimeout(150);
-    } else {
-      // Four individual sides. Filled from the roster, same as the rest.
-      const free = await freeNames(page);
-      for (const name of free.slice(0, 4)) {
-        await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
-        await page.waitForTimeout(60);
-      }
-      if (await page.locator('.overlay').count()) {
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(60);
-      }
-      await bookPanel.getByRole('button', { name: /Add fatal four-way$/i }).click();
-      await page.waitForTimeout(150);
-      builtFourWay = true;
+    await page.getByRole('button', { name: 'GM Board', exact: true }).click();
+    await page.waitForTimeout(200);
+
+    const boardNodes = await page.locator('.tree-node').count();
+    boardDrawn = boardNodes;
+    // A capstone nobody can reach at level one, to prove the trace reads.
+    await page.locator('.tree-node', { hasText: 'Three-Hour Show' }).first().click();
+    await page.waitForTimeout(120);
+    tracedTotal = (await page.locator('.trace-total').textContent().catch(() => '')) || '';
+    tracedLit = await page.locator('.tree-node.lit').count();
+
+    await page.locator('.tree-node', { hasText: 'Tag Team Wrestling' }).first().click();
+    await page.waitForTimeout(120);
+    await page.getByRole('button', { name: /^Buy — 1 point$/ }).click();
+    await page.waitForTimeout(200);
+    boughtOne = await page.locator('.tree-node.s-owned').count() > 0;
+
+    await page.getByRole('button', { name: 'Booking', exact: true }).click();
+    await page.waitForTimeout(150);
+    await bookPanel.getByRole('button', { name: 'Bigger match', exact: true }).click();
+    await page.waitForTimeout(120);
+    unlockedAfter = await bookPanel.locator('.form-row select').first()
+      .locator('option').allTextContents();
+
+    // Three names: two strangers filling one side of the tag, one filling the
+    // other so the shape is legal and the only thing left to object to is the
+    // pairing. The refusal has to arrive as a sentence naming them rather than
+    // a silent no-op.
+    const strangers = (await freeNames(page)).slice(0, 3);
+    for (const name of strangers) {
+      await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
+      await page.waitForTimeout(60);
     }
+    if (await page.locator('.overlay').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(60);
+    }
+    await bookPanel.getByRole('button', { name: /^＋\s+Add / }).click();
+    await page.waitForTimeout(150);
+    gateRefusal = (await bookPanel.locator('.over').first().textContent().catch(() => '')) || '';
+
     await bookPanel.getByRole('button', { name: 'Match', exact: true }).click();
     await page.waitForTimeout(80);
   }
@@ -624,11 +740,20 @@ check(seenBell.length >= 2, 'the bell produces moments in the browser too', seen
 check(night.threads > 0, 'the save is keeping threads', `${night.threads} pairs on the record`);
 
 // The shape builder, driven through its own controls.
-check(builtFourWay, 'a fatal four-way can be booked in the interface');
-check(builtRoyal >= 3, 'a battle royal takes the whole available roster', `${builtRoyal} selected`);
-check(night.shapes.includes('Fatal Four-Way'), 'the four-way reached the card', night.shapes.join(', '));
-check(night.shapes.includes('Battle Royal'), 'so did the battle royal', night.shapes.join(', '));
-check(night.biggest >= 4, 'and the card held a match bigger than a tag match',
+check(lockedFirst, 'a new GM is told they can only book a singles match');
+check(boardDrawn === 113, 'the whole board draws', `${boardDrawn} nodes`);
+check(tracedLit > 1 && tracedLit < boardDrawn,
+  'tracing a locked capstone lights its path and nothing else', `${tracedLit} of ${boardDrawn} lit`);
+check(/Total from here: \d+ points/.test(tracedTotal),
+  'and says what the whole run costs', tracedTotal.trim());
+check(boughtOne, 'an upgrade can be bought from the board');
+check(unlockedAfter.includes('Tag team'),
+  'and the shape it opens turns up on the builder', unlockedAfter.join(', ') || 'nothing offered');
+check(/have not worked together|no warmth/.test(gateRefusal),
+  'the tag gate refuses two strangers by name', gateRefusal.trim() || 'no refusal shown');
+// A GM who has bought one upgrade can put one kind of match on television, and
+// the card should show exactly that rather than everything the engine can do.
+check(night.biggest <= 2, 'a gated GM cannot get a multi-way onto the card',
   `biggest was ${night.biggest} people`);
 
 await page.getByRole('button', { name: 'Roster', exact: true }).click();
@@ -725,7 +850,7 @@ const migrated = await page.evaluate(() => {
       Object.values(w.relationships).every(r => Number.isFinite(r.teamed))),
   };
 });
-check(migrated.version === 16, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.version === 17, 'an older save is upgraded and written back', `version ${migrated.version}`);
 check(migrated.threads && migrated.teamed, 'an upgraded save can start noticing stories');
 check(migrated.backstage, 'an upgraded save gets a building to stand in');
 check(migrated.record, 'the existing record survives and gains the new counts');

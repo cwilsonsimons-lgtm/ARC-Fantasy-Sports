@@ -1,7 +1,14 @@
 # GM Progression — the upgrade tree
 
-*A design document. No code. This describes a system to be built, and names the
-existing systems it attaches to.*
+*A design document. This describes a system to be built, and names the existing
+systems it attaches to.*
+
+> **Build status.** The spine is in — GM levels, XP, points, the board screen,
+> and a save migration. **16 of the 113 upgrades are `built: true`** and
+> actually do something; the rest are drawn on the board greyed out so a player
+> can see where a branch goes. `gm/js/data/upgrades.js` is generated from this
+> document, so when the two disagree, the file is wrong. See *What is built*
+> at the end for the current list.
 
 ---
 
@@ -746,11 +753,18 @@ Explicitly a progression that relaxes over time, exactly as specified:
 
 | Unlock | Who you may team | Level |
 |---|---|---|
-| **Tag Team Wrestling** | closeness ≥ 10 (a real relationship) | 1 |
-| **Working Relationship** | closeness ≥ 5, warmth both ways | 5 |
+| **Tag Team Wrestling** | a named tie, or rapport ≥ 6 | 1 |
+| **Working Relationship** | rapport ≥ 3 | 5 |
 | **Just Get Along** | any pair with positive warmth either way | 9 |
 | **Forced Partnership** | any two, regardless — with consequences | 13 |
-| *(Forced Partnership, capstone-adjacent use)* | including active enemies | 13 |
+
+**Rapport, not closeness.** `closeness()` already exists and is the wrong
+measure here: it counts only same-side work, so gating a pair's *first* tag
+team on it would be asking them to team before they are allowed to team.
+`rapport()` counts matches against each other as well — two people who have
+wrestled a singles match know each other well enough to try it — and it is
+reachable from week one, because the roster generator seeds a tag team or two
+who were already a unit before you took the job.
 
 Forcing an incompatible team never stops being risky. Two wrestlers with a live
 feud thread who are booked as partners will miscommunicate, argue on camera,
@@ -1116,6 +1130,9 @@ main event.
 **Cost 2** · Requires — · Level 4 · **Trust: 10**
 
 **Expanded Broadcast II** — ninety minutes
+**Effect:** Broadcast window 75 → 90. The first length at which a match can run
+past fifteen minutes without eating the rest of the card, which is where
+stipulations stop being a luxury.
 **Cost 2** · Requires Expanded Broadcast I · Level 5 · **Trust: Fine (15)**
 
 **Make Your Case** — argue the grade
@@ -1150,9 +1167,15 @@ mechanic in the tree.
 **Cost 2** · Requires Make Your Case · Level 8 · Trust — · *Doctrine: The Desk*
 
 **Expanded Broadcast III** — one hundred and five
+**Effect:** Broadcast window 90 → 105. An optional rung: 120 requires only
+Expanded Broadcast II, so this is fifteen minutes bought five levels early
+rather than a step on the way.
 **Cost 2** · Requires Expanded Broadcast II · Level 8 · **Trust: Good (27)**
 
 **The Third Belt** — tag titles or a secondary
+**Effect:** Opens the third championship slot. A belt held by two people needs
+every side of its match to be two people, so tag titles are also a standing
+booking constraint you have chosen to take on.
 **Cost 2** · Requires The Second Belt · Level 10 · **Trust: Solid (22)**
 
 **120-Minute Broadcast** — two full hours
@@ -1191,6 +1214,9 @@ recovery for injuries**. It is a way of buying locker-room stability with time.
 **Cost 3** · Requires Talent Budget · Level 15 · **Trust: Strong (34)**
 
 **The Fourth Belt** — a fourth championship
+**Effect:** Opens the fourth championship slot. Four belts on a roster under
+twenty means most of the card is a title picture, and a champion who is not
+defending is a champion the audience stops believing in.
 **Cost 3** · Requires The Third Belt · Level 17 · **Trust: Trusted (42)**
 
 **Poach** — sign someone who already has a job
@@ -2043,3 +2069,57 @@ from `ui/` — same boundary as everywhere else.
 journal files. Where possible, compute the week's XP by walking the journal at
 show end rather than incrementing a counter as things happen — one source of
 truth, and it survives a migration.
+
+
+---
+
+## What is built
+
+The tree is being added a batch at a time, cheapest and most self-contained
+first. This section is the ledger.
+
+### Batch one — the spine and sixteen upgrades
+
+**The spine.** `model/progression.js` (levels, XP, points, prerequisites,
+exclusions, capstone cap), `model/unlocks.js` (what the tree opens),
+`data/upgrades.js` (the whole 113-upgrade catalogue, generated from this
+document), `ui/tree.js` (the board with trace mode), and a save migration to
+version 17.
+
+**XP** is awarded once, at the end of a show, read off the journal rather than
+counted as things happen — one source of truth, and it survives a migration.
+The grade is capped as specified; the harness asserts it comes in under 20% of
+a strong week.
+
+| Branch | Built | What it changes today |
+|---|---|---|
+| Authority | Paper Trail, Read The Room | warnings accumulate on a wrestler's file; response buttons carry a fallible reading of how the room will take the call |
+| Locker Room | Know Your Locker Room, Read The Grudge | the card's breakdown of what is on somebody's mind is now bought, not free; grievances name what they are about |
+| Booking | Tag Team Wrestling, Triple Threat, Stipulation: Submission Match, Fatal Four-Way, Working Relationship | every shape past one-on-one, and the tag-team ladder |
+| Production | Stopwatch | whether the rest of the card fits in the rest of the window |
+| Corporate | Expanded Broadcast I & II, The Second Belt | the broadcast ladder and championship slots are purchases now, not automatic promotions |
+| Scouting | Background Check, Tape Study | buys familiarity, which the existing `model/stats.js` already turns into readings; tape sharpens ability only |
+| Negotiation | — | the whole branch needs the request queue, which does not exist |
+
+**Two things changed behaviour for everybody, not just for the tree.**
+`awardTrust()` no longer promotes the broadcast tier — trust makes a rung
+*available* and a point takes it — and `slotsEarned()` counts belts bought
+rather than thresholds crossed. Saves from before version 17 are granted every
+built Booking upgrade outright, plus the broadcast rungs and belts they had
+already been promoted through, and keep every point their level would have
+earned.
+
+**One small system was added to make an upgrade real.** Injuries now leave a
+record on the wrestler (`injuries: [{ week, weeks }]`) rather than only a
+current state, because Injury History had nothing to read otherwise.
+
+### Not built, and what each is waiting for
+
+| Waiting on | Upgrades |
+|---|---|
+| **A pre-show phase** | Line In The Sand, Open Door Hours, Cold Open |
+| **Live segment control** | Buy Me Two Minutes, Hard Out, Go Home, Flexible Rundown, and most of Production |
+| **A talent pool** | Indie Circuit Contacts, Character Read, Tryout Match, The Feeder, and the outward half of Scouting |
+| **A request queue** | every Negotiation upgrade |
+| **Doctrine** | the doctrine bands draw on the board but nothing picks one yet |
+| **New actions on existing systems** | Send Word, Hold That Thought, Private Meeting, Promise Them Something, Make Your Case, and most of the Working tier |

@@ -8,7 +8,9 @@ import { byId } from './wrestlers.js';
 import { createEntry } from './journal.js';
 import { nextId } from '../ids.js';
 import { remember } from './memory.js';
-import { BASE_TITLES, UNLOCKABLE_TITLES, SLOT_THRESHOLDS, titleTemplate } from '../data/titles.js';
+import { BASE_TITLES, UNLOCKABLE_TITLES, titleTemplate } from '../data/titles.js';
+import { beltSlots, nextBelt } from './unlocks.js';
+import { upgrade, trustNeeded } from '../data/upgrades.js';
 
 function createTitle(template, championIds, week) {
   return {
@@ -95,17 +97,30 @@ export function reignWeeks(state, title) {
 
 // ---------- slots ----------
 
+// A belt is a purchase on the Corporate branch now, not something trust hands
+// you. The thresholds still exist — they say when head office would agree to
+// one — but agreeing and doing are two decisions.
 export function slotsEarned(state) {
-  const trust = state.network ? state.network.trust : 0;
-  return SLOT_THRESHOLDS.filter(threshold => trust >= threshold).length;
+  return beltSlots(state);
 }
 
 export function slotsUsed(state) {
   return (state.titles || []).filter(t => !t.base).length;
 }
 
+// The Corporate upgrade that would sanction the next belt, and what stands in
+// its way. Returns null once every belt in the catalogue is held.
 export function nextSlotAt(state) {
-  return SLOT_THRESHOLDS[slotsUsed(state)] || null;
+  const id = nextBelt(state);
+  if (!id) return null;
+  const spec = upgrade(id);
+  return {
+    id,
+    name: spec ? spec.name : id,
+    cost: spec ? spec.cost : 0,
+    level: spec ? spec.level : 1,
+    trust: spec ? trustNeeded(spec.trust) : 0,
+  };
 }
 
 export function availableToAdd(state) {

@@ -8,6 +8,7 @@ import { renderLive } from './ui/live.js';
 import { renderSaves } from './ui/saves.js';
 import { renderCalendar } from './ui/calendar.js';
 import { renderTitles } from './ui/titles.js';
+import { renderTree } from './ui/tree.js';
 import { renderCard } from './ui/wrestler-card.js';
 import { openCardId, closeCard } from './ui/card-state.js';
 
@@ -37,12 +38,22 @@ function render() {
   );
   promoEl.replaceChildren(state ? state.promotion.promotion : 'Open or start a save');
 
+  // Unspent points are easy to forget about and the board is a tab you have to
+  // remember to open, so the tab says so itself.
+  const points = state && state.gm ? state.gm.points : 0;
+  const boardTab = [...navEl.children].find(b => b.textContent === 'GM Board');
+  if (boardTab && points) {
+    boardTab.classList.add('has-points');
+    boardTab.title = `${points} unspent upgrade point${points === 1 ? '' : 's'}`;
+  }
+
   const view =
     route === 'saves' ? renderSaves(state, navigate) :
     !state ? renderSaves(state, navigate) :
     route === 'booking' ? renderBooking(state, navigate) :
     route === 'calendar' ? renderCalendar(state, navigate) :
     route === 'titles' ? renderTitles(state) :
+    route === 'tree' ? renderTree(state) :
     route === 'live' ? renderLive(state, navigate) :
     renderRoster(state);
 

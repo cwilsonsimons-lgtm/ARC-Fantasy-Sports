@@ -268,6 +268,11 @@ const HANDLERS = {
       + Math.floor(roll() * (INJURY_WEEKS[1] - INJURY_WEEKS[0] + 1));
     loser.status = 'Injured';
     loser.injuredUntil = state.week + weeks;
+    // Kept for good. `injuredUntil` is a state the wrestler is in; this is the
+    // history that state leaves behind, and it is the only thing Injury
+    // History has to read.
+    loser.injuries = loser.injuries || [];
+    loser.injuries.push({ week: state.week, weeks });
     delete (state.whereabouts || {})[loser.id];
 
     push(state, 'submission-held', result.at || 0, {

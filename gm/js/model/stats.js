@@ -40,8 +40,14 @@ const ROUGH = [
   [0, 'Below average'],
 ];
 
-export function knowledgeTier(wrestler) {
-  const f = wrestler.familiarity || 0;
+// `bonus` is familiarity the GM did not earn by being around: Tape Study buys
+// a read on how good somebody is without ever meeting them. It moves ability
+// only — watching tape tells you nothing about whether they hold a grudge, so
+// personalityTier() below has no equivalent and is not given one.
+export const TAPE_STUDY_BOOST = 20;
+
+export function knowledgeTier(wrestler, bonus = 0) {
+  const f = (wrestler.familiarity || 0) + bonus;
   if (f >= KNOWN_AT) return 'known';
   if (f >= IMPRESSION_AT) return 'impression';
   return 'unread';
@@ -70,8 +76,8 @@ export function knowledgePercent(wrestler) {
 }
 
 // A word, never a number. Null means the player has no read at all yet.
-export function statReading(wrestler, key) {
-  const tier = knowledgeTier(wrestler);
+export function statReading(wrestler, key, bonus = 0) {
+  const tier = knowledgeTier(wrestler, bonus);
   if (tier === 'unread') return null;
   const value = wrestler.stats[key];
   if (!Number.isFinite(value)) return null;

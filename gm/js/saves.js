@@ -15,7 +15,7 @@ const INDEX_KEY = 'wgm_index_v1';
 const SAVE_PREFIX = 'wgm_save_';
 const LEGACY_KEY = 'wgm_v1';
 
-export const STATE_VERSION = 16;
+export const STATE_VERSION = 17;
 
 function read(key) {
   try {

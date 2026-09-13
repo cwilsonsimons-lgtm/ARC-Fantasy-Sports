@@ -9,7 +9,7 @@ import {
 import { itemLabel, typeLabel } from './labels.js';
 import { matchType } from '../data/match-types.js';
 import { titleById } from '../model/titles.js';
-import { SEVERITIES, responseById, suspensionLabel } from '../data/responses.js';
+import { SEVERITIES, responseById, suspensionLabel, proportionality } from '../data/responses.js';
 import { gmReputation } from '../model/discipline.js';
 import { tierOf, nextTier } from '../model/network.js';
 import { backstagePanel } from './backstage.js';
@@ -18,6 +18,8 @@ import { incidentLine, demandLine, momentLine } from './incident-text.js';
 import { hasTwoSides, incidentKind } from '../data/backstage.js';
 import { locationName, locationProse } from '../data/locations.js';
 import { authority, minutesLeft, whereYouAre } from '../model/backstage.js';
+import { showsStopwatch, projectedFinish, readsProportionality } from '../model/unlocks.js';
+import { byId } from '../model/wrestlers.js';
 import { bossView } from '../model/executives.js';
 
 // Kinds that read as a situation, all of which the interface words the same way
@@ -108,6 +110,8 @@ function liveView(state) {
       el('div', {}, 'Show Length: ', el('b', { text: `${show.runtimeMinutes} minutes` }))
     ),
 
+    stopwatchLine(state),
+
     left < 0 ? el('div', { class: 'notice warn', text: 'This show has run past its broadcast window.' }) : null,
 
     decisionPanel(state),
@@ -180,11 +184,69 @@ function decisionPanel(state) {
           onClick: () => commit(s => resolveIncidentResponse(s, response.id)),
         },
           el('span', { class: 'option-label', text: fill(response.label) }),
-          el('span', { class: 'option-note', text: response.note })
+          el('span', { class: 'option-note', text: response.note }),
+          readingOf(state, incident, response)
         )
       )
     )
   );
+}
+
+// The rest of the card, against the rest of the window. Only shown with
+// Stopwatch, because working out for yourself that six segments at nine
+// minutes will not fit into forty is a thing a GM can do and a thing this
+// upgrade is for not having to do.
+function stopwatchLine(state) {
+  if (!showsStopwatch(state) || !state.broadcast) return null;
+  const read = projectedFinish(state.show, state.broadcast);
+  if (!read || !read.toCome) return null;
+
+  const over = read.over;
+  const word = over > 0
+    ? `The card as it stands finishes ${over} minute${over === 1 ? '' : 's'} past the window.`
+    : over < 0
+      ? `${-over} minute${over === -1 ? '' : 's'} of window spare once the card has run.`
+      : 'The card as it stands finishes exactly on the window.';
+
+  return el('div', { class: `stopwatch ${over > 0 ? 'stopwatch-over' : over < 0 ? 'stopwatch-light' : ''}` },
+    el('span', { class: 'stopwatch-key', text: 'Stopwatch' }),
+    el('span', { class: 'stopwatch-read', text: word }),
+    el('span', { class: 'muted', text: `${read.toCome} minutes still to come.` })
+  );
+}
+
+// How the room will read a call, before it is made. Wrong about one time in
+// five, and wronger on somebody the GM has never worked out — a hint, not a
+// preview, because judgement is the game.
+//
+// Deliberately deterministic: the same incident and the same button give the
+// same hint every render, so a re-draw never quietly changes the advice.
+const READ_WORD = { fair: 'reads as fair', harsh: 'reads as harsh', weak: 'reads as weak' };
+const WRONG_ONE_IN = 5;
+
+function readingOf(state, incident, response) {
+  if (!readsProportionality(state)) return null;
+  if (!response.weight && response.weight !== 0) return null;
+
+  const truth = proportionality(incident.severity, response.id);
+  const seed = hashOf(incident.id + ':' + response.id);
+  // Somebody you have never worked out is somebody whose reaction you are
+  // guessing at, so the hint is wrong more often on a stranger.
+  const aggressor = byId(state.wrestlers, incident.aggressorId);
+  const known = aggressor && (aggressor.familiarity || 0) >= 42;
+  const wrong = seed % (known ? WRONG_ONE_IN : 3) === 0;
+
+  const shown = wrong
+    ? (truth === 'fair' ? (seed % 2 ? 'harsh' : 'weak') : 'fair')
+    : truth;
+
+  return el('span', { class: `option-read read-${shown}`, text: READ_WORD[shown] });
+}
+
+function hashOf(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  return hash;
 }
 
 // What has kicked off tonight, as it happens, rather than only in the review.

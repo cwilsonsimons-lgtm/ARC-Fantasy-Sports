@@ -1050,14 +1050,95 @@ Nobody picks this at the start. `gmRecord` counts every call by how the room
 read it, and a pattern earns a name — The Disciplinarian, The Absentee, The
 Matchmaker, The Wild West GM, or an even hand. It shows on the post-show.
 
-## What comes next
+## The GM board
 
-`gmReputation()` names the GM you turned out to be. The next system gives you a
-say in it: [`docs/gm-progression.md`](../docs/gm-progression.md) specs a seven
-branch upgrade tree — GM levels, XP, an upgrade point economy, 113 upgrades,
-and two Doctrine choices you make once and live with. It is a design document,
-not built yet, and it says plainly which parts of the game it would gate that
-are currently free.
+`gmReputation()` names the GM you turned out to be. The board is where you get
+a say in it.
+
+Seven branches — Authority, Locker Room, Booking, Production, Corporate,
+Scouting, Negotiation — 113 upgrades between them costing 269 points, against
+roughly 97 you will earn by the level cap. You will own about a third of it.
+The whole design is [`docs/gm-progression.md`](../docs/gm-progression.md), and
+`data/upgrades.js` is generated from that document.
+
+**Sixteen of them are built.** The rest are drawn on the board greyed out,
+because a tree you cannot see the end of is a list. Clicking any node — built
+or not — dims the board and lights only the path to it, with what the whole run
+costs from where you are standing.
+
+### XP is for running the building
+
+Not for producing good television. Every ruling pays, weighted by how the room
+read it (fair 18, harsh 12, weak 6, gave in 4), with six more on top for
+anything you saw happen yourself rather than heard about — which makes standing
+in the right room the most repeatable XP in the game. Ties forming, title
+changes, an on-time show, a filled window, a broad card and a night where every
+wrestler laid eyes on you all pay.
+
+The network's grade is in there and is capped hard, at about a seventh of a
+strong week. The moment grade dominates XP the best play becomes booking your
+two best workers every week and ignoring everybody else, which is the game this
+one is specifically not. **XP never goes backwards** — a bad night already
+costs trust, authority and morale, and taking XP as well would punish one
+mistake three times and teach you to stop experimenting.
+
+XP is read off the journal once, when the show comes off the air. One source of
+truth, and it survives a migration.
+
+### What the tree took away
+
+Two things that used to be free are now bought:
+
+**Every match shape past one against one.** A new GM books singles matches. Tag
+teams, triple threats and fatal four-ways are the first three things on the
+Booking branch, and the submission stipulation is the fourth. This is on
+purpose: the most useful thing a new GM can learn is that in a multi-way only
+one side takes the fall — booking somebody into one is how you *use* them
+without *beating* them — and that lands much harder as an unlock than as an
+option that was always in the dropdown.
+
+**Length and belts.** `awardTrust()` no longer promotes you. Trust makes a rung
+on the broadcast ladder *available*; a point is what takes it. Head office
+offering you ninety minutes and you taking ninety minutes are two decisions,
+and the second one competes with everything else on the board.
+
+Saves written before the tree existed are granted the Booking upgrades
+outright, along with the rungs and belts they had already been promoted
+through, and keep every point their level would have earned. Taking something
+away from a GM who has been doing it for thirty weeks would be a bug wearing a
+design's clothes.
+
+### Who you are allowed to team
+
+A ladder that relaxes as you buy it. At level one you can only put two people
+together who already work as a unit — a named tie, or `rapport` of six.
+`rapport()` counts matches against each other as well as segments beside each
+other, deliberately unlike `closeness()`, which counts only same-side work:
+gating a pair's first tag team on closeness would be asking them to team before
+they were allowed to team. The roster generator seeds a tag team or two who
+were a unit before you arrived, so there is always somebody legal on day one.
+
+Working Relationship drops the bar to three. Just Get Along asks only for
+warmth. Forced Partnership removes it, and forcing an incompatible team stays
+risky for good.
+
+### Reading people is a purchase
+
+The card used to break down what was on a wrestler's mind for free. Now
+**Know Your Locker Room** buys it — without it you can see the mood and would
+have to ask what is behind it. **Read The Grudge** turns "three open grievances
+with the office" into what each one is actually about. **Paper Trail** shows
+the warning file, which is kept whether or not you can read it. **Read The
+Room** puts a reading on each response button before you commit — and is wrong
+about one time in five, and wronger on somebody you have never worked out,
+because judgement is the game and a reliable preview would be a lookup table.
+
+Scouting does not invent a second way of knowing people. `model/stats.js`
+already turns familiarity into readings that sharpen over time, so
+**Background Check** buys familiarity — a week of asking around is worth a
+season of working together — and **Tape Study** sharpens ability only. You can
+watch somebody wrestle without ever meeting them; it tells you nothing about
+whether they hold a grudge.
 
 ## Saves
 
