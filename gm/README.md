@@ -1050,6 +1050,15 @@ Nobody picks this at the start. `gmRecord` counts every call by how the room
 read it, and a pattern earns a name — The Disciplinarian, The Absentee, The
 Matchmaker, The Wild West GM, or an even hand. It shows on the post-show.
 
+## What comes next
+
+`gmReputation()` names the GM you turned out to be. The next system gives you a
+say in it: [`docs/gm-progression.md`](../docs/gm-progression.md) specs a seven
+branch upgrade tree — GM levels, XP, an upgrade point economy, 113 upgrades,
+and two Doctrine choices you make once and live with. It is a design document,
+not built yet, and it says plainly which parts of the game it would gate that
+are currently free.
+
 ## Saves
 
 Each save is a separate world — its own promotion, its own roster, its own ids —
