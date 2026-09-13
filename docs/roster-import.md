@@ -4,63 +4,75 @@
 
 ---
 
-## Before anything else: what I actually know
+## How dynastytracker actually does it
 
-**I do not remember other conversations.** Whatever files I made for you for
-dynastytracker happened in a session I have no access to. Nothing in this repo
-references it and there is no note of it in the commit history. If those files
-are useful here, the fastest thing is to paste one in.
+I had this wrong, and the correction changes the shape of the feature.
 
-**I could not look at the site.** Both `dynastytracker.com` and
-`dynastytracker.app` are blocked by this environment's network proxy. What a
-search does establish is what it *is*:
-[dynastytracker.app](https://www.dynastytracker.app/) is a free **EA Sports
-College Football 25/26/27 dynasty-mode tracker** — no paywall, no sign-up. You
-record games and seasons, build rosters, work a recruiting board and NIL, and
-follow player careers, stats, awards and All-Americans. It handles roster
-import, player ratings, dev traits and year progression. What the search does
-not tell me is the exact mechanics of its paste flow.
+I assumed the app parsed a spreadsheet paste. It does accept a TSV paste — but
+**that is the last step, not the feature.** The feature is that the app
+*generates a prompt*. The pipeline is:
 
-### Why that identification sharpens the plan
+```
+game screen  ->  screenshot  ->  AI, given the app's own generated prompt
+             ->  TSV in a fenced block  ->  pasted into the app's import box
+```
 
-A CFB dynasty tracker is solving almost exactly this problem, one genre over,
-and the shape carries across cleanly:
+The user never opens a spreadsheet. They screenshot the in-game roster screen,
+paste the app's prompt plus the screenshots into an AI, and paste the TSV that
+comes back. The app's contribution is the prompt: a precise, self-describing
+specification of its own import format.
 
-| CFB dynasty roster | This game |
-|---|---|
-| Name | `name` |
-| Position (QB, WR, …) | `role` — where they sit on the card |
-| Dev trait (Normal / Impact / Star / Elite) | `archetype` — a categorical that drives everything downstream |
-| OVR, a 0–99 rating | `inRing` and `charisma` |
-| Class (FR / SO / JR / SR, redshirt) | no direct equivalent |
-| 85 players a season, re-entered every year | 8–30 wrestlers, re-entered per promotion |
+### What that prompt contains
 
-Two things follow from that which I would not have weighted as heavily
-otherwise.
+Worth reading closely, because it is a good piece of design and most of it is
+directly stealable:
 
-**Tolerance for mess has to be high.** People assembling a CFB roster are
-transcribing off a game screen or maintaining a hand-built spreadsheet that has
-been edited by several people across three seasons. Ragged whitespace,
-inconsistent capitalisation, a stray blank row in the middle, a column somebody
-renamed. The importer should shrug at all of it. This is why §5 says *never
-reject the whole paste* — it is the single most important behaviour in the
-feature.
+- **A column table** — 15 columns, in order, each with its type and its exact
+  allowed values. Dropdown columns list every literal, with the near-misses
+  called out by name: *do NOT output "LE", "RE", "EDGE", "LB", "OLB", "MLB",
+  "OT", "OG" or "S"*. It anticipates the specific wrong answers a model gives.
+- **Format rules** — no thousands separators, no units, no "N/A", integers with
+  no decimal point, ASCII only, one line per row.
+- **"Accuracy over completeness."** A blank is easy to fill in; a wrong value is
+  hard to catch. Never guess.
+- **A tiebreaker roster** — the app sends the roster it already has, so an
+  abbreviated "A. Guess" on screen resolves to a full name. Explicitly *not* a
+  whitelist: a full name visible on screen is copied verbatim even if it is not
+  in the list, because real rosters lag the tracker.
+- **Scope discipline** — only the attachments in this request. Never carry a row
+  over from a previous week or from memory. It names stale rows bleeding in from
+  a prior week as "the most common corruption".
+- **A self-check list** — delimiter count per row, row count, a column-to-value
+  walk, nothing but data inside the fence, a number-format scan.
+- **Output shape** — one fenced block, nothing else inside it, commentary
+  outside it.
 
-**Re-import is the normal case, not the edge case.** A dynasty tracker gets a
-fresh roster every season. That makes §6 — export in exactly the format the
-importer reads — load-bearing rather than a nicety.
+### What this means for us
 
-The interaction pattern I am building against, which I am confident about even
-without seeing the site:
+**The plan below was half a feature.** Parsing a paste is necessary and it is
+the easy half. The half that makes it feel effortless is the app *emitting the
+spec* so that any source — a screenshot of another game, a fed's roster page, a
+list in a document, handwritten notes — can be turned into a valid paste by an
+AI that has been told exactly what valid means.
 
-> You keep your data in a spreadsheet. You select a block of cells and copy.
-> You paste it into a box. The tool works out what the columns are, shows you
-> what it thinks before it commits, you fix anything it guessed wrong, and it
-> fills everything in. Blank cells do not become blank records — they become
-> whatever the tool would have made up anyway.
+So this document gains **section 10, emitting an import prompt**, and three of its
+existing decisions get firmer:
 
-If dynastytracker does something meaningfully beyond that, the questions in §10
-are the ones that would change the plan.
+1. **The column table has to be machine-readable and single-source.** It already
+   had to serve the importer and the exporter (§6). Now it serves a third
+   consumer — the prompt generator — and all three must read the same table or
+   they will drift. This is the most important structural constraint in the
+   feature.
+2. **Dropdown columns must publish their exact literals**, with the likely
+   near-misses named. Our equivalents: `Main event` not `main-event` or `Main
+   Event`; the 17 archetype labels verbatim; `Face` / `Heel` / `Neutral` not
+   `babyface`.
+3. **The importer must be forgiving anyway.** A generated paste will still
+   arrive with smart quotes, an em dash where a blank belonged, or a stray
+   header row. §5's "never reject the whole paste" holds, and matters more.
+
+The interaction pattern I originally described is still worth building — pasting
+straight from a spreadsheet should work. It is just no longer the whole story.
 
 ---
 
@@ -297,8 +309,9 @@ one-line difference.
 
 | File | Change |
 |---|---|
-| `js/data/roster-columns.js` | **new** — the one column table both directions read |
+| `js/data/roster-columns.js` | **new** — the one column table all three consumers read |
 | `js/model/roster-io.js` | **new** — parse, map, validate, serialise. No DOM. |
+| `js/model/import-prompt.js` | **new** — renders the column table as the spec an AI is handed |
 | `js/model/generate.js` | accept per-wrestler overrides, and resolve import-time ties |
 | `js/ui/setup.js` | the paste / map / preview tab |
 | `js/data/setup.js` | a setup can carry an imported roster |
@@ -310,39 +323,96 @@ where the bugs in this kind of feature actually live.
 
 ---
 
-## 10. What I'd need from you
+## 10. Emitting an import prompt
 
-Four things, in order of how much they'd change the plan:
+The half I had missed. A **Copy import prompt** button beside the paste box,
+which puts on the clipboard a spec of exactly what this game accepts — generated
+from the same column table the importer and exporter read, so it can never
+describe a format the importer does not honour.
 
-1. **A real sample.** Three or four rows of what you would actually paste,
-   with your real headers. This is worth more than everything else combined —
-   it settles the aliases, the value formats and the column set at a stroke.
-2. **Where the data comes from.** Your own spreadsheet, an export from
-   somewhere, or a page you copy off? A copied web table brings ragged
-   whitespace and merged cells; a clean export does not.
-3. **Does dynastytracker do something I have not described?** The candidates
-   that would change the shape: live validation as you type rather than a
-   preview step; fuzzy matching against a known list of names; a saved mapping
-   it remembers between imports; or importing a whole *season* at once rather
-   than a roster.
-4. **Mid-save import, or setup only?** Setup only is the smaller build. Adding
-   wrestlers to a running promotion is the same parser, but it has to answer
-   what a new arrival costs, what they know about anybody, and whether the
-   locker room notices — which is really the Corporate branch's *Talent Budget*
-   wearing a different hat.
+### What ours would say
+
+Structurally the same as dynastytracker's, with our content:
+
+- **The 16 columns**, in order, with types. One required: `name`.
+- **Every dropdown's literals, verbatim**, with near-misses named:
+  - `role` — `Main event` | `Upper card` | `Midcard` | `Opener` | `Prospect`.
+    Not `main event`, not `Main Event`, not `ME`.
+  - `alignment` — `Face` | `Heel` | `Neutral`. Not `babyface`, not `tweener`.
+  - `gender` — `Male` | `Female`.
+  - `status` — `Available` | `Injured` | `Unavailable`.
+  - `archetype` — all 17 labels verbatim, and a note that the label is what is
+    wanted, not the id.
+- **The value rules** — ability and the eleven traits take 0-99 or the game's
+  own word for that trait; integers carry no decimal point; ASCII only.
+- **The blank rule**, stated as strongly as theirs: a blank cell means the game
+  decides, so leaving one is always safe and guessing never is. This is the one
+  place our rule is *better* than theirs and should be said out loud — in their
+  app a blank is a hole the user has to fill later; in ours a blank is a
+  finished wrestler the generator completed.
+- **The current roster as a tiebreaker**, when a save is open and the paste is
+  meant to edit it rather than replace it — same purpose as theirs, resolving a
+  shortened or misspelled name to somebody who already exists. Not a whitelist:
+  a clear new name is a new wrestler.
+- **Scope discipline and a self-check list**, lifted almost intact. Theirs are
+  well-tuned and there is no reason to reinvent them.
+- **Output shape** — one fenced block, data only, commentary outside it.
+
+### Why this is worth building
+
+It means the importer's source stops mattering. A screenshot of another
+wrestling game's roster, a fed's website, a list in a document, a photo of
+handwriting on paper — anything an AI can read becomes a valid paste, because
+the AI has been handed the exact grammar. We would never have to write a parser
+for any of those formats.
+
+It is also cheap. The prompt generator is a function over the column table we
+already have to build, and the table already has to carry each column's type,
+literals and aliases for the importer to work at all. Emitting it as prose is
+the smallest of the three consumers.
+
+### One thing to get right
+
+The generated prompt must state the **game's version of the format**, not a
+frozen copy of it. If an archetype is added later, the prompt says so the day
+it ships. That is the whole argument for generating it rather than writing it
+once into a help page.
 
 ---
 
-## 11. Build order
+## 11. Still open
+
+The prompt answered most of what I asked. What is left:
+
+1. **Screenshots, or a spreadsheet, or both?** For CFB the source is always a
+   game screen, so the AI path is the only path. For a wrestling promotion you
+   are inventing, a spreadsheet is likelier — and the two want slightly
+   different defaults. If you would mostly be pasting from a sheet, the mapping
+   row matters most; if you would mostly be handing screenshots to an AI, the
+   prompt generator matters most. It is worth knowing which to build first.
+2. **Mid-save import, or setup only?** Setup only is the smaller build. Adding
+   wrestlers to a running promotion uses the same parser but has to answer what
+   a new arrival costs against the wage bill, what the locker room knows about
+   them, and whether anybody notices they have arrived.
+3. **Does the app's import box do anything the prompt does not describe?** A
+   preview before committing, a diff against the existing roster, partial
+   updates by name. If it does, that is worth copying too.
+
+---
+
+## 12. Build order
 
 Each step is usable on its own, so it can stop at any of them.
 
 1. **The column table and the parser** — model only, no interface, tested
-   headlessly against deliberately awful input.
+   headlessly against deliberately awful input. Everything else reads this.
 2. **Names only.** Paste a column of names, get a roster. Genuinely useful and
    about a fifth of the work.
 3. **The full column set**, with the mapping row.
-4. **Preview and warnings.**
-5. **Export**, sharing the column table.
-6. **Relationship columns** — `partner`, `rival`, `mentor`. Last because it is
+4. **The prompt generator.** Cheap once step 1 exists, and it is what makes the
+   source of the data stop mattering. Could move ahead of step 3 if screenshots
+   are the likelier input — see section 11.
+5. **Preview and warnings.**
+6. **Export**, sharing the column table.
+7. **Relationship columns** — `partner`, `rival`, `mentor`. Last because it is
    the only part that needs a second pass over the data.
