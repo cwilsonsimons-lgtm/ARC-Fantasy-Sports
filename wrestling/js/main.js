@@ -13,9 +13,11 @@ import * as persist from './core/persist.js';
 import * as clock from './core/clock.js';
 import { checkState } from './core/invariants.js';
 import { seedRoster } from './data/roster.js';
+import { seedTitles } from './data/titles.js';
 import { installSystems } from './systems/index.js';
 import * as runner from './systems/showRunner.js';
 import * as booking from './systems/booking.js';
+import * as rankings from './systems/rankings.js';
 import { formatOf, slotsFor, autoName } from './systems/formats.js';
 import {
   registerScreen, registerActions, bindEvents, render, go, toast,
@@ -28,13 +30,15 @@ import calendarScreen from './ui/screens/calendar.js';
 import showScreen from './ui/screens/show.js';
 import logScreen, { setFilter } from './ui/screens/log.js';
 import savesScreen from './ui/screens/saves.js';
-import { draft, setDraftFormat, setOverride } from './ui/screens/show.js';
+import { draft, setDraftFormat, setOverride, setDraftTitle } from './ui/screens/show.js';
+import titlesScreen from './ui/screens/titles.js';
 import * as playback from './ui/playback.js';
 
 // Registration order is nav order, and nav order is the weekly loop:
 // look at the roster, book the show, run it, then move the calendar on.
 registerScreen('roster', rosterScreen);
 registerScreen('show', showScreen);
+registerScreen('titles', titlesScreen);
 registerScreen('calendar', calendarScreen);
 registerScreen('log', logScreen);
 registerScreen('saves', savesScreen);
@@ -61,7 +65,9 @@ registerActions({
       mode: f.get('mode') || 'sandbox',
       scheduleBlocks: 3,
     });
-    seedRoster();
+    const keys = seedRoster();
+    seedTitles(store, keys);
+    rankings.refresh();
     go('show');
     refresh('New game started with 14 wrestlers and three months booked');
   },
@@ -136,6 +142,11 @@ registerActions({
     render();
   },
 
+  changeTitle({ value }) {
+    setDraftTitle(value);
+    render();
+  },
+
   bookSegment({ show: showId }, form) {
     const format = formatOf(draft.format);
     const slots = slotsFor(draft.format);
@@ -146,7 +157,8 @@ registerActions({
       side: slot.side,
     })).filter((p) => p.wrestlerId);
 
-    const verdict = booking.validate(showId, draft.format, participants.map((p) => p.wrestlerId));
+    const titleId = draft.titleId || null;
+    const verdict = booking.validate(showId, draft.format, participants.map((p) => p.wrestlerId), { titleId });
     if (!verdict.ok) return toast(verdict.problems[0]);
 
     const typed = form.querySelector('#segName')?.value.trim();
@@ -157,11 +169,14 @@ registerActions({
         showId,
         format: draft.format,
         kind: format.kind,
+        titleId,
         name: typed || autoName(draft.format, participants, store.nameOf),
         timeLimitSec: limitMin * 60,
         participants,
       });
-      refresh('Added to the card');
+      setDraftTitle('');
+      // Booking past the contender is allowed, and worth saying out loud.
+      refresh(verdict.warnings.length ? verdict.warnings[0] : 'Added to the card');
     } catch (err) {
       toast(err.message);
     }
@@ -267,4 +282,4 @@ renderHeader(store.isLoaded() ? store.getState() : null);
 render();
 
 // A console handle, for poking at the model while developing.
-window.WGM = { store, persist, clock, checkState, seedRoster, runner, booking };
+window.WGM = { store, persist, clock, checkState, seedRoster, seedTitles, runner, booking, rankings };

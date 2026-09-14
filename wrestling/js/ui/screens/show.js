@@ -9,17 +9,19 @@ import * as runner from '../../systems/showRunner.js';
 import * as booking from '../../systems/booking.js';
 import { FORMATS, MATCH_FORMATS, SEGMENT_FORMATS, formatOf, slotsFor, autoName } from '../../systems/formats.js';
 import { sides, SEGMENT_KINDS } from '../../models/segment.js';
+import { championIds, currentReign } from '../../models/title.js';
 import * as playback from '../playback.js';
 import { esc, mmss, signedTime, titleCase } from '../format.js';
 import { notLoaded } from './roster.js';
 
 /** Booking form draft. Kept here so changing the format does not lose the rest. */
-export const draft = { format: 'singles', overrideSide: '' };
+export const draft = { format: 'singles', overrideSide: '', titleId: '' };
 
 export function setDraftFormat(next) {
   if (FORMATS[next]) draft.format = next;
 }
 export function setOverride(next) { draft.overrideSide = next; }
+export function setDraftTitle(next) { draft.titleId = next || ''; }
 
 export default {
   label: 'This week',
@@ -52,6 +54,13 @@ function lineup(segment) {
   ).join(' &amp; '));
   const joiner = segment.kind === SEGMENT_KINDS.MATCH ? ' <span class="muted">vs</span> ' : ' <span class="muted">and</span> ';
   return groups.join(joiner) || '<span class="muted">nobody booked</span>';
+}
+
+/** A belt pill, so a title match never reads like an ordinary one. */
+function titlePill(segment) {
+  if (!segment.titleId) return '';
+  const title = store.getTitle(segment.titleId);
+  return title ? ` <span class="pill brass">${esc(title.shortName)} title</span>` : '';
 }
 
 function resultCell(segment) {
@@ -87,7 +96,7 @@ function renderBooking(show) {
     <tr>
       <td class="num muted">${i + 1}</td>
       <td><span class="pill">${esc(formatOf(seg.format).label)}</span></td>
-      <td>${esc(seg.name || '-')}<div style="font-size:12px">${lineup(seg)}</div></td>
+      <td>${esc(seg.name || '-')}${titlePill(seg)}<div style="font-size:12px">${lineup(seg)}</div></td>
       <td class="num">${mmss(seg.timeLimitSec)}</td>
       <td><button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button></td>
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Nothing booked yet.</td></tr>';
@@ -106,6 +115,14 @@ function renderBooking(show) {
         <div class="kv"><span>${gap >= 0 ? 'Likely dead air' : 'Likely overrun'}</span>
           <span class="${gapTone}">${mmss(Math.abs(gap))}</span></div>
       </div>
+      ${store.allTitles().length ? `<div class="card"><h3>Championships</h3>
+        ${store.allTitles().map((t) => {
+          const holders = championIds(t);
+          const contender = t.contenderId ? store.getWrestler(t.contenderId) : null;
+          return `<div class="kv"><span>${esc(t.shortName)}</span><span>${holders.length ? esc(holders.map(store.nameOf).join(' & ')) : '<span class="neg">vacant</span>'}</span></div>
+            ${contender ? `<div class="kv"><span class="muted" style="font-size:11px">#1 contender</span><span class="muted" style="font-size:11px">${esc(contender.name)} (#${contender.standing.rank})</span></div>` : ''}`;
+        }).join('')}
+      </div>` : ''}
       <div class="card"><h3>Read this before you book</h3>
         <p style="font-size:12px;margin:0">A time limit is a ceiling, not a plan. Most matches end
         well before theirs, so a card booked to exactly fill the hour will leave you short.
@@ -138,6 +155,15 @@ function renderBooking(show) {
             </optgroup>
           </select></div>
         ${slots}
+        ${isMatch ? `<div class="field"><label for="segTitle">For the title</label>
+          <select id="segTitle" data-action="changeTitle">
+            <option value="">No title</option>
+            ${store.allTitles().map((t) => {
+              const holders = championIds(t);
+              const who = holders.length ? holders.map(store.nameOf).join(' & ') : 'vacant';
+              return `<option value="${t.id}"${t.id === draft.titleId ? ' selected' : ''}>${esc(t.shortName)} (${esc(who)})</option>`;
+            }).join('')}
+          </select></div>` : ''}
         <div class="field"><label for="segLimit">Limit (min)</label>
           <input id="segLimit" name="limit" type="number" min="1" max="60" value="${Math.round(format.defaultLimitSec / 60)}" size="4"></div>
         <div class="field"><label for="segName">Name (optional)</label>
@@ -170,7 +196,7 @@ function renderLive(show) {
     return `
       <tr${isNext ? ' style="outline:2px solid var(--brass);outline-offset:-2px"' : ''}>
         <td class="num muted">${i + 1}</td>
-        <td>${esc(seg.name || formatOf(seg.format).label)}
+        <td>${esc(seg.name || formatOf(seg.format).label)}${titlePill(seg)}
           <div style="font-size:12px">${lineup(seg)}</div>
           ${done && seg.result.beats?.length ? `<details style="margin-top:.3rem"><summary class="muted" style="font-size:11px;cursor:pointer">beats</summary>
             <div class="log" style="margin-top:.3rem">${seg.result.beats.map((b) =>
@@ -243,7 +269,7 @@ function renderResults(show) {
   const rows = segments.map((seg, i) => `
     <tr>
       <td class="num muted">${i + 1}</td>
-      <td>${esc(seg.name || formatOf(seg.format).label)}<div style="font-size:12px">${lineup(seg)}</div></td>
+      <td>${esc(seg.name || formatOf(seg.format).label)}${titlePill(seg)}<div style="font-size:12px">${lineup(seg)}</div></td>
       <td class="num">${mmss(seg.timeLimitSec)}</td>
       <td class="num">${mmss(seg.result.actualSec)}</td>
       <td class="num ${seg.result.actualSec - seg.timeLimitSec < 0 ? 'pos' : 'neg'}">${signedTime(seg.result.actualSec - seg.timeLimitSec)}</td>

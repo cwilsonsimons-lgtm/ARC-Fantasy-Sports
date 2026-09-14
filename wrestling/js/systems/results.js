@@ -140,6 +140,10 @@ export function install() {
       data: {
         finish: event.data.finish,
         winnerIds, loserIds,
+        // Everyone who was in it, so the ranking can be recomputed from the log
+        // alone without going back to the segment.
+        participantIds: everyone,
+        titleId: segment.titleId || null,
         actualSec: event.data.actualSec,
         quality: segment.result.quality,
         overridden: event.data.overridden,

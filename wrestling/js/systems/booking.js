@@ -12,6 +12,7 @@ import * as store from '../core/store.js';
 import { SEGMENT_KINDS, SEGMENT_STATUS } from '../models/segment.js';
 import { isAvailable } from '../models/wrestler.js';
 import { formatOf, slotCount } from './formats.js';
+import { championIds, isVacant } from '../models/title.js';
 
 /**
  * Matches usually end before their limit, so a card booked to exactly fill the
@@ -48,8 +49,9 @@ export function alreadyBooked(showId) {
  * Returns `{ok, problems}` rather than throwing, because the booking screen
  * wants to explain the problem, not catch an exception.
  */
-export function validate(showId, formatKey, wrestlerIds) {
+export function validate(showId, formatKey, wrestlerIds, { titleId = null } = {}) {
   const problems = [];
+  const warnings = [];
   const format = formatOf(formatKey);
   const filled = wrestlerIds.filter(Boolean);
 
@@ -79,7 +81,34 @@ export function validate(showId, formatKey, wrestlerIds) {
     }
   }
 
-  return { ok: problems.length === 0, problems };
+  if (titleId) {
+    const title = store.getTitle(titleId);
+    if (!title) {
+      problems.push(`No title with id ${titleId}`);
+    } else {
+      if (format.kind !== SEGMENT_KINDS.MATCH) {
+        problems.push(`A ${format.label} cannot be for the ${title.shortName} title`);
+      }
+      const holders = championIds(title);
+      if (!isVacant(title) && !holders.some((id) => seen.has(id))) {
+        problems.push(`${holders.map(store.nameOf).join(' & ')} holds the ${title.shortName} title and is not in this match`);
+      }
+      // Booking past the contender is allowed. It is meant to be noticed.
+      if (title.contenderId && !seen.has(title.contenderId) && !holders.includes(title.contenderId)) {
+        warnings.push(`${store.nameOf(title.contenderId)} is the #1 contender and is not in this match`);
+      }
+      for (const id of seen) {
+        const w = store.getWrestler(id);
+        const rank = w?.standing.rank;
+        const contender = title.contenderId ? store.getWrestler(title.contenderId) : null;
+        if (rank && contender?.standing.rank && rank > contender.standing.rank && !holders.includes(id)) {
+          warnings.push(`${w.name} is ranked #${rank}, below the #1 contender`);
+        }
+      }
+    }
+  }
+
+  return { ok: problems.length === 0, problems, warnings };
 }
 
 /**

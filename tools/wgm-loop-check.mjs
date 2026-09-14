@@ -291,16 +291,19 @@ check('a save taken halfway through a card resumes halfway through', () => {
   return `resumed at segment 3 of ${after.total} and carried on`;
 });
 
-check('the schema migration brings a v1 save forward', () => {
+check('the schema migration chain brings a v1 save all the way forward', () => {
   const envelope = JSON.parse(persist.toJSON({ label: 'downgrade' }));
   envelope.schemaVersion = 1;
+  delete envelope.state.titles;
   for (const seg of Object.values(envelope.state.segments)) delete seg.format;
   store.reset();
   persist.deserialize(envelope);
-  const segs = Object.values(store.getState().segments);
+  const state = store.getState();
+  const segs = Object.values(state.segments);
   assert(segs.every((s) => s.format), 'a segment came through without a format');
-  eq(store.getState().meta.schemaVersion, 2, 'schema version after migration');
-  return `${segs.length} segments given a format, schema now v2`;
+  assert(state.titles && typeof state.titles === 'object', 'no titles registry after migration');
+  eq(state.meta.schemaVersion, 3, 'schema version after migration');
+  return `${segs.length} segments given a format, titles registry added, v1 -> v3`;
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed\n`);

@@ -10,6 +10,8 @@ import {
   recordOf, streakLabel, memoryWeightOn, relationshipTo,
   TRAITS, ABILITIES, CAREER_STATUS,
 } from '../../models/wrestler.js';
+import { reignsOf, championIds } from '../../models/title.js';
+import * as rankings from '../../systems/rankings.js';
 import { esc, signed, toneOf, meter, titleCase, money } from '../format.js';
 import { notLoaded } from './roster.js';
 
@@ -21,6 +23,9 @@ export default {
     const w = store.getWrestler(id);
     if (!w) return `<h1>Unknown wrestler</h1><p class="sub">No wrestler with id ${esc(id)}.</p>`;
     const day = store.today();
+    const held = store.titlesHeldBy(w.id);
+    const reigns = reignsOf(store.getState().titles, w.id);
+    const score = rankings.scoreFor(w.id);
 
     const kv = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
     const bar = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>${meter(v)}`;
@@ -70,8 +75,10 @@ export default {
         <div class="card"><h3>3. Standing</h3>
           ${kv('Record', recordOf(w))}
           ${kv('Streak', streakLabel(w))}
-          ${kv('Rank', w.standing.rank ?? 'unranked')}
-          ${kv('Title reigns', w.standing.titleReigns.length)}
+          ${kv('Rank', w.standing.rank ? `#${w.standing.rank}` : 'unranked')}
+          ${kv('Ranking points', w.standing.rankPoints?.toFixed(1) ?? '0')}
+          ${kv('Title reigns', reignsOf(store.getState().titles, w.id).length)}
+          ${held.length ? kv('Holds', held.map((t) => esc(t.shortName)).join(', ')) : ''}
         </div>
         <div class="card"><h3>4. State</h3>
           ${bar('Morale', w.state.morale)}
@@ -92,6 +99,31 @@ export default {
           <div class="kv"><span class="muted" style="font-size:11px">Fields only. The contract system is not built.</span><span></span></div>
         </div>
       </div>
+
+      <h2>Why they are ranked #${w.standing.rank ?? '-'}</h2>
+      <p class="sub">Rankings come from results and nothing else, which is what makes them arguable.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Component</th><th>Points</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Lifetime record</td><td class="num ${toneOf(score.parts.career)}">${signed(Math.round(score.parts.career * 10) / 10)}</td><td class="muted">${recordOf(w)}</td></tr>
+          <tr><td>Recent results</td><td class="num ${toneOf(score.parts.recent)}">${signed(Math.round(score.parts.recent * 10) / 10)}</td><td class="muted">${score.results.length} match${score.results.length === 1 ? '' : 'es'} in the window</td></tr>
+          <tr><td>Momentum</td><td class="num ${toneOf(score.parts.momentum)}">${signed(Math.round(score.parts.momentum * 10) / 10)}</td><td class="muted">${signed(w.state.momentum)}</td></tr>
+          <tr><td>Streak</td><td class="num ${toneOf(score.parts.streak)}">${signed(Math.round(score.parts.streak * 10) / 10)}</td><td class="muted">${streakLabel(w)}</td></tr>
+          <tr><td><strong>Total</strong></td><td class="num"><strong>${score.points.toFixed(1)}</strong></td><td></td></tr>
+        </tbody>
+      </table></div>
+
+      ${reigns.length ? `<h2>Championship history</h2>
+      <div class="scroller"><table>
+        <thead><tr><th>Title</th><th>Won</th><th>Lost</th><th>Days</th><th>Defences</th></tr></thead>
+        <tbody>${reigns.map((r) => `<tr>
+          <td>${esc(r.titleName)}${r.reign.lostOnDay == null ? ' <span class="pill brass">current</span>' : ''}</td>
+          <td class="num">d${r.reign.wonOnDay}</td>
+          <td class="num">${r.reign.lostOnDay == null ? '-' : `d${r.reign.lostOnDay}`}</td>
+          <td class="num">${(r.reign.lostOnDay ?? day) - r.reign.wonOnDay}</td>
+          <td class="num">${r.reign.defenses}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : ''}
 
       <h2>5. Ties &middot; the locker room</h2>
       <p class="sub">Relationships are directed. The two columns disagreeing is the normal case, not a bug.</p>

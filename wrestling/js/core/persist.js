@@ -62,6 +62,26 @@ export const MIGRATIONS = {
     }
     return state;
   },
+
+  // v2 -> v3: championships and rankings arrive. Titles are a new registry, and
+  // a wrestler's reign list moves into the title's lineage where it belongs -
+  // one reign, one home. Nothing is recoverable from a v2 save's reign stubs
+  // (they never had a real title to point at), so they are dropped rather than
+  // turned into a lineage that never happened.
+  2: (state) => {
+    state.titles = state.titles || {};
+    for (const w of Object.values(state.wrestlers)) {
+      delete w.standing.titleReigns;
+      if (w.standing.rank === undefined) w.standing.rank = null;
+      if (w.standing.rankPoints === undefined) w.standing.rankPoints = 0;
+    }
+    // No titles existed at v2, so any titleId on a segment is a dangling
+    // reference by definition. Clear it rather than importing a broken link.
+    for (const seg of Object.values(state.segments)) {
+      seg.titleId = null;
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

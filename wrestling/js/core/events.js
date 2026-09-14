@@ -40,6 +40,14 @@ export const EVENT_TYPES = Object.freeze({
   WRESTLER_RELATION:   'wrestler.relationship.changed',
   WRESTLER_GM_TIE:     'wrestler.gm_tie.changed',
 
+  // --- championships and rankings ---
+  TITLE_CREATED:       'title.created',
+  TITLE_WON:           'title.won',
+  TITLE_DEFENDED:      'title.defended',
+  TITLE_VACATED:       'title.vacated',
+  RANKING_UPDATED:     'ranking.updated',
+  CONTENDER_CHANGED:   'contender.changed',
+
   // --- shows and cards ---
   SHOW_CREATED:        'show.created',
   SHOW_STARTED:        'show.started',
@@ -53,7 +61,6 @@ export const EVENT_TYPES = Object.freeze({
   // when those systems arrive they extend this log rather than starting a
   // second one, and so listeners can be written against them in advance.
   MATCH_RESULT:        'match.result.recorded',
-  RANKING_UPDATED:     'ranking.updated',
   PROMISE_MADE:        'promise.made',
   PROMISE_KEPT:        'promise.kept',
   PROMISE_BROKEN:      'promise.broken',

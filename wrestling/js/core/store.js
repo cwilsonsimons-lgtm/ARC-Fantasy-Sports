@@ -29,8 +29,9 @@ import * as clock from './clock.js';
 import { createWrestler, createMemory, clampUnit, clampSigned } from '../models/wrestler.js';
 import { createShow, SHOW_STATUS, bookedSeconds, actualSeconds } from '../models/show.js';
 import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment.js';
+import { createTitle as makeTitle, createReign, currentReign, championIds } from '../models/title.js';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -108,6 +109,7 @@ export function newGame({
     wrestlers: {},
     shows: {},
     segments: {},
+    titles: {},
     log: [],
   };
 
@@ -132,6 +134,7 @@ export function installState(state, rngState, { seed } = {}) {
     ...Object.keys(state.wrestlers),
     ...Object.keys(state.shows),
     ...Object.keys(state.segments),
+    ...Object.keys(state.titles || {}),
     ...state.log.map((e) => e.id),
     ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
     ...state.calendar.entries.map((e) => e.id),
@@ -154,6 +157,7 @@ export function reset() {
 export function getWrestler(id) { return requireGame().wrestlers[id] || null; }
 export function getShow(id) { return requireGame().shows[id] || null; }
 export function getSegment(id) { return requireGame().segments[id] || null; }
+export function getTitle(id) { return requireGame().titles[id] || null; }
 
 export function requireWrestler(id) {
   const w = getWrestler(id);
@@ -171,7 +175,17 @@ export function requireSegment(id) {
   return s;
 }
 
+export function requireTitle(id) {
+  const t = getTitle(id);
+  if (!t) throw new Error(`No title with id ${id}`);
+  return t;
+}
+
 export function allWrestlers() { return Object.values(requireGame().wrestlers); }
+export function allTitles() {
+  return Object.values(requireGame().titles)
+    .sort((a, b) => (a.tier === 'world' ? -1 : 1) - (b.tier === 'world' ? -1 : 1));
+}
 export function allShows() {
   return Object.values(requireGame().shows).sort((a, b) => a.day - b.day);
 }
@@ -187,6 +201,7 @@ export function nameOf(id) {
   return state.wrestlers[id]?.name
     || state.shows[id]?.name
     || state.segments[id]?.name
+    || state.titles[id]?.name
     || id;
 }
 
@@ -562,6 +577,91 @@ export function completeShow(id, { rating = null, cause = null } = {}) {
       budgetSec: show.timeBudgetSec,
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Championships
+// ---------------------------------------------------------------------------
+
+export function createTitle(spec, { cause = null } = {}) {
+  const state = requireGame();
+  const title = makeTitle({ activatedOnDay: state.calendar.day, ...spec });
+  state.titles[title.id] = title;
+  emit(EVENT_TYPES.TITLE_CREATED, {
+    summary: `${title.name} is introduced`,
+    subjects: [title.id],
+    cause,
+    data: { tier: title.tier },
+  });
+  return title;
+}
+
+/**
+ * Put the belt on someone. Closes the outgoing reign and opens a new one, so
+ * the lineage is always a continuous chain with exactly one open link.
+ */
+export function awardTitle(titleId, wrestlerIds, {
+  wonOnDay = null, atShowId = null, atSegmentId = null, reason = '', cause = null,
+} = {}) {
+  const state = requireGame();
+  const title = requireTitle(titleId);
+  for (const id of wrestlerIds) requireWrestler(id);
+
+  const day = wonOnDay ?? state.calendar.day;
+  const outgoing = currentReign(title);
+  const previousIds = outgoing ? [...outgoing.wrestlerIds] : [];
+  if (outgoing) outgoing.lostOnDay = day;
+
+  title.lineage.push(createReign({
+    wrestlerIds, wonOnDay: day, wonFromIds: previousIds, atShowId, atSegmentId,
+  }));
+
+  return emit(EVENT_TYPES.TITLE_WON, {
+    summary: previousIds.length
+      ? `${wrestlerIds.map(nameOf).join(' & ')} takes the ${title.shortName} title from ${previousIds.map(nameOf).join(' & ')}`
+      : `${wrestlerIds.map(nameOf).join(' & ')} becomes ${title.shortName} champion`,
+    subjects: [...wrestlerIds, ...previousIds, title.id],
+    showId: atShowId, segmentId: atSegmentId,
+    cause,
+    data: { titleId, wrestlerIds, previousIds, day, reason, reignIndex: title.lineage.length - 1 },
+  });
+}
+
+/** A successful defence. Counted on the reign, because that is what gets quoted. */
+export function recordDefense(titleId, { againstIds = [], atShowId = null, atSegmentId = null, cause = null } = {}) {
+  const title = requireTitle(titleId);
+  const reign = currentReign(title);
+  if (!reign) return null;
+  reign.defenses += 1;
+
+  return emit(EVENT_TYPES.TITLE_DEFENDED, {
+    summary: `${reign.wrestlerIds.map(nameOf).join(' & ')} retains the ${title.shortName} title`,
+    subjects: [...reign.wrestlerIds, ...againstIds, title.id],
+    showId: atShowId, segmentId: atSegmentId,
+    cause,
+    data: { titleId, againstIds, defenses: reign.defenses },
+  });
+}
+
+export function vacateTitle(titleId, { reason = '', cause = null } = {}) {
+  const state = requireGame();
+  const title = requireTitle(titleId);
+  const reign = currentReign(title);
+  if (!reign) return null;
+  const held = [...reign.wrestlerIds];
+  reign.lostOnDay = state.calendar.day;
+
+  return emit(EVENT_TYPES.TITLE_VACATED, {
+    summary: `The ${title.shortName} title is vacated`,
+    subjects: [...held, title.id],
+    cause,
+    data: { titleId, previousIds: held, reason },
+  });
+}
+
+/** Every title this wrestler currently holds. */
+export function titlesHeldBy(wrestlerId) {
+  return allTitles().filter((t) => championIds(t).includes(wrestlerId));
 }
 
 // ---------------------------------------------------------------------------

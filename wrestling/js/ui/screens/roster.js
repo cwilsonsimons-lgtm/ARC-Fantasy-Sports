@@ -9,10 +9,15 @@ export default {
   render() {
     if (!store.isLoaded()) return notLoaded();
     const day = store.today();
-    const roster = store.allWrestlers().sort((a, b) =>
-      (CAREER_RANK[b.standing.careerStatus] - CAREER_RANK[a.standing.careerStatus])
-      || (b.ability.starPower - a.ability.starPower)
-    );
+    // Ranked order once rankings exist, because that is the order the locker
+    // room argues in. Career status is only the fallback before any results.
+    const roster = store.allWrestlers().sort((a, b) => {
+      if (a.standing.rank != null && b.standing.rank != null) return a.standing.rank - b.standing.rank;
+      if (a.standing.rank != null) return -1;
+      if (b.standing.rank != null) return 1;
+      return (CAREER_RANK[b.standing.careerStatus] - CAREER_RANK[a.standing.careerStatus])
+        || (b.ability.starPower - a.ability.starPower);
+    });
 
     const rows = roster.map((w) => {
       const allies = alliesOf(w).length;
@@ -21,7 +26,9 @@ export default {
       const daysLeft = expiry == null ? null : expiry - day;
       return `
         <tr>
+          <td class="num ${w.standing.rank && w.standing.rank <= 3 ? 'pos' : 'muted'}">${w.standing.rank ? `#${w.standing.rank}` : '-'}</td>
           <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}"><strong>${esc(w.name)}</strong></button>
+              ${store.titlesHeldBy(w.id).map((t) => `<span class="pill brass">${esc(t.shortName)}</span>`).join('')}
               <div class="muted num" style="font-size:11px">${w.id}</div></td>
           <td><span class="pill">${esc(titleCase(w.standing.careerStatus))}</span></td>
           <td class="num">${recordOf(w)}</td>
@@ -41,7 +48,7 @@ export default {
       <div class="scroller">
         <table>
           <thead><tr>
-            <th>Wrestler</th><th>Status</th><th>Record</th><th>Streak</th>
+            <th>Rank</th><th>Wrestler</th><th>Status</th><th>Record</th><th>Streak</th>
             <th>Morale</th><th>Mom.</th><th>Trusts GM</th><th>Allies / Enemies</th>
             <th>Salary</th><th>Deal ends</th>
           </tr></thead>

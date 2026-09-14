@@ -13,13 +13,13 @@ import { typeOf } from './ids.js';
 import { WRESTLER_SHAPE_KEYS, validateWrestler } from '../models/wrestler.js';
 
 /** Containers that are allowed to hold whole entities. */
-const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments'];
+const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles'];
 
 export function checkState(state) {
   const problems = [];
   if (!state || typeof state !== 'object') return ['state is not an object'];
 
-  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'log']) {
+  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'log']) {
     if (state[key] == null) problems.push(`state.${key} is missing`);
   }
   if (problems.length) return problems;
@@ -41,6 +41,7 @@ export function checkState(state) {
   const wrestlerIds = new Set(Object.keys(state.wrestlers));
   const showIds = new Set(Object.keys(state.shows));
   const segmentIds = new Set(Object.keys(state.segments));
+  const titleIds = new Set(Object.keys(state.titles));
 
   const refMustExist = (id, set, where) => {
     if (id != null && !set.has(id)) problems.push(`${where} points at missing ${typeOf(id) || 'entity'} "${id}"`);
@@ -65,6 +66,7 @@ export function checkState(state) {
 
   for (const seg of Object.values(state.segments)) {
     refMustExist(seg.showId, showIds, `segment ${seg.id}`);
+    if (seg.titleId) refMustExist(seg.titleId, titleIds, `segment ${seg.id} title`);
     for (const p of seg.participants) {
       refMustExist(p.wrestlerId, wrestlerIds, `segment ${seg.id} participant`);
     }
@@ -80,6 +82,41 @@ export function checkState(state) {
 
   for (const entry of state.calendar.entries) {
     refMustExist(entry.showId, showIds, `calendar entry ${entry.id}`);
+  }
+
+  // --- a title's lineage is one continuous chain with at most one open link ---
+  for (const title of Object.values(state.titles)) {
+    if (title.contenderId) refMustExist(title.contenderId, wrestlerIds, `${title.id} contender`);
+    let open = 0;
+    title.lineage.forEach((reign, i) => {
+      for (const id of reign.wrestlerIds) refMustExist(id, wrestlerIds, `${title.id} reign ${i}`);
+      for (const id of reign.wonFromIds) refMustExist(id, wrestlerIds, `${title.id} reign ${i} lost by`);
+      if (reign.atShowId) refMustExist(reign.atShowId, showIds, `${title.id} reign ${i}`);
+      if (reign.atSegmentId) refMustExist(reign.atSegmentId, segmentIds, `${title.id} reign ${i}`);
+      if (reign.lostOnDay == null) {
+        open++;
+        if (i !== title.lineage.length - 1) {
+          problems.push(`${title.id} reign ${i} never ended but is not the current one`);
+        }
+      } else if (reign.lostOnDay < reign.wonOnDay) {
+        problems.push(`${title.id} reign ${i} was lost before it was won`);
+      }
+      if (i > 0) {
+        const prev = title.lineage[i - 1];
+        if (prev.lostOnDay != null && reign.wonOnDay < prev.lostOnDay) {
+          problems.push(`${title.id} reign ${i} starts before reign ${i - 1} ended`);
+        }
+      }
+      if (!reign.wrestlerIds.length) problems.push(`${title.id} reign ${i} has no champion`);
+    });
+    if (open > 1) problems.push(`${title.id} has ${open} champions at once`);
+  }
+
+  // --- a wrestler's reigns live only in the lineage ---
+  for (const w of Object.values(state.wrestlers)) {
+    if (w.standing.titleReigns !== undefined) {
+      problems.push(`wrestler ${w.id} carries its own titleReigns - reigns live in the title's lineage`);
+    }
   }
 
   // --- the log is append-only and internally consistent ---

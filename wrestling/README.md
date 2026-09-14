@@ -9,6 +9,9 @@ persistence, event log, navigation) and **Tier 1**, the basic GM backbone:
 
 > Roster -> Booking -> Live Show -> Results -> Next Week
 
+Plus **Tier 3**: records, rankings, championships and momentum, all updated
+automatically from results.
+
 None of the reactive systems from the design foundation are built. Nobody
 refuses a match, nobody holds a grudge, nothing goes wrong backstage.
 
@@ -18,7 +21,7 @@ refuses a match, nobody holds a grudge, nothing goes wrong backstage.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 62 headless checks: foundation, simulation, loop
+npm run check:wgm         # 86 headless checks across four suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -47,11 +50,43 @@ with the result.
 
 **Results.** Wins, losses, streaks, momentum, morale and ring wear all land on
 the wrestler, and a memory of the match goes into their log. Losing to someone
-beneath you is remembered harder and can scar.
+beneath you is remembered harder and can scar. The rankings recompute, the
+contenders move, and a belt can change hands, all off the same one result.
 
-**Next week.** The calendar moves on and the roster gets its condition back. A
-show cannot air before its date, so the rest between shows always happens
-however you navigate there.
+**Next week.** The calendar moves on, the roster gets its condition back, and
+momentum fades toward neutral. A show cannot air before its date, so the rest
+between shows always happens however you navigate there.
+
+## Rankings and championships
+
+**A ranking has to be something a wrestler can argue with.** It is computed from
+the match record and nothing else: lifetime win/loss differential as a baseline,
+recent results within a 120-day window weighted by how good the opponent was and
+how long ago it happened, plus momentum and a streak bonus. Title matches count
+for half again as much. Every wrestler's page shows the working, line by line,
+because they are going to quote it at you.
+
+Recomputed after every result rather than maintained incrementally, so the
+ranking can never disagree with the record it claims to summarise.
+
+**The #1 contender is derived, never declared:** the highest-ranked wrestler who
+is not already holding that belt. You can book past them. The booking screen
+says so, and it does not stop you.
+
+**A championship is its lineage.** The belt is not a property of the wrestler
+holding it; it is a chain of reigns, and the champion is simply the reign that
+has not ended. "Who is champion" and "who has ever been champion" are the same
+record read two ways, so they cannot drift apart. A reign tracks who it was won
+from, on what day, at which show, and how many times it has been defended.
+
+A title changes hands only on a pinfall or submission. A countout, a
+disqualification or a time-limit draw is a defence, which gives you a way to
+keep a belt on someone while still booking them to lose. Winning or losing one
+is the heaviest memory in the game, and always scars.
+
+The starting roster ships with a World champion, a National champion, and a
+contender on a six-match winning streak ranked above the champion. Nobody
+arranged that; it fell out of the records the roster was authored with.
 
 ## The simulation
 
@@ -123,6 +158,7 @@ js/models/       pure entity factories and derived reads
   wrestler.js    the six layers: identity, ability, standing, state, ties, memory
   show.js        a dated container with a time budget and ordered segment IDs
   segment.js     matches and segments as one model, with a time LIMIT not a duration
+  title.js       a championship as its lineage of reigns
 
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
@@ -130,7 +166,9 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   matchSim.js    pure: (segment, wrestlers, rng) -> {result, timeline}
   showRunner.js  go live, run the card, grade it, go off the air
   results.js     what a result does to records, momentum, morale and memory
-  upkeep.js      condition recovery between shows
+  rankings.js    the ranked table, computed from results, with its working
+  titles.js      title changes, defences and #1 contenders
+  upkeep.js      condition recovery and momentum fade between shows
 
 js/data/roster.js   fourteen hand-authored wrestlers with starting history
 js/ui/              renders the store and calls its actions; holds no game state
@@ -183,8 +221,9 @@ the schema version you are moving from, and bump `SCHEMA_VERSION` in
 
 ## What is deliberately not here
 
-No pitch or refusal logic, so nobody turns a match down. No rankings. No
-relationship changes from results, so no rivalries form on their own. No
+No pitch or refusal logic, so nobody turns a match down. Nobody complains about
+being ranked below someone they beat. No relationship changes from results, so
+no rivalries form on their own. No
 backstage locations or incidents, no live levers to fill dead air, no promises,
 contracts, budget, GM progression or competing brands.
 

@@ -135,9 +135,15 @@ export function createWrestler(spec = {}) {
       losses: standing.losses ?? 0,
       draws: standing.draws ?? 0,
       streak: standing.streak ?? { type: null, count: 0 }, // type: 'W' | 'L' | 'D'
-      rank: standing.rank ?? null,        // filled by a ranking system, not yet built
-      titleReigns: standing.titleReigns ?? [], // {titleId, wonOnDay, lostOnDay}
+      // Rank is recomputed from results by systems/rankings.js. `rankPoints` is
+      // kept alongside it so the UI can show WHY somebody is ranked where they
+      // are - a wrestler is going to quote this number at the GM.
+      rank: standing.rank ?? null,
+      rankPoints: standing.rankPoints ?? 0,
       debutDay,
+      // Title reigns are NOT stored here. A reign lives once, in the title's
+      // lineage, and is read back with reignsOf(). Storing it on the wrestler
+      // too would be a second copy of the same fact, free to disagree.
     },
 
     // 4. State - fast moving. What the recent past did to them.
