@@ -23,6 +23,9 @@ import {
   shapesFor, canBuildShapes, stipulationsFor, canCustomiseShape,
   teamRefusal, teamGateSay,
 } from '../model/unlocks.js';
+import { INTENSITIES, intensity } from '../data/promos.js';
+import { createPromo, promoReadiness, isPromo } from '../model/promos.js';
+import { rivalry, anticipationFor } from '../model/rivalries.js';
 import { listOpportunities, takeOpportunity, dismissOpportunity } from '../model/opportunities.js';
 import { nameOf } from '../model/wrestlers.js';
 
@@ -46,6 +49,12 @@ const draft = {
   // Which builder the middle column is showing, and the roster panel's own
   // search and sort. All interface state, so none of it touches the save.
   builder: 'match',
+  promoSpeaker: '',
+  promoTarget: '',
+  promoIntensity: 'heated',
+  promoAmmo: new Set(),
+  promoMinutes: '',
+  promoError: '',
   search: '',
   sortKey: 'name',
   sortDir: 1,
@@ -215,6 +224,17 @@ function assign(id) {
     return;
   }
 
+  if (draft.builder === 'promo') {
+    if (draft.promoSpeaker === id) draft.promoSpeaker = '';
+    else if (draft.promoTarget === id) draft.promoTarget = '';
+    else if (!draft.promoSpeaker) draft.promoSpeaker = id;
+    else draft.promoTarget = id;
+    draft.promoAmmo = new Set();
+    draft.promoError = '';
+    notify();
+    return;
+  }
+
   if (draft.builder === 'bout') {
     if (preset(draft.shapeId).open) {
       if (draft.royal.has(id)) draft.royal.delete(id);
@@ -245,6 +265,7 @@ function assign(id) {
 const BUILDERS = [
   ['match', 'Match'],
   ['bout', 'Bigger match'],
+  ['promo', 'Promo'],
   ['segment', 'Segment'],
 ];
 
@@ -273,6 +294,7 @@ function builderPanel(state, locked) {
       ),
       draft.builder === 'match' ? matchForm(state)
         : draft.builder === 'bout' ? (canBuildShapes(state) ? boutForm(state) : noShapes())
+        : draft.builder === 'promo' ? promoForm(state)
         : segmentForm(state)
     )
   );
@@ -358,6 +380,19 @@ function lockedNotice(state, navigate) {
   );
 }
 
+function wantedLine(state, item) {
+  if (item.type !== 'match') {
+    if (!isPromo(item)) return null;
+    const level = intensity(item.intensityId);
+    const said = (item.ammo || []).length;
+    return el('span', { class: `wanted tone-plain`, text:
+      `${level.label}${said ? ` \u00b7 ${said} thing${said === 1 ? '' : 's'} to bring up` : ''}` });
+  }
+  const read = anticipationFor(state, item);
+  if (!read) return null;
+  return el('span', { class: `wanted tone-${read.tone}`, text: read.label });
+}
+
 function cardTable(state, show, locked) {
   if (!show.items.length) {
     return el('p', { class: 'empty', style: 'padding:22px 17px;margin:0', text: 'Nothing on the card yet.' });
@@ -368,7 +403,10 @@ function cardTable(state, show, locked) {
       el('td', { class: 'pos', text: index + 1 }),
       el('td', { class: 'what' },
         el('strong', { text: typeLabel(item) }),
-        el('span', { class: 'who' }, itemLabelNodes(state, item))
+        el('span', { class: 'who' }, itemLabelNodes(state, item)),
+        // Whether anybody is waiting for it, said before it happens — which is
+        // the only point at which the GM can still do anything about it.
+        wantedLine(state, item)
       ),
       el('td', { class: 'when' },
         el('div', { class: 'timebox' },
@@ -964,4 +1002,154 @@ function addSegment() {
   draft.segParticipants = new Set();
   draft.segError = '';
   commit(s => addItem(s.show, createSegment(segment)));
+}
+
+// ---------------------------------------------------------------- the promo
+
+// Two people who have a history, a temperature, and a list of things they are
+// allowed to bring up. The list is not written anywhere — it is derived from
+// what actually happened between them, which is why a pair who met last week
+// have nothing to say and a pair who have been at it since the spring have a
+// page of it.
+function promoForm(state) {
+  const speaker = draft.promoSpeaker ? byId(state.wrestlers, draft.promoSpeaker) : null;
+  const target = draft.promoTarget ? byId(state.wrestlers, draft.promoTarget) : null;
+  const level = intensity(draft.promoIntensity);
+  const read = speaker && target ? promoReadiness(state, speaker.id, target.id) : null;
+  const between = speaker && target ? rivalry(state, speaker.id, target.id) : null;
+  const floor = 3;
+
+  return el('div', {},
+    el('div', { class: 'form-rows' },
+      row('Doing the talking', el('select', {
+        onChange: e => { draft.promoSpeaker = e.target.value; draft.promoAmmo = new Set(); notify(); },
+      }, wrestlerOptions(state, draft.promoSpeaker))),
+      row('Aimed at', el('select', {
+        onChange: e => { draft.promoTarget = e.target.value; draft.promoAmmo = new Set(); notify(); },
+      }, wrestlerOptions(state, draft.promoTarget))),
+      row('Planned time', el('div', { class: 'with-unit' },
+        el('input', {
+          type: 'number', min: String(floor),
+          value: draft.promoMinutes === '' ? String(floor + 1) : draft.promoMinutes,
+          onChange: e => { draft.promoMinutes = e.target.value; },
+        }),
+        el('span', { class: 'unit', text: `minutes (from ${floor})` })
+      ))
+    ),
+
+    between
+      ? el('p', { class: `promo-read tone-${between.quadrant.tone}` },
+          el('span', { class: 'promo-quad', text: between.quadrant.label }),
+          el('span', { class: 'muted', text: between.quadrant.note })
+        )
+      : null,
+
+    // How hot you are letting it go. The note under each one is the whole
+    // decision: the crowd gets more the further up you go, and so does the
+    // chance you are picking somebody up off the floor afterwards.
+    el('div', { class: 'intensity' },
+      INTENSITIES.map(step => el('button', {
+        type: 'button',
+        class: `int-step${step.id === draft.promoIntensity ? ' on' : ''} int-${step.id}`,
+        onClick: () => { draft.promoIntensity = step.id; notify(); },
+      },
+        el('span', { class: 'int-label', text: step.label }),
+        el('span', { class: 'int-note', text: step.note })
+      ))
+    ),
+
+    read ? ammoList(read) : el('p', { class: 'muted form-note', text:
+      'Pick who is talking and who it is aimed at.' }),
+
+    draft.promoError ? el('p', { class: 'over', text: draft.promoError }) : null,
+
+    el('div', { class: 'promo-go' },
+      el('button', {
+        type: 'button', class: 'btn primary', text: '＋  Add promo',
+        onClick: () => addPromo(state),
+      }),
+      el('span', { class: 'promo-risk muted', text:
+        `${level.label}. ${riskWord(state, speaker, target, level)}` })
+    )
+  );
+}
+
+// What they can say, and what it will cost. Ordered gentlest first, so reading
+// down the list is reading down the temperature.
+function ammoList(read) {
+  if (!read.ammo.length) {
+    return el('p', { class: 'muted form-note', text:
+      read.say + ' You can still book it — it will just be four minutes of two people '
+      + 'who have never met being told to have an argument.' });
+  }
+  return el('div', { class: 'ammo' },
+    el('p', { class: 'lab', text: read.say }),
+    el('ul', { class: 'ammo-list' }, read.ammo.map(item => {
+      const on = draft.promoAmmo.has(item.kind);
+      return el('li', { class: on ? 'ammo-item on' : 'ammo-item' },
+        el('label', {},
+          el('input', {
+            type: 'checkbox', checked: on,
+            onChange: () => {
+              if (on) draft.promoAmmo.delete(item.kind);
+              else draft.promoAmmo.add(item.kind);
+              notify();
+            },
+          }),
+          el('span', { class: 'ammo-label', text: item.label }),
+          el('span', { class: 'ammo-cost' },
+            el('span', { class: 'ammo-heat', text: `+${item.heat}` }),
+            el('span', { class: 'ammo-hate', text: `+${item.hatred}` })
+          )
+        ),
+        item.detail ? el('p', { class: 'ammo-detail muted', text: item.detail }) : null
+      );
+    })),
+    el('p', { class: 'ammo-key muted' },
+      el('span', { class: 'ammo-heat', text: 'blue' }), ' is what the crowd gets out of it. ',
+      el('span', { class: 'ammo-hate', text: 'red' }), ' is what it does to them.')
+  );
+}
+
+function riskWord(state, speaker, target, level) {
+  if (!speaker || !target) return 'Nobody booked yet.';
+  const ammo = [...draft.promoAmmo].length;
+  const rough = level.risk + ammo * 0.08;
+  if (rough <= 0.02) return 'It will stay a promo.';
+  if (rough < 0.18) return 'It should stay a promo.';
+  if (rough < 0.4) return 'It might not stay a promo.';
+  return 'Have security somewhere near the ring.';
+}
+
+function addPromo(state) {
+  if (!draft.promoSpeaker || !draft.promoTarget) {
+    draft.promoError = 'A promo needs somebody talking and somebody it is aimed at.';
+    notify();
+    return;
+  }
+  if (draft.promoSpeaker === draft.promoTarget) {
+    draft.promoError = 'They cannot cut a promo on themselves.';
+    notify();
+    return;
+  }
+
+  const promo = createPromo({
+    speakerId: draft.promoSpeaker,
+    targetId: draft.promoTarget,
+    plannedMinutes: Number(draft.promoMinutes) || 4,
+    intensityId: draft.promoIntensity,
+    ammo: [...draft.promoAmmo],
+  });
+  if (!promo) {
+    draft.promoError = 'That is not a promo yet.';
+    notify();
+    return;
+  }
+
+  draft.promoSpeaker = '';
+  draft.promoTarget = '';
+  draft.promoAmmo = new Set();
+  draft.promoMinutes = '';
+  draft.promoError = '';
+  commit(s => addItem(s.show, promo));
 }

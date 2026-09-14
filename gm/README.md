@@ -1050,6 +1050,95 @@ Nobody picks this at the start. `gmRecord` counts every call by how the room
 read it, and a pattern earns a name — The Disciplinarian, The Absentee, The
 Matchmaker, The Wild West GM, or an even hand. It shows on the post-show.
 
+## Rivalries
+
+A rivalry used to be one number. It is two now, and the gap between them is the
+whole system.
+
+**Heat** is how invested the crowd is. **Hatred** is what the two of them
+actually feel. They move apart on purpose, and the rule that makes it fall out
+on its own is that **heat only comes from what went out on television.** A
+corridor argument is worth hatred and almost no heat, which is precisely what
+gives you a reason to put a backstage grudge on camera.
+
+Four corners, and three of them are different problems:
+
+| | Low hatred | High hatred |
+|---|---|---|
+| **High heat** | **A draw** — good business, no bad blood. They will work it all year. | **A feud** — the crowd is in and so are they. The one you build to. |
+| **Low heat** | **Something and nothing** | **Bad blood** — real, and nobody is paying to see it. Put it on television or settle it. |
+
+Crowds move on faster than people do, so the two readings decay at different
+rates: heat against a six-week half-life, hatred against twenty. A pair can
+stop being a story while they are still not speaking, which is a state a locker
+room genuinely gets into and the old single number could not express.
+
+Nothing is stored for any of it. Both numbers are read off the thread's own
+event list at the moment they are asked for, the same way morale is read off
+memories.
+
+## Promos
+
+The one segment where you set the temperature rather than the outcome. You put
+two people who have a history in front of a camera, you say how hot to let it
+go, and you choose what they are allowed to bring up.
+
+**Five rungs:** Calm, Heated, Hostile, Explosive, About to Fight. Each is worth
+more to the crowd than the one below it and more likely to stop being a promo.
+The last one is not a warning, it is the booking: *you are not booking a promo,
+you are booking the start of a brawl.* Whether it turns physical is the
+intensity, plus what was said, plus the two of them — a patient professional
+and a short-tempered one do not carry a hostile segment the same distance.
+
+When it does go physical it arrives at the GM as an incident, on live
+television, which is the one kind you cannot have missed.
+
+### The material is derived, not written
+
+A promo's ammunition is a list of things that actually happened. A pair who met
+last week have nothing to say to each other. A pair who have been at it since
+the spring have a page of it:
+
+| What unlocks it | What they can bring up |
+|---|---|
+| Two or more meetings | Their record against you |
+| A match between them | The night you beat them |
+| A belt changing hands | The title they could not win |
+| A cheap shot, or a hold kept on too long | The way they were beaten |
+| An injury | The injury |
+| A betrayal | What they did to somebody who trusted them |
+| Somebody walking out on a partner | The partner they left standing |
+| A promise the office broke | What the office promised them |
+| A close tie of theirs | Somebody they care about |
+| A losing record | How long they have been waiting |
+
+Each piece carries what the crowd gets out of hearing it and what it does to the
+person it lands on, and those are different numbers. The interesting ones are
+high hatred and low heat: a thing that means nothing to the audience and
+everything to the man it is said to. Bringing somebody's friend into it is the
+sharpest material in the game and the most likely to end the segment early.
+
+## What a match is worth
+
+Two readings, before and after.
+
+**Anticipation**, composed when the match is booked and shown on the card:
+rivalry heat and hatred between the sides, whether a belt is on the line, what
+has been said about it in the last four weeks, and who is in it. *Ability is
+not in it at all* — a technically excellent match between two people nobody has
+a reason to watch is still a match nobody is waiting for, and that is the
+distinction the whole tier exists to make.
+
+**Quality**, at the bell: what they can do, whether they have worked together
+before, how much the crowd cared, and whether you gave it enough minutes. Four
+of those are things you did rather than things they are.
+
+It reaches head office as a fifth verdict, and deliberately as the smallest of
+them. A card of classics from a building nobody is running is still a building
+nobody is running, and the executives have always graded the second thing. It
+is there so a show where every match died gets told so — not because match
+quality is what the job is about.
+
 ## Building a promotion
 
 A new save is a screen now, not a button. Everything on it is a decision about

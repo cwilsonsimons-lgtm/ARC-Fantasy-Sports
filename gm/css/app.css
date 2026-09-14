@@ -1582,3 +1582,89 @@ button.cal-day.airs:hover { border-color: var(--cool); }
   .rating-row { grid-template-columns: 96px 1fr 52px; }
   .rating-src, .rating-clear { display: none; }
 }
+
+/* ── rivalries ────────────────────────────────────────────────────────────
+   Two axes, drawn side by side, because the gap between them is the thing
+   worth seeing: a long blue bar and no red is money without bad blood, and a
+   long red bar and no blue is a problem nobody is paying to watch. */
+
+.thread-axes { display: flex; align-items: center; gap: 9px; margin: 5px 0 3px; flex-wrap: wrap; }
+.thread-quad {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .13em;
+  padding: 4px 7px; border-radius: 2px; background: var(--sunken); border: 1px solid var(--line);
+}
+.tone-good { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.tone-warn { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+.tone-bad  { color: var(--tally); border-color: color-mix(in srgb, var(--tally) 45%, var(--line)); }
+.tone-fine { color: var(--cool); border-color: color-mix(in srgb, var(--cool) 45%, var(--line)); }
+.tone-plain { color: var(--muted); }
+
+.axis { flex: 1 1 60px; min-width: 44px; max-width: 130px; height: 4px; background: var(--sunken); border-radius: 2px; overflow: hidden; }
+.axis i { display: block; height: 100%; }
+.axis-heat i { background: var(--cool); }
+.axis-hate i { background: var(--tally); }
+
+/* what the card says it is worth, before it happens */
+.wanted {
+  display: block; margin-top: 3px;
+  font: 600 9px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .12em;
+}
+
+/* ── the promo builder ───────────────────────────────────────────────────── */
+
+.promo-read {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+  margin: 12px 0 4px; font-size: 12.5px;
+}
+.promo-quad {
+  font: 600 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .13em;
+  padding: 4px 7px; border-radius: 2px; background: var(--sunken); border: 1px solid currentColor;
+}
+
+.intensity { display: flex; flex-direction: column; gap: 3px; margin: 12px 0; }
+.int-step {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  text-align: left; cursor: pointer; padding: 7px 10px; border-radius: 2px;
+  background: var(--sunken); border: 1px solid var(--line-soft); border-left: 3px solid var(--line);
+  color: var(--ink-dim);
+}
+.int-step:hover { border-left-color: var(--muted); color: var(--ink); }
+.int-label { font: 600 12px/1.2 var(--sans); }
+.int-note { font: 400 11px/1.35 var(--sans); color: var(--muted); }
+.int-step.on { background: var(--raised); color: var(--ink); }
+.int-step.on .int-note { color: var(--ink-dim); }
+.int-calm.on      { border-left-color: var(--good); }
+.int-heated.on    { border-left-color: var(--cool); }
+.int-hostile.on   { border-left-color: var(--amber); }
+.int-explosive.on { border-left-color: #e07a3c; }
+.int-fight.on     { border-left-color: var(--tally); }
+
+.ammo { margin: 14px 0; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.ammo > .lab { margin-bottom: 8px; }
+.ammo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ammo-item label {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 6px 8px; border-radius: 2px; border: 1px solid transparent;
+}
+.ammo-item label:hover { background: var(--sunken); }
+.ammo-item.on label { background: var(--sunken); border-color: var(--line); }
+.ammo-item input { accent-color: var(--accent); }
+.ammo-label { flex: 1; font: 500 12.5px/1.35 var(--sans); color: var(--ink-dim); }
+.ammo-item.on .ammo-label { color: var(--ink); font-weight: 600; }
+.ammo-cost { display: flex; gap: 7px; font: 600 10px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.ammo-heat { color: var(--cool); }
+.ammo-hate { color: var(--tally); }
+.ammo-detail { margin: 0 0 2px 39px; font-size: 11px; }
+.ammo-key { margin: 9px 0 0; font-size: 11px; }
+
+/* ── what a match turned out to be ───────────────────────────────────────── */
+
+.quality {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  margin-top: 6px; font-size: 12.5px;
+}
+.quality-word { font: 700 13px/1.3 var(--sans); }
+.quality-parts { font: 400 11px/1.4 var(--mono); color: var(--muted); }
+
+.promo-go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.promo-risk { font-size: 12px; line-height: 1.4; flex: 1 1 160px; min-width: 0; }

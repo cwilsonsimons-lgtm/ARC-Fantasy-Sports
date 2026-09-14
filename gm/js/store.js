@@ -291,6 +291,16 @@ function upgrade(saved) {
     saved.version = 18;
   }
 
+  if (saved.version === 18) {
+    // Threads gain a second axis. Nothing is stored for it — heat and hatred
+    // are both read off the same event list — so there is nothing to backfill.
+    // Promos are a new kind of segment, and nothing on an old card is one.
+    for (const item of (saved.show && saved.show.items) || []) {
+      if (item.type === 'segment' && item.kind === undefined) item.kind = null;
+    }
+    saved.version = 19;
+  }
+
   return saved.version === STATE_VERSION ? saved : null;
 }
 

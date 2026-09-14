@@ -20,6 +20,9 @@ import { locationName, locationProse } from '../data/locations.js';
 import { authority, minutesLeft, whereYouAre } from '../model/backstage.js';
 import { showsStopwatch, projectedFinish, readsProportionality } from '../model/unlocks.js';
 import { byId } from '../model/wrestlers.js';
+import { anticipationFor } from '../model/rivalries.js';
+import { isPromo } from '../model/promos.js';
+import { intensity } from '../data/promos.js';
 import { bossView } from '../model/executives.js';
 
 // Kinds that read as a situation, all of which the interface words the same way
@@ -101,6 +104,10 @@ function liveView(state) {
           el('div', { class: 'label', text: 'Off the air' }),
           el('div', { class: 'title', text: 'The broadcast is over. This is not.' })
         ),
+
+    // What is on the air, and whether anybody is waiting for it. Said while it
+    // is happening, because that is when the GM is deciding how long to give it.
+    onAirLine(state, item),
 
     el('div', { class: 'totals' },
       el('div', {}, 'Current Show Time: ', el('b', { text: `${elapsedMinutes(broadcast)} minutes` })),
@@ -196,6 +203,20 @@ function decisionPanel(state) {
 // Stopwatch, because working out for yourself that six segments at nine
 // minutes will not fit into forty is a thing a GM can do and a thing this
 // upgrade is for not having to do.
+function onAirLine(state, item) {
+  if (!item) return null;
+  if (isPromo(item)) {
+    const level = intensity(item.intensityId);
+    const said = (item.ammo || []).length;
+    return el('p', { class: 'net-note muted', text:
+      `${level.label}. ${said ? `${said} thing${said === 1 ? '' : 's'} they are allowed to bring up.` : 'Nothing specific to bring up.'}` });
+  }
+  if (item.type !== 'match') return null;
+  const read = anticipationFor(state, item);
+  if (!read) return null;
+  return el('p', { class: `net-note tone-${read.tone}`, text: `${read.label}.` });
+}
+
 function stopwatchLine(state) {
   if (!showsStopwatch(state) || !state.broadcast) return null;
   const read = projectedFinish(state.show, state.broadcast);

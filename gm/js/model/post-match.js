@@ -274,6 +274,9 @@ const HANDLERS = {
     loser.injuries = loser.injuries || [];
     loser.injuries.push({ week: state.week, weeks });
     delete (state.whereabouts || {})[loser.id];
+    // Hurting somebody is remembered differently from beating them, and it is
+    // the material a rivalry never runs out of.
+    noteThread(state, winner.id, loser.id, 'injury', result.at || 0);
 
     push(state, 'submission-held', result.at || 0, {
       winnerId: winner.id, loserId: loser.id, weeks, matchType: item.matchType,

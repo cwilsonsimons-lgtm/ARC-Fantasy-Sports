@@ -612,6 +612,120 @@ for (const [key, field, sign, why] of EFFECTS) {
     `${fin.standingPenalty(broke)} off their read of you`);
 }
 
+// ---- rivalries ----
+//
+// The tier's whole claim is that heat and hatred are different things, so the
+// checks are mostly about them being able to come apart.
+{
+  const th = await mod('model/threads.js');
+  const riv = await mod('model/rivalries.js');
+  const promoData = await mod('data/promos.js');
+  const promoModel = await mod('model/promos.js');
+
+  const probe = playSeason(5150);
+  const state = probe.state;
+
+  // A pair who have only ever wrestled each other on television draw a crowd
+  // and have no reason to dislike each other.
+  const [a, b, c] = state.wrestlers.map(w => w.id);
+  const clean = { id: 't1', a, b, startedWeek: 1, lastWeek: state.week, events: [] };
+  for (let i = 0; i < 8; i += 1) clean.events.push({ week: state.week, type: 'match' });
+  clean.events.push({ week: state.week, type: 'booked' });
+  clean.events.push({ week: state.week, type: 'title-change' });
+  const drawRead = th.readingOf(clean, state.week);
+  check(drawRead.heat > drawRead.hatred * 2, 'working somebody often is heat without hatred',
+    `heat ${drawRead.heat}, hatred ${drawRead.hatred}`);
+  check(riv.quadrantOf(drawRead).id === 'draw', 'and the game calls it a draw',
+    riv.quadrantOf(drawRead).label);
+
+  // A pair whose whole history is backstage hate each other and nobody has
+  // seen any of it. This is the case the old single number could not hold.
+  const corridor = { id: 't2', a, b: c, startedWeek: 1, lastWeek: state.week, events: [] };
+  for (let i = 0; i < 3; i += 1) corridor.events.push({ week: state.week, type: 'argument' });
+  corridor.events.push({ week: state.week, type: 'abandoned' });
+  corridor.events.push({ week: state.week, type: 'tag-dispute' });
+  const bloodRead = th.readingOf(corridor, state.week);
+  check(bloodRead.hatred > bloodRead.heat * 2, 'a corridor grudge is hatred without heat',
+    `heat ${bloodRead.heat}, hatred ${bloodRead.hatred}`);
+  check(riv.quadrantOf(bloodRead).id === 'blood', 'and the game calls it bad blood',
+    riv.quadrantOf(bloodRead).label);
+
+  // Crowds move on faster than people do.
+  const old = { id: 't3', a, b, startedWeek: 1, lastWeek: 1, events: [
+    { week: 1, type: 'attack' }, { week: 1, type: 'attack' }, { week: 1, type: 'abandoned' },
+  ] };
+  const fresh = th.readingOf(old, 1);
+  const later = th.readingOf(old, 21);
+  check(later.heat / fresh.heat < later.hatred / fresh.hatred,
+    'twenty weeks on, the crowd has forgotten more of it than they have',
+    `heat ${fresh.heat}->${later.heat}, hatred ${fresh.hatred}->${later.hatred}`);
+
+  // Material is derived, so a pair with no history have nothing to say and a
+  // pair with a long one have a list.
+  const strangers = riv.ammoFor(state, a, b);
+  state.threads = [corridor];
+  const loaded = riv.ammoFor(state, a, c);
+  check(loaded.length > 0, 'a rivalry with history unlocks something to say',
+    `${loaded.length} pieces`);
+  check(loaded.every(item => promoData.ammoSpec(item.kind)),
+    'and every piece of it is a kind the game knows');
+  check(loaded[0].heat + loaded[0].hatred <= loaded[loaded.length - 1].heat + loaded[loaded.length - 1].hatred,
+    'listed gentlest first');
+  check(Array.isArray(strangers), 'two strangers produce a list rather than an error',
+    `${strangers.length} pieces`);
+
+  // Intensity is a ladder in both directions.
+  const rungs = promoData.INTENSITIES;
+  check(rungs.length === 5, 'five rungs from calm to about to fight', rungs.map(r => r.label).join(' < '));
+  check(rungs.every((r, i) => i === 0 || (r.heat > rungs[i - 1].heat && r.risk >= rungs[i - 1].risk)),
+    'every rung is worth more and riskier than the one below it');
+
+  // A promo is worth something, moves both axes, and can stop being a promo.
+  let physical = 0;
+  let totalHeat = 0;
+  for (let i = 0; i < 400; i += 1) {
+    const probeState = playSeason(6000 + i).state;
+    const ids = probeState.wrestlers.map(w => w.id);
+    const item = promoModel.createPromo({
+      speakerId: ids[0], targetId: ids[1], plannedMinutes: 5,
+      intensityId: 'explosive', ammo: [],
+    });
+    const rng = makeRng(900 + i);
+    const said = promoModel.resolvePromo(probeState, item, 10, rng);
+    if (!said) continue;
+    totalHeat += said.heat;
+    if (said.incident) physical += 1;
+  }
+  check(physical > 20 && physical < 340, 'an explosive promo sometimes stops being a promo',
+    `${physical} of 400`);
+  check(totalHeat > 0, 'and a promo is worth something to the crowd either way');
+
+  // Anticipation is about what the GM built, not about who is in it.
+  const twoStrangers = { id: 'i1', type: 'match', participants: [a, b], sides: [1, 1], plannedMinutes: 10 };
+  state.threads = [];
+  const cold = riv.anticipationFor(state, twoStrangers);
+  state.threads = [{ ...clean, a, b }];
+  const warm = riv.anticipationFor(state, twoStrangers);
+  check(warm.value > cold.value, 'a match between people with a history is more wanted',
+    `${cold.value} -> ${warm.value}`);
+  const withBelt = riv.anticipationFor(state, { ...twoStrangers, titleId: 'x' });
+  check(withBelt.value > warm.value, 'and a belt on the line is more wanted still',
+    `${warm.value} -> ${withBelt.value}`);
+
+  // Quality is mostly not ability, which is the argument the tier is making.
+  const quality = riv.matchQuality(state, twoStrangers, warm);
+  const flat = riv.matchQuality(state, twoStrangers, cold);
+  check(quality && flat && quality.value > flat.value,
+    'the same two people have a better match when people care',
+    `${flat.value} -> ${quality.value}`);
+  check(quality.crowd > 0 && quality.wrestling > 0,
+    'and the reading says what it was made of',
+    `ring ${quality.wrestling}, crowd ${quality.crowd}`);
+  const rushed = riv.matchQuality(state, { ...twoStrangers, plannedMinutes: 3 }, warm);
+  check(rushed.value < quality.value, 'four minutes is not enough for a finish to land',
+    `${quality.value} -> ${rushed.value}`);
+}
+
 if (process.argv.includes('--model')) {
   console.log(failures.length ? `\n${failures.length} FAILING:\n- ${failures.join('\n- ')}` : '\nall green');
   process.exit(failures.length ? 1 : 0);
@@ -722,6 +836,8 @@ let tracedLit = 0;
 let boughtOne = false;
 let unlockedAfter = [];
 let gateRefusal = '';
+let intensitySteps = 0;
+let promoOnCard = false;
 let rosterPicks = 0;
 
 const bookPanel = page.locator('.col-book');
@@ -817,6 +933,27 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
     await bookPanel.getByRole('button', { name: /^＋\s+Add / }).click();
     await page.waitForTimeout(150);
     gateRefusal = (await bookPanel.locator('.over').first().textContent().catch(() => '')) || '';
+
+    // And a promo, which is the one segment where the GM sets the temperature
+    // rather than the outcome.
+    await bookPanel.getByRole('button', { name: 'Promo', exact: true }).click();
+    await page.waitForTimeout(150);
+    intensitySteps = await bookPanel.locator('.int-step').count();
+    await bookPanel.locator('.int-step', { hasText: 'Hostile' }).click();
+    await page.waitForTimeout(100);
+
+    const talkers = (await freeNames(page)).slice(0, 2);
+    for (const name of talkers) {
+      await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
+      await page.waitForTimeout(60);
+    }
+    if (await page.locator('.overlay').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(60);
+    }
+    await bookPanel.getByRole('button', { name: /Add promo$/ }).click();
+    await page.waitForTimeout(200);
+    promoOnCard = await page.locator('.col-card').getByText('Promo', { exact: true }).count() > 0;
 
     await bookPanel.getByRole('button', { name: 'Match', exact: true }).click();
     await page.waitForTimeout(80);
@@ -992,6 +1129,10 @@ check(/Total from here: \d+ points/.test(tracedTotal),
 check(boughtOne, 'an upgrade can be bought from the board');
 check(unlockedAfter.includes('Tag team'),
   'and the shape it opens turns up on the builder', unlockedAfter.join(', ') || 'nothing offered');
+check(intensitySteps === 5, 'the promo builder offers the whole intensity ladder',
+  `${intensitySteps} rungs`);
+check(promoOnCard, 'a promo can be booked onto the card');
+
 check(/have not worked together|no warmth/.test(gateRefusal),
   'the tag gate refuses two strangers by name', gateRefusal.trim() || 'no refusal shown');
 // A GM who has bought one upgrade can put one kind of match on television, and
@@ -1010,7 +1151,10 @@ const shown = (await card.innerText()).toUpperCase();
 for (const heading of ['ABILITY', 'PERSONALITY', 'WHERE YOU STAND', 'WHAT IS ON THEIR MIND', 'STIPULATIONS', 'THE LOCKER ROOM']) {
   check(shown.includes(heading), `the card shows "${heading}"`);
 }
-check(!/NAN|UNDEFINED|\[OBJECT/.test(shown), 'nothing on the card reads NaN or undefined');
+// Word boundaries, not substrings: the name generator can produce "Brennan",
+// which uppercases to something containing NAN and failed this check at random
+// depending on who was on the roster.
+check(!/\bNAN\b|\bUNDEFINED\b|\[OBJECT/.test(shown), 'nothing on the card reads NaN or undefined');
 const traitRows = await page.locator('.traits li').count();
 check(traitRows === 0 || traitRows === TRAITS.length,
   'personality is either withheld or shown in full', `${traitRows} rows`);
@@ -1093,7 +1237,7 @@ const migrated = await page.evaluate(() => {
       Object.values(w.relationships).every(r => Number.isFinite(r.teamed))),
   };
 });
-check(migrated.version === 18, 'an older save is upgraded and written back', `version ${migrated.version}`);
+check(migrated.version === 19, 'an older save is upgraded and written back', `version ${migrated.version}`);
 check(migrated.threads && migrated.teamed, 'an upgraded save can start noticing stories');
 check(migrated.backstage, 'an upgraded save gets a building to stand in');
 check(migrated.record, 'the existing record survives and gains the new counts');

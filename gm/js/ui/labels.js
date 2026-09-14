@@ -33,7 +33,7 @@ function boutText(state, item) {
 // a Fatal Four-Way Ladder Match is a shape and a stipulation. A plain singles
 // match has no shape to announce, so it reads as its stipulation alone.
 export function typeLabel(item) {
-  if (item.type !== 'match') return 'Segment';
+  if (item.type !== 'match') return item.kind === 'promo' ? 'Promo' : 'Segment';
   const stipulation = matchType(item.matchType);
   const shape = shapeName(item.sides, item.matchType);
   if (!shape) return stipulation.name;

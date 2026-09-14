@@ -49,10 +49,28 @@ export function reviewShow(state) {
   const disorder = missed + walkouts * 3 + pulled * 2;
   const backstage = disorder === 0 ? 'quiet' : disorder <= 2 ? 'noisy' : 'out of hand';
 
+  // And what actually went out. Deliberately the smallest of the terms: a card
+  // of classics from a building nobody is running is still a building nobody is
+  // running, and the executives have always graded the second thing. It is here
+  // because a show where every match died deserves to be told so, not because
+  // match quality is what the job is about.
+  const rated = night
+    .filter(e => e.type === 'segment-complete' && Number.isFinite(e.data && e.data.quality))
+    .map(e => e.data.quality);
+  const cardValue = rated.length
+    ? Math.round(rated.reduce((n, q) => n + q, 0) / rated.length)
+    : null;
+  const card = cardValue === null ? 'unrated'
+    : cardValue >= 60 ? 'strong'
+    : cardValue >= 40 ? 'solid'
+    : cardValue >= 26 ? 'thin'
+    : 'poor';
+
   const score = Math.max(0,
     (timing === 'on-time' ? 1 : timing === 'light' ? 0.5 : 0)
     + (lockerRoom === 'settled' ? 1 : lockerRoom === 'restless' ? 0.5 : 0)
     + (rosterUse === 'broad' ? 1 : rosterUse === 'narrow' ? 0.5 : 0)
+    + (card === 'strong' ? 0.5 : card === 'poor' ? -0.5 : 0)
     - (backstage === 'out of hand' ? 1 : backstage === 'noisy' ? 0.5 : 0)
     - breaches);
 
@@ -60,7 +78,7 @@ export function reviewShow(state) {
 
   return {
     grade, timing, over, lockerRoom, grudgeCount, rosterUse, used, roster, aired,
-    breaches, backstage, missed, walkouts, pulled,
+    breaches, backstage, missed, walkouts, pulled, card, cardValue,
   };
 }
 

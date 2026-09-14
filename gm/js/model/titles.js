@@ -10,6 +10,7 @@ import { nextId } from '../ids.js';
 import { remember } from './memory.js';
 import { BASE_TITLES, UNLOCKABLE_TITLES, titleTemplate } from '../data/titles.js';
 import { beltSlots, nextBelt } from './unlocks.js';
+import { noteThread } from './threads.js';
 import { upgrade, trustNeeded } from '../data/upgrades.js';
 
 function createTitle(template, championIds, week) {
@@ -219,6 +220,12 @@ export function settleTitleMatch(state, title, winnerIds, at = 0) {
     week: state.week, at, type: 'title-change',
     data: { titleId: title.id, championIds: [...winnerIds], formerIds },
   }));
+
+  // Taking a belt off somebody is the single clearest thing two people can
+  // have between them, and it is material for the rest of the year.
+  for (const winner of winnerIds) {
+    for (const former of formerIds) noteThread(state, winner, former, 'title-change', at);
+  }
   return { changed: true, title, formerIds };
 }
 

@@ -41,6 +41,8 @@ import { reviewShow } from './executives.js';
 import { createProgression, pointsEarnedBy, xpForShow, awardXp } from './progression.js';
 import { createFinance, settleWeek } from './finance.js';
 import { createMatch, addItem, remainingMinutes } from './show.js';
+import { isPromo, resolvePromo } from './promos.js';
+import { anticipationFor, matchQuality } from './rivalries.js';
 
 export const PHASES = { PREP: 'prep', LIVE: 'live', AFTER: 'after' };
 
@@ -243,6 +245,13 @@ export function completeSegment(state) {
     applyOutcome(state.wrestlers, item, winnerIds, fallIds);
   }
 
+  // What the match was, once it has happened. Seven ingredients and only two of
+  // them are how good the wrestlers are — the rest is what the GM built around
+  // them, which is the argument the whole rivalry layer is making.
+  const anticipation = item.type === 'match' ? anticipationFor(state, item) : null;
+  const quality = item.type === 'match' ? matchQuality(state, item, anticipation) : null;
+  if (quality) result.quality = quality.value;
+
   state.journal.push(createEntry({
     week: state.week,
     at,
@@ -253,6 +262,8 @@ export function completeSegment(state) {
       actualMinutes: result.actualMinutes,
       winnerId: result.winnerId || null,
       winnerIds: result.winnerIds || null,
+      quality: quality ? quality.value : null,
+      anticipation: anticipation ? anticipation.value : null,
     },
   }));
 
@@ -290,6 +301,15 @@ export function completeSegment(state) {
   // All of it went out on television, so wherever the GM was standing they
   // know — the one kind of incident presence cannot make you miss.
   result.at = at;
+
+  // A promo is the one segment where the GM sets the temperature rather than
+  // the outcome. It can stop being a promo, and when it does it arrives here
+  // exactly like a bell that turned into a fight.
+  if (isPromo(item)) {
+    const said = resolvePromo(state, item, at, roll);
+    if (said && said.incident) raise(state, said.incident);
+  }
+
   const moment = resolvePostMatch(state, item, result, state.show.items.indexOf(item), roll);
   if (moment && moment.incident) {
     moment.incident.at = at;

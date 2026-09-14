@@ -7,6 +7,7 @@
 // already in the save, and all the interface has to do is stop hiding them.
 import { el } from './dom.js';
 import { liveThreads, threadsFor } from '../model/threads.js';
+import { quadrantOf } from '../model/rivalries.js';
 import { nameOf } from '../model/wrestlers.js';
 import { wrestlerLink } from './links.js';
 
@@ -27,6 +28,13 @@ const PEAK_LINE = {
   booked: 'you put them in a ring together',
   match: 'they keep ending up in a ring together',
   ruling: 'you had to make a call about them',
+  // Tier 5's own kinds. A thread whose sharpest moment was a belt changing
+  // hands should say so rather than falling back to "it keeps going".
+  betrayal: 'one of them turned on the other',
+  'title-change': 'a belt changed hands between them',
+  injury: 'one of them put the other on the shelf',
+  interference: 'somebody got involved who was not in the match',
+  promo: 'it was said out loud, on television',
 };
 
 function headline(entry) {
@@ -60,6 +68,21 @@ function volume(state, entry) {
   return `${how} between them, ${when}`;
 }
 
+// The two things a rivalry is made of, drawn side by side so the gap between
+// them is the thing you see first. A long blue bar and no red is money without
+// bad blood; a long red bar and no blue is a problem nobody is paying to watch.
+function axes(entry) {
+  const quad = quadrantOf(entry);
+  const bar = (value, cls, label) => el('span', { class: `axis ${cls}`, title: `${label}: ${value}` },
+    el('i', { style: `width:${Math.max(3, Math.min(100, value * 2.6))}%` }));
+
+  return el('div', { class: 'thread-axes' },
+    el('span', { class: `thread-quad tone-${quad.tone}`, text: quad.label }),
+    bar(Math.max(0, entry.heat), 'axis-heat', 'Crowd'),
+    bar(Math.max(0, entry.hatred), 'axis-hate', 'Between them')
+  );
+}
+
 export function threadPanel(state) {
   const threads = liveThreads(state, 5);
   if (!threads.length) return null;
@@ -79,6 +102,7 @@ export function threadPanel(state) {
             ),
             el('span', { class: `thread-temp thread-${temp.tone}`, text: temp.word })
           ),
+          axes(entry),
           el('span', { class: 'thread-why', text: `${volume(state, entry)}. Where it turned: ${headline(entry)}.` })
         );
       })
@@ -102,6 +126,7 @@ export function threadList(state, wrestlerId) {
             wrestlerLink(state, otherId),
             el('span', { class: `thread-temp thread-${temp.tone}`, text: temp.word })
           ),
+          axes(entry),
           el('span', { class: 'thread-why', text: `${headline(entry)}.` })
         );
       })
