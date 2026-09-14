@@ -1277,17 +1277,26 @@ mistake three times and teach you to stop experimenting.
 XP is read off the journal once, when the show comes off the air. One source of
 truth, and it survives a migration.
 
-### What the tree took away
+### Every match type, from week one
 
-Two things that used to be free are now bought:
+Tag teams, triple threats, fatal four-ways, eight-person tags, battle royals
+and every stipulation are available from the first show. They were briefly
+purchases on the Booking branch and that was the wrong trade: a GM who cannot
+book a tag match is not a GM, and locking the vocabulary of the job behind a
+skill tree bought a tutorial beat at the cost of the fantasy.
 
-**Every match shape past one against one.** A new GM books singles matches. Tag
-teams, triple threats and fatal four-ways are the first three things on the
-Booking branch, and the submission stipulation is the fourth. This is on
-purpose: the most useful thing a new GM can learn is that in a multi-way only
-one side takes the fall — booking somebody into one is how you *use* them
-without *beating* them — and that lands much harder as an unlock than as an
-option that was always in the dropdown.
+What the Booking branch buys instead is **capacity** — how many people you can
+carry (18 → 60), how far ahead you can commit, contendership, and the
+main-event scene.
+
+The one thing it still relaxes is **who you may put on the same side**, which
+is a different question from what matches exist. At the bottom rung, free from
+week one, you can team a pair who already work as a unit — a named tie, or
+rapport of six. *Working Relationship* drops it to three, *Just Get Along* asks
+only for warmth, and *Forced Partnership* removes it. Forcing an incompatible
+team stays risky for good.
+
+### What the tree does take away
 
 **Length and belts.** `awardTrust()` no longer promotes you. Trust makes a rung
 on the broadcast ladder *available*; a point is what takes it. Head office
@@ -1300,19 +1309,39 @@ through, and keep every point their level would have earned. Taking something
 away from a GM who has been doing it for thirty weeks would be a bug wearing a
 design's clothes.
 
-### Who you are allowed to team
+### Rapport, not closeness
 
-A ladder that relaxes as you buy it. At level one you can only put two people
-together who already work as a unit — a named tie, or `rapport` of six.
-`rapport()` counts matches against each other as well as segments beside each
-other, deliberately unlike `closeness()`, which counts only same-side work:
-gating a pair's first tag team on closeness would be asking them to team before
-they were allowed to team. The roster generator seeds a tag team or two who
-were a unit before you arrived, so there is always somebody legal on day one.
+The tag gate measures `rapport()` rather than `closeness()`. Closeness counts
+only same-side work, so gating a pair's *first* tag team on it would ask them to
+team before they were allowed to team. Rapport counts matches against each other
+as well, and the roster generator seeds a team or two who were a unit before you
+arrived, so there is always somebody legal on day one.
 
-Working Relationship drops the bar to three. Just Get Along asks only for
-warmth. Forced Partnership removes it, and forcing an incompatible team stays
-risky for good.
+## Locker rooms
+
+A save is a world. A **locker room** is the other thing: the people, without any
+of the world they were in.
+
+**Keep this locker room** on the roster screen saves the roster you are playing
+to a shelf that outlives the promotion. A new promotion can start from it
+instead of from the seed, so the cast you spent sixty weeks building can walk
+into a fresh save with none of the history.
+
+The conversion is deliberately lossy in one direction. Everything a wrestler
+*is* travels — name, ability, all eleven traits, what they like working, and the
+tag teams and mentorships that make a locker room a shape rather than a list.
+Everything that happened *to* them stays behind: memories, grudges, morale,
+familiarity, record, who they were feuding with. **A roster arriving in a new
+promotion has not met you yet**, which is the whole point of taking it
+somewhere new.
+
+Ties travel by index rather than by id, because ids are per-save, and mentor /
+student is stored from the senior end because it is the one tie that is not the
+same thing from both sides.
+
+There is also **Copy as text** — plain JSON rather than base64, because a locker
+room is something you might want to open, hand-edit, diff or keep in a file, and
+there is nothing in it worth hiding. Paste one into the setup screen to load it.
 
 ### Reading people is a purchase
 

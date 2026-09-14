@@ -62,6 +62,10 @@ export function defaultSetup(seed) {
     // Belt renames, keyed by template key. A promotion recreating somebody
     // else's is going to want its own names on the wall.
     titleNames: {},
+    // A locker room loaded from the library instead of rolled. When this is
+    // set the seed stops deciding who is in the promotion and only decides
+    // the world around them.
+    roster: null,
   };
 }
 

@@ -16,55 +16,31 @@ import { feelingToward } from './memory.js';
 
 // ── booking ─────────────────────────────────────────────────────────────────
 
-// A preset appears once the upgrade that opens it is owned. Presets with no
-// entry here are not reachable yet by anybody; they are drawn on the board so
-// the player can see where the branch goes.
-const SHAPE_UNLOCK = {
-  tag: 'tag-team-wrestling',
-  triple: 'triple-threat',
-  fatal4: 'fatal-four-way',
-  'six-tag': 'six-person-tag',
-  'eight-tag': 'six-person-tag',
-  tag3: 'six-person-tag',
-  five: 'the-scramble',
-  six: 'the-scramble',
-  seven: 'the-scramble',
-  eight: 'the-scramble',
-  royal: 'battle-royal',
-};
-
-const STIPULATION_UNLOCK = {
-  submission: 'stipulation-submission-match',
-  hardcore: 'stipulation-hardcore-ladder',
-  ladder: 'stipulation-hardcore-ladder',
-  cage: 'stipulation-cage-last-man-standing',
-  lastman: 'stipulation-cage-last-man-standing',
-  ironman: 'iron-man-match',
-  'battle-royal': 'battle-royal',
-};
-
-export function shapesFor(state) {
-  return PRESETS.filter(p => has(state, SHAPE_UNLOCK[p.id]));
+// Every shape and every stipulation, from week one.
+//
+// These used to be purchases on the Booking branch. They are not any more: a
+// GM who cannot book a tag match is not a GM, and locking the vocabulary of
+// the job behind a skill tree bought a tutorial beat at the cost of the
+// fantasy. The branch expands what you can *carry* — roster, show length,
+// championships, how far ahead you can advertise — not what a match can be.
+export function shapesFor() {
+  return PRESETS;
 }
 
-export function canBuildShapes(state) {
-  return shapesFor(state).length > 0;
+export function canBuildShapes() {
+  return true;
 }
 
-// Singles is not an unlock. It is what a match is when you have not bought
-// anything, and there is no version of this game where you cannot book one.
-export function stipulationsFor(state) {
-  return MATCH_TYPES.filter(t => t.id === 'singles' || has(state, STIPULATION_UNLOCK[t.id]));
+export function stipulationsFor() {
+  return MATCH_TYPES;
 }
 
-export function canUseStipulation(state, typeId) {
-  return typeId === 'singles' || has(state, STIPULATION_UNLOCK[typeId]);
+export function canUseStipulation() {
+  return true;
 }
 
-// Custom arrangements are the Scramble's territory: once you can put eight
-// sides in a ring, saying how they divide is the same permission.
-export function canCustomiseShape(state) {
-  return has(state, 'the-scramble');
+export function canCustomiseShape() {
+  return true;
 }
 
 // ── who may be put on a side together ───────────────────────────────────────
@@ -72,6 +48,10 @@ export function canCustomiseShape(state) {
 // The ladder relaxes as the branch is bought, which is the point: a new GM can
 // only team people who already work together, and by the late game can put
 // anybody with anybody and take what comes.
+// The bottom rung has no upgrade on it. Booking a tag match is part of the
+// job, so what the branch buys is not the match — it is permission to put
+// two people together who would not naturally go. The ladder relaxes from a
+// pair who already work as a unit all the way to anybody at all.
 export const TEAM_GATES = [
   { id: 'forced-partnership', floor: 0, warmth: false,
     say: 'Anybody, regardless.' },
@@ -79,17 +59,17 @@ export const TEAM_GATES = [
     say: 'Any pair who feel warmly toward one another.' },
   { id: 'working-relationship', floor: 3, warmth: false,
     say: 'A pair with some history together.' },
-  { id: 'tag-team-wrestling', floor: 6, warmth: false, tie: true,
+  { id: null, floor: 6, warmth: false, tie: true,
     say: 'A pair who already work as a unit.' },
 ];
 
 export function teamGate(state) {
-  return TEAM_GATES.find(g => has(state, g.id)) || null;
+  return TEAM_GATES.find(g => g.id === null || has(state, g.id)) || null;
 }
 
 export function teamGateSay(state) {
   const gate = teamGate(state);
-  return gate ? gate.say : 'Tag team wrestling is not unlocked.';
+  return gate ? gate.say : 'A pair who already work as a unit.';
 }
 
 // Whether a side of two or more may be put together. Returns null when it may,

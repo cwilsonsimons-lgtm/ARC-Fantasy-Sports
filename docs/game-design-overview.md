@@ -235,6 +235,7 @@ Honest status, because a roadmap that ignores what exists is fiction.
 | PPVs | **Named only** — every twelve weeks, +30 minutes, no distinct format |
 | **The live rundown running long** | **Not built.** The hook exists and is unused |
 | **Requests / negotiation** | **Not built.** Whole branch |
+| Locker rooms — keep a roster, load it into another promotion | **Built** |
 | **Scouting, the indie pool, the living outside world** | **Not built.** Inward half only |
 | **Open challenges, the race to Gorilla** | **Not built** |
 | **Sabotage** | **Not built** |
@@ -380,7 +381,13 @@ than a new pillar. That is the test.
 
 The most useful section. Nine of them, hardest first.
 
-### 8.1 The match-type lock directly contradicts this brief — and the brief wins
+### 8.1 The match-type lock — resolved, and un-gated
+
+> **Settled.** Every match type and shape is now available from week one. The
+> Booking branch was rewritten into capacity — roster size 18 → 60, how far
+> ahead you can commit, contendership, the main-event scene — and the only
+> thing it still relaxes is *who you may put on the same side*. What follows is
+> the reasoning, kept because the argument is worth having on the record.
 
 **The problem.** The brief says: *"All normal match types should be available
 from the beginning. I do not want basic match types arbitrarily locked behind
@@ -406,8 +413,9 @@ it is a restriction on *who* you may team, not on *what matches exist*, which
 is a different thing and one the brief explicitly endorses (*Forced
 Partnership*).
 
-**Migration.** Existing saves already receive the Booking upgrades free; after
-this they are granted to everybody and the nodes come off the board.
+**Migration.** Done. The ten match-type nodes came off the board, the catalogue
+went from 113 upgrades to 108, and nothing had to be granted to anybody because
+nothing is gated any more.
 
 ### 8.2 "You do not control the show" versus "make live changes to the show"
 

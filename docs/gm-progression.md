@@ -732,92 +732,55 @@ room's goodwill in one night and you will spend a month paying it back.**
 
 # 🔵 BOOKING
 
-*What can you put on television?*
+*What can you carry?*
 
-The largest branch, and the one that most obviously answers "what can I now
-do?" It is also the branch that takes things away from the current build:
-multi-person matches, battle royals, stipulations and tag teams are all
-unrestricted today.
+**This branch used to gate match types, and no longer does.** Tag teams, triple
+threats, fatal four-ways, battle royals and every stipulation are available
+from week one, because a GM who cannot book a tag match is not a GM. Locking
+the vocabulary of the job behind a skill tree bought a tutorial beat at the
+cost of the fantasy, and that was the wrong trade.
 
-The design case for gating them is that **a match shape is a tool for solving a
-booking problem**, and the game is better when you acquire those tools one at a
-time and learn what each is for. The most important thing a new GM can learn is
-the multi-way fall rule — in a triple threat only one side takes the loss, so
-booking somebody into a multi-way is how you *use* them without *beating* them.
-That is a genuine insight, and it lands much harder as an unlock at level 2
-than as an option that was always in the dropdown.
+What the branch buys instead is **capacity**: how many people you can carry,
+how far ahead you can commit, how many stories you can run at once, and
+permission to put two people together who would not naturally go.
 
 ### The tag-team ladder
 
-Explicitly a progression that relaxes over time, exactly as specified:
+The bottom rung has no upgrade on it. Booking a tag match is free; what the
+branch relaxes is *who you may put on the same side*.
 
-| Unlock | Who you may team | Level |
+| Rung | Who you may team | Level |
 |---|---|---|
-| **Tag Team Wrestling** | a named tie, or rapport ≥ 6 | 1 |
+| *(free from week one)* | a named tie, or rapport ≥ 6 | 1 |
 | **Working Relationship** | rapport ≥ 3 | 5 |
 | **Just Get Along** | any pair with positive warmth either way | 9 |
 | **Forced Partnership** | any two, regardless — with consequences | 13 |
 
-**Rapport, not closeness.** `closeness()` already exists and is the wrong
-measure here: it counts only same-side work, so gating a pair's *first* tag
-team on it would be asking them to team before they are allowed to team.
-`rapport()` counts matches against each other as well — two people who have
-wrestled a singles match know each other well enough to try it — and it is
-reachable from week one, because the roster generator seeds a tag team or two
-who were already a unit before you took the job.
-
-Forcing an incompatible team never stops being risky. Two wrestlers with a live
-feud thread who are booked as partners will miscommunicate, argue on camera,
-and have a meaningful chance of the match ending in one walking out on the
-other — which is, of course, a story, and one of the better ones the game can
-tell.
+**Rapport, not closeness.** `closeness()` counts only same-side work, so gating
+a pair's *first* tag team on it would ask them to team before they were allowed
+to team. `rapport()` counts matches against each other as well, and the roster
+generator seeds a team or two who were already a unit, so there is always
+somebody legal on day one.
 
 ### Foundation
 
-**Tag Team Wrestling** — two on two
-*Two people who trust each other, against two more.*
-**Effect:** Unlocks `sides: [2,2]`. Both members of a side must have closeness
-≥ 10. Teaming builds `teamed` on the relationship, which is the fastest legal
-route to a tie forming.
-**Cost 1** · Requires — · Level 1 · Trust —
-
-**Triple Threat** — three sides, one fall
-*Somebody has to lose. It doesn't have to be either of the other two.*
-**Effect:** Unlocks `sides: [1,1,1]`. Introduces the fall rule: `decideFall()`
-picks which side eats the loss, and the third side records no defeat at all.
-The tutorial text should say this out loud.
-**Cost 1** · Requires — · Level 2 · Trust —
-
-**Stipulation: Submission Match** — a finish with no count
-*No pinfalls. It ends when somebody quits.*
-**Effect:** Unlocks the Submission match type (min 10 minutes). Increases the
-chance of the *submission held too long* post-match outcome, which is one of
-the game's best incident generators.
+**Room For More** — carry twenty-two
+*Four more people who want to be on television.*
+**Effect:** Roster capacity 18 → 22. Every one of them is a wage, an opinion
+about the card, and somebody who notices when they are left off it.
 **Cost 1** · Requires — · Level 3 · Trust —
 
-**Fatal Four-Way** — four sides
-**Effect:** Unlocks `sides: [1,1,1,1]`. Three of four wrestlers take no loss.
-**Cost 2** · Requires Triple Threat · Level 4 · Trust —
-
 **Working Relationship** — relax the tag gate
-**Effect:** Tag teams may be formed between wrestlers with closeness ≥ 5 and
-warmth in both directions.
-**Cost 1** · Requires Tag Team Wrestling · Level 5 · Trust —
+**Effect:** Tag teams may be formed between wrestlers with rapport ≥ 3.
+**Cost 1** · Requires — · Level 5 · Trust —
 
 ### Working
 
-**Six-Person Tag** — three a side, and four
-**Effect:** Unlocks `sides: [3,3]` and `[4,4]`, and uneven multi-man sides.
-Six- and eight-person tags are the cheapest way to get bodies on television
-inside a short window, which makes them the roster-use answer for a GM stuck on
-the hour.
-**Cost 2** · Requires Working Relationship · Level 6 · Trust —
-
-**Stipulation: Hardcore & Ladder** — weapons and height
-**Effect:** Unlocks Hardcore (min 8) and Ladder (min 12). Both raise injury
-chance meaningfully. A wrestler injured in a stipulation you chose files a
-memory about it.
-**Cost 2** · Requires Stipulation: Submission · Level 7 · Trust —
+**More Room Still** — carry twenty-eight
+**Effect:** Roster capacity 22 → 28. Past twenty-something the card stops being
+able to hold everybody every week, and who sits at home becomes a weekly
+decision rather than an occasional one.
+**Cost 2** · Requires Room For More · Level 7 · **Trust: Fine**
 
 **Number One Contender** — a match that creates a debt
 *The winner gets a title shot. You have now told the audience that.*
@@ -834,11 +797,6 @@ that persists.
 warmth in at least one direction.
 **Cost 1** · Requires Working Relationship · Level 9 · Trust —
 
-**The Scramble** — five, six, seven, eight ways
-**Effect:** Unlocks `sides` up to `MAX_SIDES = 8` for singles-per-side
-arrangements, and mixed arrangements up to 8 sides.
-**Cost 2** · Requires Fatal Four-Way · Level 10 · Trust —
-
 **Open Challenge** — book a slot without an opponent
 *"Anybody in the back."*
 **Effect:** Book a segment with one named wrestler and an empty opposite side.
@@ -849,82 +807,72 @@ is a possible outcome**, and it is embarrassing.
 **Cost 2** · Requires Number One Contender · Level 11 · Trust —
 
 **Advertise It** — announce it in advance
-*It's in the graphics. It's happening.*
+*It is in the graphics. It is happening.*
 **Effect:** Announce a match one to four weeks ahead. Advertised matches
 generate anticipation the executive review counts positively, and the audience
-notices. An advertised match that does not happen is a **breach**, which the
-existing `reviewShow()` already punishes hard. Advertising a match involving a
-wrestler with an unresolved grudge against their announced opponent is a
-gamble.
+notices. An advertised match that does not happen is a **breach**. Advertising
+a match involving a wrestler with an unresolved grudge against their announced
+opponent is a gamble.
 **Cost 2** · Requires — · Level 12 · Trust —
 
 ### Established
 
+**A Full Locker Room** — carry thirty-six
+**Effect:** Roster capacity 28 → 36. At this size the undercard is a division of
+its own, and the people in it know exactly how far from the main event they are.
+**Cost 3** · Requires More Room Still · Level 13 · **Trust: Solid**
+
 **Forced Partnership** — team anybody
-*They don't have to like it.*
-**Effect:** Removes the relationship gate on tag teams entirely. Partners with
-a live feud thread will visibly fail to cooperate; a partnership between active
-enemies has a real chance of one abandoning the other mid-match, which files
-the `abandoned` thread event (weight +6 — one of the heaviest in the game) and
-creates an opportunity.
+*They do not have to like it.*
+**Effect:** Removes the relationship gate on tag teams entirely. Partners with a
+live feud thread will visibly fail to cooperate; a partnership between active
+enemies has a real chance of one abandoning the other mid-match, which files the
+`abandoned` thread event — one of the heaviest in the game — and creates an
+opportunity.
 **Cost 3** · Requires Just Get Along · Level 13 · Trust —
-
-**Stipulation: Cage & Last Man Standing** — no escape and no count-out
-**Effect:** Unlocks Steel Cage (min 12) and Last Man Standing (min 14). A cage
-match suppresses run-ins and saves entirely, which means it is the one match
-type where a beatdown finishes what it started.
-**Cost 2** · Requires Stipulation: Hardcore & Ladder · Level 14 · Trust —
-
-**Battle Royal** — everybody
-*No limit.*
-**Effect:** Unlocks the open-field Battle Royal shape. No cap on participants.
-Only the winner records a win; **nobody records a loss**, which makes it the
-single best tool in the game for putting the entire roster on television in one
-segment without damaging anyone. It also, at high chaos, generates more
-post-match incidents than any other match type.
-**Cost 3** · Requires The Scramble · Level 15 · Trust —
 
 **Protect The Fall** — choose who loses
 *You decide who eats it. Everyone else goes home whole.*
-**Effect:** In any match with three or more sides, you nominate which side
-takes the fall, overriding `decideFall()`'s weighted draw. The nominated side's
-wrestlers know they were chosen — a wrestler protected too often stops
-believing their wins mean anything, and a wrestler nominated three times in six
-weeks files an `opportunity` grudge whether or not they lost anything on paper.
-**Cost 3** · Requires Fatal Four-Way · Level 16 · Trust —
+**Effect:** In any match with three or more sides, you nominate which side takes
+the fall, overriding the weighted draw. The nominated side knows they were
+chosen — a wrestler protected too often stops believing their wins mean
+anything, and one nominated three times in six weeks files an `opportunity`
+grudge whether or not they lost anything on paper.
+**Cost 3** · Requires — · Level 16 · Trust —
 
-**Iron Man Match** — the long one
-**Effect:** Unlocks Iron Man (min 25 minutes). Effectively impossible below a
-90-minute broadcast, which is why it sits here.
-**Cost 3** · Requires Stipulation: Cage & Last Man Standing · Level 18 · **Trust: Fine** *(90-minute broadcast required in practice)*
+**Everybody In** — carry forty-five
+**Effect:** Roster capacity 36 → 45. More wrestlers than a three-hour show can
+use, which is the point: from here on, roster size is a problem you chose.
+**Cost 3** · Requires A Full Locker Room · Level 18 · **Trust: Strong**
+
+**Book It Now** — commit further ahead
+*The card for the first week of next month, today.*
+**Effect:** Extends advertising and scheduling from four weeks ahead to twelve.
+Everything you commit to that far out is a promise with a very long time to go
+wrong in — an injury, a walkout, a wrestler who has stopped speaking to their
+announced opponent.
+**Cost 2** · Requires Advertise It · Level 19 · **Trust: Strong**
 
 ### 🏆 Capstones
 
 **The Main Event Scene** — designate a top tier
 *These four are the show. Everybody knows it, including them.*
 **Effect:** Nominate four to six wrestlers as the main event scene. They gain
-automatic contendership logic (title shots route through them), the executive
-review weights their usage heavily, and the audience treats their matches as
-main events regardless of card position.
+automatic contendership logic, the executive review weights their usage heavily,
+and the audience treats their matches as main events regardless of card
+position.
 **The cost:** everyone in the scene now expects to be in the main event every
-week. Being on the card but not in the main event files a small `opportunity`
-memory each time. **Dropping someone out of the scene is a critical incident**,
-guaranteed, with the wrestler and with everyone tied to them. You have created
-a hierarchy, and hierarchies have politics.
+week. Being on the card but not in it files a small `opportunity` memory each
+time. **Dropping somebody out of the scene is a critical incident**, guaranteed,
+with them and with everybody tied to them.
 **Cost 4** · Requires Number One Contender, Advertise It · Level 20 · **Trust: Solid**
 
-**Book The Long Game** — plan an arc and be held to it
-*Eight weeks. You've written down what happens in week eight.*
-**Effect:** Plot a multi-week storyline: two to four participants, three to
-eight weeks, with checkpoints you define (a betrayal in week 3, a contender
-match in week 5, a blow-off in week 8). The game shows the arc on the calendar
-and **the executive review grades you against your own plan** — hitting
-checkpoints pays large XP and trust, missing them costs more than never having
-planned. Wrestlers in a plotted arc who are booked outside it notice.
-An arc cannot be abandoned; it can only be failed.
-**Cost 5** · Requires The Main Event Scene · Level 24 · **Trust: Strong** · *Locked by Doctrine: The Desk*
+**A Roster Of Sixty** — carry everybody
+**Effect:** Roster capacity 45 → 60. A locker room nobody can know all of,
+which is the last thing the presence layer has to say: at sixty people there is
+always somebody you have not spoken to in a month, and they have noticed.
+**Cost 5** · Requires Everybody In · Level 24 · **Trust: Trusted**
 
----
 # 🟠 PRODUCTION / GORILLA
 
 *Can you run the show live?*

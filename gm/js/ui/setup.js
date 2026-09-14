@@ -23,6 +23,8 @@ import { UPGRADES } from '../data/upgrades.js';
 import { TRAITS, ABILITIES } from '../model/traits.js';
 import { ARCHETYPES } from '../data/archetypes.js';
 import { resetIds } from '../ids.js';
+import { listRosters, readRoster, keepFile, removeRoster, describe } from '../rosters.js';
+import { toRosterFile, fromText, toText, valid as validRoster } from '../model/roster-file.js';
 
 const ALIGNMENTS = ['Face', 'Heel', 'Neutral'];
 const ROLES = ['Main event', 'Upper card', 'Midcard', 'Opener', 'Prospect'];
@@ -34,6 +36,9 @@ let importText = '';
 let importError = '';
 let openRoster = false;
 let editing = null;   // index into the preview, or 'added:N'
+let rosterText = '';
+let rosterError = '';
+let rosterSaved = '';
 const writingArchetype = new Set();   // keys whose archetype is being typed
 
 function randomSeed() {
@@ -185,6 +190,7 @@ export function renderSetup(state, navigate) {
       gmPanel(),
       beltPanel(),
       moneyPanel(),
+      lockerRoomPanel(),
       sharePanel()
     ),
 
@@ -366,7 +372,7 @@ function sharePanel() {
     }),
     shareCode
       ? el('textarea', {
-          class: 'share-code', rows: 3, readonly: true, value: shareCode,
+          class: 'share-code setup-code', rows: 3, readonly: true, value: shareCode,
           onClick: e => e.target.select(),
         })
       : null,
@@ -737,4 +743,126 @@ function recordBlock(person) {
   return editorSection('Record', 'Where they stand before your first show.',
     el('div', { class: 'editor-grid' }, box('wins', 'Wins'), box('losses', 'Losses'))
   );
+}
+
+// ---------------------------------------------------------------- the library
+
+// Locker rooms you have kept. A roster outlives the promotion it came from:
+// save the one you spent sixty weeks building, then start a fresh promotion
+// with the same people and none of the history.
+function lockerRoomPanel() {
+  const kept = listRosters();
+  const loaded = setup.roster;
+
+  return panel('Locker rooms', 'Rosters you kept, and rosters somebody sent you.',
+    loaded
+      ? el('div', { class: 'lr-loaded' },
+          el('span', { class: 'lab', text: 'Loaded' }),
+          el('b', { text: loaded.name || 'Locker room' }),
+          el('span', { class: 'muted', text: describe(loaded) }),
+          el('button', {
+            type: 'button', class: 'link', text: 'Use the seed instead',
+            onClick: () => change(() => { setup.roster = null; }),
+          })
+        )
+      : el('p', { class: 'setup-note', text:
+          'Nothing loaded. The roster below is the one the seed rolled.' }),
+
+    kept.length
+      ? el('ul', { class: 'lr-list' }, kept.map(entry => el('li', { class: 'lr-row' },
+          el('div', {},
+            el('b', { text: entry.name }),
+            el('span', { class: 'muted', text:
+              `${entry.count} wrestlers${entry.teams ? ` · ${entry.teams} team${entry.teams === 1 ? '' : 's'}` : ''}`
+              + `${entry.source ? ` · ${entry.source}` : ''}` })
+          ),
+          el('div', { class: 'lr-actions' },
+            el('button', {
+              type: 'button', class: 'link', text: 'Load',
+              onClick: () => change(() => {
+                const file = readRoster(entry.id);
+                if (file) setup.roster = file;
+              }),
+            }),
+            el('button', {
+              type: 'button', class: 'link', text: 'Forget',
+              onClick: () => change(() => { removeRoster(entry.id); }),
+            })
+          )
+        )))
+      : el('p', { class: 'setup-note', text:
+          'No locker rooms kept yet. Save one from the roster screen of a save '
+          + 'you are playing, or paste one in below.' }),
+
+    // Keeping the roster currently on this screen, whether it was rolled,
+    // edited, or written from nothing.
+    el('button', {
+      type: 'button', class: 'btn', text: 'Keep the roster below',
+      onClick: () => {
+        const people = kept0();
+        const entry = keepFile(toRosterFile(people, setup.promotion || 'Locker room'), 'from setup');
+        rosterSaved = entry ? `Kept as "${entry.name}".` : 'Could not keep it — storage is full.';
+        rebuild();
+        notify();
+      },
+    }),
+    rosterSaved ? el('p', { class: 'setup-note', text: rosterSaved }) : null,
+
+    el('div', { class: 'setup-import' },
+      el('label', { class: 'lab', text: 'Paste a locker room' }),
+      el('textarea', {
+        class: 'share-code', rows: 3, placeholder: 'Paste the text of a locker room',
+        value: rosterText,
+        onInput: e => { rosterText = e.target.value; },
+      }),
+      el('div', { class: 'lr-actions' },
+        el('button', {
+          type: 'button', class: 'btn', text: 'Load it',
+          onClick: () => {
+            const file = fromText(rosterText);
+            if (!file) {
+              rosterError = 'That is not a locker room this build understands.';
+              notify();
+              return;
+            }
+            rosterError = '';
+            rosterText = '';
+            change(() => {
+              setup.roster = file;
+              keepFile(file, 'pasted in');
+            });
+          },
+        }),
+        loaded
+          ? el('button', {
+              type: 'button', class: 'link', text: 'Copy this one as text',
+              onClick: () => { rosterText = toText(loaded); notify(); },
+            })
+          : null
+      ),
+      rosterError ? el('p', { class: 'over', text: rosterError }) : null
+    )
+  );
+}
+
+// The roster as it currently stands on this screen, as whole wrestlers rather
+// than preview rows — which is what a locker-room file is made of.
+function kept0() {
+  return kept().map(person => ({
+    id: person.base ? person.base.id : `w_new_${person.key}`,
+    name: person.name,
+    gender: person.gender,
+    alignment: person.alignment,
+    role: person.role,
+    archetype: person.archetype,
+    archetypeId: person.base ? person.base.archetypeId : null,
+    bio: person.edit.bio !== undefined ? person.edit.bio : (person.base ? person.base.bio : ''),
+    photo: null,
+    baseline: person.base ? person.base.baseline : 55,
+    stats: { ...(person.base ? person.base.stats : { inRing: 55, charisma: 55 }), ...(person.edit.stats || {}) },
+    traits: { ...(person.base ? person.base.traits : {}), ...(person.edit.traits || {}) },
+    matchTypes: person.base ? person.base.matchTypes : {},
+    record: person.edit.record || (person.base ? person.base.record : { wins: 0, losses: 0 }),
+    relationships: person.base ? person.base.relationships : {},
+  }));
 }

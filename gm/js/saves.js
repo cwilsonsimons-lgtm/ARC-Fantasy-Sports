@@ -10,6 +10,7 @@ import { generateRoster, generatePromotion } from './model/generate.js';
 import { makeAirSchedule } from './model/calendar.js';
 import { seedTitles } from './model/titles.js';
 import { createGame } from './model/game.js';
+import { fromRosterFile } from './model/roster-file.js';
 
 const INDEX_KEY = 'wgm_index_v1';
 const SAVE_PREFIX = 'wgm_save_';
@@ -81,7 +82,14 @@ export function createSave(seedOrSetup = randomSeed()) {
   };
   if (setup && setup.airNight) air.airNight = setup.airNight;
 
-  const wrestlers = applyRosterEdits(generateRoster(rng, setup && setup.rosterSize), setup);
+  // A promotion can start from a locker room you kept rather than from the
+  // seed. The seed still decides everything else — the promotion's name, who
+  // is already hurt, the history between people the file did not carry — so a
+  // loaded roster is a cast, not a save.
+  const loaded = setup && setup.roster ? fromRosterFile(setup.roster) : null;
+  const wrestlers = loaded && loaded.length >= 4
+    ? loaded
+    : applyRosterEdits(generateRoster(rng, setup && setup.rosterSize), setup);
   const titles = seedTitles(wrestlers, rng, setup && setup.titles, setup && setup.titleNames);
 
   const state = {

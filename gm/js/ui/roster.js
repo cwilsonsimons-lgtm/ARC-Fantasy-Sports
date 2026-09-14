@@ -9,6 +9,9 @@ import { moodWord, moodClass } from './mood.js';
 import { bookable } from '../model/morale.js';
 import { reinstate, indefinitelySuspended } from '../model/discipline.js';
 import { wrestlerLink } from './links.js';
+import { notify } from '../store.js';
+import { saveRoster } from '../rosters.js';
+import { toRosterFile, toText } from '../model/roster-file.js';
 
 export function renderRoster(state) {
   const rows = state.wrestlers.map(w =>
@@ -51,6 +54,7 @@ export function renderRoster(state) {
   return el('section', {},
     el('h2', { text: `Roster (${state.wrestlers.length})` }),
     el('p', { class: 'muted', text: 'Click any name to open their card. Demeanour is how they seem to you, never a number.' }),
+    keepBar(state),
     held.length
       ? el('div', { class: 'notice warn' },
           `${held.length === 1 ? 'One wrestler is' : `${held.length} wrestlers are`} suspended indefinitely. `
@@ -69,5 +73,53 @@ export function renderRoster(state) {
       ),
       el('tbody', {}, rows)
     )
+  );
+}
+
+// ---------------------------------------------------------------- keeping it
+
+// Interface state: what the last attempt to keep this roster said, and whether
+// the text copy is open.
+let kept = '';
+let showText = '';
+
+// Take this locker room with you.
+//
+// The people travel; the world does not. What gets kept is who they are — name,
+// ability, personality, tastes, and the teams and mentorships that make the
+// room a shape — and what gets left behind is everything that happened to them
+// here. A roster dropped into a new promotion has not met that GM yet.
+function keepBar(state) {
+  return el('div', { class: 'keep-bar' },
+    el('button', {
+      type: 'button', class: 'btn',
+      text: 'Keep this locker room',
+      title: 'Save the roster so a future promotion can start with these people.',
+      onClick: () => {
+        const entry = saveRoster(state.wrestlers, state.promotion.promotion, `week ${state.week}`);
+        kept = entry
+          ? `Kept. "${entry.name}" is on the shelf for any new promotion.`
+          : 'Could not keep it — browser storage is full.';
+        showText = '';
+        notify();
+      },
+    }),
+    el('button', {
+      type: 'button', class: 'link',
+      text: showText ? 'Hide the text' : 'Copy as text',
+      title: 'For moving a locker room to another browser, or sending it to somebody.',
+      onClick: () => {
+        showText = showText ? '' : toText(toRosterFile(state.wrestlers, state.promotion.promotion));
+        kept = '';
+        notify();
+      },
+    }),
+    kept ? el('span', { class: 'muted', text: kept }) : null,
+    showText
+      ? el('textarea', {
+          class: 'share-code keep-text', rows: 4, readonly: true, value: showText,
+          onClick: e => e.target.select(),
+        })
+      : null
   );
 }

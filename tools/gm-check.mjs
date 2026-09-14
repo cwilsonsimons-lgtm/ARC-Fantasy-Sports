@@ -380,7 +380,7 @@ for (const [key, field, sign, why] of EFFECTS) {
   const netw = await mod('model/network.js');
 
   const catalogue = cat.UPGRADES;
-  check(catalogue.length === 113, 'the whole catalogue is on the board',
+  check(catalogue.length === 108, 'the whole catalogue is on the board',
     `${catalogue.length} upgrades, ${catalogue.reduce((n, u) => n + u.cost, 0)} points`);
   check(catalogue.every(u => (u.requires || []).every(r => cat.upgrade(r))),
     'every prerequisite names an upgrade that exists');
@@ -395,19 +395,23 @@ for (const [key, field, sign, why] of EFFECTS) {
   fresh.gm = prog.createProgression();
 
   check(prog.progression(fresh).points === 3, 'a new GM starts with three points');
-  check(unlocks.shapesFor(fresh).length === 0, 'and cannot book anything but a singles match');
-  check(unlocks.stipulationsFor(fresh).length === 1, 'with no stipulation to put on it');
+  // Every shape and every stipulation, from week one. This used to be the
+  // opposite and it was the wrong trade.
+  check(unlocks.shapesFor(fresh).length >= 11, 'and can book any shape of match from week one',
+    `${unlocks.shapesFor(fresh).length} shapes`);
+  check(unlocks.stipulationsFor(fresh).length >= 8, 'with every stipulation available',
+    `${unlocks.stipulationsFor(fresh).length} stipulations`);
+  check(unlocks.teamGate(fresh) !== null, 'and can put two people on the same side');
   check(unlocks.broadcastMinutes(fresh) === 60, 'on an hour of television');
   check(netw.runtimeFor(fresh) === 60, 'which is what the show is built against');
 
   // Buying is the only way points leave the pool, and it obeys the gates.
-  check(!prog.canBuy(fresh, 'fatal-four-way'), 'a level-4 upgrade is out of reach at level 1');
-  check(prog.blockers(fresh, 'fatal-four-way').length >= 2,
-    'and the board can say exactly why', prog.blockers(fresh, 'fatal-four-way').map(b => b[0]).join(', '));
-  check(prog.buy(fresh, 'tag-team-wrestling'), 'a level-1 upgrade can be bought');
+  check(!prog.canBuy(fresh, 'more-room-still'), 'a level-7 upgrade is out of reach at level 1');
+  check(prog.blockers(fresh, 'more-room-still').length >= 2,
+    'and the board can say exactly why', prog.blockers(fresh, 'more-room-still').map(b => b[0]).join(', '));
+  check(prog.buy(fresh, 'know-your-locker-room'), 'a level-1 upgrade can be bought');
   check(prog.progression(fresh).points === 2, 'and it costs what it says');
-  check(unlocks.shapesFor(fresh).some(p => p.id === 'tag'), 'tag team wrestling appears on the builder');
-  check(!prog.buy(fresh, 'tag-team-wrestling'), 'nothing can be bought twice');
+  check(!prog.buy(fresh, 'know-your-locker-room'), 'nothing can be bought twice');
 
   // The broadcast ladder is trust to open and a point to take.
   fresh.network.trust = 40;
@@ -446,7 +450,6 @@ for (const [key, field, sign, why] of EFFECTS) {
   // The tag ladder relaxes, and refuses with a sentence rather than a boolean.
   const pair = playSeason(31).state;
   pair.gm = prog.createProgression();
-  prog.buy(pair, 'tag-team-wrestling');
   const strangers = [pair.wrestlers[0].id, pair.wrestlers[1].id];
   const refusal = unlocks.teamRefusal(pair, pair.wrestlers, strangers);
   check(typeof refusal === 'string' || refusal === null,
@@ -726,6 +729,86 @@ for (const [key, field, sign, why] of EFFECTS) {
     `${quality.value} -> ${rushed.value}`);
 }
 
+// ---- locker rooms ----
+//
+// A roster file is the people without the world. What has to hold is that
+// everything they *are* travels and everything that happened *to* them does
+// not — a locker room dropped into a new promotion has not met that GM.
+{
+  const rf = await mod('model/roster-file.js');
+  const saves = await mod('saves.js');
+  const setupData = await mod('data/setup.js');
+
+  const lived = playSeason(3141).state;
+  // Make sure there is something to leave behind.
+  const someone = lived.wrestlers.find(w => (w.memories || []).length) || lived.wrestlers[0];
+  const teamed = lived.wrestlers.find(w =>
+    Object.values(w.relationships || {}).some(r => r.tie === 'tag-team'));
+
+  const file = rf.toRosterFile(lived.wrestlers, 'The Kept Room');
+  check(rf.valid(file), 'a live roster becomes a locker-room file', rf.describe(file));
+  check(file.wrestlers.length === lived.wrestlers.length, 'with everybody in it');
+  check(file.wrestlers.every(w => w.name && w.traits && w.stats),
+    'and everybody arrives whole');
+  check(!JSON.stringify(file).includes('memories'), 'memories do not travel');
+  check(!JSON.stringify(file).includes('grudges'), 'neither do grudges');
+  if (teamed) {
+    check((file.ties || []).some(t => t.tie === 'tag-team'),
+      'a tag team travels, because it is part of who they are',
+      `${(file.ties || []).length} ties`);
+  }
+  // One entry per pair, not two.
+  const pairs = new Set((file.ties || []).map(t => `${Math.min(t.a, t.b)}|${Math.max(t.a, t.b)}`));
+  check(pairs.size === (file.ties || []).length, 'and travels once rather than twice');
+
+  const back = rf.fromRosterFile(file);
+  check(back && back.length === file.wrestlers.length, 'the file becomes whole wrestlers again');
+  check(back.every(w => Object.keys(w.traits).length === 11),
+    'with all eleven traits, whatever the file carried');
+  check(back.every(w => w.memories.length === 0 && w.grudges.length === 0 && w.familiarity === 0),
+    'and none of the history — they have not met you');
+  check(new Set(back.map(w => w.id)).size === back.length, 'and nobody shares an id');
+  const names = new Set(lived.wrestlers.map(w => w.name));
+  check(back.every(w => names.has(w.name)), 'the same people, by name');
+
+  // Ties are rebuilt by index, and mentor/student is not symmetric.
+  const mentored = back.find(w => Object.values(w.relationships).some(r => r.tie === 'mentor'));
+  if (mentored) {
+    const studentId = Object.entries(mentored.relationships).find(([, r]) => r.tie === 'mentor')[0];
+    const student = back.find(w => w.id === studentId);
+    check(student && student.relationships[mentored.id].tie === 'student',
+      'a mentorship arrives pointing the right way round');
+  }
+
+  // Text is the portable form.
+  const text = rf.toText(file);
+  const reread = rf.fromText(text);
+  check(reread && reread.wrestlers.length === file.wrestlers.length,
+    'a locker room survives being turned into text and back');
+  check(rf.fromText('not a locker room') === null, 'and nonsense is refused rather than half-loaded');
+  check(rf.fromText(JSON.stringify({ v: 99, wrestlers: [{ name: 'x' }] })) === null,
+    'as is a file from a build that does not exist yet');
+  check(rf.fromRosterFile({ v: 1, wrestlers: [] }) === null, 'and an empty one');
+
+  // And the whole point: a new promotion built on a kept locker room.
+  const started = saves.createSave({
+    ...setupData.defaultSetup(2718),
+    roster: file,
+    titles: ['world'],
+  }).state;
+  check(started.wrestlers.length === file.wrestlers.length,
+    'a new promotion can start from a kept locker room',
+    `${started.wrestlers.length} wrestlers`);
+  check(started.wrestlers.every(w => (w.memories || []).length === 0),
+    'and nobody in it is carrying anything from the last one');
+  check(started.week === 1, 'in week one');
+  check(started.titles.length === 1 && started.titles[0].championIds.length === 1,
+    'with a champion crowned out of the new room');
+  check(started.promotion.promotion !== lived.promotion.promotion
+    || file.wrestlers.length === 0,
+    'under a different promotion', started.promotion.promotion);
+}
+
 if (process.argv.includes('--model')) {
   console.log(failures.length ? `\n${failures.length} FAILING:\n- ${failures.join('\n- ')}` : '\nall green');
   process.exit(failures.length ? 1 : 0);
@@ -779,7 +862,7 @@ await page.waitForTimeout(150);
 // And the code, which is the whole point of building one of these.
 await page.getByRole('button', { name: 'Make a code', exact: true }).click();
 await page.waitForTimeout(200);
-const madeCode = (await page.locator('.share-code').first().inputValue()).trim();
+const madeCode = (await page.locator('.setup-code').first().inputValue()).trim();
 check(madeCode.length > 8 && !/[^A-Za-z0-9_-]/.test(madeCode),
   'a promotion can be shared as a code', `${madeCode.length} characters`);
 
@@ -829,14 +912,14 @@ const PLAY_WEEKS = 10;
 let played = 0;
 let talked = 0;
 let walked = 0;
-let lockedFirst = false;
 let boardDrawn = 0;
 let tracedTotal = '';
 let tracedLit = 0;
 let boughtOne = false;
-let unlockedAfter = [];
 let gateRefusal = '';
 let intensitySteps = 0;
+let shapesOffered = [];
+let builtFourWay = false;
 let promoOnCard = false;
 let rosterPicks = 0;
 
@@ -866,12 +949,14 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
   await page.waitForTimeout(120);
 
   // Week 2 goes through the GM board, because every shape past one-on-one is
-  // something you now have to buy. The gate is worth driving in both
-  // directions: the builder says no, you buy the upgrade, the builder says yes.
+  // Every shape is free from week one now, so what week 2 proves is that the
+  // builder offers the whole vocabulary and that the board can still sell
+  // something and have it take effect.
   if (week === 2) {
     await bookPanel.getByRole('button', { name: 'Bigger match', exact: true }).click();
     await page.waitForTimeout(120);
-    lockedFirst = await bookPanel.locator('.form-note').count() > 0;
+    shapesOffered = await bookPanel.locator('.form-row select').first()
+      .locator('option').allTextContents();
 
     await page.getByRole('button', { name: 'GM Board', exact: true }).click();
     await page.waitForTimeout(200);
@@ -884,7 +969,7 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
     tracedTotal = (await page.locator('.trace-total').textContent().catch(() => '')) || '';
     tracedLit = await page.locator('.tree-node.lit').count();
 
-    await page.locator('.tree-node', { hasText: 'Tag Team Wrestling' }).first().click();
+    await page.locator('.tree-node', { hasText: 'Know Your Locker Room' }).first().click();
     await page.waitForTimeout(120);
     await page.getByRole('button', { name: /^Buy — 1 point$/ }).click();
     await page.waitForTimeout(200);
@@ -892,10 +977,29 @@ for (let week = 1; week <= PLAY_WEEKS; week += 1) {
 
     await page.getByRole('button', { name: 'Booking', exact: true }).click();
     await page.waitForTimeout(150);
+
+    // And a four-way actually reaches the card, which is the thing un-gating
+    // was for.
     await bookPanel.getByRole('button', { name: 'Bigger match', exact: true }).click();
     await page.waitForTimeout(120);
-    unlockedAfter = await bookPanel.locator('.form-row select').first()
-      .locator('option').allTextContents();
+    await bookPanel.locator('.form-row select').first().selectOption('fatal4');
+    await page.waitForTimeout(120);
+    for (const name of (await freeNames(page)).slice(0, 4)) {
+      await rosterPanel.locator('tbody tr.pick-row', { hasText: name }).first().click();
+      await page.waitForTimeout(50);
+    }
+    if (await page.locator('.overlay').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(60);
+    }
+    await bookPanel.getByRole('button', { name: /^＋\s+Add / }).click();
+    await page.waitForTimeout(150);
+    builtFourWay = await page.locator('.col-card').getByText('Fatal Four-Way', { exact: false }).count() > 0;
+
+    // Back to a tag shape, so that two of the three names below land on the
+    // same side and the pairing is what there is to object to.
+    await bookPanel.locator('.form-row select').first().selectOption('tag');
+    await page.waitForTimeout(120);
 
     // Two people the gate should refuse, plus one to fill the other side so the
     // shape is legal and the pairing is the only thing left to object to.
@@ -1120,15 +1224,16 @@ check(seenBell.length >= 2, 'the bell produces moments in the browser too', seen
 check(night.threads > 0, 'the save is keeping threads', `${night.threads} pairs on the record`);
 
 // The shape builder, driven through its own controls.
-check(lockedFirst, 'a new GM is told they can only book a singles match');
-check(boardDrawn === 113, 'the whole board draws', `${boardDrawn} nodes`);
+check(shapesOffered.includes('Tag team') && shapesOffered.includes('Battle royal'),
+  'every shape of match is on the builder from week one',
+  `${shapesOffered.length} shapes offered`);
+check(boardDrawn === 108, 'the whole board draws', `${boardDrawn} nodes`);
 check(tracedLit > 1 && tracedLit < boardDrawn,
   'tracing a locked capstone lights its path and nothing else', `${tracedLit} of ${boardDrawn} lit`);
 check(/Total from here: \d+ points/.test(tracedTotal),
   'and says what the whole run costs', tracedTotal.trim());
 check(boughtOne, 'an upgrade can be bought from the board');
-check(unlockedAfter.includes('Tag team'),
-  'and the shape it opens turns up on the builder', unlockedAfter.join(', ') || 'nothing offered');
+
 check(intensitySteps === 5, 'the promo builder offers the whole intensity ladder',
   `${intensitySteps} rungs`);
 check(promoOnCard, 'a promo can be booked onto the card');
@@ -1137,8 +1242,8 @@ check(/have not worked together|no warmth/.test(gateRefusal),
   'the tag gate refuses two strangers by name', gateRefusal.trim() || 'no refusal shown');
 // A GM who has bought one upgrade can put one kind of match on television, and
 // the card should show exactly that rather than everything the engine can do.
-check(night.biggest <= 2, 'a gated GM cannot get a multi-way onto the card',
-  `biggest was ${night.biggest} people`);
+check(builtFourWay, 'a four-way can be booked at level one');
+check(night.biggest >= 4, 'and it reaches the card', `biggest was ${night.biggest} people`);
 
 await page.getByRole('button', { name: 'Roster', exact: true }).click();
 await page.waitForTimeout(200);
@@ -1195,6 +1300,61 @@ const reloaded = await page.evaluate(() => {
   return JSON.parse(localStorage.getItem('wgm_save_' + index.currentId)).week;
 });
 check(reloaded === stored.week, 'the week survives a reload', `${stored.week} -> ${reloaded}`);
+
+// The wrestler card from the checks above is still open over the nav.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
+
+// ---- keeping a locker room, for real ----
+//
+// The whole round trip in the interface: keep the roster out of the save that
+// has been played, start a new promotion, load it back, and check the same
+// people turn up with none of what happened to them.
+await page.getByRole('button', { name: 'Roster', exact: true }).click();
+await page.waitForTimeout(250);
+const playedNames = await page.locator('.view table tbody .wlink').allTextContents();
+await page.getByRole('button', { name: 'Keep this locker room', exact: true }).click();
+await page.waitForTimeout(250);
+const keptSaid = (await page.locator('.keep-bar .muted').first().textContent().catch(() => '')) || '';
+check(/Kept\./.test(keptSaid), 'a locker room can be kept from a save being played', keptSaid.trim());
+
+await page.getByRole('button', { name: 'Saves', exact: true }).click();
+await page.waitForTimeout(200);
+await page.getByRole('button', { name: 'Build a promotion', exact: true }).click();
+await page.waitForTimeout(350);
+const shelf = await page.locator('.lr-row').count();
+check(shelf > 0, 'and turns up on the shelf of a new promotion', `${shelf} on the shelf`);
+
+await page.locator('.lr-row').first().getByRole('button', { name: 'Load' }).click();
+await page.waitForTimeout(300);
+const loadedSaid = (await page.locator('.lr-loaded b').first().textContent().catch(() => '')) || '';
+check(Boolean(loadedSaid), 'it loads into the setup screen', loadedSaid.trim());
+
+await page.getByRole('button', { name: 'Take the job', exact: true }).click();
+await page.waitForTimeout(450);
+await page.getByRole('button', { name: 'Roster', exact: true }).click();
+await page.waitForTimeout(250);
+const newNames = await page.locator('.view table tbody .wlink').allTextContents();
+const carried = newNames.filter(n => playedNames.includes(n)).length;
+check(carried >= Math.min(8, playedNames.length),
+  'and the new promotion is the same people', `${carried} of ${playedNames.length} carried over`);
+
+const freshRoom = await page.evaluate(() => {
+  const index = JSON.parse(localStorage.getItem('wgm_index_v1'));
+  const save = JSON.parse(localStorage.getItem('wgm_save_' + index.currentId));
+  return {
+    week: save.week,
+    memories: save.wrestlers.reduce((n, w) => n + (w.memories || []).length, 0),
+    grudges: save.wrestlers.reduce((n, w) => n + (w.grudges || []).length, 0),
+    teams: save.wrestlers.filter(w =>
+      Object.values(w.relationships || {}).some(r => r.tie === 'tag-team')).length,
+  };
+});
+check(freshRoom.week === 1 && freshRoom.memories === 0 && freshRoom.grudges === 0,
+  'carrying none of the last promotion with them',
+  `week ${freshRoom.week}, ${freshRoom.memories} memories`);
+check(freshRoom.teams > 0, 'but the tag teams came too', `${freshRoom.teams} in teams`);
+
 
 // An older save must upgrade in place rather than being discarded — and the
 // three traits that moved out of `stats` must keep their values.
