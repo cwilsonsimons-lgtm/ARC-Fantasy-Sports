@@ -4,3 +4,11 @@ snapshots/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Throwaway debug and screenshot scripts written at the repo root while
+# chasing something down. They are not part of the project.
+.dbg*.mjs
+.shot*.mjs
+.probe*.mjs
+.v.mjs
+.board-preview.html
