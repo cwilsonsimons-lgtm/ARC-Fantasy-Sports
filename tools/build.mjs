@@ -4,22 +4,27 @@
 // modules over file://. This produces dist/index.html with the CSS and JS inlined
 // so it can be opened by double-clicking, the way the original prototype worked.
 //
-// Usage: node tools/build.mjs
+// Usage: node tools/build.mjs [htmlPath] [entryPath] [outPath]
+// Defaults bundle the fantasy app; the wrestling GM app passes its own paths.
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, resolve, relative } from 'node:path';
 
-const html = await readFile('index.html', 'utf8');
+const [htmlPath = 'index.html', entryPath = 'js/main.js', outPath = 'dist/index.html'] = process.argv.slice(2);
+const srcDir = dirname(htmlPath);
+
+const html = await readFile(htmlPath, 'utf8');
 
 // CSS, concatenated in the exact order index.html links it, to preserve cascade.
 const hrefs = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(m => m[1]);
 const css = (await Promise.all(
-  hrefs.map(async h => `/* ${h} */\n${await readFile(h, 'utf8')}`)
+  hrefs.map(async h => `/* ${h} */\n${await readFile(resolve(srcDir, h), 'utf8')}`)
 )).join('\n');
 
 // JS, bundled to a single classic script. The module version is deferred; this
 // tag sits last in <body>, so the DOM is parsed either way.
 const bundled = await build({
-  entryPoints: ['js/main.js'],
+  entryPoints: [entryPath],
   bundle: true,
   format: 'iife',
   write: false,
@@ -32,8 +37,8 @@ const out = html
   .replace('</head>', `<style>\n${css}\n</style>\n</head>`)
   .replace(/<script type="module" src="[^"]+"><\/script>/, `<script>\n${js}\n</script>`);
 
-await mkdir('dist', { recursive: true });
-await writeFile('dist/index.html', out);
+await mkdir(dirname(outPath), { recursive: true });
+await writeFile(outPath, out);
 
 const kb = n => (n / 1024).toFixed(0) + ' KB';
-console.log(`dist/index.html  ${kb(out.length)}  (css ${kb(css.length)}, js ${kb(js.length)})`);
+console.log(`${outPath}  ${kb(out.length)}  (css ${kb(css.length)}, js ${kb(js.length)})`);

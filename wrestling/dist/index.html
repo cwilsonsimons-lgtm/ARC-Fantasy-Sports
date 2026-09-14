@@ -1,0 +1,2805 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wrestling GM</title>
+<style>
+/* css/app.css */
+/* Wrestling GM shell.
+   Tool-first, not document-first: dense rows, tabular numbers, one accent.
+   Palette matches the design foundation page - cool slate ground, brass accent
+   for anything live or on-air, oxblood for cuts, losses and grievances. */
+
+:root{
+  --ground:#E8EAE7; --surface:#F3F4F1; --sunk:#DDE0DC;
+  --ink:#15181A; --soft:#4C5457; --faint:#6E777A;
+  --brass:#9C6511; --brass-wash:#EDE3D2;
+  --grease:#8E2226; --grease-wash:#EFDDDC;
+  --rule:#C7CBC6; --rule-soft:#D7DAD6;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#14171A; --surface:#1B1F22; --sunk:#101315;
+    --ink:#E7E9E6; --soft:#A3ACAF; --faint:#7E878A;
+    --brass:#E2A54A; --brass-wash:#241C0F;
+    --grease:#E07A80; --grease-wash:#241516;
+    --rule:#2F353A; --rule-soft:#242A2E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14171A; --surface:#1B1F22; --sunk:#101315;
+  --ink:#E7E9E6; --soft:#A3ACAF; --faint:#7E878A;
+  --brass:#E2A54A; --brass-wash:#241C0F;
+  --grease:#E07A80; --grease-wash:#241516;
+  --rule:#2F353A; --rule-soft:#242A2E;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--ground);color:var(--ink);font:14px/1.5 var(--sans)}
+#app{display:flex;flex-direction:column;min-height:100%}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:grid;grid-template-columns:1fr auto;align-items:center;
+  gap:.5rem 1rem;padding:.7rem 16px .55rem;
+  border-bottom:2px solid var(--ink);background:var(--surface);
+  position:sticky;top:0;z-index:5;
+}
+.brand{display:flex;flex-direction:column;min-width:0}
+.brand-name{font-weight:700;letter-spacing:-.01em}
+.brand-sub{font:400 11px/1.4 var(--mono);color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+.when{font:400 11px/1.4 var(--mono);color:var(--brass);text-align:right;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.tabs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.15rem;margin-top:.35rem}
+.tab{
+  font:400 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  padding:.45rem .6rem;border:0;background:none;color:var(--faint);
+  cursor:pointer;border-bottom:2px solid transparent;
+}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--brass);border-bottom-color:var(--brass)}
+
+/* ---------- screen ---------- */
+.screen{flex:1;padding:1.1rem 16px 4rem;max-width:72rem;width:100%;margin:0 auto}
+h1{font-size:1.15rem;margin:0 0 .15rem;letter-spacing:-.01em}
+h2{font:700 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:1.6rem 0 .5rem}
+.sub{font:400 11px/1.5 var(--mono);color:var(--faint);letter-spacing:.05em;margin:0 0 1rem}
+p{margin:0 0 .7rem}
+a{color:var(--brass)}
+
+/* ---------- tables ---------- */
+.scroller{overflow-x:auto;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:30rem}
+th{
+  font:700 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);text-align:left;border-bottom:1px solid var(--ink);
+  padding:.35rem .6rem .35rem 0;white-space:nowrap;
+}
+td{border-bottom:1px solid var(--rule-soft);padding:.45rem .6rem .45rem 0;vertical-align:top}
+th:last-child,td:last-child{padding-right:0}
+tbody tr:hover{background:var(--surface)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--brass)}
+.neg{color:var(--grease)}
+.muted{color:var(--faint)}
+
+/* ---------- controls ---------- */
+.bar{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:1rem}
+button.act,select,input{
+  font:400 12px/1 var(--mono);color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule);padding:.5rem .7rem;cursor:pointer;
+}
+input,select{cursor:auto}
+button.act:hover{border-color:var(--brass);color:var(--brass)}
+button.act.primary{background:var(--brass-wash);border-color:var(--brass);color:var(--brass);font-weight:700}
+button.act.danger:hover{border-color:var(--grease);color:var(--grease)}
+button.act:disabled{opacity:.45;cursor:not-allowed}
+label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:.2rem}
+.field{display:flex;flex-direction:column;min-width:8rem}
+
+/* ---------- cards and layers ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.9rem;margin-bottom:1rem}
+.card{background:var(--surface);border:1px solid var(--rule);padding:.8rem .9rem}
+.card h3{font:700 10px/1.4 var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--brass);margin:0 0 .5rem}
+.kv{display:flex;justify-content:space-between;gap:1rem;padding:.2rem 0;border-bottom:1px solid var(--rule-soft);font-size:12px}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--faint)}
+.kv span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.meter{height:4px;background:var(--sunk);margin-top:.25rem;position:relative;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--brass)}
+.meter i.low{background:var(--grease)}
+
+.pill{
+  display:inline-block;font:700 10px/1 var(--mono);letter-spacing:.07em;
+  text-transform:uppercase;padding:.25rem .4rem;border:1px solid var(--rule);color:var(--faint);
+}
+.pill.brass{color:var(--brass);border-color:var(--brass);background:var(--brass-wash)}
+.pill.grease{color:var(--grease);border-color:var(--grease);background:var(--grease-wash)}
+
+.empty{color:var(--faint);font-style:italic;padding:1.2rem 0}
+.rowlink{background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left}
+.rowlink:hover{color:var(--brass)}
+
+/* ---------- log ---------- */
+.log{font-family:var(--mono);font-size:11.5px}
+.log .ev{display:grid;grid-template-columns:4.2rem 9.5rem 1fr;gap:.6rem;padding:.35rem 0;border-bottom:1px solid var(--rule-soft)}
+.log .ev .d{color:var(--faint)}
+.log .ev .t{color:var(--brass);overflow-wrap:anywhere}
+@media (max-width:40rem){
+  .log .ev{grid-template-columns:1fr;gap:.1rem}
+}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%) translateY(1rem);
+  background:var(--ink);color:var(--ground);font:400 12px/1 var(--mono);
+  padding:.6rem .9rem;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  max-width:calc(100vw - 32px);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+</style>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-name" id="brandName">Wrestling GM</span>
+        <span class="brand-sub" id="gmName"></span>
+      </div>
+      <div class="when" id="when"></div>
+      <nav class="tabs" id="tabs"></nav>
+    </header>
+    <main id="screen" class="screen"></main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+(() => {
+  var __defProp = Object.defineProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
+  // wrestling/js/core/store.js
+  var store_exports = {};
+  __export(store_exports, {
+    G: () => G,
+    SCHEMA_VERSION: () => SCHEMA_VERSION,
+    addMemory: () => addMemory,
+    addWrestler: () => addWrestler,
+    adjustGmTie: () => adjustGmTie,
+    adjustRelationship: () => adjustRelationship,
+    advanceDays: () => advanceDays,
+    advanceToDay: () => advanceToDay,
+    advanceToNextShow: () => advanceToNextShow,
+    allShows: () => allShows,
+    allWrestlers: () => allWrestlers,
+    bookSegment: () => bookSegment,
+    causeChain: () => causeChain2,
+    completeSegment: () => completeSegment,
+    completeShow: () => completeShow,
+    cutSegment: () => cutSegment,
+    emit: () => emit,
+    getRng: () => getRng,
+    getSegment: () => getSegment,
+    getShow: () => getShow,
+    getState: () => getState,
+    getWrestler: () => getWrestler,
+    historyOf: () => historyOf2,
+    installState: () => installState,
+    isLoaded: () => isLoaded,
+    nameOf: () => nameOf,
+    newGame: () => newGame,
+    off: () => off2,
+    on: () => on2,
+    queryLog: () => queryLog,
+    requireSegment: () => requireSegment,
+    requireShow: () => requireShow,
+    requireWrestler: () => requireWrestler,
+    reset: () => reset,
+    scheduleProgramming: () => scheduleProgramming,
+    scheduleShow: () => scheduleShow,
+    segmentsOfShow: () => segmentsOfShow,
+    setBackstory: () => setBackstory,
+    startShow: () => startShow,
+    today: () => today,
+    updateSegment: () => updateSegment,
+    updateStanding: () => updateStanding,
+    updateWrestlerState: () => updateWrestlerState
+  });
+
+  // wrestling/js/core/ids.js
+  var ID_TYPES = Object.freeze({
+    // built now
+    wrestler: "w",
+    show: "sh",
+    segment: "sg",
+    event: "ev",
+    calendarEntry: "cal",
+    memory: "mem",
+    // reserved for systems named in the design foundation but not yet built
+    promise: "pr",
+    incident: "inc",
+    rivalry: "rv",
+    team: "tm",
+    title: "ttl",
+    contract: "ct"
+  });
+  var PREFIX_TO_TYPE = Object.freeze(
+    Object.fromEntries(Object.entries(ID_TYPES).map(([type, prefix]) => [prefix, type]))
+  );
+  var PAD = 4;
+  var counters = /* @__PURE__ */ Object.create(null);
+  function mint(type) {
+    const prefix = ID_TYPES[type];
+    if (!prefix) throw new Error(`mint: unknown entity type "${type}"`);
+    const n = (counters[type] || 0) + 1;
+    counters[type] = n;
+    return `${prefix}_${String(n).padStart(PAD, "0")}`;
+  }
+  function typeOf(id) {
+    if (typeof id !== "string") return null;
+    const i = id.indexOf("_");
+    if (i < 1) return null;
+    return PREFIX_TO_TYPE[id.slice(0, i)] || null;
+  }
+  function isId(v, type) {
+    const t = typeOf(v);
+    if (!t) return false;
+    return type ? t === type : true;
+  }
+  function assertId(v, type, context = "") {
+    if (!isId(v, type)) {
+      throw new Error(
+        `Expected a ${type} id${context ? ` for ${context}` : ""}, got ${JSON.stringify(v)}`
+      );
+    }
+    return v;
+  }
+  function ordinalOf(id) {
+    const i = String(id).indexOf("_");
+    return i < 0 ? NaN : Number(id.slice(i + 1));
+  }
+  function exportCounters() {
+    return { ...counters };
+  }
+  function importCounters(next) {
+    counters = /* @__PURE__ */ Object.create(null);
+    for (const [k, v] of Object.entries(next || {})) {
+      if (ID_TYPES[k] && Number.isFinite(v)) counters[k] = v;
+    }
+  }
+  function resetCounters() {
+    counters = /* @__PURE__ */ Object.create(null);
+  }
+  function syncCountersTo(ids) {
+    for (const id of ids) {
+      const type = typeOf(id);
+      if (!type) continue;
+      const n = ordinalOf(id);
+      if (Number.isFinite(n) && n > (counters[type] || 0)) counters[type] = n;
+    }
+  }
+
+  // wrestling/js/core/rng.js
+  var MASK = 4294967295;
+  function seedWords(seed) {
+    let h1 = 1779033703 ^ seed.length;
+    let h2 = 3144134277;
+    let h3 = 1013904242;
+    let h4 = 2773480762;
+    for (let i = 0; i < seed.length; i++) {
+      const k = seed.charCodeAt(i);
+      h1 = Math.imul(h2 ^ k, 597399067);
+      h2 = Math.imul(h3 ^ k, 2869860233);
+      h3 = Math.imul(h4 ^ k, 951274213);
+      h4 = Math.imul(h1 ^ k, 2716044179);
+    }
+    return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
+  }
+  function createRng(seed = String(Date.now())) {
+    let [a, b, c, d] = typeof seed === "string" ? seedWords(seed) : seed;
+    let draws = 0;
+    function next() {
+      a >>>= 0;
+      b >>>= 0;
+      c >>>= 0;
+      d >>>= 0;
+      let t = a + b | 0;
+      a = b ^ b >>> 9;
+      b = c + (c << 3) | 0;
+      c = c << 21 | c >>> 11;
+      d = d + 1 | 0;
+      t = t + d | 0;
+      c = c + t | 0;
+      draws++;
+      return (t >>> 0) / (MASK + 1);
+    }
+    return {
+      /** Float in [0, 1). */
+      float: next,
+      /** Integer in [0, n). */
+      int: (n) => Math.floor(next() * n),
+      /** Integer in [min, max], inclusive. */
+      range: (min, max) => min + Math.floor(next() * (max - min + 1)),
+      /** True with probability p. */
+      chance: (p) => next() < p,
+      /** Uniform pick. */
+      pick: (arr) => arr[Math.floor(next() * arr.length)],
+      /**
+       * Weighted pick from `{key: weight}` or `[[value, weight], ...]`.
+       * Zero and negative weights are treated as ineligible, which is how the
+       * design's eligibility stage is meant to express "not in the draw at all".
+       */
+      weighted(entries) {
+        const pairs = Array.isArray(entries) ? entries : Object.entries(entries);
+        let total = 0;
+        for (const [, w] of pairs) if (w > 0) total += w;
+        if (total <= 0) return null;
+        let roll = next() * total;
+        for (const [value, w] of pairs) {
+          if (w <= 0) continue;
+          roll -= w;
+          if (roll <= 0) return value;
+        }
+        return pairs[pairs.length - 1][0];
+      },
+      /** Fisher-Yates, returns a new array. */
+      shuffle(arr) {
+        const out = arr.slice();
+        for (let i = out.length - 1; i > 0; i--) {
+          const j = Math.floor(next() * (i + 1));
+          [out[i], out[j]] = [out[j], out[i]];
+        }
+        return out;
+      },
+      /** Serializable generator state, carried in the save file. */
+      getState: () => ({ a: a >>> 0, b: b >>> 0, c: c >>> 0, d: d >>> 0, draws }),
+      setState(s) {
+        a = s.a >>> 0;
+        b = s.b >>> 0;
+        c = s.c >>> 0;
+        d = s.d >>> 0;
+        draws = s.draws || 0;
+      }
+    };
+  }
+
+  // wrestling/js/core/events.js
+  var EVENT_TYPES = Object.freeze({
+    // --- game lifecycle ---
+    GAME_CREATED: "game.created",
+    GAME_LOADED: "game.loaded",
+    GAME_SAVED: "game.saved",
+    // --- calendar ---
+    CALENDAR_ADVANCED: "calendar.advanced",
+    CALENDAR_SCHEDULED: "calendar.entry.scheduled",
+    CALENDAR_DUE: "calendar.entry.due",
+    // --- roster ---
+    WRESTLER_CREATED: "wrestler.created",
+    WRESTLER_UPDATED: "wrestler.updated",
+    WRESTLER_STATE: "wrestler.state.changed",
+    WRESTLER_STANDING: "wrestler.standing.changed",
+    WRESTLER_MEMORY: "wrestler.memory.added",
+    WRESTLER_RELATION: "wrestler.relationship.changed",
+    WRESTLER_GM_TIE: "wrestler.gm_tie.changed",
+    // --- shows and cards ---
+    SHOW_CREATED: "show.created",
+    SHOW_STARTED: "show.started",
+    SHOW_COMPLETED: "show.completed",
+    SEGMENT_BOOKED: "segment.booked",
+    SEGMENT_UPDATED: "segment.updated",
+    SEGMENT_CUT: "segment.cut",
+    SEGMENT_COMPLETED: "segment.completed",
+    // --- Reserved. No system emits these yet. They are declared here so that
+    // when those systems arrive they extend this log rather than starting a
+    // second one, and so listeners can be written against them in advance.
+    MATCH_RESULT: "match.result.recorded",
+    RANKING_UPDATED: "ranking.updated",
+    PROMISE_MADE: "promise.made",
+    PROMISE_KEPT: "promise.kept",
+    PROMISE_BROKEN: "promise.broken",
+    INCIDENT_STARTED: "incident.started",
+    INCIDENT_ESCALATED: "incident.escalated",
+    INCIDENT_RESOLVED: "incident.resolved",
+    RIVALRY_FORMED: "rivalry.formed",
+    CONTRACT_SIGNED: "contract.signed",
+    CONTRACT_EXPIRED: "contract.expired",
+    BOOKING_REFUSED: "booking.refused"
+  });
+  var VALID_TYPES = new Set(Object.values(EVENT_TYPES));
+  function isValidEventType(type) {
+    return VALID_TYPES.has(type);
+  }
+  function makeEvent({
+    id,
+    seq,
+    day,
+    type,
+    summary = "",
+    actorId = null,
+    subjects = [],
+    showId = null,
+    segmentId = null,
+    causeId = null,
+    data = {}
+  }) {
+    if (!isValidEventType(type)) {
+      throw new Error(`Unregistered event type "${type}". Add it to EVENT_TYPES.`);
+    }
+    return {
+      id,
+      seq,
+      day,
+      type,
+      summary,
+      actorId,
+      subjects: Array.from(new Set(subjects.filter(Boolean))),
+      showId,
+      segmentId,
+      causeId,
+      data,
+      wallClock: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+  var listeners = /* @__PURE__ */ new Map();
+  function on(pattern, fn) {
+    if (!listeners.has(pattern)) listeners.set(pattern, /* @__PURE__ */ new Set());
+    listeners.get(pattern).add(fn);
+    return () => off(pattern, fn);
+  }
+  function off(pattern, fn) {
+    listeners.get(pattern)?.delete(fn);
+  }
+  function clearListeners() {
+    listeners.clear();
+  }
+  function patternsFor(type) {
+    const out = ["*", type];
+    const parts = type.split(".");
+    for (let i = 1; i < parts.length; i++) {
+      out.push(`${parts.slice(0, i).join(".")}.*`);
+    }
+    return out;
+  }
+  var dispatching = false;
+  var queue = [];
+  function dispatch(event) {
+    queue.push(event);
+    if (dispatching) return;
+    dispatching = true;
+    try {
+      while (queue.length) {
+        const e = queue.shift();
+        for (const pattern of patternsFor(e.type)) {
+          const set = listeners.get(pattern);
+          if (!set) continue;
+          for (const fn of Array.from(set)) {
+            try {
+              fn(e);
+            } catch (err) {
+              console.error(`Listener for ${pattern} threw on ${e.type}:`, err);
+            }
+          }
+        }
+      }
+    } finally {
+      dispatching = false;
+    }
+  }
+  function query(log, {
+    type,
+    types,
+    subjectId,
+    showId,
+    segmentId,
+    since,
+    until,
+    limit,
+    newestFirst = false
+  } = {}) {
+    const wanted = types ? new Set(types) : null;
+    let out = log.filter((e) => {
+      if (type && e.type !== type) return false;
+      if (wanted && !wanted.has(e.type)) return false;
+      if (showId && e.showId !== showId) return false;
+      if (segmentId && e.segmentId !== segmentId) return false;
+      if (since != null && e.day < since) return false;
+      if (until != null && e.day > until) return false;
+      if (subjectId && e.actorId !== subjectId && !e.subjects.includes(subjectId)) return false;
+      return true;
+    });
+    if (newestFirst) out = out.reverse();
+    if (limit != null) out = out.slice(0, limit);
+    return out;
+  }
+  function historyOf(log, entityId, opts = {}) {
+    return query(log, { ...opts, subjectId: entityId });
+  }
+  function causeChain(log, eventId) {
+    const byId = new Map(log.map((e) => [e.id, e]));
+    const chain = [];
+    let cur = byId.get(eventId);
+    while (cur) {
+      chain.push(cur);
+      cur = cur.causeId ? byId.get(cur.causeId) : null;
+      if (chain.length > 100) break;
+    }
+    return chain;
+  }
+
+  // wrestling/js/core/clock.js
+  var clock_exports = {};
+  __export(clock_exports, {
+    BLOCK_WEEKS: () => BLOCK_WEEKS,
+    DEFAULT_BUDGET_SEC: () => DEFAULT_BUDGET_SEC,
+    MS_PER_DAY: () => MS_PER_DAY,
+    PLE_WEEK_OF_BLOCK: () => PLE_WEEK_OF_BLOCK,
+    SHOW_KINDS: () => SHOW_KINDS,
+    TV_WEEKDAY: () => TV_WEEKDAY,
+    blockOf: () => blockOf,
+    createCalendar: () => createCalendar,
+    dateOf: () => dateOf,
+    daysUntil: () => daysUntil,
+    entriesBetween: () => entriesBetween,
+    entriesOn: () => entriesOn,
+    formatDate: () => formatDate,
+    formatGameTime: () => formatGameTime,
+    isoOf: () => isoOf,
+    nextEntry: () => nextEntry,
+    planSchedule: () => planSchedule,
+    pleDayForBlock: () => pleDayForBlock,
+    tvDayForWeek: () => tvDayForWeek,
+    upcomingEntry: () => upcomingEntry,
+    weekInBlock: () => weekInBlock,
+    weekOf: () => weekOf,
+    weekdayOf: () => weekdayOf
+  });
+  var MS_PER_DAY = 864e5;
+  var TV_WEEKDAY = 2;
+  var BLOCK_WEEKS = 4;
+  var PLE_WEEK_OF_BLOCK = 4;
+  var SHOW_KINDS = Object.freeze({ TV: "tv", PLE: "ple" });
+  var DEFAULT_BUDGET_SEC = Object.freeze({
+    [SHOW_KINDS.TV]: 60 * 60,
+    [SHOW_KINDS.PLE]: 150 * 60
+  });
+  function createCalendar(startDate = "2026-01-05") {
+    return {
+      startDate,
+      // ISO date of day 0
+      day: 0,
+      // current game day
+      entries: []
+      // scheduled calendar entries, ascending by day
+    };
+  }
+  function dateOf(calendar, day = calendar.day) {
+    return new Date(Date.parse(`${calendar.startDate}T00:00:00Z`) + day * MS_PER_DAY);
+  }
+  function isoOf(calendar, day = calendar.day) {
+    return dateOf(calendar, day).toISOString().slice(0, 10);
+  }
+  function weekOf(day) {
+    return Math.floor(day / 7) + 1;
+  }
+  function blockOf(day) {
+    return Math.floor(day / (7 * BLOCK_WEEKS)) + 1;
+  }
+  function weekInBlock(day) {
+    return (weekOf(day) - 1) % BLOCK_WEEKS + 1;
+  }
+  var WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function weekdayOf(calendar, day = calendar.day) {
+    return dateOf(calendar, day).getUTCDay();
+  }
+  function formatDate(calendar, day = calendar.day) {
+    const d = dateOf(calendar, day);
+    return `${WEEKDAY_NAMES[d.getUTCDay()].slice(0, 3)} ${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  }
+  function formatGameTime(day) {
+    return `Month ${blockOf(day)}, Week ${weekInBlock(day)}`;
+  }
+  function tvDayForWeek(calendar, week) {
+    const weekStart = (week - 1) * 7;
+    const startWeekday = weekdayOf(calendar, weekStart);
+    const offset = (TV_WEEKDAY - startWeekday + 7) % 7;
+    return weekStart + offset;
+  }
+  function pleDayForBlock(calendar, block) {
+    const finalWeek = (block - 1) * BLOCK_WEEKS + PLE_WEEK_OF_BLOCK;
+    const weekStart = (finalWeek - 1) * 7;
+    const startWeekday = weekdayOf(calendar, weekStart);
+    const offset = (0 - startWeekday + 7) % 7;
+    return weekStart + (offset === 0 ? 7 : offset);
+  }
+  function planSchedule(calendar, blocks = 3, { startBlock = 1 } = {}) {
+    const planned = [];
+    for (let b = startBlock; b < startBlock + blocks; b++) {
+      for (let w = 1; w <= BLOCK_WEEKS; w++) {
+        const week = (b - 1) * BLOCK_WEEKS + w;
+        if (w === PLE_WEEK_OF_BLOCK) {
+          planned.push({
+            day: pleDayForBlock(calendar, b),
+            kind: SHOW_KINDS.PLE,
+            label: `Premium Live Event ${b}`,
+            block: b,
+            week
+          });
+        } else {
+          planned.push({
+            day: tvDayForWeek(calendar, week),
+            kind: SHOW_KINDS.TV,
+            label: `Weekly TV, Week ${week}`,
+            block: b,
+            week
+          });
+        }
+      }
+    }
+    return planned.sort((a, b) => a.day - b.day);
+  }
+  function entriesOn(calendar, day) {
+    return calendar.entries.filter((e) => e.day === day);
+  }
+  function entriesBetween(calendar, from, to) {
+    return calendar.entries.filter((e) => e.day >= from && e.day <= to);
+  }
+  function nextEntry(calendar, day = calendar.day) {
+    return calendar.entries.find((e) => e.day > day) || null;
+  }
+  function upcomingEntry(calendar, day = calendar.day) {
+    return calendar.entries.find((e) => e.day >= day) || null;
+  }
+  function daysUntil(calendar, day) {
+    return day - calendar.day;
+  }
+
+  // wrestling/js/models/wrestler.js
+  var SCALES = Object.freeze({
+    UNIT: { min: 0, max: 100, neutral: 50 },
+    // ability, morale, trust, traits
+    SIGNED: { min: -100, max: 100, neutral: 0 }
+    // momentum, relationships
+  });
+  var CAREER_STATUS = Object.freeze({
+    ROOKIE: "rookie",
+    JOBBER: "jobber",
+    MIDCARD: "midcard",
+    UPPER_MIDCARD: "upper_midcard",
+    MAIN_EVENT: "main_event",
+    VETERAN: "veteran",
+    DECLINING: "declining"
+  });
+  var CAREER_RANK = Object.freeze({
+    [CAREER_STATUS.ROOKIE]: 0,
+    [CAREER_STATUS.JOBBER]: 1,
+    [CAREER_STATUS.MIDCARD]: 2,
+    [CAREER_STATUS.UPPER_MIDCARD]: 3,
+    [CAREER_STATUS.MAIN_EVENT]: 4,
+    [CAREER_STATUS.VETERAN]: 3,
+    [CAREER_STATUS.DECLINING]: 2
+  });
+  var MOODS = Object.freeze([
+    "content",
+    "confident",
+    "focused",
+    "restless",
+    "frustrated",
+    "angry",
+    "anxious"
+  ]);
+  var HEALTH = Object.freeze({ HEALTHY: "healthy", INJURED: "injured" });
+  var CONTRACT_STATUS = Object.freeze({
+    ACTIVE: "active",
+    EXPIRED: "expired",
+    RELEASED: "released"
+  });
+  var TRAITS = Object.freeze([
+    "professionalism",
+    "volatility",
+    "loyalty",
+    "vindictiveness",
+    "sociability",
+    "riskAversion"
+  ]);
+  var ABILITIES = Object.freeze(["workRate", "charisma", "durability", "starPower"]);
+  function clampUnit(n) {
+    return Math.max(SCALES.UNIT.min, Math.min(SCALES.UNIT.max, Math.round(n)));
+  }
+  function clampSigned(n) {
+    return Math.max(SCALES.SIGNED.min, Math.min(SCALES.SIGNED.max, Math.round(n)));
+  }
+  function createWrestler(spec = {}) {
+    const {
+      id = mint("wrestler"),
+      name,
+      shortName,
+      debutDay = 0,
+      careerStatus = CAREER_STATUS.MIDCARD,
+      identity = {},
+      ability = {},
+      standing = {},
+      state = {},
+      ties = {},
+      contract = {},
+      memory = []
+    } = spec;
+    if (!name) throw new Error("createWrestler: name is required");
+    const traits = {};
+    for (const t of TRAITS) traits[t] = clampUnit(identity.traits?.[t] ?? SCALES.UNIT.neutral);
+    const abilities = {};
+    for (const a of ABILITIES) abilities[a] = clampUnit(ability[a] ?? SCALES.UNIT.neutral);
+    return {
+      id,
+      name,
+      shortName: shortName || name.split(" ").slice(-1)[0],
+      createdDay: debutDay,
+      brandId: null,
+      // reserved: competing brands are an optional mode, not built
+      // 1. Identity - stable. The lens.
+      identity: {
+        ego: clampUnit(identity.ego ?? SCALES.UNIT.neutral),
+        ambition: clampUnit(identity.ambition ?? SCALES.UNIT.neutral),
+        traits
+      },
+      // 2. Ability - slow moving.
+      ability: abilities,
+      // 3. Standing - public, earned, and the vocabulary of every argument.
+      standing: {
+        careerStatus,
+        wins: standing.wins ?? 0,
+        losses: standing.losses ?? 0,
+        draws: standing.draws ?? 0,
+        streak: standing.streak ?? { type: null, count: 0 },
+        // type: 'W' | 'L' | 'D'
+        rank: standing.rank ?? null,
+        // filled by a ranking system, not yet built
+        titleReigns: standing.titleReigns ?? [],
+        // {titleId, wonOnDay, lostOnDay}
+        debutDay
+      },
+      // 4. State - fast moving. What the recent past did to them.
+      state: {
+        morale: clampUnit(state.morale ?? 60),
+        momentum: clampSigned(state.momentum ?? 0),
+        condition: clampUnit(state.condition ?? 100),
+        // 100 = fresh, falls with ring time
+        mood: state.mood ?? "content",
+        health: state.health ?? { status: HEALTH.HEALTHY, returnsOnDay: null }
+      },
+      // 5. Ties.
+      //
+      // Relationships are DIRECTED: `relationships[otherId]` is how *this*
+      // wrestler feels about that one, which need not be mutual. That is the
+      // point - the design's example has B taking exception to something A did
+      // while A thinks nothing of it, and a symmetric value cannot express that.
+      ties: {
+        relationships: ties.relationships ?? {},
+        // otherId -> {value, lastChangedDay, sourceEventIds}
+        gm: {
+          trust: clampUnit(ties.gm?.trust ?? 50),
+          // do they believe what you say
+          respect: clampUnit(ties.gm?.respect ?? 50)
+          // do they rate you as a GM
+        }
+      },
+      // 6. Memory - the engine. Why they behave the way they do, and what they
+      // quote at you when they push back.
+      memory,
+      // Contract. The *system* is not built; the fields live here so that when it
+      // is, it extends this entity instead of starting a parallel roster.
+      contract: {
+        salary: contract.salary ?? 0,
+        signedOnDay: contract.signedOnDay ?? debutDay,
+        expiresOnDay: contract.expiresOnDay ?? null,
+        status: contract.status ?? CONTRACT_STATUS.ACTIVE
+      }
+    };
+  }
+  function createMemory({
+    day,
+    type,
+    summary,
+    aboutIds = [],
+    weight = 50,
+    floor = 5,
+    decayPerDay = 0.5,
+    sourceEventId = null,
+    scar = false
+  }) {
+    return {
+      id: mint("memory"),
+      day,
+      type,
+      summary,
+      aboutIds,
+      weight: clampUnit(weight),
+      floor: clampUnit(scar ? Math.max(floor, 40) : floor),
+      decayPerDay,
+      scar,
+      sourceEventId
+    };
+  }
+  function memoryWeightOn(memory, today2) {
+    const elapsed = Math.max(0, today2 - memory.day);
+    return Math.max(memory.floor, memory.weight - memory.decayPerDay * elapsed);
+  }
+  function recordOf(wrestler) {
+    const { wins, losses, draws } = wrestler.standing;
+    return draws ? `${wins}-${losses}-${draws}` : `${wins}-${losses}`;
+  }
+  function streakLabel(wrestler) {
+    const { type, count } = wrestler.standing.streak;
+    if (!type || !count) return "none";
+    return `${type}${count}`;
+  }
+  function relationshipTo(wrestler, otherId) {
+    return wrestler.ties.relationships[otherId]?.value ?? SCALES.SIGNED.neutral;
+  }
+  function alliesOf(wrestler, threshold = 40) {
+    return Object.entries(wrestler.ties.relationships).filter(([, r]) => r.value >= threshold).map(([id]) => id);
+  }
+  function enemiesOf(wrestler, threshold = -40) {
+    return Object.entries(wrestler.ties.relationships).filter(([, r]) => r.value <= threshold).map(([id]) => id);
+  }
+  function validateWrestler(w) {
+    const problems = [];
+    if (!w || typeof w !== "object") return ["not an object"];
+    if (!w.id) problems.push("missing id");
+    if (!w.name) problems.push("missing name");
+    for (const layer of ["identity", "ability", "standing", "state", "ties", "contract"]) {
+      if (!w[layer] || typeof w[layer] !== "object") problems.push(`missing layer "${layer}"`);
+    }
+    if (!Array.isArray(w.memory)) problems.push("memory is not an array");
+    for (const a of ABILITIES) {
+      const v = w.ability?.[a];
+      if (!Number.isFinite(v)) problems.push(`ability.${a} is not a number`);
+    }
+    return problems;
+  }
+  var WRESTLER_SHAPE_KEYS = Object.freeze(["identity", "ability", "standing", "ties"]);
+
+  // wrestling/js/models/show.js
+  var SHOW_STATUS = Object.freeze({
+    SCHEDULED: "scheduled",
+    LIVE: "live",
+    COMPLETE: "complete"
+  });
+  function createShow(spec = {}) {
+    const {
+      id = mint("show"),
+      name,
+      day,
+      kind = SHOW_KINDS.TV,
+      calendarEntryId = null,
+      timeBudgetSec = DEFAULT_BUDGET_SEC[kind] ?? DEFAULT_BUDGET_SEC[SHOW_KINDS.TV],
+      brandId = null
+    } = spec;
+    if (day == null) throw new Error("createShow: day is required");
+    return {
+      id,
+      name: name || (kind === SHOW_KINDS.PLE ? "Premium Live Event" : "Weekly TV"),
+      kind,
+      day,
+      calendarEntryId,
+      brandId,
+      status: SHOW_STATUS.SCHEDULED,
+      // The booked budget. The gap between this and what the card actually runs
+      // is the live-show problem the design is built around, so both are tracked.
+      timeBudgetSec,
+      segmentIds: [],
+      result: {
+        rating: null,
+        // set by a show-grading system, not yet built
+        bookedSec: 0,
+        // sum of assigned time limits
+        actualSec: 0,
+        // sum of what the segments really ran
+        startedOnDay: null,
+        completedOnDay: null
+      }
+    };
+  }
+  function bookedSeconds(show, segmentsById) {
+    return show.segmentIds.reduce(
+      (t, id) => t + (segmentsById[id]?.timeLimitSec || 0),
+      0
+    );
+  }
+  function actualSeconds(show, segmentsById) {
+    return show.segmentIds.reduce(
+      (t, id) => t + (segmentsById[id]?.result?.actualSec || 0),
+      0
+    );
+  }
+
+  // wrestling/js/models/segment.js
+  var SEGMENT_KINDS = Object.freeze({
+    MATCH: "match",
+    PROMO: "promo",
+    ANGLE: "angle",
+    INTERVIEW: "interview"
+  });
+  var SEGMENT_STATUS = Object.freeze({
+    BOOKED: "booked",
+    LIVE: "live",
+    COMPLETE: "complete",
+    CUT: "cut"
+  });
+  var FINISHES = Object.freeze({
+    PINFALL: "pinfall",
+    SUBMISSION: "submission",
+    COUNTOUT: "countout",
+    DQ: "disqualification",
+    TIME_LIMIT_DRAW: "time_limit_draw",
+    NO_CONTEST: "no_contest",
+    SEGMENT_END: "segment_end"
+    // non-match segments simply end
+  });
+  var ROLES = Object.freeze({
+    COMPETITOR: "competitor",
+    SPEAKER: "speaker",
+    MANAGER: "manager",
+    INTERVIEWER: "interviewer",
+    RUN_IN: "run_in"
+  });
+  var PITCH_RESPONSE = Object.freeze({
+    ACCEPTED: "accepted",
+    RESENTED: "accepted_resentfully",
+    PUSHED_BACK: "pushed_back",
+    REFUSED: "refused"
+  });
+  function createParticipant(wrestlerId, { side = "a", role = ROLES.COMPETITOR } = {}) {
+    assertId(wrestlerId, "wrestler", "segment participant");
+    return { wrestlerId, side, role };
+  }
+  function createSegment(spec = {}) {
+    const {
+      id = mint("segment"),
+      showId,
+      kind = SEGMENT_KINDS.MATCH,
+      name = "",
+      order = 0,
+      timeLimitSec = 10 * 60,
+      participants = [],
+      stipulation = null,
+      titleId = null,
+      // reserved: championship system not built
+      bookedOnDay = null
+    } = spec;
+    assertId(showId, "show", "segment.showId");
+    return {
+      id,
+      showId,
+      kind,
+      name,
+      order,
+      stipulation,
+      titleId,
+      // The GM assigns a LIMIT, never a duration. What the segment actually runs
+      // is decided by the simulation and recorded in `result.actualSec`.
+      timeLimitSec,
+      participants: participants.map(
+        (p) => typeof p === "string" ? createParticipant(p) : createParticipant(p.wrestlerId, p)
+      ),
+      status: SEGMENT_STATUS.BOOKED,
+      booking: {
+        bookedOnDay,
+        // One entry per wrestler pitched, filled in by the pitch system later.
+        reactions: []
+        // {wrestlerId, response, reason, eventId}
+      },
+      result: {
+        finish: null,
+        // one of FINISHES
+        winnerIds: [],
+        loserIds: [],
+        actualSec: 0,
+        quality: null,
+        // set by the match simulation, not yet built
+        overridden: false,
+        // true when the player forced this result
+        beats: []
+        // minute-by-minute log, written by the simulation
+      }
+    };
+  }
+  function participantIds(segment) {
+    return segment.participants.map((p) => p.wrestlerId);
+  }
+  function sides(segment) {
+    const out = {};
+    for (const p of segment.participants) {
+      (out[p.side] ||= []).push(p.wrestlerId);
+    }
+    return out;
+  }
+
+  // wrestling/js/core/store.js
+  var SCHEMA_VERSION = 1;
+  var G = { state: null, rng: null };
+  function getState() {
+    return G.state;
+  }
+  function getRng() {
+    return G.rng;
+  }
+  function isLoaded() {
+    return G.state != null;
+  }
+  var on2 = on;
+  var off2 = off;
+  function requireGame() {
+    if (!G.state) throw new Error("No game loaded. Call newGame() or loadGame() first.");
+    return G.state;
+  }
+  function emit(type, {
+    summary = "",
+    actorId = null,
+    subjects = [],
+    showId = null,
+    segmentId = null,
+    cause = null,
+    data = {}
+  } = {}) {
+    const state = requireGame();
+    const event = makeEvent({
+      id: mint("event"),
+      seq: state.log.length + 1,
+      day: state.calendar.day,
+      type,
+      summary,
+      actorId,
+      subjects,
+      showId,
+      segmentId,
+      causeId: cause,
+      data
+    });
+    state.log.push(event);
+    dispatch(event);
+    return event;
+  }
+  function newGame({
+    seed = String(Date.now()),
+    gmName = "New GM",
+    brandName = "Weekly Showcase",
+    mode = "sandbox",
+    // 'sandbox' | 'competitive'
+    startDate = "2026-01-05",
+    scheduleBlocks = 3,
+    roster = []
+  } = {}) {
+    resetCounters();
+    G.rng = createRng(seed);
+    G.state = {
+      meta: {
+        schemaVersion: SCHEMA_VERSION,
+        gameId: `wgm-${seed}`,
+        seed,
+        gmName,
+        brandName,
+        mode,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      calendar: createCalendar(startDate),
+      wrestlers: {},
+      shows: {},
+      segments: {},
+      log: []
+    };
+    emit(EVENT_TYPES.GAME_CREATED, {
+      summary: `${gmName} takes over ${brandName}`,
+      data: { seed, mode, startDate }
+    });
+    for (const spec of roster) addWrestler(spec);
+    if (scheduleBlocks > 0) scheduleProgramming(scheduleBlocks);
+    return G.state;
+  }
+  function installState(state, rngState, { seed } = {}) {
+    G.state = state;
+    G.rng = createRng(seed || state.meta.seed || "restored");
+    if (rngState) G.rng.setState(rngState);
+    syncCountersTo([
+      ...Object.keys(state.wrestlers),
+      ...Object.keys(state.shows),
+      ...Object.keys(state.segments),
+      ...state.log.map((e) => e.id),
+      ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
+      ...state.calendar.entries.map((e) => e.id)
+    ]);
+    return G.state;
+  }
+  function reset() {
+    G.state = null;
+    G.rng = null;
+    resetCounters();
+    clearListeners();
+  }
+  function getWrestler(id) {
+    return requireGame().wrestlers[id] || null;
+  }
+  function getShow(id) {
+    return requireGame().shows[id] || null;
+  }
+  function getSegment(id) {
+    return requireGame().segments[id] || null;
+  }
+  function requireWrestler(id) {
+    const w = getWrestler(id);
+    if (!w) throw new Error(`No wrestler with id ${id}`);
+    return w;
+  }
+  function requireShow(id) {
+    const s = getShow(id);
+    if (!s) throw new Error(`No show with id ${id}`);
+    return s;
+  }
+  function requireSegment(id) {
+    const s = getSegment(id);
+    if (!s) throw new Error(`No segment with id ${id}`);
+    return s;
+  }
+  function allWrestlers() {
+    return Object.values(requireGame().wrestlers);
+  }
+  function allShows() {
+    return Object.values(requireGame().shows).sort((a, b) => a.day - b.day);
+  }
+  function segmentsOfShow(showId) {
+    const show = requireShow(showId);
+    return show.segmentIds.map((id) => requireSegment(id));
+  }
+  function today() {
+    return requireGame().calendar.day;
+  }
+  function nameOf(id) {
+    const state = requireGame();
+    return state.wrestlers[id]?.name || state.shows[id]?.name || state.segments[id]?.name || id;
+  }
+  function addWrestler(spec, { cause = null } = {}) {
+    const state = requireGame();
+    const wrestler = createWrestler({ debutDay: state.calendar.day, ...spec });
+    state.wrestlers[wrestler.id] = wrestler;
+    emit(EVENT_TYPES.WRESTLER_CREATED, {
+      summary: `${wrestler.name} joins the roster`,
+      actorId: wrestler.id,
+      subjects: [wrestler.id],
+      cause,
+      data: { careerStatus: wrestler.standing.careerStatus }
+    });
+    return wrestler;
+  }
+  function updateWrestlerState(id, patch, { reason = "", cause = null } = {}) {
+    const w = requireWrestler(id);
+    const before = { ...w.state };
+    if (patch.morale != null) w.state.morale = clampUnit(patch.morale);
+    if (patch.momentum != null) w.state.momentum = clampSigned(patch.momentum);
+    if (patch.condition != null) w.state.condition = clampUnit(patch.condition);
+    if (patch.mood != null) w.state.mood = patch.mood;
+    if (patch.health != null) w.state.health = { ...w.state.health, ...patch.health };
+    emit(EVENT_TYPES.WRESTLER_STATE, {
+      summary: reason || `${w.name}'s state changed`,
+      actorId: id,
+      subjects: [id],
+      cause,
+      data: { before, after: { ...w.state }, reason }
+    });
+    return w;
+  }
+  function updateStanding(id, patch, { reason = "", cause = null } = {}) {
+    const w = requireWrestler(id);
+    const before = { ...w.standing };
+    Object.assign(w.standing, patch);
+    emit(EVENT_TYPES.WRESTLER_STANDING, {
+      summary: reason || `${w.name}'s record changed`,
+      actorId: id,
+      subjects: [id],
+      cause,
+      data: { before, after: { ...w.standing }, reason }
+    });
+    return w;
+  }
+  function addMemory(id, memorySpec, { cause = null } = {}) {
+    const state = requireGame();
+    const w = requireWrestler(id);
+    const memory = createMemory({ day: state.calendar.day, sourceEventId: cause, ...memorySpec });
+    w.memory.push(memory);
+    emit(EVENT_TYPES.WRESTLER_MEMORY, {
+      summary: `${w.name} remembers: ${memory.summary}`,
+      actorId: id,
+      subjects: [id, ...memory.aboutIds],
+      cause,
+      data: { memoryId: memory.id, type: memory.type, weight: memory.weight, scar: memory.scar }
+    });
+    return memory;
+  }
+  function adjustRelationship(fromId, toId, delta, { reason = "", cause = null } = {}) {
+    const state = requireGame();
+    const from = requireWrestler(fromId);
+    requireWrestler(toId);
+    if (fromId === toId) throw new Error("A wrestler cannot hold a relationship with themselves");
+    const rel = from.ties.relationships[toId] ||= {
+      value: 0,
+      lastChangedDay: state.calendar.day,
+      sourceEventIds: []
+    };
+    const before = rel.value;
+    rel.value = clampSigned(rel.value + delta);
+    rel.lastChangedDay = state.calendar.day;
+    const event = emit(EVENT_TYPES.WRESTLER_RELATION, {
+      summary: reason || `${from.name}'s view of ${nameOf(toId)} changed`,
+      actorId: fromId,
+      subjects: [fromId, toId],
+      cause,
+      data: { fromId, toId, before, after: rel.value, delta, reason }
+    });
+    rel.sourceEventIds.push(event.id);
+    return rel;
+  }
+  function adjustGmTie(id, { trust = 0, respect = 0 }, { reason = "", cause = null } = {}) {
+    const w = requireWrestler(id);
+    const before = { ...w.ties.gm };
+    w.ties.gm.trust = clampUnit(w.ties.gm.trust + trust);
+    w.ties.gm.respect = clampUnit(w.ties.gm.respect + respect);
+    emit(EVENT_TYPES.WRESTLER_GM_TIE, {
+      summary: reason || `${w.name}'s view of the GM changed`,
+      actorId: id,
+      subjects: [id],
+      cause,
+      data: { before, after: { ...w.ties.gm }, reason }
+    });
+    return w.ties.gm;
+  }
+  function scheduleProgramming(blocks = 3, { cause = null } = {}) {
+    const state = requireGame();
+    const existingBlocks = new Set(state.calendar.entries.map((e) => e.block));
+    const startBlock = existingBlocks.size ? Math.max(...existingBlocks) + 1 : 1;
+    const planned = planSchedule(state.calendar, blocks, { startBlock });
+    return planned.map((p) => scheduleShow(p, { cause }));
+  }
+  function scheduleShow({ day, kind, label, block, week }, { cause = null } = {}) {
+    const state = requireGame();
+    const show = createShow({ name: label, day, kind });
+    state.shows[show.id] = show;
+    const entry = {
+      id: mint("calendarEntry"),
+      day,
+      kind,
+      label: label || show.name,
+      showId: show.id,
+      block: block ?? blockOf(day),
+      week: week ?? weekOf(day)
+    };
+    show.calendarEntryId = entry.id;
+    state.calendar.entries.push(entry);
+    state.calendar.entries.sort((a, b) => a.day - b.day);
+    const created = emit(EVENT_TYPES.SHOW_CREATED, {
+      summary: `${show.name} scheduled for ${formatDate(state.calendar, day)}`,
+      subjects: [show.id],
+      showId: show.id,
+      cause,
+      data: { day, kind, calendarEntryId: entry.id }
+    });
+    emit(EVENT_TYPES.CALENDAR_SCHEDULED, {
+      summary: `Calendar: ${entry.label}`,
+      subjects: [show.id],
+      showId: show.id,
+      cause: created.id,
+      data: { entryId: entry.id, day, kind }
+    });
+    return show;
+  }
+  function advanceDays(n = 1, { cause = null } = {}) {
+    const state = requireGame();
+    if (n <= 0) throw new Error("advanceDays: n must be positive");
+    const from = state.calendar.day;
+    const to = from + n;
+    state.calendar.day = to;
+    const advanced = emit(EVENT_TYPES.CALENDAR_ADVANCED, {
+      summary: `${formatDate(state.calendar, to)} (${formatGameTime(to)})`,
+      cause,
+      data: { from, to, days: n }
+    });
+    for (const entry of entriesBetween(state.calendar, from + 1, to)) {
+      emit(EVENT_TYPES.CALENDAR_DUE, {
+        summary: `${entry.label} is today`,
+        subjects: [entry.showId].filter(Boolean),
+        showId: entry.showId || null,
+        cause: advanced.id,
+        data: { entryId: entry.id, day: entry.day, kind: entry.kind }
+      });
+    }
+    return { from, to, event: advanced };
+  }
+  function advanceToDay(day, opts) {
+    const state = requireGame();
+    return advanceDays(day - state.calendar.day, opts);
+  }
+  function advanceToNextShow(opts) {
+    const state = requireGame();
+    const next = nextEntry(state.calendar);
+    if (!next) return null;
+    return advanceToDay(next.day, opts);
+  }
+  function bookSegment(spec, { cause = null } = {}) {
+    const state = requireGame();
+    const show = requireShow(spec.showId);
+    for (const p of spec.participants || []) {
+      requireWrestler(typeof p === "string" ? p : p.wrestlerId);
+    }
+    const segment = createSegment({
+      order: show.segmentIds.length,
+      bookedOnDay: state.calendar.day,
+      ...spec
+    });
+    state.segments[segment.id] = segment;
+    show.segmentIds.push(segment.id);
+    show.result.bookedSec = bookedSeconds(show, state.segments);
+    emit(EVENT_TYPES.SEGMENT_BOOKED, {
+      summary: `${segment.name || segment.kind} booked for ${show.name}`,
+      subjects: participantIds(segment),
+      showId: show.id,
+      segmentId: segment.id,
+      cause,
+      data: {
+        kind: segment.kind,
+        timeLimitSec: segment.timeLimitSec,
+        participants: segment.participants
+      }
+    });
+    return segment;
+  }
+  function updateSegment(id, patch, { reason = "", cause = null } = {}) {
+    const state = requireGame();
+    const segment = requireSegment(id);
+    const before = { timeLimitSec: segment.timeLimitSec, name: segment.name, order: segment.order };
+    if (patch.timeLimitSec != null) segment.timeLimitSec = Math.max(0, Math.round(patch.timeLimitSec));
+    if (patch.name != null) segment.name = patch.name;
+    if (patch.order != null) segment.order = patch.order;
+    if (patch.stipulation !== void 0) segment.stipulation = patch.stipulation;
+    const show = requireShow(segment.showId);
+    show.result.bookedSec = bookedSeconds(show, state.segments);
+    emit(EVENT_TYPES.SEGMENT_UPDATED, {
+      summary: reason || `${segment.name || segment.kind} updated`,
+      subjects: participantIds(segment),
+      showId: segment.showId,
+      segmentId: segment.id,
+      cause,
+      data: { before, after: { timeLimitSec: segment.timeLimitSec, name: segment.name, order: segment.order }, reason }
+    });
+    return segment;
+  }
+  function cutSegment(id, { reason = "", cause = null } = {}) {
+    const state = requireGame();
+    const segment = requireSegment(id);
+    segment.status = SEGMENT_STATUS.CUT;
+    const show = requireShow(segment.showId);
+    show.segmentIds = show.segmentIds.filter((sid) => sid !== id);
+    show.result.bookedSec = bookedSeconds(show, state.segments);
+    emit(EVENT_TYPES.SEGMENT_CUT, {
+      summary: reason || `${segment.name || segment.kind} cut from ${show.name}`,
+      subjects: participantIds(segment),
+      showId: show.id,
+      segmentId: segment.id,
+      cause,
+      data: { reason }
+    });
+    return segment;
+  }
+  function completeSegment(id, result, { cause = null } = {}) {
+    const state = requireGame();
+    const segment = requireSegment(id);
+    segment.status = SEGMENT_STATUS.COMPLETE;
+    Object.assign(segment.result, result);
+    const show = requireShow(segment.showId);
+    show.result.actualSec = actualSeconds(show, state.segments);
+    return emit(EVENT_TYPES.SEGMENT_COMPLETED, {
+      summary: `${segment.name || segment.kind}: ${result.finish || "ended"}`,
+      subjects: participantIds(segment),
+      showId: show.id,
+      segmentId: segment.id,
+      cause,
+      data: {
+        finish: result.finish,
+        winnerIds: result.winnerIds || [],
+        loserIds: result.loserIds || [],
+        actualSec: result.actualSec || 0,
+        timeLimitSec: segment.timeLimitSec,
+        overridden: !!result.overridden
+      }
+    });
+  }
+  function startShow(id, { cause = null } = {}) {
+    const state = requireGame();
+    const show = requireShow(id);
+    show.status = SHOW_STATUS.LIVE;
+    show.result.startedOnDay = state.calendar.day;
+    return emit(EVENT_TYPES.SHOW_STARTED, {
+      summary: `${show.name} is live`,
+      subjects: [show.id],
+      showId: show.id,
+      cause,
+      data: { bookedSec: show.result.bookedSec, budgetSec: show.timeBudgetSec }
+    });
+  }
+  function completeShow(id, { rating = null, cause = null } = {}) {
+    const state = requireGame();
+    const show = requireShow(id);
+    show.status = SHOW_STATUS.COMPLETE;
+    show.result.completedOnDay = state.calendar.day;
+    show.result.rating = rating;
+    show.result.actualSec = actualSeconds(show, state.segments);
+    return emit(EVENT_TYPES.SHOW_COMPLETED, {
+      summary: `${show.name} is off the air`,
+      subjects: [show.id],
+      showId: show.id,
+      cause,
+      data: {
+        rating,
+        bookedSec: show.result.bookedSec,
+        actualSec: show.result.actualSec,
+        budgetSec: show.timeBudgetSec
+      }
+    });
+  }
+  function queryLog(opts) {
+    return query(requireGame().log, opts);
+  }
+  function historyOf2(entityId, opts) {
+    return historyOf(requireGame().log, entityId, opts);
+  }
+  function causeChain2(eventId) {
+    return causeChain(requireGame().log, eventId);
+  }
+  function setBackstory(id, { relationships = {}, memory = [] } = {}, { cause = null } = {}) {
+    const state = requireGame();
+    const w = requireWrestler(id);
+    for (const [otherId, value] of Object.entries(relationships)) {
+      requireWrestler(otherId);
+      if (otherId === id) throw new Error(`${id} cannot hold a relationship with themselves`);
+      w.ties.relationships[otherId] = {
+        value: clampSigned(value),
+        lastChangedDay: state.calendar.day,
+        sourceEventIds: []
+      };
+    }
+    for (const spec of memory) {
+      w.memory.push(createMemory({ day: state.calendar.day, ...spec }));
+    }
+    emit(EVENT_TYPES.WRESTLER_UPDATED, {
+      summary: `${w.name} arrives with history`,
+      actorId: id,
+      subjects: [id, ...Object.keys(relationships)],
+      cause,
+      data: {
+        relationships: Object.keys(relationships).length,
+        memories: memory.length
+      }
+    });
+    return w;
+  }
+
+  // wrestling/js/core/persist.js
+  var persist_exports = {};
+  __export(persist_exports, {
+    MIGRATIONS: () => MIGRATIONS,
+    SAVE_FORMAT: () => SAVE_FORMAT,
+    SAVE_INDEX_KEY: () => SAVE_INDEX_KEY,
+    SAVE_PREFIX: () => SAVE_PREFIX,
+    deleteSave: () => deleteSave,
+    deserialize: () => deserialize,
+    fromJSON: () => fromJSON,
+    hasSave: () => hasSave,
+    listSaves: () => listSaves,
+    load: () => load,
+    migrate: () => migrate,
+    save: () => save,
+    saveSummary: () => saveSummary,
+    serialize: () => serialize,
+    setStorage: () => setStorage,
+    toJSON: () => toJSON
+  });
+
+  // wrestling/js/core/invariants.js
+  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments"];
+  function checkState(state) {
+    const problems = [];
+    if (!state || typeof state !== "object") return ["state is not an object"];
+    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "log"]) {
+      if (state[key] == null) problems.push(`state.${key} is missing`);
+    }
+    if (problems.length) return problems;
+    for (const registry of ENTITY_REGISTRIES) {
+      for (const [key, entity] of Object.entries(state[registry])) {
+        if (entity.id !== key) {
+          problems.push(`${registry}["${key}"] has id "${entity.id}" - key and id disagree`);
+        }
+      }
+    }
+    for (const w of Object.values(state.wrestlers)) {
+      for (const p of validateWrestler(w)) problems.push(`wrestler ${w.id}: ${p}`);
+    }
+    const wrestlerIds = new Set(Object.keys(state.wrestlers));
+    const showIds = new Set(Object.keys(state.shows));
+    const segmentIds = new Set(Object.keys(state.segments));
+    const refMustExist = (id, set, where) => {
+      if (id != null && !set.has(id)) problems.push(`${where} points at missing ${typeOf(id) || "entity"} "${id}"`);
+    };
+    for (const w of Object.values(state.wrestlers)) {
+      for (const otherId of Object.keys(w.ties.relationships)) {
+        refMustExist(otherId, wrestlerIds, `wrestler ${w.id} relationship`);
+        if (otherId === w.id) problems.push(`wrestler ${w.id} holds a relationship with themselves`);
+      }
+      for (const m of w.memory) {
+        for (const about of m.aboutIds) {
+          if (typeOf(about) === "wrestler") refMustExist(about, wrestlerIds, `memory ${m.id}`);
+        }
+      }
+    }
+    for (const show of Object.values(state.shows)) {
+      for (const sid of show.segmentIds) refMustExist(sid, segmentIds, `show ${show.id} card`);
+    }
+    for (const seg of Object.values(state.segments)) {
+      refMustExist(seg.showId, showIds, `segment ${seg.id}`);
+      for (const p of seg.participants) {
+        refMustExist(p.wrestlerId, wrestlerIds, `segment ${seg.id} participant`);
+      }
+      for (const id of [...seg.result.winnerIds || [], ...seg.result.loserIds || []]) {
+        refMustExist(id, wrestlerIds, `segment ${seg.id} result`);
+      }
+      const owner = state.shows[seg.showId];
+      if (owner && seg.status !== "cut" && !owner.segmentIds.includes(seg.id)) {
+        problems.push(`segment ${seg.id} claims show ${seg.showId} but is not on its card`);
+      }
+    }
+    for (const entry of state.calendar.entries) {
+      refMustExist(entry.showId, showIds, `calendar entry ${entry.id}`);
+    }
+    const seenEventIds = /* @__PURE__ */ new Set();
+    state.log.forEach((e, i) => {
+      if (e.seq !== i + 1) problems.push(`log[${i}] has seq ${e.seq}, expected ${i + 1}`);
+      if (seenEventIds.has(e.id)) problems.push(`duplicate event id ${e.id}`);
+      seenEventIds.add(e.id);
+      if (i > 0 && e.day < state.log[i - 1].day) {
+        problems.push(`log[${i}] (${e.id}) goes back in time`);
+      }
+      for (const s of e.subjects) {
+        if (typeOf(s) === "wrestler") refMustExist(s, wrestlerIds, `event ${e.id} subject`);
+      }
+      if (e.causeId && !seenEventIds.has(e.causeId)) {
+        problems.push(`event ${e.id} cites cause ${e.causeId}, which does not precede it`);
+      }
+    });
+    problems.push(...findDuplicateWrestlers(state));
+    return problems;
+  }
+  function findDuplicateWrestlers(state) {
+    const problems = [];
+    const seen = /* @__PURE__ */ new WeakSet();
+    const isWrestlerShaped = (v) => v && typeof v === "object" && !Array.isArray(v) && WRESTLER_SHAPE_KEYS.every((k) => k in v);
+    const walk = (node, path) => {
+      if (!node || typeof node !== "object") return;
+      if (seen.has(node)) return;
+      seen.add(node);
+      if (Array.isArray(node)) {
+        node.forEach((v, i) => {
+          if (isWrestlerShaped(v)) {
+            problems.push(`duplicate wrestler data at ${path}[${i}] - store the wrestler id instead`);
+          } else walk(v, `${path}[${i}]`);
+        });
+        return;
+      }
+      for (const [k, v] of Object.entries(node)) {
+        if (isWrestlerShaped(v)) {
+          problems.push(`duplicate wrestler data at ${path}.${k} - store the wrestler id instead`);
+        } else walk(v, `${path}.${k}`);
+      }
+    };
+    for (const [key, value] of Object.entries(state)) {
+      if (key === "wrestlers") continue;
+      walk(value, `state.${key}`);
+    }
+    return problems;
+  }
+
+  // wrestling/js/core/persist.js
+  var SAVE_FORMAT = "wgm-save";
+  var SAVE_PREFIX = "wgm_save_";
+  var SAVE_INDEX_KEY = "wgm_saves";
+  function memoryStorage() {
+    const map = /* @__PURE__ */ new Map();
+    return {
+      getItem: (k) => map.has(k) ? map.get(k) : null,
+      setItem: (k, v) => map.set(k, v),
+      removeItem: (k) => map.delete(k)
+    };
+  }
+  var storage = (() => {
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("wgm_probe", "1");
+        localStorage.removeItem("wgm_probe");
+        return localStorage;
+      }
+    } catch {
+    }
+    return memoryStorage();
+  })();
+  function setStorage(next) {
+    storage = next;
+  }
+  var MIGRATIONS = {
+    // 1: (state) => { ...; return state; },
+  };
+  function migrate(state, fromVersion) {
+    let v = fromVersion;
+    let out = state;
+    while (v < SCHEMA_VERSION) {
+      const step = MIGRATIONS[v];
+      if (!step) throw new Error(`No migration from schema v${v} to v${v + 1}`);
+      out = step(out);
+      v += 1;
+    }
+    out.meta.schemaVersion = SCHEMA_VERSION;
+    return out;
+  }
+  function serialize({ label = "", slot = "auto" } = {}) {
+    if (!G.state) throw new Error("Nothing to save: no game loaded");
+    return {
+      format: SAVE_FORMAT,
+      schemaVersion: SCHEMA_VERSION,
+      savedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      slot,
+      label,
+      summary: saveSummary(),
+      counters: exportCounters(),
+      rng: G.rng.getState(),
+      state: G.state
+    };
+  }
+  function saveSummary() {
+    const s = G.state;
+    return {
+      gmName: s.meta.gmName,
+      brandName: s.meta.brandName,
+      day: s.calendar.day,
+      rosterSize: Object.keys(s.wrestlers).length,
+      showsRun: Object.values(s.shows).filter((x) => x.status === "complete").length,
+      events: s.log.length
+    };
+  }
+  function toJSON(opts) {
+    return JSON.stringify(serialize(opts));
+  }
+  function deserialize(envelope, { validate = true } = {}) {
+    if (!envelope || envelope.format !== SAVE_FORMAT) {
+      throw new Error("Not a wrestling GM save file");
+    }
+    if (envelope.schemaVersion > SCHEMA_VERSION) {
+      throw new Error(
+        `Save is from a newer version (v${envelope.schemaVersion}, this build reads v${SCHEMA_VERSION})`
+      );
+    }
+    const state = envelope.schemaVersion < SCHEMA_VERSION ? migrate(envelope.state, envelope.schemaVersion) : envelope.state;
+    if (validate) {
+      const problems = checkState(state);
+      if (problems.length) {
+        throw new Error(`Save failed integrity checks:
+- ${problems.join("\n- ")}`);
+      }
+    }
+    importCounters(envelope.counters || {});
+    installState(state, envelope.rng, { seed: state.meta.seed });
+    emit(EVENT_TYPES.GAME_LOADED, {
+      summary: `Loaded ${envelope.label || envelope.slot || "save"}`,
+      data: { savedAt: envelope.savedAt, schemaVersion: envelope.schemaVersion }
+    });
+    return G.state;
+  }
+  function fromJSON(text, opts) {
+    return deserialize(JSON.parse(text), opts);
+  }
+  function readIndex() {
+    try {
+      return JSON.parse(storage.getItem(SAVE_INDEX_KEY)) || {};
+    } catch {
+      return {};
+    }
+  }
+  function writeIndex(index) {
+    try {
+      storage.setItem(SAVE_INDEX_KEY, JSON.stringify(index));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function save(slot = "auto", { label = "" } = {}) {
+    try {
+      const envelope = serialize({ slot, label });
+      storage.setItem(SAVE_PREFIX + slot, JSON.stringify(envelope));
+      const index = readIndex();
+      index[slot] = {
+        slot,
+        label,
+        savedAt: envelope.savedAt,
+        schemaVersion: envelope.schemaVersion,
+        summary: envelope.summary
+      };
+      writeIndex(index);
+      emit(EVENT_TYPES.GAME_SAVED, { summary: `Saved to ${slot}`, data: { slot, label } });
+      return { ok: true, slot, savedAt: envelope.savedAt };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }
+  function load(slot = "auto") {
+    const raw = storage.getItem(SAVE_PREFIX + slot);
+    if (!raw) return { ok: false, error: `No save in slot "${slot}"` };
+    try {
+      fromJSON(raw);
+      return { ok: true, slot };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }
+  function listSaves() {
+    return Object.values(readIndex()).sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+  }
+  function deleteSave(slot) {
+    try {
+      storage.removeItem(SAVE_PREFIX + slot);
+      const index = readIndex();
+      delete index[slot];
+      writeIndex(index);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }
+  function hasSave(slot) {
+    return storage.getItem(SAVE_PREFIX + slot) != null;
+  }
+
+  // wrestling/js/data/roster.js
+  var { ROOKIE, JOBBER, MIDCARD, UPPER_MIDCARD, MAIN_EVENT, VETERAN, DECLINING } = CAREER_STATUS;
+  var STARTING_ROSTER = [
+    // ---------------------------------------------------------------- main event
+    {
+      key: "croft",
+      name: "Damien Croft",
+      careerStatus: MAIN_EVENT,
+      identity: {
+        ego: 92,
+        ambition: 78,
+        traits: { professionalism: 80, volatility: 25, loyalty: 35, vindictiveness: 70, sociability: 40, riskAversion: 75 }
+      },
+      ability: { workRate: 84, charisma: 88, durability: 70, starPower: 94 },
+      standing: { wins: 41, losses: 12, draws: 3, streak: { type: "W", count: 3 } },
+      state: { morale: 74, momentum: 45, mood: "confident" },
+      ties: { gm: { trust: 45, respect: 38 } },
+      contract: { salary: 48e4, expiresOnDay: 620 },
+      relationships: { vance: -40, wren: 5, delacroix: 25, mabry: -5 },
+      memory: [
+        {
+          type: "career",
+          weight: 70,
+          floor: 45,
+          decayPerDay: 0.2,
+          scar: true,
+          aboutKeys: ["vance"],
+          summary: "Vance went over me clean in front of the largest crowd of my career"
+        }
+      ]
+    },
+    {
+      key: "vance",
+      name: "Ruby Vance",
+      careerStatus: MAIN_EVENT,
+      identity: {
+        ego: 80,
+        ambition: 95,
+        traits: { professionalism: 62, volatility: 72, loyalty: 55, vindictiveness: 60, sociability: 70, riskAversion: 30 }
+      },
+      ability: { workRate: 89, charisma: 82, durability: 74, starPower: 86 },
+      standing: { wins: 33, losses: 15, draws: 2, streak: { type: "W", count: 1 } },
+      state: { morale: 81, momentum: 55, mood: "confident" },
+      ties: { gm: { trust: 60, respect: 55 } },
+      contract: { salary: 41e4, expiresOnDay: 340 },
+      relationships: { croft: -45, okonkwo: 35, sparrow: 40 },
+      memory: [
+        {
+          type: "career",
+          weight: 80,
+          floor: 50,
+          decayPerDay: 0.15,
+          scar: true,
+          aboutKeys: ["croft"],
+          summary: "Beat Croft clean for the top spot and he has not spoken to me since"
+        }
+      ]
+    },
+    // ------------------------------------------------------------ upper midcard
+    {
+      key: "wren",
+      name: "Tobias Wren",
+      careerStatus: UPPER_MIDCARD,
+      identity: {
+        ego: 74,
+        ambition: 88,
+        traits: { professionalism: 70, volatility: 58, loyalty: 40, vindictiveness: 82, sociability: 35, riskAversion: 45 }
+      },
+      ability: { workRate: 91, charisma: 58, durability: 78, starPower: 62 },
+      standing: { wins: 28, losses: 9, draws: 1, streak: { type: "W", count: 6 } },
+      state: { morale: 44, momentum: 62, mood: "frustrated" },
+      ties: { gm: { trust: 22, respect: 40 } },
+      contract: { salary: 185e3, expiresOnDay: 210 },
+      relationships: { croft: -62, pike: 45, delacroix: -20 },
+      memory: [
+        {
+          type: "gm_promise_broken",
+          weight: 85,
+          floor: 55,
+          decayPerDay: 0.1,
+          scar: true,
+          aboutKeys: ["croft"],
+          summary: "Told I was next in line, then watched Croft get the shot with a worse record"
+        },
+        {
+          type: "standing",
+          weight: 60,
+          floor: 20,
+          decayPerDay: 0.4,
+          aboutKeys: [],
+          summary: "Six straight wins and still opening the show"
+        }
+      ]
+    },
+    {
+      key: "okonkwo",
+      name: "Sable Okonkwo",
+      careerStatus: UPPER_MIDCARD,
+      identity: {
+        ego: 58,
+        ambition: 90,
+        traits: { professionalism: 85, volatility: 40, loyalty: 72, vindictiveness: 45, sociability: 66, riskAversion: 35 }
+      },
+      ability: { workRate: 82, charisma: 79, durability: 80, starPower: 71 },
+      standing: { wins: 24, losses: 11, draws: 0, streak: { type: "L", count: 1 } },
+      state: { morale: 68, momentum: 20, mood: "focused" },
+      ties: { gm: { trust: 70, respect: 62 } },
+      contract: { salary: 165e3, expiresOnDay: 480 },
+      relationships: { delacroix: -68, vance: 40, kane: 30 },
+      memory: [
+        {
+          type: "cheated",
+          weight: 88,
+          floor: 50,
+          decayPerDay: 0.12,
+          scar: true,
+          aboutKeys: ["delacroix"],
+          summary: "Delacroix had a fistful of tights and the referee never saw it"
+        }
+      ]
+    },
+    {
+      key: "kane",
+      name: "Marcus Kane",
+      careerStatus: UPPER_MIDCARD,
+      identity: {
+        ego: 38,
+        ambition: 52,
+        traits: { professionalism: 94, volatility: 18, loyalty: 90, vindictiveness: 20, sociability: 75, riskAversion: 55 }
+      },
+      ability: { workRate: 73, charisma: 66, durability: 92, starPower: 68 },
+      standing: { wins: 31, losses: 19, draws: 4, streak: { type: "W", count: 2 } },
+      state: { morale: 79, momentum: 25, mood: "content" },
+      ties: { gm: { trust: 78, respect: 70 } },
+      contract: { salary: 15e4, expiresOnDay: 700 },
+      relationships: { pike: 58, ruiz: 48, okonkwo: 30, halloran: -15 },
+      memory: [
+        {
+          type: "kindness",
+          weight: 55,
+          floor: 25,
+          decayPerDay: 0.2,
+          aboutKeys: ["ruiz"],
+          summary: "Ruiz stayed behind to help me to the back after a bad landing"
+        }
+      ]
+    },
+    {
+      key: "delacroix",
+      name: "Iris Delacroix",
+      careerStatus: UPPER_MIDCARD,
+      identity: {
+        ego: 81,
+        ambition: 84,
+        traits: { professionalism: 45, volatility: 66, loyalty: 25, vindictiveness: 88, sociability: 58, riskAversion: 60 }
+      },
+      ability: { workRate: 76, charisma: 85, durability: 65, starPower: 74 },
+      standing: { wins: 26, losses: 14, draws: 1, streak: { type: "W", count: 4 } },
+      state: { morale: 72, momentum: 48, mood: "confident" },
+      ties: { gm: { trust: 38, respect: 44 } },
+      contract: { salary: 172e3, expiresOnDay: 400 },
+      relationships: { okonkwo: -18, croft: 30, bloom: -35 },
+      memory: []
+    },
+    // ------------------------------------------------------------------ midcard
+    {
+      key: "pike",
+      name: "Jonah Pike",
+      careerStatus: MIDCARD,
+      identity: {
+        ego: 30,
+        ambition: 48,
+        traits: { professionalism: 96, volatility: 12, loyalty: 85, vindictiveness: 18, sociability: 62, riskAversion: 40 }
+      },
+      ability: { workRate: 78, charisma: 52, durability: 84, starPower: 44 },
+      standing: { wins: 18, losses: 27, draws: 2, streak: { type: "L", count: 3 } },
+      state: { morale: 61, momentum: -30, mood: "content" },
+      ties: { gm: { trust: 82, respect: 66 } },
+      contract: { salary: 95e3, expiresOnDay: 560 },
+      relationships: { kane: 58, wren: 45, lund: 40 },
+      memory: []
+    },
+    {
+      key: "bloom",
+      name: "Cassidy Bloom",
+      careerStatus: MIDCARD,
+      identity: {
+        ego: 69,
+        ambition: 74,
+        traits: { professionalism: 50, volatility: 78, loyalty: 48, vindictiveness: 55, sociability: 88, riskAversion: 50 }
+      },
+      ability: { workRate: 55, charisma: 91, durability: 62, starPower: 70 },
+      standing: { wins: 15, losses: 20, draws: 1, streak: { type: "W", count: 1 } },
+      state: { morale: 66, momentum: 10, mood: "restless" },
+      ties: { gm: { trust: 52, respect: 48 } },
+      contract: { salary: 88e3, expiresOnDay: 300 },
+      relationships: { sparrow: 52, delacroix: -35 },
+      memory: []
+    },
+    {
+      key: "halloran",
+      name: "Viktor Halloran",
+      careerStatus: DECLINING,
+      identity: {
+        ego: 77,
+        ambition: 40,
+        traits: { professionalism: 68, volatility: 62, loyalty: 42, vindictiveness: 74, sociability: 45, riskAversion: 70 }
+      },
+      ability: { workRate: 70, charisma: 74, durability: 48, starPower: 58 },
+      standing: { wins: 52, losses: 48, draws: 6, streak: { type: "L", count: 4 } },
+      state: { morale: 38, momentum: -55, mood: "frustrated" },
+      ties: { gm: { trust: 40, respect: 30 } },
+      contract: { salary: 21e4, expiresOnDay: 180 },
+      relationships: { sparrow: -32, ruiz: -28, kane: -15, croft: 20 },
+      memory: [
+        {
+          type: "career",
+          weight: 75,
+          floor: 45,
+          decayPerDay: 0.1,
+          scar: true,
+          aboutKeys: [],
+          summary: "Told my main event days were behind me, by someone who never had any"
+        }
+      ]
+    },
+    {
+      key: "sparrow",
+      name: "Nia Sparrow",
+      careerStatus: MIDCARD,
+      identity: {
+        ego: 52,
+        ambition: 80,
+        traits: { professionalism: 72, volatility: 55, loyalty: 65, vindictiveness: 30, sociability: 70, riskAversion: 12 }
+      },
+      ability: { workRate: 86, charisma: 68, durability: 41, starPower: 63 },
+      standing: { wins: 21, losses: 16, draws: 0, streak: { type: "W", count: 2 } },
+      state: { morale: 73, momentum: 35, condition: 82, mood: "confident" },
+      ties: { gm: { trust: 64, respect: 58 } },
+      contract: { salary: 105e3, expiresOnDay: 520 },
+      relationships: { bloom: 52, vance: 40, halloran: -30 },
+      memory: [
+        {
+          type: "injury",
+          weight: 50,
+          floor: 20,
+          decayPerDay: 0.3,
+          aboutKeys: [],
+          summary: "Landed badly off the top rope and worked six weeks hurt rather than lose the spot"
+        }
+      ]
+    },
+    // -------------------------------------------------------- lower card, rookies
+    {
+      key: "ruiz",
+      name: "Deacon Ruiz",
+      careerStatus: ROOKIE,
+      identity: {
+        ego: 28,
+        ambition: 76,
+        traits: { professionalism: 80, volatility: 35, loyalty: 78, vindictiveness: 22, sociability: 72, riskAversion: 25 }
+      },
+      ability: { workRate: 61, charisma: 55, durability: 72, starPower: 38 },
+      standing: { wins: 4, losses: 11, draws: 0, streak: { type: "L", count: 2 } },
+      state: { morale: 70, momentum: -15, mood: "focused" },
+      ties: { gm: { trust: 74, respect: 60 } },
+      contract: { salary: 42e3, expiresOnDay: 380 },
+      relationships: { kane: 62, halloran: -20, lund: 35 },
+      memory: []
+    },
+    {
+      key: "lund",
+      name: "Perry Lund",
+      careerStatus: JOBBER,
+      identity: {
+        ego: 22,
+        ambition: 34,
+        traits: { professionalism: 92, volatility: 15, loyalty: 70, vindictiveness: 15, sociability: 80, riskAversion: 35 }
+      },
+      ability: { workRate: 58, charisma: 44, durability: 76, starPower: 24 },
+      standing: { wins: 3, losses: 34, draws: 1, streak: { type: "L", count: 9 } },
+      state: { morale: 55, momentum: -60, mood: "content" },
+      ties: { gm: { trust: 80, respect: 55 } },
+      contract: { salary: 36e3, expiresOnDay: 300 },
+      relationships: { pike: 40, ruiz: 35, mabry: 30 },
+      memory: []
+    },
+    {
+      key: "mabry",
+      name: "Trent Mabry",
+      careerStatus: JOBBER,
+      identity: {
+        ego: 60,
+        ambition: 68,
+        traits: { professionalism: 58, volatility: 64, loyalty: 38, vindictiveness: 80, sociability: 42, riskAversion: 45 }
+      },
+      ability: { workRate: 64, charisma: 49, durability: 70, starPower: 30 },
+      standing: { wins: 5, losses: 29, draws: 0, streak: { type: "L", count: 6 } },
+      state: { morale: 34, momentum: -58, mood: "frustrated" },
+      ties: { gm: { trust: 30, respect: 35 } },
+      contract: { salary: 38e3, expiresOnDay: 250 },
+      relationships: { croft: -44, lund: 30, halloran: 25 },
+      memory: [
+        {
+          type: "humiliation",
+          weight: 78,
+          floor: 42,
+          decayPerDay: 0.15,
+          scar: true,
+          aboutKeys: ["croft"],
+          summary: "Croft beat me in forty seconds and did not bother learning my name"
+        }
+      ]
+    },
+    {
+      key: "kovac",
+      name: "Ines Kovac",
+      careerStatus: ROOKIE,
+      identity: {
+        ego: 44,
+        ambition: 92,
+        traits: { professionalism: 66, volatility: 70, loyalty: 50, vindictiveness: 40, sociability: 48, riskAversion: 20 }
+      },
+      ability: { workRate: 69, charisma: 62, durability: 68, starPower: 45 },
+      standing: { wins: 6, losses: 7, draws: 0, streak: { type: "W", count: 1 } },
+      state: { morale: 76, momentum: 22, mood: "confident" },
+      ties: { gm: { trust: 68, respect: 64 } },
+      contract: { salary: 48e3, expiresOnDay: 420 },
+      relationships: { okonkwo: 42, wren: -25 },
+      memory: []
+    }
+  ];
+  function seedRoster(roster = STARTING_ROSTER) {
+    const idByKey = /* @__PURE__ */ new Map();
+    for (const spec of roster) {
+      const { key, relationships, memory, ...rest } = spec;
+      const wrestler = addWrestler(rest);
+      idByKey.set(key, wrestler.id);
+    }
+    const resolve = (key) => {
+      const id = idByKey.get(key);
+      if (!id) throw new Error(`Roster references unknown wrestler key "${key}"`);
+      return id;
+    };
+    for (const spec of roster) {
+      const id = resolve(spec.key);
+      const relationships = {};
+      for (const [key, value] of Object.entries(spec.relationships || {})) {
+        relationships[resolve(key)] = value;
+      }
+      const memory = (spec.memory || []).map(({ aboutKeys = [], ...m }) => ({
+        ...m,
+        aboutIds: aboutKeys.map(resolve)
+      }));
+      if (Object.keys(relationships).length || memory.length) {
+        setBackstory(id, { relationships, memory });
+      }
+    }
+    return Object.fromEntries(idByKey);
+  }
+
+  // wrestling/js/ui/format.js
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+  function mmss(sec) {
+    const s = Math.max(0, Math.round(sec || 0));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+  function signedTime(sec) {
+    return (sec < 0 ? "-" : "+") + mmss(Math.abs(sec));
+  }
+  function signed(n) {
+    return n > 0 ? `+${n}` : String(n);
+  }
+  function toneOf(n, invert = false) {
+    if (n === 0) return "muted";
+    const good = invert ? n < 0 : n > 0;
+    return good ? "pos" : "neg";
+  }
+  function meter(value, lowBelow = 35) {
+    const v = Math.max(0, Math.min(100, value));
+    return `<div class="meter"><i class="${v < lowBelow ? "low" : ""}" style="width:${v}%"></i></div>`;
+  }
+  function titleCase(s) {
+    return String(s).replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  function money(n) {
+    return n ? `${Math.round(n).toLocaleString("en-US")}` : "-";
+  }
+
+  // wrestling/js/ui/shell.js
+  var screens = /* @__PURE__ */ new Map();
+  var actions = /* @__PURE__ */ new Map();
+  function registerScreen(name, screen) {
+    screens.set(name, screen);
+  }
+  function registerActions(map) {
+    for (const [name, fn] of Object.entries(map)) actions.set(name, fn);
+  }
+  function parseRoute(hash = location.hash) {
+    const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+    return { name: parts[0] || "roster", args: parts.slice(1) };
+  }
+  function go(path) {
+    const next = `#/${String(path).replace(/^#?\/?/, "")}`;
+    if (location.hash === next) render();
+    else location.hash = next;
+  }
+  function render() {
+    const { name, args } = parseRoute();
+    const screen = screens.get(name);
+    const host = document.getElementById("screen");
+    if (!screen) {
+      host.innerHTML = `<h1>Not found</h1><p class="sub">No screen called "${esc(name)}".</p>`;
+      return;
+    }
+    try {
+      host.innerHTML = screen.render(args);
+    } catch (err) {
+      host.innerHTML = `<h1>Screen error</h1><p class="sub">${esc(err.message)}</p>`;
+      console.error(err);
+    }
+    renderTabs(name);
+    host.scrollTop = 0;
+  }
+  function renderTabs(active) {
+    const el = document.getElementById("tabs");
+    el.innerHTML = [...screens.entries()].filter(([, s]) => s.inNav !== false).map(
+      ([name, s]) => `<button class="tab${name === active ? " on" : ""}" data-action="go" data-arg="${name}">${esc(s.label)}</button>`
+    ).join("");
+  }
+  function renderHeader(state) {
+    const brand = document.getElementById("brandName");
+    const gm = document.getElementById("gmName");
+    const when = document.getElementById("when");
+    if (!state) {
+      brand.textContent = "Wrestling GM";
+      gm.textContent = "no game loaded";
+      when.textContent = "";
+      return;
+    }
+    brand.textContent = state.meta.brandName;
+    gm.textContent = `${state.meta.gmName} - ${state.meta.mode}`;
+    when.textContent = headerWhen(state);
+  }
+  var whenFormatter = () => "";
+  function setWhenFormatter(fn) {
+    whenFormatter = fn;
+  }
+  function headerWhen(state) {
+    return whenFormatter(state);
+  }
+  var toastTimer;
+  function toast(message) {
+    const el = document.getElementById("toast");
+    el.textContent = message;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+  }
+  function bindEvents() {
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-action]");
+      if (!el) return;
+      const fn = actions.get(el.dataset.action);
+      if (!fn) return;
+      e.preventDefault();
+      fn(el.dataset, el);
+    });
+    document.addEventListener("submit", (e) => {
+      const form = e.target.closest("form[data-action]");
+      if (!form) return;
+      e.preventDefault();
+      const fn = actions.get(form.dataset.action);
+      if (fn) fn(form.dataset, form);
+    });
+    document.addEventListener("change", (e) => {
+      const el = e.target.closest("[data-action]");
+      if (!el || el.tagName === "FORM") return;
+      const fn = actions.get(el.dataset.action);
+      if (fn) fn({ ...el.dataset, value: el.value }, el);
+    });
+    window.addEventListener("hashchange", render);
+  }
+  registerActions({
+    go: ({ arg }) => go(arg)
+  });
+
+  // wrestling/js/ui/screens/roster.js
+  var roster_default = {
+    label: "Roster",
+    render() {
+      if (!isLoaded()) return notLoaded();
+      const day = today();
+      const roster = allWrestlers().sort(
+        (a, b) => CAREER_RANK[b.standing.careerStatus] - CAREER_RANK[a.standing.careerStatus] || b.ability.starPower - a.ability.starPower
+      );
+      const rows = roster.map((w) => {
+        const allies = alliesOf(w).length;
+        const enemies = enemiesOf(w).length;
+        const expiry = w.contract.expiresOnDay;
+        const daysLeft = expiry == null ? null : expiry - day;
+        return `
+        <tr>
+          <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}"><strong>${esc(w.name)}</strong></button>
+              <div class="muted num" style="font-size:11px">${w.id}</div></td>
+          <td><span class="pill">${esc(titleCase(w.standing.careerStatus))}</span></td>
+          <td class="num">${recordOf(w)}</td>
+          <td class="num ${w.standing.streak.type === "W" ? "pos" : w.standing.streak.type === "L" ? "neg" : "muted"}">${streakLabel(w)}</td>
+          <td class="num">${w.state.morale}${meter(w.state.morale)}</td>
+          <td class="num ${toneOf(w.state.momentum)}">${signed(w.state.momentum)}</td>
+          <td class="num">${w.ties.gm.trust}${meter(w.ties.gm.trust, 40)}</td>
+          <td class="num">${allies ? `<span class="pos">${allies}</span>` : '<span class="muted">0</span>'} / ${enemies ? `<span class="neg">${enemies}</span>` : '<span class="muted">0</span>'}</td>
+          <td class="num">${money(w.contract.salary)}</td>
+          <td class="num ${daysLeft != null && daysLeft < 120 ? "neg" : "muted"}">${daysLeft == null ? "-" : `${daysLeft}d`}</td>
+        </tr>`;
+      }).join("");
+      return `
+      <h1>Roster</h1>
+      <p class="sub">${roster.length} under contract &middot; one entity each, referenced by ID everywhere else</p>
+      <div class="scroller">
+        <table>
+          <thead><tr>
+            <th>Wrestler</th><th>Status</th><th>Record</th><th>Streak</th>
+            <th>Morale</th><th>Mom.</th><th>Trusts GM</th><th>Allies / Enemies</th>
+            <th>Salary</th><th>Deal ends</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }
+  };
+  function notLoaded() {
+    return `<h1>No game loaded</h1>
+    <p class="sub">Start one from the saves screen.</p>
+    <div class="bar"><button class="act primary" data-action="go" data-arg="saves">Go to saves</button></div>`;
+  }
+
+  // wrestling/js/ui/screens/wrestler.js
+  var wrestler_default = {
+    label: "Wrestler",
+    inNav: false,
+    render([id]) {
+      if (!isLoaded()) return notLoaded();
+      const w = getWrestler(id);
+      if (!w) return `<h1>Unknown wrestler</h1><p class="sub">No wrestler with id ${esc(id)}.</p>`;
+      const day = today();
+      const kv = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+      const bar = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>${meter(v)}`;
+      const relationships = Object.entries(w.ties.relationships).sort((a, b) => b[1].value - a[1].value).map(([otherId, rel]) => {
+        const theirView = relationshipTo(getWrestler(otherId), w.id);
+        const mutual = Math.sign(rel.value) === Math.sign(theirView) || theirView === 0;
+        return `<tr>
+          <td><button class="rowlink" data-action="go" data-arg="wrestler/${otherId}">${esc(nameOf(otherId))}</button></td>
+          <td class="num ${toneOf(rel.value)}">${signed(rel.value)}</td>
+          <td class="num ${toneOf(theirView)}">${signed(theirView)}</td>
+          <td class="muted">${mutual ? "" : "one-sided"}</td>
+        </tr>`;
+      }).join("") || '<tr><td colspan="4" class="empty">No opinions about anyone yet.</td></tr>';
+      const memories = w.memory.map((m) => ({ m, weight: memoryWeightOn(m, day) })).sort((a, b) => b.weight - a.weight).map(({ m, weight }) => `
+        <tr>
+          <td class="num">d${m.day}</td>
+          <td>${esc(m.summary)}
+            ${m.aboutIds.map((a) => `<button class="rowlink muted" data-action="go" data-arg="wrestler/${a}" style="font-size:11px">${esc(nameOf(a))}</button>`).join(" ")}</td>
+          <td><span class="pill ${m.scar ? "grease" : ""}">${esc(titleCase(m.type))}</span></td>
+          <td class="num">${Math.round(weight)} <span class="muted">/ ${m.weight}</span></td>
+        </tr>`).join("") || '<tr><td colspan="4" class="empty">Nothing worth remembering yet.</td></tr>';
+      const history = historyOf2(w.id, { newestFirst: true, limit: 25 }).map((e) => `<div class="ev"><span class="d">d${e.day}</span><span class="t">${esc(e.type)}</span><span>${esc(e.summary)}</span></div>`).join("");
+      return `
+      <h1>${esc(w.name)}</h1>
+      <p class="sub">${w.id} &middot; ${esc(titleCase(w.standing.careerStatus))} &middot; debuted day ${w.standing.debutDay}</p>
+
+      <div class="cards">
+        <div class="card"><h3>1. Identity</h3>
+          ${bar("Ego", w.identity.ego)}
+          ${bar("Ambition", w.identity.ambition)}
+          ${TRAITS.map((t) => kv(titleCase(t), w.identity.traits[t])).join("")}
+        </div>
+        <div class="card"><h3>2. Ability</h3>
+          ${ABILITIES.map((a) => bar(titleCase(a), w.ability[a])).join("")}
+        </div>
+        <div class="card"><h3>3. Standing</h3>
+          ${kv("Record", recordOf(w))}
+          ${kv("Streak", streakLabel(w))}
+          ${kv("Rank", w.standing.rank ?? "unranked")}
+          ${kv("Title reigns", w.standing.titleReigns.length)}
+        </div>
+        <div class="card"><h3>4. State</h3>
+          ${bar("Morale", w.state.morale)}
+          ${kv("Momentum", `<span class="${toneOf(w.state.momentum)}">${signed(w.state.momentum)}</span>`)}
+          ${bar("Condition", w.state.condition)}
+          ${kv("Mood", titleCase(w.state.mood))}
+          ${kv("Health", titleCase(w.state.health.status))}
+        </div>
+        <div class="card"><h3>5. Ties &middot; the GM</h3>
+          ${bar("Trusts you", w.ties.gm.trust)}
+          ${bar("Respects you", w.ties.gm.respect)}
+          ${kv("Relationships", Object.keys(w.ties.relationships).length)}
+        </div>
+        <div class="card"><h3>Contract</h3>
+          ${kv("Salary", money(w.contract.salary))}
+          ${kv("Expires", w.contract.expiresOnDay == null ? "-" : `day ${w.contract.expiresOnDay}`)}
+          ${kv("Status", titleCase(w.contract.status))}
+          <div class="kv"><span class="muted" style="font-size:11px">Fields only. The contract system is not built.</span><span></span></div>
+        </div>
+      </div>
+
+      <h2>5. Ties &middot; the locker room</h2>
+      <p class="sub">Relationships are directed. The two columns disagreeing is the normal case, not a bug.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Wrestler</th><th>${esc(w.shortName)} thinks</th><th>They think</th><th></th></tr></thead>
+        <tbody>${relationships}</tbody>
+      </table></div>
+
+      <h2>6. Memory</h2>
+      <p class="sub">Weight today, against weight when it happened. Scars hold at a high floor.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Day</th><th>What they remember</th><th>Type</th><th>Weight</th></tr></thead>
+        <tbody>${memories}</tbody>
+      </table></div>
+
+      <h2>Everything that has happened to them</h2>
+      <div class="log">${history || '<p class="empty">Nothing yet.</p>'}</div>
+
+      <div class="bar" style="margin-top:1.4rem">
+        <button class="act" data-action="go" data-arg="roster">Back to roster</button>
+      </div>`;
+    }
+  };
+
+  // wrestling/js/ui/screens/calendar.js
+  var calendar_default = {
+    label: "Calendar",
+    render() {
+      if (!isLoaded()) return notLoaded();
+      const state = getState();
+      const cal = state.calendar;
+      const day = cal.day;
+      const rows = cal.entries.map((entry) => {
+        const show = getShow(entry.showId);
+        const when = entry.day - day;
+        const status = entry.day < day ? "past" : entry.day === day ? "today" : `in ${when}d`;
+        return `<tr>
+        <td class="num ${entry.day === day ? "pos" : entry.day < day ? "muted" : ""}">${formatDate(cal, entry.day)}</td>
+        <td class="num muted">d${entry.day}</td>
+        <td><span class="pill ${entry.kind === "ple" ? "brass" : ""}">${entry.kind.toUpperCase()}</span></td>
+        <td><button class="rowlink" data-action="go" data-arg="show/${show.id}">${esc(entry.label)}</button></td>
+        <td class="num muted">M${entry.block} W${entry.week}</td>
+        <td class="num">${show.segmentIds.length}</td>
+        <td><span class="pill ${show.status === "complete" ? "" : show.status === "live" ? "brass" : ""}">${esc(titleCase(show.status))}</span></td>
+        <td class="num muted">${status}</td>
+      </tr>`;
+      }).join("") || '<tr><td colspan="8" class="empty">Nothing scheduled.</td></tr>';
+      const next = nextEntry(cal);
+      return `
+      <h1>Calendar</h1>
+      <p class="sub">${formatDate(cal, day)} &middot; ${formatGameTime(day)} &middot; day ${day}</p>
+
+      <div class="bar">
+        <button class="act" data-action="advance" data-days="1">Advance 1 day</button>
+        <button class="act" data-action="advance" data-days="7">Advance 1 week</button>
+        <button class="act primary" data-action="advanceToShow"${next ? "" : " disabled"}>
+          ${next ? `Advance to ${esc(next.label)}` : "Nothing scheduled"}
+        </button>
+        <button class="act" data-action="scheduleMore">Schedule another month</button>
+      </div>
+
+      <div class="scroller"><table>
+        <thead><tr><th>Date</th><th>Day</th><th>Kind</th><th>Show</th><th>Block</th><th>Card</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <p class="sub">Three weeks of television then a premium live event, as set out in the design foundation.
+      Every dated thing in the game stores the integer day, never a formatted date.</p>`;
+    }
+  };
+
+  // wrestling/js/ui/screens/show.js
+  var show_default = {
+    label: "Show",
+    inNav: false,
+    render([id]) {
+      if (!isLoaded()) return notLoaded();
+      const show = id ? getShow(id) : allShows().find((s) => s.status !== "complete");
+      if (!show) return `<h1>Unknown show</h1><p class="sub">No show with id ${esc(id)}.</p>`;
+      const state = getState();
+      const segments = segmentsOfShow(show.id);
+      const booked = show.result.bookedSec;
+      const actual = show.result.actualSec;
+      const unbooked = show.timeBudgetSec - booked;
+      const rows = segments.map((seg, i) => {
+        const bySide = sides(seg);
+        const line = Object.values(bySide).map((ids) => ids.map(
+          (wid) => `<button class="rowlink" data-action="go" data-arg="wrestler/${wid}">${esc(nameOf(wid))}</button>`
+        ).join(" &amp; ")).join(' <span class="muted">vs</span> ');
+        const ran = seg.result.actualSec;
+        const delta = ran ? ran - seg.timeLimitSec : 0;
+        const winners = (seg.result.winnerIds || []).map((w) => esc(nameOf(w))).join(", ");
+        return `<tr>
+        <td class="num muted">${i + 1}</td>
+        <td><span class="pill">${esc(seg.kind)}</span></td>
+        <td>${esc(seg.name || "-")}<div style="font-size:12px">${line || '<span class="muted">nobody booked</span>'}</div></td>
+        <td class="num">${mmss(seg.timeLimitSec)}</td>
+        <td class="num">${ran ? mmss(ran) : '<span class="muted">-</span>'}</td>
+        <td class="num ${delta < 0 ? "pos" : delta > 0 ? "neg" : "muted"}">${ran ? signedTime(delta) : ""}</td>
+        <td>${seg.result.finish ? `${esc(titleCase(seg.result.finish))}${winners ? `<div class="muted" style="font-size:11px">${winners}</div>` : ""}` : '<span class="muted">not run</span>'}</td>
+        <td>
+          ${seg.status === "complete" ? "" : `<button class="act" data-action="runSegment" data-id="${seg.id}">Record result</button>`}
+          <button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button>
+        </td>
+      </tr>`;
+      }).join("") || '<tr><td colspan="8" class="empty">Nothing booked on this card yet.</td></tr>';
+      const rosterOptions = allWrestlers().map((w) => `<option value="${w.id}">${esc(w.name)}</option>`).join("");
+      return `
+      <h1>${esc(show.name)}</h1>
+      <p class="sub">${show.id} &middot; ${formatDate(state.calendar, show.day)} &middot;
+        ${show.kind.toUpperCase()} &middot; ${esc(titleCase(show.status))}</p>
+
+      <div class="cards">
+        <div class="card"><h3>Television time</h3>
+          <div class="kv"><span>Budget</span><span>${mmss(show.timeBudgetSec)}</span></div>
+          <div class="kv"><span>Booked as limits</span><span>${mmss(booked)}</span></div>
+          <div class="kv"><span>Actually run</span><span>${actual ? mmss(actual) : "-"}</span></div>
+          <div class="kv"><span>Still to fill</span><span class="${unbooked < 0 ? "neg" : "pos"}">${signedTime(-unbooked)}</span></div>
+        </div>
+        <div class="card"><h3>Card</h3>
+          <div class="kv"><span>Segments</span><span>${segments.length}</span></div>
+          <div class="kv"><span>Matches</span><span>${segments.filter((s) => s.kind === "match").length}</span></div>
+          <div class="kv"><span>Complete</span><span>${segments.filter((s) => s.status === "complete").length}</span></div>
+        </div>
+      </div>
+
+      <div class="bar">
+        ${show.status === "scheduled" ? `<button class="act primary" data-action="startShow" data-id="${show.id}">Go live</button>` : ""}
+        ${show.status === "live" ? `<button class="act primary" data-action="completeShow" data-id="${show.id}">Off the air</button>` : ""}
+        <button class="act" data-action="go" data-arg="calendar">Calendar</button>
+      </div>
+
+      <h2>The card</h2>
+      <div class="scroller"><table>
+        <thead><tr><th>#</th><th>Kind</th><th>Segment</th><th>Limit</th><th>Ran</th><th>Gap</th><th>Finish</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <h2>Book a segment</h2>
+      <p class="sub">You assign a time limit, not a duration. What it actually runs is the simulation's call.</p>
+      <form data-action="bookSegment" data-show="${show.id}">
+        <div class="bar">
+          <div class="field"><label for="segKind">Kind</label>
+            <select id="segKind" name="kind">
+              ${Object.values(SEGMENT_KINDS).map((k) => `<option value="${k}">${titleCase(k)}</option>`).join("")}
+            </select></div>
+          <div class="field"><label for="segName">Name</label>
+            <input id="segName" name="name" placeholder="Main event" size="18"></div>
+          <div class="field"><label for="segA">Side A</label>
+            <select id="segA" name="a">${rosterOptions}</select></div>
+          <div class="field"><label for="segB">Side B</label>
+            <select id="segB" name="b"><option value="">(none)</option>${rosterOptions}</select></div>
+          <div class="field"><label for="segLimit">Limit (min)</label>
+            <input id="segLimit" name="limit" type="number" min="1" max="60" value="15" size="4"></div>
+          <button class="act primary" type="submit">Book it</button>
+        </div>
+      </form>`;
+    }
+  };
+
+  // wrestling/js/ui/screens/log.js
+  var filter = "";
+  function setFilter(next) {
+    filter = next;
+  }
+  var log_default = {
+    label: "Event log",
+    render() {
+      if (!isLoaded()) return notLoaded();
+      const log = queryLog(filter ? { type: filter } : {});
+      const used = /* @__PURE__ */ new Map();
+      for (const e of queryLog({})) used.set(e.type, (used.get(e.type) || 0) + 1);
+      const options = [...used.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([type, n]) => `<option value="${type}"${type === filter ? " selected" : ""}>${esc(type)} (${n})</option>`).join("");
+      const rows = [...log].reverse().map((e) => `
+      <div class="ev">
+        <span class="d">d${e.day} <span style="opacity:.6">#${e.seq}</span></span>
+        <span class="t">${esc(e.type)}</span>
+        <span>${esc(e.summary)}${e.causeId ? ` <span class="muted">&larr; ${e.causeId}</span>` : ""}</span>
+      </div>`).join("") || '<p class="empty">No events match.</p>';
+      const registered = Object.keys(EVENT_TYPES).length;
+      return `
+      <h1>Event log</h1>
+      <p class="sub">${queryLog({}).length} events &middot; ${used.size} of ${registered} registered types in use &middot; append-only</p>
+
+      <div class="bar">
+        <div class="field"><label for="logFilter">Filter by type</label>
+          <select id="logFilter" data-action="filterLog">
+            <option value="">all types</option>${options}
+          </select></div>
+      </div>
+
+      <div class="log">${rows}</div>`;
+    }
+  };
+
+  // wrestling/js/ui/screens/saves.js
+  var saves_default = {
+    label: "Saves",
+    render() {
+      const loaded = isLoaded();
+      const saves = listSaves();
+      const rows = saves.map((s) => `<tr>
+      <td><strong>${esc(s.label || s.slot)}</strong><div class="muted num" style="font-size:11px">${esc(s.slot)}</div></td>
+      <td class="num">${esc(String(s.savedAt).replace("T", " ").slice(0, 16))}</td>
+      <td class="num">day ${s.summary?.day ?? "?"}</td>
+      <td class="num">${s.summary?.rosterSize ?? "?"}</td>
+      <td class="num">${s.summary?.events ?? "?"}</td>
+      <td>
+        <button class="act" data-action="loadSlot" data-slot="${esc(s.slot)}">Load</button>
+        <button class="act danger" data-action="deleteSlot" data-slot="${esc(s.slot)}">Delete</button>
+      </td>
+    </tr>`).join("") || '<tr><td colspan="6" class="empty">No saves yet.</td></tr>';
+      const problems = loaded ? checkState(getState()) : [];
+      return `
+      <h1>Saves</h1>
+      <p class="sub">A save carries the state, the ID counters and the RNG position, so a reload continues
+      the same world rather than a similar one.</p>
+
+      <h2>New game</h2>
+      <form data-action="newGame">
+        <div class="bar">
+          <div class="field"><label for="gmName">GM name</label>
+            <input id="gmName" name="gmName" value="C. Wilson" size="14"></div>
+          <div class="field"><label for="brandName">Brand</label>
+            <input id="brandName" name="brandName" value="Friday Night Showcase" size="18"></div>
+          <div class="field"><label for="seed">Seed</label>
+            <input id="seed" name="seed" value="" placeholder="random" size="12"></div>
+          <div class="field"><label for="mode">Mode</label>
+            <select id="mode" name="mode">
+              <option value="sandbox">Solo sandbox</option>
+              <option value="competitive">Competitive</option>
+            </select></div>
+          <button class="act primary" type="submit">Start</button>
+        </div>
+      </form>
+
+      <h2>Slots</h2>
+      <div class="bar">
+        <div class="field"><label for="slotName">Slot</label>
+          <input id="slotName" value="slot1" size="10"></div>
+        <div class="field"><label for="slotLabel">Label</label>
+          <input id="slotLabel" value="" placeholder="optional" size="16"></div>
+        <button class="act primary" data-action="saveSlot"${loaded ? "" : " disabled"}>Save</button>
+        <button class="act" data-action="exportSave"${loaded ? "" : " disabled"}>Copy as JSON</button>
+        <button class="act" data-action="importSave">Paste JSON</button>
+      </div>
+      <div class="scroller"><table>
+        <thead><tr><th>Save</th><th>Written</th><th>Day</th><th>Roster</th><th>Events</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <h2>Integrity</h2>
+      ${!loaded ? '<p class="empty">No game loaded.</p>' : problems.length ? `<p class="neg">${problems.length} problem(s):</p><ul>${problems.map((p) => `<li class="neg">${esc(p)}</li>`).join("")}</ul>` : `<p><span class="pill brass">Sound</span> Every reference resolves, no wrestler is stored twice, the log is append-only.</p>`}
+      <div class="bar"><button class="act" data-action="checkState"${loaded ? "" : " disabled"}>Re-check now</button></div>`;
+    }
+  };
+
+  // wrestling/js/main.js
+  registerScreen("roster", roster_default);
+  registerScreen("calendar", calendar_default);
+  registerScreen("show", show_default);
+  registerScreen("log", log_default);
+  registerScreen("saves", saves_default);
+  registerScreen("wrestler", wrestler_default);
+  setWhenFormatter((state) => `${formatDate(state.calendar)} \xB7 ${formatGameTime(state.calendar.day)}`);
+  function refresh(message) {
+    renderHeader(isLoaded() ? getState() : null);
+    render();
+    if (message) toast(message);
+  }
+  registerActions({
+    // --- lifecycle ---------------------------------------------------------
+    newGame(_data, form) {
+      const f = new FormData(form);
+      newGame({
+        seed: (f.get("seed") || "").trim() || `seed-${Date.now()}`,
+        gmName: f.get("gmName") || "New GM",
+        brandName: f.get("brandName") || "Weekly Showcase",
+        mode: f.get("mode") || "sandbox",
+        scheduleBlocks: 3
+      });
+      seedRoster();
+      go("roster");
+      refresh("New game started with 14 wrestlers and three months booked");
+    },
+    saveSlot() {
+      const slot = document.getElementById("slotName")?.value.trim() || "slot1";
+      const label = document.getElementById("slotLabel")?.value.trim() || "";
+      const result = save(slot, { label });
+      refresh(result.ok ? `Saved to ${slot}` : `Save failed: ${result.error}`);
+    },
+    loadSlot({ slot }) {
+      const result = load(slot);
+      if (!result.ok) return toast(`Load failed: ${result.error}`);
+      go("roster");
+      refresh(`Loaded ${slot}`);
+    },
+    deleteSlot({ slot }) {
+      deleteSave(slot);
+      refresh(`Deleted ${slot}`);
+    },
+    async exportSave() {
+      const json = toJSON({ label: "export" });
+      try {
+        await navigator.clipboard.writeText(json);
+        toast(`Copied ${(json.length / 1024).toFixed(0)} KB to the clipboard`);
+      } catch {
+        window.prompt("Copy this save:", json);
+      }
+    },
+    importSave() {
+      const text = window.prompt("Paste a save:");
+      if (!text) return;
+      try {
+        fromJSON(text);
+        go("roster");
+        refresh("Save imported");
+      } catch (err) {
+        toast(err.message);
+      }
+    },
+    checkState() {
+      const problems = checkState(getState());
+      refresh(problems.length ? `${problems.length} integrity problem(s)` : "State is sound");
+    },
+    // --- calendar ----------------------------------------------------------
+    advance({ days }) {
+      const { to } = advanceDays(Number(days) || 1);
+      refresh(`Now day ${to}`);
+    },
+    advanceToShow() {
+      const moved = advanceToNextShow();
+      if (!moved) return toast("Nothing left on the calendar");
+      const entry = getState().calendar.entries.find((e) => e.day === moved.to);
+      refresh(entry ? `${entry.label} is today` : `Now day ${moved.to}`);
+    },
+    scheduleMore() {
+      const added = scheduleProgramming(1);
+      refresh(`Scheduled ${added.length} more shows`);
+    },
+    // --- booking -----------------------------------------------------------
+    bookSegment({ show: showId }, form) {
+      const f = new FormData(form);
+      const participants = [];
+      if (f.get("a")) participants.push({ wrestlerId: f.get("a"), side: "a" });
+      if (f.get("b")) participants.push({ wrestlerId: f.get("b"), side: "b" });
+      if (participants.length === 2 && participants[0].wrestlerId === participants[1].wrestlerId) {
+        return toast("A wrestler cannot face themselves");
+      }
+      try {
+        bookSegment({
+          showId,
+          kind: f.get("kind"),
+          name: (f.get("name") || "").trim(),
+          timeLimitSec: Math.max(1, Number(f.get("limit")) || 10) * 60,
+          participants
+        });
+        refresh("Booked");
+      } catch (err) {
+        toast(err.message);
+      }
+    },
+    cutSegment({ id }) {
+      cutSegment(id, { reason: "Cut for time" });
+      refresh("Cut from the card");
+    },
+    startShow({ id }) {
+      startShow(id);
+      refresh("Live");
+    },
+    completeShow({ id }) {
+      completeShow(id);
+      refresh("Off the air");
+    },
+    /**
+     * PLACEHOLDER, not the match simulation.
+     *
+     * It picks a duration and a winner with flat randomness and reads no wrestler
+     * stat at all, precisely so it cannot be mistaken for the real thing. Its only
+     * job is to exercise completeSegment so the event chain and the time
+     * bookkeeping can be seen working. The simulation described in the design
+     * foundation replaces this wholesale.
+     */
+    runSegment({ id }) {
+      const seg = getSegment(id);
+      const rng = getRng();
+      const bySide = sides(seg);
+      const sideKeys = Object.keys(bySide);
+      const ranFull = rng.chance(0.15);
+      const actualSec = ranFull ? seg.timeLimitSec : rng.range(20, Math.max(25, seg.timeLimitSec));
+      let finish = FINISHES.SEGMENT_END;
+      let winnerIds = [];
+      let loserIds = [];
+      if (seg.kind === "match" && sideKeys.length >= 2) {
+        if (ranFull) {
+          finish = FINISHES.TIME_LIMIT_DRAW;
+        } else {
+          finish = rng.pick([FINISHES.PINFALL, FINISHES.SUBMISSION, FINISHES.COUNTOUT, FINISHES.DQ]);
+          const winSide = rng.pick(sideKeys);
+          winnerIds = bySide[winSide];
+          loserIds = sideKeys.filter((k) => k !== winSide).flatMap((k) => bySide[k]);
+        }
+      }
+      completeSegment(id, { finish, winnerIds, loserIds, actualSec });
+      const delta = actualSec - seg.timeLimitSec;
+      refresh(delta < 0 ? `Ran ${Math.round(-delta / 60)} minutes short of its limit` : "Went the distance");
+    },
+    // --- log ---------------------------------------------------------------
+    filterLog({ value }) {
+      setFilter(value);
+      render();
+    }
+  });
+  bindEvents();
+  var resumed = hasSave("auto") && load("auto").ok;
+  if (!resumed && !location.hash) location.hash = "#/saves";
+  on2("show.completed", () => save("auto", { label: "Autosave" }));
+  on2("calendar.advanced", () => save("auto", { label: "Autosave" }));
+  renderHeader(isLoaded() ? getState() : null);
+  render();
+  window.WGM = { store: store_exports, persist: persist_exports, clock: clock_exports, checkState, seedRoster };
+})();
+
+</script>
+</body>
+</html>

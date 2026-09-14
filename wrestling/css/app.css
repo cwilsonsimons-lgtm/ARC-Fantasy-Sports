@@ -1,0 +1,136 @@
+/* Wrestling GM shell.
+   Tool-first, not document-first: dense rows, tabular numbers, one accent.
+   Palette matches the design foundation page - cool slate ground, brass accent
+   for anything live or on-air, oxblood for cuts, losses and grievances. */
+
+:root{
+  --ground:#E8EAE7; --surface:#F3F4F1; --sunk:#DDE0DC;
+  --ink:#15181A; --soft:#4C5457; --faint:#6E777A;
+  --brass:#9C6511; --brass-wash:#EDE3D2;
+  --grease:#8E2226; --grease-wash:#EFDDDC;
+  --rule:#C7CBC6; --rule-soft:#D7DAD6;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#14171A; --surface:#1B1F22; --sunk:#101315;
+    --ink:#E7E9E6; --soft:#A3ACAF; --faint:#7E878A;
+    --brass:#E2A54A; --brass-wash:#241C0F;
+    --grease:#E07A80; --grease-wash:#241516;
+    --rule:#2F353A; --rule-soft:#242A2E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14171A; --surface:#1B1F22; --sunk:#101315;
+  --ink:#E7E9E6; --soft:#A3ACAF; --faint:#7E878A;
+  --brass:#E2A54A; --brass-wash:#241C0F;
+  --grease:#E07A80; --grease-wash:#241516;
+  --rule:#2F353A; --rule-soft:#242A2E;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--ground);color:var(--ink);font:14px/1.5 var(--sans)}
+#app{display:flex;flex-direction:column;min-height:100%}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:grid;grid-template-columns:1fr auto;align-items:center;
+  gap:.5rem 1rem;padding:.7rem 16px .55rem;
+  border-bottom:2px solid var(--ink);background:var(--surface);
+  position:sticky;top:0;z-index:5;
+}
+.brand{display:flex;flex-direction:column;min-width:0}
+.brand-name{font-weight:700;letter-spacing:-.01em}
+.brand-sub{font:400 11px/1.4 var(--mono);color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+.when{font:400 11px/1.4 var(--mono);color:var(--brass);text-align:right;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.tabs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.15rem;margin-top:.35rem}
+.tab{
+  font:400 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  padding:.45rem .6rem;border:0;background:none;color:var(--faint);
+  cursor:pointer;border-bottom:2px solid transparent;
+}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--brass);border-bottom-color:var(--brass)}
+
+/* ---------- screen ---------- */
+.screen{flex:1;padding:1.1rem 16px 4rem;max-width:72rem;width:100%;margin:0 auto}
+h1{font-size:1.15rem;margin:0 0 .15rem;letter-spacing:-.01em}
+h2{font:700 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:1.6rem 0 .5rem}
+.sub{font:400 11px/1.5 var(--mono);color:var(--faint);letter-spacing:.05em;margin:0 0 1rem}
+p{margin:0 0 .7rem}
+a{color:var(--brass)}
+
+/* ---------- tables ---------- */
+.scroller{overflow-x:auto;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:30rem}
+th{
+  font:700 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);text-align:left;border-bottom:1px solid var(--ink);
+  padding:.35rem .6rem .35rem 0;white-space:nowrap;
+}
+td{border-bottom:1px solid var(--rule-soft);padding:.45rem .6rem .45rem 0;vertical-align:top}
+th:last-child,td:last-child{padding-right:0}
+tbody tr:hover{background:var(--surface)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--brass)}
+.neg{color:var(--grease)}
+.muted{color:var(--faint)}
+
+/* ---------- controls ---------- */
+.bar{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:1rem}
+button.act,select,input{
+  font:400 12px/1 var(--mono);color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule);padding:.5rem .7rem;cursor:pointer;
+}
+input,select{cursor:auto}
+button.act:hover{border-color:var(--brass);color:var(--brass)}
+button.act.primary{background:var(--brass-wash);border-color:var(--brass);color:var(--brass);font-weight:700}
+button.act.danger:hover{border-color:var(--grease);color:var(--grease)}
+button.act:disabled{opacity:.45;cursor:not-allowed}
+label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:.2rem}
+.field{display:flex;flex-direction:column;min-width:8rem}
+
+/* ---------- cards and layers ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.9rem;margin-bottom:1rem}
+.card{background:var(--surface);border:1px solid var(--rule);padding:.8rem .9rem}
+.card h3{font:700 10px/1.4 var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--brass);margin:0 0 .5rem}
+.kv{display:flex;justify-content:space-between;gap:1rem;padding:.2rem 0;border-bottom:1px solid var(--rule-soft);font-size:12px}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--faint)}
+.kv span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.meter{height:4px;background:var(--sunk);margin-top:.25rem;position:relative;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--brass)}
+.meter i.low{background:var(--grease)}
+
+.pill{
+  display:inline-block;font:700 10px/1 var(--mono);letter-spacing:.07em;
+  text-transform:uppercase;padding:.25rem .4rem;border:1px solid var(--rule);color:var(--faint);
+}
+.pill.brass{color:var(--brass);border-color:var(--brass);background:var(--brass-wash)}
+.pill.grease{color:var(--grease);border-color:var(--grease);background:var(--grease-wash)}
+
+.empty{color:var(--faint);font-style:italic;padding:1.2rem 0}
+.rowlink{background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left}
+.rowlink:hover{color:var(--brass)}
+
+/* ---------- log ---------- */
+.log{font-family:var(--mono);font-size:11.5px}
+.log .ev{display:grid;grid-template-columns:4.2rem 9.5rem 1fr;gap:.6rem;padding:.35rem 0;border-bottom:1px solid var(--rule-soft)}
+.log .ev .d{color:var(--faint)}
+.log .ev .t{color:var(--brass);overflow-wrap:anywhere}
+@media (max-width:40rem){
+  .log .ev{grid-template-columns:1fr;gap:.1rem}
+}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%) translateY(1rem);
+  background:var(--ink);color:var(--ground);font:400 12px/1 var(--mono);
+  padding:.6rem .9rem;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;
+  max-width:calc(100vw - 32px);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
