@@ -29,6 +29,7 @@ import showScreen from './ui/screens/show.js';
 import logScreen, { setFilter } from './ui/screens/log.js';
 import savesScreen from './ui/screens/saves.js';
 import { draft, setDraftFormat, setOverride } from './ui/screens/show.js';
+import * as playback from './ui/playback.js';
 
 // Registration order is nav order, and nav order is the weekly loop:
 // look at the roster, book the show, run it, then move the calendar on.
@@ -174,6 +175,7 @@ registerActions({
   // --- running the show --------------------------------------------------
   goLive({ id }) {
     try {
+      playback.stop();
       runner.goLive(id);
       refresh('On the air');
     } catch (err) {
@@ -185,23 +187,37 @@ registerActions({
     setOverride(value);
   },
 
+  /**
+   * Work out the next segment, then play it out on screen. Nothing is recorded
+   * until the clock reaches the finish, so the card behind the panel cannot
+   * give the result away.
+   */
   runNext({ id }) {
-    const step = runner.runNext(id, { overrideWinnerSide: draft.overrideSide || null });
+    const step = runner.previewNext(id, { overrideWinnerSide: draft.overrideSide || null });
     setOverride('');
     if (!step) return refresh('The card is done');
-    const { segment, result } = step;
-    const delta = result.actualSec - segment.timeLimitSec;
-    refresh(delta < -30
-      ? `${segment.name} ran ${mmssShort(-delta)} short of its limit`
-      : `${segment.name} went the distance`);
+
+    playback.start(step, (result) => {
+      runner.commitResult(step.segment.id, result);
+      const delta = result.actualSec - step.segment.timeLimitSec;
+      refresh(delta < -30
+        ? `${step.segment.name} ended ${mmssShort(-delta)} inside its limit`
+        : `${step.segment.name} went the distance`);
+    });
+    render();
   },
 
+  playbackSkip() { playback.skip(); },
+  playbackSpeed({ value }) { playback.setSpeed(value); },
+
   runRest({ id }) {
+    playback.stop();
     const steps = runner.runRest(id);
     refresh(`Ran the last ${steps.length} segment${steps.length === 1 ? '' : 's'}`);
   },
 
   goOffAir({ id }) {
+    playback.stop();
     const show = runner.goOffAir(id);
     // Pin the route to this show, or "This week" would skip straight past the
     // results to next week's empty card.
@@ -210,6 +226,7 @@ registerActions({
   },
 
   nextWeek() {
+    playback.stop();
     const show = runner.nextWeek();
     if (!show) return toast('Nothing left on the calendar');
     go(`show/${show.id}`);

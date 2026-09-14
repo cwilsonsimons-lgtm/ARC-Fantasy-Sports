@@ -62,27 +62,51 @@ export function goLive(showId) {
 }
 
 /**
- * Run the next segment on the card.
+ * Work out what happens next, WITHOUT recording it.
+ *
+ * Split from committing so the UI can play the match out on screen before the
+ * result exists anywhere the player can see. Nothing is written here, so a
+ * reload mid-playback simply means the match has not happened yet.
  *
  * `overrideWinnerSide` is the player's override: they keep the duration and the
  * rating the simulation produced and force who goes over. If they do not use
  * it, they live with the result.
  */
-export function runNext(showId, { overrideWinnerSide = null } = {}) {
+export function previewNext(showId, { overrideWinnerSide = null } = {}) {
   const show = store.requireShow(showId);
   if (show.status !== SHOW_STATUS.LIVE) throw new Error('The show is not on the air');
 
   const segment = nextSegment(showId);
   if (!segment) return null;
 
-  let result = simulateSegment(segment, {
+  const { result, timeline } = simulateSegment(segment, {
     get: (id) => store.requireWrestler(id),
     rng: store.getRng(),
   });
-  if (overrideWinnerSide) result = applyOverride(result, segment, overrideWinnerSide);
 
-  store.completeSegment(segment.id, result);
-  return { segment: store.getSegment(segment.id), result };
+  return {
+    segment,
+    timeline,
+    result: overrideWinnerSide ? applyOverride(result, segment, overrideWinnerSide) : result,
+  };
+}
+
+/** Put a previewed result into the books. */
+export function commitResult(segmentId, result) {
+  store.completeSegment(segmentId, result);
+  return store.getSegment(segmentId);
+}
+
+/**
+ * Simulate and record the next segment in one go. Used by "run the rest of the
+ * card" and by the headless checks; the live screen previews and commits
+ * separately so it can show the match happening.
+ */
+export function runNext(showId, opts) {
+  const step = previewNext(showId, opts);
+  if (!step) return null;
+  commitResult(step.segment.id, step.result);
+  return { segment: store.getSegment(step.segment.id), result: step.result, timeline: step.timeline };
 }
 
 /** Run everything left on the card in one go. */

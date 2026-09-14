@@ -144,6 +144,32 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 
+/* ---------- match playback ---------- */
+.playback{
+  border:1px solid var(--rule);
+  border-left:3px solid var(--brass);
+  background:var(--surface);
+  padding:.9rem 1rem;
+  margin-bottom:1.2rem;
+}
+.playback.done{border-left-color:var(--ink)}
+.pb-head{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:.6rem;font-size:13px}
+.pb-clock{
+  font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:2.6rem;line-height:1;letter-spacing:-.02em;
+}
+.pb-bar{height:6px;margin:.5rem 0 .7rem}
+.pb-result{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1.2rem;margin-bottom:.6rem}
+.pb-outcome{font-size:1.05rem;font-weight:600}
+.pb-feed{min-height:5.6rem}
+.pb-feed .ev{grid-template-columns:3.4rem 1fr;padding:.22rem 0;border-bottom:0}
+.pb-feed .ev.fin span:last-child{color:var(--brass);font-weight:700}
+.pb-controls{margin:0}
+@media (max-width:40rem){
+  .pb-feed .ev{grid-template-columns:3.2rem 1fr}
+  .pb-clock{font-size:2.1rem}
+}
+
 </style>
 </head>
 <body>
@@ -728,7 +754,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       identity = {},
       ability = {},
       standing = {},
-      state = {},
+      state: state2 = {},
       ties = {},
       contract = {},
       memory = []
@@ -769,12 +795,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       },
       // 4. State - fast moving. What the recent past did to them.
       state: {
-        morale: clampUnit(state.morale ?? 60),
-        momentum: clampSigned(state.momentum ?? 0),
-        condition: clampUnit(state.condition ?? 100),
+        morale: clampUnit(state2.morale ?? 60),
+        momentum: clampSigned(state2.momentum ?? 0),
+        condition: clampUnit(state2.condition ?? 100),
         // 100 = fresh, falls with ring time
-        mood: state.mood ?? "content",
-        health: state.health ?? { status: HEALTH.HEALTHY, returnsOnDay: null }
+        mood: state2.mood ?? "content",
+        health: state2.health ?? { status: HEALTH.HEALTHY, returnsOnDay: null }
       },
       // 5. Ties.
       //
@@ -1061,11 +1087,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     cause = null,
     data = {}
   } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const event = makeEvent({
       id: mint("event"),
-      seq: state.log.length + 1,
-      day: state.calendar.day,
+      seq: state2.log.length + 1,
+      day: state2.calendar.day,
       type,
       summary,
       actorId,
@@ -1075,7 +1101,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       causeId: cause,
       data
     });
-    state.log.push(event);
+    state2.log.push(event);
     dispatch(event);
     return event;
   }
@@ -1115,17 +1141,17 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     if (scheduleBlocks > 0) scheduleProgramming(scheduleBlocks);
     return G.state;
   }
-  function installState(state, rngState, { seed } = {}) {
-    G.state = state;
-    G.rng = createRng(seed || state.meta.seed || "restored");
+  function installState(state2, rngState, { seed } = {}) {
+    G.state = state2;
+    G.rng = createRng(seed || state2.meta.seed || "restored");
     if (rngState) G.rng.setState(rngState);
     syncCountersTo([
-      ...Object.keys(state.wrestlers),
-      ...Object.keys(state.shows),
-      ...Object.keys(state.segments),
-      ...state.log.map((e) => e.id),
-      ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
-      ...state.calendar.entries.map((e) => e.id)
+      ...Object.keys(state2.wrestlers),
+      ...Object.keys(state2.shows),
+      ...Object.keys(state2.segments),
+      ...state2.log.map((e) => e.id),
+      ...Object.values(state2.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
+      ...state2.calendar.entries.map((e) => e.id)
     ]);
     return G.state;
   }
@@ -1173,13 +1199,13 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return requireGame().calendar.day;
   }
   function nameOf(id) {
-    const state = requireGame();
-    return state.wrestlers[id]?.name || state.shows[id]?.name || state.segments[id]?.name || id;
+    const state2 = requireGame();
+    return state2.wrestlers[id]?.name || state2.shows[id]?.name || state2.segments[id]?.name || id;
   }
   function addWrestler(spec, { cause = null } = {}) {
-    const state = requireGame();
-    const wrestler = createWrestler({ debutDay: state.calendar.day, ...spec });
-    state.wrestlers[wrestler.id] = wrestler;
+    const state2 = requireGame();
+    const wrestler = createWrestler({ debutDay: state2.calendar.day, ...spec });
+    state2.wrestlers[wrestler.id] = wrestler;
     emit(EVENT_TYPES.WRESTLER_CREATED, {
       summary: `${wrestler.name} joins the roster`,
       actorId: wrestler.id,
@@ -1221,9 +1247,9 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return w;
   }
   function addMemory(id, memorySpec, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const w = requireWrestler(id);
-    const memory = createMemory({ day: state.calendar.day, sourceEventId: cause, ...memorySpec });
+    const memory = createMemory({ day: state2.calendar.day, sourceEventId: cause, ...memorySpec });
     w.memory.push(memory);
     emit(EVENT_TYPES.WRESTLER_MEMORY, {
       summary: `${w.name} remembers: ${memory.summary}`,
@@ -1235,18 +1261,18 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return memory;
   }
   function adjustRelationship(fromId, toId, delta, { reason = "", cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const from = requireWrestler(fromId);
     requireWrestler(toId);
     if (fromId === toId) throw new Error("A wrestler cannot hold a relationship with themselves");
     const rel = from.ties.relationships[toId] ||= {
       value: 0,
-      lastChangedDay: state.calendar.day,
+      lastChangedDay: state2.calendar.day,
       sourceEventIds: []
     };
     const before = rel.value;
     rel.value = clampSigned(rel.value + delta);
-    rel.lastChangedDay = state.calendar.day;
+    rel.lastChangedDay = state2.calendar.day;
     const event = emit(EVENT_TYPES.WRESTLER_RELATION, {
       summary: reason || `${from.name}'s view of ${nameOf(toId)} changed`,
       actorId: fromId,
@@ -1272,16 +1298,16 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return w.ties.gm;
   }
   function scheduleProgramming(blocks = 3, { cause = null } = {}) {
-    const state = requireGame();
-    const existingBlocks = new Set(state.calendar.entries.map((e) => e.block));
+    const state2 = requireGame();
+    const existingBlocks = new Set(state2.calendar.entries.map((e) => e.block));
     const startBlock = existingBlocks.size ? Math.max(...existingBlocks) + 1 : 1;
-    const planned = planSchedule(state.calendar, blocks, { startBlock });
+    const planned = planSchedule(state2.calendar, blocks, { startBlock });
     return planned.map((p) => scheduleShow(p, { cause }));
   }
   function scheduleShow({ day, kind, label, block, week }, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const show = createShow({ name: label, day, kind });
-    state.shows[show.id] = show;
+    state2.shows[show.id] = show;
     const entry = {
       id: mint("calendarEntry"),
       day,
@@ -1292,10 +1318,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       week: week ?? weekOf(day)
     };
     show.calendarEntryId = entry.id;
-    state.calendar.entries.push(entry);
-    state.calendar.entries.sort((a, b) => a.day - b.day);
+    state2.calendar.entries.push(entry);
+    state2.calendar.entries.sort((a, b) => a.day - b.day);
     const created = emit(EVENT_TYPES.SHOW_CREATED, {
-      summary: `${show.name} scheduled for ${formatDate(state.calendar, day)}`,
+      summary: `${show.name} scheduled for ${formatDate(state2.calendar, day)}`,
       subjects: [show.id],
       showId: show.id,
       cause,
@@ -1311,17 +1337,17 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return show;
   }
   function advanceDays(n = 1, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     if (n <= 0) throw new Error("advanceDays: n must be positive");
-    const from = state.calendar.day;
+    const from = state2.calendar.day;
     const to = from + n;
-    state.calendar.day = to;
+    state2.calendar.day = to;
     const advanced = emit(EVENT_TYPES.CALENDAR_ADVANCED, {
-      summary: `${formatDate(state.calendar, to)} (${formatGameTime(to)})`,
+      summary: `${formatDate(state2.calendar, to)} (${formatGameTime(to)})`,
       cause,
       data: { from, to, days: n }
     });
-    for (const entry of entriesBetween(state.calendar, from + 1, to)) {
+    for (const entry of entriesBetween(state2.calendar, from + 1, to)) {
       emit(EVENT_TYPES.CALENDAR_DUE, {
         summary: `${entry.label} is today`,
         subjects: [entry.showId].filter(Boolean),
@@ -1333,29 +1359,29 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return { from, to, event: advanced };
   }
   function advanceToDay(day, opts) {
-    const state = requireGame();
-    return advanceDays(day - state.calendar.day, opts);
+    const state2 = requireGame();
+    return advanceDays(day - state2.calendar.day, opts);
   }
   function advanceToNextShow(opts) {
-    const state = requireGame();
-    const next = nextEntry(state.calendar);
+    const state2 = requireGame();
+    const next = nextEntry(state2.calendar);
     if (!next) return null;
     return advanceToDay(next.day, opts);
   }
   function bookSegment(spec, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const show = requireShow(spec.showId);
     for (const p of spec.participants || []) {
       requireWrestler(typeof p === "string" ? p : p.wrestlerId);
     }
     const segment = createSegment({
       order: show.segmentIds.length,
-      bookedOnDay: state.calendar.day,
+      bookedOnDay: state2.calendar.day,
       ...spec
     });
-    state.segments[segment.id] = segment;
+    state2.segments[segment.id] = segment;
     show.segmentIds.push(segment.id);
-    show.result.bookedSec = bookedSeconds(show, state.segments);
+    show.result.bookedSec = bookedSeconds(show, state2.segments);
     emit(EVENT_TYPES.SEGMENT_BOOKED, {
       summary: `${segment.name || segment.kind} booked for ${show.name}`,
       subjects: participantIds(segment),
@@ -1371,7 +1397,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return segment;
   }
   function updateSegment(id, patch, { reason = "", cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const segment = requireSegment(id);
     const before = { timeLimitSec: segment.timeLimitSec, name: segment.name, order: segment.order };
     if (patch.timeLimitSec != null) segment.timeLimitSec = Math.max(0, Math.round(patch.timeLimitSec));
@@ -1379,7 +1405,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     if (patch.order != null) segment.order = patch.order;
     if (patch.stipulation !== void 0) segment.stipulation = patch.stipulation;
     const show = requireShow(segment.showId);
-    show.result.bookedSec = bookedSeconds(show, state.segments);
+    show.result.bookedSec = bookedSeconds(show, state2.segments);
     emit(EVENT_TYPES.SEGMENT_UPDATED, {
       summary: reason || `${segment.name || segment.kind} updated`,
       subjects: participantIds(segment),
@@ -1391,12 +1417,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return segment;
   }
   function cutSegment(id, { reason = "", cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const segment = requireSegment(id);
     segment.status = SEGMENT_STATUS.CUT;
     const show = requireShow(segment.showId);
     show.segmentIds = show.segmentIds.filter((sid) => sid !== id);
-    show.result.bookedSec = bookedSeconds(show, state.segments);
+    show.result.bookedSec = bookedSeconds(show, state2.segments);
     emit(EVENT_TYPES.SEGMENT_CUT, {
       summary: reason || `${segment.name || segment.kind} cut from ${show.name}`,
       subjects: participantIds(segment),
@@ -1408,12 +1434,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return segment;
   }
   function completeSegment(id, result, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const segment = requireSegment(id);
     segment.status = SEGMENT_STATUS.COMPLETE;
     Object.assign(segment.result, result);
     const show = requireShow(segment.showId);
-    show.result.actualSec = actualSeconds(show, state.segments);
+    show.result.actualSec = actualSeconds(show, state2.segments);
     return emit(EVENT_TYPES.SEGMENT_COMPLETED, {
       summary: `${segment.name || segment.kind}: ${result.finish || "ended"}`,
       subjects: participantIds(segment),
@@ -1431,10 +1457,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     });
   }
   function startShow(id, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const show = requireShow(id);
     show.status = SHOW_STATUS.LIVE;
-    show.result.startedOnDay = state.calendar.day;
+    show.result.startedOnDay = state2.calendar.day;
     return emit(EVENT_TYPES.SHOW_STARTED, {
       summary: `${show.name} is live`,
       subjects: [show.id],
@@ -1444,12 +1470,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     });
   }
   function completeShow(id, { rating = null, cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const show = requireShow(id);
     show.status = SHOW_STATUS.COMPLETE;
-    show.result.completedOnDay = state.calendar.day;
+    show.result.completedOnDay = state2.calendar.day;
     show.result.rating = rating;
-    show.result.actualSec = actualSeconds(show, state.segments);
+    show.result.actualSec = actualSeconds(show, state2.segments);
     return emit(EVENT_TYPES.SHOW_COMPLETED, {
       summary: `${show.name} is off the air`,
       subjects: [show.id],
@@ -1473,19 +1499,19 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return causeChain(requireGame().log, eventId);
   }
   function setBackstory(id, { relationships = {}, memory = [] } = {}, { cause = null } = {}) {
-    const state = requireGame();
+    const state2 = requireGame();
     const w = requireWrestler(id);
     for (const [otherId, value] of Object.entries(relationships)) {
       requireWrestler(otherId);
       if (otherId === id) throw new Error(`${id} cannot hold a relationship with themselves`);
       w.ties.relationships[otherId] = {
         value: clampSigned(value),
-        lastChangedDay: state.calendar.day,
+        lastChangedDay: state2.calendar.day,
         sourceEventIds: []
       };
     }
     for (const spec of memory) {
-      w.memory.push(createMemory({ day: state.calendar.day, ...spec }));
+      w.memory.push(createMemory({ day: state2.calendar.day, ...spec }));
     }
     emit(EVENT_TYPES.WRESTLER_UPDATED, {
       summary: `${w.name} arrives with history`,
@@ -1523,30 +1549,30 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
 
   // wrestling/js/core/invariants.js
   var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments"];
-  function checkState(state) {
+  function checkState(state2) {
     const problems = [];
-    if (!state || typeof state !== "object") return ["state is not an object"];
+    if (!state2 || typeof state2 !== "object") return ["state is not an object"];
     for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "log"]) {
-      if (state[key] == null) problems.push(`state.${key} is missing`);
+      if (state2[key] == null) problems.push(`state.${key} is missing`);
     }
     if (problems.length) return problems;
     for (const registry of ENTITY_REGISTRIES) {
-      for (const [key, entity] of Object.entries(state[registry])) {
+      for (const [key, entity] of Object.entries(state2[registry])) {
         if (entity.id !== key) {
           problems.push(`${registry}["${key}"] has id "${entity.id}" - key and id disagree`);
         }
       }
     }
-    for (const w of Object.values(state.wrestlers)) {
+    for (const w of Object.values(state2.wrestlers)) {
       for (const p of validateWrestler(w)) problems.push(`wrestler ${w.id}: ${p}`);
     }
-    const wrestlerIds = new Set(Object.keys(state.wrestlers));
-    const showIds = new Set(Object.keys(state.shows));
-    const segmentIds = new Set(Object.keys(state.segments));
+    const wrestlerIds = new Set(Object.keys(state2.wrestlers));
+    const showIds = new Set(Object.keys(state2.shows));
+    const segmentIds = new Set(Object.keys(state2.segments));
     const refMustExist = (id, set, where) => {
       if (id != null && !set.has(id)) problems.push(`${where} points at missing ${typeOf(id) || "entity"} "${id}"`);
     };
-    for (const w of Object.values(state.wrestlers)) {
+    for (const w of Object.values(state2.wrestlers)) {
       for (const otherId of Object.keys(w.ties.relationships)) {
         refMustExist(otherId, wrestlerIds, `wrestler ${w.id} relationship`);
         if (otherId === w.id) problems.push(`wrestler ${w.id} holds a relationship with themselves`);
@@ -1557,10 +1583,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         }
       }
     }
-    for (const show of Object.values(state.shows)) {
+    for (const show of Object.values(state2.shows)) {
       for (const sid of show.segmentIds) refMustExist(sid, segmentIds, `show ${show.id} card`);
     }
-    for (const seg of Object.values(state.segments)) {
+    for (const seg of Object.values(state2.segments)) {
       refMustExist(seg.showId, showIds, `segment ${seg.id}`);
       for (const p of seg.participants) {
         refMustExist(p.wrestlerId, wrestlerIds, `segment ${seg.id} participant`);
@@ -1568,20 +1594,20 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       for (const id of [...seg.result.winnerIds || [], ...seg.result.loserIds || []]) {
         refMustExist(id, wrestlerIds, `segment ${seg.id} result`);
       }
-      const owner = state.shows[seg.showId];
+      const owner = state2.shows[seg.showId];
       if (owner && seg.status !== "cut" && !owner.segmentIds.includes(seg.id)) {
         problems.push(`segment ${seg.id} claims show ${seg.showId} but is not on its card`);
       }
     }
-    for (const entry of state.calendar.entries) {
+    for (const entry of state2.calendar.entries) {
       refMustExist(entry.showId, showIds, `calendar entry ${entry.id}`);
     }
     const seenEventIds = /* @__PURE__ */ new Set();
-    state.log.forEach((e, i) => {
+    state2.log.forEach((e, i) => {
       if (e.seq !== i + 1) problems.push(`log[${i}] has seq ${e.seq}, expected ${i + 1}`);
       if (seenEventIds.has(e.id)) problems.push(`duplicate event id ${e.id}`);
       seenEventIds.add(e.id);
-      if (i > 0 && e.day < state.log[i - 1].day) {
+      if (i > 0 && e.day < state2.log[i - 1].day) {
         problems.push(`log[${i}] (${e.id}) goes back in time`);
       }
       for (const s of e.subjects) {
@@ -1591,10 +1617,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         problems.push(`event ${e.id} cites cause ${e.causeId}, which does not precede it`);
       }
     });
-    problems.push(...findDuplicateWrestlers(state));
+    problems.push(...findDuplicateWrestlers(state2));
     return problems;
   }
-  function findDuplicateWrestlers(state) {
+  function findDuplicateWrestlers(state2) {
     const problems = [];
     const seen = /* @__PURE__ */ new WeakSet();
     const isWrestlerShaped = (v) => v && typeof v === "object" && !Array.isArray(v) && WRESTLER_SHAPE_KEYS.every((k) => k in v);
@@ -1616,7 +1642,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         } else walk(v, `${path}.${k}`);
       }
     };
-    for (const [key, value] of Object.entries(state)) {
+    for (const [key, value] of Object.entries(state2)) {
       if (key === "wrestlers") continue;
       walk(value, `state.${key}`);
     }
@@ -1653,18 +1679,18 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     // v1 -> v2: segments gained a `format` key (Tier 1 match types). Saves from
     // v1 only ever held singles matches and plain segments, so the format is
     // recoverable from the kind.
-    1: (state) => {
-      for (const segment of Object.values(state.segments)) {
+    1: (state2) => {
+      for (const segment of Object.values(state2.segments)) {
         if (!segment.format) {
           segment.format = segment.kind === "match" ? "singles" : segment.kind;
         }
       }
-      return state;
+      return state2;
     }
   };
-  function migrate(state, fromVersion) {
+  function migrate(state2, fromVersion) {
     let v = fromVersion;
-    let out = state;
+    let out = state2;
     while (v < SCHEMA_VERSION) {
       const step = MIGRATIONS[v];
       if (!step) throw new Error(`No migration from schema v${v} to v${v + 1}`);
@@ -1711,16 +1737,16 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         `Save is from a newer version (v${envelope.schemaVersion}, this build reads v${SCHEMA_VERSION})`
       );
     }
-    const state = envelope.schemaVersion < SCHEMA_VERSION ? migrate(envelope.state, envelope.schemaVersion) : envelope.state;
+    const state2 = envelope.schemaVersion < SCHEMA_VERSION ? migrate(envelope.state, envelope.schemaVersion) : envelope.state;
     if (validate2) {
-      const problems = checkState(state);
+      const problems = checkState(state2);
       if (problems.length) {
         throw new Error(`Save failed integrity checks:
 - ${problems.join("\n- ")}`);
       }
     }
     importCounters(envelope.counters || {});
-    installState(state, envelope.rng, { seed: state.meta.seed });
+    installState(state2, envelope.rng, { seed: state2.meta.seed });
     emit(EVENT_TYPES.GAME_LOADED, {
       summary: `Loaded ${envelope.label || envelope.slot || "save"}`,
       data: { savedAt: envelope.savedAt, schemaVersion: envelope.schemaVersion }
@@ -2301,12 +2327,14 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   // wrestling/js/systems/showRunner.js
   var showRunner_exports = {};
   __export(showRunner_exports, {
+    commitResult: () => commitResult,
     currentShow: () => currentShow,
     goLive: () => goLive,
     goOffAir: () => goOffAir,
     gradeShow: () => gradeShow,
     nextSegment: () => nextSegment,
     nextWeek: () => nextWeek,
+    previewNext: () => previewNext,
     progress: () => progress,
     runNext: () => runNext,
     runRest: () => runRest
@@ -2449,6 +2477,18 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   }
   var mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   var clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  var PHRASES = {
+    open: ["The bell rings.", "Here we go.", "They lock up."],
+    early: ["A feeling-out process early.", "Neither wants to make the first mistake.", "Cagey start."],
+    takeover: ["{X} takes over.", "{X} seizes control.", "{X} turns it around."],
+    pressing: ["{X} is grinding this down.", "{X} keeps the pressure on.", "{X} is in complete control."],
+    trouble: ["{X} is in real trouble now.", "{X} cannot get going."],
+    nearfall: ["Near fall for {X}.", "That was almost it.", "{X} thought that was three."],
+    rally: ["{X} is fighting back.", "The crowd is with {X}."]
+  };
+  function phrase(rng, key, name) {
+    return rng.pick(PHRASES[key]).replace("{X}", name);
+  }
   function finishHazards(beats, gap) {
     const shape = 2.8 - 1.6 * gap;
     const flat = 0.05 + 0.1 * gap;
@@ -2489,21 +2529,38 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     const gap = high > 0 ? clamp((high - low) / high, 0, 1) : 0;
     const beats = Math.max(2, Math.floor(segment.timeLimitSec / BEAT_SEC));
     const hazards = finishHazards(beats, gap);
-    const log = [];
+    const timeline = [];
     let endedAtBeat = null;
     let control = sideKeys[strengths.indexOf(high)];
-    log.push({ atSec: 0, text: "The bell rings." });
+    let heldFor = 0;
+    timeline.push({ atSec: 0, text: phrase(rng, "open"), kind: "open" });
     for (let i = 0; i < beats; i++) {
       const atSec = (i + 1) * BEAT_SEC;
+      const fraction = (i + 1) / beats;
+      const inControl = () => nameSide(bySide[control], get);
       if (rng.chance(0.18)) {
         const others = sideKeys.filter((k) => k !== control);
         const next = rng.weighted(others.map((k) => [k, strengths[sideKeys.indexOf(k)]]));
-        if (next) {
+        if (next && next !== control) {
           control = next;
-          log.push({ atSec, text: `${nameSide(bySide[control], get)} take over.` });
+          heldFor = 0;
+          timeline.push({ atSec, text: phrase(rng, "takeover", inControl()), kind: "takeover" });
         }
-      } else if (i > beats * 0.4 && rng.chance(0.12)) {
-        log.push({ atSec, text: `Near fall for ${nameSide(bySide[control], get)}.` });
+      } else {
+        heldFor++;
+        if (fraction < 0.2 && i === 1) {
+          timeline.push({ atSec, text: phrase(rng, "early"), kind: "colour" });
+        } else if (fraction > 0.4 && rng.chance(0.12)) {
+          timeline.push({ atSec, text: phrase(rng, "nearfall", inControl()), kind: "nearfall" });
+        } else if (heldFor >= 5 && rng.chance(0.35)) {
+          const losing = sideKeys.filter((k) => k !== control);
+          timeline.push({
+            atSec,
+            text: rng.chance(0.5) ? phrase(rng, "pressing", inControl()) : phrase(rng, "trouble", nameSide(bySide[rng.pick(losing)], get)),
+            kind: "colour"
+          });
+          heldFor = 0;
+        }
       }
       if (rng.chance(hazards[i])) {
         endedAtBeat = i + 1;
@@ -2512,18 +2569,22 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     }
     const wentLong = endedAtBeat == null;
     const actualSec = wentLong ? segment.timeLimitSec : Math.min(segment.timeLimitSec, endedAtBeat * BEAT_SEC + rng.range(0, BEAT_SEC - 1));
-    let finish;
+    let finish2;
     let winnerIds = [];
     let loserIds = [];
     if (wentLong) {
-      finish = FINISHES.TIME_LIMIT_DRAW;
-      log.push({ atSec: actualSec, text: "Time limit expires. We have a draw." });
+      finish2 = FINISHES.TIME_LIMIT_DRAW;
+      timeline.push({ atSec: actualSec, text: "Time limit expires. We have a draw.", kind: "finish" });
     } else {
-      finish = pickFinish(rng, gap);
+      finish2 = pickFinish(rng, gap);
       const winnerSide = rng.weighted(sideKeys.map((k, i) => [k, Math.pow(strengths[i], WIN_EXPONENT)]));
       winnerIds = bySide[winnerSide];
       loserIds = sideKeys.filter((k) => k !== winnerSide).flatMap((k) => bySide[k]);
-      log.push({ atSec: actualSec, text: `${nameSide(winnerIds, get)} wins by ${finish.replace(/_/g, " ")}.` });
+      timeline.push({
+        atSec: actualSec,
+        text: `${nameSide(winnerIds, get)} wins by ${finish2.replace(/_/g, " ")}.`,
+        kind: "finish"
+      });
     }
     const people = everyone.map(get);
     const quality = qualityOf({
@@ -2536,21 +2597,34 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       actualSec,
       rng
     });
-    return { finish, winnerIds, loserIds, actualSec, quality, beats: trimLog(log), overridden: false };
+    return {
+      // What gets stored. `beats` is the trimmed highlight set kept in the save.
+      result: { finish: finish2, winnerIds, loserIds, actualSec, quality, beats: trimLog(timeline), overridden: false },
+      // The full feed, for watching it happen. Never stored: a season of these
+      // would be most of the save file, and the highlights are the record.
+      timeline
+    };
   }
   function simulateTalking(segment, everyone, { get, rng }) {
     const people = everyone.map(get).filter(Boolean);
     const actualSec = Math.round(segment.timeLimitSec * rng.range(70, 100) / 100);
     const chem = chemistry(everyone, get);
     let q = 0.55 * mean(people.map((w) => w.ability.charisma)) + 0.12 * mean(people.map((w) => w.ability.starPower)) + 10 * chem + rng.range(-7, 7);
+    const timeline = [
+      { atSec: 0, text: `${nameSide(everyone, get)} has the microphone.`, kind: "open" },
+      { atSec: actualSec, text: `${nameSide(everyone, get)} wraps it up.`, kind: "finish" }
+    ];
     return {
-      finish: FINISHES.SEGMENT_END,
-      winnerIds: [],
-      loserIds: [],
-      actualSec,
-      quality: Math.round(clamp(q, 1, 100)),
-      beats: [{ atSec: actualSec, text: `${nameSide(everyone, get)} wraps it up.` }],
-      overridden: false
+      result: {
+        finish: FINISHES.SEGMENT_END,
+        winnerIds: [],
+        loserIds: [],
+        actualSec,
+        quality: Math.round(clamp(q, 1, 100)),
+        beats: timeline,
+        overridden: false
+      },
+      timeline
     };
   }
   function nameSide(ids, get) {
@@ -2571,8 +2645,8 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     if (!bySide[winnerSideKey]) return result;
     const winnerIds = bySide[winnerSideKey];
     const loserIds = Object.keys(bySide).filter((k) => k !== winnerSideKey).flatMap((k) => bySide[k]);
-    const finish = result.finish === FINISHES.TIME_LIMIT_DRAW ? FINISHES.PINFALL : result.finish;
-    return { ...result, finish, winnerIds, loserIds, overridden: true };
+    const finish2 = result.finish === FINISHES.TIME_LIMIT_DRAW ? FINISHES.PINFALL : result.finish;
+    return { ...result, finish: finish2, winnerIds, loserIds, overridden: true };
   }
 
   // wrestling/js/systems/showRunner.js
@@ -2610,18 +2684,30 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     startShow(showId);
     return show;
   }
-  function runNext(showId, { overrideWinnerSide = null } = {}) {
+  function previewNext(showId, { overrideWinnerSide = null } = {}) {
     const show = requireShow(showId);
     if (show.status !== SHOW_STATUS.LIVE) throw new Error("The show is not on the air");
     const segment = nextSegment(showId);
     if (!segment) return null;
-    let result = simulateSegment(segment, {
+    const { result, timeline } = simulateSegment(segment, {
       get: (id) => requireWrestler(id),
       rng: getRng()
     });
-    if (overrideWinnerSide) result = applyOverride(result, segment, overrideWinnerSide);
-    completeSegment(segment.id, result);
-    return { segment: getSegment(segment.id), result };
+    return {
+      segment,
+      timeline,
+      result: overrideWinnerSide ? applyOverride(result, segment, overrideWinnerSide) : result
+    };
+  }
+  function commitResult(segmentId, result) {
+    completeSegment(segmentId, result);
+    return getSegment(segmentId);
+  }
+  function runNext(showId, opts) {
+    const step = previewNext(showId, opts);
+    if (!step) return null;
+    commitResult(step.segment.id, step.result);
+    return { segment: getSegment(step.segment.id), result: step.result, timeline: step.timeline };
   }
   function runRest(showId) {
     const out = [];
@@ -2811,26 +2897,26 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       ([name, s]) => `<button class="tab${name === active ? " on" : ""}" data-action="go" data-arg="${name}">${esc(s.label)}</button>`
     ).join("");
   }
-  function renderHeader(state) {
+  function renderHeader(state2) {
     const brand = document.getElementById("brandName");
     const gm = document.getElementById("gmName");
     const when = document.getElementById("when");
-    if (!state) {
+    if (!state2) {
       brand.textContent = "Wrestling GM";
       gm.textContent = "no game loaded";
       when.textContent = "";
       return;
     }
-    brand.textContent = state.meta.brandName;
-    gm.textContent = `${state.meta.gmName} - ${state.meta.mode}`;
-    when.textContent = headerWhen(state);
+    brand.textContent = state2.meta.brandName;
+    gm.textContent = `${state2.meta.gmName} - ${state2.meta.mode}`;
+    when.textContent = headerWhen(state2);
   }
   var whenFormatter = () => "";
   function setWhenFormatter(fn) {
     whenFormatter = fn;
   }
-  function headerWhen(state) {
-    return whenFormatter(state);
+  function headerWhen(state2) {
+    return whenFormatter(state2);
   }
   var toastTimer;
   function toast(message) {
@@ -3015,8 +3101,8 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     label: "Calendar",
     render() {
       if (!isLoaded()) return notLoaded();
-      const state = getState();
-      const cal = state.calendar;
+      const state2 = getState();
+      const cal = state2.calendar;
       const day = cal.day;
       const rows = cal.entries.map((entry) => {
         const show = getShow(entry.showId);
@@ -3056,6 +3142,149 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       Every dated thing in the game stores the integer day, never a formatted date.</p>`;
     }
   };
+
+  // wrestling/js/ui/playback.js
+  var SPEEDS = Object.freeze({
+    instant: { label: "Instant", msPerSec: 0 },
+    fast: { label: "Fast", msPerSec: 9 },
+    normal: { label: "Normal", msPerSec: 22 },
+    slow: { label: "Slow", msPerSec: 45 }
+  });
+  var SPEED_KEY = "wgm_playback_speed";
+  var TICK_MS = 50;
+  function readSpeed() {
+    try {
+      const stored = localStorage.getItem(SPEED_KEY);
+      if (stored && SPEEDS[stored]) return stored;
+    } catch {
+    }
+    return "normal";
+  }
+  var speed = readSpeed();
+  var state = null;
+  var timer = null;
+  var onFinish = null;
+  function isActive() {
+    return state != null;
+  }
+  function isFinished() {
+    return !!state?.finished;
+  }
+  function setSpeed(next) {
+    if (!SPEEDS[next]) return;
+    speed = next;
+    try {
+      localStorage.setItem(SPEED_KEY, next);
+    } catch {
+    }
+    if (state && !state.finished && SPEEDS[next].msPerSec === 0) finish();
+    else paint();
+  }
+  function start({ segment, result, timeline }, onDone) {
+    stop();
+    onFinish = onDone;
+    state = {
+      segment,
+      result,
+      timeline: timeline || result.beats || [],
+      clockSec: 0,
+      finished: false,
+      startedAt: Date.now()
+    };
+    if (SPEEDS[speed].msPerSec === 0) return finish();
+    timer = setInterval(() => {
+      const elapsed = Date.now() - state.startedAt;
+      state.clockSec = elapsed / SPEEDS[speed].msPerSec;
+      if (state.clockSec >= state.result.actualSec) finish();
+      else paint();
+    }, TICK_MS);
+    paint();
+  }
+  function skip() {
+    if (state && !state.finished) finish();
+  }
+  function finish() {
+    clearInterval(timer);
+    timer = null;
+    if (!state) return;
+    state.clockSec = state.result.actualSec;
+    state.finished = true;
+    const done = onFinish;
+    onFinish = null;
+    if (done) done(state.result);
+    else paint();
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+    state = null;
+    onFinish = null;
+  }
+  function paint() {
+    const host = document.getElementById("playbackHost");
+    if (host) host.innerHTML = panelHtml();
+  }
+  function speedPickerHtml() {
+    return `<select data-action="playbackSpeed" aria-label="Match playback speed">
+      ${Object.entries(SPEEDS).map(([k, v]) => `<option value="${k}"${k === speed ? " selected" : ""}>${v.label}</option>`).join("")}
+    </select>`;
+  }
+  function nameSides(segment) {
+    const bySide = {};
+    for (const p of segment.participants) (bySide[p.side] ||= []).push(nameOf(p.wrestlerId));
+    return Object.values(bySide).map((n) => n.join(" & ")).join(" vs ");
+  }
+  function panelHtml() {
+    if (!state) return "";
+    const { segment, result, timeline, clockSec, finished } = state;
+    const shown = Math.min(clockSec, result.actualSec);
+    const pct = Math.min(100, shown / segment.timeLimitSec * 100);
+    const revealed = timeline.filter((b) => b.atSec <= shown + 1e-3);
+    const feed = revealed.slice(-7).map((b) => `
+    <div class="ev${b.kind === "finish" ? " fin" : ""}">
+      <span class="d">${mmss(b.atSec)}</span>
+      <span>${esc(b.text)}</span>
+    </div>`).join("");
+    const speedPicker = speedPickerHtml();
+    if (!finished) {
+      return `
+      <div class="playback live">
+        <div class="pb-head">
+          <span class="pill brass">On now</span>
+          <strong>${esc(segment.name || nameSides(segment))}</strong>
+          <span class="muted">limit ${mmss(segment.timeLimitSec)}</span>
+        </div>
+        <div class="pb-clock">${mmss(shown)}</div>
+        <div class="meter pb-bar"><i style="width:${pct}%"></i></div>
+        <div class="log pb-feed">${feed}</div>
+        <div class="bar pb-controls">
+          <button class="act" data-action="playbackSkip">Skip to the finish</button>
+          ${speedPicker}
+        </div>
+      </div>`;
+    }
+    const delta = result.actualSec - segment.timeLimitSec;
+    const outcome = result.winnerIds.length ? `${result.winnerIds.map((id) => esc(nameOf(id))).join(" &amp; ")} <span class="muted">by ${esc(titleCase(result.finish))}</span>` : `<span class="muted">${esc(titleCase(result.finish))}</span>`;
+    return `
+    <div class="playback done">
+      <div class="pb-head">
+        <span class="pill">Final</span>
+        <strong>${esc(segment.name || nameSides(segment))}</strong>
+        <span class="muted">limit ${mmss(segment.timeLimitSec)}</span>
+      </div>
+      <div class="pb-result">
+        <div class="pb-clock">${mmss(result.actualSec)}</div>
+        <div>
+          <div class="pb-outcome">${outcome}${result.overridden ? ' <span class="pill grease">overridden</span>' : ""}</div>
+          <div class="muted" style="font-size:12px">
+            ${delta < 0 ? `${mmss(-delta)} inside the limit` : "went the distance"}
+            &middot; rated ${result.quality}
+          </div>
+        </div>
+      </div>
+      <div class="log pb-feed">${feed}</div>
+    </div>`;
+  }
 
   // wrestling/js/ui/screens/show.js
   var draft = { format: "singles", overrideSide: "" };
@@ -3198,6 +3427,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         <td class="num">${done && seg.result.quality != null ? seg.result.quality : ""}</td>
       </tr>`;
     }).join("");
+    const watching = isActive() && !isFinished();
     const overrideControl = next && next.kind === SEGMENT_KINDS.MATCH ? `<div class="field"><label for="ovr">Override the finish</label>
         <select id="ovr" data-action="changeOverride">
           <option value=""${draft.overrideSide === "" ? " selected" : ""}>Let it play out</option>
@@ -3221,12 +3451,15 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       </div>
     </div>
 
-    <div class="bar">
+    <div id="playbackHost">${panelHtml()}</div>
+
+    ${watching ? "" : `<div class="bar">
       ${next ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ""}
       ${next ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ""}
       ${overrideControl}
+      ${next ? `<div class="field"><label for="pbSpeed">Match playback</label>${speedPickerHtml()}</div>` : ""}
       ${!next ? `<button class="act primary" data-action="goOffAir" data-id="${show.id}">Go off the air</button>` : ""}
-    </div>
+    </div>`}
 
     <h2>The card</h2>
     <div class="scroller"><table>
@@ -3381,7 +3614,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   registerScreen("log", log_default);
   registerScreen("saves", saves_default);
   registerScreen("wrestler", wrestler_default);
-  setWhenFormatter((state) => `${formatDate(state.calendar)} \xB7 ${formatGameTime(state.calendar.day)}`);
+  setWhenFormatter((state2) => `${formatDate(state2.calendar)} \xB7 ${formatGameTime(state2.calendar.day)}`);
   function refresh(message) {
     renderHeader(isLoaded() ? getState() : null);
     render();
@@ -3494,6 +3727,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     // --- running the show --------------------------------------------------
     goLive({ id }) {
       try {
+        stop();
         goLive(id);
         refresh("On the air");
       } catch (err) {
@@ -3503,24 +3737,41 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     changeOverride({ value }) {
       setOverride(value);
     },
+    /**
+     * Work out the next segment, then play it out on screen. Nothing is recorded
+     * until the clock reaches the finish, so the card behind the panel cannot
+     * give the result away.
+     */
     runNext({ id }) {
-      const step = runNext(id, { overrideWinnerSide: draft.overrideSide || null });
+      const step = previewNext(id, { overrideWinnerSide: draft.overrideSide || null });
       setOverride("");
       if (!step) return refresh("The card is done");
-      const { segment, result } = step;
-      const delta = result.actualSec - segment.timeLimitSec;
-      refresh(delta < -30 ? `${segment.name} ran ${mmssShort(-delta)} short of its limit` : `${segment.name} went the distance`);
+      start(step, (result) => {
+        commitResult(step.segment.id, result);
+        const delta = result.actualSec - step.segment.timeLimitSec;
+        refresh(delta < -30 ? `${step.segment.name} ended ${mmssShort(-delta)} inside its limit` : `${step.segment.name} went the distance`);
+      });
+      render();
+    },
+    playbackSkip() {
+      skip();
+    },
+    playbackSpeed({ value }) {
+      setSpeed(value);
     },
     runRest({ id }) {
+      stop();
       const steps = runRest(id);
       refresh(`Ran the last ${steps.length} segment${steps.length === 1 ? "" : "s"}`);
     },
     goOffAir({ id }) {
+      stop();
       const show = goOffAir(id);
       go(`show/${id}`);
       refresh(`${show.name} rated ${show.result.rating}`);
     },
     nextWeek() {
+      stop();
       const show = nextWeek();
       if (!show) return toast("Nothing left on the calendar");
       go(`show/${show.id}`);

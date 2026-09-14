@@ -18,7 +18,7 @@ refuses a match, nobody holds a grudge, nothing goes wrong backstage.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 47 headless checks: foundation + the Tier 1 loop
+npm run check:wgm         # 62 headless checks: foundation, simulation, loop
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -35,10 +35,11 @@ booking screen shows expected fill alongside the booked limits, and the show
 rating penalises missing the budget in either direction. Booking past the
 budget is the first real skill in the game.
 
-**Run.** Go live and work down the card one segment at a time. The simulation
-decides when each match ends from ability, momentum, condition, chemistry and
-RNG. A fifteen-minute limit can end at ninety seconds or go the distance to a
-time-limit draw. The clock updates as you go.
+**Run.** Go live and work down the card one segment at a time. Each match
+plays out on screen: the clock climbs, the feed fills in, and you find out when
+it ends as it ends. Nothing is recorded until the clock reaches the finish, so
+the card behind the panel cannot give the result away. Skip to the finish at
+any time, or set playback to Instant and never watch one again.
 
 **Override.** Before running a match you can force who goes over. The duration
 and the rating still come from the simulation. If you do not override, you live
@@ -52,20 +53,47 @@ beneath you is remembered harder and can scar.
 show cannot air before its date, so the rest between shows always happens
 however you navigate there.
 
-### How the simulation is calibrated
+## The simulation
 
-Numbers verified by `tools/wgm-loop-check.mjs` and the calibration in the
-commit history:
+`matchSim.js` is a pure function of `(segment, wrestler lookup, rng)`. It reads
+no module state and writes nothing, which is why every number below is measured
+rather than asserted. `tools/wgm-sim-check.mjs` re-measures them on every run.
 
-| Matchup | Favourite wins | Draws | Median finish |
-|---|---|---|---|
-| Main event vs jobber | 97% | 2% | 51% of the limit |
-| Main event vs midcard | 85% | 2% | 56% |
-| Two main eventers | 57% | 3% | 62% |
+**The GM sets a ceiling, not a duration.** Two evenly matched wrestlers under a
+fifteen-minute limit, over 20,000 matches:
 
-Upsets are a genuine tail rather than a coin flip. Even matches build to a late
-finish; mismatches spread earlier, which is what a squash looks like. Longer
-limits draw less often, because there is more time to get a finish.
+| Finish | Frequency |
+|---|---|
+| Minute 2 | 3.7% |
+| Minute 8 | 8.1% |
+| Minute 14 | 6.5% |
+| Full limit, a draw | 2.7% |
+
+Every minute from 0 to 14 is reachable, with the bulk landing between minutes 8
+and 12. No match ever runs past its limit.
+
+**Who wins.** Strength comes from work rate, star power and durability, moved
+by momentum and condition, then raised to a power so that quality converts
+sharply into wins:
+
+| Matchup | Favourite wins | Median finish |
+|---|---|---|
+| Main event vs jobber | 97% | 7.6 min |
+| Main event vs midcard | 84% | 8.2 min |
+| Two main eventers | 58% | 9.3 min |
+
+An upset is a genuine tail rather than a coin flip. Even matches build to a late
+finish; mismatches spread earlier, which is what a squash looks like from
+outside. Longer limits draw less often, because there is more time to get a
+finish: 4.1% at a five-minute limit, 1.9% at thirty.
+
+Momentum and condition move the result without deciding it. A star facing an
+opponent on a hot streak drops from 58% to 44%; worn down to 30 condition
+themselves, they drop to 30%.
+
+**The override** forces who goes over and keeps everything else the simulation
+produced, so the match still has a real duration and a real rating. Pick it
+before running the match. If you do not, you live with the result.
 
 ## The one rule
 
@@ -99,13 +127,15 @@ js/models/       pure entity factories and derived reads
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
   booking.js     booking rules, conflicts, and the expected-fill estimate
-  matchSim.js    pure: (segment, wrestlers, rng) -> a result. Writes nothing.
+  matchSim.js    pure: (segment, wrestlers, rng) -> {result, timeline}
   showRunner.js  go live, run the card, grade it, go off the air
   results.js     what a result does to records, momentum, morale and memory
   upkeep.js      condition recovery between shows
 
 js/data/roster.js   fourteen hand-authored wrestlers with starting history
 js/ui/              renders the store and calls its actions; holds no game state
+  playback.js       spends a finished match back out over real time, so the
+                    GM watches the clock instead of reading a finished row
 ```
 
 Nothing below `ui/` imports anything above it. That is why the whole simulation

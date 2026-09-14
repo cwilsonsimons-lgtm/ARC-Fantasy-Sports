@@ -9,6 +9,7 @@ import * as runner from '../../systems/showRunner.js';
 import * as booking from '../../systems/booking.js';
 import { FORMATS, MATCH_FORMATS, SEGMENT_FORMATS, formatOf, slotsFor, autoName } from '../../systems/formats.js';
 import { sides, SEGMENT_KINDS } from '../../models/segment.js';
+import * as playback from '../playback.js';
 import { esc, mmss, signedTime, titleCase } from '../format.js';
 import { notLoaded } from './roster.js';
 
@@ -183,6 +184,10 @@ function renderLive(show) {
       </tr>`;
   }).join('');
 
+  // While a match is playing out, the controls step aside: the only things to do
+  // are watch it, hurry it along, or skip to the finish.
+  const watching = playback.isActive() && !playback.isFinished();
+
   const overrideControl = next && next.kind === SEGMENT_KINDS.MATCH
     ? `<div class="field"><label for="ovr">Override the finish</label>
         <select id="ovr" data-action="changeOverride">
@@ -209,12 +214,15 @@ function renderLive(show) {
       </div>
     </div>
 
-    <div class="bar">
+    <div id="playbackHost">${playback.panelHtml()}</div>
+
+    ${watching ? '' : `<div class="bar">
       ${next ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ''}
       ${next ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ''}
       ${overrideControl}
+      ${next ? `<div class="field"><label for="pbSpeed">Match playback</label>${playback.speedPickerHtml()}</div>` : ''}
       ${!next ? `<button class="act primary" data-action="goOffAir" data-id="${show.id}">Go off the air</button>` : ''}
-    </div>
+    </div>`}
 
     <h2>The card</h2>
     <div class="scroller"><table>

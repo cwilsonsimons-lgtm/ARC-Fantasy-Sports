@@ -70,6 +70,25 @@ const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 /**
+ * Beat vocabulary. Small on purpose, and varied enough that one card does not
+ * read the same line five times. These are punctuation for the clock, not
+ * play-by-play: the match is the numbers, and this is what the GM sees of it.
+ */
+const PHRASES = {
+  open: ['The bell rings.', 'Here we go.', 'They lock up.'],
+  early: ['A feeling-out process early.', 'Neither wants to make the first mistake.', 'Cagey start.'],
+  takeover: ['{X} takes over.', '{X} seizes control.', '{X} turns it around.'],
+  pressing: ['{X} is grinding this down.', '{X} keeps the pressure on.', '{X} is in complete control.'],
+  trouble: ['{X} is in real trouble now.', '{X} cannot get going.'],
+  nearfall: ['Near fall for {X}.', 'That was almost it.', '{X} thought that was three.'],
+  rally: ['{X} is fighting back.', 'The crowd is with {X}.'],
+};
+
+function phrase(rng, key, name) {
+  return rng.pick(PHRASES[key]).replace('{X}', name);
+}
+
+/**
  * When does it end?
  *
  * Each beat gets a chance of producing a finish. The chances are shaped so that
@@ -144,26 +163,45 @@ export function simulateSegment(segment, { get, rng }) {
   // --- when does it end ---
   const beats = Math.max(2, Math.floor(segment.timeLimitSec / BEAT_SEC));
   const hazards = finishHazards(beats, gap);
-  const log = [];
+  const timeline = [];
   let endedAtBeat = null;
   let control = sideKeys[strengths.indexOf(high)];
+  let heldFor = 0;
 
-  log.push({ atSec: 0, text: 'The bell rings.' });
+  timeline.push({ atSec: 0, text: phrase(rng, 'open'), kind: 'open' });
 
   for (let i = 0; i < beats; i++) {
     const atSec = (i + 1) * BEAT_SEC;
+    const fraction = (i + 1) / beats;
+    const inControl = () => nameSide(bySide[control], get);
 
-    // Control passes around. The weaker side has to work for it, so the
-    // commentary tracks the same numbers the finish does.
+    // Control passes around. The weaker side has to work for it, so what the
+    // GM reads tracks the same numbers the finish does.
     if (rng.chance(0.18)) {
       const others = sideKeys.filter((k) => k !== control);
       const next = rng.weighted(others.map((k) => [k, strengths[sideKeys.indexOf(k)]]));
-      if (next) {
+      if (next && next !== control) {
         control = next;
-        log.push({ atSec, text: `${nameSide(bySide[control], get)} take over.` });
+        heldFor = 0;
+        timeline.push({ atSec, text: phrase(rng, 'takeover', inControl()), kind: 'takeover' });
       }
-    } else if (i > beats * 0.4 && rng.chance(0.12)) {
-      log.push({ atSec, text: `Near fall for ${nameSide(bySide[control], get)}.` });
+    } else {
+      heldFor++;
+      if (fraction < 0.2 && i === 1) {
+        timeline.push({ atSec, text: phrase(rng, 'early'), kind: 'colour' });
+      } else if (fraction > 0.4 && rng.chance(0.12)) {
+        timeline.push({ atSec, text: phrase(rng, 'nearfall', inControl()), kind: 'nearfall' });
+      } else if (heldFor >= 5 && rng.chance(0.35)) {
+        const losing = sideKeys.filter((k) => k !== control);
+        timeline.push({
+          atSec,
+          text: rng.chance(0.5)
+            ? phrase(rng, 'pressing', inControl())
+            : phrase(rng, 'trouble', nameSide(bySide[rng.pick(losing)], get)),
+          kind: 'colour',
+        });
+        heldFor = 0;
+      }
     }
 
     if (rng.chance(hazards[i])) { endedAtBeat = i + 1; break; }
@@ -181,7 +219,7 @@ export function simulateSegment(segment, { get, rng }) {
 
   if (wentLong) {
     finish = FINISHES.TIME_LIMIT_DRAW;
-    log.push({ atSec: actualSec, text: 'Time limit expires. We have a draw.' });
+    timeline.push({ atSec: actualSec, text: 'Time limit expires. We have a draw.', kind: 'finish' });
   } else {
     finish = pickFinish(rng, gap);
     // Better wrestlers win more. The exponent is what keeps an upset a genuine
@@ -190,7 +228,11 @@ export function simulateSegment(segment, { get, rng }) {
     const winnerSide = rng.weighted(sideKeys.map((k, i) => [k, Math.pow(strengths[i], WIN_EXPONENT)]));
     winnerIds = bySide[winnerSide];
     loserIds = sideKeys.filter((k) => k !== winnerSide).flatMap((k) => bySide[k]);
-    log.push({ atSec: actualSec, text: `${nameSide(winnerIds, get)} wins by ${finish.replace(/_/g, ' ')}.` });
+    timeline.push({
+      atSec: actualSec,
+      text: `${nameSide(winnerIds, get)} wins by ${finish.replace(/_/g, ' ')}.`,
+      kind: 'finish',
+    });
   }
 
   const people = everyone.map(get);
@@ -204,7 +246,13 @@ export function simulateSegment(segment, { get, rng }) {
     actualSec, rng,
   });
 
-  return { finish, winnerIds, loserIds, actualSec, quality, beats: trimLog(log), overridden: false };
+  return {
+    // What gets stored. `beats` is the trimmed highlight set kept in the save.
+    result: { finish, winnerIds, loserIds, actualSec, quality, beats: trimLog(timeline), overridden: false },
+    // The full feed, for watching it happen. Never stored: a season of these
+    // would be most of the save file, and the highlights are the record.
+    timeline,
+  };
 }
 
 /** Promos, interviews and angles: they run, they are good or they are not. */
@@ -216,14 +264,20 @@ function simulateTalking(segment, everyone, { get, rng }) {
         + 0.12 * mean(people.map((w) => w.ability.starPower))
         + 10 * chem
         + rng.range(-7, 7);
+  const timeline = [
+    { atSec: 0, text: `${nameSide(everyone, get)} has the microphone.`, kind: 'open' },
+    { atSec: actualSec, text: `${nameSide(everyone, get)} wraps it up.`, kind: 'finish' },
+  ];
   return {
-    finish: FINISHES.SEGMENT_END,
-    winnerIds: [],
-    loserIds: [],
-    actualSec,
-    quality: Math.round(clamp(q, 1, 100)),
-    beats: [{ atSec: actualSec, text: `${nameSide(everyone, get)} wraps it up.` }],
-    overridden: false,
+    result: {
+      finish: FINISHES.SEGMENT_END,
+      winnerIds: [], loserIds: [],
+      actualSec,
+      quality: Math.round(clamp(q, 1, 100)),
+      beats: timeline,
+      overridden: false,
+    },
+    timeline,
   };
 }
 
@@ -231,7 +285,7 @@ function nameSide(ids, get) {
   return ids.map((id) => get(id)?.shortName || id).join(' & ');
 }
 
-/** Keep the beat log readable: the open, the finish, and a few moments between. */
+/** Keep the stored beat log readable: the open, the finish, a few moments between. */
 function trimLog(log, max = 8) {
   if (log.length <= max) return log;
   const first = log[0];
