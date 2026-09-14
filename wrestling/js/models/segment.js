@@ -66,6 +66,10 @@ export function createSegment(spec = {}) {
   const {
     id = mint('segment'),
     showId,
+    // Which format this is - 'singles', 'tag', 'promo' and so on. `kind` is the
+    // broad category the format belongs to, kept alongside it so anything that
+    // only cares "is this a match" does not have to consult the format table.
+    format = 'singles',
     kind = SEGMENT_KINDS.MATCH,
     name = '',
     order = 0,
@@ -81,6 +85,7 @@ export function createSegment(spec = {}) {
   return {
     id,
     showId,
+    format,
     kind,
     name,
     order,

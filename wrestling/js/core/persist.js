@@ -51,7 +51,17 @@ export function setStorage(next) { storage = next; }
  * save keeps loading instead of failing in a way nobody notices until later.
  */
 export const MIGRATIONS = {
-  // 1: (state) => { ...; return state; },
+  // v1 -> v2: segments gained a `format` key (Tier 1 match types). Saves from
+  // v1 only ever held singles matches and plain segments, so the format is
+  // recoverable from the kind.
+  1: (state) => {
+    for (const segment of Object.values(state.segments)) {
+      if (!segment.format) {
+        segment.format = segment.kind === 'match' ? 'singles' : segment.kind;
+      }
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

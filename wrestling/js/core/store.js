@@ -30,7 +30,7 @@ import { createWrestler, createMemory, clampUnit, clampSigned } from '../models/
 import { createShow, SHOW_STATUS, bookedSeconds, actualSeconds } from '../models/show.js';
 import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment.js';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -211,8 +211,16 @@ export function addWrestler(spec, { cause = null } = {}) {
   return wrestler;
 }
 
-/** Patch the fast-moving layer. Every change is reported with a reason. */
-export function updateWrestlerState(id, patch, { reason = '', cause = null } = {}) {
+/**
+ * Patch the fast-moving layer. Every change is reported with a reason.
+ *
+ * `silent` suppresses the event, and exists for ambient upkeep that touches the
+ * whole roster at once - overnight condition recovery would otherwise put
+ * fourteen events in the log for something no system needs to react to
+ * individually. A silent caller is expected to emit one summary event of its
+ * own. Nothing that a system might want to respond to should use it.
+ */
+export function updateWrestlerState(id, patch, { reason = '', cause = null, silent = false } = {}) {
   const w = requireWrestler(id);
   const before = { ...w.state };
   if (patch.morale != null) w.state.morale = clampUnit(patch.morale);
@@ -221,6 +229,7 @@ export function updateWrestlerState(id, patch, { reason = '', cause = null } = {
   if (patch.mood != null) w.state.mood = patch.mood;
   if (patch.health != null) w.state.health = { ...w.state.health, ...patch.health };
 
+  if (silent) return w;
   emit(EVENT_TYPES.WRESTLER_STATE, {
     summary: reason || `${w.name}'s state changed`,
     actorId: id,

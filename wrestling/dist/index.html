@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wrestling GM</title>
+<link rel="icon" href="data:,">
 <style>
 /* css/app.css */
 /* Wrestling GM shell.
@@ -841,6 +842,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     if (!type || !count) return "none";
     return `${type}${count}`;
   }
+  function isAvailable(wrestler, day) {
+    const h = wrestler.state.health;
+    if (h.status === HEALTH.HEALTHY) return true;
+    return h.returnsOnDay != null && day >= h.returnsOnDay;
+  }
   function relationshipTo(wrestler, otherId) {
     return wrestler.ties.relationships[otherId]?.value ?? SCALES.SIGNED.neutral;
   }
@@ -965,6 +971,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     const {
       id = mint("segment"),
       showId,
+      // Which format this is - 'singles', 'tag', 'promo' and so on. `kind` is the
+      // broad category the format belongs to, kept alongside it so anything that
+      // only cares "is this a match" does not have to consult the format table.
+      format = "singles",
       kind = SEGMENT_KINDS.MATCH,
       name = "",
       order = 0,
@@ -979,6 +989,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return {
       id,
       showId,
+      format,
       kind,
       name,
       order,
@@ -1024,7 +1035,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   }
 
   // wrestling/js/core/store.js
-  var SCHEMA_VERSION = 1;
+  var SCHEMA_VERSION = 2;
   var G = { state: null, rng: null };
   function getState() {
     return G.state;
@@ -1178,7 +1189,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     });
     return wrestler;
   }
-  function updateWrestlerState(id, patch, { reason = "", cause = null } = {}) {
+  function updateWrestlerState(id, patch, { reason = "", cause = null, silent = false } = {}) {
     const w = requireWrestler(id);
     const before = { ...w.state };
     if (patch.morale != null) w.state.morale = clampUnit(patch.morale);
@@ -1186,6 +1197,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     if (patch.condition != null) w.state.condition = clampUnit(patch.condition);
     if (patch.mood != null) w.state.mood = patch.mood;
     if (patch.health != null) w.state.health = { ...w.state.health, ...patch.health };
+    if (silent) return w;
     emit(EVENT_TYPES.WRESTLER_STATE, {
       summary: reason || `${w.name}'s state changed`,
       actorId: id,
@@ -1638,7 +1650,17 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     storage = next;
   }
   var MIGRATIONS = {
-    // 1: (state) => { ...; return state; },
+    // v1 -> v2: segments gained a `format` key (Tier 1 match types). Saves from
+    // v1 only ever held singles matches and plain segments, so the format is
+    // recoverable from the kind.
+    1: (state) => {
+      for (const segment of Object.values(state.segments)) {
+        if (!segment.format) {
+          segment.format = segment.kind === "match" ? "singles" : segment.kind;
+        }
+      }
+      return state;
+    }
   };
   function migrate(state, fromVersion) {
     let v = fromVersion;
@@ -1680,7 +1702,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   function toJSON(opts) {
     return JSON.stringify(serialize(opts));
   }
-  function deserialize(envelope, { validate = true } = {}) {
+  function deserialize(envelope, { validate: validate2 = true } = {}) {
     if (!envelope || envelope.format !== SAVE_FORMAT) {
       throw new Error("Not a wrestling GM save file");
     }
@@ -1690,7 +1712,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       );
     }
     const state = envelope.schemaVersion < SCHEMA_VERSION ? migrate(envelope.state, envelope.schemaVersion) : envelope.state;
-    if (validate) {
+    if (validate2) {
       const problems = checkState(state);
       if (problems.length) {
         throw new Error(`Save failed integrity checks:
@@ -2131,6 +2153,593 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return Object.fromEntries(idByKey);
   }
 
+  // wrestling/js/systems/results.js
+  function nextStreak(streak, type) {
+    return streak && streak.type === type ? { type, count: streak.count + 1 } : { type, count: 1 };
+  }
+  function conditionCost(wrestler, actualSec) {
+    const minutes = actualSec / 60;
+    return minutes * (1.6 - wrestler.ability.durability / 100);
+  }
+  function recordWin(id, event, opponentIds) {
+    const w = getWrestler(id);
+    updateStanding(id, {
+      wins: w.standing.wins + 1,
+      streak: nextStreak(w.standing.streak, "W")
+    }, { reason: `Beat ${opponentIds.map(nameOf).join(" & ")}`, cause: event.id });
+    updateWrestlerState(id, {
+      momentum: w.state.momentum + 14,
+      morale: w.state.morale + 4,
+      condition: w.state.condition - conditionCost(w, event.data.actualSec)
+    }, { reason: "Won their match", cause: event.id });
+    addMemory(id, {
+      type: "win",
+      summary: `Beat ${opponentIds.map(nameOf).join(" & ")}`,
+      aboutIds: opponentIds,
+      weight: 20,
+      floor: 2,
+      decayPerDay: 0.9
+    }, { cause: event.id });
+  }
+  function recordLoss(id, event, winnerIds) {
+    const w = getWrestler(id);
+    updateStanding(id, {
+      losses: w.standing.losses + 1,
+      streak: nextStreak(w.standing.streak, "L")
+    }, { reason: `Lost to ${winnerIds.map(nameOf).join(" & ")}`, cause: event.id });
+    const moraleHit = 3 + w.identity.ego / 20;
+    updateWrestlerState(id, {
+      momentum: w.state.momentum - 12,
+      morale: w.state.morale - moraleHit,
+      condition: w.state.condition - conditionCost(w, event.data.actualSec)
+    }, { reason: "Lost their match", cause: event.id });
+    const mine = CAREER_RANK[w.standing.careerStatus] ?? 2;
+    const theirs = Math.max(...winnerIds.map((id2) => CAREER_RANK[getWrestler(id2).standing.careerStatus] ?? 2));
+    const upset = mine - theirs;
+    addMemory(id, {
+      type: upset > 0 ? "upset_loss" : "loss",
+      summary: upset > 0 ? `Lost to ${winnerIds.map(nameOf).join(" & ")}, who should not have beaten me` : `Lost to ${winnerIds.map(nameOf).join(" & ")}`,
+      aboutIds: winnerIds,
+      weight: 25 + w.identity.ego / 5 + Math.max(0, upset) * 12,
+      floor: upset > 0 ? 12 : 2,
+      decayPerDay: 0.8,
+      scar: upset > 1
+    }, { cause: event.id });
+  }
+  function recordDraw(id, event, otherIds) {
+    const w = getWrestler(id);
+    updateStanding(id, {
+      draws: w.standing.draws + 1,
+      streak: nextStreak(w.standing.streak, "D")
+    }, { reason: "Went to a time-limit draw", cause: event.id });
+    updateWrestlerState(id, {
+      momentum: w.state.momentum + 2,
+      morale: w.state.morale + 1,
+      condition: w.state.condition - conditionCost(w, event.data.actualSec)
+    }, { reason: "Went the distance", cause: event.id });
+    addMemory(id, {
+      type: "draw",
+      summary: `Went the full limit with ${otherIds.map(nameOf).join(" & ")} and settled nothing`,
+      aboutIds: otherIds,
+      weight: 22,
+      floor: 4,
+      decayPerDay: 0.7
+    }, { cause: event.id });
+  }
+  function recordAppearance(id, event) {
+    const w = getWrestler(id);
+    updateWrestlerState(id, {
+      condition: w.state.condition - event.data.actualSec / 60 * 0.3
+    }, { reason: "Worked a segment", cause: event.id });
+  }
+  function install() {
+    on2(EVENT_TYPES.SEGMENT_COMPLETED, (event) => {
+      const segment = getSegment(event.segmentId);
+      if (!segment) return;
+      const { winnerIds = [], loserIds = [] } = event.data;
+      const everyone = segment.participants.map((p) => p.wrestlerId);
+      if (segment.kind !== SEGMENT_KINDS.MATCH) {
+        everyone.forEach((id) => recordAppearance(id, event));
+        return;
+      }
+      if (event.data.finish === FINISHES.TIME_LIMIT_DRAW) {
+        everyone.forEach((id) => recordDraw(id, event, everyone.filter((o) => o !== id)));
+      } else {
+        winnerIds.forEach((id) => recordWin(id, event, loserIds));
+        loserIds.forEach((id) => recordLoss(id, event, winnerIds));
+      }
+      emit(EVENT_TYPES.MATCH_RESULT, {
+        summary: winnerIds.length ? `${winnerIds.map(nameOf).join(" & ")} def. ${loserIds.map(nameOf).join(" & ")}` : `${everyone.map(nameOf).join(" & ")} fought to a draw`,
+        subjects: everyone,
+        showId: event.showId,
+        segmentId: event.segmentId,
+        cause: event.id,
+        data: {
+          finish: event.data.finish,
+          winnerIds,
+          loserIds,
+          actualSec: event.data.actualSec,
+          quality: segment.result.quality,
+          overridden: event.data.overridden
+        }
+      });
+    });
+  }
+
+  // wrestling/js/systems/upkeep.js
+  function recoveryPerDay(wrestler) {
+    return 4 + wrestler.ability.durability / 25;
+  }
+  function install2() {
+    on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
+      const days = event.data.days;
+      if (!days) return;
+      const recovered = [];
+      for (const w of allWrestlers()) {
+        if (w.state.condition >= 100) continue;
+        const before = w.state.condition;
+        const next = Math.min(100, before + recoveryPerDay(w) * days);
+        updateWrestlerState(w.id, { condition: next }, { silent: true });
+        recovered.push({ id: w.id, from: Math.round(before), to: Math.round(next) });
+      }
+      if (!recovered.length) return;
+      emit(EVENT_TYPES.WRESTLER_STATE, {
+        summary: `${recovered.length} wrestler${recovered.length === 1 ? "" : "s"} recovered over ${days} day${days === 1 ? "" : "s"}`,
+        subjects: recovered.map((r) => r.id),
+        cause: event.id,
+        data: { kind: "condition_recovery", days, recovered }
+      });
+    });
+  }
+
+  // wrestling/js/systems/index.js
+  function installSystems() {
+    install();
+    install2();
+  }
+
+  // wrestling/js/systems/showRunner.js
+  var showRunner_exports = {};
+  __export(showRunner_exports, {
+    currentShow: () => currentShow,
+    goLive: () => goLive,
+    goOffAir: () => goOffAir,
+    gradeShow: () => gradeShow,
+    nextSegment: () => nextSegment,
+    nextWeek: () => nextWeek,
+    progress: () => progress,
+    runNext: () => runNext,
+    runRest: () => runRest
+  });
+
+  // wrestling/js/systems/formats.js
+  var FORMATS = Object.freeze({
+    // ---- matches ----
+    singles: {
+      label: "Singles",
+      kind: SEGMENT_KINDS.MATCH,
+      sideSizes: [1, 1],
+      defaultLimitSec: 12 * 60
+    },
+    tag: {
+      label: "Tag Team",
+      kind: SEGMENT_KINDS.MATCH,
+      sideSizes: [2, 2],
+      defaultLimitSec: 15 * 60
+    },
+    triple_threat: {
+      label: "Triple Threat",
+      kind: SEGMENT_KINDS.MATCH,
+      sideSizes: [1, 1, 1],
+      defaultLimitSec: 15 * 60
+    },
+    fatal_four_way: {
+      label: "Fatal Four-Way",
+      kind: SEGMENT_KINDS.MATCH,
+      sideSizes: [1, 1, 1, 1],
+      defaultLimitSec: 15 * 60
+    },
+    six_man_tag: {
+      label: "Six-Man Tag",
+      kind: SEGMENT_KINDS.MATCH,
+      sideSizes: [3, 3],
+      defaultLimitSec: 18 * 60
+    },
+    handicap: {
+      label: "Handicap",
+      kind: SEGMENT_KINDS.MATCH,
+      sideSizes: [1, 2],
+      defaultLimitSec: 10 * 60
+    },
+    // ---- segments ----
+    promo: {
+      label: "Promo",
+      kind: SEGMENT_KINDS.PROMO,
+      sideSizes: [1],
+      defaultLimitSec: 5 * 60
+    },
+    face_to_face: {
+      label: "Face-to-Face Promo",
+      kind: SEGMENT_KINDS.PROMO,
+      sideSizes: [1, 1],
+      defaultLimitSec: 7 * 60
+    },
+    interview: {
+      label: "Backstage Interview",
+      kind: SEGMENT_KINDS.INTERVIEW,
+      sideSizes: [1],
+      defaultLimitSec: 3 * 60
+    },
+    angle: {
+      label: "Angle",
+      kind: SEGMENT_KINDS.ANGLE,
+      sideSizes: [1, 1],
+      defaultLimitSec: 4 * 60
+    }
+  });
+  var FORMAT_KEYS = Object.freeze(Object.keys(FORMATS));
+  var MATCH_FORMATS = Object.freeze(
+    FORMAT_KEYS.filter((k) => FORMATS[k].kind === SEGMENT_KINDS.MATCH)
+  );
+  var SEGMENT_FORMATS = Object.freeze(
+    FORMAT_KEYS.filter((k) => FORMATS[k].kind !== SEGMENT_KINDS.MATCH)
+  );
+  function formatOf(key) {
+    return FORMATS[key] || FORMATS.singles;
+  }
+  function slotCount(key) {
+    return formatOf(key).sideSizes.reduce((a, b) => a + b, 0);
+  }
+  function slotsFor(key) {
+    const { sideSizes } = formatOf(key);
+    const out = [];
+    sideSizes.forEach((size, s) => {
+      const side = String.fromCharCode(97 + s);
+      for (let i = 0; i < size; i++) {
+        out.push({
+          side,
+          index: i,
+          label: sideSizes.length === 1 ? size === 1 ? "Wrestler" : `Wrestler ${i + 1}` : `Side ${side.toUpperCase()}${size > 1 ? ` (${i + 1})` : ""}`
+        });
+      }
+    });
+    return out;
+  }
+  function autoName(formatKey, participants, nameOf2) {
+    const format = formatOf(formatKey);
+    const bySide = /* @__PURE__ */ new Map();
+    for (const p of participants) {
+      if (!bySide.has(p.side)) bySide.set(p.side, []);
+      bySide.get(p.side).push(nameOf2(p.wrestlerId));
+    }
+    const groups = [...bySide.values()].map((names) => names.join(" & "));
+    if (!groups.length) return format.label;
+    if (format.kind === SEGMENT_KINDS.MATCH) return groups.join(" vs ");
+    if (formatKey === "promo") return `${groups[0]} promo`;
+    if (formatKey === "interview") return `${groups[0]} interview`;
+    return groups.join(" and ");
+  }
+
+  // wrestling/js/systems/matchSim.js
+  var BEAT_SEC = 30;
+  var WIN_EXPONENT = 6;
+  function ringStrength(w) {
+    const base = 0.5 * w.ability.workRate + 0.3 * w.ability.starPower + 0.2 * w.ability.durability;
+    const momentum = w.state.momentum * 0.12;
+    const condition = 0.75 + 0.25 * (w.state.condition / 100);
+    return Math.max(5, (base + momentum) * condition);
+  }
+  function sideStrength(ids, get) {
+    const each = ids.map((id) => ringStrength(get(id))).sort((a, b) => b - a);
+    return each[0] + each.slice(1).reduce((t, v) => t + v * 0.3, 0);
+  }
+  function chemistry(participantIds2, get) {
+    if (participantIds2.length < 2) return 0;
+    let total = 0;
+    let pairs = 0;
+    for (let i = 0; i < participantIds2.length; i++) {
+      for (let j = i + 1; j < participantIds2.length; j++) {
+        const a = get(participantIds2[i]);
+        const b = get(participantIds2[j]);
+        total += (Math.abs(relationshipTo(a, participantIds2[j])) + Math.abs(relationshipTo(b, participantIds2[i]))) / 2;
+        pairs++;
+      }
+    }
+    return pairs ? Math.min(1, total / pairs / 100) : 0;
+  }
+  var mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+  var clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  function finishHazards(beats, gap) {
+    const shape = 2.8 - 1.6 * gap;
+    const flat = 0.05 + 0.1 * gap;
+    const budget = (2.9 + 0.9 * gap) * (1 + 0.25 * Math.log(beats / 20));
+    const weights = [];
+    for (let i = 1; i <= beats; i++) weights.push(flat + Math.pow(i / beats, shape));
+    const total = weights.reduce((a, b) => a + b, 0);
+    return weights.map((w) => clamp(budget * w / total, 0, 0.85));
+  }
+  function pickFinish(rng, gap) {
+    return rng.weighted([
+      [FINISHES.PINFALL, 60 + 15 * gap],
+      [FINISHES.SUBMISSION, 20],
+      [FINISHES.COUNTOUT, 8 - 3 * gap],
+      [FINISHES.DQ, 7 - 2 * gap]
+    ]);
+  }
+  function qualityOf({ workAvg, charismaAvg, starAvg, competitiveness, chem, conditionAvg, actualSec, rng }) {
+    let q = 0.42 * workAvg + 0.12 * charismaAvg + 0.1 * starAvg;
+    q += 16 * competitiveness;
+    q += 8 * chem;
+    q *= 0.85 + 0.15 * (conditionAvg / 100);
+    q += actualSec < 90 ? -20 + actualSec / 90 * 8 : -4 + 12 * Math.min(1, actualSec / 600);
+    q += rng.range(-6, 6);
+    return Math.round(clamp(q, 1, 100));
+  }
+  function simulateSegment(segment, { get, rng }) {
+    const format = formatOf(segment.format);
+    const bySide = sides(segment);
+    const sideKeys = Object.keys(bySide);
+    const everyone = segment.participants.map((p) => p.wrestlerId);
+    if (format.kind !== SEGMENT_KINDS.MATCH || sideKeys.length < 2 || !everyone.length) {
+      return simulateTalking(segment, everyone, { get, rng });
+    }
+    const strengths = sideKeys.map((k) => sideStrength(bySide[k], get));
+    const high = Math.max(...strengths);
+    const low = Math.min(...strengths);
+    const gap = high > 0 ? clamp((high - low) / high, 0, 1) : 0;
+    const beats = Math.max(2, Math.floor(segment.timeLimitSec / BEAT_SEC));
+    const hazards = finishHazards(beats, gap);
+    const log = [];
+    let endedAtBeat = null;
+    let control = sideKeys[strengths.indexOf(high)];
+    log.push({ atSec: 0, text: "The bell rings." });
+    for (let i = 0; i < beats; i++) {
+      const atSec = (i + 1) * BEAT_SEC;
+      if (rng.chance(0.18)) {
+        const others = sideKeys.filter((k) => k !== control);
+        const next = rng.weighted(others.map((k) => [k, strengths[sideKeys.indexOf(k)]]));
+        if (next) {
+          control = next;
+          log.push({ atSec, text: `${nameSide(bySide[control], get)} take over.` });
+        }
+      } else if (i > beats * 0.4 && rng.chance(0.12)) {
+        log.push({ atSec, text: `Near fall for ${nameSide(bySide[control], get)}.` });
+      }
+      if (rng.chance(hazards[i])) {
+        endedAtBeat = i + 1;
+        break;
+      }
+    }
+    const wentLong = endedAtBeat == null;
+    const actualSec = wentLong ? segment.timeLimitSec : Math.min(segment.timeLimitSec, endedAtBeat * BEAT_SEC + rng.range(0, BEAT_SEC - 1));
+    let finish;
+    let winnerIds = [];
+    let loserIds = [];
+    if (wentLong) {
+      finish = FINISHES.TIME_LIMIT_DRAW;
+      log.push({ atSec: actualSec, text: "Time limit expires. We have a draw." });
+    } else {
+      finish = pickFinish(rng, gap);
+      const winnerSide = rng.weighted(sideKeys.map((k, i) => [k, Math.pow(strengths[i], WIN_EXPONENT)]));
+      winnerIds = bySide[winnerSide];
+      loserIds = sideKeys.filter((k) => k !== winnerSide).flatMap((k) => bySide[k]);
+      log.push({ atSec: actualSec, text: `${nameSide(winnerIds, get)} wins by ${finish.replace(/_/g, " ")}.` });
+    }
+    const people = everyone.map(get);
+    const quality = qualityOf({
+      workAvg: mean(people.map((w) => w.ability.workRate)),
+      charismaAvg: mean(people.map((w) => w.ability.charisma)),
+      starAvg: mean(people.map((w) => w.ability.starPower)),
+      competitiveness: 1 - gap,
+      chem: chemistry(everyone, get),
+      conditionAvg: mean(people.map((w) => w.state.condition)),
+      actualSec,
+      rng
+    });
+    return { finish, winnerIds, loserIds, actualSec, quality, beats: trimLog(log), overridden: false };
+  }
+  function simulateTalking(segment, everyone, { get, rng }) {
+    const people = everyone.map(get).filter(Boolean);
+    const actualSec = Math.round(segment.timeLimitSec * rng.range(70, 100) / 100);
+    const chem = chemistry(everyone, get);
+    let q = 0.55 * mean(people.map((w) => w.ability.charisma)) + 0.12 * mean(people.map((w) => w.ability.starPower)) + 10 * chem + rng.range(-7, 7);
+    return {
+      finish: FINISHES.SEGMENT_END,
+      winnerIds: [],
+      loserIds: [],
+      actualSec,
+      quality: Math.round(clamp(q, 1, 100)),
+      beats: [{ atSec: actualSec, text: `${nameSide(everyone, get)} wraps it up.` }],
+      overridden: false
+    };
+  }
+  function nameSide(ids, get) {
+    return ids.map((id) => get(id)?.shortName || id).join(" & ");
+  }
+  function trimLog(log, max = 8) {
+    if (log.length <= max) return log;
+    const first = log[0];
+    const last = log[log.length - 1];
+    const middle = log.slice(1, -1);
+    const step = middle.length / (max - 2);
+    const kept = [];
+    for (let i = 0; i < max - 2; i++) kept.push(middle[Math.floor(i * step)]);
+    return [first, ...kept, last];
+  }
+  function applyOverride(result, segment, winnerSideKey) {
+    const bySide = sides(segment);
+    if (!bySide[winnerSideKey]) return result;
+    const winnerIds = bySide[winnerSideKey];
+    const loserIds = Object.keys(bySide).filter((k) => k !== winnerSideKey).flatMap((k) => bySide[k]);
+    const finish = result.finish === FINISHES.TIME_LIMIT_DRAW ? FINISHES.PINFALL : result.finish;
+    return { ...result, finish, winnerIds, loserIds, overridden: true };
+  }
+
+  // wrestling/js/systems/showRunner.js
+  function nextSegment(showId) {
+    return segmentsOfShow(showId).find((s) => s.status === SEGMENT_STATUS.BOOKED) || null;
+  }
+  function progress(showId) {
+    const show = requireShow(showId);
+    const segments = segmentsOfShow(showId);
+    const done = segments.filter((s) => s.status === SEGMENT_STATUS.COMPLETE);
+    const elapsedSec = done.reduce((t, s) => t + s.result.actualSec, 0);
+    const bookedSec = segments.reduce((t, s) => t + s.timeLimitSec, 0);
+    const remainingBookedSec = segments.filter((s) => s.status === SEGMENT_STATUS.BOOKED).reduce((t, s) => t + s.timeLimitSec, 0);
+    return {
+      show,
+      segments,
+      doneCount: done.length,
+      total: segments.length,
+      elapsedSec,
+      bookedSec,
+      remainingBookedSec,
+      budgetSec: show.timeBudgetSec,
+      // What the night is projected to fill if everything left runs its full limit.
+      projectedSec: elapsedSec + remainingBookedSec,
+      // Positive means television still to fill, negative means over.
+      slackSec: show.timeBudgetSec - (elapsedSec + remainingBookedSec),
+      finished: done.length === segments.length && segments.length > 0
+    };
+  }
+  function goLive(showId) {
+    const show = requireShow(showId);
+    if (show.status !== SHOW_STATUS.SCHEDULED) return show;
+    if (!show.segmentIds.length) throw new Error("Nothing is booked on this card");
+    if (show.day > today()) advanceToDay(show.day);
+    startShow(showId);
+    return show;
+  }
+  function runNext(showId, { overrideWinnerSide = null } = {}) {
+    const show = requireShow(showId);
+    if (show.status !== SHOW_STATUS.LIVE) throw new Error("The show is not on the air");
+    const segment = nextSegment(showId);
+    if (!segment) return null;
+    let result = simulateSegment(segment, {
+      get: (id) => requireWrestler(id),
+      rng: getRng()
+    });
+    if (overrideWinnerSide) result = applyOverride(result, segment, overrideWinnerSide);
+    completeSegment(segment.id, result);
+    return { segment: getSegment(segment.id), result };
+  }
+  function runRest(showId) {
+    const out = [];
+    let step;
+    while (step = runNext(showId)) out.push(step);
+    return out;
+  }
+  function gradeShow(showId) {
+    const { segments, elapsedSec, budgetSec } = progress(showId);
+    const done = segments.filter((s) => s.status === SEGMENT_STATUS.COMPLETE && s.result.quality != null);
+    if (!done.length) return 1;
+    const totalSec = done.reduce((t, s) => t + s.result.actualSec, 0) || 1;
+    const weighted = done.reduce((t, s) => t + s.result.quality * s.result.actualSec, 0) / totalSec;
+    const finale = done[done.length - 1].result.quality;
+    let rating = 0.85 * weighted + 0.15 * finale;
+    const miss = Math.abs(1 - elapsedSec / budgetSec);
+    rating -= miss * 35;
+    return Math.round(Math.max(1, Math.min(100, rating)));
+  }
+  function goOffAir(showId) {
+    const show = requireShow(showId);
+    if (show.status !== SHOW_STATUS.LIVE) return show;
+    const rating = gradeShow(showId);
+    completeShow(showId, { rating });
+    return getShow(showId);
+  }
+  function currentShow() {
+    return allShows().find((s) => s.status !== SHOW_STATUS.COMPLETE) || null;
+  }
+  function nextWeek() {
+    const moved = advanceToNextShow();
+    if (!moved) return null;
+    return currentShow();
+  }
+
+  // wrestling/js/systems/booking.js
+  var booking_exports = {};
+  __export(booking_exports, {
+    TYPICAL_FILL_RATIO: () => TYPICAL_FILL_RATIO,
+    alreadyBooked: () => alreadyBooked,
+    alreadyWrestling: () => alreadyWrestling,
+    availableFor: () => availableFor,
+    cardOutlook: () => cardOutlook,
+    validate: () => validate
+  });
+  var TYPICAL_FILL_RATIO = 0.62;
+  function alreadyWrestling(showId) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const seg of segmentsOfShow(showId)) {
+      if (seg.kind !== SEGMENT_KINDS.MATCH) continue;
+      if (seg.status === SEGMENT_STATUS.CUT) continue;
+      for (const p of seg.participants) ids.add(p.wrestlerId);
+    }
+    return ids;
+  }
+  function alreadyBooked(showId) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const seg of segmentsOfShow(showId)) {
+      if (seg.status === SEGMENT_STATUS.CUT) continue;
+      for (const p of seg.participants) ids.add(p.wrestlerId);
+    }
+    return ids;
+  }
+  function validate(showId, formatKey, wrestlerIds) {
+    const problems = [];
+    const format = formatOf(formatKey);
+    const filled = wrestlerIds.filter(Boolean);
+    if (filled.length !== slotCount(formatKey)) {
+      problems.push(`${format.label} needs ${slotCount(formatKey)} people, got ${filled.length}`);
+    }
+    const seen = /* @__PURE__ */ new Set();
+    for (const id of filled) {
+      if (seen.has(id)) problems.push(`${nameOf(id)} cannot face themselves`);
+      seen.add(id);
+    }
+    const working = alreadyWrestling(showId);
+    if (format.kind === SEGMENT_KINDS.MATCH) {
+      for (const id of seen) {
+        if (working.has(id)) problems.push(`${nameOf(id)} is already in a match tonight`);
+      }
+    }
+    const day = today();
+    for (const id of seen) {
+      const w = getWrestler(id);
+      if (!w) {
+        problems.push(`No wrestler with id ${id}`);
+        continue;
+      }
+      if (format.kind === SEGMENT_KINDS.MATCH && !isAvailable(w, day)) {
+        problems.push(`${w.name} is not fit to wrestle`);
+      }
+    }
+    return { ok: problems.length === 0, problems };
+  }
+  function cardOutlook(showId) {
+    const show = requireShow(showId);
+    const segments = segmentsOfShow(showId);
+    let expectedSec = 0;
+    for (const seg of segments) {
+      if (seg.status === SEGMENT_STATUS.COMPLETE) expectedSec += seg.result.actualSec;
+      else if (seg.kind === SEGMENT_KINDS.MATCH) expectedSec += seg.timeLimitSec * TYPICAL_FILL_RATIO;
+      else expectedSec += seg.timeLimitSec * 0.85;
+    }
+    const bookedSec = segments.reduce((t, s) => t + s.timeLimitSec, 0);
+    return {
+      bookedSec,
+      expectedSec: Math.round(expectedSec),
+      budgetSec: show.timeBudgetSec,
+      expectedGapSec: Math.round(show.timeBudgetSec - expectedSec),
+      ceilingGapSec: show.timeBudgetSec - bookedSec
+    };
+  }
+  function availableFor(showId, { matchOnly = true } = {}) {
+    const working = matchOnly ? alreadyWrestling(showId) : alreadyBooked(showId);
+    const day = today();
+    return allWrestlers().filter((w) => !working.has(w.id) && isAvailable(w, day));
+  }
+
   // wrestling/js/ui/format.js
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -2449,93 +3058,224 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   };
 
   // wrestling/js/ui/screens/show.js
+  var draft = { format: "singles", overrideSide: "" };
+  function setDraftFormat(next) {
+    if (FORMATS[next]) draft.format = next;
+  }
+  function setOverride(next) {
+    draft.overrideSide = next;
+  }
   var show_default = {
-    label: "Show",
-    inNav: false,
+    label: "This week",
     render([id]) {
       if (!isLoaded()) return notLoaded();
-      const show = id ? getShow(id) : allShows().find((s) => s.status !== "complete");
-      if (!show) return `<h1>Unknown show</h1><p class="sub">No show with id ${esc(id)}.</p>`;
-      const state = getState();
-      const segments = segmentsOfShow(show.id);
-      const booked = show.result.bookedSec;
-      const actual = show.result.actualSec;
-      const unbooked = show.timeBudgetSec - booked;
-      const rows = segments.map((seg, i) => {
-        const bySide = sides(seg);
-        const line = Object.values(bySide).map((ids) => ids.map(
-          (wid) => `<button class="rowlink" data-action="go" data-arg="wrestler/${wid}">${esc(nameOf(wid))}</button>`
-        ).join(" &amp; ")).join(' <span class="muted">vs</span> ');
-        const ran = seg.result.actualSec;
-        const delta = ran ? ran - seg.timeLimitSec : 0;
-        const winners = (seg.result.winnerIds || []).map((w) => esc(nameOf(w))).join(", ");
-        return `<tr>
-        <td class="num muted">${i + 1}</td>
-        <td><span class="pill">${esc(seg.kind)}</span></td>
-        <td>${esc(seg.name || "-")}<div style="font-size:12px">${line || '<span class="muted">nobody booked</span>'}</div></td>
-        <td class="num">${mmss(seg.timeLimitSec)}</td>
-        <td class="num">${ran ? mmss(ran) : '<span class="muted">-</span>'}</td>
-        <td class="num ${delta < 0 ? "pos" : delta > 0 ? "neg" : "muted"}">${ran ? signedTime(delta) : ""}</td>
-        <td>${seg.result.finish ? `${esc(titleCase(seg.result.finish))}${winners ? `<div class="muted" style="font-size:11px">${winners}</div>` : ""}` : '<span class="muted">not run</span>'}</td>
-        <td>
-          ${seg.status === "complete" ? "" : `<button class="act" data-action="runSegment" data-id="${seg.id}">Record result</button>`}
-          <button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button>
-        </td>
-      </tr>`;
-      }).join("") || '<tr><td colspan="8" class="empty">Nothing booked on this card yet.</td></tr>';
-      const rosterOptions = allWrestlers().map((w) => `<option value="${w.id}">${esc(w.name)}</option>`).join("");
-      return `
-      <h1>${esc(show.name)}</h1>
-      <p class="sub">${show.id} &middot; ${formatDate(state.calendar, show.day)} &middot;
-        ${show.kind.toUpperCase()} &middot; ${esc(titleCase(show.status))}</p>
-
-      <div class="cards">
-        <div class="card"><h3>Television time</h3>
-          <div class="kv"><span>Budget</span><span>${mmss(show.timeBudgetSec)}</span></div>
-          <div class="kv"><span>Booked as limits</span><span>${mmss(booked)}</span></div>
-          <div class="kv"><span>Actually run</span><span>${actual ? mmss(actual) : "-"}</span></div>
-          <div class="kv"><span>Still to fill</span><span class="${unbooked < 0 ? "neg" : "pos"}">${signedTime(-unbooked)}</span></div>
-        </div>
-        <div class="card"><h3>Card</h3>
-          <div class="kv"><span>Segments</span><span>${segments.length}</span></div>
-          <div class="kv"><span>Matches</span><span>${segments.filter((s) => s.kind === "match").length}</span></div>
-          <div class="kv"><span>Complete</span><span>${segments.filter((s) => s.status === "complete").length}</span></div>
-        </div>
-      </div>
-
-      <div class="bar">
-        ${show.status === "scheduled" ? `<button class="act primary" data-action="startShow" data-id="${show.id}">Go live</button>` : ""}
-        ${show.status === "live" ? `<button class="act primary" data-action="completeShow" data-id="${show.id}">Off the air</button>` : ""}
-        <button class="act" data-action="go" data-arg="calendar">Calendar</button>
-      </div>
-
-      <h2>The card</h2>
-      <div class="scroller"><table>
-        <thead><tr><th>#</th><th>Kind</th><th>Segment</th><th>Limit</th><th>Ran</th><th>Gap</th><th>Finish</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>
-
-      <h2>Book a segment</h2>
-      <p class="sub">You assign a time limit, not a duration. What it actually runs is the simulation's call.</p>
-      <form data-action="bookSegment" data-show="${show.id}">
-        <div class="bar">
-          <div class="field"><label for="segKind">Kind</label>
-            <select id="segKind" name="kind">
-              ${Object.values(SEGMENT_KINDS).map((k) => `<option value="${k}">${titleCase(k)}</option>`).join("")}
-            </select></div>
-          <div class="field"><label for="segName">Name</label>
-            <input id="segName" name="name" placeholder="Main event" size="18"></div>
-          <div class="field"><label for="segA">Side A</label>
-            <select id="segA" name="a">${rosterOptions}</select></div>
-          <div class="field"><label for="segB">Side B</label>
-            <select id="segB" name="b"><option value="">(none)</option>${rosterOptions}</select></div>
-          <div class="field"><label for="segLimit">Limit (min)</label>
-            <input id="segLimit" name="limit" type="number" min="1" max="60" value="15" size="4"></div>
-          <button class="act primary" type="submit">Book it</button>
-        </div>
-      </form>`;
+      const show = id ? getShow(id) : currentShow();
+      if (!show) return `<h1>No show</h1><p class="sub">Everything on the calendar has been run.</p>`;
+      if (show.status === "live") return renderLive(show);
+      if (show.status === "complete") return renderResults(show);
+      return renderBooking(show);
     }
   };
+  function header(show, extra = "") {
+    const cal = getState().calendar;
+    return `
+    <h1>${esc(show.name)}</h1>
+    <p class="sub">${formatDate(cal, show.day)} &middot; ${show.kind.toUpperCase()}
+      &middot; budget ${mmss(show.timeBudgetSec)}${extra}</p>`;
+  }
+  function lineup(segment) {
+    const bySide = sides(segment);
+    const groups = Object.values(bySide).map((ids) => ids.map(
+      (wid) => `<button class="rowlink" data-action="go" data-arg="wrestler/${wid}">${esc(nameOf(wid))}</button>`
+    ).join(" &amp; "));
+    const joiner = segment.kind === SEGMENT_KINDS.MATCH ? ' <span class="muted">vs</span> ' : ' <span class="muted">and</span> ';
+    return groups.join(joiner) || '<span class="muted">nobody booked</span>';
+  }
+  function resultCell(segment) {
+    const r = segment.result;
+    if (segment.status !== "complete") return '<span class="muted">not run</span>';
+    if (!r.winnerIds.length) return `${esc(titleCase(r.finish))}`;
+    return `${esc(nameOf(r.winnerIds[0]))}${r.winnerIds.length > 1 ? " &amp; " + esc(nameOf(r.winnerIds[1])) : ""}
+    <div class="muted" style="font-size:11px">${esc(titleCase(r.finish))}${r.overridden ? " &middot; overridden" : ""}</div>`;
+  }
+  function renderBooking(show) {
+    const segments = segmentsOfShow(show.id);
+    const outlook = cardOutlook(show.id);
+    const format = formatOf(draft.format);
+    const isMatch = format.kind === SEGMENT_KINDS.MATCH;
+    const pool = isMatch ? availableFor(show.id) : allWrestlers();
+    const options = pool.map((w) => `<option value="${w.id}">${esc(w.name)}</option>`).join("");
+    const slots = slotsFor(draft.format).map((slot, i) => `
+    <div class="field">
+      <label for="slot${i}">${esc(slot.label)}</label>
+      <select id="slot${i}" name="slot${i}" data-side="${slot.side}">${options}</select>
+    </div>`).join("");
+    const rows = segments.map((seg, i) => `
+    <tr>
+      <td class="num muted">${i + 1}</td>
+      <td><span class="pill">${esc(formatOf(seg.format).label)}</span></td>
+      <td>${esc(seg.name || "-")}<div style="font-size:12px">${lineup(seg)}</div></td>
+      <td class="num">${mmss(seg.timeLimitSec)}</td>
+      <td><button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button></td>
+    </tr>`).join("") || '<tr><td colspan="5" class="empty">Nothing booked yet.</td></tr>';
+    const gap = outlook.expectedGapSec;
+    const gapTone = Math.abs(gap) < 180 ? "pos" : "neg";
+    return `
+    ${header(show)}
+
+    <div class="cards">
+      <div class="card"><h3>The hour</h3>
+        <div class="kv"><span>Budget</span><span>${mmss(outlook.budgetSec)}</span></div>
+        <div class="kv"><span>Booked as limits</span><span>${mmss(outlook.bookedSec)}</span></div>
+        <div class="kv"><span>Expected to fill</span><span>${mmss(outlook.expectedSec)}</span></div>
+        <div class="kv"><span>${gap >= 0 ? "Likely dead air" : "Likely overrun"}</span>
+          <span class="${gapTone}">${mmss(Math.abs(gap))}</span></div>
+      </div>
+      <div class="card"><h3>Read this before you book</h3>
+        <p style="font-size:12px;margin:0">A time limit is a ceiling, not a plan. Most matches end
+        well before theirs, so a card booked to exactly fill the hour will leave you short.
+        Book past the budget.</p>
+      </div>
+    </div>
+
+    <div class="bar">
+      <button class="act primary" data-action="goLive" data-id="${show.id}"${segments.length ? "" : " disabled"}>
+        Go live${segments.length ? "" : " (nothing booked)"}</button>
+      <button class="act" data-action="go" data-arg="calendar">Calendar</button>
+    </div>
+
+    <h2>The card</h2>
+    <div class="scroller"><table>
+      <thead><tr><th>#</th><th>Format</th><th>Segment</th><th>Limit</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+
+    <h2>Book a segment</h2>
+    <form data-action="bookSegment" data-show="${show.id}">
+      <div class="bar">
+        <div class="field"><label for="segFormat">Format</label>
+          <select id="segFormat" data-action="changeFormat">
+            <optgroup label="Matches">
+              ${MATCH_FORMATS.map((k) => `<option value="${k}"${k === draft.format ? " selected" : ""}>${esc(FORMATS[k].label)}</option>`).join("")}
+            </optgroup>
+            <optgroup label="Segments">
+              ${SEGMENT_FORMATS.map((k) => `<option value="${k}"${k === draft.format ? " selected" : ""}>${esc(FORMATS[k].label)}</option>`).join("")}
+            </optgroup>
+          </select></div>
+        ${slots}
+        <div class="field"><label for="segLimit">Limit (min)</label>
+          <input id="segLimit" name="limit" type="number" min="1" max="60" value="${Math.round(format.defaultLimitSec / 60)}" size="4"></div>
+        <div class="field"><label for="segName">Name (optional)</label>
+          <input id="segName" name="name" placeholder="auto" size="16"></div>
+        <button class="act primary" type="submit"${pool.length ? "" : " disabled"}>Add to card</button>
+      </div>
+    </form>
+    ${isMatch && pool.length < slotsFor(draft.format).length ? '<p class="neg">Not enough wrestlers left who are not already in a match tonight.</p>' : ""}`;
+  }
+  function renderLive(show) {
+    const p = progress(show.id);
+    const outlook = cardOutlook(show.id);
+    const next = nextSegment(show.id);
+    const elapsedPct = Math.min(100, Math.round(p.elapsedSec / p.budgetSec * 100));
+    const gap = outlook.expectedGapSec;
+    const rows = p.segments.map((seg, i) => {
+      const done = seg.status === "complete";
+      const isNext = next && seg.id === next.id;
+      const ran = seg.result.actualSec;
+      const delta = done ? ran - seg.timeLimitSec : 0;
+      return `
+      <tr${isNext ? ' style="outline:2px solid var(--brass);outline-offset:-2px"' : ""}>
+        <td class="num muted">${i + 1}</td>
+        <td>${esc(seg.name || formatOf(seg.format).label)}
+          <div style="font-size:12px">${lineup(seg)}</div>
+          ${done && seg.result.beats?.length ? `<details style="margin-top:.3rem"><summary class="muted" style="font-size:11px;cursor:pointer">beats</summary>
+            <div class="log" style="margin-top:.3rem">${seg.result.beats.map((b) => `<div class="ev"><span class="d">${mmss(b.atSec)}</span><span></span><span>${esc(b.text)}</span></div>`).join("")}</div></details>` : ""}
+        </td>
+        <td class="num">${mmss(seg.timeLimitSec)}</td>
+        <td class="num">${done ? mmss(ran) : '<span class="muted">-</span>'}</td>
+        <td class="num ${delta < 0 ? "pos" : delta > 0 ? "neg" : "muted"}">${done ? signedTime(delta) : ""}</td>
+        <td>${resultCell(seg)}</td>
+        <td class="num">${done && seg.result.quality != null ? seg.result.quality : ""}</td>
+      </tr>`;
+    }).join("");
+    const overrideControl = next && next.kind === SEGMENT_KINDS.MATCH ? `<div class="field"><label for="ovr">Override the finish</label>
+        <select id="ovr" data-action="changeOverride">
+          <option value=""${draft.overrideSide === "" ? " selected" : ""}>Let it play out</option>
+          ${Object.keys(sides(next)).map((k) => `<option value="${k}"${draft.overrideSide === k ? " selected" : ""}>${esc(sides(next)[k].map(nameOf).join(" & "))} goes over</option>`).join("")}
+        </select></div>` : "";
+    return `
+    ${header(show, ' &middot; <span class="pos">ON AIR</span>')}
+
+    <div class="cards">
+      <div class="card"><h3>Clock</h3>
+        <div class="kv"><span>Aired</span><span>${mmss(p.elapsedSec)} of ${mmss(p.budgetSec)}</span></div>
+        <div class="meter"><i style="width:${elapsedPct}%"></i></div>
+        <div class="kv"><span>Still to come (limits)</span><span>${mmss(p.remainingBookedSec)}</span></div>
+        <div class="kv"><span>Expected to finish on</span><span>${mmss(outlook.expectedSec)}</span></div>
+        <div class="kv"><span>${gap >= 0 ? "Likely short by" : "Likely over by"}</span>
+          <span class="${Math.abs(gap) < 180 ? "pos" : "neg"}">${mmss(Math.abs(gap))}</span></div>
+      </div>
+      <div class="card"><h3>Card</h3>
+        <div class="kv"><span>Done</span><span>${p.doneCount} of ${p.total}</span></div>
+        <div class="kv"><span>Up next</span><span>${next ? esc(next.name || formatOf(next.format).label) : "nothing left"}</span></div>
+      </div>
+    </div>
+
+    <div class="bar">
+      ${next ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ""}
+      ${next ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ""}
+      ${overrideControl}
+      ${!next ? `<button class="act primary" data-action="goOffAir" data-id="${show.id}">Go off the air</button>` : ""}
+    </div>
+
+    <h2>The card</h2>
+    <div class="scroller"><table>
+      <thead><tr><th>#</th><th>Segment</th><th>Limit</th><th>Ran</th><th>Gap</th><th>Result</th><th>Rating</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+  function renderResults(show) {
+    const segments = segmentsOfShow(show.id);
+    const fillPct = Math.round(show.result.actualSec / show.timeBudgetSec * 100);
+    const next = currentShow();
+    const rows = segments.map((seg, i) => `
+    <tr>
+      <td class="num muted">${i + 1}</td>
+      <td>${esc(seg.name || formatOf(seg.format).label)}<div style="font-size:12px">${lineup(seg)}</div></td>
+      <td class="num">${mmss(seg.timeLimitSec)}</td>
+      <td class="num">${mmss(seg.result.actualSec)}</td>
+      <td class="num ${seg.result.actualSec - seg.timeLimitSec < 0 ? "pos" : "neg"}">${signedTime(seg.result.actualSec - seg.timeLimitSec)}</td>
+      <td>${resultCell(seg)}</td>
+      <td class="num">${seg.result.quality ?? ""}</td>
+    </tr>`).join("");
+    return `
+    ${header(show, " &middot; in the books")}
+
+    <div class="cards">
+      <div class="card"><h3>Show rating</h3>
+        <div style="font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums">${show.result.rating}</div>
+        <div class="meter" style="margin-top:.5rem"><i style="width:${show.result.rating}%"></i></div>
+      </div>
+      <div class="card"><h3>The hour</h3>
+        <div class="kv"><span>Budget</span><span>${mmss(show.timeBudgetSec)}</span></div>
+        <div class="kv"><span>Booked as limits</span><span>${mmss(show.result.bookedSec)}</span></div>
+        <div class="kv"><span>Actually aired</span><span>${mmss(show.result.actualSec)}</span></div>
+        <div class="kv"><span>Filled</span><span class="${fillPct >= 85 ? "pos" : "neg"}">${fillPct}%</span></div>
+      </div>
+    </div>
+
+    <div class="bar">
+      ${next && next.id !== show.id ? `<button class="act primary" data-action="nextWeek">Next week: ${esc(next.name)}</button>` : '<span class="muted">Nothing left on the calendar.</span>'}
+      <button class="act" data-action="go" data-arg="roster">Roster</button>
+      <button class="act" data-action="go" data-arg="calendar">Calendar</button>
+    </div>
+
+    <h2>The card</h2>
+    <div class="scroller"><table>
+      <thead><tr><th>#</th><th>Segment</th><th>Limit</th><th>Ran</th><th>Gap</th><th>Result</th><th>Rating</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
 
   // wrestling/js/ui/screens/log.js
   var filter = "";
@@ -2636,8 +3376,8 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
 
   // wrestling/js/main.js
   registerScreen("roster", roster_default);
-  registerScreen("calendar", calendar_default);
   registerScreen("show", show_default);
+  registerScreen("calendar", calendar_default);
   registerScreen("log", log_default);
   registerScreen("saves", saves_default);
   registerScreen("wrestler", wrestler_default);
@@ -2659,7 +3399,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         scheduleBlocks: 3
       });
       seedRoster();
-      go("roster");
+      go("show");
       refresh("New game started with 14 wrestlers and three months booked");
     },
     saveSlot() {
@@ -2718,23 +3458,31 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       refresh(`Scheduled ${added.length} more shows`);
     },
     // --- booking -----------------------------------------------------------
+    changeFormat({ value }) {
+      setDraftFormat(value);
+      render();
+    },
     bookSegment({ show: showId }, form) {
-      const f = new FormData(form);
-      const participants = [];
-      if (f.get("a")) participants.push({ wrestlerId: f.get("a"), side: "a" });
-      if (f.get("b")) participants.push({ wrestlerId: f.get("b"), side: "b" });
-      if (participants.length === 2 && participants[0].wrestlerId === participants[1].wrestlerId) {
-        return toast("A wrestler cannot face themselves");
-      }
+      const format = formatOf(draft.format);
+      const slots = slotsFor(draft.format);
+      const participants = slots.map((slot, i) => ({
+        wrestlerId: form.querySelector(`#slot${i}`)?.value || "",
+        side: slot.side
+      })).filter((p) => p.wrestlerId);
+      const verdict = validate(showId, draft.format, participants.map((p) => p.wrestlerId));
+      if (!verdict.ok) return toast(verdict.problems[0]);
+      const typed = form.querySelector("#segName")?.value.trim();
+      const limitMin = Math.max(1, Number(form.querySelector("#segLimit")?.value) || 10);
       try {
         bookSegment({
           showId,
-          kind: f.get("kind"),
-          name: (f.get("name") || "").trim(),
-          timeLimitSec: Math.max(1, Number(f.get("limit")) || 10) * 60,
+          format: draft.format,
+          kind: format.kind,
+          name: typed || autoName(draft.format, participants, nameOf),
+          timeLimitSec: limitMin * 60,
           participants
         });
-        refresh("Booked");
+        refresh("Added to the card");
       } catch (err) {
         toast(err.message);
       }
@@ -2743,46 +3491,40 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       cutSegment(id, { reason: "Cut for time" });
       refresh("Cut from the card");
     },
-    startShow({ id }) {
-      startShow(id);
-      refresh("Live");
-    },
-    completeShow({ id }) {
-      completeShow(id);
-      refresh("Off the air");
-    },
-    /**
-     * PLACEHOLDER, not the match simulation.
-     *
-     * It picks a duration and a winner with flat randomness and reads no wrestler
-     * stat at all, precisely so it cannot be mistaken for the real thing. Its only
-     * job is to exercise completeSegment so the event chain and the time
-     * bookkeeping can be seen working. The simulation described in the design
-     * foundation replaces this wholesale.
-     */
-    runSegment({ id }) {
-      const seg = getSegment(id);
-      const rng = getRng();
-      const bySide = sides(seg);
-      const sideKeys = Object.keys(bySide);
-      const ranFull = rng.chance(0.15);
-      const actualSec = ranFull ? seg.timeLimitSec : rng.range(20, Math.max(25, seg.timeLimitSec));
-      let finish = FINISHES.SEGMENT_END;
-      let winnerIds = [];
-      let loserIds = [];
-      if (seg.kind === "match" && sideKeys.length >= 2) {
-        if (ranFull) {
-          finish = FINISHES.TIME_LIMIT_DRAW;
-        } else {
-          finish = rng.pick([FINISHES.PINFALL, FINISHES.SUBMISSION, FINISHES.COUNTOUT, FINISHES.DQ]);
-          const winSide = rng.pick(sideKeys);
-          winnerIds = bySide[winSide];
-          loserIds = sideKeys.filter((k) => k !== winSide).flatMap((k) => bySide[k]);
-        }
+    // --- running the show --------------------------------------------------
+    goLive({ id }) {
+      try {
+        goLive(id);
+        refresh("On the air");
+      } catch (err) {
+        toast(err.message);
       }
-      completeSegment(id, { finish, winnerIds, loserIds, actualSec });
-      const delta = actualSec - seg.timeLimitSec;
-      refresh(delta < 0 ? `Ran ${Math.round(-delta / 60)} minutes short of its limit` : "Went the distance");
+    },
+    changeOverride({ value }) {
+      setOverride(value);
+    },
+    runNext({ id }) {
+      const step = runNext(id, { overrideWinnerSide: draft.overrideSide || null });
+      setOverride("");
+      if (!step) return refresh("The card is done");
+      const { segment, result } = step;
+      const delta = result.actualSec - segment.timeLimitSec;
+      refresh(delta < -30 ? `${segment.name} ran ${mmssShort(-delta)} short of its limit` : `${segment.name} went the distance`);
+    },
+    runRest({ id }) {
+      const steps = runRest(id);
+      refresh(`Ran the last ${steps.length} segment${steps.length === 1 ? "" : "s"}`);
+    },
+    goOffAir({ id }) {
+      const show = goOffAir(id);
+      go(`show/${id}`);
+      refresh(`${show.name} rated ${show.result.rating}`);
+    },
+    nextWeek() {
+      const show = nextWeek();
+      if (!show) return toast("Nothing left on the calendar");
+      go(`show/${show.id}`);
+      refresh(`${show.name}, ${getState().calendar.day} days in`);
     },
     // --- log ---------------------------------------------------------------
     filterLog({ value }) {
@@ -2790,14 +3532,20 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       render();
     }
   });
+  function mmssShort(sec) {
+    const s = Math.max(0, Math.round(sec));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+  installSystems();
   bindEvents();
   var resumed = hasSave("auto") && load("auto").ok;
   if (!resumed && !location.hash) location.hash = "#/saves";
   on2("show.completed", () => save("auto", { label: "Autosave" }));
   on2("calendar.advanced", () => save("auto", { label: "Autosave" }));
+  on2("segment.completed", () => save("auto", { label: "Autosave" }));
   renderHeader(isLoaded() ? getState() : null);
   render();
-  window.WGM = { store: store_exports, persist: persist_exports, clock: clock_exports, checkState, seedRoster };
+  window.WGM = { store: store_exports, persist: persist_exports, clock: clock_exports, checkState, seedRoster, runner: showRunner_exports, booking: booking_exports };
 })();
 
 </script>

@@ -13,7 +13,10 @@ import * as persist from './core/persist.js';
 import * as clock from './core/clock.js';
 import { checkState } from './core/invariants.js';
 import { seedRoster } from './data/roster.js';
-import { FINISHES, sides } from './models/segment.js';
+import { installSystems } from './systems/index.js';
+import * as runner from './systems/showRunner.js';
+import * as booking from './systems/booking.js';
+import { formatOf, slotsFor, autoName } from './systems/formats.js';
 import {
   registerScreen, registerActions, bindEvents, render, go, toast,
   renderHeader, setWhenFormatter,
@@ -25,10 +28,13 @@ import calendarScreen from './ui/screens/calendar.js';
 import showScreen from './ui/screens/show.js';
 import logScreen, { setFilter } from './ui/screens/log.js';
 import savesScreen from './ui/screens/saves.js';
+import { draft, setDraftFormat, setOverride } from './ui/screens/show.js';
 
+// Registration order is nav order, and nav order is the weekly loop:
+// look at the roster, book the show, run it, then move the calendar on.
 registerScreen('roster', rosterScreen);
-registerScreen('calendar', calendarScreen);
 registerScreen('show', showScreen);
+registerScreen('calendar', calendarScreen);
 registerScreen('log', logScreen);
 registerScreen('saves', savesScreen);
 registerScreen('wrestler', wrestlerScreen);
@@ -55,7 +61,7 @@ registerActions({
       scheduleBlocks: 3,
     });
     seedRoster();
-    go('roster');
+    go('show');
     refresh('New game started with 14 wrestlers and three months booked');
   },
 
@@ -124,23 +130,37 @@ registerActions({
   },
 
   // --- booking -----------------------------------------------------------
+  changeFormat({ value }) {
+    setDraftFormat(value);
+    render();
+  },
+
   bookSegment({ show: showId }, form) {
-    const f = new FormData(form);
-    const participants = [];
-    if (f.get('a')) participants.push({ wrestlerId: f.get('a'), side: 'a' });
-    if (f.get('b')) participants.push({ wrestlerId: f.get('b'), side: 'b' });
-    if (participants.length === 2 && participants[0].wrestlerId === participants[1].wrestlerId) {
-      return toast('A wrestler cannot face themselves');
-    }
+    const format = formatOf(draft.format);
+    const slots = slotsFor(draft.format);
+
+    // Read one select per slot, in the order the format declares them.
+    const participants = slots.map((slot, i) => ({
+      wrestlerId: form.querySelector(`#slot${i}`)?.value || '',
+      side: slot.side,
+    })).filter((p) => p.wrestlerId);
+
+    const verdict = booking.validate(showId, draft.format, participants.map((p) => p.wrestlerId));
+    if (!verdict.ok) return toast(verdict.problems[0]);
+
+    const typed = form.querySelector('#segName')?.value.trim();
+    const limitMin = Math.max(1, Number(form.querySelector('#segLimit')?.value) || 10);
+
     try {
       store.bookSegment({
         showId,
-        kind: f.get('kind'),
-        name: (f.get('name') || '').trim(),
-        timeLimitSec: Math.max(1, Number(f.get('limit')) || 10) * 60,
+        format: draft.format,
+        kind: format.kind,
+        name: typed || autoName(draft.format, participants, store.nameOf),
+        timeLimitSec: limitMin * 60,
         participants,
       });
-      refresh('Booked');
+      refresh('Added to the card');
     } catch (err) {
       toast(err.message);
     }
@@ -151,51 +171,49 @@ registerActions({
     refresh('Cut from the card');
   },
 
-  startShow({ id }) {
-    store.startShow(id);
-    refresh('Live');
-  },
-
-  completeShow({ id }) {
-    store.completeShow(id);
-    refresh('Off the air');
-  },
-
-  /**
-   * PLACEHOLDER, not the match simulation.
-   *
-   * It picks a duration and a winner with flat randomness and reads no wrestler
-   * stat at all, precisely so it cannot be mistaken for the real thing. Its only
-   * job is to exercise completeSegment so the event chain and the time
-   * bookkeeping can be seen working. The simulation described in the design
-   * foundation replaces this wholesale.
-   */
-  runSegment({ id }) {
-    const seg = store.getSegment(id);
-    const rng = store.getRng();
-    const bySide = sides(seg);
-    const sideKeys = Object.keys(bySide);
-    const ranFull = rng.chance(0.15);
-    const actualSec = ranFull ? seg.timeLimitSec : rng.range(20, Math.max(25, seg.timeLimitSec));
-
-    let finish = FINISHES.SEGMENT_END;
-    let winnerIds = [];
-    let loserIds = [];
-    if (seg.kind === 'match' && sideKeys.length >= 2) {
-      if (ranFull) {
-        finish = FINISHES.TIME_LIMIT_DRAW;
-      } else {
-        finish = rng.pick([FINISHES.PINFALL, FINISHES.SUBMISSION, FINISHES.COUNTOUT, FINISHES.DQ]);
-        const winSide = rng.pick(sideKeys);
-        winnerIds = bySide[winSide];
-        loserIds = sideKeys.filter((k) => k !== winSide).flatMap((k) => bySide[k]);
-      }
+  // --- running the show --------------------------------------------------
+  goLive({ id }) {
+    try {
+      runner.goLive(id);
+      refresh('On the air');
+    } catch (err) {
+      toast(err.message);
     }
-    store.completeSegment(id, { finish, winnerIds, loserIds, actualSec });
-    const delta = actualSec - seg.timeLimitSec;
-    refresh(delta < 0
-      ? `Ran ${Math.round(-delta / 60)} minutes short of its limit`
-      : 'Went the distance');
+  },
+
+  changeOverride({ value }) {
+    setOverride(value);
+  },
+
+  runNext({ id }) {
+    const step = runner.runNext(id, { overrideWinnerSide: draft.overrideSide || null });
+    setOverride('');
+    if (!step) return refresh('The card is done');
+    const { segment, result } = step;
+    const delta = result.actualSec - segment.timeLimitSec;
+    refresh(delta < -30
+      ? `${segment.name} ran ${mmssShort(-delta)} short of its limit`
+      : `${segment.name} went the distance`);
+  },
+
+  runRest({ id }) {
+    const steps = runner.runRest(id);
+    refresh(`Ran the last ${steps.length} segment${steps.length === 1 ? '' : 's'}`);
+  },
+
+  goOffAir({ id }) {
+    const show = runner.goOffAir(id);
+    // Pin the route to this show, or "This week" would skip straight past the
+    // results to next week's empty card.
+    go(`show/${id}`);
+    refresh(`${show.name} rated ${show.result.rating}`);
+  },
+
+  nextWeek() {
+    const show = runner.nextWeek();
+    if (!show) return toast('Nothing left on the calendar');
+    go(`show/${show.id}`);
+    refresh(`${show.name}, ${store.getState().calendar.day} days in`);
   },
 
   // --- log ---------------------------------------------------------------
@@ -205,7 +223,17 @@ registerActions({
   },
 });
 
+/** "6:30" from 390 seconds, for toasts. */
+function mmssShort(sec) {
+  const s = Math.max(0, Math.round(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 // --- boot ------------------------------------------------------------------
+
+// Systems subscribe to the event log once, here. They keep working across a new
+// game or a save load, so nothing needs re-installing later.
+installSystems();
 
 bindEvents();
 
@@ -216,9 +244,10 @@ if (!resumed && !location.hash) location.hash = '#/saves';
 // Autosave whenever the world moves in a way worth not losing.
 store.on('show.completed', () => persist.save('auto', { label: 'Autosave' }));
 store.on('calendar.advanced', () => persist.save('auto', { label: 'Autosave' }));
+store.on('segment.completed', () => persist.save('auto', { label: 'Autosave' }));
 
 renderHeader(store.isLoaded() ? store.getState() : null);
 render();
 
 // A console handle, for poking at the model while developing.
-window.WGM = { store, persist, clock, checkState, seedRoster };
+window.WGM = { store, persist, clock, checkState, seedRoster, runner, booking };
