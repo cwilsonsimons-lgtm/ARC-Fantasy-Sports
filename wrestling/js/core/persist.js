@@ -118,6 +118,32 @@ export const MIGRATIONS = {
     }
     return state;
   },
+
+  // v4 -> v5: a relationship stops being one number.
+  //
+  // The old `value` was the ally rating, so it becomes affinity directly. The
+  // other three axes are inferred the same way the authored roster's shorthand
+  // infers them: somebody you disliked carried heat and could not be relied on.
+  // That is a guess, but it is the same guess the roster was written with, and
+  // it beats resetting every relationship in the save to neutral.
+  4: (state) => {
+    for (const w of Object.values(state.wrestlers)) {
+      const ties = w.ties.relationships || {};
+      for (const [otherId, rel] of Object.entries(ties)) {
+        if (rel.affinity !== undefined) continue;
+        const value = rel.value ?? 0;
+        ties[otherId] = {
+          affinity: value,
+          hostility: value < 0 ? Math.min(100, Math.round(-value * 0.8)) : 0,
+          respect: 50,
+          trust: Math.max(0, Math.min(100, Math.round(50 + value * 0.4))),
+          lastChangedDay: rel.lastChangedDay ?? 0,
+          history: [],
+        };
+      }
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

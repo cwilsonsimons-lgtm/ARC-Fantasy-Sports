@@ -7,13 +7,17 @@
 import * as results from './results.js';
 import * as rankings from './rankings.js';
 import * as titles from './titles.js';
+import * as relationships from './relationships.js';
+import * as gmRelations from './gmRelations.js';
 import * as upkeep from './upkeep.js';
 
 export function installSystems() {
   // Order is only about readability - every system subscribes to the log rather
   // than calling the next one, so none of them depends on installing first.
-  results.install();   // a result lands on the record
-  titles.install();    // ...and can move a belt
-  rankings.install();  // ...and reshuffles the rankings, which sets contenders
-  upkeep.install();    // between shows: condition back, momentum fading
+  results.install();        // a result lands on the record
+  titles.install();         // ...and can move a belt
+  rankings.install();       // ...and reshuffles the rankings, which sets contenders
+  relationships.install();  // ...and changes how the people in it see each other
+  gmRelations.install();    // what the GM's own decisions cost the GM
+  upkeep.install();         // between shows: condition back, momentum fading
 }

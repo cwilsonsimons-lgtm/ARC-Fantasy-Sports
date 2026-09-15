@@ -27,11 +27,12 @@ import * as events from './events.js';
 import { EVENT_TYPES } from './events.js';
 import * as clock from './clock.js';
 import { createWrestler, createMemory, clampUnit, clampSigned } from '../models/wrestler.js';
+import { createRelationship, applyDeltas, AXES } from '../models/relationship.js';
 import { createShow, SHOW_STATUS, bookedSeconds, actualSeconds } from '../models/show.js';
 import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment.js';
 import { createTitle as makeTitle, createReign, currentReign, championIds } from '../models/title.js';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -271,12 +272,30 @@ export function updateStanding(id, patch, { reason = '', cause = null } = {}) {
   return w;
 }
 
+/**
+ * How many memories one wrestler keeps. Scars are never pruned; beyond the cap
+ * the lightest ordinary memories are dropped, which is roughly what forgetting
+ * is. Without this a long save accumulates every routine win forever.
+ */
+export const MEMORY_LIMIT = 60;
+
 /** Give a wrestler something to remember. */
 export function addMemory(id, memorySpec, { cause = null } = {}) {
   const state = requireGame();
   const w = requireWrestler(id);
   const memory = createMemory({ day: state.calendar.day, sourceEventId: cause, ...memorySpec });
   w.memory.push(memory);
+
+  if (w.memory.length > MEMORY_LIMIT) {
+    const today = state.calendar.day;
+    const weigh = (m) => Math.max(m.floor, m.weight - m.decayPerDay * Math.max(0, today - m.day));
+    const droppable = w.memory
+      .map((m, i) => ({ m, i }))
+      .filter(({ m }) => !m.scar)
+      .sort((a, b) => weigh(a.m) - weigh(b.m));
+    const toDrop = new Set(droppable.slice(0, w.memory.length - MEMORY_LIMIT).map((x) => x.i));
+    if (toDrop.size) w.memory = w.memory.filter((_, i) => !toDrop.has(i));
+  }
 
   emit(EVENT_TYPES.WRESTLER_MEMORY, {
     summary: `${w.name} remembers: ${memory.summary}`,
@@ -289,31 +308,44 @@ export function addMemory(id, memorySpec, { cause = null } = {}) {
 }
 
 /**
- * Move how `fromId` feels about `toId`. Directed on purpose: shifting A's view
- * of B says nothing about B's view of A, which is what lets one wrestler carry
- * a grudge the other never noticed starting.
+ * Move how `fromId` feels about `toId`, across any of the four axes.
+ *
+ * Directed on purpose: shifting A's view of B says nothing about B's view of A,
+ * which is what lets one wrestler carry a grudge the other never noticed
+ * starting. Pass a number as shorthand for an affinity-only change.
+ *
+ * Emits nothing when nothing actually moved, so a clamped-out nudge does not
+ * put a line in the log claiming something happened.
  */
-export function adjustRelationship(fromId, toId, delta, { reason = '', cause = null } = {}) {
+export function adjustRelationship(fromId, toId, deltas, {
+  reason = '', cause = null, type = '',
+} = {}) {
   const state = requireGame();
   const from = requireWrestler(fromId);
   requireWrestler(toId);
   if (fromId === toId) throw new Error('A wrestler cannot hold a relationship with themselves');
 
-  const rel = from.ties.relationships[toId] ||= {
-    value: 0, lastChangedDay: state.calendar.day, sourceEventIds: [],
-  };
-  const before = rel.value;
-  rel.value = clampSigned(rel.value + delta);
-  rel.lastChangedDay = state.calendar.day;
+  const rel = from.ties.relationships[toId] ||= createRelationship({}, state.calendar.day);
+  const before = Object.fromEntries(AXES.map((a) => [a, rel[a]]));
+  const patch = typeof deltas === 'number' ? { affinity: deltas } : deltas;
+
+  const changed = applyDeltas(rel, patch, {
+    day: state.calendar.day,
+    summary: reason,
+    type,
+  });
+  if (!Object.keys(changed).length) return rel;
 
   const event = emit(EVENT_TYPES.WRESTLER_RELATION, {
     summary: reason || `${from.name}'s view of ${nameOf(toId)} changed`,
     actorId: fromId,
     subjects: [fromId, toId],
     cause,
-    data: { fromId, toId, before, after: rel.value, delta, reason },
+    data: { fromId, toId, before, after: Object.fromEntries(AXES.map((a) => [a, rel[a]])), changed, reason, type },
   });
-  rel.sourceEventIds.push(event.id);
+  // Point the history entry at the event that caused it, so the full record is
+  // one hop away even after the capped history rolls over.
+  rel.history[rel.history.length - 1].eventId = event.id;
   return rel;
 }
 
@@ -681,14 +713,10 @@ export function setBackstory(id, { relationships = {}, memory = [] } = {}, { cau
   const state = requireGame();
   const w = requireWrestler(id);
 
-  for (const [otherId, value] of Object.entries(relationships)) {
+  for (const [otherId, seed] of Object.entries(relationships)) {
     requireWrestler(otherId);
     if (otherId === id) throw new Error(`${id} cannot hold a relationship with themselves`);
-    w.ties.relationships[otherId] = {
-      value: clampSigned(value),
-      lastChangedDay: state.calendar.day,
-      sourceEventIds: [],
-    };
+    w.ties.relationships[otherId] = createRelationship(seed, state.calendar.day);
   }
   for (const spec of memory) {
     w.memory.push(createMemory({ day: state.calendar.day, ...spec }));

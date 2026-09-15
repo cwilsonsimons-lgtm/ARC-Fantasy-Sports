@@ -9,12 +9,12 @@ persistence, event log, navigation) and **Tier 1**, the basic GM backbone:
 
 > Roster -> Booking -> Live Show -> Results -> Next Week
 
-Plus **Tier 3** (records, rankings, championships and momentum, all updated
-automatically from results) and **Tier 4** (personality, career status, and the
-judgement of what behaviour is believable).
+Plus **Tier 3** (records, rankings, championships and momentum), **Tier 4**
+(personality, career status, and the judgement of what behaviour is believable)
+and **Tier 5** (relationships, the GM's own standing, and memory).
 
-Nothing acts on that judgement yet. Nobody actually refuses a match, nobody
-holds a grudge against the GM, nothing goes wrong backstage.
+Nobody acts on any of it yet. Nothing goes wrong backstage, nobody refuses a
+match or comes to your office. The locker room has opinions and no voice.
 
 ## Running it
 
@@ -22,7 +22,7 @@ holds a grudge against the GM, nothing goes wrong backstage.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 111 headless checks across five suites
+npm run check:wgm         # 140 headless checks across six suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -160,6 +160,8 @@ js/models/       pure entity factories and derived reads
   show.js        a dated container with a time budget and ordered segment IDs
   segment.js     matches and segments as one model, with a time LIMIT not a duration
   title.js       a championship as its lineage of reigns
+  relationship.js four axes, a history, and one phrase to describe them
+  memory.js      the closed vocabulary of what can be remembered
 
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
@@ -168,6 +170,8 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   showRunner.js  go live, run the card, grade it, go off the air
   results.js     what a result does to records, momentum, morale and memory
   disposition.js how a wrestler regards a booking, with its working. Pure.
+  relationships.js what a match does to how the people in it see each other
+  gmRelations.js what the GM's own decisions cost the GM
   rankings.js    the ranked table, computed from results, with its working
   titles.js      title changes, defences and #1 contenders
   upkeep.js      condition recovery and momentum fade between shows
@@ -273,13 +277,74 @@ makes a wrestler WANT a match rather than duck it. Being teamed with someone
 they resent is held against you. A world title shot is wanted by everyone on
 the roster.
 
+## Relationships and memory
+
+### Four axes, not one number
+
+| Axis | Range | What it means |
+|---|---|---|
+| Affinity | -100..100 | The ally rating. Do they like this person. |
+| Hostility | 0..100 | The rivalry rating. How much heat is between them. |
+| Respect | 0..100 | Do they rate them as a wrestler. |
+| Trust | 0..100 | Would they rely on them when it counts. |
+
+These are genuinely independent, and that is the whole point. You can respect
+someone you cannot stand, which is most of the best rivalries in wrestling. You
+can like someone you would never trust. Two friends can carry real heat and
+still be friends. One number collapses all of that into "how much do you like
+them", which is the least interesting of the four.
+
+Every relationship is directed. A's view of B says nothing about B's view of A,
+and the wrestler page shows both so the disagreement is visible.
+
+### Rivalries emerge, they are not declared
+
+Losing to someone moves all four axes at once, weighted by who is taking the
+loss: respect goes up when they were beaten by someone better and DOWN when
+beaten by someone beneath them, hostility rises with vindictiveness, trust
+barely moves. Repeated meetings compound, so booking two people against each
+other over and over is the GM's most direct way of manufacturing heat.
+
+Heat also cools, about 2.5 points a week, so a feud has to be fed. A rivalry is
+any pair above 55 hostility, read off the numbers rather than stored in a list.
+
+In testing, five weeks of the same match with no authoring at all produced
+Cassidy Bloom and Nia Sparrow at 74 heat, 69 respect and +42 affinity: a
+friendly rivalry between two people who like each other and want to prove
+something. Nobody wrote that.
+
+### The GM is a character
+
+Trust and respect are tracked separately because they are separately earned,
+and separately damaged. Cutting somebody from a card after booking them costs
+trust. Leaving them off television costs respect, and after two shows running
+they start remembering it. Handing out a title shot buys goodwill from whoever
+gets it and costs you with the contender you passed over, who also takes it out
+on whoever took their spot.
+
+### Memory
+
+Twenty-four registered kinds with their own weights and decay rates, so losing
+a championship marks someone for years while an ordinary win fades in weeks.
+The vocabulary is closed: the invariant checker rejects a memory type no system
+can recognise.
+
+Ten kinds are written by play today: wins, losses, upset losses, being cheated
+by a disqualification, winning and losing a title, being given a title shot,
+being passed over for one, being cut from a card, and being left off television.
+Four more are registered and reserved with no system to generate them yet:
+betrayal, saves, broken promises and suspensions.
+
+Memory is capped at 60 per wrestler. Beyond that the lightest ordinary memories
+are dropped, which is roughly what forgetting is. Scars are never pruned.
+
 ## What is deliberately not here
 
 No pitch step, so the disposition model is read-only and nobody actually turns
-a match down. Nobody complains about being ranked below someone they beat. No
-relationship changes from results, so no rivalries form on their own. No
-backstage locations or incidents, no live levers to fill dead air, no promises,
-contracts, budget, GM progression or competing brands.
+a match down. Nobody comes to your office about a grievance they are carrying.
+No backstage locations or incidents, no live levers to fill dead air, no
+promises, contracts, budget, GM progression or competing brands. Betrayals and
+saves have memory types and no way to happen.
 
 The data model has the fields and the event log has the vocabulary for all of
 it. `results.js` is where reactions will hook in, because it already sees every

@@ -17,6 +17,11 @@
 //   memory    - accumulates;         the receipts, and the reason for behaviour
 
 import { mint } from '../core/ids.js';
+import {
+  createRelationship, describe as describeRelationship,
+  isAlly, isEnemy, isRival, isNotable, AXIS_RANGE,
+} from './relationship.js';
+import { memorySpec } from './memory.js';
 
 /**
  * Every numeric field in the model uses one of these two scales. Keeping it to
@@ -253,11 +258,12 @@ export function createWrestler(spec = {}) {
  * "memory decays but never vanishes, and large events scar permanently" becomes
  * one number rather than a special case.
  */
-export function createMemory({
-  day, type, summary,
-  aboutIds = [], weight = 50, floor = 5, decayPerDay = 0.5,
-  sourceEventId = null, scar = false,
-}) {
+export function createMemory(spec) {
+  const {
+    day, type, summary,
+    aboutIds = [], weight = 50, floor = 5, decayPerDay = 0.5,
+    sourceEventId = null, scar = false,
+  } = spec.type ? memorySpec(spec.type, spec) : spec;
   return {
     id: mint('memory'),
     day,
@@ -321,23 +327,44 @@ export function standingWeight(wrestler) {
   return statusRank(wrestler) / TOP_STATUS_RANK;
 }
 
+/** The whole four-axis view, or a neutral one if they have no opinion yet. */
+export function relationshipWith(wrestler, otherId) {
+  return wrestler.ties.relationships[otherId] || createRelationship({}, wrestler.createdDay);
+}
+
+/** The ally rating. Kept as the plain name because it is the axis most callers want. */
 export function relationshipTo(wrestler, otherId) {
-  return wrestler.ties.relationships[otherId]?.value ?? SCALES.SIGNED.neutral;
+  return relationshipWith(wrestler, otherId).affinity;
 }
 
-/** Everyone this wrestler actively likes or dislikes. Allies and enemies are
- *  read out of the relationship values, never stored as separate lists - one
- *  source of truth, so the two can never disagree. */
-export function alliesOf(wrestler, threshold = 40) {
-  return Object.entries(wrestler.ties.relationships)
-    .filter(([, r]) => r.value >= threshold)
-    .map(([id]) => id);
+export function hostilityTo(wrestler, otherId) { return relationshipWith(wrestler, otherId).hostility; }
+export function respectTo(wrestler, otherId) { return relationshipWith(wrestler, otherId).respect; }
+export function trustTo(wrestler, otherId) { return relationshipWith(wrestler, otherId).trust; }
+
+/**
+ * Allies, enemies and rivals are READ from the relationship axes, never stored
+ * as separate lists. One source of truth, so the list and the numbers can never
+ * disagree.
+ */
+export function alliesOf(wrestler) {
+  return Object.entries(wrestler.ties.relationships).filter(([, r]) => isAlly(r)).map(([id]) => id);
 }
 
-export function enemiesOf(wrestler, threshold = -40) {
+export function enemiesOf(wrestler) {
+  return Object.entries(wrestler.ties.relationships).filter(([, r]) => isEnemy(r)).map(([id]) => id);
+}
+
+/** Heat, which does not require dislike. This is where feuds come from. */
+export function rivalsOf(wrestler) {
+  return Object.entries(wrestler.ties.relationships).filter(([, r]) => isRival(r)).map(([id]) => id);
+}
+
+/** Everyone they have any opinion about at all, strongest feeling first. */
+export function notableTies(wrestler) {
   return Object.entries(wrestler.ties.relationships)
-    .filter(([, r]) => r.value <= threshold)
-    .map(([id]) => id);
+    .filter(([, r]) => isNotable(r))
+    .sort((a, b) => (Math.abs(b[1].affinity) + b[1].hostility) - (Math.abs(a[1].affinity) + a[1].hostility))
+    .map(([id, rel]) => ({ id, rel, label: describeRelationship(rel) }));
 }
 
 /** Structural check used by invariants.js and by save loading. */

@@ -32,6 +32,7 @@ import logScreen, { setFilter } from './ui/screens/log.js';
 import savesScreen from './ui/screens/saves.js';
 import { draft, setDraftFormat, setOverride, setDraftTitle } from './ui/screens/show.js';
 import titlesScreen from './ui/screens/titles.js';
+import lockerRoomScreen from './ui/screens/lockerroom.js';
 import * as playback from './ui/playback.js';
 
 // Registration order is nav order, and nav order is the weekly loop:
@@ -39,6 +40,7 @@ import * as playback from './ui/playback.js';
 registerScreen('roster', rosterScreen);
 registerScreen('show', showScreen);
 registerScreen('titles', titlesScreen);
+registerScreen('lockerroom', lockerRoomScreen);
 registerScreen('calendar', calendarScreen);
 registerScreen('log', logScreen);
 registerScreen('saves', savesScreen);

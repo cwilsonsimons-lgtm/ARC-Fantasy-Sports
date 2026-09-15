@@ -11,6 +11,8 @@
 
 import { typeOf } from './ids.js';
 import { WRESTLER_SHAPE_KEYS, validateWrestler, CAREER_STATUS, TRAJECTORY, TRAITS } from '../models/wrestler.js';
+import { validateRelationship } from '../models/relationship.js';
+import { isKnownMemoryType } from '../models/memory.js';
 
 /** Containers that are allowed to hold whole entities. */
 const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles'];
@@ -62,13 +64,19 @@ export function checkState(state) {
 
   // --- every cross-system reference resolves ---
   for (const w of Object.values(state.wrestlers)) {
-    for (const otherId of Object.keys(w.ties.relationships)) {
+    for (const [otherId, rel] of Object.entries(w.ties.relationships)) {
       refMustExist(otherId, wrestlerIds, `wrestler ${w.id} relationship`);
       if (otherId === w.id) problems.push(`wrestler ${w.id} holds a relationship with themselves`);
+      for (const p of validateRelationship(rel)) {
+        problems.push(`wrestler ${w.id} relationship with ${otherId}: ${p}`);
+      }
     }
     for (const m of w.memory) {
       for (const about of m.aboutIds) {
         if (typeOf(about) === 'wrestler') refMustExist(about, wrestlerIds, `memory ${m.id}`);
+      }
+      if (!isKnownMemoryType(m.type)) {
+        problems.push(`wrestler ${w.id} memory ${m.id} has unknown type "${m.type}"`);
       }
     }
   }

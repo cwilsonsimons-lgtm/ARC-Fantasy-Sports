@@ -7,11 +7,14 @@
 
 import * as store from '../../core/store.js';
 import {
-  recordOf, streakLabel, memoryWeightOn, relationshipTo,
+  recordOf, streakLabel, memoryWeightOn, relationshipTo, relationshipWith, notableTies,
+  alliesOf, enemiesOf, rivalsOf,
   TRAITS, TRAIT_GROUPS, ABILITIES, CAREER_STATUS, TRAJECTORY, statusRank, CAREER_ORDER,
 } from '../../models/wrestler.js';
 import { refusalFloor, expectedMinutes, expectedSlot } from '../../systems/disposition.js';
 import { reignsOf, championIds } from '../../models/title.js';
+import { AXES, describe as describeRelationship, isRival, isAlly, isEnemy } from '../../models/relationship.js';
+import { memoryTypeOf } from '../../models/memory.js';
 import * as rankings from '../../systems/rankings.js';
 import { esc, signed, toneOf, meter, titleCase, money } from '../format.js';
 import { notLoaded } from './roster.js';
@@ -31,18 +34,24 @@ export default {
     const kv = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
     const bar = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>${meter(v)}`;
 
-    const relationships = Object.entries(w.ties.relationships)
-      .sort((a, b) => b[1].value - a[1].value)
-      .map(([otherId, rel]) => {
-        const theirView = relationshipTo(store.getWrestler(otherId), w.id);
-        const mutual = Math.sign(rel.value) === Math.sign(theirView) || theirView === 0;
-        return `<tr>
-          <td><button class="rowlink" data-action="go" data-arg="wrestler/${otherId}">${esc(store.nameOf(otherId))}</button></td>
-          <td class="num ${toneOf(rel.value)}">${signed(rel.value)}</td>
-          <td class="num ${toneOf(theirView)}">${signed(theirView)}</td>
-          <td class="muted">${mutual ? '' : 'one-sided'}</td>
-        </tr>`;
-      }).join('') || '<tr><td colspan="4" class="empty">No opinions about anyone yet.</td></tr>';
+    const ties = notableTies(w);
+    const relationships = ties.map(({ id: otherId, rel, label }) => {
+      const other = store.getWrestler(otherId);
+      const theirAffinity = relationshipTo(other, w.id);
+      const oneSided = Math.abs(rel.affinity - theirAffinity) > 35;
+      const recent = rel.history.slice(-2).reverse();
+      return `<tr>
+        <td><button class="rowlink" data-action="go" data-arg="wrestler/${otherId}">${esc(store.nameOf(otherId))}</button>
+          <div><span class="pill ${isRival(rel) ? 'grease' : isAlly(rel) ? 'brass' : ''}">${esc(label)}</span></div></td>
+        <td class="num ${toneOf(rel.affinity)}">${signed(rel.affinity)}</td>
+        <td class="num ${rel.hostility >= 55 ? 'neg' : 'muted'}">${rel.hostility}</td>
+        <td class="num">${rel.respect}</td>
+        <td class="num ${rel.trust < 35 ? 'neg' : ''}">${rel.trust}</td>
+        <td class="num ${toneOf(theirAffinity)}">${signed(theirAffinity)}${oneSided ? '<div class="muted" style="font-size:11px">one-sided</div>' : ''}</td>
+        <td style="font-size:11px" class="muted">${recent.map((h) =>
+          `d${h.day} ${esc(h.summary || h.type)}`).join('<br>') || '-'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="empty">No opinions about anyone yet.</td></tr>';
 
     const memories = w.memory
       .map((m) => ({ m, weight: memoryWeightOn(m, day) }))
@@ -52,7 +61,7 @@ export default {
           <td class="num">d${m.day}</td>
           <td>${esc(m.summary)}
             ${m.aboutIds.map((a) => `<button class="rowlink muted" data-action="go" data-arg="wrestler/${a}" style="font-size:11px">${esc(store.nameOf(a))}</button>`).join(' ')}</td>
-          <td><span class="pill ${m.scar ? 'grease' : ''}">${esc(titleCase(m.type))}</span></td>
+          <td><span class="pill ${m.scar ? 'grease' : ''}">${esc(titleCase(m.type))}</span>${m.scar ? '<div class="muted" style="font-size:10px">scar</div>' : ''}</td>
           <td class="num">${Math.round(weight)} <span class="muted">/ ${m.weight}</span></td>
         </tr>`).join('') || '<tr><td colspan="4" class="empty">Nothing worth remembering yet.</td></tr>';
 
@@ -101,7 +110,13 @@ export default {
         <div class="card"><h3>5. Ties &middot; the GM</h3>
           ${bar('Trusts you', w.ties.gm.trust)}
           ${bar('Respects you', w.ties.gm.respect)}
-          ${kv('Relationships', Object.keys(w.ties.relationships).length)}
+          <div class="kv"><span class="muted" style="font-size:11px">Trust is whether they believe what you say. Respect is whether they rate you at the job. They are earned and lost separately.</span><span></span></div>
+        </div>
+        <div class="card"><h3>5. Ties &middot; the locker room</h3>
+          ${kv('Opinions held', Object.keys(w.ties.relationships).length)}
+          ${kv('Allies', alliesOf(w).length)}
+          ${kv('Enemies', enemiesOf(w).length)}
+          ${kv('Live rivalries', rivalsOf(w).length)}
         </div>
         <div class="card"><h3>Contract</h3>
           ${kv('Salary', money(w.contract.salary))}
@@ -154,9 +169,13 @@ export default {
       </table></div>` : ''}
 
       <h2>5. Ties &middot; the locker room</h2>
-      <p class="sub">Relationships are directed. The two columns disagreeing is the normal case, not a bug.</p>
+      <p class="sub">Four axes, because one number cannot say that you respect someone you cannot stand.
+      All of it is directed: the last column disagreeing with the first is the normal case, not a bug.</p>
       <div class="scroller"><table>
-        <thead><tr><th>Wrestler</th><th>${esc(w.shortName)} thinks</th><th>They think</th><th></th></tr></thead>
+        <thead><tr>
+          <th>Wrestler</th><th>Ally</th><th>Hostility</th><th>Respect</th><th>Trust</th>
+          <th>They think</th><th>What moved it</th>
+        </tr></thead>
         <tbody>${relationships}</tbody>
       </table></div>
 

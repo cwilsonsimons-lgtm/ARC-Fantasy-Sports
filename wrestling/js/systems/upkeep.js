@@ -22,6 +22,15 @@ export function recoveryPerDay(wrestler) {
  */
 export const MOMENTUM_DECAY_PER_DAY = 1.5;
 
+/**
+ * Hostility cools per day when a feud is not being fed.
+ *
+ * Without this, heat only ever accumulates and every pair on the roster ends up
+ * a blood feud by month six. With it, a rivalry has to be kept alive by
+ * booking, which is the correct thing for the GM to have to do.
+ */
+export const HOSTILITY_COOLING_PER_DAY = 0.35;
+
 export function decayMomentum(momentum, days) {
   const drop = MOMENTUM_DECAY_PER_DAY * days;
   if (momentum > 0) return Math.max(0, momentum - drop);
@@ -36,7 +45,16 @@ export function install() {
 
     const recovered = [];
     const cooled = [];
+    let feudsCooled = 0;
     for (const w of store.allWrestlers()) {
+      // Heat fades between meetings. Written straight to the relationship: this
+      // is weather, not an event, and nothing should react to it.
+      for (const rel of Object.values(w.ties.relationships)) {
+        if (rel.hostility <= 0) continue;
+        const next = Math.max(0, rel.hostility - HOSTILITY_COOLING_PER_DAY * days);
+        if (next !== rel.hostility) { rel.hostility = Math.round(next); feudsCooled++; }
+      }
+
       const patch = {};
       if (w.state.condition < 100) {
         const next = Math.min(100, w.state.condition + recoveryPerDay(w) * days);
@@ -51,13 +69,13 @@ export function install() {
       // Silent: one line in the log for the whole roster, not fourteen.
       if (Object.keys(patch).length) store.updateWrestlerState(w.id, patch, { silent: true });
     }
-    if (!recovered.length && !cooled.length) return;
+    if (!recovered.length && !cooled.length && !feudsCooled) return;
 
     store.emit(EVENT_TYPES.WRESTLER_STATE, {
-      summary: `${recovered.length} rested and ${cooled.length} cooled off over ${days} day${days === 1 ? '' : 's'}`,
+      summary: `${recovered.length} rested, ${cooled.length} cooled off, ${feudsCooled} rivalries lost heat over ${days} day${days === 1 ? '' : 's'}`,
       subjects: [...new Set([...recovered.map((r) => r.id), ...cooled.map((c) => c.id)])],
       cause: event.id,
-      data: { kind: 'condition_recovery', days, recovered, cooled },
+      data: { kind: 'condition_recovery', days, recovered, cooled, feudsCooled },
     });
   });
 }

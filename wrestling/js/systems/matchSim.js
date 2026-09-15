@@ -16,7 +16,7 @@
 import { sides, FINISHES } from '../models/segment.js';
 import { formatOf } from './formats.js';
 import { SEGMENT_KINDS } from '../models/segment.js';
-import { relationshipTo } from '../models/wrestler.js';
+import { relationshipWith } from '../models/wrestler.js';
 
 /** The clock ticks in half-minutes. Fine enough to feel live, coarse enough to read. */
 export const BEAT_SEC = 30;
@@ -48,8 +48,12 @@ export function sideStrength(ids, get) {
 
 /**
  * How much these people have going on with each other, 0..1.
- * Strong feeling in EITHER direction raises the ceiling: two men who hate each
- * other have a better match than two who have no opinion.
+ *
+ * Two things raise a match's ceiling, and they are not the same thing. HEAT is
+ * strong feeling in either direction - love or hatred both beat indifference.
+ * RESPECT is whether they can actually work together. The best matches in
+ * wrestling have both: two men who cannot stand each other and know exactly how
+ * good the other one is.
  */
 export function chemistry(participantIds, get) {
   if (participantIds.length < 2) return 0;
@@ -59,11 +63,15 @@ export function chemistry(participantIds, get) {
     for (let j = i + 1; j < participantIds.length; j++) {
       const a = get(participantIds[i]);
       const b = get(participantIds[j]);
-      total += (Math.abs(relationshipTo(a, participantIds[j])) + Math.abs(relationshipTo(b, participantIds[i]))) / 2;
+      const ab = relationshipWith(a, participantIds[j]);
+      const ba = relationshipWith(b, participantIds[i]);
+      const heat = (Math.abs(ab.affinity) + ab.hostility + Math.abs(ba.affinity) + ba.hostility) / 2;
+      const respect = (ab.respect + ba.respect) / 2;
+      total += clamp(heat * 0.006 + (respect - 50) * 0.006, 0, 1);
       pairs++;
     }
   }
-  return pairs ? Math.min(1, total / pairs / 100) : 0;
+  return pairs ? Math.min(1, total / pairs) : 0;
 }
 
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
