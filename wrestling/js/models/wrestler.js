@@ -27,25 +27,55 @@ export const SCALES = Object.freeze({
   SIGNED: { min: -100, max: 100, neutral: 0 }, // momentum, relationships
 });
 
+/**
+ * Where a wrestler sits on the card. Seven rungs, low to high.
+ *
+ * This is position, not trajectory - a faded former main-eventer working the
+ * lower card and a kid climbing toward it occupy the same rung and behave
+ * nothing alike, which is what `trajectory` below is for.
+ *
+ * Status is the single most important input to whether a behaviour is
+ * believable. A rookie does not have the standing to refuse anything; a
+ * superstar has enough standing to refuse almost everything.
+ */
 export const CAREER_STATUS = Object.freeze({
   ROOKIE: 'rookie',
   JOBBER: 'jobber',
+  LOWER_CARD: 'lower_card',
   MIDCARD: 'midcard',
   UPPER_MIDCARD: 'upper_midcard',
   MAIN_EVENT: 'main_event',
-  VETERAN: 'veteran',
-  DECLINING: 'declining',
+  SUPERSTAR: 'superstar',
 });
 
-/** Rough seniority, used for sorting and for "is this beneath me" comparisons. */
+/** Position on the card, 0 (rookie) to 6 (superstar). */
 export const CAREER_RANK = Object.freeze({
   [CAREER_STATUS.ROOKIE]: 0,
   [CAREER_STATUS.JOBBER]: 1,
-  [CAREER_STATUS.MIDCARD]: 2,
-  [CAREER_STATUS.UPPER_MIDCARD]: 3,
-  [CAREER_STATUS.MAIN_EVENT]: 4,
-  [CAREER_STATUS.VETERAN]: 3,
-  [CAREER_STATUS.DECLINING]: 2,
+  [CAREER_STATUS.LOWER_CARD]: 2,
+  [CAREER_STATUS.MIDCARD]: 3,
+  [CAREER_STATUS.UPPER_MIDCARD]: 4,
+  [CAREER_STATUS.MAIN_EVENT]: 5,
+  [CAREER_STATUS.SUPERSTAR]: 6,
+});
+
+export const CAREER_ORDER = Object.freeze([
+  CAREER_STATUS.ROOKIE, CAREER_STATUS.JOBBER, CAREER_STATUS.LOWER_CARD,
+  CAREER_STATUS.MIDCARD, CAREER_STATUS.UPPER_MIDCARD, CAREER_STATUS.MAIN_EVENT,
+  CAREER_STATUS.SUPERSTAR,
+]);
+
+export const TOP_STATUS_RANK = CAREER_RANK[CAREER_STATUS.SUPERSTAR];
+
+/**
+ * Which way they are heading. Separate from status because the two say
+ * different things: a rising midcarder takes a loss as a setback on the way up,
+ * a declining one takes the same loss as proof it is over.
+ */
+export const TRAJECTORY = Object.freeze({
+  RISING: 'rising',
+  STEADY: 'steady',
+  DECLINING: 'declining',
 });
 
 export const MOODS = Object.freeze([
@@ -59,17 +89,44 @@ export const CONTRACT_STATUS = Object.freeze({
 });
 
 /**
- * Personality traits. Six, each one load-bearing for a behaviour the design
- * already describes, so the list has a reason to stop where it does:
- *   professionalism - accepts a booking they dislike anyway
- *   volatility      - the *width* of their reaction distribution
- *   loyalty         - eligibility for betrayal, and standing by an ally
- *   vindictiveness  - whether a grievance is carried or let go
- *   sociability     - how much backstage information passes through them
- *   riskAversion    - refusing a match as unnecessarily dangerous
+ * Personality traits, all 0-100.
+ *
+ * Every one earns its place by changing a specific behaviour. Ego and ambition
+ * are NOT in here: they sit alongside traits on `identity` because they are
+ * what a wrestler wants rather than how they are, and almost everything else
+ * gets weighed against them.
+ *
+ *   How they treat the job
+ *     professionalism    - accepts a booking they dislike anyway
+ *     respectForAuthority- defers to the office even when they disagree
+ *     patience           - how long they will wait for what they were promised
+ *
+ *   How they treat people
+ *     loyalty            - stands by an ally; eligibility for betrayal
+ *     jealousy           - resents someone else's spot as taken from them
+ *     vindictiveness     - carries a grievance rather than letting it go
+ *     aggression         - escalates rather than swallowing it
+ *
+ *   How they treat risk
+ *     courage            - takes the dangerous match, the high spot, the fall
+ *
+ *   How predictable they are
+ *     volatility         - the WIDTH of their reaction range, not its centre
+ *     sociability        - how much backstage information passes through them
  */
 export const TRAITS = Object.freeze([
-  'professionalism', 'volatility', 'loyalty', 'vindictiveness', 'sociability', 'riskAversion',
+  'professionalism', 'respectForAuthority', 'patience',
+  'loyalty', 'jealousy', 'vindictiveness', 'aggression',
+  'courage',
+  'volatility', 'sociability',
+]);
+
+/** Grouping, for anything that wants to show them in readable blocks. */
+export const TRAIT_GROUPS = Object.freeze([
+  { label: 'The job', traits: ['professionalism', 'respectForAuthority', 'patience'] },
+  { label: 'People', traits: ['loyalty', 'jealousy', 'vindictiveness', 'aggression'] },
+  { label: 'Risk', traits: ['courage'] },
+  { label: 'Temperament', traits: ['volatility', 'sociability'] },
 ]);
 
 /** The four performance stats. Deliberately small; resist growing this. */
@@ -94,6 +151,7 @@ export function createWrestler(spec = {}) {
     shortName,
     debutDay = 0,
     careerStatus = CAREER_STATUS.MIDCARD,
+    trajectory = TRAJECTORY.STEADY,
     identity = {},
     ability = {},
     standing = {},
@@ -131,6 +189,7 @@ export function createWrestler(spec = {}) {
     // 3. Standing - public, earned, and the vocabulary of every argument.
     standing: {
       careerStatus,
+      trajectory,
       wins: standing.wins ?? 0,
       losses: standing.losses ?? 0,
       draws: standing.draws ?? 0,
@@ -244,6 +303,22 @@ export function isAvailable(wrestler, day) {
   const h = wrestler.state.health;
   if (h.status === HEALTH.HEALTHY) return true;
   return h.returnsOnDay != null && day >= h.returnsOnDay;
+}
+
+/** Position on the card as a number, for "is this beneath me" comparisons. */
+export function statusRank(wrestler) {
+  return CAREER_RANK[wrestler.standing.careerStatus] ?? 3;
+}
+
+/**
+ * How much standing this wrestler has to push back with, 0 to 1.
+ *
+ * This is the number that makes the tier's central rule true: a rookie jobber
+ * rarely refuses because refusing is not available to someone with no standing,
+ * whatever their ego says. A superstar has all of it.
+ */
+export function standingWeight(wrestler) {
+  return statusRank(wrestler) / TOP_STATUS_RANK;
 }
 
 export function relationshipTo(wrestler, otherId) {

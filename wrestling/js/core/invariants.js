@@ -10,7 +10,7 @@
 // console. It is cheap enough to run after every action while developing.
 
 import { typeOf } from './ids.js';
-import { WRESTLER_SHAPE_KEYS, validateWrestler } from '../models/wrestler.js';
+import { WRESTLER_SHAPE_KEYS, validateWrestler, CAREER_STATUS, TRAJECTORY, TRAITS } from '../models/wrestler.js';
 
 /** Containers that are allowed to hold whole entities. */
 const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles'];
@@ -34,8 +34,21 @@ export function checkState(state) {
   }
 
   // --- wrestlers are structurally sound ---
+  const STATUSES = new Set(Object.values(CAREER_STATUS));
+  const TRAJECTORIES = new Set(Object.values(TRAJECTORY));
   for (const w of Object.values(state.wrestlers)) {
     for (const p of validateWrestler(w)) problems.push(`wrestler ${w.id}: ${p}`);
+    if (!STATUSES.has(w.standing.careerStatus)) {
+      problems.push(`wrestler ${w.id} has unknown career status "${w.standing.careerStatus}"`);
+    }
+    if (!TRAJECTORIES.has(w.standing.trajectory)) {
+      problems.push(`wrestler ${w.id} has unknown trajectory "${w.standing.trajectory}"`);
+    }
+    for (const trait of TRAITS) {
+      if (!Number.isFinite(w.identity.traits?.[trait])) {
+        problems.push(`wrestler ${w.id} is missing the "${trait}" trait`);
+      }
+    }
   }
 
   const wrestlerIds = new Set(Object.keys(state.wrestlers));

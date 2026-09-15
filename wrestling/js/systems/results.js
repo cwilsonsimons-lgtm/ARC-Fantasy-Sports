@@ -64,8 +64,8 @@ function recordLoss(id, event, winnerIds) {
   }, { reason: 'Lost their match', cause: event.id });
 
   // Losing to someone beneath you is the kind of thing that stays with a person.
-  const mine = CAREER_RANK[w.standing.careerStatus] ?? 2;
-  const theirs = Math.max(...winnerIds.map((id2) => CAREER_RANK[store.getWrestler(id2).standing.careerStatus] ?? 2));
+  const mine = CAREER_RANK[w.standing.careerStatus] ?? 3;
+  const theirs = Math.max(...winnerIds.map((id2) => CAREER_RANK[store.getWrestler(id2).standing.careerStatus] ?? 3));
   const upset = mine - theirs;
   store.addMemory(id, {
     type: upset > 0 ? 'upset_loss' : 'loss',

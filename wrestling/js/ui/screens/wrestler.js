@@ -8,8 +8,9 @@
 import * as store from '../../core/store.js';
 import {
   recordOf, streakLabel, memoryWeightOn, relationshipTo,
-  TRAITS, ABILITIES, CAREER_STATUS,
+  TRAITS, TRAIT_GROUPS, ABILITIES, CAREER_STATUS, TRAJECTORY, statusRank, CAREER_ORDER,
 } from '../../models/wrestler.js';
+import { refusalFloor, expectedMinutes, expectedSlot } from '../../systems/disposition.js';
 import { reignsOf, championIds } from '../../models/title.js';
 import * as rankings from '../../systems/rankings.js';
 import { esc, signed, toneOf, meter, titleCase, money } from '../format.js';
@@ -64,15 +65,25 @@ export default {
       <p class="sub">${w.id} &middot; ${esc(titleCase(w.standing.careerStatus))} &middot; debuted day ${w.standing.debutDay}</p>
 
       <div class="cards">
-        <div class="card"><h3>1. Identity</h3>
+        <div class="card"><h3>1. Identity &middot; what they want</h3>
           ${bar('Ego', w.identity.ego)}
           ${bar('Ambition', w.identity.ambition)}
-          ${TRAITS.map((t) => kv(titleCase(t), w.identity.traits[t])).join('')}
+          <div class="kv"><span class="muted" style="font-size:11px">Ego is what pushes back. Ambition is what they will put up with to get somewhere.</span><span></span></div>
+        </div>
+        <div class="card"><h3>1. Identity &middot; how they are</h3>
+          ${TRAIT_GROUPS.map((group) => `
+            <div class="kv" style="border-bottom:0;padding-bottom:0">
+              <span class="muted" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase">${esc(group.label)}</span><span></span>
+            </div>
+            ${group.traits.map((t) => kv(titleCase(t), w.identity.traits[t])).join('')}
+          `).join('')}
         </div>
         <div class="card"><h3>2. Ability</h3>
           ${ABILITIES.map((a) => bar(titleCase(a), w.ability[a])).join('')}
         </div>
         <div class="card"><h3>3. Standing</h3>
+          ${kv('On the card', `${titleCase(w.standing.careerStatus)} <span class="muted">(${statusRank(w) + 1} of ${CAREER_ORDER.length})</span>`)}
+          ${kv('Trajectory', `<span class="${w.standing.trajectory === TRAJECTORY.RISING ? 'pos' : w.standing.trajectory === TRAJECTORY.DECLINING ? 'neg' : 'muted'}">${titleCase(w.standing.trajectory)}</span>`)}
           ${kv('Record', recordOf(w))}
           ${kv('Streak', streakLabel(w))}
           ${kv('Rank', w.standing.rank ? `#${w.standing.rank}` : 'unranked')}
@@ -97,6 +108,23 @@ export default {
           ${kv('Expires', w.contract.expiresOnDay == null ? '-' : `day ${w.contract.expiresOnDay}`)}
           ${kv('Status', titleCase(w.contract.status))}
           <div class="kv"><span class="muted" style="font-size:11px">Fields only. The contract system is not built.</span><span></span></div>
+        </div>
+      </div>
+
+      <h2>What they think they are worth</h2>
+      <p class="sub">Read off their status. This is what the GM is measured against when a booking arrives.</p>
+      <div class="cards">
+        <div class="card"><h3>Expectations</h3>
+          ${kv('Ring time', `about ${Math.round(expectedMinutes(w))} minutes`)}
+          ${kv('Spot on the card', `${Math.round(expectedSlot(w) * 100)}% of the way up`)}
+        </div>
+        <div class="card"><h3>Room to refuse</h3>
+          ${kv('Willingness floor', Math.round(refusalFloor(w)))}
+          <div class="kv"><span class="muted" style="font-size:11px">${refusalFloor(w) >= 70
+            ? 'Has no standing to turn anything down, whatever they think of it.'
+            : refusalFloor(w) >= 45
+              ? 'Can complain, and be talked round.'
+              : 'Has the standing to say no and make it stick.'}</span><span></span></div>
         </div>
       </div>
 

@@ -713,20 +713,35 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   var CAREER_STATUS = Object.freeze({
     ROOKIE: "rookie",
     JOBBER: "jobber",
+    LOWER_CARD: "lower_card",
     MIDCARD: "midcard",
     UPPER_MIDCARD: "upper_midcard",
     MAIN_EVENT: "main_event",
-    VETERAN: "veteran",
-    DECLINING: "declining"
+    SUPERSTAR: "superstar"
   });
   var CAREER_RANK = Object.freeze({
     [CAREER_STATUS.ROOKIE]: 0,
     [CAREER_STATUS.JOBBER]: 1,
-    [CAREER_STATUS.MIDCARD]: 2,
-    [CAREER_STATUS.UPPER_MIDCARD]: 3,
-    [CAREER_STATUS.MAIN_EVENT]: 4,
-    [CAREER_STATUS.VETERAN]: 3,
-    [CAREER_STATUS.DECLINING]: 2
+    [CAREER_STATUS.LOWER_CARD]: 2,
+    [CAREER_STATUS.MIDCARD]: 3,
+    [CAREER_STATUS.UPPER_MIDCARD]: 4,
+    [CAREER_STATUS.MAIN_EVENT]: 5,
+    [CAREER_STATUS.SUPERSTAR]: 6
+  });
+  var CAREER_ORDER = Object.freeze([
+    CAREER_STATUS.ROOKIE,
+    CAREER_STATUS.JOBBER,
+    CAREER_STATUS.LOWER_CARD,
+    CAREER_STATUS.MIDCARD,
+    CAREER_STATUS.UPPER_MIDCARD,
+    CAREER_STATUS.MAIN_EVENT,
+    CAREER_STATUS.SUPERSTAR
+  ]);
+  var TOP_STATUS_RANK = CAREER_RANK[CAREER_STATUS.SUPERSTAR];
+  var TRAJECTORY = Object.freeze({
+    RISING: "rising",
+    STEADY: "steady",
+    DECLINING: "declining"
   });
   var MOODS = Object.freeze([
     "content",
@@ -745,11 +760,21 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   });
   var TRAITS = Object.freeze([
     "professionalism",
-    "volatility",
+    "respectForAuthority",
+    "patience",
     "loyalty",
+    "jealousy",
     "vindictiveness",
-    "sociability",
-    "riskAversion"
+    "aggression",
+    "courage",
+    "volatility",
+    "sociability"
+  ]);
+  var TRAIT_GROUPS = Object.freeze([
+    { label: "The job", traits: ["professionalism", "respectForAuthority", "patience"] },
+    { label: "People", traits: ["loyalty", "jealousy", "vindictiveness", "aggression"] },
+    { label: "Risk", traits: ["courage"] },
+    { label: "Temperament", traits: ["volatility", "sociability"] }
   ]);
   var ABILITIES = Object.freeze(["workRate", "charisma", "durability", "starPower"]);
   function clampUnit(n) {
@@ -765,6 +790,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       shortName,
       debutDay = 0,
       careerStatus = CAREER_STATUS.MIDCARD,
+      trajectory = TRAJECTORY.STEADY,
       identity = {},
       ability = {},
       standing = {},
@@ -796,6 +822,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       // 3. Standing - public, earned, and the vocabulary of every argument.
       standing: {
         careerStatus,
+        trajectory,
         wins: standing.wins ?? 0,
         losses: standing.losses ?? 0,
         draws: standing.draws ?? 0,
@@ -890,6 +917,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     const h = wrestler.state.health;
     if (h.status === HEALTH.HEALTHY) return true;
     return h.returnsOnDay != null && day >= h.returnsOnDay;
+  }
+  function statusRank(wrestler) {
+    return CAREER_RANK[wrestler.standing.careerStatus] ?? 3;
+  }
+  function standingWeight(wrestler) {
+    return statusRank(wrestler) / TOP_STATUS_RANK;
   }
   function relationshipTo(wrestler, otherId) {
     return wrestler.ties.relationships[otherId]?.value ?? SCALES.SIGNED.neutral;
@@ -1157,7 +1190,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   }
 
   // wrestling/js/core/store.js
-  var SCHEMA_VERSION = 3;
+  var SCHEMA_VERSION = 4;
   var G = { state: null, rng: null };
   function getState() {
     return G.state;
@@ -1745,8 +1778,21 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         }
       }
     }
+    const STATUSES = new Set(Object.values(CAREER_STATUS));
+    const TRAJECTORIES = new Set(Object.values(TRAJECTORY));
     for (const w of Object.values(state2.wrestlers)) {
       for (const p of validateWrestler(w)) problems.push(`wrestler ${w.id}: ${p}`);
+      if (!STATUSES.has(w.standing.careerStatus)) {
+        problems.push(`wrestler ${w.id} has unknown career status "${w.standing.careerStatus}"`);
+      }
+      if (!TRAJECTORIES.has(w.standing.trajectory)) {
+        problems.push(`wrestler ${w.id} has unknown trajectory "${w.standing.trajectory}"`);
+      }
+      for (const trait of TRAITS) {
+        if (!Number.isFinite(w.identity.traits?.[trait])) {
+          problems.push(`wrestler ${w.id} is missing the "${trait}" trait`);
+        }
+      }
     }
     const wrestlerIds = new Set(Object.keys(state2.wrestlers));
     const showIds = new Set(Object.keys(state2.shows));
@@ -1918,6 +1964,39 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         seg.titleId = null;
       }
       return state2;
+    },
+    // v3 -> v4: personality and status.
+    //
+    // Career status gains lower_card and superstar and loses veteran and
+    // declining, because those two described a career's DIRECTION rather than its
+    // position on the card. That direction is not thrown away - it moves to the
+    // new `trajectory` field, where it can say what it actually meant.
+    //
+    // riskAversion becomes courage, which is the same axis read the right way up,
+    // so it is inverted rather than reset. The five genuinely new traits arrive
+    // neutral, since a v3 save never had an opinion about them.
+    3: (state2) => {
+      const STATUS_MAP = {
+        veteran: ["upper_midcard", "steady"],
+        declining: ["lower_card", "declining"]
+      };
+      const NEW_TRAITS = ["respectForAuthority", "patience", "jealousy", "aggression"];
+      for (const w of Object.values(state2.wrestlers)) {
+        const [mapped, trajectory] = STATUS_MAP[w.standing.careerStatus] || [];
+        if (mapped) w.standing.careerStatus = mapped;
+        if (w.standing.trajectory === void 0) w.standing.trajectory = trajectory || "steady";
+        const traits = w.identity.traits;
+        if (traits.courage === void 0) {
+          traits.courage = traits.riskAversion === void 0 ? 50 : 100 - traits.riskAversion;
+        }
+        delete traits.riskAversion;
+        for (const name of NEW_TRAITS) {
+          if (traits[name] === void 0) traits[name] = 50;
+        }
+        if (traits.volatility === void 0) traits.volatility = 50;
+        if (traits.sociability === void 0) traits.sociability = 50;
+      }
+      return state2;
     }
   };
   function migrate(state2, fromVersion) {
@@ -2051,17 +2130,19 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   }
 
   // wrestling/js/data/roster.js
-  var { ROOKIE, JOBBER, MIDCARD, UPPER_MIDCARD, MAIN_EVENT, VETERAN, DECLINING } = CAREER_STATUS;
+  var { ROOKIE, JOBBER, LOWER_CARD, MIDCARD, UPPER_MIDCARD, MAIN_EVENT, SUPERSTAR } = CAREER_STATUS;
+  var { RISING, STEADY, DECLINING } = TRAJECTORY;
   var STARTING_ROSTER = [
     // ---------------------------------------------------------------- main event
     {
       key: "croft",
       name: "Damien Croft",
-      careerStatus: MAIN_EVENT,
+      careerStatus: SUPERSTAR,
+      trajectory: STEADY,
       identity: {
         ego: 92,
         ambition: 78,
-        traits: { professionalism: 80, volatility: 25, loyalty: 35, vindictiveness: 70, sociability: 40, riskAversion: 75 }
+        traits: { professionalism: 80, respectForAuthority: 30, patience: 65, loyalty: 35, jealousy: 78, vindictiveness: 70, aggression: 45, courage: 25, volatility: 25, sociability: 40 }
       },
       ability: { workRate: 84, charisma: 88, durability: 70, starPower: 94 },
       standing: { wins: 41, losses: 12, draws: 3, streak: { type: "W", count: 3 } },
@@ -2085,10 +2166,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "vance",
       name: "Ruby Vance",
       careerStatus: MAIN_EVENT,
+      trajectory: RISING,
       identity: {
         ego: 80,
         ambition: 95,
-        traits: { professionalism: 62, volatility: 72, loyalty: 55, vindictiveness: 60, sociability: 70, riskAversion: 30 }
+        traits: { professionalism: 62, respectForAuthority: 45, patience: 30, loyalty: 55, jealousy: 50, vindictiveness: 60, aggression: 72, courage: 78, volatility: 72, sociability: 70 }
       },
       ability: { workRate: 89, charisma: 82, durability: 74, starPower: 86 },
       standing: { wins: 33, losses: 15, draws: 2, streak: { type: "W", count: 1 } },
@@ -2113,10 +2195,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "wren",
       name: "Tobias Wren",
       careerStatus: UPPER_MIDCARD,
+      trajectory: RISING,
       identity: {
         ego: 74,
         ambition: 88,
-        traits: { professionalism: 70, volatility: 58, loyalty: 40, vindictiveness: 82, sociability: 35, riskAversion: 45 }
+        traits: { professionalism: 70, respectForAuthority: 25, patience: 18, loyalty: 40, jealousy: 85, vindictiveness: 82, aggression: 66, courage: 60, volatility: 58, sociability: 35 }
       },
       ability: { workRate: 91, charisma: 58, durability: 78, starPower: 62 },
       standing: { wins: 28, losses: 9, draws: 1, streak: { type: "W", count: 6 } },
@@ -2148,10 +2231,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "okonkwo",
       name: "Sable Okonkwo",
       careerStatus: UPPER_MIDCARD,
+      trajectory: RISING,
       identity: {
         ego: 58,
         ambition: 90,
-        traits: { professionalism: 85, volatility: 40, loyalty: 72, vindictiveness: 45, sociability: 66, riskAversion: 35 }
+        traits: { professionalism: 85, respectForAuthority: 70, patience: 62, loyalty: 72, jealousy: 30, vindictiveness: 45, aggression: 40, courage: 70, volatility: 40, sociability: 66 }
       },
       ability: { workRate: 82, charisma: 79, durability: 80, starPower: 71 },
       standing: { wins: 24, losses: 11, draws: 0, streak: { type: "L", count: 1 } },
@@ -2175,10 +2259,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "kane",
       name: "Marcus Kane",
       careerStatus: UPPER_MIDCARD,
+      trajectory: STEADY,
       identity: {
         ego: 38,
         ambition: 52,
-        traits: { professionalism: 94, volatility: 18, loyalty: 90, vindictiveness: 20, sociability: 75, riskAversion: 55 }
+        traits: { professionalism: 94, respectForAuthority: 82, patience: 80, loyalty: 90, jealousy: 12, vindictiveness: 20, aggression: 25, courage: 55, volatility: 18, sociability: 75 }
       },
       ability: { workRate: 73, charisma: 66, durability: 92, starPower: 68 },
       standing: { wins: 31, losses: 19, draws: 4, streak: { type: "W", count: 2 } },
@@ -2201,10 +2286,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "delacroix",
       name: "Iris Delacroix",
       careerStatus: UPPER_MIDCARD,
+      trajectory: RISING,
       identity: {
         ego: 81,
         ambition: 84,
-        traits: { professionalism: 45, volatility: 66, loyalty: 25, vindictiveness: 88, sociability: 58, riskAversion: 60 }
+        traits: { professionalism: 45, respectForAuthority: 35, patience: 40, loyalty: 25, jealousy: 80, vindictiveness: 88, aggression: 70, courage: 45, volatility: 66, sociability: 58 }
       },
       ability: { workRate: 76, charisma: 85, durability: 65, starPower: 74 },
       standing: { wins: 26, losses: 14, draws: 1, streak: { type: "W", count: 4 } },
@@ -2219,10 +2305,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "pike",
       name: "Jonah Pike",
       careerStatus: MIDCARD,
+      trajectory: STEADY,
       identity: {
         ego: 30,
         ambition: 48,
-        traits: { professionalism: 96, volatility: 12, loyalty: 85, vindictiveness: 18, sociability: 62, riskAversion: 40 }
+        traits: { professionalism: 96, respectForAuthority: 90, patience: 88, loyalty: 85, jealousy: 10, vindictiveness: 18, aggression: 20, courage: 60, volatility: 12, sociability: 62 }
       },
       ability: { workRate: 78, charisma: 52, durability: 84, starPower: 44 },
       standing: { wins: 18, losses: 27, draws: 2, streak: { type: "L", count: 3 } },
@@ -2236,10 +2323,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "bloom",
       name: "Cassidy Bloom",
       careerStatus: MIDCARD,
+      trajectory: STEADY,
       identity: {
         ego: 69,
         ambition: 74,
-        traits: { professionalism: 50, volatility: 78, loyalty: 48, vindictiveness: 55, sociability: 88, riskAversion: 50 }
+        traits: { professionalism: 50, respectForAuthority: 40, patience: 35, loyalty: 48, jealousy: 72, vindictiveness: 55, aggression: 58, courage: 50, volatility: 78, sociability: 88 }
       },
       ability: { workRate: 55, charisma: 91, durability: 62, starPower: 70 },
       standing: { wins: 15, losses: 20, draws: 1, streak: { type: "W", count: 1 } },
@@ -2252,11 +2340,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     {
       key: "halloran",
       name: "Viktor Halloran",
-      careerStatus: DECLINING,
+      careerStatus: LOWER_CARD,
+      trajectory: DECLINING,
       identity: {
         ego: 77,
         ambition: 40,
-        traits: { professionalism: 68, volatility: 62, loyalty: 42, vindictiveness: 74, sociability: 45, riskAversion: 70 }
+        traits: { professionalism: 68, respectForAuthority: 28, patience: 22, loyalty: 42, jealousy: 88, vindictiveness: 74, aggression: 62, courage: 20, volatility: 62, sociability: 45 }
       },
       ability: { workRate: 70, charisma: 74, durability: 48, starPower: 58 },
       standing: { wins: 52, losses: 48, draws: 6, streak: { type: "L", count: 4 } },
@@ -2280,10 +2369,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "sparrow",
       name: "Nia Sparrow",
       careerStatus: MIDCARD,
+      trajectory: RISING,
       identity: {
         ego: 52,
         ambition: 80,
-        traits: { professionalism: 72, volatility: 55, loyalty: 65, vindictiveness: 30, sociability: 70, riskAversion: 12 }
+        traits: { professionalism: 72, respectForAuthority: 65, patience: 55, loyalty: 65, jealousy: 28, vindictiveness: 30, aggression: 45, courage: 92, volatility: 55, sociability: 70 }
       },
       ability: { workRate: 86, charisma: 68, durability: 41, starPower: 63 },
       standing: { wins: 21, losses: 16, draws: 0, streak: { type: "W", count: 2 } },
@@ -2307,10 +2397,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "ruiz",
       name: "Deacon Ruiz",
       careerStatus: ROOKIE,
+      trajectory: RISING,
       identity: {
         ego: 28,
         ambition: 76,
-        traits: { professionalism: 80, volatility: 35, loyalty: 78, vindictiveness: 22, sociability: 72, riskAversion: 25 }
+        traits: { professionalism: 80, respectForAuthority: 88, patience: 70, loyalty: 78, jealousy: 18, vindictiveness: 22, aggression: 30, courage: 75, volatility: 35, sociability: 72 }
       },
       ability: { workRate: 61, charisma: 55, durability: 72, starPower: 38 },
       standing: { wins: 4, losses: 11, draws: 0, streak: { type: "L", count: 2 } },
@@ -2324,10 +2415,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "lund",
       name: "Perry Lund",
       careerStatus: JOBBER,
+      trajectory: STEADY,
       identity: {
         ego: 22,
         ambition: 34,
-        traits: { professionalism: 92, volatility: 15, loyalty: 70, vindictiveness: 15, sociability: 80, riskAversion: 35 }
+        traits: { professionalism: 92, respectForAuthority: 95, patience: 90, loyalty: 70, jealousy: 8, vindictiveness: 15, aggression: 12, courage: 62, volatility: 15, sociability: 80 }
       },
       ability: { workRate: 58, charisma: 44, durability: 76, starPower: 24 },
       standing: { wins: 3, losses: 34, draws: 1, streak: { type: "L", count: 9 } },
@@ -2340,11 +2432,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     {
       key: "mabry",
       name: "Trent Mabry",
-      careerStatus: JOBBER,
+      careerStatus: LOWER_CARD,
+      trajectory: STEADY,
       identity: {
         ego: 60,
         ambition: 68,
-        traits: { professionalism: 58, volatility: 64, loyalty: 38, vindictiveness: 80, sociability: 42, riskAversion: 45 }
+        traits: { professionalism: 58, respectForAuthority: 32, patience: 25, loyalty: 38, jealousy: 82, vindictiveness: 80, aggression: 55, courage: 55, volatility: 64, sociability: 42 }
       },
       ability: { workRate: 64, charisma: 49, durability: 70, starPower: 30 },
       standing: { wins: 5, losses: 29, draws: 0, streak: { type: "L", count: 6 } },
@@ -2368,10 +2461,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       key: "kovac",
       name: "Ines Kovac",
       careerStatus: ROOKIE,
+      trajectory: RISING,
       identity: {
         ego: 44,
         ambition: 92,
-        traits: { professionalism: 66, volatility: 70, loyalty: 50, vindictiveness: 40, sociability: 48, riskAversion: 20 }
+        traits: { professionalism: 66, respectForAuthority: 58, patience: 28, loyalty: 50, jealousy: 55, vindictiveness: 40, aggression: 60, courage: 80, volatility: 70, sociability: 48 }
       },
       ability: { workRate: 69, charisma: 62, durability: 68, starPower: 45 },
       standing: { wins: 6, losses: 7, draws: 0, streak: { type: "W", count: 1 } },
@@ -2485,8 +2579,8 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       morale: w.state.morale - moraleHit,
       condition: w.state.condition - conditionCost(w, event.data.actualSec)
     }, { reason: "Lost their match", cause: event.id });
-    const mine = CAREER_RANK[w.standing.careerStatus] ?? 2;
-    const theirs = Math.max(...winnerIds.map((id2) => CAREER_RANK[getWrestler(id2).standing.careerStatus] ?? 2));
+    const mine = CAREER_RANK[w.standing.careerStatus] ?? 3;
+    const theirs = Math.max(...winnerIds.map((id2) => CAREER_RANK[getWrestler(id2).standing.careerStatus] ?? 3));
     const upset = mine - theirs;
     addMemory(id, {
       type: upset > 0 ? "upset_loss" : "loss",
@@ -2591,7 +2685,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     STREAK_CAP: 6
   });
   function opponentWeight(opponentIds) {
-    const tier = Math.max(0, ...opponentIds.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 2));
+    const tier = Math.max(0, ...opponentIds.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 3));
     return 0.6 + tier * 0.2;
   }
   function scoreFor(wrestlerId, { today: today2 = today() } = {}) {
@@ -2613,8 +2707,8 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       const opponents = involved.filter((id) => id !== wrestlerId);
       let base = won ? POINTS.WIN : lost ? POINTS.LOSS : POINTS.DRAW;
       if (lost) {
-        const mine = CAREER_RANK[w.standing.careerStatus] ?? 2;
-        const theirs = Math.max(0, ...opponents.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 2));
+        const mine = CAREER_RANK[w.standing.careerStatus] ?? 3;
+        const theirs = Math.max(0, ...opponents.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 3));
         base -= Math.max(0, mine - theirs) * POINTS.LOSS_TIER_PENALTY;
       }
       const age = Math.max(0, today2 - event.day);
@@ -3572,6 +3666,205 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     <div class="bar"><button class="act primary" data-action="go" data-arg="saves">Go to saves</button></div>`;
   }
 
+  // wrestling/js/systems/disposition.js
+  var RESPONSE = Object.freeze({
+    ACCEPT: "accept",
+    GRUDGING: "accept_grudgingly",
+    PUSH_BACK: "push_back",
+    REFUSE: "refuse"
+  });
+  var RESPONSE_LABEL = Object.freeze({
+    [RESPONSE.ACCEPT]: "Accepts",
+    [RESPONSE.GRUDGING]: "Accepts, unhappy",
+    [RESPONSE.PUSH_BACK]: "Pushes back",
+    [RESPONSE.REFUSE]: "Refuses"
+  });
+  var THRESHOLDS = Object.freeze([
+    [72, RESPONSE.ACCEPT],
+    [52, RESPONSE.GRUDGING],
+    [32, RESPONSE.PUSH_BACK],
+    [0, RESPONSE.REFUSE]
+  ]);
+  function responseFor(willingness) {
+    return THRESHOLDS.find(([min]) => willingness >= min)[1];
+  }
+  var clamp2 = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+  function refusalFloor(wrestler) {
+    return 88 - standingWeight(wrestler) * 80;
+  }
+  function expectedSlot(wrestler) {
+    return statusRank(wrestler) / TOP_STATUS_RANK;
+  }
+  function expectedMinutes(wrestler) {
+    return 6 + statusRank(wrestler) * 2.5;
+  }
+  function regard(wrestlerId, ask = {}) {
+    const w = requireWrestler(wrestlerId);
+    const {
+      opponentIds = [],
+      partnerIds = [],
+      formatKey = "singles",
+      timeLimitSec = 10 * 60,
+      cardIndex = null,
+      cardLength = null,
+      titleId = null
+    } = ask;
+    const t = w.identity.traits;
+    const reasons = [];
+    const add = (delta, text) => {
+      if (Math.abs(delta) < 2.5) return 0;
+      reasons.push({ delta: Math.round(delta * 10) / 10, text });
+      return delta;
+    };
+    let willingness = 50 + t.professionalism * 0.3 + t.respectForAuthority * 0.22 + t.patience * 0.08 - w.identity.ego * 0.28;
+    const disposition = willingness;
+    reasons.push({
+      delta: Math.round((disposition - 50) * 10) / 10,
+      text: disposition >= 50 ? "Professional, and defers to the office" : "Carries enough ego to argue with the office",
+      base: true
+    });
+    willingness += add(
+      (w.ties.gm.trust - 50) * 0.22,
+      w.ties.gm.trust >= 50 ? "Takes you at your word" : "Does not take you at your word"
+    );
+    willingness += add(
+      (w.ties.gm.respect - 50) * 0.1,
+      w.ties.gm.respect >= 50 ? "Rates you as a GM" : "Does not rate you as a GM"
+    );
+    willingness += add(
+      (w.state.morale - 50) * 0.14,
+      w.state.morale >= 50 ? "In reasonable spirits" : "Unhappy at the moment"
+    );
+    if (opponentIds.length) {
+      const theirRank = Math.max(...opponentIds.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 3));
+      const gap = statusRank(w) - theirRank;
+      const names = opponentIds.map(nameOf).join(" and ");
+      if (gap > 0) {
+        willingness += add(
+          -gap * 4.5 * (0.4 + w.identity.ego / 120),
+          `Thinks ${names} is beneath them`
+        );
+      } else if (gap < 0) {
+        willingness += add(
+          -gap * 6 * (0.4 + w.identity.ambition / 100),
+          `A chance against ${names}`
+        );
+      }
+      const today2 = today();
+      let grudge = 0;
+      for (const m of w.memory) {
+        if (!m.aboutIds.some((id) => opponentIds.includes(id))) continue;
+        if (!["loss", "upset_loss", "cheated", "humiliation", "title_loss", "gm_promise_broken"].includes(m.type)) continue;
+        grudge = Math.max(grudge, memoryWeightOn(m, today2));
+      }
+      if (grudge) {
+        willingness += add(
+          grudge * 0.15 * (0.3 + t.aggression / 100),
+          `Has something to settle with ${names}`
+        );
+      }
+    }
+    for (const partnerId of partnerIds) {
+      const feeling = relationshipTo(w, partnerId);
+      if (feeling < -25) {
+        willingness += add(
+          feeling * 0.25 * (0.5 + t.vindictiveness / 100),
+          `Does not want to be in a team with ${nameOf(partnerId)}`
+        );
+      } else if (feeling > 35) {
+        willingness += add(
+          feeling * 0.12 * (0.5 + t.loyalty / 100),
+          `Happy to work with ${nameOf(partnerId)}`
+        );
+      }
+    }
+    if (cardIndex != null && cardLength > 1) {
+      const actual = cardIndex / (cardLength - 1);
+      const slip = expectedSlot(w) - actual;
+      if (slip > 0.25) {
+        willingness += add(
+          -slip * 30 * (0.4 + w.identity.ego / 100),
+          cardIndex === 0 ? "Being asked to open the show" : "Placed lower on the card than they expect"
+        );
+      } else if (slip < -0.3) {
+        willingness += add(
+          -slip * 14 * (0.3 + w.identity.ambition / 100),
+          "Placed higher on the card than they expect"
+        );
+      }
+    }
+    const limitMin = timeLimitSec / 60;
+    const wanted = expectedMinutes(w);
+    if (limitMin < wanted * 0.6) {
+      willingness += add(
+        -(1 - limitMin / (wanted * 0.6)) * 25 * (0.5 + w.identity.ego / 100),
+        `Only ${Math.round(limitMin)} minutes for someone of their standing`
+      );
+    }
+    if (limitMin > 20) {
+      willingness += add(
+        -(limitMin - 20) * 0.8 * (1 - t.courage / 100),
+        "A longer match than they are comfortable with"
+      );
+    }
+    if (w.state.condition < 60) {
+      willingness += add(
+        -(60 - w.state.condition) * 0.25 * (1 - t.courage / 100),
+        "Carrying too much wear to want this"
+      );
+    }
+    if (formatOf(formatKey).kind !== SEGMENT_KINDS.MATCH) {
+      willingness += add(12 * (0.3 + t.sociability / 100), "A segment rather than a match");
+    }
+    if (titleId) {
+      const title = getTitle(titleId);
+      const holding = title && titlesHeldBy(wrestlerId).some((x) => x.id === title.id);
+      willingness += holding ? add(9, `Defending the ${title.shortName} title`) : add(20 * (0.4 + w.identity.ambition / 100), `A shot at the ${title.shortName} title`);
+    }
+    if (w.standing.trajectory === TRAJECTORY.DECLINING) {
+      willingness += add(-7 * (0.5 + t.jealousy / 100), "Believes they are being written off");
+    } else if (w.standing.trajectory === TRAJECTORY.RISING) {
+      willingness += add(5, "On the way up and taking what is offered");
+    }
+    const raw = clamp2(willingness);
+    const floor = refusalFloor(w);
+    const final = Math.round(Math.max(raw, floor));
+    const held = raw < floor && responseFor(final) !== responseFor(raw);
+    if (held) {
+      reasons.push({
+        delta: Math.round((floor - raw) * 10) / 10,
+        text: "Has no standing to refuse, whatever they think of it",
+        floor: true
+      });
+    }
+    return {
+      wrestlerId,
+      willingness: final,
+      raw: Math.round(raw),
+      floor: Math.round(floor),
+      heldUpByStanding: held,
+      likely: responseFor(final),
+      reasons: reasons.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    };
+  }
+  function regardSegment(segment, { cardIndex = null, cardLength = null } = {}) {
+    const bySide = {};
+    for (const p of segment.participants) (bySide[p.side] ||= []).push(p.wrestlerId);
+    return segment.participants.map((p) => {
+      const mine = bySide[p.side] || [];
+      const opponentIds = Object.entries(bySide).filter(([side]) => side !== p.side).flatMap(([, ids]) => ids);
+      return regard(p.wrestlerId, {
+        opponentIds,
+        partnerIds: mine.filter((id) => id !== p.wrestlerId),
+        formatKey: segment.format,
+        timeLimitSec: segment.timeLimitSec,
+        titleId: segment.titleId,
+        cardIndex,
+        cardLength
+      });
+    });
+  }
+
   // wrestling/js/ui/screens/wrestler.js
   var wrestler_default = {
     label: "Wrestler",
@@ -3610,15 +3903,25 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       <p class="sub">${w.id} &middot; ${esc(titleCase(w.standing.careerStatus))} &middot; debuted day ${w.standing.debutDay}</p>
 
       <div class="cards">
-        <div class="card"><h3>1. Identity</h3>
+        <div class="card"><h3>1. Identity &middot; what they want</h3>
           ${bar("Ego", w.identity.ego)}
           ${bar("Ambition", w.identity.ambition)}
-          ${TRAITS.map((t) => kv(titleCase(t), w.identity.traits[t])).join("")}
+          <div class="kv"><span class="muted" style="font-size:11px">Ego is what pushes back. Ambition is what they will put up with to get somewhere.</span><span></span></div>
+        </div>
+        <div class="card"><h3>1. Identity &middot; how they are</h3>
+          ${TRAIT_GROUPS.map((group) => `
+            <div class="kv" style="border-bottom:0;padding-bottom:0">
+              <span class="muted" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase">${esc(group.label)}</span><span></span>
+            </div>
+            ${group.traits.map((t) => kv(titleCase(t), w.identity.traits[t])).join("")}
+          `).join("")}
         </div>
         <div class="card"><h3>2. Ability</h3>
           ${ABILITIES.map((a) => bar(titleCase(a), w.ability[a])).join("")}
         </div>
         <div class="card"><h3>3. Standing</h3>
+          ${kv("On the card", `${titleCase(w.standing.careerStatus)} <span class="muted">(${statusRank(w) + 1} of ${CAREER_ORDER.length})</span>`)}
+          ${kv("Trajectory", `<span class="${w.standing.trajectory === TRAJECTORY.RISING ? "pos" : w.standing.trajectory === TRAJECTORY.DECLINING ? "neg" : "muted"}">${titleCase(w.standing.trajectory)}</span>`)}
           ${kv("Record", recordOf(w))}
           ${kv("Streak", streakLabel(w))}
           ${kv("Rank", w.standing.rank ? `#${w.standing.rank}` : "unranked")}
@@ -3643,6 +3946,19 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
           ${kv("Expires", w.contract.expiresOnDay == null ? "-" : `day ${w.contract.expiresOnDay}`)}
           ${kv("Status", titleCase(w.contract.status))}
           <div class="kv"><span class="muted" style="font-size:11px">Fields only. The contract system is not built.</span><span></span></div>
+        </div>
+      </div>
+
+      <h2>What they think they are worth</h2>
+      <p class="sub">Read off their status. This is what the GM is measured against when a booking arrives.</p>
+      <div class="cards">
+        <div class="card"><h3>Expectations</h3>
+          ${kv("Ring time", `about ${Math.round(expectedMinutes(w))} minutes`)}
+          ${kv("Spot on the card", `${Math.round(expectedSlot(w) * 100)}% of the way up`)}
+        </div>
+        <div class="card"><h3>Room to refuse</h3>
+          ${kv("Willingness floor", Math.round(refusalFloor(w)))}
+          <div class="kv"><span class="muted" style="font-size:11px">${refusalFloor(w) >= 70 ? "Has no standing to turn anything down, whatever they think of it." : refusalFloor(w) >= 45 ? "Can complain, and be talked round." : "Has the standing to say no and make it stick."}</span><span></span></div>
         </div>
       </div>
 
@@ -3926,6 +4242,20 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     const title = getTitle(segment.titleId);
     return title ? ` <span class="pill brass">${esc(title.shortName)} title</span>` : "";
   }
+  var RESPONSE_TONE = {
+    [RESPONSE.ACCEPT]: "",
+    [RESPONSE.GRUDGING]: "",
+    [RESPONSE.PUSH_BACK]: "grease",
+    [RESPONSE.REFUSE]: "grease"
+  };
+  function reactionPill(segment, index, total) {
+    if (!segment.participants.length) return '<span class="muted">-</span>';
+    const views = regardSegment(segment, { cardIndex: index, cardLength: total });
+    const worst = views.sort((a, b) => a.willingness - b.willingness)[0];
+    const name = getWrestler(worst.wrestlerId)?.shortName || "";
+    return `<span class="pill ${RESPONSE_TONE[worst.likely]}">${esc(RESPONSE_LABEL[worst.likely])}</span>
+    <div class="muted" style="font-size:11px">${esc(name)} &middot; ${worst.willingness}</div>`;
+  }
   function resultCell(segment) {
     const r = segment.result;
     if (segment.status !== "complete") return '<span class="muted">not run</span>';
@@ -3951,8 +4281,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       <td><span class="pill">${esc(formatOf(seg.format).label)}</span></td>
       <td>${esc(seg.name || "-")}${titlePill(seg)}<div style="font-size:12px">${lineup(seg)}</div></td>
       <td class="num">${mmss(seg.timeLimitSec)}</td>
+      <td>${reactionPill(seg, i, segments.length)}</td>
       <td><button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button></td>
-    </tr>`).join("") || '<tr><td colspan="5" class="empty">Nothing booked yet.</td></tr>';
+    </tr>`).join("") || '<tr><td colspan="6" class="empty">Nothing booked yet.</td></tr>';
+    const unhappy = segments.flatMap((seg, i) => regardSegment(seg, { cardIndex: i, cardLength: segments.length }).filter((v) => v.likely !== RESPONSE.ACCEPT).map((v) => ({ v, seg }))).sort((a, b) => a.v.willingness - b.v.willingness);
     const gap = outlook.expectedGapSec;
     const gapTone = Math.abs(gap) < 180 ? "pos" : "neg";
     return `
@@ -3989,9 +4321,29 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
 
     <h2>The card</h2>
     <div class="scroller"><table>
-      <thead><tr><th>#</th><th>Format</th><th>Segment</th><th>Limit</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Format</th><th>Segment</th><th>Limit</th><th>Taking it</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
+
+    ${unhappy.length ? `
+    <h2>How the locker room is taking it</h2>
+    <p class="sub">Nobody acts on this yet. It is what they think, and what they would say if asked.</p>
+    <div class="scroller"><table>
+      <thead><tr><th>Wrestler</th><th>Segment</th><th>Response</th><th>Why</th></tr></thead>
+      <tbody>${unhappy.map(({ v, seg }) => {
+      const w = getWrestler(v.wrestlerId);
+      const top = v.reasons.filter((r) => r.delta < -2).slice(0, 3);
+      return `<tr>
+          <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}">${esc(w.name)}</button>
+            <div class="muted" style="font-size:11px">${esc(titleCase(w.standing.careerStatus))}</div></td>
+          <td class="muted">${esc(seg.name || formatOf(seg.format).label)}</td>
+          <td><span class="pill ${RESPONSE_TONE[v.likely]}">${esc(RESPONSE_LABEL[v.likely])}</span>
+            <div class="muted num" style="font-size:11px">${v.willingness}${v.heldUpByStanding ? ` (wants ${v.raw})` : ""}</div></td>
+          <td style="font-size:12px">${top.map((r) => `${esc(r.text)} <span class="neg num">${r.delta}</span>`).join("<br>")}
+            ${v.heldUpByStanding ? '<br><span class="muted">Has no standing to refuse, whatever they think of it.</span>' : ""}</td>
+        </tr>`;
+    }).join("")}</tbody>
+    </table></div>` : ""}
 
     <h2>Book a segment</h2>
     <form data-action="bookSegment" data-show="${show.id}">

@@ -9,11 +9,12 @@ persistence, event log, navigation) and **Tier 1**, the basic GM backbone:
 
 > Roster -> Booking -> Live Show -> Results -> Next Week
 
-Plus **Tier 3**: records, rankings, championships and momentum, all updated
-automatically from results.
+Plus **Tier 3** (records, rankings, championships and momentum, all updated
+automatically from results) and **Tier 4** (personality, career status, and the
+judgement of what behaviour is believable).
 
-None of the reactive systems from the design foundation are built. Nobody
-refuses a match, nobody holds a grudge, nothing goes wrong backstage.
+Nothing acts on that judgement yet. Nobody actually refuses a match, nobody
+holds a grudge against the GM, nothing goes wrong backstage.
 
 ## Running it
 
@@ -21,7 +22,7 @@ refuses a match, nobody holds a grudge, nothing goes wrong backstage.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 86 headless checks across four suites
+npm run check:wgm         # 111 headless checks across five suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -166,6 +167,7 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   matchSim.js    pure: (segment, wrestlers, rng) -> {result, timeline}
   showRunner.js  go live, run the card, grade it, go off the air
   results.js     what a result does to records, momentum, morale and memory
+  disposition.js how a wrestler regards a booking, with its working. Pure.
   rankings.js    the ranked table, computed from results, with its working
   titles.js      title changes, defences and #1 contenders
   upkeep.js      condition recovery and momentum fade between shows
@@ -219,11 +221,63 @@ Add it to the model factory, then add a migration in `core/persist.js` keyed by
 the schema version you are moving from, and bump `SCHEMA_VERSION` in
 `core/store.js`. Old saves keep loading instead of failing quietly.
 
+## Personality and status
+
+**Ten traits, all 0-100**, each one earning its place by changing a specific
+behaviour: professionalism, respect for authority and patience for how they
+treat the job; loyalty, jealousy, vindictiveness and aggression for how they
+treat people; courage for how they treat risk; volatility and sociability for
+how predictable they are. Ego and ambition sit apart from the traits, because
+they are what a wrestler wants rather than how they are, and nearly everything
+else gets weighed against them.
+
+**Seven rungs on the card**, rookie through jobber, lower card, midcard, upper
+midcard, main event and superstar. Position is kept separate from `trajectory`
+(rising, steady, declining), because a faded former main-eventer and a kid
+climbing toward it can share a rung and behave nothing alike.
+
+### Standing buys the right to say no
+
+`systems/disposition.js` answers "how would this person take this?" for any
+booking, and shows its working line by line. The number it returns is a
+tendency, not a roll, and nothing acts on it yet.
+
+The rule that makes the behaviour believable is a floor under the final answer,
+not a special case anywhere:
+
+| Status | Willingness floor |
+|---|---|
+| Rookie | 88 |
+| Jobber | 75 |
+| Lower card | 61 |
+| Midcard | 48 |
+| Upper midcard | 35 |
+| Main event | 21 |
+| Superstar | 8 |
+
+A rookie cannot fall below 88 however much they hate a booking, so a rookie
+jobber essentially never refuses. A superstar can fall to 8, so they can refuse
+almost anything. Give a jobber a superstar's ego and they still accept; the
+standing is what is missing, not the temperament.
+
+The interesting cases are the ones the floor catches. Viktor Halloran is a
+declining former star on the lower card: asked to open the show against a
+jobber his raw willingness is 28, and he is held at 61, complaining but
+working. The booking screen shows exactly that, including what he actually
+thinks.
+
+Everything else shades around it. Croft asked to open the show against Perry
+Lund for six minutes reads: being asked to open the show (-40), thinks Lund is
+beneath him (-26), only six minutes for someone of his standing (-19). A grudge
+makes a wrestler WANT a match rather than duck it. Being teamed with someone
+they resent is held against you. A world title shot is wanted by everyone on
+the roster.
+
 ## What is deliberately not here
 
-No pitch or refusal logic, so nobody turns a match down. Nobody complains about
-being ranked below someone they beat. No relationship changes from results, so
-no rivalries form on their own. No
+No pitch step, so the disposition model is read-only and nobody actually turns
+a match down. Nobody complains about being ranked below someone they beat. No
+relationship changes from results, so no rivalries form on their own. No
 backstage locations or incidents, no live levers to fill dead air, no promises,
 contracts, budget, GM progression or competing brands.
 

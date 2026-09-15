@@ -2,6 +2,7 @@
 //
 // Usage: node tools/wgm-rank-check.mjs
 import * as store from '../wrestling/js/core/store.js';
+import { SCHEMA_VERSION } from '../wrestling/js/core/store.js';
 import * as persist from '../wrestling/js/core/persist.js';
 import * as runner from '../wrestling/js/systems/showRunner.js';
 import * as rankings from '../wrestling/js/systems/rankings.js';
@@ -317,7 +318,7 @@ check('titles and rankings survive a save and load', () => {
   return `${beforeLineage} reigns and 14 ranks restored intact`;
 });
 
-check('a v2 save migrates forward into the title era', () => {
+check('a v2 save migrates forward through every later schema', () => {
   const envelope = JSON.parse(persist.toJSON({ label: 'v2' }));
   envelope.schemaVersion = 2;
   delete envelope.state.titles;
@@ -330,13 +331,15 @@ check('a v2 save migrates forward into the title era', () => {
   store.reset();
   persist.deserialize(envelope);
   const state = store.getState();
-  eq(state.meta.schemaVersion, 3, 'schema after migration');
+  eq(state.meta.schemaVersion, SCHEMA_VERSION, 'schema after migration');
   assert(state.titles && typeof state.titles === 'object', 'no titles registry after migration');
   for (const w of Object.values(state.wrestlers)) {
     assert(w.standing.titleReigns === undefined, 'the duplicated reign list survived the migration');
     assert(w.standing.rank === null || Number.isFinite(w.standing.rank), 'rank missing after migration');
   }
-  return 'reign lists dropped, titles registry added, ranks defaulted';
+  const problems = checkState(state);
+  assert(!problems.length, `migrated state is not sound:\n      - ${problems.join('\n      - ')}`);
+  return `reign lists dropped, titles added, v2 -> v${SCHEMA_VERSION}, state sound`;
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed\n`);

@@ -10,6 +10,7 @@ import * as booking from '../../systems/booking.js';
 import { FORMATS, MATCH_FORMATS, SEGMENT_FORMATS, formatOf, slotsFor, autoName } from '../../systems/formats.js';
 import { sides, SEGMENT_KINDS } from '../../models/segment.js';
 import { championIds, currentReign } from '../../models/title.js';
+import { regardSegment, RESPONSE, RESPONSE_LABEL } from '../../systems/disposition.js';
 import * as playback from '../playback.js';
 import { esc, mmss, signedTime, titleCase } from '../format.js';
 import { notLoaded } from './roster.js';
@@ -63,6 +64,23 @@ function titlePill(segment) {
   return title ? ` <span class="pill brass">${esc(title.shortName)} title</span>` : '';
 }
 
+const RESPONSE_TONE = {
+  [RESPONSE.ACCEPT]: '',
+  [RESPONSE.GRUDGING]: '',
+  [RESPONSE.PUSH_BACK]: 'grease',
+  [RESPONSE.REFUSE]: 'grease',
+};
+
+/** How the least happy person in a segment is taking it. */
+function reactionPill(segment, index, total) {
+  if (!segment.participants.length) return '<span class="muted">-</span>';
+  const views = regardSegment(segment, { cardIndex: index, cardLength: total });
+  const worst = views.sort((a, b) => a.willingness - b.willingness)[0];
+  const name = store.getWrestler(worst.wrestlerId)?.shortName || '';
+  return `<span class="pill ${RESPONSE_TONE[worst.likely]}">${esc(RESPONSE_LABEL[worst.likely])}</span>
+    <div class="muted" style="font-size:11px">${esc(name)} &middot; ${worst.willingness}</div>`;
+}
+
 function resultCell(segment) {
   const r = segment.result;
   if (segment.status !== 'complete') return '<span class="muted">not run</span>';
@@ -98,8 +116,16 @@ function renderBooking(show) {
       <td><span class="pill">${esc(formatOf(seg.format).label)}</span></td>
       <td>${esc(seg.name || '-')}${titlePill(seg)}<div style="font-size:12px">${lineup(seg)}</div></td>
       <td class="num">${mmss(seg.timeLimitSec)}</td>
+      <td>${reactionPill(seg, i, segments.length)}</td>
       <td><button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button></td>
-    </tr>`).join('') || '<tr><td colspan="5" class="empty">Nothing booked yet.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Nothing booked yet.</td></tr>';
+
+  // Everyone on tonight's card who is less than happy about their spot.
+  const unhappy = segments.flatMap((seg, i) =>
+    regardSegment(seg, { cardIndex: i, cardLength: segments.length })
+      .filter((v) => v.likely !== RESPONSE.ACCEPT)
+      .map((v) => ({ v, seg })))
+    .sort((a, b) => a.v.willingness - b.v.willingness);
 
   const gap = outlook.expectedGapSec;
   const gapTone = Math.abs(gap) < 180 ? 'pos' : 'neg';
@@ -138,9 +164,29 @@ function renderBooking(show) {
 
     <h2>The card</h2>
     <div class="scroller"><table>
-      <thead><tr><th>#</th><th>Format</th><th>Segment</th><th>Limit</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Format</th><th>Segment</th><th>Limit</th><th>Taking it</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
+
+    ${unhappy.length ? `
+    <h2>How the locker room is taking it</h2>
+    <p class="sub">Nobody acts on this yet. It is what they think, and what they would say if asked.</p>
+    <div class="scroller"><table>
+      <thead><tr><th>Wrestler</th><th>Segment</th><th>Response</th><th>Why</th></tr></thead>
+      <tbody>${unhappy.map(({ v, seg }) => {
+        const w = store.getWrestler(v.wrestlerId);
+        const top = v.reasons.filter((r) => r.delta < -2).slice(0, 3);
+        return `<tr>
+          <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}">${esc(w.name)}</button>
+            <div class="muted" style="font-size:11px">${esc(titleCase(w.standing.careerStatus))}</div></td>
+          <td class="muted">${esc(seg.name || formatOf(seg.format).label)}</td>
+          <td><span class="pill ${RESPONSE_TONE[v.likely]}">${esc(RESPONSE_LABEL[v.likely])}</span>
+            <div class="muted num" style="font-size:11px">${v.willingness}${v.heldUpByStanding ? ` (wants ${v.raw})` : ''}</div></td>
+          <td style="font-size:12px">${top.map((r) => `${esc(r.text)} <span class="neg num">${r.delta}</span>`).join('<br>')}
+            ${v.heldUpByStanding ? '<br><span class="muted">Has no standing to refuse, whatever they think of it.</span>' : ''}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>` : ''}
 
     <h2>Book a segment</h2>
     <form data-action="bookSegment" data-show="${show.id}">

@@ -5,26 +5,34 @@
 // every one arrives with relationships and memories already in place, so the
 // locker room has history from the first show rather than a month in.
 //
+// Status runs from rookie to superstar and is the strongest single input to
+// whether a behaviour is believable: Lund has the professionalism and none of
+// the standing to refuse anything, while Croft has enough of both to refuse
+// almost anything. Halloran is the interesting case - a superstar's ego on a
+// lower-card wrestler's standing.
+//
 // Relationships are written by `key` here and resolved to real IDs by
 // seedRoster(). They are DIRECTED: Wren's view of Croft and Croft's view of
 // Wren are separate numbers, and in several cases below they disagree sharply.
 // That is deliberate. One man carrying a grudge the other never noticed
 // starting is the seed of most of the stories this game is meant to produce.
 
-import { CAREER_STATUS } from '../models/wrestler.js';
+import { CAREER_STATUS, TRAJECTORY } from '../models/wrestler.js';
 import * as store from '../core/store.js';
 
-const { ROOKIE, JOBBER, MIDCARD, UPPER_MIDCARD, MAIN_EVENT, VETERAN, DECLINING } = CAREER_STATUS;
+const { ROOKIE, JOBBER, LOWER_CARD, MIDCARD, UPPER_MIDCARD, MAIN_EVENT, SUPERSTAR } = CAREER_STATUS;
+const { RISING, STEADY, DECLINING } = TRAJECTORY;
 
 export const STARTING_ROSTER = [
   // ---------------------------------------------------------------- main event
   {
     key: 'croft',
     name: 'Damien Croft',
-    careerStatus: MAIN_EVENT,
+    careerStatus: SUPERSTAR,
+    trajectory: STEADY,
     identity: {
       ego: 92, ambition: 78,
-      traits: { professionalism: 80, volatility: 25, loyalty: 35, vindictiveness: 70, sociability: 40, riskAversion: 75 },
+      traits: { professionalism: 80, respectForAuthority: 30, patience: 65, loyalty: 35, jealousy: 78, vindictiveness: 70, aggression: 45, courage: 25, volatility: 25, sociability: 40 },
     },
     ability: { workRate: 84, charisma: 88, durability: 70, starPower: 94 },
     standing: { wins: 41, losses: 12, draws: 3, streak: { type: 'W', count: 3 } },
@@ -44,9 +52,10 @@ export const STARTING_ROSTER = [
     key: 'vance',
     name: 'Ruby Vance',
     careerStatus: MAIN_EVENT,
+    trajectory: RISING,
     identity: {
       ego: 80, ambition: 95,
-      traits: { professionalism: 62, volatility: 72, loyalty: 55, vindictiveness: 60, sociability: 70, riskAversion: 30 },
+      traits: { professionalism: 62, respectForAuthority: 45, patience: 30, loyalty: 55, jealousy: 50, vindictiveness: 60, aggression: 72, courage: 78, volatility: 72, sociability: 70 },
     },
     ability: { workRate: 89, charisma: 82, durability: 74, starPower: 86 },
     standing: { wins: 33, losses: 15, draws: 2, streak: { type: 'W', count: 1 } },
@@ -68,9 +77,10 @@ export const STARTING_ROSTER = [
     key: 'wren',
     name: 'Tobias Wren',
     careerStatus: UPPER_MIDCARD,
+    trajectory: RISING,
     identity: {
       ego: 74, ambition: 88,
-      traits: { professionalism: 70, volatility: 58, loyalty: 40, vindictiveness: 82, sociability: 35, riskAversion: 45 },
+      traits: { professionalism: 70, respectForAuthority: 25, patience: 18, loyalty: 40, jealousy: 85, vindictiveness: 82, aggression: 66, courage: 60, volatility: 58, sociability: 35 },
     },
     ability: { workRate: 91, charisma: 58, durability: 78, starPower: 62 },
     standing: { wins: 28, losses: 9, draws: 1, streak: { type: 'W', count: 6 } },
@@ -95,9 +105,10 @@ export const STARTING_ROSTER = [
     key: 'okonkwo',
     name: 'Sable Okonkwo',
     careerStatus: UPPER_MIDCARD,
+    trajectory: RISING,
     identity: {
       ego: 58, ambition: 90,
-      traits: { professionalism: 85, volatility: 40, loyalty: 72, vindictiveness: 45, sociability: 66, riskAversion: 35 },
+      traits: { professionalism: 85, respectForAuthority: 70, patience: 62, loyalty: 72, jealousy: 30, vindictiveness: 45, aggression: 40, courage: 70, volatility: 40, sociability: 66 },
     },
     ability: { workRate: 82, charisma: 79, durability: 80, starPower: 71 },
     standing: { wins: 24, losses: 11, draws: 0, streak: { type: 'L', count: 1 } },
@@ -117,9 +128,10 @@ export const STARTING_ROSTER = [
     key: 'kane',
     name: 'Marcus Kane',
     careerStatus: UPPER_MIDCARD,
+    trajectory: STEADY,
     identity: {
       ego: 38, ambition: 52,
-      traits: { professionalism: 94, volatility: 18, loyalty: 90, vindictiveness: 20, sociability: 75, riskAversion: 55 },
+      traits: { professionalism: 94, respectForAuthority: 82, patience: 80, loyalty: 90, jealousy: 12, vindictiveness: 20, aggression: 25, courage: 55, volatility: 18, sociability: 75 },
     },
     ability: { workRate: 73, charisma: 66, durability: 92, starPower: 68 },
     standing: { wins: 31, losses: 19, draws: 4, streak: { type: 'W', count: 2 } },
@@ -139,9 +151,10 @@ export const STARTING_ROSTER = [
     key: 'delacroix',
     name: 'Iris Delacroix',
     careerStatus: UPPER_MIDCARD,
+    trajectory: RISING,
     identity: {
       ego: 81, ambition: 84,
-      traits: { professionalism: 45, volatility: 66, loyalty: 25, vindictiveness: 88, sociability: 58, riskAversion: 60 },
+      traits: { professionalism: 45, respectForAuthority: 35, patience: 40, loyalty: 25, jealousy: 80, vindictiveness: 88, aggression: 70, courage: 45, volatility: 66, sociability: 58 },
     },
     ability: { workRate: 76, charisma: 85, durability: 65, starPower: 74 },
     standing: { wins: 26, losses: 14, draws: 1, streak: { type: 'W', count: 4 } },
@@ -157,9 +170,10 @@ export const STARTING_ROSTER = [
     key: 'pike',
     name: 'Jonah Pike',
     careerStatus: MIDCARD,
+    trajectory: STEADY,
     identity: {
       ego: 30, ambition: 48,
-      traits: { professionalism: 96, volatility: 12, loyalty: 85, vindictiveness: 18, sociability: 62, riskAversion: 40 },
+      traits: { professionalism: 96, respectForAuthority: 90, patience: 88, loyalty: 85, jealousy: 10, vindictiveness: 18, aggression: 20, courage: 60, volatility: 12, sociability: 62 },
     },
     ability: { workRate: 78, charisma: 52, durability: 84, starPower: 44 },
     standing: { wins: 18, losses: 27, draws: 2, streak: { type: 'L', count: 3 } },
@@ -173,9 +187,10 @@ export const STARTING_ROSTER = [
     key: 'bloom',
     name: 'Cassidy Bloom',
     careerStatus: MIDCARD,
+    trajectory: STEADY,
     identity: {
       ego: 69, ambition: 74,
-      traits: { professionalism: 50, volatility: 78, loyalty: 48, vindictiveness: 55, sociability: 88, riskAversion: 50 },
+      traits: { professionalism: 50, respectForAuthority: 40, patience: 35, loyalty: 48, jealousy: 72, vindictiveness: 55, aggression: 58, courage: 50, volatility: 78, sociability: 88 },
     },
     ability: { workRate: 55, charisma: 91, durability: 62, starPower: 70 },
     standing: { wins: 15, losses: 20, draws: 1, streak: { type: 'W', count: 1 } },
@@ -188,10 +203,11 @@ export const STARTING_ROSTER = [
   {
     key: 'halloran',
     name: 'Viktor Halloran',
-    careerStatus: DECLINING,
+    careerStatus: LOWER_CARD,
+    trajectory: DECLINING,
     identity: {
       ego: 77, ambition: 40,
-      traits: { professionalism: 68, volatility: 62, loyalty: 42, vindictiveness: 74, sociability: 45, riskAversion: 70 },
+      traits: { professionalism: 68, respectForAuthority: 28, patience: 22, loyalty: 42, jealousy: 88, vindictiveness: 74, aggression: 62, courage: 20, volatility: 62, sociability: 45 },
     },
     ability: { workRate: 70, charisma: 74, durability: 48, starPower: 58 },
     standing: { wins: 52, losses: 48, draws: 6, streak: { type: 'L', count: 4 } },
@@ -211,9 +227,10 @@ export const STARTING_ROSTER = [
     key: 'sparrow',
     name: 'Nia Sparrow',
     careerStatus: MIDCARD,
+    trajectory: RISING,
     identity: {
       ego: 52, ambition: 80,
-      traits: { professionalism: 72, volatility: 55, loyalty: 65, vindictiveness: 30, sociability: 70, riskAversion: 12 },
+      traits: { professionalism: 72, respectForAuthority: 65, patience: 55, loyalty: 65, jealousy: 28, vindictiveness: 30, aggression: 45, courage: 92, volatility: 55, sociability: 70 },
     },
     ability: { workRate: 86, charisma: 68, durability: 41, starPower: 63 },
     standing: { wins: 21, losses: 16, draws: 0, streak: { type: 'W', count: 2 } },
@@ -235,9 +252,10 @@ export const STARTING_ROSTER = [
     key: 'ruiz',
     name: 'Deacon Ruiz',
     careerStatus: ROOKIE,
+    trajectory: RISING,
     identity: {
       ego: 28, ambition: 76,
-      traits: { professionalism: 80, volatility: 35, loyalty: 78, vindictiveness: 22, sociability: 72, riskAversion: 25 },
+      traits: { professionalism: 80, respectForAuthority: 88, patience: 70, loyalty: 78, jealousy: 18, vindictiveness: 22, aggression: 30, courage: 75, volatility: 35, sociability: 72 },
     },
     ability: { workRate: 61, charisma: 55, durability: 72, starPower: 38 },
     standing: { wins: 4, losses: 11, draws: 0, streak: { type: 'L', count: 2 } },
@@ -251,9 +269,10 @@ export const STARTING_ROSTER = [
     key: 'lund',
     name: 'Perry Lund',
     careerStatus: JOBBER,
+    trajectory: STEADY,
     identity: {
       ego: 22, ambition: 34,
-      traits: { professionalism: 92, volatility: 15, loyalty: 70, vindictiveness: 15, sociability: 80, riskAversion: 35 },
+      traits: { professionalism: 92, respectForAuthority: 95, patience: 90, loyalty: 70, jealousy: 8, vindictiveness: 15, aggression: 12, courage: 62, volatility: 15, sociability: 80 },
     },
     ability: { workRate: 58, charisma: 44, durability: 76, starPower: 24 },
     standing: { wins: 3, losses: 34, draws: 1, streak: { type: 'L', count: 9 } },
@@ -266,10 +285,11 @@ export const STARTING_ROSTER = [
   {
     key: 'mabry',
     name: 'Trent Mabry',
-    careerStatus: JOBBER,
+    careerStatus: LOWER_CARD,
+    trajectory: STEADY,
     identity: {
       ego: 60, ambition: 68,
-      traits: { professionalism: 58, volatility: 64, loyalty: 38, vindictiveness: 80, sociability: 42, riskAversion: 45 },
+      traits: { professionalism: 58, respectForAuthority: 32, patience: 25, loyalty: 38, jealousy: 82, vindictiveness: 80, aggression: 55, courage: 55, volatility: 64, sociability: 42 },
     },
     ability: { workRate: 64, charisma: 49, durability: 70, starPower: 30 },
     standing: { wins: 5, losses: 29, draws: 0, streak: { type: 'L', count: 6 } },
@@ -289,9 +309,10 @@ export const STARTING_ROSTER = [
     key: 'kovac',
     name: 'Ines Kovac',
     careerStatus: ROOKIE,
+    trajectory: RISING,
     identity: {
       ego: 44, ambition: 92,
-      traits: { professionalism: 66, volatility: 70, loyalty: 50, vindictiveness: 40, sociability: 48, riskAversion: 20 },
+      traits: { professionalism: 66, respectForAuthority: 58, patience: 28, loyalty: 50, jealousy: 55, vindictiveness: 40, aggression: 60, courage: 80, volatility: 70, sociability: 48 },
     },
     ability: { workRate: 69, charisma: 62, durability: 68, starPower: 45 },
     standing: { wins: 6, losses: 7, draws: 0, streak: { type: 'W', count: 1 } },

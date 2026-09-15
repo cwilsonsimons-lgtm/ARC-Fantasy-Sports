@@ -31,7 +31,7 @@ import { createShow, SHOW_STATUS, bookedSeconds, actualSeconds } from '../models
 import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment.js';
 import { createTitle as makeTitle, createReign, currentReign, championIds } from '../models/title.js';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };

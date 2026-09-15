@@ -82,6 +82,42 @@ export const MIGRATIONS = {
     }
     return state;
   },
+
+  // v3 -> v4: personality and status.
+  //
+  // Career status gains lower_card and superstar and loses veteran and
+  // declining, because those two described a career's DIRECTION rather than its
+  // position on the card. That direction is not thrown away - it moves to the
+  // new `trajectory` field, where it can say what it actually meant.
+  //
+  // riskAversion becomes courage, which is the same axis read the right way up,
+  // so it is inverted rather than reset. The five genuinely new traits arrive
+  // neutral, since a v3 save never had an opinion about them.
+  3: (state) => {
+    const STATUS_MAP = {
+      veteran: ['upper_midcard', 'steady'],
+      declining: ['lower_card', 'declining'],
+    };
+    const NEW_TRAITS = ['respectForAuthority', 'patience', 'jealousy', 'aggression'];
+
+    for (const w of Object.values(state.wrestlers)) {
+      const [mapped, trajectory] = STATUS_MAP[w.standing.careerStatus] || [];
+      if (mapped) w.standing.careerStatus = mapped;
+      if (w.standing.trajectory === undefined) w.standing.trajectory = trajectory || 'steady';
+
+      const traits = w.identity.traits;
+      if (traits.courage === undefined) {
+        traits.courage = traits.riskAversion === undefined ? 50 : 100 - traits.riskAversion;
+      }
+      delete traits.riskAversion;
+      for (const name of NEW_TRAITS) {
+        if (traits[name] === undefined) traits[name] = 50;
+      }
+      if (traits.volatility === undefined) traits.volatility = 50;
+      if (traits.sociability === undefined) traits.sociability = 50;
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

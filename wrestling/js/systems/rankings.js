@@ -38,7 +38,7 @@ const POINTS = Object.freeze({
 
 /** How much a win over this opponent is worth, by their standing. */
 function opponentWeight(opponentIds) {
-  const tier = Math.max(0, ...opponentIds.map((id) => CAREER_RANK[store.getWrestler(id)?.standing.careerStatus] ?? 2));
+  const tier = Math.max(0, ...opponentIds.map((id) => CAREER_RANK[store.getWrestler(id)?.standing.careerStatus] ?? 3));
   return 0.6 + tier * 0.2; // rookie 0.6 .. main event 1.4
 }
 
@@ -70,8 +70,8 @@ export function scoreFor(wrestlerId, { today = store.today() } = {}) {
 
     let base = won ? POINTS.WIN : lost ? POINTS.LOSS : POINTS.DRAW;
     if (lost) {
-      const mine = CAREER_RANK[w.standing.careerStatus] ?? 2;
-      const theirs = Math.max(0, ...opponents.map((id) => CAREER_RANK[store.getWrestler(id)?.standing.careerStatus] ?? 2));
+      const mine = CAREER_RANK[w.standing.careerStatus] ?? 3;
+      const theirs = Math.max(0, ...opponents.map((id) => CAREER_RANK[store.getWrestler(id)?.standing.careerStatus] ?? 3));
       base -= Math.max(0, mine - theirs) * POINTS.LOSS_TIER_PENALTY;
     }
 

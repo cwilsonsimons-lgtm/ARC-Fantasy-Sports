@@ -6,6 +6,7 @@
 //
 // Usage: node tools/wgm-loop-check.mjs
 import * as store from '../wrestling/js/core/store.js';
+import { SCHEMA_VERSION } from '../wrestling/js/core/store.js';
 import * as persist from '../wrestling/js/core/persist.js';
 import * as runner from '../wrestling/js/systems/showRunner.js';
 import { installSystems } from '../wrestling/js/systems/index.js';
@@ -302,8 +303,10 @@ check('the schema migration chain brings a v1 save all the way forward', () => {
   const segs = Object.values(state.segments);
   assert(segs.every((s) => s.format), 'a segment came through without a format');
   assert(state.titles && typeof state.titles === 'object', 'no titles registry after migration');
-  eq(state.meta.schemaVersion, 3, 'schema version after migration');
-  return `${segs.length} segments given a format, titles registry added, v1 -> v3`;
+  eq(state.meta.schemaVersion, SCHEMA_VERSION, 'schema version after migration');
+  const problems = checkState(state);
+  assert(!problems.length, `migrated state is not sound:\n      - ${problems.join('\n      - ')}`);
+  return `${segs.length} segments given a format, titles added, v1 -> v${SCHEMA_VERSION}, state sound`;
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed\n`);
