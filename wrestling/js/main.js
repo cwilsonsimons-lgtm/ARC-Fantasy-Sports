@@ -96,8 +96,8 @@ registerActions({
       mode: f.get('mode') || 'sandbox',
       scheduleBlocks: 3,
     });
-    const keys = seedRoster();
-    seedTitles(store, keys);
+    seedRoster();
+    seedTitles(store);
     rankings.refresh();
     go('show');
     refresh('New game started with 14 wrestlers and three months booked');

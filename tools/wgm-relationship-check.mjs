@@ -16,6 +16,7 @@ import {
 } from '../wrestling/js/models/relationship.js';
 import { MEMORY_TYPES, MEMORY_KEYS, isKnownMemoryType } from '../wrestling/js/models/memory.js';
 import { relationshipWith, rivalsOf, memoryWeightOn } from '../wrestling/js/models/wrestler.js';
+import { establishHistory, crownChampion } from './lib/fixtures.mjs';
 
 let passed = 0; const failures = [];
 const check = (label, fn) => {
@@ -28,7 +29,10 @@ const eq = (a, b, m) => { if (a !== b) throw new Error(`${m} (expected ${JSON.st
 installSystems();
 store.newGame({ seed: 'relationships', gmName: 'R', brandName: 'T', scheduleBlocks: 3 });
 const k = seedRoster();
-const titles = seedTitles(store, k);
+establishHistory(store, k);
+const titles = seedTitles(store);
+crownChampion(store, titles.world.id, k.croft, 112);
+crownChampion(store, titles.national.id, k.delacroix, 43);
 
 const rel = (fromKey, toKey) => relationshipWith(store.getWrestler(k[fromKey]), k[toKey]);
 const memOf = (key, type) => store.getWrestler(k[key]).memory.filter((m) => m.type === type);

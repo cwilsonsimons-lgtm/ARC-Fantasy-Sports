@@ -105,6 +105,14 @@ export function computeRankings({ today = store.today() } = {}) {
       const wa = store.getWrestler(a.wrestlerId);
       const wb = store.getWrestler(b.wrestlerId);
       if (wb.standing.wins !== wa.standing.wins) return wb.standing.wins - wa.standing.wins;
+      // The score stays purely results-based, so a brand-new save has everybody
+      // level on nothing. Where the score cannot separate two people, fall back
+      // to where they sit on the card and then to star power: before anyone has
+      // wrestled, that is the only honest ordering there is, and it stops
+      // mattering the moment real results arrive.
+      const sa = CAREER_RANK[wa.standing.careerStatus] ?? 3;
+      const sb = CAREER_RANK[wb.standing.careerStatus] ?? 3;
+      if (sb !== sa) return sb - sa;
       return wb.ability.starPower - wa.ability.starPower;
     })
     .map((entry, i) => ({ ...entry, rank: i + 1 }));

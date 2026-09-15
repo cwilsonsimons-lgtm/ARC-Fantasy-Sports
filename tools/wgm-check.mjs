@@ -14,6 +14,7 @@ import { checkState, findDuplicateWrestlers } from '../wrestling/js/core/invaria
 import { seedRoster } from '../wrestling/js/data/roster.js';
 import { SEGMENT_KINDS, FINISHES } from '../wrestling/js/models/segment.js';
 import { relationshipTo, memoryWeightOn } from '../wrestling/js/models/wrestler.js';
+import { establishHistory, crownChampion } from './lib/fixtures.mjs';
 
 let passed = 0;
 const failures = [];
@@ -43,6 +44,7 @@ console.log('\nwrestling GM foundation check\n');
 console.log('game and roster');
 store.newGame({ seed: 'check-seed', gmName: 'Test GM', brandName: 'Test Brand', scheduleBlocks: 3 });
 const keys = seedRoster();
+establishHistory(store, keys);
 
 check('roster is created', () => {
   eq(store.allWrestlers().length, 14, 'roster size');

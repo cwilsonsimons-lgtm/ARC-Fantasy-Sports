@@ -15,6 +15,7 @@ import { EVENT_TYPES } from '../wrestling/js/core/events.js';
 import { championIds, currentReign, reignsOf, reignLength, isVacant } from '../wrestling/js/models/title.js';
 import { FINISHES } from '../wrestling/js/models/segment.js';
 import { recordOf, streakLabel } from '../wrestling/js/models/wrestler.js';
+import { establishHistory, crownChampion } from './lib/fixtures.mjs';
 
 let passed = 0; const failures = [];
 const check = (label, fn) => {
@@ -27,7 +28,10 @@ const eq = (a, b, m) => { if (a !== b) throw new Error(`${m} (expected ${JSON.st
 installSystems();
 store.newGame({ seed: 'rank-check', gmName: 'Rank', brandName: 'Test', scheduleBlocks: 3 });
 const k = seedRoster();
-const titles = seedTitles(store, k);
+establishHistory(store, k);
+const titles = seedTitles(store);
+crownChampion(store, titles.world.id, k.croft, 112);
+crownChampion(store, titles.national.id, k.delacroix, 43);
 rankings.refresh();
 
 const WORLD = titles.world.id;

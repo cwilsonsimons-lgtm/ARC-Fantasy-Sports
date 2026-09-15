@@ -16,6 +16,7 @@ import { FORMATS, autoName, slotsFor } from '../wrestling/js/systems/formats.js'
 import { EVENT_TYPES } from '../wrestling/js/core/events.js';
 import { recordOf, streakLabel } from '../wrestling/js/models/wrestler.js';
 import * as booking from '../wrestling/js/systems/booking.js';
+import { establishHistory, crownChampion } from './lib/fixtures.mjs';
 
 let passed = 0; const failures = [];
 const check = (label, fn) => {
@@ -31,6 +32,7 @@ console.log('\nTier 1 loop check\n');
 installSystems();
 store.newGame({ seed: 'loop-check', gmName: 'Loop', brandName: 'Tuesday Night', scheduleBlocks: 2 });
 const k = seedRoster();
+establishHistory(store, k);
 
 /** Book a plausible card: an opening promo, three matches, a main event. */
 function bookCard(showId, week) {

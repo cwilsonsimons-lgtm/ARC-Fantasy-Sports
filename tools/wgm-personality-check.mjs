@@ -19,6 +19,7 @@ import {
 import {
   TRAITS, CAREER_STATUS, CAREER_ORDER, CAREER_RANK, TRAJECTORY, statusRank, standingWeight,
 } from '../wrestling/js/models/wrestler.js';
+import { establishHistory, crownChampion } from './lib/fixtures.mjs';
 
 let passed = 0; const failures = [];
 const check = (label, fn) => {
@@ -31,7 +32,10 @@ const eq = (a, b, m) => { if (a !== b) throw new Error(`${m} (expected ${JSON.st
 installSystems();
 store.newGame({ seed: 'personality', gmName: 'P', brandName: 'T', scheduleBlocks: 1 });
 const k = seedRoster();
-const titles = seedTitles(store, k);
+establishHistory(store, k);
+const titles = seedTitles(store);
+crownChampion(store, titles.world.id, k.croft, 112);
+crownChampion(store, titles.national.id, k.delacroix, 43);
 
 const W = (key) => store.getWrestler(k[key]);
 const OPENER_VS_JOBBER = { opponentIds: [k.lund], timeLimitSec: 360, cardIndex: 0, cardLength: 5 };

@@ -23,9 +23,41 @@ and nothing goes wrong backstage.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 167 headless checks across seven suites
+npm run check:wgm         # 183 headless checks across eight suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
+
+## A new save is a blank slate
+
+Nothing has happened yet. Every record is 0-0, every belt is vacant, nobody
+holds an opinion about anybody, and not one person has a view of the GM: trust
+and respect start level at 50 across the roster, morale at 60, momentum at zero.
+
+What IS authored is who these people are rather than what they have done:
+personality, ego, ambition, ability, where they sit on the card, which way their
+career is pointing, and what they are paid. The characters still differ sharply
+from the first minute. Halloran is a superstar's ego stranded on the lower card.
+Lund has the professionalism and none of the standing to refuse anything. Wren
+has almost no patience. None of that needs a backstory to be true.
+
+Everything else is written by play, which is the point: two saves of this roster
+should tell different stories, and they cannot do that if the interesting
+history is baked in before anyone wrestles.
+
+With no results at all the rankings still order the roster, because the score
+stays purely results-based and the TIE-BREAK falls back to position on the card.
+Before anyone has wrestled that is the only honest ordering there is, and it
+stops mattering the moment real results arrive.
+
+Vacant belts are a feature rather than a gap: week one's job is deciding who the
+first champion is and booking the match that crowns them. A save that starts
+with a champion has already made the most interesting decision for you.
+
+`tools/wgm-newgame-check.mjs` guards all of this, including a check that the
+shipped roster data declares no records, ties or memories at all. Tests that
+need an established locker room build one from `tools/lib/fixtures.mjs`, so the
+history lives in the test tooling where changing it cannot change what a
+player's first save looks like.
 
 ## The weekly loop
 
@@ -86,9 +118,7 @@ disqualification or a time-limit draw is a defence, which gives you a way to
 keep a belt on someone while still booking them to lose. Winning or losing one
 is the heaviest memory in the game, and always scars.
 
-The starting roster ships with a World champion, a National champion, and a
-contender on a six-match winning streak ranked above the champion. Nobody
-arranged that; it fell out of the records the roster was authored with.
+Both belts start vacant, so the first champion of a save is one the GM crowned.
 
 ## The simulation
 

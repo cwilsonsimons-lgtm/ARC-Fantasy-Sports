@@ -22,28 +22,18 @@ export const STARTING_TITLES = [
 ];
 
 /**
- * Create the titles and put them on the wrestlers who held them before the save
- * began, so the roster starts with a champion to chase rather than two vacant
- * belts and no reason for anyone to want anything.
+ * Bring the championships into existence, VACANT.
+ *
+ * Nobody has held anything yet, which gives the GM something to do in week one:
+ * decide who the first champion is and book the match that crowns them. A save
+ * that starts with a champion has already made the most interesting decision on
+ * the player's behalf.
  */
-export function seedTitles(store, idByKey, { worldChampionKey = 'croft', secondaryChampionKey = 'delacroix' } = {}) {
+export function seedTitles(store) {
   const titles = {};
   for (const spec of STARTING_TITLES) {
     const { key, ...rest } = spec;
     titles[key] = store.createTitle(rest);
   }
-
-  const openingReign = (titleKey, wrestlerKey, heldForDays) => {
-    const wrestlerId = idByKey[wrestlerKey];
-    if (!wrestlerId) return;
-    store.awardTitle(titles[titleKey].id, [wrestlerId], {
-      wonOnDay: store.today() - heldForDays,
-      reason: 'Held the title coming into the save',
-    });
-  };
-
-  openingReign('world', worldChampionKey, 112);
-  openingReign('national', secondaryChampionKey, 43);
-
   return titles;
 }
