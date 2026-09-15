@@ -206,6 +206,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     advanceDays: () => advanceDays,
     advanceToDay: () => advanceToDay,
     advanceToNextShow: () => advanceToNextShow,
+    allRequests: () => allRequests,
     allShows: () => allShows,
     allTitles: () => allTitles,
     allWrestlers: () => allWrestlers,
@@ -217,6 +218,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     createTitle: () => createTitle2,
     cutSegment: () => cutSegment,
     emit: () => emit,
+    getRequest: () => getRequest,
     getRng: () => getRng,
     getSegment: () => getSegment,
     getShow: () => getShow,
@@ -226,10 +228,13 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     historyOf: () => historyOf2,
     installState: () => installState,
     isLoaded: () => isLoaded,
+    makeRequestFor: () => makeRequestFor,
     nameOf: () => nameOf,
     newGame: () => newGame,
     off: () => off2,
     on: () => on2,
+    openRequests: () => openRequests,
+    openRequestsFor: () => openRequestsFor,
     queryLog: () => queryLog,
     recordDefense: () => recordDefense,
     requireSegment: () => requireSegment,
@@ -237,6 +242,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     requireTitle: () => requireTitle,
     requireWrestler: () => requireWrestler,
     reset: () => reset,
+    resolveRequest: () => resolveRequest,
     scheduleProgramming: () => scheduleProgramming,
     scheduleShow: () => scheduleShow,
     segmentsOfShow: () => segmentsOfShow,
@@ -259,6 +265,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     event: "ev",
     calendarEntry: "cal",
     memory: "mem",
+    request: "req",
     // reserved for systems named in the design foundation but not yet built
     promise: "pr",
     incident: "inc",
@@ -432,6 +439,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     TITLE_VACATED: "title.vacated",
     RANKING_UPDATED: "ranking.updated",
     CONTENDER_CHANGED: "contender.changed",
+    // --- what the roster wants ---
+    REQUEST_MADE: "request.made",
+    REQUEST_GRANTED: "request.granted",
+    REQUEST_DENIED: "request.denied",
+    REQUEST_IGNORED: "request.ignored",
     // --- shows and cards ---
     SHOW_CREATED: "show.created",
     SHOW_STARTED: "show.started",
@@ -820,6 +832,10 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     PROMISE_KEPT: { key: "promise_kept", weight: 65, floor: 25, decayPerDay: 0.2 },
     PROMISE_BROKEN: { key: "gm_promise_broken", weight: 85, floor: 55, decayPerDay: 0.1, scar: true },
     SUSPENSION: { key: "suspension", weight: 80, floor: 40, decayPerDay: 0.15, scar: true },
+    // --- asking for things ---
+    REQUEST_GRANTED: { key: "request_granted", weight: 58, floor: 20, decayPerDay: 0.3 },
+    REQUEST_DENIED: { key: "request_denied", weight: 55, floor: 18, decayPerDay: 0.3 },
+    REQUEST_IGNORED: { key: "request_ignored", weight: 72, floor: 32, decayPerDay: 0.18 },
     // --- between wrestlers ---
     BETRAYAL: { key: "betrayal", weight: 95, floor: 60, decayPerDay: 0.05, scar: true },
     SAVE: { key: "save", weight: 80, floor: 40, decayPerDay: 0.12, scar: true },
@@ -863,6 +879,9 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     MEMORY_TYPES.TEAMED_BADLY.key
   ]);
   var GM_MEMORY_TYPES = Object.freeze([
+    MEMORY_TYPES.REQUEST_GRANTED.key,
+    MEMORY_TYPES.REQUEST_DENIED.key,
+    MEMORY_TYPES.REQUEST_IGNORED.key,
     MEMORY_TYPES.CUT_FROM_SHOW.key,
     MEMORY_TYPES.OVERLOOKED.key,
     MEMORY_TYPES.PROMISE_KEPT.key,
@@ -1371,8 +1390,99 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return DECISIVE_FINISHES.includes(finish2);
   }
 
+  // wrestling/js/models/request.js
+  var REQUEST_KINDS = Object.freeze({
+    TITLE_SHOT: "title_shot",
+    MORE_TV_TIME: "more_tv_time",
+    MORE_SEGMENT_TIME: "more_segment_time",
+    MATCH_WITH: "match_with",
+    FACE_RIVAL: "face_rival",
+    AVOID: "avoid",
+    TAG_WITH: "tag_with",
+    BETTER_ROLE: "better_role"
+  });
+  var REQUEST_LABEL = Object.freeze({
+    [REQUEST_KINDS.TITLE_SHOT]: "Title shot",
+    [REQUEST_KINDS.MORE_TV_TIME]: "More television time",
+    [REQUEST_KINDS.MORE_SEGMENT_TIME]: "Longer matches",
+    [REQUEST_KINDS.MATCH_WITH]: "A match with somebody",
+    [REQUEST_KINDS.FACE_RIVAL]: "To settle it with a rival",
+    [REQUEST_KINDS.AVOID]: "To stop working with somebody",
+    [REQUEST_KINDS.TAG_WITH]: "To team with somebody",
+    [REQUEST_KINDS.BETTER_ROLE]: "A better spot on the card"
+  });
+  var REQUEST_NOUN = Object.freeze({
+    [REQUEST_KINDS.TITLE_SHOT]: "a title shot",
+    [REQUEST_KINDS.MORE_TV_TIME]: "more television time",
+    [REQUEST_KINDS.MORE_SEGMENT_TIME]: "longer matches",
+    [REQUEST_KINDS.MATCH_WITH]: "a match with somebody",
+    [REQUEST_KINDS.FACE_RIVAL]: "a match with a rival",
+    [REQUEST_KINDS.AVOID]: "to be kept away from somebody",
+    [REQUEST_KINDS.TAG_WITH]: "a tag team partner",
+    [REQUEST_KINDS.BETTER_ROLE]: "a better spot on the card"
+  });
+  var REQUEST_STATUS = Object.freeze({
+    OPEN: "open",
+    GRANTED: "granted",
+    DENIED: "denied",
+    IGNORED: "ignored"
+  });
+  function createRequest(spec = {}) {
+    const {
+      id = mint("request"),
+      wrestlerId,
+      kind,
+      day,
+      targetId = null,
+      titleId = null,
+      urgency = 50,
+      strength = 50,
+      reasons = [],
+      text = ""
+    } = spec;
+    if (!wrestlerId) throw new Error("createRequest: wrestlerId is required");
+    if (!Object.values(REQUEST_KINDS).includes(kind)) {
+      throw new Error(`createRequest: unknown kind "${kind}"`);
+    }
+    return {
+      id,
+      wrestlerId,
+      kind,
+      day,
+      targetId,
+      // another wrestler, for the ones that are about a person
+      titleId,
+      // a championship, for a title shot
+      urgency: Math.max(0, Math.min(100, Math.round(urgency))),
+      strength: Math.max(0, Math.min(100, Math.round(strength))),
+      // Why they are asking. Straight from the world, never invented.
+      reasons,
+      // What they actually say.
+      text,
+      status: REQUEST_STATUS.OPEN,
+      resolvedOnDay: null,
+      resolvedBySegmentId: null
+    };
+  }
+  var PERSON_KINDS = Object.freeze([
+    REQUEST_KINDS.MATCH_WITH,
+    REQUEST_KINDS.FACE_RIVAL,
+    REQUEST_KINDS.AVOID,
+    REQUEST_KINDS.TAG_WITH
+  ]);
+  function validateRequest(r) {
+    const problems = [];
+    if (!r.wrestlerId) problems.push("missing wrestlerId");
+    if (!Object.values(REQUEST_KINDS).includes(r.kind)) problems.push(`unknown kind "${r.kind}"`);
+    if (!Object.values(REQUEST_STATUS).includes(r.status)) problems.push(`unknown status "${r.status}"`);
+    if (PERSON_KINDS.includes(r.kind) && !r.targetId) problems.push(`${r.kind} has no target`);
+    if (r.kind === REQUEST_KINDS.TITLE_SHOT && !r.titleId) problems.push("title_shot has no title");
+    if (!Array.isArray(r.reasons) || !r.reasons.length) problems.push("no reasons given");
+    return problems;
+  }
+
   // wrestling/js/core/store.js
-  var SCHEMA_VERSION = 5;
+  var SCHEMA_VERSION = 6;
   var G = { state: null, rng: null };
   function getState() {
     return G.state;
@@ -1443,6 +1553,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       shows: {},
       segments: {},
       titles: {},
+      requests: {},
       log: []
     };
     emit(EVENT_TYPES.GAME_CREATED, {
@@ -1462,6 +1573,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       ...Object.keys(state2.shows),
       ...Object.keys(state2.segments),
       ...Object.keys(state2.titles || {}),
+      ...Object.keys(state2.requests || {}),
       ...state2.log.map((e) => e.id),
       ...Object.values(state2.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
       ...state2.calendar.entries.map((e) => e.id)
@@ -1485,6 +1597,9 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   }
   function getTitle(id) {
     return requireGame().titles[id] || null;
+  }
+  function getRequest(id) {
+    return requireGame().requests[id] || null;
   }
   function requireWrestler(id) {
     const w = getWrestler(id);
@@ -1899,6 +2014,65 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   function titlesHeldBy(wrestlerId) {
     return allTitles().filter((t) => championIds(t).includes(wrestlerId));
   }
+  function allRequests() {
+    return Object.values(requireGame().requests);
+  }
+  function openRequests() {
+    return allRequests().filter((r) => r.status === REQUEST_STATUS.OPEN).sort((a, b) => b.urgency - a.urgency);
+  }
+  function openRequestsFor(wrestlerId) {
+    return openRequests().filter((r) => r.wrestlerId === wrestlerId);
+  }
+  function makeRequestFor(spec, { cause = null } = {}) {
+    const state2 = requireGame();
+    requireWrestler(spec.wrestlerId);
+    const request = createRequest({ day: state2.calendar.day, ...spec });
+    state2.requests[request.id] = request;
+    emit(EVENT_TYPES.REQUEST_MADE, {
+      summary: request.text || `${nameOf(request.wrestlerId)} asks for ${REQUEST_LABEL[request.kind]}`,
+      actorId: request.wrestlerId,
+      subjects: [request.wrestlerId, request.targetId].filter(Boolean),
+      cause,
+      data: {
+        requestId: request.id,
+        kind: request.kind,
+        urgency: request.urgency,
+        targetId: request.targetId,
+        titleId: request.titleId,
+        reasons: request.reasons
+      }
+    });
+    return request;
+  }
+  function resolveRequest(id, outcome, { segmentId = null, reason = "", cause = null } = {}) {
+    const state2 = requireGame();
+    const request = requireGame().requests[id];
+    if (!request || request.status !== REQUEST_STATUS.OPEN) return null;
+    request.status = outcome;
+    request.resolvedOnDay = state2.calendar.day;
+    request.resolvedBySegmentId = segmentId;
+    const type = {
+      [REQUEST_STATUS.GRANTED]: EVENT_TYPES.REQUEST_GRANTED,
+      [REQUEST_STATUS.DENIED]: EVENT_TYPES.REQUEST_DENIED,
+      [REQUEST_STATUS.IGNORED]: EVENT_TYPES.REQUEST_IGNORED
+    }[outcome];
+    if (!type) throw new Error(`resolveRequest: unknown outcome "${outcome}"`);
+    return emit(type, {
+      summary: reason || `${nameOf(request.wrestlerId)}: ${REQUEST_LABEL[request.kind]} ${outcome}`,
+      actorId: request.wrestlerId,
+      subjects: [request.wrestlerId, request.targetId].filter(Boolean),
+      segmentId,
+      cause,
+      data: {
+        requestId: request.id,
+        kind: request.kind,
+        outcome,
+        targetId: request.targetId,
+        titleId: request.titleId,
+        urgency: request.urgency
+      }
+    });
+  }
   function queryLog(opts) {
     return query(requireGame().log, opts);
   }
@@ -1954,11 +2128,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
   });
 
   // wrestling/js/core/invariants.js
-  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments", "titles"];
+  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments", "titles", "requests"];
   function checkState(state2) {
     const problems = [];
     if (!state2 || typeof state2 !== "object") return ["state is not an object"];
-    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "log"]) {
+    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "log"]) {
       if (state2[key] == null) problems.push(`state.${key} is missing`);
     }
     if (problems.length) return problems;
@@ -2075,6 +2249,13 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         problems.push(`event ${e.id} cites cause ${e.causeId}, which does not precede it`);
       }
     });
+    for (const r of Object.values(state2.requests)) {
+      refMustExist(r.wrestlerId, wrestlerIds, `request ${r.id}`);
+      if (r.targetId) refMustExist(r.targetId, wrestlerIds, `request ${r.id} target`);
+      if (r.titleId) refMustExist(r.titleId, titleIds, `request ${r.id} title`);
+      if (r.resolvedBySegmentId) refMustExist(r.resolvedBySegmentId, segmentIds, `request ${r.id}`);
+      for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
+    }
     problems.push(...findDuplicateWrestlers(state2));
     return problems;
   }
@@ -2160,6 +2341,9 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       for (const seg of Object.values(state2.segments)) {
         seg.titleId = null;
       }
+      for (const r of Object.values(state2.requests || {})) {
+        r.titleId = null;
+      }
       return state2;
     },
     // v3 -> v4: personality and status.
@@ -2218,6 +2402,12 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
           };
         }
       }
+      return state2;
+    },
+    // v5 -> v6: the roster can ask for things. Nothing to convert - a save
+    // written before requests existed simply has none.
+    5: (state2) => {
+      state2.requests = state2.requests || {};
       return state2;
     }
   };
@@ -3402,83 +3592,6 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     on2(EVENT_TYPES.SHOW_COMPLETED, onShowCompleted);
   }
 
-  // wrestling/js/systems/upkeep.js
-  function recoveryPerDay(wrestler) {
-    return 4 + wrestler.ability.durability / 25;
-  }
-  var MOMENTUM_DECAY_PER_DAY = 1.5;
-  var HOSTILITY_COOLING_PER_DAY = 0.35;
-  function decayMomentum(momentum, days) {
-    const drop = MOMENTUM_DECAY_PER_DAY * days;
-    if (momentum > 0) return Math.max(0, momentum - drop);
-    if (momentum < 0) return Math.min(0, momentum + drop);
-    return 0;
-  }
-  function install6() {
-    on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
-      const days = event.data.days;
-      if (!days) return;
-      const recovered = [];
-      const cooled = [];
-      let feudsCooled = 0;
-      for (const w of allWrestlers()) {
-        for (const rel of Object.values(w.ties.relationships)) {
-          if (rel.hostility <= 0) continue;
-          const next = Math.max(0, rel.hostility - HOSTILITY_COOLING_PER_DAY * days);
-          if (next !== rel.hostility) {
-            rel.hostility = Math.round(next);
-            feudsCooled++;
-          }
-        }
-        const patch = {};
-        if (w.state.condition < 100) {
-          const next = Math.min(100, w.state.condition + recoveryPerDay(w) * days);
-          patch.condition = next;
-          recovered.push({ id: w.id, from: Math.round(w.state.condition), to: Math.round(next) });
-        }
-        if (w.state.momentum !== 0) {
-          const next = decayMomentum(w.state.momentum, days);
-          patch.momentum = next;
-          cooled.push({ id: w.id, from: Math.round(w.state.momentum), to: Math.round(next) });
-        }
-        if (Object.keys(patch).length) updateWrestlerState(w.id, patch, { silent: true });
-      }
-      if (!recovered.length && !cooled.length && !feudsCooled) return;
-      emit(EVENT_TYPES.WRESTLER_STATE, {
-        summary: `${recovered.length} rested, ${cooled.length} cooled off, ${feudsCooled} rivalries lost heat over ${days} day${days === 1 ? "" : "s"}`,
-        subjects: [.../* @__PURE__ */ new Set([...recovered.map((r) => r.id), ...cooled.map((c) => c.id)])],
-        cause: event.id,
-        data: { kind: "condition_recovery", days, recovered, cooled, feudsCooled }
-      });
-    });
-  }
-
-  // wrestling/js/systems/index.js
-  function installSystems() {
-    install();
-    install3();
-    install2();
-    install4();
-    install5();
-    install6();
-  }
-
-  // wrestling/js/systems/showRunner.js
-  var showRunner_exports = {};
-  __export(showRunner_exports, {
-    commitResult: () => commitResult,
-    currentShow: () => currentShow,
-    goLive: () => goLive,
-    goOffAir: () => goOffAir,
-    gradeShow: () => gradeShow,
-    nextSegment: () => nextSegment,
-    nextWeek: () => nextWeek,
-    previewNext: () => previewNext,
-    progress: () => progress,
-    runNext: () => runNext,
-    runRest: () => runRest
-  });
-
   // wrestling/js/systems/formats.js
   var FORMATS = Object.freeze({
     // ---- matches ----
@@ -3587,6 +3700,872 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     return groups.join(" and ");
   }
 
+  // wrestling/js/systems/disposition.js
+  var RESPONSE = Object.freeze({
+    ACCEPT: "accept",
+    GRUDGING: "accept_grudgingly",
+    PUSH_BACK: "push_back",
+    REFUSE: "refuse"
+  });
+  var RESPONSE_LABEL = Object.freeze({
+    [RESPONSE.ACCEPT]: "Accepts",
+    [RESPONSE.GRUDGING]: "Accepts, unhappy",
+    [RESPONSE.PUSH_BACK]: "Pushes back",
+    [RESPONSE.REFUSE]: "Refuses"
+  });
+  var THRESHOLDS = Object.freeze([
+    [72, RESPONSE.ACCEPT],
+    [52, RESPONSE.GRUDGING],
+    [32, RESPONSE.PUSH_BACK],
+    [0, RESPONSE.REFUSE]
+  ]);
+  function responseFor(willingness) {
+    return THRESHOLDS.find(([min]) => willingness >= min)[1];
+  }
+  var clamp = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+  function refusalFloor(wrestler) {
+    return 88 - standingWeight(wrestler) * 80;
+  }
+  function expectedSlot(wrestler) {
+    return statusRank(wrestler) / TOP_STATUS_RANK;
+  }
+  function expectedMinutes(wrestler) {
+    return 6 + statusRank(wrestler) * 2.5;
+  }
+  function regard(wrestlerId, ask = {}) {
+    const w = requireWrestler(wrestlerId);
+    const {
+      opponentIds = [],
+      partnerIds = [],
+      formatKey = "singles",
+      timeLimitSec = 10 * 60,
+      cardIndex = null,
+      cardLength = null,
+      titleId = null
+    } = ask;
+    const t = w.identity.traits;
+    const reasons = [];
+    const add = (delta, text) => {
+      if (Math.abs(delta) < 2.5) return 0;
+      reasons.push({ delta: Math.round(delta * 10) / 10, text });
+      return delta;
+    };
+    let willingness = 50 + t.professionalism * 0.3 + t.respectForAuthority * 0.22 + t.patience * 0.08 - w.identity.ego * 0.28;
+    const disposition = willingness;
+    reasons.push({
+      delta: Math.round((disposition - 50) * 10) / 10,
+      text: disposition >= 50 ? "Professional, and defers to the office" : "Carries enough ego to argue with the office",
+      base: true
+    });
+    willingness += add(
+      (w.ties.gm.trust - 50) * 0.22,
+      w.ties.gm.trust >= 50 ? "Takes you at your word" : "Does not take you at your word"
+    );
+    willingness += add(
+      (w.ties.gm.respect - 50) * 0.1,
+      w.ties.gm.respect >= 50 ? "Rates you as a GM" : "Does not rate you as a GM"
+    );
+    willingness += add(
+      (w.state.morale - 50) * 0.14,
+      w.state.morale >= 50 ? "In reasonable spirits" : "Unhappy at the moment"
+    );
+    if (opponentIds.length) {
+      const theirRank = Math.max(...opponentIds.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 3));
+      const gap = statusRank(w) - theirRank;
+      const names = opponentIds.map(nameOf).join(" and ");
+      if (gap > 0) {
+        willingness += add(
+          -gap * 4.5 * (0.4 + w.identity.ego / 120),
+          `Thinks ${names} is beneath them`
+        );
+      } else if (gap < 0) {
+        willingness += add(
+          -gap * 6 * (0.4 + w.identity.ambition / 100),
+          `A chance against ${names}`
+        );
+      }
+      const today2 = today();
+      let grudge = 0;
+      for (const m of w.memory) {
+        if (!m.aboutIds.some((id) => opponentIds.includes(id))) continue;
+        if (!["loss", "upset_loss", "cheated", "humiliation", "title_loss", "gm_promise_broken"].includes(m.type)) continue;
+        grudge = Math.max(grudge, memoryWeightOn(m, today2));
+      }
+      if (grudge) {
+        willingness += add(
+          grudge * 0.15 * (0.3 + t.aggression / 100),
+          `Has something to settle with ${names}`
+        );
+      }
+    }
+    for (const partnerId of partnerIds) {
+      const feeling = relationshipTo(w, partnerId);
+      if (feeling < -25) {
+        willingness += add(
+          feeling * 0.25 * (0.5 + t.vindictiveness / 100),
+          `Does not want to be in a team with ${nameOf(partnerId)}`
+        );
+      } else if (feeling > 35) {
+        willingness += add(
+          feeling * 0.12 * (0.5 + t.loyalty / 100),
+          `Happy to work with ${nameOf(partnerId)}`
+        );
+      }
+    }
+    if (cardIndex != null && cardLength > 1) {
+      const actual = cardIndex / (cardLength - 1);
+      const slip = expectedSlot(w) - actual;
+      if (slip > 0.25) {
+        willingness += add(
+          -slip * 30 * (0.4 + w.identity.ego / 100),
+          cardIndex === 0 ? "Being asked to open the show" : "Placed lower on the card than they expect"
+        );
+      } else if (slip < -0.3) {
+        willingness += add(
+          -slip * 14 * (0.3 + w.identity.ambition / 100),
+          "Placed higher on the card than they expect"
+        );
+      }
+    }
+    const limitMin = timeLimitSec / 60;
+    const wanted = expectedMinutes(w);
+    if (limitMin < wanted * 0.6) {
+      willingness += add(
+        -(1 - limitMin / (wanted * 0.6)) * 25 * (0.5 + w.identity.ego / 100),
+        `Only ${Math.round(limitMin)} minutes for someone of their standing`
+      );
+    }
+    if (limitMin > 20) {
+      willingness += add(
+        -(limitMin - 20) * 0.8 * (1 - t.courage / 100),
+        "A longer match than they are comfortable with"
+      );
+    }
+    if (w.state.condition < 60) {
+      willingness += add(
+        -(60 - w.state.condition) * 0.25 * (1 - t.courage / 100),
+        "Carrying too much wear to want this"
+      );
+    }
+    if (formatOf(formatKey).kind !== SEGMENT_KINDS.MATCH) {
+      willingness += add(12 * (0.3 + t.sociability / 100), "A segment rather than a match");
+    }
+    if (titleId) {
+      const title = getTitle(titleId);
+      const holding = title && titlesHeldBy(wrestlerId).some((x) => x.id === title.id);
+      willingness += holding ? add(9, `Defending the ${title.shortName} title`) : add(20 * (0.4 + w.identity.ambition / 100), `A shot at the ${title.shortName} title`);
+    }
+    if (w.standing.trajectory === TRAJECTORY.DECLINING) {
+      willingness += add(-7 * (0.5 + t.jealousy / 100), "Believes they are being written off");
+    } else if (w.standing.trajectory === TRAJECTORY.RISING) {
+      willingness += add(5, "On the way up and taking what is offered");
+    }
+    const raw = clamp(willingness);
+    const floor = refusalFloor(w);
+    const final = Math.round(Math.max(raw, floor));
+    const held = raw < floor && responseFor(final) !== responseFor(raw);
+    if (held) {
+      reasons.push({
+        delta: Math.round((floor - raw) * 10) / 10,
+        text: "Has no standing to refuse, whatever they think of it",
+        floor: true
+      });
+    }
+    return {
+      wrestlerId,
+      willingness: final,
+      raw: Math.round(raw),
+      floor: Math.round(floor),
+      heldUpByStanding: held,
+      likely: responseFor(final),
+      reasons: reasons.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    };
+  }
+  function regardSegment(segment, { cardIndex = null, cardLength = null } = {}) {
+    const bySide = {};
+    for (const p of segment.participants) (bySide[p.side] ||= []).push(p.wrestlerId);
+    return segment.participants.map((p) => {
+      const mine = bySide[p.side] || [];
+      const opponentIds = Object.entries(bySide).filter(([side]) => side !== p.side).flatMap(([, ids]) => ids);
+      return regard(p.wrestlerId, {
+        opponentIds,
+        partnerIds: mine.filter((id) => id !== p.wrestlerId),
+        formatKey: segment.format,
+        timeLimitSec: segment.timeLimitSec,
+        titleId: segment.titleId,
+        cardIndex,
+        cardLength
+      });
+    });
+  }
+
+  // wrestling/js/systems/satisfaction.js
+  var RECENT_SHOWS = 4;
+  var DIMENSIONS = Object.freeze([
+    "booking",
+    "tvTime",
+    "role",
+    "championship",
+    "contract",
+    "standing"
+  ]);
+  var DIMENSION_LABEL = Object.freeze({
+    booking: "How they are booked",
+    tvTime: "Television time",
+    role: "Their spot on the card",
+    championship: "Championship prospects",
+    contract: "What they are paid",
+    standing: "Standing with you and the room"
+  });
+  var clamp2 = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+  var median = (xs) => {
+    if (!xs.length) return 0;
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  };
+  function recentShows(n = RECENT_SHOWS) {
+    return allShows().filter((s) => s.status === "complete").sort((a, b) => b.day - a.day).slice(0, n);
+  }
+  function appearances(wrestlerId, shows = recentShows()) {
+    const out = [];
+    for (const show of shows) {
+      const ids = show.segmentIds;
+      ids.forEach((segId, index) => {
+        const seg = getSegment(segId);
+        if (!seg || !seg.participants.some((p) => p.wrestlerId === wrestlerId)) return;
+        out.push({
+          show,
+          segment: seg,
+          index,
+          total: ids.length,
+          slot: ids.length > 1 ? index / (ids.length - 1) : 1,
+          seconds: seg.result.actualSec || 0
+        });
+      });
+    }
+    return out;
+  }
+  function expectedAppearanceRate(w) {
+    return 0.4 + standingWeight(w) * 0.6;
+  }
+  function championshipAmbition(wrestlerId) {
+    const w = requireWrestler(wrestlerId);
+    const titles = allTitles();
+    if (!titles.length) return null;
+    const held = titlesHeldBy(wrestlerId);
+    const rank = statusRank(w);
+    const world = titles.find((t) => t.tier === "world");
+    const secondary = titles.find((t) => t.tier !== "world") || world;
+    const wanted = rank >= CAREER_RANK.upper_midcard ? world : secondary;
+    if (!wanted) return null;
+    if (held.some((t) => t.id === wanted.id)) {
+      return { titleId: wanted.id, urgency: 0, holding: true, reasons: ["Already holds it"] };
+    }
+    const reasons = [];
+    let urgency = w.identity.ambition * 0.45;
+    reasons.push(`Ambition ${w.identity.ambition}`);
+    const standing = w.standing.rank;
+    if (standing != null) {
+      const proximity = Math.max(0, 1 - (standing - 1) / 8);
+      urgency += proximity * 30;
+      if (proximity > 0.5) reasons.push(`Ranked #${standing}`);
+    }
+    if (wanted.contenderId === wrestlerId) {
+      urgency += 15;
+      reasons.push(`Is the #1 contender for the ${wanted.shortName} title`);
+    }
+    if (isVacant(wanted)) {
+      urgency += 10;
+      reasons.push("The title is vacant");
+    }
+    const today2 = today();
+    const denied = w.memory.filter((m) => m.type === MEMORY_TYPES.TITLE_SHOT_DENIED.key).reduce((t, m) => t + memoryWeightOn(m, today2), 0);
+    if (denied > 0) {
+      urgency += Math.min(25, denied * 0.3);
+      reasons.push("Has been passed over before");
+    }
+    const lastShot = w.memory.filter((m) => m.type === MEMORY_TYPES.TITLE_SHOT.key).sort((a, b) => b.day - a.day)[0];
+    if (lastShot && today2 - lastShot.day < 60) {
+      urgency -= 25;
+      reasons.push("Had a shot recently");
+    }
+    return { titleId: wanted.id, urgency: clamp2(urgency), holding: false, reasons };
+  }
+  function bookingSatisfaction(w, apps, shows) {
+    const reasons = [];
+    if (!shows.length) return { score: 50, reasons: ["No shows have run yet"] };
+    const expected = Math.max(0.5, shows.length * expectedAppearanceRate(w));
+    const ratio = apps.length / expected;
+    let score = 50 + (ratio - 1) * 40;
+    reasons.push(`On ${apps.length} of the last ${shows.length} shows, expects about ${Math.round(expected)}`);
+    const matches = apps.filter((a) => a.segment.kind === "match");
+    if (matches.length) {
+      const wins = matches.filter((a) => (a.segment.result.winnerIds || []).includes(w.id)).length;
+      const winRate = wins / matches.length;
+      const expectedRate = 0.3 + standingWeight(w) * 0.45;
+      score += (winRate - expectedRate) * 45;
+      reasons.push(`Winning ${Math.round(winRate * 100)}% lately, expects about ${Math.round(expectedRate * 100)}%`);
+    }
+    return { score: clamp2(score), reasons };
+  }
+  function tvTimeSatisfaction(w, apps, shows) {
+    const reasons = [];
+    if (!shows.length) return { score: 50, reasons: ["No shows have run yet"] };
+    const got = apps.reduce((t, a) => t + a.seconds, 0);
+    const wantPerShow = expectedMinutes(w) * 60 * expectedAppearanceRate(w);
+    const want = Math.max(60, wantPerShow * shows.length);
+    const ratio = got / want;
+    reasons.push(`${Math.round(got / 60)} minutes of television lately, expects about ${Math.round(want / 60)}`);
+    return { score: clamp2(50 + (ratio - 1) * 35), reasons };
+  }
+  function roleSatisfaction(w, apps) {
+    const reasons = [];
+    let score = 50;
+    if (apps.length) {
+      const avgSlot = apps.reduce((t, a) => t + a.slot, 0) / apps.length;
+      const want = expectedSlot(w);
+      score += (avgSlot - want) * 60;
+      reasons.push(`Booked ${Math.round(avgSlot * 100)}% up the card, expects ${Math.round(want * 100)}%`);
+    } else {
+      reasons.push("Has not been on a card to judge");
+    }
+    if (w.standing.rank != null) {
+      const roster = allWrestlers().length;
+      const actual = 1 - (w.standing.rank - 1) / Math.max(1, roster - 1);
+      const expected = expectedSlot(w);
+      score += (actual - expected) * 35;
+      reasons.push(`Ranked #${w.standing.rank} of ${roster} as a ${w.standing.careerStatus.replace("_", " ")}`);
+    }
+    if (!reasons.length) reasons.push("Nothing to judge their spot against yet");
+    return { score: clamp2(score), reasons };
+  }
+  function championshipSatisfaction(w) {
+    const want = championshipAmbition(w.id);
+    if (!want) return { score: 50, reasons: ["No championships exist"] };
+    if (want.holding) {
+      return { score: 88, reasons: [`Holds the ${getTitle(want.titleId)?.shortName} title`] };
+    }
+    const title = getTitle(want.titleId);
+    return {
+      score: clamp2(58 - want.urgency * 0.55),
+      reasons: [`Wants the ${title?.shortName} title`, ...want.reasons]
+    };
+  }
+  function contractSatisfaction(w) {
+    const reasons = [];
+    const peers = allWrestlers().filter((x) => x.id !== w.id && x.standing.careerStatus === w.standing.careerStatus).map((x) => x.contract.salary).filter((n) => n > 0);
+    const benchmark = peers.length ? median(peers) : median(allWrestlers().map((x) => x.contract.salary));
+    if (!benchmark || !w.contract.salary) return { score: 50, reasons: ["No pay to compare"] };
+    const ratio = w.contract.salary / benchmark;
+    let score = 50 + (ratio - 1) * 45;
+    reasons.push(peers.length ? `Paid ${Math.round(ratio * 100)}% of what others at their level get` : `Paid ${Math.round(ratio * 100)}% of the roster median`);
+    if (w.standing.rank != null && w.standing.rank <= 4 && ratio < 1.1) {
+      score -= 12;
+      reasons.push(`Ranked #${w.standing.rank} on a deal that has not moved`);
+    }
+    const expiry = w.contract.expiresOnDay;
+    if (expiry != null) {
+      const left = expiry - today();
+      if (left < 120) {
+        score -= (120 - Math.max(0, left)) * 0.08;
+        reasons.push(`${Math.max(0, left)} days left on the deal`);
+      }
+    }
+    return { score: clamp2(score), reasons };
+  }
+  function standingSatisfaction(w) {
+    const reasons = [];
+    const gm = (w.ties.gm.trust + w.ties.gm.respect) / 2;
+    let score = 50 + (gm - 50) * 0.7;
+    reasons.push(`Trusts you ${w.ties.gm.trust}, rates you ${w.ties.gm.respect}`);
+    const allies = alliesOf(w).length;
+    const enemies = enemiesOf(w).length;
+    score += (allies - enemies) * 4;
+    if (allies || enemies) reasons.push(`${allies} allies, ${enemies} enemies in the room`);
+    const today2 = today();
+    const grievance = w.memory.filter((m) => [
+      MEMORY_TYPES.CUT_FROM_SHOW.key,
+      MEMORY_TYPES.OVERLOOKED.key,
+      MEMORY_TYPES.PROMISE_BROKEN.key
+    ].includes(m.type)).reduce((t, m) => t + memoryWeightOn(m, today2), 0);
+    if (grievance > 0) {
+      score -= Math.min(25, grievance * 0.12);
+      reasons.push("Carrying grievances about how they have been used");
+    }
+    return { score: clamp2(score), reasons };
+  }
+  function weightsFor(w) {
+    const ego = w.identity.ego / 100;
+    const ambition = w.identity.ambition / 100;
+    const raw = {
+      booking: 0.25,
+      tvTime: 0.12 + ambition * 0.08,
+      role: 0.14 + ego * 0.12,
+      championship: 0.08 + ambition * 0.16,
+      contract: 0.06 + ego * 0.1,
+      standing: 0.14
+    };
+    const total = Object.values(raw).reduce((a, b) => a + b, 0);
+    return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v / total]));
+  }
+  function satisfactionOf(wrestlerId, { showCount = RECENT_SHOWS } = {}) {
+    const w = requireWrestler(wrestlerId);
+    const shows = recentShows(showCount);
+    const apps = appearances(wrestlerId, shows);
+    const dimensions = {
+      booking: bookingSatisfaction(w, apps, shows),
+      tvTime: tvTimeSatisfaction(w, apps, shows),
+      role: roleSatisfaction(w, apps),
+      championship: championshipSatisfaction(w),
+      contract: contractSatisfaction(w),
+      standing: standingSatisfaction(w)
+    };
+    const weights = weightsFor(w);
+    const overall = Math.round(
+      DIMENSIONS.reduce((t, key) => t + dimensions[key].score * weights[key], 0)
+    );
+    const worst = DIMENSIONS.map((key) => ({ key, ...dimensions[key], weight: weights[key] })).sort((a, b) => a.score * (0.5 + a.weight) - b.score * (0.5 + b.weight))[0];
+    return { wrestlerId, overall, dimensions, weights, worst, appearances: apps.length, shows: shows.length };
+  }
+  function moraleTarget(wrestlerId) {
+    return satisfactionOf(wrestlerId).overall;
+  }
+
+  // wrestling/js/systems/requests.js
+  var MAX_OPEN_PER_WRESTLER = 2;
+  var MAX_NEW_PER_SHOW = 5;
+  var DENIED_COOLDOWN_DAYS = 21;
+  var clamp3 = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+  function voiceThreshold(w) {
+    const t = w.identity.traits;
+    const boldness = (w.identity.ego * 0.35 + (100 - t.patience) * 0.25 + (100 - t.respectForAuthority) * 0.25 + w.identity.ambition * 0.15) / 100;
+    return clamp3(74 - standingWeight(w) * 32 - boldness * 24, 10, 95);
+  }
+  function recentlyDenied(wrestlerId, kind) {
+    const today2 = today();
+    return allRequests().some((r) => r.wrestlerId === wrestlerId && r.kind === kind && r.status === REQUEST_STATUS.DENIED && r.resolvedOnDay != null && today2 - r.resolvedOnDay < DENIED_COOLDOWN_DAYS);
+  }
+  function ignoredBoost(wrestlerId, kind) {
+    const today2 = today();
+    const ignored = allRequests().filter((r) => r.wrestlerId === wrestlerId && r.kind === kind && r.status === REQUEST_STATUS.IGNORED && r.resolvedOnDay != null && today2 - r.resolvedOnDay < 90);
+    return Math.min(22, ignored.length * 11);
+  }
+  function wantTitleShot(w, sat) {
+    const want = championshipAmbition(w.id);
+    if (!want || want.holding) return null;
+    const title = getTitle(want.titleId);
+    if (!title) return null;
+    if (championIds(title).includes(w.id)) return null;
+    const rank = w.standing.rank;
+    const plausible = rank == null ? 0.5 : Math.max(0.12, 1 - (rank - 1) / 8);
+    const strength = clamp3(
+      (want.urgency * 0.85 + (100 - sat.dimensions.championship.score) * 0.25) * plausible
+    );
+    return {
+      kind: REQUEST_KINDS.TITLE_SHOT,
+      titleId: title.id,
+      strength,
+      urgency: want.urgency,
+      reasons: want.reasons,
+      text: `${w.name} wants a shot at the ${title.shortName} title`
+    };
+  }
+  function wantMoreTvTime(w, sat) {
+    const score = sat.dimensions.tvTime.score;
+    if (score >= 45) return null;
+    return {
+      kind: REQUEST_KINDS.MORE_TV_TIME,
+      strength: clamp3((45 - score) * 1.7),
+      urgency: clamp3((45 - score) * 1.6),
+      reasons: sat.dimensions.tvTime.reasons,
+      text: `${w.name} wants more television time`
+    };
+  }
+  function wantLongerMatches(w, sat) {
+    const apps = appearances(w.id).filter((a) => a.segment.kind === "match");
+    if (apps.length < 2) return null;
+    const avgLimit = apps.reduce((t, a) => t + a.segment.timeLimitSec, 0) / apps.length / 60;
+    const wanted = expectedMinutes(w);
+    if (avgLimit >= wanted * 0.75) return null;
+    const shortfall = 1 - avgLimit / wanted;
+    return {
+      kind: REQUEST_KINDS.MORE_SEGMENT_TIME,
+      strength: clamp3(shortfall * 115),
+      urgency: clamp3(shortfall * 100),
+      reasons: [`Averaging ${Math.round(avgLimit)} minute limits, expects about ${Math.round(wanted)}`],
+      text: `${w.name} wants longer matches`
+    };
+  }
+  function wantBetterRole(w, sat) {
+    const score = sat.dimensions.role.score;
+    if (score >= 42) return null;
+    return {
+      kind: REQUEST_KINDS.BETTER_ROLE,
+      strength: clamp3((42 - score) * 1.8),
+      urgency: clamp3((42 - score) * 1.7),
+      reasons: sat.dimensions.role.reasons,
+      text: `${w.name} wants a better spot on the card`
+    };
+  }
+  function wantToFaceRival(w) {
+    const t = w.identity.traits;
+    const candidates = Object.entries(w.ties.relationships).filter(([, rel2]) => rel2.hostility >= RIVAL_THRESHOLD).sort((a, b) => b[1].hostility - a[1].hostility);
+    if (!candidates.length) return null;
+    const [targetId, rel] = candidates[0];
+    if (!getWrestler(targetId)) return null;
+    if (t.aggression < 40 && t.courage < 45) return null;
+    const strength = clamp3(rel.hostility * 0.75 + t.aggression * 0.25);
+    const reasons = [`${rel.hostility} hostility toward ${nameOf(targetId)}`];
+    const last = rel.history[rel.history.length - 1];
+    if (last?.summary) reasons.push(last.summary);
+    return {
+      kind: REQUEST_KINDS.FACE_RIVAL,
+      targetId,
+      strength,
+      urgency: clamp3(rel.hostility),
+      reasons,
+      text: `${w.name} wants ${nameOf(targetId)} one on one`
+    };
+  }
+  function wantMatchWith(w) {
+    const today2 = today();
+    let best = null;
+    for (const m of w.memory) {
+      if (!GRUDGE_TYPES.includes(m.type)) continue;
+      for (const targetId of m.aboutIds) {
+        if (!getWrestler(targetId)) continue;
+        const weight = memoryWeightOn(m, today2);
+        if (!best || weight > best.weight) best = { targetId, weight, memory: m };
+      }
+    }
+    if (!best || best.weight < 30) return null;
+    const rel = relationshipWith(w, best.targetId);
+    const gap = CAREER_RANK[getWrestler(best.targetId).standing.careerStatus] - statusRank(w);
+    const strength = clamp3(
+      best.weight * 0.6 + Math.max(0, gap) * 6 * (w.identity.ambition / 100) + rel.hostility * 0.2
+    );
+    return {
+      kind: REQUEST_KINDS.MATCH_WITH,
+      targetId: best.targetId,
+      strength,
+      urgency: clamp3(best.weight),
+      reasons: [best.memory.summary],
+      text: `${w.name} wants a match with ${nameOf(best.targetId)}`
+    };
+  }
+  function wantToAvoid(w) {
+    const t = w.identity.traits;
+    const candidates = Object.entries(w.ties.relationships).filter(([, rel2]) => rel2.trust <= 30 && rel2.respect <= 45).sort((a, b) => a[1].trust + a[1].respect - (b[1].trust + b[1].respect));
+    if (!candidates.length) return null;
+    const [targetId, rel] = candidates[0];
+    if (!getWrestler(targetId)) return null;
+    if (t.aggression >= 55 || t.courage >= 70) return null;
+    const strength = clamp3((100 - rel.trust) * 0.5 + (100 - rel.respect) * 0.3 + (100 - t.courage) * 0.2);
+    const reasons = [`Trusts ${nameOf(targetId)} at ${rel.trust} and rates them at ${rel.respect}`];
+    const cheated = w.memory.find((m) => m.type === MEMORY_TYPES.CHEATED.key && m.aboutIds.includes(targetId));
+    if (cheated) reasons.push(cheated.summary);
+    return {
+      kind: REQUEST_KINDS.AVOID,
+      targetId,
+      strength,
+      urgency: clamp3(strength * 0.8),
+      reasons,
+      text: `${w.name} does not want to be booked with ${nameOf(targetId)} again`
+    };
+  }
+  function wantToTagWith(w, sat) {
+    const candidates = Object.entries(w.ties.relationships).filter(([, rel2]) => rel2.affinity >= 45 && rel2.trust >= 55).sort((a, b) => b[1].affinity + b[1].trust - (a[1].affinity + a[1].trust));
+    if (!candidates.length) return null;
+    const [targetId, rel] = candidates[0];
+    const other = getWrestler(targetId);
+    if (!other) return null;
+    const struggling = 100 - sat.dimensions.booking.score;
+    const strength = clamp3(
+      rel.affinity * 0.4 + rel.trust * 0.2 + struggling * 0.25 + w.identity.traits.sociability * 0.2 - 22
+    );
+    return {
+      kind: REQUEST_KINDS.TAG_WITH,
+      targetId,
+      strength,
+      urgency: clamp3(strength * 0.8),
+      reasons: [`Trusts ${other.name} at ${rel.trust}, affinity ${rel.affinity}`],
+      text: `${w.name} wants to form a team with ${other.name}`
+    };
+  }
+  var CANDIDATES = [
+    wantTitleShot,
+    wantMoreTvTime,
+    wantLongerMatches,
+    wantBetterRole,
+    wantToFaceRival,
+    wantMatchWith,
+    wantToAvoid,
+    wantToTagWith
+  ];
+  function wantsOf(wrestlerId) {
+    const w = requireWrestler(wrestlerId);
+    const sat = satisfactionOf(wrestlerId);
+    return CANDIDATES.map((fn) => fn(w, sat)).filter(Boolean).map((spec) => ({ ...spec, strength: clamp3(spec.strength + ignoredBoost(wrestlerId, spec.kind)) })).sort((a, b) => b.strength - a.strength);
+  }
+  function voicedWantsOf(wrestlerId) {
+    const w = requireWrestler(wrestlerId);
+    const threshold = voiceThreshold(w);
+    return wantsOf(wrestlerId).filter((want) => want.strength >= threshold);
+  }
+  function generateRequests({ cause = null } = {}) {
+    const made = [];
+    const candidates = [];
+    for (const w of allWrestlers()) {
+      const open = openRequestsFor(w.id);
+      if (open.length >= MAX_OPEN_PER_WRESTLER) continue;
+      const openKinds = new Set(open.map((r) => r.kind));
+      for (const want of voicedWantsOf(w.id)) {
+        if (openKinds.has(want.kind)) continue;
+        if (recentlyDenied(w.id, want.kind)) continue;
+        candidates.push({ wrestlerId: w.id, want, room: MAX_OPEN_PER_WRESTLER - open.length });
+      }
+    }
+    candidates.sort((a, b) => b.want.strength - a.want.strength);
+    const perWrestler = /* @__PURE__ */ new Map();
+    for (const { wrestlerId, want, room } of candidates) {
+      if (made.length >= MAX_NEW_PER_SHOW) break;
+      const used = perWrestler.get(wrestlerId) || 0;
+      if (used >= room) continue;
+      perWrestler.set(wrestlerId, used + 1);
+      made.push(makeRequestFor({ wrestlerId, ...want }, { cause }));
+    }
+    return made;
+  }
+  function bookingSatisfies(request, segment) {
+    const ids = segment.participants.map((p) => p.wrestlerId);
+    if (!ids.includes(request.wrestlerId)) return false;
+    const sides2 = {};
+    for (const p of segment.participants) (sides2[p.side] ||= []).push(p.wrestlerId);
+    const mySide = segment.participants.find((p) => p.wrestlerId === request.wrestlerId)?.side;
+    const opponents = Object.entries(sides2).filter(([s]) => s !== mySide).flatMap(([, v]) => v);
+    const partners = (sides2[mySide] || []).filter((id) => id !== request.wrestlerId);
+    switch (request.kind) {
+      case REQUEST_KINDS.TITLE_SHOT:
+        return segment.titleId === request.titleId;
+      case REQUEST_KINDS.FACE_RIVAL:
+      case REQUEST_KINDS.MATCH_WITH:
+        return opponents.includes(request.targetId);
+      case REQUEST_KINDS.TAG_WITH:
+        return partners.includes(request.targetId);
+      case REQUEST_KINDS.MORE_SEGMENT_TIME:
+        return segment.kind === "match" && segment.timeLimitSec >= expectedMinutes(getWrestler(request.wrestlerId)) * 60;
+      case REQUEST_KINDS.MORE_TV_TIME:
+      case REQUEST_KINDS.BETTER_ROLE:
+        return false;
+      // these are judged over a whole show, below
+      case REQUEST_KINDS.AVOID:
+        return false;
+      // an avoid request is kept by NOT booking it
+      default:
+        return false;
+    }
+  }
+  function bookingBreaks(request, segment) {
+    if (request.kind !== REQUEST_KINDS.AVOID) return false;
+    const ids = segment.participants.map((p) => p.wrestlerId);
+    return ids.includes(request.wrestlerId) && ids.includes(request.targetId);
+  }
+  function payOff(request, outcome, event) {
+    const w = getWrestler(request.wrestlerId);
+    if (!w) return;
+    const weight = 0.5 + request.urgency / 100;
+    const table2 = {
+      [REQUEST_STATUS.GRANTED]: { trust: 8, respect: 6, morale: 9, memory: MEMORY_TYPES.REQUEST_GRANTED.key, mood: "confident" },
+      [REQUEST_STATUS.DENIED]: { trust: -3, respect: -2, morale: -5, memory: MEMORY_TYPES.REQUEST_DENIED.key, mood: "restless" },
+      [REQUEST_STATUS.IGNORED]: { trust: -5, respect: -4, morale: -6, memory: MEMORY_TYPES.REQUEST_IGNORED.key, mood: "frustrated" }
+    }[outcome];
+    if (!table2) return;
+    adjustGmTie(w.id, {
+      trust: Math.round(table2.trust * weight),
+      respect: Math.round(table2.respect * weight)
+    }, { reason: `${REQUEST_LABEL[request.kind]} ${outcome}`, cause: event?.id ?? null });
+    updateWrestlerState(w.id, {
+      morale: w.state.morale + table2.morale * weight,
+      mood: table2.mood
+    }, { reason: `${REQUEST_LABEL[request.kind]} ${outcome}`, cause: event?.id ?? null });
+    addMemory(w.id, {
+      type: table2.memory,
+      summary: outcome === REQUEST_STATUS.GRANTED ? `Asked for ${REQUEST_NOUN[request.kind]} and got it` : outcome === REQUEST_STATUS.DENIED ? `Asked for ${REQUEST_NOUN[request.kind]} and was told no` : `Asked for ${REQUEST_NOUN[request.kind]} and never heard back`,
+      aboutIds: request.targetId ? [request.targetId] : []
+    }, { cause: event?.id ?? null });
+  }
+  function denyRequest(requestId, { reason = "" } = {}) {
+    const request = getRequest(requestId);
+    if (!request) return null;
+    const event = resolveRequest(requestId, REQUEST_STATUS.DENIED, { reason });
+    payOff(request, REQUEST_STATUS.DENIED, event);
+    return event;
+  }
+  function install6() {
+    on2(EVENT_TYPES.SEGMENT_BOOKED, (event) => {
+      const segment = getSegment(event.segmentId);
+      if (!segment) return;
+      for (const request of openRequests()) {
+        if (bookingSatisfies(request, segment)) {
+          const done = resolveRequest(request.id, REQUEST_STATUS.GRANTED, {
+            segmentId: segment.id,
+            reason: `${nameOf(request.wrestlerId)} got what they asked for`,
+            cause: event.id
+          });
+          payOff(request, REQUEST_STATUS.GRANTED, done);
+        } else if (bookingBreaks(request, segment)) {
+          const done = resolveRequest(request.id, REQUEST_STATUS.IGNORED, {
+            segmentId: segment.id,
+            reason: `${nameOf(request.wrestlerId)} was booked with ${nameOf(request.targetId)} anyway`,
+            cause: event.id
+          });
+          payOff(request, REQUEST_STATUS.IGNORED, done);
+        }
+      }
+    });
+    on2(EVENT_TYPES.SHOW_COMPLETED, (event) => {
+      const show = getShow(event.showId);
+      const stung = /* @__PURE__ */ new Set();
+      for (const request of openRequests()) {
+        if (request.day > (show?.day ?? today())) continue;
+        const apps = appearances(request.wrestlerId, [show]).length;
+        if (request.kind === REQUEST_KINDS.MORE_TV_TIME && apps > 0) {
+          const got = appearances(request.wrestlerId, [show]).reduce((t, a) => t + a.seconds, 0);
+          if (got >= expectedMinutes(getWrestler(request.wrestlerId)) * 60) {
+            const done2 = resolveRequest(request.id, REQUEST_STATUS.GRANTED, {
+              reason: `${nameOf(request.wrestlerId)} got the television time they wanted`,
+              cause: event.id
+            });
+            payOff(request, REQUEST_STATUS.GRANTED, done2);
+            continue;
+          }
+        }
+        if (request.kind === REQUEST_KINDS.BETTER_ROLE && apps > 0) {
+          const best = Math.max(...appearances(request.wrestlerId, [show]).map((a) => a.slot));
+          if (best >= 0.7) {
+            const done2 = resolveRequest(request.id, REQUEST_STATUS.GRANTED, {
+              reason: `${nameOf(request.wrestlerId)} was moved up the card`,
+              cause: event.id
+            });
+            payOff(request, REQUEST_STATUS.GRANTED, done2);
+            continue;
+          }
+        }
+        if (request.kind === REQUEST_KINDS.AVOID) {
+          const done2 = resolveRequest(request.id, REQUEST_STATUS.GRANTED, {
+            reason: `${nameOf(request.wrestlerId)} was kept away from ${nameOf(request.targetId)}`,
+            cause: event.id
+          });
+          payOff(request, REQUEST_STATUS.GRANTED, done2);
+          continue;
+        }
+        const done = resolveRequest(request.id, REQUEST_STATUS.IGNORED, {
+          reason: `${nameOf(request.wrestlerId)} never heard back`,
+          cause: event.id
+        });
+        if (!stung.has(request.wrestlerId)) {
+          stung.add(request.wrestlerId);
+          payOff(request, REQUEST_STATUS.IGNORED, done);
+        }
+      }
+      generateRequests({ cause: event.id });
+    });
+  }
+
+  // wrestling/js/systems/upkeep.js
+  function recoveryPerDay(wrestler) {
+    return 4 + wrestler.ability.durability / 25;
+  }
+  var MOMENTUM_DECAY_PER_DAY = 1.5;
+  var HOSTILITY_COOLING_PER_DAY = 0.35;
+  var MORALE_SETTLING_PER_DAY = 1.2;
+  var GM_TIE_RECOVERY_PER_DAY = 0.15;
+  var GM_TIE_NEUTRAL = 50;
+  function driftToward(value, target, amount) {
+    if (value === target) return value;
+    const step = Math.min(Math.abs(target - value), amount);
+    return value + Math.sign(target - value) * step;
+  }
+  function decayMomentum(momentum, days) {
+    const drop = MOMENTUM_DECAY_PER_DAY * days;
+    if (momentum > 0) return Math.max(0, momentum - drop);
+    if (momentum < 0) return Math.min(0, momentum + drop);
+    return 0;
+  }
+  function install7() {
+    on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
+      const days = event.data.days;
+      if (!days) return;
+      const recovered = [];
+      const cooled = [];
+      let feudsCooled = 0;
+      for (const w of allWrestlers()) {
+        for (const rel of Object.values(w.ties.relationships)) {
+          if (rel.hostility <= 0) continue;
+          const next = Math.max(0, rel.hostility - HOSTILITY_COOLING_PER_DAY * days);
+          if (next !== rel.hostility) {
+            rel.hostility = Math.round(next);
+            feudsCooled++;
+          }
+        }
+        const patch = {};
+        if (w.state.condition < 100) {
+          const next = Math.min(100, w.state.condition + recoveryPerDay(w) * days);
+          patch.condition = next;
+          recovered.push({ id: w.id, from: Math.round(w.state.condition), to: Math.round(next) });
+        }
+        const heal = GM_TIE_RECOVERY_PER_DAY * days;
+        w.ties.gm.trust = Math.round(driftToward(w.ties.gm.trust, GM_TIE_NEUTRAL, heal));
+        w.ties.gm.respect = Math.round(driftToward(w.ties.gm.respect, GM_TIE_NEUTRAL, heal));
+        const target = moraleTarget(w.id);
+        if (Math.abs(target - w.state.morale) > 1) {
+          const step = Math.min(Math.abs(target - w.state.morale), MORALE_SETTLING_PER_DAY * days);
+          patch.morale = w.state.morale + Math.sign(target - w.state.morale) * step;
+        }
+        if (w.state.momentum !== 0) {
+          const next = decayMomentum(w.state.momentum, days);
+          patch.momentum = next;
+          cooled.push({ id: w.id, from: Math.round(w.state.momentum), to: Math.round(next) });
+        }
+        if (Object.keys(patch).length) updateWrestlerState(w.id, patch, { silent: true });
+      }
+      if (!recovered.length && !cooled.length && !feudsCooled) return;
+      emit(EVENT_TYPES.WRESTLER_STATE, {
+        summary: `${recovered.length} rested, ${cooled.length} cooled off, ${feudsCooled} rivalries lost heat over ${days} day${days === 1 ? "" : "s"}`,
+        subjects: [.../* @__PURE__ */ new Set([...recovered.map((r) => r.id), ...cooled.map((c) => c.id)])],
+        cause: event.id,
+        data: { kind: "condition_recovery", days, recovered, cooled, feudsCooled }
+      });
+    });
+  }
+
+  // wrestling/js/systems/index.js
+  function installSystems() {
+    install();
+    install3();
+    install2();
+    install4();
+    install5();
+    install6();
+    install7();
+  }
+
+  // wrestling/js/systems/showRunner.js
+  var showRunner_exports = {};
+  __export(showRunner_exports, {
+    commitResult: () => commitResult,
+    currentShow: () => currentShow,
+    goLive: () => goLive,
+    goOffAir: () => goOffAir,
+    gradeShow: () => gradeShow,
+    nextSegment: () => nextSegment,
+    nextWeek: () => nextWeek,
+    previewNext: () => previewNext,
+    progress: () => progress,
+    runNext: () => runNext,
+    runRest: () => runRest
+  });
+
   // wrestling/js/systems/matchSim.js
   var BEAT_SEC = 30;
   var WIN_EXPONENT = 6;
@@ -3612,14 +4591,14 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         const ba = relationshipWith(b, participantIds2[i]);
         const heat = (Math.abs(ab.affinity) + ab.hostility + Math.abs(ba.affinity) + ba.hostility) / 2;
         const respect = (ab.respect + ba.respect) / 2;
-        total += clamp(heat * 6e-3 + (respect - 50) * 6e-3, 0, 1);
+        total += clamp4(heat * 6e-3 + (respect - 50) * 6e-3, 0, 1);
         pairs++;
       }
     }
     return pairs ? Math.min(1, total / pairs) : 0;
   }
   var mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-  var clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  var clamp4 = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   var PHRASES = {
     open: ["The bell rings.", "Here we go.", "They lock up."],
     early: ["A feeling-out process early.", "Neither wants to make the first mistake.", "Cagey start."],
@@ -3639,7 +4618,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     const weights = [];
     for (let i = 1; i <= beats; i++) weights.push(flat + Math.pow(i / beats, shape));
     const total = weights.reduce((a, b) => a + b, 0);
-    return weights.map((w) => clamp(budget * w / total, 0, 0.85));
+    return weights.map((w) => clamp4(budget * w / total, 0, 0.85));
   }
   function pickFinish(rng, gap) {
     return rng.weighted([
@@ -3656,7 +4635,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     q *= 0.85 + 0.15 * (conditionAvg / 100);
     q += actualSec < 90 ? -20 + actualSec / 90 * 8 : -4 + 12 * Math.min(1, actualSec / 600);
     q += rng.range(-6, 6);
-    return Math.round(clamp(q, 1, 100));
+    return Math.round(clamp4(q, 1, 100));
   }
   function simulateSegment(segment, { get, rng }) {
     const format = formatOf(segment.format);
@@ -3669,7 +4648,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     const strengths = sideKeys.map((k) => sideStrength(bySide[k], get));
     const high = Math.max(...strengths);
     const low = Math.min(...strengths);
-    const gap = high > 0 ? clamp((high - low) / high, 0, 1) : 0;
+    const gap = high > 0 ? clamp4((high - low) / high, 0, 1) : 0;
     const beats = Math.max(2, Math.floor(segment.timeLimitSec / BEAT_SEC));
     const hazards = finishHazards(beats, gap);
     const timeline = [];
@@ -3763,7 +4742,7 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
         winnerIds: [],
         loserIds: [],
         actualSec,
-        quality: Math.round(clamp(q, 1, 100)),
+        quality: Math.round(clamp4(q, 1, 100)),
         beats: timeline,
         overridden: false
       },
@@ -4178,205 +5157,6 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     <div class="bar"><button class="act primary" data-action="go" data-arg="saves">Go to saves</button></div>`;
   }
 
-  // wrestling/js/systems/disposition.js
-  var RESPONSE = Object.freeze({
-    ACCEPT: "accept",
-    GRUDGING: "accept_grudgingly",
-    PUSH_BACK: "push_back",
-    REFUSE: "refuse"
-  });
-  var RESPONSE_LABEL = Object.freeze({
-    [RESPONSE.ACCEPT]: "Accepts",
-    [RESPONSE.GRUDGING]: "Accepts, unhappy",
-    [RESPONSE.PUSH_BACK]: "Pushes back",
-    [RESPONSE.REFUSE]: "Refuses"
-  });
-  var THRESHOLDS = Object.freeze([
-    [72, RESPONSE.ACCEPT],
-    [52, RESPONSE.GRUDGING],
-    [32, RESPONSE.PUSH_BACK],
-    [0, RESPONSE.REFUSE]
-  ]);
-  function responseFor(willingness) {
-    return THRESHOLDS.find(([min]) => willingness >= min)[1];
-  }
-  var clamp2 = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
-  function refusalFloor(wrestler) {
-    return 88 - standingWeight(wrestler) * 80;
-  }
-  function expectedSlot(wrestler) {
-    return statusRank(wrestler) / TOP_STATUS_RANK;
-  }
-  function expectedMinutes(wrestler) {
-    return 6 + statusRank(wrestler) * 2.5;
-  }
-  function regard(wrestlerId, ask = {}) {
-    const w = requireWrestler(wrestlerId);
-    const {
-      opponentIds = [],
-      partnerIds = [],
-      formatKey = "singles",
-      timeLimitSec = 10 * 60,
-      cardIndex = null,
-      cardLength = null,
-      titleId = null
-    } = ask;
-    const t = w.identity.traits;
-    const reasons = [];
-    const add = (delta, text) => {
-      if (Math.abs(delta) < 2.5) return 0;
-      reasons.push({ delta: Math.round(delta * 10) / 10, text });
-      return delta;
-    };
-    let willingness = 50 + t.professionalism * 0.3 + t.respectForAuthority * 0.22 + t.patience * 0.08 - w.identity.ego * 0.28;
-    const disposition = willingness;
-    reasons.push({
-      delta: Math.round((disposition - 50) * 10) / 10,
-      text: disposition >= 50 ? "Professional, and defers to the office" : "Carries enough ego to argue with the office",
-      base: true
-    });
-    willingness += add(
-      (w.ties.gm.trust - 50) * 0.22,
-      w.ties.gm.trust >= 50 ? "Takes you at your word" : "Does not take you at your word"
-    );
-    willingness += add(
-      (w.ties.gm.respect - 50) * 0.1,
-      w.ties.gm.respect >= 50 ? "Rates you as a GM" : "Does not rate you as a GM"
-    );
-    willingness += add(
-      (w.state.morale - 50) * 0.14,
-      w.state.morale >= 50 ? "In reasonable spirits" : "Unhappy at the moment"
-    );
-    if (opponentIds.length) {
-      const theirRank = Math.max(...opponentIds.map((id) => CAREER_RANK[getWrestler(id)?.standing.careerStatus] ?? 3));
-      const gap = statusRank(w) - theirRank;
-      const names = opponentIds.map(nameOf).join(" and ");
-      if (gap > 0) {
-        willingness += add(
-          -gap * 4.5 * (0.4 + w.identity.ego / 120),
-          `Thinks ${names} is beneath them`
-        );
-      } else if (gap < 0) {
-        willingness += add(
-          -gap * 6 * (0.4 + w.identity.ambition / 100),
-          `A chance against ${names}`
-        );
-      }
-      const today2 = today();
-      let grudge = 0;
-      for (const m of w.memory) {
-        if (!m.aboutIds.some((id) => opponentIds.includes(id))) continue;
-        if (!["loss", "upset_loss", "cheated", "humiliation", "title_loss", "gm_promise_broken"].includes(m.type)) continue;
-        grudge = Math.max(grudge, memoryWeightOn(m, today2));
-      }
-      if (grudge) {
-        willingness += add(
-          grudge * 0.15 * (0.3 + t.aggression / 100),
-          `Has something to settle with ${names}`
-        );
-      }
-    }
-    for (const partnerId of partnerIds) {
-      const feeling = relationshipTo(w, partnerId);
-      if (feeling < -25) {
-        willingness += add(
-          feeling * 0.25 * (0.5 + t.vindictiveness / 100),
-          `Does not want to be in a team with ${nameOf(partnerId)}`
-        );
-      } else if (feeling > 35) {
-        willingness += add(
-          feeling * 0.12 * (0.5 + t.loyalty / 100),
-          `Happy to work with ${nameOf(partnerId)}`
-        );
-      }
-    }
-    if (cardIndex != null && cardLength > 1) {
-      const actual = cardIndex / (cardLength - 1);
-      const slip = expectedSlot(w) - actual;
-      if (slip > 0.25) {
-        willingness += add(
-          -slip * 30 * (0.4 + w.identity.ego / 100),
-          cardIndex === 0 ? "Being asked to open the show" : "Placed lower on the card than they expect"
-        );
-      } else if (slip < -0.3) {
-        willingness += add(
-          -slip * 14 * (0.3 + w.identity.ambition / 100),
-          "Placed higher on the card than they expect"
-        );
-      }
-    }
-    const limitMin = timeLimitSec / 60;
-    const wanted = expectedMinutes(w);
-    if (limitMin < wanted * 0.6) {
-      willingness += add(
-        -(1 - limitMin / (wanted * 0.6)) * 25 * (0.5 + w.identity.ego / 100),
-        `Only ${Math.round(limitMin)} minutes for someone of their standing`
-      );
-    }
-    if (limitMin > 20) {
-      willingness += add(
-        -(limitMin - 20) * 0.8 * (1 - t.courage / 100),
-        "A longer match than they are comfortable with"
-      );
-    }
-    if (w.state.condition < 60) {
-      willingness += add(
-        -(60 - w.state.condition) * 0.25 * (1 - t.courage / 100),
-        "Carrying too much wear to want this"
-      );
-    }
-    if (formatOf(formatKey).kind !== SEGMENT_KINDS.MATCH) {
-      willingness += add(12 * (0.3 + t.sociability / 100), "A segment rather than a match");
-    }
-    if (titleId) {
-      const title = getTitle(titleId);
-      const holding = title && titlesHeldBy(wrestlerId).some((x) => x.id === title.id);
-      willingness += holding ? add(9, `Defending the ${title.shortName} title`) : add(20 * (0.4 + w.identity.ambition / 100), `A shot at the ${title.shortName} title`);
-    }
-    if (w.standing.trajectory === TRAJECTORY.DECLINING) {
-      willingness += add(-7 * (0.5 + t.jealousy / 100), "Believes they are being written off");
-    } else if (w.standing.trajectory === TRAJECTORY.RISING) {
-      willingness += add(5, "On the way up and taking what is offered");
-    }
-    const raw = clamp2(willingness);
-    const floor = refusalFloor(w);
-    const final = Math.round(Math.max(raw, floor));
-    const held = raw < floor && responseFor(final) !== responseFor(raw);
-    if (held) {
-      reasons.push({
-        delta: Math.round((floor - raw) * 10) / 10,
-        text: "Has no standing to refuse, whatever they think of it",
-        floor: true
-      });
-    }
-    return {
-      wrestlerId,
-      willingness: final,
-      raw: Math.round(raw),
-      floor: Math.round(floor),
-      heldUpByStanding: held,
-      likely: responseFor(final),
-      reasons: reasons.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-    };
-  }
-  function regardSegment(segment, { cardIndex = null, cardLength = null } = {}) {
-    const bySide = {};
-    for (const p of segment.participants) (bySide[p.side] ||= []).push(p.wrestlerId);
-    return segment.participants.map((p) => {
-      const mine = bySide[p.side] || [];
-      const opponentIds = Object.entries(bySide).filter(([side]) => side !== p.side).flatMap(([, ids]) => ids);
-      return regard(p.wrestlerId, {
-        opponentIds,
-        partnerIds: mine.filter((id) => id !== p.wrestlerId),
-        formatKey: segment.format,
-        timeLimitSec: segment.timeLimitSec,
-        titleId: segment.titleId,
-        cardIndex,
-        cardLength
-      });
-    });
-  }
-
   // wrestling/js/ui/screens/wrestler.js
   var wrestler_default = {
     label: "Wrestler",
@@ -4389,6 +5169,9 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       const held = titlesHeldBy(w.id);
       const reigns = reignsOf(getState().titles, w.id);
       const score = scoreFor(w.id);
+      const sat = satisfactionOf(w.id);
+      const threshold = voiceThreshold(w);
+      const wants = wantsOf(w.id);
       const kv = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
       const bar = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>${meter(v)}`;
       const ties = notableTies(w);
@@ -4473,6 +5256,36 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
           <div class="kv"><span class="muted" style="font-size:11px">Fields only. The contract system is not built.</span><span></span></div>
         </div>
       </div>
+
+      <h2>How they feel about it</h2>
+      <p class="sub">Six things they are separately judging you on. Morale settles toward the total.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Dimension</th><th>Score</th><th>Weight</th><th>Why</th></tr></thead>
+        <tbody>
+          ${DIMENSIONS.map((key) => `<tr>
+            <td>${esc(DIMENSION_LABEL[key])}</td>
+            <td class="num ${sat.dimensions[key].score < 35 ? "neg" : sat.dimensions[key].score > 65 ? "pos" : ""}">${Math.round(sat.dimensions[key].score)}${meter(sat.dimensions[key].score, 35)}</td>
+            <td class="num muted">${Math.round(sat.weights[key] * 100)}%</td>
+            <td style="font-size:12px" class="muted">${sat.dimensions[key].reasons.map((r) => esc(r)).join("<br>")}</td>
+          </tr>`).join("")}
+          <tr><td><strong>Overall</strong></td>
+            <td class="num"><strong>${sat.overall}</strong></td>
+            <td class="num muted">morale ${Math.round(w.state.morale)}</td>
+            <td class="muted" style="font-size:12px">Morale drifts toward this over time</td></tr>
+        </tbody>
+      </table></div>
+
+      <h2>What they want</h2>
+      <p class="sub">They will say anything above ${Math.round(threshold)} out loud. Below that they keep it to themselves.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Want</th><th>Strength</th><th>Would they say it</th><th>Because</th></tr></thead>
+        <tbody>${wants.length ? wants.map((want) => `<tr>
+          <td>${esc(REQUEST_LABEL[want.kind])}${want.targetId ? ` <span class="muted">(${esc(nameOf(want.targetId))})</span>` : ""}</td>
+          <td class="num">${Math.round(want.strength)}</td>
+          <td>${want.strength >= threshold ? '<span class="pill brass">Says it</span>' : '<span class="pill">Keeps it in</span>'}</td>
+          <td style="font-size:12px" class="muted">${want.reasons.map((r) => esc(r)).join("<br>")}</td>
+        </tr>`).join("") : '<tr><td colspan="4" class="empty">They want nothing in particular right now.</td></tr>'}</tbody>
+      </table></div>
 
       <h2>What they think they are worth</h2>
       <p class="sub">Read off their status. This is what the GM is measured against when a booking arrives.</p>
@@ -5293,9 +6106,101 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
     }
   };
 
+  // wrestling/js/ui/screens/requests.js
+  var STATUS_TONE = {
+    [REQUEST_STATUS.GRANTED]: "brass",
+    [REQUEST_STATUS.DENIED]: "",
+    [REQUEST_STATUS.IGNORED]: "grease"
+  };
+  function howToGrant(r) {
+    switch (r.kind) {
+      case REQUEST_KINDS.TITLE_SHOT:
+        return `Book them in a match for the ${getTitle(r.titleId)?.shortName || ""} title`;
+      case REQUEST_KINDS.FACE_RIVAL:
+      case REQUEST_KINDS.MATCH_WITH:
+        return `Book them against ${nameOf(r.targetId)}`;
+      case REQUEST_KINDS.TAG_WITH:
+        return `Book them in a tag match alongside ${nameOf(r.targetId)}`;
+      case REQUEST_KINDS.AVOID:
+        return `Keep them off the same match as ${nameOf(r.targetId)} for a show`;
+      case REQUEST_KINDS.MORE_SEGMENT_TIME:
+        return "Give them a match with a limit worth their standing";
+      case REQUEST_KINDS.MORE_TV_TIME:
+        return "Give them enough airtime on one show";
+      case REQUEST_KINDS.BETTER_ROLE:
+        return "Book them near the top of a card";
+      default:
+        return "";
+    }
+  }
+  var requests_default = {
+    label: "Requests",
+    render() {
+      if (!isLoaded()) return notLoaded();
+      const open = openRequests();
+      const resolved = allRequests().filter((r) => r.status !== REQUEST_STATUS.OPEN).sort((a, b) => (b.resolvedOnDay ?? 0) - (a.resolvedOnDay ?? 0)).slice(0, 12);
+      const rows = open.map((r) => {
+        const w = getWrestler(r.wrestlerId);
+        const sat = satisfactionOf(r.wrestlerId);
+        return `<tr>
+        <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}"><strong>${esc(w.name)}</strong></button>
+          <div class="muted" style="font-size:11px">${esc(titleCase(w.standing.careerStatus))}
+            ${w.standing.rank ? `&middot; #${w.standing.rank}` : ""}</div></td>
+        <td><span class="pill ${r.urgency >= 70 ? "grease" : ""}">${esc(REQUEST_LABEL[r.kind])}</span>
+          <div style="font-size:12px;margin-top:.25rem">${esc(r.text)}</div></td>
+        <td style="font-size:12px">${r.reasons.map((x) => esc(x)).join("<br>")}</td>
+        <td class="num">${r.urgency}${meter(r.urgency, 40)}
+          <div class="muted" style="font-size:11px">morale ${Math.round(w.state.morale)} &middot; sat ${sat.overall}</div></td>
+        <td style="font-size:12px" class="muted">${esc(howToGrant(r))}</td>
+        <td><button class="act danger" data-action="denyRequest" data-id="${r.id}">Tell them no</button></td>
+      </tr>`;
+      }).join("") || '<tr><td colspan="6" class="empty">Nobody is asking for anything. Run a show.</td></tr>';
+      const history = resolved.map((r) => `<tr>
+      <td>${esc(nameOf(r.wrestlerId))}</td>
+      <td>${esc(REQUEST_LABEL[r.kind])}${PERSON_KINDS.includes(r.kind) && r.targetId ? ` <span class="muted">(${esc(nameOf(r.targetId))})</span>` : ""}</td>
+      <td><span class="pill ${STATUS_TONE[r.status]}">${esc(titleCase(r.status))}</span></td>
+      <td class="num muted">d${r.resolvedOnDay ?? "-"}</td>
+    </tr>`).join("") || '<tr><td colspan="4" class="empty">Nothing settled yet.</td></tr>';
+      const counts = allRequests().reduce((acc, r) => {
+        acc[r.status] = (acc[r.status] || 0) + 1;
+        return acc;
+      }, {});
+      const unhappy = allWrestlers().map((w) => ({ w, sat: satisfactionOf(w.id) })).sort((a, b) => a.sat.overall - b.sat.overall).slice(0, 6).map(({ w, sat }) => `<tr>
+        <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}">${esc(w.name)}</button></td>
+        <td class="num ${sat.overall < 35 ? "neg" : ""}">${sat.overall}${meter(sat.overall, 35)}</td>
+        <td class="num">${Math.round(w.state.morale)}</td>
+        <td>${esc(DIMENSION_LABEL[sat.worst.key])} <span class="num neg">${Math.round(sat.worst.score)}</span></td>
+        <td style="font-size:12px" class="muted">${esc(sat.worst.reasons[0] || "")}</td>
+      </tr>`).join("");
+      return `
+      <h1>Requests</h1>
+      <p class="sub">${open.length} open &middot;
+        ${counts.granted || 0} granted, ${counts.denied || 0} refused, ${counts.ignored || 0} never answered.
+        Every one comes from the record, never from a dice roll.</p>
+
+      <div class="scroller"><table>
+        <thead><tr><th>Wrestler</th><th>Asking for</th><th>Because</th><th>Urgency</th><th>To say yes</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <h2>Unhappiest in the room</h2>
+      <div class="scroller"><table>
+        <thead><tr><th>Wrestler</th><th>Satisfaction</th><th>Morale</th><th>Worst of it</th><th>Why</th></tr></thead>
+        <tbody>${unhappy}</tbody>
+      </table></div>
+
+      <h2>Recently settled</h2>
+      <div class="scroller"><table>
+        <thead><tr><th>Wrestler</th><th>Asked for</th><th>Outcome</th><th>When</th></tr></thead>
+        <tbody>${history}</tbody>
+      </table></div>`;
+    }
+  };
+
   // wrestling/js/main.js
   registerScreen("roster", roster_default);
   registerScreen("show", show_default);
+  registerScreen("requests", requests_default);
   registerScreen("titles", titles_default);
   registerScreen("lockerroom", lockerroom_default);
   registerScreen("calendar", calendar_default);
@@ -5473,6 +6378,11 @@ label{font:400 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase
       if (!show) return toast("Nothing left on the calendar");
       go(`show/${show.id}`);
       refresh2(`${show.name}, ${getState().calendar.day} days in`);
+    },
+    denyRequest({ id }) {
+      const request = getRequest(id);
+      denyRequest(id, { reason: "Told no by the GM" });
+      refresh2(request ? `${nameOf(request.wrestlerId)} was told no` : "Refused");
     },
     // --- log ---------------------------------------------------------------
     filterLog({ value }) {

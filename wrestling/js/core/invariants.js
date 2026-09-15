@@ -13,15 +13,16 @@ import { typeOf } from './ids.js';
 import { WRESTLER_SHAPE_KEYS, validateWrestler, CAREER_STATUS, TRAJECTORY, TRAITS } from '../models/wrestler.js';
 import { validateRelationship } from '../models/relationship.js';
 import { isKnownMemoryType } from '../models/memory.js';
+import { validateRequest } from '../models/request.js';
 
 /** Containers that are allowed to hold whole entities. */
-const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles'];
+const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles', 'requests'];
 
 export function checkState(state) {
   const problems = [];
   if (!state || typeof state !== 'object') return ['state is not an object'];
 
-  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'log']) {
+  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'log']) {
     if (state[key] == null) problems.push(`state.${key} is missing`);
   }
   if (problems.length) return problems;
@@ -156,6 +157,15 @@ export function checkState(state) {
       problems.push(`event ${e.id} cites cause ${e.causeId}, which does not precede it`);
     }
   });
+
+  // --- requests point at real people and say why they exist ---
+  for (const r of Object.values(state.requests)) {
+    refMustExist(r.wrestlerId, wrestlerIds, `request ${r.id}`);
+    if (r.targetId) refMustExist(r.targetId, wrestlerIds, `request ${r.id} target`);
+    if (r.titleId) refMustExist(r.titleId, titleIds, `request ${r.id} title`);
+    if (r.resolvedBySegmentId) refMustExist(r.resolvedBySegmentId, segmentIds, `request ${r.id}`);
+    for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
+  }
 
   problems.push(...findDuplicateWrestlers(state));
   return problems;

@@ -48,6 +48,12 @@ export const EVENT_TYPES = Object.freeze({
   RANKING_UPDATED:     'ranking.updated',
   CONTENDER_CHANGED:   'contender.changed',
 
+  // --- what the roster wants ---
+  REQUEST_MADE:        'request.made',
+  REQUEST_GRANTED:     'request.granted',
+  REQUEST_DENIED:      'request.denied',
+  REQUEST_IGNORED:     'request.ignored',
+
   // --- shows and cards ---
   SHOW_CREATED:        'show.created',
   SHOW_STARTED:        'show.started',

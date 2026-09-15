@@ -33,12 +33,15 @@ import savesScreen from './ui/screens/saves.js';
 import { draft, setDraftFormat, setOverride, setDraftTitle } from './ui/screens/show.js';
 import titlesScreen from './ui/screens/titles.js';
 import lockerRoomScreen from './ui/screens/lockerroom.js';
+import requestsScreen from './ui/screens/requests.js';
+import { denyRequest as refuseRequest } from './systems/requests.js';
 import * as playback from './ui/playback.js';
 
 // Registration order is nav order, and nav order is the weekly loop:
 // look at the roster, book the show, run it, then move the calendar on.
 registerScreen('roster', rosterScreen);
 registerScreen('show', showScreen);
+registerScreen('requests', requestsScreen);
 registerScreen('titles', titlesScreen);
 registerScreen('lockerroom', lockerRoomScreen);
 registerScreen('calendar', calendarScreen);
@@ -248,6 +251,12 @@ registerActions({
     if (!show) return toast('Nothing left on the calendar');
     go(`show/${show.id}`);
     refresh(`${show.name}, ${store.getState().calendar.day} days in`);
+  },
+
+  denyRequest({ id }) {
+    const request = store.getRequest(id);
+    refuseRequest(id, { reason: 'Told no by the GM' });
+    refresh(request ? `${store.nameOf(request.wrestlerId)} was told no` : 'Refused');
   },
 
   // --- log ---------------------------------------------------------------

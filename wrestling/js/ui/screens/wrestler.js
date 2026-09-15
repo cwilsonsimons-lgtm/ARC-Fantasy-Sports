@@ -12,6 +12,9 @@ import {
   TRAITS, TRAIT_GROUPS, ABILITIES, CAREER_STATUS, TRAJECTORY, statusRank, CAREER_ORDER,
 } from '../../models/wrestler.js';
 import { refusalFloor, expectedMinutes, expectedSlot } from '../../systems/disposition.js';
+import { satisfactionOf, DIMENSIONS, DIMENSION_LABEL } from '../../systems/satisfaction.js';
+import { wantsOf, voiceThreshold } from '../../systems/requests.js';
+import { REQUEST_LABEL } from '../../models/request.js';
 import { reignsOf, championIds } from '../../models/title.js';
 import { AXES, describe as describeRelationship, isRival, isAlly, isEnemy } from '../../models/relationship.js';
 import { memoryTypeOf } from '../../models/memory.js';
@@ -30,6 +33,9 @@ export default {
     const held = store.titlesHeldBy(w.id);
     const reigns = reignsOf(store.getState().titles, w.id);
     const score = rankings.scoreFor(w.id);
+    const sat = satisfactionOf(w.id);
+    const threshold = voiceThreshold(w);
+    const wants = wantsOf(w.id);
 
     const kv = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
     const bar = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>${meter(v)}`;
@@ -125,6 +131,38 @@ export default {
           <div class="kv"><span class="muted" style="font-size:11px">Fields only. The contract system is not built.</span><span></span></div>
         </div>
       </div>
+
+      <h2>How they feel about it</h2>
+      <p class="sub">Six things they are separately judging you on. Morale settles toward the total.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Dimension</th><th>Score</th><th>Weight</th><th>Why</th></tr></thead>
+        <tbody>
+          ${DIMENSIONS.map((key) => `<tr>
+            <td>${esc(DIMENSION_LABEL[key])}</td>
+            <td class="num ${sat.dimensions[key].score < 35 ? 'neg' : sat.dimensions[key].score > 65 ? 'pos' : ''}">${Math.round(sat.dimensions[key].score)}${meter(sat.dimensions[key].score, 35)}</td>
+            <td class="num muted">${Math.round(sat.weights[key] * 100)}%</td>
+            <td style="font-size:12px" class="muted">${sat.dimensions[key].reasons.map((r) => esc(r)).join('<br>')}</td>
+          </tr>`).join('')}
+          <tr><td><strong>Overall</strong></td>
+            <td class="num"><strong>${sat.overall}</strong></td>
+            <td class="num muted">morale ${Math.round(w.state.morale)}</td>
+            <td class="muted" style="font-size:12px">Morale drifts toward this over time</td></tr>
+        </tbody>
+      </table></div>
+
+      <h2>What they want</h2>
+      <p class="sub">They will say anything above ${Math.round(threshold)} out loud. Below that they keep it to themselves.</p>
+      <div class="scroller"><table>
+        <thead><tr><th>Want</th><th>Strength</th><th>Would they say it</th><th>Because</th></tr></thead>
+        <tbody>${wants.length ? wants.map((want) => `<tr>
+          <td>${esc(REQUEST_LABEL[want.kind])}${want.targetId ? ` <span class="muted">(${esc(store.nameOf(want.targetId))})</span>` : ''}</td>
+          <td class="num">${Math.round(want.strength)}</td>
+          <td>${want.strength >= threshold
+            ? '<span class="pill brass">Says it</span>'
+            : '<span class="pill">Keeps it in</span>'}</td>
+          <td style="font-size:12px" class="muted">${want.reasons.map((r) => esc(r)).join('<br>')}</td>
+        </tr>`).join('') : '<tr><td colspan="4" class="empty">They want nothing in particular right now.</td></tr>'}</tbody>
+      </table></div>
 
       <h2>What they think they are worth</h2>
       <p class="sub">Read off their status. This is what the GM is measured against when a booking arrives.</p>

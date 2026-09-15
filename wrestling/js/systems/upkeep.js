@@ -7,6 +7,7 @@
 
 import * as store from '../core/store.js';
 import { EVENT_TYPES } from '../core/events.js';
+import { moraleTarget } from './satisfaction.js';
 
 /** Condition recovered per day. Durable wrestlers bounce back faster. */
 export function recoveryPerDay(wrestler) {
@@ -30,6 +31,34 @@ export const MOMENTUM_DECAY_PER_DAY = 1.5;
  * booking, which is the correct thing for the GM to have to do.
  */
 export const HOSTILITY_COOLING_PER_DAY = 0.35;
+
+/**
+ * How fast morale moves toward what a wrestler's situation actually justifies.
+ *
+ * Events still knock morale about in the moment - losing a title hurts the
+ * night it happens - but left alone it converges on their real satisfaction.
+ * That way morale has a cause you can point at rather than being a number that
+ * drifts wherever the last few events pushed it.
+ */
+export const MORALE_SETTLING_PER_DAY = 1.2;
+
+/**
+ * How fast a wrestler's view of the GM drifts back toward neutral.
+ *
+ * Deliberately slow - about a point a week. Without it trust and respect only
+ * ever fall, so a GM who has a bad month can never recover anybody's faith and
+ * the number sticks at zero where it stops carrying information. With it,
+ * sustained neglect still craters somebody, but stopping the neglect is worth
+ * something.
+ */
+export const GM_TIE_RECOVERY_PER_DAY = 0.15;
+export const GM_TIE_NEUTRAL = 50;
+
+function driftToward(value, target, amount) {
+  if (value === target) return value;
+  const step = Math.min(Math.abs(target - value), amount);
+  return value + Math.sign(target - value) * step;
+}
 
 export function decayMomentum(momentum, days) {
   const drop = MOMENTUM_DECAY_PER_DAY * days;
@@ -61,6 +90,17 @@ export function install() {
         patch.condition = next;
         recovered.push({ id: w.id, from: Math.round(w.state.condition), to: Math.round(next) });
       }
+      // Faith in the office heals slowly on its own.
+      const heal = GM_TIE_RECOVERY_PER_DAY * days;
+      w.ties.gm.trust = Math.round(driftToward(w.ties.gm.trust, GM_TIE_NEUTRAL, heal));
+      w.ties.gm.respect = Math.round(driftToward(w.ties.gm.respect, GM_TIE_NEUTRAL, heal));
+
+      const target = moraleTarget(w.id);
+      if (Math.abs(target - w.state.morale) > 1) {
+        const step = Math.min(Math.abs(target - w.state.morale), MORALE_SETTLING_PER_DAY * days);
+        patch.morale = w.state.morale + Math.sign(target - w.state.morale) * step;
+      }
+
       if (w.state.momentum !== 0) {
         const next = decayMomentum(w.state.momentum, days);
         patch.momentum = next;

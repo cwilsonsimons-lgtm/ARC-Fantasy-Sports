@@ -9,6 +9,7 @@ import * as rankings from './rankings.js';
 import * as titles from './titles.js';
 import * as relationships from './relationships.js';
 import * as gmRelations from './gmRelations.js';
+import * as requests from './requests.js';
 import * as upkeep from './upkeep.js';
 
 export function installSystems() {
@@ -19,5 +20,6 @@ export function installSystems() {
   rankings.install();       // ...and reshuffles the rankings, which sets contenders
   relationships.install();  // ...and changes how the people in it see each other
   gmRelations.install();    // what the GM's own decisions cost the GM
+  requests.install();       // ...and what the roster asks for as a result
   upkeep.install();         // between shows: condition back, momentum fading
 }

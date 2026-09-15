@@ -322,6 +322,7 @@ check('a v2 save migrates forward through every later schema', () => {
   const envelope = JSON.parse(persist.toJSON({ label: 'v2' }));
   envelope.schemaVersion = 2;
   delete envelope.state.titles;
+  envelope.state.requests = {};     // requests did not exist at v2 either
   for (const seg of Object.values(envelope.state.segments)) seg.titleId = null;
   for (const w of Object.values(envelope.state.wrestlers)) {
     w.standing.titleReigns = [{ titleId: 'ttl_0001', wonOnDay: 0 }];

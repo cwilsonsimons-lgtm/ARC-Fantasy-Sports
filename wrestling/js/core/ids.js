@@ -20,6 +20,7 @@ export const ID_TYPES = Object.freeze({
   event:         'ev',
   calendarEntry: 'cal',
   memory:        'mem',
+  request:       'req',
   // reserved for systems named in the design foundation but not yet built
   promise:       'pr',
   incident:      'inc',

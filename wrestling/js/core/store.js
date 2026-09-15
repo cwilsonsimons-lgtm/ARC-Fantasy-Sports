@@ -31,8 +31,9 @@ import { createRelationship, applyDeltas, AXES } from '../models/relationship.js
 import { createShow, SHOW_STATUS, bookedSeconds, actualSeconds } from '../models/show.js';
 import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment.js';
 import { createTitle as makeTitle, createReign, currentReign, championIds } from '../models/title.js';
+import { createRequest as makeRequest, REQUEST_STATUS, REQUEST_LABEL } from '../models/request.js';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -111,6 +112,7 @@ export function newGame({
     shows: {},
     segments: {},
     titles: {},
+    requests: {},
     log: [],
   };
 
@@ -136,6 +138,7 @@ export function installState(state, rngState, { seed } = {}) {
     ...Object.keys(state.shows),
     ...Object.keys(state.segments),
     ...Object.keys(state.titles || {}),
+    ...Object.keys(state.requests || {}),
     ...state.log.map((e) => e.id),
     ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
     ...state.calendar.entries.map((e) => e.id),
@@ -159,6 +162,7 @@ export function getWrestler(id) { return requireGame().wrestlers[id] || null; }
 export function getShow(id) { return requireGame().shows[id] || null; }
 export function getSegment(id) { return requireGame().segments[id] || null; }
 export function getTitle(id) { return requireGame().titles[id] || null; }
+export function getRequest(id) { return requireGame().requests[id] || null; }
 
 export function requireWrestler(id) {
   const w = getWrestler(id);
@@ -694,6 +698,78 @@ export function vacateTitle(titleId, { reason = '', cause = null } = {}) {
 /** Every title this wrestler currently holds. */
 export function titlesHeldBy(wrestlerId) {
   return allTitles().filter((t) => championIds(t).includes(wrestlerId));
+}
+
+// ---------------------------------------------------------------------------
+// What the roster is asking for
+// ---------------------------------------------------------------------------
+
+export function allRequests() {
+  return Object.values(requireGame().requests);
+}
+
+export function openRequests() {
+  return allRequests()
+    .filter((r) => r.status === REQUEST_STATUS.OPEN)
+    .sort((a, b) => b.urgency - a.urgency);
+}
+
+export function openRequestsFor(wrestlerId) {
+  return openRequests().filter((r) => r.wrestlerId === wrestlerId);
+}
+
+/** Somebody asks for something. */
+export function makeRequestFor(spec, { cause = null } = {}) {
+  const state = requireGame();
+  requireWrestler(spec.wrestlerId);
+  const request = makeRequest({ day: state.calendar.day, ...spec });
+  state.requests[request.id] = request;
+
+  emit(EVENT_TYPES.REQUEST_MADE, {
+    summary: request.text || `${nameOf(request.wrestlerId)} asks for ${REQUEST_LABEL[request.kind]}`,
+    actorId: request.wrestlerId,
+    subjects: [request.wrestlerId, request.targetId].filter(Boolean),
+    cause,
+    data: {
+      requestId: request.id, kind: request.kind, urgency: request.urgency,
+      targetId: request.targetId, titleId: request.titleId,
+      reasons: request.reasons,
+    },
+  });
+  return request;
+}
+
+/**
+ * Close a request. `outcome` is granted, denied or ignored, and which one it
+ * was matters more to the wrestler than what they asked for.
+ */
+export function resolveRequest(id, outcome, { segmentId = null, reason = '', cause = null } = {}) {
+  const state = requireGame();
+  const request = requireGame().requests[id];
+  if (!request || request.status !== REQUEST_STATUS.OPEN) return null;
+
+  request.status = outcome;
+  request.resolvedOnDay = state.calendar.day;
+  request.resolvedBySegmentId = segmentId;
+
+  const type = {
+    [REQUEST_STATUS.GRANTED]: EVENT_TYPES.REQUEST_GRANTED,
+    [REQUEST_STATUS.DENIED]: EVENT_TYPES.REQUEST_DENIED,
+    [REQUEST_STATUS.IGNORED]: EVENT_TYPES.REQUEST_IGNORED,
+  }[outcome];
+  if (!type) throw new Error(`resolveRequest: unknown outcome "${outcome}"`);
+
+  return emit(type, {
+    summary: reason || `${nameOf(request.wrestlerId)}: ${REQUEST_LABEL[request.kind]} ${outcome}`,
+    actorId: request.wrestlerId,
+    subjects: [request.wrestlerId, request.targetId].filter(Boolean),
+    segmentId,
+    cause,
+    data: {
+      requestId: request.id, kind: request.kind, outcome,
+      targetId: request.targetId, titleId: request.titleId, urgency: request.urgency,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

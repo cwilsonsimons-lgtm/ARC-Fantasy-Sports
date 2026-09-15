@@ -75,10 +75,13 @@ export const MIGRATIONS = {
       if (w.standing.rank === undefined) w.standing.rank = null;
       if (w.standing.rankPoints === undefined) w.standing.rankPoints = 0;
     }
-    // No titles existed at v2, so any titleId on a segment is a dangling
-    // reference by definition. Clear it rather than importing a broken link.
+    // No titles existed at v2, so any titleId anywhere is a dangling reference
+    // by definition. Clear them rather than importing broken links.
     for (const seg of Object.values(state.segments)) {
       seg.titleId = null;
+    }
+    for (const r of Object.values(state.requests || {})) {
+      r.titleId = null;
     }
     return state;
   },
@@ -142,6 +145,13 @@ export const MIGRATIONS = {
         };
       }
     }
+    return state;
+  },
+
+  // v5 -> v6: the roster can ask for things. Nothing to convert - a save
+  // written before requests existed simply has none.
+  5: (state) => {
+    state.requests = state.requests || {};
     return state;
   },
 };

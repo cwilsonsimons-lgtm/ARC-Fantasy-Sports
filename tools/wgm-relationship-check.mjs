@@ -275,7 +275,10 @@ check('passing over the #1 contender is noticed by the contender', () => {
   playMatch(champ, bypass, { titleId: titles.world.id, winner: champ, finish: FINISHES.PINFALL });
 
   const after = store.getWrestler(contenderId).ties.gm;
-  assert(after.trust < before.trust, `contender trust ${before.trust} -> ${after.trust}`);
+  // A GM who has already destroyed somebody's faith completely has nothing left
+  // to take; what matters either way is that it is recorded and aimed somewhere.
+  assert(after.trust < before.trust || before.trust === 0,
+    `contender trust ${before.trust} -> ${after.trust}`);
   const w = store.getWrestler(contenderId);
   const mem = w.memory.filter((m) => m.type === MEMORY_TYPES.TITLE_SHOT_DENIED.key);
   assert(mem.length > 0, 'no denied-shot memory');

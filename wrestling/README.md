@@ -11,10 +11,11 @@ persistence, event log, navigation) and **Tier 1**, the basic GM backbone:
 
 Plus **Tier 3** (records, rankings, championships and momentum), **Tier 4**
 (personality, career status, and the judgement of what behaviour is believable)
-and **Tier 5** (relationships, the GM's own standing, and memory).
+**Tier 5** (relationships, the GM's own standing, and memory) and **Tier 6**
+(morale, satisfaction, and the requests they produce).
 
-Nobody acts on any of it yet. Nothing goes wrong backstage, nobody refuses a
-match or comes to your office. The locker room has opinions and no voice.
+The locker room now has a voice. It still cannot act: nobody refuses a booking,
+and nothing goes wrong backstage.
 
 ## Running it
 
@@ -22,7 +23,7 @@ match or comes to your office. The locker room has opinions and no voice.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 140 headless checks across six suites
+npm run check:wgm         # 167 headless checks across seven suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -162,6 +163,7 @@ js/models/       pure entity factories and derived reads
   title.js       a championship as its lineage of reigns
   relationship.js four axes, a history, and one phrase to describe them
   memory.js      the closed vocabulary of what can be remembered
+  request.js     an ask with an ID, a life, and its reasons attached
 
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
@@ -172,6 +174,8 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   disposition.js how a wrestler regards a booking, with its working. Pure.
   relationships.js what a match does to how the people in it see each other
   gmRelations.js what the GM's own decisions cost the GM
+  satisfaction.js six things they judge you on, and what morale settles toward
+  requests.js    what they want, whether they would say it, and what it costs
   rankings.js    the ranked table, computed from results, with its working
   titles.js      title changes, defences and #1 contenders
   upkeep.js      condition recovery and momentum fade between shows
@@ -338,13 +342,65 @@ betrayal, saves, broken promises and suspensions.
 Memory is capped at 60 per wrestler. Beyond that the lightest ordinary memories
 are dropped, which is roughly what forgetting is. Scars are never pruned.
 
+## Morale, wants and requests
+
+### Morale has a cause now
+
+Morale used to be a number that events nudged. That is backwards: a wrestler is
+not unhappy because something bad happened three weeks ago, they are unhappy
+because of where they stand today. Six dimensions are computed from the world,
+each showing its working:
+
+| Dimension | Judged on |
+|---|---|
+| How they are booked | Appearances against what their standing expects, and win rate |
+| Television time | Minutes on the air against what they think they are worth |
+| Their spot on the card | Average card position, and their rank against their status |
+| Championship prospects | Which belt they can plausibly chase, and how close they are |
+| What they are paid | Salary against others at the same level, and time left on the deal |
+| Standing with you and the room | Trust, respect, allies, enemies, grievances |
+
+The dimensions are weighted per person: an ambitious wrestler cares more about
+championships, a big ego about pay and position. Morale then settles toward the
+total over time, so events still sting in the moment but the number converges on
+something you can point at.
+
+### Requests come from the record, never from a dice roll
+
+Two gates stand between wanting something and asking for it. **Strength** is how
+much the world justifies the ask, computed purely from state. **Voice** is
+whether this person would say it out loud, which is the Tier 4 rule again: a
+rookie speaks at 66, a superstar at 25.
+
+Eight kinds: a title shot, more television time, longer matches, a better spot
+on the card, a match with somebody, to settle it with a rival, to be kept away
+from somebody, and a tag team partner.
+
+Every request carries its reasons, and they are real. In testing: "Sable Okonkwo
+wants a match with Iris Delacroix" because "Delacroix had a fistful of tights and
+the referee never saw it". "Trent Mabry wants a match with Damien Croft" because
+"Croft beat me in forty seconds and did not bother learning my name". Those are
+memories from months earlier, surfacing as demands.
+
+Personality decides the shape of the ask. Somebody with heat and aggression asks
+to face their rival; somebody with the same heat and no fight in them asks to be
+kept away from them instead.
+
+### There is no Grant button
+
+A request is granted by booking the thing they asked for, so the GM's answer and
+the GM's card are the same act. You can refuse to somebody's face, which costs
+about half what silence costs. Letting it sit until the show passes is the worst
+of the three and the one they remember longest, and being ignored makes them ask
+again louder rather than giving up.
+
 ## What is deliberately not here
 
-No pitch step, so the disposition model is read-only and nobody actually turns
-a match down. Nobody comes to your office about a grievance they are carrying.
-No backstage locations or incidents, no live levers to fill dead air, no
-promises, contracts, budget, GM progression or competing brands. Betrayals and
-saves have memory types and no way to happen.
+No pitch step, so the disposition model is still read-only and nobody actually
+turns a match down. No backstage locations or incidents, no live levers to fill
+dead air, no promises the GM can make, no contract negotiation, no budget, no GM
+progression, no competing brands. Betrayals and saves have memory types and no
+way to happen.
 
 The data model has the fields and the event log has the vocabulary for all of
 it. `results.js` is where reactions will hook in, because it already sees every

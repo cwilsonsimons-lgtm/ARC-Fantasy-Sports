@@ -38,6 +38,11 @@ export const MEMORY_TYPES = Object.freeze({
   PROMISE_BROKEN:   { key: 'gm_promise_broken', weight: 85, floor: 55, decayPerDay: 0.1, scar: true },
   SUSPENSION:       { key: 'suspension',       weight: 80, floor: 40, decayPerDay: 0.15, scar: true },
 
+  // --- asking for things ---
+  REQUEST_GRANTED:  { key: 'request_granted',  weight: 58, floor: 20, decayPerDay: 0.3 },
+  REQUEST_DENIED:   { key: 'request_denied',   weight: 55, floor: 18, decayPerDay: 0.3 },
+  REQUEST_IGNORED:  { key: 'request_ignored',  weight: 72, floor: 32, decayPerDay: 0.18 },
+
   // --- between wrestlers ---
   BETRAYAL:         { key: 'betrayal',         weight: 95, floor: 60, decayPerDay: 0.05, scar: true },
   SAVE:             { key: 'save',             weight: 80, floor: 40, decayPerDay: 0.12, scar: true },
@@ -91,6 +96,8 @@ export const GRUDGE_TYPES = Object.freeze([
 
 /** Memories about the GM rather than another wrestler. */
 export const GM_MEMORY_TYPES = Object.freeze([
+  MEMORY_TYPES.REQUEST_GRANTED.key, MEMORY_TYPES.REQUEST_DENIED.key,
+  MEMORY_TYPES.REQUEST_IGNORED.key,
   MEMORY_TYPES.CUT_FROM_SHOW.key, MEMORY_TYPES.OVERLOOKED.key,
   MEMORY_TYPES.PROMISE_KEPT.key, MEMORY_TYPES.PROMISE_BROKEN.key,
   MEMORY_TYPES.SUSPENSION.key, MEMORY_TYPES.TITLE_SHOT.key,
