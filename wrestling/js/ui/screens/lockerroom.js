@@ -14,7 +14,7 @@ import { esc, signed, toneOf, meter, titleCase } from '../format.js';
 import { notLoaded } from './roster.js';
 
 /** Every pair with heat, counted once, hottest first. */
-function rivalries() {
+export function rivalries() {
   const seen = new Set();
   const out = [];
   for (const w of store.allWrestlers()) {

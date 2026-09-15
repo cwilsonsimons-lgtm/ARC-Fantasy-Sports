@@ -21,7 +21,7 @@ import * as rankings from './systems/rankings.js';
 import { formatOf, slotsFor, autoName } from './systems/formats.js';
 import {
   registerScreen, registerActions, bindEvents, render, go, toast,
-  renderHeader, setWhenFormatter,
+  renderHeader, setWhenFormatter, setChipProvider, chip,
 } from './ui/shell.js';
 
 import rosterScreen from './ui/screens/roster.js';
@@ -36,6 +36,7 @@ import lockerRoomScreen from './ui/screens/lockerroom.js';
 import requestsScreen from './ui/screens/requests.js';
 import { denyRequest as refuseRequest } from './systems/requests.js';
 import * as playback from './ui/playback.js';
+import { setRailText, setRailOnly } from './ui/rosterRail.js';
 
 // Registration order is nav order, and nav order is the weekly loop:
 // look at the roster, book the show, run it, then move the calendar on.
@@ -51,6 +52,31 @@ registerScreen('wrestler', wrestlerScreen);
 
 setWhenFormatter((state) =>
   `${clock.formatDate(state.calendar)} · ${clock.formatGameTime(state.calendar.day)}`);
+
+// The status chips. Every one is a number the game really keeps.
+setChipProvider((state) => {
+  const roster = store.allWrestlers();
+  const morale = roster.length
+    ? Math.round(roster.reduce((t, w) => t + w.state.morale, 0) / roster.length) : 0;
+  const open = store.openRequests().length;
+  const heldTitles = store.allTitles().filter((t) => t.lineage.some((r) => r.lostOnDay == null)).length;
+  const day = state.calendar.day;
+
+  return [
+    chip({ icon: 'roster', value: roster.length, caption: 'Roster' }),
+    chip({
+      icon: 'morale', tone: morale >= 55 ? 'green' : morale >= 35 ? 'amber' : '',
+      value: morale, caption: 'Locker room',
+    }),
+    chip({ icon: 'belt', tone: 'amber', value: `${heldTitles}/${store.allTitles().length}`, caption: 'Titles held' }),
+    chip({ icon: 'mail', tone: open ? 'violet' : '', value: open, caption: 'Requests', badge: open || null }),
+    chip({
+      icon: 'cal',
+      value: `Week ${clock.weekOf(day)}`,
+      caption: clock.formatDate(state.calendar, day),
+    }),
+  ].join('');
+});
 
 /** Re-render the current screen and the header after anything that moves the world. */
 function refresh(message) {
@@ -142,6 +168,16 @@ registerActions({
   },
 
   // --- booking -----------------------------------------------------------
+  railSearch({ value }) {
+    setRailText(value);
+    render();
+  },
+
+  railOnly({ arg }) {
+    setRailOnly(arg);
+    render();
+  },
+
   changeFormat({ value }) {
     setDraftFormat(value);
     render();

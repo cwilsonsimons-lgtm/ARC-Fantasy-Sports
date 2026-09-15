@@ -14,6 +14,8 @@ import { regardSegment, RESPONSE, RESPONSE_LABEL } from '../../systems/dispositi
 import * as playback from '../playback.js';
 import { esc, mmss, signedTime, titleCase } from '../format.js';
 import { notLoaded } from './roster.js';
+import { rosterRailHtml } from '../rosterRail.js';
+import { rivalries } from './lockerroom.js';
 
 /** Booking form draft. Kept here so changing the format does not lose the rest. */
 export const draft = { format: 'singles', overrideSide: '', titleId: '' };
@@ -93,34 +95,75 @@ function resultCell(segment) {
 // Booking
 // ---------------------------------------------------------------------------
 
+/** Five blocks of heat, the way a feud reads at a glance. */
+function heatBars(heat) {
+  const on = Math.round(heat / 20);
+  return `<span class="heat"><span class="heatbars">${
+    [0, 1, 2, 3, 4].map((i) => `<i class="${i < on ? 'on' : ''}"></i>`).join('')
+  }</span><span class="heatval">${heat}</span></span>`;
+}
+
+function feudsPanel() {
+  const feuds = rivalries().slice(0, 4).map(({ a, b, heat, ab, ba }) => `
+    <div class="slot" style="border-left:3px solid var(--red)">
+      <span class="what">
+        <span class="t">${esc(a.name)} <span class="muted">vs</span> ${esc(b.name)}</span>
+        <span class="d">${esc((ab.history.slice(-1)[0] || ba.history.slice(-1)[0] || {}).summary || 'Bad blood')}</span>
+      </span>
+      <span class="side">${heatBars(heat)}</span>
+    </div>`).join('');
+
+  return `<section class="panel">
+    <div class="head">
+      <span class="title">Active Feuds</span>
+      <button class="act" data-action="go" data-arg="lockerroom">View all</button>
+    </div>
+    <div class="body">
+      <div class="sheet">${feuds || '<p class="empty">No feuds yet. Book people against each other more than once.</p>'}</div>
+    </div>
+  </section>`;
+}
+
 function renderBooking(show) {
+  const state = store.getState();
   const segments = store.segmentsOfShow(show.id);
   const outlook = booking.cardOutlook(show.id);
   const format = formatOf(draft.format);
   const isMatch = format.kind === SEGMENT_KINDS.MATCH;
 
-  // Someone already in a match cannot be in another, but can still talk.
   const pool = isMatch ? booking.availableFor(show.id) : store.allWrestlers();
-  const options = pool.map((w) =>
-    `<option value="${w.id}">${esc(w.name)}</option>`).join('');
 
-  const slots = slotsFor(draft.format).map((slot, i) => `
-    <div class="field">
+  // Each slot pre-selects a DIFFERENT wrestler, so an untouched four-slot tag
+  // form is already a legal booking rather than one man against himself.
+  const slots = slotsFor(draft.format).map((slot, i) => {
+    const preferred = pool[i % Math.max(1, pool.length)]?.id;
+    const options = pool.map((w) =>
+      `<option value="${w.id}"${w.id === preferred ? ' selected' : ''}>${esc(w.name)}</option>`).join('');
+    return `<div class="field">
       <label for="slot${i}">${esc(slot.label)}</label>
       <select id="slot${i}" name="slot${i}" data-side="${slot.side}">${options}</select>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
-  const rows = segments.map((seg, i) => `
-    <tr>
-      <td class="num muted">${i + 1}</td>
-      <td><span class="pill">${esc(formatOf(seg.format).label)}</span></td>
-      <td>${esc(seg.name || '-')}${titlePill(seg)}<div style="font-size:12px">${lineup(seg)}</div></td>
-      <td class="num">${mmss(seg.timeLimitSec)}</td>
-      <td>${reactionPill(seg, i, segments.length)}</td>
-      <td><button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="empty">Nothing booked yet.</td></tr>';
+  // ---- the card as a run sheet ----
+  const sheet = segments.map((seg, i) => {
+    const views = regardSegment(seg, { cardIndex: i, cardLength: segments.length });
+    const worst = views.sort((a, b) => a.willingness - b.willingness)[0];
+    return `<div class="slot">
+      <span class="idx">${i + 1}</span>
+      <span class="what">
+        <span class="t">${esc(seg.name || formatOf(seg.format).label)}${titlePill(seg)}</span>
+        <span class="d">${lineup(seg)}</span>
+      </span>
+      <span class="side">
+        <span class="tag">${esc(formatOf(seg.format).label)}</span>
+        ${worst ? `<span class="tag ${RESPONSE_TONE[worst.likely] === 'grease' ? 'red' : ''}">${esc(RESPONSE_LABEL[worst.likely])}</span>` : ''}
+        <span class="time">${mmss(seg.timeLimitSec)}</span>
+        <button class="act danger" data-action="cutSegment" data-id="${seg.id}">Cut</button>
+      </span>
+    </div>`;
+  }).join('') || '<p class="empty">Nothing booked yet.</p>';
 
-  // Everyone on tonight's card who is less than happy about their spot.
   const unhappy = segments.flatMap((seg, i) =>
     regardSegment(seg, { cardIndex: i, cardLength: segments.length })
       .filter((v) => v.likely !== RESPONSE.ACCEPT)
@@ -128,97 +171,164 @@ function renderBooking(show) {
     .sort((a, b) => a.v.willingness - b.v.willingness);
 
   const gap = outlook.expectedGapSec;
-  const gapTone = Math.abs(gap) < 180 ? 'pos' : 'neg';
+  const grade = gradeGuess(outlook);
 
   return `
-    ${header(show)}
+  <div class="cols three">
+    <div>${rosterRailHtml()}</div>
 
-    <div class="cards">
-      <div class="card"><h3>The hour</h3>
-        <div class="kv"><span>Budget</span><span>${mmss(outlook.budgetSec)}</span></div>
-        <div class="kv"><span>Booked as limits</span><span>${mmss(outlook.bookedSec)}</span></div>
-        <div class="kv"><span>Expected to fill</span><span>${mmss(outlook.expectedSec)}</span></div>
-        <div class="kv"><span>${gap >= 0 ? 'Likely dead air' : 'Likely overrun'}</span>
-          <span class="${gapTone}">${mmss(Math.abs(gap))}</span></div>
-      </div>
-      ${store.allTitles().length ? `<div class="card"><h3>Championships</h3>
-        ${store.allTitles().map((t) => {
-          const holders = championIds(t);
-          const contender = t.contenderId ? store.getWrestler(t.contenderId) : null;
-          return `<div class="kv"><span>${esc(t.shortName)}</span><span>${holders.length ? esc(holders.map(store.nameOf).join(' & ')) : '<span class="neg">vacant</span>'}</span></div>
-            ${contender ? `<div class="kv"><span class="muted" style="font-size:11px">#1 contender</span><span class="muted" style="font-size:11px">${esc(contender.name)} (#${contender.standing.rank})</span></div>` : ''}`;
-        }).join('')}
-      </div>` : ''}
-      <div class="card"><h3>Read this before you book</h3>
-        <p style="font-size:12px;margin:0">A time limit is a ceiling, not a plan. Most matches end
-        well before theirs, so a card booked to exactly fill the hour will leave you short.
-        Book past the budget.</p>
-      </div>
+    <div>
+      <section class="panel">
+        <div class="head">
+          <span class="title">Book a Segment</span>
+          <span class="meta">${segments.length} of 8 on the card</span>
+        </div>
+        <div class="body">
+          <form data-action="bookSegment" data-show="${show.id}">
+            <div class="bar">
+              <div class="field wide"><label for="segFormat">Format</label>
+                <select id="segFormat" data-action="changeFormat">
+                  <optgroup label="Matches">
+                    ${MATCH_FORMATS.map((k) => `<option value="${k}"${k === draft.format ? ' selected' : ''}>${esc(FORMATS[k].label)}</option>`).join('')}
+                  </optgroup>
+                  <optgroup label="Segments">
+                    ${SEGMENT_FORMATS.map((k) => `<option value="${k}"${k === draft.format ? ' selected' : ''}>${esc(FORMATS[k].label)}</option>`).join('')}
+                  </optgroup>
+                </select></div>
+              ${isMatch ? `<div class="field wide"><label for="segTitle">Title / stakes</label>
+                <select id="segTitle" data-action="changeTitle">
+                  <option value="">None</option>
+                  ${store.allTitles().map((t) => {
+                    const holders = championIds(t);
+                    const who = holders.length ? holders.map(store.nameOf).join(' & ') : 'vacant';
+                    return `<option value="${t.id}"${t.id === draft.titleId ? ' selected' : ''}>${esc(t.shortName)} (${esc(who)})</option>`;
+                  }).join('')}
+                </select></div>` : ''}
+            </div>
+            <div class="bar">
+              ${slots}
+              <div class="field" style="flex:0 1 8rem"><label for="segLimit">Time limit</label>
+                <input id="segLimit" name="limit" type="number" min="1" max="60" value="${Math.round(format.defaultLimitSec / 60)}"></div>
+            </div>
+            <div class="bar" style="margin-bottom:0">
+              <div class="field wide"><label for="segName">Name (optional)</label>
+                <input id="segName" name="name" placeholder="auto"></div>
+              <button class="act primary" type="submit"${pool.length ? '' : ' disabled'}>Add to Show</button>
+            </div>
+          </form>
+          ${isMatch && pool.length < slotsFor(draft.format).length
+            ? '<p class="neg" style="margin:.7rem 0 0">Not enough wrestlers left who are not already in a match tonight.</p>' : ''}
+        </div>
+      </section>
+
+      ${feudsPanel()}
+
+      <section class="panel">
+        <div class="head">
+          <span class="title">Current Show Card</span>
+          <span class="meta">${mmss(outlook.bookedSec)} booked</span>
+        </div>
+        <div class="body"><div class="sheet">${sheet}</div></div>
+      </section>
+
+      ${unhappy.length ? `<section class="panel">
+        <div class="head">
+          <span class="title">How the locker room is taking it</span>
+          <span class="meta">${unhappy.length} unhappy</span>
+        </div>
+        <div class="body"><div class="scroller"><table>
+          <thead><tr><th>Wrestler</th><th>Segment</th><th>Response</th><th>Why</th></tr></thead>
+          <tbody>${unhappy.map(({ v, seg }) => {
+            const w = store.getWrestler(v.wrestlerId);
+            const top = v.reasons.filter((r) => r.delta < -2).slice(0, 3);
+            return `<tr>
+              <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}">${esc(w.name)}</button>
+                <div class="muted" style="font-size:11px">${esc(titleCase(w.standing.careerStatus))}</div></td>
+              <td class="muted">${esc(seg.name || formatOf(seg.format).label)}</td>
+              <td><span class="tag ${RESPONSE_TONE[v.likely] === 'grease' ? 'red' : 'amber'}">${esc(RESPONSE_LABEL[v.likely])}</span>
+                <div class="muted num" style="font-size:11px">${v.willingness}${v.heldUpByStanding ? ` (wants ${v.raw})` : ''}</div></td>
+              <td style="font-size:12px">${top.map((r) => `${esc(r.text)} <span class="neg num">${r.delta}</span>`).join('<br>')}
+                ${v.heldUpByStanding ? '<br><span class="muted">Has no standing to refuse, whatever they think of it.</span>' : ''}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div></div>
+      </section>` : ''}
     </div>
 
-    <div class="bar">
-      <button class="act primary" data-action="goLive" data-id="${show.id}"${segments.length ? '' : ' disabled'}>
-        Go live${segments.length ? '' : ' (nothing booked)'}</button>
-      <button class="act" data-action="go" data-arg="calendar">Calendar</button>
+    <div>
+      <section class="panel">
+        <div class="head">
+          <span class="title">Upcoming Show</span>
+          <span class="meta">${daysAway(show)}</span>
+        </div>
+        <div class="body">
+          <div class="showart">
+            <div class="kicker">${esc(state.meta.brandName)}</div>
+            <div class="big">${esc(show.name)}</div>
+          </div>
+          <div class="kv"><span>${clock.formatDate(state.calendar, show.day)}</span><span>${show.kind.toUpperCase()}</span></div>
+          <div class="cards" style="grid-template-columns:1fr 1fr;gap:.5rem;margin:.7rem 0 0">
+            <div class="card" style="padding:.6rem"><h3>Booked</h3>
+              <div class="num" style="font-size:1.2rem">${mmss(outlook.bookedSec)}</div>
+              <div class="muted" style="font-size:11px">of ${mmss(outlook.budgetSec)}</div></div>
+            <div class="card" style="padding:.6rem"><h3>Likely fill</h3>
+              <div class="num" style="font-size:1.2rem">${mmss(outlook.expectedSec)}</div>
+              <div class="muted ${Math.abs(gap) < 180 ? 'pos' : 'neg'}" style="font-size:11px">${gap >= 0 ? `${mmss(gap)} short` : `${mmss(-gap)} over`}</div></div>
+            <div class="card" style="padding:.6rem"><h3>Projected</h3>
+              <div class="num ${grade.tone}" style="font-size:1.2rem">${grade.label}</div>
+              <div class="muted" style="font-size:11px">if it runs as booked</div></div>
+            <div class="card" style="padding:.6rem"><h3>Segments</h3>
+              <div class="num" style="font-size:1.2rem">${segments.length}</div>
+              <div class="muted" style="font-size:11px">${segments.filter((s) => s.kind === 'match').length} matches</div></div>
+          </div>
+          <div class="bar" style="margin:.8rem 0 0">
+            <button class="act primary" data-action="goLive" data-id="${show.id}"${segments.length ? '' : ' disabled'}>
+              ${segments.length ? 'Go live' : 'Nothing booked'}</button>
+            <button class="act" data-action="go" data-arg="calendar">Calendar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="head"><span class="title">Championships</span></div>
+        <div class="body">
+          ${store.allTitles().map((t) => {
+            const holders = championIds(t);
+            const contender = t.contenderId ? store.getWrestler(t.contenderId) : null;
+            return `<div class="kv"><span>${esc(t.shortName)}</span><span>${holders.length ? esc(holders.map(store.nameOf).join(' & ')) : '<span class="neg">vacant</span>'}</span></div>
+              ${contender ? `<div class="kv"><span class="muted" style="font-size:11px">#1 contender</span><span class="muted" style="font-size:11px">${esc(contender.name)} (#${contender.standing.rank})</span></div>` : ''}`;
+          }).join('')}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="head"><span class="title">Before you book</span></div>
+        <div class="body">
+          <p style="font-size:.8rem;color:var(--muted);margin:0">A time limit is a ceiling, not a plan.
+          Most matches end well before theirs, so a card booked to exactly fill the hour leaves you short.
+          Book past the budget.</p>
+        </div>
+      </section>
     </div>
+  </div>`;
+}
 
-    <h2>The card</h2>
-    <div class="scroller"><table>
-      <thead><tr><th>#</th><th>Format</th><th>Segment</th><th>Limit</th><th>Taking it</th><th></th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
+/** A rough letter for how the card looks before anybody wrestles. */
+function gradeGuess(outlook) {
+  const fill = outlook.expectedSec / outlook.budgetSec;
+  const miss = Math.abs(1 - fill);
+  const score = Math.max(0, 100 - miss * 120);
+  if (score >= 82) return { label: 'A-', tone: 'pos' };
+  if (score >= 70) return { label: 'B+', tone: 'pos' };
+  if (score >= 55) return { label: 'B-', tone: '' };
+  if (score >= 38) return { label: 'C', tone: '' };
+  return { label: 'D', tone: 'neg' };
+}
 
-    ${unhappy.length ? `
-    <h2>How the locker room is taking it</h2>
-    <p class="sub">Nobody acts on this yet. It is what they think, and what they would say if asked.</p>
-    <div class="scroller"><table>
-      <thead><tr><th>Wrestler</th><th>Segment</th><th>Response</th><th>Why</th></tr></thead>
-      <tbody>${unhappy.map(({ v, seg }) => {
-        const w = store.getWrestler(v.wrestlerId);
-        const top = v.reasons.filter((r) => r.delta < -2).slice(0, 3);
-        return `<tr>
-          <td><button class="rowlink" data-action="go" data-arg="wrestler/${w.id}">${esc(w.name)}</button>
-            <div class="muted" style="font-size:11px">${esc(titleCase(w.standing.careerStatus))}</div></td>
-          <td class="muted">${esc(seg.name || formatOf(seg.format).label)}</td>
-          <td><span class="pill ${RESPONSE_TONE[v.likely]}">${esc(RESPONSE_LABEL[v.likely])}</span>
-            <div class="muted num" style="font-size:11px">${v.willingness}${v.heldUpByStanding ? ` (wants ${v.raw})` : ''}</div></td>
-          <td style="font-size:12px">${top.map((r) => `${esc(r.text)} <span class="neg num">${r.delta}</span>`).join('<br>')}
-            ${v.heldUpByStanding ? '<br><span class="muted">Has no standing to refuse, whatever they think of it.</span>' : ''}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>` : ''}
-
-    <h2>Book a segment</h2>
-    <form data-action="bookSegment" data-show="${show.id}">
-      <div class="bar">
-        <div class="field"><label for="segFormat">Format</label>
-          <select id="segFormat" data-action="changeFormat">
-            <optgroup label="Matches">
-              ${MATCH_FORMATS.map((k) => `<option value="${k}"${k === draft.format ? ' selected' : ''}>${esc(FORMATS[k].label)}</option>`).join('')}
-            </optgroup>
-            <optgroup label="Segments">
-              ${SEGMENT_FORMATS.map((k) => `<option value="${k}"${k === draft.format ? ' selected' : ''}>${esc(FORMATS[k].label)}</option>`).join('')}
-            </optgroup>
-          </select></div>
-        ${slots}
-        ${isMatch ? `<div class="field"><label for="segTitle">For the title</label>
-          <select id="segTitle" data-action="changeTitle">
-            <option value="">No title</option>
-            ${store.allTitles().map((t) => {
-              const holders = championIds(t);
-              const who = holders.length ? holders.map(store.nameOf).join(' & ') : 'vacant';
-              return `<option value="${t.id}"${t.id === draft.titleId ? ' selected' : ''}>${esc(t.shortName)} (${esc(who)})</option>`;
-            }).join('')}
-          </select></div>` : ''}
-        <div class="field"><label for="segLimit">Limit (min)</label>
-          <input id="segLimit" name="limit" type="number" min="1" max="60" value="${Math.round(format.defaultLimitSec / 60)}" size="4"></div>
-        <div class="field"><label for="segName">Name (optional)</label>
-          <input id="segName" name="name" placeholder="auto" size="16"></div>
-        <button class="act primary" type="submit"${pool.length ? '' : ' disabled'}>Add to card</button>
-      </div>
-    </form>
-    ${isMatch && pool.length < slotsFor(draft.format).length
-      ? '<p class="neg">Not enough wrestlers left who are not already in a match tonight.</p>' : ''}`;
+function daysAway(show) {
+  const n = show.day - store.today();
+  if (n <= 0) return 'Tonight';
+  return n === 1 ? 'Tomorrow' : `In ${n} days`;
 }
 
 // ---------------------------------------------------------------------------

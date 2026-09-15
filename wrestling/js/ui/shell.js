@@ -56,25 +56,58 @@ function renderTabs(active) {
     ).join('');
 }
 
-/** Refresh the persistent header. Called after anything that moves the world. */
+/* Small inline icons for the status chips. Drawn here rather than loaded,
+   because the page has to work with no network at all. */
+const ICONS = {
+  roster: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  morale: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>',
+  belt: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+};
+
+function chip({ icon, tone = '', value, caption, badge }) {
+  return `<div class="chip">
+    <span class="ico ${tone}">${ICONS[icon] || ''}</span>
+    <span><span class="val">${escapeText(value)}</span><span class="cap">${escapeText(caption)}</span></span>
+    ${badge ? `<span class="badge">${escapeText(badge)}</span>` : ''}
+  </div>`;
+}
+
+function escapeText(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+/**
+ * Refresh the persistent header.
+ *
+ * The chips show things the game actually tracks. There is no budget or
+ * attendance system, so there are no budget or attendance chips: a number with
+ * nothing behind it would be worse than an empty corner.
+ */
 export function renderHeader(state) {
   const brand = document.getElementById('brandName');
   const gm = document.getElementById('gmName');
-  const when = document.getElementById('when');
+  const chips = document.getElementById('chips');
   if (!state) {
     brand.textContent = 'Wrestling GM';
     gm.textContent = 'no game loaded';
-    when.textContent = '';
+    chips.innerHTML = '';
     return;
   }
   brand.textContent = state.meta.brandName;
-  gm.textContent = `${state.meta.gmName} - ${state.meta.mode}`;
-  when.textContent = headerWhen(state);
+  gm.textContent = `${state.meta.gmName} · ${state.meta.mode}`;
+  chips.innerHTML = chipProvider(state);
 }
+
+let chipProvider = () => '';
+export function setChipProvider(fn) { chipProvider = fn; }
+export { chip };
 
 let whenFormatter = () => '';
 export function setWhenFormatter(fn) { whenFormatter = fn; }
-function headerWhen(state) { return whenFormatter(state); }
 
 let toastTimer;
 export function toast(message) {
@@ -101,6 +134,20 @@ export function bindEvents() {
     e.preventDefault();
     const fn = actions.get(form.dataset.action);
     if (fn) fn(form.dataset, form);
+  });
+  // Typing re-renders, so put the caret back where it was afterwards.
+  document.addEventListener('input', (e) => {
+    const el = e.target.closest('input[data-action]');
+    if (!el) return;
+    const fn = actions.get(el.dataset.action);
+    if (!fn) return;
+    const { id, selectionStart } = el;
+    fn({ ...el.dataset, value: el.value }, el);
+    const next = id && document.getElementById(id);
+    if (next) {
+      next.focus();
+      try { next.setSelectionRange(selectionStart, selectionStart); } catch { /* not a text input */ }
+    }
   });
   document.addEventListener('change', (e) => {
     const el = e.target.closest('[data-action]');
