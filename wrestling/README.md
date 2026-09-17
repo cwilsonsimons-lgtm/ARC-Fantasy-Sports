@@ -11,11 +11,12 @@ persistence, event log, navigation) and **Tier 1**, the basic GM backbone:
 
 Plus **Tier 3** (records, rankings, championships and momentum), **Tier 4**
 (personality, career status, and the judgement of what behaviour is believable)
-**Tier 5** (relationships, the GM's own standing, and memory) and **Tier 6**
-(morale, satisfaction, and the requests they produce).
+**Tier 5** (relationships, the GM's own standing, and memory), **Tier 6**
+(morale, satisfaction, and the requests they produce) and **Tier 7** (the
+backstage map, and news that reaches the GM late or not at all).
 
-The locker room now has a voice. It still cannot act: nobody refuses a booking,
-and nothing goes wrong backstage.
+The locker room now has a voice, and the GM can now miss it. Nobody refuses a
+booking yet, and nothing goes wrong backstage that the GM has to deal with.
 
 ## Running it
 
@@ -23,7 +24,7 @@ and nothing goes wrong backstage.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 183 headless checks across eight suites
+npm run check:wgm         # 224 headless checks across nine suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -194,6 +195,8 @@ js/models/       pure entity factories and derived reads
   relationship.js four axes, a history, and one phrase to describe them
   memory.js      the closed vocabulary of what can be remembered
   request.js     an ask with an ID, a life, and its reasons attached
+  location.js    nine rooms and the corridor joining them. A pure graph.
+  notification.js what the GM was told, by whom, how late, and how reliably
 
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
@@ -209,6 +212,8 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   rankings.js    the ranked table, computed from results, with its working
   titles.js      title changes, defences and #1 contenders
   upkeep.js      condition recovery and momentum fade between shows
+  backstage.js   who is standing where, and what the night's clock does to it
+  notifications.js how news finds the GM: witnessed, late, hedged, or never
 
 js/data/roster.js   fourteen hand-authored wrestlers with starting history
 js/ui/              renders the store and calls its actions; holds no game state
@@ -424,15 +429,94 @@ about half what silence costs. Letting it sit until the show passes is the worst
 of the three and the one they remember longest, and being ignored makes them ask
 again louder rather than giving up.
 
+
+## The building, and what reaches you in it
+
+An event happening and the GM knowing about it are two different things. Tier 7
+is the second one.
+
+### Nine rooms and a corridor
+
+Gorilla Position, the GM Office, the Locker Room, the Hallways, Medical, the
+Interview Area, Production, Catering, and Parking and Loading. The hallway is
+the hub, so almost nothing is next to almost anything: crossing the building
+costs 45 seconds a doorway, and the longest walk is two doors. `location.js` is
+a pure graph that does not know who is standing in it.
+
+The night has its own clock, separate from the calendar. It starts at zero when
+the doors open, advances by however long each segment actually ran, and resets
+for the next show. Walking spends it, which is the only reason walking is a
+decision rather than a menu.
+
+### Everybody is somewhere
+
+Anybody who exists is standing in a room; nowhere is not a place, and the
+invariant checker enforces it. When the doors open the roster is placed by what
+it is doing: whoever opens the show is already at the curtain, everybody else
+working tonight is near the action, and anyone not booked drifts to wherever
+their sociability and ego take them. The injured are in Medical. After a match
+the participants come back through the curtain and scatter, and whoever is on
+next gets called up.
+
+### The four questions
+
+Every backstage event goes through the same four, in order:
+
+1. **Was the GM in the room?** Then they saw it, now, correctly.
+2. **Was anybody else in the room?** If nobody was, the news is simply lost,
+   and the log says so (`news.missed`, reason `no_witnesses`).
+3. **Would any of them tell the GM?** Willingness is trust in the office (45%),
+   sociability (35%) and respect for the office (20%). Below 32 they keep it to
+   themselves (reason `nobody_would_tell`).
+4. **How long does it take, and how much survives the trip?** 90 seconds plus
+   110 a doorway, and reliability falls with distance.
+
+A notification is a separate entity from the event it describes, because it has
+its own timing, its own source and its own accuracy. The same fallout can reach
+the GM instantly and correctly, twenty minutes late from somebody with a reason
+to shade it, or never.
+
+| Reliability | Confidence | How it reads |
+|---|---|---|
+| Saw it | 100% | the line as written |
+| First hand | 80% | the line as written |
+| Second hand | 55% | "You hear that ..." |
+| Rumour | 30% | "Word going round is that ..." |
+
+Somebody the news is **about** is always at least first hand, however far they
+walked to say it. They cannot be second hand on themselves.
+
+### News is written to be heard, not to be read
+
+An event carries two lines. `summary` is written to be read in the log, where
+"Beat Tobias Wren" is a perfectly good record. `newsSummary` is written to be
+heard in a corridor, where the same fact has to be a sentence: "Marcus Kane is
+souring on Tobias Wren". Notifications prefer the second, and hedging only
+lowercases an opening word that is nobody's name.
+
+In testing, one four-match night left the GM standing in the locker room with
+six things having reached them: two they saw happen in the room, two brought
+over by the person they were about, and two that arrived eleven minutes late,
+second hand, through Cassidy Bloom. Four more never reached them at all.
+
+### The hook for the skill tree
+
+`state.meta.backstageAwareness` is 0 and nothing raises it yet. At 100 it cuts
+every delay by 60%, which is what the design foundation's "faster information
+flow" upgrade will buy. The backstage screen quotes the current numbers, so the
+effect of raising it will be visible rather than described.
+
 ## What is deliberately not here
 
 No pitch step, so the disposition model is still read-only and nobody actually
-turns a match down. No backstage locations or incidents, no live levers to fill
-dead air, no promises the GM can make, no contract negotiation, no budget, no GM
-progression, no competing brands. Betrayals and saves have memory types and no
-way to happen.
+turns a match down. Nothing goes wrong backstage on its own: the rooms carry
+relationship fallout around, but there are no incidents to carry. No live levers
+to fill dead air, no promises the GM can make, no contract negotiation, no
+budget, no GM progression, no competing brands. Betrayals and saves have memory
+types and no way to happen.
 
 The data model has the fields and the event log has the vocabulary for all of
 it. `results.js` is where reactions will hook in, because it already sees every
 result; `booking.js` is where a pitch step goes, because it already sits between
-the GM and the card.
+the GM and the card; and anything that happens in a room already reaches the GM
+through `notifications.js` without needing to know it exists.

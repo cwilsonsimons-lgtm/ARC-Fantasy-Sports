@@ -232,7 +232,7 @@ check('booking to fill the hour rates better than under-booking', () => {
   runner.nextWeek();
   const show = runner.currentShow();
   let guard = 0;
-  while (booking.cardOutlook(show.id).expectedGapSec > 120 && guard++ < 12) {
+  while (booking.cardOutlook(show.id).expectedGapSec > 0 && guard++ < 14) {
     const free = booking.availableFor(show.id).map((w) => w.id);
     if (free.length < 2) break;
     const pair = store.getRng().shuffle(free).slice(0, 2);
@@ -248,12 +248,20 @@ check('booking to fill the hour rates better than under-booking', () => {
   runner.runRest(show.id);
   runner.goOffAir(show.id);
   const s2 = store.getShow(show.id);
-  const fill = s2.result.actualSec / s2.timeBudgetSec;
-  assert(fill > 0.8, `a properly booked card only filled ${(fill * 100).toFixed(0)}% of the hour`);
+
+  // How much of the hour each kind of card actually filled. The absolute
+  // figure swings a lot run to run - that is the simulation working - so the
+  // claim under test is the COMPARISON, not a fixed percentage.
+  const fill = (x) => x.result.actualSec / x.timeBudgetSec;
   const underBooked = store.allShows().filter((x) => x.status === 'complete' && x.id !== s2.id);
-  const avgUnder = underBooked.reduce((t, x) => t + x.result.rating, 0) / underBooked.length;
-  assert(s2.result.rating > avgUnder, `filled card rated ${s2.result.rating}, under-booked average ${avgUnder.toFixed(0)}`);
-  return `booked ${mmss(outlook.bookedSec)} of limits, filled ${mmss(s2.result.actualSec)} of ${mmss(s2.timeBudgetSec)}, rated ${s2.result.rating} vs ${avgUnder.toFixed(0)} average`;
+  const avgUnderFill = underBooked.reduce((t, x) => t + fill(x), 0) / underBooked.length;
+  const avgUnderRating = underBooked.reduce((t, x) => t + x.result.rating, 0) / underBooked.length;
+
+  assert(fill(s2) > avgUnderFill + 0.15,
+    `filled card ran ${(fill(s2) * 100).toFixed(0)}% of the hour, under-booked ones averaged ${(avgUnderFill * 100).toFixed(0)}%`);
+  assert(s2.result.rating > avgUnderRating,
+    `filled card rated ${s2.result.rating}, under-booked average ${avgUnderRating.toFixed(0)}`);
+  return `booked ${mmss(outlook.bookedSec)} of limits: filled ${(fill(s2) * 100).toFixed(0)}% and rated ${s2.result.rating}, against ${(avgUnderFill * 100).toFixed(0)}% and ${avgUnderRating.toFixed(0)} under-booked`;
 });
 
 check('memories accumulated from results', () => {

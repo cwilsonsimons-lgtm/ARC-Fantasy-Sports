@@ -14,6 +14,8 @@ import { WRESTLER_SHAPE_KEYS, validateWrestler, CAREER_STATUS, TRAJECTORY, TRAIT
 import { validateRelationship } from '../models/relationship.js';
 import { isKnownMemoryType } from '../models/memory.js';
 import { validateRequest } from '../models/request.js';
+import { isLocation, locationName } from '../models/location.js';
+import { validateNotification } from '../models/notification.js';
 
 /** Containers that are allowed to hold whole entities. */
 const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles', 'requests'];
@@ -22,7 +24,7 @@ export function checkState(state) {
   const problems = [];
   if (!state || typeof state !== 'object') return ['state is not an object'];
 
-  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'log']) {
+  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'backstage', 'log']) {
     if (state[key] == null) problems.push(`state.${key} is missing`);
   }
   if (problems.length) return problems;
@@ -165,6 +167,43 @@ export function checkState(state) {
     if (r.titleId) refMustExist(r.titleId, titleIds, `request ${r.id} title`);
     if (r.resolvedBySegmentId) refMustExist(r.resolvedBySegmentId, segmentIds, `request ${r.id}`);
     for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
+  }
+
+  // --- everybody is somewhere real, and the GM is too ---
+  const b = state.backstage;
+  if (!isLocation(b.gmLocation)) problems.push(`the GM is in unknown location "${b.gmLocation}"`);
+  if (!Number.isFinite(b.tick) || b.tick < 0) problems.push(`backstage clock is ${b.tick}`);
+  for (const [id, locationId] of Object.entries(b.wrestlers)) {
+    refMustExist(id, wrestlerIds, 'backstage placement');
+    if (!isLocation(locationId)) {
+      problems.push(`wrestler ${id} is in unknown location "${locationId}"`);
+    }
+  }
+  for (const w of Object.values(state.wrestlers)) {
+    if (!b.wrestlers[w.id]) problems.push(`wrestler ${w.id} is not anywhere in the building`);
+  }
+
+  // --- news is about real people and cannot arrive before it happened ---
+  const eventIds = new Set(state.log.map((e) => e.id));
+  for (const n of b.notifications) {
+    for (const p of validateNotification(n)) problems.push(`notification ${n.id}: ${p}`);
+    if (n.locationId && !isLocation(n.locationId)) {
+      problems.push(`notification ${n.id} points at unknown location "${n.locationId}"`);
+    }
+    if (n.eventId && !eventIds.has(n.eventId)) {
+      problems.push(`notification ${n.id} cites missing event "${n.eventId}"`);
+    }
+    if (n.sourceWrestlerId) refMustExist(n.sourceWrestlerId, wrestlerIds, `notification ${n.id} source`);
+    for (const id of n.aboutIds) {
+      if (typeOf(id) === 'wrestler') refMustExist(id, wrestlerIds, `notification ${n.id}`);
+    }
+  }
+
+  // --- a located event points at a real room ---
+  for (const e of state.log) {
+    if (e.locationId && !isLocation(e.locationId)) {
+      problems.push(`event ${e.id} happened in unknown location "${e.locationId}"`);
+    }
   }
 
   problems.push(...findDuplicateWrestlers(state));

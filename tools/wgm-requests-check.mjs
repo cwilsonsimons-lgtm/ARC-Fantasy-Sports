@@ -253,21 +253,27 @@ check('booking what they asked for grants it and pays them back', () => {
 });
 
 check('refusing to their face costs less than never answering', () => {
-  const opens = store.openRequests();
-  assert(opens.length >= 2, `only ${opens.length} open requests to compare`);
-  const [a, b] = opens;
-  const beforeA = store.getWrestler(a.wrestlerId).ties.gm.trust;
-  denyRequest(a.id, { reason: 'test denial' });
-  const deniedCost = beforeA - store.getWrestler(a.wrestlerId).ties.gm.trust;
+  // Two requests of identical urgency from two people, so the only difference
+  // being measured is how the GM handled it.
+  const mk = (wrestlerId) => store.makeRequestFor({
+    wrestlerId, kind: REQUEST_KINDS.MORE_TV_TIME,
+    urgency: 60, strength: 60, reasons: ['test'], text: 'test ask',
+  });
+  const refused = mk(k.kane);
+  const silent = mk(k.sparrow);
 
-  const beforeB = store.getWrestler(b.wrestlerId).ties.gm.trust;
-  runShow(() => {});   // b's request is never answered
-  const ignoredCost = beforeB - store.getWrestler(b.wrestlerId).ties.gm.trust;
+  const beforeRefused = store.getWrestler(k.kane).ties.gm.trust;
+  denyRequest(refused.id, { reason: 'test denial' });
+  const deniedCost = beforeRefused - store.getWrestler(k.kane).ties.gm.trust;
 
-  eq(store.getRequest(a.id).status, REQUEST_STATUS.DENIED, 'denied status');
-  eq(store.getRequest(b.id).status, REQUEST_STATUS.IGNORED, 'ignored status');
-  assert(ignoredCost > deniedCost, `denial cost ${deniedCost}, silence cost ${ignoredCost}`);
-  return `telling them no cost ${deniedCost} trust, silence cost ${ignoredCost}`;
+  const beforeSilent = store.getWrestler(k.sparrow).ties.gm.trust;
+  runShow(() => {});   // never answered
+  const ignoredCost = beforeSilent - store.getWrestler(k.sparrow).ties.gm.trust;
+
+  eq(store.getRequest(refused.id).status, REQUEST_STATUS.DENIED, 'denied status');
+  eq(store.getRequest(silent.id).status, REQUEST_STATUS.IGNORED, 'ignored status');
+  assert(ignoredCost > deniedCost, `same urgency: denial cost ${deniedCost}, silence cost ${ignoredCost}`);
+  return `at equal urgency, telling them no cost ${deniedCost} trust and silence cost ${ignoredCost}`;
 });
 
 check('being ignored makes somebody ask again, louder', () => {

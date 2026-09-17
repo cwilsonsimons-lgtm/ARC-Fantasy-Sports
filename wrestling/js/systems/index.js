@@ -10,6 +10,8 @@ import * as titles from './titles.js';
 import * as relationships from './relationships.js';
 import * as gmRelations from './gmRelations.js';
 import * as requests from './requests.js';
+import * as backstage from './backstage.js';
+import * as notifications from './notifications.js';
 import * as upkeep from './upkeep.js';
 
 export function installSystems() {
@@ -21,5 +23,7 @@ export function installSystems() {
   relationships.install();  // ...and changes how the people in it see each other
   gmRelations.install();    // what the GM's own decisions cost the GM
   requests.install();       // ...and what the roster asks for as a result
+  backstage.install();      // who is standing where, and what walking costs
+  notifications.install();  // ...and how any of it reaches the GM
   upkeep.install();         // between shows: condition back, momentum fading
 }

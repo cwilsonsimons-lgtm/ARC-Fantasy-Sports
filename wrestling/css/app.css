@@ -89,6 +89,7 @@ body{
 .chip .ico.green{color:var(--green)}
 .chip .ico.amber{color:var(--amber)}
 .chip .ico.violet{color:var(--violet)}
+.chip .ico.dim{color:var(--faint)}
 .chip .val{
   font:600 .95rem/1.1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);
   white-space:nowrap;
@@ -363,3 +364,16 @@ details summary{cursor:pointer}
   .tab{white-space:nowrap}
   .screen{padding:.9rem 14px 4rem}
 }
+
+/* --------------------------------------------------------------- backstage */
+/* The news feed reuses the run-sheet row, so the row has to work as a button. */
+button.slot{
+  width:100%;font:inherit;color:var(--ink);text-align:left;cursor:pointer;
+}
+button.slot:hover{background:var(--raised);border-color:#2a3d52}
+.note.next{border-left:3px solid var(--blue)}
+.note.done{border-left:3px solid var(--line);opacity:.62}
+.note .t{font-weight:500}
+.wcard[aria-current="true"]{background:var(--raised);border-color:var(--green);cursor:default}
+/* The event log's three columns do not fit a side rail. */
+.log.narrow .ev{grid-template-columns:3.2rem 1fr}

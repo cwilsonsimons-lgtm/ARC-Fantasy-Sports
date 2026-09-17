@@ -98,6 +98,7 @@ body{
 .chip .ico.green{color:var(--green)}
 .chip .ico.amber{color:var(--amber)}
 .chip .ico.violet{color:var(--violet)}
+.chip .ico.dim{color:var(--faint)}
 .chip .val{
   font:600 .95rem/1.1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);
   white-space:nowrap;
@@ -373,6 +374,19 @@ details summary{cursor:pointer}
   .screen{padding:.9rem 14px 4rem}
 }
 
+/* --------------------------------------------------------------- backstage */
+/* The news feed reuses the run-sheet row, so the row has to work as a button. */
+button.slot{
+  width:100%;font:inherit;color:var(--ink);text-align:left;cursor:pointer;
+}
+button.slot:hover{background:var(--raised);border-color:#2a3d52}
+.note.next{border-left:3px solid var(--blue)}
+.note.done{border-left:3px solid var(--line);opacity:.62}
+.note .t{font-weight:500}
+.wcard[aria-current="true"]{background:var(--raised);border-color:var(--green);cursor:default}
+/* The event log's three columns do not fit a side rail. */
+.log.narrow .ev{grid-template-columns:3.2rem 1fr}
+
 </style>
 </head>
 <body>
@@ -416,12 +430,14 @@ details summary{cursor:pointer}
   __export(store_exports, {
     G: () => G,
     MEMORY_LIMIT: () => MEMORY_LIMIT,
+    NOTIFICATION_LIMIT: () => NOTIFICATION_LIMIT,
     SCHEMA_VERSION: () => SCHEMA_VERSION,
     addMemory: () => addMemory,
     addWrestler: () => addWrestler,
     adjustGmTie: () => adjustGmTie,
     adjustRelationship: () => adjustRelationship,
     advanceDays: () => advanceDays,
+    advanceTick: () => advanceTick,
     advanceToDay: () => advanceToDay,
     advanceToNextShow: () => advanceToNextShow,
     allRequests: () => allRequests,
@@ -429,12 +445,15 @@ details summary{cursor:pointer}
     allTitles: () => allTitles,
     allWrestlers: () => allWrestlers,
     awardTitle: () => awardTitle,
+    backstage: () => backstage,
     bookSegment: () => bookSegment,
     causeChain: () => causeChain2,
     completeSegment: () => completeSegment,
     completeShow: () => completeShow,
     createTitle: () => createTitle2,
     cutSegment: () => cutSegment,
+    deliverDueNotifications: () => deliverDueNotifications,
+    deliveredNotifications: () => deliveredNotifications,
     emit: () => emit,
     getRequest: () => getRequest,
     getRng: () => getRng,
@@ -443,16 +462,24 @@ details summary{cursor:pointer}
     getState: () => getState,
     getTitle: () => getTitle,
     getWrestler: () => getWrestler,
+    gmLocation: () => gmLocation,
     historyOf: () => historyOf2,
     installState: () => installState,
     isLoaded: () => isLoaded,
+    locationOf: () => locationOf,
     makeRequestFor: () => makeRequestFor,
+    markAllNotificationsRead: () => markAllNotificationsRead,
+    markNotificationRead: () => markNotificationRead,
+    moveGm: () => moveGm,
     nameOf: () => nameOf,
     newGame: () => newGame,
+    notifications: () => notifications,
     off: () => off2,
     on: () => on2,
     openRequests: () => openRequests,
     openRequestsFor: () => openRequestsFor,
+    pendingNotifications: () => pendingNotifications,
+    placeWrestler: () => placeWrestler,
     queryLog: () => queryLog,
     recordDefense: () => recordDefense,
     requireSegment: () => requireSegment,
@@ -460,18 +487,24 @@ details summary{cursor:pointer}
     requireTitle: () => requireTitle,
     requireWrestler: () => requireWrestler,
     reset: () => reset,
+    resetBackstageClock: () => resetBackstageClock,
     resolveRequest: () => resolveRequest,
+    scheduleNotification: () => scheduleNotification,
     scheduleProgramming: () => scheduleProgramming,
     scheduleShow: () => scheduleShow,
     segmentsOfShow: () => segmentsOfShow,
+    setBackstageAwareness: () => setBackstageAwareness,
     setBackstory: () => setBackstory,
     startShow: () => startShow,
+    tick: () => tick,
     titlesHeldBy: () => titlesHeldBy,
     today: () => today,
+    unreadNotifications: () => unreadNotifications,
     updateSegment: () => updateSegment,
     updateStanding: () => updateStanding,
     updateWrestlerState: () => updateWrestlerState,
-    vacateTitle: () => vacateTitle
+    vacateTitle: () => vacateTitle,
+    whoIsIn: () => whoIsIn
   });
 
   // wrestling/js/core/ids.js
@@ -484,6 +517,7 @@ details summary{cursor:pointer}
     calendarEntry: "cal",
     memory: "mem",
     request: "req",
+    notification: "nt",
     // reserved for systems named in the design foundation but not yet built
     promise: "pr",
     incident: "inc",
@@ -657,6 +691,11 @@ details summary{cursor:pointer}
     TITLE_VACATED: "title.vacated",
     RANKING_UPDATED: "ranking.updated",
     CONTENDER_CHANGED: "contender.changed",
+    // --- the backstage ---
+    GM_MOVED: "gm.moved",
+    WRESTLER_MOVED: "wrestler.moved",
+    NEWS_REACHED_GM: "news.reached_gm",
+    NEWS_MISSED: "news.missed",
     // --- what the roster wants ---
     REQUEST_MADE: "request.made",
     REQUEST_GRANTED: "request.granted",
@@ -689,6 +728,10 @@ details summary{cursor:pointer}
   function isValidEventType(type) {
     return VALID_TYPES.has(type);
   }
+  var VISIBILITY = Object.freeze({
+    PUBLIC: "public",
+    BACKSTAGE: "backstage"
+  });
   function makeEvent({
     id,
     seq,
@@ -700,7 +743,11 @@ details summary{cursor:pointer}
     showId = null,
     segmentId = null,
     causeId = null,
-    data = {}
+    data = {},
+    locationId = null,
+    visibility = VISIBILITY.PUBLIC,
+    tick: tick2 = null,
+    newsSummary = ""
   }) {
     if (!isValidEventType(type)) {
       throw new Error(`Unregistered event type "${type}". Add it to EVENT_TYPES.`);
@@ -716,6 +763,15 @@ details summary{cursor:pointer}
       showId,
       segmentId,
       causeId,
+      // Where it happened, when within the night, and whether the GM is present
+      // for it by definition. Backstage events go through systems/notifications.
+      locationId,
+      visibility,
+      tick: tick2,
+      // `summary` is written to be READ in the log. `newsSummary` is written to
+      // be HEARD second-hand in a corridor, which is a different sentence:
+      // "Beat Tobias Wren" is a record, "Kane is souring on Wren" is news.
+      newsSummary,
       data,
       wallClock: (/* @__PURE__ */ new Date()).toISOString()
     };
@@ -1699,8 +1755,231 @@ details summary{cursor:pointer}
     return problems;
   }
 
+  // wrestling/js/models/notification.js
+  var RELIABILITY = Object.freeze({
+    /** Saw it happen. */
+    WITNESSED: "witnessed",
+    /** Told by somebody who was there. */
+    FIRSTHAND: "firsthand",
+    /** Told by somebody who was told. */
+    SECONDHAND: "secondhand",
+    /** Somebody mentioned something. Details are wrong or missing. */
+    RUMOUR: "rumour"
+  });
+  var RELIABILITY_LABEL = Object.freeze({
+    [RELIABILITY.WITNESSED]: "Saw it",
+    [RELIABILITY.FIRSTHAND]: "First hand",
+    [RELIABILITY.SECONDHAND]: "Second hand",
+    [RELIABILITY.RUMOUR]: "Rumour"
+  });
+  var RELIABILITY_SCORE = Object.freeze({
+    [RELIABILITY.WITNESSED]: 100,
+    [RELIABILITY.FIRSTHAND]: 80,
+    [RELIABILITY.SECONDHAND]: 55,
+    [RELIABILITY.RUMOUR]: 30
+  });
+  function createNotification(spec = {}) {
+    const {
+      id = mint("notification"),
+      eventId = null,
+      locationId,
+      aboutIds = [],
+      reliability = RELIABILITY.WITNESSED,
+      sourceWrestlerId = null,
+      raisedTick,
+      dueTick,
+      summary,
+      detail = ""
+    } = spec;
+    if (!summary) throw new Error("createNotification: summary is required");
+    return {
+      id,
+      eventId,
+      locationId,
+      aboutIds,
+      reliability,
+      sourceWrestlerId,
+      // who told the GM, null when they saw it themselves
+      raisedTick,
+      // when it actually happened
+      dueTick,
+      // when the GM finds out
+      deliveredTick: null,
+      read: false,
+      summary,
+      // what the GM is told, which may not be what happened
+      detail
+    };
+  }
+  function confidenceOf(n) {
+    return RELIABILITY_SCORE[n.reliability] ?? 50;
+  }
+  function lateness(n) {
+    return n.deliveredTick == null ? null : Math.max(0, n.deliveredTick - n.raisedTick);
+  }
+  function validateNotification(n) {
+    const problems = [];
+    if (!n.summary) problems.push("missing summary");
+    if (!Object.values(RELIABILITY).includes(n.reliability)) {
+      problems.push(`unknown reliability "${n.reliability}"`);
+    }
+    if (!Number.isFinite(n.raisedTick)) problems.push("raisedTick is not a number");
+    if (!Number.isFinite(n.dueTick)) problems.push("dueTick is not a number");
+    if (n.dueTick < n.raisedTick) problems.push("news arrives before it happened");
+    return problems;
+  }
+
+  // wrestling/js/models/location.js
+  var LOCATIONS = Object.freeze({
+    gorilla: {
+      id: "gorilla",
+      name: "Gorilla Position",
+      short: "Gorilla",
+      blurb: "The curtain. Where the show is actually run from.",
+      onAir: true
+    },
+    gm_office: {
+      id: "gm_office",
+      name: "GM Office",
+      short: "Office",
+      blurb: "Your desk. Where people come to find you, if they can."
+    },
+    locker_room: {
+      id: "locker_room",
+      name: "Locker Room",
+      short: "Locker",
+      blurb: "Where the roster waits, and where most of it goes wrong."
+    },
+    hallway: {
+      id: "hallway",
+      name: "Hallways",
+      short: "Halls",
+      blurb: "Everything connects through here. You see people passing.",
+      hub: true
+    },
+    medical: {
+      id: "medical",
+      name: "Medical",
+      short: "Medical",
+      blurb: "The trainer. Nobody comes here with good news."
+    },
+    interview_area: {
+      id: "interview_area",
+      name: "Interview Area",
+      short: "Interview",
+      blurb: "Backdrop and a camera. Words get said here that get repeated."
+    },
+    production: {
+      id: "production",
+      name: "Production",
+      short: "Truck",
+      blurb: "The truck. Timing, graphics, and whoever is shouting about them.",
+      onAir: true
+    },
+    catering: {
+      id: "catering",
+      name: "Catering",
+      short: "Catering",
+      blurb: "Where the talking happens. Everybody passes through eventually."
+    },
+    parking: {
+      id: "parking",
+      name: "Parking and Loading",
+      short: "Parking",
+      blurb: "Arrivals, departures, and the odd conversation nobody wanted overheard."
+    }
+  });
+  var LOCATION_IDS = Object.freeze(Object.keys(LOCATIONS));
+  var EDGES = [
+    ["hallway", "gorilla"],
+    ["hallway", "gm_office"],
+    ["hallway", "locker_room"],
+    ["hallway", "medical"],
+    ["hallway", "interview_area"],
+    ["hallway", "production"],
+    ["hallway", "catering"],
+    ["hallway", "parking"],
+    ["gorilla", "production"],
+    ["gorilla", "interview_area"],
+    ["locker_room", "medical"],
+    ["locker_room", "catering"]
+  ];
+  var NEIGHBOURS = Object.freeze((() => {
+    const map = Object.fromEntries(LOCATION_IDS.map((id) => [id, []]));
+    for (const [a, b] of EDGES) {
+      map[a].push(b);
+      map[b].push(a);
+    }
+    return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, Object.freeze(v.sort())]));
+  })());
+  var SECONDS_PER_HOP = 45;
+  function isLocation(id) {
+    return Object.prototype.hasOwnProperty.call(LOCATIONS, id);
+  }
+  function locationName(id) {
+    return LOCATIONS[id]?.name || id;
+  }
+  function locationShort(id) {
+    return LOCATIONS[id]?.short || locationName(id);
+  }
+  function hops(from, to) {
+    if (from === to) return 0;
+    if (!isLocation(from) || !isLocation(to)) return Infinity;
+    const seen = /* @__PURE__ */ new Set([from]);
+    let frontier = [from];
+    let depth = 0;
+    while (frontier.length) {
+      depth++;
+      const next = [];
+      for (const here of frontier) {
+        for (const there of NEIGHBOURS[here]) {
+          if (there === to) return depth;
+          if (seen.has(there)) continue;
+          seen.add(there);
+          next.push(there);
+        }
+      }
+      frontier = next;
+    }
+    return Infinity;
+  }
+  function travelSeconds(from, to) {
+    const n = hops(from, to);
+    return Number.isFinite(n) ? n * SECONDS_PER_HOP : Infinity;
+  }
+  function route(from, to) {
+    if (from === to) return [from];
+    if (!isLocation(from) || !isLocation(to)) return [];
+    const prev = { [from]: null };
+    let frontier = [from];
+    while (frontier.length) {
+      const next = [];
+      for (const here of frontier) {
+        for (const there of NEIGHBOURS[here]) {
+          if (there in prev) continue;
+          prev[there] = here;
+          if (there === to) {
+            const path = [to];
+            let step = here;
+            while (step) {
+              path.unshift(step);
+              step = prev[step];
+            }
+            return path;
+          }
+          next.push(there);
+        }
+      }
+      frontier = next;
+    }
+    return [];
+  }
+  function isOnAir(id) {
+    return !!LOCATIONS[id]?.onAir;
+  }
+
   // wrestling/js/core/store.js
-  var SCHEMA_VERSION = 6;
+  var SCHEMA_VERSION = 7;
   var G = { state: null, rng: null };
   function getState() {
     return G.state;
@@ -1724,7 +2003,10 @@ details summary{cursor:pointer}
     showId = null,
     segmentId = null,
     cause = null,
-    data = {}
+    data = {},
+    locationId = null,
+    visibility = VISIBILITY.PUBLIC,
+    newsSummary = ""
   } = {}) {
     const state2 = requireGame();
     const event = makeEvent({
@@ -1738,7 +2020,11 @@ details summary{cursor:pointer}
       showId,
       segmentId,
       causeId: cause,
-      data
+      data,
+      locationId,
+      visibility,
+      newsSummary,
+      tick: state2.backstage?.tick ?? 0
     });
     state2.log.push(event);
     dispatch(event);
@@ -1764,6 +2050,10 @@ details summary{cursor:pointer}
         gmName,
         brandName,
         mode,
+        // How fast and how accurately backstage news reaches the GM, 0-100.
+        // Raised by the GM skill tree, which is not built: see the design
+        // foundation's backstage-awareness branch.
+        backstageAwareness: 0,
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       },
       calendar: createCalendar(startDate),
@@ -1772,6 +2062,16 @@ details summary{cursor:pointer}
       segments: {},
       titles: {},
       requests: {},
+      // The building. `tick` is seconds into the working night, which is what
+      // notification timing is measured in.
+      backstage: {
+        gmLocation: "gm_office",
+        tick: 0,
+        wrestlers: {},
+        // wrestlerId -> locationId
+        notifications: []
+        // pending and delivered, newest last
+      },
       log: []
     };
     emit(EVENT_TYPES.GAME_CREATED, {
@@ -1792,6 +2092,7 @@ details summary{cursor:pointer}
       ...Object.keys(state2.segments),
       ...Object.keys(state2.titles || {}),
       ...Object.keys(state2.requests || {}),
+      ...(state2.backstage?.notifications || []).map((n) => n.id),
       ...state2.log.map((e) => e.id),
       ...Object.values(state2.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
       ...state2.calendar.entries.map((e) => e.id)
@@ -1863,6 +2164,7 @@ details summary{cursor:pointer}
     const state2 = requireGame();
     const wrestler = createWrestler({ debutDay: state2.calendar.day, ...spec });
     state2.wrestlers[wrestler.id] = wrestler;
+    state2.backstage.wrestlers[wrestler.id] = "locker_room";
     emit(EVENT_TYPES.WRESTLER_CREATED, {
       summary: `${wrestler.name} joins the roster`,
       actorId: wrestler.id,
@@ -1943,11 +2245,17 @@ details summary{cursor:pointer}
       type
     });
     if (!Object.keys(changed).length) return rel;
+    const souring = (changed.hostility || 0) > 0 || (changed.affinity || 0) < 0;
+    const warming = (changed.affinity || 0) > 0 || (changed.trust || 0) > 0;
+    const drift = souring ? "souring on" : warming ? "warming to" : "reassessing";
     const event = emit(EVENT_TYPES.WRESTLER_RELATION, {
       summary: reason || `${from.name}'s view of ${nameOf(toId)} changed`,
+      newsSummary: `${from.name} is ${drift} ${nameOf(toId)}`,
       actorId: fromId,
       subjects: [fromId, toId],
       cause,
+      locationId: state2.backstage.wrestlers[fromId] || "locker_room",
+      visibility: VISIBILITY.BACKSTAGE,
       data: { fromId, toId, before, after: Object.fromEntries(AXES.map((a) => [a, rel[a]])), changed, reason, type }
     });
     rel.history[rel.history.length - 1].eventId = event.id;
@@ -2291,6 +2599,142 @@ details summary{cursor:pointer}
       }
     });
   }
+  function backstage() {
+    return requireGame().backstage;
+  }
+  function gmLocation() {
+    return requireGame().backstage.gmLocation;
+  }
+  function tick() {
+    return requireGame().backstage.tick;
+  }
+  function locationOf(wrestlerId) {
+    return requireGame().backstage.wrestlers[wrestlerId] || "locker_room";
+  }
+  function whoIsIn(locationId) {
+    const b = requireGame().backstage;
+    return allWrestlers().filter((w) => (b.wrestlers[w.id] || "locker_room") === locationId);
+  }
+  function placeWrestler(wrestlerId, locationId, { reason = "", cause = null, silent = true } = {}) {
+    const state2 = requireGame();
+    requireWrestler(wrestlerId);
+    if (!isLocation(locationId)) throw new Error(`Unknown location "${locationId}"`);
+    const before = state2.backstage.wrestlers[wrestlerId] || null;
+    if (before === locationId) return locationId;
+    state2.backstage.wrestlers[wrestlerId] = locationId;
+    if (!silent) {
+      emit(EVENT_TYPES.WRESTLER_MOVED, {
+        summary: reason || `${nameOf(wrestlerId)} goes to ${locationName(locationId)}`,
+        actorId: wrestlerId,
+        subjects: [wrestlerId],
+        locationId,
+        visibility: VISIBILITY.BACKSTAGE,
+        cause,
+        data: { from: before, to: locationId }
+      });
+    }
+    return locationId;
+  }
+  function moveGm(locationId, { cause = null } = {}) {
+    const state2 = requireGame();
+    if (!isLocation(locationId)) throw new Error(`Unknown location "${locationId}"`);
+    const from = state2.backstage.gmLocation;
+    if (from === locationId) return { from, to: locationId, seconds: 0 };
+    const seconds = travelSeconds(from, locationId);
+    state2.backstage.tick += seconds;
+    state2.backstage.gmLocation = locationId;
+    const via = route(from, locationId);
+    const event = emit(EVENT_TYPES.GM_MOVED, {
+      summary: `You walk to ${locationName(locationId)}`,
+      cause,
+      locationId,
+      data: { from, to: locationId, seconds, via }
+    });
+    return { from, to: locationId, seconds, via, event };
+  }
+  function advanceTick(seconds) {
+    const state2 = requireGame();
+    if (seconds > 0) state2.backstage.tick += Math.round(seconds);
+    return state2.backstage.tick;
+  }
+  function resetBackstageClock() {
+    const state2 = requireGame();
+    state2.backstage.tick = 0;
+    return state2.backstage.tick;
+  }
+  function notifications() {
+    return requireGame().backstage.notifications;
+  }
+  function pendingNotifications() {
+    return notifications().filter((n) => n.deliveredTick == null);
+  }
+  function deliveredNotifications() {
+    return notifications().filter((n) => n.deliveredTick != null);
+  }
+  function unreadNotifications() {
+    return deliveredNotifications().filter((n) => !n.read);
+  }
+  var NOTIFICATION_LIMIT = 120;
+  function scheduleNotification(spec, { cause = null } = {}) {
+    const state2 = requireGame();
+    const note = createNotification({ raisedTick: state2.backstage.tick, ...spec });
+    state2.backstage.notifications.push(note);
+    trimNotifications(state2);
+    return note;
+  }
+  function trimNotifications(state2) {
+    const list = state2.backstage.notifications;
+    let over = list.length - NOTIFICATION_LIMIT;
+    if (over <= 0) return;
+    const oldestFirst = [...list].sort((a, b) => a.raisedTick - b.raisedTick);
+    const doomed = /* @__PURE__ */ new Set();
+    for (const pass of [(n) => n.deliveredTick != null && n.read, () => true]) {
+      for (const n of oldestFirst) {
+        if (over <= 0) break;
+        if (doomed.has(n.id) || !pass(n)) continue;
+        doomed.add(n.id);
+        over--;
+      }
+    }
+    state2.backstage.notifications = list.filter((n) => !doomed.has(n.id));
+  }
+  function deliverDueNotifications({ cause = null } = {}) {
+    const state2 = requireGame();
+    const now = state2.backstage.tick;
+    const landed = [];
+    for (const note of state2.backstage.notifications) {
+      if (note.deliveredTick != null || note.dueTick > now) continue;
+      note.deliveredTick = now;
+      landed.push(note);
+      emit(EVENT_TYPES.NEWS_REACHED_GM, {
+        summary: note.summary,
+        subjects: note.aboutIds,
+        locationId: note.locationId,
+        cause: cause || note.eventId,
+        data: {
+          notificationId: note.id,
+          eventId: note.eventId,
+          reliability: note.reliability,
+          sourceWrestlerId: note.sourceWrestlerId,
+          lateBySec: Math.max(0, now - note.raisedTick)
+        }
+      });
+    }
+    return landed;
+  }
+  function markNotificationRead(id) {
+    const note = requireGame().backstage.notifications.find((n) => n.id === id);
+    if (note) note.read = true;
+    return note;
+  }
+  function setBackstageAwareness(value) {
+    const state2 = requireGame();
+    state2.meta.backstageAwareness = Math.max(0, Math.min(100, Math.round(value)));
+    return state2.meta.backstageAwareness;
+  }
+  function markAllNotificationsRead() {
+    for (const n of deliveredNotifications()) n.read = true;
+  }
   function queryLog(opts) {
     return query(requireGame().log, opts);
   }
@@ -2350,7 +2794,7 @@ details summary{cursor:pointer}
   function checkState(state2) {
     const problems = [];
     if (!state2 || typeof state2 !== "object") return ["state is not an object"];
-    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "log"]) {
+    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "backstage", "log"]) {
       if (state2[key] == null) problems.push(`state.${key} is missing`);
     }
     if (problems.length) return problems;
@@ -2473,6 +2917,37 @@ details summary{cursor:pointer}
       if (r.titleId) refMustExist(r.titleId, titleIds, `request ${r.id} title`);
       if (r.resolvedBySegmentId) refMustExist(r.resolvedBySegmentId, segmentIds, `request ${r.id}`);
       for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
+    }
+    const b = state2.backstage;
+    if (!isLocation(b.gmLocation)) problems.push(`the GM is in unknown location "${b.gmLocation}"`);
+    if (!Number.isFinite(b.tick) || b.tick < 0) problems.push(`backstage clock is ${b.tick}`);
+    for (const [id, locationId] of Object.entries(b.wrestlers)) {
+      refMustExist(id, wrestlerIds, "backstage placement");
+      if (!isLocation(locationId)) {
+        problems.push(`wrestler ${id} is in unknown location "${locationId}"`);
+      }
+    }
+    for (const w of Object.values(state2.wrestlers)) {
+      if (!b.wrestlers[w.id]) problems.push(`wrestler ${w.id} is not anywhere in the building`);
+    }
+    const eventIds = new Set(state2.log.map((e) => e.id));
+    for (const n of b.notifications) {
+      for (const p of validateNotification(n)) problems.push(`notification ${n.id}: ${p}`);
+      if (n.locationId && !isLocation(n.locationId)) {
+        problems.push(`notification ${n.id} points at unknown location "${n.locationId}"`);
+      }
+      if (n.eventId && !eventIds.has(n.eventId)) {
+        problems.push(`notification ${n.id} cites missing event "${n.eventId}"`);
+      }
+      if (n.sourceWrestlerId) refMustExist(n.sourceWrestlerId, wrestlerIds, `notification ${n.id} source`);
+      for (const id of n.aboutIds) {
+        if (typeOf(id) === "wrestler") refMustExist(id, wrestlerIds, `notification ${n.id}`);
+      }
+    }
+    for (const e of state2.log) {
+      if (e.locationId && !isLocation(e.locationId)) {
+        problems.push(`event ${e.id} happened in unknown location "${e.locationId}"`);
+      }
     }
     problems.push(...findDuplicateWrestlers(state2));
     return problems;
@@ -2626,6 +3101,26 @@ details summary{cursor:pointer}
     // written before requests existed simply has none.
     5: (state2) => {
       state2.requests = state2.requests || {};
+      return state2;
+    },
+    // v6 -> v7: the building exists. A save written before it has nobody
+    // anywhere, so everyone starts in the locker room and the GM at their desk.
+    6: (state2) => {
+      if (state2.meta.backstageAwareness === void 0) state2.meta.backstageAwareness = 0;
+      state2.backstage = state2.backstage || {
+        gmLocation: "gm_office",
+        tick: 0,
+        wrestlers: {},
+        notifications: []
+      };
+      for (const id of Object.keys(state2.wrestlers)) {
+        if (!state2.backstage.wrestlers[id]) state2.backstage.wrestlers[id] = "locker_room";
+      }
+      for (const e of state2.log) {
+        if (e.visibility === void 0) e.visibility = "public";
+        if (e.locationId === void 0) e.locationId = null;
+        if (e.tick === void 0) e.tick = null;
+      }
       return state2;
     }
   };
@@ -4503,6 +4998,207 @@ details summary{cursor:pointer}
     });
   }
 
+  // wrestling/js/systems/backstage.js
+  function idleRoomFor(wrestler, rng) {
+    const t = wrestler.identity.traits;
+    return rng.weighted([
+      ["locker_room", 40],
+      ["catering", 10 + t.sociability * 0.5],
+      ["hallway", 10 + t.sociability * 0.2],
+      ["parking", 6 + (100 - t.sociability) * 0.15],
+      ["gm_office", 2 + wrestler.identity.ego * 0.08]
+    ]) || "locker_room";
+  }
+  function bookedRoomFor(wrestler, rng) {
+    const t = wrestler.identity.traits;
+    return rng.weighted([
+      ["locker_room", 55],
+      ["catering", 12 + t.sociability * 0.2],
+      ["hallway", 10],
+      ["interview_area", 5 + wrestler.ability.charisma * 0.12],
+      ["production", 4],
+      ["gm_office", 2 + wrestler.identity.ego * 0.06]
+    ]) || "locker_room";
+  }
+  function openDoors(showId, { cause = null } = {}) {
+    const rng = getRng();
+    const show = getShow(showId);
+    const segments = show ? segmentsOfShow(show.id) : [];
+    const booked = new Set(
+      segments.flatMap((seg) => seg.participants.map((p) => p.wrestlerId))
+    );
+    resetBackstageClock();
+    for (const w of allWrestlers()) {
+      if (w.state.health.status === HEALTH.INJURED) {
+        placeWrestler(w.id, "medical", { cause });
+        continue;
+      }
+      placeWrestler(w.id, booked.has(w.id) ? bookedRoomFor(w, rng) : idleRoomFor(w, rng), { cause });
+    }
+    if (segments[0]) callToGorilla(segments[0].id, { cause });
+    return backstage();
+  }
+  function callToGorilla(segmentId, { cause = null } = {}) {
+    const segment = getSegment(segmentId);
+    if (!segment) return;
+    for (const p of segment.participants) {
+      placeWrestler(p.wrestlerId, "gorilla", { cause });
+    }
+  }
+  function afterWorking(wrestler, rng) {
+    if (wrestler.state.health.status === HEALTH.INJURED) return "medical";
+    if (wrestler.state.condition < 45) return rng.chance(0.5) ? "medical" : "locker_room";
+    return rng.weighted([
+      ["locker_room", 55],
+      ["interview_area", 10 + wrestler.ability.charisma * 0.2],
+      ["catering", 12 + wrestler.identity.traits.sociability * 0.25],
+      ["hallway", 10],
+      ["gm_office", 3 + wrestler.identity.ego * 0.1]
+    ]) || "locker_room";
+  }
+  function install7() {
+    on2(EVENT_TYPES.SHOW_STARTED, (event) => {
+      openDoors(event.showId, { cause: event.id });
+    });
+    on2(EVENT_TYPES.SEGMENT_COMPLETED, (event) => {
+      const segment = getSegment(event.segmentId);
+      if (!segment) return;
+      const rng = getRng();
+      advanceTick(event.data.actualSec || 0);
+      for (const p of segment.participants) {
+        const w = getWrestler(p.wrestlerId);
+        if (w) placeWrestler(w.id, afterWorking(w, rng), { cause: event.id });
+      }
+      const next = segmentsOfShow(segment.showId).find((s) => s.status === SEGMENT_STATUS.BOOKED);
+      if (next) callToGorilla(next.id, { cause: event.id });
+      deliverDueNotifications({ cause: event.id });
+    });
+    on2(EVENT_TYPES.GM_MOVED, (event) => {
+      deliverDueNotifications({ cause: event.id });
+    });
+    on2(EVENT_TYPES.SHOW_COMPLETED, (event) => {
+      const rng = getRng();
+      for (const w of allWrestlers()) {
+        placeWrestler(w.id, w.state.health.status === HEALTH.INJURED ? "medical" : idleRoomFor(w, rng), { cause: event.id });
+      }
+      advanceTick(600);
+      deliverDueNotifications({ cause: event.id });
+    });
+  }
+
+  // wrestling/js/systems/notifications.js
+  var BASE_DELAY_SEC = 90;
+  var DELAY_PER_HOP_SEC = 110;
+  var MAX_AWARENESS_CUT = 0.6;
+  function awareness() {
+    return Math.max(0, Math.min(100, getState()?.meta.backstageAwareness ?? 0));
+  }
+  function willingnessToTell(wrestler) {
+    const t = wrestler.identity.traits;
+    return Math.round(
+      wrestler.ties.gm.trust * 0.45 + t.sociability * 0.35 + wrestler.ties.gm.respect * 0.2
+    );
+  }
+  var TELL_THRESHOLD = 32;
+  function bestTeller(locationId, { exclude = [] } = {}) {
+    const skip2 = new Set(exclude);
+    return whoIsIn(locationId).filter((w) => !skip2.has(w.id)).map((w) => ({ w, willingness: willingnessToTell(w) })).sort((a, b) => b.willingness - a.willingness)[0] || null;
+  }
+  function spoken(event) {
+    return event.newsSummary || event.summary;
+  }
+  function hedge(line, reliability) {
+    switch (reliability) {
+      case RELIABILITY.WITNESSED:
+      case RELIABILITY.FIRSTHAND:
+        return line;
+      case RELIABILITY.SECONDHAND:
+        return `You hear that ${lowerLead(line)}`;
+      default:
+        return `Word going round is that ${lowerLead(line)}`;
+    }
+  }
+  function lowerLead(line) {
+    if (!line) return line;
+    const lead = line.split(/\s+/)[0].replace(/[^A-Za-z'-]/g, "");
+    if (isSomebodysName(lead)) return line;
+    return line[0].toLowerCase() + line.slice(1);
+  }
+  function isSomebodysName(word) {
+    if (!word) return false;
+    const state2 = getState();
+    if (!state2) return false;
+    return Object.values(state2.wrestlers).some((w) => w.name.split(/\s+/).includes(word));
+  }
+  function report(event, { cause = null } = {}) {
+    if (event.visibility !== VISIBILITY.BACKSTAGE) return null;
+    const where = event.locationId;
+    if (!where) return null;
+    const gmWhere = gmLocation();
+    if (where === gmWhere) {
+      const note = scheduleNotification({
+        eventId: event.id,
+        locationId: where,
+        aboutIds: event.subjects,
+        reliability: RELIABILITY.WITNESSED,
+        sourceWrestlerId: null,
+        dueTick: tick(),
+        summary: spoken(event),
+        detail: `You were in ${locationName(where)} when it happened.`
+      }, { cause });
+      deliverDueNotifications({ cause: cause || event.id });
+      return note;
+    }
+    const teller = bestTeller(where);
+    if (!teller) {
+      emit(EVENT_TYPES.NEWS_MISSED, {
+        summary: `Something happened in ${locationName(where)} with nobody around to mention it`,
+        subjects: event.subjects,
+        locationId: where,
+        cause: cause || event.id,
+        data: { eventId: event.id, reason: "no_witnesses" }
+      });
+      return null;
+    }
+    if (teller.willingness < TELL_THRESHOLD) {
+      emit(EVENT_TYPES.NEWS_MISSED, {
+        summary: `Whatever happened in ${locationName(where)}, nobody is telling you`,
+        subjects: event.subjects,
+        locationId: where,
+        cause: cause || event.id,
+        data: {
+          eventId: event.id,
+          reason: "nobody_would_tell",
+          closestTeller: teller.w.id,
+          willingness: teller.willingness
+        }
+      });
+      return null;
+    }
+    const distance = hops(where, gmWhere);
+    const cut = 1 - awareness() / 100 * MAX_AWARENESS_CUT;
+    const delay = Math.round((BASE_DELAY_SEC + distance * DELAY_PER_HOP_SEC) * cut);
+    const itsAboutThem = (event.subjects || []).includes(teller.w.id);
+    const reliability = itsAboutThem || distance <= 1 && teller.willingness >= 55 ? RELIABILITY.FIRSTHAND : teller.willingness >= 45 ? RELIABILITY.SECONDHAND : RELIABILITY.RUMOUR;
+    return scheduleNotification({
+      eventId: event.id,
+      locationId: where,
+      aboutIds: event.subjects,
+      reliability,
+      sourceWrestlerId: teller.w.id,
+      dueTick: tick() + delay,
+      summary: hedge(spoken(event), reliability),
+      detail: itsAboutThem ? `${teller.w.name} came and told you themselves, from ${locationName(where)}.` : `It started in ${locationName(where)}, ${distance} door${distance === 1 ? "" : "s"} from you, and reached you through ${teller.w.name}.`
+    }, { cause });
+  }
+  function install8() {
+    on2("*", (event) => {
+      if (event.visibility !== VISIBILITY.BACKSTAGE) return;
+      if (event.type === EVENT_TYPES.NEWS_REACHED_GM || event.type === EVENT_TYPES.NEWS_MISSED) return;
+      report(event, { cause: event.id });
+    });
+  }
+
   // wrestling/js/systems/upkeep.js
   function recoveryPerDay(wrestler) {
     return 4 + wrestler.ability.durability / 25;
@@ -4523,7 +5219,7 @@ details summary{cursor:pointer}
     if (momentum < 0) return Math.min(0, momentum + drop);
     return 0;
   }
-  function install7() {
+  function install9() {
     on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
       const days = event.data.days;
       if (!days) return;
@@ -4579,6 +5275,8 @@ details summary{cursor:pointer}
     install5();
     install6();
     install7();
+    install8();
+    install9();
   }
 
   // wrestling/js/systems/showRunner.js
@@ -5081,6 +5779,7 @@ details summary{cursor:pointer}
     morale: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>',
     mail: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>',
     belt: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1"/></svg>',
+    ear: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 0 1-7 0"/><path d="M9.5 8.5a2.5 2.5 0 1 1 5 0c0 2.5-2.5 2.5-2.5 5"/></svg>',
     cal: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
   };
   function chip({ icon, tone = "", value, caption, badge }) {
@@ -6340,6 +7039,166 @@ details summary{cursor:pointer}
     }
   };
 
+  // wrestling/js/ui/screens/backstage.js
+  var RELIABILITY_TONE = {
+    [RELIABILITY.WITNESSED]: "green",
+    [RELIABILITY.FIRSTHAND]: "blue",
+    [RELIABILITY.SECONDHAND]: "amber",
+    [RELIABILITY.RUMOUR]: "red"
+  };
+  function buildingFrom(here) {
+    return LOCATION_IDS.map((id) => ({
+      id,
+      room: LOCATIONS[id],
+      away: hops(here, id),
+      seconds: travelSeconds(here, id),
+      who: whoIsIn(id)
+    })).sort((a, b) => a.away - b.away || a.room.name.localeCompare(b.room.name));
+  }
+  function newsDelay(distance) {
+    const cut = 1 - awareness() / 100 * MAX_AWARENESS_CUT;
+    return Math.round((BASE_DELAY_SEC + distance * DELAY_PER_HOP_SEC) * cut);
+  }
+  function roomCard(entry, here) {
+    const { id, room, away, seconds, who } = entry;
+    const youAreHere = id === here;
+    const tone = youAreHere ? " good" : room.onAir ? " warn" : "";
+    const cost = youAreHere ? "You are here" : `${mmss(seconds)} walk &middot; ${away} door${away === 1 ? "" : "s"}`;
+    return `
+    <button class="wcard${tone}" data-action="walkTo" data-room="${id}"${youAreHere ? ' aria-current="true"' : ""}>
+      <span class="who">
+        <span class="nm">${esc(room.name)}</span>
+        <span class="sub">${cost}</span>
+      </span>
+      ${room.onAir ? '<span class="tag amber">On air</span>' : ""}
+      <span class="tag${who.length ? " blue" : ""}">${who.length}</span>
+    </button>`;
+  }
+  function personCard(w) {
+    const tells = willingnessToTell(w);
+    const tone = tells >= 55 ? " good" : tells < TELL_THRESHOLD ? " bad" : "";
+    return `
+    <button class="wcard${tone}" data-action="go" data-arg="wrestler/${w.id}">
+      <span class="who">
+        <span class="nm">${esc(w.name)}</span>
+        <span class="sub">${esc(titleCase(w.standing.careerStatus))} &middot; talks to you ${tells}</span>
+      </span>
+      ${titlesHeldBy(w.id).map((t) => `<span class="tag amber">${esc(t.shortName)}</span>`).join("")}
+    </button>`;
+  }
+  function noteRow(n) {
+    const late = lateness(n);
+    return `
+    <button class="slot note${n.read ? " done" : " next"}" data-action="readNews" data-id="${n.id}">
+      <span class="what">
+        <span class="t">${esc(n.summary)}</span>
+        <span class="d">${esc(n.detail || locationName(n.locationId))}${late ? ` &middot; ${mmss(late)} late` : ""}</span>
+      </span>
+      <span class="side">
+        <span class="tag ${RELIABILITY_TONE[n.reliability] || ""}">${esc(RELIABILITY_LABEL[n.reliability] || n.reliability)}</span>
+        <span class="time">${confidenceOf(n)}%</span>
+      </span>
+    </button>`;
+  }
+  var backstage_default = {
+    label: "Backstage",
+    render() {
+      if (!isLoaded()) return notLoaded();
+      const here = gmLocation();
+      const room = LOCATIONS[here];
+      const clock = tick();
+      const building = buildingFrom(here);
+      const inHere = whoIsIn(here);
+      const heard = deliveredNotifications().slice().sort((a, b) => b.deliveredTick - a.deliveredTick || b.raisedTick - a.raisedTick);
+      const unread = heard.filter((n) => !n.read).length;
+      const rooms = building.map((e) => roomCard(e, here)).join("");
+      const people = inHere.length ? inHere.map(personCard).join("") : `<p class="empty">Nobody else is in ${esc(room.name)}. Whatever is happening tonight,
+         it is happening somewhere you are not.</p>`;
+      const news = heard.length ? heard.slice(0, 24).map(noteRow).join("") : `<p class="empty">Nothing has reached you yet. News takes time to cross the building,
+         and somebody has to want to bring it.</p>`;
+      const tellers = allWrestlers().map((w) => ({ w, tells: willingnessToTell(w), where: locationOf(w.id) })).sort((a, b) => b.tells - a.tells).slice(0, 6).map(({ w, tells, where }) => `
+        <div class="kv"><span>${esc(w.shortName)} <span class="muted">&middot; ${esc(locationName(where))}</span></span>
+          <span>${tells}</span></div>`).join("");
+      const silent = allWrestlers().filter((w) => willingnessToTell(w) < TELL_THRESHOLD).length;
+      const distances = [0, 1, 2].map((d) => `
+      <div class="kv"><span>${d === 0 ? "In this room" : `${d} door${d === 1 ? "" : "s"} away`}</span>
+        <span>${d === 0 ? "at once" : mmss(newsDelay(d))}</span></div>`).join("");
+      const walks = queryLog({
+        types: [EVENT_TYPES.GM_MOVED],
+        newestFirst: true,
+        limit: 6
+      }).map((e) => {
+        const through = (e.data?.via || []).slice(1, -1).map(locationShort);
+        return `<div class="ev">
+        <span class="d">${mmss(e.data?.seconds || 0)}</span>
+        <span><span class="t">${esc(locationName(e.data?.to))}</span>${through.length ? `<br><span class="muted">through ${esc(through.join(", "))}</span>` : ""}</span>
+      </div>`;
+      }).join("") || '<p class="empty">You have not moved tonight.</p>';
+      return `
+      <h1>Backstage</h1>
+      <p class="sub">${mmss(clock)} into the night &middot; you are in ${esc(room.name)}
+        &middot; ${heard.length} thing${heard.length === 1 ? "" : "s"} have reached you${unread ? `, ${unread} unread` : ""}</p>
+
+      <div class="cols three">
+        <div>
+          <section class="panel">
+            <div class="head"><h2>The building</h2><span class="meta">${allWrestlers().length} in</span></div>
+            <div class="body"><div class="sheet">${rooms}</div></div>
+          </section>
+        </div>
+
+        <div>
+          <section class="panel">
+            <div class="head">
+              <h2>${esc(room.name)}</h2>
+              <span class="meta">${isOnAir(here) ? "You can run the show from here" : "Off the air"}</span>
+            </div>
+            <div class="body">
+              <p class="sub" style="margin-top:0">${esc(room.blurb)}</p>
+              <div class="sheet">${people}</div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <h2>What you have been told</h2>
+              <span class="meta">${unread ? `${unread} unread` : "all read"}</span>
+            </div>
+            <div class="body">
+              ${heard.length ? `<div class="bar"><button class="act" data-action="markAllNews">Mark all read</button></div>` : ""}
+              <div class="sheet">${news}</div>
+            </div>
+          </section>
+        </div>
+
+        <div>
+          <section class="panel">
+            <div class="head"><h2>How wired in you are</h2><span class="meta">${awareness()}/100</span></div>
+            <div class="body">
+              ${meter(awareness(), 1)}
+              <p class="sub">Raising this shortens every delay and sharpens what arrives. Nothing raises
+                it yet; it is the hook the GM skill tree hangs off.</p>
+              ${distances}
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Who would tell you</h2><span class="meta">of ${allWrestlers().length}</span></div>
+            <div class="body">
+              ${tellers}
+              <p class="sub">${silent ? `${silent} ${silent === 1 ? "person" : "people"} would not come and find you at all.` : "Everybody would bring you news if they saw something."}</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Where you have walked</h2></div>
+            <div class="body"><div class="log narrow">${walks}</div></div>
+          </section>
+        </div>
+      </div>`;
+    }
+  };
+
   // wrestling/js/ui/screens/requests.js
   var STATUS_TONE = {
     [REQUEST_STATUS.GRANTED]: "brass",
@@ -6434,6 +7293,7 @@ details summary{cursor:pointer}
   // wrestling/js/main.js
   registerScreen("roster", roster_default);
   registerScreen("show", show_default);
+  registerScreen("backstage", backstage_default);
   registerScreen("requests", requests_default);
   registerScreen("titles", titles_default);
   registerScreen("lockerroom", lockerroom_default);
@@ -6446,6 +7306,7 @@ details summary{cursor:pointer}
     const roster = allWrestlers();
     const morale = roster.length ? Math.round(roster.reduce((t, w) => t + w.state.morale, 0) / roster.length) : 0;
     const open = openRequests().length;
+    const unheard = unreadNotifications().length;
     const heldTitles = allTitles().filter((t) => t.lineage.some((r) => r.lostOnDay == null)).length;
     const day = state2.calendar.day;
     return [
@@ -6458,6 +7319,13 @@ details summary{cursor:pointer}
       }),
       chip({ icon: "belt", tone: "amber", value: `${heldTitles}/${allTitles().length}`, caption: "Titles held" }),
       chip({ icon: "mail", tone: open ? "violet" : "", value: open, caption: "Requests", badge: open || null }),
+      chip({
+        icon: "ear",
+        tone: unheard ? "blue" : "dim",
+        value: locationShort(gmLocation()),
+        caption: "Backstage",
+        badge: unheard || null
+      }),
       chip({
         icon: "cal",
         value: `Week ${weekOf(day)}`,
@@ -6643,6 +7511,31 @@ details summary{cursor:pointer}
       if (!show) return toast("Nothing left on the calendar");
       go(`show/${show.id}`);
       refresh2(`${show.name}, ${getState().calendar.day} days in`);
+    },
+    // --- backstage ---------------------------------------------------------
+    /**
+     * Walk somewhere. The clock moves, which is the only reason this is a
+     * decision rather than a menu: anything that happens while you are in the
+     * corridor happens without you.
+     */
+    walkTo({ room }) {
+      const before = gmLocation();
+      if (room === before) return;
+      try {
+        const walk = moveGm(room);
+        const landed = deliverDueNotifications({ cause: walk.event?.id || null });
+        refresh2(landed.length ? `${locationName(room)}, ${mmssShort(walk.seconds)} later. ${landed.length} thing${landed.length === 1 ? "" : "s"} caught up with you` : `${locationName(room)}, ${mmssShort(walk.seconds)} later`);
+      } catch (err) {
+        toast(err.message);
+      }
+    },
+    readNews({ id }) {
+      markNotificationRead(id);
+      render();
+    },
+    markAllNews() {
+      markAllNotificationsRead();
+      render();
     },
     denyRequest({ id }) {
       const request = getRequest(id);

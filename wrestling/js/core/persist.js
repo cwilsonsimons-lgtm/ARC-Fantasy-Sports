@@ -154,6 +154,28 @@ export const MIGRATIONS = {
     state.requests = state.requests || {};
     return state;
   },
+
+  // v6 -> v7: the building exists. A save written before it has nobody
+  // anywhere, so everyone starts in the locker room and the GM at their desk.
+  6: (state) => {
+    if (state.meta.backstageAwareness === undefined) state.meta.backstageAwareness = 0;
+    state.backstage = state.backstage || {
+      gmLocation: 'gm_office',
+      tick: 0,
+      wrestlers: {},
+      notifications: [],
+    };
+    for (const id of Object.keys(state.wrestlers)) {
+      if (!state.backstage.wrestlers[id]) state.backstage.wrestlers[id] = 'locker_room';
+    }
+    // Events predating the backstage were all things the GM was present for.
+    for (const e of state.log) {
+      if (e.visibility === undefined) e.visibility = 'public';
+      if (e.locationId === undefined) e.locationId = null;
+      if (e.tick === undefined) e.tick = null;
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

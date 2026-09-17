@@ -11,7 +11,7 @@
     "pixel-diff": "node tools/pixel-diff.mjs",
     "check:markets": "node tools/markets-check.mjs",
     "build:wgm": "node tools/build.mjs wrestling/index.html wrestling/js/main.js wrestling/dist/index.html",
-    "check:wgm": "node tools/wgm-check.mjs && node tools/wgm-newgame-check.mjs && node tools/wgm-sim-check.mjs && node tools/wgm-personality-check.mjs && node tools/wgm-rank-check.mjs && node tools/wgm-relationship-check.mjs && node tools/wgm-requests-check.mjs && node tools/wgm-loop-check.mjs"
+    "check:wgm": "node tools/wgm-check.mjs && node tools/wgm-newgame-check.mjs && node tools/wgm-sim-check.mjs && node tools/wgm-personality-check.mjs && node tools/wgm-rank-check.mjs && node tools/wgm-relationship-check.mjs && node tools/wgm-requests-check.mjs && node tools/wgm-backstage-check.mjs && node tools/wgm-loop-check.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

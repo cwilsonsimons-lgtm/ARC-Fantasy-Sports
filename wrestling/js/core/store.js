@@ -24,7 +24,7 @@
 import * as ids from './ids.js';
 import { createRng } from './rng.js';
 import * as events from './events.js';
-import { EVENT_TYPES } from './events.js';
+import { EVENT_TYPES, VISIBILITY } from './events.js';
 import * as clock from './clock.js';
 import { createWrestler, createMemory, clampUnit, clampSigned } from '../models/wrestler.js';
 import { createRelationship, applyDeltas, AXES } from '../models/relationship.js';
@@ -32,8 +32,10 @@ import { createShow, SHOW_STATUS, bookedSeconds, actualSeconds } from '../models
 import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment.js';
 import { createTitle as makeTitle, createReign, currentReign, championIds } from '../models/title.js';
 import { createRequest as makeRequest, REQUEST_STATUS, REQUEST_LABEL } from '../models/request.js';
+import { createNotification, RELIABILITY } from '../models/notification.js';
+import { LOCATIONS, isLocation, locationName, travelSeconds, route } from '../models/location.js';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -67,6 +69,7 @@ function requireGame() {
 export function emit(type, {
   summary = '', actorId = null, subjects = [], showId = null, segmentId = null,
   cause = null, data = {},
+  locationId = null, visibility = VISIBILITY.PUBLIC, newsSummary = '',
 } = {}) {
   const state = requireGame();
   const event = events.makeEvent({
@@ -76,6 +79,10 @@ export function emit(type, {
     type, summary, actorId, subjects, showId, segmentId,
     causeId: cause,
     data,
+    locationId,
+    visibility,
+    newsSummary,
+    tick: state.backstage?.tick ?? 0,
   });
   state.log.push(event);
   events.dispatch(event);
@@ -105,6 +112,10 @@ export function newGame({
       gmName,
       brandName,
       mode,
+      // How fast and how accurately backstage news reaches the GM, 0-100.
+      // Raised by the GM skill tree, which is not built: see the design
+      // foundation's backstage-awareness branch.
+      backstageAwareness: 0,
       createdAt: new Date().toISOString(),
     },
     calendar: clock.createCalendar(startDate),
@@ -113,6 +124,14 @@ export function newGame({
     segments: {},
     titles: {},
     requests: {},
+    // The building. `tick` is seconds into the working night, which is what
+    // notification timing is measured in.
+    backstage: {
+      gmLocation: 'gm_office',
+      tick: 0,
+      wrestlers: {},        // wrestlerId -> locationId
+      notifications: [],    // pending and delivered, newest last
+    },
     log: [],
   };
 
@@ -139,6 +158,7 @@ export function installState(state, rngState, { seed } = {}) {
     ...Object.keys(state.segments),
     ...Object.keys(state.titles || {}),
     ...Object.keys(state.requests || {}),
+    ...(state.backstage?.notifications || []).map((n) => n.id),
     ...state.log.map((e) => e.id),
     ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
     ...state.calendar.entries.map((e) => e.id),
@@ -218,6 +238,8 @@ export function addWrestler(spec, { cause = null } = {}) {
   const state = requireGame();
   const wrestler = createWrestler({ debutDay: state.calendar.day, ...spec });
   state.wrestlers[wrestler.id] = wrestler;
+  // Anybody who exists is standing somewhere. Nowhere is not a place.
+  state.backstage.wrestlers[wrestler.id] = 'locker_room';
 
   // Starting relationships in an authored roster are written as names or IDs of
   // wrestlers who may not exist yet; resolution happens in linkRoster() below.
@@ -340,11 +362,21 @@ export function adjustRelationship(fromId, toId, deltas, {
   });
   if (!Object.keys(changed).length) return rel;
 
+  // This happened somewhere, between two people, and the GM was not
+  // necessarily standing there. Everything else about the backstage layer
+  // follows from marking it so.
+  const souring = (changed.hostility || 0) > 0 || (changed.affinity || 0) < 0;
+  const warming = (changed.affinity || 0) > 0 || (changed.trust || 0) > 0;
+  const drift = souring ? 'souring on' : warming ? 'warming to' : 'reassessing';
+
   const event = emit(EVENT_TYPES.WRESTLER_RELATION, {
     summary: reason || `${from.name}'s view of ${nameOf(toId)} changed`,
+    newsSummary: `${from.name} is ${drift} ${nameOf(toId)}`,
     actorId: fromId,
     subjects: [fromId, toId],
     cause,
+    locationId: state.backstage.wrestlers[fromId] || 'locker_room',
+    visibility: VISIBILITY.BACKSTAGE,
     data: { fromId, toId, before, after: Object.fromEntries(AXES.map((a) => [a, rel[a]])), changed, reason, type },
   });
   // Point the history entry at the event that caused it, so the full record is
@@ -770,6 +802,184 @@ export function resolveRequest(id, outcome, { segmentId = null, reason = '', cau
       targetId: request.targetId, titleId: request.titleId, urgency: request.urgency,
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// The backstage
+// ---------------------------------------------------------------------------
+
+export function backstage() { return requireGame().backstage; }
+export function gmLocation() { return requireGame().backstage.gmLocation; }
+export function tick() { return requireGame().backstage.tick; }
+
+export function locationOf(wrestlerId) {
+  return requireGame().backstage.wrestlers[wrestlerId] || 'locker_room';
+}
+
+/** Everybody currently in a room. */
+export function whoIsIn(locationId) {
+  const b = requireGame().backstage;
+  return allWrestlers().filter((w) => (b.wrestlers[w.id] || 'locker_room') === locationId);
+}
+
+/** Put somebody in a room. Quiet by default: people move constantly. */
+export function placeWrestler(wrestlerId, locationId, { reason = '', cause = null, silent = true } = {}) {
+  const state = requireGame();
+  requireWrestler(wrestlerId);
+  if (!isLocation(locationId)) throw new Error(`Unknown location "${locationId}"`);
+  const before = state.backstage.wrestlers[wrestlerId] || null;
+  if (before === locationId) return locationId;
+  state.backstage.wrestlers[wrestlerId] = locationId;
+
+  if (!silent) {
+    emit(EVENT_TYPES.WRESTLER_MOVED, {
+      summary: reason || `${nameOf(wrestlerId)} goes to ${locationName(locationId)}`,
+      actorId: wrestlerId,
+      subjects: [wrestlerId],
+      locationId,
+      visibility: VISIBILITY.BACKSTAGE,
+      cause,
+      data: { from: before, to: locationId },
+    });
+  }
+  return locationId;
+}
+
+/**
+ * Walk the GM somewhere. Costs time, which is the whole point: while you are
+ * crossing the building, the building is carrying on without you.
+ */
+export function moveGm(locationId, { cause = null } = {}) {
+  const state = requireGame();
+  if (!isLocation(locationId)) throw new Error(`Unknown location "${locationId}"`);
+  const from = state.backstage.gmLocation;
+  if (from === locationId) return { from, to: locationId, seconds: 0 };
+
+  const seconds = travelSeconds(from, locationId);
+  state.backstage.tick += seconds;
+  state.backstage.gmLocation = locationId;
+
+  const via = route(from, locationId);
+  const event = emit(EVENT_TYPES.GM_MOVED, {
+    summary: `You walk to ${locationName(locationId)}`,
+    cause,
+    locationId,
+    data: { from, to: locationId, seconds, via },
+  });
+  return { from, to: locationId, seconds, via, event };
+}
+
+/** Move the night along without walking anywhere. */
+export function advanceTick(seconds) {
+  const state = requireGame();
+  if (seconds > 0) state.backstage.tick += Math.round(seconds);
+  return state.backstage.tick;
+}
+
+/** Reset the clock and clear the floor, at the top of a new night. */
+export function resetBackstageClock() {
+  const state = requireGame();
+  state.backstage.tick = 0;
+  return state.backstage.tick;
+}
+
+// --- notifications ---
+
+export function notifications() { return requireGame().backstage.notifications; }
+
+export function pendingNotifications() {
+  return notifications().filter((n) => n.deliveredTick == null);
+}
+
+export function deliveredNotifications() {
+  return notifications().filter((n) => n.deliveredTick != null);
+}
+
+export function unreadNotifications() {
+  return deliveredNotifications().filter((n) => !n.read);
+}
+
+/** How many notifications a save keeps before the oldest read ones are dropped. */
+export const NOTIFICATION_LIMIT = 120;
+
+/** Queue news to reach the GM at some future tick. */
+export function scheduleNotification(spec, { cause = null } = {}) {
+  const state = requireGame();
+  const note = createNotification({ raisedTick: state.backstage.tick, ...spec });
+  state.backstage.notifications.push(note);
+  trimNotifications(state);
+  return note;
+}
+
+/**
+ * Keep the list to its cap, oldest read news first.
+ *
+ * Preferring to drop what the GM has already seen is the right instinct, but a
+ * cap that only ever drops read news is not a cap: a quiet GM who reads nothing
+ * would grow the save without limit. So once the read ones are gone, the oldest
+ * of anything goes too.
+ */
+function trimNotifications(state) {
+  const list = state.backstage.notifications;
+  let over = list.length - NOTIFICATION_LIMIT;
+  if (over <= 0) return;
+
+  const oldestFirst = [...list].sort((a, b) => a.raisedTick - b.raisedTick);
+  const doomed = new Set();
+  for (const pass of [(n) => n.deliveredTick != null && n.read, () => true]) {
+    for (const n of oldestFirst) {
+      if (over <= 0) break;
+      if (doomed.has(n.id) || !pass(n)) continue;
+      doomed.add(n.id);
+      over--;
+    }
+  }
+  state.backstage.notifications = list.filter((n) => !doomed.has(n.id));
+}
+
+/** Deliver everything whose time has come. Returns what just landed. */
+export function deliverDueNotifications({ cause = null } = {}) {
+  const state = requireGame();
+  const now = state.backstage.tick;
+  const landed = [];
+
+  for (const note of state.backstage.notifications) {
+    if (note.deliveredTick != null || note.dueTick > now) continue;
+    note.deliveredTick = now;
+    landed.push(note);
+
+    emit(EVENT_TYPES.NEWS_REACHED_GM, {
+      summary: note.summary,
+      subjects: note.aboutIds,
+      locationId: note.locationId,
+      cause: cause || note.eventId,
+      data: {
+        notificationId: note.id,
+        eventId: note.eventId,
+        reliability: note.reliability,
+        sourceWrestlerId: note.sourceWrestlerId,
+        lateBySec: Math.max(0, now - note.raisedTick),
+      },
+    });
+  }
+  return landed;
+}
+
+export function markNotificationRead(id) {
+  const note = requireGame().backstage.notifications.find((n) => n.id === id);
+  if (note) note.read = true;
+  return note;
+}
+
+/** Raise or lower how well wired-in the GM is. The skill tree's hook. */
+export function setBackstageAwareness(value) {
+  const state = requireGame();
+  state.meta.backstageAwareness = Math.max(0, Math.min(100, Math.round(value)));
+  return state.meta.backstageAwareness;
+}
+
+export function markAllNotificationsRead() {
+  for (const n of deliveredNotifications()) n.read = true;
 }
 
 // ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@ import * as runner from './systems/showRunner.js';
 import * as booking from './systems/booking.js';
 import * as rankings from './systems/rankings.js';
 import { formatOf, slotsFor, autoName } from './systems/formats.js';
+import { locationName, locationShort } from './models/location.js';
 import {
   registerScreen, registerActions, bindEvents, render, go, toast,
   renderHeader, setWhenFormatter, setChipProvider, chip,
@@ -33,6 +34,7 @@ import savesScreen from './ui/screens/saves.js';
 import { draft, setDraftFormat, setOverride, setDraftTitle } from './ui/screens/show.js';
 import titlesScreen from './ui/screens/titles.js';
 import lockerRoomScreen from './ui/screens/lockerroom.js';
+import backstageScreen from './ui/screens/backstage.js';
 import requestsScreen from './ui/screens/requests.js';
 import { denyRequest as refuseRequest } from './systems/requests.js';
 import * as playback from './ui/playback.js';
@@ -42,6 +44,7 @@ import { setRailText, setRailOnly } from './ui/rosterRail.js';
 // look at the roster, book the show, run it, then move the calendar on.
 registerScreen('roster', rosterScreen);
 registerScreen('show', showScreen);
+registerScreen('backstage', backstageScreen);
 registerScreen('requests', requestsScreen);
 registerScreen('titles', titlesScreen);
 registerScreen('lockerroom', lockerRoomScreen);
@@ -59,6 +62,7 @@ setChipProvider((state) => {
   const morale = roster.length
     ? Math.round(roster.reduce((t, w) => t + w.state.morale, 0) / roster.length) : 0;
   const open = store.openRequests().length;
+  const unheard = store.unreadNotifications().length;
   const heldTitles = store.allTitles().filter((t) => t.lineage.some((r) => r.lostOnDay == null)).length;
   const day = state.calendar.day;
 
@@ -70,6 +74,11 @@ setChipProvider((state) => {
     }),
     chip({ icon: 'belt', tone: 'amber', value: `${heldTitles}/${store.allTitles().length}`, caption: 'Titles held' }),
     chip({ icon: 'mail', tone: open ? 'violet' : '', value: open, caption: 'Requests', badge: open || null }),
+    chip({
+      icon: 'ear', tone: unheard ? 'blue' : 'dim',
+      value: locationShort(store.gmLocation()), caption: 'Backstage',
+      badge: unheard || null,
+    }),
     chip({
       icon: 'cal',
       value: `Week ${clock.weekOf(day)}`,
@@ -287,6 +296,36 @@ registerActions({
     if (!show) return toast('Nothing left on the calendar');
     go(`show/${show.id}`);
     refresh(`${show.name}, ${store.getState().calendar.day} days in`);
+  },
+
+  // --- backstage ---------------------------------------------------------
+  /**
+   * Walk somewhere. The clock moves, which is the only reason this is a
+   * decision rather than a menu: anything that happens while you are in the
+   * corridor happens without you.
+   */
+  walkTo({ room }) {
+    const before = store.gmLocation();
+    if (room === before) return;
+    try {
+      const walk = store.moveGm(room);
+      const landed = store.deliverDueNotifications({ cause: walk.event?.id || null });
+      refresh(landed.length
+        ? `${locationName(room)}, ${mmssShort(walk.seconds)} later. ${landed.length} thing${landed.length === 1 ? '' : 's'} caught up with you`
+        : `${locationName(room)}, ${mmssShort(walk.seconds)} later`);
+    } catch (err) {
+      toast(err.message);
+    }
+  },
+
+  readNews({ id }) {
+    store.markNotificationRead(id);
+    render();
+  },
+
+  markAllNews() {
+    store.markAllNotificationsRead();
+    render();
   },
 
   denyRequest({ id }) {

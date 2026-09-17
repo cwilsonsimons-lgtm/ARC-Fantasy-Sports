@@ -48,6 +48,12 @@ export const EVENT_TYPES = Object.freeze({
   RANKING_UPDATED:     'ranking.updated',
   CONTENDER_CHANGED:   'contender.changed',
 
+  // --- the backstage ---
+  GM_MOVED:            'gm.moved',
+  WRESTLER_MOVED:      'wrestler.moved',
+  NEWS_REACHED_GM:     'news.reached_gm',
+  NEWS_MISSED:         'news.missed',
+
   // --- what the roster wants ---
   REQUEST_MADE:        'request.made',
   REQUEST_GRANTED:     'request.granted',
@@ -86,6 +92,19 @@ export function isValidEventType(type) {
 }
 
 /**
+ * Whether the GM knows about something the moment it happens.
+ *
+ * PUBLIC is anything they are present for by definition: the show they are
+ * running, a result, a title changing hands. BACKSTAGE happens in a room, and
+ * whether the GM ever learns of it depends on where they were standing and who
+ * was willing to tell them. That split is the whole backstage layer.
+ */
+export const VISIBILITY = Object.freeze({
+  PUBLIC: 'public',
+  BACKSTAGE: 'backstage',
+});
+
+/**
  * Shape every event shares.
  *
  * `subjects` is the indexed field: every entity the event is *about*, so that
@@ -98,6 +117,8 @@ export function makeEvent({
   id, seq, day, type, summary = '',
   actorId = null, subjects = [], showId = null, segmentId = null,
   causeId = null, data = {},
+  locationId = null, visibility = VISIBILITY.PUBLIC, tick = null,
+  newsSummary = '',
 }) {
   if (!isValidEventType(type)) {
     throw new Error(`Unregistered event type "${type}". Add it to EVENT_TYPES.`);
@@ -107,6 +128,13 @@ export function makeEvent({
     actorId,
     subjects: Array.from(new Set(subjects.filter(Boolean))),
     showId, segmentId, causeId,
+    // Where it happened, when within the night, and whether the GM is present
+    // for it by definition. Backstage events go through systems/notifications.
+    locationId, visibility, tick,
+    // `summary` is written to be READ in the log. `newsSummary` is written to
+    // be HEARD second-hand in a corridor, which is a different sentence:
+    // "Beat Tobias Wren" is a record, "Kane is souring on Wren" is news.
+    newsSummary,
     data,
     wallClock: new Date().toISOString(),
   };
