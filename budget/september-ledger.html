@@ -154,6 +154,8 @@
   .entry button.mark{display:inline-block;margin-top:5px;padding:5px 9px;background:var(--paper);
     border:1px solid var(--ink-soft);color:var(--ink-soft);font:inherit;font-size:12.5px;cursor:pointer}
   .entry button.mark:hover{background:var(--ink);color:var(--paper-lit);border-color:var(--ink)}
+  textarea.code{margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;line-height:1.35;resize:vertical;word-break:break-all}
   .empty{color:var(--muted);font-size:14px;padding:10px 0}
   .note{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5}
   .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
@@ -769,6 +771,7 @@ function render(){
 
     + '<div class="foot">'+plural(state.purchases.length,'entry','entries')+' logged · '+plural(state.sched.length,'repeating charge','repeating charges')+''
     + '<div id="saveState" style="margin-top:4px"></div>'
+    + '<div style="margin-top:6px"><button id="backupBtn">Back up or move your ledger</button></div>'
     + '<button id="reset" style="margin-top:6px">Clear what is logged in '+monthName(view)+'</button></div>';
 
   flagSave();
@@ -792,6 +795,7 @@ function render(){
   document.getElementById('editBtn').onclick = openSettings;
   const balLink = document.getElementById('balBtn');   // only on the live month
   if(balLink) balLink.onclick = openSettings;
+  document.getElementById('backupBtn').onclick = openBackup;
   document.getElementById('reset').onclick = ()=>{
     if(!confirm('Delete every entry logged in '+monthName(view)+'? Other months are left alone.')) return;
     state.purchases=[]; save(); render();
@@ -965,6 +969,69 @@ function readIncome(){
     it.label = r.querySelector('[data-f="label"]').value.trim().slice(0,32) || 'Money in';
     it.amt   = Math.abs(parseFloat(r.querySelector('[data-f="amt"]').value)) || 0;
   });
+}
+
+/* Every copy of this ledger — the one in Claude, the file on your disk —
+   keeps its own books. This is how a month of entries moves between them. */
+function ledgerSummary(){
+  const ks = monthKeys();
+  const n = ks.reduce((t,k)=>t + store.months[k].purchases.length, 0);
+  return ks.length ? plural(ks.length,'month','months') + ' · ' + plural(n,'entry','entries')
+                     + ' · ' + ks.map(shortMonth).join(', ')
+                   : 'nothing saved yet';
+}
+function openBackup(){
+  openDay = null;
+  const text = JSON.stringify(store);
+  document.getElementById('sheet').innerHTML =
+    '<div class="sheet-head"><div><h2>Back up or move</h2>'
+    + '<div class="sub">' + ledgerSummary() + '</div></div>'
+    + '<button class="x" id="close" aria-label="Close">×</button></div>'
+
+    + '<div class="note" style="margin-top:0">This is your whole ledger as text. Copy it somewhere safe, '
+    + 'or paste it into another copy of this page to carry everything across.</div>'
+    + '<textarea id="bkOut" class="code" rows="4" readonly aria-label="Your ledger as text">'+esc(text)+'</textarea>'
+    + '<button class="btn" id="bkCopy">Copy it</button>'
+    + '<div class="note" id="bkMsg"></div>'
+
+    + '<h3 style="font-size:15px;margin:22px 0 0">Bring one in</h3>'
+    + '<div class="note" style="margin-top:4px">Paste a backup here to load it. It replaces what is on this '
+    + 'copy, and it understands backups from every older version of this ledger.</div>'
+    + '<textarea id="bkIn" class="code" rows="4" placeholder="Paste a backup" aria-label="Paste a backup"></textarea>'
+    + '<button class="btn" id="bkLoad">Load it</button>'
+    + '<div class="note" id="bkErr" style="color:var(--debit)"></div>';
+  showSheet('sheet');
+  document.getElementById('close').onclick = closeSheet;
+
+  document.getElementById('bkCopy').onclick = async ()=>{
+    const box = document.getElementById('bkOut'), msg = document.getElementById('bkMsg');
+    try{
+      await navigator.clipboard.writeText(box.value);
+      msg.textContent = 'Copied. Paste it into the other copy, or anywhere you want it kept.';
+      msg.style.color = 'var(--credit)';
+    }catch(e){
+      box.focus(); box.select();
+      msg.textContent = 'Could not reach the clipboard here — it is selected above, so copy it yourself.';
+      msg.style.color = 'var(--amber)';
+    }
+  };
+
+  document.getElementById('bkLoad').onclick = ()=>{
+    const err = document.getElementById('bkErr');
+    const raw = document.getElementById('bkIn').value.trim();
+    err.textContent = '';
+    if(!raw){ err.textContent = 'Paste a backup in first.'; return; }
+    let parsed;
+    try{ parsed = JSON.parse(raw); }
+    catch(e){ err.textContent = 'That is not a backup — it did not read as text this ledger wrote.'; return; }
+    const looksRight = parsed && typeof parsed === 'object'
+      && (parsed.months || Array.isArray(parsed.purchases) || parsed.balance != null || parsed.startBalance != null);
+    if(!looksRight){ err.textContent = 'That read fine but holds no ledger.'; return; }
+    if(!confirm('Load this backup? It replaces everything on this copy — ' + ledgerSummary() + '.')) return;
+    store = { v:2, months:{}, quick: SEED_QUICK.map(x=>Object.assign({},x)), plan:'comfortable', cushion:null };
+    adopt(parsed);
+    save(); closeSheet(); render();
+  };
 }
 
 function openSheet(day){
