@@ -1,4 +1,4 @@
-<title>September Ledger</title>
+<title>Running Ledger</title>
 <style>
   :root{
     --ink:#12271F; --ink-soft:#2E4A3E; --paper:#E9E4D4; --paper-lit:#F3EFE2;
@@ -20,6 +20,13 @@
   .link{background:none;border:0;padding:0;font:inherit;font-size:inherit;color:var(--ink-soft);text-decoration:underline;cursor:pointer}
 
   .hero{border-top:2px solid var(--ink);padding-top:14px;margin-bottom:8px}
+  .months{display:flex;align-items:center;gap:6px}
+  .mnow{flex:1;min-width:0;text-align:center}
+  .mnav{background:transparent;border:1px solid var(--rule);color:var(--ink);font:inherit;font-size:20px;
+    line-height:1;padding:6px 13px;cursor:pointer;flex:none}
+  .mnav:hover{background:var(--ink);color:var(--paper-lit);border-color:var(--ink)}
+  .backnow{display:block;width:100%;margin-top:10px;padding:8px;background:var(--paper-lit);
+    border:1px dashed var(--rule);font:inherit;font-size:13px;color:var(--ink-soft);cursor:pointer}
   .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .edit-btn{background:transparent;border:1px solid var(--rule);color:var(--ink);font:inherit;font-size:13px;padding:7px 11px;cursor:pointer;white-space:nowrap}
 
@@ -201,8 +208,21 @@ const MEALS = {
   mcd:    { name:"McDonald's", cost:11.36 },
   sonic:  { name:'Sonic',      cost:6.00  }
 };
-const DAYS = 30, FIRST_DOW = 2;   // Sept 2026: 30 days, 1st is a Tuesday
 const DOWNAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHNAMES = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+
+/* ---- a month is a key like "2026-09"; everything about it is derived ---- */
+function ymOf(y,m){ return y + '-' + String(m+1).padStart(2,'0'); }
+function partsOf(k){ const a = String(k).split('-'); return {y:+a[0], m:(+a[1])-1}; }
+function monthName(k){ const p = partsOf(k); return MONTHNAMES[p.m] + ' ' + p.y; }
+function shortMonth(k){ return MONTHNAMES[partsOf(k).m].slice(0,3); }
+function daysIn(k){ const p = partsOf(k); return new Date(p.y, p.m+1, 0).getDate(); }
+function firstDowOf(k){ const p = partsOf(k); return new Date(p.y, p.m, 1).getDay(); }
+function shiftMonth(k, n){
+  const p = partsOf(k), d = new Date(p.y, p.m + n, 1);
+  return ymOf(d.getFullYear(), d.getMonth());
+}
 
 const SEED_SCHED = [
   {id:'s-apple',  day:1,  label:'Apple Music',        amt:6.99,  kind:'sub'},
@@ -232,20 +252,64 @@ const CATS = [
 const FOOD_ONLY_BUDGET = {games:0, extras:100};
 
 const now = new Date();
-const isSept = now.getFullYear()===2026 && now.getMonth()===8;
-const todayN = isSept ? now.getDate() : 0;
+const THIS_MONTH = ymOf(now.getFullYear(), now.getMonth());
 
-let state = {
-  plan:'comfortable',
-  purchases:[],            // one-offs, money out or in
-  balance:0,
-  balanceDay: todayN || 1,
-  income: SEED_INCOME.map(s=>Object.assign({},s)),   // scheduled money in
-  sched: SEED_SCHED.map(s=>Object.assign({},s)),     // scheduled money out
-  quick: SEED_QUICK.map(s=>Object.assign({},s)),     // the one-tap buttons
-  autoMeals:true,
-  cushion:null
+/* which day of a month counts as today: the real date in the month we are
+   living in, past the end of one already gone, before the start of one still
+   to come. Every is-this-future question downstream reads from it. */
+function todayNFor(k){
+  if(k === THIS_MONTH) return now.getDate();
+  return k < THIS_MONTH ? daysIn(k) + 1 : 0;
+}
+
+function blankMonth(){
+  return { balance:0, balanceDay:0, carry:false, autoMeals:true,
+           income:[], sched:[], purchases:[] };
+}
+
+/* everything saved: the months, plus the settings that are not monthly */
+let store = {
+  v: 2,
+  months: {},
+  quick: SEED_QUICK.map(s=>Object.assign({},s)),
+  plan: 'comfortable',
+  cushion: null
 };
+
+/* the month on screen. state, DAYS, FIRST_DOW and todayN always describe it,
+   so the rest of the page reads them without knowing months exist. */
+let view = THIS_MONTH, state = blankMonth(), DAYS = 30, FIRST_DOW = 2, todayN = 0;
+
+function setView(k){
+  view = k;
+  state = ensureMonth(k);
+  DAYS = daysIn(k);
+  FIRST_DOW = firstDowOf(k);
+  todayN = todayNFor(k);
+}
+
+/* A month opened for the first time is born from the one before it: what
+   repeats — subscriptions, installments, paydays — comes across, what you
+   bought does not, and it opens on whatever the month before finishes with. */
+function ensureMonth(k){
+  if(store.months[k]) return store.months[k];
+  const m = blankMonth();
+  const prev = store.months[shiftMonth(k,-1)];
+  const dim = daysIn(k);
+  if(prev){
+    m.sched  = prev.sched.map(x=>({id:newId(), day:Math.min(x.day,dim), label:x.label, amt:x.amt, kind:x.kind}));
+    m.income = prev.income.map(x=>({id:newId(), day:Math.min(x.day,dim), label:x.label, amt:x.amt}));
+    m.autoMeals = prev.autoMeals;
+    m.carry = true;                     // its opening balance follows the month before
+  } else {
+    m.sched  = SEED_SCHED.map(x=>Object.assign({},x));
+    m.income = SEED_INCOME.map(x=>Object.assign({},x));
+  }
+  store.months[k] = m;
+  return m;
+}
+function monthKeys(){ return Object.keys(store.months).sort(); }
+
 let openDay = null, addDir = 'out', addWhen = 'spent', schedKind = 'sub', quickEdit = false;
 
 /* ---------- storage: Claude's artifact store, else this browser ---------- */
@@ -260,6 +324,7 @@ function boot(){
     const v = localStorage.getItem(KEY);
     if(v) adopt(JSON.parse(v));
   }catch(e){ localOk = false; saveMode='none'; }
+  setView(view);
   render();
   // saved to disk and opened on its own, there is no Claude to ask
   if(!(window.claude && typeof window.claude.use === 'function')){
@@ -285,45 +350,74 @@ async function connect(){
     render();
     doc.onSnapshot(s=>{
       if (!s || !s.exists || s.hasPendingWrites || writing) return;
-      if (JSON.stringify(s.data()) === JSON.stringify(strip(state))) return;
+      if (JSON.stringify(s.data()) === JSON.stringify(strip(store))) return;
       adopt(s.data()); render();
     }, ()=>{});
   }catch(e){ writing = false; dbDoc = null; }
 }
 
-/* accepts both the old shape (startBalance, no sched) and the current one */
+/* Takes anything this ledger has ever saved — the first single-month shape,
+   the one after it, or the current store of months — and leaves store sound. */
 function adopt(raw){
   if(!raw || typeof raw !== 'object') return;
-  const s = Object.assign({}, raw);
-  if (s.startBalance !== undefined && s.balance === undefined){
-    s.balance = s.startBalance;
-    s.balanceDay = 0;              // an opening balance, before day 1
-  }
-  delete s.startBalance;
-  state = Object.assign(state, s);
 
-  if(!Array.isArray(state.sched) || !state.sched.length) state.sched = SEED_SCHED.map(x=>Object.assign({},x));
-  if(!Array.isArray(state.purchases)) state.purchases = [];
-  if(!Array.isArray(state.quick)) state.quick = SEED_QUICK.map(x=>Object.assign({},x));
+  const incoming = (raw.v >= 2 && raw.months && typeof raw.months === 'object')
+    ? raw
+    : { months:{ '2026-09': oneMonthFrom(raw) }, quick: raw.quick, plan: raw.plan, cushion: raw.cushion };
 
-  // one flat gift + one paycheck figure became editable income lines
-  if(!Array.isArray(state.income) || !state.income.length){
-    const inc = [];
-    if(+raw.gift) inc.push({id:'i-gift', day:clampDay(raw.giftDay||1), label:"Mom's gift", amt:Math.abs(+raw.gift)});
-    (Array.isArray(raw.payDays)?raw.payDays:[]).forEach((d,n)=>
-      inc.push({id:'i-pay'+(n+1), day:clampDay(d), label:'Lids paycheck', amt:Math.abs(+raw.paycheck)||0}));
-    state.income = inc.length ? inc : SEED_INCOME.map(x=>Object.assign({},x));
-  }
-  ['gift','giftDay','paycheck','payDays'].forEach(k=> delete state[k]);
+  store.months = (incoming.months && typeof incoming.months === 'object') ? incoming.months : {};
+  if(Array.isArray(incoming.quick) && incoming.quick.length) store.quick = incoming.quick;
+  if(incoming.plan === 'comfortable' || incoming.plan === 'aggressive') store.plan = incoming.plan;
+  if(incoming.cushion === null || isFinite(+incoming.cushion)) store.cushion = incoming.cushion;
+  store.v = 2;
 
-  state.sched.forEach(x=>{ x.day=clampDay(x.day); x.amt=Math.abs(+x.amt)||0; x.kind = x.kind==='bill'?'bill':'sub'; });
-  state.income.forEach(x=>{ x.day=clampDay(x.day); x.amt=Math.abs(+x.amt)||0; x.label=String(x.label||'Money in'); });
-  state.quick.forEach(x=>{ x.amt=Math.abs(+x.amt)||0; x.dir = x.dir==='in'?'in':'out'; if(x.dir==='out' && !catOk(x.cat)) x.cat='extras'; });
-  state.purchases.forEach(p=>{
-    p.day=clampDay(p.day); p.amt=Math.abs(+p.amt)||0;
-    p.dir = p.dir==='in' ? 'in' : 'out';
-    if(p.dir==='out' && !catOk(p.cat)) p.cat='extras';
+  store.quick.forEach(x=>{ x.amt=Math.abs(+x.amt)||0; x.dir = x.dir==='in'?'in':'out';
+    if(x.dir==='out' && !catOk(x.cat)) x.cat='extras'; });
+
+  Object.keys(store.months).forEach(k=>{
+    if(!/^\d{4}-\d{2}$/.test(k)){ delete store.months[k]; return; }
+    const m = Object.assign(blankMonth(), store.months[k]);
+    const dim = daysIn(k), day = d=>{ d=parseInt(d,10); return isFinite(d)?Math.min(dim,Math.max(1,d)):1; };
+    if(!Array.isArray(m.sched)) m.sched = [];
+    if(!Array.isArray(m.income)) m.income = [];
+    if(!Array.isArray(m.purchases)) m.purchases = [];
+    m.balance = +m.balance || 0;
+    m.balanceDay = Math.min(dim, Math.max(0, parseInt(m.balanceDay,10) || 0));
+    m.carry = m.carry === true;
+    m.autoMeals = m.autoMeals !== false;
+    m.sched.forEach(x=>{ x.day=day(x.day); x.amt=Math.abs(+x.amt)||0; x.kind = x.kind==='bill'?'bill':'sub'; });
+    m.income.forEach(x=>{ x.day=day(x.day); x.amt=Math.abs(+x.amt)||0; x.label=String(x.label||'Money in'); });
+    m.purchases.forEach(p=>{
+      p.day=day(p.day); p.amt=Math.abs(+p.amt)||0;
+      p.dir = p.dir==='in' ? 'in' : 'out';
+      if(p.dir==='out' && !catOk(p.cat)) p.cat='extras';
+    });
+    store.months[k] = m;
   });
+  setView(view);
+}
+
+/* the first save shape — one month, unnamed — read as September 2026 */
+function oneMonthFrom(raw){
+  const m = blankMonth();
+  const opening = raw.startBalance !== undefined && raw.balance === undefined;
+  m.balance = +(opening ? raw.startBalance : raw.balance) || 0;
+  m.balanceDay = opening ? 0 : Math.max(0, parseInt(raw.balanceDay,10) || 0);
+  m.autoMeals = raw.autoMeals !== false;
+  m.purchases = Array.isArray(raw.purchases) ? raw.purchases : [];
+  m.sched = Array.isArray(raw.sched) && raw.sched.length
+    ? raw.sched : SEED_SCHED.map(x=>Object.assign({},x));
+
+  if(Array.isArray(raw.income) && raw.income.length) m.income = raw.income;
+  else {
+    // older still: one gift figure, and paydays that all shared one amount
+    const inc = [];
+    if(+raw.gift) inc.push({id:'i-gift', day:Math.max(1,parseInt(raw.giftDay,10)||1), label:"Mom's gift", amt:Math.abs(+raw.gift)});
+    (Array.isArray(raw.payDays)?raw.payDays:[]).forEach((d,n)=>
+      inc.push({id:'i-pay'+(n+1), day:Math.max(1,parseInt(d,10)||1), label:'Lids paycheck', amt:Math.abs(+raw.paycheck)||0}));
+    m.income = inc.length ? inc : SEED_INCOME.map(x=>Object.assign({},x));
+  }
+  return m;
 }
 function strip(s){ return JSON.parse(JSON.stringify(s)); }
 
@@ -343,7 +437,7 @@ async function flush(){
   if(wBusy){ save(); return; }        // a write is in flight; try again after it
   if(!wQueued) return;
   wQueued = false; wBusy = true;
-  const payload = strip(state);
+  const payload = strip(store);
   let landed = false;
   if(localOk){
     try{ localStorage.setItem(KEY, JSON.stringify(payload)); landed = true; }catch(e){}
@@ -391,9 +485,57 @@ function clampDay(d){ d = parseInt(d,10); return isFinite(d) ? Math.min(DAYS, Ma
 function catOk(c){ return CATS.some(x=>x.id===c); }
 function newId(){ return String(Date.now().toString(36)) + Math.random().toString(36).slice(2,6); }
 
-function anchorDay(){ const a = parseInt(state.balanceDay,10); return isFinite(a) ? Math.min(DAYS, Math.max(0,a)) : 0; }
-function cushion(){ return state.cushion==null ? PLANS[state.plan].save : Math.abs(+state.cushion)||0; }
-function isFuture(d){ return !isSept || d >= todayN; }
+function anchorDay(){ return state.carry ? 0 : Math.min(DAYS, Math.max(0, parseInt(state.balanceDay,10) || 0)); }
+function cushion(){ return store.cushion==null ? PLANS[store.plan].save : Math.abs(+store.cushion)||0; }
+function isFuture(d){ return d >= todayN; }
+
+/* ---- the chain between months ----
+   A month that carries opens on whatever the month before it finishes with, so
+   a purchase logged in September moves October's whole forecast. Months that do
+   not carry sit on the balance you typed. Walked with the month's own calendar,
+   never the one on screen. */
+function openingOf(k, seen){
+  const m = store.months[k];
+  if(!m) return 0;
+  const prevK = shiftMonth(k,-1);
+  if(m.carry && store.months[prevK] && !(seen && seen[prevK])) return closingOf(prevK, seen);
+  return +m.balance || 0;
+}
+function closingOf(k, seen){
+  const m = store.months[k];
+  if(!m) return 0;
+  seen = Object.assign({}, seen); seen[k] = 1;
+  const dim = daysIn(k), tN = todayNFor(k), fd = firstDowOf(k);
+  let bal = openingOf(k, seen);
+  const anchor = m.carry ? 0 : Math.min(dim, Math.max(0, parseInt(m.balanceDay,10) || 0));
+  for(let d = Math.max(1,anchor); d<=dim; d++) bal += netOf(m, d, false, tN, fd, dim);
+  return bal;
+}
+
+/* one day's net, for any month — the pure form the view wrappers below call */
+function mealOf(day, fd){
+  const dow = (fd + day - 1) % 7;
+  if(PLANS[store.plan].skip.includes(dow)) return null;
+  if(dow === 2) return MEALS.cfaUNT;
+  return (day % 2 === 0) ? MEALS.canes : MEALS.cfa;
+}
+function autoMealOf(m, d, tN, fd){
+  if(!m.autoMeals || d < tN) return 0;
+  if(m.purchases.some(x=>x.day===d && x.cat==='food' && x.dir!=='in')) return 0;
+  const meal = mealOf(d, fd);
+  return meal ? meal.cost : 0;
+}
+function netOf(m, d, real, tN, fd){
+  let n = 0;
+  m.income.forEach(i=>{ if(i.day===d) n += i.amt; });
+  m.sched.forEach(x=>{ if(x.day===d) n -= x.amt; });
+  m.purchases.forEach(p=>{
+    if(p.day!==d || (real && p.planned)) return;
+    n += p.dir==='in' ? p.amt : -p.amt;
+  });
+  if(!real) n -= autoMealOf(m, d, tN, fd);
+  return n;
+}
 function schedOn(d){ return state.sched.filter(x=>x.day===d); }
 function incomeOn(d){ return state.income.filter(x=>x.day===d); }
 function dayPurchases(d){ return state.purchases.filter(x=>x.day===d); }
@@ -401,46 +543,33 @@ function isIn(p){ return p.dir === 'in'; }
 function catLabel(id){ const c = CATS.find(x=>x.id===id); return c ? c.label : 'Money in'; }
 function incomeTotal(){ return state.income.reduce((s,x)=>s+x.amt,0); }
 
-function plannedMeal(day){
-  const dow = (FIRST_DOW + day - 1) % 7;
-  if (PLANS[state.plan].skip.includes(dow)) return null;
-  if (dow === 2) return MEALS.cfaUNT;
-  return (day % 2 === 0) ? MEALS.canes : MEALS.cfa;
-}
-function autoMealFor(d){
-  if(!state.autoMeals || !isFuture(d)) return 0;
-  if(dayPurchases(d).some(x=>x.cat==='food' && !isIn(x))) return 0;
-  const m = plannedMeal(d);
-  return m ? m.cost : 0;
-}
+function plannedMeal(day){ return mealOf(day, FIRST_DOW); }
+function autoMealFor(d){ return autoMealOf(state, d, todayN, FIRST_DOW); }
 
 /* net change on one day. real=true counts only what has actually happened:
    no assumed meals, no purchases you have merely planned. */
-function netFor(d, real){
-  let n = 0;
-  incomeOn(d).forEach(i=> n += i.amt);
-  schedOn(d).forEach(s=> n -= s.amt);
-  dayPurchases(d).forEach(p=>{ if(!(real && p.planned)) n += isIn(p) ? p.amt : -p.amt; });
-  if(!real) n -= autoMealFor(d);
-  return n;
-}
+function netFor(d, real){ return netOf(state, d, real, todayN, FIRST_DOW); }
+
+/* what this month opens on, whether carried or typed */
+function opening(){ return state.carry ? openingOf(view) : (+state.balance || 0); }
 
 /* balance at the end of every day, anchored on the balance you recorded
    (which is read as the start of its day) and walked both directions */
 function forecast(){
   const rows = new Array(DAYS).fill(0);
   const a = Math.max(1, anchorDay());
-  let bal = state.balance;
+  const open = opening();
+  let bal = open;
   for(let d=a; d<=DAYS; d++){ bal += netFor(d,false); rows[d-1] = bal; }
-  bal = state.balance;
+  bal = open;
   for(let d=a-1; d>=1; d--){ rows[d-1] = bal; bal -= netFor(d,false); }
   return rows;
 }
 
 /* what is in the account at this moment */
 function balanceNow(){
-  if(todayN < 1) return state.balance;
-  let bal = state.balance;
+  if(todayN < 1) return opening();
+  let bal = opening();
   for(let d=Math.max(1,anchorDay()); d<=Math.min(todayN,DAYS); d++) bal += netFor(d,true);
   return bal;
 }
@@ -481,7 +610,7 @@ function spentBy(c){
   return s;
 }
 function budgetFor(c){
-  if(c==='food')  return PLANS[state.plan].food;
+  if(c==='food')  return PLANS[store.plan].food;
   if(c==='subs')  return schedTotal('sub', false);
   if(c==='bills') return schedTotal('bill', false);
   return FOOD_ONLY_BUDGET[c] || 0;
@@ -513,7 +642,9 @@ function render(){
   const now$ = balanceNow();
   const al = allowance();
   const today$ = spentToday();
-  const income = state.balance + incomeTotal();
+  const income = opening() + incomeTotal();
+  const phase = view === THIS_MONTH ? 'now' : (view < THIS_MONTH ? 'past' : 'ahead');
+  const prevK = shiftMonth(view,-1), nextK = shiftMonth(view,1);
 
   let bar='';
   CATS.forEach(c=>{
@@ -522,7 +653,8 @@ function render(){
   });
 
   let warn = '';
-  if(now$ < 0)
+  if(phase === 'past') warn = '';
+  else if(now$ < 0)
     warn = '<div class="warn">Your account is showing '+money(now$)+'. Nothing else should go out until money lands.</div>';
   else if(al.perDay < 0)
     warn = '<div class="warn">There is no room left: what is already committed for the rest of September runs '+money(-al.free)+' past what you have. Cut something planned, or lower the cushion.</div>';
@@ -573,37 +705,54 @@ function render(){
   app.className='';
   app.innerHTML =
     '<div class="hero">'
-    + '<div class="hero-top"><div><h1>September 2026</h1>'
-    + '<div class="sub">'+(todayN? DOWNAMES[(FIRST_DOW+todayN-1)%7]+' the '+ord(todayN) : 'not started yet')+' · '+money0(income)+' to work with</div></div>'
+    + '<div class="months">'
+    + '<button class="mnav" id="prevM" aria-label="'+monthName(prevK)+'">‹</button>'
+    + '<div class="mnow"><h1>'+monthName(view)+'</h1>'
+    + '<div class="sub">'+(phase==='now' ? DOWNAMES[(FIRST_DOW+todayN-1)%7]+' the '+ord(todayN)
+        : phase==='past' ? 'finished · '+DAYS+' days'
+        : 'ahead of you · '+DAYS+' days')+' · '+money0(income)+' to work with</div></div>'
+    + '<button class="mnav" id="nextM" aria-label="'+monthName(nextK)+'">›</button></div>'
+    + (phase!=='now' ? '<button class="backnow" id="backNow">Back to '+monthName(THIS_MONTH)+'</button>' : '')
+    + '<div class="hero-top" style="margin-top:12px"><div class="sub" style="margin:0">'
+    + (state.carry ? 'Opened on '+money(opening())+', carried from '+monthName(prevK)+'.'
+                   : 'Opened on '+money(opening())+', which you set.')+'</div>'
     + '<button class="edit-btn" id="editBtn">Edit month</button></div>'
 
-    + '<div class="figure"><div class="fig-label">In the account right now</div>'
-    + '<div class="big'+(now$<0?' over':'')+'">'+money(now$)+'</div>'
-    + '<div class="fig-note">Carried from the '+money(state.balance)+' you recorded at '+asOf
-    + ', through every real charge and deposit since. <button class="link" id="balBtn">Update the balance</button></div></div>'
+    + '<div class="figure"><div class="fig-label">'
+    + (phase==='now' ? 'In the account right now' : phase==='past' ? 'Finished the month with' : 'Expected to finish with')+'</div>'
+    + '<div class="big'+((phase==='now'?now$:endBal)<0?' over':'')+'">'+money(phase==='now'?now$:endBal)+'</div>'
+    + '<div class="fig-note">'
+    + (phase==='now'
+        ? 'Carried from the '+money(opening())+' this month opened on'+(state.carry?'':' at '+asOf)
+          + ', through every real charge and deposit since. <button class="link" id="balBtn">Update the balance</button>'
+        : phase==='past'
+        ? 'What this month came out at, after everything on it. It is what '+monthName(nextK)+' opens on.'
+        : 'What this month is on course to end at, from the '+money(opening())+' it opens on.')
+    + '</div></div>'
 
-    + '<div class="figure"><div class="fig-label">Free to spend</div>'
+    + (phase==='past' ? '' :
+      '<div class="figure"><div class="fig-label">Free to spend</div>'
     + '<div class="big second'+(al.perDay<0?' over':'')+'">'+money(al.perDay)+'</div>'
     + '<div class="fig-note">for '+dayWord+' — that is '+money0(al.free)+' loose, after <b>'+money0(al.fixed)+'</b> of bills and subscriptions still to come, <b>'+money0(al.incoming)+'</b> landing'
     + (al.earmarked>0 ? ', <b>'+money0(al.earmarked)+'</b> already promised to things you planned' : '')
     + ', and a <b>'+money0(al.target)+'</b> cushion to finish the month on.</div>'
-    + (todayN ? '<div class="today-line"><div class="tl-top"><span>Spent today</span><span>'+money(today$)+' of '+money(Math.max(al.perDay,0))+'</span></div>'
+    + (phase==='now' ? '<div class="today-line"><div class="tl-top"><span>Spent today</span><span>'+money(today$)+' of '+money(Math.max(al.perDay,0))+'</span></div>'
         + '<div class="tl-bar"><span class="'+(today$>al.perDay?'over':'')+'" style="width:'+todayPct+'%"></span></div></div>' : '')
-    + '</div>'
+    + '</div>')
 
     + '<div class="split">'
-    + '<div><b class="'+(endBal<0?'over':'')+'">'+money0(endBal)+'</b><small>left on the 30th</small></div>'
+    + '<div><b class="'+(endBal<0?'over':'')+'">'+money0(endBal)+'</b><small>left on the '+ord(DAYS)+'</small></div>'
     + '<div><b class="'+(lowest<0?'over':'')+'">'+money0(lowest)+'</b><small>lowest point, the '+ord(lowDay)+'</small></div>'
-    + '<div><b class="up">'+money0(totalIn())+'</b><small>come in so far</small></div>'
-    + '<div><b>'+money0(totalSpent())+'</b><small>gone so far</small></div></div>'
+    + '<div><b class="up">'+money0(totalIn())+'</b><small>came in'+(phase==='now'?' so far':'')+'</small></div>'
+    + '<div><b>'+money0(totalSpent())+'</b><small>gone'+(phase==='now'?' so far':'')+'</small></div></div>'
     + '<div class="bar">'+bar+'</div>'
     + '<div class="legend">'+CATS.map(c=>'<span><i style="background:'+c.color+'"></i>'+c.label+'</span>').join('')+'</div>'
     + warn
     + '</div>'
 
     + '<div class="plan-switch" role="group" aria-label="Budget plan">'
-    + '<button data-plan="comfortable" aria-pressed="'+(state.plan==='comfortable')+'">Comfortable · 7 meals/wk</button>'
-    + '<button data-plan="aggressive" aria-pressed="'+(state.plan==='aggressive')+'">Aggressive · 5 meals/wk</button></div>'
+    + '<button data-plan="comfortable" aria-pressed="'+(store.plan==='comfortable')+'">Comfortable · 7 meals/wk</button>'
+    + '<button data-plan="aggressive" aria-pressed="'+(store.plan==='aggressive')+'">Aggressive · 5 meals/wk</button></div>'
 
     + '<div class="cal"><h2>The month</h2>'
     + '<div class="dow"><div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div></div>'
@@ -620,7 +769,7 @@ function render(){
 
     + '<div class="foot">'+plural(state.purchases.length,'entry','entries')+' logged · '+plural(state.sched.length,'repeating charge','repeating charges')+''
     + '<div id="saveState" style="margin-top:4px"></div>'
-    + '<button id="reset" style="margin-top:6px">Clear everything and start over</button></div>';
+    + '<button id="reset" style="margin-top:6px">Clear what is logged in '+monthName(view)+'</button></div>';
 
   flagSave();
 
@@ -635,16 +784,33 @@ function render(){
     }
   });
   document.querySelectorAll('[data-plan]').forEach(el=>
-    el.onclick = ()=>{ state.plan = el.dataset.plan; save(); render(); });
+    el.onclick = ()=>{ store.plan = el.dataset.plan; save(); render(); });
+  document.getElementById('prevM').onclick = ()=> goMonth(shiftMonth(view,-1));
+  document.getElementById('nextM').onclick = ()=> goMonth(shiftMonth(view, 1));
+  const back = document.getElementById('backNow');
+  if(back) back.onclick = ()=> goMonth(THIS_MONTH);
   document.getElementById('editBtn').onclick = openSettings;
-  document.getElementById('balBtn').onclick = openSettings;
-  document.getElementById('reset').onclick = async ()=>{
-    if(!confirm('Delete every entry for September?')) return;
+  const balLink = document.getElementById('balBtn');   // only on the live month
+  if(balLink) balLink.onclick = openSettings;
+  document.getElementById('reset').onclick = ()=>{
+    if(!confirm('Delete every entry logged in '+monthName(view)+'? Other months are left alone.')) return;
     state.purchases=[]; save(); render();
   };
 }
 function plural(n,one,many){ return n+' '+(n===1?one:many); }
+
+/* opening a month you have never opened creates it, so a first visit to
+   October is a save as well as a render */
+function goMonth(k){
+  const fresh = !store.months[k];
+  hideTip(); closeSheet();
+  setView(k);
+  if(fresh) save();
+  render();
+  window.scrollTo({top:0, behavior:'auto'});
+}
 const canHover = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+let tipFor = null;   // the day cell the card is pinned to
 
 function showTip(el, d){
   const tip = document.getElementById('tip');
@@ -660,15 +826,24 @@ function showTip(el, d){
   h += '<div class="tip-r tip-f'+(lines.length>1?'':' tip-net')+'"><span>Left after</span><b>'+money(bal)+'</b></div>';
   tip.innerHTML = h;
   tip.classList.add('on');
-
-  // sit above the day when there is room, otherwise below; never off the edge
-  const r = el.getBoundingClientRect(), w = tip.offsetWidth, hh = tip.offsetHeight;
+  tipFor = el;
+  placeTip();
+}
+/* sit above the day when there is room, otherwise below; never off the edge */
+function placeTip(){
+  const tip = document.getElementById('tip');
+  if(!tipFor || !tip || !tip.classList.contains('on')) return;
+  const r = tipFor.getBoundingClientRect(), w = tip.offsetWidth, hh = tip.offsetHeight;
   const left = Math.max(8, Math.min(r.left + r.width/2 - w/2, window.innerWidth - w - 8));
   const top  = r.top - hh - 8 < 8 ? r.bottom + 8 : r.top - hh - 8;
   tip.style.left = left + 'px';
   tip.style.top  = top + 'px';
 }
-function hideTip(){ const t = document.getElementById('tip'); if(t) t.classList.remove('on'); }
+function hideTip(){
+  tipFor = null;
+  const t = document.getElementById('tip');
+  if(t) t.classList.remove('on');
+}
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
@@ -676,12 +851,19 @@ function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;'
 function openSettings(){
   openDay = null;
   document.getElementById('sheet').innerHTML =
-    '<div class="sheet-head"><h2>Edit the month</h2><button class="x" id="close" aria-label="Close">×</button></div>'
-    + '<label class="f">What your account holds'
-    + '<input id="s_bal" type="number" inputmode="decimal" step="0.01" value="'+state.balance+'"></label>'
-    + '<label class="f">Read as the start of which day (1–30)'
-    + '<input id="s_balday" type="number" min="0" max="30" value="'+anchorDay()+'"></label>'
-    + '<div class="note" id="balPreview"></div>'
+    '<div class="sheet-head"><h2>Edit '+monthName(view)+'</h2><button class="x" id="close" aria-label="Close">×</button></div>'
+    + '<div class="note" style="margin-top:14px">Where this month starts</div>'
+    + '<div class="toggle">'
+    + '<button data-carry="1" aria-pressed="'+state.carry+'">Carry from '+shortMonth(shiftMonth(view,-1))+'</button>'
+    + '<button data-carry="0" aria-pressed="'+(!state.carry)+'">Set it myself</button></div>'
+    + (state.carry
+        ? '<div class="note">Opening on '+money(opening())+', whatever '+monthName(shiftMonth(view,-1))
+          + ' ends up at. Change something back there and this month follows.</div>'
+        : '<label class="f">What your account holds'
+          + '<input id="s_bal" type="number" inputmode="decimal" step="0.01" value="'+state.balance+'"></label>'
+          + '<label class="f">Read as the start of which day (1–'+DAYS+')'
+          + '<input id="s_balday" type="number" min="0" max="'+DAYS+'" value="'+anchorDay()+'"></label>'
+          + '<div class="note" id="balPreview"></div>')
     + '<h3 style="font-size:15px;margin:22px 0 0">Money coming in</h3>'
     + '<div class="note" style="margin-top:4px">Every payday carries its own amount — change one without touching the rest.</div>'
     + '<div class="inc-head"><span>Day</span><span>What it is</span><span>Amount</span><span></span></div>'
@@ -692,9 +874,9 @@ function openSettings(){
 
     + '<h3 style="font-size:15px;margin:24px 0 0">Quick buttons</h3>'
     + '<div class="note" style="margin-top:4px">'
-    + (state.quick.length ? 'Tap × to drop one. New ones are made on a day, under ＋ New button.'
+    + (store.quick.length ? 'Tap × to drop one. New ones are made on a day, under ＋ New button.'
                           : 'None yet — make them on a day, under ＋ New button.')+'</div>'
-    + state.quick.map(q=>'<div class="entry"><div>'+esc(q.name)+'<small>'+(q.dir==='in'?'money in':catLabel(q.cat))+'</small></div>'
+    + store.quick.map(q=>'<div class="entry"><div>'+esc(q.name)+'<small>'+(q.dir==='in'?'money in':catLabel(q.cat))+'</small></div>'
         + '<div>'+(q.dir==='in'?'+':'')+money(q.amt)+' <button data-delq="'+q.id+'" aria-label="Remove">×</button></div></div>').join('')
 
     + '<label class="f">Cushion to finish the month with'
@@ -710,20 +892,32 @@ function openSettings(){
     state.autoMeals = el.dataset.meals==='1'; save(); openSettings();
   });
 
-  const preview = ()=>{
-    const b = parseFloat(document.getElementById('s_bal').value)||0;
-    const d = Math.min(30,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
-    const keep = {balance:state.balance, balanceDay:state.balanceDay};
-    state.balance = b; state.balanceDay = d;
-    const n = balanceNow();
-    state.balance = keep.balance; state.balanceDay = keep.balanceDay;
-    document.getElementById('balPreview').textContent =
-      todayN ? 'That leaves ' + money(n) + ' in the account right now, once everything logged since is taken off. Use 0 for a balance from before the 1st.'
-             : 'September has not started, so this is your opening balance.';
-  };
-  preview();
-  document.getElementById('s_bal').oninput = preview;
-  document.getElementById('s_balday').oninput = preview;
+  document.querySelectorAll('[data-carry]').forEach(el=> el.onclick = ()=>{
+    readIncome();
+    const wants = el.dataset.carry === '1';
+    if(wants) ensureMonth(shiftMonth(view,-1));
+    else if(state.carry) state.balance = opening();   // keep the number, stop following
+    state.carry = wants;
+    save(); openSettings();
+  });
+  const balEl = document.getElementById('s_bal');
+  if(balEl){
+    const preview = ()=>{
+      const b = parseFloat(balEl.value)||0;
+      const d = Math.min(DAYS,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
+      const keep = {balance:state.balance, balanceDay:state.balanceDay};
+      state.balance = b; state.balanceDay = d;
+      const n = balanceNow();
+      state.balance = keep.balance; state.balanceDay = keep.balanceDay;
+      document.getElementById('balPreview').textContent =
+        todayN >= 1 && todayN <= DAYS
+          ? 'That leaves ' + money(n) + ' in the account right now, once everything logged since is taken off. Use 0 for a balance from before the 1st.'
+          : monthName(view) + ' is not running yet, so this is simply what it opens on.';
+    };
+    preview();
+    balEl.oninput = preview;
+    document.getElementById('s_balday').oninput = preview;
+  }
 
   const wire = ()=>{
     document.querySelectorAll('[data-delinc]').forEach(el=> el.onclick = ()=>{
@@ -733,7 +927,7 @@ function openSettings(){
     });
     document.querySelectorAll('[data-delq]').forEach(el=> el.onclick = ()=>{
       readIncome();
-      state.quick = state.quick.filter(x=>x.id!==el.dataset.delq);
+      store.quick = store.quick.filter(x=>x.id!==el.dataset.delq);
       save(); openSettings();
     });
   };
@@ -744,10 +938,13 @@ function openSettings(){
     save(); openSettings();
   };
   document.getElementById('saveSettings').onclick = ()=>{
-    state.balance = parseFloat(document.getElementById('s_bal').value)||0;
-    state.balanceDay = Math.min(30,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
+    const b = document.getElementById('s_bal');
+    if(b){
+      state.balance = parseFloat(b.value)||0;
+      state.balanceDay = Math.min(DAYS,Math.max(0,parseInt(document.getElementById('s_balday').value)||0));
+    }
     readIncome();
-    state.cushion = parseFloat(document.getElementById('s_cushion').value)||0;
+    store.cushion = parseFloat(document.getElementById('s_cushion').value)||0;
     save(); closeSheet(); render();
   };
 }
@@ -799,7 +996,7 @@ function drawSheet(){
     : '<div class="empty">Nothing logged yet.</div>';
 
   const isBill = addDir==='bill', isIncome = addDir==='in';
-  const tiles = state.quick.filter(q=> isIncome ? q.dir==='in' : q.dir!=='in');
+  const tiles = store.quick.filter(q=> isIncome ? q.dir==='in' : q.dir!=='in');
   document.getElementById('sheet').innerHTML =
     '<div class="sheet-head"><div><h2>'+dow+' the '+day+'</h2>'
     + '<div class="sub" style="color:'+(bal<0?'var(--debit)':'var(--muted)')+'">'+money(bal)+' left after this day</div></div>'
@@ -841,9 +1038,9 @@ function drawSheet(){
   document.querySelectorAll('[data-when]').forEach(el=> el.onclick = ()=>{ addWhen = el.dataset.when; drawSheet(); });
   document.querySelectorAll('[data-quicknew]').forEach(el=> el.onclick = ()=>{ quickEdit = !quickEdit; drawSheet(); });
   document.querySelectorAll('[data-quick]').forEach(el=> el.onclick = ()=>{
-    const q = state.quick.find(x=>x.id===el.dataset.quick);
+    const q = store.quick.find(x=>x.id===el.dataset.quick);
     if(!q) return;
-    if(quickEdit){ state.quick = state.quick.filter(x=>x.id!==q.id); save(); drawSheet(); return; }
+    if(quickEdit){ store.quick = store.quick.filter(x=>x.id!==q.id); save(); drawSheet(); return; }
     addPurchase(q.name, q.amt, q.cat, q.dir);
   });
   const qadd = document.getElementById('qadd');
@@ -852,7 +1049,7 @@ function drawSheet(){
     const a  = parseFloat(document.getElementById('qamt').value);
     if(!nm || !isFinite(a) || a<=0){ document.getElementById(nm?'qamt':'qname').focus(); return; }
     const sel = document.getElementById('cat');
-    state.quick.push({id:newId(), name:nm.slice(0,24), amt:a,
+    store.quick.push({id:newId(), name:nm.slice(0,24), amt:a,
       cat: isIncome ? 'income' : (sel ? sel.value : 'extras'),
       dir: isIncome ? 'in' : 'out'});
     quickEdit = false; save(); drawSheet();
@@ -920,8 +1117,8 @@ function addPurchase(name, amt, cat, dir){
 }
 document.getElementById('bg').onclick = closeSheet;
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ hideTip(); closeSheet(); } });
-window.addEventListener('scroll', hideTip, {passive:true});
-window.addEventListener('resize', hideTip);
+window.addEventListener('scroll', placeTip, {passive:true});
+window.addEventListener('resize', placeTip);
 
 /* --------------------------- ask the ledger --------------------------- */
 let sampleFn = null, sampleTried = false, canTools = false;
@@ -1067,18 +1264,44 @@ const TOOLS = [
   }
 },
 {
-  name:'set_money',
-  description:'Change the month settings: the account balance and the day it was true, which plan is active, whether meals are assumed, and the cushion to end the month with. Paychecks and other money coming in are separate lines — use set_scheduled with kind "income" for those.',
+  name:'open_month',
+  description:'Switch the ledger to another month, so the questions and changes that follow are about that one. Takes a month like "2026-10". A month opened for the first time is created from the one before it: repeating charges and paydays carry over, purchases do not, and it opens on what the previous month finishes with.',
   inputSchema:{type:'object',properties:{
-    balance:{type:'number',description:'What the account holds'},
+    month:{type:'string',description:'Month as YYYY-MM, e.g. 2026-10'}
+  },required:['month']},
+  async execute(i){
+    const k = String(i.month||'').trim();
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(k)) throw new Error('month must look like 2026-10');
+    const fresh = !store.months[k];
+    setView(k);
+    note('Opened ' + monthName(k) + (fresh ? ', carried over from '+monthName(shiftMonth(k,-1)) : ''));
+    commit();
+    return 'Now on ' + monthName(k) + (fresh ? ' (new, carried over)' : '')
+      + '. Opens on ' + money(opening()) + ', ends at ' + money(forecast()[DAYS-1]) + '.';
+  }
+},
+{
+  name:'set_money',
+  description:'Change settings for the month on screen: the account balance and the day it was true, whether the month carries its opening balance from the one before, which plan is active, whether meals are assumed, and the cushion to end on. Paychecks and other money coming in are separate lines — use set_scheduled with kind "income" for those.',
+  inputSchema:{type:'object',properties:{
+    balance:{type:'number',description:'What the account holds. Setting it stops this month carrying from the previous one.'},
     balance_day:{type:'integer',description:'Day that balance was true, read as the start of that day; 0 means before the 1st'},
+    carry:{type:'boolean',description:'true = open on whatever the month before finishes with; false = use the balance set here'},
     plan:{type:'string',enum:['comfortable','aggressive']},
     assume_meals:{type:'boolean'},
     cushion:{type:'number',description:'Dollars to finish the month with'}
   }},
   async execute(i){
     let n = 0;
+    if(typeof i.carry === 'boolean'){
+      if(i.carry) ensureMonth(shiftMonth(view,-1));
+      else if(state.carry) state.balance = opening();
+      state.carry = i.carry;
+      note(i.carry ? 'This month now carries from '+monthName(shiftMonth(view,-1))
+                   : 'This month now sits on its own balance'); n++;
+    }
     if(i.balance != null && isFinite(Number(i.balance))){
+      state.carry = false;
       state.balance = Number(i.balance);
       state.balanceDay = (i.balance_day != null && isFinite(Number(i.balance_day)))
         ? Math.min(DAYS,Math.max(0,parseInt(i.balance_day,10))) : (todayN||0);
@@ -1087,9 +1310,9 @@ const TOOLS = [
       state.balanceDay = Math.min(DAYS,Math.max(0,parseInt(i.balance_day,10)));
       note('Balance now read as of the start of the '+ord(state.balanceDay||1)); n++;
     }
-    if(i.plan==='comfortable'||i.plan==='aggressive'){ state.plan = i.plan; note('Switched to the '+i.plan+' plan'); n++; }
+    if(i.plan==='comfortable'||i.plan==='aggressive'){ store.plan = i.plan; note('Switched to the '+i.plan+' plan'); n++; }
     if(typeof i.assume_meals === 'boolean'){ state.autoMeals = i.assume_meals; note(i.assume_meals?'Assuming meals out again':'No longer assuming meals out'); n++; }
-    if(i.cushion != null && isFinite(Number(i.cushion))){ state.cushion = Math.abs(Number(i.cushion)); note('Cushion set to '+money0(state.cushion)); n++; }
+    if(i.cushion != null && isFinite(Number(i.cushion))){ store.cushion = Math.abs(Number(i.cushion)); note('Cushion set to '+money0(store.cushion)); n++; }
     if(!n) throw new Error('nothing to change — pass at least one field');
     commit();
     return 'Updated. Balance '+money(state.balance)+', in the account now '+money(balanceNow())+', free per day '+money(allowance().perDay);
@@ -1101,15 +1324,19 @@ function snapshot(){
   const al = allowance(), fc = forecast();
   const lowest = Math.min.apply(null, fc), lowDay = fc.indexOf(lowest)+1;
   const L = [];
-  L.push('LEDGER — September 2026 (30 days, the 1st is a Tuesday).');
-  L.push('Today is '+(todayN ? DOWNAMES[(FIRST_DOW+todayN-1)%7]+' September '+todayN : 'outside September')+'.');
+  const ph = view === THIS_MONTH ? 'the month we are in' : (view < THIS_MONTH ? 'a month already finished' : 'a month still ahead');
+  L.push('LEDGER — on screen: '+monthName(view)+' ['+view+'], '+DAYS+' days, the 1st is a '+DOWNAMES[FIRST_DOW]+'. This is '+ph+'.');
+  L.push('Real today is '+MONTHNAMES[partsOf(THIS_MONTH).m]+' '+now.getDate()+', '+partsOf(THIS_MONTH).y+'.');
+  L.push('Months on file: '+monthKeys().map(k=>k+' (ends at '+money(closingOf(k))+')').join(', ')
+    + '. open_month moves to any month, including one not on that list — it gets created from the one before it.');
+  L.push('This month opens on '+money(opening())+(state.carry ? ', carried from '+monthName(shiftMonth(view,-1)) : ', a figure set here')+'.');
   L.push('In the account right now: '+money(balanceNow())+' (recorded balance '+money(state.balance)+' as of the start of the '+ord(anchorDay()||1)+').');
   L.push('Free to spend: '+money(al.perDay)+' a day across '+al.daysLeft+' days left. That is '+money(al.free)+' loose after '
     + money(al.fixed)+' of bills and subscriptions still to come, '+money(al.incoming)+' of income still to land, '
     + money(al.earmarked)+' already promised to planned purchases, and a '+money(al.target)+' cushion to end the month on.');
   L.push('Projected on the 30th: '+money(fc[DAYS-1])+'. Lowest point: '+money(lowest)+' on the '+ord(lowDay)+'.');
   L.push('Spent today: '+money(spentToday())+'. Spent this month: '+money(totalSpent())+'.');
-  L.push('Plan: '+state.plan+' ('+(state.plan==='comfortable'?'7':'5')+' meals a week, '+money0(PLANS[state.plan].food)+' food budget). Assumed meals: '+(state.autoMeals?'on':'off')+'.');
+  L.push('Plan: '+store.plan+' ('+(store.plan==='comfortable'?'7':'5')+' meals a week, '+money0(PLANS[store.plan].food)+' food budget). Assumed meals: '+(state.autoMeals?'on':'off')+'.');
   L.push('Money in this month: '+money(incomeTotal())+' across '+state.income.length+' scheduled lines; '+money(totalIn())+' of it has landed.');
   L.push('');
   L.push('SCHEDULED MONEY IN (id · day · label · amount) — each line holds its own amount:');
@@ -1127,20 +1354,22 @@ function snapshot(){
     L.push('  '+p.id+' · '+p.day+' · '+p.name+' · '+(isIn(p)?'+':'-')+money(p.amt)+' · '+p.cat
       + ' · '+(isIn(p)?'money in':'money out')+' · '+(p.planned?'not yet':'real')));
   L.push('');
-  L.push('QUICK BUTTONS: '+(state.quick.length ? state.quick.map(q=>q.name+' '+(q.dir==='in'?'+':'')+money(q.amt)).join(', ') : 'none')+'.');
+  L.push('QUICK BUTTONS: '+(store.quick.length ? store.quick.map(q=>q.name+' '+(q.dir==='in'?'+':'')+money(q.amt)).join(', ') : 'none')+'.');
   return L.join('\n');
 }
 
 function rulesTurn(){
-  return 'You are the assistant inside Chris\'s September budget ledger — a single-month spending app he keeps on his phone. '
+  return 'You are the assistant inside Chris\'s budget ledger, a month-by-month spending app he keeps on his phone. '
+  + 'One month is on screen at a time and every other tool acts on that month, so reach for open_month first when he asks about another one. '
   + 'Answer his questions about his money and, when he asks for a change, make it with the tools instead of telling him how.\n\n'
   + 'How to answer: two or three sentences, plain and direct, like a friend who can see the numbers. No headings, no bullet lists '
   + 'unless he asks for a list, no markdown bold. Lead with the number he asked for. Never invent figures — every number you need is below, '
   + 'or comes back from a tool. Dollars to the cent when it matters, rounded when it does not.\n\n'
-  + 'Judgement: "can I afford X" means compare X against the free-to-spend-per-day figure and what it does to the projected balance on the 30th '
-  + 'and the lowest point. Say plainly when something breaks the cushion or runs him negative. If he asks you to change something that would '
-  + 'run him dry, make the change he asked for and say what it costs him.\n\n'
-  + 'Changes: days are 1-30 of September 2026. Categories are food, subs, games, bills, extras. Use log_entry for a one-off, money out '
+  + 'Judgement: "can I afford X" means compare X against the free-to-spend-per-day figure and what it does to the balance at the end of the '
+  + 'month and the lowest point. Say plainly when something breaks the cushion or runs him negative. If he asks you to change something that '
+  + 'would run him dry, make the change he asked for and say what it costs him. A month that carries opens on whatever the month before '
+  + 'finishes with, so a change in an earlier month moves every later one — say so when it matters.\n\n'
+  + 'Changes: days are numbered within the month on screen. Categories are food, subs, games, bills, extras. Use log_entry for a one-off, money out '
   + 'or money in (direction "in" for a shift he picked up, a gift, something he sold), '
   + 'set_scheduled for a subscription, an installment, or money that lands such as a paycheck (kind "income"), move_entry and '
   + 'remove_entry by the ids listed below, set_money for balance, plan and cushion. Paychecks vary — each income line holds its own '
@@ -1204,7 +1433,8 @@ function paintChat(){
   log.querySelectorAll('[data-undo]').forEach(el=> el.onclick = async ()=>{
     const b = bubbles[+el.dataset.undo];
     if(!b || !b.undo) return;
-    state = b.undo; b.undo = null;
+    store = b.undo; b.undo = null;
+    setView(store.months[view] ? view : THIS_MONTH);
     save(); render(); paintChat();
   });
 }
@@ -1239,7 +1469,7 @@ async function sendChat(){
     paintChat(); return;
   }
 
-  const before = strip(state);
+  const before = strip(store);
   pending = [];
   busy = true;
   const send = document.getElementById('chatSend');
