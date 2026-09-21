@@ -16,15 +16,16 @@ import { isKnownMemoryType } from '../models/memory.js';
 import { validateRequest } from '../models/request.js';
 import { isLocation, locationName } from '../models/location.js';
 import { validateNotification } from '../models/notification.js';
+import { validateIncident, INCIDENT_STATUS } from '../models/incident.js';
 
 /** Containers that are allowed to hold whole entities. */
-const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles', 'requests'];
+const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles', 'requests', 'incidents'];
 
 export function checkState(state) {
   const problems = [];
   if (!state || typeof state !== 'object') return ['state is not an object'];
 
-  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'backstage', 'log']) {
+  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'incidents', 'backstage', 'log']) {
     if (state[key] == null) problems.push(`state.${key} is missing`);
   }
   if (problems.length) return problems;
@@ -167,6 +168,39 @@ export function checkState(state) {
     if (r.titleId) refMustExist(r.titleId, titleIds, `request ${r.id} title`);
     if (r.resolvedBySegmentId) refMustExist(r.resolvedBySegmentId, segmentIds, `request ${r.id}`);
     for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
+  }
+
+  // --- incidents happened to real people, in a real room ---
+  const incidentIds = new Set(Object.keys(state.incidents));
+  for (const inc of Object.values(state.incidents)) {
+    for (const p of validateIncident(inc)) problems.push(`incident ${inc.id}: ${p}`);
+    if (!isLocation(inc.locationId)) {
+      problems.push(`incident ${inc.id} happened in unknown location "${inc.locationId}"`);
+    }
+    for (const id of inc.participantIds) refMustExist(id, wrestlerIds, `incident ${inc.id}`);
+    if (inc.targetId) refMustExist(inc.targetId, wrestlerIds, `incident ${inc.id} target`);
+    if (inc.instigatorId) refMustExist(inc.instigatorId, wrestlerIds, `incident ${inc.id} instigator`);
+    if (inc.showId) refMustExist(inc.showId, showIds, `incident ${inc.id}`);
+    if (inc.segmentId) refMustExist(inc.segmentId, segmentIds, `incident ${inc.id}`);
+    if (inc.blocksSegmentId) refMustExist(inc.blocksSegmentId, segmentIds, `incident ${inc.id} block`);
+    if (inc.startedEventId && !state.log.some((e) => e.id === inc.startedEventId)) {
+      problems.push(`incident ${inc.id} cites missing event "${inc.startedEventId}"`);
+    }
+    // An incident the GM was never told about cannot have been answered.
+    if (inc.response && inc.discoveredTick == null) {
+      problems.push(`incident ${inc.id} was answered without ever reaching the GM`);
+    }
+  }
+
+  // --- a blocked segment is blocked by an incident that is still open ---
+  for (const seg of Object.values(state.segments)) {
+    const blocker = seg.blockedByIncidentId;
+    if (!blocker) continue;
+    refMustExist(blocker, incidentIds, `segment ${seg.id} block`);
+    const inc = state.incidents[blocker];
+    if (inc && inc.status !== INCIDENT_STATUS.OPEN) {
+      problems.push(`segment ${seg.id} is held up by ${blocker}, which is already ${inc.status}`);
+    }
   }
 
   // --- everybody is somewhere real, and the GM is too ---

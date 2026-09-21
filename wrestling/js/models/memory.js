@@ -38,6 +38,13 @@ export const MEMORY_TYPES = Object.freeze({
   PROMISE_BROKEN:   { key: 'gm_promise_broken', weight: 85, floor: 55, decayPerDay: 0.1, scar: true },
   SUSPENSION:       { key: 'suspension',       weight: 80, floor: 40, decayPerDay: 0.15, scar: true },
 
+  // --- how the GM handled trouble ---
+  HEARD_OUT:        { key: 'heard_out',        weight: 52, floor: 20, decayPerDay: 0.28 },
+  LEFT_TO_IT:       { key: 'left_to_it',       weight: 66, floor: 28, decayPerDay: 0.22 },
+  WARNED:           { key: 'warned',           weight: 58, floor: 22, decayPerDay: 0.25 },
+  MANHANDLED:       { key: 'manhandled',       weight: 72, floor: 32, decayPerDay: 0.18 },
+  SENT_HOME:        { key: 'sent_home',        weight: 78, floor: 38, decayPerDay: 0.15, scar: true },
+
   // --- asking for things ---
   REQUEST_GRANTED:  { key: 'request_granted',  weight: 58, floor: 20, decayPerDay: 0.3 },
   REQUEST_DENIED:   { key: 'request_denied',   weight: 55, floor: 18, decayPerDay: 0.3 },
@@ -102,4 +109,7 @@ export const GM_MEMORY_TYPES = Object.freeze([
   MEMORY_TYPES.PROMISE_KEPT.key, MEMORY_TYPES.PROMISE_BROKEN.key,
   MEMORY_TYPES.SUSPENSION.key, MEMORY_TYPES.TITLE_SHOT.key,
   MEMORY_TYPES.TITLE_SHOT_DENIED.key,
+  MEMORY_TYPES.HEARD_OUT.key, MEMORY_TYPES.LEFT_TO_IT.key,
+  MEMORY_TYPES.WARNED.key, MEMORY_TYPES.MANHANDLED.key,
+  MEMORY_TYPES.SENT_HOME.key,
 ]);

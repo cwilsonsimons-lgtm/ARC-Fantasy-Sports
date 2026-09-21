@@ -1,3 +1,5 @@
+import { respond, canRespond } from '../../wrestling/js/systems/incidents.js';
+import { RESPONSES } from '../../wrestling/js/models/incident.js';
 // Test fixtures: a locker room with a past.
 //
 // The shipped roster is a blank slate on purpose - every save starts 0-0 with
@@ -544,4 +546,54 @@ export function giveRecord(store, wrestlerId, { wins = 0, losses = 0, draws = 0,
     wins, losses, draws,
     streak: streak || { type: null, count: 0 },
   }, { reason: 'fixture: record' });
+}
+
+/**
+ * Clear anything holding the card up, the way a GM would.
+ *
+ * From Tier 8 a wrestler can refuse to go out, which stops the show until the
+ * GM deals with it. Tests that are about the weekly loop rather than about
+ * incidents should not fall over when one happens - they should do what a
+ * player does and handle it.
+ *
+ * The preference order is the one a GM under time pressure would use: pull them
+ * apart if there are two of them, otherwise put it on the record, and only
+ * remove somebody if neither is available. All three always land and none of
+ * them needs the GM to walk across the building first.
+ *
+ * Returns the incidents it had to answer, so a test can assert on them.
+ */
+const PUSH_THROUGH_ORDER = [
+  RESPONSES.SECURITY, RESPONSES.WARNING, RESPONSES.EJECTION, RESPONSES.IGNORE,
+];
+
+export function clearTheWay(store, runner, showId) {
+  const handled = [];
+  let guard = 0;
+  let blocked;
+  while ((blocked = runner.blockedBy(showId)) && guard++ < 12) {
+    // The GM has to know about it before they can do anything about it, which
+    // in a test is not worth simulating a walk across the building for.
+    store.discoverIncident(blocked.incident.id);
+    const key = PUSH_THROUGH_ORDER
+      .find((r) => canRespond(blocked.incident, r).ok);
+    if (!key) break;
+    respond(blocked.incident.id, key, { reason: 'fixture: pushed through' });
+    handled.push({ incident: blocked.incident, response: key });
+  }
+  return handled;
+}
+
+/** Run a whole card, handling anything that stops it. */
+export function runCard(store, runner, showId) {
+  const steps = [];
+  let guard = 0;
+  while (runner.nextSegment(showId) && guard++ < 24) {
+    clearTheWay(store, runner, showId);
+    if (runner.blockedBy(showId)) break;
+    const step = runner.runNext(showId);
+    if (!step) break;
+    steps.push(step);
+  }
+  return steps;
 }

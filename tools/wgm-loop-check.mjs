@@ -16,7 +16,7 @@ import { FORMATS, autoName, slotsFor } from '../wrestling/js/systems/formats.js'
 import { EVENT_TYPES } from '../wrestling/js/core/events.js';
 import { recordOf, streakLabel } from '../wrestling/js/models/wrestler.js';
 import * as booking from '../wrestling/js/systems/booking.js';
-import { establishHistory, crownChampion } from './lib/fixtures.mjs';
+import { establishHistory, crownChampion, clearTheWay, runCard } from './lib/fixtures.mjs';
 
 let passed = 0; const failures = [];
 const check = (label, fn) => {
@@ -108,6 +108,7 @@ check('the card outlook warns that limits are a ceiling, not a plan', () => {
 check('the show goes live and the card progresses one segment at a time', () => {
   runner.goLive(show1.id);
   eq(store.getShow(show1.id).status, 'live', 'status');
+  clearTheWay(store, runner, show1.id);
   const first = runner.runNext(show1.id);
   assert(first, 'nothing ran');
   eq(runner.progress(show1.id).doneCount, 1, 'segments done');
@@ -117,7 +118,7 @@ check('the show goes live and the card progresses one segment at a time', () => 
 
 let week1Results;
 check('the rest of the card runs and the night ends', () => {
-  week1Results = runner.runRest(show1.id);
+  week1Results = runCard(store, runner, show1.id);
   const p = runner.progress(show1.id);
   assert(p.finished, 'card not finished');
   runner.goOffAir(show1.id);
@@ -193,7 +194,7 @@ for (let week = 2; week <= 4; week++) {
   const show = runner.currentShow();
   bookCard(show.id, week);
   runner.goLive(show.id);
-  runner.runRest(show.id);
+  runCard(store, runner, show.id);
   runner.goOffAir(show.id);
   if (week < 4) runner.nextWeek();
 }
@@ -245,7 +246,7 @@ check('booking to fill the hour rates better than under-booking', () => {
   }
   const outlook = booking.cardOutlook(show.id);
   runner.goLive(show.id);
-  runner.runRest(show.id);
+  runCard(store, runner, show.id);
   runner.goOffAir(show.id);
   const s2 = store.getShow(show.id);
 
@@ -284,7 +285,9 @@ check('a save taken halfway through a card resumes halfway through', () => {
   const show = runner.currentShow();
   bookCard(show.id, 5);
   runner.goLive(show.id);
+  clearTheWay(store, runner, show.id);
   runner.runNext(show.id);
+  clearTheWay(store, runner, show.id);
   runner.runNext(show.id);
   const before = runner.progress(show.id);
   eq(before.doneCount, 2, 'segments run before saving');
@@ -296,6 +299,7 @@ check('a save taken halfway through a card resumes halfway through', () => {
   const after = runner.progress(show.id);
   eq(after.doneCount, 2, 'segments done after reload');
   eq(store.getShow(show.id).status, 'live', 'show status after reload');
+  clearTheWay(store, runner, show.id);
   const resumed = runner.runNext(show.id);
   assert(resumed, 'could not carry on after reload');
   eq(runner.progress(show.id).doneCount, 3, 'segments after resuming');

@@ -217,6 +217,14 @@ export function createWrestler(spec = {}) {
       condition: clampUnit(state.condition ?? 100), // 100 = fresh, falls with ring time
       mood: state.mood ?? 'content',
       health: state.health ?? { status: HEALTH.HEALTHY, returnsOnDay: null },
+      // What the office has had to do about them. Separate from health,
+      // because being unable to work and being not allowed to are different
+      // things and the roster feels them differently.
+      discipline: state.discipline ?? {
+        warnings: 0,
+        suspendedUntilDay: null,
+        sentHomeFromShowId: null,
+      },
     },
 
     // 5. Ties.
@@ -309,6 +317,21 @@ export function isAvailable(wrestler, day) {
   const h = wrestler.state.health;
   if (h.status === HEALTH.HEALTHY) return true;
   return h.returnsOnDay != null && day >= h.returnsOnDay;
+}
+
+/**
+ * Suspended is not injured. A suspended wrestler is perfectly fit and simply
+ * not allowed on television, which is why booking checks it separately and the
+ * roster screen says something different about it.
+ */
+export function isSuspended(wrestler, day) {
+  const until = wrestler.state.discipline?.suspendedUntilDay;
+  return until != null && day < until;
+}
+
+/** Fit, and allowed. What booking actually needs to know. */
+export function canBeBooked(wrestler, day) {
+  return isAvailable(wrestler, day) && !isSuspended(wrestler, day);
 }
 
 /** Position on the card as a number, for "is this beneath me" comparisons. */

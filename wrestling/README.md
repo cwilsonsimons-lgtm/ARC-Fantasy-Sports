@@ -12,11 +12,13 @@ persistence, event log, navigation) and **Tier 1**, the basic GM backbone:
 Plus **Tier 3** (records, rankings, championships and momentum), **Tier 4**
 (personality, career status, and the judgement of what behaviour is believable)
 **Tier 5** (relationships, the GM's own standing, and memory), **Tier 6**
-(morale, satisfaction, and the requests they produce) and **Tier 7** (the
-backstage map, and news that reaches the GM late or not at all).
+(morale, satisfaction, and the requests they produce), **Tier 7** (the backstage
+map, and news that reaches the GM late or not at all) and **Tier 8** (things
+going wrong, and the eight answers to them).
 
-The locker room now has a voice, and the GM can now miss it. Nobody refuses a
-booking yet, and nothing goes wrong backstage that the GM has to deal with.
+The locker room has a voice, the GM can miss it, and the roster can now act on
+its own: people argue, fight, complain, come looking for you, and refuse to go
+out. That last one stops the show.
 
 ## Running it
 
@@ -24,7 +26,7 @@ booking yet, and nothing goes wrong backstage that the GM has to deal with.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 224 headless checks across nine suites
+npm run check:wgm         # 263 headless checks across ten suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -197,6 +199,7 @@ js/models/       pure entity factories and derived reads
   request.js     an ask with an ID, a life, and its reasons attached
   location.js    nine rooms and the corridor joining them. A pure graph.
   notification.js what the GM was told, by whom, how late, and how reliably
+  incident.js    six kinds of trouble, eight answers, and a severity scale
 
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
@@ -214,6 +217,7 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   upkeep.js      condition recovery and momentum fade between shows
   backstage.js   who is standing where, and what the night's clock does to it
   notifications.js how news finds the GM: witnessed, late, hedged, or never
+  incidents.js   what goes wrong in those rooms, and what each answer costs
 
 js/data/roster.js   fourteen hand-authored wrestlers with starting history
 js/ui/              renders the store and calls its actions; holds no game state
@@ -506,17 +510,128 @@ every delay by 60%, which is what the design foundation's "faster information
 flow" upgrade will buy. The backstage screen quotes the current numbers, so the
 effect of raising it will be visible rather than described.
 
+
+## When it goes wrong
+
+Six kinds of trouble, and eight things the GM can do about each one. This is
+the tier where everything below it starts acting rather than only being true.
+
+| Kind | Between | Comes from |
+|---|---|---|
+| Argument | two people | heat, a short fuse, a fresh grudge, low morale, sharing a room |
+| Backstage fight | two people | the same pressure, higher, with aggression behind it |
+| Post-match confrontation | two people | losing to somebody beneath you, or a match that settled nothing |
+| Complaint | at you | the worst of their six satisfaction dimensions, plus the ego to say it |
+| Refusal | at you | Tier 4's `regard()`, finally acting |
+| Request for a meeting | at you | requests you never answered, and grievances they are still carrying |
+
+**Nothing here is a dice roll.** Pressure is computed from the state, the roll
+only decides whether pressure that is already there tips over, and every
+incident carries its reasons with their weights. A real one, from play:
+
+> **Damien Croft is asking for a word**
+> Asked and heard nothing · 2 requests went unanswered  **+45**
+> Something on their mind · The GM knew about a refusal to go out and let the night end  **+32**
+> Waiting on an answer · Still wants a better spot on the card  **+21**
+
+Tier 6 generated the requests, Tier 5 stored the memory, Tier 8 wrote the
+memory about the GM's own handling of an earlier incident, and none of it was
+authored.
+
+Measured over forty simulated shows: **about two incidents a night**, four in
+five of them friction or a flare-up, a serious one every eight nights or so and
+a genuine crisis about one night in twenty. A backstage fight happens roughly
+every eight shows and a refusal every four. `tools/wgm-incident-check.mjs`
+re-measures the whole distribution on every run, because the design's "almost
+every show has some chaos, and most of it is small" is a claim about numbers.
+
+### You can only answer what you know about
+
+An incident is raised wherever it happens, whether or not the GM is anywhere
+near. Tier 7 then decides whether they hear, how late, and through whom. An
+incident nobody mentions cannot be answered, does not appear on any screen, and
+**costs the GM nothing** - which is the honest version of a fog of war, and the
+first real argument for the backstage-awareness upgrade.
+
+The one exception is a refusal, which is public. A GM whose next match simply
+never starts knows at once that something is wrong, wherever they are standing.
+Without that the show could deadlock: a card that will not move and no way to
+find out why.
+
+### The eight answers
+
+| Answer | Needs | Costs | What it does |
+|---|---|---|---|
+| Talk to them | **you in the room** | 2:00 | Trust up, nothing resented. Can fail. |
+| Mediate | **you in the room** | 4:00 | Takes the heat out on both sides. Harder than talking. |
+| Book the match | an upcoming card | 1:30 | Puts the problem on television. Morale and respect up. |
+| Formal warning | - | 0:30 | On the record, and it genuinely damps the next row. |
+| Send security | two people | 1:00 | Always works. Never forgiven. |
+| Send them home | a live show | 1:30 | Off the rest of the card, tonight. |
+| Suspend | - | 1:00 | Fourteen days off television. Scars. |
+| Ignore | - | nothing now | They notice. A serious one left alone is remembered. |
+
+Talking and mediating are the only two that need the GM to be **in the room**,
+which is where Tier 7 stops being a screen and becomes a cost: walking to the
+locker room spends the night's clock while the broadcast runs without you. The
+other six can be sent rather than done, and that is exactly why they are worse
+for the relationship.
+
+**Talking people down is what trust is for.** The odds are mostly trust:
+
+| | small row | crisis |
+|---|---|---|
+| A GM they believe | 81% | 51% |
+| An ordinary GM | 42% | 20% |
+| A GM nobody believes | 5% | 5% |
+
+A GM nobody believes cannot talk anybody down and has to reach for security,
+which costs them more trust, which makes the next one harder. That loop is the
+tier.
+
+A failed answer is spent but leaves the incident open, so the GM can try
+something else. The same answer cannot be tried twice.
+
+### A refusal stops the show
+
+Tier 4 has been computing how people take a booking since it was built and
+nothing acted on it. Now a `REFUSE` refuses, and the standing floor decides who
+even can: a rookie essentially never gets there, a superstar can. From play:
+
+> **Damien Croft will not go out for Damien Croft vs Deacon Ruiz**
+> Being asked to open the show **+40** · Thinks Deacon Ruiz is beneath them **+5** · Unhappy at the moment **+3**
+
+The card does not move until it is dealt with. Talking him round or forcing the
+issue puts the match back on; ignoring him, sending him home or suspending him
+means the match never happens and the night is graded on what aired.
+
+### The ripples
+
+Suspension is enforced in `booking.validate`, so a suspended wrestler cannot be
+put on a card and does not appear in the available list. Ejection cuts their
+remaining segments from tonight. Both ripple out to their allies, who take it
+personally. Warnings sit on the record and damp future friction, which is the
+only reason the professionalism trait pays off here: a professional takes a
+warning as the job, somebody who is not takes it personally.
+
 ## What is deliberately not here
 
-No pitch step, so the disposition model is still read-only and nobody actually
-turns a match down. Nothing goes wrong backstage on its own: the rooms carry
-relationship fallout around, but there are no incidents to carry. No live levers
-to fill dead air, no promises the GM can make, no contract negotiation, no
-budget, no GM progression, no competing brands. Betrayals and saves have memory
-types and no way to happen.
+**No escalation over time.** The design foundation has incidents escalating on a
+timer - a tense exchange becoming an argument becoming somebody refusing to go
+out. That is a layer on top of this one, and `EVENT_TYPES.INCIDENT_ESCALATED`
+stays reserved for it. An incident here is raised at a severity and stays there
+until it is answered or the night ends.
+
+No pitch step: refusal happens at the curtain rather than when the card is
+written, so the GM still books without being told no in advance. No live levers
+to fill the dead air a cut match leaves. No promises the GM can make, no
+contract negotiation, no budget, no GM progression, no competing brands.
+Betrayals and saves have memory types and no way to happen.
 
 The data model has the fields and the event log has the vocabulary for all of
 it. `results.js` is where reactions will hook in, because it already sees every
 result; `booking.js` is where a pitch step goes, because it already sits between
-the GM and the card; and anything that happens in a room already reaches the GM
-through `notifications.js` without needing to know it exists.
+the GM and the card; anything that happens in a room already reaches the GM
+through `notifications.js` without needing to know it exists; and an escalation
+timer would only need to raise the severity of an open incident, because
+everything that reads severity already reads it live.

@@ -176,6 +176,23 @@ export const MIGRATIONS = {
     }
     return state;
   },
+
+  // v7 -> v8: things can go wrong backstage now. A save written before this
+  // has no incidents and nobody with a disciplinary record.
+  7: (state) => {
+    state.incidents = state.incidents || {};
+    for (const w of Object.values(state.wrestlers)) {
+      w.state.discipline = w.state.discipline || {
+        warnings: 0, suspendedUntilDay: null, sentHomeFromShowId: null,
+      };
+    }
+    // No incidents existed at v7, so any block on a segment is a dangling
+    // reference by definition.
+    for (const seg of Object.values(state.segments)) {
+      seg.blockedByIncidentId = null;
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

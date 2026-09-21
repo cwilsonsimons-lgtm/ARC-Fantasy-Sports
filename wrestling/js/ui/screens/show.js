@@ -12,6 +12,7 @@ import { sides, SEGMENT_KINDS } from '../../models/segment.js';
 import { championIds, currentReign } from '../../models/title.js';
 import { regardSegment, RESPONSE, RESPONSE_LABEL } from '../../systems/disposition.js';
 import * as playback from '../playback.js';
+import { incidentCard } from '../incidentCard.js';
 import { esc, mmss, signedTime, titleCase } from '../format.js';
 import { notLoaded } from './roster.js';
 import { rosterRailHtml } from '../rosterRail.js';
@@ -370,6 +371,20 @@ function renderLive(show) {
   // are watch it, hurry it along, or skip to the finish.
   const watching = playback.isActive() && !playback.isFinished();
 
+  // Somebody refusing to go out stops the card. It goes at the top, above the
+  // clock, because it is the only thing that matters until it is dealt with.
+  const held = runner.blockedBy(show.id);
+  const blocker = held ? `
+    <div class="blocker">
+      <strong>The card is held up.</strong>
+      ${esc(store.nameOf(held.incident.instigatorId))} will not go out for
+      ${esc(held.segment.name || formatOf(held.segment.format).label)}.
+      ${held.incident.discoveredTick == null
+        ? ' Nobody has come and told you yet, so the show simply is not moving.'
+        : ' Deal with it and the show moves on.'}
+    </div>
+    ${held.incident.discoveredTick != null ? incidentCard(held.incident) : ''}` : '';
+
   const overrideControl = next && next.kind === SEGMENT_KINDS.MATCH
     ? `<div class="field"><label for="ovr">Override the finish</label>
         <select id="ovr" data-action="changeOverride">
@@ -380,6 +395,7 @@ function renderLive(show) {
 
   return `
     ${header(show, ' &middot; <span class="pos">ON AIR</span>')}
+    ${blocker}
 
     <div class="cards">
       <div class="card"><h3>Clock</h3>
@@ -399,11 +415,11 @@ function renderLive(show) {
     <div id="playbackHost">${playback.panelHtml()}</div>
 
     ${watching ? '' : `<div class="bar">
-      ${next ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ''}
-      ${next ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ''}
+      ${next && !held ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ''}
+      ${next && !held ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ''}
       ${overrideControl}
       ${next ? `<div class="field"><label for="pbSpeed">Match playback</label>${playback.speedPickerHtml()}</div>` : ''}
-      ${!next ? `<button class="act primary" data-action="goOffAir" data-id="${show.id}">Go off the air</button>` : ''}
+      ${!next || held ? `<button class="act${next ? '' : ' primary'}" data-action="goOffAir" data-id="${show.id}">Go off the air${next ? ' anyway' : ''}</button>` : ''}
     </div>`}
 
     <h2>The card</h2>

@@ -12,6 +12,7 @@ import * as gmRelations from './gmRelations.js';
 import * as requests from './requests.js';
 import * as backstage from './backstage.js';
 import * as notifications from './notifications.js';
+import * as incidents from './incidents.js';
 import * as upkeep from './upkeep.js';
 
 export function installSystems() {
@@ -25,5 +26,9 @@ export function installSystems() {
   requests.install();       // ...and what the roster asks for as a result
   backstage.install();      // who is standing where, and what walking costs
   notifications.install();  // ...and how any of it reaches the GM
+  // The one exception to "order does not matter": an incident happens in a
+  // room, so the building has to have been filled before trouble looks around
+  // it. backstage.install() must come first.
+  incidents.install();      // ...and what goes wrong in those rooms
   upkeep.install();         // between shows: condition back, momentum fading
 }

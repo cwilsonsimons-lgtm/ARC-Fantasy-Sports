@@ -99,6 +99,7 @@ body{
 .chip .ico.amber{color:var(--amber)}
 .chip .ico.violet{color:var(--violet)}
 .chip .ico.dim{color:var(--faint)}
+.chip .ico.red{color:var(--red)}
 .chip .val{
   font:600 .95rem/1.1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);
   white-space:nowrap;
@@ -387,6 +388,29 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
 /* The event log's three columns do not fit a side rail. */
 .log.narrow .ev{grid-template-columns:3.2rem 1fr}
 
+/* ----------------------------------------------------------------- trouble */
+/* A stripe by severity, so a list of incidents scans without being read. */
+.panel.trouble{border-left:3px solid var(--blue)}
+.panel.trouble.warn{border-left-color:var(--amber)}
+.panel.trouble.bad{border-left-color:var(--red)}
+.panel.trouble h3{
+  margin:.9rem 0 .35rem;font:700 .74rem/1.4 var(--sans);
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);
+}
+.opts{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.opts .act{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
+.opts .act em{
+  font:400 9.5px/1.3 var(--mono);font-style:normal;letter-spacing:.05em;
+  color:var(--faint);text-transform:uppercase;max-width:11rem;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.opts .act.primary em{color:rgba(4,18,31,.7)}
+.blocker{
+  background:var(--red-wash);border:1px solid rgba(229,72,77,.45);
+  border-radius:var(--r);padding:.75rem .9rem;margin-bottom:1rem;
+}
+.blocker strong{color:var(--red)}
+
 </style>
 </head>
 <body>
@@ -440,12 +464,15 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     advanceTick: () => advanceTick,
     advanceToDay: () => advanceToDay,
     advanceToNextShow: () => advanceToNextShow,
+    allIncidents: () => allIncidents,
     allRequests: () => allRequests,
     allShows: () => allShows,
     allTitles: () => allTitles,
     allWrestlers: () => allWrestlers,
+    answerableIncidents: () => answerableIncidents,
     awardTitle: () => awardTitle,
     backstage: () => backstage,
+    blockSegment: () => blockSegment,
     bookSegment: () => bookSegment,
     causeChain: () => causeChain2,
     completeSegment: () => completeSegment,
@@ -454,7 +481,10 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     cutSegment: () => cutSegment,
     deliverDueNotifications: () => deliverDueNotifications,
     deliveredNotifications: () => deliveredNotifications,
+    discoverIncident: () => discoverIncident,
     emit: () => emit,
+    getEvent: () => getEvent,
+    getIncident: () => getIncident,
     getRequest: () => getRequest,
     getRng: () => getRng,
     getSegment: () => getSegment,
@@ -464,8 +494,10 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     getWrestler: () => getWrestler,
     gmLocation: () => gmLocation,
     historyOf: () => historyOf2,
+    incidentsAbout: () => incidentsAbout,
     installState: () => installState,
     isLoaded: () => isLoaded,
+    lapseIncident: () => lapseIncident,
     locationOf: () => locationOf,
     makeRequestFor: () => makeRequestFor,
     markAllNotificationsRead: () => markAllNotificationsRead,
@@ -473,21 +505,26 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     moveGm: () => moveGm,
     nameOf: () => nameOf,
     newGame: () => newGame,
+    noteAttempt: () => noteAttempt,
     notifications: () => notifications,
     off: () => off2,
     on: () => on2,
+    openIncidents: () => openIncidents,
     openRequests: () => openRequests,
     openRequestsFor: () => openRequestsFor,
     pendingNotifications: () => pendingNotifications,
     placeWrestler: () => placeWrestler,
     queryLog: () => queryLog,
+    raiseIncident: () => raiseIncident,
     recordDefense: () => recordDefense,
+    requireIncident: () => requireIncident,
     requireSegment: () => requireSegment,
     requireShow: () => requireShow,
     requireTitle: () => requireTitle,
     requireWrestler: () => requireWrestler,
     reset: () => reset,
     resetBackstageClock: () => resetBackstageClock,
+    resolveIncident: () => resolveIncident,
     resolveRequest: () => resolveRequest,
     scheduleNotification: () => scheduleNotification,
     scheduleProgramming: () => scheduleProgramming,
@@ -495,10 +532,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     segmentsOfShow: () => segmentsOfShow,
     setBackstageAwareness: () => setBackstageAwareness,
     setBackstory: () => setBackstory,
+    setDiscipline: () => setDiscipline,
     startShow: () => startShow,
     tick: () => tick,
     titlesHeldBy: () => titlesHeldBy,
     today: () => today,
+    unblockSegment: () => unblockSegment,
     unreadNotifications: () => unreadNotifications,
     updateSegment: () => updateSegment,
     updateStanding: () => updateStanding,
@@ -696,6 +735,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     WRESTLER_MOVED: "wrestler.moved",
     NEWS_REACHED_GM: "news.reached_gm",
     NEWS_MISSED: "news.missed",
+    // --- trouble, and what the GM did about it ---
+    INCIDENT_STARTED: "incident.started",
+    INCIDENT_RESOLVED: "incident.resolved",
+    INCIDENT_LAPSED: "incident.lapsed",
+    GM_RESPONDED: "gm.responded",
+    BOOKING_REFUSED: "booking.refused",
+    WRESTLER_DISCIPLINE: "wrestler.discipline.changed",
     // --- what the roster wants ---
     REQUEST_MADE: "request.made",
     REQUEST_GRANTED: "request.granted",
@@ -716,13 +762,10 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     PROMISE_MADE: "promise.made",
     PROMISE_KEPT: "promise.kept",
     PROMISE_BROKEN: "promise.broken",
-    INCIDENT_STARTED: "incident.started",
     INCIDENT_ESCALATED: "incident.escalated",
-    INCIDENT_RESOLVED: "incident.resolved",
     RIVALRY_FORMED: "rivalry.formed",
     CONTRACT_SIGNED: "contract.signed",
-    CONTRACT_EXPIRED: "contract.expired",
-    BOOKING_REFUSED: "booking.refused"
+    CONTRACT_EXPIRED: "contract.expired"
   });
   var VALID_TYPES = new Set(Object.values(EVENT_TYPES));
   function isValidEventType(type) {
@@ -1106,6 +1149,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     PROMISE_KEPT: { key: "promise_kept", weight: 65, floor: 25, decayPerDay: 0.2 },
     PROMISE_BROKEN: { key: "gm_promise_broken", weight: 85, floor: 55, decayPerDay: 0.1, scar: true },
     SUSPENSION: { key: "suspension", weight: 80, floor: 40, decayPerDay: 0.15, scar: true },
+    // --- how the GM handled trouble ---
+    HEARD_OUT: { key: "heard_out", weight: 52, floor: 20, decayPerDay: 0.28 },
+    LEFT_TO_IT: { key: "left_to_it", weight: 66, floor: 28, decayPerDay: 0.22 },
+    WARNED: { key: "warned", weight: 58, floor: 22, decayPerDay: 0.25 },
+    MANHANDLED: { key: "manhandled", weight: 72, floor: 32, decayPerDay: 0.18 },
+    SENT_HOME: { key: "sent_home", weight: 78, floor: 38, decayPerDay: 0.15, scar: true },
     // --- asking for things ---
     REQUEST_GRANTED: { key: "request_granted", weight: 58, floor: 20, decayPerDay: 0.3 },
     REQUEST_DENIED: { key: "request_denied", weight: 55, floor: 18, decayPerDay: 0.3 },
@@ -1162,7 +1211,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     MEMORY_TYPES.PROMISE_BROKEN.key,
     MEMORY_TYPES.SUSPENSION.key,
     MEMORY_TYPES.TITLE_SHOT.key,
-    MEMORY_TYPES.TITLE_SHOT_DENIED.key
+    MEMORY_TYPES.TITLE_SHOT_DENIED.key,
+    MEMORY_TYPES.HEARD_OUT.key,
+    MEMORY_TYPES.LEFT_TO_IT.key,
+    MEMORY_TYPES.WARNED.key,
+    MEMORY_TYPES.MANHANDLED.key,
+    MEMORY_TYPES.SENT_HOME.key
   ]);
 
   // wrestling/js/models/wrestler.js
@@ -1307,7 +1361,15 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         condition: clampUnit(state2.condition ?? 100),
         // 100 = fresh, falls with ring time
         mood: state2.mood ?? "content",
-        health: state2.health ?? { status: HEALTH.HEALTHY, returnsOnDay: null }
+        health: state2.health ?? { status: HEALTH.HEALTHY, returnsOnDay: null },
+        // What the office has had to do about them. Separate from health,
+        // because being unable to work and being not allowed to are different
+        // things and the roster feels them differently.
+        discipline: state2.discipline ?? {
+          warnings: 0,
+          suspendedUntilDay: null,
+          sentHomeFromShowId: null
+        }
       },
       // 5. Ties.
       //
@@ -1380,6 +1442,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     const h = wrestler.state.health;
     if (h.status === HEALTH.HEALTHY) return true;
     return h.returnsOnDay != null && day >= h.returnsOnDay;
+  }
+  function isSuspended(wrestler, day) {
+    const until = wrestler.state.discipline?.suspendedUntilDay;
+    return until != null && day < until;
+  }
+  function canBeBooked(wrestler, day) {
+    return isAvailable(wrestler, day) && !isSuspended(wrestler, day);
   }
   function statusRank(wrestler) {
     return CAREER_RANK[wrestler.standing.careerStatus] ?? 3;
@@ -1551,6 +1620,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         (p) => typeof p === "string" ? createParticipant(p) : createParticipant(p.wrestlerId, p)
       ),
       status: SEGMENT_STATUS.BOOKED,
+      // Set when somebody in it refuses to go out. The show cannot run a blocked
+      // segment, which is what makes a refusal a problem rather than a mood.
+      blockedByIncidentId: null,
       booking: {
         bookedOnDay,
         // One entry per wrestler pitched, filled in by the pitch system later.
@@ -1829,6 +1901,265 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     return problems;
   }
 
+  // wrestling/js/models/incident.js
+  var INCIDENT_KINDS = Object.freeze({
+    ARGUMENT: "argument",
+    FIGHT: "fight",
+    COMPLAINT: "complaint",
+    REFUSAL: "refusal",
+    CONFRONTATION: "confrontation",
+    MEETING_REQUEST: "meeting_request"
+  });
+  var INCIDENT_SPECS = Object.freeze({
+    [INCIDENT_KINDS.ARGUMENT]: {
+      kind: INCIDENT_KINDS.ARGUMENT,
+      label: "Argument",
+      noun: "an argument",
+      between: true,
+      baseSeverity: 22
+    },
+    [INCIDENT_KINDS.FIGHT]: {
+      kind: INCIDENT_KINDS.FIGHT,
+      label: "Backstage fight",
+      noun: "a fight",
+      between: true,
+      baseSeverity: 48
+    },
+    [INCIDENT_KINDS.CONFRONTATION]: {
+      kind: INCIDENT_KINDS.CONFRONTATION,
+      label: "Post-match confrontation",
+      noun: "a confrontation coming back through the curtain",
+      between: true,
+      baseSeverity: 30
+    },
+    [INCIDENT_KINDS.COMPLAINT]: {
+      kind: INCIDENT_KINDS.COMPLAINT,
+      label: "Complaint",
+      noun: "a complaint",
+      between: false,
+      baseSeverity: 17
+    },
+    [INCIDENT_KINDS.REFUSAL]: {
+      kind: INCIDENT_KINDS.REFUSAL,
+      label: "Refusal",
+      noun: "a refusal to go out",
+      between: false,
+      baseSeverity: 46
+    },
+    [INCIDENT_KINDS.MEETING_REQUEST]: {
+      kind: INCIDENT_KINDS.MEETING_REQUEST,
+      label: "Request for a meeting",
+      noun: "somebody wanting a word",
+      between: false,
+      baseSeverity: 13
+    }
+  });
+  var INCIDENT_KEYS = Object.freeze(Object.keys(INCIDENT_SPECS));
+  function incidentSpec(kind) {
+    const spec = INCIDENT_SPECS[kind];
+    if (!spec) throw new Error(`Unknown incident kind "${kind}". Add it to INCIDENT_SPECS.`);
+    return spec;
+  }
+  function isKnownIncidentKind(kind) {
+    return kind in INCIDENT_SPECS;
+  }
+  var INCIDENT_STATUS = Object.freeze({
+    OPEN: "open",
+    RESOLVED: "resolved",
+    /** The night ended with it still sitting there. */
+    UNRESOLVED: "unresolved"
+  });
+  var SEVERITY_BANDS = Object.freeze([
+    [76, "Crisis"],
+    [54, "Serious"],
+    [31, "Flare-up"],
+    [0, "Friction"]
+  ]);
+  function severityLabel(severity) {
+    return SEVERITY_BANDS.find(([min]) => severity >= min)[1];
+  }
+  function isSerious(incident) {
+    return incident.severity >= 54;
+  }
+  var RESPONSES = Object.freeze({
+    IGNORE: "ignore",
+    TALK: "talk",
+    MEDIATE: "mediate",
+    SECURITY: "security",
+    WARNING: "warning",
+    EJECTION: "ejection",
+    SUSPENSION: "suspension",
+    BOOK_MATCH: "book_match"
+  });
+  var RESPONSE_SPECS = Object.freeze({
+    [RESPONSES.TALK]: {
+      key: RESPONSES.TALK,
+      label: "Talk to them",
+      blurb: "One on one. Costs you two minutes of the night and works on whether they believe you.",
+      needsPresence: true,
+      minParticipants: 1,
+      seconds: 120
+    },
+    [RESPONSES.MEDIATE]: {
+      key: RESPONSES.MEDIATE,
+      label: "Mediate",
+      blurb: "Both of them, in a room, until it is settled. Four minutes, and harder than talking.",
+      needsPresence: true,
+      minParticipants: 2,
+      betweenOnly: true,
+      seconds: 240
+    },
+    [RESPONSES.BOOK_MATCH]: {
+      key: RESPONSES.BOOK_MATCH,
+      label: "Book the match",
+      blurb: "Put the problem on television. The heat stays; now it is yours.",
+      needsPresence: false,
+      minParticipants: 2,
+      betweenOnly: true,
+      seconds: 90,
+      alwaysLands: true
+    },
+    [RESPONSES.WARNING]: {
+      key: RESPONSES.WARNING,
+      label: "Formal warning",
+      blurb: "On the record. A professional takes it; somebody who is not resents it.",
+      needsPresence: false,
+      minParticipants: 1,
+      seconds: 30,
+      alwaysLands: true
+    },
+    [RESPONSES.SECURITY]: {
+      key: RESPONSES.SECURITY,
+      label: "Send security",
+      blurb: "Always works, immediately, and they will not forgive being handled.",
+      needsPresence: false,
+      minParticipants: 1,
+      betweenOnly: true,
+      seconds: 60,
+      alwaysLands: true
+    },
+    [RESPONSES.EJECTION]: {
+      key: RESPONSES.EJECTION,
+      label: "Send them home",
+      blurb: "Out of the building tonight, and off the rest of the card with them.",
+      needsPresence: false,
+      minParticipants: 1,
+      seconds: 90,
+      alwaysLands: true,
+      liveShowOnly: true
+    },
+    [RESPONSES.SUSPENSION]: {
+      key: RESPONSES.SUSPENSION,
+      label: "Suspend",
+      blurb: "Off television for a fortnight. The heaviest thing you can do, and never forgotten.",
+      needsPresence: false,
+      minParticipants: 1,
+      seconds: 60,
+      alwaysLands: true
+    },
+    [RESPONSES.IGNORE]: {
+      key: RESPONSES.IGNORE,
+      label: "Ignore",
+      blurb: "Let it go. They will notice that you did.",
+      needsPresence: false,
+      minParticipants: 1,
+      seconds: 0,
+      alwaysLands: true
+    }
+  });
+  var RESPONSE_KEYS = Object.freeze(Object.keys(RESPONSE_SPECS));
+  function responseSpec(key) {
+    const spec = RESPONSE_SPECS[key];
+    if (!spec) throw new Error(`Unknown response "${key}". Add it to RESPONSE_SPECS.`);
+    return spec;
+  }
+  var SUSPENSION_DAYS = 14;
+  function createIncident(spec = {}) {
+    const {
+      id = mint("incident"),
+      kind,
+      day,
+      tick: tick2 = 0,
+      locationId,
+      showId = null,
+      segmentId = null,
+      participantIds: participantIds2 = [],
+      instigatorId = null,
+      targetId = null,
+      severity,
+      causeEventId = null,
+      startedEventId = null,
+      reasons = [],
+      blocksSegmentId = null
+    } = spec;
+    const preset = incidentSpec(kind);
+    if (!locationId) throw new Error("createIncident: an incident happens somewhere");
+    if (!participantIds2.length) throw new Error("createIncident: an incident happens to somebody");
+    return {
+      id,
+      kind,
+      day,
+      tick: tick2,
+      // where in the night it happened
+      locationId,
+      showId,
+      segmentId,
+      // the segment it came out of, if any
+      participantIds: participantIds2,
+      instigatorId: instigatorId || participantIds2[0],
+      targetId,
+      // the other wrestler, when it is between two people
+      severity: Math.max(1, Math.min(100, Math.round(severity ?? preset.baseSeverity))),
+      causeEventId,
+      // the event UPSTREAM of it: the match, the walk, the show
+      startedEventId,
+      // its OWN entry in the log, which is what reads as its headline
+      reasons,
+      // [{label, detail, weight}] - why this happened, never hidden
+      status: INCIDENT_STATUS.OPEN,
+      // Tier 7 decides this. Null means the GM never found out, and an incident
+      // the GM never found out about cannot be held against them.
+      discoveredTick: null,
+      notificationId: null,
+      // What the GM did, and what came of it.
+      response: null,
+      respondedOnTick: null,
+      attempted: [],
+      // responses already tried, so none can be spammed
+      outcome: null,
+      // {landed, summary, effects:[...]}
+      // A refusal stops the match it is a refusal of.
+      blocksSegmentId
+    };
+  }
+  function isOpen(incident) {
+    return incident.status === INCIDENT_STATUS.OPEN;
+  }
+  function isKnown(incident) {
+    return incident.discoveredTick != null;
+  }
+  function isAnswerable(incident) {
+    return isOpen(incident) && isKnown(incident);
+  }
+  function validateIncident(inc) {
+    const problems = [];
+    if (!isKnownIncidentKind(inc.kind)) problems.push(`unknown kind "${inc.kind}"`);
+    if (!inc.locationId) problems.push("no location");
+    if (!inc.participantIds?.length) problems.push("no participants");
+    if (!Number.isFinite(inc.severity)) problems.push("severity is not a number");
+    if (inc.severity < 1 || inc.severity > 100) problems.push(`severity ${inc.severity} out of range`);
+    if (!Object.values(INCIDENT_STATUS).includes(inc.status)) {
+      problems.push(`unknown status "${inc.status}"`);
+    }
+    if (inc.response && !(inc.response in RESPONSE_SPECS)) {
+      problems.push(`unknown response "${inc.response}"`);
+    }
+    if (inc.status === INCIDENT_STATUS.RESOLVED && !inc.response) {
+      problems.push("resolved with no response recorded");
+    }
+    return problems;
+  }
+
   // wrestling/js/models/location.js
   var LOCATIONS = Object.freeze({
     gorilla: {
@@ -1979,7 +2310,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   }
 
   // wrestling/js/core/store.js
-  var SCHEMA_VERSION = 7;
+  var SCHEMA_VERSION = 8;
   var G = { state: null, rng: null };
   function getState() {
     return G.state;
@@ -2062,6 +2393,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       segments: {},
       titles: {},
       requests: {},
+      incidents: {},
       // The building. `tick` is seconds into the working night, which is what
       // notification timing is measured in.
       backstage: {
@@ -2092,6 +2424,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       ...Object.keys(state2.segments),
       ...Object.keys(state2.titles || {}),
       ...Object.keys(state2.requests || {}),
+      ...Object.keys(state2.incidents || {}),
       ...(state2.backstage?.notifications || []).map((n) => n.id),
       ...state2.log.map((e) => e.id),
       ...Object.values(state2.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
@@ -2599,6 +2932,142 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       }
     });
   }
+  function allIncidents() {
+    return Object.values(requireGame().incidents);
+  }
+  function getIncident(id) {
+    return requireGame().incidents[id] || null;
+  }
+  function requireIncident(id) {
+    const incident = getIncident(id);
+    if (!incident) throw new Error(`No incident with id ${id}`);
+    return incident;
+  }
+  function openIncidents() {
+    return allIncidents().filter((i) => i.status === INCIDENT_STATUS.OPEN).sort((a, b) => b.severity - a.severity || a.tick - b.tick);
+  }
+  function answerableIncidents() {
+    return openIncidents().filter(isAnswerable);
+  }
+  function incidentsAbout(wrestlerId) {
+    return allIncidents().filter((i) => i.participantIds.includes(wrestlerId));
+  }
+  function raiseIncident(spec, { cause = null } = {}) {
+    const state2 = requireGame();
+    for (const id of spec.participantIds || []) requireWrestler(id);
+    const incident = createIncident({
+      day: state2.calendar.day,
+      tick: state2.backstage.tick,
+      ...spec
+    });
+    state2.incidents[incident.id] = incident;
+    const preset = INCIDENT_SPECS[incident.kind];
+    const who = incident.participantIds.map(nameOf);
+    const heard = incident.participantIds.length > 1 ? `${who[0]} and ${who[1]} are having ${preset.noun}` : `${who[0]} is the subject of ${preset.noun}`;
+    const event = emit(EVENT_TYPES.INCIDENT_STARTED, {
+      summary: spec.summary || heard,
+      newsSummary: spec.newsSummary || heard,
+      actorId: incident.instigatorId,
+      subjects: incident.participantIds,
+      showId: incident.showId,
+      segmentId: incident.segmentId,
+      locationId: incident.locationId,
+      // Almost everything backstage is backstage news, and goes through Tier 7's
+      // four questions. A refusal is the exception: it stops the broadcast, and
+      // dead air is not something anybody has to come and tell you about.
+      visibility: spec.visibility || VISIBILITY.BACKSTAGE,
+      cause,
+      data: {
+        incidentId: incident.id,
+        kind: incident.kind,
+        severity: incident.severity,
+        severityLabel: severityLabel(incident.severity),
+        reasons: incident.reasons
+      }
+    });
+    incident.startedEventId = event.id;
+    incident.causeEventId = incident.causeEventId || cause || event.id;
+    return incident;
+  }
+  function discoverIncident(id, { notificationId = null } = {}) {
+    const incident = getIncident(id);
+    if (!incident || incident.discoveredTick != null) return incident || null;
+    incident.discoveredTick = requireGame().backstage.tick;
+    incident.notificationId = notificationId;
+    return incident;
+  }
+  function resolveIncident(id, { response, landed = true, summary = "", effects = [], cause = null } = {}) {
+    const state2 = requireGame();
+    const incident = requireIncident(id);
+    if (incident.status !== INCIDENT_STATUS.OPEN) return incident;
+    incident.status = INCIDENT_STATUS.RESOLVED;
+    incident.response = response;
+    incident.respondedOnTick = state2.backstage.tick;
+    incident.outcome = { landed, summary, effects };
+    emit(EVENT_TYPES.INCIDENT_RESOLVED, {
+      summary: summary || `${incident.kind} settled`,
+      subjects: incident.participantIds,
+      showId: incident.showId,
+      locationId: incident.locationId,
+      cause: cause || incident.causeEventId,
+      data: {
+        incidentId: incident.id,
+        kind: incident.kind,
+        response,
+        landed,
+        severity: incident.severity,
+        effects
+      }
+    });
+    return incident;
+  }
+  function lapseIncident(id, { cause = null } = {}) {
+    const incident = requireIncident(id);
+    if (incident.status !== INCIDENT_STATUS.OPEN) return incident;
+    incident.status = INCIDENT_STATUS.UNRESOLVED;
+    emit(EVENT_TYPES.INCIDENT_LAPSED, {
+      summary: `${INCIDENT_SPECS[incident.kind].label} left where it was`,
+      subjects: incident.participantIds,
+      showId: incident.showId,
+      locationId: incident.locationId,
+      cause: cause || incident.causeEventId,
+      data: {
+        incidentId: incident.id,
+        kind: incident.kind,
+        severity: incident.severity,
+        knownToGm: incident.discoveredTick != null
+      }
+    });
+    return incident;
+  }
+  function noteAttempt(id, response) {
+    const incident = requireIncident(id);
+    if (!incident.attempted.includes(response)) incident.attempted.push(response);
+    return incident;
+  }
+  function blockSegment(segmentId, incidentId) {
+    const segment = requireSegment(segmentId);
+    segment.blockedByIncidentId = incidentId;
+    return segment;
+  }
+  function unblockSegment(segmentId) {
+    const segment = requireSegment(segmentId);
+    segment.blockedByIncidentId = null;
+    return segment;
+  }
+  function setDiscipline(id, patch, { reason = "", cause = null } = {}) {
+    const wrestler = requireWrestler(id);
+    const before = { ...wrestler.state.discipline };
+    Object.assign(wrestler.state.discipline, patch);
+    emit(EVENT_TYPES.WRESTLER_DISCIPLINE, {
+      summary: reason || `${wrestler.name}'s standing with the office changed`,
+      actorId: id,
+      subjects: [id],
+      cause,
+      data: { before, after: { ...wrestler.state.discipline }, patch }
+    });
+    return wrestler.state.discipline;
+  }
   function backstage() {
     return requireGame().backstage;
   }
@@ -2738,6 +3207,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   function queryLog(opts) {
     return query(requireGame().log, opts);
   }
+  function getEvent(id) {
+    return requireGame().log.find((e) => e.id === id) || null;
+  }
   function historyOf2(entityId, opts) {
     return historyOf(requireGame().log, entityId, opts);
   }
@@ -2790,11 +3262,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   });
 
   // wrestling/js/core/invariants.js
-  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments", "titles", "requests"];
+  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments", "titles", "requests", "incidents"];
   function checkState(state2) {
     const problems = [];
     if (!state2 || typeof state2 !== "object") return ["state is not an object"];
-    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "backstage", "log"]) {
+    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "incidents", "backstage", "log"]) {
       if (state2[key] == null) problems.push(`state.${key} is missing`);
     }
     if (problems.length) return problems;
@@ -2917,6 +3389,34 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       if (r.titleId) refMustExist(r.titleId, titleIds, `request ${r.id} title`);
       if (r.resolvedBySegmentId) refMustExist(r.resolvedBySegmentId, segmentIds, `request ${r.id}`);
       for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
+    }
+    const incidentIds = new Set(Object.keys(state2.incidents));
+    for (const inc of Object.values(state2.incidents)) {
+      for (const p of validateIncident(inc)) problems.push(`incident ${inc.id}: ${p}`);
+      if (!isLocation(inc.locationId)) {
+        problems.push(`incident ${inc.id} happened in unknown location "${inc.locationId}"`);
+      }
+      for (const id of inc.participantIds) refMustExist(id, wrestlerIds, `incident ${inc.id}`);
+      if (inc.targetId) refMustExist(inc.targetId, wrestlerIds, `incident ${inc.id} target`);
+      if (inc.instigatorId) refMustExist(inc.instigatorId, wrestlerIds, `incident ${inc.id} instigator`);
+      if (inc.showId) refMustExist(inc.showId, showIds, `incident ${inc.id}`);
+      if (inc.segmentId) refMustExist(inc.segmentId, segmentIds, `incident ${inc.id}`);
+      if (inc.blocksSegmentId) refMustExist(inc.blocksSegmentId, segmentIds, `incident ${inc.id} block`);
+      if (inc.startedEventId && !state2.log.some((e) => e.id === inc.startedEventId)) {
+        problems.push(`incident ${inc.id} cites missing event "${inc.startedEventId}"`);
+      }
+      if (inc.response && inc.discoveredTick == null) {
+        problems.push(`incident ${inc.id} was answered without ever reaching the GM`);
+      }
+    }
+    for (const seg of Object.values(state2.segments)) {
+      const blocker = seg.blockedByIncidentId;
+      if (!blocker) continue;
+      refMustExist(blocker, incidentIds, `segment ${seg.id} block`);
+      const inc = state2.incidents[blocker];
+      if (inc && inc.status !== INCIDENT_STATUS.OPEN) {
+        problems.push(`segment ${seg.id} is held up by ${blocker}, which is already ${inc.status}`);
+      }
     }
     const b = state2.backstage;
     if (!isLocation(b.gmLocation)) problems.push(`the GM is in unknown location "${b.gmLocation}"`);
@@ -3120,6 +3620,22 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         if (e.visibility === void 0) e.visibility = "public";
         if (e.locationId === void 0) e.locationId = null;
         if (e.tick === void 0) e.tick = null;
+      }
+      return state2;
+    },
+    // v7 -> v8: things can go wrong backstage now. A save written before this
+    // has no incidents and nobody with a disciplinary record.
+    7: (state2) => {
+      state2.incidents = state2.incidents || {};
+      for (const w of Object.values(state2.wrestlers)) {
+        w.state.discipline = w.state.discipline || {
+          warnings: 0,
+          suspendedUntilDay: null,
+          sentHomeFromShowId: null
+        };
+      }
+      for (const seg of Object.values(state2.segments)) {
+        seg.blockedByIncidentId = null;
       }
       return state2;
     }
@@ -5199,6 +5715,801 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     });
   }
 
+  // wrestling/js/systems/incidents.js
+  var clamp4 = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+  var PRESSURE_FLOOR = 22;
+  var FRICTION_RATE = 0.14;
+  var CONFRONTATION_RATE = 0.18;
+  var COMPLAINT_RATE = 0.11;
+  var MEETING_RATE = 0.1;
+  var MAX_PER_SHOW = 4;
+  var LAPSE_MATTERS_ABOVE = 54;
+  function frictionBetween(aId, bId) {
+    const a = getWrestler(aId);
+    const b = getWrestler(bId);
+    if (!a || !b) return { score: 0, reasons: [] };
+    const today2 = today();
+    const ab = relationshipWith(a, bId);
+    const ba = relationshipWith(b, aId);
+    const heat = Math.max(ab.hostility, ba.hostility);
+    const reasons = [];
+    let score = 0;
+    if (heat > 0) {
+      const add = heat * 0.75;
+      score += add;
+      if (heat >= 30) {
+        reasons.push({
+          label: "Bad blood",
+          detail: `${heat} heat between them`,
+          weight: Math.round(add)
+        });
+      }
+    }
+    const ta = a.identity.traits;
+    const tb = b.identity.traits;
+    const volatility = Math.max(ta.volatility, tb.volatility);
+    const aggression = Math.max(ta.aggression, tb.aggression);
+    const patience = Math.min(ta.patience, tb.patience);
+    const temper = volatility * 0.18 + aggression * 0.12 - patience * 0.14;
+    score += temper;
+    if (temper > 8) {
+      const hot = ta.volatility >= tb.volatility ? a : b;
+      reasons.push({
+        label: "Short fuse",
+        detail: `${hot.name} does not let things go`,
+        weight: Math.round(temper)
+      });
+    }
+    for (const [self, otherId, other] of [[a, bId, b], [b, aId, a]]) {
+      const grudge = self.memory.filter((m) => m.aboutIds?.includes(otherId)).map((m) => ({ m, weight: memoryWeightOn(m, today2) })).sort((x, y) => y.weight - x.weight)[0];
+      if (grudge && grudge.weight >= 30) {
+        const add = grudge.weight * 0.2;
+        score += add;
+        reasons.push({
+          label: "Unfinished business",
+          detail: `${self.name} has not forgotten: ${grudge.m.summary}`,
+          weight: Math.round(add)
+        });
+      }
+    }
+    const respect = Math.min(ab.respect, ba.respect);
+    if (respect >= 55) {
+      const off3 = (respect - 55) * 0.3;
+      score -= off3;
+      reasons.push({
+        label: "Mutual respect",
+        detail: "Both of them know better",
+        weight: -Math.round(off3)
+      });
+    }
+    const morale = Math.min(a.state.morale, b.state.morale);
+    if (morale < 45) {
+      const add = (45 - morale) * 0.22;
+      score += add;
+      const glum = a.state.morale <= b.state.morale ? a : b;
+      reasons.push({
+        label: "Unhappy",
+        detail: `${glum.name}'s morale is ${glum.state.morale}`,
+        weight: Math.round(add)
+      });
+    }
+    const warnings = a.state.discipline.warnings + b.state.discipline.warnings;
+    if (warnings) {
+      const off3 = Math.min(18, warnings * 9);
+      score -= off3;
+      reasons.push({
+        label: "On a warning",
+        detail: `${warnings} formal warning${warnings === 1 ? "" : "s"} between them`,
+        weight: -off3
+      });
+    }
+    return { score: clamp4(score), reasons: reasons.sort((x, y) => Math.abs(y.weight) - Math.abs(x.weight)) };
+  }
+  function grievancePressure(wrestlerId) {
+    const w = requireWrestler(wrestlerId);
+    const sat = satisfactionOf(wrestlerId);
+    const reasons = [];
+    const worstLabel = DIMENSION_LABEL[sat.worst.key] || sat.worst.key;
+    let score = Math.max(0, 55 - sat.worst.score) * 0.9;
+    if (score > 0) {
+      const said = sat.worst.reasons?.[0];
+      reasons.push({
+        label: worstLabel,
+        detail: (typeof said === "string" ? said : said?.detail || said?.text) || "Not happy with it",
+        weight: Math.round(score)
+      });
+    }
+    const nerve = w.identity.ego * 0.22 + (100 - w.identity.traits.professionalism) * 0.1;
+    score += nerve;
+    if (w.identity.ego >= 60) {
+      reasons.push({ label: "Ego", detail: `Thinks they are worth more`, weight: Math.round(nerve) });
+    }
+    if (w.state.morale < 40) {
+      const add = (40 - w.state.morale) * 0.3;
+      score += add;
+      reasons.push({ label: "Morale", detail: `Morale is ${w.state.morale}`, weight: Math.round(add) });
+    }
+    if (w.ties.gm.trust < 30) {
+      const off3 = (30 - w.ties.gm.trust) * 0.5;
+      score -= off3;
+      reasons.push({
+        label: "Past caring",
+        detail: `Trusts you ${w.ties.gm.trust}, so why bother`,
+        weight: -Math.round(off3)
+      });
+    }
+    return { score: clamp4(score), reasons, satisfaction: sat, worstLabel };
+  }
+  function meetingPressure(wrestlerId) {
+    const w = requireWrestler(wrestlerId);
+    const today2 = today();
+    const reasons = [];
+    let score = 0;
+    const ignored = w.memory.filter((m) => m.type === MEMORY_TYPES.REQUEST_IGNORED.key).map((m) => memoryWeightOn(m, today2));
+    if (ignored.length) {
+      const add = Math.min(45, ignored.reduce((t, x) => t + x, 0) * 0.35);
+      score += add;
+      reasons.push({
+        label: "Asked and heard nothing",
+        detail: `${ignored.length} request${ignored.length === 1 ? "" : "s"} went unanswered`,
+        weight: Math.round(add)
+      });
+    }
+    const grievances = w.memory.filter((m) => [
+      MEMORY_TYPES.CUT_FROM_SHOW.key,
+      MEMORY_TYPES.OVERLOOKED.key,
+      MEMORY_TYPES.TITLE_SHOT_DENIED.key,
+      MEMORY_TYPES.LEFT_TO_IT.key
+    ].includes(m.type)).map((m) => ({ m, weight: memoryWeightOn(m, today2) })).sort((a, b) => b.weight - a.weight);
+    if (grievances.length) {
+      const add = Math.min(35, grievances[0].weight * 0.5);
+      score += add;
+      reasons.push({ label: "Something on their mind", detail: grievances[0].m.summary, weight: Math.round(add) });
+    }
+    const open = openRequestsFor(wrestlerId);
+    if (open.length) {
+      const add = Math.min(28, open[0].urgency * 0.3);
+      score += add;
+      reasons.push({
+        label: "Waiting on an answer",
+        detail: `Still wants ${REQUEST_NOUN[open[0].kind] || "an answer"}`,
+        weight: Math.round(add)
+      });
+    }
+    const nerve = w.ties.gm.trust * 0.2 + standingWeight(w) * 22 + w.identity.traits.sociability * 0.12;
+    score += nerve - 22;
+    return { score: clamp4(score), reasons };
+  }
+  function liveShow() {
+    return allShows().find((s) => s.status === SHOW_STATUS.LIVE) || null;
+  }
+  function raisedTonight(showId) {
+    return allIncidents().filter((i) => i.showId === showId).length;
+  }
+  function pairsInRooms() {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const w of allWrestlers()) {
+      const room = locationOf(w.id);
+      for (const other of whoIsIn(room)) {
+        if (other.id === w.id) continue;
+        const key = [w.id, other.id].sort().join("|");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ a: w, b: other, room });
+      }
+    }
+    return out;
+  }
+  function checkFriction({ cause = null } = {}) {
+    const show = liveShow();
+    if (!show || raisedTonight(show.id) >= MAX_PER_SHOW) return null;
+    const rng = getRng();
+    const candidates = pairsInRooms().map(({ a, b, room }) => ({ a, b, room, ...frictionBetween(a.id, b.id) })).filter((c) => c.score >= PRESSURE_FLOOR).filter((c) => !busyWith(c.a.id) && !busyWith(c.b.id)).sort((x, y) => y.score - x.score);
+    if (!candidates.length) return null;
+    const top = candidates[0];
+    if (!rng.chance(top.score / 100 * FRICTION_RATE)) return null;
+    const violence = Math.max(top.a.identity.traits.aggression, top.b.identity.traits.aggression);
+    const goesPhysical = top.score >= 62 && rng.chance((top.score - 62) / 180 + violence / 450);
+    const kind = goesPhysical ? INCIDENT_KINDS.FIGHT : INCIDENT_KINDS.ARGUMENT;
+    const growth = goesPhysical ? 0.45 : 0.22;
+    const severity = INCIDENT_SPECS[kind].baseSeverity + (top.score - PRESSURE_FLOOR) * growth;
+    const incident = raiseIncident({
+      kind,
+      locationId: top.room,
+      showId: show.id,
+      participantIds: [top.a.id, top.b.id],
+      instigatorId: top.a.identity.traits.aggression >= top.b.identity.traits.aggression ? top.a.id : top.b.id,
+      targetId: top.b.id,
+      severity,
+      reasons: top.reasons,
+      summary: goesPhysical ? `${top.a.name} and ${top.b.name} come to blows in ${locationName(top.room)}` : `${top.a.name} and ${top.b.name} are shouting at each other in ${locationName(top.room)}`,
+      newsSummary: goesPhysical ? `${top.a.name} and ${top.b.name} have had a fight in ${locationName(top.room)}` : `${top.a.name} and ${top.b.name} are having a row in ${locationName(top.room)}`
+    }, { cause });
+    const bite = goesPhysical ? 9 : 5;
+    adjustRelationship(
+      top.a.id,
+      top.b.id,
+      { hostility: bite, trust: -bite },
+      { reason: `Row in ${locationName(top.room)}`, cause: incident.causeEventId }
+    );
+    adjustRelationship(
+      top.b.id,
+      top.a.id,
+      { hostility: bite, trust: -bite },
+      { reason: `Row in ${locationName(top.room)}`, cause: incident.causeEventId }
+    );
+    return incident;
+  }
+  function busyWith(wrestlerId) {
+    return openIncidents().some((i) => i.participantIds.includes(wrestlerId));
+  }
+  function checkConfrontation(segment, result, { cause = null } = {}) {
+    const show = liveShow();
+    if (!show || segment.kind !== SEGMENT_KINDS.MATCH) return null;
+    if (raisedTonight(show.id) >= MAX_PER_SHOW) return null;
+    const rng = getRng();
+    const winners = new Set(result.winnerIds || []);
+    const losers = segment.participants.map((p) => p.wrestlerId).filter((id) => !winners.has(id));
+    if (!losers.length || !winners.size) return null;
+    const pairs = [];
+    for (const loserId of losers) {
+      for (const winnerId of winners) {
+        const pressure = frictionBetween(loserId, winnerId);
+        const loser2 = getWrestler(loserId);
+        const reasons = [...pressure.reasons];
+        let score = pressure.score;
+        const gap = statusRank(loser2) - statusRank(getWrestler(winnerId));
+        if (gap > 0) {
+          const add = gap * 9;
+          score += add;
+          reasons.push({
+            label: "Beaten by somebody beneath them",
+            detail: `${gap} rung${gap === 1 ? "" : "s"} down the card`,
+            weight: add
+          });
+        }
+        if (result.finish === FINISHES.DQ) {
+          score += 20;
+          reasons.push({ label: "It ended in a disqualification", detail: "Nothing was settled", weight: 20 });
+        }
+        pairs.push({ loserId, winnerId, score: clamp4(score), reasons });
+      }
+    }
+    const top = pairs.sort((a, b) => b.score - a.score)[0];
+    if (top.score < PRESSURE_FLOOR) return null;
+    if (!rng.chance(top.score / 100 * CONFRONTATION_RATE)) return null;
+    const loser = getWrestler(top.loserId);
+    const winner = getWrestler(top.winnerId);
+    const severity = INCIDENT_SPECS[INCIDENT_KINDS.CONFRONTATION].baseSeverity + (top.score - PRESSURE_FLOOR) * 0.2;
+    return raiseIncident({
+      kind: INCIDENT_KINDS.CONFRONTATION,
+      locationId: locationOf(top.loserId),
+      showId: show.id,
+      segmentId: segment.id,
+      participantIds: [top.loserId, top.winnerId],
+      instigatorId: top.loserId,
+      targetId: top.winnerId,
+      severity,
+      reasons: top.reasons,
+      summary: `${loser.name} goes after ${winner.name} coming back from ${segment.name}`,
+      newsSummary: `${loser.name} went after ${winner.name} on the way back from the ring`
+    }, { cause });
+  }
+  function checkRefusal(segment, { cause = null } = {}) {
+    const show = liveShow();
+    if (!show || segment.status !== SEGMENT_STATUS.BOOKED) return null;
+    if (segment.blockedByIncidentId) return null;
+    const rng = getRng();
+    const all = segmentsOfShow(show.id);
+    const regards = regardSegment(segment, {
+      cardIndex: all.indexOf(segment),
+      cardLength: all.length
+    });
+    const worst = regards.sort((a, b) => a.willingness - b.willingness)[0];
+    if (!worst) return null;
+    const verdict = responseFor(worst.willingness);
+    if (verdict !== RESPONSE.REFUSE && verdict !== RESPONSE.PUSH_BACK) return null;
+    const w = requireWrestler(worst.wrestlerId);
+    if (verdict === RESPONSE.PUSH_BACK && !rng.chance(w.identity.traits.volatility / 900)) return null;
+    if (verdict === RESPONSE.REFUSE && !rng.chance(0.3)) return null;
+    const severity = INCIDENT_SPECS[INCIDENT_KINDS.REFUSAL].baseSeverity + (52 - worst.willingness) * 0.35;
+    const incident = raiseIncident({
+      kind: INCIDENT_KINDS.REFUSAL,
+      locationId: locationOf(w.id),
+      showId: show.id,
+      segmentId: segment.id,
+      blocksSegmentId: segment.id,
+      participantIds: [w.id],
+      instigatorId: w.id,
+      severity,
+      // `regard()` speaks in pulls on willingness; an incident speaks in pushes
+      // toward trouble. Same facts, opposite sign, so they are translated here
+      // rather than leaving two reason vocabularies loose in the save.
+      reasons: (worst.reasons || []).filter((r) => r.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 4).map((r) => ({ label: r.text, detail: "", weight: Math.round(-r.delta) })),
+      summary: `${w.name} will not go out for ${segment.name}`,
+      newsSummary: `${w.name} is refusing to go out for ${segment.name}`,
+      // Public, so Tier 7 does not treat it as something somebody has to come and
+      // mention. A GM whose next match simply never starts knows at once that
+      // something is wrong, wherever in the building they happen to be standing.
+      visibility: VISIBILITY.PUBLIC
+    }, { cause });
+    blockSegment(segment.id, incident.id);
+    scheduleNotification({
+      eventId: incident.causeEventId,
+      locationId: incident.locationId,
+      aboutIds: [w.id],
+      reliability: RELIABILITY.WITNESSED,
+      sourceWrestlerId: null,
+      dueTick: tick(),
+      summary: `${segment.name} is not starting. ${w.name} will not go out.`,
+      detail: `The card has stopped in ${locationName(incident.locationId)}.`
+    });
+    deliverDueNotifications({ cause: incident.causeEventId });
+    discoverIncident(incident.id);
+    emit(EVENT_TYPES.BOOKING_REFUSED, {
+      summary: `${w.name} refuses ${segment.name}`,
+      actorId: w.id,
+      subjects: [w.id],
+      showId: show.id,
+      segmentId: segment.id,
+      locationId: incident.locationId,
+      visibility: VISIBILITY.BACKSTAGE,
+      cause: incident.causeEventId,
+      data: {
+        incidentId: incident.id,
+        willingness: worst.willingness,
+        floor: worst.floor,
+        heldUpByStanding: worst.heldUpByStanding,
+        reasons: worst.reasons
+      }
+    });
+    return incident;
+  }
+  function checkComplaints({ cause = null } = {}) {
+    const show = liveShow();
+    if (!show || raisedTonight(show.id) >= MAX_PER_SHOW) return null;
+    const rng = getRng();
+    const candidates = allWrestlers().filter((w) => !busyWith(w.id)).map((w) => ({ w, ...grievancePressure(w.id) })).filter((c) => c.score >= PRESSURE_FLOOR).sort((a, b) => b.score - a.score);
+    if (!candidates.length) return null;
+    const top = candidates[0];
+    if (!rng.chance(top.score / 100 * COMPLAINT_RATE)) return null;
+    const severity = INCIDENT_SPECS[INCIDENT_KINDS.COMPLAINT].baseSeverity + (top.score - PRESSURE_FLOOR) * 0.25;
+    return raiseIncident({
+      kind: INCIDENT_KINDS.COMPLAINT,
+      locationId: locationOf(top.w.id),
+      showId: show.id,
+      participantIds: [top.w.id],
+      severity,
+      reasons: top.reasons,
+      summary: `${top.w.name} is complaining about ${top.worstLabel.toLowerCase()}`,
+      newsSummary: `${top.w.name} is going round complaining about ${top.worstLabel.toLowerCase()}`
+    }, { cause });
+  }
+  function checkMeetingRequests({ cause = null } = {}) {
+    const show = liveShow();
+    if (!show || raisedTonight(show.id) >= MAX_PER_SHOW) return null;
+    const rng = getRng();
+    const candidates = allWrestlers().filter((w) => !busyWith(w.id)).map((w) => ({ w, ...meetingPressure(w.id) })).filter((c) => c.score >= PRESSURE_FLOOR && c.reasons.length).sort((a, b) => b.score - a.score);
+    if (!candidates.length) return null;
+    const top = candidates[0];
+    if (!rng.chance(top.score / 100 * MEETING_RATE)) return null;
+    return raiseIncident({
+      kind: INCIDENT_KINDS.MEETING_REQUEST,
+      locationId: locationOf(top.w.id),
+      showId: show.id,
+      participantIds: [top.w.id],
+      severity: INCIDENT_SPECS[INCIDENT_KINDS.MEETING_REQUEST].baseSeverity + (top.score - PRESSURE_FLOOR) * 0.2,
+      reasons: top.reasons,
+      summary: `${top.w.name} is asking for a word`,
+      newsSummary: `${top.w.name} is looking for you`
+    }, { cause });
+  }
+  function canRespond(incident, key) {
+    const spec = responseSpec(key);
+    const problems = [];
+    if (!isAnswerable(incident)) problems.push("You do not know about this");
+    if (incident.attempted.includes(key)) problems.push("You have already tried that");
+    if (incident.participantIds.length < spec.minParticipants) {
+      problems.push(`${spec.label} needs ${spec.minParticipants} people`);
+    }
+    if (spec.betweenOnly && !INCIDENT_SPECS[incident.kind].between) {
+      problems.push(`There is nobody to ${key === RESPONSES.BOOK_MATCH ? "book them against" : "separate them from"}`);
+    }
+    if (spec.needsPresence && gmLocation() !== incident.locationId) {
+      problems.push(`You are not in ${locationName(incident.locationId)}`);
+    }
+    if (spec.liveShowOnly && !liveShow()) {
+      problems.push("There is no show to send them home from");
+    }
+    if (key === RESPONSES.BOOK_MATCH && !showWithRoom()) {
+      problems.push("No upcoming show to put it on");
+    }
+    return { ok: problems.length === 0, problems };
+  }
+  function showWithRoom() {
+    return allShows().find((s) => s.status === SHOW_STATUS.SCHEDULED) || null;
+  }
+  function chanceOf(incident, key) {
+    const spec = responseSpec(key);
+    if (spec.alwaysLands) return 1;
+    const people = incident.participantIds.map((id) => requireWrestler(id));
+    const avg = (fn) => people.reduce((t, w) => t + fn(w), 0) / people.length;
+    const trust = avg((w) => w.ties.gm.trust);
+    const respect = avg((w) => w.ties.gm.respect);
+    const professionalism = avg((w) => w.identity.traits.professionalism);
+    const volatility = avg((w) => w.identity.traits.volatility);
+    let chance = 0.24 + trust * 55e-4 + respect * 22e-4 + professionalism * 28e-4 - volatility * 22e-4 - incident.severity * 55e-4;
+    if (key === RESPONSES.MEDIATE) chance -= 0.12;
+    return Math.max(0.05, Math.min(0.95, chance));
+  }
+  function optionsFor(incidentId) {
+    const incident = requireIncident(incidentId);
+    return Object.values(RESPONSE_SPECS).map((spec) => {
+      const verdict = canRespond(incident, spec.key);
+      return {
+        ...spec,
+        ok: verdict.ok,
+        problems: verdict.problems,
+        chance: chanceOf(incident, spec.key)
+      };
+    });
+  }
+  function rememberAll(incident, typeKey, summary, { cause = null, aboutGm = true } = {}) {
+    for (const id of incident.participantIds) {
+      addMemory(id, memorySpec(typeKey, {
+        summary,
+        aboutIds: aboutGm ? [] : incident.participantIds.filter((x) => x !== id),
+        day: today()
+      }), { cause });
+    }
+  }
+  function respond(incidentId, key, { reason = "" } = {}) {
+    const incident = requireIncident(incidentId);
+    const spec = responseSpec(key);
+    const verdict = canRespond(incident, key);
+    if (!verdict.ok) throw new Error(verdict.problems[0]);
+    noteAttempt(incidentId, key);
+    if (spec.seconds) advanceTick(spec.seconds);
+    const cause = incident.causeEventId;
+    const effects = [];
+    const names = incident.participantIds.map(nameOf);
+    const weight = incident.severity / 100;
+    const gm = (id, deltas, why) => {
+      adjustGmTie(id, deltas, { reason: why, cause });
+      effects.push({ wrestlerId: id, ...deltas, why });
+    };
+    const landed = spec.alwaysLands ? true : getRng().chance(chanceOf(incident, key));
+    let summary = reason;
+    emit(EVENT_TYPES.GM_RESPONDED, {
+      summary: `${spec.label}: ${names.join(" and ")}`,
+      subjects: incident.participantIds,
+      showId: incident.showId,
+      locationId: incident.locationId,
+      cause,
+      data: { incidentId, response: key, severity: incident.severity, landed }
+    });
+    switch (key) {
+      // --- do nothing, on purpose ------------------------------------------
+      case RESPONSES.IGNORE: {
+        for (const id of incident.participantIds) {
+          gm(id, { respect: -Math.round(1 + weight * 13) }, "Watched it happen and did nothing");
+        }
+        if (incident.severity >= LAPSE_MATTERS_ABOVE) {
+          rememberAll(
+            incident,
+            MEMORY_TYPES.LEFT_TO_IT.key,
+            `The GM knew about ${INCIDENT_SPECS[incident.kind].noun} and left it`,
+            { cause }
+          );
+        }
+        if (incident.targetId) {
+          adjustRelationship(
+            incident.instigatorId,
+            incident.targetId,
+            { hostility: Math.round(3 + weight * 6) },
+            { reason: "Left to fester", cause }
+          );
+        }
+        summary = summary || `Left ${names.join(" and ")} to it`;
+        break;
+      }
+      // --- be in the room --------------------------------------------------
+      case RESPONSES.TALK: {
+        if (landed) {
+          for (const id of incident.participantIds) {
+            gm(
+              id,
+              { trust: Math.round(4 + weight * 12), respect: Math.round(2 + weight * 5) },
+              "Came and talked it through"
+            );
+          }
+          rememberAll(
+            incident,
+            MEMORY_TYPES.HEARD_OUT.key,
+            "The GM came and heard them out",
+            { cause }
+          );
+          summary = summary || `Talked ${names.join(" and ")} round`;
+        } else {
+          for (const id of incident.participantIds) {
+            gm(id, { respect: -Math.round(2 + weight * 5) }, "Tried talking and got nowhere");
+          }
+          summary = `Tried talking to ${names.join(" and ")} and got nowhere`;
+        }
+        break;
+      }
+      case RESPONSES.MEDIATE: {
+        if (landed) {
+          const cool = -Math.round(10 + weight * 22);
+          adjustRelationship(
+            incident.participantIds[0],
+            incident.participantIds[1],
+            { hostility: cool, respect: 4 },
+            { reason: "Talked out with the GM", cause }
+          );
+          adjustRelationship(
+            incident.participantIds[1],
+            incident.participantIds[0],
+            { hostility: cool, respect: 4 },
+            { reason: "Talked out with the GM", cause }
+          );
+          effects.push({ hostility: cool, why: "Heat taken out of it on both sides" });
+          for (const id of incident.participantIds) {
+            gm(
+              id,
+              { trust: Math.round(5 + weight * 12), respect: Math.round(4 + weight * 10) },
+              "Sat them both down and settled it"
+            );
+          }
+          rememberAll(
+            incident,
+            MEMORY_TYPES.HEARD_OUT.key,
+            "The GM sat them both down and settled it",
+            { cause }
+          );
+          summary = summary || `Settled it between ${names.join(" and ")}`;
+        } else {
+          for (const id of incident.participantIds) {
+            gm(id, { respect: -Math.round(3 + weight * 8) }, "Tried to mediate and lost the room");
+          }
+          summary = `Could not get ${names.join(" and ")} to climb down`;
+        }
+        break;
+      }
+      // --- send somebody else ----------------------------------------------
+      case RESPONSES.SECURITY: {
+        for (const id of incident.participantIds) {
+          gm(id, {
+            trust: -Math.round(6 + weight * 14),
+            respect: Math.round(2 + weight * 6)
+            // it worked, and they know it worked
+          }, "Had security pull them apart");
+        }
+        rememberAll(
+          incident,
+          MEMORY_TYPES.MANHANDLED.key,
+          "Security pulled them apart on the GM\u2019s say-so",
+          { cause }
+        );
+        summary = summary || `Security separated ${names.join(" and ")}`;
+        break;
+      }
+      case RESPONSES.WARNING: {
+        for (const id of incident.participantIds) {
+          const w = requireWrestler(id);
+          setDiscipline(
+            id,
+            { warnings: w.state.discipline.warnings + 1 },
+            { reason: `Formal warning after ${INCIDENT_SPECS[incident.kind].noun}`, cause }
+          );
+          const takesIt = w.identity.traits.professionalism >= 55;
+          gm(
+            id,
+            takesIt ? { respect: Math.round(2 + weight * 6), trust: -2 } : { respect: -Math.round(2 + weight * 5), trust: -Math.round(4 + weight * 9) },
+            takesIt ? "Took the warning as read" : "Did not take the warning well"
+          );
+        }
+        rememberAll(incident, MEMORY_TYPES.WARNED.key, "Formally warned by the GM", { cause });
+        summary = summary || `Warned ${names.join(" and ")}`;
+        break;
+      }
+      // --- remove them ------------------------------------------------------
+      case RESPONSES.EJECTION: {
+        const show = liveShow();
+        const cut = [];
+        for (const id of incident.participantIds) {
+          setDiscipline(
+            id,
+            { sentHomeFromShowId: show?.id || null },
+            { reason: "Sent home", cause }
+          );
+          for (const seg of segmentsOfShow(show.id)) {
+            if (seg.status !== SEGMENT_STATUS.BOOKED) continue;
+            if (!seg.participants.some((p) => p.wrestlerId === id)) continue;
+            cutSegment(seg.id, { reason: `${nameOf(id)} was sent home`, cause });
+            cut.push(seg.name);
+          }
+          gm(id, {
+            trust: -Math.round(12 + weight * 20),
+            respect: -Math.round(4 + weight * 10)
+          }, "Sent home from the show");
+          updateWrestlerState(
+            id,
+            { morale: clamp4(requireWrestler(id).state.morale - 14) },
+            { reason: "Sent home", cause }
+          );
+        }
+        rememberAll(incident, MEMORY_TYPES.SENT_HOME.key, "Sent home from the show", { cause });
+        rippleToAllies(incident, -5, "A friend was sent home", cause, effects);
+        if (cut.length) effects.push({ why: `Cut from the card: ${cut.join(", ")}` });
+        summary = summary || `Sent ${names.join(" and ")} home`;
+        break;
+      }
+      case RESPONSES.SUSPENSION: {
+        const until = today() + SUSPENSION_DAYS;
+        for (const id of incident.participantIds) {
+          setDiscipline(
+            id,
+            { suspendedUntilDay: until },
+            { reason: `Suspended for ${SUSPENSION_DAYS} days`, cause }
+          );
+          gm(id, {
+            trust: -Math.round(16 + weight * 22),
+            respect: -Math.round(6 + weight * 12)
+          }, `Suspended until day ${until}`);
+          updateWrestlerState(
+            id,
+            { morale: clamp4(requireWrestler(id).state.morale - 22) },
+            { reason: "Suspended", cause }
+          );
+          effects.push({ wrestlerId: id, suspendedUntilDay: until, why: "Off television" });
+        }
+        rememberAll(
+          incident,
+          MEMORY_TYPES.SUSPENSION.key,
+          `Suspended for ${SUSPENSION_DAYS} days`,
+          { cause }
+        );
+        rippleToAllies(incident, -8, "A friend was suspended", cause, effects);
+        summary = summary || `Suspended ${names.join(" and ")}`;
+        break;
+      }
+      // --- put it on television ---------------------------------------------
+      case RESPONSES.BOOK_MATCH: {
+        const show = showWithRoom();
+        const [aId, bId] = incident.participantIds;
+        const segment = bookSegment({
+          showId: show.id,
+          format: "singles",
+          kind: SEGMENT_KINDS.MATCH,
+          name: `${nameOf(aId)} vs ${nameOf(bId)}`,
+          timeLimitSec: 12 * 60,
+          participants: [{ wrestlerId: aId, side: "a" }, { wrestlerId: bId, side: "b" }]
+        }, { cause });
+        for (const id of incident.participantIds) {
+          gm(
+            id,
+            { respect: Math.round(6 + weight * 14), trust: Math.round(2 + weight * 4) },
+            "Gave them somewhere to put it"
+          );
+          updateWrestlerState(
+            id,
+            { morale: clamp4(requireWrestler(id).state.morale + 8) },
+            { reason: "Got the match out of it", cause }
+          );
+        }
+        rememberAll(
+          incident,
+          MEMORY_TYPES.REQUEST_GRANTED.key,
+          `The GM turned it into a match on ${show.name}`,
+          { cause }
+        );
+        effects.push({ segmentId: segment.id, why: `Booked on ${show.name}` });
+        summary = summary || `Booked ${nameOf(aId)} vs ${nameOf(bId)} on ${show.name}`;
+        break;
+      }
+      default:
+        throw new Error(`No handler for response "${key}"`);
+    }
+    if (incident.blocksSegmentId) settleBlock(incident, key, landed, effects, cause);
+    if (!landed && !spec.alwaysLands) {
+      incident.outcome = { landed: false, summary, effects };
+      return { incident, landed: false, summary, effects };
+    }
+    resolveIncident(incidentId, { response: key, landed, summary, effects, cause });
+    return { incident: getIncident(incidentId), landed, summary, effects };
+  }
+  function settleBlock(incident, key, landed, effects, cause) {
+    const segment = getSegment(incident.blocksSegmentId);
+    if (!segment || segment.status !== SEGMENT_STATUS.BOOKED) return;
+    const talkedRound = landed && (key === RESPONSES.TALK || key === RESPONSES.MEDIATE);
+    const forced = key === RESPONSES.SECURITY || key === RESPONSES.WARNING;
+    if (talkedRound || forced) {
+      unblockSegment(segment.id);
+      effects.push({ segmentId: segment.id, why: `${segment.name} goes ahead` });
+      return;
+    }
+    if (key === RESPONSES.IGNORE || key === RESPONSES.EJECTION || key === RESPONSES.SUSPENSION) {
+      unblockSegment(segment.id);
+      cutSegment(segment.id, {
+        reason: `${nameOf(incident.instigatorId)} would not go out`,
+        cause
+      });
+      effects.push({ segmentId: segment.id, why: `${segment.name} never happened` });
+    }
+  }
+  function rippleToAllies(incident, respectDelta, why, cause, effects) {
+    const touched = new Set(incident.participantIds);
+    for (const id of incident.participantIds) {
+      for (const allyId of alliesOf(requireWrestler(id))) {
+        if (touched.has(allyId) || !getWrestler(allyId)) continue;
+        touched.add(allyId);
+        adjustGmTie(allyId, { respect: respectDelta }, { reason: why, cause });
+        effects.push({ wrestlerId: allyId, respect: respectDelta, why });
+      }
+    }
+  }
+  function install9() {
+    on2(EVENT_TYPES.SEGMENT_COMPLETED, (event) => {
+      const segment = getSegment(event.segmentId);
+      if (!segment) return;
+      checkConfrontation(segment, event.data.result || segment.result, { cause: event.id });
+      checkFriction({ cause: event.id });
+      checkComplaints({ cause: event.id });
+      checkMeetingRequests({ cause: event.id });
+      const next = segmentsOfShow(segment.showId).find((s) => s.status === SEGMENT_STATUS.BOOKED);
+      if (next) checkRefusal(next, { cause: event.id });
+    });
+    on2(EVENT_TYPES.SHOW_STARTED, (event) => {
+      checkFriction({ cause: event.id });
+      checkMeetingRequests({ cause: event.id });
+      const first = segmentsOfShow(event.showId).find((s) => s.status === SEGMENT_STATUS.BOOKED);
+      if (first) checkRefusal(first, { cause: event.id });
+    });
+    on2(EVENT_TYPES.NEWS_REACHED_GM, (event) => {
+      const source = event.data.eventId ? getEvent(event.data.eventId) : null;
+      const incidentId = source?.data?.incidentId;
+      if (incidentId) discoverIncident(incidentId, { notificationId: event.data.notificationId });
+    });
+    on2(EVENT_TYPES.SHOW_COMPLETED, (event) => {
+      for (const incident of openIncidents()) {
+        const knew = incident.discoveredTick != null;
+        if (knew && incident.severity >= LAPSE_MATTERS_ABOVE) {
+          for (const id of incident.participantIds) {
+            adjustGmTie(
+              id,
+              { respect: -Math.round(1 + incident.severity / 100 * 6) },
+              { reason: "Knew about it all night and did nothing", cause: event.id }
+            );
+            addMemory(id, memorySpec(MEMORY_TYPES.LEFT_TO_IT.key, {
+              summary: `The GM knew about ${INCIDENT_SPECS[incident.kind].noun} and let the night end`,
+              day: today()
+            }), { cause: event.id });
+          }
+        }
+        if (incident.blocksSegmentId) unblockSegment(incident.blocksSegmentId);
+        lapseIncident(incident.id, { cause: event.id });
+      }
+    });
+    on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
+      const today2 = today();
+      for (const w of allWrestlers()) {
+        const until = w.state.discipline.suspendedUntilDay;
+        if (until != null && today2 >= until) {
+          setDiscipline(
+            w.id,
+            { suspendedUntilDay: null },
+            { reason: `${w.name}'s suspension is served`, cause: event.id }
+          );
+        }
+        if (w.state.discipline.sentHomeFromShowId) {
+          setDiscipline(w.id, { sentHomeFromShowId: null }, { reason: "", cause: event.id });
+        }
+      }
+    });
+  }
+
   // wrestling/js/systems/upkeep.js
   function recoveryPerDay(wrestler) {
     return 4 + wrestler.ability.durability / 25;
@@ -5219,7 +6530,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     if (momentum < 0) return Math.min(0, momentum + drop);
     return 0;
   }
-  function install9() {
+  function install10() {
     on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
       const days = event.data.days;
       if (!days) return;
@@ -5277,11 +6588,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     install7();
     install8();
     install9();
+    install10();
   }
 
   // wrestling/js/systems/showRunner.js
   var showRunner_exports = {};
   __export(showRunner_exports, {
+    blockedBy: () => blockedBy,
     commitResult: () => commitResult,
     currentShow: () => currentShow,
     goLive: () => goLive,
@@ -5320,14 +6633,14 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         const ba = relationshipWith(b, participantIds2[i]);
         const heat = (Math.abs(ab.affinity) + ab.hostility + Math.abs(ba.affinity) + ba.hostility) / 2;
         const respect = (ab.respect + ba.respect) / 2;
-        total += clamp4(heat * 6e-3 + (respect - 50) * 6e-3, 0, 1);
+        total += clamp5(heat * 6e-3 + (respect - 50) * 6e-3, 0, 1);
         pairs++;
       }
     }
     return pairs ? Math.min(1, total / pairs) : 0;
   }
   var mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-  var clamp4 = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  var clamp5 = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   var PHRASES = {
     open: ["The bell rings.", "Here we go.", "They lock up."],
     early: ["A feeling-out process early.", "Neither wants to make the first mistake.", "Cagey start."],
@@ -5347,7 +6660,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     const weights = [];
     for (let i = 1; i <= beats; i++) weights.push(flat + Math.pow(i / beats, shape));
     const total = weights.reduce((a, b) => a + b, 0);
-    return weights.map((w) => clamp4(budget * w / total, 0, 0.85));
+    return weights.map((w) => clamp5(budget * w / total, 0, 0.85));
   }
   function pickFinish(rng, gap) {
     return rng.weighted([
@@ -5364,7 +6677,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     q *= 0.85 + 0.15 * (conditionAvg / 100);
     q += actualSec < 90 ? -20 + actualSec / 90 * 8 : -4 + 12 * Math.min(1, actualSec / 600);
     q += rng.range(-6, 6);
-    return Math.round(clamp4(q, 1, 100));
+    return Math.round(clamp5(q, 1, 100));
   }
   function simulateSegment(segment, { get, rng }) {
     const format = formatOf(segment.format);
@@ -5377,7 +6690,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     const strengths = sideKeys.map((k) => sideStrength(bySide[k], get));
     const high = Math.max(...strengths);
     const low = Math.min(...strengths);
-    const gap = high > 0 ? clamp4((high - low) / high, 0, 1) : 0;
+    const gap = high > 0 ? clamp5((high - low) / high, 0, 1) : 0;
     const beats = Math.max(2, Math.floor(segment.timeLimitSec / BEAT_SEC));
     const hazards = finishHazards(beats, gap);
     const timeline = [];
@@ -5471,7 +6784,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         winnerIds: [],
         loserIds: [],
         actualSec,
-        quality: Math.round(clamp4(q, 1, 100)),
+        quality: Math.round(clamp5(q, 1, 100)),
         beats: timeline,
         overridden: false
       },
@@ -5503,6 +6816,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   // wrestling/js/systems/showRunner.js
   function nextSegment(showId) {
     return segmentsOfShow(showId).find((s) => s.status === SEGMENT_STATUS.BOOKED) || null;
+  }
+  function blockedBy(showId) {
+    const segment = nextSegment(showId);
+    if (!segment?.blockedByIncidentId) return null;
+    const incident = getIncident(segment.blockedByIncidentId);
+    if (!incident || incident.status !== "open") return null;
+    return { segment, incident };
   }
   function progress(showId) {
     const show = requireShow(showId);
@@ -5540,6 +6860,14 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     if (show.status !== SHOW_STATUS.LIVE) throw new Error("The show is not on the air");
     const segment = nextSegment(showId);
     if (!segment) return null;
+    if (segment.blockedByIncidentId) {
+      const incident = getIncident(segment.blockedByIncidentId);
+      if (incident && incident.status === "open") {
+        throw new Error(
+          `${nameOf(incident.instigatorId)} will not go out for ${segment.name}`
+        );
+      }
+    }
     const { result, timeline } = simulateSegment(segment, {
       get: (id) => requireWrestler(id),
       rng: getRng()
@@ -5562,8 +6890,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   }
   function runRest(showId) {
     const out = [];
-    let step;
-    while (step = runNext(showId)) out.push(step);
+    while (nextSegment(showId)) {
+      if (blockedBy(showId)) break;
+      const step = runNext(showId);
+      if (!step) break;
+      out.push(step);
+    }
     return out;
   }
   function gradeShow(showId) {
@@ -5581,6 +6913,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   function goOffAir(showId) {
     const show = requireShow(showId);
     if (show.status !== SHOW_STATUS.LIVE) return show;
+    for (const seg of segmentsOfShow(showId)) {
+      if (seg.status !== SEGMENT_STATUS.BOOKED) continue;
+      unblockSegment(seg.id);
+      cutSegment(seg.id, { reason: "Never made it to air" });
+    }
     const rating = gradeShow(showId);
     completeShow(showId, { rating });
     return getShow(showId);
@@ -5651,6 +6988,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       if (format.kind === SEGMENT_KINDS.MATCH && !isAvailable(w, day)) {
         problems.push(`${w.name} is not fit to wrestle`);
       }
+      if (isSuspended(w, day)) {
+        problems.push(`${w.name} is suspended until day ${w.state.discipline.suspendedUntilDay}`);
+      }
     }
     if (titleId) {
       const title = getTitle(titleId);
@@ -5700,7 +7040,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   function availableFor(showId, { matchOnly = true } = {}) {
     const working = matchOnly ? alreadyWrestling(showId) : alreadyBooked(showId);
     const day = today();
-    return allWrestlers().filter((w) => !working.has(w.id) && isAvailable(w, day));
+    return allWrestlers().filter((w) => !working.has(w.id) && canBeBooked(w, day));
   }
 
   // wrestling/js/ui/format.js
@@ -5779,6 +7119,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     morale: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>',
     mail: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>',
     belt: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.2 13.9 7 22l5-3 5 3-1.2-8.1"/></svg>',
+    flare: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.2 1.8 17.5A2 2 0 0 0 3.5 20.5h17a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0"/><path d="M12 9v4M12 17h.01"/></svg>',
     ear: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 0 1-7 0"/><path d="M9.5 8.5a2.5 2.5 0 1 1 5 0c0 2.5-2.5 2.5-2.5 5"/></svg>',
     cal: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
   };
@@ -6306,6 +7647,109 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     </div>`;
   }
 
+  // wrestling/js/ui/incidentCard.js
+  function severityTone(severity) {
+    if (severity >= 76) return "bad";
+    if (severity >= 54) return "warn";
+    return "";
+  }
+  function tagTone(severity) {
+    if (severity >= 76) return "red";
+    if (severity >= 54) return "amber";
+    if (severity >= 31) return "blue";
+    return "";
+  }
+  function person(id) {
+    const w = getWrestler(id);
+    if (!w) return "";
+    return `<button class="wcard" data-action="go" data-arg="wrestler/${w.id}">
+    <span class="who">
+      <span class="nm">${esc(w.name)}</span>
+      <span class="sub">${esc(titleCase(w.standing.careerStatus))} &middot; morale ${w.state.morale}
+        &middot; trusts you ${w.ties.gm.trust}</span>
+    </span>
+    ${w.state.discipline.warnings ? `<span class="tag amber">${w.state.discipline.warnings} warning${w.state.discipline.warnings === 1 ? "" : "s"}</span>` : ""}
+  </button>`;
+  }
+  function reasonRow(r) {
+    const weight = Number(r.weight);
+    return `<div class="kv">
+    <span>${esc(r.label || "")}${r.detail ? ` <span class="muted">&middot; ${esc(r.detail)}</span>` : ""}</span>
+    <span class="${weight < 0 ? "pos" : ""}">${Number.isFinite(weight) ? signed(Math.round(weight)) : ""}</span>
+  </div>`;
+  }
+  function cost(option) {
+    const parts = [];
+    if (option.chance < 1) parts.push(`${Math.round(option.chance * 100)}% to land`);
+    else if (option.seconds) parts.push("certain");
+    if (option.seconds) parts.push(mmss(option.seconds));
+    return parts.join(" \xB7 ") || "costs you nothing now";
+  }
+  function optionButton(incident, option) {
+    const why = option.problems[0] || option.blurb;
+    const primary = option.ok && (option.key === RESPONSES.TALK || option.key === RESPONSES.MEDIATE);
+    return `<button class="act${primary ? " primary" : ""}${option.key === RESPONSES.SUSPENSION || option.key === RESPONSES.EJECTION ? " danger" : ""}"
+    data-action="respondTo" data-id="${incident.id}" data-response="${option.key}"
+    title="${esc(why)}"${option.ok ? "" : " disabled"}>
+    ${esc(option.label)}<em>${option.ok ? esc(cost(option)) : esc(option.problems[0])}</em>
+  </button>`;
+  }
+  function incidentCard(incident, { compact = false } = {}) {
+    const spec = INCIDENT_SPECS[incident.kind];
+    const known = incident.discoveredTick != null;
+    const started = getEvent(incident.startedEventId);
+    const line = started?.summary || `${spec.label} in ${locationName(incident.locationId)}`;
+    const meta = [
+      `${severityLabel(incident.severity)} ${incident.severity}`,
+      locationName(incident.locationId),
+      `${mmss(incident.tick)} in`
+    ].join(" &middot; ");
+    if (!known) {
+      return "";
+    }
+    const options = optionsFor(incident.id);
+    const available = options.filter((o) => o.ok);
+    return `
+    <section class="panel trouble ${severityTone(incident.severity)}">
+      <div class="head">
+        <h2>${esc(spec.label)}</h2>
+        <span class="meta">
+          <span class="tag ${tagTone(incident.severity)}">${esc(severityLabel(incident.severity))}</span>
+          ${esc(locationName(incident.locationId))} &middot; ${mmss(incident.tick)} in
+        </span>
+      </div>
+      <div class="body">
+        <p class="sub" style="margin-top:0">${esc(line)}</p>
+        ${compact ? "" : `<div class="sheet">${incident.participantIds.map(person).join("")}</div>`}
+
+        ${compact || !incident.reasons.length ? "" : `
+          <h3>Why it happened</h3>
+          ${incident.reasons.map(reasonRow).join("")}`}
+
+        <h3>What you can do</h3>
+        ${incident.attempted.length ? `<p class="sub">Already tried:
+          ${incident.attempted.map((a) => esc(options.find((o) => o.key === a)?.label || a)).join(", ")}</p>` : ""}
+        <div class="opts">${options.map((o) => optionButton(incident, o)).join("")}</div>
+        ${available.length ? "" : '<p class="empty">Nothing is available from here. Walk to them, or wait.</p>'}
+      </div>
+    </section>`;
+  }
+  function incidentRow(incident) {
+    const spec = INCIDENT_SPECS[incident.kind];
+    const options = incident.response ? `<span class="tag ${incident.outcome?.landed === false ? "red" : "green"}">${esc(incident.response.replace(/_/g, " "))}</span>` : '<span class="tag">left as it was</span>';
+    return `<div class="slot ${isSerious(incident) ? "next" : "done"}">
+    <span class="idx">${esc(severityLabel(incident.severity)[0])}</span>
+    <span class="what">
+      <span class="t">${esc(incident.outcome?.summary || spec.label)}</span>
+      <span class="d">${esc(incident.participantIds.map(nameOf).join(" and "))}
+        &middot; ${esc(locationName(incident.locationId))}
+        &middot; ${esc(severityLabel(incident.severity))} ${incident.severity}
+        ${incident.discoveredTick == null ? "&middot; you never found out" : ""}</span>
+    </span>
+    <span class="side">${options}</span>
+  </div>`;
+  }
+
   // wrestling/js/ui/rosterRail.js
   var railFilter = { text: "", only: "all" };
   function setRailText(v) {
@@ -6781,6 +8225,15 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       </tr>`;
     }).join("");
     const watching = isActive() && !isFinished();
+    const held = blockedBy(show.id);
+    const blocker = held ? `
+    <div class="blocker">
+      <strong>The card is held up.</strong>
+      ${esc(nameOf(held.incident.instigatorId))} will not go out for
+      ${esc(held.segment.name || formatOf(held.segment.format).label)}.
+      ${held.incident.discoveredTick == null ? " Nobody has come and told you yet, so the show simply is not moving." : " Deal with it and the show moves on."}
+    </div>
+    ${held.incident.discoveredTick != null ? incidentCard(held.incident) : ""}` : "";
     const overrideControl = next && next.kind === SEGMENT_KINDS.MATCH ? `<div class="field"><label for="ovr">Override the finish</label>
         <select id="ovr" data-action="changeOverride">
           <option value=""${draft.overrideSide === "" ? " selected" : ""}>Let it play out</option>
@@ -6788,6 +8241,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         </select></div>` : "";
     return `
     ${header(show, ' &middot; <span class="pos">ON AIR</span>')}
+    ${blocker}
 
     <div class="cards">
       <div class="card"><h3>Clock</h3>
@@ -6807,11 +8261,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     <div id="playbackHost">${panelHtml()}</div>
 
     ${watching ? "" : `<div class="bar">
-      ${next ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ""}
-      ${next ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ""}
+      ${next && !held ? `<button class="act primary" data-action="runNext" data-id="${show.id}">Run: ${esc(next.name || formatOf(next.format).label)}</button>` : ""}
+      ${next && !held ? `<button class="act" data-action="runRest" data-id="${show.id}">Run the rest of the card</button>` : ""}
       ${overrideControl}
       ${next ? `<div class="field"><label for="pbSpeed">Match playback</label>${speedPickerHtml()}</div>` : ""}
-      ${!next ? `<button class="act primary" data-action="goOffAir" data-id="${show.id}">Go off the air</button>` : ""}
+      ${!next || held ? `<button class="act${next ? "" : " primary"}" data-action="goOffAir" data-id="${show.id}">Go off the air${next ? " anyway" : ""}</button>` : ""}
     </div>`}
 
     <h2>The card</h2>
@@ -7052,7 +8506,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       room: LOCATIONS[id],
       away: hops(here, id),
       seconds: travelSeconds(here, id),
-      who: whoIsIn(id)
+      who: whoIsIn(id),
+      trouble: answerableIncidents().filter((i) => i.locationId === id).length
     })).sort((a, b) => a.away - b.away || a.room.name.localeCompare(b.room.name));
   }
   function newsDelay(distance) {
@@ -7060,16 +8515,17 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     return Math.round((BASE_DELAY_SEC + distance * DELAY_PER_HOP_SEC) * cut);
   }
   function roomCard(entry, here) {
-    const { id, room, away, seconds, who } = entry;
+    const { id, room, away, seconds, who, trouble } = entry;
     const youAreHere = id === here;
-    const tone = youAreHere ? " good" : room.onAir ? " warn" : "";
-    const cost = youAreHere ? "You are here" : `${mmss(seconds)} walk &middot; ${away} door${away === 1 ? "" : "s"}`;
+    const tone = trouble ? " bad" : youAreHere ? " good" : room.onAir ? " warn" : "";
+    const cost2 = youAreHere ? "You are here" : `${mmss(seconds)} walk &middot; ${away} door${away === 1 ? "" : "s"}`;
     return `
     <button class="wcard${tone}" data-action="walkTo" data-room="${id}"${youAreHere ? ' aria-current="true"' : ""}>
       <span class="who">
         <span class="nm">${esc(room.name)}</span>
-        <span class="sub">${cost}</span>
+        <span class="sub">${cost2}</span>
       </span>
+      ${trouble ? `<span class="tag red">${trouble}</span>` : ""}
       ${room.onAir ? '<span class="tag amber">On air</span>' : ""}
       <span class="tag${who.length ? " blue" : ""}">${who.length}</span>
     </button>`;
@@ -7114,6 +8570,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       const rooms = building.map((e) => roomCard(e, here)).join("");
       const people = inHere.length ? inHere.map(personCard).join("") : `<p class="empty">Nobody else is in ${esc(room.name)}. Whatever is happening tonight,
          it is happening somewhere you are not.</p>`;
+      const rightHere = answerableIncidents().filter((i) => i.locationId === here);
+      const elsewhere = answerableIncidents().length - rightHere.length;
       const news = heard.length ? heard.slice(0, 24).map(noteRow).join("") : `<p class="empty">Nothing has reached you yet. News takes time to cross the building,
          and somebody has to want to bring it.</p>`;
       const tellers = allWrestlers().map((w) => ({ w, tells: willingnessToTell(w), where: locationOf(w.id) })).sort((a, b) => b.tells - a.tells).slice(0, 6).map(({ w, tells, where }) => `
@@ -7159,6 +8617,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
             </div>
           </section>
 
+          ${rightHere.map((i) => incidentCard(i)).join("")}
+          ${elsewhere ? `<p class="sub">${elsewhere} other thing${elsewhere === 1 ? "" : "s"}
+            need${elsewhere === 1 ? "s" : ""} you somewhere else.
+            <button class="rowlink" data-action="go" data-arg="trouble">See them all</button></p>` : ""}
+
           <section class="panel">
             <div class="head">
               <h2>What you have been told</h2>
@@ -7193,6 +8656,74 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
           <section class="panel">
             <div class="head"><h2>Where you have walked</h2></div>
             <div class="body"><div class="log narrow">${walks}</div></div>
+          </section>
+        </div>
+      </div>`;
+    }
+  };
+
+  // wrestling/js/ui/screens/trouble.js
+  var trouble_default = {
+    label: "Trouble",
+    render() {
+      if (!isLoaded()) return notLoaded();
+      const answerable = answerableIncidents();
+      const open = openIncidents();
+      const quiet = open.length - answerable.length;
+      const settled = allIncidents().filter((i) => i.status !== INCIDENT_STATUS.OPEN).sort((a, b) => b.day - a.day || b.tick - a.tick).slice(0, 30);
+      const waiting = answerable.length ? answerable.map((i) => incidentCard(i)).join("") : `<p class="empty">Nothing is waiting on you. That is either a quiet night or a sign
+         that nobody is telling you anything.</p>`;
+      const byResponse = {};
+      for (const i of allIncidents()) {
+        if (!i.response) continue;
+        byResponse[i.response] = (byResponse[i.response] || 0) + 1;
+      }
+      const habits = Object.entries(byResponse).sort((a, b) => b[1] - a[1]).map(([key, n]) => `<div class="kv"><span>${esc(key.replace(/_/g, " "))}</span><span>${n}</span></div>`).join("") || '<p class="empty">You have not had to do anything yet.</p>';
+      const lapsed = allIncidents().filter((i) => i.status === INCIDENT_STATUS.UNRESOLVED);
+      const neverHeard = allIncidents().filter((i) => i.discoveredTick == null && i.status !== INCIDENT_STATUS.OPEN);
+      return `
+      <h1>Trouble</h1>
+      <p class="sub">${answerable.length} waiting on you${quiet ? ` &middot; ${quiet} more happening that nobody has mentioned` : ""}</p>
+
+      <div class="cols two">
+        <div>
+          ${waiting}
+
+          <h2>What has already happened</h2>
+          <div class="sheet">${settled.map(incidentRow).join("") || '<p class="empty">Nothing yet.</p>'}</div>
+        </div>
+
+        <div>
+          <section class="panel">
+            <div class="head"><h2>How you handle things</h2></div>
+            <div class="body">
+              ${habits}
+              <p class="sub">There is no right answer here. Security always works and is never
+                forgiven; talking is free of resentment and often fails.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>The record</h2></div>
+            <div class="body">
+              <div class="kv"><span>Things that have gone wrong</span><span>${allIncidents().length}</span></div>
+              <div class="kv"><span>Answered</span><span>${allIncidents().filter((i) => i.response).length}</span></div>
+              <div class="kv"><span>Left as they were</span><span>${lapsed.length}</span></div>
+              <div class="kv"><span>You never heard about</span><span>${neverHeard.length}</span></div>
+              <p class="sub">The last line is the case for being better wired in. Nothing you
+                were never told about cost you anything, but nothing you were never told about
+                could be turned into television either.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Who is on a warning</h2></div>
+            <div class="body">
+              ${allWrestlers().filter((w) => w.state.discipline.warnings || w.state.discipline.suspendedUntilDay).map((w) => `<div class="kv">
+                  <span>${esc(w.name)}</span>
+                  <span>${w.state.discipline.suspendedUntilDay != null ? `suspended to day ${w.state.discipline.suspendedUntilDay}` : `${w.state.discipline.warnings} warning${w.state.discipline.warnings === 1 ? "" : "s"}`}</span>
+                </div>`).join("") || '<p class="empty">Nobody has been in front of you yet.</p>'}
+            </div>
           </section>
         </div>
       </div>`;
@@ -7294,6 +8825,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   registerScreen("roster", roster_default);
   registerScreen("show", show_default);
   registerScreen("backstage", backstage_default);
+  registerScreen("trouble", trouble_default);
   registerScreen("requests", requests_default);
   registerScreen("titles", titles_default);
   registerScreen("lockerroom", lockerroom_default);
@@ -7307,6 +8839,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     const morale = roster.length ? Math.round(roster.reduce((t, w) => t + w.state.morale, 0) / roster.length) : 0;
     const open = openRequests().length;
     const unheard = unreadNotifications().length;
+    const waiting = answerableIncidents().length;
     const heldTitles = allTitles().filter((t) => t.lineage.some((r) => r.lostOnDay == null)).length;
     const day = state2.calendar.day;
     return [
@@ -7325,6 +8858,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         value: locationShort(gmLocation()),
         caption: "Backstage",
         badge: unheard || null
+      }),
+      chip({
+        icon: "flare",
+        tone: waiting ? "red" : "dim",
+        value: waiting,
+        caption: "Trouble",
+        badge: waiting || null
       }),
       chip({
         icon: "cal",
@@ -7478,6 +9018,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
      * give the result away.
      */
     runNext({ id }) {
+      const held = blockedBy(id);
+      if (held) {
+        go("show");
+        return toast(`${nameOf(held.incident.instigatorId)} will not go out. Deal with it first.`);
+      }
       const step = previewNext(id, { overrideWinnerSide: draft.overrideSide || null });
       setOverride("");
       if (!step) return refresh2("The card is done");
@@ -7497,7 +9042,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     runRest({ id }) {
       stop();
       const steps = runRest(id);
-      refresh2(`Ran the last ${steps.length} segment${steps.length === 1 ? "" : "s"}`);
+      const held = blockedBy(id);
+      refresh2(held ? `Ran ${steps.length}, then ${nameOf(held.incident.instigatorId)} would not go out` : `Ran the last ${steps.length} segment${steps.length === 1 ? "" : "s"}`);
     },
     goOffAir({ id }) {
       stop();
@@ -7525,6 +9071,19 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         const walk = moveGm(room);
         const landed = deliverDueNotifications({ cause: walk.event?.id || null });
         refresh2(landed.length ? `${locationName(room)}, ${mmssShort(walk.seconds)} later. ${landed.length} thing${landed.length === 1 ? "" : "s"} caught up with you` : `${locationName(room)}, ${mmssShort(walk.seconds)} later`);
+      } catch (err) {
+        toast(err.message);
+      }
+    },
+    /**
+     * Answer an incident. The system decides what it costs; this only reports it.
+     */
+    respondTo({ id, response }) {
+      const incident = getIncident(id);
+      if (!incident) return toast("That is no longer open");
+      try {
+        const out = respond(id, response);
+        refresh2(out.landed ? out.summary : `${out.summary}. Try something else.`);
       } catch (err) {
         toast(err.message);
       }

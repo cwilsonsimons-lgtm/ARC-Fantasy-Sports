@@ -33,9 +33,12 @@ import { createSegment, SEGMENT_STATUS, participantIds } from '../models/segment
 import { createTitle as makeTitle, createReign, currentReign, championIds } from '../models/title.js';
 import { createRequest as makeRequest, REQUEST_STATUS, REQUEST_LABEL } from '../models/request.js';
 import { createNotification, RELIABILITY } from '../models/notification.js';
+import {
+  createIncident, INCIDENT_STATUS, INCIDENT_SPECS, isAnswerable, severityLabel,
+} from '../models/incident.js';
 import { LOCATIONS, isLocation, locationName, travelSeconds, route } from '../models/location.js';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -124,6 +127,7 @@ export function newGame({
     segments: {},
     titles: {},
     requests: {},
+    incidents: {},
     // The building. `tick` is seconds into the working night, which is what
     // notification timing is measured in.
     backstage: {
@@ -158,6 +162,7 @@ export function installState(state, rngState, { seed } = {}) {
     ...Object.keys(state.segments),
     ...Object.keys(state.titles || {}),
     ...Object.keys(state.requests || {}),
+    ...Object.keys(state.incidents || {}),
     ...(state.backstage?.notifications || []).map((n) => n.id),
     ...state.log.map((e) => e.id),
     ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
@@ -805,6 +810,175 @@ export function resolveRequest(id, outcome, { segmentId = null, reason = '', cau
 }
 
 // ---------------------------------------------------------------------------
+// Trouble
+// ---------------------------------------------------------------------------
+
+export function allIncidents() { return Object.values(requireGame().incidents); }
+export function getIncident(id) { return requireGame().incidents[id] || null; }
+
+export function requireIncident(id) {
+  const incident = getIncident(id);
+  if (!incident) throw new Error(`No incident with id ${id}`);
+  return incident;
+}
+
+export function openIncidents() {
+  return allIncidents()
+    .filter((i) => i.status === INCIDENT_STATUS.OPEN)
+    .sort((a, b) => b.severity - a.severity || a.tick - b.tick);
+}
+
+/** Open AND the GM has been told. The only ones they can actually answer. */
+export function answerableIncidents() {
+  return openIncidents().filter(isAnswerable);
+}
+
+export function incidentsAbout(wrestlerId) {
+  return allIncidents().filter((i) => i.participantIds.includes(wrestlerId));
+}
+
+/**
+ * Something goes wrong.
+ *
+ * The event is BACKSTAGE, so it goes through Tier 7's four questions like
+ * anything else: if the GM is in the room they see it, and if they are not,
+ * somebody has to be willing to come and find them. An incident nobody
+ * mentions is one the GM will never answer, and that is the point.
+ */
+export function raiseIncident(spec, { cause = null } = {}) {
+  const state = requireGame();
+  for (const id of spec.participantIds || []) requireWrestler(id);
+
+  const incident = createIncident({
+    day: state.calendar.day,
+    tick: state.backstage.tick,
+    ...spec,
+  });
+  state.incidents[incident.id] = incident;
+
+  const preset = INCIDENT_SPECS[incident.kind];
+  const who = incident.participantIds.map(nameOf);
+  const heard = incident.participantIds.length > 1
+    ? `${who[0]} and ${who[1]} are having ${preset.noun}`
+    : `${who[0]} is the subject of ${preset.noun}`;
+
+  const event = emit(EVENT_TYPES.INCIDENT_STARTED, {
+    summary: spec.summary || heard,
+    newsSummary: spec.newsSummary || heard,
+    actorId: incident.instigatorId,
+    subjects: incident.participantIds,
+    showId: incident.showId,
+    segmentId: incident.segmentId,
+    locationId: incident.locationId,
+    // Almost everything backstage is backstage news, and goes through Tier 7's
+    // four questions. A refusal is the exception: it stops the broadcast, and
+    // dead air is not something anybody has to come and tell you about.
+    visibility: spec.visibility || VISIBILITY.BACKSTAGE,
+    cause,
+    data: {
+      incidentId: incident.id,
+      kind: incident.kind,
+      severity: incident.severity,
+      severityLabel: severityLabel(incident.severity),
+      reasons: incident.reasons,
+    },
+  });
+  incident.startedEventId = event.id;
+  incident.causeEventId = incident.causeEventId || cause || event.id;
+  return incident;
+}
+
+/** The GM has been told. Until this happens they cannot answer it. */
+export function discoverIncident(id, { notificationId = null } = {}) {
+  const incident = getIncident(id);
+  if (!incident || incident.discoveredTick != null) return incident || null;
+  incident.discoveredTick = requireGame().backstage.tick;
+  incident.notificationId = notificationId;
+  return incident;
+}
+
+/** Close it, recording what the GM did and what came of it. */
+export function resolveIncident(id, { response, landed = true, summary = '', effects = [], cause = null } = {}) {
+  const state = requireGame();
+  const incident = requireIncident(id);
+  if (incident.status !== INCIDENT_STATUS.OPEN) return incident;
+
+  incident.status = INCIDENT_STATUS.RESOLVED;
+  incident.response = response;
+  incident.respondedOnTick = state.backstage.tick;
+  incident.outcome = { landed, summary, effects };
+
+  emit(EVENT_TYPES.INCIDENT_RESOLVED, {
+    summary: summary || `${incident.kind} settled`,
+    subjects: incident.participantIds,
+    showId: incident.showId,
+    locationId: incident.locationId,
+    cause: cause || incident.causeEventId,
+    data: {
+      incidentId: incident.id, kind: incident.kind, response,
+      landed, severity: incident.severity, effects,
+    },
+  });
+  return incident;
+}
+
+/** The night ended with it still open. Not the same as answering it. */
+export function lapseIncident(id, { cause = null } = {}) {
+  const incident = requireIncident(id);
+  if (incident.status !== INCIDENT_STATUS.OPEN) return incident;
+  incident.status = INCIDENT_STATUS.UNRESOLVED;
+
+  emit(EVENT_TYPES.INCIDENT_LAPSED, {
+    summary: `${INCIDENT_SPECS[incident.kind].label} left where it was`,
+    subjects: incident.participantIds,
+    showId: incident.showId,
+    locationId: incident.locationId,
+    cause: cause || incident.causeEventId,
+    data: {
+      incidentId: incident.id, kind: incident.kind,
+      severity: incident.severity, knownToGm: incident.discoveredTick != null,
+    },
+  });
+  return incident;
+}
+
+/** Record an attempt, so the same answer cannot be tried twice on one incident. */
+export function noteAttempt(id, response) {
+  const incident = requireIncident(id);
+  if (!incident.attempted.includes(response)) incident.attempted.push(response);
+  return incident;
+}
+
+/** A refusal stops the match it is a refusal of, until somebody deals with it. */
+export function blockSegment(segmentId, incidentId) {
+  const segment = requireSegment(segmentId);
+  segment.blockedByIncidentId = incidentId;
+  return segment;
+}
+
+export function unblockSegment(segmentId) {
+  const segment = requireSegment(segmentId);
+  segment.blockedByIncidentId = null;
+  return segment;
+}
+
+/** What the office has had to do about somebody. */
+export function setDiscipline(id, patch, { reason = '', cause = null } = {}) {
+  const wrestler = requireWrestler(id);
+  const before = { ...wrestler.state.discipline };
+  Object.assign(wrestler.state.discipline, patch);
+
+  emit(EVENT_TYPES.WRESTLER_DISCIPLINE, {
+    summary: reason || `${wrestler.name}'s standing with the office changed`,
+    actorId: id,
+    subjects: [id],
+    cause,
+    data: { before, after: { ...wrestler.state.discipline }, patch },
+  });
+  return wrestler.state.discipline;
+}
+
+// ---------------------------------------------------------------------------
 // The backstage
 // ---------------------------------------------------------------------------
 
@@ -987,6 +1161,7 @@ export function markAllNotificationsRead() {
 // ---------------------------------------------------------------------------
 
 export function queryLog(opts) { return events.query(requireGame().log, opts); }
+export function getEvent(id) { return requireGame().log.find((e) => e.id === id) || null; }
 export function historyOf(entityId, opts) { return events.historyOf(requireGame().log, entityId, opts); }
 export function causeChain(eventId) { return events.causeChain(requireGame().log, eventId); }
 

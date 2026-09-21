@@ -10,7 +10,7 @@
 
 import * as store from '../core/store.js';
 import { SEGMENT_KINDS, SEGMENT_STATUS } from '../models/segment.js';
-import { isAvailable } from '../models/wrestler.js';
+import { isAvailable, isSuspended, canBeBooked } from '../models/wrestler.js';
 import { formatOf, slotCount } from './formats.js';
 import { championIds, isVacant } from '../models/title.js';
 
@@ -79,6 +79,11 @@ export function validate(showId, formatKey, wrestlerIds, { titleId = null } = {}
     if (format.kind === SEGMENT_KINDS.MATCH && !isAvailable(w, day)) {
       problems.push(`${w.name} is not fit to wrestle`);
     }
+    // Being suspended is not being injured. It applies to talking segments too:
+    // somebody who is off television is off television.
+    if (isSuspended(w, day)) {
+      problems.push(`${w.name} is suspended until day ${w.state.discipline.suspendedUntilDay}`);
+    }
   }
 
   if (titleId) {
@@ -141,5 +146,5 @@ export function cardOutlook(showId) {
 export function availableFor(showId, { matchOnly = true } = {}) {
   const working = matchOnly ? alreadyWrestling(showId) : alreadyBooked(showId);
   const day = store.today();
-  return store.allWrestlers().filter((w) => !working.has(w.id) && isAvailable(w, day));
+  return store.allWrestlers().filter((w) => !working.has(w.id) && canBeBooked(w, day));
 }

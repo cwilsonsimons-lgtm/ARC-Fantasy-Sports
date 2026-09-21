@@ -54,6 +54,14 @@ export const EVENT_TYPES = Object.freeze({
   NEWS_REACHED_GM:     'news.reached_gm',
   NEWS_MISSED:         'news.missed',
 
+  // --- trouble, and what the GM did about it ---
+  INCIDENT_STARTED:    'incident.started',
+  INCIDENT_RESOLVED:   'incident.resolved',
+  INCIDENT_LAPSED:     'incident.lapsed',
+  GM_RESPONDED:        'gm.responded',
+  BOOKING_REFUSED:     'booking.refused',
+  WRESTLER_DISCIPLINE: 'wrestler.discipline.changed',
+
   // --- what the roster wants ---
   REQUEST_MADE:        'request.made',
   REQUEST_GRANTED:     'request.granted',
@@ -76,13 +84,10 @@ export const EVENT_TYPES = Object.freeze({
   PROMISE_MADE:        'promise.made',
   PROMISE_KEPT:        'promise.kept',
   PROMISE_BROKEN:      'promise.broken',
-  INCIDENT_STARTED:    'incident.started',
   INCIDENT_ESCALATED:  'incident.escalated',
-  INCIDENT_RESOLVED:   'incident.resolved',
   RIVALRY_FORMED:      'rivalry.formed',
   CONTRACT_SIGNED:     'contract.signed',
   CONTRACT_EXPIRED:    'contract.expired',
-  BOOKING_REFUSED:     'booking.refused',
 });
 
 const VALID_TYPES = new Set(Object.values(EVENT_TYPES));

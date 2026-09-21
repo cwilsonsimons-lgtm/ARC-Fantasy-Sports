@@ -35,8 +35,10 @@ import { draft, setDraftFormat, setOverride, setDraftTitle } from './ui/screens/
 import titlesScreen from './ui/screens/titles.js';
 import lockerRoomScreen from './ui/screens/lockerroom.js';
 import backstageScreen from './ui/screens/backstage.js';
+import troubleScreen from './ui/screens/trouble.js';
 import requestsScreen from './ui/screens/requests.js';
 import { denyRequest as refuseRequest } from './systems/requests.js';
+import * as incidents from './systems/incidents.js';
 import * as playback from './ui/playback.js';
 import { setRailText, setRailOnly } from './ui/rosterRail.js';
 
@@ -45,6 +47,7 @@ import { setRailText, setRailOnly } from './ui/rosterRail.js';
 registerScreen('roster', rosterScreen);
 registerScreen('show', showScreen);
 registerScreen('backstage', backstageScreen);
+registerScreen('trouble', troubleScreen);
 registerScreen('requests', requestsScreen);
 registerScreen('titles', titlesScreen);
 registerScreen('lockerroom', lockerRoomScreen);
@@ -63,6 +66,7 @@ setChipProvider((state) => {
     ? Math.round(roster.reduce((t, w) => t + w.state.morale, 0) / roster.length) : 0;
   const open = store.openRequests().length;
   const unheard = store.unreadNotifications().length;
+  const waiting = store.answerableIncidents().length;
   const heldTitles = store.allTitles().filter((t) => t.lineage.some((r) => r.lostOnDay == null)).length;
   const day = state.calendar.day;
 
@@ -78,6 +82,10 @@ setChipProvider((state) => {
       icon: 'ear', tone: unheard ? 'blue' : 'dim',
       value: locationShort(store.gmLocation()), caption: 'Backstage',
       badge: unheard || null,
+    }),
+    chip({
+      icon: 'flare', tone: waiting ? 'red' : 'dim',
+      value: waiting, caption: 'Trouble', badge: waiting || null,
     }),
     chip({
       icon: 'cal',
@@ -258,6 +266,11 @@ registerActions({
    * give the result away.
    */
   runNext({ id }) {
+    const held = runner.blockedBy(id);
+    if (held) {
+      go('show');
+      return toast(`${store.nameOf(held.incident.instigatorId)} will not go out. Deal with it first.`);
+    }
     const step = runner.previewNext(id, { overrideWinnerSide: draft.overrideSide || null });
     setOverride('');
     if (!step) return refresh('The card is done');
@@ -278,7 +291,10 @@ registerActions({
   runRest({ id }) {
     playback.stop();
     const steps = runner.runRest(id);
-    refresh(`Ran the last ${steps.length} segment${steps.length === 1 ? '' : 's'}`);
+    const held = runner.blockedBy(id);
+    refresh(held
+      ? `Ran ${steps.length}, then ${store.nameOf(held.incident.instigatorId)} would not go out`
+      : `Ran the last ${steps.length} segment${steps.length === 1 ? '' : 's'}`);
   },
 
   goOffAir({ id }) {
@@ -313,6 +329,22 @@ registerActions({
       refresh(landed.length
         ? `${locationName(room)}, ${mmssShort(walk.seconds)} later. ${landed.length} thing${landed.length === 1 ? '' : 's'} caught up with you`
         : `${locationName(room)}, ${mmssShort(walk.seconds)} later`);
+    } catch (err) {
+      toast(err.message);
+    }
+  },
+
+  /**
+   * Answer an incident. The system decides what it costs; this only reports it.
+   */
+  respondTo({ id, response }) {
+    const incident = store.getIncident(id);
+    if (!incident) return toast('That is no longer open');
+    try {
+      const out = incidents.respond(id, response);
+      refresh(out.landed
+        ? out.summary
+        : `${out.summary}. Try something else.`);
     } catch (err) {
       toast(err.message);
     }

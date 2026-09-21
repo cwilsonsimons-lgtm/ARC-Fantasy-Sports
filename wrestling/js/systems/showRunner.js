@@ -19,6 +19,22 @@ export function nextSegment(showId) {
   return store.segmentsOfShow(showId).find((s) => s.status === SEGMENT_STATUS.BOOKED) || null;
 }
 
+/**
+ * What is stopping the next segment, if anything.
+ *
+ * A refusal is only a refusal if it actually stops the match. The GM has to
+ * deal with the incident - talk them round, force them out, or take them off
+ * the card - before the show can move on, which is the live scramble the design
+ * foundation asks for.
+ */
+export function blockedBy(showId) {
+  const segment = nextSegment(showId);
+  if (!segment?.blockedByIncidentId) return null;
+  const incident = store.getIncident(segment.blockedByIncidentId);
+  if (!incident || incident.status !== 'open') return null;
+  return { segment, incident };
+}
+
 /** Where the show is up to, and how the clock is doing against the budget. */
 export function progress(showId) {
   const show = store.requireShow(showId);
@@ -78,6 +94,14 @@ export function previewNext(showId, { overrideWinnerSide = null } = {}) {
 
   const segment = nextSegment(showId);
   if (!segment) return null;
+  if (segment.blockedByIncidentId) {
+    const incident = store.getIncident(segment.blockedByIncidentId);
+    if (incident && incident.status === 'open') {
+      throw new Error(
+        `${store.nameOf(incident.instigatorId)} will not go out for ${segment.name}`
+      );
+    }
+  }
 
   const { result, timeline } = simulateSegment(segment, {
     get: (id) => store.requireWrestler(id),
@@ -109,11 +133,21 @@ export function runNext(showId, opts) {
   return { segment: store.getSegment(step.segment.id), result: step.result, timeline: step.timeline };
 }
 
-/** Run everything left on the card in one go. */
+/**
+ * Run everything left on the card in one go.
+ *
+ * Stops at a refusal rather than throwing, because "run the rest" is a
+ * convenience and a card that cannot be run to the end is information, not an
+ * error. The caller checks `blockedBy` to find out why it stopped short.
+ */
 export function runRest(showId) {
   const out = [];
-  let step;
-  while ((step = runNext(showId))) out.push(step);
+  while (nextSegment(showId)) {
+    if (blockedBy(showId)) break;
+    const step = runNext(showId);
+    if (!step) break;
+    out.push(step);
+  }
   return out;
 }
 
@@ -141,9 +175,21 @@ export function gradeShow(showId) {
   return Math.round(Math.max(1, Math.min(100, rating)));
 }
 
+/**
+ * Go off the air.
+ *
+ * Anything still booked when the broadcast ends did not happen. Cutting it is
+ * honest - the night is graded on what aired - and it clears any refusal still
+ * holding the card up, which the incident then lapses with.
+ */
 export function goOffAir(showId) {
   const show = store.requireShow(showId);
   if (show.status !== SHOW_STATUS.LIVE) return show;
+  for (const seg of store.segmentsOfShow(showId)) {
+    if (seg.status !== SEGMENT_STATUS.BOOKED) continue;
+    store.unblockSegment(seg.id);
+    store.cutSegment(seg.id, { reason: 'Never made it to air' });
+  }
   const rating = gradeShow(showId);
   store.completeShow(showId, { rating });
   return store.getShow(showId);

@@ -18,6 +18,7 @@ import {
 import { RELIABILITY, RELIABILITY_LABEL, confidenceOf, lateness } from '../../models/notification.js';
 import { willingnessToTell, TELL_THRESHOLD, awareness, BASE_DELAY_SEC, DELAY_PER_HOP_SEC, MAX_AWARENESS_CUT } from '../../systems/notifications.js';
 import { esc, mmss, meter, titleCase } from '../format.js';
+import { incidentCard } from '../incidentCard.js';
 import { notLoaded } from './roster.js';
 
 /** Reliability decides how much of the accent a line is allowed. */
@@ -37,6 +38,7 @@ export function buildingFrom(here) {
       away: hops(here, id),
       seconds: travelSeconds(here, id),
       who: store.whoIsIn(id),
+      trouble: store.answerableIncidents().filter((i) => i.locationId === id).length,
     }))
     .sort((a, b) => a.away - b.away || a.room.name.localeCompare(b.room.name));
 }
@@ -48,9 +50,10 @@ export function newsDelay(distance) {
 }
 
 function roomCard(entry, here) {
-  const { id, room, away, seconds, who } = entry;
+  const { id, room, away, seconds, who, trouble } = entry;
   const youAreHere = id === here;
-  const tone = youAreHere ? ' good' : room.onAir ? ' warn' : '';
+  // Trouble you have been told about outranks everything else about a room.
+  const tone = trouble ? ' bad' : youAreHere ? ' good' : room.onAir ? ' warn' : '';
   const cost = youAreHere
     ? 'You are here'
     : `${mmss(seconds)} walk &middot; ${away} door${away === 1 ? '' : 's'}`;
@@ -60,6 +63,7 @@ function roomCard(entry, here) {
         <span class="nm">${esc(room.name)}</span>
         <span class="sub">${cost}</span>
       </span>
+      ${trouble ? `<span class="tag red">${trouble}</span>` : ''}
       ${room.onAir ? '<span class="tag amber">On air</span>' : ''}
       <span class="tag${who.length ? ' blue' : ''}">${who.length}</span>
     </button>`;
@@ -123,6 +127,13 @@ export default {
       : `<p class="empty">Nobody else is in ${esc(room.name)}. Whatever is happening tonight,
          it is happening somewhere you are not.</p>`;
 
+    // Anything going on where you are standing. Trouble elsewhere is not shown
+    // here: you would have to be told about it, and being told is the Tier 7
+    // notification feed below.
+    const rightHere = store.answerableIncidents()
+      .filter((i) => i.locationId === here);
+    const elsewhere = store.answerableIncidents().length - rightHere.length;
+
     const news = heard.length
       ? heard.slice(0, 24).map(noteRow).join('')
       : `<p class="empty">Nothing has reached you yet. News takes time to cross the building,
@@ -183,6 +194,11 @@ export default {
               <div class="sheet">${people}</div>
             </div>
           </section>
+
+          ${rightHere.map((i) => incidentCard(i)).join('')}
+          ${elsewhere ? `<p class="sub">${elsewhere} other thing${elsewhere === 1 ? '' : 's'}
+            need${elsewhere === 1 ? 's' : ''} you somewhere else.
+            <button class="rowlink" data-action="go" data-arg="trouble">See them all</button></p>` : ''}
 
           <section class="panel">
             <div class="head">

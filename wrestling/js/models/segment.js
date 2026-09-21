@@ -102,6 +102,10 @@ export function createSegment(spec = {}) {
 
     status: SEGMENT_STATUS.BOOKED,
 
+    // Set when somebody in it refuses to go out. The show cannot run a blocked
+    // segment, which is what makes a refusal a problem rather than a mood.
+    blockedByIncidentId: null,
+
     booking: {
       bookedOnDay,
       // One entry per wrestler pitched, filled in by the pitch system later.

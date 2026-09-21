@@ -90,6 +90,7 @@ body{
 .chip .ico.amber{color:var(--amber)}
 .chip .ico.violet{color:var(--violet)}
 .chip .ico.dim{color:var(--faint)}
+.chip .ico.red{color:var(--red)}
 .chip .val{
   font:600 .95rem/1.1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);
   white-space:nowrap;
@@ -377,3 +378,26 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
 .wcard[aria-current="true"]{background:var(--raised);border-color:var(--green);cursor:default}
 /* The event log's three columns do not fit a side rail. */
 .log.narrow .ev{grid-template-columns:3.2rem 1fr}
+
+/* ----------------------------------------------------------------- trouble */
+/* A stripe by severity, so a list of incidents scans without being read. */
+.panel.trouble{border-left:3px solid var(--blue)}
+.panel.trouble.warn{border-left-color:var(--amber)}
+.panel.trouble.bad{border-left-color:var(--red)}
+.panel.trouble h3{
+  margin:.9rem 0 .35rem;font:700 .74rem/1.4 var(--sans);
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);
+}
+.opts{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.opts .act{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
+.opts .act em{
+  font:400 9.5px/1.3 var(--mono);font-style:normal;letter-spacing:.05em;
+  color:var(--faint);text-transform:uppercase;max-width:11rem;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.opts .act.primary em{color:rgba(4,18,31,.7)}
+.blocker{
+  background:var(--red-wash);border:1px solid rgba(229,72,77,.45);
+  border-radius:var(--r);padding:.75rem .9rem;margin-bottom:1rem;
+}
+.blocker strong{color:var(--red)}
