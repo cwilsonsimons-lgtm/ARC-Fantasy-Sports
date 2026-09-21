@@ -8,7 +8,7 @@
 
 import * as store from '../../core/store.js';
 import { INCIDENT_SPECS, INCIDENT_STATUS, severityLabel } from '../../models/incident.js';
-import { incidentCard, incidentRow } from '../incidentCard.js';
+import { incidentCard, incidentRow, chainRows } from '../incidentCard.js';
 import { locationName } from '../../models/location.js';
 import { esc, mmss } from '../format.js';
 import { notLoaded } from './roster.js';
@@ -48,6 +48,22 @@ export default {
     const neverHeard = store.allIncidents().filter((i) => i.discoveredTick == null
       && i.status !== INCIDENT_STATUS.OPEN);
 
+    // Anything that turned into something else. These are the stories the tier
+    // exists to produce, so they get their own list rather than being scattered
+    // through the record.
+    const chains = store.allIncidents()
+      .filter((i) => i.chainDepth === 0 && store.incidentsCausedBy(i.id).length)
+      .sort((a, b) => b.day - a.day || b.tick - a.tick)
+      .slice(0, 6);
+
+    const reactionTally = {};
+    for (const i of store.allIncidents()) {
+      for (const r of i.reactions) {
+        if (r.tick == null) continue;
+        reactionTally[r.kind] = (reactionTally[r.kind] || 0) + 1;
+      }
+    }
+
     return `
       <h1>Trouble</h1>
       <p class="sub">${answerable.length} waiting on you${
@@ -56,6 +72,12 @@ export default {
       <div class="cols two">
         <div>
           ${waiting}
+
+          ${chains.length ? `
+            <h2>One thing led to another</h2>
+            <p class="sub">Somebody got involved, and it became somebody else's problem.</p>
+            ${chains.map((root) => `<div class="sheet" style="margin-bottom:.8rem">${chainRows(root)}</div>`).join('')}
+          ` : ''}
 
           <h2>What has already happened</h2>
           <div class="sheet">${settled.map(incidentRow).join('')
@@ -82,6 +104,32 @@ export default {
               <p class="sub">The last line is the case for being better wired in. Nothing you
                 were never told about cost you anything, but nothing you were never told about
                 could be turned into television either.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Who gets involved</h2></div>
+            <div class="body">
+              ${Object.entries(reactionTally).sort((a, b) => b[1] - a[1])
+                .map(([kind, n]) => `<div class="kv">
+                  <span>${esc(kind.replace(/_/g, ' '))}</span><span>${n}</span></div>`).join('')
+                || '<p class="empty">Nobody has had to decide yet.</p>'}
+              <p class="sub">Standing there is a decision too, and the person who was not
+                helped remembers it.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Who runs with whom</h2></div>
+            <div class="body">
+              ${store.allFactions().map((f) => `
+                <div class="kv"><span><strong>${esc(f.name)}</strong></span>
+                  <span>${f.memberIds.length}</span></div>
+                <p class="sub" style="margin:.1rem 0 .5rem">${f.memberIds.map((id) =>
+                  `${esc(store.nameOf(id))}${id === f.leaderId ? ' (leads)' : ''}`).join(', ')}</p>
+              `).join('') || '<p class="empty">Nobody runs with anybody.</p>'}
+              <p class="sub">A stable backs its own whether or not they like each other, which
+                is a different reason from friendship and counted separately.</p>
             </div>
           </section>
 

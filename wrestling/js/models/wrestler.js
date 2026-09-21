@@ -89,6 +89,27 @@ export const MOODS = Object.freeze([
 
 export const HEALTH = Object.freeze({ HEALTHY: 'healthy', INJURED: 'injured' });
 
+/**
+ * Which way the crowd is meant to take them.
+ *
+ * Authored character, like position on the card: it is who somebody is, not
+ * something that has happened to them, so a blank-slate save still has it. It
+ * earns its place in exactly one rule - babyfaces help babyfaces - and nothing
+ * else reads it, because an alignment that silently changed every number would
+ * be a second personality system wearing a hat.
+ */
+export const ALIGNMENT = Object.freeze({
+  FACE: 'face',
+  HEEL: 'heel',
+  TWEENER: 'tweener',
+});
+
+export const ALIGNMENT_LABEL = Object.freeze({
+  [ALIGNMENT.FACE]: 'Babyface',
+  [ALIGNMENT.HEEL]: 'Heel',
+  [ALIGNMENT.TWEENER]: 'Tweener',
+});
+
 export const CONTRACT_STATUS = Object.freeze({
   ACTIVE: 'active', EXPIRED: 'expired', RELEASED: 'released',
 });
@@ -185,6 +206,7 @@ export function createWrestler(spec = {}) {
     identity: {
       ego: clampUnit(identity.ego ?? SCALES.UNIT.neutral),
       ambition: clampUnit(identity.ambition ?? SCALES.UNIT.neutral),
+      alignment: identity.alignment ?? ALIGNMENT.TWEENER,
       traits,
     },
 
@@ -332,6 +354,10 @@ export function isSuspended(wrestler, day) {
 /** Fit, and allowed. What booking actually needs to know. */
 export function canBeBooked(wrestler, day) {
   return isAvailable(wrestler, day) && !isSuspended(wrestler, day);
+}
+
+export function isFace(wrestler) {
+  return wrestler.identity.alignment === ALIGNMENT.FACE;
 }
 
 /** Position on the card as a number, for "is this beneath me" comparisons. */

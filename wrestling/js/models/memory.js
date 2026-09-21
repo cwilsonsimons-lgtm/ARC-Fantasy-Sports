@@ -53,6 +53,7 @@ export const MEMORY_TYPES = Object.freeze({
   // --- between wrestlers ---
   BETRAYAL:         { key: 'betrayal',         weight: 95, floor: 60, decayPerDay: 0.05, scar: true },
   SAVE:             { key: 'save',             weight: 80, floor: 40, decayPerDay: 0.12, scar: true },
+  STOOD_BY:         { key: 'stood_by',         weight: 74, floor: 34, decayPerDay: 0.14, scar: true },
   KINDNESS:         { key: 'kindness',         weight: 55, floor: 25, decayPerDay: 0.2 },
   TEAMED_WELL:      { key: 'teamed_well',      weight: 35, floor: 8,  decayPerDay: 0.5 },
   TEAMED_BADLY:     { key: 'teamed_badly',     weight: 45, floor: 12, decayPerDay: 0.4 },
@@ -98,7 +99,7 @@ export function memorySpec(typeKey, spec = {}) {
 export const GRUDGE_TYPES = Object.freeze([
   MEMORY_TYPES.LOSS.key, MEMORY_TYPES.UPSET_LOSS.key, MEMORY_TYPES.CHEATED.key,
   MEMORY_TYPES.HUMILIATION.key, MEMORY_TYPES.TITLE_LOSS.key, MEMORY_TYPES.BETRAYAL.key,
-  MEMORY_TYPES.TEAMED_BADLY.key,
+  MEMORY_TYPES.TEAMED_BADLY.key, MEMORY_TYPES.STOOD_BY.key,
 ]);
 
 /** Memories about the GM rather than another wrestler. */

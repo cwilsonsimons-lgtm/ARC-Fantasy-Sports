@@ -10,22 +10,24 @@
 // console. It is cheap enough to run after every action while developing.
 
 import { typeOf } from './ids.js';
-import { WRESTLER_SHAPE_KEYS, validateWrestler, CAREER_STATUS, TRAJECTORY, TRAITS } from '../models/wrestler.js';
+import { WRESTLER_SHAPE_KEYS, validateWrestler, CAREER_STATUS, TRAJECTORY, TRAITS, ALIGNMENT } from '../models/wrestler.js';
 import { validateRelationship } from '../models/relationship.js';
 import { isKnownMemoryType } from '../models/memory.js';
 import { validateRequest } from '../models/request.js';
 import { isLocation, locationName } from '../models/location.js';
 import { validateNotification } from '../models/notification.js';
 import { validateIncident, INCIDENT_STATUS } from '../models/incident.js';
+import { validateFaction } from '../models/faction.js';
+import { validateReaction } from '../models/reaction.js';
 
 /** Containers that are allowed to hold whole entities. */
-const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles', 'requests', 'incidents'];
+const ENTITY_REGISTRIES = ['wrestlers', 'shows', 'segments', 'titles', 'requests', 'incidents', 'factions'];
 
 export function checkState(state) {
   const problems = [];
   if (!state || typeof state !== 'object') return ['state is not an object'];
 
-  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'incidents', 'backstage', 'log']) {
+  for (const key of ['meta', 'calendar', 'wrestlers', 'shows', 'segments', 'titles', 'requests', 'incidents', 'factions', 'backstage', 'log']) {
     if (state[key] == null) problems.push(`state.${key} is missing`);
   }
   if (problems.length) return problems;
@@ -172,6 +174,12 @@ export function checkState(state) {
 
   // --- incidents happened to real people, in a real room ---
   const incidentIds = new Set(Object.keys(state.incidents));
+  const alignments = new Set(Object.values(ALIGNMENT));
+  for (const w of Object.values(state.wrestlers)) {
+    if (!alignments.has(w.identity.alignment)) {
+      problems.push(`wrestler ${w.id} has unknown alignment "${w.identity.alignment}"`);
+    }
+  }
   for (const inc of Object.values(state.incidents)) {
     for (const p of validateIncident(inc)) problems.push(`incident ${inc.id}: ${p}`);
     if (!isLocation(inc.locationId)) {
@@ -190,6 +198,51 @@ export function checkState(state) {
     if (inc.response && inc.discoveredTick == null) {
       problems.push(`incident ${inc.id} was answered without ever reaching the GM`);
     }
+    // A chain has to terminate and cannot loop.
+    if (inc.causeIncidentId) {
+      refMustExist(inc.causeIncidentId, incidentIds, `incident ${inc.id} chain`);
+      const parent = state.incidents[inc.causeIncidentId];
+      if (parent && parent.chainDepth >= inc.chainDepth) {
+        problems.push(`incident ${inc.id} is at depth ${inc.chainDepth} under a parent at ${parent.chainDepth}`);
+      }
+    } else if (inc.chainDepth !== 0) {
+      problems.push(`incident ${inc.id} has no cause but sits at depth ${inc.chainDepth}`);
+    }
+
+    // --- reactions belong to real people and cannot predate what they answer ---
+    for (const r of inc.reactions || []) {
+      for (const p of validateReaction(r)) problems.push(`reaction ${r.id}: ${p}`);
+      if (r.incidentId !== inc.id) {
+        problems.push(`reaction ${r.id} is filed under ${inc.id} but claims ${r.incidentId}`);
+      }
+      refMustExist(r.wrestlerId, wrestlerIds, `reaction ${r.id}`);
+      if (r.forId) refMustExist(r.forId, wrestlerIds, `reaction ${r.id} for`);
+      if (r.againstId) refMustExist(r.againstId, wrestlerIds, `reaction ${r.id} against`);
+      if (r.spawnedIncidentId) refMustExist(r.spawnedIncidentId, incidentIds, `reaction ${r.id} spawn`);
+      if (inc.participantIds.includes(r.wrestlerId) && r.kind !== 'join') {
+        problems.push(`reaction ${r.id}: ${r.wrestlerId} is reacting to something they are in`);
+      }
+    }
+  }
+
+  // --- a faction is a real group of real people, and nobody is in two ---
+  const inAFaction = new Set();
+  for (const f of Object.values(state.factions)) {
+    for (const p of validateFaction(f)) problems.push(`faction ${f.id}: ${p}`);
+    for (const id of f.memberIds) {
+      refMustExist(id, wrestlerIds, `faction ${f.id}`);
+      if (f.disbandedOnDay != null) continue;
+      if (inAFaction.has(id)) problems.push(`${id} is in more than one faction`);
+      inAFaction.add(id);
+    }
+  }
+
+  // --- everything queued to happen still has something to happen to ---
+  const reactionIds = new Set(
+    Object.values(state.incidents).flatMap((i) => (i.reactions || []).map((r) => r.id))
+  );
+  for (const id of state.pendingReactions || []) {
+    if (!reactionIds.has(id)) problems.push(`pending reaction ${id} does not exist`);
   }
 
   // --- a blocked segment is blocked by an incident that is still open ---

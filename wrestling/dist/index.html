@@ -457,6 +457,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     NOTIFICATION_LIMIT: () => NOTIFICATION_LIMIT,
     SCHEMA_VERSION: () => SCHEMA_VERSION,
     addMemory: () => addMemory,
+    addParticipant: () => addParticipant,
+    addReaction: () => addReaction,
     addWrestler: () => addWrestler,
     adjustGmTie: () => adjustGmTie,
     adjustRelationship: () => adjustRelationship,
@@ -464,6 +466,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     advanceTick: () => advanceTick,
     advanceToDay: () => advanceToDay,
     advanceToNextShow: () => advanceToNextShow,
+    allFactions: () => allFactions,
     allIncidents: () => allIncidents,
     allRequests: () => allRequests,
     allShows: () => allShows,
@@ -475,6 +478,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     blockSegment: () => blockSegment,
     bookSegment: () => bookSegment,
     causeChain: () => causeChain2,
+    clearPendingReactions: () => clearPendingReactions,
+    commitReaction: () => commitReaction,
     completeSegment: () => completeSegment,
     completeShow: () => completeShow,
     createTitle: () => createTitle2,
@@ -482,8 +487,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     deliverDueNotifications: () => deliverDueNotifications,
     deliveredNotifications: () => deliveredNotifications,
     discoverIncident: () => discoverIncident,
+    dueReactions: () => dueReactions,
     emit: () => emit,
+    factionOf: () => factionOf,
+    findReaction: () => findReaction,
+    formFaction: () => formFaction,
     getEvent: () => getEvent,
+    getFaction: () => getFaction,
     getIncident: () => getIncident,
     getRequest: () => getRequest,
     getRng: () => getRng,
@@ -494,7 +504,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     getWrestler: () => getWrestler,
     gmLocation: () => gmLocation,
     historyOf: () => historyOf2,
+    incidentChain: () => incidentChain,
     incidentsAbout: () => incidentsAbout,
+    incidentsCausedBy: () => incidentsCausedBy,
     installState: () => installState,
     isLoaded: () => isLoaded,
     lapseIncident: () => lapseIncident,
@@ -513,9 +525,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     openRequests: () => openRequests,
     openRequestsFor: () => openRequestsFor,
     pendingNotifications: () => pendingNotifications,
+    pendingReactions: () => pendingReactions,
     placeWrestler: () => placeWrestler,
     queryLog: () => queryLog,
     raiseIncident: () => raiseIncident,
+    raiseSeverity: () => raiseSeverity,
     recordDefense: () => recordDefense,
     requireIncident: () => requireIncident,
     requireSegment: () => requireSegment,
@@ -526,6 +540,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     resetBackstageClock: () => resetBackstageClock,
     resolveIncident: () => resolveIncident,
     resolveRequest: () => resolveRequest,
+    sameFaction: () => sameFaction,
     scheduleNotification: () => scheduleNotification,
     scheduleProgramming: () => scheduleProgramming,
     scheduleShow: () => scheduleShow,
@@ -557,11 +572,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     memory: "mem",
     request: "req",
     notification: "nt",
+    incident: "inc",
+    reaction: "rx",
+    team: "tm",
     // reserved for systems named in the design foundation but not yet built
     promise: "pr",
-    incident: "inc",
     rivalry: "rv",
-    team: "tm",
     title: "ttl",
     contract: "ct"
   });
@@ -740,6 +756,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     INCIDENT_RESOLVED: "incident.resolved",
     INCIDENT_LAPSED: "incident.lapsed",
     GM_RESPONDED: "gm.responded",
+    INCIDENT_ESCALATED: "incident.escalated",
+    INCIDENT_REACTION: "incident.reaction",
+    FACTION_FORMED: "faction.formed",
     BOOKING_REFUSED: "booking.refused",
     WRESTLER_DISCIPLINE: "wrestler.discipline.changed",
     // --- what the roster wants ---
@@ -762,7 +781,6 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     PROMISE_MADE: "promise.made",
     PROMISE_KEPT: "promise.kept",
     PROMISE_BROKEN: "promise.broken",
-    INCIDENT_ESCALATED: "incident.escalated",
     RIVALRY_FORMED: "rivalry.formed",
     CONTRACT_SIGNED: "contract.signed",
     CONTRACT_EXPIRED: "contract.expired"
@@ -1162,6 +1180,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     // --- between wrestlers ---
     BETRAYAL: { key: "betrayal", weight: 95, floor: 60, decayPerDay: 0.05, scar: true },
     SAVE: { key: "save", weight: 80, floor: 40, decayPerDay: 0.12, scar: true },
+    STOOD_BY: { key: "stood_by", weight: 74, floor: 34, decayPerDay: 0.14, scar: true },
     KINDNESS: { key: "kindness", weight: 55, floor: 25, decayPerDay: 0.2 },
     TEAMED_WELL: { key: "teamed_well", weight: 35, floor: 8, decayPerDay: 0.5 },
     TEAMED_BADLY: { key: "teamed_badly", weight: 45, floor: 12, decayPerDay: 0.4 },
@@ -1199,7 +1218,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     MEMORY_TYPES.HUMILIATION.key,
     MEMORY_TYPES.TITLE_LOSS.key,
     MEMORY_TYPES.BETRAYAL.key,
-    MEMORY_TYPES.TEAMED_BADLY.key
+    MEMORY_TYPES.TEAMED_BADLY.key,
+    MEMORY_TYPES.STOOD_BY.key
   ]);
   var GM_MEMORY_TYPES = Object.freeze([
     MEMORY_TYPES.REQUEST_GRANTED.key,
@@ -1269,6 +1289,16 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     "anxious"
   ]);
   var HEALTH = Object.freeze({ HEALTHY: "healthy", INJURED: "injured" });
+  var ALIGNMENT = Object.freeze({
+    FACE: "face",
+    HEEL: "heel",
+    TWEENER: "tweener"
+  });
+  var ALIGNMENT_LABEL = Object.freeze({
+    [ALIGNMENT.FACE]: "Babyface",
+    [ALIGNMENT.HEEL]: "Heel",
+    [ALIGNMENT.TWEENER]: "Tweener"
+  });
   var CONTRACT_STATUS = Object.freeze({
     ACTIVE: "active",
     EXPIRED: "expired",
@@ -1331,6 +1361,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: clampUnit(identity.ego ?? SCALES.UNIT.neutral),
         ambition: clampUnit(identity.ambition ?? SCALES.UNIT.neutral),
+        alignment: identity.alignment ?? ALIGNMENT.TWEENER,
         traits
       },
       // 2. Ability - slow moving.
@@ -1449,6 +1480,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   }
   function canBeBooked(wrestler, day) {
     return isAvailable(wrestler, day) && !isSuspended(wrestler, day);
+  }
+  function isFace(wrestler) {
+    return wrestler.identity.alignment === ALIGNMENT.FACE;
   }
   function statusRank(wrestler) {
     return CAREER_RANK[wrestler.standing.careerStatus] ?? 3;
@@ -2090,7 +2124,9 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       causeEventId = null,
       startedEventId = null,
       reasons = [],
-      blocksSegmentId = null
+      blocksSegmentId = null,
+      causeIncidentId = null,
+      chainDepth = 0
     } = spec;
     const preset = incidentSpec(kind);
     if (!locationId) throw new Error("createIncident: an incident happens somewhere");
@@ -2129,7 +2165,13 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       outcome: null,
       // {landed, summary, effects:[...]}
       // A refusal stops the match it is a refusal of.
-      blocksSegmentId
+      blocksSegmentId,
+      // Tier 9. What other people did about it, and where this one came from:
+      // an incident spawned by somebody reacting to another one knows its parent,
+      // so a whole chain can be walked from either end.
+      reactions: [],
+      causeIncidentId,
+      chainDepth
     };
   }
   function isOpen(incident) {
@@ -2156,6 +2198,181 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     }
     if (inc.status === INCIDENT_STATUS.RESOLVED && !inc.response) {
       problems.push("resolved with no response recorded");
+    }
+    if (!Number.isFinite(inc.chainDepth) || inc.chainDepth < 0) {
+      problems.push(`chainDepth is ${inc.chainDepth}`);
+    }
+    if (inc.causeIncidentId === inc.id) problems.push("is its own cause");
+    return problems;
+  }
+
+  // wrestling/js/models/faction.js
+  function createFaction(spec = {}) {
+    const {
+      id = mint("team"),
+      name,
+      shortName = "",
+      memberIds = [],
+      leaderId = null,
+      formedOnDay = 0
+    } = spec;
+    if (!name) throw new Error("createFaction: a faction needs a name");
+    if (memberIds.length < 2) throw new Error(`createFaction: ${name} needs at least two members`);
+    return {
+      id,
+      name,
+      shortName: shortName || name,
+      memberIds: [...memberIds],
+      leaderId: leaderId || memberIds[0],
+      formedOnDay,
+      disbandedOnDay: null
+    };
+  }
+  function isActive(faction) {
+    return faction.disbandedOnDay == null && faction.memberIds.length >= 2;
+  }
+  function validateFaction(f) {
+    const problems = [];
+    if (!f.name) problems.push("no name");
+    if (!Array.isArray(f.memberIds)) problems.push("memberIds is not a list");
+    else {
+      if (new Set(f.memberIds).size !== f.memberIds.length) problems.push("somebody is in it twice");
+      if (f.leaderId && !f.memberIds.includes(f.leaderId)) {
+        problems.push("the leader is not a member");
+      }
+    }
+    return problems;
+  }
+
+  // wrestling/js/models/reaction.js
+  var REACTION_KINDS = Object.freeze({
+    /** Pulled somebody out of it. */
+    SAVE: "save",
+    /** Piled in on a side. */
+    JOIN: "join",
+    /** Came in from outside and went after one of them. */
+    INTERFERE: "interfere",
+    /** Was there, had every reason to act, and did not. */
+    STOOD_BY: "stood_by",
+    /** Left rather than be anywhere near it. */
+    AVOIDED: "avoided"
+  });
+  var REACTION_SPECS = Object.freeze({
+    [REACTION_KINDS.SAVE]: {
+      kind: REACTION_KINDS.SAVE,
+      label: "Save",
+      acts: true,
+      /** A save puts the saver in the aggressor's way, which is a new problem. */
+      spawns: true
+    },
+    [REACTION_KINDS.JOIN]: {
+      kind: REACTION_KINDS.JOIN,
+      label: "Joined in",
+      acts: true,
+      spawns: false
+      // it makes the same fight worse rather than a new one
+    },
+    [REACTION_KINDS.INTERFERE]: {
+      kind: REACTION_KINDS.INTERFERE,
+      label: "Interfered",
+      acts: true,
+      spawns: true
+    },
+    [REACTION_KINDS.STOOD_BY]: {
+      kind: REACTION_KINDS.STOOD_BY,
+      label: "Stood there",
+      acts: false,
+      spawns: false
+    },
+    [REACTION_KINDS.AVOIDED]: {
+      kind: REACTION_KINDS.AVOIDED,
+      label: "Walked away",
+      acts: false,
+      spawns: false
+    }
+  });
+  var REACTION_KEYS = Object.freeze(Object.keys(REACTION_SPECS));
+  function reactionSpec(kind) {
+    const spec = REACTION_SPECS[kind];
+    if (!spec) throw new Error(`Unknown reaction "${kind}". Add it to REACTION_SPECS.`);
+    return spec;
+  }
+  function isKnownReactionKind(kind) {
+    return kind in REACTION_SPECS;
+  }
+  var MOTIVES = Object.freeze({
+    ALLY: "ally",
+    FACTION: "faction",
+    CODE: "code",
+    // babyfaces help babyfaces
+    RIVALRY: "rivalry",
+    GRUDGE: "grudge",
+    JEALOUSY: "jealousy",
+    LOYALTY: "loyalty"
+  });
+  var MOTIVE_LABEL = Object.freeze({
+    [MOTIVES.ALLY]: "They are close",
+    [MOTIVES.FACTION]: "Same stable",
+    [MOTIVES.CODE]: "One babyface helping another",
+    [MOTIVES.RIVALRY]: "Heat between them",
+    [MOTIVES.GRUDGE]: "Has not forgotten",
+    [MOTIVES.JEALOUSY]: "Resents them",
+    [MOTIVES.LOYALTY]: "The sort who gets involved"
+  });
+  function createReaction(spec = {}) {
+    const {
+      id = mint("reaction"),
+      incidentId,
+      wrestlerId,
+      kind,
+      /** Who they acted for (a save or a join) or against (an interference). */
+      forId = null,
+      againstId = null,
+      score = 0,
+      nerve = 0,
+      reasons = [],
+      raisedTick = 0,
+      dueTick = 0,
+      tick: tick2 = null,
+      // when it actually happened, once it has
+      spawnedIncidentId = null
+    } = spec;
+    reactionSpec(kind);
+    if (!incidentId) throw new Error("createReaction: a reaction is a reaction to something");
+    if (!wrestlerId) throw new Error("createReaction: somebody has to be reacting");
+    return {
+      id,
+      incidentId,
+      wrestlerId,
+      kind,
+      forId,
+      againstId,
+      score,
+      // how strongly they were pulled in
+      nerve,
+      // whether they had it in them
+      reasons,
+      // [{motive, label, detail, weight}]
+      raisedTick,
+      // when the thing they are reacting to happened
+      dueTick,
+      // when they act. Later than raisedTick is a slow burn.
+      tick: tick2,
+      spawnedIncidentId
+    };
+  }
+  function validateReaction(r) {
+    const problems = [];
+    if (!isKnownReactionKind(r.kind)) problems.push(`unknown kind "${r.kind}"`);
+    if (!r.wrestlerId) problems.push("nobody is reacting");
+    if (!Number.isFinite(r.dueTick)) problems.push("dueTick is not a number");
+    if (Number.isFinite(r.raisedTick) && Number.isFinite(r.dueTick) && r.dueTick < r.raisedTick) {
+      problems.push("reacted before it happened");
+    }
+    for (const reason of r.reasons || []) {
+      if (reason.motive && !(reason.motive in MOTIVE_LABEL)) {
+        problems.push(`unknown motive "${reason.motive}"`);
+      }
     }
     return problems;
   }
@@ -2310,7 +2527,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   }
 
   // wrestling/js/core/store.js
-  var SCHEMA_VERSION = 8;
+  var SCHEMA_VERSION = 9;
   var G = { state: null, rng: null };
   function getState() {
     return G.state;
@@ -2394,6 +2611,10 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       titles: {},
       requests: {},
       incidents: {},
+      factions: {},
+      // Reactions that have been decided but have not happened yet. A slow burn
+      // is the same decision with a later tick on it.
+      pendingReactions: [],
       // The building. `tick` is seconds into the working night, which is what
       // notification timing is measured in.
       backstage: {
@@ -2425,6 +2646,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       ...Object.keys(state2.titles || {}),
       ...Object.keys(state2.requests || {}),
       ...Object.keys(state2.incidents || {}),
+      ...Object.keys(state2.factions || {}),
+      ...Object.values(state2.incidents || {}).flatMap((i) => (i.reactions || []).map((r) => r.id)),
       ...(state2.backstage?.notifications || []).map((n) => n.id),
       ...state2.log.map((e) => e.id),
       ...Object.values(state2.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
@@ -3068,6 +3291,116 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     });
     return wrestler.state.discipline;
   }
+  function allFactions() {
+    return Object.values(requireGame().factions);
+  }
+  function getFaction(id) {
+    return requireGame().factions[id] || null;
+  }
+  function factionOf(wrestlerId) {
+    return allFactions().find((f) => isActive(f) && f.memberIds.includes(wrestlerId)) || null;
+  }
+  function sameFaction(aId, bId) {
+    const f = factionOf(aId);
+    return !!f && f.memberIds.includes(bId);
+  }
+  function formFaction(spec, { cause = null } = {}) {
+    const state2 = requireGame();
+    for (const id of spec.memberIds || []) requireWrestler(id);
+    const faction = createFaction({ formedOnDay: state2.calendar.day, ...spec });
+    state2.factions[faction.id] = faction;
+    emit(EVENT_TYPES.FACTION_FORMED, {
+      summary: `${faction.name}: ${faction.memberIds.map(nameOf).join(", ")}`,
+      subjects: faction.memberIds,
+      cause,
+      data: { factionId: faction.id, leaderId: faction.leaderId, memberIds: faction.memberIds }
+    });
+    return faction;
+  }
+  function addReaction(incidentId, spec, { cause = null } = {}) {
+    const state2 = requireGame();
+    const incident = requireIncident(incidentId);
+    requireWrestler(spec.wrestlerId);
+    const reaction = createReaction({
+      incidentId,
+      raisedTick: incident.tick,
+      dueTick: state2.backstage.tick,
+      ...spec
+    });
+    incident.reactions.push(reaction);
+    if (reaction.dueTick > state2.backstage.tick) state2.pendingReactions.push(reaction.id);
+    return reaction;
+  }
+  function findReaction(id) {
+    for (const incident of allIncidents()) {
+      const found = incident.reactions.find((r) => r.id === id);
+      if (found) return found;
+    }
+    return null;
+  }
+  function pendingReactions() {
+    return requireGame().pendingReactions.map(findReaction).filter(Boolean).sort((a, b) => a.dueTick - b.dueTick);
+  }
+  function dueReactions() {
+    const now = requireGame().backstage.tick;
+    return pendingReactions().filter((r) => r.dueTick <= now);
+  }
+  function commitReaction(reactionId, { spawnedIncidentId = null } = {}) {
+    const state2 = requireGame();
+    const reaction = findReaction(reactionId);
+    if (!reaction || reaction.tick != null) return reaction || null;
+    reaction.tick = state2.backstage.tick;
+    reaction.spawnedIncidentId = spawnedIncidentId;
+    state2.pendingReactions = state2.pendingReactions.filter((id) => id !== reactionId);
+    return reaction;
+  }
+  function clearPendingReactions() {
+    const state2 = requireGame();
+    const dropped = state2.pendingReactions.length;
+    state2.pendingReactions = [];
+    return dropped;
+  }
+  function raiseSeverity(incidentId, by, { reason = "", cause = null } = {}) {
+    const incident = requireIncident(incidentId);
+    const before = incident.severity;
+    incident.severity = Math.max(1, Math.min(100, Math.round(before + by)));
+    if (incident.severity === before) return incident;
+    emit(EVENT_TYPES.INCIDENT_ESCALATED, {
+      summary: reason || `${INCIDENT_SPECS[incident.kind].label} is getting worse`,
+      subjects: incident.participantIds,
+      showId: incident.showId,
+      locationId: incident.locationId,
+      visibility: VISIBILITY.BACKSTAGE,
+      cause: cause || incident.startedEventId,
+      data: {
+        incidentId,
+        from: before,
+        to: incident.severity,
+        severityLabel: severityLabel(incident.severity)
+      }
+    });
+    return incident;
+  }
+  function addParticipant(incidentId, wrestlerId) {
+    const incident = requireIncident(incidentId);
+    requireWrestler(wrestlerId);
+    if (!incident.participantIds.includes(wrestlerId)) incident.participantIds.push(wrestlerId);
+    return incident;
+  }
+  function incidentChain(incidentId) {
+    const chain = [];
+    let current = getIncident(incidentId);
+    const seen = /* @__PURE__ */ new Set();
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      chain.unshift(current);
+      current = current.causeIncidentId ? getIncident(current.causeIncidentId) : null;
+    }
+    return chain;
+  }
+  function incidentsCausedBy(incidentId) {
+    return allIncidents().filter((i) => i.causeIncidentId === incidentId);
+  }
   function backstage() {
     return requireGame().backstage;
   }
@@ -3262,11 +3595,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   });
 
   // wrestling/js/core/invariants.js
-  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments", "titles", "requests", "incidents"];
+  var ENTITY_REGISTRIES = ["wrestlers", "shows", "segments", "titles", "requests", "incidents", "factions"];
   function checkState(state2) {
     const problems = [];
     if (!state2 || typeof state2 !== "object") return ["state is not an object"];
-    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "incidents", "backstage", "log"]) {
+    for (const key of ["meta", "calendar", "wrestlers", "shows", "segments", "titles", "requests", "incidents", "factions", "backstage", "log"]) {
       if (state2[key] == null) problems.push(`state.${key} is missing`);
     }
     if (problems.length) return problems;
@@ -3391,6 +3724,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       for (const p of validateRequest(r)) problems.push(`request ${r.id}: ${p}`);
     }
     const incidentIds = new Set(Object.keys(state2.incidents));
+    const alignments = new Set(Object.values(ALIGNMENT));
+    for (const w of Object.values(state2.wrestlers)) {
+      if (!alignments.has(w.identity.alignment)) {
+        problems.push(`wrestler ${w.id} has unknown alignment "${w.identity.alignment}"`);
+      }
+    }
     for (const inc of Object.values(state2.incidents)) {
       for (const p of validateIncident(inc)) problems.push(`incident ${inc.id}: ${p}`);
       if (!isLocation(inc.locationId)) {
@@ -3408,6 +3747,44 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       if (inc.response && inc.discoveredTick == null) {
         problems.push(`incident ${inc.id} was answered without ever reaching the GM`);
       }
+      if (inc.causeIncidentId) {
+        refMustExist(inc.causeIncidentId, incidentIds, `incident ${inc.id} chain`);
+        const parent = state2.incidents[inc.causeIncidentId];
+        if (parent && parent.chainDepth >= inc.chainDepth) {
+          problems.push(`incident ${inc.id} is at depth ${inc.chainDepth} under a parent at ${parent.chainDepth}`);
+        }
+      } else if (inc.chainDepth !== 0) {
+        problems.push(`incident ${inc.id} has no cause but sits at depth ${inc.chainDepth}`);
+      }
+      for (const r of inc.reactions || []) {
+        for (const p of validateReaction(r)) problems.push(`reaction ${r.id}: ${p}`);
+        if (r.incidentId !== inc.id) {
+          problems.push(`reaction ${r.id} is filed under ${inc.id} but claims ${r.incidentId}`);
+        }
+        refMustExist(r.wrestlerId, wrestlerIds, `reaction ${r.id}`);
+        if (r.forId) refMustExist(r.forId, wrestlerIds, `reaction ${r.id} for`);
+        if (r.againstId) refMustExist(r.againstId, wrestlerIds, `reaction ${r.id} against`);
+        if (r.spawnedIncidentId) refMustExist(r.spawnedIncidentId, incidentIds, `reaction ${r.id} spawn`);
+        if (inc.participantIds.includes(r.wrestlerId) && r.kind !== "join") {
+          problems.push(`reaction ${r.id}: ${r.wrestlerId} is reacting to something they are in`);
+        }
+      }
+    }
+    const inAFaction = /* @__PURE__ */ new Set();
+    for (const f of Object.values(state2.factions)) {
+      for (const p of validateFaction(f)) problems.push(`faction ${f.id}: ${p}`);
+      for (const id of f.memberIds) {
+        refMustExist(id, wrestlerIds, `faction ${f.id}`);
+        if (f.disbandedOnDay != null) continue;
+        if (inAFaction.has(id)) problems.push(`${id} is in more than one faction`);
+        inAFaction.add(id);
+      }
+    }
+    const reactionIds = new Set(
+      Object.values(state2.incidents).flatMap((i) => (i.reactions || []).map((r) => r.id))
+    );
+    for (const id of state2.pendingReactions || []) {
+      if (!reactionIds.has(id)) problems.push(`pending reaction ${id} does not exist`);
     }
     for (const seg of Object.values(state2.segments)) {
       const blocker = seg.blockedByIncidentId;
@@ -3638,6 +4015,23 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         seg.blockedByIncidentId = null;
       }
       return state2;
+    },
+    // v8 -> v9: the rest of the room reacts now. A save written before this has
+    // no factions, nobody queued to do anything, and no reactions on any
+    // incident. Alignment is authored character, so everybody who predates it
+    // starts as a tweener rather than being guessed at from their traits.
+    8: (state2) => {
+      state2.factions = state2.factions || {};
+      state2.pendingReactions = [];
+      for (const w of Object.values(state2.wrestlers)) {
+        if (!w.identity.alignment) w.identity.alignment = "tweener";
+      }
+      for (const inc of Object.values(state2.incidents || {})) {
+        inc.reactions = inc.reactions || [];
+        if (inc.causeIncidentId === void 0) inc.causeIncidentId = null;
+        if (!Number.isFinite(inc.chainDepth)) inc.chainDepth = 0;
+      }
+      return state2;
     }
   };
   function migrate(state2, fromVersion) {
@@ -3773,6 +4167,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   // wrestling/js/data/roster.js
   var { ROOKIE, JOBBER, LOWER_CARD, MIDCARD, UPPER_MIDCARD, MAIN_EVENT, SUPERSTAR } = CAREER_STATUS;
   var { RISING, STEADY, DECLINING } = TRAJECTORY;
+  var { FACE, HEEL, TWEENER } = ALIGNMENT;
   var STARTING_ROSTER = [
     {
       key: "croft",
@@ -3782,6 +4177,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 92,
         ambition: 78,
+        alignment: HEEL,
         traits: { professionalism: 80, respectForAuthority: 30, patience: 65, loyalty: 35, jealousy: 78, vindictiveness: 70, aggression: 45, courage: 25, volatility: 25, sociability: 40 }
       },
       ability: { workRate: 84, charisma: 88, durability: 70, starPower: 94 },
@@ -3795,6 +4191,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 80,
         ambition: 95,
+        alignment: FACE,
         traits: { professionalism: 62, respectForAuthority: 45, patience: 30, loyalty: 55, jealousy: 50, vindictiveness: 60, aggression: 72, courage: 78, volatility: 72, sociability: 70 }
       },
       ability: { workRate: 89, charisma: 82, durability: 74, starPower: 86 },
@@ -3808,6 +4205,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 74,
         ambition: 88,
+        alignment: HEEL,
         traits: { professionalism: 70, respectForAuthority: 25, patience: 18, loyalty: 40, jealousy: 85, vindictiveness: 82, aggression: 66, courage: 60, volatility: 58, sociability: 35 }
       },
       ability: { workRate: 91, charisma: 58, durability: 78, starPower: 62 },
@@ -3821,6 +4219,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 58,
         ambition: 90,
+        alignment: FACE,
         traits: { professionalism: 85, respectForAuthority: 70, patience: 62, loyalty: 72, jealousy: 30, vindictiveness: 45, aggression: 40, courage: 70, volatility: 40, sociability: 66 }
       },
       ability: { workRate: 82, charisma: 79, durability: 80, starPower: 71 },
@@ -3834,6 +4233,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 38,
         ambition: 52,
+        alignment: FACE,
         traits: { professionalism: 94, respectForAuthority: 82, patience: 80, loyalty: 90, jealousy: 12, vindictiveness: 20, aggression: 25, courage: 55, volatility: 18, sociability: 75 }
       },
       ability: { workRate: 73, charisma: 66, durability: 92, starPower: 68 },
@@ -3847,6 +4247,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 81,
         ambition: 84,
+        alignment: HEEL,
         traits: { professionalism: 45, respectForAuthority: 35, patience: 40, loyalty: 25, jealousy: 80, vindictiveness: 88, aggression: 70, courage: 45, volatility: 66, sociability: 58 }
       },
       ability: { workRate: 76, charisma: 85, durability: 65, starPower: 74 },
@@ -3860,6 +4261,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 30,
         ambition: 48,
+        alignment: FACE,
         traits: { professionalism: 96, respectForAuthority: 90, patience: 88, loyalty: 85, jealousy: 10, vindictiveness: 18, aggression: 20, courage: 60, volatility: 12, sociability: 62 }
       },
       ability: { workRate: 78, charisma: 52, durability: 84, starPower: 44 },
@@ -3873,6 +4275,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 69,
         ambition: 74,
+        alignment: TWEENER,
         traits: { professionalism: 50, respectForAuthority: 40, patience: 35, loyalty: 48, jealousy: 72, vindictiveness: 55, aggression: 58, courage: 50, volatility: 78, sociability: 88 }
       },
       ability: { workRate: 55, charisma: 91, durability: 62, starPower: 70 },
@@ -3886,6 +4289,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 77,
         ambition: 40,
+        alignment: HEEL,
         traits: { professionalism: 68, respectForAuthority: 28, patience: 22, loyalty: 42, jealousy: 88, vindictiveness: 74, aggression: 62, courage: 20, volatility: 62, sociability: 45 }
       },
       ability: { workRate: 70, charisma: 74, durability: 48, starPower: 58 },
@@ -3899,6 +4303,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 52,
         ambition: 80,
+        alignment: FACE,
         traits: { professionalism: 72, respectForAuthority: 65, patience: 55, loyalty: 65, jealousy: 28, vindictiveness: 30, aggression: 45, courage: 92, volatility: 55, sociability: 70 }
       },
       ability: { workRate: 86, charisma: 68, durability: 41, starPower: 63 },
@@ -3912,6 +4317,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 28,
         ambition: 76,
+        alignment: FACE,
         traits: { professionalism: 80, respectForAuthority: 88, patience: 70, loyalty: 78, jealousy: 18, vindictiveness: 22, aggression: 30, courage: 75, volatility: 35, sociability: 72 }
       },
       ability: { workRate: 61, charisma: 55, durability: 72, starPower: 38 },
@@ -3925,6 +4331,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 22,
         ambition: 34,
+        alignment: FACE,
         traits: { professionalism: 92, respectForAuthority: 95, patience: 90, loyalty: 70, jealousy: 8, vindictiveness: 15, aggression: 12, courage: 62, volatility: 15, sociability: 80 }
       },
       ability: { workRate: 58, charisma: 44, durability: 76, starPower: 24 },
@@ -3938,6 +4345,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 60,
         ambition: 68,
+        alignment: HEEL,
         traits: { professionalism: 58, respectForAuthority: 32, patience: 25, loyalty: 38, jealousy: 82, vindictiveness: 80, aggression: 55, courage: 55, volatility: 64, sociability: 42 }
       },
       ability: { workRate: 64, charisma: 49, durability: 70, starPower: 30 },
@@ -3951,6 +4359,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       identity: {
         ego: 44,
         ambition: 92,
+        alignment: TWEENER,
         traits: { professionalism: 66, respectForAuthority: 58, patience: 28, loyalty: 50, jealousy: 55, vindictiveness: 40, aggression: 60, courage: 80, volatility: 70, sociability: 48 }
       },
       ability: { workRate: 69, charisma: 62, durability: 68, starPower: 45 },
@@ -3964,6 +4373,28 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       idByKey[key] = addWrestler(rest).id;
     }
     return idByKey;
+  }
+  var FACTIONS = [
+    {
+      name: "The Syndicate",
+      shortName: "Syndicate",
+      leader: "croft",
+      members: ["croft", "wren", "delacroix"]
+    },
+    {
+      name: "The Iron Union",
+      shortName: "Iron Union",
+      leader: "kane",
+      members: ["kane", "pike", "lund"]
+    }
+  ];
+  function seedFactions(idByKey) {
+    return FACTIONS.map((f) => formFaction({
+      name: f.name,
+      shortName: f.shortName,
+      leaderId: idByKey[f.leader],
+      memberIds: f.members.map((k) => idByKey[k])
+    }));
   }
 
   // wrestling/js/data/titles.js
@@ -6510,6 +6941,463 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     });
   }
 
+  // wrestling/js/systems/reactions.js
+  var clamp5 = (n, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+  var PULL_FLOOR = 24;
+  var STOOD_BY_FLOOR = 38;
+  var MAX_CHAIN_DEPTH = 3;
+  var MAX_REACTORS = 3;
+  var ACT_RATE = 0.92;
+  var FULL_COMMITMENT = 70;
+  var NERVE_FLOOR = 30;
+  var DELAY_MIN_SEC = 240;
+  var DELAY_MAX_SEC = 900;
+  var LATE_FLOOR = 52;
+  var HEARD_LAG_MIN_SEC = 60;
+  var HEARD_LAG_MAX_SEC = 240;
+  function pullToward(candidate, otherId) {
+    const other = getWrestler(otherId);
+    if (!other || candidate.id === otherId) return { score: 0, reasons: [] };
+    const rel = relationshipWith(candidate, otherId);
+    const traits = candidate.identity.traits;
+    const today2 = today();
+    const reasons = [];
+    let score = 0;
+    const add = (weight, motive, detail) => {
+      if (Math.abs(weight) < 3) return;
+      score += weight;
+      reasons.push({ motive, label: MOTIVE_LABEL[motive], detail, weight: Math.round(weight) });
+    };
+    if (rel.affinity > 0) {
+      add(
+        rel.affinity * (0.42 + traits.loyalty * 4e-3),
+        MOTIVES.ALLY,
+        `Affinity ${rel.affinity}, loyalty ${traits.loyalty}`
+      );
+    }
+    if (sameFaction(candidate.id, otherId)) {
+      const faction = factionOf(candidate.id);
+      const isLeader = faction.leaderId === otherId;
+      add(
+        34 + (isLeader ? 14 : 0) + traits.loyalty * 0.14,
+        MOTIVES.FACTION,
+        isLeader ? `${faction.name}, and that is the leader` : faction.name
+      );
+    }
+    if (isFace(candidate) && isFace(other)) {
+      add(
+        12 + traits.professionalism * 0.12 + traits.courage * 0.08,
+        MOTIVES.CODE,
+        "Both babyfaces"
+      );
+    }
+    if (traits.loyalty >= 70 && traits.aggression >= 45) {
+      add((traits.loyalty - 70) * 0.35, MOTIVES.LOYALTY, `Loyalty ${traits.loyalty}`);
+    }
+    if (rel.hostility > 0) {
+      add(
+        -rel.hostility * (0.45 + traits.vindictiveness * 4e-3),
+        MOTIVES.RIVALRY,
+        `Hostility ${rel.hostility}, vindictiveness ${traits.vindictiveness}`
+      );
+    }
+    if (rel.affinity < 0) {
+      add(rel.affinity * 0.35, MOTIVES.RIVALRY, `Cannot stand them (${rel.affinity})`);
+    }
+    const grudge = candidate.memory.filter((m) => m.aboutIds?.includes(otherId)).map((m) => ({ m, weight: memoryWeightOn(m, today2) })).sort((a, b) => b.weight - a.weight)[0];
+    if (grudge && grudge.weight >= 30 && rel.hostility > rel.affinity) {
+      add(-grudge.weight * 0.28, MOTIVES.GRUDGE, grudge.m.summary);
+    }
+    if (traits.jealousy >= 55 && (other.standing.rank ?? 99) < (candidate.standing.rank ?? 99)) {
+      add(
+        -(traits.jealousy - 55) * 0.7,
+        MOTIVES.JEALOUSY,
+        `Ranked #${other.standing.rank} to their #${candidate.standing.rank ?? "-"}`
+      );
+    }
+    return { score, reasons };
+  }
+  function nerveFor(candidate, incident) {
+    const t = candidate.identity.traits;
+    const physical = incident.kind === INCIDENT_KINDS.FIGHT;
+    const risk = incident.severity * (physical ? 0.75 : 0.42);
+    return Math.round(clamp5(
+      t.courage * 0.82 + t.aggression * 0.3 + t.volatility * 0.12 - risk
+    ));
+  }
+  function chainIds(incident) {
+    const root = incidentChain(incident.id)[0] || incident;
+    const ids = /* @__PURE__ */ new Set([root.id]);
+    const walk = (id) => {
+      for (const child of incidentsCausedBy(id)) {
+        if (ids.has(child.id)) continue;
+        ids.add(child.id);
+        walk(child.id);
+      }
+    };
+    walk(root.id);
+    return ids;
+  }
+  function inAnOpenIncident(wrestlerId, except = null) {
+    const excluded = except instanceof Set ? except : new Set(except ? [except] : []);
+    return openIncidents().some((i) => !excluded.has(i.id) && INCIDENT_SPECS[i.kind].between && i.participantIds.includes(wrestlerId));
+  }
+  function candidatesFor(incident) {
+    const involved = new Set(incident.participantIds);
+    const already = new Set(incident.reactions.map((r) => r.wrestlerId));
+    const mine = chainIds(incident);
+    const day = today();
+    return whoIsIn(incident.locationId).filter((w) => !involved.has(w.id) && !already.has(w.id) && canBeBooked(w, day)).filter((w) => !inAnOpenIncident(w.id, mine)).map((w) => {
+      const pulls = incident.participantIds.map((id) => ({ id, ...pullToward(w, id) })).sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+      const top = pulls[0];
+      return {
+        wrestler: w,
+        aboutId: top?.id || null,
+        score: Math.abs(top?.score || 0),
+        forThem: (top?.score || 0) > 0,
+        reasons: top?.reasons || [],
+        nerve: nerveFor(w, incident)
+      };
+    }).filter((c) => c.aboutId).sort((a, b) => b.score - a.score);
+  }
+  function actChance(candidate) {
+    const drive = Math.min(1, candidate.score / FULL_COMMITMENT);
+    const composure = Math.min(1, 0.45 + candidate.nerve / 90);
+    return Math.max(0, Math.min(1, drive * composure * ACT_RATE));
+  }
+  function kindFor(candidate, incident) {
+    const { aboutId, forThem } = candidate;
+    if (!forThem) return REACTION_KINDS.INTERFERE;
+    return aboutId === incident.targetId || aboutId !== incident.instigatorId ? REACTION_KINDS.SAVE : REACTION_KINDS.JOIN;
+  }
+  function react(incident, { cause = null } = {}) {
+    if (!INCIDENT_SPECS[incident.kind].between) return [];
+    if (incident.chainDepth >= MAX_CHAIN_DEPTH) return [];
+    const rng = getRng();
+    const out = [];
+    const candidates = candidatesFor(incident).slice(0, MAX_REACTORS + 2);
+    for (const candidate of candidates) {
+      if (out.length >= MAX_REACTORS) break;
+      if (candidate.score < PULL_FLOOR) continue;
+      const { wrestler: w, nerve } = candidate;
+      const wants = kindFor(candidate, incident);
+      const reasons = [...candidate.reasons];
+      if (nerve < NERVE_FLOOR) {
+        const bottles = w.identity.traits.courage < 40;
+        const kind = bottles && wants !== REACTION_KINDS.INTERFERE ? REACTION_KINDS.AVOIDED : REACTION_KINDS.STOOD_BY;
+        if (kind === REACTION_KINDS.STOOD_BY && candidate.score < STOOD_BY_FLOOR) continue;
+        reasons.push({
+          motive: null,
+          label: bottles ? "No stomach for it" : "Thought better of it",
+          detail: `Courage ${w.identity.traits.courage} against a ${severityLabel(incident.severity).toLowerCase()}`,
+          weight: -(NERVE_FLOOR - nerve)
+        });
+        out.push(addReaction(incident.id, {
+          wrestlerId: w.id,
+          kind,
+          forId: candidate.forThem ? candidate.aboutId : null,
+          againstId: candidate.forThem ? null : candidate.aboutId,
+          score: Math.round(candidate.score),
+          nerve,
+          reasons
+        }, { cause }));
+        continue;
+      }
+      if (!rng.chance(actChance(candidate))) {
+        if (candidate.score < STOOD_BY_FLOOR) continue;
+        out.push(addReaction(incident.id, {
+          wrestlerId: w.id,
+          kind: REACTION_KINDS.STOOD_BY,
+          forId: candidate.forThem ? candidate.aboutId : null,
+          againstId: candidate.forThem ? null : candidate.aboutId,
+          score: Math.round(candidate.score),
+          nerve,
+          reasons
+        }, { cause }));
+        continue;
+      }
+      const slowBurn = wants === REACTION_KINDS.INTERFERE && nerve < 52 && w.identity.traits.vindictiveness >= 60;
+      const delay = slowBurn ? rng.range(DELAY_MIN_SEC, DELAY_MAX_SEC) : 0;
+      if (slowBurn) {
+        reasons.push({
+          motive: null,
+          label: "Waits for their moment",
+          detail: `Vindictiveness ${w.identity.traits.vindictiveness}, and not here and now`,
+          weight: 0
+        });
+      }
+      out.push(addReaction(incident.id, {
+        wrestlerId: w.id,
+        kind: wants,
+        forId: candidate.forThem ? candidate.aboutId : null,
+        againstId: candidate.forThem ? null : candidate.aboutId,
+        score: Math.round(candidate.score),
+        nerve,
+        reasons,
+        dueTick: tick() + delay
+      }, { cause }));
+    }
+    const late = reactLate(incident, { cause });
+    if (late) out.push(late);
+    for (const reaction of out) {
+      if (reaction.dueTick <= tick()) perform(reaction, { cause });
+    }
+    return out;
+  }
+  function reactLate(incident, { cause = null } = {}) {
+    const rng = getRng();
+    const involved = new Set(incident.participantIds);
+    const already = new Set(incident.reactions.map((r) => r.wrestlerId));
+    const mine = chainIds(incident);
+    const day = today();
+    const best = allWrestlers().filter((w) => !involved.has(w.id) && !already.has(w.id) && canBeBooked(w, day)).filter((w) => !inAnOpenIncident(w.id, mine)).filter((w) => locationOf(w.id) !== incident.locationId).map((w) => {
+      const pulls = incident.participantIds.map((id) => ({ id, ...pullToward(w, id) })).sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+      const top = pulls[0];
+      return {
+        wrestler: w,
+        aboutId: top?.id || null,
+        score: Math.abs(top?.score || 0),
+        forThem: (top?.score || 0) > 0,
+        reasons: top?.reasons || [],
+        nerve: nerveFor(w, incident)
+      };
+    }).filter((c) => c.aboutId && c.score >= LATE_FLOOR && c.nerve >= NERVE_FLOOR).sort((a, b) => b.score - a.score)[0];
+    if (!best) return null;
+    const from = locationOf(best.wrestler.id);
+    const travel = travelSeconds(from, incident.locationId);
+    if (!Number.isFinite(travel)) return null;
+    if (!rng.chance(actChance(best))) return null;
+    const lag = rng.range(HEARD_LAG_MIN_SEC, HEARD_LAG_MAX_SEC);
+    const reasons = [...best.reasons, {
+      motive: null,
+      label: "Heard about it",
+      detail: `Was in ${locationName(from)}, ${Math.round(travel)}s away`,
+      weight: 0
+    }];
+    return addReaction(incident.id, {
+      wrestlerId: best.wrestler.id,
+      kind: kindFor(best, incident),
+      forId: best.forThem ? best.aboutId : null,
+      againstId: best.forThem ? null : best.aboutId,
+      score: Math.round(best.score),
+      nerve: best.nerve,
+      reasons,
+      dueTick: tick() + travel + lag
+    }, { cause });
+  }
+  function describe2(reaction, incident) {
+    const who = nameOf(reaction.wrestlerId);
+    const about = nameOf(reaction.forId || reaction.againstId);
+    switch (reaction.kind) {
+      case REACTION_KINDS.SAVE:
+        return `${who} pulls ${about} out of it`;
+      case REACTION_KINDS.JOIN:
+        return `${who} piles in alongside ${about}`;
+      case REACTION_KINDS.INTERFERE:
+        return `${who} goes after ${about}`;
+      case REACTION_KINDS.STOOD_BY:
+        return `${who} stands there and watches`;
+      default:
+        return `${who} walks the other way`;
+    }
+  }
+  function perform(reaction, { cause = null } = {}) {
+    const incident = getIncident(reaction.incidentId);
+    if (!incident || reaction.tick != null) return null;
+    const spec = reactionSpec(reaction.kind);
+    const actorId = reaction.wrestlerId;
+    const day = today();
+    const weight = incident.severity / 100;
+    let spawned = null;
+    const event = emit(EVENT_TYPES.INCIDENT_REACTION, {
+      summary: describe2(reaction, incident),
+      newsSummary: describe2(reaction, incident),
+      actorId,
+      subjects: [actorId, reaction.forId, reaction.againstId].filter(Boolean),
+      showId: incident.showId,
+      locationId: incident.locationId,
+      visibility: VISIBILITY.BACKSTAGE,
+      cause: cause || incident.startedEventId,
+      data: {
+        incidentId: incident.id,
+        reactionId: reaction.id,
+        kind: reaction.kind,
+        forId: reaction.forId,
+        againstId: reaction.againstId,
+        motives: reaction.reasons.map((r) => r.motive).filter(Boolean),
+        delayedBySec: reaction.dueTick - reaction.raisedTick
+      }
+    });
+    switch (reaction.kind) {
+      // --- pulled them out of it ---
+      case REACTION_KINDS.SAVE: {
+        const savedId = reaction.forId;
+        adjustRelationship(
+          savedId,
+          actorId,
+          { affinity: Math.round(14 + weight * 20), trust: Math.round(10 + weight * 16), respect: 6 },
+          { reason: `${nameOf(actorId)} got them out of it`, cause: event.id }
+        );
+        addMemory(savedId, memorySpec(MEMORY_TYPES.SAVE.key, {
+          summary: `${nameOf(actorId)} pulled them out of ${INCIDENT_SPECS[incident.kind].noun}`,
+          aboutIds: [actorId],
+          day
+        }), { cause: event.id });
+        for (const otherId of incident.participantIds) {
+          if (otherId === savedId) continue;
+          adjustRelationship(
+            otherId,
+            actorId,
+            { hostility: Math.round(12 + weight * 22), affinity: -8 },
+            { reason: "Got in the way", cause: event.id }
+          );
+        }
+        const aggressorId = incident.participantIds.find((id) => id !== savedId && id !== actorId);
+        spawned = spawnFrom(incident, actorId, aggressorId, { cause: event.id });
+        break;
+      }
+      // --- piled in ---
+      case REACTION_KINDS.JOIN: {
+        const withId = reaction.forId;
+        addParticipant(incident.id, actorId);
+        raiseSeverity(
+          incident.id,
+          10 + weight * 14,
+          { reason: `${nameOf(actorId)} makes it two on one`, cause: event.id }
+        );
+        adjustRelationship(
+          withId,
+          actorId,
+          { affinity: Math.round(8 + weight * 12), trust: 8 },
+          { reason: "Backed them up", cause: event.id }
+        );
+        for (const otherId of incident.participantIds) {
+          if (otherId === withId || otherId === actorId) continue;
+          const rel = relationshipWith(requireWrestler(otherId), actorId);
+          const betrayed = rel.affinity >= 40;
+          adjustRelationship(otherId, actorId, {
+            hostility: Math.round((betrayed ? 22 : 14) + weight * 20),
+            affinity: betrayed ? -40 : -12,
+            trust: betrayed ? -35 : -12
+          }, { reason: betrayed ? "Somebody they trusted piled in" : "Piled in against them", cause: event.id });
+          if (betrayed) {
+            addMemory(otherId, memorySpec(MEMORY_TYPES.BETRAYAL.key, {
+              summary: `${nameOf(actorId)} piled in against them in ${locationName(incident.locationId)}`,
+              aboutIds: [actorId],
+              day
+            }), { cause: event.id });
+          }
+        }
+        break;
+      }
+      // --- came in and went after somebody ---
+      case REACTION_KINDS.INTERFERE: {
+        const againstId = reaction.againstId;
+        adjustRelationship(
+          againstId,
+          actorId,
+          { hostility: Math.round(20 + weight * 26), affinity: -16, trust: -14 },
+          { reason: "Jumped while they were already in something", cause: event.id }
+        );
+        spawned = spawnFrom(incident, actorId, againstId, { cause: event.id });
+        break;
+      }
+      // --- did nothing ---
+      case REACTION_KINDS.STOOD_BY: {
+        const letDownId = reaction.forId;
+        if (letDownId) {
+          const rel = relationshipWith(requireWrestler(letDownId), actorId);
+          const closeness = Math.max(0, rel.affinity) / 100;
+          adjustRelationship(letDownId, actorId, {
+            affinity: -Math.round(6 + closeness * 22),
+            trust: -Math.round(8 + closeness * 24),
+            respect: -Math.round(3 + closeness * 8)
+          }, { reason: `${nameOf(actorId)} watched and did nothing`, cause: event.id });
+          if (rel.affinity >= 25) {
+            addMemory(letDownId, memorySpec(MEMORY_TYPES.STOOD_BY.key, {
+              summary: `${nameOf(actorId)} stood there while it happened`,
+              aboutIds: [actorId],
+              day
+            }), { cause: event.id });
+          }
+        }
+        break;
+      }
+      // --- left ---
+      default: {
+        for (const witness of whoIsIn(incident.locationId)) {
+          if (witness.id === actorId || incident.participantIds.includes(witness.id)) continue;
+          adjustRelationship(
+            witness.id,
+            actorId,
+            { respect: -4 },
+            { reason: "Walked away from it", cause: event.id }
+          );
+        }
+        break;
+      }
+    }
+    commitReaction(reaction.id, { spawnedIncidentId: spawned?.id || null });
+    return { reaction, event, spawned };
+  }
+  function spawnFrom(parent, aId, bId, { cause }) {
+    if (!bId || aId === bId) return null;
+    if (parent.chainDepth + 1 >= MAX_CHAIN_DEPTH) return null;
+    if (incidentsCausedBy(parent.id).length) return null;
+    const mine = chainIds(parent);
+    if (inAnOpenIncident(bId, mine) || inAnOpenIncident(aId, mine)) return null;
+    const a = getWrestler(aId);
+    const b = getWrestler(bId);
+    if (!a || !b) return null;
+    const summary = `${b.name} rounds on ${a.name}`;
+    const child = raiseIncident({
+      kind: INCIDENT_KINDS.FIGHT,
+      locationId: parent.locationId,
+      showId: parent.showId,
+      segmentId: parent.segmentId,
+      participantIds: [aId, bId],
+      instigatorId: bId,
+      targetId: aId,
+      severity: Math.round(parent.severity * 0.85),
+      causeIncidentId: parent.id,
+      chainDepth: parent.chainDepth + 1,
+      reasons: [{
+        label: "Came out of something else",
+        detail: `${INCIDENT_SPECS[parent.kind].label} between ${parent.participantIds.map(nameOf).join(" and ")}`,
+        weight: Math.round(parent.severity)
+      }],
+      summary,
+      newsSummary: summary
+    }, { cause });
+    react(child, { cause: child.startedEventId });
+    return child;
+  }
+  function flushDue({ cause = null } = {}) {
+    const out = [];
+    for (const reaction of dueReactions()) {
+      const incident = getIncident(reaction.incidentId);
+      if (!incident || incident.status !== INCIDENT_STATUS.OPEN) {
+        commitReaction(reaction.id);
+        continue;
+      }
+      const done = perform(reaction, { cause });
+      if (done) out.push(done);
+    }
+    return out;
+  }
+  function install10() {
+    on2(EVENT_TYPES.INCIDENT_STARTED, (event) => {
+      const incident = getIncident(event.data.incidentId);
+      if (!incident || incident.reactions.length) return;
+      react(incident, { cause: event.id });
+    });
+    on2(EVENT_TYPES.SEGMENT_COMPLETED, (event) => flushDue({ cause: event.id }));
+    on2(EVENT_TYPES.GM_MOVED, (event) => flushDue({ cause: event.id }));
+    on2(EVENT_TYPES.SHOW_COMPLETED, () => {
+      clearPendingReactions();
+    });
+  }
+
   // wrestling/js/systems/upkeep.js
   function recoveryPerDay(wrestler) {
     return 4 + wrestler.ability.durability / 25;
@@ -6530,7 +7418,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     if (momentum < 0) return Math.min(0, momentum + drop);
     return 0;
   }
-  function install10() {
+  function install11() {
     on2(EVENT_TYPES.CALENDAR_ADVANCED, (event) => {
       const days = event.data.days;
       if (!days) return;
@@ -6589,6 +7477,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     install8();
     install9();
     install10();
+    install11();
   }
 
   // wrestling/js/systems/showRunner.js
@@ -6633,14 +7522,14 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         const ba = relationshipWith(b, participantIds2[i]);
         const heat = (Math.abs(ab.affinity) + ab.hostility + Math.abs(ba.affinity) + ba.hostility) / 2;
         const respect = (ab.respect + ba.respect) / 2;
-        total += clamp5(heat * 6e-3 + (respect - 50) * 6e-3, 0, 1);
+        total += clamp6(heat * 6e-3 + (respect - 50) * 6e-3, 0, 1);
         pairs++;
       }
     }
     return pairs ? Math.min(1, total / pairs) : 0;
   }
   var mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-  var clamp5 = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  var clamp6 = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   var PHRASES = {
     open: ["The bell rings.", "Here we go.", "They lock up."],
     early: ["A feeling-out process early.", "Neither wants to make the first mistake.", "Cagey start."],
@@ -6660,7 +7549,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     const weights = [];
     for (let i = 1; i <= beats; i++) weights.push(flat + Math.pow(i / beats, shape));
     const total = weights.reduce((a, b) => a + b, 0);
-    return weights.map((w) => clamp5(budget * w / total, 0, 0.85));
+    return weights.map((w) => clamp6(budget * w / total, 0, 0.85));
   }
   function pickFinish(rng, gap) {
     return rng.weighted([
@@ -6677,7 +7566,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     q *= 0.85 + 0.15 * (conditionAvg / 100);
     q += actualSec < 90 ? -20 + actualSec / 90 * 8 : -4 + 12 * Math.min(1, actualSec / 600);
     q += rng.range(-6, 6);
-    return Math.round(clamp5(q, 1, 100));
+    return Math.round(clamp6(q, 1, 100));
   }
   function simulateSegment(segment, { get, rng }) {
     const format = formatOf(segment.format);
@@ -6690,7 +7579,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     const strengths = sideKeys.map((k) => sideStrength(bySide[k], get));
     const high = Math.max(...strengths);
     const low = Math.min(...strengths);
-    const gap = high > 0 ? clamp5((high - low) / high, 0, 1) : 0;
+    const gap = high > 0 ? clamp6((high - low) / high, 0, 1) : 0;
     const beats = Math.max(2, Math.floor(segment.timeLimitSec / BEAT_SEC));
     const hazards = finishHazards(beats, gap);
     const timeline = [];
@@ -6784,7 +7673,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         winnerIds: [],
         loserIds: [],
         actualSec,
-        quality: Math.round(clamp5(q, 1, 100)),
+        quality: Math.round(clamp6(q, 1, 100)),
         beats: timeline,
         overridden: false
       },
@@ -7311,6 +8200,8 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
 
       <div class="cards">
         <div class="card"><h3>1. Identity &middot; what they want</h3>
+          ${kv("The crowd takes them as", ALIGNMENT_LABEL[w.identity.alignment])}
+          ${kv("Runs with", factionOf(w.id) ? `${esc(factionOf(w.id).name)}${factionOf(w.id).leaderId === w.id ? ' <span class="muted">(leads)</span>' : ""}` : '<span class="muted">nobody</span>')}
           ${bar("Ego", w.identity.ego)}
           ${bar("Ambition", w.identity.ambition)}
           <div class="kv"><span class="muted" style="font-size:11px">Ego is what pushes back. Ambition is what they will put up with to get somewhere.</span><span></span></div>
@@ -7525,7 +8416,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
   var state = null;
   var timer = null;
   var onFinish = null;
-  function isActive() {
+  function isActive2() {
     return state != null;
   }
   function isFinished() {
@@ -7659,6 +8550,11 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     if (severity >= 31) return "blue";
     return "";
   }
+  function nameList(ids) {
+    const names = ids.map(nameOf);
+    if (names.length <= 1) return names[0] || "";
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  }
   function person(id) {
     const w = getWrestler(id);
     if (!w) return "";
@@ -7676,6 +8572,27 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     return `<div class="kv">
     <span>${esc(r.label || "")}${r.detail ? ` <span class="muted">&middot; ${esc(r.detail)}</span>` : ""}</span>
     <span class="${weight < 0 ? "pos" : ""}">${Number.isFinite(weight) ? signed(Math.round(weight)) : ""}</span>
+  </div>`;
+  }
+  var REACTION_TONE = {
+    [REACTION_KINDS.SAVE]: "green",
+    [REACTION_KINDS.JOIN]: "red",
+    [REACTION_KINDS.INTERFERE]: "red",
+    [REACTION_KINDS.STOOD_BY]: "amber",
+    [REACTION_KINDS.AVOIDED]: ""
+  };
+  function reactionRow(r) {
+    const spec = REACTION_SPECS[r.kind];
+    const about = r.forId || r.againstId;
+    const why = r.reasons.filter((x) => x.label).map((x) => esc(x.label)).join(" &middot; ");
+    const waiting = r.tick == null;
+    return `<div class="slot ${waiting ? "" : "done"}">
+    <span class="what">
+      <span class="t">${esc(nameOf(r.wrestlerId))}
+        <span class="muted">${esc(spec.label.toLowerCase())}${about ? ` ${r.againstId ? "at" : "for"} ${esc(nameOf(about))}` : ""}</span></span>
+      <span class="d">${why}${waiting ? " &middot; on their way" : ""}</span>
+    </span>
+    <span class="side"><span class="tag ${REACTION_TONE[r.kind] || ""}">${esc(spec.label)}</span></span>
   </div>`;
   }
   function cost(option) {
@@ -7709,6 +8626,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     }
     const options = optionsFor(incident.id);
     const available = options.filter((o) => o.ok);
+    const chain = incident.causeIncidentId ? incidentChain(incident.id) : [];
     return `
     <section class="panel trouble ${severityTone(incident.severity)}">
       <div class="head">
@@ -7726,6 +8644,17 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
           <h3>Why it happened</h3>
           ${incident.reasons.map(reasonRow).join("")}`}
 
+        ${compact || !incident.reactions.length ? "" : `
+          <h3>Who else got involved</h3>
+          <div class="sheet">${incident.reactions.map(reactionRow).join("")}</div>`}
+
+        ${compact || !chain.length ? "" : `
+          <h3>How it got here</h3>
+          <div class="log narrow">${chain.map((link2, i) => `<div class="ev">
+            <span class="d">${i + 1}</span>
+            <span>${esc(getEvent(link2.startedEventId)?.summary || link2.kind)}</span>
+          </div>`).join("")}</div>`}
+
         <h3>What you can do</h3>
         ${incident.attempted.length ? `<p class="sub">Already tried:
           ${incident.attempted.map((a) => esc(options.find((o) => o.key === a)?.label || a)).join(", ")}</p>` : ""}
@@ -7741,13 +8670,27 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
     <span class="idx">${esc(severityLabel(incident.severity)[0])}</span>
     <span class="what">
       <span class="t">${esc(incident.outcome?.summary || spec.label)}</span>
-      <span class="d">${esc(incident.participantIds.map(nameOf).join(" and "))}
+      <span class="d">${esc(nameList(incident.participantIds))}
         &middot; ${esc(locationName(incident.locationId))}
         &middot; ${esc(severityLabel(incident.severity))} ${incident.severity}
         ${incident.discoveredTick == null ? "&middot; you never found out" : ""}</span>
     </span>
     <span class="side">${options}</span>
   </div>`;
+  }
+  function chainRows(root) {
+    const walk = (incident) => [incident, ...incidentsCausedBy(incident.id).flatMap(walk)];
+    return walk(root).map((link2) => {
+      const acts = link2.reactions.filter((r) => r.tick != null && REACTION_SPECS[r.kind].acts);
+      const depth = link2.chainDepth;
+      return `<div class="slot ${depth ? "done" : "next"}" style="margin-left:${depth * 1.1}rem">
+      <span class="idx">${depth ? "&#8627;" : "&#9679;"}</span>
+      <span class="what">
+        <span class="t">${esc(getEvent(link2.startedEventId)?.summary || INCIDENT_SPECS[link2.kind].label)}</span>
+        <span class="d">${esc(severityLabel(link2.severity))} ${link2.severity}${acts.length ? ` &middot; ${acts.map((r) => `${esc(nameOf(r.wrestlerId))} ${esc(REACTION_SPECS[r.kind].label.toLowerCase())}`).join(", ")}` : ""}</span>
+      </span>
+    </div>`;
+    }).join("");
   }
 
   // wrestling/js/ui/rosterRail.js
@@ -8224,7 +9167,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         <td class="num">${done && seg.result.quality != null ? seg.result.quality : ""}</td>
       </tr>`;
     }).join("");
-    const watching = isActive() && !isFinished();
+    const watching = isActive2() && !isFinished();
     const held = blockedBy(show.id);
     const blocker = held ? `
     <div class="blocker">
@@ -8681,6 +9624,14 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       const habits = Object.entries(byResponse).sort((a, b) => b[1] - a[1]).map(([key, n]) => `<div class="kv"><span>${esc(key.replace(/_/g, " "))}</span><span>${n}</span></div>`).join("") || '<p class="empty">You have not had to do anything yet.</p>';
       const lapsed = allIncidents().filter((i) => i.status === INCIDENT_STATUS.UNRESOLVED);
       const neverHeard = allIncidents().filter((i) => i.discoveredTick == null && i.status !== INCIDENT_STATUS.OPEN);
+      const chains = allIncidents().filter((i) => i.chainDepth === 0 && incidentsCausedBy(i.id).length).sort((a, b) => b.day - a.day || b.tick - a.tick).slice(0, 6);
+      const reactionTally = {};
+      for (const i of allIncidents()) {
+        for (const r of i.reactions) {
+          if (r.tick == null) continue;
+          reactionTally[r.kind] = (reactionTally[r.kind] || 0) + 1;
+        }
+      }
       return `
       <h1>Trouble</h1>
       <p class="sub">${answerable.length} waiting on you${quiet ? ` &middot; ${quiet} more happening that nobody has mentioned` : ""}</p>
@@ -8688,6 +9639,12 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
       <div class="cols two">
         <div>
           ${waiting}
+
+          ${chains.length ? `
+            <h2>One thing led to another</h2>
+            <p class="sub">Somebody got involved, and it became somebody else's problem.</p>
+            ${chains.map((root) => `<div class="sheet" style="margin-bottom:.8rem">${chainRows(root)}</div>`).join("")}
+          ` : ""}
 
           <h2>What has already happened</h2>
           <div class="sheet">${settled.map(incidentRow).join("") || '<p class="empty">Nothing yet.</p>'}</div>
@@ -8713,6 +9670,29 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
               <p class="sub">The last line is the case for being better wired in. Nothing you
                 were never told about cost you anything, but nothing you were never told about
                 could be turned into television either.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Who gets involved</h2></div>
+            <div class="body">
+              ${Object.entries(reactionTally).sort((a, b) => b[1] - a[1]).map(([kind, n]) => `<div class="kv">
+                  <span>${esc(kind.replace(/_/g, " "))}</span><span>${n}</span></div>`).join("") || '<p class="empty">Nobody has had to decide yet.</p>'}
+              <p class="sub">Standing there is a decision too, and the person who was not
+                helped remembers it.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head"><h2>Who runs with whom</h2></div>
+            <div class="body">
+              ${allFactions().map((f) => `
+                <div class="kv"><span><strong>${esc(f.name)}</strong></span>
+                  <span>${f.memberIds.length}</span></div>
+                <p class="sub" style="margin:.1rem 0 .5rem">${f.memberIds.map((id) => `${esc(nameOf(id))}${id === f.leaderId ? " (leads)" : ""}`).join(", ")}</p>
+              `).join("") || '<p class="empty">Nobody runs with anybody.</p>'}
+              <p class="sub">A stable backs its own whether or not they like each other, which
+                is a different reason from friendship and counted separately.</p>
             </div>
           </section>
 
@@ -8889,7 +9869,7 @@ button.slot:hover{background:var(--raised);border-color:#2a3d52}
         mode: f.get("mode") || "sandbox",
         scheduleBlocks: 3
       });
-      seedRoster();
+      seedFactions(seedRoster());
       seedTitles(store_exports);
       refresh();
       go("show");

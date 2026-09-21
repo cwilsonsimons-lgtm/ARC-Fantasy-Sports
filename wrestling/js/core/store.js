@@ -36,9 +36,11 @@ import { createNotification, RELIABILITY } from '../models/notification.js';
 import {
   createIncident, INCIDENT_STATUS, INCIDENT_SPECS, isAnswerable, severityLabel,
 } from '../models/incident.js';
+import { createFaction, isActive as factionIsActive } from '../models/faction.js';
+import { createReaction, reactionSpec } from '../models/reaction.js';
 import { LOCATIONS, isLocation, locationName, travelSeconds, route } from '../models/location.js';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /** The live game. `state` and `rng` are replaced together when a save loads. */
 export const G = { state: null, rng: null };
@@ -128,6 +130,10 @@ export function newGame({
     titles: {},
     requests: {},
     incidents: {},
+    factions: {},
+    // Reactions that have been decided but have not happened yet. A slow burn
+    // is the same decision with a later tick on it.
+    pendingReactions: [],
     // The building. `tick` is seconds into the working night, which is what
     // notification timing is measured in.
     backstage: {
@@ -163,6 +169,8 @@ export function installState(state, rngState, { seed } = {}) {
     ...Object.keys(state.titles || {}),
     ...Object.keys(state.requests || {}),
     ...Object.keys(state.incidents || {}),
+    ...Object.keys(state.factions || {}),
+    ...Object.values(state.incidents || {}).flatMap((i) => (i.reactions || []).map((r) => r.id)),
     ...(state.backstage?.notifications || []).map((n) => n.id),
     ...state.log.map((e) => e.id),
     ...Object.values(state.wrestlers).flatMap((w) => w.memory.map((m) => m.id)),
@@ -976,6 +984,149 @@ export function setDiscipline(id, patch, { reason = '', cause = null } = {}) {
     data: { before, after: { ...wrestler.state.discipline }, patch },
   });
   return wrestler.state.discipline;
+}
+
+// ---------------------------------------------------------------------------
+// Factions and reactions
+// ---------------------------------------------------------------------------
+
+export function allFactions() { return Object.values(requireGame().factions); }
+export function getFaction(id) { return requireGame().factions[id] || null; }
+
+/** The stable somebody runs with, or null. Nobody is in two. */
+export function factionOf(wrestlerId) {
+  return allFactions().find((f) => factionIsActive(f) && f.memberIds.includes(wrestlerId)) || null;
+}
+
+export function sameFaction(aId, bId) {
+  const f = factionOf(aId);
+  return !!f && f.memberIds.includes(bId);
+}
+
+export function formFaction(spec, { cause = null } = {}) {
+  const state = requireGame();
+  for (const id of spec.memberIds || []) requireWrestler(id);
+  const faction = createFaction({ formedOnDay: state.calendar.day, ...spec });
+  state.factions[faction.id] = faction;
+
+  emit(EVENT_TYPES.FACTION_FORMED, {
+    summary: `${faction.name}: ${faction.memberIds.map(nameOf).join(', ')}`,
+    subjects: faction.memberIds,
+    cause,
+    data: { factionId: faction.id, leaderId: faction.leaderId, memberIds: faction.memberIds },
+  });
+  return faction;
+}
+
+/**
+ * Record what somebody did, or decided not to do, about an incident.
+ *
+ * Reactions live on the incident rather than in a registry of their own,
+ * because a reaction with no incident is meaningless and one that outlived its
+ * incident would be a dangling reference waiting to happen.
+ */
+export function addReaction(incidentId, spec, { cause = null } = {}) {
+  const state = requireGame();
+  const incident = requireIncident(incidentId);
+  requireWrestler(spec.wrestlerId);
+  const reaction = createReaction({
+    incidentId,
+    raisedTick: incident.tick,
+    dueTick: state.backstage.tick,
+    ...spec,
+  });
+  incident.reactions.push(reaction);
+  if (reaction.dueTick > state.backstage.tick) state.pendingReactions.push(reaction.id);
+  return reaction;
+}
+
+export function findReaction(id) {
+  for (const incident of allIncidents()) {
+    const found = incident.reactions.find((r) => r.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Reactions decided but not yet acted on, soonest first. */
+export function pendingReactions() {
+  return requireGame().pendingReactions
+    .map(findReaction)
+    .filter(Boolean)
+    .sort((a, b) => a.dueTick - b.dueTick);
+}
+
+/** Everything whose moment has come. The caller decides what each one does. */
+export function dueReactions() {
+  const now = requireGame().backstage.tick;
+  return pendingReactions().filter((r) => r.dueTick <= now);
+}
+
+/** Mark one as having happened, and take it off the queue. */
+export function commitReaction(reactionId, { spawnedIncidentId = null } = {}) {
+  const state = requireGame();
+  const reaction = findReaction(reactionId);
+  if (!reaction || reaction.tick != null) return reaction || null;
+  reaction.tick = state.backstage.tick;
+  reaction.spawnedIncidentId = spawnedIncidentId;
+  state.pendingReactions = state.pendingReactions.filter((id) => id !== reactionId);
+  return reaction;
+}
+
+/** Drop anything still queued. Used when the night ends. */
+export function clearPendingReactions() {
+  const state = requireGame();
+  const dropped = state.pendingReactions.length;
+  state.pendingReactions = [];
+  return dropped;
+}
+
+/** A join makes the same fight worse rather than starting a new one. */
+export function raiseSeverity(incidentId, by, { reason = '', cause = null } = {}) {
+  const incident = requireIncident(incidentId);
+  const before = incident.severity;
+  incident.severity = Math.max(1, Math.min(100, Math.round(before + by)));
+  if (incident.severity === before) return incident;
+
+  emit(EVENT_TYPES.INCIDENT_ESCALATED, {
+    summary: reason || `${INCIDENT_SPECS[incident.kind].label} is getting worse`,
+    subjects: incident.participantIds,
+    showId: incident.showId,
+    locationId: incident.locationId,
+    visibility: VISIBILITY.BACKSTAGE,
+    cause: cause || incident.startedEventId,
+    data: {
+      incidentId, from: before, to: incident.severity,
+      severityLabel: severityLabel(incident.severity),
+    },
+  });
+  return incident;
+}
+
+/** Pull somebody into an incident that is already running. */
+export function addParticipant(incidentId, wrestlerId) {
+  const incident = requireIncident(incidentId);
+  requireWrestler(wrestlerId);
+  if (!incident.participantIds.includes(wrestlerId)) incident.participantIds.push(wrestlerId);
+  return incident;
+}
+
+/** Walk a chain back to the thing that started it. */
+export function incidentChain(incidentId) {
+  const chain = [];
+  let current = getIncident(incidentId);
+  const seen = new Set();
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    chain.unshift(current);
+    current = current.causeIncidentId ? getIncident(current.causeIncidentId) : null;
+  }
+  return chain;
+}
+
+/** Everything that came out of this one, depth first. */
+export function incidentsCausedBy(incidentId) {
+  return allIncidents().filter((i) => i.causeIncidentId === incidentId);
 }
 
 // ---------------------------------------------------------------------------

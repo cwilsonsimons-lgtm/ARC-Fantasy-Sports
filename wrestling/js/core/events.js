@@ -59,6 +59,9 @@ export const EVENT_TYPES = Object.freeze({
   INCIDENT_RESOLVED:   'incident.resolved',
   INCIDENT_LAPSED:     'incident.lapsed',
   GM_RESPONDED:        'gm.responded',
+  INCIDENT_ESCALATED:  'incident.escalated',
+  INCIDENT_REACTION:   'incident.reaction',
+  FACTION_FORMED:      'faction.formed',
   BOOKING_REFUSED:     'booking.refused',
   WRESTLER_DISCIPLINE: 'wrestler.discipline.changed',
 
@@ -84,7 +87,6 @@ export const EVENT_TYPES = Object.freeze({
   PROMISE_MADE:        'promise.made',
   PROMISE_KEPT:        'promise.kept',
   PROMISE_BROKEN:      'promise.broken',
-  INCIDENT_ESCALATED:  'incident.escalated',
   RIVALRY_FORMED:      'rivalry.formed',
   CONTRACT_SIGNED:     'contract.signed',
   CONTRACT_EXPIRED:    'contract.expired',

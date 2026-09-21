@@ -13,6 +13,7 @@ import * as requests from './requests.js';
 import * as backstage from './backstage.js';
 import * as notifications from './notifications.js';
 import * as incidents from './incidents.js';
+import * as reactions from './reactions.js';
 import * as upkeep from './upkeep.js';
 
 export function installSystems() {
@@ -30,5 +31,6 @@ export function installSystems() {
   // room, so the building has to have been filled before trouble looks around
   // it. backstage.install() must come first.
   incidents.install();      // ...and what goes wrong in those rooms
+  reactions.install();      // ...and what everybody else does about it
   upkeep.install();         // between shows: condition back, momentum fading
 }

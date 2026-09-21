@@ -193,6 +193,24 @@ export const MIGRATIONS = {
     }
     return state;
   },
+
+  // v8 -> v9: the rest of the room reacts now. A save written before this has
+  // no factions, nobody queued to do anything, and no reactions on any
+  // incident. Alignment is authored character, so everybody who predates it
+  // starts as a tweener rather than being guessed at from their traits.
+  8: (state) => {
+    state.factions = state.factions || {};
+    state.pendingReactions = [];
+    for (const w of Object.values(state.wrestlers)) {
+      if (!w.identity.alignment) w.identity.alignment = 'tweener';
+    }
+    for (const inc of Object.values(state.incidents || {})) {
+      inc.reactions = inc.reactions || [];
+      if (inc.causeIncidentId === undefined) inc.causeIncidentId = null;
+      if (!Number.isFinite(inc.chainDepth)) inc.chainDepth = 0;
+    }
+    return state;
+  },
 };
 
 export function migrate(state, fromVersion) {

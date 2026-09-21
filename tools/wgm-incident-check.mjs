@@ -780,16 +780,22 @@ check('almost every show has some chaos, and most of it is small', () => {
       .map(([x, n]) => `${x} ${(n / shows).toFixed(2)}`).join(', ');
 });
 
-check('a fight is rarer than an argument, and a refusal rarer still than both', () => {
-  // Re-measured from the same run as above, kept separate so a failure here
-  // says something different from a failure there.
+check('people do not start swinging more readily than they start shouting', () => {
+  // Only incidents that START on their own. From Tier 9 a fight can also be
+  // the second link in a chain - somebody pulled a man off and got rounded on
+  // for it - and those say nothing about how readily anybody swings first.
   const tally = {};
-  for (const i of store.allIncidents()) tally[i.kind] = (tally[i.kind] || 0) + 1;
-  const arguments_ = tally[INCIDENT_KINDS.ARGUMENT] || 0;
+  for (const i of store.allIncidents()) {
+    if (i.chainDepth > 0) continue;
+    tally[i.kind] = (tally[i.kind] || 0) + 1;
+  }
+  const rows = tally[INCIDENT_KINDS.ARGUMENT] || 0;
   const fights = tally[INCIDENT_KINDS.FIGHT] || 0;
-  assert(fights <= arguments_,
-    `${fights} fights against ${arguments_} arguments: people are swinging too readily`);
-  return Object.entries(tally).map(([x, n]) => `${x} ${n}`).join(', ');
+  assert(fights <= rows,
+    `${fights} fights against ${rows} arguments, neither out of a chain: people are swinging too readily`);
+  const spawned = store.allIncidents().filter((i) => i.chainDepth > 0).length;
+  return Object.entries(tally).map(([x, n]) => `${x} ${n}`).join(', ')
+    + ` (plus ${spawned} out of chains)`;
 });
 
 check('every incident carries reasons that are not a dice roll', () => {

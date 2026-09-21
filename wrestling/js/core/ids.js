@@ -22,11 +22,12 @@ export const ID_TYPES = Object.freeze({
   memory:        'mem',
   request:       'req',
   notification:  'nt',
+  incident:      'inc',
+  reaction:      'rx',
+  team:          'tm',
   // reserved for systems named in the design foundation but not yet built
   promise:       'pr',
-  incident:      'inc',
   rivalry:       'rv',
-  team:          'tm',
   title:         'ttl',
   contract:      'ct',
 });

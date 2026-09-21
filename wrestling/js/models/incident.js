@@ -263,6 +263,8 @@ export function createIncident(spec = {}) {
     startedEventId = null,
     reasons = [],
     blocksSegmentId = null,
+    causeIncidentId = null,
+    chainDepth = 0,
   } = spec;
 
   const preset = incidentSpec(kind);
@@ -300,7 +302,20 @@ export function createIncident(spec = {}) {
 
     // A refusal stops the match it is a refusal of.
     blocksSegmentId,
+
+    // Tier 9. What other people did about it, and where this one came from:
+    // an incident spawned by somebody reacting to another one knows its parent,
+    // so a whole chain can be walked from either end.
+    reactions: [],
+    causeIncidentId,
+    chainDepth,
   };
+}
+
+/** The reactions that were actually acts rather than decisions not to act. */
+export function actsIn(incident) {
+  return incident.reactions.filter((r) => r.tick != null
+    && (r.kind === 'save' || r.kind === 'join' || r.kind === 'interfere'));
 }
 
 export function isOpen(incident) {
@@ -332,5 +347,9 @@ export function validateIncident(inc) {
   if (inc.status === INCIDENT_STATUS.RESOLVED && !inc.response) {
     problems.push('resolved with no response recorded');
   }
+  if (!Number.isFinite(inc.chainDepth) || inc.chainDepth < 0) {
+    problems.push(`chainDepth is ${inc.chainDepth}`);
+  }
+  if (inc.causeIncidentId === inc.id) problems.push('is its own cause');
   return problems;
 }

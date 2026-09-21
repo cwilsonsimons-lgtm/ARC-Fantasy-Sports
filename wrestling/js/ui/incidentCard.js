@@ -14,6 +14,7 @@ import * as store from '../core/store.js';
 import {
   INCIDENT_SPECS, RESPONSES, severityLabel, isSerious,
 } from '../models/incident.js';
+import { REACTION_SPECS, REACTION_KINDS } from '../models/reaction.js';
 import { optionsFor } from '../systems/incidents.js';
 import { locationName } from '../models/location.js';
 import { esc, mmss, signed, titleCase } from './format.js';
@@ -30,6 +31,13 @@ function tagTone(severity) {
   if (severity >= 54) return 'amber';
   if (severity >= 31) return 'blue';
   return '';
+}
+
+/** "A and B", "A, B and C" - never "A and B and C". */
+export function nameList(ids) {
+  const names = ids.map(store.nameOf);
+  if (names.length <= 1) return names[0] || '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 function person(id) {
@@ -52,6 +60,38 @@ function reasonRow(r) {
     <span class="${weight < 0 ? 'pos' : ''}">${Number.isFinite(weight) ? signed(Math.round(weight)) : ''}</span>
   </div>`;
 }
+
+/** Who else got involved, and who pointedly did not. */
+const REACTION_TONE = {
+  [REACTION_KINDS.SAVE]: 'green',
+  [REACTION_KINDS.JOIN]: 'red',
+  [REACTION_KINDS.INTERFERE]: 'red',
+  [REACTION_KINDS.STOOD_BY]: 'amber',
+  [REACTION_KINDS.AVOIDED]: '',
+};
+
+/**
+ * One person's decision about somebody else's trouble.
+ *
+ * Deciding not to move is shown exactly like deciding to, because it is exactly
+ * as much of a decision and the person who was not helped treats it as one.
+ */
+function reactionRow(r) {
+  const spec = REACTION_SPECS[r.kind];
+  const about = r.forId || r.againstId;
+  const why = r.reasons.filter((x) => x.label).map((x) => esc(x.label)).join(' &middot; ');
+  const waiting = r.tick == null;
+  return `<div class="slot ${waiting ? '' : 'done'}">
+    <span class="what">
+      <span class="t">${esc(store.nameOf(r.wrestlerId))}
+        <span class="muted">${esc(spec.label.toLowerCase())}${
+          about ? ` ${r.againstId ? 'at' : 'for'} ${esc(store.nameOf(about))}` : ''}</span></span>
+      <span class="d">${why}${waiting ? ' &middot; on their way' : ''}</span>
+    </span>
+    <span class="side"><span class="tag ${REACTION_TONE[r.kind] || ''}">${esc(spec.label)}</span></span>
+  </div>`;
+}
+
 
 /**
  * What this answer costs, said the way a person would say it.
@@ -106,6 +146,8 @@ export function incidentCard(incident, { compact = false } = {}) {
 
   const options = optionsFor(incident.id);
   const available = options.filter((o) => o.ok);
+  // Only worth showing when this one came out of something else.
+  const chain = incident.causeIncidentId ? store.incidentChain(incident.id) : [];
 
   return `
     <section class="panel trouble ${severityTone(incident.severity)}">
@@ -123,6 +165,17 @@ export function incidentCard(incident, { compact = false } = {}) {
         ${compact || !incident.reasons.length ? '' : `
           <h3>Why it happened</h3>
           ${incident.reasons.map(reasonRow).join('')}`}
+
+        ${compact || !incident.reactions.length ? '' : `
+          <h3>Who else got involved</h3>
+          <div class="sheet">${incident.reactions.map(reactionRow).join('')}</div>`}
+
+        ${compact || !chain.length ? '' : `
+          <h3>How it got here</h3>
+          <div class="log narrow">${chain.map((link, i) => `<div class="ev">
+            <span class="d">${i + 1}</span>
+            <span>${esc(store.getEvent(link.startedEventId)?.summary || link.kind)}</span>
+          </div>`).join('')}</div>`}
 
         <h3>What you can do</h3>
         ${incident.attempted.length ? `<p class="sub">Already tried:
@@ -143,11 +196,36 @@ export function incidentRow(incident) {
     <span class="idx">${esc(severityLabel(incident.severity)[0])}</span>
     <span class="what">
       <span class="t">${esc(incident.outcome?.summary || spec.label)}</span>
-      <span class="d">${esc(incident.participantIds.map(store.nameOf).join(' and '))}
+      <span class="d">${esc(nameList(incident.participantIds))}
         &middot; ${esc(locationName(incident.locationId))}
         &middot; ${esc(severityLabel(incident.severity))} ${incident.severity}
         ${incident.discoveredTick == null ? '&middot; you never found out' : ''}</span>
     </span>
     <span class="side">${options}</span>
   </div>`;
+}
+
+/**
+ * A whole chain as an indented list, root first.
+ *
+ * This is the shape Tier 9 exists to produce, so it gets shown as a shape: one
+ * thing, then the thing it turned into, with who stepped in at each step.
+ */
+export function chainRows(root) {
+  const walk = (incident) => [incident, ...store.incidentsCausedBy(incident.id).flatMap(walk)];
+  return walk(root).map((link) => {
+    const acts = link.reactions.filter((r) => r.tick != null && REACTION_SPECS[r.kind].acts);
+    const depth = link.chainDepth;
+    return `<div class="slot ${depth ? 'done' : 'next'}" style="margin-left:${depth * 1.1}rem">
+      <span class="idx">${depth ? '&#8627;' : '&#9679;'}</span>
+      <span class="what">
+        <span class="t">${esc(store.getEvent(link.startedEventId)?.summary
+          || INCIDENT_SPECS[link.kind].label)}</span>
+        <span class="d">${esc(severityLabel(link.severity))} ${link.severity}${
+          acts.length
+            ? ` &middot; ${acts.map((r) => `${esc(store.nameOf(r.wrestlerId))} ${esc(REACTION_SPECS[r.kind].label.toLowerCase())}`).join(', ')}`
+            : ''}</span>
+      </span>
+    </div>`;
+  }).join('');
 }

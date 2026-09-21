@@ -13,12 +13,14 @@ Plus **Tier 3** (records, rankings, championships and momentum), **Tier 4**
 (personality, career status, and the judgement of what behaviour is believable)
 **Tier 5** (relationships, the GM's own standing, and memory), **Tier 6**
 (morale, satisfaction, and the requests they produce), **Tier 7** (the backstage
-map, and news that reaches the GM late or not at all) and **Tier 8** (things
-going wrong, and the eight answers to them).
+map, and news that reaches the GM late or not at all), **Tier 8** (things going
+wrong, and the eight answers to them) and **Tier 9** (the rest of the room
+reacting, and one thing turning into the next).
 
-The locker room has a voice, the GM can miss it, and the roster can now act on
-its own: people argue, fight, complain, come looking for you, and refuse to go
-out. That last one stops the show.
+The locker room has a voice, the GM can miss it, and the roster acts on its own:
+people argue, fight, complain, come looking for you, and refuse to go out. When
+two of them go at it the others are standing right there, and what they do about
+it is the difference between an incident and a story.
 
 ## Running it
 
@@ -26,7 +28,7 @@ out. That last one stops the show.
 npm start                 # serves the repo at :8080
 # open http://127.0.0.1:8080/wrestling/index.html
 
-npm run check:wgm         # 263 headless checks across ten suites
+npm run check:wgm         # 293 headless checks across eleven suites
 npm run build:wgm         # bundle to wrestling/dist/index.html
 ```
 
@@ -200,6 +202,8 @@ js/models/       pure entity factories and derived reads
   location.js    nine rooms and the corridor joining them. A pure graph.
   notification.js what the GM was told, by whom, how late, and how reliably
   incident.js    six kinds of trouble, eight answers, and a severity scale
+  faction.js     who runs with whom. Membership and a name, nothing else.
+  reaction.js    five things somebody can do about somebody else's trouble
 
 js/systems/      the game itself. Subscribes to the log, writes through actions.
   formats.js     what can go on a card and the shape it takes
@@ -218,6 +222,7 @@ js/systems/      the game itself. Subscribes to the log, writes through actions.
   backstage.js   who is standing where, and what the night's clock does to it
   notifications.js how news finds the GM: witnessed, late, hedged, or never
   incidents.js   what goes wrong in those rooms, and what each answer costs
+  reactions.js   who else gets involved, why, and what it turns into
 
 js/data/roster.js   fourteen hand-authored wrestlers with starting history
 js/ui/              renders the store and calls its actions; holds no game state
@@ -367,16 +372,17 @@ on whoever took their spot.
 
 ### Memory
 
-Twenty-four registered kinds with their own weights and decay rates, so losing
+Thirty-three registered kinds with their own weights and decay rates, so losing
 a championship marks someone for years while an ordinary win fades in weeks.
 The vocabulary is closed: the invariant checker rejects a memory type no system
 can recognise.
 
-Ten kinds are written by play today: wins, losses, upset losses, being cheated
-by a disqualification, winning and losing a title, being given a title shot,
-being passed over for one, being cut from a card, and being left off television.
-Four more are registered and reserved with no system to generate them yet:
-betrayal, saves, broken promises and suspensions.
+Written by play today: wins, losses, upset losses, being cheated by a
+disqualification, winning and losing a title, being given a title shot, being
+passed over for one, being cut from a card and being left off television
+(Tier 3-6); being heard out, left to it, warned, manhandled, sent home and
+suspended (Tier 8); and being saved, betrayed or stood by (Tier 9). Broken
+promises are the last kind still registered with no system to generate them.
 
 Memory is capped at 60 per wrestler. Beyond that the lightest ordinary memories
 are dropped, which is roughly what forgetting is. Scars are never pruned.
@@ -614,6 +620,112 @@ personally. Warnings sit on the record and damp future friction, which is the
 only reason the professionalism trait pays off here: a professional takes a
 warning as the job, somebody who is not takes it personally.
 
+
+## One thing leads to another
+
+Tier 8 made things go wrong between two people. Tier 9 is the fact that the rest
+of the locker room is standing right there.
+
+    Croft and Vance are shouting at each other in the Gorilla Position
+      -> Tobias Wren pulls Croft out of it          (a save)
+         -> Ruby Vance rounds on Tobias Wren        (a new incident)
+            -> Sable Okonkwo piles in               (a join)
+
+That is a real chain out of a real save, printed as the game printed it.
+
+**Nothing here is new data.** Every motive reads a number an earlier tier
+already owns: affinity and hostility from Tier 5, loyalty, jealousy,
+vindictiveness, aggression and courage from Tier 4, grudge memories from Tier 5,
+the room from Tier 7, the incident from Tier 8. Only two facts are new, and both
+are authored character rather than anything that has happened.
+
+### The two new facts
+
+**Alignment.** Face, heel or tweener, on `identity`. It earns its place in
+exactly one rule - a babyface does not watch another babyface get jumped - and
+nothing else reads it, because an alignment that silently moved every number
+would be a second personality system wearing a hat.
+
+**Factions.** The Syndicate (Croft, Wren, Delacroix) and the Iron Union (Kane,
+Pike, Lund). Membership and a name. No faction morale, no faction wars, no
+leader powers beyond the fact that the leader's fights are the faction's fights.
+
+Crucially, **a stable carries no relationship values at all.** On a new save the
+Syndicate think nothing of each other, and they still pile in when one of them
+is in a fight, because that is what a stable is. Affinity and faction are
+separate motives and are counted separately, which is what stops "faction" being
+a shorthand for "friends". Both are authored the way position on the card is:
+who these people are on day one, not what has happened to them.
+
+### Seven motives, five answers
+
+| Motive | Reads |
+|---|---|
+| They are close | affinity, scaled by loyalty |
+| Same stable | faction membership, more again for the leader |
+| One babyface helping another | alignment, scaled by professionalism and courage |
+| Heat between them | hostility, scaled by vindictiveness |
+| Has not forgotten | the freshest grudge memory, already decayed by Tier 5 |
+| Resents them | jealousy against somebody ranked above them |
+| The sort who gets involved | loyalty and aggression together |
+
+The strongest pull decides who they care about and which way, and that decides
+what they do: **save** the person being gone after, **join** whoever started it,
+or **interfere** against somebody they have a problem with.
+
+**Deciding not to act is a reaction too.** Three of the five kinds are somebody
+acting; two are somebody not, and those two matter just as much:
+
+- **Walked away** - a coward with every reason to help. Halloran, courage 20,
+  in front of a crisis: nerve 0 against a floor of 30. He leaves.
+- **Stood there** - had the nerve, had the reason, did not move. The person who
+  was not helped gets a `stood_by` memory about them, and it scars.
+
+A system that only logged the heroics would be missing half the tier.
+
+### Courage decides now, vindictiveness decides later
+
+Nerve is courage against how bad it is, with aggression as the part of somebody
+that does not stop to think. Below the floor they are not going anywhere near
+it. Above it, commitment **saturates**: somebody fully committed acts 92% of the
+time, not 50% - the courageous best friend of the man being jumped should be a
+near certainty, and a linear curve made him a coin flip.
+
+Delayed reactions come from two places:
+
+1. **A slow burn.** Somebody short on nerve and long on spite waits four to
+   fifteen minutes and comes back to it. Only an *interference* can smoulder:
+   piling into a fight happening now is now or never, and a save that arrives
+   ten minutes late is not a save.
+2. **Hearing about it.** Somebody elsewhere in the building with a strong enough
+   reason sets off anyway, and Tier 7 already knows how far it is. By the time
+   they arrive it may be over, which is its own answer.
+
+### The chain is a line
+
+One incident spawns at most one more, up to three links. A chain that branches
+is a riot rather than a wrestling show, and it leaves one man in five
+simultaneous fights. Nobody is in two fights at once - but being in two *links
+of the same chain* is not being in two fights, it is being in this one twice,
+and the invariants know the difference.
+
+### What it costs
+
+| | The people in it |
+|---|---|
+| A save | the saved gain affinity and trust and a `save` memory that scars; the aggressor now has a problem with the saver |
+| A join | the side joined gains affinity; the other side gains heat - and if they were close, a `betrayal` memory instead |
+| An interference | heavy hostility from whoever got jumped |
+| Standing there | affinity and trust fall, worse the closer they were, plus a `stood_by` scar |
+| Walking away | nothing from the people in it, who did not see. Respect from anyone who did |
+
+Measured over forty shows: about **1.7 reactions a night**, chains reaching
+three links, all five kinds and all seven motives firing, and roughly a fifth of
+reactions delayed. `tools/wgm-reaction-check.mjs` re-measures it, and also
+guards the failure that nearly happened: every bystander quietly accruing a
+grudge against every other bystander until the whole roster hated each other for
+reasons nobody could name.
+
 ## What is deliberately not here
 
 **No escalation over time.** The design foundation has incidents escalating on a
@@ -626,7 +738,10 @@ No pitch step: refusal happens at the curtain rather than when the card is
 written, so the GM still books without being told no in advance. No live levers
 to fill the dead air a cut match leaves. No promises the GM can make, no
 contract negotiation, no budget, no GM progression, no competing brands.
-Betrayals and saves have memory types and no way to happen.
+Factions never form, change or break up in play - the two that ship are the two
+there are. Alignment never turns; a heel who keeps getting saved by babyfaces
+stays a heel. Nobody runs in on a match: reactions happen backstage only, and
+the ring is still a closed system.
 
 The data model has the fields and the event log has the vocabulary for all of
 it. `results.js` is where reactions will hook in, because it already sees every

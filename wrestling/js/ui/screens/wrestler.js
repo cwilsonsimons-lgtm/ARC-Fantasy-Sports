@@ -10,6 +10,7 @@ import {
   recordOf, streakLabel, memoryWeightOn, relationshipTo, relationshipWith, notableTies,
   alliesOf, enemiesOf, rivalsOf,
   TRAITS, TRAIT_GROUPS, ABILITIES, CAREER_STATUS, TRAJECTORY, statusRank, CAREER_ORDER,
+  ALIGNMENT_LABEL,
 } from '../../models/wrestler.js';
 import { refusalFloor, expectedMinutes, expectedSlot } from '../../systems/disposition.js';
 import { satisfactionOf, DIMENSIONS, DIMENSION_LABEL } from '../../systems/satisfaction.js';
@@ -81,6 +82,10 @@ export default {
 
       <div class="cards">
         <div class="card"><h3>1. Identity &middot; what they want</h3>
+          ${kv('The crowd takes them as', ALIGNMENT_LABEL[w.identity.alignment])}
+          ${kv('Runs with', store.factionOf(w.id)
+            ? `${esc(store.factionOf(w.id).name)}${store.factionOf(w.id).leaderId === w.id ? ' <span class="muted">(leads)</span>' : ''}`
+            : '<span class="muted">nobody</span>')}
           ${bar('Ego', w.identity.ego)}
           ${bar('Ambition', w.identity.ambition)}
           <div class="kv"><span class="muted" style="font-size:11px">Ego is what pushes back. Ambition is what they will put up with to get somewhere.</span><span></span></div>

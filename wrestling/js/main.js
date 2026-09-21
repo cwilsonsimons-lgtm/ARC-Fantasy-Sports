@@ -12,7 +12,7 @@ import * as store from './core/store.js';
 import * as persist from './core/persist.js';
 import * as clock from './core/clock.js';
 import { checkState } from './core/invariants.js';
-import { seedRoster } from './data/roster.js';
+import { seedRoster, seedFactions } from './data/roster.js';
 import { seedTitles } from './data/titles.js';
 import { installSystems } from './systems/index.js';
 import * as runner from './systems/showRunner.js';
@@ -113,7 +113,7 @@ registerActions({
       mode: f.get('mode') || 'sandbox',
       scheduleBlocks: 3,
     });
-    seedRoster();
+    seedFactions(seedRoster());
     seedTitles(store);
     rankings.refresh();
     go('show');
