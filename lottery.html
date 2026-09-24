@@ -64,6 +64,7 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .reveal.pop{border-color:var(--tc);animation:flash 1.1s ease-out}
 @keyframes flash{0%{box-shadow:0 0 0 0 var(--tc),0 0 60px 10px var(--tc)}100%{box-shadow:0 0 0 0 transparent,0 0 0 0 transparent}}
 .reveal.pop .team{animation:none}
+.reveal .team .w{white-space:nowrap}
 .reveal.pop .team .ch{display:inline-block;animation:drop .45s cubic-bezier(.2,1.5,.4,1) both}
 @keyframes drop{from{transform:translateY(-60%) scale(1.4);opacity:0}to{transform:none;opacity:1}}
 .btn.peekbtn{flex:0 0 auto;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:none}
@@ -129,13 +130,24 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .hint b{color:var(--gold);font-weight:600}
 
 /* ---- setup ---- */
-.srow{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr) 72px;gap:10px;align-items:center}
+.srow{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr) 64px 52px;gap:10px;align-items:center}
 .srow label{font-size:13px;color:var(--ink-2);font-weight:600}
 select,input[type=number]{background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0;width:100%}
 input[type=number]{font-family:var(--mono);text-align:center}
 select:disabled,input:disabled{opacity:.55}
-.shead{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr) 72px;gap:10px;color:var(--ink-3);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
-.shead span:last-child{text-align:center}
+.shead{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr) 64px 52px;gap:10px;color:var(--ink-3);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.shead span:nth-child(n+3){text-align:center}
+@media (max-width:480px){.srow,.shead{grid-template-columns:minmax(0,1fr) 56px 48px}.srow label,.shead span:first-child{grid-column:1/-1}
+  .shead span:first-child{display:none}.srow label{margin-bottom:-4px}}
+.logo{position:relative;width:48px;height:42px;border-radius:10px;border:1px dashed var(--line);background:var(--card-2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--ink-3);font-weight:600;overflow:hidden}
+.logo:hover,.logo:focus-within{border-color:var(--ink-3);color:var(--ink)}
+.logo:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+.logo img{width:100%;height:100%;object-fit:contain}
+.logo input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.logo-x{position:absolute;top:1px;right:1px;width:16px;height:16px;border-radius:50%;border:0;background:var(--bg);color:var(--ink);
+  font-size:11px;line-height:16px;z-index:1}
+.reveal .rlogo{flex:none;width:56px;height:56px;border-radius:50%;object-fit:contain;background:#fff;border:3px solid var(--tc)}
 .dir{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
 .dir button{text-align:left;background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;
   display:flex;flex-direction:column;gap:2px}
@@ -167,7 +179,7 @@ select:disabled,input:disabled{opacity:.55}
       <button type="button" id="dirDown" data-mode="down"><b>Start at #30</b><span>Draw #30 down to #1. The worst team gets the most balls.</span></button>
       <button type="button" id="dirUp" data-mode="up"><b>Start at #1</b><span>Draw #1 up to #30. The worst team gets the fewest balls.</span></button>
     </div>
-    <div class="shead"><span>Finish</span><span>Team</span><span>Balls</span></div>
+    <div class="shead"><span>Finish</span><span>Team</span><span>Balls</span><span>Logo</span></div>
     <div id="setup" style="display:flex;flex-direction:column;gap:8px"></div>
     <p class="note" id="setupNote"></p>
     <div class="actions">
@@ -233,12 +245,13 @@ function defaults(){
     mode:'down',  // 'down': #30 to #1, 'up': #1 to #30
     draws:[],     // draws[k] = slot index that received numberOf(k)
     sealed:false, // last ball is out but the dealer hasn't revealed it
+    logos:{},     // team id -> small data: URL, shown on the revealed ball
     winner:null,  // Rumble-winning entrant number
   };
 }
 let S = load();
 function load(){
-  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.slots) && Array.isArray(s.draws)){ s.mode = s.mode === 'up' ? 'up' : 'down'; s.sealed = !!s.sealed && s.draws.length > 0; return s; } }catch(e){}
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.slots) && Array.isArray(s.draws)){ s.mode = s.mode === 'up' ? 'up' : 'down'; s.sealed = !!s.sealed && s.draws.length > 0; s.logos = s.logos || {}; return s; } }catch(e){}
   return defaults();
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
@@ -291,10 +304,8 @@ function size(){
 const trayPos = () => ({x:drum.x, y:H - br * 1.7 - 6, r:br * 1.7});
 function fill(){
   balls = [];
-  // A sealed draw is still shown in the cage: the cage only gives up that team's ball at the reveal,
-  // so counting colours can't give the pick away early.
-  const pend = S.sealed ? S.draws[S.draws.length - 1] : -1;
-  S.slots.forEach((s, i) => { for(let k = 0; k < left(i) + (i === pend ? 1 : 0); k++) balls.push(newBall(i)); });
+  // Every ball in the cage looks the same (a grey ?), so the cage never shows which teams are left.
+  for(let k = 0; k < remaining(); k++) balls.push(newBall(null));
   // a ball that is out of the cage but not yet revealed sits sealed in the tray
   const last = S.draws.length - 1;
   tray = last >= 0 && (S.sealed || tray) ? {slot:S.draws[last], t0:-1e9, sealed:!!S.sealed, revealT:S.sealed ? 0 : -1e9} : null;
@@ -333,9 +344,25 @@ function step(now){
   sparks = sparks.filter(p => (p.life -= 1) > 0);
   for(const p of sparks){ p.vy += .12; p.vx *= .98; p.x += p.vx; p.y += p.vy; p.rot += p.vr; }
 }
+const logoImgs = {};
+function logoImg(id){
+  const src = S.logos[id]; if(!src) return null;
+  let im = logoImgs[id];
+  if(!im || im.src !== src){ im = logoImgs[id] = new Image(); im.src = src; }
+  return im.complete && im.naturalWidth ? im : null;
+}
 function drawBall(x, y, r, slot, sx = 1){
-  const sealed = slot == null, t = sealed ? null : team(slot), c = sealed ? '#E9E3D3' : t.c;
+  const sealed = slot == null, t = sealed ? null : team(slot), c = sealed ? '#A9B2BF' : t.c;
   ctx.save(); ctx.translate(x, y); ctx.scale(Math.max(.02, sx), 1);
+  const logo = sealed ? null : logoImg(t.id);
+  if(logo){                                            // revealed ball with the team's logo on a white face
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.clip();
+    const k = Math.min(r * 1.5 / logo.naturalWidth, r * 1.5 / logo.naturalHeight), w = logo.naturalWidth * k, h = logo.naturalHeight * k;
+    ctx.drawImage(logo, -w / 2, -h / 2, w, h); ctx.restore();
+    ctx.strokeStyle = c; ctx.lineWidth = r * .2; ctx.beginPath(); ctx.arc(0, 0, r - r * .1, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore(); return;
+  }
   const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .1, 0, 0, r);
   g.addColorStop(0, '#ffffff'); g.addColorStop(.35, c); g.addColorStop(1, shade(c, sealed ? -.3 : -.35));
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
@@ -387,11 +414,7 @@ function render(now){
   ctx.beginPath(); ctx.roundRect(tp.x - tp.r - 8, drum.y + drum.r - 6, (tp.r + 8) * 2, H - (drum.y + drum.r) + 4, [0, 0, 16, 16]);
   ctx.fill(); ctx.stroke();
   drawCage();
-  balls = balls.filter(b => !b.fade || now - b.fade < 500);
-  for(const b of balls){
-    if(b.fade){ const f = (now - b.fade) / 500; ctx.globalAlpha = 1 - f; drawBall(b.x, b.y, br * (1 + f * .8), b.slot); ctx.globalAlpha = 1; }
-    else drawBall(b.x, b.y, br, b.slot);
-  }
+  for(const b of balls) drawBall(b.x, b.y, br, null);
   drawWires();
   if(!balls.length && !tray){
     ctx.fillStyle = '#5E6B7C'; ctx.font = `600 ${Math.round(drum.r * .12)}px Oswald, 'Arial Narrow', sans-serif`;
@@ -445,7 +468,8 @@ async function spin(){
   const el = $('reveal'); el.className = 'reveal sealed';
   el.innerHTML = `<span class="big">#${nextNum() - (up() ? 1 : -1)}</span><div class="who"><span class="team">Spinning…</span><span class="sub">One ball is about to drop.</span></div>`;
   if(!reduce){ spinUntil = performance.now() + 1700; await wait(2100); }
-  tray = {slot, x0:drum.x, y0:drum.y + drum.r - br, t0:performance.now(), sealed:true, revealT:0};
+  const b = balls.splice(Math.floor(Math.random() * balls.length), 1)[0] || {x:drum.x, y:drum.y};
+  tray = {slot, x0:b.x, y0:b.y, t0:performance.now(), sealed:true, revealT:0};
   await wait(reduce ? 0 : 650);
   busy = false; renderAll();
 }
@@ -460,8 +484,6 @@ async function reveal(){
   tray.sealed = false; S.sealed = false; save();
   $('reveal').classList.remove('rattle');
   if(!reduce) burst(slot);
-  const gone = balls.find(b => b.slot === slot && !b.fade);
-  if(gone) gone.fade = performance.now() + (reduce ? -1e9 : 0);
   showReveal(numberOf(k), slot, true);
   busy = false; renderAll({keepReveal:true});
 }
@@ -486,9 +508,11 @@ function showReveal(num, slot, pop){
   el.style.setProperty('--tc', t.c);
   if(pop) el.classList.add('pop');
   const letters = pop && !reduce
-    ? [...t.n].map((ch, i) => `<span class="ch" style="animation-delay:${i * 35}ms">${ch === ' ' ? '&nbsp;' : esc(ch)}</span>`).join('')
+    ? (() => { let i = 0; return t.n.split(' ').map(w => `<span class="w">${[...w].map(ch =>
+        `<span class="ch" style="animation-delay:${i++ * 35}ms">${esc(ch)}</span>`).join('')}</span>`).join(' '); })()
     : esc(t.n);
   el.innerHTML = `<span class="big" style="color:${t.c}">#${num}</span>
+    ${S.logos[t.id] ? `<img class="rlogo" src="${S.logos[t.id]}" alt="">` : ''}
     <div class="who"><span class="team" style="color:${t.c}" aria-label="${esc(t.n)}">${letters}</span>
     <span class="sub">${esc(t.mgr)} gets entry #${num} · ${left(slot)} ball${left(slot) === 1 ? '' : 's'} left</span></div>`;
 }
@@ -561,6 +585,8 @@ function renderAll(opt = {}){
       <select id="team${i}" data-i="${i}" ${locked ? 'disabled' : ''}>${LEAGUE.map(t =>
         `<option value="${t.id}"${t.id === s.team ? ' selected' : ''}>${esc(t.n)} (${esc(t.mgr)})</option>`).join('')}</select>
       <input id="balls${i}" data-i="${i}" type="number" min="1" max="30" value="${s.balls}" aria-label="${PLACES[i]} balls" ${locked ? 'disabled' : ''}>
+      <span class="logo">${S.logos[s.team] ? `<img src="${S.logos[s.team]}" alt=""><button type="button" class="logo-x" data-clear="${s.team}" aria-label="Remove ${esc(team(i).n)} logo">×</button>` : '+'}
+        <input id="logo${i}" data-i="${i}" type="file" accept="image/*" aria-label="${esc(team(i).n)} logo"></span>
     </div>`).join('');
   const note = $('setupNote');
   note.className = 'note' + (err ? ' err' : '');
@@ -602,11 +628,30 @@ $('board').addEventListener('click', e => {
   const n = +t.dataset.n; S.winner = S.winner === n ? null : n; save(); renderAll({keepReveal:true});
 });
 $('setup').addEventListener('change', e => {
-  const i = +e.target.dataset.i; if(isNaN(i) || S.draws.length) return;
+  const i = +e.target.dataset.i; if(isNaN(i)) return;
+  if(e.target.type === 'file'){ const f = e.target.files[0]; if(f) addLogo(S.slots[i].team, f); return; }   // logos can change any time
+  if(S.draws.length) return;
   if(e.target.tagName === 'SELECT') S.slots[i].team = e.target.value;
   else S.slots[i].balls = Math.max(0, Math.round(+e.target.value || 0));
   save(); fill(); renderAll();
 });
+$('setup').addEventListener('click', e => {
+  const x = e.target.closest('[data-clear]'); if(!x) return;
+  e.preventDefault(); delete S.logos[x.dataset.clear]; save(); renderAll({keepReveal:true});
+});
+// Shrink an uploaded logo to 160px so a handful of them fit comfortably in browser storage.
+function addLogo(id, file){
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => {
+    const k = Math.min(1, 160 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+    c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    S.logos[id] = c.toDataURL('image/png'); save(); renderAll({keepReveal:true});
+  };
+  im.onerror = () => { URL.revokeObjectURL(url); $('setupNote').className = 'note err'; $('setupNote').textContent = 'That file isn\'t an image this browser can open. Try a PNG or JPG.'; };
+  im.src = url;
+}
 function armed(btn, label, action){
   let t = 0;
   btn.addEventListener('click', () => {
@@ -623,7 +668,7 @@ armed($('restBtn'), 'Draw the rest', () => {
 });
 armed($('resetBtn'), 'Reset lottery', () => {
   if(busy) return;
-  S = {...defaults(), slots:S.slots, mode:S.mode}; save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
+  S = {...defaults(), slots:S.slots, mode:S.mode, logos:S.logos}; save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
 });
 $('copyBtn').addEventListener('click', () => {
   const lines = [`ROYAL RUMBLE LOTTERY (#${firstNum()} to #${lastNum()})`];

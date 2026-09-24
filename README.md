@@ -77,9 +77,13 @@ Draws are dealt like a bingo cage: **Spin** turns the cage and drops one ball,
 sealed, into the tray. Nothing on the page shows the team until the dealer taps
 **Reveal**, which rattles the ball, flips it to the team's colour and bursts
 confetti. Before that, **Hold to peek** shows the dealer the team only while the
-button is held. A sealed ball survives a reload and stays sealed. The cage keeps
-showing the drawn team's ball until the reveal, then fades it out, so counting
-the colours left can't give the pick away.
+button is held. A sealed ball survives a reload and stays sealed.
+
+Every ball in the cage is the same grey **?**, so watching the cage never tells
+you which teams have balls left. A ball only takes its team's colour and letter
+when it is revealed. Setup takes an optional logo per team (shrunk to 160px and
+kept with the rest of the lottery in `localStorage`); a revealed ball then shows
+the logo in a ring of the team's colour, and so does the reveal card.
 
 Draws use `crypto.getRandomValues` and are saved before the cage spins, so reloading mid-draw can't re-roll a result. Progress is kept in
 `localStorage` (`rumble_lottery_v1`); setup locks after the first draw.
