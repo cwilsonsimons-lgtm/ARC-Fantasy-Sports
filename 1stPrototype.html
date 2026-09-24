@@ -4915,7 +4915,25 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       if (isFinite(o)) ords.push(o);
     }));
     if (!ords.length) return [];
-    const windows = liveWindows(ords.map(absMin));
+    // The chart runs from Thursday Night Football's kickoff to the end of Monday
+    // Night Football, taken from the NFL schedule so the frame holds even when no
+    // starter plays in either game. A game before TNF (a Wednesday opener) is
+    // already in the books when the chart starts, so its points are part of the
+    // opening score rather than a stretch of the chart.
+    const frame = weekFrame(ords);
+    let windows = liveWindows(ords.map(absMin));
+    if (frame.tnf != null) {
+      windows = windows.map(([ws, we]) => [Math.max(ws, frame.tnf), we]).filter(([ws, we]) => we >= ws);
+      if (!windows.length || windows[0][0] > frame.tnf + GAME_MIN) windows.unshift([frame.tnf, frame.tnf + GAME_MIN]);
+      else windows[0][0] = frame.tnf;
+    }
+    if (frame.mnf != null) {
+      const closes = frame.mnf + GAME_MIN;
+      windows = windows.map(([ws, we]) => [ws, Math.min(we, closes)]).filter(([ws, we]) => we >= ws);
+      const lastW = windows[windows.length - 1];
+      if (!lastW || lastW[1] < frame.mnf) windows.push([frame.mnf, closes]);
+      else lastW[1] = closes;
+    }
     const side = (list) => list.filter((p) => isFinite(pOrd(p))).map((p) => ({ name: p.n, total: pLive(p.proj, p.n), proj: p.proj, kick: absMin(pOrd(p)) }));
     const A = side(lists[0]), X = side(lists[1]);
     const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
@@ -4930,6 +4948,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     }, 0);
     const plays = touchdowns(A, X);
     const kicks = /* @__PURE__ */ new Map();
+    [frame.tnfOrd, frame.mnfOrd].forEach((o) => {
+      if (o != null) kicks.set(absMin(o), o);
+    });
     lists.forEach((list) => list.forEach((p) => {
       const o = pOrd(p);
       if (isFinite(o)) kicks.set(absMin(o), o);
@@ -4944,6 +4965,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     windows.forEach(([ws, we], w) => {
       const times = /* @__PURE__ */ new Set();
       for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
+      times.add(we);
       plays.forEach((e) => {
         if (e.t >= ws && e.t <= we) times.add(e.t);
       });
@@ -4962,9 +4984,28 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   // Prime-time windows get their broadcast name; anything else is its slot.
   var PRIME = { THU: ["TNF", "Thursday Night Football"], SUN: ["SNF", "Sunday Night Football"], MON: ["MNF", "Monday Night Football"] };
   function kickInfo(ord) {
-    const when = ordLabel(ord), m = when.match(/^(\w+) (\d+):/);
-    const hr = m ? +m[2] : 0, prime = m && hr >= 6 && hr < 12 ? PRIME[m[1]] : null;
+    // printed times carry no AM/PM (a London 8:30 reads like a night game), so
+    // the evening test runs on the ord's own clock, which is Eastern
+    const when = ordLabel(ord), m = when.match(/^(\w+) /);
+    const prime = m && ord % 2e3 >= 18 * 60 ? PRIME[m[1]] : null;
     return prime ? { tag: prime[0], title: prime[1], when } : { tag: "", title: when + " kickoffs", when };
+  }
+  // TNF and MNF kickoffs for the NFL week the starters' games belong to.
+  function weekFrame(ords) {
+    const wk = Object.keys(NFL_WEEKS).find((w) => NFL_WEEKS[w].some((g) => ords.indexOf(kickOrd(g.dt, g.t)) > -1));
+    const out = { tnf: null, mnf: null, tnfOrd: null, mnfOrd: null };
+    if (!wk) return out;
+    const all = NFL_WEEKS[wk].map((g) => kickOrd(g.dt, g.t));
+    const tnf = all.filter((o) => kickInfo(o).tag === "TNF"), mnf = all.filter((o) => kickInfo(o).tag === "MNF");
+    if (tnf.length) {
+      out.tnfOrd = Math.min(...tnf);
+      out.tnf = absMin(out.tnfOrd);
+    }
+    if (mnf.length) {
+      out.mnfOrd = Math.max(...mnf);
+      out.mnf = absMin(out.mnfOrd);
+    }
+    return out;
   }
   var rwAt = {};
   var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
