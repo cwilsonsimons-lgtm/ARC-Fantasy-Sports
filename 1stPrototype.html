@@ -5008,7 +5008,6 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const rT = el.querySelector(".rw-read .t"), rW = el.querySelector(".rw-read .w");
     const rS = el.querySelector(".rw-read .sc");
     const pinEls = [...layer.querySelectorAll(".rw-pin")];
-    // The bubble belongs to the scoring play closest to the cursor.
     const nearestPlay = (i) => plays.reduce((b, j) => b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b, -1);
     function placeBubble(j) {
       pinEls.forEach((e) => e.classList.toggle("on", +e.dataset.i === j));
@@ -5055,7 +5054,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       rW.textContent = p.win + "% win";
       rW.className = "w " + (p.win >= 50 ? "up" : "dn");
       rS.innerHTML = `<b class="me">${p.a.toFixed(1)}</b> &ndash; <b class="opp">${p.x.toFixed(1)}</b>`;
-      placeBubble(nearestPlay(i));
+      // a bubble only while the cursor sits on a scoring play
+      placeBubble(p.ev.length ? i : -1);
     }
     let last = n - 1;
     show(last);
