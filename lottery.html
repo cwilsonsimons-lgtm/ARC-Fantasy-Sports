@@ -148,15 +148,6 @@ select:disabled,input:disabled{opacity:.55}
 .logo-x{position:absolute;top:1px;right:1px;width:16px;height:16px;border-radius:50%;border:0;background:var(--bg);color:var(--ink);
   font-size:11px;line-height:16px;z-index:1}
 .reveal .rlogo{flex:none;width:56px;height:56px;border-radius:50%;object-fit:contain;background:#fff;border:3px solid var(--tc)}
-.dir{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
-.dir button{text-align:left;background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;
-  display:flex;flex-direction:column;gap:2px}
-.dir button b{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.04em;text-transform:uppercase}
-.dir button span{font-size:13px;color:var(--ink-2)}
-.dir button[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
-.dir button[aria-pressed="true"] b{color:var(--gold)}
-.dir button:disabled{cursor:default}
-.dir button:disabled[aria-pressed="false"]{opacity:.4}
 .note{font-size:13px;color:var(--ink-3)}
 .note.err{color:#F0453E}
 .copyout{width:100%;min-height:120px;background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px;
@@ -170,15 +161,11 @@ select:disabled,input:disabled{opacity:.55}
   <header>
     <div class="eyebrow">City Boys Dynasty · Draft lottery</div>
     <h1>Royal Rumble <em>Lottery</em></h1>
-    <p class="lede" id="lede"></p>
+    <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Whoever holds the Rumble winner's number gets the 1st pick.</p>
   </header>
 
   <section class="panel" aria-label="Lottery setup">
     <h2>Setup</h2>
-    <div class="dir" role="group" aria-label="Draw direction">
-      <button type="button" id="dirDown" data-mode="down"><b>Start at #30</b><span>Draw #30 down to #1. The worst team gets the most balls.</span></button>
-      <button type="button" id="dirUp" data-mode="up"><b>Start at #1</b><span>Draw #1 up to #30. The worst team gets the fewest balls.</span></button>
-    </div>
     <div class="shead"><span>Finish</span><span>Team</span><span>Balls</span><span>Logo</span></div>
     <div id="setup" style="display:flex;flex-direction:column;gap:8px"></div>
     <p class="note" id="setupNote"></p>
@@ -242,7 +229,6 @@ const KEY = 'rumble_lottery_v1';
 function defaults(){
   return {
     slots:[{team:'dakyard',balls:12},{team:'brady',balls:9},{team:'longhorns',balls:6},{team:'burrow',balls:3}],
-    mode:'down',  // 'down': #30 to #1, 'up': #1 to #30
     draws:[],     // draws[k] = slot index that received numberOf(k)
     sealed:false, // last ball is out but the dealer hasn't revealed it
     logos:{},     // team id -> small data: URL, shown on the revealed ball
@@ -251,19 +237,30 @@ function defaults(){
 }
 let S = load();
 function load(){
-  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.slots) && Array.isArray(s.draws)){ s.mode = s.mode === 'up' ? 'up' : 'down'; s.sealed = !!s.sealed && s.draws.length > 0; s.logos = s.logos || {}; return s; } }catch(e){}
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.slots) && Array.isArray(s.draws)){
+      // A save from the removed start-at-#1 mode has the ball counts reversed (worst team fewest) and
+      // draws numbered the other way: put the counts back and clear the draws.
+      if(s.mode === 'up'){
+        const c = s.slots.map(x => x.balls).reverse(); s.slots.forEach((x, i) => x.balls = c[i]);
+        s.draws = []; s.sealed = false; s.winner = null;
+      }
+      delete s.mode;
+      s.sealed = !!s.sealed && s.draws.length > 0; s.logos = s.logos || {};
+      return s;
+    }
+  }catch(e){}
   return defaults();
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
 const total = () => S.slots.reduce((a, s) => a + s.balls, 0);
 const left = i => S.slots[i].balls - S.draws.filter(d => d === i).length;
-const up = () => S.mode === 'up';
 const remaining = () => total() - S.draws.length;
-const numberOf = k => up() ? k + 1 : total() - k;   // number handed out by draw k
-const drawOf = n => up() ? n - 1 : total() - n;     // inverse of numberOf
+const numberOf = k => total() - k;                  // number handed out by draw k: #30, #29, …
+const drawOf = n => total() - n;                    // inverse of numberOf
 const nextNum = () => numberOf(S.draws.length);
-const firstNum = () => numberOf(0), lastNum = () => numberOf(total() - 1);
 const team = i => BY_ID[S.slots[i].team];
 const numsFor = i => S.draws.map((d, k) => d === i ? numberOf(k) : null).filter(n => n !== null).sort((a, b) => a - b);
 const holderOf = n => { const k = drawOf(n); return k >= 0 && k < S.draws.length ? S.draws[k] : null; };
@@ -466,7 +463,7 @@ async function spin(){
   S.draws.push(slot); S.sealed = true; save();      // committed before the show, so a reload can't re-roll it
   renderAll();
   const el = $('reveal'); el.className = 'reveal sealed';
-  el.innerHTML = `<span class="big">#${nextNum() - (up() ? 1 : -1)}</span><div class="who"><span class="team">Spinning…</span><span class="sub">One ball is about to drop.</span></div>`;
+  el.innerHTML = `<span class="big">#${nextNum() + 1}</span><div class="who"><span class="team">Spinning…</span><span class="sub">One ball is about to drop.</span></div>`;
   if(!reduce){ spinUntil = performance.now() + 1700; await wait(2100); }
   const b = balls.splice(Math.floor(Math.random() * balls.length), 1)[0] || {x:drum.x, y:drum.y};
   tray = {slot, x0:b.x, y0:b.y, t0:performance.now(), sealed:true, revealT:0};
@@ -566,7 +563,7 @@ function renderAll(opt = {}){
   }else if(pick){
     $('resultBox').innerHTML = `<p class="hint">Every number is out. After the Royal Rumble, <b>tap the winner's entrant number</b> to see who gets the 1st pick.</p>`;
   }else{
-    $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${firstNum()} ${up() ? 'up' : 'down'} to #${lastNum()}. Each ball drawn fills in the next one.</p>`;
+    $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
   }
 
   // holdings
@@ -592,13 +589,7 @@ function renderAll(opt = {}){
   note.className = 'note' + (err ? ' err' : '');
   note.textContent = err || (locked
     ? 'Setup is locked once the first ball is drawn. Reset the lottery to change it.'
-    : `${T} balls in the machine, one per entry number from #${firstNum()} ${up() ? 'up' : 'down'} to #${lastNum()}.`);
-  for(const b of document.querySelectorAll('.dir button')){
-    b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)); b.disabled = locked;
-  }
-  $('lede').textContent = up()
-    ? `Every ball in the machine is a team. Start at entry #1 with every team holding all their balls, draw one, and that team gets #1 and loses a ball. Then draw for #2, #3, and so on up to #${T}. The worst team has the fewest balls, so it is least likely to get stuck with an early number. Whoever holds the Rumble winner's number gets the 1st pick.`
-    : `Every ball in the machine is a team. Start at entry #${T} with every team holding all their balls, draw one, and that team gets #${T} and loses a ball. Then draw for #${T - 1}, #${T - 2}, and so on down to #1. Whoever holds the Rumble winner's number gets the 1st pick.`;
+    : `${T} balls in the machine, one per entry number from #${T} down to #1.`);
   $('restBtn').disabled = done || busy || S.sealed || !!err;
   if(!busy && !opt.keepReveal){
     const last = S.draws.length - 1;
@@ -616,13 +607,6 @@ for(const ev of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) $('peekB
 $('peekBtn').addEventListener('keydown', e => { if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); peek(true); } });
 $('peekBtn').addEventListener('keyup', () => peek(false));
 $('peekBtn').addEventListener('contextmenu', e => e.preventDefault());
-document.querySelector('.dir').addEventListener('click', e => {
-  const b = e.target.closest('button'); if(!b || b.disabled || S.draws.length || b.dataset.mode === S.mode) return;
-  // Flip the ball counts too, so the worst team goes from most balls to fewest (12/9/6/3 <-> 3/6/9/12).
-  const counts = S.slots.map(s => s.balls).reverse();
-  S.slots.forEach((s, i) => s.balls = counts[i]);
-  S.mode = b.dataset.mode; save(); fill(); renderAll();
-});
 $('board').addEventListener('click', e => {
   const t = e.target.closest('.tile.filled'); if(!t || remaining() > 0 || busy || S.sealed) return;
   const n = +t.dataset.n; S.winner = S.winner === n ? null : n; save(); renderAll({keepReveal:true});
@@ -668,10 +652,10 @@ armed($('restBtn'), 'Draw the rest', () => {
 });
 armed($('resetBtn'), 'Reset lottery', () => {
   if(busy) return;
-  S = {...defaults(), slots:S.slots, mode:S.mode, logos:S.logos}; save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
+  S = {...defaults(), slots:S.slots, logos:S.logos}; save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
 });
 $('copyBtn').addEventListener('click', () => {
-  const lines = [`ROYAL RUMBLE LOTTERY (#${firstNum()} to #${lastNum()})`];
+  const lines = ['ROYAL RUMBLE LOTTERY'];
   S.slots.forEach((s, i) => {
     const t = team(i), nums = numsFor(i);
     lines.push(`${t.n} (${t.mgr}), ${PLACES[i].toLowerCase()}: ${nums.length ? nums.map(x => '#' + x).join(', ') : 'none yet'}`);
