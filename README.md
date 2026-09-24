@@ -72,8 +72,9 @@ Rumble, tap the winner's entry number to see who gets the 1st pick.
 Draws are dealt like a bingo cage: **Spin** turns the cage and drops one ball,
 sealed, into the tray. Nothing on the page shows the team until the dealer taps
 **Reveal**, which rattles the ball, flips it to the team's colour and bursts
-confetti. Before that, **Hold to peek** shows the dealer the team only while the
-button is held. A sealed ball survives a reload and stays sealed.
+confetti. A sealed ball survives a reload and stays sealed. **Undo last spin**
+(tap twice to confirm) takes back the most recent ball, sealed or revealed, and
+returns it to the cage so that number can be spun again.
 
 Every ball in the cage is the same grey **?**, so watching the cage never tells
 you which teams have balls left. A ball only takes its team's colour and letter
