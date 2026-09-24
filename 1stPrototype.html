@@ -414,16 +414,31 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .rw-pin.on{width:12px;height:12px;z-index:2}
 .rw-pin.on.me{box-shadow:0 0 0 2px #171416,0 0 0 3.5px var(--green)}
 .rw-pin.on.opp{box-shadow:0 0 0 2px #171416,0 0 0 3.5px var(--red)}
+.rw-ko{position:absolute;width:7px;height:7px;transform:translate(-50%,-50%) rotate(45deg);
+  background:#171416;border:1.5px solid var(--ink-2);z-index:1}
+.rw-ko.prime{width:9px;height:9px;border-color:#fff}
+.rw-ko.on{width:12px;height:12px;border-color:#fff;background:var(--ink-2);z-index:2}
+.rw-ktag{position:absolute;top:2px;transform:translateX(-50%);font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:8.5px;letter-spacing:.8px;color:var(--ink-2);background:#131722;padding:0 3px;border-radius:3px}
+.rw-kline{stroke:rgba(255,255,255,.22);stroke-width:1;stroke-dasharray:1 3;vector-effect:non-scaling-stroke}
 .rw-dot{width:8px;height:8px;background:#fff;border:2px solid var(--green);z-index:3}
 .rw-dot.dn{border-color:var(--red)}
 .rw-lead{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
 .rw-lead line{stroke-width:1.2}
 .rw-lead.me line{stroke:var(--green)}
 .rw-lead.opp line{stroke:var(--red)}
+.rw-lead.ko line{stroke:var(--ink-2)}
 .rw-bub{position:absolute;display:none;z-index:4;max-width:62%;padding:5px 8px 6px;border-radius:8px;
   border:1px solid;background:rgba(23,20,22,.92);box-shadow:0 4px 14px rgba(0,0,0,.45)}
 .rw-bub.me{border-color:var(--green);background:linear-gradient(rgba(50,159,91,.14),rgba(50,159,91,.14)),rgba(23,20,22,.94)}
 .rw-bub.opp{border-color:var(--red);background:linear-gradient(rgba(240,93,94,.14),rgba(240,93,94,.14)),rgba(23,20,22,.94)}
+.rw-bub.ko{border-color:rgba(255,255,255,.55)}
+.rw-bub.ko .h{color:var(--ink)}
+.rw-bub .wp{color:var(--ink-3);font-weight:600}
+.rw-bub .k{font-size:9.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rw-bub .k .me{color:var(--green)}
+.rw-bub .k .opp{color:var(--red)}
+.st-hd .rw-at{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;font-size:11px;letter-spacing:0;color:var(--ink-2);text-transform:none}
 .rw-bub .h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9px;
   letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rw-bub.me .h{color:var(--green)}
@@ -942,8 +957,6 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 
 /* css/lineup.css */
 /* simulated week clock + lineup editing */
-.starters .phasebar{margin:0;border:0;border-radius:0;border-top:1px solid var(--line-soft);background:transparent}
-.phasebar.scrub .ph-lbl{color:var(--green)}
 .phasebar{display:flex;align-items:center;gap:10px;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
 .ph-ar{width:30px;height:30px;flex:none;border-radius:9px;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;font-size:18px;color:var(--ink-2)}
 .ph-ar.dis{opacity:.3;pointer-events:none}
@@ -4829,7 +4842,11 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   var GAME_MIN = 200;
   var DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   var absMin = (ord) => Math.floor(ord / 2e3) * 1440 + ord % 2e3;
+  // Kickoff ords are Eastern; every game time the app prints is Central, so the
+  // chart's labels shift by an hour to agree with the lineup.
+  var TZ_SHIFT = 60;
   function slotLabel(abs) {
+    abs -= TZ_SHIFT;
     const day = Math.floor(abs / 1440), mins = (abs % 1440 + 1440) % 1440;
     let h = Math.floor(mins / 60);
     const ap = h >= 12 ? "PM" : "AM";
@@ -4837,6 +4854,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     return `${DAYS[(day + 4) % 7]} ${h}${ap}`;
   }
   function clockLabel(abs) {
+    abs -= TZ_SHIFT;
     const day = Math.floor(abs / 1440), mins = (abs % 1440 + 1440) % 1440;
     let h = Math.floor(mins / 60);
     const m = mins % 60;
@@ -4911,6 +4929,17 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       return n + p.proj * (1 - done);
     }, 0);
     const plays = touchdowns(A, X);
+    const kicks = /* @__PURE__ */ new Map();
+    lists.forEach((list) => list.forEach((p) => {
+      const o = pOrd(p);
+      if (isFinite(o)) kicks.set(absMin(o), o);
+    }));
+    const kickoff = (t) => {
+      if (!kicks.has(t)) return null;
+      const info = kickInfo(kicks.get(t));
+      info.who = [...A.map((p) => ({ ...p, side: "a" })), ...X.map((p) => ({ ...p, side: "x" }))].filter((p) => p.kick === t).map((p) => ({ name: p.name, side: p.side }));
+      return info;
+    };
     const out = [];
     windows.forEach(([ws, we], w) => {
       const times = /* @__PURE__ */ new Set();
@@ -4918,15 +4947,26 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       plays.forEach((e) => {
         if (e.t >= ws && e.t <= we) times.add(e.t);
       });
+      kicks.forEach((o, t) => {
+        if (t >= ws && t <= we) times.add(t);
+      });
       [...times].sort((p, q) => p - q).forEach((t) => {
         const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side }));
         const a = sum(A, t), x = sum(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
-        out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev });
+        out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev, ko: kickoff(t) });
       });
     });
     return out;
   }
+  // Prime-time windows get their broadcast name; anything else is its slot.
+  var PRIME = { THU: ["TNF", "Thursday Night Football"], SUN: ["SNF", "Sunday Night Football"], MON: ["MNF", "Monday Night Football"] };
+  function kickInfo(ord) {
+    const when = ordLabel(ord), m = when.match(/^(\w+) (\d+):/);
+    const hr = m ? +m[2] : 0, prime = m && hr >= 6 && hr < 12 ? PRIME[m[1]] : null;
+    return prime ? { tag: prime[0], title: prime[1], when } : { tag: "", title: when + " kickoffs", when };
+  }
+  var rwAt = {};
   var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   var W = 320;
   var H = 150;
@@ -4953,6 +4993,14 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       if (p.ev.length) plays.push(i);
     });
     const sideCls = (s) => s === "a" ? "me" : "opp";
+    const kos = [];
+    pts.forEach((p, i) => {
+      if (p.ko) kos.push(i);
+    });
+    const special = [...new Set([...plays, ...kos])].sort((p, q) => p - q);
+    const koPins = kos.map((i) => `<span class="rw-ko${pts[i].ko.tag ? " prime" : ""}" data-i="${i}" style="left:${pctX(i)};top:${pctY(pts[i].win)}"></span>`).join("");
+    const koTags = kos.filter((i) => pts[i].ko.tag).map((i) => `<span class="rw-ktag" style="left:${pctX(i)}">${pts[i].ko.tag}</span>`).join("");
+    const koLines = kos.filter((i) => pts[i].ko.tag).map((i) => `<line class="rw-kline" x1="${X(i).toFixed(1)}" y1="0" x2="${X(i).toFixed(1)}" y2="${H}"/>`).join("");
     const pins = plays.map((i) => `<span class="rw-pin ${sideCls(pts[i].ev[0].side)}" data-i="${i}"
          style="left:${pctX(i)};top:${pctY(pts[i].win)}"></span>`).join("");
     const [aKey, xKey] = liveSides();
@@ -4991,11 +5039,14 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
         ${marks.map((m) => `<line class="rw-grid" x1="${m.x.toFixed(1)}" y1="0" x2="${m.x.toFixed(1)}" y2="${H}"/>`).join("")}
         <polygon class="rw-area" points="${area}" fill="url(#rwFill)"/>
         <line class="rw-mid" x1="0" y1="${Y(50)}" x2="${W}" y2="${Y(50)}"/>
+        ${koLines}
         <polyline class="rw-line" points="${line}"/>
         <line class="rw-cursor" x1="0" y1="0" x2="0" y2="${H}"/>
       </svg>
       <div class="rw-pins">
         <svg class="rw-lead"><line x1="0" y1="0" x2="0" y2="0"/></svg>
+        ${koTags}
+        ${koPins}
         ${pins}
         <span class="rw-dot"></span>
         <div class="rw-bub"></div>
@@ -5009,8 +5060,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const leadLn = lead.querySelector("line");
     const rT = el.querySelector(".rw-read .t"), rW = el.querySelector(".rw-read .w");
     const rS = el.querySelector(".rw-read .sc");
-    const pinEls = [...layer.querySelectorAll(".rw-pin")];
-    const nearestPlay = (i) => plays.reduce((b, j) => b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b, -1);
+    const pinEls = [...layer.querySelectorAll(".rw-pin, .rw-ko")];
+    const nearestPlay = (i) => special.reduce((b, j) => b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b, -1);
     function placeBubble(j) {
       pinEls.forEach((e) => e.classList.toggle("on", +e.dataset.i === j));
       if (j < 0) {
@@ -5018,11 +5069,24 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
         lead.style.display = "none";
         return;
       }
-      const p = pts[j], side = p.ev[0].side;
-      bub.className = "rw-bub " + sideCls(side);
-      bub.innerHTML = `<div class="h">${escName(names[side])} &middot; TD</div>` + p.ev.map(
-        (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">+${e.pts.toFixed(1)} pts</em></div>`
-      ).join("");
+      const p = pts[j];
+      let cls;
+      if (p.ev.length) {
+        const side = p.ev[0].side;
+        cls = sideCls(side);
+        bub.innerHTML = `<div class="h">${escName(names[side])} &middot; TD</div>` + p.ev.map(
+          (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">+${e.pts.toFixed(1)} pts</em></div>`
+        ).join("");
+      } else {
+        // a kickoff: what the matchup looked like as these games started
+        const ko = p.ko, who = ko.who.slice(0, 3).map((w) => `<span class="${sideCls(w.side)}">${escName(w.name)}</span>`).join(", ");
+        const more = ko.who.length > 3 ? ` +${ko.who.length - 3}` : "";
+        cls = "ko";
+        bub.innerHTML = `<div class="h">${escName(ko.tag ? ko.title : ko.when)} &middot; ${ko.tag ? escName(ko.when) : "KICKOFF"}</div>
+          <div class="b"><em class="me">${p.a.toFixed(1)}</em> &ndash; <em class="opp">${p.x.toFixed(1)}</em> <span class="wp">&middot; ${p.win}% win</span></div>
+          ${who ? `<div class="k">Kicking off: ${who}${more}</div>` : ""}`;
+      }
+      bub.className = "rw-bub " + cls;
       bub.style.display = "block";
       const lw = layer.clientWidth, lh = layer.clientHeight;
       const dx = X(j) / W * lw, dy = Y(p.win) / H * lh;
@@ -5041,7 +5105,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       leadLn.setAttribute("y1", dy);
       leadLn.setAttribute("x2", ex);
       leadLn.setAttribute("y2", ey);
-      lead.setAttribute("class", "rw-lead " + sideCls(side));
+      lead.setAttribute("class", "rw-lead " + cls);
       lead.style.display = "block";
     }
     function show(i) {
@@ -5056,12 +5120,15 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       rW.textContent = p.win + "% win";
       rW.className = "w " + (p.win >= 50 ? "up" : "dn");
       rS.innerHTML = `<b class="me">${p.a.toFixed(1)}</b> &ndash; <b class="opp">${p.x.toFixed(1)}</b>`;
-      // a bubble only while the cursor sits on a scoring play
-      placeBubble(p.ev.length ? i : -1);
-      if (scrubbed) scrubLineup(el, p.abs);
+      // a bubble only while the cursor sits on a scoring play or a kickoff
+      placeBubble(p.ev.length || p.ko ? i : -1);
+      rwAt[el.id] = p.abs;
+      if (rwOpen[el.id]) scrubLineup(el, p.abs);
     }
-    let scrubbed = false;
+    // keep the cursor where it was across re-renders of the same week
+    const keep = rwAt[el.id];
     let last = n - 1;
+    if (keep != null && keep >= pts[0].abs && keep <= pts[n - 1].abs) last = pts.reduce((b, p, i) => Math.abs(p.abs - keep) < Math.abs(pts[b].abs - keep) ? i : b, 0);
     show(last);
     // the bubble is sized in pixels, so re-place it once the chart is actually on screen
     if (typeof ResizeObserver !== "undefined") {
@@ -5073,8 +5140,8 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const at = (e) => {
       const r = svg2.getBoundingClientRect();
       const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-      let i = Math.round(cx / r.width * (n - 1));
-      // snap onto a scoring play when the finger lands close to one
+      let i = Math.round((cx / r.width * W - PADL) / (W - PADL - PADR) * (n - 1));
+      // snap onto a scoring play or kickoff when the finger lands close to one
       const j = nearestPlay(i);
       if (j >= 0 && Math.abs(X(j) - X(i)) / W * r.width <= 10) i = j;
       last = Math.max(0, Math.min(n - 1, i));
@@ -5088,7 +5155,6 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     };
     const down = (e) => {
       drag = true;
-      scrubbed = true;
       at(e);
     };
     const up = () => {
@@ -5106,9 +5172,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     window.addEventListener("touchmove", move, sigP);
     window.addEventListener("touchend", up, sig);
   }
-  // While the chart is being scrubbed, every live score cell in the lineup shows
-  // what that player had at the scrubbed minute, using the same accrual as the
-  // chart, and the stepper in the Starters card names the minute.
+  // While the chart is open, every live score cell in the lineup shows what that
+  // player had at the chart's minute, using the same accrual as the chart, and
+  // the Starters header names the minute.
   function scrubLineup(el, abs) {
     if (el.id !== "userRewind") return;
     const root = document.getElementById("userLineup");
@@ -5120,11 +5186,11 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       c.firstChild.nodeValue = (Math.round(pts * 10) / 10).toFixed(1);
       c.classList.toggle("pre", !started);
     });
-    const lbl = root.querySelector(".ph-lbl"), sub = root.querySelector(".ph-sub");
-    if (lbl) lbl.textContent = clockLabel(abs);
-    if (sub) sub.textContent = "Rewind \xB7 points as of this minute";
-    const bar = root.querySelector(".phasebar");
-    if (bar) bar.classList.add("scrub");
+    const hd = root.querySelector(".starters .st-hd span:last-child");
+    if (hd) {
+      hd.className = "rw-at";
+      hd.textContent = clockLabel(abs);
+    }
   }
   var rwOpen = {};
   function toggleRewind(id) {
@@ -5134,6 +5200,10 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     rwOpen[id] = open;
     rw.style.display = open ? "block" : "none";
     document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
+    if (id === "userRewind") {
+      if (open && rwAt[id] != null) scrubLineup(rw, rwAt[id]);
+      else if (!open) renderUserMatchup();
+    }
     if (open && rw.scrollIntoView) rw.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
   function syncRewind(id) {
@@ -6748,7 +6818,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       uRw.style.display = "none";
     }
     if (live) {
-      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: true, editable: true, stepper: phaseStepperHTML() });
+      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: true, editable: true });
+      if (canRewind && rwOpen.userRewind && rwAt.userRewind != null) scrubLineup(uRw, rwAt.userRewind);
     } else if (S.week > LIVE_WEEK && S.week === MINW) {
       uLine.innerHTML = fullStartersHTML(aK, xK, { phased: false, editable: true });
     } else {
@@ -11393,7 +11464,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const A = rosterOf(aKey), X = rosterOf(xKey);
     const starters = zipStarters(A.starters, X.starters);
     const bench = zipReserve(A.bench, X.bench), ir = zipReserve(A.ir, X.ir), taxi = zipReserve(A.taxi, X.taxi);
-    let h = `<div class="starters"><div class="st-hd"><span class="g">Starters</span><span></span></div>${opts.stepper || ""}`;
+    let h = `<div class="starters"><div class="st-hd"><span class="g">Starters</span><span></span></div>`;
     h += starters.map((r, i) => lineupRow(r, i, { phased: ph, editable: ed })).join("") + `</div>`;
     if (bench.length) h += reserveSection("Bench", bench, "BN", ph, ed);
     if (ir.length) h += reserveSection("Injured Reserve", ir, "IR", ph);
