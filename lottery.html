@@ -291,7 +291,10 @@ function size(){
 const trayPos = () => ({x:drum.x, y:H - br * 1.7 - 6, r:br * 1.7});
 function fill(){
   balls = [];
-  S.slots.forEach((s, i) => { for(let k = 0; k < left(i); k++) balls.push(newBall(i)); });
+  // A sealed draw is still shown in the cage: the cage only gives up that team's ball at the reveal,
+  // so counting colours can't give the pick away early.
+  const pend = S.sealed ? S.draws[S.draws.length - 1] : -1;
+  S.slots.forEach((s, i) => { for(let k = 0; k < left(i) + (i === pend ? 1 : 0); k++) balls.push(newBall(i)); });
   // a ball that is out of the cage but not yet revealed sits sealed in the tray
   const last = S.draws.length - 1;
   tray = last >= 0 && (S.sealed || tray) ? {slot:S.draws[last], t0:-1e9, sealed:!!S.sealed, revealT:S.sealed ? 0 : -1e9} : null;
@@ -384,7 +387,11 @@ function render(now){
   ctx.beginPath(); ctx.roundRect(tp.x - tp.r - 8, drum.y + drum.r - 6, (tp.r + 8) * 2, H - (drum.y + drum.r) + 4, [0, 0, 16, 16]);
   ctx.fill(); ctx.stroke();
   drawCage();
-  for(const b of balls) drawBall(b.x, b.y, br, b.slot);
+  balls = balls.filter(b => !b.fade || now - b.fade < 500);
+  for(const b of balls){
+    if(b.fade){ const f = (now - b.fade) / 500; ctx.globalAlpha = 1 - f; drawBall(b.x, b.y, br * (1 + f * .8), b.slot); ctx.globalAlpha = 1; }
+    else drawBall(b.x, b.y, br, b.slot);
+  }
   drawWires();
   if(!balls.length && !tray){
     ctx.fillStyle = '#5E6B7C'; ctx.font = `600 ${Math.round(drum.r * .12)}px Oswald, 'Arial Narrow', sans-serif`;
@@ -438,9 +445,7 @@ async function spin(){
   const el = $('reveal'); el.className = 'reveal sealed';
   el.innerHTML = `<span class="big">#${nextNum() - (up() ? 1 : -1)}</span><div class="who"><span class="team">Spinning…</span><span class="sub">One ball is about to drop.</span></div>`;
   if(!reduce){ spinUntil = performance.now() + 1700; await wait(2100); }
-  const idx = balls.findIndex(b => b.slot === slot);
-  const b = balls.splice(idx >= 0 ? idx : 0, 1)[0] || newBall(slot);
-  tray = {slot, x0:b.x, y0:b.y, t0:performance.now(), sealed:true, revealT:0};
+  tray = {slot, x0:drum.x, y0:drum.y + drum.r - br, t0:performance.now(), sealed:true, revealT:0};
   await wait(reduce ? 0 : 650);
   busy = false; renderAll();
 }
@@ -455,6 +460,8 @@ async function reveal(){
   tray.sealed = false; S.sealed = false; save();
   $('reveal').classList.remove('rattle');
   if(!reduce) burst(slot);
+  const gone = balls.find(b => b.slot === slot && !b.fade);
+  if(gone) gone.fade = performance.now() + (reduce ? -1e9 : 0);
   showReveal(numberOf(k), slot, true);
   busy = false; renderAll({keepReveal:true});
 }
