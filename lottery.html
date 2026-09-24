@@ -42,16 +42,32 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .col{display:flex;flex-direction:column;gap:22px;min-width:0}
 
 /* ---- machine ---- */
-.drum-wrap{position:relative;width:100%;max-width:360px;margin:0 auto;aspect-ratio:1/1.12}
+.drum-wrap{position:relative;width:100%;max-width:360px;margin:0 auto;aspect-ratio:1/1.22}
 #drum{width:100%;height:100%;display:block}
 .reveal{min-height:96px;display:flex;align-items:center;gap:16px;padding:12px 16px;border-radius:14px;
   background:var(--card-2);border:1px solid var(--line-soft)}
-.reveal .big{font-family:var(--display);font-weight:700;font-size:54px;line-height:1;font-variant-numeric:tabular-nums;min-width:2.4ch}
+.reveal .big{flex:none;font-family:var(--display);font-weight:700;font-size:54px;line-height:1;font-variant-numeric:tabular-nums;min-width:2.4ch}
 .reveal .who{display:flex;flex-direction:column;gap:2px;min-width:0}
 .reveal .team{font-family:var(--display);font-weight:600;font-size:22px;line-height:1.1;text-transform:uppercase;overflow-wrap:anywhere}
 .reveal .sub{color:var(--ink-2);font-size:13px}
 .reveal.pop .big,.reveal.pop .team{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.reveal{--tc:var(--gold);transition:border-color .3s}
+.reveal.sealed .big{color:var(--ink-3)}
+.reveal.sealed .team{color:var(--ink)}
+.reveal .sub b{color:var(--gold);font-weight:600}
+.reveal .peek{margin-top:4px;padding:4px 10px;border-radius:8px;background:var(--bg);border:1px dashed var(--ink-3);
+  font-weight:600;font-size:14px;align-self:flex-start;visibility:hidden}
+.reveal .peek.show{visibility:visible}
+.reveal.rattle{animation:rattle .12s linear infinite}
+@keyframes rattle{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.reveal.pop{border-color:var(--tc);animation:flash 1.1s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 0 var(--tc),0 0 60px 10px var(--tc)}100%{box-shadow:0 0 0 0 transparent,0 0 0 0 transparent}}
+.reveal.pop .team{animation:none}
+.reveal.pop .team .ch{display:inline-block;animation:drop .45s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes drop{from{transform:translateY(-60%) scale(1.4);opacity:0}to{transform:none;opacity:1}}
+.btn.peekbtn{flex:0 0 auto;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:none}
+.btn.peekbtn.on{border-color:var(--gold);color:var(--gold)}
 
 .actions{display:flex;gap:10px;flex-wrap:wrap}
 .btn{border:0;border-radius:12px;padding:14px 18px;font-family:var(--display);font-weight:600;font-size:17px;
@@ -134,7 +150,7 @@ select:disabled,input:disabled{opacity:.55}
 .copyout{width:100%;min-height:120px;background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px;
   font-family:var(--mono);font-size:12px;color:var(--ink);resize:vertical}
 
-@media (prefers-reduced-motion:reduce){.reveal.pop .big,.reveal.pop .team{animation:none}}
+@media (prefers-reduced-motion:reduce){.reveal.pop,.reveal.pop .big,.reveal.pop .team .ch,.reveal.rattle{animation:none}}
 </style>
 </head>
 <body>
@@ -167,7 +183,8 @@ select:disabled,input:disabled{opacity:.55}
       <div class="drum-wrap"><canvas id="drum" aria-hidden="true"></canvas></div>
       <div class="reveal" id="reveal" aria-live="polite"></div>
       <div class="actions">
-        <button class="btn primary" id="drawBtn" type="button">Draw a team</button>
+        <button class="btn ghost peekbtn" id="peekBtn" type="button" hidden>Hold to peek</button>
+        <button class="btn primary" id="drawBtn" type="button">Spin the cage</button>
       </div>
       <div class="odds">
         <div class="olabel"><span>Balls left</span><span id="oddsFor"></span></div>
@@ -215,12 +232,13 @@ function defaults(){
     slots:[{team:'dakyard',balls:12},{team:'brady',balls:9},{team:'longhorns',balls:6},{team:'burrow',balls:3}],
     mode:'down',  // 'down': #30 to #1, 'up': #1 to #30
     draws:[],     // draws[k] = slot index that received numberOf(k)
+    sealed:false, // last ball is out but the dealer hasn't revealed it
     winner:null,  // Rumble-winning entrant number
   };
 }
 let S = load();
 function load(){
-  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.slots) && Array.isArray(s.draws)){ s.mode = s.mode === 'up' ? 'up' : 'down'; return s; } }catch(e){}
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.slots) && Array.isArray(s.draws)){ s.mode = s.mode === 'up' ? 'up' : 'down'; s.sealed = !!s.sealed && s.draws.length > 0; return s; } }catch(e){}
   return defaults();
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
@@ -254,37 +272,49 @@ function pickSlot(){
   for(let i = 0; i < S.slots.length; i++){ r -= left(i); if(r < 0) return i; }
 }
 
-/* ---------------- ball machine (visual only) ---------------- */
+/* ---------------- bingo cage (visual only) ---------------- */
 const cv = document.getElementById('drum'), ctx = cv.getContext('2d');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let W = 0, H = 0, dpr = 1, drum = {x:0, y:0, r:0}, br = 12;
-let balls = [], mixUntil = 0, flying = null, busy = false;
+let balls = [], spinUntil = 0, busy = false;
+let angle = 0, omega = 0;   // cage rotation and its speed (radians per frame)
+let tray = null;            // the ball that came out: {slot, x0, y0, t0, sealed, revealT}
+let sparks = [];
 
 function size(){
   const r = cv.getBoundingClientRect();
   dpr = window.devicePixelRatio || 1; W = r.width; H = r.height;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-  drum = {x:W / 2, y:W / 2, r:W / 2 - 8};
+  drum = {x:W / 2, y:W / 2, r:W / 2 - 10};
   br = Math.max(8, drum.r * 0.085);
 }
+const trayPos = () => ({x:drum.x, y:H - br * 1.7 - 6, r:br * 1.7});
 function fill(){
   balls = [];
   S.slots.forEach((s, i) => { for(let k = 0; k < left(i); k++) balls.push(newBall(i)); });
+  // a ball that is out of the cage but not yet revealed sits sealed in the tray
+  const last = S.draws.length - 1;
+  tray = last >= 0 && (S.sealed || tray) ? {slot:S.draws[last], t0:-1e9, sealed:!!S.sealed, revealT:S.sealed ? 0 : -1e9} : null;
 }
 function newBall(slot){
   const a = Math.random() * Math.PI * 2, d = Math.random() * (drum.r - br * 2);
   return {slot, x:drum.x + Math.cos(a) * d, y:drum.y + Math.sin(a) * d * .5 + drum.r * .3, vx:0, vy:0};
 }
 function step(now){
-  const mixing = now < mixUntil;
+  const spinning = now < spinUntil;
+  omega += ((spinning ? .09 : 0) - omega) * (spinning ? .05 : .03);
+  angle += omega;
   for(const b of balls){
-    b.vy += mixing ? 0 : .18;                                      // gravity
-    const kick = mixing ? 2.4 : (Math.random() < .03 ? .9 : 0);    // air jets
-    b.vx += (Math.random() - .5) * kick; b.vy += (Math.random() - .5) * kick - (mixing ? .35 : 0);
+    const dx = b.x - drum.x, dy = b.y - drum.y, d = Math.hypot(dx, dy) || 1;
+    b.vy += .18;                                                    // gravity
+    if(omega > .01){                                                // the turning cage drags balls round and tosses them
+      b.vx += -dy / d * omega * 3.2; b.vy += dx / d * omega * 3.2;
+      b.vx += (Math.random() - .5) * omega * 14; b.vy += (Math.random() - .5) * omega * 14;
+    }else if(Math.random() < .02){ b.vx += (Math.random() - .5) * .8; }
     b.vx *= .985; b.vy *= .985; b.x += b.vx; b.y += b.vy;
-    const dx = b.x - drum.x, dy = b.y - drum.y, d = Math.hypot(dx, dy), lim = drum.r - br - 3;
-    if(d > lim){
-      const nx = dx / d, ny = dy / d; b.x = drum.x + nx * lim; b.y = drum.y + ny * lim;
+    const ex = b.x - drum.x, ey = b.y - drum.y, e = Math.hypot(ex, ey), lim = drum.r - br - 4;
+    if(e > lim){
+      const nx = ex / e, ny = ey / e; b.x = drum.x + nx * lim; b.y = drum.y + ny * lim;
       const dot = b.vx * nx + b.vy * ny; if(dot > 0){ b.vx -= 1.7 * dot * nx; b.vy -= 1.7 * dot * ny; }
     }
   }
@@ -297,90 +327,176 @@ function step(now){
       if(rv < 0){ a.vx += rv * nx * .9; a.vy += rv * ny * .9; b.vx -= rv * nx * .9; b.vy -= rv * ny * .9; }
     }
   }
+  sparks = sparks.filter(p => (p.life -= 1) > 0);
+  for(const p of sparks){ p.vy += .12; p.vx *= .98; p.x += p.vx; p.y += p.vy; p.rot += p.vr; }
 }
-function drawBall(x, y, r, slot, alpha = 1){
-  const t = team(slot);
-  ctx.globalAlpha = alpha;
-  const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
-  g.addColorStop(0, '#ffffff'); g.addColorStop(.35, t.c); g.addColorStop(1, shade(t.c, -.35));
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#0B0F16'; ctx.font = `700 ${Math.round(r * .95)}px Oswald, 'Arial Narrow', sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t.n[0], x, y + r * .06);
-  ctx.globalAlpha = 1;
+function drawBall(x, y, r, slot, sx = 1){
+  const sealed = slot == null, t = sealed ? null : team(slot), c = sealed ? '#E9E3D3' : t.c;
+  ctx.save(); ctx.translate(x, y); ctx.scale(Math.max(.02, sx), 1);
+  const g = ctx.createRadialGradient(-r * .35, -r * .4, r * .1, 0, 0, r);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(.35, c); g.addColorStop(1, shade(c, sealed ? -.3 : -.35));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0B0F16'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(r * .95)}px Oswald, 'Arial Narrow', sans-serif`;
+  ctx.fillText(sealed ? '?' : t.n[0], 0, r * .06);
+  ctx.restore();
 }
 function shade(hex, f){
   const n = parseInt(hex.slice(1), 16), c = [n >> 16, n >> 8 & 255, n & 255].map(v => Math.round(v * (1 + f)));
   return `rgb(${c.join(',')})`;
 }
+function drawCage(){
+  const {x, y, r} = drum;
+  // stand + crank
+  ctx.strokeStyle = '#2A3648'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x - r * .55, y + r * .95); ctx.lineTo(x, y); ctx.lineTo(x + r * .55, y + r * .95); ctx.stroke();
+  // glass-ish interior
+  const g = ctx.createRadialGradient(x - r * .3, y - r * .4, r * .1, x, y, r);
+  g.addColorStop(0, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(255,255,255,.012)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+}
+function drawWires(){
+  const {x, y, r} = drum;
+  // the cage's wire hoops, seen side-on: ellipses that turn with the cage
+  ctx.lineWidth = 1.5;
+  for(let k = 0; k < 6; k++){
+    const a = angle + k * Math.PI / 6, w = Math.abs(Math.cos(a)) * r;
+    ctx.strokeStyle = `rgba(147,160,176,${.10 + .22 * Math.max(0, Math.sin(a))})`;
+    ctx.beginPath(); ctx.ellipse(x, y, Math.max(1, w), r, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.strokeStyle = '#3A475B'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  // hub and crank handle
+  const hx = x + Math.cos(angle * 1.5) * r * .22, hy = y + Math.sin(angle * 1.5) * r * .22;
+  ctx.strokeStyle = '#93A0B0'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.fillStyle = '#F2C14E'; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#93A0B0'; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+  // glint
+  ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(x, y, r - 12, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+}
 function render(now){
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-  // chute below the drum
-  const cw = br * 2.9, cy = drum.y + drum.r;
+  const tp = trayPos();
+  // chute and tray cup
   ctx.fillStyle = '#0B111B'; ctx.strokeStyle = '#2A3648'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(drum.x - cw / 2, cy - 6, cw, H - cy, [0, 0, 10, 10]); ctx.fill(); ctx.stroke();
-  // drum
-  const g = ctx.createRadialGradient(drum.x - drum.r * .3, drum.y - drum.r * .4, drum.r * .1, drum.x, drum.y, drum.r);
-  g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(255,255,255,.015)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(drum.x, drum.y, drum.r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#2A3648'; ctx.lineWidth = 3; ctx.stroke();
-  if(!balls.length && !flying){
-    ctx.fillStyle = '#5E6B7C'; ctx.font = `600 ${Math.round(drum.r * .12)}px Oswald, 'Arial Narrow', sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MACHINE EMPTY', drum.x, drum.y);
-  }
+  ctx.beginPath(); ctx.roundRect(tp.x - tp.r - 8, drum.y + drum.r - 6, (tp.r + 8) * 2, H - (drum.y + drum.r) + 4, [0, 0, 16, 16]);
+  ctx.fill(); ctx.stroke();
+  drawCage();
   for(const b of balls) drawBall(b.x, b.y, br, b.slot);
-  if(flying){
-    const p = Math.min(1, (now - flying.t0) / flying.dur), e = 1 - Math.pow(1 - p, 3);
-    const tx = drum.x, ty = H - br - 8;
-    drawBall(flying.x + (tx - flying.x) * e, flying.y + (ty - flying.y) * e, br * (1 + .5 * e), flying.slot);
+  drawWires();
+  if(!balls.length && !tray){
+    ctx.fillStyle = '#5E6B7C'; ctx.font = `600 ${Math.round(drum.r * .12)}px Oswald, 'Arial Narrow', sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CAGE EMPTY', drum.x, drum.y);
   }
-  // glass glint
-  ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(drum.x, drum.y, drum.r - 12, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+  if(tray){
+    // drop from the cage into the tray
+    const p = Math.min(1, (now - tray.t0) / 600), e = 1 - Math.pow(1 - p, 3);
+    const x0 = tray.x0 ?? tp.x, y0 = tray.y0 ?? tp.y;
+    let x = x0 + (tp.x - x0) * e, y = y0 + (tp.y - y0) * e, r = br + (tp.r - br) * e, sx = 1;
+    let face = tray.sealed ? null : tray.slot;
+    if(tray.revealT > 0){
+      // reveal: rattle, then flip to the team's colour
+      const q = now - tray.revealT;
+      if(q < SHAKE){ const amp = 1 + q / SHAKE * 4; x += Math.sin(q / 28) * amp; y += Math.cos(q / 41) * amp * .6; face = null; }
+      else if(q < SHAKE + FLIP){ const f = (q - SHAKE) / FLIP; sx = Math.abs(Math.cos(f * Math.PI)); face = f < .5 ? null : tray.slot; r *= 1 + .25 * Math.sin(f * Math.PI); }
+    }
+    if(tray.sealed && tray.revealT === 0 && p >= 1){          // sealed and waiting: a slow shimmer
+      ctx.fillStyle = `rgba(242,193,78,${.10 + .08 * Math.sin(now / 300)})`;
+      ctx.beginPath(); ctx.arc(x, y, r + 7, 0, Math.PI * 2); ctx.fill();
+    }
+    drawBall(x, y, r, face, sx);
+  }
+  for(const p of sparks){
+    ctx.save(); ctx.globalAlpha = Math.min(1, p.life / 30); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore();
+  }
+}
+function burst(slot){
+  const tp = trayPos(), c = team(slot).c;
+  for(let i = 0; i < 70; i++){
+    const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.3, v = 3 + Math.random() * 6;
+    sparks.push({x:tp.x, y:tp.y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, life:50 + Math.random() * 40,
+      c:Math.random() < .7 ? c : '#F2C14E', s:4 + Math.random() * 5, rot:Math.random() * 6, vr:(Math.random() - .5) * .4});
+  }
 }
 function loop(now){ step(now); render(now); requestAnimationFrame(loop); }
 
 /* ---------------- draw flow ---------------- */
 const $ = id => document.getElementById(id);
 const wait = ms => new Promise(r => setTimeout(r, ms));
+const SHAKE = reduce ? 0 : 1300, FLIP = reduce ? 0 : 420;
 
-async function drawOne(){
-  if(busy || remaining() < 1 || setupError()) return;
-  busy = true;
-  const num = nextNum(), slot = pickSlot();
-  S.draws.push(slot); save();                 // committed before the show, so a reload can't re-roll it
-  renderAll({hideLast:true});
-  if(!reduce){ mixUntil = performance.now() + 1500; await wait(1500); }
+// 1. Spin the cage and drop one ball, sealed. Nobody sees the team yet.
+async function spin(){
+  if(busy || S.sealed || remaining() < 1 || setupError()) return;
+  busy = true; tray = null;
+  const slot = pickSlot();
+  S.draws.push(slot); S.sealed = true; save();      // committed before the show, so a reload can't re-roll it
+  renderAll();
+  const el = $('reveal'); el.className = 'reveal sealed';
+  el.innerHTML = `<span class="big">#${nextNum() - (up() ? 1 : -1)}</span><div class="who"><span class="team">Spinning…</span><span class="sub">One ball is about to drop.</span></div>`;
+  if(!reduce){ spinUntil = performance.now() + 1700; await wait(2100); }
   const idx = balls.findIndex(b => b.slot === slot);
   const b = balls.splice(idx >= 0 ? idx : 0, 1)[0] || newBall(slot);
-  flying = {x:b.x, y:b.y, slot, t0:performance.now(), dur:reduce ? 1 : 650};
-  await wait(reduce ? 0 : 700);
-  showReveal(num, slot, true);
-  busy = false;
-  renderAll();
-  await wait(reduce ? 400 : 1400);
-  if(flying && flying.slot === slot && !busy) flying = null;
+  tray = {slot, x0:b.x, y0:b.y, t0:performance.now(), sealed:true, revealT:0};
+  await wait(reduce ? 0 : 650);
+  busy = false; renderAll();
+}
+// 2. The dealer reveals it to the room.
+async function reveal(){
+  if(busy || !S.sealed || !tray) return;
+  busy = true; renderAll();
+  const k = S.draws.length - 1, slot = S.draws[k];
+  tray.revealT = performance.now();
+  $('reveal').classList.add('rattle');
+  await wait(SHAKE + FLIP / 2);
+  tray.sealed = false; S.sealed = false; save();
+  $('reveal').classList.remove('rattle');
+  if(!reduce) burst(slot);
+  showReveal(numberOf(k), slot, true);
+  busy = false; renderAll({keepReveal:true});
 }
 function showReveal(num, slot, pop){
   const el = $('reveal');
+  el.className = 'reveal';
   if(num == null){
+    el.style.removeProperty('--tc');
     el.innerHTML = `<div class="who"><span class="team" style="color:var(--ink-2)">Ready</span><span class="sub">Every team has all ${remaining()} balls in. The first ball out gets entry #${nextNum()}.</span></div>`;
     return;
   }
+  if(slot == null){                                  // sealed ball waiting in the tray
+    const t = team(S.draws[S.draws.length - 1]);
+    el.classList.add('sealed');
+    el.innerHTML = `<span class="big">#${num}</span>
+      <div class="who"><span class="team">Ball is out</span>
+      <span class="sub">Dealer: hold <b>Peek</b> to check it, then tap <b>Reveal</b>.</span>
+      <span class="peek" id="peekOut">${esc(t.n)} (${esc(t.mgr)})</span></div>`;
+    return;
+  }
   const t = team(slot);
-  el.className = 'reveal' + (pop ? ' pop' : '');
+  el.style.setProperty('--tc', t.c);
+  if(pop) el.classList.add('pop');
+  const letters = pop && !reduce
+    ? [...t.n].map((ch, i) => `<span class="ch" style="animation-delay:${i * 35}ms">${ch === ' ' ? '&nbsp;' : esc(ch)}</span>`).join('')
+    : esc(t.n);
   el.innerHTML = `<span class="big" style="color:${t.c}">#${num}</span>
-    <div class="who"><span class="team" style="color:${t.c}">${esc(t.n)}</span>
+    <div class="who"><span class="team" style="color:${t.c}" aria-label="${esc(t.n)}">${letters}</span>
     <span class="sub">${esc(t.mgr)} gets entry #${num} · ${left(slot)} ball${left(slot) === 1 ? '' : 's'} left</span></div>`;
 }
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderAll(opt = {}){
-  const hide = opt.hideLast ? S.draws.length - 1 : -1;   // keep the pending draw secret until it drops
+  const hide = S.sealed ? S.draws.length - 1 : -1;       // a sealed ball stays secret everywhere until revealed
   const drawn = S.draws.length - (hide >= 0 ? 1 : 0), rem = total() - drawn;
   const n = numberOf(drawn), done = rem < 1, err = setupError();   // n = number on the line
 
-  $('drawBtn').textContent = done ? 'All numbers drawn' : busy ? `Drawing for #${n}…` : `Draw a team for #${n}`;
-  $('drawBtn').disabled = done || busy || !!err;
+  const db = $('drawBtn');
+  db.textContent = S.sealed ? (busy ? (tray && tray.revealT ? 'Revealing…' : `Spinning for #${n}…`) : `Reveal #${n}`)
+    : done ? 'All numbers drawn' : `Spin for #${n}`;
+  db.disabled = busy || (!S.sealed && (done || !!err));
+  $('peekBtn').hidden = !S.sealed || busy;
   $('oddsFor').textContent = done ? 'Done' : `Chance at #${n}`;
 
   // odds + pips
@@ -394,7 +510,7 @@ function renderAll(opt = {}){
   }).join('');
 
   // entrant board
-  const T = total(), pick = done && !busy;
+  const T = total(), pick = done && !busy && !S.sealed;
   $('board').className = 'board' + (pick ? ' pick' : '');
   let tiles = '';
   for(let num = 1; num <= T; num++){
@@ -450,16 +566,23 @@ function renderAll(opt = {}){
   $('lede').textContent = up()
     ? `Every ball in the machine is a team. Start at entry #1 with every team holding all their balls, draw one, and that team gets #1 and loses a ball. Then draw for #2, #3, and so on up to #${T}. The worst team has the fewest balls, so it is least likely to get stuck with an early number. Whoever holds the Rumble winner's number gets the 1st pick.`
     : `Every ball in the machine is a team. Start at entry #${T} with every team holding all their balls, draw one, and that team gets #${T} and loses a ball. Then draw for #${T - 1}, #${T - 2}, and so on down to #1. Whoever holds the Rumble winner's number gets the 1st pick.`;
-  $('restBtn').disabled = done || busy || !!err;
+  $('restBtn').disabled = done || busy || S.sealed || !!err;
   if(!busy && !opt.keepReveal){
     const last = S.draws.length - 1;
-    if(last >= 0 && last !== hide) showReveal(numberOf(last), S.draws[last], false);
-    else if(last < 0) showReveal(null);
+    if(last < 0) showReveal(null);
+    else showReveal(numberOf(last), S.sealed ? null : S.draws[last], false);
   }
 }
 
 /* ---------------- events ---------------- */
-$('drawBtn').addEventListener('click', drawOne);
+$('drawBtn').addEventListener('click', () => S.sealed ? reveal() : spin());
+// Peek: shows the team only while the dealer holds the button down.
+const peek = on => { const o = $('peekOut'); if(o) o.classList.toggle('show', on); $('peekBtn').classList.toggle('on', on); };
+$('peekBtn').addEventListener('pointerdown', e => { e.preventDefault(); try{ e.target.setPointerCapture(e.pointerId); }catch(_){} peek(true); });
+for(const ev of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) $('peekBtn').addEventListener(ev, () => peek(false));
+$('peekBtn').addEventListener('keydown', e => { if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); peek(true); } });
+$('peekBtn').addEventListener('keyup', () => peek(false));
+$('peekBtn').addEventListener('contextmenu', e => e.preventDefault());
 document.querySelector('.dir').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b || b.disabled || S.draws.length || b.dataset.mode === S.mode) return;
   // Flip the ball counts too, so the worst team goes from most balls to fewest (12/9/6/3 <-> 3/6/9/12).
@@ -468,7 +591,7 @@ document.querySelector('.dir').addEventListener('click', e => {
   S.mode = b.dataset.mode; save(); fill(); renderAll();
 });
 $('board').addEventListener('click', e => {
-  const t = e.target.closest('.tile.filled'); if(!t || remaining() > 0 || busy) return;
+  const t = e.target.closest('.tile.filled'); if(!t || remaining() > 0 || busy || S.sealed) return;
   const n = +t.dataset.n; S.winner = S.winner === n ? null : n; save(); renderAll({keepReveal:true});
 });
 $('setup').addEventListener('change', e => {
@@ -489,11 +612,11 @@ function armed(btn, label, action){
 armed($('restBtn'), 'Draw the rest', () => {
   if(busy) return;
   while(remaining() > 0) S.draws.push(pickSlot());
-  save(); flying = null; fill(); renderAll();
+  save(); tray = null; fill(); renderAll();
 });
 armed($('resetBtn'), 'Reset lottery', () => {
   if(busy) return;
-  S = {...defaults(), slots:S.slots, mode:S.mode}; save(); flying = null; $('copyOut').hidden = true; fill(); renderAll();
+  S = {...defaults(), slots:S.slots, mode:S.mode}; save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
 });
 $('copyBtn').addEventListener('click', () => {
   const lines = [`ROYAL RUMBLE LOTTERY (#${firstNum()} to #${lastNum()})`];
@@ -508,7 +631,10 @@ $('copyBtn').addEventListener('click', () => {
   const fallback = () => { out.hidden = false; out.focus(); out.select(); btn.textContent = 'Select and copy below'; };
   try{ navigator.clipboard.writeText(text).then(ok, fallback); }catch(e){ fallback(); }
 });
-new ResizeObserver(() => { size(); fill(); }).observe(cv);
+new ResizeObserver(() => {
+  size(); if(busy) return;             // mid-spin the ball about to drop is still in the cage; refill after
+  const t = tray; fill(); if(t && tray) tray = {...t, x0:undefined, y0:undefined};
+}).observe(cv);
 
 size(); fill(); renderAll(); requestAnimationFrame(loop);
 </script>

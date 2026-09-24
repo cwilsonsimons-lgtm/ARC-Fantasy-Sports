@@ -73,8 +73,13 @@ Setup also has an inverse mode, **Start at #1**: draws run #1 up to #30 and
 the ball counts flip, so the worst team has the fewest balls (3/6/9/12) and
 is least likely to be stuck with an early entry number.
 
-Draws use `crypto.getRandomValues` and are saved before the ball animation
-plays, so reloading mid-draw can't re-roll a result. Progress is kept in
+Draws are dealt like a bingo cage: **Spin** turns the cage and drops one ball,
+sealed, into the tray. Nothing on the page shows the team until the dealer taps
+**Reveal**, which rattles the ball, flips it to the team's colour and bursts
+confetti. Before that, **Hold to peek** shows the dealer the team only while the
+button is held. A sealed ball survives a reload and stays sealed.
+
+Draws use `crypto.getRandomValues` and are saved before the cage spins, so reloading mid-draw can't re-roll a result. Progress is kept in
 `localStorage` (`rumble_lottery_v1`); setup locks after the first draw.
 
 ## Layout
