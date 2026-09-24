@@ -69,6 +69,10 @@ so 30 balls for 30 Rumble entry numbers. Draw at #30 with every ball in; the
 team that comes out gets #30 and loses a ball, then #29, down to #1. After the
 Rumble, tap the winner's entry number to see who gets the 1st pick.
 
+Setup also has an inverse mode, **Start at #1**: draws run #1 up to #30 and
+the ball counts flip, so the worst team has the fewest balls (3/6/9/12) and
+is least likely to be stuck with an early entry number.
+
 Draws use `crypto.getRandomValues` and are saved before the ball animation
 plays, so reloading mid-draw can't re-roll a result. Progress is kept in
 `localStorage` (`rumble_lottery_v1`); setup locks after the first draw.
