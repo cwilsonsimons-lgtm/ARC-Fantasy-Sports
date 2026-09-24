@@ -373,47 +373,73 @@ body.open .scrim{opacity:1;pointer-events:auto}
    whoever leads, day gridlines across the NFL week, scrub for the score. */
 .rewind{display:none;border:1px solid var(--line);border-radius:16px;
   background:linear-gradient(180deg,#0d1524,#171416);padding:10px 12px 8px;margin-top:10px}
-.rw-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.rw-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 .rw-title{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;
-  letter-spacing:1.4px;color:var(--ink-2)}
-.rw-legend{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:600;color:var(--ink-3)}
-.rw-legend i{width:8px;height:8px;border-radius:2px;display:inline-block}
+  letter-spacing:1.4px;color:var(--ink-2);white-space:nowrap}
+.rw-legend{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:600;color:var(--ink-3);min-width:0}
+.rw-legend .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px}
+.rw-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
 .rw-legend i.me{background:var(--green)}
 .rw-legend i.opp{background:var(--red);margin-left:6px}
 
+/* readout: time, score and win % above the chart */
+.rw-read{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  border-bottom:1px solid var(--line-soft);padding-bottom:7px;margin-bottom:10px}
+.rw-read .t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;color:var(--ink-2);flex:1}
+.rw-read .sc{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14px;color:var(--ink-3);white-space:nowrap}
+.rw-read .sc b{font-weight:700}
+.rw-read .sc b.me{color:var(--green)}
+.rw-read .sc b.opp{color:var(--red)}
+.rw-read .w{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;flex:1;text-align:right}
+.rw-read .w.up{color:var(--green)}
+.rw-read .w.dn{color:var(--red)}
+
 .rw-chart{position:relative;padding-right:22px}
-.rw-y{position:absolute;right:0;top:0;height:150px;display:flex;flex-direction:column;
+.rw-y{position:absolute;right:0;top:0;height:170px;display:flex;flex-direction:column;
   justify-content:space-between;align-items:flex-end;
   font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8px;color:var(--ink-3);pointer-events:none}
-.rw-svg{width:100%;height:150px;display:block;cursor:crosshair;touch-action:none}
+.rw-svg{width:100%;height:170px;display:block;cursor:crosshair;touch-action:none}
 .rw-grid{stroke:rgba(255,255,255,.07);stroke-width:1;stroke-dasharray:2 4}
-.rw-mid{stroke:rgba(255,255,255,.34);stroke-width:1;vector-effect:non-scaling-stroke}
+.rw-mid{stroke:rgba(255,255,255,.34);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
 .rw-line{fill:none;stroke:var(--green);stroke-width:2;stroke-linejoin:round;
   vector-effect:non-scaling-stroke}
-.rw-td{opacity:.95;stroke:#171416;stroke-width:1}
-.rw-td.me{fill:var(--green)}
-.rw-td.opp{fill:var(--red)}
-.rw-cursor{stroke:var(--ink-2);stroke-width:1;vector-effect:non-scaling-stroke}
-.rw-dot{fill:#fff;stroke:var(--green);stroke-width:2;vector-effect:non-scaling-stroke}
-.rw-axis{position:relative;height:13px;margin-top:2px}
+.rw-cursor{stroke:var(--ink-2);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+
+/* pins, cursor dot and the callout bubble sit over the (stretched) SVG in real pixels */
+.rw-pins{position:absolute;left:0;top:0;right:22px;height:170px;pointer-events:none}
+.rw-pin,.rw-dot{position:absolute;border-radius:50%;transform:translate(-50%,-50%)}
+.rw-pin{width:9px;height:9px;border:1.5px solid #171416;transition:box-shadow .15s}
+.rw-pin.me{background:var(--green)}
+.rw-pin.opp{background:var(--red)}
+.rw-pin.on{width:12px;height:12px;z-index:2}
+.rw-pin.on.me{box-shadow:0 0 0 2px #171416,0 0 0 3.5px var(--green)}
+.rw-pin.on.opp{box-shadow:0 0 0 2px #171416,0 0 0 3.5px var(--red)}
+.rw-dot{width:8px;height:8px;background:#fff;border:2px solid var(--green);z-index:3}
+.rw-dot.dn{border-color:var(--red)}
+.rw-lead{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
+.rw-lead line{stroke-width:1.2}
+.rw-lead.me line{stroke:var(--green)}
+.rw-lead.opp line{stroke:var(--red)}
+.rw-bub{position:absolute;display:none;z-index:4;max-width:62%;padding:5px 8px 6px;border-radius:8px;
+  border:1px solid;background:rgba(23,20,22,.92);box-shadow:0 4px 14px rgba(0,0,0,.45)}
+.rw-bub.me{border-color:var(--green);background:linear-gradient(rgba(50,159,91,.14),rgba(50,159,91,.14)),rgba(23,20,22,.94)}
+.rw-bub.opp{border-color:var(--red);background:linear-gradient(rgba(240,93,94,.14),rgba(240,93,94,.14)),rgba(23,20,22,.94)}
+.rw-bub .h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9px;
+  letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rw-bub.me .h{color:var(--green)}
+.rw-bub.opp .h{color:var(--red)}
+.rw-bub .b{font-size:11px;font-weight:600;color:var(--ink);margin-top:1px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.rw-bub .b em{font-style:normal;font-weight:700;margin-left:3px}
+.rw-bub .b em.me{color:var(--green)}
+.rw-bub .b em.opp{color:var(--red)}
+
+.rw-axis{position:relative;height:13px;margin-top:4px}
 .rw-axis span{position:absolute;transform:translateX(-50%);font-family:'JetBrains Mono',ui-monospace,monospace;
   font-size:8px;color:var(--ink-3);white-space:nowrap}
 /* the first and last ticks sit on the edges; centring them would clip the text */
 .rw-axis span:first-child{transform:translateX(0)}
 .rw-axis span:last-child{transform:translateX(-100%)}
-
-.rw-read{border-top:1px solid var(--line-soft);margin-top:6px;padding-top:7px}
-.rw-r1{display:flex;align-items:baseline;justify-content:space-between}
-.rw-r1 .t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:var(--ink-2)}
-.rw-r1 .w{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px}
-.rw-r1 .w.up{color:var(--green)}
-.rw-r1 .w.dn{color:var(--red)}
-.rw-r2{display:flex;align-items:baseline;justify-content:space-between;margin-top:2px}
-.rw-r2 .sc{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;color:var(--ink-3)}
-.rw-r2 .sc b{color:var(--ink);font-weight:700}
-.rw-r2 .ev{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;font-size:10.5px;font-weight:700}
-.rw-r2 .ev .me{color:var(--green)}
-.rw-r2 .ev .opp{color:var(--red)}
 .rw-empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
 
 /* starters */
@@ -4904,6 +4930,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   var H = 150;
   var PADL = 4;
   var PADR = 4;
+  var BUB_GAP = 16;
   function buildRewind(el, aFinal, xFinal) {
     const pts = rewindSeries();
     if (!pts.length) {
@@ -4913,10 +4940,21 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     const n = pts.length;
     const X = (i) => PADL + i / (n - 1) * (W - PADL - PADR);
     const Y = (w) => H - w / 100 * H;
+    const pctX = (i) => (X(i) / W * 100).toFixed(2) + "%";
+    const pctY = (w) => (Y(w) / H * 100).toFixed(2) + "%";
     const line = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.win).toFixed(1)}`).join(" ");
     const area = `${PADL},${Y(50)} ${line} ${X(n - 1).toFixed(1)},${Y(50)}`;
-    const scored = pts.map((p, i) => p.ev.length ? `<circle class="rw-td ${p.ev[0].side === "a" ? "me" : "opp"}"
-         cx="${X(i).toFixed(1)}" cy="${Y(p.win).toFixed(1)}" r="2.8"/>` : "").join("");
+    // Scoring plays are HTML pins over the chart, not SVG circles: the SVG is
+    // stretched to fit (preserveAspectRatio="none"), which would squash a circle.
+    const plays = [];
+    pts.forEach((p, i) => {
+      if (p.ev.length) plays.push(i);
+    });
+    const sideCls = (s) => s === "a" ? "me" : "opp";
+    const pins = plays.map((i) => `<span class="rw-pin ${sideCls(pts[i].ev[0].side)}" data-i="${i}"
+         style="left:${pctX(i)};top:${pctY(pts[i].win)}"></span>`).join("");
+    const [aKey, xKey] = liveSides();
+    const names = { a: teamName(aKey), x: teamName(xKey) };
     const marks = [];
     let lastW = null;
     pts.forEach((p, i) => {
@@ -4929,7 +4967,12 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     el.innerHTML = `
     <div class="rw-head">
       <span class="rw-title">WIN PROBABILITY</span>
-      <span class="rw-legend"><i class="me"></i>You<i class="opp"></i>Opponent</span>
+      <span class="rw-legend"><i class="me"></i><span class="nm">${escName(names.a)}</span><i class="opp"></i><span class="nm">${escName(names.x)}</span></span>
+    </div>
+    <div class="rw-read">
+      <span class="t"></span>
+      <span class="sc"></span>
+      <span class="w"></span>
     </div>
     <div class="rw-chart">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="rw-svg">
@@ -4947,42 +4990,91 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
         <polygon class="rw-area" points="${area}" fill="url(#rwFill)"/>
         <line class="rw-mid" x1="0" y1="${Y(50)}" x2="${W}" y2="${Y(50)}"/>
         <polyline class="rw-line" points="${line}"/>
-        ${scored}
         <line class="rw-cursor" x1="0" y1="0" x2="0" y2="${H}"/>
-        <circle class="rw-dot" cx="0" cy="0" r="4"/>
       </svg>
+      <div class="rw-pins">
+        <svg class="rw-lead"><line x1="0" y1="0" x2="0" y2="0"/></svg>
+        ${pins}
+        <span class="rw-dot"></span>
+        <div class="rw-bub"></div>
+      </div>
       <div class="rw-y"><span>100</span><span>50</span><span>100</span></div>
       <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%">${m.lb}</span>`).join("")}</div>
-    </div>
-    <div class="rw-read">
-      <div class="rw-r1"><span class="t"></span><span class="w"></span></div>
-      <div class="rw-r2"><span class="sc"></span><span class="ev"></span></div>
     </div>`;
-    const svg2 = el.querySelector(".rw-svg");
+    const svg2 = el.querySelector(".rw-svg"), layer = el.querySelector(".rw-pins");
     const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
-    const rT = el.querySelector(".rw-r1 .t"), rW = el.querySelector(".rw-r1 .w");
-    const rS = el.querySelector(".rw-r2 .sc"), rE = el.querySelector(".rw-r2 .ev");
+    const bub = el.querySelector(".rw-bub"), lead = el.querySelector(".rw-lead");
+    const leadLn = lead.querySelector("line");
+    const rT = el.querySelector(".rw-read .t"), rW = el.querySelector(".rw-read .w");
+    const rS = el.querySelector(".rw-read .sc");
+    const pinEls = [...layer.querySelectorAll(".rw-pin")];
+    // The bubble belongs to the scoring play closest to the cursor.
+    const nearestPlay = (i) => plays.reduce((b, j) => b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b, -1);
+    function placeBubble(j) {
+      pinEls.forEach((e) => e.classList.toggle("on", +e.dataset.i === j));
+      if (j < 0) {
+        bub.style.display = "none";
+        lead.style.display = "none";
+        return;
+      }
+      const p = pts[j], side = p.ev[0].side;
+      bub.className = "rw-bub " + sideCls(side);
+      bub.innerHTML = `<div class="h">${escName(names[side])} &middot; TD</div>` + p.ev.map(
+        (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">+${e.pts.toFixed(1)} pts</em></div>`
+      ).join("");
+      bub.style.display = "block";
+      const lw = layer.clientWidth, lh = layer.clientHeight;
+      const dx = X(j) / W * lw, dy = Y(p.win) / H * lh;
+      const bw = bub.offsetWidth, bh = bub.offsetHeight;
+      // off to the side toward the roomier half, and clear of the pin vertically
+      // (below a high pin, above a low one) so the leader line reads as a pointer
+      let left = dx < lw / 2 ? dx + BUB_GAP : dx - BUB_GAP - bw;
+      left = Math.max(0, Math.min(lw - bw, left));
+      let top = dy < lh / 2 ? dy + BUB_GAP : dy - BUB_GAP - bh;
+      top = Math.max(0, Math.min(lh - bh, top));
+      bub.style.left = left + "px";
+      bub.style.top = top + "px";
+      // leader line from the pin to the nearest point on the bubble's edge
+      const ex = Math.max(left, Math.min(left + bw, dx)), ey = Math.max(top, Math.min(top + bh, dy));
+      leadLn.setAttribute("x1", dx);
+      leadLn.setAttribute("y1", dy);
+      leadLn.setAttribute("x2", ex);
+      leadLn.setAttribute("y2", ey);
+      lead.setAttribute("class", "rw-lead " + sideCls(side));
+      lead.style.display = "block";
+    }
     function show(i) {
       i = Math.max(0, Math.min(n - 1, i));
-      const p = pts[i], x = X(i), y = Y(p.win);
+      const p = pts[i], x = X(i);
       cur.setAttribute("x1", x);
       cur.setAttribute("x2", x);
-      dot.setAttribute("cx", x);
-      dot.setAttribute("cy", y);
+      dot.style.left = pctX(i);
+      dot.style.top = pctY(p.win);
+      dot.className = "rw-dot " + (p.win >= 50 ? "up" : "dn");
       rT.textContent = clockLabel(p.abs);
       rW.textContent = p.win + "% win";
       rW.className = "w " + (p.win >= 50 ? "up" : "dn");
-      rS.innerHTML = `<b>${p.a.toFixed(1)}</b> &ndash; <b>${p.x.toFixed(1)}</b>`;
-      rE.innerHTML = p.ev.map(
-        (e) => `<span class="${e.side === "a" ? "me" : "opp"}">${escName(e.name)} TD +${e.pts.toFixed(1)}</span>`
-      ).join("");
+      rS.innerHTML = `<b class="me">${p.a.toFixed(1)}</b> &ndash; <b class="opp">${p.x.toFixed(1)}</b>`;
+      placeBubble(nearestPlay(i));
     }
-    show(n - 1);
+    let last = n - 1;
+    show(last);
+    // the bubble is sized in pixels, so re-place it once the chart is actually on screen
+    if (typeof ResizeObserver !== "undefined") {
+      if (el._rwRO) el._rwRO.disconnect();
+      el._rwRO = new ResizeObserver(() => show(last));
+      el._rwRO.observe(layer);
+    }
     let drag = false;
     const at = (e) => {
       const r = svg2.getBoundingClientRect();
       const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-      show(Math.round(cx / r.width * (n - 1)));
+      let i = Math.round(cx / r.width * (n - 1));
+      // snap onto a scoring play when the finger lands close to one
+      const j = nearestPlay(i);
+      if (j >= 0 && Math.abs(X(j) - X(i)) / W * r.width <= 10) i = j;
+      last = Math.max(0, Math.min(n - 1, i));
+      show(last);
     };
     const move = (e) => {
       if (drag) {
