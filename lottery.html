@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Royal Rumble Lottery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Single dark look on purpose: it matches the City Boys Dynasty app. */
+:root{
+  color-scheme:dark;
+  --bg:#070A0F;--card:#111826;--card-2:#0E1420;
+  --line:#1E2836;--line-soft:#161E2A;
+  --ink:#F3F6FA;--ink-2:#93A0B0;--ink-3:#5E6B7C;
+  --gold:#F2C14E;--gold-ink:#1A1405;
+  --violet:#7C5CFF;
+  --display:'Oswald','Arial Narrow',system-ui,sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:15px;line-height:1.45;padding:28px 16px 48px;min-height:100%}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--display);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,7vw,52px);line-height:1;letter-spacing:.01em;
+  text-transform:uppercase;text-wrap:balance}
+h1 em{font-style:normal;color:var(--gold)}
+.lede{color:var(--ink-2);max-width:62ch}
+h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+@media (min-width:860px){.grid{grid-template-columns:minmax(0,420px) minmax(0,1fr);align-items:start}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:16px}
+.col{display:flex;flex-direction:column;gap:22px;min-width:0}
+
+/* ---- machine ---- */
+.drum-wrap{position:relative;width:100%;max-width:360px;margin:0 auto;aspect-ratio:1/1.12}
+#drum{width:100%;height:100%;display:block}
+.reveal{min-height:96px;display:flex;align-items:center;gap:16px;padding:12px 16px;border-radius:14px;
+  background:var(--card-2);border:1px solid var(--line-soft)}
+.reveal .big{font-family:var(--display);font-weight:700;font-size:54px;line-height:1;font-variant-numeric:tabular-nums;min-width:2.4ch}
+.reveal .who{display:flex;flex-direction:column;gap:2px;min-width:0}
+.reveal .team{font-family:var(--display);font-weight:600;font-size:22px;line-height:1.1;text-transform:uppercase;overflow-wrap:anywhere}
+.reveal .sub{color:var(--ink-2);font-size:13px}
+.reveal.pop .big,.reveal.pop .team{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{border:0;border-radius:12px;padding:14px 18px;font-family:var(--display);font-weight:600;font-size:17px;
+  letter-spacing:.06em;text-transform:uppercase}
+.btn.primary{background:var(--gold);color:var(--gold-ink);flex:1 1 200px}
+.btn.primary:disabled{background:#3a3320;color:#8a7d55;cursor:default}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2);font-size:14px;padding:12px 14px}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink-3)}
+.btn.ghost.armed{border-color:#F0453E;color:#F0453E}
+.btn.ghost:disabled{opacity:.4;cursor:default}
+
+/* ---- odds table ---- */
+.odds{display:flex;flex-direction:column;gap:8px}
+.orow{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line-soft)}
+.orow:first-child{border-top:0}
+.chip{width:12px;height:12px;border-radius:50%}
+.oname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oname small{color:var(--ink-3);font-weight:500;margin-left:6px}
+.opct{font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;text-align:right}
+.pips{grid-column:2/4;display:flex;flex-wrap:wrap;gap:3px}
+.pip{width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor}
+.pip.on{background:currentColor}
+.olabel{display:flex;justify-content:space-between;color:var(--ink-3);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+/* ---- entrant board ---- */
+.board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+@media (max-width:420px){.board{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.tile{position:relative;aspect-ratio:1/1.05;border-radius:10px;background:var(--card-2);border:1px dashed var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px;
+  font-variant-numeric:tabular-nums;min-width:0}
+.tile .n{font-family:var(--display);font-weight:700;font-size:22px;line-height:1;color:var(--ink-3)}
+.tile .m{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.filled{border:1px solid transparent}
+.tile.filled .n{color:inherit}
+.tile.next{border:1.5px solid var(--gold)}
+.tile.next .n{color:var(--gold)}
+.tile.next::after{content:'NEXT';position:absolute;bottom:4px;font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--gold)}
+.board.pick .tile.filled{cursor:pointer}
+.board.pick .tile.filled:hover{outline:2px solid var(--ink)}
+.tile.winner{outline:3px solid var(--gold);outline-offset:1px}
+.tile.winner::before{content:'★';position:absolute;top:2px;right:5px;font-size:11px;color:var(--gold)}
+.tile.dim{opacity:.35}
+
+/* ---- per-team holdings ---- */
+.hold{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.hcard{border-radius:12px;padding:12px 14px;background:var(--card-2);border:1px solid var(--line-soft);display:flex;flex-direction:column;gap:6px}
+.hcard .hn{font-family:var(--display);font-weight:600;font-size:17px;text-transform:uppercase;line-height:1.1}
+.hcard .hm{color:var(--ink-2);font-size:13px}
+.hcard .nums{font-family:var(--mono);font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.hcard .nums.empty{color:var(--ink-3)}
+.hcard.win{border-color:var(--gold)}
+
+/* ---- result ---- */
+.result{border-radius:16px;padding:18px;background:var(--gold);color:var(--gold-ink);display:flex;flex-direction:column;gap:4px}
+.result .k{font-family:var(--display);font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+.result .v{font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,36px);line-height:1.05;text-transform:uppercase;text-wrap:balance}
+.hint{color:var(--ink-2);font-size:14px}
+.hint b{color:var(--gold);font-weight:600}
+
+/* ---- setup ---- */
+.srow{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr) 72px;gap:10px;align-items:center}
+.srow label{font-size:13px;color:var(--ink-2);font-weight:600}
+select,input[type=number]{background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0;width:100%}
+input[type=number]{font-family:var(--mono);text-align:center}
+select:disabled,input:disabled{opacity:.55}
+.shead{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr) 72px;gap:10px;color:var(--ink-3);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.shead span:last-child{text-align:center}
+.note{font-size:13px;color:var(--ink-3)}
+.note.err{color:#F0453E}
+.copyout{width:100%;min-height:120px;background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px;
+  font-family:var(--mono);font-size:12px;color:var(--ink);resize:vertical}
+
+@media (prefers-reduced-motion:reduce){.reveal.pop .big,.reveal.pop .team{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">City Boys Dynasty · Draft lottery</div>
+    <h1>Royal Rumble <em>Lottery</em></h1>
+    <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Whoever holds the Rumble winner's number gets the 1st pick.</p>
+  </header>
+
+  <section class="panel" aria-label="Lottery setup">
+    <h2>Setup</h2>
+    <div class="shead"><span>Finish</span><span>Team</span><span>Balls</span></div>
+    <div id="setup" style="display:flex;flex-direction:column;gap:8px"></div>
+    <p class="note" id="setupNote"></p>
+    <div class="actions">
+      <button class="btn ghost" id="restBtn" type="button">Draw the rest</button>
+      <button class="btn ghost" id="copyBtn" type="button">Copy results</button>
+      <button class="btn ghost" id="resetBtn" type="button">Reset lottery</button>
+    </div>
+    <textarea class="copyout" id="copyOut" readonly hidden></textarea>
+  </section>
+
+  <div class="grid">
+    <section class="panel" aria-label="Ball machine">
+      <div class="drum-wrap"><canvas id="drum" aria-hidden="true"></canvas></div>
+      <div class="reveal" id="reveal" aria-live="polite"></div>
+      <div class="actions">
+        <button class="btn primary" id="drawBtn" type="button">Draw a team for #30</button>
+      </div>
+      <div class="odds">
+        <div class="olabel"><span>Balls left</span><span id="oddsFor">Chance at #30</span></div>
+        <div id="odds"></div>
+      </div>
+    </section>
+
+    <div class="col">
+      <section class="panel" aria-label="Entrant numbers">
+        <h2>Rumble entrants</h2>
+        <div id="resultBox"></div>
+        <div class="board" id="board"></div>
+      </section>
+
+      <section class="panel" aria-label="Numbers by team">
+        <h2>Numbers by team</h2>
+        <div class="hold" id="hold"></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// League teams, mirrored from js/data/teams.js (this page is standalone so it
+// opens by double-clicking, without the app's module server).
+const LEAGUE = [
+  {id:'pandas',n:'UGF Pandas',mgr:'Wilson',c:'#8CE04A'},
+  {id:'radiator',n:'Radiator Springs',mgr:'Benton',c:'#F0453E'},
+  {id:'barzal',n:"Barzal's Balls",mgr:'Luke',c:'#5AA9E6'},
+  {id:'dakyard',n:'Dakyard Football',mgr:'Jake',c:'#E6A85A'},
+  {id:'boutte',n:'Diggin in Boutte',mgr:'Jatin',c:'#5AE6B5'},
+  {id:'burrow',n:'Seriously Step Burrow',mgr:'Jarren',c:'#E65A7A'},
+  {id:'saquon',n:'Saquon My Balls',mgr:'Cam',c:'#C77DFF'},
+  {id:'brady',n:'Brady Bunch',mgr:'Manas',c:'#7D9BFF'},
+  {id:'longhorns',n:'Texas Longhorns',mgr:'Mason',c:'#E6845A'},
+  {id:'doghouse',n:"Mike Vick's Dog House",mgr:'Seabass',c:'#E6D15A'},
+];
+const BY_ID = Object.fromEntries(LEAGUE.map(t => [t.id, t]));
+const PLACES = ['Last', '2nd to last', '3rd to last', '4th to last'];
+const KEY = 'rumble_lottery_v1';
+
+function defaults(){
+  return {
+    slots:[{team:'dakyard',balls:12},{team:'brady',balls:9},{team:'longhorns',balls:6},{team:'burrow',balls:3}],
+    draws:[],     // draws[i] = slot index that received number (total - i)
+    winner:null,  // Rumble-winning entrant number
+  };
+}
+let S = load();
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && Array.isArray(s.slots) && Array.isArray(s.draws)) return s; }catch(e){}
+  return defaults();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+const total = () => S.slots.reduce((a, s) => a + s.balls, 0);
+const left = i => S.slots[i].balls - S.draws.filter(d => d === i).length;
+const nextNum = () => total() - S.draws.length;
+const numberOf = k => total() - k;            // number handed out by draw k
+const team = i => BY_ID[S.slots[i].team];
+const numsFor = i => S.draws.map((d, k) => d === i ? numberOf(k) : null).filter(n => n !== null).sort((a, b) => a - b);
+const holderOf = n => { const k = total() - n; return k >= 0 && k < S.draws.length ? S.draws[k] : null; };
+function setupError(){
+  const ids = S.slots.map(s => s.team);
+  if(new Set(ids).size !== ids.length) return 'Each finish needs a different team.';
+  if(S.slots.some(s => !(s.balls >= 1 && s.balls <= 30))) return 'Every team needs between 1 and 30 balls.';
+  return '';
+}
+
+// Fair draw: one ball uniformly from every ball still in the machine.
+function secureInt(n){
+  const lim = Math.floor(0x100000000 / n) * n, buf = new Uint32Array(1);
+  do crypto.getRandomValues(buf); while(buf[0] >= lim);
+  return buf[0] % n;
+}
+function pickSlot(){
+  let r = secureInt(nextNum());
+  for(let i = 0; i < S.slots.length; i++){ r -= left(i); if(r < 0) return i; }
+}
+
+/* ---------------- ball machine (visual only) ---------------- */
+const cv = document.getElementById('drum'), ctx = cv.getContext('2d');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W = 0, H = 0, dpr = 1, drum = {x:0, y:0, r:0}, br = 12;
+let balls = [], mixUntil = 0, flying = null, busy = false;
+
+function size(){
+  const r = cv.getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1; W = r.width; H = r.height;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  drum = {x:W / 2, y:W / 2, r:W / 2 - 8};
+  br = Math.max(8, drum.r * 0.085);
+}
+function fill(){
+  balls = [];
+  S.slots.forEach((s, i) => { for(let k = 0; k < left(i); k++) balls.push(newBall(i)); });
+}
+function newBall(slot){
+  const a = Math.random() * Math.PI * 2, d = Math.random() * (drum.r - br * 2);
+  return {slot, x:drum.x + Math.cos(a) * d, y:drum.y + Math.sin(a) * d * .5 + drum.r * .3, vx:0, vy:0};
+}
+function step(now){
+  const mixing = now < mixUntil;
+  for(const b of balls){
+    b.vy += mixing ? 0 : .18;                                      // gravity
+    const kick = mixing ? 2.4 : (Math.random() < .03 ? .9 : 0);    // air jets
+    b.vx += (Math.random() - .5) * kick; b.vy += (Math.random() - .5) * kick - (mixing ? .35 : 0);
+    b.vx *= .985; b.vy *= .985; b.x += b.vx; b.y += b.vy;
+    const dx = b.x - drum.x, dy = b.y - drum.y, d = Math.hypot(dx, dy), lim = drum.r - br - 3;
+    if(d > lim){
+      const nx = dx / d, ny = dy / d; b.x = drum.x + nx * lim; b.y = drum.y + ny * lim;
+      const dot = b.vx * nx + b.vy * ny; if(dot > 0){ b.vx -= 1.7 * dot * nx; b.vy -= 1.7 * dot * ny; }
+    }
+  }
+  for(let i = 0; i < balls.length; i++) for(let j = i + 1; j < balls.length; j++){
+    const a = balls[i], b = balls[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, m = br * 2;
+    if(d < m){
+      const nx = dx / d, ny = dy / d, o = (m - d) / 2;
+      a.x -= nx * o; a.y -= ny * o; b.x += nx * o; b.y += ny * o;
+      const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+      if(rv < 0){ a.vx += rv * nx * .9; a.vy += rv * ny * .9; b.vx -= rv * nx * .9; b.vy -= rv * ny * .9; }
+    }
+  }
+}
+function drawBall(x, y, r, slot, alpha = 1){
+  const t = team(slot);
+  ctx.globalAlpha = alpha;
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(.35, t.c); g.addColorStop(1, shade(t.c, -.35));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0B0F16'; ctx.font = `700 ${Math.round(r * .95)}px Oswald, 'Arial Narrow', sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t.n[0], x, y + r * .06);
+  ctx.globalAlpha = 1;
+}
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16), c = [n >> 16, n >> 8 & 255, n & 255].map(v => Math.round(v * (1 + f)));
+  return `rgb(${c.join(',')})`;
+}
+function render(now){
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  // chute below the drum
+  const cw = br * 2.9, cy = drum.y + drum.r;
+  ctx.fillStyle = '#0B111B'; ctx.strokeStyle = '#2A3648'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(drum.x - cw / 2, cy - 6, cw, H - cy, [0, 0, 10, 10]); ctx.fill(); ctx.stroke();
+  // drum
+  const g = ctx.createRadialGradient(drum.x - drum.r * .3, drum.y - drum.r * .4, drum.r * .1, drum.x, drum.y, drum.r);
+  g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(255,255,255,.015)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(drum.x, drum.y, drum.r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2A3648'; ctx.lineWidth = 3; ctx.stroke();
+  if(!balls.length && !flying){
+    ctx.fillStyle = '#5E6B7C'; ctx.font = `600 ${Math.round(drum.r * .12)}px Oswald, 'Arial Narrow', sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('MACHINE EMPTY', drum.x, drum.y);
+  }
+  for(const b of balls) drawBall(b.x, b.y, br, b.slot);
+  if(flying){
+    const p = Math.min(1, (now - flying.t0) / flying.dur), e = 1 - Math.pow(1 - p, 3);
+    const tx = drum.x, ty = H - br - 8;
+    drawBall(flying.x + (tx - flying.x) * e, flying.y + (ty - flying.y) * e, br * (1 + .5 * e), flying.slot);
+  }
+  // glass glint
+  ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(drum.x, drum.y, drum.r - 12, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+}
+function loop(now){ step(now); render(now); requestAnimationFrame(loop); }
+
+/* ---------------- draw flow ---------------- */
+const $ = id => document.getElementById(id);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+async function drawOne(){
+  if(busy || nextNum() < 1 || setupError()) return;
+  busy = true;
+  const num = nextNum(), slot = pickSlot();
+  S.draws.push(slot); save();                 // committed before the show, so a reload can't re-roll it
+  renderAll({hideLast:true});
+  if(!reduce){ mixUntil = performance.now() + 1500; await wait(1500); }
+  const idx = balls.findIndex(b => b.slot === slot);
+  const b = balls.splice(idx >= 0 ? idx : 0, 1)[0] || newBall(slot);
+  flying = {x:b.x, y:b.y, slot, t0:performance.now(), dur:reduce ? 1 : 650};
+  await wait(reduce ? 0 : 700);
+  showReveal(num, slot, true);
+  busy = false;
+  renderAll();
+  await wait(reduce ? 400 : 1400);
+  if(flying && flying.slot === slot && !busy) flying = null;
+}
+function showReveal(num, slot, pop){
+  const el = $('reveal');
+  if(num == null){
+    el.innerHTML = `<div class="who"><span class="team" style="color:var(--ink-2)">Ready</span><span class="sub">Every team has all ${nextNum()} balls in. The first ball out gets entry #${nextNum()}.</span></div>`;
+    return;
+  }
+  const t = team(slot);
+  el.className = 'reveal' + (pop ? ' pop' : '');
+  el.innerHTML = `<span class="big" style="color:${t.c}">#${num}</span>
+    <div class="who"><span class="team" style="color:${t.c}">${esc(t.n)}</span>
+    <span class="sub">${esc(t.mgr)} gets entry #${num} · ${left(slot)} ball${left(slot) === 1 ? '' : 's'} left</span></div>`;
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderAll(opt = {}){
+  const hide = opt.hideLast ? S.draws.length - 1 : -1;   // keep the pending draw secret until it drops
+  const n = nextNum() + (hide >= 0 ? 1 : 0), done = n < 1, err = setupError();   // n = number on the line
+
+  $('drawBtn').textContent = done ? 'All numbers drawn' : busy ? `Drawing for #${n}…` : `Draw a team for #${n}`;
+  $('drawBtn').disabled = done || busy || !!err;
+  $('oddsFor').textContent = done ? 'Done' : `Chance at #${n}`;
+
+  // odds + pips
+  $('odds').innerHTML = S.slots.map((s, i) => {
+    const t = team(i), l = left(i) + (i === S.draws[hide] ? 1 : 0), pool = n;
+    const pct = pool > 0 ? (l / pool * 100).toFixed(1) + '%' : '—';
+    const pips = Array.from({length:s.balls}, (_, k) => `<span class="pip${k < l ? ' on' : ''}"></span>`).join('');
+    return `<div class="orow"><span class="chip" style="background:${t.c}"></span>
+      <span class="oname">${esc(t.n)}<small>${PLACES[i]}</small></span><span class="opct">${pct}</span>
+      <span class="pips" style="color:${t.c}" aria-label="${l} of ${s.balls} balls left">${pips}</span></div>`;
+  }).join('');
+
+  // entrant board
+  const T = total(), pick = done && !busy;
+  $('board').className = 'board' + (pick ? ' pick' : '');
+  let tiles = '';
+  for(let num = 1; num <= T; num++){
+    const k = T - num, has = k < S.draws.length && k !== hide, slot = has ? S.draws[k] : null;
+    const next = !done && num === n;
+    if(has){
+      const t = team(slot), win = S.winner === num;
+      tiles += `<button type="button" class="tile filled${win ? ' winner' : ''}${S.winner && !win ? ' dim' : ''}" data-n="${num}"
+        style="background:${t.c}22;color:${t.c}" ${pick ? '' : 'tabindex="-1"'} aria-label="Entrant ${num}: ${esc(t.n)}">
+        <span class="n">${num}</span><span class="m">${esc(t.mgr)}</span></button>`;
+    }else{
+      tiles += `<div class="tile${next ? ' next' : ''}"><span class="n">${num}</span></div>`;
+    }
+  }
+  $('board').innerHTML = tiles;
+
+  // result
+  if(S.winner && holderOf(S.winner) !== null){
+    const t = team(holderOf(S.winner));
+    $('resultBox').innerHTML = `<div class="result"><span class="k">Rumble winner: entrant #${S.winner}</span>
+      <span class="v">${esc(t.n)} gets the 1st pick</span><span>${esc(t.mgr)} held #${S.winner}. Tap a different number to change it.</span></div>`;
+  }else if(pick){
+    $('resultBox').innerHTML = `<p class="hint">Every number is out. After the Royal Rumble, <b>tap the winner's entrant number</b> to see who gets the 1st pick.</p>`;
+  }else{
+    $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
+  }
+
+  // holdings
+  $('hold').innerHTML = S.slots.map((s, i) => {
+    const t = team(i), nums = numsFor(i).filter(x => hide < 0 || x !== numberOf(hide));
+    const win = S.winner && holderOf(S.winner) === i;
+    return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.c}">${esc(t.n)}</span>
+      <span class="hm">${esc(t.mgr)} · ${PLACES[i]} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
+      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => '#' + x).join('  ') : 'No numbers yet'}</span></div>`;
+  }).join('');
+
+  // setup
+  const locked = S.draws.length > 0;
+  $('setup').innerHTML = S.slots.map((s, i) => `<div class="srow">
+      <label for="team${i}">${PLACES[i]}</label>
+      <select id="team${i}" data-i="${i}" ${locked ? 'disabled' : ''}>${LEAGUE.map(t =>
+        `<option value="${t.id}"${t.id === s.team ? ' selected' : ''}>${esc(t.n)} (${esc(t.mgr)})</option>`).join('')}</select>
+      <input id="balls${i}" data-i="${i}" type="number" min="1" max="30" value="${s.balls}" aria-label="${PLACES[i]} balls" ${locked ? 'disabled' : ''}>
+    </div>`).join('');
+  const note = $('setupNote');
+  note.className = 'note' + (err ? ' err' : '');
+  note.textContent = err || (locked
+    ? 'Setup is locked once the first ball is drawn. Reset the lottery to change it.'
+    : `${T} balls in the machine, one per entry number from #${T} down to #1.`);
+  $('restBtn').disabled = done || busy || !!err;
+  if(!busy && !opt.keepReveal){
+    const last = S.draws.length - 1;
+    if(last >= 0 && last !== hide) showReveal(numberOf(last), S.draws[last], false);
+    else if(last < 0) showReveal(null);
+  }
+}
+
+/* ---------------- events ---------------- */
+$('drawBtn').addEventListener('click', drawOne);
+$('board').addEventListener('click', e => {
+  const t = e.target.closest('.tile.filled'); if(!t || nextNum() > 0 || busy) return;
+  const n = +t.dataset.n; S.winner = S.winner === n ? null : n; save(); renderAll({keepReveal:true});
+});
+$('setup').addEventListener('change', e => {
+  const i = +e.target.dataset.i; if(isNaN(i) || S.draws.length) return;
+  if(e.target.tagName === 'SELECT') S.slots[i].team = e.target.value;
+  else S.slots[i].balls = Math.max(0, Math.round(+e.target.value || 0));
+  save(); fill(); renderAll();
+});
+function armed(btn, label, action){
+  let t = 0;
+  btn.addEventListener('click', () => {
+    if(btn.disabled) return;
+    if(btn.classList.contains('armed')){ clearTimeout(t); btn.classList.remove('armed'); btn.textContent = label; action(); return; }
+    btn.classList.add('armed'); btn.textContent = 'Tap again to confirm';
+    t = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = label; }, 3000);
+  });
+}
+armed($('restBtn'), 'Draw the rest', () => {
+  if(busy) return;
+  while(nextNum() > 0) S.draws.push(pickSlot());
+  save(); flying = null; fill(); renderAll();
+});
+armed($('resetBtn'), 'Reset lottery', () => {
+  if(busy) return;
+  S = {...defaults(), slots:S.slots}; save(); flying = null; $('copyOut').hidden = true; fill(); renderAll();
+});
+$('copyBtn').addEventListener('click', () => {
+  const lines = ['ROYAL RUMBLE LOTTERY'];
+  S.slots.forEach((s, i) => {
+    const t = team(i), nums = numsFor(i);
+    lines.push(`${t.n} (${t.mgr}), ${PLACES[i].toLowerCase()}: ${nums.length ? nums.map(x => '#' + x).join(', ') : 'none yet'}`);
+  });
+  if(S.winner && holderOf(S.winner) !== null) lines.push('', `Rumble winner #${S.winner}: ${team(holderOf(S.winner)).n} gets the 1st pick`);
+  const text = lines.join('\n'), out = $('copyOut'), btn = $('copyBtn');
+  out.value = text;
+  const ok = () => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy results', 1500); };
+  const fallback = () => { out.hidden = false; out.focus(); out.select(); btn.textContent = 'Select and copy below'; };
+  try{ navigator.clipboard.writeText(text).then(ok, fallback); }catch(e){ fallback(); }
+});
+new ResizeObserver(() => { size(); fill(); }).observe(cv);
+
+size(); fill(); renderAll(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

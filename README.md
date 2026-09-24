@@ -61,6 +61,18 @@ used outside a card or row rendered its headshot at full natural size. The check
 also fakes a successful headshot load, so layout is tested the way a user with a
 working network sees it.
 
+## Royal Rumble Lottery
+
+`lottery.html` is a standalone page (double-click it) for the non-playoff draft
+lottery. Every ball in the machine is a team: last place 12, then 9, 6 and 3,
+so 30 balls for 30 Rumble entry numbers. Draw at #30 with every ball in; the
+team that comes out gets #30 and loses a ball, then #29, down to #1. After the
+Rumble, tap the winner's entry number to see who gets the 1st pick.
+
+Draws use `crypto.getRandomValues` and are saved before the ball animation
+plays, so reloading mid-draw can't re-roll a result. Progress is kept in
+`localStorage` (`rumble_lottery_v1`); setup locks after the first draw.
+
 ## Layout
 
 ```
