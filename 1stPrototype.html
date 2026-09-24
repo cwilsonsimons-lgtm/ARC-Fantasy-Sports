@@ -942,6 +942,8 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 
 /* css/lineup.css */
 /* simulated week clock + lineup editing */
+.starters .phasebar{margin:0;border:0;border-radius:0;border-top:1px solid var(--line-soft);background:transparent}
+.phasebar.scrub .ph-lbl{color:var(--green)}
 .phasebar{display:flex;align-items:center;gap:10px;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
 .ph-ar{width:30px;height:30px;flex:none;border-radius:9px;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;font-size:18px;color:var(--ink-2)}
 .ph-ar.dis{opacity:.3;pointer-events:none}
@@ -5056,7 +5058,9 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
       rS.innerHTML = `<b class="me">${p.a.toFixed(1)}</b> &ndash; <b class="opp">${p.x.toFixed(1)}</b>`;
       // a bubble only while the cursor sits on a scoring play
       placeBubble(p.ev.length ? i : -1);
+      if (scrubbed) scrubLineup(el, p.abs);
     }
+    let scrubbed = false;
     let last = n - 1;
     show(last);
     // the bubble is sized in pixels, so re-place it once the chart is actually on screen
@@ -5084,6 +5088,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     };
     const down = (e) => {
       drag = true;
+      scrubbed = true;
       at(e);
     };
     const up = () => {
@@ -5100,6 +5105,26 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
     svg2.addEventListener("touchstart", down, sigP);
     window.addEventListener("touchmove", move, sigP);
     window.addEventListener("touchend", up, sig);
+  }
+  // While the chart is being scrubbed, every live score cell in the lineup shows
+  // what that player had at the scrubbed minute, using the same accrual as the
+  // chart, and the stepper in the Starters card names the minute.
+  function scrubLineup(el, abs) {
+    if (el.id !== "userRewind") return;
+    const root = document.getElementById("userLineup");
+    if (!root) return;
+    root.querySelectorAll(".st-pts[data-n]").forEach((c) => {
+      const name = c.dataset.n, proj = +c.dataset.proj, ord = +c.dataset.ord;
+      const started = isFinite(ord) && abs >= absMin(ord);
+      const pts = started ? accrued(pLive(proj, name), name, (abs - absMin(ord)) / GAME_MIN) : 0;
+      c.firstChild.nodeValue = (Math.round(pts * 10) / 10).toFixed(1);
+      c.classList.toggle("pre", !started);
+    });
+    const lbl = root.querySelector(".ph-lbl"), sub = root.querySelector(".ph-sub");
+    if (lbl) lbl.textContent = clockLabel(abs);
+    if (sub) sub.textContent = "Rewind \xB7 points as of this minute";
+    const bar = root.querySelector(".phasebar");
+    if (bar) bar.classList.add("scrub");
   }
   var rwOpen = {};
   function toggleRewind(id) {
@@ -6723,7 +6748,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       uRw.style.display = "none";
     }
     if (live) {
-      uLine.innerHTML = phaseStepperHTML() + fullStartersHTML(aK, xK, { phased: true, editable: true });
+      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: true, editable: true, stepper: phaseStepperHTML() });
     } else if (S.week > LIVE_WEEK && S.week === MINW) {
       uLine.innerHTML = fullStartersHTML(aK, xK, { phased: false, editable: true });
     } else {
@@ -11302,7 +11327,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!p) return `<div class="st-pts">\u2014</div>`;
     if (phased) {
       const locked = isLocked(p), pts = locked ? pLive(p.proj, p.n) : 0;
-      return `<div class="st-pts${locked ? "" : " pre"}">${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+      return `<div class="st-pts${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-proj="${p.proj}" data-ord="${pOrd(p)}">${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
     }
     return `<div class="st-pts">${pLive(p.proj, p.n).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
   }
@@ -11368,7 +11393,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const A = rosterOf(aKey), X = rosterOf(xKey);
     const starters = zipStarters(A.starters, X.starters);
     const bench = zipReserve(A.bench, X.bench), ir = zipReserve(A.ir, X.ir), taxi = zipReserve(A.taxi, X.taxi);
-    let h = `<div class="starters"><div class="st-hd"><span class="g">Starters</span><span></span></div>`;
+    let h = `<div class="starters"><div class="st-hd"><span class="g">Starters</span><span></span></div>${opts.stepper || ""}`;
     h += starters.map((r, i) => lineupRow(r, i, { phased: ph, editable: ed })).join("") + `</div>`;
     if (bench.length) h += reserveSection("Bench", bench, "BN", ph, ed);
     if (ir.length) h += reserveSection("Injured Reserve", ir, "IR", ph);
