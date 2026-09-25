@@ -384,7 +384,9 @@ async function connect(){
     render();
 
     doc.onSnapshot(s=>{
-      if (!s || !s.exists || s.hasPendingWrites || writing) return;
+      if (!s || !s.exists) return;
+      if (s.metadata && s.metadata.hasPendingWrites) return;   // our own write, echoed back
+      if (wQueued || wBusy || writing) return;                 // our edits are not saved yet
       const d = s.data();
       if ((+d.updatedAt || 0) <= (+store.updatedAt || 0)) return;   // not newer than ours
       if (JSON.stringify(d) === JSON.stringify(strip(store))) return;
@@ -400,6 +402,13 @@ async function connect(){
    the one after it, or the current store of months — and leaves store sound. */
 function adopt(raw){
   if(!raw || typeof raw !== 'object') return;
+  // Everything the account delivers is frozen, and editing a frozen object in
+  // place either does nothing or throws — so the ledger never holds what it was
+  // handed, only its own copy of it.
+  raw = JSON.parse(JSON.stringify(raw));
+  // and it remembers how new the copy it took is, or it would treat every copy
+  // it hears about afterwards as newer than its own
+  store.updatedAt = +raw.updatedAt || 0;
 
   const incoming = (raw.v >= 2 && raw.months && typeof raw.months === 'object')
     ? raw
