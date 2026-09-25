@@ -119,7 +119,9 @@
   .sheet.chat{display:none;flex-direction:column;height:88vh;overflow:hidden;padding-bottom:0}
   .sheet.chat.on{display:flex}
   .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px}
-  .x{background:none;border:0;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px}
+  .x{background:none;border:0;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;
+    min-width:44px;min-height:44px;padding:0;flex:none;
+    display:inline-flex;align-items:center;justify-content:center;margin:-8px -10px 0 0}
   .quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
   .quick button{padding:11px 8px;background:var(--paper);border:1px solid var(--rule);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
   .quick button b{display:block;font-weight:600}
@@ -130,11 +132,12 @@
   .quick.editing button.newq{border-color:var(--ink);color:var(--ink);border-style:solid}
   .qedit{border:1px solid var(--rule);background:var(--paper);padding:11px 12px;margin-bottom:12px}
 
-  .inc-head{display:grid;grid-template-columns:56px 1fr 88px 26px;gap:6px;margin-top:12px;
+  .inc-head{display:grid;grid-template-columns:52px 1fr 84px 44px;gap:6px;margin-top:12px;
     font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-  .inc-row{display:grid;grid-template-columns:56px 1fr 88px 26px;gap:6px;align-items:center;margin-top:6px}
+  .inc-row{display:grid;grid-template-columns:52px 1fr 84px 44px;gap:6px;align-items:center;margin-top:6px}
   .inc-row input{padding:9px 7px;font-size:15px}
-  .inc-row button{background:none;border:0;color:var(--debit);font-size:19px;cursor:pointer;padding:0}
+  .inc-row button{background:none;border:0;color:var(--debit);font-size:20px;cursor:pointer;padding:0;
+    min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   .addrow{width:100%;margin-top:8px;padding:10px;background:var(--paper);border:1px dashed var(--rule);
     font:inherit;font-size:14px;color:var(--ink-soft);cursor:pointer}
   .row{display:flex;gap:8px;margin-top:10px}
@@ -148,12 +151,16 @@
   .btn{width:100%;padding:13px;margin-top:12px;background:var(--ink);color:var(--paper-lit);border:0;font:inherit;font-size:16px;cursor:pointer}
   .btn[disabled]{opacity:.5;cursor:default}
   .btn.danger{background:var(--debit)}
-  .entry{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule-soft);font-size:14px;gap:8px}
+  .entry{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--rule-soft);font-size:14px;gap:8px;min-height:46px}
+  .entry > div:last-child{display:flex;align-items:center;gap:4px;white-space:nowrap;flex:none}
   .entry small{color:var(--muted);display:block;font-size:12px}
-  .entry button{background:none;border:0;color:var(--debit);font-size:18px;cursor:pointer;padding:0 6px}
+  .entry button{background:none;border:0;color:var(--debit);font-size:20px;cursor:pointer;
+    min-width:44px;min-height:44px;padding:0;line-height:1;flex:none;
+    display:inline-flex;align-items:center;justify-content:center;margin-right:-8px}
   .pill{display:inline-block;border:1px solid var(--amber);color:var(--amber);font-size:10.5px;padding:0 5px;margin-left:5px;vertical-align:1px}
-  .entry button.mark{display:inline-block;margin-top:5px;padding:5px 9px;background:var(--paper);
-    border:1px solid var(--ink-soft);color:var(--ink-soft);font:inherit;font-size:12.5px;cursor:pointer}
+  .entry button.mark{display:inline-flex;align-items:center;justify-content:center;
+    margin:6px 0 0;padding:0 13px;min-width:0;min-height:40px;background:var(--paper);
+    border:1px solid var(--ink-soft);color:var(--ink-soft);font:inherit;font-size:13px;cursor:pointer}
   .entry button.mark:hover{background:var(--ink);color:var(--paper-lit);border-color:var(--ink)}
   textarea.code{margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     font-size:12px;line-height:1.35;resize:vertical;word-break:break-all}
@@ -461,7 +468,9 @@ async function flush(){
   if(wBusy){ save(); return; }        // a write is in flight; try again after it
   if(!wQueued) return;
   wQueued = false; wBusy = true;
-  store.updatedAt = Date.now();
+  // strictly ahead of whatever we last adopted, so a device whose clock runs
+  // behind cannot write a save that another device reads as older and ignores
+  store.updatedAt = Math.max(Date.now(), (+store.updatedAt || 0) + 1);
   const payload = strip(store);
   let landed = false;
   if(localOk){
