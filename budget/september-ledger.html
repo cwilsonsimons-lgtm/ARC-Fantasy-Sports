@@ -67,7 +67,9 @@
   .dow{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;color:var(--muted);margin-bottom:4px}
   .dow div{text-align:center}
   .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-  .day{aspect-ratio:1/1.2;background:var(--paper-lit);border:1px solid var(--rule-soft);padding:3px 2px 2px;font-size:11px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;overflow:hidden;color:var(--ink);font-family:inherit}
+  .day{aspect-ratio:1/1.2;background:var(--paper-lit);border:1px solid var(--rule-soft);padding:3px 2px 2px;font-size:11px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;overflow:hidden;color:var(--ink);font-family:inherit;
+    -webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  .day.peek{outline:2px solid var(--ink);outline-offset:1px;z-index:1;opacity:1}
   .day.blank{background:transparent;border:0;cursor:default}
   .day.past{opacity:.55}
   .day .n{font-weight:600;font-size:12px}
@@ -871,7 +873,7 @@ function render(){
     + '<span><i style="background:#C98A22;border-radius:50%"></i>subscription</span>'
     + '<span><i style="background:#A83220;border-radius:50%"></i>installment</span></div>'
     + '<div class="note">Each day shows what it does to your money — red for a day that takes, green for one that gives — and under it what you would have left. '
-    + (canHover ? 'Hover a day to read what is on it; click' : 'Tap a day')
+    + (canHover ? 'Hover a day to read what is on it; click' : 'Hold a day to peek at what is on it; tap')
     + ' to log spending, plan something, or put a bill on it.</div></div>'
 
     + '<div class="cats"><h2>Where it went</h2>'+cats
@@ -887,9 +889,10 @@ function render(){
 
   flagSave();
 
+  wirePeek(document.querySelector('.grid'));
   document.querySelectorAll('.day[data-day]').forEach(el=>{
     const d = +el.dataset.day;
-    el.onclick = ()=> openSheet(d);
+    el.onclick = ()=>{ if(swallowNext){ swallowNext = false; return; } openSheet(d); };   // a hold is not a tap
     el.onfocus = ()=> showTip(el, d);
     el.onblur  = hideTip;
     if(canHover){
@@ -934,8 +937,12 @@ function goMonth(k){
 }
 const canHover = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
 let tipFor = null;   // the day cell the card is pinned to
+let tipTouch = false;           // the card was raised by a finger, so it keeps clear of the hand
+let peek = null, peekTimer = null, peekFrom = null, swallowNext = false, swallowT = null;
+const HOLD_MS = 420, SLOP_PX = 10;
 
-function showTip(el, d){
+function showTip(el, d, touch){
+  tipTouch = !!touch;
   const tip = document.getElementById('tip');
   const lines = dayLines(d), net = netFor(d,false), bal = forecast()[d-1];
   let h = '<div class="tip-h">'+DOWNAMES[(FIRST_DOW+d-1)%7]+' the '+ord(d)+'</div>';
@@ -958,9 +965,62 @@ function placeTip(){
   if(!tipFor || !tip || !tip.classList.contains('on')) return;
   const r = tipFor.getBoundingClientRect(), w = tip.offsetWidth, hh = tip.offsetHeight;
   const left = Math.max(8, Math.min(r.left + r.width/2 - w/2, window.innerWidth - w - 8));
-  const top  = r.top - hh - 8 < 8 ? r.bottom + 8 : r.top - hh - 8;
+  // a mouse can sit either side of the day; a hand comes from below, so a
+  // held day's card goes above it even if that means covering the day itself
+  const top  = tipTouch ? Math.max(8, r.top - hh - 14)
+             : (r.top - hh - 8 < 8 ? r.bottom + 8 : r.top - hh - 8);
   tip.style.left = left + 'px';
   tip.style.top  = top + 'px';
+}
+/* Hold a day to see what is on it, the way a mouse resting on it would.
+   Lifting the finger puts the card away without opening the day; sliding the
+   finger while holding moves the card from day to day. A plain tap still
+   opens the day, and a finger that moves before the hold lands is a scroll. */
+function wirePeek(grid){
+  if(!grid) return;
+  const dayAt = (x,y)=>{ const el = document.elementFromPoint(x,y); return el && el.closest ? el.closest('.day[data-day]') : null; };
+  const holdOn = el=>{
+    if(peek) peek.el.classList.remove('peek');
+    peek = {el, day:+el.dataset.day};
+    el.classList.add('peek');
+    showTip(el, peek.day, true);
+  };
+  const cancelHold = ()=>{ clearTimeout(peekTimer); peekTimer = null; peekFrom = null; };
+  const endPeek = ()=>{
+    cancelHold();
+    if(peek){
+      peek.el.classList.remove('peek'); peek = null; hideTip();
+      swallowNext = true;                        // the release's own click, if the browser sends one
+      clearTimeout(swallowT); swallowT = setTimeout(()=>{ swallowNext = false; }, 1000);
+    }
+  };
+  grid.addEventListener('touchstart', e=>{
+    swallowNext = false;                         // a new touch is a new gesture
+    if(e.touches.length !== 1){ endPeek(); return; }
+    const el = e.target.closest && e.target.closest('.day[data-day]');
+    if(!el) return;
+    const t = e.touches[0];
+    cancelHold();
+    peekFrom = {x:t.clientX, y:t.clientY};
+    peekTimer = setTimeout(()=>{
+      peekTimer = null;
+      holdOn(el);
+      try{ if(navigator.vibrate) navigator.vibrate(8); }catch(_){}
+    }, HOLD_MS);
+  }, {passive:true});
+  grid.addEventListener('touchmove', e=>{
+    const t = e.touches[0];
+    if(!peek){
+      if(peekFrom && Math.hypot(t.clientX-peekFrom.x, t.clientY-peekFrom.y) > SLOP_PX) cancelHold();
+      return;
+    }
+    e.preventDefault();                      // holding a day: the finger scrubs, the page stays put
+    const el = dayAt(t.clientX, t.clientY);
+    if(el && el !== peek.el){ holdOn(el); try{ if(navigator.vibrate) navigator.vibrate(4); }catch(_){} }
+  }, {passive:false});
+  grid.addEventListener('touchend', e=>{ if(peek) e.preventDefault(); endPeek(); }, {passive:false});
+  grid.addEventListener('touchcancel', endPeek, {passive:true});
+  grid.addEventListener('contextmenu', e=>{ if(peek || peekTimer) e.preventDefault(); });
 }
 function hideTip(){
   tipFor = null;
