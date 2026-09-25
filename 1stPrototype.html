@@ -2518,6 +2518,61 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   font-family:inherit;font-size:13.5px;font-weight:600;-webkit-user-select:text;user-select:text}
 .mk-search .x{color:var(--mk-ink-3);font-size:13px;cursor:pointer;flex:none;padding:4px}
 
+/* css/account.css */
+/* ===== PROFILE / ACCOUNT =====
+   Covers the phone above the bottom nav, like Arc Markets. The element is .acct;
+   the body state class is .acct-open. They must differ: a shared name would make
+   every .acct rule match <body> too. */
+.acct{position:absolute;inset:0;z-index:60;background:var(--bg);display:none;flex-direction:column;color:var(--ink)}
+body.acct-open .acct{display:flex}
+body.acct-open .shift,body.acct-open .drawer,body.acct-open .scrim{visibility:hidden}
+body.acct-open .nav{z-index:75}
+body.acct-open .nav .nv.on{color:var(--ink-3)}
+body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
+.acct-head{flex:none;padding:56px 18px 12px;border-bottom:1px solid var(--line-soft)}
+.acct-t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:22px;letter-spacing:1.5px;text-transform:uppercase}
+.acct-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(var(--navh) + 20px)}
+.acct-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.acct-h{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:14px;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
+.acct-p{font-size:13px;line-height:1.5;color:var(--ink-2);margin-bottom:10px}
+.acct-p b{color:var(--ink);font-weight:600}
+.acct-fine{font-size:11px;line-height:1.45;color:var(--ink-3);margin:6px 2px 12px}
+.acct-fine.center{text-align:center;margin:10px 12px}
+.acct-seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px;margin-bottom:14px}
+.acct-seg span{flex:1;text-align:center;padding:8px 0;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink-3);cursor:pointer}
+.acct-seg span.on{background:var(--card-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.acct form label{display:block;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+/* the app turns text selection off everywhere; typing needs it back, and 16px
+   keeps iOS from zooming the page when a field is focused */
+.acct input{display:block;width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+  padding:11px 12px;font:500 16px 'Barlow',system-ui,sans-serif;color:var(--ink);outline:none;
+  -webkit-user-select:text;user-select:text;text-transform:none;letter-spacing:0}
+.acct input:focus{border-color:var(--accent)}
+.acct-btn{display:block;width:100%;border:none;border-radius:12px;padding:13px;margin-top:4px;cursor:pointer;
+  background:var(--accent);color:#fff;font:700 14px 'Oswald','Arial Narrow',system-ui,sans-serif;letter-spacing:1.2px;text-transform:uppercase}
+.acct-btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.acct-btn.danger{background:transparent;color:var(--red);border:1px solid rgba(var(--red-rgb),.5)}
+.acct-btn[disabled]{opacity:.5;pointer-events:none}
+.acct-err{font-size:12.5px;color:var(--red);font-weight:600;margin:-2px 0 10px}
+.acct-note{font-size:12.5px;color:var(--green);font-weight:600;margin:0 0 10px;line-height:1.4}
+.acct-me{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.acct-av{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex:none;background:var(--accent-soft);
+  border:1.5px solid var(--accent);color:var(--accent);font:700 22px 'Oswald','Arial Narrow',system-ui,sans-serif}
+.acct-id{min-width:0}
+.acct-id .n{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-id .e{font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-st{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ink-2);
+  background:var(--bg);border:1px solid var(--line-soft);border-radius:10px;padding:9px 11px;margin-bottom:10px}
+.acct-st i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ink-3)}
+.acct-st.ok i{background:var(--green)}
+.acct-st.busy i{background:var(--ink-2);animation:acctPulse 1s infinite alternate}
+.acct-st.warn i{background:#E6C35A}
+.acct-st.bad{color:var(--red)}
+.acct-st.bad i{background:var(--red)}
+@keyframes acctPulse{to{opacity:.3}}
+@media (max-width:440px){
+  .acct-head{padding-top:calc(env(safe-area-inset-top,0px) + 14px)}
+}
 </style>
 </head>
 <body>
@@ -2688,10 +2743,10 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 
   <!-- BOTTOM NAV -->
   <div class="nav">
-    <div class="nv on" data-nav="matchup" onclick="closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" data-nav="markets" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
-    <div class="nv" data-nav="feed" onclick="closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
-    <div class="nv" data-nav="profile" onclick="closeMarkets();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+    <div class="nv on" data-nav="matchup" onclick="closeAccount();closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
+    <div class="nv" data-nav="markets" onclick="closeAccount();openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" data-nav="feed" onclick="closeAccount();closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
+    <div class="nv" data-nav="profile" onclick="openAccount()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
 
   <div class="sheet-scrim" id="sheetScrim" onclick="closeWeekPicker()"></div>
@@ -2737,6 +2792,14 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   </div>
 
   <div class="hint" id="hint"></div>
+
+  <!-- ===== PROFILE / ACCOUNT =====
+       Sign-in and cloud sync. The body of the panel is drawn by the account
+       script at the end of the page. -->
+  <div class="acct" id="acct">
+    <div class="acct-head"><div class="acct-t">Profile</div></div>
+    <div class="acct-scroll" id="acctBody"></div>
+  </div>
 
   <!-- ===== ARC MARKETS =====
        A separate section, not a fantasy screen. It covers the phone above the
@@ -2915,6 +2978,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
   function saveStore() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      if (window.__cloudSaved) window.__cloudSaved();
       return true;
     } catch (e) {
       showSaveWarning();
@@ -14443,6 +14507,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function saveMk() {
     try {
       localStorage.setItem(STORE_KEY2, JSON.stringify(mkStore));
+      if (window.__cloudSaved) window.__cloudSaved();
     } catch (e) {
     }
   }
@@ -15878,6 +15943,356 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   })();
 })();
 
+</script>
+<script>
+/* ===== ACCOUNTS + CLOUD SYNC =====
+   Sign in with the same account on a computer and a phone and the leagues follow
+   you. Auth is Supabase's auth server (GoTrue) over plain fetch, no SDK. The app's
+   whole saved state is two localStorage blobs (the fantasy store and Arc Markets),
+   and those travel together as one row per user in the `app_state` table, which
+   row-level security limits to its owner.
+
+   The publishable key is meant to live in front-end code: it only grants the
+   anonymous role, and every read and write is still checked against the signed-in
+   user by RLS. The secret / service_role key must never appear here.
+
+   Sync model: this device keeps working from localStorage exactly as before.
+   After each save the state is pushed (debounced); on open, on returning to the
+   tab and on reconnect the account's row is pulled, and if another device saved
+   since this one last synced, its copy replaces this one and the page reloads.
+   Last writer wins, which is right for one person moving between devices. */
+(() => {
+  const SUPABASE_URL = "https://xppjoqkasnuzbyvwuucu.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_Hhq2KEHIlmo1VBmz938_Ug_4F_o2qSS";
+  const APP_KEYS = { team: "cbd_team_v1", markets: "arc_markets_v1" };
+  const META_KEY = "arc_cloud_v1";
+  const PUSH_DELAY = 1200;
+
+  const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+  const writeRaw = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+  // { session, rev (ms of the row this device last matched), dirty, dirtyAt, notice }
+  let meta = readJSON(META_KEY) || {};
+  const saveMeta = () => writeRaw(META_KEY, JSON.stringify(meta));
+
+  // UI state
+  let mode = "signin";          // signin | signup
+  let busy = false, formErr = "", formNote = "";
+  let typed = { name: "", email: "" };  // survives a re-render, e.g. after a wrong password
+  let status = "idle";          // idle | saving | saved | offline | setup | error
+  let statusMsg = "", lastSync = null;
+  let choice = null;            // pending { row } when this device and the account disagree at sign-in
+  let signOutArmed = false;
+  // Pushes wait for the first pull: the app saves several times while booting,
+  // and none of that may overwrite the account before we know what it holds.
+  let ready = !meta.session;
+
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const say = (m) => { if (window.toast) window.toast(m); };
+
+  // ---------------------------------------------------------------- auth
+  async function authPost(path, body, token) {
+    const headers = { "Content-Type": "application/json", apikey: SUPABASE_KEY };
+    if (token) headers.Authorization = "Bearer " + token;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, { method: "POST", headers, body: JSON.stringify(body || {}) });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* empty body */ }
+    return { ok: res.ok, status: res.status, data };
+  }
+  const authError = (r) => {
+    const d = r.data || {};
+    const m = d.error_description || d.msg || d.message || (typeof d.error === "string" ? d.error : "") || `Request failed (${r.status})`;
+    if (/invalid login credentials/i.test(m)) return "That email and password don't match an account.";
+    if (/email not confirmed/i.test(m)) return "Confirm your email first — check your inbox for the link, then sign in.";
+    if (/already registered|already exists/i.test(m)) return "There's already an account with that email. Sign in instead.";
+    return m;
+  };
+  function sessionFrom(d) {
+    const u = d.user || {}, md = u.user_metadata || {};
+    return {
+      access_token: d.access_token, refresh_token: d.refresh_token,
+      expires_at: Date.now() + (d.expires_in || 3600) * 1000,
+      user: { id: u.id, email: u.email, name: md.name || (u.email || "").split("@")[0] },
+    };
+  }
+  // A valid access token, refreshed when it is about to expire. Null means the
+  // session is dead (refresh rejected); a network failure throws instead.
+  async function token() {
+    const s = meta.session;
+    if (!s) return null;
+    if (s.expires_at - 60000 > Date.now()) return s.access_token;
+    const r = await authPost("token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    if (!r.ok) {
+      meta.session = null; saveMeta();
+      status = "idle"; formErr = "You were signed out. Sign in again to keep syncing.";
+      render();
+      return null;
+    }
+    meta.session = sessionFrom(r.data); saveMeta();
+    return meta.session.access_token;
+  }
+
+  // ---------------------------------------------------------------- data
+  async function rest(method, query, body, prefer, keepalive) {
+    const t = await token();
+    if (!t) { const e = new Error("signed out"); e.signedOut = true; throw e; }
+    const headers = { apikey: SUPABASE_KEY, Authorization: "Bearer " + t, "Content-Type": "application/json" };
+    if (prefer) headers.Prefer = prefer;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_state${query}`, {
+      method, headers, body: body ? JSON.stringify(body) : undefined, keepalive: !!keepalive,
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* return=minimal */ }
+    if (!res.ok) {
+      const e = new Error((data && (data.message || data.hint)) || `Request failed (${res.status})`);
+      e.status = res.status; e.code = data && data.code;
+      throw e;
+    }
+    return data;
+  }
+  const snapshot = () => ({ team: readJSON(APP_KEYS.team) || {}, markets: readJSON(APP_KEYS.markets) || {} });
+  function adopt(row) {
+    const d = row.data || {};
+    writeRaw(APP_KEYS.team, JSON.stringify(d.team || {}));
+    writeRaw(APP_KEYS.markets, JSON.stringify(d.markets || {}));
+    meta.rev = Date.parse(row.updated_at); meta.dirty = false; saveMeta();
+  }
+  const sameData = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  function fail(e) {
+    if (e && e.signedOut) return;
+    if (e && (e.code === "PGRST205" || e.code === "42P01" || e.status === 404)) {
+      status = "setup"; statusMsg = "The app_state table isn't set up in Supabase yet.";
+    } else if (e && e.status) {
+      status = "error"; statusMsg = e.message;
+    } else {
+      status = "offline"; statusMsg = "";
+    }
+    render();
+  }
+
+  async function fetchRow() {
+    const rows = await rest("GET", `?select=data,updated_at&user_id=eq.${encodeURIComponent(meta.session.user.id)}`);
+    return rows && rows[0] || null;
+  }
+
+  let pushTimer = null;
+  async function push(keepalive) {
+    clearTimeout(pushTimer); pushTimer = null;
+    if (!meta.session || !ready) return;
+    const rev = new Date().toISOString();
+    status = "saving"; render();
+    try {
+      await rest("POST", "?on_conflict=user_id", { user_id: meta.session.user.id, data: snapshot(), updated_at: rev },
+        "resolution=merge-duplicates,return=minimal", keepalive);
+      meta.rev = Date.parse(rev); meta.dirty = false; saveMeta();
+      lastSync = Date.now(); status = "saved"; statusMsg = "";
+      render();
+    } catch (e) { fail(e); }
+  }
+  // Called by saveStore / saveMk after every successful local save.
+  window.__cloudSaved = () => {
+    if (!meta.session || !ready) return;
+    meta.dirty = true; meta.dirtyAt = Date.now(); saveMeta();
+    status = "saving"; render();
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, PUSH_DELAY);
+  };
+
+  function reloadWith(notice) {
+    meta.notice = notice; saveMeta();
+    location.reload();
+  }
+
+  // Bring this device in line with the account: take the account's copy when
+  // another device saved since this one last synced, otherwise push anything
+  // this device changed while offline.
+  let syncing = false, lastOpenSync = 0;
+  async function sync() {
+    if (!meta.session || syncing || choice) return;
+    syncing = true;
+    try {
+      const row = await fetchRow();
+      if (!row) { ready = true; await push(); return; }
+      const remoteRev = Date.parse(row.updated_at);
+      if (remoteRev !== meta.rev) {
+        // changed elsewhere; unsynced edits here only win if they are newer
+        if (!meta.dirty || remoteRev > (meta.dirtyAt || 0)) {
+          if (!sameData(row.data, snapshot())) { adopt(row); reloadWith("Leagues updated from your account"); return; }
+          adopt(row);
+        }
+      }
+      ready = true;
+      if (meta.dirty) await push();
+      else { lastSync = Date.now(); status = "saved"; statusMsg = ""; render(); }
+    } catch (e) { ready = true; fail(e); }
+    finally { syncing = false; }
+  }
+
+  // ---------------------------------------------------------------- actions
+  async function afterSignIn(isNew) {
+    meta.rev = null; meta.dirty = false; saveMeta();
+    let row = null;
+    try { row = isNew ? null : await fetchRow(); } catch (e) { ready = true; fail(e); render(); return; }
+    if (!row) {
+      // a new account starts from whatever this device has
+      ready = true; await push();
+      formNote = "Your leagues on this device are now saved to your account.";
+      render(); return;
+    }
+    if (sameData(row.data, snapshot())) { adopt(row); ready = true; lastSync = Date.now(); status = "saved"; render(); return; }
+    choice = { row }; render();
+  }
+
+  async function submit(form) {
+    if (busy) return;
+    const f = new FormData(form);
+    const email = String(f.get("email") || "").trim(), password = String(f.get("password") || ""), name = String(f.get("name") || "").trim();
+    typed = { name, email };
+    formErr = ""; formNote = "";
+    if (mode === "signup" && !name) { formErr = "Enter your name."; render(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { formErr = "Enter a valid email address."; render(); return; }
+    if (password.length < 6) { formErr = "Passwords are at least 6 characters."; render(); return; }
+    busy = true; render();
+    try {
+      if (mode === "signup") {
+        const r = await authPost("signup", { email, password, data: { name } });
+        if (!r.ok) { formErr = authError(r); return; }
+        if (!r.data.access_token) {
+          mode = "signin";
+          formNote = "Check your email for a confirmation link, then sign in here.";
+          return;
+        }
+        meta.session = sessionFrom(r.data); saveMeta();
+        await afterSignIn(true);
+      } else {
+        const r = await authPost("token?grant_type=password", { email, password });
+        if (!r.ok) { formErr = authError(r); return; }
+        meta.session = sessionFrom(r.data); saveMeta();
+        await afterSignIn(false);
+      }
+    } catch (e) {
+      formErr = "Couldn't reach the server. Check your connection and try again.";
+    } finally { busy = false; render(); }
+  }
+
+  async function choose(which) {
+    const row = choice && choice.row;
+    choice = null;
+    if (!row) return;
+    if (which === "account") { adopt(row); reloadWith("Signed in — your account's leagues are loaded"); return; }
+    ready = true; await push();
+    formNote = "This device's leagues are now saved to your account.";
+    render();
+  }
+
+  async function signOut() {
+    if (!signOutArmed) { signOutArmed = true; render(); setTimeout(() => { signOutArmed = false; render(); }, 4000); return; }
+    busy = true; render();
+    if (meta.dirty) await push();
+    const t = meta.session && meta.session.access_token;
+    if (t) { try { await authPost("logout", {}, t); } catch (e) { /* offline: the token just expires */ } }
+    // The leagues stay in the account; this device goes back to a fresh app so
+    // the next person to sign in here never inherits them.
+    writeRaw(APP_KEYS.team, null); writeRaw(APP_KEYS.markets, null);
+    meta = { notice: "Signed out" }; saveMeta();
+    location.reload();
+  }
+
+  // ---------------------------------------------------------------- UI
+  const ago = (t) => {
+    if (!t) return "";
+    const s = Math.round((Date.now() - t) / 1000);
+    return s < 10 ? "just now" : s < 60 ? s + "s ago" : s < 3600 ? Math.round(s / 60) + "m ago" : Math.round(s / 3600) + "h ago";
+  };
+  function statusLine() {
+    switch (status) {
+      case "saving": return { cls: "busy", t: "Saving to your account…" };
+      case "saved": return { cls: "ok", t: "All changes saved" + (lastSync ? " · " + ago(lastSync) : "") };
+      case "offline": return { cls: "warn", t: "Offline — changes will sync when you're back online" };
+      case "setup": return { cls: "bad", t: statusMsg };
+      case "error": return { cls: "bad", t: "Sync problem: " + statusMsg };
+      default: return { cls: "busy", t: "Checking your account…" };
+    }
+  }
+  function render() {
+    const el = document.getElementById("acctBody");
+    if (!el) return;
+    const s = meta.session;
+    const note = formNote ? `<div class="acct-note">${esc(formNote)}</div>` : "";
+    if (choice) {
+      el.innerHTML = `<div class="acct-card">
+        <div class="acct-h">Which leagues should this account keep?</div>
+        <p class="acct-p">Your account already has leagues saved from another device, and this device has different ones.</p>
+        <button class="acct-btn" onclick="acctChoose('account')">Use my account's leagues</button>
+        <p class="acct-fine">Best on a new phone or computer. This device's leagues are replaced.</p>
+        <button class="acct-btn ghost" onclick="acctChoose('device')">Keep this device's leagues</button>
+        <p class="acct-fine">Replaces what's saved in your account with what's on this device.</p>
+      </div>`;
+      return;
+    }
+    if (s) {
+      const st = statusLine();
+      el.innerHTML = `<div class="acct-card">
+        <div class="acct-me"><div class="acct-av">${esc((s.user.name || s.user.email || "?").charAt(0).toUpperCase())}</div>
+          <div class="acct-id"><div class="n">${esc(s.user.name)}</div><div class="e">${esc(s.user.email)}</div></div></div>
+        <div class="acct-st ${st.cls}"><i></i><span>${esc(st.t)}</span></div>
+        ${status === "setup" ? `<p class="acct-fine">Run the one-time SQL setup in your Supabase project (SQL Editor), then tap Sync now.</p>` : ""}
+        ${note}
+        <button class="acct-btn ghost" onclick="acctSync()"${busy ? " disabled" : ""}>Sync now</button>
+      </div>
+      <div class="acct-card">
+        <div class="acct-h">On your other devices</div>
+        <p class="acct-p">Sign in with <b>${esc(s.user.email)}</b> on your phone or computer and the same leagues, drafts, lineups, photos and Markets portfolio open there.</p>
+      </div>
+      <button class="acct-btn danger" onclick="acctSignOut()"${busy ? " disabled" : ""}>${signOutArmed ? "Tap again to sign out" : "Sign out"}</button>
+      <p class="acct-fine center">Signing out removes the leagues from this device. They stay saved in your account.</p>`;
+      return;
+    }
+    const up = mode === "signup";
+    el.innerHTML = `<div class="acct-card">
+      <div class="acct-seg"><span class="${up ? "" : "on"}" onclick="acctMode('signin')">Sign in</span><span class="${up ? "on" : ""}" onclick="acctMode('signup')">Create account</span></div>
+      <form onsubmit="event.preventDefault();acctSubmit(this)" autocomplete="on">
+        ${up ? `<label>Name<input name="name" autocomplete="name" placeholder="Your name" value="${esc(typed.name)}"></label>` : ""}
+        <label>Email<input name="email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" placeholder="you@example.com" value="${esc(typed.email)}"></label>
+        <label>Password<input name="password" type="password" autocomplete="${up ? "new-password" : "current-password"}" placeholder="${up ? "At least 6 characters" : "Password"}"></label>
+        ${formErr ? `<div class="acct-err">${esc(formErr)}</div>` : ""}
+        ${note}
+        <button class="acct-btn" type="submit"${busy ? " disabled" : ""}>${busy ? "One moment…" : up ? "Create account" : "Sign in"}</button>
+      </form>
+    </div>
+    <p class="acct-fine center">Use the same account on your computer and phone to see the same leagues on both.</p>`;
+  }
+
+  window.openAccount = () => {
+    if (window.closeMarkets) window.closeMarkets();
+    document.body.classList.add("acct-open");
+    render();
+  };
+  window.closeAccount = () => document.body.classList.remove("acct-open");
+  window.acctMode = (m) => { mode = m; formErr = ""; formNote = ""; render(); };
+  window.acctSubmit = submit;
+  window.acctChoose = choose;
+  window.acctSync = () => { formNote = ""; status = "idle"; render(); sync(); };
+  window.acctSignOut = signOut;
+
+  // ---------------------------------------------------------------- lifecycle
+  if (meta.notice) {
+    const n = meta.notice; delete meta.notice; saveMeta();
+    setTimeout(() => say(n), 300);
+  }
+  if (meta.session) sync();
+  document.addEventListener("visibilitychange", () => {
+    if (!meta.session) return;
+    if (document.visibilityState === "visible") {
+      if (Date.now() - lastOpenSync > 5000) { lastOpenSync = Date.now(); sync(); }
+    } else if (meta.dirty && ready) {
+      // leaving: send the last change now rather than waiting out the debounce
+      push(JSON.stringify(snapshot()).length < 60000);
+    }
+  });
+  window.addEventListener("online", () => { if (meta.session) sync(); });
+  setInterval(() => { if (status === "saved" && document.body.classList.contains("acct-open")) render(); }, 15000);
+})();
 </script>
 </body>
 </html>
