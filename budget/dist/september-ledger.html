@@ -179,6 +179,7 @@
     display:inline-flex;align-items:center}
   .entry .act:hover{background:var(--ink);color:var(--paper-lit);border-color:var(--ink)}
   .pill.pill-ok{border-color:var(--credit);color:var(--credit)}
+  .linkline{flex-basis:100%;font-size:13px;color:var(--ink-soft);line-height:1.45;margin:2px 0 2px}
   .flag{display:flex;align-items:center;gap:10px;width:100%;margin-top:8px;padding:0 2px;min-height:44px;
     background:none;border:0;font:inherit;font-size:14px;color:var(--ink-soft);cursor:pointer;text-align:left}
   .flag .box{width:18px;height:18px;border:1.5px solid var(--ink-soft);flex:none;display:inline-block;position:relative}
@@ -462,8 +463,10 @@ function adopt(raw){
       p.day=day(p.day); p.amt=Math.abs(+p.amt)||0;
       p.dir = p.dir==='in' ? 'in' : 'out';
       if(p.dir==='out' && !catOk(p.cat)) p.cat='extras';
-      if(p.dir==='in'){ delete p.back; if(p.payback !== true) delete p.payback; }
-      else { delete p.payback; if(p.back!=='owed' && p.back!=='paid') delete p.back; }
+      if(p.dir==='in'){ delete p.back;
+        if(p.payback !== true){ delete p.payback; delete p.for; }
+        else if(typeof p.for !== 'string') delete p.for; }
+      else { delete p.payback; delete p.for; if(p.back!=='owed' && p.back!=='paid') delete p.back; }
     });
     store.months[k] = m;
   });
@@ -727,8 +730,8 @@ function entryTags(p){
   const t = [];
   if(p.planned) t.push(isIn(p) ? 'expected' : 'planned');
   if(p.back==='owed') t.push('owed back');
-  if(p.back==='paid') t.push('paid back');
-  if(p.payback) t.push('payback');
+  if(p.back==='paid') t.push('reimbursed');
+  if(p.payback) t.push('reimbursement');
   return t;
 }
 
@@ -742,7 +745,7 @@ function dayLines(d){
   const am = autoMealFor(d);
   if(am){ const m = plannedMeal(d); out.push({t:m.name, a:-am, q:'assumed'}); }
   if(d === DAYS) state.purchases.forEach(p=>{
-    if(!isIn(p) && p.back==='owed') out.push({t:'Back for '+p.name, a:p.amt, q:'owed, expected'}); });
+    if(!isIn(p) && p.back==='owed') out.push({t:'Reimbursement for '+p.name, a:p.amt, q:'owed, expected'}); });
   return out;
 }
 
@@ -881,8 +884,8 @@ function render(){
     + ' to log spending, plan something, or put a bill on it.</div></div>'
 
     + '<div class="cats"><h2>Where it went</h2>'+cats
-    + ((owedBack()||paidBack()) ? '<div class="cat"><div class="cat-top"><b>Getting paid back</b><span>'
-        + [owedBack() ? money(owedBack())+' owed to you' : '', paidBack() ? money(paidBack())+' paid back' : ''].filter(Boolean).join(' · ')
+    + ((owedBack()||paidBack()) ? '<div class="cat"><div class="cat-top"><b>Reimbursements</b><span>'
+        + [owedBack() ? money(owedBack())+' owed to you' : '', paidBack() ? money(paidBack())+' reimbursed' : ''].filter(Boolean).join(' · ')
         + '</span></div><div class="note" style="margin-top:4px">Left out of your spending above — somebody else is covering it.</div></div>' : '')
     + '</div>'
 
@@ -1206,10 +1209,10 @@ function drawSheet(){
   if(am) sched += entryRow(meal.name,'assumed meal, not logged',am,false);
 
   if(day === DAYS) owedList().forEach(p=>
-    sched += entryRow('Back for '+p.name, 'owed to you — expected by month end', p.amt, true));
+    sched += entryRow('Reimbursement for '+p.name, 'owed to you — expected by month end', p.amt, true));
 
   const logged = pur.length
-    ? '<div class="note" style="margin-top:4px">Tap an entry for more — like marking one somebody is paying you back for.</div>'
+    ? '<div class="note" style="margin-top:4px">Tap an entry for more — like a purchase you are getting reimbursed for.</div>'
       + pur.map(entryHtml).join('')
     : '<div class="empty">Nothing logged yet.</div>';
 
@@ -1244,7 +1247,7 @@ function drawSheet(){
     + '</div>'
     + '<input id="name" type="text" placeholder="'+(isBill?'What is the charge?':isIncome?'Where is it from?':'What is it?')+'" style="margin-top:8px">'
     + (isBill ? '' : '<button class="flag" id="flagBtn" aria-pressed="'+addFlag+'"><span class="box" aria-hidden="true"></span>'
-        + (isIncome ? 'Somebody paying me back — not income' : 'Somebody is paying me back for this') + '</button>')
+        + (isIncome ? 'This is a reimbursement — not income' : 'I\'m getting reimbursed for this') + '</button>')
     + '<div class="note" id="addErr" style="color:var(--debit);display:none"></div>'
     + '<button class="btn" id="add">'+(isBill ? 'Put it on the '+ord(day)
         : isIncome ? (addWhen==='planned'?'Add what you expect':'Log the money in')
@@ -1267,8 +1270,11 @@ function drawSheet(){
     else if(what==='clear') delete x.back;
     else if(what==='paidonly') x.back = 'paid';
     else if(what==='paidadd'){ x.back = 'paid'; logPayback(x); }
-    else if(what==='payback') x.payback = true;
-    else if(what==='unpayback') delete x.payback;
+    else if(what==='payback'){ x.payback = true; openEntry = x.id; }        // now ask what it was for
+    else if(what==='link'){ const e = findEntry(el.dataset.to); if(e){ x.for = e.p.id; e.p.back = 'paid'; } }
+    else if(what==='unlink') unlinkFrom(x);
+    else if(what==='unpayback'){ unlinkFrom(x); delete x.payback; }
+    else if(what==='leave') openEntry = null;
     save(); render(); drawSheet();
   });
   document.querySelectorAll('[data-when]').forEach(el=> el.onclick = ()=>{ addWhen = el.dataset.when; drawSheet(); });
@@ -1312,6 +1318,11 @@ function drawSheet(){
     }
   };
   document.querySelectorAll('[data-del]').forEach(el=> el.onclick = ()=>{
+    const gone = state.purchases.find(x=>x.id===el.dataset.del);
+    if(gone){
+      unlinkFrom(gone);                                   // deleting the money un-reimburses its purchase
+      monthKeys().forEach(k=> store.months[k].purchases.forEach(p=>{ if(p.for===gone.id) delete p.for; }));
+    }
     state.purchases = state.purchases.filter(x=>x.id!==el.dataset.del);
     save(); render(); drawSheet();
   });
@@ -1329,25 +1340,65 @@ function drawSheet(){
     save(); render(); drawSheet();
   });
 }
+function findEntry(id){
+  for(const k of monthKeys()){ const p = store.months[k].purchases.find(e=>e.id===id); if(p) return {k, p}; }
+  return null;
+}
+function whenOf(e){ return ord(e.p.day) + (e.k===view ? '' : ' of '+MONTHNAMES[partsOf(e.k).m]); }
+/* Purchases a reimbursement most likely covers: ones already marked owed first,
+   then whatever is closest in amount and in time — from this month or last. */
+function linkCandidates(x){
+  const here = [view, shiftMonth(view,-1)].filter(k=>store.months[k]);
+  const all = [];
+  here.forEach(k=> store.months[k].purchases.forEach(p=>{
+    if(p.dir!=='in' && p.back!=='paid') all.push({k, p});
+  }));
+  const gap = e => Math.abs(e.p.amt - x.amt) / Math.max(x.amt, 1)
+                 + (Math.abs(e.p.day - x.day) + (e.k===view ? 0 : 30)) / 30;
+  const owed = all.filter(e=>e.p.back==='owed').sort((a,b)=>gap(a)-gap(b));
+  const rest = all.filter(e=>e.p.back!=='owed').sort((a,b)=>gap(a)-gap(b));
+  return owed.concat(rest).slice(0, 5);
+}
+/* a reimbursement stops covering its purchase: that purchase is still being
+   reimbursed, just not by this money */
+function unlinkFrom(x){
+  if(!x.for) return;
+  const e = findEntry(x.for);
+  if(e && e.p.back==='paid') e.p.back = 'owed';
+  delete x.for;
+}
 function entryHtml(x){
   const inn = isIn(x), open = openEntry === x.id;
-  const tags = entryTags(x).map(t=>'<span class="pill'+(t==='paid back'||t==='payback'?' pill-ok':'')+'">'+t+'</span>').join('');
-  const act = (what,label)=>'<button class="act" data-act="'+what+'" data-id="'+x.id+'">'+label+'</button>';
+  const tags = entryTags(x).map(t=>'<span class="pill'+(t==='reimbursed'||t==='reimbursement'?' pill-ok':'')+'">'+t+'</span>').join('');
+  const act = (what,label,extra)=>'<button class="act" data-act="'+what+'" data-id="'+x.id+'"'+(extra||'')+'>'+label+'</button>';
+  const link = inn && x.payback && x.for ? findEntry(x.for) : null;
   let acts = '';
-  if(open){
-    if(inn) acts = x.payback ? act('unpayback','Not a payback') : act('payback','This is somebody paying me back');
-    else if(!x.back) acts = act('owe','Getting paid back for this');
-    else if(x.back==='owed') acts = act('paidadd','Got paid back — add the money')
+  if(inn && !x.payback && !open){
+    // money in is nearly always pay or a reimbursement, and rows of it are few —
+    // so the question sits on the row rather than behind a tap
+    acts = '<div class="acts">'+act('payback','Mark as a reimbursement')+'</div>';
+  } else if(open){
+    if(inn){
+      if(!x.payback) acts = act('payback','This is a reimbursement');
+      else if(link) acts = '<div class="linkline">For <b>'+esc(link.p.name)+'</b> — '+money(link.p.amt)+' on the '+whenOf(link)+'.</div>'
+                         + act('unlink','Not for that one') + act('unpayback','Not a reimbursement');
+      else acts = '<div class="linkline">What was it for? Picking it marks that purchase reimbursed too.</div>'
+                + linkCandidates(x).map(e=>act('link', esc(e.p.name)+' · '+money(e.p.amt)+' · '+whenOf(e), ' data-to="'+e.p.id+'"')).join('')
+                + act('leave','Leave it unlinked') + act('unpayback','Not a reimbursement');
+    }
+    else if(!x.back) acts = act('owe','Getting reimbursed for this');
+    else if(x.back==='owed') acts = act('paidadd','Got reimbursed — add the money')
                                   + act('paidonly','I logged the money myself')
-                                  + act('clear','Not getting paid back');
-    else acts = act('owe','Still waiting on it') + act('clear','Not getting paid back');
+                                  + act('clear','Not getting reimbursed');
+    else acts = act('owe','Still waiting on it') + act('clear','Not getting reimbursed');
     acts = '<div class="acts">'+acts+'</div>';
   }
   const faded = x.back || x.payback;
   return '<div class="entry'+(open?' open':'')+'"><div class="eleft">'
     + '<button class="ebody" data-exp="'+x.id+'" aria-expanded="'+open+'">'
     + '<span class="ename">'+esc(x.name)+'</span>'+tags
-    + '<small>'+catLabel(x.cat)+(x.back?' · not counted as your spending':x.payback?' · not counted as income':'')+'</small></button>'
+    + '<small>'+catLabel(x.cat)+(x.back?' · not counted as your spending'
+        : x.payback?' · not counted as income'+(link?' · for '+esc(link.p.name):'') : '')+'</small></button>'
     + (x.planned ? '<button class="mark" data-mark="'+x.id+'">'+(inn?'Got it — count it in':'Bought it — count it')+'</button>' : '')
     + acts + '</div>'
     + '<div style="color:'+(inn?'var(--credit)':faded?'var(--muted)':'var(--ink)')+'">'+(inn?'+':'')+money(x.amt)
@@ -1373,7 +1424,7 @@ function closeSheet(){
 function addPurchase(name, amt, cat, dir){
   const e = { id:newId(), day:openDay, name, amt, cat,
     dir: dir==='in' ? 'in' : 'out', planned: addWhen==='planned' };
-  if(addFlag){ if(e.dir==='in') e.payback = true; else e.back = 'owed'; }
+  if(addFlag){ if(e.dir==='in'){ e.payback = true; openEntry = e.id; } else e.back = 'owed'; }
   addFlag = false;                      // one entry at a time, never sticky
   state.purchases.push(e);
   save(); render(); drawSheet();
@@ -1386,7 +1437,7 @@ function logPayback(x){
   const k = view > THIS_MONTH ? view : THIS_MONTH;
   const m = ensureMonth(k);
   const d = k === THIS_MONTH ? now.getDate() : x.day;
-  m.purchases.push({ id:newId(), day:d, name:'Back for '+x.name, amt:x.amt,
+  m.purchases.push({ id:newId(), day:d, name:'Reimbursement for '+x.name, amt:x.amt,
     cat:'income', dir:'in', planned:false, payback:true, for:x.id });
   return {k, d};
 }
@@ -1431,8 +1482,9 @@ const TOOLS = [
     direction:{type:'string',enum:['out','in'],description:'out = spent, in = received. Defaults to out.'},
     category:{type:'string',enum:['food','subs','games','bills','extras'],description:'Spending bucket; ignored for money in'},
     planned:{type:'boolean',description:'true = expected but not yet real, false = already happened'},
-    paid_back:{type:'boolean',description:'Money out only: somebody (usually his mom) is paying him back, so it is not his spending'},
-    payback:{type:'boolean',description:'Money in only: this is somebody paying him back for a purchase, not income'}
+    paid_back:{type:'boolean',description:'Money out only: he is getting reimbursed for it (usually by his mom), so it is not his spending'},
+    payback:{type:'boolean',description:'Money in only: this is a reimbursement, not income'},
+    for_id:{type:'string',description:'With payback: the id of the purchase it reimburses — that purchase is marked reimbursed too'}
   },required:['day','name','amount']},
   async execute(i){
     const day = clampDay(i.day);
@@ -1443,7 +1495,11 @@ const TOOLS = [
     const planned = i.planned === true || i.planned === 'true';
     const e = {id:newId(), day, name:String(i.name||(dir==='in'?'Money in':'Purchase')).slice(0,40), amt, cat, dir, planned};
     if(dir==='out' && (i.paid_back===true || i.paid_back==='true')) e.back = 'owed';
-    if(dir==='in'  && (i.payback===true   || i.payback==='true'))   e.payback = true;
+    if(dir==='in'  && (i.payback===true   || i.payback==='true')){
+      e.payback = true;
+      const t = i.for_id ? findEntry(String(i.for_id)) : null;
+      if(t && t.p.dir!=='in'){ e.for = t.p.id; t.p.back = 'paid'; }
+    }
     state.purchases.push(e);
     note((dir==='in' ? (planned?'Expecting ':'Logged money in — ') : (planned?'Planned ':'Logged '))
       + e.name+' — '+(dir==='in'?'+':'')+money(amt)+' on the '+ord(day));
@@ -1545,11 +1601,12 @@ const TOOLS = [
 },
 {
   name:'set_paid_back',
-  description:'Mark who is really paying for an entry, by id. For a purchase: "owed" = somebody is paying him back, so it stops counting as his spending; "paid" = they have paid him back; "none" = it is his own spending after all. With status "paid", add_money_in true also logs the repayment as money in today — leave it false if he already logged that money himself. For money he received: "payback" = it was somebody paying him back, so it is not income; "none" = it is ordinary income.',
+  description:'Mark reimbursements, by id. For a purchase: "owed" = he is getting reimbursed, so it stops counting as his spending; "paid" = he has been reimbursed; "none" = it is his own spending after all. With status "paid", add_money_in true also logs the reimbursement as money in today — leave it false if he already logged that money. For money he received: "payback" = it is a reimbursement, not income (pass for_id, the purchase it covers, to mark that purchase reimbursed as well); "none" = ordinary income.',
   inputSchema:{type:'object',properties:{
     id:{type:'string'},
     status:{type:'string',enum:['owed','paid','none','payback']},
-    add_money_in:{type:'boolean',description:'Only with status "paid": also log the repayment as money in today'}
+    add_money_in:{type:'boolean',description:'Only with status "paid" on a purchase: also log the reimbursement as money in today'},
+    for_id:{type:'string',description:'Only with status "payback": the purchase this money reimburses'}
   },required:['id','status']},
   async execute(i){
     const id = String(i.id||''), st = String(i.status||'');
@@ -1557,23 +1614,29 @@ const TOOLS = [
     for(const k of monthKeys()){ x = store.months[k].purchases.find(p=>p.id===id); if(x) break; }
     if(!x) throw new Error('no entry with id '+id);
     if(x.dir==='in'){
-      if(st==='payback'){ x.payback = true; note(x.name+' — marked as a payback, not income'); }
-      else if(st==='none'){ delete x.payback; note(x.name+' — counted as income again'); }
+      if(st==='payback'){
+        x.payback = true;
+        const t = i.for_id ? findEntry(String(i.for_id)) : null;
+        if(t && t.p.dir!=='in'){ unlinkFrom(x); x.for = t.p.id; t.p.back = 'paid';
+          note(x.name+' — a reimbursement for '+t.p.name+', which is now marked reimbursed'); }
+        else note(x.name+' — a reimbursement, not income');
+      }
+      else if(st==='none'){ unlinkFrom(x); delete x.payback; note(x.name+' — counted as income again'); }
       else throw new Error('money in can only be "payback" or "none"');
     } else {
-      if(st==='owed'){ x.back = 'owed'; note(x.name+' — '+money(x.amt)+' owed back, not your spending'); }
+      if(st==='owed'){ x.back = 'owed'; note(x.name+' — '+money(x.amt)+' to be reimbursed, not your spending'); }
       else if(st==='paid'){
         x.back = 'paid';
         if(i.add_money_in===true || i.add_money_in==='true'){
           const at = logPayback(x);
-          note(x.name+' — paid back; logged +'+money(x.amt)+' on '+monthName(at.k).split(' ')[0]+' '+ord(at.d));
-        } else note(x.name+' — paid back');
+          note(x.name+' — reimbursed; logged +'+money(x.amt)+' on '+monthName(at.k).split(' ')[0]+' '+ord(at.d));
+        } else note(x.name+' — reimbursed');
       }
       else if(st==='none'){ delete x.back; note(x.name+' — counted as your spending again'); }
       else throw new Error('a purchase can only be "owed", "paid" or "none"');
     }
     commit();
-    return 'Done. '+x.name+' is now '+(x.dir==='in' ? (x.payback?'a payback':'income') : (x.back||'his own spending'))
+    return 'Done. '+x.name+' is now '+(x.dir==='in' ? (x.payback?'a reimbursement':'income') : (x.back==='paid'?'reimbursed':x.back==='owed'?'owed back':'his own spending'))
       + '. Owed back this month: '+money(owedBack())+'.';
   }
 },
@@ -1667,10 +1730,10 @@ function snapshot(){
   state.purchases.slice().sort((a,b)=>a.day-b.day).forEach(p=>
     L.push('  '+p.id+' · '+p.day+' · '+p.name+' · '+(isIn(p)?'+':'-')+money(p.amt)+' · '+p.cat
       + ' · '+(isIn(p)?'money in':'money out')+' · '+(p.planned?'not yet':'real')
-      + (p.back==='owed' ? ' · OWED BACK (not his spending)' : p.back==='paid' ? ' · PAID BACK (not his spending)' : '')
-      + (p.payback ? ' · PAYBACK (not income)' : '')));
+      + (p.back==='owed' ? ' · TO BE REIMBURSED (not his spending)' : p.back==='paid' ? ' · REIMBURSED (not his spending)' : '')
+      + (p.payback ? ' · REIMBURSEMENT (not income)' + (p.for && findEntry(p.for) ? ' for '+findEntry(p.for).p.name+' ['+p.for+']' : '') : '')));
   if(owedBack() || paidBack())
-    L.push('Being paid back this month: '+money(owedBack())+' still owed to him, '+money(paidBack())+' already paid back. '
+    L.push('Reimbursements this month: '+money(owedBack())+' still owed to him, '+money(paidBack())+' already reimbursed. '
       + 'None of it counts as his spending; owed money counts as money on its way in.');
   L.push('');
   L.push('QUICK BUTTONS: '+(store.quick.length ? store.quick.map(q=>q.name+' '+(q.dir==='in'?'+':'')+money(q.amt)).join(', ') : 'none')+'.');
@@ -1693,9 +1756,10 @@ function rulesTurn(){
   + 'set_scheduled for a subscription, an installment, or money that lands such as a paycheck (kind "income"), move_entry and '
   + 'remove_entry by the ids listed below, set_money for balance, plan and cushion. Paychecks vary — each income line holds its own '
   + 'amount, so "my check was only 140 this time" means set_scheduled on that one line\'s id, never all of them. '
-  + 'Some purchases are really somebody else\'s — usually his mom reimburses him. set_paid_back marks one "owed" so it stops '
-  + 'counting as his spending, and "paid" once the money comes back; his mom\'s repayment, logged as money in, should be marked '
-  + '"payback" so it does not count as income. He usually logs her repayment himself, so only add the money in when he asks you to. '
+  + 'Some purchases are really somebody else\'s — usually his mom reimburses him. set_paid_back marks a purchase "owed" so it stops '
+  + 'counting as his spending, and "paid" once he is reimbursed. Money he receives as a reimbursement gets status "payback" so it '
+  + 'does not count as income — pass for_id with the purchase it covers and that purchase is marked reimbursed in the same step. '
+  + 'He usually logs her money himself, so only add money in when he asks you to. '
   + 'Confirm what you changed in your reply — he sees the calendar update behind this sheet. Ask first only if the request is '
   + 'genuinely ambiguous about which entry or which day.\n\n'
   + snapshot();
