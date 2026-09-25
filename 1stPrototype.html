@@ -3022,6 +3022,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     r.readAsDataURL(file);
   }
   var store = loadStore();
+  ctxBoot();
   store.team = store.team || {};
   store.players = store.players || {};
   function markInner(t) {
@@ -3048,8 +3049,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   }
   var ROSTERS = {};
   function rosterLeagueId() {
-    const id = store.activeLeague || "cbd";
-    return LEAGUE_BY_ID[id] && LEAGUE_BY_ID[id].real ? id : "cbd";
+    return loadedLeague();
   }
   function blankRows(n) {
     const out = [];
@@ -4276,7 +4276,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   }
   function liveSides() {
     const g = GAMES.find((q) => q.me);
-    if (!g) return [MY_TEAM, "radiator"];
+    if (!g) return [MY_TEAM, Object.keys(T).find((k) => k !== MY_TEAM)];
     return g.a === MY_TEAM ? [g.a, g.x] : [g.x, g.a];
   }
   function starterPlayers(key) {
@@ -6884,8 +6884,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const uHero = document.getElementById("userHero"), uRw = document.getElementById("userRewind"), uLine = document.getElementById("userLineup");
     let aK, xK, as, xs, aw, xw, ap = null, xp = null;
     if (live) {
-      aK = "pandas";
-      xK = "radiator";
+      [aK, xK] = liveSides();
       as = LT.a;
       xs = LT.x;
       aw = LT.aw;
@@ -6900,7 +6899,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       xs = g.xs;
       aw = g.aw;
       xw = g.xw;
-      if (g.x === "pandas") {
+      if (g.x === MY_TEAM) {
         aK = g.x;
         xK = g.a;
         as = g.xs;
@@ -7217,6 +7216,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return store.myLeagues;
   }
   function asLeague(rec) {
+    const teams = {};
+    (rec.teams || []).forEach((t) => teams[t.key] = t);
     return {
       id: rec.id,
       name: rec.name,
@@ -7225,8 +7226,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       teamCount: +rec.league.teams,
       week: 1,
       status: "forming",
-      myTeamKey: null,
-      real: false,
+      myTeamKey: rec.started && rec.teams[0] ? rec.teams[0].key : null,
+      teams,
+      real: !!rec.started,
       created: true,
       rec
     };
@@ -7249,7 +7251,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return !!activeLeague2().real;
   }
   function leagueStatus(lg) {
-    if (lg.created) return "forming";
+    if (lg.created) return createdPhase(lg.rec);
     if (!lg.real) return lg.status;
     return draftDone() ? "active" : "predraft";
   }
@@ -7257,6 +7259,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return lg.real ? S.week : lg.week;
   }
   function teamsOf(lg) {
+    if (lg.created) return loadedLeague() === lg.id ? T : lg.teams;
     return lg.real ? T : lg.teams;
   }
   function myKeyOf(lg) {
@@ -7294,6 +7297,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function leagueScore(lg) {
     const teams = teamsOf(lg), me = myKeyOf(lg), opp = lg.opp;
+    // S.games belongs to whichever league is loaded
+    if (lg.real && loadedLeague() !== (lg.created ? lg.id : "cbd")) return null;
     if (lg.real) {
       const g = (S.games || []).find((x) => x.me);
       if (!g) return null;
@@ -7352,11 +7357,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function openLeague(id) {
     const lg = leagueById(id);
     store.activeLeague = lg.id;
+    useLeague(lg.id);
     saveStore();
     document.body.classList.remove("hub");
     document.body.classList.toggle("seeded", !lg.real);
     stampLeagueBar2(lg);
-    if (lg.created) {
+    if (lg.created && !lg.real) {
       if (window.renderWaitRoom) window.renderWaitRoom(lg.id);
       if (document.body.classList.contains("open")) toggleDrawer();
       return;
@@ -7397,6 +7403,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     b.setAttribute("aria-label", "Back to " + t);
   }
   function goHome() {
+    // the hub reads City Boys' draft and games for its card
+    useLeague("cbd");
     document.body.classList.remove("seeded");
     showView2("home");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
@@ -7416,7 +7424,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const wk = document.querySelector(".league-id .wk");
     if (nm) nm.childNodes[0].nodeValue = lg.name + " ";
     const st = leagueStatus(lg);
-    if (wk) wk.textContent = st === "forming" ? "FORMING" : st === "predraft" ? "PRE-DRAFT" : st === "complete" ? "FINAL" : "WEEK " + leagueWeek(lg);
+    if (wk) wk.textContent = st === "forming" ? "FORMING" : st === "drafting" ? "DRAFTING" : st === "predraft" ? "PRE-DRAFT" : st === "complete" ? "FINAL" : "WEEK " + leagueWeek(lg);
   }
   function initLeagues2() {
     store.activeLeague = store.activeLeague || "cbd";
@@ -9170,7 +9178,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function notifyDraftClock() {
     if (draftDone()) return;
-    const i = onClockIdx(), lid = "cbd";
+    const i = onClockIdx(), lid = loadedLeague();
     if (onClockTeam() === MY_TEAM) {
       const m = pickMeta(i);
       pushNotif({
@@ -10763,7 +10771,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const L = LG();
     const teamOpts = [8, 10, 12, 14, 16].map((n) => [n, n + " teams"]);
     const waiverRows = L.waiver === "faab" ? setRow("Waiver budget", setNum("faabBudget", L.faabBudget, 1, 1e3)) + setRow("Minimum bid", setNum("faabMin", L.faabMin, 0, Math.max(1, L.faabBudget))) : "";
-    const sizeNote = +L.teams !== 10 ? `<div class="set-note" style="margin-top:11px;color:var(--accent)">City Boys Dynasty is playing 10 teams this season \u2014 ${L.teams} takes effect at the next draft.</div>` : "";
+    const seated = Object.keys(T).length;
+    const sizeNote = +L.teams !== seated ? `<div class="set-note" style="margin-top:11px;color:var(--accent)">${escHtml(activeLeague2().name)} is playing ${seated} teams this season \u2014 ${L.teams} takes effect at the next draft.</div>` : "";
     const crest = leagueCrestCard();
     return `
     ${crest}
@@ -10996,7 +11005,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (key !== MY_TEAM) {
       openConfirm(
         `Make ${T[key].mgr} commissioner?`,
-        `${T[key].mgr} takes over league settings for City Boys Dynasty. You will be able to see them but not change them, and only ${T[key].mgr} can hand the role back.`,
+        `${T[key].mgr} takes over league settings for ${escHtml(activeLeague2().name)}. You will be able to see them but not change them, and only ${T[key].mgr} can hand the role back.`,
         () => applyCommish(key),
         "Hand it over"
       );
@@ -11010,7 +11019,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!ownsCommish()) setTab = "general";
     saveStore();
     renderSettings();
-    toast(key === MY_TEAM ? "You are the commissioner" : `${T[key].mgr} is now the commissioner of City Boys Dynasty`);
+    toast(key === MY_TEAM ? "You are the commissioner" : `${T[key].mgr} is now the commissioner of ${activeLeague2().name}`);
   }
   function commishCards() {
     const opts = Object.keys(T).map((k) => [k, `${T[k].mgr} \xB7 ${T[k].n}`]);
@@ -11297,7 +11306,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       commish: commishCards()
     };
     const cm = commishTeam();
-    const sub = isCommish() ? `${ICON_STAR} Commissioner \xB7 City Boys Dynasty` : `City Boys Dynasty \xB7 Commissioner ${escHtml(cm.mgr)}`;
+    const lgName = escHtml(activeLeague2().name);
+    const sub = isCommish() ? `${ICON_STAR} Commissioner \xB7 ${lgName}` : `${lgName} \xB7 Commissioner ${escHtml(cm.mgr)}`;
     const banner = isCommish() || setTab === "notifs" ? "" : `
     <div class="set-ro">
       <div class="set-ro-t">${previewAsMember ? "Previewing as a league member" : "View only"}</div>
@@ -11671,13 +11681,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     const games = scheduleForWeek(week).map(([k1, k2]) => {
       let a = k1, x = k2;
-      if (k2 === "pandas") {
+      if (k2 === MY_TEAM) {
         a = k2;
         x = k1;
       }
       const as = seededScore(week, a), xs = seededScore(week, x);
       const aw = as || xs ? Math.max(1, Math.min(99, Math.round(50 + (as - xs) * 1.3))) : 50;
-      return { a, x, as, xs, aw, xw: 100 - aw, me: a === "pandas" || x === "pandas", status: week < LIVE_WEEK ? "final" : "sched" };
+      return { a, x, as, xs, aw, xw: 100 - aw, me: a === MY_TEAM || x === MY_TEAM, status: week < LIVE_WEEK ? "final" : "sched" };
     });
     games.sort((p, q) => (q.me ? 1 : 0) - (p.me ? 1 : 0));
     return games;
@@ -12487,6 +12497,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function teamOnPick(i) {
     const n = DRAFT_ORDER.length, rd = Math.floor(i / n), k = i % n;
+    if ((LG().draftType || "snake") === "linear") return DRAFT_ORDER[k];
     return DRAFT_ORDER[rd % 2 === 0 ? k : n - 1 - k];
   }
   function pickMeta(i) {
@@ -13473,6 +13484,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     currentSeededTeam: () => currentSeededTeam,
     initHome: () => initHome2,
     openInvite: () => openInvite,
+    fillSeats: () => fillSeats,
+    closeInviteSheet: () => closeInviteSheet,
     openSeededTeam: () => openSeededTeam,
     renderHome: () => renderHome2,
     renderSeededLeague: () => renderSeededLeague,
@@ -13484,6 +13497,136 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     simulateJoin: () => simulateJoin,
     startCreatedDraft: () => startCreatedDraft
   });
+
+  // js/league-context.js — run a league you created on the full league engine
+  //
+  // The draft room, rosters, lineups, matchups and Rewind were written for one
+  // league, City Boys Dynasty: its teams live in T, its manager is MY_TEAM, and
+  // six of its settings sit at the top of the store. Rather than thread a league
+  // id through all of that, opening a league you created *loads* it: its teams,
+  // draft order and week-1 games replace City Boys' in those globals, and its
+  // saved settings move to the top of the store. Leaving swaps City Boys back.
+  // Everything else the engine saves (rosters, waivers, trades, transactions...)
+  // is already filed under rosterLeagueId(), which now names the loaded league.
+  //
+  // store.ctx names the loaded league (absent = City Boys). While another league
+  // is loaded, City Boys' six keys wait in store.cbdPark; a created league's wait
+  // on its own record in store.myLeagues.
+  var CTX_KEYS = ["draft", "team", "league", "scoring", "slots", "simIdx", "lineup"];
+  var CBD_GLOBALS = null;
+  function loadedLeague() {
+    return store.ctx || "cbd";
+  }
+  function createdRec(id) {
+    return (store.myLeagues || []).find((l) => l.id === id) || null;
+  }
+  // A created league's draft progress, readable while it is not loaded.
+  function createdPicks(rec) {
+    return (rec.draft && rec.draft.picks || []).filter(Boolean).length;
+  }
+  function createdPhase(rec) {
+    if (!rec.started) return "forming";
+    if (loadedLeague() === rec.id) return draftDone() ? "active" : "drafting";
+    return createdPicks(rec) >= DRAFT_ROUNDS * rec.teams.length ? "active" : "drafting";
+  }
+  // Runs once at startup, before anything reads the store: if the page was left
+  // inside a created league, file its keys back on its record and restore City
+  // Boys, so boot always starts from City Boys (literals only: this runs before
+  // the rest of the bundle has initialised).
+  function ctxBoot() {
+    const keys = ["draft", "team", "league", "scoring", "slots", "simIdx", "lineup"];
+    if (!store.ctx || store.ctx === "cbd") {
+      delete store.ctx;
+      delete store.cbdPark;
+      return;
+    }
+    const rec = (store.myLeagues || []).find((l) => l.id === store.ctx);
+    if (rec) keys.forEach((k) => {
+      if (store[k] !== void 0) rec[k] = store[k];
+    });
+    const park = store.cbdPark || {};
+    keys.forEach((k) => {
+      if (park[k] !== void 0) store[k] = park[k];
+      else delete store[k];
+    });
+    delete store.cbdPark;
+    delete store.ctx;
+  }
+  // Load a league into the engine: a created league that has started drafting,
+  // or City Boys for anything else. No-op when it is already loaded.
+  function useLeague(id) {
+    const rec = id && id !== "cbd" ? createdRec(id) : null;
+    const target = rec && rec.started ? id : "cbd";
+    const cur = loadedLeague();
+    if (target === cur) return false;
+    // park what is loaded
+    if (cur === "cbd") {
+      if (!CBD_GLOBALS) CBD_GLOBALS = { T: JSON.parse(JSON.stringify(T)), order: DRAFT_ORDER.slice(), games: JSON.parse(JSON.stringify(GAMES)) };
+      store.cbdPark = {};
+      CTX_KEYS.forEach((k) => {
+        if (store[k] !== void 0) store.cbdPark[k] = store[k];
+      });
+    } else {
+      const was = createdRec(cur);
+      if (was) CTX_KEYS.forEach((k) => {
+        if (store[k] !== void 0) was[k] = store[k];
+      });
+    }
+    CTX_KEYS.forEach((k) => delete store[k]);
+    // bring in the target
+    Object.keys(T).forEach((k) => delete T[k]);
+    DRAFT_ORDER.length = 0;
+    GAMES.length = 0;
+    if (target === "cbd") {
+      const p = store.cbdPark || {};
+      CTX_KEYS.forEach((k) => {
+        if (p[k] !== void 0) store[k] = p[k];
+      });
+      delete store.cbdPark;
+      delete store.ctx;
+      const g = CBD_GLOBALS;
+      Object.assign(T, JSON.parse(JSON.stringify(g.T)));
+      MY_TEAM = "pandas";
+      DRAFT_ORDER.push(...g.order);
+      GAMES.push(...JSON.parse(JSON.stringify(g.games)));
+    } else {
+      CTX_KEYS.forEach((k) => {
+        if (rec[k] !== void 0) store[k] = rec[k];
+      });
+      store.ctx = target;
+      rec.teams.forEach((t, i) => {
+        T[t.key] = { n: t.n, mgr: t.mgr, rec: t.rec || "0-0", rk: t.rk || i + 1, c: t.c, bg: t.bg, mono: t.mono, font: t.font || "oswald" };
+      });
+      MY_TEAM = rec.teams[0].key;
+      DRAFT_ORDER.push(...(rec.draftOrder || rec.teams.map((t) => t.key)).filter((k) => T[k]));
+      scheduleForWeek(LIVE_WEEK).forEach(([a, x]) => {
+        if (!T[a] || !T[x] || a === x) return;
+        GAMES.push({ a, x, as: 0, aw: 50, xs: 0, xw: 50, live: false, me: a === MY_TEAM || x === MY_TEAM });
+      });
+    }
+    DRAFT_TOTAL = DRAFT_ROUNDS * DRAFT_ORDER.length;
+    // standings order was sorted from T at load
+    order.splice(0, order.length, ...Object.keys(T).sort((a, b) => T[a].rk - T[b].rk));
+    // rebuild everything derived from the league, in boot order
+    _taken = null;
+    _rosterCache = null;
+    Object.keys(_posRankCache).forEach((k) => delete _posRankCache[k]);
+    S.pidx = null;
+    S.games = [];
+    store.team = store.team || {};
+    initStore2();
+    initLeagueConfig2();
+    // the wizard stamped City Boys' manager as commissioner; in its own league
+    // that manager is this league's first seat
+    if (target !== "cbd" && !T[store.league.commish]) store.league.commish = MY_TEAM;
+    initClock2();
+    if (pickCount()) applyDraftToRosters();
+    applyStoredRoster2();
+    hydrateRosters(S.week);
+    applyTeamFonts2();
+    saveStore();
+    return true;
+  }
 
   // js/create.js
   var create_exports = {};
@@ -13650,6 +13793,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     document.getElementById("scroll").scrollTop = 0;
   }
   function openCreateLeague() {
+    // "copy City Boys' settings" has to read City Boys, not a loaded league
+    useLeague("cbd");
     renderWizard();
     showView2("create");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
@@ -13932,6 +14077,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function statusLine(lg) {
     const st = leagueStatus(lg), bits = [typeLabel(lg), lg.teamCount + " teams"];
     if (st === "forming") bits.push("Forming");
+    else if (st === "drafting") bits.push("Drafting");
     else if (st === "predraft") bits.push("Pre-draft");
     else if (st === "complete") bits.push(lg.placed ? ordinal2(lg.placed) + " place" : "Final");
     else bits.push("Week " + leagueWeek(lg));
@@ -13940,6 +14086,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function joinHTML(lg) {
     const joined = lg.rec && lg.rec.joined || 1;
     return `<div class="hb-join"><b>${joined}</b><span>of ${lg.teamCount}</span></div>`;
+  }
+  function draftingHTML(lg) {
+    return `<div class="hb-join"><b>${createdPicks(lg.rec)}</b><span>of ${DRAFT_ROUNDS * lg.rec.teams.length} picks</span></div>`;
   }
   function ordinal2(n) {
     const s = ["th", "st", "nd", "rd"], v = n % 100;
@@ -13966,7 +14115,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const mk = leagueMark(lg), teams = teamsOf(lg), me = teams && teams[myKeyOf(lg)];
     const tint = me ? me.c : "var(--accent)", bgc = me ? me.bg : "#171429";
     const st = leagueStatus(lg);
-    const right = st === "forming" ? joinHTML(lg) : st === "predraft" ? countdownHTML(lg) : scoreHTML(lg);
+    const right = st === "forming" ? joinHTML(lg) : st === "drafting" ? draftingHTML(lg) : st === "predraft" ? countdownHTML(lg) : scoreHTML(lg);
     return `<div class="hb-row" data-league="${lg.id}" onclick="openLeague('${lg.id}')">
     <div class="hb-grip" data-grip>${GRIP}</div>
     <div class="hb-crest" style="background:linear-gradient(155deg,${bgc},#0b0e14);border-color:${tint};color:${tint}">${markInner(mk)}</div>
@@ -14303,6 +14452,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="cond-row"><input id="invLink" class="set-ctl" type="text" readonly value="${escHtml(url)}"></div>
     <div class="cond-btns">
       <div class="tc-btn" onclick="simulateJoin('${rec.id}')">Simulate a join</div>
+      <div class="tc-btn" onclick="closeInviteSheet();fillSeats('${rec.id}')">Fill open seats</div>
       <div class="tc-btn acc" onclick="copyInvite()">Copy link</div>
     </div>`;
     document.getElementById("condScrim").classList.add("show");
@@ -14338,8 +14488,40 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function startCreatedDraft(id) {
     const rec = myLeagues().find((l) => l.id === id);
     if (!rec) return;
-    if ((rec.joined || 1) < +rec.league.teams) return;
-    toast("Draft opening");
+    if ((rec.joined || 1) < +rec.league.teams) {
+      toast("Fill every seat before the draft can start");
+      return;
+    }
+    if (!rec.started) {
+      // draw the draft order once; it is kept for the life of the draft
+      const order = rec.teams.map((t) => t.key);
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      rec.draftOrder = order;
+      rec.draft = { picks: [] };
+      rec.started = Date.now();
+      saveStore();
+    }
+    document.body.classList.remove("forming");
+    openLeague(id);
+    toast(rec.league.draftType === "auction" ? "Auction drafts run as a snake draft for now" : "The draft is open");
+  }
+  function closeInviteSheet() {
+    document.getElementById("condScrim").classList.remove("show");
+    document.getElementById("condSheet").classList.remove("show");
+  }
+  // Seat computer-managed teams in every open spot, for trying a league alone.
+  function fillSeats(id) {
+    const rec = myLeagues().find((l) => l.id === id);
+    if (!rec) return;
+    const cap = +rec.league.teams;
+    rec.teams = rec.teams || [];
+    while (rec.teams.length < cap) rec.teams.push(newTeam(rec.teams.length));
+    rec.joined = rec.teams.length;
+    saveStore();
+    renderWaitRoom(id);
   }
   function initHome2() {
     store.leagueOrder = store.leagueOrder || [];
