@@ -589,7 +589,7 @@ function closingOf(k, seen){
   const dim = daysIn(k), tN = todayNFor(k), fd = firstDowOf(k);
   let bal = openingOf(k, seen);
   const anchor = m.carry ? 0 : Math.min(dim, Math.max(0, parseInt(m.balanceDay,10) || 0));
-  for(let d = Math.max(1,anchor); d<=dim; d++) bal += netOf(m, d, false, tN, fd, dim);
+  for(let d = Math.max(1,anchor); d<=dim; d++) bal += netOf(m, d, false, tN, fd);
   return bal;
 }
 
@@ -606,7 +606,7 @@ function autoMealOf(m, d, tN, fd){
   const meal = mealOf(d, fd);
   return meal ? meal.cost : 0;
 }
-function netOf(m, d, real, tN, fd, dim){
+function netOf(m, d, real, tN, fd){
   let n = 0;
   m.income.forEach(i=>{ if(i.day===d) n += i.amt; });
   m.sched.forEach(x=>{ if(x.day===d) n -= x.amt; });
@@ -614,12 +614,9 @@ function netOf(m, d, real, tN, fd, dim){
     if(p.day!==d || (real && p.planned)) return;
     n += p.dir==='in' ? p.amt : -p.amt;
   });
-  if(!real){
-    n -= autoMealOf(m, d, tN, fd);
-    // money someone owes you back is expected by the end of the month — never
-    // in the real balance until it actually lands and is logged
-    if(d === dim) m.purchases.forEach(p=>{ if(p.dir!=='in' && p.back==='owed') n += p.amt; });
-  }
+  // owed money is never assumed back: a reimbursement counts once it is logged,
+  // as money in — planned if it has not arrived yet
+  if(!real) n -= autoMealOf(m, d, tN, fd);
   return n;
 }
 function schedOn(d){ return state.sched.filter(x=>x.day===d); }
@@ -644,7 +641,7 @@ function autoMealFor(d){ return autoMealOf(state, d, todayN, FIRST_DOW); }
 
 /* net change on one day. real=true counts only what has actually happened:
    no assumed meals, no purchases you have merely planned. */
-function netFor(d, real){ return netOf(state, d, real, todayN, FIRST_DOW, DAYS); }
+function netFor(d, real){ return netOf(state, d, real, todayN, FIRST_DOW); }
 
 /* what this month opens on, whether carried or typed */
 function opening(){ return state.carry ? openingOf(view) : (+state.balance || 0); }
@@ -683,10 +680,8 @@ function allowance(){
     schedOn(d).forEach(s=> fixed += s.amt);
     dayPurchases(d).forEach(p=> isIn(p) ? incoming += p.amt : earmarked += p.amt);
   }
-  const owed = owedBack();
-  incoming += owed;
   const free = balanceNow() + incoming - fixed - earmarked - cushion();
-  return { perDay: free/daysLeft, free, daysLeft, incoming, fixed, earmarked, owed, target:cushion() };
+  return { perDay: free/daysLeft, free, daysLeft, incoming, fixed, earmarked, target:cushion() };
 }
 function spentToday(){
   if(todayN<1 || todayN>DAYS) return 0;
@@ -737,8 +732,6 @@ function dayLines(d){
     q: entryTags(p).join(' · ') || null}));
   const am = autoMealFor(d);
   if(am){ const m = plannedMeal(d); out.push({t:m.name, a:-am, q:'assumed'}); }
-  if(d === DAYS) state.purchases.forEach(p=>{
-    if(!isIn(p) && p.back==='owed') out.push({t:'Reimbursement for '+p.name, a:p.amt, q:'owed, expected'}); });
   return out;
 }
 
@@ -844,7 +837,6 @@ function render(){
       '<div class="figure"><div class="fig-label">Free to spend</div>'
     + '<div class="big second'+(al.perDay<0?' over':'')+'">'+money(al.perDay)+'</div>'
     + '<div class="fig-note">for '+dayWord+' — that is '+money0(al.free)+' loose, after <b>'+money0(al.fixed)+'</b> of bills and subscriptions still to come, <b>'+money0(al.incoming)+'</b> landing'
-    + (al.owed>0 ? ' (<b>'+money0(al.owed)+'</b> of it owed back to you)' : '')
     + (al.earmarked>0 ? ', <b>'+money0(al.earmarked)+'</b> already promised to things you planned' : '')
     + ', and a <b>'+money0(al.target)+'</b> cushion to finish the month on.</div>'
     + (phase==='now' ? '<div class="today-line"><div class="tl-top"><span>Spent today</span><span>'+money(today$)+' of '+money(Math.max(al.perDay,0))+'</span></div>'
@@ -1259,8 +1251,6 @@ function drawSheet(){
   const am = autoMealFor(day);
   if(am) sched += entryRow(meal.name,'assumed meal, not logged',am,false);
 
-  if(day === DAYS) owedList().forEach(p=>
-    sched += entryRow('Reimbursement for '+p.name, 'owed to you — expected by month end', p.amt, true));
 
   const logged = pur.length
     ? '<div class="note" style="margin-top:4px">Tap an entry for more — like a purchase you are getting reimbursed for.</div>'
@@ -1785,7 +1775,8 @@ function snapshot(){
       + (p.payback ? ' · REIMBURSEMENT (not income)' + (p.for && findEntry(p.for) ? ' for '+findEntry(p.for).p.name+' ['+p.for+']' : '') : '')));
   if(owedBack() || paidBack())
     L.push('Reimbursements this month: '+money(owedBack())+' still owed to him, '+money(paidBack())+' already reimbursed. '
-      + 'None of it counts as his spending; owed money counts as money on its way in.');
+      + 'None of it counts as his spending. Nothing assumes owed money comes back — he logs each reimbursement himself, '
+      + 'as money in (planned, on the day he expects it, if it has not arrived). Do not count owed money as coming unless he has logged it.');
   L.push('');
   L.push('QUICK BUTTONS: '+(store.quick.length ? store.quick.map(q=>q.name+' '+(q.dir==='in'?'+':'')+money(q.amt)).join(', ') : 'none')+'.');
   return L.join('\n');
