@@ -317,6 +317,7 @@ let openDay = null, addDir = 'out', addWhen = 'spent', schedKind = 'sub', quickE
 /* ---------- storage: Claude's artifact store, else this browser ---------- */
 let saveMode = 'none', lastSaved = null, dbDoc = null, writing = false, localOk = false;
 let wTimer = null, wQueued = false, wBusy = false, wFailed = false;
+let syncedAt = null, cameFromAway = false;
 
 function boot(){
   // read this browser first so the page is never sitting blank
@@ -346,14 +347,33 @@ async function connect(){
   try{
     const doc = cap.doc(DOC);
     const snap = await withTimeout(doc.get(), 10000);
-    if(snap && snap.exists) adopt(snap.data());
     dbDoc = doc; saveMode = 'cloud';
-    if(!(snap && snap.exists)) save();   // seed it through the normal write queue
+
+    /* Two copies of the same ledger, one in this browser and one in your
+       Claude account. Whichever was written last is the real one. A device
+       that has never saved always takes the account's copy, so a phone
+       opening the link for the first time inherits the laptop rather than
+       pushing an empty month over it. */
+    const mine = +store.updatedAt || 0;
+    if(!snap || !snap.exists){
+      save();                                   // nothing up there yet — send this one
+    } else if(mine === 0 || (+snap.data().updatedAt || 0) >= mine){
+      adopt(snap.data());
+      syncedAt = new Date(); cameFromAway = true;
+    } else {
+      save();                                   // this device is ahead
+    }
     render();
+
     doc.onSnapshot(s=>{
       if (!s || !s.exists || s.hasPendingWrites || writing) return;
-      if (JSON.stringify(s.data()) === JSON.stringify(strip(store))) return;
-      adopt(s.data()); render();
+      const d = s.data();
+      if ((+d.updatedAt || 0) <= (+store.updatedAt || 0)) return;   // not newer than ours
+      if (JSON.stringify(d) === JSON.stringify(strip(store))) return;
+      adopt(d);
+      syncedAt = new Date(); cameFromAway = true;
+      render();
+      if(openDay != null) drawSheet();           // a sheet open over it must not go stale
     }, ()=>{});
   }catch(e){ writing = false; dbDoc = null; }
 }
@@ -439,6 +459,7 @@ async function flush(){
   if(wBusy){ save(); return; }        // a write is in flight; try again after it
   if(!wQueued) return;
   wQueued = false; wBusy = true;
+  store.updatedAt = Date.now();
   const payload = strip(store);
   let landed = false;
   if(localOk){
@@ -452,6 +473,7 @@ async function flush(){
       throw new Error('no storage available');
     }
     lastSaved = new Date(); wFailed = false;
+    if(saveMode==='cloud' && dbDoc){ syncedAt = lastSaved; cameFromAway = false; }
   }catch(e){
     console.error('Could not save', e);
     wFailed = true;
@@ -470,11 +492,19 @@ function flagSave(){
   } else if(wFailed || saveMode==='none'){
     el.textContent = "Not saving — storage is blocked here. Your entries will vanish when you close the tab.";
     el.style.color = 'var(--debit)';
-  } else if(lastSaved){
-    el.textContent = 'Saved ' + lastSaved.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+  } else if(saveMode === 'cloud'){
+    const t = (syncedAt || lastSaved);
+    el.textContent = 'Synced to your Claude account'
+      + (t ? ' · ' + (cameFromAway ? 'picked up a change from another device at ' : 'saved ')
+            + t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '')
+      + '. Open this same link on your phone to carry on there.';
     el.style.color = 'var(--credit)';
+  } else if(lastSaved){
+    el.textContent = 'Saved on this device only — this copy does not sync. '
+      + 'Saved ' + lastSaved.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) + '.';
+    el.style.color = 'var(--amber)';
   } else {
-    el.textContent = 'Saving is on';
+    el.textContent = 'Saved on this device only — this copy does not sync.';
     el.style.color = 'var(--muted)';
   }
 }
@@ -988,8 +1018,14 @@ function openBackup(){
     + '<div class="sub">' + ledgerSummary() + '</div></div>'
     + '<button class="x" id="close" aria-label="Close">×</button></div>'
 
-    + '<div class="note" style="margin-top:0">This is your whole ledger as text. Copy it somewhere safe, '
-    + 'or paste it into another copy of this page to carry everything across.</div>'
+    + '<div class="note" style="margin-top:0">'
+    + (saveMode === 'cloud'
+        ? 'This ledger already syncs: it is kept in your Claude account, so opening this same link on your phone '
+          + 'shows everything you have logged here, and changes on either one reach the other. The text below is a '
+          + 'backup on top of that — worth keeping somewhere safe.'
+        : 'This copy saves only to this browser, so it does not reach your phone. The text below is your whole '
+          + 'ledger — copy it, then paste it into the Claude link on the device you want it on.')
+    + '</div>'
     + '<textarea id="bkOut" class="code" rows="4" readonly aria-label="Your ledger as text">'+esc(text)+'</textarea>'
     + '<button class="btn" id="bkCopy">Copy it</button>'
     + '<div class="note" id="bkMsg"></div>'
