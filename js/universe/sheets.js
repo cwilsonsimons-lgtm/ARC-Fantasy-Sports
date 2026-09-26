@@ -1,94 +1,21 @@
-// WWE Universe — the bottom sheets: every place something is created or edited.
+// WWE Universe — the bottom sheets for creating things, and for events and
+// their results: add wrestlers, new team, new title, seasons, events, and the
+// result form (which records a new result or corrects one in place).
 //
-// Two kinds. Record sheets (a wrestler, team, title, event) render straight
-// from the universe and save each field as it changes. Form sheets (add
-// wrestlers, new team, record a result...) keep a draft here until the owner
-// saves it, so a rejected save keeps what they typed.
+// Form sheets keep a draft here until the owner saves it, so a save that's
+// refused keeps everything they typed. Profiles and their edits live in
+// pages.js and edits.js.
 import * as M from './model.js';
 import {
-  ICON, LABEL, avatar, empty, esc, field, labelPairs, matchLine, matchMeta, options, select,
-  showColor, showName, showPairs, stampLabel, teamOptions, titleOptions, wrestlerOptions,
+  ICON, LABEL, empty, esc, field, labelPairs, matchLine, matchMeta, options, select,
+  showColor, showName, showPairs, teamOptions, titleOptions, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, focusField, openSheet, paintSheet, toast, uni } from './app.js';
-import { uvFollowActiveSeason, uvHolderLink, uvRosterShow } from './views.js';
+import { uvFollowActiveSeason, uvRosterShow } from './views.js';
+import { uvOpenTeam, uvOpenTitle } from './pages.js';
 
-const fine = text => `<div class="fine">${esc(text)}</div>`;
 const none = text => `<div class="uv-none">${esc(text)}</div>`;
-const eventName = (st, id) => (M.eventById(st, id) || { name: '(deleted event)' }).name;
 const alignPairs = () => [['', 'Not set'], ...labelPairs(LABEL.alignment)];
-
-// ================================================================ wrestlers
-
-export function uvOpenWrestler(id) {
-  openSheet(() => {
-    const st = uni();
-    const w = M.wrestlerById(st, id);
-    if (!w) return null;
-    const set = k => `uvSetWrestler('${id}','${k}',this.value)`;
-    const held = M.titlesOfWrestler(st, id);
-    const teams = M.teamsOf(st, id);
-    const matches = M.matchesOf(st, id);
-    const moves = M.movesOf(st, id).reverse();
-    const refs = M.wrestlerRefs(st, id);
-    const facts = [w.origin, LABEL.gender[w.gender], w.alignment && LABEL.alignment[w.alignment],
-      w.status === 'injured' && 'Injured'].filter(Boolean).join(' · ');
-
-    return {
-      title: esc(w.name),
-      body: `
-        <div class="uv-hero">${avatar(st, w, 'lg')}<div>
-          <div class="k" style="color:${showColor(st, w.showId)}">${esc(showName(st, w.showId))}</div>
-          <div class="s">${esc(facts)}</div></div></div>
-        <div class="uv-grid">
-          ${field('Show', select(`uvAssign('${id}',this.value)`, options(showPairs(st, 'Unassigned'), w.showId || '')))}
-          ${field('Status', select(set('status'), options(labelPairs(LABEL.status), w.status)))}
-          ${field('Name', `<input class="uv-in" maxlength="60" value="${esc(w.name)}" onchange="${set('name')}">`, 'wide')}
-          ${field('Gender', select(set('gender'), options(labelPairs(LABEL.gender), w.gender)))}
-          ${field('Comes from', select(set('origin'), options(labelPairs(LABEL.origin), w.origin)))}
-          ${field('Alignment', select(set('alignment'), options(alignPairs(), w.alignment || '')))}
-          ${field('Notes', `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set('notes')}">${esc(w.notes)}</textarea>`, 'wide')}
-        </div>
-
-        <h4>Championships</h4>
-        ${held.length ? held.map(h => `<div class="uv-li" onclick="uvOpenTitle('${h.title.id}')">${ICON.belt}
-          <span>${esc(h.title.name)}${h.team ? ` <span class="uv-muted">with ${esc(h.team.name)}</span>` : ''}</span></div>`).join('')
-          : none('None right now.')}
-
-        <h4>Tag teams</h4>
-        ${teams.length ? teams.map(t => `<div class="uv-li" onclick="uvOpenTeam('${t.id}')">${ICON.team}
-          <span>${esc(t.name)}${t.active ? '' : ' <span class="uv-muted">(disbanded)</span>'}</span></div>`).join('')
-          : none('Not on a team.')}
-
-        <h4>Matches${matches.length ? ` · ${matches.length}` : ''}</h4>
-        ${matches.length ? matches.slice(0, 30).map(x => {
-          const r = M.resultFor(x.match, x.side);
-          return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res ${r}">${r}</span>
-            <span>${matchLine(st, x.match)}<span class="uv-muted d">${esc(x.event.name)} · ${stampLabel(st, x.event.at)}</span></span></div>`;
-        }).join('') : none('No results recorded yet.')}
-
-        <h4>Roster history</h4>
-        ${moves.length ? moves.map(m => `<div class="uv-li plain"><span class="w">${stampLabel(st, m.at)}</span>
-          <span>${m.from ? `${esc(showName(st, m.from))} → ` : 'Joined '}${esc(showName(st, m.to))}${m.note ? ` <span class="uv-muted">— ${esc(m.note)}</span>` : ''}</span></div>`).join('')
-          : none('Never assigned to a show.')}
-
-        ${refs.length ? fine(`${w.name} is part of the history (${refs.join(', ')}), so they can't be deleted. Leave them unassigned instead.`)
-          : `<div class="uv-btn bad full" onclick="uvDeleteWrestler('${id}')">Delete wrestler</div>`}`,
-    };
-  });
-}
-
-export function uvSetWrestler(id, key, value) {
-  commit(st => M.updateWrestler(st, id, { [key]: value }));
-}
-export function uvAssign(id, showId) {
-  commit(st => M.assignWrestler(st, id, showId),
-    mv => mv && `${M.wrestlerById(uni(), id).name} → ${showName(uni(), mv.to)}`);
-}
-export function uvDeleteWrestler(id) {
-  const w = M.wrestlerById(uni(), id);
-  confirmThen(`Delete ${w.name}?`, 'They have no history yet, so nothing else changes. Use this for someone added by mistake.', 'Delete',
-    () => { if (commit(st => M.deleteWrestler(st, id), `${w.name} deleted`).ok) closeSheet(); });
-}
 
 // ---------------------------------------------------------------- add wrestlers
 
@@ -120,7 +47,7 @@ function addSheet() {
       <div class="uv-grid">
         ${field('Show', select(`uvAddSet('showId',this.value)`, options(showPairs(st, 'Unassigned'), d.showId)))}
         ${field('Comes from', select(`uvAddSet('origin',this.value)`, options(labelPairs(LABEL.origin), d.origin)))}
-        ${field('Gender', select(`uvAddSet('gender',this.value)`, options(labelPairs(LABEL.gender), d.gender)))}
+        ${field('Division', select(`uvAddSet('gender',this.value)`, options(labelPairs(LABEL.gender), d.gender)))}
         ${field('Alignment', select(`uvAddSet('alignment',this.value)`, options(alignPairs(), d.alignment)))}
       </div>
       ${d.result ? `<div class="uv-note warn">${esc(d.result)}</div>` : ''}
@@ -195,59 +122,6 @@ export function uvCreateTeam() {
   if (r.ok) uvOpenTeam(r.value.id);
 }
 
-export function uvOpenTeam(id) {
-  openSheet(() => {
-    const st = uni();
-    const t = M.teamById(st, id);
-    if (!t) return null;
-    const shows = M.teamShows(st, t);
-    const reigns = st.reigns.filter(r => r.holder.type === 'team' && r.holder.id === id)
-      .sort((a, b) => b.start.seq - a.start.seq);
-    const refs = M.teamRefs(st, id);
-    const memberPick = (m, i) => `<div class="uv-pick">${select(`uvSetTeamMember('${id}',${i},this.value)`, wrestlerOptions(st, m))}
-      ${t.members.length > 2 ? `<div class="uv-ic sm" onclick="uvDropTeamMember('${id}',${i})">${ICON.x}</div>` : ''}</div>`;
-
-    return {
-      title: esc(t.name),
-      body: `
-        <div class="uv-hero"><span class="uv-av lg sq">${ICON.team}</span><div>
-          <div class="k">${t.active ? 'Active' : 'Disbanded'}</div>
-          <div class="s">Formed ${stampLabel(st, t.formed)}${t.disbanded ? ` · disbanded ${stampLabel(st, t.disbanded)}` : ''}</div></div></div>
-        ${shows.length > 1 ? `<div class="uv-note warn">The members are on different shows: ${shows.map(s => esc(showName(st, s))).join(', ')}.</div>` : ''}
-        ${field('Team name', `<input class="uv-in" maxlength="60" value="${esc(t.name)}" onchange="uvSetTeamName('${id}',this.value)">`, 'wide')}
-
-        <h4>Members</h4>
-        ${t.members.map(memberPick).join('')}
-        <div class="uv-pick">${select(`uvAddTeamMember('${id}',this.value)`, wrestlerOptions(st, '', '+ Add a member'))}</div>
-
-        <h4>Title reigns</h4>
-        ${reigns.length ? reigns.map(r => reignLi(st, r, 'title')).join('') : none('No title reigns yet.')}
-
-        <div class="uv-btn full" onclick="uvTeamActive('${id}',${!t.active})">${t.active ? 'Disband team' : 'Reunite team'}</div>
-        ${refs.length ? fine(`${t.name} are part of the history (${refs.join(', ')}), so they can't be deleted. Disband them instead.`)
-          : `<div class="uv-btn bad full" onclick="uvDeleteTeam('${id}')">Delete team</div>`}`,
-    };
-  });
-}
-
-const withMembers = (id, fn) => st => {
-  const members = [...M.teamById(st, id).members];
-  fn(members);
-  return M.updateTeam(st, id, { members });
-};
-export function uvSetTeamName(id, v) { commit(st => M.updateTeam(st, id, { name: v })); }
-export function uvSetTeamMember(id, i, v) { commit(withMembers(id, m => { m[i] = v; })); }
-export function uvDropTeamMember(id, i) { commit(withMembers(id, m => { m.splice(i, 1); })); }
-export function uvAddTeamMember(id, v) { if (v) commit(withMembers(id, m => { m.push(v); })); }
-export function uvTeamActive(id, active) {
-  commit(st => M.setTeamActive(st, id, active), t => `${t.name} ${active ? 'reunited' : 'disbanded'}`);
-}
-export function uvDeleteTeam(id) {
-  const t = M.teamById(uni(), id);
-  confirmThen(`Delete ${t.name}?`, 'They have no history yet. Use this for a team added by mistake.', 'Delete',
-    () => { if (commit(st => M.deleteTeam(st, id), `${t.name} deleted`).ok) closeSheet(); });
-}
-
 // ================================================================ championships
 
 let titleDraft = null;
@@ -280,92 +154,6 @@ export function uvTitleDraft(k, v) { titleDraft[k] = v; }
 export function uvCreateTitle() {
   const r = commit(st => M.addTitle(st, titleDraft), t => `${t.name} created`);
   if (r.ok) uvOpenTitle(r.value.id);
-}
-
-function reignLi(st, r, show) {
-  const who = show === 'title' ? `<span class="uv-link" onclick="uvOpenTitle('${r.titleId}')">${esc((M.titleById(st, r.titleId) || {}).name || '?')}</span>`
-    : uvHolderLink(st, r.holder);
-  const span = `${stampLabel(st, r.start)} → ${r.end ? stampLabel(st, r.end) + (r.vacated ? ' (vacated)' : '') : 'now'}`;
-  const where = r.eventId ? ` · ${esc(eventName(st, r.eventId))}` : '';
-  return `<div class="uv-li plain">${ICON.belt}<span>${who}<span class="uv-muted d">${span}${where}</span></span></div>`;
-}
-
-export function uvOpenTitle(id) {
-  openSheet(() => {
-    const st = uni();
-    const t = M.titleById(st, id);
-    if (!t) return null;
-    const cur = M.currentReign(st, id);
-    const reigns = M.titleReigns(st, id).reverse();
-    const refs = M.titleRefs(st, id);
-    const set = k => `uvSetTitle('${id}','${k}',this.value)`;
-    const pool = t.kind === 'tag' ? teamOptions(st, '', '— Pick the new champions —') : wrestlerOptions(st, '', '— Pick the new champion —');
-
-    return {
-      title: esc(t.name),
-      body: `
-        <div class="uv-champ-card" style="--c:${showColor(st, t.showId)}">
-          <div class="k">${!t.active ? 'Retired' : cur ? (t.kind === 'tag' ? 'Champions' : 'Champion') : 'Vacant'}</div>
-          <div class="h">${cur ? uvHolderLink(st, cur.holder) : '—'}</div>
-          ${cur ? `<div class="s">Since ${stampLabel(st, cur.start)}${cur.eventId ? ` · ${esc(eventName(st, cur.eventId))}` : ''}</div>` : ''}
-          <div class="s">${esc(showName(st, t.showId, 'No brand'))} · ${esc(LABEL.division[t.division])} · ${esc(LABEL.kind[t.kind])}</div>
-        </div>
-
-        ${t.active ? `
-          <h4>Crown a new champion</h4>
-          <div class="uv-pick"><select id="uvCrownPick" class="uv-in">${pool}</select>
-            <div class="uv-btn pri" onclick="uvCrown('${id}')">Crown</div></div>
-          <p class="uv-p">When a title changes hands on a show, record the result on that event instead, so the reign is dated to it.</p>` : ''}
-        ${cur || reigns.length ? `<div class="uv-row2">
-          ${cur ? `<div class="uv-btn" onclick="uvVacate('${id}')">Vacate</div>` : ''}
-          ${reigns.length ? `<div class="uv-btn" onclick="uvUndoTitle('${id}')">Undo last change</div>` : ''}</div>` : ''}
-
-        <h4>Title history${reigns.length ? ` · ${reigns.length} reign${reigns.length === 1 ? '' : 's'}` : ''}</h4>
-        ${reigns.length ? reigns.map(r => reignLi(st, r, 'holder')).join('') : none('Never held.')}
-
-        <h4>Details</h4>
-        ${field('Name', `<input class="uv-in" maxlength="60" value="${esc(t.name)}" onchange="${set('name')}">`, 'wide')}
-        <div class="uv-grid" style="margin-top:10px">
-          ${field('Show', select(set('showId'), options(showPairs(st, 'No brand'), t.showId || '')), 'wide')}
-          ${field('Division', select(set('division'), options(labelPairs(LABEL.division), t.division)))}
-          ${field('Type', select(set('kind'), options(labelPairs(LABEL.kind), t.kind), reigns.length ? ' disabled' : ''))}
-        </div>
-        <div class="uv-btn full" onclick="uvRetireTitle('${id}',${!t.active})">${t.active ? 'Retire title' : 'Bring title back'}</div>
-        ${refs.length ? fine(`The ${t.name} has history (${refs.join(', ')}), so it can't be deleted. Retire it instead.`)
-          : `<div class="uv-btn bad full" onclick="uvDeleteTitle('${id}')">Delete title</div>`}`,
-    };
-  });
-}
-
-export function uvSetTitle(id, key, value) { commit(st => M.updateTitle(st, id, { [key]: value })); }
-export function uvRetireTitle(id, active) {
-  commit(st => M.updateTitle(st, id, { active }), t => `${t.name} ${active ? 'is back' : 'retired'}`);
-}
-export function uvCrown(id) {
-  const pick = document.getElementById('uvCrownPick');
-  const t = M.titleById(uni(), id);
-  if (!pick || !pick.value) { toast(`Pick the new champion${t.kind === 'tag' ? 's' : ''} first.`, true); return; }
-  const holder = { type: t.kind === 'tag' ? 'team' : 'wrestler', id: pick.value };
-  commit(st => M.setChampion(st, id, holder), r => `${M.holderName(uni(), r.holder)} — new ${t.name} champion${t.kind === 'tag' ? 's' : ''}`);
-}
-export function uvVacate(id) {
-  const t = M.titleById(uni(), id);
-  confirmThen(`Vacate the ${t.name}?`, 'The current reign ends this week. Undo brings it back if this was a mistake.', 'Vacate',
-    () => commit(st => M.vacateTitle(st, id), `The ${t.name} is vacant`));
-}
-export function uvUndoTitle(id) {
-  const st = uni();
-  const t = M.titleById(st, id);
-  const reigns = M.titleReigns(st, id);
-  const last = reigns[reigns.length - 1];
-  const what = last.end ? `the ${t.name} being vacated` : `${M.holderName(st, last.holder)} winning the ${t.name}`;
-  confirmThen('Undo the last title change?', `This takes back ${what}. The result itself, if there was one, stays recorded.`, 'Undo',
-    () => commit(s => M.undoTitleChange(s, id), 'Title change undone'));
-}
-export function uvDeleteTitle(id) {
-  const t = M.titleById(uni(), id);
-  confirmThen(`Delete the ${t.name}?`, 'It has no history yet. Use this for a title added by mistake.', 'Delete',
-    () => { if (commit(st => M.deleteTitle(st, id), `${t.name} deleted`).ok) closeSheet(); });
 }
 
 // ================================================================ seasons
@@ -454,14 +242,14 @@ export function uvOpenEvent(id) {
     const e = M.eventById(st, id);
     if (!e) return null;
     const season = M.seasonById(st, e.at.season);
-    const weekFixed = st.reigns.some(r => r.eventId === id);
+    const changed = st.reigns.filter(r => r.eventId === id);
     const set = k => `uvSetEvent('${id}','${k}',this.value)`;
     const results = e.matches.map((m, i) => {
       const reign = st.reigns.find(r => r.matchId === m.id);
       const meta = matchMeta(st, m, reign);
-      return `<div class="uv-match"><span class="i">${i + 1}</span><div class="b"><div>${matchLine(st, m)}</div>
+      return `<div class="uv-match" onclick="uvEditResult('${id}','${m.id}')"><span class="i">${i + 1}</span><div class="b"><div>${matchLine(st, m)}</div>
         ${meta ? `<div class="uv-muted d">${meta}</div>` : ''}${m.notes ? `<div class="uv-muted d">${esc(m.notes)}</div>` : ''}</div>
-        <div class="uv-ic sm" onclick="uvDeleteMatch('${id}','${m.id}')" title="Delete result">${ICON.x}</div></div>`;
+        <span class="uv-chev">${ICON.edit}</span></div>`;
     }).join('');
 
     return {
@@ -472,48 +260,74 @@ export function uvOpenEvent(id) {
           <div class="s">${esc(e.showId ? showName(st, e.showId) : 'All shows')} · ${esc(season.name)} · Week ${e.at.week}</div></div></div>
 
         <h4>Results${e.matches.length ? ` · ${e.matches.length}` : ''}</h4>
-        ${results || none('No results recorded yet.')}
+        ${results ? results + '<div class="fine">Tap a result to correct it. It’s changed in place — nothing else on the card moves.</div>'
+          : none('No results recorded yet.')}
         <div class="uv-btn pri full" onclick="uvRecordResult('${id}')">${ICON.plus}Record a result</div>
 
         <h4>Details</h4>
         ${field('Name', `<input class="uv-in" maxlength="60" value="${esc(e.name)}" onchange="${set('name')}">`, 'wide')}
         <div class="uv-grid" style="margin-top:10px">
           ${field('Show', select(set('showId'), options(showPairs(st, e.kind === 'ple' ? 'All shows' : ''), e.showId || '')))}
-          ${field('Week', `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}"
-            onchange="${set('week')}"${weekFixed ? ' disabled title="A title changed hands here"' : ''}>`)}
+          ${field('Week', `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}" onchange="${set('week')}">`)}
           ${field('Notes', `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set('notes')}">${esc(e.notes)}</textarea>`, 'wide')}
         </div>
+        ${changed.length ? `<div class="fine">A title changed hands here, so a new week moves that title change with it — as long as the title’s history still reads in order.</div>` : ''}
         <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete event</div>`,
     };
   });
 }
 
-export function uvSetEvent(id, key, value) { commit(st => M.updateEvent(st, id, { [key]: value })); }
+export function uvSetEvent(id, key, value) { commit(st => M.updateEvent(st, id, { [key]: value }), 'Saved'); }
 export function uvDeleteEvent(id) {
-  const e = M.eventById(uni(), id);
+  const st = uni();
+  const e = M.eventById(st, id);
   const n = e.matches.length;
-  confirmThen(`Delete ${e.name}?`, n ? `Its ${n} recorded result${n === 1 ? '' : 's'} will be deleted with it.` : 'It has no results yet.', 'Delete',
-    () => { if (commit(st => M.deleteEvent(st, id), `${e.name} deleted`).ok) closeSheet(); });
-}
-export function uvDeleteMatch(eventId, matchId) {
-  confirmThen('Delete this result?', 'The match is removed from the event and from everyone’s history.', 'Delete',
-    () => commit(st => M.deleteMatch(st, eventId, matchId), 'Result deleted'));
+  const titles = st.reigns.filter(r => r.eventId === id).map(r => M.titleById(st, r.titleId).name);
+  confirmThen(`Delete ${e.name}?`,
+    (n ? `Its ${n} recorded result${n === 1 ? '' : 's'} will be deleted with it.` : 'It has no results yet.')
+    + (titles.length ? ` The ${titles.join(' and the ')} will go back to whoever held ${titles.length === 1 ? 'it' : 'them'} before.` : ''),
+    'Delete', () => { if (commit(s => M.deleteEvent(s, id), `${e.name} deleted`).ok) closeSheet(); });
 }
 
-// ---------------------------------------------------------------- record a result
+// ---------------------------------------------------------------- record or correct a result
 
 let md = null;
 const blankSide = () => ({ team: '', wrestlers: [''] });
 
 export function uvRecordResult(eventId) {
-  md = { eventId, sides: [blankSide(), blankSide()], result: '0', finish: '', titleId: '', titleChange: false, stip: '', notes: '' };
+  md = { eventId, matchId: null, sides: [blankSide(), blankSide()], result: '0', finish: '', titleId: '', titleChange: false, stip: '', notes: '' };
   openSheet(matchSheet);
+}
+
+/** Open a recorded result in the same form, filled in, to correct it in place. */
+export function uvEditResult(eventId, matchId) {
+  const st = uni();
+  const m = M.eventById(st, eventId).matches.find(x => x.id === matchId);
+  md = {
+    eventId, matchId,
+    sides: m.sides.map(sd => ({ team: sd.team || '', wrestlers: [...sd.wrestlers] })),
+    result: m.outcome === 'win' ? String(m.winner) : m.outcome,
+    finish: m.finish || '', titleId: m.titleId || '', titleChange: st.reigns.some(r => r.matchId === matchId),
+    stip: m.stip, notes: m.notes,
+  };
+  openSheet(matchSheet);
+}
+
+// Registered teams a side could be wrestling as: every wrestler on the side
+// is currently on the team. Offered, never assumed - it decides whose record
+// the match goes on.
+function teamGuesses(st, side) {
+  const ids = side.wrestlers.filter(Boolean);
+  if (side.team || ids.length < 2) return [];
+  return st.teams.filter(t => t.active && ids.every(id => t.members.includes(id)));
 }
 
 function matchSheet() {
   const st = uni();
   const e = M.eventById(st, md.eventId);
   if (!e) return null;
+  const editing = !!md.matchId;
+  if (editing && !e.matches.some(m => m.id === md.matchId)) return null;
   if (st.wrestlers.length < 2) {
     return { title: 'Record a result', body: empty(ICON.user, 'Add wrestlers first', 'A match needs at least two wrestlers on the roster.') };
   }
@@ -524,20 +338,26 @@ function matchSheet() {
   };
   const resultPairs = [...md.sides.map((s, i) => [String(i), `${label(s, i)} won`]), ['draw', 'Draw'], ['nc', 'No contest']];
   const title = md.titleId ? M.titleById(st, md.titleId) : null;
-  const hasTeams = st.teams.some(t => t.active);
+  const linked = editing ? st.reigns.find(r => r.matchId === md.matchId) : null;
+  const hasTeams = st.teams.some(t => t.active) || md.sides.some(s => s.team);
 
   const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
       <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ''}</div>
       ${hasTeams ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, 'Not as a tag team'))}</div>` : ''}
       ${s.wrestlers.map((w, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, w))}
         ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON.x}</div>` : ''}</div>`).join('')}
+      ${teamGuesses(st, s).map(t => `<div class="uv-hint" onclick="uvMTeam(${i},'${t.id}')">Wrestling as <b>${esc(t.name)}</b>?
+        <span>Tap so it counts on their team record</span></div>`).join('')}
       <div class="uv-add" onclick="uvMAddWrestler(${i})">${ICON.plus}Add a partner</div>
     </div>`).join('');
 
   return {
-    title: 'Record a result',
+    title: editing ? 'Correct a result' : 'Record a result',
     body: `
-      <p class="uv-p">${esc(e.name)} — enter what happened in the game.</p>
+      <p class="uv-p">${esc(e.name)} — ${editing ? 'change whatever was entered wrong. It’s corrected in place: its spot on the card stays, and nothing else changes.'
+        : 'enter what happened in the game.'}</p>
+      ${linked ? `<div class="uv-note">This result changed the <b>${esc(M.titleById(st, linked.titleId).name)}</b>. Pick a different winner and
+        that reign moves to them; untick the box and the belt goes back to the previous champion — as long as it hasn’t changed hands since.</div>` : ''}
       ${sides}
       <div class="uv-add" onclick="uvMAddSide()">${ICON.plus}Add another side</div>
       <div class="uv-grid" style="margin-top:14px">
@@ -550,7 +370,8 @@ function matchSheet() {
       ${title ? `<label class="uv-check"><input type="checkbox"${md.titleChange ? ' checked' : ''} onchange="uvMSet('titleChange',this.checked)">
         <span>The title changed hands — the winner${title.kind === 'tag' ? 's are the new champions' : ' is the new champion'}</span></label>` : ''}
       ${field('Notes', `<input class="uv-in" maxlength="2000" value="${esc(md.notes)}" oninput="uvMText('notes',this.value)">`, 'wide')}
-      <div class="uv-btn pri full" onclick="uvSaveResult()">Save result</div>`,
+      <div class="uv-btn pri full" onclick="uvSaveResult()">${editing ? 'Save correction' : 'Save result'}</div>
+      ${editing ? `<div class="uv-btn bad full" onclick="uvDeleteResult()">Delete this result</div>` : ''}`,
   };
 }
 
@@ -558,7 +379,10 @@ export function uvMTeam(i, teamId) {
   const side = md.sides[i];
   side.team = teamId;
   const team = teamId && M.teamById(uni(), teamId);
-  if (team) side.wrestlers = [...team.members];
+  // picking the team fills in its line-up - unless the side already names
+  // only its members (a trio sending two), which is left as it is
+  const ids = side.wrestlers.filter(Boolean);
+  if (team && (!ids.length || !ids.every(id => team.members.includes(id)))) side.wrestlers = [...team.members];
   paintSheet();
 }
 export function uvMWrestler(i, j, v) { md.sides[i].wrestlers[j] = v; paintSheet(); }
@@ -586,12 +410,24 @@ export function uvSaveResult() {
     outcome, winner: outcome === 'win' ? Number(d.result) : null,
     finish: d.finish, titleId: d.titleId || null, stip: d.stip, notes: d.notes,
   };
-  const r = commit(st => M.recordMatch(st, d.eventId, input, { titleChange: !!(d.titleId && d.titleChange) }), m => {
+  const opts = { titleChange: !!(d.titleId && d.titleChange) };
+  const r = commit(st => (d.matchId ? M.updateMatch(st, d.eventId, d.matchId, input, opts) : M.recordMatch(st, d.eventId, input, opts)), m => {
     const st = uni();
     const reign = st.reigns.find(x => x.matchId === m.id);
-    if (!reign) return 'Result saved';
-    const verb = reign.holder.type === 'team' ? 'win' : 'wins';
-    return `Result saved — ${M.holderName(st, reign.holder)} ${verb} the ${M.titleById(st, reign.titleId).name}`;
+    const saved = d.matchId ? 'Result corrected' : 'Result saved';
+    if (!reign) return saved;
+    const verb = reign.holder.type === 'team' ? 'hold' : 'holds';
+    return `${saved} — ${M.holderName(st, reign.holder)} ${verb} the ${M.titleById(st, reign.titleId).name}`;
   });
   if (r.ok) uvOpenEvent(d.eventId);
+}
+
+export function uvDeleteResult() {
+  const d = md;
+  const st = uni();
+  const linked = st.reigns.find(x => x.matchId === d.matchId);
+  confirmThen('Delete this result?',
+    'It’s removed from the event and from everyone’s record.'
+    + (linked ? ` The ${M.titleById(st, linked.titleId).name} goes back to whoever held it before.` : ''),
+    'Delete', () => { if (commit(s => M.deleteMatch(s, d.eventId, d.matchId), 'Result deleted').ok) uvOpenEvent(d.eventId); });
 }

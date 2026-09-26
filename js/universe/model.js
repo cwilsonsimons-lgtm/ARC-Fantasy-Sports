@@ -16,9 +16,16 @@
 // Time is recorded as a stamp - { season, week, seq }. `season` and `week` are
 // the universe's own calendar; `seq` is a counter that only goes up, so any two
 // things that happened can be put in order even inside the same week.
+//
+// History is never rewritten by an ordinary change. Moving a wrestler adds a
+// roster move; changing a team's line-up adds or closes a membership; a new
+// champion adds a reign. Past results name the wrestlers who were actually in
+// them, so none of that touches them. The correction tools further down -
+// undo, edit a result, edit a reign, merge a duplicate - each fix one record
+// and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -61,6 +68,7 @@ export function createUniverse() {
     wrestlers: [],
     moves: [],              // roster assignment history, one row per change of show
     teams: [],
+    memberships: [],        // team line-up history, one row per spell a wrestler spent on a team
     titles: [],
     reigns: [],             // title history; the open reign (end === null) is the champion
     seasons: [],
@@ -109,6 +117,30 @@ function now(st) {
   const s = activeSeason(st);
   return stampAt(st, s.id, s.week);
 }
+// The { season, week } a change is dated to: a given week of the active
+// season, or its current week. Turned into a stamp only once every check passes.
+function dateIn(st, week) {
+  const s = activeSeason(st);
+  return { season: s.id, week: week == null || week === '' ? s.week : checkWeek(week) };
+}
+const stampFor = (st, date) => stampAt(st, date.season, date.week);
+const nowDate = st => ({ season: activeSeason(st).id, week: activeSeason(st).week });
+// true when stamp/date `x` falls inside the span [from, to) - `to` null means still open
+const within = (st, x, from, to) => compareStamps(st, from, x) <= 0 && (!to || compareStamps(st, x, to) < 0);
+
+/**
+ * Whole weeks from one date to another, counting across season breaks: a
+ * season's last week runs straight into week 1 of the next.
+ */
+export function weeksBetween(st, a, b) {
+  const sa = seasonById(st, a.season), sb = seasonById(st, b.season);
+  if (!sa || !sb || sa.number > sb.number) return 0;
+  if (sa.id === sb.id) return Math.max(0, b.week - a.week);
+  const lastWeek = s => (s.ended ? s.ended.week : s.week);
+  let n = lastWeek(sa) - a.week;
+  st.seasons.filter(s => s.number > sa.number && s.number < sb.number).forEach(s => { n += lastWeek(s); });
+  return Math.max(0, n + b.week);
+}
 
 // ---------------------------------------------------------------- field checks
 
@@ -136,6 +168,11 @@ function checkShowId(st, id) {
   if (id == null || id === '') return null;
   if (!showById(st, id)) fail(`Unknown show: ${id}.`);
   return id;
+}
+function checkNote(value) {
+  const n = cleanName(value);
+  if (n.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
+  return n;
 }
 function checkWeek(value) {
   const n = Number(value);
@@ -167,7 +204,7 @@ export function addWrestler(st, input = {}) {
   const showId = checkShowId(st, input.showId);
   const w = { id: newId(st, 'w'), ...fields, showId: null };
   st.wrestlers.push(w);
-  if (showId) recordMove(st, w, showId, '');
+  if (showId) recordMove(st, w, showId, '', nowDate(st));
   return w;
 }
 
@@ -205,29 +242,67 @@ export function updateWrestler(st, id, patch = {}) {
   return w;
 }
 
-function recordMove(st, w, to, note) {
-  const move = { id: newId(st, 'mv'), wrestler: w.id, from: w.showId, to, at: now(st), note: cleanName(note) };
+function recordMove(st, w, to, note, date) {
+  const move = { id: newId(st, 'mv'), wrestler: w.id, from: w.showId, to, at: stampFor(st, date || nowDate(st)), note };
   st.moves.push(move);
   w.showId = to;
   return move;
 }
 
-/**
- * Put a wrestler on a show, or pass null / '' to leave them unassigned.
- * Returns the recorded move, or null when they were already there.
- */
-export function assignWrestler(st, id, showId, note = '') {
+// A wrestler's show history is one line, so each move has to be dated on or
+// after the one before it. Returns the wrestler, or null if they're already there.
+function moveChecks(st, id, to, date) {
   const w = must(wrestlerById(st, id), 'wrestler', id);
-  const to = checkShowId(st, showId);
   if (w.showId === to) return null;
-  if (cleanName(note).length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
-  return recordMove(st, w, to, note);
+  const moves = movesOf(st, id);
+  const last = moves[moves.length - 1];
+  if (last && earlierWeek(st, date, last.at)) {
+    fail(`${w.name}'s last move was in ${weekLabel(st, last.at)}, later than ${weekLabel(st, date)}. Moves have to be recorded in order.`);
+  }
+  return w;
+}
+
+/**
+ * Put a wrestler on a show, or pass null / '' to leave them unassigned. The
+ * move is kept in their history; nothing they've already done changes, since
+ * results name the wrestler, not the show they were on. `opts.week` backdates
+ * the move within the current season. Returns the move, or null when they
+ * were already there.
+ */
+export function assignWrestler(st, id, showId, note = '', opts = {}) {
+  const to = checkShowId(st, showId);
+  const n = checkNote(note);
+  const date = dateIn(st, opts.week);
+  const w = moveChecks(st, id, to, date);
+  return w ? recordMove(st, w, to, n, date) : null;
+}
+
+/** Move several wrestlers at once - all of them, or none if any can't go. */
+export function assignWrestlers(st, ids, showId, note = '', opts = {}) {
+  const to = checkShowId(st, showId);
+  const n = checkNote(note);
+  const date = dateIn(st, opts.week);
+  if (!Array.isArray(ids) || !ids.length) fail('Pick at least one wrestler to move.');
+  if (new Set(ids).size !== ids.length) fail('The same wrestler is picked twice.');
+  const going = ids.map(id => moveChecks(st, id, to, date)).filter(Boolean);
+  return going.map(w => recordMove(st, w, to, n, date));
+}
+
+/** Take back a wrestler's most recent move - the fix for a move made by mistake. */
+export function undoLastMove(st, id) {
+  const w = must(wrestlerById(st, id), 'wrestler', id);
+  const moves = movesOf(st, id);
+  const last = moves[moves.length - 1];
+  if (!last) fail(`${w.name} has no roster moves to undo.`);
+  removeWhere(st.moves, m => m.id === last.id);
+  w.showId = last.from;
+  return last;
 }
 
 /** What stops a wrestler from being deleted - empty when nothing does. */
 export function wrestlerRefs(st, id) {
   const refs = [];
-  const teams = st.teams.filter(t => t.members.includes(id)).length;
+  const teams = teamsEver(st, id).length;
   if (teams) refs.push(teams === 1 ? 'a tag team' : `${teams} tag teams`);
   const reigns = st.reigns.filter(r => r.holder.type === 'wrestler' && r.holder.id === id).length;
   if (reigns) refs.push(reigns === 1 ? 'a title reign' : `${reigns} title reigns`);
@@ -266,32 +341,77 @@ export function movesOf(st, wrestlerId) {
 export function byName(a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }); }
 
 // ---------------------------------------------------------------- tag teams
+//
+// A team's current line-up is `members`; how it got there is kept in
+// `memberships`, one row per spell a wrestler spent on the team -
+// { team, wrestler, start, end }. `log` records the team itself forming,
+// disbanding and reuniting. A team's record comes only from matches it
+// wrestled as the team, never from its members' own matches.
 
-function teamFields(st, input, self) {
-  const name = has(input, 'name') || !self ? checkName(st.teams, input.name, 'tag team', self && self.id) : self.name;
-  let members = self ? self.members : [];
-  if (has(input, 'members') || !self) {
-    const ids = (input.members || []).filter(x => x != null && x !== '');
-    ids.forEach(m => must(wrestlerById(st, m), 'wrestler', m));
-    if (new Set(ids).size !== ids.length) fail('A wrestler can only be on a team once.');
-    if (ids.length < 2) fail('A tag team needs at least two wrestlers.');
-    members = [...ids];
-  }
-  return { name, members };
+export const TEAM_EVENTS = ['formed', 'disbanded', 'reunited'];
+export const teamFormed = t => t.log[0].at;
+
+function checkMembers(st, members) {
+  const ids = (members || []).filter(x => x != null && x !== '');
+  ids.forEach(m => must(wrestlerById(st, m), 'wrestler', m));
+  if (new Set(ids).size !== ids.length) fail('A wrestler can only be on a team once.');
+  if (ids.length < 2) fail('A tag team needs at least two wrestlers.');
+  return ids;
 }
 
 /** A team of two or more. A wrestler may be on several teams at once. */
 export function addTeam(st, input = {}) {
-  const fields = teamFields(st, input, null);
-  const team = { id: newId(st, 'tm'), ...fields, active: true, formed: now(st), disbanded: null };
+  const name = checkName(st.teams, input.name, 'tag team', null);
+  const ids = checkMembers(st, input.members);
+  const at = stampFor(st, dateIn(st, input.week));
+  const team = { id: newId(st, 'tm'), name, members: [...ids], active: true, log: [{ type: 'formed', at }] };
   st.teams.push(team);
+  ids.forEach(w => st.memberships.push({ id: newId(st, 'ms'), team: team.id, wrestler: w, start: { ...at }, end: null }));
   return team;
 }
 
+/** Rename a team. Line-up changes go through add/removeTeamMember so they're dated. */
 export function updateTeam(st, id, patch = {}) {
   const t = must(teamById(st, id), 'tag team', id);
-  Object.assign(t, teamFields(st, patch, t));
+  if (has(patch, 'members')) fail('Change the line-up with addTeamMember and removeTeamMember, so it stays in the history.');
+  if (has(patch, 'name')) t.name = checkName(st.teams, patch.name, 'tag team', id);
   return t;
+}
+
+export function membershipsOf(st, teamId) {
+  return st.memberships.filter(m => m.team === teamId).sort((a, b) => a.start.seq - b.start.seq);
+}
+const openSpell = (st, teamId, wrestlerId) =>
+  st.memberships.find(m => m.team === teamId && m.wrestler === wrestlerId && m.end === null) || null;
+
+/** Add a wrestler to a team's line-up, from `opts.week` (default: this week). */
+export function addTeamMember(st, teamId, wrestlerId, opts = {}) {
+  const t = must(teamById(st, teamId), 'tag team', teamId);
+  const w = must(wrestlerById(st, wrestlerId), 'wrestler', wrestlerId);
+  if (t.members.includes(wrestlerId)) fail(`${w.name} is already on ${t.name}.`);
+  const date = dateIn(st, opts.week);
+  if (earlierWeek(st, date, teamFormed(t))) fail(`${t.name} formed in ${weekLabel(st, teamFormed(t))}, after ${weekLabel(st, date)}.`);
+  const before = st.memberships.filter(m => m.team === teamId && m.wrestler === wrestlerId && m.end);
+  const lastLeft = before.sort((a, b) => b.end.seq - a.end.seq)[0];
+  if (lastLeft && earlierWeek(st, date, lastLeft.end)) fail(`${w.name} left ${t.name} in ${weekLabel(st, lastLeft.end)}, after ${weekLabel(st, date)}.`);
+  const spell = { id: newId(st, 'ms'), team: teamId, wrestler: wrestlerId, start: stampFor(st, date), end: null };
+  st.memberships.push(spell);
+  t.members.push(wrestlerId);
+  return spell;
+}
+
+/** Take a wrestler off a team's line-up. Their past matches with the team stay theirs. */
+export function removeTeamMember(st, teamId, wrestlerId, opts = {}) {
+  const t = must(teamById(st, teamId), 'tag team', teamId);
+  const w = must(wrestlerById(st, wrestlerId), 'wrestler', wrestlerId);
+  if (!t.members.includes(wrestlerId)) fail(`${w.name} isn't on ${t.name}.`);
+  if (t.members.length <= 2) fail(`${t.name} need at least two members. Add the new partner first, or disband the team.`);
+  const spell = openSpell(st, teamId, wrestlerId);
+  const date = dateIn(st, opts.week);
+  if (earlierWeek(st, date, spell.start)) fail(`${w.name} joined ${t.name} in ${weekLabel(st, spell.start)}, after ${weekLabel(st, date)}.`);
+  spell.end = stampFor(st, date);
+  removeWhere(t.members, x => x === wrestlerId);
+  return spell;
 }
 
 /** Disband (false) or reunite (true). A team holding a title can't disband. */
@@ -301,13 +421,60 @@ export function setTeamActive(st, id, active) {
   if (!active) {
     const held = titlesHeldBy(st, { type: 'team', id });
     if (held.length) fail(`${t.name} hold the ${held[0].name}. Vacate it or crown new champions first.`);
-    t.active = false;
-    t.disbanded = now(st);
-  } else {
-    t.active = true;
-    t.disbanded = null;
   }
+  t.active = !!active;
+  t.log.push({ type: active ? 'reunited' : 'disbanded', at: now(st) });
   return t;
+}
+
+/**
+ * A team's most recent change - { kind, seq, at, entry | m }, kind being
+ * 'disbanded', 'reunited', 'joined' or 'left' - or null if it hasn't changed
+ * since it formed. What undoTeamChange would take back.
+ */
+export function lastTeamChange(st, id) {
+  const t = must(teamById(st, id), 'tag team', id);
+  const formedSeq = teamFormed(t).seq;
+  const changes = [];
+  t.log.slice(1).forEach(entry => changes.push({ kind: entry.type, seq: entry.at.seq, at: entry.at, entry }));
+  membershipsOf(st, id).forEach(m => {
+    if (m.start.seq !== formedSeq) changes.push({ kind: 'joined', seq: m.start.seq, at: m.start, m });
+    if (m.end) changes.push({ kind: 'left', seq: m.end.seq, at: m.end, m });
+  });
+  return changes.sort((a, b) => b.seq - a.seq)[0] || null;
+}
+
+/**
+ * Take back a team's most recent change - a member joining or leaving, or
+ * the team disbanding or reuniting - without touching anything before it.
+ */
+export function undoTeamChange(st, id) {
+  const t = must(teamById(st, id), 'tag team', id);
+  const last = lastTeamChange(st, id);
+  if (!last) fail(`${t.name} haven't changed since they formed. If the team itself was a mistake, delete it.`);
+  if (last.kind === 'disbanded') {
+    t.active = true;
+  } else if (last.kind === 'reunited') {
+    const held = titlesHeldBy(st, { type: 'team', id });
+    if (held.length) fail(`${t.name} hold the ${held[0].name} since reuniting, so they can't go back to being disbanded.`);
+    t.active = false;
+  } else if (last.kind === 'joined') {
+    const w = wrestlerById(st, last.m.wrestler);
+    if (t.members.length <= 2) fail(`${t.name} need at least two members, so ${w.name} joining can't be undone. Disband the team instead.`);
+    const otherSpells = st.memberships.some(m => m !== last.m && m.team === id && m.wrestler === w.id);
+    let used = null;
+    eachMatch(st, (m, ev) => { if (!used && m.sides.some(sd => sd.team === id && sd.wrestlers.includes(w.id))) used = ev; });
+    if (used && !otherSpells) fail(`${w.name} wrestled for ${t.name} at ${used.name}. Edit that result first.`);
+    removeWhere(st.memberships, m => m === last.m);
+    removeWhere(t.members, x => x === w.id);
+    return last;
+  } else {                                                 // left: put them back
+    last.m.end = null;
+    t.members.push(last.m.wrestler);
+    return last;
+  }
+  removeWhere(t.log, e => e === last.entry);
+  return last;
 }
 
 export function teamRefs(st, id) {
@@ -325,14 +492,77 @@ export function deleteTeam(st, id) {
   const refs = teamRefs(st, id);
   if (refs.length) fail(`${t.name} are part of the history (${refs.join(', ')}), so they can't be deleted. Disband them instead.`);
   removeWhere(st.teams, x => x.id === id);
+  removeWhere(st.memberships, m => m.team === id);
 }
 
+/** Teams a wrestler is on right now. */
 export function teamsOf(st, wrestlerId) {
   return st.teams.filter(t => t.members.includes(wrestlerId));
+}
+/** Every team a wrestler has ever been on. */
+export function teamsEver(st, wrestlerId) {
+  const ids = new Set(st.memberships.filter(m => m.wrestler === wrestlerId).map(m => m.team));
+  return st.teams.filter(t => ids.has(t.id));
 }
 /** The shows a team's members are on. More than one means the team is split. */
 export function teamShows(st, team) {
   return [...new Set(team.members.map(id => (wrestlerById(st, id) || {}).showId || null))];
+}
+/** Was the wrestler on the team at that moment? */
+export function memberAt(st, teamId, wrestlerId, stamp) {
+  return st.memberships.some(m => m.team === teamId && m.wrestler === wrestlerId && within(st, stamp, m.start, m.end));
+}
+
+/**
+ * A team's own history, newest first: forming, disbanding and reuniting,
+ * members joining and leaving, and titles won, lost and vacated.
+ * Each entry: { type, seq, season, week, ... }.
+ */
+export function teamHistoryOf(st, teamId) {
+  const t = must(teamById(st, teamId), 'tag team', teamId);
+  const out = [];
+  const at = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
+  t.log.forEach(e => at(e.at, `team-${e.type}`, {}));
+  membershipsOf(st, teamId).forEach(m => {
+    const wrestler = wrestlerById(st, m.wrestler);
+    if (m.start.seq !== teamFormed(t).seq) at(m.start, 'member-joined', { wrestler });
+    if (m.end) at(m.end, 'member-left', { wrestler });
+  });
+  st.reigns.filter(r => r.holder.type === 'team' && r.holder.id === teamId).forEach(reign => {
+    const title = titleById(st, reign.titleId);
+    at(reign.start, 'title-won', { reign, title });
+    if (reign.end) at(reign.end, reign.vacated ? 'title-vacated' : 'title-lost', { reign, title });
+  });
+  return out.sort((a, b) => compareStamps(st, b, a));
+}
+
+/** Partners in tag matches that weren't as a registered team: [{ wrestler, count }], most frequent first. */
+export function tagPartnersOf(st, wrestlerId) {
+  const count = new Map();
+  matchesOf(st, wrestlerId).forEach(({ match, side }) => {
+    const s = match.sides[side];
+    if (s.team || s.wrestlers.length < 2) return;
+    s.wrestlers.forEach(id => { if (id !== wrestlerId) count.set(id, (count.get(id) || 0) + 1); });
+  });
+  return [...count].map(([id, n]) => ({ wrestler: wrestlerById(st, id), count: n }))
+    .sort((a, b) => b.count - a.count || byName(a.wrestler, b.wrestler));
+}
+
+/**
+ * Everyone a wrestler has teamed with, team by team: [{ team, current, spells,
+ * partners }]. Partners are the wrestlers whose time on the team overlapped
+ * theirs - so a former team lists who they actually teamed with.
+ */
+export function teammatesOf(st, wrestlerId) {
+  return teamsEver(st, wrestlerId).map(team => {
+    const spells = st.memberships.filter(m => m.team === team.id && m.wrestler === wrestlerId);
+    const overlaps = o => spells.some(s => (!o.end || compareStamps(st, s.start, o.end) < 0)
+      && (!s.end || compareStamps(st, o.start, s.end) < 0));
+    const partners = [...new Set(st.memberships
+      .filter(o => o.team === team.id && o.wrestler !== wrestlerId && overlaps(o)).map(o => o.wrestler))]
+      .map(id => wrestlerById(st, id)).filter(Boolean);
+    return { team, current: team.members.includes(wrestlerId), spells, partners };
+  });
 }
 
 // ---------------------------------------------------------------- championships
@@ -408,12 +638,14 @@ export function titlesOfWrestler(st, wrestlerId) {
   return out;
 }
 
-function checkHolder(st, title, holder) {
+// `pastOk` allows a team that has since disbanded - for correcting a reign in
+// the past, not for crowning anyone today.
+function checkHolder(st, title, holder, pastOk = false) {
   if (!holder || !holder.id) fail('Pick who holds the title.');
   if (title.kind === 'tag') {
     if (holder.type !== 'team') fail(`The ${title.name} is a tag title, so a tag team has to hold it.`);
     const team = must(teamById(st, holder.id), 'tag team', holder.id);
-    if (!team.active) fail(`${team.name} have disbanded.`);
+    if (!team.active && !pastOk) fail(`${team.name} have disbanded.`);
   } else {
     if (holder.type !== 'wrestler') fail(`The ${title.name} is a singles title, so one wrestler has to hold it.`);
     must(wrestlerById(st, holder.id), 'wrestler', holder.id);
@@ -496,6 +728,120 @@ export function undoTitleChange(st, titleId) {
   return prev || null;
 }
 
+// Title changes can only be taken back from the end of a title's history:
+// removing one from the middle would leave the next champion winning the belt
+// from someone who never held it. Checks `reigns` can go, and returns the
+// function that removes them and hands the belt back to whoever they ended.
+function removableReigns(st, reigns, what) {
+  const byTitle = new Map();
+  reigns.forEach(r => byTitle.set(r.titleId, [...(byTitle.get(r.titleId) || []), r]));
+  const plans = [...byTitle].map(([titleId, group]) => {
+    const hist = titleReigns(st, titleId);
+    const tail = hist.slice(-group.length);
+    if (!tail.every(r => group.includes(r)) || tail[tail.length - 1].end) {
+      fail(`The ${titleById(st, titleId).name} has changed hands or been vacated since ${what}. Undo those later changes first.`);
+    }
+    return { group, prev: hist[hist.length - group.length - 1] || null };
+  });
+  return () => plans.forEach(({ group, prev }) => {
+    const first = group.reduce((a, b) => (a.start.seq < b.start.seq ? a : b));
+    removeWhere(st.reigns, r => group.includes(r));
+    if (prev && prev.end && prev.end.seq === first.start.seq) prev.end = null;
+  });
+}
+
+// The reign before and after `r` on its title, and whether each is joined to
+// it (the belt passing straight from one to the other). `floor` is the
+// earliest `r` can begin: when the reign before it began, if the belt passed
+// straight over - or when it ended, if the title sat vacant in between.
+function neighbours(st, r) {
+  const hist = titleReigns(st, r.titleId);
+  const i = hist.indexOf(r);
+  const prev = hist[i - 1] || null, next = hist[i + 1] || null;
+  const prevJoined = !!(prev && prev.end && prev.end.seq === r.start.seq);
+  return { prev, next, prevJoined,
+    nextJoined: !!(next && r.end && next.start.seq === r.end.seq),
+    floor: prev ? (prevJoined ? prev.start : prev.end) : null };
+}
+
+/** How many weeks a reign lasted - or has lasted, if it's still going. */
+export function reignWeeks(st, r) { return weeksBetween(st, r.start, r.end || nowDate(st)); }
+
+/**
+ * Successful defences in a reign: title matches for this title, dated inside
+ * the reign, that the champion was in and that didn't change the title.
+ */
+export function defencesOf(st, r) {
+  let n = 0;
+  eachMatch(st, (m, ev) => {
+    if (m.titleId !== r.titleId || st.reigns.some(x => x.matchId === m.id)) return;
+    if (earlierWeek(st, ev.at, r.start) || (r.end && earlierWeek(st, r.end, ev.at))) return;
+    const inIt = r.holder.type === 'team' ? m.sides.some(s => s.team === r.holder.id)
+      : m.sides.some(s => s.wrestlers.includes(r.holder.id));
+    if (inIt) n++;
+  });
+  return n;
+}
+
+/**
+ * Correct one reign without touching the rest of the title's history: who
+ * held it, the week it began, or its note. A reign that came from a result is
+ * corrected through that result (or its event's week) instead, so the two
+ * can't disagree.
+ */
+export function updateReign(st, reignId, patch = {}) {
+  const r = must(st.reigns.find(x => x.id === reignId), 'title reign', reignId);
+  const title = titleById(st, r.titleId);
+  const ev = r.eventId ? eventById(st, r.eventId) : null;
+  const { prev, next, prevJoined, nextJoined, floor } = neighbours(st, r);
+  let holder = r.holder, week = r.start.week, note = r.note;
+  if (has(patch, 'holder')) {
+    holder = checkHolder(st, title, patch.holder, true);
+    if (!sameHolder(holder, r.holder)) {
+      if (r.matchId) fail(`This reign came from a result at ${ev ? ev.name : 'an event'} - edit that result to change who won.`);
+      if (!r.end && holder.type === 'team' && !teamById(st, holder.id).active) fail(`${holderName(st, holder)} have disbanded, so they can't be the current champions.`);
+      if (prevJoined && sameHolder(prev.holder, holder)) fail(`${holderName(st, holder)} already held the ${title.name} going into this reign.`);
+      if (nextJoined && sameHolder(next.holder, holder)) fail(`${holderName(st, holder)} win the ${title.name} next, so they can't be the ones they won it from.`);
+    }
+  }
+  if (has(patch, 'week')) {
+    week = checkWeek(patch.week);
+    if (week !== r.start.week) {
+      if (r.eventId) fail(`This reign is dated by ${ev ? ev.name : 'its event'} - change that event's week instead.`);
+      const date = { season: r.start.season, week };
+      if (floor && earlierWeek(st, date, floor)) {
+        fail(prevJoined ? `That's before the previous reign began (${weekLabel(st, floor)}).`
+          : `The title was vacant until ${weekLabel(st, floor)}, so this reign can't begin before then.`);
+      }
+      if (r.end && earlierWeek(st, r.end, date)) fail(`That's after this reign ended (${weekLabel(st, r.end)}).`);
+    }
+  }
+  if (has(patch, 'note')) note = checkNote(patch.note);
+  r.holder = holder;
+  r.note = note;
+  r.start.week = week;
+  if (prevJoined) prev.end.week = week;
+  return r;
+}
+
+/** Every reign a wrestler was part of, newest first: [{ reign, title, team }] (team null for singles). */
+export function championshipsOf(st, wrestlerId) {
+  const out = [];
+  st.reigns.forEach(reign => {
+    const title = titleById(st, reign.titleId);
+    if (reign.holder.type === 'wrestler') {
+      if (reign.holder.id === wrestlerId) out.push({ reign, title, team: null });
+      return;
+    }
+    // a tag reign counts if they were on the team at any point during it
+    const spells = st.memberships.filter(m => m.team === reign.holder.id && m.wrestler === wrestlerId);
+    const overlaps = spells.some(m => (!reign.end || compareStamps(st, m.start, reign.end) < 0)
+      && (!m.end || compareStamps(st, reign.start, m.end) < 0));
+    if (overlaps) out.push({ reign, title, team: teamById(st, reign.holder.id) });
+  });
+  return out.sort((a, b) => compareStamps(st, b.reign.start, a.reign.start));
+}
+
 export function holderName(st, holder) {
   if (!holder) return 'Vacant';
   const x = holder.type === 'team' ? teamById(st, holder.id) : wrestlerById(st, holder.id);
@@ -571,23 +917,46 @@ export function updateEvent(st, id, patch = {}) {
   const showId = has(patch, 'showId') ? checkShowId(st, patch.showId) : ev.showId;
   if (kind === 'weekly' && !showId) fail('A weekly episode needs a show.');
   let week = ev.at.week;
+  const linked = st.reigns.filter(r => r.eventId === id);
   if (has(patch, 'week')) {
     week = checkWeek(patch.week);
-    if (week !== ev.at.week && st.reigns.some(r => r.eventId === id)) {
-      fail('A title changed hands at this event, so its week is fixed. Undo that title change first.');
-    }
+    // a title that changed hands here moves with the event, as long as the
+    // title's history still reads in order afterwards
+    const date = { season: ev.at.season, week };
+    linked.forEach(r => {
+      const { prevJoined, floor } = neighbours(st, r);
+      const title = titleById(st, r.titleId).name;
+      if (floor && earlierWeek(st, date, floor)) {
+        fail(prevJoined ? `Week ${week} is before the ${title} reign this event ended began (${weekLabel(st, floor)}).`
+          : `The ${title} was vacant until ${weekLabel(st, floor)}, so week ${week} is too early.`);
+      }
+      if (r.end && earlierWeek(st, r.end, date)) fail(`Week ${week} is after the ${title} reign won here ended (${weekLabel(st, r.end)}).`);
+    });
   }
   const name = has(patch, 'name') ? eventName(st, kind, showId, week, patch.name) : ev.name;
   const notes = has(patch, 'notes') ? checkText(patch.notes, 'Notes') : ev.notes;
   Object.assign(ev, { kind, showId, name, notes });
-  ev.at.week = week;
+  if (week !== ev.at.week) {
+    linked.forEach(r => {
+      const { prev, prevJoined } = neighbours(st, r);
+      if (prevJoined) prev.end.week = week;
+      r.start.week = week;
+    });
+    ev.at.week = week;
+  }
   return ev;
 }
 
+/**
+ * Delete an event and its results. A title that changed hands here goes back
+ * to whoever held it before - allowed only while nothing later depends on it.
+ */
 export function deleteEvent(st, id) {
   const ev = must(eventById(st, id), 'event', id);
-  if (st.reigns.some(r => r.eventId === id)) fail(`A title changed hands at ${ev.name}. Undo that title change before deleting the event.`);
+  const linked = st.reigns.filter(r => r.eventId === id);
+  const revert = linked.length ? removableReigns(st, linked, ev.name) : null;
   removeWhere(st.events, e => e.id === id);
+  if (revert) revert();
 }
 
 /** Events in a season, oldest first. */
@@ -598,6 +967,8 @@ export function eventsIn(st, seasonId) {
 
 // ---------------------------------------------------------------- match results
 
+// A side wrestling as a team counts toward that team's record, so it has to
+// be the team: at least two wrestlers, every one of them on it at some point.
 function normalizeSides(st, sides) {
   if (!Array.isArray(sides) || sides.length < 2) fail('A match needs at least two sides.');
   if (sides.length > MAX_SIDES) fail(`A match can have at most ${MAX_SIDES} sides.`);
@@ -611,10 +982,36 @@ function normalizeSides(st, sides) {
       seen.add(id);
     });
     const team = side.team || null;
-    if (team) must(teamById(st, team), 'tag team', team);
+    if (team) {
+      const t = must(teamById(st, team), 'tag team', team);
+      if (ids.length < 2) fail(`Side ${i + 1} is wrestling as ${t.name}, so it needs at least two of them.`);
+      const outsider = ids.find(id => !st.memberships.some(m => m.team === team && m.wrestler === id));
+      if (outsider) fail(`${wrestlerById(st, outsider).name} has never been on ${t.name}. Add them to the team first, or record the side without the team.`);
+    }
     return { wrestlers: [...ids], team };
   });
 }
+
+// Everything about a result that can be checked on its own. `keepTitleId`
+// lets a correction to an old result keep a title that has since retired.
+function matchFields(st, input, keepTitleId = null) {
+  const sides = normalizeSides(st, input.sides);
+  const outcome = oneOf(input.outcome || 'win', OUTCOMES, 'result');
+  let winner = null;
+  if (outcome === 'win') {
+    winner = input.winner === '' || input.winner == null ? NaN : Number(input.winner);
+    if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail('Pick who won.');
+  }
+  const finish = input.finish == null || input.finish === '' ? null : oneOf(input.finish, FINISHES, 'finish');
+  const title = input.titleId ? must(titleById(st, input.titleId), 'championship', input.titleId) : null;
+  if (title && !title.active && title.id !== keepTitleId) fail(`The ${title.name} is retired.`);
+  const stip = cleanName(input.stip);
+  if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
+  const notes = checkText(input.notes, 'Notes');
+  return { sides, outcome, winner, finish, title, stip, notes };
+}
+const matchRecord = f => ({ sides: f.sides, outcome: f.outcome, winner: f.winner, finish: f.finish,
+  titleId: f.title ? f.title.id : null, stip: f.stip, notes: f.notes });
 
 function holderFromSide(title, side) {
   if (title.kind === 'tag') {
@@ -636,39 +1033,69 @@ function holderFromSide(title, side) {
  */
 export function recordMatch(st, eventId, input = {}, opts = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const sides = normalizeSides(st, input.sides);
-  const outcome = oneOf(input.outcome || 'win', OUTCOMES, 'result');
-  let winner = null;
-  if (outcome === 'win') {
-    winner = input.winner === '' || input.winner == null ? NaN : Number(input.winner);
-    if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail('Pick who won.');
-  }
-  const finish = input.finish == null || input.finish === '' ? null : oneOf(input.finish, FINISHES, 'finish');
-  const title = input.titleId ? must(titleById(st, input.titleId), 'championship', input.titleId) : null;
-  if (title && !title.active) fail(`The ${title.name} is retired.`);
-  const stip = cleanName(input.stip);
-  if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
-  const notes = checkText(input.notes, 'Notes');
-
+  const f = matchFields(st, input);
   let holder = null;
   if (opts.titleChange) {
-    if (!title) fail('Pick the title that changed hands.');
-    if (outcome !== 'win') fail('A title only changes hands when someone wins.');
-    holder = champChecks(st, title.id, holderFromSide(title, sides[winner]), dateOf(st, ev)).holder;
+    if (!f.title) fail('Pick the title that changed hands.');
+    if (f.outcome !== 'win') fail('A title only changes hands when someone wins.');
+    holder = champChecks(st, f.title.id, holderFromSide(f.title, f.sides[f.winner]), dateOf(st, ev)).holder;
   }
-
-  const match = { id: newId(st, 'm'), sides, outcome, winner, finish, titleId: title ? title.id : null, stip, notes };
+  const match = { id: newId(st, 'm'), ...matchRecord(f) };
   ev.matches.push(match);
-  if (holder) setChampion(st, title.id, holder, { eventId: ev.id, matchId: match.id });
+  if (holder) setChampion(st, f.title.id, holder, { eventId: ev.id, matchId: match.id });
   return match;
 }
 
+/**
+ * Correct a recorded result in place - wrong winner, wrong people, wrong
+ * finish, wrong title. It keeps its id and its place on the card, so nothing
+ * else has to be re-entered. If it changed a title, the correction carries
+ * through: a different winner becomes that reign's holder, and dropping the
+ * title change hands the belt back - but only while nothing later depends on
+ * it, so correcting one result can't rewrite anyone else's history.
+ */
+export function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  const m = must(ev.matches.find(x => x.id === matchId), 'match', matchId);
+  const linked = st.reigns.find(r => r.matchId === matchId) || null;
+  const f = matchFields(st, input, m.titleId);
+  let keep = null, add = null, revert = null;
+  if (opts.titleChange) {
+    if (!f.title) fail('Pick the title that changed hands.');
+    if (f.outcome !== 'win') fail('A title only changes hands when someone wins.');
+    const raw = holderFromSide(f.title, f.sides[f.winner]);
+    if (linked && linked.titleId === f.title.id) {
+      const holder = checkHolder(st, f.title, raw, sameHolder(raw, linked.holder));
+      const { prev, next, prevJoined, nextJoined } = neighbours(st, linked);
+      const who = holderName(st, holder);
+      if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${f.title.name} going into this match - that's a retention, not a title change.`);
+      if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${f.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
+      keep = holder;
+    } else {
+      if (linked) revert = removableReigns(st, [linked], 'this match');
+      add = champChecks(st, f.title.id, raw, dateOf(st, ev)).holder;
+    }
+  } else if (linked) {
+    revert = removableReigns(st, [linked], 'this match');
+  }
+  Object.assign(m, matchRecord(f));
+  if (revert) revert();
+  if (keep) linked.holder = keep;
+  if (add) setChampion(st, f.title.id, add, { eventId: ev.id, matchId: m.id });
+  return m;
+}
+
+/**
+ * Delete a result. If it changed a title, the belt goes back to whoever held
+ * it before - allowed only while nothing later depends on that change.
+ */
 export function deleteMatch(st, eventId, matchId) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   must(ev.matches.find(m => m.id === matchId), 'match', matchId);
-  const reign = st.reigns.find(r => r.matchId === matchId);
-  if (reign) fail(`The ${titleById(st, reign.titleId).name} changed hands in this match. Undo that title change first.`);
+  const linked = st.reigns.find(r => r.matchId === matchId);
+  const revert = linked ? removableReigns(st, [linked], 'this match') : null;
   removeWhere(ev.matches, m => m.id === matchId);
+  if (revert) revert();
 }
 
 function eachMatch(st, fn) {
@@ -690,6 +1117,119 @@ export function resultFor(match, side) {
   return match.winner === side ? 'W' : 'L';
 }
 
+// ---------------------------------------------------------------- records
+
+const KEY = { W: 'w', L: 'l', D: 'd', NC: 'nc' };
+export const blankRecord = () => ({ w: 0, l: 0, d: 0, nc: 0 });
+const tally = (rec, r) => { rec[KEY[r]]++; return rec; };
+
+/**
+ * A wrestler's record, split the way wrestling splits it. A match is singles
+ * when their own side was just them - a triple threat is singles, and so is
+ * the lone wrestler in a handicap match - and tag when they had a partner.
+ * `teams` breaks the tag record down by the team they wrestled as, with ''
+ * for makeshift pairings.
+ */
+export function wrestlerRecord(st, wrestlerId) {
+  const out = { singles: blankRecord(), tag: blankRecord(), teams: {} };
+  matchesOf(st, wrestlerId).forEach(({ match, side }) => {
+    const s = match.sides[side];
+    const r = resultFor(match, side);
+    if (s.wrestlers.length === 1) tally(out.singles, r);
+    else {
+      tally(out.tag, r);
+      tally(out.teams[s.team || ''] || (out.teams[s.team || ''] = blankRecord()), r);
+    }
+  });
+  return out;
+}
+
+/** Every match a team wrestled as the team, newest first: [{ event, match, side }]. */
+export function teamMatches(st, teamId) {
+  const out = [];
+  eachMatch(st, (match, event) => {
+    const side = match.sides.findIndex(s => s.team === teamId);
+    if (side >= 0) out.push({ event, match, side });
+  });
+  return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+}
+
+/**
+ * A team's own record - only matches it wrestled as the team. Its members'
+ * singles matches, and tag matches they had with other partners, don't count.
+ */
+export function teamRecord(st, teamId) {
+  return teamMatches(st, teamId).reduce((rec, x) => tally(rec, resultFor(x.match, x.side)), blankRecord());
+}
+
+// ---------------------------------------------------------------- merging duplicates
+
+/**
+ * Fold a duplicate into the wrestler it duplicates - the usual cure for a name
+ * entered twice. Everything the duplicate did (results, team spells, title
+ * reigns) is re-pointed at the kept wrestler; the duplicate's own roster moves
+ * are dropped, since the kept wrestler's show history is the real one.
+ * Refused when the two were ever in the same match or on the same team, or
+ * when it would give one wrestler back-to-back reigns of the same title.
+ */
+export function mergeWrestlers(st, keepId, dupId) {
+  const keep = must(wrestlerById(st, keepId), 'wrestler', keepId);
+  const dup = must(wrestlerById(st, dupId), 'wrestler', dupId);
+  if (keepId === dupId) fail('Pick two different wrestlers.');
+  let clash = null;
+  eachMatch(st, (m, ev) => {
+    const ws = m.sides.flatMap(sd => sd.wrestlers);
+    if (!clash && ws.includes(keepId) && ws.includes(dupId)) clash = ev;
+  });
+  if (clash) fail(`${keep.name} and ${dup.name} were both in a match at ${clash.name}, so they can't be the same person. Fix that result first.`);
+  const keepTeams = new Set(st.memberships.filter(m => m.wrestler === keepId).map(m => m.team));
+  const shared = st.memberships.find(m => m.wrestler === dupId && keepTeams.has(m.team));
+  if (shared) fail(`${keep.name} and ${dup.name} have both been on ${teamById(st, shared.team).name}. Take one of them off it first.`);
+  const as = h => (h.type === 'wrestler' && h.id === dupId ? { type: 'wrestler', id: keepId } : h);
+  st.titles.forEach(t => {
+    const hist = titleReigns(st, t.id);
+    hist.forEach((r, i) => {
+      const prev = hist[i - 1];
+      if (prev && prev.end && prev.end.seq === r.start.seq && sameHolder(as(prev.holder), as(r.holder))) {
+        fail(`${keep.name} would win the ${t.name} from themselves in ${weekLabel(st, r.start)}. Fix that title history first.`);
+      }
+    });
+  });
+  eachMatch(st, m => m.sides.forEach(sd => { sd.wrestlers = sd.wrestlers.map(id => (id === dupId ? keepId : id)); }));
+  st.memberships.forEach(m => { if (m.wrestler === dupId) m.wrestler = keepId; });
+  st.teams.forEach(t => { t.members = t.members.map(id => (id === dupId ? keepId : id)); });
+  st.reigns.forEach(r => { r.holder = as(r.holder); });
+  removeWhere(st.moves, m => m.wrestler === dupId);
+  removeWhere(st.wrestlers, w => w.id === dupId);
+  return keep;
+}
+
+// ---------------------------------------------------------------- career
+
+/**
+ * One wrestler's career, newest first by the calendar: shows joined and left,
+ * teams formed, joined, left and disbanded, and titles won, lost and vacated -
+ * tag titles included when they were on the team at the time.
+ * Each entry: { type, seq, season, week, ... }.
+ */
+export function careerOf(st, wrestlerId) {
+  const out = [];
+  const at = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
+  movesOf(st, wrestlerId).forEach(move => at(move.at, 'move', { move }));
+  st.memberships.filter(m => m.wrestler === wrestlerId).forEach(m => {
+    const team = teamById(st, m.team);
+    at(m.start, m.start.seq === teamFormed(team).seq ? 'team-formed' : 'team-joined', { team });
+    if (m.end) at(m.end, 'team-left', { team });
+    team.log.slice(1).forEach(e => { if (within(st, e.at, m.start, m.end)) at(e.at, `team-${e.type}`, { team }); });
+  });
+  championshipsOf(st, wrestlerId).forEach(({ reign, title, team }) => {
+    const there = stamp => !team || memberAt(st, team.id, wrestlerId, stamp);
+    if (there(reign.start)) at(reign.start, 'title-won', { reign, title, team });
+    if (reign.end && there(reign.end)) at(reign.end, reign.vacated ? 'title-vacated' : 'title-lost', { reign, title, team });
+  });
+  return out.sort((a, b) => compareStamps(st, b, a));
+}
+
 // ---------------------------------------------------------------- history
 
 /**
@@ -697,7 +1237,7 @@ export function resultFor(match, side) {
  * from the records themselves rather than kept as a second copy - so it can
  * never disagree with them.
  * Each entry: { type, seq, season, week, rec } where `rec` is the season,
- * roster move, team, reign or event the entry came from.
+ * roster move, team, team membership, reign or event the entry came from.
  */
 export function timeline(st) {
   const out = [];
@@ -707,9 +1247,11 @@ export function timeline(st) {
     if (s.ended) at(s.ended, 'season-end', s);
   });
   st.moves.forEach(m => at(m.at, 'move', m));
-  st.teams.forEach(t => {
-    at(t.formed, 'team-formed', t);
-    if (t.disbanded) at(t.disbanded, 'team-disbanded', t);
+  st.teams.forEach(t => t.log.forEach(e => at(e.at, `team-${e.type}`, t)));
+  st.memberships.forEach(m => {
+    const t = teamById(st, m.team);
+    if (t && m.start.seq !== teamFormed(t).seq) at(m.start, 'team-joined', m);
+    if (m.end) at(m.end, 'team-left', m);
   });
   st.reigns.forEach(r => {
     at(r.start, 'title-won', r);
@@ -742,16 +1284,33 @@ export function migrate(raw) {
   if (!Number.isInteger(v) || v < 1) fail('That save has no version number.');
   if (v > SCHEMA_VERSION) fail(`That save is from a newer version of this tool (v${v}; this is v${SCHEMA_VERSION}).`);
   const st = JSON.parse(JSON.stringify(raw));
-  // Version 1 is the first schema, so there is nothing to upgrade yet. A future
-  // change adds a step here - if (st.version === 1) { ...; st.version = 2; } -
-  // so every older save walks forward one version at a time.
-  for (const k of ['shows', 'wrestlers', 'moves', 'teams', 'titles', 'reigns', 'seasons', 'events']) {
+  for (const k of ['shows', 'wrestlers', 'moves', 'teams', 'memberships', 'titles', 'reigns', 'seasons', 'events']) {
     if (!Array.isArray(st[k])) st[k] = [];
   }
   if (!Number.isInteger(st.nextId) || st.nextId < 1) st.nextId = 1;
   if (!Number.isInteger(st.seq) || st.seq < 0) st.seq = 0;
   SHOW_SEED.forEach(seed => { if (!showById(st, seed.id)) st.shows.push({ ...seed }); });
   if (!st.seasons.length) openSeason(st, 1, '');
+
+  // Each step walks a save forward one version, so any older save arrives at
+  // the current schema however old it is.
+  if (st.version === 1) {
+    // v2: team line-ups get their own dated history. A v1 save only knew each
+    // team's current members and when it formed, so that is what's kept:
+    // everyone on the team joined when it formed, and nobody has left.
+    st.memberships = [];
+    st.teams.forEach(t => {
+      const formed = t.formed || st.seasons[0].started;
+      t.log = [{ type: 'formed', at: { ...formed } }];
+      if (t.disbanded) t.log.push({ type: 'disbanded', at: { ...t.disbanded } });
+      t.active = !t.disbanded;
+      (Array.isArray(t.members) ? t.members : []).forEach(w =>
+        st.memberships.push({ id: `ms${st.nextId++}`, team: t.id, wrestler: w, start: { ...formed }, end: null }));
+      delete t.formed;
+      delete t.disbanded;
+    });
+    st.version = 2;
+  }
   return st;
 }
 
@@ -775,6 +1334,7 @@ export function validate(st) {
   });
   own(st.shows, 'show'); own(st.wrestlers, 'wrestler'); own(st.moves, 'roster move'); own(st.teams, 'tag team');
   own(st.titles, 'championship'); own(st.reigns, 'title reign'); own(st.seasons, 'season'); own(st.events, 'event');
+  own(st.memberships, 'team membership');
   st.events.forEach(e => own(e.matches || [], 'match'));
 
   const stamp = (s, where) => {
@@ -821,10 +1381,40 @@ export function validate(st) {
     else {
       if (new Set(t.members).size !== t.members.length) bad.push(`${t.name} list a member twice.`);
       if (t.members.some(id => !wrestlerById(st, id))) bad.push(`${t.name} include a wrestler who doesn't exist.`);
+      const open = st.memberships.filter(m => m.team === t.id && m.end === null).map(m => m.wrestler).sort();
+      if (JSON.stringify([...t.members].sort()) !== JSON.stringify(open)) bad.push(`${t.name}'s line-up doesn't match their membership history.`);
     }
-    stamp(t.formed, t.name);
-    if (t.active === !!t.disbanded) bad.push(`${t.name} are marked both active and disbanded, or neither.`);
-    if (t.disbanded) stamp(t.disbanded, t.name);
+    const log = Array.isArray(t.log) ? t.log : [];
+    if (!log.length || !log[0] || log[0].type !== 'formed') { bad.push(`${t.name} have no record of forming.`); return; }
+    log.forEach((e, i) => {
+      if (!TEAM_EVENTS.includes(e.type)) bad.push(`${t.name} have an unknown history entry.`);
+      stamp(e.at, t.name);
+      if (i > 0 && e.type !== (log[i - 1].type === 'disbanded' ? 'reunited' : 'disbanded')) {
+        bad.push(`${t.name}'s history has them ${e.type} out of turn.`);
+      }
+    });
+    if (t.active !== (log[log.length - 1].type !== 'disbanded')) bad.push(`${t.name}'s active flag disagrees with their history.`);
+  });
+  const spells = new Map();
+  st.memberships.forEach(m => {
+    const t = teamById(st, m.team);
+    if (!t) { bad.push(`Membership ${m.id} is for a team that doesn't exist.`); return; }
+    if (!wrestlerById(st, m.wrestler)) bad.push(`Membership ${m.id} is for a wrestler who doesn't exist.`);
+    stamp(m.start, `Membership ${m.id}`);
+    if (m.end) {
+      stamp(m.end, `Membership ${m.id}`);
+      if (m.end.seq < m.start.seq || earlierWeek(st, m.end, m.start)) bad.push(`Membership ${m.id} ends before it starts.`);
+    }
+    const formed = Array.isArray(t.log) && t.log[0] && t.log[0].at;
+    if (formed && m.start && m.start.seq < formed.seq) bad.push(`Membership ${m.id} starts before ${t.name} formed.`);
+    const k = `${m.team}/${m.wrestler}`;
+    spells.set(k, [...(spells.get(k) || []), m]);
+  });
+  spells.forEach(list => {
+    list.sort((a, b) => a.start.seq - b.start.seq).forEach((m, i) => {
+      const prev = list[i - 1];
+      if (prev && (!prev.end || prev.end.seq > m.start.seq)) bad.push(`Membership ${m.id} overlaps an earlier spell on the same team.`);
+    });
   });
 
   names(st.titles, 'championship');

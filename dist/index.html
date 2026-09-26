@@ -1665,6 +1665,77 @@ body.uv-confirm-open .uv-confirm{display:flex}
   box-shadow:0 8px 24px rgba(232,185,49,.3)}
 #uvHint.bad{background:#3A1512;color:#FFD6D1;border:1px solid rgba(255,90,78,.5);box-shadow:0 8px 24px rgba(0,0,0,.5)}
 
+/* ---------- profile pages ---------- */
+.uv-back{display:flex;align-items:center;gap:4px;padding:12px 12px 2px;font-size:13px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-back svg{width:17px;height:17px}
+.uv-prof{margin:10px 14px 0;padding:16px;border-radius:18px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--uv-line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c) 20%,transparent),transparent 62%),var(--uv-card)}
+.uv-prof-top{display:flex;align-items:center;gap:14px}
+.uv-av.xl{width:64px;height:64px;font-size:21px}
+.uv-av.xl svg{width:28px;height:28px}
+.uv-prof-id{min-width:0;flex:1}
+.uv-prof-id .nm{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:25px;line-height:1.1;
+  text-transform:uppercase;letter-spacing:.4px;overflow-wrap:anywhere}
+.uv-prof-id .show{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:13px;font-weight:800;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--uv-ink)}
+.uv-prof-id .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.uv-prof-acts{display:flex;gap:8px;margin-top:14px}
+.uv-page>.uv-prof-acts{margin:12px 14px 0}
+.uv-prof-acts .uv-btn{flex:1}
+.uv-recs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 14px 2px}
+.uv-rec{padding:11px 8px 10px;border-radius:14px;border:1px solid var(--uv-line);background:var(--uv-card);text-align:center;min-width:0}
+.uv-rec .k{font-size:9.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-rec .v{margin-top:3px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:23px;line-height:1.1;
+  font-variant-numeric:tabular-nums}
+.uv-rec .s{margin-top:2px;font-size:10.5px;color:var(--uv-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-page>.uv-note,.uv-page>.uv-p{margin-left:14px;margin-right:14px}
+.uv-page .uv-tls{padding:0 14px}
+.uv-page .uv-li{margin:0 14px}
+.uv-page .uv-champ-card{margin:10px 14px 0}
+.uv-sub{padding:10px 14px 4px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-num{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:800;
+  background:var(--uv-gold-soft);color:var(--uv-gold)}
+.uv-belt.in{display:inline-flex;vertical-align:-3px}
+.uv-belt.in svg{width:16px;height:16px}
+.uv-fix{margin:22px 14px 6px;padding:12px 12px 8px;border-radius:16px;border:1px dashed var(--uv-line);background:var(--uv-card-2)}
+.uv-fix .h{font-size:10.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-ink-3);margin:0 2px 6px}
+.uv-fix .fine{margin:8px 2px 4px;font-size:11px;line-height:1.5;color:var(--uv-ink-3)}
+.uv-fixrow{display:flex;align-items:flex-start;gap:10px;padding:9px 4px;border-top:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-fixrow:first-of-type{border-top:none}
+.uv-fixrow>svg{flex:none;width:17px;height:17px;margin-top:1px;color:var(--uv-gold)}
+.uv-fixrow b{display:block;font-size:13px}
+.uv-fixrow span{display:block;margin-top:2px;font-size:11.5px;color:var(--uv-ink-3);line-height:1.4}
+.uv-fixrow.bad>svg,.uv-fixrow.bad b{color:var(--uv-red)}
+
+/* ---------- moving shows ---------- */
+.uv-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.uv-tile{padding:11px 12px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card);cursor:pointer;
+  display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}
+.uv-tile .uv-dot{grid-row:span 2}
+.uv-tile b{font-size:14px}
+.uv-tile span:last-child{font-size:11px;color:var(--uv-ink-3)}
+.uv-tile.here{border-style:dashed}
+.uv-tile.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 16%,var(--uv-card));box-shadow:inset 0 0 0 1px var(--c)}
+.uv-tile:last-child:nth-child(odd){grid-column:1/-1}
+.uv-btn.off{opacity:.45}
+.uv-btn.on{border-color:var(--uv-gold-line);color:var(--uv-gold)}
+.uv-btn.sm{height:30px;padding:0 10px;font-size:12px;margin-left:auto}
+.uv-selbar{position:sticky;bottom:calc(var(--navh) - 70px);margin:14px 10px 0;padding:10px 10px 10px 14px;border-radius:14px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;background:#141A24;border:1px solid var(--uv-gold-line);
+  box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;font-weight:700;z-index:5}
+.uv-tick{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--uv-line);display:grid;place-items:center;color:#1B1505}
+.uv-tick svg{width:13px;height:13px}
+.uv-row.picked{background:var(--uv-gold-soft)}
+.uv-row.picked .uv-tick{background:var(--uv-gold);border-color:var(--uv-gold)}
+
+/* ---------- result form extras ---------- */
+.uv-match{cursor:pointer}
+.uv-match .uv-chev svg{width:15px;height:15px}
+.uv-hint{margin-top:8px;padding:8px 10px;border-radius:10px;border:1px dashed var(--uv-gold-line);background:var(--uv-gold-soft);
+  font-size:12.5px;cursor:pointer}
+.uv-hint span{display:block;margin-top:2px;font-size:11px;color:var(--uv-ink-2)}
+.uv-li .uv-btn.sm{flex:none}
+
 @media (max-width:440px){
   .uv-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
 }
@@ -6462,7 +6533,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!rec) return;
     const p = NFL_BY_ID[rec.id], m = pickMeta(overall), t = T[m.team];
     const badges = pickBadges(rec, overall);
-    const tally = reactionTally(rec);
+    const tally2 = reactionTally(rec);
     const when = rec.ts ? new Date(rec.ts).toLocaleString(
       void 0,
       { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
@@ -6489,7 +6560,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${badges.length ? `<h4>BADGES</h4><div class="dp-badges">${badges.map((b) => `<span class="dp-badge ${b.k}">${b.icon} ${esc(b.label)}</span>`).join("")}</div>` : ""}
 
     <h4>LEAGUE REACTIONS</h4>
-    ${tally.length ? `<div class="dp-reacts">${tally.map(([e, n, teams]) => `<div class="dp-rr"><span class="e">${e}</span><span class="who">${teams.map((k) => escHtml((T[k] || {}).mgr || k)).join(", ")}</span><b>${n}</b></div>`).join("")}</div>` : `<div class="dp-none">No reactions on this pick</div>`}
+    ${tally2.length ? `<div class="dp-reacts">${tally2.map(([e, n, teams]) => `<div class="dp-rr"><span class="e">${e}</span><span class="who">${teams.map((k) => escHtml((T[k] || {}).mgr || k)).join(", ")}</span><b>${n}</b></div>`).join("")}</div>` : `<div class="dp-none">No reactions on this pick</div>`}
 
     <div class="dp-acts">
       <div class="dr-btn" onclick="closeDraftSheet();openPlayer('${esc(p.id)}')">Player profile</div>
@@ -6530,9 +6601,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function openReactionBreakdown(overall) {
     const rec = pickAt(overall);
     if (!rec) return;
-    const p = NFL_BY_ID[rec.id], tally = reactionTally(rec);
+    const p = NFL_BY_ID[rec.id], tally2 = reactionTally(rec);
     sheet(escHtml(p.full || p.n), `
-    <div class="dp-reacts">${tally.map(([e, n, teams]) => teams.map((k) => `<div class="dp-rr"><span class="e">${e}</span>
+    <div class="dp-reacts">${tally2.map(([e, n, teams]) => teams.map((k) => `<div class="dp-rr"><span class="e">${e}</span>
        <span class="who">${escHtml((T[k] || {}).mgr || k)}</span></div>`).join("")).join("")}</div>
     ${reactionsOpen(overall, draftPicks().length) ? `<div class="dr-btn go" style="margin-top:12px" onclick="openReactionSheet(${overall})">Add or change yours</div>` : `<div class="dp-locked">Locked \u2014 this is how draft night saw it</div>`}`);
   }
@@ -6632,10 +6703,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return `<span class="dg-badges">${b.map((x) => `<i class="dg-b ${x.k}" title="${esc(x.label)}">${x.icon}</i>`).join("")}</span>`;
   }
   function reactionStrip(rec, overall) {
-    const tally = reactionTally(rec);
-    if (!tally.length) return "";
-    const shown = tally.slice(0, REACT_SHOWN);
-    const more = tally.length - shown.length;
+    const tally2 = reactionTally(rec);
+    if (!tally2.length) return "";
+    const shown = tally2.slice(0, REACT_SHOWN);
+    const more = tally2.length - shown.length;
     return `<span class="dg-react" onclick="event.stopPropagation();openReactionBreakdown(${overall})">
     ${shown.map(([e, n]) => `<i>${e}${n > 1 ? `<b>${n}</b>` : ""}</i>`).join("")}
     ${more ? `<i class="more">+${more}</i>` : ""}</span>`;
@@ -7717,8 +7788,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       out.push(start + dayChange * t + (r() * 2 - 1) * Math.abs(dayChange) * 0.16 * (1 - t * 0.3));
     }
     out[n - 1] = value;
-    const lo = Math.min(...out), hi = Math.max(...out), span = hi - lo || 1;
-    return out.map((v) => Math.round((v - lo) / span * 100) / 100);
+    const lo = Math.min(...out), hi = Math.max(...out), span2 = hi - lo || 1;
+    return out.map((v) => Math.round((v - lo) / span2 * 100) / 100);
   }
   function isWatched(id) {
     return mkStore.watch.includes(id);
@@ -7783,8 +7854,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const days = priceDays(p);
     const vs = [];
     for (let i = 0; i < n; i++) vs.push(days[Math.round(i / (n - 1) * (days.length - 1))].v);
-    const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
-    return vs.map((v) => Math.round((v - lo) / span * 100) / 100);
+    const lo = Math.min(...vs), hi = Math.max(...vs), span2 = hi - lo || 1;
+    return vs.map((v) => Math.round((v - lo) / span2 * 100) / 100);
   }
   MARKET.forEach((p) => {
     const days = priceDays(p);
@@ -8269,8 +8340,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       })));
     }
     const days = priceDays(p);
-    const span = range === "week" ? 7 : range === "five" ? 35 : days.length;
-    const cut = days.slice(Math.max(0, days.length - span));
+    const span2 = range === "week" ? 7 : range === "five" ? 35 : days.length;
+    const cut = days.slice(Math.max(0, days.length - span2));
     const every = range === "week" ? 1 : 7;
     let seen = null;
     return frame(cut.map((d, i) => {
@@ -8586,22 +8657,25 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/universe/views.js
   var views_exports = {};
   __export(views_exports, {
+    uvEndSelect: () => uvEndSelect,
     uvFollowActiveSeason: () => uvFollowActiveSeason,
     uvHistoryView: () => uvHistoryView,
-    uvHolderLink: () => uvHolderLink,
     uvMoreHistory: () => uvMoreHistory,
+    uvMoveSelected: () => uvMoveSelected,
+    uvPick: () => uvPick,
     uvRosterFilter: () => uvRosterFilter,
     uvRosterSearch: () => uvRosterSearch,
     uvRosterShow: () => uvRosterShow,
     uvRosterView: () => uvRosterView,
     uvTeamsView: () => uvTeamsView,
     uvTitlesView: () => uvTitlesView,
+    uvToggleSelect: () => uvToggleSelect,
     uvViewSeason: () => uvViewSeason
   });
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 1;
+  var SCHEMA_VERSION = 2;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -8643,6 +8717,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       moves: [],
       // roster assignment history, one row per change of show
       teams: [],
+      memberships: [],
+      // team line-up history, one row per spell a wrestler spent on a team
       titles: [],
       reigns: [],
       // title history; the open reign (end === null) is the champion
@@ -8686,6 +8762,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const s = activeSeason(st);
     return stampAt(st, s.id, s.week);
   }
+  function dateIn(st, week) {
+    const s = activeSeason(st);
+    return { season: s.id, week: week == null || week === "" ? s.week : checkWeek(week) };
+  }
+  var stampFor = (st, date) => stampAt(st, date.season, date.week);
+  var nowDate = (st) => ({ season: activeSeason(st).id, week: activeSeason(st).week });
+  var within = (st, x, from, to) => compareStamps(st, from, x) <= 0 && (!to || compareStamps(st, x, to) < 0);
+  function weeksBetween(st, a, b) {
+    const sa = seasonById(st, a.season), sb = seasonById(st, b.season);
+    if (!sa || !sb || sa.number > sb.number) return 0;
+    if (sa.id === sb.id) return Math.max(0, b.week - a.week);
+    const lastWeek = (s) => s.ended ? s.ended.week : s.week;
+    let n = lastWeek(sa) - a.week;
+    st.seasons.filter((s) => s.number > sa.number && s.number < sb.number).forEach((s) => {
+      n += lastWeek(s);
+    });
+    return Math.max(0, n + b.week);
+  }
   function cleanName(v) {
     return String(v == null ? "" : v).replace(/\s+/g, " ").trim();
   }
@@ -8712,6 +8806,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!showById(st, id)) fail(`Unknown show: ${id}.`);
     return id;
   }
+  function checkNote(value) {
+    const n = cleanName(value);
+    if (n.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
+    return n;
+  }
   function checkWeek(value) {
     const n = Number(value);
     if (!Number.isInteger(n) || n < 1 || n > MAX_WEEK) fail(`Week must be a whole number from 1 to ${MAX_WEEK}.`);
@@ -8736,7 +8835,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const showId = checkShowId(st, input.showId);
     const w = { id: newId(st, "w"), ...fields, showId: null };
     st.wrestlers.push(w);
-    if (showId) recordMove(st, w, showId, "");
+    if (showId) recordMove(st, w, showId, "", nowDate(st));
     return w;
   }
   function addWrestlers(st, names, defaults = {}) {
@@ -8762,22 +8861,43 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     Object.assign(w, wrestlerFields(st, patch, w));
     return w;
   }
-  function recordMove(st, w, to, note) {
-    const move = { id: newId(st, "mv"), wrestler: w.id, from: w.showId, to, at: now(st), note: cleanName(note) };
+  function recordMove(st, w, to, note, date) {
+    const move = { id: newId(st, "mv"), wrestler: w.id, from: w.showId, to, at: stampFor(st, date || nowDate(st)), note };
     st.moves.push(move);
     w.showId = to;
     return move;
   }
-  function assignWrestler(st, id, showId, note = "") {
+  function moveChecks(st, id, to, date) {
     const w = must(wrestlerById(st, id), "wrestler", id);
-    const to = checkShowId(st, showId);
     if (w.showId === to) return null;
-    if (cleanName(note).length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
-    return recordMove(st, w, to, note);
+    const moves = movesOf(st, id);
+    const last = moves[moves.length - 1];
+    if (last && earlierWeek(st, date, last.at)) {
+      fail(`${w.name}'s last move was in ${weekLabel(st, last.at)}, later than ${weekLabel(st, date)}. Moves have to be recorded in order.`);
+    }
+    return w;
+  }
+  function assignWrestlers(st, ids, showId, note = "", opts = {}) {
+    const to = checkShowId(st, showId);
+    const n = checkNote(note);
+    const date = dateIn(st, opts.week);
+    if (!Array.isArray(ids) || !ids.length) fail("Pick at least one wrestler to move.");
+    if (new Set(ids).size !== ids.length) fail("The same wrestler is picked twice.");
+    const going = ids.map((id) => moveChecks(st, id, to, date)).filter(Boolean);
+    return going.map((w) => recordMove(st, w, to, n, date));
+  }
+  function undoLastMove(st, id) {
+    const w = must(wrestlerById(st, id), "wrestler", id);
+    const moves = movesOf(st, id);
+    const last = moves[moves.length - 1];
+    if (!last) fail(`${w.name} has no roster moves to undo.`);
+    removeWhere(st.moves, (m) => m.id === last.id);
+    w.showId = last.from;
+    return last;
   }
   function wrestlerRefs(st, id) {
     const refs = [];
-    const teams = st.teams.filter((t) => t.members.includes(id)).length;
+    const teams = teamsEver(st, id).length;
     if (teams) refs.push(teams === 1 ? "a tag team" : `${teams} tag teams`);
     const reigns = st.reigns.filter((r) => r.holder.type === "wrestler" && r.holder.id === id).length;
     if (reigns) refs.push(reigns === 1 ? "a title reign" : `${reigns} title reigns`);
@@ -8812,28 +8932,59 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function byName(a, b) {
     return a.name.localeCompare(b.name, void 0, { sensitivity: "base" });
   }
-  function teamFields(st, input, self) {
-    const name = has(input, "name") || !self ? checkName(st.teams, input.name, "tag team", self && self.id) : self.name;
-    let members = self ? self.members : [];
-    if (has(input, "members") || !self) {
-      const ids = (input.members || []).filter((x) => x != null && x !== "");
-      ids.forEach((m) => must(wrestlerById(st, m), "wrestler", m));
-      if (new Set(ids).size !== ids.length) fail("A wrestler can only be on a team once.");
-      if (ids.length < 2) fail("A tag team needs at least two wrestlers.");
-      members = [...ids];
-    }
-    return { name, members };
+  var TEAM_EVENTS = ["formed", "disbanded", "reunited"];
+  var teamFormed = (t) => t.log[0].at;
+  function checkMembers(st, members) {
+    const ids = (members || []).filter((x) => x != null && x !== "");
+    ids.forEach((m) => must(wrestlerById(st, m), "wrestler", m));
+    if (new Set(ids).size !== ids.length) fail("A wrestler can only be on a team once.");
+    if (ids.length < 2) fail("A tag team needs at least two wrestlers.");
+    return ids;
   }
   function addTeam(st, input = {}) {
-    const fields = teamFields(st, input, null);
-    const team = { id: newId(st, "tm"), ...fields, active: true, formed: now(st), disbanded: null };
+    const name = checkName(st.teams, input.name, "tag team", null);
+    const ids = checkMembers(st, input.members);
+    const at = stampFor(st, dateIn(st, input.week));
+    const team = { id: newId(st, "tm"), name, members: [...ids], active: true, log: [{ type: "formed", at }] };
     st.teams.push(team);
+    ids.forEach((w) => st.memberships.push({ id: newId(st, "ms"), team: team.id, wrestler: w, start: { ...at }, end: null }));
     return team;
   }
   function updateTeam(st, id, patch = {}) {
     const t = must(teamById(st, id), "tag team", id);
-    Object.assign(t, teamFields(st, patch, t));
+    if (has(patch, "members")) fail("Change the line-up with addTeamMember and removeTeamMember, so it stays in the history.");
+    if (has(patch, "name")) t.name = checkName(st.teams, patch.name, "tag team", id);
     return t;
+  }
+  function membershipsOf(st, teamId) {
+    return st.memberships.filter((m) => m.team === teamId).sort((a, b) => a.start.seq - b.start.seq);
+  }
+  var openSpell = (st, teamId, wrestlerId) => st.memberships.find((m) => m.team === teamId && m.wrestler === wrestlerId && m.end === null) || null;
+  function addTeamMember(st, teamId, wrestlerId, opts = {}) {
+    const t = must(teamById(st, teamId), "tag team", teamId);
+    const w = must(wrestlerById(st, wrestlerId), "wrestler", wrestlerId);
+    if (t.members.includes(wrestlerId)) fail(`${w.name} is already on ${t.name}.`);
+    const date = dateIn(st, opts.week);
+    if (earlierWeek(st, date, teamFormed(t))) fail(`${t.name} formed in ${weekLabel(st, teamFormed(t))}, after ${weekLabel(st, date)}.`);
+    const before = st.memberships.filter((m) => m.team === teamId && m.wrestler === wrestlerId && m.end);
+    const lastLeft = before.sort((a, b) => b.end.seq - a.end.seq)[0];
+    if (lastLeft && earlierWeek(st, date, lastLeft.end)) fail(`${w.name} left ${t.name} in ${weekLabel(st, lastLeft.end)}, after ${weekLabel(st, date)}.`);
+    const spell = { id: newId(st, "ms"), team: teamId, wrestler: wrestlerId, start: stampFor(st, date), end: null };
+    st.memberships.push(spell);
+    t.members.push(wrestlerId);
+    return spell;
+  }
+  function removeTeamMember(st, teamId, wrestlerId, opts = {}) {
+    const t = must(teamById(st, teamId), "tag team", teamId);
+    const w = must(wrestlerById(st, wrestlerId), "wrestler", wrestlerId);
+    if (!t.members.includes(wrestlerId)) fail(`${w.name} isn't on ${t.name}.`);
+    if (t.members.length <= 2) fail(`${t.name} need at least two members. Add the new partner first, or disband the team.`);
+    const spell = openSpell(st, teamId, wrestlerId);
+    const date = dateIn(st, opts.week);
+    if (earlierWeek(st, date, spell.start)) fail(`${w.name} joined ${t.name} in ${weekLabel(st, spell.start)}, after ${weekLabel(st, date)}.`);
+    spell.end = stampFor(st, date);
+    removeWhere(t.members, (x) => x === wrestlerId);
+    return spell;
   }
   function setTeamActive(st, id, active) {
     const t = must(teamById(st, id), "tag team", id);
@@ -8841,13 +8992,51 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!active) {
       const held = titlesHeldBy(st, { type: "team", id });
       if (held.length) fail(`${t.name} hold the ${held[0].name}. Vacate it or crown new champions first.`);
-      t.active = false;
-      t.disbanded = now(st);
-    } else {
-      t.active = true;
-      t.disbanded = null;
     }
+    t.active = !!active;
+    t.log.push({ type: active ? "reunited" : "disbanded", at: now(st) });
     return t;
+  }
+  function lastTeamChange(st, id) {
+    const t = must(teamById(st, id), "tag team", id);
+    const formedSeq = teamFormed(t).seq;
+    const changes = [];
+    t.log.slice(1).forEach((entry) => changes.push({ kind: entry.type, seq: entry.at.seq, at: entry.at, entry }));
+    membershipsOf(st, id).forEach((m) => {
+      if (m.start.seq !== formedSeq) changes.push({ kind: "joined", seq: m.start.seq, at: m.start, m });
+      if (m.end) changes.push({ kind: "left", seq: m.end.seq, at: m.end, m });
+    });
+    return changes.sort((a, b) => b.seq - a.seq)[0] || null;
+  }
+  function undoTeamChange(st, id) {
+    const t = must(teamById(st, id), "tag team", id);
+    const last = lastTeamChange(st, id);
+    if (!last) fail(`${t.name} haven't changed since they formed. If the team itself was a mistake, delete it.`);
+    if (last.kind === "disbanded") {
+      t.active = true;
+    } else if (last.kind === "reunited") {
+      const held = titlesHeldBy(st, { type: "team", id });
+      if (held.length) fail(`${t.name} hold the ${held[0].name} since reuniting, so they can't go back to being disbanded.`);
+      t.active = false;
+    } else if (last.kind === "joined") {
+      const w = wrestlerById(st, last.m.wrestler);
+      if (t.members.length <= 2) fail(`${t.name} need at least two members, so ${w.name} joining can't be undone. Disband the team instead.`);
+      const otherSpells = st.memberships.some((m) => m !== last.m && m.team === id && m.wrestler === w.id);
+      let used = null;
+      eachMatch(st, (m, ev) => {
+        if (!used && m.sides.some((sd) => sd.team === id && sd.wrestlers.includes(w.id))) used = ev;
+      });
+      if (used && !otherSpells) fail(`${w.name} wrestled for ${t.name} at ${used.name}. Edit that result first.`);
+      removeWhere(st.memberships, (m) => m === last.m);
+      removeWhere(t.members, (x) => x === w.id);
+      return last;
+    } else {
+      last.m.end = null;
+      t.members.push(last.m.wrestler);
+      return last;
+    }
+    removeWhere(t.log, (e) => e === last.entry);
+    return last;
   }
   function teamRefs(st, id) {
     const refs = [];
@@ -8865,12 +9054,56 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const refs = teamRefs(st, id);
     if (refs.length) fail(`${t.name} are part of the history (${refs.join(", ")}), so they can't be deleted. Disband them instead.`);
     removeWhere(st.teams, (x) => x.id === id);
+    removeWhere(st.memberships, (m) => m.team === id);
   }
   function teamsOf(st, wrestlerId) {
     return st.teams.filter((t) => t.members.includes(wrestlerId));
   }
+  function teamsEver(st, wrestlerId) {
+    const ids = new Set(st.memberships.filter((m) => m.wrestler === wrestlerId).map((m) => m.team));
+    return st.teams.filter((t) => ids.has(t.id));
+  }
   function teamShows(st, team) {
     return [...new Set(team.members.map((id) => (wrestlerById(st, id) || {}).showId || null))];
+  }
+  function memberAt(st, teamId, wrestlerId, stamp) {
+    return st.memberships.some((m) => m.team === teamId && m.wrestler === wrestlerId && within(st, stamp, m.start, m.end));
+  }
+  function teamHistoryOf(st, teamId) {
+    const t = must(teamById(st, teamId), "tag team", teamId);
+    const out = [];
+    const at = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
+    t.log.forEach((e) => at(e.at, `team-${e.type}`, {}));
+    membershipsOf(st, teamId).forEach((m) => {
+      const wrestler = wrestlerById(st, m.wrestler);
+      if (m.start.seq !== teamFormed(t).seq) at(m.start, "member-joined", { wrestler });
+      if (m.end) at(m.end, "member-left", { wrestler });
+    });
+    st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === teamId).forEach((reign) => {
+      const title = titleById(st, reign.titleId);
+      at(reign.start, "title-won", { reign, title });
+      if (reign.end) at(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title });
+    });
+    return out.sort((a, b) => compareStamps(st, b, a));
+  }
+  function tagPartnersOf(st, wrestlerId) {
+    const count = /* @__PURE__ */ new Map();
+    matchesOf(st, wrestlerId).forEach(({ match, side }) => {
+      const s = match.sides[side];
+      if (s.team || s.wrestlers.length < 2) return;
+      s.wrestlers.forEach((id) => {
+        if (id !== wrestlerId) count.set(id, (count.get(id) || 0) + 1);
+      });
+    });
+    return [...count].map(([id, n]) => ({ wrestler: wrestlerById(st, id), count: n })).sort((a, b) => b.count - a.count || byName(a.wrestler, b.wrestler));
+  }
+  function teammatesOf(st, wrestlerId) {
+    return teamsEver(st, wrestlerId).map((team) => {
+      const spells = st.memberships.filter((m) => m.team === team.id && m.wrestler === wrestlerId);
+      const overlaps = (o) => spells.some((s) => (!o.end || compareStamps(st, s.start, o.end) < 0) && (!s.end || compareStamps(st, o.start, s.end) < 0));
+      const partners = [...new Set(st.memberships.filter((o) => o.team === team.id && o.wrestler !== wrestlerId && overlaps(o)).map((o) => o.wrestler))].map((id) => wrestlerById(st, id)).filter(Boolean);
+      return { team, current: team.members.includes(wrestlerId), spells, partners };
+    });
   }
   function titleFields(st, input, self) {
     const base = self || { showId: null, kind: "singles", division: "open" };
@@ -8933,12 +9166,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     teamsOf(st, wrestlerId).forEach((team) => titlesHeldBy(st, { type: "team", id: team.id }).forEach((title) => out.push({ title, team })));
     return out;
   }
-  function checkHolder(st, title, holder) {
+  function checkHolder(st, title, holder, pastOk = false) {
     if (!holder || !holder.id) fail("Pick who holds the title.");
     if (title.kind === "tag") {
       if (holder.type !== "team") fail(`The ${title.name} is a tag title, so a tag team has to hold it.`);
       const team = must(teamById(st, holder.id), "tag team", holder.id);
-      if (!team.active) fail(`${team.name} have disbanded.`);
+      if (!team.active && !pastOk) fail(`${team.name} have disbanded.`);
     } else {
       if (holder.type !== "wrestler") fail(`The ${title.name} is a singles title, so one wrestler has to hold it.`);
       must(wrestlerById(st, holder.id), "wrestler", holder.id);
@@ -9007,6 +9240,96 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (prev && prev.end && prev.end.seq === last.start.seq) prev.end = null;
     return prev || null;
   }
+  function removableReigns(st, reigns, what) {
+    const byTitle = /* @__PURE__ */ new Map();
+    reigns.forEach((r) => byTitle.set(r.titleId, [...byTitle.get(r.titleId) || [], r]));
+    const plans = [...byTitle].map(([titleId, group]) => {
+      const hist = titleReigns(st, titleId);
+      const tail = hist.slice(-group.length);
+      if (!tail.every((r) => group.includes(r)) || tail[tail.length - 1].end) {
+        fail(`The ${titleById(st, titleId).name} has changed hands or been vacated since ${what}. Undo those later changes first.`);
+      }
+      return { group, prev: hist[hist.length - group.length - 1] || null };
+    });
+    return () => plans.forEach(({ group, prev }) => {
+      const first = group.reduce((a, b) => a.start.seq < b.start.seq ? a : b);
+      removeWhere(st.reigns, (r) => group.includes(r));
+      if (prev && prev.end && prev.end.seq === first.start.seq) prev.end = null;
+    });
+  }
+  function neighbours(st, r) {
+    const hist = titleReigns(st, r.titleId);
+    const i = hist.indexOf(r);
+    const prev = hist[i - 1] || null, next = hist[i + 1] || null;
+    const prevJoined = !!(prev && prev.end && prev.end.seq === r.start.seq);
+    return {
+      prev,
+      next,
+      prevJoined,
+      nextJoined: !!(next && r.end && next.start.seq === r.end.seq),
+      floor: prev ? prevJoined ? prev.start : prev.end : null
+    };
+  }
+  function reignWeeks(st, r) {
+    return weeksBetween(st, r.start, r.end || nowDate(st));
+  }
+  function defencesOf(st, r) {
+    let n = 0;
+    eachMatch(st, (m, ev) => {
+      if (m.titleId !== r.titleId || st.reigns.some((x) => x.matchId === m.id)) return;
+      if (earlierWeek(st, ev.at, r.start) || r.end && earlierWeek(st, r.end, ev.at)) return;
+      const inIt = r.holder.type === "team" ? m.sides.some((s) => s.team === r.holder.id) : m.sides.some((s) => s.wrestlers.includes(r.holder.id));
+      if (inIt) n++;
+    });
+    return n;
+  }
+  function updateReign(st, reignId, patch = {}) {
+    const r = must(st.reigns.find((x) => x.id === reignId), "title reign", reignId);
+    const title = titleById(st, r.titleId);
+    const ev = r.eventId ? eventById(st, r.eventId) : null;
+    const { prev, next, prevJoined, nextJoined, floor } = neighbours(st, r);
+    let holder = r.holder, week = r.start.week, note = r.note;
+    if (has(patch, "holder")) {
+      holder = checkHolder(st, title, patch.holder, true);
+      if (!sameHolder(holder, r.holder)) {
+        if (r.matchId) fail(`This reign came from a result at ${ev ? ev.name : "an event"} - edit that result to change who won.`);
+        if (!r.end && holder.type === "team" && !teamById(st, holder.id).active) fail(`${holderName(st, holder)} have disbanded, so they can't be the current champions.`);
+        if (prevJoined && sameHolder(prev.holder, holder)) fail(`${holderName(st, holder)} already held the ${title.name} going into this reign.`);
+        if (nextJoined && sameHolder(next.holder, holder)) fail(`${holderName(st, holder)} win the ${title.name} next, so they can't be the ones they won it from.`);
+      }
+    }
+    if (has(patch, "week")) {
+      week = checkWeek(patch.week);
+      if (week !== r.start.week) {
+        if (r.eventId) fail(`This reign is dated by ${ev ? ev.name : "its event"} - change that event's week instead.`);
+        const date = { season: r.start.season, week };
+        if (floor && earlierWeek(st, date, floor)) {
+          fail(prevJoined ? `That's before the previous reign began (${weekLabel(st, floor)}).` : `The title was vacant until ${weekLabel(st, floor)}, so this reign can't begin before then.`);
+        }
+        if (r.end && earlierWeek(st, r.end, date)) fail(`That's after this reign ended (${weekLabel(st, r.end)}).`);
+      }
+    }
+    if (has(patch, "note")) note = checkNote(patch.note);
+    r.holder = holder;
+    r.note = note;
+    r.start.week = week;
+    if (prevJoined) prev.end.week = week;
+    return r;
+  }
+  function championshipsOf(st, wrestlerId) {
+    const out = [];
+    st.reigns.forEach((reign) => {
+      const title = titleById(st, reign.titleId);
+      if (reign.holder.type === "wrestler") {
+        if (reign.holder.id === wrestlerId) out.push({ reign, title, team: null });
+        return;
+      }
+      const spells = st.memberships.filter((m) => m.team === reign.holder.id && m.wrestler === wrestlerId);
+      const overlaps = spells.some((m) => (!reign.end || compareStamps(st, m.start, reign.end) < 0) && (!m.end || compareStamps(st, reign.start, m.end) < 0));
+      if (overlaps) out.push({ reign, title, team: teamById(st, reign.holder.id) });
+    });
+    return out.sort((a, b) => compareStamps(st, b.reign.start, a.reign.start));
+  }
   function holderName(st, holder) {
     if (!holder) return "Vacant";
     const x = holder.type === "team" ? teamById(st, holder.id) : wrestlerById(st, holder.id);
@@ -9071,22 +9394,38 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const showId = has(patch, "showId") ? checkShowId(st, patch.showId) : ev.showId;
     if (kind === "weekly" && !showId) fail("A weekly episode needs a show.");
     let week = ev.at.week;
+    const linked = st.reigns.filter((r) => r.eventId === id);
     if (has(patch, "week")) {
       week = checkWeek(patch.week);
-      if (week !== ev.at.week && st.reigns.some((r) => r.eventId === id)) {
-        fail("A title changed hands at this event, so its week is fixed. Undo that title change first.");
-      }
+      const date = { season: ev.at.season, week };
+      linked.forEach((r) => {
+        const { prevJoined, floor } = neighbours(st, r);
+        const title = titleById(st, r.titleId).name;
+        if (floor && earlierWeek(st, date, floor)) {
+          fail(prevJoined ? `Week ${week} is before the ${title} reign this event ended began (${weekLabel(st, floor)}).` : `The ${title} was vacant until ${weekLabel(st, floor)}, so week ${week} is too early.`);
+        }
+        if (r.end && earlierWeek(st, r.end, date)) fail(`Week ${week} is after the ${title} reign won here ended (${weekLabel(st, r.end)}).`);
+      });
     }
     const name = has(patch, "name") ? eventName(st, kind, showId, week, patch.name) : ev.name;
     const notes = has(patch, "notes") ? checkText(patch.notes, "Notes") : ev.notes;
     Object.assign(ev, { kind, showId, name, notes });
-    ev.at.week = week;
+    if (week !== ev.at.week) {
+      linked.forEach((r) => {
+        const { prev, prevJoined } = neighbours(st, r);
+        if (prevJoined) prev.end.week = week;
+        r.start.week = week;
+      });
+      ev.at.week = week;
+    }
     return ev;
   }
   function deleteEvent(st, id) {
     const ev = must(eventById(st, id), "event", id);
-    if (st.reigns.some((r) => r.eventId === id)) fail(`A title changed hands at ${ev.name}. Undo that title change before deleting the event.`);
+    const linked = st.reigns.filter((r) => r.eventId === id);
+    const revert = linked.length ? removableReigns(st, linked, ev.name) : null;
     removeWhere(st.events, (e) => e.id === id);
+    if (revert) revert();
   }
   function eventsIn(st, seasonId) {
     return st.events.filter((e) => e.at.season === seasonId).sort((a, b) => a.at.week - b.at.week || a.at.seq - b.at.seq);
@@ -9104,10 +9443,40 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         seen.add(id);
       });
       const team = side.team || null;
-      if (team) must(teamById(st, team), "tag team", team);
+      if (team) {
+        const t = must(teamById(st, team), "tag team", team);
+        if (ids.length < 2) fail(`Side ${i + 1} is wrestling as ${t.name}, so it needs at least two of them.`);
+        const outsider = ids.find((id) => !st.memberships.some((m) => m.team === team && m.wrestler === id));
+        if (outsider) fail(`${wrestlerById(st, outsider).name} has never been on ${t.name}. Add them to the team first, or record the side without the team.`);
+      }
       return { wrestlers: [...ids], team };
     });
   }
+  function matchFields(st, input, keepTitleId = null) {
+    const sides = normalizeSides(st, input.sides);
+    const outcome = oneOf(input.outcome || "win", OUTCOMES, "result");
+    let winner = null;
+    if (outcome === "win") {
+      winner = input.winner === "" || input.winner == null ? NaN : Number(input.winner);
+      if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail("Pick who won.");
+    }
+    const finish = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
+    const title = input.titleId ? must(titleById(st, input.titleId), "championship", input.titleId) : null;
+    if (title && !title.active && title.id !== keepTitleId) fail(`The ${title.name} is retired.`);
+    const stip = cleanName(input.stip);
+    if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
+    const notes = checkText(input.notes, "Notes");
+    return { sides, outcome, winner, finish, title, stip, notes };
+  }
+  var matchRecord = (f) => ({
+    sides: f.sides,
+    outcome: f.outcome,
+    winner: f.winner,
+    finish: f.finish,
+    titleId: f.title ? f.title.id : null,
+    stip: f.stip,
+    notes: f.notes
+  });
   function holderFromSide(title, side) {
     if (title.kind === "tag") {
       if (!side.team) fail(`The ${title.name} is a tag title - pick the tag team on the winning side.`);
@@ -9118,36 +9487,55 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function recordMatch(st, eventId, input = {}, opts = {}) {
     const ev = must(eventById(st, eventId), "event", eventId);
-    const sides = normalizeSides(st, input.sides);
-    const outcome = oneOf(input.outcome || "win", OUTCOMES, "result");
-    let winner = null;
-    if (outcome === "win") {
-      winner = input.winner === "" || input.winner == null ? NaN : Number(input.winner);
-      if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail("Pick who won.");
-    }
-    const finish = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
-    const title = input.titleId ? must(titleById(st, input.titleId), "championship", input.titleId) : null;
-    if (title && !title.active) fail(`The ${title.name} is retired.`);
-    const stip = cleanName(input.stip);
-    if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
-    const notes = checkText(input.notes, "Notes");
+    const f = matchFields(st, input);
     let holder = null;
     if (opts.titleChange) {
-      if (!title) fail("Pick the title that changed hands.");
-      if (outcome !== "win") fail("A title only changes hands when someone wins.");
-      holder = champChecks(st, title.id, holderFromSide(title, sides[winner]), dateOf(st, ev)).holder;
+      if (!f.title) fail("Pick the title that changed hands.");
+      if (f.outcome !== "win") fail("A title only changes hands when someone wins.");
+      holder = champChecks(st, f.title.id, holderFromSide(f.title, f.sides[f.winner]), dateOf(st, ev)).holder;
     }
-    const match = { id: newId(st, "m"), sides, outcome, winner, finish, titleId: title ? title.id : null, stip, notes };
+    const match = { id: newId(st, "m"), ...matchRecord(f) };
     ev.matches.push(match);
-    if (holder) setChampion(st, title.id, holder, { eventId: ev.id, matchId: match.id });
+    if (holder) setChampion(st, f.title.id, holder, { eventId: ev.id, matchId: match.id });
     return match;
+  }
+  function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    const m = must(ev.matches.find((x) => x.id === matchId), "match", matchId);
+    const linked = st.reigns.find((r) => r.matchId === matchId) || null;
+    const f = matchFields(st, input, m.titleId);
+    let keep = null, add2 = null, revert = null;
+    if (opts.titleChange) {
+      if (!f.title) fail("Pick the title that changed hands.");
+      if (f.outcome !== "win") fail("A title only changes hands when someone wins.");
+      const raw = holderFromSide(f.title, f.sides[f.winner]);
+      if (linked && linked.titleId === f.title.id) {
+        const holder = checkHolder(st, f.title, raw, sameHolder(raw, linked.holder));
+        const { prev, next, prevJoined, nextJoined } = neighbours(st, linked);
+        const who = holderName(st, holder);
+        if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${f.title.name} going into this match - that's a retention, not a title change.`);
+        if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${f.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
+        keep = holder;
+      } else {
+        if (linked) revert = removableReigns(st, [linked], "this match");
+        add2 = champChecks(st, f.title.id, raw, dateOf(st, ev)).holder;
+      }
+    } else if (linked) {
+      revert = removableReigns(st, [linked], "this match");
+    }
+    Object.assign(m, matchRecord(f));
+    if (revert) revert();
+    if (keep) linked.holder = keep;
+    if (add2) setChampion(st, f.title.id, add2, { eventId: ev.id, matchId: m.id });
+    return m;
   }
   function deleteMatch(st, eventId, matchId) {
     const ev = must(eventById(st, eventId), "event", eventId);
     must(ev.matches.find((m) => m.id === matchId), "match", matchId);
-    const reign = st.reigns.find((r) => r.matchId === matchId);
-    if (reign) fail(`The ${titleById(st, reign.titleId).name} changed hands in this match. Undo that title change first.`);
+    const linked = st.reigns.find((r) => r.matchId === matchId);
+    const revert = linked ? removableReigns(st, [linked], "this match") : null;
     removeWhere(ev.matches, (m) => m.id === matchId);
+    if (revert) revert();
   }
   function eachMatch(st, fn) {
     st.events.forEach((ev) => ev.matches.forEach((m) => fn(m, ev)));
@@ -9165,6 +9553,94 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (match.outcome === "nc") return "NC";
     return match.winner === side ? "W" : "L";
   }
+  var KEY = { W: "w", L: "l", D: "d", NC: "nc" };
+  var blankRecord = () => ({ w: 0, l: 0, d: 0, nc: 0 });
+  var tally = (rec, r) => {
+    rec[KEY[r]]++;
+    return rec;
+  };
+  function wrestlerRecord(st, wrestlerId) {
+    const out = { singles: blankRecord(), tag: blankRecord(), teams: {} };
+    matchesOf(st, wrestlerId).forEach(({ match, side }) => {
+      const s = match.sides[side];
+      const r = resultFor(match, side);
+      if (s.wrestlers.length === 1) tally(out.singles, r);
+      else {
+        tally(out.tag, r);
+        tally(out.teams[s.team || ""] || (out.teams[s.team || ""] = blankRecord()), r);
+      }
+    });
+    return out;
+  }
+  function teamMatches(st, teamId) {
+    const out = [];
+    eachMatch(st, (match, event) => {
+      const side = match.sides.findIndex((s) => s.team === teamId);
+      if (side >= 0) out.push({ event, match, side });
+    });
+    return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+  }
+  function teamRecord(st, teamId) {
+    return teamMatches(st, teamId).reduce((rec, x) => tally(rec, resultFor(x.match, x.side)), blankRecord());
+  }
+  function mergeWrestlers(st, keepId, dupId) {
+    const keep = must(wrestlerById(st, keepId), "wrestler", keepId);
+    const dup = must(wrestlerById(st, dupId), "wrestler", dupId);
+    if (keepId === dupId) fail("Pick two different wrestlers.");
+    let clash = null;
+    eachMatch(st, (m, ev) => {
+      const ws = m.sides.flatMap((sd) => sd.wrestlers);
+      if (!clash && ws.includes(keepId) && ws.includes(dupId)) clash = ev;
+    });
+    if (clash) fail(`${keep.name} and ${dup.name} were both in a match at ${clash.name}, so they can't be the same person. Fix that result first.`);
+    const keepTeams = new Set(st.memberships.filter((m) => m.wrestler === keepId).map((m) => m.team));
+    const shared = st.memberships.find((m) => m.wrestler === dupId && keepTeams.has(m.team));
+    if (shared) fail(`${keep.name} and ${dup.name} have both been on ${teamById(st, shared.team).name}. Take one of them off it first.`);
+    const as = (h) => h.type === "wrestler" && h.id === dupId ? { type: "wrestler", id: keepId } : h;
+    st.titles.forEach((t) => {
+      const hist = titleReigns(st, t.id);
+      hist.forEach((r, i) => {
+        const prev = hist[i - 1];
+        if (prev && prev.end && prev.end.seq === r.start.seq && sameHolder(as(prev.holder), as(r.holder))) {
+          fail(`${keep.name} would win the ${t.name} from themselves in ${weekLabel(st, r.start)}. Fix that title history first.`);
+        }
+      });
+    });
+    eachMatch(st, (m) => m.sides.forEach((sd) => {
+      sd.wrestlers = sd.wrestlers.map((id) => id === dupId ? keepId : id);
+    }));
+    st.memberships.forEach((m) => {
+      if (m.wrestler === dupId) m.wrestler = keepId;
+    });
+    st.teams.forEach((t) => {
+      t.members = t.members.map((id) => id === dupId ? keepId : id);
+    });
+    st.reigns.forEach((r) => {
+      r.holder = as(r.holder);
+    });
+    removeWhere(st.moves, (m) => m.wrestler === dupId);
+    removeWhere(st.wrestlers, (w) => w.id === dupId);
+    return keep;
+  }
+  function careerOf(st, wrestlerId) {
+    const out = [];
+    const at = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
+    movesOf(st, wrestlerId).forEach((move) => at(move.at, "move", { move }));
+    st.memberships.filter((m) => m.wrestler === wrestlerId).forEach((m) => {
+      const team = teamById(st, m.team);
+      at(m.start, m.start.seq === teamFormed(team).seq ? "team-formed" : "team-joined", { team });
+      if (m.end) at(m.end, "team-left", { team });
+      team.log.slice(1).forEach((e) => {
+        if (within(st, e.at, m.start, m.end)) at(e.at, `team-${e.type}`, { team });
+      });
+    });
+    championshipsOf(st, wrestlerId).forEach(({ reign, title, team }) => {
+      const there = (stamp) => !team || memberAt(st, team.id, wrestlerId, stamp);
+      if (there(reign.start)) at(reign.start, "title-won", { reign, title, team });
+      if (reign.end && there(reign.end)) at(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title, team });
+    });
+    return out.sort((a, b) => compareStamps(st, b, a));
+  }
   function timeline(st) {
     const out = [];
     const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, rec });
@@ -9173,9 +9649,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (s.ended) at(s.ended, "season-end", s);
     });
     st.moves.forEach((m) => at(m.at, "move", m));
-    st.teams.forEach((t) => {
-      at(t.formed, "team-formed", t);
-      if (t.disbanded) at(t.disbanded, "team-disbanded", t);
+    st.teams.forEach((t) => t.log.forEach((e) => at(e.at, `team-${e.type}`, t)));
+    st.memberships.forEach((m) => {
+      const t = teamById(st, m.team);
+      if (t && m.start.seq !== teamFormed(t).seq) at(m.start, "team-joined", m);
+      if (m.end) at(m.end, "team-left", m);
     });
     st.reigns.forEach((r) => {
       at(r.start, "title-won", r);
@@ -9205,7 +9683,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!Number.isInteger(v) || v < 1) fail("That save has no version number.");
     if (v > SCHEMA_VERSION) fail(`That save is from a newer version of this tool (v${v}; this is v${SCHEMA_VERSION}).`);
     const st = JSON.parse(JSON.stringify(raw));
-    for (const k of ["shows", "wrestlers", "moves", "teams", "titles", "reigns", "seasons", "events"]) {
+    for (const k of ["shows", "wrestlers", "moves", "teams", "memberships", "titles", "reigns", "seasons", "events"]) {
       if (!Array.isArray(st[k])) st[k] = [];
     }
     if (!Number.isInteger(st.nextId) || st.nextId < 1) st.nextId = 1;
@@ -9214,6 +9692,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (!showById(st, seed.id)) st.shows.push({ ...seed });
     });
     if (!st.seasons.length) openSeason(st, 1, "");
+    if (st.version === 1) {
+      st.memberships = [];
+      st.teams.forEach((t) => {
+        const formed = t.formed || st.seasons[0].started;
+        t.log = [{ type: "formed", at: { ...formed } }];
+        if (t.disbanded) t.log.push({ type: "disbanded", at: { ...t.disbanded } });
+        t.active = !t.disbanded;
+        (Array.isArray(t.members) ? t.members : []).forEach((w) => st.memberships.push({ id: `ms${st.nextId++}`, team: t.id, wrestler: w, start: { ...formed }, end: null }));
+        delete t.formed;
+        delete t.disbanded;
+      });
+      st.version = 2;
+    }
     return st;
   }
   function validate(st) {
@@ -9244,6 +9735,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     own(st.reigns, "title reign");
     own(st.seasons, "season");
     own(st.events, "event");
+    own(st.memberships, "team membership");
     st.events.forEach((e) => own(e.matches || [], "match"));
     const stamp = (s, where) => {
       if (!s || !seasonById(st, s.season) || !Number.isInteger(s.week) || !Number.isInteger(s.seq)) {
@@ -9288,10 +9780,46 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       else {
         if (new Set(t.members).size !== t.members.length) bad.push(`${t.name} list a member twice.`);
         if (t.members.some((id) => !wrestlerById(st, id))) bad.push(`${t.name} include a wrestler who doesn't exist.`);
+        const open = st.memberships.filter((m) => m.team === t.id && m.end === null).map((m) => m.wrestler).sort();
+        if (JSON.stringify([...t.members].sort()) !== JSON.stringify(open)) bad.push(`${t.name}'s line-up doesn't match their membership history.`);
       }
-      stamp(t.formed, t.name);
-      if (t.active === !!t.disbanded) bad.push(`${t.name} are marked both active and disbanded, or neither.`);
-      if (t.disbanded) stamp(t.disbanded, t.name);
+      const log = Array.isArray(t.log) ? t.log : [];
+      if (!log.length || !log[0] || log[0].type !== "formed") {
+        bad.push(`${t.name} have no record of forming.`);
+        return;
+      }
+      log.forEach((e, i) => {
+        if (!TEAM_EVENTS.includes(e.type)) bad.push(`${t.name} have an unknown history entry.`);
+        stamp(e.at, t.name);
+        if (i > 0 && e.type !== (log[i - 1].type === "disbanded" ? "reunited" : "disbanded")) {
+          bad.push(`${t.name}'s history has them ${e.type} out of turn.`);
+        }
+      });
+      if (t.active !== (log[log.length - 1].type !== "disbanded")) bad.push(`${t.name}'s active flag disagrees with their history.`);
+    });
+    const spells = /* @__PURE__ */ new Map();
+    st.memberships.forEach((m) => {
+      const t = teamById(st, m.team);
+      if (!t) {
+        bad.push(`Membership ${m.id} is for a team that doesn't exist.`);
+        return;
+      }
+      if (!wrestlerById(st, m.wrestler)) bad.push(`Membership ${m.id} is for a wrestler who doesn't exist.`);
+      stamp(m.start, `Membership ${m.id}`);
+      if (m.end) {
+        stamp(m.end, `Membership ${m.id}`);
+        if (m.end.seq < m.start.seq || earlierWeek(st, m.end, m.start)) bad.push(`Membership ${m.id} ends before it starts.`);
+      }
+      const formed = Array.isArray(t.log) && t.log[0] && t.log[0].at;
+      if (formed && m.start && m.start.seq < formed.seq) bad.push(`Membership ${m.id} starts before ${t.name} formed.`);
+      const k = `${m.team}/${m.wrestler}`;
+      spells.set(k, [...spells.get(k) || [], m]);
+    });
+    spells.forEach((list) => {
+      list.sort((a, b) => a.start.seq - b.start.seq).forEach((m, i) => {
+        const prev = list[i - 1];
+        if (prev && (!prev.end || prev.end.seq > m.start.seq)) bad.push(`Membership ${m.id} overlaps an earlier spell on the same team.`);
+      });
     });
     names(st.titles, "championship");
     st.titles.forEach((t) => {
@@ -9383,10 +9911,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     save: svg2('<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>'),
     x: svg2('<path d="M18 6 6 18M6 6l12 12"/>'),
     left: svg2('<path d="m15 18-6-6 6-6"/>'),
-    right: svg2('<path d="m9 18 6-6-6-6"/>')
+    right: svg2('<path d="m9 18 6-6-6-6"/>'),
+    move: svg2('<path d="M7 7h11l-3-3M17 17H6l3 3"/>'),
+    edit: svg2('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+    undo: svg2('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
+    check: svg2('<path d="m5 12 5 5 9-10"/>')
   };
   var LABEL = {
-    gender: { male: "Male", female: "Female" },
+    gender: { male: "Men\u2019s", female: "Women\u2019s" },
+    // shown as the wrestler's division
     origin: { WWE: "WWE", AEW: "AEW", NXT: "NXT", Other: "Other" },
     alignment: { face: "Face", heel: "Heel", tweener: "Tweener" },
     status: { active: "Active", injured: "Injured" },
@@ -9432,16 +9965,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const pairs = st.shows.map((s) => [s.id, s.name]);
     return none2 ? [["", none2], ...pairs] : pairs;
   }
-  function wrestlerOptions(st, selected, blank = "\u2014 Pick a wrestler \u2014") {
+  function wrestlerOptions(st, selected, blank = "\u2014 Pick a wrestler \u2014", skip = []) {
     const groups = [...st.shows.map((s) => [s.id, s.name]), [null, "Unassigned"]];
     return `<option value="">${esc3(blank)}</option>` + groups.map(([id, name]) => {
-      const list = st.wrestlers.filter((w) => w.showId === id).sort(byName);
+      const list = st.wrestlers.filter((w) => w.showId === id && !skip.includes(w.id)).sort(byName);
       if (!list.length) return "";
       return `<optgroup label="${esc3(name)}">${options(list.map((w) => [w.id, w.name]), selected)}</optgroup>`;
     }).join("");
   }
-  function teamOptions(st, selected, blank = "\u2014 Pick a tag team \u2014") {
-    const list = st.teams.filter((t) => t.active || t.id === selected).sort(byName);
+  function teamOptions(st, selected, blank = "\u2014 Pick a tag team \u2014", all = false) {
+    const list = st.teams.filter((t) => all || t.active || t.id === selected).sort(byName);
     return `<option value="">${esc3(blank)}</option>` + options(list.map((t) => [t.id, t.name]), selected);
   }
   function titleOptions(st, selected, blank = "No title on the line") {
@@ -9484,6 +10017,31 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (m.finish) bits.push(LABEL.finish[m.finish]);
     if (m.stip) bits.push(esc3(m.stip));
     return bits.join(" \xB7 ");
+  }
+  function fmtRec(rec = blankRecord()) {
+    return `${rec.w}\u2013${rec.l}\u2013${rec.d}`;
+  }
+  function recNote(rec = blankRecord()) {
+    const n = rec.w + rec.l + rec.d + rec.nc;
+    if (!n) return "No matches";
+    return `${n} match${n === 1 ? "" : "es"}${rec.nc ? ` \xB7 ${rec.nc} NC` : ""}`;
+  }
+  function weeksText(n) {
+    return n === 0 ? "under a week" : `${n} week${n === 1 ? "" : "s"}`;
+  }
+  function holderLink(st, holder) {
+    if (holder.type === "team") {
+      const t = teamById(st, holder.id);
+      return t ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenTeam('${t.id}')">${esc3(t.name)}</span>` : "(missing)";
+    }
+    const w = wrestlerById(st, holder.id);
+    return w ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenWrestler('${w.id}')">${esc3(w.name)}</span>` : "(missing)";
+  }
+  function wrestlerLink(st, w) {
+    return w ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenWrestler('${w.id}')">${esc3(w.name)}</span>` : "(deleted)";
+  }
+  function histLine(st, e, html) {
+    return `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${html}</span></div>`;
   }
 
   // js/universe/persist.js
@@ -9614,6 +10172,37 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     painter();
     paintSheet();
   }
+  var pages = [];
+  var tabScroll = 0;
+  var currentPage = () => pages[pages.length - 1] || null;
+  var previousPage = () => pages[pages.length - 2] || null;
+  var scroller = () => document.getElementById("uvScroll");
+  function pushPage(kind, id) {
+    const top = currentPage();
+    if (top && top.kind === kind && top.id === id) {
+      closeSheet();
+      return;
+    }
+    const sc = scroller();
+    if (top) top.scroll = sc ? sc.scrollTop : 0;
+    else tabScroll = sc ? sc.scrollTop : 0;
+    pages.push({ kind, id, title: "", scroll: 0 });
+    closeSheet();
+    painter();
+    if (sc) sc.scrollTop = 0;
+  }
+  function popPage() {
+    pages.pop();
+    painter();
+    const top = currentPage(), sc = scroller();
+    if (sc) sc.scrollTop = top ? top.scroll : tabScroll;
+  }
+  function dropPage() {
+    pages.pop();
+  }
+  function clearPages() {
+    pages = [];
+  }
   var sheet2 = null;
   function openSheet2(render) {
     sheet2 = render;
@@ -9669,6 +10258,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/universe/views.js
   var rosterShow = "all";
   var rosterQ = "";
+  var picking = null;
   function uvRosterShow() {
     return rosterShow === "all" ? "" : rosterShow;
   }
@@ -9680,14 +10270,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="uv-bar">
       <div class="uv-search">${ICON2.search}<input id="uvQ" type="search" placeholder="Search wrestlers"
         autocomplete="off" spellcheck="false" value="${esc3(rosterQ)}" oninput="uvRosterSearch(this.value)"></div>
-      <div class="uv-btn pri" onclick="uvAddWrestler()">${ICON2.plus}Add</div>
+      ${st.wrestlers.length ? `<div class="uv-btn${picking ? " on" : ""}" onclick="uvToggleSelect()">${picking ? "Cancel" : "Select"}</div>` : ""}
+      ${picking ? "" : `<div class="uv-btn pri" onclick="uvAddWrestler()">${ICON2.plus}Add</div>`}
     </div>
     <div class="uv-pills">
       ${pill("all", "All", st.wrestlers.length)}
       ${st.shows.map((s) => pill(s.id, s.name, counts[s.id], s.color)).join("")}
       ${pill("", "Unassigned", counts[""])}
     </div>
-    <div id="uvRosterList">${rosterList()}</div>`;
+    <div id="uvRosterList">${rosterList()}</div>
+    ${picking ? `<div class="uv-selbar"><span>${picking.size ? `${picking.size} selected` : "Tap wrestlers to select them"}</span>
+      <div class="uv-btn pri${picking.size ? "" : " off"}" onclick="uvMoveSelected()">${ICON2.move}Move to\u2026</div></div>` : ""}`;
   }
   function rosterList() {
     const st = uni();
@@ -9716,12 +10309,32 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (w.gender === "female") tags.push(tag("F"));
     if (w.alignment) tags.push(tag(LABEL.alignment[w.alignment], w.alignment));
     if (w.status === "injured") tags.push(tag("Injured", "inj"));
-    return `<div class="uv-row" onclick="uvOpenWrestler('${w.id}')">
+    const on = picking && picking.has(w.id);
+    return `<div class="uv-row${on ? " picked" : ""}" data-w="${w.id}" onclick="${picking ? `uvPick('${w.id}')` : `uvOpenWrestler('${w.id}')`}">
+    ${picking ? `<span class="uv-tick">${on ? ICON2.check : ""}</span>` : ""}
     ${avatar(st, w)}
     <div class="uv-main"><div class="nm">${esc3(w.name)}</div><div class="sub">${tags.join("")}</div></div>
     ${held.length ? `<span class="uv-belt" title="${esc3(held.map((h) => h.title.name).join(", "))}">${ICON2.belt}${held.length > 1 ? held.length : ""}</span>` : ""}
-    <span class="uv-chev">${ICON2.right}</span>
+    ${picking ? "" : `<span class="uv-chev">${ICON2.right}</span>`}
   </div>`;
+  }
+  function uvToggleSelect() {
+    picking = picking ? null : /* @__PURE__ */ new Set();
+    refresh();
+  }
+  function uvPick(id) {
+    if (!picking) return;
+    if (picking.has(id)) picking.delete(id);
+    else picking.add(id);
+    refresh();
+  }
+  function uvMoveSelected() {
+    if (picking && picking.size) window.uvMoveWrestlers([...picking]);
+  }
+  function uvEndSelect() {
+    if (!picking) return;
+    picking = null;
+    refresh();
   }
   function uvRosterFilter(k) {
     rosterShow = k;
@@ -9753,10 +10366,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const members = t.members.map((id) => (wrestlerById(st, id) || { name: "?" }).name).join(" & ");
     return `<div class="uv-row${t.active ? "" : " dim"}" onclick="uvOpenTeam('${t.id}')">
     <span class="uv-av sq">${ICON2.team}</span>
-    <div class="uv-main"><div class="nm">${esc3(t.name)}</div>
+    <div class="uv-main"><div class="nm">${esc3(t.name)}${held.length ? ` <span class="uv-belt in">${ICON2.belt}</span>` : ""}</div>
       <div class="sub">${shows.map((id) => showDot(st, id)).join("")}${esc3(members)}${shows.length > 1 ? tag("Split", "warn") : ""}</div></div>
-    ${held.length ? `<span class="uv-belt">${ICON2.belt}</span>` : ""}
-    <span class="uv-chev">${ICON2.right}</span>
+    <div class="uv-champ"><div class="h">${fmtRec(teamRecord(st, t.id))}</div><div class="s">W\u2013L\u2013D</div></div>
   </div>`;
   }
   function uvTitlesView() {
@@ -9786,7 +10398,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <span class="uv-av sq gold" style="--c:${showColor(st, t.showId)}">${ICON2.belt}</span>
     <div class="uv-main"><div class="nm">${esc3(t.name)}</div>
       <div class="sub">${esc3(LABEL.division[t.division])} \xB7 ${esc3(LABEL.kind[t.kind])}</div></div>
-    <div class="uv-champ">${r ? `<div class="h">${esc3(holderName(st, r.holder))}</div><div class="s">since ${stampLabel(st, r.start)}</div>` : `<div class="h vac">Vacant</div>`}</div>
+    <div class="uv-champ">${r ? `<div class="h">${esc3(holderName(st, r.holder))}</div><div class="s">${weeksText(reignWeeks(st, r))} \xB7 since ${stampLabel(st, r.start)}</div>` : `<div class="h vac">Vacant</div>`}</div>
   </div>`;
   }
   var viewSeason = null;
@@ -9857,6 +10469,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         return `<b>${esc3(r.name)}</b> formed`;
       case "team-disbanded":
         return `<b>${esc3(r.name)}</b> disbanded`;
+      case "team-reunited":
+        return `<b>${esc3(r.name)}</b> reunited`;
+      case "team-joined":
+        return `${w(r.wrestler)} joined <b>${esc3((teamById(st, r.team) || { name: "?" }).name)}</b>`;
+      case "team-left":
+        return `${w(r.wrestler)} left <b>${esc3((teamById(st, r.team) || { name: "?" }).name)}</b>`;
       case "title-won": {
         const t = titleById(st, r.titleId);
         const ev = r.eventId ? ` at ${esc3((st.events.find((x) => x.id === r.eventId) || {}).name || "")}` : "";
@@ -9883,14 +10501,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function uvFollowActiveSeason() {
     viewSeason = null;
   }
-  function uvHolderLink(st, holder) {
-    if (holder.type === "team") {
-      const t = teamById(st, holder.id);
-      return t ? `<span class="uv-link" onclick="uvOpenTeam('${t.id}')">${esc3(t.name)}</span>` : "(missing)";
-    }
-    const w = wrestlerById(st, holder.id);
-    return w ? `<span class="uv-link" onclick="uvOpenWrestler('${w.id}')">${esc3(w.name)}</span>` : "(missing)";
-  }
 
   // js/universe/sheets.js
   var sheets_exports = {};
@@ -9898,19 +10508,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     uvAddMode: () => uvAddMode,
     uvAddSave: () => uvAddSave,
     uvAddSet: () => uvAddSet,
-    uvAddTeamMember: () => uvAddTeamMember,
     uvAddWrestler: () => uvAddWrestler,
-    uvAssign: () => uvAssign,
     uvCreateEvent: () => uvCreateEvent,
     uvCreateTeam: () => uvCreateTeam,
     uvCreateTitle: () => uvCreateTitle,
-    uvCrown: () => uvCrown,
     uvDeleteEvent: () => uvDeleteEvent,
-    uvDeleteMatch: () => uvDeleteMatch,
-    uvDeleteTeam: () => uvDeleteTeam,
-    uvDeleteTitle: () => uvDeleteTitle,
-    uvDeleteWrestler: () => uvDeleteWrestler,
-    uvDropTeamMember: () => uvDropTeamMember,
+    uvDeleteResult: () => uvDeleteResult,
+    uvEditResult: () => uvEditResult,
     uvEventDraft: () => uvEventDraft,
     uvEventDraftName: () => uvEventDraftName,
     uvEventKind: () => uvEventKind,
@@ -9927,109 +10531,345 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     uvNewTitle: () => uvNewTitle,
     uvNextSeason: () => uvNextSeason,
     uvOpenEvent: () => uvOpenEvent,
-    uvOpenTeam: () => uvOpenTeam,
-    uvOpenTitle: () => uvOpenTitle,
-    uvOpenWrestler: () => uvOpenWrestler,
     uvRecordResult: () => uvRecordResult,
     uvRenameSeason: () => uvRenameSeason,
-    uvRetireTitle: () => uvRetireTitle,
     uvSaveResult: () => uvSaveResult,
     uvSaveSeasonName: () => uvSaveSeasonName,
     uvSetEvent: () => uvSetEvent,
-    uvSetTeamMember: () => uvSetTeamMember,
-    uvSetTeamName: () => uvSetTeamName,
-    uvSetTitle: () => uvSetTitle,
-    uvSetWrestler: () => uvSetWrestler,
     uvStepWeek: () => uvStepWeek,
-    uvTeamActive: () => uvTeamActive,
     uvTeamDraftAdd: () => uvTeamDraftAdd,
     uvTeamDraftDrop: () => uvTeamDraftDrop,
     uvTeamDraftMember: () => uvTeamDraftMember,
     uvTeamDraftName: () => uvTeamDraftName,
-    uvTitleDraft: () => uvTitleDraft,
-    uvUndoTitle: () => uvUndoTitle,
-    uvVacate: () => uvVacate
+    uvTitleDraft: () => uvTitleDraft
   });
-  var fine = (text) => `<div class="fine">${esc3(text)}</div>`;
-  var none = (text) => `<div class="uv-none">${esc3(text)}</div>`;
-  var eventName2 = (st, id) => (eventById(st, id) || { name: "(deleted event)" }).name;
-  var alignPairs = () => [["", "Not set"], ...labelPairs(LABEL.alignment)];
+
+  // js/universe/pages.js
+  var pages_exports = {};
+  __export(pages_exports, {
+    uvOpenTeam: () => uvOpenTeam,
+    uvOpenTitle: () => uvOpenTitle,
+    uvOpenWrestler: () => uvOpenWrestler,
+    uvPageView: () => uvPageView,
+    uvShowAll: () => uvShowAll
+  });
   function uvOpenWrestler(id) {
-    openSheet2(() => {
-      const st = uni();
-      const w = wrestlerById(st, id);
-      if (!w) return null;
-      const set = (k) => `uvSetWrestler('${id}','${k}',this.value)`;
-      const held = titlesOfWrestler(st, id);
-      const teams = teamsOf(st, id);
-      const matches = matchesOf(st, id);
-      const moves = movesOf(st, id).reverse();
-      const refs = wrestlerRefs(st, id);
-      const facts = [
-        w.origin,
-        LABEL.gender[w.gender],
-        w.alignment && LABEL.alignment[w.alignment],
-        w.status === "injured" && "Injured"
-      ].filter(Boolean).join(" \xB7 ");
-      return {
-        title: esc3(w.name),
-        body: `
-        <div class="uv-hero">${avatar(st, w, "lg")}<div>
-          <div class="k" style="color:${showColor(st, w.showId)}">${esc3(showName(st, w.showId))}</div>
-          <div class="s">${esc3(facts)}</div></div></div>
-        <div class="uv-grid">
-          ${field("Show", select(`uvAssign('${id}',this.value)`, options(showPairs(st, "Unassigned"), w.showId || "")))}
-          ${field("Status", select(set("status"), options(labelPairs(LABEL.status), w.status)))}
-          ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(w.name)}" onchange="${set("name")}">`, "wide")}
-          ${field("Gender", select(set("gender"), options(labelPairs(LABEL.gender), w.gender)))}
-          ${field("Comes from", select(set("origin"), options(labelPairs(LABEL.origin), w.origin)))}
-          ${field("Alignment", select(set("alignment"), options(alignPairs(), w.alignment || "")))}
-          ${field("Notes", `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set("notes")}">${esc3(w.notes)}</textarea>`, "wide")}
-        </div>
-
-        <h4>Championships</h4>
-        ${held.length ? held.map((h) => `<div class="uv-li" onclick="uvOpenTitle('${h.title.id}')">${ICON2.belt}
-          <span>${esc3(h.title.name)}${h.team ? ` <span class="uv-muted">with ${esc3(h.team.name)}</span>` : ""}</span></div>`).join("") : none("None right now.")}
-
-        <h4>Tag teams</h4>
-        ${teams.length ? teams.map((t) => `<div class="uv-li" onclick="uvOpenTeam('${t.id}')">${ICON2.team}
-          <span>${esc3(t.name)}${t.active ? "" : ' <span class="uv-muted">(disbanded)</span>'}</span></div>`).join("") : none("Not on a team.")}
-
-        <h4>Matches${matches.length ? ` \xB7 ${matches.length}` : ""}</h4>
-        ${matches.length ? matches.slice(0, 30).map((x) => {
-          const r = resultFor(x.match, x.side);
-          return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res ${r}">${r}</span>
-            <span>${matchLine(st, x.match)}<span class="uv-muted d">${esc3(x.event.name)} \xB7 ${stampLabel(st, x.event.at)}</span></span></div>`;
-        }).join("") : none("No results recorded yet.")}
-
-        <h4>Roster history</h4>
-        ${moves.length ? moves.map((m) => `<div class="uv-li plain"><span class="w">${stampLabel(st, m.at)}</span>
-          <span>${m.from ? `${esc3(showName(st, m.from))} \u2192 ` : "Joined "}${esc3(showName(st, m.to))}${m.note ? ` <span class="uv-muted">\u2014 ${esc3(m.note)}</span>` : ""}</span></div>`).join("") : none("Never assigned to a show.")}
-
-        ${refs.length ? fine(`${w.name} is part of the history (${refs.join(", ")}), so they can't be deleted. Leave them unassigned instead.`) : `<div class="uv-btn bad full" onclick="uvDeleteWrestler('${id}')">Delete wrestler</div>`}`
-      };
-    });
+    pushPage("wrestler", id);
   }
-  function uvSetWrestler(id, key, value) {
-    commit((st) => updateWrestler(st, id, { [key]: value }));
+  function uvOpenTeam(id) {
+    pushPage("team", id);
   }
-  function uvAssign(id, showId) {
-    commit(
-      (st) => assignWrestler(st, id, showId),
-      (mv) => mv && `${wrestlerById(uni(), id).name} \u2192 ${showName(uni(), mv.to)}`
-    );
+  function uvOpenTitle(id) {
+    pushPage("title", id);
   }
-  function uvDeleteWrestler(id) {
-    const w = wrestlerById(uni(), id);
-    confirmThen(
-      `Delete ${w.name}?`,
-      "They have no history yet, so nothing else changes. Use this for someone added by mistake.",
-      "Delete",
-      () => {
-        if (commit((st) => deleteWrestler(st, id), `${w.name} deleted`).ok) closeSheet();
+  function uvPageView(kind, id) {
+    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : null;
+  }
+  var expanded = /* @__PURE__ */ new Set();
+  function uvShowAll(key) {
+    expanded.add(key);
+    refresh();
+  }
+  function capped(key, items, n, row) {
+    const all = expanded.has(key);
+    const shown = all ? items : items.slice(0, n);
+    return shown.map(row).join("") + (!all && items.length > n ? `<div class="uv-more" onclick="uvShowAll('${key}')">Show all ${items.length}</div>` : "");
+  }
+  var recTile = (label, rec, note) => `<div class="uv-rec"><div class="k">${esc3(label)}</div><div class="v">${fmtRec(rec)}</div><div class="s">${esc3(note || recNote(rec))}</div></div>`;
+  var numTile = (label, n, note) => `<div class="uv-rec"><div class="k">${esc3(label)}</div><div class="v">${n}</div><div class="s">${esc3(note)}</div></div>`;
+  var fixRow = (onclick, icon, head, sub, cls = "") => `<div class="uv-fixrow ${cls}" onclick="${onclick}">${icon}<div><b>${head}</b><span>${sub}</span></div></div>`;
+  var span = (st, a, b) => `${stampLabel(st, a)} \u2192 ${b ? stampLabel(st, b) : "now"}`;
+  var eventName2 = (st, id) => (eventById(st, id) || { name: "(deleted event)" }).name;
+  function reignRow(st, r, lead) {
+    const weeks = reignWeeks(st, r), def = defencesOf(st, r);
+    const where = r.eventId ? ` \xB7 ${esc3(eventName2(st, r.eventId))}` : "";
+    return `<div class="uv-row" onclick="uvOpenTitle('${r.titleId}')">
+    <span class="uv-av sq gold" style="--c:${showColor(st, (titleById(st, r.titleId) || {}).showId)}">${ICON2.belt}</span>
+    <div class="uv-main"><div class="nm">${lead}</div>
+      <div class="sub">${span(st, r.start, r.end)}${r.vacated ? " (vacated)" : ""}${where}</div></div>
+    <div class="uv-champ"><div class="h">${weeksText(weeks)}</div><div class="s">${def} defence${def === 1 ? "" : "s"}</div></div>
+  </div>`;
+  }
+  function resultRow(st, x, label) {
+    const r = resultFor(x.match, x.side);
+    return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res ${r}">${r}</span>
+    <span>${matchLine(st, x.match)}<span class="uv-muted d">${esc3(x.event.name)} \xB7 ${stampLabel(st, x.event.at)}${label ? ` \xB7 ${esc3(label)}` : ""}</span></span></div>`;
+  }
+  function careerText(st, e) {
+    const show = (id) => esc3(showName(st, id));
+    const team = (t) => `<span class="uv-link" onclick="uvOpenTeam('${t.id}')">${esc3(t.name)}</span>`;
+    const title = (e2) => `the <span class="uv-link" onclick="uvOpenTitle('${e2.title.id}')">${esc3(e2.title.name)}</span>${e2.team ? ` with ${esc3(e2.team.name)}` : ""}`;
+    switch (e.type) {
+      case "move": {
+        const m = e.move, note = m.note ? ` <span class="uv-muted">\u2014 ${esc3(m.note)}</span>` : "";
+        if (!m.from) return `Joined ${show(m.to)}${note}`;
+        if (!m.to) return `Left ${show(m.from)}${note}`;
+        return `Moved from ${show(m.from)} to ${show(m.to)}${note}`;
       }
-    );
+      case "team-formed":
+        return `Formed ${team(e.team)}`;
+      case "team-joined":
+        return `Joined ${team(e.team)}`;
+      case "team-left":
+        return `Left ${team(e.team)}`;
+      case "team-disbanded":
+        return `${team(e.team)} disbanded`;
+      case "team-reunited":
+        return `${team(e.team)} reunited`;
+      case "title-won":
+        return `<b>Won ${title(e)}</b>${e.reign.eventId ? ` at ${esc3(eventName2(st, e.reign.eventId))}` : ""}`;
+      case "title-lost":
+        return `Lost ${title(e)}`;
+      case "title-vacated":
+        return `${title(e).replace(/^the/, "The")} was vacated`;
+      default:
+        return "";
+    }
   }
+  function wrestlerPage(id) {
+    const st = uni();
+    const w = wrestlerById(st, id);
+    if (!w) return null;
+    const rec = wrestlerRecord(st, id);
+    const champs = championshipsOf(st, id);
+    const holding = (c) => !c.reign.end && (!c.team || c.team.members.includes(id));
+    const current = champs.filter(holding), former = champs.filter((c) => !holding(c));
+    const mates = teammatesOf(st, id).sort((a, b) => b.current - a.current || byName(a.team, b.team));
+    const partners = tagPartnersOf(st, id);
+    const career = careerOf(st, id);
+    const results = matchesOf(st, id);
+    const moves = movesOf(st, id);
+    const lastMove = moves[moves.length - 1];
+    const refs = wrestlerRefs(st, id);
+    const tags = [
+      tag(w.origin),
+      w.gender === "female" ? tag("Women\u2019s division") : tag("Men\u2019s division"),
+      w.alignment ? tag(LABEL.alignment[w.alignment], w.alignment) : "",
+      w.status === "injured" ? tag("Injured", "inj") : ""
+    ].join("");
+    const champRow = (c) => reignRow(st, c.reign, `${esc3(c.title.name)}${c.team ? ` <span class="uv-muted">with ${esc3(c.team.name)}</span>` : ""}`);
+    const mateRow = (m) => {
+      const spell = m.spells[m.spells.length - 1];
+      const when = m.current ? m.team.active ? `since ${stampLabel(st, m.spells[0].start)}` : "team disbanded" : `${span(st, spell.start, spell.end)}`;
+      const together = rec.teams[m.team.id];
+      return `<div class="uv-row${m.current && m.team.active ? "" : " dim"}" onclick="uvOpenTeam('${m.team.id}')">
+      <span class="uv-av sq">${ICON2.team}</span>
+      <div class="uv-main"><div class="nm">${esc3(m.team.name)}${m.current ? "" : " " + tag("Former")}</div>
+        <div class="sub">${m.partners.length ? `with ${esc3(m.partners.map((p) => p.name).join(" & "))} \xB7 ` : ""}${when}</div></div>
+      <div class="uv-champ"><div class="h">${fmtRec(together)}</div><div class="s">as the team</div></div>
+    </div>`;
+    };
+    const typeOf = (x) => {
+      const s = x.match.sides[x.side];
+      if (s.wrestlers.length === 1) return "Singles";
+      return s.team ? `with ${(teamById(st, s.team) || { name: "team" }).name}` : "Tag";
+    };
+    const moveDesc = (mv2) => `${mv2.from ? showName(st, mv2.from) : "Unassigned"} \u2192 ${showName(st, mv2.to)}`;
+    return {
+      title: w.name,
+      body: `
+      <div class="uv-prof" style="--c:${showColor(st, w.showId)}">
+        <div class="uv-prof-top">${avatar(st, w, "xl")}
+          <div class="uv-prof-id"><div class="nm">${esc3(w.name)}</div>
+            <div class="show">${w.showId ? `<span class="uv-dot" style="--c:${showColor(st, w.showId)}"></span>${esc3(showName(st, w.showId))}` : "Unassigned"}</div>
+            <div class="tags">${tags}</div></div></div>
+        <div class="uv-prof-acts">
+          <div class="uv-btn pri" onclick="uvMoveWrestlers(['${id}'])">${ICON2.move}Move show</div>
+          <div class="uv-btn" onclick="uvEditWrestler('${id}')">${ICON2.edit}Edit</div>
+        </div>
+      </div>
+      <div class="uv-recs">
+        ${recTile("Singles", rec.singles)}${recTile("Tag", rec.tag)}
+        ${numTile("Title reigns", champs.length, current.length ? `${current.length} held now` : champs.length ? "none held now" : "never a champion")}
+      </div>
+      ${w.notes ? `<div class="uv-note">${esc3(w.notes)}</div>` : ""}
+
+      ${section("Championships", champs.length || null)}
+      ${champs.length ? current.map(champRow).join("") + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : "") : '<div class="uv-none">Never held a title.</div>'}
+
+      ${section("Tag teams & partners", mates.length || null)}
+      ${mates.length ? mates.map(mateRow).join("") : '<div class="uv-none">Never on a registered tag team.</div>'}
+      ${partners.length ? `<div class="uv-none">Also teamed with ${partners.map((p) => `${wrestlerLink(st, p.wrestler)} (${p.count})`).join(", ")}</div>` : ""}
+
+      ${section("Career history", career.length || null)}
+      <div class="uv-tls">${career.length ? capped(`h-${id}`, career, 12, (e) => histLine(st, e, careerText(st, e))) : '<div class="uv-none">Nothing yet.</div>'}</div>
+
+      ${section("Results", results.length || null)}
+      ${results.length ? capped(`r-${id}`, results, 10, (x) => resultRow(st, x, typeOf(x))) : '<div class="uv-none">No results recorded yet.</div>'}
+
+      <div class="uv-fix">
+        <div class="h">Fix a mistake</div>
+        ${lastMove ? fixRow(
+        `uvUndoMove('${id}')`,
+        ICON2.undo,
+        "Undo last move",
+        `${esc3(moveDesc(lastMove))} \xB7 ${stampLabel(st, lastMove.at)}`
+      ) : ""}
+        ${fixRow(`uvEditWrestler('${id}')`, ICON2.edit, "Edit details", "Name, division, promotion, alignment, status, notes")}
+        ${fixRow(`uvMergeInto('${id}')`, ICON2.team, `Merge a duplicate into ${esc3(w.name)}`, "For the same wrestler entered twice")}
+        ${refs.length ? `<div class="fine">${esc3(w.name)} is part of the history (${esc3(refs.join(", "))}), so they can\u2019t be deleted \u2014 leave them unassigned instead.</div>` : fixRow(`uvDeleteWrestler('${id}')`, ICON2.x, `Delete ${esc3(w.name)}`, "No history yet \u2014 for someone added by mistake", "bad")}
+        <div class="fine">A wrong result is fixed on its event: open it from Results above.</div>
+      </div>`
+    };
+  }
+  function teamHistText(st, t, e) {
+    const who = e.wrestler ? wrestlerLink(st, e.wrestler) : "";
+    const title = e.title ? `the <span class="uv-link" onclick="uvOpenTitle('${e.title.id}')">${esc3(e.title.name)}</span>` : "";
+    switch (e.type) {
+      case "team-formed": {
+        const founders = membershipsOf(st, t.id).filter((m) => m.start.seq === teamFormed(t).seq).map((m) => wrestlerLink(st, wrestlerById(st, m.wrestler)));
+        return `Formed \u2014 ${founders.join(" & ")}`;
+      }
+      case "team-disbanded":
+        return "Disbanded";
+      case "team-reunited":
+        return "Reunited";
+      case "member-joined":
+        return `${who} joined`;
+      case "member-left":
+        return `${who} left`;
+      case "title-won":
+        return `<b>Won ${title}</b>${e.reign.eventId ? ` at ${esc3(eventName2(st, e.reign.eventId))}` : ""}`;
+      case "title-lost":
+        return `Lost ${title}`;
+      case "title-vacated":
+        return `${title.replace(/^the/, "The")} was vacated`;
+      default:
+        return "";
+    }
+  }
+  function teamChangeText(st, c) {
+    if (c.kind === "disbanded") return "Disbanding";
+    if (c.kind === "reunited") return "Reuniting";
+    const w = wrestlerById(st, c.m.wrestler);
+    return `${w ? w.name : "A member"} ${c.kind === "joined" ? "joining" : "leaving"}`;
+  }
+  function teamPage(id) {
+    const st = uni();
+    const t = teamById(st, id);
+    if (!t) return null;
+    const rec = teamRecord(st, id);
+    const shows = teamShows(st, t);
+    const spells = membershipsOf(st, id);
+    const former = spells.filter((m) => m.end).sort((a, b) => b.end.seq - a.end.seq);
+    const reigns = st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === id).sort((a, b) => compareStamps(st, b.start, a.start));
+    const held = reigns.filter((r) => !r.end).length;
+    const hist = teamHistoryOf(st, id);
+    const results = teamMatches(st, id);
+    const last = lastTeamChange(st, id);
+    const refs = teamRefs(st, id);
+    const lastLog = t.log[t.log.length - 1];
+    const memberRow = (m) => {
+      const w = wrestlerById(st, m.wrestler);
+      return `<div class="uv-row${m.end ? " dim" : ""}" onclick="uvOpenWrestler('${w.id}')">${avatar(st, w)}
+      <div class="uv-main"><div class="nm">${esc3(w.name)}</div>
+        <div class="sub">${esc3(showName(st, w.showId))} \xB7 ${m.end ? span(st, m.start, m.end) : `since ${stampLabel(st, m.start)}`}</div></div>
+      <span class="uv-chev">${ICON2.right}</span></div>`;
+    };
+    return {
+      title: t.name,
+      body: `
+      <div class="uv-prof" style="--c:${shows.length === 1 ? showColor(st, shows[0]) : "#5E6979"}">
+        <div class="uv-prof-top"><span class="uv-av xl sq">${ICON2.team}</span>
+          <div class="uv-prof-id"><div class="nm">${esc3(t.name)}</div>
+            <div class="show">${t.active ? shows.map((s) => `<span class="uv-dot" style="--c:${showColor(st, s)}"></span>${esc3(showName(st, s))}`).join(" &nbsp;") : `Disbanded ${stampLabel(st, lastLog.at)}`}</div>
+            <div class="tags">${t.active ? tag("Active") : tag("Disbanded", "warn")}${shows.length > 1 && t.active ? tag("Split across shows", "warn") : ""}</div></div></div>
+        <div class="uv-prof-acts">
+          <div class="uv-btn pri" onclick="uvLineup('${id}')">${ICON2.team}Line-up</div>
+          <div class="uv-btn" onclick="uvRenameTeam('${id}')">${ICON2.edit}Rename</div>
+          <div class="uv-btn" onclick="uvTeamActive('${id}',${!t.active})">${t.active ? "Disband" : "Reunite"}</div>
+        </div>
+      </div>
+      <div class="uv-recs">
+        ${recTile("Team record", rec)}
+        ${numTile("Title reigns", reigns.length, held ? `${held} held now` : reigns.length ? "none held now" : "never champions")}
+        ${numTile("Members", t.members.length, former.length ? `${former.length} former` : "original line-up")}
+      </div>
+      <div class="uv-note">Counts only matches wrestled as ${esc3(t.name)}. Members\u2019 singles matches, and tag matches with other partners, go on their own records \u2014 not the team\u2019s.</div>
+
+      ${section("Members", t.members.length)}
+      ${t.members.map((wid) => memberRow(spells.find((m) => m.wrestler === wid && !m.end))).join("")}
+      ${former.length ? `<div class="uv-sub">Former</div>${former.map(memberRow).join("")}` : ""}
+
+      ${section("Championships", reigns.length || null)}
+      ${reigns.length ? reigns.map((r) => reignRow(st, r, esc3(titleById(st, r.titleId).name))).join("") : '<div class="uv-none">Never champions.</div>'}
+
+      ${section("Team history", hist.length)}
+      <div class="uv-tls">${capped(`th-${id}`, hist, 12, (e) => histLine(st, e, teamHistText(st, t, e)))}</div>
+
+      ${section("Results as a team", results.length || null)}
+      ${results.length ? capped(`tr-${id}`, results, 10, (x) => resultRow(st, x, "")) : '<div class="uv-none">No matches as a team yet.</div>'}
+
+      <div class="uv-fix">
+        <div class="h">Fix a mistake</div>
+        ${last ? fixRow(`uvUndoTeam('${id}')`, ICON2.undo, "Undo last change", `${esc3(teamChangeText(st, last))} \xB7 ${stampLabel(st, last.at)}`) : ""}
+        ${fixRow(`uvRenameTeam('${id}')`, ICON2.edit, "Rename the team", "Past results show the new name")}
+        ${refs.length ? `<div class="fine">${esc3(t.name)} are part of the history (${esc3(refs.join(", "))}), so they can\u2019t be deleted \u2014 disband them instead.</div>` : fixRow(`uvDeleteTeam('${id}')`, ICON2.x, `Delete ${esc3(t.name)}`, "No matches or titles yet \u2014 for a team added by mistake", "bad")}
+      </div>`
+    };
+  }
+  function titlePage(id) {
+    const st = uni();
+    const t = titleById(st, id);
+    if (!t) return null;
+    const cur = currentReign(st, id);
+    const reigns = titleReigns(st, id);
+    const refs = titleRefs(st, id);
+    const last = reigns[reigns.length - 1];
+    const longest = reigns.reduce((best, r) => !best || reignWeeks(st, r) > reignWeeks(st, best) ? r : best, null);
+    const holders = new Set(reigns.map((r) => `${r.holder.type}:${r.holder.id}`)).size;
+    const kindWord = t.kind === "tag" ? "Champions" : "Champion";
+    const historyRow = (r, n) => {
+      const weeks = reignWeeks(st, r), def = defencesOf(st, r);
+      const how = r.matchId ? `won at ${esc3(eventName2(st, r.eventId))}` : r.eventId ? esc3(eventName2(st, r.eventId)) : "awarded";
+      return `<div class="uv-row" onclick="uvEditReign('${r.id}')">
+      <span class="uv-num">${n}</span>
+      <div class="uv-main"><div class="nm">${esc3(holderName(st, r.holder))}</div>
+        <div class="sub">${span(st, r.start, r.end)}${r.vacated ? " (vacated)" : ""} \xB7 ${how}${r.note ? ` \xB7 ${esc3(r.note)}` : ""}</div></div>
+      <div class="uv-champ"><div class="h">${weeksText(weeks)}</div><div class="s">${def} defence${def === 1 ? "" : "s"}</div></div>
+    </div>`;
+    };
+    const undoText = !last ? "" : last.end ? `The vacancy \xB7 ${stampLabel(st, last.end)}` : `${esc3(holderName(st, last.holder))} winning it \xB7 ${stampLabel(st, last.start)}`;
+    return {
+      title: t.name,
+      body: `
+      <div class="uv-champ-card" style="--c:${showColor(st, t.showId)}">
+        <div class="k">${!t.active ? "Retired" : cur ? kindWord : "Vacant"}</div>
+        <div class="h">${cur ? holderLink(st, cur.holder) : "\u2014"}</div>
+        ${cur ? `<div class="s">Since ${stampLabel(st, cur.start)} \xB7 ${weeksText(reignWeeks(st, cur))} \xB7 ${defencesOf(st, cur)} defence${defencesOf(st, cur) === 1 ? "" : "s"}</div>` : ""}
+        <div class="s">${esc3(showName(st, t.showId, "No brand"))} \xB7 ${esc3(LABEL.division[t.division])} \xB7 ${esc3(LABEL.kind[t.kind])}</div>
+      </div>
+      <div class="uv-prof-acts">
+        ${t.active ? `<div class="uv-btn pri" onclick="uvCrownSheet('${id}')">${ICON2.belt}Crown\u2026</div>` : ""}
+        ${cur ? `<div class="uv-btn" onclick="uvVacate('${id}')">Vacate</div>` : ""}
+        <div class="uv-btn" onclick="uvEditTitle('${id}')">${ICON2.edit}Edit</div>
+      </div>
+      <div class="uv-recs">
+        ${numTile("Reigns", reigns.length, `${holders} different ${t.kind === "tag" ? "teams" : "champions"}`)}
+        ${numTile("Longest", longest ? reignWeeks(st, longest) : 0, longest ? holderName(st, longest.holder) : "\u2014")}
+        ${numTile("Title matches", countTitleMatches(st, id), "recorded")}
+      </div>
+      <p class="uv-p">A title that changes hands on a show is best recorded on that event\u2019s result, so the reign is dated to it and the defences count.</p>
+
+      ${section("Title history", reigns.length || null)}
+      ${reigns.length ? reigns.map((r, i) => [r, i + 1]).reverse().map(([r, n]) => historyRow(r, n)).join("") : '<div class="uv-none">Never held.</div>'}
+
+      <div class="uv-fix">
+        <div class="h">Fix a mistake</div>
+        ${last ? fixRow(`uvUndoTitle('${id}')`, ICON2.undo, "Undo last change", undoText) : ""}
+        ${reigns.length ? `<div class="fine">To correct an older reign \u2014 who held it, or the week it began \u2014 tap it in the history above. Nothing around it changes.</div>` : ""}
+        ${fixRow(`uvEditTitle('${id}')`, ICON2.edit, "Edit details", "Name, show, division; retire or bring back")}
+        ${refs.length ? `<div class="fine">The ${esc3(t.name)} has history (${esc3(refs.join(", "))}), so it can\u2019t be deleted \u2014 retire it instead.</div>` : fixRow(`uvDeleteTitle('${id}')`, ICON2.x, `Delete the ${esc3(t.name)}`, "No history yet \u2014 for a title added by mistake", "bad")}
+      </div>`
+    };
+  }
+  function countTitleMatches(st, titleId) {
+    return st.events.reduce((n, e) => n + e.matches.filter((m) => m.titleId === titleId).length, 0);
+  }
+
+  // js/universe/sheets.js
+  var none = (text) => `<div class="uv-none">${esc3(text)}</div>`;
+  var alignPairs = () => [["", "Not set"], ...labelPairs(LABEL.alignment)];
   var add = null;
   function uvAddWrestler() {
     add = { mode: "one", name: "", list: "", showId: uvRosterShow(), origin: "WWE", gender: "male", alignment: "", result: "" };
@@ -10052,7 +10892,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="uv-grid">
         ${field("Show", select(`uvAddSet('showId',this.value)`, options(showPairs(st, "Unassigned"), d.showId)))}
         ${field("Comes from", select(`uvAddSet('origin',this.value)`, options(labelPairs(LABEL.origin), d.origin)))}
-        ${field("Gender", select(`uvAddSet('gender',this.value)`, options(labelPairs(LABEL.gender), d.gender)))}
+        ${field("Division", select(`uvAddSet('gender',this.value)`, options(labelPairs(LABEL.gender), d.gender)))}
         ${field("Alignment", select(`uvAddSet('alignment',this.value)`, options(alignPairs(), d.alignment)))}
       </div>
       ${d.result ? `<div class="uv-note warn">${esc3(d.result)}</div>` : ""}
@@ -10142,74 +10982,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const r = commit((st) => addTeam(st, { name: d.name, members: d.members }), (t) => `${t.name} formed`);
     if (r.ok) uvOpenTeam(r.value.id);
   }
-  function uvOpenTeam(id) {
-    openSheet2(() => {
-      const st = uni();
-      const t = teamById(st, id);
-      if (!t) return null;
-      const shows = teamShows(st, t);
-      const reigns = st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === id).sort((a, b) => b.start.seq - a.start.seq);
-      const refs = teamRefs(st, id);
-      const memberPick = (m, i) => `<div class="uv-pick">${select(`uvSetTeamMember('${id}',${i},this.value)`, wrestlerOptions(st, m))}
-      ${t.members.length > 2 ? `<div class="uv-ic sm" onclick="uvDropTeamMember('${id}',${i})">${ICON2.x}</div>` : ""}</div>`;
-      return {
-        title: esc3(t.name),
-        body: `
-        <div class="uv-hero"><span class="uv-av lg sq">${ICON2.team}</span><div>
-          <div class="k">${t.active ? "Active" : "Disbanded"}</div>
-          <div class="s">Formed ${stampLabel(st, t.formed)}${t.disbanded ? ` \xB7 disbanded ${stampLabel(st, t.disbanded)}` : ""}</div></div></div>
-        ${shows.length > 1 ? `<div class="uv-note warn">The members are on different shows: ${shows.map((s) => esc3(showName(st, s))).join(", ")}.</div>` : ""}
-        ${field("Team name", `<input class="uv-in" maxlength="60" value="${esc3(t.name)}" onchange="uvSetTeamName('${id}',this.value)">`, "wide")}
-
-        <h4>Members</h4>
-        ${t.members.map(memberPick).join("")}
-        <div class="uv-pick">${select(`uvAddTeamMember('${id}',this.value)`, wrestlerOptions(st, "", "+ Add a member"))}</div>
-
-        <h4>Title reigns</h4>
-        ${reigns.length ? reigns.map((r) => reignLi(st, r, "title")).join("") : none("No title reigns yet.")}
-
-        <div class="uv-btn full" onclick="uvTeamActive('${id}',${!t.active})">${t.active ? "Disband team" : "Reunite team"}</div>
-        ${refs.length ? fine(`${t.name} are part of the history (${refs.join(", ")}), so they can't be deleted. Disband them instead.`) : `<div class="uv-btn bad full" onclick="uvDeleteTeam('${id}')">Delete team</div>`}`
-      };
-    });
-  }
-  var withMembers = (id, fn) => (st) => {
-    const members = [...teamById(st, id).members];
-    fn(members);
-    return updateTeam(st, id, { members });
-  };
-  function uvSetTeamName(id, v) {
-    commit((st) => updateTeam(st, id, { name: v }));
-  }
-  function uvSetTeamMember(id, i, v) {
-    commit(withMembers(id, (m) => {
-      m[i] = v;
-    }));
-  }
-  function uvDropTeamMember(id, i) {
-    commit(withMembers(id, (m) => {
-      m.splice(i, 1);
-    }));
-  }
-  function uvAddTeamMember(id, v) {
-    if (v) commit(withMembers(id, (m) => {
-      m.push(v);
-    }));
-  }
-  function uvTeamActive(id, active) {
-    commit((st) => setTeamActive(st, id, active), (t) => `${t.name} ${active ? "reunited" : "disbanded"}`);
-  }
-  function uvDeleteTeam(id) {
-    const t = teamById(uni(), id);
-    confirmThen(
-      `Delete ${t.name}?`,
-      "They have no history yet. Use this for a team added by mistake.",
-      "Delete",
-      () => {
-        if (commit((st) => deleteTeam(st, id), `${t.name} deleted`).ok) closeSheet();
-      }
-    );
-  }
   var titleDraft = null;
   function uvNewTitle() {
     titleDraft = { name: "", showId: "", kind: "singles", division: "open" };
@@ -10239,105 +11011,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function uvCreateTitle() {
     const r = commit((st) => addTitle(st, titleDraft), (t) => `${t.name} created`);
     if (r.ok) uvOpenTitle(r.value.id);
-  }
-  function reignLi(st, r, show) {
-    const who = show === "title" ? `<span class="uv-link" onclick="uvOpenTitle('${r.titleId}')">${esc3((titleById(st, r.titleId) || {}).name || "?")}</span>` : uvHolderLink(st, r.holder);
-    const span = `${stampLabel(st, r.start)} \u2192 ${r.end ? stampLabel(st, r.end) + (r.vacated ? " (vacated)" : "") : "now"}`;
-    const where = r.eventId ? ` \xB7 ${esc3(eventName2(st, r.eventId))}` : "";
-    return `<div class="uv-li plain">${ICON2.belt}<span>${who}<span class="uv-muted d">${span}${where}</span></span></div>`;
-  }
-  function uvOpenTitle(id) {
-    openSheet2(() => {
-      const st = uni();
-      const t = titleById(st, id);
-      if (!t) return null;
-      const cur = currentReign(st, id);
-      const reigns = titleReigns(st, id).reverse();
-      const refs = titleRefs(st, id);
-      const set = (k) => `uvSetTitle('${id}','${k}',this.value)`;
-      const pool = t.kind === "tag" ? teamOptions(st, "", "\u2014 Pick the new champions \u2014") : wrestlerOptions(st, "", "\u2014 Pick the new champion \u2014");
-      return {
-        title: esc3(t.name),
-        body: `
-        <div class="uv-champ-card" style="--c:${showColor(st, t.showId)}">
-          <div class="k">${!t.active ? "Retired" : cur ? t.kind === "tag" ? "Champions" : "Champion" : "Vacant"}</div>
-          <div class="h">${cur ? uvHolderLink(st, cur.holder) : "\u2014"}</div>
-          ${cur ? `<div class="s">Since ${stampLabel(st, cur.start)}${cur.eventId ? ` \xB7 ${esc3(eventName2(st, cur.eventId))}` : ""}</div>` : ""}
-          <div class="s">${esc3(showName(st, t.showId, "No brand"))} \xB7 ${esc3(LABEL.division[t.division])} \xB7 ${esc3(LABEL.kind[t.kind])}</div>
-        </div>
-
-        ${t.active ? `
-          <h4>Crown a new champion</h4>
-          <div class="uv-pick"><select id="uvCrownPick" class="uv-in">${pool}</select>
-            <div class="uv-btn pri" onclick="uvCrown('${id}')">Crown</div></div>
-          <p class="uv-p">When a title changes hands on a show, record the result on that event instead, so the reign is dated to it.</p>` : ""}
-        ${cur || reigns.length ? `<div class="uv-row2">
-          ${cur ? `<div class="uv-btn" onclick="uvVacate('${id}')">Vacate</div>` : ""}
-          ${reigns.length ? `<div class="uv-btn" onclick="uvUndoTitle('${id}')">Undo last change</div>` : ""}</div>` : ""}
-
-        <h4>Title history${reigns.length ? ` \xB7 ${reigns.length} reign${reigns.length === 1 ? "" : "s"}` : ""}</h4>
-        ${reigns.length ? reigns.map((r) => reignLi(st, r, "holder")).join("") : none("Never held.")}
-
-        <h4>Details</h4>
-        ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(t.name)}" onchange="${set("name")}">`, "wide")}
-        <div class="uv-grid" style="margin-top:10px">
-          ${field("Show", select(set("showId"), options(showPairs(st, "No brand"), t.showId || "")), "wide")}
-          ${field("Division", select(set("division"), options(labelPairs(LABEL.division), t.division)))}
-          ${field("Type", select(set("kind"), options(labelPairs(LABEL.kind), t.kind), reigns.length ? " disabled" : ""))}
-        </div>
-        <div class="uv-btn full" onclick="uvRetireTitle('${id}',${!t.active})">${t.active ? "Retire title" : "Bring title back"}</div>
-        ${refs.length ? fine(`The ${t.name} has history (${refs.join(", ")}), so it can't be deleted. Retire it instead.`) : `<div class="uv-btn bad full" onclick="uvDeleteTitle('${id}')">Delete title</div>`}`
-      };
-    });
-  }
-  function uvSetTitle(id, key, value) {
-    commit((st) => updateTitle(st, id, { [key]: value }));
-  }
-  function uvRetireTitle(id, active) {
-    commit((st) => updateTitle(st, id, { active }), (t) => `${t.name} ${active ? "is back" : "retired"}`);
-  }
-  function uvCrown(id) {
-    const pick = document.getElementById("uvCrownPick");
-    const t = titleById(uni(), id);
-    if (!pick || !pick.value) {
-      toast3(`Pick the new champion${t.kind === "tag" ? "s" : ""} first.`, true);
-      return;
-    }
-    const holder = { type: t.kind === "tag" ? "team" : "wrestler", id: pick.value };
-    commit((st) => setChampion(st, id, holder), (r) => `${holderName(uni(), r.holder)} \u2014 new ${t.name} champion${t.kind === "tag" ? "s" : ""}`);
-  }
-  function uvVacate(id) {
-    const t = titleById(uni(), id);
-    confirmThen(
-      `Vacate the ${t.name}?`,
-      "The current reign ends this week. Undo brings it back if this was a mistake.",
-      "Vacate",
-      () => commit((st) => vacateTitle(st, id), `The ${t.name} is vacant`)
-    );
-  }
-  function uvUndoTitle(id) {
-    const st = uni();
-    const t = titleById(st, id);
-    const reigns = titleReigns(st, id);
-    const last = reigns[reigns.length - 1];
-    const what = last.end ? `the ${t.name} being vacated` : `${holderName(st, last.holder)} winning the ${t.name}`;
-    confirmThen(
-      "Undo the last title change?",
-      `This takes back ${what}. The result itself, if there was one, stays recorded.`,
-      "Undo",
-      () => commit((s) => undoTitleChange(s, id), "Title change undone")
-    );
-  }
-  function uvDeleteTitle(id) {
-    const t = titleById(uni(), id);
-    confirmThen(
-      `Delete the ${t.name}?`,
-      "It has no history yet. Use this for a title added by mistake.",
-      "Delete",
-      () => {
-        if (commit((st) => deleteTitle(st, id), `${t.name} deleted`).ok) closeSheet();
-      }
-    );
   }
   function uvStepWeek(d) {
     const week = activeSeason(uni()).week + d;
@@ -10424,14 +11097,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const e = eventById(st, id);
       if (!e) return null;
       const season = seasonById(st, e.at.season);
-      const weekFixed = st.reigns.some((r) => r.eventId === id);
+      const changed = st.reigns.filter((r) => r.eventId === id);
       const set = (k) => `uvSetEvent('${id}','${k}',this.value)`;
       const results = e.matches.map((m, i) => {
         const reign = st.reigns.find((r) => r.matchId === m.id);
         const meta = matchMeta(st, m, reign);
-        return `<div class="uv-match"><span class="i">${i + 1}</span><div class="b"><div>${matchLine(st, m)}</div>
+        return `<div class="uv-match" onclick="uvEditResult('${id}','${m.id}')"><span class="i">${i + 1}</span><div class="b"><div>${matchLine(st, m)}</div>
         ${meta ? `<div class="uv-muted d">${meta}</div>` : ""}${m.notes ? `<div class="uv-muted d">${esc3(m.notes)}</div>` : ""}</div>
-        <div class="uv-ic sm" onclick="uvDeleteMatch('${id}','${m.id}')" title="Delete result">${ICON2.x}</div></div>`;
+        <span class="uv-chev">${ICON2.edit}</span></div>`;
       }).join("");
       return {
         title: esc3(e.name),
@@ -10441,54 +11114,71 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           <div class="s">${esc3(e.showId ? showName(st, e.showId) : "All shows")} \xB7 ${esc3(season.name)} \xB7 Week ${e.at.week}</div></div></div>
 
         <h4>Results${e.matches.length ? ` \xB7 ${e.matches.length}` : ""}</h4>
-        ${results || none("No results recorded yet.")}
+        ${results ? results + '<div class="fine">Tap a result to correct it. It\u2019s changed in place \u2014 nothing else on the card moves.</div>' : none("No results recorded yet.")}
         <div class="uv-btn pri full" onclick="uvRecordResult('${id}')">${ICON2.plus}Record a result</div>
 
         <h4>Details</h4>
         ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(e.name)}" onchange="${set("name")}">`, "wide")}
         <div class="uv-grid" style="margin-top:10px">
           ${field("Show", select(set("showId"), options(showPairs(st, e.kind === "ple" ? "All shows" : ""), e.showId || "")))}
-          ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}"
-            onchange="${set("week")}"${weekFixed ? ' disabled title="A title changed hands here"' : ""}>`)}
+          ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}" onchange="${set("week")}">`)}
           ${field("Notes", `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set("notes")}">${esc3(e.notes)}</textarea>`, "wide")}
         </div>
+        ${changed.length ? `<div class="fine">A title changed hands here, so a new week moves that title change with it \u2014 as long as the title\u2019s history still reads in order.</div>` : ""}
         <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete event</div>`
       };
     });
   }
   function uvSetEvent(id, key, value) {
-    commit((st) => updateEvent(st, id, { [key]: value }));
+    commit((st) => updateEvent(st, id, { [key]: value }), "Saved");
   }
   function uvDeleteEvent(id) {
-    const e = eventById(uni(), id);
+    const st = uni();
+    const e = eventById(st, id);
     const n = e.matches.length;
+    const titles = st.reigns.filter((r) => r.eventId === id).map((r) => titleById(st, r.titleId).name);
     confirmThen(
       `Delete ${e.name}?`,
-      n ? `Its ${n} recorded result${n === 1 ? "" : "s"} will be deleted with it.` : "It has no results yet.",
+      (n ? `Its ${n} recorded result${n === 1 ? "" : "s"} will be deleted with it.` : "It has no results yet.") + (titles.length ? ` The ${titles.join(" and the ")} will go back to whoever held ${titles.length === 1 ? "it" : "them"} before.` : ""),
       "Delete",
       () => {
-        if (commit((st) => deleteEvent(st, id), `${e.name} deleted`).ok) closeSheet();
+        if (commit((s) => deleteEvent(s, id), `${e.name} deleted`).ok) closeSheet();
       }
-    );
-  }
-  function uvDeleteMatch(eventId, matchId) {
-    confirmThen(
-      "Delete this result?",
-      "The match is removed from the event and from everyone\u2019s history.",
-      "Delete",
-      () => commit((st) => deleteMatch(st, eventId, matchId), "Result deleted")
     );
   }
   var md = null;
   var blankSide = () => ({ team: "", wrestlers: [""] });
   function uvRecordResult(eventId) {
-    md = { eventId, sides: [blankSide(), blankSide()], result: "0", finish: "", titleId: "", titleChange: false, stip: "", notes: "" };
+    md = { eventId, matchId: null, sides: [blankSide(), blankSide()], result: "0", finish: "", titleId: "", titleChange: false, stip: "", notes: "" };
     openSheet2(matchSheet);
+  }
+  function uvEditResult(eventId, matchId) {
+    const st = uni();
+    const m = eventById(st, eventId).matches.find((x) => x.id === matchId);
+    md = {
+      eventId,
+      matchId,
+      sides: m.sides.map((sd) => ({ team: sd.team || "", wrestlers: [...sd.wrestlers] })),
+      result: m.outcome === "win" ? String(m.winner) : m.outcome,
+      finish: m.finish || "",
+      titleId: m.titleId || "",
+      titleChange: st.reigns.some((r) => r.matchId === matchId),
+      stip: m.stip,
+      notes: m.notes
+    };
+    openSheet2(matchSheet);
+  }
+  function teamGuesses(st, side) {
+    const ids = side.wrestlers.filter(Boolean);
+    if (side.team || ids.length < 2) return [];
+    return st.teams.filter((t) => t.active && ids.every((id) => t.members.includes(id)));
   }
   function matchSheet() {
     const st = uni();
     const e = eventById(st, md.eventId);
     if (!e) return null;
+    const editing = !!md.matchId;
+    if (editing && !e.matches.some((m) => m.id === md.matchId)) return null;
     if (st.wrestlers.length < 2) {
       return { title: "Record a result", body: empty2(ICON2.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
     }
@@ -10499,18 +11189,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     };
     const resultPairs = [...md.sides.map((s, i) => [String(i), `${label(s, i)} won`]), ["draw", "Draw"], ["nc", "No contest"]];
     const title = md.titleId ? titleById(st, md.titleId) : null;
-    const hasTeams = st.teams.some((t) => t.active);
+    const linked = editing ? st.reigns.find((r) => r.matchId === md.matchId) : null;
+    const hasTeams = st.teams.some((t) => t.active) || md.sides.some((s) => s.team);
     const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
       <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ""}</div>
       ${hasTeams ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, "Not as a tag team"))}</div>` : ""}
       ${s.wrestlers.map((w, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, w))}
         ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON2.x}</div>` : ""}</div>`).join("")}
+      ${teamGuesses(st, s).map((t) => `<div class="uv-hint" onclick="uvMTeam(${i},'${t.id}')">Wrestling as <b>${esc3(t.name)}</b>?
+        <span>Tap so it counts on their team record</span></div>`).join("")}
       <div class="uv-add" onclick="uvMAddWrestler(${i})">${ICON2.plus}Add a partner</div>
     </div>`).join("");
     return {
-      title: "Record a result",
+      title: editing ? "Correct a result" : "Record a result",
       body: `
-      <p class="uv-p">${esc3(e.name)} \u2014 enter what happened in the game.</p>
+      <p class="uv-p">${esc3(e.name)} \u2014 ${editing ? "change whatever was entered wrong. It\u2019s corrected in place: its spot on the card stays, and nothing else changes." : "enter what happened in the game."}</p>
+      ${linked ? `<div class="uv-note">This result changed the <b>${esc3(titleById(st, linked.titleId).name)}</b>. Pick a different winner and
+        that reign moves to them; untick the box and the belt goes back to the previous champion \u2014 as long as it hasn\u2019t changed hands since.</div>` : ""}
       ${sides}
       <div class="uv-add" onclick="uvMAddSide()">${ICON2.plus}Add another side</div>
       <div class="uv-grid" style="margin-top:14px">
@@ -10523,14 +11218,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${title ? `<label class="uv-check"><input type="checkbox"${md.titleChange ? " checked" : ""} onchange="uvMSet('titleChange',this.checked)">
         <span>The title changed hands \u2014 the winner${title.kind === "tag" ? "s are the new champions" : " is the new champion"}</span></label>` : ""}
       ${field("Notes", `<input class="uv-in" maxlength="2000" value="${esc3(md.notes)}" oninput="uvMText('notes',this.value)">`, "wide")}
-      <div class="uv-btn pri full" onclick="uvSaveResult()">Save result</div>`
+      <div class="uv-btn pri full" onclick="uvSaveResult()">${editing ? "Save correction" : "Save result"}</div>
+      ${editing ? `<div class="uv-btn bad full" onclick="uvDeleteResult()">Delete this result</div>` : ""}`
     };
   }
   function uvMTeam(i, teamId) {
     const side = md.sides[i];
     side.team = teamId;
     const team = teamId && teamById(uni(), teamId);
-    if (team) side.wrestlers = [...team.members];
+    const ids = side.wrestlers.filter(Boolean);
+    if (team && (!ids.length || !ids.every((id) => team.members.includes(id)))) side.wrestlers = [...team.members];
     paintSheet();
   }
   function uvMWrestler(i, j, v) {
@@ -10575,14 +11272,29 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       stip: d.stip,
       notes: d.notes
     };
-    const r = commit((st) => recordMatch(st, d.eventId, input, { titleChange: !!(d.titleId && d.titleChange) }), (m) => {
+    const opts = { titleChange: !!(d.titleId && d.titleChange) };
+    const r = commit((st) => d.matchId ? updateMatch(st, d.eventId, d.matchId, input, opts) : recordMatch(st, d.eventId, input, opts), (m) => {
       const st = uni();
       const reign = st.reigns.find((x) => x.matchId === m.id);
-      if (!reign) return "Result saved";
-      const verb = reign.holder.type === "team" ? "win" : "wins";
-      return `Result saved \u2014 ${holderName(st, reign.holder)} ${verb} the ${titleById(st, reign.titleId).name}`;
+      const saved = d.matchId ? "Result corrected" : "Result saved";
+      if (!reign) return saved;
+      const verb = reign.holder.type === "team" ? "hold" : "holds";
+      return `${saved} \u2014 ${holderName(st, reign.holder)} ${verb} the ${titleById(st, reign.titleId).name}`;
     });
     if (r.ok) uvOpenEvent(d.eventId);
+  }
+  function uvDeleteResult() {
+    const d = md;
+    const st = uni();
+    const linked = st.reigns.find((x) => x.matchId === d.matchId);
+    confirmThen(
+      "Delete this result?",
+      "It\u2019s removed from the event and from everyone\u2019s record." + (linked ? ` The ${titleById(st, linked.titleId).name} goes back to whoever held it before.` : ""),
+      "Delete",
+      () => {
+        if (commit((s) => deleteMatch(s, d.eventId, d.matchId), "Result deleted").ok) uvOpenEvent(d.eventId);
+      }
+    );
   }
 
   // js/universe/index.js
@@ -10591,6 +11303,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     closeUniverse: () => closeUniverse,
     initUniverse: () => initUniverse2,
     openUniverse: () => openUniverse,
+    uvBack: () => uvBack,
     uvCloseSheet: () => uvCloseSheet,
     uvConfirmNo: () => uvConfirmNo,
     uvConfirmYes: () => uvConfirmYes,
@@ -10615,7 +11328,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const s = activeSeason(st);
     document.getElementById("uvClock").textContent = `${s.name} \xB7 Week ${s.week}`;
     document.getElementById("uvTabs").innerHTML = TABS3.map(([k, lb]) => `<div class="uv-tab${k === tab2 ? " on" : ""}" data-uvtab="${k}" onclick="uvTab('${k}')">${lb}</div>`).join("");
-    body2.innerHTML = VIEWS[tab2]();
+    let page = currentPage(), out = null;
+    while (page && !(out = uvPageView(page.kind, page.id))) {
+      dropPage();
+      page = currentPage();
+    }
+    if (page) {
+      page.title = out.title;
+      const back = previousPage() ? previousPage().title : TABS3.find(([k]) => k === tab2)[1];
+      body2.innerHTML = `<div class="uv-back" onclick="uvBack()">${ICON2.left}<span>${esc3(back)}</span></div><div class="uv-page" data-page="${page.kind}">${out.body}</div>`;
+    } else {
+      body2.innerHTML = VIEWS[tab2]();
+    }
     const L = loadState();
     document.getElementById("uvDataBtn").classList.toggle(
       "warn",
@@ -10635,16 +11359,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!document.body.classList.contains("universe")) return;
     document.body.classList.remove("universe");
     closeSheet();
+    clearPages();
     answerConfirm(false);
     window.showTab && window.showTab(window.homeTab ? window.homeTab() : "matchup");
   }
   function uvTab(k) {
     tab2 = k;
+    clearPages();
     paint();
     document.getElementById("uvScroll").scrollTop = 0;
   }
   function uvCloseSheet() {
     closeSheet();
+  }
+  function uvBack() {
+    popPage();
   }
   function uvConfirmYes() {
     answerConfirm(true);
@@ -10729,6 +11458,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         "Replace",
         () => {
           uvFollowActiveSeason();
+          clearPages();
           const saved = replaceUniverse(state);
           toast3(saved ? "Universe imported" : "Imported, but it could not be saved in this browser.", !saved);
         }
@@ -10743,11 +11473,415 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       "Delete everything",
       () => {
         uvFollowActiveSeason();
+        clearPages();
         replaceUniverse(createUniverse());
         closeSheet();
         toast3("New universe started");
       }
     );
+  }
+
+  // js/universe/edits.js
+  var edits_exports = {};
+  __export(edits_exports, {
+    uvAddMember: () => uvAddMember,
+    uvCrown: () => uvCrown,
+    uvCrownSheet: () => uvCrownSheet,
+    uvDeleteTeam: () => uvDeleteTeam,
+    uvDeleteTitle: () => uvDeleteTitle,
+    uvDeleteWrestler: () => uvDeleteWrestler,
+    uvEditReign: () => uvEditReign,
+    uvEditTitle: () => uvEditTitle,
+    uvEditWrestler: () => uvEditWrestler,
+    uvLineup: () => uvLineup,
+    uvLineupWeek: () => uvLineupWeek,
+    uvMergeInto: () => uvMergeInto,
+    uvMergeSave: () => uvMergeSave,
+    uvMoveSave: () => uvMoveSave,
+    uvMoveSet: () => uvMoveSet,
+    uvMoveTo: () => uvMoveTo,
+    uvMoveWrestlers: () => uvMoveWrestlers,
+    uvRemoveMember: () => uvRemoveMember,
+    uvRenameTeam: () => uvRenameTeam,
+    uvRetireTitle: () => uvRetireTitle,
+    uvSaveReign: () => uvSaveReign,
+    uvSaveTeamName: () => uvSaveTeamName,
+    uvSetTitle: () => uvSetTitle,
+    uvSetWrestler: () => uvSetWrestler,
+    uvTeamActive: () => uvTeamActive,
+    uvUndoMove: () => uvUndoMove,
+    uvUndoTeam: () => uvUndoTeam,
+    uvUndoTitle: () => uvUndoTitle,
+    uvVacate: () => uvVacate
+  });
+  var alignPairs2 = () => [["", "Not set"], ...labelPairs(LABEL.alignment)];
+  var weekInput = (value, handler, extra = "") => `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${esc3(value)}" oninput="${handler}"${extra}>`;
+  var thisWeek = () => String(activeSeason(uni()).week);
+  function uvEditWrestler(id) {
+    openSheet2(() => {
+      const st = uni();
+      const w = wrestlerById(st, id);
+      if (!w) return null;
+      const set = (k) => `uvSetWrestler('${id}','${k}',this.value)`;
+      return {
+        title: "Edit details",
+        body: `
+        <div class="uv-grid">
+          ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(w.name)}" onchange="${set("name")}">`, "wide")}
+          ${field("Division", select(set("gender"), options(labelPairs(LABEL.gender), w.gender)))}
+          ${field("Comes from", select(set("origin"), options(labelPairs(LABEL.origin), w.origin)))}
+          ${field("Alignment", select(set("alignment"), options(alignPairs2(), w.alignment || "")))}
+          ${field("Status", select(set("status"), options(labelPairs(LABEL.status), w.status)))}
+          ${field("Notes", `<textarea class="uv-in" rows="3" maxlength="2000" onchange="${set("notes")}">${esc3(w.notes)}</textarea>`, "wide")}
+        </div>
+        <p class="uv-p">Each change saves as you make it. To change shows use <b>Move show</b>, which keeps the move in their history.</p>
+        <div class="uv-btn full" onclick="uvCloseSheet()">Done</div>`
+      };
+    });
+  }
+  function uvSetWrestler(id, key, value) {
+    commit((st) => updateWrestler(st, id, { [key]: value }), "Saved");
+  }
+  var mv = null;
+  function uvMoveWrestlers(ids) {
+    mv = { ids: [...ids], to: null, week: thisWeek(), note: "" };
+    openSheet2(moveSheet);
+  }
+  function moveSheet() {
+    const st = uni();
+    const ws = mv.ids.map((id) => wrestlerById(st, id)).filter(Boolean);
+    if (!ws.length) return null;
+    const counts = rosterCounts(st);
+    const one = ws.length === 1 ? ws[0] : null;
+    const tile = (id, name) => {
+      const here = one && (one.showId || "") === id;
+      return `<div class="uv-tile${mv.to === id ? " on" : ""}${here ? " here" : ""}" style="--c:${id ? showColor(st, id) : "#5E6979"}"
+      data-show="${id}" onclick="uvMoveTo('${id}')"><span class="uv-dot"></span><b>${esc3(name)}</b>
+      <span>${counts[id]} wrestler${counts[id] === 1 ? "" : "s"}${here ? " \xB7 here now" : ""}</span></div>`;
+    };
+    return {
+      title: one ? `Move ${esc3(one.name)}` : `Move ${ws.length} wrestlers`,
+      body: `
+      <p class="uv-p">${one ? `Now on <b>${esc3(showName(st, one.showId))}</b>.` : esc3(ws.map((w) => w.name).join(", ")) + "."} Results, titles and teams stay exactly as they are \u2014 the move is added to ${one ? "their" : "each one\u2019s"} history. Shows have no size limit.</p>
+      <div class="uv-tiles">${st.shows.map((s) => tile(s.id, s.name)).join("")}${tile("", "Unassigned")}</div>
+      <div class="uv-grid" style="margin-top:12px">
+        ${field("Week", weekInput(mv.week, "uvMoveSet('week',this.value)"))}
+        ${field("Note (optional)", `<input class="uv-in" maxlength="60" value="${esc3(mv.note)}" placeholder="e.g. Traded"
+          oninput="uvMoveSet('note',this.value)">`)}
+      </div>
+      <div class="uv-btn pri full${mv.to === null ? " off" : ""}" onclick="uvMoveSave()">${mv.to === null ? "Pick a show" : `Move to ${esc3(showName(st, mv.to || null))}`}</div>`
+    };
+  }
+  function uvMoveTo(id) {
+    mv.to = id;
+    paintSheet();
+  }
+  function uvMoveSet(k, v) {
+    mv[k] = v;
+  }
+  function uvMoveSave() {
+    const d = mv;
+    if (!d || d.to === null) {
+      toast3("Pick a show first.", true);
+      return;
+    }
+    const where = () => showName(uni(), d.to || null);
+    const r = commit((st) => assignWrestlers(st, d.ids, d.to, d.note, { week: d.week }), (moves) => {
+      if (!moves.length) return `Already on ${where()}`;
+      return moves.length === 1 ? `${wrestlerById(uni(), moves[0].wrestler).name} \u2192 ${where()}` : `${moves.length} wrestlers \u2192 ${where()}`;
+    });
+    if (r.ok) {
+      closeSheet();
+      uvEndSelect();
+    }
+  }
+  function uvUndoMove(id) {
+    const st = uni();
+    const w = wrestlerById(st, id);
+    const moves = movesOf(st, id);
+    const last = moves[moves.length - 1];
+    if (!last) return;
+    const from = showName(st, last.from), to = showName(st, last.to);
+    confirmThen(
+      "Undo the last move?",
+      `This takes back ${w.name} ${last.from ? `moving from ${from} to ${to}` : `joining ${to}`} (${stampLabel(st, last.at)}), so they're back ${last.from ? `on ${from}` : "unassigned"}. Their results and earlier moves don't change.`,
+      "Undo move",
+      () => commit((s) => undoLastMove(s, id), `${w.name} is back ${last.from ? `on ${from}` : "unassigned"}`)
+    );
+  }
+  function uvDeleteWrestler(id) {
+    const w = wrestlerById(uni(), id);
+    confirmThen(
+      `Delete ${w.name}?`,
+      "They have no history yet, so nothing else changes. Use this for someone added by mistake.",
+      "Delete",
+      () => commit((st) => deleteWrestler(st, id), `${w.name} deleted`)
+    );
+  }
+  function uvMergeInto(keepId) {
+    openSheet2(() => {
+      const st = uni();
+      const keep = wrestlerById(st, keepId);
+      if (!keep) return null;
+      return {
+        title: "Merge a duplicate",
+        body: `
+        <p class="uv-p">For the same wrestler entered twice. Pick the duplicate of <b>${esc3(keep.name)}</b>: everything it
+          did \u2014 results, team spells, title reigns \u2014 becomes ${esc3(keep.name)}\u2019s, and the duplicate is removed.
+          Its roster moves are dropped; ${esc3(keep.name)}\u2019s own show history is kept.</p>
+        ${field("The duplicate", `<select id="uvMergePick" class="uv-in">${wrestlerOptions(st, "", "\u2014 Pick the duplicate \u2014", [keepId])}</select>`, "wide")}
+        <div class="uv-btn pri full" onclick="uvMergeSave('${keepId}')">Merge into ${esc3(keep.name)}</div>
+        <div class="fine">It\u2019s refused if the two were ever in the same match or on the same team \u2014 then they can\u2019t be the same person.</div>`
+      };
+    });
+  }
+  function uvMergeSave(keepId) {
+    const st = uni();
+    const dupId = (document.getElementById("uvMergePick") || {}).value;
+    if (!dupId) {
+      toast3("Pick the duplicate first.", true);
+      return;
+    }
+    const keep = wrestlerById(st, keepId), dup = wrestlerById(st, dupId);
+    confirmThen(
+      `Merge ${dup.name} into ${keep.name}?`,
+      `${dup.name} is removed and everything they did becomes ${keep.name}\u2019s. This can\u2019t be undone \u2014 export a save first if you\u2019re unsure.`,
+      "Merge",
+      () => {
+        if (commit((s) => mergeWrestlers(s, keepId, dupId), `${dup.name} merged into ${keep.name}`).ok) closeSheet();
+      }
+    );
+  }
+  function uvRenameTeam(id) {
+    openSheet2(() => {
+      const t = teamById(uni(), id);
+      if (!t) return null;
+      return {
+        title: "Rename the team",
+        body: `${field("Team name", `<input id="uvTeamRename" class="uv-in" maxlength="60" value="${esc3(t.name)}"
+          onkeydown="if(event.key==='Enter')uvSaveTeamName('${id}')">`, "wide")}
+        <p class="uv-p">Past results and title reigns show the new name.</p>
+        <div class="uv-btn pri full" onclick="uvSaveTeamName('${id}')">Save</div>`
+      };
+    });
+    focusField("uvTeamRename");
+  }
+  function uvSaveTeamName(id) {
+    const v = document.getElementById("uvTeamRename").value;
+    if (commit((st) => updateTeam(st, id, { name: v }), "Team renamed").ok) closeSheet();
+  }
+  var lineWeek = "";
+  function uvLineup(id) {
+    lineWeek = thisWeek();
+    openSheet2(() => {
+      const st = uni();
+      const t = teamById(st, id);
+      if (!t) return null;
+      const spells = membershipsOf(st, id);
+      const current = t.members.map((wid) => spells.find((m) => m.wrestler === wid && !m.end));
+      const former = spells.filter((m) => m.end).sort((a, b) => b.end.seq - a.end.seq);
+      const name = (m) => esc3(wrestlerById(st, m.wrestler).name);
+      return {
+        title: `${esc3(t.name)} line-up`,
+        body: `
+        <p class="uv-p">Joining and leaving are dated and kept. Matches the team already wrestled keep the line-up they had.</p>
+        ${field("Week of the change", weekInput(lineWeek, "uvLineupWeek(this.value)"), "wide")}
+        <h4>Now</h4>
+        ${current.map((m) => `<div class="uv-li plain"><span>${name(m)}<span class="uv-muted d">since ${stampLabel(st, m.start)}</span></span>
+          ${t.members.length > 2 ? `<div class="uv-btn sm" onclick="uvRemoveMember('${id}','${m.wrestler}')">Remove</div>` : ""}</div>`).join("")}
+        ${t.members.length <= 2 ? '<div class="fine">A team needs two members: add the new partner before removing anyone.</div>' : ""}
+        <h4>Add a member</h4>
+        <div class="uv-pick"><select id="uvLineupPick" class="uv-in">${wrestlerOptions(st, "", "\u2014 Pick a wrestler \u2014", t.members)}</select>
+          <div class="uv-btn pri" onclick="uvAddMember('${id}')">Add</div></div>
+        ${former.length ? `<h4>Former</h4>${former.map((m) => `<div class="uv-li plain"><span>${name(m)}
+          <span class="uv-muted d">${stampLabel(st, m.start)} \u2192 ${stampLabel(st, m.end)}</span></span></div>`).join("")}` : ""}
+        <div class="uv-btn full" onclick="uvCloseSheet()">Done</div>`
+      };
+    });
+  }
+  function uvLineupWeek(v) {
+    lineWeek = v;
+  }
+  function uvAddMember(teamId) {
+    const wid = (document.getElementById("uvLineupPick") || {}).value;
+    if (!wid) {
+      toast3("Pick who is joining.", true);
+      return;
+    }
+    commit(
+      (st) => addTeamMember(st, teamId, wid, { week: lineWeek }),
+      () => `${wrestlerById(uni(), wid).name} joined ${teamById(uni(), teamId).name}`
+    );
+  }
+  function uvRemoveMember(teamId, wid) {
+    commit(
+      (st) => removeTeamMember(st, teamId, wid, { week: lineWeek }),
+      () => `${wrestlerById(uni(), wid).name} left ${teamById(uni(), teamId).name}`
+    );
+  }
+  function uvTeamActive(id, active) {
+    const t = teamById(uni(), id);
+    const go = () => commit((st) => setTeamActive(st, id, active), `${t.name} ${active ? "reunited" : "disbanded"}`);
+    if (active) go();
+    else confirmThen(`Disband ${t.name}?`, "Their record and history stay. They can reunite later, and the members stay listed.", "Disband", go);
+  }
+  function uvUndoTeam(id) {
+    const st = uni();
+    const t = teamById(st, id);
+    const c = lastTeamChange(st, id);
+    if (!c) return;
+    const w = c.m && wrestlerById(st, c.m.wrestler);
+    const what = c.kind === "disbanded" ? "the team disbanding" : c.kind === "reunited" ? "the team reuniting" : `${w.name} ${c.kind === "joined" ? "joining" : "leaving"}`;
+    confirmThen(
+      "Undo the last line-up change?",
+      `This takes back ${what} (${stampLabel(st, c.at)}). Nothing before it changes.`,
+      "Undo",
+      () => commit((s) => undoTeamChange(s, id), `${t.name}: change undone`)
+    );
+  }
+  function uvDeleteTeam(id) {
+    const t = teamById(uni(), id);
+    confirmThen(
+      `Delete ${t.name}?`,
+      "They have no matches or titles yet. Use this for a team added by mistake.",
+      "Delete",
+      () => commit((st) => deleteTeam(st, id), `${t.name} deleted`)
+    );
+  }
+  function uvCrownSheet(id) {
+    openSheet2(() => {
+      const st = uni();
+      const t = titleById(st, id);
+      if (!t) return null;
+      const pool = t.kind === "tag" ? teamOptions(st, "", "\u2014 Pick the new champions \u2014") : wrestlerOptions(st, "", "\u2014 Pick the new champion \u2014");
+      return {
+        title: `Crown a new champion`,
+        body: `
+        <p class="uv-p">For the <b>${esc3(t.name)}</b>, dated to this week. If it changed hands in a match, record it on that
+          event\u2019s result instead \u2014 then the reign is dated to the show and counts as won there.</p>
+        ${field(t.kind === "tag" ? "New champions" : "New champion", `<select id="uvCrownPick" class="uv-in">${pool}</select>`, "wide")}
+        <div style="margin-top:10px">${field("Note (optional)", `<input id="uvCrownNote" class="uv-in" maxlength="60" placeholder="e.g. Awarded, tournament">`, "wide")}</div>
+        <div class="uv-btn pri full" onclick="uvCrown('${id}')">Crown</div>`
+      };
+    });
+  }
+  function uvCrown(id) {
+    const t = titleById(uni(), id);
+    const pick = document.getElementById("uvCrownPick");
+    if (!pick || !pick.value) {
+      toast3(`Pick the new champion${t.kind === "tag" ? "s" : ""} first.`, true);
+      return;
+    }
+    const note = (document.getElementById("uvCrownNote") || {}).value || "";
+    const holder = { type: t.kind === "tag" ? "team" : "wrestler", id: pick.value };
+    const r = commit(
+      (st) => setChampion(st, id, holder, { note }),
+      (reign) => `${holderName(uni(), reign.holder)} \u2014 new ${t.name} champion${t.kind === "tag" ? "s" : ""}`
+    );
+    if (r.ok) closeSheet();
+  }
+  function uvVacate(id) {
+    const t = titleById(uni(), id);
+    confirmThen(
+      `Vacate the ${t.name}?`,
+      "The current reign ends this week. Undo brings it back if this was a mistake.",
+      "Vacate",
+      () => commit((st) => vacateTitle(st, id), `The ${t.name} is vacant`)
+    );
+  }
+  function uvUndoTitle(id) {
+    const st = uni();
+    const t = titleById(st, id);
+    const reigns = titleReigns(st, id);
+    const last = reigns[reigns.length - 1];
+    if (!last) return;
+    const what = last.end ? `the ${t.name} being vacated (${stampLabel(st, last.end)})` : `${holderName(st, last.holder)} winning the ${t.name} (${stampLabel(st, last.start)})`;
+    confirmThen(
+      "Undo the last title change?",
+      `This takes back ${what}. If it came from a result, the result stays recorded as a title match.`,
+      "Undo",
+      () => commit((s) => undoTitleChange(s, id), "Title change undone")
+    );
+  }
+  function uvEditTitle(id) {
+    openSheet2(() => {
+      const st = uni();
+      const t = titleById(st, id);
+      if (!t) return null;
+      const set = (k) => `uvSetTitle('${id}','${k}',this.value)`;
+      const hasHistory = st.reigns.some((r) => r.titleId === id);
+      return {
+        title: "Edit championship",
+        body: `
+        ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(t.name)}" onchange="${set("name")}">`, "wide")}
+        <div class="uv-grid" style="margin-top:10px">
+          ${field("Show", select(set("showId"), options(showPairs(st, "No brand"), t.showId || "")), "wide")}
+          ${field("Division", select(set("division"), options(labelPairs(LABEL.division), t.division)))}
+          ${field("Type", select(set("kind"), options(labelPairs(LABEL.kind), t.kind), hasHistory ? " disabled" : ""))}
+        </div>
+        ${hasHistory ? '<div class="fine">It has a title history, so it can\u2019t switch between singles and tag.</div>' : ""}
+        <div class="uv-btn full" onclick="uvRetireTitle('${id}',${!t.active})">${t.active ? "Retire title" : "Bring title back"}</div>
+        <div class="uv-btn full" onclick="uvCloseSheet()">Done</div>`
+      };
+    });
+  }
+  function uvSetTitle(id, key, value) {
+    commit((st) => updateTitle(st, id, { [key]: value }), "Saved");
+  }
+  function uvRetireTitle(id, active) {
+    commit((st) => updateTitle(st, id, { active }), (t) => `${t.name} ${active ? "is back" : "retired"}`);
+  }
+  function uvDeleteTitle(id) {
+    const t = titleById(uni(), id);
+    confirmThen(
+      `Delete the ${t.name}?`,
+      "It has no history yet. Use this for a title added by mistake.",
+      "Delete",
+      () => commit((st) => deleteTitle(st, id), `${t.name} deleted`)
+    );
+  }
+  function uvEditReign(reignId) {
+    openSheet2(() => {
+      const st = uni();
+      const r = st.reigns.find((x) => x.id === reignId);
+      if (!r) return null;
+      const t = titleById(st, r.titleId);
+      const n = titleReigns(st, t.id).indexOf(r) + 1;
+      const ev = r.eventId ? eventById(st, r.eventId) : null;
+      const pool = t.kind === "tag" ? teamOptions(st, r.holder.id, "\u2014 Pick \u2014", !!r.end) : wrestlerOptions(st, r.holder.id, "\u2014 Pick \u2014");
+      const fromResult = !!r.matchId;
+      return {
+        title: `Reign ${n} \xB7 ${esc3(t.name)}`,
+        body: `
+        <p class="uv-p"><b>${esc3(holderName(st, r.holder))}</b>, ${stampLabel(st, r.start)} \u2192 ${r.end ? stampLabel(st, r.end) : "now"}
+          \xB7 ${weeksText(reignWeeks(st, r))} \xB7 ${defencesOf(st, r)} defence${defencesOf(st, r) === 1 ? "" : "s"}. Correcting it leaves every other reign as it is.</p>
+        ${fromResult ? `<div class="uv-note">This reign came from a result at <b>${esc3(ev.name)}</b>, so who won \u2014 and when \u2014 is
+            fixed there. <span class="uv-link" onclick="uvOpenEvent('${ev.id}')">Open ${esc3(ev.name)}</span></div>` : `<div class="uv-grid" style="margin-top:4px">
+              ${field(t.kind === "tag" ? "Held by (team)" : "Held by", `<select id="uvReignHolder" class="uv-in">${pool}</select>`, "wide")}
+              ${field("Began in week", weekInput(String(r.start.week), "", ` id="uvReignWeek"${ev ? " disabled" : ""}`))}
+            </div>`}
+        <div style="margin-top:10px">${field("Note", `<input id="uvReignNote" class="uv-in" maxlength="60" value="${esc3(r.note)}"
+          placeholder="e.g. Awarded, cash-in">`, "wide")}</div>
+        <div class="uv-btn pri full" onclick="uvSaveReign('${reignId}')">Save correction</div>`
+      };
+    });
+  }
+  function uvSaveReign(reignId) {
+    const st = uni();
+    const r = st.reigns.find((x) => x.id === reignId);
+    const t = titleById(st, r.titleId);
+    const patch = { note: document.getElementById("uvReignNote").value };
+    const holderPick = document.getElementById("uvReignHolder");
+    const weekPick = document.getElementById("uvReignWeek");
+    if (holderPick) {
+      if (!holderPick.value) {
+        toast3("Pick who held it.", true);
+        return;
+      }
+      patch.holder = { type: t.kind === "tag" ? "team" : "wrestler", id: holderPick.value };
+    }
+    if (weekPick && !weekPick.disabled) patch.week = weekPick.value;
+    if (commit((s) => updateReign(s, reignId, patch), "Reign corrected").ok) closeSheet();
   }
 
   // js/main.js
@@ -10786,7 +11920,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     markets_exports,
     views_exports,
     sheets_exports,
-    universe_exports
+    universe_exports,
+    pages_exports,
+    edits_exports
   );
   initStore();
   migrateDraft();

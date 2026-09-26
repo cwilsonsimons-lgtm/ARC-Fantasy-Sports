@@ -39,6 +39,8 @@ import * as mk5 from './markets/index.js';
 import * as uv0 from './universe/views.js';
 import * as uv1 from './universe/sheets.js';
 import * as uv2 from './universe/index.js';
+import * as uv3 from './universe/pages.js';
+import * as uv4 from './universe/edits.js';
 
 // The markup drives the app through inline `onclick="..."` attributes, which
 // resolve against the global scope. Every top-level name was a global in the
@@ -48,7 +50,7 @@ Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13
   m22, m23,
   mh,
   mk0, mk1, mk2, mk3, mk4, mk5,
-  uv0, uv1, uv2);
+  uv0, uv1, uv2, uv3, uv4);
 
 // Startup, in the order these ran in the original script.
 initStore();

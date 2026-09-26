@@ -71,6 +71,39 @@ export function replaceUniverse(state) {
 
 export function refresh() { painter(); paintSheet(); }
 
+// ---------------------------------------------------------------- pages
+// Profiles (a wrestler, a team, a title) open as full pages over the current
+// tab, stacked so Back retraces the path: roster -> wrestler -> team -> title.
+// Each entry remembers where its page was scrolled, so coming back lands in
+// the same place. Changing tab clears the stack.
+let pages = [];
+let tabScroll = 0;          // where the tab underneath was scrolled
+
+export const currentPage = () => pages[pages.length - 1] || null;
+export const previousPage = () => pages[pages.length - 2] || null;
+const scroller = () => document.getElementById('uvScroll');
+
+export function pushPage(kind, id) {
+  const top = currentPage();
+  if (top && top.kind === kind && top.id === id) { closeSheet(); return; }
+  const sc = scroller();
+  if (top) top.scroll = sc ? sc.scrollTop : 0;
+  else tabScroll = sc ? sc.scrollTop : 0;
+  pages.push({ kind, id, title: '', scroll: 0 });
+  closeSheet();
+  painter();
+  if (sc) sc.scrollTop = 0;
+}
+export function popPage() {
+  pages.pop();
+  painter();
+  const top = currentPage(), sc = scroller();
+  if (sc) sc.scrollTop = top ? top.scroll : tabScroll;
+}
+/** Drop pages whose record has gone (deleted, merged away). */
+export function dropPage() { pages.pop(); }
+export function clearPages() { pages = []; }
+
 // ---------------------------------------------------------------- sheet
 // A sheet is a function returning { title, body } from the current universe,
 // so it repaints itself after every change. Returning null closes it - the

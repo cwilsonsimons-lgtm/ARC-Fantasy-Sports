@@ -1,19 +1,21 @@
 // WWE Universe — the four tabs: Roster, Teams, Titles, History.
 //
-// Lists only. Tapping a row opens its sheet (sheets.js), which is where
-// anything gets changed.
+// Lists only. Tapping a row opens its profile page (pages.js) or, for an
+// event, its sheet. The roster also has a select mode for moving several
+// wrestlers between shows at once.
 import {
-  activeSeason, byName, currentReign, eventsIn, holderName, rosterCounts, rosterOf,
-  seasonById, teamById, teamShows, timeline, titleById, titlesHeldBy, titlesOfWrestler,
+  activeSeason, byName, currentReign, eventsIn, holderName, reignWeeks, rosterCounts, rosterOf,
+  seasonById, teamById, teamRecord, teamShows, timeline, titleById, titlesHeldBy, titlesOfWrestler,
   wrestlerById,
 } from './model.js';
-import { ICON, LABEL, avatar, empty, esc, section, showColor, showDot, showName, stampLabel, tag } from './ui.js';
+import { ICON, LABEL, avatar, empty, esc, fmtRec, section, showColor, showDot, showName, stampLabel, tag, weeksText } from './ui.js';
 import { refresh, uni } from './app.js';
 
 // ---------------------------------------------------------------- roster
 
 let rosterShow = 'all';      // 'all', a show id, or '' for unassigned
 let rosterQ = '';
+let picking = null;          // a Set of wrestler ids while selecting, else null
 
 export function uvRosterShow() { return rosterShow === 'all' ? '' : rosterShow; }
 
@@ -26,14 +28,17 @@ export function uvRosterView() {
     <div class="uv-bar">
       <div class="uv-search">${ICON.search}<input id="uvQ" type="search" placeholder="Search wrestlers"
         autocomplete="off" spellcheck="false" value="${esc(rosterQ)}" oninput="uvRosterSearch(this.value)"></div>
-      <div class="uv-btn pri" onclick="uvAddWrestler()">${ICON.plus}Add</div>
+      ${st.wrestlers.length ? `<div class="uv-btn${picking ? ' on' : ''}" onclick="uvToggleSelect()">${picking ? 'Cancel' : 'Select'}</div>` : ''}
+      ${picking ? '' : `<div class="uv-btn pri" onclick="uvAddWrestler()">${ICON.plus}Add</div>`}
     </div>
     <div class="uv-pills">
       ${pill('all', 'All', st.wrestlers.length)}
       ${st.shows.map(s => pill(s.id, s.name, counts[s.id], s.color)).join('')}
       ${pill('', 'Unassigned', counts[''])}
     </div>
-    <div id="uvRosterList">${rosterList()}</div>`;
+    <div id="uvRosterList">${rosterList()}</div>
+    ${picking ? `<div class="uv-selbar"><span>${picking.size ? `${picking.size} selected` : 'Tap wrestlers to select them'}</span>
+      <div class="uv-btn pri${picking.size ? '' : ' off'}" onclick="uvMoveSelected()">${ICON.move}Move to…</div></div>` : ''}`;
 }
 
 function rosterList() {
@@ -62,12 +67,30 @@ function wrestlerRow(st, w) {
   if (w.gender === 'female') tags.push(tag('F'));
   if (w.alignment) tags.push(tag(LABEL.alignment[w.alignment], w.alignment));
   if (w.status === 'injured') tags.push(tag('Injured', 'inj'));
-  return `<div class="uv-row" onclick="uvOpenWrestler('${w.id}')">
+  const on = picking && picking.has(w.id);
+  return `<div class="uv-row${on ? ' picked' : ''}" data-w="${w.id}" onclick="${picking ? `uvPick('${w.id}')` : `uvOpenWrestler('${w.id}')`}">
+    ${picking ? `<span class="uv-tick">${on ? ICON.check : ''}</span>` : ''}
     ${avatar(st, w)}
     <div class="uv-main"><div class="nm">${esc(w.name)}</div><div class="sub">${tags.join('')}</div></div>
     ${held.length ? `<span class="uv-belt" title="${esc(held.map(h => h.title.name).join(', '))}">${ICON.belt}${held.length > 1 ? held.length : ''}</span>` : ''}
-    <span class="uv-chev">${ICON.right}</span>
+    ${picking ? '' : `<span class="uv-chev">${ICON.right}</span>`}
   </div>`;
+}
+
+export function uvToggleSelect() { picking = picking ? null : new Set(); refresh(); }
+export function uvPick(id) {
+  if (!picking) return;
+  if (picking.has(id)) picking.delete(id); else picking.add(id);
+  refresh();
+}
+export function uvMoveSelected() {
+  if (picking && picking.size) window.uvMoveWrestlers([...picking]);
+}
+/** After a move from select mode, leave select mode - and show the list without it. */
+export function uvEndSelect() {
+  if (!picking) return;
+  picking = null;
+  refresh();
 }
 
 export function uvRosterFilter(k) {
@@ -104,10 +127,9 @@ function teamRow(st, t) {
   const members = t.members.map(id => (wrestlerById(st, id) || { name: '?' }).name).join(' & ');
   return `<div class="uv-row${t.active ? '' : ' dim'}" onclick="uvOpenTeam('${t.id}')">
     <span class="uv-av sq">${ICON.team}</span>
-    <div class="uv-main"><div class="nm">${esc(t.name)}</div>
+    <div class="uv-main"><div class="nm">${esc(t.name)}${held.length ? ` <span class="uv-belt in">${ICON.belt}</span>` : ''}</div>
       <div class="sub">${shows.map(id => showDot(st, id)).join('')}${esc(members)}${shows.length > 1 ? tag('Split', 'warn') : ''}</div></div>
-    ${held.length ? `<span class="uv-belt">${ICON.belt}</span>` : ''}
-    <span class="uv-chev">${ICON.right}</span>
+    <div class="uv-champ"><div class="h">${fmtRec(teamRecord(st, t.id))}</div><div class="s">W–L–D</div></div>
   </div>`;
 }
 
@@ -139,7 +161,7 @@ function titleRow(st, t) {
     <span class="uv-av sq gold" style="--c:${showColor(st, t.showId)}">${ICON.belt}</span>
     <div class="uv-main"><div class="nm">${esc(t.name)}</div>
       <div class="sub">${esc(LABEL.division[t.division])} · ${esc(LABEL.kind[t.kind])}</div></div>
-    <div class="uv-champ">${r ? `<div class="h">${esc(holderName(st, r.holder))}</div><div class="s">since ${stampLabel(st, r.start)}</div>`
+    <div class="uv-champ">${r ? `<div class="h">${esc(holderName(st, r.holder))}</div><div class="s">${weeksText(reignWeeks(st, r))} · since ${stampLabel(st, r.start)}</div>`
       : `<div class="h vac">Vacant</div>`}</div>
   </div>`;
 }
@@ -217,6 +239,9 @@ function timelineText(st, e) {
       return `${w(r.wrestler)} moved from ${show(r.from)} to ${show(r.to)}${r.note ? ` — ${esc(r.note)}` : ''}`;
     case 'team-formed': return `<b>${esc(r.name)}</b> formed`;
     case 'team-disbanded': return `<b>${esc(r.name)}</b> disbanded`;
+    case 'team-reunited': return `<b>${esc(r.name)}</b> reunited`;
+    case 'team-joined': return `${w(r.wrestler)} joined <b>${esc((teamById(st, r.team) || { name: '?' }).name)}</b>`;
+    case 'team-left': return `${w(r.wrestler)} left <b>${esc((teamById(st, r.team) || { name: '?' }).name)}</b>`;
     case 'title-won': {
       const t = titleById(st, r.titleId);
       const ev = r.eventId ? ` at ${esc((st.events.find(x => x.id === r.eventId) || {}).name || '')}` : '';
@@ -232,13 +257,3 @@ export function uvViewSeason(id) { viewSeason = id; refresh(); }
 export function uvMoreHistory() { historyShown += 40; refresh(); }
 /** When the active season changes, follow it. */
 export function uvFollowActiveSeason() { viewSeason = null; }
-
-// shared by sheets.js for the "Tag teams" and "Champion" sections
-export function uvHolderLink(st, holder) {
-  if (holder.type === 'team') {
-    const t = teamById(st, holder.id);
-    return t ? `<span class="uv-link" onclick="uvOpenTeam('${t.id}')">${esc(t.name)}</span>` : '(missing)';
-  }
-  const w = wrestlerById(st, holder.id);
-  return w ? `<span class="uv-link" onclick="uvOpenWrestler('${w.id}')">${esc(w.name)}</span>` : '(missing)';
-}

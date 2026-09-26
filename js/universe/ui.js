@@ -3,7 +3,7 @@
 // Everything the owner types - names, notes, stipulations - goes through esc()
 // before it reaches innerHTML. Inline handlers only ever carry record ids,
 // which the model generates, never names.
-import { seasonById, showById, wrestlerById, teamById, titleById, byName } from './model.js';
+import { seasonById, showById, wrestlerById, teamById, titleById, byName, blankRecord } from './model.js';
 
 export function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -23,10 +23,14 @@ export const ICON = {
   x:      svg('<path d="M18 6 6 18M6 6l12 12"/>'),
   left:   svg('<path d="m15 18-6-6 6-6"/>'),
   right:  svg('<path d="m9 18 6-6-6-6"/>'),
+  move:   svg('<path d="M7 7h11l-3-3M17 17H6l3 3"/>'),
+  edit:   svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+  undo:   svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
+  check:  svg('<path d="m5 12 5 5 9-10"/>'),
 };
 
 export const LABEL = {
-  gender:    { male: 'Male', female: 'Female' },
+  gender:    { male: 'Men’s', female: 'Women’s' },   // shown as the wrestler's division
   origin:    { WWE: 'WWE', AEW: 'AEW', NXT: 'NXT', Other: 'Other' },
   alignment: { face: 'Face', heel: 'Heel', tweener: 'Tweener' },
   status:    { active: 'Active', injured: 'Injured' },
@@ -72,17 +76,18 @@ export function showPairs(st, none) {
   return none ? [['', none], ...pairs] : pairs;
 }
 
-/** Every wrestler, grouped by show, for a picker. */
-export function wrestlerOptions(st, selected, blank = '— Pick a wrestler —') {
+/** Every wrestler, grouped by show, for a picker. `skip` leaves some out (ids). */
+export function wrestlerOptions(st, selected, blank = '— Pick a wrestler —', skip = []) {
   const groups = [...st.shows.map(s => [s.id, s.name]), [null, 'Unassigned']];
   return `<option value="">${esc(blank)}</option>` + groups.map(([id, name]) => {
-    const list = st.wrestlers.filter(w => w.showId === id).sort(byName);
+    const list = st.wrestlers.filter(w => w.showId === id && !skip.includes(w.id)).sort(byName);
     if (!list.length) return '';
     return `<optgroup label="${esc(name)}">${options(list.map(w => [w.id, w.name]), selected)}</optgroup>`;
   }).join('');
 }
-export function teamOptions(st, selected, blank = '— Pick a tag team —') {
-  const list = st.teams.filter(t => t.active || t.id === selected).sort(byName);
+/** Active teams for a picker; `all` includes disbanded ones (for correcting the past). */
+export function teamOptions(st, selected, blank = '— Pick a tag team —', all = false) {
+  const list = st.teams.filter(t => all || t.active || t.id === selected).sort(byName);
   return `<option value="">${esc(blank)}</option>` + options(list.map(t => [t.id, t.name]), selected);
 }
 export function titleOptions(st, selected, blank = 'No title on the line') {
@@ -133,4 +138,34 @@ export function matchMeta(st, m, reign) {
   if (m.finish) bits.push(LABEL.finish[m.finish]);
   if (m.stip) bits.push(esc(m.stip));
   return bits.join(' · ');
+}
+
+// ---------------------------------------------------------------- records, lengths, links
+
+/** "5–2–1" (wins–losses–draws); no contests ride along only when there are any. */
+export function fmtRec(rec = blankRecord()) {
+  return `${rec.w}–${rec.l}–${rec.d}`;
+}
+export function recNote(rec = blankRecord()) {
+  const n = rec.w + rec.l + rec.d + rec.nc;
+  if (!n) return 'No matches';
+  return `${n} match${n === 1 ? '' : 'es'}${rec.nc ? ` · ${rec.nc} NC` : ''}`;
+}
+export function weeksText(n) { return n === 0 ? 'under a week' : `${n} week${n === 1 ? '' : 's'}`; }
+
+/** A holder's name as a link to their page. */
+export function holderLink(st, holder) {
+  if (holder.type === 'team') {
+    const t = teamById(st, holder.id);
+    return t ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenTeam('${t.id}')">${esc(t.name)}</span>` : '(missing)';
+  }
+  const w = wrestlerById(st, holder.id);
+  return w ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenWrestler('${w.id}')">${esc(w.name)}</span>` : '(missing)';
+}
+export function wrestlerLink(st, w) {
+  return w ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenWrestler('${w.id}')">${esc(w.name)}</span>` : '(deleted)';
+}
+/** A dated history line, the same shape everywhere: stamp on the left, text on the right. */
+export function histLine(st, e, html) {
+  return `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${html}</span></div>`;
 }

@@ -1,0 +1,631 @@
+{
+  "app": "wwe-universe",
+  "version": 1,
+  "nextId": 41,
+  "seq": 25,
+  "shows": [
+    {
+      "id": "raw",
+      "name": "Raw",
+      "promotion": "WWE",
+      "color": "#E23B2E"
+    },
+    {
+      "id": "smackdown",
+      "name": "SmackDown",
+      "promotion": "WWE",
+      "color": "#2F6BFF"
+    },
+    {
+      "id": "dynamite",
+      "name": "Dynamite",
+      "promotion": "AEW",
+      "color": "#D8A93B"
+    },
+    {
+      "id": "nxt",
+      "name": "NXT",
+      "promotion": "WWE",
+      "color": "#C4CAD3"
+    }
+  ],
+  "wrestlers": [
+    {
+      "id": "w2",
+      "name": "Cody Rhodes",
+      "gender": "male",
+      "origin": "WWE",
+      "alignment": "face",
+      "status": "active",
+      "notes": "",
+      "showId": "smackdown"
+    },
+    {
+      "id": "w4",
+      "name": "Gunther",
+      "gender": "male",
+      "origin": "WWE",
+      "alignment": "heel",
+      "status": "active",
+      "notes": "",
+      "showId": "raw"
+    },
+    {
+      "id": "w6",
+      "name": "Jey Uso",
+      "gender": "male",
+      "origin": "WWE",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": "raw"
+    },
+    {
+      "id": "w8",
+      "name": "Jimmy Uso",
+      "gender": "male",
+      "origin": "WWE",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": "smackdown"
+    },
+    {
+      "id": "w10",
+      "name": "Kenny Omega",
+      "gender": "male",
+      "origin": "AEW",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": "dynamite"
+    },
+    {
+      "id": "w12",
+      "name": "Will Ospreay",
+      "gender": "male",
+      "origin": "AEW",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": "dynamite"
+    },
+    {
+      "id": "w14",
+      "name": "Rhea Ripley",
+      "gender": "female",
+      "origin": "WWE",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": "raw"
+    },
+    {
+      "id": "w16",
+      "name": "Iyo Sky",
+      "gender": "female",
+      "origin": "NXT",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": "raw"
+    },
+    {
+      "id": "w18",
+      "name": "Free Agent",
+      "gender": "male",
+      "origin": "WWE",
+      "alignment": null,
+      "status": "active",
+      "notes": "",
+      "showId": null
+    }
+  ],
+  "moves": [
+    {
+      "id": "mv3",
+      "wrestler": "w2",
+      "from": null,
+      "to": "smackdown",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 2
+      },
+      "note": ""
+    },
+    {
+      "id": "mv5",
+      "wrestler": "w4",
+      "from": null,
+      "to": "raw",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 3
+      },
+      "note": ""
+    },
+    {
+      "id": "mv7",
+      "wrestler": "w6",
+      "from": null,
+      "to": "raw",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 4
+      },
+      "note": ""
+    },
+    {
+      "id": "mv9",
+      "wrestler": "w8",
+      "from": null,
+      "to": "smackdown",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 5
+      },
+      "note": ""
+    },
+    {
+      "id": "mv11",
+      "wrestler": "w10",
+      "from": null,
+      "to": "dynamite",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 6
+      },
+      "note": ""
+    },
+    {
+      "id": "mv13",
+      "wrestler": "w12",
+      "from": null,
+      "to": "dynamite",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 7
+      },
+      "note": ""
+    },
+    {
+      "id": "mv15",
+      "wrestler": "w14",
+      "from": null,
+      "to": "raw",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 8
+      },
+      "note": ""
+    },
+    {
+      "id": "mv17",
+      "wrestler": "w16",
+      "from": null,
+      "to": "nxt",
+      "at": {
+        "season": "s1",
+        "week": 1,
+        "seq": 9
+      },
+      "note": ""
+    },
+    {
+      "id": "mv27",
+      "wrestler": "w16",
+      "from": "nxt",
+      "to": "raw",
+      "at": {
+        "season": "s1",
+        "week": 2,
+        "seq": 16
+      },
+      "note": "called up"
+    }
+  ],
+  "teams": [
+    {
+      "id": "tm19",
+      "name": "The Usos",
+      "members": [
+        "w6",
+        "w8"
+      ],
+      "active": true,
+      "formed": {
+        "season": "s1",
+        "week": 1,
+        "seq": 10
+      },
+      "disbanded": null
+    },
+    {
+      "id": "tm20",
+      "name": "The Elite Two",
+      "members": [
+        "w10",
+        "w12"
+      ],
+      "active": true,
+      "formed": {
+        "season": "s1",
+        "week": 1,
+        "seq": 11
+      },
+      "disbanded": null
+    },
+    {
+      "id": "tm21",
+      "name": "Odd Couple",
+      "members": [
+        "w2",
+        "w4"
+      ],
+      "active": false,
+      "formed": {
+        "season": "s1",
+        "week": 1,
+        "seq": 12
+      },
+      "disbanded": {
+        "season": "s1",
+        "week": 1,
+        "seq": 13
+      }
+    }
+  ],
+  "titles": [
+    {
+      "id": "ch22",
+      "name": "World Heavyweight Championship",
+      "showId": "raw",
+      "kind": "singles",
+      "division": "men",
+      "active": true
+    },
+    {
+      "id": "ch23",
+      "name": "AEW World Tag Team Championship",
+      "showId": "dynamite",
+      "kind": "tag",
+      "division": "men",
+      "active": true
+    },
+    {
+      "id": "ch24",
+      "name": "Women's World Championship",
+      "showId": "raw",
+      "kind": "singles",
+      "division": "women",
+      "active": true
+    }
+  ],
+  "reigns": [
+    {
+      "id": "rg25",
+      "titleId": "ch22",
+      "holder": {
+        "type": "wrestler",
+        "id": "w4"
+      },
+      "start": {
+        "season": "s1",
+        "week": 1,
+        "seq": 14
+      },
+      "end": {
+        "season": "s1",
+        "week": 2,
+        "seq": 18
+      },
+      "vacated": false,
+      "eventId": null,
+      "matchId": null,
+      "note": ""
+    },
+    {
+      "id": "rg26",
+      "titleId": "ch24",
+      "holder": {
+        "type": "wrestler",
+        "id": "w14"
+      },
+      "start": {
+        "season": "s1",
+        "week": 1,
+        "seq": 15
+      },
+      "end": {
+        "season": "s1",
+        "week": 3,
+        "seq": 21
+      },
+      "vacated": true,
+      "eventId": null,
+      "matchId": null,
+      "note": ""
+    },
+    {
+      "id": "rg30",
+      "titleId": "ch22",
+      "holder": {
+        "type": "wrestler",
+        "id": "w6"
+      },
+      "start": {
+        "season": "s1",
+        "week": 2,
+        "seq": 18
+      },
+      "end": null,
+      "vacated": false,
+      "eventId": "ev28",
+      "matchId": "m29",
+      "note": ""
+    },
+    {
+      "id": "rg34",
+      "titleId": "ch23",
+      "holder": {
+        "type": "team",
+        "id": "tm20"
+      },
+      "start": {
+        "season": "s1",
+        "week": 2,
+        "seq": 20
+      },
+      "end": null,
+      "vacated": false,
+      "eventId": "ev32",
+      "matchId": "m33",
+      "note": ""
+    }
+  ],
+  "seasons": [
+    {
+      "id": "s1",
+      "number": 1,
+      "name": "Season 1",
+      "week": 3,
+      "status": "complete",
+      "started": {
+        "season": "s1",
+        "week": 1,
+        "seq": 1
+      },
+      "ended": {
+        "season": "s1",
+        "week": 3,
+        "seq": 23
+      }
+    },
+    {
+      "id": "s38",
+      "number": 2,
+      "name": "Season 2",
+      "week": 1,
+      "status": "active",
+      "started": {
+        "season": "s38",
+        "week": 1,
+        "seq": 24
+      },
+      "ended": null
+    }
+  ],
+  "events": [
+    {
+      "id": "ev28",
+      "name": "Raw · Week 2",
+      "kind": "weekly",
+      "showId": "raw",
+      "at": {
+        "season": "s1",
+        "week": 2,
+        "seq": 17
+      },
+      "notes": "",
+      "matches": [
+        {
+          "id": "m29",
+          "sides": [
+            {
+              "wrestlers": [
+                "w4"
+              ],
+              "team": null
+            },
+            {
+              "wrestlers": [
+                "w6"
+              ],
+              "team": null
+            }
+          ],
+          "outcome": "win",
+          "winner": 1,
+          "finish": "pinfall",
+          "titleId": "ch22",
+          "stip": "",
+          "notes": ""
+        },
+        {
+          "id": "m31",
+          "sides": [
+            {
+              "wrestlers": [
+                "w14"
+              ],
+              "team": null
+            },
+            {
+              "wrestlers": [
+                "w16"
+              ],
+              "team": null
+            }
+          ],
+          "outcome": "win",
+          "winner": 0,
+          "finish": "submission",
+          "titleId": "ch24",
+          "stip": "",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "ev32",
+      "name": "Dynamite · Week 2",
+      "kind": "weekly",
+      "showId": "dynamite",
+      "at": {
+        "season": "s1",
+        "week": 2,
+        "seq": 19
+      },
+      "notes": "",
+      "matches": [
+        {
+          "id": "m33",
+          "sides": [
+            {
+              "wrestlers": [
+                "w10",
+                "w12"
+              ],
+              "team": "tm20"
+            },
+            {
+              "wrestlers": [
+                "w6",
+                "w8"
+              ],
+              "team": "tm19"
+            }
+          ],
+          "outcome": "win",
+          "winner": 0,
+          "finish": null,
+          "titleId": "ch23",
+          "stip": "",
+          "notes": ""
+        },
+        {
+          "id": "m35",
+          "sides": [
+            {
+              "wrestlers": [
+                "w10"
+              ],
+              "team": null
+            },
+            {
+              "wrestlers": [
+                "w12"
+              ],
+              "team": null
+            }
+          ],
+          "outcome": "draw",
+          "winner": null,
+          "finish": null,
+          "titleId": null,
+          "stip": "",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "ev36",
+      "name": "Clash",
+      "kind": "ple",
+      "showId": null,
+      "at": {
+        "season": "s1",
+        "week": 3,
+        "seq": 22
+      },
+      "notes": "",
+      "matches": [
+        {
+          "id": "m37",
+          "sides": [
+            {
+              "wrestlers": [
+                "w2"
+              ],
+              "team": null
+            },
+            {
+              "wrestlers": [
+                "w4"
+              ],
+              "team": null
+            },
+            {
+              "wrestlers": [
+                "w8"
+              ],
+              "team": null
+            }
+          ],
+          "outcome": "win",
+          "winner": 0,
+          "finish": null,
+          "titleId": null,
+          "stip": "Triple Threat",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "ev39",
+      "name": "SmackDown · Week 1",
+      "kind": "weekly",
+      "showId": "smackdown",
+      "at": {
+        "season": "s38",
+        "week": 1,
+        "seq": 25
+      },
+      "notes": "",
+      "matches": [
+        {
+          "id": "m40",
+          "sides": [
+            {
+              "wrestlers": [
+                "w6",
+                "w8"
+              ],
+              "team": "tm19"
+            },
+            {
+              "wrestlers": [
+                "w2",
+                "w14"
+              ],
+              "team": null
+            }
+          ],
+          "outcome": "nc",
+          "winner": null,
+          "finish": null,
+          "titleId": null,
+          "stip": "",
+          "notes": ""
+        }
+      ]
+    }
+  ]
+}

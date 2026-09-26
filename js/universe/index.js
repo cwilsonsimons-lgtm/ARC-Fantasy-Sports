@@ -7,10 +7,11 @@
 import { SCHEMA_VERSION, activeSeason, createUniverse, summary } from './model.js';
 import { STORAGE_KEY, exportUniverse, importUniverse } from './persist.js';
 import {
-  answerConfirm, bootUniverse, closeSheet, confirmThen, lastSaveFailed, loadState, openSheet,
-  replaceUniverse, toast, uni,
+  answerConfirm, bootUniverse, clearPages, closeSheet, confirmThen, currentPage, dropPage, lastSaveFailed, loadState,
+  openSheet, popPage, previousPage, replaceUniverse, toast, uni,
 } from './app.js';
 import { uvFollowActiveSeason, uvHistoryView, uvRosterView, uvTeamsView, uvTitlesView } from './views.js';
+import { uvPageView } from './pages.js';
 import { ICON, esc } from './ui.js';
 
 const TABS = [['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['history', 'History']];
@@ -28,7 +29,17 @@ function paint() {
   document.getElementById('uvClock').textContent = `${s.name} · Week ${s.week}`;
   document.getElementById('uvTabs').innerHTML = TABS.map(([k, lb]) =>
     `<div class="uv-tab${k === tab ? ' on' : ''}" data-uvtab="${k}" onclick="uvTab('${k}')">${lb}</div>`).join('');
-  body.innerHTML = VIEWS[tab]();
+  // a profile page, if one is open - dropping any whose record has gone
+  let page = currentPage(), out = null;
+  while (page && !(out = uvPageView(page.kind, page.id))) { dropPage(); page = currentPage(); }
+  if (page) {
+    page.title = out.title;
+    const back = previousPage() ? previousPage().title : TABS.find(([k]) => k === tab)[1];
+    body.innerHTML = `<div class="uv-back" onclick="uvBack()">${ICON.left}<span>${esc(back)}</span></div>`
+      + `<div class="uv-page" data-page="${page.kind}">${out.body}</div>`;
+  } else {
+    body.innerHTML = VIEWS[tab]();
+  }
   const L = loadState();
   document.getElementById('uvDataBtn').classList.toggle('warn',
     lastSaveFailed() || L.readOnly || L.status === 'recovered' || L.problems.length > 0);
@@ -49,16 +60,19 @@ export function closeUniverse() {
   if (!document.body.classList.contains('universe')) return;   // also called by the other nav items
   document.body.classList.remove('universe');
   closeSheet();
+  clearPages();
   answerConfirm(false);
   window.showTab && window.showTab(window.homeTab ? window.homeTab() : 'matchup');
 }
 
 export function uvTab(k) {
   tab = k;
+  clearPages();
   paint();
   document.getElementById('uvScroll').scrollTop = 0;
 }
 export function uvCloseSheet() { closeSheet(); }
+export function uvBack() { popPage(); }
 export function uvConfirmYes() { answerConfirm(true); }
 export function uvConfirmNo() { answerConfirm(false); }
 
@@ -139,6 +153,7 @@ export function uvImportFile(input) {
       `The file has ${n.wrestlers} wrestlers, ${n.titles} titles and ${n.events} events. Everything here now is replaced — export first if you want to keep it.`,
       'Replace', () => {
         uvFollowActiveSeason();
+        clearPages();                    // ids repeat across universes: never show a page for the wrong record
         const saved = replaceUniverse(state);
         toast(saved ? 'Universe imported' : 'Imported, but it could not be saved in this browser.', !saved);
       });
@@ -151,6 +166,7 @@ export function uvReset() {
     'This deletes every wrestler, team, title, season and result here. It cannot be undone — export first if you might want it back.',
     'Delete everything', () => {
       uvFollowActiveSeason();
+      clearPages();
       replaceUniverse(createUniverse());
       closeSheet();
       toast('New universe started');
