@@ -108,13 +108,16 @@ function matchCard(st, ev, m, i) {
   const title = m.titleId && M.titleById(st, m.titleId);
   const reign = played && st.reigns.find(r => r.matchId === m.id);
   const detail = played ? [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(' · ') : '';
+  const rel = m.relegation && st.relegations.find(r => r.match === m.id);
   const move = d => `<div class="uv-ic mv" title="Move ${d < 0 ? 'up' : 'down'}" onclick="uvMoveMatch('${ev.id}','${m.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
   return `<div class="uv-mc ${m.status}" data-m="${m.id}">
-    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${title ? chip(title.name, 'gold') : ''}${m.stip ? chip(m.stip) : ''}
+    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.relegation ? chip('Relegation', 'bad') : ''}${title ? chip(title.name, 'gold') : ''}${m.stip && !m.relegation ? chip(m.stip) : ''}
       <span class="st">${played ? 'Result' : 'Booked'}</span></div>
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ''}
     ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title.name)} ${reign.holder.type === 'team' ? 'champions' : 'champion'}</div>` : ''}
+    ${rel ? `<div class="uv-mc-d bad">${esc(M.wrestlerById(st, rel.wrestler).name)} relegated to NXT</div>` : ''}
+    ${m.relegation && !played ? '<div class="uv-mc-d">Relegation match: the loser goes to NXT when you save the result.</div>' : ''}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ''}
     <div class="uv-mc-acts">
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>`
@@ -145,6 +148,7 @@ export function uvEventPage(id) {
         <div class="uv-btn pri" onclick="uvBookMatch('${id}')">${ICON.plus}Book a match</div>
         <div class="uv-btn" onclick="uvEventDetails('${id}')">${ICON.edit}Details</div>
       </div>
+      ${transitionLink(st, e)}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ''}
       <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join('')}</div>`
@@ -157,6 +161,22 @@ export function uvEventPage(id) {
           <span>Takes its bookings and results with it</span></div></div>
       </div>`,
   };
+}
+
+// A premium live event can end the season: WrestleMania leads to the season
+// transition, and a relegation night leads back to it.
+function transitionLink(st, e) {
+  const own = st.transitions.find(t => t.event === e.id);
+  const night = e.matches.find(m => m.relegation);
+  const tr = own || (night && M.transitionById(st, night.relegation.transition));
+  if (tr) {
+    return `<div class="uv-trlink" onclick="uvOpenTransition('${tr.id}')">${ICON.move}<div><b>Season transition</b>
+      <span>${own ? 'Relegation after this event' : 'Relegation matches are on this card'}</span></div>${ICON.right}</div>`;
+  }
+  if (e.kind !== 'ple' || M.transitionOfSeason(st, e.at.season)) return '';
+  const mania = /wrestlemania/i.test(e.name);
+  return `<div class="uv-trlink${mania ? '' : ' quiet'}" onclick="uvStartTransitionAt('${e.id}')">${ICON.move}<div><b>${mania ? 'Start the season transition' : 'End the season here'}</b>
+    <span>Relegation matches on each main show’s first episode after ${esc(e.name)}</span></div>${ICON.right}</div>`;
 }
 
 export function uvMoveMatch(eventId, matchId, d) {
@@ -194,8 +214,10 @@ function openForm(mode, eventId, m, lineup = null) {
     finish: (m && m.finish) || '', by: (m && m.fall && m.fall.by) || '', on: (m && m.fall && m.fall.on) || '',
     titleChange: !!linked,
     // entering a result starts from the booking as it stands; the line-up
-    // opens only if the owner asks (a run-in, a late change)
-    lineup: mode === 'book' || mode === 'edit',
+    // opens only if the owner asks (a run-in, a late change). A relegation
+    // match's line-up is its pairing, and never opens here.
+    lineup: (mode === 'book' || mode === 'edit') && !(m && m.relegation),
+    relegation: !!(m && m.relegation),
   };
   openSheet(formSheet);
 }
@@ -317,7 +339,9 @@ function formSheet() {
       <p class="uv-p">${esc(e.name)} · ${esc(eventWhen(st, e))}${withResult ? ' — enter what the CPU produced. Nothing is filled in for you.' : ''}</p>
       ${md.lineup ? lineup : summary}
       ${result}
-      ${md.lineup ? '' : `<div class="uv-add" onclick="uvMLineup()">${ICON.edit}Change the line-up, title or stipulation</div>`}
+      ${md.relegation ? `<div class="fine">A relegation match: ${withResult ? 'the loser moves to NXT as soon as you save. ' : ''}Its line-up is its
+        pairing — change that on the <span class="uv-link" onclick="uvOpenTransition('${M.eventById(st, md.eventId).matches.find(x => x.id === md.matchId).relegation.transition}')">season transition page</span>.</div>`
+        : md.lineup ? '' : `<div class="uv-add" onclick="uvMLineup()">${ICON.edit}Change the line-up, title or stipulation</div>`}
       <div style="margin-top:12px">${field(withResult ? 'What happened (optional)' : 'Notes (optional)',
         `<textarea id="uvMNotes" class="uv-in" rows="2" maxlength="2000" oninput="uvMText('notes',this.value)"
           placeholder="${withResult ? 'e.g. Run-in, botched finish, crowd went wild' : 'e.g. #1 contender’s match'}">${esc(md.notes)}</textarea>`, 'wide')}</div>
@@ -395,6 +419,8 @@ export function uvMSave(thenResult) {
     const st = uni();
     const reign = st.reigns.find(x => x.matchId === m.id);
     const saved = d.mode === 'result' ? 'Result saved' : 'Result corrected';
+    const rel = st.relegations.find(x => x.match === m.id);
+    if (rel) return `${saved} — ${M.wrestlerById(st, rel.wrestler).name} relegated to NXT`;
     if (!reign) return saved;
     return `${saved} — ${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}`;
   });

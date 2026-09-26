@@ -1257,12 +1257,14 @@ test('the card can be reordered, and history browses newest first by show', () =
   sound(st);
 });
 
-test('a real v2 save migrates to v3: every result played, every show on its night', async () => {
+test('a real v2 save migrates: every result played, every show on its night, nothing relegated', async () => {
   const { readFile } = await import('node:fs/promises');
   const text = await readFile(new URL('./fixtures/universe-v2.json', import.meta.url), 'utf8');
   assert.equal(JSON.parse(text).version, 2);
   const st = importUniverse(text);
-  assert.equal(st.version, 3);
+  assert.equal(st.version, M.SCHEMA_VERSION);
+  assert.deepEqual([st.transitions, st.relegations], [[], []]);
+  assert.ok(st.events.every(e => e.matches.every(m => m.relegation === null)));
   sound(st);
   assert.ok(st.events.every(e => e.matches.every(m => m.status === 'played' && m.fall === null)));
   const byName = n => st.events.find(e => e.name === n);
@@ -1686,3 +1688,261 @@ test('match ideas: available opponents, ranked on need, rivalry and standings - 
   assert.deepEqual(again.slice(0, 2).map(i => i.opponent.name), ['C', 'F']);
   assert.match(again[1].note, /already booked/);
 });
+
+// ---------------------------------------------------------------- the season transition: relegation
+//
+// Season 1. Wins before WrestleMania (all at an NXT house show, against N1;
+// R1, S1 and S2 each lose there once, so everyone has wrestled):
+//   Raw        R1 0, R2 1, R3 1, R4 2, R5 2 (+1 at WrestleMania = 3), R6 4
+//   SmackDown  S1 0, S2 0, S3 1, S4 2, S5 5
+//   Dynamite   D1 1, D2 1, D3 1
+// WrestleMania is a Saturday PLE in week 4.
+function relegationWorld() {
+  const st = M.createUniverse();
+  const add = (n, show) => M.addWrestler(st, { name: n, showId: show });
+  const rw = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(n => add(n, 'raw'));
+  const sw = ['S1', 'S2', 'S3', 'S4', 'S5'].map(n => add(n, 'smackdown'));
+  const dw = ['D1', 'D2', 'D3'].map(n => add(n, 'dynamite'));
+  const n1 = add('N1', 'nxt');
+  const wins = [[rw[1], 1], [rw[2], 1], [rw[3], 2], [rw[4], 2], [rw[5], 4], [sw[2], 1], [sw[3], 2], [sw[4], 5], [dw[0], 1], [dw[1], 1], [dw[2], 1]];
+  M.setWeek(st, 2);
+  const house = M.addEvent(st, { showId: 'nxt' });
+  wins.forEach(([w, n]) => { for (let i = 0; i < n; i++) M.recordMatch(st, house.id, { sides: S([w.id, n1.id]), winner: 0 }); });
+  [rw[0], sw[0], sw[1]].forEach(w => M.recordMatch(st, house.id, { sides: S([w.id, n1.id]), winner: 1 }));
+  M.setWeek(st, 4);
+  const wm = M.addEvent(st, { kind: 'ple', name: 'WrestleMania', week: 4 });
+  M.recordMatch(st, wm.id, { sides: S([rw[4].id, n1.id]), winner: 0 });
+  const tr = M.startTransition(st, wm.id);
+  const id = w => w.id;
+  return { st, rw, sw, dw, n1, wm, tr, id };
+}
+const keys = t => t.flags.map(f => `${f.level}:${f.key}`);
+const cand = (st, t) => t.candidates.map(id => M.wrestlerById(st, id).name);
+
+test('relegation candidates are the fewest wins on each show; a tie at the cutoff is left to the owner', () => {
+  const { st, tr, wm } = relegationWorld();
+  const raw = M.relegationTable(st, tr.id, 'raw');
+  assert.deepEqual(raw.pool.map(r => `${r.name}:${r.wins}`), ['R1:0', 'R2:1', 'R3:1', 'R4:2', 'R5:3', 'R6:4']);
+  assert.deepEqual(raw.pool.map(r => r.place), [1, 2, 2, 4, 5, 6]);
+  assert.equal(raw.pool.find(r => r.name === 'R5').matches, 3);                // WrestleMania counts
+  // two candidates: R1 for sure; R2 and R3 tie for the second spot
+  assert.deepEqual([cand(st, raw), raw.tied.map(r => r.name)], [['R1'], ['R2', 'R3']]);
+  assert.deepEqual(keys(raw), ['decide:tie']);                               // R1 alone is the tie's doing, not flagged twice
+  assert.match(raw.flags[0].text, /R2 and R3 are tied on 1 win for the last candidate spot/);
+  const night = M.addEvent(st, { showId: 'raw', week: 5 });
+  throwsUE(() => M.bookRelegation(st, tr.id, 'raw', night.id), /tied on 1 win/);
+
+  // SmackDown holds more this year, Dynamite none: nothing has to match
+  M.setCandidateCount(st, tr.id, 'smackdown', 4);
+  const sd = M.relegationTable(st, tr.id, 'smackdown');
+  assert.deepEqual(cand(st, sd), ['S1', 'S2', 'S3', 'S4']);
+  assert.deepEqual(sd.pairs.map(p => [p.a, p.b].map(x => M.wrestlerById(st, x).name).join('-')), ['S1-S2', 'S3-S4']);
+  assert.deepEqual(sd.blocking, []);
+  const dyn = M.relegationTable(st, tr.id, 'dynamite');
+  assert.deepEqual([cand(st, dyn), dyn.tied.length, keys(dyn)], [[], 3, ['decide:tie']]);
+  M.setCandidateCount(st, tr.id, 'dynamite', 0);
+  assert.deepEqual(keys(M.relegationTable(st, tr.id, 'dynamite')), []);
+  assert.equal(M.relegationTable(st, tr.id, 'raw').wm.id, wm.id);
+  assert.ok(!('nxt' in tr.shows), 'NXT holds no relegation matches');
+  sound(st);
+});
+
+test('the owner settles the tie and books the match on the first show after WrestleMania', () => {
+  const { st, tr, rw } = relegationWorld();
+  M.toggleCandidate(st, tr.id, 'raw', rw[2].id);                            // R3 takes the tied spot
+  let raw = M.relegationTable(st, tr.id, 'raw');
+  assert.deepEqual([cand(st, raw), keys(raw)], [['R1', 'R3'], ['check:picked']]);
+  assert.match(raw.flags[0].text, /Picked by you — added R3/);
+  // no Raw after WrestleMania yet: it would be Monday of week 5
+  assert.deepEqual([raw.night.event, raw.night.week], [undefined, 5]);
+  const before = M.addEvent(st, { showId: 'raw', week: 4 });                 // Monday of WrestleMania week
+  const sd = M.addEvent(st, { showId: 'smackdown', week: 5 });
+  const night = M.addEvent(st, { showId: 'raw', week: 5 });
+  assert.equal(M.relegationTable(st, tr.id, 'raw').night.event.id, night.id);
+  throwsUE(() => M.bookRelegation(st, tr.id, 'raw', before.id), /come after WrestleMania/);
+  throwsUE(() => M.bookRelegation(st, tr.id, 'raw', sd.id), /go on a Raw episode/);
+  const [m] = M.bookRelegation(st, tr.id, 'raw', night.id);
+  assert.deepEqual([m.status, m.stip, m.relegation.show, m.winner], ['scheduled', 'Relegation match', 'raw', null]);
+  raw = M.relegationTable(st, tr.id, 'raw');
+  assert.equal(raw.pairs[0].status, 'booked');
+  throwsUE(() => M.toggleCandidate(st, tr.id, 'raw', rw[0].id), /booked in a relegation match/);
+  throwsUE(() => M.useWinTotals(st, tr.id, 'raw'), /candidates are fixed/);
+  throwsUE(() => M.bookRelegation(st, tr.id, 'raw', night.id), /already booked/);
+  sound(st);
+});
+
+function bookedRaw() {
+  const w = relegationWorld();
+  M.toggleCandidate(w.st, w.tr.id, 'raw', w.rw[2].id);
+  const night = M.addEvent(w.st, { showId: 'raw', week: 5 });
+  const [m] = M.bookRelegation(w.st, w.tr.id, 'raw', night.id);
+  const who = m.sides.findIndex(sd => sd.wrestlers[0] === w.rw[2].id);         // R3's side
+  return { ...w, night, m, r3: who, r1: 1 - who };
+}
+
+test('the loser moves to NXT the moment the result is entered, with why kept for good', () => {
+  const { st, tr, rw, night, m, r3 } = bookedRaw();
+  M.recordMatch(st, night.id, { sides: S([rw[0].id, rw[5].id]), winner: 0 });  // after WrestleMania: not counted
+  M.enterResult(st, night.id, m.id, { outcome: 'win', winner: r3 });
+  const R1 = M.wrestlerById(st, rw[0].id);
+  assert.equal(R1.showId, 'nxt');
+  assert.equal(M.wrestlerById(st, rw[2].id).showId, 'raw');                    // the winner stays
+  const mv = M.movesOf(st, R1.id).pop();
+  assert.deepEqual([mv.from, mv.to, mv.at.week, mv.at.day, mv.note], ['raw', 'nxt', 5, 0, 'Relegated — lost to R3']);
+  const [rec] = M.relegationsOf(st, R1.id);
+  assert.deepEqual([rec.show, rec.from, rec.wins, rec.place, rec.of, rec.candidate, rec.opponent, rec.match],
+    ['raw', 'raw', 0, 1, 6, 'fewest wins', rw[2].id, m.id]);
+  assert.equal(rec.reason, 'Lost the Raw relegation match to R3 at Raw · Week 5 (Season 1). A relegation candidate for the fewest wins: '
+    + '0 wins in Season 1 up to WrestleMania — 1st fewest of 6 on Raw.');
+  const t = M.relegationTable(st, tr.id, 'raw');
+  assert.equal(t.pairs[0].status, 'relegated');
+  assert.equal(t.pool.find(r => r.name === 'R1').wins, 0);
+  assert.equal(t.pool.find(r => r.name === 'R1').now, 'nxt');
+  assert.ok(M.careerOf(st, R1.id).some(e => e.type === 'move' && e.move.to === 'nxt'));
+  // R3 was the owner's pick, and the record would say so
+  M.updateMatch(st, night.id, m.id, { sides: m.sides, outcome: 'win', winner: 1 - r3 });
+  assert.equal(M.relegationsOf(st, rw[2].id)[0].candidate, 'owner');
+  assert.match(M.relegationsOf(st, rw[2].id)[0].reason, /Picked as a candidate by the owner, with 1 win in Season 1 up to WrestleMania \(joint 2nd fewest of 6 on Raw\)/);
+  sound(st);
+});
+
+test('correcting a relegation result swaps who goes down; clearing or deleting it brings them back', () => {
+  const { st, tr, rw, night, m, r1, r3 } = bookedRaw();
+  const show = id => M.wrestlerById(st, id).showId;
+  M.enterResult(st, night.id, m.id, { outcome: 'win', winner: r3 });
+  M.updateMatch(st, night.id, m.id, { sides: m.sides, outcome: 'win', winner: r1 });      // R1 won after all
+  assert.deepEqual([show(rw[0].id), show(rw[2].id)], ['raw', 'nxt']);
+  assert.deepEqual(st.relegations.map(r => M.wrestlerById(st, r.wrestler).name), ['R3']);
+  M.updateMatch(st, night.id, m.id, { sides: m.sides, outcome: 'win', winner: r1, finish: 'pinfall' });   // same result, more detail
+  assert.equal(st.relegations.length, 1);
+  M.clearResult(st, night.id, m.id);
+  assert.deepEqual([show(rw[0].id), show(rw[2].id), st.relegations.length], ['raw', 'raw', 0]);
+  assert.equal(M.movesOf(st, rw[2].id).length, 1);                           // the NXT move is gone, not just reversed
+  M.enterResult(st, night.id, m.id, { outcome: 'win', winner: r3 });
+  M.setWeek(st, 6);
+  M.assignWrestler(st, rw[0].id, 'smackdown');                                // R1 has moved on since
+  throwsUE(() => M.updateMatch(st, night.id, m.id, { sides: m.sides, outcome: 'win', winner: r1 }), /R1 has moved since being relegated/);
+  throwsUE(() => M.deleteMatch(st, night.id, m.id), /moved since being relegated/);
+  M.undoLastMove(st, rw[0].id);
+  M.deleteMatch(st, night.id, m.id);
+  assert.deepEqual([show(rw[0].id), st.relegations.length], ['raw', 0]);
+  assert.equal(M.relegationTable(st, tr.id, 'raw').pairs[0].status, 'unbooked');
+  sound(st);
+});
+
+test('a relegation match without a winner is the owner’s decision: settle it, or book a rematch', () => {
+  const { st, tr, sw } = relegationWorld();
+  M.setCandidateCount(st, tr.id, 'smackdown', 4);
+  const night = M.addEvent(st, { showId: 'smackdown', week: 5 });
+  const [m1, m2] = M.bookRelegation(st, tr.id, 'smackdown', night.id);
+  M.enterResult(st, night.id, m1.id, { outcome: 'draw' });                   // S1 v S2
+  M.enterResult(st, night.id, m2.id, { outcome: 'win', winner: 1 });          // S4 beats S3
+  let t = M.relegationTable(st, tr.id, 'smackdown');
+  assert.deepEqual(t.pairs.map(p => p.status), ['no winner', 'relegated']);
+  assert.deepEqual(keys(t), ['decide:nowinner']);
+  assert.match(t.flags[0].text, /S1 vs S2 ended in a draw\. Book a rematch, or decide/);
+  assert.equal(M.wrestlerById(st, sw[1].id).showId, 'smackdown');           // a draw sends nobody down
+  const pair = t.pairs[0];
+  M.decidePair(st, tr.id, 'smackdown', pair.id, sw[1].id, 'Lost the coin toss');
+  assert.equal(M.wrestlerById(st, sw[1].id).showId, 'nxt');
+  const rec = M.relegationsOf(st, sw[1].id)[0];
+  assert.equal(rec.decided, true);
+  assert.match(rec.reason, /ended without a winner; sent to NXT by the owner's decision — Lost the coin toss\./);
+  throwsUE(() => M.clearResult(st, night.id, m1.id), /Undo that decision first/);
+  M.undoDecision(st, tr.id, 'smackdown', pair.id);
+  assert.equal(M.wrestlerById(st, sw[1].id).showId, 'smackdown');
+  // a rematch the next week: S1 wins it
+  const next = M.addEvent(st, { showId: 'smackdown', week: 6 });
+  const [re] = M.bookRelegation(st, tr.id, 'smackdown', next.id, [pair.id]);
+  M.enterResult(st, next.id, re.id, { outcome: 'win', winner: 0 });
+  assert.equal(M.wrestlerById(st, sw[1].id).showId, 'nxt');
+  assert.match(M.relegationsOf(st, sw[1].id)[0].reason, /^Lost the SmackDown relegation match to S1 at SmackDown · Week 6/);
+  throwsUE(() => M.updateMatch(st, night.id, m1.id, { sides: m1.sides, outcome: 'win', winner: 0 }), /rematch has been booked/);
+  // SmackDown sent two down, Raw none so far: nothing has to match
+  assert.equal(st.relegations.length, 2);
+  sound(st);
+});
+
+test('odd numbers and missing results are flagged for the owner, never settled quietly', () => {
+  const { st, tr, rw, wm, n1 } = relegationWorld();
+  M.bookMatch(st, wm.id, { sides: S([rw[5].id, n1.id]) });                   // WrestleMania isn't finished
+  let raw = M.relegationTable(st, tr.id, 'raw');
+  assert.deepEqual(keys(raw), ['decide:incomplete', 'decide:tie']);
+  assert.match(raw.flags[0].text, /1 match up to WrestleMania has no result yet \(WrestleMania\)/);
+  M.countWinsAsTheyStand(st, tr.id);
+  M.toggleCandidate(st, tr.id, 'raw', rw[1].id);                              // R1, R2 ...
+  M.toggleCandidate(st, tr.id, 'raw', rw[2].id);                              // ... and R3: three
+  raw = M.relegationTable(st, tr.id, 'raw');
+  assert.deepEqual(keys(raw), ['decide:odd', 'check:picked']);
+  assert.match(raw.flags[0].text, /An odd number of candidates \(3\): R3 has no opponent/);
+  M.pairCandidates(st, tr.id, 'raw', rw[0].id, rw[2].id);                     // R1 v R3; R2 left over
+  raw = M.relegationTable(st, tr.id, 'raw');
+  assert.deepEqual(raw.pairs.map(p => [p.a, p.b].map(x => M.wrestlerById(st, x).name).join('-')), ['R1-R3']);
+  assert.deepEqual(raw.unpaired.map(x => M.wrestlerById(st, x).name), ['R2']);
+  M.toggleCandidate(st, tr.id, 'raw', rw[1].id);                              // two again: back to win order
+  raw = M.relegationTable(st, tr.id, 'raw');
+  assert.deepEqual([keys(raw), raw.pairs.length], [['check:picked'], 1]);
+  M.bookMatch(st, wm.id, { sides: S([rw[3].id, n1.id]) });                   // another missing result: flagged again
+  assert.ok(keys(M.relegationTable(st, tr.id, 'raw')).includes('decide:incomplete'));
+  sound(st);
+});
+
+test('a relegation match keeps its pairing, its night stays after WrestleMania, and its move follows the night', () => {
+  const { st, tr, rw, wm, night, m, r3 } = bookedRaw();
+  throwsUE(() => M.updateBooking(st, night.id, m.id, { sides: S([rw[0].id, rw[5].id]) }), /its line-up is its pairing/);
+  throwsUE(() => M.enterResult(st, night.id, m.id, { sides: S([rw[0].id, rw[5].id]), winner: 0 }), /its line-up is its pairing/);
+  M.updateBooking(st, night.id, m.id, { notes: 'Loser goes to NXT' });        // everything else can change
+  M.enterResult(st, night.id, m.id, { outcome: 'win', winner: r3 });
+  throwsUE(() => M.updateEvent(st, night.id, { week: 4 }), /has to stay after WrestleMania/);
+  throwsUE(() => M.updateEvent(st, night.id, { showId: 'smackdown' }), /stays a Raw episode/);
+  throwsUE(() => M.updateEvent(st, wm.id, { week: 6 }), /has to stay before it/);
+  M.updateEvent(st, night.id, { week: 6, day: 1 });
+  const mv = M.movesOf(st, rw[0].id).pop();
+  assert.deepEqual([mv.at.week, mv.at.day, st.relegations[0].at.week], [6, 1, 6]);
+  throwsUE(() => M.deleteEvent(st, wm.id), /season transition starts from WrestleMania/);
+  throwsUE(() => M.cancelTransition(st, tr.id), /Take them off first/);
+  throwsUE(() => M.startTransition(st, wm.id), /already has its season transition/);
+  M.deleteEvent(st, night.id);                                               // the whole night goes: so does the relegation
+  assert.deepEqual([M.wrestlerById(st, rw[0].id).showId, st.relegations.length], ['raw', 0]);
+  M.cancelTransition(st, tr.id);
+  assert.equal(st.transitions.length, 0);
+  sound(st);
+});
+
+test('the pool is who was on the show at WrestleMania', () => {
+  const { st, tr, rw, sw } = relegationWorld();
+  M.setWeek(st, 5);
+  M.assignWrestler(st, rw[0].id, 'smackdown');                               // traded after WrestleMania
+  M.assignWrestler(st, sw[4].id, 'raw');
+  const raw = M.relegationTable(st, tr.id, 'raw');
+  assert.ok(raw.pool.some(r => r.name === 'R1') && !raw.pool.some(r => r.name === 'S5'));
+  assert.ok(raw.flags.some(f => f.key === 'moved' && /R1 is on SmackDown now/.test(f.text)));
+});
+
+test('merging duplicates carries who took the fall, and leaves relegation records alone', () => {
+  const st = M.createUniverse();
+  const [a, dup, b] = ['Cody', 'Cody R', 'Gunther'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, ev.id, { sides: S([dup.id, b.id]), winner: 0, fall: { by: dup.id, on: b.id } });
+  M.mergeWrestlers(st, a.id, dup.id);
+  assert.deepEqual(st.events[0].matches[0].fall, { by: a.id, on: b.id });
+  sound(st);
+  const w = relegationWorld();
+  const twin = M.addWrestler(w.st, { name: 'R1 again', showId: 'raw' });
+  M.toggleCandidate(w.st, w.tr.id, 'raw', w.rw[2].id);                      // R1 and R3 are now the owner's picks
+  throwsUE(() => M.mergeWrestlers(w.st, twin.id, w.rw[0].id), /part of a season transition/);
+  M.mergeWrestlers(w.st, w.rw[0].id, twin.id);
+  sound(w.st);
+});
+
+test('a save with relegation in it round-trips, and a broken record is refused', () => {
+  const { st, night, m, r3 } = bookedRaw();
+  M.enterResult(st, night.id, m.id, { outcome: 'win', winner: r3 });
+  const back = importUniverse(exportUniverse(st));
+  assert.deepEqual(back, st);
+  const broken = JSON.parse(exportUniverse(st));
+  broken.moves = broken.moves.filter(x => x.to !== 'nxt');
+  throwsUE(() => importUniverse(JSON.stringify(broken)), /problem/);
+  assert.ok(M.validate(migrateOnly(broken)).some(p => /roster move that doesn't match/.test(p)));
+});
+function migrateOnly(raw) { return M.migrate(raw); }

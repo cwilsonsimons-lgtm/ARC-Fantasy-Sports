@@ -813,7 +813,7 @@ await check('export downloads the whole universe', async () => {
   await dl.saveAs(exported);
   const file = JSON.parse(await readFile(exported, 'utf8'));
   return [dl.suggestedFilename(), JSON.stringify(file) === JSON.stringify(before), file.version];
-}, ['wwe-universe-season2-week1.json', true, 3]);
+}, ['wwe-universe-season2-week1.json', true, M.SCHEMA_VERSION]);
 await check('start a new universe (confirmed)', async () => {
   await sheet.getByText('Start a new universe').click();
   await settle();
@@ -847,7 +847,7 @@ await check('a v1 save from the last version imports and upgrades', async () => 
   await closeSheet();
   await openRow('Jey Uso', 'roster');
   return [u.version, validate(u), await recs()];
-}, [3, [], ['Singles 1–0–0', 'Tag 0–1–0', 'Title reigns 1']]);
+}, [M.SCHEMA_VERSION, [], ['Singles 1–0–0', 'Tag 0–1–0', 'Title reigns 1']]);
 await check('a v2 save (last stage) imports: every result kept, every show on its night', async () => {
   await noSheet();
   await page.click('#uvDataBtn');
@@ -862,7 +862,7 @@ await check('a v2 save (last stage) imports: every result kept, every show on it
   await page.click('#uvTabs [data-uvtab=history]');
   await body.locator('.uv-pill', { hasText: 'Season 1' }).click();
   return [u.version, validate(u), u.events.every(e => e.matches.every(m => m.status === 'played')), rhea, (await shows()).length > 0];
-}, [3, [], true, 'Singles 2–0–0', true]);
+}, [M.SCHEMA_VERSION, [], true, 'Singles 2–0–0', true]);
 await check('layout anchored after all that', async () => { await noSheet(); return anchored(); }, isAnchored);
 
 // ================================================================ rankings and booking balance
@@ -996,6 +996,139 @@ await check('the bottom of the standings can be booked for the world title, and 
   return [titles, u.wrestlers.find(w => w.id === cur.holder.id).name, (await toast()).t];
 }, [['None', 'World Heavyweight Championship'], 'D', 'Result saved — D holds the World Heavyweight Championship']);
 await check('saved universe is sound after all that', sound, []);
+
+// ================================================================ season transition: relegation
+// Season 1, week 4. Wins before WrestleMania (Saturday, week 4), all against N1:
+//   Raw        R1 0 (one loss), R2 1, R3 1, R4 2, R5 2 (+1 at WrestleMania), R6 4
+//   SmackDown  S1 0, S2 0 (a loss each), S3 1, S4 2, S5 5
+//   Dynamite   D1 1, D2 1, D3 1
+function relegationWorld() {
+  const st = M.createUniverse();
+  const add = (n, show) => M.addWrestler(st, { name: n, showId: show });
+  const rw = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(n => add(n, 'raw'));
+  const sw = ['S1', 'S2', 'S3', 'S4', 'S5'].map(n => add(n, 'smackdown'));
+  const dw = ['D1', 'D2', 'D3'].map(n => add(n, 'dynamite'));
+  const n1 = add('N1', 'nxt');
+  const one = (x, y, winner) => ({ sides: [{ wrestlers: [x.id] }, { wrestlers: [y.id] }], winner });
+  M.setWeek(st, 2);
+  const house = M.addEvent(st, { showId: 'nxt' });
+  [[rw[1], 1], [rw[2], 1], [rw[3], 2], [rw[4], 2], [rw[5], 4], [sw[2], 1], [sw[3], 2], [sw[4], 5], [dw[0], 1], [dw[1], 1], [dw[2], 1]]
+    .forEach(([w, n]) => { for (let i = 0; i < n; i++) M.recordMatch(st, house.id, one(w, n1, 0)); });
+  [rw[0], sw[0], sw[1]].forEach(w => M.recordMatch(st, house.id, one(w, n1, 1)));
+  M.setWeek(st, 4);
+  const wm = M.addEvent(st, { kind: 'ple', name: 'WrestleMania', week: 4 });
+  M.recordMatch(st, wm.id, one(rw[4], n1, 0));
+  return st;
+}
+const trRows = sid => js(`[...document.querySelectorAll('.uv-trshow[data-show=${sid}] .uv-tw[data-w]')].map(r =>
+  r.querySelector('.nm').childNodes[0].textContent.trim() + ':' + r.querySelector('.w b').textContent + (r.classList.contains('on') ? '*' : '') + (r.classList.contains('tied') ? '~' : ''))`);
+const trFlags = sid => js(`[...document.querySelectorAll('.uv-trshow[data-show=${sid}] .uv-flag')].map(${TEXT})`);
+const trShow = sid => page.locator(`.uv-trshow[data-show=${sid}]`);
+await check('relegation: WrestleMania on the calendar leads to the season transition', async () => {
+  await noSheet();
+  const file = join(dir, 'relegation.json');
+  await writeFile(file, JSON.stringify(relegationWorld()));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  const row = await js(`document.querySelector('.uv-card-row').textContent.replace(/\\s+/g, ' ').trim()`);
+  await page.click('.uv-card-row');
+  await page.waitForTimeout(150);
+  return [row, await pageKind(), (await saved()).transitions.length,
+    await js(`[...document.querySelectorAll('.uv-trsum span')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`)];
+}, ['WrestleMania ends the season Start the season transition: relegation to NXT', 'transition', 1,
+  ['Raw: 1 decision for you', 'SmackDown: ready to book', 'Dynamite: 1 decision for you']]);
+await check('the season win totals behind the candidates, fewest first', async () => [await trRows('raw'), await trRows('smackdown')],
+  [['R1:0*', 'R2:1~', 'R3:1~', 'R4:2', 'R5:3', 'R6:4'], ['S1:0*', 'S2:0*', 'S3:1', 'S4:2', 'S5:5']]);
+await check('a tie at the cutoff waits for you, and so does booking', async () => [await trFlags('raw'),
+  await trShow('raw').locator('.uv-btn.full').textContent()],
+  [['Your decision R2 and R3 are tied on 1 win for the last candidate spot. Pick who\'s a candidate, or change the number.'],
+    'Settle the decisions above to book']);
+await check('you settle it: pick R3, and R1 v R3 is the pairing', async () => {
+  await trShow('raw').locator('.uv-tw[data-w]', { hasText: 'R3' }).click();
+  await page.waitForTimeout(150);
+  return [await trRows('raw'), await trFlags('raw'), await js(`document.querySelector('.uv-trshow[data-show=raw] .uv-pair .vs').textContent.replace(/\\s+/g, ' ').trim()`)];
+}, [['R1:0*', 'R2:1', 'R3:1*', 'R4:2', 'R5:3', 'R6:4'], ['Picked by you — added R3.'], 'R1 (0) vs R3 (1)']);
+await check('an odd number is flagged, not settled for you', async () => {
+  await trShow('smackdown').locator('.uv-trcount .uv-ic').nth(1).click();          // three candidates
+  await page.waitForTimeout(150);
+  const flags = await trFlags('smackdown');
+  await trShow('smackdown').locator('.uv-trcount .uv-ic').nth(0).click();          // back to two
+  await page.waitForTimeout(150);
+  return [flags, await trFlags('smackdown')];
+}, [['Your decision An odd number of candidates (3): S3 has no opponent. Add or take out a candidate, or change the pairings.'], []]);
+await check('each show sets its own number: none for Dynamite this year', async () => {
+  for (let i = 0; i < 2; i++) { await trShow('dynamite').locator('.uv-trcount .uv-ic').nth(0).click(); await page.waitForTimeout(120); }
+  return [(await saved()).transitions[0].shows.dynamite.count, await trFlags('dynamite'),
+    await js(`[...document.querySelectorAll('.uv-trsum span')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`)];
+}, [0, [], ['Raw: ready to book', 'SmackDown: ready to book', 'Dynamite: no relegation this year']]);
+await check('plan Raw’s first show after WrestleMania, and book the match there', async () => {
+  await trShow('raw').locator('.uv-btn', { hasText: 'Plan it' }).click();
+  await page.waitForTimeout(150);
+  const night = await js(`document.querySelector('.uv-trshow[data-show=raw] .uv-trnight b').textContent`);
+  await trShow('raw').locator('.uv-btn.pri').click();
+  await page.waitForTimeout(150);
+  const u = await saved();
+  const ev = u.events.find(e => e.name === 'Raw · Week 5');
+  const m = ev.matches[0];
+  return [night, ev.at.day, m.status, m.stip, !!m.relegation, (await toast()).t,
+    await js(`document.querySelector('.uv-trshow[data-show=raw] .uv-pst').textContent`)];
+}, ['Raw · Week 5', 0, 'scheduled', 'Relegation match', true, '1 relegation match booked on Raw · Week 5', 'Booked — waiting for the result']);
+await check('the relegation match on the card; its result form keeps the pairing', async () => {
+  await trShow('raw').locator('.uv-trnight').click();
+  await page.waitForTimeout(150);
+  const chips = await js(`[...document.querySelectorAll('.uv-page .uv-mc .uv-chip')].map(c => c.textContent)`);
+  await btn(mc(0), 'Enter result').click();
+  await settle();
+  return [chips, await js(`/loser moves to NXT as soon as you save/.test(document.getElementById('uvSheetBody').textContent)`),
+    await js(`!!document.querySelector('#uvSheetBody .uv-add')`), await js(`document.getElementById('uvMResult').value`)];
+}, [['Singles', 'Relegation'], true, false, '']);
+await check('the loser moves to NXT the moment the result is saved', async () => {
+  await page.selectOption('#uvMResult', { label: 'R3 won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const u = await saved();
+  const w = n => u.wrestlers.find(x => x.name === n);
+  const rec = u.relegations[0];
+  return [(await toast()).t, w('R1').showId, w('R3').showId, rec && rec.show, rec && rec.reason,
+    await js(`[...document.querySelectorAll('.uv-page .uv-mc-d')].map(e => e.textContent.trim()).includes('R1 relegated to NXT')`)];
+}, ['Result saved — R1 relegated to NXT', 'nxt', 'raw', 'raw',
+  'Lost the Raw relegation match to R3 at Raw · Week 5 (Season 1). A relegation candidate for the fewest wins: 0 wins in Season 1 up to WrestleMania — 1st fewest of 6 on Raw.',
+  true]);
+await check('a corrected result swaps who goes down', async () => {
+  await btn(mc(0), 'Correct').click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'R1 won' });
+  await btn(sheet, 'Save the correction').click();
+  await settle();
+  const u = await saved();
+  const w = n => u.wrestlers.find(x => x.name === n);
+  return [(await toast()).t, w('R1').showId, w('R3').showId, u.relegations.map(r => u.wrestlers.find(x => x.id === r.wrestler).name), await sound()];
+}, ['Result corrected — R3 relegated to NXT', 'raw', 'nxt', ['R3'], []]);
+await check('the record stays on the wrestler’s page, and on the transition', async () => {
+  await openRow('R3', 'roster');
+  const prof = await js(`${TEXT}(document.querySelector('.uv-page .uv-relrec'))`);
+  await body.locator('.uv-page .uv-relrec').click();
+  await page.waitForTimeout(150);
+  return [prof, await pageKind(), await js(`document.querySelector('.uv-trshow[data-show=raw] .uv-relrec b').textContent`)];
+}, r => /^Raw → NXT · S1 · W5 Lost the Raw relegation match to R1 at Raw · Week 5 \(Season 1\)\. Picked as a candidate by the owner, with 1 win in Season 1 up to WrestleMania \(joint 2nd fewest of 6 on Raw\)\.$/.test(r[0])
+  && r[1] === 'transition' && r[2] === 'R3 → NXT');
+await check('How relegation works explains the rule and what waits for you', async () => {
+  await body.locator('.uv-link', { hasText: 'How relegation works' }).click();
+  await settle();
+  const t = await js(`document.getElementById('uvSheetBody').textContent.replace(/\\s+/g, ' ')`);
+  await closeSheet();
+  return [/fewest/.test(t), /Tie/.test(t) && /Odd/.test(t) && /Missing/.test(t) && /Draw/.test(t), /whatever their roster sizes/.test(t), /never does/.test(t)];
+}, [true, true, true, true]);
+await check('WrestleMania’s page links to its transition', async () => {
+  await openShow('WrestleMania', 4);
+  return js(`document.querySelector('.uv-trlink b').textContent`);
+}, 'Season transition');
+await check('saved universe is sound after relegation', sound, []);
 
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {

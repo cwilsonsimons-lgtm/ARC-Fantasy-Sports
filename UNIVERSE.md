@@ -44,13 +44,14 @@ js/universe/
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
   ranks.js             the Rankings tab: standings and booking balance
   standings.js         the arithmetic behind it - pure, runs under Node
+  relegation.js        the season transition page: relegation after WrestleMania
   card.js              a show's page and match card; the booking / result form
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       76 model tests      npm run test:universe
-tools/universe-check.mjs      99 browser checks   npm run check:universe
+tools/universe-test.mjs       86 model tests      npm run test:universe
+tools/universe-check.mjs      113 browser checks  npm run check:universe
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -142,6 +143,53 @@ The **History** tab browses the past, newest first: **Results** lists every
 result show by show, filterable by season and by show (or just the PLEs), each
 with its finish, title and notes; **Everything** puts results, title changes,
 moves and team changes on one timeline. Tap any of it to open the show.
+
+## The season transition: relegation after WrestleMania
+
+Once a season, WrestleMania ends it. Each main-roster show — every show but NXT:
+Raw, SmackDown and Dynamite — holds its own relegation matches on its first
+episode after WrestleMania. Whoever loses a relegation match moves to NXT the
+moment the result is saved; the winner stays. The game decides who wins.
+
+Start it from the season card on the Calendar ("WrestleMania ends the season")
+or from WrestleMania's own page. The transition page has a section per show:
+
+- **The win totals.** Everyone who was on the show at WrestleMania, fewest wins
+  first — wins in that season up to and including WrestleMania, singles and tag,
+  wherever they happened (relegation matches themselves never count). This is
+  the list the candidates come from, shown in full.
+- **Candidates.** The ones with the fewest wins — as many as you set *for that
+  show* (two to start; any number, including none). Tap anyone to make them a
+  candidate or not. Shows never have to match: roster sizes, numbers of
+  candidates and numbers relegated are each show's own.
+- **Pairings.** One on one, in win order until you pair them differently.
+- **Relegation night.** The show's first episode after WrestleMania; if there
+  isn't one yet, **Plan it** puts one on the calendar. **Book** puts the
+  matches on its card, marked as relegation matches.
+
+Nothing is decided for you where the rule runs out. Each of these is flagged as
+*your decision*, and booking waits until it's settled:
+
+| Flag | What you decide |
+|---|---|
+| A tie across the cutoff | Who takes the spot — or change the number |
+| An odd number of candidates, or someone unpaired | Add or take out a candidate, or re-pair |
+| Matches up to WrestleMania still without a result | Enter them, or count the wins as they stand |
+| A relegation match without a winner (draw or no contest) | Book a rematch, or send one (or neither) to NXT yourself |
+
+Also shown, without holding anything up: an injured candidate, a candidate who
+has changed show since WrestleMania, a pairing across divisions, a candidate
+with no matches, and candidates you picked by hand.
+
+**The record.** Every relegation keeps, for good, the show they were relegated
+from, the match and who won it (or that it was your decision, with your note),
+and the win total and place that made them a candidate — or that you picked
+them. It shows on the wrestler's page, on the transition page, and in their
+career history as the move to NXT. A wrong relegation result is corrected like
+any other: the real loser goes down and the other comes back; clearing the
+result or taking the match off the card brings them back — only while it's
+still their latest move, so nothing later is rewritten. A relegation match's
+line-up is its pairing, so it's changed only on the transition page.
 
 ## Rankings and booking balance
 
@@ -255,6 +303,9 @@ refuses rather than disturb anything else:
 | A show on the wrong week or night | Change it in the show's **Details**; any title change there moves with it, as long as the title's history still reads in order. An episode still called by its default name ("Raw · Week 3") is renamed to match. |
 | The same wrestler entered twice | **Merge a duplicate** on the profile: results, team spells and reigns move over. Refused if the two were ever in the same match or on the same team. |
 | Something added by mistake with no history | Delete it. |
+| A relegation result entered wrong | **Correct** it on its match: the wrestler who really lost goes to NXT, and the other comes back. Clearing it, or taking it off the card, brings them back — while it's still their latest move. |
+| A relegation decision made wrong | **Undo** it on the transition page. |
+| A season transition started by mistake | **Cancel** it, while nothing is booked from it. |
 
 ## Saving
 
@@ -290,16 +341,18 @@ a time. **Version 2** added team line-up history: a version 1 save only knew
 each team's current members, so on load everyone becomes a founding member and
 nobody has left. **Version 3** added the calendar and bookings: every result
 in an older save becomes a played match, and every show lands on its show's
-night (a PLE on Saturday). `tools/fixtures/` holds a real save from each older
-version, written by that version's code, and the tests load both.
+night (a PLE on Saturday). **Version 4** added the season transition and the
+relegation record; nothing in an older save was a relegation match.
+`tools/fixtures/` holds real version 1 and 2 saves, written by that version's
+code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Promotion/relegation (the annual transfer system), personality events and
-story generation are later work. The foundation is shaped for them — results
-record sides, winners, finishes and titles, standings rank every show, roster
-moves record who changed show and when, and seasons have hard edges — but none
-of that logic exists yet. Whatever suggests a match, the result still comes
+Promotion from NXT, personality events and story generation are later work.
+The foundation is shaped for them — results record sides, winners, finishes and
+titles, standings rank every show, roster moves record who changed show and
+when, relegation keeps why, and seasons have hard edges — but none of that
+logic exists yet. Whatever suggests a match, the result still comes
 from the game. There are
 also no personality or relationship fields: those belong to the features that
 will use them, and inventing their shape now would only mean migrating it

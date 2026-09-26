@@ -16,6 +16,7 @@ import {
 } from './ui.js';
 import { pushPage, refresh, uni } from './app.js';
 import { uvEventPage } from './card.js';
+import { uvTransitionPage } from './relegation.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -24,7 +25,7 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 /** { title, body } for a page, or null if what it showed no longer exists. */
 export function uvPageView(kind, id) {
   return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
-    : kind === 'event' ? uvEventPage(id) : null;
+    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.
@@ -111,6 +112,7 @@ function wrestlerPage(id) {
   const career = M.careerOf(st, id);
   const results = M.matchesOf(st, id);
   const booked = M.bookingsOf(st, id);
+  const relegated = M.relegationsOf(st, id);
   const moves = M.movesOf(st, id);
   const lastMove = moves[moves.length - 1];
   const refs = M.wrestlerRefs(st, id);
@@ -157,6 +159,8 @@ function wrestlerPage(id) {
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ''}
 
       ${upcoming(st, booked)}
+      ${relegated.length ? section('Relegation', relegated.length) + relegated.map(r => `<div class="uv-relrec in" onclick="uvOpenTransition('${r.transition}')">
+        <b>${esc(showName(st, r.show))} → NXT · ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span></div>`).join('') : ''}
 
       ${section('Championships', champs.length || null)}
       ${champs.length ? current.map(champRow).join('') + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : '')

@@ -15,6 +15,7 @@ import {
 } from './ui.js';
 import { refresh, uni } from './app.js';
 import { uvRankFollow } from './ranks.js';
+import { uvTransitionSummary } from './relegation.js';
 
 // ---------------------------------------------------------------- calendar
 //
@@ -55,6 +56,7 @@ export function uvCalendarView() {
         <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON.right}</div>
       </div>
     </div>
+    ${transitionRows(st, s)}
     <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? 'Dates' : 'Set dates'}</span>
       <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvNextSeason()">Start Season ${next}…</span></div>
   </div>`;
@@ -76,6 +78,22 @@ export function uvCalendarView() {
     <div class="uv-nights">${rows.map(r => nightRow(st, s, week, r)).join('')}</div>
     <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
     ${seasonGrid(st, s, week)}`;
+}
+
+// The season transition, on the season card: this season's and last season's
+// while they're recent, or - once WrestleMania is on the calendar - the way in.
+function transitionRows(st, s) {
+  const recent = st.transitions.filter(t => {
+    const n = seasonById(st, t.season).number;
+    return n === s.number || n === s.number - 1;
+  });
+  const row = (onclick, head, sub) => `<div class="uv-card-row" onclick="${onclick}">${ICON.move}<div><b>${esc(head)}</b>
+    <span>${esc(sub)}</span></div>${ICON.right}</div>`;
+  const rows = recent.map(t => row(`uvOpenTransition('${t.id}')`, `${seasonById(st, t.season).name} transition · relegation`,
+    uvTransitionSummary(st, t).map(x => `${x.show.name}: ${x.text}`).join(' · ')));
+  const mania = !recent.some(t => t.season === s.id) && eventsIn(st, s.id).filter(e => e.kind === 'ple' && /wrestlemania/i.test(e.name)).pop();
+  if (mania) rows.push(row(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, 'Start the season transition: relegation to NXT'));
+  return rows.join('');
 }
 
 function nightRow(st, s, week, r) {
