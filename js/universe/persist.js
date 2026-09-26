@@ -1,9 +1,11 @@
 // WWE Universe — saving, loading, export and import.
 //
-// The universe lives under its own localStorage key, apart from the fantasy
-// league (cbd_team_v1) and Arc Markets (arc_markets_v1); neither is read or
-// written here. Storage is passed in rather than reached for, so the same code
-// runs against a stand-in under Node.
+// The universe lives under its own localStorage key. Universe is a separate
+// app from the fantasy league in this repository, but opened from the same
+// place - both as local files in Chrome, say - the two share one browser
+// storage area, so the fantasy keys (cbd_team_v1, arc_markets_v1) are never
+// read or written here. Storage is passed in rather than reached for, so the
+// same code runs against a stand-in under Node.
 //
 // The one rule that matters: a save that can't be read is never overwritten.
 // It is copied aside first, and if even that fails the caller is told to stay

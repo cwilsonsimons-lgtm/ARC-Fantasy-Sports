@@ -2,7 +2,7 @@
   "name": "arc-fantasy-sports",
   "version": "0.1.0",
   "private": true,
-  "description": "City Boys Dynasty — fantasy league app prototype, plus a WWE 2K25 Universe Mode companion",
+  "description": "Two separate apps: City Boys Dynasty (fantasy league prototype) and Universe (WWE 2K25 Universe Mode companion)",
   "type": "module",
   "scripts": {
     "start": "node tools/serve.mjs . 8080",

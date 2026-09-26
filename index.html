@@ -23,7 +23,6 @@
   <link rel="stylesheet" href="css/panel.css">
   <link rel="stylesheet" href="css/nav.css">
   <link rel="stylesheet" href="css/markets.css">
-  <link rel="stylesheet" href="css/universe.css">
 </head>
 <body>
 <div class="phone">
@@ -167,11 +166,10 @@
 
   <!-- BOTTOM NAV -->
   <div class="nav">
-    <div class="nv on" data-nav="matchup" onclick="closeMarkets();closeUniverse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" data-nav="markets" onclick="closeUniverse();openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
-    <div class="nv" data-nav="universe" onclick="closeMarkets();openUniverse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="8" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M5 10v4M19 10v4"/></svg>Universe</div>
-    <div class="nv" data-nav="feed" onclick="closeMarkets();closeUniverse();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
-    <div class="nv" data-nav="profile" onclick="closeMarkets();closeUniverse();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+    <div class="nv on" data-nav="matchup" onclick="closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
+    <div class="nv" data-nav="markets" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" data-nav="feed" onclick="closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
+    <div class="nv" data-nav="profile" onclick="closeMarkets();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
 
   <div class="sheet-scrim" id="sheetScrim" onclick="closeWeekPicker()"></div>
@@ -231,41 +229,6 @@
       <div class="bd" id="mkSheetBody"></div>
     </div>
     <div class="hint" id="mkHint"></div>
-  </div>
-
-  <!-- ===== WWE UNIVERSE =====
-       A companion to WWE 2K25 Universe Mode: rosters, tag teams, titles,
-       seasons and results, entered by the owner after each show. Like Markets
-       it covers the phone above the app's bottom nav. -->
-  <div class="uv" id="uv">
-    <div class="uv-head">
-      <div class="uv-brand">
-        <div class="a">Universe</div>
-        <div class="m" id="uvClock"></div>
-      </div>
-      <div class="uv-ic" id="uvDataBtn" onclick="uvData()" title="Save file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/></svg></div>
-    </div>
-    <div class="uv-tabs" id="uvTabs"></div>
-    <div class="uv-scroll" id="uvScroll"><div id="uvBody"></div></div>
-
-    <div class="uv-scrim" onclick="uvCloseSheet()"></div>
-    <div class="uv-sheet" id="uvSheet">
-      <div class="grab"></div>
-      <div class="hd" id="uvSheetTitle"></div>
-      <div class="bd" id="uvSheetBody"></div>
-    </div>
-    <div class="uv-confirm" onclick="if(event.target===this)uvConfirmNo()">
-      <div class="box">
-        <div class="t" id="uvConfirmTitle"></div>
-        <div class="x" id="uvConfirmText"></div>
-        <div class="uv-row2">
-          <div class="uv-btn" onclick="uvConfirmNo()">Cancel</div>
-          <div class="uv-btn bad" id="uvConfirmYes" onclick="uvConfirmYes()">Confirm</div>
-        </div>
-      </div>
-    </div>
-    <div class="hint" id="uvHint"></div>
-    <input type="file" accept="application/json,.json" class="hidden-file" id="uvImport" onchange="uvImportFile(this)">
   </div>
 </div>
 

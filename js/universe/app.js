@@ -132,8 +132,8 @@ export function closeSheet() {
 /**
  * Focus a form field so typing can start straight away. preventScroll is not
  * optional: the sheet is still sliding in from below the frame, and a plain
- * focus() scrolls the overflow:hidden .phone to bring the field into view -
- * dragging the whole app up and exposing the fantasy sheets parked under it.
+ * focus() scrolls the overflow:hidden app column to bring the field into
+ * view - dragging the whole app up and out of its frame.
  */
 export function focusField(id) {
   const el = document.getElementById(id);

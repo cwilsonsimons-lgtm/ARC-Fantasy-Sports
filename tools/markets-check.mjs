@@ -52,8 +52,7 @@ const isAnchored = r => r && r.bodyY === 0 && r.docH <= 940;
 await check('opens from the app nav', `document.querySelector('.nav .nv[data-nav=markets]').click();
   document.body.classList.contains('markets')`, true);
 await check('market rows render', `document.querySelectorAll('#mkMarket .mk-row').length`, n => n > 100);
-// Markets has no nav of its own: the app's nav stays, now five items with Universe
-await check('app nav still has 5 tabs', `document.querySelectorAll('.nav .nv').length`, 5);
+await check('app nav still has 4 tabs', `document.querySelectorAll('.nav .nv').length`, 4);
 await check('layout anchored', anchored, isAnchored);
 
 await check('faces are 38px in rows', `(()=>{const r=document.querySelector('#mkMarket .mk-row .face')

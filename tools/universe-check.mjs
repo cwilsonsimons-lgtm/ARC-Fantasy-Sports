@@ -1,6 +1,6 @@
-// Interaction checks for the WWE Universe section.
+// Interaction checks for Universe, the standalone WWE 2K25 companion app.
 //
-// Usage: node tools/universe-check.mjs [url]      (defaults to the dist build)
+// Usage: node tools/universe-check.mjs [url]      (defaults to dist/universe.html)
 //        npm run check:universe
 //
 // Drives the section the way the owner would - nav taps, typing, selects,
@@ -11,15 +11,15 @@
 // if it looks right.
 //
 // Layout is checked by geometry as well: focusing a field inside a sheet that
-// is still sliding in used to scroll the overflow:hidden .phone, dragging the
-// whole app up. DOM assertions never saw it.
+// is still sliding in scrolls the overflow:hidden app column, dragging the
+// whole app up. DOM assertions never see it.
 import { chromium } from 'playwright';
 import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validate, wrestlerRecord, teamRecord } from '../js/universe/model.js';
 
-const url = process.argv[2] || 'file://' + process.cwd() + '/dist/index.html';
+const url = process.argv[2] || 'file://' + process.cwd() + '/dist/universe.html';
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
 });
@@ -31,10 +31,14 @@ page.on('pageerror', e => errors.push('pageerror: ' + String(e).split('\n')[0]))
 await page.route('**', r => (/^(file|data|blob):/.test(r.request().url()) || /127\.0\.0\.1|localhost/.test(r.request().url())
   ? r.continue() : r.abort()));
 
+// Local files can share one browser storage area with the fantasy app, so plant
+// what it would have saved and prove Universe never touches it.
 await page.goto(url, { waitUntil: 'domcontentloaded' });
-await page.evaluate(`localStorage.clear()`);
+await page.evaluate(`localStorage.clear();
+  localStorage.setItem('cbd_team_v1', '{"team":{"name":"UGF Pandas"}}');
+  localStorage.setItem('arc_markets_v1', '{"watch":["00-0036900"]}')`);
 await page.reload({ waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(900);
+await page.waitForTimeout(600);
 
 let pass = 0, fail = 0;
 async function check(label, fn, want) {
@@ -84,21 +88,21 @@ const noSheet = async () => { if (await sheetOpen()) await closeSheet(); };
 
 // the app must never be dragged out of place, whatever is open
 const anchored = () => js(`(() => {
-  const ph = document.querySelector('.phone'), uv = document.getElementById('uv');
+  const ph = document.querySelector('.uv-app'), uv = document.getElementById('uv');
   const a = ph.getBoundingClientRect(), b = uv.getBoundingClientRect();
-  return { bodyY: document.body.getBoundingClientRect().y | 0, phoneScroll: ph.scrollTop + ph.scrollLeft,
+  return { bodyY: document.body.getBoundingClientRect().y | 0, frameScroll: ph.scrollTop + ph.scrollLeft,
     covers: Math.abs(a.top + ph.clientTop - b.top) < 1.5 && Math.abs(a.left + ph.clientLeft - b.left) < 1.5 };
 })()`);
-const isAnchored = r => r && r.bodyY === 0 && r.phoneScroll === 0 && r.covers;
+const isAnchored = r => r && r.bodyY === 0 && r.frameScroll === 0 && r.covers;
 
 const fantasyBefore = await js(`[localStorage.getItem('cbd_team_v1'), localStorage.getItem('arc_markets_v1')]`);
 
 // ================================================================ open
-await check('opens from the app nav', async () => {
-  await page.click('.nav .nv[data-nav=universe]');
-  return js(`document.body.classList.contains('universe')`);
-}, true);
-await check('app nav has 5 items', () => js(`document.querySelectorAll('.nav .nv').length`), 5);
+await check('opens straight into the app', () => js(`[document.title, document.querySelector('.uv-tab.on').textContent]`),
+  ['Universe — WWE 2K25 companion', 'Roster']);
+await check('nothing of the fantasy app on the page', () => js(`[
+  !!document.querySelector('.phone, .nav, .shift, .drawer, #hint, .mk'),
+  ['showTab', 'openMarkets', 'renderWeek', 'LG'].filter(n => n in window)]`), [false, []]);
 await check('starts empty, four shows + All + Unassigned', () => js(`[
   document.querySelectorAll('#uvBody .uv-row').length,
   [...document.querySelectorAll('#uvBody .uv-pill')].map(p => p.textContent.trim())]`),
@@ -591,8 +595,7 @@ await check('fantasy + Markets storage untouched', () => js(`[localStorage.getIt
   fantasyBefore);
 await check('everything survives a reload', async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(700);
-  await page.click('.nav .nv[data-nav=universe]');
+  await page.waitForTimeout(600);
   return [JSON.stringify(await saved()) === JSON.stringify(before),
     await js(`document.getElementById('uvClock').textContent`),
     await js(`document.querySelectorAll('#uvBody .uv-row').length`)];
@@ -646,19 +649,14 @@ await check('a v1 save from the last version imports and upgrades', async () => 
 }, [2, [], ['Singles 1–0–0', 'Tag 0–1–0', 'Title reigns 1']]);
 await check('layout anchored after all that', async () => { await noSheet(); return anchored(); }, isAnchored);
 
-// ================================================================ the seam
-await check('Markets from Universe swaps sections', async () => {
-  await page.click('.nav .nv[data-nav=markets]');
-  return js(`[document.body.classList.contains('markets'), document.body.classList.contains('universe')]`);
-}, [true, false]);
-await check('and back again, to the list not a stale page', async () => {
-  await page.click('.nav .nv[data-nav=universe]');
-  return js(`[document.body.classList.contains('markets'), document.body.classList.contains('universe'), !!document.querySelector('.uv-page')]`);
-}, [false, true, false]);
-await check('Matchup leaves the universe', async () => {
-  await page.click('.nav .nv[data-nav=matchup]');
-  return js(`[document.body.classList.contains('universe'), !!document.querySelector('.view.on')]`);
-}, [false, true]);
+// ================================================================ wider screens
+await check('on a laptop it’s a centred column', async () => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(150);
+  return js(`(() => { const r = document.querySelector('.uv-app').getBoundingClientRect();
+    return [r.width | 0, Math.round(r.left), r.height | 0]; })()`);
+}, [560, 360, 900]);
+await check('layout anchored at laptop width', anchored, isAnchored);
 
 await browser.close();
 console.log(`\n${pass} passed, ${fail} failed, ${errors.length} page errors`);

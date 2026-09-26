@@ -1,9 +1,5 @@
-// WWE Universe — section shell: open/close, tabs, and the save-file sheet.
-//
-// Like Arc Markets, this is a separate section rather than a fantasy screen:
-// it covers the phone above the app's own bottom nav, keeps its own
-// localStorage key, and touches the fantasy app only at the seam - opening it
-// adds a class to <body>, closing it hands control back to the home tab.
+// Universe — the app shell: start-up, tabs, the page stack, and the
+// save-file sheet.
 import { SCHEMA_VERSION, activeSeason, createUniverse, summary } from './model.js';
 import { STORAGE_KEY, exportUniverse, importUniverse } from './persist.js';
 import {
@@ -17,9 +13,16 @@ import { ICON, esc } from './ui.js';
 const TABS = [['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['history', 'History']];
 const VIEWS = { roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
 let tab = 'roster';
-let warnedOnOpen = false;
 
-export function initUniverse() { bootUniverse(paint); }
+/** Load the saved universe and draw the app. Warns once if the save had problems. */
+export function initUniverse() {
+  bootUniverse(paint);
+  paint();
+  const L = loadState();
+  if (L.status === 'recovered' || L.readOnly || L.problems.length) {
+    toast('There was a problem loading your saved universe — see the save menu.', true);
+  }
+}
 
 function paint() {
   const st = uni();
@@ -43,26 +46,6 @@ function paint() {
   const L = loadState();
   document.getElementById('uvDataBtn').classList.toggle('warn',
     lastSaveFailed() || L.readOnly || L.status === 'recovered' || L.problems.length > 0);
-}
-
-export function openUniverse() {
-  document.body.classList.add('universe');
-  paint();
-  const L = loadState();
-  if (!warnedOnOpen && (L.status === 'recovered' || L.readOnly || L.problems.length)) {
-    warnedOnOpen = true;
-    toast('There was a problem loading your saved universe — see the save menu.', true);
-  }
-}
-
-/** Leave the universe and go back to the fantasy app. */
-export function closeUniverse() {
-  if (!document.body.classList.contains('universe')) return;   // also called by the other nav items
-  document.body.classList.remove('universe');
-  closeSheet();
-  clearPages();
-  answerConfirm(false);
-  window.showTab && window.showTab(window.homeTab ? window.homeTab() : 'matchup');
 }
 
 export function uvTab(k) {
