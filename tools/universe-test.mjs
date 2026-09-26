@@ -10,10 +10,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as M from '../js/universe/model.js';
 import { STORAGE_KEY, loadUniverse, saveUniverse, exportUniverse, importUniverse } from '../js/universe/persist.js';
+import * as P from '../js/universe/persist.js';
 import { createCloud } from '../js/universe/cloud.js';
 import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
 import * as SG from '../js/universe/suggest.js';
+import { sampleCycle, sampleSeason } from './universe-sample.mjs';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
 const throwsUE = (fn, re) => assert.throws(fn, e => e instanceof M.UniverseError && (!re || re.test(e.message)));
@@ -24,8 +26,14 @@ function memoryStorage(seed = {}) {
   const m = new Map(Object.entries(seed));
   return {
     full: false,
+    limit: Infinity,                      // total characters it can hold, like a browser's quota
     getItem: k => (m.has(k) ? m.get(k) : null),
-    setItem(k, v) { if (this.full) throw new Error('QuotaExceededError'); m.set(k, String(v)); },
+    setItem(k, v) {
+      const size = [...m].reduce((n, [key, val]) => n + (key === k ? 0 : val.length), 0) + String(v).length;
+      if (this.full || size > this.limit) throw new Error('QuotaExceededError');
+      m.set(k, String(v));
+    },
+    removeItem(k) { m.delete(k); },
     keys: () => [...m.keys()],
   };
 }
@@ -2711,4 +2719,138 @@ test('the story engine can be switched off; merges, deletes and older saves keep
   M.deleteWrestler(st, loner.id);
   assert.equal(st.story.suggestions.length, 0);
   sound(st);
+});
+
+// ---------------------------------------------------------------- a whole sample season, end to end
+
+// the season itself is built in universe-sample.mjs, shared with the browser checks
+
+test('a sample season: unequal rosters, title changes, an underbooked wrestler, relegation on every show, qualifiers, a draft', () => {
+  const x = sampleSeason();
+  const { st, W, T } = x;
+  // the underbooked wrestler is flagged; booking balance never compares rosters across shows
+  const bal = SD.balance(st, { showId: 'raw', period: SD.periodOf(st, 'last4') });
+  const rows = bal.groups.flatMap(g => g.rows);
+  assert.deepEqual(rows.filter(r => r.flagged).map(r => r.name), ['Idle']);
+  // title histories read in order, and the standings count singles and tag apart
+  assert.deepEqual(M.titleReigns(st, T.world.id).map(r => M.holderName(st, r.holder)), ['Gunther', 'Cody', 'Gunther']);
+  assert.equal(M.defencesOf(st, M.titleReigns(st, T.world.id)[1]), 1);
+  assert.deepEqual(M.titleReigns(st, T.tag.id).map(r => M.holderName(st, r.holder)), ['Judgment', 'KO Crew']);
+  assert.deepEqual(M.wrestlerRecord(st, W('Seth').id).tag, { w: 2, l: 0, d: 0, nc: 0 });
+  assert.equal(SD.standings(st, { showId: 'raw', period: SD.periodOf(st, 'all') }).ranked[0].name, 'Cody');
+  // the transition: ties at the cutoff wait for the owner; Dynamite's cutoff is clean
+  const c = sampleCycle();
+  const tr = c.tr;
+  assert.deepEqual(['raw', 'smackdown', 'dynamite'].map(sid => c.table(sid).pool.length), [9, 7, 5]);
+  assert.deepEqual(c.st.relegations.map(r => [M.showById(c.st, r.show).name, c.W && M.wrestlerById(c.st, r.wrestler).name, r.candidate]),
+    [['Raw', 'Idle', 'owner'], ['SmackDown', 'Andrade', 'owner'], ['Dynamite', 'Moxley', 'fewest wins']]);
+  assert.ok(c.table('raw').flags.some(f => f.key === 'idle'), 'a candidate with no matches is pointed out');
+  // qualifier winners and the NXT champion are eligible; eligibility moved nobody; the draft did
+  assert.deepEqual(c.st.eligibility.map(e => `${M.wrestlerById(c.st, e.wrestler).name}:${e.source}`).sort(), ['Oba:champion', 'Tony:qualifier', 'Trick:qualifier']);
+  assert.deepEqual(c.st.drafts.map(d => `${M.wrestlerById(c.st, d.wrestler).name}>${d.to}`), ['Oba>raw', 'Trick>dynamite']);
+  assert.deepEqual(c.st.transitions[0].window.undrafted.map(id => M.wrestlerById(c.st, id).name), ['Tony']);
+  assert.equal(M.currentReign(c.st, c.T.nxt.id), null, 'the NXT title was vacated with the pick');
+  // every show ends a different size, and nothing had to match
+  assert.deepEqual(['raw', 'smackdown', 'dynamite', 'nxt'].map(s => c.st.wrestlers.filter(w => w.showId === s).length), [9, 6, 5, 7]);
+  assert.equal(M.transfersSince(c.st, tr.id).length, 5);
+  sound(c.st);
+});
+
+test('correcting old results afterwards keeps standings, titles and relegation history straight', () => {
+  const c = sampleCycle();
+  const { st, W, T, tr } = c;
+  const ev = m => st.events.find(e => e.matches.includes(m));
+  const flip = (m, opts = {}) => M.updateMatch(st, ev(m).id, m.id, { sides: m.sides, outcome: 'win', winner: 1 - m.winner, titleId: m.titleId }, opts);
+  // a pre-WrestleMania result that moves the win totals: the relegation stands, and says what changed
+  const before = SD.standings(st, { showId: 'dynamite', period: SD.periodOf(st, st.seasons[0].id) });
+  flip(c.hangmanDarby);
+  const after = SD.standings(st, { showId: 'dynamite', period: SD.periodOf(st, st.seasons[0].id) });
+  const rec = (t, n) => [...t.ranked, ...t.unranked].find(r => r.name === n).rec;
+  assert.equal(rec(after, 'Darby').w - rec(before, 'Darby').w, 1);
+  const dyn = c.table('dynamite');
+  assert.ok(!dyn.flags.some(f => f.key === 'picked'), 'the rule picked them — never shown as the owner’s pick');
+  const changed = dyn.flags.find(f => f.key === 'changed');
+  assert.match(changed.text, /Darby 0 → 1, Hangman 2 → 1\. The candidates and results stand as booked/);
+  const moxley = st.relegations.find(r => r.show === 'dynamite');
+  assert.equal(moxley.wins, 1);                                                  // the record keeps what it was decided on
+  assert.equal(M.relegationDrift(st, moxley), null);                              // Moxley's own total didn't move
+  // a later title change can't be pulled out from under the history
+  throwsUE(() => flip(c.codyWins), /changed hands or been vacated since/);
+  // WrestleMania's title change corrected to a retention: Cody is champion again, cleanly
+  flip(c.maniaMain, { titleChange: false });
+  assert.equal(M.currentReign(st, T.world.id).holder.id, W('Cody').id);
+  assert.deepEqual(M.titleChecks(st, T.world.id), []);
+  // now week 2 can be corrected too - and the week-3 title match without the champion is pointed out, not hidden
+  flip(c.codyWins, { titleChange: false });
+  assert.deepEqual(M.titleReigns(st, T.world.id).map(r => M.holderName(st, r.holder)), ['Gunther']);
+  assert.deepEqual(M.titleChecks(st, T.world.id).map(x => x.text), [
+    "The World match at Raw · Week 3 didn't include the champion of the day, Gunther."]);
+  // a qualifier can't change under a closed window; reopened, it can
+  const tonyQual = c.quals.find(m => m.sides[m.winner].wrestlers[0] === W('Tony').id);
+  throwsUE(() => flip(tonyQual), /transfer window has closed/);
+  M.reopenWindow(st, tr.id);
+  flip(tonyQual);
+  assert.ok(!M.eligibilityOf(st, tr.id, W('Tony').id).length);
+  M.closeWindow(st, tr.id);
+  assert.deepEqual(st.transitions[0].window.undrafted.map(id => M.wrestlerById(st, id).name), ['Je']);
+  // a relegation result corrected: the other wrestler goes down, and the history says so
+  flip(c.rel.raw.m);
+  assert.deepEqual(st.relegations.filter(r => r.show === 'raw').map(r => M.wrestlerById(st, r.wrestler).name), ['Drew']);
+  assert.deepEqual([W('Idle').showId, W('Drew').showId], ['raw', 'nxt']);
+  // a title the draft vacated comes back only by undoing that pick
+  throwsUE(() => M.undoTitleChange(st, T.nxt.id), /vacated when Oba was drafted to Raw\. Undo that draft pick instead/);
+  // a drafted wrestler's qualifier is locked until the pick is undone
+  M.reopenWindow(st, tr.id);
+  throwsUE(() => flip(c.quals.find(m => m.sides[m.winner].wrestlers[0] === W('Trick').id)), /drafted to Dynamite since qualifying/);
+  sound(st);
+  // and a correction that moves a relegated wrestler's own total shows on their record
+  const idleMatch = M.recordMatch(st, st.events.find(e => e.name === 'Raw · Week 1').id, { sides: S([W('Drew').id, W('Rhea').id]), winner: 0 });
+  assert.deepEqual(M.relegationDrift(st, st.relegations.find(r => r.show === 'raw')), { then: 0, now: 1 });
+  M.deleteMatch(st, ev(idleMatch).id, idleMatch.id);
+  sound(st);
+});
+
+// ---------------------------------------------------------------- restore points
+
+test('restore points: kept before big changes, the newest weekly one only, never at the save’s expense', () => {
+  const store = memoryStorage();
+  const st = M.createUniverse();
+  M.addWrestler(st, { name: 'Cody', showId: 'raw' });
+  assert.ok(P.keepRestorePoint(store, st, { label: 'End of Season 1 · Week 1', kind: 'weekly', when: '2026-09-01T10:00:00Z' }));
+  M.setWeek(st, 2);
+  M.addWrestler(st, { name: 'Gunther', showId: 'raw' });
+  assert.ok(P.keepRestorePoint(store, st, { label: 'End of Season 1 · Week 2', kind: 'weekly' }));
+  assert.ok(P.keepRestorePoint(store, st, { label: 'Before importing x.json', kind: 'import' }));
+  assert.deepEqual(P.listRestorePoints(store).map(p => p.label), ['Before importing x.json', 'End of Season 1 · Week 2']);
+  // what comes back is checked like an imported file, and is the universe as it was
+  const back = P.readRestorePoint(store, P.listRestorePoints(store)[1].id);
+  assert.deepEqual(back.wrestlers.map(w => w.name), ['Cody', 'Gunther']);
+  sound(back);
+  // at most four; the oldest go first
+  ['a', 'b', 'c'].forEach(l => P.keepRestorePoint(store, st, { label: l, kind: 'manual' }));
+  assert.deepEqual(P.listRestorePoints(store).map(p => p.label), ['c', 'b', 'a', 'Before importing x.json']);
+  assert.equal(store.keys().filter(k => k.startsWith(`${P.RESTORE_KEY}:`)).length, 4);
+  // storage running short: restore points give way before the universe fails to save
+  const size = JSON.stringify(st).length;
+  store.limit = store.keys().reduce((n, k) => n + store.getItem(k).length, 0) + size - 1;   // not quite room for the save
+  assert.ok(saveUniverse(store, st));
+  assert.ok(P.listRestorePoints(store).length < 4);
+  assert.equal(loadUniverse(store).status, 'loaded');
+  // storage that takes no writes: keeping one fails quietly, and what's already kept stays
+  const kept = P.listRestorePoints(store).map(p => p.label);
+  store.full = true;
+  assert.equal(P.keepRestorePoint(store, st, { label: 'no room' }), false);
+  store.full = false;
+  assert.deepEqual(P.listRestorePoints(store).map(p => p.label), kept);
+  // too big to fit even alone: the index still matches what's really there
+  store.limit = store.getItem(STORAGE_KEY).length + store.getItem(P.RESTORE_KEY).length + 10;
+  assert.equal(P.keepRestorePoint(store, st, { label: 'too big' }), false);
+  P.listRestorePoints(store).forEach(p => assert.ok(P.readRestorePoint(store, p.id)));
+  assert.equal(loadUniverse(store).status, 'loaded');
+  store.limit = Infinity;
+  throwsUE(() => P.readRestorePoint(store, 999), /no longer in this browser/);
+  // exports are remembered, so the app can say how long it's been
+  assert.equal(P.lastExported(store), null);
+  P.noteExported(store, '2026-09-26T12:00:00Z');
+  assert.equal(P.lastExported(store), '2026-09-26T12:00:00Z');
 });

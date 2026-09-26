@@ -4,8 +4,8 @@
 // Every change goes through commit(). It snapshots the universe first, so if
 // the model throws halfway the universe is put back exactly as it was - the
 // owner sees the reason in a toast, and nothing half-done is ever saved.
-import { UniverseError, createUniverse } from './model.js';
-import { loadUniverse, saveUniverse } from './persist.js';
+import { UniverseError, activeSeason, createUniverse, summary } from './model.js';
+import { keepRestorePoint, loadUniverse, saveUniverse } from './persist.js';
 
 let U = null;
 let loaded = { status: 'new', problems: [], backupKey: null, readOnly: false };
@@ -18,6 +18,21 @@ export const lastSaveFailed = () => saveFailed;
 
 function storage() {
   try { return window.localStorage || null; } catch (e) { return null; }
+}
+/** This browser's storage, or null where it's blocked. */
+export const browserStorage = storage;
+
+/**
+ * Keep a restore point of the universe as it is now (see persist.js). Never
+ * gets in the way: returns false if there's no storage or no room.
+ */
+export function keepRestore(label, kind = 'manual') {
+  const s = storage();
+  if (!s || !U || loaded.readOnly) return false;
+  const season = activeSeason(U);
+  const n = summary(U);
+  return keepRestorePoint(s, U, { label, kind, when: new Date().toISOString(), clock: `${season.name} · Week ${season.week}`,
+    counts: { wrestlers: n.wrestlers, results: n.matches } });
 }
 
 export function bootUniverse(paint) {
@@ -107,6 +122,17 @@ export function pushPage(kind, id) {
   pages.push({ kind, id, title: '', scroll: 0 });
   closeSheet();
   painter();
+  if (sc) sc.scrollTop = 0;
+}
+/** Swap the page on top for another - moving between shows without piling up Back steps. */
+export function swapPage(kind, id) {
+  const top = currentPage();
+  if (top && top.kind === kind && top.id === id) return;
+  if (top) pages.pop();                    // the page underneath keeps the scroll it was left at
+  pages.push({ kind, id, title: '', scroll: 0 });
+  closeSheet();
+  painter();
+  const sc = scroller();
   if (sc) sc.scrollTop = 0;
 }
 export function popPage() {

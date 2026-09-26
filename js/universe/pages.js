@@ -10,6 +10,7 @@
 // counted from their own side in each match; a team's record counts only
 // matches it wrestled as the team.
 import * as M from './model.js';
+import * as SD from './standings.js';
 import {
   ICON, LABEL, avatar, chip, esc, eventWhen, fmtRec, histLine, holderLink, incidentText, kindChip, matchLine, recNote, section, showColor,
   showName, stampLabel, tag, vsLine, weeksText, wrestlerLink,
@@ -82,6 +83,25 @@ function eligibilityText(e) {
   if (e.source === 'champion') return `held the ${M.titleById(st, e.title).name}${e.team ? ` with ${M.teamById(st, e.team).name}` : ''}`;
   const opp = (M.wrestlerById(st, e.opponent) || { name: '?' }).name;
   return e.source === 'qualifier' ? `won a qualifying match against ${opp}` : `owner's decision after a qualifier with ${opp}${e.note ? ` (${e.note})` : ''}`;
+}
+
+// where they stand on their show this season - a way into the Rankings tab
+function rankLine(st, w) {
+  if (!w.showId) return '';
+  const season = M.activeSeason(st);
+  const t = SD.standings(st, { showId: w.showId, period: SD.periodOf(st, season.id), kind: 'singles' });
+  const row = t.ranked.find(r => r.id === w.id);
+  const all = t.ranked.length + t.unranked.length;
+  const nth = n => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
+  const text = row ? `Ranked ${nth(row.rank)} of ${all} on ${showName(st, w.showId)} in ${season.name} singles`
+    : `Not ranked yet on ${showName(st, w.showId)} this season`;
+  return `<div class="uv-ranklink" onclick="uvGo('rankings','${w.showId}')">${ICON.list}<span>${esc(text)}</span>${ICON.right}</div>`;
+}
+
+// a relegation decided on season wins that a correction has changed since
+function driftNote(st, rec) {
+  const d = M.relegationDrift(st, rec);
+  return d ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? '' : 's'} now, not ${d.then}. The relegation stands unless you undo it.</span>` : '';
 }
 
 // ================================================================ wrestler
@@ -169,6 +189,7 @@ function wrestlerPage(id) {
         ${recTile('Singles', rec.singles)}${recTile('Tag', rec.tag)}
         ${numTile('Title reigns', champs.length, current.length ? `${current.length} held now` : champs.length ? 'none held now' : 'never a champion')}
       </div>
+      ${rankLine(st, w)}
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ''}
 
       ${upcoming(st, booked)}
@@ -186,7 +207,7 @@ function wrestlerPage(id) {
           <span>${esc(how)}.${left ? ' Left undrafted when the transfer window closed.' : ''}</span></div>`;
       }).join('') : ''}
       ${relegated.length ? section('Relegation', relegated.length) + relegated.map(r => `<div class="uv-relrec in" onclick="uvOpenTransition('${r.transition}')">
-        <b>${esc(showName(st, r.show))} → NXT · ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span></div>`).join('') : ''}
+        <b>${esc(showName(st, r.show))} → NXT · ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span>${driftNote(st, r)}</div>`).join('') : ''}
 
       ${section('Championships', champs.length || null)}
       ${champs.length ? current.map(champRow).join('') + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : '')
@@ -364,6 +385,7 @@ function titlePage(id) {
         ${numTile('Title matches', countTitleMatches(st, id), booked.length ? `${booked.length} booked` : 'with a result')}
       </div>
       <p class="uv-p">A title that changes hands on a show is best recorded on that match’s result, so the reign is dated to it and the defences count.</p>
+      ${M.titleChecks(st, id).map(x => `<div class="uv-note warn uv-inset" data-check="1" onclick="uvOpenEvent('${x.event.id}')">${esc(x.text)} Check that result.</div>`).join('')}
 
       ${upcoming(st, booked)}
 

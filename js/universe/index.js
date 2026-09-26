@@ -1,15 +1,21 @@
 // Universe — the app shell: start-up, tabs, the page stack, and the
 // save-file sheet.
+import * as M from './model.js';
 import { SCHEMA_VERSION, activeSeason, createUniverse, summary } from './model.js';
-import { STORAGE_KEY, exportUniverse, importUniverse } from './persist.js';
+import { STORAGE_KEY, exportUniverse, importUniverse, lastExported, listRestorePoints, noteExported, readRestorePoint } from './persist.js';
 import {
-  adoptUniverse, answerConfirm, bootUniverse, clearPages, closeSheet, confirmThen, currentPage, dropPage, lastSaveFailed,
-  loadState, onSaved, openSheet, paintSheet, popPage, previousPage, replaceUniverse, sheetShowing, toast, uni,
+  adoptUniverse, answerConfirm, bootUniverse, browserStorage, clearPages, closeSheet, confirmThen, currentPage, dropPage, keepRestore, lastSaveFailed,
+  loadState, onSaved, openSheet, paintSheet, popPage, previousPage, pushPage, replaceUniverse, sheetShowing, toast, uni,
 } from './app.js';
 import { createCloud } from './cloud.js';
-import { uvCalFollow, uvCalendarView, uvFollowActiveSeason, uvHistoryView, uvRosterView, uvTeamsView, uvTitlesView } from './views.js';
+import {
+  uvCalFollow, uvCalGo, uvCalendarView, uvFollowActiveSeason, uvHistoryView, uvRosterMode, uvRosterView, uvTeamsView, uvTitlesView, uvUpNext,
+  uvViewSeason,
+} from './views.js';
+import * as RL from './relations.js';
+import { uvTrPart, uvTransitionSummary } from './relegation.js';
 import { uvPageView } from './pages.js';
-import { uvRankingsView } from './ranks.js';
+import { uvRankFor, uvRankingsView } from './ranks.js';
 import { ICON, esc } from './ui.js';
 
 const TABS = [['calendar', 'Calendar'], ['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['rankings', 'Rankings'],
@@ -85,6 +91,85 @@ export function uvTab(k) {
   document.getElementById('uvScroll').scrollTop = 0;
 }
 export function uvCloseSheet() { closeSheet(); }
+
+// ---------------------------------------------------------------- getting around
+//
+// One place to reach everything: the header's Go to sheet, with where each
+// thing stands right now. Every destination starts from its tab, so Back
+// always leads somewhere sensible.
+
+/** Go somewhere: a tab, or a page opened from its tab. */
+export function uvGo(where, arg = '') {
+  closeSheet();
+  const st = uni();
+  switch (where) {
+    case 'show': uvTab('calendar'); pushPage('event', arg); return;
+    case 'week': {
+      const [season, week] = String(arg).split(':');
+      if (season && season !== activeSeason(st).id) { uvViewSeason(season); uvTab('history'); return; }
+      uvTab('calendar'); uvCalGo(Number(week)); return;
+    }
+    case 'relations': uvRosterMode('relations'); uvTab('roster'); return;
+    case 'roster': uvRosterMode('wrestlers'); uvTab('roster'); return;
+    case 'rankings': uvRankFor(arg || null); uvTab('rankings'); return;
+    case 'balance': uvRankFor(arg || null, 'balance'); uvTab('rankings'); return;
+    case 'story': uvTab('calendar'); pushPage('story', 'all'); return;
+    case 'transition': {
+      const [id, part] = String(arg).split(':');
+      uvTab('calendar');
+      if (part) uvTrPart(part);
+      pushPage('transition', id);
+      return;
+    }
+    case 'save': uvData(); return;
+    default: uvTab(where);
+  }
+}
+
+export function uvGoSheet() { openSheet(goSheet); }
+
+function goSheet() {
+  const st = uni();
+  const s = activeSeason(st);
+  const next = uvUpNext(st);
+  const count = id => st.wrestlers.filter(w => w.showId === id).length;
+  const held = st.titles.filter(t => t.active && M.currentReign(st, t.id));
+  const active = st.titles.filter(t => t.active);
+  const rels = [...RL.relationships(st).rels.values()].filter(r => r.active);
+  const waiting = st.story.suggestions.filter(x => x.status === 'open' && !M.suggestionProblem(st, x)).length;
+  const played = st.events.filter(e => e.at.season === s.id).reduce((n, e) => n + e.matches.filter(m => m.status === 'played').length, 0);
+  const tr = [...st.transitions].sort((a, b) => M.seasonById(st, b.season).number - M.seasonById(st, a.season).number)[0];
+  const trWin = tr && tr.window && !tr.window.closed;
+  const row = (go, icon, head, sub, cls = '') => `<div class="uv-go ${cls}" onclick="${go}">${icon}<div><b>${esc(head)}</b>
+    <span>${esc(sub)}</span></div>${ICON.right}</div>`;
+  const how = [['uvHowRanked', 'Rankings'], ['uvHowBalance', 'Booking balance'], ['uvHowRelegation', 'Relegation'],
+    ['uvHowPromotion', 'NXT promotion & draft'], ['uvHowRelations', 'Relationships'], ['uvHowStory', 'Story engine']];
+  return {
+    title: 'Go to',
+    body: `
+      <div class="uv-gos">
+        ${next ? row(`uvGo('show','${next.event.id}')`, ICON.cal, `Up next: ${next.event.name}`, next.text, 'hot')
+          : row(`uvGo('calendar')`, ICON.cal, 'Up next', 'Nothing planned from this week on — plan a show')}
+        ${row(`uvGo('calendar')`, ICON.cal, 'This week’s shows', `${s.name} · Week ${s.week} — cards and results`)}
+        ${row(`uvGo('history')`, ICON.list, 'Results', `${played} result${played === 1 ? '' : 's'} this season, show by show`)}
+        ${row(`uvGo('roster')`, ICON.user, 'Rosters', st.shows.map(x => `${x.name} ${count(x.id)}`).join(' · '))}
+        ${row(`uvGo('teams')`, ICON.team, 'Tag teams', `${st.teams.filter(t => t.active).length} active`)}
+        ${row(`uvGo('titles')`, ICON.belt, 'Champions', active.length ? `${held.length} of ${active.length} titles held — `
+          + held.slice(0, 2).map(t => `${t.name}: ${M.holderName(st, M.currentReign(st, t.id).holder)}`).join(' · ') : 'No titles yet')}
+        ${row(`uvGo('rankings')`, ICON.list, 'Rankings', 'Standings by show, singles and tag')}
+        ${row(`uvGo('balance')`, ICON.list, 'Booking balance', 'Who’s short of matches on each show')}
+        ${row(`uvGo('relations')`, ICON.team, 'Relationships', `${rels.length} now — ${rels.filter(r => r.kind === 'grudge').length} grudges, ${rels.filter(r => r.kind === 'rivals').length} rivalries`)}
+        ${row(`uvGo('story')`, ICON.star, 'Story suggestions', st.story.on ? (waiting ? `${waiting} waiting for you` : 'Nothing waiting') : 'Switched off')}
+        ${tr ? row(`uvGo('transition','${tr.id}:${tr.window ? 'window' : 'relegation'}')`, ICON.move,
+          trWin ? 'Transfer window — open' : tr.window ? `${M.seasonById(st, tr.season).name} transition · transfer window` : `${M.seasonById(st, tr.season).name} transition`,
+          uvTransitionSummary(st, tr).map(x => `${x.label}: ${x.text}`).join(' · '), trWin ? 'hot' : '')
+          : row(`uvGo('calendar')`, ICON.move, 'Season transition', 'Starts from WrestleMania, on its show page — relegation, NXT promotion, the draft')}
+        ${row(`uvGo('save')`, ICON.save, 'Save & backup', 'Export, import, restore points')}
+      </div>
+      <div class="uv-sub flush" style="margin-top:14px">How it works</div>
+      <div class="uv-pills tight">${how.map(([fn, lb]) => `<div class="uv-pill" onclick="${fn}()">${esc(lb)}</div>`).join('')}</div>`,
+  };
+}
 export function uvBack() { popPage(); }
 export function uvConfirmYes() { answerConfirm(true); }
 export function uvConfirmNo() { answerConfirm(false); }
@@ -133,10 +218,72 @@ function dataSheet() {
         <div class="uv-btn pri" onclick="uvExport()">${ICON.save}Export</div>
         <div class="uv-btn" onclick="uvImportPick()">Import…</div>
       </div>
+      ${exportedLine()}
+      ${restoreSection()}
       <div class="uv-btn bad full" onclick="uvReset()">Start a new universe…</div>
       <div class="fine">This records what happens in your WWE 2K25 Universe Mode. It never decides a result or
         controls the game. Stored under ${esc(STORAGE_KEY)}, format v${SCHEMA_VERSION}.</div>`,
   };
+}
+
+// how long ago an ISO time was, in words
+function ago(iso) {
+  const t = Date.parse(iso);
+  if (!t) return '';
+  const min = Math.round((Date.now() - t) / 60000);
+  if (min < 2) return 'just now';
+  if (min < 60) return `${min} minutes ago`;
+  const h = Math.round(min / 60);
+  if (h < 36) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+function exportedLine() {
+  const s = browserStorage();
+  const when = s && lastExported(s);
+  const n = summary(uni()).matches;
+  if (when) return `<div class="uv-savenote" data-exported="1">Last save file exported ${esc(ago(when))} from this browser.</div>`;
+  return n ? `<div class="uv-savenote warn" data-exported="0">No save file exported from this browser yet — export one so ${n} result${n === 1 ? '' : 's'} can’t be lost.</div>` : '';
+}
+function restoreSection() {
+  const s = browserStorage();
+  if (!s) return '';
+  const points = listRestorePoints(s);
+  return `<div class="uv-sub flush" style="margin-top:14px">Restore points</div>
+    <p class="uv-p">Copies kept in this browser — taken before an import, a reset or a restore, and each time the week moves on (the
+      newest of those). Up to four; the oldest go first, and they give way if storage runs short.</p>
+    ${points.length ? `<div class="uv-gos">${points.map(p => `<div class="uv-go" data-restore="${p.id}" onclick="uvRestorePoint(${p.id})">${ICON.undo}
+      <div><b>${esc(p.label)}</b><span>${esc([p.clock, p.counts && `${p.counts.wrestlers} wrestlers, ${p.counts.results} results`, ago(p.when)].filter(Boolean).join(' · '))}</span></div>
+      ${ICON.right}</div>`).join('')}</div>` : '<div class="uv-none">None yet.</div>'}
+    <div class="uv-btn full" onclick="uvKeepRestore()">Keep a restore point now</div>`;
+}
+export function uvKeepRestore() {
+  const ok = keepRestore('Kept by you', 'manual');
+  paintSheet();
+  toast(ok ? 'Restore point kept' : 'Couldn’t keep one — this browser’s storage is full or blocked', !ok);
+}
+export function uvRestorePoint(id) {
+  const s = browserStorage();
+  const p = s && listRestorePoints(s).find(x => x.id === id);
+  if (!p) return;
+  let state;
+  try {
+    state = readRestorePoint(s, id);
+  } catch (e) {
+    toast(e.message, true);
+    return;
+  }
+  const n = summary(state);
+  confirmThen(`Go back to “${p.label}”?`,
+    `The universe goes back to how it was then (${p.clock}: ${n.wrestlers} wrestlers, ${n.matches} results). What you have now is kept as a restore point first, so this can be undone.`,
+    'Restore', () => {
+      keepRestore(`Before restoring “${p.label}”`, 'restore');
+      uvFollowActiveSeason();
+      clearPages();
+      const saved = replaceUniverse(state);
+      closeSheet();
+      toast(saved ? `Restored — ${p.clock}` : 'Restored, but it could not be saved in this browser.', !saved);
+    });
 }
 
 export async function uvExport() {
@@ -146,7 +293,12 @@ export async function uvExport() {
   if (cloud) {
     // a published page can't start a download itself; claude.ai asks the viewer
     const r = await cloud.exportFile(name, exportUniverse(st));
-    if (r === 'saved') toast('Save file downloaded');
+    if (r === 'saved') {
+      const store = browserStorage();
+      if (store) noteExported(store, new Date().toISOString());
+      toast('Save file downloaded');
+      paintSheet();
+    }
     else if (r !== 'declined') toast('Exporting isn’t available here — open the app as a file to export.', true);
     return;
   }
@@ -158,7 +310,10 @@ export async function uvExport() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  const store = browserStorage();
+  if (store) noteExported(store, new Date().toISOString());
   toast('Save file downloaded');
+  paintSheet();
 }
 
 export function uvImportPick() { document.getElementById('uvImport').click(); }
@@ -179,8 +334,9 @@ export function uvImportFile(input) {
     }
     const n = summary(state);
     confirmThen('Replace this universe?',
-      `The file has ${n.wrestlers} wrestlers, ${n.titles} titles and ${n.events} events. Everything here now is replaced — export first if you want to keep it.`,
+      `The file has ${n.wrestlers} wrestlers, ${n.titles} titles and ${n.events} events. Everything here now is replaced — a restore point of it is kept in this browser first, and a save file keeps a copy of your own.`,
       'Replace', () => {
+        keepRestore(`Before importing ${file.name}`.slice(0, 80), 'import');
         uvFollowActiveSeason();
         clearPages();                    // ids repeat across universes: never show a page for the wrong record
         const saved = replaceUniverse(state);
@@ -192,8 +348,9 @@ export function uvImportFile(input) {
 
 export function uvReset() {
   confirmThen('Start a new universe?',
-    'This deletes every wrestler, team, title, season and result here. It cannot be undone — export first if you might want it back.',
+    'This deletes every wrestler, team, title, season and result here. A restore point of it is kept in this browser, so it can be brought back there — export a save file to keep a copy of your own.',
     'Delete everything', () => {
+      keepRestore('Before starting a new universe', 'reset');
       uvFollowActiveSeason();
       clearPages();
       replaceUniverse(createUniverse());

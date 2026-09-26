@@ -71,7 +71,7 @@ export function uvCalendarView() {
   rows.sort((a, b) => (a.day ?? 9) - (b.day ?? 9));     // stable: a night's episodes before its unplanned shows
 
   const wr = weekRange(st, s.id, week);
-  return card + `
+  return card + upNextCard(st) + `
     <div class="uv-weeknav">
       <div class="uv-ic" onclick="uvCalWeek(-1)" title="Previous week">${ICON.left}</div>
       <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel)}${wr ? ` · ${esc(wr)}` : ''}</div></div>
@@ -81,6 +81,33 @@ export function uvCalendarView() {
     <div class="uv-nights">${rows.map(r => nightRow(st, s, week, r)).join('')}</div>
     <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
     ${seasonGrid(st, s, week)}`;
+}
+
+/**
+ * Today's show - the one that needs the owner next: a show from an earlier
+ * week still waiting for results comes first; otherwise the first show from
+ * this week on, in calendar order, that isn't finished. { event, state, text,
+ * overdue } or null.
+ */
+export function uvUpNext(st) {
+  const s = activeSeason(st);
+  const evs = eventsIn(st, s.id);
+  const overdue = evs.find(e => e.at.week < s.week && ['booked', 'partial'].includes(cardStatus(e).state));
+  const e = overdue || evs.find(x => x.at.week >= s.week && cardStatus(x).state !== 'complete');
+  if (!e) return null;
+  const c = cardStatus(e);
+  const text = { empty: 'Planned — nothing booked yet', booked: `${c.total} booked — waiting for results`,
+    partial: `${c.played} of ${c.total} results in — enter the rest`, complete: '' }[c.state];
+  return { event: e, state: c.state, text, overdue: e.at.week < s.week };
+}
+function upNextCard(st) {
+  const n = uvUpNext(st);
+  if (!n) return `<div class="uv-upnext none" data-upnext="none"><div class="k">Up next</div><b>Nothing planned from this week on</b>
+    <span>Plan a show below, or add a premium live event.</span></div>`;
+  const e = n.event;
+  return `<div class="uv-upnext" data-upnext="${e.id}" style="--c:${showColor(st, e.showId)}" onclick="uvOpenEvent('${e.id}')">
+    <div class="k">Up next${n.overdue ? ' · from an earlier week' : ''}</div><b>${esc(e.name)}</b>
+    <span>${esc(eventWhen(st, e))} · ${esc(n.text)}</span>${ICON.right}</div>`;
 }
 
 // The season transition, on the season card: this season's and last season's

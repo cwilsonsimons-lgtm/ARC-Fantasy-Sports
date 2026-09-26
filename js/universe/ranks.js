@@ -104,6 +104,12 @@ export function uvRankPeriod(k) { stPeriod = k; refresh(); }
 export function uvRankKind(k) { stKind = k; refresh(); }
 /** When the active season changes, follow it. */
 export function uvRankFollow() { stPeriod = null; }
+/** Point the Rankings tab at a show - this season's standings, or its booking balance. */
+export function uvRankFor(showId, view = 'standings', kind = 'singles') {
+  mode = view;
+  if (view === 'balance') balShow = showId || balShow;
+  else { stShow = showId || stShow; stPeriod = null; stKind = kind; }
+}
 
 export function uvHowRanked() {
   openSheet(() => ({

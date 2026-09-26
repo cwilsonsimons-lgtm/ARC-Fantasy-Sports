@@ -21,6 +21,7 @@ import * as M from '../js/universe/model.js';
 import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
 import * as SG from '../js/universe/suggest.js';
+import { sampleCycle } from './universe-sample.mjs';
 const { validate, wrestlerRecord, teamRecord } = M;
 
 const url = process.argv[2] || 'file://' + process.cwd() + '/dist/universe.html';
@@ -1737,6 +1738,153 @@ await check('accept the challenge, then book the title match — booked, not dec
 }, [['Book a match', 'Women’s World Championship'], 1, null, ['challenge']]);
 await check('saved universe is sound after the story engine', sound, []);
 await check('layout anchored', anchored, isAnchored);
+
+// ================================================================ a whole season, end to end
+// The shared sample season (universe-sample.mjs): four weeks, WrestleMania,
+// relegation on Raw, SmackDown and Dynamite, NXT qualifiers and a draft. Week
+// 6 is under way: Raw planned, SmackDown with a match booked.
+const sample = sampleCycle();
+M.setWeek(sample.st, 6);
+const raw6 = M.addEvent(sample.st, { showId: 'raw' });
+const sd6 = M.addEvent(sample.st, { showId: 'smackdown' });
+M.bookMatch(sample.st, sd6.id, { sides: [{ wrestlers: [sample.W('Solo').id] }, { wrestlers: [sample.W('Bron').id] }] });
+const goTo = async label => {
+  await noSheet();
+  await page.click('#uvGoBtn');
+  await settle();
+  await sheet.locator('.uv-go', { has: page.locator('b', { hasText: label }) }).first().click();
+  await page.waitForTimeout(200);
+};
+const activeTab = () => js(`document.querySelector('.uv-tab.on').dataset.uvtab`);
+
+await check('season: imported, it opens on today’s show', async () => {
+  await noSheet();
+  const file = join(dir, 'sample.json');
+  await writeFile(file, JSON.stringify(sample.st));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  return js(`(() => { const u = document.querySelector('.uv-upnext'); return [u.dataset.upnext, ${TEXT}(u)]; })()`);
+}, r => r[0] === raw6.id && /^Up next Raw · Week 6 Mon · Week 6 · Planned — nothing booked yet/.test(r[1]));
+await check('Go to lists every destination, with where each stands', async () => {
+  await page.click('#uvGoBtn');
+  await settle();
+  return js(`[...document.querySelectorAll('#uvSheetBody .uv-go')].map(g => g.querySelector('b').textContent + ' | ' + g.querySelector('span').textContent)`);
+}, r => r.length === 12 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
+  && r.includes('Rosters | Raw 9 · SmackDown 6 · Dynamite 5 · NXT 7')
+  && r.some(x => /^Season 1 transition · transfer window \| Raw: done — 1 to NXT/.test(x)) && r[11].startsWith('Save & backup'));
+await check('Go to reaches champions, relationships, rankings, story and the transfer window', async () => {
+  const seen = [];
+  await closeSheet();
+  await goTo('Champions'); seen.push(await activeTab());
+  await goTo('Relationships'); seen.push(`${await activeTab()}:${await js(`document.querySelector('.uv-seg [data-mode].on').dataset.mode`)}`);
+  await goTo('Booking balance'); seen.push(`${await activeTab()}:${await js(`document.querySelector('#uvBody .uv-seg .on').textContent`)}`);
+  await goTo('Story suggestions'); seen.push(await pageKind());
+  await goTo('transfer window'); seen.push(`${await pageKind()}:${await js(`document.querySelector('[data-part].on').dataset.part`)}`);
+  await goTo('Rosters'); seen.push(`${await activeTab()}:${await js(`document.querySelector('.uv-seg [data-mode].on').dataset.mode`)}`);
+  return seen;
+}, ['titles', 'roster:relations', 'rankings:Booking balance', 'story', 'transition:window', 'roster:wrestlers']);
+await check('from a show, the shows either side are a tap away — and Back is one step', async () => {
+  await goTo('Up next');
+  const a = await evTitle();
+  await body.locator('.uv-evnav .p').click();
+  await page.waitForTimeout(150);
+  const b = await evTitle();
+  await body.locator('.uv-evnav .n').click();
+  await page.waitForTimeout(150);
+  const c = await evTitle();
+  await page.click('.uv-back');
+  await page.waitForTimeout(150);
+  return [a, b, c, await pageKind(), await activeTab()];
+}, ['Raw · Week 6', 'SmackDown · Week 5', 'Raw · Week 6', null, 'calendar']);
+await check('a wrestler’s ranking leads to their show’s table', async () => {
+  await openRow('Cody', 'roster');
+  const line = await js(`document.querySelector('.uv-page .uv-ranklink').textContent.trim()`);
+  await body.locator('.uv-ranklink').click();
+  await page.waitForTimeout(150);
+  const t = SD.standings(sample.st, { showId: 'raw', period: SD.periodOf(sample.st, sample.st.seasons[0].id) });
+  const rank = t.ranked.find(r => r.name === 'Cody').rank;
+  return [line === `Ranked ${rank}${rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th'} of 9 on Raw in Season 1 singles`,
+    await activeTab(), await js(`document.querySelector('#uvBody .uv-pill.on').textContent.trim()`)];
+}, [true, 'rankings', 'Raw']);
+await check('correcting an old result: the relegation stands, and the transition page says what moved', async () => {
+  await openShow('Dynamite', 1);
+  await mc(0).locator('.uv-btn', { hasText: 'Correct' }).click();
+  await settle();
+  await page.selectOption('#uvMResult', '1');                                     // Darby beat Hangman after all
+  await btn(sheet, 'Save the correction').click();
+  await settle();
+  await goTo('transfer window');
+  await page.click('[data-part=relegation]');
+  await page.waitForTimeout(150);
+  const flags = await trFlags('dynamite');
+  const u = await saved();
+  return [flags.some(f => /^Since the relegation matches were booked, corrected results changed the win totals: Darby 0 → 1, Hangman 2 → 1\./.test(f)),
+    flags.some(f => /^Picked by you/.test(f)), u.relegations.find(r => r.show === 'dynamite').wins, await sound()];
+}, [true, false, 1, []]);
+await check('a title correction that leaves the history odd is pointed out, not hidden', async () => {
+  await openShow('WrestleMania', 4);
+  await mc(0).locator('.uv-btn', { hasText: 'Correct' }).click();
+  await settle();
+  await page.selectOption('#uvMResult', '1');                                     // Cody retained at WrestleMania
+  await page.uncheck('#uvMTitleChange');
+  await btn(sheet, 'Save the correction').click();
+  await settle();
+  await openShow('Raw', 2);
+  await mc(0).locator('.uv-btn', { hasText: 'Correct' }).click();
+  await settle();
+  await page.selectOption('#uvMResult', '1');                                     // and Gunther never lost it in week 2
+  await page.uncheck('#uvMTitleChange');
+  await btn(sheet, 'Save the correction').click();
+  await settle();
+  const t = (await toast()).t;
+  await openRow('World', 'titles');
+  return [t, await js(`[...document.querySelectorAll('.uv-page [data-check]')].map(e => e.textContent.trim())`), await sound()];
+}, r => r[0].startsWith('Result corrected — Check the World history: 1 thing doesn’t add up')
+  && JSON.stringify(r[1]) === JSON.stringify(["The World match at Raw · Week 3 didn't include the champion of the day, Gunther. Check that result."])
+  && !r[2].length);
+await check('a qualifier can’t change under a closed transfer window', async () => {
+  await openShow('NXT', 5);
+  await mc(0).locator('.uv-btn', { hasText: 'Correct' }).click();
+  await settle();
+  const cur = await js(`document.getElementById('uvMResult').value`);
+  await page.selectOption('#uvMResult', cur === '0' ? '1' : '0');
+  await btn(sheet, 'Save the correction').click();
+  await settle();
+  const t = await toast();
+  await closeSheet();
+  return [t.bad, /transfer window has closed/.test(t.t)];
+}, [true, true]);
+await check('restore points: kept on import and when the week moves on — and the week can be undone', async () => {
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('.uv-btn', { hasText: 'Next week' }).click();
+  await page.waitForTimeout(150);
+  const week7 = (await saved()).seasons[0].week;
+  await page.click('#uvDataBtn');
+  await settle();
+  const points = await js(`[...document.querySelectorAll('#uvSheetBody [data-restore] b')].map(e => e.textContent)`);
+  await sheet.locator('[data-restore]', { hasText: 'End of Season 1 · Week 6' }).click();
+  await page.waitForTimeout(100);
+  await confirmYes();
+  return [week7, points.slice(0, 2), points.length <= 4, (await saved()).seasons[0].week, await js(`document.getElementById('uvClock').textContent`), await sound()];
+}, [7, ['End of Season 1 · Week 6', 'Before importing sample.json'], true, 6, 'Season 1 · Week 6', []]);
+await check('the save sheet remembers the last export', async () => {
+  await page.click('#uvDataBtn');
+  await settle();
+  const before = await js(`(document.querySelector('#uvSheetBody .uv-savenote') || {}).textContent || ''`);
+  const dl = page.waitForEvent('download');
+  await btn(sheet, 'Export').click();
+  await dl;
+  await page.waitForTimeout(150);
+  const after = await js(`document.querySelector('#uvSheetBody .uv-savenote').textContent`);
+  const points = await js(`[...document.querySelectorAll('#uvSheetBody [data-restore] b')].map(e => e.textContent)`);
+  await closeSheet();
+  return [/^(No save file exported|Last save file exported)/.test(before), after, points[0]];
+}, [true, 'Last save file exported just now from this browser.', 'Before restoring “End of Season 1 · Week 6”']);
 
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {

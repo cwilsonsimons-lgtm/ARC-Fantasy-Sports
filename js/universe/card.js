@@ -15,11 +15,23 @@ import {
   ICON, LABEL, chip, empty, esc, eventWhen, fallLine, field, isoText, kindChip, labelPairs, matchLine, options,
   select, showColor, showName, showPairs, teamOptions, titleOptions, vsLine, wrestlerOptions,
 } from './ui.js';
-import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, toast, uni } from './app.js';
+import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
 import { uvStoryAfterResult, uvStoryBlock, uvStoryToast } from './story.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
+/** Move to another show from a show's page, without stacking up Back steps. */
+export function uvSwapEvent(id) { swapPage('event', id); }
+
+// the shows either side of this one, by the calendar - across the whole universe
+function showNav(st, e) {
+  const all = [...st.events].sort((a, b) => M.compareStamps(st, a.at, b.at));
+  const i = all.indexOf(e);
+  const [prev, next] = [all[i - 1], all[i + 1]];
+  const link = (x, dir) => (x ? `<div class="${dir}" onclick="uvSwapEvent('${x.id}')">${dir === 'p' ? ICON.left : ''}<span><em>${dir === 'p' ? 'Previous' : 'Next'}</em>${esc(x.name)}</span>${dir === 'n' ? ICON.right : ''}</div>`
+    : `<div class="${dir} off"></div>`);
+  return `<div class="uv-evnav">${link(prev, 'p')}<div class="w" onclick="uvGo('week','${e.at.season}:${e.at.week}')">Week ${e.at.week}</div>${link(next, 'n')}</div>`;
+}
 
 // ================================================================ planning shows
 
@@ -143,6 +155,7 @@ export function uvEventPage(id) {
   return {
     title: e.name,
     body: `
+      ${showNav(st, e)}
       <div class="uv-evhead" style="--c:${showColor(st, e.showId)}">
         <div class="k">${esc(LABEL.event[e.kind])} · ${esc(e.showId ? showName(st, e.showId) : 'All shows')}</div>
         <div class="nm">${esc(e.name)}</div>
@@ -446,7 +459,9 @@ export function uvMSave(thenResult) {
       : q ? `${M.wrestlerById(st, q.wrestler).name} is draft eligible`
         : reign ? `${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}` : '';
     const news = uvRelNews(before).replace(/^ — /, '');
-    return `${saved}${[what, news].filter(Boolean).map((x, i) => (i ? `. ${x}` : ` — ${x}`)).join('')}${uvStoryToast(story)}`;
+    const checks = m.titleId ? M.titleChecks(st, m.titleId).length : 0;
+    const heads = checks ? `Check the ${M.titleById(st, m.titleId).name} history: ${checks} thing${checks === 1 ? ' doesn’t' : 's don’t'} add up` : '';
+    return `${saved}${[what, heads, news].filter(Boolean).map((x, i) => (i ? `. ${x}` : ` — ${x}`)).join('')}${uvStoryToast(story)}`;
   });
   if (r.ok) closeSheet();
 }

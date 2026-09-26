@@ -40,7 +40,7 @@ js/universe/
   persist.js           saving, loading, export and import
   cloud.js             the claude.ai copy, when published as an artifact
   app.js               commit (change + save + repaint), sheets, the page stack
-  index.js             start-up, tabs, the save-file sheet
+  index.js             start-up, tabs, the Go to sheet, the save-file sheet and restore points
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
   personality.js       traits, relationships, the page for two wrestlers, incidents
   story.js             the story engine's suggestions, the Story page and its settings
@@ -55,11 +55,110 @@ js/universe/
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       114 model tests     npm run test:universe
-tools/universe-check.mjs      164 browser checks  npm run check:universe
+tools/universe-test.mjs       117 model tests     npm run test:universe
+tools/universe-check.mjs      174 browser checks  npm run check:universe
+tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
+
+## The workflow
+
+1. **Set up.** Add wrestlers (paste a whole roster at once) to Raw, SmackDown,
+   Dynamite and NXT — any sizes. Add tag teams and titles, and crown the
+   champions. Give wrestlers traits if you like.
+2. **Each week.** The Calendar opens on the week, with **Up next** — today's
+   show. Plan an episode, book its card, play the matches in WWE 2K25, then enter
+   each result as the game produced it. Record anything else you saw (an attack,
+   a betrayal, a challenge) as an incident on the show. Tap **Next week** when
+   it's done.
+3. **Keep track.** Rankings (standings and booking balance), Titles, Roster
+   (and its Relationships view), History and the Story page all read the
+   record. None of them books or decides anything.
+4. **After WrestleMania.** Start the season transition from WrestleMania's page:
+   relegation matches on each main show's next episode, NXT qualifiers, then the
+   transfer window and the draft. Close the window, then start the next season.
+5. **Anything wrong?** Correct it where it happened — the result, the incident,
+   the pick. Everything built on it follows, or is flagged for you.
+
+The **Go to** button (top right, beside the save button) reaches every part of
+this from anywhere, with where each stands.
+
+## Rules at a glance
+
+What the app does by itself — each is explained in its own section below and
+in the app's "How it works" sheets.
+
+- **Results** come only from you. A match is booked until you enter a result;
+  the form starts blank. Only played matches count.
+- **Records.** Singles when your own side was just you; tag when you had a
+  partner. A team's record counts only matches as that team. W–L–D, with no
+  contests alongside.
+- **Titles** change only when a result says so. History runs in calendar
+  order; a title change can't be undone while a later one depends on it. After
+  a correction, a title match the champion of the day wasn't in, or a title
+  change the outgoing champion wasn't part of, is flagged on the title's page.
+- **Rankings**: (W + ½D + 1) ÷ (W + L + D + 2), by show and division; ties to
+  more wins, then fewer losses. **Booking balance** flags a rate at most half
+  of the show's typical and 2+ matches short. Neither ever limits booking.
+- **Relegation**: on each main show, the fewest wins up to and including
+  WrestleMania (default 2 candidates) face each other on its next episode; the
+  loser moves to NXT on the result. Candidates are fixed when booked; a later
+  correction to the win totals is shown against them, never applied.
+- **NXT promotion**: NXT champions are eligible when the window opens;
+  qualifier winners are eligible on the result. Eligibility moves nobody — the
+  draft does. A qualifier can't change once its winner is drafted, or while the
+  window is closed.
+- **Relationships** are worked out from the record (losses, title defeats,
+  teaming, splits, incidents) plus your edits. Traits never change on their own.
+- **Story suggestions** are only suggestions until accepted; rare, explained,
+  seeded, never a result.
+- **Saving** is automatic in the browser (and to your claude.ai account when
+  published); save files are checked before they're imported; restore points
+  are kept in the browser before anything big replaces the universe.
+
+## Decisions left to you
+
+Everything the app won't decide, and where it asks:
+
+| Decision | Where |
+|---|---|
+| Every result: the winner, the finish, who took the fall, whether a title changed hands (a DQ or a cash-in is your call) | The result form |
+| Who wrestles whom, which titles are on the line, when shows air | The calendar and the card — rankings, booking balance and story ideas only suggest |
+| Whether a pairing wrestled as a registered tag team | The result form ("Wrestling as …?") |
+| Traits, and any relationship you want started, set, ended or ignored | A wrestler's page; the page for two wrestlers |
+| What counts as an incident | The show page |
+| Each story suggestion: accept, edit, dismiss; the pace, or switching it off | The show page and the Story page |
+| When WrestleMania is, and starting the transition from it | WrestleMania's page, or the season card |
+| How many relegation candidates each show has (any number, zero included) | The transition page |
+| A tie across the cutoff, an odd candidate out, the pairings | The transition page — booking waits for these |
+| Results still missing before WrestleMania: enter them, or count wins as they stand | The transition page |
+| A relegation match without a winner: rematch, or who (if anyone) goes down | The transition page |
+| Whether a correction to the win totals after booking should change anything | The transition page shows what moved; it changes nothing itself |
+| Who's in the NXT qualifiers (suggestions from the season record), their pairings, a qualifier without a winner | NXT promotion |
+| When the transfer window opens and closes, who's drafted where, how many each show takes | Transfer window |
+| For each pick: keep or vacate every title they (or their team) hold; bring tag partners along or split the team | The draft sheet — the pick waits for an answer |
+| Which result is wrong when a title history is flagged | The title's page, then the result |
+| Injuries, alignment and other details | A wrestler's page |
+| When a season ends and the next begins | The season card |
+| Exporting save files — the only backup that leaves this browser | The save sheet |
+
+## Getting around
+
+- **Go to** (top right): Up next, this week's shows, results, rosters, tag teams,
+  champions, rankings, booking balance, relationships, story suggestions, the
+  season transition and transfer window, and saving — each with where it
+  stands — plus every "How it works" sheet.
+- **Up next** on the Calendar is today's show: a show from an earlier week still
+  waiting for results comes first; otherwise the first unfinished show from this
+  week on, in calendar order.
+- **On a show's page**, the previous and next shows (by the calendar, across every
+  show) are one tap away, and so is its week. Moving between shows replaces the
+  page, so Back always returns to where you came from.
+- **On a wrestler's page**, their ranking this season links to their show's
+  standings; titles, teams, relationships and results link on as before.
+- Every page opened from Go to starts from its tab, so Back leads somewhere
+  sensible.
 
 ## The data
 
@@ -487,6 +586,11 @@ refuses rather than disturb anything else:
 | A story suggestion accepted by mistake | **Take it back** on the show or the Story page: its incidents go, a team it split is back together (while nothing has changed on the team since), and the suggestion waits again. |
 | A story suggestion dismissed by mistake | **Bring it back**. |
 | The result behind a suggestion corrected | The suggestion is marked as no longer fitting; dismiss it. One already accepted stays on the record — edit or delete its incidents on the show. |
+| A result before WrestleMania corrected after relegation matches were booked | The candidates, pairings and relegations stand as booked. The transition page lists exactly whose win totals moved, and what the rule would pick now; a relegated wrestler's record shows their total now beside the one it was decided on. Any change — undoing a relegation, re-pairing — is yours. |
+| A title history flagged after a correction | The title's page names the title match the champion of the day wasn't in (or the change the outgoing champion wasn't part of). Correct whichever result is really wrong. |
+| A qualifier result after the transfer window closed | Refused while the window is closed — its record of who was left undrafted rests on it. Reopen the window, correct it, close it again. |
+| A title the draft vacated | Comes back only by undoing that draft pick, never from the title page. |
+| The universe itself went wrong (a bad import, a reset, a week to redo) | Save sheet → **Restore points**. |
 
 ## Saving
 
@@ -496,8 +600,18 @@ local files in Chrome, say — the two apps share one browser storage area, whic
 is why Universe never reads or writes the fantasy app's keys.
 
 The save menu (top right) exports the whole universe as a JSON file and
-imports one back; that file is the only backup, and how the universe moves
-between browsers or devices.
+imports one back; that file is the real backup, and how the universe moves
+between browsers or devices. The save sheet says when a save file was last
+exported from this browser — or that one never has been.
+
+**Restore points** are copies kept in the browser, taken automatically before
+an import, a reset or a restore replaces the universe, and each time the week
+moves on (only the newest of those), or by hand (**Keep a restore point
+now**). Up to four are kept, oldest dropped first; restoring one first keeps
+what you have as another, so it can be undone. They share the browser's
+storage with the save itself and give way — oldest first — whenever the save
+needs the room, so they can never cost you a save. They're checked like an
+imported file before they're used.
 
 **Published on claude.ai**, a browser's storage can't be relied on, so every
 save also goes to the artifact's database, into the viewer's own private

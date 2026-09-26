@@ -172,7 +172,8 @@ function showSection(st, t) {
       ${fixed ? '<div class="fine">Candidates are fixed now that matches are booked.</div>' : '<div class="fine">Tap a wrestler to make them a candidate, or not.</div>'}
       ${t.pairs.length || t.unpaired.length ? `<div class="uv-sub">Relegation matches</div><div class="uv-pairs">${pairs}</div>` : ''}
       ${book}
-      ${t.records.map(r => `<div class="uv-relrec"><b>${nm(st, r.wrestler)} → NXT</b><span>${esc(r.reason)}</span></div>`).join('')}
+      ${t.records.map(r => { const d = M.relegationDrift(st, r); return `<div class="uv-relrec"><b>${nm(st, r.wrestler)} → NXT</b><span>${esc(r.reason)}</span>${d
+        ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? '' : 's'} now, not ${d.then}. The relegation stands unless you undo it.</span>` : ''}</div>`; }).join('')}
     </div>`;
 }
 

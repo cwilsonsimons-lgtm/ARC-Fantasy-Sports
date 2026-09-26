@@ -785,6 +785,8 @@ export function undoTitleChange(st, titleId) {
   if (!last) fail(`The ${title.name} has no history to undo.`);
   if (last.end) {
     if (!title.active) fail(`The ${title.name} is retired. Reactivate it first.`);
+    const pick = st.drafts.find(d => d.titles.some(x => x.reign === last.id && x.choice === 'vacated'));
+    if (pick) fail(`The ${title.name} was vacated when ${nameOf(st, pick.wrestler)} was drafted to ${showById(st, pick.to).name}. Undo that draft pick instead.`);
     last.end = null;
     last.vacated = false;
     return last;
@@ -848,6 +850,35 @@ export function defencesOf(st, r) {
     if (inIt) n++;
   });
   return n;
+}
+
+/**
+ * What in a title's history doesn't add up - usually after a correction: a
+ * title change the outgoing champion wasn't part of, or a title match the
+ * champion of the day wasn't in. Only ever flagged: which result is wrong is
+ * the owner's call. [{ event, match, text }], oldest first.
+ */
+export function titleChecks(st, titleId) {
+  const t = must(titleById(st, titleId), 'championship', titleId);
+  const hist = titleReigns(st, titleId);
+  const inIt = (h, m) => (h.type === 'team' ? m.sides.some(sd => sd.team === h.id) : m.sides.some(sd => sd.wrestlers.includes(h.id)));
+  const out = [];
+  eachPlayed(st, (m, ev) => {
+    if (m.titleId !== titleId) return;
+    const won = st.reigns.find(x => x.matchId === m.id);
+    if (won) {
+      const { prev, prevJoined } = neighbours(st, won);
+      if (prevJoined && !inIt(prev.holder, m)) {
+        out.push({ event: ev, match: m, text: `${holderName(st, won.holder)} won the ${t.name} at ${ev.name} from ${holderName(st, prev.holder)}, who wasn't in that match.` });
+      }
+      return;
+    }
+    const live = hist.filter(r => !earlierDate(st, ev.at, r.start) && !(r.end && earlierDate(st, r.end, ev.at)));
+    if (live.length === 1 && !inIt(live[0].holder, m)) {
+      out.push({ event: ev, match: m, text: `The ${t.name} match at ${ev.name} didn't include the champion of the day, ${holderName(st, live[0].holder)}.` });
+    }
+  });
+  return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
 }
 
 /**
@@ -1602,10 +1633,21 @@ export function relegationTable(st, trId, showId) {
     const [a, b] = [byIdIn(p.a), byIdIn(p.b)];
     if (a && b && a.gender !== b.gender) check('mixed', `${a.name} and ${b.name} are in different divisions. Check that pairing.`);
   });
-  if (cfg.picked) {
+  const basis = cfg.basis || null;
+  if (cfg.picked && !(basis && basis.rule)) {
     const added = candidates.filter(id => !autoIds.includes(id)), out = autoIds.filter(id => !candidates.includes(id));
     if (added.length || out.length) {
       check('picked', `Picked by you${added.length ? ` — added ${listNames(st, added)}` : ''}${out.length ? `${added.length ? ';' : ' —'} left out ${listNames(st, out)}` : ''}.`);
+    }
+  }
+  // corrected results since booking: the candidates stand as booked, and the owner is told exactly what moved
+  if (basis) {
+    const moved = pool.filter(r => basis.wins[r.id] != null && basis.wins[r.id] !== r.wins);
+    if (moved.length) {
+      const now = !tied.length && (autoIds.length !== candidates.length || autoIds.some(id => !candidates.includes(id)))
+        ? ` By the totals as they stand, the fewest wins would pick ${listNames(st, autoIds)}.` : '';
+      check('changed', `Since the relegation matches were booked, corrected results changed the win totals: ${moved.map(r =>
+        `${r.name} ${basis.wins[r.id]} → ${r.wins}`).join(', ')}. The candidates and results stand as booked — any change is your call.${now}`);
     }
   }
   const blocking = flags.filter(f => ['incomplete', 'tie', 'odd'].includes(f.key));
@@ -1685,6 +1727,7 @@ export function useWinTotals(st, trId, showId) {
   if (bookedPairs(cfg).length) fail('Relegation matches are on the card, so the candidates are fixed. Take them off first.');
   cfg.picked = null;
   cfg.pairs = null;
+  cfg.basis = null;
   return cfg;
 }
 
@@ -1728,6 +1771,8 @@ export function bookRelegation(st, trId, showId, eventId, pairIds = null) {
   if (t.blocking.length) fail(t.blocking[0].text);
   const todo = t.pairs.filter(p => (pairIds ? pairIds.includes(p.id) && p.status === 'no winner' : p.status === 'unbooked'));
   if (!todo.length) fail(pairIds ? 'Only a relegation match without a winner can be rematched.' : 'Every pairing is already booked.');
+  // what the candidates rested on when they were booked, so a later correction to a result can be shown against it
+  if (!cfg.basis) cfg.basis = { rule: !cfg.picked, wins: Object.fromEntries(t.pool.map(r => [r.id, r.wins])) };
   cfg.picked = [...t.candidates];
   cfg.pairs = t.pairs.map(p => ({ id: p.id || newId(st, 'rp'), a: p.a, b: p.b, matches: [...p.matches], decision: p.decision }));
   return todo.map(p => {
@@ -1738,6 +1783,19 @@ export function bookRelegation(st, trId, showId, eventId, pairIds = null) {
     pair.matches.push(m.id);
     return m;
   });
+}
+
+/**
+ * A relegation record against the results as they stand now: the season wins
+ * it was decided on can since have been corrected. { then, now } when they
+ * differ, else null. The record itself is history and never changes.
+ */
+export function relegationDrift(st, rec) {
+  const tr = transitionById(st, rec.transition);
+  const wm = tr && eventById(st, tr.event);
+  if (!wm || rec.wins == null) return null;
+  const now = (seasonWins(st, wm).get(rec.wrestler) || { wins: 0 }).wins;
+  return now === rec.wins ? null : { then: rec.wins, now };
 }
 
 // Why someone was relegated, in words, kept with the record for good.
@@ -2066,6 +2124,10 @@ export function bookQualifiers(st, trId, eventId, pairIds = null) {
 }
 
 const draftedWith = (st, eligibilityId) => st.drafts.find(d => d.eligibility.includes(eligibilityId)) || null;
+// who's eligible can't change under a closed window: its list of who was left undrafted would be wrong
+function windowOpenFor(tr) {
+  if (tr.window && tr.window.closed) fail('The transfer window has closed, and its record of who was left undrafted rests on this. Reopen the window first.');
+}
 function uneligibleChecks(st, rec) {
   const d = draftedWith(st, rec.id);
   if (d) fail(`${nameOf(st, rec.wrestler)} has been drafted to ${showById(st, d.to).name} since qualifying. Undo that pick first.`);
@@ -2094,6 +2156,7 @@ function qualifierPlan(st, ev, m, sides, r) {
   const old = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier') || null;
   const winner = r && r.outcome === 'win' ? sides[r.winner].wrestlers[0] : null;
   if (old && old.wrestler === winner) return null;
+  if (old || winner) windowOpenFor(tr);
   const undo = old ? uneligibleChecks(st, old) : null;
   return { undo, tr, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
 }
@@ -2107,6 +2170,7 @@ function qualifierRemoval(st, m) {
   const pair = transitionById(st, m.qualifier.transition).promotion.pairs.find(x => x.id === m.qualifier.pair);
   if (pair.decision && pair.matches[pair.matches.length - 1] === m.id) fail('You decided this pairing after this match. Undo that decision first.');
   const rec = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
+  if (rec) windowOpenFor(transitionById(st, m.qualifier.transition));
   const undo = rec ? uneligibleChecks(st, rec) : null;
   return () => {
     if (undo) undo();
@@ -2123,6 +2187,7 @@ export function decideQualifier(st, trId, pairId, qualifyIds, note = '') {
   const ids = Array.isArray(qualifyIds) ? qualifyIds : [];
   if (ids.some(id => ![x.a, x.b].includes(id)) || new Set(ids).size !== ids.length) fail('Pick from the two in that match.');
   const n = checkNote(note);
+  windowOpenFor(t.tr);
   const pair = t.tr.promotion.pairs.find(y => y.id === pairId);
   ids.forEach(id => qualify(st, t.tr, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
   pair.decision = { qualify: [...ids], note: n, at: now(st) };
@@ -2133,6 +2198,7 @@ export function undoQualifierDecision(st, trId, pairId) {
   const pair = (p.pairs || []).find(x => x.id === pairId);
   if (!pair || !pair.decision) fail('There\'s no decision to undo.');
   const recs = st.eligibility.filter(x => x.pair === pairId && x.source === 'decision');
+  if (recs.length) windowOpenFor(transitionById(st, trId));
   const undos = recs.map(r => uneligibleChecks(st, r));
   undos.forEach(f => f());
   pair.decision = null;

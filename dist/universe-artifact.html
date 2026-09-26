@@ -780,6 +780,46 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-separt>.h{display:flex;align-items:center;justify-content:space-between}
 .uv-separt>.h .uv-link{font-size:12px;color:var(--uv-ink-3)}
 .uv-separt .uv-sidebox{background:var(--uv-card)}
+.uv-drift{display:block;margin-top:5px;color:var(--uv-amber)}
+.uv-note[data-check]{cursor:pointer}
+
+/* ---------- getting around ---------- */
+.uv-head-acts{display:flex;gap:8px}
+.uv-upnext{position:relative;display:block;margin:12px 14px 0;padding:12px 40px 12px 14px;border-radius:14px;cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--c) 45%,var(--uv-line));
+  background:linear-gradient(120deg,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%),var(--uv-card)}
+.uv-upnext.none{cursor:default;border-style:dashed;background:var(--uv-card-2)}
+.uv-upnext .k{font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-gold)}
+.uv-upnext b{display:block;margin-top:3px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:18px;letter-spacing:.3px}
+.uv-upnext span{display:block;margin-top:2px;font-size:12px;color:var(--uv-ink-2)}
+.uv-upnext>svg{position:absolute;right:14px;top:50%;width:16px;height:16px;margin-top:-8px;color:var(--uv-ink-3)}
+.uv-evnav{display:flex;align-items:stretch;gap:6px;margin:10px 14px 0}
+.uv-evnav>div{display:flex;align-items:center;gap:4px;min-width:0;padding:7px 8px;border-radius:10px;border:1px solid var(--uv-line);
+  background:var(--uv-card);font-size:12px;color:var(--uv-ink-2);cursor:pointer}
+.uv-evnav .p,.uv-evnav .n{flex:1}
+.uv-evnav .n{justify-content:flex-end;text-align:right}
+.uv-evnav .off{visibility:hidden}
+.uv-evnav .w{flex:none;justify-content:center;font-weight:800;color:var(--uv-gold)}
+.uv-evnav span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-evnav em{display:block;font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-evnav svg{flex:none;width:14px;height:14px}
+.uv-gos{display:flex;flex-direction:column;border:1px solid var(--uv-line);border-radius:14px;overflow:hidden}
+.uv-go{display:flex;align-items:center;gap:11px;padding:10px 12px;border-top:1px solid var(--uv-line-soft);cursor:pointer;background:var(--uv-card)}
+.uv-go:first-child{border-top:none}
+.uv-go:active{background:var(--uv-card-2)}
+.uv-go>svg:first-child{flex:none;width:17px;height:17px;color:var(--uv-gold)}
+.uv-go>svg:last-child{flex:none;width:14px;height:14px;color:var(--uv-ink-3)}
+.uv-go div{flex:1;min-width:0}
+.uv-go b{display:block;font-size:13.5px}
+.uv-go span{display:block;margin-top:1px;font-size:11.5px;line-height:1.4;color:var(--uv-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-go.hot{background:var(--uv-gold-soft)}
+.uv-go.hot b{color:var(--uv-gold)}
+.uv-ranklink{display:flex;align-items:center;gap:9px;margin:10px 14px 0;padding:9px 12px;border-radius:12px;border:1px solid var(--uv-line);
+  background:var(--uv-card);font-size:12.5px;color:var(--uv-ink-2);cursor:pointer}
+.uv-ranklink svg{flex:none;width:15px;height:15px;color:var(--uv-gold)}
+.uv-ranklink svg:last-child{margin-left:auto;color:var(--uv-ink-3)}
+.uv-savenote{margin-top:10px;font-size:12px;line-height:1.5;color:var(--uv-ink-3)}
+.uv-savenote.warn{color:var(--uv-amber)}
 
 /* css/universe-artifact.css */
 /* ===== UNIVERSE, PUBLISHED =====
@@ -800,7 +840,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="a">Universe</div>
         <div class="m" id="uvClock"></div>
       </div>
+      <div class="uv-head-acts">
+      <div class="uv-ic" id="uvGoBtn" onclick="uvGoSheet()" title="Go to"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
       <div class="uv-ic" id="uvDataBtn" onclick="uvData()" title="Save file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/></svg></div>
+      </div>
     </div>
     <div class="uv-tabs" id="uvTabs"></div>
     <div class="uv-scroll" id="uvScroll"><div id="uvBody"></div></div>
@@ -858,6 +901,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvTeamsView: () => uvTeamsView,
     uvTitlesView: () => uvTitlesView,
     uvToggleSelect: () => uvToggleSelect,
+    uvUpNext: () => uvUpNext,
     uvViewSeason: () => uvViewSeason
   });
 
@@ -1473,6 +1517,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!last) fail(`The ${title2.name} has no history to undo.`);
     if (last.end) {
       if (!title2.active) fail(`The ${title2.name} is retired. Reactivate it first.`);
+      const pick = st.drafts.find((d) => d.titles.some((x) => x.reign === last.id && x.choice === "vacated"));
+      if (pick) fail(`The ${title2.name} was vacated when ${nameOf(st, pick.wrestler)} was drafted to ${showById(st, pick.to).name}. Undo that draft pick instead.`);
       last.end = null;
       last.vacated = false;
       return last;
@@ -1524,6 +1570,28 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (inIt) n++;
     });
     return n;
+  }
+  function titleChecks(st, titleId) {
+    const t = must(titleById(st, titleId), "championship", titleId);
+    const hist = titleReigns(st, titleId);
+    const inIt = (h, m) => h.type === "team" ? m.sides.some((sd) => sd.team === h.id) : m.sides.some((sd) => sd.wrestlers.includes(h.id));
+    const out = [];
+    eachPlayed(st, (m, ev) => {
+      if (m.titleId !== titleId) return;
+      const won = st.reigns.find((x) => x.matchId === m.id);
+      if (won) {
+        const { prev, prevJoined } = neighbours(st, won);
+        if (prevJoined && !inIt(prev.holder, m)) {
+          out.push({ event: ev, match: m, text: `${holderName(st, won.holder)} won the ${t.name} at ${ev.name} from ${holderName(st, prev.holder)}, who wasn't in that match.` });
+        }
+        return;
+      }
+      const live = hist.filter((r) => !earlierDate(st, ev.at, r.start) && !(r.end && earlierDate(st, r.end, ev.at)));
+      if (live.length === 1 && !inIt(live[0].holder, m)) {
+        out.push({ event: ev, match: m, text: `The ${t.name} match at ${ev.name} didn't include the champion of the day, ${holderName(st, live[0].holder)}.` });
+      }
+    });
+    return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
   }
   function updateReign(st, reignId, patch = {}) {
     const r = must(st.reigns.find((x) => x.id === reignId), "title reign", reignId);
@@ -2117,10 +2185,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const [a, b] = [byIdIn(p.a), byIdIn(p.b)];
       if (a && b && a.gender !== b.gender) check("mixed", `${a.name} and ${b.name} are in different divisions. Check that pairing.`);
     });
-    if (cfg.picked) {
+    const basis = cfg.basis || null;
+    if (cfg.picked && !(basis && basis.rule)) {
       const added = candidates.filter((id) => !autoIds.includes(id)), out = autoIds.filter((id) => !candidates.includes(id));
       if (added.length || out.length) {
         check("picked", `Picked by you${added.length ? ` \u2014 added ${listNames(st, added)}` : ""}${out.length ? `${added.length ? ";" : " \u2014"} left out ${listNames(st, out)}` : ""}.`);
+      }
+    }
+    if (basis) {
+      const moved = pool.filter((r) => basis.wins[r.id] != null && basis.wins[r.id] !== r.wins);
+      if (moved.length) {
+        const now2 = !tied.length && (autoIds.length !== candidates.length || autoIds.some((id) => !candidates.includes(id))) ? ` By the totals as they stand, the fewest wins would pick ${listNames(st, autoIds)}.` : "";
+        check("changed", `Since the relegation matches were booked, corrected results changed the win totals: ${moved.map((r) => `${r.name} ${basis.wins[r.id]} \u2192 ${r.wins}`).join(", ")}. The candidates and results stand as booked \u2014 any change is your call.${now2}`);
       }
     }
     const blocking = flags.filter((f) => ["incomplete", "tie", "odd"].includes(f.key));
@@ -2213,6 +2289,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (bookedPairs(cfg).length) fail("Relegation matches are on the card, so the candidates are fixed. Take them off first.");
     cfg.picked = null;
     cfg.pairs = null;
+    cfg.basis = null;
     return cfg;
   }
   function pairCandidates(st, trId, showId, aId, bId) {
@@ -2246,6 +2323,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (t.blocking.length) fail(t.blocking[0].text);
     const todo = t.pairs.filter((p) => pairIds ? pairIds.includes(p.id) && p.status === "no winner" : p.status === "unbooked");
     if (!todo.length) fail(pairIds ? "Only a relegation match without a winner can be rematched." : "Every pairing is already booked.");
+    if (!cfg.basis) cfg.basis = { rule: !cfg.picked, wins: Object.fromEntries(t.pool.map((r) => [r.id, r.wins])) };
     cfg.picked = [...t.candidates];
     cfg.pairs = t.pairs.map((p) => ({ id: p.id || newId(st, "rp"), a: p.a, b: p.b, matches: [...p.matches], decision: p.decision }));
     return todo.map((p) => {
@@ -2260,6 +2338,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
       pair.matches.push(m.id);
       return m;
     });
+  }
+  function relegationDrift(st, rec) {
+    const tr = transitionById(st, rec.transition);
+    const wm = tr && eventById(st, tr.event);
+    if (!wm || rec.wins == null) return null;
+    const now2 = (seasonWins(st, wm).get(rec.wrestler) || { wins: 0 }).wins;
+    return now2 === rec.wins ? null : { then: rec.wins, now: now2 };
   }
   function relegationBasis(st, t, wid) {
     const r = t.pool.find((x) => x.id === wid);
@@ -2545,6 +2630,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
   }
   var draftedWith = (st, eligibilityId) => st.drafts.find((d) => d.eligibility.includes(eligibilityId)) || null;
+  function windowOpenFor(tr) {
+    if (tr.window && tr.window.closed) fail("The transfer window has closed, and its record of who was left undrafted rests on this. Reopen the window first.");
+  }
   function uneligibleChecks(st, rec) {
     const d = draftedWith(st, rec.id);
     if (d) fail(`${nameOf(st, rec.wrestler)} has been drafted to ${showById(st, d.to).name} since qualifying. Undo that pick first.`);
@@ -2583,6 +2671,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const old = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier") || null;
     const winner = r && r.outcome === "win" ? sides[r.winner].wrestlers[0] : null;
     if (old && old.wrestler === winner) return null;
+    if (old || winner) windowOpenFor(tr);
     const undo = old ? uneligibleChecks(st, old) : null;
     return { undo, tr, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
   }
@@ -2596,6 +2685,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const pair = transitionById(st, m.qualifier.transition).promotion.pairs.find((x) => x.id === m.qualifier.pair);
     if (pair.decision && pair.matches[pair.matches.length - 1] === m.id) fail("You decided this pairing after this match. Undo that decision first.");
     const rec = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier");
+    if (rec) windowOpenFor(transitionById(st, m.qualifier.transition));
     const undo = rec ? uneligibleChecks(st, rec) : null;
     return () => {
       if (undo) undo();
@@ -2610,6 +2700,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const ids = Array.isArray(qualifyIds) ? qualifyIds : [];
     if (ids.some((id) => ![x.a, x.b].includes(id)) || new Set(ids).size !== ids.length) fail("Pick from the two in that match.");
     const n = checkNote(note);
+    windowOpenFor(t.tr);
     const pair = t.tr.promotion.pairs.find((y) => y.id === pairId);
     ids.forEach((id) => qualify(st, t.tr, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
     pair.decision = { qualify: [...ids], note: n, at: now(st) };
@@ -2620,6 +2711,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const pair = (p.pairs || []).find((x) => x.id === pairId);
     if (!pair || !pair.decision) fail("There's no decision to undo.");
     const recs = st.eligibility.filter((x) => x.pair === pairId && x.source === "decision");
+    if (recs.length) windowOpenFor(transitionById(st, trId));
     const undos = recs.map((r) => uneligibleChecks(st, r));
     undos.forEach((f) => f());
     pair.decision = null;
@@ -4043,11 +4135,104 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return null;
   }
   function saveUniverse(storage2, state) {
+    const text = JSON.stringify(state);
+    for (; ; ) {
+      try {
+        storage2.setItem(STORAGE_KEY, text);
+        return true;
+      } catch (e) {
+        if (!dropOldestRestorePoint(storage2)) return false;
+      }
+    }
+  }
+  var RESTORE_KEY = `${STORAGE_KEY}:restore`;
+  var EXPORTED_KEY = `${STORAGE_KEY}:exported`;
+  var MAX_RESTORE = 4;
+  var pointKey = (id) => `${RESTORE_KEY}:${id}`;
+  function readIndex(storage2) {
     try {
-      storage2.setItem(STORAGE_KEY, JSON.stringify(state));
+      const list = JSON.parse(storage2.getItem(RESTORE_KEY) || "[]");
+      return Array.isArray(list) ? list.filter((p) => p && Number.isInteger(p.id)) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function writeIndex(storage2, list) {
+    storage2.setItem(RESTORE_KEY, JSON.stringify(list));
+  }
+  function listRestorePoints(storage2) {
+    return readIndex(storage2).sort((a, b) => b.id - a.id);
+  }
+  function dropOldestRestorePoint(storage2) {
+    try {
+      const list = readIndex(storage2).sort((a, b) => a.id - b.id);
+      if (!list.length) return false;
+      storage2.removeItem(pointKey(list[0].id));
+      writeIndex(storage2, list.slice(1));
       return true;
     } catch (e) {
       return false;
+    }
+  }
+  function keepRestorePoint(storage2, state, { label, kind = "manual", when: when2 = "", clock = "", counts = null } = {}) {
+    let list;
+    try {
+      list = readIndex(storage2);
+      writeIndex(storage2, list);
+    } catch (e) {
+      return false;
+    }
+    const drop = (p) => {
+      storage2.removeItem(pointKey(p.id));
+      list = list.filter((x) => x !== p);
+    };
+    const oldest = () => list.reduce((a, b) => a.id < b.id ? a : b);
+    let kept = false;
+    try {
+      if (kind === "weekly") list.filter((p) => p.kind === "weekly").forEach(drop);
+      while (list.length >= MAX_RESTORE) drop(oldest());
+      const id = list.reduce((n, p) => Math.max(n, p.id), 0) + 1;
+      const data = JSON.stringify(state);
+      for (; ; ) {
+        try {
+          storage2.setItem(pointKey(id), data);
+          break;
+        } catch (e) {
+          if (!list.length) throw e;
+          drop(oldest());
+        }
+      }
+      list.push({ id, label: String(label || "Restore point"), kind, when: String(when2), clock: String(clock), counts });
+      kept = true;
+    } catch (e) {
+    }
+    try {
+      writeIndex(storage2, list);
+    } catch (e) {
+      return false;
+    }
+    return kept;
+  }
+  function readRestorePoint(storage2, id) {
+    let text = null;
+    try {
+      text = storage2.getItem(pointKey(id));
+    } catch (e) {
+    }
+    if (text == null) throw new UniverseError("That restore point is no longer in this browser.");
+    return importUniverse(text);
+  }
+  function lastExported(storage2) {
+    try {
+      return storage2.getItem(EXPORTED_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+  function noteExported(storage2, when2) {
+    try {
+      storage2.setItem(EXPORTED_KEY, String(when2));
+    } catch (e) {
     }
   }
   function exportUniverse(state) {
@@ -4084,6 +4269,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
     } catch (e) {
       return null;
     }
+  }
+  var browserStorage = storage;
+  function keepRestore(label, kind = "manual") {
+    const s = storage();
+    if (!s || !U || loaded.readOnly) return false;
+    const season = activeSeason(U);
+    const n = summary(U);
+    return keepRestorePoint(s, U, {
+      label,
+      kind,
+      when: (/* @__PURE__ */ new Date()).toISOString(),
+      clock: `${season.name} \xB7 Week ${season.week}`,
+      counts: { wrestlers: n.wrestlers, results: n.matches }
+    });
   }
   function bootUniverse(paint2) {
     painter = paint2;
@@ -4160,6 +4359,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
     painter();
     if (sc) sc.scrollTop = 0;
   }
+  function swapPage(kind, id) {
+    const top = currentPage();
+    if (top && top.kind === kind && top.id === id) return;
+    if (top) pages.pop();
+    pages.push({ kind, id, title: "", scroll: 0 });
+    closeSheet();
+    painter();
+    const sc = scroller();
+    if (sc) sc.scrollTop = 0;
+  }
   function popPage() {
     pages.pop();
     painter();
@@ -4234,6 +4443,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvHowRanked: () => uvHowRanked,
     uvIdeaBook: () => uvIdeaBook,
     uvRankFollow: () => uvRankFollow,
+    uvRankFor: () => uvRankFor,
     uvRankKind: () => uvRankKind,
     uvRankMode: () => uvRankMode,
     uvRankPeriod: () => uvRankPeriod,
@@ -4494,11 +4704,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
         reasons.push("Both are short of matches");
       }
       const h = headToHead(st, onSide, self.id, o.id);
-      const ago = h.last ? weeksBetween(st, h.last.at, now2) : null;
+      const ago2 = h.last ? weeksBetween(st, h.last.at, now2) : null;
       if (h.n >= 2) {
         score += 2;
         reasons.push(`Rivalry: met ${h.n} times \u2014 ${self.name} ${h.a}, ${o.name} ${h.b}${h.other ? `, ${h.other} other` : ""}`);
-      } else if (h.n === 1 && ago <= 6) {
+      } else if (h.n === 1 && ago2 <= 6) {
         score += 1.5;
         reasons.push(h.a ? `Rematch: ${self.name} won in week ${h.last.at.week}` : h.b ? `Rematch: ${o.name} won in week ${h.last.at.week}` : `Unfinished: no winner in week ${h.last.at.week}`);
       } else if (!h.n) {
@@ -4528,9 +4738,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
         score -= 1;
         note = `${o.name} ${team ? "are" : "is"} already booked: ${upcoming2[0].event.name}`;
       }
-      if (h.last && ago <= 1) {
+      if (h.last && ago2 <= 1) {
         score -= 1;
-        note = note || (ago === 0 ? "They already met this week" : "They met last week");
+        note = note || (ago2 === 0 ? "They already met this week" : "They met last week");
       }
       const side = (x) => team ? { team: x.id, wrestlers: [...x.members] } : { team: "", wrestlers: [x.id] };
       return { opponent: { kind: subject.kind, id: o.id, name: o.name }, lineup: [side(self), side(o)], score, reasons, note };
@@ -4630,6 +4840,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvRankFollow() {
     stPeriod = null;
+  }
+  function uvRankFor(showId, view = "standings", kind = "singles") {
+    mode = view;
+    if (view === "balance") balShow = showId || balShow;
+    else {
+      stShow = showId || stShow;
+      stPeriod = null;
+      stKind = kind;
+    }
   }
   function uvHowRanked() {
     openSheet(() => ({
@@ -5393,7 +5612,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${fixed ? '<div class="fine">Candidates are fixed now that matches are booked.</div>' : '<div class="fine">Tap a wrestler to make them a candidate, or not.</div>'}
       ${t.pairs.length || t.unpaired.length ? `<div class="uv-sub">Relegation matches</div><div class="uv-pairs">${pairs}</div>` : ""}
       ${book}
-      ${t.records.map((r) => `<div class="uv-relrec"><b>${nm2(st, r.wrestler)} \u2192 NXT</b><span>${esc(r.reason)}</span></div>`).join("")}
+      ${t.records.map((r) => {
+      const d = relegationDrift(st, r);
+      return `<div class="uv-relrec"><b>${nm2(st, r.wrestler)} \u2192 NXT</b><span>${esc(r.reason)}</span>${d ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? "" : "s"} now, not ${d.then}. The relegation stands unless you undo it.</span>` : ""}</div>`;
+    }).join("")}
     </div>`;
   }
   function pairRow2(st, t, p) {
@@ -7504,7 +7726,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
     rows.sort((a, b) => (a.day ?? 9) - (b.day ?? 9));
     const wr = weekRange(st, s.id, week);
-    return card + `
+    return card + upNextCard(st) + `
     <div class="uv-weeknav">
       <div class="uv-ic" onclick="uvCalWeek(-1)" title="Previous week">${ICON.left}</div>
       <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel2)}${wr ? ` \xB7 ${esc(wr)}` : ""}</div></div>
@@ -7514,6 +7736,30 @@ body.uv-confirm-open .uv-confirm{display:flex}
     <div class="uv-nights">${rows.map((r) => nightRow(st, s, week, r)).join("")}</div>
     <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
     ${seasonGrid(st, s, week)}`;
+  }
+  function uvUpNext(st) {
+    const s = activeSeason(st);
+    const evs = eventsIn(st, s.id);
+    const overdue = evs.find((e2) => e2.at.week < s.week && ["booked", "partial"].includes(cardStatus(e2).state));
+    const e = overdue || evs.find((x) => x.at.week >= s.week && cardStatus(x).state !== "complete");
+    if (!e) return null;
+    const c = cardStatus(e);
+    const text = {
+      empty: "Planned \u2014 nothing booked yet",
+      booked: `${c.total} booked \u2014 waiting for results`,
+      partial: `${c.played} of ${c.total} results in \u2014 enter the rest`,
+      complete: ""
+    }[c.state];
+    return { event: e, state: c.state, text, overdue: e.at.week < s.week };
+  }
+  function upNextCard(st) {
+    const n = uvUpNext(st);
+    if (!n) return `<div class="uv-upnext none" data-upnext="none"><div class="k">Up next</div><b>Nothing planned from this week on</b>
+    <span>Plan a show below, or add a premium live event.</span></div>`;
+    const e = n.event;
+    return `<div class="uv-upnext" data-upnext="${e.id}" style="--c:${showColor(st, e.showId)}" onclick="uvOpenEvent('${e.id}')">
+    <div class="k">Up next${n.overdue ? " \xB7 from an earlier week" : ""}</div><b>${esc(e.name)}</b>
+    <span>${esc(eventWhen(st, e))} \xB7 ${esc(n.text)}</span>${ICON.right}</div>`;
   }
   function transitionRows(st, s) {
     const recent = st.transitions.filter((t) => {
@@ -7947,10 +8193,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvPleSet: () => uvPleSet,
     uvSaveSeasonStart: () => uvSaveSeasonStart,
     uvSeasonDates: () => uvSeasonDates,
-    uvSetEvent: () => uvSetEvent
+    uvSetEvent: () => uvSetEvent,
+    uvSwapEvent: () => uvSwapEvent
   });
   function uvOpenEvent(id) {
     pushPage("event", id);
+  }
+  function uvSwapEvent(id) {
+    swapPage("event", id);
+  }
+  function showNav(st, e) {
+    const all = [...st.events].sort((a, b) => compareStamps(st, a.at, b.at));
+    const i = all.indexOf(e);
+    const [prev, next] = [all[i - 1], all[i + 1]];
+    const link = (x, dir) => x ? `<div class="${dir}" onclick="uvSwapEvent('${x.id}')">${dir === "p" ? ICON.left : ""}<span><em>${dir === "p" ? "Previous" : "Next"}</em>${esc(x.name)}</span>${dir === "n" ? ICON.right : ""}</div>` : `<div class="${dir} off"></div>`;
+    return `<div class="uv-evnav">${link(prev, "p")}<div class="w" onclick="uvGo('week','${e.at.season}:${e.at.week}')">Week ${e.at.week}</div>${link(next, "n")}</div>`;
   }
   function uvPlanShow(showId, week) {
     const r = commit((st) => addEvent(st, { showId, week }), (e) => `${e.name} planned`);
@@ -8070,6 +8327,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return {
       title: e.name,
       body: `
+      ${showNav(st, e)}
       <div class="uv-evhead" style="--c:${showColor(st, e.showId)}">
         <div class="k">${esc(LABEL.event[e.kind])} \xB7 ${esc(e.showId ? showName(st, e.showId) : "All shows")}</div>
         <div class="nm">${esc(e.name)}</div>
@@ -8419,7 +8677,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const q = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier");
       const what = rel2 ? `${wrestlerById(st, rel2.wrestler).name} relegated to NXT` : q ? `${wrestlerById(st, q.wrestler).name} is draft eligible` : reign ? `${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}` : "";
       const news = uvRelNews(before).replace(/^ — /, "");
-      return `${saved}${[what, news].filter(Boolean).map((x, i) => i ? `. ${x}` : ` \u2014 ${x}`).join("")}${uvStoryToast(story)}`;
+      const checks = m.titleId ? titleChecks(st, m.titleId).length : 0;
+      const heads = checks ? `Check the ${titleById(st, m.titleId).name} history: ${checks} thing${checks === 1 ? " doesn\u2019t" : "s don\u2019t"} add up` : "";
+      return `${saved}${[what, heads, news].filter(Boolean).map((x, i) => i ? `. ${x}` : ` \u2014 ${x}`).join("")}${uvStoryToast(story)}`;
     });
     if (r.ok) closeSheet();
   }
@@ -8536,6 +8796,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const opp = (wrestlerById(st, e.opponent) || { name: "?" }).name;
     return e.source === "qualifier" ? `won a qualifying match against ${opp}` : `owner's decision after a qualifier with ${opp}${e.note ? ` (${e.note})` : ""}`;
   }
+  function rankLine(st, w) {
+    if (!w.showId) return "";
+    const season = activeSeason(st);
+    const t = standings(st, { showId: w.showId, period: periodOf(st, season.id), kind: "singles" });
+    const row2 = t.ranked.find((r) => r.id === w.id);
+    const all = t.ranked.length + t.unranked.length;
+    const nth2 = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
+    const text = row2 ? `Ranked ${nth2(row2.rank)} of ${all} on ${showName(st, w.showId)} in ${season.name} singles` : `Not ranked yet on ${showName(st, w.showId)} this season`;
+    return `<div class="uv-ranklink" onclick="uvGo('rankings','${w.showId}')">${ICON.list}<span>${esc(text)}</span>${ICON.right}</div>`;
+  }
+  function driftNote(st, rec) {
+    const d = relegationDrift(st, rec);
+    return d ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? "" : "s"} now, not ${d.then}. The relegation stands unless you undo it.</span>` : "";
+  }
   function careerText(st, e) {
     const show = (id) => esc(showName(st, id));
     const team = (t) => `<span class="uv-link" onclick="uvOpenTeam('${t.id}')">${esc(t.name)}</span>`;
@@ -8629,6 +8903,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${recTile("Singles", rec.singles)}${recTile("Tag", rec.tag)}
         ${numTile("Title reigns", champs.length, current.length ? `${current.length} held now` : champs.length ? "none held now" : "never a champion")}
       </div>
+      ${rankLine(st, w)}
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ""}
 
       ${upcoming(st, booked)}
@@ -8646,7 +8921,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
           <span>${esc(how)}.${left ? " Left undrafted when the transfer window closed." : ""}</span></div>`;
       }).join("") : ""}
       ${relegated.length ? section("Relegation", relegated.length) + relegated.map((r) => `<div class="uv-relrec in" onclick="uvOpenTransition('${r.transition}')">
-        <b>${esc(showName(st, r.show))} \u2192 NXT \xB7 ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span></div>`).join("") : ""}
+        <b>${esc(showName(st, r.show))} \u2192 NXT \xB7 ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span>${driftNote(st, r)}</div>`).join("") : ""}
 
       ${section("Championships", champs.length || null)}
       ${champs.length ? current.map(champRow).join("") + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : "") : '<div class="uv-none">Never held a title.</div>'}
@@ -8818,6 +9093,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${numTile("Title matches", countTitleMatches(st, id), booked.length ? `${booked.length} booked` : "with a result")}
       </div>
       <p class="uv-p">A title that changes hands on a show is best recorded on that match\u2019s result, so the reign is dated to it and the defences count.</p>
+      ${titleChecks(st, id).map((x) => `<div class="uv-note warn uv-inset" data-check="1" onclick="uvOpenEvent('${x.event.id}')">${esc(x.text)} Check that result.</div>`).join("")}
 
       ${upcoming(st, booked)}
 
@@ -8989,8 +9265,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (r.ok) uvOpenTitle(r.value.id);
   }
   function uvStepWeek(d) {
-    const week = activeSeason(uni()).week + d;
+    const season = activeSeason(uni());
+    const week = season.week + d;
     if (week < 1) return;
+    if (d > 0) keepRestore(`End of ${season.name} \xB7 Week ${season.week}`, "weekly");
     uvCalFollow();
     commit((st) => setWeek(st, week), `Week ${week}`);
   }
@@ -9037,9 +9315,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvConfirmYes: () => uvConfirmYes,
     uvData: () => uvData,
     uvExport: () => uvExport,
+    uvGo: () => uvGo,
+    uvGoSheet: () => uvGoSheet,
     uvImportFile: () => uvImportFile,
     uvImportPick: () => uvImportPick,
+    uvKeepRestore: () => uvKeepRestore,
     uvReset: () => uvReset,
+    uvRestorePoint: () => uvRestorePoint,
     uvTab: () => uvTab
   });
 
@@ -9305,6 +9587,111 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvCloseSheet() {
     closeSheet();
   }
+  function uvGo(where, arg = "") {
+    closeSheet();
+    const st = uni();
+    switch (where) {
+      case "show":
+        uvTab("calendar");
+        pushPage("event", arg);
+        return;
+      case "week": {
+        const [season, week] = String(arg).split(":");
+        if (season && season !== activeSeason(st).id) {
+          uvViewSeason(season);
+          uvTab("history");
+          return;
+        }
+        uvTab("calendar");
+        uvCalGo(Number(week));
+        return;
+      }
+      case "relations":
+        uvRosterMode("relations");
+        uvTab("roster");
+        return;
+      case "roster":
+        uvRosterMode("wrestlers");
+        uvTab("roster");
+        return;
+      case "rankings":
+        uvRankFor(arg || null);
+        uvTab("rankings");
+        return;
+      case "balance":
+        uvRankFor(arg || null, "balance");
+        uvTab("rankings");
+        return;
+      case "story":
+        uvTab("calendar");
+        pushPage("story", "all");
+        return;
+      case "transition": {
+        const [id, part2] = String(arg).split(":");
+        uvTab("calendar");
+        if (part2) uvTrPart(part2);
+        pushPage("transition", id);
+        return;
+      }
+      case "save":
+        uvData();
+        return;
+      default:
+        uvTab(where);
+    }
+  }
+  function uvGoSheet() {
+    openSheet(goSheet);
+  }
+  function goSheet() {
+    const st = uni();
+    const s = activeSeason(st);
+    const next = uvUpNext(st);
+    const count = (id) => st.wrestlers.filter((w) => w.showId === id).length;
+    const held = st.titles.filter((t) => t.active && currentReign(st, t.id));
+    const active = st.titles.filter((t) => t.active);
+    const rels = [...relationships(st).rels.values()].filter((r) => r.active);
+    const waiting = st.story.suggestions.filter((x) => x.status === "open" && !suggestionProblem(st, x)).length;
+    const played = st.events.filter((e) => e.at.season === s.id).reduce((n, e) => n + e.matches.filter((m) => m.status === "played").length, 0);
+    const tr = [...st.transitions].sort((a, b) => seasonById(st, b.season).number - seasonById(st, a.season).number)[0];
+    const trWin = tr && tr.window && !tr.window.closed;
+    const row2 = (go, icon, head, sub, cls = "") => `<div class="uv-go ${cls}" onclick="${go}">${icon}<div><b>${esc(head)}</b>
+    <span>${esc(sub)}</span></div>${ICON.right}</div>`;
+    const how = [
+      ["uvHowRanked", "Rankings"],
+      ["uvHowBalance", "Booking balance"],
+      ["uvHowRelegation", "Relegation"],
+      ["uvHowPromotion", "NXT promotion & draft"],
+      ["uvHowRelations", "Relationships"],
+      ["uvHowStory", "Story engine"]
+    ];
+    return {
+      title: "Go to",
+      body: `
+      <div class="uv-gos">
+        ${next ? row2(`uvGo('show','${next.event.id}')`, ICON.cal, `Up next: ${next.event.name}`, next.text, "hot") : row2(`uvGo('calendar')`, ICON.cal, "Up next", "Nothing planned from this week on \u2014 plan a show")}
+        ${row2(`uvGo('calendar')`, ICON.cal, "This week\u2019s shows", `${s.name} \xB7 Week ${s.week} \u2014 cards and results`)}
+        ${row2(`uvGo('history')`, ICON.list, "Results", `${played} result${played === 1 ? "" : "s"} this season, show by show`)}
+        ${row2(`uvGo('roster')`, ICON.user, "Rosters", st.shows.map((x) => `${x.name} ${count(x.id)}`).join(" \xB7 "))}
+        ${row2(`uvGo('teams')`, ICON.team, "Tag teams", `${st.teams.filter((t) => t.active).length} active`)}
+        ${row2(`uvGo('titles')`, ICON.belt, "Champions", active.length ? `${held.length} of ${active.length} titles held \u2014 ` + held.slice(0, 2).map((t) => `${t.name}: ${holderName(st, currentReign(st, t.id).holder)}`).join(" \xB7 ") : "No titles yet")}
+        ${row2(`uvGo('rankings')`, ICON.list, "Rankings", "Standings by show, singles and tag")}
+        ${row2(`uvGo('balance')`, ICON.list, "Booking balance", "Who\u2019s short of matches on each show")}
+        ${row2(`uvGo('relations')`, ICON.team, "Relationships", `${rels.length} now \u2014 ${rels.filter((r) => r.kind === "grudge").length} grudges, ${rels.filter((r) => r.kind === "rivals").length} rivalries`)}
+        ${row2(`uvGo('story')`, ICON.star, "Story suggestions", st.story.on ? waiting ? `${waiting} waiting for you` : "Nothing waiting" : "Switched off")}
+        ${tr ? row2(
+        `uvGo('transition','${tr.id}:${tr.window ? "window" : "relegation"}')`,
+        ICON.move,
+        trWin ? "Transfer window \u2014 open" : tr.window ? `${seasonById(st, tr.season).name} transition \xB7 transfer window` : `${seasonById(st, tr.season).name} transition`,
+        uvTransitionSummary(st, tr).map((x) => `${x.label}: ${x.text}`).join(" \xB7 "),
+        trWin ? "hot" : ""
+      ) : row2(`uvGo('calendar')`, ICON.move, "Season transition", "Starts from WrestleMania, on its show page \u2014 relegation, NXT promotion, the draft")}
+        ${row2(`uvGo('save')`, ICON.save, "Save & backup", "Export, import, restore points")}
+      </div>
+      <div class="uv-sub flush" style="margin-top:14px">How it works</div>
+      <div class="uv-pills tight">${how.map(([fn, lb]) => `<div class="uv-pill" onclick="${fn}()">${esc(lb)}</div>`).join("")}</div>`
+    };
+  }
   function uvBack() {
     popPage();
   }
@@ -9355,10 +9742,73 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="uv-btn pri" onclick="uvExport()">${ICON.save}Export</div>
         <div class="uv-btn" onclick="uvImportPick()">Import\u2026</div>
       </div>
+      ${exportedLine()}
+      ${restoreSection()}
       <div class="uv-btn bad full" onclick="uvReset()">Start a new universe\u2026</div>
       <div class="fine">This records what happens in your WWE 2K25 Universe Mode. It never decides a result or
         controls the game. Stored under ${esc(STORAGE_KEY)}, format v${SCHEMA_VERSION}.</div>`
     };
+  }
+  function ago(iso) {
+    const t = Date.parse(iso);
+    if (!t) return "";
+    const min = Math.round((Date.now() - t) / 6e4);
+    if (min < 2) return "just now";
+    if (min < 60) return `${min} minutes ago`;
+    const h = Math.round(min / 60);
+    if (h < 36) return `${h} hour${h === 1 ? "" : "s"} ago`;
+    const d = Math.round(h / 24);
+    return `${d} day${d === 1 ? "" : "s"} ago`;
+  }
+  function exportedLine() {
+    const s = browserStorage();
+    const when2 = s && lastExported(s);
+    const n = summary(uni()).matches;
+    if (when2) return `<div class="uv-savenote" data-exported="1">Last save file exported ${esc(ago(when2))} from this browser.</div>`;
+    return n ? `<div class="uv-savenote warn" data-exported="0">No save file exported from this browser yet \u2014 export one so ${n} result${n === 1 ? "" : "s"} can\u2019t be lost.</div>` : "";
+  }
+  function restoreSection() {
+    const s = browserStorage();
+    if (!s) return "";
+    const points = listRestorePoints(s);
+    return `<div class="uv-sub flush" style="margin-top:14px">Restore points</div>
+    <p class="uv-p">Copies kept in this browser \u2014 taken before an import, a reset or a restore, and each time the week moves on (the
+      newest of those). Up to four; the oldest go first, and they give way if storage runs short.</p>
+    ${points.length ? `<div class="uv-gos">${points.map((p) => `<div class="uv-go" data-restore="${p.id}" onclick="uvRestorePoint(${p.id})">${ICON.undo}
+      <div><b>${esc(p.label)}</b><span>${esc([p.clock, p.counts && `${p.counts.wrestlers} wrestlers, ${p.counts.results} results`, ago(p.when)].filter(Boolean).join(" \xB7 "))}</span></div>
+      ${ICON.right}</div>`).join("")}</div>` : '<div class="uv-none">None yet.</div>'}
+    <div class="uv-btn full" onclick="uvKeepRestore()">Keep a restore point now</div>`;
+  }
+  function uvKeepRestore() {
+    const ok = keepRestore("Kept by you", "manual");
+    paintSheet();
+    toast(ok ? "Restore point kept" : "Couldn\u2019t keep one \u2014 this browser\u2019s storage is full or blocked", !ok);
+  }
+  function uvRestorePoint(id) {
+    const s = browserStorage();
+    const p = s && listRestorePoints(s).find((x) => x.id === id);
+    if (!p) return;
+    let state;
+    try {
+      state = readRestorePoint(s, id);
+    } catch (e) {
+      toast(e.message, true);
+      return;
+    }
+    const n = summary(state);
+    confirmThen(
+      `Go back to \u201C${p.label}\u201D?`,
+      `The universe goes back to how it was then (${p.clock}: ${n.wrestlers} wrestlers, ${n.matches} results). What you have now is kept as a restore point first, so this can be undone.`,
+      "Restore",
+      () => {
+        keepRestore(`Before restoring \u201C${p.label}\u201D`, "restore");
+        uvFollowActiveSeason();
+        clearPages();
+        const saved = replaceUniverse(state);
+        closeSheet();
+        toast(saved ? `Restored \u2014 ${p.clock}` : "Restored, but it could not be saved in this browser.", !saved);
+      }
+    );
   }
   async function uvExport() {
     const st = uni();
@@ -9366,8 +9816,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const name = `wwe-universe-season${s.number}-week${s.week}.json`;
     if (cloud) {
       const r = await cloud.exportFile(name, exportUniverse(st));
-      if (r === "saved") toast("Save file downloaded");
-      else if (r !== "declined") toast("Exporting isn\u2019t available here \u2014 open the app as a file to export.", true);
+      if (r === "saved") {
+        const store2 = browserStorage();
+        if (store2) noteExported(store2, (/* @__PURE__ */ new Date()).toISOString());
+        toast("Save file downloaded");
+        paintSheet();
+      } else if (r !== "declined") toast("Exporting isn\u2019t available here \u2014 open the app as a file to export.", true);
       return;
     }
     const blob = new Blob([exportUniverse(st)], { type: "application/json" });
@@ -9378,7 +9832,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
+    const store = browserStorage();
+    if (store) noteExported(store, (/* @__PURE__ */ new Date()).toISOString());
     toast("Save file downloaded");
+    paintSheet();
   }
   function uvImportPick() {
     document.getElementById("uvImport").click();
@@ -9400,9 +9857,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const n = summary(state);
       confirmThen(
         "Replace this universe?",
-        `The file has ${n.wrestlers} wrestlers, ${n.titles} titles and ${n.events} events. Everything here now is replaced \u2014 export first if you want to keep it.`,
+        `The file has ${n.wrestlers} wrestlers, ${n.titles} titles and ${n.events} events. Everything here now is replaced \u2014 a restore point of it is kept in this browser first, and a save file keeps a copy of your own.`,
         "Replace",
         () => {
+          keepRestore(`Before importing ${file.name}`.slice(0, 80), "import");
           uvFollowActiveSeason();
           clearPages();
           const saved = replaceUniverse(state);
@@ -9415,9 +9873,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvReset() {
     confirmThen(
       "Start a new universe?",
-      "This deletes every wrestler, team, title, season and result here. It cannot be undone \u2014 export first if you might want it back.",
+      "This deletes every wrestler, team, title, season and result here. A restore point of it is kept in this browser, so it can be brought back there \u2014 export a save file to keep a copy of your own.",
       "Delete everything",
       () => {
+        keepRestore("Before starting a new universe", "reset");
         uvFollowActiveSeason();
         clearPages();
         replaceUniverse(createUniverse());

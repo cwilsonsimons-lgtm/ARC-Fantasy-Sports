@@ -7,7 +7,7 @@
 // pages.js and edits.js.
 import * as M from './model.js';
 import { ICON, LABEL, empty, esc, field, labelPairs, options, select, showName, showPairs, wrestlerOptions } from './ui.js';
-import { closeSheet, commit, confirmThen, focusField, openSheet, paintSheet, toast, uni } from './app.js';
+import { closeSheet, commit, confirmThen, focusField, keepRestore, openSheet, paintSheet, toast, uni } from './app.js';
 import { uvCalFollow, uvFollowActiveSeason, uvRosterShow } from './views.js';
 import { uvOpenTeam, uvOpenTitle } from './pages.js';
 
@@ -155,8 +155,10 @@ export function uvCreateTitle() {
 // ================================================================ seasons
 
 export function uvStepWeek(d) {
-  const week = M.activeSeason(uni()).week + d;
+  const season = M.activeSeason(uni());
+  const week = season.week + d;
   if (week < 1) return;
+  if (d > 0) keepRestore(`End of ${season.name} · Week ${season.week}`, 'weekly');     // one to go back to, if the week goes wrong
   uvCalFollow();
   commit(st => M.setWeek(st, week), `Week ${week}`);
 }
