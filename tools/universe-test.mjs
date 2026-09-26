@@ -12,6 +12,7 @@ import * as M from '../js/universe/model.js';
 import { STORAGE_KEY, loadUniverse, saveUniverse, exportUniverse, importUniverse } from '../js/universe/persist.js';
 import { createCloud } from '../js/universe/cloud.js';
 import * as SD from '../js/universe/standings.js';
+import * as RL from '../js/universe/relations.js';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
 const throwsUE = (fn, re) => assert.throws(fn, e => e instanceof M.UniverseError && (!re || re.test(e.message)));
@@ -2166,4 +2167,238 @@ test('a drafted or eligible wrestler can’t be merged away', () => {
   const twin = M.addWrestler(st, { name: 'NChamp 2', showId: 'raw' });
   throwsUE(() => M.mergeWrestlers(st, twin.id, NChamp.id), /part of a season transition/);
   assert.ok(M.wrestlerRefs(st, NChamp.id).includes('a season transition'));
+});
+
+// ---------------------------------------------------------------- personalities and relationships
+
+function relWorld() {
+  const st = M.createUniverse();
+  const [A, B, C, D, E] = ['A', 'B', 'C', 'D', 'E'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  let week = 0;
+  const show = () => { M.setWeek(st, ++week); return M.addEvent(st, { showId: 'raw' }); };
+  const beat = (ev, w, l) => M.recordMatch(st, ev.id, { sides: S([w.id, l.id]), winner: 0 });
+  const rels = () => RL.relationships(st);
+  const name = id => M.wrestlerById(st, id).name;
+  const now = kind => [...rels().rels.values()].filter(r => r.active && (!kind || r.kind === kind))
+    .map(r => `${r.kind === 'grudge' ? `${name(r.a)}>${name(r.b)}` : [name(r.a), name(r.b)].sort().join('+')}:${r.kind}:${r.level}`).sort();
+  return { st, A, B, C, D, E, show, beat, rels, now };
+}
+
+test('traits are the owner’s: dated, kept, and never changed by results', () => {
+  const { st, A, B, show, beat } = relWorld();
+  M.setTraits(st, A.id, ['proud', 'loyal'], { since: 'start' });
+  assert.deepEqual(M.wrestlerById(st, A.id).traits, ['loyal', 'proud']);                  // kept in the list's order
+  const ev = show();
+  for (let i = 0; i < 10; i++) beat(ev, B, A);                                              // ten straight losses
+  assert.deepEqual(M.wrestlerById(st, A.id).traits, ['loyal', 'proud']);
+  M.setWeek(st, 6);
+  const ch = M.setTraits(st, A.id, ['loyal', 'hot-headed'], { note: 'Snapped at WrestleMania' });
+  assert.deepEqual(ch.map(c => `${c.trait}:${c.on}`), ['hot-headed:true', 'proud:false']);
+  assert.deepEqual([...M.traitsAt(st, A.id, ev.at)].sort(), ['loyal', 'proud']);           // as they were at week 1
+  assert.deepEqual([...M.traitsAt(st, A.id, null)].sort(), ['hot-headed', 'loyal']);
+  assert.deepEqual(M.traitHistory(st, A.id).map(e => `${e.trait}:${e.on}:${e.at ? e.at.week : 'start'}`),
+    ['hot-headed:true:6', 'proud:false:6', 'loyal:true:start', 'proud:true:start']);
+  throwsUE(() => M.setTraits(st, A.id, ['sneaky']), /Unknown trait/);
+  assert.deepEqual(M.setTraits(st, A.id, ['hot-headed', 'loyal']), []);                    // nothing changed: nothing logged
+  sound(st);
+});
+
+test('repeated losses to the same wrestler grow a grudge - a win resets the count', () => {
+  const { st, A, B, show, beat, now, rels } = relWorld();
+  const ev = show();
+  beat(ev, B, A); beat(ev, B, A);
+  assert.deepEqual(now(), []);
+  beat(ev, A, B);                                                                          // A wins one back: the count restarts
+  beat(ev, B, A); beat(ev, B, A);
+  assert.deepEqual(now(), []);
+  beat(ev, B, A);                                                                          // third in a row
+  assert.deepEqual(now(), ['A>B:grudge:1']);
+  const e = rels().entries.find(x => x.kind === 'grudge');
+  assert.deepEqual(RL.entryText(st, e), { cause: 'A lost to B for the 3rd time running at Raw · Week 1', result: 'A holds a grudge against B' });
+  beat(ev, B, A); beat(ev, B, A); beat(ev, B, A);
+  assert.deepEqual(now(), ['A>B:grudge:2']);
+  const pv = RL.pairView(st, A.id, B.id);
+  assert.deepEqual(pv.progress.losses.map(x => `${x.n}/${x.need}`), ['0/3', '0/3']);
+  beat(ev, B, A);
+  assert.deepEqual(RL.pairView(st, A.id, B.id).progress.losses[0].n, 1);
+});
+
+test('traits change how fast grudges form - as they were at the time', () => {
+  const { st, A, B, C, D, show, beat, now } = relWorld();
+  M.setTraits(st, A.id, ['hot-headed'], { since: 'start' });
+  M.setTraits(st, C.id, ['patient'], { since: 'start' });
+  const ev = show();
+  beat(ev, B, A); beat(ev, B, A);                                                          // hot-headed: 2 is enough
+  beat(ev, D, C); beat(ev, D, C); beat(ev, D, C);                                          // patient: 3 isn't
+  assert.deepEqual(now(), ['A>B:grudge:1']);
+  beat(ev, D, C);
+  assert.deepEqual(now(), ['A>B:grudge:1', 'C>D:grudge:1']);
+  // hot-headed from week 3 on doesn't change what already happened at week 1
+  const w = relWorld();
+  const ev1 = w.show();
+  w.beat(ev1, w.B, w.A); w.beat(ev1, w.B, w.A);
+  M.setWeek(w.st, 3);
+  M.setTraits(w.st, w.A.id, ['hot-headed']);
+  assert.deepEqual(w.now(), []);
+});
+
+test('a title defeat: a grudge against the new champion, and they’re rivals', () => {
+  const { st, A, B, C, D, show, now, rels } = relWorld();
+  const belt = M.addTitle(st, { name: 'Belt' });
+  M.setChampion(st, belt.id, { type: 'wrestler', id: A.id });
+  M.setTraits(st, C.id, ['ambitious'], { since: 'start' });
+  const ev = show();
+  M.recordMatch(st, ev.id, { sides: S([B.id, A.id]), winner: 0, titleId: belt.id }, { titleChange: true });
+  assert.deepEqual(now(), ['A+B:rivals:1', 'A>B:grudge:1']);
+  const e = rels().entries.find(x => x.kind === 'grudge');
+  assert.equal(RL.entryText(st, e).cause, 'A lost the Belt to B at Raw · Week 1');
+  // a title match the champion keeps is just a loss for the challenger
+  M.recordMatch(st, ev.id, { sides: S([B.id, D.id]), winner: 0, titleId: belt.id });
+  assert.equal(now().length, 2);
+  // ambitious: 2 heat
+  M.setChampion(st, belt.id, { type: 'wrestler', id: C.id });
+  M.recordMatch(st, ev.id, { sides: S([D.id, C.id]), winner: 0, titleId: belt.id }, { titleChange: true });
+  assert.ok(now().includes('C>D:grudge:2'));
+});
+
+test('incidents: a betrayal ends a friendship, an interference makes allies, an attack starts a grudge', () => {
+  const { st, A, B, C, D, E, show, now, rels } = relWorld();
+  M.editRelationship(st, { action: 'form', kind: 'friends', a: A.id, b: B.id, since: 'start' });
+  M.editRelationship(st, { action: 'form', kind: 'allies', a: A.id, b: B.id, since: 'start', level: 2 });
+  M.setTraits(st, A.id, ['loyal'], { since: 'start' });
+  M.setTraits(st, D.id, ['hot-headed'], { since: 'start' });
+  const ev = show();
+  const m = M.recordMatch(st, ev.id, { sides: S([C.id, A.id]), winner: 0 });
+  M.recordIncident(st, ev.id, { kind: 'betrayal', by: [B.id], on: [A.id], note: 'Walked out mid-match' });
+  M.recordIncident(st, ev.id, { kind: 'interference', by: [E.id], on: [A.id], helped: [C.id], match: m.id });
+  M.recordIncident(st, ev.id, { kind: 'attack', by: [C.id], on: [D.id] });
+  assert.deepEqual(now(), ['A>B:grudge:3', 'A>E:grudge:1', 'C+E:allies:1', 'D>C:grudge:2']);
+  const texts = rels().entries.filter(e => e.auto).map(e => RL.entryText(st, e).result);
+  assert.ok(texts.includes('A and B are no longer friends') && texts.includes('A and B are no longer allies'));
+  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'attack', by: [C.id], on: [C.id] }), /can't be on both sides/);
+  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'attack', by: [], on: [C.id] }), /Pick who attacked/);
+  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'rumour', by: [C.id], on: [D.id] }), /Unknown incident/);
+  // correcting an incident corrects what grew out of it
+  const betrayal = ev.incidents[0];
+  M.deleteIncident(st, ev.id, betrayal.id);
+  assert.deepEqual(now(), ['A+B:allies:2', 'A+B:friends:1', 'A>E:grudge:1', 'C+E:allies:1', 'D>C:grudge:2']);
+  sound(st);
+});
+
+test('a long partnership makes allies, then friends; splitting up leaves former partners', () => {
+  const { st, A, B, C, D, E, show, now } = relWorld();
+  const team = M.addTeam(st, { name: 'AB', members: [A.id, B.id] });
+  const ev = show();
+  const tag = w => M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [A.id, B.id] }, { wrestlers: [C.id, D.id] }], winner: w });
+  for (let i = 0; i < 4; i++) tag(i % 2);
+  assert.deepEqual(now('allies'), []);
+  tag(0);                                                                                  // the 5th match together, win or lose
+  assert.deepEqual(now('allies'), ['A+B:allies:1', 'C+D:allies:1']);
+  for (let i = 0; i < 7; i++) tag(0);
+  assert.deepEqual(now('friends'), ['A+B:friends:1', 'C+D:friends:1']);                    // losing together still counts; their grudges are against A and B
+  M.setWeek(st, 4);
+  M.setTeamActive(st, team.id, false);
+  assert.deepEqual(now('former-partners'), ['A+B:former-partners:1']);
+  const trio = M.addTeam(st, { name: 'CDE', members: [C.id, D.id, E.id] });
+  M.removeTeamMember(st, trio.id, E.id, { week: 4 });                                     // leaving a team, too
+  assert.deepEqual(now('former-partners'), ['A+B:former-partners:1', 'C+E:former-partners:1', 'D+E:former-partners:1']);
+  // loyal partners are allies sooner; the opportunistic never become friends on their own
+  const w = relWorld();
+  M.setTraits(w.st, w.A.id, ['loyal', 'opportunistic'], { since: 'start' });
+  const e2 = w.show();
+  for (let i = 0; i < 12; i++) {
+    M.recordMatch(w.st, e2.id, { sides: [{ wrestlers: [w.A.id, w.B.id] }, { wrestlers: [w.C.id, w.D.id] }], outcome: 'draw' });
+    if (i === 2) assert.deepEqual(w.now('allies'), ['A+B:allies:1']);                     // 3 matches: only the loyal pair
+  }
+  assert.deepEqual(w.now('friends'), ['C+D:friends:1']);
+});
+
+test('a corrected result corrects the relationship it built', () => {
+  const { st, A, B, show, beat, now } = relWorld();
+  const ev = show();
+  beat(ev, B, A); beat(ev, B, A);
+  const third = beat(ev, B, A);
+  assert.deepEqual(now(), ['A>B:grudge:1']);
+  M.updateMatch(st, ev.id, third.id, { sides: third.sides, outcome: 'win', winner: 1 });   // A actually won that one
+  assert.deepEqual(now(), []);
+  M.deleteMatch(st, ev.id, third.id);
+  beat(ev, B, A);
+  assert.deepEqual(now(), ['A>B:grudge:1']);
+});
+
+test('the owner edits any relationship; automatic changes can be ignored; the timeline says why', () => {
+  const { st, A, B, C, show, beat, now, rels } = relWorld();
+  M.editRelationship(st, { action: 'form', kind: 'rivals', a: A.id, b: B.id, level: 2, since: 'start', note: 'Old enemies' });
+  const ev = show();
+  beat(ev, B, A); beat(ev, B, A); beat(ev, B, A);
+  assert.deepEqual(now(), ['A+B:rivals:2', 'A>B:grudge:1']);
+  M.setWeek(st, 2);
+  M.editRelationship(st, { action: 'level', kind: 'grudge', a: A.id, b: B.id, level: 3, note: 'Cost him the title shot' });
+  M.editRelationship(st, { action: 'end', kind: 'rivals', a: A.id, b: B.id });
+  assert.deepEqual(now(), ['A>B:grudge:3']);
+  // the timeline, oldest first
+  const pv = RL.pairView(st, A.id, B.id);
+  assert.deepEqual(pv.entries.map(e => `${e.change}:${e.kind}`), ['formed:rivals', 'formed:grudge', 'set:grudge', 'ended:rivals']);
+  assert.deepEqual(RL.entryText(st, pv.entries[0]), { cause: 'Your change, counted from the start — Old enemies', result: 'A and B are rivals (heat 2)' });
+  // ignore the automatic grudge: it's still on the timeline, marked, and changes nothing
+  const auto = pv.entries.find(e => e.auto);
+  M.dismissChange(st, auto.key, 'Never happened like that');
+  let again = RL.pairView(st, A.id, B.id);
+  assert.ok(again.entries.find(e => e.key === auto.key).ignored);
+  assert.deepEqual(now(), ['A>B:grudge:3']);                                               // the owner's own heat still stands
+  throwsUE(() => M.dismissChange(st, auto.key), /already ignored/);
+  M.restoreChange(st, auto.key);
+  // take back an edit of the owner's own
+  const edit = st.relEdits.find(e => e.action === 'level');
+  M.deleteRelEdit(st, edit.id);
+  assert.deepEqual(now(), ['A>B:grudge:1']);
+  // what a result just changed, in words
+  const before = RL.snapshot(st);
+  const ev2 = show();
+  beat(ev2, A, C); beat(ev2, A, C); beat(ev2, A, C);
+  assert.deepEqual(RL.changesBetween(st, before, RL.snapshot(st)), ['C holds a grudge against A']);
+  throwsUE(() => M.editRelationship(st, { action: 'form', kind: 'friends', a: A.id, b: A.id }), /two different wrestlers/);
+  throwsUE(() => M.editRelationship(st, { action: 'level', kind: 'grudge', a: A.id, b: B.id, level: 4 }), /from 1 to 3/);
+  // an ending is dated; one with nothing left to end still shows, so it can be taken back
+  throwsUE(() => M.editRelationship(st, { action: 'end', kind: 'grudge', a: A.id, b: B.id, since: 'start' }), /ended from this week on/);
+  const noop = M.editRelationship(st, { action: 'end', kind: 'friends', a: A.id, b: B.id });
+  const last = RL.pairView(st, A.id, B.id).entries.at(-1);
+  assert.deepEqual([last.change, last.cause.edit.id, RL.entryText(st, last).result],
+    ['nothing', noop.id, 'A and B\'s friendship had already ended — nothing to end']);
+  sound(st);
+});
+
+test('relationships and incidents survive merges, deletes and the save file', () => {
+  const { st, A, B, C, show } = relWorld();
+  const ev = show();
+  M.recordIncident(st, ev.id, { kind: 'attack', by: [A.id], on: [B.id] });
+  M.editRelationship(st, { action: 'form', kind: 'friends', a: A.id, b: C.id });
+  assert.ok(M.wrestlerRefs(st, A.id).includes('an incident') && M.wrestlerRefs(st, C.id).includes('a relationship'));
+  throwsUE(() => M.deleteWrestler(st, C.id), /part of the history/);
+  const dup = M.addWrestler(st, { name: 'A2', showId: 'raw' });
+  M.setTraits(st, dup.id, ['proud'], { since: 'start' });
+  const inc = M.recordIncident(st, ev.id, { kind: 'interference', by: [dup.id], on: [C.id], helped: [B.id] });
+  const helped = RL.relationships(st).entries.find(e => e.cause.incident === inc.id && e.kind === 'allies');
+  M.dismissChange(st, helped.key, 'Wrong run-in');
+  M.mergeWrestlers(st, A.id, dup.id);
+  assert.deepEqual(ev.incidents.map(x => x.by), [[A.id], [A.id]]);
+  // an ignored change stays ignored under the kept wrestler's name
+  const moved = RL.relationships(st);
+  assert.ok(moved.entries.find(e => e.cause.incident === inc.id && e.kind === 'allies').ignored);
+  assert.ok(!(moved.rels.get(RL.relKey('allies', A.id, B.id)) || {}).active);
+  assert.equal(st.traitLog.length, 0);
+  const b2 = M.addWrestler(st, { name: 'B2', showId: 'raw' });
+  M.recordIncident(st, ev.id, { kind: 'attack', by: [B.id], on: [b2.id] });
+  throwsUE(() => M.mergeWrestlers(st, B.id, b2.id), /opposite sides of an incident/);
+  assert.deepEqual(importUniverse(exportUniverse(st)), st);
+  sound(st);
+  // a v5 save grows the personality layer on load
+  const old = JSON.parse(exportUniverse(st));
+  old.version = 5;
+  old.wrestlers.forEach(w => { delete w.traits; });
+  old.events.forEach(e => { delete e.incidents; });
+  delete old.traitLog;
+  delete old.relEdits;
+  const back = M.migrate(old);
+  assert.deepEqual([back.version, back.wrestlers[0].traits, back.events[0].incidents, back.traitLog, back.relEdits], [M.SCHEMA_VERSION, [], [], [], []]);
 });

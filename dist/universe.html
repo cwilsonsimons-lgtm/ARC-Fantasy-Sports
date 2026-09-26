@@ -685,6 +685,72 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-relrec.draft{border-color:var(--uv-gold-line);background:var(--uv-gold-soft)}
 .uv-trsum{flex-wrap:wrap}
 
+/* ---------- personalities and relationships ---------- */
+.uv-rk{flex:none;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--k);
+  border:1px solid color-mix(in srgb,var(--k) 45%,transparent);background:color-mix(in srgb,var(--k) 11%,transparent)}
+.uv-rt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-lv{flex:none;display:inline-flex;gap:3px}
+.uv-lv i{width:7px;height:7px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--k) 60%,transparent)}
+.uv-lv i.on{background:var(--k);border-color:var(--k)}
+.uv-av2{flex:none;display:flex}
+.uv-av2 .uv-av{width:30px;height:30px;font-size:11px;box-shadow:0 0 0 2px var(--uv-bg)}
+.uv-av2 .uv-av+.uv-av{margin-left:-6px}
+.uv-p.uv-inset-p{margin:8px 14px 0}
+.uv-page-acts .uv-btn:only-child{flex:1}
+.uv-traits{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.uv-traits.read{margin:0 14px}
+.uv-trait{padding:9px 10px;border-radius:12px;border:1px solid var(--uv-line);background:var(--uv-card);cursor:pointer;min-width:0}
+.uv-traits.read .uv-trait{cursor:default}
+.uv-trait b{display:block;font-size:13px}
+.uv-trait span{display:block;margin-top:2px;font-size:11px;line-height:1.4;color:var(--uv-ink-2)}
+.uv-trait .fx{margin-top:5px;color:var(--uv-ink-3)}
+.uv-trait.on{border-color:var(--uv-gold-line);background:var(--uv-gold-soft)}
+.uv-trait.on .fx{color:#E9D9A6}
+.uv-left{flex:none;min-width:30px;height:22px;padding:0 5px;border-radius:7px;display:grid;place-items:center;font-size:11.5px;font-weight:800;
+  background:var(--uv-card);border:1px solid var(--uv-line);color:var(--uv-gold)}
+.uv-in.ro{color:var(--uv-ink-2)}
+.uv-pairhead{display:flex;align-items:flex-start;gap:6px;margin:14px 14px 0;padding:14px 10px;border-radius:16px;border:1px solid var(--uv-line);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--c) 12%,transparent),transparent 60%),var(--uv-card)}
+.uv-pairhead .p{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer}
+.uv-pairhead .p b{margin-top:7px;font-size:14.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-pairhead .p span{font-size:11px;color:var(--uv-ink-2)}
+.uv-pairhead .p .tr{margin-top:3px;color:var(--uv-ink-3);line-height:1.35}
+.uv-pairhead .amp{flex:none;align-self:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-size:20px;color:var(--uv-ink-3)}
+.uv-rels{display:flex;flex-direction:column;gap:6px;margin:0 14px}
+.uv-relnow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:13px;
+  border:1px solid color-mix(in srgb,var(--k) 38%,var(--uv-line));background:color-mix(in srgb,var(--k) 7%,var(--uv-card))}
+.uv-relnow .uv-main .nm{white-space:normal;font-size:13.5px}
+.uv-build{margin:0 14px;padding:10px 12px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card);font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-build div+div{margin-top:5px}
+.uv-ents{margin:0 14px;border-left:2px solid var(--uv-line);padding-left:0}
+.uv-sheet .uv-ents{margin:0}
+.uv-ent{position:relative;display:flex;gap:10px;padding:8px 0 10px 12px}
+.uv-ent[onclick]{cursor:pointer}
+.uv-ent::before{content:"";position:absolute;left:-6px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--k);box-shadow:0 0 0 3px var(--uv-bg)}
+.uv-ent.own::before{background:var(--uv-bg);border:2px solid var(--k);width:6px;height:6px}
+.uv-ent .w{flex:none;width:50px;padding-top:2px;font-size:10.5px;font-weight:700;color:var(--uv-ink-3)}
+.uv-ent .x{flex:1;min-width:0;font-size:12.5px;line-height:1.45}
+.uv-ent .c{color:var(--uv-ink-2)}
+.uv-ent .r{margin-top:2px;font-weight:700;color:var(--uv-ink)}
+.uv-ent .ig{margin-top:3px;font-size:11.5px;color:var(--uv-amber)}
+.uv-ent .a{display:flex;flex-wrap:wrap;gap:12px;margin-top:5px;font-size:11.5px;color:var(--uv-ink-3)}
+.uv-ent .a .uv-link{color:var(--uv-ink-2)}
+.uv-ent.ignored .c,.uv-ent.ignored .r{text-decoration:line-through;text-decoration-color:var(--uv-ink-3);opacity:.6}
+.uv-ent.ignored::before{background:var(--uv-ink-3)}
+.uv-prev{margin-top:12px;padding:10px 12px;border-radius:12px;border:1px dashed var(--uv-line);font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-prev b{display:block;margin-bottom:3px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-prev span{display:block}
+.uv-inc{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-inc:active{background:var(--uv-card-2)}
+.uv-inc .uv-main .nm{white-space:normal;font-size:13.5px}
+.uv-inc .uv-main .sub{display:block;white-space:normal;line-height:1.45}
+.uv-relrow{align-items:flex-start}
+.uv-relrow .uv-chev{align-self:center}
+.uv-rl{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:12px;line-height:1.35;color:var(--uv-ink-2)}
+.uv-rl>span:not(.uv-rk):not(.uv-lv){flex:1;min-width:0}
+.uv-rl em{font-style:normal;color:var(--uv-ink-3);white-space:nowrap}
+.uv-bu .uv-left{font-size:10.5px}
+
 </style>
 </head>
 <body>
@@ -749,6 +815,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvMoveSelected: () => uvMoveSelected,
     uvPick: () => uvPick,
     uvRosterFilter: () => uvRosterFilter,
+    uvRosterMode: () => uvRosterMode,
     uvRosterSearch: () => uvRosterSearch,
     uvRosterShow: () => uvRosterShow,
     uvRosterView: () => uvRosterView,
@@ -760,7 +827,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 5;
+  var SCHEMA_VERSION = 6;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -819,8 +886,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
       // every relegation to NXT, and why - kept for good
       eligibility: [],
       // who became draft eligible after WrestleMania, and how
-      drafts: []
+      drafts: [],
       // every draft pick from NXT - kept for good
+      traitLog: [],
+      // every change to a wrestler's personality, dated (or from the start)
+      relEdits: []
+      // the owner's own relationship changes, dated; the rest is worked out from the record
     };
     openSeason(st, 1, "");
     return st;
@@ -948,17 +1019,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function addWrestler(st, input = {}) {
     const fields = wrestlerFields(st, input, null);
     const showId = checkShowId(st, input.showId);
-    const w = { id: newId(st, "w"), ...fields, showId: null };
+    const w = { id: newId(st, "w"), ...fields, traits: [], showId: null };
     st.wrestlers.push(w);
     if (showId) recordMove(st, w, showId, "", nowDate(st));
     return w;
   }
-  function addWrestlers(st, names, defaults = {}) {
+  function addWrestlers(st, names2, defaults = {}) {
     const { name: _ignored, ...shared } = defaults;
     wrestlerFields(st, shared, { ...WRESTLER_DEFAULTS, id: null, name: "" });
     checkShowId(st, defaults.showId);
     const added = [], skipped = [];
-    for (const raw of names || []) {
+    for (const raw of names2 || []) {
       const name = cleanName(raw);
       if (!name) continue;
       try {
@@ -1021,6 +1092,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const booked = bookingsOf(st, id).length;
     if (booked) refs.push(booked === 1 ? "a booked match" : `${booked} booked matches`);
     if (inTransition(st, id)) refs.push("a season transition");
+    const incidents = st.events.reduce((n, e) => n + e.incidents.filter((x) => [...x.by, ...x.on, ...x.helped].includes(id)).length, 0);
+    if (incidents) refs.push(incidents === 1 ? "an incident" : `${incidents} incidents`);
+    if (st.relEdits.some((e) => e.a === id || e.b === id)) refs.push("a relationship");
     return refs;
   }
   function inTransition(st, id) {
@@ -1033,6 +1107,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (refs.length) fail(`${w.name} is part of the history (${refs.join(", ")}), so they can't be deleted. Leave them unassigned instead.`);
     removeWhere(st.wrestlers, (x) => x.id === id);
     removeWhere(st.moves, (m) => m.wrestler === id);
+    removeWhere(st.traitLog, (e) => e.wrestler === id);
   }
   function rosterOf(st, showId) {
     const key = showId || null;
@@ -1066,10 +1141,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function addTeam(st, input = {}) {
     const name = checkName(st.teams, input.name, "tag team", null);
     const ids = checkMembers(st, input.members);
-    const at = stampFor(st, dateIn(st, input.week));
-    const team = { id: newId(st, "tm"), name, members: [...ids], active: true, log: [{ type: "formed", at }] };
+    const at2 = stampFor(st, dateIn(st, input.week));
+    const team = { id: newId(st, "tm"), name, members: [...ids], active: true, log: [{ type: "formed", at: at2 }] };
     st.teams.push(team);
-    ids.forEach((w) => st.memberships.push({ id: newId(st, "ms"), team: team.id, wrestler: w, start: { ...at }, end: null }));
+    ids.forEach((w) => st.memberships.push({ id: newId(st, "ms"), team: team.id, wrestler: w, start: { ...at2 }, end: null }));
     return team;
   }
   function updateTeam(st, id, patch = {}) {
@@ -1196,17 +1271,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function teamHistoryOf(st, teamId) {
     const t = must(teamById(st, teamId), "tag team", teamId);
     const out = [];
-    const at = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
-    t.log.forEach((e) => at(e.at, `team-${e.type}`, {}));
+    const at2 = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
+    t.log.forEach((e) => at2(e.at, `team-${e.type}`, {}));
     membershipsOf(st, teamId).forEach((m) => {
       const wrestler = wrestlerById(st, m.wrestler);
-      if (m.start.seq !== teamFormed(t).seq) at(m.start, "member-joined", { wrestler });
-      if (m.end) at(m.end, "member-left", { wrestler });
+      if (m.start.seq !== teamFormed(t).seq) at2(m.start, "member-joined", { wrestler });
+      if (m.end) at2(m.end, "member-left", { wrestler });
     });
     st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === teamId).forEach((reign) => {
       const title2 = titleById(st, reign.titleId);
-      at(reign.start, "title-won", { reign, title: title2 });
-      if (reign.end) at(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title: title2 });
+      at2(reign.start, "title-won", { reign, title: title2 });
+      if (reign.end) at2(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title: title2 });
     });
     return out.sort((a, b) => compareStamps(st, b, a));
   }
@@ -1302,18 +1377,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }
     return { type: holder.type, id: holder.id };
   }
-  function champChecks(st, titleId, holder, when) {
+  function champChecks(st, titleId, holder, when2) {
     const title2 = must(titleById(st, titleId), "championship", titleId);
     if (!title2.active) fail(`The ${title2.name} is retired.`);
     const h = checkHolder(st, title2, holder);
     const cur = currentReign(st, titleId);
     if (cur && sameHolder(cur.holder, h)) fail(`${holderName(st, h)} already hold${h.type === "team" ? "" : "s"} the ${title2.name}.`);
-    checkInOrder(st, title2, cur, when);
+    checkInOrder(st, title2, cur, when2);
     return { title: title2, holder: h, cur };
   }
-  function checkInOrder(st, title2, cur, when) {
-    if (cur && earlierDate(st, when, cur.start)) {
-      fail(`The current ${title2.name} reign began in ${weekLabel(st, cur.start)}, later than ${weekLabel(st, when)}. Title changes have to be recorded in order - undo the later one first.`);
+  function checkInOrder(st, title2, cur, when2) {
+    if (cur && earlierDate(st, when2, cur.start)) {
+      fail(`The current ${title2.name} reign began in ${weekLabel(st, cur.start)}, later than ${weekLabel(st, when2)}. Title changes have to be recorded in order - undo the later one first.`);
     }
   }
   var dateOf = (st, ev) => ev ? { season: ev.at.season, week: ev.at.week, day: ev.at.day } : { season: activeSeason(st).id, week: activeSeason(st).week };
@@ -1323,13 +1398,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (opts.matchId && !(ev && ev.matches.some((m) => m.id === opts.matchId && m.status === "played"))) fail("That match has no result on that event.");
     const note = cleanName(opts.note);
     if (note.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
-    const at = ev ? stampAt(st, ev.at.season, ev.at.week, ev.at.day) : now(st);
-    if (cur) cur.end = { ...at };
+    const at2 = ev ? stampAt(st, ev.at.season, ev.at.week, ev.at.day) : now(st);
+    if (cur) cur.end = { ...at2 };
     const reign = {
       id: newId(st, "rg"),
       titleId,
       holder: h,
-      start: at,
+      start: at2,
       end: null,
       vacated: false,
       eventId: ev ? ev.id : null,
@@ -1524,7 +1599,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const day = input.day == null || input.day === "" ? defaultDay(st, kind, showId) : checkDay(input.day);
     const name = eventName(st, kind, showId, week, input.name);
     const notes = checkText(input.notes, "Notes");
-    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [] };
+    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [] };
     st.events.push(ev);
     return ev;
   }
@@ -1539,14 +1614,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const moved = week !== ev.at.week || day !== ev.at.day;
     if (moved) {
       const date = { season: ev.at.season, week, day };
-      const when = weekLabel(st, date);
+      const when2 = weekLabel(st, date);
       linked.forEach((r) => {
         const { prevJoined, floor } = neighbours(st, r);
         const title2 = titleById(st, r.titleId).name;
         if (floor && earlierDate(st, date, floor)) {
-          fail(prevJoined ? `${when} is before the ${title2} reign this event ended began (${weekLabel(st, floor)}).` : `The ${title2} was vacant until ${weekLabel(st, floor)}, so ${when} is too early.`);
+          fail(prevJoined ? `${when2} is before the ${title2} reign this event ended began (${weekLabel(st, floor)}).` : `The ${title2} was vacant until ${weekLabel(st, floor)}, so ${when2} is too early.`);
         }
-        if (r.end && earlierDate(st, r.end, date)) fail(`${when} is after the ${title2} reign won here ended (${weekLabel(st, r.end)}).`);
+        if (r.end && earlierDate(st, r.end, date)) fail(`${when2} is after the ${title2} reign won here ended (${weekLabel(st, r.end)}).`);
       });
     }
     const relMatches = ev.matches.filter((m) => m.relegation || m.qualifier);
@@ -1793,6 +1868,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const unrel = relegationRemoval(st, m);
     const unqual = qualifierRemoval(st, m);
     removeWhere(ev.matches, (x) => x.id === matchId);
+    ev.incidents.forEach((x) => {
+      if (x.match === matchId) x.match = null;
+    });
     if (revert) revert();
     if (unrel) unrel();
     if (unqual) unqual();
@@ -2159,11 +2237,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function relegate(st, t, pair, ev, m, loser, winner, decided, note) {
     const w = wrestlerById(st, loser);
     const from = w.showId;
-    const at = stampAt(st, ev.at.season, ev.at.week, ev.at.day);
+    const at2 = stampAt(st, ev.at.season, ev.at.week, ev.at.day);
     let move = null;
     if (from !== RELEGATED_TO) {
       const why = decided ? "Relegated by the owner" : `Relegated \u2014 lost to ${nameOf(st, winner)}`;
-      move = { id: newId(st, "mv"), wrestler: loser, from, to: RELEGATED_TO, at: { ...at }, note: why.slice(0, MAX_NAME) };
+      move = { id: newId(st, "mv"), wrestler: loser, from, to: RELEGATED_TO, at: { ...at2 }, note: why.slice(0, MAX_NAME) };
       st.moves.push(move);
       w.showId = RELEGATED_TO;
     }
@@ -2186,7 +2264,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       candidate: t.autoIds.includes(loser) ? "fewest wins" : "owner",
       decided: !!decided,
       reason: `${how} ${relegationBasis(st, t, loser)}`,
-      at
+      at: at2
     };
     st.relegations.push(rec);
     return rec;
@@ -2506,7 +2584,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const tr = must(transitionById(st, trId), "season transition", trId);
     if (tr.window && !tr.window.closed) fail("The transfer window is already open.");
     if (tr.window) fail("The transfer window has been open already. Reopen it instead.");
-    const at = now(st);
+    const at2 = now(st);
     nxtChampions(st).forEach((c) => st.eligibility.push({
       id: newId(st, "el"),
       transition: tr.id,
@@ -2520,9 +2598,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       opponent: null,
       event: null,
       note: "",
-      at: { ...at }
+      at: { ...at2 }
     }));
-    tr.window = { opened: at, closed: null, undrafted: null };
+    tr.window = { opened: at2, closed: null, undrafted: null };
     return tr.window;
   }
   function unopenWindow(st, trId) {
@@ -2651,6 +2729,107 @@ body.uv-confirm-open .uv-confirm{display:flex}
       draft: st.drafts.find((d) => d.move === mv2.id) || null
     }));
   }
+  var TRAITS = ["ambitious", "loyal", "opportunistic", "hot-headed", "patient", "proud", "cowardly", "respectful"];
+  var REL_KINDS = ["grudge", "rivals", "allies", "friends", "former-partners"];
+  var INCIDENT_KINDS = ["betrayal", "interference", "attack"];
+  var REL_ACTIONS = ["form", "level", "end", "note", "dismiss"];
+  function traitsAt(st, wid, stamp) {
+    const on = /* @__PURE__ */ new Set();
+    const log = st.traitLog.filter((e) => e.wrestler === wid);
+    const apply = (e) => {
+      if (e.on) on.add(e.trait);
+      else on.delete(e.trait);
+    };
+    log.filter((e) => !e.at).forEach(apply);
+    log.filter((e) => e.at && (!stamp || compareStamps(st, e.at, stamp) <= 0)).sort((a, b) => compareStamps(st, a.at, b.at)).forEach(apply);
+    return on;
+  }
+  var traitHistory = (st, wid) => st.traitLog.filter((e) => e.wrestler === wid).sort((a, b) => !a.at || !b.at ? !a.at - !b.at : compareStamps(st, b.at, a.at));
+  function setTraits(st, wid, traits, opts = {}) {
+    const w = must(wrestlerById(st, wid), "wrestler", wid);
+    if (!Array.isArray(traits)) fail("Pick the traits as a list.");
+    traits.forEach((t) => oneOf(t, TRAITS, "trait"));
+    const want = new Set(traits);
+    const note = checkNote(opts.note);
+    const at2 = opts.since === "start" ? null : now(st);
+    const changes = [.../* @__PURE__ */ new Set([...w.traits, ...want])].filter((t) => w.traits.includes(t) !== want.has(t)).sort().map((t) => ({ id: newId(st, "tl"), wrestler: wid, trait: t, on: want.has(t), at: at2 && { ...at2 }, note }));
+    if (!changes.length) return [];
+    st.traitLog.push(...changes);
+    w.traits = TRAITS.filter((t) => want.has(t));
+    return changes;
+  }
+  function incidentFields(st, ev, input) {
+    const kind = oneOf(input.kind, INCIDENT_KINDS, "incident");
+    const ids = (list) => [...new Set((Array.isArray(list) ? list : []).filter(Boolean))].map((id) => must(wrestlerById(st, id), "wrestler", id).id);
+    const by = ids(input.by), on = ids(input.on), helped = kind === "interference" ? ids(input.helped) : [];
+    if (!by.length) fail(`Pick who ${kind === "betrayal" ? "turned on someone" : kind === "interference" ? "interfered" : "attacked"}.`);
+    if (!on.length) fail(`Pick who ${kind === "betrayal" ? "was betrayed" : kind === "interference" ? "it was against" : "was attacked"}.`);
+    const clash = by.find((id) => on.includes(id) || helped.includes(id)) || on.find((id) => helped.includes(id));
+    if (clash) fail(`${wrestlerById(st, clash).name} can't be on both sides of it.`);
+    const match = input.match ? must(ev.matches.find((m) => m.id === input.match), "match", input.match).id : null;
+    return { kind, by, on, helped, match, note: checkText(input.note, "Notes") };
+  }
+  function recordIncident(st, eventId, input = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    const inc = { id: newId(st, "in"), ...incidentFields(st, ev, input) };
+    ev.incidents.push(inc);
+    return inc;
+  }
+  function updateIncident(st, eventId, incidentId, input = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    const inc = must(ev.incidents.find((x) => x.id === incidentId), "incident", incidentId);
+    Object.assign(inc, incidentFields(st, ev, { ...inc, ...input }));
+    return inc;
+  }
+  function deleteIncident(st, eventId, incidentId) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    must(ev.incidents.find((x) => x.id === incidentId), "incident", incidentId);
+    removeWhere(ev.incidents, (x) => x.id === incidentId);
+  }
+  function editRelationship(st, input = {}) {
+    const action = oneOf(input.action, ["form", "level", "end", "note"], "change");
+    const kind = oneOf(input.kind, REL_KINDS, "relationship");
+    const a = must(wrestlerById(st, input.a), "wrestler", input.a), b = must(wrestlerById(st, input.b), "wrestler", input.b);
+    if (a.id === b.id) fail("A relationship needs two different wrestlers.");
+    let level = null;
+    if (action === "form" || action === "level") {
+      level = kind === "former-partners" ? 1 : Number(input.level == null ? 1 : input.level);
+      if (![1, 2, 3].includes(level)) fail("Heat and strength go from 1 to 3.");
+    }
+    const note = checkNote(input.note);
+    if (action === "note" && !note) fail("Write the note first.");
+    if (action === "end" && input.since === "start") {
+      fail("A relationship can only be ended from this week on. To wipe one out from the start, ignore the changes that built it.");
+    }
+    const e = {
+      id: newId(st, "re"),
+      action,
+      kind,
+      a: a.id,
+      b: b.id,
+      level,
+      key: null,
+      note,
+      at: input.since === "start" ? null : now(st)
+    };
+    st.relEdits.push(e);
+    return e;
+  }
+  function dismissChange(st, key, note = "") {
+    if (typeof key !== "string" || !key) fail("That change can't be found.");
+    if (st.relEdits.some((e2) => e2.action === "dismiss" && e2.key === key)) fail("That change is already ignored.");
+    const e = { id: newId(st, "re"), action: "dismiss", kind: null, a: null, b: null, level: null, key, note: checkNote(note), at: now(st) };
+    st.relEdits.push(e);
+    return e;
+  }
+  function restoreChange(st, key) {
+    if (!st.relEdits.some((e) => e.action === "dismiss" && e.key === key)) fail("That change isn't ignored.");
+    removeWhere(st.relEdits, (e) => e.action === "dismiss" && e.key === key);
+  }
+  function deleteRelEdit(st, id) {
+    must(st.relEdits.find((e) => e.id === id), "relationship change", id);
+    removeWhere(st.relEdits, (e) => e.id === id);
+  }
   var KEY = { W: "w", L: "l", D: "d", NC: "nc" };
   var blankRecord = () => ({ w: 0, l: 0, d: 0, nc: 0 });
   var tally = (rec, r) => {
@@ -2689,6 +2868,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function teamRecord(st, teamId) {
     return teamMatches(st, teamId).reduce((rec, x) => tally(rec, resultFor(x.match, x.side)), blankRecord());
   }
+  var rekey = (key, from, to) => key.split("|").map((part2) => part2.split(":").map((tok) => tok.includes("+") ? tok.split("+").map((x) => x === from ? to : x).sort().join("+") : tok.split(">").map((x) => x === from ? to : x).join(">")).join(":")).join("|");
   function mergeWrestlers(st, keepId, dupId) {
     const keep = must(wrestlerById(st, keepId), "wrestler", keepId);
     const dup = must(wrestlerById(st, dupId), "wrestler", dupId);
@@ -2713,6 +2893,27 @@ body.uv-confirm-open .uv-confirm{display:flex}
         }
       });
     });
+    const swap = (list) => [...new Set(list.map((id) => id === dupId ? keepId : id))];
+    st.events.forEach((e) => e.incidents.forEach((x) => {
+      const [by, on, helped] = [swap(x.by), swap(x.on), swap(x.helped)];
+      if (by.some((id) => on.includes(id) || helped.includes(id)) || on.some((id) => helped.includes(id))) {
+        fail(`${keep.name} and ${dup.name} are on opposite sides of an incident at ${e.name}, so they can't be the same person. Fix that incident first.`);
+      }
+    }));
+    if (st.relEdits.some((r) => r.a === keepId && r.b === dupId || r.a === dupId && r.b === keepId)) {
+      fail(`You've set a relationship between ${keep.name} and ${dup.name}, so they can't be the same person. Take it back first.`);
+    }
+    st.events.forEach((e) => e.incidents.forEach((x) => {
+      x.by = swap(x.by);
+      x.on = swap(x.on);
+      x.helped = swap(x.helped);
+    }));
+    st.relEdits.forEach((r) => {
+      if (r.a === dupId) r.a = keepId;
+      if (r.b === dupId) r.b = keepId;
+      if (r.key) r.key = rekey(r.key, dupId, keepId);
+    });
+    removeWhere(st.traitLog, (e) => e.wrestler === dupId);
     eachMatch(st, (m) => {
       m.sides.forEach((sd) => {
         sd.wrestlers = sd.wrestlers.map((id) => id === dupId ? keepId : id);
@@ -2734,42 +2935,42 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function careerOf(st, wrestlerId) {
     const out = [];
-    const at = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
-    movesOf(st, wrestlerId).forEach((move) => at(move.at, "move", { move }));
+    const at2 = (stamp, type, extra) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, ...extra });
+    movesOf(st, wrestlerId).forEach((move) => at2(move.at, "move", { move }));
     st.memberships.filter((m) => m.wrestler === wrestlerId).forEach((m) => {
       const team = teamById(st, m.team);
-      at(m.start, m.start.seq === teamFormed(team).seq ? "team-formed" : "team-joined", { team });
-      if (m.end) at(m.end, "team-left", { team });
+      at2(m.start, m.start.seq === teamFormed(team).seq ? "team-formed" : "team-joined", { team });
+      if (m.end) at2(m.end, "team-left", { team });
       team.log.slice(1).forEach((e) => {
-        if (within(st, e.at, m.start, m.end)) at(e.at, `team-${e.type}`, { team });
+        if (within(st, e.at, m.start, m.end)) at2(e.at, `team-${e.type}`, { team });
       });
     });
     championshipsOf(st, wrestlerId).forEach(({ reign, title: title2, team }) => {
       const there = (stamp) => !team || memberAt(st, team.id, wrestlerId, stamp);
-      if (there(reign.start)) at(reign.start, "title-won", { reign, title: title2, team });
-      if (reign.end && there(reign.end)) at(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title: title2, team });
+      if (there(reign.start)) at2(reign.start, "title-won", { reign, title: title2, team });
+      if (reign.end && there(reign.end)) at2(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title: title2, team });
     });
     return out.sort((a, b) => compareStamps(st, b, a));
   }
   function timeline(st) {
     const out = [];
-    const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, day: stamp.day, rec });
+    const at2 = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, day: stamp.day, rec });
     st.seasons.forEach((s) => {
-      at(s.started, "season-start", s);
-      if (s.ended) at(s.ended, "season-end", s);
+      at2(s.started, "season-start", s);
+      if (s.ended) at2(s.ended, "season-end", s);
     });
-    st.moves.forEach((m) => at(m.at, "move", m));
-    st.teams.forEach((t) => t.log.forEach((e) => at(e.at, `team-${e.type}`, t)));
+    st.moves.forEach((m) => at2(m.at, "move", m));
+    st.teams.forEach((t) => t.log.forEach((e) => at2(e.at, `team-${e.type}`, t)));
     st.memberships.forEach((m) => {
       const t = teamById(st, m.team);
-      if (t && m.start.seq !== teamFormed(t).seq) at(m.start, "team-joined", m);
-      if (m.end) at(m.end, "team-left", m);
+      if (t && m.start.seq !== teamFormed(t).seq) at2(m.start, "team-joined", m);
+      if (m.end) at2(m.end, "team-left", m);
     });
     st.reigns.forEach((r) => {
-      at(r.start, "title-won", r);
-      if (r.vacated) at(r.end, "title-vacated", r);
+      at2(r.start, "title-won", r);
+      if (r.vacated) at2(r.end, "title-vacated", r);
     });
-    st.events.forEach((e) => at(e.at, "event", e));
+    st.events.forEach((e) => at2(e.at, "event", e));
     return out.sort((a, b) => compareStamps(st, b, a));
   }
   function summary(st) {
@@ -2854,7 +3055,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }));
       st.version = 5;
     }
-    for (const k of ["transitions", "relegations", "eligibility", "drafts"]) if (!Array.isArray(st[k])) st[k] = [];
+    if (st.version === 5) {
+      st.wrestlers.forEach((w) => {
+        if (!Array.isArray(w.traits)) w.traits = [];
+      });
+      st.events.forEach((e) => {
+        if (!Array.isArray(e.incidents)) e.incidents = [];
+      });
+      st.traitLog = [];
+      st.relEdits = [];
+      st.version = 6;
+    }
+    for (const k of ["transitions", "relegations", "eligibility", "drafts", "traitLog", "relEdits"]) if (!Array.isArray(st[k])) st[k] = [];
     return st;
   }
   function validate(st) {
@@ -2891,6 +3103,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     own(st.relegations, "relegation record");
     own(st.eligibility, "draft eligibility record");
     own(st.drafts, "draft pick");
+    own(st.traitLog, "personality change");
+    own(st.relEdits, "relationship change");
+    st.events.forEach((e) => own(Array.isArray(e.incidents) ? e.incidents : [], "incident"));
     st.transitions.forEach((t) => Object.values(t.shows || {}).forEach((c) => own(Array.isArray(c.pairs) ? c.pairs : [], "relegation pairing")));
     st.transitions.forEach((t) => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], "qualifier pairing"));
     const stamp = (s, where) => {
@@ -2898,7 +3113,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         bad.push(`${where} has a broken date.`);
       } else if (s.seq > st.seq) bad.push(`${where} is dated ahead of the clock.`);
     };
-    const names = (list, what) => {
+    const names2 = (list, what) => {
       const seen = /* @__PURE__ */ new Set();
       list.forEach((x) => {
         if (typeof x.name !== "string") {
@@ -2912,27 +3127,52 @@ body.uv-confirm-open .uv-confirm{display:flex}
       });
     };
     const showOk = (id) => id === null || !!showById(st, id);
-    names(st.shows, "show");
+    names2(st.shows, "show");
     const night = (d) => Number.isInteger(d) && d >= 0 && d <= 6;
     st.shows.forEach((s) => {
       if (!/^#[0-9a-f]{3,8}$/i.test(String(s.color))) bad.push(`${s.name} has an unreadable colour.`);
       if (typeof s.promotion !== "string") bad.push(`${s.name} has no promotion.`);
       if (!night(s.day)) bad.push(`${s.name} has no night of the week.`);
     });
-    names(st.wrestlers, "wrestler");
+    names2(st.wrestlers, "wrestler");
     st.wrestlers.forEach((w) => {
       if (!GENDERS.includes(w.gender) || !ORIGINS.includes(w.origin) || !STATUSES.includes(w.status) || !(w.alignment === null || ALIGNMENTS.includes(w.alignment))) bad.push(`${w.name} has an unknown detail.`);
       if (!showOk(w.showId)) bad.push(`${w.name} is on a show that doesn't exist.`);
       const moves = movesOf(st, w.id);
       const last = moves.length ? moves[moves.length - 1].to : null;
       if (last !== w.showId) bad.push(`${w.name}'s roster history doesn't end on their current show.`);
+      if (!Array.isArray(w.traits) || w.traits.some((t) => !TRAITS.includes(t)) || new Set(w.traits).size !== w.traits.length) {
+        bad.push(`${w.name} has an unknown trait.`);
+      } else if (JSON.stringify([...traitsAt(st, w.id, null)].sort()) !== JSON.stringify([...w.traits].sort())) {
+        bad.push(`${w.name}'s traits don't match their personality history.`);
+      }
+    });
+    st.traitLog.forEach((e) => {
+      if (!wrestlerById(st, e.wrestler)) bad.push(`Personality change ${e.id} is for a wrestler who doesn't exist.`);
+      if (!TRAITS.includes(e.trait) || typeof e.on !== "boolean") bad.push(`Personality change ${e.id} is unreadable.`);
+      if (e.at !== null) stamp(e.at, `Personality change ${e.id}`);
+    });
+    st.relEdits.forEach((e) => {
+      const where = `Relationship change ${e.id}`;
+      if (!REL_ACTIONS.includes(e.action)) {
+        bad.push(`${where} is unreadable.`);
+        return;
+      }
+      if (e.at !== null) stamp(e.at, where);
+      if (e.action === "dismiss") {
+        if (typeof e.key !== "string" || !e.key) bad.push(`${where} ignores nothing.`);
+        return;
+      }
+      if (!REL_KINDS.includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
+      if (!wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong wrestlers.`);
+      if (["form", "level"].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
     });
     st.moves.forEach((m) => {
       if (!wrestlerById(st, m.wrestler)) bad.push(`Roster move ${m.id} is for a wrestler who doesn't exist.`);
       if (!showOk(m.from) || !showOk(m.to)) bad.push(`Roster move ${m.id} names a show that doesn't exist.`);
       stamp(m.at, `Roster move ${m.id}`);
     });
-    names(st.teams, "tag team");
+    names2(st.teams, "tag team");
     st.teams.forEach((t) => {
       if (!Array.isArray(t.members) || t.members.length < 2) bad.push(`${t.name} have fewer than two members.`);
       else {
@@ -2979,7 +3219,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         if (prev && (!prev.end || prev.end.seq > m.start.seq)) bad.push(`Membership ${m.id} overlaps an earlier spell on the same team.`);
       });
     });
-    names(st.titles, "championship");
+    names2(st.titles, "championship");
     st.titles.forEach((t) => {
       if (!TITLE_KINDS.includes(t.kind) || !DIVISIONS.includes(t.division)) bad.push(`The ${t.name} has an unknown detail.`);
       if (!showOk(t.showId)) bad.push(`The ${t.name} is on a show that doesn't exist.`);
@@ -3026,6 +3266,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
     st.events.forEach((e) => {
       if (typeof e.name !== "string" || !e.name.trim()) bad.push(`Event ${e.id} has no name.`);
+      if (!Array.isArray(e.incidents)) bad.push(`${e.name} has no incidents list.`);
+      else e.incidents.forEach((x) => {
+        const lists = [x.by, x.on, x.helped];
+        if (!INCIDENT_KINDS.includes(x.kind) || lists.some((l) => !Array.isArray(l))) {
+          bad.push(`An incident at ${e.name} is unreadable.`);
+          return;
+        }
+        if (!x.by.length || !x.on.length || lists.flat().some((id) => !wrestlerById(st, id))) bad.push(`An incident at ${e.name} names the wrong wrestlers.`);
+        if (x.by.some((id) => x.on.includes(id))) bad.push(`An incident at ${e.name} has someone on both sides.`);
+        if (x.match != null && !(e.matches || []).some((m) => m.id === x.match)) bad.push(`An incident at ${e.name} is in a match that isn't on its card.`);
+      });
       if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
       if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
       if (!showOk(e.showId) || e.kind === "weekly" && !e.showId) bad.push(`${e.name} is on a show that doesn't exist.`);
@@ -3306,12 +3557,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return side.wrestlers.map((id) => (wrestlerById(st, id) || { name: "(missing)" }).name).join(" & ");
   }
   function matchLine(st, m) {
-    const names = m.sides.map((s) => esc(sideName(st, s)));
+    const names2 = m.sides.map((s) => esc(sideName(st, s)));
     if (m.outcome === "win") {
-      const rest = names.filter((_, i) => i !== m.winner);
-      return `<b>${names[m.winner]}</b> def. ${rest.join(", ")}`;
+      const rest = names2.filter((_, i) => i !== m.winner);
+      return `<b>${names2[m.winner]}</b> def. ${rest.join(", ")}`;
     }
-    return `${names.join(" vs ")} <span class="uv-muted">\u2014 ${m.outcome === "draw" ? "Draw" : "No contest"}</span>`;
+    return `${names2.join(" vs ")} <span class="uv-muted">\u2014 ${m.outcome === "draw" ? "Draw" : "No contest"}</span>`;
   }
   function fmtRec(rec = blankRecord()) {
     return `${rec.w}\u2013${rec.l}\u2013${rec.d}`;
@@ -3601,7 +3852,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     el.classList.toggle("bad", !!bad);
     el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove("show"), bad ? 3600 : 1800);
+    toastTimer = setTimeout(() => el.classList.remove("show"), bad || msg.length > 60 ? 3600 : 1800);
   }
 
   // js/universe/ranks.js
@@ -4102,7 +4353,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     openSheet(() => {
       const st = uni();
       const cur = activeSeason(st);
-      const names = lineup.split("|").map((part2) => {
+      const names2 = lineup.split("|").map((part2) => {
         const [team, list] = part2.includes(":") ? part2.split(":") : ["", part2];
         const t = team && teamById(st, team);
         return t ? t.name : list.split(",").map((id) => (wrestlerById(st, id) || { name: "?" }).name).join(" & ");
@@ -4112,15 +4363,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
       for (let wk = cur.week; open.length < 2 && wk < cur.week + 8; wk++) {
         if (!st.events.some((e) => e.at.season === cur.id && e.at.week === wk && e.kind === "weekly" && e.showId === showId)) open.push(wk);
       }
-      const when = (e) => `${esc(eventWhen(st, e))} \xB7 ${plural2(e.matches.length, "match", "matches")} on the card`;
+      const when2 = (e) => `${esc(eventWhen(st, e))} \xB7 ${plural2(e.matches.length, "match", "matches")} on the card`;
       return {
         title: "Book this match",
         body: `
-        <p class="uv-p"><b>${names.map(esc).join("</b> vs <b>")}</b> \u2014 pick where it goes. The booking form opens with them
+        <p class="uv-p"><b>${names2.map(esc).join("</b> vs <b>")}</b> \u2014 pick where it goes. The booking form opens with them
           filled in; change anything before you add it, or don\u2019t book it at all.</p>
         ${upcoming2.map((e) => `<div class="uv-row" onclick="uvBookLineup('${e.id}','${lineup}')">
           <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${e.kind === "ple" ? ICON.star : ICON.cal}</span>
-          <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${when(e)}</div></div>
+          <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${when2(e)}</div></div>
           <span class="uv-chev">${ICON.right}</span></div>`).join("")}
         ${open.map((wk) => `<div class="uv-row" onclick="uvPlanAndBook('${showId}',${wk},'${lineup}')">
           <span class="uv-av sq" style="--c:${showColor(st, showId)}">${ICON.plus}</span>
@@ -4570,7 +4821,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return `<div class="uv-tq"><span>${who} hold${h.team ? "" : "s"} the <b>${title(st, h.title)}</b>. The app has no rule for this \u2014 your call:</span>
       <div class="uv-seg">${seg("keep", "Keep it")}${seg("vacate", "Vacate it")}</div></div>`;
     }).join("");
-    const names = group.map((id) => wrestlerById(st, id).name).join(" & ");
+    const names2 = group.map((id) => wrestlerById(st, id).name).join(" & ");
     const unanswered = [...titles.values()].some((h) => !d.titles[h.title]);
     const ready = d.to && !unanswered;
     return {
@@ -4583,7 +4834,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${titleQs ? `<h4>Titles</h4>${titleQs}` : ""}
       <label class="uv-f wide" style="margin-top:12px"><span>Note (optional)</span>
         <input id="uvDraftNote" class="uv-in" maxlength="60" value="${esc(d.note)}" placeholder="e.g. First overall pick" oninput="uvDraftSet('note',this.value)"></label>
-      <div class="uv-btn pri full${ready ? "" : " off"}" onclick="uvDraftSave()">${!d.to ? "Pick a show" : unanswered ? "Keep or vacate each title first" : `Draft ${esc(names)} to ${esc(showName(st, d.to))}`}</div>`
+      <div class="uv-btn pri full${ready ? "" : " off"}" onclick="uvDraftSave()">${!d.to ? "Pick a show" : unanswered ? "Keep or vacate each title first" : `Draft ${esc(names2)} to ${esc(showName(st, d.to))}`}</div>`
     };
   }
   function uvDraftSet(k, v) {
@@ -4946,6 +5197,922 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }));
   }
 
+  // js/universe/personality.js
+  var personality_exports = {};
+  __export(personality_exports, {
+    uvEditTraits: () => uvEditTraits,
+    uvHowRelations: () => uvHowRelations,
+    uvIcAdd: () => uvIcAdd,
+    uvIcDelete: () => uvIcDelete,
+    uvIcDrop: () => uvIcDrop,
+    uvIcKind: () => uvIcKind,
+    uvIcNote: () => uvIcNote,
+    uvIcPick: () => uvIcPick,
+    uvIcSave: () => uvIcSave,
+    uvIcSet: () => uvIcSet,
+    uvIgnoreChange: () => uvIgnoreChange,
+    uvIncident: () => uvIncident,
+    uvIncidentsBlock: () => uvIncidentsBlock,
+    uvOpenPair: () => uvOpenPair,
+    uvPairPage: () => uvPairPage,
+    uvProfilePersonality: () => uvProfilePersonality,
+    uvRelAction: () => uvRelAction,
+    uvRelBefore: () => uvRelBefore,
+    uvRelDir: () => uvRelDir,
+    uvRelKind: () => uvRelKind,
+    uvRelLevel: () => uvRelLevel,
+    uvRelNews: () => uvRelNews,
+    uvRelNote: () => uvRelNote,
+    uvRelSave: () => uvRelSave,
+    uvRelSet: () => uvRelSet,
+    uvRelSheet: () => uvRelSheet,
+    uvRelSince: () => uvRelSince,
+    uvRelationsView: () => uvRelationsView,
+    uvRestoreChange: () => uvRestoreChange,
+    uvTakeBackRel: () => uvTakeBackRel,
+    uvTraitNote: () => uvTraitNote,
+    uvTraitSave: () => uvTraitSave,
+    uvTraitSince: () => uvTraitSince,
+    uvTraitToggle: () => uvTraitToggle
+  });
+
+  // js/universe/relations.js
+  var relations_exports = {};
+  __export(relations_exports, {
+    KIND_LABEL: () => KIND_LABEL,
+    RULES: () => RULES,
+    changesBetween: () => changesBetween,
+    entryText: () => entryText,
+    levelText: () => levelText,
+    pairView: () => pairView,
+    relKey: () => relKey,
+    relText: () => relText,
+    relationsOf: () => relationsOf,
+    relationships: () => relationships,
+    snapshot: () => snapshot
+  });
+  var RULES = { streak: 3, streakHotHeaded: 2, streakPatient: 4, allies: 5, alliesLoyal: 3, friends: 12 };
+  var KIND_LABEL = { grudge: "Grudge", rivals: "Rivals", allies: "Allies", friends: "Friends", "former-partners": "Former partners" };
+  var LEVEL_WORD = { grudge: "heat", rivals: "heat", allies: "strength", friends: "strength" };
+  var pairOf = (a, b) => a < b ? `${a}+${b}` : `${b}+${a}`;
+  var relKey = (kind, a, b) => kind === "grudge" ? `grudge:${a}>${b}` : `${kind}:${pairOf(a, b)}`;
+  var nth = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
+  function relationships(st) {
+    const rels = /* @__PURE__ */ new Map();
+    const entries = [];
+    const dismissed = new Map(st.relEdits.filter((e) => e.action === "dismiss").map((e) => [e.key, e]));
+    const streak = /* @__PURE__ */ new Map();
+    const together = /* @__PURE__ */ new Map();
+    const logs = /* @__PURE__ */ new Map();
+    st.traitLog.forEach((e) => {
+      if (!logs.has(e.wrestler)) logs.set(e.wrestler, []);
+      logs.get(e.wrestler).push(e);
+    });
+    logs.forEach((list) => list.sort((x, y) => !x.at || !y.at ? !y.at - !x.at : compareStamps(st, x.at, y.at)));
+    const has2 = (wid, trait, at2) => {
+      let on = false;
+      for (const e of logs.get(wid) || []) {
+        if (e.at && at2 && compareStamps(st, e.at, at2) > 0) break;
+        if (e.trait === trait) on = e.on;
+      }
+      return on;
+    };
+    const get = (kind, a, b) => {
+      const key = relKey(kind, a, b);
+      if (!rels.has(key)) {
+        const [x, y] = kind === "grudge" ? [a, b] : [a, b].sort();
+        rels.set(key, { key, kind, a: x, b: y, active: false, level: 0, since: null, entries: [] });
+      }
+      return rels.get(key);
+    };
+    const outcome = (r, op, amount) => {
+      if (op === "end") return r.active ? { active: false, level: 0, change: "ended" } : null;
+      if (op === "form") return r.active ? null : { active: true, level: Math.max(1, amount), change: "formed" };
+      if (op === "set") return { active: true, level: amount, change: r.active ? "set" : "formed" };
+      if (!r.active) return { active: true, level: Math.min(3, amount), change: "formed" };
+      return r.level < 3 ? { active: true, level: Math.min(3, r.level + amount), change: "raised" } : { active: true, level: 3, change: "fuelled" };
+    };
+    const record = (r, next, at2, extra) => {
+      const e = { rel: r.key, kind: r.kind, a: r.a, b: r.b, at: at2, change: next.change, level: next.level, ...extra };
+      r.entries.push(e);
+      entries.push(e);
+      return e;
+    };
+    const auto = (kind, a, b, op, amount, cause) => {
+      const r = get(kind, a, b);
+      const next = outcome(r, op, amount);
+      if (!next) return;
+      const key = `${cause.key}|${r.key}`;
+      const ignored = dismissed.get(key) || null;
+      if (!ignored) {
+        if (next.active && !r.active) r.since = cause.at;
+        r.active = next.active;
+        r.level = next.level;
+      }
+      record(r, next, cause.at, { key, auto: true, ignored, cause });
+    };
+    const items = [];
+    st.relEdits.filter((e) => e.action !== "dismiss").forEach((e) => items.push({ at: e.at, order: 0, type: "edit", e }));
+    st.events.forEach((ev) => {
+      ev.matches.forEach((m, i) => {
+        if (m.status === "played") items.push({ at: ev.at, order: i + 1, type: "match", ev, m });
+      });
+      ev.incidents.forEach((inc, j) => items.push({ at: ev.at, order: 1e3 + j, type: "incident", ev, inc }));
+    });
+    st.memberships.forEach((ms) => {
+      if (ms.end) items.push({ at: ms.end, order: 0, type: "left", ms });
+    });
+    st.teams.forEach((t) => t.log.forEach((l) => {
+      if (l.type === "disbanded") items.push({ at: l.at, order: 0, type: "disbanded", t, l });
+    }));
+    items.sort((x, y) => !x.at && !y.at ? 0 : !x.at ? -1 : !y.at ? 1 : compareStamps(st, x.at, y.at) || x.order - y.order);
+    const reignOf = new Map(st.reigns.filter((r) => r.matchId).map((r) => [r.matchId, r]));
+    for (const it of items) {
+      if (it.type === "edit") {
+        const e = it.e;
+        const r = get(e.kind, e.a, e.b);
+        const next = e.action === "end" ? outcome(r, "end") || { active: false, level: 0, change: "nothing" } : e.action === "note" ? { active: r.active, level: r.level, change: "note" } : outcome(r, "set", e.level);
+        if (next.active && !r.active) r.since = e.at;
+        r.active = next.active;
+        r.level = next.level;
+        record(r, next, e.at, { key: `edit:${e.id}`, auto: false, ignored: null, cause: { type: "owner", edit: e, at: e.at } });
+        continue;
+      }
+      if (it.type === "match") {
+        const { ev, m } = it;
+        const base = { at: ev.at, event: ev.id, match: m.id };
+        if (m.outcome === "win") {
+          const W = m.sides[m.winner].wrestlers;
+          m.sides.forEach((sd, i) => {
+            if (i === m.winner) return;
+            sd.wrestlers.forEach((l) => W.forEach((w) => {
+              streak.set(`${w}>${l}`, 0);
+              const n = (streak.get(`${l}>${w}`) || 0) + 1;
+              const need = has2(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has2(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
+              if (n >= need) {
+                auto("grudge", l, w, "raise", 1, { ...base, key: `loss:${m.id}:${l}>${w}`, type: "losses", loser: l, winner: w, n });
+                streak.set(`${l}>${w}`, 0);
+              } else streak.set(`${l}>${w}`, n);
+            }));
+          });
+          const reign = reignOf.get(m.id);
+          const prev = reign && st.reigns.find((r) => r.titleId === reign.titleId && r.end && r.end.seq === reign.start.seq);
+          if (prev) {
+            const held = (sd) => prev.holder.type === "team" ? sd.team === prev.holder.id : sd.wrestlers.includes(prev.holder.id);
+            m.sides.forEach((sd, i) => {
+              if (i === m.winner || !held(sd)) return;
+              sd.wrestlers.forEach((l) => W.forEach((w) => {
+                const cause = { ...base, key: `title:${reign.id}:${l}>${w}`, type: "title", loser: l, winner: w, title: reign.titleId };
+                auto("grudge", l, w, "raise", has2(l, "ambitious", ev.at) ? 2 : 1, cause);
+                auto("rivals", l, w, "raise", 1, { ...cause, key: `title:${reign.id}:${pairOf(l, w)}` });
+              }));
+            });
+          }
+        }
+        m.sides.forEach((sd) => {
+          const ids = sd.wrestlers;
+          for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) {
+              const [x, y] = [ids[i], ids[j]], p = pairOf(x, y);
+              const n = (together.get(p) || 0) + 1;
+              together.set(p, n);
+              const loyal = has2(x, "loyal", ev.at) || has2(y, "loyal", ev.at);
+              const cause = { ...base, type: "partners", x, y, n };
+              if (n === (loyal ? RULES.alliesLoyal : RULES.allies)) auto("allies", x, y, "form", 1, { ...cause, key: `partners:${m.id}:${p}:allies` });
+              const grudge = get("grudge", x, y).active || get("grudge", y, x).active;
+              const opportunist = has2(x, "opportunistic", ev.at) || has2(y, "opportunistic", ev.at);
+              if (n === RULES.friends && !grudge && !opportunist) auto("friends", x, y, "form", 1, { ...cause, key: `partners:${m.id}:${p}:friends` });
+            }
+          }
+        });
+        continue;
+      }
+      if (it.type === "incident") {
+        const { ev, inc } = it;
+        const base = { at: ev.at, event: ev.id, match: inc.match, incident: inc.id, kind: inc.kind };
+        inc.by.forEach((x) => inc.on.forEach((y) => {
+          const cause = { ...base, key: `inc:${inc.id}:${y}>${x}`, type: inc.kind, by: x, on: y };
+          if (inc.kind === "betrayal") {
+            auto("grudge", y, x, "raise", has2(y, "loyal", ev.at) ? 3 : 2, cause);
+            auto("friends", x, y, "end", 0, cause);
+            auto("allies", x, y, "end", 0, cause);
+          } else if (inc.kind === "attack") {
+            auto("grudge", y, x, "raise", has2(y, "hot-headed", ev.at) ? 2 : 1, cause);
+          } else auto("grudge", y, x, "raise", 1, cause);
+        }));
+        if (inc.kind === "interference") {
+          inc.by.forEach((x) => inc.helped.forEach((h) => auto(
+            "allies",
+            x,
+            h,
+            "raise",
+            1,
+            { ...base, key: `inc:${inc.id}:${x}>${h}:helped`, type: "helped", by: x, helped: h }
+          )));
+        }
+        continue;
+      }
+      if (it.type === "left") {
+        const { ms } = it;
+        st.memberships.filter((o) => o.team === ms.team && o.wrestler !== ms.wrestler && compareStamps(st, o.start, ms.end) < 0 && (!o.end || compareStamps(st, ms.start, o.end) < 0)).forEach((o) => auto(
+          "former-partners",
+          ms.wrestler,
+          o.wrestler,
+          "form",
+          1,
+          { at: ms.end, key: `left:${ms.id}:${pairOf(ms.wrestler, o.wrestler)}`, type: "left", who: ms.wrestler, team: ms.team }
+        ));
+        continue;
+      }
+      if (it.type === "disbanded") {
+        const { t, l } = it;
+        const on = st.memberships.filter((o) => o.team === t.id && compareStamps(st, o.start, l.at) <= 0 && (!o.end || compareStamps(st, o.end, l.at) > 0)).map((o) => o.wrestler);
+        for (let i = 0; i < on.length; i++) {
+          for (let j = i + 1; j < on.length; j++) {
+            auto("former-partners", on[i], on[j], "form", 1, { at: l.at, key: `disband:${t.id}:${l.at.seq}:${pairOf(on[i], on[j])}`, type: "disbanded", team: t.id });
+          }
+        }
+      }
+    }
+    return { rels, entries, streak, together, has: has2 };
+  }
+  function relationsOf(st, wid, derived = relationships(st)) {
+    const order = { grudge: 0, rivals: 1, allies: 2, friends: 3, "former-partners": 4 };
+    return [...derived.rels.values()].filter((r) => r.active && (r.a === wid || r.b === wid)).sort((x, y) => order[x.kind] - order[y.kind] || y.level - x.level);
+  }
+  function pairView(st, a, b, derived = relationships(st)) {
+    const rels = [...derived.rels.values()].filter((r) => r.a === a && r.b === b || r.a === b && r.b === a);
+    const entries = derived.entries.filter((e) => e.a === a && e.b === b || e.a === b && e.b === a);
+    const need = (w) => derived.has(w, "hot-headed", null) ? RULES.streakHotHeaded : derived.has(w, "patient", null) ? RULES.streakPatient : RULES.streak;
+    const loyal = derived.has(a, "loyal", null) || derived.has(b, "loyal", null);
+    return {
+      rels,
+      entries,
+      progress: {
+        losses: [[a, b], [b, a]].map(([l, w]) => ({ loser: l, winner: w, n: derived.streak.get(`${l}>${w}`) || 0, need: need(l) })),
+        together: derived.together.get(pairOf(a, b)) || 0,
+        alliesAt: loyal ? RULES.alliesLoyal : RULES.allies,
+        friendsAt: RULES.friends
+      }
+    };
+  }
+  var nm3 = (st, id) => (wrestlerById(st, id) || { name: "(deleted)" }).name;
+  var at = (st, id) => (eventById(st, id) || { name: "a show" }).name;
+  function relText(st, r) {
+    const [A, B] = [nm3(st, r.a), nm3(st, r.b)];
+    return {
+      grudge: `${A} holds a grudge against ${B}`,
+      rivals: `${A} and ${B} are rivals`,
+      allies: `${A} and ${B} are allies`,
+      friends: `${A} and ${B} are friends`,
+      "former-partners": `${A} and ${B} are former partners`
+    }[r.kind];
+  }
+  var endText = (st, r) => {
+    const [A, B] = [nm3(st, r.a), nm3(st, r.b)];
+    return {
+      grudge: `${A} lets the grudge against ${B} go`,
+      rivals: `${A} and ${B} are no longer rivals`,
+      allies: `${A} and ${B} are no longer allies`,
+      friends: `${A} and ${B} are no longer friends`,
+      "former-partners": `${A} and ${B} are no longer counted as former partners`
+    }[r.kind];
+  };
+  var levelText = (r) => LEVEL_WORD[r.kind] ? `${LEVEL_WORD[r.kind]} ${r.level}` : "";
+  function entryText(st, e) {
+    const c = e.cause;
+    const A = nm3(st, e.a), B = nm3(st, e.b);
+    let cause;
+    switch (c.type) {
+      case "losses":
+        cause = `${nm3(st, c.loser)} lost to ${nm3(st, c.winner)} for the ${nth(c.n)} time running at ${at(st, c.event)}`;
+        break;
+      case "title":
+        cause = `${nm3(st, c.loser)} lost the ${(titleById(st, c.title) || { name: "title" }).name} to ${nm3(st, c.winner)} at ${at(st, c.event)}`;
+        break;
+      case "betrayal":
+        cause = `${nm3(st, c.by)} betrayed ${nm3(st, c.on)} at ${at(st, c.event)}`;
+        break;
+      case "interference":
+        cause = `${nm3(st, c.by)} interfered against ${nm3(st, c.on)} at ${at(st, c.event)}`;
+        break;
+      case "attack":
+        cause = `${nm3(st, c.by)} attacked ${nm3(st, c.on)} at ${at(st, c.event)}`;
+        break;
+      case "helped":
+        cause = `${nm3(st, c.by)} interfered to help ${nm3(st, c.helped)} at ${at(st, c.event)}`;
+        break;
+      case "partners":
+        cause = `${nm3(st, c.x)} and ${nm3(st, c.y)} teamed up for the ${nth(c.n)} time at ${at(st, c.event)}`;
+        break;
+      case "left":
+        cause = `${nm3(st, c.who)} left ${(teamById(st, c.team) || { name: "their team" }).name}`;
+        break;
+      case "disbanded":
+        cause = `${(teamById(st, c.team) || { name: "Their team" }).name} disbanded`;
+        break;
+      default: {
+        const ed = c.edit;
+        cause = e.at ? "Your change" : "Your change, counted from the start";
+        if (ed.note) cause += ` \u2014 ${ed.note}`;
+      }
+    }
+    const word = LEVEL_WORD[e.kind];
+    const who = {
+      grudge: `${A}'s grudge against ${B}`,
+      rivals: `${A} and ${B}'s rivalry`,
+      allies: `${A} and ${B}'s alliance`,
+      friends: `${A} and ${B}'s friendship`,
+      "former-partners": `${A} and ${B} as former partners`
+    }[e.kind];
+    const result = {
+      formed: relText(st, e) + (word && e.level > 1 ? ` (${word} ${e.level})` : ""),
+      raised: `${who} grows to ${word} ${e.level}`,
+      fuelled: `${who} is already at its hottest`,
+      set: `${who} set to ${word} ${e.level}`,
+      ended: endText(st, e),
+      note: `A note on ${who}`,
+      nothing: `${who.charAt(0).toUpperCase()}${who.slice(1)} had already ended \u2014 nothing to end`
+    }[e.change];
+    return { cause, result };
+  }
+  function snapshot(st) {
+    const out = /* @__PURE__ */ new Map();
+    relationships(st).rels.forEach((r) => {
+      if (r.active) out.set(r.key, r.level);
+    });
+    return out;
+  }
+  function changesBetween(st, before, after) {
+    const out = [];
+    const rel = (key) => {
+      const [kind, rest] = key.split(":");
+      const [a, b] = kind === "grudge" ? rest.split(">") : rest.split("+");
+      return { kind, a, b };
+    };
+    after.forEach((level, key) => {
+      const r = { ...rel(key), level };
+      if (!before.has(key)) out.push(relText(st, r) + (LEVEL_WORD[r.kind] && level > 1 ? ` (${LEVEL_WORD[r.kind]} ${level})` : ""));
+      else if (before.get(key) !== level) out.push(`${relText(st, r)} \u2014 now ${LEVEL_WORD[r.kind]} ${level}`);
+    });
+    before.forEach((level, key) => {
+      if (!after.has(key)) out.push(endText(st, rel(key)));
+    });
+    return out;
+  }
+
+  // js/universe/personality.js
+  var { RULES: RULES2 } = relations_exports;
+  var TRAIT = {
+    ambitious: ["Ambitious", "Wants the gold above everything.", "Losing a title in a match starts their grudge at heat 2, not 1."],
+    loyal: [
+      "Loyal",
+      "Sticks by partners and friends.",
+      `Allies with a partner after ${RULES2.alliesLoyal} matches on the same side, not ${RULES2.allies}. Being betrayed hurts more: heat 3.`
+    ],
+    opportunistic: ["Opportunistic", "Looks out for number one.", "Can become allies with a partner, but never friends just from teaming up."],
+    "hot-headed": [
+      "Hot-headed",
+      "Quick to anger.",
+      `A grudge after ${RULES2.streakHotHeaded} straight losses to someone, not ${RULES2.streak}. Being attacked: heat 2.`
+    ],
+    patient: ["Patient", "Slow to anger.", `A grudge only after ${RULES2.streakPatient} straight losses to someone, not ${RULES2.streak}.`],
+    proud: ["Proud", "Hates to look weak.", null],
+    cowardly: ["Cowardly", "Would rather not fight fair.", null],
+    respectful: ["Respectful", "Shakes hands after a hard loss.", null]
+  };
+  var NO_EFFECT = "For your booking \u2014 it doesn\u2019t change a relationship by itself.";
+  var traitName = (t) => TRAIT[t][0];
+  var KIND = {
+    grudge: { label: "Grudge", color: "#FF5A4E", level: "heat" },
+    rivals: { label: "Rivals", color: "#F0A53A", level: "heat" },
+    allies: { label: "Allies", color: "#72C4FF", level: "strength" },
+    friends: { label: "Friends", color: "#4CD37A", level: "strength" },
+    "former-partners": { label: "Former partners", color: "#98A3B3", level: null }
+  };
+  var ORDER = Object.keys(KIND);
+  var kindChip2 = (kind) => `<span class="uv-rk" style="--k:${KIND[kind].color}">${KIND[kind].label}</span>`;
+  var dots = (r) => KIND[r.kind].level ? `<span class="uv-lv" style="--k:${KIND[r.kind].color}" title="${KIND[r.kind].level} ${r.level} of 3">${[1, 2, 3].map((i) => `<i${i <= r.level ? ' class="on"' : ""}></i>`).join("")}</span>` : "";
+  var when = (st, at2) => at2 ? stampLabel(st, at2) : "Start";
+  var nm4 = (st, id) => (wrestlerById(st, id) || { name: "(deleted)" }).name;
+  var other = (r, wid) => r.a === wid ? r.b : r.a;
+  var plural5 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  function uvOpenPair(a, b) {
+    pushPage("pair", `${a}+${b}`);
+  }
+  function buildingOf(st, d, wid) {
+    const out = [];
+    const needOf = (l) => d.has(l, "hot-headed", null) ? RULES2.streakHotHeaded : d.has(l, "patient", null) ? RULES2.streakPatient : RULES2.streak;
+    d.streak.forEach((n, key) => {
+      const [l, w] = key.split(">");
+      if (!n || l !== wid && w !== wid) return;
+      const need = needOf(l);
+      const g = d.rels.get(relKey("grudge", l, w));
+      const next = `${need - n} more in a row ${g && g.active ? "adds heat" : "makes a grudge"}`;
+      const run = n === 1 ? "last time" : `the last ${n} times`;
+      out.push({
+        other: l === wid ? w : l,
+        left: need - n,
+        n,
+        of: need,
+        text: l === wid ? `Lost to ${nm4(st, w)} ${run} \u2014 ${next}` : `${nm4(st, l)} lost to them ${run} \u2014 ${next}`
+      });
+    });
+    d.together.forEach((n, p) => {
+      const [x, y] = p.split("+");
+      if (x !== wid && y !== wid) return;
+      const mate = x === wid ? y : x;
+      const alliesAt = d.has(x, "loyal", null) || d.has(y, "loyal", null) ? RULES2.alliesLoyal : RULES2.allies;
+      const on = (kind) => (d.rels.get(relKey(kind, x, y)) || {}).active;
+      const opportunist = d.has(x, "opportunistic", null) || d.has(y, "opportunistic", null);
+      const teamed = `Teamed with ${nm4(st, mate)} ${plural5(n, "time")}`;
+      if (n < alliesAt && !on("allies")) out.push({ other: mate, left: alliesAt - n, n, of: alliesAt, text: `${teamed} \u2014 allies at ${alliesAt}` });
+      else if (n < RULES2.friends && !on("friends") && !opportunist) {
+        out.push({ other: mate, left: RULES2.friends - n, n, of: RULES2.friends, text: `${teamed} \u2014 friends at ${RULES2.friends}` });
+      }
+    });
+    return out.sort((p, q) => p.left - q.left);
+  }
+  function relRows(st, rels, wid) {
+    const by = /* @__PURE__ */ new Map();
+    rels.forEach((r) => {
+      const o = other(r, wid);
+      if (!by.has(o)) by.set(o, []);
+      by.get(o).push(r);
+    });
+    return [...by].map(([oid, list]) => {
+      const o = wrestlerById(st, oid);
+      return `<div class="uv-row uv-relrow" data-pair="${oid}" onclick="uvOpenPair('${wid}','${oid}')">${avatar(st, o)}
+      <div class="uv-main"><div class="nm">${esc(o.name)}</div>
+        ${list.map((r) => `<div class="uv-rl" data-rel="${esc(r.key)}">${kindChip2(r.kind)}<span>${esc(relText(st, r))}
+          <em>since ${when(st, r.since)}</em></span>${dots(r)}</div>`).join("")}</div>
+      <span class="uv-chev">${ICON.right}</span></div>`;
+    }).join("");
+  }
+  function traitLine(st, e) {
+    const name = traitName(e.trait);
+    const text = e.at ? e.on ? `Became <b>${esc(name.toLowerCase())}</b>` : `No longer <b>${esc(name.toLowerCase())}</b>` : e.on ? `<b>${esc(name)}</b> from the start` : `Not <b>${esc(name.toLowerCase())}</b> after all \u2014 from the start`;
+    return `<div class="uv-tl"><span class="w">${when(st, e.at)}</span><span class="x">${text}${e.note ? ` <span class="uv-muted">\u2014 ${esc(e.note)}</span>` : ""}</span></div>`;
+  }
+  function uvProfilePersonality(st, w) {
+    const d = relationships(st);
+    const rels = relationsOf(st, w.id, d);
+    const hist = traitHistory(st, w.id);
+    const building = buildingOf(st, d, w.id).slice(0, 5);
+    return `
+    ${section("Personality", w.traits.length || null)}
+    ${w.traits.length ? `<div class="uv-traits read">${w.traits.map((t) => `<div class="uv-trait on" data-trait="${t}"><b>${esc(traitName(t))}</b>
+      <span>${esc(TRAIT[t][1])}</span><span class="fx">${esc(TRAIT[t][2] || NO_EFFECT)}</span></div>`).join("")}</div>` : '<div class="uv-none">No traits set. Traits shape how relationships grow \u2014 and only you change them.</div>'}
+    <div class="uv-page-acts"><div class="uv-btn" onclick="uvEditTraits('${w.id}')">${ICON.edit}Edit personality</div></div>
+    ${hist.length ? `<div class="uv-sub">Personality history</div><div class="uv-tls">${hist.map((e) => traitLine(st, e)).join("")}</div>` : ""}
+
+    ${section("Relationships", rels.length || null)}
+    ${rels.length ? relRows(st, rels, w.id) : '<div class="uv-none">No relationships right now.</div>'}
+    ${building.length ? `<div class="uv-sub">Building up</div>${building.map((b) => `<div class="uv-li uv-bu" onclick="uvOpenPair('${w.id}','${b.other}')">
+      <span class="uv-left">${b.n}/${b.of}</span><span>${esc(b.text)}</span></div>`).join("")}` : ""}
+    <div class="uv-page-acts"><div class="uv-btn" onclick="uvRelSheet('${w.id}')">${ICON.plus}Add or change a relationship</div></div>
+    <p class="uv-p uv-inset-p"><span class="uv-link" onclick="uvHowRelations()">How relationships work</span></p>`;
+  }
+  function entryRow(st, e, pairLink = false) {
+    const { cause, result } = entryText(st, e);
+    const ev = e.cause.event;
+    const act = e.auto ? e.ignored ? `<span class="uv-link" onclick="event.stopPropagation();uvRestoreChange('${esc(e.key)}')">Count it again</span>` : `<span class="uv-link" onclick="event.stopPropagation();uvIgnoreChange('${esc(e.key)}')">Ignore</span>` : `<span class="uv-link" onclick="event.stopPropagation();uvTakeBackRel('${e.cause.edit.id}')">Take back</span>`;
+    return `<div class="uv-ent${e.ignored ? " ignored" : ""}${e.auto ? "" : " own"}" style="--k:${KIND[e.kind].color}" data-entry="${esc(e.key)}"
+      ${pairLink ? `onclick="uvOpenPair('${e.a}','${e.b}')"` : ""}>
+    <div class="w">${when(st, e.at)}</div>
+    <div class="x"><div class="c">${esc(cause)}</div>
+      <div class="r">\u2192 ${esc(result)}</div>
+      ${e.ignored ? `<div class="ig">Ignored by you${e.ignored.note ? ` \u2014 ${esc(e.ignored.note)}` : ""}. It doesn\u2019t count.</div>` : ""}
+      ${pairLink ? "" : `<div class="a"><span>${e.auto ? "Automatic" : "Your change"}</span>${act}${ev ? `<span class="uv-link" onclick="event.stopPropagation();uvOpenEvent('${ev}')">Open the show</span>` : ""}</div>`}
+    </div></div>`;
+  }
+  function uvPairPage(id) {
+    const st = uni();
+    const [a, b] = String(id).split("+");
+    const A = wrestlerById(st, a), B = wrestlerById(st, b);
+    if (!A || !B) return null;
+    const d = relationships(st);
+    const pv = pairView(st, a, b, d);
+    const now2 = pv.rels.filter((r) => r.active).sort((x, y) => ORDER.indexOf(x.kind) - ORDER.indexOf(y.kind));
+    const p = pv.progress;
+    const runs = p.losses.filter((x) => x.n > 0);
+    const opportunist = d.has(a, "opportunistic", null) || d.has(b, "opportunistic", null);
+    const person = (w) => `<div class="p" onclick="uvOpenWrestler('${w.id}')">${avatar(st, w, "lg")}<b>${esc(w.name)}</b>
+    <span>${esc(showName(st, w.showId))}</span>
+    <span class="tr">${w.traits.length ? esc(w.traits.map(traitName).join(", ")) : "No traits set"}</span></div>`;
+    return {
+      title: `${A.name} & ${B.name}`,
+      body: `
+      <div class="uv-pairhead" style="--c:${showColor(st, A.showId)}">${person(A)}<div class="amp">&amp;</div>${person(B)}</div>
+      <div class="uv-page-acts">
+        <div class="uv-btn pri" onclick="uvRelSheet('${a}','${b}')">${ICON.edit}Change\u2026</div>
+        <div class="uv-btn" onclick="uvHowRelations()">How it works</div>
+      </div>
+
+      ${section("Now", now2.length || null)}
+      ${now2.length ? `<div class="uv-rels">${now2.map((r) => `<div class="uv-relnow" style="--k:${KIND[r.kind].color}" data-rel="${esc(r.key)}">
+        ${kindChip2(r.kind)}<div class="uv-main"><div class="nm">${esc(relText(st, r))}</div>
+        <div class="sub">${levelText(r) ? `${esc(levelText(r))} of 3 \xB7 ` : ""}since ${when(st, r.since)}</div></div>${dots(r)}</div>`).join("")}</div>` : '<div class="uv-none">Nothing between them right now.</div>'}
+
+      ${section("Building up", null)}
+      <div class="uv-build">
+        ${runs.length ? runs.map((x) => `<div>${esc(nm4(st, x.loser))} has lost ${x.n} in a row to ${esc(nm4(st, x.winner))} \u2014
+          ${(d.rels.get(relKey("grudge", x.loser, x.winner)) || {}).active ? "more heat" : "a grudge"} at ${x.need}</div>`).join("") : "<div>No losing run between them. A win resets one.</div>"}
+        <div>${p.together ? `On the same side ${plural5(p.together, "time")}.` : "Never on the same side."} Allies at ${p.alliesAt}${opportunist ? "; never friends from teaming up (opportunistic)" : `, friends at ${p.friendsAt}`}.</div>
+      </div>
+
+      ${section("Timeline", pv.entries.length || null)}
+      ${pv.entries.length ? `<div class="uv-ents">${pv.entries.map((e) => entryRow(st, e)).join("")}</div>` : '<div class="uv-none">Nothing has happened between them yet.</div>'}
+      <div class="uv-fix">
+        <div class="h">Fix a mistake</div>
+        <div class="fine">An automatic change you don\u2019t agree with: tap <b>Ignore</b> on it. It stays on the timeline, crossed out,
+          and everything after it is worked out again without it. Your own changes can be taken back.</div>
+        <div class="fine">A wrong result or incident: correct it on its show \u2014 every relationship built on it follows.</div>
+      </div>`
+    };
+  }
+  function uvIgnoreChange(key) {
+    const st = uni();
+    const e = relationships(st).entries.find((x) => x.key === key);
+    if (!e) return;
+    confirmThen(
+      "Ignore this change?",
+      `\u201C${entryText(st, e).result}\u201D won\u2019t count. It stays on the timeline, crossed out, and you can count it again any time. Everything after it is worked out again without it.`,
+      "Ignore it",
+      () => {
+        const before = snapshot(uni());
+        commit((s) => dismissChange(s, key), () => `Ignored${uvRelNews(before)}`);
+      }
+    );
+  }
+  function uvRestoreChange(key) {
+    const before = snapshot(uni());
+    commit((st) => restoreChange(st, key), () => `Counted again${uvRelNews(before)}`);
+  }
+  function uvTakeBackRel(editId) {
+    const st = uni();
+    const e = relationships(st).entries.find((x) => !x.auto && x.cause.edit.id === editId);
+    confirmThen(
+      "Take back your change?",
+      `${e ? `\u201C${entryText(st, e).result}\u201D comes off the timeline. ` : ""}Everything after it is worked out again without it.`,
+      "Take it back",
+      () => {
+        const before = snapshot(uni());
+        commit((s) => deleteRelEdit(s, editId), () => `Taken back${uvRelNews(before)}`);
+      }
+    );
+  }
+  function uvRelNews(before) {
+    const st = uni();
+    const news = changesBetween(st, before, snapshot(st));
+    return news.length ? ` \u2014 ${news[0]}${news.length > 1 ? ` (+${news.length - 1} more)` : ""}` : "";
+  }
+  function uvRelBefore() {
+    return snapshot(uni());
+  }
+  function preview(apply) {
+    const st = uni();
+    try {
+      const copy = JSON.parse(JSON.stringify(st));
+      apply(copy);
+      return changesBetween(copy, snapshot(st), snapshot(copy));
+    } catch (e) {
+      if (e instanceof UniverseError) return null;
+      throw e;
+    }
+  }
+  var previewBox = (news, idle) => `<div class="uv-prev"><b>What it changes</b>${news == null ? `<span>${esc(idle)}</span>` : news.length ? news.map((x) => `<span>${esc(x)}</span>`).join("") : "<span>No relationship changes.</span>"}</div>`;
+  var rd = null;
+  function uvRelSheet(a = "", b = "", kind = "") {
+    rd = { a, b, fixA: !!a, fixB: !!b, kind: kind || "grudge", dir: "ab", action: "", level: 1, since: "now", note: "" };
+    openSheet(relSheet);
+  }
+  function relSheet() {
+    const st = uni();
+    if (!rd) return null;
+    if (rd.fixA && !wrestlerById(st, rd.a) || rd.fixB && !wrestlerById(st, rd.b)) return null;
+    if (st.wrestlers.length < 2) return { title: "Relationship", body: empty(ICON.user, "Add wrestlers first", "A relationship needs two wrestlers.") };
+    const both = rd.a && rd.b && rd.a !== rd.b;
+    const [x, y] = rd.kind === "grudge" && rd.dir === "ba" ? [rd.b, rd.a] : [rd.a, rd.b];
+    const d = both ? relationships(st) : null;
+    const r = both ? d.rels.get(relKey(rd.kind, x, y)) : null;
+    const active = !!(r && r.active);
+    const lv = KIND[rd.kind].level;
+    const acts = active ? [...lv ? [["level", `Set the ${lv}`]] : [], ["end", "End it"], ["note", "Add a note"]] : [["form", "Start it"], ["note", "Add a note"]];
+    if (!acts.some(([k]) => k === rd.action)) rd.action = acts[0][0];
+    const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${String(cur) === String(k) ? "on" : ""}" data-v="${k}"
+    onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
+    const s = activeSeason(st);
+    if (rd.action === "end" || rd.action === "note") rd.since = "now";
+    const input = { action: rd.action, kind: rd.kind, a: x, b: y, level: rd.level, since: rd.since, note: rd.note };
+    const news = both ? preview((copy) => editRelationship(copy, input)) : null;
+    return {
+      title: rd.fixA && rd.fixB ? `${esc(nm4(st, rd.a))} & ${esc(nm4(st, rd.b))}` : "Relationship",
+      body: `
+      ${rd.fixA && rd.fixB ? "" : `<div class="uv-grid">
+        ${field("Wrestler", rd.fixA ? `<div class="uv-in ro">${esc(nm4(st, rd.a))}</div>` : select("uvRelSet('a',this.value)", wrestlerOptions(st, rd.a, "\u2014 Pick a wrestler \u2014", [rd.b]), ' id="uvRelA"'), "wide")}
+        ${field("And", select("uvRelSet('b',this.value)", wrestlerOptions(st, rd.b, "\u2014 Pick a wrestler \u2014", [rd.a]), ' id="uvRelB"'), "wide")}
+      </div>`}
+      <div class="uv-pills tight">${ORDER.map((k) => `<div class="uv-pill${rd.kind === k ? " on" : ""}" data-kind="${k}" onclick="uvRelSet('kind','${k}')">
+        <span class="uv-dot" style="--c:${KIND[k].color}"></span>${KIND[k].label}</div>`).join("")}</div>
+      ${both && rd.kind === "grudge" ? `<div class="uv-sub flush">Who holds it</div>${seg([["ab", `${nm4(st, rd.a)} \u2192 ${nm4(st, rd.b)}`], ["ba", `${nm4(st, rd.b)} \u2192 ${nm4(st, rd.a)}`]], rd.dir, "uvRelDir")}` : ""}
+      ${both ? `<div class="uv-note">${active ? `Now: <b>${esc(relText(st, r))}</b>${lv ? ` \u2014 ${esc(levelText(r))} of 3` : ""}.` : `Not now: ${esc(relText(st, { kind: rd.kind, a: x, b: y }).replace(" holds a grudge", " holds no grudge").replace(" are ", " are not "))}.`}</div>
+      <div class="uv-sub flush">Change</div>${seg(acts, rd.action, "uvRelAction")}
+      ${(rd.action === "form" || rd.action === "level") && lv ? `<div class="uv-sub flush">${lv === "heat" ? "Heat" : "Strength"}</div>
+        ${seg([[1, "1 \xB7 mild"], [2, "2"], [3, "3 \xB7 all-out"]], rd.level, "uvRelLevel")}` : ""}
+      ${rd.action === "form" || rd.action === "level" ? `<div class="uv-sub flush">Counts from</div>
+      ${seg([["now", `This week (W${s.week})`], ["start", "The start"]], rd.since, "uvRelSince")}
+      <div class="fine">${rd.since === "start" ? "From the start: as if it had always been so \u2014 for history from before your universe began. It counts before every result." : "This week: from now on. Everything before stays as it was."}</div>` : ""}
+      <div style="margin-top:10px">${field(rd.action === "note" ? "Note" : "Why (optional)", `<input id="uvRelNote" class="uv-in" maxlength="60" value="${esc(rd.note)}"
+        placeholder="${rd.action === "note" ? "e.g. Still bitter about Mania" : "e.g. Feud from before the universe"}" oninput="uvRelNote(this.value)">`, "wide")}</div>
+      ${previewBox(news, rd.action === "note" ? "Only a note on the timeline." : "")}
+      <div class="uv-btn pri full" onclick="uvRelSave()">Save</div>` : '<p class="uv-p">Pick two wrestlers.</p>'}`
+    };
+  }
+  function uvRelSet(k, v) {
+    rd[k] = v;
+    if (k !== "kind") rd.dir = "ab";
+    paintSheet();
+  }
+  function uvRelDir(v) {
+    rd.dir = v;
+    paintSheet();
+  }
+  function uvRelAction(v) {
+    rd.action = v;
+    paintSheet();
+  }
+  function uvRelLevel(v) {
+    rd.level = Number(v);
+    paintSheet();
+  }
+  function uvRelSince(v) {
+    rd.since = v;
+    paintSheet();
+  }
+  function uvRelNote(v) {
+    rd.note = v;
+  }
+  function uvRelSave() {
+    const [x, y] = rd.kind === "grudge" && rd.dir === "ba" ? [rd.b, rd.a] : [rd.a, rd.b];
+    const before = snapshot(uni());
+    const r = commit(
+      (st) => editRelationship(st, { action: rd.action, kind: rd.kind, a: x, b: y, level: rd.level, since: rd.since, note: rd.note }),
+      () => `Saved${uvRelNews(before)}`
+    );
+    if (r.ok) closeSheet();
+  }
+  var td = null;
+  function uvEditTraits(id) {
+    const st = uni();
+    const w = wrestlerById(st, id);
+    if (!w) return;
+    td = { id, on: new Set(w.traits), since: traitHistory(st, id).length ? "now" : "start", note: "" };
+    openSheet(traitSheet);
+  }
+  function traitSheet() {
+    const st = uni();
+    const w = td && wrestlerById(st, td.id);
+    if (!w) return null;
+    const adds = TRAITS.filter((t) => td.on.has(t) && !w.traits.includes(t));
+    const drops = w.traits.filter((t) => !td.on.has(t));
+    const s = activeSeason(st);
+    const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${cur === k ? "on" : ""}" data-v="${k}"
+    onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
+    const news = adds.length || drops.length ? preview((copy) => setTraits(copy, td.id, [...td.on], { since: td.since })) : [];
+    return {
+      title: `${esc(w.name)}\u2019s personality`,
+      body: `
+      <p class="uv-p">Pick any traits. They never change on their own \u2014 a result, however bad, doesn\u2019t rewrite who someone is.
+        Only you do, here.</p>
+      <div class="uv-traits">${TRAITS.map((t) => `<div class="uv-trait${td.on.has(t) ? " on" : ""}" data-trait="${t}" onclick="uvTraitToggle('${t}')">
+        <b>${esc(traitName(t))}</b><span>${esc(TRAIT[t][1])}</span><span class="fx">${esc(TRAIT[t][2] || NO_EFFECT)}</span></div>`).join("")}</div>
+      ${adds.length || drops.length ? `
+        <div class="uv-note">${[adds.length && `Adds ${adds.map(traitName).join(", ")}`, drops.length && `Removes ${drops.map(traitName).join(", ")}`].filter(Boolean).join(" \xB7 ")}.</div>
+        <div class="uv-sub flush">Counts from</div>
+        ${seg([["now", `This week (W${s.week})`], ["start", "The start"]], td.since, "uvTraitSince")}
+        <div class="fine">${td.since === "start" ? "From the start: as if they\u2019d always been this way. Past relationships are worked out again with it." : "This week: from now on. What already happened stays as it was \u2014 traits count as they were at the time."}</div>
+        <div style="margin-top:10px">${field("Why (optional)", `<input id="uvTraitNote" class="uv-in" maxlength="60" value="${esc(td.note)}"
+          placeholder="e.g. Snapped after WrestleMania" oninput="uvTraitNote(this.value)">`, "wide")}</div>
+        ${td.since === "start" || news.length ? previewBox(news, "") : ""}
+        <div class="uv-btn pri full" onclick="uvTraitSave()">Save</div>` : '<div class="uv-btn full" onclick="uvCloseSheet()">Done</div>'}`
+    };
+  }
+  function uvTraitToggle(t) {
+    if (td.on.has(t)) td.on.delete(t);
+    else td.on.add(t);
+    paintSheet();
+  }
+  function uvTraitSince(v) {
+    td.since = v;
+    paintSheet();
+  }
+  function uvTraitNote(v) {
+    td.note = v;
+  }
+  function uvTraitSave() {
+    const before = snapshot(uni());
+    const r = commit((st) => setTraits(st, td.id, [...td.on], { since: td.since, note: td.note }), () => `Personality saved${uvRelNews(before)}`);
+    if (r.ok) closeSheet();
+  }
+  var names = (st, ids) => ids.map((id) => nm4(st, id)).join(" & ");
+  function incidentText(st, inc) {
+    if (inc.kind === "betrayal") return `${names(st, inc.by)} betrayed ${names(st, inc.on)}`;
+    if (inc.kind === "attack") return `${names(st, inc.by)} attacked ${names(st, inc.on)}`;
+    return `${names(st, inc.by)} interfered against ${names(st, inc.on)}${inc.helped.length ? `, helping ${names(st, inc.helped)}` : ""}`;
+  }
+  var INC = {
+    betrayal: {
+      label: "Betrayal",
+      color: "#FF5A4E",
+      by: "Who turned",
+      on: "On whom",
+      text: "Someone turned on a partner or friend. The one betrayed holds a grudge \u2014 heat 2, or 3 if they\u2019re loyal \u2014 and any friendship or alliance between them ends."
+    },
+    interference: {
+      label: "Interference",
+      color: "#F0A53A",
+      by: "Who interfered",
+      on: "Against",
+      text: "Someone got involved in a match. Whoever it went against holds a grudge; whoever it helped becomes their ally."
+    },
+    attack: {
+      label: "Attack",
+      color: "#C9A7FF",
+      by: "Who attacked",
+      on: "Who was attacked",
+      text: "A beat-down \u2014 backstage, before or after the bell. The one attacked holds a grudge: heat 1, or 2 if they\u2019re hot-headed."
+    }
+  };
+  var matchName = (st, ev, id) => {
+    const i = ev.matches.findIndex((m) => m.id === id);
+    return i < 0 ? "" : `Match ${i + 1}: ${ev.matches[i].sides.map((sd) => sideName(st, sd)).join(" vs ")}`;
+  };
+  function uvIncidentsBlock(st, ev) {
+    const d = relationships(st);
+    const here = d.entries.filter((e) => e.cause.event === ev.id);
+    return `
+    ${section("Incidents", ev.incidents.length || null)}
+    ${ev.incidents.map((inc) => `<div class="uv-inc" data-inc="${inc.id}" onclick="uvIncident('${ev.id}','${inc.id}')">
+      <span class="uv-rk" style="--k:${INC[inc.kind].color}">${INC[inc.kind].label}</span>
+      <div class="uv-main"><div class="nm">${esc(incidentText(st, inc))}</div>
+        ${inc.match || inc.note ? `<div class="sub">${esc([inc.match && matchName(st, ev, inc.match), inc.note].filter(Boolean).join(" \xB7 "))}</div>` : ""}</div>
+      <span class="uv-chev">${ICON.edit}</span></div>`).join("")}
+    ${ev.incidents.length ? "" : '<div class="uv-none">A betrayal, an interference or an attack you saw in the game goes here. The result of a match doesn\u2019t.</div>'}
+    <div class="uv-page-acts"><div class="uv-btn" onclick="uvIncident('${ev.id}')">${ICON.plus}Record an incident</div></div>
+    ${here.length ? `${section("Relationships", here.length)}<div class="uv-ents">${here.map((e) => entryRow(st, e, true)).join("")}</div>` : ""}`;
+  }
+  var ic = null;
+  function uvIncident(eventId, incId = "") {
+    const ev = eventById(uni(), eventId);
+    const inc = incId && ev && ev.incidents.find((x) => x.id === incId);
+    ic = inc ? { eventId, incId, kind: inc.kind, by: [...inc.by], on: [...inc.on], helped: [...inc.helped], match: inc.match || "", note: inc.note } : { eventId, incId: "", kind: "betrayal", by: [""], on: [""], helped: [], match: "", note: "" };
+    openSheet(incidentSheet);
+  }
+  function incidentSheet() {
+    const st = uni();
+    const ev = ic && eventById(st, ic.eventId);
+    if (!ev || ic.incId && !ev.incidents.some((x) => x.id === ic.incId)) return null;
+    const k = INC[ic.kind];
+    const picks = (list, label, optional = false) => `<div class="uv-sidebox"><div class="h"><span>${esc(label)}</span></div>
+    ${ic[list].map((wid, j) => `<div class="uv-pick">${select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`)}
+      ${ic[list].length > 1 || optional ? `<div class="uv-ic sm" onclick="uvIcDrop('${list}',${j})">${ICON.x}</div>` : ""}</div>`).join("")}
+    <div class="uv-add" onclick="uvIcAdd('${list}')">${ICON.plus}${ic[list].length ? "Add another" : "Add someone"}</div></div>`;
+    const input = { kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note };
+    const news = preview((copy) => ic.incId ? updateIncident(copy, ic.eventId, ic.incId, input) : recordIncident(copy, ic.eventId, input));
+    return {
+      title: ic.incId ? "Edit the incident" : "Record an incident",
+      body: `
+      <p class="uv-p">${esc(ev.name)} \u2014 what you saw in the game besides the result.</p>
+      <div class="uv-seg">${Object.keys(INC).map((x) => `<div class="${ic.kind === x ? "on" : ""}" data-v="${x}" onclick="uvIcKind('${x}')">${INC[x].label}</div>`).join("")}</div>
+      <div class="fine" style="margin:0 0 10px">${esc(k.text)}</div>
+      ${ev.matches.length ? field("During", select("uvIcSet('match',this.value)", options([
+        ["", "\u2014 Not during a match \u2014"],
+        ...ev.matches.map((m) => [m.id, matchName(st, ev, m.id)])
+      ], ic.match), ' id="uvIcMatch"'), "wide") : ""}
+      <div style="margin-top:10px">${picks("by", k.by)}${picks("on", k.on)}${ic.kind === "interference" ? picks("helped", "Helping (optional)", true) : ""}</div>
+      <div style="margin-top:12px">${field("Notes (optional)", `<input id="uvIcNote" class="uv-in" maxlength="2000" value="${esc(ic.note)}" placeholder="e.g. Hit him with the belt"
+        oninput="uvIcNote(this.value)">`, "wide")}</div>
+      ${previewBox(news, "Pick who did it and to whom.")}
+      <div class="uv-btn pri full" onclick="uvIcSave()">${ic.incId ? "Save the incident" : "Record it"}</div>
+      ${ic.incId ? '<div class="uv-btn bad full" onclick="uvIcDelete()">Delete the incident</div>' : ""}`
+    };
+  }
+  function uvIcKind(k) {
+    ic.kind = k;
+    if (k !== "interference") ic.helped = [];
+    paintSheet();
+  }
+  function uvIcSet(k, v) {
+    ic[k] = v;
+    paintSheet();
+  }
+  function uvIcPick(list, j, v) {
+    ic[list][j] = v;
+    paintSheet();
+  }
+  function uvIcAdd(list) {
+    ic[list].push("");
+    paintSheet();
+  }
+  function uvIcDrop(list, j) {
+    ic[list].splice(j, 1);
+    paintSheet();
+  }
+  function uvIcNote(v) {
+    ic.note = v;
+  }
+  function uvIcSave() {
+    const input = { kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note };
+    const before = snapshot(uni());
+    const r = commit(
+      (st) => ic.incId ? updateIncident(st, ic.eventId, ic.incId, input) : recordIncident(st, ic.eventId, input),
+      () => `${ic.incId ? "Incident saved" : "Incident recorded"}${uvRelNews(before)}`
+    );
+    if (r.ok) closeSheet();
+  }
+  function uvIcDelete() {
+    const { eventId, incId } = ic;
+    const st = uni();
+    const inc = eventById(st, eventId).incidents.find((x) => x.id === incId);
+    confirmThen(
+      "Delete this incident?",
+      `\u201C${incidentText(st, inc)}\u201D comes off the show, and every relationship change it made is worked out again without it.`,
+      "Delete",
+      () => {
+        const before = snapshot(uni());
+        if (commit((s) => deleteIncident(s, eventId, incId), () => `Incident deleted${uvRelNews(before)}`).ok) closeSheet();
+      }
+    );
+  }
+  var relKind = "";
+  function uvRelKind(k) {
+    relKind = k;
+    refresh();
+  }
+  function uvRelationsView() {
+    const st = uni();
+    if (st.wrestlers.length < 2) {
+      return empty(ICON.team, "No relationships yet", "Add wrestlers to the roster first. Relationships grow out of their results, teams and incidents.");
+    }
+    const d = relationships(st);
+    const active = [...d.rels.values()].filter((r) => r.active);
+    const count = (k) => active.filter((r) => r.kind === k).length;
+    const shown = active.filter((r) => !relKind || r.kind === relKind);
+    const last = (r) => r.entries[r.entries.length - 1];
+    shown.sort((x, y) => ORDER.indexOf(x.kind) - ORDER.indexOf(y.kind) || y.level - x.level || (last(y).at && last(x).at ? compareStamps(st, last(y).at, last(x).at) : !last(x).at - !last(y).at));
+    const pill2 = (k, label, n, color) => `<div class="uv-pill${relKind === k ? " on" : ""}" data-kind="${k}" onclick="uvRelKind('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}<span class="n">${n}</span></div>`;
+    const row2 = (r) => {
+      const A = wrestlerById(st, r.a), B = wrestlerById(st, r.b);
+      return `<div class="uv-row" data-rel="${esc(r.key)}" onclick="uvOpenPair('${r.a}','${r.b}')">
+      <span class="uv-av2">${avatar(st, A)}${avatar(st, B)}</span>
+      <div class="uv-main"><div class="nm">${esc(A.name)} ${r.kind === "grudge" ? "\u2192" : "&amp;"} ${esc(B.name)}</div>
+        <div class="sub">${kindChip2(r.kind)}<span class="uv-rt">since ${when(st, r.since)} \xB7 ${plural5(r.entries.length, "change")}</span></div></div>
+      ${dots(r)}<span class="uv-chev">${ICON.right}</span></div>`;
+    };
+    const latest = d.entries.slice(-12).reverse();
+    return `
+    <div class="uv-bar"><div class="uv-bar-t">Relationships</div>
+      <div class="uv-btn pri" onclick="uvRelSheet()">${ICON.plus}Add</div></div>
+    <p class="uv-p uv-inset-p">Worked out from results, title changes, tag teams and the incidents you record \u2014 plus your own changes.
+      Tap one to see exactly why it exists. <span class="uv-link" onclick="uvHowRelations()">How relationships work</span></p>
+    <div class="uv-pills">${pill2("", "All", active.length)}${ORDER.map((k) => pill2(k, KIND[k].label, count(k), KIND[k].color)).join("")}</div>
+    ${shown.length ? shown.map(row2).join("") : `<div class="uv-none">${active.length ? "None of these right now." : "None yet. They grow out of results, teams and incidents \u2014 or add one yourself."}</div>`}
+    ${latest.length ? `${section("Latest changes", null)}<div class="uv-ents">${latest.map((e) => entryRow(st, e, true)).join("")}</div>` : ""}`;
+  }
+  function uvHowRelations() {
+    openSheet(() => ({
+      title: "How relationships work",
+      body: `
+      <p class="uv-p"><b>You see everything.</b> Every trait and every relationship is on show from the start. Nothing is hidden,
+        scouted or discovered over time.</p>
+      <p class="uv-p"><b>Where relationships come from.</b> They\u2019re worked out from what\u2019s on record, in calendar order \u2014 results,
+        title changes, tag teams, the incidents you log on a show, and your own changes. Nothing random happens.</p>
+      <div class="uv-calc">
+        <div><span>Losses</span><b>${RULES2.streak} straight losses to the same wrestler: a grudge against them, or 1 more heat.
+          Hot-headed: ${RULES2.streakHotHeaded}. Patient: ${RULES2.streakPatient}. A win over them starts the count again.</b></div>
+        <div><span>Title</span><b>losing a title to someone in a match: a grudge against the new champion (ambitious: heat 2), and
+          they\u2019re rivals</b></div>
+        <div><span>Betrayal</span><b>a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends</b></div>
+        <div><span>Interference</span><b>a grudge against whoever interfered; whoever it helped becomes their ally</b></div>
+        <div><span>Attack</span><b>a grudge against the attacker (hot-headed: heat 2)</b></div>
+        <div><span>Teaming</span><b>${RULES2.allies} matches on the same side, win or lose: allies (loyal: ${RULES2.alliesLoyal}).
+          ${RULES2.friends}: friends \u2014 unless either is opportunistic, or there\u2019s a grudge between them</b></div>
+        <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners</b></div>
+      </div>
+      <p class="uv-p"><b>Heat and strength</b> run from 1 to 3. A grudge goes one way \u2014 one wrestler holds it against another.
+        Rivals, allies and friends go both ways.</p>
+      <p class="uv-p"><b>Traits</b> only change how fast or how hard those rules hit, and they count as they were at the time.
+        Proud, cowardly and respectful don\u2019t change anything by themselves \u2014 they\u2019re for your booking. If someone is both
+        hot-headed and patient, hot-headed wins. A trait is never changed for you, however a match goes.</p>
+      <p class="uv-p"><b>Your changes.</b> Ignore any automatic change: it stays on the timeline, crossed out, and doesn\u2019t count.
+        Start, set, end or add a note to any relationship yourself \u2014 from this week, or from the start for history before your
+        universe began. Your changes sit on the same timeline and can be taken back.</p>
+      <p class="uv-p"><b>Corrections follow.</b> Correct a result, or edit or delete an incident, and every relationship built on it
+        is worked out again.</p>`
+    }));
+  }
+
   // js/universe/views.js
   var calWeek = null;
   var CARD_TEXT = {
@@ -5071,16 +6238,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
     calWeek = null;
   }
   var rosterShow = "all";
+  var rosterMode = "wrestlers";
   var rosterQ = "";
   var picking = null;
   function uvRosterShow() {
     return rosterShow === "all" ? "" : rosterShow;
   }
   function uvRosterView() {
+    const seg = (k, lb) => `<div class="${rosterMode === k ? "on" : ""}" data-mode="${k}" onclick="uvRosterMode('${k}')">${lb}</div>`;
+    const top = `<div class="uv-seg uv-seg-page">${seg("wrestlers", "Wrestlers")}${seg("relations", "Relationships")}</div>`;
+    if (rosterMode === "relations") return top + uvRelationsView();
     const st = uni();
     const counts = rosterCounts(st);
     const pill2 = (k, label, n, color) => `<div class="uv-pill${rosterShow === k ? " on" : ""}" onclick="uvRosterFilter('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}<span class="n">${n}</span></div>`;
-    return `
+    return `${top}
     <div class="uv-bar">
       <div class="uv-search">${ICON.search}<input id="uvQ" type="search" placeholder="Search wrestlers"
         autocomplete="off" spellcheck="false" value="${esc(rosterQ)}" oninput="uvRosterSearch(this.value)"></div>
@@ -5147,6 +6318,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvEndSelect() {
     if (!picking) return;
+    picking = null;
+    refresh();
+  }
+  function uvRosterMode(k) {
+    rosterMode = k;
     picking = null;
     refresh();
   }
@@ -5553,6 +6729,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ""}
       <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ""}</div>
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join("")}</div>` : empty(ICON.cal, "Nothing booked yet", "Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.")}
+      ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
         <div class="fine">A result entered wrong: tap <b>Correct</b> on it. You can change anything, clear the result
@@ -5870,16 +7047,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
       fall: { by: d.by || null, on: d.on || null }
     };
     const opts = { titleChange: !!(d.titleId && d.titleChange && isWin) };
+    const before = uvRelBefore();
     const r = commit((st) => d.mode === "result" ? enterResult(st, d.eventId, d.matchId, input, opts) : updateMatch(st, d.eventId, d.matchId, input, opts), (m) => {
       const st = uni();
       const reign = st.reigns.find((x) => x.matchId === m.id);
       const saved = d.mode === "result" ? "Result saved" : "Result corrected";
+      const news = uvRelNews(before).replace(/^ — /, ". ");
       const rel = st.relegations.find((x) => x.match === m.id);
-      if (rel) return `${saved} \u2014 ${wrestlerById(st, rel.wrestler).name} relegated to NXT`;
+      if (rel) return `${saved} \u2014 ${wrestlerById(st, rel.wrestler).name} relegated to NXT${news}`;
       const q = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier");
-      if (q) return `${saved} \u2014 ${wrestlerById(st, q.wrestler).name} is draft eligible`;
-      if (!reign) return saved;
-      return `${saved} \u2014 ${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}`;
+      if (q) return `${saved} \u2014 ${wrestlerById(st, q.wrestler).name} is draft eligible${news}`;
+      if (!reign) return saved + (news ? ` \u2014 ${news.slice(2)}` : "");
+      return `${saved} \u2014 ${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}${news}`;
     });
     if (r.ok) closeSheet();
   }
@@ -5892,7 +7071,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       "The match stays on the card, booked, as if it hadn\u2019t been played yet. It comes off everyone\u2019s record." + (linked ? ` The ${titleById(st, linked.titleId).name} goes back to whoever held it before.` : ""),
       "Clear result",
       () => {
-        if (commit((s) => clearResult(s, d.eventId, d.matchId), "Result cleared \u2014 booked again").ok) closeSheet();
+        const before = uvRelBefore();
+        if (commit((s) => clearResult(s, d.eventId, d.matchId), () => `Result cleared \u2014 booked again${uvRelNews(before)}`).ok) closeSheet();
       }
     );
   }
@@ -5906,7 +7086,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       (m.status === "played" ? "Its result comes off everyone\u2019s record." : "It hasn\u2019t been played, so nothing else changes.") + (linked ? ` The ${titleById(st, linked.titleId).name} goes back to whoever held it before.` : ""),
       "Take it off",
       () => {
-        if (commit((s) => deleteMatch(s, d.eventId, d.matchId), "Match removed").ok) closeSheet();
+        const before = uvRelBefore();
+        if (commit((s) => deleteMatch(s, d.eventId, d.matchId), () => `Match removed${uvRelNews(before)}`).ok) closeSheet();
       }
     );
   }
@@ -5949,7 +7130,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     pushPage("title", id);
   }
   function uvPageView(kind, id) {
-    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : null;
+    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : null;
   }
   var expanded = /* @__PURE__ */ new Set();
   function uvShowAll(key) {
@@ -6053,12 +7234,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const champRow = (c) => reignRow(st, c.reign, `${esc(c.title.name)}${c.team ? ` <span class="uv-muted">with ${esc(c.team.name)}</span>` : ""}`);
     const mateRow = (m) => {
       const spell = m.spells[m.spells.length - 1];
-      const when = m.current ? m.team.active ? `since ${stampLabel(st, m.spells[0].start)}` : "team disbanded" : `${span(st, spell.start, spell.end)}`;
+      const when2 = m.current ? m.team.active ? `since ${stampLabel(st, m.spells[0].start)}` : "team disbanded" : `${span(st, spell.start, spell.end)}`;
       const together = rec.teams[m.team.id];
       return `<div class="uv-row${m.current && m.team.active ? "" : " dim"}" onclick="uvOpenTeam('${m.team.id}')">
       <span class="uv-av sq">${ICON.team}</span>
       <div class="uv-main"><div class="nm">${esc(m.team.name)}${m.current ? "" : " " + tag("Former")}</div>
-        <div class="sub">${m.partners.length ? `with ${esc(m.partners.map((p) => p.name).join(" & "))} \xB7 ` : ""}${when}</div></div>
+        <div class="sub">${m.partners.length ? `with ${esc(m.partners.map((p) => p.name).join(" & "))} \xB7 ` : ""}${when2}</div></div>
       <div class="uv-champ"><div class="h">${fmtRec(together)}</div><div class="s">as the team</div></div>
     </div>`;
     };
@@ -6088,6 +7269,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ""}
 
       ${upcoming(st, booked)}
+      ${uvProfilePersonality(st, w)}
       ${drafted.length || eligibleOnly.length ? section("Draft", null) + drafted.map((d) => {
         const how = d.eligibility.map((x) => st.eligibility.find((e) => e.id === x)).filter(Boolean).map(eligibilityText).join("; ") || "brought along by the owner\u2019s decision";
         const titles = d.titles.map((x) => `${x.choice === "vacated" ? "vacated" : "kept"} the ${esc(titleById(st, x.title).name)}`).join(", ");
@@ -6355,13 +7537,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }
       return;
     }
-    const names = d.list.split("\n").filter((n) => n.trim());
-    if (!names.length) {
+    const names2 = d.list.split("\n").filter((n) => n.trim());
+    if (!names2.length) {
       toast("Paste at least one name.", true);
       return;
     }
     const r = commit(
-      (st) => addWrestlers(st, names, shared),
+      (st) => addWrestlers(st, names2, shared),
       (res) => `Added ${res.added.length} wrestler${res.added.length === 1 ? "" : "s"}`
     );
     if (!r.ok) return;
@@ -7286,7 +8468,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports);
   initUniverse();
 })();
 

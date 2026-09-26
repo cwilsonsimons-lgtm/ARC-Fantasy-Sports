@@ -16,6 +16,7 @@ import {
   select, showColor, showName, showPairs, teamOptions, titleOptions, vsLine, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, toast, uni } from './app.js';
+import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
 
@@ -156,6 +157,7 @@ export function uvEventPage(id) {
       <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join('')}</div>`
         : empty(ICON.cal, 'Nothing booked yet', 'Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.')}
+      ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
         <div class="fine">A result entered wrong: tap <b>Correct</b> on it. You can change anything, clear the result
@@ -424,17 +426,19 @@ export function uvMSave(thenResult) {
     finish: d.finish, fall: { by: d.by || null, on: d.on || null },
   };
   const opts = { titleChange: !!(d.titleId && d.titleChange && isWin) };
+  const before = uvRelBefore();
   const r = commit(st => (d.mode === 'result' ? M.enterResult(st, d.eventId, d.matchId, input, opts)
     : M.updateMatch(st, d.eventId, d.matchId, input, opts)), m => {
     const st = uni();
     const reign = st.reigns.find(x => x.matchId === m.id);
     const saved = d.mode === 'result' ? 'Result saved' : 'Result corrected';
+    const news = uvRelNews(before).replace(/^ — /, '. ');
     const rel = st.relegations.find(x => x.match === m.id);
-    if (rel) return `${saved} — ${M.wrestlerById(st, rel.wrestler).name} relegated to NXT`;
+    if (rel) return `${saved} — ${M.wrestlerById(st, rel.wrestler).name} relegated to NXT${news}`;
     const q = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
-    if (q) return `${saved} — ${M.wrestlerById(st, q.wrestler).name} is draft eligible`;
-    if (!reign) return saved;
-    return `${saved} — ${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}`;
+    if (q) return `${saved} — ${M.wrestlerById(st, q.wrestler).name} is draft eligible${news}`;
+    if (!reign) return saved + (news ? ` — ${news.slice(2)}` : '');
+    return `${saved} — ${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}${news}`;
   });
   if (r.ok) closeSheet();
 }
@@ -446,7 +450,10 @@ export function uvMClear() {
   confirmThen('Clear this result?',
     'The match stays on the card, booked, as if it hadn’t been played yet. It comes off everyone’s record.'
     + (linked ? ` The ${M.titleById(st, linked.titleId).name} goes back to whoever held it before.` : ''),
-    'Clear result', () => { if (commit(s => M.clearResult(s, d.eventId, d.matchId), 'Result cleared — booked again').ok) closeSheet(); });
+    'Clear result', () => {
+      const before = uvRelBefore();
+      if (commit(s => M.clearResult(s, d.eventId, d.matchId), () => `Result cleared — booked again${uvRelNews(before)}`).ok) closeSheet();
+    });
 }
 
 export function uvMDelete() {
@@ -457,7 +464,10 @@ export function uvMDelete() {
   confirmThen('Take this match off the card?',
     (m.status === 'played' ? 'Its result comes off everyone’s record.' : 'It hasn’t been played, so nothing else changes.')
     + (linked ? ` The ${M.titleById(st, linked.titleId).name} goes back to whoever held it before.` : ''),
-    'Take it off', () => { if (commit(s => M.deleteMatch(s, d.eventId, d.matchId), 'Match removed').ok) closeSheet(); });
+    'Take it off', () => {
+      const before = uvRelBefore();
+      if (commit(s => M.deleteMatch(s, d.eventId, d.matchId), () => `Match removed${uvRelNews(before)}`).ok) closeSheet();
+    });
 }
 
 // ================================================================ season dates

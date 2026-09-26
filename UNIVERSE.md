@@ -42,6 +42,8 @@ js/universe/
   app.js               commit (change + save + repaint), sheets, the page stack
   index.js             start-up, tabs, the save-file sheet
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
+  personality.js       traits, relationships, the page for two wrestlers, incidents
+  relations.js         relationships worked out from the record - pure, runs under Node
   ranks.js             the Rankings tab: standings and booking balance
   standings.js         the arithmetic behind it - pure, runs under Node
   relegation.js        the season transition page, and its relegation part
@@ -51,8 +53,8 @@ js/universe/
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       93 model tests      npm run test:universe
-tools/universe-check.mjs      129 browser checks  npm run check:universe
+tools/universe-test.mjs       102 model tests     npm run test:universe
+tools/universe-check.mjs      149 browser checks  npm run check:universe
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -73,7 +75,9 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | reigns    | title history. The reign with no end is the champion |
 | shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite Wednesday, SmackDown Friday |
 | seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
-| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card |
+| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences and attacks |
+| traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
+| relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start) and the automatic changes they've chosen to ignore |
 
 A **match** is one record from the moment it's booked: its sides — each a set
 of wrestlers, plus the tag team they wrestled as — the title on the line, a
@@ -292,6 +296,54 @@ new one; nothing is booked until you add it, and the result still comes from
 the game. Both calculations are explained in the app ("How rankings work",
 "How this is worked out").
 
+## Personalities and relationships
+
+The owner sees all of it, from the start: every trait, every relationship, and
+why each one exists. Nothing is hidden, scouted or discovered over time.
+
+**Traits** — ambitious, loyal, opportunistic, hot-headed, patient, proud,
+cowardly, respectful — are set on a wrestler's page (**Edit personality**), each
+shown with what it means and what it does. They're the owner's alone: no
+result, however many, changes one. A change is logged and dated to this week,
+or counted **from the start** — for who someone has always been. Proud,
+cowardly and respectful are there for booking and change nothing by themselves.
+
+**Relationships** — a grudge (one way: one wrestler holds it against another),
+rivals, allies, friends, former partners — are never stored. They're worked
+out (`relations.js`) by replaying the record in calendar order, so correcting a
+result, or editing or deleting an incident, corrects everything that grew out
+of it. Heat and strength run 1–3. The rules, each explained in the app ("How
+relationships work"), with traits counted as they were at the time:
+
+| What happened | What it does |
+|---|---|
+| 3 straight losses to the same wrestler (no win over them in between) | a grudge against them, or 1 more heat. Hot-headed: 2 losses. Patient: 4 |
+| Losing a title to someone in a match | a grudge against the new champion (ambitious: heat 2), and they're rivals |
+| A betrayal (logged on the show) | a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends |
+| An interference | a grudge against whoever interfered; whoever it helped becomes their ally |
+| An attack | a grudge against the attacker (hot-headed: heat 2) |
+| 5 matches on the same side, win or lose | allies (either loyal: 3). At 12, friends — never for the opportunistic, or with a grudge between them |
+| Leaving a tag team, or it disbanding | former partners |
+
+**Incidents** go on the show they happened on (**Record an incident**): who did
+it, to whom, who an interference helped, and the match, if any. The sheet shows
+what it will change before it's saved, and the show page lists every
+relationship change made there.
+
+**Seeing why.** A wrestler's page lists their relationships, grouped by person,
+and what's building up ("Lost to Gunther the last 2 times — 1 more in a row
+makes a grudge"). Tapping one opens the page for the two of them: what's
+between them now, what's building, and the whole timeline, oldest first — each
+entry says what happened, where, and what it did. The Roster tab's
+**Relationships** view lists every one, filtered by kind, and the latest
+changes. Saving a result, incident or trait says in its toast what it changed.
+
+**Changing it.** **Ignore** any automatic change: it stays on the timeline,
+crossed out, and everything after it is worked out again without it (**Count
+it again** undoes that). **Change…** starts, sets, ends or adds a note to any
+relationship — dated to this week, or from the start for history before the
+universe began. Those are entries on the same timeline, and can be taken back.
+
 ## Profiles and records
 
 Tapping a wrestler, team or title opens its **profile page**; Back retraces the
@@ -299,7 +351,8 @@ path (roster → wrestler → team → title) and returns to where the list was
 scrolled.
 
 - **A wrestler** shows their current show, singles record, tag record, title
-  reigns, what they're booked in next, every team they've been on with who
+  reigns, what they're booked in next, their personality and relationships
+  (see above), every team they've been on with who
   they teamed with and their record together, makeshift partners, a dated
   career history and every result.
 - **A team** shows its own record, what it's booked in, current and former
@@ -358,6 +411,10 @@ refuses rather than disturb anything else:
 | A qualifier result entered wrong | **Correct** it on its match: eligibility follows the real winner — refused once they've been drafted, until that pick is undone. |
 | A draft pick made wrong | Reopen the window if it's closed, then **Undo** the pick: everyone drafted with it goes back to NXT, and a title vacated with it goes back — while it's still their latest move and the title hasn't changed hands since. |
 | The transfer window opened too early | **Take back opening the window**, while nobody's been drafted. |
+| An automatic relationship change you don't agree with | **Ignore** it on the timeline. It stays there, crossed out, and doesn't count; **Count it again** brings it back. |
+| A relationship change of your own, made wrong | **Take back** on the timeline. |
+| An incident recorded wrong | Tap it on its show: edit it, or delete it. The relationships it built follow. |
+| A trait set wrong | **Edit personality** again. A trait set from the start can be removed from the start, as if it had never been there. |
 
 ## Saving
 
@@ -396,19 +453,20 @@ in an older save becomes a played match, and every show lands on its show's
 night (a PLE on Saturday). **Version 4** added the season transition and the
 relegation record; nothing in an older save was a relegation match. **Version
 5** added NXT promotion, draft eligibility and draft picks; a version 4
-transition gets an empty qualifier field and an unopened window.
+transition gets an empty qualifier field and an unopened window. **Version 6**
+added personalities, incidents and relationship edits; an older save starts
+with no traits, no incidents and no edits, and its relationships are worked out
+from its results and teams on load.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Personality events and story generation are later work. The foundation is
-shaped for them — results record sides, winners, finishes and titles,
-standings rank every show, roster moves record who changed show and when, the
-season transition keeps why each wrestler went down or came up, and seasons
-have hard edges — but none of that logic exists yet. Whatever suggests a match, the result still comes
-from the game. There are
-also no personality or relationship fields: those belong to the features that
-will use them, and inventing their shape now would only mean migrating it
-later.
+Random events and story generation are later work. The foundation is shaped
+for them — results record sides, winners, finishes and titles, standings rank
+every show, roster moves record who changed show and when, the season
+transition keeps why each wrestler went down or came up, and every
+relationship can say why it exists — but nothing happens on its own yet: no
+event is ever rolled, and a relationship only changes because of something on
+record. Whatever suggests a match, the result still comes from the game.
 

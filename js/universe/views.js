@@ -16,6 +16,7 @@ import {
 import { refresh, uni } from './app.js';
 import { uvRankFollow } from './ranks.js';
 import { uvTransitionSummary } from './relegation.js';
+import { uvRelationsView } from './personality.js';
 
 // ---------------------------------------------------------------- calendar
 //
@@ -159,17 +160,21 @@ export function uvCalFollow() { calWeek = null; }
 // ---------------------------------------------------------------- roster
 
 let rosterShow = 'all';      // 'all', a show id, or '' for unassigned
+let rosterMode = 'wrestlers';  // or 'relations'
 let rosterQ = '';
 let picking = null;          // a Set of wrestler ids while selecting, else null
 
 export function uvRosterShow() { return rosterShow === 'all' ? '' : rosterShow; }
 
 export function uvRosterView() {
+  const seg = (k, lb) => `<div class="${rosterMode === k ? 'on' : ''}" data-mode="${k}" onclick="uvRosterMode('${k}')">${lb}</div>`;
+  const top = `<div class="uv-seg uv-seg-page">${seg('wrestlers', 'Wrestlers')}${seg('relations', 'Relationships')}</div>`;
+  if (rosterMode === 'relations') return top + uvRelationsView();
   const st = uni();
   const counts = rosterCounts(st);
   const pill = (k, label, n, color) => `<div class="uv-pill${rosterShow === k ? ' on' : ''}" onclick="uvRosterFilter('${k}')">`
     + `${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ''}${esc(label)}<span class="n">${n}</span></div>`;
-  return `
+  return `${top}
     <div class="uv-bar">
       <div class="uv-search">${ICON.search}<input id="uvQ" type="search" placeholder="Search wrestlers"
         autocomplete="off" spellcheck="false" value="${esc(rosterQ)}" oninput="uvRosterSearch(this.value)"></div>
@@ -238,6 +243,7 @@ export function uvEndSelect() {
   refresh();
 }
 
+export function uvRosterMode(k) { rosterMode = k; picking = null; refresh(); }
 export function uvRosterFilter(k) {
   rosterShow = k;
   refresh();

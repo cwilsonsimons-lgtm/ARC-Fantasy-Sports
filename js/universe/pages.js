@@ -17,6 +17,7 @@ import {
 import { pushPage, refresh, uni } from './app.js';
 import { uvEventPage } from './card.js';
 import { uvTransitionPage } from './relegation.js';
+import { uvPairPage, uvProfilePersonality } from './personality.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -25,7 +26,7 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 /** { title, body } for a page, or null if what it showed no longer exists. */
 export function uvPageView(kind, id) {
   return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
-    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : null;
+    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.
@@ -169,6 +170,7 @@ function wrestlerPage(id) {
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ''}
 
       ${upcoming(st, booked)}
+      ${uvProfilePersonality(st, w)}
       ${drafted.length || eligibleOnly.length ? section('Draft', null) + drafted.map(d => {
         const how = d.eligibility.map(x => st.eligibility.find(e => e.id === x)).filter(Boolean).map(eligibilityText).join('; ') || 'brought along by the owner’s decision';
         const titles = d.titles.map(x => `${x.choice === 'vacated' ? 'vacated' : 'kept'} the ${esc(M.titleById(st, x.title).name)}`).join(', ');

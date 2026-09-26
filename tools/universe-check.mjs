@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as M from '../js/universe/model.js';
 import * as SD from '../js/universe/standings.js';
+import * as RL from '../js/universe/relations.js';
 const { validate, wrestlerRecord, teamRecord } = M;
 
 const url = process.argv[2] || 'file://' + process.cwd() + '/dist/universe.html';
@@ -199,7 +200,7 @@ await check('a row opens the wrestler’s profile page', async () => {
 await check('profile shows records, titles, teams, career, results', () => js(`[
   [...document.querySelectorAll('.uv-page .uv-rec .k')].map(e => e.textContent),
   [...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)]`),
-  [['Singles', 'Tag', 'Title reigns'], ['Championships', 'Tag teams & partners', 'Career history', 'Results']]);
+  [['Singles', 'Tag', 'Title reigns'], ['Personality', 'Relationships', 'Championships', 'Tag teams & partners', 'Career history', 'Results']]);
 await check('Move show: pick a show, dated, with a note', async () => {
   await btn(body, 'Move show').click();
   await settle();
@@ -401,7 +402,7 @@ await check('enter what the CPU did: a title change, and who took the fall', asy
     r.eventId === u.events[0].id && r.matchId === m.id, `${r.start.week}/${r.start.day}`, (await toast()).t,
     await js(`${TEXT}(document.querySelector('.uv-page .uv-mc'))`)];
 }, r => JSON.stringify(r.slice(0, 11)) === JSON.stringify(['played', 'win', 1, 'pinfall', null, 'Gunther', 'Three Cross Rhodes', 'Cody Rhodes',
-  true, '3/0', 'Result saved — Cody Rhodes holds the World Heavyweight Championship'])
+  true, '3/0', 'Result saved — Cody Rhodes holds the World Heavyweight Championship. Gunther holds a grudge against Cody Rhodes (+1 more)'])
   && /Cody Rhodes def\. Gunther Pinfall · Cody Rhodes pinned Gunther New World Heavyweight Championship champion Three Cross Rhodes Correct/.test(r[11]));
 await check('a tag match: the form offers the team two members could be', async () => {
   await btn(body, 'Book a match').click();
@@ -994,7 +995,7 @@ await check('the bottom of the standings can be booked for the world title, and 
   const u = await saved();
   const cur = u.reigns.find(r => r.end === null);
   return [titles, u.wrestlers.find(w => w.id === cur.holder.id).name, (await toast()).t];
-}, [['None', 'World Heavyweight Championship'], 'D', 'Result saved — D holds the World Heavyweight Championship']);
+}, [['None', 'World Heavyweight Championship'], 'D', 'Result saved — D holds the World Heavyweight Championship. A holds a grudge against D (+1 more)']);
 await check('saved universe is sound after all that', sound, []);
 
 // ================================================================ season transition: relegation
@@ -1328,6 +1329,207 @@ await check('reopen, undo a pick: they go back, and so does the title', async ()
   return [(await who('NChamp')).showId, r && u.wrestlers.find(w => w.id === r.holder.id).name, u.drafts.length];
 }, ['nxt', 'NChamp', 3]);
 await check('saved universe is sound after the whole cycle', sound, []);
+
+// ================================================================ personalities and relationships
+// Raw, week 1: Gunther beats Jey twice; Sami & Kevin draw with Seth & Jey four
+// times. Week 2: a Raw episode with the same tag match booked, no result yet.
+function relationsWorld() {
+  const st = M.createUniverse();
+  const [Jey, Gunther, Sami, Kevin, Seth] = ['Jey', 'Gunther', 'Sami', 'Kevin', 'Seth'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  const ev1 = M.addEvent(st, { showId: 'raw' });
+  for (let i = 0; i < 2; i++) M.recordMatch(st, ev1.id, { sides: [{ wrestlers: [Gunther.id] }, { wrestlers: [Jey.id] }], winner: 0 });
+  const tag = { sides: [{ wrestlers: [Sami.id, Kevin.id] }, { wrestlers: [Seth.id, Jey.id] }] };
+  for (let i = 0; i < 4; i++) M.recordMatch(st, ev1.id, { ...tag, outcome: 'draw' });
+  M.setWeek(st, 2);
+  const ev2 = M.addEvent(st, { showId: 'raw' });
+  M.bookMatch(st, ev2.id, { sides: [{ wrestlers: [Gunther.id] }, { wrestlers: [Jey.id] }] });
+  M.bookMatch(st, ev2.id, tag);
+  return st;
+}
+const secs = () => js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`);
+const building = () => js(`[...document.querySelectorAll('.uv-page .uv-bu')].map(${TEXT})`);
+const ents = where => js(`[...document.querySelectorAll('${where} .uv-ent')].map(e => [e.querySelector('.c').textContent.trim(),
+  e.querySelector('.r').textContent.trim(), e.classList.contains('ignored'), e.classList.contains('own')])`);
+const nowRels = () => js(`[...document.querySelectorAll('.uv-page .uv-relnow .nm')].map(e => e.textContent.trim())`);
+const derived = async () => { const u = await saved(); return { u, d: RL.relationships(u) }; };
+const idOf = async n => (await W(n)).id;
+
+await check('relationships: a fresh world, nothing set yet', async () => {
+  await noSheet();
+  const file = join(dir, 'relations.json');
+  await writeFile(file, JSON.stringify(relationsWorld()));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await openRow('Jey', 'roster');
+  return [await pageName(), await js(`${TEXT}(document.querySelector('.uv-page .uv-sec + .uv-none'))`), await building()];
+}, ['Jey', 'No traits set. Traits shape how relationships grow — and only you change them.',
+  ['2/3 Lost to Gunther the last 2 times — 1 more in a row makes a grudge', '4/5 Teamed with Seth 4 times — allies at 5']]);
+await check('every trait is on show, with what it does', async () => {
+  await btn(body, 'Edit personality').click();
+  await settle();
+  return js(`[...document.querySelectorAll('#uvSheetBody .uv-trait')].map(t => t.querySelector('b').textContent)`);
+}, ['Ambitious', 'Loyal', 'Opportunistic', 'Hot-headed', 'Patient', 'Proud', 'Cowardly', 'Respectful']);
+await check('a first personality counts from the start, and says what it will change', async () => {
+  await sheet.locator('.uv-trait[data-trait=hot-headed]').click();
+  await page.waitForTimeout(100);
+  return [await js(`document.querySelector('#uvSheetBody .uv-seg .on').dataset.v`),
+    await js(`[...document.querySelectorAll('#uvSheetBody .uv-prev span')].map(e => e.textContent)`)];
+}, ['start', ['Jey holds a grudge against Gunther']]);
+await check('saving it: the trait is logged from the start, the grudge follows', async () => {
+  await btn(sheet, 'Save').click();
+  await settle();
+  const u = await saved();
+  const jey = u.wrestlers.find(w => w.name === 'Jey');
+  return [(await toast()).t, jey.traits, u.traitLog.map(e => [e.trait, e.on, e.at])];
+}, ['Personality saved — Jey holds a grudge against Gunther', ['hot-headed'], [['hot-headed', true, null]]]);
+await check('the profile lists the relationship and the trait', () => js(`[
+  ${TEXT}(document.querySelector('.uv-page .uv-relrow')),
+  [...document.querySelectorAll('.uv-page .uv-traits.read .uv-trait b')].map(e => e.textContent),
+  ${TEXT}(document.querySelector('.uv-page .uv-tls .uv-tl'))]`),
+  ['GU Gunther Grudge Jey holds a grudge against Gunther since S1 · W1', ['Hot-headed'], 'Start Hot-headed from the start']);
+await check('the pair page: what’s between them, and why', async () => {
+  await body.locator('.uv-relrow').first().click();
+  await page.waitForTimeout(150);
+  const { u, d } = await derived();
+  const want = RL.pairView(u, await idOf('Jey'), await idOf('Gunther'), d).entries.map(e => RL.entryText(u, e));
+  return [await pageKind(), await nowRels(), JSON.stringify((await ents('.uv-page')).map(([c, r]) => ({ cause: c, result: r.replace(/^→ /, '') })))
+    === JSON.stringify(want), (await ents('.uv-page'))[0]];
+}, r => r[0] === 'pair' && r[1].join() === 'Jey holds a grudge against Gunther' && r[2]
+  && /^Jey lost to Gunther for the 2nd time running at /.test(r[3][0]) && r[3][1] === '→ Jey holds a grudge against Gunther' && !r[3][2]);
+await check('an automatic change can be ignored — it stays, crossed out', async () => {
+  await page.locator('.uv-page .uv-ent .uv-link', { hasText: /^Ignore$/ }).click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  return [(await toast()).t, await nowRels(), (await ents('.uv-page')).map(e => e[2]), u.relEdits.map(e => e.action)];
+}, ['Ignored — Jey lets the grudge against Gunther go', [], [true], ['dismiss']]);
+await check('…and counted again', async () => {
+  await page.locator('.uv-page .uv-ent .uv-link', { hasText: 'Count it again' }).click();
+  await page.waitForTimeout(150);
+  return [(await toast()).t, await nowRels(), (await saved()).relEdits.length];
+}, ['Counted again — Jey holds a grudge against Gunther', ['Jey holds a grudge against Gunther'], 0]);
+await check('the owner starts a rivalry from the start, with a reason', async () => {
+  await btn(body, 'Change…').click();
+  await settle();
+  await sheet.locator('.uv-pill[data-kind=rivals]').click();
+  await page.waitForTimeout(80);
+  await sheet.locator('.uv-seg div[data-v="2"]').click();
+  await sheet.locator('.uv-seg div[data-v=start]').click();
+  await page.fill('#uvRelNote', 'Old enemies');
+  await page.waitForTimeout(80);
+  const prev = await js(`[...document.querySelectorAll('#uvSheetBody .uv-prev span')].map(e => e.textContent)`);
+  await btn(sheet, 'Save').click();
+  await settle();
+  const u = await saved();
+  return [prev.length, (await toast()).t.replace(/Gunther and Jey|Jey and Gunther/, 'X'), u.relEdits.map(e => [e.action, e.kind, e.level, e.at, e.note]),
+    (await ents('.uv-page')).filter(e => e[3]).map(e => e[0])];
+}, [1, 'Saved — X are rivals (heat 2)', [['form', 'rivals', 2, null, 'Old enemies']], ['Your change, counted from the start — Old enemies']]);
+await check('the owner’s change can be taken back', async () => {
+  await page.locator('.uv-page .uv-ent.own .uv-link', { hasText: 'Take back' }).click();
+  await settle();
+  await confirmYes();
+  return [(await saved()).relEdits.length, await nowRels()];
+}, [0, ['Jey holds a grudge against Gunther']]);
+await check('a show’s incidents: record an interference in a booked match', async () => {
+  await body.locator('.uv-ent .uv-link', { hasText: 'Open the show' }).first().click();   // week 1
+  await page.waitForTimeout(120);
+  await openShow('Raw', 2);
+  await btn(body, 'Record an incident').click();
+  await settle();
+  await sheet.locator('.uv-seg div[data-v=interference]').click();
+  await page.waitForTimeout(80);
+  const u = await saved();
+  const ev = u.events.find(e => e.at.week === 2);
+  await page.selectOption('#uvIcMatch', ev.matches[0].id);
+  await page.selectOption('#uvSheetBody select[data-by="0"]', await idOf('Seth'));
+  await page.selectOption('#uvSheetBody select[data-on="0"]', await idOf('Gunther'));
+  await sheet.locator('.uv-sidebox', { hasText: 'Helping' }).locator('.uv-add').click();
+  await page.waitForTimeout(80);
+  await page.selectOption('#uvSheetBody select[data-helped="0"]', await idOf('Jey'));
+  await page.waitForTimeout(80);
+  return js(`[...document.querySelectorAll('#uvSheetBody .uv-prev span')].map(e => e.textContent).sort()`);
+}, r => r.length === 2 && r[0] === 'Gunther holds a grudge against Seth' && /^(Jey and Seth|Seth and Jey) are allies$/.test(r[1]));
+await check('recorded: on the show, with what it changed', async () => {
+  await btn(sheet, 'Record it').click();
+  await settle();
+  const u = await saved();
+  const inc = u.events.find(e => e.at.week === 2).incidents;
+  return [(await toast()).t, inc.map(i => [i.kind, i.by.length, i.on.length, i.helped.length, !!i.match]),
+    await js(`[...document.querySelectorAll('.uv-page .uv-inc')].map(${TEXT})`), (await ents('.uv-page')).length, await sound()];
+}, ['Incident recorded — Gunther holds a grudge against Seth (+1 more)', [['interference', 1, 1, 1, true]],
+  ['Interference Seth interfered against Gunther, helping Jey Match 1: Gunther vs Jey'], 2, []]);
+await check('edit it into an attack: the alliance goes, the grudge stays', async () => {
+  await body.locator('.uv-inc').click();
+  await settle();
+  await sheet.locator('.uv-seg div[data-v=attack]').click();
+  await page.waitForTimeout(80);
+  await btn(sheet, 'Save the incident').click();
+  await settle();
+  const { u, d } = await derived();
+  const allies = [...d.rels.values()].filter(r => r.active && r.kind === 'allies').length;
+  return [u.events.find(e => e.at.week === 2).incidents.map(i => [i.kind, i.helped.length]), allies,
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-inc .nm'))`)];
+}, [[['attack', 0]], 0, 'Seth attacked Gunther']);
+await check('deleting it takes back what it did', async () => {
+  await body.locator('.uv-inc').click();
+  await settle();
+  await btn(sheet, 'Delete the incident').click();
+  await settle();
+  await confirmYes();
+  const { u, d } = await derived();
+  return [(await toast()).t, u.events.find(e => e.at.week === 2).incidents.length,
+    [...d.rels.values()].filter(r => r.active).map(r => RL.relText(u, r))];
+}, ['Incident deleted — Gunther lets the grudge against Seth go', 0, ['Jey holds a grudge against Gunther']]);
+await check('a result says what it did to relationships', async () => {
+  await mc(1).locator('.uv-btn', { hasText: 'Enter result' }).click();
+  await settle();
+  await page.selectOption('#uvMResult', 'draw');
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  return (await toast()).t;
+}, r => /^Result saved — (Kevin and Sami|Sami and Kevin|Jey and Seth|Seth and Jey) are allies \(\+1 more\)$/.test(r));
+await check('the Roster tab lists every relationship, with filters', async () => {
+  await page.click('#uvTabs [data-uvtab=roster]');
+  await body.locator('.uv-seg [data-mode=relations]').click();
+  await page.waitForTimeout(120);
+  const all = await js(`[...document.querySelectorAll('#uvBody .uv-pill')].map(p => p.textContent.trim())`);
+  await body.locator('.uv-pill[data-kind=allies]').click();
+  await page.waitForTimeout(100);
+  return [all, await js(`[...document.querySelectorAll('#uvBody .uv-row[data-rel]')].length`),
+    await js(`document.querySelectorAll('#uvBody .uv-ents .uv-ent').length`)];
+}, [['All3', 'Grudge1', 'Rivals0', 'Allies2', 'Friends0', 'Former partners0'], 2, 3]);
+await check('a later trait change is dated to this week, never rewriting the past', async () => {
+  await body.locator('.uv-pill[data-kind=grudge]').click();
+  await page.waitForTimeout(100);
+  await body.locator('.uv-row[data-rel]').first().click();
+  await page.waitForTimeout(120);
+  await body.locator('.uv-pairhead .p', { hasText: 'Jey' }).click();
+  await page.waitForTimeout(120);
+  await btn(body, 'Edit personality').click();
+  await settle();
+  const since = await js(`document.querySelector('#uvSheetBody .uv-seg .on') && document.querySelector('#uvSheetBody .uv-seg .on').dataset.v`);
+  await sheet.locator('.uv-trait[data-trait=loyal]').click();
+  await page.waitForTimeout(80);
+  const since2 = await js(`document.querySelector('#uvSheetBody .uv-seg .on').dataset.v`);
+  await page.fill('#uvTraitNote', 'Found his family');
+  await btn(sheet, 'Save').click();
+  await settle();
+  const u = await saved();
+  return [since, since2, u.wrestlers.find(w => w.name === 'Jey').traits, u.traitLog.map(e => [e.trait, e.at && e.at.week, e.note]),
+    await js(`[...document.querySelectorAll('.uv-page .uv-tls')].map(${TEXT})[0]`)];
+}, [null, 'now', ['loyal', 'hot-headed'], [['hot-headed', null, ''], ['loyal', 2, 'Found his family']],
+  'S1 · W2 Became loyal — Found his family Start Hot-headed from the start']);
+await check('How relationships work explains every rule', async () => {
+  await page.locator('.uv-page .uv-link', { hasText: 'How relationships work' }).click();
+  await settle();
+  return js(`[...document.querySelectorAll('#uvSheetBody .uv-calc span')].map(e => e.textContent)`);
+}, ['Losses', 'Title', 'Betrayal', 'Interference', 'Attack', 'Teaming', 'Split']);
+await check('saved universe is sound after the relationship edits', sound, []);
+await check('layout anchored', async () => { await closeSheet(); return anchored(); }, isAnchored);
 
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {

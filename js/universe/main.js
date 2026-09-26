@@ -15,6 +15,7 @@ import * as card from './card.js';
 import * as ranks from './ranks.js';
 import * as relegation from './relegation.js';
 import * as promotion from './promotion.js';
+import * as personality from './personality.js';
 
-Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion);
+Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality);
 shell.initUniverse();

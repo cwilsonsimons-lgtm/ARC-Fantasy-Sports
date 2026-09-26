@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -81,6 +81,8 @@ export function createUniverse() {
     relegations: [],        // every relegation to NXT, and why - kept for good
     eligibility: [],        // who became draft eligible after WrestleMania, and how
     drafts: [],             // every draft pick from NXT - kept for good
+    traitLog: [],           // every change to a wrestler's personality, dated (or from the start)
+    relEdits: [],           // the owner's own relationship changes, dated; the rest is worked out from the record
   };
   openSeason(st, 1, '');
   return st;
@@ -242,7 +244,7 @@ function wrestlerFields(st, input, self) {
 export function addWrestler(st, input = {}) {
   const fields = wrestlerFields(st, input, null);
   const showId = checkShowId(st, input.showId);
-  const w = { id: newId(st, 'w'), ...fields, showId: null };
+  const w = { id: newId(st, 'w'), ...fields, traits: [], showId: null };
   st.wrestlers.push(w);
   if (showId) recordMove(st, w, showId, '', nowDate(st));
   return w;
@@ -351,6 +353,9 @@ export function wrestlerRefs(st, id) {
   const booked = bookingsOf(st, id).length;
   if (booked) refs.push(booked === 1 ? 'a booked match' : `${booked} booked matches`);
   if (inTransition(st, id)) refs.push('a season transition');
+  const incidents = st.events.reduce((n, e) => n + e.incidents.filter(x => [...x.by, ...x.on, ...x.helped].includes(id)).length, 0);
+  if (incidents) refs.push(incidents === 1 ? 'an incident' : `${incidents} incidents`);
+  if (st.relEdits.some(e => e.a === id || e.b === id)) refs.push('a relationship');
   return refs;
 }
 
@@ -374,6 +379,7 @@ export function deleteWrestler(st, id) {
   if (refs.length) fail(`${w.name} is part of the history (${refs.join(', ')}), so they can't be deleted. Leave them unassigned instead.`);
   removeWhere(st.wrestlers, x => x.id === id);
   removeWhere(st.moves, m => m.wrestler === id);
+  removeWhere(st.traitLog, e => e.wrestler === id);
 }
 
 export function rosterOf(st, showId) {
@@ -981,7 +987,7 @@ export function addEvent(st, input = {}) {
   const day = input.day == null || input.day === '' ? defaultDay(st, kind, showId) : checkDay(input.day);
   const name = eventName(st, kind, showId, week, input.name);
   const notes = checkText(input.notes, 'Notes');
-  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [] };
+  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [] };
   st.events.push(ev);
   return ev;
 }
@@ -1332,6 +1338,7 @@ export function deleteMatch(st, eventId, matchId) {
   const unrel = relegationRemoval(st, m);
   const unqual = qualifierRemoval(st, m);
   removeWhere(ev.matches, x => x.id === matchId);
+  ev.incidents.forEach(x => { if (x.match === matchId) x.match = null; });      // the incident still happened
   if (revert) revert();
   if (unrel) unrel();
   if (unqual) unqual();
@@ -2266,6 +2273,129 @@ export function transfersSince(st, trId) {
   }));
 }
 
+// ---------------------------------------------------------------- personalities, incidents, relationships
+//
+// The owner sees everything: every trait and every relationship, from the
+// start. Traits are the owner's alone - nothing a wrestler does rewrites
+// them; each change is dated and kept. Relationships are worked out from the
+// record (relations.js) - results, title changes, team history, and the
+// incidents the owner logs on a show (a betrayal, an interference, an
+// attack) - together with the owner's own edits, kept here as dated entries:
+// start one, set its heat, end it, or have an automatic change ignored.
+
+export const TRAITS = ['ambitious', 'loyal', 'opportunistic', 'hot-headed', 'patient', 'proud', 'cowardly', 'respectful'];
+export const REL_KINDS = ['grudge', 'rivals', 'allies', 'friends', 'former-partners'];   // a grudge is one-way: a holds it against b
+export const INCIDENT_KINDS = ['betrayal', 'interference', 'attack'];
+const REL_ACTIONS = ['form', 'level', 'end', 'note', 'dismiss'];
+
+/** A wrestler's traits at a moment (`stamp` null: now) - replayed from the dated log. */
+export function traitsAt(st, wid, stamp) {
+  const on = new Set();
+  const log = st.traitLog.filter(e => e.wrestler === wid);
+  const apply = e => { if (e.on) on.add(e.trait); else on.delete(e.trait); };
+  log.filter(e => !e.at).forEach(apply);
+  log.filter(e => e.at && (!stamp || compareStamps(st, e.at, stamp) <= 0)).sort((a, b) => compareStamps(st, a.at, b.at)).forEach(apply);
+  return on;
+}
+export const traitHistory = (st, wid) => st.traitLog.filter(e => e.wrestler === wid)
+  .sort((a, b) => (!a.at || !b.at ? !a.at - !b.at : compareStamps(st, b.at, a.at)));   // newest first, then the start
+
+/**
+ * Set a wrestler's traits - the whole set. `since` 'start' makes the change
+ * count from the start of the universe (for setting up who they've always
+ * been); anything else dates it to this week. Returns the log entries made.
+ */
+export function setTraits(st, wid, traits, opts = {}) {
+  const w = must(wrestlerById(st, wid), 'wrestler', wid);
+  if (!Array.isArray(traits)) fail('Pick the traits as a list.');
+  traits.forEach(t => oneOf(t, TRAITS, 'trait'));
+  const want = new Set(traits);
+  const note = checkNote(opts.note);
+  const at = opts.since === 'start' ? null : now(st);
+  const changes = [...new Set([...w.traits, ...want])].filter(t => w.traits.includes(t) !== want.has(t)).sort()
+    .map(t => ({ id: newId(st, 'tl'), wrestler: wid, trait: t, on: want.has(t), at: at && { ...at }, note }));
+  if (!changes.length) return [];
+  st.traitLog.push(...changes);
+  w.traits = TRAITS.filter(t => want.has(t));
+  return changes;
+}
+
+// incidents: who did it (`by`), to whom (`on`), and - for an interference -
+// the match it happened in and anyone it helped
+function incidentFields(st, ev, input) {
+  const kind = oneOf(input.kind, INCIDENT_KINDS, 'incident');
+  const ids = list => [...new Set((Array.isArray(list) ? list : []).filter(Boolean))].map(id => must(wrestlerById(st, id), 'wrestler', id).id);
+  const by = ids(input.by), on = ids(input.on), helped = kind === 'interference' ? ids(input.helped) : [];
+  if (!by.length) fail(`Pick who ${kind === 'betrayal' ? 'turned on someone' : kind === 'interference' ? 'interfered' : 'attacked'}.`);
+  if (!on.length) fail(`Pick who ${kind === 'betrayal' ? 'was betrayed' : kind === 'interference' ? 'it was against' : 'was attacked'}.`);
+  const clash = by.find(id => on.includes(id) || helped.includes(id)) || on.find(id => helped.includes(id));
+  if (clash) fail(`${wrestlerById(st, clash).name} can't be on both sides of it.`);
+  const match = input.match ? must(ev.matches.find(m => m.id === input.match), 'match', input.match).id : null;
+  return { kind, by, on, helped, match, note: checkText(input.note, 'Notes') };
+}
+/** Log what happened on a show besides the result: a betrayal, an interference, an attack. */
+export function recordIncident(st, eventId, input = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  const inc = { id: newId(st, 'in'), ...incidentFields(st, ev, input) };
+  ev.incidents.push(inc);
+  return inc;
+}
+export function updateIncident(st, eventId, incidentId, input = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  const inc = must(ev.incidents.find(x => x.id === incidentId), 'incident', incidentId);
+  Object.assign(inc, incidentFields(st, ev, { ...inc, ...input }));
+  return inc;
+}
+export function deleteIncident(st, eventId, incidentId) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  must(ev.incidents.find(x => x.id === incidentId), 'incident', incidentId);
+  removeWhere(ev.incidents, x => x.id === incidentId);
+}
+
+/**
+ * The owner's hand on a relationship, kept as a dated entry the derivation
+ * replays in order: `form` (start it, at `level`), `level` (set its heat or
+ * strength, 1-3), `end`, `note`. For a grudge, `a` holds it against `b`.
+ * `since` 'start' counts it from the start of the universe.
+ */
+export function editRelationship(st, input = {}) {
+  const action = oneOf(input.action, ['form', 'level', 'end', 'note'], 'change');
+  const kind = oneOf(input.kind, REL_KINDS, 'relationship');
+  const a = must(wrestlerById(st, input.a), 'wrestler', input.a), b = must(wrestlerById(st, input.b), 'wrestler', input.b);
+  if (a.id === b.id) fail('A relationship needs two different wrestlers.');
+  let level = null;
+  if (action === 'form' || action === 'level') {
+    level = kind === 'former-partners' ? 1 : Number(input.level == null ? 1 : input.level);
+    if (![1, 2, 3].includes(level)) fail('Heat and strength go from 1 to 3.');
+  }
+  const note = checkNote(input.note);
+  if (action === 'note' && !note) fail('Write the note first.');
+  if (action === 'end' && input.since === 'start') {
+    fail('A relationship can only be ended from this week on. To wipe one out from the start, ignore the changes that built it.');
+  }
+  const e = { id: newId(st, 're'), action, kind, a: a.id, b: b.id, level, key: null, note,
+    at: input.since === 'start' ? null : now(st) };
+  st.relEdits.push(e);
+  return e;
+}
+/** Have an automatic change ignored - it's still shown, crossed out, with why. */
+export function dismissChange(st, key, note = '') {
+  if (typeof key !== 'string' || !key) fail('That change can\'t be found.');
+  if (st.relEdits.some(e => e.action === 'dismiss' && e.key === key)) fail('That change is already ignored.');
+  const e = { id: newId(st, 're'), action: 'dismiss', kind: null, a: null, b: null, level: null, key, note: checkNote(note), at: now(st) };
+  st.relEdits.push(e);
+  return e;
+}
+export function restoreChange(st, key) {
+  if (!st.relEdits.some(e => e.action === 'dismiss' && e.key === key)) fail('That change isn\'t ignored.');
+  removeWhere(st.relEdits, e => e.action === 'dismiss' && e.key === key);
+}
+/** Take back one of the owner's own relationship edits. */
+export function deleteRelEdit(st, id) {
+  must(st.relEdits.find(e => e.id === id), 'relationship change', id);
+  removeWhere(st.relEdits, e => e.id === id);
+}
+
 // ---------------------------------------------------------------- records
 
 const KEY = { W: 'w', L: 'l', D: 'd', NC: 'nc' };
@@ -2322,6 +2452,12 @@ export function teamRecord(st, teamId) {
 
 // ---------------------------------------------------------------- merging duplicates
 
+// An ignored change is kept by its key, which names wrestlers: "cause|relationship",
+// each part ":"-separated, with a "+" pair in sorted order and a ">" pair as it is.
+const rekey = (key, from, to) => key.split('|').map(part => part.split(':').map(tok => (tok.includes('+')
+  ? tok.split('+').map(x => (x === from ? to : x)).sort().join('+')
+  : tok.split('>').map(x => (x === from ? to : x)).join('>'))).join(':')).join('|');
+
 /**
  * Fold a duplicate into the wrestler it duplicates - the usual cure for a name
  * entered twice. Everything the duplicate did (results, team spells, title
@@ -2354,6 +2490,23 @@ export function mergeWrestlers(st, keepId, dupId) {
       }
     });
   });
+  const swap = list => [...new Set(list.map(id => (id === dupId ? keepId : id)))];
+  st.events.forEach(e => e.incidents.forEach(x => {
+    const [by, on, helped] = [swap(x.by), swap(x.on), swap(x.helped)];
+    if (by.some(id => on.includes(id) || helped.includes(id)) || on.some(id => helped.includes(id))) {
+      fail(`${keep.name} and ${dup.name} are on opposite sides of an incident at ${e.name}, so they can't be the same person. Fix that incident first.`);
+    }
+  }));
+  if (st.relEdits.some(r => (r.a === keepId && r.b === dupId) || (r.a === dupId && r.b === keepId))) {
+    fail(`You've set a relationship between ${keep.name} and ${dup.name}, so they can't be the same person. Take it back first.`);
+  }
+  st.events.forEach(e => e.incidents.forEach(x => { x.by = swap(x.by); x.on = swap(x.on); x.helped = swap(x.helped); }));
+  st.relEdits.forEach(r => {
+    if (r.a === dupId) r.a = keepId;
+    if (r.b === dupId) r.b = keepId;
+    if (r.key) r.key = rekey(r.key, dupId, keepId);
+  });
+  removeWhere(st.traitLog, e => e.wrestler === dupId);                    // the one kept keeps their own personality
   eachMatch(st, m => {
     m.sides.forEach(sd => { sd.wrestlers = sd.wrestlers.map(id => (id === dupId ? keepId : id)); });
     if (m.fall) m.fall = { by: m.fall.by === dupId ? keepId : m.fall.by, on: m.fall.on === dupId ? keepId : m.fall.on };
@@ -2507,7 +2660,15 @@ export function migrate(raw) {
     st.events.forEach(e => (Array.isArray(e.matches) ? e.matches : []).forEach(m => { if (m.qualifier === undefined) m.qualifier = null; }));
     st.version = 5;
   }
-  for (const k of ['transitions', 'relegations', 'eligibility', 'drafts']) if (!Array.isArray(st[k])) st[k] = [];
+  if (st.version === 5) {
+    // v6: personalities and relationships. Nobody had a trait yet; no show had an incident.
+    st.wrestlers.forEach(w => { if (!Array.isArray(w.traits)) w.traits = []; });
+    st.events.forEach(e => { if (!Array.isArray(e.incidents)) e.incidents = []; });
+    st.traitLog = [];
+    st.relEdits = [];
+    st.version = 6;
+  }
+  for (const k of ['transitions', 'relegations', 'eligibility', 'drafts', 'traitLog', 'relEdits']) if (!Array.isArray(st[k])) st[k] = [];
   return st;
 }
 
@@ -2535,6 +2696,8 @@ export function validate(st) {
   st.events.forEach(e => own(e.matches || [], 'match'));
   own(st.transitions, 'season transition'); own(st.relegations, 'relegation record');
   own(st.eligibility, 'draft eligibility record'); own(st.drafts, 'draft pick');
+  own(st.traitLog, 'personality change'); own(st.relEdits, 'relationship change');
+  st.events.forEach(e => own(Array.isArray(e.incidents) ? e.incidents : [], 'incident'));
   st.transitions.forEach(t => Object.values(t.shows || {}).forEach(c => own(Array.isArray(c.pairs) ? c.pairs : [], 'relegation pairing')));
   st.transitions.forEach(t => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], 'qualifier pairing'));
 
@@ -2571,6 +2734,25 @@ export function validate(st) {
     const moves = movesOf(st, w.id);
     const last = moves.length ? moves[moves.length - 1].to : null;
     if (last !== w.showId) bad.push(`${w.name}'s roster history doesn't end on their current show.`);
+    if (!Array.isArray(w.traits) || w.traits.some(t => !TRAITS.includes(t)) || new Set(w.traits).size !== w.traits.length) {
+      bad.push(`${w.name} has an unknown trait.`);
+    } else if (JSON.stringify([...traitsAt(st, w.id, null)].sort()) !== JSON.stringify([...w.traits].sort())) {
+      bad.push(`${w.name}'s traits don't match their personality history.`);
+    }
+  });
+  st.traitLog.forEach(e => {
+    if (!wrestlerById(st, e.wrestler)) bad.push(`Personality change ${e.id} is for a wrestler who doesn't exist.`);
+    if (!TRAITS.includes(e.trait) || typeof e.on !== 'boolean') bad.push(`Personality change ${e.id} is unreadable.`);
+    if (e.at !== null) stamp(e.at, `Personality change ${e.id}`);
+  });
+  st.relEdits.forEach(e => {
+    const where = `Relationship change ${e.id}`;
+    if (!REL_ACTIONS.includes(e.action)) { bad.push(`${where} is unreadable.`); return; }
+    if (e.at !== null) stamp(e.at, where);
+    if (e.action === 'dismiss') { if (typeof e.key !== 'string' || !e.key) bad.push(`${where} ignores nothing.`); return; }
+    if (!REL_KINDS.includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
+    if (!wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong wrestlers.`);
+    if (['form', 'level'].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
   });
   st.moves.forEach(m => {
     if (!wrestlerById(st, m.wrestler)) bad.push(`Roster move ${m.id} is for a wrestler who doesn't exist.`);
@@ -2666,6 +2848,14 @@ export function validate(st) {
 
   st.events.forEach(e => {
     if (typeof e.name !== 'string' || !e.name.trim()) bad.push(`Event ${e.id} has no name.`);
+    if (!Array.isArray(e.incidents)) bad.push(`${e.name} has no incidents list.`);
+    else e.incidents.forEach(x => {
+      const lists = [x.by, x.on, x.helped];
+      if (!INCIDENT_KINDS.includes(x.kind) || lists.some(l => !Array.isArray(l))) { bad.push(`An incident at ${e.name} is unreadable.`); return; }
+      if (!x.by.length || !x.on.length || lists.flat().some(id => !wrestlerById(st, id))) bad.push(`An incident at ${e.name} names the wrong wrestlers.`);
+      if (x.by.some(id => x.on.includes(id))) bad.push(`An incident at ${e.name} has someone on both sides.`);
+      if (x.match != null && !(e.matches || []).some(m => m.id === x.match)) bad.push(`An incident at ${e.name} is in a match that isn't on its card.`);
+    });
     if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
     if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
     if (!showOk(e.showId) || (e.kind === 'weekly' && !e.showId)) bad.push(`${e.name} is on a show that doesn't exist.`);

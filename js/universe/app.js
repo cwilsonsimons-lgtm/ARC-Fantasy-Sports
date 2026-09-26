@@ -182,5 +182,5 @@ export function toast(msg, bad = false) {
   el.classList.toggle('bad', !!bad);
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), bad ? 3600 : 1800);
+  toastTimer = setTimeout(() => el.classList.remove('show'), bad || msg.length > 60 ? 3600 : 1800);
 }
