@@ -1946,3 +1946,224 @@ test('a save with relegation in it round-trips, and a broken record is refused',
   assert.ok(M.validate(migrateOnly(broken)).some(p => /roster move that doesn't match/.test(p)));
 });
 function migrateOnly(raw) { return M.migrate(raw); }
+
+// ---------------------------------------------------------------- the season transition: NXT promotion and the draft
+//
+// The relegation world, plus NXT: prospects NA-ND, NChamp holding the NXT
+// Championship, and Prospects (NT1 & NT2) holding the NXT Tag Team
+// Championship - all there before WrestleMania.
+function cycleWorld() {
+  const w = relegationWorld();
+  const { st } = w;
+  M.setWeek(st, 3);
+  const [NA, NB, NC, ND, NChamp, NT1, NT2] = ['NA', 'NB', 'NC', 'ND', 'NChamp', 'NT1', 'NT2'].map(n => M.addWrestler(st, { name: n, showId: 'nxt' }));
+  const nxtTitle = M.addTitle(st, { name: 'NXT Championship', showId: 'nxt' });
+  const nxtTag = M.addTitle(st, { name: 'NXT Tag Team Championship', showId: 'nxt', kind: 'tag' });
+  const team = M.addTeam(st, { name: 'Prospects', members: [NT1.id, NT2.id] });
+  M.setChampion(st, nxtTitle.id, { type: 'wrestler', id: NChamp.id });
+  M.setChampion(st, nxtTag.id, { type: 'team', id: team.id });
+  M.setWeek(st, 5);
+  return { ...w, NA, NB, NC, ND, NChamp, NT1, NT2, nxtTitle, nxtTag, team };
+}
+const names2 = (st, ids) => ids.map(id => M.wrestlerById(st, id).name);
+const eligibleNames = (st, trId) => M.promotionTable(st, trId).eligible.map(e => `${M.wrestlerById(st, e.wrestler).name}:${e.sources.map(s => s.source).join('+')}`);
+
+test('NXT: champions are eligible automatically, qualifier winners become eligible, and nobody moves', () => {
+  const { st, tr, NA, NB, NC, ND, NChamp } = cycleWorld();
+  let t = M.promotionTable(st, tr.id);
+  assert.deepEqual(t.champions.map(c => `${M.wrestlerById(st, c.wrestler).name}:${M.titleById(st, c.title).name}`),
+    ['NChamp:NXT Championship', 'NT1:NXT Tag Team Championship', 'NT2:NXT Tag Team Championship']);
+  assert.deepEqual(eligibleNames(st, tr.id), ['NChamp:champion', 'NT1:champion', 'NT2:champion']);
+  assert.deepEqual(t.flags.map(f => f.key), ['tagchamps']);
+  assert.match(t.flags[0].text, /Prospects hold the NXT Tag Team Championship: each of them is eligible\. Whether they move together is your call/);
+  M.setQualifiers(st, tr.id, [NA.id, NB.id, NC.id, ND.id]);
+  t = M.promotionTable(st, tr.id);
+  assert.deepEqual(t.pairs.map(p => names2(st, [p.a, p.b]).join('-')), ['NA-NB', 'NC-ND']);
+  assert.deepEqual([t.night.event, t.night.week], [undefined, 5]);            // Tuesday after a Saturday WrestleMania
+  const night = M.addEvent(st, { showId: 'nxt', week: 5 });
+  const raw = M.addEvent(st, { showId: 'raw', week: 5 });
+  throwsUE(() => M.bookQualifiers(st, tr.id, raw.id), /go on an NXT episode/);
+  const [q1, q2] = M.bookQualifiers(st, tr.id, night.id);
+  assert.deepEqual([q1.stip, !!q1.qualifier, q1.relegation, q1.status], ['Qualifying match', true, null, 'scheduled']);
+  M.enterResult(st, night.id, q1.id, { outcome: 'win', winner: 0 });          // NA beats NB
+  M.enterResult(st, night.id, q2.id, { outcome: 'draw' });                    // NC and ND draw
+  t = M.promotionTable(st, tr.id);
+  assert.deepEqual(t.pairs.map(p => p.status), ['qualified', 'no winner']);
+  assert.ok(t.flags.some(f => f.key === 'nowinner' && /NC vs ND ended in a draw\. Book a rematch, or decide who \(if anyone\) qualifies/.test(f.text)));
+  M.decideQualifier(st, tr.id, t.pairs[1].id, [NC.id, ND.id], 'Both impressed');
+  assert.deepEqual(eligibleNames(st, tr.id), ['NA:qualifier', 'NC:decision', 'NChamp:champion', 'ND:decision', 'NT1:champion', 'NT2:champion']);
+  const na = M.eligibilityOf(st, tr.id, NA.id)[0];
+  assert.deepEqual([na.source, na.opponent, na.match], ['qualifier', NB.id, q1.id]);
+  // eligible moves nobody
+  assert.ok([NA, NB, NC, ND, NChamp].every(w => M.wrestlerById(st, w.id).showId === 'nxt'));
+  sound(st);
+});
+
+test('NXT: the qualifier field is the owner’s - odd numbers and champions are flagged, not fixed', () => {
+  const { st, tr, NA, NB, NC, NChamp } = cycleWorld();
+  M.toggleQualifier(st, tr.id, NA.id);
+  M.toggleQualifier(st, tr.id, NB.id);
+  M.toggleQualifier(st, tr.id, NChamp.id);
+  let t = M.promotionTable(st, tr.id);
+  assert.deepEqual(t.flags.map(f => `${f.level}:${f.key}`), ['decide:odd', 'check:champion', 'check:tagchamps']);
+  assert.match(t.flags[0].text, /An odd number in the qualifiers \(3\): NChamp has no opponent/);
+  assert.match(t.flags[1].text, /NChamp is already eligible as an NXT champion/);
+  const night = M.addEvent(st, { showId: 'nxt', week: 5 });
+  throwsUE(() => M.bookQualifiers(st, tr.id, night.id), /odd number in the qualifiers/);
+  M.toggleQualifier(st, tr.id, NChamp.id);
+  M.toggleQualifier(st, tr.id, NC.id);
+  M.pairQualifiers(st, tr.id, NA.id, NC.id);                                  // NA v NC, NB left with nobody... then paired
+  t = M.promotionTable(st, tr.id);
+  assert.deepEqual(t.pairs.map(p => names2(st, [p.a, p.b]).join('-')), ['NA-NC']);
+  assert.deepEqual(names2(st, t.unpaired), ['NB']);
+  throwsUE(() => M.toggleQualifier(st, tr.id, M.wrestlerById(st, st.wrestlers.find(w => w.name === 'R1').id).id), /wasn't on NXT at WrestleMania/);
+  sound(st);
+});
+
+test('NXT: a corrected qualifier changes who is eligible - until they have been drafted', () => {
+  const { st, tr, NA, NB, NC, ND } = cycleWorld();
+  M.setQualifiers(st, tr.id, [NA.id, NB.id, NC.id, ND.id]);
+  const night = M.addEvent(st, { showId: 'nxt', week: 5 });
+  const [q1] = M.bookQualifiers(st, tr.id, night.id);
+  M.enterResult(st, night.id, q1.id, { outcome: 'win', winner: 0 });
+  M.updateMatch(st, night.id, q1.id, { sides: q1.sides, outcome: 'win', winner: 1 });     // NB won after all
+  assert.deepEqual([M.eligibilityOf(st, tr.id, NA.id).length, M.eligibilityOf(st, tr.id, NB.id).length], [0, 1]);
+  M.clearResult(st, night.id, q1.id);
+  assert.equal(M.eligibilityOf(st, tr.id, NB.id).length, 0);
+  M.enterResult(st, night.id, q1.id, { outcome: 'win', winner: 0 });
+  M.openWindow(st, tr.id);
+  M.draftWrestler(st, tr.id, NA.id, 'dynamite');
+  throwsUE(() => M.updateMatch(st, night.id, q1.id, { sides: q1.sides, outcome: 'win', winner: 1 }), /NA has been drafted to Dynamite since qualifying\. Undo that pick first/);
+  throwsUE(() => M.updateBooking(st, night.id, q1.id, {}), /already has a result/);
+  sound(st);
+});
+
+test('the transfer window: draft, with the title and tag-team calls left to the owner; end it with some undrafted', () => {
+  const { st, tr, NA, NB, NChamp, NT1, NT2, nxtTitle, nxtTag, team } = cycleWorld();
+  M.setQualifiers(st, tr.id, [NA.id, NB.id]);
+  const night = M.addEvent(st, { showId: 'nxt', week: 5 });
+  const [q1] = M.bookQualifiers(st, tr.id, night.id);
+  throwsUE(() => M.draftWrestler(st, tr.id, NChamp.id, 'raw'), /transfer window isn't open/);
+  M.openWindow(st, tr.id);
+  M.enterResult(st, night.id, q1.id, { outcome: 'win', winner: 0 });          // qualifying while the window is open still counts
+  const champs = st.eligibility.filter(e => e.source === 'champion');
+  assert.deepEqual(champs.map(e => [M.wrestlerById(st, e.wrestler).name, M.titleById(st, e.title).name, e.team]),
+    [['NChamp', 'NXT Championship', null], ['NT1', 'NXT Tag Team Championship', team.id], ['NT2', 'NXT Tag Team Championship', team.id]]);
+  // a champion: keep the title or vacate it - never assumed
+  assert.deepEqual(M.draftQuestions(st, NChamp.id).titles.map(x => x.title), [nxtTitle.id]);
+  throwsUE(() => M.draftWrestler(st, tr.id, NChamp.id, 'raw'), /NXT Championship: keep it or vacate it\?/);
+  throwsUE(() => M.draftWrestler(st, tr.id, NChamp.id, 'nxt', { titles: { [nxtTitle.id]: 'vacate' } }), /go to Raw, SmackDown or Dynamite/);
+  const [p1] = M.draftWrestler(st, tr.id, NChamp.id, 'raw', { titles: { [nxtTitle.id]: 'vacate' }, note: 'Top pick' });
+  assert.equal(M.wrestlerById(st, NChamp.id).showId, 'raw');
+  assert.equal(M.currentReign(st, nxtTitle.id), null);
+  assert.deepEqual([p1.pick, p1.from, p1.to, p1.titles, p1.note], [1, 'nxt', 'raw', [{ title: nxtTitle.id, reign: M.titleReigns(st, nxtTitle.id)[0].id, choice: 'vacated' }], 'Top pick']);
+  assert.equal(st.eligibility.find(e => e.id === p1.eligibility[0]).source, 'champion');
+  // tag champions: the partner comes along only if the owner says so; the team keeps its title here
+  const [p2a, p2b] = M.draftWrestler(st, tr.id, NT1.id, 'smackdown', { partners: [NT2.id], titles: { [nxtTag.id]: 'keep' } });
+  assert.deepEqual([M.wrestlerById(st, NT1.id).showId, M.wrestlerById(st, NT2.id).showId], ['smackdown', 'smackdown']);
+  assert.equal(M.currentReign(st, nxtTag.id).holder.id, team.id);
+  assert.deepEqual([p2a.pick, p2b.pick, p2b.with, p2a.group === p2b.group, p2a.titles[0].choice], [2, 2, NT1.id, true, 'kept']);
+  M.draftWrestler(st, tr.id, NA.id, 'dynamite');
+  throwsUE(() => M.draftWrestler(st, tr.id, NB.id, 'raw'), /NB isn't draft eligible/);
+  throwsUE(() => M.draftWrestler(st, tr.id, NA.id, 'raw'), /isn't on NXT/);
+  // each show took a different number
+  const took = show => M.draftsOf(st, tr.id).filter(d => d.to === show).length;
+  assert.deepEqual([took('raw'), took('smackdown'), took('dynamite')], [1, 2, 1]);
+  // end the window; nobody else has to go
+  M.closeWindow(st, tr.id);
+  assert.deepEqual(tr.window.undrafted, []);
+  throwsUE(() => M.draftWrestler(st, tr.id, NA.id, 'raw'), /isn't open/);
+  throwsUE(() => M.undoDraft(st, p1.id), /Reopen it first/);
+  M.reopenWindow(st, tr.id);
+  M.undoDraft(st, p1.id);                                                     // NChamp goes back, and so does the belt
+  assert.equal(M.wrestlerById(st, NChamp.id).showId, 'nxt');
+  assert.equal(M.currentReign(st, nxtTitle.id).holder.id, NChamp.id);
+  M.closeWindow(st, tr.id);
+  assert.deepEqual(names2(st, tr.window.undrafted), ['NChamp']);              // left undrafted, and kept on record
+  sound(st);
+});
+
+test('a complete post-WrestleMania cycle: relegation, NXT qualifiers, the draft, a new season', () => {
+  const w = cycleWorld();
+  const { st, tr, rw, sw, NA, NB, NC, ND, NChamp, NT1, NT2, nxtTitle, nxtTag } = w;
+  const rosterOf = show => st.wrestlers.filter(x => x.showId === show).length;
+  const before = { raw: rosterOf('raw'), smackdown: rosterOf('smackdown'), dynamite: rosterOf('dynamite'), nxt: rosterOf('nxt') };
+  assert.deepEqual(before, { raw: 6, smackdown: 5, dynamite: 3, nxt: 8 });
+
+  // 1. relegation: Raw settles its tie; SmackDown sends two; Dynamite none
+  M.toggleCandidate(st, tr.id, 'raw', rw[2].id);
+  M.setCandidateCount(st, tr.id, 'smackdown', 4);
+  M.setCandidateCount(st, tr.id, 'dynamite', 0);
+  const rawNight = M.addEvent(st, { showId: 'raw', week: 5 });
+  const sdNight = M.addEvent(st, { showId: 'smackdown', week: 5 });
+  const [rm] = M.bookRelegation(st, tr.id, 'raw', rawNight.id);
+  const [sm1, sm2] = M.bookRelegation(st, tr.id, 'smackdown', sdNight.id);
+  const winnerIs = (m, id) => m.sides.findIndex(sd => sd.wrestlers[0] === id);
+  M.enterResult(st, rawNight.id, rm.id, { outcome: 'win', winner: winnerIs(rm, rw[2].id) });   // R3 stays, R1 down
+  M.enterResult(st, sdNight.id, sm1.id, { outcome: 'win', winner: winnerIs(sm1, sw[1].id) });  // S2 stays, S1 down
+  M.enterResult(st, sdNight.id, sm2.id, { outcome: 'win', winner: winnerIs(sm2, sw[2].id) });  // S3 stays, S4 down
+
+  // 2. NXT's first show after WrestleMania: qualifiers
+  M.setQualifiers(st, tr.id, [NA.id, NB.id, NC.id, ND.id]);
+  const nxtNight = M.addEvent(st, { showId: 'nxt', week: 5 });
+  const [q1, q2] = M.bookQualifiers(st, tr.id, nxtNight.id);
+  M.enterResult(st, nxtNight.id, q1.id, { outcome: 'win', winner: 0 });      // NA qualifies
+  M.enterResult(st, nxtNight.id, q2.id, { outcome: 'win', winner: 1 });      // ND qualifies
+  // relegated wrestlers arrived in NXT, but weren't on NXT at WrestleMania: not in the qualifier pool
+  assert.ok(!M.promotionTable(st, tr.id).inPool.has(rw[0].id));
+
+  // 3. the transfer window: champions fixed as eligible, then the draft
+  M.openWindow(st, tr.id);
+  assert.deepEqual(eligibleNames(st, tr.id), ['NA:qualifier', 'NChamp:champion', 'ND:qualifier', 'NT1:champion', 'NT2:champion']);
+  M.draftWrestler(st, tr.id, NChamp.id, 'raw', { titles: { [nxtTitle.id]: 'vacate' } });
+  M.draftWrestler(st, tr.id, NA.id, 'raw');
+  M.draftWrestler(st, tr.id, NT1.id, 'dynamite', { titles: { [nxtTag.id]: 'vacate' } });   // NT1 alone: NT2 stays
+  M.closeWindow(st, tr.id);                                                    // ND and NT2 left undrafted
+  assert.deepEqual(names2(st, tr.window.undrafted), ['ND', 'NT2']);
+
+  // where everyone ended up: nothing had to balance
+  const after = { raw: rosterOf('raw'), smackdown: rosterOf('smackdown'), dynamite: rosterOf('dynamite'), nxt: rosterOf('nxt') };
+  assert.deepEqual(after, { raw: 7, smackdown: 3, dynamite: 4, nxt: 8 });
+  assert.equal(M.currentReign(st, nxtTag.id), null);                          // vacated on NT1's pick, as decided
+  assert.deepEqual(M.teamShows(st, M.teamById(st, w.team.id)).sort(), ['dynamite', 'nxt']);   // the team is split, not dissolved
+
+  // the record, in order: every transfer since WrestleMania and why
+  const moves = M.transfersSince(st, tr.id).map(x => `${M.wrestlerById(st, x.move.wrestler).name} ${x.move.from}>${x.move.to} ${x.relegation ? 'relegated' : x.draft ? `pick ${x.draft.pick}` : 'move'}`);
+  assert.deepEqual(moves, ['R1 raw>nxt relegated', 'S1 smackdown>nxt relegated', 'S4 smackdown>nxt relegated',
+    'NChamp nxt>raw pick 1', 'NA nxt>raw pick 2', 'NT1 nxt>dynamite pick 3']);
+  const pick = id => M.draftsOf(st, tr.id).find(d => d.wrestler === id);
+  assert.equal(st.eligibility.find(e => e.id === pick(NA.id).eligibility[0]).source, 'qualifier');
+  assert.equal(st.eligibility.find(e => e.id === pick(NChamp.id).eligibility[0]).source, 'champion');
+  assert.deepEqual(M.careerOf(st, NChamp.id).filter(e => e.type === 'move').map(e => e.move.note), ['Drafted from NXT', '']);
+
+  // 4. a new season begins; all of it is still there, and the save round-trips
+  M.startNextSeason(st);
+  assert.equal(M.activeSeason(st).number, 2);
+  assert.equal(st.relegations.length, 3);
+  assert.equal(st.drafts.length, 3);
+  assert.deepEqual(importUniverse(exportUniverse(st)), st);
+  sound(st);
+});
+
+test('a v4 save with a season transition migrates to the promotion format', () => {
+  const { st } = relegationWorld();
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 4;
+  old.transitions.forEach(t => { delete t.promotion; delete t.window; });
+  delete old.eligibility;
+  delete old.drafts;
+  old.events.forEach(e => e.matches.forEach(m => { delete m.qualifier; }));
+  const back = M.migrate(old);
+  assert.equal(back.version, M.SCHEMA_VERSION);
+  assert.deepEqual([back.transitions[0].promotion, back.transitions[0].window, back.eligibility, back.drafts], [{ picked: [], pairs: null }, null, [], []]);
+  assert.deepEqual(M.validate(back), []);
+});
+
+test('a drafted or eligible wrestler can’t be merged away', () => {
+  const { st, tr, NChamp, nxtTitle } = cycleWorld();
+  M.openWindow(st, tr.id);
+  M.draftWrestler(st, tr.id, NChamp.id, 'raw', { titles: { [nxtTitle.id]: 'keep' } });
+  const twin = M.addWrestler(st, { name: 'NChamp 2', showId: 'raw' });
+  throwsUE(() => M.mergeWrestlers(st, twin.id, NChamp.id), /part of a season transition/);
+  assert.ok(M.wrestlerRefs(st, NChamp.id).includes('a season transition'));
+});

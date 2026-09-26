@@ -44,14 +44,15 @@ js/universe/
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
   ranks.js             the Rankings tab: standings and booking balance
   standings.js         the arithmetic behind it - pure, runs under Node
-  relegation.js        the season transition page: relegation after WrestleMania
+  relegation.js        the season transition page, and its relegation part
+  promotion.js         its NXT promotion and transfer window parts, and the draft
   card.js              a show's page and match card; the booking / result form
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       86 model tests      npm run test:universe
-tools/universe-check.mjs      113 browser checks  npm run check:universe
+tools/universe-test.mjs       93 model tests      npm run test:universe
+tools/universe-check.mjs      129 browser checks  npm run check:universe
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -191,6 +192,54 @@ result or taking the match off the card brings them back — only while it's
 still their latest move, so nothing later is rewritten. A relegation match's
 line-up is its pairing, so it's changed only on the transition page.
 
+## NXT promotion and the transfer window
+
+The season transition page has three parts: **Relegation**, **NXT promotion** and
+**Transfer window**.
+
+**NXT promotion.** NXT's first show after WrestleMania holds one-on-one
+qualifying matches (**Plan it** puts that episode on the calendar if it isn't
+there).
+
+- **Who's in them is your pick.** Everyone who was on NXT at WrestleMania is
+  listed with their season record, ranked exactly as on the Rankings tab. The
+  top few (you set how many), leaving out champions and the injured, are marked
+  *Suggested* — **Pick them** takes all of those, or tap anyone in or out. The
+  order you pick in is the pairing order, and pairings can be changed.
+- **Winners become draft eligible**, the moment the result is saved. A
+  qualifier without a winner is your decision: a rematch, or send one, both or
+  neither through (with a note). A corrected result changes who's eligible —
+  refused once they've been drafted, until that pick is undone.
+- **Every NXT champion is draft eligible without a match** — both members of a
+  team holding an NXT tag title. They're fixed as eligible when the transfer
+  window opens.
+- **Eligible moves nobody.**
+
+**The transfer window.** Open it when you're ready (it can be taken back until
+someone's drafted). Tap an eligible wrestler to draft them to Raw, SmackDown or
+Dynamite. Each show can take any number, and rosters never have to come out
+even — the tiles show each show's roster, plus drafted in and relegated out.
+End the window whenever you like: anyone left undrafted stays on NXT, and the
+closed window keeps who that was. It can be reopened to draft more or undo a
+pick; an undone pick goes back to NXT, and a title vacated with it goes back to
+its holder — only while nothing has happened since.
+
+**Decided at every pick, never by the app:**
+
+| Question | How it's asked |
+|---|---|
+| A drafted wrestler (or their team) holds a title | **Keep it** or **Vacate it** — the pick waits for an answer |
+| A drafted wrestler has tag partners | **Bring them too** (eligible or not — noted as your decision), or leave the team split across shows |
+
+**The record.** Each eligibility says how it came about: holding an NXT title
+(which one, and with which team), winning a qualifier (against whom), or your
+decision after a qualifier without a winner (with your note). Each pick keeps
+its number, the show, the eligibility it used — or that a partner came along by
+your decision — every title kept or vacated, and a note. The window page lists
+every roster move since WrestleMania in order: relegations, draft picks, and
+any other transfer. Wrestlers' pages show their draft, or that they were
+eligible and left undrafted.
+
 ## Rankings and booking balance
 
 The **Rankings** tab reads the results you've entered and nothing else. It never
@@ -305,7 +354,10 @@ refuses rather than disturb anything else:
 | Something added by mistake with no history | Delete it. |
 | A relegation result entered wrong | **Correct** it on its match: the wrestler who really lost goes to NXT, and the other comes back. Clearing it, or taking it off the card, brings them back — while it's still their latest move. |
 | A relegation decision made wrong | **Undo** it on the transition page. |
-| A season transition started by mistake | **Cancel** it, while nothing is booked from it. |
+| A season transition started by mistake | **Cancel** it, while nothing is booked or drafted from it. |
+| A qualifier result entered wrong | **Correct** it on its match: eligibility follows the real winner — refused once they've been drafted, until that pick is undone. |
+| A draft pick made wrong | Reopen the window if it's closed, then **Undo** the pick: everyone drafted with it goes back to NXT, and a title vacated with it goes back — while it's still their latest move and the title hasn't changed hands since. |
+| The transfer window opened too early | **Take back opening the window**, while nobody's been drafted. |
 
 ## Saving
 
@@ -342,17 +394,19 @@ each team's current members, so on load everyone becomes a founding member and
 nobody has left. **Version 3** added the calendar and bookings: every result
 in an older save becomes a played match, and every show lands on its show's
 night (a PLE on Saturday). **Version 4** added the season transition and the
-relegation record; nothing in an older save was a relegation match.
+relegation record; nothing in an older save was a relegation match. **Version
+5** added NXT promotion, draft eligibility and draft picks; a version 4
+transition gets an empty qualifier field and an unopened window.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Promotion from NXT, personality events and story generation are later work.
-The foundation is shaped for them — results record sides, winners, finishes and
-titles, standings rank every show, roster moves record who changed show and
-when, relegation keeps why, and seasons have hard edges — but none of that
-logic exists yet. Whatever suggests a match, the result still comes
+Personality events and story generation are later work. The foundation is
+shaped for them — results record sides, winners, finishes and titles,
+standings rank every show, roster moves record who changed show and when, the
+season transition keeps why each wrestler went down or came up, and seasons
+have hard edges — but none of that logic exists yet. Whatever suggests a match, the result still comes
 from the game. There are
 also no personality or relationship fields: those belong to the features that
 will use them, and inventing their shape now would only mean migrating it

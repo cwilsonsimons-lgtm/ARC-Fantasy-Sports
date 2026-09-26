@@ -109,15 +109,18 @@ function matchCard(st, ev, m, i) {
   const reign = played && st.reigns.find(r => r.matchId === m.id);
   const detail = played ? [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(' · ') : '';
   const rel = m.relegation && st.relegations.find(r => r.match === m.id);
+  const qual = m.qualifier && st.eligibility.find(e => e.match === m.id && e.source === 'qualifier');
   const move = d => `<div class="uv-ic mv" title="Move ${d < 0 ? 'up' : 'down'}" onclick="uvMoveMatch('${ev.id}','${m.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
   return `<div class="uv-mc ${m.status}" data-m="${m.id}">
-    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.relegation ? chip('Relegation', 'bad') : ''}${title ? chip(title.name, 'gold') : ''}${m.stip && !m.relegation ? chip(m.stip) : ''}
+    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.relegation ? chip('Relegation', 'bad') : ''}${m.qualifier ? chip('Qualifier', 'gold') : ''}${title ? chip(title.name, 'gold') : ''}${m.stip && !m.relegation && !m.qualifier ? chip(m.stip) : ''}
       <span class="st">${played ? 'Result' : 'Booked'}</span></div>
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ''}
     ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title.name)} ${reign.holder.type === 'team' ? 'champions' : 'champion'}</div>` : ''}
     ${rel ? `<div class="uv-mc-d bad">${esc(M.wrestlerById(st, rel.wrestler).name)} relegated to NXT</div>` : ''}
     ${m.relegation && !played ? '<div class="uv-mc-d">Relegation match: the loser goes to NXT when you save the result.</div>' : ''}
+    ${qual ? `<div class="uv-mc-d uv-gold">${esc(M.wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ''}
+    ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ''}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ''}
     <div class="uv-mc-acts">
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>`
@@ -167,11 +170,12 @@ export function uvEventPage(id) {
 // transition, and a relegation night leads back to it.
 function transitionLink(st, e) {
   const own = st.transitions.find(t => t.event === e.id);
-  const night = e.matches.find(m => m.relegation);
-  const tr = own || (night && M.transitionById(st, night.relegation.transition));
+  const night = e.matches.find(m => m.relegation || m.qualifier);
+  const tr = own || (night && M.transitionById(st, (night.relegation || night.qualifier).transition));
   if (tr) {
     return `<div class="uv-trlink" onclick="uvOpenTransition('${tr.id}')">${ICON.move}<div><b>Season transition</b>
-      <span>${own ? 'Relegation after this event' : 'Relegation matches are on this card'}</span></div>${ICON.right}</div>`;
+      <span>${own ? 'Relegation, NXT promotion and the draft after this event'
+        : night.relegation ? 'Relegation matches are on this card' : 'Qualifying matches for the draft are on this card'}</span></div>${ICON.right}</div>`;
   }
   if (e.kind !== 'ple' || M.transitionOfSeason(st, e.at.season)) return '';
   const mania = /wrestlemania/i.test(e.name);
@@ -216,8 +220,9 @@ function openForm(mode, eventId, m, lineup = null) {
     // entering a result starts from the booking as it stands; the line-up
     // opens only if the owner asks (a run-in, a late change). A relegation
     // match's line-up is its pairing, and never opens here.
-    lineup: (mode === 'book' || mode === 'edit') && !(m && m.relegation),
+    lineup: (mode === 'book' || mode === 'edit') && !(m && (m.relegation || m.qualifier)),
     relegation: !!(m && m.relegation),
+    qualifier: !!(m && m.qualifier),
   };
   openSheet(formSheet);
 }
@@ -339,8 +344,13 @@ function formSheet() {
       <p class="uv-p">${esc(e.name)} · ${esc(eventWhen(st, e))}${withResult ? ' — enter what the CPU produced. Nothing is filled in for you.' : ''}</p>
       ${md.lineup ? lineup : summary}
       ${result}
-      ${md.relegation ? `<div class="fine">A relegation match: ${withResult ? 'the loser moves to NXT as soon as you save. ' : ''}Its line-up is its
-        pairing — change that on the <span class="uv-link" onclick="uvOpenTransition('${M.eventById(st, md.eventId).matches.find(x => x.id === md.matchId).relegation.transition}')">season transition page</span>.</div>`
+      ${md.relegation || md.qualifier ? (() => {
+          const mm = M.eventById(st, md.eventId).matches.find(x => x.id === md.matchId);
+          const what = md.relegation ? `A relegation match: ${withResult ? 'the loser moves to NXT as soon as you save. ' : ''}`
+            : `A qualifying match: ${withResult ? 'the winner becomes draft eligible when you save — nobody moves. ' : ''}`;
+          return `<div class="fine">${what}Its line-up is its pairing — change that on the <span class="uv-link"
+            onclick="uvOpenTransition('${(mm.relegation || mm.qualifier).transition}')">season transition page</span>.</div>`;
+        })()
         : md.lineup ? '' : `<div class="uv-add" onclick="uvMLineup()">${ICON.edit}Change the line-up, title or stipulation</div>`}
       <div style="margin-top:12px">${field(withResult ? 'What happened (optional)' : 'Notes (optional)',
         `<textarea id="uvMNotes" class="uv-in" rows="2" maxlength="2000" oninput="uvMText('notes',this.value)"
@@ -421,6 +431,8 @@ export function uvMSave(thenResult) {
     const saved = d.mode === 'result' ? 'Result saved' : 'Result corrected';
     const rel = st.relegations.find(x => x.match === m.id);
     if (rel) return `${saved} — ${M.wrestlerById(st, rel.wrestler).name} relegated to NXT`;
+    const q = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
+    if (q) return `${saved} — ${M.wrestlerById(st, q.wrestler).name} is draft eligible`;
     if (!reign) return saved;
     return `${saved} — ${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}`;
   });

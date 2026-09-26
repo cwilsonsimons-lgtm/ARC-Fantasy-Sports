@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -79,6 +79,8 @@ export function createUniverse() {
     events: [],             // shows and PLEs, each holding its match results
     transitions: [],        // the season transition after each WrestleMania: relegation candidates and pairings
     relegations: [],        // every relegation to NXT, and why - kept for good
+    eligibility: [],        // who became draft eligible after WrestleMania, and how
+    drafts: [],             // every draft pick from NXT - kept for good
   };
   openSeason(st, 1, '');
   return st;
@@ -359,9 +361,11 @@ export function wrestlerRefs(st, id) {
  */
 // named as a relegation candidate, in a pairing, or in a relegation record
 function inTransition(st, id) {
+  const inPairs = pairs => (pairs || []).some(p => p.a === id || p.b === id);
   return st.relegations.some(r => r.wrestler === id || r.opponent === id)
-    || st.transitions.some(t => Object.values(t.shows).some(c => (c.picked || []).includes(id)
-      || (c.pairs || []).some(p => p.a === id || p.b === id)));
+    || st.eligibility.some(e => e.wrestler === id || e.opponent === id) || st.drafts.some(d => d.wrestler === id)
+    || st.transitions.some(t => Object.values(t.shows).some(c => (c.picked || []).includes(id) || inPairs(c.pairs))
+      || t.promotion.picked.includes(id) || inPairs(t.promotion.pairs));
 }
 
 export function deleteWrestler(st, id) {
@@ -1008,18 +1012,19 @@ export function updateEvent(st, id, patch = {}) {
   }
   // relegation: its matches stay on this show and after WrestleMania, and a
   // relegation to NXT made here moves with the night - in order with the rest
-  const relMatches = ev.matches.filter(m => m.relegation);
-  if (relMatches.length && (kind !== ev.kind || showId !== ev.showId)) fail(`${ev.name} holds relegation matches, so it stays a ${showById(st, ev.showId).name} episode.`);
+  const relMatches = ev.matches.filter(m => m.relegation || m.qualifier);
+  if (relMatches.length && (kind !== ev.kind || showId !== ev.showId)) fail(`${ev.name} holds ${relMatches[0].relegation ? 'relegation' : 'qualifying'} matches, so it stays a ${showById(st, ev.showId).name} episode.`);
   const relMoves = st.relegations.filter(x => x.event === id && x.move).map(x => st.moves.find(mv => mv.id === x.move));
   if (moved) {
     const date = { season: ev.at.season, week, day };
     relMatches.forEach(m => {
-      const wm = eventById(st, transitionById(st, m.relegation.transition).event);
-      if (cmpDate(st, date, wm.at) <= 0) fail(`${ev.name} holds relegation matches, so it has to stay after ${wm.name}.`);
+      const wm = eventById(st, transitionById(st, (m.relegation || m.qualifier).transition).event);
+      if (cmpDate(st, date, wm.at) <= 0) fail(`${ev.name} holds ${m.relegation ? 'relegation' : 'qualifying'} matches, so it has to stay after ${wm.name}.`);
     });
+    const ofTransition = (m, t) => (m.relegation && m.relegation.transition === t.id) || (m.qualifier && m.qualifier.transition === t.id);
     st.transitions.filter(t => t.event === id).forEach(t => {
-      const night = st.events.find(e => e.id !== id && e.matches.some(m => m.relegation && m.relegation.transition === t.id) && cmpDate(st, e.at, date) <= 0);
-      if (night) fail(`${night.name} holds relegation matches from after ${ev.name}, so ${ev.name} has to stay before it.`);
+      const night = st.events.find(e => e.id !== id && e.matches.some(m => ofTransition(m, t)) && cmpDate(st, e.at, date) <= 0);
+      if (night) fail(`${night.name} holds matches from after ${ev.name}, so ${ev.name} has to stay before it.`);
     });
     relMoves.forEach(mv => {
       const list = movesOf(st, mv.wrestler), i = list.indexOf(mv);
@@ -1044,6 +1049,7 @@ export function updateEvent(st, id, patch = {}) {
     });
     relMoves.forEach(mv => place(mv.at));
     st.relegations.filter(x => x.event === id).forEach(x => place(x.at));
+    st.eligibility.filter(x => x.event === id).forEach(x => place(x.at));
     place(ev.at);
   }
   return ev;
@@ -1059,7 +1065,7 @@ export function deleteEvent(st, id) {
   if (tr) fail(`The ${seasonById(st, tr.season).name} season transition starts from ${ev.name}. Cancel it first.`);
   const linked = st.reigns.filter(r => r.eventId === id);
   const revert = linked.length ? removableReigns(st, linked, ev.name) : null;
-  const unrel = ev.matches.map(m => relegationRemoval(st, m)).filter(Boolean);
+  const unrel = ev.matches.flatMap(m => [relegationRemoval(st, m), qualifierRemoval(st, m)]).filter(Boolean);
   removeWhere(st.events, e => e.id === id);
   if (revert) revert();
   unrel.forEach(f => f());
@@ -1218,7 +1224,7 @@ function findMatch(st, eventId, matchId) {
 /** Put a match on an event's card: who's in it, what's at stake. The result comes later, from the game. */
 export function bookMatch(st, eventId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const m = { id: newId(st, 'm'), relegation: null, ...bookedRecord(bookingFields(st, input)) };
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, ...bookedRecord(bookingFields(st, input)) };
   ev.matches.push(m);
   return m;
 }
@@ -1228,7 +1234,8 @@ export function updateBooking(st, eventId, matchId, input = {}) {
   const { m } = findMatch(st, eventId, matchId);
   if (m.status !== 'scheduled') fail('This match already has a result - correct the result instead.');
   const b = bookingFields(st, bookingInput(m, input), m.titleId);
-  relegationPlan(st, null, m, b.sides, null);                       // a relegation match keeps its pairing
+  relegationPlan(st, null, m, b.sides, null);                       // a relegation or qualifying match keeps its pairing
+  qualifierPlan(st, null, m, b.sides, null);
   Object.assign(m, bookedRecord(b));
   return m;
 }
@@ -1246,9 +1253,11 @@ export function enterResult(st, eventId, matchId, input = {}, opts = {}) {
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
   const rel = relegationPlan(st, ev, m, b.sides, r);
+  const qual = qualifierPlan(st, ev, m, b.sides, r);
   Object.assign(m, playedRecord(b, r));
   applyPlan(st, ev, m, plan, null);
   applyRelegation(st, ev, m, rel);
+  applyQualifier(st, ev, m, qual);
   return m;
 }
 
@@ -1261,7 +1270,7 @@ export function recordMatch(st, eventId, input = {}, opts = {}) {
   const b = bookingFields(st, input);
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
-  const m = { id: newId(st, 'm'), relegation: null, ...playedRecord(b, r) };
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, ...playedRecord(b, r) };
   ev.matches.push(m);
   applyPlan(st, ev, m, plan, null);
   return m;
@@ -1284,9 +1293,11 @@ export function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, linked, b, r, opts.titleChange);
   const rel = relegationPlan(st, ev, m, b.sides, r);
+  const qual = qualifierPlan(st, ev, m, b.sides, r);
   Object.assign(m, playedRecord(b, r));
   applyPlan(st, ev, m, plan, linked);
   applyRelegation(st, ev, m, rel);
+  applyQualifier(st, ev, m, qual);
   return m;
 }
 
@@ -1301,9 +1312,11 @@ export function clearResult(st, eventId, matchId) {
   const linked = st.reigns.find(r => r.matchId === matchId);
   const revert = linked ? removableReigns(st, [linked], 'this match') : null;
   const rel = relegationPlan(st, ev, m, m.sides, null);
+  const qual = qualifierPlan(st, ev, m, m.sides, null);
   Object.assign(m, bookedRecord({ sides: m.sides, title: titleById(st, m.titleId), stip: m.stip, notes: m.notes }));
   if (revert) revert();
   applyRelegation(st, ev, m, rel);
+  applyQualifier(st, ev, m, qual);
   return m;
 }
 
@@ -1317,9 +1330,11 @@ export function deleteMatch(st, eventId, matchId) {
   const linked = st.reigns.find(r => r.matchId === matchId);
   const revert = linked ? removableReigns(st, [linked], 'this match') : null;
   const unrel = relegationRemoval(st, m);
+  const unqual = qualifierRemoval(st, m);
   removeWhere(ev.matches, x => x.id === matchId);
   if (revert) revert();
   if (unrel) unrel();
+  if (unqual) unqual();
 }
 
 /** Move a match one place up (-1) or down (+1) the card. False at either end. */
@@ -1607,7 +1622,8 @@ export function startTransition(st, eventId) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   const season = seasonById(st, ev.at.season);
   if (transitionOfSeason(st, season.id)) fail(`${season.name} already has its season transition.`);
-  const tr = { id: newId(st, 'tr'), season: season.id, event: ev.id, ack: 0, at: now(st), shows: {} };
+  const tr = { id: newId(st, 'tr'), season: season.id, event: ev.id, ack: 0, at: now(st), shows: {},
+    promotion: { picked: [], pairs: null }, window: null };
   mainShows(st).forEach(s => { tr.shows[s.id] = { count: DEFAULT_CANDIDATES, picked: null, pairs: null }; });
   st.transitions.push(tr);
   return tr;
@@ -1617,6 +1633,8 @@ export function startTransition(st, eventId) {
 export function cancelTransition(st, trId) {
   const tr = must(transitionById(st, trId), 'season transition', trId);
   if (Object.values(tr.shows).some(c => bookedPairs(c).length)) fail('Relegation matches are on the card. Take them off first.');
+  if (bookedQualifiers(tr.promotion).length) fail('Qualifying matches are on the card. Take them off first.');
+  if (tr.window) fail('The transfer window has been opened. Take that back first.');
   removeWhere(st.transitions, t => t.id === trId);
 }
 
@@ -1698,7 +1716,7 @@ export function bookRelegation(st, trId, showId, eventId, pairIds = null) {
   cfg.pairs = t.pairs.map(p => ({ id: p.id || newId(st, 'rp'), a: p.a, b: p.b, matches: [...p.matches], decision: p.decision }));
   return todo.map(p => {
     const pair = cfg.pairs.find(x => x.a === p.a && x.b === p.b);
-    const m = { id: newId(st, 'm'), relegation: { transition: tr.id, show: showId, pair: pair.id },
+    const m = { id: newId(st, 'm'), relegation: { transition: tr.id, show: showId, pair: pair.id }, qualifier: null,
       ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Relegation match' })) };
     ev.matches.push(m);
     pair.matches.push(m.id);
@@ -1843,6 +1861,409 @@ export function undoDecision(st, trId, showId, pairId) {
 /** Relegation records, newest first - for a wrestler, or all of them. */
 export function relegationsOf(st, wrestlerId = null) {
   return st.relegations.filter(r => !wrestlerId || r.wrestler === wrestlerId).sort((a, b) => compareStamps(st, b.at, a.at));
+}
+
+// ---------------------------------------------------------------- the season transition: NXT promotion and the draft
+//
+// NXT's first show after WrestleMania holds qualifying matches. Every NXT
+// champion is draft eligible; so is whoever wins a qualifying match. Being
+// eligible moves nobody: the owner drafts eligible wrestlers to Raw,
+// SmackDown or Dynamite in the transfer window, as many to each as they like,
+// and can close the window with anyone left undrafted.
+//
+// The model never ranks anyone here - who is picked for a qualifier is the
+// owner's choice (the page suggests from NXT's season records), and the game
+// decides who wins. Two things it has no rule for are asked at the draft
+// instead: whether a drafted wrestler's tag partners go too, and whether a
+// title they hold is kept or vacated.
+//
+// A transition carries promotion: { picked, pairs } - the qualifier
+// participants in the owner's order, and their pairings (null: in that order)
+// - and window: null | { opened, closed, undrafted }. Qualifying matches carry
+// { transition, pair }. st.eligibility and st.drafts keep, for good, who
+// became eligible and why, and every pick.
+
+export const PROMOTED_FROM = 'nxt';
+const nxtTitles = st => st.titles.filter(t => t.showId === PROMOTED_FROM && t.active);
+const liveEligibility = (st, trId) => st.eligibility.filter(e => e.transition === trId);
+export const eligibilityOf = (st, trId, wid) => liveEligibility(st, trId).filter(e => e.wrestler === wid);
+export const draftsOf = (st, trId) => st.drafts.filter(d => d.transition === trId).sort((a, b) => a.pick - b.pick);
+
+// The NXT champions right now, as eligibility would record them:
+// [{ wrestler, title, reign, team }] - a tag title makes each of its holders' members eligible.
+export function nxtChampions(st) {
+  const out = [];
+  nxtTitles(st).forEach(title => {
+    const r = currentReign(st, title.id);
+    if (!r) return;
+    if (r.holder.type === 'team') {
+      const team = teamById(st, r.holder.id);
+      (team ? team.members : []).forEach(w => out.push({ wrestler: w, title: title.id, reign: r.id, team: team.id }));
+    } else out.push({ wrestler: r.holder.id, title: title.id, reign: r.id, team: null });
+  });
+  return out;
+}
+
+/**
+ * NXT's side of the transition, worked out as things stand: { tr, wm, pool,
+ * picked, pairs, unpaired, flags, blocking, night, champions, eligible, window }.
+ *   pool       wrestlers on NXT at WrestleMania - who can be picked for a qualifier
+ *   champions  the NXT champions: live until the window opens, then as fixed
+ *   eligible   everyone eligible, one row each: { wrestler, sources: [records], drafted }
+ */
+export function promotionTable(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const wm = eventById(st, tr.event);
+  const p = tr.promotion;
+  const pool = st.wrestlers.filter(w => showAtStamp(st, w, wm.at) === PROMOTED_FROM).map(w => ({
+    id: w.id, name: w.name, gender: w.gender, injured: w.status === 'injured', now: w.showId,
+  })).sort(byName);
+  const inPool = new Set(pool.map(r => r.id));
+  const picked = p.picked.filter(id => inPool.has(id));
+  let pairs;
+  if (p.pairs) pairs = p.pairs.map(x => ({ ...x, matches: [...x.matches] }));
+  else {
+    pairs = [];
+    for (let i = 0; i + 1 < picked.length; i += 2) pairs.push({ id: null, a: picked[i], b: picked[i + 1], matches: [], decision: null });
+  }
+  pairs.forEach(x => {
+    const s = pairStatus(st, x);
+    Object.assign(x, s, { status: s.status === 'relegated' ? 'qualified' : s.status });
+  });
+  const paired = new Set(pairs.flatMap(x => [x.a, x.b]));
+  const unpaired = picked.filter(id => !paired.has(id));
+
+  const champions = tr.window
+    ? liveEligibility(st, trId).filter(e => e.source === 'champion').map(e => ({ wrestler: e.wrestler, title: e.title, reign: e.reign, team: e.team }))
+    : nxtChampions(st);
+  const flags = [];
+  const decide = (key, text) => flags.push({ level: 'decide', key, text });
+  const check = (key, text) => flags.push({ level: 'check', key, text });
+  if (unpaired.length) {
+    decide('odd', `${picked.length % 2 ? `An odd number in the qualifiers (${picked.length}): ` : ''}${listNames(st, unpaired)} `
+      + `${unpaired.length === 1 ? 'has' : 'have'} no opponent. Add or take someone out, or change the pairings.`);
+  }
+  pairs.filter(x => x.status === 'no winner').forEach(x => decide('nowinner',
+    `${nameOf(st, x.a)} vs ${nameOf(st, x.b)} ended in ${x.last.m.outcome === 'draw' ? 'a draw' : 'a no contest'}. Book a rematch, or decide who (if anyone) qualifies.`));
+  picked.forEach(id => {
+    const r = pool.find(x => x.id === id);
+    if (champions.some(c => c.wrestler === id)) check('champion', `${r.name} is already eligible as an NXT champion.`);
+    if (r.injured) check('injured', `${r.name} is injured.`);
+    if (r.now !== PROMOTED_FROM) check('moved', `${r.name} is on ${r.now ? showById(st, r.now).name : 'no show'} now.`);
+  });
+  pairs.forEach(x => {
+    const [a, b] = [pool.find(r => r.id === x.a), pool.find(r => r.id === x.b)];
+    if (a && b && a.gender !== b.gender) check('mixed', `${a.name} and ${b.name} are in different divisions. Check that pairing.`);
+  });
+  champions.filter(c => c.team).forEach((c, i, list) => {
+    if (list.findIndex(x => x.team === c.team && x.title === c.title) !== i) return;
+    check('tagchamps', `${teamById(st, c.team).name} hold the ${titleById(st, c.title).name}: each of them is eligible. `
+      + 'Whether they move together is your call when you draft.');
+  });
+  const blocking = flags.filter(f => f.key === 'odd');
+
+  const after = st.events.filter(e => e.kind === 'weekly' && e.showId === PROMOTED_FROM && cmpDate(st, e.at, wm.at) > 0)
+    .sort((a, b) => compareStamps(st, a.at, b.at));
+  const cur = activeSeason(st);
+  const nxt = showById(st, PROMOTED_FROM);
+  const night = after.length ? { event: after[0] }
+    : { week: wm.at.season === cur.id ? wm.at.week + (nxt.day > wm.at.day ? 0 : 1) : cur.week };
+
+  // eligible: the champions (live or fixed), and every qualifier or decision on record
+  const byWrestler = new Map();
+  const add = (wid, src) => { if (!byWrestler.has(wid)) byWrestler.set(wid, []); byWrestler.get(wid).push(src); };
+  if (!tr.window) champions.forEach(c => add(c.wrestler, { source: 'champion', title: c.title, team: c.team, live: true }));
+  liveEligibility(st, trId).forEach(e => add(e.wrestler, e));
+  const drafts = draftsOf(st, trId);
+  const eligible = [...byWrestler].map(([wrestler, sources]) => ({ wrestler, sources, drafted: drafts.find(d => d.wrestler === wrestler) || null }))
+    .sort((a, b) => byName(wrestlerById(st, a.wrestler), wrestlerById(st, b.wrestler)));
+  return { tr, wm, pool, inPool, picked, pairs, unpaired, flags, blocking, night, champions, eligible, drafts, window: tr.window };
+}
+
+const promo = (st, trId) => must(transitionById(st, trId), 'season transition', trId).promotion;
+const bookedQualifiers = p => (p.pairs || []).filter(x => x.matches.length);
+function repairQualifiers(p) {
+  const kept = bookedQualifiers(p);
+  p.pairs = kept.length ? kept : null;
+}
+
+/** Pick a wrestler for the qualifiers, or take them out. The order picked is the pairing order. */
+export function toggleQualifier(st, trId, wrestlerId) {
+  const p = promo(st, trId);
+  const t = promotionTable(st, trId);
+  if (!t.inPool.has(wrestlerId)) fail(`${nameOf(st, wrestlerId)} wasn't on NXT at ${t.wm.name}.`);
+  if (bookedQualifiers(p).some(x => x.a === wrestlerId || x.b === wrestlerId)) fail(`${nameOf(st, wrestlerId)} is booked in a qualifying match. Take it off the card first.`);
+  p.picked = t.picked.includes(wrestlerId) ? t.picked.filter(id => id !== wrestlerId) : [...t.picked, wrestlerId];
+  repairQualifiers(p);
+  return p;
+}
+/** Set the whole qualifier field at once, in pairing order - e.g. the page's suggestions. */
+export function setQualifiers(st, trId, ids) {
+  const p = promo(st, trId);
+  const t = promotionTable(st, trId);
+  if (bookedQualifiers(p).length) fail('Qualifying matches are on the card, so the field is fixed. Take them off first.');
+  if (!Array.isArray(ids) || new Set(ids).size !== ids.length) fail('Pick each wrestler once.');
+  ids.forEach(id => { if (!t.inPool.has(id)) fail(`${nameOf(st, id)} wasn't on NXT at ${t.wm.name}.`); });
+  p.picked = [...ids];
+  p.pairs = null;
+  return p;
+}
+/** Pair two qualifier participants; their old opponents are paired with each other. */
+export function pairQualifiers(st, trId, aId, bId) {
+  const p = promo(st, trId);
+  const t = promotionTable(st, trId);
+  if (aId === bId) fail('Pick two different wrestlers.');
+  [aId, bId].forEach(id => {
+    if (!t.picked.includes(id)) fail(`${nameOf(st, id)} isn't in the qualifiers.`);
+    if (t.pairs.some(x => x.matches.length && (x.a === id || x.b === id))) fail(`${nameOf(st, id)} is already booked in a qualifying match.`);
+  });
+  const touched = t.pairs.filter(x => [x.a, x.b].some(id => id === aId || id === bId));
+  const left = touched.flatMap(x => [x.a, x.b]).filter(id => id !== aId && id !== bId);
+  const clean = x => ({ id: x.id || newId(st, 'rp'), a: x.a, b: x.b, matches: [...x.matches], decision: x.decision });
+  const pairs = t.pairs.filter(x => !touched.includes(x)).map(clean);
+  pairs.push(clean({ a: aId, b: bId, matches: [], decision: null }));
+  if (left.length === 2) pairs.push(clean({ a: left[0], b: left[1], matches: [], decision: null }));
+  p.pairs = pairs;
+  return p;
+}
+
+/** Put the qualifying matches on NXT's episode after WrestleMania (or, with `pairIds`, their rematches). */
+export function bookQualifiers(st, trId, eventId, pairIds = null) {
+  const p = promo(st, trId);
+  const t = promotionTable(st, trId);
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  if (ev.kind !== 'weekly' || ev.showId !== PROMOTED_FROM) fail('Qualifying matches go on an NXT episode.');
+  if (cmpDate(st, ev.at, t.wm.at) <= 0) fail(`Qualifying matches come after ${t.wm.name}.`);
+  if (t.blocking.length) fail(t.blocking[0].text);
+  const todo = t.pairs.filter(x => (pairIds ? pairIds.includes(x.id) && x.status === 'no winner' : x.status === 'unbooked'));
+  if (!todo.length) fail(pairIds ? 'Only a qualifying match without a winner can be rematched.' : 'Every qualifying match is already booked.');
+  p.picked = [...t.picked];
+  p.pairs = t.pairs.map(x => ({ id: x.id || newId(st, 'rp'), a: x.a, b: x.b, matches: [...x.matches], decision: x.decision }));
+  return todo.map(x => {
+    const pair = p.pairs.find(y => y.a === x.a && y.b === x.b);
+    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, pair: pair.id },
+      ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Qualifying match' })) };
+    ev.matches.push(m);
+    pair.matches.push(m.id);
+    return m;
+  });
+}
+
+const draftedWith = (st, eligibilityId) => st.drafts.find(d => d.eligibility.includes(eligibilityId)) || null;
+function uneligibleChecks(st, rec) {
+  const d = draftedWith(st, rec.id);
+  if (d) fail(`${nameOf(st, rec.wrestler)} has been drafted to ${showById(st, d.to).name} since qualifying. Undo that pick first.`);
+  return () => removeWhere(st.eligibility, x => x.id === rec.id);
+}
+function qualify(st, tr, pair, ev, m, winner, loser, decided, note) {
+  const rec = { id: newId(st, 'el'), transition: tr.id, wrestler: winner, source: decided ? 'decision' : 'qualifier', title: null,
+    reign: null, team: null, match: m ? m.id : null, pair: pair.id, opponent: loser, event: ev.id, note: note || '',
+    at: stampAt(st, ev.at.season, ev.at.week, ev.at.day) };
+  st.eligibility.push(rec);
+  return rec;
+}
+// What a result means for a qualifying match, before anything changes.
+function qualifierPlan(st, ev, m, sides, r) {
+  if (!m.qualifier) return null;
+  const tr = transitionById(st, m.qualifier.transition);
+  const pair = tr.promotion.pairs.find(x => x.id === m.qualifier.pair);
+  const ids = sides.map(sd => sd.wrestlers);
+  if (sides.length !== 2 || ids.some(x => x.length !== 1) || sides.some(sd => sd.team)
+    || !ids.flat().includes(pair.a) || !ids.flat().includes(pair.b)) {
+    fail('This is a qualifying match, so its line-up is its pairing. Change the pairing on the season transition page.');
+  }
+  const latest = pair.matches[pair.matches.length - 1] === m.id;
+  if (!latest && r && r.outcome === 'win') fail('A rematch has been booked for this pairing since. Take the rematch off the card first.');
+  if (latest && pair.decision) fail('You decided this pairing after it ended without a winner. Undo that decision first.');
+  const old = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier') || null;
+  const winner = r && r.outcome === 'win' ? sides[r.winner].wrestlers[0] : null;
+  if (old && old.wrestler === winner) return null;
+  const undo = old ? uneligibleChecks(st, old) : null;
+  return { undo, tr, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
+}
+function applyQualifier(st, ev, m, plan) {
+  if (!plan) return;
+  if (plan.undo) plan.undo();
+  if (plan.winner) qualify(st, plan.tr, plan.pair, ev, m, plan.winner, plan.loser, false);
+}
+function qualifierRemoval(st, m) {
+  if (!m.qualifier) return null;
+  const pair = transitionById(st, m.qualifier.transition).promotion.pairs.find(x => x.id === m.qualifier.pair);
+  if (pair.decision && pair.matches[pair.matches.length - 1] === m.id) fail('You decided this pairing after this match. Undo that decision first.');
+  const rec = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
+  const undo = rec ? uneligibleChecks(st, rec) : null;
+  return () => {
+    if (undo) undo();
+    pair.matches = pair.matches.filter(id => id !== m.id);
+  };
+}
+
+/** Settle a qualifying match that ended without a winner: who qualifies - one, both, or neither ([]). */
+export function decideQualifier(st, trId, pairId, qualifyIds, note = '') {
+  const t = promotionTable(st, trId);
+  const x = t.pairs.find(y => y.id === pairId);
+  if (!x) fail('That pairing isn\'t part of the qualifiers.');
+  if (x.status !== 'no winner') fail('Only a qualifying match that ended without a winner needs a decision.');
+  const ids = Array.isArray(qualifyIds) ? qualifyIds : [];
+  if (ids.some(id => ![x.a, x.b].includes(id)) || new Set(ids).size !== ids.length) fail('Pick from the two in that match.');
+  const n = checkNote(note);
+  const pair = t.tr.promotion.pairs.find(y => y.id === pairId);
+  ids.forEach(id => qualify(st, t.tr, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
+  pair.decision = { qualify: [...ids], note: n, at: now(st) };
+  return pair;
+}
+export function undoQualifierDecision(st, trId, pairId) {
+  const p = promo(st, trId);
+  const pair = (p.pairs || []).find(x => x.id === pairId);
+  if (!pair || !pair.decision) fail('There\'s no decision to undo.');
+  const recs = st.eligibility.filter(x => x.pair === pairId && x.source === 'decision');
+  const undos = recs.map(r => uneligibleChecks(st, r));
+  undos.forEach(f => f());
+  pair.decision = null;
+  return pair;
+}
+
+// ---------------------------------------------------------------- the transfer window
+
+/** Open the transfer window. The NXT champions of this moment are fixed as eligible. */
+export function openWindow(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  if (tr.window && !tr.window.closed) fail('The transfer window is already open.');
+  if (tr.window) fail('The transfer window has been open already. Reopen it instead.');
+  const at = now(st);
+  nxtChampions(st).forEach(c => st.eligibility.push({ id: newId(st, 'el'), transition: tr.id, wrestler: c.wrestler, source: 'champion',
+    title: c.title, reign: c.reign, team: c.team, match: null, pair: null, opponent: null, event: null, note: '', at: { ...at } }));
+  tr.window = { opened: at, closed: null, undrafted: null };
+  return tr.window;
+}
+/** Take back opening the window - only before anyone has been drafted. */
+export function unopenWindow(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  if (!tr.window) fail('The transfer window isn\'t open.');
+  if (draftsOf(st, trId).length) fail('Wrestlers have been drafted. Undo those picks first.');
+  removeWhere(st.eligibility, e => e.transition === trId && e.source === 'champion');
+  tr.window = null;
+}
+
+// Titles a wrestler holds now: their own, and their teams'. [{ title, reign, team }]
+function heldNow(st, wid) {
+  return st.reigns.filter(r => !r.end && (r.holder.type === 'wrestler' ? r.holder.id === wid
+    : (teamById(st, r.holder.id) || { members: [] }).members.includes(wid)))
+    .map(r => ({ title: r.titleId, reign: r.id, team: r.holder.type === 'team' ? r.holder.id : null }));
+}
+/** What drafting a wrestler would ask: their titles and their tag partners. */
+export function draftQuestions(st, wid) {
+  const w = must(wrestlerById(st, wid), 'wrestler', wid);
+  const partners = st.teams.filter(t => t.active && t.members.includes(wid))
+    .map(t => ({ team: t.id, partners: t.members.filter(id => id !== wid) }));
+  return { wrestler: w, titles: heldNow(st, wid), partners };
+}
+
+/**
+ * Draft an eligible wrestler to a main show. `opts.partners` are tag partners
+ * the owner brings along (eligible or not - the owner's call); every title any
+ * of them holds needs `opts.titles[titleId]` of 'keep' or 'vacate'. Everyone
+ * drafted together is one pick group.
+ */
+export function draftWrestler(st, trId, wid, showId, opts = {}) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  if (!tr.window || tr.window.closed) fail('The transfer window isn\'t open.');
+  const to = must(showById(st, showId), 'show', showId);
+  if (to.id === PROMOTED_FROM) fail('Draft picks go to Raw, SmackDown or Dynamite.');
+  const w = must(wrestlerById(st, wid), 'wrestler', wid);
+  const elig = eligibilityOf(st, trId, wid);
+  if (!elig.length) fail(`${w.name} isn't draft eligible.`);
+  const partners = [...new Set(opts.partners || [])];
+  const team = draftQuestions(st, wid).partners.flatMap(x => x.partners);
+  partners.forEach(id => { if (!team.includes(id)) fail(`${nameOf(st, id)} isn't ${w.name}'s tag partner.`); });
+  const group = [wid, ...partners];
+  const date = { season: activeSeason(st).id, week: activeSeason(st).week };
+  group.forEach(id => {
+    const x = wrestlerById(st, id);
+    if (x.showId !== PROMOTED_FROM) fail(`${x.name} isn't on NXT.`);
+    if (draftsOf(st, trId).some(d => d.wrestler === id)) fail(`${x.name} has already been drafted.`);
+    moveChecks(st, id, to.id, date);
+  });
+  const titles = new Map();
+  group.forEach(id => heldNow(st, id).forEach(h => titles.set(h.title, h)));
+  const choices = opts.titles || {};
+  titles.forEach(h => {
+    if (!['keep', 'vacate'].includes(choices[h.title])) {
+      fail(`${titleById(st, h.title).name}: keep it or vacate it? ${h.team ? teamById(st, h.team).name : nameOf(st, wid)} hold${h.team ? '' : 's'} it.`);
+    }
+    if (choices[h.title] === 'vacate') checkInOrder(st, titleById(st, h.title), currentReign(st, h.title), date);
+  });
+  const note = checkNote(opts.note);
+  const heldBy = new Map(group.map(id => [id, heldNow(st, id).map(h => h.reign)]));
+  // everything checked: vacate, move, record
+  const decisions = [...titles.values()].map(h => {
+    if (choices[h.title] === 'vacate') vacateTitle(st, h.title);
+    return { title: h.title, reign: h.reign, choice: choices[h.title] === 'vacate' ? 'vacated' : 'kept' };
+  });
+  const groupId = newId(st, 'dg');
+  const pick = Math.max(0, ...draftsOf(st, trId).map(d => d.pick)) + 1;
+  return group.map((id, i) => {
+    const move = recordMove(st, wrestlerById(st, id), to.id, `Drafted from NXT${i ? ` with ${w.name}` : ''}`.slice(0, MAX_NAME), date);
+    const rec = { id: newId(st, 'dr'), transition: tr.id, group: groupId, pick, wrestler: id, from: PROMOTED_FROM, to: to.id,
+      move: move.id, eligibility: eligibilityOf(st, trId, id).map(e => e.id), with: i ? wid : null,
+      titles: decisions.filter(d => heldBy.get(id).includes(d.reign)), note, at: { ...move.at } };
+    st.drafts.push(rec);
+    return rec;
+  });
+}
+
+/** Take back a pick - everyone drafted with it - while their moves and any vacancy are still the latest. */
+export function undoDraft(st, draftId) {
+  const d = must(st.drafts.find(x => x.id === draftId), 'draft pick', draftId);
+  const group = st.drafts.filter(x => x.group === d.group);
+  const tr = transitionById(st, d.transition);
+  if (tr.window && tr.window.closed) fail('The transfer window is closed. Reopen it first.');
+  group.forEach(x => {
+    const moves = movesOf(st, x.wrestler);
+    if (moves[moves.length - 1].id !== x.move) fail(`${nameOf(st, x.wrestler)} has moved since being drafted. Undo that move first.`);
+  });
+  const vacated = new Map();
+  group.forEach(x => x.titles.filter(t => t.choice === 'vacated').forEach(t => vacated.set(t.reign, t)));
+  vacated.forEach(t => {
+    const hist = titleReigns(st, t.title);
+    const last = hist[hist.length - 1];
+    if (!last || last.id !== t.reign || !last.vacated) fail(`The ${titleById(st, t.title).name} has changed hands since it was vacated. Undo that first.`);
+  });
+  vacated.forEach(t => { const r = st.reigns.find(x => x.id === t.reign); r.end = null; r.vacated = false; });
+  group.forEach(x => {
+    const w = wrestlerById(st, x.wrestler);
+    removeWhere(st.moves, mv => mv.id === x.move);
+    w.showId = x.from;
+    removeWhere(st.drafts, y => y.id === x.id);
+  });
+}
+
+/** End the transfer window. Anyone eligible and undrafted stays on NXT - and that's kept too. */
+export function closeWindow(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  if (!tr.window || tr.window.closed) fail('The transfer window isn\'t open.');
+  const t = promotionTable(st, trId);
+  tr.window.closed = now(st);
+  tr.window.undrafted = t.eligible.filter(e => !e.drafted).map(e => e.wrestler);
+  return tr.window;
+}
+export function reopenWindow(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  if (!tr.window || !tr.window.closed) fail('The transfer window isn\'t closed.');
+  tr.window.closed = null;
+  tr.window.undrafted = null;
+  return tr.window;
+}
+
+/** Every roster move since WrestleMania - relegations, draft picks and any other transfer - oldest first. */
+export function transfersSince(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const wm = eventById(st, tr.event);
+  return st.moves.filter(mv => compareStamps(st, mv.at, wm.at) > 0).sort((a, b) => compareStamps(st, a.at, b.at)).map(mv => ({
+    move: mv,
+    relegation: st.relegations.find(r => r.move === mv.id) || null,
+    draft: st.drafts.find(d => d.move === mv.id) || null,
+  }));
 }
 
 // ---------------------------------------------------------------- records
@@ -2075,8 +2496,18 @@ export function migrate(raw) {
     st.events.forEach(e => (Array.isArray(e.matches) ? e.matches : []).forEach(m => { if (m.relegation === undefined) m.relegation = null; }));
     st.version = 4;
   }
-  if (!Array.isArray(st.transitions)) st.transitions = [];
-  if (!Array.isArray(st.relegations)) st.relegations = [];
+  if (st.version === 4) {
+    // v5: NXT promotion and the transfer window. A v4 transition had neither yet.
+    (Array.isArray(st.transitions) ? st.transitions : []).forEach(t => {
+      if (!t.promotion) t.promotion = { picked: [], pairs: null };
+      if (t.window === undefined) t.window = null;
+    });
+    st.eligibility = [];
+    st.drafts = [];
+    st.events.forEach(e => (Array.isArray(e.matches) ? e.matches : []).forEach(m => { if (m.qualifier === undefined) m.qualifier = null; }));
+    st.version = 5;
+  }
+  for (const k of ['transitions', 'relegations', 'eligibility', 'drafts']) if (!Array.isArray(st[k])) st[k] = [];
   return st;
 }
 
@@ -2103,7 +2534,9 @@ export function validate(st) {
   own(st.memberships, 'team membership');
   st.events.forEach(e => own(e.matches || [], 'match'));
   own(st.transitions, 'season transition'); own(st.relegations, 'relegation record');
+  own(st.eligibility, 'draft eligibility record'); own(st.drafts, 'draft pick');
   st.transitions.forEach(t => Object.values(t.shows || {}).forEach(c => own(Array.isArray(c.pairs) ? c.pairs : [], 'relegation pairing')));
+  st.transitions.forEach(t => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], 'qualifier pairing'));
 
   const stamp = (s, where) => {
     if (!s || !seasonById(st, s.season) || !Number.isInteger(s.week) || !Number.isInteger(s.seq)) {
@@ -2264,6 +2697,15 @@ export function validate(st) {
           || ![pair.a, pair.b].every(id => sides.some(sd => sd.wrestlers[0] === id))) bad.push(`${where} is a relegation match between the wrong wrestlers.`);
         if (e.showId !== rl.show) bad.push(`${where} is a relegation match on the wrong show.`);
       }
+      if (m.qualifier != null) {
+        const q = m.qualifier, t = transitionById(st, q.transition);
+        const pair = t && t.promotion && Array.isArray(t.promotion.pairs) && t.promotion.pairs.find(x => x.id === q.pair);
+        if (!pair || !pair.matches.includes(m.id)) bad.push(`${where} is a qualifying match for a pairing that doesn't exist.`);
+        else if (sides.length !== 2 || sides.some(sd => !sd || sd.team || !Array.isArray(sd.wrestlers) || sd.wrestlers.length !== 1)
+          || ![pair.a, pair.b].every(id => sides.some(sd => sd.wrestlers[0] === id))) bad.push(`${where} is a qualifying match between the wrong wrestlers.`);
+        if (e.showId !== PROMOTED_FROM) bad.push(`${where} is a qualifying match off NXT.`);
+        if (m.relegation != null) bad.push(`${where} can't be a relegation and a qualifying match at once.`);
+      }
       if (m.status === 'scheduled') {
         if (m.outcome !== null || m.winner !== null || m.finish !== null || m.fall !== null) bad.push(`${where} is only booked but has a result.`);
         if (st.reigns.some(r => r.matchId === m.id)) bad.push(`${where} is only booked but changed a title.`);
@@ -2303,6 +2745,55 @@ export function validate(st) {
         if (p.decision != null && !(typeof p.decision.note === 'string' && [null, p.a, p.b].includes(p.decision.relegate))) bad.push(`${where} has a broken decision.`);
       });
     });
+  });
+  st.transitions.forEach(t => {
+    const where = `The season transition ${t.id}`;
+    const p = t.promotion;
+    if (!p || !Array.isArray(p.picked) || p.picked.some(id => !wrestlerById(st, id))) { bad.push(`${where} has a broken qualifier field.`); return; }
+    if (p.pairs !== null) {
+      if (!Array.isArray(p.pairs)) bad.push(`${where} has broken qualifier pairings.`);
+      else p.pairs.forEach(x => {
+        if (!wrestlerById(st, x.a) || !wrestlerById(st, x.b) || x.a === x.b) bad.push(`${where} has a qualifier pairing with the wrong wrestlers.`);
+        if (!Array.isArray(x.matches) || x.matches.some(id => !st.events.some(e => e.matches.some(m => m.id === id && m.qualifier && m.qualifier.pair === x.id)))) {
+          bad.push(`${where} has a qualifier pairing whose matches don't exist.`);
+        }
+        if (x.decision != null && !(typeof x.decision.note === 'string' && Array.isArray(x.decision.qualify)
+          && x.decision.qualify.every(id => [x.a, x.b].includes(id)))) bad.push(`${where} has a broken qualifier decision.`);
+      });
+    }
+    if (t.window !== null) {
+      const w = t.window;
+      if (!w || typeof w !== 'object') { bad.push(`${where} has a broken transfer window.`); return; }
+      stamp(w.opened, `${where}'s transfer window`);
+      if (w.closed !== null) {
+        stamp(w.closed, `${where}'s transfer window`);
+        if (!Array.isArray(w.undrafted) || w.undrafted.some(id => !wrestlerById(st, id))) bad.push(`${where}'s closed window has a broken undrafted list.`);
+      }
+    }
+  });
+  st.eligibility.forEach(e => {
+    const where = `Draft eligibility ${e.id}`;
+    if (!transitionById(st, e.transition)) bad.push(`${where} is for a season transition that doesn't exist.`);
+    if (!wrestlerById(st, e.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
+    if (!['champion', 'qualifier', 'decision'].includes(e.source)) bad.push(`${where} has an unknown source.`);
+    if (e.source === 'champion' && !titleById(st, e.title)) bad.push(`${where} names a title that doesn't exist.`);
+    if (e.source === 'qualifier' && !st.events.some(ev => ev.matches.some(m => m.id === e.match && m.qualifier))) bad.push(`${where} names a qualifying match that doesn't exist.`);
+    if (e.team != null && !teamById(st, e.team)) bad.push(`${where} names a tag team that doesn't exist.`);
+    stamp(e.at, where);
+  });
+  st.drafts.forEach(d => {
+    const where = `Draft pick ${d.id}`;
+    const t = transitionById(st, d.transition);
+    if (!t) bad.push(`${where} is for a season transition that doesn't exist.`);
+    else if (!t.window) bad.push(`${where} was made without a transfer window.`);
+    if (!wrestlerById(st, d.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
+    if (!showById(st, d.to) || d.to === PROMOTED_FROM) bad.push(`${where} goes to a show that can't take draft picks.`);
+    const mv = st.moves.find(x => x.id === d.move);
+    if (!mv || mv.wrestler !== d.wrestler || mv.to !== d.to) bad.push(`${where} names a roster move that doesn't match it.`);
+    if (!Array.isArray(d.eligibility) || d.eligibility.some(id => !st.eligibility.some(e => e.id === id && e.wrestler === d.wrestler))) bad.push(`${where} names eligibility that doesn't match it.`);
+    if (!Array.isArray(d.titles) || d.titles.some(x => !titleById(st, x.title) || !['kept', 'vacated'].includes(x.choice))) bad.push(`${where} has a broken title decision.`);
+    if (!Number.isInteger(d.pick) || d.pick < 1) bad.push(`${where} has a broken pick number.`);
+    stamp(d.at, where);
   });
   st.relegations.forEach(r => {
     const where = `Relegation record ${r.id}`;

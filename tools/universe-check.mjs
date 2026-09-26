@@ -1041,7 +1041,8 @@ await check('relegation: WrestleMania on the calendar leads to the season transi
   return [row, await pageKind(), (await saved()).transitions.length,
     await js(`[...document.querySelectorAll('.uv-trsum span')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`)];
 }, ['WrestleMania ends the season Start the season transition: relegation to NXT', 'transition', 1,
-  ['Raw: 1 decision for you', 'SmackDown: ready to book', 'Dynamite: 1 decision for you']]);
+  ['Raw: 1 decision for you', 'SmackDown: ready to book', 'Dynamite: 1 decision for you',
+    'NXT: 0 champions eligible; no qualifiers picked', 'Transfer window: not open — 0 eligible']]);
 await check('the season win totals behind the candidates, fewest first', async () => [await trRows('raw'), await trRows('smackdown')],
   [['R1:0*', 'R2:1~', 'R3:1~', 'R4:2', 'R5:3', 'R6:4'], ['S1:0*', 'S2:0*', 'S3:1', 'S4:2', 'S5:5']]);
 await check('a tie at the cutoff waits for you, and so does booking', async () => [await trFlags('raw'),
@@ -1065,7 +1066,8 @@ await check('each show sets its own number: none for Dynamite this year', async 
   for (let i = 0; i < 2; i++) { await trShow('dynamite').locator('.uv-trcount .uv-ic').nth(0).click(); await page.waitForTimeout(120); }
   return [(await saved()).transitions[0].shows.dynamite.count, await trFlags('dynamite'),
     await js(`[...document.querySelectorAll('.uv-trsum span')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`)];
-}, [0, [], ['Raw: ready to book', 'SmackDown: ready to book', 'Dynamite: no relegation this year']]);
+}, [0, [], ['Raw: ready to book', 'SmackDown: ready to book', 'Dynamite: no relegation this year',
+  'NXT: 0 champions eligible; no qualifiers picked', 'Transfer window: not open — 0 eligible']]);
 await check('plan Raw’s first show after WrestleMania, and book the match there', async () => {
   await trShow('raw').locator('.uv-btn', { hasText: 'Plan it' }).click();
   await page.waitForTimeout(150);
@@ -1129,6 +1131,203 @@ await check('WrestleMania’s page links to its transition', async () => {
   return js(`document.querySelector('.uv-trlink b').textContent`);
 }, 'Season transition');
 await check('saved universe is sound after relegation', sound, []);
+
+// ================================================================ a complete post-WrestleMania cycle
+// The relegation world, plus NXT before WrestleMania: prospects NA (3 wins),
+// NB (2), NC (2), ND (1); NChamp holds the NXT Championship; Prospects (NT1 &
+// NT2) hold the NXT Tag Team Championship.
+function cycleWorld() {
+  const st = relegationWorld();
+  M.setWeek(st, 2);
+  const [NA, NB, NC, ND, NChamp, NT1, NT2] = ['NA', 'NB', 'NC', 'ND', 'NChamp', 'NT1', 'NT2'].map(n => M.addWrestler(st, { name: n, showId: 'nxt' }));
+  const n1 = st.wrestlers.find(w => w.name === 'N1');
+  const house = st.events.find(e => e.showId === 'nxt');
+  [[NA, 3], [NB, 2], [NC, 2], [ND, 1]].forEach(([w, n]) => {
+    for (let i = 0; i < n; i++) M.recordMatch(st, house.id, { sides: [{ wrestlers: [w.id] }, { wrestlers: [n1.id] }], winner: 0 });
+  });
+  const title = M.addTitle(st, { name: 'NXT Championship', showId: 'nxt' });
+  const tag = M.addTitle(st, { name: 'NXT Tag Team Championship', showId: 'nxt', kind: 'tag' });
+  const team = M.addTeam(st, { name: 'Prospects', members: [NT1.id, NT2.id] });
+  M.setChampion(st, title.id, { type: 'wrestler', id: NChamp.id });
+  M.setChampion(st, tag.id, { type: 'team', id: team.id });
+  M.setWeek(st, 4);
+  M.startTransition(st, st.events.find(e => e.name === 'WrestleMania').id);
+  M.setWeek(st, 5);
+  return st;
+}
+const part = async k => { await page.click(`[data-part=${k}]`); await page.waitForTimeout(150); };
+const who = n => saved().then(u => u.wrestlers.find(w => w.name === n));
+await check('cycle: the transition covers relegation, NXT and the transfer window', async () => {
+  await noSheet();
+  const file = join(dir, 'cycle.json');
+  await writeFile(file, JSON.stringify(cycleWorld()));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await page.click('.uv-card-row');
+  await page.waitForTimeout(150);
+  return js(`[...document.querySelectorAll('.uv-trsum span')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`);
+}, ['Raw: 1 decision for you', 'SmackDown: ready to book', 'Dynamite: 1 decision for you',
+  'NXT: 3 champions eligible; no qualifiers picked', 'Transfer window: not open — 3 eligible']);
+await check('cycle 1: Raw relegation — R1 goes down to NXT', async () => {
+  await trShow('raw').locator('.uv-tw[data-w]', { hasText: 'R3' }).click();
+  await page.waitForTimeout(120);
+  await trShow('raw').locator('.uv-btn', { hasText: 'Plan it' }).click();
+  await page.waitForTimeout(120);
+  await trShow('raw').locator('.uv-btn.pri').click();
+  await page.waitForTimeout(150);
+  await trShow('raw').locator('.uv-trnight').click();
+  await page.waitForTimeout(150);
+  await btn(mc(0), 'Enter result').click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'R3 won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  return [(await toast()).t, (await who('R1')).showId];
+}, ['Result saved — R1 relegated to NXT', 'nxt']);
+await check('cycle 2: NXT’s season records suggest the qualifiers; you pick', async () => {
+  await body.locator('.uv-trlink').click();
+  await page.waitForTimeout(150);
+  await part('promotion');
+  const rows = await js(`[...document.querySelectorAll('.uv-trshow .uv-tw[data-w]')].map(r => ${TEXT}(r.querySelector('.nm')))`);
+  await body.locator('.uv-trcount .uv-link', { hasText: 'Pick them' }).click();
+  await page.waitForTimeout(150);
+  const u = await saved();
+  return [rows.slice(0, 5), u.transitions[0].promotion.picked.map(id => u.wrestlers.find(w => w.id === id).name),
+    await js(`[...document.querySelectorAll('.uv-pair .vs')].map(v => v.firstElementChild.textContent + ' v ' + (v.querySelector('select') ? v.querySelector('select').selectedOptions[0].textContent : ''))`)];
+}, [['1 NA Suggested', '2 NB Suggested', '2 NC Suggested', '4 ND Suggested', '5 N1'], ['NA', 'NB', 'NC', 'ND'], ['NA v NB', 'NC v ND']]);
+await check('you can override the suggestions', async () => {
+  await body.locator('.uv-trshow .uv-tw[data-w]', { hasText: 'N1' }).click();
+  await page.waitForTimeout(120);
+  const flag = await js(`[...document.querySelectorAll('.uv-trshow .uv-flag.decide')].map(${TEXT})`);
+  await body.locator('.uv-trshow .uv-tw[data-w]', { hasText: 'N1' }).click();
+  await page.waitForTimeout(120);
+  return [flag, (await saved()).transitions[0].promotion.picked.length];
+}, [['Your decision An odd number in the qualifiers (5): N1 has no opponent. Add or take someone out, or change the pairings.'], 4]);
+await check('book the qualifiers on NXT’s first show after WrestleMania', async () => {
+  await body.locator('.uv-trnight .uv-btn', { hasText: 'Plan it' }).click();
+  await page.waitForTimeout(150);
+  await body.locator('.uv-trshow .uv-btn.pri').click();
+  await page.waitForTimeout(150);
+  const u = await saved();
+  const ev = u.events.find(e => e.name === 'NXT · Week 5');
+  return [(await toast()).t, ev.matches.map(m => `${m.stip}:${!!m.qualifier}`), ev.at.day];
+}, ['2 qualifying matches booked on NXT · Week 5', ['Qualifying match:true', 'Qualifying match:true'], 1]);
+await check('a qualifier win makes the winner eligible — and moves nobody', async () => {
+  await body.locator('.uv-trnight').first().click();
+  await page.waitForTimeout(150);
+  await btn(mc(0), 'Enter result').click();
+  await settle();
+  const note = await js(`/the winner becomes draft eligible when you save — nobody moves/.test(document.getElementById('uvSheetBody').textContent)`);
+  await page.selectOption('#uvMResult', { label: 'NA won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  await btn(mc(1), 'Enter result').click();
+  await settle();
+  await page.selectOption('#uvMResult', 'draw');
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const u = await saved();
+  return [note, (await toast()).t, u.eligibility.map(e => `${u.wrestlers.find(w => w.id === e.wrestler).name}:${e.source}`), (await who('NA')).showId];
+}, [true, 'Result saved', ['NA:qualifier'], 'nxt']);
+await check('a qualifier without a winner is your decision: send both through', async () => {
+  await body.locator('.uv-trlink').click();
+  await page.waitForTimeout(150);
+  const flag = await js(`[...document.querySelectorAll('.uv-trshow .uv-flag.decide')].map(${TEXT})`);
+  await body.locator('.uv-pair .uv-btn', { hasText: 'Decide…' }).click();
+  await settle();
+  await sheet.locator('.uv-check', { hasText: 'NC goes through' }).locator('input').check();
+  await sheet.locator('.uv-check', { hasText: 'ND goes through' }).locator('input').check();
+  await page.fill('#uvQDNote', 'Both earned it');
+  await sheet.locator('.uv-btn.pri').click();
+  await settle();
+  const u = await saved();
+  return [flag, u.eligibility.filter(e => e.source === 'decision').map(e => `${u.wrestlers.find(w => w.id === e.wrestler).name}:${e.note}`)];
+}, [['Your decision NC vs ND ended in a draw. Book a rematch, or decide who (if anyone) qualifies.'], ['NC:Both earned it', 'ND:Both earned it']]);
+await check('cycle 3: open the transfer window — the champions are fixed as eligible', async () => {
+  await part('window');
+  await btn(body, 'Open the transfer window').click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  return [u.eligibility.filter(e => e.source === 'champion').map(e => u.wrestlers.find(w => w.id === e.wrestler).name),
+    await js(`[...document.querySelectorAll('.uv-els .uv-el')].map(r => r.querySelector('.nm').textContent.replace(/\\s+/g, ' ').trim())`),
+    await js(`[...document.querySelectorAll('.uv-wtile')].map(t => t.querySelector('b').textContent + ' ' + t.querySelector('.n').textContent)`)];
+}, [['NChamp', 'NT1', 'NT2'], ['NA Qualifier', 'NC Your call', 'NChamp Champion', 'ND Your call', 'NT1 Champion', 'NT2 Champion'],
+  ['Raw 5', 'SmackDown 5', 'Dynamite 3']]);
+await check('draft a champion: the title question waits for you', async () => {
+  await body.locator('.uv-el.tap', { hasText: 'NChamp' }).click();
+  await settle();
+  await sheet.locator('.uv-tile[data-show=raw]').click();
+  const before = await sheet.locator('.uv-btn.pri').textContent();
+  await sheet.locator('.uv-tq .uv-seg div', { hasText: 'Vacate it' }).click();
+  const after = await sheet.locator('.uv-btn.pri').textContent();
+  await sheet.locator('.uv-btn.pri').click();
+  await settle();
+  const u = await saved();
+  const title = u.titles.find(t => t.name === 'NXT Championship');
+  return [before, after, (await toast()).t, (await who('NChamp')).showId, u.reigns.some(r => r.titleId === title.id && !r.end)];
+}, ['Keep or vacate each title first', 'Draft NChamp to Raw', 'Pick 1: NChamp to Raw', 'raw', false]);
+await check('draft a tag champion: whether the partner comes is your call', async () => {
+  await body.locator('.uv-el.tap', { hasText: 'NT1' }).click();
+  await settle();
+  await sheet.locator('.uv-tile[data-show=smackdown]').click();
+  await sheet.locator('.uv-check', { hasText: 'Bring NT2 too' }).locator('input').check();
+  await sheet.locator('.uv-tq .uv-seg div', { hasText: 'Keep it' }).click();
+  await sheet.locator('.uv-btn.pri').click();
+  await settle();
+  const u = await saved();
+  const tag = u.titles.find(t => t.name === 'NXT Tag Team Championship');
+  return [(await toast()).t, (await who('NT1')).showId, (await who('NT2')).showId, u.reigns.some(r => r.titleId === tag.id && !r.end)];
+}, ['Pick 2: NT1 & NT2 to SmackDown', 'smackdown', 'smackdown', true]);
+await check('each show drafts as many as you like: NA to Dynamite', async () => {
+  await body.locator('.uv-el.tap', { hasText: 'NA' }).click();
+  await settle();
+  await sheet.locator('.uv-tile[data-show=dynamite]').click();
+  await sheet.locator('.uv-btn.pri').click();
+  await settle();
+  return js(`[...document.querySelectorAll('.uv-wtile')].map(t => t.querySelector('b').textContent + ' ' + t.querySelector('.n').textContent + ' ' + t.querySelector('.ch').textContent)`);
+}, ['Raw 6 +1 drafted · −1 relegated', 'SmackDown 7 +2 drafted', 'Dynamite 4 +1 drafted']);
+await check('end the window with eligible wrestlers left undrafted', async () => {
+  await btn(body, /End the transfer window/).click();
+  await settle();
+  const msg = await js(`document.getElementById('uvConfirmText').textContent`);
+  await confirmYes();
+  const u = await saved();
+  return [msg, u.transitions[0].window.undrafted.map(id => u.wrestlers.find(w => w.id === id).name),
+    await js(`${TEXT}(document.querySelector('.uv-flag.top.ok'))`), (await who('NC')).showId];
+}, ['NC, ND stay on NXT, undrafted — and that’s kept on record.', ['NC', 'ND'],
+  'The window closed in week 5: 4 wrestlers drafted, 2 eligible wrestlers left on NXT (NC, ND).', 'nxt']);
+await check('every transfer since WrestleMania, in order, and why', () => js(`[...document.querySelectorAll('.uv-page .uv-tls .uv-tl .x')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`),
+  ['R1 Raw → NXT — relegated', 'NChamp NXT → Raw — draft pick 1', 'NT1 NXT → SmackDown — draft pick 2', 'NT2 NXT → SmackDown — draft pick 2',
+    'NA NXT → Dynamite — draft pick 3']);
+await check('the draft stays on each wrestler’s page', async () => {
+  await openRow('NChamp', 'roster');
+  const champ = await js(`[...document.querySelectorAll('.uv-page .uv-relrec')].map(${TEXT})`);
+  await openRow('ND', 'roster');
+  const nd = await js(`[...document.querySelectorAll('.uv-page .uv-relrec')].map(${TEXT})`);
+  return [champ, nd];
+}, r => /^Drafted to Raw from NXT · pick 1 · S1 · W5 Eligible: held the NXT Championship\. Vacated the NXT Championship\.$/.test(r[0][0])
+  && /^Draft eligible · Season 1 owner's decision after a qualifier with NC \(Both earned it\)\. Left undrafted when the transfer window closed\.$/.test(r[1][0]));
+await check('reopen, undo a pick: they go back, and so does the title', async () => {
+  await body.locator('.uv-page .uv-relrec').first().click();
+  await page.waitForTimeout(150);
+  await part('window');
+  await body.locator('.uv-fixrow', { hasText: 'Reopen the transfer window' }).click();
+  await page.waitForTimeout(150);
+  await body.locator('.uv-pick-row', { hasText: 'NChamp' }).locator('.uv-link', { hasText: 'Undo' }).click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  const title = u.titles.find(t => t.name === 'NXT Championship');
+  const r = u.reigns.find(x => x.titleId === title.id && !x.end);
+  return [(await who('NChamp')).showId, r && u.wrestlers.find(w => w.id === r.holder.id).name, u.drafts.length];
+}, ['nxt', 'NChamp', 3]);
+await check('saved universe is sound after the whole cycle', sound, []);
 
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {

@@ -90,7 +90,7 @@ function transitionRows(st, s) {
   const row = (onclick, head, sub) => `<div class="uv-card-row" onclick="${onclick}">${ICON.move}<div><b>${esc(head)}</b>
     <span>${esc(sub)}</span></div>${ICON.right}</div>`;
   const rows = recent.map(t => row(`uvOpenTransition('${t.id}')`, `${seasonById(st, t.season).name} transition · relegation`,
-    uvTransitionSummary(st, t).map(x => `${x.show.name}: ${x.text}`).join(' · ')));
+    uvTransitionSummary(st, t).map(x => `${x.label}: ${x.text}`).join(' · ')));
   const mania = !recent.some(t => t.season === s.id) && eventsIn(st, s.id).filter(e => e.kind === 'ple' && /wrestlemania/i.test(e.name)).pop();
   if (mania) rows.push(row(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, 'Start the season transition: relegation to NXT'));
   return rows.join('');

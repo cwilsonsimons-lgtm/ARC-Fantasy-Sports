@@ -74,6 +74,14 @@ function bookingRow(st, x) {
 }
 const upcoming = (st, list) => (list.length ? section('Booked', list.length) + list.map(x => bookingRow(st, x)).join('') : '');
 
+// how a wrestler became draft eligible, in words
+function eligibilityText(e) {
+  const st = uni();
+  if (e.source === 'champion') return `held the ${M.titleById(st, e.title).name}${e.team ? ` with ${M.teamById(st, e.team).name}` : ''}`;
+  const opp = (M.wrestlerById(st, e.opponent) || { name: '?' }).name;
+  return e.source === 'qualifier' ? `won a qualifying match against ${opp}` : `owner's decision after a qualifier with ${opp}${e.note ? ` (${e.note})` : ''}`;
+}
+
 // ================================================================ wrestler
 
 function careerText(st, e) {
@@ -113,6 +121,8 @@ function wrestlerPage(id) {
   const results = M.matchesOf(st, id);
   const booked = M.bookingsOf(st, id);
   const relegated = M.relegationsOf(st, id);
+  const drafted = st.drafts.filter(d => d.wrestler === id);
+  const eligibleOnly = st.eligibility.filter(e => e.wrestler === id && !drafted.some(d => d.transition === e.transition));
   const moves = M.movesOf(st, id);
   const lastMove = moves[moves.length - 1];
   const refs = M.wrestlerRefs(st, id);
@@ -159,6 +169,18 @@ function wrestlerPage(id) {
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ''}
 
       ${upcoming(st, booked)}
+      ${drafted.length || eligibleOnly.length ? section('Draft', null) + drafted.map(d => {
+        const how = d.eligibility.map(x => st.eligibility.find(e => e.id === x)).filter(Boolean).map(eligibilityText).join('; ') || 'brought along by the owner’s decision';
+        const titles = d.titles.map(x => `${x.choice === 'vacated' ? 'vacated' : 'kept'} the ${esc(M.titleById(st, x.title).name)}`).join(', ');
+        return `<div class="uv-relrec in draft" onclick="uvOpenTransition('${d.transition}')"><b>Drafted to ${esc(showName(st, d.to))} from NXT · pick ${d.pick} · ${stampLabel(st, d.at)}</b>
+          <span>Eligible: ${esc(how)}${titles ? `. ${titles.charAt(0).toUpperCase()}${titles.slice(1)}` : ''}.${d.note ? ` “${esc(d.note)}”` : ''}</span></div>`;
+      }).join('') + [...new Set(eligibleOnly.map(e => e.transition))].map(trId => {
+        const tr = M.transitionById(st, trId);
+        const how = eligibleOnly.filter(e => e.transition === trId).map(eligibilityText).join('; ');
+        const left = tr.window && tr.window.closed && tr.window.undrafted.includes(id);
+        return `<div class="uv-relrec in draft" onclick="uvOpenTransition('${trId}')"><b>Draft eligible · ${esc(M.seasonById(st, tr.season).name)}</b>
+          <span>${esc(how)}.${left ? ' Left undrafted when the transfer window closed.' : ''}</span></div>`;
+      }).join('') : ''}
       ${relegated.length ? section('Relegation', relegated.length) + relegated.map(r => `<div class="uv-relrec in" onclick="uvOpenTransition('${r.transition}')">
         <b>${esc(showName(st, r.show))} → NXT · ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span></div>`).join('') : ''}
 

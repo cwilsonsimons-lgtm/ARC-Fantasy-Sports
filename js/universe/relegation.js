@@ -9,7 +9,8 @@
 // whoever wins in WWE 2K25; the loser moves to NXT when the result is saved.
 import * as M from './model.js';
 import { ICON, chip, empty, esc, eventWhen, showColor, showName } from './ui.js';
-import { closeSheet, commit, confirmThen, openSheet, popPage, pushPage, uni } from './app.js';
+import { closeSheet, commit, confirmThen, openSheet, popPage, pushPage, refresh, uni } from './app.js';
+import { uvPromotionPart, uvPromotionSummary, uvWindowPart } from './promotion.js';
 
 export function uvOpenTransition(id) { pushPage('transition', id); }
 
@@ -57,8 +58,12 @@ const STATUS = {
   decided: 'Decided by you',
 };
 
-// where a show stands, in a few words, for the header and the calendar
+// where each part stands, in a few words, for the header and the calendar:
+// [{ label, color, text, decisions }]
 export function uvTransitionSummary(st, tr) {
+  return [...relegationSummary(st, tr), ...uvPromotionSummary(st, tr)];
+}
+function relegationSummary(st, tr) {
   return M.mainShows(st).map(s => {
     const t = M.relegationTable(st, tr.id, s.id);
     const decisions = t.flags.filter(f => f.level === 'decide').length;
@@ -69,9 +74,13 @@ export function uvTransitionSummary(st, tr) {
     else if (t.pairs.length && t.pairs.every(p => ['relegated', 'decided'].includes(p.status))) text = `done — ${down} to NXT`;
     else if (t.pairs.some(p => p.status === 'booked')) text = 'booked';
     else text = 'ready to book';
-    return { show: s, text, decisions };
+    return { label: s.name, color: showColor(st, s.id), text, decisions };
   });
 }
+
+// the page's three parts: relegation on the main shows, NXT's promotion, the transfer window
+let part = 'relegation';
+export function uvTrPart(k) { part = k; refresh(); }
 
 export function uvTransitionPage(id) {
   const st = uni();
@@ -80,19 +89,25 @@ export function uvTransitionPage(id) {
   const wm = M.eventById(st, tr.event);
   const season = M.seasonById(st, tr.season);
   const summary = uvTransitionSummary(st, tr);
+  const seg = (k, lb) => `<div class="${part === k ? 'on' : ''}" data-part="${k}" onclick="uvTrPart('${k}')">${lb}</div>`;
+  const head = `
+      <div class="uv-evhead" style="--c:var(--uv-gold)">
+        <div class="k">Season transition · ${esc(season.name)}</div>
+        <div class="nm">After ${esc(wm.name)}</div>
+        <div class="s"><span class="uv-link" onclick="uvOpenEvent('${wm.id}')">${esc(wm.name)}</span> · ${esc(eventWhen(st, wm, true))}</div>
+        <div class="uv-trsum">${summary.map(x => `<span class="${x.decisions ? 'warn' : ''}"><i style="--c:${x.color}"></i>
+          ${esc(x.label)}: ${esc(x.text)}</span>`).join('')}</div>
+      </div>
+      <div class="uv-seg uv-seg-page">${seg('relegation', 'Relegation')}${seg('promotion', 'NXT promotion')}${seg('window', 'Transfer window')}</div>`;
+  if (part === 'promotion') return { title: `${season.name} transition`, body: head + uvPromotionPart(st, tr) };
+  if (part === 'window') return { title: `${season.name} transition`, body: head + uvWindowPart(st, tr) };
   const tables = M.mainShows(st).map(s => M.relegationTable(st, id, s.id));
   const incomplete = tables[0] && tables[0].flags.find(f => f.key === 'incomplete');
   const booked = tables.some(t => t.pairs.some(p => p.matches.length));
+  const started = booked || M.promotionTable(st, id).pairs.some(p => p.matches.length) || tr.window;
   return {
     title: `${season.name} transition`,
-    body: `
-      <div class="uv-evhead" style="--c:var(--uv-gold)">
-        <div class="k">Season transition · ${esc(season.name)}</div>
-        <div class="nm">Relegation</div>
-        <div class="s">After <span class="uv-link" onclick="uvOpenEvent('${wm.id}')">${esc(wm.name)}</span> · ${esc(eventWhen(st, wm, true))}</div>
-        <div class="uv-trsum">${summary.map(x => `<span class="${x.decisions ? 'warn' : ''}"><i style="--c:${showColor(st, x.show.id)}"></i>
-          ${esc(x.show.name)}: ${esc(x.text)}</span>`).join('')}</div>
-      </div>
+    body: `${head}
       <p class="uv-p uv-inset-p">On each main show, the wrestlers with the fewest wins in ${esc(season.name)} — up to and including
         ${esc(wm.name)} — face each other on its first show after it. Whoever loses goes to NXT; the winner stays. Each show sets
         its own number. <span class="uv-link gold" onclick="uvHowRelegation()">How relegation works</span></p>
@@ -103,7 +118,7 @@ export function uvTransitionPage(id) {
         <div class="h">Fix a mistake</div>
         <div class="fine">A wrong relegation result is corrected on its match, like any other: the wrestler who really lost goes
           to NXT instead, and the one who didn’t comes back. Clearing the result or taking the match off the card brings them back.</div>
-        ${booked ? '' : `<div class="uv-fixrow bad" onclick="uvTrCancel('${id}')">${ICON.x}<div><b>Cancel this transition</b>
+        ${started ? '' : `<div class="uv-fixrow bad" onclick="uvTrCancel('${id}')">${ICON.x}<div><b>Cancel this transition</b>
           <span>Nothing is booked from it yet</span></div></div>`}
       </div>`,
   };

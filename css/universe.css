@@ -566,3 +566,42 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-relrec b{display:block;margin-bottom:2px;font-size:13px;color:var(--uv-ink)}
 .uv-relrec.in{margin:0 14px 8px;cursor:pointer}
 .uv-mc-d.bad{color:var(--uv-red);font-weight:700}
+
+/* ---------- NXT promotion and the transfer window ---------- */
+.uv-sub.flush{padding:6px 2px 0}
+.uv-tw.on.pick{background:rgba(232,185,49,.08)}
+.uv-tw.on.pick .uv-tick{background:var(--uv-gold);border-color:var(--uv-gold);color:#1B1505}
+.uv-tw .rk{display:inline-block;min-width:18px;margin-right:6px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-size:13px;color:var(--uv-ink-3)}
+.uv-tw .w b{font-size:14px}
+.uv-els{display:flex;flex-direction:column;border:1px solid var(--uv-line);border-radius:14px;overflow:hidden;background:var(--uv-card)}
+.uv-els.inset{margin:0 14px}
+.uv-el{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--uv-line-soft)}
+.uv-el:first-child{border-top:none}
+.uv-el.tap{cursor:pointer}
+.uv-el.tap:active{background:var(--uv-card-2)}
+.uv-el .uv-main .nm{display:flex;align-items:center;flex-wrap:wrap;gap:6px;white-space:normal}
+.uv-el .uv-main .sub{display:block;white-space:normal;line-height:1.45}
+.uv-el .uv-main .sub.warn{color:var(--uv-amber)}
+.uv-drafted{flex:none;padding:3px 8px;border-radius:7px;font-size:11px;font-weight:800;color:var(--c);
+  border:1px solid color-mix(in srgb,var(--c) 50%,transparent);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.uv-wtiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 14px 0}
+.uv-wtile{padding:10px;border-radius:13px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--uv-line));
+  background:linear-gradient(160deg,color-mix(in srgb,var(--c) 14%,transparent),transparent 70%),var(--uv-card);min-width:0}
+.uv-wtile b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-wtile .n{display:block;margin-top:4px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px;line-height:1;color:var(--uv-ink)}
+.uv-wtile span{display:block;font-size:10.5px;color:var(--uv-ink-3)}
+.uv-wtile .ch{margin-top:4px;color:var(--uv-ink-2)}
+.uv-picks{display:flex;flex-direction:column;gap:6px;margin:0 14px}
+.uv-pick-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-pick-row .no{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:13px;
+  background:var(--uv-gold-soft);color:var(--uv-gold)}
+.uv-pick-row .uv-main .nm{white-space:normal}
+.uv-pick-row .uv-main .sub{display:block;white-space:normal;line-height:1.45}
+.uv-pick-row .uv-link{flex:none;font-size:12px;color:var(--uv-ink-3)}
+.uv-btn.uv-inset-btn{width:auto;margin:14px 14px 0}
+.uv-flag.ok{border-color:rgba(76,211,122,.35);background:rgba(76,211,122,.06);color:#A6E9BD}
+.uv-tq{margin-top:8px}
+.uv-tq>span{display:block;font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-tq .uv-seg{margin:6px 0 0}
+.uv-relrec.draft{border-color:var(--uv-gold-line);background:var(--uv-gold-soft)}
+.uv-trsum{flex-wrap:wrap}
