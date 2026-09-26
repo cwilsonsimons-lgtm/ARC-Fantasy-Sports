@@ -18,6 +18,13 @@
 //   Interference  a grudge against whoever interfered against them; whoever
 //                 it helped becomes their ally.
 //   Attack        a grudge against the attacker (hot-headed: 2 heat).
+//   Save          the attacker holds a grudge against whoever made the save;
+//                 the one saved becomes their ally.
+//   Brawl         a grudge each way, and they're rivals.
+//   Challenge     a title challenge, or calling someone out - rivals.
+//   Walk-out      leaving a team on bad terms - a grudge against the one who
+//                 walked, and any friendship or alliance between them ends.
+//   Momentum      an unlikely run - nothing between anyone.
 //   Partnership   5 matches on the same side - allies (loyal: 3); 12 -
 //                 friends (never for the opportunistic, or with a grudge
 //                 between them).
@@ -177,20 +184,33 @@ export function relationships(st) {
     }
     if (it.type === 'incident') {
       const { ev, inc } = it;
-      const base = { at: ev.at, event: ev.id, match: inc.match, incident: inc.id, kind: inc.kind };
+      const base = { at: ev.at, event: ev.id, match: inc.match, incident: inc.id, kind: inc.kind, title: inc.title, team: inc.team };
       inc.by.forEach(x => inc.on.forEach(y => {
         const cause = { ...base, key: `inc:${inc.id}:${y}>${x}`, type: inc.kind, by: x, on: y };
-        if (inc.kind === 'betrayal') {
-          auto('grudge', y, x, 'raise', has(y, 'loyal', ev.at) ? 3 : 2, cause);
-          auto('friends', x, y, 'end', 0, cause);
-          auto('allies', x, y, 'end', 0, cause);
-        } else if (inc.kind === 'attack') {
-          auto('grudge', y, x, 'raise', has(y, 'hot-headed', ev.at) ? 2 : 1, cause);
-        } else auto('grudge', y, x, 'raise', 1, cause);
+        switch (inc.kind) {
+          case 'betrayal':
+            auto('grudge', y, x, 'raise', has(y, 'loyal', ev.at) ? 3 : 2, cause);
+            auto('friends', x, y, 'end', 0, cause);
+            auto('allies', x, y, 'end', 0, cause);
+            break;
+          case 'attack': auto('grudge', y, x, 'raise', has(y, 'hot-headed', ev.at) ? 2 : 1, cause); break;
+          case 'brawl':
+            auto('grudge', y, x, 'raise', 1, cause);
+            auto('grudge', x, y, 'raise', 1, cause);
+            auto('rivals', x, y, 'raise', 1, cause);
+            break;
+          case 'challenge': case 'demand': auto('rivals', x, y, 'raise', 1, cause); break;
+          case 'breakup':
+            auto('grudge', y, x, 'raise', 1, cause);
+            auto('friends', x, y, 'end', 0, cause);
+            auto('allies', x, y, 'end', 0, cause);
+            break;
+          default: auto('grudge', y, x, 'raise', 1, cause);               // an interference, a save
+        }
       }));
-      if (inc.kind === 'interference') {
+      if (inc.kind === 'interference' || inc.kind === 'save') {
         inc.by.forEach(x => inc.helped.forEach(h => auto('allies', x, h, 'raise', 1,
-          { ...base, key: `inc:${inc.id}:${x}>${h}:helped`, type: 'helped', by: x, helped: h })));
+          { ...base, key: `inc:${inc.id}:${x}>${h}:helped`, type: inc.kind === 'save' ? 'saved' : 'helped', by: x, helped: h })));
       }
       continue;
     }
@@ -273,6 +293,12 @@ export function entryText(st, e) {
     case 'interference': cause = `${nm(st, c.by)} interfered against ${nm(st, c.on)} at ${at(st, c.event)}`; break;
     case 'attack': cause = `${nm(st, c.by)} attacked ${nm(st, c.on)} at ${at(st, c.event)}`; break;
     case 'helped': cause = `${nm(st, c.by)} interfered to help ${nm(st, c.helped)} at ${at(st, c.event)}`; break;
+    case 'save': cause = `${nm(st, c.by)} made the save against ${nm(st, c.on)} at ${at(st, c.event)}`; break;
+    case 'saved': cause = `${nm(st, c.by)} made the save for ${nm(st, c.helped)} at ${at(st, c.event)}`; break;
+    case 'brawl': cause = `${nm(st, c.by)} and ${nm(st, c.on)} brawled at ${at(st, c.event)}`; break;
+    case 'challenge': cause = `${nm(st, c.by)} challenged ${nm(st, c.on)} for the ${(titleById(st, c.title) || { name: 'title' }).name} at ${at(st, c.event)}`; break;
+    case 'demand': cause = `${nm(st, c.by)} called out ${nm(st, c.on)}${c.title ? ` over the ${(titleById(st, c.title) || { name: 'title' }).name}` : ''} at ${at(st, c.event)}`; break;
+    case 'breakup': cause = `${nm(st, c.by)} walked out on ${nm(st, c.on)}${c.team ? ` and ${(teamById(st, c.team) || { name: 'their team' }).name}` : ''} at ${at(st, c.event)}`; break;
     case 'partners': cause = `${nm(st, c.x)} and ${nm(st, c.y)} teamed up for the ${nth(c.n)} time at ${at(st, c.event)}`; break;
     case 'left': cause = `${nm(st, c.who)} left ${(teamById(st, c.team) || { name: 'their team' }).name}`; break;
     case 'disbanded': cause = `${(teamById(st, c.team) || { name: 'Their team' }).name} disbanded`; break;

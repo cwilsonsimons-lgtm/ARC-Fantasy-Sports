@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -83,6 +83,7 @@ export function createUniverse() {
     drafts: [],             // every draft pick from NXT - kept for good
     traitLog: [],           // every change to a wrestler's personality, dated (or from the start)
     relEdits: [],           // the owner's own relationship changes, dated; the rest is worked out from the record
+    story: newStory(),      // the story engine's settings, and what it has suggested
   };
   openSeason(st, 1, '');
   return st;
@@ -380,6 +381,7 @@ export function deleteWrestler(st, id) {
   removeWhere(st.wrestlers, x => x.id === id);
   removeWhere(st.moves, m => m.wrestler === id);
   removeWhere(st.traitLog, e => e.wrestler === id);
+  removeWhere(st.story.suggestions, sg => sg.status !== 'accepted' && planWrestlers(sg.plan).includes(id));
 }
 
 export function rosterOf(st, showId) {
@@ -544,6 +546,7 @@ export function teamRefs(st, id) {
   let matches = 0;
   eachMatch(st, (m) => { if (m.sides.some(s => s.team === id)) matches++; });
   if (matches) refs.push(matches === 1 ? 'a match' : `${matches} matches`);
+  if (st.events.some(e => e.incidents.some(x => x.team === id))) refs.push('an incident');
   return refs;
 }
 
@@ -553,6 +556,8 @@ export function deleteTeam(st, id) {
   if (refs.length) fail(`${t.name} are part of the history (${refs.join(', ')}), so they can't be deleted. Disband them instead.`);
   removeWhere(st.teams, x => x.id === id);
   removeWhere(st.memberships, m => m.team === id);
+  removeWhere(st.story.suggestions, sg => sg.status !== 'accepted' && (sg.plan.disband === id || sg.basis.team === id
+    || sg.plan.incidents.some(i => i.team === id)));
 }
 
 /** Teams a wrestler is on right now. */
@@ -667,6 +672,7 @@ export function titleRefs(st, id) {
   let matches = 0;
   eachMatch(st, m => { if (m.titleId === id) matches++; });
   if (matches) refs.push(matches === 1 ? 'a title match' : `${matches} title matches`);
+  if (st.events.some(e => e.incidents.some(x => x.title === id))) refs.push('an incident');
   return refs;
 }
 
@@ -675,6 +681,7 @@ export function deleteTitle(st, id) {
   const refs = titleRefs(st, id);
   if (refs.length) fail(`The ${t.name} has history (${refs.join(', ')}), so it can't be deleted. Retire it instead.`);
   removeWhere(st.titles, x => x.id === id);
+  removeWhere(st.story.suggestions, sg => sg.status !== 'accepted' && (sg.plan.incidents.some(i => i.title === id) || (sg.basis.title || {}).id === id));
 }
 
 export function titleReigns(st, titleId) {
@@ -1075,6 +1082,8 @@ export function deleteEvent(st, id) {
   removeWhere(st.events, e => e.id === id);
   if (revert) revert();
   unrel.forEach(f => f());
+  removeWhere(st.story.suggestions, sg => sg.event === id);
+  removeWhere(st.story.rolls, r => r.event === id);
 }
 
 /** Events in a season, oldest first: by week, then night, then the order they were added. */
@@ -2285,7 +2294,21 @@ export function transfersSince(st, trId) {
 
 export const TRAITS = ['ambitious', 'loyal', 'opportunistic', 'hot-headed', 'patient', 'proud', 'cowardly', 'respectful'];
 export const REL_KINDS = ['grudge', 'rivals', 'allies', 'friends', 'former-partners'];   // a grudge is one-way: a holds it against b
-export const INCIDENT_KINDS = ['betrayal', 'interference', 'attack'];
+export const INCIDENT_KINDS = ['betrayal', 'interference', 'attack', 'save', 'brawl', 'challenge', 'demand', 'breakup', 'momentum'];
+// what each kind of incident needs: `on` required, or optional, or never
+// (momentum: someone on a run, with nobody on the other end); who can be
+// `helped`; whether it names a title or a team
+const INCIDENT_SHAPE = {
+  betrayal: { by: 'turned on someone', on: 'was betrayed' },
+  interference: { by: 'interfered', on: 'it was against', helped: true },
+  attack: { by: 'attacked', on: 'was attacked' },
+  save: { by: 'made the save', on: 'the save was against', helped: 'was saved' },
+  brawl: { by: 'started the brawl', on: 'it was with' },
+  challenge: { by: 'made the challenge', on: 'was challenged', title: 'required' },
+  demand: { by: 'made the demand', on: null, title: 'optional' },
+  breakup: { by: 'walked away', on: null, team: true },
+  momentum: { by: 'is on a run', on: false },
+};
 const REL_ACTIONS = ['form', 'level', 'end', 'note', 'dismiss'];
 
 /** A wrestler's traits at a moment (`stamp` null: now) - replayed from the dated log. */
@@ -2320,23 +2343,36 @@ export function setTraits(st, wid, traits, opts = {}) {
   return changes;
 }
 
-// incidents: who did it (`by`), to whom (`on`), and - for an interference -
-// the match it happened in and anyone it helped
+// incidents: who did it (`by`), to whom (`on`), anyone it `helped` (an
+// interference, a save), the match it happened in, and the title or team it
+// was about. `story` names the suggestion it came from, if it did.
 function incidentFields(st, ev, input) {
   const kind = oneOf(input.kind, INCIDENT_KINDS, 'incident');
+  const shape = INCIDENT_SHAPE[kind];
   const ids = list => [...new Set((Array.isArray(list) ? list : []).filter(Boolean))].map(id => must(wrestlerById(st, id), 'wrestler', id).id);
-  const by = ids(input.by), on = ids(input.on), helped = kind === 'interference' ? ids(input.helped) : [];
-  if (!by.length) fail(`Pick who ${kind === 'betrayal' ? 'turned on someone' : kind === 'interference' ? 'interfered' : 'attacked'}.`);
-  if (!on.length) fail(`Pick who ${kind === 'betrayal' ? 'was betrayed' : kind === 'interference' ? 'it was against' : 'was attacked'}.`);
+  const by = ids(input.by), on = shape.on === false ? [] : ids(input.on), helped = shape.helped ? ids(input.helped) : [];
+  if (!by.length) fail(`Pick who ${shape.by}.`);
+  if (shape.on && !on.length) fail(`Pick who ${shape.on}.`);
+  if (typeof shape.helped === 'string' && !helped.length) fail(`Pick who ${shape.helped}.`);
   const clash = by.find(id => on.includes(id) || helped.includes(id)) || on.find(id => helped.includes(id));
   if (clash) fail(`${wrestlerById(st, clash).name} can't be on both sides of it.`);
   const match = input.match ? must(ev.matches.find(m => m.id === input.match), 'match', input.match).id : null;
-  return { kind, by, on, helped, match, note: checkText(input.note, 'Notes') };
+  let title = null, team = null;
+  if (shape.title && input.title) title = must(titleById(st, input.title), 'championship', input.title).id;
+  if (shape.title === 'required' && !title) fail('Pick the title it’s for.');
+  if (shape.team) {
+    const t = must(teamById(st, input.team), 'tag team', input.team);
+    const ever = new Set(st.memberships.filter(m => m.team === t.id).map(m => m.wrestler));
+    const outsider = [...by, ...on].find(id => !ever.has(id));
+    if (outsider) fail(`${wrestlerById(st, outsider).name} was never on ${t.name}.`);
+    team = t.id;
+  }
+  return { kind, by, on, helped, match, title, team, note: checkText(input.note, 'Notes') };
 }
-/** Log what happened on a show besides the result: a betrayal, an interference, an attack. */
+/** Log what happened on a show besides the results: a betrayal, an attack, a save, a challenge... */
 export function recordIncident(st, eventId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const inc = { id: newId(st, 'in'), ...incidentFields(st, ev, input) };
+  const inc = { id: newId(st, 'in'), ...incidentFields(st, ev, input), story: null };
   ev.incidents.push(inc);
   return inc;
 }
@@ -2345,6 +2381,11 @@ export function updateIncident(st, eventId, incidentId, input = {}) {
   const inc = must(ev.incidents.find(x => x.id === incidentId), 'incident', incidentId);
   Object.assign(inc, incidentFields(st, ev, { ...inc, ...input }));
   return inc;
+}
+/** Every incident, oldest first: [{ event, incident }]. */
+export function allIncidents(st) {
+  return st.events.flatMap(event => event.incidents.map(incident => ({ event, incident })))
+    .sort((a, b) => compareStamps(st, a.event.at, b.event.at));
 }
 export function deleteIncident(st, eventId, incidentId) {
   const ev = must(eventById(st, eventId), 'event', eventId);
@@ -2394,6 +2435,164 @@ export function restoreChange(st, key) {
 export function deleteRelEdit(st, id) {
   must(st.relEdits.find(e => e.id === id), 'relationship change', id);
   removeWhere(st.relEdits, e => e.id === id);
+}
+
+// ---------------------------------------------------------------- the story engine's suggestions
+//
+// suggest.js reads the record after a show and, with a seeded draw that
+// comes out the same every time for the same universe, may suggest what
+// happens next: a post-match attack, a save, a betrayal, a title challenge...
+// Until the owner accepts one, a suggestion is only that - no relationship
+// changes, nothing reaches the timeline, and nothing is ever a result.
+// Accepting records its incidents on the show (and, for a team breaking up,
+// disbands the team); from then on they're ordinary records.
+
+export const STORY_KINDS = ['attack', 'save', 'betrayal', 'escalation', 'challenge', 'breakup', 'streak', 'demand'];
+export const STORY_PACES = ['quiet', 'normal', 'wild'];
+const SUGGESTION_STATUSES = ['open', 'accepted', 'dismissed'];
+function newStory() { return { on: true, pace: 'normal', seed: 0, rolls: [], suggestions: [] }; }
+
+export const suggestionById = (st, id) => byId(st.story.suggestions, id);
+export const suggestionsFor = (st, eventId) => st.story.suggestions.filter(x => x.event === eventId);
+/** The record of the engine looking at a show - { event, at, pool, found, pace } - or null. */
+export const storyRollOf = (st, eventId) => st.story.rolls.find(r => r.event === eventId) || null;
+
+export function setStory(st, { on, pace } = {}) {
+  if (on !== undefined) st.story.on = !!on;
+  if (pace !== undefined) st.story.pace = oneOf(pace, STORY_PACES, 'pace');
+  return st.story;
+}
+/** Seed the draw, once. The seed is handed in, so the model itself never rolls. */
+export function seedStory(st, seed) {
+  if (!st.story.seed) st.story.seed = (Math.abs(Math.floor(Number(seed) || 0)) % 2147483646) + 1;
+  return st.story.seed;
+}
+
+// a suggestion's plan: the incidents accepting it would record, and a team it would disband
+function planFields(st, ev, plan) {
+  const incidents = (plan && Array.isArray(plan.incidents) ? plan.incidents : []).map(i => incidentFields(st, ev, i));
+  if (!incidents.length) fail('A suggestion needs something to happen.');
+  let disband = null;
+  if (plan.disband) {
+    const t = must(teamById(st, plan.disband), 'tag team', plan.disband);
+    if (!t.active) fail(`${t.name} have already split.`);
+    disband = t.id;
+  }
+  return { incidents, disband };
+}
+const planWrestlers = plan => plan.incidents.flatMap(i => [...i.by, ...i.on, ...i.helped]);
+
+/**
+ * Keep what the engine found for a show. `found` is suggest.js's list of
+ * drafts - { kind, key, plan, why, chance, basis } - and `pool` how many
+ * possibilities it weighed. The engine looks at each show once.
+ */
+export function saveStoryRoll(st, eventId, { found = [], pool = 0 } = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  if (!st.story.on) fail('Story suggestions are switched off.');
+  if (storyRollOf(st, eventId)) fail(`The story engine has already looked at ${ev.name}.`);
+  if (!ev.matches.some(m => m.status === 'played')) fail(`${ev.name} has no results yet.`);
+  const made = found.map(d => ({
+    id: newId(st, 'sg'), event: ev.id, kind: oneOf(d.kind, STORY_KINDS, 'suggestion'), key: String(d.key || ''),
+    plan: planFields(st, ev, d.plan), why: (Array.isArray(d.why) ? d.why : []).map(String),
+    chance: Math.min(1, Math.max(0, Number(d.chance) || 0)), basis: basisFields(d.basis),
+    status: 'open', decided: null, created: null, edited: false, note: '',
+  }));
+  st.story.rolls.push({ event: ev.id, at: now(st), pool: Math.max(0, Math.floor(Number(pool) || 0)), found: made.length, pace: st.story.pace });
+  st.story.suggestions.push(...made);
+  return made;
+}
+// what a suggestion rests on, so a later correction can show it no longer fits
+function basisFields(b = {}) {
+  return {
+    match: b.match || null,
+    winners: Array.isArray(b.winners) ? [...b.winners].sort() : null,
+    title: b.title ? { id: b.title.id, holder: { type: b.title.holder.type, id: b.title.holder.id } } : null,
+    team: b.team || null,
+  };
+}
+
+/** Why a suggestion no longer fits the record - a sentence - or null. */
+export function suggestionProblem(st, sg) {
+  const ev = eventById(st, sg.event);
+  if (!ev) return 'Its show has been deleted.';
+  const b = sg.basis;
+  if (b.match) {
+    const m = ev.matches.find(x => x.id === b.match);
+    if (!m || m.status !== 'played') return 'The result it came from is no longer on record.';
+    const won = m.outcome === 'win' ? [...m.sides[m.winner].wrestlers].sort() : [];
+    if (b.winners && JSON.stringify(won) !== JSON.stringify(b.winners)) return 'The result it came from has been corrected.';
+  }
+  if (b.title) {
+    const cur = currentReign(st, b.title.id);
+    if (!cur || !sameHolder(cur.holder, b.title.holder)) return 'The title has changed hands since.';
+  }
+  if (b.team && !(teamById(st, b.team) || {}).active) return 'The team has already split.';
+  if (planWrestlers(sg.plan).some(id => !wrestlerById(st, id))) return 'Someone in it is no longer on the roster.';
+  try { planFields(st, ev, sg.plan); } catch (e) { if (e instanceof UniverseError) return e.message; throw e; }
+  return null;
+}
+
+/** Make it happen: record its incidents on the show, and split the team for a breakup. */
+export function acceptSuggestion(st, id) {
+  const sg = must(suggestionById(st, id), 'suggestion', id);
+  if (sg.status !== 'open') fail(`That suggestion has already been ${sg.status}.`);
+  const problem = suggestionProblem(st, sg);
+  if (problem) fail(`${problem} Dismiss it instead.`);
+  const ev = eventById(st, sg.event);
+  const incidents = sg.plan.incidents.map(input => {
+    const inc = { id: newId(st, 'in'), ...incidentFields(st, ev, input), story: sg.id };
+    ev.incidents.push(inc);
+    return inc.id;
+  });
+  let disbanded = null;
+  if (sg.plan.disband) {
+    setTeamActive(st, sg.plan.disband, false);
+    const t = teamById(st, sg.plan.disband);
+    disbanded = { team: t.id, seq: t.log[t.log.length - 1].at.seq };
+  }
+  Object.assign(sg, { status: 'accepted', decided: now(st), created: { incidents, disbanded } });
+  return sg;
+}
+export function dismissSuggestion(st, id, note = '') {
+  const sg = must(suggestionById(st, id), 'suggestion', id);
+  if (sg.status !== 'open') fail(`That suggestion has already been ${sg.status}.`);
+  Object.assign(sg, { status: 'dismissed', decided: now(st), note: checkNote(note) });
+  return sg;
+}
+/** Bring back a dismissed suggestion. */
+export function reopenSuggestion(st, id) {
+  const sg = must(suggestionById(st, id), 'suggestion', id);
+  if (sg.status !== 'dismissed') fail('Only a dismissed suggestion can be brought back.');
+  Object.assign(sg, { status: 'open', decided: null, note: '' });
+  return sg;
+}
+/** Take back an accepted suggestion: its incidents go, and a team it split is back together. */
+export function undoSuggestion(st, id) {
+  const sg = must(suggestionById(st, id), 'suggestion', id);
+  if (sg.status !== 'accepted') fail('Only an accepted suggestion can be taken back.');
+  const split = sg.created.disbanded;
+  if (split) {
+    const t = teamById(st, split.team);
+    if (t && t.active) fail(`${t.name} have reunited since. Undo that on their page first.`);
+    if (t) {
+      const last = lastTeamChange(st, t.id);
+      if (!last || last.kind !== 'disbanded' || last.seq !== split.seq) fail(`${t.name} have changed since they split. Undo that on their page first.`);
+      undoTeamChange(st, t.id);
+    }
+  }
+  const ev = eventById(st, sg.event);
+  if (ev) removeWhere(ev.incidents, x => x.story === sg.id);
+  Object.assign(sg, { status: 'open', decided: null, created: null });
+  return sg;
+}
+/** Change what an open suggestion would do before accepting it. */
+export function editSuggestion(st, id, plan) {
+  const sg = must(suggestionById(st, id), 'suggestion', id);
+  if (sg.status !== 'open') fail('Only an open suggestion can be changed.');
+  sg.plan = planFields(st, must(eventById(st, sg.event), 'event', sg.event), plan);
+  sg.edited = true;
+  return sg;
 }
 
 // ---------------------------------------------------------------- records
@@ -2507,6 +2706,11 @@ export function mergeWrestlers(st, keepId, dupId) {
     if (r.key) r.key = rekey(r.key, dupId, keepId);
   });
   removeWhere(st.traitLog, e => e.wrestler === dupId);                    // the one kept keeps their own personality
+  st.story.suggestions.forEach(sg => {
+    sg.plan.incidents.forEach(x => { x.by = swap(x.by); x.on = swap(x.on); x.helped = swap(x.helped); });
+    if (sg.basis.winners) sg.basis.winners = swap(sg.basis.winners).sort();
+    if (sg.basis.title) sg.basis.title.holder = as(sg.basis.title.holder);
+  });
   eachMatch(st, m => {
     m.sides.forEach(sd => { sd.wrestlers = sd.wrestlers.map(id => (id === dupId ? keepId : id)); });
     if (m.fall) m.fall = { by: m.fall.by === dupId ? keepId : m.fall.by, on: m.fall.on === dupId ? keepId : m.fall.on };
@@ -2542,6 +2746,9 @@ export function careerOf(st, wrestlerId) {
     if (there(reign.start)) at(reign.start, 'title-won', { reign, title, team });
     if (reign.end && there(reign.end)) at(reign.end, reign.vacated ? 'title-vacated' : 'title-lost', { reign, title, team });
   });
+  st.events.forEach(event => event.incidents.forEach(incident => {
+    if ([...incident.by, ...incident.on, ...incident.helped].includes(wrestlerId)) at(event.at, 'incident', { event, incident });
+  }));
   return out.sort((a, b) => compareStamps(st, b, a));
 }
 
@@ -2573,6 +2780,7 @@ export function timeline(st) {
     if (r.vacated) at(r.end, 'title-vacated', r);
   });
   st.events.forEach(e => at(e.at, 'event', e));
+  st.events.forEach(e => e.incidents.forEach(x => at(e.at, 'incident', { event: e, incident: x })));
   return out.sort((a, b) => compareStamps(st, b, a));
 }
 
@@ -2668,6 +2876,19 @@ export function migrate(raw) {
     st.relEdits = [];
     st.version = 6;
   }
+  if (st.version === 6) {
+    // v7: the story engine, and incidents that can name a title or a team, or
+    // come from a suggestion. Nothing in a v6 save had been suggested.
+    st.events.forEach(e => (Array.isArray(e.incidents) ? e.incidents : []).forEach(x => {
+      if (x.title === undefined) x.title = null;
+      if (x.team === undefined) x.team = null;
+      if (x.story === undefined) x.story = null;
+    }));
+    st.story = newStory();
+    st.version = 7;
+  }
+  if (!st.story || typeof st.story !== 'object') st.story = newStory();
+  for (const k of ['rolls', 'suggestions']) if (!Array.isArray(st.story[k])) st.story[k] = [];
   for (const k of ['transitions', 'relegations', 'eligibility', 'drafts', 'traitLog', 'relEdits']) if (!Array.isArray(st[k])) st[k] = [];
   return st;
 }
@@ -2698,6 +2919,7 @@ export function validate(st) {
   own(st.eligibility, 'draft eligibility record'); own(st.drafts, 'draft pick');
   own(st.traitLog, 'personality change'); own(st.relEdits, 'relationship change');
   st.events.forEach(e => own(Array.isArray(e.incidents) ? e.incidents : [], 'incident'));
+  own(st.story.suggestions, 'story suggestion');
   st.transitions.forEach(t => Object.values(t.shows || {}).forEach(c => own(Array.isArray(c.pairs) ? c.pairs : [], 'relegation pairing')));
   st.transitions.forEach(t => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], 'qualifier pairing'));
 
@@ -2753,6 +2975,29 @@ export function validate(st) {
     if (!REL_KINDS.includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
     if (!wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong wrestlers.`);
     if (['form', 'level'].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
+  });
+  const sto = st.story;
+  if (typeof sto.on !== 'boolean' || !STORY_PACES.includes(sto.pace) || !Number.isInteger(sto.seed) || sto.seed < 0) {
+    bad.push('The story engine settings are unreadable.');
+  }
+  const rolled = new Set();
+  sto.rolls.forEach(r => {
+    if (!r || !eventById(st, r.event)) { bad.push('The story engine looked at a show that doesn\'t exist.'); return; }
+    if (rolled.has(r.event)) bad.push(`The story engine looked at ${eventById(st, r.event).name} twice.`);
+    rolled.add(r.event);
+    stamp(r.at, 'A story engine roll');
+  });
+  sto.suggestions.forEach(sg => {
+    const where = `Story suggestion ${sg.id}`;
+    const ev = eventById(st, sg.event);
+    if (!ev) { bad.push(`${where} is for a show that doesn't exist.`); return; }
+    if (!STORY_KINDS.includes(sg.kind) || !SUGGESTION_STATUSES.includes(sg.status) || !sg.plan || !Array.isArray(sg.plan.incidents)
+      || !sg.plan.incidents.length || !sg.basis || !Array.isArray(sg.why) || sg.why.some(x => typeof x !== 'string')
+      || typeof sg.chance !== 'number') { bad.push(`${where} is unreadable.`); return; }
+    if (sg.plan.incidents.some(i => !INCIDENT_KINDS.includes(i.kind) || ![i.by, i.on, i.helped].every(Array.isArray))) bad.push(`${where} is unreadable.`);
+    if (sg.status !== 'open') stamp(sg.decided, where);
+    if (sg.status === 'accepted' && !(sg.created && Array.isArray(sg.created.incidents))) bad.push(`${where} was accepted but made nothing.`);
+    if (!rolled.has(sg.event)) bad.push(`${where} came from a look at ${ev.name} that isn't on record.`);
   });
   st.moves.forEach(m => {
     if (!wrestlerById(st, m.wrestler)) bad.push(`Roster move ${m.id} is for a wrestler who doesn't exist.`);
@@ -2852,9 +3097,14 @@ export function validate(st) {
     else e.incidents.forEach(x => {
       const lists = [x.by, x.on, x.helped];
       if (!INCIDENT_KINDS.includes(x.kind) || lists.some(l => !Array.isArray(l))) { bad.push(`An incident at ${e.name} is unreadable.`); return; }
-      if (!x.by.length || !x.on.length || lists.flat().some(id => !wrestlerById(st, id))) bad.push(`An incident at ${e.name} names the wrong wrestlers.`);
-      if (x.by.some(id => x.on.includes(id))) bad.push(`An incident at ${e.name} has someone on both sides.`);
+      const shape = INCIDENT_SHAPE[x.kind];
+      if (!x.by.length || (shape.on && !x.on.length) || (shape.on === false && x.on.length) || (!shape.helped && x.helped.length)
+        || lists.flat().some(id => !wrestlerById(st, id))) bad.push(`An incident at ${e.name} names the wrong wrestlers.`);
+      if (x.by.some(id => x.on.includes(id) || x.helped.includes(id))) bad.push(`An incident at ${e.name} has someone on both sides.`);
       if (x.match != null && !(e.matches || []).some(m => m.id === x.match)) bad.push(`An incident at ${e.name} is in a match that isn't on its card.`);
+      if (x.title != null ? !shape.title || !titleById(st, x.title) : shape.title === 'required') bad.push(`An incident at ${e.name} names the wrong title.`);
+      if (x.team != null ? !shape.team || !teamById(st, x.team) : !!shape.team) bad.push(`An incident at ${e.name} names the wrong team.`);
+      if (x.story != null && !(suggestionById(st, x.story) || {}).status) bad.push(`An incident at ${e.name} comes from a suggestion that doesn't exist.`);
     });
     if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
     if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);

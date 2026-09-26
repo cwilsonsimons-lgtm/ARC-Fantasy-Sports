@@ -43,6 +43,8 @@ js/universe/
   index.js             start-up, tabs, the save-file sheet
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
   personality.js       traits, relationships, the page for two wrestlers, incidents
+  story.js             the story engine's suggestions, the Story page and its settings
+  suggest.js           the story engine itself - pure, seeded, runs under Node
   relations.js         relationships worked out from the record - pure, runs under Node
   ranks.js             the Rankings tab: standings and booking balance
   standings.js         the arithmetic behind it - pure, runs under Node
@@ -53,8 +55,8 @@ js/universe/
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       102 model tests     npm run test:universe
-tools/universe-check.mjs      149 browser checks  npm run check:universe
+tools/universe-test.mjs       114 model tests     npm run test:universe
+tools/universe-check.mjs      164 browser checks  npm run check:universe
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -75,9 +77,10 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | reigns    | title history. The reign with no end is the champion |
 | shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite Wednesday, SmackDown Friday |
 | seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
-| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences and attacks |
+| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, challenges, demands, walk-outs and runs of momentum |
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
 | relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start) and the automatic changes they've chosen to ignore |
+| story     | the story engine: on or off, its pace, its seed, every show it looked at, and every suggestion it made — open, accepted or dismissed, with its reasons |
 
 A **match** is one record from the moment it's booked: its sides — each a set
 of wrestlers, plus the tag team they wrestled as — the title on the line, a
@@ -322,6 +325,10 @@ relationships work"), with traits counted as they were at the time:
 | A betrayal (logged on the show) | a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends |
 | An interference | a grudge against whoever interfered; whoever it helped becomes their ally |
 | An attack | a grudge against the attacker (hot-headed: heat 2) |
+| A save | the attacker holds a grudge against whoever made the save; the one saved becomes their ally |
+| A brawl | a grudge each way, and they're rivals |
+| A title challenge, or calling someone out | they're rivals |
+| Walking out on a team | anyone left behind holds a grudge; any friendship or alliance between them ends |
 | 5 matches on the same side, win or lose | allies (either loyal: 3). At 12, friends — never for the opportunistic, or with a grudge between them |
 | Leaving a tag team, or it disbanding | former partners |
 
@@ -343,6 +350,68 @@ crossed out, and everything after it is worked out again without it (**Count
 it again** undoes that). **Change…** starts, sets, ends or adds a note to any
 relationship — dated to this week, or from the start for history before the
 universe began. Those are entries on the same timeline, and can be taken back.
+
+## The story engine
+
+An optional storyteller in the spirit of SmackDown vs. Raw 2011's Universe
+Mode. After a recent show's last result goes in (or when asked, on the show
+page), it reads the record — results, personalities, relationships, champions,
+tag teams and who's been getting booked — and may suggest what happens next,
+for the owner to recreate or acknowledge in WWE 2K25:
+
+| Suggestion | Comes from |
+|---|---|
+| Post-match attack | a loser lashing out: likelier if hot-headed or proud, holding a grudge, on a losing run against them, or just stripped of a title |
+| Surprise save | someone running in to stop an attack: a friend, ally, partner, or someone with their own grudge against the attacker |
+| Betrayal | a partner turning: likelier if opportunistic or ambitious, holding a grudge, or losing together; rare for the loyal |
+| Rivalry escalation | rivals or wrestlers with grudges brawling: likelier with more bad blood, and if they just shared a ring |
+| Title challenge | someone stepping up to a champion, drawn from everyone eligible |
+| Team breakup | a team splitting over bad blood, ambition or a losing run; champions don't |
+| Unlikely winning streak | three or more straight wins from someone who'd been losing more than winning |
+| Demands an opportunity | someone short of matches, or ambitious and winning, wanting a chance — sometimes at a title |
+
+**Nothing happens until it's accepted.** A suggestion changes no relationship,
+isn't on the timeline, and never books or decides a match. **Accept** records
+it on the show as incidents (a team breakup also disbands the team), so the
+relationship rules above apply and it appears on the History timeline and the
+wrestlers' career histories. **Edit** changes who's in it, or adds a note,
+first. **Dismiss** keeps it off the record (**Bring it back** reverses that),
+and an accepted one can be **taken back**. A suggestion whose result is later
+corrected, or whose champion has changed, is marked as no longer fitting and
+can only be dismissed. An accepted title challenge or demand offers **Book the
+title match** — the booking form, filled in; the result still comes from the
+game.
+
+**Explained.** Every suggestion lists why it came up, reason by reason, and
+how likely it was ("uncommon (19%)"). "How the story engine works" in the app
+explains every kind.
+
+**Rare on purpose.** Each chance starts small and has to be earned by the
+record; one with nothing behind it is a long shot, but never impossible. The
+**pace** scales every chance — Quiet ×0.5 (at most 1 a show, 2 a week), Normal
+(2 and 3), Wild ×2 (3 and 6). Anyone in something in the last 2 weeks is less
+likely to be in something again; the same thing between the same people won't
+come back for 6 weeks, nor anything dismissed for 10; after an eventful
+episode, that show's next one is calmer; and a show never gets two of a kind or
+one wrestler twice. Simulated over 16 weeks of three shows with random
+results, Quiet comes out at about one suggestion every five shows, Normal one
+every two or three, and Wild one every one or two.
+
+**Seeded, not rerolled.** The draw is a hash of the universe's seed, the show
+and the possibility, so the same universe always gets the same suggestions and
+looking again can't fish for a better one. The seed is picked at random the
+first time the engine looks (by the app, never the model). Each show is looked
+at once.
+
+**Outcomes stay open.** A title challenger is drawn from everyone eligible on
+the title's show and division, weighted by grudges, wins over the champion,
+streaks, momentum and ambition, but never ranked out: the tests show the
+winless wrestler at the bottom of the standings being drawn, booked for the
+title, and winning it.
+
+It can be switched off, or its pace changed, on the **Story** page (from the
+season card on the Calendar). Switched off, nothing is looked at; suggestions
+already made stay where they are.
 
 ## Profiles and records
 
@@ -415,6 +484,9 @@ refuses rather than disturb anything else:
 | A relationship change of your own, made wrong | **Take back** on the timeline. |
 | An incident recorded wrong | Tap it on its show: edit it, or delete it. The relationships it built follow. |
 | A trait set wrong | **Edit personality** again. A trait set from the start can be removed from the start, as if it had never been there. |
+| A story suggestion accepted by mistake | **Take it back** on the show or the Story page: its incidents go, a team it split is back together (while nothing has changed on the team since), and the suggestion waits again. |
+| A story suggestion dismissed by mistake | **Bring it back**. |
+| The result behind a suggestion corrected | The suggestion is marked as no longer fitting; dismiss it. One already accepted stays on the record — edit or delete its incidents on the show. |
 
 ## Saving
 
@@ -456,17 +528,17 @@ relegation record; nothing in an older save was a relegation match. **Version
 transition gets an empty qualifier field and an unopened window. **Version 6**
 added personalities, incidents and relationship edits; an older save starts
 with no traits, no incidents and no edits, and its relationships are worked out
-from its results and teams on load.
+from its results and teams on load. **Version 7** added the story engine;
+an older save starts with it on, at a normal pace, having suggested nothing,
+and its incidents name no title, team or suggestion.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Random events and story generation are later work. The foundation is shaped
-for them — results record sides, winners, finishes and titles, standings rank
-every show, roster moves record who changed show and when, the season
-transition keeps why each wrestler went down or came up, and every
-relationship can say why it exists — but nothing happens on its own yet: no
-event is ever rolled, and a relationship only changes because of something on
-record. Whatever suggests a match, the result still comes from the game.
-
+The story engine suggests; it doesn't write promos, run injuries, handle
+contracts or book whole cards, and it never looks at a show from more than a
+couple of weeks ago (it reads the record as it stands now). A relationship still
+only changes because of something on record — a result, a team change, an
+incident the owner recorded or a suggestion they accepted. Whatever suggests a
+match, the result still comes from the game.

@@ -17,6 +17,7 @@ import {
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
+import { uvStoryAfterResult, uvStoryBlock, uvStoryToast } from './story.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
 
@@ -157,6 +158,7 @@ export function uvEventPage(id) {
       <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join('')}</div>`
         : empty(ICON.cal, 'Nothing booked yet', 'Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.')}
+      ${uvStoryBlock(st, e)}
       ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
@@ -208,13 +210,13 @@ const STIPULATIONS = ['Normal', 'No Disqualification', 'Street Fight', 'Extreme 
 
 const fromMatch = m => m.sides.map(sd => ({ team: sd.team || '', wrestlers: [...sd.wrestlers] }));
 
-function openForm(mode, eventId, m, lineup = null) {
+function openForm(mode, eventId, m, lineup = null, titleId = '') {
   const st = uni();
   const linked = m && st.reigns.some(r => r.matchId === m.id);
   md = {
     mode, eventId, matchId: m ? m.id : null,
     sides: m ? fromMatch(m) : lineup || [blankSide(), blankSide()],
-    titleId: (m && m.titleId) || '', stip: (m && m.stip) || '', notes: (m && m.notes) || '',
+    titleId: (m && m.titleId) || titleId || '', stip: (m && m.stip) || '', notes: (m && m.notes) || '',
     // a result is never pre-filled for a match that hasn't got one
     result: m && m.status === 'played' ? (m.outcome === 'win' ? String(m.winner) : m.outcome) : '',
     finish: (m && m.finish) || '', by: (m && m.fall && m.fall.by) || '', on: (m && m.fall && m.fall.on) || '',
@@ -239,12 +241,13 @@ export function uvCorrectResult(eventId, matchId) { openForm('correct', eventId,
 // booking form filled in - nothing is booked until the owner adds it.
 const parseLineup = text => String(text).split('|').map(part => {
   const [team, list] = part.includes(':') ? part.split(':') : ['', part];
-  return { team, wrestlers: list.split(',').filter(Boolean) };
+  const wrestlers = list.split(',').filter(Boolean);
+  return { team, wrestlers: wrestlers.length ? wrestlers : [''] };        // an empty side is left for the owner to fill
 });
-export function uvBookLineup(eventId, lineup) { openForm('book', eventId, null, parseLineup(lineup)); }
-export function uvPlanAndBook(showId, week, lineup) {
+export function uvBookLineup(eventId, lineup, titleId = '') { openForm('book', eventId, null, parseLineup(lineup), titleId); }
+export function uvPlanAndBook(showId, week, lineup, titleId = '') {
   const r = commit(st => M.addEvent(st, { showId, week }), e => `${e.name} planned`);
-  if (r.ok) uvBookLineup(r.value.id, lineup);
+  if (r.ok) uvBookLineup(r.value.id, lineup, titleId);
 }
 
 // Registered teams a side could be wrestling as: every wrestler on it is on
@@ -427,18 +430,23 @@ export function uvMSave(thenResult) {
   };
   const opts = { titleChange: !!(d.titleId && d.titleChange && isWin) };
   const before = uvRelBefore();
-  const r = commit(st => (d.mode === 'result' ? M.enterResult(st, d.eventId, d.matchId, input, opts)
-    : M.updateMatch(st, d.eventId, d.matchId, input, opts)), m => {
+  let story = null;
+  const r = commit(st => {
+    if (d.mode !== 'result') return M.updateMatch(st, d.eventId, d.matchId, input, opts);
+    const played = M.enterResult(st, d.eventId, d.matchId, input, opts);
+    story = uvStoryAfterResult(st, d.eventId);
+    return played;
+  }, m => {
     const st = uni();
     const reign = st.reigns.find(x => x.matchId === m.id);
     const saved = d.mode === 'result' ? 'Result saved' : 'Result corrected';
-    const news = uvRelNews(before).replace(/^ — /, '. ');
     const rel = st.relegations.find(x => x.match === m.id);
-    if (rel) return `${saved} — ${M.wrestlerById(st, rel.wrestler).name} relegated to NXT${news}`;
     const q = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
-    if (q) return `${saved} — ${M.wrestlerById(st, q.wrestler).name} is draft eligible${news}`;
-    if (!reign) return saved + (news ? ` — ${news.slice(2)}` : '');
-    return `${saved} — ${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}${news}`;
+    const what = rel ? `${M.wrestlerById(st, rel.wrestler).name} relegated to NXT`
+      : q ? `${M.wrestlerById(st, q.wrestler).name} is draft eligible`
+        : reign ? `${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}` : '';
+    const news = uvRelNews(before).replace(/^ — /, '');
+    return `${saved}${[what, news].filter(Boolean).map((x, i) => (i ? `. ${x}` : ` — ${x}`)).join('')}${uvStoryToast(story)}`;
   });
   if (r.ok) closeSheet();
 }

@@ -743,6 +743,44 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-rl em{font-style:normal;color:var(--uv-ink-3);white-space:nowrap}
 .uv-bu .uv-left{font-size:10.5px}
 
+/* ---------- the story engine ---------- */
+.uv-card-row.hot{background:var(--uv-gold-soft)}
+.uv-card-row.hot b{color:var(--uv-gold)}
+.uv-sgs{display:flex;flex-direction:column;gap:10px;margin:0 14px}
+.uv-sg{padding:12px;border-radius:14px;border:1px dashed color-mix(in srgb,var(--k) 55%,var(--uv-line));
+  background:color-mix(in srgb,var(--k) 5%,var(--uv-card))}
+.uv-sg.accepted{border-style:solid;background:var(--uv-card)}
+.uv-sg.dismissed,.uv-sg.stale{border-color:var(--uv-line);background:var(--uv-card-2)}
+.uv-sg.dismissed .hl{color:var(--uv-ink-2);text-decoration:line-through;text-decoration-color:var(--uv-ink-3)}
+.uv-sg .top{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.uv-sg .top .st{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-sg.accepted .top .st{color:var(--uv-green)}
+.uv-sg.stale .top .st{color:var(--uv-amber)}
+.uv-sg .top .odds{margin-left:auto;font-size:11px;color:var(--uv-ink-3)}
+.uv-sg .hl{margin-top:8px;font-size:15px;font-weight:700;line-height:1.35}
+.uv-sg .where{margin-top:3px;font-size:11.5px;color:var(--uv-ink-2)}
+.uv-sg .warn{margin-top:8px;font-size:12px;color:var(--uv-amber)}
+.uv-sg .why{margin-top:8px;font-size:12px;color:var(--uv-ink-2)}
+.uv-sg .why summary{cursor:pointer;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-sg .why ul{margin:6px 0 0;padding-left:16px;line-height:1.5}
+.uv-sg .why li.minus{color:var(--uv-ink-3)}
+.uv-sg .fx{margin-top:9px;padding:9px 10px;border-radius:10px;background:var(--uv-card-2);font-size:12px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-sg .fx b{display:block;margin-bottom:2px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-sg .fx span{display:block}
+.uv-sg .fx span.rel{color:var(--uv-ink)}
+.uv-sg .fx .fine{margin-top:5px;font-size:11px;color:var(--uv-ink-3)}
+.uv-sg .acts{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:10px}
+.uv-sgw{font-size:11px}
+.uv-storyhead{margin:14px 14px 0;padding:14px;border-radius:16px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-storyhead .k{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.4px;text-transform:uppercase}
+.uv-storyhead p{margin:6px 0 10px;font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-storyhead .uv-seg{margin:6px 0 0}
+.uv-storyhead .s{margin-top:8px;font-size:11.5px;line-height:1.5;color:var(--uv-ink-3)}
+.uv-separt{margin-top:10px;padding:10px 11px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card-2)}
+.uv-separt>.h{display:flex;align-items:center;justify-content:space-between}
+.uv-separt>.h .uv-link{font-size:12px;color:var(--uv-ink-3)}
+.uv-separt .uv-sidebox{background:var(--uv-card)}
+
 /* css/universe-artifact.css */
 /* ===== UNIVERSE, PUBLISHED =====
    Added only to the claude.ai artifact build (dist/universe-artifact.html).
@@ -825,7 +863,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 6;
+  var SCHEMA_VERSION = 7;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -888,8 +926,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       // every draft pick from NXT - kept for good
       traitLog: [],
       // every change to a wrestler's personality, dated (or from the start)
-      relEdits: []
+      relEdits: [],
       // the owner's own relationship changes, dated; the rest is worked out from the record
+      story: newStory()
+      // the story engine's settings, and what it has suggested
     };
     openSeason(st, 1, "");
     return st;
@@ -1106,6 +1146,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     removeWhere(st.wrestlers, (x) => x.id === id);
     removeWhere(st.moves, (m) => m.wrestler === id);
     removeWhere(st.traitLog, (e) => e.wrestler === id);
+    removeWhere(st.story.suggestions, (sg) => sg.status !== "accepted" && planWrestlers(sg.plan).includes(id));
   }
   function rosterOf(st, showId) {
     const key = showId || null;
@@ -1244,6 +1285,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (m.sides.some((s) => s.team === id)) matches++;
     });
     if (matches) refs.push(matches === 1 ? "a match" : `${matches} matches`);
+    if (st.events.some((e) => e.incidents.some((x) => x.team === id))) refs.push("an incident");
     return refs;
   }
   function deleteTeam(st, id) {
@@ -1252,6 +1294,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (refs.length) fail(`${t.name} are part of the history (${refs.join(", ")}), so they can't be deleted. Disband them instead.`);
     removeWhere(st.teams, (x) => x.id === id);
     removeWhere(st.memberships, (m) => m.team === id);
+    removeWhere(st.story.suggestions, (sg) => sg.status !== "accepted" && (sg.plan.disband === id || sg.basis.team === id || sg.plan.incidents.some((i) => i.team === id)));
   }
   function teamsOf(st, wrestlerId) {
     return st.teams.filter((t) => t.members.includes(wrestlerId));
@@ -1340,6 +1383,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (m.titleId === id) matches++;
     });
     if (matches) refs.push(matches === 1 ? "a title match" : `${matches} title matches`);
+    if (st.events.some((e) => e.incidents.some((x) => x.title === id))) refs.push("an incident");
     return refs;
   }
   function deleteTitle(st, id) {
@@ -1347,6 +1391,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const refs = titleRefs(st, id);
     if (refs.length) fail(`The ${t.name} has history (${refs.join(", ")}), so it can't be deleted. Retire it instead.`);
     removeWhere(st.titles, (x) => x.id === id);
+    removeWhere(st.story.suggestions, (sg) => sg.status !== "accepted" && (sg.plan.incidents.some((i) => i.title === id) || (sg.basis.title || {}).id === id));
   }
   function titleReigns(st, titleId) {
     return st.reigns.filter((r) => r.titleId === titleId).sort((a, b) => a.start.seq - b.start.seq);
@@ -1675,6 +1720,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     removeWhere(st.events, (e) => e.id === id);
     if (revert) revert();
     unrel.forEach((f) => f());
+    removeWhere(st.story.suggestions, (sg) => sg.event === id);
+    removeWhere(st.story.rolls, (r) => r.event === id);
   }
   function eventsIn(st, seasonId) {
     return st.events.filter((e) => e.at.season === seasonId).sort((a, b) => compareStamps(st, a.at, b.at));
@@ -1725,8 +1772,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     } else if (hasWinner) {
       fail(`A ${outcome === "draw" ? "draw" : "no contest"} has no winner.`);
     }
-    const finish = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
-    return { outcome, winner, finish, fall: checkFall(st, input.fall, sides, outcome, winner) };
+    const finish2 = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
+    return { outcome, winner, finish: finish2, fall: checkFall(st, input.fall, sides, outcome, winner) };
   }
   function checkFall(st, fall, sides, outcome, winner) {
     const by = fall && fall.by || null, on = fall && fall.on || null;
@@ -1772,10 +1819,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return { type: "wrestler", id: side.wrestlers[0] };
   }
   function titlePlan(st, ev, linked, b, r, titleChange) {
-    const plan = { keep: null, add: null, revert: null };
+    const plan2 = { keep: null, add: null, revert: null };
     if (!titleChange) {
-      if (linked) plan.revert = removableReigns(st, [linked], "this match");
-      return plan;
+      if (linked) plan2.revert = removableReigns(st, [linked], "this match");
+      return plan2;
     }
     if (!b.title) fail("Pick the title that changed hands.");
     if (r.outcome !== "win") fail("A title only changes hands when someone wins.");
@@ -1786,17 +1833,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const who = holderName(st, holder);
       if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${b.title.name} going into this match - that's a retention, not a title change.`);
       if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${b.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
-      plan.keep = holder;
+      plan2.keep = holder;
     } else {
-      if (linked) plan.revert = removableReigns(st, [linked], "this match");
-      plan.add = champChecks(st, b.title.id, raw, dateOf(st, ev)).holder;
+      if (linked) plan2.revert = removableReigns(st, [linked], "this match");
+      plan2.add = champChecks(st, b.title.id, raw, dateOf(st, ev)).holder;
     }
-    return plan;
+    return plan2;
   }
-  function applyPlan(st, ev, m, plan, linked) {
-    if (plan.revert) plan.revert();
-    if (plan.keep) linked.holder = plan.keep;
-    if (plan.add) setChampion(st, m.titleId, plan.add, { eventId: ev.id, matchId: m.id });
+  function applyPlan(st, ev, m, plan2, linked) {
+    if (plan2.revert) plan2.revert();
+    if (plan2.keep) linked.holder = plan2.keep;
+    if (plan2.add) setChampion(st, m.titleId, plan2.add, { eventId: ev.id, matchId: m.id });
   }
   function findMatch(st, eventId, matchId) {
     const ev = must(eventById(st, eventId), "event", eventId);
@@ -1822,12 +1869,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (m.status === "played") fail("This match already has a result - correct it instead.");
     const b = bookingFields(st, bookingInput(m, input), m.titleId);
     const r = resultFields(st, input, b.sides);
-    const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
-    const rel = relegationPlan(st, ev, m, b.sides, r);
+    const plan2 = titlePlan(st, ev, null, b, r, opts.titleChange);
+    const rel2 = relegationPlan(st, ev, m, b.sides, r);
     const qual = qualifierPlan(st, ev, m, b.sides, r);
     Object.assign(m, playedRecord(b, r));
-    applyPlan(st, ev, m, plan, null);
-    applyRelegation(st, ev, m, rel);
+    applyPlan(st, ev, m, plan2, null);
+    applyRelegation(st, ev, m, rel2);
     applyQualifier(st, ev, m, qual);
     return m;
   }
@@ -1837,12 +1884,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const linked = st.reigns.find((r2) => r2.matchId === matchId) || null;
     const b = bookingFields(st, input, m.titleId);
     const r = resultFields(st, input, b.sides);
-    const plan = titlePlan(st, ev, linked, b, r, opts.titleChange);
-    const rel = relegationPlan(st, ev, m, b.sides, r);
+    const plan2 = titlePlan(st, ev, linked, b, r, opts.titleChange);
+    const rel2 = relegationPlan(st, ev, m, b.sides, r);
     const qual = qualifierPlan(st, ev, m, b.sides, r);
     Object.assign(m, playedRecord(b, r));
-    applyPlan(st, ev, m, plan, linked);
-    applyRelegation(st, ev, m, rel);
+    applyPlan(st, ev, m, plan2, linked);
+    applyRelegation(st, ev, m, rel2);
     applyQualifier(st, ev, m, qual);
     return m;
   }
@@ -1851,11 +1898,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (m.status !== "played") fail("This match has no result to clear.");
     const linked = st.reigns.find((r) => r.matchId === matchId);
     const revert = linked ? removableReigns(st, [linked], "this match") : null;
-    const rel = relegationPlan(st, ev, m, m.sides, null);
+    const rel2 = relegationPlan(st, ev, m, m.sides, null);
     const qual = qualifierPlan(st, ev, m, m.sides, null);
     Object.assign(m, bookedRecord({ sides: m.sides, title: titleById(st, m.titleId), stip: m.stip, notes: m.notes }));
     if (revert) revert();
-    applyRelegation(st, ev, m, rel);
+    applyRelegation(st, ev, m, rel2);
     applyQualifier(st, ev, m, qual);
     return m;
   }
@@ -2238,8 +2285,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const at2 = stampAt(st, ev.at.season, ev.at.week, ev.at.day);
     let move = null;
     if (from !== RELEGATED_TO) {
-      const why = decided ? "Relegated by the owner" : `Relegated \u2014 lost to ${nameOf(st, winner)}`;
-      move = { id: newId(st, "mv"), wrestler: loser, from, to: RELEGATED_TO, at: { ...at2 }, note: why.slice(0, MAX_NAME) };
+      const why2 = decided ? "Relegated by the owner" : `Relegated \u2014 lost to ${nameOf(st, winner)}`;
+      move = { id: newId(st, "mv"), wrestler: loser, from, to: RELEGATED_TO, at: { ...at2 }, note: why2.slice(0, MAX_NAME) };
       st.moves.push(move);
       w.showId = RELEGATED_TO;
     }
@@ -2300,10 +2347,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (loser) relegateChecks(st, loser, ev);
     return { undo, t, pair, loser, winner: loser ? sides[r.winner].wrestlers[0] : null };
   }
-  function applyRelegation(st, ev, m, plan) {
-    if (!plan) return null;
-    if (plan.undo) plan.undo();
-    return plan.loser ? relegate(st, plan.t, plan.pair, ev, m, plan.loser, plan.winner, false) : null;
+  function applyRelegation(st, ev, m, plan2) {
+    if (!plan2) return null;
+    if (plan2.undo) plan2.undo();
+    return plan2.loser ? relegate(st, plan2.t, plan2.pair, ev, m, plan2.loser, plan2.winner, false) : null;
   }
   function relegationRemoval(st, m) {
     if (!m.relegation) return null;
@@ -2539,10 +2586,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const undo = old ? uneligibleChecks(st, old) : null;
     return { undo, tr, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
   }
-  function applyQualifier(st, ev, m, plan) {
-    if (!plan) return;
-    if (plan.undo) plan.undo();
-    if (plan.winner) qualify(st, plan.tr, plan.pair, ev, m, plan.winner, plan.loser, false);
+  function applyQualifier(st, ev, m, plan2) {
+    if (!plan2) return;
+    if (plan2.undo) plan2.undo();
+    if (plan2.winner) qualify(st, plan2.tr, plan2.pair, ev, m, plan2.winner, plan2.loser, false);
   }
   function qualifierRemoval(st, m) {
     if (!m.qualifier) return null;
@@ -2729,7 +2776,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var TRAITS = ["ambitious", "loyal", "opportunistic", "hot-headed", "patient", "proud", "cowardly", "respectful"];
   var REL_KINDS = ["grudge", "rivals", "allies", "friends", "former-partners"];
-  var INCIDENT_KINDS = ["betrayal", "interference", "attack"];
+  var INCIDENT_KINDS = ["betrayal", "interference", "attack", "save", "brawl", "challenge", "demand", "breakup", "momentum"];
+  var INCIDENT_SHAPE = {
+    betrayal: { by: "turned on someone", on: "was betrayed" },
+    interference: { by: "interfered", on: "it was against", helped: true },
+    attack: { by: "attacked", on: "was attacked" },
+    save: { by: "made the save", on: "the save was against", helped: "was saved" },
+    brawl: { by: "started the brawl", on: "it was with" },
+    challenge: { by: "made the challenge", on: "was challenged", title: "required" },
+    demand: { by: "made the demand", on: null, title: "optional" },
+    breakup: { by: "walked away", on: null, team: true },
+    momentum: { by: "is on a run", on: false }
+  };
   var REL_ACTIONS = ["form", "level", "end", "note", "dismiss"];
   function traitsAt(st, wid, stamp) {
     const on = /* @__PURE__ */ new Set();
@@ -2758,18 +2816,30 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function incidentFields(st, ev, input) {
     const kind = oneOf(input.kind, INCIDENT_KINDS, "incident");
+    const shape = INCIDENT_SHAPE[kind];
     const ids = (list) => [...new Set((Array.isArray(list) ? list : []).filter(Boolean))].map((id) => must(wrestlerById(st, id), "wrestler", id).id);
-    const by = ids(input.by), on = ids(input.on), helped = kind === "interference" ? ids(input.helped) : [];
-    if (!by.length) fail(`Pick who ${kind === "betrayal" ? "turned on someone" : kind === "interference" ? "interfered" : "attacked"}.`);
-    if (!on.length) fail(`Pick who ${kind === "betrayal" ? "was betrayed" : kind === "interference" ? "it was against" : "was attacked"}.`);
+    const by = ids(input.by), on = shape.on === false ? [] : ids(input.on), helped = shape.helped ? ids(input.helped) : [];
+    if (!by.length) fail(`Pick who ${shape.by}.`);
+    if (shape.on && !on.length) fail(`Pick who ${shape.on}.`);
+    if (typeof shape.helped === "string" && !helped.length) fail(`Pick who ${shape.helped}.`);
     const clash = by.find((id) => on.includes(id) || helped.includes(id)) || on.find((id) => helped.includes(id));
     if (clash) fail(`${wrestlerById(st, clash).name} can't be on both sides of it.`);
     const match = input.match ? must(ev.matches.find((m) => m.id === input.match), "match", input.match).id : null;
-    return { kind, by, on, helped, match, note: checkText(input.note, "Notes") };
+    let title2 = null, team = null;
+    if (shape.title && input.title) title2 = must(titleById(st, input.title), "championship", input.title).id;
+    if (shape.title === "required" && !title2) fail("Pick the title it\u2019s for.");
+    if (shape.team) {
+      const t = must(teamById(st, input.team), "tag team", input.team);
+      const ever = new Set(st.memberships.filter((m) => m.team === t.id).map((m) => m.wrestler));
+      const outsider = [...by, ...on].find((id) => !ever.has(id));
+      if (outsider) fail(`${wrestlerById(st, outsider).name} was never on ${t.name}.`);
+      team = t.id;
+    }
+    return { kind, by, on, helped, match, title: title2, team, note: checkText(input.note, "Notes") };
   }
   function recordIncident(st, eventId, input = {}) {
     const ev = must(eventById(st, eventId), "event", eventId);
-    const inc = { id: newId(st, "in"), ...incidentFields(st, ev, input) };
+    const inc = { id: newId(st, "in"), ...incidentFields(st, ev, input), story: null };
     ev.incidents.push(inc);
     return inc;
   }
@@ -2778,6 +2848,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const inc = must(ev.incidents.find((x) => x.id === incidentId), "incident", incidentId);
     Object.assign(inc, incidentFields(st, ev, { ...inc, ...input }));
     return inc;
+  }
+  function allIncidents(st) {
+    return st.events.flatMap((event) => event.incidents.map((incident) => ({ event, incident }))).sort((a, b) => compareStamps(st, a.event.at, b.event.at));
   }
   function deleteIncident(st, eventId, incidentId) {
     const ev = must(eventById(st, eventId), "event", eventId);
@@ -2827,6 +2900,149 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function deleteRelEdit(st, id) {
     must(st.relEdits.find((e) => e.id === id), "relationship change", id);
     removeWhere(st.relEdits, (e) => e.id === id);
+  }
+  var STORY_KINDS = ["attack", "save", "betrayal", "escalation", "challenge", "breakup", "streak", "demand"];
+  var STORY_PACES = ["quiet", "normal", "wild"];
+  var SUGGESTION_STATUSES = ["open", "accepted", "dismissed"];
+  function newStory() {
+    return { on: true, pace: "normal", seed: 0, rolls: [], suggestions: [] };
+  }
+  var suggestionById = (st, id) => byId(st.story.suggestions, id);
+  var suggestionsFor = (st, eventId) => st.story.suggestions.filter((x) => x.event === eventId);
+  var storyRollOf = (st, eventId) => st.story.rolls.find((r) => r.event === eventId) || null;
+  function setStory(st, { on, pace } = {}) {
+    if (on !== void 0) st.story.on = !!on;
+    if (pace !== void 0) st.story.pace = oneOf(pace, STORY_PACES, "pace");
+    return st.story;
+  }
+  function seedStory(st, seed) {
+    if (!st.story.seed) st.story.seed = Math.abs(Math.floor(Number(seed) || 0)) % 2147483646 + 1;
+    return st.story.seed;
+  }
+  function planFields(st, ev, plan2) {
+    const incidents = (plan2 && Array.isArray(plan2.incidents) ? plan2.incidents : []).map((i) => incidentFields(st, ev, i));
+    if (!incidents.length) fail("A suggestion needs something to happen.");
+    let disband = null;
+    if (plan2.disband) {
+      const t = must(teamById(st, plan2.disband), "tag team", plan2.disband);
+      if (!t.active) fail(`${t.name} have already split.`);
+      disband = t.id;
+    }
+    return { incidents, disband };
+  }
+  var planWrestlers = (plan2) => plan2.incidents.flatMap((i) => [...i.by, ...i.on, ...i.helped]);
+  function saveStoryRoll(st, eventId, { found = [], pool = 0 } = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    if (!st.story.on) fail("Story suggestions are switched off.");
+    if (storyRollOf(st, eventId)) fail(`The story engine has already looked at ${ev.name}.`);
+    if (!ev.matches.some((m) => m.status === "played")) fail(`${ev.name} has no results yet.`);
+    const made = found.map((d) => ({
+      id: newId(st, "sg"),
+      event: ev.id,
+      kind: oneOf(d.kind, STORY_KINDS, "suggestion"),
+      key: String(d.key || ""),
+      plan: planFields(st, ev, d.plan),
+      why: (Array.isArray(d.why) ? d.why : []).map(String),
+      chance: Math.min(1, Math.max(0, Number(d.chance) || 0)),
+      basis: basisFields(d.basis),
+      status: "open",
+      decided: null,
+      created: null,
+      edited: false,
+      note: ""
+    }));
+    st.story.rolls.push({ event: ev.id, at: now(st), pool: Math.max(0, Math.floor(Number(pool) || 0)), found: made.length, pace: st.story.pace });
+    st.story.suggestions.push(...made);
+    return made;
+  }
+  function basisFields(b = {}) {
+    return {
+      match: b.match || null,
+      winners: Array.isArray(b.winners) ? [...b.winners].sort() : null,
+      title: b.title ? { id: b.title.id, holder: { type: b.title.holder.type, id: b.title.holder.id } } : null,
+      team: b.team || null
+    };
+  }
+  function suggestionProblem(st, sg) {
+    const ev = eventById(st, sg.event);
+    if (!ev) return "Its show has been deleted.";
+    const b = sg.basis;
+    if (b.match) {
+      const m = ev.matches.find((x) => x.id === b.match);
+      if (!m || m.status !== "played") return "The result it came from is no longer on record.";
+      const won = m.outcome === "win" ? [...m.sides[m.winner].wrestlers].sort() : [];
+      if (b.winners && JSON.stringify(won) !== JSON.stringify(b.winners)) return "The result it came from has been corrected.";
+    }
+    if (b.title) {
+      const cur = currentReign(st, b.title.id);
+      if (!cur || !sameHolder(cur.holder, b.title.holder)) return "The title has changed hands since.";
+    }
+    if (b.team && !(teamById(st, b.team) || {}).active) return "The team has already split.";
+    if (planWrestlers(sg.plan).some((id) => !wrestlerById(st, id))) return "Someone in it is no longer on the roster.";
+    try {
+      planFields(st, ev, sg.plan);
+    } catch (e) {
+      if (e instanceof UniverseError) return e.message;
+      throw e;
+    }
+    return null;
+  }
+  function acceptSuggestion(st, id) {
+    const sg = must(suggestionById(st, id), "suggestion", id);
+    if (sg.status !== "open") fail(`That suggestion has already been ${sg.status}.`);
+    const problem = suggestionProblem(st, sg);
+    if (problem) fail(`${problem} Dismiss it instead.`);
+    const ev = eventById(st, sg.event);
+    const incidents = sg.plan.incidents.map((input) => {
+      const inc = { id: newId(st, "in"), ...incidentFields(st, ev, input), story: sg.id };
+      ev.incidents.push(inc);
+      return inc.id;
+    });
+    let disbanded = null;
+    if (sg.plan.disband) {
+      setTeamActive(st, sg.plan.disband, false);
+      const t = teamById(st, sg.plan.disband);
+      disbanded = { team: t.id, seq: t.log[t.log.length - 1].at.seq };
+    }
+    Object.assign(sg, { status: "accepted", decided: now(st), created: { incidents, disbanded } });
+    return sg;
+  }
+  function dismissSuggestion(st, id, note = "") {
+    const sg = must(suggestionById(st, id), "suggestion", id);
+    if (sg.status !== "open") fail(`That suggestion has already been ${sg.status}.`);
+    Object.assign(sg, { status: "dismissed", decided: now(st), note: checkNote(note) });
+    return sg;
+  }
+  function reopenSuggestion(st, id) {
+    const sg = must(suggestionById(st, id), "suggestion", id);
+    if (sg.status !== "dismissed") fail("Only a dismissed suggestion can be brought back.");
+    Object.assign(sg, { status: "open", decided: null, note: "" });
+    return sg;
+  }
+  function undoSuggestion(st, id) {
+    const sg = must(suggestionById(st, id), "suggestion", id);
+    if (sg.status !== "accepted") fail("Only an accepted suggestion can be taken back.");
+    const split = sg.created.disbanded;
+    if (split) {
+      const t = teamById(st, split.team);
+      if (t && t.active) fail(`${t.name} have reunited since. Undo that on their page first.`);
+      if (t) {
+        const last = lastTeamChange(st, t.id);
+        if (!last || last.kind !== "disbanded" || last.seq !== split.seq) fail(`${t.name} have changed since they split. Undo that on their page first.`);
+        undoTeamChange(st, t.id);
+      }
+    }
+    const ev = eventById(st, sg.event);
+    if (ev) removeWhere(ev.incidents, (x) => x.story === sg.id);
+    Object.assign(sg, { status: "open", decided: null, created: null });
+    return sg;
+  }
+  function editSuggestion(st, id, plan2) {
+    const sg = must(suggestionById(st, id), "suggestion", id);
+    if (sg.status !== "open") fail("Only an open suggestion can be changed.");
+    sg.plan = planFields(st, must(eventById(st, sg.event), "event", sg.event), plan2);
+    sg.edited = true;
+    return sg;
   }
   var KEY = { W: "w", L: "l", D: "d", NC: "nc" };
   var blankRecord = () => ({ w: 0, l: 0, d: 0, nc: 0 });
@@ -2912,6 +3128,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (r.key) r.key = rekey(r.key, dupId, keepId);
     });
     removeWhere(st.traitLog, (e) => e.wrestler === dupId);
+    st.story.suggestions.forEach((sg) => {
+      sg.plan.incidents.forEach((x) => {
+        x.by = swap(x.by);
+        x.on = swap(x.on);
+        x.helped = swap(x.helped);
+      });
+      if (sg.basis.winners) sg.basis.winners = swap(sg.basis.winners).sort();
+      if (sg.basis.title) sg.basis.title.holder = as(sg.basis.title.holder);
+    });
     eachMatch(st, (m) => {
       m.sides.forEach((sd) => {
         sd.wrestlers = sd.wrestlers.map((id) => id === dupId ? keepId : id);
@@ -2948,6 +3173,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (there(reign.start)) at2(reign.start, "title-won", { reign, title: title2, team });
       if (reign.end && there(reign.end)) at2(reign.end, reign.vacated ? "title-vacated" : "title-lost", { reign, title: title2, team });
     });
+    st.events.forEach((event) => event.incidents.forEach((incident) => {
+      if ([...incident.by, ...incident.on, ...incident.helped].includes(wrestlerId)) at2(event.at, "incident", { event, incident });
+    }));
     return out.sort((a, b) => compareStamps(st, b, a));
   }
   function timeline(st) {
@@ -2969,6 +3197,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (r.vacated) at2(r.end, "title-vacated", r);
     });
     st.events.forEach((e) => at2(e.at, "event", e));
+    st.events.forEach((e) => e.incidents.forEach((x) => at2(e.at, "incident", { event: e, incident: x })));
     return out.sort((a, b) => compareStamps(st, b, a));
   }
   function summary(st) {
@@ -3021,8 +3250,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       st.shows.forEach((sh) => {
         if (!Number.isInteger(sh.day)) sh.day = night(sh.id);
       });
-      st.seasons.forEach((se) => {
-        if (se.start === void 0) se.start = null;
+      st.seasons.forEach((se2) => {
+        if (se2.start === void 0) se2.start = null;
       });
       st.events.forEach((e) => {
         if (e.at && e.at.day == null) e.at.day = e.kind === "weekly" && showById(st, e.showId) ? showById(st, e.showId).day : PLE_DAY;
@@ -3064,6 +3293,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
       st.relEdits = [];
       st.version = 6;
     }
+    if (st.version === 6) {
+      st.events.forEach((e) => (Array.isArray(e.incidents) ? e.incidents : []).forEach((x) => {
+        if (x.title === void 0) x.title = null;
+        if (x.team === void 0) x.team = null;
+        if (x.story === void 0) x.story = null;
+      }));
+      st.story = newStory();
+      st.version = 7;
+    }
+    if (!st.story || typeof st.story !== "object") st.story = newStory();
+    for (const k of ["rolls", "suggestions"]) if (!Array.isArray(st.story[k])) st.story[k] = [];
     for (const k of ["transitions", "relegations", "eligibility", "drafts", "traitLog", "relEdits"]) if (!Array.isArray(st[k])) st[k] = [];
     return st;
   }
@@ -3104,6 +3344,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     own(st.traitLog, "personality change");
     own(st.relEdits, "relationship change");
     st.events.forEach((e) => own(Array.isArray(e.incidents) ? e.incidents : [], "incident"));
+    own(st.story.suggestions, "story suggestion");
     st.transitions.forEach((t) => Object.values(t.shows || {}).forEach((c) => own(Array.isArray(c.pairs) ? c.pairs : [], "relegation pairing")));
     st.transitions.forEach((t) => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], "qualifier pairing"));
     const stamp = (s, where) => {
@@ -3164,6 +3405,36 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!REL_KINDS.includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
       if (!wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong wrestlers.`);
       if (["form", "level"].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
+    });
+    const sto = st.story;
+    if (typeof sto.on !== "boolean" || !STORY_PACES.includes(sto.pace) || !Number.isInteger(sto.seed) || sto.seed < 0) {
+      bad.push("The story engine settings are unreadable.");
+    }
+    const rolled = /* @__PURE__ */ new Set();
+    sto.rolls.forEach((r) => {
+      if (!r || !eventById(st, r.event)) {
+        bad.push("The story engine looked at a show that doesn't exist.");
+        return;
+      }
+      if (rolled.has(r.event)) bad.push(`The story engine looked at ${eventById(st, r.event).name} twice.`);
+      rolled.add(r.event);
+      stamp(r.at, "A story engine roll");
+    });
+    sto.suggestions.forEach((sg) => {
+      const where = `Story suggestion ${sg.id}`;
+      const ev = eventById(st, sg.event);
+      if (!ev) {
+        bad.push(`${where} is for a show that doesn't exist.`);
+        return;
+      }
+      if (!STORY_KINDS.includes(sg.kind) || !SUGGESTION_STATUSES.includes(sg.status) || !sg.plan || !Array.isArray(sg.plan.incidents) || !sg.plan.incidents.length || !sg.basis || !Array.isArray(sg.why) || sg.why.some((x) => typeof x !== "string") || typeof sg.chance !== "number") {
+        bad.push(`${where} is unreadable.`);
+        return;
+      }
+      if (sg.plan.incidents.some((i) => !INCIDENT_KINDS.includes(i.kind) || ![i.by, i.on, i.helped].every(Array.isArray))) bad.push(`${where} is unreadable.`);
+      if (sg.status !== "open") stamp(sg.decided, where);
+      if (sg.status === "accepted" && !(sg.created && Array.isArray(sg.created.incidents))) bad.push(`${where} was accepted but made nothing.`);
+      if (!rolled.has(sg.event)) bad.push(`${where} came from a look at ${ev.name} that isn't on record.`);
     });
     st.moves.forEach((m) => {
       if (!wrestlerById(st, m.wrestler)) bad.push(`Roster move ${m.id} is for a wrestler who doesn't exist.`);
@@ -3271,9 +3542,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
           bad.push(`An incident at ${e.name} is unreadable.`);
           return;
         }
-        if (!x.by.length || !x.on.length || lists.flat().some((id) => !wrestlerById(st, id))) bad.push(`An incident at ${e.name} names the wrong wrestlers.`);
-        if (x.by.some((id) => x.on.includes(id))) bad.push(`An incident at ${e.name} has someone on both sides.`);
+        const shape = INCIDENT_SHAPE[x.kind];
+        if (!x.by.length || shape.on && !x.on.length || shape.on === false && x.on.length || !shape.helped && x.helped.length || lists.flat().some((id) => !wrestlerById(st, id))) bad.push(`An incident at ${e.name} names the wrong wrestlers.`);
+        if (x.by.some((id) => x.on.includes(id) || x.helped.includes(id))) bad.push(`An incident at ${e.name} has someone on both sides.`);
         if (x.match != null && !(e.matches || []).some((m) => m.id === x.match)) bad.push(`An incident at ${e.name} is in a match that isn't on its card.`);
+        if (x.title != null ? !shape.title || !titleById(st, x.title) : shape.title === "required") bad.push(`An incident at ${e.name} names the wrong title.`);
+        if (x.team != null ? !shape.team || !teamById(st, x.team) : !!shape.team) bad.push(`An incident at ${e.name} names the wrong team.`);
+        if (x.story != null && !(suggestionById(st, x.story) || {}).status) bad.push(`An incident at ${e.name} comes from a suggestion that doesn't exist.`);
       });
       if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
       if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
@@ -3628,6 +3903,103 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return `${name(by)} ${verb.includes("{}") ? verb.replace("{}", name(on)) : `${verb} ${name(on)}`}`;
     }
     return by ? `${name(by)} scored the win` : `${name(on)} took the fall`;
+  }
+  var INCIDENT = {
+    betrayal: {
+      label: "Betrayal",
+      color: "#FF5A4E",
+      by: "Who turned",
+      on: "On whom",
+      text: "Someone turned on a partner or friend. The one betrayed holds a grudge \u2014 heat 2, or 3 if they\u2019re loyal \u2014 and any friendship or alliance between them ends."
+    },
+    interference: {
+      label: "Interference",
+      color: "#F0A53A",
+      by: "Who interfered",
+      on: "Against",
+      helped: "Helping (optional)",
+      text: "Someone got involved in a match. Whoever it went against holds a grudge; whoever it helped becomes their ally."
+    },
+    attack: {
+      label: "Attack",
+      color: "#C9A7FF",
+      by: "Who attacked",
+      on: "Who was attacked",
+      text: "A beat-down \u2014 backstage, before or after the bell. The one attacked holds a grudge: heat 1, or 2 if they\u2019re hot-headed."
+    },
+    save: {
+      label: "Save",
+      color: "#4CD37A",
+      by: "Who made the save",
+      on: "From whom",
+      helped: "Who was saved",
+      text: "Someone ran in to stop an attack. The attacker holds a grudge against them, and the one saved becomes their ally."
+    },
+    brawl: {
+      label: "Brawl",
+      color: "#F0A53A",
+      by: "Who",
+      on: "Brawled with",
+      text: "A rivalry boiled over. Each holds a grudge against the other, and they\u2019re rivals."
+    },
+    challenge: {
+      label: "Challenge",
+      color: "#E8B931",
+      by: "Challenger",
+      on: "Champion",
+      title: true,
+      text: "Someone laid down a challenge for a title. The challenger and the champion become rivals. Nothing is booked until you book it."
+    },
+    demand: {
+      label: "Demand",
+      color: "#C9A7FF",
+      by: "Who",
+      on: null,
+      title: true,
+      text: "Someone demanded an opportunity \u2014 a match, or a shot at someone. Calling someone out makes them rivals."
+    },
+    breakup: {
+      label: "Walk-out",
+      color: "#98A3B3",
+      by: "Who walked away",
+      on: null,
+      team: true,
+      text: 'A tag team split. Anyone left behind holds a grudge against whoever walked out on them, and any friendship or alliance between them ends. Leave "Left behind" empty for an amicable split.'
+    },
+    momentum: {
+      label: "Momentum",
+      color: "#72C4FF",
+      by: "Who",
+      on: false,
+      text: "An unlikely run everyone\u2019s noticed. It changes no relationship \u2014 but the story engine remembers it when a title shot comes up."
+    }
+  };
+  function incidentText(st, inc) {
+    const n = (ids) => ids.map((id) => (wrestlerById(st, id) || { name: "(deleted)" }).name).join(" & ");
+    const title2 = (titleById(st, inc.title) || { name: "title" }).name;
+    const team = (teamById(st, inc.team) || { name: "Their team" }).name;
+    switch (inc.kind) {
+      case "betrayal":
+        return `${n(inc.by)} betrayed ${n(inc.on)}`;
+      case "attack":
+        return `${n(inc.by)} attacked ${n(inc.on)}`;
+      case "interference":
+        return `${n(inc.by)} interfered against ${n(inc.on)}${inc.helped.length ? `, helping ${n(inc.helped)}` : ""}`;
+      case "save":
+        return `${n(inc.by)} saved ${n(inc.helped)} from ${n(inc.on)}`;
+      case "brawl":
+        return `${n(inc.by)} and ${n(inc.on)} brawled`;
+      case "challenge":
+        return `${n(inc.by)} challenged ${n(inc.on)} for the ${title2}`;
+      case "demand":
+        return inc.on.length ? `${n(inc.by)} called out ${n(inc.on)}${inc.title ? ` over the ${title2}` : ""}` : `${n(inc.by)} demanded ${inc.title ? `a shot at the ${title2}` : "an opportunity"}`;
+      case "breakup":
+        return inc.on.length ? `${n(inc.by)} walked out on ${n(inc.on)} \u2014 ${team} split` : `${team} split up`;
+      case "momentum":
+        return `${n(inc.by)} is on an unlikely run`;
+      default:
+        return "";
+    }
   }
 
   // js/universe/persist.js
@@ -4711,9 +5083,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${w && !w.closed ? `<span class="uv-link" onclick="uvUndoDraft('${g[0].id}')">Undo</span>` : ""}
     </div>`).join("");
     const history = transfersSince(st, trId).map((x) => {
-      const why = x.relegation ? "relegated" : x.draft ? `draft pick ${x.draft.pick}` : x.move.note ? esc(x.move.note) : "transfer";
+      const why2 = x.relegation ? "relegated" : x.draft ? `draft pick ${x.draft.pick}` : x.move.note ? esc(x.move.note) : "transfer";
       return `<div class="uv-tl"><span class="w">S${seasonById(st, x.move.at.season).number} \xB7 W${x.move.at.week}</span>
-      <span class="x"><b>${nm(st, x.move.wrestler)}</b> ${esc(showName(st, x.move.from))} \u2192 ${esc(showName(st, x.move.to))} <span class="uv-muted">\u2014 ${why}</span></span></div>`;
+      <span class="x"><b>${nm(st, x.move.wrestler)}</b> ${esc(showName(st, x.move.from))} \u2192 ${esc(showName(st, x.move.to))} <span class="uv-muted">\u2014 ${why2}</span></span></div>`;
     }).join("");
     let top;
     if (!w) {
@@ -5267,7 +5639,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       logs.get(e.wrestler).push(e);
     });
     logs.forEach((list) => list.sort((x, y) => !x.at || !y.at ? !y.at - !x.at : compareStamps(st, x.at, y.at)));
-    const has2 = (wid, trait, at2) => {
+    const has3 = (wid, trait, at2) => {
       let on = false;
       for (const e of logs.get(wid) || []) {
         if (e.at && at2 && compareStamps(st, e.at, at2) > 0) break;
@@ -5340,13 +5712,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const { ev, m } = it;
         const base = { at: ev.at, event: ev.id, match: m.id };
         if (m.outcome === "win") {
-          const W = m.sides[m.winner].wrestlers;
+          const W2 = m.sides[m.winner].wrestlers;
           m.sides.forEach((sd, i) => {
             if (i === m.winner) return;
-            sd.wrestlers.forEach((l) => W.forEach((w) => {
+            sd.wrestlers.forEach((l) => W2.forEach((w) => {
               streak.set(`${w}>${l}`, 0);
               const n = (streak.get(`${l}>${w}`) || 0) + 1;
-              const need = has2(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has2(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
+              const need = has3(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has3(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
               if (n >= need) {
                 auto("grudge", l, w, "raise", 1, { ...base, key: `loss:${m.id}:${l}>${w}`, type: "losses", loser: l, winner: w, n });
                 streak.set(`${l}>${w}`, 0);
@@ -5359,9 +5731,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
             const held = (sd) => prev.holder.type === "team" ? sd.team === prev.holder.id : sd.wrestlers.includes(prev.holder.id);
             m.sides.forEach((sd, i) => {
               if (i === m.winner || !held(sd)) return;
-              sd.wrestlers.forEach((l) => W.forEach((w) => {
+              sd.wrestlers.forEach((l) => W2.forEach((w) => {
                 const cause = { ...base, key: `title:${reign.id}:${l}>${w}`, type: "title", loser: l, winner: w, title: reign.titleId };
-                auto("grudge", l, w, "raise", has2(l, "ambitious", ev.at) ? 2 : 1, cause);
+                auto("grudge", l, w, "raise", has3(l, "ambitious", ev.at) ? 2 : 1, cause);
                 auto("rivals", l, w, "raise", 1, { ...cause, key: `title:${reign.id}:${pairOf(l, w)}` });
               }));
             });
@@ -5374,11 +5746,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
               const [x, y] = [ids[i], ids[j]], p = pairOf(x, y);
               const n = (together.get(p) || 0) + 1;
               together.set(p, n);
-              const loyal = has2(x, "loyal", ev.at) || has2(y, "loyal", ev.at);
+              const loyal = has3(x, "loyal", ev.at) || has3(y, "loyal", ev.at);
               const cause = { ...base, type: "partners", x, y, n };
               if (n === (loyal ? RULES.alliesLoyal : RULES.allies)) auto("allies", x, y, "form", 1, { ...cause, key: `partners:${m.id}:${p}:allies` });
               const grudge = get("grudge", x, y).active || get("grudge", y, x).active;
-              const opportunist = has2(x, "opportunistic", ev.at) || has2(y, "opportunistic", ev.at);
+              const opportunist = has3(x, "opportunistic", ev.at) || has3(y, "opportunistic", ev.at);
               if (n === RULES.friends && !grudge && !opportunist) auto("friends", x, y, "form", 1, { ...cause, key: `partners:${m.id}:${p}:friends` });
             }
           }
@@ -5387,25 +5759,44 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }
       if (it.type === "incident") {
         const { ev, inc } = it;
-        const base = { at: ev.at, event: ev.id, match: inc.match, incident: inc.id, kind: inc.kind };
+        const base = { at: ev.at, event: ev.id, match: inc.match, incident: inc.id, kind: inc.kind, title: inc.title, team: inc.team };
         inc.by.forEach((x) => inc.on.forEach((y) => {
           const cause = { ...base, key: `inc:${inc.id}:${y}>${x}`, type: inc.kind, by: x, on: y };
-          if (inc.kind === "betrayal") {
-            auto("grudge", y, x, "raise", has2(y, "loyal", ev.at) ? 3 : 2, cause);
-            auto("friends", x, y, "end", 0, cause);
-            auto("allies", x, y, "end", 0, cause);
-          } else if (inc.kind === "attack") {
-            auto("grudge", y, x, "raise", has2(y, "hot-headed", ev.at) ? 2 : 1, cause);
-          } else auto("grudge", y, x, "raise", 1, cause);
+          switch (inc.kind) {
+            case "betrayal":
+              auto("grudge", y, x, "raise", has3(y, "loyal", ev.at) ? 3 : 2, cause);
+              auto("friends", x, y, "end", 0, cause);
+              auto("allies", x, y, "end", 0, cause);
+              break;
+            case "attack":
+              auto("grudge", y, x, "raise", has3(y, "hot-headed", ev.at) ? 2 : 1, cause);
+              break;
+            case "brawl":
+              auto("grudge", y, x, "raise", 1, cause);
+              auto("grudge", x, y, "raise", 1, cause);
+              auto("rivals", x, y, "raise", 1, cause);
+              break;
+            case "challenge":
+            case "demand":
+              auto("rivals", x, y, "raise", 1, cause);
+              break;
+            case "breakup":
+              auto("grudge", y, x, "raise", 1, cause);
+              auto("friends", x, y, "end", 0, cause);
+              auto("allies", x, y, "end", 0, cause);
+              break;
+            default:
+              auto("grudge", y, x, "raise", 1, cause);
+          }
         }));
-        if (inc.kind === "interference") {
+        if (inc.kind === "interference" || inc.kind === "save") {
           inc.by.forEach((x) => inc.helped.forEach((h) => auto(
             "allies",
             x,
             h,
             "raise",
             1,
-            { ...base, key: `inc:${inc.id}:${x}>${h}:helped`, type: "helped", by: x, helped: h }
+            { ...base, key: `inc:${inc.id}:${x}>${h}:helped`, type: inc.kind === "save" ? "saved" : "helped", by: x, helped: h }
           )));
         }
         continue;
@@ -5432,7 +5823,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         }
       }
     }
-    return { rels, entries, streak, together, has: has2 };
+    return { rels, entries, streak, together, has: has3 };
   }
   function relationsOf(st, wid, derived = relationships(st)) {
     const order = { grudge: 0, rivals: 1, allies: 2, friends: 3, "former-partners": 4 };
@@ -5500,6 +5891,24 @@ body.uv-confirm-open .uv-confirm{display:flex}
       case "helped":
         cause = `${nm3(st, c.by)} interfered to help ${nm3(st, c.helped)} at ${at(st, c.event)}`;
         break;
+      case "save":
+        cause = `${nm3(st, c.by)} made the save against ${nm3(st, c.on)} at ${at(st, c.event)}`;
+        break;
+      case "saved":
+        cause = `${nm3(st, c.by)} made the save for ${nm3(st, c.helped)} at ${at(st, c.event)}`;
+        break;
+      case "brawl":
+        cause = `${nm3(st, c.by)} and ${nm3(st, c.on)} brawled at ${at(st, c.event)}`;
+        break;
+      case "challenge":
+        cause = `${nm3(st, c.by)} challenged ${nm3(st, c.on)} for the ${(titleById(st, c.title) || { name: "title" }).name} at ${at(st, c.event)}`;
+        break;
+      case "demand":
+        cause = `${nm3(st, c.by)} called out ${nm3(st, c.on)}${c.title ? ` over the ${(titleById(st, c.title) || { name: "title" }).name}` : ""} at ${at(st, c.event)}`;
+        break;
+      case "breakup":
+        cause = `${nm3(st, c.by)} walked out on ${nm3(st, c.on)}${c.team ? ` and ${(teamById(st, c.team) || { name: "their team" }).name}` : ""} at ${at(st, c.event)}`;
+        break;
       case "partners":
         cause = `${nm3(st, c.x)} and ${nm3(st, c.y)} teamed up for the ${nth(c.n)} time at ${at(st, c.event)}`;
         break;
@@ -5543,18 +5952,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function changesBetween(st, before, after) {
     const out = [];
-    const rel = (key) => {
+    const rel2 = (key) => {
       const [kind, rest] = key.split(":");
       const [a, b] = kind === "grudge" ? rest.split(">") : rest.split("+");
       return { kind, a, b };
     };
     after.forEach((level, key) => {
-      const r = { ...rel(key), level };
+      const r = { ...rel2(key), level };
       if (!before.has(key)) out.push(relText(st, r) + (LEVEL_WORD[r.kind] && level > 1 ? ` (${LEVEL_WORD[r.kind]} ${level})` : ""));
       else if (before.get(key) !== level) out.push(`${relText(st, r)} \u2014 now ${LEVEL_WORD[r.kind]} ${level}`);
     });
     before.forEach((level, key) => {
-      if (!after.has(key)) out.push(endText(st, rel(key)));
+      if (!after.has(key)) out.push(endText(st, rel2(key)));
     });
     return out;
   }
@@ -5607,13 +6016,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const need = needOf(l);
       const g = d.rels.get(relKey("grudge", l, w));
       const next = `${need - n} more in a row ${g && g.active ? "adds heat" : "makes a grudge"}`;
-      const run = n === 1 ? "last time" : `the last ${n} times`;
+      const run2 = n === 1 ? "last time" : `the last ${n} times`;
       out.push({
         other: l === wid ? w : l,
         left: need - n,
         n,
         of: need,
-        text: l === wid ? `Lost to ${nm4(st, w)} ${run} \u2014 ${next}` : `${nm4(st, l)} lost to them ${run} \u2014 ${next}`
+        text: l === wid ? `Lost to ${nm4(st, w)} ${run2} \u2014 ${next}` : `${nm4(st, l)} lost to them ${run2} \u2014 ${next}`
       });
     });
     d.together.forEach((n, p) => {
@@ -5913,35 +6322,6 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const r = commit((st) => setTraits(st, td.id, [...td.on], { since: td.since, note: td.note }), () => `Personality saved${uvRelNews(before)}`);
     if (r.ok) closeSheet();
   }
-  var names = (st, ids) => ids.map((id) => nm4(st, id)).join(" & ");
-  function incidentText(st, inc) {
-    if (inc.kind === "betrayal") return `${names(st, inc.by)} betrayed ${names(st, inc.on)}`;
-    if (inc.kind === "attack") return `${names(st, inc.by)} attacked ${names(st, inc.on)}`;
-    return `${names(st, inc.by)} interfered against ${names(st, inc.on)}${inc.helped.length ? `, helping ${names(st, inc.helped)}` : ""}`;
-  }
-  var INC = {
-    betrayal: {
-      label: "Betrayal",
-      color: "#FF5A4E",
-      by: "Who turned",
-      on: "On whom",
-      text: "Someone turned on a partner or friend. The one betrayed holds a grudge \u2014 heat 2, or 3 if they\u2019re loyal \u2014 and any friendship or alliance between them ends."
-    },
-    interference: {
-      label: "Interference",
-      color: "#F0A53A",
-      by: "Who interfered",
-      on: "Against",
-      text: "Someone got involved in a match. Whoever it went against holds a grudge; whoever it helped becomes their ally."
-    },
-    attack: {
-      label: "Attack",
-      color: "#C9A7FF",
-      by: "Who attacked",
-      on: "Who was attacked",
-      text: "A beat-down \u2014 backstage, before or after the bell. The one attacked holds a grudge: heat 1, or 2 if they\u2019re hot-headed."
-    }
-  };
   var matchName = (st, ev, id) => {
     const i = ev.matches.findIndex((m) => m.id === id);
     return i < 0 ? "" : `Match ${i + 1}: ${ev.matches[i].sides.map((sd) => sideName(st, sd)).join(" vs ")}`;
@@ -5952,11 +6332,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return `
     ${section("Incidents", ev.incidents.length || null)}
     ${ev.incidents.map((inc) => `<div class="uv-inc" data-inc="${inc.id}" onclick="uvIncident('${ev.id}','${inc.id}')">
-      <span class="uv-rk" style="--k:${INC[inc.kind].color}">${INC[inc.kind].label}</span>
+      <span class="uv-rk" style="--k:${INCIDENT[inc.kind].color}">${INCIDENT[inc.kind].label}</span>
       <div class="uv-main"><div class="nm">${esc(incidentText(st, inc))}</div>
-        ${inc.match || inc.note ? `<div class="sub">${esc([inc.match && matchName(st, ev, inc.match), inc.note].filter(Boolean).join(" \xB7 "))}</div>` : ""}</div>
+        ${inc.match || inc.note || inc.story ? `<div class="sub">${esc([
+      inc.match && matchName(st, ev, inc.match),
+      inc.note,
+      inc.story && "From a story suggestion"
+    ].filter(Boolean).join(" \xB7 "))}</div>` : ""}</div>
       <span class="uv-chev">${ICON.edit}</span></div>`).join("")}
-    ${ev.incidents.length ? "" : '<div class="uv-none">A betrayal, an interference or an attack you saw in the game goes here. The result of a match doesn\u2019t.</div>'}
+    ${ev.incidents.length ? "" : '<div class="uv-none">A betrayal, a run-in, an attack, a challenge \u2014 whatever you saw in the game besides the results goes here.</div>'}
     <div class="uv-page-acts"><div class="uv-btn" onclick="uvIncident('${ev.id}')">${ICON.plus}Record an incident</div></div>
     ${here.length ? `${section("Relationships", here.length)}<div class="uv-ents">${here.map((e) => entryRow(st, e, true)).join("")}</div>` : ""}`;
   }
@@ -5964,41 +6348,92 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvIncident(eventId, incId = "") {
     const ev = eventById(uni(), eventId);
     const inc = incId && ev && ev.incidents.find((x) => x.id === incId);
-    ic = inc ? { eventId, incId, kind: inc.kind, by: [...inc.by], on: [...inc.on], helped: [...inc.helped], match: inc.match || "", note: inc.note } : { eventId, incId: "", kind: "betrayal", by: [""], on: [""], helped: [], match: "", note: "" };
+    ic = inc ? {
+      eventId,
+      incId,
+      kind: inc.kind,
+      by: [...inc.by],
+      on: [...inc.on],
+      helped: [...inc.helped],
+      match: inc.match || "",
+      note: inc.note,
+      title: inc.title || "",
+      team: inc.team || "",
+      disband: false
+    } : { eventId, incId: "", kind: "betrayal", by: [""], on: [""], helped: [], match: "", note: "", title: "", team: "", disband: true };
     openSheet(incidentSheet);
+  }
+  var incidentInput = () => ({
+    kind: ic.kind,
+    by: ic.by,
+    on: ic.on,
+    helped: ic.helped,
+    match: ic.match || null,
+    note: ic.note,
+    title: ic.title || null,
+    team: ic.team || null
+  });
+  var splits = (st) => ic.kind === "breakup" && !ic.incId && ic.disband && ic.team && (teamById(st, ic.team) || {}).active;
+  function saveIncident(st) {
+    const inc = ic.incId ? updateIncident(st, ic.eventId, ic.incId, incidentInput()) : recordIncident(st, ic.eventId, incidentInput());
+    if (splits(st)) setTeamActive(st, ic.team, false);
+    return inc;
   }
   function incidentSheet() {
     const st = uni();
     const ev = ic && eventById(st, ic.eventId);
     if (!ev || ic.incId && !ev.incidents.some((x) => x.id === ic.incId)) return null;
-    const k = INC[ic.kind];
+    const k = INCIDENT[ic.kind];
     const picks = (list, label, optional = false) => `<div class="uv-sidebox"><div class="h"><span>${esc(label)}</span></div>
     ${ic[list].map((wid, j) => `<div class="uv-pick">${select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`)}
       ${ic[list].length > 1 || optional ? `<div class="uv-ic sm" onclick="uvIcDrop('${list}',${j})">${ICON.x}</div>` : ""}</div>`).join("")}
     <div class="uv-add" onclick="uvIcAdd('${list}')">${ICON.plus}${ic[list].length ? "Add another" : "Add someone"}</div></div>`;
-    const input = { kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note };
-    const news = preview((copy) => ic.incId ? updateIncident(copy, ic.eventId, ic.incId, input) : recordIncident(copy, ic.eventId, input));
+    const titles = st.titles.filter((t) => t.active || t.id === ic.title);
+    const teams = st.teams.filter((t) => t.members.length || t.id === ic.team);
+    const news = preview((copy) => saveIncident(copy));
     return {
       title: ic.incId ? "Edit the incident" : "Record an incident",
       body: `
-      <p class="uv-p">${esc(ev.name)} \u2014 what you saw in the game besides the result.</p>
-      <div class="uv-seg">${Object.keys(INC).map((x) => `<div class="${ic.kind === x ? "on" : ""}" data-v="${x}" onclick="uvIcKind('${x}')">${INC[x].label}</div>`).join("")}</div>
-      <div class="fine" style="margin:0 0 10px">${esc(k.text)}</div>
+      <p class="uv-p">${esc(ev.name)} \u2014 what you saw in the game besides the results.</p>
+      <div class="uv-pills tight">${Object.keys(INCIDENT).map((x) => `<div class="uv-pill${ic.kind === x ? " on" : ""}" data-v="${x}" onclick="uvIcKind('${x}')">
+        <span class="uv-dot" style="--c:${INCIDENT[x].color}"></span>${INCIDENT[x].label}</div>`).join("")}</div>
+      <div class="fine" style="margin:4px 0 10px">${esc(k.text)}</div>
       ${ev.matches.length ? field("During", select("uvIcSet('match',this.value)", options([
         ["", "\u2014 Not during a match \u2014"],
         ...ev.matches.map((m) => [m.id, matchName(st, ev, m.id)])
       ], ic.match), ' id="uvIcMatch"'), "wide") : ""}
-      <div style="margin-top:10px">${picks("by", k.by)}${picks("on", k.on)}${ic.kind === "interference" ? picks("helped", "Helping (optional)", true) : ""}</div>
+      ${k.title ? `<div style="margin-top:10px">${field(
+        ic.kind === "challenge" ? "For the title" : "Over a title (optional)",
+        select(
+          "uvIcSet('title',this.value)",
+          options([["", ic.kind === "challenge" ? "\u2014 Pick the title \u2014" : "No title"], ...titles.map((t) => [t.id, t.name])], ic.title),
+          ' id="uvIcTitle"'
+        ),
+        "wide"
+      )}</div>` : ""}
+      ${k.team ? `<div style="margin-top:10px">${field("The team", select("uvIcSet('team',this.value)", options([
+        ["", "\u2014 Pick the team \u2014"],
+        ...teams.map((t) => [t.id, t.name])
+      ], ic.team), ' id="uvIcTeam"'), "wide")}</div>` : ""}
+      <div style="margin-top:10px">${picks("by", k.by)}${k.on === false ? "" : picks("on", k.on || (ic.kind === "breakup" ? "Left behind (optional)" : "Calling out (optional)"), k.on === null)}${k.helped ? picks("helped", k.helped, ic.kind === "interference") : ""}</div>
+      ${ic.kind === "breakup" && !ic.incId && ic.team && (teamById(st, ic.team) || {}).active ? `<label class="uv-check"><input id="uvIcDisband" type="checkbox"${ic.disband ? " checked" : ""}
+        onchange="uvIcSet('disband',this.checked)"><span>Disband ${esc(teamById(st, ic.team).name)} as well</span></label>` : ""}
       <div style="margin-top:12px">${field("Notes (optional)", `<input id="uvIcNote" class="uv-in" maxlength="2000" value="${esc(ic.note)}" placeholder="e.g. Hit him with the belt"
         oninput="uvIcNote(this.value)">`, "wide")}</div>
-      ${previewBox(news, "Pick who did it and to whom.")}
+      ${previewBox(news, "Pick who was in it.")}
       <div class="uv-btn pri full" onclick="uvIcSave()">${ic.incId ? "Save the incident" : "Record it"}</div>
       ${ic.incId ? '<div class="uv-btn bad full" onclick="uvIcDelete()">Delete the incident</div>' : ""}`
     };
   }
   function uvIcKind(k) {
     ic.kind = k;
-    if (k !== "interference") ic.helped = [];
+    const shape = INCIDENT[k];
+    if (!shape.helped) ic.helped = [];
+    else if (!ic.helped.length && k === "save") ic.helped = [""];
+    if (shape.on === false) ic.on = [];
+    else if (!ic.on.length && shape.on) ic.on = [""];
+    if (!shape.title) ic.title = "";
+    if (!shape.team) ic.team = "";
     paintSheet();
   }
   function uvIcSet(k, v) {
@@ -6021,12 +6456,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     ic.note = v;
   }
   function uvIcSave() {
-    const input = { kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note };
     const before = snapshot(uni());
-    const r = commit(
-      (st) => ic.incId ? updateIncident(st, ic.eventId, ic.incId, input) : recordIncident(st, ic.eventId, input),
-      () => `${ic.incId ? "Incident saved" : "Incident recorded"}${uvRelNews(before)}`
-    );
+    const r = commit((st) => saveIncident(st), () => `${ic.incId ? "Incident saved" : "Incident recorded"}${uvRelNews(before)}`);
     if (r.ok) closeSheet();
   }
   function uvIcDelete() {
@@ -6035,7 +6466,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const inc = eventById(st, eventId).incidents.find((x) => x.id === incId);
     confirmThen(
       "Delete this incident?",
-      `\u201C${incidentText(st, inc)}\u201D comes off the show, and every relationship change it made is worked out again without it.`,
+      `\u201C${incidentText(st, inc)}\u201D comes off the show, and every relationship change it made is worked out again without it.` + (inc.story ? " The story suggestion it came from stays accepted \u2014 take that back on the show instead if you want it open again." : ""),
       "Delete",
       () => {
         const before = snapshot(uni());
@@ -6094,6 +6525,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div><span>Betrayal</span><b>a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends</b></div>
         <div><span>Interference</span><b>a grudge against whoever interfered; whoever it helped becomes their ally</b></div>
         <div><span>Attack</span><b>a grudge against the attacker (hot-headed: heat 2)</b></div>
+        <div><span>Save</span><b>the attacker holds a grudge against whoever made the save; the one saved becomes their ally</b></div>
+        <div><span>Brawl</span><b>a grudge each way, and they\u2019re rivals</b></div>
+        <div><span>Challenge</span><b>a title challenge, or calling someone out: they\u2019re rivals</b></div>
+        <div><span>Walk-out</span><b>anyone left behind holds a grudge against whoever walked out; any friendship or alliance between them ends</b></div>
         <div><span>Teaming</span><b>${RULES2.allies} matches on the same side, win or lose: allies (loyal: ${RULES2.alliesLoyal}).
           ${RULES2.friends}: friends \u2014 unless either is opportunistic, or there\u2019s a grudge between them</b></div>
         <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners</b></div>
@@ -6109,6 +6544,923 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <p class="uv-p"><b>Corrections follow.</b> Correct a result, or edit or delete an incident, and every relationship built on it
         is worked out again.</p>`
     }));
+  }
+
+  // js/universe/story.js
+  var story_exports = {};
+  __export(story_exports, {
+    uvHowStory: () => uvHowStory,
+    uvOpenStory: () => uvOpenStory,
+    uvSeAdd: () => uvSeAdd,
+    uvSeDisband: () => uvSeDisband,
+    uvSeDrop: () => uvSeDrop,
+    uvSeDropPart: () => uvSeDropPart,
+    uvSeNote: () => uvSeNote,
+    uvSePick: () => uvSePick,
+    uvSeSave: () => uvSeSave,
+    uvStoryAccept: () => uvStoryAccept,
+    uvStoryAfterResult: () => uvStoryAfterResult,
+    uvStoryBlock: () => uvStoryBlock,
+    uvStoryDismiss: () => uvStoryDismiss,
+    uvStoryEdit: () => uvStoryEdit,
+    uvStoryLook: () => uvStoryLook,
+    uvStoryMore: () => uvStoryMore,
+    uvStoryOn: () => uvStoryOn,
+    uvStoryPace: () => uvStoryPace,
+    uvStoryPage: () => uvStoryPage,
+    uvStoryReopen: () => uvStoryReopen,
+    uvStoryRow: () => uvStoryRow,
+    uvStoryToast: () => uvStoryToast,
+    uvStoryUndo: () => uvStoryUndo
+  });
+
+  // js/universe/suggest.js
+  var PACE = {
+    quiet: { label: "Quiet", mult: 0.5, perShow: 1, perWeek: 2, text: "Once in a while \u2014 most shows pass without anything." },
+    normal: { label: "Normal", mult: 1, perShow: 2, perWeek: 3, text: "Now and then \u2014 something after roughly one show in three." },
+    wild: { label: "Wild", mult: 2, perShow: 3, perWeek: 6, text: "Often \u2014 something after about every other show. Chaos, within limits." }
+  };
+  var KIND2 = {
+    attack: { label: "Post-match attack", base: 0.025, color: "#FF5A4E" },
+    save: { label: "Surprise save", base: 0.35, color: "#4CD37A" },
+    // once an attack happens
+    betrayal: { label: "Betrayal", base: 0.02, color: "#FF5A4E" },
+    escalation: { label: "Rivalry escalation", base: 0.012, color: "#F0A53A" },
+    challenge: { label: "Title challenge", base: 0.06, color: "#E8B931" },
+    breakup: { label: "Team breakup", base: 0.012, color: "#98A3B3" },
+    streak: { label: "Unlikely winning streak", base: 0.15, color: "#72C4FF" },
+    demand: { label: "Demands an opportunity", base: 8e-3, color: "#C9A7FF" }
+  };
+  var RULES3 = {
+    recentWeeks: 2,
+    recentFactor: 0.4,
+    repeatWeeks: 6,
+    dismissedWeeks: 10,
+    calmFactor: 0.6,
+    maxChance: 0.85,
+    streakMin: 3,
+    quietTitleWeeks: 4
+  };
+  function draw(...parts) {
+    const str = parts.join("|");
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    h ^= h >>> 16;
+    h = Math.imul(h, 2246822507);
+    h ^= h >>> 13;
+    h = Math.imul(h, 3266489909);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  function weekNo(st, stamp) {
+    let n = 0;
+    for (const s of [...st.seasons].sort((a, b) => a.number - b.number)) {
+      if (s.id === stamp.season) return n + stamp.week;
+      n += s.status === "active" ? s.week : s.ended.week;
+    }
+    return n + stamp.week;
+  }
+  var pct2 = (x) => `${Math.round(x * 100)}%`;
+  var times = (n) => `${n} time${n === 1 ? "" : "s"}`;
+  function context(st, ev) {
+    const d = relationships(st);
+    const wk = weekNo(st, ev.at);
+    const upTo2 = (e) => compareStamps(st, e.at, ev.at) <= 0;
+    const played = st.events.filter(upTo2).sort((a, b) => compareStamps(st, a.at, b.at)).flatMap((e) => e.matches.filter((m) => m.status === "played").map((m) => ({ ev: e, m, wk: weekNo(st, e.at) })));
+    const hist = /* @__PURE__ */ new Map();
+    played.forEach((x) => x.m.sides.forEach((sd, i) => sd.wrestlers.forEach((id) => {
+      if (!hist.has(id)) hist.set(id, []);
+      hist.get(id).push({ ...x, side: i, res: resultFor(x.m, i) });
+    })));
+    const tonight = ev.matches.filter((m) => m.status === "played");
+    const onCard = new Set(tonight.flatMap((m) => m.sides.flatMap((sd) => sd.wrestlers)));
+    const incidents = allIncidents(st).filter((x) => upTo2(x.event)).map((x) => ({ ...x, wk: weekNo(st, x.event.at) }));
+    const others = st.story.suggestions.filter((sg) => sg.event !== ev.id).map((sg) => {
+      const e = eventById(st, sg.event);
+      return { sg, wk: e ? weekNo(st, e.at) : -99, show: e ? e.showId : null, e };
+    });
+    return { st, ev, d, wk, hist, tonight, onCard, incidents, others, seed: st.story.seed, pace: PACE[st.story.pace] };
+  }
+  var W = (c, id) => wrestlerById(c.st, id);
+  var nm5 = (c, id) => (W(c, id) || { name: "?" }).name;
+  var names = (c, ids) => ids.map((id) => nm5(c, id)).join(" & ");
+  var has2 = (c, id, trait) => (W(c, id) || { traits: [] }).traits.includes(trait);
+  var rel = (c, kind, a, b) => {
+    const r = c.d.rels.get(relKey(kind, a, b));
+    return r && r.active ? r : null;
+  };
+  var heat = (c, a, b) => (rel(c, "grudge", a, b) || { level: 0 }).level;
+  var winnersOf = (m) => m.outcome === "win" ? m.sides[m.winner].wrestlers : [];
+  function run(c, id) {
+    const h = c.hist.get(id) || [];
+    if (!h.length) return { res: null, n: 0 };
+    const res = h[h.length - 1].res;
+    let n = 0;
+    for (let i = h.length - 1; i >= 0 && h[i].res === res; i--) n++;
+    return { res, n };
+  }
+  function lossesTo(c, id, ws) {
+    const h = (c.hist.get(id) || []).filter((x) => x.m.sides.some((sd, i) => i !== x.side && sd.wrestlers.some((w) => ws.includes(w))));
+    let n = 0;
+    for (let i = h.length - 1; i >= 0 && h[i].res === "L"; i--) n++;
+    return n;
+  }
+  var holders = (st, h) => h.type === "team" ? (teamById(st, h.id) || { members: [] }).members : [h.id];
+  var fits = (w, t) => t.division === "open" || t.division === "men" === (w.gender === "male");
+  function candidate(c, kind, key, people) {
+    return { kind, key, people, factors: [], plan: null, basis: {}, chance: 0, extra: null, prompt: null };
+  }
+  var why = (cand, factor, text) => {
+    cand.factors.push({ factor, text });
+  };
+  var driven = (cand) => cand.factors.some((f) => f.factor > 1);
+  var outOfNowhere = (cand, factor = 0.3) => {
+    if (!driven(cand)) why(cand, factor, "Nothing obvious behind it \u2014 this would come out of nowhere");
+  };
+  var sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+  function freshness(c, cand) {
+    const p = cand.plan.incidents[0];
+    if (c.ev.incidents.some((x) => x.kind === p.kind && sameSet(x.by, p.by) && sameSet(x.on, p.on))) return false;
+    const recent = /* @__PURE__ */ new Set();
+    c.incidents.filter((x) => c.wk - x.wk < RULES3.recentWeeks && x.wk <= c.wk && x.incident.id !== cand.prompt).forEach((x) => [...x.incident.by, ...x.incident.on, ...x.incident.helped].forEach((id) => {
+      if (cand.people.includes(id)) recent.add(id);
+    }));
+    c.others.filter((o) => o.sg.status !== "dismissed" && c.wk - o.wk < RULES3.recentWeeks && o.wk <= c.wk).forEach((o) => o.sg.plan.incidents.forEach((i) => [...i.by, ...i.on, ...i.helped].forEach((id) => {
+      if (cand.people.includes(id)) recent.add(id);
+    })));
+    if (recent.size) {
+      why(
+        cand,
+        RULES3.recentFactor ** Math.min(2, recent.size),
+        `Less likely: ${names(c, [...recent])} ${recent.size === 1 ? "was" : "were"} in something in the last ${RULES3.recentWeeks} weeks`
+      );
+    }
+    const same = c.others.filter((o) => o.sg.key === cand.key && c.wk - o.wk >= 0);
+    if (same.some((o) => o.sg.status === "dismissed" && c.wk - o.wk < RULES3.dismissedWeeks)) return false;
+    if (same.some((o) => o.sg.status !== "dismissed" && c.wk - o.wk < RULES3.repeatWeeks)) return false;
+    return true;
+  }
+  function finish(c, cand, base) {
+    let x = base * c.pace.mult;
+    cand.factors.forEach((f) => {
+      x *= f.factor;
+    });
+    cand.chance = Math.min(RULES3.maxChance, x);
+    return cand;
+  }
+  function attacks(c) {
+    const out = [];
+    c.tonight.forEach((m) => {
+      if (m.outcome !== "win") return;
+      const Ws = winnersOf(m);
+      const reign = c.st.reigns.find((r) => r.matchId === m.id);
+      const best = [];
+      m.sides.forEach((sd, i) => {
+        if (i === m.winner) return;
+        sd.wrestlers.forEach((l) => {
+          if (c.st.teams.some((t) => t.active && t.members.includes(l) && Ws.some((w) => t.members.includes(w)))) return;
+          const cand = candidate(c, "attack", `attack:${l}>${[...Ws].sort().join("+")}`, [l, ...Ws]);
+          const L = nm5(c, l), V = names(c, Ws);
+          why(cand, 1, `${L} lost to ${V} at ${c.ev.name}`);
+          if (has2(c, l, "hot-headed")) why(cand, 2.2, `${L} is hot-headed`);
+          if (has2(c, l, "proud")) why(cand, 1.4, `${L} is proud, and hates to lose`);
+          if (has2(c, l, "cowardly")) why(cand, 1.3, `${L} is cowardly \u2014 happy to strike once the bell has gone`);
+          if (has2(c, l, "patient")) why(cand, 0.6, `Less likely: ${L} is patient`);
+          if (has2(c, l, "respectful")) why(cand, 0.3, `Less likely: ${L} is respectful`);
+          const h = Math.max(...Ws.map((w) => heat(c, l, w)));
+          if (h) why(cand, 1 + 0.7 * h, `${L} holds a grudge against ${V} (heat ${h})`);
+          if (Ws.some((w) => rel(c, "rivals", l, w))) why(cand, 1.4, `${L} and ${V} are rivals`);
+          if (reign) why(cand, 2.5, `${L} just lost the ${titleById(c.st, reign.titleId).name}`);
+          const n = lossesTo(c, l, Ws);
+          if (n >= 2) why(cand, 1 + 0.35 * n, `${L} has lost ${n} straight to ${V}`);
+          outOfNowhere(cand);
+          if (Ws.some((w) => rel(c, "friends", l, w))) why(cand, 0.15, `Less likely: ${L} and ${V} are friends`);
+          else if (Ws.some((w) => rel(c, "allies", l, w))) why(cand, 0.4, `Less likely: ${L} and ${V} are allies`);
+          cand.plan = { incidents: [{ kind: "attack", by: [l], on: [...Ws], helped: [], match: m.id }] };
+          cand.basis = { match: m.id, winners: Ws };
+          if (!freshness(c, cand)) return;
+          cand.extra = saverFor(c, l, Ws, m.id);
+          best.push(finish(c, cand, KIND2.attack.base));
+        });
+      });
+      const top = best.sort((a, b) => b.chance - a.chance)[0];
+      if (top) out.push(top);
+    });
+    return out;
+  }
+  function saverFor(c, attacker, victims, matchId) {
+    const ev = c.ev;
+    const pool = c.st.wrestlers.filter((z) => z.status !== "injured" && z.id !== attacker && !victims.includes(z.id) && (c.onCard.has(z.id) || !ev.showId || z.showId === ev.showId));
+    let best = null;
+    pool.forEach((z) => {
+      const reasons = [];
+      let w = 0;
+      victims.forEach((v) => {
+        const Z = z.name, V = nm5(c, v);
+        if (rel(c, "friends", z.id, v)) {
+          w += 3;
+          reasons.push(`${Z} and ${V} are friends`);
+        } else if (rel(c, "allies", z.id, v)) {
+          w += 2.2;
+          reasons.push(`${Z} and ${V} are allies`);
+        }
+        if (c.st.teams.some((t) => t.active && t.members.includes(z.id) && t.members.includes(v))) {
+          w += 2;
+          reasons.push(`${Z} teams with ${V}`);
+        } else if (rel(c, "former-partners", z.id, v)) {
+          w += 1.2;
+          reasons.push(`${Z} and ${V} are former partners`);
+        }
+      });
+      const h = heat(c, z.id, attacker);
+      if (h) {
+        w += 1 + h;
+        reasons.push(`${z.name} holds a grudge against ${nm5(c, attacker)} (heat ${h})`);
+      }
+      if (rel(c, "rivals", z.id, attacker)) {
+        w += 1;
+        reasons.push(`${z.name} and ${nm5(c, attacker)} are rivals`);
+      }
+      if (!w) return;
+      if (z.traits.includes("loyal")) {
+        w *= 1.5;
+        reasons.push(`${z.name} is loyal`);
+      }
+      if (z.traits.includes("cowardly")) {
+        w *= 0.4;
+        reasons.push(`Less likely: ${z.name} is cowardly`);
+      }
+      const tie = draw(c.seed, ev.id, "saver", z.id);
+      if (!best || w > best.w || w === best.w && tie > best.tie) best = { z: z.id, w, reasons, tie };
+    });
+    if (!best) return null;
+    const chance = Math.min(RULES3.maxChance, KIND2.save.base * (1 + 0.25 * best.w) * c.pace.mult);
+    return { saver: best.z, chance, reasons: best.reasons, save: { kind: "save", by: [best.z], on: [attacker], helped: [...victims], match: matchId } };
+  }
+  function savesForRecorded(c) {
+    const out = [];
+    c.ev.incidents.filter((x) => x.kind === "attack").forEach((x) => {
+      if (c.ev.incidents.some((y) => y.kind === "save" && y.on.some((id) => x.by.includes(id)))) return;
+      const attacker = x.by[0];
+      const s = saverFor(c, attacker, x.on, x.match);
+      if (!s) return;
+      const cand = candidate(c, "save", `save:${s.saver}>${attacker}`, [s.saver, attacker, ...x.on]);
+      why(cand, 1, `${nm5(c, attacker)} attacked ${names(c, x.on)} at ${c.ev.name}`);
+      s.reasons.forEach((t) => why(cand, 1, t));
+      cand.prompt = x.id;
+      cand.plan = { incidents: [s.save] };
+      cand.basis = x.match ? { match: x.match, winners: winnersOf(c.ev.matches.find((m) => m.id === x.match) || {}) } : {};
+      if (!freshness(c, cand)) return;
+      out.push(finish(c, cand, s.chance / c.pace.mult * 0.7));
+    });
+    return out;
+  }
+  function betrayals(c) {
+    const out = [];
+    c.tonight.forEach((m) => m.sides.forEach((sd, i) => {
+      if (sd.wrestlers.length < 2) return;
+      const res = resultFor(m, i);
+      const best = [];
+      sd.wrestlers.forEach((x) => sd.wrestlers.forEach((y) => {
+        if (x === y) return;
+        const cand = candidate(c, "betrayal", `betrayal:${x}>${y}`, [x, y]);
+        const X = nm5(c, x), Y = nm5(c, y);
+        why(cand, 1, `${X} teamed with ${Y} at ${c.ev.name}`);
+        if (res === "L") why(cand, 1.6, `They just lost together`);
+        if (has2(c, x, "opportunistic")) why(cand, 3, `${X} is opportunistic`);
+        if (has2(c, x, "ambitious")) why(cand, 1.5, `${X} is ambitious`);
+        const theirs = c.st.titles.filter((t) => {
+          const r = currentReign(c.st, t.id);
+          return r && holders(c.st, r.holder).includes(y) && !holders(c.st, r.holder).includes(x);
+        });
+        if (theirs.length && has2(c, x, "ambitious")) why(cand, 1.5, `${Y} holds the ${theirs[0].name}`);
+        const h = heat(c, x, y);
+        if (h) why(cand, 1 + h, `${X} already holds a grudge against ${Y} (heat ${h})`);
+        const together = (c.hist.get(x) || []).filter((e) => e.m.sides[e.side].wrestlers.includes(y)).slice(-4);
+        const lost = together.filter((e) => e.res === "L").length;
+        if (lost >= 2) why(cand, 1 + 0.3 * lost, `They've lost ${lost} of their last ${together.length} together`);
+        outOfNowhere(cand, 0.25);
+        if (has2(c, x, "loyal")) why(cand, 0.15, `Less likely: ${X} is loyal`);
+        if (has2(c, x, "respectful")) why(cand, 0.5, `Less likely: ${X} is respectful`);
+        if (rel(c, "friends", x, y)) why(cand, 0.5, `Less likely: ${X} and ${Y} are friends`);
+        cand.plan = { incidents: [{ kind: "betrayal", by: [x], on: [y], helped: [], match: m.id }] };
+        cand.basis = { match: m.id, winners: winnersOf(m) };
+        if (!freshness(c, cand)) return;
+        best.push(finish(c, cand, KIND2.betrayal.base));
+      }));
+      const top = best.sort((a, b) => b.chance - a.chance)[0];
+      if (top) out.push(top);
+    }));
+    return out;
+  }
+  function escalations(c) {
+    const out = [];
+    const ids = [...c.onCard].sort();
+    const together = (a, b) => c.tonight.find((m) => m.sides.some((sd) => sd.wrestlers.includes(a)) && m.sides.some((sd) => sd.wrestlers.includes(b)));
+    ids.forEach((a, i) => ids.slice(i + 1).forEach((b) => {
+      const rv = rel(c, "rivals", a, b), ha = heat(c, a, b), hb = heat(c, b, a);
+      const bad = (rv ? rv.level : 0) + ha + hb;
+      const m = together(a, b);
+      if (!bad || !m && bad < 3) return;
+      const [x, y] = ha >= hb ? [a, b] : [b, a];
+      const cand = candidate(c, "escalation", `escalation:${a}+${b}`, [a, b]);
+      const A = nm5(c, a), B = nm5(c, b);
+      if (rv) why(cand, 1, `${A} and ${B} are rivals (heat ${rv.level})`);
+      if (ha) why(cand, 1, `${A} holds a grudge against ${B} (heat ${ha})`);
+      if (hb) why(cand, 1, `${B} holds a grudge against ${A} (heat ${hb})`);
+      why(cand, 1 + 0.3 * bad, bad >= 4 ? "There\u2019s a lot of bad blood between them" : "There\u2019s bad blood between them");
+      if (m) why(cand, 1.6, `They were in the same match tonight`);
+      else why(cand, 1, `Both were at ${c.ev.name}`);
+      if (has2(c, a, "hot-headed") || has2(c, b, "hot-headed")) why(cand, 1.4, `${has2(c, a, "hot-headed") ? A : B} is hot-headed`);
+      cand.plan = { incidents: [{ kind: "brawl", by: [x], on: [y], helped: [], match: m ? m.id : null }] };
+      cand.basis = m ? { match: m.id, winners: winnersOf(m) } : {};
+      if (!freshness(c, cand)) return;
+      out.push(finish(c, cand, KIND2.escalation.base));
+    }));
+    return out;
+  }
+  function contendersOf(c, t, reign, showId) {
+    const st = c.st;
+    const champs = holders(st, reign.holder);
+    const champName = holderName(st, reign.holder);
+    const pool = t.kind === "tag" ? st.teams.filter((tm) => tm.active && tm.id !== reign.holder.id && !tm.members.some((id) => champs.includes(id)) && tm.members.every((id) => {
+      const w = W(c, id);
+      return w && w.showId === showId && w.status !== "injured" && fits(w, t);
+    })).map((tm) => ({ ids: [...tm.members], name: tm.name, team: tm.id })) : st.wrestlers.filter((w) => w.showId === showId && w.status !== "injured" && !champs.includes(w.id) && fits(w, t)).map((w) => ({ ids: [w.id], name: w.name }));
+    return pool.map((k) => {
+      const reasons = [];
+      let w = 1;
+      const lead = k.ids[0];
+      const h = Math.max(...k.ids.flatMap((x) => champs.map((y) => heat(c, x, y))));
+      if (h) {
+        w += 1.5 * h;
+        reasons.push(`${k.name} holds a grudge against ${champName} (heat ${h})`);
+      }
+      if (k.ids.some((x) => champs.some((y) => rel(c, "rivals", x, y)))) {
+        w += 1;
+        reasons.push(`${k.name} and ${champName} are rivals`);
+      }
+      const beat = (c.hist.get(lead) || []).filter((e) => c.wk - e.wk < 6 && e.res === "W" && e.m.sides.some((sd, i) => i !== e.side && sd.wrestlers.some((id) => champs.includes(id))));
+      if (beat.length) {
+        w += 2;
+        reasons.push(`${k.name} beat ${champName} at ${beat[beat.length - 1].ev.name}`);
+      }
+      const r = run(c, lead);
+      if (r.res === "W" && r.n >= 2) {
+        w += 0.5 * r.n;
+        reasons.push(`${k.name} has won ${r.n} straight`);
+      }
+      const lately = (kind) => c.incidents.some((x) => x.incident.kind === kind && x.incident.by.some((id) => k.ids.includes(id)) && c.wk - x.wk < RULES3.repeatWeeks);
+      if (lately("momentum")) {
+        w += 2;
+        reasons.push(`${k.name}'s unlikely run has everyone talking`);
+      }
+      if (lately("demand")) {
+        w += 1.5;
+        reasons.push(`${k.name} demanded an opportunity recently`);
+      }
+      if (c.tonight.some((m) => m.outcome === "win" && winnersOf(m).includes(lead))) {
+        w += 0.7;
+        reasons.push(`${k.name} won tonight`);
+      }
+      if (k.ids.some((x) => has2(c, x, "ambitious"))) {
+        w *= 1.5;
+        reasons.push(`${k.name} ${k.ids.length > 1 ? "have" : "is"} ambition`);
+      }
+      return { ...k, w, reasons };
+    });
+  }
+  function challenges(c) {
+    const st = c.st, out = [];
+    st.titles.filter((t) => t.active).forEach((t) => {
+      const reign = currentReign(st, t.id);
+      if (!reign) return;
+      const champs = holders(st, reign.holder);
+      const champAppeared = champs.some((id) => c.onCard.has(id));
+      const showId = t.showId || (W(c, champs[0]) || {}).showId;
+      if (!champAppeared && c.ev.showId && showId !== c.ev.showId) return;
+      const champName = holderName(st, reign.holder);
+      const contenders = contendersOf(c, t, reign, showId);
+      if (!contenders.length) return;
+      const total = contenders.reduce((n, k) => n + k.w, 0);
+      let x = draw(c.seed, c.ev.id, "contender", t.id) * total;
+      const pick = contenders.find((k) => (x -= k.w) < 0) || contenders[contenders.length - 1];
+      const cand = candidate(c, "challenge", `challenge:${t.id}:${[...pick.ids].sort().join("+")}`, [...pick.ids, ...champs]);
+      why(cand, 1, `${champName} ${champs.length > 1 ? "hold" : "holds"} the ${t.name}`);
+      if (champAppeared) why(cand, 1.4, `${champName} wrestled at ${c.ev.name}`);
+      const lastTitleMatch = st.events.filter((e) => e.matches.some((m) => m.status === "played" && m.titleId === t.id)).map((e) => weekNo(st, e.at)).filter((n) => n <= c.wk).sort((a, b) => b - a)[0];
+      const quiet = lastTitleMatch == null ? c.wk - weekNo(st, reign.start) : c.wk - lastTitleMatch;
+      if (quiet >= RULES3.quietTitleWeeks) why(cand, 1.5, `The ${t.name} hasn't been on the line in ${quiet} weeks`);
+      pick.reasons.forEach((r) => why(cand, 1, r));
+      why(cand, 1, `${pick.name} came up from ${contenders.length} possible challenger${contenders.length === 1 ? "" : "s"} \u2014 anyone eligible can, and the rankings don't decide it (${pct2(pick.w / total)} of the draw)`);
+      if (weekNo(st, reign.start) >= c.wk - 1) why(cand, 0.5, `Less likely: ${champName} only just won it`);
+      cand.plan = { incidents: [{ kind: "challenge", by: [...pick.ids], on: [...champs], helped: [], title: t.id }] };
+      cand.basis = { title: { id: t.id, holder: reign.holder } };
+      if (!freshness(c, cand)) return;
+      out.push(finish(c, cand, KIND2.challenge.base));
+    });
+    return out;
+  }
+  function breakups(c) {
+    const st = c.st, out = [];
+    st.teams.filter((t) => t.active && t.members.some((id) => c.onCard.has(id))).forEach((t) => {
+      if (titlesHeldBy(st, { type: "team", id: t.id }).length) return;
+      const cand = candidate(c, "breakup", `breakup:${t.id}`, [...t.members]);
+      const results = teamMatches(st, t.id).filter((x) => compareStamps(st, x.event.at, c.ev.at) <= 0);
+      why(cand, 1, `${t.name} were at ${c.ev.name}`);
+      const tonight = results.find((x) => x.event.id === c.ev.id);
+      if (tonight && resultFor(tonight.match, tonight.side) === "L") why(cand, 1.6, `${t.name} lost tonight`);
+      const last4 = results.slice(0, 4), lost = last4.filter((x) => resultFor(x.match, x.side) === "L").length;
+      if (lost >= 3) why(cand, 2, `${t.name} have lost ${lost} of their last ${last4.length}`);
+      let walker = null, walkerScore = 0;
+      t.members.forEach((x) => {
+        let s = 0;
+        const X = nm5(c, x);
+        t.members.forEach((y) => {
+          const h = x !== y && heat(c, x, y);
+          if (h) {
+            why(cand, 1 + h, `${X} holds a grudge against ${nm5(c, y)} (heat ${h})`);
+            s += 2 * h;
+          }
+        });
+        if (has2(c, x, "opportunistic")) {
+          why(cand, 2, `${X} is opportunistic`);
+          s += 2;
+        }
+        if (has2(c, x, "ambitious")) {
+          why(cand, 1.4, `${X} is ambitious`);
+          s += 1;
+        }
+        if (has2(c, x, "loyal")) why(cand, 0.5, `Less likely: ${X} is loyal`);
+        if (s > walkerScore) {
+          walker = x;
+          walkerScore = s;
+        }
+      });
+      if (!walker && lost < 3) return;
+      if (t.members.some((x, i) => t.members.slice(i + 1).some((y) => rel(c, "friends", x, y)))) why(cand, 0.4, `Less likely: there are friends in ${t.name}`);
+      const others = t.members.filter((x) => x !== walker);
+      cand.plan = { incidents: [{
+        kind: "breakup",
+        by: walker ? [walker] : [...t.members],
+        on: walker ? others : [],
+        helped: [],
+        team: t.id,
+        match: tonight ? tonight.match.id : null
+      }], disband: t.id };
+      cand.basis = { team: t.id };
+      if (!freshness(c, cand)) return;
+      out.push(finish(c, cand, KIND2.breakup.base));
+    });
+    return out;
+  }
+  function streaks(c) {
+    const out = [];
+    c.tonight.forEach((m) => winnersOf(m).forEach((id) => {
+      const r = run(c, id);
+      if (r.res !== "W" || r.n < RULES3.streakMin) return;
+      const before = (c.hist.get(id) || []).slice(0, -r.n).slice(-10);
+      const w = before.filter((x) => x.res === "W").length, l = before.filter((x) => x.res === "L").length;
+      if (before.length < 3 || w / before.length >= 0.45) return;
+      const cand = candidate(c, "streak", `streak:${id}`, [id]);
+      why(cand, 1 + 0.25 * (r.n - RULES3.streakMin), `${nm5(c, id)} has won ${r.n} straight`);
+      why(cand, 1, `Before this run: ${w} win${w === 1 ? "" : "s"} and ${l} loss${l === 1 ? "" : "es"} in their last ${before.length}`);
+      cand.plan = { incidents: [{ kind: "momentum", by: [id], on: [], helped: [], match: m.id }] };
+      cand.basis = { match: m.id, winners: winnersOf(m) };
+      if (!freshness(c, cand)) return;
+      out.push(finish(c, cand, KIND2.streak.base));
+    }));
+    return out;
+  }
+  function demands(c) {
+    const st = c.st, out = [];
+    if (!c.ev.showId) return out;
+    const roster = st.wrestlers.filter((w) => w.showId === c.ev.showId && w.status !== "injured");
+    const count = (id) => (c.hist.get(id) || []).filter((x) => c.wk - x.wk < 4).length;
+    const byDiv = (g) => roster.filter((w) => w.gender === g).map((w) => count(w.id)).sort((a, b) => a - b);
+    roster.forEach((w) => {
+      const counts = byDiv(w.gender), typical = counts.length >= 3 ? counts[counts.length >> 1] : null;
+      const mine = count(w.id), r = run(c, w.id);
+      const underbooked = typical != null && typical >= 2 && mine <= typical / 2;
+      const winning = r.res === "W" && r.n >= 2 && c.onCard.has(w.id);
+      const driven2 = w.traits.includes("ambitious") || w.traits.includes("proud");
+      if (!underbooked && !(winning && driven2)) return;
+      const cand = candidate(c, "demand", `demand:${w.id}`, [w.id]);
+      if (underbooked) why(cand, 3, `${w.name} has had ${times(mine)} in 4 weeks \u2014 ${typical} is typical on ${showById(st, c.ev.showId).name}`);
+      if (winning) why(cand, 1.5, `${w.name} has won ${r.n} straight`);
+      if (w.traits.includes("ambitious")) why(cand, 2, `${w.name} is ambitious`);
+      if (w.traits.includes("proud")) why(cand, 1.5, `${w.name} is proud`);
+      if (w.traits.includes("patient")) why(cand, 0.4, `Less likely: ${w.name} is patient`);
+      if (w.traits.includes("cowardly")) why(cand, 0.5, `Less likely: ${w.name} is cowardly`);
+      const t = (winning || w.traits.includes("ambitious")) && st.titles.find((x) => x.active && x.kind === "singles" && x.showId === w.showId && fits(w, x) && currentReign(st, x.id) && !holders(st, currentReign(st, x.id).holder).includes(w.id));
+      const reign = t && currentReign(st, t.id);
+      cand.plan = { incidents: [{ kind: "demand", by: [w.id], on: reign ? holders(st, reign.holder) : [], helped: [], title: t ? t.id : null }] };
+      cand.basis = reign ? { title: { id: t.id, holder: reign.holder } } : {};
+      if (!freshness(c, cand)) return;
+      out.push(finish(c, cand, KIND2.demand.base));
+    });
+    return out;
+  }
+  function lookAt(st, eventId) {
+    const ev = eventById(st, eventId);
+    if (!ev || !ev.matches.some((m) => m.status === "played")) return { pool: 0, found: [], considered: [], cap: 0 };
+    const c = context(st, ev);
+    const considered = [
+      ...attacks(c),
+      ...savesForRecorded(c),
+      ...betrayals(c),
+      ...escalations(c),
+      ...challenges(c),
+      ...breakups(c),
+      ...streaks(c),
+      ...demands(c)
+    ];
+    const prev = c.others.filter((o) => o.e && o.show === ev.showId && compareStamps(st, o.e.at, ev.at) < 0 && o.sg.status !== "dismissed");
+    const lastEv = prev.map((o) => o.e).sort((a, b) => compareStamps(st, b.at, a.at))[0];
+    if (lastEv && prev.filter((o) => o.e === lastEv).length >= 2) {
+      considered.forEach((k) => {
+        k.chance *= RULES3.calmFactor;
+        why(k, 1, `Less likely: the last ${lastEv.name} was eventful`);
+      });
+    }
+    const thisWeek2 = c.others.filter((o) => o.wk === c.wk && o.sg.status !== "dismissed").length;
+    const cap = Math.max(0, Math.min(c.pace.perShow, c.pace.perWeek - thisWeek2));
+    const passed = [];
+    considered.forEach((k) => {
+      k.roll = draw(c.seed, ev.id, k.key);
+      if (k.roll >= k.chance) return;
+      if (k.kind === "attack" && k.extra && draw(c.seed, ev.id, k.key, "save") < k.extra.chance) {
+        k.kind = "save";
+        k.plan = { incidents: [...k.plan.incidents, k.extra.save] };
+        k.people = [...k.people, k.extra.saver];
+        k.extra.reasons.forEach((r) => why(k, 1, r));
+        k.chance *= k.extra.chance;
+      }
+      passed.push(k);
+    });
+    passed.sort((a, b) => a.roll / a.chance - b.roll / b.chance);
+    const found = [], used = /* @__PURE__ */ new Set(), kinds = /* @__PURE__ */ new Set();
+    for (const k of passed) {
+      if (found.length >= cap) break;
+      if (kinds.has(k.kind) || k.people.some((id) => used.has(id))) continue;
+      kinds.add(k.kind);
+      k.people.forEach((id) => used.add(id));
+      found.push({ kind: k.kind, key: k.key, plan: k.plan, why: k.factors.map((f) => f.text), chance: k.chance, basis: k.basis });
+    }
+    return { pool: considered.length, found, considered, cap };
+  }
+  function headline(st, sg) {
+    const [a, b] = sg.plan.incidents;
+    const n = (ids) => ids.map((id) => (wrestlerById(st, id) || { name: "?" }).name).join(" & ");
+    const title2 = (id) => (titleById(st, id) || { name: "title" }).name;
+    switch (sg.kind) {
+      case "attack":
+        return `${n(a.by)} attacks ${n(a.on)}${a.match ? " after the match" : ""}`;
+      case "save":
+        return b ? `${n(a.by)} attacks ${n(a.on)} \u2014 until ${n(b.by)} makes the save` : `${n(a.by)} runs in to save ${n(a.helped)} from ${n(a.on)}`;
+      case "betrayal":
+        return `${n(a.by)} turns on ${n(a.on)}`;
+      case "escalation":
+        return `${n(a.by)} and ${n(a.on)} brawl \u2014 the rivalry boils over`;
+      case "challenge":
+        return `${n(a.by)} challenge${a.by.length > 1 ? "" : "s"} ${n(a.on)} for the ${title2(a.title)}`;
+      case "breakup": {
+        const team = (teamById(st, a.team) || { name: "The team" }).name;
+        return a.on.length ? `${n(a.by)} walks out on ${n(a.on)} \u2014 ${team} are finished` : `${team} go their separate ways`;
+      }
+      case "streak":
+        return `${n(a.by)} is on an unlikely winning streak`;
+      case "demand":
+        return a.title ? `${n(a.by)} demands a shot at the ${title2(a.title)}` : `${n(a.by)} demands an opportunity`;
+      default:
+        return "";
+    }
+  }
+  function oddsText(chance) {
+    if (chance < 0.05) return `a long shot (${chance < 0.01 ? "under 1%" : pct2(chance)})`;
+    if (chance < 0.15) return `rare (${pct2(chance)})`;
+    if (chance < 0.35) return `uncommon (${pct2(chance)})`;
+    return `likely (${pct2(chance)})`;
+  }
+
+  // js/universe/story.js
+  function uvOpenStory() {
+    pushPage("story", "all");
+  }
+  function recentEnough(st, ev) {
+    const s = activeSeason(st);
+    return ev.at.season === s.id && ev.at.week >= s.week - 2;
+  }
+  function look(st, eventId) {
+    seedStory(st, Math.floor(Math.random() * 2147483646));
+    return saveStoryRoll(st, eventId, lookAt(st, eventId));
+  }
+  function uvStoryAfterResult(st, eventId) {
+    const ev = eventById(st, eventId);
+    if (!st.story.on || !ev || storyRollOf(st, eventId) || cardStatus(ev).state !== "complete" || !recentEnough(st, ev)) return null;
+    try {
+      return look(st, eventId).length;
+    } catch (e) {
+      if (e instanceof UniverseError) return null;
+      throw e;
+    }
+  }
+  function uvStoryToast(n) {
+    if (n == null) return "";
+    return n ? ` \xB7 Story: ${n} suggestion${n === 1 ? "" : "s"} on the show` : "";
+  }
+  function uvStoryLook(eventId) {
+    commit((st) => look(st, eventId), (made) => made.length ? `${made.length} story suggestion${made.length === 1 ? "" : "s"}` : "Nothing unexpected this time");
+  }
+  function preview2(st, apply, base = snapshot(st)) {
+    try {
+      const copy = JSON.parse(JSON.stringify(st));
+      apply(copy);
+      return changesBetween(copy, base, snapshot(copy));
+    } catch (e) {
+      if (e instanceof UniverseError) return null;
+      throw e;
+    }
+  }
+  function bookingTarget(st, showId) {
+    const s = activeSeason(st);
+    const eps = st.events.filter((e) => e.kind === "weekly" && e.showId === showId && e.at.season === s.id);
+    const next = eps.filter((e) => e.at.week >= s.week && cardStatus(e).state !== "complete").sort((a, b) => compareStamps(st, a.at, b.at))[0];
+    if (next) return { event: next };
+    let week = s.week;
+    while (eps.some((e) => e.at.week === week)) week++;
+    return { week };
+  }
+  function bookButton(st, sg) {
+    const inc = sg.plan.incidents[0];
+    if (!["challenge", "demand"].includes(inc.kind)) return "";
+    const t = inc.title && titleById(st, inc.title);
+    const showId = t && t.showId || (wrestlerById(st, inc.by[0]) || {}).showId;
+    if (!showId) return "";
+    const side = (ids) => {
+      const team = ids.length > 1 && st.teams.find((x) => x.active && x.members.length === ids.length && ids.every((i) => x.members.includes(i)));
+      return `${team ? `${team.id}:` : ""}${ids.join(",")}`;
+    };
+    const lineup = `${side(inc.by)}|${side(inc.on)}`;
+    const target = bookingTarget(st, showId);
+    const onclick = target.event ? `uvBookLineup('${target.event.id}','${lineup}','${t ? t.id : ""}')` : `uvPlanAndBook('${showId}',${target.week},'${lineup}','${t ? t.id : ""}')`;
+    const where = target.event ? target.event.name : `${showById(st, showId).name} \xB7 Week ${target.week}`;
+    return `<div class="uv-btn sm2" onclick="${onclick}">${ICON.plus}Book ${t ? "the title match" : "the match"}</div>
+    <span class="uv-muted uv-sgw">on ${esc(where)}</span>`;
+  }
+  function suggestionCard(st, sg, { showEvent = false, base } = {}) {
+    const ev = eventById(st, sg.event);
+    const k = KIND2[sg.kind];
+    const problem = sg.status === "open" ? suggestionProblem(st, sg) : null;
+    const status = sg.status === "accepted" ? "Accepted" : sg.status === "dismissed" ? "Dismissed" : problem ? "No longer fits" : "Suggested";
+    const made = sg.status === "accepted" && ev ? ev.incidents.filter((x) => x.story === sg.id) : [];
+    const split = sg.created && sg.created.disbanded && teamById(st, sg.created.disbanded.team);
+    const team = sg.plan.disband && teamById(st, sg.plan.disband);
+    const news = sg.status === "open" && !problem ? preview2(st, (copy) => acceptSuggestion(copy, sg.id), base) : null;
+    const acts = {
+      open: problem ? `<div class="uv-btn sm2" onclick="uvStoryDismiss('${sg.id}')">Dismiss</div>` : `<div class="uv-btn pri sm2" onclick="uvStoryAccept('${sg.id}')">${ICON.check}Accept</div>
+        <div class="uv-btn sm2" onclick="uvStoryEdit('${sg.id}')">${ICON.edit}Edit</div>
+        <div class="uv-btn sm2" onclick="uvStoryDismiss('${sg.id}')">Dismiss</div>`,
+      accepted: `<div class="uv-btn sm2" onclick="uvStoryUndo('${sg.id}')">${ICON.undo}Take it back</div>${bookButton(st, sg)}`,
+      dismissed: `<div class="uv-btn sm2" onclick="uvStoryReopen('${sg.id}')">Bring it back</div>`
+    }[sg.status];
+    return `<div class="uv-sg ${sg.status}${problem ? " stale" : ""}" style="--k:${k.color}" data-sg="${sg.id}" data-kind="${sg.kind}">
+    <div class="top"><span class="uv-rk" style="--k:${k.color}">${esc(k.label)}</span><span class="st">${status}${sg.edited && sg.status === "open" ? " \xB7 edited" : ""}</span>
+      <span class="odds">${esc(oddsText(sg.chance))}</span></div>
+    <div class="hl">${esc(headline(st, sg))}</div>
+    ${showEvent && ev ? `<div class="where"><span class="uv-link" onclick="uvOpenEvent('${ev.id}')">${esc(ev.name)}</span> \xB7 ${esc(eventWhen(st, ev))}</div>` : ""}
+    ${problem ? `<div class="warn">${esc(problem)}</div>` : ""}
+    <details class="why"${sg.status === "open" ? " open" : ""}><summary>Why it came up</summary>
+      <ul>${sg.why.map((w) => `<li class="${/^Less likely/.test(w) ? "minus" : ""}">${esc(w)}</li>`).join("")}</ul></details>
+    ${sg.status === "open" && !problem ? `<div class="fx"><b>If you accept</b>
+      ${sg.plan.incidents.map((i) => `<span>Records on ${esc(ev.name)}: ${esc(incidentText(st, i))}${i.note ? ` \u2014 ${esc(i.note)}` : ""}</span>`).join("")}
+      ${team ? `<span>${esc(team.name)} are disbanded</span>` : ""}
+      ${(news || []).map((x) => `<span class="rel">${esc(x)}</span>`).join("")}
+      <span class="fine">It\u2019s only a suggestion until then \u2014 nothing has happened. Recreate it in WWE 2K25, or just let it stand as part of the story.</span></div>` : ""}
+    ${sg.status === "accepted" ? `<div class="fx"><b>On record</b>
+      ${made.map((i) => `<span>${esc(incidentText(st, i))}</span>`).join("") || "<span>Its incidents have since been deleted.</span>"}
+      ${split ? `<span>${esc(split.name)} split up</span>` : ""}</div>` : ""}
+    ${sg.status === "dismissed" && sg.note ? `<div class="where">Dismissed \u2014 ${esc(sg.note)}</div>` : ""}
+    <div class="acts">${acts}</div>
+  </div>`;
+  }
+  function uvStoryAccept(id) {
+    const before = snapshot(uni());
+    commit((st) => acceptSuggestion(st, id), () => {
+      const news = changesBetween(uni(), before, snapshot(uni()));
+      return `Accepted${news.length ? ` \u2014 ${news[0]}${news.length > 1 ? ` (+${news.length - 1} more)` : ""}` : ""}`;
+    });
+  }
+  function uvStoryDismiss(id) {
+    commit((st) => dismissSuggestion(st, id), "Dismissed \u2014 it won\u2019t come back for a while");
+  }
+  function uvStoryReopen(id) {
+    commit((st) => reopenSuggestion(st, id), "Brought back");
+  }
+  function uvStoryUndo(id) {
+    const st = uni();
+    const sg = suggestionById(st, id);
+    const split = sg.created && sg.created.disbanded && teamById(st, sg.created.disbanded.team);
+    confirmThen(
+      "Take it back?",
+      `Its incidents come off ${(eventById(st, sg.event) || { name: "the show" }).name}${split ? ` and ${split.name} are back together` : ""}, and every relationship change they made is worked out again without them. The suggestion goes back to waiting for you.`,
+      "Take it back",
+      () => commit((s) => undoSuggestion(s, id), "Taken back \u2014 the suggestion is open again")
+    );
+  }
+  function uvStoryBlock(st, ev) {
+    const list = suggestionsFor(st, ev.id);
+    const roll = storyRollOf(st, ev.id);
+    if (!st.story.on && !list.length) return "";
+    const base = list.some((sg) => sg.status === "open") ? snapshot(st) : null;
+    const played = ev.matches.some((m) => m.status === "played");
+    let note = "";
+    if (roll && !list.length) {
+      note = `<div class="uv-none">The story engine looked after this show \u2014 ${roll.pool} possibilit${roll.pool === 1 ? "y" : "ies"} at a
+      ${esc(PACE[roll.pace].label.toLowerCase())} pace \u2014 and nothing unexpected happened.</div>`;
+    } else if (!roll && st.story.on && played && recentEnough(st, ev)) {
+      note = `<div class="uv-none">The story engine looks here once every result is in.</div>
+      <div class="uv-page-acts"><div class="uv-btn" onclick="uvStoryLook('${ev.id}')">${ICON.star}Look for story ideas now</div></div>`;
+    } else if (!roll && st.story.on && played) {
+      note = '<div class="uv-none">The story engine only looks at shows from the last couple of weeks.</div>';
+    } else if (!roll && st.story.on) {
+      note = '<div class="uv-none">Once the results are in, the story engine may suggest what happens next. Nothing happens unless you accept it.</div>';
+    }
+    return `${section("Story", list.length || null)}
+    ${list.length ? `<div class="uv-sgs">${list.map((sg) => suggestionCard(st, sg, { base })).join("")}</div>` : ""}
+    ${note}
+    <p class="uv-p uv-inset-p"><span class="uv-link" onclick="uvOpenStory()">All story suggestions</span> \xB7
+      <span class="uv-link" onclick="uvHowStory()">How the story engine works</span></p>`;
+  }
+  function uvStoryRow(st) {
+    const waiting = st.story.suggestions.filter((sg) => sg.status === "open" && !suggestionProblem(st, sg)).length;
+    const head = waiting ? `Story \xB7 ${waiting} suggestion${waiting === 1 ? "" : "s"} waiting` : st.story.on ? "Story engine" : "Story engine is off";
+    const sub = waiting ? "Accept, edit or dismiss \u2014 nothing has happened until you do" : st.story.on ? `${PACE[st.story.pace].label} pace \xB7 it looks after each show\u2019s results` : "Switch it on to get suggestions after shows";
+    return `<div class="uv-card-row${waiting ? " hot" : ""}" data-story="1" onclick="uvOpenStory()">${ICON.star}<div><b>${esc(head)}</b>
+    <span>${esc(sub)}</span></div>${ICON.right}</div>`;
+  }
+  var decidedShown = 12;
+  function uvStoryMore() {
+    decidedShown += 12;
+    refresh();
+  }
+  function uvStoryPage() {
+    const st = uni();
+    const sto = st.story;
+    const at2 = (sg) => (eventById(st, sg.event) || { at: { season: "", week: 0, seq: 0 } }).at;
+    const open = sto.suggestions.filter((sg) => sg.status === "open").sort((a, b) => compareStamps(st, at2(b), at2(a)));
+    const decided = sto.suggestions.filter((sg) => sg.status !== "open").sort((a, b) => b.decided.seq - a.decided.seq);
+    const accepted = sto.suggestions.filter((sg) => sg.status === "accepted").length;
+    const base = open.length ? snapshot(st) : null;
+    const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${String(cur) === String(k) ? "on" : ""}" data-v="${k}"
+    onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
+    return {
+      title: "Story",
+      body: `
+      <div class="uv-storyhead">
+        <div class="k">Story engine</div>
+        <p>After a show\u2019s results are in, it may suggest what happens next \u2014 an attack, a save, a betrayal, a challenge \u2014 with
+          the reasons. Nothing happens unless you accept it, and it never decides a match.</p>
+        ${seg([["on", "On"], ["off", "Off"]], sto.on ? "on" : "off", "uvStoryOn")}
+        ${sto.on ? `<div class="uv-sub flush">Pace</div>${seg(Object.entries(PACE).map(([k, p]) => [k, p.label]), sto.pace, "uvStoryPace")}
+          <div class="s">${esc(PACE[sto.pace].text)} At most ${PACE[sto.pace].perShow} a show and ${PACE[sto.pace].perWeek} a week.</div>` : ""}
+        <div class="s">Looked at ${sto.rolls.length} show${sto.rolls.length === 1 ? "" : "s"} \xB7 ${sto.suggestions.length} suggestion${sto.suggestions.length === 1 ? "" : "s"}
+          \xB7 ${accepted} accepted \xB7 <span class="uv-link" onclick="uvHowStory()">How it works</span></div>
+      </div>
+      ${section("Waiting for you", open.length || null)}
+      ${open.length ? `<div class="uv-sgs">${open.map((sg) => suggestionCard(st, sg, { showEvent: true, base })).join("")}</div>` : '<div class="uv-none">Nothing waiting. Suggestions turn up here, and on the show they\u2019re about, after its results are in.</div>'}
+      ${decided.length ? `${section("Decided", decided.length)}<div class="uv-sgs">${decided.slice(0, decidedShown).map((sg) => suggestionCard(st, sg, { showEvent: true })).join("")}</div>
+        ${decided.length > decidedShown ? `<div class="uv-more" onclick="uvStoryMore()">Show more (${decided.length - decidedShown})</div>` : ""}` : ""}`
+    };
+  }
+  function uvStoryOn(v) {
+    commit((st) => setStory(st, { on: v === "on" }), v === "on" ? "Story engine on" : "Story engine off");
+  }
+  function uvStoryPace(v) {
+    commit((st) => setStory(st, { pace: v }), `${PACE[v].label} pace`);
+  }
+  var se = null;
+  function uvStoryEdit(id) {
+    const sg = suggestionById(uni(), id);
+    if (!sg) return;
+    se = {
+      id,
+      parts: sg.plan.incidents.map((i) => ({ ...i, by: [...i.by], on: [...i.on], helped: [...i.helped], note: i.note || "" })),
+      disband: !!sg.plan.disband,
+      team: sg.plan.disband || (sg.plan.incidents.find((i) => i.team) || {}).team || null
+    };
+    openSheet(editSheet);
+  }
+  var plan = () => ({
+    incidents: se.parts.map((p) => ({ kind: p.kind, by: p.by, on: p.on, helped: p.helped, match: p.match, title: p.title, team: p.team, note: p.note })),
+    disband: se.disband ? se.team : null
+  });
+  function editSheet() {
+    const st = uni();
+    const sg = se && suggestionById(st, se.id);
+    if (!sg || sg.status !== "open") return null;
+    const picks = (j, list, label, optional) => `<div class="uv-sidebox"><div class="h"><span>${esc(label)}</span></div>
+    ${se.parts[j][list].map((wid, i) => `<div class="uv-pick">${select(`uvSePick(${j},'${list}',${i},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}-${i}"`)}
+      ${se.parts[j][list].length > 1 || optional ? `<div class="uv-ic sm" onclick="uvSeDrop(${j},'${list}',${i})">${ICON.x}</div>` : ""}</div>`).join("")}
+    <div class="uv-add" onclick="uvSeAdd(${j},'${list}')">${ICON.plus}Add ${se.parts[j][list].length ? "another" : "someone"}</div></div>`;
+    const news = preview2(st, (copy) => {
+      editSuggestion(copy, se.id, plan());
+      acceptSuggestion(copy, se.id);
+    });
+    const team = se.team && teamById(st, se.team);
+    return {
+      title: "Edit the suggestion",
+      body: `
+      <p class="uv-p">Change who\u2019s in it, or add a note, before you accept it. ${esc(KIND2[sg.kind].label)} at
+        ${esc((eventById(st, sg.event) || { name: "" }).name)}.</p>
+      ${se.parts.map((p, j) => {
+        const k = INCIDENT[p.kind];
+        return `<div class="uv-separt"><div class="h"><span class="uv-rk" style="--k:${k.color}">${esc(k.label)}</span>
+          ${se.parts.length > 1 ? `<span class="uv-link" onclick="uvSeDropPart(${j})">Leave this part out</span>` : ""}</div>
+          ${picks(j, "by", k.by, false)}${k.on === false ? "" : picks(j, "on", k.on || "Left behind / called out (optional)", k.on === null)}
+          ${k.helped ? picks(j, "helped", k.helped, p.kind === "interference") : ""}
+          <div style="margin-top:8px">${field("Note (optional)", `<input class="uv-in" maxlength="2000" value="${esc(p.note)}" data-note="${j}"
+            oninput="uvSeNote(${j},this.value)">`, "wide")}</div></div>`;
+      }).join("")}
+      ${team ? `<label class="uv-check"><input id="uvSeDisband" type="checkbox"${se.disband ? " checked" : ""} onchange="uvSeDisband(this.checked)">
+        <span>Disband ${esc(team.name)}</span></label>` : ""}
+      <div class="uv-prev"><b>If you accept</b>${news == null ? "<span>Pick who\u2019s in it.</span>" : news.length ? news.map((x) => `<span>${esc(x)}</span>`).join("") : "<span>No relationship changes.</span>"}</div>
+      <div class="uv-btn pri full" onclick="uvSeSave(true)">Save and accept</div>
+      <div class="uv-btn full" onclick="uvSeSave(false)">Save changes \u2014 decide later</div>`
+    };
+  }
+  function uvSePick(j, list, i, v) {
+    se.parts[j][list][i] = v;
+    paintSheet();
+  }
+  function uvSeAdd(j, list) {
+    se.parts[j][list].push("");
+    paintSheet();
+  }
+  function uvSeDrop(j, list, i) {
+    se.parts[j][list].splice(i, 1);
+    paintSheet();
+  }
+  function uvSeDropPart(j) {
+    se.parts.splice(j, 1);
+    paintSheet();
+  }
+  function uvSeNote(j, v) {
+    se.parts[j].note = v;
+  }
+  function uvSeDisband(v) {
+    se.disband = !!v;
+    paintSheet();
+  }
+  function uvSeSave(accept) {
+    const before = snapshot(uni());
+    const r = commit((st) => {
+      editSuggestion(st, se.id, plan());
+      if (accept) acceptSuggestion(st, se.id);
+    }, () => {
+      if (!accept) return "Suggestion saved";
+      const news = changesBetween(uni(), before, snapshot(uni()));
+      return `Accepted${news.length ? ` \u2014 ${news[0]}${news.length > 1 ? ` (+${news.length - 1} more)` : ""}` : ""}`;
+    });
+    if (r.ok) closeSheet();
+  }
+  function uvHowStory() {
+    openSheet(() => {
+      const k = KIND2, R = RULES3;
+      return {
+        title: "How the story engine works",
+        body: `
+        <p class="uv-p"><b>Suggestions, not events.</b> When the last result of a recent show goes in, the engine reads the record \u2014
+          results, personalities, relationships, champions, tag teams and who\u2019s been getting booked \u2014 and may suggest what happens
+          next. Nothing happens until you accept it: no relationship changes, nothing reaches the timeline, and no match is ever
+          booked or decided for you. WWE 2K25 decides every result.</p>
+        <div class="uv-calc">
+          <div><span>${k.attack.label}</span><b>a loser lashes out \u2014 likelier if they\u2019re hot-headed or proud, hold a grudge, keep losing to them, or just lost a title</b></div>
+          <div><span>${k.save.label}</span><b>someone runs in to stop an attack \u2014 a friend, ally, partner, or someone with their own grudge</b></div>
+          <div><span>${k.betrayal.label}</span><b>a partner turns \u2014 likelier if they\u2019re opportunistic or ambitious, hold a grudge, or keep losing together; rare for the loyal</b></div>
+          <div><span>${k.escalation.label}</span><b>rivals, or wrestlers with grudges, brawl \u2014 likelier the more bad blood, and if they just shared a ring</b></div>
+          <div><span>${k.challenge.label}</span><b>someone steps up to a champion. Everyone eligible is in the draw \u2014 weighted by grudges, wins over the champion, streaks and ambition, but nobody is ranked out</b></div>
+          <div><span>${k.breakup.label}</span><b>a tag team splits over bad blood, ambition or a losing run. Champions don\u2019t</b></div>
+          <div><span>${k.streak.label}</span><b>${R.streakMin}+ straight wins from someone who was losing more than winning</b></div>
+          <div><span>${k.demand.label}</span><b>someone short of matches, or ambitious and winning, wants a chance \u2014 sometimes at a title</b></div>
+        </div>
+        <p class="uv-p"><b>Rarity.</b> Every chance starts small; the pace scales it (Quiet \xD7${PACE.quiet.mult}, Normal \xD71, Wild \xD7${PACE.wild.mult}).
+          Someone in something in the last ${R.recentWeeks} weeks is less likely to be in something again. The same thing between the same
+          people won\u2019t come back for ${R.repeatWeeks} weeks, and something you dismissed stays away for ${R.dismissedWeeks}. After an
+          eventful episode, that show\u2019s next one is calmer. A show gets at most a few, never two of a kind or one wrestler twice.
+          With nothing behind it, a suggestion is a real long shot \u2014 but not impossible.</p>
+        <p class="uv-p"><b>Why each one came up.</b> Every suggestion lists its reasons and how likely it was. The draw is seeded, so the
+          same universe always gets the same suggestions \u2014 looking again never rerolls.</p>
+        <p class="uv-p"><b>Accepting</b> records it on the show as incidents (a team breakup also disbands the team), so relationships
+          change and it joins the timeline. <b>Edit</b> changes who\u2019s in it first. <b>Dismiss</b> keeps it off the record. An accepted
+          one can be taken back, and its incidents can be edited on the show like any other.</p>
+        <p class="uv-p"><b>Outcomes stay open.</b> Rankings never rule anyone out \u2014 the least likely challenger can come up, and anyone
+          can be booked for any title and win it.</p>`
+      };
+    });
   }
 
   // js/universe/views.js
@@ -6129,7 +7481,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const s = activeSeason(st);
     const week = calWeek || s.week;
     const off = week - s.week;
-    const rel = off === 0 ? "This week" : off === 1 ? "Next week" : off === -1 ? "Last week" : off > 0 ? `${off} weeks ahead` : `${-off} weeks ago`;
+    const rel2 = off === 0 ? "This week" : off === 1 ? "Next week" : off === -1 ? "Last week" : off > 0 ? `${off} weeks ahead` : `${-off} weeks ago`;
     const range = weekRange(st, s.id, s.week);
     const next = Math.max(...st.seasons.map((x) => x.number)) + 1;
     const card = `<div class="uv-card">
@@ -6141,6 +7493,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       </div>
     </div>
     ${transitionRows(st, s)}
+    ${uvStoryRow(st)}
     <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? "Dates" : "Set dates"}</span>
       <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvNextSeason()">Start Season ${next}\u2026</span></div>
   </div>`;
@@ -6154,7 +7507,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return card + `
     <div class="uv-weeknav">
       <div class="uv-ic" onclick="uvCalWeek(-1)" title="Previous week">${ICON.left}</div>
-      <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel)}${wr ? ` \xB7 ${esc(wr)}` : ""}</div></div>
+      <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel2)}${wr ? ` \xB7 ${esc(wr)}` : ""}</div></div>
       <div class="uv-ic" onclick="uvCalWeek(1)" title="Following week">${ICON.right}</div>
     </div>
     ${off ? `<div class="uv-back-now" onclick="uvCalGo(${s.week})">Back to this week (week ${s.week})</div>` : ""}
@@ -6487,6 +7840,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const t = titleById(st, r.titleId);
         return `The ${esc(t ? t.name : "title")} was vacated`;
       }
+      case "incident": {
+        const x = r.incident;
+        return `${esc(incidentText(st, x))} at <span class="uv-link" onclick="uvOpenEvent('${r.event.id}')">${esc(r.event.name)}</span>` + (x.story ? ' <span class="uv-muted">\xB7 from a story suggestion</span>' : "");
+      }
       case "event": {
         const c = cardStatus(r);
         return `<span class="uv-link" onclick="uvOpenEvent('${r.id}')">${esc(r.name)}</span> <span class="uv-muted">${esc(eventWhen(st, r))}</span> \u2014 ${c.played} result${c.played === 1 ? "" : "s"}${c.booked ? `, ${c.booked} still to enter` : ""}`;
@@ -6683,7 +8040,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const title2 = m.titleId && titleById(st, m.titleId);
     const reign = played && st.reigns.find((r) => r.matchId === m.id);
     const detail = played ? [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(" \xB7 ") : "";
-    const rel = m.relegation && st.relegations.find((r) => r.match === m.id);
+    const rel2 = m.relegation && st.relegations.find((r) => r.match === m.id);
     const qual = m.qualifier && st.eligibility.find((e) => e.match === m.id && e.source === "qualifier");
     const move = (d) => `<div class="uv-ic mv" title="Move ${d < 0 ? "up" : "down"}" onclick="uvMoveMatch('${ev.id}','${m.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
     return `<div class="uv-mc ${m.status}" data-m="${m.id}">
@@ -6692,7 +8049,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ""}
     ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title2.name)} ${reign.holder.type === "team" ? "champions" : "champion"}</div>` : ""}
-    ${rel ? `<div class="uv-mc-d bad">${esc(wrestlerById(st, rel.wrestler).name)} relegated to NXT</div>` : ""}
+    ${rel2 ? `<div class="uv-mc-d bad">${esc(wrestlerById(st, rel2.wrestler).name)} relegated to NXT</div>` : ""}
     ${m.relegation && !played ? '<div class="uv-mc-d">Relegation match: the loser goes to NXT when you save the result.</div>' : ""}
     ${qual ? `<div class="uv-mc-d uv-gold">${esc(wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ""}
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ""}
@@ -6727,6 +8084,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ""}
       <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ""}</div>
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join("")}</div>` : empty(ICON.cal, "Nothing booked yet", "Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.")}
+      ${uvStoryBlock(st, e)}
       ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
@@ -6792,7 +8150,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     "Special Guest Referee"
   ];
   var fromMatch = (m) => m.sides.map((sd) => ({ team: sd.team || "", wrestlers: [...sd.wrestlers] }));
-  function openForm(mode2, eventId, m, lineup = null) {
+  function openForm(mode2, eventId, m, lineup = null, titleId = "") {
     const st = uni();
     const linked = m && st.reigns.some((r) => r.matchId === m.id);
     md = {
@@ -6800,7 +8158,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       eventId,
       matchId: m ? m.id : null,
       sides: m ? fromMatch(m) : lineup || [blankSide(), blankSide()],
-      titleId: m && m.titleId || "",
+      titleId: m && m.titleId || titleId || "",
       stip: m && m.stip || "",
       notes: m && m.notes || "",
       // a result is never pre-filled for a match that hasn't got one
@@ -6833,14 +8191,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var parseLineup = (text) => String(text).split("|").map((part2) => {
     const [team, list] = part2.includes(":") ? part2.split(":") : ["", part2];
-    return { team, wrestlers: list.split(",").filter(Boolean) };
+    const wrestlers = list.split(",").filter(Boolean);
+    return { team, wrestlers: wrestlers.length ? wrestlers : [""] };
   });
-  function uvBookLineup(eventId, lineup) {
-    openForm("book", eventId, null, parseLineup(lineup));
+  function uvBookLineup(eventId, lineup, titleId = "") {
+    openForm("book", eventId, null, parseLineup(lineup), titleId);
   }
-  function uvPlanAndBook(showId, week, lineup) {
+  function uvPlanAndBook(showId, week, lineup, titleId = "") {
     const r = commit((st) => addEvent(st, { showId, week }), (e) => `${e.name} planned`);
-    if (r.ok) uvBookLineup(r.value.id, lineup);
+    if (r.ok) uvBookLineup(r.value.id, lineup, titleId);
   }
   function teamGuesses(st, side) {
     const ids = side.wrestlers.filter(Boolean);
@@ -7046,17 +8405,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
     const opts = { titleChange: !!(d.titleId && d.titleChange && isWin) };
     const before = uvRelBefore();
-    const r = commit((st) => d.mode === "result" ? enterResult(st, d.eventId, d.matchId, input, opts) : updateMatch(st, d.eventId, d.matchId, input, opts), (m) => {
+    let story = null;
+    const r = commit((st) => {
+      if (d.mode !== "result") return updateMatch(st, d.eventId, d.matchId, input, opts);
+      const played = enterResult(st, d.eventId, d.matchId, input, opts);
+      story = uvStoryAfterResult(st, d.eventId);
+      return played;
+    }, (m) => {
       const st = uni();
       const reign = st.reigns.find((x) => x.matchId === m.id);
       const saved = d.mode === "result" ? "Result saved" : "Result corrected";
-      const news = uvRelNews(before).replace(/^ — /, ". ");
-      const rel = st.relegations.find((x) => x.match === m.id);
-      if (rel) return `${saved} \u2014 ${wrestlerById(st, rel.wrestler).name} relegated to NXT${news}`;
+      const rel2 = st.relegations.find((x) => x.match === m.id);
       const q = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier");
-      if (q) return `${saved} \u2014 ${wrestlerById(st, q.wrestler).name} is draft eligible${news}`;
-      if (!reign) return saved + (news ? ` \u2014 ${news.slice(2)}` : "");
-      return `${saved} \u2014 ${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}${news}`;
+      const what = rel2 ? `${wrestlerById(st, rel2.wrestler).name} relegated to NXT` : q ? `${wrestlerById(st, q.wrestler).name} is draft eligible` : reign ? `${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}` : "";
+      const news = uvRelNews(before).replace(/^ — /, "");
+      return `${saved}${[what, news].filter(Boolean).map((x, i) => i ? `. ${x}` : ` \u2014 ${x}`).join("")}${uvStoryToast(story)}`;
     });
     if (r.ok) closeSheet();
   }
@@ -7128,7 +8491,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     pushPage("title", id);
   }
   function uvPageView(kind, id) {
-    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : null;
+    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : kind === "story" ? uvStoryPage() : null;
   }
   var expanded = /* @__PURE__ */ new Set();
   function uvShowAll(key) {
@@ -7200,6 +8563,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         return `Lost ${title2(e)}`;
       case "title-vacated":
         return `${title2(e).replace(/^the/, "The")} was vacated`;
+      case "incident":
+        return `${esc(incidentText(st, e.incident))} at <span class="uv-link" onclick="uvOpenEvent('${e.event.id}')">${esc(e.event.name)}</span>`;
       default:
         return "";
     }
@@ -7419,7 +8784,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const refs = titleRefs(st, id);
     const last = reigns[reigns.length - 1];
     const longest = reigns.reduce((best, r) => !best || reignWeeks(st, r) > reignWeeks(st, best) ? r : best, null);
-    const holders = new Set(reigns.map((r) => `${r.holder.type}:${r.holder.id}`)).size;
+    const holders2 = new Set(reigns.map((r) => `${r.holder.type}:${r.holder.id}`)).size;
     const kindWord = t.kind === "tag" ? "Champions" : "Champion";
     const booked = titleBookings(st, id);
     const historyRow = (r, n) => {
@@ -7448,7 +8813,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="uv-btn" onclick="uvEditTitle('${id}')">${ICON.edit}Edit</div>
       </div>
       <div class="uv-recs">
-        ${numTile("Reigns", reigns.length, `${holders} different ${t.kind === "tag" ? "teams" : "champions"}`)}
+        ${numTile("Reigns", reigns.length, `${holders2} different ${t.kind === "tag" ? "teams" : "champions"}`)}
         ${numTile("Longest", longest ? reignWeeks(st, longest) : 0, longest ? holderName(st, longest.holder) : "\u2014")}
         ${numTile("Title matches", countTitleMatches(st, id), booked.length ? `${booked.length} booked` : "with a result")}
       </div>
@@ -8466,7 +9831,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports);
   initUniverse();
 })();
 

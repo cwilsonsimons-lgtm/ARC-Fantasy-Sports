@@ -12,7 +12,9 @@
 // on the show they happened on.
 import * as M from './model.js';
 import * as RL from './relations.js';
-import { ICON, avatar, empty, esc, field, options, section, select, showColor, showName, sideName, stampLabel, wrestlerOptions } from './ui.js';
+import {
+  ICON, INCIDENT, avatar, empty, esc, field, incidentText, options, section, select, showColor, showName, sideName, stampLabel, wrestlerOptions,
+} from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, refresh, uni } from './app.js';
 
 const { RULES } = RL;
@@ -361,20 +363,6 @@ export function uvTraitSave() {
 
 // ================================================================ incidents on a show
 
-const names = (st, ids) => ids.map(id => nm(st, id)).join(' & ');
-function incidentText(st, inc) {
-  if (inc.kind === 'betrayal') return `${names(st, inc.by)} betrayed ${names(st, inc.on)}`;
-  if (inc.kind === 'attack') return `${names(st, inc.by)} attacked ${names(st, inc.on)}`;
-  return `${names(st, inc.by)} interfered against ${names(st, inc.on)}${inc.helped.length ? `, helping ${names(st, inc.helped)}` : ''}`;
-}
-const INC = {
-  betrayal: { label: 'Betrayal', color: '#FF5A4E', by: 'Who turned', on: 'On whom',
-    text: 'Someone turned on a partner or friend. The one betrayed holds a grudge — heat 2, or 3 if they’re loyal — and any friendship or alliance between them ends.' },
-  interference: { label: 'Interference', color: '#F0A53A', by: 'Who interfered', on: 'Against',
-    text: 'Someone got involved in a match. Whoever it went against holds a grudge; whoever it helped becomes their ally.' },
-  attack: { label: 'Attack', color: '#C9A7FF', by: 'Who attacked', on: 'Who was attacked',
-    text: 'A beat-down — backstage, before or after the bell. The one attacked holds a grudge: heat 1, or 2 if they’re hot-headed.' },
-};
 const matchName = (st, ev, id) => {
   const i = ev.matches.findIndex(m => m.id === id);
   return i < 0 ? '' : `Match ${i + 1}: ${ev.matches[i].sides.map(sd => sideName(st, sd)).join(' vs ')}`;
@@ -387,11 +375,12 @@ export function uvIncidentsBlock(st, ev) {
   return `
     ${section('Incidents', ev.incidents.length || null)}
     ${ev.incidents.map(inc => `<div class="uv-inc" data-inc="${inc.id}" onclick="uvIncident('${ev.id}','${inc.id}')">
-      <span class="uv-rk" style="--k:${INC[inc.kind].color}">${INC[inc.kind].label}</span>
+      <span class="uv-rk" style="--k:${INCIDENT[inc.kind].color}">${INCIDENT[inc.kind].label}</span>
       <div class="uv-main"><div class="nm">${esc(incidentText(st, inc))}</div>
-        ${inc.match || inc.note ? `<div class="sub">${esc([inc.match && matchName(st, ev, inc.match), inc.note].filter(Boolean).join(' · '))}</div>` : ''}</div>
+        ${inc.match || inc.note || inc.story ? `<div class="sub">${esc([inc.match && matchName(st, ev, inc.match), inc.note,
+          inc.story && 'From a story suggestion'].filter(Boolean).join(' · '))}</div>` : ''}</div>
       <span class="uv-chev">${ICON.edit}</span></div>`).join('')}
-    ${ev.incidents.length ? '' : '<div class="uv-none">A betrayal, an interference or an attack you saw in the game goes here. The result of a match doesn’t.</div>'}
+    ${ev.incidents.length ? '' : '<div class="uv-none">A betrayal, a run-in, an attack, a challenge — whatever you saw in the game besides the results goes here.</div>'}
     <div class="uv-page-acts"><div class="uv-btn" onclick="uvIncident('${ev.id}')">${ICON.plus}Record an incident</div></div>
     ${here.length ? `${section('Relationships', here.length)}<div class="uv-ents">${here.map(e => entryRow(st, e, true)).join('')}</div>` : ''}`;
 }
@@ -401,56 +390,84 @@ let ic = null;
 export function uvIncident(eventId, incId = '') {
   const ev = M.eventById(uni(), eventId);
   const inc = incId && ev && ev.incidents.find(x => x.id === incId);
-  ic = inc ? { eventId, incId, kind: inc.kind, by: [...inc.by], on: [...inc.on], helped: [...inc.helped], match: inc.match || '', note: inc.note }
-    : { eventId, incId: '', kind: 'betrayal', by: [''], on: [''], helped: [], match: '', note: '' };
+  ic = inc ? { eventId, incId, kind: inc.kind, by: [...inc.by], on: [...inc.on], helped: [...inc.helped], match: inc.match || '', note: inc.note,
+    title: inc.title || '', team: inc.team || '', disband: false }
+    : { eventId, incId: '', kind: 'betrayal', by: [''], on: [''], helped: [], match: '', note: '', title: '', team: '', disband: true };
   openSheet(incidentSheet);
+}
+const incidentInput = () => ({ kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note,
+  title: ic.title || null, team: ic.team || null });
+// a walk-out can split the team up at the same time - only when it's new, and the team is still together
+const splits = st => ic.kind === 'breakup' && !ic.incId && ic.disband && ic.team && (M.teamById(st, ic.team) || {}).active;
+function saveIncident(st) {
+  const inc = ic.incId ? M.updateIncident(st, ic.eventId, ic.incId, incidentInput()) : M.recordIncident(st, ic.eventId, incidentInput());
+  if (splits(st)) M.setTeamActive(st, ic.team, false);
+  return inc;
 }
 
 function incidentSheet() {
   const st = uni();
   const ev = ic && M.eventById(st, ic.eventId);
   if (!ev || (ic.incId && !ev.incidents.some(x => x.id === ic.incId))) return null;
-  const k = INC[ic.kind];
+  const k = INCIDENT[ic.kind];
   const picks = (list, label, optional = false) => `<div class="uv-sidebox"><div class="h"><span>${esc(label)}</span></div>
     ${ic[list].map((wid, j) => `<div class="uv-pick">${select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`)}
       ${ic[list].length > 1 || optional ? `<div class="uv-ic sm" onclick="uvIcDrop('${list}',${j})">${ICON.x}</div>` : ''}</div>`).join('')}
     <div class="uv-add" onclick="uvIcAdd('${list}')">${ICON.plus}${ic[list].length ? 'Add another' : 'Add someone'}</div></div>`;
-  const input = { kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note };
-  const news = preview(copy => (ic.incId ? M.updateIncident(copy, ic.eventId, ic.incId, input) : M.recordIncident(copy, ic.eventId, input)));
+  const titles = st.titles.filter(t => t.active || t.id === ic.title);
+  const teams = st.teams.filter(t => t.members.length || t.id === ic.team);
+  const news = preview(copy => saveIncident(copy));
   return {
     title: ic.incId ? 'Edit the incident' : 'Record an incident',
     body: `
-      <p class="uv-p">${esc(ev.name)} — what you saw in the game besides the result.</p>
-      <div class="uv-seg">${Object.keys(INC).map(x => `<div class="${ic.kind === x ? 'on' : ''}" data-v="${x}" onclick="uvIcKind('${x}')">${INC[x].label}</div>`).join('')}</div>
-      <div class="fine" style="margin:0 0 10px">${esc(k.text)}</div>
+      <p class="uv-p">${esc(ev.name)} — what you saw in the game besides the results.</p>
+      <div class="uv-pills tight">${Object.keys(INCIDENT).map(x => `<div class="uv-pill${ic.kind === x ? ' on' : ''}" data-v="${x}" onclick="uvIcKind('${x}')">
+        <span class="uv-dot" style="--c:${INCIDENT[x].color}"></span>${INCIDENT[x].label}</div>`).join('')}</div>
+      <div class="fine" style="margin:4px 0 10px">${esc(k.text)}</div>
       ${ev.matches.length ? field('During', select("uvIcSet('match',this.value)", options([['', '— Not during a match —'],
         ...ev.matches.map(m => [m.id, matchName(st, ev, m.id)])], ic.match), ' id="uvIcMatch"'), 'wide') : ''}
-      <div style="margin-top:10px">${picks('by', k.by)}${picks('on', k.on)}${ic.kind === 'interference' ? picks('helped', 'Helping (optional)', true) : ''}</div>
+      ${k.title ? `<div style="margin-top:10px">${field(ic.kind === 'challenge' ? 'For the title' : 'Over a title (optional)',
+        select("uvIcSet('title',this.value)", options([['', ic.kind === 'challenge' ? '— Pick the title —' : 'No title'], ...titles.map(t => [t.id, t.name])], ic.title),
+          ' id="uvIcTitle"'), 'wide')}</div>` : ''}
+      ${k.team ? `<div style="margin-top:10px">${field('The team', select("uvIcSet('team',this.value)", options([['', '— Pick the team —'],
+        ...teams.map(t => [t.id, t.name])], ic.team), ' id="uvIcTeam"'), 'wide')}</div>` : ''}
+      <div style="margin-top:10px">${picks('by', k.by)}${k.on === false ? '' : picks('on', k.on || (ic.kind === 'breakup' ? 'Left behind (optional)' : 'Calling out (optional)'), k.on === null)}${k.helped ? picks('helped', k.helped, ic.kind === 'interference') : ''}</div>
+      ${ic.kind === 'breakup' && !ic.incId && ic.team && (M.teamById(st, ic.team) || {}).active ? `<label class="uv-check"><input id="uvIcDisband" type="checkbox"${ic.disband ? ' checked' : ''}
+        onchange="uvIcSet('disband',this.checked)"><span>Disband ${esc(M.teamById(st, ic.team).name)} as well</span></label>` : ''}
       <div style="margin-top:12px">${field('Notes (optional)', `<input id="uvIcNote" class="uv-in" maxlength="2000" value="${esc(ic.note)}" placeholder="e.g. Hit him with the belt"
         oninput="uvIcNote(this.value)">`, 'wide')}</div>
-      ${previewBox(news, 'Pick who did it and to whom.')}
+      ${previewBox(news, 'Pick who was in it.')}
       <div class="uv-btn pri full" onclick="uvIcSave()">${ic.incId ? 'Save the incident' : 'Record it'}</div>
       ${ic.incId ? '<div class="uv-btn bad full" onclick="uvIcDelete()">Delete the incident</div>' : ''}`,
   };
 }
-export function uvIcKind(k) { ic.kind = k; if (k !== 'interference') ic.helped = []; paintSheet(); }
+export function uvIcKind(k) {
+  ic.kind = k;
+  const shape = INCIDENT[k];
+  if (!shape.helped) ic.helped = [];
+  else if (!ic.helped.length && k === 'save') ic.helped = [''];
+  if (shape.on === false) ic.on = [];
+  else if (!ic.on.length && shape.on) ic.on = [''];
+  if (!shape.title) ic.title = '';
+  if (!shape.team) ic.team = '';
+  paintSheet();
+}
 export function uvIcSet(k, v) { ic[k] = v; paintSheet(); }
 export function uvIcPick(list, j, v) { ic[list][j] = v; paintSheet(); }
 export function uvIcAdd(list) { ic[list].push(''); paintSheet(); }
 export function uvIcDrop(list, j) { ic[list].splice(j, 1); paintSheet(); }
 export function uvIcNote(v) { ic.note = v; }
 export function uvIcSave() {
-  const input = { kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note };
   const before = RL.snapshot(uni());
-  const r = commit(st => (ic.incId ? M.updateIncident(st, ic.eventId, ic.incId, input) : M.recordIncident(st, ic.eventId, input)),
-    () => `${ic.incId ? 'Incident saved' : 'Incident recorded'}${uvRelNews(before)}`);
+  const r = commit(st => saveIncident(st), () => `${ic.incId ? 'Incident saved' : 'Incident recorded'}${uvRelNews(before)}`);
   if (r.ok) closeSheet();
 }
 export function uvIcDelete() {
   const { eventId, incId } = ic;
   const st = uni();
   const inc = M.eventById(st, eventId).incidents.find(x => x.id === incId);
-  confirmThen('Delete this incident?', `“${incidentText(st, inc)}” comes off the show, and every relationship change it made is worked out again without it.`,
+  confirmThen('Delete this incident?', `“${incidentText(st, inc)}” comes off the show, and every relationship change it made is worked out again without it.`
+    + (inc.story ? ' The story suggestion it came from stays accepted — take that back on the show instead if you want it open again.' : ''),
     'Delete', () => {
       const before = RL.snapshot(uni());
       if (commit(s => M.deleteIncident(s, eventId, incId), () => `Incident deleted${uvRelNews(before)}`).ok) closeSheet();
@@ -515,6 +532,10 @@ export function uvHowRelations() {
         <div><span>Betrayal</span><b>a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends</b></div>
         <div><span>Interference</span><b>a grudge against whoever interfered; whoever it helped becomes their ally</b></div>
         <div><span>Attack</span><b>a grudge against the attacker (hot-headed: heat 2)</b></div>
+        <div><span>Save</span><b>the attacker holds a grudge against whoever made the save; the one saved becomes their ally</b></div>
+        <div><span>Brawl</span><b>a grudge each way, and they’re rivals</b></div>
+        <div><span>Challenge</span><b>a title challenge, or calling someone out: they’re rivals</b></div>
+        <div><span>Walk-out</span><b>anyone left behind holds a grudge against whoever walked out; any friendship or alliance between them ends</b></div>
         <div><span>Teaming</span><b>${RULES.allies} matches on the same side, win or lose: allies (loyal: ${RULES.alliesLoyal}).
           ${RULES.friends}: friends — unless either is opportunistic, or there’s a grudge between them</b></div>
         <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners</b></div>

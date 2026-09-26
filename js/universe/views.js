@@ -10,13 +10,14 @@ import {
   titlesOfWrestler, wrestlerById,
 } from './model.js';
 import {
-  ICON, LABEL, NIGHT, avatar, chip, empty, esc, eventWhen, fallLine, fmtRec, isoText, kindChip, matchLine, section,
+  ICON, LABEL, NIGHT, avatar, chip, empty, esc, eventWhen, fallLine, fmtRec, incidentText, isoText, kindChip, matchLine, section,
   showColor, showDot, showName, stampLabel, tag, weeksText,
 } from './ui.js';
 import { refresh, uni } from './app.js';
 import { uvRankFollow } from './ranks.js';
 import { uvTransitionSummary } from './relegation.js';
 import { uvRelationsView } from './personality.js';
+import { uvStoryRow } from './story.js';
 
 // ---------------------------------------------------------------- calendar
 //
@@ -58,6 +59,7 @@ export function uvCalendarView() {
       </div>
     </div>
     ${transitionRows(st, s)}
+    ${uvStoryRow(st)}
     <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? 'Dates' : 'Set dates'}</span>
       <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvNextSeason()">Start Season ${next}…</span></div>
   </div>`;
@@ -419,6 +421,11 @@ function timelineText(st, e) {
       return `<b>${esc(holderName(st, r.holder))}</b> won the ${esc(t ? t.name : 'title')}${ev}`;
     }
     case 'title-vacated': { const t = titleById(st, r.titleId); return `The ${esc(t ? t.name : 'title')} was vacated`; }
+    case 'incident': {
+      const x = r.incident;
+      return `${esc(incidentText(st, x))} at <span class="uv-link" onclick="uvOpenEvent('${r.event.id}')">${esc(r.event.name)}</span>`
+        + (x.story ? ' <span class="uv-muted">· from a story suggestion</span>' : '');
+    }
     case 'event': {
       const c = cardStatus(r);
       return `<span class="uv-link" onclick="uvOpenEvent('${r.id}')">${esc(r.name)}</span> <span class="uv-muted">${esc(eventWhen(st, r))}</span>`

@@ -11,13 +11,14 @@
 // matches it wrestled as the team.
 import * as M from './model.js';
 import {
-  ICON, LABEL, avatar, chip, esc, eventWhen, fmtRec, histLine, holderLink, kindChip, matchLine, recNote, section, showColor,
+  ICON, LABEL, avatar, chip, esc, eventWhen, fmtRec, histLine, holderLink, incidentText, kindChip, matchLine, recNote, section, showColor,
   showName, stampLabel, tag, vsLine, weeksText, wrestlerLink,
 } from './ui.js';
 import { pushPage, refresh, uni } from './app.js';
 import { uvEventPage } from './card.js';
 import { uvTransitionPage } from './relegation.js';
 import { uvPairPage, uvProfilePersonality } from './personality.js';
+import { uvStoryPage } from './story.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -26,7 +27,7 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 /** { title, body } for a page, or null if what it showed no longer exists. */
 export function uvPageView(kind, id) {
   return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
-    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : null;
+    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : kind === 'story' ? uvStoryPage() : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.
@@ -104,6 +105,7 @@ function careerText(st, e) {
     case 'title-won': return `<b>Won ${title(e)}</b>${e.reign.eventId ? ` at ${esc(eventName(st, e.reign.eventId))}` : ''}`;
     case 'title-lost': return `Lost ${title(e)}`;
     case 'title-vacated': return `${title(e).replace(/^the/, 'The')} was vacated`;
+    case 'incident': return `${esc(incidentText(st, e.incident))} at <span class="uv-link" onclick="uvOpenEvent('${e.event.id}')">${esc(e.event.name)}</span>`;
     default: return '';
   }
 }

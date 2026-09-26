@@ -218,3 +218,50 @@ export function fallLine(st, m) {
   }
   return by ? `${name(by)} scored the win` : `${name(on)} took the fall`;
 }
+
+// ---------------------------------------------------------------- incidents
+
+/**
+ * Every kind of incident: its label and colour, how the sheet asks who was in
+ * it (`on` null: optional; false: nobody), and what it does to relationships.
+ */
+export const INCIDENT = {
+  betrayal: { label: 'Betrayal', color: '#FF5A4E', by: 'Who turned', on: 'On whom',
+    text: 'Someone turned on a partner or friend. The one betrayed holds a grudge — heat 2, or 3 if they’re loyal — and any friendship or alliance between them ends.' },
+  interference: { label: 'Interference', color: '#F0A53A', by: 'Who interfered', on: 'Against', helped: 'Helping (optional)',
+    text: 'Someone got involved in a match. Whoever it went against holds a grudge; whoever it helped becomes their ally.' },
+  attack: { label: 'Attack', color: '#C9A7FF', by: 'Who attacked', on: 'Who was attacked',
+    text: 'A beat-down — backstage, before or after the bell. The one attacked holds a grudge: heat 1, or 2 if they’re hot-headed.' },
+  save: { label: 'Save', color: '#4CD37A', by: 'Who made the save', on: 'From whom', helped: 'Who was saved',
+    text: 'Someone ran in to stop an attack. The attacker holds a grudge against them, and the one saved becomes their ally.' },
+  brawl: { label: 'Brawl', color: '#F0A53A', by: 'Who', on: 'Brawled with',
+    text: 'A rivalry boiled over. Each holds a grudge against the other, and they’re rivals.' },
+  challenge: { label: 'Challenge', color: '#E8B931', by: 'Challenger', on: 'Champion', title: true,
+    text: 'Someone laid down a challenge for a title. The challenger and the champion become rivals. Nothing is booked until you book it.' },
+  demand: { label: 'Demand', color: '#C9A7FF', by: 'Who', on: null, title: true,
+    text: 'Someone demanded an opportunity — a match, or a shot at someone. Calling someone out makes them rivals.' },
+  breakup: { label: 'Walk-out', color: '#98A3B3', by: 'Who walked away', on: null, team: true,
+    text: 'A tag team split. Anyone left behind holds a grudge against whoever walked out on them, and any friendship or alliance between them ends. Leave "Left behind" empty for an amicable split.' },
+  momentum: { label: 'Momentum', color: '#72C4FF', by: 'Who', on: false,
+    text: 'An unlikely run everyone’s noticed. It changes no relationship — but the story engine remembers it when a title shot comes up.' },
+};
+
+/** An incident in words: "Kevin Owens betrayed Sami Zayn". */
+export function incidentText(st, inc) {
+  const n = ids => ids.map(id => (wrestlerById(st, id) || { name: '(deleted)' }).name).join(' & ');
+  const title = (titleById(st, inc.title) || { name: 'title' }).name;
+  const team = (teamById(st, inc.team) || { name: 'Their team' }).name;
+  switch (inc.kind) {
+    case 'betrayal': return `${n(inc.by)} betrayed ${n(inc.on)}`;
+    case 'attack': return `${n(inc.by)} attacked ${n(inc.on)}`;
+    case 'interference': return `${n(inc.by)} interfered against ${n(inc.on)}${inc.helped.length ? `, helping ${n(inc.helped)}` : ''}`;
+    case 'save': return `${n(inc.by)} saved ${n(inc.helped)} from ${n(inc.on)}`;
+    case 'brawl': return `${n(inc.by)} and ${n(inc.on)} brawled`;
+    case 'challenge': return `${n(inc.by)} challenged ${n(inc.on)} for the ${title}`;
+    case 'demand': return inc.on.length ? `${n(inc.by)} called out ${n(inc.on)}${inc.title ? ` over the ${title}` : ''}`
+      : `${n(inc.by)} demanded ${inc.title ? `a shot at the ${title}` : 'an opportunity'}`;
+    case 'breakup': return inc.on.length ? `${n(inc.by)} walked out on ${n(inc.on)} — ${team} split` : `${team} split up`;
+    case 'momentum': return `${n(inc.by)} is on an unlikely run`;
+    default: return '';
+  }
+}
