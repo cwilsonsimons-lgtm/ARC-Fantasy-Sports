@@ -12,6 +12,7 @@ import * as shell from './index.js';
 import * as pages from './pages.js';
 import * as edits from './edits.js';
 import * as card from './card.js';
+import * as ranks from './ranks.js';
 
-Object.assign(window, views, sheets, shell, pages, edits, card);
+Object.assign(window, views, sheets, shell, pages, edits, card, ranks);
 shell.initUniverse();

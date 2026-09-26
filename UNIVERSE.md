@@ -41,14 +41,16 @@ js/universe/
   cloud.js             the claude.ai copy, when published as an artifact
   app.js               commit (change + save + repaint), sheets, the page stack
   index.js             start-up, tabs, the save-file sheet
-  views.js             the five tabs: Calendar, Roster, Teams, Titles, History
+  views.js             the tabs: Calendar, Roster, Teams, Titles, History
+  ranks.js             the Rankings tab: standings and booking balance
+  standings.js         the arithmetic behind it - pure, runs under Node
   card.js              a show's page and match card; the booking / result form
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       66 model tests      npm run test:universe
-tools/universe-check.mjs      87 browser checks   npm run check:universe
+tools/universe-test.mjs       76 model tests      npm run test:universe
+tools/universe-check.mjs      99 browser checks   npm run check:universe
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -140,6 +142,58 @@ The **History** tab browses the past, newest first: **Results** lists every
 result show by show, filterable by season and by show (or just the PLEs), each
 with its finish, title and notes; **Everything** puts results, title changes,
 moves and team changes on one timeline. Tap any of it to open the show.
+
+## Rankings and booking balance
+
+The **Rankings** tab reads the results you've entered and nothing else. It never
+feeds back into booking: anyone can be booked against anyone with any title on
+the line, and win it — the tests book the bottom of a table for the world title
+and crown them. `model.js` and `card.js` don't use the standings at all.
+
+**Standings** — pick a show (or every show), a season or all time, and singles
+or tag. Men's and women's divisions are ranked separately; tag shows the
+registered teams on their own records, then each wrestler's tag record.
+
+- The score is a winning percentage with one win and one loss added to
+  everyone, a draw counting half and no contests left out:
+  (W + ½D + 1) ÷ (W + L + D + 2). So 1–0 is 67%, 5–0 is 86% and 10–2 is 79% —
+  one lucky win doesn't top the table. Ties go to more wins, then fewer
+  losses; still level, they share a rank. Anyone with no wins, losses or
+  draws in the period is listed as not ranked yet.
+- Who's on a show: for a finished season, where they were when it ended; for
+  the current season and all time, where they are now. The record is every
+  match in the period, wherever it happened.
+- Each row shows the record, the score, the last five results and the
+  current streak, and a belt for a champion.
+
+**Booking balance** — pick a show and the last 4 weeks, the last 8 or the
+season. It flags who has had far fewer matches than is typical *for their
+division on that show*; nobody is compared with another show, roster sizes
+never come into it, and nobody is expected to match anyone exactly.
+
+- *Matches*: results entered while they were on the show (singles and tag,
+  any event); a team counts only matches as the team. *Weeks*: weeks of the
+  period they were on the show, so a newcomer is judged on their time there.
+  *Rate*: matches ÷ weeks.
+- *Typical*: the median rate of their group — men, women, or the show's tag
+  teams — leaving out the injured and anyone there under 2 weeks. A group
+  needs at least 3 to compare.
+- *Short of matches*: a rate at most half of typical **and** at least 2
+  matches below typical × their weeks. The second rule is why a quiet show
+  flags nobody. *Well below* is at most a quarter of typical.
+- Every wrestler's rate is shown against the typical line, so the flags can
+  be checked by eye.
+
+**Match ideas** — up to three opponents for each flagged wrestler or team:
+same show and division, not injured, never their own partners. Each is scored
+on both being short of matches (+3), a rivalry (+2) or a recent first meeting
+(+1.5), closeness in this season's standings (up to +1.5), a shot at someone in
+the top three (+0.75), never having met (+0.75) and holding a title (+0.5), less
+1 if already booked or they met last week — and shown with the reasons. **Book…**
+opens the booking form with the line-up filled in, on an upcoming episode or a
+new one; nothing is booked until you add it, and the result still comes from
+the game. Both calculations are explained in the app ("How rankings work",
+"How this is worked out").
 
 ## Profiles and records
 
@@ -241,13 +295,12 @@ version, written by that version's code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Rankings, match suggestions, promotion/relegation (the annual transfer
-system), personality events and story generation are all later work. The
-foundation is shaped for them — cards already hold booked matches that a
-suggestion could fill in, results record sides, winners, finishes and titles,
-roster moves record who changed show and when, and seasons have hard edges —
-but none of that logic exists yet. Whatever suggests a match later, the result
-still comes from the game. There are
+Promotion/relegation (the annual transfer system), personality events and
+story generation are later work. The foundation is shaped for them — results
+record sides, winners, finishes and titles, standings rank every show, roster
+moves record who changed show and when, and seasons have hard edges — but none
+of that logic exists yet. Whatever suggests a match, the result still comes
+from the game. There are
 also no personality or relationship fields: those belong to the features that
 will use them, and inventing their shape now would only mean migrating it
 later.

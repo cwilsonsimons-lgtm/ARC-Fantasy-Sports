@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import * as M from '../js/universe/model.js';
 import { STORAGE_KEY, loadUniverse, saveUniverse, exportUniverse, importUniverse } from '../js/universe/persist.js';
 import { createCloud } from '../js/universe/cloud.js';
+import * as SD from '../js/universe/standings.js';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
 const throwsUE = (fn, re) => assert.throws(fn, e => e instanceof M.UniverseError && (!re || re.test(e.message)));
@@ -1454,4 +1455,234 @@ test('a view that can’t keep a copy leaves the app as it was; export uses the 
   assert.equal(await a.cloud.exportFile('wwe-universe-season1-week1.json', exportUniverse(a.st)), 'saved');
   assert.equal(claude.saved[0].filename, 'wwe-universe-season1-week1.json');
   assert.deepEqual(importUniverse(claude.saved[0].data), a.st);
+});
+
+// ---------------------------------------------------------------- standings and rankings
+
+// Raw: A, B, C, D (men), G (a woman); a team of A & B, and one of C & D.
+function standingsWorld() {
+  const st = M.createUniverse();
+  const [A, B, C, D] = ['A', 'B', 'C', 'D'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  const G = M.addWrestler(st, { name: 'G', showId: 'raw', gender: 'female' });
+  const T1 = M.addTeam(st, { name: 'T1', members: [A.id, B.id] });
+  const T2 = M.addTeam(st, { name: 'T2', members: [C.id, D.id] });
+  const T3 = M.addTeam(st, { name: 'T3', members: [G.id, D.id] });
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const play = (sides, input) => M.recordMatch(st, ev.id, { sides, ...input });
+  play(S([A.id, B.id]), { winner: 0 });                                     // A def. B
+  play(S([A.id, C.id]), { winner: 0 });                                     // A def. C
+  play(S([B.id, C.id]), { outcome: 'draw' });                               // B drew C
+  play([{ team: T1.id, wrestlers: [A.id, B.id] }, { team: T2.id, wrestlers: [C.id, D.id] }], { winner: 0 });
+  play(S([[A.id, D.id], [B.id, C.id]]), { winner: 1 });                     // makeshift: B & C def. A & D
+  play(S([G.id, D.id]), { outcome: 'nc' });                                 // no contest: ranks nobody
+  return { st, A, B, C, D, G, T1, T2, T3 };
+}
+const names = rows => rows.map(r => `${r.rank ?? '-'}:${r.name}`);
+
+test('the ranking score is a winning percentage with one win and one loss added', () => {
+  assert.equal(SD.rating(R(1)), 2 / 3);
+  assert.equal(SD.rating(R(5)), 6 / 7);
+  assert.equal(SD.rating(R(10, 2)), 11 / 14);
+  assert.equal(SD.rating(R(0, 0, 2)), 0.5);                                 // two draws: even
+  assert.equal(SD.rating(R(1, 0, 0, 7)), 2 / 3);                            // no contests don't count
+  assert.ok(SD.rating(R(5)) > SD.rating(R(10, 2)) && SD.rating(R(10, 2)) > SD.rating(R(1)));
+});
+
+test('standings keep singles, tag and team records apart', () => {
+  const { st } = standingsWorld();
+  const season = SD.periodOf(st, M.activeSeason(st).id);
+  const singles = SD.standings(st, { showId: 'raw', period: season, kind: 'singles' });
+  // A 2-0 (75%), B 0-1-1 and C 0-1-1 (37.5%, tied: same rank); D and G have no wins, losses or draws
+  assert.deepEqual(names(singles.ranked), ['1:A', '2:B', '2:C']);
+  assert.deepEqual(singles.ranked.map(r => r.rec), [R(2), R(0, 1, 1), R(0, 1, 1)]);
+  assert.deepEqual(names(singles.unranked), ['-:D', '-:G']);
+  assert.deepEqual(singles.unranked.find(r => r.name === 'G').rec, R(0, 0, 0, 1));
+  // tag: B won both (as T1, then with C), C split, A split, D lost both
+  const tag = SD.standings(st, { showId: 'raw', period: season, kind: 'tag' });
+  assert.deepEqual(names(tag.ranked), ['1:B', '2:A', '2:C', '4:D']);
+  assert.deepEqual(tag.ranked.map(r => r.rec), [R(2), R(1, 1), R(1, 1), R(0, 2)]);
+  // teams rank on their own matches only; T3 is together but hasn't wrestled
+  const teams = SD.standings(st, { showId: 'raw', period: season, kind: 'teams' });
+  assert.deepEqual(names(teams.ranked), ['1:T1', '2:T2']);
+  assert.deepEqual(names(teams.unranked), ['-:T3']);
+  // recent form, newest first, and the streak
+  const a = singles.ranked[0];
+  assert.deepEqual([a.form, a.streak], [['W', 'W'], { type: 'W', n: 2 }]);
+});
+
+test('season and all-time standings, each wrestler on the show they were on then', () => {
+  const { st, A, C, D } = standingsWorld();
+  M.startNextSeason(st);
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, ev.id, { sides: S([C.id, A.id]), winner: 0 });           // season 2: C def. A
+  M.assignWrestler(st, D.id, 'smackdown');
+  const [s1, s2] = st.seasons;
+  const rawS1 = SD.standings(st, { showId: 'raw', period: SD.periodOf(st, s1.id) });
+  const rawS2 = SD.standings(st, { showId: 'raw', period: SD.periodOf(st, s2.id) });
+  const rawAll = SD.standings(st, { showId: 'raw', period: SD.periodOf(st, 'all') });
+  const sdAll = SD.standings(st, { showId: 'smackdown', period: SD.periodOf(st, 'all') });
+  assert.deepEqual(names(rawS1.ranked), ['1:A', '2:B', '2:C']);            // season 1 as it ended
+  assert.ok(rawS1.unranked.some(r => r.name === 'D'), 'D was on Raw when season 1 ended');
+  assert.deepEqual(names(rawS2.ranked), ['1:C', '2:A']);                   // season 2 alone: C 1-0, A 0-1
+  assert.ok(![...rawS2.ranked, ...rawS2.unranked].some(r => r.name === 'D'), 'D is on SmackDown now');
+  // all time: A 2-1 (60%), C 1-1-1 (50%), B 0-1-1
+  assert.deepEqual(names(rawAll.ranked), ['1:A', '2:C', '3:B']);
+  assert.deepEqual(rawAll.ranked.map(r => r.rec), [R(2, 1), R(1, 1, 1), R(0, 1, 1)]);
+  assert.deepEqual(sdAll.unranked.map(r => r.name), ['D']);
+  // every show at once
+  const every = SD.standings(st, { period: SD.periodOf(st, 'all') });
+  assert.deepEqual(names(every.ranked), ['1:A', '2:C', '3:B']);
+});
+
+test('rankings never stand in the way of a title: the bottom of the table can win it', () => {
+  const st = M.createUniverse();
+  const champ = M.addWrestler(st, { name: 'Champ', showId: 'raw' });
+  const jobber = M.addWrestler(st, { name: 'Jobber', showId: 'raw' });
+  const rookie = M.addWrestler(st, { name: 'Rookie', showId: 'nxt' });      // never wrestled, another show
+  const whc = M.addTitle(st, { name: 'World Heavyweight Championship', showId: 'raw' });
+  M.setChampion(st, whc.id, { type: 'wrestler', id: champ.id });
+  const ev = M.addEvent(st, { showId: 'raw' });
+  for (let i = 0; i < 5; i++) M.recordMatch(st, ev.id, { sides: S([champ.id, jobber.id]), winner: 0 });
+  const table = SD.standings(st, { showId: 'raw', period: SD.periodOf(st, 'all') });
+  assert.deepEqual(names(table.ranked), ['1:Champ', '2:Jobber']);          // 5-0 against 0-5
+
+  const title = M.bookMatch(st, ev.id, { sides: S([champ.id, jobber.id]), titleId: whc.id });
+  M.enterResult(st, ev.id, title.id, { outcome: 'win', winner: 1 }, { titleChange: true });
+  assert.equal(M.currentReign(st, whc.id).holder.id, jobber.id);
+  const next = M.bookMatch(st, ev.id, { sides: S([jobber.id, rookie.id]), titleId: whc.id });
+  M.enterResult(st, ev.id, next.id, { outcome: 'win', winner: 1 }, { titleChange: true });
+  assert.equal(M.currentReign(st, whc.id).holder.id, rookie.id);
+  sound(st);
+});
+
+test('booking and results never consult the rankings', async () => {
+  const { readFile } = await import('node:fs/promises');
+  for (const f of ['model.js', 'card.js']) {
+    const src = await readFile(new URL(`../js/universe/${f}`, import.meta.url), 'utf8');
+    assert.ok(!/standings/.test(src), `${f} doesn't use the standings`);
+  }
+});
+
+// ---------------------------------------------------------------- booking balance
+
+// Season 2, weeks 1-4 on Raw (season 1 held one E v C rivalry each week).
+//   men    A 4, B 4, C 3, D 4, F 1, E 0 matches; J arrives from SmackDown in
+//          week 3 (0 matches); K arrives from NXT in week 4; L is injured
+//   women  G 1, H 1, I 0
+function balanceWorld() {
+  const st = M.createUniverse();
+  const add = (n, show, gender = 'male') => M.addWrestler(st, { name: n, showId: show, gender });
+  const [A, B, C, D, E, F] = ['A', 'B', 'C', 'D', 'E', 'F'].map(n => add(n, 'raw'));
+  const J = add('J', 'smackdown'), K = add('K', 'nxt'), L = add('L', 'raw');
+  const [G, H, I] = ['G', 'H', 'I'].map(n => add(n, 'raw', 'female'));
+  M.updateWrestler(st, L.id, { status: 'injured' });
+  // season 1: E and C meet twice, one win each
+  const old = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, old.id, { sides: S([E.id, C.id]), winner: 0 });
+  M.recordMatch(st, old.id, { sides: S([E.id, C.id]), winner: 1 });
+  M.startNextSeason(st);
+  const weeks = {
+    1: [[A, B], [C, D]], 2: [[A, B], [C, D], [G, H]], 3: [[A, D], [B, F]], 4: [[A, D], [B, C]],
+  };
+  for (let wk = 1; wk <= 4; wk++) {
+    M.setWeek(st, wk);
+    if (wk === 3) M.assignWrestler(st, J.id, 'raw');
+    if (wk === 4) M.assignWrestler(st, K.id, 'raw');
+    const ev = M.addEvent(st, { showId: 'raw' });
+    weeks[wk].forEach(([x, y]) => M.recordMatch(st, ev.id, { sides: S([x.id, y.id]), winner: 0 }));
+  }
+  return { st, A, B, C, D, E, F, J, K, L, G, H, I };
+}
+const byId = (res, id) => res.groups.flatMap(g => g.rows).find(r => r.id === id);
+
+test('balance: a period is the most recent weeks of the season, or the whole season', () => {
+  const { st } = balanceWorld();
+  M.setWeek(st, 6);
+  const p = SD.periodOf(st, 'last4');
+  assert.deepEqual([p.from, p.to, p.label], [3, 6, 'Last 4 weeks']);
+  assert.deepEqual([SD.periodOf(st, 'last8').from, SD.periodOf(st, M.activeSeason(st).id).from], [1, 1]);
+});
+
+test('balance: flags only wrestlers far below what is typical in their division on the show', () => {
+  const { st, A, C, E, F, J, K, L, I } = balanceWorld();
+  const res = SD.balance(st, { showId: 'raw', period: SD.periodOf(st, 'last4') });
+  const men = res.groups.find(g => g.key === 'male');
+  // judged: A B C D E F (4 weeks) and J (2 weeks) - not K (1 week), not L (injured)
+  // rates 1 1 .75 1 0 .25 0 -> median .75 a week
+  assert.equal(men.judged, 7);
+  assert.equal(men.typical, 0.75);
+  const e = byId(res, E.id), f = byId(res, F.id), j = byId(res, J.id);
+  assert.deepEqual([e.weeks, e.matches, e.expected, e.short, e.flagged, e.severity], [4, 0, 3, 3, true, 'well below']);
+  assert.deepEqual([f.matches, f.short, f.flagged, f.severity], [1, 2, true, 'below']);
+  // J arrived in week 3: judged on 2 weeks, 1.5 matches short - not enough to flag
+  assert.deepEqual([j.weeks, j.short, j.flagged], [2, 1.5, false]);
+  assert.deepEqual([byId(res, K.id).weeks, byId(res, K.id).judged, byId(res, K.id).flagged], [1, false, false]);
+  assert.deepEqual([byId(res, L.id).injured, byId(res, L.id).flagged], [true, false]);
+  assert.equal(byId(res, C.id).flagged, false);                            // .75: exactly typical
+  assert.equal(byId(res, A.id).flagged, false);
+  // the women are compared with each other: .25 .25 0 -> typical .25, I is 1 short: a quiet division flags nobody
+  const women = res.groups.find(g => g.key === 'female');
+  assert.equal(women.typical, 0.25);
+  assert.equal(byId(res, I.id).flagged, false);
+  // over the whole season it's the same four weeks
+  const season = SD.balance(st, { showId: 'raw', period: SD.periodOf(st, M.activeSeason(st).id) });
+  assert.deepEqual(season.groups.flatMap(g => g.rows.filter(r => r.flagged).map(r => r.name)), ['E', 'F']);
+});
+
+test('balance: a smaller show is judged on its own terms, never against another show', () => {
+  const { st } = balanceWorld();
+  // SmackDown now has one wrestler, nobody to compare with
+  const res = SD.balance(st, { showId: 'smackdown', period: SD.periodOf(st, 'last4') });
+  assert.ok(res.groups.every(g => !g.enough && g.rows.every(r => !r.flagged)));
+});
+
+test('balance: teams are compared with the show’s other teams, on matches as the team', () => {
+  const st = M.createUniverse();
+  const w = Array.from({ length: 10 }, (_, i) => M.addWrestler(st, { name: `W${i}`, showId: 'raw' }));
+  const team = (n, a, b) => M.addTeam(st, { name: n, members: [w[a].id, w[b].id] });
+  const [T1, T2, T3, T4] = [team('T1', 0, 1), team('T2', 2, 3), team('T3', 4, 5), team('T4', 6, 7)];
+  const side = t => ({ team: t.id, wrestlers: [...t.members] });
+  const plan = { 1: [[T1, T2]], 2: [[T1, T3]], 3: [[T2, T3]], 4: [[T1, T2]] };
+  for (let wk = 1; wk <= 4; wk++) {
+    M.setWeek(st, wk);
+    const ev = M.addEvent(st, { showId: 'raw' });
+    plan[wk].forEach(([x, y]) => M.recordMatch(st, ev.id, { sides: [side(x), side(y)], winner: 0 }));
+    // T4's members wrestle each week, but never as T4
+    M.recordMatch(st, ev.id, { sides: S([w[6].id, w[8].id]), winner: 0 });
+    M.recordMatch(st, ev.id, { sides: S([[w[7].id, w[9].id], [w[4].id, w[5].id]]), winner: 0 });
+  }
+  const res = SD.balance(st, { showId: 'raw', period: SD.periodOf(st, 'last4') });
+  const teams = res.groups.find(g => g.key === 'teams');
+  // T1 3, T2 3, T3 2, T4 0 -> rates .75 .75 .5 0, median .625; T4 is 2.5 short
+  assert.equal(teams.typical, 0.625);
+  assert.deepEqual(teams.rows.filter(r => r.flagged).map(r => [r.name, r.matches, r.short]), [['T4', 0, 2.5]]);
+  // and its members are busy, so they're not short themselves
+  assert.equal(byId(res, w[6].id).flagged, false);
+  // ideas for T4: another team on the show, never one sharing a member
+  const ideas = SD.matchIdeas(st, { kind: 'team', id: T4.id }, { showId: 'raw', balanceResult: res });
+  assert.ok(ideas.length && ideas.every(i => ['T1', 'T2', 'T3'].includes(i.opponent.name)));
+  assert.deepEqual(ideas[0].lineup[0], { team: T4.id, wrestlers: T4.members });
+});
+
+test('match ideas: available opponents, ranked on need, rivalry and standings - and only ideas', () => {
+  const { st, E, F, C, A, G, J, L } = balanceWorld();
+  const res = SD.balance(st, { showId: 'raw', period: SD.periodOf(st, 'last4') });
+  const ideas = SD.matchIdeas(st, { kind: 'wrestler', id: E.id }, { showId: 'raw', balanceResult: res });
+  // F: both short (+3), never met (+.75) = 3.75. C: rivalry from season 1 (+2), #2 in this
+  // season's standings (+.75) = 2.75. A: never met (+.75), #1 (+.75) = 1.5, ahead of B on name
+  assert.deepEqual(ideas.map(i => i.opponent.name), ['F', 'C', 'A']);
+  assert.deepEqual(ideas[0].reasons, ['Both are short of matches', 'Fresh matchup: they’ve never met']);
+  assert.deepEqual(ideas[1].reasons, ['Rivalry: met 2 times — E 1, C 1', 'A shot at #2 C']);
+  // a suggestion is only a line-up: no winner, no result, nothing booked
+  assert.deepEqual(ideas[0].lineup, [{ team: '', wrestlers: [E.id] }, { team: '', wrestlers: [F.id] }]);
+  assert.equal(st.events.flatMap(e => e.matches).filter(m => m.status === 'scheduled').length, 0);
+  // never the injured, the other division, or another show's wrestlers
+  const all = SD.matchIdeas(st, { kind: 'wrestler', id: E.id }, { showId: 'raw', balanceResult: res, });
+  assert.ok(!all.some(i => [L.id, G.id].includes(i.opponent.id)));
+  // once F is booked for this week, F drops behind C
+  const ev = st.events[st.events.length - 1];
+  M.bookMatch(st, ev.id, { sides: S([F.id, J.id]) });
+  const again = SD.matchIdeas(st, { kind: 'wrestler', id: E.id }, { showId: 'raw', balanceResult: res });
+  assert.deepEqual(again.slice(0, 2).map(i => i.opponent.name), ['C', 'F']);
+  assert.match(again[1].note, /already booked/);
 });

@@ -1,4 +1,5 @@
-// WWE Universe — the five tabs: Calendar, Roster, Teams, Titles, History.
+// WWE Universe — the tabs: Calendar, Roster, Teams, Titles, History. (Rankings
+// is in ranks.js.)
 //
 // Lists only. Tapping a row opens its page: a show's card (card.js) or a
 // profile (pages.js). The roster also has a select mode for moving several
@@ -13,6 +14,7 @@ import {
   showColor, showDot, showName, stampLabel, tag, weeksText,
 } from './ui.js';
 import { refresh, uni } from './app.js';
+import { uvRankFollow } from './ranks.js';
 
 // ---------------------------------------------------------------- calendar
 //
@@ -408,4 +410,4 @@ export function uvViewSeason(id) { viewSeason = id; eventsShown = 12; historySho
 export function uvMoreResults() { eventsShown += 12; refresh(); }
 export function uvMoreHistory() { historyShown += 40; refresh(); }
 /** When the active season changes, follow it - on the calendar and in the history. */
-export function uvFollowActiveSeason() { viewSeason = null; calWeek = null; }
+export function uvFollowActiveSeason() { viewSeason = null; calWeek = null; uvRankFollow(); }

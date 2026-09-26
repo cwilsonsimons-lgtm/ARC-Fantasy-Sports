@@ -182,12 +182,12 @@ const STIPULATIONS = ['Normal', 'No Disqualification', 'Street Fight', 'Extreme 
 
 const fromMatch = m => m.sides.map(sd => ({ team: sd.team || '', wrestlers: [...sd.wrestlers] }));
 
-function openForm(mode, eventId, m) {
+function openForm(mode, eventId, m, lineup = null) {
   const st = uni();
   const linked = m && st.reigns.some(r => r.matchId === m.id);
   md = {
     mode, eventId, matchId: m ? m.id : null,
-    sides: m ? fromMatch(m) : [blankSide(), blankSide()],
+    sides: m ? fromMatch(m) : lineup || [blankSide(), blankSide()],
     titleId: (m && m.titleId) || '', stip: (m && m.stip) || '', notes: (m && m.notes) || '',
     // a result is never pre-filled for a match that hasn't got one
     result: m && m.status === 'played' ? (m.outcome === 'win' ? String(m.winner) : m.outcome) : '',
@@ -204,6 +204,19 @@ export function uvBookMatch(eventId) { openForm('book', eventId, null); }
 export function uvEditBooking(eventId, matchId) { openForm('edit', eventId, matchOf(eventId, matchId)); }
 export function uvEnterResult(eventId, matchId) { openForm('result', eventId, matchOf(eventId, matchId)); }
 export function uvCorrectResult(eventId, matchId) { openForm('correct', eventId, matchOf(eventId, matchId)); }
+
+// A line-up handed over from elsewhere (a match idea), as ids only:
+// sides split by "|", each "teamId:w1,w2" or just "w1,w2". It opens the
+// booking form filled in - nothing is booked until the owner adds it.
+const parseLineup = text => String(text).split('|').map(part => {
+  const [team, list] = part.includes(':') ? part.split(':') : ['', part];
+  return { team, wrestlers: list.split(',').filter(Boolean) };
+});
+export function uvBookLineup(eventId, lineup) { openForm('book', eventId, null, parseLineup(lineup)); }
+export function uvPlanAndBook(showId, week, lineup) {
+  const r = commit(st => M.addEvent(st, { showId, week }), e => `${e.name} planned`);
+  if (r.ok) uvBookLineup(r.value.id, lineup);
+}
 
 // Registered teams a side could be wrestling as: every wrestler on it is on
 // the team now. Offered, never assumed - it decides whose record it counts on.

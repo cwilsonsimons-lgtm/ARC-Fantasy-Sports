@@ -17,7 +17,9 @@ import { chromium } from 'playwright';
 import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validate, wrestlerRecord, teamRecord } from '../js/universe/model.js';
+import * as M from '../js/universe/model.js';
+import * as SD from '../js/universe/standings.js';
+const { validate, wrestlerRecord, teamRecord } = M;
 
 const url = process.argv[2] || 'file://' + process.cwd() + '/dist/universe.html';
 const browser = await chromium.launch({
@@ -862,6 +864,138 @@ await check('a v2 save (last stage) imports: every result kept, every show on it
   return [u.version, validate(u), u.events.every(e => e.matches.every(m => m.status === 'played')), rhea, (await shows()).length > 0];
 }, [3, [], true, 'Singles 2–0–0', true]);
 await check('layout anchored after all that', async () => { await noSheet(); return anchored(); }, isAnchored);
+
+// ================================================================ rankings and booking balance
+// A known universe, imported the way the owner would. Season 1: E and C meet
+// twice. Season 2, weeks 1-4 on Raw: A 4 matches, B 4, C 3, D 4, F 1, E 0; J
+// arrives in week 3, K in week 4, L is injured; the women G 1, H 1, I 0. A
+// holds the World Heavyweight Championship.
+function rankingsWorld() {
+  const st = M.createUniverse();
+  const add = (n, show, gender = 'male') => M.addWrestler(st, { name: n, showId: show, gender });
+  const [A, B, C, D, E, F] = ['A', 'B', 'C', 'D', 'E', 'F'].map(n => add(n, 'raw'));
+  const J = add('J', 'smackdown'), K = add('K', 'nxt'), L = add('L', 'raw');
+  const [G, H] = ['G', 'H', 'I'].map(n => add(n, 'raw', 'female'));
+  M.updateWrestler(st, L.id, { status: 'injured' });
+  const whc = M.addTitle(st, { name: 'World Heavyweight Championship', showId: 'raw' });
+  const old = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, old.id, { sides: [{ wrestlers: [E.id] }, { wrestlers: [C.id] }], winner: 0 });
+  M.recordMatch(st, old.id, { sides: [{ wrestlers: [E.id] }, { wrestlers: [C.id] }], winner: 1 });
+  M.startNextSeason(st);
+  M.setChampion(st, whc.id, { type: 'wrestler', id: A.id });
+  const weeks = { 1: [[A, B], [C, D]], 2: [[A, B], [C, D], [G, H]], 3: [[A, D], [B, F]], 4: [[A, D], [B, C]] };
+  for (let wk = 1; wk <= 4; wk++) {
+    M.setWeek(st, wk);
+    if (wk === 3) M.assignWrestler(st, J.id, 'raw');
+    if (wk === 4) M.assignWrestler(st, K.id, 'raw');
+    const ev = M.addEvent(st, { showId: 'raw' });
+    weeks[wk].forEach(([x, y]) => M.recordMatch(st, ev.id, { sides: [{ wrestlers: [x.id] }, { wrestlers: [y.id] }], winner: 0 }));
+  }
+  return st;
+}
+const rkRows = sel => js(`[...document.querySelectorAll('${sel} .uv-st:not(.hd)')].map(r => [r.querySelector('.rk').textContent,
+  r.querySelector('.nm').textContent.trim(), r.querySelector('.rec b').textContent, r.querySelector('.pc').textContent])`);
+await check('Rankings: import a known universe', async () => {
+  await noSheet();
+  const file = join(dir, 'rankings.json');
+  await writeFile(file, JSON.stringify(rankingsWorld()));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await page.click('#uvTabs [data-uvtab=rankings]');
+  return [await js(`document.querySelector('.uv-tab.on').textContent`), await js(`document.querySelector('.uv-rk-head b').textContent`)];
+}, ['Rankings', 'Raw · Season 2']);
+await check('standings: each division ranked as the model ranks it', async () => {
+  const u = await saved();
+  const want = SD.rankRows(SD.standings(u, { showId: 'raw', period: SD.periodOf(u, u.seasons[1].id) }).ranked
+    .concat(SD.standings(u, { showId: 'raw', period: SD.periodOf(u, u.seasons[1].id) }).unranked).filter(r => r.gender === 'male'))
+    .ranked.map(r => [String(r.rank), r.name, `${r.rec.w}–${r.rec.l}–${r.rec.d}`, `${Math.round(r.score * 100)}%`]);
+  const got = await rkRows('#uvBody .uv-sts');
+  return [JSON.stringify(got.slice(0, want.length)) === JSON.stringify(want), got.slice(0, 5)];
+}, [true, [['1', 'A', '4–0–0', '83%'], ['2', 'C', '2–1–0', '60%'], ['3', 'B', '2–2–0', '50%'], ['4', 'F', '0–1–0', '33%'], ['5', 'D', '0–4–0', '17%']]]);
+await check('standings: the champion is marked; the unranked are listed', async () => [
+  await js(`!!document.querySelector('#uvBody .uv-st[data-id] .uv-belt')`),
+  await js(`document.querySelector('#uvBody .uv-unr').textContent.replace(/\\s+/g, ' ').trim()`)],
+  [true, 'Not ranked yet — no wins, losses or draws: E, J, K, L']);
+await check('season and all-time records are kept apart', async () => {
+  await body.locator('.uv-pill', { hasText: 'Season 1' }).click();
+  const s1 = await rkRows('#uvBody .uv-sts');
+  await body.locator('.uv-pill', { hasText: 'All time' }).click();
+  const all = await rkRows('#uvBody .uv-sts');
+  const row = (rows, n) => (rows.find(r => r[1] === n) || []).slice(2).join(' ');
+  return [row(s1, 'C'), row(s1, 'E'), row(all, 'C'), row(all, 'E')];
+}, ['1–1–0 50%', '1–1–0 50%', '3–2–0 57%', '1–1–0 50%']);
+await check('How rankings work explains the score', async () => {
+  await body.locator('.uv-rk-head .uv-link').click();
+  await settle();
+  const t = await js(`document.getElementById('uvSheetBody').textContent.replace(/\\s+/g, ' ')`);
+  await closeSheet();
+  return [/\(5 \+ 1\) ÷ \(5 \+ 2\) = 86%/.test(t), /never limit|never decide/.test(t)];
+}, [true, true]);
+await check('booking balance: who is short of matches, and why', async () => {
+  await body.locator('.uv-seg-page div', { hasText: 'Booking balance' }).click();
+  const cards = await js(`[...document.querySelectorAll('#uvBody .uv-short')].map(c => c.querySelector('.nm').textContent
+    + ' | ' + c.querySelector('.uv-chip').textContent + ' | ' + c.querySelector('.s').textContent.replace(/\\s+/g, ' ').trim())`);
+  return [await js(`document.querySelector('.uv-rk-head b').textContent`), await js(`${TEXT}(document.querySelector('.uv-bal-sum'))`), cards];
+}, ['Raw · weeks 1–4 of Season 2', 'Men’s division typically 0.8 a week Women’s division typically 0.3 a week',
+  ['E | Well below | 0 matches in 4 weeks on Raw — typical for the men’s division would be about 3. No matches in this period.',
+    'F | Below | 1 match in 4 weeks on Raw — typical for the men’s division would be about 3. Last match: Raw · Week 3.']]);
+await check('newcomers and the injured aren’t judged', async () => {
+  const sub = n => js(`[...document.querySelectorAll('#uvBody .uv-bl')].find(r => r.querySelector('.nm') && r.querySelector('.nm').textContent === '${n}').querySelector('.sub').textContent`);
+  return [await sub('K'), await sub('L'), await sub('J')];
+}, ['Here 1 week — not judged yet', 'Injured — not counted', '0 matches in 2 weeks']);
+await check('match ideas come with their reasons', () => js(`[...document.querySelectorAll('#uvBody .uv-short')][0].querySelectorAll('.uv-idea')`
+  + `.length && [...[...document.querySelectorAll('#uvBody .uv-short')][0].querySelectorAll('.uv-idea')].map(i => i.querySelector('.vs b').textContent + ': ' + i.querySelector('.why').textContent)`),
+  ['F: Both are short of matches · Fresh matchup: they’ve never met', 'C: Rivalry: met 2 times — E 1, C 1 · A shot at #2 C',
+    'A: Fresh matchup: they’ve never met · A shot at #1 A · A holds the World Heavyweight Championship']);
+await check('an idea opens the booking form filled in; nothing is booked until you add it', async () => {
+  const before = (await saved()).events.flatMap(e => e.matches).length;
+  await body.locator('.uv-short').first().locator('.uv-idea').first().locator('.uv-btn').click();
+  await settle();
+  const where = await js(`[...document.querySelectorAll('#uvSheetBody .uv-row .nm')].map(e => e.textContent)`);
+  await sheet.locator('.uv-row', { hasText: 'Raw · Week 4' }).click();
+  await settle();
+  const form = [await js(`document.getElementById('uvSheetTitle').textContent`),
+    await side(0).locator('select[data-w="0"]').evaluate(s => s.options[s.selectedIndex].text),
+    await side(1).locator('select[data-w="0"]').evaluate(s => s.options[s.selectedIndex].text)];
+  const untouched = (await saved()).events.flatMap(e => e.matches).length === before;
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  const u = await saved();
+  const m = u.events.find(e => e.name === 'Raw · Week 4').matches.find(x => x.status === 'scheduled');
+  const name = id => u.wrestlers.find(w => w.id === id).name;
+  return [where, form, untouched, m && m.sides.map(sd => name(sd.wrestlers[0])), m && m.outcome,
+    await js(`[...document.querySelectorAll('#uvBody .uv-short')][0].textContent.includes('Already booked: Raw · Week 4')`)];
+}, [['Raw · Week 4', 'Plan Raw · Week 5', 'Plan Raw · Week 6'], ['Book a match', 'E', 'F'], true, ['E', 'F'], null, true]);
+await check('How booking balance works spells out the rule', async () => {
+  await body.locator('.uv-rk-head .uv-link').click();
+  await settle();
+  const t = await js(`document.getElementById('uvSheetBody').textContent.replace(/\\s+/g, ' ')`);
+  await closeSheet();
+  return [/at most half the typical rate/.test(t), /at least 2 matches below/.test(t), /median/.test(t), /how big each show’s roster is/.test(t)];
+}, [true, true, true, true]);
+await check('the bottom of the standings can be booked for the world title, and win it', async () => {
+  await openShow('Raw · Week 4');
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'D' });           // 0-4, ranked last
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'A' });           // 4-0, the champion
+  const titles = await js(`[...document.querySelectorAll('#uvMTitle option')].map(o => o.textContent)`);
+  await page.selectOption('#uvMTitle', { label: 'World Heavyweight Championship' });
+  await btn(sheet, 'Add, and enter its result').click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'D won' });
+  await page.check('#uvMTitleChange');
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const u = await saved();
+  const cur = u.reigns.find(r => r.end === null);
+  return [titles, u.wrestlers.find(w => w.id === cur.holder.id).name, (await toast()).t];
+}, [['None', 'World Heavyweight Championship'], 'D', 'Result saved — D holds the World Heavyweight Championship']);
+await check('saved universe is sound after all that', sound, []);
 
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {

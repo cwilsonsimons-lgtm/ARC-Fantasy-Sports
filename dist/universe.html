@@ -489,6 +489,88 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-hm .d.nt{font-style:italic;color:var(--uv-ink-3);overflow-wrap:anywhere}
 .uv-sheet .uv-mc-sum{margin-top:10px}
 
+/* ---------- rankings: standings ---------- */
+/* six tabs: a little tighter on a narrow phone */
+@media (max-width:420px){ .uv-tab{font-size:12px;letter-spacing:.35px} .uv-tabs{padding:0 4px} }
+.uv-pills.tight2{padding-top:4px}
+.uv-seg.uv-seg-page.small{margin-top:10px}
+.uv-seg.uv-seg-page.small>div{padding:6px 4px;font-size:12px}
+.uv-rk-head{padding:14px 16px 2px}
+.uv-rk-head b{display:block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:17px;
+  letter-spacing:.4px;text-transform:uppercase}
+.uv-rk-head>span{display:block;margin-top:4px;font-size:12px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-rk-head .uv-link{color:var(--uv-gold);text-decoration-color:var(--uv-gold-line)}
+.uv-note.uv-inset{margin:12px 14px 0;font-size:12px}
+.uv-sts{margin:0 14px;border:1px solid var(--uv-line);border-radius:14px;overflow:hidden;background:var(--uv-card)}
+.uv-st{display:grid;grid-template-columns:26px minmax(0,1fr) auto 44px;align-items:center;gap:10px;padding:9px 12px;
+  border-top:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-st:first-child{border-top:none}
+.uv-st:active{background:var(--uv-card-2)}
+.uv-st.hd{cursor:default;padding:7px 12px;background:var(--uv-card-2);font-size:9.5px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-st.hd .uv-main{font-size:9.5px}
+.uv-st .rk{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:16px;text-align:center;
+  color:var(--uv-ink-2);font-variant-numeric:tabular-nums}
+.uv-st:not(.hd) .rk{color:var(--uv-ink)}
+.uv-st .uv-main .sub{gap:7px}
+.uv-st .rec{text-align:right;font-variant-numeric:tabular-nums}
+.uv-st .rec b{display:block;font-size:13.5px}
+.uv-st .rec span{display:block;margin-top:1px;font-size:10px;color:var(--uv-ink-3)}
+.uv-st .pc{text-align:right;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;
+  color:var(--uv-gold);font-variant-numeric:tabular-nums}
+.uv-st.hd .rec,.uv-st.hd .pc{font-family:inherit;font-size:9.5px;color:var(--uv-ink-3)}
+.uv-form{display:inline-flex;gap:2px}
+.uv-form i{width:17px;height:15px;border-radius:4px;display:grid;place-items:center;font-style:normal;font-size:8.5px;font-weight:800;
+  background:var(--uv-line-soft);color:var(--uv-ink-2)}
+.uv-form i.W{background:rgba(76,211,122,.16);color:var(--uv-green)}
+.uv-form i.L{background:rgba(255,90,78,.14);color:var(--uv-red)}
+.uv-form i.NC{background:none;box-shadow:inset 0 0 0 1px var(--uv-line);color:var(--uv-ink-3);font-size:7px}
+.uv-unr{padding:9px 12px;border-top:1px solid var(--uv-line-soft);font-size:11.5px;line-height:1.5;color:var(--uv-ink-3)}
+.uv-unr .uv-link{color:var(--uv-ink-2)}
+.uv-calc{margin:10px 0;border:1px solid var(--uv-line);border-radius:12px;overflow:hidden}
+.uv-calc>div{display:flex;gap:12px;align-items:baseline;padding:8px 11px;border-top:1px solid var(--uv-line-soft);font-size:12.5px}
+.uv-calc>div:first-child{border-top:none}
+.uv-calc span{flex:none;min-width:44px;font-weight:800;color:var(--uv-gold);font-variant-numeric:tabular-nums}
+.uv-calc b{font-weight:600;color:var(--uv-ink)}
+
+/* ---------- rankings: booking balance ---------- */
+.uv-bal-sum{margin:10px 14px 0;padding:4px 12px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-bal-sum .ln{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--uv-line-soft);font-size:12.5px}
+.uv-bal-sum .ln:first-child{border-top:none}
+.uv-bal-sum .ln span{color:var(--uv-ink-2)}
+.uv-bal-sum .ln b{font-weight:700;text-align:right}
+.uv-chip.warn{color:var(--uv-amber);border-color:rgba(240,165,58,.4);background:rgba(240,165,58,.08)}
+.uv-chip.bad{color:var(--uv-red);border-color:rgba(255,90,78,.4);background:rgba(255,90,78,.08)}
+.uv-short{margin:0 14px 9px;padding:12px;border-radius:14px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-short .t{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.uv-short .t .nm{font-size:15px;font-weight:700;text-decoration:none}
+.uv-short .s{margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-short .s.ok{color:#A6E9BD}
+.uv-ideas{margin-top:10px;border-top:1px solid var(--uv-line-soft)}
+.uv-ideas .h{padding:9px 0 2px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-idea{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--uv-line-soft)}
+.uv-ideas .h + .uv-idea{border-top:none}
+.uv-idea .b{flex:1;min-width:0}
+.uv-idea .vs{font-size:13.5px}
+.uv-idea .why{margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--uv-ink-3)}
+.uv-idea .why.warn{color:var(--uv-amber)}
+.uv-bls{margin:0 14px;border:1px solid var(--uv-line);border-radius:14px;overflow:hidden;background:var(--uv-card)}
+.uv-bl{display:grid;grid-template-columns:minmax(0,1fr) 34% 34px;align-items:center;gap:10px;padding:8px 12px;
+  border-top:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-bl:first-child{border-top:none}
+.uv-bl.hd{cursor:default;padding:7px 12px;background:var(--uv-card-2);font-size:9.5px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;color:var(--uv-ink-3);grid-template-columns:minmax(0,1fr) 34px}
+.uv-bl.hd .uv-main{font-size:9.5px}
+.uv-bl .uv-main .nm{font-size:13.5px}
+.uv-bl .uv-main .sub{font-size:11px}
+.uv-bl.dim .uv-main .nm{color:var(--uv-ink-3)}
+.uv-bl .bar{position:relative;height:8px;border-radius:4px;background:var(--uv-line-soft)}
+.uv-bl .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--uv-ink-3)}
+.uv-bl.flag .bar i{background:var(--uv-amber)}
+.uv-bl .bar u{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--uv-gold);border-radius:1px}
+.uv-bl .pw{text-align:right;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.uv-bl.flag .pw{color:var(--uv-amber)}
+
 </style>
 </head>
 <body>
@@ -678,10 +760,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const sa = seasonById(st, a.season), sb = seasonById(st, b.season);
     if (!sa || !sb || sa.number > sb.number) return 0;
     if (sa.id === sb.id) return Math.max(0, b.week - a.week);
-    const lastWeek = (s) => s.ended ? s.ended.week : s.week;
-    let n = lastWeek(sa) - a.week;
+    const lastWeek2 = (s) => s.ended ? s.ended.week : s.week;
+    let n = lastWeek2(sa) - a.week;
     st.seasons.filter((s) => s.number > sa.number && s.number < sb.number).forEach((s) => {
-      n += lastWeek(s);
+      n += lastWeek2(s);
     });
     return Math.max(0, n + b.week);
   }
@@ -2410,6 +2492,563 @@ body.uv-confirm-open .uv-confirm{display:flex}
     toastTimer = setTimeout(() => el.classList.remove("show"), bad ? 3600 : 1800);
   }
 
+  // js/universe/ranks.js
+  var ranks_exports = {};
+  __export(ranks_exports, {
+    uvBalPeriod: () => uvBalPeriod,
+    uvBalShow: () => uvBalShow,
+    uvHowBalance: () => uvHowBalance,
+    uvHowRanked: () => uvHowRanked,
+    uvIdeaBook: () => uvIdeaBook,
+    uvRankFollow: () => uvRankFollow,
+    uvRankKind: () => uvRankKind,
+    uvRankMode: () => uvRankMode,
+    uvRankPeriod: () => uvRankPeriod,
+    uvRankShow: () => uvRankShow,
+    uvRankingsView: () => uvRankingsView
+  });
+
+  // js/universe/standings.js
+  var sn = (st, id) => (seasonById(st, id) || { number: 0 }).number;
+  var upTo = (st, a, b) => sn(st, a.season) < sn(st, b.season) || sn(st, a.season) === sn(st, b.season) && a.week <= b.week;
+  function lastWeek(st, s) {
+    const played = st.events.filter((e) => e.at.season === s.id && e.matches.some((m) => m.status === "played")).map((e) => e.at.week);
+    return Math.max(s.status === "active" ? s.week : s.ended.week, ...played, 1);
+  }
+  function periodOf(st, spec) {
+    const cur = activeSeason(st);
+    if (spec === "all") return { kind: "all", seasonId: null, from: null, to: null, end: null, label: "All time" };
+    const recent = /^last(\d+)$/.exec(spec || "");
+    if (recent) {
+      const to = lastWeek(st, cur), n = Number(recent[1]);
+      return { kind: "recent", seasonId: cur.id, from: Math.max(1, to - n + 1), to, end: null, label: `Last ${n} weeks` };
+    }
+    const s = seasonById(st, spec) || cur;
+    const done = s.status !== "active";
+    return {
+      kind: "season",
+      seasonId: s.id,
+      from: 1,
+      to: lastWeek(st, s),
+      end: done ? { season: s.id, week: s.ended.week } : null,
+      label: s.name
+    };
+  }
+  var inPeriod = (p, ev) => p.kind === "all" || ev.at.season === p.seasonId && ev.at.week >= p.from && ev.at.week <= p.to;
+  var weeksOf = (p) => Array.from({ length: p.to - p.from + 1 }, (_, i) => p.from + i);
+  function showAt(st, w, date) {
+    if (!date) return w.showId;
+    const moves = movesOf(st, w.id);
+    let show = moves.length ? moves[0].from : w.showId;
+    for (const m of moves) {
+      if (!upTo(st, m.at, date)) break;
+      show = m.to;
+    }
+    return show;
+  }
+  function teamAt(st, t, date) {
+    if (!date) return { active: t.active, members: t.members };
+    let active = false;
+    t.log.forEach((e) => {
+      if (upTo(st, e.at, date)) active = e.type !== "disbanded";
+    });
+    const members = st.memberships.filter((m) => m.team === t.id && upTo(st, m.start, date) && !(m.end && upTo(st, m.end, date))).map((m) => m.wrestler);
+    return { active, members };
+  }
+  var teamOnShow = (st, t, showId, date) => {
+    const { members } = teamAt(st, t, date);
+    return members.some((id) => {
+      const w = wrestlerById(st, id);
+      return w && showAt(st, w, date) === showId;
+    });
+  };
+  function tally2(st, p) {
+    const singles = /* @__PURE__ */ new Map(), tag2 = /* @__PURE__ */ new Map(), teams = /* @__PURE__ */ new Map();
+    const add2 = (map, id, r, ev) => {
+      if (!map.has(id)) map.set(id, { rec: blankRecord(), results: [], last: null });
+      const e = map.get(id);
+      e.rec[{ W: "w", L: "l", D: "d", NC: "nc" }[r]]++;
+      e.results.push(r);
+      e.last = ev;
+    };
+    st.events.filter((ev) => inPeriod(p, ev)).sort((a, b) => compareStamps(st, a.at, b.at)).forEach((ev) => ev.matches.forEach((m) => {
+      if (m.status !== "played") return;
+      m.sides.forEach((sd, i) => {
+        const r = resultFor(m, i);
+        sd.wrestlers.forEach((id) => add2(sd.wrestlers.length === 1 ? singles : tag2, id, r, ev));
+        if (sd.team) add2(teams, sd.team, r, ev);
+      });
+    }));
+    return { singles, tag: tag2, teams };
+  }
+  function rating(rec) {
+    return (rec.w + rec.d / 2 + 1) / (rec.w + rec.l + rec.d + 2);
+  }
+  function streakOf(results) {
+    const counted = results.filter((r) => r !== "NC");
+    if (!counted.length) return null;
+    const last = counted[counted.length - 1];
+    let n = 0;
+    for (let i = counted.length - 1; i >= 0 && counted[i] === last; i--) n++;
+    return { type: last, n };
+  }
+  function heldAt(st, holder, date) {
+    return st.reigns.filter((r) => r.holder.type === holder.type && r.holder.id === holder.id && (date ? upTo(st, r.start, date) && !(r.end && upTo(st, r.end, date)) : !r.end)).map((r) => titleById(st, r.titleId)).filter(Boolean);
+  }
+  function rankRows(rows) {
+    const played = (r) => r.rec.w + r.rec.l + r.rec.d;
+    const ranked = rows.filter((r) => played(r) > 0).sort((a, b) => b.score - a.score || b.rec.w - a.rec.w || a.rec.l - b.rec.l || byName(a, b));
+    ranked.forEach((r, i) => {
+      const p = ranked[i - 1];
+      r.rank = p && p.score === r.score && p.rec.w === r.rec.w && p.rec.l === r.rec.l ? p.rank : i + 1;
+    });
+    return { ranked, unranked: rows.filter((r) => played(r) === 0).sort(byName) };
+  }
+  var row = (st, kind, x, entry, date) => {
+    const rec = entry ? entry.rec : blankRecord();
+    const results = entry ? entry.results : [];
+    return {
+      kind,
+      id: x.id,
+      name: x.name,
+      gender: x.gender || null,
+      status: x.status || null,
+      active: x.active,
+      rec,
+      score: rating(rec),
+      form: results.slice(-5).reverse(),
+      streak: streakOf(results),
+      last: entry ? entry.last : null,
+      titles: heldAt(st, { type: kind === "team" ? "team" : "wrestler", id: x.id }, date)
+    };
+  };
+  function standings(st, { showId = null, period, kind = "singles" }) {
+    const t = tally2(st, period);
+    const date = period.end;
+    if (kind === "teams") {
+      const rows2 = st.teams.filter((team) => {
+        const on = showId ? teamOnShow(st, team, showId, date) : true;
+        return on && (teamAt(st, team, date).active || t.teams.has(team.id));
+      }).map((team) => row(st, "team", team, t.teams.get(team.id), date));
+      return rankRows(rows2);
+    }
+    const map = kind === "tag" ? t.tag : t.singles;
+    const rows = st.wrestlers.filter((w) => showId ? showAt(st, w, date) === showId : true).map((w) => row(st, "wrestler", w, map.get(w.id), date));
+    return rankRows(rows);
+  }
+  var MIN_WEEKS = 2;
+  var MIN_GROUP = 3;
+  var MIN_SHORT = 2;
+  function pendingFor(st, kind, id) {
+    const now2 = nowDate2(st);
+    const out = [];
+    st.events.forEach((event) => event.matches.forEach((match) => {
+      if (match.status !== "scheduled" || event.at.season !== now2.season || event.at.week < now2.week) return;
+      if (match.sides.some((sd) => kind === "team" ? sd.team === id : sd.wrestlers.includes(id))) out.push({ event, match });
+    }));
+    return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
+  }
+  var median = (xs) => {
+    const s = [...xs].sort((a, b) => a - b), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  function judge(rows) {
+    const judged = rows.filter((r) => !r.injured && r.weeks >= MIN_WEEKS);
+    const enough = judged.length >= MIN_GROUP;
+    const typical = enough ? median(judged.map((r) => r.rate)) : null;
+    rows.forEach((r) => {
+      r.judged = enough && judged.includes(r);
+      r.expected = r.judged ? typical * r.weeks : null;
+      r.short = r.judged ? r.expected - r.matches : 0;
+      r.flagged = r.judged && typical > 0 && r.rate <= typical / 2 && r.short >= MIN_SHORT;
+      r.severity = r.flagged ? r.rate <= typical / 4 ? "well below" : "below" : null;
+    });
+    return { rows, judged: judged.length, typical, enough };
+  }
+  function balance(st, { showId, period }) {
+    const weeks = weeksOf(period);
+    const date = (w) => ({ season: period.seasonId, week: w });
+    const events = st.events.filter((ev) => inPeriod(period, ev));
+    const played = events.flatMap((ev) => ev.matches.filter((m) => m.status === "played").map((m) => ({ ev, m })));
+    const wrestlerRow2 = (w) => {
+      const on = new Set(weeks.filter((wk) => showAt(st, w, date(wk)) === showId));
+      const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd) => sd.wrestlers.includes(w.id)));
+      const singles = mine.filter(({ m }) => m.sides.find((sd) => sd.wrestlers.includes(w.id)).wrestlers.length === 1).length;
+      return {
+        kind: "wrestler",
+        id: w.id,
+        name: w.name,
+        gender: w.gender,
+        injured: w.status === "injured",
+        weeks: on.size,
+        matches: mine.length,
+        singles,
+        tag: mine.length - singles,
+        rate: on.size ? mine.length / on.size : 0,
+        last: lastOf(st, mine),
+        booked: pendingFor(st, "wrestler", w.id)
+      };
+    };
+    const teamRow2 = (t) => {
+      const on = new Set(weeks.filter((wk) => teamAt(st, t, date(wk)).active && teamOnShow(st, t, showId, date(wk))));
+      const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd) => sd.team === t.id));
+      return {
+        kind: "team",
+        id: t.id,
+        name: t.name,
+        injured: t.members.some((id) => (wrestlerById(st, id) || {}).status === "injured"),
+        weeks: on.size,
+        matches: mine.length,
+        rate: on.size ? mine.length / on.size : 0,
+        last: lastOf(st, mine),
+        booked: pendingFor(st, "team", t.id)
+      };
+    };
+    const roster = st.wrestlers.filter((w) => w.showId === showId);
+    const groups = [["male", "Men\u2019s division"], ["female", "Women\u2019s division"]].map(([g, label]) => {
+      const rows = roster.filter((w) => w.gender === g).map(wrestlerRow2).sort(byRate);
+      return { key: g, label, ...judge(rows) };
+    }).filter((g) => g.rows.length);
+    const teams = st.teams.filter((t) => t.active && t.members.some((id) => (wrestlerById(st, id) || {}).showId === showId)).map(teamRow2).sort(byRate);
+    if (teams.length) groups.push({ key: "teams", label: "Tag teams", ...judge(teams) });
+    return { period, groups };
+  }
+  var byRate = (a, b) => a.rate - b.rate || a.matches - b.matches || byName(a, b);
+  function lastOf(st, list) {
+    return list.reduce((best, x) => !best || compareStamps(st, x.ev.at, best.at) > 0 ? x.ev : best, null);
+  }
+  function headToHead(st, onSide, x, y) {
+    const out = { n: 0, a: 0, b: 0, other: 0, last: null };
+    st.events.forEach((ev) => ev.matches.forEach((m) => {
+      if (m.status !== "played") return;
+      const i = m.sides.findIndex((sd) => onSide(sd, x)), j = m.sides.findIndex((sd) => onSide(sd, y));
+      if (i < 0 || j < 0 || i === j) return;
+      out.n++;
+      if (m.outcome === "win" && m.winner === i) out.a++;
+      else if (m.outcome === "win" && m.winner === j) out.b++;
+      else out.other++;
+      if (!out.last || compareStamps(st, ev.at, out.last.at) > 0) out.last = ev;
+    }));
+    return out;
+  }
+  var nowDate2 = (st) => ({ season: activeSeason(st).id, week: activeSeason(st).week });
+  function matchIdeas(st, subject, { showId, balanceResult }) {
+    const flagged = new Set(balanceResult.groups.flatMap((g) => g.rows.filter((r) => r.flagged).map((r) => `${r.kind}:${r.id}`)));
+    const season = periodOf(st, activeSeason(st).id);
+    const team = subject.kind === "team";
+    const self = team ? teamById(st, subject.id) : wrestlerById(st, subject.id);
+    if (!self) return [];
+    let pool, onSide, ranks;
+    if (team) {
+      pool = st.teams.filter((t) => t.id !== self.id && t.active && !t.members.some((id) => self.members.includes(id)) && t.members.some((id) => (wrestlerById(st, id) || {}).showId === showId) && !t.members.some((id) => (wrestlerById(st, id) || {}).status === "injured"));
+      onSide = (sd, id) => sd.team === id;
+      ranks = standings(st, { showId, period: season, kind: "teams" });
+    } else {
+      const partners = new Set(st.teams.filter((t) => t.active && t.members.includes(self.id)).flatMap((t) => t.members));
+      pool = st.wrestlers.filter((w) => w.id !== self.id && w.showId === showId && w.status !== "injured" && w.gender === self.gender && !partners.has(w.id));
+      onSide = (sd, id) => sd.wrestlers.includes(id);
+      ranks = standings(st, { showId, period: season, kind: "singles" });
+    }
+    const div = rankRows([...ranks.ranked, ...ranks.unranked].filter((r) => team || r.gender === self.gender));
+    const standing = new Map(div.ranked.map((r) => [r.id, { score: r.score, rank: r.rank }]));
+    const me = standing.get(self.id);
+    const now2 = nowDate2(st);
+    const ideas = pool.map((o) => {
+      const reasons = [];
+      let score = 0, note = "";
+      if (flagged.has(`${subject.kind}:${o.id}`)) {
+        score += 3;
+        reasons.push("Both are short of matches");
+      }
+      const h = headToHead(st, onSide, self.id, o.id);
+      const ago = h.last ? weeksBetween(st, h.last.at, now2) : null;
+      if (h.n >= 2) {
+        score += 2;
+        reasons.push(`Rivalry: met ${h.n} times \u2014 ${self.name} ${h.a}, ${o.name} ${h.b}${h.other ? `, ${h.other} other` : ""}`);
+      } else if (h.n === 1 && ago <= 6) {
+        score += 1.5;
+        reasons.push(h.a ? `Rematch: ${self.name} won in week ${h.last.at.week}` : h.b ? `Rematch: ${o.name} won in week ${h.last.at.week}` : `Unfinished: no winner in week ${h.last.at.week}`);
+      } else if (!h.n) {
+        score += 0.75;
+        reasons.push("Fresh matchup: they\u2019ve never met");
+      }
+      const them = standing.get(o.id);
+      if (me && them) {
+        const close = 1 - Math.min(1, Math.abs(me.score - them.score) / 0.3);
+        score += 1.5 * close;
+        if (close >= 0.5) reasons.push(`Close in the standings: #${me.rank} and #${them.rank}`);
+        if (them.rank <= 3 && me.rank > them.rank + 2) {
+          score += 0.75;
+          reasons.push(`A shot at #${them.rank} ${o.name}`);
+        }
+      } else if (them && them.rank <= 3) {
+        score += 0.75;
+        reasons.push(`A shot at #${them.rank} ${o.name}`);
+      }
+      const held = heldAt(st, { type: team ? "team" : "wrestler", id: o.id }, null);
+      if (held.length) {
+        score += 0.5;
+        reasons.push(`${o.name} ${team ? "hold" : "holds"} the ${held[0].name}`);
+      }
+      const upcoming2 = pendingFor(st, subject.kind, o.id);
+      if (upcoming2.length) {
+        score -= 1;
+        note = `${o.name} ${team ? "are" : "is"} already booked: ${upcoming2[0].event.name}`;
+      }
+      if (h.last && ago <= 1) {
+        score -= 1;
+        note = note || (ago === 0 ? "They already met this week" : "They met last week");
+      }
+      const side = (x) => team ? { team: x.id, wrestlers: [...x.members] } : { team: "", wrestlers: [x.id] };
+      return { opponent: { kind: subject.kind, id: o.id, name: o.name }, lineup: [side(self), side(o)], score, reasons, note };
+    });
+    return ideas.sort((a, b) => b.score - a.score || byName(a.opponent, b.opponent)).slice(0, 3);
+  }
+
+  // js/universe/ranks.js
+  var mode = "standings";
+  var stShow = null;
+  var stPeriod = null;
+  var stKind = "singles";
+  var balShow = null;
+  var balPeriod = "last4";
+  function uvRankingsView() {
+    const st = uni();
+    const seg = (k, lb) => `<div class="${mode === k ? "on" : ""}" onclick="uvRankMode('${k}')">${lb}</div>`;
+    return `<div class="uv-seg uv-seg-page">${seg("standings", "Standings")}${seg("balance", "Booking balance")}</div>` + (mode === "standings" ? standingsView(st) : balanceView(st));
+  }
+  function uvRankMode(k) {
+    mode = k;
+    refresh();
+  }
+  var pill = (on, onclick, label, color) => `<div class="uv-pill${on ? " on" : ""}" onclick="${onclick}">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}</div>`;
+  var pct = (x) => `${Math.round(x * 100)}%`;
+  var perWeek = (x) => (Math.round(x * 10) / 10).toFixed(1);
+  var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  function standingsView(st) {
+    const showId = stShow && (stShow === "all" || showById(st, stShow)) ? stShow : st.shows[0].id;
+    const cur = activeSeason(st);
+    const periodKey = stPeriod === "all" || stPeriod && seasonById(st, stPeriod) ? stPeriod : cur.id;
+    const p = periodOf(st, periodKey);
+    const shows = `<div class="uv-pills">${st.shows.map((s) => pill(s.id === showId, `uvRankShow('${s.id}')`, s.name, showColor(st, s.id))).join("")}
+    ${pill(showId === "all", `uvRankShow('all')`, "All shows")}</div>`;
+    const periods = `<div class="uv-pills tight2">${[...st.seasons].reverse().map((s) => pill(s.id === periodKey, `uvRankPeriod('${s.id}')`, s.status === "active" ? `${s.name} (now)` : s.name)).join("")}
+    ${pill(periodKey === "all", `uvRankPeriod('all')`, "All time")}</div>`;
+    const kseg = (k, lb) => `<div class="${stKind === k ? "on" : ""}" onclick="uvRankKind('${k}')">${lb}</div>`;
+    const where = showId === "all" ? null : showId;
+    const title = `${showId === "all" ? "Every show" : showName(st, showId)} \xB7 ${p.label}`;
+    let body;
+    if (stKind === "singles") {
+      const all = standings(st, { showId: where, period: p, kind: "singles" });
+      body = divisions(st, [...all.ranked, ...all.unranked], "singles");
+    } else {
+      const teams = standings(st, { showId: where, period: p, kind: "teams" });
+      const tag2 = standings(st, { showId: where, period: p, kind: "tag" });
+      body = `${section("Tag teams", teams.ranked.length || null)}
+      ${table(st, teams, "No tag teams here in this period.", "Team")}
+      <div class="uv-note uv-inset">A team ranks only on matches it wrestled as the team.</div>
+      ${divisions(st, [...tag2.ranked, ...tag2.unranked], "tag")}`;
+    }
+    return `${shows}${periods}
+    <div class="uv-seg uv-seg-page small">${kseg("singles", "Singles")}${kseg("tag", "Tag")}</div>
+    <div class="uv-rk-head"><b>${esc(title)}</b><span>Ranked by winning percentage, with one win and one loss added to everyone.
+      <span class="uv-link" onclick="uvHowRanked()">How rankings work</span></span></div>
+    ${body}
+    <div class="uv-note uv-inset ok">Rankings only show who\u2019s succeeding. They never limit booking \u2014 anyone can be booked in any
+      title match, and anyone can win it.</div>`;
+  }
+  function divisions(st, rows, kind) {
+    const label = { singles: " singles", tag: " tag records" }[kind];
+    return [["male", "Men\u2019s"], ["female", "Women\u2019s"]].map(([g, name]) => {
+      const list = rows.filter((r) => r.gender === g);
+      if (!list.length) return "";
+      const ranked = rankRows(list);
+      return section(`${name}${label}`, ranked.ranked.length || null) + table(st, ranked, kind === "tag" ? "No tag results in this period." : "No singles results in this period.", "Wrestler");
+    }).join("");
+  }
+  var FORM = { W: "W", L: "L", D: "D", NC: "NC" };
+  var STREAK = { W: "Won", L: "Lost", D: "Drew" };
+  function table(st, { ranked, unranked }, none, who) {
+    const open = (r) => r.kind === "team" ? `uvOpenTeam('${r.id}')` : `uvOpenWrestler('${r.id}')`;
+    const rowHtml = (r) => `<div class="uv-st" data-id="${r.id}" onclick="${open(r)}">
+      <span class="rk">${r.rank}</span>
+      <div class="uv-main"><div class="nm">${esc(r.name)}${r.titles.length ? ` <span class="uv-belt in" title="${esc(r.titles.map((t) => t.name).join(", "))}">${ICON.belt}</span>` : ""}</div>
+        <div class="sub"><span class="uv-form">${r.form.map((x) => `<i class="${x}">${FORM[x]}</i>`).join("")}</span>
+          ${r.streak ? `<span>${STREAK[r.streak.type]} ${r.streak.n}</span>` : ""}</div></div>
+      <div class="rec"><b>${fmtRec(r.rec)}</b>${r.rec.nc ? `<span>${r.rec.nc} NC</span>` : ""}</div>
+      <div class="pc">${pct(r.score)}</div>
+    </div>`;
+    const head = `<div class="uv-st hd"><span class="rk">#</span><div class="uv-main">${who}</div><div class="rec">W\u2013L\u2013D</div><div class="pc">Score</div></div>`;
+    const rest = unranked.length ? `<div class="uv-unr">Not ranked yet \u2014 no wins, losses or draws: ${unranked.map((r) => `<span class="uv-link" onclick="${open(r)}">${esc(r.name)}</span>`).join(", ")}</div>` : "";
+    if (!ranked.length && !unranked.length) return `<div class="uv-none">${esc(none)}</div>`;
+    return `<div class="uv-sts">${ranked.length ? head + ranked.map(rowHtml).join("") : ""}${rest}</div>`;
+  }
+  function uvRankShow(k) {
+    stShow = k;
+    refresh();
+  }
+  function uvRankPeriod(k) {
+    stPeriod = k;
+    refresh();
+  }
+  function uvRankKind(k) {
+    stKind = k;
+    refresh();
+  }
+  function uvRankFollow() {
+    stPeriod = null;
+  }
+  function uvHowRanked() {
+    openSheet(() => ({
+      title: "How rankings work",
+      body: `
+      <p class="uv-p"><b>The score.</b> Each wrestler\u2019s or team\u2019s score is their winning percentage, counting a draw as half a
+        win, with one extra win and one extra loss added to everyone. No contests don\u2019t count.</p>
+      <div class="uv-calc">
+        <div><span>1\u20130</span><b>(1 + 1) \xF7 (1 + 2) = 67%</b></div>
+        <div><span>5\u20130</span><b>(5 + 1) \xF7 (5 + 2) = 86%</b></div>
+        <div><span>10\u20132</span><b>(10 + 1) \xF7 (12 + 2) = 79%</b></div>
+        <div><span>2\u20132\u20131</span><b>(2 + \xBD + 1) \xF7 (5 + 2) = 50%</b></div>
+      </div>
+      <p class="uv-p">The added win and loss keep a small sample honest: one lucky win doesn\u2019t put someone above a wrestler
+        who has won ten of twelve. Ties are broken by more wins, then fewer losses; wrestlers still level share a rank.</p>
+      <p class="uv-p"><b>What counts.</b> Only results you\u2019ve entered \u2014 booked matches don\u2019t count until they\u2019re played. A
+        match is <i>singles</i> for a wrestler when their side was just them (a triple threat or a battle royal too), and
+        <i>tag</i> when they had a partner. A tag team ranks only on matches it wrestled as the team. Men\u2019s and women\u2019s
+        divisions are ranked separately.</p>
+      <p class="uv-p"><b>Who\u2019s on which show.</b> For a finished season, the show they were on when it ended; for the current
+        season and all time, the show they\u2019re on now. Their record counts every match in the period wherever it happened,
+        premium live events and other shows included.</p>
+      <p class="uv-p"><b>Form</b> is the last five results in the period, newest first; the streak is the current run, not
+        counting no contests.</p>
+      <p class="uv-p"><b>What rankings don\u2019t do.</b> They never decide anything. Anyone can be booked against anyone, with
+        any title on the line, and the winner is whoever wins in WWE 2K25.</p>`
+    }));
+  }
+  var BAL_PERIODS = [["last4", "Last 4 weeks"], ["last8", "Last 8 weeks"], ["season", "This season"]];
+  function balanceView(st) {
+    const showId = balShow && showById(st, balShow) ? balShow : st.shows[0].id;
+    const cur = activeSeason(st);
+    const p = periodOf(st, balPeriod === "season" ? cur.id : balPeriod);
+    const res = balance(st, { showId, period: p });
+    const show = showName(st, showId);
+    const shows = `<div class="uv-pills">${st.shows.map((s) => pill(s.id === showId, `uvBalShow('${s.id}')`, s.name, showColor(st, s.id))).join("")}</div>`;
+    const periods = `<div class="uv-pills tight2">${BAL_PERIODS.map(([k, lb]) => pill(k === balPeriod, `uvBalPeriod('${k}')`, lb)).join("")}</div>`;
+    const summary2 = res.groups.map((g) => `<div class="ln"><span>${esc(g.label)}</span><b>${g.enough ? `typically ${perWeek(g.typical)} a week` : `too few to compare (${g.judged} judged)`}</b></div>`).join("");
+    const flagged = res.groups.flatMap((g) => g.rows.filter((r) => r.flagged).map((r) => ({ r, g })));
+    const head = `<div class="uv-rk-head"><b>${esc(show)} \xB7 weeks ${p.from}\u2013${p.to} of ${esc(seasonById(st, p.seasonId).name)}</b>
+    <span>Who has had far fewer matches than is typical for their division on ${esc(show)}.
+      <span class="uv-link" onclick="uvHowBalance()">How this is worked out</span></span></div>`;
+    if (!res.groups.length) {
+      return shows + periods + head + empty(ICON.user, `Nobody on ${show}`, "Put wrestlers on this show to see how their matches are spread.");
+    }
+    const cards = flagged.length ? flagged.map(({ r, g }) => shortCard(st, showId, r, g, res)).join("") : `<div class="uv-note uv-inset ok">Nobody on ${esc(show)} is well short of matches over ${esc(p.label.toLowerCase())}.</div>`;
+    return `${shows}${periods}${head}
+    <div class="uv-bal-sum">${summary2}</div>
+    ${section("Short of matches", flagged.length || null)}
+    ${cards}
+    ${res.groups.map((g) => groupTable(st, g)).join("")}`;
+  }
+  function shortCard(st, showId, r, g, res) {
+    const ideas = matchIdeas(st, { kind: r.kind, id: r.id }, { showId, balanceResult: res });
+    const open = r.kind === "team" ? `uvOpenTeam('${r.id}')` : `uvOpenWrestler('${r.id}')`;
+    const lineup = (i) => i.lineup.map((sd) => (sd.team ? `${sd.team}:` : "") + sd.wrestlers.join(",")).join("|");
+    const booked = r.booked[0];
+    return `<div class="uv-short" data-id="${r.id}">
+    <div class="t"><span class="uv-link nm" onclick="${open}">${esc(r.name)}</span>${chip(r.severity === "well below" ? "Well below" : "Below", r.severity === "well below" ? "bad" : "warn")}</div>
+    <div class="s">${plural(r.matches, "match", "matches")} in ${plural(r.weeks, "week")} on ${esc(showName(st, showId))} \u2014 typical for the
+      ${r.kind === "team" ? "show\u2019s teams" : esc(g.label.toLowerCase())} would be about ${Math.round(r.expected * 10) / 10}.
+      ${r.last ? `Last match: ${esc(r.last.name)}.` : "No matches in this period."}</div>
+    ${booked ? `<div class="s ok">Already booked: ${esc(booked.event.name)} (${esc(eventWhen(st, booked.event))}).</div>` : ""}
+    ${ideas.length ? `<div class="uv-ideas"><div class="h">Match ideas</div>${ideas.map((i) => `<div class="uv-idea">
+        <div class="b"><div class="vs">vs <b>${esc(i.opponent.name)}</b></div>
+          <div class="why">${i.reasons.map(esc).join(" \xB7 ")}</div>
+          ${i.note ? `<div class="why warn">${esc(i.note)}</div>` : ""}</div>
+        <div class="uv-btn sm2" onclick="uvIdeaBook('${showId}','${lineup(i)}')">Book\u2026</div></div>`).join("")}</div>` : `<div class="s">No available opponents on ${esc(showName(st, showId))} right now.</div>`}
+  </div>`;
+  }
+  function groupTable(st, g) {
+    const max = Math.max(...g.rows.map((r) => r.rate), g.typical || 0, 0.01);
+    const open = (r) => r.kind === "team" ? `uvOpenTeam('${r.id}')` : `uvOpenWrestler('${r.id}')`;
+    const note = (r) => r.injured ? "Injured \u2014 not counted" : r.weeks < MIN_WEEKS ? `Here ${plural(r.weeks, "week")} \u2014 not judged yet` : "";
+    const rowHtml = (r) => `<div class="uv-bl${r.flagged ? " flag" : ""}${r.judged ? "" : " dim"}" onclick="${open(r)}">
+      <div class="uv-main"><div class="nm">${esc(r.name)}</div><div class="sub">${note(r) || `${plural(r.matches, "match", "matches")} in ${plural(r.weeks, "week")}`}</div></div>
+      <div class="bar"><i style="width:${Math.round(r.rate / max * 100)}%"></i>${g.typical ? `<u style="left:${Math.round(g.typical / max * 100)}%"></u>` : ""}</div>
+      <div class="pw">${perWeek(r.rate)}</div>
+    </div>`;
+    return section(`Everyone \xB7 ${g.label}`, g.rows.length) + `<div class="uv-bls"><div class="uv-bl hd"><div class="uv-main">Matches a week${g.typical ? " \u2014 the line is typical" : ""}</div><div class="pw">/wk</div></div>` + [...g.rows].sort((a, b) => b.rate - a.rate || byName(a, b)).map(rowHtml).join("") + "</div>";
+  }
+  function uvBalShow(k) {
+    balShow = k;
+    refresh();
+  }
+  function uvBalPeriod(k) {
+    balPeriod = k;
+    refresh();
+  }
+  function uvIdeaBook(showId, lineup) {
+    openSheet(() => {
+      const st = uni();
+      const cur = activeSeason(st);
+      const names = lineup.split("|").map((part) => {
+        const [team, list] = part.includes(":") ? part.split(":") : ["", part];
+        const t = team && teamById(st, team);
+        return t ? t.name : list.split(",").map((id) => (wrestlerById(st, id) || { name: "?" }).name).join(" & ");
+      });
+      const upcoming2 = eventsIn(st, cur.id).filter((e) => e.at.week >= cur.week && (e.showId === showId || e.kind === "ple" && !e.showId));
+      const open = [];
+      for (let wk = cur.week; open.length < 2 && wk < cur.week + 8; wk++) {
+        if (!st.events.some((e) => e.at.season === cur.id && e.at.week === wk && e.kind === "weekly" && e.showId === showId)) open.push(wk);
+      }
+      const when = (e) => `${esc(eventWhen(st, e))} \xB7 ${plural(e.matches.length, "match", "matches")} on the card`;
+      return {
+        title: "Book this match",
+        body: `
+        <p class="uv-p"><b>${names.map(esc).join("</b> vs <b>")}</b> \u2014 pick where it goes. The booking form opens with them
+          filled in; change anything before you add it, or don\u2019t book it at all.</p>
+        ${upcoming2.map((e) => `<div class="uv-row" onclick="uvBookLineup('${e.id}','${lineup}')">
+          <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${e.kind === "ple" ? ICON.star : ICON.cal}</span>
+          <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${when(e)}</div></div>
+          <span class="uv-chev">${ICON.right}</span></div>`).join("")}
+        ${open.map((wk) => `<div class="uv-row" onclick="uvPlanAndBook('${showId}',${wk},'${lineup}')">
+          <span class="uv-av sq" style="--c:${showColor(st, showId)}">${ICON.plus}</span>
+          <div class="uv-main"><div class="nm">Plan ${esc(showName(st, showId))} \xB7 Week ${wk}</div>
+            <div class="sub">A new episode${wk === cur.week ? " this week" : ""}</div></div>
+          <span class="uv-chev">${ICON.right}</span></div>`).join("")}`
+      };
+    });
+  }
+  function uvHowBalance() {
+    openSheet(() => ({
+      title: "How booking balance works",
+      body: `
+      <p class="uv-p"><b>Who\u2019s compared with whom.</b> Everyone on the show now, men with men and women with women; tag teams
+        with the show\u2019s other tag teams. Nobody is compared with another show, and it doesn\u2019t matter how big each show\u2019s
+        roster is.</p>
+      <p class="uv-p"><b>Counting.</b> For the weeks you pick, each wrestler\u2019s <i>matches</i> are the results you\u2019ve entered
+        while they were on this show \u2014 singles and tag, including premium live events and other shows. A team counts only
+        matches as the team. Their <i>weeks</i> are the weeks of the period they were on the show, so someone who arrived
+        halfway is judged on their time here. Their <i>rate</i> is matches \xF7 weeks.</p>
+      <p class="uv-p"><b>What\u2019s typical.</b> The median rate of the group: half wrestle more often, half less. Injured
+        wrestlers, and anyone on the show for fewer than ${MIN_WEEKS} weeks of the period, are left out of it and aren\u2019t
+        judged. A group needs at least ${MIN_GROUP} to compare.</p>
+      <p class="uv-p"><b>Short of matches</b> means both:</p>
+      <div class="uv-calc">
+        <div><span>1</span><b>their rate is at most half the typical rate, and</b></div>
+        <div><span>2</span><b>they\u2019re at least ${MIN_SHORT} matches below typical rate \xD7 their weeks.</b></div>
+      </div>
+      <p class="uv-p">Rule 2 means a quiet show or division flags nobody, and small gaps are left alone \u2014 nobody is expected to
+        wrestle as often as everyone else. <i>Well below</i> is a rate at most a quarter of typical.</p>
+      <p class="uv-p"><b>Match ideas</b> are opponents on the same show and division, not injured and not their own tag
+        partners (a team: another team with nobody in common). Each is scored on: both being short of matches (+3); a
+        rivalry \u2014 met two or more times (+2) \u2014 or a recent first meeting (+1.5); being close in this season\u2019s standings
+        (up to +1.5); a shot at someone in the top three (+0.75); never having met (+0.75); holding a title (+0.5). An
+        opponent already booked this week or later, or met last week, scores 1 less. The top three are shown with why.</p>
+      <p class="uv-p">They\u2019re only ideas. Nothing is booked until you add it to a card, and you can book anyone else instead \u2014
+        the result is whatever the game produces.</p>`
+    }));
+  }
+
   // js/universe/views.js
   var calWeek = null;
   var CARD_TEXT = {
@@ -2526,7 +3165,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvRosterView() {
     const st = uni();
     const counts = rosterCounts(st);
-    const pill = (k, label, n, color) => `<div class="uv-pill${rosterShow === k ? " on" : ""}" onclick="uvRosterFilter('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}<span class="n">${n}</span></div>`;
+    const pill2 = (k, label, n, color) => `<div class="uv-pill${rosterShow === k ? " on" : ""}" onclick="uvRosterFilter('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}<span class="n">${n}</span></div>`;
     return `
     <div class="uv-bar">
       <div class="uv-search">${ICON.search}<input id="uvQ" type="search" placeholder="Search wrestlers"
@@ -2535,9 +3174,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${picking ? "" : `<div class="uv-btn pri" onclick="uvAddWrestler()">${ICON.plus}Add</div>`}
     </div>
     <div class="uv-pills">
-      ${pill("all", "All", st.wrestlers.length)}
-      ${st.shows.map((s) => pill(s.id, s.name, counts[s.id], s.color)).join("")}
-      ${pill("", "Unassigned", counts[""])}
+      ${pill2("all", "All", st.wrestlers.length)}
+      ${st.shows.map((s) => pill2(s.id, s.name, counts[s.id], s.color)).join("")}
+      ${pill2("", "Unassigned", counts[""])}
     </div>
     <div id="uvRosterList">${rosterList()}</div>
     ${picking ? `<div class="uv-selbar"><span>${picking.size ? `${picking.size} selected` : "Tap wrestlers to select them"}</span>
@@ -2678,8 +3317,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     ${histMode === "results" ? resultsView(st, seasonId) : everythingView(st, seasonId)}`;
   }
   function resultsView(st, seasonId) {
-    const pill = (k, label, color) => `<div class="uv-pill${histShow === k ? " on" : ""}" onclick="uvHistShow('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}</div>`;
-    const shows = `<div class="uv-pills">${pill("", "All shows")}${st.shows.map((s) => pill(s.id, s.name, showColor(st, s.id))).join("")}${pill("ple", "PLEs")}</div>`;
+    const pill2 = (k, label, color) => `<div class="uv-pill${histShow === k ? " on" : ""}" onclick="uvHistShow('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}</div>`;
+    const shows = `<div class="uv-pills">${pill2("", "All shows")}${st.shows.map((s) => pill2(s.id, s.name, showColor(st, s.id))).join("")}${pill2("ple", "PLEs")}</div>`;
     const rows = resultsHistory(st, { seasonId, showId: histShow || void 0 });
     const groups = [];
     rows.forEach((x) => {
@@ -2694,10 +3333,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         histShow ? "Nothing entered for this show in this season." : "Plan a show on the Calendar, book its matches, then enter each result after the CPU plays it in WWE 2K25."
       );
     }
-    let lastWeek = null;
+    let lastWeek2 = null;
     const html = groups.slice(0, eventsShown).map((g) => {
-      const head = g.event.at.week !== lastWeek ? `<div class="uv-wk">Week ${g.event.at.week}</div>` : "";
-      lastWeek = g.event.at.week;
+      const head = g.event.at.week !== lastWeek2 ? `<div class="uv-wk">Week ${g.event.at.week}</div>` : "";
+      lastWeek2 = g.event.at.week;
       return head + eventBlock(st, g);
     }).join("");
     const n = rows.length;
@@ -2794,6 +3433,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvFollowActiveSeason() {
     viewSeason = null;
     calWeek = null;
+    uvRankFollow();
   }
 
   // js/universe/sheets.js
@@ -2831,6 +3471,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   // js/universe/card.js
   var card_exports = {};
   __export(card_exports, {
+    uvBookLineup: () => uvBookLineup,
     uvBookMatch: () => uvBookMatch,
     uvClearSeasonStart: () => uvClearSeasonStart,
     uvCorrectResult: () => uvCorrectResult,
@@ -2856,6 +3497,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvMoveMatch: () => uvMoveMatch,
     uvNewPle: () => uvNewPle,
     uvOpenEvent: () => uvOpenEvent,
+    uvPlanAndBook: () => uvPlanAndBook,
     uvPlanShow: () => uvPlanShow,
     uvPleSet: () => uvPleSet,
     uvSaveSeasonStart: () => uvSaveSeasonStart,
@@ -3041,14 +3683,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     "Special Guest Referee"
   ];
   var fromMatch = (m) => m.sides.map((sd) => ({ team: sd.team || "", wrestlers: [...sd.wrestlers] }));
-  function openForm(mode, eventId, m) {
+  function openForm(mode2, eventId, m, lineup = null) {
     const st = uni();
     const linked = m && st.reigns.some((r) => r.matchId === m.id);
     md = {
-      mode,
+      mode: mode2,
       eventId,
       matchId: m ? m.id : null,
-      sides: m ? fromMatch(m) : [blankSide(), blankSide()],
+      sides: m ? fromMatch(m) : lineup || [blankSide(), blankSide()],
       titleId: m && m.titleId || "",
       stip: m && m.stip || "",
       notes: m && m.notes || "",
@@ -3060,7 +3702,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       titleChange: !!linked,
       // entering a result starts from the booking as it stands; the line-up
       // opens only if the owner asks (a run-in, a late change)
-      lineup: mode === "book" || mode === "edit"
+      lineup: mode2 === "book" || mode2 === "edit"
     };
     openSheet(formSheet);
   }
@@ -3076,6 +3718,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvCorrectResult(eventId, matchId) {
     openForm("correct", eventId, matchOf(eventId, matchId));
+  }
+  var parseLineup = (text) => String(text).split("|").map((part) => {
+    const [team, list] = part.includes(":") ? part.split(":") : ["", part];
+    return { team, wrestlers: list.split(",").filter(Boolean) };
+  });
+  function uvBookLineup(eventId, lineup) {
+    openForm("book", eventId, null, parseLineup(lineup));
+  }
+  function uvPlanAndBook(showId, week, lineup) {
+    const r = commit((st) => addEvent(st, { showId, week }), (e) => `${e.name} planned`);
+    if (r.ok) uvBookLineup(r.value.id, lineup);
   }
   function teamGuesses(st, side) {
     const ids = side.wrestlers.filter(Boolean);
@@ -3357,10 +4010,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     expanded.add(key);
     refresh();
   }
-  function capped(key, items, n, row) {
+  function capped(key, items, n, row2) {
     const all = expanded.has(key);
     const shown = all ? items : items.slice(0, n);
-    return shown.map(row).join("") + (!all && items.length > n ? `<div class="uv-more" onclick="uvShowAll('${key}')">Show all ${items.length}</div>` : "");
+    return shown.map(row2).join("") + (!all && items.length > n ? `<div class="uv-more" onclick="uvShowAll('${key}')">Show all ${items.length}</div>` : "");
   }
   var recTile = (label, rec, note) => `<div class="uv-rec"><div class="k">${esc(label)}</div><div class="v">${fmtRec(rec)}</div><div class="s">${esc(note || recNote(rec))}</div></div>`;
   var numTile = (label, n, note) => `<div class="uv-rec"><div class="k">${esc(label)}</div><div class="v">${n}</div><div class="s">${esc(note)}</div></div>`;
@@ -3711,11 +4364,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvAddSet(k, v) {
     if (add) add[k] = v;
   }
-  function uvAddMode(mode) {
-    add.mode = mode;
+  function uvAddMode(mode2) {
+    add.mode = mode2;
     add.result = "";
     paintSheet();
-    focusField(mode === "one" ? "uvAddName" : "uvAddList");
+    focusField(mode2 === "one" ? "uvAddName" : "uvAddList");
   }
   function uvAddSave() {
     const d = add;
@@ -3897,8 +4550,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     let latest = null;
     let timer = null, writing = null;
     let status = { mode: "connecting", message: "" };
-    const setStatus = (mode, message = "") => {
-      status = { mode, message };
+    const setStatus = (mode2, message = "") => {
+      status = { mode: mode2, message };
       onStatus(status);
     };
     const meta = () => {
@@ -4052,8 +4705,22 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/index.js
-  var TABS = [["calendar", "Calendar"], ["roster", "Roster"], ["teams", "Teams"], ["titles", "Titles"], ["history", "History"]];
-  var VIEWS = { calendar: uvCalendarView, roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
+  var TABS = [
+    ["calendar", "Calendar"],
+    ["roster", "Roster"],
+    ["teams", "Teams"],
+    ["titles", "Titles"],
+    ["rankings", "Rankings"],
+    ["history", "History"]
+  ];
+  var VIEWS = {
+    calendar: uvCalendarView,
+    roster: uvRosterView,
+    teams: uvTeamsView,
+    titles: uvTitlesView,
+    rankings: uvRankingsView,
+    history: uvHistoryView
+  };
   var tab = "calendar";
   var cloud = null;
   function initUniverse() {
@@ -4650,7 +5317,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports);
   initUniverse();
 })();
 

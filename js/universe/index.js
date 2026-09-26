@@ -9,10 +9,13 @@ import {
 import { createCloud } from './cloud.js';
 import { uvCalFollow, uvCalendarView, uvFollowActiveSeason, uvHistoryView, uvRosterView, uvTeamsView, uvTitlesView } from './views.js';
 import { uvPageView } from './pages.js';
+import { uvRankingsView } from './ranks.js';
 import { ICON, esc } from './ui.js';
 
-const TABS = [['calendar', 'Calendar'], ['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['history', 'History']];
-const VIEWS = { calendar: uvCalendarView, roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
+const TABS = [['calendar', 'Calendar'], ['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['rankings', 'Rankings'],
+  ['history', 'History']];
+const VIEWS = { calendar: uvCalendarView, roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, rankings: uvRankingsView,
+  history: uvHistoryView };
 let tab = 'calendar';
 let cloud = null;            // the claude.ai copy, when published as an artifact
 
