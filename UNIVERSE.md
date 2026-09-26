@@ -1,9 +1,9 @@
 # Universe
 
-A companion app for WWE 2K25's Universe Mode. The matches are played or watched
-in the game, with the CPU deciding who wins; the owner records the results here
-afterwards. It never simulates a match, picks a winner, books a card or talks to
-the game. And the owner is exactly that — someone who sees every wrestler,
+A companion app for WWE 2K25's Universe Mode. The owner plans each show and
+books its card here, watches the CPU play the matches in the game, then enters
+what happened. The game is the only source of truth for results: this app never
+simulates a match, picks a winner or talks to the game. And the owner is exactly that — someone who sees every wrestler,
 relationship and result — not a GM character inside the universe, so there is
 no in-world viewpoint or hidden information anywhere in the model.
 
@@ -34,14 +34,16 @@ js/universe/
   persist.js           saving, loading, export and import
   app.js               commit (change + save + repaint), sheets, the page stack
   index.js             start-up, tabs, the save-file sheet
-  views.js             the four tabs: Roster, Teams, Titles, History
+  views.js             the five tabs: Calendar, Roster, Teams, Titles, History
+  card.js              a show's page and match card; the booking / result form
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
-  sheets.js            creating things; events and results
+  sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       49 model tests      npm run test:universe
-tools/universe-check.mjs      64 browser checks   npm run check:universe
-tools/fixtures/universe-v1.json   a real version 1 save, for the migration tests
+tools/universe-test.mjs       60 model tests      npm run test:universe
+tools/universe-check.mjs      83 browser checks   npm run check:universe
+tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
+tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
 
 ## The data
@@ -58,38 +60,79 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | memberships | team line-up history: one row per spell a wrestler spent on a team, dated when they joined and left |
 | titles    | singles or tag, a division, one show or none, can be retired |
 | reigns    | title history. The reign with no end is the champion |
-| seasons   | always exactly one active, each with its own week counter |
-| events    | weekly episodes (one show) and premium live events (one show, or all), each holding its results |
+| shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite Wednesday, SmackDown Friday |
+| seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
+| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card |
 
-A result lists its sides — each a set of wrestlers, plus the tag team they
-wrestled as — and a win (with the winning side), draw or no contest, with an
-optional finish, stipulation and title on the line.
+A **match** is one record from the moment it's booked: its sides — each a set
+of wrestlers, plus the tag team they wrestled as — the title on the line, a
+stipulation and notes. While it's `scheduled` it has no result at all. Entering
+the result makes it `played`: a win (with the winning side), a draw or a no
+contest, and optionally the finish and who scored or took the fall. Only
+played matches count — toward records, defences and history. Whether it's
+singles, a tag match, a triple threat, a handicap match and so on is worked out
+from its line-up, never stored, so it can't disagree with who was in it.
 
 Anything that happens at a point in time carries a stamp,
-`{ season, week, seq }`: the universe's own calendar, plus a counter that only
-goes up to order things inside a week. The History tab's timeline is *built*
-from those stamps on the records rather than kept as a second log, so it can't
-drift out of step with them.
+`{ season, week, day?, seq }`: the universe's own calendar, plus a counter that
+only goes up. Things that happen on a show carry its night, so Monday's Raw
+comes before Friday's SmackDown however they were entered; changes made
+between shows (a move, a line-up change) belong to the week as a whole. The
+History timeline is *built* from those stamps on the records rather than kept
+as a second log, so it can't drift out of step with them.
 
 What the model enforces, so the data stays trustworthy as it grows:
 
 - **A failed change changes nothing.** Every function checks all its inputs
   before touching the universe, and the UI additionally snapshots and restores
   around each change. The reason comes back as a sentence for the owner.
-- **Nothing is inferred.** A title changes hands only when the result says so
-  ("the title changed hands"), because only the owner knows whether a DQ
-  finish or a cash-in moved the belt.
+- **Nothing is inferred.** A match has a result only when the owner enters one,
+  and a win needs its winner named — there is no default, and the form starts
+  blank. A title changes hands only when the result says so ("the title
+  changed hands"), because only the owner knows whether a DQ finish or a
+  cash-in moved the belt.
 - **History can't be pulled out from under itself.** A wrestler, team or title
   with any history can't be deleted — leave them unassigned, disband or retire
   them instead. A result or event where a title changed hands can be deleted
   only while nothing later on that title depends on it; the belt then goes
   back to whoever held it before.
-- **Title changes land in calendar order.** Backfilling a change into a week
+- **Title changes land in calendar order.** Backfilling a change onto a night
   before the current reign began would crown the wrong champion, so it's
-  refused. Match lists and the timeline sort by season and week, not by the
-  order things were typed in.
+  refused. Match lists and the timeline sort by season, week and night, not by
+  the order things were typed in.
 - **Names are unique** (ignoring case and spacing) within wrestlers, teams and
   titles, which is what makes pasting a whole roster safe to repeat.
+
+## The calendar and the card
+
+The **Calendar** tab is where a week is run:
+
+1. The week's four shows sit on their nights. **Plan** puts an episode on the
+   calendar and opens its page; **Add a premium live event** adds one with its
+   own name, for one show or all of them, on any night (Saturday by default).
+2. On the show's page, **Book a match**: pick a shape (singles, tag team,
+   triple threat, fatal 4-way, handicap, 3-on-3, triple threat tag, battle
+   royal) or build any line-up side by side, then the title on the line and a
+   stipulation. Booked matches can be edited, reordered or taken off the card,
+   and they count for nothing yet.
+3. Watch the CPU play it in WWE 2K25, then **Enter result**: who won, a draw or
+   a no contest; the finish and who took the fall if you want them; whether
+   the title changed hands; and notes on what happened. The form shows the
+   match as booked and leaves the result blank until you pick it — saving
+   without one is refused. (A run-in or a late change? Change the line-up from
+   the same form.)
+4. **Next week** moves the clock on. Browsing other weeks with the arrows, or
+   from the season grid, never moves it.
+
+Each show's row, its page and the season grid say where its card stands:
+planned, booked, some results in, or complete. **Set dates** pins a season to
+the real calendar — pick any day in its week 1 — so every show shows its date;
+without one, shows are labelled by week and night.
+
+The **History** tab browses the past, newest first: **Results** lists every
+result show by show, filterable by season and by show (or just the PLEs), each
+with its finish, title and notes; **Everything** puts results, title changes,
+moves and team changes on one timeline. Tap any of it to open the show.
 
 ## Profiles and records
 
@@ -98,13 +141,14 @@ path (roster → wrestler → team → title) and returns to where the list was
 scrolled.
 
 - **A wrestler** shows their current show, singles record, tag record, title
-  reigns, every team they've been on with who they teamed with and their
-  record together, makeshift partners, a dated career history and every result.
-- **A team** shows its own record, current and former members with dates,
-  title reigns, its history (formed, members joining and leaving, disbanding,
-  reuniting, titles) and its results.
+  reigns, what they're booked in next, every team they've been on with who
+  they teamed with and their record together, makeshift partners, a dated
+  career history and every result.
+- **A team** shows its own record, what it's booked in, current and former
+  members with dates, title reigns, its history (formed, members joining and
+  leaving, disbanding, reuniting, titles) and its results.
 - **A title** shows the champion with reign length and successful defences,
-  and the full history of reigns.
+  upcoming title matches, and the full history of reigns.
 
 How records are counted, which is the part that matters:
 
@@ -112,7 +156,7 @@ How records are counted, which is the part that matters:
   triple threat is singles, and so is the lone wrestler in a handicap match.
   It's **tag** when they had a partner.
 - **A team's record is its own.** It counts only matches recorded as that team
-  (the result form's "as a tag team" pick). Its members' singles matches, and
+  (the match form's "as a tag team" pick). Its members' singles matches, and
   tag matches they had with other partners, never add to it. When two
   members of a registered team are put on one side without the team, the form
   offers "Wrestling as …?" rather than assuming.
@@ -141,11 +185,13 @@ refuses rather than disturb anything else:
 
 | Mistake | Fix |
 |---|---|
-| Wrong winner, people, finish or title on a result | Tap it on its event and correct it in place. It keeps its place on the card. If it changed a title, a different winner becomes that reign's champion — the reigns after it are untouched. Dropping the title change hands the belt back, but only while nothing later on that title depends on it. |
+| Wrong winner, people, finish or title on a result | **Correct** it on the show's card, in place: it keeps its place on the card, and every record it touches follows. If it changed a title, a different winner becomes that reign's champion — the reigns after it are untouched. Dropping the title change hands the belt back, but only while nothing later on that title depends on it. |
+| A result entered for a match that hasn't really happened | **Clear the result** from the same form: the match goes back to booked, off everyone's record, and a title it changed goes back (on the same terms). |
+| A match that shouldn't be on the card | **Take it off the card**. If it was played, its result goes with it; a title it changed goes back, on the same terms. |
 | A move made by mistake | **Undo last move** on the profile: the wrestler goes back, earlier moves stay. |
 | A line-up change made by mistake | **Undo last change** on the team page (joining, leaving, disbanding or reuniting). A join someone has since wrestled under can't just vanish. |
 | An older reign recorded wrong | Tap it in the title history: correct who held it or the week it began. Its neighbours are checked, not changed. A reign won in a result is corrected through that result. |
-| An event in the wrong week | Change its week; any title change there moves with it, as long as the title's history still reads in order. |
+| A show on the wrong week or night | Change it in the show's **Details**; any title change there moves with it, as long as the title's history still reads in order. An episode still called by its default name ("Raw · Week 3") is renamed to match. |
 | The same wrestler entered twice | **Merge a duplicate** on the profile: results, team spells and reigns move over. Refused if the two were ever in the same match or on the same team. |
 | Something added by mistake with no history | Delete it. |
 
@@ -169,15 +215,20 @@ written, the app stays read-only rather than lose it.
 Saves carry a `version`, and `migrate()` walks older saves forward one step at
 a time. **Version 2** added team line-up history: a version 1 save only knew
 each team's current members, so on load everyone becomes a founding member and
-nobody has left. `tools/fixtures/universe-v1.json` is a real version 1 save,
-written by the version 1 code, and the tests load it.
+nobody has left. **Version 3** added the calendar and bookings: every result
+in an older save becomes a played match, and every show lands on its show's
+night (a PLE on Saturday). `tools/fixtures/` holds a real save from each older
+version, written by that version's code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Rankings, match booking, promotion/relegation (the annual transfer system),
-personality events and story generation are all later work. The foundation is shaped for them — results already record sides,
-winners, finishes and titles; roster moves already record who changed show and
-when; seasons have hard edges — but none of that logic exists yet. There are
+Rankings, match suggestions, promotion/relegation (the annual transfer
+system), personality events and story generation are all later work. The
+foundation is shaped for them — cards already hold booked matches that a
+suggestion could fill in, results record sides, winners, finishes and titles,
+roster moves record who changed show and when, and seasons have hard edges —
+but none of that logic exists yet. Whatever suggests a match later, the result
+still comes from the game. There are
 also no personality or relationship fields: those belong to the features that
 will use them, and inventing their shape now would only mean migrating it
 later.

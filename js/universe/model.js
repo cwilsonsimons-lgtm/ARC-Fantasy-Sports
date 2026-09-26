@@ -25,21 +25,24 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
 }
 function fail(message) { throw new UniverseError(message); }
 
-// The four shows. Roster sizes are whatever the owner makes them - nothing
-// here caps a show or expects them to match.
+// The four shows, each with its regular night (0 = Monday ... 6 = Sunday).
+// Roster sizes are whatever the owner makes them - nothing here caps a show
+// or expects them to match.
 export const SHOW_SEED = [
-  { id: 'raw',       name: 'Raw',       promotion: 'WWE', color: '#E23B2E' },
-  { id: 'smackdown', name: 'SmackDown', promotion: 'WWE', color: '#2F6BFF' },
-  { id: 'dynamite',  name: 'Dynamite',  promotion: 'AEW', color: '#D8A93B' },
-  { id: 'nxt',       name: 'NXT',       promotion: 'WWE', color: '#C4CAD3' },
+  { id: 'raw',       name: 'Raw',       promotion: 'WWE', color: '#E23B2E', day: 0 },
+  { id: 'smackdown', name: 'SmackDown', promotion: 'WWE', color: '#2F6BFF', day: 4 },
+  { id: 'dynamite',  name: 'Dynamite',  promotion: 'AEW', color: '#D8A93B', day: 2 },
+  { id: 'nxt',       name: 'NXT',       promotion: 'WWE', color: '#C4CAD3', day: 1 },
 ];
+export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+export const PLE_DAY = 5;                                     // premium live events default to Saturday
 
 export const GENDERS     = ['male', 'female'];
 export const ORIGINS     = ['WWE', 'AEW', 'NXT', 'Other'];   // where a wrestler comes from, not where they are
@@ -49,7 +52,8 @@ export const TITLE_KINDS = ['singles', 'tag'];
 export const DIVISIONS   = ['men', 'women', 'open'];
 export const EVENT_KINDS = ['weekly', 'ple'];                 // a weekly episode, or a premium live event
 export const OUTCOMES    = ['win', 'draw', 'nc'];             // nc = no contest
-export const FINISHES    = ['pinfall', 'submission', 'dq', 'countout', 'ko', 'other'];
+export const FINISHES    = ['pinfall', 'submission', 'ko', 'dq', 'countout', 'elimination', 'escape', 'retrieval', 'other'];
+export const MATCH_STATUSES = ['scheduled', 'played'];        // on the card, or result entered
 
 const MAX_NAME = 60;
 const MAX_TEXT = 2000;
@@ -100,19 +104,33 @@ function newId(st, prefix) { return prefix + st.nextId++; }
 export function activeSeason(st) {
   return st.seasons.find(s => s.status === 'active') || null;
 }
-function stampAt(st, seasonId, week) { return { season: seasonId, week, seq: ++st.seq }; }
+// A stamp is { season, week, seq } plus `day` (0-6) when it happened on a
+// particular night - anything dated by a show. Changes made outside a show
+// (a move, a line-up change, a title awarded) belong to the week as a whole.
+function stampAt(st, seasonId, week, day) {
+  const s = { season: seasonId, week, seq: ++st.seq };
+  if (day != null) s.day = day;
+  return s;
+}
 const seasonNo = (st, id) => (seasonById(st, id) || { number: 0 }).number;
+// Two dates by the universe's calendar: season, then week, then - when both
+// know it - the night. Negative, zero or positive.
+function cmpDate(st, a, b) {
+  return seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week
+    || (a.day != null && b.day != null ? a.day - b.day : 0);
+}
 /**
- * Order two stamps by the universe's calendar - season, then week - and only
- * then by the order they were entered. Entry order alone is wrong as soon as
- * a show is backfilled into an earlier week.
+ * Order two stamps by the universe's calendar - season, week, night - and only
+ * then by the order they were entered. Entry order alone is wrong as soon as a
+ * show is backfilled: Monday's Raw entered after Friday's SmackDown still
+ * happened first.
  */
 export function compareStamps(st, a, b) {
-  return seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week || a.seq - b.seq;
+  return cmpDate(st, a, b) || a.seq - b.seq;
 }
-// true when `a` falls in an earlier week than `b` (the same week is not earlier)
-const earlierWeek = (st, a, b) => (seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week) < 0;
-const weekLabel = (st, s) => `season ${seasonNo(st, s.season)}, week ${s.week}`;
+// true when `a` falls on an earlier date than `b` (the same date is not earlier)
+const earlierDate = (st, a, b) => cmpDate(st, a, b) < 0;
+const weekLabel = (st, s) => `season ${seasonNo(st, s.season)}, week ${s.week}${s.day != null ? ` (${DAYS[s.day]})` : ''}`;
 function now(st) {
   const s = activeSeason(st);
   return stampAt(st, s.id, s.week);
@@ -125,6 +143,17 @@ function dateIn(st, week) {
 }
 const stampFor = (st, date) => stampAt(st, date.season, date.week);
 const nowDate = st => ({ season: activeSeason(st).id, week: activeSeason(st).week });
+// The real calendar date of a week and night, as 'YYYY-MM-DD' - or null when
+// the season has no start date. A season's start is any day of its week 1;
+// the week runs Monday to Sunday.
+export function calendarDate(st, seasonId, week, day) {
+  const s = seasonById(st, seasonId);
+  if (!s || !s.start || day == null) return null;
+  const [y, m, d] = s.start.split('-').map(Number);
+  const start = Date.UTC(y, m - 1, d);
+  const monday = start - ((new Date(start).getUTCDay() + 6) % 7) * 864e5;
+  return new Date(monday + ((week - 1) * 7 + day) * 864e5).toISOString().slice(0, 10);
+}
 // true when stamp/date `x` falls inside the span [from, to) - `to` null means still open
 const within = (st, x, from, to) => compareStamps(st, from, x) <= 0 && (!to || compareStamps(st, x, to) < 0);
 
@@ -174,6 +203,13 @@ function checkNote(value) {
   if (n.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
   return n;
 }
+function checkDay(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 6) fail('Pick a night of the week.');
+  return n;
+}
+const isIsoDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+  && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
 function checkWeek(value) {
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > MAX_WEEK) fail(`Week must be a whole number from 1 to ${MAX_WEEK}.`);
@@ -256,7 +292,7 @@ function moveChecks(st, id, to, date) {
   if (w.showId === to) return null;
   const moves = movesOf(st, id);
   const last = moves[moves.length - 1];
-  if (last && earlierWeek(st, date, last.at)) {
+  if (last && earlierDate(st, date, last.at)) {
     fail(`${w.name}'s last move was in ${weekLabel(st, last.at)}, later than ${weekLabel(st, date)}. Moves have to be recorded in order.`);
   }
   return w;
@@ -308,6 +344,8 @@ export function wrestlerRefs(st, id) {
   if (reigns) refs.push(reigns === 1 ? 'a title reign' : `${reigns} title reigns`);
   const matches = matchesOf(st, id).length;
   if (matches) refs.push(matches === 1 ? 'a match' : `${matches} matches`);
+  const booked = bookingsOf(st, id).length;
+  if (booked) refs.push(booked === 1 ? 'a booked match' : `${booked} booked matches`);
   return refs;
 }
 
@@ -390,10 +428,10 @@ export function addTeamMember(st, teamId, wrestlerId, opts = {}) {
   const w = must(wrestlerById(st, wrestlerId), 'wrestler', wrestlerId);
   if (t.members.includes(wrestlerId)) fail(`${w.name} is already on ${t.name}.`);
   const date = dateIn(st, opts.week);
-  if (earlierWeek(st, date, teamFormed(t))) fail(`${t.name} formed in ${weekLabel(st, teamFormed(t))}, after ${weekLabel(st, date)}.`);
+  if (earlierDate(st, date, teamFormed(t))) fail(`${t.name} formed in ${weekLabel(st, teamFormed(t))}, after ${weekLabel(st, date)}.`);
   const before = st.memberships.filter(m => m.team === teamId && m.wrestler === wrestlerId && m.end);
   const lastLeft = before.sort((a, b) => b.end.seq - a.end.seq)[0];
-  if (lastLeft && earlierWeek(st, date, lastLeft.end)) fail(`${w.name} left ${t.name} in ${weekLabel(st, lastLeft.end)}, after ${weekLabel(st, date)}.`);
+  if (lastLeft && earlierDate(st, date, lastLeft.end)) fail(`${w.name} left ${t.name} in ${weekLabel(st, lastLeft.end)}, after ${weekLabel(st, date)}.`);
   const spell = { id: newId(st, 'ms'), team: teamId, wrestler: wrestlerId, start: stampFor(st, date), end: null };
   st.memberships.push(spell);
   t.members.push(wrestlerId);
@@ -408,7 +446,7 @@ export function removeTeamMember(st, teamId, wrestlerId, opts = {}) {
   if (t.members.length <= 2) fail(`${t.name} need at least two members. Add the new partner first, or disband the team.`);
   const spell = openSpell(st, teamId, wrestlerId);
   const date = dateIn(st, opts.week);
-  if (earlierWeek(st, date, spell.start)) fail(`${w.name} joined ${t.name} in ${weekLabel(st, spell.start)}, after ${weekLabel(st, date)}.`);
+  if (earlierDate(st, date, spell.start)) fail(`${w.name} joined ${t.name} in ${weekLabel(st, spell.start)}, after ${weekLabel(st, date)}.`);
   spell.end = stampFor(st, date);
   removeWhere(t.members, x => x === wrestlerId);
   return spell;
@@ -463,8 +501,10 @@ export function undoTeamChange(st, id) {
     if (t.members.length <= 2) fail(`${t.name} need at least two members, so ${w.name} joining can't be undone. Disband the team instead.`);
     const otherSpells = st.memberships.some(m => m !== last.m && m.team === id && m.wrestler === w.id);
     let used = null;
-    eachMatch(st, (m, ev) => { if (!used && m.sides.some(sd => sd.team === id && sd.wrestlers.includes(w.id))) used = ev; });
-    if (used && !otherSpells) fail(`${w.name} wrestled for ${t.name} at ${used.name}. Edit that result first.`);
+    eachMatch(st, (m, ev) => { if (!used && m.sides.some(sd => sd.team === id && sd.wrestlers.includes(w.id))) used = { m, ev }; });
+    if (used && !otherSpells) {
+      fail(`${w.name} ${used.m.status === 'played' ? 'wrestled' : 'is booked'} for ${t.name} at ${used.ev.name}. Edit that match first.`);
+    }
     removeWhere(st.memberships, m => m === last.m);
     removeWhere(t.members, x => x === w.id);
     return last;
@@ -669,12 +709,12 @@ function champChecks(st, titleId, holder, when) {
 // start of the reign it ends. Backfilling a change into an earlier week would
 // crown the wrong current champion, so it is refused rather than reordered.
 function checkInOrder(st, title, cur, when) {
-  if (cur && earlierWeek(st, when, cur.start)) {
+  if (cur && earlierDate(st, when, cur.start)) {
     fail(`The current ${title.name} reign began in ${weekLabel(st, cur.start)}, later than ${weekLabel(st, when)}. `
       + 'Title changes have to be recorded in order - undo the later one first.');
   }
 }
-const dateOf = (st, ev) => (ev ? { season: ev.at.season, week: ev.at.week }
+const dateOf = (st, ev) => (ev ? { season: ev.at.season, week: ev.at.week, day: ev.at.day }
   : { season: activeSeason(st).id, week: activeSeason(st).week });
 
 /**
@@ -685,10 +725,10 @@ const dateOf = (st, ev) => (ev ? { season: ev.at.season, week: ev.at.week }
 export function setChampion(st, titleId, holder, opts = {}) {
   const ev = opts.eventId ? must(eventById(st, opts.eventId), 'event', opts.eventId) : null;
   const { holder: h, cur } = champChecks(st, titleId, holder, dateOf(st, ev));
-  if (opts.matchId && !(ev && ev.matches.some(m => m.id === opts.matchId))) fail('That match is not on that event.');
+  if (opts.matchId && !(ev && ev.matches.some(m => m.id === opts.matchId && m.status === 'played'))) fail('That match has no result on that event.');
   const note = cleanName(opts.note);
   if (note.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
-  const at = ev ? stampAt(st, ev.at.season, ev.at.week) : now(st);
+  const at = ev ? stampAt(st, ev.at.season, ev.at.week, ev.at.day) : now(st);
   if (cur) cur.end = { ...at };
   const reign = { id: newId(st, 'rg'), titleId, holder: h, start: at, end: null, vacated: false,
     eventId: ev ? ev.id : null, matchId: opts.matchId || null, note };
@@ -773,9 +813,9 @@ export function reignWeeks(st, r) { return weeksBetween(st, r.start, r.end || no
  */
 export function defencesOf(st, r) {
   let n = 0;
-  eachMatch(st, (m, ev) => {
+  eachPlayed(st, (m, ev) => {
     if (m.titleId !== r.titleId || st.reigns.some(x => x.matchId === m.id)) return;
-    if (earlierWeek(st, ev.at, r.start) || (r.end && earlierWeek(st, r.end, ev.at))) return;
+    if (earlierDate(st, ev.at, r.start) || (r.end && earlierDate(st, r.end, ev.at))) return;
     const inIt = r.holder.type === 'team' ? m.sides.some(s => s.team === r.holder.id)
       : m.sides.some(s => s.wrestlers.includes(r.holder.id));
     if (inIt) n++;
@@ -809,11 +849,11 @@ export function updateReign(st, reignId, patch = {}) {
     if (week !== r.start.week) {
       if (r.eventId) fail(`This reign is dated by ${ev ? ev.name : 'its event'} - change that event's week instead.`);
       const date = { season: r.start.season, week };
-      if (floor && earlierWeek(st, date, floor)) {
+      if (floor && earlierDate(st, date, floor)) {
         fail(prevJoined ? `That's before the previous reign began (${weekLabel(st, floor)}).`
           : `The title was vacant until ${weekLabel(st, floor)}, so this reign can't begin before then.`);
       }
-      if (r.end && earlierWeek(st, r.end, date)) fail(`That's after this reign ended (${weekLabel(st, r.end)}).`);
+      if (r.end && earlierDate(st, r.end, date)) fail(`That's after this reign ended (${weekLabel(st, r.end)}).`);
     }
   }
   if (has(patch, 'note')) note = checkNote(patch.note);
@@ -853,7 +893,7 @@ export function holderName(st, holder) {
 function openSeason(st, number, name) {
   const id = newId(st, 's');
   const season = { id, number, name: cleanName(name) || `Season ${number}`, week: 1, status: 'active',
-    started: null, ended: null };
+    started: null, ended: null, start: null };
   st.seasons.push(season);
   season.started = stampAt(st, id, 1);
   return season;
@@ -875,6 +915,19 @@ export function startNextSeason(st, name = '') {
   return openSeason(st, Math.max(...st.seasons.map(s => s.number)) + 1, name);
 }
 
+/**
+ * Pin a season to the real calendar: `iso` ('YYYY-MM-DD') is any day of its
+ * week 1, and every show then gets a date. Pass '' or null to go back to
+ * plain weeks. Purely a label - nothing is reordered.
+ */
+export function setSeasonStart(st, id, iso) {
+  const s = must(seasonById(st, id), 'season', id);
+  if (iso == null || iso === '') { s.start = null; return s; }
+  if (!isIsoDate(iso)) fail('That isn’t a date.');
+  s.start = iso;
+  return s;
+}
+
 export function renameSeason(st, id, name) {
   const s = must(seasonById(st, id), 'season', id);
   const n = cleanName(name);
@@ -893,10 +946,17 @@ function eventName(st, kind, showId, week, value) {
   return `${showById(st, showId).name} · Week ${week}`;
 }
 
+/** The night an episode normally airs: its show's night, or Saturday for a PLE. */
+export function defaultDay(st, kind, showId) {
+  const show = showById(st, showId);
+  return kind === 'weekly' && show ? show.day : PLE_DAY;
+}
+
 /**
  * A weekly episode (needs a show) or a premium live event (a show is optional -
  * leave it empty for a PLE shared by every brand). New events go in the active
- * season, in the current week unless `week` says otherwise.
+ * season, in the current week unless `week` says otherwise, on the show's own
+ * night unless `day` says otherwise.
  */
 export function addEvent(st, input = {}) {
   const season = activeSeason(st);
@@ -904,9 +964,10 @@ export function addEvent(st, input = {}) {
   const showId = checkShowId(st, input.showId);
   if (kind === 'weekly' && !showId) fail('Pick which show this episode is.');
   const week = input.week == null || input.week === '' ? season.week : checkWeek(input.week);
+  const day = input.day == null || input.day === '' ? defaultDay(st, kind, showId) : checkDay(input.day);
   const name = eventName(st, kind, showId, week, input.name);
   const notes = checkText(input.notes, 'Notes');
-  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week), notes, matches: [] };
+  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [] };
   st.events.push(ev);
   return ev;
 }
@@ -916,33 +977,40 @@ export function updateEvent(st, id, patch = {}) {
   const kind = has(patch, 'kind') ? oneOf(patch.kind, EVENT_KINDS, 'event type') : ev.kind;
   const showId = has(patch, 'showId') ? checkShowId(st, patch.showId) : ev.showId;
   if (kind === 'weekly' && !showId) fail('A weekly episode needs a show.');
-  let week = ev.at.week;
+  const week = has(patch, 'week') ? checkWeek(patch.week) : ev.at.week;
+  const day = has(patch, 'day') ? checkDay(patch.day) : ev.at.day;
   const linked = st.reigns.filter(r => r.eventId === id);
-  if (has(patch, 'week')) {
-    week = checkWeek(patch.week);
+  const moved = week !== ev.at.week || day !== ev.at.day;
+  if (moved) {
     // a title that changed hands here moves with the event, as long as the
     // title's history still reads in order afterwards
-    const date = { season: ev.at.season, week };
+    const date = { season: ev.at.season, week, day };
+    const when = weekLabel(st, date);
     linked.forEach(r => {
       const { prevJoined, floor } = neighbours(st, r);
       const title = titleById(st, r.titleId).name;
-      if (floor && earlierWeek(st, date, floor)) {
-        fail(prevJoined ? `Week ${week} is before the ${title} reign this event ended began (${weekLabel(st, floor)}).`
-          : `The ${title} was vacant until ${weekLabel(st, floor)}, so week ${week} is too early.`);
+      if (floor && earlierDate(st, date, floor)) {
+        fail(prevJoined ? `${when} is before the ${title} reign this event ended began (${weekLabel(st, floor)}).`
+          : `The ${title} was vacant until ${weekLabel(st, floor)}, so ${when} is too early.`);
       }
-      if (r.end && earlierWeek(st, r.end, date)) fail(`Week ${week} is after the ${title} reign won here ended (${weekLabel(st, r.end)}).`);
+      if (r.end && earlierDate(st, r.end, date)) fail(`${when} is after the ${title} reign won here ended (${weekLabel(st, r.end)}).`);
     });
   }
-  const name = has(patch, 'name') ? eventName(st, kind, showId, week, patch.name) : ev.name;
+  // an episode still called by its default name ("Raw · Week 3") keeps up
+  // with a new show or week; a name the owner chose is left alone
+  const autoNamed = ev.kind === 'weekly' && ev.name === eventName(st, 'weekly', ev.showId, ev.at.week, '');
+  const name = has(patch, 'name') ? eventName(st, kind, showId, week, patch.name)
+    : autoNamed && kind === 'weekly' ? eventName(st, kind, showId, week, '') : ev.name;
   const notes = has(patch, 'notes') ? checkText(patch.notes, 'Notes') : ev.notes;
   Object.assign(ev, { kind, showId, name, notes });
-  if (week !== ev.at.week) {
+  if (moved) {
+    const place = x => { x.week = week; if (day == null) delete x.day; else x.day = day; };
     linked.forEach(r => {
       const { prev, prevJoined } = neighbours(st, r);
-      if (prevJoined) prev.end.week = week;
-      r.start.week = week;
+      if (prevJoined) place(prev.end);
+      place(r.start);
     });
-    ev.at.week = week;
+    place(ev.at);
   }
   return ev;
 }
@@ -959,13 +1027,23 @@ export function deleteEvent(st, id) {
   if (revert) revert();
 }
 
-/** Events in a season, oldest first. */
+/** Events in a season, oldest first: by week, then night, then the order they were added. */
 export function eventsIn(st, seasonId) {
-  return st.events.filter(e => e.at.season === seasonId)
-    .sort((a, b) => a.at.week - b.at.week || a.at.seq - b.at.seq);
+  return st.events.filter(e => e.at.season === seasonId).sort((a, b) => compareStamps(st, a.at, b.at));
 }
 
-// ---------------------------------------------------------------- match results
+// ---------------------------------------------------------------- the card: bookings and results
+//
+// A match is one record from the moment it's booked until long after its
+// result is in: { id, status, sides, titleId, stip, notes, outcome, winner,
+// finish, fall }. 'scheduled' means it's on the card and nothing about who
+// won exists yet; 'played' means the owner has entered what WWE 2K25
+// produced. It keeps its id and its place on the card throughout, so a
+// correction never rebuilds anything. Only played matches count - toward
+// records, defences and history.
+//
+// Nothing here ever picks a winner. A result exists only when the owner
+// enters one, and a win needs the winning side named.
 
 // A side wrestling as a team counts toward that team's record, so it has to
 // be the team: at least two wrestlers, every one of them on it at some point.
@@ -992,26 +1070,65 @@ function normalizeSides(st, sides) {
   });
 }
 
-// Everything about a result that can be checked on its own. `keepTitleId`
-// lets a correction to an old result keep a title that has since retired.
-function matchFields(st, input, keepTitleId = null) {
+// Who's in it and what's at stake - everything a booking has. `keepTitleId`
+// lets a correction to an old match keep a title that has since retired.
+function bookingFields(st, input, keepTitleId = null) {
   const sides = normalizeSides(st, input.sides);
-  const outcome = oneOf(input.outcome || 'win', OUTCOMES, 'result');
-  let winner = null;
-  if (outcome === 'win') {
-    winner = input.winner === '' || input.winner == null ? NaN : Number(input.winner);
-    if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail('Pick who won.');
-  }
-  const finish = input.finish == null || input.finish === '' ? null : oneOf(input.finish, FINISHES, 'finish');
   const title = input.titleId ? must(titleById(st, input.titleId), 'championship', input.titleId) : null;
   if (title && !title.active && title.id !== keepTitleId) fail(`The ${title.name} is retired.`);
   const stip = cleanName(input.stip);
   if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
   const notes = checkText(input.notes, 'Notes');
-  return { sides, outcome, winner, finish, title, stip, notes };
+  return { sides, title, stip, notes };
 }
-const matchRecord = f => ({ sides: f.sides, outcome: f.outcome, winner: f.winner, finish: f.finish,
-  titleId: f.title ? f.title.id : null, stip: f.stip, notes: f.notes });
+
+// What happened, checked against the sides it happened to. The outcome is
+// never assumed: with neither an outcome nor a winner there's no result, and
+// a win needs its winning side named.
+function resultFields(st, input, sides) {
+  const hasWinner = !(input.winner === '' || input.winner == null);
+  let outcome = input.outcome === '' || input.outcome == null ? null : input.outcome;
+  if (!outcome) {
+    if (!hasWinner) fail('Enter the result: who won, a draw, or a no contest.');
+    outcome = 'win';
+  }
+  oneOf(outcome, OUTCOMES, 'result');
+  let winner = null;
+  if (outcome === 'win') {
+    winner = hasWinner ? Number(input.winner) : NaN;
+    if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail('Pick who won.');
+  } else if (hasWinner) {
+    fail(`A ${outcome === 'draw' ? 'draw' : 'no contest'} has no winner.`);
+  }
+  const finish = input.finish == null || input.finish === '' ? null : oneOf(input.finish, FINISHES, 'finish');
+  return { outcome, winner, finish, fall: checkFall(st, input.fall, sides, outcome, winner) };
+}
+
+// Optional detail on a win: who scored the pin or submission (`by`, on the
+// winning side) and who took it (`on`, on a losing side) - in a multi-person
+// match, the one loser who actually lost the fall. Records don't depend on it.
+function checkFall(st, fall, sides, outcome, winner) {
+  const by = (fall && fall.by) || null, on = (fall && fall.on) || null;
+  if (!by && !on) return null;
+  if (outcome !== 'win') fail('Only a win has someone scoring or taking the fall.');
+  if (by && !sides[winner].wrestlers.includes(by)) fail(`${must(wrestlerById(st, by), 'wrestler', by).name} wasn't on the winning side.`);
+  if (on && !sides.some((sd, i) => i !== winner && sd.wrestlers.includes(on))) {
+    fail(`${must(wrestlerById(st, on), 'wrestler', on).name} wasn't on a losing side.`);
+  }
+  return { by, on };
+}
+
+const bookedRecord = b => ({ status: 'scheduled', sides: b.sides, titleId: b.title ? b.title.id : null,
+  stip: b.stip, notes: b.notes, outcome: null, winner: null, finish: null, fall: null });
+const playedRecord = (b, r) => ({ ...bookedRecord(b), status: 'played',
+  outcome: r.outcome, winner: r.winner, finish: r.finish, fall: r.fall });
+// A booking's fields, from `input` where given and the match where not.
+const bookingInput = (m, input) => ({
+  sides: has(input, 'sides') ? input.sides : m.sides,
+  titleId: has(input, 'titleId') ? input.titleId : m.titleId,
+  stip: has(input, 'stip') ? input.stip : m.stip,
+  notes: has(input, 'notes') ? input.notes : m.notes,
+});
 
 function holderFromSide(title, side) {
   if (title.kind === 'tag') {
@@ -1022,93 +1139,216 @@ function holderFromSide(title, side) {
   return { type: 'wrestler', id: side.wrestlers[0] };
 }
 
-/**
- * Record a result the game produced. Each side lists its wrestlers, plus the
- * tag team they wrestled as, if any. `winner` is the index of the winning side
- * when the outcome is 'win'.
- *
- * With `opts.titleChange`, the winning side becomes champion of `titleId`,
- * dated to this event. Nothing is inferred: a title match where the champion
- * retained is just a title match.
- */
-export function recordMatch(st, eventId, input = {}, opts = {}) {
-  const ev = must(eventById(st, eventId), 'event', eventId);
-  const f = matchFields(st, input);
-  let holder = null;
-  if (opts.titleChange) {
-    if (!f.title) fail('Pick the title that changed hands.');
-    if (f.outcome !== 'win') fail('A title only changes hands when someone wins.');
-    holder = champChecks(st, f.title.id, holderFromSide(f.title, f.sides[f.winner]), dateOf(st, ev)).holder;
+// How a result's title change should land, all worked out before anything
+// changes: `keep` corrects the holder of the reign this match already made,
+// `add` makes a new reign, `revert` hands a belt back. A title changes hands
+// only when opts.titleChange says so - a title match where the champion kept
+// the belt is just a title match.
+function titlePlan(st, ev, linked, b, r, titleChange) {
+  const plan = { keep: null, add: null, revert: null };
+  if (!titleChange) {
+    if (linked) plan.revert = removableReigns(st, [linked], 'this match');
+    return plan;
   }
-  const match = { id: newId(st, 'm'), ...matchRecord(f) };
-  ev.matches.push(match);
-  if (holder) setChampion(st, f.title.id, holder, { eventId: ev.id, matchId: match.id });
-  return match;
+  if (!b.title) fail('Pick the title that changed hands.');
+  if (r.outcome !== 'win') fail('A title only changes hands when someone wins.');
+  const raw = holderFromSide(b.title, b.sides[r.winner]);
+  if (linked && linked.titleId === b.title.id) {
+    const holder = checkHolder(st, b.title, raw, sameHolder(raw, linked.holder));
+    const { prev, next, prevJoined, nextJoined } = neighbours(st, linked);
+    const who = holderName(st, holder);
+    if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${b.title.name} going into this match - that's a retention, not a title change.`);
+    if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${b.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
+    plan.keep = holder;
+  } else {
+    if (linked) plan.revert = removableReigns(st, [linked], 'this match');
+    plan.add = champChecks(st, b.title.id, raw, dateOf(st, ev)).holder;
+  }
+  return plan;
+}
+function applyPlan(st, ev, m, plan, linked) {
+  if (plan.revert) plan.revert();
+  if (plan.keep) linked.holder = plan.keep;
+  if (plan.add) setChampion(st, m.titleId, plan.add, { eventId: ev.id, matchId: m.id });
 }
 
-/**
- * Correct a recorded result in place - wrong winner, wrong people, wrong
- * finish, wrong title. It keeps its id and its place on the card, so nothing
- * else has to be re-entered. If it changed a title, the correction carries
- * through: a different winner becomes that reign's holder, and dropping the
- * title change hands the belt back - but only while nothing later depends on
- * it, so correcting one result can't rewrite anyone else's history.
- */
-export function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
+function findMatch(st, eventId, matchId) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const m = must(ev.matches.find(x => x.id === matchId), 'match', matchId);
-  const linked = st.reigns.find(r => r.matchId === matchId) || null;
-  const f = matchFields(st, input, m.titleId);
-  let keep = null, add = null, revert = null;
-  if (opts.titleChange) {
-    if (!f.title) fail('Pick the title that changed hands.');
-    if (f.outcome !== 'win') fail('A title only changes hands when someone wins.');
-    const raw = holderFromSide(f.title, f.sides[f.winner]);
-    if (linked && linked.titleId === f.title.id) {
-      const holder = checkHolder(st, f.title, raw, sameHolder(raw, linked.holder));
-      const { prev, next, prevJoined, nextJoined } = neighbours(st, linked);
-      const who = holderName(st, holder);
-      if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${f.title.name} going into this match - that's a retention, not a title change.`);
-      if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${f.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
-      keep = holder;
-    } else {
-      if (linked) revert = removableReigns(st, [linked], 'this match');
-      add = champChecks(st, f.title.id, raw, dateOf(st, ev)).holder;
-    }
-  } else if (linked) {
-    revert = removableReigns(st, [linked], 'this match');
-  }
-  Object.assign(m, matchRecord(f));
-  if (revert) revert();
-  if (keep) linked.holder = keep;
-  if (add) setChampion(st, f.title.id, add, { eventId: ev.id, matchId: m.id });
+  return { ev, m: must(ev.matches.find(x => x.id === matchId), 'match', matchId) };
+}
+
+/** Put a match on an event's card: who's in it, what's at stake. The result comes later, from the game. */
+export function bookMatch(st, eventId, input = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  const m = { id: newId(st, 'm'), ...bookedRecord(bookingFields(st, input)) };
+  ev.matches.push(m);
+  return m;
+}
+
+/** Change a booked match before it's played. A played match is corrected with updateMatch. */
+export function updateBooking(st, eventId, matchId, input = {}) {
+  const { m } = findMatch(st, eventId, matchId);
+  if (m.status !== 'scheduled') fail('This match already has a result - correct the result instead.');
+  Object.assign(m, bookedRecord(bookingFields(st, bookingInput(m, input), m.titleId)));
   return m;
 }
 
 /**
- * Delete a result. If it changed a title, the belt goes back to whoever held
- * it before - allowed only while nothing later depends on that change.
+ * Enter what happened in a booked match, after watching the CPU play it.
+ * The booking's line-up, stakes and notes stand unless `input` changes them -
+ * a surprise entrant, a note about the finish. `opts.titleChange` crowns the
+ * winners of the title at stake, dated to this event.
+ */
+export function enterResult(st, eventId, matchId, input = {}, opts = {}) {
+  const { ev, m } = findMatch(st, eventId, matchId);
+  if (m.status === 'played') fail('This match already has a result - correct it instead.');
+  const b = bookingFields(st, bookingInput(m, input), m.titleId);
+  const r = resultFields(st, input, b.sides);
+  const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
+  Object.assign(m, playedRecord(b, r));
+  applyPlan(st, ev, m, plan, null);
+  return m;
+}
+
+/**
+ * Book a match and enter its result in one step - for one that happened
+ * without being on the card. Same rules as enterResult.
+ */
+export function recordMatch(st, eventId, input = {}, opts = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  const b = bookingFields(st, input);
+  const r = resultFields(st, input, b.sides);
+  const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
+  const m = { id: newId(st, 'm'), ...playedRecord(b, r) };
+  ev.matches.push(m);
+  applyPlan(st, ev, m, plan, null);
+  return m;
+}
+
+/**
+ * Correct a recorded result in place - wrong winner, wrong people, wrong
+ * finish, wrong title. `input` is the whole corrected result. It keeps its id
+ * and its place on the card, so nothing else has to be re-entered. If it
+ * changed a title, the correction carries through: a different winner becomes
+ * that reign's holder, and dropping the title change hands the belt back -
+ * but only while nothing later depends on it, so correcting one result can't
+ * rewrite anyone else's history.
+ */
+export function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
+  const { ev, m } = findMatch(st, eventId, matchId);
+  if (m.status !== 'played') fail("This match hasn't been played yet - enter its result instead.");
+  const linked = st.reigns.find(r => r.matchId === matchId) || null;
+  const b = bookingFields(st, input, m.titleId);
+  const r = resultFields(st, input, b.sides);
+  const plan = titlePlan(st, ev, linked, b, r, opts.titleChange);
+  Object.assign(m, playedRecord(b, r));
+  applyPlan(st, ev, m, plan, linked);
+  return m;
+}
+
+/**
+ * Take a result back off a match: it stays on the card, booked, as if it
+ * hadn't been played. A title change it made is handed back - only while
+ * nothing later depends on it.
+ */
+export function clearResult(st, eventId, matchId) {
+  const { m } = findMatch(st, eventId, matchId);
+  if (m.status !== 'played') fail('This match has no result to clear.');
+  const linked = st.reigns.find(r => r.matchId === matchId);
+  const revert = linked ? removableReigns(st, [linked], 'this match') : null;
+  Object.assign(m, bookedRecord({ sides: m.sides, title: titleById(st, m.titleId), stip: m.stip, notes: m.notes }));
+  if (revert) revert();
+  return m;
+}
+
+/**
+ * Take a match off the card altogether, played or not. If its result changed
+ * a title, the belt goes back to whoever held it before - allowed only while
+ * nothing later depends on that change.
  */
 export function deleteMatch(st, eventId, matchId) {
-  const ev = must(eventById(st, eventId), 'event', eventId);
-  must(ev.matches.find(m => m.id === matchId), 'match', matchId);
+  const { ev } = findMatch(st, eventId, matchId);
   const linked = st.reigns.find(r => r.matchId === matchId);
   const revert = linked ? removableReigns(st, [linked], 'this match') : null;
   removeWhere(ev.matches, m => m.id === matchId);
   if (revert) revert();
 }
 
+/** Move a match one place up (-1) or down (+1) the card. False at either end. */
+export function moveMatch(st, eventId, matchId, delta) {
+  const { ev, m } = findMatch(st, eventId, matchId);
+  const i = ev.matches.indexOf(m), j = i + Math.sign(Number(delta) || 0);
+  if (j === i || j < 0 || j >= ev.matches.length) return false;
+  ev.matches.splice(i, 1);
+  ev.matches.splice(j, 0, m);
+  return true;
+}
+
+/**
+ * What kind of match it is, read from the line-up rather than stored - so it
+ * can never disagree with who was in it. { key, label }.
+ */
+export function matchKind(match) {
+  const sizes = match.sides.map(sd => sd.wrestlers.length);
+  const n = sizes.length, k = sizes[0];
+  const K = (key, label) => ({ key, label });
+  if (sizes.every(x => x === k)) {
+    if (k === 1) return n === 2 ? K('singles', 'Singles') : n === 3 ? K('triple-threat', 'Triple threat')
+      : n === 4 ? K('fatal-4-way', 'Fatal 4-way') : K('multi-way', `${n}-way`);
+    if (k === 2) return n === 2 ? K('tag', 'Tag team') : n === 3 ? K('triple-threat-tag', 'Triple threat tag')
+      : n === 4 ? K('fatal-4-way-tag', 'Fatal 4-way tag') : K('multi-team-tag', `${n}-team tag`);
+    return n === 2 ? K('team-tag', `${k}-on-${k} tag`) : K('multi-team-tag', `${n}-team, ${k} a side`);
+  }
+  if (n === 2) return K('handicap', `Handicap ${Math.min(...sizes)}-on-${Math.max(...sizes)}`);
+  return K('other', 'Uneven multi-way');
+}
+
+/** Where an event's card stands: { booked, played, total, state } - 'empty', 'booked', 'partial' or 'complete'. */
+export function cardStatus(ev) {
+  const played = ev.matches.filter(m => m.status === 'played').length;
+  const total = ev.matches.length, booked = total - played;
+  const state = !total ? 'empty' : !played ? 'booked' : booked ? 'partial' : 'complete';
+  return { booked, played, total, state };
+}
+
 function eachMatch(st, fn) {
   st.events.forEach(ev => ev.matches.forEach(m => fn(m, ev)));
 }
-/** Every match a wrestler was in, newest first: [{ event, match, side }]. */
+function eachPlayed(st, fn) {
+  eachMatch(st, (m, ev) => { if (m.status === 'played') fn(m, ev); });
+}
+/** Every match a wrestler has had a result in, newest first: [{ event, match, side }]. */
 export function matchesOf(st, wrestlerId) {
   const out = [];
-  eachMatch(st, (match, event) => {
-    const side = match.sides.findIndex(s => s.wrestlers.includes(wrestlerId));
+  eachPlayed(st, (match, event) => {
+    const side = match.sides.findIndex(sd => sd.wrestlers.includes(wrestlerId));
     if (side >= 0) out.push({ event, match, side });
   });
   return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+}
+/** Matches a wrestler is booked in that have no result yet, soonest first. */
+export function bookingsOf(st, wrestlerId) {
+  const out = [];
+  eachMatch(st, (match, event) => {
+    if (match.status !== 'scheduled') return;
+    const side = match.sides.findIndex(sd => sd.wrestlers.includes(wrestlerId));
+    if (side >= 0) out.push({ event, match, side });
+  });
+  return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
+}
+/**
+ * The results, newest show first, each show's card in running order - the
+ * browsable history. Filter by `seasonId`, and by `showId` (or 'ple' for
+ * premium live events). Each row: { event, match, n } with n the card position.
+ */
+export function resultsHistory(st, filter = {}) {
+  const out = [];
+  st.events
+    .filter(e => (!filter.seasonId || e.at.season === filter.seasonId)
+      && (!filter.showId || (filter.showId === 'ple' ? e.kind === 'ple' : e.showId === filter.showId)))
+    .sort((a, b) => compareStamps(st, b.at, a.at))
+    .forEach(event => event.matches.forEach((match, i) => { if (match.status === 'played') out.push({ event, match, n: i + 1 }); }));
+  return out;
 }
 /** 'W', 'L', 'D' or 'NC' for whoever was on side `side`. */
 export function resultFor(match, side) {
@@ -1147,11 +1387,20 @@ export function wrestlerRecord(st, wrestlerId) {
 /** Every match a team wrestled as the team, newest first: [{ event, match, side }]. */
 export function teamMatches(st, teamId) {
   const out = [];
-  eachMatch(st, (match, event) => {
+  eachPlayed(st, (match, event) => {
     const side = match.sides.findIndex(s => s.team === teamId);
     if (side >= 0) out.push({ event, match, side });
   });
   return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+}
+/** Matches a team is booked in as the team, with no result yet, soonest first. */
+export function teamBookings(st, teamId) {
+  const out = [];
+  eachMatch(st, (match, event) => {
+    const side = match.status === 'scheduled' ? match.sides.findIndex(s => s.team === teamId) : -1;
+    if (side >= 0) out.push({ event, match, side });
+  });
+  return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
 }
 
 /**
@@ -1241,7 +1490,7 @@ export function careerOf(st, wrestlerId) {
  */
 export function timeline(st) {
   const out = [];
-  const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, rec });
+  const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, day: stamp.day, rec });
   st.seasons.forEach(s => {
     at(s.started, 'season-start', s);
     if (s.ended) at(s.ended, 'season-end', s);
@@ -1262,11 +1511,11 @@ export function timeline(st) {
 }
 
 export function summary(st) {
-  let matches = 0;
-  eachMatch(st, () => { matches++; });
+  let matches = 0, booked = 0;
+  eachMatch(st, m => { if (m.status === 'played') matches++; else booked++; });
   return {
     wrestlers: st.wrestlers.length, teams: st.teams.length, titles: st.titles.length,
-    events: st.events.length, matches, seasons: st.seasons.length,
+    events: st.events.length, matches, booked, seasons: st.seasons.length,
   };
 }
 
@@ -1310,6 +1559,22 @@ export function migrate(raw) {
       delete t.disbanded;
     });
     st.version = 2;
+  }
+  if (st.version === 2) {
+    // v3: a match can be booked before it's played, and every show has a
+    // night. Everything a v2 save recorded had been played; its episodes air
+    // on their show's regular night, and its PLEs on a Saturday.
+    const night = id => (SHOW_SEED.find(x => x.id === id) || { day: 0 }).day;
+    st.shows.forEach(sh => { if (!Number.isInteger(sh.day)) sh.day = night(sh.id); });
+    st.seasons.forEach(se => { if (se.start === undefined) se.start = null; });
+    st.events.forEach(e => {
+      if (e.at && e.at.day == null) e.at.day = e.kind === 'weekly' && showById(st, e.showId) ? showById(st, e.showId).day : PLE_DAY;
+      (Array.isArray(e.matches) ? e.matches : []).forEach(m => {
+        m.status = 'played';
+        if (m.fall === undefined) m.fall = null;
+      });
+    });
+    st.version = 3;
   }
   return st;
 }
@@ -1355,9 +1620,11 @@ export function validate(st) {
   const showOk = id => id === null || !!showById(st, id);
 
   names(st.shows, 'show');
+  const night = d => Number.isInteger(d) && d >= 0 && d <= 6;
   st.shows.forEach(s => {
     if (!/^#[0-9a-f]{3,8}$/i.test(String(s.color))) bad.push(`${s.name} has an unreadable colour.`);
     if (typeof s.promotion !== 'string') bad.push(`${s.name} has no promotion.`);
+    if (!night(s.day)) bad.push(`${s.name} has no night of the week.`);
   });
 
   names(st.wrestlers, 'wrestler');
@@ -1403,7 +1670,7 @@ export function validate(st) {
     stamp(m.start, `Membership ${m.id}`);
     if (m.end) {
       stamp(m.end, `Membership ${m.id}`);
-      if (m.end.seq < m.start.seq || earlierWeek(st, m.end, m.start)) bad.push(`Membership ${m.id} ends before it starts.`);
+      if (m.end.seq < m.start.seq || earlierDate(st, m.end, m.start)) bad.push(`Membership ${m.id} ends before it starts.`);
     }
     const formed = Array.isArray(t.log) && t.log[0] && t.log[0].at;
     if (formed && m.start && m.start.seq < formed.seq) bad.push(`Membership ${m.id} starts before ${t.name} formed.`);
@@ -1437,7 +1704,7 @@ export function validate(st) {
     stamp(r.start, `Reign ${r.id}`);
     if (r.end) {
       stamp(r.end, `Reign ${r.id}`);
-      if (r.end.seq < r.start.seq || earlierWeek(st, r.end, r.start)) bad.push(`Reign ${r.id} ends before it starts.`);
+      if (r.end.seq < r.start.seq || earlierDate(st, r.end, r.start)) bad.push(`Reign ${r.id} ends before it starts.`);
     }
     if (r.eventId) {
       const ev = eventById(st, r.eventId);
@@ -1455,6 +1722,7 @@ export function validate(st) {
     else if (numbers.has(s.number)) bad.push(`Two seasons are numbered ${s.number}.`);
     numbers.add(s.number);
     if (!['active', 'complete'].includes(s.status)) bad.push(`${s.name} has an unknown status.`);
+    if (s.start != null && !isIsoDate(s.start)) bad.push(`${s.name} has a start date that isn't a date.`);
     if (!Number.isInteger(s.week) || s.week < 1) bad.push(`${s.name} has a broken week.`);
     stamp(s.started, s.name);
     if (s.status === 'complete') stamp(s.ended, s.name);
@@ -1466,8 +1734,11 @@ export function validate(st) {
     if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
     if (!showOk(e.showId) || (e.kind === 'weekly' && !e.showId)) bad.push(`${e.name} is on a show that doesn't exist.`);
     stamp(e.at, e.name);
+    if (e.at && !night(e.at.day)) bad.push(`${e.name} has no night of the week.`);
     (e.matches || []).forEach(m => {
       const where = `A match at ${e.name}`;
+      if (!MATCH_STATUSES.includes(m.status)) { bad.push(`${where} is neither booked nor played.`); return; }
+      if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} is for a title that doesn't exist.`);
       const sides = Array.isArray(m.sides) ? m.sides : [];
       if (sides.length < 2) bad.push(`${where} has fewer than two sides.`);
       const seen = new Set();
@@ -1481,11 +1752,21 @@ export function validate(st) {
         });
         if (s && s.team && !teamById(st, s.team)) bad.push(`${where} names a tag team that doesn't exist.`);
       });
+      if (m.status === 'scheduled') {
+        if (m.outcome !== null || m.winner !== null || m.finish !== null || m.fall !== null) bad.push(`${where} is only booked but has a result.`);
+        if (st.reigns.some(r => r.matchId === m.id)) bad.push(`${where} is only booked but changed a title.`);
+        return;
+      }
       if (!OUTCOMES.includes(m.outcome)) bad.push(`${where} has an unknown result.`);
       if (m.outcome === 'win' && !(Number.isInteger(m.winner) && m.winner >= 0 && m.winner < sides.length)) bad.push(`${where} has no valid winner.`);
       if (m.outcome !== 'win' && m.winner !== null) bad.push(`${where} is a ${m.outcome} but names a winner.`);
       if (m.finish !== null && !FINISHES.includes(m.finish)) bad.push(`${where} has an unknown finish.`);
-      if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} was for a title that doesn't exist.`);
+      if (m.fall != null) {
+        const winners = m.outcome === 'win' && sides[m.winner] ? sides[m.winner].wrestlers : [];
+        const losers = sides.filter((_, i) => i !== m.winner).flatMap(sd => sd.wrestlers || []);
+        if (m.outcome !== 'win') bad.push(`${where} is a ${m.outcome} but names who took the fall.`);
+        else if ((m.fall.by && !winners.includes(m.fall.by)) || (m.fall.on && !losers.includes(m.fall.on))) bad.push(`${where} names the fall wrongly.`);
+      }
     });
   });
   return bad;

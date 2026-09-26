@@ -1,4 +1,5 @@
-// WWE Universe — profile pages: a wrestler, a tag team, a championship.
+// WWE Universe — profile pages: a wrestler, a tag team, a championship. (A
+// show's page, with its match card, is in card.js.)
 //
 // Read-first screens. Each shows where things stand now at the top, the
 // record and history underneath, and a "Fix a mistake" card at the bottom
@@ -10,10 +11,11 @@
 // matches it wrestled as the team.
 import * as M from './model.js';
 import {
-  ICON, LABEL, avatar, esc, fmtRec, histLine, holderLink, matchLine, recNote, section, showColor, showName,
-  stampLabel, tag, weeksText, wrestlerLink,
+  ICON, LABEL, avatar, chip, esc, eventWhen, fmtRec, histLine, holderLink, kindChip, matchLine, recNote, section, showColor,
+  showName, stampLabel, tag, vsLine, weeksText, wrestlerLink,
 } from './ui.js';
 import { pushPage, refresh, uni } from './app.js';
+import { uvEventPage } from './card.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -21,7 +23,8 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 
 /** { title, body } for a page, or null if what it showed no longer exists. */
 export function uvPageView(kind, id) {
-  return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id) : null;
+  return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
+    : kind === 'event' ? uvEventPage(id) : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.
@@ -61,6 +64,15 @@ function resultRow(st, x, label) {
     <span>${matchLine(st, x.match)}<span class="uv-muted d">${esc(x.event.name)} · ${stampLabel(st, x.event.at)}${label ? ` · ${esc(label)}` : ''}</span></span></div>`;
 }
 
+// A booked match that hasn't been played yet: who's in it, and where and when.
+function bookingRow(st, x) {
+  const t = x.match.titleId && M.titleById(st, x.match.titleId);
+  return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res up">vs</span>
+    <span>${vsLine(st, x.match)}<span class="uv-muted d">${esc(x.event.name)} · ${esc(eventWhen(st, x.event))}</span>
+      <span class="uv-chips">${kindChip(x.match)}${t ? chip(t.name, 'gold') : ''}${x.match.stip ? chip(x.match.stip) : ''}</span></span></div>`;
+}
+const upcoming = (st, list) => (list.length ? section('Booked', list.length) + list.map(x => bookingRow(st, x)).join('') : '');
+
 // ================================================================ wrestler
 
 function careerText(st, e) {
@@ -98,6 +110,7 @@ function wrestlerPage(id) {
   const partners = M.tagPartnersOf(st, id);
   const career = M.careerOf(st, id);
   const results = M.matchesOf(st, id);
+  const booked = M.bookingsOf(st, id);
   const moves = M.movesOf(st, id);
   const lastMove = moves[moves.length - 1];
   const refs = M.wrestlerRefs(st, id);
@@ -143,6 +156,8 @@ function wrestlerPage(id) {
       </div>
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ''}
 
+      ${upcoming(st, booked)}
+
       ${section('Championships', champs.length || null)}
       ${champs.length ? current.map(champRow).join('') + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : '')
         : '<div class="uv-none">Never held a title.</div>'}
@@ -165,7 +180,7 @@ function wrestlerPage(id) {
         ${fixRow(`uvMergeInto('${id}')`, ICON.team, `Merge a duplicate into ${esc(w.name)}`, 'For the same wrestler entered twice')}
         ${refs.length ? `<div class="fine">${esc(w.name)} is part of the history (${esc(refs.join(', '))}), so they can’t be deleted — leave them unassigned instead.</div>`
           : fixRow(`uvDeleteWrestler('${id}')`, ICON.x, `Delete ${esc(w.name)}`, 'No history yet — for someone added by mistake', 'bad')}
-        <div class="fine">A wrong result is fixed on its event: open it from Results above.</div>
+        <div class="fine">A wrong result is fixed on its show: open it from Results above and tap <b>Correct</b>.</div>
       </div>`,
   };
 }
@@ -211,6 +226,7 @@ function teamPage(id) {
   const held = reigns.filter(r => !r.end).length;
   const hist = M.teamHistoryOf(st, id);
   const results = M.teamMatches(st, id);
+  const booked = M.teamBookings(st, id);
   const last = M.lastTeamChange(st, id);
   const refs = M.teamRefs(st, id);
   const lastLog = t.log[t.log.length - 1];
@@ -244,6 +260,8 @@ function teamPage(id) {
         ${numTile('Members', t.members.length, former.length ? `${former.length} former` : 'original line-up')}
       </div>
       <div class="uv-note">Counts only matches wrestled as ${esc(t.name)}. Members’ singles matches, and tag matches with other partners, go on their own records — not the team’s.</div>
+
+      ${upcoming(st, booked)}
 
       ${section('Members', t.members.length)}
       ${t.members.map(wid => memberRow(spells.find(m => m.wrestler === wid && !m.end))).join('')}
@@ -281,6 +299,7 @@ function titlePage(id) {
   const longest = reigns.reduce((best, r) => (!best || M.reignWeeks(st, r) > M.reignWeeks(st, best) ? r : best), null);
   const holders = new Set(reigns.map(r => `${r.holder.type}:${r.holder.id}`)).size;
   const kindWord = t.kind === 'tag' ? 'Champions' : 'Champion';
+  const booked = titleBookings(st, id);
 
   const historyRow = (r, n) => {
     const weeks = M.reignWeeks(st, r), def = M.defencesOf(st, r);
@@ -312,9 +331,11 @@ function titlePage(id) {
       <div class="uv-recs">
         ${numTile('Reigns', reigns.length, `${holders} different ${t.kind === 'tag' ? 'teams' : 'champions'}`)}
         ${numTile('Longest', longest ? M.reignWeeks(st, longest) : 0, longest ? M.holderName(st, longest.holder) : '—')}
-        ${numTile('Title matches', countTitleMatches(st, id), 'recorded')}
+        ${numTile('Title matches', countTitleMatches(st, id), booked.length ? `${booked.length} booked` : 'with a result')}
       </div>
-      <p class="uv-p">A title that changes hands on a show is best recorded on that event’s result, so the reign is dated to it and the defences count.</p>
+      <p class="uv-p">A title that changes hands on a show is best recorded on that match’s result, so the reign is dated to it and the defences count.</p>
+
+      ${upcoming(st, booked)}
 
       ${section('Title history', reigns.length || null)}
       ${reigns.length ? reigns.map((r, i) => [r, i + 1]).reverse().map(([r, n]) => historyRow(r, n)).join('') : '<div class="uv-none">Never held.</div>'}
@@ -331,5 +352,13 @@ function titlePage(id) {
 }
 
 function countTitleMatches(st, titleId) {
-  return st.events.reduce((n, e) => n + e.matches.filter(m => m.titleId === titleId).length, 0);
+  return st.events.reduce((n, e) => n + e.matches.filter(m => m.titleId === titleId && m.status === 'played').length, 0);
+}
+// title matches on the card with no result yet, soonest first
+function titleBookings(st, titleId) {
+  const out = [];
+  st.events.forEach(event => event.matches.forEach(match => {
+    if (match.titleId === titleId && match.status === 'scheduled') out.push({ event, match });
+  }));
+  return out.sort((a, b) => M.compareStamps(st, a.event.at, b.event.at));
 }

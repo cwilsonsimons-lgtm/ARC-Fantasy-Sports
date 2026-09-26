@@ -1,15 +1,140 @@
-// WWE Universe — the four tabs: Roster, Teams, Titles, History.
+// WWE Universe — the five tabs: Calendar, Roster, Teams, Titles, History.
 //
-// Lists only. Tapping a row opens its profile page (pages.js) or, for an
-// event, its sheet. The roster also has a select mode for moving several
+// Lists only. Tapping a row opens its page: a show's card (card.js) or a
+// profile (pages.js). The roster also has a select mode for moving several
 // wrestlers between shows at once.
 import {
-  activeSeason, byName, currentReign, eventsIn, holderName, reignWeeks, rosterCounts, rosterOf,
-  seasonById, teamById, teamRecord, teamShows, timeline, titleById, titlesHeldBy, titlesOfWrestler,
-  wrestlerById,
+  activeSeason, byName, calendarDate, cardStatus, currentReign, eventsIn, holderName, reignWeeks, resultsHistory,
+  rosterCounts, rosterOf, seasonById, teamById, teamRecord, teamShows, timeline, titleById, titlesHeldBy,
+  titlesOfWrestler, wrestlerById,
 } from './model.js';
-import { ICON, LABEL, avatar, empty, esc, fmtRec, section, showColor, showDot, showName, stampLabel, tag, weeksText } from './ui.js';
+import {
+  ICON, LABEL, NIGHT, avatar, chip, empty, esc, eventWhen, fallLine, fmtRec, isoText, kindChip, matchLine, section,
+  showColor, showDot, showName, stampLabel, tag, weeksText,
+} from './ui.js';
 import { refresh, uni } from './app.js';
+
+// ---------------------------------------------------------------- calendar
+//
+// The week at a glance: each show on its night, planned or not, and where
+// its card stands. The season's clock (the current week) is only moved by
+// Next week / Back a week; browsing other weeks here never moves it.
+
+let calWeek = null;          // the week on screen; null follows the current week
+
+const CARD_TEXT = {
+  empty: () => 'Planned — nothing booked yet',
+  booked: c => `${c.total} booked · no results yet`,
+  partial: c => `${c.played} of ${c.total} results in`,
+  complete: c => `${c.total} result${c.total === 1 ? '' : 's'} in`,
+};
+const cardText = c => CARD_TEXT[c.state](c);
+
+function weekRange(st, seasonId, week) {
+  const a = calendarDate(st, seasonId, week, 0);
+  return a ? `${isoText(a, false)} – ${isoText(calendarDate(st, seasonId, week, 6))}` : '';
+}
+
+export function uvCalendarView() {
+  const st = uni();
+  const s = activeSeason(st);
+  const week = calWeek || s.week;
+  const off = week - s.week;
+  const rel = off === 0 ? 'This week' : off === 1 ? 'Next week' : off === -1 ? 'Last week'
+    : off > 0 ? `${off} weeks ahead` : `${-off} weeks ago`;
+  const range = weekRange(st, s.id, s.week);
+  const next = Math.max(...st.seasons.map(x => x.number)) + 1;
+
+  const card = `<div class="uv-card">
+    <div class="uv-season">
+      <div><div class="k">${esc(s.name)}</div><div class="v">Week ${s.week}</div>${range ? `<div class="s">${esc(range)}</div>` : ''}</div>
+      <div class="uv-step">
+        <div class="uv-ic" onclick="uvStepWeek(-1)" title="Back a week">${ICON.left}</div>
+        <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON.right}</div>
+      </div>
+    </div>
+    <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? 'Dates' : 'Set dates'}</span>
+      <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvNextSeason()">Start Season ${next}…</span></div>
+  </div>`;
+
+  // this week's episodes, and a row to plan each show that has none yet
+  const evs = eventsIn(st, s.id).filter(e => e.at.week === week);
+  const rows = evs.map(e => ({ day: e.at.day, e }));
+  st.shows.forEach(sh => { if (!evs.some(e => e.kind === 'weekly' && e.showId === sh.id)) rows.push({ day: sh.day, show: sh }); });
+  rows.sort((a, b) => (a.day ?? 9) - (b.day ?? 9));     // stable: a night's episodes before its unplanned shows
+
+  const wr = weekRange(st, s.id, week);
+  return card + `
+    <div class="uv-weeknav">
+      <div class="uv-ic" onclick="uvCalWeek(-1)" title="Previous week">${ICON.left}</div>
+      <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel)}${wr ? ` · ${esc(wr)}` : ''}</div></div>
+      <div class="uv-ic" onclick="uvCalWeek(1)" title="Following week">${ICON.right}</div>
+    </div>
+    ${off ? `<div class="uv-back-now" onclick="uvCalGo(${s.week})">Back to this week (week ${s.week})</div>` : ''}
+    <div class="uv-nights">${rows.map(r => nightRow(st, s, week, r)).join('')}</div>
+    <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
+    ${seasonGrid(st, s, week)}`;
+}
+
+function nightRow(st, s, week, r) {
+  const iso = r.day == null ? null : calendarDate(st, s.id, week, r.day);
+  const dt = `<div class="dt"><b>${r.day == null ? '—' : NIGHT[r.day]}</b>${iso ? `<span>${isoText(iso, false)}</span>` : ''}</div>`;
+  if (r.show) {
+    return `<div class="uv-night open" style="--c:${showColor(st, r.show.id)}" data-plan="${r.show.id}">${dt}
+      <div class="uv-main"><div class="nm">${esc(r.show.name)}</div><div class="sub">Not planned</div></div>
+      <div class="uv-btn sm2" onclick="uvPlanShow('${r.show.id}',${week})">${ICON.plus}Plan</div></div>`;
+  }
+  const e = r.e, c = cardStatus(e);
+  return `<div class="uv-night" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">${dt}
+    <div class="uv-main"><div class="nm">${e.kind === 'ple' ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}</div>
+      <div class="sub"><span class="uv-state ${c.state}"></span>${esc(cardText(c))}</div></div>
+    <span class="uv-chev">${ICON.right}</span></div>`;
+}
+
+const SHORT = { raw: 'Raw', smackdown: 'SD', dynamite: 'Dyn', nxt: 'NXT' };
+
+// Every week of the season so far, one square per show: how far along each card is.
+function seasonGrid(st, s, week) {
+  const evs = eventsIn(st, s.id);
+  if (!evs.length) return '';
+  const last = Math.max(s.week, week, ...evs.map(e => e.at.week));
+  const cols = [...st.shows.map(sh => ({ key: sh.id, label: SHORT[sh.id] || sh.name.slice(0, 3), color: showColor(st, sh.id) })),
+    { key: 'ple', label: 'PLE', color: 'var(--uv-gold)' }];
+  const cell = (w, col) => {
+    const here = evs.filter(e => e.at.week === w && (col.key === 'ple' ? e.kind === 'ple' : e.kind === 'weekly' && e.showId === col.key));
+    if (!here.length) return '<span class="uv-cell"></span>';
+    const c = cardStatus({ matches: here.flatMap(e => e.matches) });
+    return `<span class="uv-cell ${c.state}" style="--c:${col.color}"></span>`;
+  };
+  let rows = '';
+  for (let w = last; w >= 1; w--) {
+    rows += `<div class="uv-gr${w === week ? ' on' : ''}${w === s.week ? ' now' : ''}" onclick="uvCalGo(${w})">
+      <span class="w">W${w}</span>${cols.map(col => cell(w, col)).join('')}</div>`;
+  }
+  return `${section('Season at a glance', null)}
+    <div class="uv-grid-wk" style="--n:${cols.length}">
+      <div class="uv-gr hd"><span class="w"></span>${cols.map(c => `<span class="h">${esc(c.label)}</span>`).join('')}</div>
+      ${rows}
+    </div>
+    <div class="uv-legend"><span><i class="uv-cell empty"></i>Planned</span><span><i class="uv-cell booked"></i>Booked</span>
+      <span><i class="uv-cell partial"></i>Some results</span><span><i class="uv-cell complete"></i>All results in</span></div>`;
+}
+
+export function uvCalWeek(d) {
+  const s = activeSeason(uni());
+  calWeek = Math.max(1, Math.min(999, (calWeek || s.week) + d));
+  if (calWeek === s.week) calWeek = null;
+  refresh();
+}
+export function uvCalGo(w) {
+  calWeek = w === activeSeason(uni()).week ? null : w;
+  refresh();
+  const sc = document.getElementById('uvScroll');
+  if (sc) sc.scrollTop = 0;
+}
+/** When the clock moves, the calendar goes with it. */
+export function uvCalFollow() { calWeek = null; }
+
 
 // ---------------------------------------------------------------- roster
 
@@ -167,63 +292,83 @@ function titleRow(st, t) {
 }
 
 // ---------------------------------------------------------------- history
+//
+// Two ways through the past, newest first: every result show by show (filter
+// by season and show), or everything that happened - results, title changes,
+// moves, team changes - on one timeline.
 
-let viewSeason = null;      // null follows the active season
+let viewSeason = null;       // null follows the active season
+let histMode = 'results';    // 'results' or 'all'
+let histShow = '';           // '' for every show, a show id, or 'ple'
+let eventsShown = 12;
 let historyShown = 40;
 
 export function uvHistoryView() {
   const st = uni();
   const cur = activeSeason(st);
   const seasonId = (viewSeason && seasonById(st, viewSeason)) ? viewSeason : cur.id;
-  const season = seasonById(st, seasonId);
-
-  const card = `<div class="uv-card">
-    <div class="uv-season">
-      <div><div class="k">${esc(cur.name)}</div><div class="v">Week ${cur.week}</div></div>
-      <div class="uv-step">
-        <div class="uv-ic" onclick="uvStepWeek(-1)" title="Back a week">${ICON.left}</div>
-        <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON.right}</div>
-      </div>
-    </div>
-    <div class="uv-card-f"><span onclick="uvNextSeason()">Start Season ${Math.max(...st.seasons.map(s => s.number)) + 1}…</span>
-      <span onclick="uvRenameSeason('${cur.id}')">Rename</span></div>
-  </div>`;
-
-  const pills = st.seasons.length > 1 ? `<div class="uv-pills">${st.seasons.map(s =>
+  const seg = (k, lb) => `<div class="${histMode === k ? 'on' : ''}" onclick="uvHistMode('${k}')">${lb}</div>`;
+  const pills = st.seasons.length > 1 ? `<div class="uv-pills">${[...st.seasons].reverse().map(s =>
     `<div class="uv-pill${s.id === seasonId ? ' on' : ''}" onclick="uvViewSeason('${s.id}')">${esc(s.name)}</div>`).join('')}</div>` : '';
-
-  const events = eventsIn(st, seasonId).reverse();
-  let lastWeek = null;
-  const eventRows = events.map(e => {
-    const head = e.at.week !== lastWeek ? `<div class="uv-wk">Week ${e.at.week}</div>` : '';
-    lastWeek = e.at.week;
-    return head + eventRow(st, e);
-  }).join('');
-
-  const tl = timeline(st);
-  const entries = tl.slice(0, historyShown).map(e => `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span>`
-    + `<span class="x">${timelineText(st, e)}</span></div>`).join('');
-
-  return card + `
-    <div class="uv-bar"><div class="uv-bar-t">Events${st.seasons.length > 1 ? ` · ${esc(season.name)}` : ''}</div>
-      ${season.status === 'active' ? `<div class="uv-btn pri" onclick="uvNewEvent()">${ICON.plus}New event</div>` : ''}</div>
+  return `<div class="uv-seg uv-seg-page">${seg('results', 'Results')}${seg('all', 'Everything')}</div>
     ${pills}
-    ${eventRows || empty(ICON.cal, 'No events yet',
-      'Add each show or premium live event after you play or watch it in WWE 2K25, then record the results the game gave you.')}
-    ${section('History', null)}
-    <div class="uv-tls">${entries}</div>
-    ${tl.length > historyShown ? `<div class="uv-more" onclick="uvMoreHistory()">Show more (${tl.length - historyShown})</div>` : ''}`;
+    ${histMode === 'results' ? resultsView(st, seasonId) : everythingView(st, seasonId)}`;
 }
 
-function eventRow(st, e) {
-  const n = e.matches.length;
-  const kind = e.kind === 'ple' ? tag('PLE', 'ple') : '';
-  return `<div class="uv-row" onclick="uvOpenEvent('${e.id}')">
-    <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${ICON.cal}</span>
-    <div class="uv-main"><div class="nm">${esc(e.name)}</div>
-      <div class="sub">${kind}${esc(e.showId ? showName(st, e.showId) : 'All shows')} · ${n} match${n === 1 ? '' : 'es'}</div></div>
-    <span class="uv-chev">${ICON.right}</span>
-  </div>`;
+function resultsView(st, seasonId) {
+  const pill = (k, label, color) => `<div class="uv-pill${histShow === k ? ' on' : ''}" onclick="uvHistShow('${k}')">`
+    + `${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ''}${esc(label)}</div>`;
+  const shows = `<div class="uv-pills">${pill('', 'All shows')}${st.shows.map(s => pill(s.id, s.name, showColor(st, s.id))).join('')}${pill('ple', 'PLEs')}</div>`;
+  const rows = resultsHistory(st, { seasonId, showId: histShow || undefined });
+  const groups = [];
+  rows.forEach(x => {
+    const g = groups[groups.length - 1];
+    if (g && g.event === x.event) g.rows.push(x); else groups.push({ event: x.event, rows: [x] });
+  });
+  if (!groups.length) {
+    return shows + empty(ICON.list, 'No results yet',
+      histShow ? 'Nothing entered for this show in this season.'
+        : 'Plan a show on the Calendar, book its matches, then enter each result after the CPU plays it in WWE 2K25.');
+  }
+  let lastWeek = null;
+  const html = groups.slice(0, eventsShown).map(g => {
+    const head = g.event.at.week !== lastWeek ? `<div class="uv-wk">Week ${g.event.at.week}</div>` : '';
+    lastWeek = g.event.at.week;
+    return head + eventBlock(st, g);
+  }).join('');
+  const n = rows.length;
+  return shows + `<div class="uv-count">${n} result${n === 1 ? '' : 's'} on ${groups.length} show${groups.length === 1 ? '' : 's'}</div>`
+    + html + (groups.length > eventsShown ? `<div class="uv-more" onclick="uvMoreResults()">Show older shows (${groups.length - eventsShown})</div>` : '');
+}
+
+function eventBlock(st, g) {
+  const e = g.event, c = cardStatus(e);
+  const lines = g.rows.map(x => {
+    const m = x.match;
+    const t = m.titleId && titleById(st, m.titleId);
+    const won = st.reigns.some(r => r.matchId === m.id);
+    const bits = [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(' · ');
+    return `<div class="uv-hm" data-m="${m.id}" onclick="uvOpenEvent('${e.id}')"><span class="n">${x.n}</span>
+      <div class="b"><div class="l">${matchLine(st, m)}</div>
+        <div class="uv-chips">${kindChip(m)}${t ? chip(won ? `${t.name} · new champion` : t.name, 'gold') : ''}${m.stip ? chip(m.stip) : ''}</div>
+        ${bits ? `<div class="d">${bits}</div>` : ''}${m.notes ? `<div class="d nt">${esc(m.notes)}</div>` : ''}</div></div>`;
+  }).join('');
+  return `<div class="uv-hev" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">
+      <div class="uv-main"><div class="nm">${e.kind === 'ple' ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}</div>
+        <div class="sub">${esc(eventWhen(st, e))} · ${esc(e.showId ? showName(st, e.showId) : 'All shows')}${c.booked ? ` · ${c.booked} still to enter` : ''}</div></div>
+      <span class="uv-chev">${ICON.right}</span></div>
+    <div class="uv-hms">${lines}</div>`;
+}
+
+function everythingView(st, seasonId) {
+  // an event is history once it has a result; planned and booked ones live on the calendar
+  const tl = timeline(st).filter(e => e.season === seasonId
+    && (e.type !== 'event' || e.rec.matches.some(m => m.status === 'played')));
+  if (!tl.length) return empty(ICON.list, 'Nothing yet', 'Results, title changes, moves and team changes show up here as they happen.');
+  const entries = tl.slice(0, historyShown).map(e => `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span>`
+    + `<span class="x">${timelineText(st, e)}</span></div>`).join('');
+  return `<div class="uv-tls">${entries}</div>
+    ${tl.length > historyShown ? `<div class="uv-more" onclick="uvMoreHistory()">Show more (${tl.length - historyShown})</div>` : ''}`;
 }
 
 function timelineText(st, e) {
@@ -248,12 +393,19 @@ function timelineText(st, e) {
       return `<b>${esc(holderName(st, r.holder))}</b> won the ${esc(t ? t.name : 'title')}${ev}`;
     }
     case 'title-vacated': { const t = titleById(st, r.titleId); return `The ${esc(t ? t.name : 'title')} was vacated`; }
-    case 'event': return `${esc(r.name)} — ${r.matches.length} match${r.matches.length === 1 ? '' : 'es'} recorded`;
+    case 'event': {
+      const c = cardStatus(r);
+      return `<span class="uv-link" onclick="uvOpenEvent('${r.id}')">${esc(r.name)}</span> <span class="uv-muted">${esc(eventWhen(st, r))}</span>`
+        + ` — ${c.played} result${c.played === 1 ? '' : 's'}${c.booked ? `, ${c.booked} still to enter` : ''}`;
+    }
     default: return '';
   }
 }
 
-export function uvViewSeason(id) { viewSeason = id; refresh(); }
+export function uvHistMode(k) { histMode = k; refresh(); }
+export function uvHistShow(k) { histShow = k; eventsShown = 12; refresh(); }
+export function uvViewSeason(id) { viewSeason = id; eventsShown = 12; historyShown = 40; refresh(); }
+export function uvMoreResults() { eventsShown += 12; refresh(); }
 export function uvMoreHistory() { historyShown += 40; refresh(); }
-/** When the active season changes, follow it. */
-export function uvFollowActiveSeason() { viewSeason = null; }
+/** When the active season changes, follow it - on the calendar and in the history. */
+export function uvFollowActiveSeason() { viewSeason = null; calWeek = null; }

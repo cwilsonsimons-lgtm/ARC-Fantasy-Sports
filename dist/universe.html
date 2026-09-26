@@ -203,12 +203,13 @@ body{font-family:'Barlow',system-ui,sans-serif;color:#F4F6FA;overflow:hidden}
 .uv-empty .s{font-size:12.5px;line-height:1.55;margin-top:7px}
 .uv-empty .uv-btn{margin-top:16px}
 
-/* ---------- history ---------- */
+/* ---------- season card, history ---------- */
 .uv-card{margin:14px 14px 4px;border:1px solid var(--uv-line);border-radius:16px;overflow:hidden;
   background:linear-gradient(135deg,rgba(232,185,49,.11),transparent 55%),var(--uv-card)}
 .uv-season{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 12px}
 .uv-season .k{font-size:10.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--uv-gold)}
 .uv-season .v{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:28px;line-height:1.1;margin-top:3px}
+.uv-season .s{margin-top:3px;font-size:11.5px;font-weight:600;color:var(--uv-ink-2)}
 .uv-step{display:flex;align-items:center;gap:7px}
 .uv-card-f{display:flex;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--uv-line-soft);
   font-size:12px;font-weight:700;color:var(--uv-ink-2)}
@@ -240,9 +241,6 @@ body.uv-sheet-open .uv-sheet{transform:translateY(0)}
 .uv-sheet h4{margin:18px 0 6px;font-size:10.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-ink-3)}
 .uv-sheet .fine{margin-top:16px;padding-top:12px;border-top:1px solid var(--uv-line-soft);font-size:11px;line-height:1.55;color:var(--uv-ink-3)}
 .uv-p{margin:8px 0;font-size:12.5px;line-height:1.55;color:var(--uv-ink-2)}
-.uv-hero{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
-.uv-hero .k{font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
-.uv-hero .s{margin-top:3px;font-size:12.5px;color:var(--uv-ink-2)}
 
 /* ---------- forms ---------- */
 .uv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -265,7 +263,7 @@ select.uv-in{appearance:none;-webkit-appearance:none;padding-right:28px;backgrou
 .uv-add{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
 .uv-add svg{width:14px;height:14px}
 .uv-sidebox{margin-top:10px;padding:10px 11px 11px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card)}
-.uv-sidebox .uv-in{background:var(--uv-card-2)}
+.uv-sidebox .uv-in{background-color:var(--uv-card-2)}   /* the colour only: select arrows are a background image */
 .uv-sidebox .h{display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:1px;
   text-transform:uppercase;color:var(--uv-ink-2)}
 .uv-sidebox .h .uv-link{text-transform:none;letter-spacing:0;font-weight:700;color:var(--uv-ink-3)}
@@ -292,10 +290,6 @@ select.uv-in{appearance:none;-webkit-appearance:none;padding-right:28px;backgrou
   background:var(--uv-line-soft);color:var(--uv-ink-2)}
 .uv-res.W{background:rgba(76,211,122,.14);color:var(--uv-green)}
 .uv-res.L{background:rgba(255,90,78,.12);color:var(--uv-red)}
-.uv-match{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--uv-line-soft);font-size:13px;line-height:1.45}
-.uv-match .i{flex:none;width:16px;padding-top:2px;font-size:11px;font-weight:800;color:var(--uv-ink-3)}
-.uv-match .b{flex:1;min-width:0}
-.uv-match .uv-ic{width:30px;height:30px}
 .uv-champ-card{margin:8px 0 4px;padding:14px 16px;border-radius:16px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--uv-line));
   background:linear-gradient(135deg,color-mix(in srgb,var(--c) 18%,transparent),transparent 60%),var(--uv-card)}
 .uv-champ-card .k{font-size:10.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--uv-gold)}
@@ -388,14 +382,112 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-row.picked{background:var(--uv-gold-soft)}
 .uv-row.picked .uv-tick{background:var(--uv-gold);border-color:var(--uv-gold)}
 
-/* ---------- result form extras ---------- */
-.uv-match{cursor:pointer}
-.uv-match .uv-chev svg{width:15px;height:15px}
+/* ---------- match form extras ---------- */
 .uv-hint{margin-top:8px;padding:8px 10px;border-radius:10px;border:1px dashed var(--uv-gold-line);background:var(--uv-gold-soft);
   font-size:12.5px;cursor:pointer}
 .uv-hint span{display:block;margin-top:2px;font-size:11px;color:var(--uv-ink-2)}
 .uv-li .uv-btn.sm{flex:none}
 
+
+.uv-res.up{background:rgba(240,165,58,.12);color:var(--uv-amber)}
+.uv-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.uv-chip{flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 7px;border-radius:6px;
+  font-size:10.5px;font-weight:700;background:var(--uv-line-soft);border:1px solid var(--uv-line);color:var(--uv-ink-2)}
+.uv-chip.kind{color:var(--uv-ink)}
+.uv-chip.gold{color:var(--uv-gold);border-color:rgba(232,185,49,.35);background:var(--uv-gold-soft)}
+.uv-kindline{margin-top:10px}
+.uv-sheet .uv-pills.tight{padding:2px 0;flex-wrap:wrap}
+.uv-sheet .uv-pills.tight .uv-pill{padding:6px 10px}
+.uv-btn.sm2{height:32px;padding:0 11px;border-radius:10px;font-size:12px}
+.uv-btn.sm2 svg{width:14px;height:14px}
+.uv-ic.mv{width:32px;height:32px;border-radius:10px}
+.uv-ic.mv svg{width:16px;height:16px}
+.uv-star{display:inline-grid;vertical-align:-2px;margin-right:5px;color:var(--uv-gold)}
+.uv-star svg{width:14px;height:14px}
+/* how far along a card is: hollow - planned, ring - booked, filled - results in */
+.uv-state{flex:none;width:9px;height:9px;border-radius:50%;border:1.5px dashed var(--uv-ink-3)}
+.uv-state.booked{border:2px solid var(--uv-amber)}
+.uv-state.partial{border:2px solid var(--uv-amber);background:linear-gradient(90deg,var(--uv-amber) 50%,transparent 50%)}
+.uv-state.complete{border:2px solid var(--uv-green);background:var(--uv-green)}
+
+/* ---------- calendar ---------- */
+.uv-weeknav{display:flex;align-items:center;gap:10px;margin:16px 14px 0}
+.uv-weeknav .c{flex:1;min-width:0;text-align:center}
+.uv-weeknav .t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:19px;line-height:1.1;
+  letter-spacing:.6px;text-transform:uppercase}
+.uv-weeknav .s{margin-top:2px;font-size:11.5px;color:var(--uv-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-back-now{padding:6px;text-align:center;font-size:12px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-nights{margin:10px 14px 0;border:1px solid var(--uv-line);border-radius:16px;overflow:hidden;background:var(--uv-card)}
+.uv-night{display:flex;align-items:center;gap:11px;min-height:58px;padding:9px 12px 9px 0;border-top:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-night:first-child{border-top:none}
+.uv-night::before{content:"";align-self:stretch;flex:none;width:4px;margin:-9px 0;background:var(--c)}
+.uv-night:active{background:var(--uv-card-2)}
+.uv-night.open{cursor:default;background:var(--uv-card-2)}
+.uv-night.open::before{opacity:.3}
+.uv-night.open .nm{color:var(--uv-ink-2)}
+.uv-night.open .sub{color:var(--uv-ink-3)}
+.uv-night .dt{flex:none;width:42px;text-align:center}
+.uv-night .dt b{display:block;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:14px;
+  letter-spacing:.8px;text-transform:uppercase}
+.uv-night .dt span{display:block;margin-top:1px;font-size:10.5px;font-weight:600;color:var(--uv-ink-3);white-space:nowrap}
+.uv-addrow{display:flex;align-items:center;justify-content:center;gap:7px;margin:10px 14px 0;padding:11px;border-radius:13px;
+  border:1px dashed var(--uv-line);font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-addrow svg{width:15px;height:15px}
+.uv-grid-wk{margin:0 14px;padding:6px;border:1px solid var(--uv-line);border-radius:14px;background:var(--uv-card)}
+.uv-gr{display:grid;grid-template-columns:38px repeat(var(--n,5),1fr);align-items:center;gap:6px;padding:4px 6px;border-radius:8px;cursor:pointer}
+.uv-gr.hd{cursor:default;padding-bottom:2px}
+.uv-gr .w{font-size:10.5px;font-weight:800;color:var(--uv-ink-3)}
+.uv-gr .h{text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-gr.now .w{color:var(--uv-gold)}
+.uv-gr.on{background:var(--uv-gold-soft)}
+.uv-cell{justify-self:center;width:100%;max-width:48px;height:12px;border-radius:4px;background:var(--uv-line-soft)}
+.uv-cell.empty{background:none;border:1.5px dashed var(--c)}
+.uv-cell.booked{background:none;border:1.5px solid var(--c)}
+.uv-cell.partial{border:1.5px solid var(--c);background:linear-gradient(90deg,var(--c) 50%,transparent 50%)}
+.uv-cell.complete{background:var(--c)}
+.uv-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:9px 16px 0;font-size:11px;color:var(--uv-ink-3)}
+.uv-legend span{display:flex;align-items:center;gap:6px}
+.uv-legend .uv-cell{--c:var(--uv-ink-2);display:inline-block;width:18px;height:10px}
+
+/* ---------- a show's page and its card ---------- */
+.uv-evhead{margin:10px 14px 0;padding:15px 16px;border-radius:18px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--uv-line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c) 20%,transparent),transparent 62%),var(--uv-card)}
+.uv-evhead .k{font-size:10.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--c)}
+.uv-evhead .nm{margin-top:4px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:25px;line-height:1.1;
+  letter-spacing:.4px;text-transform:uppercase;overflow-wrap:anywhere}
+.uv-evhead .s{margin-top:5px;font-size:12.5px;color:var(--uv-ink-2)}
+.uv-evhead .st{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12.5px;font-weight:700}
+.uv-page-acts{display:flex;gap:8px;margin:12px 14px 0}
+.uv-page-acts .uv-btn{flex:1}
+.uv-cards{display:flex;flex-direction:column;gap:9px;margin:0 14px}
+.uv-mc{padding:11px 12px 10px;border-radius:14px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-mc.scheduled{border-style:dashed;background:var(--uv-card-2)}
+.uv-mc-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.uv-mc-top .n{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;
+  background:var(--uv-line-soft);color:var(--uv-ink-2)}
+.uv-mc-top .st{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--uv-amber)}
+.uv-mc.played .uv-mc-top .st{color:var(--uv-green)}
+.uv-mc-body{margin-top:9px;font-size:14.5px;line-height:1.4;overflow-wrap:anywhere}
+.uv-mc-d{margin-top:4px;font-size:12px;color:var(--uv-ink-2)}
+.uv-mc-n{margin-top:7px;padding:7px 9px;border-radius:9px;background:var(--uv-card-2);font-size:12px;line-height:1.45;
+  color:var(--uv-ink-2);white-space:pre-wrap;overflow-wrap:anywhere}
+.uv-mc-acts{display:flex;align-items:center;gap:7px;margin-top:10px}
+.uv-mc-acts .sp{flex:1}
+
+/* ---------- history ---------- */
+.uv-seg.uv-seg-page{margin:14px 14px 0}
+.uv-count{padding:10px 16px 0;font-size:11.5px;color:var(--uv-ink-3)}
+.uv-hev{display:flex;align-items:center;gap:10px;margin:6px 14px 0;padding:10px 12px;border:1px solid var(--uv-line);border-bottom:none;
+  border-radius:13px 13px 0 0;cursor:pointer;box-shadow:inset 4px 0 0 var(--c);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 15%,transparent),transparent 70%),var(--uv-card)}
+.uv-hms{margin:0 14px 4px;border:1px solid var(--uv-line);border-radius:0 0 13px 13px;background:var(--uv-card-2)}
+.uv-hm{display:flex;gap:10px;padding:9px 12px;border-top:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-hm .n{flex:none;width:16px;padding-top:1px;font-size:11px;font-weight:800;color:var(--uv-ink-3)}
+.uv-hm .b{flex:1;min-width:0}
+.uv-hm .l{font-size:13.5px;line-height:1.4;overflow-wrap:anywhere}
+.uv-hm .d{margin-top:4px;font-size:11.5px;color:var(--uv-ink-2)}
+.uv-hm .d.nt{font-style:italic;color:var(--uv-ink-3);overflow-wrap:anywhere}
+.uv-sheet .uv-mc-sum{margin-top:10px}
 
 </style>
 </head>
@@ -447,10 +539,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
   // js/universe/views.js
   var views_exports = {};
   __export(views_exports, {
+    uvCalFollow: () => uvCalFollow,
+    uvCalGo: () => uvCalGo,
+    uvCalWeek: () => uvCalWeek,
+    uvCalendarView: () => uvCalendarView,
     uvEndSelect: () => uvEndSelect,
     uvFollowActiveSeason: () => uvFollowActiveSeason,
+    uvHistMode: () => uvHistMode,
+    uvHistShow: () => uvHistShow,
     uvHistoryView: () => uvHistoryView,
     uvMoreHistory: () => uvMoreHistory,
+    uvMoreResults: () => uvMoreResults,
     uvMoveSelected: () => uvMoveSelected,
     uvPick: () => uvPick,
     uvRosterFilter: () => uvRosterFilter,
@@ -465,7 +564,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 2;
+  var SCHEMA_VERSION = 3;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -476,11 +575,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     throw new UniverseError(message);
   }
   var SHOW_SEED = [
-    { id: "raw", name: "Raw", promotion: "WWE", color: "#E23B2E" },
-    { id: "smackdown", name: "SmackDown", promotion: "WWE", color: "#2F6BFF" },
-    { id: "dynamite", name: "Dynamite", promotion: "AEW", color: "#D8A93B" },
-    { id: "nxt", name: "NXT", promotion: "WWE", color: "#C4CAD3" }
+    { id: "raw", name: "Raw", promotion: "WWE", color: "#E23B2E", day: 0 },
+    { id: "smackdown", name: "SmackDown", promotion: "WWE", color: "#2F6BFF", day: 4 },
+    { id: "dynamite", name: "Dynamite", promotion: "AEW", color: "#D8A93B", day: 2 },
+    { id: "nxt", name: "NXT", promotion: "WWE", color: "#C4CAD3", day: 1 }
   ];
+  var DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  var PLE_DAY = 5;
   var GENDERS = ["male", "female"];
   var ORIGINS = ["WWE", "AEW", "NXT", "Other"];
   var ALIGNMENTS = ["face", "heel", "tweener"];
@@ -489,7 +590,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var DIVISIONS = ["men", "women", "open"];
   var EVENT_KINDS = ["weekly", "ple"];
   var OUTCOMES = ["win", "draw", "nc"];
-  var FINISHES = ["pinfall", "submission", "dq", "countout", "ko", "other"];
+  var FINISHES = ["pinfall", "submission", "ko", "dq", "countout", "elimination", "escape", "retrieval", "other"];
+  var MATCH_STATUSES = ["scheduled", "played"];
   var MAX_NAME = 60;
   var MAX_TEXT = 2e3;
   var MAX_WEEK = 999;
@@ -539,15 +641,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function activeSeason(st) {
     return st.seasons.find((s) => s.status === "active") || null;
   }
-  function stampAt(st, seasonId, week) {
-    return { season: seasonId, week, seq: ++st.seq };
+  function stampAt(st, seasonId, week, day) {
+    const s = { season: seasonId, week, seq: ++st.seq };
+    if (day != null) s.day = day;
+    return s;
   }
   var seasonNo = (st, id) => (seasonById(st, id) || { number: 0 }).number;
-  function compareStamps(st, a, b) {
-    return seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week || a.seq - b.seq;
+  function cmpDate(st, a, b) {
+    return seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week || (a.day != null && b.day != null ? a.day - b.day : 0);
   }
-  var earlierWeek = (st, a, b) => (seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week) < 0;
-  var weekLabel = (st, s) => `season ${seasonNo(st, s.season)}, week ${s.week}`;
+  function compareStamps(st, a, b) {
+    return cmpDate(st, a, b) || a.seq - b.seq;
+  }
+  var earlierDate = (st, a, b) => cmpDate(st, a, b) < 0;
+  var weekLabel = (st, s) => `season ${seasonNo(st, s.season)}, week ${s.week}${s.day != null ? ` (${DAYS[s.day]})` : ""}`;
   function now(st) {
     const s = activeSeason(st);
     return stampAt(st, s.id, s.week);
@@ -558,6 +665,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var stampFor = (st, date) => stampAt(st, date.season, date.week);
   var nowDate = (st) => ({ season: activeSeason(st).id, week: activeSeason(st).week });
+  function calendarDate(st, seasonId, week, day) {
+    const s = seasonById(st, seasonId);
+    if (!s || !s.start || day == null) return null;
+    const [y, m, d] = s.start.split("-").map(Number);
+    const start = Date.UTC(y, m - 1, d);
+    const monday = start - (new Date(start).getUTCDay() + 6) % 7 * 864e5;
+    return new Date(monday + ((week - 1) * 7 + day) * 864e5).toISOString().slice(0, 10);
+  }
   var within = (st, x, from, to) => compareStamps(st, from, x) <= 0 && (!to || compareStamps(st, x, to) < 0);
   function weeksBetween(st, a, b) {
     const sa = seasonById(st, a.season), sb = seasonById(st, b.season);
@@ -601,6 +716,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (n.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
     return n;
   }
+  function checkDay(value) {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > 6) fail("Pick a night of the week.");
+    return n;
+  }
+  var isIsoDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && (/* @__PURE__ */ new Date(v + "T00:00:00Z")).toISOString().slice(0, 10) === v;
   function checkWeek(value) {
     const n = Number(value);
     if (!Number.isInteger(n) || n < 1 || n > MAX_WEEK) fail(`Week must be a whole number from 1 to ${MAX_WEEK}.`);
@@ -662,7 +783,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (w.showId === to) return null;
     const moves = movesOf(st, id);
     const last = moves[moves.length - 1];
-    if (last && earlierWeek(st, date, last.at)) {
+    if (last && earlierDate(st, date, last.at)) {
       fail(`${w.name}'s last move was in ${weekLabel(st, last.at)}, later than ${weekLabel(st, date)}. Moves have to be recorded in order.`);
     }
     return w;
@@ -693,6 +814,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (reigns) refs.push(reigns === 1 ? "a title reign" : `${reigns} title reigns`);
     const matches = matchesOf(st, id).length;
     if (matches) refs.push(matches === 1 ? "a match" : `${matches} matches`);
+    const booked = bookingsOf(st, id).length;
+    if (booked) refs.push(booked === 1 ? "a booked match" : `${booked} booked matches`);
     return refs;
   }
   function deleteWrestler(st, id) {
@@ -755,10 +878,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const w = must(wrestlerById(st, wrestlerId), "wrestler", wrestlerId);
     if (t.members.includes(wrestlerId)) fail(`${w.name} is already on ${t.name}.`);
     const date = dateIn(st, opts.week);
-    if (earlierWeek(st, date, teamFormed(t))) fail(`${t.name} formed in ${weekLabel(st, teamFormed(t))}, after ${weekLabel(st, date)}.`);
+    if (earlierDate(st, date, teamFormed(t))) fail(`${t.name} formed in ${weekLabel(st, teamFormed(t))}, after ${weekLabel(st, date)}.`);
     const before = st.memberships.filter((m) => m.team === teamId && m.wrestler === wrestlerId && m.end);
     const lastLeft = before.sort((a, b) => b.end.seq - a.end.seq)[0];
-    if (lastLeft && earlierWeek(st, date, lastLeft.end)) fail(`${w.name} left ${t.name} in ${weekLabel(st, lastLeft.end)}, after ${weekLabel(st, date)}.`);
+    if (lastLeft && earlierDate(st, date, lastLeft.end)) fail(`${w.name} left ${t.name} in ${weekLabel(st, lastLeft.end)}, after ${weekLabel(st, date)}.`);
     const spell = { id: newId(st, "ms"), team: teamId, wrestler: wrestlerId, start: stampFor(st, date), end: null };
     st.memberships.push(spell);
     t.members.push(wrestlerId);
@@ -771,7 +894,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (t.members.length <= 2) fail(`${t.name} need at least two members. Add the new partner first, or disband the team.`);
     const spell = openSpell(st, teamId, wrestlerId);
     const date = dateIn(st, opts.week);
-    if (earlierWeek(st, date, spell.start)) fail(`${w.name} joined ${t.name} in ${weekLabel(st, spell.start)}, after ${weekLabel(st, date)}.`);
+    if (earlierDate(st, date, spell.start)) fail(`${w.name} joined ${t.name} in ${weekLabel(st, spell.start)}, after ${weekLabel(st, date)}.`);
     spell.end = stampFor(st, date);
     removeWhere(t.members, (x) => x === wrestlerId);
     return spell;
@@ -814,9 +937,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const otherSpells = st.memberships.some((m) => m !== last.m && m.team === id && m.wrestler === w.id);
       let used = null;
       eachMatch(st, (m, ev) => {
-        if (!used && m.sides.some((sd) => sd.team === id && sd.wrestlers.includes(w.id))) used = ev;
+        if (!used && m.sides.some((sd) => sd.team === id && sd.wrestlers.includes(w.id))) used = { m, ev };
       });
-      if (used && !otherSpells) fail(`${w.name} wrestled for ${t.name} at ${used.name}. Edit that result first.`);
+      if (used && !otherSpells) {
+        fail(`${w.name} ${used.m.status === "played" ? "wrestled" : "is booked"} for ${t.name} at ${used.ev.name}. Edit that match first.`);
+      }
       removeWhere(st.memberships, (m) => m === last.m);
       removeWhere(t.members, (x) => x === w.id);
       return last;
@@ -978,18 +1103,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return { title, holder: h, cur };
   }
   function checkInOrder(st, title, cur, when) {
-    if (cur && earlierWeek(st, when, cur.start)) {
+    if (cur && earlierDate(st, when, cur.start)) {
       fail(`The current ${title.name} reign began in ${weekLabel(st, cur.start)}, later than ${weekLabel(st, when)}. Title changes have to be recorded in order - undo the later one first.`);
     }
   }
-  var dateOf = (st, ev) => ev ? { season: ev.at.season, week: ev.at.week } : { season: activeSeason(st).id, week: activeSeason(st).week };
+  var dateOf = (st, ev) => ev ? { season: ev.at.season, week: ev.at.week, day: ev.at.day } : { season: activeSeason(st).id, week: activeSeason(st).week };
   function setChampion(st, titleId, holder, opts = {}) {
     const ev = opts.eventId ? must(eventById(st, opts.eventId), "event", opts.eventId) : null;
     const { holder: h, cur } = champChecks(st, titleId, holder, dateOf(st, ev));
-    if (opts.matchId && !(ev && ev.matches.some((m) => m.id === opts.matchId))) fail("That match is not on that event.");
+    if (opts.matchId && !(ev && ev.matches.some((m) => m.id === opts.matchId && m.status === "played"))) fail("That match has no result on that event.");
     const note = cleanName(opts.note);
     if (note.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
-    const at = ev ? stampAt(st, ev.at.season, ev.at.week) : now(st);
+    const at = ev ? stampAt(st, ev.at.season, ev.at.week, ev.at.day) : now(st);
     if (cur) cur.end = { ...at };
     const reign = {
       id: newId(st, "rg"),
@@ -1065,9 +1190,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function defencesOf(st, r) {
     let n = 0;
-    eachMatch(st, (m, ev) => {
+    eachPlayed(st, (m, ev) => {
       if (m.titleId !== r.titleId || st.reigns.some((x) => x.matchId === m.id)) return;
-      if (earlierWeek(st, ev.at, r.start) || r.end && earlierWeek(st, r.end, ev.at)) return;
+      if (earlierDate(st, ev.at, r.start) || r.end && earlierDate(st, r.end, ev.at)) return;
       const inIt = r.holder.type === "team" ? m.sides.some((s) => s.team === r.holder.id) : m.sides.some((s) => s.wrestlers.includes(r.holder.id));
       if (inIt) n++;
     });
@@ -1093,10 +1218,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (week !== r.start.week) {
         if (r.eventId) fail(`This reign is dated by ${ev ? ev.name : "its event"} - change that event's week instead.`);
         const date = { season: r.start.season, week };
-        if (floor && earlierWeek(st, date, floor)) {
+        if (floor && earlierDate(st, date, floor)) {
           fail(prevJoined ? `That's before the previous reign began (${weekLabel(st, floor)}).` : `The title was vacant until ${weekLabel(st, floor)}, so this reign can't begin before then.`);
         }
-        if (r.end && earlierWeek(st, r.end, date)) fail(`That's after this reign ended (${weekLabel(st, r.end)}).`);
+        if (r.end && earlierDate(st, r.end, date)) fail(`That's after this reign ended (${weekLabel(st, r.end)}).`);
       }
     }
     if (has(patch, "note")) note = checkNote(patch.note);
@@ -1134,7 +1259,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       week: 1,
       status: "active",
       started: null,
-      ended: null
+      ended: null,
+      start: null
     };
     st.seasons.push(season);
     season.started = stampAt(st, id, 1);
@@ -1152,6 +1278,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
     cur.status = "complete";
     return openSeason(st, Math.max(...st.seasons.map((s) => s.number)) + 1, name);
   }
+  function setSeasonStart(st, id, iso) {
+    const s = must(seasonById(st, id), "season", id);
+    if (iso == null || iso === "") {
+      s.start = null;
+      return s;
+    }
+    if (!isIsoDate(iso)) fail("That isn\u2019t a date.");
+    s.start = iso;
+    return s;
+  }
   function renameSeason(st, id, name) {
     const s = must(seasonById(st, id), "season", id);
     const n = cleanName(name);
@@ -1166,15 +1302,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (kind === "ple") fail("Give the premium live event a name.");
     return `${showById(st, showId).name} \xB7 Week ${week}`;
   }
+  function defaultDay(st, kind, showId) {
+    const show = showById(st, showId);
+    return kind === "weekly" && show ? show.day : PLE_DAY;
+  }
   function addEvent(st, input = {}) {
     const season = activeSeason(st);
     const kind = oneOf(input.kind || "weekly", EVENT_KINDS, "event type");
     const showId = checkShowId(st, input.showId);
     if (kind === "weekly" && !showId) fail("Pick which show this episode is.");
     const week = input.week == null || input.week === "" ? season.week : checkWeek(input.week);
+    const day = input.day == null || input.day === "" ? defaultDay(st, kind, showId) : checkDay(input.day);
     const name = eventName(st, kind, showId, week, input.name);
     const notes = checkText(input.notes, "Notes");
-    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week), notes, matches: [] };
+    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [] };
     st.events.push(ev);
     return ev;
   }
@@ -1183,30 +1324,38 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const kind = has(patch, "kind") ? oneOf(patch.kind, EVENT_KINDS, "event type") : ev.kind;
     const showId = has(patch, "showId") ? checkShowId(st, patch.showId) : ev.showId;
     if (kind === "weekly" && !showId) fail("A weekly episode needs a show.");
-    let week = ev.at.week;
+    const week = has(patch, "week") ? checkWeek(patch.week) : ev.at.week;
+    const day = has(patch, "day") ? checkDay(patch.day) : ev.at.day;
     const linked = st.reigns.filter((r) => r.eventId === id);
-    if (has(patch, "week")) {
-      week = checkWeek(patch.week);
-      const date = { season: ev.at.season, week };
+    const moved = week !== ev.at.week || day !== ev.at.day;
+    if (moved) {
+      const date = { season: ev.at.season, week, day };
+      const when = weekLabel(st, date);
       linked.forEach((r) => {
         const { prevJoined, floor } = neighbours(st, r);
         const title = titleById(st, r.titleId).name;
-        if (floor && earlierWeek(st, date, floor)) {
-          fail(prevJoined ? `Week ${week} is before the ${title} reign this event ended began (${weekLabel(st, floor)}).` : `The ${title} was vacant until ${weekLabel(st, floor)}, so week ${week} is too early.`);
+        if (floor && earlierDate(st, date, floor)) {
+          fail(prevJoined ? `${when} is before the ${title} reign this event ended began (${weekLabel(st, floor)}).` : `The ${title} was vacant until ${weekLabel(st, floor)}, so ${when} is too early.`);
         }
-        if (r.end && earlierWeek(st, r.end, date)) fail(`Week ${week} is after the ${title} reign won here ended (${weekLabel(st, r.end)}).`);
+        if (r.end && earlierDate(st, r.end, date)) fail(`${when} is after the ${title} reign won here ended (${weekLabel(st, r.end)}).`);
       });
     }
-    const name = has(patch, "name") ? eventName(st, kind, showId, week, patch.name) : ev.name;
+    const autoNamed = ev.kind === "weekly" && ev.name === eventName(st, "weekly", ev.showId, ev.at.week, "");
+    const name = has(patch, "name") ? eventName(st, kind, showId, week, patch.name) : autoNamed && kind === "weekly" ? eventName(st, kind, showId, week, "") : ev.name;
     const notes = has(patch, "notes") ? checkText(patch.notes, "Notes") : ev.notes;
     Object.assign(ev, { kind, showId, name, notes });
-    if (week !== ev.at.week) {
+    if (moved) {
+      const place = (x) => {
+        x.week = week;
+        if (day == null) delete x.day;
+        else x.day = day;
+      };
       linked.forEach((r) => {
         const { prev, prevJoined } = neighbours(st, r);
-        if (prevJoined) prev.end.week = week;
-        r.start.week = week;
+        if (prevJoined) place(prev.end);
+        place(r.start);
       });
-      ev.at.week = week;
+      place(ev.at);
     }
     return ev;
   }
@@ -1218,7 +1367,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (revert) revert();
   }
   function eventsIn(st, seasonId) {
-    return st.events.filter((e) => e.at.season === seasonId).sort((a, b) => a.at.week - b.at.week || a.at.seq - b.at.seq);
+    return st.events.filter((e) => e.at.season === seasonId).sort((a, b) => compareStamps(st, a.at, b.at));
   }
   function normalizeSides(st, sides) {
     if (!Array.isArray(sides) || sides.length < 2) fail("A match needs at least two sides.");
@@ -1242,30 +1391,67 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return { wrestlers: [...ids], team };
     });
   }
-  function matchFields(st, input, keepTitleId = null) {
+  function bookingFields(st, input, keepTitleId = null) {
     const sides = normalizeSides(st, input.sides);
-    const outcome = oneOf(input.outcome || "win", OUTCOMES, "result");
-    let winner = null;
-    if (outcome === "win") {
-      winner = input.winner === "" || input.winner == null ? NaN : Number(input.winner);
-      if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail("Pick who won.");
-    }
-    const finish = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
     const title = input.titleId ? must(titleById(st, input.titleId), "championship", input.titleId) : null;
     if (title && !title.active && title.id !== keepTitleId) fail(`The ${title.name} is retired.`);
     const stip = cleanName(input.stip);
     if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
     const notes = checkText(input.notes, "Notes");
-    return { sides, outcome, winner, finish, title, stip, notes };
+    return { sides, title, stip, notes };
   }
-  var matchRecord = (f) => ({
-    sides: f.sides,
-    outcome: f.outcome,
-    winner: f.winner,
-    finish: f.finish,
-    titleId: f.title ? f.title.id : null,
-    stip: f.stip,
-    notes: f.notes
+  function resultFields(st, input, sides) {
+    const hasWinner = !(input.winner === "" || input.winner == null);
+    let outcome = input.outcome === "" || input.outcome == null ? null : input.outcome;
+    if (!outcome) {
+      if (!hasWinner) fail("Enter the result: who won, a draw, or a no contest.");
+      outcome = "win";
+    }
+    oneOf(outcome, OUTCOMES, "result");
+    let winner = null;
+    if (outcome === "win") {
+      winner = hasWinner ? Number(input.winner) : NaN;
+      if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail("Pick who won.");
+    } else if (hasWinner) {
+      fail(`A ${outcome === "draw" ? "draw" : "no contest"} has no winner.`);
+    }
+    const finish = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
+    return { outcome, winner, finish, fall: checkFall(st, input.fall, sides, outcome, winner) };
+  }
+  function checkFall(st, fall, sides, outcome, winner) {
+    const by = fall && fall.by || null, on = fall && fall.on || null;
+    if (!by && !on) return null;
+    if (outcome !== "win") fail("Only a win has someone scoring or taking the fall.");
+    if (by && !sides[winner].wrestlers.includes(by)) fail(`${must(wrestlerById(st, by), "wrestler", by).name} wasn't on the winning side.`);
+    if (on && !sides.some((sd, i) => i !== winner && sd.wrestlers.includes(on))) {
+      fail(`${must(wrestlerById(st, on), "wrestler", on).name} wasn't on a losing side.`);
+    }
+    return { by, on };
+  }
+  var bookedRecord = (b) => ({
+    status: "scheduled",
+    sides: b.sides,
+    titleId: b.title ? b.title.id : null,
+    stip: b.stip,
+    notes: b.notes,
+    outcome: null,
+    winner: null,
+    finish: null,
+    fall: null
+  });
+  var playedRecord = (b, r) => ({
+    ...bookedRecord(b),
+    status: "played",
+    outcome: r.outcome,
+    winner: r.winner,
+    finish: r.finish,
+    fall: r.fall
+  });
+  var bookingInput = (m, input) => ({
+    sides: has(input, "sides") ? input.sides : m.sides,
+    titleId: has(input, "titleId") ? input.titleId : m.titleId,
+    stip: has(input, "stip") ? input.stip : m.stip,
+    notes: has(input, "notes") ? input.notes : m.notes
   });
   function holderFromSide(title, side) {
     if (title.kind === "tag") {
@@ -1275,68 +1461,143 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (side.wrestlers.length !== 1) fail(`The ${title.name} is a singles title - the winning side has to be one wrestler.`);
     return { type: "wrestler", id: side.wrestlers[0] };
   }
-  function recordMatch(st, eventId, input = {}, opts = {}) {
-    const ev = must(eventById(st, eventId), "event", eventId);
-    const f = matchFields(st, input);
-    let holder = null;
-    if (opts.titleChange) {
-      if (!f.title) fail("Pick the title that changed hands.");
-      if (f.outcome !== "win") fail("A title only changes hands when someone wins.");
-      holder = champChecks(st, f.title.id, holderFromSide(f.title, f.sides[f.winner]), dateOf(st, ev)).holder;
+  function titlePlan(st, ev, linked, b, r, titleChange) {
+    const plan = { keep: null, add: null, revert: null };
+    if (!titleChange) {
+      if (linked) plan.revert = removableReigns(st, [linked], "this match");
+      return plan;
     }
-    const match = { id: newId(st, "m"), ...matchRecord(f) };
-    ev.matches.push(match);
-    if (holder) setChampion(st, f.title.id, holder, { eventId: ev.id, matchId: match.id });
-    return match;
+    if (!b.title) fail("Pick the title that changed hands.");
+    if (r.outcome !== "win") fail("A title only changes hands when someone wins.");
+    const raw = holderFromSide(b.title, b.sides[r.winner]);
+    if (linked && linked.titleId === b.title.id) {
+      const holder = checkHolder(st, b.title, raw, sameHolder(raw, linked.holder));
+      const { prev, next, prevJoined, nextJoined } = neighbours(st, linked);
+      const who = holderName(st, holder);
+      if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${b.title.name} going into this match - that's a retention, not a title change.`);
+      if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${b.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
+      plan.keep = holder;
+    } else {
+      if (linked) plan.revert = removableReigns(st, [linked], "this match");
+      plan.add = champChecks(st, b.title.id, raw, dateOf(st, ev)).holder;
+    }
+    return plan;
+  }
+  function applyPlan(st, ev, m, plan, linked) {
+    if (plan.revert) plan.revert();
+    if (plan.keep) linked.holder = plan.keep;
+    if (plan.add) setChampion(st, m.titleId, plan.add, { eventId: ev.id, matchId: m.id });
+  }
+  function findMatch(st, eventId, matchId) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    return { ev, m: must(ev.matches.find((x) => x.id === matchId), "match", matchId) };
+  }
+  function bookMatch(st, eventId, input = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    const m = { id: newId(st, "m"), ...bookedRecord(bookingFields(st, input)) };
+    ev.matches.push(m);
+    return m;
+  }
+  function updateBooking(st, eventId, matchId, input = {}) {
+    const { m } = findMatch(st, eventId, matchId);
+    if (m.status !== "scheduled") fail("This match already has a result - correct the result instead.");
+    Object.assign(m, bookedRecord(bookingFields(st, bookingInput(m, input), m.titleId)));
+    return m;
+  }
+  function enterResult(st, eventId, matchId, input = {}, opts = {}) {
+    const { ev, m } = findMatch(st, eventId, matchId);
+    if (m.status === "played") fail("This match already has a result - correct it instead.");
+    const b = bookingFields(st, bookingInput(m, input), m.titleId);
+    const r = resultFields(st, input, b.sides);
+    const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
+    Object.assign(m, playedRecord(b, r));
+    applyPlan(st, ev, m, plan, null);
+    return m;
   }
   function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
-    const ev = must(eventById(st, eventId), "event", eventId);
-    const m = must(ev.matches.find((x) => x.id === matchId), "match", matchId);
-    const linked = st.reigns.find((r) => r.matchId === matchId) || null;
-    const f = matchFields(st, input, m.titleId);
-    let keep = null, add2 = null, revert = null;
-    if (opts.titleChange) {
-      if (!f.title) fail("Pick the title that changed hands.");
-      if (f.outcome !== "win") fail("A title only changes hands when someone wins.");
-      const raw = holderFromSide(f.title, f.sides[f.winner]);
-      if (linked && linked.titleId === f.title.id) {
-        const holder = checkHolder(st, f.title, raw, sameHolder(raw, linked.holder));
-        const { prev, next, prevJoined, nextJoined } = neighbours(st, linked);
-        const who = holderName(st, holder);
-        if (prevJoined && sameHolder(prev.holder, holder)) fail(`${who} already held the ${f.title.name} going into this match - that's a retention, not a title change.`);
-        if (nextJoined && sameHolder(next.holder, holder)) fail(`${who} win the ${f.title.name} next, in ${weekLabel(st, next.start)}, so they can't have won it here too.`);
-        keep = holder;
-      } else {
-        if (linked) revert = removableReigns(st, [linked], "this match");
-        add2 = champChecks(st, f.title.id, raw, dateOf(st, ev)).holder;
-      }
-    } else if (linked) {
-      revert = removableReigns(st, [linked], "this match");
-    }
-    Object.assign(m, matchRecord(f));
+    const { ev, m } = findMatch(st, eventId, matchId);
+    if (m.status !== "played") fail("This match hasn't been played yet - enter its result instead.");
+    const linked = st.reigns.find((r2) => r2.matchId === matchId) || null;
+    const b = bookingFields(st, input, m.titleId);
+    const r = resultFields(st, input, b.sides);
+    const plan = titlePlan(st, ev, linked, b, r, opts.titleChange);
+    Object.assign(m, playedRecord(b, r));
+    applyPlan(st, ev, m, plan, linked);
+    return m;
+  }
+  function clearResult(st, eventId, matchId) {
+    const { m } = findMatch(st, eventId, matchId);
+    if (m.status !== "played") fail("This match has no result to clear.");
+    const linked = st.reigns.find((r) => r.matchId === matchId);
+    const revert = linked ? removableReigns(st, [linked], "this match") : null;
+    Object.assign(m, bookedRecord({ sides: m.sides, title: titleById(st, m.titleId), stip: m.stip, notes: m.notes }));
     if (revert) revert();
-    if (keep) linked.holder = keep;
-    if (add2) setChampion(st, f.title.id, add2, { eventId: ev.id, matchId: m.id });
     return m;
   }
   function deleteMatch(st, eventId, matchId) {
-    const ev = must(eventById(st, eventId), "event", eventId);
-    must(ev.matches.find((m) => m.id === matchId), "match", matchId);
+    const { ev } = findMatch(st, eventId, matchId);
     const linked = st.reigns.find((r) => r.matchId === matchId);
     const revert = linked ? removableReigns(st, [linked], "this match") : null;
     removeWhere(ev.matches, (m) => m.id === matchId);
     if (revert) revert();
   }
+  function moveMatch(st, eventId, matchId, delta) {
+    const { ev, m } = findMatch(st, eventId, matchId);
+    const i = ev.matches.indexOf(m), j = i + Math.sign(Number(delta) || 0);
+    if (j === i || j < 0 || j >= ev.matches.length) return false;
+    ev.matches.splice(i, 1);
+    ev.matches.splice(j, 0, m);
+    return true;
+  }
+  function matchKind(match) {
+    const sizes = match.sides.map((sd) => sd.wrestlers.length);
+    const n = sizes.length, k = sizes[0];
+    const K = (key, label) => ({ key, label });
+    if (sizes.every((x) => x === k)) {
+      if (k === 1) return n === 2 ? K("singles", "Singles") : n === 3 ? K("triple-threat", "Triple threat") : n === 4 ? K("fatal-4-way", "Fatal 4-way") : K("multi-way", `${n}-way`);
+      if (k === 2) return n === 2 ? K("tag", "Tag team") : n === 3 ? K("triple-threat-tag", "Triple threat tag") : n === 4 ? K("fatal-4-way-tag", "Fatal 4-way tag") : K("multi-team-tag", `${n}-team tag`);
+      return n === 2 ? K("team-tag", `${k}-on-${k} tag`) : K("multi-team-tag", `${n}-team, ${k} a side`);
+    }
+    if (n === 2) return K("handicap", `Handicap ${Math.min(...sizes)}-on-${Math.max(...sizes)}`);
+    return K("other", "Uneven multi-way");
+  }
+  function cardStatus(ev) {
+    const played = ev.matches.filter((m) => m.status === "played").length;
+    const total = ev.matches.length, booked = total - played;
+    const state = !total ? "empty" : !played ? "booked" : booked ? "partial" : "complete";
+    return { booked, played, total, state };
+  }
   function eachMatch(st, fn) {
     st.events.forEach((ev) => ev.matches.forEach((m) => fn(m, ev)));
   }
+  function eachPlayed(st, fn) {
+    eachMatch(st, (m, ev) => {
+      if (m.status === "played") fn(m, ev);
+    });
+  }
   function matchesOf(st, wrestlerId) {
     const out = [];
-    eachMatch(st, (match, event) => {
-      const side = match.sides.findIndex((s) => s.wrestlers.includes(wrestlerId));
+    eachPlayed(st, (match, event) => {
+      const side = match.sides.findIndex((sd) => sd.wrestlers.includes(wrestlerId));
       if (side >= 0) out.push({ event, match, side });
     });
     return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+  }
+  function bookingsOf(st, wrestlerId) {
+    const out = [];
+    eachMatch(st, (match, event) => {
+      if (match.status !== "scheduled") return;
+      const side = match.sides.findIndex((sd) => sd.wrestlers.includes(wrestlerId));
+      if (side >= 0) out.push({ event, match, side });
+    });
+    return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
+  }
+  function resultsHistory(st, filter = {}) {
+    const out = [];
+    st.events.filter((e) => (!filter.seasonId || e.at.season === filter.seasonId) && (!filter.showId || (filter.showId === "ple" ? e.kind === "ple" : e.showId === filter.showId))).sort((a, b) => compareStamps(st, b.at, a.at)).forEach((event) => event.matches.forEach((match, i) => {
+      if (match.status === "played") out.push({ event, match, n: i + 1 });
+    }));
+    return out;
   }
   function resultFor(match, side) {
     if (match.outcome === "draw") return "D";
@@ -1364,11 +1625,19 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function teamMatches(st, teamId) {
     const out = [];
-    eachMatch(st, (match, event) => {
+    eachPlayed(st, (match, event) => {
       const side = match.sides.findIndex((s) => s.team === teamId);
       if (side >= 0) out.push({ event, match, side });
     });
     return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+  }
+  function teamBookings(st, teamId) {
+    const out = [];
+    eachMatch(st, (match, event) => {
+      const side = match.status === "scheduled" ? match.sides.findIndex((s) => s.team === teamId) : -1;
+      if (side >= 0) out.push({ event, match, side });
+    });
+    return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
   }
   function teamRecord(st, teamId) {
     return teamMatches(st, teamId).reduce((rec, x) => tally(rec, resultFor(x.match, x.side)), blankRecord());
@@ -1433,7 +1702,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function timeline(st) {
     const out = [];
-    const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, rec });
+    const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, day: stamp.day, rec });
     st.seasons.forEach((s) => {
       at(s.started, "season-start", s);
       if (s.ended) at(s.ended, "season-end", s);
@@ -1453,9 +1722,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return out.sort((a, b) => compareStamps(st, b, a));
   }
   function summary(st) {
-    let matches = 0;
-    eachMatch(st, () => {
-      matches++;
+    let matches = 0, booked = 0;
+    eachMatch(st, (m) => {
+      if (m.status === "played") matches++;
+      else booked++;
     });
     return {
       wrestlers: st.wrestlers.length,
@@ -1463,6 +1733,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       titles: st.titles.length,
       events: st.events.length,
       matches,
+      booked,
       seasons: st.seasons.length
     };
   }
@@ -1494,6 +1765,23 @@ body.uv-confirm-open .uv-confirm{display:flex}
         delete t.disbanded;
       });
       st.version = 2;
+    }
+    if (st.version === 2) {
+      const night = (id) => (SHOW_SEED.find((x) => x.id === id) || { day: 0 }).day;
+      st.shows.forEach((sh) => {
+        if (!Number.isInteger(sh.day)) sh.day = night(sh.id);
+      });
+      st.seasons.forEach((se) => {
+        if (se.start === void 0) se.start = null;
+      });
+      st.events.forEach((e) => {
+        if (e.at && e.at.day == null) e.at.day = e.kind === "weekly" && showById(st, e.showId) ? showById(st, e.showId).day : PLE_DAY;
+        (Array.isArray(e.matches) ? e.matches : []).forEach((m) => {
+          m.status = "played";
+          if (m.fall === void 0) m.fall = null;
+        });
+      });
+      st.version = 3;
     }
     return st;
   }
@@ -1547,9 +1835,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
     const showOk = (id) => id === null || !!showById(st, id);
     names(st.shows, "show");
+    const night = (d) => Number.isInteger(d) && d >= 0 && d <= 6;
     st.shows.forEach((s) => {
       if (!/^#[0-9a-f]{3,8}$/i.test(String(s.color))) bad.push(`${s.name} has an unreadable colour.`);
       if (typeof s.promotion !== "string") bad.push(`${s.name} has no promotion.`);
+      if (!night(s.day)) bad.push(`${s.name} has no night of the week.`);
     });
     names(st.wrestlers, "wrestler");
     st.wrestlers.forEach((w) => {
@@ -1598,7 +1888,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       stamp(m.start, `Membership ${m.id}`);
       if (m.end) {
         stamp(m.end, `Membership ${m.id}`);
-        if (m.end.seq < m.start.seq || earlierWeek(st, m.end, m.start)) bad.push(`Membership ${m.id} ends before it starts.`);
+        if (m.end.seq < m.start.seq || earlierDate(st, m.end, m.start)) bad.push(`Membership ${m.id} ends before it starts.`);
       }
       const formed = Array.isArray(t.log) && t.log[0] && t.log[0].at;
       if (formed && m.start && m.start.seq < formed.seq) bad.push(`Membership ${m.id} starts before ${t.name} formed.`);
@@ -1634,7 +1924,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       stamp(r.start, `Reign ${r.id}`);
       if (r.end) {
         stamp(r.end, `Reign ${r.id}`);
-        if (r.end.seq < r.start.seq || earlierWeek(st, r.end, r.start)) bad.push(`Reign ${r.id} ends before it starts.`);
+        if (r.end.seq < r.start.seq || earlierDate(st, r.end, r.start)) bad.push(`Reign ${r.id} ends before it starts.`);
       }
       if (r.eventId) {
         const ev = eventById(st, r.eventId);
@@ -1651,6 +1941,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       else if (numbers.has(s.number)) bad.push(`Two seasons are numbered ${s.number}.`);
       numbers.add(s.number);
       if (!["active", "complete"].includes(s.status)) bad.push(`${s.name} has an unknown status.`);
+      if (s.start != null && !isIsoDate(s.start)) bad.push(`${s.name} has a start date that isn't a date.`);
       if (!Number.isInteger(s.week) || s.week < 1) bad.push(`${s.name} has a broken week.`);
       stamp(s.started, s.name);
       if (s.status === "complete") stamp(s.ended, s.name);
@@ -1661,8 +1952,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
       if (!showOk(e.showId) || e.kind === "weekly" && !e.showId) bad.push(`${e.name} is on a show that doesn't exist.`);
       stamp(e.at, e.name);
+      if (e.at && !night(e.at.day)) bad.push(`${e.name} has no night of the week.`);
       (e.matches || []).forEach((m) => {
         const where = `A match at ${e.name}`;
+        if (!MATCH_STATUSES.includes(m.status)) {
+          bad.push(`${where} is neither booked nor played.`);
+          return;
+        }
+        if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} is for a title that doesn't exist.`);
         const sides = Array.isArray(m.sides) ? m.sides : [];
         if (sides.length < 2) bad.push(`${where} has fewer than two sides.`);
         const seen = /* @__PURE__ */ new Set();
@@ -1676,11 +1973,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
           });
           if (s && s.team && !teamById(st, s.team)) bad.push(`${where} names a tag team that doesn't exist.`);
         });
+        if (m.status === "scheduled") {
+          if (m.outcome !== null || m.winner !== null || m.finish !== null || m.fall !== null) bad.push(`${where} is only booked but has a result.`);
+          if (st.reigns.some((r) => r.matchId === m.id)) bad.push(`${where} is only booked but changed a title.`);
+          return;
+        }
         if (!OUTCOMES.includes(m.outcome)) bad.push(`${where} has an unknown result.`);
         if (m.outcome === "win" && !(Number.isInteger(m.winner) && m.winner >= 0 && m.winner < sides.length)) bad.push(`${where} has no valid winner.`);
         if (m.outcome !== "win" && m.winner !== null) bad.push(`${where} is a ${m.outcome} but names a winner.`);
         if (m.finish !== null && !FINISHES.includes(m.finish)) bad.push(`${where} has an unknown finish.`);
-        if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} was for a title that doesn't exist.`);
+        if (m.fall != null) {
+          const winners = m.outcome === "win" && sides[m.winner] ? sides[m.winner].wrestlers : [];
+          const losers = sides.filter((_, i) => i !== m.winner).flatMap((sd) => sd.wrestlers || []);
+          if (m.outcome !== "win") bad.push(`${where} is a ${m.outcome} but names who took the fall.`);
+          else if (m.fall.by && !winners.includes(m.fall.by) || m.fall.on && !losers.includes(m.fall.on)) bad.push(`${where} names the fall wrongly.`);
+        }
       });
     });
     return bad;
@@ -1705,7 +2012,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     move: svg('<path d="M7 7h11l-3-3M17 17H6l3 3"/>'),
     edit: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
     undo: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
-    check: svg('<path d="m5 12 5 5 9-10"/>')
+    check: svg('<path d="m5 12 5 5 9-10"/>'),
+    up: svg('<path d="m6 15 6-6 6 6"/>'),
+    down: svg('<path d="m6 9 6 6 6-6"/>'),
+    star: svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
+    list: svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>')
   };
   var LABEL = {
     gender: { male: "Men\u2019s", female: "Women\u2019s" },
@@ -1716,16 +2027,26 @@ body.uv-confirm-open .uv-confirm{display:flex}
     kind: { singles: "Singles", tag: "Tag team" },
     division: { men: "Men's", women: "Women's", open: "Open" },
     event: { weekly: "Weekly show", ple: "Premium live event" },
-    finish: { pinfall: "Pinfall", submission: "Submission", dq: "Disqualification", countout: "Count-out", ko: "Knockout", other: "Other" }
+    finish: {
+      pinfall: "Pinfall",
+      submission: "Submission",
+      ko: "Knockout / ref stoppage",
+      dq: "Disqualification",
+      countout: "Count-out",
+      elimination: "Elimination",
+      escape: "Escape",
+      retrieval: "Retrieved the object",
+      other: "Other"
+    }
   };
   var NEUTRAL = "#5E6979";
   function showColor(st, showId) {
     const s = showById(st, showId);
     return s && /^#[0-9a-f]{3,8}$/i.test(String(s.color)) ? s.color : NEUTRAL;
   }
-  function showName(st, showId, none2 = "Unassigned") {
+  function showName(st, showId, none = "Unassigned") {
     const s = showById(st, showId);
-    return s ? s.name : none2;
+    return s ? s.name : none;
   }
   function stampLabel(st, stamp) {
     const s = stamp && seasonById(st, stamp.season);
@@ -1751,9 +2072,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function labelPairs(map) {
     return Object.entries(map);
   }
-  function showPairs(st, none2) {
+  function showPairs(st, none) {
     const pairs = st.shows.map((s) => [s.id, s.name]);
-    return none2 ? [["", none2], ...pairs] : pairs;
+    return none ? [["", none], ...pairs] : pairs;
   }
   function wrestlerOptions(st, selected, blank = "\u2014 Pick a wrestler \u2014", skip = []) {
     const groups = [...st.shows.map((s) => [s.id, s.name]), [null, "Unassigned"]];
@@ -1798,16 +2119,6 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }
     return `${names.join(" vs ")} <span class="uv-muted">\u2014 ${m.outcome === "draw" ? "Draw" : "No contest"}</span>`;
   }
-  function matchMeta(st, m, reign) {
-    const bits = [];
-    if (m.titleId) {
-      const t = titleById(st, m.titleId);
-      bits.push(`${t ? esc(t.name) : "Title"}${reign ? ' \u2014 <b class="uv-gold">new champion</b>' : ""}`);
-    }
-    if (m.finish) bits.push(LABEL.finish[m.finish]);
-    if (m.stip) bits.push(esc(m.stip));
-    return bits.join(" \xB7 ");
-  }
   function fmtRec(rec = blankRecord()) {
     return `${rec.w}\u2013${rec.l}\u2013${rec.d}`;
   }
@@ -1832,6 +2143,48 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function histLine(st, e, html) {
     return `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${html}</span></div>`;
+  }
+  var NIGHT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function isoText(iso, year = true) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return `${d} ${MONTHS[m - 1]}${year ? ` ${y}` : ""}`;
+  }
+  function eventWhen(st, ev, long = false) {
+    const day = ev.at.day;
+    const night = day == null ? "" : long ? DAYS[day] : NIGHT[day];
+    const iso = calendarDate(st, ev.at.season, ev.at.week, day);
+    if (iso) return `${night} ${isoText(iso)}`;
+    return `${night}${night ? " \xB7 " : ""}Week ${ev.at.week}`;
+  }
+  function chip(text, cls = "") {
+    return `<span class="uv-chip ${cls}">${esc(text)}</span>`;
+  }
+  function kindChip(m) {
+    return chip(matchKind(m).label, "kind");
+  }
+  function vsLine(st, m) {
+    return m.sides.map((sd) => `<b>${esc(sideName(st, sd))}</b>`).join(' <span class="uv-muted">vs</span> ');
+  }
+  var FALL_VERB = {
+    pinfall: "pinned",
+    submission: "made {} submit",
+    ko: "knocked out",
+    elimination: "eliminated {} last",
+    escape: "escaped ahead of",
+    retrieval: "beat {} to it"
+  };
+  function fallLine(st, m) {
+    if (!m.fall) return "";
+    const name = (id) => esc((wrestlerById(st, id) || { name: "?" }).name);
+    const { on } = m.fall;
+    const win = m.outcome === "win" && m.sides[m.winner];
+    const by = m.fall.by || (win && win.wrestlers.length === 1 ? win.wrestlers[0] : null);
+    if (by && on) {
+      const verb = FALL_VERB[m.finish] || "beat {}";
+      return `${name(by)} ${verb.includes("{}") ? verb.replace("{}", name(on)) : `${verb} ${name(on)}`}`;
+    }
+    return by ? `${name(by)} scored the win` : `${name(on)} took the fall`;
   }
 
   // js/universe/persist.js
@@ -2046,6 +2399,112 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/views.js
+  var calWeek = null;
+  var CARD_TEXT = {
+    empty: () => "Planned \u2014 nothing booked yet",
+    booked: (c) => `${c.total} booked \xB7 no results yet`,
+    partial: (c) => `${c.played} of ${c.total} results in`,
+    complete: (c) => `${c.total} result${c.total === 1 ? "" : "s"} in`
+  };
+  var cardText = (c) => CARD_TEXT[c.state](c);
+  function weekRange(st, seasonId, week) {
+    const a = calendarDate(st, seasonId, week, 0);
+    return a ? `${isoText(a, false)} \u2013 ${isoText(calendarDate(st, seasonId, week, 6))}` : "";
+  }
+  function uvCalendarView() {
+    const st = uni();
+    const s = activeSeason(st);
+    const week = calWeek || s.week;
+    const off = week - s.week;
+    const rel = off === 0 ? "This week" : off === 1 ? "Next week" : off === -1 ? "Last week" : off > 0 ? `${off} weeks ahead` : `${-off} weeks ago`;
+    const range = weekRange(st, s.id, s.week);
+    const next = Math.max(...st.seasons.map((x) => x.number)) + 1;
+    const card = `<div class="uv-card">
+    <div class="uv-season">
+      <div><div class="k">${esc(s.name)}</div><div class="v">Week ${s.week}</div>${range ? `<div class="s">${esc(range)}</div>` : ""}</div>
+      <div class="uv-step">
+        <div class="uv-ic" onclick="uvStepWeek(-1)" title="Back a week">${ICON.left}</div>
+        <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON.right}</div>
+      </div>
+    </div>
+    <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? "Dates" : "Set dates"}</span>
+      <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvNextSeason()">Start Season ${next}\u2026</span></div>
+  </div>`;
+    const evs = eventsIn(st, s.id).filter((e) => e.at.week === week);
+    const rows = evs.map((e) => ({ day: e.at.day, e }));
+    st.shows.forEach((sh) => {
+      if (!evs.some((e) => e.kind === "weekly" && e.showId === sh.id)) rows.push({ day: sh.day, show: sh });
+    });
+    rows.sort((a, b) => (a.day ?? 9) - (b.day ?? 9));
+    const wr = weekRange(st, s.id, week);
+    return card + `
+    <div class="uv-weeknav">
+      <div class="uv-ic" onclick="uvCalWeek(-1)" title="Previous week">${ICON.left}</div>
+      <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel)}${wr ? ` \xB7 ${esc(wr)}` : ""}</div></div>
+      <div class="uv-ic" onclick="uvCalWeek(1)" title="Following week">${ICON.right}</div>
+    </div>
+    ${off ? `<div class="uv-back-now" onclick="uvCalGo(${s.week})">Back to this week (week ${s.week})</div>` : ""}
+    <div class="uv-nights">${rows.map((r) => nightRow(st, s, week, r)).join("")}</div>
+    <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
+    ${seasonGrid(st, s, week)}`;
+  }
+  function nightRow(st, s, week, r) {
+    const iso = r.day == null ? null : calendarDate(st, s.id, week, r.day);
+    const dt = `<div class="dt"><b>${r.day == null ? "\u2014" : NIGHT[r.day]}</b>${iso ? `<span>${isoText(iso, false)}</span>` : ""}</div>`;
+    if (r.show) {
+      return `<div class="uv-night open" style="--c:${showColor(st, r.show.id)}" data-plan="${r.show.id}">${dt}
+      <div class="uv-main"><div class="nm">${esc(r.show.name)}</div><div class="sub">Not planned</div></div>
+      <div class="uv-btn sm2" onclick="uvPlanShow('${r.show.id}',${week})">${ICON.plus}Plan</div></div>`;
+    }
+    const e = r.e, c = cardStatus(e);
+    return `<div class="uv-night" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">${dt}
+    <div class="uv-main"><div class="nm">${e.kind === "ple" ? `<span class="uv-star">${ICON.star}</span>` : ""}${esc(e.name)}</div>
+      <div class="sub"><span class="uv-state ${c.state}"></span>${esc(cardText(c))}</div></div>
+    <span class="uv-chev">${ICON.right}</span></div>`;
+  }
+  var SHORT = { raw: "Raw", smackdown: "SD", dynamite: "Dyn", nxt: "NXT" };
+  function seasonGrid(st, s, week) {
+    const evs = eventsIn(st, s.id);
+    if (!evs.length) return "";
+    const last = Math.max(s.week, week, ...evs.map((e) => e.at.week));
+    const cols = [
+      ...st.shows.map((sh) => ({ key: sh.id, label: SHORT[sh.id] || sh.name.slice(0, 3), color: showColor(st, sh.id) })),
+      { key: "ple", label: "PLE", color: "var(--uv-gold)" }
+    ];
+    const cell = (w, col) => {
+      const here = evs.filter((e) => e.at.week === w && (col.key === "ple" ? e.kind === "ple" : e.kind === "weekly" && e.showId === col.key));
+      if (!here.length) return '<span class="uv-cell"></span>';
+      const c = cardStatus({ matches: here.flatMap((e) => e.matches) });
+      return `<span class="uv-cell ${c.state}" style="--c:${col.color}"></span>`;
+    };
+    let rows = "";
+    for (let w = last; w >= 1; w--) {
+      rows += `<div class="uv-gr${w === week ? " on" : ""}${w === s.week ? " now" : ""}" onclick="uvCalGo(${w})">
+      <span class="w">W${w}</span>${cols.map((col) => cell(w, col)).join("")}</div>`;
+    }
+    return `${section("Season at a glance", null)}
+    <div class="uv-grid-wk" style="--n:${cols.length}">
+      <div class="uv-gr hd"><span class="w"></span>${cols.map((c) => `<span class="h">${esc(c.label)}</span>`).join("")}</div>
+      ${rows}
+    </div>
+    <div class="uv-legend"><span><i class="uv-cell empty"></i>Planned</span><span><i class="uv-cell booked"></i>Booked</span>
+      <span><i class="uv-cell partial"></i>Some results</span><span><i class="uv-cell complete"></i>All results in</span></div>`;
+  }
+  function uvCalWeek(d) {
+    const s = activeSeason(uni());
+    calWeek = Math.max(1, Math.min(999, (calWeek || s.week) + d));
+    if (calWeek === s.week) calWeek = null;
+    refresh();
+  }
+  function uvCalGo(w) {
+    calWeek = w === activeSeason(uni()).week ? null : w;
+    refresh();
+    const sc = document.getElementById("uvScroll");
+    if (sc) sc.scrollTop = 0;
+  }
+  function uvCalFollow() {
+    calWeek = null;
+  }
   var rosterShow = "all";
   var rosterQ = "";
   var picking = null;
@@ -2192,55 +2651,70 @@ body.uv-confirm-open .uv-confirm{display:flex}
   </div>`;
   }
   var viewSeason = null;
+  var histMode = "results";
+  var histShow = "";
+  var eventsShown = 12;
   var historyShown = 40;
   function uvHistoryView() {
     const st = uni();
     const cur = activeSeason(st);
     const seasonId = viewSeason && seasonById(st, viewSeason) ? viewSeason : cur.id;
-    const season = seasonById(st, seasonId);
-    const card = `<div class="uv-card">
-    <div class="uv-season">
-      <div><div class="k">${esc(cur.name)}</div><div class="v">Week ${cur.week}</div></div>
-      <div class="uv-step">
-        <div class="uv-ic" onclick="uvStepWeek(-1)" title="Back a week">${ICON.left}</div>
-        <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON.right}</div>
-      </div>
-    </div>
-    <div class="uv-card-f"><span onclick="uvNextSeason()">Start Season ${Math.max(...st.seasons.map((s) => s.number)) + 1}\u2026</span>
-      <span onclick="uvRenameSeason('${cur.id}')">Rename</span></div>
-  </div>`;
-    const pills = st.seasons.length > 1 ? `<div class="uv-pills">${st.seasons.map((s) => `<div class="uv-pill${s.id === seasonId ? " on" : ""}" onclick="uvViewSeason('${s.id}')">${esc(s.name)}</div>`).join("")}</div>` : "";
-    const events = eventsIn(st, seasonId).reverse();
-    let lastWeek = null;
-    const eventRows = events.map((e) => {
-      const head = e.at.week !== lastWeek ? `<div class="uv-wk">Week ${e.at.week}</div>` : "";
-      lastWeek = e.at.week;
-      return head + eventRow(st, e);
-    }).join("");
-    const tl = timeline(st);
-    const entries = tl.slice(0, historyShown).map((e) => `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${timelineText(st, e)}</span></div>`).join("");
-    return card + `
-    <div class="uv-bar"><div class="uv-bar-t">Events${st.seasons.length > 1 ? ` \xB7 ${esc(season.name)}` : ""}</div>
-      ${season.status === "active" ? `<div class="uv-btn pri" onclick="uvNewEvent()">${ICON.plus}New event</div>` : ""}</div>
+    const seg = (k, lb) => `<div class="${histMode === k ? "on" : ""}" onclick="uvHistMode('${k}')">${lb}</div>`;
+    const pills = st.seasons.length > 1 ? `<div class="uv-pills">${[...st.seasons].reverse().map((s) => `<div class="uv-pill${s.id === seasonId ? " on" : ""}" onclick="uvViewSeason('${s.id}')">${esc(s.name)}</div>`).join("")}</div>` : "";
+    return `<div class="uv-seg uv-seg-page">${seg("results", "Results")}${seg("all", "Everything")}</div>
     ${pills}
-    ${eventRows || empty(
-      ICON.cal,
-      "No events yet",
-      "Add each show or premium live event after you play or watch it in WWE 2K25, then record the results the game gave you."
-    )}
-    ${section("History", null)}
-    <div class="uv-tls">${entries}</div>
-    ${tl.length > historyShown ? `<div class="uv-more" onclick="uvMoreHistory()">Show more (${tl.length - historyShown})</div>` : ""}`;
+    ${histMode === "results" ? resultsView(st, seasonId) : everythingView(st, seasonId)}`;
   }
-  function eventRow(st, e) {
-    const n = e.matches.length;
-    const kind = e.kind === "ple" ? tag("PLE", "ple") : "";
-    return `<div class="uv-row" onclick="uvOpenEvent('${e.id}')">
-    <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${ICON.cal}</span>
-    <div class="uv-main"><div class="nm">${esc(e.name)}</div>
-      <div class="sub">${kind}${esc(e.showId ? showName(st, e.showId) : "All shows")} \xB7 ${n} match${n === 1 ? "" : "es"}</div></div>
-    <span class="uv-chev">${ICON.right}</span>
-  </div>`;
+  function resultsView(st, seasonId) {
+    const pill = (k, label, color) => `<div class="uv-pill${histShow === k ? " on" : ""}" onclick="uvHistShow('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc(label)}</div>`;
+    const shows = `<div class="uv-pills">${pill("", "All shows")}${st.shows.map((s) => pill(s.id, s.name, showColor(st, s.id))).join("")}${pill("ple", "PLEs")}</div>`;
+    const rows = resultsHistory(st, { seasonId, showId: histShow || void 0 });
+    const groups = [];
+    rows.forEach((x) => {
+      const g = groups[groups.length - 1];
+      if (g && g.event === x.event) g.rows.push(x);
+      else groups.push({ event: x.event, rows: [x] });
+    });
+    if (!groups.length) {
+      return shows + empty(
+        ICON.list,
+        "No results yet",
+        histShow ? "Nothing entered for this show in this season." : "Plan a show on the Calendar, book its matches, then enter each result after the CPU plays it in WWE 2K25."
+      );
+    }
+    let lastWeek = null;
+    const html = groups.slice(0, eventsShown).map((g) => {
+      const head = g.event.at.week !== lastWeek ? `<div class="uv-wk">Week ${g.event.at.week}</div>` : "";
+      lastWeek = g.event.at.week;
+      return head + eventBlock(st, g);
+    }).join("");
+    const n = rows.length;
+    return shows + `<div class="uv-count">${n} result${n === 1 ? "" : "s"} on ${groups.length} show${groups.length === 1 ? "" : "s"}</div>` + html + (groups.length > eventsShown ? `<div class="uv-more" onclick="uvMoreResults()">Show older shows (${groups.length - eventsShown})</div>` : "");
+  }
+  function eventBlock(st, g) {
+    const e = g.event, c = cardStatus(e);
+    const lines = g.rows.map((x) => {
+      const m = x.match;
+      const t = m.titleId && titleById(st, m.titleId);
+      const won = st.reigns.some((r) => r.matchId === m.id);
+      const bits = [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(" \xB7 ");
+      return `<div class="uv-hm" data-m="${m.id}" onclick="uvOpenEvent('${e.id}')"><span class="n">${x.n}</span>
+      <div class="b"><div class="l">${matchLine(st, m)}</div>
+        <div class="uv-chips">${kindChip(m)}${t ? chip(won ? `${t.name} \xB7 new champion` : t.name, "gold") : ""}${m.stip ? chip(m.stip) : ""}</div>
+        ${bits ? `<div class="d">${bits}</div>` : ""}${m.notes ? `<div class="d nt">${esc(m.notes)}</div>` : ""}</div></div>`;
+    }).join("");
+    return `<div class="uv-hev" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">
+      <div class="uv-main"><div class="nm">${e.kind === "ple" ? `<span class="uv-star">${ICON.star}</span>` : ""}${esc(e.name)}</div>
+        <div class="sub">${esc(eventWhen(st, e))} \xB7 ${esc(e.showId ? showName(st, e.showId) : "All shows")}${c.booked ? ` \xB7 ${c.booked} still to enter` : ""}</div></div>
+      <span class="uv-chev">${ICON.right}</span></div>
+    <div class="uv-hms">${lines}</div>`;
+  }
+  function everythingView(st, seasonId) {
+    const tl = timeline(st).filter((e) => e.season === seasonId && (e.type !== "event" || e.rec.matches.some((m) => m.status === "played")));
+    if (!tl.length) return empty(ICON.list, "Nothing yet", "Results, title changes, moves and team changes show up here as they happen.");
+    const entries = tl.slice(0, historyShown).map((e) => `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${timelineText(st, e)}</span></div>`).join("");
+    return `<div class="uv-tls">${entries}</div>
+    ${tl.length > historyShown ? `<div class="uv-more" onclick="uvMoreHistory()">Show more (${tl.length - historyShown})</div>` : ""}`;
   }
   function timelineText(st, e) {
     const r = e.rec;
@@ -2274,14 +2748,31 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const t = titleById(st, r.titleId);
         return `The ${esc(t ? t.name : "title")} was vacated`;
       }
-      case "event":
-        return `${esc(r.name)} \u2014 ${r.matches.length} match${r.matches.length === 1 ? "" : "es"} recorded`;
+      case "event": {
+        const c = cardStatus(r);
+        return `<span class="uv-link" onclick="uvOpenEvent('${r.id}')">${esc(r.name)}</span> <span class="uv-muted">${esc(eventWhen(st, r))}</span> \u2014 ${c.played} result${c.played === 1 ? "" : "s"}${c.booked ? `, ${c.booked} still to enter` : ""}`;
+      }
       default:
         return "";
     }
   }
+  function uvHistMode(k) {
+    histMode = k;
+    refresh();
+  }
+  function uvHistShow(k) {
+    histShow = k;
+    eventsShown = 12;
+    refresh();
+  }
   function uvViewSeason(id) {
     viewSeason = id;
+    eventsShown = 12;
+    historyShown = 40;
+    refresh();
+  }
+  function uvMoreResults() {
+    eventsShown += 12;
     refresh();
   }
   function uvMoreHistory() {
@@ -2290,6 +2781,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvFollowActiveSeason() {
     viewSeason = null;
+    calWeek = null;
   }
 
   // js/universe/sheets.js
@@ -2299,33 +2791,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvAddSave: () => uvAddSave,
     uvAddSet: () => uvAddSet,
     uvAddWrestler: () => uvAddWrestler,
-    uvCreateEvent: () => uvCreateEvent,
     uvCreateTeam: () => uvCreateTeam,
     uvCreateTitle: () => uvCreateTitle,
-    uvDeleteEvent: () => uvDeleteEvent,
-    uvDeleteResult: () => uvDeleteResult,
-    uvEditResult: () => uvEditResult,
-    uvEventDraft: () => uvEventDraft,
-    uvEventDraftName: () => uvEventDraftName,
-    uvEventKind: () => uvEventKind,
-    uvMAddSide: () => uvMAddSide,
-    uvMAddWrestler: () => uvMAddWrestler,
-    uvMDropSide: () => uvMDropSide,
-    uvMDropWrestler: () => uvMDropWrestler,
-    uvMSet: () => uvMSet,
-    uvMTeam: () => uvMTeam,
-    uvMText: () => uvMText,
-    uvMWrestler: () => uvMWrestler,
-    uvNewEvent: () => uvNewEvent,
     uvNewTeam: () => uvNewTeam,
     uvNewTitle: () => uvNewTitle,
     uvNextSeason: () => uvNextSeason,
-    uvOpenEvent: () => uvOpenEvent,
-    uvRecordResult: () => uvRecordResult,
     uvRenameSeason: () => uvRenameSeason,
-    uvSaveResult: () => uvSaveResult,
     uvSaveSeasonName: () => uvSaveSeasonName,
-    uvSetEvent: () => uvSetEvent,
     uvStepWeek: () => uvStepWeek,
     uvTeamDraftAdd: () => uvTeamDraftAdd,
     uvTeamDraftDrop: () => uvTeamDraftDrop,
@@ -2343,6 +2815,519 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvPageView: () => uvPageView,
     uvShowAll: () => uvShowAll
   });
+
+  // js/universe/card.js
+  var card_exports = {};
+  __export(card_exports, {
+    uvBookMatch: () => uvBookMatch,
+    uvClearSeasonStart: () => uvClearSeasonStart,
+    uvCorrectResult: () => uvCorrectResult,
+    uvCreatePle: () => uvCreatePle,
+    uvDeleteEvent: () => uvDeleteEvent,
+    uvEditBooking: () => uvEditBooking,
+    uvEnterResult: () => uvEnterResult,
+    uvEventDetails: () => uvEventDetails,
+    uvEventPage: () => uvEventPage,
+    uvMAddSide: () => uvMAddSide,
+    uvMAddWrestler: () => uvMAddWrestler,
+    uvMClear: () => uvMClear,
+    uvMDelete: () => uvMDelete,
+    uvMDropSide: () => uvMDropSide,
+    uvMDropWrestler: () => uvMDropWrestler,
+    uvMLineup: () => uvMLineup,
+    uvMPreset: () => uvMPreset,
+    uvMSave: () => uvMSave,
+    uvMSet: () => uvMSet,
+    uvMTeam: () => uvMTeam,
+    uvMText: () => uvMText,
+    uvMWrestler: () => uvMWrestler,
+    uvMoveMatch: () => uvMoveMatch,
+    uvNewPle: () => uvNewPle,
+    uvOpenEvent: () => uvOpenEvent,
+    uvPlanShow: () => uvPlanShow,
+    uvPleSet: () => uvPleSet,
+    uvSaveSeasonStart: () => uvSaveSeasonStart,
+    uvSeasonDates: () => uvSeasonDates,
+    uvSetEvent: () => uvSetEvent
+  });
+  function uvOpenEvent(id) {
+    pushPage("event", id);
+  }
+  function uvPlanShow(showId, week) {
+    const r = commit((st) => addEvent(st, { showId, week }), (e) => `${e.name} planned`);
+    if (r.ok) uvOpenEvent(r.value.id);
+  }
+  var pleDraft = null;
+  function uvNewPle(week) {
+    pleDraft = { name: "", showId: "", week: String(week), day: String(PLE_DAY) };
+    openSheet(() => {
+      const st = uni();
+      const d = pleDraft;
+      return {
+        title: "Premium live event",
+        body: `
+        ${field("Name", `<input id="uvPleName" class="uv-in" maxlength="60" value="${esc(d.name)}" placeholder="e.g. WrestleMania"
+          oninput="uvPleSet('name',this.value)">`, "wide")}
+        <div class="uv-grid" style="margin-top:10px">
+          ${field("Show", select(`uvPleSet('showId',this.value)`, options(showPairs(st, "All shows"), d.showId)), "wide")}
+          ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${esc(d.week)}"
+            oninput="uvPleSet('week',this.value)">`)}
+          ${field("Night", select(`uvPleSet('day',this.value)`, options(DAYS.map((n, i) => [String(i), n]), d.day)))}
+        </div>
+        <div class="uv-btn pri full" onclick="uvCreatePle()">Add to the calendar</div>`
+      };
+    });
+  }
+  function uvPleSet(k, v) {
+    pleDraft[k] = v;
+  }
+  function uvCreatePle() {
+    const d = pleDraft;
+    const r = commit((st) => addEvent(st, { kind: "ple", name: d.name, showId: d.showId, week: d.week, day: d.day }), (e) => `${e.name} added`);
+    if (r.ok) {
+      closeSheet();
+      uvOpenEvent(r.value.id);
+    }
+  }
+  function uvEventDetails(id) {
+    openSheet(() => {
+      const st = uni();
+      const e = eventById(st, id);
+      if (!e) return null;
+      const set = (k) => `uvSetEvent('${id}','${k}',this.value)`;
+      const changed = st.reigns.some((r) => r.eventId === id);
+      return {
+        title: "Edit details",
+        body: `
+        ${field("Name", `<input class="uv-in" maxlength="60" value="${esc(e.name)}" onchange="${set("name")}">`, "wide")}
+        <div class="uv-grid" style="margin-top:10px">
+          ${field("Show", select(set("showId"), options(showPairs(st, e.kind === "ple" ? "All shows" : ""), e.showId || "")), "wide")}
+          ${field("Week", `<input id="uvEvWeek" class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}" onchange="${set("week")}">`)}
+          ${field("Night", select(set("day"), options(DAYS.map((n, i) => [String(i), n]), String(e.at.day)), ' id="uvEvDay"'))}
+          ${field("Notes", `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set("notes")}">${esc(e.notes)}</textarea>`, "wide")}
+        </div>
+        ${changed ? '<div class="fine">A title changed hands here, so a new week or night moves that title change with it \u2014 as long as the title\u2019s history still reads in order.</div>' : ""}
+        <div class="uv-btn full" onclick="uvCloseSheet()">Done</div>
+        <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete this ${e.kind === "ple" ? "event" : "episode"}</div>`
+      };
+    });
+  }
+  function uvSetEvent(id, key, value) {
+    commit((st) => updateEvent(st, id, { [key]: value }), "Saved");
+  }
+  function uvDeleteEvent(id) {
+    const st = uni();
+    const e = eventById(st, id);
+    const { played, booked } = cardStatus(e);
+    const titles = st.reigns.filter((r) => r.eventId === id).map((r) => titleById(st, r.titleId).name);
+    const parts = [played && `${played} result${played === 1 ? "" : "s"}`, booked && `${booked} booked match${booked === 1 ? "" : "es"}`].filter(Boolean);
+    confirmThen(
+      `Delete ${e.name}?`,
+      (parts.length ? `Its ${parts.join(" and ")} go with it.` : "Nothing is booked on it yet.") + (titles.length ? ` The ${titles.join(" and the ")} will go back to whoever held ${titles.length === 1 ? "it" : "them"} before.` : ""),
+      "Delete",
+      () => {
+        if (commit((s) => deleteEvent(s, id), `${e.name} deleted`).ok) closeSheet();
+      }
+    );
+  }
+  var STATUS_TEXT = {
+    empty: () => "Nothing booked yet",
+    booked: (c) => `${c.total} match${c.total === 1 ? "" : "es"} booked \u2014 waiting for results`,
+    partial: (c) => `${c.played} of ${c.total} results in`,
+    complete: (c) => `Complete \u2014 ${c.total} result${c.total === 1 ? "" : "s"}`
+  };
+  function matchCard(st, ev, m, i) {
+    const played = m.status === "played";
+    const title = m.titleId && titleById(st, m.titleId);
+    const reign = played && st.reigns.find((r) => r.matchId === m.id);
+    const detail = played ? [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(" \xB7 ") : "";
+    const move = (d) => `<div class="uv-ic mv" title="Move ${d < 0 ? "up" : "down"}" onclick="uvMoveMatch('${ev.id}','${m.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
+    return `<div class="uv-mc ${m.status}" data-m="${m.id}">
+    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${title ? chip(title.name, "gold") : ""}${m.stip ? chip(m.stip) : ""}
+      <span class="st">${played ? "Result" : "Booked"}</span></div>
+    <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
+    ${detail ? `<div class="uv-mc-d">${detail}</div>` : ""}
+    ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title.name)} ${reign.holder.type === "team" ? "champions" : "champion"}</div>` : ""}
+    ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ""}
+    <div class="uv-mc-acts">
+      ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>` : `<div class="uv-btn pri sm2" onclick="uvEnterResult('${ev.id}','${m.id}')">Enter result</div>
+           <div class="uv-btn sm2" onclick="uvEditBooking('${ev.id}','${m.id}')">${ICON.edit}Edit</div>`}
+      <span class="sp"></span>${move(-1)}${move(1)}
+    </div>
+  </div>`;
+  }
+  function uvEventPage(id) {
+    const st = uni();
+    const e = eventById(st, id);
+    if (!e) return null;
+    const season = seasonById(st, e.at.season);
+    const c = cardStatus(e);
+    return {
+      title: e.name,
+      body: `
+      <div class="uv-evhead" style="--c:${showColor(st, e.showId)}">
+        <div class="k">${esc(LABEL.event[e.kind])} \xB7 ${esc(e.showId ? showName(st, e.showId) : "All shows")}</div>
+        <div class="nm">${esc(e.name)}</div>
+        <div class="s">${esc(eventWhen(st, e, true))}${calendarDate(st, e.at.season, e.at.week, e.at.day) ? ` \xB7 week ${e.at.week}` : ""} \xB7 ${esc(season.name)}</div>
+        <div class="st"><span class="uv-state ${c.state}"></span>${STATUS_TEXT[c.state](c)}</div>
+      </div>
+      <div class="uv-page-acts">
+        <div class="uv-btn pri" onclick="uvBookMatch('${id}')">${ICON.plus}Book a match</div>
+        <div class="uv-btn" onclick="uvEventDetails('${id}')">${ICON.edit}Details</div>
+      </div>
+      ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ""}
+      <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ""}</div>
+      ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join("")}</div>` : empty(ICON.cal, "Nothing booked yet", "Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.")}
+      <div class="uv-fix">
+        <div class="h">Fix a mistake</div>
+        <div class="fine">A result entered wrong: tap <b>Correct</b> on it. You can change anything, clear the result
+          so the match is booked again, or take the match off the card. Records and title histories follow.</div>
+        <div class="uv-fixrow bad" onclick="uvDeleteEvent('${id}')">${ICON.x}<div><b>Delete this ${e.kind === "ple" ? "event" : "episode"}</b>
+          <span>Takes its bookings and results with it</span></div></div>
+      </div>`
+    };
+  }
+  function uvMoveMatch(eventId, matchId, d) {
+    const r = commit((st) => moveMatch(st, eventId, matchId, d));
+    if (r.ok && !r.value) toast(d < 0 ? "Already first on the card" : "Already last on the card");
+  }
+  var md = null;
+  var blankSide = () => ({ team: "", wrestlers: [""] });
+  var PRESETS = [
+    ["Singles", [1, 1]],
+    ["Tag team", [2, 2]],
+    ["Triple threat", [1, 1, 1]],
+    ["Fatal 4-way", [1, 1, 1, 1]],
+    ["Handicap 1-on-2", [1, 2]],
+    ["3-on-3 tag", [3, 3]],
+    ["Triple threat tag", [2, 2, 2]],
+    ["Battle royal", [1, 1, 1, 1, 1, 1]]
+  ];
+  var STIPULATIONS = [
+    "Normal",
+    "No Disqualification",
+    "Street Fight",
+    "Extreme Rules",
+    "Falls Count Anywhere",
+    "Ladder",
+    "Tables",
+    "TLC",
+    "Steel Cage",
+    "Hell in a Cell",
+    "Last Man Standing",
+    "Iron Man",
+    "Submission",
+    "I Quit",
+    "Casket",
+    "Ambulance",
+    "Backstage Brawl",
+    "Royal Rumble",
+    "Battle Royal",
+    "Elimination Chamber",
+    "Money in the Bank",
+    "Gauntlet",
+    "Special Guest Referee"
+  ];
+  var fromMatch = (m) => m.sides.map((sd) => ({ team: sd.team || "", wrestlers: [...sd.wrestlers] }));
+  function openForm(mode, eventId, m) {
+    const st = uni();
+    const linked = m && st.reigns.some((r) => r.matchId === m.id);
+    md = {
+      mode,
+      eventId,
+      matchId: m ? m.id : null,
+      sides: m ? fromMatch(m) : [blankSide(), blankSide()],
+      titleId: m && m.titleId || "",
+      stip: m && m.stip || "",
+      notes: m && m.notes || "",
+      // a result is never pre-filled for a match that hasn't got one
+      result: m && m.status === "played" ? m.outcome === "win" ? String(m.winner) : m.outcome : "",
+      finish: m && m.finish || "",
+      by: m && m.fall && m.fall.by || "",
+      on: m && m.fall && m.fall.on || "",
+      titleChange: !!linked,
+      // entering a result starts from the booking as it stands; the line-up
+      // opens only if the owner asks (a run-in, a late change)
+      lineup: mode === "book" || mode === "edit"
+    };
+    openSheet(formSheet);
+  }
+  var matchOf = (eventId, matchId) => eventById(uni(), eventId).matches.find((x) => x.id === matchId);
+  function uvBookMatch(eventId) {
+    openForm("book", eventId, null);
+  }
+  function uvEditBooking(eventId, matchId) {
+    openForm("edit", eventId, matchOf(eventId, matchId));
+  }
+  function uvEnterResult(eventId, matchId) {
+    openForm("result", eventId, matchOf(eventId, matchId));
+  }
+  function uvCorrectResult(eventId, matchId) {
+    openForm("correct", eventId, matchOf(eventId, matchId));
+  }
+  function teamGuesses(st, side) {
+    const ids = side.wrestlers.filter(Boolean);
+    if (side.team || ids.length < 2) return [];
+    return st.teams.filter((t) => t.active && ids.every((id) => t.members.includes(id)));
+  }
+  var TITLES = { book: "Book a match", edit: "Edit the booking", result: "Enter the result", correct: "Correct the result" };
+  function formSheet() {
+    const st = uni();
+    const e = eventById(st, md.eventId);
+    if (!e) return null;
+    if (md.matchId && !e.matches.some((m) => m.id === md.matchId)) return null;
+    if (st.wrestlers.length < 2) {
+      return { title: TITLES[md.mode], body: empty(ICON.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
+    }
+    const withResult = md.mode === "result" || md.mode === "correct";
+    const label = (s, i) => {
+      const team = s.team && teamById(st, s.team);
+      const ids = s.wrestlers.filter(Boolean);
+      return team ? team.name : ids.length ? ids.map((id) => wrestlerById(st, id).name).join(" & ") : `Side ${i + 1}`;
+    };
+    const shape = md.sides.map((s) => s.wrestlers.length).join(",");
+    const title = md.titleId ? titleById(st, md.titleId) : null;
+    const cur = title && currentReign(st, title.id);
+    const champIn = cur && md.sides.some((s) => cur.holder.type === "team" ? s.team === cur.holder.id : s.wrestlers.includes(cur.holder.id));
+    const w = md.result !== "" && !isNaN(Number(md.result)) ? Number(md.result) : null;
+    const linked = md.matchId && st.reigns.find((r) => r.matchId === md.matchId);
+    const hasTeams = st.teams.some((t) => t.active) || md.sides.some((s) => s.team);
+    const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
+      <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ""}</div>
+      ${hasTeams && (s.wrestlers.length > 1 || s.team) ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, "Not as a tag team"), ' data-team="1"')}</div>` : ""}
+      ${s.wrestlers.map((wid, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, wid), ` data-w="${j}"`)}
+        ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON.x}</div>` : ""}</div>`).join("")}
+      ${teamGuesses(st, s).map((t) => `<div class="uv-hint" onclick="uvMTeam(${i},'${t.id}')">Wrestling as <b>${esc(t.name)}</b>?
+        <span>Tap so it counts on their team record</span></div>`).join("")}
+      <div class="uv-add" onclick="uvMAddWrestler(${i})">${ICON.plus}Add a partner</div>
+    </div>`).join("");
+    const winSide = w != null ? md.sides[w] : null;
+    const losers = w != null ? md.sides.filter((_, i) => i !== w).flatMap((s) => s.wrestlers.filter(Boolean)) : [];
+    const pickFrom = (ids, v, k, blank) => select(
+      `uvMSet('${k}',this.value)`,
+      options([["", blank], ...ids.map((id) => [id, wrestlerById(st, id).name])], v),
+      ` id="uvM${k === "by" ? "By" : "On"}"`
+    );
+    const result = withResult ? `
+      <h4>What happened in the game</h4>
+      ${field("Result", select(`uvMSet('result',this.value)`, options([
+      ["", "\u2014 Pick the result \u2014"],
+      ...md.sides.map((s, i) => [String(i), `${label(s, i)} won`]),
+      ["draw", "Draw"],
+      ["nc", "No contest"]
+    ], md.result), ' id="uvMResult"'), "wide")}
+      <div class="uv-grid" style="margin-top:10px">
+        ${field("Finish", select(`uvMSet('finish',this.value)`, options([["", "\u2014"], ...labelPairs(LABEL.finish)], md.finish), ' id="uvMFinish"'), "wide")}
+        ${winSide && winSide.wrestlers.filter(Boolean).length > 1 ? `${field("Won by (optional)", pickFrom(winSide.wrestlers.filter(Boolean), md.by, "by", "\u2014"))}
+          ${field("Fall taken by (optional)", pickFrom(losers, md.on, "on", "\u2014"))}` : ""}
+        ${winSide && winSide.wrestlers.filter(Boolean).length === 1 ? field("Who took the fall (optional)", pickFrom(losers, md.on, "on", "\u2014"), "wide") : ""}
+      </div>
+      ${title && w != null ? `<label class="uv-check"><input id="uvMTitleChange" type="checkbox"${md.titleChange ? " checked" : ""} onchange="uvMSet('titleChange',this.checked)">
+        <span>The title changed hands \u2014 ${esc(label(winSide, w))} ${winSide.team || winSide.wrestlers.length > 1 ? "are the new champions" : "is the new champion"}</span></label>` : ""}
+      ${linked ? `<div class="fine">This result made a title change. A different winner takes over that reign; unticking the box
+        hands the belt back \u2014 as long as it hasn\u2019t changed hands since.</div>` : ""}` : "";
+    const buttons = {
+      book: `<div class="uv-btn pri full" onclick="uvMSave(false)">Add to the card</div>
+      <div class="uv-btn full" onclick="uvMSave(true)">Add, and enter its result</div>`,
+      edit: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the booking</div>
+      <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the card</div>`,
+      result: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the result</div>`,
+      correct: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the correction</div>
+      <div class="uv-btn full" onclick="uvMClear()">Clear the result \u2014 keep it booked</div>
+      <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the card</div>`
+    }[md.mode];
+    const lineup = `
+      ${md.mode === "book" || md.mode === "edit" ? `<div class="uv-pills tight">${PRESETS.map(([lb, sz]) => `<div class="uv-pill${sz.join(",") === shape ? " on" : ""}" onclick="uvMPreset('${sz.join(",")}')">${lb}</div>`).join("")}</div>` : ""}
+      ${PRESETS.some(([, sz]) => sz.join(",") === shape) && md.mode !== "result" && md.mode !== "correct" ? "" : `<div class="uv-kindline">${kindChip({ sides: md.sides })}</div>`}
+      ${sides}
+      <div class="uv-add" onclick="uvMAddSide()">${ICON.plus}Add another side</div>
+      <div class="uv-grid" style="margin-top:14px">
+        ${field("Championship at stake", select(`uvMSet('titleId',this.value)`, titleOptions(st, md.titleId, "None"), ' id="uvMTitle"'), "wide")}
+        ${field("Stipulation", `<input id="uvMStip" class="uv-in" maxlength="60" list="uvStips" value="${esc(md.stip)}" placeholder="e.g. Ladder"
+          oninput="uvMText('stip',this.value)"><datalist id="uvStips">${STIPULATIONS.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`, "wide")}
+      </div>
+      ${title && cur && !champIn ? `<div class="fine">The current ${esc(title.name)} ${cur.holder.type === "team" ? "champions" : "champion"}, ${esc(holderName(st, cur.holder))}, ${cur.holder.type === "team" ? "aren\u2019t" : "isn\u2019t"} in this match.</div>` : ""}`;
+    const summary2 = `<div class="uv-mc uv-mc-sum">
+      <div class="uv-mc-top">${kindChip({ sides: md.sides })}${title ? chip(title.name, "gold") : ""}${md.stip.trim() ? chip(md.stip.trim()) : ""}</div>
+      <div class="uv-mc-body">${md.sides.map((sd, i) => `<b>${esc(label(sd, i))}</b>`).join(' <span class="uv-muted">vs</span> ')}</div>
+    </div>`;
+    return {
+      title: TITLES[md.mode],
+      body: `
+      <p class="uv-p">${esc(e.name)} \xB7 ${esc(eventWhen(st, e))}${withResult ? " \u2014 enter what the CPU produced. Nothing is filled in for you." : ""}</p>
+      ${md.lineup ? lineup : summary2}
+      ${result}
+      ${md.lineup ? "" : `<div class="uv-add" onclick="uvMLineup()">${ICON.edit}Change the line-up, title or stipulation</div>`}
+      <div style="margin-top:12px">${field(
+        withResult ? "What happened (optional)" : "Notes (optional)",
+        `<textarea id="uvMNotes" class="uv-in" rows="2" maxlength="2000" oninput="uvMText('notes',this.value)"
+          placeholder="${withResult ? "e.g. Run-in, botched finish, crowd went wild" : "e.g. #1 contender\u2019s match"}">${esc(md.notes)}</textarea>`,
+        "wide"
+      )}</div>
+      ${buttons}`
+    };
+  }
+  function uvMPreset(shape) {
+    const sizes = shape.split(",").map(Number);
+    const picked = md.sides.flatMap((s) => s.wrestlers.filter(Boolean));
+    let k = 0;
+    md.sides = sizes.map((n) => ({ team: "", wrestlers: Array.from({ length: n }, () => picked[k++] || "") }));
+    resetResult();
+    paintSheet();
+  }
+  function uvMTeam(i, teamId) {
+    const side = md.sides[i];
+    side.team = teamId;
+    const team = teamId && teamById(uni(), teamId);
+    const ids = side.wrestlers.filter(Boolean);
+    if (team && (!ids.length || !ids.every((id) => team.members.includes(id)))) side.wrestlers = [...team.members];
+    paintSheet();
+  }
+  function uvMWrestler(i, j, v) {
+    md.sides[i].wrestlers[j] = v;
+    checkFallPicks();
+    paintSheet();
+  }
+  function uvMAddWrestler(i) {
+    md.sides[i].wrestlers.push("");
+    paintSheet();
+  }
+  function uvMDropWrestler(i, j) {
+    md.sides[i].wrestlers.splice(j, 1);
+    checkFallPicks();
+    paintSheet();
+  }
+  function uvMAddSide() {
+    md.sides.push(blankSide());
+    paintSheet();
+  }
+  function uvMDropSide(i) {
+    md.sides.splice(i, 1);
+    resetResult();
+    paintSheet();
+  }
+  function uvMSet(k, v) {
+    md[k] = v;
+    if (k === "titleId" && !v) md.titleChange = false;
+    if (k === "result") {
+      md.by = "";
+      md.on = "";
+      if (isNaN(Number(v)) || v === "") md.titleChange = false;
+    }
+    paintSheet();
+  }
+  function uvMText(k, v) {
+    md[k] = v;
+  }
+  function uvMLineup() {
+    md.lineup = true;
+    paintSheet();
+  }
+  function resetResult() {
+    md.result = "";
+    md.by = "";
+    md.on = "";
+    md.titleChange = false;
+  }
+  function checkFallPicks() {
+    const w = Number(md.result);
+    if (md.result === "" || isNaN(w) || !md.sides[w]) return;
+    if (md.by && !md.sides[w].wrestlers.includes(md.by)) md.by = "";
+    if (md.on && !md.sides.some((s, i) => i !== w && s.wrestlers.includes(md.on))) md.on = "";
+  }
+  function uvMSave(thenResult) {
+    const d = md;
+    const booking = {
+      sides: d.sides.map((s) => ({ team: s.team || null, wrestlers: s.wrestlers.filter(Boolean) })),
+      titleId: d.titleId || null,
+      stip: d.stip,
+      notes: d.notes
+    };
+    if (d.mode === "book") {
+      const r2 = commit((st) => bookMatch(st, d.eventId, booking), "Match booked");
+      if (!r2.ok) return;
+      if (thenResult) uvEnterResult(d.eventId, r2.value.id);
+      else closeSheet();
+      return;
+    }
+    if (d.mode === "edit") {
+      if (commit((st) => updateBooking(st, d.eventId, d.matchId, booking), "Booking saved").ok) closeSheet();
+      return;
+    }
+    const isWin = d.result !== "" && !isNaN(Number(d.result));
+    const input = {
+      ...booking,
+      outcome: d.result === "" ? "" : isWin ? "win" : d.result,
+      winner: isWin ? Number(d.result) : null,
+      finish: d.finish,
+      fall: { by: d.by || null, on: d.on || null }
+    };
+    const opts = { titleChange: !!(d.titleId && d.titleChange && isWin) };
+    const r = commit((st) => d.mode === "result" ? enterResult(st, d.eventId, d.matchId, input, opts) : updateMatch(st, d.eventId, d.matchId, input, opts), (m) => {
+      const st = uni();
+      const reign = st.reigns.find((x) => x.matchId === m.id);
+      const saved = d.mode === "result" ? "Result saved" : "Result corrected";
+      if (!reign) return saved;
+      return `${saved} \u2014 ${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}`;
+    });
+    if (r.ok) closeSheet();
+  }
+  function uvMClear() {
+    const d = md;
+    const st = uni();
+    const linked = st.reigns.find((x) => x.matchId === d.matchId);
+    confirmThen(
+      "Clear this result?",
+      "The match stays on the card, booked, as if it hadn\u2019t been played yet. It comes off everyone\u2019s record." + (linked ? ` The ${titleById(st, linked.titleId).name} goes back to whoever held it before.` : ""),
+      "Clear result",
+      () => {
+        if (commit((s) => clearResult(s, d.eventId, d.matchId), "Result cleared \u2014 booked again").ok) closeSheet();
+      }
+    );
+  }
+  function uvMDelete() {
+    const d = md;
+    const st = uni();
+    const m = matchOf(d.eventId, d.matchId);
+    const linked = st.reigns.find((x) => x.matchId === d.matchId);
+    confirmThen(
+      "Take this match off the card?",
+      (m.status === "played" ? "Its result comes off everyone\u2019s record." : "It hasn\u2019t been played, so nothing else changes.") + (linked ? ` The ${titleById(st, linked.titleId).name} goes back to whoever held it before.` : ""),
+      "Take it off",
+      () => {
+        if (commit((s) => deleteMatch(s, d.eventId, d.matchId), "Match removed").ok) closeSheet();
+      }
+    );
+  }
+  function uvSeasonDates(id) {
+    openSheet(() => {
+      const s = seasonById(uni(), id);
+      if (!s) return null;
+      return {
+        title: "Season dates",
+        body: `
+        <p class="uv-p">Pin ${esc(s.name)} to the calendar so every show gets a date \u2014 match it to your WWE 2K25 Universe
+          calendar. Pick any day in week 1; weeks run Monday to Sunday.</p>
+        ${field("Week 1 includes", `<input id="uvSeasonStart" class="uv-in" type="date" value="${esc(s.start || "")}">`, "wide")}
+        ${s.start ? `<p class="uv-p">Week 1 is the week of ${esc(isoText(calendarDate(uni(), id, 1, 0)))}.</p>` : ""}
+        <div class="uv-btn pri full" onclick="uvSaveSeasonStart('${id}')">Save</div>
+        ${s.start ? `<div class="uv-btn full" onclick="uvClearSeasonStart('${id}')">Go back to plain weeks</div>` : ""}`
+      };
+    });
+  }
+  function uvSaveSeasonStart(id) {
+    const v = document.getElementById("uvSeasonStart").value;
+    if (!v) {
+      toast("Pick a date first.", true);
+      return;
+    }
+    if (commit((st) => setSeasonStart(st, id, v), "Dates set").ok) closeSheet();
+  }
+  function uvClearSeasonStart(id) {
+    if (commit((st) => setSeasonStart(st, id, ""), "Back to plain weeks").ok) closeSheet();
+  }
+
+  // js/universe/pages.js
   function uvOpenWrestler(id) {
     pushPage("wrestler", id);
   }
@@ -2353,7 +3338,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     pushPage("title", id);
   }
   function uvPageView(kind, id) {
-    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : null;
+    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : null;
   }
   var expanded = /* @__PURE__ */ new Set();
   function uvShowAll(key) {
@@ -2385,6 +3370,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res ${r}">${r}</span>
     <span>${matchLine(st, x.match)}<span class="uv-muted d">${esc(x.event.name)} \xB7 ${stampLabel(st, x.event.at)}${label ? ` \xB7 ${esc(label)}` : ""}</span></span></div>`;
   }
+  function bookingRow(st, x) {
+    const t = x.match.titleId && titleById(st, x.match.titleId);
+    return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res up">vs</span>
+    <span>${vsLine(st, x.match)}<span class="uv-muted d">${esc(x.event.name)} \xB7 ${esc(eventWhen(st, x.event))}</span>
+      <span class="uv-chips">${kindChip(x.match)}${t ? chip(t.name, "gold") : ""}${x.match.stip ? chip(x.match.stip) : ""}</span></span></div>`;
+  }
+  var upcoming = (st, list) => list.length ? section("Booked", list.length) + list.map((x) => bookingRow(st, x)).join("") : "";
   function careerText(st, e) {
     const show = (id) => esc(showName(st, id));
     const team = (t) => `<span class="uv-link" onclick="uvOpenTeam('${t.id}')">${esc(t.name)}</span>`;
@@ -2428,6 +3420,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const partners = tagPartnersOf(st, id);
     const career = careerOf(st, id);
     const results = matchesOf(st, id);
+    const booked = bookingsOf(st, id);
     const moves = movesOf(st, id);
     const lastMove = moves[moves.length - 1];
     const refs = wrestlerRefs(st, id);
@@ -2474,6 +3467,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       </div>
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ""}
 
+      ${upcoming(st, booked)}
+
       ${section("Championships", champs.length || null)}
       ${champs.length ? current.map(champRow).join("") + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : "") : '<div class="uv-none">Never held a title.</div>'}
 
@@ -2498,7 +3493,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${fixRow(`uvEditWrestler('${id}')`, ICON.edit, "Edit details", "Name, division, promotion, alignment, status, notes")}
         ${fixRow(`uvMergeInto('${id}')`, ICON.team, `Merge a duplicate into ${esc(w.name)}`, "For the same wrestler entered twice")}
         ${refs.length ? `<div class="fine">${esc(w.name)} is part of the history (${esc(refs.join(", "))}), so they can\u2019t be deleted \u2014 leave them unassigned instead.</div>` : fixRow(`uvDeleteWrestler('${id}')`, ICON.x, `Delete ${esc(w.name)}`, "No history yet \u2014 for someone added by mistake", "bad")}
-        <div class="fine">A wrong result is fixed on its event: open it from Results above.</div>
+        <div class="fine">A wrong result is fixed on its show: open it from Results above and tap <b>Correct</b>.</div>
       </div>`
     };
   }
@@ -2546,6 +3541,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const held = reigns.filter((r) => !r.end).length;
     const hist = teamHistoryOf(st, id);
     const results = teamMatches(st, id);
+    const booked = teamBookings(st, id);
     const last = lastTeamChange(st, id);
     const refs = teamRefs(st, id);
     const lastLog = t.log[t.log.length - 1];
@@ -2576,6 +3572,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${numTile("Members", t.members.length, former.length ? `${former.length} former` : "original line-up")}
       </div>
       <div class="uv-note">Counts only matches wrestled as ${esc(t.name)}. Members\u2019 singles matches, and tag matches with other partners, go on their own records \u2014 not the team\u2019s.</div>
+
+      ${upcoming(st, booked)}
 
       ${section("Members", t.members.length)}
       ${t.members.map((wid) => memberRow(spells.find((m) => m.wrestler === wid && !m.end))).join("")}
@@ -2609,6 +3607,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const longest = reigns.reduce((best, r) => !best || reignWeeks(st, r) > reignWeeks(st, best) ? r : best, null);
     const holders = new Set(reigns.map((r) => `${r.holder.type}:${r.holder.id}`)).size;
     const kindWord = t.kind === "tag" ? "Champions" : "Champion";
+    const booked = titleBookings(st, id);
     const historyRow = (r, n) => {
       const weeks = reignWeeks(st, r), def = defencesOf(st, r);
       const how = r.matchId ? `won at ${esc(eventName2(st, r.eventId))}` : r.eventId ? esc(eventName2(st, r.eventId)) : "awarded";
@@ -2637,9 +3636,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div class="uv-recs">
         ${numTile("Reigns", reigns.length, `${holders} different ${t.kind === "tag" ? "teams" : "champions"}`)}
         ${numTile("Longest", longest ? reignWeeks(st, longest) : 0, longest ? holderName(st, longest.holder) : "\u2014")}
-        ${numTile("Title matches", countTitleMatches(st, id), "recorded")}
+        ${numTile("Title matches", countTitleMatches(st, id), booked.length ? `${booked.length} booked` : "with a result")}
       </div>
-      <p class="uv-p">A title that changes hands on a show is best recorded on that event\u2019s result, so the reign is dated to it and the defences count.</p>
+      <p class="uv-p">A title that changes hands on a show is best recorded on that match\u2019s result, so the reign is dated to it and the defences count.</p>
+
+      ${upcoming(st, booked)}
 
       ${section("Title history", reigns.length || null)}
       ${reigns.length ? reigns.map((r, i) => [r, i + 1]).reverse().map(([r, n]) => historyRow(r, n)).join("") : '<div class="uv-none">Never held.</div>'}
@@ -2654,11 +3655,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
   }
   function countTitleMatches(st, titleId) {
-    return st.events.reduce((n, e) => n + e.matches.filter((m) => m.titleId === titleId).length, 0);
+    return st.events.reduce((n, e) => n + e.matches.filter((m) => m.titleId === titleId && m.status === "played").length, 0);
+  }
+  function titleBookings(st, titleId) {
+    const out = [];
+    st.events.forEach((event) => event.matches.forEach((match) => {
+      if (match.titleId === titleId && match.status === "scheduled") out.push({ event, match });
+    }));
+    return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
   }
 
   // js/universe/sheets.js
-  var none = (text) => `<div class="uv-none">${esc(text)}</div>`;
   var alignPairs = () => [["", "Not set"], ...labelPairs(LABEL.alignment)];
   var add = null;
   function uvAddWrestler() {
@@ -2805,6 +3812,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvStepWeek(d) {
     const week = activeSeason(uni()).week + d;
     if (week < 1) return;
+    uvCalFollow();
     commit((st) => setWeek(st, week), `Week ${week}`);
   }
   function uvNextSeason() {
@@ -2839,253 +3847,6 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const v = document.getElementById("uvSeasonName").value;
     if (commit((st) => renameSeason(st, id, v), "Season renamed").ok) closeSheet();
   }
-  var eventDraft = null;
-  function uvNewEvent() {
-    const st = uni();
-    eventDraft = { kind: "weekly", showId: st.shows[0].id, week: String(activeSeason(st).week), name: "" };
-    openSheet(newEventSheet);
-  }
-  function newEventSheet() {
-    const st = uni();
-    const d = eventDraft;
-    const seg = (k, lb) => `<div class="${d.kind === k ? "on" : ""}" onclick="uvEventKind('${k}')">${lb}</div>`;
-    const auto = d.kind === "weekly" && d.showId ? `${showName(st, d.showId)} \xB7 Week ${d.week || "?"}` : "e.g. WrestleMania";
-    return {
-      title: "New event",
-      body: `
-      <div class="uv-seg">${seg("weekly", "Weekly show")}${seg("ple", "Premium live event")}</div>
-      <div class="uv-grid">
-        ${field("Show", select(`uvEventDraft('showId',this.value)`, options(showPairs(st, d.kind === "ple" ? "All shows" : ""), d.showId)))}
-        ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${esc(d.week)}"
-          onchange="uvEventDraft('week',this.value)">`)}
-        ${field(d.kind === "ple" ? "Name" : "Name (optional)", `<input id="uvEventName" class="uv-in" maxlength="60" value="${esc(d.name)}"
-          placeholder="${esc(auto)}" oninput="uvEventDraftName(this.value)">`, "wide")}
-      </div>
-      <div class="uv-btn pri full" onclick="uvCreateEvent()">Create event</div>`
-    };
-  }
-  function uvEventKind(k) {
-    eventDraft.kind = k;
-    if (k === "weekly" && !eventDraft.showId) eventDraft.showId = uni().shows[0].id;
-    paintSheet();
-  }
-  function uvEventDraft(k, v) {
-    eventDraft[k] = v;
-    paintSheet();
-  }
-  function uvEventDraftName(v) {
-    eventDraft.name = v;
-  }
-  function uvCreateEvent() {
-    const d = eventDraft;
-    const r = commit((st) => addEvent(st, { kind: d.kind, showId: d.showId, week: d.week, name: d.name }), (e) => `${e.name} added`);
-    if (r.ok) uvOpenEvent(r.value.id);
-  }
-  function uvOpenEvent(id) {
-    openSheet(() => {
-      const st = uni();
-      const e = eventById(st, id);
-      if (!e) return null;
-      const season = seasonById(st, e.at.season);
-      const changed = st.reigns.filter((r) => r.eventId === id);
-      const set = (k) => `uvSetEvent('${id}','${k}',this.value)`;
-      const results = e.matches.map((m, i) => {
-        const reign = st.reigns.find((r) => r.matchId === m.id);
-        const meta = matchMeta(st, m, reign);
-        return `<div class="uv-match" onclick="uvEditResult('${id}','${m.id}')"><span class="i">${i + 1}</span><div class="b"><div>${matchLine(st, m)}</div>
-        ${meta ? `<div class="uv-muted d">${meta}</div>` : ""}${m.notes ? `<div class="uv-muted d">${esc(m.notes)}</div>` : ""}</div>
-        <span class="uv-chev">${ICON.edit}</span></div>`;
-      }).join("");
-      return {
-        title: esc(e.name),
-        body: `
-        <div class="uv-hero"><span class="uv-av lg sq" style="--c:${showColor(st, e.showId)}">${ICON.cal}</span><div>
-          <div class="k">${esc(LABEL.event[e.kind])}</div>
-          <div class="s">${esc(e.showId ? showName(st, e.showId) : "All shows")} \xB7 ${esc(season.name)} \xB7 Week ${e.at.week}</div></div></div>
-
-        <h4>Results${e.matches.length ? ` \xB7 ${e.matches.length}` : ""}</h4>
-        ${results ? results + '<div class="fine">Tap a result to correct it. It\u2019s changed in place \u2014 nothing else on the card moves.</div>' : none("No results recorded yet.")}
-        <div class="uv-btn pri full" onclick="uvRecordResult('${id}')">${ICON.plus}Record a result</div>
-
-        <h4>Details</h4>
-        ${field("Name", `<input class="uv-in" maxlength="60" value="${esc(e.name)}" onchange="${set("name")}">`, "wide")}
-        <div class="uv-grid" style="margin-top:10px">
-          ${field("Show", select(set("showId"), options(showPairs(st, e.kind === "ple" ? "All shows" : ""), e.showId || "")))}
-          ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}" onchange="${set("week")}">`)}
-          ${field("Notes", `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set("notes")}">${esc(e.notes)}</textarea>`, "wide")}
-        </div>
-        ${changed.length ? `<div class="fine">A title changed hands here, so a new week moves that title change with it \u2014 as long as the title\u2019s history still reads in order.</div>` : ""}
-        <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete event</div>`
-      };
-    });
-  }
-  function uvSetEvent(id, key, value) {
-    commit((st) => updateEvent(st, id, { [key]: value }), "Saved");
-  }
-  function uvDeleteEvent(id) {
-    const st = uni();
-    const e = eventById(st, id);
-    const n = e.matches.length;
-    const titles = st.reigns.filter((r) => r.eventId === id).map((r) => titleById(st, r.titleId).name);
-    confirmThen(
-      `Delete ${e.name}?`,
-      (n ? `Its ${n} recorded result${n === 1 ? "" : "s"} will be deleted with it.` : "It has no results yet.") + (titles.length ? ` The ${titles.join(" and the ")} will go back to whoever held ${titles.length === 1 ? "it" : "them"} before.` : ""),
-      "Delete",
-      () => {
-        if (commit((s) => deleteEvent(s, id), `${e.name} deleted`).ok) closeSheet();
-      }
-    );
-  }
-  var md = null;
-  var blankSide = () => ({ team: "", wrestlers: [""] });
-  function uvRecordResult(eventId) {
-    md = { eventId, matchId: null, sides: [blankSide(), blankSide()], result: "0", finish: "", titleId: "", titleChange: false, stip: "", notes: "" };
-    openSheet(matchSheet);
-  }
-  function uvEditResult(eventId, matchId) {
-    const st = uni();
-    const m = eventById(st, eventId).matches.find((x) => x.id === matchId);
-    md = {
-      eventId,
-      matchId,
-      sides: m.sides.map((sd) => ({ team: sd.team || "", wrestlers: [...sd.wrestlers] })),
-      result: m.outcome === "win" ? String(m.winner) : m.outcome,
-      finish: m.finish || "",
-      titleId: m.titleId || "",
-      titleChange: st.reigns.some((r) => r.matchId === matchId),
-      stip: m.stip,
-      notes: m.notes
-    };
-    openSheet(matchSheet);
-  }
-  function teamGuesses(st, side) {
-    const ids = side.wrestlers.filter(Boolean);
-    if (side.team || ids.length < 2) return [];
-    return st.teams.filter((t) => t.active && ids.every((id) => t.members.includes(id)));
-  }
-  function matchSheet() {
-    const st = uni();
-    const e = eventById(st, md.eventId);
-    if (!e) return null;
-    const editing = !!md.matchId;
-    if (editing && !e.matches.some((m) => m.id === md.matchId)) return null;
-    if (st.wrestlers.length < 2) {
-      return { title: "Record a result", body: empty(ICON.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
-    }
-    const label = (s, i) => {
-      const team = s.team && teamById(st, s.team);
-      const ids = s.wrestlers.filter(Boolean);
-      return team ? team.name : ids.length ? ids.map((id) => wrestlerById(st, id).name).join(" & ") : `Side ${i + 1}`;
-    };
-    const resultPairs = [...md.sides.map((s, i) => [String(i), `${label(s, i)} won`]), ["draw", "Draw"], ["nc", "No contest"]];
-    const title = md.titleId ? titleById(st, md.titleId) : null;
-    const linked = editing ? st.reigns.find((r) => r.matchId === md.matchId) : null;
-    const hasTeams = st.teams.some((t) => t.active) || md.sides.some((s) => s.team);
-    const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
-      <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ""}</div>
-      ${hasTeams ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, "Not as a tag team"))}</div>` : ""}
-      ${s.wrestlers.map((w, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, w))}
-        ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON.x}</div>` : ""}</div>`).join("")}
-      ${teamGuesses(st, s).map((t) => `<div class="uv-hint" onclick="uvMTeam(${i},'${t.id}')">Wrestling as <b>${esc(t.name)}</b>?
-        <span>Tap so it counts on their team record</span></div>`).join("")}
-      <div class="uv-add" onclick="uvMAddWrestler(${i})">${ICON.plus}Add a partner</div>
-    </div>`).join("");
-    return {
-      title: editing ? "Correct a result" : "Record a result",
-      body: `
-      <p class="uv-p">${esc(e.name)} \u2014 ${editing ? "change whatever was entered wrong. It\u2019s corrected in place: its spot on the card stays, and nothing else changes." : "enter what happened in the game."}</p>
-      ${linked ? `<div class="uv-note">This result changed the <b>${esc(titleById(st, linked.titleId).name)}</b>. Pick a different winner and
-        that reign moves to them; untick the box and the belt goes back to the previous champion \u2014 as long as it hasn\u2019t changed hands since.</div>` : ""}
-      ${sides}
-      <div class="uv-add" onclick="uvMAddSide()">${ICON.plus}Add another side</div>
-      <div class="uv-grid" style="margin-top:14px">
-        ${field("Result", select(`uvMSet('result',this.value)`, options(resultPairs, md.result)), "wide")}
-        ${field("Finish", select(`uvMSet('finish',this.value)`, options([["", "\u2014"], ...labelPairs(LABEL.finish)], md.finish)))}
-        ${field("Stipulation", `<input class="uv-in" maxlength="60" value="${esc(md.stip)}" placeholder="e.g. Ladder"
-          oninput="uvMText('stip',this.value)">`)}
-        ${field("Championship", select(`uvMSet('titleId',this.value)`, titleOptions(st, md.titleId)), "wide")}
-      </div>
-      ${title ? `<label class="uv-check"><input type="checkbox"${md.titleChange ? " checked" : ""} onchange="uvMSet('titleChange',this.checked)">
-        <span>The title changed hands \u2014 the winner${title.kind === "tag" ? "s are the new champions" : " is the new champion"}</span></label>` : ""}
-      ${field("Notes", `<input class="uv-in" maxlength="2000" value="${esc(md.notes)}" oninput="uvMText('notes',this.value)">`, "wide")}
-      <div class="uv-btn pri full" onclick="uvSaveResult()">${editing ? "Save correction" : "Save result"}</div>
-      ${editing ? `<div class="uv-btn bad full" onclick="uvDeleteResult()">Delete this result</div>` : ""}`
-    };
-  }
-  function uvMTeam(i, teamId) {
-    const side = md.sides[i];
-    side.team = teamId;
-    const team = teamId && teamById(uni(), teamId);
-    const ids = side.wrestlers.filter(Boolean);
-    if (team && (!ids.length || !ids.every((id) => team.members.includes(id)))) side.wrestlers = [...team.members];
-    paintSheet();
-  }
-  function uvMWrestler(i, j, v) {
-    md.sides[i].wrestlers[j] = v;
-    paintSheet();
-  }
-  function uvMAddWrestler(i) {
-    md.sides[i].wrestlers.push("");
-    paintSheet();
-  }
-  function uvMDropWrestler(i, j) {
-    md.sides[i].wrestlers.splice(j, 1);
-    paintSheet();
-  }
-  function uvMAddSide() {
-    md.sides.push(blankSide());
-    paintSheet();
-  }
-  function uvMDropSide(i) {
-    md.sides.splice(i, 1);
-    const w = Number(md.result);
-    if (Number.isInteger(w)) md.result = w === i ? "0" : String(w > i ? w - 1 : w);
-    paintSheet();
-  }
-  function uvMSet(k, v) {
-    md[k] = v;
-    if (k === "titleId" && !v) md.titleChange = false;
-    paintSheet();
-  }
-  function uvMText(k, v) {
-    md[k] = v;
-  }
-  function uvSaveResult() {
-    const d = md;
-    const outcome = d.result === "draw" || d.result === "nc" ? d.result : "win";
-    const input = {
-      sides: d.sides.map((s) => ({ team: s.team || null, wrestlers: s.wrestlers.filter(Boolean) })),
-      outcome,
-      winner: outcome === "win" ? Number(d.result) : null,
-      finish: d.finish,
-      titleId: d.titleId || null,
-      stip: d.stip,
-      notes: d.notes
-    };
-    const opts = { titleChange: !!(d.titleId && d.titleChange) };
-    const r = commit((st) => d.matchId ? updateMatch(st, d.eventId, d.matchId, input, opts) : recordMatch(st, d.eventId, input, opts), (m) => {
-      const st = uni();
-      const reign = st.reigns.find((x) => x.matchId === m.id);
-      const saved = d.matchId ? "Result corrected" : "Result saved";
-      if (!reign) return saved;
-      const verb = reign.holder.type === "team" ? "hold" : "holds";
-      return `${saved} \u2014 ${holderName(st, reign.holder)} ${verb} the ${titleById(st, reign.titleId).name}`;
-    });
-    if (r.ok) uvOpenEvent(d.eventId);
-  }
-  function uvDeleteResult() {
-    const d = md;
-    const st = uni();
-    const linked = st.reigns.find((x) => x.matchId === d.matchId);
-    confirmThen(
-      "Delete this result?",
-      "It\u2019s removed from the event and from everyone\u2019s record." + (linked ? ` The ${titleById(st, linked.titleId).name} goes back to whoever held it before.` : ""),
-      "Delete",
-      () => {
-        if (commit((s) => deleteMatch(s, d.eventId, d.matchId), "Result deleted").ok) uvOpenEvent(d.eventId);
-      }
-    );
-  }
 
   // js/universe/index.js
   var index_exports = {};
@@ -3102,11 +3863,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvReset: () => uvReset,
     uvTab: () => uvTab
   });
-  var TABS = [["roster", "Roster"], ["teams", "Teams"], ["titles", "Titles"], ["history", "History"]];
-  var VIEWS = { roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
-  var tab = "roster";
+  var TABS = [["calendar", "Calendar"], ["roster", "Roster"], ["teams", "Teams"], ["titles", "Titles"], ["history", "History"]];
+  var VIEWS = { calendar: uvCalendarView, roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
+  var tab = "calendar";
   function initUniverse() {
     bootUniverse(paint);
+    if (!uni().wrestlers.length) tab = "roster";
     paint();
     const L = loadState();
     if (L.status === "recovered" || L.readOnly || L.problems.length) {
@@ -3140,6 +3902,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvTab(k) {
     tab = k;
+    if (k === "calendar") uvCalFollow();
     clearPages();
     paint();
     document.getElementById("uvScroll").scrollTop = 0;
@@ -3183,7 +3946,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       title: "Universe save",
       body: `
       <div class="uv-stats">${stat("Wrestlers", n.wrestlers)}${stat("Tag teams", n.teams)}${stat("Titles", n.titles)}
-        ${stat("Events", n.events)}${stat("Results", n.matches)}${stat("Seasons", n.seasons)}</div>
+        ${stat("Events", n.events)}${stat("Results", n.matches)}${stat("Booked", n.booked)}</div>
       ${notes.map(([cls, text]) => `<div class="uv-note ${cls}">${esc(text)}</div>`).join("")}
       <p class="uv-p" style="margin-top:12px">Your universe lives in this browser only. A save file is its backup, and how you move it
         to another browser or device \u2014 export one every so often.</p>
@@ -3660,7 +4423,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports);
   initUniverse();
 })();
 

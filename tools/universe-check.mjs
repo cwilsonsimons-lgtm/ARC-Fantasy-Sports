@@ -73,12 +73,22 @@ const openRow = async (text, tab) => {
   await body.locator('.uv-row', { hasText: text }).first().click();
   await page.waitForTimeout(120);
 };
-const openEvent = async name => {
+// a show's page, from the calendar - `week` picks another week from the season grid
+const openShow = async (name, week) => {
   await noSheet();
-  await page.click('#uvTabs [data-uvtab=history]');
-  await body.locator('.uv-row', { hasText: name }).click();
-  await settle();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  if (week) await body.locator('.uv-gr', { has: page.locator('.w', { hasText: new RegExp(`^W${week}$`) }) }).click();
+  await body.locator('.uv-night[data-ev]', { hasText: name }).click();
+  await page.waitForTimeout(120);
 };
+const evTitle = () => js(`(document.querySelector('.uv-page .uv-evhead .nm') || {}).textContent || null`);
+const mc = i => body.locator('.uv-page .uv-mc').nth(i);
+const cards = () => js(`[...document.querySelectorAll('.uv-page .uv-mc-body')].map(b => ${TEXT}(b))`);
+// the calendar's nights: "Mon Raw · Week 3 | 2 of 3 results in"
+const nights = () => js(`[...document.querySelectorAll('#uvBody .uv-night')].map(r => r.querySelector('.dt b').textContent + ' '
+  + r.querySelector('.nm').textContent.trim() + ' | ' + r.querySelector('.sub').textContent.trim())`);
+// the shows listed in History, newest first
+const shows = () => js(`[...document.querySelectorAll('#uvBody .uv-hev .nm')].map(e => e.textContent.trim())`);
 const side = i => sheet.locator('.uv-sidebox').nth(i);
 // textContent glues neighbouring elements together; this keeps a space between them
 const TEXT = `(el => { const t = n => n.nodeType === 3 ? n.textContent : n.children.length ? [...n.childNodes].map(t).join(' ') : n.textContent;
@@ -317,84 +327,160 @@ await check('Titles tab: champion, reign length, vacancy', async () => {
   return js(`[...document.querySelectorAll('#uvBody .uv-row')].map(r => ${TEXT}(r.querySelector('.uv-champ')))`);
 }, ['Gunther under a week · since S1 · W1', 'Vacant']);
 
-// ================================================================ events + results
-await check('Next week advances the clock', async () => {
-  await page.click('#uvTabs [data-uvtab=history]');
+// ================================================================ calendar
+await check('the calendar: each show on its own night, not yet planned', async () => {
+  await noSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
   await btn(body, 'Next week').click();
   await btn(body, 'Next week').click();
-  return [await js(`document.getElementById('uvClock').textContent`), (await saved()).seasons[0].week];
-}, ['Season 1 · Week 3', 3]);
-await check('a weekly event names itself', async () => {
-  await btn(body, 'New event').click();
+  return [await js(`document.getElementById('uvClock').textContent`), (await saved()).seasons[0].week,
+    await js(`document.querySelector('.uv-weeknav .t').textContent`), await nights()];
+}, ['Season 1 · Week 3', 3, 'Week 3',
+  ['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Fri SmackDown | Not planned']]);
+await check('pin the season to real dates', async () => {
+  await body.locator('.uv-card-f span', { hasText: 'Set dates' }).click();
   await settle();
-  await page.selectOption('#uvSheetBody select >> nth=0', 'raw');
-  await sheet.getByText('Create event').click();
+  await page.fill('#uvSeasonStart', '2026-01-07');                   // a Wednesday: week 1 is 5–11 Jan
+  await btn(sheet, 'Save').click();
+  await settle();
+  return [(await saved()).seasons[0].start, await js(`document.querySelector('.uv-weeknav .s').textContent`),
+    await js(`[...document.querySelectorAll('#uvBody .uv-night .dt span')].map(e => e.textContent)`)];
+}, ['2026-01-07', 'This week · 19 Jan – 25 Jan 2026', ['19 Jan', '20 Jan', '21 Jan', '23 Jan']]);
+await check('Plan puts Raw on the calendar and opens its card', async () => {
+  await body.locator('.uv-night[data-plan=raw]').locator('.uv-btn').click();
   await page.waitForTimeout(150);
   const e = (await saved()).events[0];
-  return [e.name, e.at.week, await js(`document.getElementById('uvSheetTitle').textContent`)];
-}, ['Raw · Week 3', 3, 'Raw · Week 3']);
-await check('record a title change from the result form', async () => {
-  await sheet.getByText('Record a result').click();
+  return [e.name, e.at.week, e.at.day, e.matches.length, await pageKind(), await evTitle(),
+    await js(`document.querySelector('.uv-evhead .s').textContent`), await js(`document.querySelector('.uv-back').textContent.trim()`)];
+}, ['Raw · Week 3', 3, 0, 0, 'event', 'Raw · Week 3', 'Monday 19 Jan 2026 · week 3 · Season 1', 'Calendar']);
+
+// ================================================================ booking, then results
+await check('book a title match: it counts for nothing until it’s played', async () => {
+  await btn(body, 'Book a match').click();
   await settle();
-  await side(0).locator('select').nth(1).selectOption({ label: 'Gunther' });
-  await side(1).locator('select').nth(1).selectOption({ label: 'Cody Rhodes' });
-  await sheet.locator('.uv-f', { hasText: 'Result' }).locator('select').selectOption({ label: 'Cody Rhodes won' });
-  await sheet.locator('.uv-f', { hasText: 'Finish' }).locator('select').selectOption('pinfall');
-  await sheet.locator('.uv-f', { hasText: 'Championship' }).locator('select').selectOption({ label: 'World Heavyweight Championship' });
-  await sheet.locator('.uv-check input').check();
-  await sheet.locator('.uv-f', { hasText: 'Stipulation' }).locator('input').fill('Last Man Standing');
-  await sheet.getByText('Save result').click();
-  await page.waitForTimeout(200);
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Gunther' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Cody Rhodes' });
+  await page.selectOption('#uvMTitle', { label: 'World Heavyweight Championship' });
+  await page.fill('#uvMStip', 'Last Man Standing');
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  const u = await saved();
+  const m = u.events[0].matches[0];
+  const cur = u.reigns.find(x => x.end === null && x.titleId === u.titles[0].id);
+  return [m.status, m.outcome, m.winner, m.stip, u.wrestlers.find(w => w.id === cur.holder.id).name,
+    wrestlerRecord(u, (await W('Cody Rhodes')).id).singles, await cards(), (await toast()).t, await sheetOpen()];
+}, ['scheduled', null, null, 'Last Man Standing', 'Gunther', { w: 0, l: 0, d: 0, nc: 0 }, ['Gunther vs Cody Rhodes'], 'Match booked', false]);
+await check('the result form starts blank and won’t guess a winner', async () => {
+  await btn(mc(0), 'Enter result').click();
+  await settle();
+  const r = [await js(`document.getElementById('uvSheetTitle').textContent`), await js(`document.getElementById('uvMResult').value`),
+    await js(`document.getElementById('uvMResult').selectedOptions[0].textContent`), await js(`!!document.getElementById('uvMTitleChange')`),
+    await js(`${TEXT}(document.querySelector('#uvSheetBody .uv-mc-sum'))`)];
+  await btn(sheet, 'Save the result').click();
+  await page.waitForTimeout(150);
+  return [...r, await toast(), (await saved()).events[0].matches[0].status];
+}, r => r[0] === 'Enter the result' && r[1] === '' && r[2] === '— Pick the result —' && r[3] === false
+  && r[4] === 'Singles World Heavyweight Championship Last Man Standing Gunther vs Cody Rhodes'
+  && r[5].bad && /Enter the result: who won, a draw, or a no contest/.test(r[5].t) && r[6] === 'scheduled');
+await check('layout anchored w/ the result form open', anchored, isAnchored);
+await check('enter what the CPU did: a title change, and who took the fall', async () => {
+  await page.selectOption('#uvMResult', { label: 'Cody Rhodes won' });
+  await page.selectOption('#uvMFinish', 'pinfall');
+  await page.selectOption('#uvMOn', { label: 'Gunther' });
+  await page.check('#uvMTitleChange');
+  await page.fill('#uvMNotes', 'Three Cross Rhodes');
+  await btn(sheet, 'Save the result').click();
+  await settle();
   const u = await saved();
   const m = u.events[0].matches[0];
   const r = u.reigns.find(x => x.end === null && x.titleId === u.titles[0].id);
-  return [m.outcome, m.winner, m.finish, m.stip, u.wrestlers.find(w => w.id === r.holder.id).name,
-    r.eventId === u.events[0].id && r.matchId === m.id, r.start.week, (await toast()).t];
-}, ['win', 1, 'pinfall', 'Last Man Standing', 'Cody Rhodes', true, 3,
-  'Result saved — Cody Rhodes holds the World Heavyweight Championship']);
-await check('the form offers the team two members could be', async () => {
-  await sheet.getByText('Record a result').click();
+  const name = id => id && u.wrestlers.find(w => w.id === id).name;
+  return [m.status, m.outcome, m.winner, m.finish, name(m.fall.by), name(m.fall.on), m.notes, name(r.holder.id),
+    r.eventId === u.events[0].id && r.matchId === m.id, `${r.start.week}/${r.start.day}`, (await toast()).t,
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-mc'))`)];
+}, r => JSON.stringify(r.slice(0, 11)) === JSON.stringify(['played', 'win', 1, 'pinfall', null, 'Gunther', 'Three Cross Rhodes', 'Cody Rhodes',
+  true, '3/0', 'Result saved — Cody Rhodes holds the World Heavyweight Championship'])
+  && /Cody Rhodes def\. Gunther Pinfall · Cody Rhodes pinned Gunther New World Heavyweight Championship champion Three Cross Rhodes Correct/.test(r[11]));
+await check('a tag match: the form offers the team two members could be', async () => {
+  await btn(body, 'Book a match').click();
   await settle();
-  await side(0).locator('select').nth(1).selectOption({ label: 'Kenny Omega' });
-  await side(0).locator('.uv-add').click();
-  await side(0).locator('select').nth(2).selectOption({ label: 'Will Ospreay' });
+  await sheet.locator('.uv-pill', { hasText: /^Tag team$/ }).click();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Kenny Omega' });
+  await side(0).locator('select[data-w="1"]').selectOption({ label: 'Will Ospreay' });
   const hint = await side(0).locator('.uv-hint').textContent();
   await side(0).locator('.uv-hint').click();
-  const team = await side(0).locator('select').nth(0).evaluate(s => s.options[s.selectedIndex].text);
-  await side(1).locator('select').nth(1).selectOption({ label: 'Jey Uso' });
-  await side(1).locator('.uv-add').click();
-  await side(1).locator('select').nth(2).selectOption({ label: 'Seth Rollins' });
-  await sheet.locator('.uv-f', { hasText: 'Result' }).locator('select').selectOption('draw');
-  await sheet.getByText('Save result').click();
-  await page.waitForTimeout(200);
-  const m = (await saved()).events[0].matches[1];
-  return [/Wrestling as The Elite Two/.test(hint), team, m.outcome, !!m.sides[0].team, !!m.sides[1].team];
-}, [true, 'The Elite Two', 'draw', true, false]);
-await check('a bad result is refused, form kept', async () => {
-  await sheet.getByText('Record a result').click();
+  const team = await side(0).locator('select[data-team]').evaluate(s => s.options[s.selectedIndex].text);
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Jey Uso' });
+  await side(1).locator('select[data-w="1"]').selectOption({ label: 'Seth Rollins' });
+  await btn(sheet, 'Add, and enter its result').click();
   await settle();
-  await side(0).locator('select').nth(1).selectOption({ label: 'Giulia' });
-  await sheet.getByText('Save result').click();
+  const title = await js(`document.getElementById('uvSheetTitle').textContent`);
+  await page.selectOption('#uvMResult', 'draw');
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const m = (await saved()).events[0].matches[1];
+  return [/Wrestling as The Elite Two/.test(hint), team, title, m.status, m.outcome, m.winner, !!m.sides[0].team, !!m.sides[1].team];
+}, [true, 'The Elite Two', 'Enter the result', 'played', 'draw', null, true, false]);
+await check('a triple threat ends in a no contest', async () => {
+  await btn(body, 'Book a match').click();
+  await settle();
+  await sheet.locator('.uv-pill', { hasText: /^Triple threat$/ }).click();
+  for (const [i, n] of [[0, 'Iyo Sky'], [1, 'Rhea Ripley'], [2, 'Roxanne Perez']]) {
+    await side(i).locator('select[data-w="0"]').selectOption({ label: n });
+  }
+  await btn(sheet, 'Add, and enter its result').click();
+  await settle();
+  await page.selectOption('#uvMResult', 'nc');
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const m = (await saved()).events[0].matches[2];
+  return [m.outcome, m.winner, m.sides.length, await mc(2).locator('.uv-chip.kind').textContent(), await js(`${TEXT}(document.querySelectorAll('.uv-page .uv-mc-body')[2])`)];
+}, ['nc', null, 3, 'Triple threat', 'Iyo Sky vs Rhea Ripley vs Roxanne Perez — No contest']);
+await check('a booking with an empty side is refused, form kept', async () => {
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Giulia' });
+  await btn(sheet, 'Add to the card').click();
   await page.waitForTimeout(150);
-  const r = [(await saved()).events[0].matches.length, await toast(), await js(`document.getElementById('uvSheetTitle').textContent`)];
-  await closeSheet();
-  return r;
-}, r => r[0] === 2 && r[1].bad && /Side 2 has nobody/.test(r[1].t) && r[2] === 'Record a result');
+  return [(await saved()).events[0].matches.length, await toast(), await js(`document.getElementById('uvSheetTitle').textContent`),
+    await side(0).locator('select[data-w="0"]').evaluate(s => s.options[s.selectedIndex].text)];
+}, r => r[0] === 3 && r[1].bad && /Side 2 has nobody/.test(r[1].t) && r[2] === 'Book a match' && r[3] === 'Giulia');
+await check('a handicap match left booked: card and calendar say where it stands', async () => {
+  await sheet.locator('.uv-pill', { hasText: /^Handicap 1-on-2$/ }).click();
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Iyo Sky' });
+  await side(1).locator('select[data-w="1"]').selectOption({ label: 'Rhea Ripley' });
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  const head = await js(`${TEXT}(document.querySelector('.uv-evhead .st'))`);
+  const kind = await mc(3).locator('.uv-chip.kind').textContent();
+  await page.click('.uv-back');
+  return [head, kind, (await nights())[0], await js(`document.querySelector('.uv-gr.now .uv-cell').className`)];
+}, ['3 of 4 results in', 'Handicap 1-on-2', 'Mon Raw · Week 3 | 3 of 4 results in', 'uv-cell partial']);
+await check('a booked wrestler’s page lists the match, with no record for it', async () => {
+  await openRow('Giulia', 'roster');
+  return [(await recs())[0], await js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`),
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-li'))`)];
+}, r => r[0] === 'Singles 0–0–0' && r[1][0] === 'Booked' && /^vs Giulia vs Iyo Sky & Rhea Ripley Raw · Week 3 · Mon 19 Jan 2026 Handicap 1-on-2$/.test(r[2]));
+await check('…and opens the show it’s booked on', async () => {
+  await body.locator('.uv-page .uv-li').first().click();
+  await page.waitForTimeout(120);
+  return [await pageKind(), await evTitle(), await js(`document.querySelector('.uv-back').textContent.trim()`)];
+}, ['event', 'Raw · Week 3', 'Giulia']);
 
 // ================================================================ correcting results
 await check('a wrong result is corrected in place', async () => {
-  await openEvent('Raw · Week 3');
   const before = (await saved()).events[0].matches.map(m => m.id);
-  await sheet.locator('.uv-match').nth(1).click();
+  await btn(mc(1), 'Correct').click();
   await settle();
   const title = await js(`document.getElementById('uvSheetTitle').textContent`);
-  await sheet.locator('.uv-f', { hasText: 'Result' }).locator('select').selectOption({ label: 'The Elite Two won' });
-  await sheet.getByText('Save correction').click();
-  await page.waitForTimeout(200);
+  const was = await js(`document.getElementById('uvMResult').value`);
+  await page.selectOption('#uvMResult', { label: 'The Elite Two won' });
+  await btn(sheet, 'Save the correction').click();
+  await settle();
   const u = await saved();
-  return [title, JSON.stringify(u.events[0].matches.map(m => m.id)) === JSON.stringify(before),
+  return [title, was, JSON.stringify(u.events[0].matches.map(m => m.id)) === JSON.stringify(before),
     u.events[0].matches[1].outcome, u.events[0].matches[1].winner, (await toast()).t];
-}, ['Correct a result', true, 'win', 0, 'Result corrected']);
+}, ['Correct the result', 'draw', true, 'win', 0, 'Result corrected']);
 await check('a later title change pins an earlier one', async () => {
   await openRow('World Heavyweight', 'titles');
   await btn(body, /^\s*Crown…/).click();
@@ -402,12 +488,12 @@ await check('a later title change pins an earlier one', async () => {
   await page.selectOption('#uvCrownPick', { label: 'Seth Rollins' });
   await btn(sheet, 'Crown').click();
   await settle();
-  await openEvent('Raw · Week 3');
-  await sheet.locator('.uv-match').nth(0).click();
+  await openShow('Raw · Week 3');
+  await btn(mc(0), 'Correct').click();
   await settle();
-  await sheet.locator('.uv-check input').uncheck();
+  await page.uncheck('#uvMTitleChange');
   const before = JSON.stringify(await saved());
-  await sheet.getByText('Save correction').click();
+  await btn(sheet, 'Save the correction').click();
   await page.waitForTimeout(150);
   const r = [await toast(), JSON.stringify(await saved()) === before];
   await closeSheet();
@@ -419,56 +505,95 @@ await check('undo on the title page, then the correction goes through', async ()
   await settle();
   const msg = await js(`document.getElementById('uvConfirmText').textContent`);
   await confirmYes();
-  await openEvent('Raw · Week 3');
-  await sheet.locator('.uv-match').nth(0).click();
+  await openShow('Raw · Week 3');
+  await btn(mc(0), 'Correct').click();
   await settle();
-  await sheet.locator('.uv-check input').uncheck();
-  await sheet.getByText('Save correction').click();
-  await page.waitForTimeout(200);
+  await page.uncheck('#uvMTitleChange');
+  await btn(sheet, 'Save the correction').click();
+  await settle();
   const u = await saved();
+  const m = u.events[0].matches[0];
   const cur = u.reigns.find(x => x.end === null && x.titleId === u.titles[0].id);
-  return [/Seth Rollins winning/.test(msg), u.wrestlers.find(w => w.id === cur.holder.id).name, u.events[0].matches[0].titleId === u.titles[0].id];
-}, [true, 'Gunther', true]);
+  return [/Seth Rollins winning/.test(msg), u.wrestlers.find(w => w.id === cur.holder.id).name, m.titleId === u.titles[0].id, m.winner];
+}, [true, 'Gunther', true, 1]);
 await check('and the title change can be put back', async () => {
-  await sheet.locator('.uv-match').nth(0).click();
+  await btn(mc(0), 'Correct').click();
   await settle();
-  await sheet.locator('.uv-check input').check();
-  await sheet.getByText('Save correction').click();
-  await page.waitForTimeout(200);
+  await page.check('#uvMTitleChange');
+  await btn(sheet, 'Save the correction').click();
+  await settle();
   const u = await saved();
   const cur = u.reigns.find(x => x.end === null && x.titleId === u.titles[0].id);
   return u.wrestlers.find(w => w.id === cur.holder.id).name;
 }, 'Cody Rhodes');
-await check('an event’s week carries its title change with it', async () => {
-  const wk = sheet.locator('.uv-f', { hasText: 'Week' }).locator('input');
-  await wk.fill('2');
-  await wk.press('Tab');
+await check('a new night and week carry the show’s title change with it', async () => {
+  await btn(body, 'Details').click();
+  await settle();
+  await page.selectOption('#uvEvDay', '1');                            // Tuesday
+  await page.fill('#uvEvWeek', '2');
+  await page.press('#uvEvWeek', 'Tab');
   await page.waitForTimeout(150);
+  await closeSheet();
   const u = await saved();
   const [g, c] = u.reigns.filter(r => r.titleId === u.titles[0].id).sort((a, b) => a.start.seq - b.start.seq);
-  return [u.events[0].at.week, c.start.week, g.end.week, g.start.week];
-}, [2, 2, 2, 1]);
-await check('deleting a title-changing result hands the belt back', async () => {
-  await sheet.locator('.uv-match').nth(0).click();
+  return [u.events[0].name, u.events[0].at.week, u.events[0].at.day, `${c.start.week}/${c.start.day}`, `${g.end.week}/${g.end.day}`,
+    g.start.week, await evTitle()];
+}, ['Raw · Week 2', 2, 1, '2/1', '2/1', 1, 'Raw · Week 2']);
+await check('clearing a result keeps it booked and hands the belt back', async () => {
+  await btn(mc(0), 'Correct').click();
   await settle();
-  await sheet.getByText('Delete this result').click();
+  await btn(sheet, 'Clear the result — keep it booked').click();
   await settle();
   const msg = await js(`document.getElementById('uvConfirmText').textContent`);
   await confirmYes();
   const u = await saved();
+  const m = u.events[0].matches[0];
   const cur = u.reigns.find(x => x.end === null && x.titleId === u.titles[0].id);
-  return [/goes back to whoever held it before/.test(msg), u.events[0].matches.length, u.wrestlers.find(w => w.id === cur.holder.id).name];
-}, [true, 1, 'Gunther']);
+  return [/goes back to whoever held it before/.test(msg), m.status, m.outcome, m.winner, m.fall, m.titleId === u.titles[0].id,
+    u.wrestlers.find(w => w.id === cur.holder.id).name, wrestlerRecord(u, (await W('Cody Rhodes')).id).singles,
+    await btn(mc(0), 'Enter result').count()];
+}, [true, 'scheduled', null, null, null, true, 'Gunther', { w: 0, l: 0, d: 0, nc: 0 }, 1]);
+await check('a booked match can be taken off the card', async () => {
+  await btn(mc(3), 'Edit').click();
+  await settle();
+  await btn(sheet, 'Take it off the card').click();
+  await settle();
+  const msg = await js(`document.getElementById('uvConfirmText').textContent`);
+  await confirmYes();
+  return [/hasn’t been played, so nothing else changes/.test(msg), (await saved()).events[0].matches.length,
+    await js(`${TEXT}(document.querySelector('.uv-evhead .st'))`)];
+}, [true, 3, '2 of 3 results in']);
+await check('the running order can be changed', async () => {
+  const ids = async () => (await saved()).events[0].matches.map(m => m.id);
+  const before = await ids();
+  await mc(0).locator('.uv-ic[title="Move up"]').click();
+  const t = (await toast()).t;
+  await mc(0).locator('.uv-ic[title="Move down"]').click();
+  await page.waitForTimeout(120);
+  const after = await ids();
+  await mc(0).locator('.uv-ic[title="Move down"]').click();          // and back
+  return [t, after[0] === before[1] && after[1] === before[0], JSON.stringify(await ids()) === JSON.stringify(before)];
+}, ['Already first on the card', true, true]);
 
 // ================================================================ records
+await check('draws and no contests are kept apart from wins and losses', async () => {
+  const u = await saved();
+  const id = n => u.wrestlers.find(w => w.name === n).id;
+  await openRow('Iyo Sky', 'roster');
+  const tile = await js(`${TEXT}(document.querySelector('.uv-page .uv-rec'))`);
+  return [tile, wrestlerRecord(u, id('Iyo Sky')).singles, wrestlerRecord(u, id('Seth Rollins')).tag, wrestlerRecord(u, id('Jey Uso')).tag];
+}, ['Singles 0–0–0 1 match · 1 NC', { w: 0, l: 0, d: 0, nc: 1 }, { w: 0, l: 1, d: 0, nc: 0 }, { w: 0, l: 1, d: 0, nc: 0 }]);
 await check('singles, tag and team records are counted apart', async () => {
-  await sheet.getByText('Record a result').click();                  // Kenny def. Will in singles
+  await openShow('Raw · Week 2', 2);
+  await btn(body, 'Book a match').click();                           // Kenny def. Will in singles
   await settle();
-  await side(0).locator('select').nth(1).selectOption({ label: 'Kenny Omega' });
-  await side(1).locator('select').nth(1).selectOption({ label: 'Will Ospreay' });
-  await sheet.getByText('Save result').click();
-  await page.waitForTimeout(200);
-  await closeSheet();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Kenny Omega' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Will Ospreay' });
+  await btn(sheet, 'Add, and enter its result').click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'Kenny Omega won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
   await openRow('Kenny Omega', 'roster');
   const kenny = await recs();
   const card = await js(`${TEXT}([...document.querySelectorAll('.uv-page .uv-row')].find(r => /The Elite Two/.test(r.textContent)).querySelector('.uv-champ'))`);
@@ -516,6 +641,68 @@ await check('undo the last line-up change', async () => {
   return [/Will Ospreay leaving/.test(msg), t.members.length];
 }, [true, 3]);
 
+// ================================================================ premium live events
+await check('a premium live event goes on the calendar, on a Saturday', async () => {
+  await noSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('.uv-addrow').click();
+  await settle();
+  await page.fill('#uvPleName', 'WrestleMania');
+  await btn(sheet, 'Add to the calendar').click();
+  await settle();
+  const e = (await saved()).events.find(x => x.name === 'WrestleMania');
+  return [e.kind, e.showId, e.at.week, e.at.day, await pageKind(), await js(`document.querySelector('.uv-evhead .k').textContent`)];
+}, ['ple', null, 3, 5, 'event', 'Premium live event · All shows']);
+await check('a fatal 4-way: the winner is whoever you pick', async () => {
+  await btn(body, 'Book a match').click();
+  await settle();
+  await sheet.locator('.uv-pill', { hasText: /^Fatal 4-way$/ }).click();
+  for (const [i, n] of [[0, 'Seth Rollins'], [1, 'Jey Uso'], [2, 'Cody Rhodes'], [3, 'Kenny Omega']]) {
+    await side(i).locator('select[data-w="0"]').selectOption({ label: n });
+  }
+  await btn(sheet, 'Add, and enter its result').click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'Jey Uso won' });
+  await page.selectOption('#uvMFinish', 'pinfall');
+  await page.selectOption('#uvMOn', { label: 'Seth Rollins' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const u = await saved();
+  const m = u.events.find(x => x.name === 'WrestleMania').matches[0];
+  const rec = n => wrestlerRecord(u, u.wrestlers.find(w => w.name === n).id).singles;
+  return [m.winner, rec('Jey Uso'), rec('Seth Rollins'), rec('Cody Rhodes'), rec('Kenny Omega'),
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-mc .uv-mc-d'))`), await mc(0).locator('.uv-chip.kind').textContent()];
+}, [1, { w: 1, l: 0, d: 0, nc: 0 }, { w: 0, l: 1, d: 0, nc: 0 }, { w: 0, l: 1, d: 0, nc: 0 }, { w: 1, l: 1, d: 0, nc: 0 },
+  'Pinfall · Jey Uso pinned Seth Rollins', 'Fatal 4-way']);
+await check('the calendar shows the week at a glance', async () => {
+  await page.click('.uv-back');
+  return [await nights(), await js(`[...document.querySelectorAll('.uv-gr')].map(r => r.querySelector('.w').textContent + ':'
+    + [...r.querySelectorAll('.uv-cell')].map(c => c.className.replace('uv-cell', '').trim() || '-').join(','))`)];
+}, [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Fri SmackDown | Not planned',
+  'Sat WrestleMania | 1 result in'], [':', 'W3:-,-,-,-,complete', 'W2:partial,-,-,-,-', 'W1:-,-,-,-,-']]);
+
+// ================================================================ history
+await check('History: every result, newest show first', async () => {
+  await page.click('#uvTabs [data-uvtab=history]');
+  return [await js(`document.querySelector('.uv-count').textContent`), await shows(),
+    await js(`[...document.querySelectorAll('#uvBody .uv-hms')].map(h => [...h.querySelectorAll('.uv-hm .l')].map(l => l.textContent.trim()))`)];
+}, ['4 results on 2 shows', ['WrestleMania', 'Raw · Week 2'],
+  [['Jey Uso def. Seth Rollins, Cody Rhodes, Kenny Omega'],
+    ['The Elite Two def. Jey Uso & Seth Rollins', 'Iyo Sky vs Rhea Ripley vs Roxanne Perez — No contest', 'Kenny Omega def. Will Ospreay']]]);
+await check('History: filter by show', async () => {
+  const pick = async k => { await body.locator('.uv-pill', { hasText: k }).click(); return shows(); };
+  const r = [await pick('Raw'), await pick('PLEs'), await pick('Dynamite'), await js(`document.querySelector('#uvBody .uv-empty .t').textContent`)];
+  await pick('All shows');
+  return r;
+}, [['Raw · Week 2'], ['WrestleMania'], [], 'No results yet']);
+await check('History: everything on one timeline', async () => {
+  await body.locator('.uv-seg-page div', { hasText: 'Everything' }).click();
+  const lines = await js(`[...document.querySelectorAll('#uvBody .uv-tl')].map(e => ${TEXT}(e))`);
+  await body.locator('.uv-seg-page div', { hasText: 'Results' }).click();
+  return [...lines.slice(0, 2), lines.find(l => /Raw · Week 2/.test(l))];
+}, ['S1 · W3 WrestleMania Sat 24 Jan 2026 — 1 result', 'S1 · W3 Mercedes Moné joined The Elite Two',
+  'S1 · W2 Raw · Week 2 Tue 13 Jan 2026 — 3 results, 1 still to enter']);
+
 // ================================================================ reigns, merging, deleting
 await check('correct an old reign from the title history', async () => {
   await openRow('World Heavyweight', 'titles');
@@ -538,14 +725,16 @@ await check('merge a duplicate: its results become the wrestler’s', async () =
   await page.keyboard.press('Enter');
   await page.waitForTimeout(120);
   await closeSheet();
-  await openEvent('Raw · Week 3');
-  await sheet.getByText('Record a result').click();
+  await openShow('Raw · Week 2', 2);
+  await btn(body, 'Book a match').click();
   await settle();
-  await side(0).locator('select').nth(1).selectOption({ label: 'Kenny Omgea' });
-  await side(1).locator('select').nth(1).selectOption({ label: 'Giulia' });
-  await sheet.getByText('Save result').click();
-  await page.waitForTimeout(150);
-  await closeSheet();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Kenny Omgea' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Giulia' });
+  await btn(sheet, 'Add, and enter its result').click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'Kenny Omgea won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
   await openRow('Kenny Omega', 'roster');
   await fixRow('Merge a duplicate').click();
   await settle();
@@ -555,7 +744,7 @@ await check('merge a duplicate: its results become the wrestler’s', async () =
   await confirmYes();
   const u = await saved();
   return [!!u.wrestlers.find(w => w.name === 'Kenny Omgea'), (await recs())[0], validate(u)];
-}, [false, 'Singles 2–0–0', []]);
+}, [false, 'Singles 2–1–0', []]);
 await check('deleting a mistake returns to the list', async () => {
   await page.click('#uvTabs [data-uvtab=roster]');
   await btn(body, 'Add').click();
@@ -573,20 +762,30 @@ await check('deleting a mistake returns to the list', async () => {
 
 // ================================================================ seasons
 await check('start Season 2 after confirming', async () => {
-  await page.click('#uvTabs [data-uvtab=history]');
+  await page.click('#uvTabs [data-uvtab=calendar]');
   await body.locator('.uv-card-f span', { hasText: 'Start Season 2' }).click();
   await settle();
   await confirmYes();
   const u = await saved();
   return [u.seasons.map(s => `${s.name}:${s.status}:${s.week}`), await js(`document.getElementById('uvClock').textContent`)];
 }, [['Season 1:complete:3', 'Season 2:active:1'], 'Season 2 · Week 1']);
-await check('past season’s events still browsable', async () => {
+await check('the calendar moves on to the new season', async () => [await nights(), await js(`document.querySelector('.uv-weeknav .s').textContent`)],
+  [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Fri SmackDown | Not planned'], 'This week']);
+await check('a past season’s results are still browsable', async () => {
+  await page.click('#uvTabs [data-uvtab=history]');
+  const now = await js(`document.querySelector('#uvBody .uv-empty .t').textContent`);
   await body.locator('.uv-pill', { hasText: 'Season 1' }).click();
-  return js(`[...document.querySelectorAll('#uvBody .uv-row .nm')].map(e => e.textContent)`);
-}, ['Raw · Week 3']);
-await check('timeline, newest first', () => js(`[...document.querySelectorAll('#uvBody .uv-tl')].slice(0, 3)
-  .map(e => [...e.children].map(c => c.textContent.trim()).join(' '))`),
-  r => /^S2 · W1 Season 2 began/.test(r[0]) && /^S1 · W3 Season 1 ended after 3 weeks/.test(r[1]));
+  return [now, await shows()];
+}, ['No results yet', ['WrestleMania', 'Raw · Week 2']]);
+await check('timeline, newest first, season by season', async () => {
+  await body.locator('.uv-seg-page div', { hasText: 'Everything' }).click();
+  const tl = () => js(`[...document.querySelectorAll('#uvBody .uv-tl')].map(e => [...e.children].map(c => c.textContent.trim()).join(' '))`);
+  const s1 = await tl();
+  await body.locator('.uv-pill', { hasText: 'Season 2' }).click();
+  const s2 = await tl();
+  await body.locator('.uv-seg-page div', { hasText: 'Results' }).click();
+  return [s1[0], s2];
+}, r => /^S1 · W3 Season 1 ended after 3 weeks/.test(r[0]) && r[1].length === 1 && /^S2 · W1 Season 2 began/.test(r[1][0]));
 await check('saved universe is still sound', sound, []);
 
 // ================================================================ persistence
@@ -598,8 +797,8 @@ await check('everything survives a reload', async () => {
   await page.waitForTimeout(600);
   return [JSON.stringify(await saved()) === JSON.stringify(before),
     await js(`document.getElementById('uvClock').textContent`),
-    await js(`document.querySelectorAll('#uvBody .uv-row').length`)];
-}, [true, 'Season 2 · Week 1', 11]);
+    await js(`document.querySelector('.uv-tab.on').textContent`), (await nights()).length];
+}, [true, 'Season 2 · Week 1', 'Calendar', 4]);
 
 // ================================================================ save file
 const dir = await mkdtemp(join(tmpdir(), 'uv-'));
@@ -612,14 +811,14 @@ await check('export downloads the whole universe', async () => {
   await dl.saveAs(exported);
   const file = JSON.parse(await readFile(exported, 'utf8'));
   return [dl.suggestedFilename(), JSON.stringify(file) === JSON.stringify(before), file.version];
-}, ['wwe-universe-season2-week1.json', true, 2]);
+}, ['wwe-universe-season2-week1.json', true, 3]);
 await check('start a new universe (confirmed)', async () => {
   await sheet.getByText('Start a new universe').click();
   await settle();
   await confirmYes();
   const u = await saved();
-  return [u.wrestlers.length, u.seasons.length, await js(`document.querySelectorAll('#uvBody .uv-row').length`)];
-}, [0, 1, 0]);
+  return [u.wrestlers.length, u.seasons.length, u.events.length, (await nights()).map(n => n.split(' | ')[1])];
+}, [0, 1, 0, ['Not planned', 'Not planned', 'Not planned', 'Not planned']]);
 await check('a file that isn’t a universe is refused', async () => {
   const junk = join(dir, 'junk.json');
   await writeFile(junk, JSON.stringify({ app: 'arc-markets', version: 1 }));
@@ -646,7 +845,22 @@ await check('a v1 save from the last version imports and upgrades', async () => 
   await closeSheet();
   await openRow('Jey Uso', 'roster');
   return [u.version, validate(u), await recs()];
-}, [2, [], ['Singles 1–0–0', 'Tag 0–1–0', 'Title reigns 1']]);
+}, [3, [], ['Singles 1–0–0', 'Tag 0–1–0', 'Title reigns 1']]);
+await check('a v2 save (last stage) imports: every result kept, every show on its night', async () => {
+  await noSheet();
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', join(process.cwd(), 'tools/fixtures/universe-v2.json'));
+  await page.waitForTimeout(200);
+  await confirmYes();
+  const u = await saved();
+  await closeSheet();
+  await openRow('Rhea Ripley', 'roster');
+  const rhea = (await recs())[0];
+  await page.click('#uvTabs [data-uvtab=history]');
+  await body.locator('.uv-pill', { hasText: 'Season 1' }).click();
+  return [u.version, validate(u), u.events.every(e => e.matches.every(m => m.status === 'played')), rhea, (await shows()).length > 0];
+}, [3, [], true, 'Singles 2–0–0', true]);
 await check('layout anchored after all that', async () => { await noSheet(); return anchored(); }, isAnchored);
 
 // ================================================================ wider screens

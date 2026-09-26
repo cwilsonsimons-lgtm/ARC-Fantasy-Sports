@@ -6,17 +6,19 @@ import {
   answerConfirm, bootUniverse, clearPages, closeSheet, confirmThen, currentPage, dropPage, lastSaveFailed, loadState,
   openSheet, popPage, previousPage, replaceUniverse, toast, uni,
 } from './app.js';
-import { uvFollowActiveSeason, uvHistoryView, uvRosterView, uvTeamsView, uvTitlesView } from './views.js';
+import { uvCalFollow, uvCalendarView, uvFollowActiveSeason, uvHistoryView, uvRosterView, uvTeamsView, uvTitlesView } from './views.js';
 import { uvPageView } from './pages.js';
 import { ICON, esc } from './ui.js';
 
-const TABS = [['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['history', 'History']];
-const VIEWS = { roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
-let tab = 'roster';
+const TABS = [['calendar', 'Calendar'], ['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['history', 'History']];
+const VIEWS = { calendar: uvCalendarView, roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
+let tab = 'calendar';
 
 /** Load the saved universe and draw the app. Warns once if the save had problems. */
 export function initUniverse() {
   bootUniverse(paint);
+  // a new universe starts where it needs filling in: the roster
+  if (!uni().wrestlers.length) tab = 'roster';
   paint();
   const L = loadState();
   if (L.status === 'recovered' || L.readOnly || L.problems.length) {
@@ -50,6 +52,7 @@ function paint() {
 
 export function uvTab(k) {
   tab = k;
+  if (k === 'calendar') uvCalFollow();       // the calendar tab always opens on this week
   clearPages();
   paint();
   document.getElementById('uvScroll').scrollTop = 0;
@@ -87,7 +90,7 @@ function dataSheet() {
     title: 'Universe save',
     body: `
       <div class="uv-stats">${stat('Wrestlers', n.wrestlers)}${stat('Tag teams', n.teams)}${stat('Titles', n.titles)}
-        ${stat('Events', n.events)}${stat('Results', n.matches)}${stat('Seasons', n.seasons)}</div>
+        ${stat('Events', n.events)}${stat('Results', n.matches)}${stat('Booked', n.booked)}</div>
       ${notes.map(([cls, text]) => `<div class="uv-note ${cls}">${esc(text)}</div>`).join('')}
       <p class="uv-p" style="margin-top:12px">Your universe lives in this browser only. A save file is its backup, and how you move it
         to another browser or device — export one every so often.</p>

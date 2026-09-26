@@ -3,7 +3,7 @@
 // Everything the owner types - names, notes, stipulations - goes through esc()
 // before it reaches innerHTML. Inline handlers only ever carry record ids,
 // which the model generates, never names.
-import { seasonById, showById, wrestlerById, teamById, titleById, byName, blankRecord } from './model.js';
+import { DAYS, calendarDate, seasonById, showById, wrestlerById, teamById, titleById, byName, blankRecord, matchKind } from './model.js';
 
 export function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -27,6 +27,10 @@ export const ICON = {
   edit:   svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
   undo:   svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
   check:  svg('<path d="m5 12 5 5 9-10"/>'),
+  up:     svg('<path d="m6 15 6-6 6 6"/>'),
+  down:   svg('<path d="m6 9 6 6 6-6"/>'),
+  star:   svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
+  list:   svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'),
 };
 
 export const LABEL = {
@@ -37,7 +41,8 @@ export const LABEL = {
   kind:      { singles: 'Singles', tag: 'Tag team' },
   division:  { men: "Men's", women: "Women's", open: 'Open' },
   event:     { weekly: 'Weekly show', ple: 'Premium live event' },
-  finish:    { pinfall: 'Pinfall', submission: 'Submission', dq: 'Disqualification', countout: 'Count-out', ko: 'Knockout', other: 'Other' },
+  finish:    { pinfall: 'Pinfall', submission: 'Submission', ko: 'Knockout / ref stoppage', dq: 'Disqualification',
+               countout: 'Count-out', elimination: 'Elimination', escape: 'Escape', retrieval: 'Retrieved the object', other: 'Other' },
 };
 
 const NEUTRAL = '#5E6979';
@@ -129,17 +134,6 @@ export function matchLine(st, m) {
   }
   return `${names.join(' vs ')} <span class="uv-muted">— ${m.outcome === 'draw' ? 'Draw' : 'No contest'}</span>`;
 }
-export function matchMeta(st, m, reign) {
-  const bits = [];
-  if (m.titleId) {
-    const t = titleById(st, m.titleId);
-    bits.push(`${t ? esc(t.name) : 'Title'}${reign ? ' — <b class="uv-gold">new champion</b>' : ''}`);
-  }
-  if (m.finish) bits.push(LABEL.finish[m.finish]);
-  if (m.stip) bits.push(esc(m.stip));
-  return bits.join(' · ');
-}
-
 // ---------------------------------------------------------------- records, lengths, links
 
 /** "5–2–1" (wins–losses–draws); no contests ride along only when there are any. */
@@ -168,4 +162,59 @@ export function wrestlerLink(st, w) {
 /** A dated history line, the same shape everywhere: stamp on the left, text on the right. */
 export function histLine(st, e, html) {
   return `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${html}</span></div>`;
+}
+
+// ---------------------------------------------------------------- dates
+
+export const NIGHT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** '2026-01-19' -> '19 Jan 2026' (no locale: the same everywhere). */
+export function isoText(iso, year = true) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]}${year ? ` ${y}` : ''}`;
+}
+/**
+ * When an event airs. With a season start date: "Mon 19 Jan 2026" (long:
+ * "Monday 19 Jan 2026"); without: "Mon · Week 3".
+ */
+export function eventWhen(st, ev, long = false) {
+  const day = ev.at.day;
+  const night = day == null ? '' : long ? DAYS[day] : NIGHT[day];
+  const iso = calendarDate(st, ev.at.season, ev.at.week, day);
+  if (iso) return `${night} ${isoText(iso)}`;
+  return `${night}${night ? ' · ' : ''}Week ${ev.at.week}`;
+}
+
+/** A night on a season's calendar: "Mon 19 Jan" with dates, else "Mon". */
+export function nightLabel(st, seasonId, week, day) {
+  const iso = calendarDate(st, seasonId, week, day);
+  return iso ? `${NIGHT[day]} ${isoText(iso, false)}` : NIGHT[day];
+}
+
+// ---------------------------------------------------------------- the card
+
+export function chip(text, cls = '') { return `<span class="uv-chip ${cls}">${esc(text)}</span>`; }
+export function kindChip(m) { return chip(matchKind(m).label, 'kind'); }
+
+/** "A vs B vs C" for a booked match - a team side by its name. */
+export function vsLine(st, m) {
+  return m.sides.map(sd => `<b>${esc(sideName(st, sd))}</b>`).join(' <span class="uv-muted">vs</span> ');
+}
+
+// how the win read, finish by finish; anything else (a DQ, a count-out) is "beat"
+const FALL_VERB = { pinfall: 'pinned', submission: 'made {} submit', ko: 'knocked out', elimination: 'eliminated {} last',
+  escape: 'escaped ahead of', retrieval: 'beat {} to it' };
+/** Who scored and who took the fall, when the owner recorded it: "Cody Rhodes pinned Gunther". */
+export function fallLine(st, m) {
+  if (!m.fall) return '';
+  const name = id => esc((wrestlerById(st, id) || { name: '?' }).name);
+  const { on } = m.fall;
+  // a winning side of one scored the win, whether or not the owner said so
+  const win = m.outcome === 'win' && m.sides[m.winner];
+  const by = m.fall.by || (win && win.wrestlers.length === 1 ? win.wrestlers[0] : null);
+  if (by && on) {
+    const verb = FALL_VERB[m.finish] || 'beat {}';
+    return `${name(by)} ${verb.includes('{}') ? verb.replace('{}', name(on)) : `${verb} ${name(on)}`}`;
+  }
+  return by ? `${name(by)} scored the win` : `${name(on)} took the fall`;
 }

@@ -382,7 +382,7 @@ test('title changes must follow the calendar - a backfill can’t crown the wron
   const early = M.addEvent(st, { showId: 'raw', week: 3 });         // entered later, dated earlier
   let before = frozen(st);
   throwsUE(() => M.recordMatch(st, early.id, { sides: [{ wrestlers: [a.id] }, { wrestlers: [b.id] }], winner: 1, titleId: whc.id },
-    { titleChange: true }), /began in season 1, week 5, later than season 1, week 3/);
+    { titleChange: true }), /began in season 1, week 5 \(Monday\), later than season 1, week 3 \(Monday\)/);
   throwsUE(() => M.setChampion(st, whc.id, { type: 'wrestler', id: b.id }, { eventId: early.id }), /in order/);
   assert.equal(frozen(st), before, 'nothing half-recorded');
   M.setWeek(st, 2);                                                  // clock wound back past the reign
@@ -419,6 +419,22 @@ test('history follows the calendar, not the order things were typed in', () => {
   sound(st);
 });
 
+test('an episode named for its week keeps up when it moves; a chosen name stays', () => {
+  const st = M.createUniverse();
+  const ev = M.addEvent(st, { showId: 'raw', week: 3 });
+  M.updateEvent(st, ev.id, { week: 4 });
+  assert.equal(ev.name, 'Raw · Week 4');
+  M.updateEvent(st, ev.id, { showId: 'smackdown' });
+  assert.equal(ev.name, 'SmackDown · Week 4');
+  M.updateEvent(st, ev.id, { name: 'Go-Home Show' });
+  M.updateEvent(st, ev.id, { week: 5 });
+  assert.equal(ev.name, 'Go-Home Show');
+  const ple = M.addEvent(st, { kind: 'ple', name: 'Clash', week: 3 });
+  M.updateEvent(st, ple.id, { week: 6 });
+  assert.equal(ple.name, 'Clash');
+  sound(st);
+});
+
 test('the timeline puts everything in the order it happened', () => {
   const { st, a, b, whc } = titleWorld();
   M.setChampion(st, whc.id, { type: 'wrestler', id: a.id });
@@ -433,7 +449,7 @@ test('the timeline puts everything in the order it happened', () => {
   const seqs = M.timeline(st).map(e => e.seq);
   assert.deepEqual(seqs, [...seqs].sort((x, y) => y - x));
   assert.equal(M.timeline(st).find(e => e.type === 'event').rec, ev);
-  assert.deepEqual(M.summary(st), { wrestlers: 4, teams: 1, titles: 2, events: 1, matches: 0, seasons: 2 });
+  assert.deepEqual(M.summary(st), { wrestlers: 4, teams: 1, titles: 2, events: 1, matches: 0, booked: 0, seasons: 2 });
 });
 
 // ---------------------------------------------------------------- persistence
@@ -561,13 +577,13 @@ test('an old or partial save is filled in on load', () => {
 const REC = (w = 0, l = 0, d = 0, nc = 0) => ({ w, l, d, nc });
 const byNameIn = (st, n) => st.wrestlers.find(w => w.name === n);
 
-test('a real v1 save migrates to v2 and still adds up', async () => {
+test('a real v1 save migrates all the way forward and still adds up', async () => {
   // Written by the v1 model as committed in a23ab03 - not hand-made.
   const { readFile } = await import('node:fs/promises');
   const text = await readFile(new URL('./fixtures/universe-v1.json', import.meta.url), 'utf8');
   assert.equal(JSON.parse(text).version, 1);
   const st = importUniverse(text);
-  assert.equal(st.version, 2);
+  assert.equal(st.version, M.SCHEMA_VERSION);
   sound(st);
   const team = n => st.teams.find(t => t.name === n);
   assert.equal(st.memberships.length, 6, 'every v1 member becomes a founding member');
@@ -714,7 +730,7 @@ test('undoing a team change takes back one change at a time', () => {
   // a join someone has already wrestled under can't just vanish
   const ev = M.addEvent(st, { showId: 'raw' });
   const m = M.recordMatch(st, ev.id, { sides: [{ wrestlers: [a.id, c.id], team: t.id }, { wrestlers: [b.id] }], winner: 0 });
-  throwsUE(() => M.undoTeamChange(st, t.id), /C wrestled for T at Raw · Week 1/);
+  throwsUE(() => M.undoTeamChange(st, t.id), /C wrestled for T at Raw · Week 1. Edit that match first/);
   M.deleteMatch(st, ev.id, m.id);
   M.undoTeamChange(st, t.id);                           // C joining
   assert.deepEqual([...t.members].sort(), [a.id, b.id].sort());
@@ -805,7 +821,7 @@ test('moving an event to another week carries its title changes, in order', () =
   M.updateEvent(st, ev.id, { week: 5 });
   const [ra, rb, rc] = M.titleReigns(st, t.id);
   assert.deepEqual([ra.end.week, rb.start.week, rb.end.week, rc.start.week], [5, 5, 6, 6]);
-  assert.equal(ev.name, 'Raw · Week 3', 'a name the owner may have typed is left alone');
+  assert.equal(ev.name, 'Raw · Week 5', 'still called by its default name, so it follows the week');
   throwsUE(() => M.updateEvent(st, ev.id, { week: 7 }), /after the Belt reign won here ended \(season 1, week 6\)/);
   throwsUE(() => M.updateEvent(st, ev.id, { week: 1 }), /before the Belt reign this event ended began \(season 1, week 2\)/);
   sound(st);
@@ -974,4 +990,299 @@ test('a reign after a vacancy can’t be dated before the vacancy', () => {
   M.updateEvent(st, ev.id, { week: 5 });
   assert.equal(M.currentReign(st, t.id).start.week, 5);
   sound(st);
+});
+
+// ================================================================ stage 3
+// The show calendar and match cards: booking, entering results, correcting
+// them - and records and title histories across every common match type.
+
+const S = ids => ids.map(x => ({ wrestlers: Array.isArray(x) ? x : [x] }));
+const R = (w = 0, l = 0, d = 0, nc = 0) => ({ w, l, d, nc });
+
+// Ten wrestlers, three teams, one card with every common kind of match.
+function cardWorld() {
+  const st = M.createUniverse();
+  const W = {};
+  'ABCDEFGHIJ'.split('').forEach(n => { W[n] = M.addWrestler(st, { name: n, showId: 'raw' }).id; });
+  const T = {
+    AC: M.addTeam(st, { name: 'AC', members: [W.A, W.C] }).id,
+    BD: M.addTeam(st, { name: 'BD', members: [W.B, W.D] }).id,
+    EF: M.addTeam(st, { name: 'EF', members: [W.E, W.F] }).id,
+  };
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const team = (t, ...ws) => ({ wrestlers: ws, team: t });
+  const card = [
+    ['Singles',           S([W.A, W.B])],
+    ['Tag team',          [team(T.AC, W.A, W.C), team(T.BD, W.B, W.D)]],
+    ['Tag team',          S([[W.A, W.D], [W.B, W.C]])],                            // makeshift pairs
+    ['Triple threat',     S([W.A, W.B, W.E])],
+    ['Fatal 4-way',       S([W.A, W.B, W.E, W.F])],
+    ['3-on-3 tag',        S([[W.A, W.B, W.C], [W.D, W.E, W.F]])],
+    ['Handicap 1-on-2',   S([W.G, [W.A, W.B]])],
+    ['Triple threat tag', [team(T.AC, W.A, W.C), team(T.BD, W.B, W.D), team(T.EF, W.E, W.F)]],
+    ['10-way',            S('ABCDEFGHIJ'.split('').map(n => W[n]))],               // battle royal
+    ['Singles',           S([W.A, W.C])],
+  ].map(([kind, sides]) => ({ kind, m: M.bookMatch(st, ev.id, { sides, stip: kind === '10-way' ? 'Battle Royal' : '' }) }));
+  return { st, W, T, ev, card };
+}
+// What the game produced, entered one booked match at a time.
+function playCard(st, ev, card, W) {
+  const results = [
+    { winner: 0, finish: 'pinfall', fall: { by: W.A, on: W.B } },
+    { winner: 0 },
+    { winner: 0 },
+    { winner: 2, fall: { by: W.E, on: W.B } },
+    { winner: 3 },
+    { outcome: 'nc' },
+    { winner: 0 },
+    { winner: 2 },
+    { winner: 7, finish: 'elimination', fall: { by: W.H, on: W.A } },
+    { outcome: 'draw' },
+  ];
+  card.forEach(({ m }, i) => M.enterResult(st, ev.id, m.id, results[i]));
+}
+
+test('a booked match has no result and counts for nothing until it’s played', () => {
+  const { st, W, T, ev, card } = cardWorld();
+  assert.deepEqual(card.map(c => M.matchKind(c.m).label), card.map(c => c.kind), 'the kind is read from the line-up');
+  assert.ok(card.every(c => c.m.status === 'scheduled' && c.m.outcome === null && c.m.winner === null));
+  assert.deepEqual(M.cardStatus(ev), { booked: 10, played: 0, total: 10, state: 'booked' });
+  assert.deepEqual(M.wrestlerRecord(st, W.A), { singles: R(), tag: R(), teams: {} });
+  assert.deepEqual(M.teamRecord(st, T.AC), R());
+  assert.equal(M.matchesOf(st, W.A).length, 0);
+  assert.equal(M.bookingsOf(st, W.A).length, 10);
+  assert.equal(M.teamBookings(st, T.AC).length, 2);
+  assert.deepEqual(M.resultsHistory(st), []);
+  assert.deepEqual(M.summary(st).booked, 10);
+  // a booked wrestler is on a card, so they can't just be deleted
+  throwsUE(() => M.deleteWrestler(st, W.J), /a booked match/);
+  // a booking can be changed before it's played; a result can't be changed as a booking
+  M.updateBooking(st, ev.id, card[0].m.id, { sides: S([W.A, W.G]), notes: '#1 contender' });
+  assert.deepEqual([card[0].m.sides[1].wrestlers, card[0].m.notes], [[W.G], '#1 contender']);
+  M.updateBooking(st, ev.id, card[0].m.id, { sides: S([W.A, W.B]) });
+  assert.equal(card[0].m.notes, '#1 contender', 'what isn’t changed stays');
+  sound(st);
+});
+
+test('the tool never picks a winner', () => {
+  const { st, W, ev, card } = cardWorld();
+  const t = M.addTitle(st, { name: 'Belt' });
+  M.setChampion(st, t.id, { type: 'wrestler', id: W.A });
+  const m = M.bookMatch(st, ev.id, { sides: S([W.A, W.B]), titleId: t.id });
+  const before = frozen(st);
+  throwsUE(() => M.enterResult(st, ev.id, m.id, {}), /Enter the result: who won, a draw, or a no contest/);
+  throwsUE(() => M.enterResult(st, ev.id, m.id, { outcome: 'win' }), /Pick who won/);
+  throwsUE(() => M.enterResult(st, ev.id, m.id, { outcome: 'draw', winner: 0 }), /A draw has no winner/);
+  throwsUE(() => M.enterResult(st, ev.id, m.id, { outcome: 'nc', winner: 1 }), /no contest has no winner/);
+  throwsUE(() => M.recordMatch(st, ev.id, { sides: S([W.C, W.D]) }), /Enter the result/);
+  throwsUE(() => M.enterResult(st, ev.id, m.id, { outcome: 'draw', fall: { on: W.A } }), /Only a win/);
+  throwsUE(() => M.enterResult(st, ev.id, m.id, { winner: 1, fall: { by: W.A } }), /A wasn't on the winning side/);
+  assert.equal(frozen(st), before, 'every refusal leaves the match booked and untouched');
+  // the challenger winning a title match doesn't move the belt unless the result says so (a DQ, say)
+  M.enterResult(st, ev.id, m.id, { winner: 1, finish: 'dq' });
+  assert.equal(M.currentReign(st, t.id).holder.id, W.A);
+  // nor does booking anything
+  assert.ok(card.every(c => c.m.winner === null));
+});
+
+test('records across every common match type, from one played card', () => {
+  const { st, W, T, ev, card } = cardWorld();
+  playCard(st, ev, card, W);
+  assert.deepEqual(M.cardStatus(ev).state, 'complete');
+  // worked out by hand from the ten results
+  const rec = n => { const r = M.wrestlerRecord(st, W[n]); return [r.singles, r.tag]; };
+  assert.deepEqual(rec('A'), [R(1, 3, 1), R(2, 2, 0, 1)]);
+  assert.deepEqual(rec('B'), [R(0, 4), R(0, 4, 0, 1)]);
+  assert.deepEqual(rec('C'), [R(0, 1, 1), R(1, 2, 0, 1)]);
+  assert.deepEqual(rec('D'), [R(0, 1), R(1, 2, 0, 1)]);
+  assert.deepEqual(rec('E'), [R(1, 2), R(1, 0, 0, 1)]);
+  assert.deepEqual(rec('F'), [R(1, 1), R(1, 0, 0, 1)]);
+  assert.deepEqual(rec('G'), [R(1, 1), R()], 'the lone wrestler in a handicap match: singles');
+  assert.deepEqual(rec('H'), [R(1), R()]);
+  assert.deepEqual(rec('J'), [R(0, 1), R()], 'every non-winner of a battle royal takes a loss');
+  // teams: only as the team - A&C's makeshift tag and the 3-on-3 aren't AC's
+  assert.deepEqual(M.teamRecord(st, T.AC), R(1, 1));
+  assert.deepEqual(M.teamRecord(st, T.BD), R(0, 2));
+  assert.deepEqual(M.teamRecord(st, T.EF), R(1));
+  assert.deepEqual(M.wrestlerRecord(st, W.A).teams, { [T.AC]: R(1, 1), '': R(1, 1, 0, 1) });
+  // winners, losers and the fall
+  const tt = card[3].m;
+  assert.deepEqual([tt.winner, tt.fall], [2, { by: W.E, on: W.B }]);
+  assert.equal(card[8].m.finish, 'elimination');
+  // the history lists all ten, newest show first, card in running order
+  assert.deepEqual(M.resultsHistory(st).map(x => x.n), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  sound(st);
+});
+
+test('correcting results updates every record they touch, and nothing else', () => {
+  const { st, W, T, ev, card } = cardWorld();
+  playCard(st, ev, card, W);
+  const untouched = JSON.stringify([M.wrestlerRecord(st, W.H), M.wrestlerRecord(st, W.J), M.teamRecord(st, T.BD)]);
+  // triple threat: it was B, not E, who won
+  M.updateMatch(st, ev.id, card[3].m.id, { sides: card[3].m.sides, winner: 1, fall: { by: W.B, on: W.A } });
+  assert.deepEqual(M.wrestlerRecord(st, W.B).singles, R(1, 3));
+  assert.deepEqual(M.wrestlerRecord(st, W.E).singles, R(0, 3));
+  assert.deepEqual(M.wrestlerRecord(st, W.A).singles, R(1, 3, 1), 'still a loss for A either way');
+  // triple threat tag: AC won it, not EF
+  M.updateMatch(st, ev.id, card[7].m.id, { sides: card[7].m.sides, winner: 0 });
+  assert.deepEqual([M.teamRecord(st, T.AC), M.teamRecord(st, T.EF)], [R(2, 0), R(0, 1)]);
+  // the handicap match was really a no contest
+  M.updateMatch(st, ev.id, card[6].m.id, { sides: card[6].m.sides, outcome: 'nc' });
+  assert.deepEqual(M.wrestlerRecord(st, W.G).singles, R(0, 1, 0, 1));
+  // and the draw hadn't happened yet: take the result back, it's booked again
+  M.clearResult(st, ev.id, card[9].m.id);
+  assert.equal(card[9].m.status, 'scheduled');
+  assert.deepEqual(M.wrestlerRecord(st, W.A).singles, R(1, 3, 0));
+  assert.deepEqual(M.wrestlerRecord(st, W.A).tag, R(3, 0, 0, 2), 'the handicap loss became a no contest');
+  assert.deepEqual(M.cardStatus(ev), { booked: 1, played: 9, total: 10, state: 'partial' });
+  assert.equal(JSON.stringify([M.wrestlerRecord(st, W.H), M.wrestlerRecord(st, W.J), M.teamRecord(st, T.BD)]), untouched);
+  assert.deepEqual(card.map(c => c.m.id), ev.matches.map(m => m.id), 'every match keeps its id and its place');
+  sound(st);
+});
+
+test('title histories follow results through entry, correction and clearing', () => {
+  const { st, W, T, ev } = cardWorld();
+  const belt = M.addTitle(st, { name: 'Belt' });
+  const tags = M.addTitle(st, { name: 'Tags', kind: 'tag' });
+  M.setChampion(st, belt.id, { type: 'wrestler', id: W.A });
+  M.setChampion(st, tags.id, { type: 'team', id: T.AC });
+  // a fatal 4-way for the Belt and a triple threat tag for the Tags
+  const f4 = M.bookMatch(st, ev.id, { sides: S([W.A, W.B, W.E, W.F]), titleId: belt.id });
+  const ttt = M.bookMatch(st, ev.id, { sides: [{ wrestlers: [W.A, W.C], team: T.AC }, { wrestlers: [W.B, W.D], team: T.BD },
+    { wrestlers: [W.E, W.F], team: T.EF }], titleId: tags.id });
+  M.enterResult(st, ev.id, f4.id, { winner: 2 }, { titleChange: true });              // E wins the Belt
+  M.enterResult(st, ev.id, ttt.id, { winner: 0 });                                    // AC retain
+  assert.equal(M.currentReign(st, belt.id).holder.id, W.E);
+  assert.equal(M.currentReign(st, tags.id).holder.id, T.AC);
+  assert.equal(M.defencesOf(st, M.currentReign(st, tags.id)), 1, 'a retention is a defence');
+  // correction: it was F who won the fatal 4-way - the same reign, a different champion
+  const reign = M.currentReign(st, belt.id);
+  M.updateMatch(st, ev.id, f4.id, { sides: f4.sides, titleId: belt.id, winner: 3 }, { titleChange: true });
+  assert.equal(M.currentReign(st, belt.id), reign);
+  assert.equal(reign.holder.id, W.F);
+  // correction: EF won the tag titles after all
+  M.updateMatch(st, ev.id, ttt.id, { sides: ttt.sides, titleId: tags.id, winner: 2 }, { titleChange: true });
+  assert.equal(M.currentReign(st, tags.id).holder.id, T.EF);
+  assert.deepEqual(M.titleReigns(st, tags.id).map(r => r.holder.id), [T.AC, T.EF]);
+  // clearing the Belt result hands it back to A; entering it again crowns F again
+  M.clearResult(st, ev.id, f4.id);
+  assert.equal(M.currentReign(st, belt.id).holder.id, W.A);
+  assert.equal(M.titleReigns(st, belt.id).length, 1);
+  M.enterResult(st, ev.id, f4.id, { winner: 3 }, { titleChange: true });
+  assert.equal(M.currentReign(st, belt.id).holder.id, W.F);
+  // once the Belt changes hands again later, the earlier result can't be taken back
+  M.advanceWeek(st);
+  const ev2 = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, ev2.id, { sides: S([W.F, W.G]), titleId: belt.id, winner: 1 }, { titleChange: true });
+  const pinned = frozen(st);
+  throwsUE(() => M.clearResult(st, ev.id, f4.id), /changed hands or been vacated since this match/);
+  throwsUE(() => M.deleteMatch(st, ev.id, f4.id), /since this match/);
+  assert.equal(frozen(st), pinned);
+  sound(st);
+});
+
+test('same-week shows are ordered by night: Monday’s change can’t land after Friday’s', () => {
+  const st = M.createUniverse();
+  const [a, b, c] = ['A', 'B', 'C'].map(n => M.addWrestler(st, { name: n }));
+  const belt = M.addTitle(st, { name: 'Belt' });
+  const dyn1 = M.addEvent(st, { showId: 'dynamite' });      // week 1, Wednesday: A wins the vacant Belt
+  M.recordMatch(st, dyn1.id, { sides: S([a.id, b.id]), titleId: belt.id, winner: 0 }, { titleChange: true });
+  M.advanceWeek(st);
+  const raw = M.addEvent(st, { showId: 'raw' });            // Monday
+  const sd = M.addEvent(st, { showId: 'smackdown' });       // Friday
+  assert.deepEqual([raw.at.day, sd.at.day], [0, 4]);
+  // Friday's result is entered first...
+  M.recordMatch(st, sd.id, { sides: S([a.id, c.id]), titleId: belt.id, winner: 1 }, { titleChange: true });
+  // ...so Monday's can't now be recorded as changing the belt after it
+  throwsUE(() => M.recordMatch(st, raw.id, { sides: S([a.id, b.id]), titleId: belt.id, winner: 1 }, { titleChange: true }),
+    /began in season 1, week 2 \(Friday\), later than season 1, week 2 \(Monday\)/);
+  // a PLE defaults to Saturday; nights sort the week
+  const ple = M.addEvent(st, { kind: 'ple', name: 'Clash' });
+  const nxt = M.addEvent(st, { showId: 'nxt' });
+  assert.deepEqual(M.eventsIn(st, M.activeSeason(st).id).map(e => e.name),
+    ['Dynamite · Week 1', 'Raw · Week 2', 'NXT · Week 2', 'SmackDown · Week 2', 'Clash']);
+  assert.equal(ple.at.day, 5);
+  // moving an event to another night carries its title change, in order
+  throwsUE(() => M.updateEvent(st, sd.id, { week: 1, day: 0 }), /season 1, week 1 \(Monday\) is before the Belt reign this event ended began \(season 1, week 1 \(Wednesday\)\)/);
+  M.updateEvent(st, sd.id, { week: 1, day: 3 });            // Thursday of week 1 is after Wednesday: fine
+  M.updateEvent(st, sd.id, { week: 2, day: 4 });
+  M.updateEvent(st, sd.id, { day: 6 });
+  assert.equal(M.currentReign(st, belt.id).start.day, 6);
+  assert.ok(nxt);
+  sound(st);
+});
+
+test('a season start date puts every show on the calendar', () => {
+  const st = M.createUniverse();
+  const s = M.activeSeason(st);
+  assert.equal(M.calendarDate(st, s.id, 3, 0), null, 'no start date: plain weeks');
+  M.setSeasonStart(st, s.id, '2026-01-07');                 // a Wednesday in week 1
+  assert.equal(M.calendarDate(st, s.id, 1, 0), '2026-01-05', 'week 1 runs from that Monday');
+  assert.equal(M.calendarDate(st, s.id, 3, 0), '2026-01-19');
+  assert.equal(M.calendarDate(st, s.id, 3, 4), '2026-01-23');
+  assert.equal(M.calendarDate(st, s.id, 9, 5), '2026-03-07', 'across February: 2 March + 5');
+  throwsUE(() => M.setSeasonStart(st, s.id, '2026-02-30'), /isn’t a date/);
+  throwsUE(() => M.setSeasonStart(st, s.id, 'soon'), /isn’t a date/);
+  M.setSeasonStart(st, s.id, '');
+  assert.equal(s.start, null);
+  sound(st);
+});
+
+test('the card can be reordered, and history browses newest first by show', () => {
+  const st = M.createUniverse();
+  const [a, b, c] = ['A', 'B', 'C'].map(n => M.addWrestler(st, { name: n }));
+  const raw1 = M.addEvent(st, { showId: 'raw' });
+  const m1 = M.recordMatch(st, raw1.id, { sides: S([a.id, b.id]), winner: 0 });
+  const m2 = M.bookMatch(st, raw1.id, { sides: S([b.id, c.id]) });
+  const m3 = M.recordMatch(st, raw1.id, { sides: S([a.id, c.id]), outcome: 'draw' });
+  assert.equal(M.moveMatch(st, raw1.id, m3.id, -1), true);
+  assert.equal(M.moveMatch(st, raw1.id, m3.id, -1), true);
+  assert.equal(M.moveMatch(st, raw1.id, m3.id, -1), false, 'already opening the show');
+  assert.deepEqual(raw1.matches.map(m => m.id), [m3.id, m1.id, m2.id]);
+  M.advanceWeek(st);
+  const nxt2 = M.addEvent(st, { showId: 'nxt' });
+  const m4 = M.recordMatch(st, nxt2.id, { sides: S([b.id, c.id]), outcome: 'nc' });
+  const ple = M.addEvent(st, { kind: 'ple', name: 'Mania' });
+  const m5 = M.recordMatch(st, ple.id, { sides: S([a.id, b.id, c.id]), winner: 2 });
+  assert.deepEqual(M.resultsHistory(st).map(x => x.match.id), [m5.id, m4.id, m3.id, m1.id], 'booked matches aren’t history yet');
+  assert.deepEqual(M.resultsHistory(st, { showId: 'raw' }).map(x => x.match.id), [m3.id, m1.id]);
+  assert.deepEqual(M.resultsHistory(st, { showId: 'ple' }).map(x => x.match.id), [m5.id]);
+  M.startNextSeason(st);
+  const raw3 = M.addEvent(st, { showId: 'raw' });
+  const m6 = M.recordMatch(st, raw3.id, { sides: S([a.id, b.id]), winner: 1 });
+  assert.equal(M.resultsHistory(st)[0].match.id, m6.id);
+  assert.deepEqual(M.resultsHistory(st, { seasonId: st.seasons[0].id }).length, 4);
+  sound(st);
+});
+
+test('a real v2 save migrates to v3: every result played, every show on its night', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const text = await readFile(new URL('./fixtures/universe-v2.json', import.meta.url), 'utf8');
+  assert.equal(JSON.parse(text).version, 2);
+  const st = importUniverse(text);
+  assert.equal(st.version, 3);
+  sound(st);
+  assert.ok(st.events.every(e => e.matches.every(m => m.status === 'played' && m.fall === null)));
+  const byName = n => st.events.find(e => e.name === n);
+  assert.deepEqual([byName('Raw · Week 2').at.day, byName('Dynamite · Week 2').at.day, byName('Clash').at.day,
+    byName('NXT · Week 2').at.day], [0, 2, 5, 1]);
+  const w = n => st.wrestlers.find(x => x.name === n).id;
+  const t = n => st.teams.find(x => x.name === n).id;
+  assert.deepEqual(M.wrestlerRecord(st, w('Rhea Ripley')).singles, R(2));
+  assert.deepEqual(M.teamRecord(st, t('The Elite Two')), R(1, 0, 0, 1));
+  assert.deepEqual(M.teamRecord(st, t('The Usos')), R(0, 1, 0, 2));
+  assert.equal(M.holderName(st, M.currentReign(st, st.titles.find(x => x.name === "Women's World Championship").id).holder), 'Rhea Ripley');
+});
+
+test('a save claiming a booked match has a result is refused', () => {
+  const st = M.createUniverse();
+  const [a, b] = ['A', 'B'].map(n => M.addWrestler(st, { name: n }));
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.bookMatch(st, ev.id, { sides: S([a.id, b.id]) });
+  const bad = JSON.parse(JSON.stringify(st));
+  bad.events[0].matches[0].winner = 0;
+  throwsUE(() => importUniverse(JSON.stringify(bad)), /only booked but has a result/);
+  const odd = JSON.parse(JSON.stringify(st));
+  odd.events[0].matches[0].status = 'maybe';
+  throwsUE(() => importUniverse(JSON.stringify(odd)), /neither booked nor played/);
 });
