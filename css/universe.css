@@ -1,0 +1,245 @@
+/* ===== WWE UNIVERSE =====
+   A separate section, like Arc Markets: its own palette (championship gold),
+   its own header and tabs. Every rule here is scoped under .uv or keyed off
+   body.universe, so nothing leaks into the fantasy app. */
+.uv{
+  --uv-gold:#E8B931; --uv-gold-soft:rgba(232,185,49,.14); --uv-gold-line:rgba(232,185,49,.5);
+  --uv-red:#FF5A4E; --uv-green:#4CD37A; --uv-amber:#F0A53A;
+  --uv-bg:#07090D; --uv-card:#10151E; --uv-card-2:#0B0F16;
+  --uv-line:#1D2531; --uv-line-soft:#141B25;
+  --uv-ink:#F4F6FA; --uv-ink-2:#98A3B3; --uv-ink-3:#5E6979;
+  position:absolute;inset:0;z-index:60;background:var(--uv-bg);color:var(--uv-ink);
+  display:none;flex-direction:column;color-scheme:dark;
+}
+body.universe .uv{display:flex}
+/* while the universe is open the fantasy chrome underneath is fully covered */
+body.universe .shift,body.universe .drawer,body.universe .scrim{visibility:hidden}
+/* the app's bottom nav stays visible and paints above the section; the
+   universe highlights itself there without moving the fantasy .on class */
+body.universe .nav{z-index:75}
+body.universe .nav .nv.on{color:var(--ink-3)}
+body.universe .nav .nv[data-nav="universe"]{color:#E8B931}
+body.universe #hint{display:none}
+/* base.css turns selection off everywhere; typing fields need it back */
+.uv input,.uv textarea{-webkit-user-select:text;user-select:text}
+
+/* ---------- header ---------- */
+.uv-head{flex:none;padding:56px 16px 12px;display:flex;align-items:flex-end;justify-content:space-between;
+  border-bottom:1px solid var(--uv-line-soft)}
+.uv-brand .a{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:26px;
+  letter-spacing:.6px;text-transform:uppercase;line-height:1}
+.uv-brand .m{font-size:10px;font-weight:700;letter-spacing:2.2px;color:var(--uv-gold);margin-top:6px;text-transform:uppercase}
+.uv-ic{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--uv-line);
+  background:var(--uv-card);color:var(--uv-ink-2);cursor:pointer;flex:none;position:relative}
+.uv-ic svg{width:17px;height:17px}
+.uv-ic.sm{width:36px;height:38px}
+.uv-ic.warn::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;
+  background:var(--uv-red);box-shadow:0 0 0 2px var(--uv-bg)}
+
+/* ---------- tabs ---------- */
+.uv-tabs{flex:none;display:flex;padding:0 8px;border-bottom:1px solid var(--uv-line-soft)}
+.uv-tab{flex:1;text-align:center;padding:12px 2px 11px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:13.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--uv-ink-3);cursor:pointer;position:relative}
+.uv-tab.on{color:var(--uv-ink)}
+.uv-tab.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;border-radius:2px;background:var(--uv-gold)}
+
+/* ---------- scroll body ---------- */
+.uv-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--navh) + 16px);scrollbar-width:none}
+.uv-scroll::-webkit-scrollbar{display:none}
+
+/* ---------- toolbar, buttons, pills ---------- */
+.uv-bar{display:flex;align-items:center;gap:9px;padding:12px 14px 4px}
+.uv-bar-t{flex:1;min-width:0;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;
+  letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-search{flex:1;min-width:0;display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;
+  background:var(--uv-card);border:1px solid var(--uv-line);border-radius:11px}
+.uv-search svg{width:15px;height:15px;color:var(--uv-ink-3);flex:none}
+.uv-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--uv-ink);font:inherit;font-size:13.5px}
+
+.uv-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:36px;padding:0 13px;flex:none;
+  border-radius:11px;border:1px solid var(--uv-line);background:var(--uv-card);color:var(--uv-ink);
+  font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.uv-btn svg{width:15px;height:15px}
+.uv-btn.pri{background:var(--uv-gold);border-color:var(--uv-gold);color:#1B1505}
+.uv-btn.bad{color:var(--uv-red);border-color:rgba(255,90,78,.35);background:rgba(255,90,78,.06)}
+.uv-btn.full{display:flex;width:100%;height:42px;margin-top:14px}
+.uv-row2{display:flex;gap:8px;margin-top:12px}
+.uv-row2 .uv-btn{flex:1}
+
+.uv-pills{display:flex;gap:6px;padding:10px 14px 4px;overflow-x:auto;scrollbar-width:none}
+.uv-pills::-webkit-scrollbar{display:none}
+.uv-pill{flex:none;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:10px;cursor:pointer;
+  background:var(--uv-card);border:1px solid var(--uv-line);font-size:12px;font-weight:700;color:var(--uv-ink-2)}
+.uv-pill .n{font-size:11px;font-weight:700;color:var(--uv-ink-3)}
+.uv-pill.on{background:var(--uv-gold-soft);border-color:var(--uv-gold-line);color:var(--uv-ink)}
+.uv-pill.on .n{color:var(--uv-gold)}
+.uv-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+
+/* ---------- lists ---------- */
+.uv-sec{display:flex;align-items:center;gap:8px;padding:16px 14px 7px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-ink-2)}
+.uv-sec .bar{width:4px;height:14px;border-radius:2px;background:var(--c)}
+.uv-sec .n{font-family:'Barlow',system-ui,sans-serif;font-weight:700;letter-spacing:0;color:var(--uv-ink-3)}
+
+.uv-row{display:flex;align-items:center;gap:11px;padding:9px 14px;border-bottom:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-row:active{background:var(--uv-card-2)}
+.uv-row.dim{opacity:.55}
+.uv-av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12.5px;font-weight:800;
+  color:var(--c,var(--uv-ink-2));background:color-mix(in srgb,var(--c,#5E6979) 16%,var(--uv-card));
+  border:1px solid color-mix(in srgb,var(--c,#5E6979) 42%,transparent)}
+.uv-av svg{width:18px;height:18px}
+.uv-av.sq{border-radius:10px}
+.uv-av.gold{color:var(--uv-gold)}
+.uv-av.lg{width:52px;height:52px;font-size:17px}
+.uv-av.lg svg{width:24px;height:24px}
+.uv-main{flex:1;min-width:0}
+.uv-main .nm{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-main .sub{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11.5px;color:var(--uv-ink-2);
+  white-space:nowrap;overflow:hidden}
+.uv-tag{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:5px;
+  background:var(--uv-line-soft);border:1px solid var(--uv-line);color:var(--uv-ink-2)}
+.uv-tag.face{color:#72C4FF}
+.uv-tag.heel{color:#FF7D71}
+.uv-tag.tweener{color:#C9A7FF}
+.uv-tag.inj{color:var(--uv-red);border-color:rgba(255,90,78,.35)}
+.uv-tag.warn{color:var(--uv-amber)}
+.uv-tag.ple{color:var(--uv-gold);border-color:rgba(232,185,49,.35)}
+.uv-belt{display:flex;align-items:center;gap:2px;color:var(--uv-gold);font-size:11px;font-weight:800;flex:none}
+.uv-belt svg{width:19px;height:19px}
+.uv-chev{display:grid;color:var(--uv-ink-3);flex:none}
+.uv-chev svg{width:15px;height:15px}
+.uv-champ{flex:none;max-width:44%;text-align:right}
+.uv-champ .h{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-champ .h.vac{color:var(--uv-ink-3);font-style:italic;font-weight:600}
+.uv-champ .s{font-size:10.5px;color:var(--uv-ink-3);margin-top:2px}
+.uv-none{padding:10px 14px;font-size:12.5px;color:var(--uv-ink-3)}
+.uv-sheet .uv-none{padding:6px 0}
+.uv-empty{padding:40px 30px 20px;text-align:center;color:var(--uv-ink-3)}
+.uv-empty>svg{width:34px;height:34px;margin-bottom:12px;color:#2C3646}
+.uv-empty .t{font-size:15px;font-weight:700;color:var(--uv-ink-2)}
+.uv-empty .s{font-size:12.5px;line-height:1.55;margin-top:7px}
+.uv-empty .uv-btn{margin-top:16px}
+
+/* ---------- history ---------- */
+.uv-card{margin:14px 14px 4px;border:1px solid var(--uv-line);border-radius:16px;overflow:hidden;
+  background:linear-gradient(135deg,rgba(232,185,49,.11),transparent 55%),var(--uv-card)}
+.uv-season{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 12px}
+.uv-season .k{font-size:10.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--uv-gold)}
+.uv-season .v{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:28px;line-height:1.1;margin-top:3px}
+.uv-step{display:flex;align-items:center;gap:7px}
+.uv-card-f{display:flex;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--uv-line-soft);
+  font-size:12px;font-weight:700;color:var(--uv-ink-2)}
+.uv-card-f span{cursor:pointer}
+.uv-wk{padding:12px 14px 4px;font-size:10.5px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-tls{padding:0 14px}
+.uv-tl{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--uv-line-soft);font-size:12.5px;line-height:1.4;color:var(--uv-ink-2)}
+.uv-tl .w{flex:none;width:58px;padding-top:1px;font-size:10.5px;font-weight:700;color:var(--uv-ink-3)}
+.uv-tl b{color:var(--uv-ink)}
+.uv-more{padding:12px;text-align:center;font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+
+/* ---------- sheet ----------
+   The open flag on <body> is uv-sheet-open, never the sheet's own class name:
+   Markets learned the hard way that body.mk-sheet applied the sheet's own
+   positioning to <body> and slid the whole app off screen. */
+.uv-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;transition:opacity .25s}
+body.uv-sheet-open .uv-scrim{opacity:1;pointer-events:auto}
+.uv-sheet{position:absolute;left:0;right:0;bottom:0;z-index:81;max-height:86%;overflow-y:auto;scrollbar-width:none;
+  background:var(--uv-card-2);border:1px solid var(--uv-line);border-bottom:none;border-radius:22px 22px 0 0;
+  transform:translateY(102%);transition:transform .32s cubic-bezier(.4,0,.2,1);
+  /* the app's bottom nav paints over the sheet, so its end has to clear it */
+  padding-bottom:calc(var(--navh) + 26px)}
+.uv-sheet::-webkit-scrollbar{display:none}
+body.uv-sheet-open .uv-sheet{transform:translateY(0)}
+.uv-sheet .grab{width:38px;height:4px;border-radius:3px;background:var(--uv-line);margin:10px auto 4px}
+.uv-sheet .hd{padding:8px 18px 4px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px;letter-spacing:.5px;
+  /* matchup.css styles a bare .hd (section labels); undo what it would leak in */
+  color:var(--uv-ink);text-transform:uppercase;display:block;margin:0}
+.uv-sheet .bd{padding:0 18px}
+.uv-sheet h4{margin:18px 0 6px;font-size:10.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-sheet .fine{margin-top:16px;padding-top:12px;border-top:1px solid var(--uv-line-soft);font-size:11px;line-height:1.55;color:var(--uv-ink-3)}
+.uv-p{margin:8px 0;font-size:12.5px;line-height:1.55;color:var(--uv-ink-2)}
+.uv-hero{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
+.uv-hero .k{font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
+.uv-hero .s{margin-top:3px;font-size:12.5px;color:var(--uv-ink-2)}
+
+/* ---------- forms ---------- */
+.uv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.uv-f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.uv-f.wide{grid-column:1/-1}
+.uv-f>span{font-size:10.5px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-in{width:100%;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--uv-line);background:var(--uv-card);
+  color:var(--uv-ink);font:inherit;font-size:14px;font-weight:600;outline:none}
+.uv-in:focus{border-color:var(--uv-gold-line)}
+.uv-in:disabled{opacity:.45}
+textarea.uv-in{resize:vertical;line-height:1.45;font-weight:500}
+select.uv-in{appearance:none;-webkit-appearance:none;padding-right:28px;background-repeat:no-repeat;
+  background-position:right 10px center;background-size:12px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2398A3B3' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.uv-seg{display:flex;padding:3px;margin:6px 0 12px;border-radius:11px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-seg>div{flex:1;padding:8px 4px;border-radius:8px;text-align:center;font-size:12.5px;font-weight:700;color:var(--uv-ink-2);cursor:pointer}
+.uv-seg>div.on{background:var(--uv-gold-soft);color:var(--uv-ink);box-shadow:inset 0 0 0 1px var(--uv-gold-line)}
+.uv-pick{display:flex;align-items:center;gap:7px;margin-top:7px}
+.uv-pick .uv-in{flex:1}
+.uv-add{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-add svg{width:14px;height:14px}
+.uv-sidebox{margin-top:10px;padding:10px 11px 11px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-sidebox .uv-in{background:var(--uv-card-2)}
+.uv-sidebox .h{display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;color:var(--uv-ink-2)}
+.uv-sidebox .h .uv-link{text-transform:none;letter-spacing:0;font-weight:700;color:var(--uv-ink-3)}
+.uv-check{display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:13px;line-height:1.4;color:var(--uv-ink-2);cursor:pointer}
+.uv-check input{flex:none;width:18px;height:18px;margin-top:1px;accent-color:var(--uv-gold)}
+.uv-check + .uv-f,.uv-grid + .uv-f.wide{margin-top:12px}
+.uv-note{margin-top:12px;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.5;
+  border:1px solid var(--uv-line);background:var(--uv-card);color:var(--uv-ink-2)}
+.uv-note.ok{border-color:rgba(76,211,122,.3);color:#A6E9BD;background:rgba(76,211,122,.06)}
+.uv-note.warn{border-color:rgba(240,165,58,.4);color:#F6CB8F;background:rgba(240,165,58,.07)}
+.uv-note.bad{border-color:rgba(255,90,78,.4);color:#FFB5AE;background:rgba(255,90,78,.07)}
+
+/* ---------- lists inside sheets ---------- */
+.uv-li{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--uv-line-soft);
+  font-size:13px;line-height:1.4;cursor:pointer}
+.uv-li.plain{cursor:default}
+.uv-li>svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--uv-gold)}
+.uv-li .w{flex:none;width:58px;padding-top:2px;font-size:10.5px;font-weight:700;color:var(--uv-ink-3)}
+.uv-muted{color:var(--uv-ink-3)}
+.uv-muted.d{display:block;margin-top:2px;font-size:11px}
+.uv-gold{color:var(--uv-gold)}
+.uv-link{color:var(--uv-ink);text-decoration:underline;text-decoration-color:var(--uv-line);text-underline-offset:3px;cursor:pointer}
+.uv-res{flex:none;width:26px;height:20px;border-radius:5px;display:grid;place-items:center;font-size:10px;font-weight:800;
+  background:var(--uv-line-soft);color:var(--uv-ink-2)}
+.uv-res.W{background:rgba(76,211,122,.14);color:var(--uv-green)}
+.uv-res.L{background:rgba(255,90,78,.12);color:var(--uv-red)}
+.uv-match{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--uv-line-soft);font-size:13px;line-height:1.45}
+.uv-match .i{flex:none;width:16px;padding-top:2px;font-size:11px;font-weight:800;color:var(--uv-ink-3)}
+.uv-match .b{flex:1;min-width:0}
+.uv-match .uv-ic{width:30px;height:30px}
+.uv-champ-card{margin:8px 0 4px;padding:14px 16px;border-radius:16px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--uv-line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c) 18%,transparent),transparent 60%),var(--uv-card)}
+.uv-champ-card .k{font-size:10.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--uv-gold)}
+.uv-champ-card .h{margin-top:4px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px;line-height:1.15}
+.uv-champ-card .h .uv-link{text-decoration:none}
+.uv-champ-card .s{margin-top:4px;font-size:12px;color:var(--uv-ink-2)}
+.uv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
+.uv-stat{padding:10px 6px;border-radius:12px;border:1px solid var(--uv-line);background:var(--uv-card);text-align:center}
+.uv-stat .v{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:22px}
+.uv-stat .k{margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--uv-ink-3)}
+
+/* ---------- confirm ---------- */
+.uv-confirm{position:absolute;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:24px;
+  background:rgba(2,4,8,.62)}
+body.uv-confirm-open .uv-confirm{display:flex}
+.uv-confirm .box{width:100%;max-width:320px;padding:18px 18px 14px;border-radius:18px;border:1px solid var(--uv-line);
+  background:var(--uv-card);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.uv-confirm .t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:18px;line-height:1.25}
+.uv-confirm .x{margin-top:8px;font-size:13px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-confirm .uv-row2{margin-top:16px}
+
+/* ---------- toast ---------- */
+#uvHint{width:max-content;max-width:330px;white-space:normal;background:var(--uv-gold);color:#1B1505;
+  box-shadow:0 8px 24px rgba(232,185,49,.3)}
+#uvHint.bad{background:#3A1512;color:#FFD6D1;border:1px solid rgba(255,90,78,.5);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+
+@media (max-width:440px){
+  .uv-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
+}

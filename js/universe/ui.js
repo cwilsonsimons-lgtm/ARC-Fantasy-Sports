@@ -1,0 +1,136 @@
+// WWE Universe — small HTML building blocks shared by the views and sheets.
+//
+// Everything the owner types - names, notes, stipulations - goes through esc()
+// before it reaches innerHTML. Inline handlers only ever carry record ids,
+// which the model generates, never names.
+import { seasonById, showById, wrestlerById, teamById, titleById, byName } from './model.js';
+
+export function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+const svg = (d, extra = '') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
+export const ICON = {
+  plus:   svg('<path d="M12 5v14M5 12h14"/>'),
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>'),
+  belt:   svg('<rect x="2" y="8" width="20" height="8" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M5 10v4M19 10v4"/>'),
+  team:   svg('<circle cx="9" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M14 14.5a5 5 0 0 1 7 4.5"/>'),
+  user:   svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+  cal:    svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  save:   svg('<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>'),
+  x:      svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  left:   svg('<path d="m15 18-6-6 6-6"/>'),
+  right:  svg('<path d="m9 18 6-6-6-6"/>'),
+};
+
+export const LABEL = {
+  gender:    { male: 'Male', female: 'Female' },
+  origin:    { WWE: 'WWE', AEW: 'AEW', NXT: 'NXT', Other: 'Other' },
+  alignment: { face: 'Face', heel: 'Heel', tweener: 'Tweener' },
+  status:    { active: 'Active', injured: 'Injured' },
+  kind:      { singles: 'Singles', tag: 'Tag team' },
+  division:  { men: "Men's", women: "Women's", open: 'Open' },
+  event:     { weekly: 'Weekly show', ple: 'Premium live event' },
+  finish:    { pinfall: 'Pinfall', submission: 'Submission', dq: 'Disqualification', countout: 'Count-out', ko: 'Knockout', other: 'Other' },
+};
+
+const NEUTRAL = '#5E6979';
+/** A show's colour, only ever as a plain hex value - it goes straight into a style attribute. */
+export function showColor(st, showId) {
+  const s = showById(st, showId);
+  return s && /^#[0-9a-f]{3,8}$/i.test(String(s.color)) ? s.color : NEUTRAL;
+}
+export function showName(st, showId, none = 'Unassigned') { const s = showById(st, showId); return s ? s.name : none; }
+
+export function stampLabel(st, stamp) {
+  const s = stamp && seasonById(st, stamp.season);
+  return stamp ? `S${s ? s.number : '?'} · W${stamp.week}` : '';
+}
+
+export function initials(name) {
+  const parts = String(name).replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+export function avatar(st, w, cls = '') {
+  return `<span class="uv-av ${cls}" style="--c:${showColor(st, w.showId)}">${esc(initials(w.name))}</span>`;
+}
+export function showDot(st, showId) {
+  return `<span class="uv-dot" style="--c:${showColor(st, showId)}"></span>`;
+}
+export function tag(text, cls = '') { return `<span class="uv-tag ${cls}">${esc(text)}</span>`; }
+
+/** <option>s from [value, label] pairs. */
+export function options(pairs, selected) {
+  return pairs.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(selected ?? '') ? ' selected' : ''}>${esc(l)}</option>`).join('');
+}
+export function labelPairs(map) { return Object.entries(map); }
+export function showPairs(st, none) {
+  const pairs = st.shows.map(s => [s.id, s.name]);
+  return none ? [['', none], ...pairs] : pairs;
+}
+
+/** Every wrestler, grouped by show, for a picker. */
+export function wrestlerOptions(st, selected, blank = '— Pick a wrestler —') {
+  const groups = [...st.shows.map(s => [s.id, s.name]), [null, 'Unassigned']];
+  return `<option value="">${esc(blank)}</option>` + groups.map(([id, name]) => {
+    const list = st.wrestlers.filter(w => w.showId === id).sort(byName);
+    if (!list.length) return '';
+    return `<optgroup label="${esc(name)}">${options(list.map(w => [w.id, w.name]), selected)}</optgroup>`;
+  }).join('');
+}
+export function teamOptions(st, selected, blank = '— Pick a tag team —') {
+  const list = st.teams.filter(t => t.active || t.id === selected).sort(byName);
+  return `<option value="">${esc(blank)}</option>` + options(list.map(t => [t.id, t.name]), selected);
+}
+export function titleOptions(st, selected, blank = 'No title on the line') {
+  const list = st.titles.filter(t => t.active || t.id === selected);
+  return `<option value="">${esc(blank)}</option>` + options(list.map(t => [t.id, t.name]), selected);
+}
+
+export function field(label, control, cls = '') {
+  return `<label class="uv-f ${cls}"><span>${esc(label)}</span>${control}</label>`;
+}
+export function select(handler, pairsHTML, extra = '') {
+  return `<select class="uv-in" onchange="${handler}"${extra}>${pairsHTML}</select>`;
+}
+
+export function empty(icon, title, text, action = '') {
+  return `<div class="uv-empty">${icon}<div class="t">${esc(title)}</div><div class="s">${esc(text)}</div>${action}</div>`;
+}
+export function section(title, count, color) {
+  return `<div class="uv-sec"${color ? ` style="--c:${color}"` : ''}>${color ? '<span class="bar"></span>' : ''}`
+    + `<span class="t">${esc(title)}</span>${count == null ? '' : `<span class="n">${count}</span>`}</div>`;
+}
+
+// ---------------------------------------------------------------- results
+
+export function sideName(st, side) {
+  if (side.team) {
+    const t = teamById(st, side.team);
+    if (t) return t.name;
+  }
+  return side.wrestlers.map(id => (wrestlerById(st, id) || { name: '(missing)' }).name).join(' & ');
+}
+
+/** One line for a result: "A def. B", "A vs B — Draw", with the winner in bold. */
+export function matchLine(st, m) {
+  const names = m.sides.map(s => esc(sideName(st, s)));
+  if (m.outcome === 'win') {
+    const rest = names.filter((_, i) => i !== m.winner);
+    return `<b>${names[m.winner]}</b> def. ${rest.join(', ')}`;
+  }
+  return `${names.join(' vs ')} <span class="uv-muted">— ${m.outcome === 'draw' ? 'Draw' : 'No contest'}</span>`;
+}
+export function matchMeta(st, m, reign) {
+  const bits = [];
+  if (m.titleId) {
+    const t = titleById(st, m.titleId);
+    bits.push(`${t ? esc(t.name) : 'Title'}${reign ? ' — <b class="uv-gold">new champion</b>' : ''}`);
+  }
+  if (m.finish) bits.push(LABEL.finish[m.finish]);
+  if (m.stip) bits.push(esc(m.stip));
+  return bits.join(' · ');
+}

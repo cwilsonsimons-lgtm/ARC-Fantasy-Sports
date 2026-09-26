@@ -1422,6 +1422,253 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     .mk-scroll{padding-bottom:calc(var(--navh) + 12px)}
 }
 
+/* css/universe.css */
+/* ===== WWE UNIVERSE =====
+   A separate section, like Arc Markets: its own palette (championship gold),
+   its own header and tabs. Every rule here is scoped under .uv or keyed off
+   body.universe, so nothing leaks into the fantasy app. */
+.uv{
+  --uv-gold:#E8B931; --uv-gold-soft:rgba(232,185,49,.14); --uv-gold-line:rgba(232,185,49,.5);
+  --uv-red:#FF5A4E; --uv-green:#4CD37A; --uv-amber:#F0A53A;
+  --uv-bg:#07090D; --uv-card:#10151E; --uv-card-2:#0B0F16;
+  --uv-line:#1D2531; --uv-line-soft:#141B25;
+  --uv-ink:#F4F6FA; --uv-ink-2:#98A3B3; --uv-ink-3:#5E6979;
+  position:absolute;inset:0;z-index:60;background:var(--uv-bg);color:var(--uv-ink);
+  display:none;flex-direction:column;color-scheme:dark;
+}
+body.universe .uv{display:flex}
+/* while the universe is open the fantasy chrome underneath is fully covered */
+body.universe .shift,body.universe .drawer,body.universe .scrim{visibility:hidden}
+/* the app's bottom nav stays visible and paints above the section; the
+   universe highlights itself there without moving the fantasy .on class */
+body.universe .nav{z-index:75}
+body.universe .nav .nv.on{color:var(--ink-3)}
+body.universe .nav .nv[data-nav="universe"]{color:#E8B931}
+body.universe #hint{display:none}
+/* base.css turns selection off everywhere; typing fields need it back */
+.uv input,.uv textarea{-webkit-user-select:text;user-select:text}
+
+/* ---------- header ---------- */
+.uv-head{flex:none;padding:56px 16px 12px;display:flex;align-items:flex-end;justify-content:space-between;
+  border-bottom:1px solid var(--uv-line-soft)}
+.uv-brand .a{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:26px;
+  letter-spacing:.6px;text-transform:uppercase;line-height:1}
+.uv-brand .m{font-size:10px;font-weight:700;letter-spacing:2.2px;color:var(--uv-gold);margin-top:6px;text-transform:uppercase}
+.uv-ic{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--uv-line);
+  background:var(--uv-card);color:var(--uv-ink-2);cursor:pointer;flex:none;position:relative}
+.uv-ic svg{width:17px;height:17px}
+.uv-ic.sm{width:36px;height:38px}
+.uv-ic.warn::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;
+  background:var(--uv-red);box-shadow:0 0 0 2px var(--uv-bg)}
+
+/* ---------- tabs ---------- */
+.uv-tabs{flex:none;display:flex;padding:0 8px;border-bottom:1px solid var(--uv-line-soft)}
+.uv-tab{flex:1;text-align:center;padding:12px 2px 11px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:13.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--uv-ink-3);cursor:pointer;position:relative}
+.uv-tab.on{color:var(--uv-ink)}
+.uv-tab.on::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;border-radius:2px;background:var(--uv-gold)}
+
+/* ---------- scroll body ---------- */
+.uv-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--navh) + 16px);scrollbar-width:none}
+.uv-scroll::-webkit-scrollbar{display:none}
+
+/* ---------- toolbar, buttons, pills ---------- */
+.uv-bar{display:flex;align-items:center;gap:9px;padding:12px 14px 4px}
+.uv-bar-t{flex:1;min-width:0;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;
+  letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-search{flex:1;min-width:0;display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;
+  background:var(--uv-card);border:1px solid var(--uv-line);border-radius:11px}
+.uv-search svg{width:15px;height:15px;color:var(--uv-ink-3);flex:none}
+.uv-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--uv-ink);font:inherit;font-size:13.5px}
+
+.uv-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:36px;padding:0 13px;flex:none;
+  border-radius:11px;border:1px solid var(--uv-line);background:var(--uv-card);color:var(--uv-ink);
+  font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.uv-btn svg{width:15px;height:15px}
+.uv-btn.pri{background:var(--uv-gold);border-color:var(--uv-gold);color:#1B1505}
+.uv-btn.bad{color:var(--uv-red);border-color:rgba(255,90,78,.35);background:rgba(255,90,78,.06)}
+.uv-btn.full{display:flex;width:100%;height:42px;margin-top:14px}
+.uv-row2{display:flex;gap:8px;margin-top:12px}
+.uv-row2 .uv-btn{flex:1}
+
+.uv-pills{display:flex;gap:6px;padding:10px 14px 4px;overflow-x:auto;scrollbar-width:none}
+.uv-pills::-webkit-scrollbar{display:none}
+.uv-pill{flex:none;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:10px;cursor:pointer;
+  background:var(--uv-card);border:1px solid var(--uv-line);font-size:12px;font-weight:700;color:var(--uv-ink-2)}
+.uv-pill .n{font-size:11px;font-weight:700;color:var(--uv-ink-3)}
+.uv-pill.on{background:var(--uv-gold-soft);border-color:var(--uv-gold-line);color:var(--uv-ink)}
+.uv-pill.on .n{color:var(--uv-gold)}
+.uv-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+
+/* ---------- lists ---------- */
+.uv-sec{display:flex;align-items:center;gap:8px;padding:16px 14px 7px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;
+  font-weight:600;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-ink-2)}
+.uv-sec .bar{width:4px;height:14px;border-radius:2px;background:var(--c)}
+.uv-sec .n{font-family:'Barlow',system-ui,sans-serif;font-weight:700;letter-spacing:0;color:var(--uv-ink-3)}
+
+.uv-row{display:flex;align-items:center;gap:11px;padding:9px 14px;border-bottom:1px solid var(--uv-line-soft);cursor:pointer}
+.uv-row:active{background:var(--uv-card-2)}
+.uv-row.dim{opacity:.55}
+.uv-av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12.5px;font-weight:800;
+  color:var(--c,var(--uv-ink-2));background:color-mix(in srgb,var(--c,#5E6979) 16%,var(--uv-card));
+  border:1px solid color-mix(in srgb,var(--c,#5E6979) 42%,transparent)}
+.uv-av svg{width:18px;height:18px}
+.uv-av.sq{border-radius:10px}
+.uv-av.gold{color:var(--uv-gold)}
+.uv-av.lg{width:52px;height:52px;font-size:17px}
+.uv-av.lg svg{width:24px;height:24px}
+.uv-main{flex:1;min-width:0}
+.uv-main .nm{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-main .sub{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11.5px;color:var(--uv-ink-2);
+  white-space:nowrap;overflow:hidden}
+.uv-tag{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:5px;
+  background:var(--uv-line-soft);border:1px solid var(--uv-line);color:var(--uv-ink-2)}
+.uv-tag.face{color:#72C4FF}
+.uv-tag.heel{color:#FF7D71}
+.uv-tag.tweener{color:#C9A7FF}
+.uv-tag.inj{color:var(--uv-red);border-color:rgba(255,90,78,.35)}
+.uv-tag.warn{color:var(--uv-amber)}
+.uv-tag.ple{color:var(--uv-gold);border-color:rgba(232,185,49,.35)}
+.uv-belt{display:flex;align-items:center;gap:2px;color:var(--uv-gold);font-size:11px;font-weight:800;flex:none}
+.uv-belt svg{width:19px;height:19px}
+.uv-chev{display:grid;color:var(--uv-ink-3);flex:none}
+.uv-chev svg{width:15px;height:15px}
+.uv-champ{flex:none;max-width:44%;text-align:right}
+.uv-champ .h{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uv-champ .h.vac{color:var(--uv-ink-3);font-style:italic;font-weight:600}
+.uv-champ .s{font-size:10.5px;color:var(--uv-ink-3);margin-top:2px}
+.uv-none{padding:10px 14px;font-size:12.5px;color:var(--uv-ink-3)}
+.uv-sheet .uv-none{padding:6px 0}
+.uv-empty{padding:40px 30px 20px;text-align:center;color:var(--uv-ink-3)}
+.uv-empty>svg{width:34px;height:34px;margin-bottom:12px;color:#2C3646}
+.uv-empty .t{font-size:15px;font-weight:700;color:var(--uv-ink-2)}
+.uv-empty .s{font-size:12.5px;line-height:1.55;margin-top:7px}
+.uv-empty .uv-btn{margin-top:16px}
+
+/* ---------- history ---------- */
+.uv-card{margin:14px 14px 4px;border:1px solid var(--uv-line);border-radius:16px;overflow:hidden;
+  background:linear-gradient(135deg,rgba(232,185,49,.11),transparent 55%),var(--uv-card)}
+.uv-season{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 12px}
+.uv-season .k{font-size:10.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--uv-gold)}
+.uv-season .v{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:28px;line-height:1.1;margin-top:3px}
+.uv-step{display:flex;align-items:center;gap:7px}
+.uv-card-f{display:flex;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--uv-line-soft);
+  font-size:12px;font-weight:700;color:var(--uv-ink-2)}
+.uv-card-f span{cursor:pointer}
+.uv-wk{padding:12px 14px 4px;font-size:10.5px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-tls{padding:0 14px}
+.uv-tl{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--uv-line-soft);font-size:12.5px;line-height:1.4;color:var(--uv-ink-2)}
+.uv-tl .w{flex:none;width:58px;padding-top:1px;font-size:10.5px;font-weight:700;color:var(--uv-ink-3)}
+.uv-tl b{color:var(--uv-ink)}
+.uv-more{padding:12px;text-align:center;font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+
+/* ---------- sheet ----------
+   The open flag on <body> is uv-sheet-open, never the sheet's own class name:
+   Markets learned the hard way that body.mk-sheet applied the sheet's own
+   positioning to <body> and slid the whole app off screen. */
+.uv-scrim{position:absolute;inset:0;z-index:80;background:rgba(2,4,8,.72);opacity:0;pointer-events:none;transition:opacity .25s}
+body.uv-sheet-open .uv-scrim{opacity:1;pointer-events:auto}
+.uv-sheet{position:absolute;left:0;right:0;bottom:0;z-index:81;max-height:86%;overflow-y:auto;scrollbar-width:none;
+  background:var(--uv-card-2);border:1px solid var(--uv-line);border-bottom:none;border-radius:22px 22px 0 0;
+  transform:translateY(102%);transition:transform .32s cubic-bezier(.4,0,.2,1);
+  /* the app's bottom nav paints over the sheet, so its end has to clear it */
+  padding-bottom:calc(var(--navh) + 26px)}
+.uv-sheet::-webkit-scrollbar{display:none}
+body.uv-sheet-open .uv-sheet{transform:translateY(0)}
+.uv-sheet .grab{width:38px;height:4px;border-radius:3px;background:var(--uv-line);margin:10px auto 4px}
+.uv-sheet .hd{padding:8px 18px 4px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:20px;letter-spacing:.5px;
+  /* matchup.css styles a bare .hd (section labels); undo what it would leak in */
+  color:var(--uv-ink);text-transform:uppercase;display:block;margin:0}
+.uv-sheet .bd{padding:0 18px}
+.uv-sheet h4{margin:18px 0 6px;font-size:10.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-sheet .fine{margin-top:16px;padding-top:12px;border-top:1px solid var(--uv-line-soft);font-size:11px;line-height:1.55;color:var(--uv-ink-3)}
+.uv-p{margin:8px 0;font-size:12.5px;line-height:1.55;color:var(--uv-ink-2)}
+.uv-hero{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
+.uv-hero .k{font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
+.uv-hero .s{margin-top:3px;font-size:12.5px;color:var(--uv-ink-2)}
+
+/* ---------- forms ---------- */
+.uv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.uv-f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.uv-f.wide{grid-column:1/-1}
+.uv-f>span{font-size:10.5px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--uv-ink-3)}
+.uv-in{width:100%;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--uv-line);background:var(--uv-card);
+  color:var(--uv-ink);font:inherit;font-size:14px;font-weight:600;outline:none}
+.uv-in:focus{border-color:var(--uv-gold-line)}
+.uv-in:disabled{opacity:.45}
+textarea.uv-in{resize:vertical;line-height:1.45;font-weight:500}
+select.uv-in{appearance:none;-webkit-appearance:none;padding-right:28px;background-repeat:no-repeat;
+  background-position:right 10px center;background-size:12px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2398A3B3' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.uv-seg{display:flex;padding:3px;margin:6px 0 12px;border-radius:11px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-seg>div{flex:1;padding:8px 4px;border-radius:8px;text-align:center;font-size:12.5px;font-weight:700;color:var(--uv-ink-2);cursor:pointer}
+.uv-seg>div.on{background:var(--uv-gold-soft);color:var(--uv-ink);box-shadow:inset 0 0 0 1px var(--uv-gold-line)}
+.uv-pick{display:flex;align-items:center;gap:7px;margin-top:7px}
+.uv-pick .uv-in{flex:1}
+.uv-add{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-add svg{width:14px;height:14px}
+.uv-sidebox{margin-top:10px;padding:10px 11px 11px;border-radius:13px;border:1px solid var(--uv-line);background:var(--uv-card)}
+.uv-sidebox .uv-in{background:var(--uv-card-2)}
+.uv-sidebox .h{display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;color:var(--uv-ink-2)}
+.uv-sidebox .h .uv-link{text-transform:none;letter-spacing:0;font-weight:700;color:var(--uv-ink-3)}
+.uv-check{display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:13px;line-height:1.4;color:var(--uv-ink-2);cursor:pointer}
+.uv-check input{flex:none;width:18px;height:18px;margin-top:1px;accent-color:var(--uv-gold)}
+.uv-check + .uv-f,.uv-grid + .uv-f.wide{margin-top:12px}
+.uv-note{margin-top:12px;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.5;
+  border:1px solid var(--uv-line);background:var(--uv-card);color:var(--uv-ink-2)}
+.uv-note.ok{border-color:rgba(76,211,122,.3);color:#A6E9BD;background:rgba(76,211,122,.06)}
+.uv-note.warn{border-color:rgba(240,165,58,.4);color:#F6CB8F;background:rgba(240,165,58,.07)}
+.uv-note.bad{border-color:rgba(255,90,78,.4);color:#FFB5AE;background:rgba(255,90,78,.07)}
+
+/* ---------- lists inside sheets ---------- */
+.uv-li{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--uv-line-soft);
+  font-size:13px;line-height:1.4;cursor:pointer}
+.uv-li.plain{cursor:default}
+.uv-li>svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--uv-gold)}
+.uv-li .w{flex:none;width:58px;padding-top:2px;font-size:10.5px;font-weight:700;color:var(--uv-ink-3)}
+.uv-muted{color:var(--uv-ink-3)}
+.uv-muted.d{display:block;margin-top:2px;font-size:11px}
+.uv-gold{color:var(--uv-gold)}
+.uv-link{color:var(--uv-ink);text-decoration:underline;text-decoration-color:var(--uv-line);text-underline-offset:3px;cursor:pointer}
+.uv-res{flex:none;width:26px;height:20px;border-radius:5px;display:grid;place-items:center;font-size:10px;font-weight:800;
+  background:var(--uv-line-soft);color:var(--uv-ink-2)}
+.uv-res.W{background:rgba(76,211,122,.14);color:var(--uv-green)}
+.uv-res.L{background:rgba(255,90,78,.12);color:var(--uv-red)}
+.uv-match{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--uv-line-soft);font-size:13px;line-height:1.45}
+.uv-match .i{flex:none;width:16px;padding-top:2px;font-size:11px;font-weight:800;color:var(--uv-ink-3)}
+.uv-match .b{flex:1;min-width:0}
+.uv-match .uv-ic{width:30px;height:30px}
+.uv-champ-card{margin:8px 0 4px;padding:14px 16px;border-radius:16px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--uv-line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c) 18%,transparent),transparent 60%),var(--uv-card)}
+.uv-champ-card .k{font-size:10.5px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--uv-gold)}
+.uv-champ-card .h{margin-top:4px;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:24px;line-height:1.15}
+.uv-champ-card .h .uv-link{text-decoration:none}
+.uv-champ-card .s{margin-top:4px;font-size:12px;color:var(--uv-ink-2)}
+.uv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
+.uv-stat{padding:10px 6px;border-radius:12px;border:1px solid var(--uv-line);background:var(--uv-card);text-align:center}
+.uv-stat .v{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:22px}
+.uv-stat .k{margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--uv-ink-3)}
+
+/* ---------- confirm ---------- */
+.uv-confirm{position:absolute;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:24px;
+  background:rgba(2,4,8,.62)}
+body.uv-confirm-open .uv-confirm{display:flex}
+.uv-confirm .box{width:100%;max-width:320px;padding:18px 18px 14px;border-radius:18px;border:1px solid var(--uv-line);
+  background:var(--uv-card);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.uv-confirm .t{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:18px;line-height:1.25}
+.uv-confirm .x{margin-top:8px;font-size:13px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-confirm .uv-row2{margin-top:16px}
+
+/* ---------- toast ---------- */
+#uvHint{width:max-content;max-width:330px;white-space:normal;background:var(--uv-gold);color:#1B1505;
+  box-shadow:0 8px 24px rgba(232,185,49,.3)}
+#uvHint.bad{background:#3A1512;color:#FFD6D1;border:1px solid rgba(255,90,78,.5);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+
+@media (max-width:440px){
+  .uv-head{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
+}
+
 </style>
 </head>
 <body>
@@ -1566,10 +1813,11 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 
   <!-- BOTTOM NAV -->
   <div class="nav">
-    <div class="nv on" data-nav="matchup" onclick="closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" data-nav="markets" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
-    <div class="nv" data-nav="feed" onclick="closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
-    <div class="nv" data-nav="profile" onclick="closeMarkets();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+    <div class="nv on" data-nav="matchup" onclick="closeMarkets();closeUniverse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
+    <div class="nv" data-nav="markets" onclick="closeUniverse();openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" data-nav="universe" onclick="closeMarkets();openUniverse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="8" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M5 10v4M19 10v4"/></svg>Universe</div>
+    <div class="nv" data-nav="feed" onclick="closeMarkets();closeUniverse();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
+    <div class="nv" data-nav="profile" onclick="closeMarkets();closeUniverse();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
 
   <div class="sheet-scrim" id="sheetScrim" onclick="closeWeekPicker()"></div>
@@ -1629,6 +1877,41 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="bd" id="mkSheetBody"></div>
     </div>
     <div class="hint" id="mkHint"></div>
+  </div>
+
+  <!-- ===== WWE UNIVERSE =====
+       A companion to WWE 2K25 Universe Mode: rosters, tag teams, titles,
+       seasons and results, entered by the owner after each show. Like Markets
+       it covers the phone above the app's bottom nav. -->
+  <div class="uv" id="uv">
+    <div class="uv-head">
+      <div class="uv-brand">
+        <div class="a">Universe</div>
+        <div class="m" id="uvClock"></div>
+      </div>
+      <div class="uv-ic" id="uvDataBtn" onclick="uvData()" title="Save file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/></svg></div>
+    </div>
+    <div class="uv-tabs" id="uvTabs"></div>
+    <div class="uv-scroll" id="uvScroll"><div id="uvBody"></div></div>
+
+    <div class="uv-scrim" onclick="uvCloseSheet()"></div>
+    <div class="uv-sheet" id="uvSheet">
+      <div class="grab"></div>
+      <div class="hd" id="uvSheetTitle"></div>
+      <div class="bd" id="uvSheetBody"></div>
+    </div>
+    <div class="uv-confirm" onclick="if(event.target===this)uvConfirmNo()">
+      <div class="box">
+        <div class="t" id="uvConfirmTitle"></div>
+        <div class="x" id="uvConfirmText"></div>
+        <div class="uv-row2">
+          <div class="uv-btn" onclick="uvConfirmNo()">Cancel</div>
+          <div class="uv-btn bad" id="uvConfirmYes" onclick="uvConfirmYes()">Confirm</div>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="uvHint"></div>
+    <input type="file" accept="application/json,.json" class="hidden-file" id="uvImport" onchange="uvImportFile(this)">
   </div>
 </div>
 
@@ -3502,13 +3785,13 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
   var TD_PTS = 6;
   function touchdowns(A, X) {
     const out = [];
-    const add = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
+    const add2 = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
       const pts = Math.round(p.total * j.share * 10) / 10;
       if (pts < TD_PTS) return;
       out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
     }));
-    add(A, "a");
-    add(X, "x");
+    add2(A, "a");
+    add2(X, "x");
     return out.sort((a, b) => a.t - b.t);
   }
   function liveWindows(kicks) {
@@ -3623,7 +3906,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
       <div class="rw-r1"><span class="t"></span><span class="w"></span></div>
       <div class="rw-r2"><span class="sc"></span><span class="ev"></span></div>
     </div>`;
-    const svg2 = el.querySelector(".rw-svg");
+    const svg3 = el.querySelector(".rw-svg");
     const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
     const rT = el.querySelector(".rw-r1 .t"), rW = el.querySelector(".rw-r1 .w");
     const rS = el.querySelector(".rw-r2 .sc"), rE = el.querySelector(".rw-r2 .ev");
@@ -3645,7 +3928,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     show(n - 1);
     let drag = false;
     const at = (e) => {
-      const r = svg2.getBoundingClientRect();
+      const r = svg3.getBoundingClientRect();
       const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
       show(Math.round(cx / r.width * (n - 1)));
     };
@@ -3667,10 +3950,10 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     el._rwAbort = ac;
     const sig = ac ? { signal: ac.signal } : {};
     const sigP = ac ? { passive: false, signal: ac.signal } : { passive: false };
-    svg2.addEventListener("mousedown", down, sig);
+    svg3.addEventListener("mousedown", down, sig);
     window.addEventListener("mousemove", move, sig);
     window.addEventListener("mouseup", up, sig);
-    svg2.addEventListener("touchstart", down, sigP);
+    svg3.addEventListener("touchstart", down, sigP);
     window.addEventListener("touchmove", move, sigP);
     window.addEventListener("touchend", up, sig);
   }
@@ -4905,11 +5188,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!rows2.length) return noHits("leaders", `No ${leaderPos} players`);
     return rows2.slice(0, PANEL_CAP).map((r, i) => {
       const p = r.p;
-      const add = faOpen() && !isRostered(pKeyOf(p)) ? `<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(pKeyOf(p))}')">+</span>` : "";
+      const add2 = faOpen() && !isRostered(pKeyOf(p)) ? `<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(pKeyOf(p))}')">+</span>` : "";
       return `<div class="ld-row" onclick="openPlayer('${esc(p.id)}')"><span class="ld-rk">${i + 1}</span>
         <span class="ld-face">${faceInner(p.id)}</span>
         <div class="ld-info"><div class="ld-nm">${p.full}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm} \xB7 ${leaderMeta(p)}</div></div>
-        <span class="ld-pt${r.v == null ? " none" : ""}">${leaderFmt(r.v)}</span>${add}</div>`;
+        <span class="ld-pt${r.v == null ? " none" : ""}">${leaderFmt(r.v)}</span>${add2}</div>`;
     }).join("");
   }
   function leaderScopeOpts() {
@@ -5554,16 +5837,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function renderSettings() {
     const bl = document.getElementById("setBackLb");
     if (bl) bl.textContent = preDraft() ? "Draft" : "Matchup";
-    const has = !!store.globalBackdrop;
+    const has2 = !!store.globalBackdrop;
     const perGame = Object.keys(store.backdrops || {}).length;
-    const preview = has ? `<div class="set-preview" style="background-image:url('${store.globalBackdrop}')"></div>` : `<div class="set-preview none">Default stadium field</div>`;
+    const preview = has2 ? `<div class="set-preview" style="background-image:url('${store.globalBackdrop}')"></div>` : `<div class="set-preview none">Default stadium field</div>`;
     const backdropCards = `
     <div class="set-card">
       <div class="set-title">League Matchup Backgrounds</div>
       <div class="set-note">Set one background for every matchup at once. This replaces any per-game backgrounds.</div>
       ${preview}
       ${isCommish() ? `<div class="set-btns">
-        <div class="set-btn primary" onclick="pickGlobalBackdrop()">${ICON_UP} ${has ? "Change" : "Set"} background for all matchups</div>
+        <div class="set-btn primary" onclick="pickGlobalBackdrop()">${ICON_UP} ${has2 ? "Change" : "Set"} background for all matchups</div>
         <div class="set-btn" onclick="clearAllBackdrops()">${ICON_X} Clear all backgrounds</div>
       </div>` : ""}
       ${perGame ? `<div class="set-note" style="margin-top:11px;color:var(--violet)">${perGame} game${perGame > 1 ? "s have" : " has"} a custom background. Setting one for all clears those.</div>` : ""}
@@ -7137,14 +7420,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase();
   }
   function trendRow(t) {
-    const add = !faOpen() || isRostered(t.n) ? "" : `<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(t.n)}')">+</span>`;
+    const add2 = !faOpen() || isRostered(t.n) ? "" : `<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(t.n)}')">+</span>`;
     return `<div class="tr-row" onclick="openPlayer('${esc(t.n)}')">
     <span class="tr-rk">${t.rk}</span>
     <span class="tr-face">${faceInner(t.n)}</span>
     <div class="tr-info"><div class="tr-nm">${t.n}${t.rookie ? '<span class="rk-badge">R</span>' : ""}</div>
       <div class="tr-mt"><span class="pos ${t.pos}">${t.pos}</span> \xB7 ${t.tm} \xB7 ${t.rost}% rost</div></div>
     <div class="tr-add">+${(t.add / 1e3).toFixed(1)}K<div class="tr-arrow">\u25B2</div></div>
-    ${add}
+    ${add2}
   </div>`;
   }
 
@@ -7618,8 +7901,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   </svg>`;
   }
   function face(p) {
-    const initials2 = (p.name || "").split(" ").map((s) => s[0]).slice(0, 2).join("");
-    return `<div class="face">${esc2(initials2)}${p.hs ? `<img src="${esc2(p.hs)}" alt="" loading="lazy"
+    const initials3 = (p.name || "").split(" ").map((s) => s[0]).slice(0, 2).join("");
+    return `<div class="face">${esc2(initials3)}${p.hs ? `<img src="${esc2(p.hs)}" alt="" loading="lazy"
          style="position:absolute" onerror="this.remove()">` : ""}</div>`;
   }
   var tri = (n) => `<span class="mk-tri ${n < 0 ? "d" : "u"}"></span>`;
@@ -8300,6 +8583,2173 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function initMarkets2() {
   }
 
+  // js/universe/views.js
+  var views_exports = {};
+  __export(views_exports, {
+    uvFollowActiveSeason: () => uvFollowActiveSeason,
+    uvHistoryView: () => uvHistoryView,
+    uvHolderLink: () => uvHolderLink,
+    uvMoreHistory: () => uvMoreHistory,
+    uvRosterFilter: () => uvRosterFilter,
+    uvRosterSearch: () => uvRosterSearch,
+    uvRosterShow: () => uvRosterShow,
+    uvRosterView: () => uvRosterView,
+    uvTeamsView: () => uvTeamsView,
+    uvTitlesView: () => uvTitlesView,
+    uvViewSeason: () => uvViewSeason
+  });
+
+  // js/universe/model.js
+  var APP_ID = "wwe-universe";
+  var SCHEMA_VERSION = 1;
+  var UniverseError = class extends Error {
+    constructor(message) {
+      super(message);
+      this.name = "UniverseError";
+    }
+  };
+  function fail(message) {
+    throw new UniverseError(message);
+  }
+  var SHOW_SEED = [
+    { id: "raw", name: "Raw", promotion: "WWE", color: "#E23B2E" },
+    { id: "smackdown", name: "SmackDown", promotion: "WWE", color: "#2F6BFF" },
+    { id: "dynamite", name: "Dynamite", promotion: "AEW", color: "#D8A93B" },
+    { id: "nxt", name: "NXT", promotion: "WWE", color: "#C4CAD3" }
+  ];
+  var GENDERS = ["male", "female"];
+  var ORIGINS = ["WWE", "AEW", "NXT", "Other"];
+  var ALIGNMENTS = ["face", "heel", "tweener"];
+  var STATUSES = ["active", "injured"];
+  var TITLE_KINDS = ["singles", "tag"];
+  var DIVISIONS = ["men", "women", "open"];
+  var EVENT_KINDS = ["weekly", "ple"];
+  var OUTCOMES = ["win", "draw", "nc"];
+  var FINISHES = ["pinfall", "submission", "dq", "countout", "ko", "other"];
+  var MAX_NAME = 60;
+  var MAX_TEXT = 2e3;
+  var MAX_WEEK = 999;
+  var MAX_SIDES = 40;
+  function createUniverse() {
+    const st = {
+      app: APP_ID,
+      version: SCHEMA_VERSION,
+      nextId: 1,
+      // every record id ends in this counter, so ids never repeat
+      seq: 0,
+      // the ordering clock behind every stamp
+      shows: SHOW_SEED.map((s) => ({ ...s })),
+      wrestlers: [],
+      moves: [],
+      // roster assignment history, one row per change of show
+      teams: [],
+      titles: [],
+      reigns: [],
+      // title history; the open reign (end === null) is the champion
+      seasons: [],
+      events: []
+      // shows and PLEs, each holding its match results
+    };
+    openSeason(st, 1, "");
+    return st;
+  }
+  var byId = (list, id) => id == null || id === "" ? null : list.find((x) => x.id === id) || null;
+  var showById = (st, id) => byId(st.shows, id);
+  var wrestlerById = (st, id) => byId(st.wrestlers, id);
+  var teamById = (st, id) => byId(st.teams, id);
+  var titleById = (st, id) => byId(st.titles, id);
+  var eventById = (st, id) => byId(st.events, id);
+  var seasonById = (st, id) => byId(st.seasons, id);
+  function must(found, what, id) {
+    if (!found) fail(`No ${what} with id "${id}".`);
+    return found;
+  }
+  function removeWhere(list, pred) {
+    for (let i = list.length - 1; i >= 0; i--) if (pred(list[i])) list.splice(i, 1);
+  }
+  function newId(st, prefix) {
+    return prefix + st.nextId++;
+  }
+  function activeSeason(st) {
+    return st.seasons.find((s) => s.status === "active") || null;
+  }
+  function stampAt(st, seasonId, week) {
+    return { season: seasonId, week, seq: ++st.seq };
+  }
+  var seasonNo = (st, id) => (seasonById(st, id) || { number: 0 }).number;
+  function compareStamps(st, a, b) {
+    return seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week || a.seq - b.seq;
+  }
+  var earlierWeek = (st, a, b) => (seasonNo(st, a.season) - seasonNo(st, b.season) || a.week - b.week) < 0;
+  var weekLabel = (st, s) => `season ${seasonNo(st, s.season)}, week ${s.week}`;
+  function now(st) {
+    const s = activeSeason(st);
+    return stampAt(st, s.id, s.week);
+  }
+  function cleanName(v) {
+    return String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+  }
+  var nameKey = (v) => cleanName(v).toLowerCase();
+  function checkName(list, value, what, selfId) {
+    const name = cleanName(value);
+    if (!name) fail(`Give the ${what} a name.`);
+    if (name.length > MAX_NAME) fail(`That name is too long (${MAX_NAME} characters max).`);
+    const clash = list.find((x) => x.id !== selfId && nameKey(x.name) === name.toLowerCase());
+    if (clash) fail(`There is already a ${what} called ${clash.name}.`);
+    return name;
+  }
+  function checkText(value, what) {
+    const s = String(value == null ? "" : value).trim();
+    if (s.length > MAX_TEXT) fail(`${what} is too long (${MAX_TEXT} characters max).`);
+    return s;
+  }
+  function oneOf(value, allowed, what) {
+    if (!allowed.includes(value)) fail(`Unknown ${what}: ${value}.`);
+    return value;
+  }
+  function checkShowId(st, id) {
+    if (id == null || id === "") return null;
+    if (!showById(st, id)) fail(`Unknown show: ${id}.`);
+    return id;
+  }
+  function checkWeek(value) {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_WEEK) fail(`Week must be a whole number from 1 to ${MAX_WEEK}.`);
+    return n;
+  }
+  var has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  var WRESTLER_DEFAULTS = { gender: "male", origin: "WWE", alignment: null, status: "active", notes: "" };
+  function wrestlerFields(st, input, self) {
+    const base = self || WRESTLER_DEFAULTS;
+    const alignment = (v) => v == null || v === "" ? null : oneOf(v, ALIGNMENTS, "alignment");
+    return {
+      name: has(input, "name") || !self ? checkName(st.wrestlers, input.name, "wrestler", self && self.id) : self.name,
+      gender: has(input, "gender") ? oneOf(input.gender, GENDERS, "gender") : base.gender,
+      origin: has(input, "origin") ? oneOf(input.origin, ORIGINS, "origin") : base.origin,
+      alignment: has(input, "alignment") ? alignment(input.alignment) : base.alignment,
+      status: has(input, "status") ? oneOf(input.status, STATUSES, "status") : base.status,
+      notes: has(input, "notes") ? checkText(input.notes, "Notes") : base.notes
+    };
+  }
+  function addWrestler(st, input = {}) {
+    const fields = wrestlerFields(st, input, null);
+    const showId = checkShowId(st, input.showId);
+    const w = { id: newId(st, "w"), ...fields, showId: null };
+    st.wrestlers.push(w);
+    if (showId) recordMove(st, w, showId, "");
+    return w;
+  }
+  function addWrestlers(st, names, defaults = {}) {
+    const { name: _ignored, ...shared } = defaults;
+    wrestlerFields(st, shared, { ...WRESTLER_DEFAULTS, id: null, name: "" });
+    checkShowId(st, defaults.showId);
+    const added = [], skipped = [];
+    for (const raw of names || []) {
+      const name = cleanName(raw);
+      if (!name) continue;
+      try {
+        added.push(addWrestler(st, { ...defaults, name }));
+      } catch (e) {
+        if (!(e instanceof UniverseError)) throw e;
+        skipped.push({ name, reason: e.message });
+      }
+    }
+    return { added, skipped };
+  }
+  function updateWrestler(st, id, patch = {}) {
+    const w = must(wrestlerById(st, id), "wrestler", id);
+    if (has(patch, "showId")) fail("Change shows with assignWrestler, so the move is kept in the history.");
+    Object.assign(w, wrestlerFields(st, patch, w));
+    return w;
+  }
+  function recordMove(st, w, to, note) {
+    const move = { id: newId(st, "mv"), wrestler: w.id, from: w.showId, to, at: now(st), note: cleanName(note) };
+    st.moves.push(move);
+    w.showId = to;
+    return move;
+  }
+  function assignWrestler(st, id, showId, note = "") {
+    const w = must(wrestlerById(st, id), "wrestler", id);
+    const to = checkShowId(st, showId);
+    if (w.showId === to) return null;
+    if (cleanName(note).length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
+    return recordMove(st, w, to, note);
+  }
+  function wrestlerRefs(st, id) {
+    const refs = [];
+    const teams = st.teams.filter((t) => t.members.includes(id)).length;
+    if (teams) refs.push(teams === 1 ? "a tag team" : `${teams} tag teams`);
+    const reigns = st.reigns.filter((r) => r.holder.type === "wrestler" && r.holder.id === id).length;
+    if (reigns) refs.push(reigns === 1 ? "a title reign" : `${reigns} title reigns`);
+    const matches = matchesOf(st, id).length;
+    if (matches) refs.push(matches === 1 ? "a match" : `${matches} matches`);
+    return refs;
+  }
+  function deleteWrestler(st, id) {
+    const w = must(wrestlerById(st, id), "wrestler", id);
+    const refs = wrestlerRefs(st, id);
+    if (refs.length) fail(`${w.name} is part of the history (${refs.join(", ")}), so they can't be deleted. Leave them unassigned instead.`);
+    removeWhere(st.wrestlers, (x) => x.id === id);
+    removeWhere(st.moves, (m) => m.wrestler === id);
+  }
+  function rosterOf(st, showId) {
+    const key = showId || null;
+    return st.wrestlers.filter((w) => w.showId === key).sort(byName);
+  }
+  function rosterCounts(st) {
+    const out = { "": 0 };
+    st.shows.forEach((s) => {
+      out[s.id] = 0;
+    });
+    st.wrestlers.forEach((w) => {
+      out[w.showId || ""] = (out[w.showId || ""] || 0) + 1;
+    });
+    return out;
+  }
+  function movesOf(st, wrestlerId) {
+    return st.moves.filter((m) => m.wrestler === wrestlerId).sort((a, b) => a.at.seq - b.at.seq);
+  }
+  function byName(a, b) {
+    return a.name.localeCompare(b.name, void 0, { sensitivity: "base" });
+  }
+  function teamFields(st, input, self) {
+    const name = has(input, "name") || !self ? checkName(st.teams, input.name, "tag team", self && self.id) : self.name;
+    let members = self ? self.members : [];
+    if (has(input, "members") || !self) {
+      const ids = (input.members || []).filter((x) => x != null && x !== "");
+      ids.forEach((m) => must(wrestlerById(st, m), "wrestler", m));
+      if (new Set(ids).size !== ids.length) fail("A wrestler can only be on a team once.");
+      if (ids.length < 2) fail("A tag team needs at least two wrestlers.");
+      members = [...ids];
+    }
+    return { name, members };
+  }
+  function addTeam(st, input = {}) {
+    const fields = teamFields(st, input, null);
+    const team = { id: newId(st, "tm"), ...fields, active: true, formed: now(st), disbanded: null };
+    st.teams.push(team);
+    return team;
+  }
+  function updateTeam(st, id, patch = {}) {
+    const t = must(teamById(st, id), "tag team", id);
+    Object.assign(t, teamFields(st, patch, t));
+    return t;
+  }
+  function setTeamActive(st, id, active) {
+    const t = must(teamById(st, id), "tag team", id);
+    if (!!active === t.active) return t;
+    if (!active) {
+      const held = titlesHeldBy(st, { type: "team", id });
+      if (held.length) fail(`${t.name} hold the ${held[0].name}. Vacate it or crown new champions first.`);
+      t.active = false;
+      t.disbanded = now(st);
+    } else {
+      t.active = true;
+      t.disbanded = null;
+    }
+    return t;
+  }
+  function teamRefs(st, id) {
+    const refs = [];
+    const reigns = st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === id).length;
+    if (reigns) refs.push(reigns === 1 ? "a title reign" : `${reigns} title reigns`);
+    let matches = 0;
+    eachMatch(st, (m) => {
+      if (m.sides.some((s) => s.team === id)) matches++;
+    });
+    if (matches) refs.push(matches === 1 ? "a match" : `${matches} matches`);
+    return refs;
+  }
+  function deleteTeam(st, id) {
+    const t = must(teamById(st, id), "tag team", id);
+    const refs = teamRefs(st, id);
+    if (refs.length) fail(`${t.name} are part of the history (${refs.join(", ")}), so they can't be deleted. Disband them instead.`);
+    removeWhere(st.teams, (x) => x.id === id);
+  }
+  function teamsOf(st, wrestlerId) {
+    return st.teams.filter((t) => t.members.includes(wrestlerId));
+  }
+  function teamShows(st, team) {
+    return [...new Set(team.members.map((id) => (wrestlerById(st, id) || {}).showId || null))];
+  }
+  function titleFields(st, input, self) {
+    const base = self || { showId: null, kind: "singles", division: "open" };
+    return {
+      name: has(input, "name") || !self ? checkName(st.titles, input.name, "championship", self && self.id) : self.name,
+      showId: has(input, "showId") ? checkShowId(st, input.showId) : base.showId,
+      kind: has(input, "kind") ? oneOf(input.kind, TITLE_KINDS, "title type") : base.kind,
+      division: has(input, "division") ? oneOf(input.division, DIVISIONS, "division") : base.division
+    };
+  }
+  function addTitle(st, input = {}) {
+    const fields = titleFields(st, input, null);
+    const title = { id: newId(st, "ch"), ...fields, active: true };
+    st.titles.push(title);
+    return title;
+  }
+  function updateTitle(st, id, patch = {}) {
+    const t = must(titleById(st, id), "championship", id);
+    const fields = titleFields(st, patch, t);
+    if (fields.kind !== t.kind && st.reigns.some((r) => r.titleId === id)) {
+      fail(`${t.name} already has a title history, so it can't switch between singles and tag.`);
+    }
+    let active = t.active;
+    if (has(patch, "active")) {
+      active = !!patch.active;
+      if (!active && currentReign(st, id)) fail(`Vacate the ${t.name} before retiring it.`);
+    }
+    Object.assign(t, fields, { active });
+    return t;
+  }
+  function titleRefs(st, id) {
+    const refs = [];
+    const reigns = st.reigns.filter((r) => r.titleId === id).length;
+    if (reigns) refs.push(reigns === 1 ? "a reign" : `${reigns} reigns`);
+    let matches = 0;
+    eachMatch(st, (m) => {
+      if (m.titleId === id) matches++;
+    });
+    if (matches) refs.push(matches === 1 ? "a title match" : `${matches} title matches`);
+    return refs;
+  }
+  function deleteTitle(st, id) {
+    const t = must(titleById(st, id), "championship", id);
+    const refs = titleRefs(st, id);
+    if (refs.length) fail(`The ${t.name} has history (${refs.join(", ")}), so it can't be deleted. Retire it instead.`);
+    removeWhere(st.titles, (x) => x.id === id);
+  }
+  function titleReigns(st, titleId) {
+    return st.reigns.filter((r) => r.titleId === titleId).sort((a, b) => a.start.seq - b.start.seq);
+  }
+  function currentReign(st, titleId) {
+    return st.reigns.find((r) => r.titleId === titleId && r.end === null) || null;
+  }
+  var sameHolder = (a, b) => !!a && !!b && a.type === b.type && a.id === b.id;
+  function titlesHeldBy(st, holder) {
+    return st.reigns.filter((r) => r.end === null && sameHolder(r.holder, holder)).map((r) => titleById(st, r.titleId));
+  }
+  function titlesOfWrestler(st, wrestlerId) {
+    const out = titlesHeldBy(st, { type: "wrestler", id: wrestlerId }).map((title) => ({ title, team: null }));
+    teamsOf(st, wrestlerId).forEach((team) => titlesHeldBy(st, { type: "team", id: team.id }).forEach((title) => out.push({ title, team })));
+    return out;
+  }
+  function checkHolder(st, title, holder) {
+    if (!holder || !holder.id) fail("Pick who holds the title.");
+    if (title.kind === "tag") {
+      if (holder.type !== "team") fail(`The ${title.name} is a tag title, so a tag team has to hold it.`);
+      const team = must(teamById(st, holder.id), "tag team", holder.id);
+      if (!team.active) fail(`${team.name} have disbanded.`);
+    } else {
+      if (holder.type !== "wrestler") fail(`The ${title.name} is a singles title, so one wrestler has to hold it.`);
+      must(wrestlerById(st, holder.id), "wrestler", holder.id);
+    }
+    return { type: holder.type, id: holder.id };
+  }
+  function champChecks(st, titleId, holder, when) {
+    const title = must(titleById(st, titleId), "championship", titleId);
+    if (!title.active) fail(`The ${title.name} is retired.`);
+    const h = checkHolder(st, title, holder);
+    const cur = currentReign(st, titleId);
+    if (cur && sameHolder(cur.holder, h)) fail(`${holderName(st, h)} already hold${h.type === "team" ? "" : "s"} the ${title.name}.`);
+    checkInOrder(st, title, cur, when);
+    return { title, holder: h, cur };
+  }
+  function checkInOrder(st, title, cur, when) {
+    if (cur && earlierWeek(st, when, cur.start)) {
+      fail(`The current ${title.name} reign began in ${weekLabel(st, cur.start)}, later than ${weekLabel(st, when)}. Title changes have to be recorded in order - undo the later one first.`);
+    }
+  }
+  var dateOf = (st, ev) => ev ? { season: ev.at.season, week: ev.at.week } : { season: activeSeason(st).id, week: activeSeason(st).week };
+  function setChampion(st, titleId, holder, opts = {}) {
+    const ev = opts.eventId ? must(eventById(st, opts.eventId), "event", opts.eventId) : null;
+    const { holder: h, cur } = champChecks(st, titleId, holder, dateOf(st, ev));
+    if (opts.matchId && !(ev && ev.matches.some((m) => m.id === opts.matchId))) fail("That match is not on that event.");
+    const note = cleanName(opts.note);
+    if (note.length > MAX_NAME) fail(`That note is too long (${MAX_NAME} characters max).`);
+    const at = ev ? stampAt(st, ev.at.season, ev.at.week) : now(st);
+    if (cur) cur.end = { ...at };
+    const reign = {
+      id: newId(st, "rg"),
+      titleId,
+      holder: h,
+      start: at,
+      end: null,
+      vacated: false,
+      eventId: ev ? ev.id : null,
+      matchId: opts.matchId || null,
+      note
+    };
+    st.reigns.push(reign);
+    return reign;
+  }
+  function vacateTitle(st, titleId) {
+    const title = must(titleById(st, titleId), "championship", titleId);
+    const cur = currentReign(st, titleId);
+    if (!cur) fail(`The ${title.name} is already vacant.`);
+    checkInOrder(st, title, cur, dateOf(st, null));
+    cur.end = now(st);
+    cur.vacated = true;
+    return cur;
+  }
+  function undoTitleChange(st, titleId) {
+    const title = must(titleById(st, titleId), "championship", titleId);
+    const reigns = titleReigns(st, titleId);
+    const last = reigns[reigns.length - 1];
+    if (!last) fail(`The ${title.name} has no history to undo.`);
+    if (last.end) {
+      if (!title.active) fail(`The ${title.name} is retired. Reactivate it first.`);
+      last.end = null;
+      last.vacated = false;
+      return last;
+    }
+    const prev = reigns[reigns.length - 2];
+    removeWhere(st.reigns, (r) => r.id === last.id);
+    if (prev && prev.end && prev.end.seq === last.start.seq) prev.end = null;
+    return prev || null;
+  }
+  function holderName(st, holder) {
+    if (!holder) return "Vacant";
+    const x = holder.type === "team" ? teamById(st, holder.id) : wrestlerById(st, holder.id);
+    return x ? x.name : "(missing)";
+  }
+  function openSeason(st, number, name) {
+    const id = newId(st, "s");
+    const season = {
+      id,
+      number,
+      name: cleanName(name) || `Season ${number}`,
+      week: 1,
+      status: "active",
+      started: null,
+      ended: null
+    };
+    st.seasons.push(season);
+    season.started = stampAt(st, id, 1);
+    return season;
+  }
+  function setWeek(st, week) {
+    const season = activeSeason(st);
+    season.week = checkWeek(week);
+    return season;
+  }
+  function startNextSeason(st, name = "") {
+    if (cleanName(name).length > MAX_NAME) fail(`That name is too long (${MAX_NAME} characters max).`);
+    const cur = activeSeason(st);
+    cur.ended = now(st);
+    cur.status = "complete";
+    return openSeason(st, Math.max(...st.seasons.map((s) => s.number)) + 1, name);
+  }
+  function renameSeason(st, id, name) {
+    const s = must(seasonById(st, id), "season", id);
+    const n = cleanName(name);
+    if (n.length > MAX_NAME) fail(`That name is too long (${MAX_NAME} characters max).`);
+    s.name = n || `Season ${s.number}`;
+    return s;
+  }
+  function eventName(st, kind, showId, week, value) {
+    const name = cleanName(value);
+    if (name.length > MAX_NAME) fail(`That name is too long (${MAX_NAME} characters max).`);
+    if (name) return name;
+    if (kind === "ple") fail("Give the premium live event a name.");
+    return `${showById(st, showId).name} \xB7 Week ${week}`;
+  }
+  function addEvent(st, input = {}) {
+    const season = activeSeason(st);
+    const kind = oneOf(input.kind || "weekly", EVENT_KINDS, "event type");
+    const showId = checkShowId(st, input.showId);
+    if (kind === "weekly" && !showId) fail("Pick which show this episode is.");
+    const week = input.week == null || input.week === "" ? season.week : checkWeek(input.week);
+    const name = eventName(st, kind, showId, week, input.name);
+    const notes = checkText(input.notes, "Notes");
+    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week), notes, matches: [] };
+    st.events.push(ev);
+    return ev;
+  }
+  function updateEvent(st, id, patch = {}) {
+    const ev = must(eventById(st, id), "event", id);
+    const kind = has(patch, "kind") ? oneOf(patch.kind, EVENT_KINDS, "event type") : ev.kind;
+    const showId = has(patch, "showId") ? checkShowId(st, patch.showId) : ev.showId;
+    if (kind === "weekly" && !showId) fail("A weekly episode needs a show.");
+    let week = ev.at.week;
+    if (has(patch, "week")) {
+      week = checkWeek(patch.week);
+      if (week !== ev.at.week && st.reigns.some((r) => r.eventId === id)) {
+        fail("A title changed hands at this event, so its week is fixed. Undo that title change first.");
+      }
+    }
+    const name = has(patch, "name") ? eventName(st, kind, showId, week, patch.name) : ev.name;
+    const notes = has(patch, "notes") ? checkText(patch.notes, "Notes") : ev.notes;
+    Object.assign(ev, { kind, showId, name, notes });
+    ev.at.week = week;
+    return ev;
+  }
+  function deleteEvent(st, id) {
+    const ev = must(eventById(st, id), "event", id);
+    if (st.reigns.some((r) => r.eventId === id)) fail(`A title changed hands at ${ev.name}. Undo that title change before deleting the event.`);
+    removeWhere(st.events, (e) => e.id === id);
+  }
+  function eventsIn(st, seasonId) {
+    return st.events.filter((e) => e.at.season === seasonId).sort((a, b) => a.at.week - b.at.week || a.at.seq - b.at.seq);
+  }
+  function normalizeSides(st, sides) {
+    if (!Array.isArray(sides) || sides.length < 2) fail("A match needs at least two sides.");
+    if (sides.length > MAX_SIDES) fail(`A match can have at most ${MAX_SIDES} sides.`);
+    const seen = /* @__PURE__ */ new Set();
+    return sides.map((side, i) => {
+      const ids = (side && side.wrestlers || []).filter((x) => x != null && x !== "");
+      if (!ids.length) fail(`Side ${i + 1} has nobody on it.`);
+      ids.forEach((id) => {
+        const w = must(wrestlerById(st, id), "wrestler", id);
+        if (seen.has(id)) fail(`${w.name} can't be in the same match twice.`);
+        seen.add(id);
+      });
+      const team = side.team || null;
+      if (team) must(teamById(st, team), "tag team", team);
+      return { wrestlers: [...ids], team };
+    });
+  }
+  function holderFromSide(title, side) {
+    if (title.kind === "tag") {
+      if (!side.team) fail(`The ${title.name} is a tag title - pick the tag team on the winning side.`);
+      return { type: "team", id: side.team };
+    }
+    if (side.wrestlers.length !== 1) fail(`The ${title.name} is a singles title - the winning side has to be one wrestler.`);
+    return { type: "wrestler", id: side.wrestlers[0] };
+  }
+  function recordMatch(st, eventId, input = {}, opts = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    const sides = normalizeSides(st, input.sides);
+    const outcome = oneOf(input.outcome || "win", OUTCOMES, "result");
+    let winner = null;
+    if (outcome === "win") {
+      winner = input.winner === "" || input.winner == null ? NaN : Number(input.winner);
+      if (!Number.isInteger(winner) || winner < 0 || winner >= sides.length) fail("Pick who won.");
+    }
+    const finish = input.finish == null || input.finish === "" ? null : oneOf(input.finish, FINISHES, "finish");
+    const title = input.titleId ? must(titleById(st, input.titleId), "championship", input.titleId) : null;
+    if (title && !title.active) fail(`The ${title.name} is retired.`);
+    const stip = cleanName(input.stip);
+    if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
+    const notes = checkText(input.notes, "Notes");
+    let holder = null;
+    if (opts.titleChange) {
+      if (!title) fail("Pick the title that changed hands.");
+      if (outcome !== "win") fail("A title only changes hands when someone wins.");
+      holder = champChecks(st, title.id, holderFromSide(title, sides[winner]), dateOf(st, ev)).holder;
+    }
+    const match = { id: newId(st, "m"), sides, outcome, winner, finish, titleId: title ? title.id : null, stip, notes };
+    ev.matches.push(match);
+    if (holder) setChampion(st, title.id, holder, { eventId: ev.id, matchId: match.id });
+    return match;
+  }
+  function deleteMatch(st, eventId, matchId) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    must(ev.matches.find((m) => m.id === matchId), "match", matchId);
+    const reign = st.reigns.find((r) => r.matchId === matchId);
+    if (reign) fail(`The ${titleById(st, reign.titleId).name} changed hands in this match. Undo that title change first.`);
+    removeWhere(ev.matches, (m) => m.id === matchId);
+  }
+  function eachMatch(st, fn) {
+    st.events.forEach((ev) => ev.matches.forEach((m) => fn(m, ev)));
+  }
+  function matchesOf(st, wrestlerId) {
+    const out = [];
+    eachMatch(st, (match, event) => {
+      const side = match.sides.findIndex((s) => s.wrestlers.includes(wrestlerId));
+      if (side >= 0) out.push({ event, match, side });
+    });
+    return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
+  }
+  function resultFor(match, side) {
+    if (match.outcome === "draw") return "D";
+    if (match.outcome === "nc") return "NC";
+    return match.winner === side ? "W" : "L";
+  }
+  function timeline(st) {
+    const out = [];
+    const at = (stamp, type, rec) => out.push({ type, seq: stamp.seq, season: stamp.season, week: stamp.week, rec });
+    st.seasons.forEach((s) => {
+      at(s.started, "season-start", s);
+      if (s.ended) at(s.ended, "season-end", s);
+    });
+    st.moves.forEach((m) => at(m.at, "move", m));
+    st.teams.forEach((t) => {
+      at(t.formed, "team-formed", t);
+      if (t.disbanded) at(t.disbanded, "team-disbanded", t);
+    });
+    st.reigns.forEach((r) => {
+      at(r.start, "title-won", r);
+      if (r.vacated) at(r.end, "title-vacated", r);
+    });
+    st.events.forEach((e) => at(e.at, "event", e));
+    return out.sort((a, b) => compareStamps(st, b, a));
+  }
+  function summary(st) {
+    let matches = 0;
+    eachMatch(st, () => {
+      matches++;
+    });
+    return {
+      wrestlers: st.wrestlers.length,
+      teams: st.teams.length,
+      titles: st.titles.length,
+      events: st.events.length,
+      matches,
+      seasons: st.seasons.length
+    };
+  }
+  function migrate(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) fail("That is not a universe save.");
+    if (raw.app !== APP_ID) fail("That is not a WWE Universe save.");
+    const v = raw.version;
+    if (!Number.isInteger(v) || v < 1) fail("That save has no version number.");
+    if (v > SCHEMA_VERSION) fail(`That save is from a newer version of this tool (v${v}; this is v${SCHEMA_VERSION}).`);
+    const st = JSON.parse(JSON.stringify(raw));
+    for (const k of ["shows", "wrestlers", "moves", "teams", "titles", "reigns", "seasons", "events"]) {
+      if (!Array.isArray(st[k])) st[k] = [];
+    }
+    if (!Number.isInteger(st.nextId) || st.nextId < 1) st.nextId = 1;
+    if (!Number.isInteger(st.seq) || st.seq < 0) st.seq = 0;
+    SHOW_SEED.forEach((seed) => {
+      if (!showById(st, seed.id)) st.shows.push({ ...seed });
+    });
+    if (!st.seasons.length) openSeason(st, 1, "");
+    return st;
+  }
+  function validate(st) {
+    const bad = [];
+    const ids = /* @__PURE__ */ new Set();
+    const idNum = (id) => {
+      const m = /\d+$/.exec(id);
+      return m ? +m[0] : 0;
+    };
+    const own = (list, what) => list.forEach((x) => {
+      if (!x || typeof x.id !== "string" || !x.id) {
+        bad.push(`A ${what} has no id.`);
+        return;
+      }
+      if (!/^[a-z][a-z0-9-]{0,39}$/i.test(x.id)) {
+        bad.push(`A ${what} has an id that isn't a plain token.`);
+        return;
+      }
+      if (ids.has(x.id)) bad.push(`The id ${x.id} is used twice.`);
+      ids.add(x.id);
+      if (list !== st.shows && idNum(x.id) >= st.nextId) bad.push(`The id ${x.id} is ahead of the id counter.`);
+    });
+    own(st.shows, "show");
+    own(st.wrestlers, "wrestler");
+    own(st.moves, "roster move");
+    own(st.teams, "tag team");
+    own(st.titles, "championship");
+    own(st.reigns, "title reign");
+    own(st.seasons, "season");
+    own(st.events, "event");
+    st.events.forEach((e) => own(e.matches || [], "match"));
+    const stamp = (s, where) => {
+      if (!s || !seasonById(st, s.season) || !Number.isInteger(s.week) || !Number.isInteger(s.seq)) {
+        bad.push(`${where} has a broken date.`);
+      } else if (s.seq > st.seq) bad.push(`${where} is dated ahead of the clock.`);
+    };
+    const names = (list, what) => {
+      const seen = /* @__PURE__ */ new Set();
+      list.forEach((x) => {
+        if (typeof x.name !== "string") {
+          bad.push(`A ${what} (${x.id}) has a name that isn't text.`);
+          return;
+        }
+        const k = nameKey(x.name);
+        if (!k) bad.push(`A ${what} (${x.id}) has no name.`);
+        else if (seen.has(k)) bad.push(`Two ${what}s are called ${x.name}.`);
+        seen.add(k);
+      });
+    };
+    const showOk = (id) => id === null || !!showById(st, id);
+    names(st.shows, "show");
+    st.shows.forEach((s) => {
+      if (!/^#[0-9a-f]{3,8}$/i.test(String(s.color))) bad.push(`${s.name} has an unreadable colour.`);
+      if (typeof s.promotion !== "string") bad.push(`${s.name} has no promotion.`);
+    });
+    names(st.wrestlers, "wrestler");
+    st.wrestlers.forEach((w) => {
+      if (!GENDERS.includes(w.gender) || !ORIGINS.includes(w.origin) || !STATUSES.includes(w.status) || !(w.alignment === null || ALIGNMENTS.includes(w.alignment))) bad.push(`${w.name} has an unknown detail.`);
+      if (!showOk(w.showId)) bad.push(`${w.name} is on a show that doesn't exist.`);
+      const moves = movesOf(st, w.id);
+      const last = moves.length ? moves[moves.length - 1].to : null;
+      if (last !== w.showId) bad.push(`${w.name}'s roster history doesn't end on their current show.`);
+    });
+    st.moves.forEach((m) => {
+      if (!wrestlerById(st, m.wrestler)) bad.push(`Roster move ${m.id} is for a wrestler who doesn't exist.`);
+      if (!showOk(m.from) || !showOk(m.to)) bad.push(`Roster move ${m.id} names a show that doesn't exist.`);
+      stamp(m.at, `Roster move ${m.id}`);
+    });
+    names(st.teams, "tag team");
+    st.teams.forEach((t) => {
+      if (!Array.isArray(t.members) || t.members.length < 2) bad.push(`${t.name} have fewer than two members.`);
+      else {
+        if (new Set(t.members).size !== t.members.length) bad.push(`${t.name} list a member twice.`);
+        if (t.members.some((id) => !wrestlerById(st, id))) bad.push(`${t.name} include a wrestler who doesn't exist.`);
+      }
+      stamp(t.formed, t.name);
+      if (t.active === !!t.disbanded) bad.push(`${t.name} are marked both active and disbanded, or neither.`);
+      if (t.disbanded) stamp(t.disbanded, t.name);
+    });
+    names(st.titles, "championship");
+    st.titles.forEach((t) => {
+      if (!TITLE_KINDS.includes(t.kind) || !DIVISIONS.includes(t.division)) bad.push(`The ${t.name} has an unknown detail.`);
+      if (!showOk(t.showId)) bad.push(`The ${t.name} is on a show that doesn't exist.`);
+      const open = st.reigns.filter((r) => r.titleId === t.id && r.end === null);
+      if (open.length > 1) bad.push(`The ${t.name} has ${open.length} champions at once.`);
+      if (open.length && !t.active) bad.push(`The ${t.name} is retired but still has a champion.`);
+    });
+    st.reigns.forEach((r) => {
+      const t = titleById(st, r.titleId);
+      if (!t) {
+        bad.push(`Reign ${r.id} is for a title that doesn't exist.`);
+        return;
+      }
+      const holder = r.holder || {};
+      const want = t.kind === "tag" ? "team" : "wrestler";
+      if (holder.type !== want) bad.push(`Reign ${r.id} on the ${t.name} has the wrong kind of holder.`);
+      else if (!(want === "team" ? teamById(st, holder.id) : wrestlerById(st, holder.id))) {
+        bad.push(`Reign ${r.id} on the ${t.name} names a holder who doesn't exist.`);
+      }
+      stamp(r.start, `Reign ${r.id}`);
+      if (r.end) {
+        stamp(r.end, `Reign ${r.id}`);
+        if (r.end.seq < r.start.seq || earlierWeek(st, r.end, r.start)) bad.push(`Reign ${r.id} ends before it starts.`);
+      }
+      if (r.eventId) {
+        const ev = eventById(st, r.eventId);
+        if (!ev) bad.push(`Reign ${r.id} was won at an event that doesn't exist.`);
+        else if (r.matchId && !ev.matches.some((m) => m.id === r.matchId)) bad.push(`Reign ${r.id} was won in a match that doesn't exist.`);
+      }
+    });
+    const active = st.seasons.filter((s) => s.status === "active");
+    if (active.length !== 1) bad.push(`There should be exactly one active season, not ${active.length}.`);
+    const numbers = /* @__PURE__ */ new Set();
+    st.seasons.forEach((s) => {
+      if (typeof s.name !== "string") bad.push(`Season ${s.id} has a name that isn't text.`);
+      if (!Number.isInteger(s.number) || s.number < 1) bad.push(`Season ${s.id} has a broken number.`);
+      else if (numbers.has(s.number)) bad.push(`Two seasons are numbered ${s.number}.`);
+      numbers.add(s.number);
+      if (!["active", "complete"].includes(s.status)) bad.push(`${s.name} has an unknown status.`);
+      if (!Number.isInteger(s.week) || s.week < 1) bad.push(`${s.name} has a broken week.`);
+      stamp(s.started, s.name);
+      if (s.status === "complete") stamp(s.ended, s.name);
+    });
+    st.events.forEach((e) => {
+      if (typeof e.name !== "string" || !e.name.trim()) bad.push(`Event ${e.id} has no name.`);
+      if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
+      if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
+      if (!showOk(e.showId) || e.kind === "weekly" && !e.showId) bad.push(`${e.name} is on a show that doesn't exist.`);
+      stamp(e.at, e.name);
+      (e.matches || []).forEach((m) => {
+        const where = `A match at ${e.name}`;
+        const sides = Array.isArray(m.sides) ? m.sides : [];
+        if (sides.length < 2) bad.push(`${where} has fewer than two sides.`);
+        const seen = /* @__PURE__ */ new Set();
+        sides.forEach((s) => {
+          const ws = s && s.wrestlers || [];
+          if (!ws.length) bad.push(`${where} has an empty side.`);
+          ws.forEach((id) => {
+            if (!wrestlerById(st, id)) bad.push(`${where} includes a wrestler who doesn't exist.`);
+            if (seen.has(id)) bad.push(`${where} has the same wrestler twice.`);
+            seen.add(id);
+          });
+          if (s && s.team && !teamById(st, s.team)) bad.push(`${where} names a tag team that doesn't exist.`);
+        });
+        if (!OUTCOMES.includes(m.outcome)) bad.push(`${where} has an unknown result.`);
+        if (m.outcome === "win" && !(Number.isInteger(m.winner) && m.winner >= 0 && m.winner < sides.length)) bad.push(`${where} has no valid winner.`);
+        if (m.outcome !== "win" && m.winner !== null) bad.push(`${where} is a ${m.outcome} but names a winner.`);
+        if (m.finish !== null && !FINISHES.includes(m.finish)) bad.push(`${where} has an unknown finish.`);
+        if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} was for a title that doesn't exist.`);
+      });
+    });
+    return bad;
+  }
+
+  // js/universe/ui.js
+  function esc3(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  var svg2 = (d, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
+  var ICON2 = {
+    plus: svg2('<path d="M12 5v14M5 12h14"/>'),
+    search: svg2('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>'),
+    belt: svg2('<rect x="2" y="8" width="20" height="8" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M5 10v4M19 10v4"/>'),
+    team: svg2('<circle cx="9" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M14 14.5a5 5 0 0 1 7 4.5"/>'),
+    user: svg2('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+    cal: svg2('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+    save: svg2('<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>'),
+    x: svg2('<path d="M18 6 6 18M6 6l12 12"/>'),
+    left: svg2('<path d="m15 18-6-6 6-6"/>'),
+    right: svg2('<path d="m9 18 6-6-6-6"/>')
+  };
+  var LABEL = {
+    gender: { male: "Male", female: "Female" },
+    origin: { WWE: "WWE", AEW: "AEW", NXT: "NXT", Other: "Other" },
+    alignment: { face: "Face", heel: "Heel", tweener: "Tweener" },
+    status: { active: "Active", injured: "Injured" },
+    kind: { singles: "Singles", tag: "Tag team" },
+    division: { men: "Men's", women: "Women's", open: "Open" },
+    event: { weekly: "Weekly show", ple: "Premium live event" },
+    finish: { pinfall: "Pinfall", submission: "Submission", dq: "Disqualification", countout: "Count-out", ko: "Knockout", other: "Other" }
+  };
+  var NEUTRAL = "#5E6979";
+  function showColor(st, showId) {
+    const s = showById(st, showId);
+    return s && /^#[0-9a-f]{3,8}$/i.test(String(s.color)) ? s.color : NEUTRAL;
+  }
+  function showName(st, showId, none2 = "Unassigned") {
+    const s = showById(st, showId);
+    return s ? s.name : none2;
+  }
+  function stampLabel(st, stamp) {
+    const s = stamp && seasonById(st, stamp.season);
+    return stamp ? `S${s ? s.number : "?"} \xB7 W${stamp.week}` : "";
+  }
+  function initials2(name) {
+    const parts = String(name).replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  function avatar(st, w, cls = "") {
+    return `<span class="uv-av ${cls}" style="--c:${showColor(st, w.showId)}">${esc3(initials2(w.name))}</span>`;
+  }
+  function showDot(st, showId) {
+    return `<span class="uv-dot" style="--c:${showColor(st, showId)}"></span>`;
+  }
+  function tag(text, cls = "") {
+    return `<span class="uv-tag ${cls}">${esc3(text)}</span>`;
+  }
+  function options(pairs, selected) {
+    return pairs.map(([v, l]) => `<option value="${esc3(v)}"${String(v) === String(selected ?? "") ? " selected" : ""}>${esc3(l)}</option>`).join("");
+  }
+  function labelPairs(map) {
+    return Object.entries(map);
+  }
+  function showPairs(st, none2) {
+    const pairs = st.shows.map((s) => [s.id, s.name]);
+    return none2 ? [["", none2], ...pairs] : pairs;
+  }
+  function wrestlerOptions(st, selected, blank = "\u2014 Pick a wrestler \u2014") {
+    const groups = [...st.shows.map((s) => [s.id, s.name]), [null, "Unassigned"]];
+    return `<option value="">${esc3(blank)}</option>` + groups.map(([id, name]) => {
+      const list = st.wrestlers.filter((w) => w.showId === id).sort(byName);
+      if (!list.length) return "";
+      return `<optgroup label="${esc3(name)}">${options(list.map((w) => [w.id, w.name]), selected)}</optgroup>`;
+    }).join("");
+  }
+  function teamOptions(st, selected, blank = "\u2014 Pick a tag team \u2014") {
+    const list = st.teams.filter((t) => t.active || t.id === selected).sort(byName);
+    return `<option value="">${esc3(blank)}</option>` + options(list.map((t) => [t.id, t.name]), selected);
+  }
+  function titleOptions(st, selected, blank = "No title on the line") {
+    const list = st.titles.filter((t) => t.active || t.id === selected);
+    return `<option value="">${esc3(blank)}</option>` + options(list.map((t) => [t.id, t.name]), selected);
+  }
+  function field(label, control, cls = "") {
+    return `<label class="uv-f ${cls}"><span>${esc3(label)}</span>${control}</label>`;
+  }
+  function select(handler, pairsHTML, extra = "") {
+    return `<select class="uv-in" onchange="${handler}"${extra}>${pairsHTML}</select>`;
+  }
+  function empty2(icon, title, text, action = "") {
+    return `<div class="uv-empty">${icon}<div class="t">${esc3(title)}</div><div class="s">${esc3(text)}</div>${action}</div>`;
+  }
+  function section(title, count, color) {
+    return `<div class="uv-sec"${color ? ` style="--c:${color}"` : ""}>${color ? '<span class="bar"></span>' : ""}<span class="t">${esc3(title)}</span>${count == null ? "" : `<span class="n">${count}</span>`}</div>`;
+  }
+  function sideName(st, side) {
+    if (side.team) {
+      const t = teamById(st, side.team);
+      if (t) return t.name;
+    }
+    return side.wrestlers.map((id) => (wrestlerById(st, id) || { name: "(missing)" }).name).join(" & ");
+  }
+  function matchLine(st, m) {
+    const names = m.sides.map((s) => esc3(sideName(st, s)));
+    if (m.outcome === "win") {
+      const rest = names.filter((_, i) => i !== m.winner);
+      return `<b>${names[m.winner]}</b> def. ${rest.join(", ")}`;
+    }
+    return `${names.join(" vs ")} <span class="uv-muted">\u2014 ${m.outcome === "draw" ? "Draw" : "No contest"}</span>`;
+  }
+  function matchMeta(st, m, reign) {
+    const bits = [];
+    if (m.titleId) {
+      const t = titleById(st, m.titleId);
+      bits.push(`${t ? esc3(t.name) : "Title"}${reign ? ' \u2014 <b class="uv-gold">new champion</b>' : ""}`);
+    }
+    if (m.finish) bits.push(LABEL.finish[m.finish]);
+    if (m.stip) bits.push(esc3(m.stip));
+    return bits.join(" \xB7 ");
+  }
+
+  // js/universe/persist.js
+  var STORAGE_KEY = "wwe_universe_v1";
+  function loadUniverse(storage2) {
+    let raw;
+    try {
+      raw = storage2.getItem(STORAGE_KEY);
+    } catch (e) {
+      return { state: createUniverse(), status: "unavailable", problems: [], backupKey: null, readOnly: false };
+    }
+    if (raw == null) return { state: createUniverse(), status: "new", problems: [], backupKey: null, readOnly: false };
+    try {
+      const state = migrate(JSON.parse(raw));
+      return { state, status: "loaded", problems: validate(state), backupKey: null, readOnly: false };
+    } catch (e) {
+      const backupKey = setAside(storage2, raw);
+      return {
+        state: createUniverse(),
+        status: "recovered",
+        problems: [String(e && e.message || e)],
+        backupKey,
+        // nowhere safe to put the old save - don't let the next save destroy it
+        readOnly: !backupKey
+      };
+    }
+  }
+  function setAside(storage2, raw) {
+    try {
+      for (let i = 1; i < 100; i++) {
+        const key = `${STORAGE_KEY}:unreadable-${i}`;
+        const there = storage2.getItem(key);
+        if (there === raw) return key;
+        if (there == null) {
+          storage2.setItem(key, raw);
+          return key;
+        }
+      }
+    } catch (e) {
+    }
+    return null;
+  }
+  function saveUniverse(storage2, state) {
+    try {
+      storage2.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function exportUniverse(state) {
+    return JSON.stringify(state, null, 2) + "\n";
+  }
+  function importUniverse(text) {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new UniverseError("That file is not a universe save (it is not valid JSON).");
+    }
+    const state = migrate(data);
+    const problems = validate(state);
+    if (problems.length) {
+      const more = problems.length > 3 ? ` (and ${problems.length - 3} more)` : "";
+      throw new UniverseError(`That save has ${problems.length} problem${problems.length > 1 ? "s" : ""}: ${problems.slice(0, 3).join(" ")}${more}`);
+    }
+    return state;
+  }
+
+  // js/universe/app.js
+  var U = null;
+  var loaded = { status: "new", problems: [], backupKey: null, readOnly: false };
+  var saveFailed = false;
+  var painter = () => {
+  };
+  var uni = () => U;
+  var loadState = () => loaded;
+  var lastSaveFailed = () => saveFailed;
+  function storage() {
+    try {
+      return window.localStorage || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function bootUniverse(paint2) {
+    painter = paint2;
+    const s = storage();
+    loaded = s ? loadUniverse(s) : { state: createUniverse(), status: "unavailable", problems: [], backupKey: null, readOnly: false };
+    U = loaded.state;
+  }
+  function persist() {
+    if (loaded.readOnly) {
+      saveFailed = true;
+      return false;
+    }
+    const s = storage();
+    saveFailed = !(s && saveUniverse(s, U));
+    return !saveFailed;
+  }
+  function commit(fn, okMsg) {
+    const before = JSON.stringify(U);
+    let value;
+    try {
+      value = fn(U);
+    } catch (e) {
+      U = JSON.parse(before);
+      if (!(e instanceof UniverseError)) throw e;
+      refresh();
+      toast3(e.message, true);
+      return { ok: false, error: e.message };
+    }
+    const saved = persist();
+    refresh();
+    const msg = typeof okMsg === "function" ? okMsg(value) : okMsg;
+    if (!saved) toast3("Couldn't save - storage is full or blocked. Export a backup.", true);
+    else if (msg) toast3(msg);
+    return { ok: true, value };
+  }
+  function replaceUniverse(state) {
+    U = state;
+    loaded = { status: "loaded", problems: [], backupKey: loaded.backupKey, readOnly: false };
+    const saved = persist();
+    refresh();
+    return saved;
+  }
+  function refresh() {
+    painter();
+    paintSheet();
+  }
+  var sheet2 = null;
+  function openSheet2(render) {
+    sheet2 = render;
+    paintSheet();
+    if (!sheet2) return;
+    document.body.classList.add("uv-sheet-open");
+    const el = document.getElementById("uvSheet");
+    if (el) el.scrollTop = 0;
+  }
+  function paintSheet() {
+    if (!sheet2) return;
+    const out = sheet2();
+    if (!out) {
+      closeSheet();
+      return;
+    }
+    document.getElementById("uvSheetTitle").innerHTML = out.title;
+    document.getElementById("uvSheetBody").innerHTML = out.body;
+  }
+  function closeSheet() {
+    sheet2 = null;
+    document.body.classList.remove("uv-sheet-open");
+  }
+  function focusField(id) {
+    const el = document.getElementById(id);
+    if (el) el.focus({ preventScroll: true });
+  }
+  var onYes = null;
+  function confirmThen(title, text, yesLabel, fn) {
+    onYes = fn;
+    document.getElementById("uvConfirmTitle").textContent = title;
+    document.getElementById("uvConfirmText").textContent = text;
+    document.getElementById("uvConfirmYes").textContent = yesLabel;
+    document.body.classList.add("uv-confirm-open");
+  }
+  function answerConfirm(yes) {
+    const fn = onYes;
+    onYes = null;
+    document.body.classList.remove("uv-confirm-open");
+    if (yes && fn) fn();
+  }
+  var toastTimer;
+  function toast3(msg, bad = false) {
+    const el = document.getElementById("uvHint");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.toggle("bad", !!bad);
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), bad ? 3600 : 1800);
+  }
+
+  // js/universe/views.js
+  var rosterShow = "all";
+  var rosterQ = "";
+  function uvRosterShow() {
+    return rosterShow === "all" ? "" : rosterShow;
+  }
+  function uvRosterView() {
+    const st = uni();
+    const counts = rosterCounts(st);
+    const pill = (k, label, n, color) => `<div class="uv-pill${rosterShow === k ? " on" : ""}" onclick="uvRosterFilter('${k}')">${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ""}${esc3(label)}<span class="n">${n}</span></div>`;
+    return `
+    <div class="uv-bar">
+      <div class="uv-search">${ICON2.search}<input id="uvQ" type="search" placeholder="Search wrestlers"
+        autocomplete="off" spellcheck="false" value="${esc3(rosterQ)}" oninput="uvRosterSearch(this.value)"></div>
+      <div class="uv-btn pri" onclick="uvAddWrestler()">${ICON2.plus}Add</div>
+    </div>
+    <div class="uv-pills">
+      ${pill("all", "All", st.wrestlers.length)}
+      ${st.shows.map((s) => pill(s.id, s.name, counts[s.id], s.color)).join("")}
+      ${pill("", "Unassigned", counts[""])}
+    </div>
+    <div id="uvRosterList">${rosterList()}</div>`;
+  }
+  function rosterList() {
+    const st = uni();
+    if (!st.wrestlers.length) {
+      return empty2(
+        ICON2.user,
+        "No wrestlers yet",
+        "Add your universe roster one at a time, or paste a whole list at once. Wrestlers from WWE, AEW and NXT can go on any show.",
+        `<div class="uv-btn pri" onclick="uvAddWrestler()">${ICON2.plus}Add wrestlers</div>`
+      );
+    }
+    const q = rosterQ.trim().toLowerCase();
+    const groups = rosterShow === "all" ? [...st.shows.map((s) => s.id), ""] : [rosterShow];
+    const html = groups.map((id) => {
+      const list = rosterOf(st, id || null).filter((w) => !q || w.name.toLowerCase().includes(q));
+      if (q && !list.length) return "";
+      const head = section(showName(st, id || null), list.length, id ? showColor(st, id) : null);
+      const rows2 = list.length ? list.map((w) => wrestlerRow(st, w)).join("") : `<div class="uv-none">Nobody on ${esc3(showName(st, id || null))}.</div>`;
+      return head + rows2;
+    }).join("");
+    return html || `<div class="uv-none">No wrestler matches <b>${esc3(rosterQ)}</b>.</div>`;
+  }
+  function wrestlerRow(st, w) {
+    const held = titlesOfWrestler(st, w.id);
+    const tags = [tag(w.origin)];
+    if (w.gender === "female") tags.push(tag("F"));
+    if (w.alignment) tags.push(tag(LABEL.alignment[w.alignment], w.alignment));
+    if (w.status === "injured") tags.push(tag("Injured", "inj"));
+    return `<div class="uv-row" onclick="uvOpenWrestler('${w.id}')">
+    ${avatar(st, w)}
+    <div class="uv-main"><div class="nm">${esc3(w.name)}</div><div class="sub">${tags.join("")}</div></div>
+    ${held.length ? `<span class="uv-belt" title="${esc3(held.map((h) => h.title.name).join(", "))}">${ICON2.belt}${held.length > 1 ? held.length : ""}</span>` : ""}
+    <span class="uv-chev">${ICON2.right}</span>
+  </div>`;
+  }
+  function uvRosterFilter(k) {
+    rosterShow = k;
+    refresh();
+  }
+  function uvRosterSearch(v) {
+    rosterQ = v;
+    const el = document.getElementById("uvRosterList");
+    if (el) el.innerHTML = rosterList();
+  }
+  function uvTeamsView() {
+    const st = uni();
+    const bar = `<div class="uv-bar"><div class="uv-bar-t">Tag teams</div>
+    <div class="uv-btn pri" onclick="uvNewTeam()">${ICON2.plus}New team</div></div>`;
+    if (!st.teams.length) {
+      return bar + empty2(
+        ICON2.team,
+        "No tag teams yet",
+        "A team is two or more wrestlers. They can be on different shows, and a wrestler can be on more than one team."
+      );
+    }
+    const active = st.teams.filter((t) => t.active).sort(byName);
+    const gone = st.teams.filter((t) => !t.active).sort(byName);
+    return bar + section("Active", active.length) + (active.map((t) => teamRow2(st, t)).join("") || '<div class="uv-none">No active teams.</div>') + (gone.length ? section("Disbanded", gone.length) + gone.map((t) => teamRow2(st, t)).join("") : "");
+  }
+  function teamRow2(st, t) {
+    const shows = teamShows(st, t);
+    const held = titlesHeldBy(st, { type: "team", id: t.id });
+    const members = t.members.map((id) => (wrestlerById(st, id) || { name: "?" }).name).join(" & ");
+    return `<div class="uv-row${t.active ? "" : " dim"}" onclick="uvOpenTeam('${t.id}')">
+    <span class="uv-av sq">${ICON2.team}</span>
+    <div class="uv-main"><div class="nm">${esc3(t.name)}</div>
+      <div class="sub">${shows.map((id) => showDot(st, id)).join("")}${esc3(members)}${shows.length > 1 ? tag("Split", "warn") : ""}</div></div>
+    ${held.length ? `<span class="uv-belt">${ICON2.belt}</span>` : ""}
+    <span class="uv-chev">${ICON2.right}</span>
+  </div>`;
+  }
+  function uvTitlesView() {
+    const st = uni();
+    const bar = `<div class="uv-bar"><div class="uv-bar-t">Championships</div>
+    <div class="uv-btn pri" onclick="uvNewTitle()">${ICON2.plus}New title</div></div>`;
+    if (!st.titles.length) {
+      return bar + empty2(
+        ICON2.belt,
+        "No championships yet",
+        "Add the titles your universe uses. Each can belong to one show or to none, and be singles or tag team."
+      );
+    }
+    const live = st.titles.filter((t) => t.active);
+    const groups = [...st.shows.map((s) => s.id), null];
+    const html = groups.map((id) => {
+      const list = live.filter((t) => t.showId === id);
+      if (!list.length) return "";
+      return section(showName(st, id, "No brand"), list.length, id ? showColor(st, id) : null) + list.map((t) => titleRow(st, t)).join("");
+    }).join("");
+    const retired = st.titles.filter((t) => !t.active);
+    return bar + html + (retired.length ? section("Retired", retired.length) + retired.map((t) => titleRow(st, t)).join("") : "");
+  }
+  function titleRow(st, t) {
+    const r = currentReign(st, t.id);
+    return `<div class="uv-row${t.active ? "" : " dim"}" onclick="uvOpenTitle('${t.id}')">
+    <span class="uv-av sq gold" style="--c:${showColor(st, t.showId)}">${ICON2.belt}</span>
+    <div class="uv-main"><div class="nm">${esc3(t.name)}</div>
+      <div class="sub">${esc3(LABEL.division[t.division])} \xB7 ${esc3(LABEL.kind[t.kind])}</div></div>
+    <div class="uv-champ">${r ? `<div class="h">${esc3(holderName(st, r.holder))}</div><div class="s">since ${stampLabel(st, r.start)}</div>` : `<div class="h vac">Vacant</div>`}</div>
+  </div>`;
+  }
+  var viewSeason = null;
+  var historyShown = 40;
+  function uvHistoryView() {
+    const st = uni();
+    const cur = activeSeason(st);
+    const seasonId = viewSeason && seasonById(st, viewSeason) ? viewSeason : cur.id;
+    const season = seasonById(st, seasonId);
+    const card = `<div class="uv-card">
+    <div class="uv-season">
+      <div><div class="k">${esc3(cur.name)}</div><div class="v">Week ${cur.week}</div></div>
+      <div class="uv-step">
+        <div class="uv-ic" onclick="uvStepWeek(-1)" title="Back a week">${ICON2.left}</div>
+        <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON2.right}</div>
+      </div>
+    </div>
+    <div class="uv-card-f"><span onclick="uvNextSeason()">Start Season ${Math.max(...st.seasons.map((s) => s.number)) + 1}\u2026</span>
+      <span onclick="uvRenameSeason('${cur.id}')">Rename</span></div>
+  </div>`;
+    const pills = st.seasons.length > 1 ? `<div class="uv-pills">${st.seasons.map((s) => `<div class="uv-pill${s.id === seasonId ? " on" : ""}" onclick="uvViewSeason('${s.id}')">${esc3(s.name)}</div>`).join("")}</div>` : "";
+    const events = eventsIn(st, seasonId).reverse();
+    let lastWeek = null;
+    const eventRows = events.map((e) => {
+      const head = e.at.week !== lastWeek ? `<div class="uv-wk">Week ${e.at.week}</div>` : "";
+      lastWeek = e.at.week;
+      return head + eventRow(st, e);
+    }).join("");
+    const tl = timeline(st);
+    const entries = tl.slice(0, historyShown).map((e) => `<div class="uv-tl"><span class="w">${stampLabel(st, e)}</span><span class="x">${timelineText(st, e)}</span></div>`).join("");
+    return card + `
+    <div class="uv-bar"><div class="uv-bar-t">Events${st.seasons.length > 1 ? ` \xB7 ${esc3(season.name)}` : ""}</div>
+      ${season.status === "active" ? `<div class="uv-btn pri" onclick="uvNewEvent()">${ICON2.plus}New event</div>` : ""}</div>
+    ${pills}
+    ${eventRows || empty2(
+      ICON2.cal,
+      "No events yet",
+      "Add each show or premium live event after you play or watch it in WWE 2K25, then record the results the game gave you."
+    )}
+    ${section("History", null)}
+    <div class="uv-tls">${entries}</div>
+    ${tl.length > historyShown ? `<div class="uv-more" onclick="uvMoreHistory()">Show more (${tl.length - historyShown})</div>` : ""}`;
+  }
+  function eventRow(st, e) {
+    const n = e.matches.length;
+    const kind = e.kind === "ple" ? tag("PLE", "ple") : "";
+    return `<div class="uv-row" onclick="uvOpenEvent('${e.id}')">
+    <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${ICON2.cal}</span>
+    <div class="uv-main"><div class="nm">${esc3(e.name)}</div>
+      <div class="sub">${kind}${esc3(e.showId ? showName(st, e.showId) : "All shows")} \xB7 ${n} match${n === 1 ? "" : "es"}</div></div>
+    <span class="uv-chev">${ICON2.right}</span>
+  </div>`;
+  }
+  function timelineText(st, e) {
+    const r = e.rec;
+    const w = (id) => `<b>${esc3((wrestlerById(st, id) || { name: "(deleted)" }).name)}</b>`;
+    const show = (id) => esc3(showName(st, id));
+    switch (e.type) {
+      case "season-start":
+        return `<b>${esc3(r.name)}</b> began`;
+      case "season-end":
+        return `<b>${esc3(r.name)}</b> ended after ${r.ended.week} week${r.ended.week === 1 ? "" : "s"}`;
+      case "move":
+        if (!r.from) return `${w(r.wrestler)} joined ${show(r.to)}${r.note ? ` \u2014 ${esc3(r.note)}` : ""}`;
+        if (!r.to) return `${w(r.wrestler)} left ${show(r.from)}${r.note ? ` \u2014 ${esc3(r.note)}` : ""}`;
+        return `${w(r.wrestler)} moved from ${show(r.from)} to ${show(r.to)}${r.note ? ` \u2014 ${esc3(r.note)}` : ""}`;
+      case "team-formed":
+        return `<b>${esc3(r.name)}</b> formed`;
+      case "team-disbanded":
+        return `<b>${esc3(r.name)}</b> disbanded`;
+      case "title-won": {
+        const t = titleById(st, r.titleId);
+        const ev = r.eventId ? ` at ${esc3((st.events.find((x) => x.id === r.eventId) || {}).name || "")}` : "";
+        return `<b>${esc3(holderName(st, r.holder))}</b> won the ${esc3(t ? t.name : "title")}${ev}`;
+      }
+      case "title-vacated": {
+        const t = titleById(st, r.titleId);
+        return `The ${esc3(t ? t.name : "title")} was vacated`;
+      }
+      case "event":
+        return `${esc3(r.name)} \u2014 ${r.matches.length} match${r.matches.length === 1 ? "" : "es"} recorded`;
+      default:
+        return "";
+    }
+  }
+  function uvViewSeason(id) {
+    viewSeason = id;
+    refresh();
+  }
+  function uvMoreHistory() {
+    historyShown += 40;
+    refresh();
+  }
+  function uvFollowActiveSeason() {
+    viewSeason = null;
+  }
+  function uvHolderLink(st, holder) {
+    if (holder.type === "team") {
+      const t = teamById(st, holder.id);
+      return t ? `<span class="uv-link" onclick="uvOpenTeam('${t.id}')">${esc3(t.name)}</span>` : "(missing)";
+    }
+    const w = wrestlerById(st, holder.id);
+    return w ? `<span class="uv-link" onclick="uvOpenWrestler('${w.id}')">${esc3(w.name)}</span>` : "(missing)";
+  }
+
+  // js/universe/sheets.js
+  var sheets_exports = {};
+  __export(sheets_exports, {
+    uvAddMode: () => uvAddMode,
+    uvAddSave: () => uvAddSave,
+    uvAddSet: () => uvAddSet,
+    uvAddTeamMember: () => uvAddTeamMember,
+    uvAddWrestler: () => uvAddWrestler,
+    uvAssign: () => uvAssign,
+    uvCreateEvent: () => uvCreateEvent,
+    uvCreateTeam: () => uvCreateTeam,
+    uvCreateTitle: () => uvCreateTitle,
+    uvCrown: () => uvCrown,
+    uvDeleteEvent: () => uvDeleteEvent,
+    uvDeleteMatch: () => uvDeleteMatch,
+    uvDeleteTeam: () => uvDeleteTeam,
+    uvDeleteTitle: () => uvDeleteTitle,
+    uvDeleteWrestler: () => uvDeleteWrestler,
+    uvDropTeamMember: () => uvDropTeamMember,
+    uvEventDraft: () => uvEventDraft,
+    uvEventDraftName: () => uvEventDraftName,
+    uvEventKind: () => uvEventKind,
+    uvMAddSide: () => uvMAddSide,
+    uvMAddWrestler: () => uvMAddWrestler,
+    uvMDropSide: () => uvMDropSide,
+    uvMDropWrestler: () => uvMDropWrestler,
+    uvMSet: () => uvMSet,
+    uvMTeam: () => uvMTeam,
+    uvMText: () => uvMText,
+    uvMWrestler: () => uvMWrestler,
+    uvNewEvent: () => uvNewEvent,
+    uvNewTeam: () => uvNewTeam,
+    uvNewTitle: () => uvNewTitle,
+    uvNextSeason: () => uvNextSeason,
+    uvOpenEvent: () => uvOpenEvent,
+    uvOpenTeam: () => uvOpenTeam,
+    uvOpenTitle: () => uvOpenTitle,
+    uvOpenWrestler: () => uvOpenWrestler,
+    uvRecordResult: () => uvRecordResult,
+    uvRenameSeason: () => uvRenameSeason,
+    uvRetireTitle: () => uvRetireTitle,
+    uvSaveResult: () => uvSaveResult,
+    uvSaveSeasonName: () => uvSaveSeasonName,
+    uvSetEvent: () => uvSetEvent,
+    uvSetTeamMember: () => uvSetTeamMember,
+    uvSetTeamName: () => uvSetTeamName,
+    uvSetTitle: () => uvSetTitle,
+    uvSetWrestler: () => uvSetWrestler,
+    uvStepWeek: () => uvStepWeek,
+    uvTeamActive: () => uvTeamActive,
+    uvTeamDraftAdd: () => uvTeamDraftAdd,
+    uvTeamDraftDrop: () => uvTeamDraftDrop,
+    uvTeamDraftMember: () => uvTeamDraftMember,
+    uvTeamDraftName: () => uvTeamDraftName,
+    uvTitleDraft: () => uvTitleDraft,
+    uvUndoTitle: () => uvUndoTitle,
+    uvVacate: () => uvVacate
+  });
+  var fine = (text) => `<div class="fine">${esc3(text)}</div>`;
+  var none = (text) => `<div class="uv-none">${esc3(text)}</div>`;
+  var eventName2 = (st, id) => (eventById(st, id) || { name: "(deleted event)" }).name;
+  var alignPairs = () => [["", "Not set"], ...labelPairs(LABEL.alignment)];
+  function uvOpenWrestler(id) {
+    openSheet2(() => {
+      const st = uni();
+      const w = wrestlerById(st, id);
+      if (!w) return null;
+      const set = (k) => `uvSetWrestler('${id}','${k}',this.value)`;
+      const held = titlesOfWrestler(st, id);
+      const teams = teamsOf(st, id);
+      const matches = matchesOf(st, id);
+      const moves = movesOf(st, id).reverse();
+      const refs = wrestlerRefs(st, id);
+      const facts = [
+        w.origin,
+        LABEL.gender[w.gender],
+        w.alignment && LABEL.alignment[w.alignment],
+        w.status === "injured" && "Injured"
+      ].filter(Boolean).join(" \xB7 ");
+      return {
+        title: esc3(w.name),
+        body: `
+        <div class="uv-hero">${avatar(st, w, "lg")}<div>
+          <div class="k" style="color:${showColor(st, w.showId)}">${esc3(showName(st, w.showId))}</div>
+          <div class="s">${esc3(facts)}</div></div></div>
+        <div class="uv-grid">
+          ${field("Show", select(`uvAssign('${id}',this.value)`, options(showPairs(st, "Unassigned"), w.showId || "")))}
+          ${field("Status", select(set("status"), options(labelPairs(LABEL.status), w.status)))}
+          ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(w.name)}" onchange="${set("name")}">`, "wide")}
+          ${field("Gender", select(set("gender"), options(labelPairs(LABEL.gender), w.gender)))}
+          ${field("Comes from", select(set("origin"), options(labelPairs(LABEL.origin), w.origin)))}
+          ${field("Alignment", select(set("alignment"), options(alignPairs(), w.alignment || "")))}
+          ${field("Notes", `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set("notes")}">${esc3(w.notes)}</textarea>`, "wide")}
+        </div>
+
+        <h4>Championships</h4>
+        ${held.length ? held.map((h) => `<div class="uv-li" onclick="uvOpenTitle('${h.title.id}')">${ICON2.belt}
+          <span>${esc3(h.title.name)}${h.team ? ` <span class="uv-muted">with ${esc3(h.team.name)}</span>` : ""}</span></div>`).join("") : none("None right now.")}
+
+        <h4>Tag teams</h4>
+        ${teams.length ? teams.map((t) => `<div class="uv-li" onclick="uvOpenTeam('${t.id}')">${ICON2.team}
+          <span>${esc3(t.name)}${t.active ? "" : ' <span class="uv-muted">(disbanded)</span>'}</span></div>`).join("") : none("Not on a team.")}
+
+        <h4>Matches${matches.length ? ` \xB7 ${matches.length}` : ""}</h4>
+        ${matches.length ? matches.slice(0, 30).map((x) => {
+          const r = resultFor(x.match, x.side);
+          return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res ${r}">${r}</span>
+            <span>${matchLine(st, x.match)}<span class="uv-muted d">${esc3(x.event.name)} \xB7 ${stampLabel(st, x.event.at)}</span></span></div>`;
+        }).join("") : none("No results recorded yet.")}
+
+        <h4>Roster history</h4>
+        ${moves.length ? moves.map((m) => `<div class="uv-li plain"><span class="w">${stampLabel(st, m.at)}</span>
+          <span>${m.from ? `${esc3(showName(st, m.from))} \u2192 ` : "Joined "}${esc3(showName(st, m.to))}${m.note ? ` <span class="uv-muted">\u2014 ${esc3(m.note)}</span>` : ""}</span></div>`).join("") : none("Never assigned to a show.")}
+
+        ${refs.length ? fine(`${w.name} is part of the history (${refs.join(", ")}), so they can't be deleted. Leave them unassigned instead.`) : `<div class="uv-btn bad full" onclick="uvDeleteWrestler('${id}')">Delete wrestler</div>`}`
+      };
+    });
+  }
+  function uvSetWrestler(id, key, value) {
+    commit((st) => updateWrestler(st, id, { [key]: value }));
+  }
+  function uvAssign(id, showId) {
+    commit(
+      (st) => assignWrestler(st, id, showId),
+      (mv) => mv && `${wrestlerById(uni(), id).name} \u2192 ${showName(uni(), mv.to)}`
+    );
+  }
+  function uvDeleteWrestler(id) {
+    const w = wrestlerById(uni(), id);
+    confirmThen(
+      `Delete ${w.name}?`,
+      "They have no history yet, so nothing else changes. Use this for someone added by mistake.",
+      "Delete",
+      () => {
+        if (commit((st) => deleteWrestler(st, id), `${w.name} deleted`).ok) closeSheet();
+      }
+    );
+  }
+  var add = null;
+  function uvAddWrestler() {
+    add = { mode: "one", name: "", list: "", showId: uvRosterShow(), origin: "WWE", gender: "male", alignment: "", result: "" };
+    openSheet2(addSheet);
+    focusField("uvAddName");
+  }
+  function addSheet() {
+    const st = uni();
+    const d = add;
+    const seg = (k, lb) => `<div class="${d.mode === k ? "on" : ""}" onclick="uvAddMode('${k}')">${lb}</div>`;
+    const main = d.mode === "one" ? field("Name", `<input id="uvAddName" class="uv-in" maxlength="60" value="${esc3(d.name)}" placeholder="e.g. Cody Rhodes"
+        oninput="uvAddSet('name',this.value)" onkeydown="if(event.key==='Enter')uvAddSave()">`, "wide") : field("Names \u2014 one per line", `<textarea id="uvAddList" class="uv-in" rows="7" oninput="uvAddSet('list',this.value)"
+        placeholder="Cody Rhodes&#10;Kenny Omega&#10;Iyo Sky">${esc3(d.list)}</textarea>`, "wide");
+    return {
+      title: "Add wrestlers",
+      body: `
+      <div class="uv-seg">${seg("one", "One at a time")}${seg("list", "Paste a list")}</div>
+      ${main}
+      <p class="uv-p">${d.mode === "one" ? "These stay set between adds, so a whole show goes in quickly." : "Everyone in the list gets these details. Change any of them afterwards."}</p>
+      <div class="uv-grid">
+        ${field("Show", select(`uvAddSet('showId',this.value)`, options(showPairs(st, "Unassigned"), d.showId)))}
+        ${field("Comes from", select(`uvAddSet('origin',this.value)`, options(labelPairs(LABEL.origin), d.origin)))}
+        ${field("Gender", select(`uvAddSet('gender',this.value)`, options(labelPairs(LABEL.gender), d.gender)))}
+        ${field("Alignment", select(`uvAddSet('alignment',this.value)`, options(alignPairs(), d.alignment)))}
+      </div>
+      ${d.result ? `<div class="uv-note warn">${esc3(d.result)}</div>` : ""}
+      <div class="uv-btn pri full" onclick="uvAddSave()">${d.mode === "one" ? "Add wrestler" : "Add everyone"}</div>`
+    };
+  }
+  function uvAddSet(k, v) {
+    if (add) add[k] = v;
+  }
+  function uvAddMode(mode) {
+    add.mode = mode;
+    add.result = "";
+    paintSheet();
+    focusField(mode === "one" ? "uvAddName" : "uvAddList");
+  }
+  function uvAddSave() {
+    const d = add;
+    if (!d) return;
+    const shared = { showId: d.showId, origin: d.origin, gender: d.gender, alignment: d.alignment };
+    if (d.mode === "one") {
+      const r2 = commit(
+        (st) => addWrestler(st, { ...shared, name: d.name }),
+        (w) => `Added ${w.name}${w.showId ? ` to ${showName(uni(), w.showId)}` : ""}`
+      );
+      if (r2.ok) {
+        d.name = "";
+        paintSheet();
+        focusField("uvAddName");
+      }
+      return;
+    }
+    const names = d.list.split("\n").filter((n) => n.trim());
+    if (!names.length) {
+      toast3("Paste at least one name.", true);
+      return;
+    }
+    const r = commit(
+      (st) => addWrestlers(st, names, shared),
+      (res) => `Added ${res.added.length} wrestler${res.added.length === 1 ? "" : "s"}`
+    );
+    if (!r.ok) return;
+    const skipped = r.value.skipped;
+    d.list = skipped.map((s) => s.name).join("\n");
+    d.result = skipped.length ? `Not added (left in the box): ${skipped.map((s) => s.reason).join(" ")}` : "";
+    paintSheet();
+  }
+  var teamDraft = null;
+  function uvNewTeam() {
+    teamDraft = { name: "", members: ["", ""] };
+    openSheet2(newTeamSheet);
+    focusField("uvTeamName");
+  }
+  function newTeamSheet() {
+    const st = uni();
+    const d = teamDraft;
+    if (st.wrestlers.length < 2) {
+      return { title: "New tag team", body: empty2(ICON2.team, "Add wrestlers first", "A tag team needs at least two wrestlers on the roster.") };
+    }
+    return {
+      title: "New tag team",
+      body: `
+      ${field("Team name", `<input id="uvTeamName" class="uv-in" maxlength="60" value="${esc3(d.name)}" placeholder="e.g. The New Day"
+        oninput="uvTeamDraftName(this.value)">`, "wide")}
+      <h4>Members</h4>
+      ${d.members.map((m, i) => `<div class="uv-pick">${select(`uvTeamDraftMember(${i},this.value)`, wrestlerOptions(st, m))}
+        ${d.members.length > 2 ? `<div class="uv-ic sm" onclick="uvTeamDraftDrop(${i})">${ICON2.x}</div>` : ""}</div>`).join("")}
+      <div class="uv-add" onclick="uvTeamDraftAdd()">${ICON2.plus}Add a member</div>
+      <div class="uv-btn pri full" onclick="uvCreateTeam()">Create team</div>`
+    };
+  }
+  function uvTeamDraftName(v) {
+    teamDraft.name = v;
+  }
+  function uvTeamDraftMember(i, v) {
+    teamDraft.members[i] = v;
+  }
+  function uvTeamDraftAdd() {
+    teamDraft.members.push("");
+    paintSheet();
+  }
+  function uvTeamDraftDrop(i) {
+    teamDraft.members.splice(i, 1);
+    paintSheet();
+  }
+  function uvCreateTeam() {
+    const d = teamDraft;
+    const r = commit((st) => addTeam(st, { name: d.name, members: d.members }), (t) => `${t.name} formed`);
+    if (r.ok) uvOpenTeam(r.value.id);
+  }
+  function uvOpenTeam(id) {
+    openSheet2(() => {
+      const st = uni();
+      const t = teamById(st, id);
+      if (!t) return null;
+      const shows = teamShows(st, t);
+      const reigns = st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === id).sort((a, b) => b.start.seq - a.start.seq);
+      const refs = teamRefs(st, id);
+      const memberPick = (m, i) => `<div class="uv-pick">${select(`uvSetTeamMember('${id}',${i},this.value)`, wrestlerOptions(st, m))}
+      ${t.members.length > 2 ? `<div class="uv-ic sm" onclick="uvDropTeamMember('${id}',${i})">${ICON2.x}</div>` : ""}</div>`;
+      return {
+        title: esc3(t.name),
+        body: `
+        <div class="uv-hero"><span class="uv-av lg sq">${ICON2.team}</span><div>
+          <div class="k">${t.active ? "Active" : "Disbanded"}</div>
+          <div class="s">Formed ${stampLabel(st, t.formed)}${t.disbanded ? ` \xB7 disbanded ${stampLabel(st, t.disbanded)}` : ""}</div></div></div>
+        ${shows.length > 1 ? `<div class="uv-note warn">The members are on different shows: ${shows.map((s) => esc3(showName(st, s))).join(", ")}.</div>` : ""}
+        ${field("Team name", `<input class="uv-in" maxlength="60" value="${esc3(t.name)}" onchange="uvSetTeamName('${id}',this.value)">`, "wide")}
+
+        <h4>Members</h4>
+        ${t.members.map(memberPick).join("")}
+        <div class="uv-pick">${select(`uvAddTeamMember('${id}',this.value)`, wrestlerOptions(st, "", "+ Add a member"))}</div>
+
+        <h4>Title reigns</h4>
+        ${reigns.length ? reigns.map((r) => reignLi(st, r, "title")).join("") : none("No title reigns yet.")}
+
+        <div class="uv-btn full" onclick="uvTeamActive('${id}',${!t.active})">${t.active ? "Disband team" : "Reunite team"}</div>
+        ${refs.length ? fine(`${t.name} are part of the history (${refs.join(", ")}), so they can't be deleted. Disband them instead.`) : `<div class="uv-btn bad full" onclick="uvDeleteTeam('${id}')">Delete team</div>`}`
+      };
+    });
+  }
+  var withMembers = (id, fn) => (st) => {
+    const members = [...teamById(st, id).members];
+    fn(members);
+    return updateTeam(st, id, { members });
+  };
+  function uvSetTeamName(id, v) {
+    commit((st) => updateTeam(st, id, { name: v }));
+  }
+  function uvSetTeamMember(id, i, v) {
+    commit(withMembers(id, (m) => {
+      m[i] = v;
+    }));
+  }
+  function uvDropTeamMember(id, i) {
+    commit(withMembers(id, (m) => {
+      m.splice(i, 1);
+    }));
+  }
+  function uvAddTeamMember(id, v) {
+    if (v) commit(withMembers(id, (m) => {
+      m.push(v);
+    }));
+  }
+  function uvTeamActive(id, active) {
+    commit((st) => setTeamActive(st, id, active), (t) => `${t.name} ${active ? "reunited" : "disbanded"}`);
+  }
+  function uvDeleteTeam(id) {
+    const t = teamById(uni(), id);
+    confirmThen(
+      `Delete ${t.name}?`,
+      "They have no history yet. Use this for a team added by mistake.",
+      "Delete",
+      () => {
+        if (commit((st) => deleteTeam(st, id), `${t.name} deleted`).ok) closeSheet();
+      }
+    );
+  }
+  var titleDraft = null;
+  function uvNewTitle() {
+    titleDraft = { name: "", showId: "", kind: "singles", division: "open" };
+    openSheet2(newTitleSheet);
+    focusField("uvTitleName");
+  }
+  function newTitleSheet() {
+    const st = uni();
+    const d = titleDraft;
+    const set = (k) => `uvTitleDraft('${k}',this.value)`;
+    return {
+      title: "New championship",
+      body: `
+      ${field("Name", `<input id="uvTitleName" class="uv-in" maxlength="60" value="${esc3(d.name)}"
+        placeholder="e.g. Intercontinental Championship" oninput="${set("name")}">`, "wide")}
+      <div class="uv-grid" style="margin-top:10px">
+        ${field("Show", select(set("showId"), options(showPairs(st, "No brand"), d.showId)), "wide")}
+        ${field("Type", select(set("kind"), options(labelPairs(LABEL.kind), d.kind)))}
+        ${field("Division", select(set("division"), options(labelPairs(LABEL.division), d.division)))}
+      </div>
+      <div class="uv-btn pri full" onclick="uvCreateTitle()">Create championship</div>`
+    };
+  }
+  function uvTitleDraft(k, v) {
+    titleDraft[k] = v;
+  }
+  function uvCreateTitle() {
+    const r = commit((st) => addTitle(st, titleDraft), (t) => `${t.name} created`);
+    if (r.ok) uvOpenTitle(r.value.id);
+  }
+  function reignLi(st, r, show) {
+    const who = show === "title" ? `<span class="uv-link" onclick="uvOpenTitle('${r.titleId}')">${esc3((titleById(st, r.titleId) || {}).name || "?")}</span>` : uvHolderLink(st, r.holder);
+    const span = `${stampLabel(st, r.start)} \u2192 ${r.end ? stampLabel(st, r.end) + (r.vacated ? " (vacated)" : "") : "now"}`;
+    const where = r.eventId ? ` \xB7 ${esc3(eventName2(st, r.eventId))}` : "";
+    return `<div class="uv-li plain">${ICON2.belt}<span>${who}<span class="uv-muted d">${span}${where}</span></span></div>`;
+  }
+  function uvOpenTitle(id) {
+    openSheet2(() => {
+      const st = uni();
+      const t = titleById(st, id);
+      if (!t) return null;
+      const cur = currentReign(st, id);
+      const reigns = titleReigns(st, id).reverse();
+      const refs = titleRefs(st, id);
+      const set = (k) => `uvSetTitle('${id}','${k}',this.value)`;
+      const pool = t.kind === "tag" ? teamOptions(st, "", "\u2014 Pick the new champions \u2014") : wrestlerOptions(st, "", "\u2014 Pick the new champion \u2014");
+      return {
+        title: esc3(t.name),
+        body: `
+        <div class="uv-champ-card" style="--c:${showColor(st, t.showId)}">
+          <div class="k">${!t.active ? "Retired" : cur ? t.kind === "tag" ? "Champions" : "Champion" : "Vacant"}</div>
+          <div class="h">${cur ? uvHolderLink(st, cur.holder) : "\u2014"}</div>
+          ${cur ? `<div class="s">Since ${stampLabel(st, cur.start)}${cur.eventId ? ` \xB7 ${esc3(eventName2(st, cur.eventId))}` : ""}</div>` : ""}
+          <div class="s">${esc3(showName(st, t.showId, "No brand"))} \xB7 ${esc3(LABEL.division[t.division])} \xB7 ${esc3(LABEL.kind[t.kind])}</div>
+        </div>
+
+        ${t.active ? `
+          <h4>Crown a new champion</h4>
+          <div class="uv-pick"><select id="uvCrownPick" class="uv-in">${pool}</select>
+            <div class="uv-btn pri" onclick="uvCrown('${id}')">Crown</div></div>
+          <p class="uv-p">When a title changes hands on a show, record the result on that event instead, so the reign is dated to it.</p>` : ""}
+        ${cur || reigns.length ? `<div class="uv-row2">
+          ${cur ? `<div class="uv-btn" onclick="uvVacate('${id}')">Vacate</div>` : ""}
+          ${reigns.length ? `<div class="uv-btn" onclick="uvUndoTitle('${id}')">Undo last change</div>` : ""}</div>` : ""}
+
+        <h4>Title history${reigns.length ? ` \xB7 ${reigns.length} reign${reigns.length === 1 ? "" : "s"}` : ""}</h4>
+        ${reigns.length ? reigns.map((r) => reignLi(st, r, "holder")).join("") : none("Never held.")}
+
+        <h4>Details</h4>
+        ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(t.name)}" onchange="${set("name")}">`, "wide")}
+        <div class="uv-grid" style="margin-top:10px">
+          ${field("Show", select(set("showId"), options(showPairs(st, "No brand"), t.showId || "")), "wide")}
+          ${field("Division", select(set("division"), options(labelPairs(LABEL.division), t.division)))}
+          ${field("Type", select(set("kind"), options(labelPairs(LABEL.kind), t.kind), reigns.length ? " disabled" : ""))}
+        </div>
+        <div class="uv-btn full" onclick="uvRetireTitle('${id}',${!t.active})">${t.active ? "Retire title" : "Bring title back"}</div>
+        ${refs.length ? fine(`The ${t.name} has history (${refs.join(", ")}), so it can't be deleted. Retire it instead.`) : `<div class="uv-btn bad full" onclick="uvDeleteTitle('${id}')">Delete title</div>`}`
+      };
+    });
+  }
+  function uvSetTitle(id, key, value) {
+    commit((st) => updateTitle(st, id, { [key]: value }));
+  }
+  function uvRetireTitle(id, active) {
+    commit((st) => updateTitle(st, id, { active }), (t) => `${t.name} ${active ? "is back" : "retired"}`);
+  }
+  function uvCrown(id) {
+    const pick = document.getElementById("uvCrownPick");
+    const t = titleById(uni(), id);
+    if (!pick || !pick.value) {
+      toast3(`Pick the new champion${t.kind === "tag" ? "s" : ""} first.`, true);
+      return;
+    }
+    const holder = { type: t.kind === "tag" ? "team" : "wrestler", id: pick.value };
+    commit((st) => setChampion(st, id, holder), (r) => `${holderName(uni(), r.holder)} \u2014 new ${t.name} champion${t.kind === "tag" ? "s" : ""}`);
+  }
+  function uvVacate(id) {
+    const t = titleById(uni(), id);
+    confirmThen(
+      `Vacate the ${t.name}?`,
+      "The current reign ends this week. Undo brings it back if this was a mistake.",
+      "Vacate",
+      () => commit((st) => vacateTitle(st, id), `The ${t.name} is vacant`)
+    );
+  }
+  function uvUndoTitle(id) {
+    const st = uni();
+    const t = titleById(st, id);
+    const reigns = titleReigns(st, id);
+    const last = reigns[reigns.length - 1];
+    const what = last.end ? `the ${t.name} being vacated` : `${holderName(st, last.holder)} winning the ${t.name}`;
+    confirmThen(
+      "Undo the last title change?",
+      `This takes back ${what}. The result itself, if there was one, stays recorded.`,
+      "Undo",
+      () => commit((s) => undoTitleChange(s, id), "Title change undone")
+    );
+  }
+  function uvDeleteTitle(id) {
+    const t = titleById(uni(), id);
+    confirmThen(
+      `Delete the ${t.name}?`,
+      "It has no history yet. Use this for a title added by mistake.",
+      "Delete",
+      () => {
+        if (commit((st) => deleteTitle(st, id), `${t.name} deleted`).ok) closeSheet();
+      }
+    );
+  }
+  function uvStepWeek(d) {
+    const week = activeSeason(uni()).week + d;
+    if (week < 1) return;
+    commit((st) => setWeek(st, week), `Week ${week}`);
+  }
+  function uvNextSeason() {
+    const st = uni();
+    const cur = activeSeason(st);
+    const next = Math.max(...st.seasons.map((s) => s.number)) + 1;
+    confirmThen(
+      `Start Season ${next}?`,
+      `${cur.name} ends at week ${cur.week}. Rosters, tag teams and champions all carry over; its events stay in the history.`,
+      `Start Season ${next}`,
+      () => {
+        uvFollowActiveSeason();
+        commit((s) => startNextSeason(s), (s) => `${s.name} has begun`);
+      }
+    );
+  }
+  function uvRenameSeason(id) {
+    openSheet2(() => {
+      const s = seasonById(uni(), id);
+      if (!s) return null;
+      return {
+        title: "Rename season",
+        body: `${field("Name", `<input id="uvSeasonName" class="uv-in" maxlength="60" value="${esc3(s.name)}"
+          placeholder="Season ${s.number}" onkeydown="if(event.key==='Enter')uvSaveSeasonName('${id}')">`, "wide")}
+        <p class="uv-p">Leave it empty to go back to \u201CSeason ${s.number}\u201D.</p>
+        <div class="uv-btn pri full" onclick="uvSaveSeasonName('${id}')">Save</div>`
+      };
+    });
+    focusField("uvSeasonName");
+  }
+  function uvSaveSeasonName(id) {
+    const v = document.getElementById("uvSeasonName").value;
+    if (commit((st) => renameSeason(st, id, v), "Season renamed").ok) closeSheet();
+  }
+  var eventDraft = null;
+  function uvNewEvent() {
+    const st = uni();
+    eventDraft = { kind: "weekly", showId: st.shows[0].id, week: String(activeSeason(st).week), name: "" };
+    openSheet2(newEventSheet);
+  }
+  function newEventSheet() {
+    const st = uni();
+    const d = eventDraft;
+    const seg = (k, lb) => `<div class="${d.kind === k ? "on" : ""}" onclick="uvEventKind('${k}')">${lb}</div>`;
+    const auto = d.kind === "weekly" && d.showId ? `${showName(st, d.showId)} \xB7 Week ${d.week || "?"}` : "e.g. WrestleMania";
+    return {
+      title: "New event",
+      body: `
+      <div class="uv-seg">${seg("weekly", "Weekly show")}${seg("ple", "Premium live event")}</div>
+      <div class="uv-grid">
+        ${field("Show", select(`uvEventDraft('showId',this.value)`, options(showPairs(st, d.kind === "ple" ? "All shows" : ""), d.showId)))}
+        ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${esc3(d.week)}"
+          onchange="uvEventDraft('week',this.value)">`)}
+        ${field(d.kind === "ple" ? "Name" : "Name (optional)", `<input id="uvEventName" class="uv-in" maxlength="60" value="${esc3(d.name)}"
+          placeholder="${esc3(auto)}" oninput="uvEventDraftName(this.value)">`, "wide")}
+      </div>
+      <div class="uv-btn pri full" onclick="uvCreateEvent()">Create event</div>`
+    };
+  }
+  function uvEventKind(k) {
+    eventDraft.kind = k;
+    if (k === "weekly" && !eventDraft.showId) eventDraft.showId = uni().shows[0].id;
+    paintSheet();
+  }
+  function uvEventDraft(k, v) {
+    eventDraft[k] = v;
+    paintSheet();
+  }
+  function uvEventDraftName(v) {
+    eventDraft.name = v;
+  }
+  function uvCreateEvent() {
+    const d = eventDraft;
+    const r = commit((st) => addEvent(st, { kind: d.kind, showId: d.showId, week: d.week, name: d.name }), (e) => `${e.name} added`);
+    if (r.ok) uvOpenEvent(r.value.id);
+  }
+  function uvOpenEvent(id) {
+    openSheet2(() => {
+      const st = uni();
+      const e = eventById(st, id);
+      if (!e) return null;
+      const season = seasonById(st, e.at.season);
+      const weekFixed = st.reigns.some((r) => r.eventId === id);
+      const set = (k) => `uvSetEvent('${id}','${k}',this.value)`;
+      const results = e.matches.map((m, i) => {
+        const reign = st.reigns.find((r) => r.matchId === m.id);
+        const meta = matchMeta(st, m, reign);
+        return `<div class="uv-match"><span class="i">${i + 1}</span><div class="b"><div>${matchLine(st, m)}</div>
+        ${meta ? `<div class="uv-muted d">${meta}</div>` : ""}${m.notes ? `<div class="uv-muted d">${esc3(m.notes)}</div>` : ""}</div>
+        <div class="uv-ic sm" onclick="uvDeleteMatch('${id}','${m.id}')" title="Delete result">${ICON2.x}</div></div>`;
+      }).join("");
+      return {
+        title: esc3(e.name),
+        body: `
+        <div class="uv-hero"><span class="uv-av lg sq" style="--c:${showColor(st, e.showId)}">${ICON2.cal}</span><div>
+          <div class="k">${esc3(LABEL.event[e.kind])}</div>
+          <div class="s">${esc3(e.showId ? showName(st, e.showId) : "All shows")} \xB7 ${esc3(season.name)} \xB7 Week ${e.at.week}</div></div></div>
+
+        <h4>Results${e.matches.length ? ` \xB7 ${e.matches.length}` : ""}</h4>
+        ${results || none("No results recorded yet.")}
+        <div class="uv-btn pri full" onclick="uvRecordResult('${id}')">${ICON2.plus}Record a result</div>
+
+        <h4>Details</h4>
+        ${field("Name", `<input class="uv-in" maxlength="60" value="${esc3(e.name)}" onchange="${set("name")}">`, "wide")}
+        <div class="uv-grid" style="margin-top:10px">
+          ${field("Show", select(set("showId"), options(showPairs(st, e.kind === "ple" ? "All shows" : ""), e.showId || "")))}
+          ${field("Week", `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}"
+            onchange="${set("week")}"${weekFixed ? ' disabled title="A title changed hands here"' : ""}>`)}
+          ${field("Notes", `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set("notes")}">${esc3(e.notes)}</textarea>`, "wide")}
+        </div>
+        <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete event</div>`
+      };
+    });
+  }
+  function uvSetEvent(id, key, value) {
+    commit((st) => updateEvent(st, id, { [key]: value }));
+  }
+  function uvDeleteEvent(id) {
+    const e = eventById(uni(), id);
+    const n = e.matches.length;
+    confirmThen(
+      `Delete ${e.name}?`,
+      n ? `Its ${n} recorded result${n === 1 ? "" : "s"} will be deleted with it.` : "It has no results yet.",
+      "Delete",
+      () => {
+        if (commit((st) => deleteEvent(st, id), `${e.name} deleted`).ok) closeSheet();
+      }
+    );
+  }
+  function uvDeleteMatch(eventId, matchId) {
+    confirmThen(
+      "Delete this result?",
+      "The match is removed from the event and from everyone\u2019s history.",
+      "Delete",
+      () => commit((st) => deleteMatch(st, eventId, matchId), "Result deleted")
+    );
+  }
+  var md = null;
+  var blankSide = () => ({ team: "", wrestlers: [""] });
+  function uvRecordResult(eventId) {
+    md = { eventId, sides: [blankSide(), blankSide()], result: "0", finish: "", titleId: "", titleChange: false, stip: "", notes: "" };
+    openSheet2(matchSheet);
+  }
+  function matchSheet() {
+    const st = uni();
+    const e = eventById(st, md.eventId);
+    if (!e) return null;
+    if (st.wrestlers.length < 2) {
+      return { title: "Record a result", body: empty2(ICON2.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
+    }
+    const label = (s, i) => {
+      const team = s.team && teamById(st, s.team);
+      const ids = s.wrestlers.filter(Boolean);
+      return team ? team.name : ids.length ? ids.map((id) => wrestlerById(st, id).name).join(" & ") : `Side ${i + 1}`;
+    };
+    const resultPairs = [...md.sides.map((s, i) => [String(i), `${label(s, i)} won`]), ["draw", "Draw"], ["nc", "No contest"]];
+    const title = md.titleId ? titleById(st, md.titleId) : null;
+    const hasTeams = st.teams.some((t) => t.active);
+    const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
+      <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ""}</div>
+      ${hasTeams ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, "Not as a tag team"))}</div>` : ""}
+      ${s.wrestlers.map((w, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, w))}
+        ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON2.x}</div>` : ""}</div>`).join("")}
+      <div class="uv-add" onclick="uvMAddWrestler(${i})">${ICON2.plus}Add a partner</div>
+    </div>`).join("");
+    return {
+      title: "Record a result",
+      body: `
+      <p class="uv-p">${esc3(e.name)} \u2014 enter what happened in the game.</p>
+      ${sides}
+      <div class="uv-add" onclick="uvMAddSide()">${ICON2.plus}Add another side</div>
+      <div class="uv-grid" style="margin-top:14px">
+        ${field("Result", select(`uvMSet('result',this.value)`, options(resultPairs, md.result)), "wide")}
+        ${field("Finish", select(`uvMSet('finish',this.value)`, options([["", "\u2014"], ...labelPairs(LABEL.finish)], md.finish)))}
+        ${field("Stipulation", `<input class="uv-in" maxlength="60" value="${esc3(md.stip)}" placeholder="e.g. Ladder"
+          oninput="uvMText('stip',this.value)">`)}
+        ${field("Championship", select(`uvMSet('titleId',this.value)`, titleOptions(st, md.titleId)), "wide")}
+      </div>
+      ${title ? `<label class="uv-check"><input type="checkbox"${md.titleChange ? " checked" : ""} onchange="uvMSet('titleChange',this.checked)">
+        <span>The title changed hands \u2014 the winner${title.kind === "tag" ? "s are the new champions" : " is the new champion"}</span></label>` : ""}
+      ${field("Notes", `<input class="uv-in" maxlength="2000" value="${esc3(md.notes)}" oninput="uvMText('notes',this.value)">`, "wide")}
+      <div class="uv-btn pri full" onclick="uvSaveResult()">Save result</div>`
+    };
+  }
+  function uvMTeam(i, teamId) {
+    const side = md.sides[i];
+    side.team = teamId;
+    const team = teamId && teamById(uni(), teamId);
+    if (team) side.wrestlers = [...team.members];
+    paintSheet();
+  }
+  function uvMWrestler(i, j, v) {
+    md.sides[i].wrestlers[j] = v;
+    paintSheet();
+  }
+  function uvMAddWrestler(i) {
+    md.sides[i].wrestlers.push("");
+    paintSheet();
+  }
+  function uvMDropWrestler(i, j) {
+    md.sides[i].wrestlers.splice(j, 1);
+    paintSheet();
+  }
+  function uvMAddSide() {
+    md.sides.push(blankSide());
+    paintSheet();
+  }
+  function uvMDropSide(i) {
+    md.sides.splice(i, 1);
+    const w = Number(md.result);
+    if (Number.isInteger(w)) md.result = w === i ? "0" : String(w > i ? w - 1 : w);
+    paintSheet();
+  }
+  function uvMSet(k, v) {
+    md[k] = v;
+    if (k === "titleId" && !v) md.titleChange = false;
+    paintSheet();
+  }
+  function uvMText(k, v) {
+    md[k] = v;
+  }
+  function uvSaveResult() {
+    const d = md;
+    const outcome = d.result === "draw" || d.result === "nc" ? d.result : "win";
+    const input = {
+      sides: d.sides.map((s) => ({ team: s.team || null, wrestlers: s.wrestlers.filter(Boolean) })),
+      outcome,
+      winner: outcome === "win" ? Number(d.result) : null,
+      finish: d.finish,
+      titleId: d.titleId || null,
+      stip: d.stip,
+      notes: d.notes
+    };
+    const r = commit((st) => recordMatch(st, d.eventId, input, { titleChange: !!(d.titleId && d.titleChange) }), (m) => {
+      const st = uni();
+      const reign = st.reigns.find((x) => x.matchId === m.id);
+      if (!reign) return "Result saved";
+      const verb = reign.holder.type === "team" ? "win" : "wins";
+      return `Result saved \u2014 ${holderName(st, reign.holder)} ${verb} the ${titleById(st, reign.titleId).name}`;
+    });
+    if (r.ok) uvOpenEvent(d.eventId);
+  }
+
+  // js/universe/index.js
+  var universe_exports = {};
+  __export(universe_exports, {
+    closeUniverse: () => closeUniverse,
+    initUniverse: () => initUniverse2,
+    openUniverse: () => openUniverse,
+    uvCloseSheet: () => uvCloseSheet,
+    uvConfirmNo: () => uvConfirmNo,
+    uvConfirmYes: () => uvConfirmYes,
+    uvData: () => uvData,
+    uvExport: () => uvExport,
+    uvImportFile: () => uvImportFile,
+    uvImportPick: () => uvImportPick,
+    uvReset: () => uvReset,
+    uvTab: () => uvTab
+  });
+  var TABS3 = [["roster", "Roster"], ["teams", "Teams"], ["titles", "Titles"], ["history", "History"]];
+  var VIEWS = { roster: uvRosterView, teams: uvTeamsView, titles: uvTitlesView, history: uvHistoryView };
+  var tab2 = "roster";
+  var warnedOnOpen = false;
+  function initUniverse2() {
+    bootUniverse(paint);
+  }
+  function paint() {
+    const st = uni();
+    const body2 = document.getElementById("uvBody");
+    if (!st || !body2) return;
+    const s = activeSeason(st);
+    document.getElementById("uvClock").textContent = `${s.name} \xB7 Week ${s.week}`;
+    document.getElementById("uvTabs").innerHTML = TABS3.map(([k, lb]) => `<div class="uv-tab${k === tab2 ? " on" : ""}" data-uvtab="${k}" onclick="uvTab('${k}')">${lb}</div>`).join("");
+    body2.innerHTML = VIEWS[tab2]();
+    const L = loadState();
+    document.getElementById("uvDataBtn").classList.toggle(
+      "warn",
+      lastSaveFailed() || L.readOnly || L.status === "recovered" || L.problems.length > 0
+    );
+  }
+  function openUniverse() {
+    document.body.classList.add("universe");
+    paint();
+    const L = loadState();
+    if (!warnedOnOpen && (L.status === "recovered" || L.readOnly || L.problems.length)) {
+      warnedOnOpen = true;
+      toast3("There was a problem loading your saved universe \u2014 see the save menu.", true);
+    }
+  }
+  function closeUniverse() {
+    if (!document.body.classList.contains("universe")) return;
+    document.body.classList.remove("universe");
+    closeSheet();
+    answerConfirm(false);
+    window.showTab && window.showTab(window.homeTab ? window.homeTab() : "matchup");
+  }
+  function uvTab(k) {
+    tab2 = k;
+    paint();
+    document.getElementById("uvScroll").scrollTop = 0;
+  }
+  function uvCloseSheet() {
+    closeSheet();
+  }
+  function uvConfirmYes() {
+    answerConfirm(true);
+  }
+  function uvConfirmNo() {
+    answerConfirm(false);
+  }
+  function uvData() {
+    openSheet2(dataSheet);
+  }
+  function dataSheet() {
+    const st = uni();
+    const n = summary(st);
+    const L = loadState();
+    const stat = (k, v) => `<div class="uv-stat"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+    const notes = [];
+    if (L.readOnly) {
+      notes.push(["bad", "Your saved universe could not be read, and there was no room to keep a copy of it, so nothing is being saved over it. Export this universe or free up browser storage, then reload."]);
+    } else if (lastSaveFailed()) {
+      notes.push(["bad", "The last change could not be saved \u2014 this browser\u2019s storage is full or blocked. Export a save file so nothing is lost."]);
+    } else if (L.status === "unavailable") {
+      notes.push(["bad", "This browser is blocking storage (private mode?), so the universe will be gone when the page closes. Export a save file to keep it."]);
+    } else {
+      notes.push(["ok", "Saved automatically in this browser after every change."]);
+    }
+    if (L.status === "recovered" && L.backupKey) {
+      notes.push(["warn", `An earlier save could not be read (${L.problems[0]}). It was kept in this browser\u2019s storage under \u201C${L.backupKey}\u201D, and a new universe was started.`]);
+    } else if (L.status === "loaded" && L.problems.length) {
+      notes.push(["warn", `The saved universe loaded with ${L.problems.length} inconsistenc${L.problems.length === 1 ? "y" : "ies"}: ${L.problems.slice(0, 3).join(" ")}`]);
+    }
+    return {
+      title: "Universe save",
+      body: `
+      <div class="uv-stats">${stat("Wrestlers", n.wrestlers)}${stat("Tag teams", n.teams)}${stat("Titles", n.titles)}
+        ${stat("Events", n.events)}${stat("Results", n.matches)}${stat("Seasons", n.seasons)}</div>
+      ${notes.map(([cls, text]) => `<div class="uv-note ${cls}">${esc3(text)}</div>`).join("")}
+      <p class="uv-p" style="margin-top:12px">Your universe lives in this browser only. A save file is its backup, and how you move it
+        to another browser or device \u2014 export one every so often.</p>
+      <div class="uv-row2">
+        <div class="uv-btn pri" onclick="uvExport()">${ICON2.save}Export</div>
+        <div class="uv-btn" onclick="uvImportPick()">Import\u2026</div>
+      </div>
+      <div class="uv-btn bad full" onclick="uvReset()">Start a new universe\u2026</div>
+      <div class="fine">This records what happens in your WWE 2K25 Universe Mode. It never decides a result or
+        controls the game. Stored under ${esc3(STORAGE_KEY)}, format v${SCHEMA_VERSION}.</div>`
+    };
+  }
+  function uvExport() {
+    const st = uni();
+    const s = activeSeason(st);
+    const blob = new Blob([exportUniverse(st)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `wwe-universe-season${s.number}-week${s.week}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
+    toast3("Save file downloaded");
+  }
+  function uvImportPick() {
+    document.getElementById("uvImport").click();
+  }
+  function uvImportFile(input) {
+    const file = input.files && input.files[0];
+    input.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = () => toast3("That file could not be read.", true);
+    reader.onload = () => {
+      let state;
+      try {
+        state = importUniverse(String(reader.result));
+      } catch (e) {
+        toast3(e.message, true);
+        return;
+      }
+      const n = summary(state);
+      confirmThen(
+        "Replace this universe?",
+        `The file has ${n.wrestlers} wrestlers, ${n.titles} titles and ${n.events} events. Everything here now is replaced \u2014 export first if you want to keep it.`,
+        "Replace",
+        () => {
+          uvFollowActiveSeason();
+          const saved = replaceUniverse(state);
+          toast3(saved ? "Universe imported" : "Imported, but it could not be saved in this browser.", !saved);
+        }
+      );
+    };
+    reader.readAsText(file);
+  }
+  function uvReset() {
+    confirmThen(
+      "Start a new universe?",
+      "This deletes every wrestler, team, title, season and result here. It cannot be undone \u2014 export first if you might want it back.",
+      "Delete everything",
+      () => {
+        uvFollowActiveSeason();
+        replaceUniverse(createUniverse());
+        closeSheet();
+        toast3("New universe started");
+      }
+    );
+  }
+
   // js/main.js
   Object.assign(
     window,
@@ -8333,7 +10783,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     market_exports,
     portfolio_exports,
     charts_exports,
-    markets_exports
+    markets_exports,
+    views_exports,
+    sheets_exports,
+    universe_exports
   );
   initStore();
   migrateDraft();
@@ -8350,6 +10803,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   applyTeamFonts();
   renderTabs(homeTab());
   showTab(homeTab());
+  initUniverse();
 })();
 
 </script>
