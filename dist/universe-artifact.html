@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#07090D">
-<title>Universe — WWE 2K25 companion</title>
+<title>WWE 2K25 Universe</title>
 <style>
 /* css/fonts.css */
 /* Fonts embedded by tools/fetch-fonts.mjs — do not edit by hand.
@@ -489,12 +481,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-hm .d.nt{font-style:italic;color:var(--uv-ink-3);overflow-wrap:anywhere}
 .uv-sheet .uv-mc-sum{margin-top:10px}
 
+/* css/universe-artifact.css */
+/* ===== UNIVERSE, PUBLISHED =====
+   Added only to the claude.ai artifact build (dist/universe-artifact.html).
+   There the page sits inside claude.ai's own document, which already pads it
+   clear of a phone's status bar and home indicator and pins a light colour
+   scheme - so the app fills the space it's given and stops adding those
+   insets itself. */
+:root{color-scheme:dark;background:#000}
+.uv-app{height:100%}
+.uv-head{padding-top:16px}
+.uv{--uv-bottom:0px}
 </style>
-</head>
-<body>
-<!-- Universe: a companion for WWE 2K25's Universe Mode. A standalone app - it
-     shares this repository's build and test tooling with the City Boys
-     Dynasty fantasy app (index.html), and nothing else. -->
 <div class="uv-app">
   <div class="uv" id="uv">
     <div class="uv-head">
@@ -4655,5 +4653,3 @@ body.uv-confirm-open .uv-confirm{display:flex}
 })();
 
 </script>
-</body>
-</html>

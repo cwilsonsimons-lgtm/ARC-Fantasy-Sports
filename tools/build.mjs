@@ -6,6 +6,11 @@
 // its own module entry point - into dist/, so either can be opened by
 // double-clicking, the way the original prototype worked.
 //
+// Universe is also built a second way, as dist/universe-artifact.html, for
+// publishing on claude.ai: claude.ai wraps a published page in its own
+// document, so that file is the page's content only - its title first, then
+// its styles, markup and script - with css/universe-artifact.css added.
+//
 // Usage: node tools/build.mjs
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -14,7 +19,8 @@ const PAGES = [
   { html: 'index.html', out: 'dist/index.html' },
   // Universe sets its type in Oswald and Barlow only; the other thirteen
   // embedded faces belong to the fantasy app's team names.
-  { html: 'universe.html', out: 'dist/universe.html', fonts: ['Oswald', 'Barlow'] },
+  { html: 'universe.html', out: 'dist/universe.html', fonts: ['Oswald', 'Barlow'],
+    artifact: { out: 'dist/universe-artifact.html', title: 'WWE 2K25 Universe', css: 'css/universe-artifact.css' } },
 ];
 
 // Keep only the @font-face rules for the given families. Base64 never
@@ -59,5 +65,16 @@ for (const page of PAGES) {
     .replace(/<script type="module" src="[^"]+"><\/script>/, `<script>\n${js}\n</script>`);
 
   await writeFile(page.out, out);
-  console.log(`${page.out.padEnd(19)} ${kb(out.length)}  (css ${kb(css.length)}, js ${kb(js.length)})`);
+  console.log(`${page.out.padEnd(28)} ${kb(out.length)}  (css ${kb(css.length)}, js ${kb(js.length)})`);
+
+  if (page.artifact) {
+    const a = page.artifact;
+    const extra = await readFile(a.css, 'utf8');
+    const body = /<body>\n?([\s\S]*?)<\/body>/.exec(html)[1]
+      .replace(/<!--[\s\S]*?-->\n?/, '')                                  // the note to readers of the source
+      .replace(/<script type="module" src="[^"]+"><\/script>/, () => `<script>\n${js}\n</script>`);
+    const art = `<title>${a.title}</title>\n<style>\n${css}\n/* ${a.css} */\n${extra}</style>\n${body}`;
+    await writeFile(a.out, art);
+    console.log(`${a.out.padEnd(28)} ${kb(art.length)}`);
+  }
 }

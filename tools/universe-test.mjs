@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as M from '../js/universe/model.js';
 import { STORAGE_KEY, loadUniverse, saveUniverse, exportUniverse, importUniverse } from '../js/universe/persist.js';
+import { createCloud } from '../js/universe/cloud.js';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
 const throwsUE = (fn, re) => assert.throws(fn, e => e instanceof M.UniverseError && (!re || re.test(e.message)));
@@ -1285,4 +1286,172 @@ test('a save claiming a booked match has a result is refused', () => {
   const odd = JSON.parse(JSON.stringify(st));
   odd.events[0].matches[0].status = 'maybe';
   throwsUE(() => importUniverse(JSON.stringify(odd)), /neither booked nor played/);
+});
+
+// ---------------------------------------------------------------- the claude.ai copy
+//
+// Published as an artifact, the app keeps the universe in the viewer's own
+// space in the artifact's database. A stand-in with the same shape: documents
+// in a Map, the viewer's id, a save prompt that records what it was given.
+
+function fakeClaude(store = new Map(), { uid = 'viewer-1', failOn = null } = {}) {
+  const saved = [];
+  const snap = path => {
+    const v = store.get(path);
+    return { id: path.split('/').pop(), exists: v !== undefined, data: () => v && JSON.parse(JSON.stringify(v)),
+      metadata: { fromCache: false, hasPendingWrites: false } };
+  };
+  const doc = path => ({
+    path,
+    get: async () => snap(path),
+    set: async data => {
+      if (failOn && failOn(path)) throw { code: 'unavailable', message: 'down' };
+      store.set(path, JSON.parse(JSON.stringify(data)));
+    },
+    delete: async () => { store.delete(path); },
+    acquire: async () => ({ acquired: true }),
+    onSnapshot: () => () => {},
+  });
+  const db = { doc, collection: p => ({ path: p, doc: id => doc(`${p}/${id}`) }) };
+  const ns = { db, user: { id: async () => uid }, downloads: { save: async r => { saved.push(r); return { status: 'saved' }; } } };
+  return { use: async name => ns[name] || null, store, saved };
+}
+const memory = () => {
+  const m = new Map();
+  return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), m };
+};
+// one browser with the app open: its universe, its storage, its claude.ai copy
+function device(claude, st = M.createUniverse(), storage = memory()) {
+  const d = { st, storage, adopted: 0 };
+  d.cloud = createCloud({ claude, storage, delay: 0, current: () => d.st, adopt: x => { d.st = x; d.adopted++; } });
+  return d;
+}
+function bigUniverse(n) {
+  const st = M.createUniverse();
+  for (let i = 0; i < n; i++) M.addWrestler(st, { name: `Wrestler ${i}`, showId: M.SHOW_SEED[i % 4].id, notes: 'x'.repeat(400) });
+  return st;
+}
+
+test('as an artifact, the universe goes to the claude.ai copy, and a new browser opens it', async () => {
+  const claude = fakeClaude();
+  const st = M.createUniverse();
+  M.addWrestler(st, { name: 'Cody Rhodes', showId: 'smackdown' });
+  const a = device(claude, st);
+  await a.cloud.start();
+  const man = claude.store.get('data/users/viewer-1/save');
+  assert.equal(man.rev, 1);
+  assert.equal(a.cloud.status().mode, 'synced');
+
+  const b = device(claude);                                          // another browser: nothing stored locally
+  await b.cloud.start();
+  assert.equal(b.adopted, 1);
+  assert.deepEqual(b.st, a.st);
+
+  M.addWrestler(b.st, { name: 'Gunther', showId: 'raw' });           // a change there goes up
+  assert.equal(b.cloud.changed(b.st), true);
+  await b.cloud.flush();
+  const c = device(claude);
+  await c.cloud.start();
+  assert.deepEqual(c.st.wrestlers.map(w => w.name), ['Cody Rhodes', 'Gunther']);
+  assert.equal(claude.store.get('data/users/viewer-1/save').rev, 2);
+  // nothing lands outside the viewer's own space
+  assert.ok([...claude.store.keys()].every(k => k.startsWith('data/users/viewer-1/')));
+});
+
+test('a universe too big for one document is split, and reads back whole', async () => {
+  const claude = fakeClaude();
+  const a = device(claude, bigUniverse(500));
+  await a.cloud.start();
+  const man = claude.store.get('data/users/viewer-1/save');
+  assert.ok(man.parts[man.slot] >= 3, `${man.parts[man.slot]} parts`);
+  for (const [k, v] of claude.store) assert.ok(JSON.stringify(v).length < 200 * 1024, `${k} fits in a document`);
+  const b = device(claude);
+  await b.cloud.start();
+  assert.deepEqual(b.st, a.st);
+  // shrinking tidies the parts the smaller save no longer needs, in its slot
+  a.st = bigUniverse(5);
+  a.cloud.changed(a.st);
+  await a.cloud.flush();
+  a.st = bigUniverse(4);
+  a.cloud.changed(a.st);
+  await a.cloud.flush();
+  const now = claude.store.get('data/users/viewer-1/save');
+  const leftover = [...claude.store.keys()].filter(k => k.includes(`/${now.slot}-`)).length;
+  assert.equal(leftover, now.parts[now.slot]);
+});
+
+test('a save cut off before it finishes leaves the last one whole', async () => {
+  let failing = false;
+  const claude = fakeClaude(new Map(), { failOn: p => failing && p.endsWith('/save') });
+  const st = M.createUniverse();
+  M.addWrestler(st, { name: 'Cody Rhodes' });
+  const a = device(claude, st);
+  await a.cloud.start();
+  failing = true;                                                    // parts go in, the manifest doesn't
+  M.addWrestler(a.st, { name: 'Gunther' });
+  a.cloud.changed(a.st);
+  await a.cloud.flush();
+  assert.equal(a.cloud.status().mode, 'error');
+  assert.equal(JSON.parse(a.storage.getItem('wwe_universe_v1:cloud')).dirty, true);
+  const b = device(claude);
+  await b.cloud.start();
+  assert.deepEqual(b.st.wrestlers.map(w => w.name), ['Cody Rhodes']);
+  failing = false;                                                   // and the next try gets it up
+  await a.cloud.flush();
+  const c = device(claude);
+  await c.cloud.start();
+  assert.deepEqual(c.st.wrestlers.map(w => w.name), ['Cody Rhodes', 'Gunther']);
+});
+
+test('a change this browser hadn’t sent yet goes up; one a newer save overtook is kept aside', async () => {
+  const claude = fakeClaude();
+  const st = M.createUniverse();
+  M.addWrestler(st, { name: 'Cody Rhodes' });
+  const a = device(claude, st);
+  await a.cloud.start();                                             // rev 1, this browser in step
+  const behind = JSON.parse(JSON.stringify(a.st));
+
+  // the page closed before a change went up: next time it's sent, not replaced
+  M.addWrestler(a.st, { name: 'Gunther' });
+  a.storage.setItem('wwe_universe_v1:cloud', JSON.stringify({ rev: 1, dirty: true }));
+  const again = device(claude, a.st, a.storage);
+  await again.cloud.start();
+  assert.equal(again.adopted, 0);
+  assert.equal(claude.store.get('data/users/viewer-1/save').rev, 2);
+
+  // meanwhile another browser was behind (rev 1) with its own unsent change: the newer save wins
+  const other = device(claude, behind, memory());
+  other.storage.setItem('wwe_universe_v1:cloud', JSON.stringify({ rev: 1, dirty: true }));
+  await other.cloud.start();
+  assert.equal(other.adopted, 1);
+  assert.deepEqual(other.st.wrestlers.map(w => w.name), ['Cody Rhodes', 'Gunther']);
+  assert.ok(other.storage.getItem('wwe_universe_v1:before-sync'));
+});
+
+test('an unreadable claude.ai copy is never written over', async () => {
+  const store = new Map([['data/users/viewer-1/save', { rev: 3, slot: 'a', parts: { a: 2 } }], ['data/users/viewer-1/a-0', { s: '{"app":' }]]);
+  const claude = fakeClaude(store);
+  const st = M.createUniverse();
+  M.addWrestler(st, { name: 'Cody Rhodes' });
+  const a = device(claude, st);
+  await a.cloud.start();
+  assert.equal(a.cloud.status().mode, 'error');
+  assert.equal(a.cloud.changed(a.st), false);
+  await a.cloud.flush();
+  assert.equal(store.get('data/users/viewer-1/save').rev, 3);
+});
+
+test('a view that can’t keep a copy leaves the app as it was; export uses the save prompt', async () => {
+  const none = device({ use: async () => null });
+  await none.cloud.start();
+  assert.equal(none.cloud.status().mode, 'off');
+  assert.equal(none.cloud.changed(none.st), false);
+  assert.equal(none.storage.getItem('wwe_universe_v1:cloud'), null);
+  assert.equal(await none.cloud.exportFile('x.json', '{}'), 'unavailable');
+
+  const claude = fakeClaude();
+  const a = device(claude);
+  assert.equal(await a.cloud.exportFile('wwe-universe-season1-week1.json', exportUniverse(a.st)), 'saved');
+  assert.equal(claude.saved[0].filename, 'wwe-universe-season1-week1.json');
+  assert.deepEqual(importUniverse(claude.saved[0].data), a.st);
 });

@@ -28,10 +28,17 @@ export function bootUniverse(paint) {
   U = loaded.state;
 }
 
+// Published as a claude.ai artifact, cloud.js keeps a second copy in the
+// owner's account; it hears about every save here, and when it's keeping that
+// copy, a browser that can't store the universe itself is no longer a failure.
+let saveListener = null;
+export function onSaved(fn) { saveListener = fn; }
+
 function persist() {
-  if (loaded.readOnly) { saveFailed = true; return false; }
+  const kept = saveListener ? saveListener(U) : false;
+  if (loaded.readOnly) { saveFailed = !kept; return kept; }
   const s = storage();
-  saveFailed = !(s && saveUniverse(s, U));
+  saveFailed = !(s && saveUniverse(s, U)) && !kept;
   return !saveFailed;
 }
 
@@ -67,6 +74,14 @@ export function replaceUniverse(state) {
   const saved = persist();
   refresh();
   return saved;
+}
+
+/** Take the universe as saved in the claude.ai copy: shown and cached here, not sent back. */
+export function adoptUniverse(state) {
+  U = state;
+  const s = storage();
+  if (s && !loaded.readOnly) saveUniverse(s, U);
+  refresh();
 }
 
 export function refresh() { painter(); paintSheet(); }
@@ -118,6 +133,7 @@ export function openSheet(render) {
   const el = document.getElementById('uvSheet');
   if (el) el.scrollTop = 0;
 }
+export const sheetShowing = render => sheet === render;
 export function paintSheet() {
   if (!sheet) return;
   const out = sheet();

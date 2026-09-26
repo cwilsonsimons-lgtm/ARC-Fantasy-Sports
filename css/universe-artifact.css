@@ -1,0 +1,10 @@
+/* ===== UNIVERSE, PUBLISHED =====
+   Added only to the claude.ai artifact build (dist/universe-artifact.html).
+   There the page sits inside claude.ai's own document, which already pads it
+   clear of a phone's status bar and home indicator and pins a light colour
+   scheme - so the app fills the space it's given and stops adding those
+   insets itself. */
+:root{color-scheme:dark;background:#000}
+.uv-app{height:100%}
+.uv-head{padding-top:16px}
+.uv{--uv-bottom:0px}

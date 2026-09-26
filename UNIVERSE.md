@@ -25,13 +25,20 @@ to load over `file://`, so it needs serving:
 npm start          # then open http://127.0.0.1:8080/universe.html
 ```
 
+**On claude.ai.** `dist/universe-artifact.html` is the same app built for
+publishing as a claude.ai artifact (claude.ai supplies the surrounding
+document, so it's the page's content only). Published there, the universe is
+kept in your claude.ai account instead of one browser — see Saving.
+
 ```
 universe.html          the page
 css/universe.css       its whole stylesheet (plus Oswald and Barlow from css/fonts.css)
+css/universe-artifact.css   the few overrides for the claude.ai build
 js/universe/
   main.js              entry point
   model.js             the data and every rule about it - pure, runs under Node
   persist.js           saving, loading, export and import
+  cloud.js             the claude.ai copy, when published as an artifact
   app.js               commit (change + save + repaint), sheets, the page stack
   index.js             start-up, tabs, the save-file sheet
   views.js             the five tabs: Calendar, Roster, Teams, Titles, History
@@ -40,8 +47,8 @@ js/universe/
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       60 model tests      npm run test:universe
-tools/universe-check.mjs      83 browser checks   npm run check:universe
+tools/universe-test.mjs       66 model tests      npm run test:universe
+tools/universe-check.mjs      87 browser checks   npm run check:universe
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -205,6 +212,18 @@ is why Universe never reads or writes the fantasy app's keys.
 The save menu (top right) exports the whole universe as a JSON file and
 imports one back; that file is the only backup, and how the universe moves
 between browsers or devices.
+
+**Published on claude.ai**, a browser's storage can't be relied on, so every
+save also goes to the artifact's database, into the viewer's own private
+space (`data/users/<id>/` — nobody else, the page's owner included, can read
+it), and any browser that opens the page loads it from there. A universe is
+bigger than one database document allows, so it's stored in parts in one of
+two slots, with a small manifest written last: a save that's cut off leaves the
+previous one whole. A change that couldn't go up is kept in the browser and
+sent next time; if the stored copy ever can't be read, the page shows the
+browser's copy and never writes over it. Export there goes through claude.ai's
+save prompt, since a published page can't start a download itself. None of
+this runs when the app is opened as a file (`cloud.js`).
 
 Import refuses anything that isn't a sound universe — wrong app, newer
 version, or data that fails `validate()` — before touching what's there. A

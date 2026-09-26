@@ -872,6 +872,72 @@ await check('on a laptop it’s a centred column', async () => {
 }, [560, 360, 900]);
 await check('layout anchored at laptop width', anchored, isAnchored);
 
+// ================================================================ published on claude.ai
+// Published as an artifact, the page gets window.claude. A stand-in with the
+// same shape keeps the database here in the script, so two separate browsers
+// (each with its own empty storage) share it the way two devices would.
+const cloudDocs = new Map(), cloudSaves = [];
+async function artifactBrowser() {
+  const ctx = await browser.newContext({ viewport: { width: 436, height: 920 } });
+  const p = await ctx.newPage();
+  p.setDefaultTimeout(4000);
+  p.on('pageerror', e => errors.push('artifact pageerror: ' + String(e).split('\n')[0]));
+  await p.exposeFunction('__cloud', (op, path, data) => {
+    if (op === 'get') return cloudDocs.has(path) ? cloudDocs.get(path) : null;
+    if (op === 'set') cloudDocs.set(path, data);
+    if (op === 'delete') cloudDocs.delete(path);
+    if (op === 'download') cloudSaves.push({ filename: path, data });
+    return null;
+  });
+  await p.addInitScript(() => {
+    const call = (...a) => window.__cloud(...a);
+    const snap = (path, v) => ({ id: path.split('/').pop(), exists: v != null, data: () => v, metadata: { fromCache: false, hasPendingWrites: false } });
+    const doc = path => ({ path, get: async () => snap(path, await call('get', path)), set: async d => { await call('set', path, d); },
+      delete: async () => { await call('delete', path); }, acquire: async () => ({ acquired: true }), onSnapshot: () => () => {} });
+    const ns = { db: { doc, collection: c => ({ path: c, doc: id => doc(`${c}/${id}`) }) }, user: { id: async () => 'viewer-1' },
+      downloads: { save: async r => { await call('download', r.filename, r.data); return { status: 'saved' }; } } };
+    window.claude = { use: async n => ns[n] || null };
+  });
+  await p.goto(url, { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(600);
+  return { ctx, p };
+}
+const cloudUniverse = () => {
+  const m = cloudDocs.get('data/users/viewer-1/save');
+  return m && JSON.parse(Array.from({ length: m.parts[m.slot] }, (_, i) => cloudDocs.get(`data/users/viewer-1/${m.slot}-${i}`).s).join(''));
+};
+const one = await artifactBrowser();
+await check('as an artifact, a change is saved to the claude.ai account', async () => {
+  const { p } = one;
+  await p.locator('#uvBody .uv-btn', { hasText: /^\s*Add\s*$/ }).click();
+  await p.waitForTimeout(380);
+  await p.keyboard.type('Cody Rhodes');
+  await p.keyboard.press('Enter');
+  await p.waitForTimeout(1300);                                        // changes go up after a short pause
+  await p.click('.uv-scrim', { position: { x: 200, y: 60 } });
+  await p.waitForTimeout(380);
+  await p.click('#uvDataBtn');
+  await p.waitForTimeout(380);
+  const u = cloudUniverse();
+  return [u && u.wrestlers.map(w => w.name), await p.evaluate(`document.querySelector('#uvSheetBody .uv-note').textContent`)];
+}, [['Cody Rhodes'], 'Saved to your claude.ai account after every change, so it’s the same on any device you open this page on.']);
+await check('Export goes through claude.ai’s save prompt', async () => {
+  await one.p.locator('#uvSheetBody .uv-btn', { hasText: 'Export' }).click();
+  await one.p.waitForTimeout(300);
+  const f = cloudSaves[0];
+  return [cloudSaves.length, f && f.filename, f && JSON.parse(f.data).wrestlers.length,
+    await one.p.evaluate(`document.getElementById('uvHint').textContent`)];
+}, [1, 'wwe-universe-season1-week1.json', 1, 'Save file downloaded']);
+const two = await artifactBrowser();
+await check('another browser opens the same universe from the account', () =>
+  two.p.evaluate(`[...document.querySelectorAll('#uvBody .uv-row .nm')].map(e => e.textContent)`), ['Cody Rhodes']);
+await check('the published build has no document wrapper, its title first', async () => {
+  const art = await readFile(join(process.cwd(), 'dist/universe-artifact.html'), 'utf8');
+  return [art.slice(0, 32), /<!doctype|<html|<head>|<body>/i.test(art.replace(/\/\*[\s\S]*?\*\//g, ''))];
+}, ['<title>WWE 2K25 Universe</title>', false]);
+await one.ctx.close();
+await two.ctx.close();
+
 await browser.close();
 console.log(`\n${pass} passed, ${fail} failed, ${errors.length} page errors`);
 if (errors.length) console.log(errors.join('\n'));
