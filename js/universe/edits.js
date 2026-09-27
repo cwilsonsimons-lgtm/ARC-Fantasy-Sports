@@ -7,7 +7,7 @@
 // take back before it does.
 import * as M from './model.js';
 import {
-  LABEL, esc, field, labelPairs, options, select, showColor, showName, showPairs, stampLabel, teamOptions,
+  LABEL, esc, field, findable, labelPairs, options, select, showColor, showName, showPairs, stampLabel, teamOptions,
   weeksText, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, focusField, openSheet, paintSheet, toast, uni } from './app.js';
@@ -128,7 +128,7 @@ export function uvMergeInto(keepId) {
         <p class="uv-p">For the same wrestler entered twice. Pick the duplicate of <b>${esc(keep.name)}</b>: everything it
           did — results, team spells, title reigns — becomes ${esc(keep.name)}’s, and the duplicate is removed.
           Its roster moves are dropped; ${esc(keep.name)}’s own show history is kept.</p>
-        ${field('The duplicate', `<select id="uvMergePick" class="uv-in">${wrestlerOptions(st, '', '— Pick the duplicate —', [keepId])}</select>`, 'wide')}
+        ${field('The duplicate', findable(`<select id="uvMergePick" class="uv-in">${wrestlerOptions(st, '', '— Pick the duplicate —', [keepId])}</select>`), 'wide')}
         <div class="uv-btn pri full" onclick="uvMergeSave('${keepId}')">Merge into ${esc(keep.name)}</div>
         <div class="fine">It’s refused if the two were ever in the same match or on the same team — then they can’t be the same person.</div>`,
     };
@@ -187,7 +187,7 @@ export function uvLineup(id) {
           ${t.members.length > 2 ? `<div class="uv-btn sm" onclick="uvRemoveMember('${id}','${m.wrestler}')">Remove</div>` : ''}</div>`).join('')}
         ${t.members.length <= 2 ? '<div class="fine">A team needs two members: add the new partner before removing anyone.</div>' : ''}
         <h4>Add a member</h4>
-        <div class="uv-pick"><select id="uvLineupPick" class="uv-in">${wrestlerOptions(st, '', '— Pick a wrestler —', t.members)}</select>
+        <div class="uv-pick">${findable(`<select id="uvLineupPick" class="uv-in">${wrestlerOptions(st, '', '— Pick a wrestler —', t.members)}</select>`)}
           <div class="uv-btn pri" onclick="uvAddMember('${id}')">Add</div></div>
         ${former.length ? `<h4>Former</h4>${former.map(m => `<div class="uv-li plain"><span>${name(m)}
           <span class="uv-muted d">${stampLabel(st, m.start)} → ${stampLabel(st, m.end)}</span></span></div>`).join('')}` : ''}
@@ -245,7 +245,7 @@ export function uvCrownSheet(id) {
       body: `
         <p class="uv-p">For the <b>${esc(t.name)}</b>, dated to this week. If it changed hands in a match, record it on that
           event’s result instead — then the reign is dated to the show and counts as won there.</p>
-        ${field(t.kind === 'tag' ? 'New champions' : 'New champion', `<select id="uvCrownPick" class="uv-in">${pool}</select>`, 'wide')}
+        ${field(t.kind === 'tag' ? 'New champions' : 'New champion', findable(`<select id="uvCrownPick" class="uv-in">${pool}</select>`), 'wide')}
         <div style="margin-top:10px">${field('Note (optional)', `<input id="uvCrownNote" class="uv-in" maxlength="60" placeholder="e.g. Awarded, tournament">`, 'wide')}</div>
         <div class="uv-btn pri full" onclick="uvCrown('${id}')">Crown</div>`,
     };
@@ -332,7 +332,7 @@ export function uvEditReign(reignId) {
         ${fromResult ? `<div class="uv-note">This reign came from a result at <b>${esc(ev.name)}</b>, so who won — and when — is
             fixed there. <span class="uv-link" onclick="uvOpenEvent('${ev.id}')">Open ${esc(ev.name)}</span></div>`
           : `<div class="uv-grid" style="margin-top:4px">
-              ${field(t.kind === 'tag' ? 'Held by (team)' : 'Held by', `<select id="uvReignHolder" class="uv-in">${pool}</select>`, 'wide')}
+              ${field(t.kind === 'tag' ? 'Held by (team)' : 'Held by', findable(`<select id="uvReignHolder" class="uv-in">${pool}</select>`), 'wide')}
               ${field('Began in week', weekInput(String(r.start.week), '', ` id="uvReignWeek"${ev ? ' disabled' : ''}`))}
             </div>`}
         <div style="margin-top:10px">${field('Note', `<input id="uvReignNote" class="uv-in" maxlength="60" value="${esc(r.note)}"

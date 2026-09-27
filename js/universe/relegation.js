@@ -8,7 +8,7 @@
 // held until they're decided. The winner of every relegation match is
 // whoever wins in WWE 2K25; the loser moves to NXT when the result is saved.
 import * as M from './model.js';
-import { ICON, chip, empty, esc, eventWhen, showColor, showName } from './ui.js';
+import { ICON, chip, empty, esc, eventWhen, findable, showColor, showName } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, popPage, pushPage, refresh, uni } from './app.js';
 import { uvPromotionPart, uvPromotionSummary, uvWindowPart } from './promotion.js';
 
@@ -185,8 +185,8 @@ function pairRow(st, t, p) {
   if (p.status === 'unbooked') {
     return `<div class="uv-pair">
       <div class="vs"><b>${nm(st, p.a)}</b> <span class="uv-muted">(${wins(p.a)})</span> vs
-        <select class="uv-in sm" onchange="uvTrPair('${trId}','${sid}','${p.a}',this.value)">${others(p.a).map(id =>
-          `<option value="${id}"${id === p.b ? ' selected' : ''}>${nm(st, id)} (${wins(id)})</option>`).join('')}</select></div>
+        ${findable(`<select class="uv-in sm" onchange="uvTrPair('${trId}','${sid}','${p.a}',this.value)">${others(p.a).map(id =>
+          `<option value="${id}"${id === p.b ? ' selected' : ''}>${nm(st, id)} (${wins(id)})</option>`).join('')}</select>`)}</div>
       ${status}</div>`;
   }
   const m = p.last.m, ev = p.last.ev;

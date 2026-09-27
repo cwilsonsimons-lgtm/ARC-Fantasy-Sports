@@ -57,9 +57,10 @@ js/universe/
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
+  find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       118 model tests     npm run test:universe
-tools/universe-check.mjs      176 browser checks  npm run check:universe
+tools/universe-test.mjs       119 model tests     npm run test:universe
+tools/universe-check.mjs      180 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
@@ -169,6 +170,14 @@ Everything the app won't decide, and where it asks:
   standings; titles, teams, relationships and results link on as before.
 - Every page opened from Go to starts from its tab, so Back leads somewhere
   sensible.
+- **Searching a long list.** Wherever a wrestler or tag team is picked from a
+  dropdown with 7 or more choices — booking a match, a team's members, an
+  incident, a relationship, a champion, a merge, a pairing — a search button
+  sits beside it. Type part of a name (case and accents don't matter; "rey mys"
+  finds Rey Mysterio), then tap a match, or press Enter for the best one. It
+  searches exactly what that dropdown offers, each match labelled with its show,
+  and picking one is the same as picking it in the dropdown, which still works
+  as before.
 
 ## The data
 

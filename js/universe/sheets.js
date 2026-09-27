@@ -6,7 +6,7 @@
 // refused keeps everything they typed. Profiles and their edits live in
 // pages.js and edits.js.
 import * as M from './model.js';
-import { ICON, LABEL, empty, esc, field, labelPairs, options, select, showName, showPairs, wrestlerOptions } from './ui.js';
+import { ICON, LABEL, empty, esc, field, findable, labelPairs, options, select, showName, showPairs, wrestlerOptions } from './ui.js';
 import { closeSheet, commit, confirmThen, focusField, keepRestore, openSheet, paintSheet, toast, uni } from './app.js';
 import { uvCalFollow, uvFollowActiveSeason, uvRosterShow } from './views.js';
 import { uvOpenTeam, uvOpenTitle } from './pages.js';
@@ -102,7 +102,7 @@ function newTeamSheet() {
       ${field('Team name', `<input id="uvTeamName" class="uv-in" maxlength="60" value="${esc(d.name)}" placeholder="e.g. The New Day"
         oninput="uvTeamDraftName(this.value)">`, 'wide')}
       <h4>Members</h4>
-      ${d.members.map((m, i) => `<div class="uv-pick">${select(`uvTeamDraftMember(${i},this.value)`, wrestlerOptions(st, m))}
+      ${d.members.map((m, i) => `<div class="uv-pick">${findable(select(`uvTeamDraftMember(${i},this.value)`, wrestlerOptions(st, m)))}
         ${d.members.length > 2 ? `<div class="uv-ic sm" onclick="uvTeamDraftDrop(${i})">${ICON.x}</div>` : ''}</div>`).join('')}
       <div class="uv-add" onclick="uvTeamDraftAdd()">${ICON.plus}Add a member</div>
       <div class="uv-btn pri full" onclick="uvCreateTeam()">Create team</div>`,

@@ -17,6 +17,7 @@ import * as relegation from './relegation.js';
 import * as promotion from './promotion.js';
 import * as personality from './personality.js';
 import * as story from './story.js';
+import * as find from './find.js';
 
-Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality, story);
+Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality, story, find);
 shell.initUniverse();

@@ -1964,6 +1964,58 @@ await check('the save sheet remembers the last export', async () => {
   return [/^(No save file exported|Last save file exported)/.test(before), after, points[0]];
 }, [true, 'Last save file exported just now from this browser.', 'Before restoring “End of Season 1 · Week 6”']);
 
+// ================================================================ searching the long dropdowns
+// Every wrestler (or team) dropdown with a long list has a search beside it.
+// The sample season is loaded: Raw · Week 6 is planned.
+const hits = () => js(`[...document.querySelectorAll('#uvSheetBody .uv-findhit')].map(b => [b.querySelector('b').textContent,
+  (b.querySelector('span') || { textContent: '' }).textContent])`);
+await check('a long dropdown has a search beside it: typing narrows it, Enter takes the best match', async () => {
+  await openShow('Raw');
+  await btn(body, 'Book a match').click();
+  await settle();
+  const buttons = await js(`document.querySelectorAll('#uvSheetBody .uv-find-btn').length`);
+  await sheet.locator('.uv-sidebox').nth(0).locator('.uv-find-btn').click();
+  await page.keyboard.type('gun');
+  await page.waitForTimeout(80);
+  const found = await hits();
+  const typing = await js(`document.activeElement && document.activeElement.type`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(120);
+  return [buttons, found, typing, await js(`document.querySelector('#uvSheetBody select[data-w="0"]').selectedOptions[0].textContent`),
+    await js(`document.querySelectorAll('#uvSheetBody .uv-findbox').length`), await anchored()];
+}, r => r[0] === 2 && JSON.stringify(r[1]) === '[["Gunther","Raw"]]' && r[2] === 'search' && r[3] === 'Gunther' && r[4] === 0 && isAnchored(r[5]));
+await check('tap a match to pick it — the booking saves exactly who was picked', async () => {
+  await sheet.locator('.uv-sidebox').nth(1).locator('.uv-find-btn').click();
+  await page.keyboard.type('JE');
+  await page.waitForTimeout(80);
+  const found = await hits();
+  await sheet.locator('.uv-findhit', { has: page.locator('span', { hasText: 'Raw' }) }).click();
+  await page.waitForTimeout(120);
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  const u = await saved();
+  const m = u.events.find(e => e.id === raw6.id).matches.at(-1);
+  return [found, m.sides.map(sd => sd.wrestlers.map(id => M.wrestlerById(u, id).name)), m.status, m.winner, await sound()];
+}, [[['Jey', 'Raw'], ['Je', 'NXT']], [['Gunther'], ['Jey']], 'scheduled', null, []]);
+await check('the search offers only what its dropdown does, and Escape closes it', async () => {
+  await js(`uvRelSheet('${sample.W('Cody').id}')`);
+  await settle();
+  await sheet.locator('.uv-find', { has: page.locator('#uvRelB') }).locator('.uv-find-btn').click();
+  await page.keyboard.type('cody');                                 // the other wrestler can't be Cody himself
+  await page.waitForTimeout(80);
+  const none = await js(`document.querySelector('#uvSheetBody .uv-findres').textContent`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(80);
+  const closed = [await js(`document.querySelectorAll('#uvSheetBody .uv-findbox').length`), await sheetOpen()];
+  await closeSheet();
+  return [none, closed];
+}, ['Nobody by that name in this list', [0, true]]);
+await check('the other long pickers have it too: a team’s members, an incident, a new champion', async () => {
+  const count = async open => { await js(open); await settle(); const n = await js(`document.querySelectorAll('#uvSheetBody .uv-find-btn').length`); await closeSheet(); return n; };
+  const team = sample.st.teams[0], title = sample.st.titles.find(t => t.kind === 'singles');
+  return [await count(`uvNewTeam()`), await count(`uvIncident('${raw6.id}')`), await count(`uvLineup('${team.id}')`), await count(`uvCrownSheet('${title.id}')`)];
+}, r => r.every(n => n >= 1));
+
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {
   await page.setViewportSize({ width: 1280, height: 900 });

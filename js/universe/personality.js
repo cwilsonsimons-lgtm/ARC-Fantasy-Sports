@@ -14,7 +14,8 @@
 import * as M from './model.js';
 import * as RL from './relations.js';
 import {
-  ICON, INCIDENT, LABEL, avatar, empty, esc, field, incidentText, options, section, select, showColor, showName, sideName, stampLabel, wrestlerOptions,
+  ICON, INCIDENT, LABEL, avatar, empty, esc, field, findable, incidentText, options, section, select, showColor, showName, sideName, stampLabel,
+  wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, refresh, uni } from './app.js';
 
@@ -276,8 +277,8 @@ function relSheet() {
     title: rd.fixA && rd.fixB ? `${esc(nm(st, rd.a))} & ${esc(nm(st, rd.b))}` : 'Relationship',
     body: `
       ${rd.fixA && rd.fixB ? '' : `<div class="uv-grid">
-        ${field('Wrestler', rd.fixA ? `<div class="uv-in ro">${esc(nm(st, rd.a))}</div>` : select("uvRelSet('a',this.value)", wrestlerOptions(st, rd.a, '— Pick a wrestler —', [rd.b]), ' id="uvRelA"'), 'wide')}
-        ${field('And', select("uvRelSet('b',this.value)", wrestlerOptions(st, rd.b, '— Pick a wrestler —', [rd.a]), ' id="uvRelB"'), 'wide')}
+        ${field('Wrestler', rd.fixA ? `<div class="uv-in ro">${esc(nm(st, rd.a))}</div>` : findable(select("uvRelSet('a',this.value)", wrestlerOptions(st, rd.a, '— Pick a wrestler —', [rd.b]), ' id="uvRelA"')), 'wide')}
+        ${field('And', findable(select("uvRelSet('b',this.value)", wrestlerOptions(st, rd.b, '— Pick a wrestler —', [rd.a]), ' id="uvRelB"')), 'wide')}
       </div>`}
       <div class="uv-pills tight">${ORDER.map(k => `<div class="uv-pill${rd.kind === k ? ' on' : ''}" data-kind="${k}" onclick="uvRelSet('kind','${k}')">
         <span class="uv-dot" style="--c:${KIND[k].color}"></span>${KIND[k].label}</div>`).join('')}</div>
@@ -411,7 +412,7 @@ function incidentSheet() {
   if (!ev || (ic.incId && !ev.incidents.some(x => x.id === ic.incId))) return null;
   const k = INCIDENT[ic.kind];
   const picks = (list, label, optional = false) => `<div class="uv-sidebox"><div class="h"><span>${esc(label)}</span></div>
-    ${ic[list].map((wid, j) => `<div class="uv-pick">${select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`)}
+    ${ic[list].map((wid, j) => `<div class="uv-pick">${findable(select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`))}
       ${ic[list].length > 1 || optional ? `<div class="uv-ic sm" onclick="uvIcDrop('${list}',${j})">${ICON.x}</div>` : ''}</div>`).join('')}
     <div class="uv-add" onclick="uvIcAdd('${list}')">${ICON.plus}${ic[list].length ? 'Add another' : 'Add someone'}</div></div>`;
   const titles = st.titles.filter(t => t.active || t.id === ic.title);
@@ -437,8 +438,8 @@ function incidentSheet() {
       ${k.title ? `<div style="margin-top:10px">${field(ic.kind === 'challenge' ? 'For the title' : 'Over a title (optional)',
         select("uvIcSet('title',this.value)", options([['', ic.kind === 'challenge' ? '— Pick the title —' : 'No title'], ...titles.map(t => [t.id, t.name])], ic.title),
           ' id="uvIcTitle"'), 'wide')}</div>` : ''}
-      ${k.team ? `<div style="margin-top:10px">${field('The team', select("uvIcSet('team',this.value)", options([['', '— Pick the team —'],
-        ...teams.map(t => [t.id, t.name])], ic.team), ' id="uvIcTeam"'), 'wide')}</div>` : ''}
+      ${k.team ? `<div style="margin-top:10px">${field('The team', findable(select("uvIcSet('team',this.value)", options([['', '— Pick the team —'],
+        ...teams.map(t => [t.id, t.name])], ic.team), ' id="uvIcTeam"')), 'wide')}</div>` : ''}
       <div style="margin-top:10px">${picks('by', k.by)}${k.on === false ? '' : picks('on', k.on || (ic.kind === 'breakup' ? 'Left behind (optional)' : 'Calling out (optional)'), k.on === null)}${k.helped ? picks('helped', k.helped, ic.kind === 'interference') : ''}</div>
       ${ic.kind === 'breakup' && !ic.incId && ic.team && (M.teamById(st, ic.team) || {}).active ? `<label class="uv-check"><input id="uvIcDisband" type="checkbox"${ic.disband ? ' checked' : ''}
         onchange="uvIcSet('disband',this.checked)"><span>Disband ${esc(M.teamById(st, ic.team).name)} as well</span></label>` : ''}

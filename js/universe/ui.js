@@ -106,6 +106,17 @@ export function field(label, control, cls = '') {
 export function select(handler, pairsHTML, extra = '') {
   return `<select class="uv-in" onchange="${handler}"${extra}>${pairsHTML}</select>`;
 }
+/**
+ * A dropdown of wrestlers or teams, with a search button beside it once the
+ * list is long enough to need one (find.js). The dropdown itself is unchanged.
+ */
+export const FIND_FROM = 7;
+export function findable(selectHTML) {
+  const choices = (selectHTML.match(/<option value="[^"]+"/g) || []).length;        // not the blank "— Pick —"
+  if (choices < FIND_FROM) return selectHTML;
+  return `<div class="uv-find">${selectHTML}<button type="button" class="uv-ic uv-find-btn" title="Search" aria-label="Search"
+    onclick="uvFind(this)">${ICON.search}</button></div>`;
+}
 
 export function empty(icon, title, text, action = '') {
   return `<div class="uv-empty">${icon}<div class="t">${esc(title)}</div><div class="s">${esc(text)}</div>${action}</div>`;

@@ -15,6 +15,7 @@ import { createCloud } from '../js/universe/cloud.js';
 import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
 import * as DR from '../js/universe/director.js';
+import { FIND_FROM, findable } from '../js/universe/ui.js';
 import { sampleCycle, sampleSeason } from './universe-sample.mjs';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
@@ -2738,6 +2739,13 @@ test('a run whose picks can’t be recorded is logged with nothing made and why 
   assert.deepEqual([r.made, r.problem, r.considered[0].picked], [[], 'KO & Sami have already split.', false]);
   sound(st);
   assert.ok(M.validate(M.migrate(JSON.parse(exportUniverse(st)))).length === 0);
+});
+
+test('a dropdown gets a search once its list is long enough to need one', () => {
+  const list = n => `<select class="uv-in"><option value="">— Pick —</option>${Array.from({ length: n }, (_, i) => `<option value="w${i}">W${i}</option>`).join('')}</select>`;
+  assert.equal(findable(list(FIND_FROM - 1)), list(FIND_FROM - 1), 'a short list is just the dropdown');
+  const long = findable(list(FIND_FROM));
+  assert.ok(long.startsWith('<div class="uv-find">') && long.includes(list(FIND_FROM)) && /onclick="uvFind\(this\)"/.test(long));
 });
 
 test('momentum and goals come from the record', () => {

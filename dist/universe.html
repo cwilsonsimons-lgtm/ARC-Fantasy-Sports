@@ -267,6 +267,23 @@ select.uv-in{appearance:none;-webkit-appearance:none;padding-right:28px;backgrou
 .uv-sidebox .h{display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:1px;
   text-transform:uppercase;color:var(--uv-ink-2)}
 .uv-sidebox .h .uv-link{text-transform:none;letter-spacing:0;font-weight:700;color:var(--uv-ink-3)}
+/* a long dropdown's search (find.js): a button beside the dropdown, the box under its row */
+.uv-find{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
+.uv-find>select{flex:1;min-width:0}
+.uv-find-btn{width:38px;height:38px;padding:0;font:inherit;appearance:none;-webkit-appearance:none}
+.uv-find-btn.on{border-color:var(--uv-gold-line);color:var(--uv-gold);background:var(--uv-gold-soft)}
+.uv-pair .vs .uv-find{flex:1 1 170px}
+.uv-findbox{grid-column:1/-1;margin-top:6px;padding:8px;border-radius:12px;border:1px solid var(--uv-gold-line);background:var(--uv-card-2)}
+.uv-findbox input.uv-in{background-color:var(--uv-card)}
+.uv-findres{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.uv-findhit{display:flex;align-items:baseline;justify-content:space-between;gap:10px;width:100%;min-height:40px;padding:10px;
+  border:0;border-radius:9px;background:transparent;color:var(--uv-ink);font:inherit;font-size:13.5px;text-align:left;cursor:pointer;
+  appearance:none;-webkit-appearance:none}
+.uv-findhit:first-child,.uv-findhit:hover,.uv-findhit:focus-visible{background:var(--uv-card)}   /* the first is what Enter picks */
+.uv-findhit b{min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-findhit.on b{color:var(--uv-gold)}
+.uv-findhit span{flex:none;font-size:11px;color:var(--uv-ink-3)}
+.uv-findnote{padding:6px 10px;font-size:12px;color:var(--uv-ink-3)}
 .uv-check{display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:13px;line-height:1.4;color:var(--uv-ink-2);cursor:pointer}
 .uv-check input{flex:none;width:18px;height:18px;margin-top:1px;accent-color:var(--uv-gold)}
 .uv-check + .uv-f,.uv-grid + .uv-f.wide{margin-top:12px}
@@ -1188,8 +1205,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (teams) refs.push(teams === 1 ? "a tag team" : `${teams} tag teams`);
     const reigns = st.reigns.filter((r) => r.holder.type === "wrestler" && r.holder.id === id).length;
     if (reigns) refs.push(reigns === 1 ? "a title reign" : `${reigns} title reigns`);
-    const matches = matchesOf(st, id).length;
-    if (matches) refs.push(matches === 1 ? "a match" : `${matches} matches`);
+    const matches2 = matchesOf(st, id).length;
+    if (matches2) refs.push(matches2 === 1 ? "a match" : `${matches2} matches`);
     const booked = bookingsOf(st, id).length;
     if (booked) refs.push(booked === 1 ? "a booked match" : `${booked} booked matches`);
     if (inTransition(st, id)) refs.push("a season transition");
@@ -1342,11 +1359,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const refs = [];
     const reigns = st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === id).length;
     if (reigns) refs.push(reigns === 1 ? "a title reign" : `${reigns} title reigns`);
-    let matches = 0;
+    let matches2 = 0;
     eachMatch(st, (m) => {
-      if (m.sides.some((s) => s.team === id)) matches++;
+      if (m.sides.some((s) => s.team === id)) matches2++;
     });
-    if (matches) refs.push(matches === 1 ? "a match" : `${matches} matches`);
+    if (matches2) refs.push(matches2 === 1 ? "a match" : `${matches2} matches`);
     if (st.events.some((e) => e.incidents.some((x) => x.team === id))) refs.push("an incident");
     return refs;
   }
@@ -1439,11 +1456,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const refs = [];
     const reigns = st.reigns.filter((r) => r.titleId === id).length;
     if (reigns) refs.push(reigns === 1 ? "a reign" : `${reigns} reigns`);
-    let matches = 0;
+    let matches2 = 0;
     eachMatch(st, (m) => {
-      if (m.titleId === id) matches++;
+      if (m.titleId === id) matches2++;
     });
-    if (matches) refs.push(matches === 1 ? "a title match" : `${matches} title matches`);
+    if (matches2) refs.push(matches2 === 1 ? "a title match" : `${matches2} title matches`);
     if (st.events.some((e) => e.incidents.some((x) => x.title === id))) refs.push("an incident");
     return refs;
   }
@@ -1533,8 +1550,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!last) fail(`The ${title2.name} has no history to undo.`);
     if (last.end) {
       if (!title2.active) fail(`The ${title2.name} is retired. Reactivate it first.`);
-      const pick = st.drafts.find((d) => d.titles.some((x) => x.reign === last.id && x.choice === "vacated"));
-      if (pick) fail(`The ${title2.name} was vacated when ${nameOf(st, pick.wrestler)} was drafted to ${showById(st, pick.to).name}. Undo that draft pick instead.`);
+      const pick2 = st.drafts.find((d) => d.titles.some((x) => x.reign === last.id && x.choice === "vacated"));
+      if (pick2) fail(`The ${title2.name} was vacated when ${nameOf(st, pick2.wrestler)} was drafted to ${showById(st, pick2.to).name}. Undo that draft pick instead.`);
       last.end = null;
       last.vacated = false;
       return last;
@@ -2808,14 +2825,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return { title: h.title, reign: h.reign, choice: choices[h.title] === "vacate" ? "vacated" : "kept" };
     });
     const groupId = newId(st, "dg");
-    const pick = Math.max(0, ...draftsOf(st, trId).map((d) => d.pick)) + 1;
+    const pick2 = Math.max(0, ...draftsOf(st, trId).map((d) => d.pick)) + 1;
     return group.map((id, i) => {
       const move = recordMove(st, wrestlerById(st, id), to.id, `Drafted from NXT${i ? ` with ${w.name}` : ""}`.slice(0, MAX_NAME), date);
       const rec = {
         id: newId(st, "dr"),
         transition: tr.id,
         group: groupId,
-        pick,
+        pick: pick2,
         wrestler: id,
         from: PROMOTED_FROM,
         to: to.id,
@@ -3362,9 +3379,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return out.sort((a, b) => compareStamps(st, b, a));
   }
   function summary(st) {
-    let matches = 0, booked = 0;
+    let matches2 = 0, booked = 0;
     eachMatch(st, (m) => {
-      if (m.status === "played") matches++;
+      if (m.status === "played") matches2++;
       else booked++;
     });
     return {
@@ -3372,7 +3389,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       teams: st.teams.length,
       titles: st.titles.length,
       events: st.events.length,
-      matches,
+      matches: matches2,
       booked,
       seasons: st.seasons.length
     };
@@ -4016,6 +4033,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function select(handler, pairsHTML, extra = "") {
     return `<select class="uv-in" onchange="${handler}"${extra}>${pairsHTML}</select>`;
   }
+  var FIND_FROM = 7;
+  function findable(selectHTML) {
+    const choices = (selectHTML.match(/<option value="[^"]+"/g) || []).length;
+    if (choices < FIND_FROM) return selectHTML;
+    return `<div class="uv-find">${selectHTML}<button type="button" class="uv-ic uv-find-btn" title="Search" aria-label="Search"
+    onclick="uvFind(this)">${ICON.search}</button></div>`;
+  }
   function empty(icon, title2, text, action = "") {
     return `<div class="uv-empty">${icon}<div class="t">${esc(title2)}</div><div class="s">${esc(text)}</div>${action}</div>`;
   }
@@ -4449,8 +4473,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       counts: { wrestlers: n.wrestlers, results: n.matches }
     });
   }
-  function bootUniverse(paint2) {
-    painter = paint2;
+  function bootUniverse(paint3) {
+    painter = paint3;
     const s = storage();
     loaded = s ? loadUniverse(s) : { state: createUniverse(), status: "unavailable", problems: [], backupKey: null, readOnly: false };
     U = loaded.state;
@@ -4882,9 +4906,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }
       const them = standing.get(o.id);
       if (me && them) {
-        const close = 1 - Math.min(1, Math.abs(me.score - them.score) / 0.3);
-        score += 1.5 * close;
-        if (close >= 0.5) reasons2.push(`Close in the standings: #${me.rank} and #${them.rank}`);
+        const close2 = 1 - Math.min(1, Math.abs(me.score - them.score) / 0.3);
+        score += 1.5 * close2;
+        if (close2 >= 0.5) reasons2.push(`Close in the standings: #${me.rank} and #${them.rank}`);
         if (them.rank <= 3 && me.rank > them.rank + 2) {
           score += 0.75;
           reasons2.push(`A shot at #${them.rank} ${o.name}`);
@@ -5312,7 +5336,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const status = `<span class="uv-pst ${p.status.replace(" ", "-")}">${QSTATUS[p.status]}</span>`;
     if (p.status === "unbooked") {
       return `<div class="uv-pair"><div class="vs"><b>${nm(st, p.a)}</b> vs
-      <select class="uv-in sm" onchange="uvQPair('${trId}','${p.a}',this.value)">${t.picked.filter((id) => id !== p.a).map((id) => `<option value="${id}"${id === p.b ? " selected" : ""}>${nm(st, id)}</option>`).join("")}</select></div>${status}</div>`;
+      ${findable(`<select class="uv-in sm" onchange="uvQPair('${trId}','${p.a}',this.value)">${t.picked.filter((id) => id !== p.a).map((id) => `<option value="${id}"${id === p.b ? " selected" : ""}>${nm(st, id)}</option>`).join("")}</select>`)}</div>${status}</div>`;
     }
     const { m, ev } = p.last;
     let detail = "";
@@ -5749,9 +5773,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const cutoff = t.auto ? t.candidates.length + t.tied.length : null;
     const rows = t.pool.map((r, i) => {
       const on = t.candidates.includes(r.id), tied = t.auto && t.tied.some((x) => x.id === r.id);
-      const line = t.auto && i === cutoff - 1 && i < t.pool.length - 1 ? " cut" : "";
+      const line2 = t.auto && i === cutoff - 1 && i < t.pool.length - 1 ? " cut" : "";
       const notes = [r.injured && "injured", r.now !== sid && (r.now ? `now ${showName(st, r.now)}` : "now unassigned")].filter(Boolean);
-      return `<div class="uv-tw${on ? " on" : ""}${tied ? " tied" : ""}${line}" data-w="${r.id}" onclick="uvTrPick('${trId}','${sid}','${r.id}')">
+      return `<div class="uv-tw${on ? " on" : ""}${tied ? " tied" : ""}${line2}" data-w="${r.id}" onclick="uvTrPick('${trId}','${sid}','${r.id}')">
       <span class="uv-tick">${on ? ICON.check : ""}</span>
       <div class="uv-main"><div class="nm">${esc(r.name)}${tied ? ' <span class="uv-chip warn">Tied</span>' : ""}</div>
         <div class="sub">${esc(notes.join(" \xB7 ") || `${plural4(r.matches, "match", "matches")}`)}</div></div>
@@ -5791,7 +5815,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (p.status === "unbooked") {
       return `<div class="uv-pair">
       <div class="vs"><b>${nm2(st, p.a)}</b> <span class="uv-muted">(${wins(p.a)})</span> vs
-        <select class="uv-in sm" onchange="uvTrPair('${trId}','${sid}','${p.a}',this.value)">${others(p.a).map((id) => `<option value="${id}"${id === p.b ? " selected" : ""}>${nm2(st, id)} (${wins(id)})</option>`).join("")}</select></div>
+        ${findable(`<select class="uv-in sm" onchange="uvTrPair('${trId}','${sid}','${p.a}',this.value)">${others(p.a).map((id) => `<option value="${id}"${id === p.b ? " selected" : ""}>${nm2(st, id)} (${wins(id)})</option>`).join("")}</select>`)}</div>
       ${status}</div>`;
     }
     const m = p.last.m, ev = p.last.ev;
@@ -6635,8 +6659,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       title: rd.fixA && rd.fixB ? `${esc(nm4(st, rd.a))} & ${esc(nm4(st, rd.b))}` : "Relationship",
       body: `
       ${rd.fixA && rd.fixB ? "" : `<div class="uv-grid">
-        ${field("Wrestler", rd.fixA ? `<div class="uv-in ro">${esc(nm4(st, rd.a))}</div>` : select("uvRelSet('a',this.value)", wrestlerOptions(st, rd.a, "\u2014 Pick a wrestler \u2014", [rd.b]), ' id="uvRelA"'), "wide")}
-        ${field("And", select("uvRelSet('b',this.value)", wrestlerOptions(st, rd.b, "\u2014 Pick a wrestler \u2014", [rd.a]), ' id="uvRelB"'), "wide")}
+        ${field("Wrestler", rd.fixA ? `<div class="uv-in ro">${esc(nm4(st, rd.a))}</div>` : findable(select("uvRelSet('a',this.value)", wrestlerOptions(st, rd.a, "\u2014 Pick a wrestler \u2014", [rd.b]), ' id="uvRelA"')), "wide")}
+        ${field("And", findable(select("uvRelSet('b',this.value)", wrestlerOptions(st, rd.b, "\u2014 Pick a wrestler \u2014", [rd.a]), ' id="uvRelB"')), "wide")}
       </div>`}
       <div class="uv-pills tight">${ORDER.map((k) => `<div class="uv-pill${rd.kind === k ? " on" : ""}" data-kind="${k}" onclick="uvRelSet('kind','${k}')">
         <span class="uv-dot" style="--c:${KIND[k].color}"></span>${KIND[k].label}</div>`).join("")}</div>
@@ -6814,7 +6838,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!ev || ic.incId && !ev.incidents.some((x) => x.id === ic.incId)) return null;
     const k = INCIDENT[ic.kind];
     const picks = (list, label, optional = false) => `<div class="uv-sidebox"><div class="h"><span>${esc(label)}</span></div>
-    ${ic[list].map((wid, j) => `<div class="uv-pick">${select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`)}
+    ${ic[list].map((wid, j) => `<div class="uv-pick">${findable(select(`uvIcPick('${list}',${j},this.value)`, wrestlerOptions(st, wid), ` data-${list}="${j}"`))}
       ${ic[list].length > 1 || optional ? `<div class="uv-ic sm" onclick="uvIcDrop('${list}',${j})">${ICON.x}</div>` : ""}</div>`).join("")}
     <div class="uv-add" onclick="uvIcAdd('${list}')">${ICON.plus}${ic[list].length ? "Add another" : "Add someone"}</div></div>`;
     const titles = st.titles.filter((t) => t.active || t.id === ic.title);
@@ -6850,10 +6874,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ),
         "wide"
       )}</div>` : ""}
-      ${k.team ? `<div style="margin-top:10px">${field("The team", select("uvIcSet('team',this.value)", options([
+      ${k.team ? `<div style="margin-top:10px">${field("The team", findable(select("uvIcSet('team',this.value)", options([
         ["", "\u2014 Pick the team \u2014"],
         ...teams.map((t) => [t.id, t.name])
-      ], ic.team), ' id="uvIcTeam"'), "wide")}</div>` : ""}
+      ], ic.team), ' id="uvIcTeam"')), "wide")}</div>` : ""}
       <div style="margin-top:10px">${picks("by", k.by)}${k.on === false ? "" : picks("on", k.on || (ic.kind === "breakup" ? "Left behind (optional)" : "Calling out (optional)"), k.on === null)}${k.helped ? picks("helped", k.helped, ic.kind === "interference") : ""}</div>
       ${ic.kind === "breakup" && !ic.incId && ic.team && (teamById(st, ic.team) || {}).active ? `<label class="uv-check"><input id="uvIcDisband" type="checkbox"${ic.disband ? " checked" : ""}
         onchange="uvIcSet('disband',this.checked)"><span>Disband ${esc(teamById(st, ic.team).name)} as well</span></label>` : ""}
@@ -7655,17 +7679,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!contenders.length) return;
       const total = contenders.reduce((n, k) => n + k.w, 0);
       let x = draw(c.seed, c.ev.id, c.phase, c.nonce, "contender", t.id) * total;
-      const pick = contenders.find((k) => (x -= k.w) < 0) || contenders[contenders.length - 1];
-      const cand = candidate(c, "challenge", `challenge:${t.id}:${[...pick.ids].sort().join("+")}`, [...pick.ids, ...champs]);
+      const pick2 = contenders.find((k) => (x -= k.w) < 0) || contenders[contenders.length - 1];
+      const cand = candidate(c, "challenge", `challenge:${t.id}:${[...pick2.ids].sort().join("+")}`, [...pick2.ids, ...champs]);
       why(cand, 1, `${champName} ${champs.length > 1 ? "hold" : "holds"} the ${t.name}`);
       if (champAppeared) why(cand, 1.4, `${champName} wrestled at ${c.ev.name}`);
       const lastTitleMatch = st.events.filter((e) => e.matches.some((m) => m.status === "played" && m.titleId === t.id)).map((e) => weekNo(st, e.at)).filter((n) => n <= c.wk).sort((a, b) => b - a)[0];
       const quiet = lastTitleMatch == null ? c.wk - weekNo(st, reign.start) : c.wk - lastTitleMatch;
       if (quiet >= 4) why(cand, 1.5, `The ${t.name} hasn't been on the line in ${quiet} weeks`);
-      pick.reasons.forEach((r) => why(cand, 1, r));
-      why(cand, 1, `${pick.name} came up from ${contenders.length} possible challenger${contenders.length === 1 ? "" : "s"} \u2014 anyone eligible can, and the rankings don't decide it (${pct2(pick.w / total)} of the draw)`);
+      pick2.reasons.forEach((r) => why(cand, 1, r));
+      why(cand, 1, `${pick2.name} came up from ${contenders.length} possible challenger${contenders.length === 1 ? "" : "s"} \u2014 anyone eligible can, and the rankings don't decide it (${pct2(pick2.w / total)} of the draw)`);
       if (weekNo(st, reign.start) >= c.wk - 1) why(cand, 0.5, `Less likely: ${champName} only just won it`);
-      cand.plan = { incidents: [{ kind: "challenge", by: [...pick.ids], on: [...champs], title: t.id }] };
+      cand.plan = { incidents: [{ kind: "challenge", by: [...pick2.ids], on: [...champs], title: t.id }] };
       cand.basis = { title: { id: t.id, holder: reign.holder } };
       if (!freshness(c, cand)) return;
       out.push(finish(c, cand, KIND2.challenge.base));
@@ -8032,7 +8056,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!g) return null;
     const ids = g.incs.map((i) => i.id);
     const changes = relationships(st).entries.filter((e) => ids.includes(e.cause.incident));
-    const pick = pickOf(g);
+    const pick2 = pickOf(g);
     const problems = [...new Set(g.incs.map((i) => storyProblem(st, g.event, i)).filter(Boolean))];
     const turns2 = g.incs.filter((i) => i.turn);
     const split = g.roll ? g.roll.disbanded.filter((d) => ids.includes(d.incident)).map((d) => teamById(st, d.team)).filter(Boolean) : [];
@@ -8057,7 +8081,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${split.map((t) => `<li>${esc(t.name)} disbanded</li>`).join("")}
         ${changes.length || turns2.length || split.length ? "" : `<li class="minus">${esc(none)}</li>`}
       </ul>
-      ${pick ? `<div class="uv-odds">Chance ${esc(chanceText(pick.chance))} \xB7 drew ${pick.draw.toFixed(4)}${pick.shock ? " \xB7 a rare shock" : ""}
+      ${pick2 ? `<div class="uv-odds">Chance ${esc(chanceText(pick2.chance))} \xB7 drew ${pick2.draw.toFixed(4)}${pick2.shock ? " \xB7 a rare shock" : ""}
         \xB7 <span class="uv-link" onclick="uvStoryLog('${g.roll.id}')">See the whole run</span></div>` : ""}
       ${bookButton(st, g)}
       <div class="uv-sub flush">Change it</div>
@@ -8221,11 +8245,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvStoryBlock(st, ev, phase) {
     const list = storyEvents(st, { event: ev.id, phase });
-    const line = runLine(st, ev, phase, directorRollOf(st, ev.id, phase));
-    if (!list.length && !line) return "";
+    const line2 = runLine(st, ev, phase, directorRollOf(st, ev.id, phase));
+    if (!list.length && !line2) return "";
     return `${section(phase === "pre" ? "Before the show" : "During & after", list.length || null)}
     ${list.length ? `<div class="uv-whs" data-phase="${phase}">${list.map((g) => feedRow(st, g, { where: false })).join("")}</div>` : ""}
-    ${line}`;
+    ${line2}`;
   }
   function uvStoryRow(st) {
     const s = activeSeason(st);
@@ -9176,8 +9200,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const hasTeams = st.teams.some((t) => t.active) || md.sides.some((s) => s.team);
     const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
       <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ""}</div>
-      ${hasTeams && (s.wrestlers.length > 1 || s.team) ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, "Not as a tag team"), ' data-team="1"')}</div>` : ""}
-      ${s.wrestlers.map((wid, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, wid), ` data-w="${j}"`)}
+      ${hasTeams && (s.wrestlers.length > 1 || s.team) ? `<div class="uv-pick">${findable(select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, "Not as a tag team"), ' data-team="1"'))}</div>` : ""}
+      ${s.wrestlers.map((wid, j) => `<div class="uv-pick">${findable(select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, wid), ` data-w="${j}"`))}
         ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON.x}</div>` : ""}</div>`).join("")}
       ${teamGuesses(st, s).map((t) => `<div class="uv-hint" onclick="uvMTeam(${i},'${t.id}')">Wrestling as <b>${esc(t.name)}</b>?
         <span>Tap so it counts on their team record</span></div>`).join("")}
@@ -9185,11 +9209,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     </div>`).join("");
     const winSide = w != null ? md.sides[w] : null;
     const losers = w != null ? md.sides.filter((_, i) => i !== w).flatMap((s) => s.wrestlers.filter(Boolean)) : [];
-    const pickFrom = (ids, v, k, blank) => select(
+    const pickFrom = (ids, v, k, blank) => findable(select(
       `uvMSet('${k}',this.value)`,
       options([["", blank], ...ids.map((id) => [id, wrestlerById(st, id).name])], v),
       ` id="uvM${k === "by" ? "By" : "On"}"`
-    );
+    ));
     const result = withResult ? `
       <h4>What happened in the game</h4>
       ${field("Result", select(`uvMSet('result',this.value)`, options([
@@ -9897,7 +9921,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${field("Team name", `<input id="uvTeamName" class="uv-in" maxlength="60" value="${esc(d.name)}" placeholder="e.g. The New Day"
         oninput="uvTeamDraftName(this.value)">`, "wide")}
       <h4>Members</h4>
-      ${d.members.map((m, i) => `<div class="uv-pick">${select(`uvTeamDraftMember(${i},this.value)`, wrestlerOptions(st, m))}
+      ${d.members.map((m, i) => `<div class="uv-pick">${findable(select(`uvTeamDraftMember(${i},this.value)`, wrestlerOptions(st, m)))}
         ${d.members.length > 2 ? `<div class="uv-ic sm" onclick="uvTeamDraftDrop(${i})">${ICON.x}</div>` : ""}</div>`).join("")}
       <div class="uv-add" onclick="uvTeamDraftAdd()">${ICON.plus}Add a member</div>
       <div class="uv-btn pri full" onclick="uvCreateTeam()">Create team</div>`
@@ -10726,7 +10750,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <p class="uv-p">For the same wrestler entered twice. Pick the duplicate of <b>${esc(keep.name)}</b>: everything it
           did \u2014 results, team spells, title reigns \u2014 becomes ${esc(keep.name)}\u2019s, and the duplicate is removed.
           Its roster moves are dropped; ${esc(keep.name)}\u2019s own show history is kept.</p>
-        ${field("The duplicate", `<select id="uvMergePick" class="uv-in">${wrestlerOptions(st, "", "\u2014 Pick the duplicate \u2014", [keepId])}</select>`, "wide")}
+        ${field("The duplicate", findable(`<select id="uvMergePick" class="uv-in">${wrestlerOptions(st, "", "\u2014 Pick the duplicate \u2014", [keepId])}</select>`), "wide")}
         <div class="uv-btn pri full" onclick="uvMergeSave('${keepId}')">Merge into ${esc(keep.name)}</div>
         <div class="fine">It\u2019s refused if the two were ever in the same match or on the same team \u2014 then they can\u2019t be the same person.</div>`
       };
@@ -10788,7 +10812,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
           ${t.members.length > 2 ? `<div class="uv-btn sm" onclick="uvRemoveMember('${id}','${m.wrestler}')">Remove</div>` : ""}</div>`).join("")}
         ${t.members.length <= 2 ? '<div class="fine">A team needs two members: add the new partner before removing anyone.</div>' : ""}
         <h4>Add a member</h4>
-        <div class="uv-pick"><select id="uvLineupPick" class="uv-in">${wrestlerOptions(st, "", "\u2014 Pick a wrestler \u2014", t.members)}</select>
+        <div class="uv-pick">${findable(`<select id="uvLineupPick" class="uv-in">${wrestlerOptions(st, "", "\u2014 Pick a wrestler \u2014", t.members)}</select>`)}
           <div class="uv-btn pri" onclick="uvAddMember('${id}')">Add</div></div>
         ${former.length ? `<h4>Former</h4>${former.map((m) => `<div class="uv-li plain"><span>${name(m)}
           <span class="uv-muted d">${stampLabel(st, m.start)} \u2192 ${stampLabel(st, m.end)}</span></span></div>`).join("")}` : ""}
@@ -10856,7 +10880,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         body: `
         <p class="uv-p">For the <b>${esc(t.name)}</b>, dated to this week. If it changed hands in a match, record it on that
           event\u2019s result instead \u2014 then the reign is dated to the show and counts as won there.</p>
-        ${field(t.kind === "tag" ? "New champions" : "New champion", `<select id="uvCrownPick" class="uv-in">${pool}</select>`, "wide")}
+        ${field(t.kind === "tag" ? "New champions" : "New champion", findable(`<select id="uvCrownPick" class="uv-in">${pool}</select>`), "wide")}
         <div style="margin-top:10px">${field("Note (optional)", `<input id="uvCrownNote" class="uv-in" maxlength="60" placeholder="e.g. Awarded, tournament">`, "wide")}</div>
         <div class="uv-btn pri full" onclick="uvCrown('${id}')">Crown</div>`
       };
@@ -10864,13 +10888,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvCrown(id) {
     const t = titleById(uni(), id);
-    const pick = document.getElementById("uvCrownPick");
-    if (!pick || !pick.value) {
+    const pick2 = document.getElementById("uvCrownPick");
+    if (!pick2 || !pick2.value) {
       toast(`Pick the new champion${t.kind === "tag" ? "s" : ""} first.`, true);
       return;
     }
     const note = (document.getElementById("uvCrownNote") || {}).value || "";
-    const holder = { type: t.kind === "tag" ? "team" : "wrestler", id: pick.value };
+    const holder = { type: t.kind === "tag" ? "team" : "wrestler", id: pick2.value };
     const r = commit(
       (st) => setChampion(st, id, holder, { note }),
       (reign) => `${holderName(uni(), reign.holder)} \u2014 new ${t.name} champion${t.kind === "tag" ? "s" : ""}`
@@ -10954,7 +10978,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
           \xB7 ${weeksText(reignWeeks(st, r))} \xB7 ${defencesOf(st, r)} defence${defencesOf(st, r) === 1 ? "" : "s"}. Correcting it leaves every other reign as it is.</p>
         ${fromResult ? `<div class="uv-note">This reign came from a result at <b>${esc(ev.name)}</b>, so who won \u2014 and when \u2014 is
             fixed there. <span class="uv-link" onclick="uvOpenEvent('${ev.id}')">Open ${esc(ev.name)}</span></div>` : `<div class="uv-grid" style="margin-top:4px">
-              ${field(t.kind === "tag" ? "Held by (team)" : "Held by", `<select id="uvReignHolder" class="uv-in">${pool}</select>`, "wide")}
+              ${field(t.kind === "tag" ? "Held by (team)" : "Held by", findable(`<select id="uvReignHolder" class="uv-in">${pool}</select>`), "wide")}
               ${field("Began in week", weekInput(String(r.start.week), "", ` id="uvReignWeek"${ev ? " disabled" : ""}`))}
             </div>`}
         <div style="margin-top:10px">${field("Note", `<input id="uvReignNote" class="uv-in" maxlength="60" value="${esc(r.note)}"
@@ -10981,8 +11005,121 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (commit((s) => updateReign(s, reignId, patch), "Reign corrected").ok) closeSheet();
   }
 
+  // js/universe/find.js
+  var find_exports = {};
+  __export(find_exports, {
+    uvFind: () => uvFind
+  });
+  var SHOWN = 8;
+  var norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  var words = (s) => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
+  function matches(sel, q) {
+    const want = words(q);
+    if (!want.length) return [];
+    const out = [];
+    [...sel.options].forEach((o, i) => {
+      if (!o.value || o.disabled) return;
+      const name = norm(o.textContent), parts = words(o.textContent);
+      if (!want.every((w) => name.includes(w))) return;
+      const rank = name.startsWith(want[0]) ? 0 : parts.some((p) => p.startsWith(want[0])) ? 1 : 2;
+      out.push({ o, rank, i });
+    });
+    return out.sort((a, b) => a.rank - b.rank || a.i - b.i);
+  }
+  function line(res, text) {
+    const d = document.createElement("div");
+    d.className = "uv-findnote";
+    d.textContent = text;
+    res.append(d);
+  }
+  function paint2(box) {
+    const sel = box.uvSelect, q = box.querySelector("input").value;
+    const res = box.querySelector(".uv-findres");
+    res.textContent = "";
+    if (!words(q).length) {
+      line(res, "Type part of a name");
+      return;
+    }
+    const list = matches(sel, q);
+    if (!list.length) {
+      line(res, "Nobody by that name in this list");
+      return;
+    }
+    list.slice(0, SHOWN).forEach(({ o }) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `uv-findhit${o.value === sel.value ? " on" : ""}`;
+      b.dataset.v = o.value;
+      const name = document.createElement("b");
+      name.textContent = o.textContent;
+      b.append(name);
+      const group = o.parentElement && o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : "";
+      if (group) {
+        const g = document.createElement("span");
+        g.textContent = group;
+        b.append(g);
+      }
+      b.addEventListener("click", () => pick(box, o.value));
+      res.append(b);
+    });
+    if (list.length > SHOWN) line(res, `${list.length - SHOWN} more \u2014 keep typing`);
+  }
+  function close(box) {
+    if (box.uvButton) box.uvButton.classList.remove("on");
+    box.remove();
+  }
+  function pick(box, value) {
+    const sel = box.uvSelect;
+    close(box);
+    if (sel.value === value) return;
+    sel.value = value;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  function uvFind(btn) {
+    const wrap = btn.closest(".uv-find");
+    const sel = wrap && wrap.querySelector("select");
+    if (!sel) return;
+    const host = wrap.closest(".uv-pick, .uv-f") || wrap;
+    const open2 = host.nextElementSibling;
+    if (open2 && open2.classList.contains("uv-findbox")) {
+      close(open2);
+      return;
+    }
+    document.querySelectorAll(".uv-findbox").forEach(close);
+    const box = document.createElement("div");
+    box.className = "uv-findbox";
+    box.uvSelect = sel;
+    box.uvButton = btn;
+    const input = document.createElement("input");
+    input.className = "uv-in";
+    input.type = "search";
+    input.placeholder = "Search by name";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.setAttribute("aria-label", "Search the list");
+    const res = document.createElement("div");
+    res.className = "uv-findres";
+    box.append(input, res);
+    host.after(box);
+    btn.classList.add("on");
+    input.addEventListener("input", () => paint2(box));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const first = res.querySelector(".uv-findhit");
+        if (first) pick(box, first.dataset.v);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        close(box);
+      }
+    });
+    paint2(box);
+    input.focus({ preventScroll: true });
+  }
+
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports, find_exports);
   initUniverse();
 })();
 

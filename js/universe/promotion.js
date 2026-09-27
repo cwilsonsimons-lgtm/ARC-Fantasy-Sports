@@ -11,7 +11,7 @@
 // the draft, every time.
 import * as M from './model.js';
 import { periodOf, rankRows, standings } from './standings.js';
-import { ICON, chip, esc, eventWhen, fmtRec, showColor, showName } from './ui.js';
+import { ICON, chip, esc, eventWhen, findable, fmtRec, showColor, showName } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, refresh, uni } from './app.js';
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -115,8 +115,8 @@ function pairRow(st, t, p) {
   const status = `<span class="uv-pst ${p.status.replace(' ', '-')}">${QSTATUS[p.status]}</span>`;
   if (p.status === 'unbooked') {
     return `<div class="uv-pair"><div class="vs"><b>${nm(st, p.a)}</b> vs
-      <select class="uv-in sm" onchange="uvQPair('${trId}','${p.a}',this.value)">${t.picked.filter(id => id !== p.a).map(id =>
-        `<option value="${id}"${id === p.b ? ' selected' : ''}>${nm(st, id)}</option>`).join('')}</select></div>${status}</div>`;
+      ${findable(`<select class="uv-in sm" onchange="uvQPair('${trId}','${p.a}',this.value)">${t.picked.filter(id => id !== p.a).map(id =>
+        `<option value="${id}"${id === p.b ? ' selected' : ''}>${nm(st, id)}</option>`).join('')}</select>`)}</div>${status}</div>`;
   }
   const { m, ev } = p.last;
   let detail = '';

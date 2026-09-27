@@ -13,7 +13,7 @@
 import * as M from './model.js';
 import {
   ICON, LABEL, chip, empty, esc, eventWhen, fallLine, field, isoText, kindChip, labelPairs, matchLine, options,
-  select, showColor, showName, showPairs, teamOptions, titleOptions, vsLine, wrestlerOptions,
+  findable, select, showColor, showName, showPairs, teamOptions, titleOptions, vsLine, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
@@ -305,8 +305,8 @@ function formSheet() {
 
   const sides = md.sides.map((s, i) => `<div class="uv-sidebox">
       <div class="h"><span>Side ${i + 1}</span>${md.sides.length > 2 ? `<span class="uv-link" onclick="uvMDropSide(${i})">Remove</span>` : ''}</div>
-      ${hasTeams && (s.wrestlers.length > 1 || s.team) ? `<div class="uv-pick">${select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, 'Not as a tag team'), ' data-team="1"')}</div>` : ''}
-      ${s.wrestlers.map((wid, j) => `<div class="uv-pick">${select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, wid), ` data-w="${j}"`)}
+      ${hasTeams && (s.wrestlers.length > 1 || s.team) ? `<div class="uv-pick">${findable(select(`uvMTeam(${i},this.value)`, teamOptions(st, s.team, 'Not as a tag team'), ' data-team="1"'))}</div>` : ''}
+      ${s.wrestlers.map((wid, j) => `<div class="uv-pick">${findable(select(`uvMWrestler(${i},${j},this.value)`, wrestlerOptions(st, wid), ` data-w="${j}"`))}
         ${s.wrestlers.length > 1 ? `<div class="uv-ic sm" onclick="uvMDropWrestler(${i},${j})">${ICON.x}</div>` : ''}</div>`).join('')}
       ${teamGuesses(st, s).map(t => `<div class="uv-hint" onclick="uvMTeam(${i},'${t.id}')">Wrestling as <b>${esc(t.name)}</b>?
         <span>Tap so it counts on their team record</span></div>`).join('')}
@@ -315,8 +315,8 @@ function formSheet() {
 
   const winSide = w != null ? md.sides[w] : null;
   const losers = w != null ? md.sides.filter((_, i) => i !== w).flatMap(s => s.wrestlers.filter(Boolean)) : [];
-  const pickFrom = (ids, v, k, blank) => select(`uvMSet('${k}',this.value)`,
-    options([['', blank], ...ids.map(id => [id, M.wrestlerById(st, id).name])], v), ` id="uvM${k === 'by' ? 'By' : 'On'}"`);
+  const pickFrom = (ids, v, k, blank) => findable(select(`uvMSet('${k}',this.value)`,
+    options([['', blank], ...ids.map(id => [id, M.wrestlerById(st, id).name])], v), ` id="uvM${k === 'by' ? 'By' : 'On'}"`));
 
   const result = withResult ? `
       <h4>What happened in the game</h4>
