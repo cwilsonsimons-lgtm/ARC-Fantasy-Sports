@@ -3244,13 +3244,15 @@ test('logical matches: titles and contenders, feuds and their allies, friends, t
   const direct = find('feud', 'Seth', 'Kevin');
   const proxy = find('build', 'Seth', 'Sami');
   assert.ok(proxy.score > direct.score + 3, `${proxy.score} vs ${direct.score}`);
-  assert.match(proxy.why[0], /Rivals face each other’s allies: Seth against Sami, Kevin’s tag partner/);
-  assert.match(proxy.why.join(' '), /They met one on one last week — the feud builds another way this time/);
+  assert.equal(proxy.why[0], 'Seth against Sami, who stands with Kevin');
+  assert.equal(proxy.why[1], 'Connection: Seth → Kevin (rival) → Sami (Kevin’s tag partner)');
+  assert.match(proxy.why.join(' '), /They met one on one last week — the feud moves on another way/);
   assert.match(direct.why.join(' '), /Backlash is in 2 weeks — this could wait for it/);
-  // a friend steps in against a friend's rival (Jey for Cody, against Gunther)
-  assert.ok(said(/^Jey stands up for a friend: Cody’s feud with Gunther/));
+  // a friend isn't an enemy of a friend's rival by default: with nothing on record to draw Jey in, Jey isn't pitted against Gunther for Cody
+  assert.ok(!said(/stands up for a friend: Cody’s feud with Gunther/));
   // tag partners against a member of the team they're at odds with
-  assert.ok(find('teams', 'Sami', 'Finn') || ideas.some(x => x.kind === 'build' && pairIs(st, x, 'Sami', 'Finn')));
+  const odds = ideas.find(x => pairIs(st, x, 'Sami', 'Finn'));
+  assert.ok(odds.why.some(w => /Sami of KO & Sami against Finn of Judgment Day — their teams are at odds/.test(w)), odds.why.join(' | '));
   // an upset: a rematch, and a step up
   assert.match(find('rematch', 'Jey', 'Gunther').why[0], /^Rematch: Jey upset Gunther last week/);
   assert.ok(ideas.some(x => x.kind === 'step' && who(x).includes(st.wrestlers.find(w => w.name === 'Jey').id)));
@@ -3279,10 +3281,10 @@ test('the premium live event: every title with a contender, the feuds’ big mat
   const { st, C, backlash } = bookingSample();
   const r = B.draftCard(st, backlash.id);
   const byTitle = id => r.matches.find(m => m.titleId === id);
-  assert.equal(lineupOf(st, byTitle(C.world.id)), 'Cody vs Gunther');
+  assert.ok(pairIs(st, byTitle(C.world.id), 'Cody', 'Gunther'));
   assert.ok(byTitle(C.world.id).stip);
-  assert.match(byTitle(C.world.id).why.join(' | '), /The feud’s big match, at Backlash/);
-  assert.equal(lineupOf(st, byTitle(C.women.id)), 'Liv vs Becky');
+  assert.match(byTitle(C.world.id).why.join(' | '), /Gunther defends the World Heavyweight Championship at Backlash.*Cody holds a grudge against Gunther/);
+  assert.ok(pairIs(st, byTitle(C.women.id), 'Liv', 'Becky'));
   assert.ok(byTitle(C.rawTag.id));
   assert.equal(r.matches[r.matches.length - 1].titleId, C.world.id, 'the World title main-events');
   M.setBookerSettings(st, 'raw', { stips: 'never' });

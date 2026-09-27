@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -1494,7 +1494,7 @@ export const TYPE_LEVELS = ['often', 'sometimes', 'rarely', 'never'];
 export const STIP_USES = ['never', 'feuds', 'often'];
 export const MAX_CARD = 15;
 export const MAX_TITLE_MATCHES = 5;
-const MAX_DRAFT = 40, MAX_WHY = 6, MAX_WHY_TEXT = 300, MAX_PASSED = 300;
+const MAX_DRAFT = 40, MAX_WHY = 6, MAX_WHY_TEXT = 300, MAX_PASSED = 300, MAX_EVENTS = 12, MAX_SEEN = 400;
 const TIER_SIZES = [6, 5, 4];              // matches on an episode by default: tier 1, tier 2, any tier below
 const NO_TIER_SIZE = 5;
 const ALL_SHOWS_SIZE = 10;                 // a premium live event for every show
@@ -1567,13 +1567,15 @@ function draftFields(st, input) {
   const b = bookingFields(st, input);
   return { sides: b.sides, titleId: b.title ? b.title.id : null, stip: b.stip, notes: b.notes };
 }
-// why the booker chose a match: its kind, a key naming who and what, and a few short sentences
+// why the booker chose a match: its kind, a key naming who and what, a few short sentences, and
+// the story events behind it (ids - kept even if an event is undone later, so the draft can say so)
 function autoFields(auto) {
   if (auto == null) return null;
   const kind = String(auto.kind || '');
   if (!/^[a-z][a-z-]{0,23}$/.test(kind)) fail('That drafted match has an unknown kind.');
   const why = (Array.isArray(auto.why) ? auto.why : []).map(x => cleanName(x).slice(0, MAX_WHY_TEXT)).filter(Boolean).slice(0, MAX_WHY);
-  return { kind, key: String(auto.key || '').slice(0, 400), why, edited: !!auto.edited };
+  const events = [...new Set((Array.isArray(auto.events) ? auto.events : []).map(String).filter(x => /^[a-z][a-z0-9-]{0,39}$/i.test(x)))].slice(0, MAX_EVENTS);
+  return { kind, key: String(auto.key || '').slice(0, 400), why, events, edited: !!auto.edited };
 }
 const lineupOf = dm => JSON.stringify([dm.sides, dm.titleId, dm.stip, dm.notes]);
 // a drafted match the owner took off or drew again isn't offered again on this draft
@@ -1589,8 +1591,10 @@ function pass(d, dm) {
  * kept exactly as it is - or a new match { sides, titleId, stip, notes, auto }
  * (auto null: the owner's own). Draft matches left out are dropped. Who's out
  * tonight, and the matches the owner has turned down, stay with the draft.
+ * `seen` (story event ids) and `played` (results on record) say what the
+ * draft knew when it was drawn, so anything newer can be pointed out.
  */
-export function setDraft(st, eventId, list = [], { nonce = 0 } = {}) {
+export function setDraft(st, eventId, list = [], { nonce = 0, seen = null, played = null } = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   if (!Array.isArray(list)) fail('A draft card is a list of matches.');
   if (list.length > MAX_DRAFT) fail(`A draft card holds at most ${MAX_DRAFT} matches.`);
@@ -1608,10 +1612,13 @@ export function setDraft(st, eventId, list = [], { nonce = 0 } = {}) {
     }
     return { ...draftFields(st, x || {}), auto: autoFields(x && x.auto) };
   });
+  const known = Array.isArray(seen) ? [...new Set(seen.map(String))].slice(0, MAX_SEEN) : null;
+  const count = played == null ? null : Number(played);
+  if (count !== null && (!Number.isInteger(count) || count < 0)) fail('That count of results is unreadable.');
   ev.draft = {
     made: nowDate(st), nonce: n,
     matches: built.map(x => (x.id ? x : { id: newId(st, 'dm'), ...x })),
-    passed: old ? old.passed : [], out: old ? old.out : [],
+    passed: old ? old.passed : [], out: old ? old.out : [], seen: known, played: count,
   };
   return ev.draft;
 }
@@ -1686,7 +1693,7 @@ export function bookDraft(st, eventId) {
     }
   });
   const made = checked.map((b, i) => ({ id: newId(st, 'm'), relegation: null, qualifier: null,
-    auto: d.matches[i].auto ? { ...d.matches[i].auto, why: [...d.matches[i].auto.why] } : null, ...bookedRecord(b) }));
+    auto: d.matches[i].auto ? { ...d.matches[i].auto, why: [...d.matches[i].auto.why], events: [...d.matches[i].auto.events] } : null, ...bookedRecord(b) }));
   ev.matches.push(...made);
   ev.draft = null;
   return made;
@@ -3681,6 +3688,17 @@ export function migrate(raw) {
     });
     st.version = 10;
   }
+  if (st.version === 10) {
+    // v11: the booker reads the story. Drafted and auto-booked matches name the
+    // story events behind them - none, for anything drawn before - and a draft
+    // remembers what it had seen; one drawn before doesn't know.
+    st.events.forEach(e => {
+      const autos = [...(Array.isArray(e.matches) ? e.matches : []), ...(e.draft && Array.isArray(e.draft.matches) ? e.draft.matches : [])];
+      autos.forEach(m => { if (m.auto && typeof m.auto === 'object' && !Array.isArray(m.auto.events)) m.auto.events = []; });
+      if (e.draft && typeof e.draft === 'object') { e.draft.seen = null; e.draft.played = null; }
+    });
+    st.version = 11;
+  }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();
   st.events.forEach(e => {
@@ -3749,7 +3767,8 @@ export function validate(st) {
   };
   const showOk = id => id === null || !!showById(st, id);
   const autoOk = a => !!a && typeof a === 'object' && typeof a.kind === 'string' && typeof a.key === 'string'
-    && Array.isArray(a.why) && a.why.every(x => typeof x === 'string') && typeof a.edited === 'boolean';
+    && Array.isArray(a.why) && a.why.every(x => typeof x === 'string') && typeof a.edited === 'boolean'
+    && Array.isArray(a.events) && a.events.every(x => typeof x === 'string');
 
   // the auto booker's settings: only what the owner changed, per show
   const settingOk = ([k, v]) => ((k === 'size' || k === 'pleSize') ? Number.isInteger(v) && v >= 1 && v <= MAX_CARD
@@ -3962,7 +3981,9 @@ export function validate(st) {
       const d = e.draft;
       if (!d || typeof d !== 'object' || !Array.isArray(d.matches) || !Array.isArray(d.passed) || !Array.isArray(d.out)
         || !Number.isInteger(d.nonce) || d.nonce < 0 || !d.made || !seasonById(st, d.made.season) || !Number.isInteger(d.made.week)
-        || d.passed.some(k => typeof k !== 'string')) {
+        || d.passed.some(k => typeof k !== 'string')
+        || !(d.seen === null || (Array.isArray(d.seen) && d.seen.every(k => typeof k === 'string')))
+        || !(d.played === null || (Number.isInteger(d.played) && d.played >= 0))) {
         bad.push(`${e.name}'s draft card is unreadable.`);
       } else {
         if (d.out.some(id => !wrestlerById(st, id))) bad.push(`${e.name}'s draft card leaves out a wrestler who doesn't exist.`);
