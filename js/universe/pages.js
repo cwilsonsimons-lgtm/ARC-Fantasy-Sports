@@ -19,7 +19,7 @@ import { pushPage, refresh, uni } from './app.js';
 import { uvEventPage } from './card.js';
 import { uvTransitionPage } from './relegation.js';
 import { uvPairPage, uvProfilePersonality } from './personality.js';
-import { uvStoryPage } from './story.js';
+import { uvProfileStory, uvStoryPage } from './story.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -193,6 +193,7 @@ function wrestlerPage(id) {
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ''}
 
       ${upcoming(st, booked)}
+      ${uvProfileStory(st, w)}
       ${uvProfilePersonality(st, w)}
       ${drafted.length || eligibleOnly.length ? section('Draft', null) + drafted.map(d => {
         const how = d.eligibility.map(x => st.eligibility.find(e => e.id === x)).filter(Boolean).map(eligibilityText).join('; ') || 'brought along by the owner’s decision';

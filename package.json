@@ -11,7 +11,8 @@
     "pixel-diff": "node tools/pixel-diff.mjs",
     "check:markets": "node tools/markets-check.mjs",
     "test:universe": "node --test tools/universe-test.mjs",
-    "check:universe": "node tools/universe-check.mjs"
+    "check:universe": "node tools/universe-check.mjs",
+    "demo:story": "node tools/universe-story-demo.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

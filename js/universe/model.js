@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -83,7 +83,7 @@ export function createUniverse() {
     drafts: [],             // every draft pick from NXT - kept for good
     traitLog: [],           // every change to a wrestler's personality, dated (or from the start)
     relEdits: [],           // the owner's own relationship changes, dated; the rest is worked out from the record
-    story: newStory(),      // the story engine's settings, and what it has suggested
+    story: newStory(),      // the story director: its settings, seed, and a log of every time it ran
   };
   openSeason(st, 1, '');
   return st;
@@ -381,7 +381,6 @@ export function deleteWrestler(st, id) {
   removeWhere(st.wrestlers, x => x.id === id);
   removeWhere(st.moves, m => m.wrestler === id);
   removeWhere(st.traitLog, e => e.wrestler === id);
-  removeWhere(st.story.suggestions, sg => sg.status !== 'accepted' && planWrestlers(sg.plan).includes(id));
 }
 
 export function rosterOf(st, showId) {
@@ -556,8 +555,6 @@ export function deleteTeam(st, id) {
   if (refs.length) fail(`${t.name} are part of the history (${refs.join(', ')}), so they can't be deleted. Disband them instead.`);
   removeWhere(st.teams, x => x.id === id);
   removeWhere(st.memberships, m => m.team === id);
-  removeWhere(st.story.suggestions, sg => sg.status !== 'accepted' && (sg.plan.disband === id || sg.basis.team === id
-    || sg.plan.incidents.some(i => i.team === id)));
 }
 
 /** Teams a wrestler is on right now. */
@@ -681,7 +678,6 @@ export function deleteTitle(st, id) {
   const refs = titleRefs(st, id);
   if (refs.length) fail(`The ${t.name} has history (${refs.join(', ')}), so it can't be deleted. Retire it instead.`);
   removeWhere(st.titles, x => x.id === id);
-  removeWhere(st.story.suggestions, sg => sg.status !== 'accepted' && (sg.plan.incidents.some(i => i.title === id) || (sg.basis.title || {}).id === id));
 }
 
 export function titleReigns(st, titleId) {
@@ -1113,7 +1109,7 @@ export function deleteEvent(st, id) {
   removeWhere(st.events, e => e.id === id);
   if (revert) revert();
   unrel.forEach(f => f());
-  removeWhere(st.story.suggestions, sg => sg.event === id);
+  ev.incidents.forEach(x => unturn(st, x));                   // turns made there go back with it
   removeWhere(st.story.rolls, r => r.event === id);
 }
 
@@ -2360,7 +2356,9 @@ export function transfersSince(st, trId) {
 
 export const TRAITS = ['ambitious', 'loyal', 'opportunistic', 'hot-headed', 'patient', 'proud', 'cowardly', 'respectful'];
 export const REL_KINDS = ['grudge', 'rivals', 'allies', 'friends', 'former-partners'];   // a grudge is one-way: a holds it against b
-export const INCIDENT_KINDS = ['betrayal', 'interference', 'attack', 'save', 'brawl', 'challenge', 'demand', 'breakup', 'momentum'];
+export const INCIDENT_KINDS = ['betrayal', 'interference', 'attack', 'save', 'brawl', 'confrontation', 'challenge', 'open-challenge',
+  'demand', 'alliance', 'tension', 'breakup', 'truce', 'turn', 'momentum'];
+export const INCIDENT_PHASES = ['pre', 'post'];       // before the show's matches, or after them
 // what each kind of incident needs: `on` required, or optional, or never
 // (momentum: someone on a run, with nobody on the other end); who can be
 // `helped`; whether it names a title or a team
@@ -2374,6 +2372,12 @@ const INCIDENT_SHAPE = {
   demand: { by: 'made the demand', on: null, title: 'optional' },
   breakup: { by: 'walked away', on: null, team: true },
   momentum: { by: 'is on a run', on: false },
+  confrontation: { by: 'confronted someone', on: 'was confronted' },
+  'open-challenge': { by: 'laid down the challenge', on: false, title: 'optional' },
+  alliance: { by: 'reached out', on: 'they allied with' },
+  tension: { by: 'caused the tension', on: 'it was with', team: 'optional' },
+  truce: { by: 'offered the truce', on: 'accepted it' },
+  turn: { by: 'turned', on: false, turn: true },
 };
 const REL_ACTIONS = ['form', 'level', 'end', 'note', 'dismiss'];
 
@@ -2410,8 +2414,10 @@ export function setTraits(st, wid, traits, opts = {}) {
 }
 
 // incidents: who did it (`by`), to whom (`on`), anyone it `helped` (an
-// interference, a save), the match it happened in, and the title or team it
-// was about. `story` names the suggestion it came from, if it did.
+// interference, a save), the match it happened in, the title or team it was
+// about, and whether it came before the show's matches or after (`phase`).
+// One the story director recorded names its run (`story`) and keeps its
+// `cause` and `basis`; a turn keeps the alignment it came `from`.
 function incidentFields(st, ev, input) {
   const kind = oneOf(input.kind, INCIDENT_KINDS, 'incident');
   const shape = INCIDENT_SHAPE[kind];
@@ -2426,26 +2432,53 @@ function incidentFields(st, ev, input) {
   let title = null, team = null;
   if (shape.title && input.title) title = must(titleById(st, input.title), 'championship', input.title).id;
   if (shape.title === 'required' && !title) fail('Pick the title it’s for.');
-  if (shape.team) {
+  if (shape.team === true || (shape.team && input.team)) {
     const t = must(teamById(st, input.team), 'tag team', input.team);
     const ever = new Set(st.memberships.filter(m => m.team === t.id).map(m => m.wrestler));
     const outsider = [...by, ...on].find(id => !ever.has(id));
     if (outsider) fail(`${wrestlerById(st, outsider).name} was never on ${t.name}.`);
     team = t.id;
   }
-  return { kind, by, on, helped, match, title, team, note: checkText(input.note, 'Notes') };
+  const phase = input.phase == null || input.phase === '' ? null : oneOf(input.phase, INCIDENT_PHASES, 'phase');
+  if (shape.turn && by.length !== 1) fail('A turn is one wrestler’s.');
+  return { kind, by, on, helped, match, title, team, phase, note: checkText(input.note, 'Notes') };
 }
-/** Log what happened on a show besides the results: a betrayal, an attack, a save, a challenge... */
+// a turn: from the alignment they have now (or had, for one being edited) to a new one
+function turnFor(st, input, by, prev = null) {
+  const want = input.to || (input.turn && input.turn.to);
+  if (!want) fail('Pick the alignment they turned to.');
+  const to = oneOf(want, ALIGNMENTS, 'alignment');
+  const w = wrestlerById(st, by[0]);
+  const from = prev && prev.turn && prev.by[0] === w.id ? prev.turn.from : w.alignment;
+  if (from === to) fail(`${w.name} is already a ${to}.`);
+  return { from, to };
+}
+// a turn is taken back only while nobody has changed that alignment since
+function unturn(st, inc) {
+  const w = inc.turn && wrestlerById(st, inc.by[0]);
+  if (w && w.alignment === inc.turn.to) w.alignment = inc.turn.from;
+}
+const incidentRecord = (st, fields, extra = {}) => ({ id: newId(st, 'in'), ...fields, turn: fields.turn || null, story: null, cause: [],
+  basis: null, edited: false, ...extra });
+/** Log what happened on a show besides the results: a betrayal, an attack, a save, a challenge, a turn... */
 export function recordIncident(st, eventId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const inc = { id: newId(st, 'in'), ...incidentFields(st, ev, input), story: null };
+  const f = incidentFields(st, ev, input);
+  if (f.kind === 'turn') f.turn = turnFor(st, input, f.by);
+  const inc = incidentRecord(st, f);
+  if (inc.turn) wrestlerById(st, inc.by[0]).alignment = inc.turn.to;
   ev.incidents.push(inc);
   return inc;
 }
+/** Change an incident - the owner's own, or one the story director recorded (it's marked as edited). */
 export function updateIncident(st, eventId, incidentId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   const inc = must(ev.incidents.find(x => x.id === incidentId), 'incident', incidentId);
-  Object.assign(inc, incidentFields(st, ev, { ...inc, ...input }));
+  const f = incidentFields(st, ev, { ...inc, ...input });
+  if (f.kind === 'turn') f.turn = turnFor(st, { to: input.to || (inc.turn && inc.turn.to) }, f.by, inc);
+  unturn(st, inc);
+  Object.assign(inc, f, { turn: f.turn || null, edited: inc.edited || !!inc.story });
+  if (inc.turn) wrestlerById(st, inc.by[0]).alignment = inc.turn.to;
   return inc;
 }
 /** Every incident, oldest first: [{ event, incident }]. */
@@ -2453,10 +2486,33 @@ export function allIncidents(st) {
   return st.events.flatMap(event => event.incidents.map(incident => ({ event, incident })))
     .sort((a, b) => compareStamps(st, a.event.at, b.event.at));
 }
+/**
+ * Take an incident off its show. A turn goes back (if the alignment hasn't
+ * been changed since); a breakup the story director made reunites the team
+ * (if nothing has happened to the team since).
+ */
 export function deleteIncident(st, eventId, incidentId) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  must(ev.incidents.find(x => x.id === incidentId), 'incident', incidentId);
+  const inc = must(ev.incidents.find(x => x.id === incidentId), 'incident', incidentId);
+  const roll = inc.story ? rollById(st, inc.story) : null;
+  const split = roll && roll.disbanded.find(d => d.incident === inc.id);
+  if (split) reunite(st, split);
+  unturn(st, inc);
   removeWhere(ev.incidents, x => x.id === incidentId);
+  if (roll) {
+    roll.made = roll.made.filter(id => id !== incidentId);
+    roll.disbanded = roll.disbanded.filter(d => d !== split);
+  }
+}
+// a team the director split, back together - only while that split is still the team's latest change
+function reunite(st, split, check = false) {
+  const t = teamById(st, split.team);
+  if (!t || t.active) return;
+  const last = lastTeamChange(st, t.id);
+  if (!last || last.kind !== 'disbanded' || last.seq !== split.seq) {
+    fail(`${t.name} have changed since they split. Undo that on their page first.`);
+  }
+  if (!check) undoTeamChange(st, t.id);
 }
 
 /**
@@ -2503,73 +2559,51 @@ export function deleteRelEdit(st, id) {
   removeWhere(st.relEdits, e => e.id === id);
 }
 
-// ---------------------------------------------------------------- the story engine's suggestions
+// ---------------------------------------------------------------- the story director
 //
-// suggest.js reads the record after a show and, with a seeded draw that
-// comes out the same every time for the same universe, may suggest what
-// happens next: a post-match attack, a save, a betrayal, a title challenge...
-// Until the owner accepts one, a suggestion is only that - no relationship
-// changes, nothing reaches the timeline, and nothing is ever a result.
-// Accepting records its incidents on the show (and, for a team breaking up,
-// disbands the team); from then on they're ordinary records.
+// director.js reads the record around a show and decides - with a seeded
+// draw, so the same save always gives the same story - what else happened:
+// before the show (a confrontation, a title demand, an alliance forming) and
+// after its results (a post-match attack, a save, a betrayal, a team
+// splitting). What it decides is canon at once: incidents on the show, each
+// with its cause, so relationships follow and they join the timeline. The
+// owner edits, deletes or overrides them like any incident; nothing waits for
+// approval. The director never touches a match, a title reign or a roster
+// move: a breakup disbands a team, a turn changes an alignment, and that is
+// the whole of what it can change beyond incidents.
+//
+// Every run is logged - its seed, nonce, pace, and every possibility it
+// weighed with its chance and draw - so any event can be traced back.
 
-export const STORY_KINDS = ['attack', 'save', 'betrayal', 'escalation', 'challenge', 'breakup', 'streak', 'demand'];
 export const STORY_PACES = ['quiet', 'normal', 'wild'];
-const SUGGESTION_STATUSES = ['open', 'accepted', 'dismissed'];
-function newStory() { return { on: true, pace: 'normal', seed: 0, rolls: [], suggestions: [] }; }
+function newStory(since = null) { return { on: true, pace: 'normal', seed: 0, since, rolls: [] }; }
 
-export const suggestionById = (st, id) => byId(st.story.suggestions, id);
-export const suggestionsFor = (st, eventId) => st.story.suggestions.filter(x => x.event === eventId);
-/** The record of the engine looking at a show - { event, at, pool, found, pace } - or null. */
-export const storyRollOf = (st, eventId) => st.story.rolls.find(r => r.event === eventId) || null;
+export const rollById = (st, id) => byId(st.story.rolls, id);
+/** The latest time the director ran for a show's phase - 'pre' or 'post' - or null. */
+export const directorRollOf = (st, eventId, phase) =>
+  st.story.rolls.filter(r => r.event === eventId && r.phase === phase).pop() || null;
 
+/**
+ * Switch the director on or off, or set its pace. Switched back on, it starts
+ * from this week: shows played while it was off are left as they were.
+ */
 export function setStory(st, { on, pace } = {}) {
-  if (on !== undefined) st.story.on = !!on;
+  if (on !== undefined) {
+    if (on && !st.story.on) { const s = activeSeason(st); st.story.since = { season: s.id, week: s.week }; }
+    st.story.on = !!on;
+  }
   if (pace !== undefined) st.story.pace = oneOf(pace, STORY_PACES, 'pace');
   return st.story;
 }
-/** Seed the draw, once. The seed is handed in, so the model itself never rolls. */
+/** Seed the draw, once per save. The seed is handed in, so the model itself never rolls. */
 export function seedStory(st, seed) {
   if (!st.story.seed) st.story.seed = (Math.abs(Math.floor(Number(seed) || 0)) % 2147483646) + 1;
   return st.story.seed;
 }
 
-// a suggestion's plan: the incidents accepting it would record, and a team it would disband
-function planFields(st, ev, plan) {
-  const incidents = (plan && Array.isArray(plan.incidents) ? plan.incidents : []).map(i => incidentFields(st, ev, i));
-  if (!incidents.length) fail('A suggestion needs something to happen.');
-  let disband = null;
-  if (plan.disband) {
-    const t = must(teamById(st, plan.disband), 'tag team', plan.disband);
-    if (!t.active) fail(`${t.name} have already split.`);
-    disband = t.id;
-  }
-  return { incidents, disband };
-}
-const planWrestlers = plan => plan.incidents.flatMap(i => [...i.by, ...i.on, ...i.helped]);
-
-/**
- * Keep what the engine found for a show. `found` is suggest.js's list of
- * drafts - { kind, key, plan, why, chance, basis } - and `pool` how many
- * possibilities it weighed. The engine looks at each show once.
- */
-export function saveStoryRoll(st, eventId, { found = [], pool = 0 } = {}) {
-  const ev = must(eventById(st, eventId), 'event', eventId);
-  if (!st.story.on) fail('Story suggestions are switched off.');
-  if (storyRollOf(st, eventId)) fail(`The story engine has already looked at ${ev.name}.`);
-  if (!ev.matches.some(m => m.status === 'played')) fail(`${ev.name} has no results yet.`);
-  const made = found.map(d => ({
-    id: newId(st, 'sg'), event: ev.id, kind: oneOf(d.kind, STORY_KINDS, 'suggestion'), key: String(d.key || ''),
-    plan: planFields(st, ev, d.plan), why: (Array.isArray(d.why) ? d.why : []).map(String),
-    chance: Math.min(1, Math.max(0, Number(d.chance) || 0)), basis: basisFields(d.basis),
-    status: 'open', decided: null, created: null, edited: false, note: '',
-  }));
-  st.story.rolls.push({ event: ev.id, at: now(st), pool: Math.max(0, Math.floor(Number(pool) || 0)), found: made.length, pace: st.story.pace });
-  st.story.suggestions.push(...made);
-  return made;
-}
-// what a suggestion rests on, so a later correction can show it no longer fits
-function basisFields(b = {}) {
+// what an event rests on, so a later correction can show its cause has changed
+function basisFields(b) {
+  if (!b) return null;
   return {
     match: b.match || null,
     winners: Array.isArray(b.winners) ? [...b.winners].sort() : null,
@@ -2578,87 +2612,103 @@ function basisFields(b = {}) {
   };
 }
 
-/** Why a suggestion no longer fits the record - a sentence - or null. */
-export function suggestionProblem(st, sg) {
-  const ev = eventById(st, sg.event);
-  if (!ev) return 'Its show has been deleted.';
-  const b = sg.basis;
+/**
+ * Record what the director decided for a show - `phase` 'pre' (before its
+ * matches) or 'post' (after its results) - as canon. `result` comes from
+ * director.js: { pool, picked: [{ kind, key, why, chance, draw, basis, plan:
+ * { incidents, disband } }], considered: [{ kind, key, chance, draw, picked }] }.
+ * Everything is checked before anything changes. Returns the run's log entry.
+ */
+export function saveDirectorRoll(st, eventId, phase, result = {}, { nonce = 0, problem = null } = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  oneOf(phase, INCIDENT_PHASES, 'phase');
+  if (!st.story.on) fail('The story director is switched off.');
+  const prev = directorRollOf(st, eventId, phase);
+  if (prev && !prev.undone) fail(`The story director has already been through ${ev.name}${phase === 'pre' ? ' before the show' : ''}.`);
+  const played = ev.matches.some(m => m.status === 'played');
+  if (phase === 'pre' && played) fail(`${ev.name} already has results — too late for what happens before it.`);
+  if (phase === 'post' && !played) fail(`${ev.name} has no results yet.`);
+  const turning = new Set();
+  const picked = (Array.isArray(result.picked) ? result.picked : []).map(p => {
+    const incidents = p.plan.incidents.map(i => {
+      const f = incidentFields(st, ev, { ...i, phase });
+      if (f.kind === 'turn') {
+        if (turning.has(f.by[0])) fail('One turn at a time.');
+        turning.add(f.by[0]);
+        f.turn = turnFor(st, i, f.by);
+      }
+      return f;
+    });
+    let disband = null;
+    if (p.plan.disband) {
+      const t = must(teamById(st, p.plan.disband), 'tag team', p.plan.disband);
+      if (!t.active) fail(`${t.name} have already split.`);
+      if (titlesHeldBy(st, { type: 'team', id: t.id }).length) fail(`${t.name} hold a title, so they can't split.`);
+      disband = t.id;
+    }
+    return { incidents, disband, why: (Array.isArray(p.why) ? p.why : []).map(String), basis: basisFields(p.basis) };
+  });
+  const id = newId(st, 'dr');
+  const made = [], disbanded = [];
+  picked.forEach(p => {
+    const incs = p.incidents.map(f => {
+      const inc = incidentRecord(st, f, { story: id, cause: p.why, basis: p.basis });
+      if (inc.turn) wrestlerById(st, inc.by[0]).alignment = inc.turn.to;
+      ev.incidents.push(inc);
+      made.push(inc.id);
+      return inc;
+    });
+    if (p.disband) {
+      setTeamActive(st, p.disband, false);
+      const t = teamById(st, p.disband);
+      disbanded.push({ team: t.id, seq: t.log[t.log.length - 1].at.seq, incident: (incs.find(x => x.kind === 'breakup') || incs[0]).id });
+    }
+  });
+  const considered = (Array.isArray(result.considered) ? result.considered : []).slice(0, 80).map(k => ({
+    kind: String(k.kind), key: String(k.key), chance: Number(k.chance) || 0, draw: Number(k.draw) || 0, picked: !!k.picked, shock: !!k.shock }));
+  // `problem`: why what it picked couldn't be recorded, when it had to be logged with nothing made
+  const roll = { id, event: ev.id, phase, at: now(st), nonce: Math.max(0, Math.floor(Number(nonce) || 0)), pace: st.story.pace,
+    seed: st.story.seed, pool: Math.max(0, Math.floor(Number(result.pool) || 0)), made, disbanded, considered, undone: false,
+    problem: problem == null ? null : String(problem) };
+  st.story.rolls.push(roll);
+  return roll;
+}
+
+/**
+ * Take back everything the director did in one run: its incidents go, turns
+ * go back, and teams it split are together again - refused if a team has
+ * changed since. The run stays in the log, marked undone, so the director
+ * doesn't simply do it again; running it afresh is the owner's choice.
+ */
+export function undoDirectorRoll(st, rollId) {
+  const roll = must(rollById(st, rollId), 'story director run', rollId);
+  if (roll.undone) fail('That has already been undone.');
+  roll.disbanded.forEach(d => reunite(st, d, true));
+  roll.disbanded.forEach(d => reunite(st, d));
+  const ev = eventById(st, roll.event);
+  if (ev) {
+    ev.incidents.filter(x => roll.made.includes(x.id)).forEach(x => unturn(st, x));
+    removeWhere(ev.incidents, x => roll.made.includes(x.id));
+  }
+  Object.assign(roll, { made: [], disbanded: [], undone: true });
+  return roll;
+}
+
+/** Why a director event's cause no longer holds - a sentence - or null. It stays canon either way. */
+export function storyProblem(st, ev, inc) {
+  const b = inc.basis;
+  if (!b) return null;
   if (b.match) {
     const m = ev.matches.find(x => x.id === b.match);
-    if (!m || m.status !== 'played') return 'The result it came from is no longer on record.';
+    if (!m || m.status !== 'played') return 'The result it followed is no longer on record.';
     const won = m.outcome === 'win' ? [...m.sides[m.winner].wrestlers].sort() : [];
-    if (b.winners && JSON.stringify(won) !== JSON.stringify(b.winners)) return 'The result it came from has been corrected.';
+    if (b.winners && JSON.stringify(won) !== JSON.stringify(b.winners)) return 'The result it followed has been corrected since.';
   }
   if (b.title) {
     const cur = currentReign(st, b.title.id);
     if (!cur || !sameHolder(cur.holder, b.title.holder)) return 'The title has changed hands since.';
   }
-  if (b.team && !(teamById(st, b.team) || {}).active) return 'The team has already split.';
-  if (planWrestlers(sg.plan).some(id => !wrestlerById(st, id))) return 'Someone in it is no longer on the roster.';
-  try { planFields(st, ev, sg.plan); } catch (e) { if (e instanceof UniverseError) return e.message; throw e; }
   return null;
-}
-
-/** Make it happen: record its incidents on the show, and split the team for a breakup. */
-export function acceptSuggestion(st, id) {
-  const sg = must(suggestionById(st, id), 'suggestion', id);
-  if (sg.status !== 'open') fail(`That suggestion has already been ${sg.status}.`);
-  const problem = suggestionProblem(st, sg);
-  if (problem) fail(`${problem} Dismiss it instead.`);
-  const ev = eventById(st, sg.event);
-  const incidents = sg.plan.incidents.map(input => {
-    const inc = { id: newId(st, 'in'), ...incidentFields(st, ev, input), story: sg.id };
-    ev.incidents.push(inc);
-    return inc.id;
-  });
-  let disbanded = null;
-  if (sg.plan.disband) {
-    setTeamActive(st, sg.plan.disband, false);
-    const t = teamById(st, sg.plan.disband);
-    disbanded = { team: t.id, seq: t.log[t.log.length - 1].at.seq };
-  }
-  Object.assign(sg, { status: 'accepted', decided: now(st), created: { incidents, disbanded } });
-  return sg;
-}
-export function dismissSuggestion(st, id, note = '') {
-  const sg = must(suggestionById(st, id), 'suggestion', id);
-  if (sg.status !== 'open') fail(`That suggestion has already been ${sg.status}.`);
-  Object.assign(sg, { status: 'dismissed', decided: now(st), note: checkNote(note) });
-  return sg;
-}
-/** Bring back a dismissed suggestion. */
-export function reopenSuggestion(st, id) {
-  const sg = must(suggestionById(st, id), 'suggestion', id);
-  if (sg.status !== 'dismissed') fail('Only a dismissed suggestion can be brought back.');
-  Object.assign(sg, { status: 'open', decided: null, note: '' });
-  return sg;
-}
-/** Take back an accepted suggestion: its incidents go, and a team it split is back together. */
-export function undoSuggestion(st, id) {
-  const sg = must(suggestionById(st, id), 'suggestion', id);
-  if (sg.status !== 'accepted') fail('Only an accepted suggestion can be taken back.');
-  const split = sg.created.disbanded;
-  if (split) {
-    const t = teamById(st, split.team);
-    if (t && t.active) fail(`${t.name} have reunited since. Undo that on their page first.`);
-    if (t) {
-      const last = lastTeamChange(st, t.id);
-      if (!last || last.kind !== 'disbanded' || last.seq !== split.seq) fail(`${t.name} have changed since they split. Undo that on their page first.`);
-      undoTeamChange(st, t.id);
-    }
-  }
-  const ev = eventById(st, sg.event);
-  if (ev) removeWhere(ev.incidents, x => x.story === sg.id);
-  Object.assign(sg, { status: 'open', decided: null, created: null });
-  return sg;
-}
-/** Change what an open suggestion would do before accepting it. */
-export function editSuggestion(st, id, plan) {
-  const sg = must(suggestionById(st, id), 'suggestion', id);
-  if (sg.status !== 'open') fail('Only an open suggestion can be changed.');
-  sg.plan = planFields(st, must(eventById(st, sg.event), 'event', sg.event), plan);
-  sg.edited = true;
-  return sg;
 }
 
 // ---------------------------------------------------------------- records
@@ -2772,11 +2822,10 @@ export function mergeWrestlers(st, keepId, dupId) {
     if (r.key) r.key = rekey(r.key, dupId, keepId);
   });
   removeWhere(st.traitLog, e => e.wrestler === dupId);                    // the one kept keeps their own personality
-  st.story.suggestions.forEach(sg => {
-    sg.plan.incidents.forEach(x => { x.by = swap(x.by); x.on = swap(x.on); x.helped = swap(x.helped); });
-    if (sg.basis.winners) sg.basis.winners = swap(sg.basis.winners).sort();
-    if (sg.basis.title) sg.basis.title.holder = as(sg.basis.title.holder);
-  });
+  st.events.forEach(e => e.incidents.forEach(x => {
+    if (x.basis && x.basis.winners) x.basis.winners = swap(x.basis.winners).sort();
+    if (x.basis && x.basis.title) x.basis.title.holder = as(x.basis.title.holder);
+  }));
   eachMatch(st, m => {
     m.sides.forEach(sd => { sd.wrestlers = sd.wrestlers.map(id => (id === dupId ? keepId : id)); });
     if (m.fall) m.fall = { by: m.fall.by === dupId ? keepId : m.fall.by, on: m.fall.on === dupId ? keepId : m.fall.on };
@@ -2950,11 +2999,40 @@ export function migrate(raw) {
       if (x.team === undefined) x.team = null;
       if (x.story === undefined) x.story = null;
     }));
-    st.story = newStory();
+    st.story = { on: true, pace: 'normal', seed: 0, rolls: [], suggestions: [] };
     st.version = 7;
   }
+  if (st.version === 7) {
+    // v8: the story director replaces suggestions. An accepted suggestion's
+    // incidents stay - as the owner's, keeping why they happened; the rest are
+    // dropped. Shows the engine had looked at count as done, and the director
+    // takes over from the current week, rather than rewriting weeks gone by.
+    const old = st.story && typeof st.story === 'object' ? st.story : {};
+    const sgs = Array.isArray(old.suggestions) ? old.suggestions : [];
+    st.events.forEach(e => (Array.isArray(e.incidents) ? e.incidents : []).forEach(x => {
+      const sg = x.story ? sgs.find(g => g.id === x.story) : null;
+      Object.assign(x, { cause: sg && Array.isArray(sg.why) ? sg.why.map(String) : [], basis: sg && sg.basis ? basisFields(sg.basis) : null,
+        phase: sg ? 'post' : null, story: null, turn: null, edited: false });
+    }));
+    const cur = activeSeason(st);
+    st.story = {
+      on: old.on !== false, pace: STORY_PACES.includes(old.pace) ? old.pace : 'normal',
+      seed: Number.isInteger(old.seed) && old.seed >= 0 ? old.seed : 0, since: cur ? { season: cur.id, week: cur.week } : null,
+      rolls: (Array.isArray(old.rolls) ? old.rolls : []).filter(r => r && eventById(st, r.event)).map(r => ({
+        id: `dr${st.nextId++}`, event: r.event, phase: 'post', at: r.at, nonce: 0, pace: STORY_PACES.includes(r.pace) ? r.pace : 'normal',
+        seed: Number.isInteger(old.seed) ? old.seed : 0, pool: Number(r.pool) || 0, made: [], disbanded: [], considered: [], undone: false,
+        problem: null })),
+    };
+    st.version = 8;
+  }
   if (!st.story || typeof st.story !== 'object') st.story = newStory();
-  for (const k of ['rolls', 'suggestions']) if (!Array.isArray(st.story[k])) st.story[k] = [];
+  if (!Array.isArray(st.story.rolls)) st.story.rolls = [];
+  if (st.story.since === undefined) st.story.since = null;
+  st.story.rolls.forEach(r => { if (r && r.problem === undefined) r.problem = null; });
+  delete st.story.suggestions;
+  st.events.forEach(e => (Array.isArray(e.incidents) ? e.incidents : []).forEach(x => {
+    for (const [k, v] of [['cause', []], ['basis', null], ['phase', null], ['turn', null], ['edited', false], ['story', null]]) if (x[k] === undefined) x[k] = v;
+  }));
   for (const k of ['transitions', 'relegations', 'eligibility', 'drafts', 'traitLog', 'relEdits']) if (!Array.isArray(st[k])) st[k] = [];
   return st;
 }
@@ -2985,7 +3063,7 @@ export function validate(st) {
   own(st.eligibility, 'draft eligibility record'); own(st.drafts, 'draft pick');
   own(st.traitLog, 'personality change'); own(st.relEdits, 'relationship change');
   st.events.forEach(e => own(Array.isArray(e.incidents) ? e.incidents : [], 'incident'));
-  own(st.story.suggestions, 'story suggestion');
+  own(st.story.rolls, 'story director run');
   st.transitions.forEach(t => Object.values(t.shows || {}).forEach(c => own(Array.isArray(c.pairs) ? c.pairs : [], 'relegation pairing')));
   st.transitions.forEach(t => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], 'qualifier pairing'));
 
@@ -3043,27 +3121,23 @@ export function validate(st) {
     if (['form', 'level'].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
   });
   const sto = st.story;
-  if (typeof sto.on !== 'boolean' || !STORY_PACES.includes(sto.pace) || !Number.isInteger(sto.seed) || sto.seed < 0) {
-    bad.push('The story engine settings are unreadable.');
+  if (typeof sto.on !== 'boolean' || !STORY_PACES.includes(sto.pace) || !Number.isInteger(sto.seed) || sto.seed < 0
+    || !(sto.since === null || (sto.since && seasonById(st, sto.since.season) && Number.isInteger(sto.since.week)))) {
+    bad.push('The story director settings are unreadable.');
   }
-  const rolled = new Set();
+  const live = new Set();
   sto.rolls.forEach(r => {
-    if (!r || !eventById(st, r.event)) { bad.push('The story engine looked at a show that doesn\'t exist.'); return; }
-    if (rolled.has(r.event)) bad.push(`The story engine looked at ${eventById(st, r.event).name} twice.`);
-    rolled.add(r.event);
-    stamp(r.at, 'A story engine roll');
-  });
-  sto.suggestions.forEach(sg => {
-    const where = `Story suggestion ${sg.id}`;
-    const ev = eventById(st, sg.event);
-    if (!ev) { bad.push(`${where} is for a show that doesn't exist.`); return; }
-    if (!STORY_KINDS.includes(sg.kind) || !SUGGESTION_STATUSES.includes(sg.status) || !sg.plan || !Array.isArray(sg.plan.incidents)
-      || !sg.plan.incidents.length || !sg.basis || !Array.isArray(sg.why) || sg.why.some(x => typeof x !== 'string')
-      || typeof sg.chance !== 'number') { bad.push(`${where} is unreadable.`); return; }
-    if (sg.plan.incidents.some(i => !INCIDENT_KINDS.includes(i.kind) || ![i.by, i.on, i.helped].every(Array.isArray))) bad.push(`${where} is unreadable.`);
-    if (sg.status !== 'open') stamp(sg.decided, where);
-    if (sg.status === 'accepted' && !(sg.created && Array.isArray(sg.created.incidents))) bad.push(`${where} was accepted but made nothing.`);
-    if (!rolled.has(sg.event)) bad.push(`${where} came from a look at ${ev.name} that isn't on record.`);
+    const where = `Story director run ${r.id}`;
+    const ev = eventById(st, r.event);
+    if (!ev || !INCIDENT_PHASES.includes(r.phase) || ![r.made, r.disbanded, r.considered].every(Array.isArray)) { bad.push(`${where} is unreadable.`); return; }
+    stamp(r.at, where);
+    if (!r.undone) {
+      if (live.has(`${r.event}:${r.phase}`)) bad.push(`${where} is a second run for the same part of ${ev.name}.`);
+      live.add(`${r.event}:${r.phase}`);
+    }
+    if (r.made.some(id => !ev.incidents.some(x => x.id === id && x.story === r.id))) bad.push(`${where} lists an event that isn't on ${ev.name}.`);
+    if (r.disbanded.some(d => !teamById(st, d.team))) bad.push(`${where} split a team that doesn't exist.`);
+    if (r.problem != null && typeof r.problem !== 'string') bad.push(`${where} has an unreadable note.`);
   });
   st.moves.forEach(m => {
     if (!wrestlerById(st, m.wrestler)) bad.push(`Roster move ${m.id} is for a wrestler who doesn't exist.`);
@@ -3170,7 +3244,11 @@ export function validate(st) {
       if (x.match != null && !(e.matches || []).some(m => m.id === x.match)) bad.push(`An incident at ${e.name} is in a match that isn't on its card.`);
       if (x.title != null ? !shape.title || !titleById(st, x.title) : shape.title === 'required') bad.push(`An incident at ${e.name} names the wrong title.`);
       if (x.team != null ? !shape.team || !teamById(st, x.team) : !!shape.team) bad.push(`An incident at ${e.name} names the wrong team.`);
-      if (x.story != null && !(suggestionById(st, x.story) || {}).status) bad.push(`An incident at ${e.name} comes from a suggestion that doesn't exist.`);
+      if (x.story != null && !rollById(st, x.story)) bad.push(`An incident at ${e.name} comes from a story director run that isn't on record.`);
+      if ((x.phase != null && !INCIDENT_PHASES.includes(x.phase)) || !Array.isArray(x.cause) || x.cause.some(c => typeof c !== 'string')
+        || typeof x.edited !== 'boolean') bad.push(`An incident at ${e.name} is unreadable.`);
+      if (x.kind === 'turn' ? !(x.turn && ALIGNMENTS.includes(x.turn.to) && (x.turn.from === null || ALIGNMENTS.includes(x.turn.from)))
+        : x.turn != null) bad.push(`A turn at ${e.name} is unreadable.`);
     });
     if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
     if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);

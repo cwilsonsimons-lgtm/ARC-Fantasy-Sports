@@ -451,7 +451,7 @@ function timelineText(st, e) {
     case 'incident': {
       const x = r.incident;
       return `${esc(incidentText(st, x))} at <span class="uv-link" onclick="uvOpenEvent('${r.event.id}')">${esc(r.event.name)}</span>`
-        + (x.story ? ' <span class="uv-muted">· from a story suggestion</span>' : '');
+        + (x.phase === 'pre' ? ' <span class="uv-muted">· before the show</span>' : '');
     }
     case 'event': {
       const c = cardStatus(r);

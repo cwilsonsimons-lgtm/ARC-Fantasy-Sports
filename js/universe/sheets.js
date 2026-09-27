@@ -10,6 +10,7 @@ import { ICON, LABEL, empty, esc, field, labelPairs, options, select, showName, 
 import { closeSheet, commit, confirmThen, focusField, keepRestore, openSheet, paintSheet, toast, uni } from './app.js';
 import { uvCalFollow, uvFollowActiveSeason, uvRosterShow } from './views.js';
 import { uvOpenTeam, uvOpenTitle } from './pages.js';
+import { uvDirect, uvDirectedToast } from './story.js';
 
 const alignPairs = () => [['', 'Not set'], ...labelPairs(LABEL.alignment)];
 
@@ -160,7 +161,9 @@ export function uvStepWeek(d) {
   if (week < 1) return;
   if (d > 0) keepRestore(`End of ${season.name} · Week ${season.week}`, 'weekly');     // one to go back to, if the week goes wrong
   uvCalFollow();
-  commit(st => M.setWeek(st, week), `Week ${week}`);
+  let runs = [];
+  // moving on: last week's shows are done, and this week's first show is next up - the story director catches up
+  commit(st => { M.setWeek(st, week); if (d > 0) runs = uvDirect(st); }, () => `Week ${week}${uvDirectedToast(runs)}`);
 }
 export function uvNextSeason() {
   const st = uni();

@@ -243,7 +243,19 @@ export const INCIDENT = {
   breakup: { label: 'Walk-out', color: '#98A3B3', by: 'Who walked away', on: null, team: true,
     text: 'A tag team split. Anyone left behind holds a grudge against whoever walked out on them, and any friendship or alliance between them ends. Leave "Left behind" empty for an amicable split.' },
   momentum: { label: 'Momentum', color: '#72C4FF', by: 'Who', on: false,
-    text: 'An unlikely run everyone’s noticed. It changes no relationship — but the story engine remembers it when a title shot comes up.' },
+    text: 'An unlikely run everyone’s noticed. It changes no relationship — but the story director remembers it when a title shot comes up.' },
+  confrontation: { label: 'Confrontation', color: '#F0A53A', by: 'Who', on: 'Confronted',
+    text: 'A face-off backstage or in the ring, words not blows. They’re rivals, or more so.' },
+  'open-challenge': { label: 'Open challenge', color: '#E8B931', by: 'Who', on: false, title: true,
+    text: 'Anyone who wants it: a match, or a shot at a title. It changes no relationship by itself — whoever answers is up to you (and the game).' },
+  alliance: { label: 'Alliance', color: '#72C4FF', by: 'Who', on: 'Allied with',
+    text: 'Two wrestlers join forces. They’re allies, or stronger ones.' },
+  tension: { label: 'Tension', color: '#98A3B3', by: 'Who', on: 'With', team: 'optional',
+    text: 'Friction between partners. An alliance or a friendship between them weakens a step — and enough of it breaks teams up.' },
+  truce: { label: 'Truce', color: '#4CD37A', by: 'Who', on: 'With',
+    text: 'A rivalry cools off. Each grudge between them, and the rivalry, drops a step.' },
+  turn: { label: 'Turn', color: '#C9A7FF', by: 'Who turned', on: false, turn: true,
+    text: 'A change of alignment — face, heel or tweener. It changes their alignment on their profile, and taking it back changes it back.' },
 };
 
 /** An incident in words: "Kevin Owens betrayed Sami Zayn". */
@@ -261,7 +273,13 @@ export function incidentText(st, inc) {
     case 'demand': return inc.on.length ? `${n(inc.by)} called out ${n(inc.on)}${inc.title ? ` over the ${title}` : ''}`
       : `${n(inc.by)} demanded ${inc.title ? `a shot at the ${title}` : 'an opportunity'}`;
     case 'breakup': return inc.on.length ? `${n(inc.by)} walked out on ${n(inc.on)} — ${team} split` : `${team} split up`;
-    case 'momentum': return `${n(inc.by)} is on an unlikely run`;
+    case 'momentum': return `${n(inc.by)} is on the rise`;
+    case 'confrontation': return `${n(inc.by)} confronted ${n(inc.on)}`;
+    case 'open-challenge': return `${n(inc.by)} issued an open challenge${inc.title ? ` for the ${title}` : ''}`;
+    case 'alliance': return `${n(inc.by)} and ${n(inc.on)} joined forces`;
+    case 'tension': return `${n(inc.by)} and ${n(inc.on)} clashed${inc.team ? ` — trouble in ${team}` : ''}`;
+    case 'truce': return `${n(inc.by)} and ${n(inc.on)} called a truce`;
+    case 'turn': return `${n(inc.by)} turned ${inc.turn ? inc.turn.to : ''}`.trim();
     default: return '';
   }
 }

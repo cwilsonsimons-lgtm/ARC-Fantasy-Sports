@@ -20,7 +20,8 @@ import { join } from 'node:path';
 import * as M from '../js/universe/model.js';
 import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
-import * as SG from '../js/universe/suggest.js';
+import * as DR from '../js/universe/director.js';
+import { incidentText } from '../js/universe/ui.js';
 import { sampleCycle } from './universe-sample.mjs';
 const { validate, wrestlerRecord, teamRecord } = M;
 
@@ -111,7 +112,7 @@ const anchored = () => js(`(() => {
 const isAnchored = r => r && r.bodyY === 0 && r.frameScroll === 0 && r.covers;
 
 const fantasyBefore = await js(`[localStorage.getItem('cbd_team_v1'), localStorage.getItem('arc_markets_v1')]`);
-// the story engine rolls a random seed the first time it looks, so the sections that
+// the story director rolls a random seed the first time it runs, so the sections that
 // aren't about it run with it off; the story section brings its own seeded universe
 await js(`uvStoryOn('off')`);
 await page.waitForTimeout(100);
@@ -206,7 +207,7 @@ await check('a row opens the wrestler’s profile page', async () => {
 await check('profile shows records, titles, teams, career, results', () => js(`[
   [...document.querySelectorAll('.uv-page .uv-rec .k')].map(e => e.textContent),
   [...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)]`),
-  [['Singles', 'Tag', 'Title reigns'], ['Personality', 'Relationships', 'Championships', 'Tag teams & partners', 'Career history', 'Results']]);
+  [['Singles', 'Tag', 'Title reigns'], ['Story', 'Personality', 'Relationships', 'Championships', 'Tag teams & partners', 'Career history', 'Results']]);
 await check('Move show: pick a show, dated, with a note', async () => {
   await btn(body, 'Move show').click();
   await settle();
@@ -879,6 +880,7 @@ await check('layout anchored after all that', async () => { await noSheet(); ret
 // holds the World Heavyweight Championship.
 function rankingsWorld() {
   const st = M.createUniverse();
+  M.setStory(st, { on: false });                         // the standings are under test here, not the story
   const add = (n, show, gender = 'male') => M.addWrestler(st, { name: n, showId: show, gender });
   const [A, B, C, D, E, F] = ['A', 'B', 'C', 'D', 'E', 'F'].map(n => add(n, 'raw'));
   const J = add('J', 'smackdown'), K = add('K', 'nxt'), L = add('L', 'raw');
@@ -1446,7 +1448,7 @@ await check('a show’s incidents: record an interference in a booked match', as
   await body.locator('.uv-ent .uv-link', { hasText: 'Open the show' }).first().click();   // week 1
   await page.waitForTimeout(120);
   await openShow('Raw', 2);
-  await btn(body, 'Record an incident').click();
+  await btn(body, 'Record something yourself').click();
   await settle();
   await sheet.locator('.uv-pill[data-v=interference]').click();
   await page.waitForTimeout(80);
@@ -1467,11 +1469,14 @@ await check('recorded: on the show, with what it changed', async () => {
   const u = await saved();
   const inc = u.events.find(e => e.at.week === 2).incidents;
   return [(await toast()).t, inc.map(i => [i.kind, i.by.length, i.on.length, i.helped.length, !!i.match]),
-    await js(`[...document.querySelectorAll('.uv-page .uv-inc')].map(${TEXT})`), (await ents('.uv-page')).length, await sound()];
+    await js(`[...document.querySelectorAll('.uv-page .uv-wh')].map(${TEXT})`), (await ents('.uv-page')).length, await sound(),
+    inc[0] && inc[0].phase];
 }, ['Incident recorded — Gunther holds a grudge against Seth (+1 more)', [['interference', 1, 1, 1, true]],
-  ['Interference Seth interfered against Gunther, helping Jey Match 1: Gunther vs Jey'], 2, []]);
+  ['Interference Seth interfered against Gunther, helping Jey Recorded by you · Match 1: Gunther vs Jey'], 2, [], 'post']);
 await check('edit it into an attack: the alliance goes, the grudge stays', async () => {
-  await body.locator('.uv-inc').click();
+  await body.locator('.uv-wh').click();
+  await settle();
+  await sheet.locator('[data-edit]').click();
   await settle();
   await sheet.locator('.uv-pill[data-v=attack]').click();
   await page.waitForTimeout(80);
@@ -1480,10 +1485,12 @@ await check('edit it into an attack: the alliance goes, the grudge stays', async
   const { u, d } = await derived();
   const allies = [...d.rels.values()].filter(r => r.active && r.kind === 'allies').length;
   return [u.events.find(e => e.at.week === 2).incidents.map(i => [i.kind, i.helped.length]), allies,
-    await js(`${TEXT}(document.querySelector('.uv-page .uv-inc .nm'))`)];
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-wh .nm'))`)];
 }, [[['attack', 0]], 0, 'Seth attacked Gunther']);
 await check('deleting it takes back what it did', async () => {
-  await body.locator('.uv-inc').click();
+  await body.locator('.uv-wh').click();
+  await settle();
+  await sheet.locator('[data-edit]').click();
   await settle();
   await btn(sheet, 'Delete the incident').click();
   await settle();
@@ -1535,15 +1542,19 @@ await check('How relationships work explains every rule', async () => {
   await page.locator('.uv-page .uv-link', { hasText: 'How relationships work' }).click();
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-calc span')].map(e => e.textContent)`);
-}, ['Losses', 'Title', 'Betrayal', 'Interference', 'Attack', 'Save', 'Brawl', 'Challenge', 'Walk-out', 'Teaming', 'Split']);
+}, ['Losses', 'Title', 'Betrayal', 'Interference', 'Attack', 'Save', 'Brawl', 'Challenge', 'Alliance', 'Tension', 'Truce', 'Walk-out', 'Teaming', 'Split']);
 await check('saved universe is sound after the relationship edits', sound, []);
 await check('layout anchored', async () => { await closeSheet(); return anchored(); }, isAnchored);
 
-// ================================================================ the story engine
-// Raw, week 1: two results in, and Jey Uso vs Gunther for the world title
-// still booked. Gunther is hot-headed and holds a grudge against Jey; Jey and
-// Seth are friends. The draw is seeded, so what comes up is known in advance:
-// the check works it out with the engine itself, on a copy.
+// ================================================================ the story director
+// Raw, week 1, the director on at a wild pace with a known seed: two results
+// in, and Jey Uso vs Gunther for the world title still booked. Gunther is
+// hot-headed and holds a grudge against Jey; Jey and Seth are friends; Kevin
+// Owens and Sami Zayn are a team. The director has already been through what
+// happens before the show. The draw is seeded, so what it does next is known
+// in advance: each check works it out with the director itself, on a copy of
+// what's saved, and then does it through the screens.
+const STORY_SEED = 3859;
 function storyWorld(seed) {
   const st = M.createUniverse();
   M.setStory(st, { pace: 'wild' });
@@ -1557,186 +1568,253 @@ function storyWorld(seed) {
   M.editRelationship(st, { action: 'form', kind: 'friends', a: J.id, b: Se.id, level: 2, since: 'start' });
   M.editRelationship(st, { action: 'form', kind: 'grudge', a: G.id, b: J.id, level: 2, since: 'start' });
   const ev = M.addEvent(st, { showId: 'raw' });
+  DR.tick(st);                                                     // before the show: it's the next one up
   M.recordMatch(st, ev.id, { sides: [{ wrestlers: [Se.id] }, { wrestlers: [N.id] }], winner: 0 });
   M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [Se.id, N.id] }], winner: 1 });
   const m = M.bookMatch(st, ev.id, { sides: [{ wrestlers: [J.id] }, { wrestlers: [G.id] }], titleId: title.id });
-  return { st, ev, m, title };
+  return { st, ev, m, title, G, J };
 }
-// what the engine will make of it once Jey wins the title
-const storyAfter = w => {
-  const copy = JSON.parse(JSON.stringify(w.st));
-  M.enterResult(copy, w.ev.id, w.m.id, { sides: w.m.sides, outcome: 'win', winner: 0, titleId: w.title.id }, { titleChange: true });
-  return { copy, r: SG.lookAt(copy, w.ev.id) };
-};
-let sw = null, sx = null;
-for (let seed = 1; seed < 500 && !sw; seed++) {
-  const w = storyWorld(seed), x = storyAfter(w);
-  if (x.r.found.length >= 2 && x.r.found.some(f => f.kind === 'save')) { sw = w; sx = x; }
-}
-const cardsNow = () => js(`[...document.querySelectorAll('.uv-page .uv-sg')].map(c => ({ kind: c.dataset.kind, hl: c.querySelector('.hl').textContent,
-  st: c.querySelector('.st').textContent, why: c.querySelectorAll('.why li').length, fx: !!c.querySelector('.fx') }))`);
-const sgCard = kind => page.locator(`.uv-page .uv-sg[data-kind=${kind}]`);
+const sw = storyWorld(STORY_SEED);
+const SEED = sw.st.story.seed;                                     // as the model keeps it
+const copyOf = u => JSON.parse(JSON.stringify(u));
+const madeBy = (u, roll) => u.events.flatMap(e => e.incidents.filter(i => i.story === roll.id));
+const lastRoll = (u, eventId, phase) => u.story.rolls.filter(r => r.event === eventId && r.phase === phase).pop();
 const savedStory = async () => (await saved()).story;
-
-await check('story: a seeded universe where the last result brings suggestions', async () => {
+const feedRows = where => js(`[...document.querySelectorAll('${where} .uv-wh[data-wh]')].map(r => ({ kind: r.dataset.kind,
+  nm: r.querySelector('.nm').textContent, sub: (r.querySelector('.sub') || { textContent: '' }).textContent }))`);
+const row = kind => page.locator(`.uv-page .uv-wh[data-kind=${kind}]`).first();
+// the feed's events, newest first, as the screens group them: one decision (an attack and its save) is one event
+const names = (u, ids) => ids.map(id => M.wrestlerById(u, id).name).join(' & ');
+function storyGroups(u) {
+  const out = [];
+  [...u.events].sort((a, b) => M.compareStamps(u, b.at, a.at)).forEach(ev => {
+    const list = [];
+    ev.incidents.forEach(i => {
+      const last = list[list.length - 1];
+      if (i.story && last && last.story === i.story && JSON.stringify(last.cause) === JSON.stringify(i.cause)) last.incs.push(i);
+      else list.push({ story: i.story, cause: i.cause, phase: i.phase === 'pre' ? 'pre' : 'post', incs: [i] });
+    });
+    out.push(...list.filter(g => g.phase === 'post'), ...list.filter(g => g.phase === 'pre'));
+  });
+  return out.map(g => [incidentText(u, g.incs[0]), ...g.incs.slice(1).map(i => (i.kind === 'save' ? `${names(u, i.by)} made the save`
+    : i.kind === 'turn' ? `${names(u, i.by)} turned ${i.turn.to}` : i.kind === 'breakup' ? `${M.teamById(u, i.team).name} split` : incidentText(u, i)))].join(' — '));
+}
+const importState = async (st, name) => {
   await noSheet();
-  const file = join(dir, 'story.json');
-  await writeFile(file, JSON.stringify(sw.st));
+  const file = join(dir, name);
+  await writeFile(file, JSON.stringify(st));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
   await page.waitForTimeout(200);
   await confirmYes();
   await closeSheet();
+};
+
+await check('story: before the show is done already — after waits for the results', async () => {
+  await importState(sw.st, 'story.json');
   await openShow('Raw');
-  return [await js(`${TEXT}(document.querySelector('.uv-page .uv-sec + .uv-none'))`) , sx.r.found.map(f => f.kind)];
-}, r => /^The story engine looks here once every result is in\./.test(r[0]) && r[1].includes('save'));
-await check('entering the last result lets the engine look — the toast says what came up', async () => {
+  return [await js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`),
+    await js(`[...document.querySelectorAll('.uv-page .uv-runl')].map(${TEXT})`), (await savedStory()).rolls.map(r => r.phase)];
+}, r => r[0].join('|').startsWith('Before the show|The card|During & after') && r[2].join() === 'pre'
+  && /^Nothing happened before the show\. The director’s log$/.test(r[1][0]) && /^Once every result is in — or the week is over —/.test(r[1][1]));
+let before1 = null, pred1 = null;
+await check('the last result goes in: the director follows it by itself, and the toast says what happened', async () => {
+  before1 = await saved();
+  pred1 = copyOf(before1);
+  M.enterResult(pred1, sw.ev.id, sw.m.id, { sides: sw.m.sides, outcome: 'win', winner: 0, titleId: sw.title.id }, { titleChange: true });
+  DR.tick(pred1);
   await mc(2).locator('.uv-btn', { hasText: 'Enter result' }).click();
   await settle();
   await page.selectOption('#uvMResult', '0');
   await page.check('#uvMTitleChange');
   await btn(sheet, 'Save the result').click();
   await settle();
-  const sto = await savedStory();
-  return [(await toast()).t.endsWith(`· Story: ${sx.r.found.length} suggestions on the show`), sto.rolls.length,
-    sto.suggestions.map(x => [x.kind, x.status]), (await saved()).events[0].incidents.length];
-}, [true, 1, sx.r.found.map(f => [f.kind, 'open']), 0]);
-await check('each suggestion: what, how likely, why, and what accepting would do — nothing recorded yet', async () => {
-  const shown = await cardsNow();
-  const want = sx.r.found.map(f => SG.headline(sx.copy, { kind: f.kind, plan: f.plan }));
   const u = await saved();
-  return [shown.map(c => c.hl), shown.every(c => c.st === 'Suggested' && c.why > 0 && c.fx), M.timeline(u).some(e => e.type === 'incident'),
-    JSON.stringify(RL.snapshot(u)) === JSON.stringify(RL.snapshot(sx.copy))];
-}, r => JSON.stringify(r[0]) === JSON.stringify(sx.r.found.map(f => SG.headline(sx.copy, { kind: f.kind, plan: f.plan }))) && r[1] && !r[2] && r[3]);
-await check('the calendar says they’re waiting', async () => {
-  await page.click('#uvTabs [data-uvtab=calendar]');
-  return js(`${TEXT}(document.querySelector('#uvBody [data-story] b'))`);
-}, `Story · ${sx.r.found.length} suggestions waiting`);
-const other = sx.r.found.find(f => f.kind !== 'save');
-await check('dismiss one — and bring it back', async () => {
-  await body.locator('[data-story]').click();
-  await page.waitForTimeout(150);
-  await sgCard(other.kind).locator('.uv-btn', { hasText: 'Dismiss' }).click();
-  await page.waitForTimeout(150);
-  const a = (await savedStory()).suggestions.find(x => x.kind === other.kind).status;
-  const shown = await js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`);
-  await sgCard(other.kind).locator('.uv-btn', { hasText: 'Bring it back' }).click();
-  await page.waitForTimeout(150);
-  return [a, shown.includes('Decided'), (await savedStory()).suggestions.find(x => x.kind === other.kind).status];
-}, ['dismissed', true, 'open']);
-await check('edit the save before accepting: add a note, and see what it will do', async () => {
-  await sgCard('save').locator('.uv-btn', { hasText: 'Edit' }).click();
-  await settle();
-  await sheet.locator('input[data-note="1"]').fill('Came out of nowhere with a chair');
-  await page.waitForTimeout(80);
-  const prev = await js(`[...document.querySelectorAll('#uvSheetBody .uv-prev span')].map(e => e.textContent)`);
-  await btn(sheet, 'Save and accept').click();
+  const want = madeBy(pred1, lastRoll(pred1, sw.ev.id, 'post'));
+  const t = (await toast()).t;
+  return [t.startsWith('Result saved — Jey Uso holds the World Heavyweight Championship'),
+    t.endsWith(` · After Raw · Week 1: ${storyGroups(pred1)[0]} (+1 more)`),
+    madeBy(u, lastRoll(u, sw.ev.id, 'post')).map(i => i.kind), want.map(i => i.kind), u.story.seed];
+}, r => r[0] && r[1] && JSON.stringify(r[2]) === JSON.stringify(r[3]) && r[2].includes('save') && r[4] === SEED);
+await check('it’s canon on the show, with causes — the result, the title and the rosters exactly as entered', async () => {
+  const u = await saved();
+  const ev = u.events.find(e => e.id === sw.ev.id);
+  const made = madeBy(u, lastRoll(u, sw.ev.id, 'post'));
+  return [ev.matches.map(m => [m.status, m.winner]), M.currentReign(u, sw.title.id).holder.id === sw.J.id, u.reigns.length - before1.reigns.length,
+    u.moves.length - before1.moves.length, made.every(i => i.phase === 'post' && i.cause.length > 0), (await feedRows('.uv-page')).map(x => x.nm),
+    storyGroups(u), await sound()];
+}, r => JSON.stringify(r[0]) === '[["played",0],["played",1],["played",0]]' && r[1] && r[2] === 1 && r[3] === 0 && r[4]
+  && r[5].length === 2 && JSON.stringify(r[5]) === JSON.stringify(r[6]) && r[7].length === 0);
+await check('tap an event: why it happened, what it changed, its chance and draw', async () => {
+  await row('save').click();
   await settle();
   const u = await saved();
-  const sg = u.story.suggestions.find(x => x.kind === 'save');
-  return [prev.length > 0, sg.status, sg.edited, u.events[0].incidents.map(i => [i.kind, i.story === sg.id, i.note]), /^Accepted — /.test((await toast()).t)];
-}, [true, 'accepted', true, [['attack', true, ''], ['save', true, 'Came out of nowhere with a chair']], true]);
-await check('accepted: on the show, in relationships, and on the timeline', async () => {
-  const u = await saved();
-  const saver = u.story.suggestions.find(x => x.kind === 'save').plan.incidents[1];
-  await page.click('#uvTabs [data-uvtab=history]');
-  await body.locator('.uv-seg-page div', { hasText: 'Everything' }).click();
-  await page.waitForTimeout(100);
-  const tl = await js(`[...document.querySelectorAll('#uvBody .uv-tl')].map(${TEXT}).filter(t => /from a story suggestion/.test(t))`);
-  const rels = RL.relationsOf(u, saver.by[0]).map(r => RL.relText(u, r));
-  await body.locator('.uv-seg-page div', { hasText: 'Results' }).click();
-  return [tl.length, rels.some(t => / are allies$/.test(t))];
-}, [2, true]);
-await check('take an accepted one back: its incidents go, and it waits again', async () => {
-  await openShow('Raw');
-  await sgCard('save').locator('.uv-btn', { hasText: 'Take it back' }).click();
+  const inc = u.events.find(e => e.id === sw.ev.id).incidents.find(i => i.kind === 'save');
+  const why = [...inc.cause.filter(w => !/^Less likely/.test(w)), ...inc.cause.filter(w => /^Less likely/.test(w))];
+  return [await js(`document.getElementById('uvSheetTitle').textContent`),
+    JSON.stringify(await js(`[...document.querySelectorAll('#uvSheetBody [data-why] li')].map(e => e.textContent)`)) === JSON.stringify(why),
+    await js(`[...document.querySelectorAll('#uvSheetBody [data-fx] li')].map(e => e.textContent)`), await js(`${TEXT}(document.querySelector('#uvSheetBody .uv-odds'))`)];
+}, r => r[0] === 'Save' && r[1] && r[2].length >= 2 && r[2].every(x => !/No relationship/.test(x)) && /^Chance \d+(\.\d+)?% · drew 0\.\d{4} · See the whole run$/.test(r[3]));
+await check('the director’s log: the seed, every possibility, its chance and draw', async () => {
+  await sheet.locator('.uv-odds .uv-link').click();
   await settle();
-  await confirmYes();
-  const u = await saved();
-  return [u.events[0].incidents.length, u.story.suggestions.find(x => x.kind === 'save').status];
-}, [0, 'open']);
-await check('a corrected result leaves its suggestion no longer fitting', async () => {
-  await mc(2).locator('.uv-btn', { hasText: 'Correct' }).click();
-  await settle();
-  await page.selectOption('#uvMResult', '1');                                       // Gunther actually won - and kept the belt
-  await page.uncheck('#uvMTitleChange');
-  await btn(sheet, 'Save the correction').click();
-  await settle();
-  const c = await js(`(() => { const x = document.querySelector('.uv-page .uv-sg[data-kind=save]'); return [x.querySelector('.st').textContent,
-    x.querySelector('.warn').textContent, [...x.querySelectorAll('.acts .uv-btn')].map(b => b.textContent.trim())]; })()`);
-  return c;
-}, ['No longer fits · edited', 'The result it came from has been corrected.', ['Dismiss']]);
-await check('pace and switching the engine off are the owner’s', async () => {
-  await body.locator('.uv-link', { hasText: 'All story suggestions' }).click();
-  await page.waitForTimeout(150);
-  await body.locator('.uv-storyhead .uv-seg div[data-v=normal]').click();
-  await page.waitForTimeout(120);
-  const pace = (await savedStory()).pace;
-  await body.locator('.uv-storyhead .uv-seg div[data-v=off]').click();
-  await page.waitForTimeout(120);
-  const off = (await savedStory()).on;
-  const row = await js(`(() => { const r = document.querySelector('.uv-storyhead'); return r.querySelectorAll('.uv-seg').length; })()`);
-  await body.locator('.uv-storyhead .uv-seg div[data-v=on]').click();
-  await page.waitForTimeout(120);
-  return [pace, off, row, (await savedStory()).on];
-}, ['normal', false, 1, true]);
-await check('How the story engine works covers every kind of suggestion', async () => {
-  await body.locator('.uv-storyhead .uv-link', { hasText: 'How it works' }).click();
-  await settle();
-  return js(`[...document.querySelectorAll('#uvSheetBody .uv-calc span')].map(e => e.textContent)`);
-}, Object.values(SG.KIND).map(k => k.label));
-
-// A second universe: nobody in it is new to the story, and the engine is asked
-// to look before the card is done. A challenge comes up; accepting it offers
-// to book the title match - booked, never decided.
-function challengeWorld(seed) {
-  const st = M.createUniverse();
-  M.setStory(st, { pace: 'wild' });
-  M.seedStory(st, seed);
-  const ws = ['Rhea Ripley', 'Liv Morgan', 'Iyo Sky', 'Bayley', 'Lyra Valkyria'].map(n => M.addWrestler(st, { name: n, showId: 'raw', gender: 'female' }));
-  M.setTraits(st, ws[1].id, ['ambitious'], { since: 'start' });
-  const title = M.addTitle(st, { name: 'Women’s World Championship', showId: 'raw', division: 'women' });
-  M.setChampion(st, title.id, { type: 'wrestler', id: ws[0].id });
-  M.setWeek(st, 6);
-  const ev = M.addEvent(st, { showId: 'raw' });
-  M.recordMatch(st, ev.id, { sides: [{ wrestlers: [ws[1].id] }, { wrestlers: [ws[0].id] }], winner: 0 });
-  M.bookMatch(st, ev.id, { sides: [{ wrestlers: [ws[2].id] }, { wrestlers: [ws[3].id] }] });
-  return { st, ev, title };
-}
-let cw = null;
-for (let seed = 1; seed < 800 && !cw; seed++) {
-  const w = challengeWorld(seed);
-  if (SG.lookAt(w.st, w.ev.id).found.some(f => f.kind === 'challenge')) cw = w;
-}
-await check('story: asking the engine to look before the card is done', async () => {
-  await noSheet();
-  const file = join(dir, 'story2.json');
-  await writeFile(file, JSON.stringify(cw.st));
-  await page.click('#uvDataBtn');
-  await settle();
-  await page.setInputFiles('#uvImport', file);
-  await page.waitForTimeout(200);
-  await confirmYes();
+  const roll = lastRoll(await saved(), sw.ev.id, 'post');
+  return [await js(`[...document.querySelectorAll('#uvSheetBody .uv-logh b')].map(e => e.textContent)`),
+    await js(`document.querySelectorAll('#uvSheetBody .uv-log > div').length`), await js(`document.querySelectorAll('#uvSheetBody .uv-log > div.on').length`),
+    roll.considered.length, roll.considered.filter(k => k.picked).length,
+    roll.considered.every(k => k.draw === DR.draw(SEED, sw.ev.id, 'post', 0, k.key))];
+}, r => r[0][0] === String(SEED) && r[0][1] === 'first' && r[0][2] === 'Wild' && r[1] === r[3] && r[2] === 2 && r[4] === 2 && r[5]);
+await check('edit what the director did: it stays, marked as edited by you', async () => {
   await closeSheet();
-  await openShow('Raw', 6);
-  await btn(body, 'Look for story ideas now').click();
-  await page.waitForTimeout(150);
-  return (await cardsNow()).map(c => c.kind);
-}, r => r.includes('challenge'));
-await check('accept the challenge, then book the title match — booked, not decided', async () => {
-  await sgCard('challenge').locator('.uv-btn', { hasText: 'Accept' }).click();
-  await page.waitForTimeout(150);
-  await sgCard('challenge').locator('.uv-btn', { hasText: 'Book the title match' }).click();
+  await row('tension').click();
+  await settle();
+  await sheet.locator('[data-edit]').first().click();
+  await settle();
+  const intro = await js(`document.querySelector('#uvSheetBody .uv-p').textContent`);
+  await page.fill('#uvIcNote', 'Argued in the locker room');
+  await btn(sheet, 'Save the incident').click();
+  await settle();
+  const inc = (await saved()).events.find(e => e.id === sw.ev.id).incidents.find(i => i.kind === 'tension');
+  return [/the story director recorded this/.test(intro), inc.edited, inc.note, !!inc.story,
+    (await feedRows('.uv-page')).find(x => x.kind === 'tension').sub.includes('Edited by you')];
+}, [true, true, 'Argued in the locker room', true, true]);
+await check('undo an event: it comes off, and so does what it did to relationships', async () => {
+  const pred = copyOf(await saved());
+  const ev = pred.events.find(e => e.id === sw.ev.id);
+  ev.incidents.filter(i => ['attack', 'save'].includes(i.kind) && i.story).forEach(i => M.deleteIncident(pred, ev.id, i.id));
+  const want = [...RL.relationships(pred).rels.values()].filter(r => r.active).map(r => RL.relText(pred, r)).sort();
+  await row('save').click();
+  await settle();
+  await btn(sheet, /^\s*Undo it/).click();
+  await settle();
+  await confirmYes();
+  const { u, d } = await derived();
+  return [(await toast()).t.startsWith('Undone'), u.events.find(e => e.id === sw.ev.id).incidents.map(i => i.kind),
+    lastRoll(u, sw.ev.id, 'post').made.length, JSON.stringify([...d.rels.values()].filter(r => r.active).map(r => RL.relText(u, r)).sort()) === JSON.stringify(want),
+    (await feedRows('.uv-page')).map(x => x.kind)];
+}, [true, ['tension'], 1, true, ['tension']]);
+await check('run it again: the next draw, just as reproducible', async () => {
+  const u0 = await saved();
+  const old = lastRoll(u0, sw.ev.id, 'post');
+  const pred = copyOf(u0);
+  const r = DR.rerun(pred, old.id);
+  await body.locator(`.uv-runl[data-run="${old.id}"] .uv-link`, { hasText: 'Run it again' }).click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  const now = lastRoll(u, sw.ev.id, 'post');
+  return [(await toast()).t.startsWith('Ran again'), u.story.rolls.find(x => x.id === old.id).undone, now.nonce,
+    madeBy(u, now).map(i => [i.kind, i.cause.length > 0]), madeBy(pred, r).map(i => [i.kind, true]), await sound()];
+}, r => r[0] && r[1] === true && r[2] === 1 && JSON.stringify(r[3]) === JSON.stringify(r[4]) && r[3].some(x => x[0] === 'challenge') && !r[5].length);
+await check('a title challenge can be booked — the form filled in, booked, never decided', async () => {
+  await row('challenge').click();
+  await settle();
+  const label = await js(`${TEXT}(document.querySelector('#uvSheetBody [data-book]'))`);
+  await sheet.locator('[data-book]').click();
   await settle();
   const form = [await js(`document.getElementById('uvSheetTitle').textContent`), await js(`document.getElementById('uvMTitle').selectedOptions[0].textContent`)];
   await btn(sheet, 'Add to the card').click();
   await settle();
   const u = await saved();
-  const booked = u.events.flatMap(e => e.matches).filter(m => m.titleId === cw.title.id && m.status === 'scheduled');
-  return [form, booked.length, booked[0] && booked[0].outcome, u.events[0].incidents.map(i => i.kind)];
-}, [['Book a match', 'Women’s World Championship'], 1, null, ['challenge']]);
-await check('saved universe is sound after the story engine', sound, []);
+  const w2 = u.events.find(e => e.at.week === 2 && e.showId === 'raw');
+  const inc = u.events.find(e => e.id === sw.ev.id).incidents.find(i => i.kind === 'challenge');
+  return [label, form, w2 && w2.matches.map(m => [m.titleId === sw.title.id, m.status, m.outcome, m.winner,
+    JSON.stringify(m.sides.map(sd => sd.wrestlers)) === JSON.stringify([inc.by, inc.on])]), u.story.rolls.length];
+}, r => r[0] === 'Book the title match on Raw · Week 2' && JSON.stringify(r[1]) === '["Book a match","World Heavyweight Championship"]'
+  && JSON.stringify(r[2]) === '[[true,"scheduled",null,null,true]]' && r[3] === 3);
+let pred2 = null;
+await check('Next week: the next show is up, and what happens before it has happened', async () => {
+  pred2 = copyOf(await saved());
+  M.setWeek(pred2, 2);
+  DR.tick(pred2);
+  await noSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('.uv-btn', { hasText: 'Next week' }).click();
+  await page.waitForTimeout(150);
+  const u = await saved();
+  const w2 = u.events.find(e => e.at.week === 2 && e.showId === 'raw');
+  const pre = lastRoll(u, w2.id, 'pre');
+  const t = (await toast()).t;
+  const want = madeBy(pred2, lastRoll(pred2, w2.id, 'pre'));
+  return [pre && pre.phase, madeBy(u, pre).map(i => i.kind), want.map(i => i.kind),
+    want.length ? t.startsWith(`Week 2 · Before Raw · Week 2: ${incidentText(pred2, want[0])}`) : t === 'Week 2', w2.matches[0].status];
+}, r => r[0] === 'pre' && JSON.stringify(r[1]) === JSON.stringify(r[2]) && r[3] && r[4] === 'scheduled');
+await check('the calendar shows what happened lately', async () => {
+  const u = await saved();
+  return [await js(`[...document.querySelectorAll('#uvBody [data-story] .wh')].map(e => e.textContent)`), storyGroups(u).slice(0, 3)];
+}, r => r[0].length > 0 && JSON.stringify(r[0]) === JSON.stringify(r[1]));
+await check('What happened: the whole feed a week at a time, with filters, and the director’s log', async () => {
+  await body.locator('[data-story]').click();
+  await page.waitForTimeout(150);
+  const u = await saved();
+  const all = (await feedRows('.uv-page [data-feed]')).map(x => x.nm);
+  const weeks = await js(`[...document.querySelectorAll('.uv-page [data-feed] .uv-sub')].map(e => e.textContent)`);
+  await body.locator('.uv-pill[data-only=post]').click();
+  await page.waitForTimeout(100);
+  const post = await feedRows('.uv-page [data-feed]');
+  await body.locator('.uv-pill[data-only=yours]').click();
+  await page.waitForTimeout(100);
+  const yours = await feedRows('.uv-page [data-feed]');
+  await body.locator('.uv-pill[data-only=""]').click();
+  await page.waitForTimeout(100);
+  return [await pageKind(), JSON.stringify(all) === JSON.stringify(storyGroups(u)), weeks.at(-1), post.every(x => x.sub.startsWith('After ')) && post.length > 0,
+    yours.length, await js(`document.querySelectorAll('.uv-page [data-log]').length`), u.story.rolls.length];
+}, r => r[0] === 'story' && r[1] && r[2] === 'Week 1' && r[3] && r[4] === 0 && r[5] === r[6]);
+await check('pace, and on or off: switched back on, it starts from this week', async () => {
+  await body.locator('.uv-storyhead .uv-seg div[data-v=quiet]').click();
+  await page.waitForTimeout(100);
+  const pace = (await savedStory()).pace;
+  await body.locator('.uv-storyhead .uv-seg div[data-v=off]').click();
+  await page.waitForTimeout(100);
+  const off = [(await savedStory()).on, await js(`document.querySelectorAll('.uv-storyhead .uv-seg').length`)];
+  await body.locator('.uv-storyhead .uv-seg div[data-v=on]').click();
+  await page.waitForTimeout(100);
+  const sto = await savedStory();
+  await body.locator('.uv-storyhead .uv-seg div[data-v=wild]').click();
+  await page.waitForTimeout(100);
+  return [pace, off, sto.on, sto.since.week, (await savedStory()).pace];
+}, ['quiet', [false, 1], true, 2, 'wild']);
+await check('How the story director works: every kind, and what it never does', async () => {
+  await body.locator('.uv-storyhead .uv-link', { hasText: 'How it works' }).click();
+  await settle();
+  const t = await js(`${TEXT}(document.getElementById('uvSheetBody'))`);
+  return [/never enters, invents or changes a match or its winner/.test(t), /never hands out a title/.test(t),
+    /never moves anyone between shows/.test(t), /Reproducible/.test(t), /Big moments are earned/.test(t)];
+}, [true, true, true, true, true]);
+await check('a wrestler’s page: their goal, momentum and story', async () => {
+  await closeSheet();
+  await js(`uvRosterMode('wrestlers')`);
+  await openRow('Jey Uso', 'roster');
+  const u = await saved();
+  return [await js(`(() => { const s = document.querySelector('.uv-page .uv-story1'); return [s.dataset.goal, s.dataset.momentum]; })()`),
+    DR.goalOf(u, sw.J.id), DR.momentumOf(u, sw.J.id).label, (await feedRows('.uv-page')).length > 0];
+}, r => r[0][0] === 'Keep the World Heavyweight Championship' && r[0][0] === r[1] && r[0][1] === r[2] && r[3]);
+await check('your own turn, before the show: recorded as yours — and undone, the alignment goes back', async () => {
+  await noSheet();
+  await openShow('Raw', 2);
+  await btn(body, 'Record something yourself').click();
+  await settle();
+  await sheet.locator('.uv-pill[data-v=turn]').click();
+  await page.waitForTimeout(80);
+  await page.selectOption('#uvSheetBody select[data-by="0"]', sw.G.id);
+  await page.waitForTimeout(80);
+  await page.selectOption('#uvIcTo', 'face');
+  await page.waitForTimeout(80);
+  const phase = await js(`document.querySelector('#uvSheetBody .uv-seg .on').dataset.v`);
+  await btn(sheet, 'Record it').click();
+  await settle();
+  const a = (await saved()).wrestlers.find(w => w.id === sw.G.id).alignment;
+  const shown = (await feedRows('.uv-page [data-phase=pre]')).find(x => x.kind === 'turn');
+  await row('turn').click();
+  await settle();
+  await btn(sheet, /^\s*Undo it/).click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  return [phase, a, shown && [shown.nm, shown.sub], u.wrestlers.find(w => w.id === sw.G.id).alignment,
+    u.events.flatMap(e => e.incidents).filter(i => i.kind === 'turn').length, await sound()];
+}, ['pre', 'face', ['Gunther turned face', 'Recorded by you'], null, 0, []]);
 await check('layout anchored', anchored, isAnchored);
 
 // ================================================================ a whole season, end to end
@@ -1783,7 +1861,7 @@ await check('Go to reaches champions, relationships, rankings, story and the tra
   await goTo('Champions'); seen.push(await activeTab());
   await goTo('Relationships'); seen.push(`${await activeTab()}:${await js(`document.querySelector('.uv-seg [data-mode].on').dataset.mode`)}`);
   await goTo('Booking balance'); seen.push(`${await activeTab()}:${await js(`document.querySelector('#uvBody .uv-seg .on').textContent`)}`);
-  await goTo('Story suggestions'); seen.push(await pageKind());
+  await goTo('What happened'); seen.push(await pageKind());
   await goTo('transfer window'); seen.push(`${await pageKind()}:${await js(`document.querySelector('[data-part].on').dataset.part`)}`);
   await goTo('Rosters'); seen.push(`${await activeTab()}:${await js(`document.querySelector('.uv-seg [data-mode].on').dataset.mode`)}`);
   return seen;

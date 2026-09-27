@@ -136,14 +136,14 @@ function goSheet() {
   const held = st.titles.filter(t => t.active && M.currentReign(st, t.id));
   const active = st.titles.filter(t => t.active);
   const rels = [...RL.relationships(st).rels.values()].filter(r => r.active);
-  const waiting = st.story.suggestions.filter(x => x.status === 'open' && !M.suggestionProblem(st, x)).length;
+  const thisWeek = st.events.filter(e => e.at.season === s.id && e.at.week === s.week).reduce((n, e) => n + e.incidents.length, 0);
   const played = st.events.filter(e => e.at.season === s.id).reduce((n, e) => n + e.matches.filter(m => m.status === 'played').length, 0);
   const tr = [...st.transitions].sort((a, b) => M.seasonById(st, b.season).number - M.seasonById(st, a.season).number)[0];
   const trWin = tr && tr.window && !tr.window.closed;
   const row = (go, icon, head, sub, cls = '') => `<div class="uv-go ${cls}" onclick="${go}">${icon}<div><b>${esc(head)}</b>
     <span>${esc(sub)}</span></div>${ICON.right}</div>`;
   const how = [['uvHowRanked', 'Rankings'], ['uvHowBalance', 'Booking balance'], ['uvHowRelegation', 'Relegation'],
-    ['uvHowPromotion', 'NXT promotion & draft'], ['uvHowRelations', 'Relationships'], ['uvHowStory', 'Story engine']];
+    ['uvHowPromotion', 'NXT promotion & draft'], ['uvHowRelations', 'Relationships'], ['uvHowStory', 'Story director']];
   return {
     title: 'Go to',
     body: `
@@ -159,7 +159,8 @@ function goSheet() {
         ${row(`uvGo('rankings')`, ICON.list, 'Rankings', 'Standings by show, singles and tag')}
         ${row(`uvGo('balance')`, ICON.list, 'Booking balance', 'Who’s short of matches on each show')}
         ${row(`uvGo('relations')`, ICON.team, 'Relationships', `${rels.length} now — ${rels.filter(r => r.kind === 'grudge').length} grudges, ${rels.filter(r => r.kind === 'rivals').length} rivalries`)}
-        ${row(`uvGo('story')`, ICON.star, 'Story suggestions', st.story.on ? (waiting ? `${waiting} waiting for you` : 'Nothing waiting') : 'Switched off')}
+        ${row(`uvGo('story')`, ICON.star, 'What happened', `${thisWeek ? `${thisWeek} thing${thisWeek === 1 ? '' : 's'} off the card this week` : 'Nothing off the card this week'}`
+          + ` · story director ${st.story.on ? `on, ${st.story.pace} pace` : 'off'}`)}
         ${tr ? row(`uvGo('transition','${tr.id}:${tr.window ? 'window' : 'relegation'}')`, ICON.move,
           trWin ? 'Transfer window — open' : tr.window ? `${M.seasonById(st, tr.season).name} transition · transfer window` : `${M.seasonById(st, tr.season).name} transition`,
           uvTransitionSummary(st, tr).map(x => `${x.label}: ${x.text}`).join(' · '), trWin ? 'hot' : '')

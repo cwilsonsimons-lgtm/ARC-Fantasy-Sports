@@ -25,6 +25,12 @@
 //   Walk-out      leaving a team on bad terms - a grudge against the one who
 //                 walked, and any friendship or alliance between them ends.
 //   Momentum      an unlikely run - nothing between anyone.
+//   Confrontation a backstage face-off - they're rivals, or more so.
+//   Alliance      joining forces - allies, or stronger ones.
+//   Tension       friction between partners - an alliance or friendship
+//                 weakens a step.
+//   Truce         a rivalry cooling off - each grudge and the rivalry drop a step.
+//   Open challenge, turn - nothing between anyone by themselves.
 //   Partnership   5 matches on the same side - allies (loyal: 3); 12 -
 //                 friends (never for the opportunistic, or with a grudge
 //                 between them).
@@ -47,7 +53,7 @@ const nth = n => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd
  *            (a grudge: a holds it against b; the rest: a and b in id order)
  *   entries  every change in order: { key, rel, kind, a, b, at, change, level,
  *            auto, ignored, cause } - change is formed | raised | fuelled |
- *            set | ended | note | nothing (an end with nothing to end)
+ *            set | cooled | ended | note | nothing (an end with nothing to end)
  */
 export function relationships(st) {
   const rels = new Map();
@@ -82,6 +88,10 @@ export function relationships(st) {
     if (op === 'end') return r.active ? { active: false, level: 0, change: 'ended' } : null;
     if (op === 'form') return r.active ? null : { active: true, level: Math.max(1, amount), change: 'formed' };
     if (op === 'set') return { active: true, level: amount, change: r.active ? 'set' : 'formed' };
+    if (op === 'lower') {
+      if (!r.active) return null;
+      return r.level - amount > 0 ? { active: true, level: r.level - amount, change: 'cooled' } : { active: false, level: 0, change: 'ended' };
+    }
     if (!r.active) return { active: true, level: Math.min(3, amount), change: 'formed' };           // raise
     return r.level < 3 ? { active: true, level: Math.min(3, r.level + amount), change: 'raised' } : { active: true, level: 3, change: 'fuelled' };
   };
@@ -111,7 +121,8 @@ export function relationships(st) {
   st.relEdits.filter(e => e.action !== 'dismiss').forEach(e => items.push({ at: e.at, order: 0, type: 'edit', e }));
   st.events.forEach(ev => {
     ev.matches.forEach((m, i) => { if (m.status === 'played') items.push({ at: ev.at, order: i + 1, type: 'match', ev, m }); });
-    ev.incidents.forEach((inc, j) => items.push({ at: ev.at, order: 1000 + j, type: 'incident', ev, inc }));
+    // what happened before the show comes before its matches; everything else after
+    ev.incidents.forEach((inc, j) => items.push({ at: ev.at, order: inc.phase === 'pre' ? 0.5 + j / 1000 : 1000 + j, type: 'incident', ev, inc }));
   });
   st.memberships.forEach(ms => { if (ms.end) items.push({ at: ms.end, order: 0, type: 'left', ms }); });
   st.teams.forEach(t => t.log.forEach(l => { if (l.type === 'disbanded') items.push({ at: l.at, order: 0, type: 'disbanded', t, l }); }));
@@ -199,7 +210,17 @@ export function relationships(st) {
             auto('grudge', x, y, 'raise', 1, cause);
             auto('rivals', x, y, 'raise', 1, cause);
             break;
-          case 'challenge': case 'demand': auto('rivals', x, y, 'raise', 1, cause); break;
+          case 'challenge': case 'demand': case 'confrontation': auto('rivals', x, y, 'raise', 1, cause); break;
+          case 'alliance': auto('allies', x, y, 'raise', 1, cause); break;
+          case 'tension':
+            auto('allies', x, y, 'lower', 1, cause);
+            auto('friends', x, y, 'lower', 1, cause);
+            break;
+          case 'truce':
+            auto('grudge', y, x, 'lower', 1, cause);
+            auto('grudge', x, y, 'lower', 1, cause);
+            auto('rivals', x, y, 'lower', 1, cause);
+            break;
           case 'breakup':
             auto('grudge', y, x, 'raise', 1, cause);
             auto('friends', x, y, 'end', 0, cause);
@@ -299,6 +320,10 @@ export function entryText(st, e) {
     case 'challenge': cause = `${nm(st, c.by)} challenged ${nm(st, c.on)} for the ${(titleById(st, c.title) || { name: 'title' }).name} at ${at(st, c.event)}`; break;
     case 'demand': cause = `${nm(st, c.by)} called out ${nm(st, c.on)}${c.title ? ` over the ${(titleById(st, c.title) || { name: 'title' }).name}` : ''} at ${at(st, c.event)}`; break;
     case 'breakup': cause = `${nm(st, c.by)} walked out on ${nm(st, c.on)}${c.team ? ` and ${(teamById(st, c.team) || { name: 'their team' }).name}` : ''} at ${at(st, c.event)}`; break;
+    case 'confrontation': cause = `${nm(st, c.by)} confronted ${nm(st, c.on)} at ${at(st, c.event)}`; break;
+    case 'alliance': cause = `${nm(st, c.by)} and ${nm(st, c.on)} joined forces at ${at(st, c.event)}`; break;
+    case 'tension': cause = `${nm(st, c.by)} and ${nm(st, c.on)} clashed${c.team ? ` — trouble in ${(teamById(st, c.team) || { name: 'their team' }).name}` : ''} at ${at(st, c.event)}`; break;
+    case 'truce': cause = `${nm(st, c.by)} and ${nm(st, c.on)} called a truce at ${at(st, c.event)}`; break;
     case 'partners': cause = `${nm(st, c.x)} and ${nm(st, c.y)} teamed up for the ${nth(c.n)} time at ${at(st, c.event)}`; break;
     case 'left': cause = `${nm(st, c.who)} left ${(teamById(st, c.team) || { name: 'their team' }).name}`; break;
     case 'disbanded': cause = `${(teamById(st, c.team) || { name: 'Their team' }).name} disbanded`; break;
@@ -318,6 +343,7 @@ export function entryText(st, e) {
     set: `${who} set to ${word} ${e.level}`,
     ended: endText(st, e),
     note: `A note on ${who}`,
+    cooled: `${who} cools to ${word} ${e.level}`,
     nothing: `${who.charAt(0).toUpperCase()}${who.slice(1)} had already ended — nothing to end`,
   }[e.change];
   return { cause, result };

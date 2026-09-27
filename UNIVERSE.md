@@ -5,7 +5,10 @@ books its card here, watches the CPU play the matches in the game, then enters
 what happened. The game is the only source of truth for results: this app never
 simulates a match, picks a winner or talks to the game. And the owner is exactly that — someone who sees every wrestler,
 relationship and result — not a GM character inside the universe, so there is
-no in-world viewpoint or hidden information anywhere in the model.
+no in-world viewpoint or hidden information anywhere in the model. Around the
+matches, a story director fills in the rest of the story by itself — attacks,
+saves, betrayals, alliances, challenges — from the record, as canon, without
+ever touching a result.
 
 It's a standalone app. It shares this repository with the City Boys Dynasty
 fantasy league (see [README.md](README.md)) only for the build and test
@@ -43,8 +46,8 @@ js/universe/
   index.js             start-up, tabs, the Go to sheet, the save-file sheet and restore points
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
   personality.js       traits, relationships, the page for two wrestlers, incidents
-  story.js             the story engine's suggestions, the Story page and its settings
-  suggest.js           the story engine itself - pure, seeded, runs under Node
+  story.js             the story director on screen: What happened, a show's Before/After, the log, settings
+  director.js          the story director itself - pure, seeded, runs under Node
   relations.js         relationships worked out from the record - pure, runs under Node
   ranks.js             the Rankings tab: standings and booking balance
   standings.js         the arithmetic behind it - pure, runs under Node
@@ -55,9 +58,10 @@ js/universe/
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   ui.js                small HTML building blocks
-tools/universe-test.mjs       117 model tests     npm run test:universe
-tools/universe-check.mjs      174 browser checks  npm run check:universe
+tools/universe-test.mjs       118 model tests     npm run test:universe
+tools/universe-check.mjs      176 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
+tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -68,13 +72,16 @@ tools/fixtures/universe-v2.json   of those versions, for the migration tests
    Dynamite and NXT — any sizes. Add tag teams and titles, and crown the
    champions. Give wrestlers traits if you like.
 2. **Each week.** The Calendar opens on the week, with **Up next** — today's
-   show. Plan an episode, book its card, play the matches in WWE 2K25, then enter
-   each result as the game produced it. Record anything else you saw (an attack,
-   a betrayal, a challenge) as an incident on the show. Tap **Next week** when
-   it's done.
-3. **Keep track.** Rankings (standings and booking balance), Titles, Roster
-   (and its Relationships view), History and the Story page all read the
-   record. None of them books or decides anything.
+   show. Plan an episode: the story director decides what happens **before the
+   show** (a confrontation, a title demand…), so you can book the card around
+   it. Play the matches in WWE 2K25, then enter each result as the game produced
+   it; once the card is complete the director decides what happens **after**
+   (an attack, a save, a betrayal…). Record anything else you saw yourself. Tap
+   **Next week** when it's done.
+3. **Keep track.** **What happened** (on the Calendar's season card) is the
+   story so far. Rankings (standings and booking balance), Titles, Roster (and
+   its Relationships view) and History all read the record. None of them books
+   or decides a match.
 4. **After WrestleMania.** Start the season transition from WrestleMania's page:
    relegation matches on each main show's next episode, NXT qualifiers, then the
    transfer window and the draft. Close the window, then start the next season.
@@ -111,8 +118,11 @@ in the app's "How it works" sheets.
   window is closed.
 - **Relationships** are worked out from the record (losses, title defeats,
   teaming, splits, incidents) plus your edits. Traits never change on their own.
-- **Story suggestions** are only suggestions until accepted; rare, explained,
-  seeded, never a result.
+- **The story director** records what happens around each show by itself, as
+  canon: occasional, varied, each event with its cause; betrayals, breakups and
+  turns only after buildup; seeded and logged. It never enters or changes a
+  result, never awards a title, never moves anyone between shows. Anything it
+  does can be edited, undone or run again.
 - **Saving** is automatic in the browser (and to your claude.ai account when
   published); save files are checked before they're imported; restore points
   are kept in the browser before anything big replaces the universe.
@@ -124,11 +134,11 @@ Everything the app won't decide, and where it asks:
 | Decision | Where |
 |---|---|
 | Every result: the winner, the finish, who took the fall, whether a title changed hands (a DQ or a cash-in is your call) | The result form |
-| Who wrestles whom, which titles are on the line, when shows air | The calendar and the card — rankings, booking balance and story ideas only suggest |
+| Who wrestles whom, which titles are on the line, when shows air | The calendar and the card — rankings and booking balance only inform, and a story event's **Book the match** only fills in the form |
 | Whether a pairing wrestled as a registered tag team | The result form ("Wrestling as …?") |
 | Traits, and any relationship you want started, set, ended or ignored | A wrestler's page; the page for two wrestlers |
 | What counts as an incident | The show page |
-| Each story suggestion: accept, edit, dismiss; the pace, or switching it off | The show page and the Story page |
+| Any story event you'd rather hadn't happened: edit it, undo it, or run the show again; the director's pace, or switching it off | The event (tap it), the show page, What happened |
 | When WrestleMania is, and starting the transition from it | WrestleMania's page, or the season card |
 | How many relegation candidates each show has (any number, zero included) | The transition page |
 | A tie across the cutoff, an odd candidate out, the pairings | The transition page — booking waits for these |
@@ -146,7 +156,7 @@ Everything the app won't decide, and where it asks:
 ## Getting around
 
 - **Go to** (top right): Up next, this week's shows, results, rosters, tag teams,
-  champions, rankings, booking balance, relationships, story suggestions, the
+  champions, rankings, booking balance, relationships, what happened, the
   season transition and transfer window, and saving — each with where it
   stands — plus every "How it works" sheet.
 - **Up next** on the Calendar is today's show: a show from an earlier week still
@@ -176,10 +186,10 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | reigns    | title history. The reign with no end is the champion |
 | shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite Wednesday, SmackDown Friday |
 | seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
-| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, challenges, demands, walk-outs and runs of momentum |
+| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it, and the director's keep their run and their cause |
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
 | relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start) and the automatic changes they've chosen to ignore |
-| story     | the story engine: on or off, its pace, its seed, every show it looked at, and every suggestion it made — open, accepted or dismissed, with its reasons |
+| story     | the story director: on or off, its pace, the save's seed, the week it started from, and a log of every run — the show, before or after, the seed and run number, every possibility it weighed with its chance and draw, and what it recorded |
 
 A **match** is one record from the moment it's booked: its sides — each a set
 of wrestlers, plus the tag team they wrestled as — the title on the line, a
@@ -426,15 +436,21 @@ relationships work"), with traits counted as they were at the time:
 | An attack | a grudge against the attacker (hot-headed: heat 2) |
 | A save | the attacker holds a grudge against whoever made the save; the one saved becomes their ally |
 | A brawl | a grudge each way, and they're rivals |
-| A title challenge, or calling someone out | they're rivals |
+| A title challenge, calling someone out, or a confrontation | they're rivals (or 1 more heat) |
+| An alliance | allies (or stronger ones) |
+| Tension between partners | an alliance or friendship between them weakens a step |
+| A truce | each grudge between them, and the rivalry, cools a step |
 | Walking out on a team | anyone left behind holds a grudge; any friendship or alliance between them ends |
 | 5 matches on the same side, win or lose | allies (either loyal: 3). At 12, friends — never for the opportunistic, or with a grudge between them |
 | Leaving a tag team, or it disbanding | former partners |
 
-**Incidents** go on the show they happened on (**Record an incident**): who did
-it, to whom, who an interference helped, and the match, if any. The sheet shows
-what it will change before it's saved, and the show page lists every
-relationship change made there.
+**Incidents** go on the show they happened on — the story director records
+most of them, and you can add your own (**Record something yourself**): who did
+it, to whom, who an interference helped, the match, if any, and whether it was
+before the show or during/after it. A turn changes the wrestler's alignment
+(and deleting it changes it back). The sheet shows what it will change before
+it's saved, and the show page lists every relationship change made there. What
+happens before a show counts before its matches.
 
 **Seeing why.** A wrestler's page lists their relationships, grouped by person,
 and what's building up ("Lost to Gunther the last 2 times — 1 more in a row
@@ -450,67 +466,143 @@ it again** undoes that). **Change…** starts, sets, ends or adds a note to any
 relationship — dated to this week, or from the start for history before the
 universe began. Those are entries on the same timeline, and can be taken back.
 
-## The story engine
+## The story director
 
-An optional storyteller in the spirit of SmackDown vs. Raw 2011's Universe
-Mode. After a recent show's last result goes in (or when asked, on the show
-page), it reads the record — results, personalities, relationships, champions,
-tag teams and who's been getting booked — and may suggest what happens next,
-for the owner to recreate or acknowledge in WWE 2K25:
+You watch; it tells the story around the matches, in the spirit of SmackDown
+vs. Raw 2011's Universe Mode. It runs by itself, at two moments, and nothing it
+does waits for approval:
 
-| Suggestion | Comes from |
-|---|---|
-| Post-match attack | a loser lashing out: likelier if hot-headed or proud, holding a grudge, on a losing run against them, or just stripped of a title |
-| Surprise save | someone running in to stop an attack: a friend, ally, partner, or someone with their own grudge against the attacker |
-| Betrayal | a partner turning: likelier if opportunistic or ambitious, holding a grudge, or losing together; rare for the loyal |
-| Rivalry escalation | rivals or wrestlers with grudges brawling: likelier with more bad blood, and if they just shared a ring |
-| Title challenge | someone stepping up to a champion, drawn from everyone eligible |
-| Team breakup | a team splitting over bad blood, ambition or a losing run; champions don't |
-| Unlikely winning streak | three or more straight wins from someone who'd been losing more than winning |
-| Demands an opportunity | someone short of matches, or ambitious and winning, wanting a chance — sometimes at a title |
+- **Before a show**, once it's the next one up — planned for this week, with
+  every show before it through. What happens here comes before you book the
+  card, so it can shape it: a confrontation is a match waiting to happen, and a
+  title demand or challenge offers **Book the title match** (the booking form,
+  filled in).
+- **After a show**, once its card is complete, or its week has gone by.
 
-**Nothing happens until it's accepted.** A suggestion changes no relationship,
-isn't on the timeline, and never books or decides a match. **Accept** records
-it on the show as incidents (a team breakup also disbands the team), so the
-relationship rules above apply and it appears on the History timeline and the
-wrestlers' career histories. **Edit** changes who's in it, or adds a note,
-first. **Dismiss** keeps it off the record (**Bring it back** reverses that),
-and an accepted one can be **taken back**. A suggestion whose result is later
-corrected, or whose champion has changed, is marked as no longer fitting and
-can only be dismissed. An accepted title challenge or demand offers **Book the
-title match** — the booking form, filled in; the result still comes from the
-game.
+It runs when a result goes in, when a show is planned, when you move on a
+week, and when it's switched on. What it decides is canon at once: incidents
+on the show, each with its cause, so relationships follow and it's on the
+History timeline, each wrestler's page, the show's **Before the show** and
+**During & after**, and the **What happened** feed (the Calendar's season card,
+and its own page). The toast says what happened.
 
-**Explained.** Every suggestion lists why it came up, reason by reason, and
-how likely it was ("uncommon (19%)"). "How the story engine works" in the app
-explains every kind.
+| Before a show | Comes from | Changes |
+|---|---|---|
+| Backstage confrontation | rivals and grudges on the show — much likelier if they're booked against each other | rivals |
+| Title demand | someone hot or rising, ambitious, or who has beaten the champion lately — however low they're ranked | rivals with the champion |
+| Open challenge | a champion who's proud, a fighting face, or hasn't defended lately; or someone red-hot | nothing — who answers is yours |
+| New alliance | two with a grudge against the same person, or one who saved the other; never current partners | allies |
+| Rivalry cools | a rivalry nobody has touched for 6+ weeks — likelier across shows, or for the patient | cools a step |
+| Team tension, turn | as after a show | |
 
-**Rare on purpose.** Each chance starts small and has to be earned by the
-record; one with nothing behind it is a long shot, but never impossible. The
-**pace** scales every chance — Quiet ×0.5 (at most 1 a show, 2 a week), Normal
-(2 and 3), Wild ×2 (3 and 6). Anyone in something in the last 2 weeks is less
-likely to be in something again; the same thing between the same people won't
-come back for 6 weeks, nor anything dismissed for 10; after an eventful
-episode, that show's next one is calmer; and a show never gets two of a kind or
-one wrestler twice. Simulated over 16 weeks of three shows with random
-results, Quiet comes out at about one suggestion every five shows, Normal one
-every two or three, and Wild one every one or two.
+| After a show | Comes from | Changes |
+|---|---|---|
+| Post-match attack | a loser lashing out: hot-headed, proud, a heel, a grudge, a losing run against them, a title just lost, revenge | a grudge |
+| Surprise save | someone stopping that attack: a friend, ally, partner, or someone with their own grudge against the attacker | a grudge, allies |
+| Betrayal | a partner who has had enough — only after buildup (below) | a grudge; friendship and alliance end |
+| Rivalry escalates | rivals or grudges, especially after sharing a ring | grudges both ways, rivals |
+| Team tension | losing, a partner winning alone, opportunism, ambition, a grudge inside the team | weakens the alliance |
+| Team breakup | only after repeated tension (below); never champions | a walk-out; the team disbands |
+| Rivalry cools | a hard-fought match between rivals, a respectful or patient one among them | cools a step |
+| Title challenge | a challenger drawn from everyone eligible (below) | rivals |
+| On the rise | an upset over a champion from low in the standings (or after a losing record), or a winning run after losing more than winning | nothing — it's remembered for title shots |
+| Turn | a record of it (below) | the alignment |
 
-**Seeded, not rerolled.** The draw is a hash of the universe's seed, the show
-and the possibility, so the same universe always gets the same suggestions and
-looking again can't fish for a better one. The seed is picked at random the
-first time the engine looks (by the app, never the model). Each show is looked
-at once.
+**Every event has a cause.** Its reasons come with it: the feed shows the lead
+one ("Gunther lost to Akira Tozawa at Raw · Week 5"); tapping it shows them
+all, what it changed — each relationship, an alignment, a team — and its chance
+and draw.
 
-**Outcomes stay open.** A title challenger is drawn from everyone eligible on
-the title's show and division, weighted by grudges, wins over the champion,
-streaks, momentum and ambition, but never ranked out: the tests show the
-winless wrestler at the bottom of the standings being drawn, booked for the
-title, and winning it.
+**Occasional and varied.** Every chance starts small, and the pace scales it.
 
-It can be switched off, or its pace changed, on the **Story** page (from the
-season card on the Calendar). Switched off, nothing is looked at; suggestions
-already made stay where they are.
+| Pace | Chances | At most, before a show / after / a week | Measured* |
+|---|---|---|---|
+| Quiet | ×0.5 | 1 / 1 / 2 | 0.4 a show (0.2–0.5) |
+| Normal | ×1 | 1 / 2 / 3 | 0.7 a show (0.6–0.9) |
+| Wild | ×2 | 2 / 3 / 6 | 1.1 a show (1.0–1.4) |
+
+\* `tools/universe-story-demo.mjs`, 12 weeks of Raw and SmackDown, 16 seeds.
+
+A show never gets two of a kind or one wrestler twice. Anyone in something in
+the last 2 weeks is less likely to be in more. The same thing between the same
+people doesn't happen again for 6 weeks. After an eventful episode, the show's
+next one is calmer. Betrayals are at least 3 weeks apart across the universe,
+breakups and turns 4.
+
+**Big moments are earned.** Buildup between two partners counts 2 for each
+clash of team tension in the last 12 weeks, 1 per level of grudge, 1 for
+losing 2 of their last 4 together, 1 for an opportunist, 1 for the ambitious
+with a champion for a partner. A **betrayal** needs 5, including tension or a
+grudge of heat 2. At 7, a face who betrays turns heel; at 7, or with 2
+clashes behind them, their team splits too. A **breakup** needs 2 clashes within 12 weeks. A
+**turn** needs a record: a face with 2+ attacks or betrayals in 12 weeks goes
+heel; a heel with 2+ saves, alliances, truces — or attacks from heels — goes
+face. Nobody turns twice within 10 weeks; tweeners and wrestlers with no
+alignment are left alone. A true **shock** — a betrayal from nowhere — is a
+0.4% long shot at most once every 8 weeks. At a normal pace, the demo comes
+to about one big moment every 30–35 shows.
+
+**It never** enters, invents or changes a match or its winner; never awards a
+title (titles change only on a result you enter); never moves anyone between
+shows (only relegation and the draft do); never books a match. A breakup
+disbanding a team and a turn changing an alignment are all it changes beyond
+the story.
+
+**An underdog can rise.** A title challenger is drawn from everyone eligible
+on the title's show and division, weighted by momentum, grudges, wins over the
+champion, streaks and ambition — never ranked out. An upset or a run from low
+in the standings is noticed ("On the rise"), and momentum feeds title demands.
+So if the CPU keeps giving someone at the bottom wins, the story follows: in
+the demo, Akira Tozawa's run leads to a title demand, a title match you book,
+and — because the results said so — the title.
+
+**Reproducible.** Each save has its own seed, rolled at random the first time
+the director runs (by the app; the model never rolls). Every draw is a hash of
+the seed, the show, before or after, the run and the possibility, so the same
+save always tells the same story. Every run is logged — its seed, run number,
+pace, and every possibility it weighed (the 80 likeliest) with its chance and
+draw — under **The director's log** on the show's page and the What happened
+page. If what it picked ever can't be recorded, the run is logged with nothing
+made and the reason, so it can be looked into and nothing after it is held up. `npm run demo:story` (or `node tools/universe-story-demo.mjs [weeks] [seed] [pace] [results]`)
+plays a universe forward the same way and checks that the director left every
+result, title and roster alone.
+
+**Yours to change.** Tap any event: **Edit** it (it's marked as edited by you),
+or **Undo it** — its incidents come off, a turn goes back, a team it split is
+back together. **Undo all** takes back everything the director did around a
+show; **Run it again** undoes it and draws again with the next run number,
+just as reproducible. What you undo stays undone — the director never does a
+show's part twice by itself. **Record something yourself** adds your own,
+before the show or during and after it. Switch the director off on the What
+happened page and nothing more happens by itself; switch it back on and it
+starts from that week. If a result an event followed is corrected later, the
+event is marked, and stays until you change it.
+
+**On a wrestler's page**, **Story** shows what they're after — keep the title,
+revenge on someone, win their show's title, tag team gold, turn it around — and
+their momentum (hot, rising, steady or cold, from their last six results,
+wins over champions and winning runs), with their latest story events.
+
+From the demo (seed 23, normal pace; the results are a stand-in for the CPU):
+
+```
+Week 3
+  Raw · Week 3
+    after   Kevin Owens and Sami Zayn clashed — trouble in KO & Sami  (KO & Sami lost at Raw · Week 3)
+Week 4
+  SmackDown · Week 4
+    after   Bron Breakker is on the rise  (Bron Breakker beat Carmelo Hayes, a champion, from 6th of 6)
+Week 5
+  Raw · Week 5
+    before  Akira Tozawa called out Gunther over the World Heavyweight Championship  (Akira Tozawa is hot — 4 straight wins)
+    card    Akira Tozawa vs Gunther (World Heavyweight Championship) · KO & Sami vs Judgment Day · …
+    winners Akira Tozawa (new champion) · Judgment Day · …
+    after   Gunther attacked Akira Tozawa — Cody Rhodes made the save  (Gunther lost to Akira Tozawa at Raw · Week 5)
+Week 7
+  Raw · Week 7
+    before  Kevin Owens confronted Seth Rollins  (Kevin Owens holds a grudge against Seth Rollins (heat 1))
+    after   Kevin Owens and Seth Rollins brawled  (Seth Rollins and Kevin Owens are rivals (heat 1))
+```
 
 ## Profiles and records
 
@@ -581,11 +673,11 @@ refuses rather than disturb anything else:
 | The transfer window opened too early | **Take back opening the window**, while nobody's been drafted. |
 | An automatic relationship change you don't agree with | **Ignore** it on the timeline. It stays there, crossed out, and doesn't count; **Count it again** brings it back. |
 | A relationship change of your own, made wrong | **Take back** on the timeline. |
-| An incident recorded wrong | Tap it on its show: edit it, or delete it. The relationships it built follow. |
+| An incident recorded wrong | Tap it on its show: edit it, or undo it. The relationships it built follow. |
 | A trait set wrong | **Edit personality** again. A trait set from the start can be removed from the start, as if it had never been there. |
-| A story suggestion accepted by mistake | **Take it back** on the show or the Story page: its incidents go, a team it split is back together (while nothing has changed on the team since), and the suggestion waits again. |
-| A story suggestion dismissed by mistake | **Bring it back**. |
-| The result behind a suggestion corrected | The suggestion is marked as no longer fitting; dismiss it. One already accepted stays on the record — edit or delete its incidents on the show. |
+| A story event you don't want | Tap it: **Edit** it, or **Undo it** — its incidents go, a turn goes back, a team it split is back together (while nothing has changed on the team since). The director won't do it again by itself. |
+| Everything the director did around a show | **Undo all** on the show's page, or **Run it again** for a different outcome (the next draw — just as reproducible). |
+| The result behind a story event corrected | The event is marked ("The result it followed has been corrected since") and stays on the record — edit it or undo it if it no longer fits. |
 | A result before WrestleMania corrected after relegation matches were booked | The candidates, pairings and relegations stand as booked. The transition page lists exactly whose win totals moved, and what the rule would pick now; a relegated wrestler's record shows their total now beside the one it was decided on. Any change — undoing a relegation, re-pairing — is yours. |
 | A title history flagged after a correction | The title's page names the title match the champion of the day wasn't in (or the change the outgoing champion wasn't part of). Correct whichever result is really wrong. |
 | A qualifier result after the transfer window closed | Refused while the window is closed — its record of who was left undrafted rests on it. Reopen the window, correct it, close it again. |
@@ -642,17 +734,22 @@ relegation record; nothing in an older save was a relegation match. **Version
 transition gets an empty qualifier field and an unopened window. **Version 6**
 added personalities, incidents and relationship edits; an older save starts
 with no traits, no incidents and no edits, and its relationships are worked out
-from its results and teams on load. **Version 7** added the story engine;
-an older save starts with it on, at a normal pace, having suggested nothing,
-and its incidents name no title, team or suggestion.
+from its results and teams on load. **Version 7** added story suggestions;
+an older save starts with them on, at a normal pace, having suggested
+nothing, and its incidents name no title or team. **Version 8** replaced
+suggestions with the story director: an accepted suggestion's incidents stay,
+as the owner's, with its reasons as their cause; open and dismissed ones are
+dropped; and the director starts from the save's current week, so nothing
+already played is gone over again.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
 ## Not built yet, on purpose
 
-The story engine suggests; it doesn't write promos, run injuries, handle
-contracts or book whole cards, and it never looks at a show from more than a
-couple of weeks ago (it reads the record as it stands now). A relationship still
-only changes because of something on record — a result, a team change, an
-incident the owner recorded or a suggestion they accepted. Whatever suggests a
-match, the result still comes from the game.
+The story director tells the story around the matches; it doesn't write
+promos, run injuries, handle contracts or book whole cards, and it only goes
+over the last couple of weeks of the current season (it reads the record as it
+stands now, so it never rewrites the past). A relationship still only changes
+because of something on record — a result, a team change, or an incident,
+whether the director's or yours. Whatever the story sets up, the result still
+comes from the game.

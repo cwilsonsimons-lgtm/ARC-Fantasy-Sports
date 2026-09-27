@@ -14,7 +14,7 @@ import * as P from '../js/universe/persist.js';
 import { createCloud } from '../js/universe/cloud.js';
 import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
-import * as SG from '../js/universe/suggest.js';
+import * as DR from '../js/universe/director.js';
 import { sampleCycle, sampleSeason } from './universe-sample.mjs';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
@@ -2412,313 +2412,390 @@ test('relationships and incidents survive merges, deletes and the save file', ()
   assert.deepEqual([back.version, back.wrestlers[0].traits, back.events[0].incidents, back.traitLog, back.relEdits], [M.SCHEMA_VERSION, [], [], [], []]);
 });
 
-// ---------------------------------------------------------------- the story engine
+// ---------------------------------------------------------------- the story director
 
-// Raw: Gunther (hot-headed, ambitious) holds the world title; Jey is loyal;
-// Sami & Kevin (opportunistic) are a team; Nobody has lost every match.
-function storyWorld({ pace = 'normal', seed = 7 } = {}) {
+// Raw: Gunther (hot-headed, ambitious heel) holds the world title and has a
+// grudge against Jey (loyal face); Sami & Kevin (opportunistic) are a team;
+// Nobody has lost every match.
+function directorWorld({ pace = 'normal', seed = 7 } = {}) {
   const st = M.createUniverse();
   M.setStory(st, { pace });
   M.seedStory(st, seed);
-  const [G, J, Sa, K, Se, N] = ['Gunther', 'Jey', 'Sami', 'Kevin', 'Seth', 'Nobody'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
-  M.setTraits(st, G.id, ['hot-headed', 'ambitious'], { since: 'start' });
-  M.setTraits(st, J.id, ['loyal'], { since: 'start' });
-  M.setTraits(st, K.id, ['opportunistic'], { since: 'start' });
+  const add = (n, alignment, traits) => {
+    const w = M.addWrestler(st, { name: n, showId: 'raw', alignment });
+    M.setTraits(st, w.id, traits, { since: 'start' });
+    return w;
+  };
+  const G = add('Gunther', 'heel', ['hot-headed', 'ambitious']), J = add('Jey', 'face', ['loyal']), Sa = add('Sami', 'face', ['loyal']);
+  const K = add('Kevin', 'face', ['opportunistic']), Se = add('Seth', 'heel', []), N = add('Nobody', 'face', []);
   const title = M.addTitle(st, { name: 'World Heavyweight Championship', showId: 'raw', division: 'men' });
   M.setChampion(st, title.id, { type: 'wrestler', id: G.id });
   const team = M.addTeam(st, { name: 'KO & Sami', members: [Sa.id, K.id] });
   let week = 0;
-  const show = () => { M.setWeek(st, ++week); return M.addEvent(st, { showId: 'raw' }); };
-  const one = (ev, w, l, extra = {}, opts = {}) => M.recordMatch(st, ev.id, { sides: S([w.id, l.id]), winner: 0, ...extra }, opts);
-  return { st, G, J, Sa, K, Se, N, title, team, show, one, week: () => week };
-}
-// a hand-made suggestion, so model tests don't depend on the draw
-const drafted = (kind, incidents, basis = {}, extra = {}) => ({ kind, key: `${kind}:test`, plan: { incidents, ...extra }, why: ['Because'], chance: 0.5, basis });
-
-test('the story engine only suggests: looking at a show records nothing', () => {
-  const { st, G, J, Se, N, title, show, one } = storyWorld({ pace: 'wild' });
-  const ev = show();
-  M.editRelationship(st, { action: 'form', kind: 'grudge', a: G.id, b: J.id, level: 3, since: 'start' });
-  const m = one(ev, J, G, { titleId: title.id }, { titleChange: true });          // Jey takes Gunther's title
-  one(ev, Se, N);
-  const before = frozen(st), rels = RL.snapshot(st), matches = JSON.stringify(st.events);
-  const r = SG.lookAt(st, ev.id);
-  assert.equal(frozen(st), before);                                              // looking changes nothing
-  assert.ok(r.pool > 0 && r.considered.every(k => k.factors.length && k.chance > 0 && k.chance <= SG.RULES.maxChance));
-  const attack = r.considered.find(k => k.key === `attack:${G.id}>${J.id}`);
-  assert.ok(attack.chance >= 0.5, 'a hot-headed champion who just lost to someone he hates is likely to lash out');
-  const reasons = attack.factors.map(f => f.text).join(' | ');
-  for (const bit of ['Gunther is hot-headed', 'Gunther just lost the World Heavyweight Championship', 'Gunther holds a grudge against Jey (heat 3)']) {
-    assert.ok(reasons.includes(bit), bit);
-  }
-  const nobody = r.considered.find(k => k.key === `attack:${N.id}>${Se.id}`);
-  assert.ok(nobody.chance < 0.03 && nobody.factors.some(f => /out of nowhere/.test(f.text)));
-  // keeping the suggestions adds them, and nothing else happens
-  M.saveStoryRoll(st, ev.id, r);
-  assert.equal(JSON.stringify(st.events), matches);
-  assert.deepEqual(RL.snapshot(st), rels);
-  assert.ok(!M.timeline(st).some(e => e.type === 'incident'));
-  assert.deepEqual(M.suggestionsFor(st, ev.id).map(x => x.status), r.found.map(() => 'open'));
-  assert.equal(M.storyRollOf(st, ev.id).pool, r.pool);
-  throwsUE(() => M.saveStoryRoll(st, ev.id, r), /already looked/);
-  sound(st);
-});
-
-test('the same universe always gets the same suggestions; its seed changes them', () => {
-  const found = seed => {
-    const { st, J, G, Se, N, Sa, K, show, one } = storyWorld({ pace: 'wild', seed });
-    const ev = show();
-    one(ev, J, G); one(ev, Se, N);
-    M.recordMatch(st, ev.id, { sides: [{ wrestlers: [Sa.id, K.id] }, { wrestlers: [J.id, Se.id] }], winner: 1 });
-    const a = SG.lookAt(st, ev.id), b = SG.lookAt(st, ev.id);
-    assert.deepEqual(a, b);
-    return a.found.map(f => f.key).join(',');
+  const show = () => { M.setWeek(st, ++week); const ev = M.addEvent(st, { showId: 'raw' }); DR.tick(st); return ev; };
+  const one = (ev, w, l, extra = {}, opts = {}) => {
+    const m = M.recordMatch(st, ev.id, { sides: S([w.id, l.id]), winner: 0, ...extra }, opts);
+    DR.tick(st);
+    return m;
   };
-  const runs = Array.from({ length: 30 }, (_, i) => found(i + 1));
-  assert.ok(new Set(runs).size > 3, 'different universes, different stories');
-  assert.ok(runs.includes(''), 'and some shows pass without anything');
-});
+  return { st, G, J, Sa, K, Se, N, title, team, show, one };
+}
+const directorIncidents = st => st.events.flatMap(e => e.incidents.filter(i => i.story).map(i => ({ e, i })));
+const whatHappened = st => directorIncidents(st).map(({ e, i }) => `${e.name}:${i.phase}:${i.kind}:${i.by.map(id => M.wrestlerById(st, id).name)}>${i.on.map(id => M.wrestlerById(st, id).name)}`);
 
-test('a show gets few suggestions, never two of a kind or one wrestler twice', () => {
-  for (let seed = 1; seed <= 40; seed++) {
-    const { st, J, G, Se, N, Sa, K, show, one } = storyWorld({ pace: 'wild', seed });
-    const ev = show();
-    one(ev, J, G); one(ev, Se, N); one(ev, Sa, K);
-    const r = SG.lookAt(st, ev.id);
-    assert.ok(r.found.length <= SG.PACE.wild.perShow);
-    assert.equal(new Set(r.found.map(f => f.kind)).size, r.found.length);
-    const people = r.found.flatMap(f => f.plan.incidents.flatMap(i => [...i.by, ...i.on, ...i.helped]));
-    assert.equal(new Set(people).size, people.length);
-    r.found.forEach(f => assert.ok(r.considered.some(k => k.key === f.key) && f.why.length));
+test('the story director records canon by itself — before a show and after its results — and never touches results, titles or rosters', () => {
+  const { st, G, J, Se, N, title, show, one } = directorWorld({ pace: 'wild' });
+  M.editRelationship(st, { action: 'form', kind: 'grudge', a: G.id, b: J.id, level: 3, since: 'start' });
+  const ev = show();
+  assert.equal(M.directorRollOf(st, ev.id, 'pre').phase, 'pre', 'the director ran before the show as soon as it was the next one');
+  const reigns = st.reigns.length, moves = st.moves.length;
+  const m = one(ev, J, G, { titleId: title.id }, { titleChange: true });       // the game said Jey won the title
+  one(ev, Se, N);
+  const post = M.directorRollOf(st, ev.id, 'post');
+  assert.ok(post, 'the card is complete, so the director has been through it');
+  // the results are exactly as entered; the only title change is the entered one; nobody moved
+  assert.deepEqual([m.winner, M.currentReign(st, title.id).holder.id, st.reigns.length, st.moves.length], [0, J.id, reigns + 1, moves]);
+  // what it recorded is canon: incidents on the show, each with its cause, and the relationships follow
+  const made = ev.incidents.filter(i => i.story === post.id);
+  assert.deepEqual(made.map(i => i.id), post.made);
+  made.forEach(i => { assert.equal(i.phase, 'post'); assert.ok(i.cause.length > 0); });
+  if (made.length) {
+    assert.ok(M.timeline(st).some(e => e.type === 'incident' && e.rec.incident.id === made[0].id));
+    assert.ok(RL.relationships(st).entries.some(e => e.cause.incident === made[0].id) || ['momentum', 'open-challenge', 'turn'].includes(made[0].kind));
   }
-});
-
-test('accepting records it on the show; relationships and the timeline follow; dismissing records nothing', () => {
-  const { st, G, J, Se, show, one } = storyWorld();
-  const ev = show();
-  const m = one(ev, J, G);
-  const [atk, save] = M.saveStoryRoll(st, ev.id, { pool: 4, found: [
-    drafted('attack', [{ kind: 'attack', by: [G.id], on: [J.id], match: m.id }], { match: m.id, winners: [J.id] }),
-    drafted('save', [{ kind: 'save', by: [Se.id], on: [G.id], helped: [J.id], match: m.id }]),
-  ] });
-  M.acceptSuggestion(st, atk.id);
-  assert.deepEqual(ev.incidents.map(i => [i.kind, i.story]), [['attack', atk.id]]);
-  assert.deepEqual(RL.relationsOf(st, J.id).map(r => RL.relText(st, r)), ['Jey holds a grudge against Gunther']);
-  assert.ok(M.timeline(st).some(e => e.type === 'incident' && e.rec.incident.story === atk.id));
-  assert.ok(M.careerOf(st, J.id).some(e => e.type === 'incident'));
-  throwsUE(() => M.acceptSuggestion(st, atk.id), /already been accepted/);
-  M.dismissSuggestion(st, save.id, 'Not tonight');
-  assert.equal(ev.incidents.length, 1);
-  assert.deepEqual([save.status, save.note], ['dismissed', 'Not tonight']);
-  M.reopenSuggestion(st, save.id);
-  M.acceptSuggestion(st, save.id);
-  // the save: Gunther resents Seth, and Seth and Jey are allies
-  assert.deepEqual(RL.relationsOf(st, Se.id).map(r => RL.relText(st, r)).sort(), ['Gunther holds a grudge against Seth', 'Seth and Jey are allies']);
+  // every possibility it weighed is logged, with the draw that decided it
+  post.considered.forEach(k => {
+    assert.equal(k.draw, DR.draw(st.story.seed, ev.id, 'post', 0, k.key));
+    if (k.picked) assert.ok(k.draw < k.chance);
+  });
+  // nothing is due now; running it again changes nothing
+  const before = frozen(st);
+  assert.deepEqual(DR.tick(st), []);
+  assert.equal(frozen(st), before);
   sound(st);
 });
 
-test('edit a suggestion before accepting it; take an accepted one back', () => {
-  const { st, G, J, Se, show, one } = storyWorld();
+test('the same save always tells the same story; another seed tells another', () => {
+  const story = seed => {
+    const { st, G, J, Sa, K, Se, N, show, one } = directorWorld({ pace: 'wild', seed });
+    for (let wk = 0; wk < 4; wk++) {
+      const ev = show();
+      one(ev, J, G); one(ev, Se, N);
+      const m = M.recordMatch(st, ev.id, { sides: [{ team: st.teams[0].id, wrestlers: [Sa.id, K.id] }, { wrestlers: [Se.id, N.id] }], winner: 1 });
+      DR.tick(st);
+      assert.ok(m);
+    }
+    sound(st);
+    return whatHappened(st).join(' | ');
+  };
+  assert.equal(story(11), story(11));
+  const tales = new Set(Array.from({ length: 12 }, (_, i) => story(i + 1)));
+  assert.ok(tales.size > 6, 'different saves, different stories');
+});
+
+// a season of CPU-style results on Raw and SmackDown, with the director running as it would in the app
+function directorSeason(pace, seed, weeks = 16) {
+  const st = M.createUniverse();
+  M.setStory(st, { pace });
+  M.seedStory(st, seed);
+  let x = seed * 7919 + 13;
+  const rnd = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
+  const shows = ['raw', 'smackdown'];
+  shows.forEach(sh => Array.from({ length: 9 }, (_, i) => {
+    const w = M.addWrestler(st, { name: `${sh} ${i}`, showId: sh, alignment: rnd() < 0.5 ? 'face' : 'heel' });
+    M.setTraits(st, w.id, M.TRAITS.filter(() => rnd() < 0.18), { since: 'start' });
+    return w;
+  }));
+  const roster = sh => st.wrestlers.filter(w => w.showId === sh);
+  shows.forEach(sh => {
+    const r = roster(sh);
+    M.addTeam(st, { name: `${sh} A`, members: [r[0].id, r[1].id] });
+    M.addTeam(st, { name: `${sh} B`, members: [r[2].id, r[3].id] });
+    const t = M.addTitle(st, { name: `${sh} title`, showId: sh, division: 'men' });
+    M.setChampion(st, t.id, { type: 'wrestler', id: r[8].id });
+  });
+  for (let wk = 1; wk <= weeks; wk++) {
+    if (wk > 1) { M.setWeek(st, wk); DR.tick(st); }
+    shows.forEach(sh => {
+      const ev = M.addEvent(st, { showId: sh });
+      DR.tick(st);
+      const ws = [...roster(sh)].sort(() => rnd() - 0.5);
+      const booked = [M.bookMatch(st, ev.id, { sides: S([ws[4].id, ws[5].id]) }), M.bookMatch(st, ev.id, { sides: S([ws[6].id, ws[7].id]) })];
+      const teams = st.teams.filter(t => t.active && t.members.every(id => M.wrestlerById(st, id).showId === sh));
+      if (teams.length >= 2) booked.push(M.bookMatch(st, ev.id, { sides: teams.slice(0, 2).map(t => ({ team: t.id, wrestlers: [...t.members] })) }));
+      booked.forEach(m => {
+        M.enterResult(st, ev.id, m.id, { sides: m.sides, outcome: 'win', winner: rnd() < 0.5 ? 0 : 1 });
+        DR.tick(st);
+      });
+    });
+  }
+  return st;
+}
+
+test('occasional and varied: within its limits, never the same thing twice in a row, and the big moments spaced out', () => {
+  const rate = pace => {
+    const st = directorSeason(pace, 5);
+    const P = DR.PACE[pace];
+    const runs = st.story.rolls.filter(r => !r.undone);
+    runs.forEach(r => assert.ok(r.considered.filter(k => k.picked).length <= P[r.phase], `${r.phase} cap`));
+    const byWeek = new Map();
+    runs.forEach(r => { const w = M.eventById(st, r.event).at.week; byWeek.set(w, (byWeek.get(w) || 0) + r.considered.filter(k => k.picked).length); });
+    byWeek.forEach(n => assert.ok(n <= P.perWeek, 'week cap'));
+    // the same thing between the same people doesn't come straight back
+    const picks = runs.flatMap(r => r.considered.filter(k => k.picked).map(k => ({ ...k, wk: M.eventById(st, r.event).at.week })));
+    picks.forEach((p, i) => picks.slice(i + 1).forEach(q => { if (q.key === p.key) assert.ok(q.wk - p.wk >= DR.RULES.repeatWeeks, p.key); }));
+    // betrayals, breakups and turns are spaced apart across the universe
+    ['betrayal', 'breakup', 'turn'].forEach(kind => {
+      const wks = directorIncidents(st).filter(({ i }) => i.kind === kind).map(({ e }) => e.at.week).sort((a, b) => a - b);
+      wks.forEach((w, i) => { if (i) assert.ok(w - wks[i - 1] >= DR.KIND[kind].spacing || w === wks[i - 1] && kind !== 'betrayal', `${kind} spacing`); });
+    });
+    sound(st);
+    return { perShow: picks.length / 32, kinds: new Set(picks.map(p => p.kind)).size };
+  };
+  const [quiet, normal, wild] = ['quiet', 'normal', 'wild'].map(rate);
+  assert.ok(quiet.perShow < normal.perShow && normal.perShow < wild.perShow, JSON.stringify([quiet, normal, wild]));
+  assert.ok(normal.perShow > 0.15 && normal.perShow < 1, `normal: ${normal.perShow} a show`);
+  assert.ok(wild.kinds >= 7, `wild: ${wild.kinds} kinds of event`);
+});
+
+test('big moments are earned: breakups follow repeated tension, betrayals follow buildup, turns follow a pattern', () => {
+  let breakups = 0, betrayals = 0, turns = 0;
+  for (const seed of [2, 5, 9, 13, 21]) {
+    const st = directorSeason('wild', seed, 20);
+    const all = M.allIncidents(st);
+    const weekOf = e => e.at.week;
+    directorIncidents(st).forEach(({ e, i }) => {
+      if (i.kind === 'breakup') {
+        breakups++;
+        const members = [...i.by, ...i.on];
+        const tension = all.filter(x => x.incident.kind === 'tension' && weekOf(e) - weekOf(x.event) < DR.RULES.buildupWeeks
+          && M.compareStamps(st, x.event.at, e.at) <= 0 && x.incident.id !== i.id
+          && [...x.incident.by, ...x.incident.on].filter(id => members.includes(id)).length >= 2).length;
+        assert.ok(tension >= DR.RULES.breakupTension || i.cause.some(c => /building|A shock/.test(c)), `a breakup without buildup: ${i.cause.join('; ')}`);
+      }
+      if (i.kind === 'betrayal') {
+        betrayals++;
+        assert.ok(i.cause.some(c => /It has been building|A shock/.test(c)), i.cause.join('; '));
+      }
+      if (i.kind === 'turn') {
+        turns++;
+        assert.ok(i.cause.some(c => /times in \d+ weeks|done right by others|turned on by their own|was a face — no longer/.test(c)), i.cause.join('; '));
+      }
+    });
+  }
+  assert.ok(breakups + betrayals + turns > 0, 'some big moments happened');
+});
+
+test('undo a run, run it again, edit or delete one event: the owner overrides anything', () => {
+  const { st, Sa, K, team, show } = directorWorld({ pace: 'wild' });
   const ev = show();
-  const m = one(ev, J, G);
-  const [sg] = M.saveStoryRoll(st, ev.id, { found: [drafted('attack', [{ kind: 'attack', by: [G.id], on: [J.id], match: m.id }], { match: m.id, winners: [J.id] })] });
+  const other = M.addWrestler(st, { name: 'X', showId: 'raw' }), y = M.addWrestler(st, { name: 'Y', showId: 'raw' });
+  M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [other.id, y.id] }], winner: 1 });
+  // a hand-made run, so this doesn't depend on the draw: a walk-out, and a turn
   const rels = RL.snapshot(st);
-  throwsUE(() => M.editSuggestion(st, sg.id, { incidents: [{ kind: 'attack', by: [J.id], on: [J.id] }] }), /both sides/);
-  M.editSuggestion(st, sg.id, { incidents: [{ kind: 'attack', by: [Se.id], on: [J.id], match: m.id, note: 'From behind' }] });
-  assert.ok(sg.edited);
-  M.acceptSuggestion(st, sg.id);
-  assert.deepEqual(ev.incidents.map(i => [i.by, i.note]), [[[Se.id], 'From behind']]);
-  M.undoSuggestion(st, sg.id);
-  assert.deepEqual([ev.incidents.length, sg.status], [0, 'open']);
+  const post = M.directorRollOf(st, ev.id, 'post');
+  if (post) M.undoDirectorRoll(st, post.id);
+  const alignment = K.alignment;
+  const r = M.saveDirectorRoll(st, ev.id, 'post', { pool: 2, picked: [
+    { kind: 'breakup', key: 'breakup:test', why: ['They had been falling apart'], plan: { incidents: [{ kind: 'breakup', by: [K.id], on: [Sa.id], team: team.id }], disband: team.id } },
+    { kind: 'turn', key: 'turn:test', why: ['Enough'], plan: { incidents: [{ kind: 'turn', by: [K.id], to: 'heel' }] } },
+  ], considered: [] }, { nonce: 5 });
+  assert.deepEqual([team.active, K.alignment], [false, 'heel']);
+  // override one event: edit it (it's marked as edited), or delete it (the turn goes back)
+  const turn = ev.incidents.find(i => i.kind === 'turn' && i.story === r.id);
+  M.updateIncident(st, ev.id, turn.id, { note: 'Snapped' });
+  assert.equal(turn.edited, true);
+  M.deleteIncident(st, ev.id, turn.id);
+  assert.equal(K.alignment, alignment);
+  // undo the whole run: the team is back, the run stays logged as undone, and the director doesn't redo it by itself
+  M.undoDirectorRoll(st, r.id);
+  assert.deepEqual([team.active, r.undone, ev.incidents.filter(i => i.story === r.id).length], [true, true, 0]);
   assert.deepEqual(RL.snapshot(st), rels);
-  throwsUE(() => M.undoSuggestion(st, sg.id), /Only an accepted/);
+  assert.deepEqual(DR.tick(st), []);
+  throwsUE(() => M.undoDirectorRoll(st, r.id), /already been undone/);
+  // run it again: a new nonce, logged, and just as reproducible
+  const copy = JSON.parse(JSON.stringify(st));
+  const again = DR.rerun(st, r.id);
+  const again2 = DR.rerun(copy, r.id);
+  assert.deepEqual([again.nonce, again.considered], [again2.nonce, again2.considered]);
+  assert.ok(again.nonce > r.nonce);
   sound(st);
-});
-
-test('a team breakup disbands the team; taking it back reunites them', () => {
-  const { st, Sa, K, team, show } = storyWorld();
-  const ev = show();
-  M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [M.addWrestler(st, { name: 'X', showId: 'raw' }).id, M.addWrestler(st, { name: 'Y', showId: 'raw' }).id] }], winner: 1 });
-  const [sg] = M.saveStoryRoll(st, ev.id, { found: [drafted('breakup', [{ kind: 'breakup', by: [K.id], on: [Sa.id], team: team.id }], { team: team.id }, { disband: team.id })] });
-  M.acceptSuggestion(st, sg.id);
-  assert.equal(team.active, false);
-  assert.deepEqual(RL.relationsOf(st, Sa.id).map(r => RL.relText(st, r)), ['Sami holds a grudge against Kevin', 'Sami and Kevin are former partners']);
-  M.undoSuggestion(st, sg.id);
-  assert.equal(team.active, true);
-  M.acceptSuggestion(st, sg.id);
-  M.setTeamActive(st, team.id, true);                                            // they got back together
-  throwsUE(() => M.undoSuggestion(st, sg.id), /reunited since/);
-  sound(st);
-});
-
-test('a suggestion that no longer fits the record can only be dismissed', () => {
-  const { st, G, J, N, title, show, one } = storyWorld();
-  const ev = show();
-  const m = one(ev, J, G);
-  const [atk, ch] = M.saveStoryRoll(st, ev.id, { found: [
-    drafted('attack', [{ kind: 'attack', by: [G.id], on: [J.id], match: m.id }], { match: m.id, winners: [J.id] }),
-    drafted('challenge', [{ kind: 'challenge', by: [N.id], on: [G.id], title: title.id }], { title: { id: title.id, holder: { type: 'wrestler', id: G.id } } }),
-  ] });
-  assert.equal(M.suggestionProblem(st, atk), null);
-  M.updateMatch(st, ev.id, m.id, { sides: m.sides, outcome: 'win', winner: 1 });   // Gunther actually won
-  assert.equal(M.suggestionProblem(st, atk), 'The result it came from has been corrected.');
-  throwsUE(() => M.acceptSuggestion(st, atk.id), /corrected\. Dismiss it instead/);
-  M.dismissSuggestion(st, atk.id);
-  M.setChampion(st, title.id, { type: 'wrestler', id: J.id });
-  assert.equal(M.suggestionProblem(st, ch), 'The title has changed hands since.');
-  sound(st);
-});
-
-test('what was dismissed stays away for weeks; someone just in the thick of it is less likely again', () => {
-  const { st, G, J, show, one } = storyWorld();
-  const ev1 = show();
-  const m1 = one(ev1, J, G);
-  const key = `attack:${G.id}>${J.id}`;
-  const [sg] = M.saveStoryRoll(st, ev1.id, { found: [{ ...drafted('attack', [{ kind: 'attack', by: [G.id], on: [J.id], match: m1.id }]), key }] });
-  M.dismissSuggestion(st, sg.id);
+  // a correction the event followed from is flagged on it; the event stays canon
   const ev2 = show();
-  one(ev2, J, G);
-  assert.ok(!SG.lookAt(st, ev2.id).considered.some(k => k.key === key));
-  M.setWeek(st, 1 + SG.RULES.dismissedWeeks);
-  const later = M.addEvent(st, { showId: 'raw' });
-  one(later, J, G);
-  const back = SG.lookAt(st, later.id).considered.find(k => k.key === key);
-  assert.ok(back, 'after long enough it can come up again');
-  // an attack Gunther was in last week makes him less likely to be in another
-  const fresh = back.chance;
-  M.setWeek(st, SG.RULES.dismissedWeeks);                                        // the week before
-  M.recordIncident(st, M.addEvent(st, { showId: 'smackdown' }).id, { kind: 'brawl', by: [G.id], on: [M.addWrestler(st, { name: 'Z', showId: 'raw' }).id] });
-  M.setWeek(st, 1 + SG.RULES.dismissedWeeks);
-  const tired = SG.lookAt(st, later.id).considered.find(k => k.key === key);
-  assert.ok(tired.chance < fresh && tired.factors.some(f => /^Less likely: Gunther was in something in the last 2 weeks/.test(f.text)));
+  const m = M.recordMatch(st, ev2.id, { sides: S([Sa.id, K.id]), winner: 0 });
+  const rr = M.directorRollOf(st, ev2.id, 'post') || M.saveDirectorRoll(st, ev2.id, 'post', { picked: [] });
+  M.undoDirectorRoll(st, rr.id);
+  const r2 = M.saveDirectorRoll(st, ev2.id, 'post', { picked: [{ kind: 'attack', key: 'a', why: ['Lost'], basis: { match: m.id, winners: [Sa.id] },
+    plan: { incidents: [{ kind: 'attack', by: [K.id], on: [Sa.id], match: m.id }] } }] }, { nonce: 1 });
+  const atk = ev2.incidents.find(i => i.story === r2.id);
+  assert.equal(M.storyProblem(st, ev2, atk), null);
+  M.updateMatch(st, ev2.id, m.id, { sides: m.sides, outcome: 'win', winner: 1 });
+  assert.equal(M.storyProblem(st, ev2, atk), 'The result it followed has been corrected since.');
+  sound(st);
 });
 
-test('anyone can come up as a title challenger — the rankings never rule anyone out', () => {
-  const { st, G, J, Sa, K, Se, N, title, show, one } = storyWorld({ pace: 'wild' });
+test('before a show is for the next show up; after is once its results are in', () => {
+  const st = M.createUniverse();
+  M.seedStory(st, 3);
+  const [a, b] = ['A', 'B'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  const [c, d] = ['C', 'D'].map(n => M.addWrestler(st, { name: n, showId: 'smackdown' }));
+  const raw = M.addEvent(st, { showId: 'raw' }), sd = M.addEvent(st, { showId: 'smackdown' });
+  assert.deepEqual(DR.due(st).map(x => `${x.event.name}:${x.phase}`), ['Raw · Week 1:pre']);
+  DR.tick(st);
+  const m = M.bookMatch(st, raw.id, { sides: S([a.id, b.id]) });
+  M.bookMatch(st, raw.id, { sides: S([b.id, a.id]) });
+  M.enterResult(st, raw.id, m.id, { sides: m.sides, outcome: 'win', winner: 0 });
+  assert.deepEqual(DR.due(st), [], 'half a card: not yet');
+  M.enterResult(st, raw.id, raw.matches[1].id, { sides: raw.matches[1].sides, outcome: 'win', winner: 1 });
+  assert.deepEqual(DR.due(st).map(x => `${x.event.name}:${x.phase}`), ['Raw · Week 1:post']);
+  DR.tick(st);
+  assert.ok(M.directorRollOf(st, sd.id, 'pre'), 'then SmackDown is next up');
+  // switched off, nothing happens at all
+  M.setStory(st, { on: false });
+  M.recordMatch(st, sd.id, { sides: S([c.id, d.id]), winner: 0 });
+  assert.deepEqual([DR.due(st), DR.tick(st)], [[], []]);
+  sound(st);
+});
+
+test('switched back on, the director starts from that week; what happens before a show counts before its matches', () => {
+  const st = M.createUniverse();
+  M.seedStory(st, 5);
+  const [a, b] = ['A', 'B'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  M.setStory(st, { on: false });
+  const w1 = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, w1.id, { sides: S([a.id, b.id]), winner: 0 });
+  M.setWeek(st, 2);
+  const w2 = M.addEvent(st, { showId: 'raw' });
+  M.setStory(st, { on: true });
+  assert.deepEqual(st.story.since, { season: M.activeSeason(st).id, week: 2 });
+  assert.deepEqual(DR.due(st).map(x => `${x.event.name}:${x.phase}`), ['Raw · Week 2:pre'], 'the week it was off stays as it was');
+  M.setStory(st, { on: true });
+  assert.equal(st.story.since.week, 2, 'switching on when it is on changes nothing');
+  // a confrontation before the show, then a brawl in it: the rivalry forms before the match, not after
+  M.recordIncident(st, w2.id, { kind: 'confrontation', by: [a.id], on: [b.id], phase: 'pre' });
+  M.recordMatch(st, w2.id, { sides: S([b.id, a.id]), winner: 0 });
+  const order = RL.relationships(st).entries.filter(e => e.at && e.at.week === 2).map(e => e.cause.type);
+  assert.equal(order[0], 'confrontation');
+  throwsUE(() => M.recordIncident(st, w2.id, { kind: 'turn', by: [a.id] }), /Pick the alignment they turned to/);
+  sound(st);
+});
+
+test('an underdog can rise: upsets are noticed, and anyone can be drawn to challenge — the title changes only on a result', () => {
+  const { st, G, J, Sa, K, Se, N, title, show, one } = directorWorld({ pace: 'wild' });
   const ev = show();
   for (const w of [J, Sa, K, Se]) one(ev, w, N);                                  // Nobody loses everything
   one(ev, G, Se);
-  const table = SD.standings(st, { showId: 'raw', period: SD.periodOf(st, 'all') });
-  const contenders = SG.titleContenders(st, ev.id, title.id);
-  const underdog = contenders.find(k => k.ids[0] === N.id);
-  assert.ok(underdog && underdog.share > 0, 'the bottom of the table is in the draw');
-  assert.ok(!contenders.some(k => k.ids.includes(G.id)));
-  // across universes the draw does land on them
-  let picked = 0;
-  for (let seed = 1; seed <= 300 && !picked; seed++) {
-    st.story.seed = seed;
-    if (SG.lookAt(st, ev.id).considered.some(k => k.kind === 'challenge' && k.plan.incidents[0].by.includes(N.id))) picked = seed;
-  }
-  assert.ok(picked, 'the underdog comes up');
-  // and they can be booked for the title and win it; the engine never books or decides anything
-  const matches = st.events.flatMap(e => e.matches).length;
-  const [sg] = M.saveStoryRoll(st, ev.id, SG.lookAt(st, ev.id));
-  if (sg) M.acceptSuggestion(st, sg.id);
-  assert.equal(st.events.flatMap(e => e.matches).length, matches);
-  const next = show();
-  const b = M.bookMatch(st, next.id, { sides: S([N.id, G.id]), titleId: title.id });
-  M.enterResult(st, next.id, b.id, { sides: b.sides, outcome: 'win', winner: 0 }, { titleChange: true });
-  assert.equal(M.currentReign(st, title.id).holder.id, N.id);
-  assert.ok(table.groups || table);
-  sound(st);
-});
-
-test('over a season the engine stays occasional, within its limits, and doesn’t repeat itself', () => {
-  const season = pace => {
-    const st = M.createUniverse();
-    M.setStory(st, { pace });
-    M.seedStory(st, 5);
-    let x = 12345;
-    const rnd = () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; };
-    const shows = ['raw', 'smackdown', 'dynamite'];
-    const roster = Object.fromEntries(shows.map(sh => [sh, Array.from({ length: 10 }, (_, i) => M.addWrestler(st, { name: `${sh} ${i}`, showId: sh }))]));
-    shows.forEach(sh => roster[sh].forEach(w => M.setTraits(st, w.id, M.TRAITS.filter(() => rnd() < 0.15), { since: 'start' })));
-    const teams = Object.fromEntries(shows.map(sh => [sh, [0, 2].map(i => M.addTeam(st, { name: `${sh} team ${i}`, members: [roster[sh][i].id, roster[sh][i + 1].id] }))]));
-    const found = [];
-    for (let wk = 1; wk <= 16; wk++) {
-      M.setWeek(st, wk);
-      shows.forEach(sh => {
-        const ev = M.addEvent(st, { showId: sh });
-        const ws = [...roster[sh]].sort(() => rnd() - 0.5);
-        for (let i = 4; i < 10; i += 2) M.recordMatch(st, ev.id, { sides: S([ws[i].id, ws[i + 1].id]), winner: rnd() < 0.5 ? 0 : 1 });
-        const [t1, t2] = teams[sh].filter(t => t.active);
-        if (t1 && t2) M.recordMatch(st, ev.id, { sides: [{ team: t1.id, wrestlers: [...t1.members] }, { team: t2.id, wrestlers: [...t2.members] }], winner: rnd() < 0.5 ? 0 : 1 });
-        const r = SG.lookAt(st, ev.id);
-        assert.ok(r.found.length <= SG.PACE[pace].perShow);
-        M.saveStoryRoll(st, ev.id, r).forEach(sg => {
-          found.push({ wk, key: sg.key });
-          if (rnd() < 0.6 && !M.suggestionProblem(st, sg)) M.acceptSuggestion(st, sg.id); else M.dismissSuggestion(st, sg.id);
-        });
-      });
-      assert.ok(found.filter(f => f.wk === wk).length <= SG.PACE[pace].perWeek);
-    }
-    // the same thing between the same people doesn't come straight back
-    found.forEach((f, i) => found.slice(i + 1).forEach(g => { if (g.key === f.key) assert.ok(g.wk - f.wk >= SG.RULES.repeatWeeks, f.key); }));
-    sound(st);
-    return found.length / 48;
-  };
-  const [quiet, normal, wild] = ['quiet', 'normal', 'wild'].map(season);
-  assert.ok(quiet < normal && normal < wild, `${quiet} < ${normal} < ${wild}`);
-  assert.ok(normal > 0.1 && normal < 0.9, `normal: ${normal} a show`);
-  assert.ok(quiet < 0.5, `quiet: ${quiet} a show`);
-});
-
-test('new incidents: saves, brawls, challenges, demands, walk-outs, and runs of momentum', () => {
-  const { st, G, J, Sa, K, Se, N, title, team, show } = storyWorld();
-  const ev = show();
-  const rel = () => [...RL.relationships(st).rels.values()].filter(r => r.active).map(r => RL.relText(st, r)).sort();
-  M.recordIncident(st, ev.id, { kind: 'brawl', by: [G.id], on: [J.id] });
-  assert.deepEqual(rel(), ['Gunther and Jey are rivals', 'Gunther holds a grudge against Jey', 'Jey holds a grudge against Gunther']);
-  M.recordIncident(st, ev.id, { kind: 'challenge', by: [Se.id], on: [G.id], title: title.id });
-  assert.ok(rel().includes('Gunther and Seth are rivals') || rel().includes('Seth and Gunther are rivals'));
-  M.recordIncident(st, ev.id, { kind: 'demand', by: [N.id] });                   // a demand needn't call anyone out
-  M.recordIncident(st, ev.id, { kind: 'momentum', by: [N.id], note: 'Five straight' });
-  M.recordIncident(st, ev.id, { kind: 'breakup', by: [Sa.id, K.id], team: team.id });   // amicable: nobody walked out on anyone
-  assert.equal(rel().length, 4);
-  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'challenge', by: [Se.id], on: [G.id] }), /title it’s for/);
-  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'save', by: [Se.id], on: [G.id] }), /was saved/);
-  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'breakup', by: [J.id], on: [Sa.id], team: team.id }), /never on KO & Sami/);
-  const mo = M.recordIncident(st, ev.id, { kind: 'momentum', by: [N.id], on: [G.id] });
-  assert.deepEqual(mo.on, []);                                                   // a run has nobody on the other end
-  assert.ok(M.titleRefs(st, title.id).includes('an incident') && M.teamRefs(st, team.id).includes('an incident'));
-  const entries = RL.relationships(st).entries.map(e => RL.entryText(st, e).cause);
-  assert.ok(entries.some(c => /^Gunther and Jey brawled at /.test(c)) && entries.some(c => /^Seth challenged Gunther for the World Heavyweight Championship at /.test(c)));
-  sound(st);
-});
-
-test('the story engine can be switched off; merges, deletes and older saves keep it sound', () => {
-  const { st, G, J, Se, show, one } = storyWorld();
-  const ev = show();
-  const m = one(ev, J, G);
-  throwsUE(() => M.setStory(st, { pace: 'chaotic' }), /Unknown pace/);
-  M.setStory(st, { on: false });
-  throwsUE(() => M.saveStoryRoll(st, ev.id, { found: [] }), /switched off/);
-  M.setStory(st, { on: true });
-  const seed = st.story.seed;
-  assert.equal(M.seedStory(st, 999), seed);                                      // seeded once, and kept
-  const dup = M.addWrestler(st, { name: 'Gunther 2', showId: 'raw' });
-  const [sg] = M.saveStoryRoll(st, ev.id, { found: [drafted('attack', [{ kind: 'attack', by: [dup.id], on: [J.id], match: m.id }], { match: m.id, winners: [J.id] })] });
-  M.mergeWrestlers(st, G.id, dup.id);
-  assert.deepEqual(sg.plan.incidents[0].by, [G.id]);
-  sound(st);
-  // an older save starts with the engine on, at a normal pace, having suggested nothing
-  const old = JSON.parse(exportUniverse(st));
-  old.version = 6;
-  delete old.story;
-  old.events.forEach(e => e.incidents.forEach(x => { delete x.title; delete x.team; delete x.story; }));
-  const back = M.migrate(old);
-  assert.deepEqual([back.version, back.story.on, back.story.pace, back.story.suggestions], [M.SCHEMA_VERSION, true, 'normal', []]);
-  sound(back);
-  // a deleted show takes its suggestions with it
-  M.deleteEvent(st, ev.id);
-  assert.deepEqual([st.story.suggestions.length, st.story.rolls.length], [0, 0]);
-  const loner = M.addWrestler(st, { name: 'Loner', showId: 'raw' });
+  const contenders = DR.titleContenders(st, ev.id, title.id);
+  assert.ok(contenders.find(k => k.ids[0] === N.id).share > 0, 'the bottom of the table is in the draw');
+  // Nobody beats the champion: the upset is noticed, from the bottom of the rankings
   const ev2 = show();
-  one(ev2, Se, J);
-  M.saveStoryRoll(st, ev2.id, { found: [drafted('demand', [{ kind: 'demand', by: [loner.id] }])] });
-  M.deleteWrestler(st, loner.id);
-  assert.equal(st.story.suggestions.length, 0);
+  const upset = M.recordMatch(st, ev2.id, { sides: S([N.id, G.id]), winner: 0 });
+  const r = DR.lookAt(st, ev2.id, 'post', 0);
+  const rise = r.considered.find(k => k.key === `rise:${N.id}`);
+  assert.ok(rise && rise.chance > 0);
+  assert.equal(M.currentReign(st, title.id).holder.id, G.id, 'a non-title win changes no title');
+  // booked for the title and winning it on an entered result: champion
+  const ev3 = show();
+  const tm = M.bookMatch(st, ev3.id, { sides: S([N.id, G.id]), titleId: title.id });
+  M.enterResult(st, ev3.id, tm.id, { sides: tm.sides, outcome: 'win', winner: 0 }, { titleChange: true });
+  DR.tick(st);
+  assert.equal(M.currentReign(st, title.id).holder.id, N.id);
+  assert.ok(upset);
   sound(st);
+});
+
+test('alliances form between people who aren’t partners already; early on, an upset needs a losing record behind it', () => {
+  const { st, G, J, Sa, K, Se, N, show, one } = directorWorld({ pace: 'wild' });
+  M.setStory(st, { on: false });                                     // looked at by hand, nothing recorded
+  [Sa, K, J].forEach(w => M.editRelationship(st, { action: 'form', kind: 'grudge', a: w.id, b: G.id, level: 3, since: 'start' }));
+  const ev = show();
+  const allies = DR.lookAt(st, ev.id, 'pre', 0).considered.filter(k => k.kind === 'alliance').map(k => k.key);
+  assert.ok(!allies.includes(`alliance:${[Sa.id, K.id].sort().join('+')}`), 'KO & Sami are a team already');
+  assert.ok(allies.includes(`alliance:${[J.id, Sa.id].sort().join('+')}`), 'Jey and Sami share an enemy');
+  // Jey beats the champion in his first match: no record to speak of, so no upset
+  one(ev, J, G);
+  assert.ok(!DR.lookAt(st, ev.id, 'post', 0).considered.some(k => k.key === `rise:${J.id}`));
+  // Nobody loses twice, then beats the champion: that's an upset
+  const ev2 = show();
+  one(ev2, J, N); one(ev2, Se, N); one(ev2, N, G);
+  const rise = DR.lookAt(st, ev2.id, 'post', 0).considered.find(k => k.key === `rise:${N.id}`);
+  assert.ok(rise && rise.chance > 0);
+});
+
+test('a run whose picks can’t be recorded is logged with nothing made and why — and nothing after it is held up', () => {
+  const { st, Sa, K, team, show } = directorWorld({ pace: 'wild' });
+  M.setStory(st, { on: false });
+  const ev = show();
+  const m = M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [M.addWrestler(st, { name: 'X', showId: 'raw' }).id] }], winner: 1 });
+  M.setStory(st, { on: true });
+  // a pick that no longer fits the record (the team has already split) is refused as a whole...
+  M.setTeamActive(st, team.id, false);
+  const bad = { pool: 1, picked: [{ kind: 'breakup', key: 'b', why: ['Clashed twice'], plan: { incidents: [{ kind: 'breakup', by: [K.id], on: [Sa.id], team: team.id, match: m.id }], disband: team.id } }],
+    considered: [{ kind: 'breakup', key: 'b', chance: 0.5, draw: 0.1, picked: true }] };
+  throwsUE(() => M.saveDirectorRoll(st, ev.id, 'post', bad), /already split/);
+  // ...and the fallback the director uses: logged, nothing made, the reason kept
+  const r = M.saveDirectorRoll(st, ev.id, 'post', { ...bad, picked: [], considered: bad.considered.map(k => ({ ...k, picked: false })) }, { problem: 'KO & Sami have already split.' });
+  assert.deepEqual([r.made, r.problem, r.considered[0].picked], [[], 'KO & Sami have already split.', false]);
+  sound(st);
+  assert.ok(M.validate(M.migrate(JSON.parse(exportUniverse(st)))).length === 0);
+});
+
+test('momentum and goals come from the record', () => {
+  const { st, G, J, N, show, one } = directorWorld();
+  const ev = show();
+  one(ev, N, J); one(ev, N, G); one(ev, N, J);
+  const mo = DR.momentumOf(st, N.id);
+  assert.equal(mo.label, 'hot');
+  assert.ok(mo.reasons.some(r => /beat Gunther, a champion/.test(r)));
+  assert.equal(DR.goalOf(st, G.id), 'Keep the World Heavyweight Championship');
+  M.editRelationship(st, { action: 'form', kind: 'grudge', a: J.id, b: N.id, level: 2 });
+  assert.equal(DR.goalOf(st, J.id), 'Revenge on Nobody');
+});
+
+test('new incidents: confrontations, alliances, tension, truces, open challenges and turns', () => {
+  const { st, G, J, Sa, K, Se, title, team, show } = directorWorld({ pace: 'quiet' });
+  M.setStory(st, { on: false });
+  const ev = show();
+  const rel = () => [...RL.relationships(st).rels.values()].filter(r => r.active).map(r => `${RL.relText(st, r)}${RL.levelText(r) ? ` ${r.level}` : ''}`).sort();
+  M.recordIncident(st, ev.id, { kind: 'confrontation', by: [G.id], on: [J.id] });
+  M.recordIncident(st, ev.id, { kind: 'brawl', by: [G.id], on: [J.id] });
+  M.recordIncident(st, ev.id, { kind: 'alliance', by: [Se.id], on: [G.id] });
+  assert.deepEqual(rel(), ['Gunther and Jey are rivals 2', 'Gunther holds a grudge against Jey 1', 'Jey holds a grudge against Gunther 1', 'Seth and Gunther are allies 1'].sort());
+  M.recordIncident(st, ev.id, { kind: 'truce', by: [J.id], on: [G.id] });
+  assert.deepEqual(rel(), ['Gunther and Jey are rivals 1', 'Seth and Gunther are allies 1'].sort());
+  M.recordIncident(st, ev.id, { kind: 'tension', by: [K.id], on: [Sa.id], team: team.id });
+  M.recordIncident(st, ev.id, { kind: 'open-challenge', by: [G.id], title: title.id });
+  const turn = M.recordIncident(st, ev.id, { kind: 'turn', by: [J.id], to: 'heel' });
+  assert.deepEqual([J.alignment, turn.turn], ['heel', { from: 'face', to: 'heel' }]);
+  throwsUE(() => M.recordIncident(st, ev.id, { kind: 'turn', by: [J.id], to: 'heel' }), /already a heel/);
+  M.deleteIncident(st, ev.id, turn.id);
+  assert.equal(J.alignment, 'face');
+  const texts = RL.relationships(st).entries.map(e => RL.entryText(st, e));
+  assert.ok(texts.some(t => /^Jey and Gunther called a truce at /.test(t.cause) && / cools to heat 1$/.test(t.result)));
+  sound(st);
+});
+
+test('a v7 save: accepted suggestions stay as the owner’s incidents with their reasons, and the director takes over from this week', () => {
+  const { st, G, J, show } = directorWorld();
+  M.setStory(st, { on: false });
+  const ev = show();
+  const inc = M.recordIncident(st, ev.id, { kind: 'attack', by: [G.id], on: [J.id] });
+  const old = JSON.parse(exportUniverse(st));
+  old.version = 7;
+  old.story = { on: true, pace: 'wild', seed: 99, rolls: [{ event: ev.id, at: ev.at, pool: 4, found: 1, pace: 'wild' }],
+    suggestions: [{ id: 'sg900', event: ev.id, kind: 'attack', key: 'k', status: 'accepted', why: ['Gunther is hot-headed'],
+      basis: { match: null, winners: null, title: null, team: null }, plan: { incidents: [] }, created: { incidents: [inc.id] } },
+    { id: 'sg901', event: ev.id, kind: 'demand', key: 'k2', status: 'open', why: [], basis: {}, plan: { incidents: [] } }] };
+  old.events.forEach(e => e.incidents.forEach(x => { x.story = 'sg900'; delete x.cause; delete x.phase; delete x.basis; delete x.turn; delete x.edited; }));
+  const back = M.migrate(old);
+  const x = back.events[0].incidents[0];
+  assert.deepEqual([back.version, x.story, x.cause, x.phase], [M.SCHEMA_VERSION, null, ['Gunther is hot-headed'], 'post']);
+  assert.deepEqual([back.story.pace, back.story.seed, back.story.suggestions, back.story.rolls.length, back.story.rolls[0].phase],
+    ['wild', 99, undefined, 1, 'post']);
+  assert.deepEqual(back.story.since, { season: back.seasons[0].id, week: 1 });
+  sound(back);
+  // shows before `since` are left alone
+  assert.deepEqual(DR.due(back).filter(d => d.event.id === ev.id && d.phase === 'post'), []);
 });
 
 // ---------------------------------------------------------------- a whole sample season, end to end

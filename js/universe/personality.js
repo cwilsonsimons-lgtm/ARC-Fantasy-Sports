@@ -9,11 +9,12 @@
 // owner can ignore any automatic change, and start, set, end or annotate any
 // relationship by hand - dated entries on the same timeline, which can be
 // taken back. Incidents (a betrayal, an interference, an attack) are logged
-// on the show they happened on.
+// on the show they happened on - by the owner here, or by the story director
+// (story.js shows those); either can be edited or deleted here.
 import * as M from './model.js';
 import * as RL from './relations.js';
 import {
-  ICON, INCIDENT, avatar, empty, esc, field, incidentText, options, section, select, showColor, showName, sideName, stampLabel, wrestlerOptions,
+  ICON, INCIDENT, LABEL, avatar, empty, esc, field, incidentText, options, section, select, showColor, showName, sideName, stampLabel, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, refresh, uni } from './app.js';
 
@@ -368,20 +369,17 @@ const matchName = (st, ev, id) => {
   return i < 0 ? '' : `Match ${i + 1}: ${ev.matches[i].sides.map(sd => sideName(st, sd)).join(' vs ')}`;
 };
 
-/** The show page's Incidents section, and what changed between wrestlers there. */
+/**
+ * Below a show's story: recording something yourself, and every relationship
+ * change on the show. (The incidents themselves are listed by story.js,
+ * before the show and after it.)
+ */
 export function uvIncidentsBlock(st, ev) {
   const d = RL.relationships(st);
   const here = d.entries.filter(e => e.cause.event === ev.id);
   return `
-    ${section('Incidents', ev.incidents.length || null)}
-    ${ev.incidents.map(inc => `<div class="uv-inc" data-inc="${inc.id}" onclick="uvIncident('${ev.id}','${inc.id}')">
-      <span class="uv-rk" style="--k:${INCIDENT[inc.kind].color}">${INCIDENT[inc.kind].label}</span>
-      <div class="uv-main"><div class="nm">${esc(incidentText(st, inc))}</div>
-        ${inc.match || inc.note || inc.story ? `<div class="sub">${esc([inc.match && matchName(st, ev, inc.match), inc.note,
-          inc.story && 'From a story suggestion'].filter(Boolean).join(' · '))}</div>` : ''}</div>
-      <span class="uv-chev">${ICON.edit}</span></div>`).join('')}
-    ${ev.incidents.length ? '' : '<div class="uv-none">A betrayal, a run-in, an attack, a challenge — whatever you saw in the game besides the results goes here.</div>'}
-    <div class="uv-page-acts"><div class="uv-btn" onclick="uvIncident('${ev.id}')">${ICON.plus}Record an incident</div></div>
+    <div class="uv-page-acts"><div class="uv-btn" onclick="uvIncident('${ev.id}')">${ICON.plus}Record something yourself</div></div>
+    ${ev.incidents.length ? '' : '<div class="uv-none">A betrayal, a run-in, an attack, a challenge — anything you saw in the game besides the results can go here too.</div>'}
     ${here.length ? `${section('Relationships', here.length)}<div class="uv-ents">${here.map(e => entryRow(st, e, true)).join('')}</div>` : ''}`;
 }
 
@@ -390,13 +388,15 @@ let ic = null;
 export function uvIncident(eventId, incId = '') {
   const ev = M.eventById(uni(), eventId);
   const inc = incId && ev && ev.incidents.find(x => x.id === incId);
+  const played = ev && ev.matches.some(m => m.status === 'played');
   ic = inc ? { eventId, incId, kind: inc.kind, by: [...inc.by], on: [...inc.on], helped: [...inc.helped], match: inc.match || '', note: inc.note,
-    title: inc.title || '', team: inc.team || '', disband: false }
-    : { eventId, incId: '', kind: 'betrayal', by: [''], on: [''], helped: [], match: '', note: '', title: '', team: '', disband: true };
+    title: inc.title || '', team: inc.team || '', disband: false, phase: inc.phase || '', to: inc.turn ? inc.turn.to : '', story: !!inc.story }
+    : { eventId, incId: '', kind: 'betrayal', by: [''], on: [''], helped: [], match: '', note: '', title: '', team: '', disband: true,
+      phase: played ? 'post' : 'pre', to: '', story: false };
   openSheet(incidentSheet);
 }
 const incidentInput = () => ({ kind: ic.kind, by: ic.by, on: ic.on, helped: ic.helped, match: ic.match || null, note: ic.note,
-  title: ic.title || null, team: ic.team || null });
+  title: ic.title || null, team: ic.team || null, phase: ic.phase || null, to: ic.kind === 'turn' ? ic.to : undefined });
 // a walk-out can split the team up at the same time - only when it's new, and the team is still together
 const splits = st => ic.kind === 'breakup' && !ic.incId && ic.disband && ic.team && (M.teamById(st, ic.team) || {}).active;
 function saveIncident(st) {
@@ -417,13 +417,21 @@ function incidentSheet() {
   const titles = st.titles.filter(t => t.active || t.id === ic.title);
   const teams = st.teams.filter(t => t.members.length || t.id === ic.team);
   const news = preview(copy => saveIncident(copy));
+  const turner = ic.kind === 'turn' && M.wrestlerById(st, ic.by[0]);
+  const seg = (items, cur, fn) => `<div class="uv-seg">${items.map(([k, lb]) => `<div class="${cur === k ? 'on' : ''}" data-v="${k}"
+    onclick="${fn}('${k}')">${esc(lb)}</div>`).join('')}</div>`;
   return {
     title: ic.incId ? 'Edit the incident' : 'Record an incident',
     body: `
-      <p class="uv-p">${esc(ev.name)} — what you saw in the game besides the results.</p>
+      <p class="uv-p">${esc(ev.name)} — ${ic.story ? 'the story director recorded this. Change anything; it’s marked as edited by you.'
+        : 'what you saw in the game besides the results.'}</p>
       <div class="uv-pills tight">${Object.keys(INCIDENT).map(x => `<div class="uv-pill${ic.kind === x ? ' on' : ''}" data-v="${x}" onclick="uvIcKind('${x}')">
         <span class="uv-dot" style="--c:${INCIDENT[x].color}"></span>${INCIDENT[x].label}</div>`).join('')}</div>
       <div class="fine" style="margin:4px 0 10px">${esc(k.text)}</div>
+      <div class="uv-sub flush">When</div>
+      ${seg([['pre', 'Before the show'], ['post', 'During or after']], ic.phase === 'pre' ? 'pre' : 'post', 'uvIcPhase')}
+      ${k.turn ? `<div style="margin-top:10px">${field(turner && turner.alignment ? `Turned (from ${LABEL.alignment[turner.alignment].toLowerCase()})` : 'Turned',
+        select("uvIcSet('to',this.value)", options([['', '— Pick the new alignment —'], ...M.ALIGNMENTS.map(a => [a, LABEL.alignment[a]])], ic.to), ' id="uvIcTo"'), 'wide')}</div>` : ''}
       ${ev.matches.length ? field('During', select("uvIcSet('match',this.value)", options([['', '— Not during a match —'],
         ...ev.matches.map(m => [m.id, matchName(st, ev, m.id)])], ic.match), ' id="uvIcMatch"'), 'wide') : ''}
       ${k.title ? `<div style="margin-top:10px">${field(ic.kind === 'challenge' ? 'For the title' : 'Over a title (optional)',
@@ -450,9 +458,11 @@ export function uvIcKind(k) {
   else if (!ic.on.length && shape.on) ic.on = [''];
   if (!shape.title) ic.title = '';
   if (!shape.team) ic.team = '';
+  if (shape.turn) ic.by = ic.by.slice(0, 1);
   paintSheet();
 }
-export function uvIcSet(k, v) { ic[k] = v; paintSheet(); }
+export function uvIcPhase(v) { ic.phase = v; paintSheet(); }
+export function uvIcSet(k, v) { ic[k] = v; if (k === 'match' && v) ic.phase = 'post'; paintSheet(); }      // during a match is after the bell
 export function uvIcPick(list, j, v) { ic[list][j] = v; paintSheet(); }
 export function uvIcAdd(list) { ic[list].push(''); paintSheet(); }
 export function uvIcDrop(list, j) { ic[list].splice(j, 1); paintSheet(); }
@@ -467,7 +477,8 @@ export function uvIcDelete() {
   const st = uni();
   const inc = M.eventById(st, eventId).incidents.find(x => x.id === incId);
   confirmThen('Delete this incident?', `“${incidentText(st, inc)}” comes off the show, and every relationship change it made is worked out again without it.`
-    + (inc.story ? ' The story suggestion it came from stays accepted — take that back on the show instead if you want it open again.' : ''),
+    + (inc.turn ? ` ${(M.wrestlerById(st, inc.by[0]) || { name: 'They' }).name} goes back to ${inc.turn.from || 'no alignment'}.` : '')
+    + (inc.story ? ' The story director won’t do it again by itself.' : ''),
     'Delete', () => {
       const before = RL.snapshot(uni());
       if (commit(s => M.deleteIncident(s, eventId, incId), () => `Incident deleted${uvRelNews(before)}`).ok) closeSheet();
@@ -523,7 +534,8 @@ export function uvHowRelations() {
       <p class="uv-p"><b>You see everything.</b> Every trait and every relationship is on show from the start. Nothing is hidden,
         scouted or discovered over time.</p>
       <p class="uv-p"><b>Where relationships come from.</b> They’re worked out from what’s on record, in calendar order — results,
-        title changes, tag teams, the incidents you log on a show, and your own changes. Nothing random happens.</p>
+        title changes, tag teams, the incidents on each show (the story director’s and yours), and your own changes. These rules
+        never roll dice: the same record always gives the same relationships.</p>
       <div class="uv-calc">
         <div><span>Losses</span><b>${RULES.streak} straight losses to the same wrestler: a grudge against them, or 1 more heat.
           Hot-headed: ${RULES.streakHotHeaded}. Patient: ${RULES.streakPatient}. A win over them starts the count again.</b></div>
@@ -534,7 +546,10 @@ export function uvHowRelations() {
         <div><span>Attack</span><b>a grudge against the attacker (hot-headed: heat 2)</b></div>
         <div><span>Save</span><b>the attacker holds a grudge against whoever made the save; the one saved becomes their ally</b></div>
         <div><span>Brawl</span><b>a grudge each way, and they’re rivals</b></div>
-        <div><span>Challenge</span><b>a title challenge, or calling someone out: they’re rivals</b></div>
+        <div><span>Challenge</span><b>a title challenge, calling someone out, or a confrontation: they’re rivals, or 1 more heat</b></div>
+        <div><span>Alliance</span><b>two joining forces: allies, or stronger ones</b></div>
+        <div><span>Tension</span><b>partners clashing: an alliance or friendship between them weakens a step</b></div>
+        <div><span>Truce</span><b>a rivalry cooling off: each grudge between them, and the rivalry, drops a step</b></div>
         <div><span>Walk-out</span><b>anyone left behind holds a grudge against whoever walked out; any friendship or alliance between them ends</b></div>
         <div><span>Teaming</span><b>${RULES.allies} matches on the same side, win or lose: allies (loyal: ${RULES.alliesLoyal}).
           ${RULES.friends}: friends — unless either is opportunistic, or there’s a grudge between them</b></div>

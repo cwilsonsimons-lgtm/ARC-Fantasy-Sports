@@ -17,7 +17,7 @@ import {
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
-import { uvStoryAfterResult, uvStoryBlock, uvStoryToast } from './story.js';
+import { uvDirect, uvDirectedToast, uvStoryBlock } from './story.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
 /** Move to another show from a show's page, without stacking up Back steps. */
@@ -35,9 +35,16 @@ function showNav(st, e) {
 
 // ================================================================ planning shows
 
+// add a show to the calendar, and let the story director catch up - if it's
+// this week's next show, what happens before it happens now, ahead of booking
+function planEvent(input, done) {
+  let runs = [];
+  return commit(st => { const e = M.addEvent(st, input); runs = uvDirect(st); return e; }, e => `${done(e)}${uvDirectedToast(runs)}`);
+}
+
 /** Plan an episode of a show for a week: it goes on the calendar, empty, ready to book. */
 export function uvPlanShow(showId, week) {
-  const r = commit(st => M.addEvent(st, { showId, week }), e => `${e.name} planned`);
+  const r = planEvent({ showId, week }, e => `${e.name} planned`);
   if (r.ok) uvOpenEvent(r.value.id);
 }
 
@@ -67,7 +74,7 @@ export function uvNewPle(week) {
 export function uvPleSet(k, v) { pleDraft[k] = v; }
 export function uvCreatePle() {
   const d = pleDraft;
-  const r = commit(st => M.addEvent(st, { kind: 'ple', name: d.name, showId: d.showId, week: d.week, day: d.day }), e => `${e.name} added`);
+  const r = planEvent({ kind: 'ple', name: d.name, showId: d.showId, week: d.week, day: d.day }, e => `${e.name} added`);
   if (r.ok) { closeSheet(); uvOpenEvent(r.value.id); }
 }
 
@@ -168,10 +175,11 @@ export function uvEventPage(id) {
       </div>
       ${transitionLink(st, e)}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ''}
+      ${uvStoryBlock(st, e, 'pre')}
       <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join('')}</div>`
         : empty(ICON.cal, 'Nothing booked yet', 'Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.')}
-      ${uvStoryBlock(st, e)}
+      ${uvStoryBlock(st, e, 'post')}
       ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
@@ -259,7 +267,7 @@ const parseLineup = text => String(text).split('|').map(part => {
 });
 export function uvBookLineup(eventId, lineup, titleId = '') { openForm('book', eventId, null, parseLineup(lineup), titleId); }
 export function uvPlanAndBook(showId, week, lineup, titleId = '') {
-  const r = commit(st => M.addEvent(st, { showId, week }), e => `${e.name} planned`);
+  const r = planEvent({ showId, week }, e => `${e.name} planned`);
   if (r.ok) uvBookLineup(r.value.id, lineup, titleId);
 }
 
@@ -443,12 +451,11 @@ export function uvMSave(thenResult) {
   };
   const opts = { titleChange: !!(d.titleId && d.titleChange && isWin) };
   const before = uvRelBefore();
-  let story = null;
+  let runs = [];
   const r = commit(st => {
-    if (d.mode !== 'result') return M.updateMatch(st, d.eventId, d.matchId, input, opts);
-    const played = M.enterResult(st, d.eventId, d.matchId, input, opts);
-    story = uvStoryAfterResult(st, d.eventId);
-    return played;
+    const m = d.mode === 'result' ? M.enterResult(st, d.eventId, d.matchId, input, opts) : M.updateMatch(st, d.eventId, d.matchId, input, opts);
+    runs = uvDirect(st);                   // the result is in: the story director catches up (it never touches the result)
+    return m;
   }, m => {
     const st = uni();
     const reign = st.reigns.find(x => x.matchId === m.id);
@@ -461,7 +468,7 @@ export function uvMSave(thenResult) {
     const news = uvRelNews(before).replace(/^ — /, '');
     const checks = m.titleId ? M.titleChecks(st, m.titleId).length : 0;
     const heads = checks ? `Check the ${M.titleById(st, m.titleId).name} history: ${checks} thing${checks === 1 ? ' doesn’t' : 's don’t'} add up` : '';
-    return `${saved}${[what, heads, news].filter(Boolean).map((x, i) => (i ? `. ${x}` : ` — ${x}`)).join('')}${uvStoryToast(story)}`;
+    return `${saved}${[what, heads, news].filter(Boolean).map((x, i) => (i ? `. ${x}` : ` — ${x}`)).join('')}${uvDirectedToast(runs)}`;
   });
   if (r.ok) closeSheet();
 }
