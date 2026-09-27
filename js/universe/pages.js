@@ -20,6 +20,7 @@ import { uvEventPage } from './card.js';
 import { uvTransitionPage } from './relegation.js';
 import { uvPairPage, uvProfilePersonality } from './personality.js';
 import { uvProfileStory, uvStoryPage } from './story.js';
+import { uvTiersPage } from './tiers.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -28,7 +29,8 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 /** { title, body } for a page, or null if what it showed no longer exists. */
 export function uvPageView(kind, id) {
   return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
-    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : kind === 'story' ? uvStoryPage() : null;
+    : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : kind === 'story' ? uvStoryPage()
+    : kind === 'tiers' ? uvTiersPage() : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.
@@ -198,7 +200,7 @@ function wrestlerPage(id) {
       ${drafted.length || eligibleOnly.length ? section('Draft', null) + drafted.map(d => {
         const how = d.eligibility.map(x => st.eligibility.find(e => e.id === x)).filter(Boolean).map(eligibilityText).join('; ') || 'brought along by the owner’s decision';
         const titles = d.titles.map(x => `${x.choice === 'vacated' ? 'vacated' : 'kept'} the ${esc(M.titleById(st, x.title).name)}`).join(', ');
-        return `<div class="uv-relrec in draft" onclick="uvOpenTransition('${d.transition}')"><b>Drafted to ${esc(showName(st, d.to))} from NXT · pick ${d.pick} · ${stampLabel(st, d.at)}</b>
+        return `<div class="uv-relrec in draft" onclick="uvOpenTransition('${d.transition}')"><b>Drafted to ${esc(showName(st, d.to))} from ${esc(showName(st, d.from))} · pick ${d.pick} · ${stampLabel(st, d.at)}</b>
           <span>Eligible: ${esc(how)}${titles ? `. ${titles.charAt(0).toUpperCase()}${titles.slice(1)}` : ''}.${d.note ? ` “${esc(d.note)}”` : ''}</span></div>`;
       }).join('') + [...new Set(eligibleOnly.map(e => e.transition))].map(trId => {
         const tr = M.transitionById(st, trId);
@@ -208,7 +210,7 @@ function wrestlerPage(id) {
           <span>${esc(how)}.${left ? ' Left undrafted when the transfer window closed.' : ''}</span></div>`;
       }).join('') : ''}
       ${relegated.length ? section('Relegation', relegated.length) + relegated.map(r => `<div class="uv-relrec in" onclick="uvOpenTransition('${r.transition}')">
-        <b>${esc(showName(st, r.show))} → NXT · ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span>${driftNote(st, r)}</div>`).join('') : ''}
+        <b>${esc(showName(st, r.show))} → ${esc(showName(st, r.to))} · ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span>${driftNote(st, r)}</div>`).join('') : ''}
 
       ${section('Championships', champs.length || null)}
       ${champs.length ? current.map(champRow).join('') + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : '')

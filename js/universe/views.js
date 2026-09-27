@@ -122,7 +122,7 @@ function transitionRows(st, s) {
   const rows = recent.map(t => row(`uvOpenTransition('${t.id}')`, `${seasonById(st, t.season).name} transition · relegation`,
     uvTransitionSummary(st, t).map(x => `${x.label}: ${x.text}`).join(' · ')));
   const mania = !recent.some(t => t.season === s.id) && eventsIn(st, s.id).filter(e => e.kind === 'ple' && /wrestlemania/i.test(e.name)).pop();
-  if (mania) rows.push(row(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, 'Start the season transition: relegation to NXT'));
+  if (mania) rows.push(row(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, 'Start the season transition: relegation, promotion and the draft'));
   return rows.join('');
 }
 

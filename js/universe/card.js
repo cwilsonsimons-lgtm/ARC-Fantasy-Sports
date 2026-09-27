@@ -124,6 +124,9 @@ const STATUS_TEXT = {
   complete: c => `Complete — ${c.total} result${c.total === 1 ? '' : 's'}`,
 };
 
+// where a relegation match's loser goes, by its transition's rules
+const downTo = (st, m) => showName(st, M.relegationTo(M.transitionById(st, m.relegation.transition), m.relegation.show));
+
 function matchCard(st, ev, m, i) {
   const played = m.status === 'played';
   const title = m.titleId && M.titleById(st, m.titleId);
@@ -138,8 +141,8 @@ function matchCard(st, ev, m, i) {
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ''}
     ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title.name)} ${reign.holder.type === 'team' ? 'champions' : 'champion'}</div>` : ''}
-    ${rel ? `<div class="uv-mc-d bad">${esc(M.wrestlerById(st, rel.wrestler).name)} relegated to NXT</div>` : ''}
-    ${m.relegation && !played ? '<div class="uv-mc-d">Relegation match: the loser goes to NXT when you save the result.</div>' : ''}
+    ${rel ? `<div class="uv-mc-d bad">${esc(M.wrestlerById(st, rel.wrestler).name)} relegated to ${esc(showName(st, rel.to))}</div>` : ''}
+    ${m.relegation && !played ? `<div class="uv-mc-d">Relegation match: the loser goes to ${esc(downTo(st, m))} when you save the result.</div>` : ''}
     ${qual ? `<div class="uv-mc-d uv-gold">${esc(M.wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ''}
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ''}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ''}
@@ -199,7 +202,7 @@ function transitionLink(st, e) {
   const tr = own || (night && M.transitionById(st, (night.relegation || night.qualifier).transition));
   if (tr) {
     return `<div class="uv-trlink" onclick="uvOpenTransition('${tr.id}')">${ICON.move}<div><b>Season transition</b>
-      <span>${own ? 'Relegation, NXT promotion and the draft after this event'
+      <span>${own ? 'Relegation, promotion and the draft after this event'
         : night.relegation ? 'Relegation matches are on this card' : 'Qualifying matches for the draft are on this card'}</span></div>${ICON.right}</div>`;
   }
   if (e.kind !== 'ple' || M.transitionOfSeason(st, e.at.season)) return '';
@@ -372,7 +375,7 @@ function formSheet() {
       ${result}
       ${md.relegation || md.qualifier ? (() => {
           const mm = M.eventById(st, md.eventId).matches.find(x => x.id === md.matchId);
-          const what = md.relegation ? `A relegation match: ${withResult ? 'the loser moves to NXT as soon as you save. ' : ''}`
+          const what = md.relegation ? `A relegation match: ${withResult ? `the loser moves to ${downTo(st, mm)} as soon as you save. ` : ''}`
             : `A qualifying match: ${withResult ? 'the winner becomes draft eligible when you save — nobody moves. ' : ''}`;
           return `<div class="fine">${what}Its line-up is its pairing — change that on the <span class="uv-link"
             onclick="uvOpenTransition('${(mm.relegation || mm.qualifier).transition}')">season transition page</span>.</div>`;
@@ -462,7 +465,7 @@ export function uvMSave(thenResult) {
     const saved = d.mode === 'result' ? 'Result saved' : 'Result corrected';
     const rel = st.relegations.find(x => x.match === m.id);
     const q = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
-    const what = rel ? `${M.wrestlerById(st, rel.wrestler).name} relegated to NXT`
+    const what = rel ? `${M.wrestlerById(st, rel.wrestler).name} relegated to ${showName(st, rel.to)}`
       : q ? `${M.wrestlerById(st, q.wrestler).name} is draft eligible`
         : reign ? `${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}` : '';
     const news = uvRelNews(before).replace(/^ — /, '');

@@ -123,10 +123,10 @@ await check('opens straight into the app', () => js(`[document.title, document.q
 await check('nothing of the fantasy app on the page', () => js(`[
   !!document.querySelector('.phone, .nav, .shift, .drawer, #hint, .mk'),
   ['showTab', 'openMarkets', 'renderWeek', 'LG'].filter(n => n in window)]`), [false, []]);
-await check('starts empty, four shows + All + Unassigned', () => js(`[
+await check('starts empty, five shows + All + Unassigned', () => js(`[
   document.querySelectorAll('#uvBody .uv-row').length,
   [...document.querySelectorAll('#uvBody .uv-pill')].map(p => p.textContent.trim())]`),
-  r => r[0] === 0 && r[1].join('|') === 'All0|Raw0|SmackDown0|Dynamite0|NXT0|Unassigned0');
+  r => r[0] === 0 && r[1].join('|') === 'All0|Raw0|SmackDown0|Dynamite0|NXT0|Evolve0|Unassigned0');
 await check('Season 1, Week 1 on the clock', () => js(`document.getElementById('uvClock').textContent`), 'Season 1 · Week 1');
 await check('layout anchored', anchored, isAnchored);
 
@@ -182,7 +182,7 @@ await check('saved universe is sound', sound, []);
 await check('pills show unequal show sizes', async () => {
   await closeSheet();
   return js(`[...document.querySelectorAll('#uvBody .uv-pill .n')].map(e => +e.textContent)`);
-}, [11, 2, 2, 3, 4, 0]);
+}, [11, 2, 2, 3, 4, 0, 0]);
 await check('filtering by show', async () => {
   await body.locator('.uv-pill', { hasText: 'Dynamite' }).click();
   return js(`[...document.querySelectorAll('#uvBody .uv-row .nm')].map(e => e.textContent)`);
@@ -270,7 +270,7 @@ await check('select mode moves several wrestlers at once', async () => {
     await js(`!!document.querySelector('.uv-selbar')`), (await toast()).t];
 }, ['2 selected', ['raw', 'raw'], false, '2 wrestlers → Raw']);
 await check('a show can be emptied; sizes stay unequal', () =>
-  js(`[...document.querySelectorAll('#uvBody .uv-pill .n')].map(e => +e.textContent)`), [11, 4, 0, 3, 4, 0]);
+  js(`[...document.querySelectorAll('#uvBody .uv-pill .n')].map(e => +e.textContent)`), [11, 4, 0, 3, 4, 0, 0]);
 
 // ================================================================ tag teams
 await check('a new team opens its own page', async () => {
@@ -346,7 +346,7 @@ await check('the calendar: each show on its own night, not yet planned', async (
   return [await js(`document.getElementById('uvClock').textContent`), (await saved()).seasons[0].week,
     await js(`document.querySelector('.uv-weeknav .t').textContent`), await nights()];
 }, ['Season 1 · Week 3', 3, 'Week 3',
-  ['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Fri SmackDown | Not planned']]);
+  ['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned']]);
 await check('pin the season to real dates', async () => {
   await body.locator('.uv-card-f span', { hasText: 'Set dates' }).click();
   await settle();
@@ -355,7 +355,7 @@ await check('pin the season to real dates', async () => {
   await settle();
   return [(await saved()).seasons[0].start, await js(`document.querySelector('.uv-weeknav .s').textContent`),
     await js(`[...document.querySelectorAll('#uvBody .uv-night .dt span')].map(e => e.textContent)`)];
-}, ['2026-01-07', 'This week · 19 Jan – 25 Jan 2026', ['19 Jan', '20 Jan', '21 Jan', '23 Jan']]);
+}, ['2026-01-07', 'This week · 19 Jan – 25 Jan 2026', ['19 Jan', '20 Jan', '21 Jan', '21 Jan', '23 Jan']]);
 await check('Plan puts Raw on the calendar and opens its card', async () => {
   await body.locator('.uv-night[data-plan=raw]').locator('.uv-btn').click();
   await page.waitForTimeout(150);
@@ -688,8 +688,8 @@ await check('the calendar shows the week at a glance', async () => {
   await page.click('.uv-back');
   return [await nights(), await js(`[...document.querySelectorAll('.uv-gr')].map(r => r.querySelector('.w').textContent + ':'
     + [...r.querySelectorAll('.uv-cell')].map(c => c.className.replace('uv-cell', '').trim() || '-').join(','))`)];
-}, [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Fri SmackDown | Not planned',
-  'Sat WrestleMania | 1 result in'], [':', 'W3:-,-,-,-,complete', 'W2:partial,-,-,-,-', 'W1:-,-,-,-,-']]);
+}, [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned',
+  'Sat WrestleMania | 1 result in'], [':', 'W3:-,-,-,-,-,complete', 'W2:partial,-,-,-,-,-', 'W1:-,-,-,-,-,-']]);
 
 // ================================================================ history
 await check('History: every result, newest show first', async () => {
@@ -780,7 +780,7 @@ await check('start Season 2 after confirming', async () => {
   return [u.seasons.map(s => `${s.name}:${s.status}:${s.week}`), await js(`document.getElementById('uvClock').textContent`)];
 }, [['Season 1:complete:3', 'Season 2:active:1'], 'Season 2 · Week 1']);
 await check('the calendar moves on to the new season', async () => [await nights(), await js(`document.querySelector('.uv-weeknav .s').textContent`)],
-  [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Fri SmackDown | Not planned'], 'This week']);
+  [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned'], 'This week']);
 await check('a past season’s results are still browsable', async () => {
   await page.click('#uvTabs [data-uvtab=history]');
   const now = await js(`document.querySelector('#uvBody .uv-empty .t').textContent`);
@@ -808,7 +808,7 @@ await check('everything survives a reload', async () => {
   return [JSON.stringify(await saved()) === JSON.stringify(before),
     await js(`document.getElementById('uvClock').textContent`),
     await js(`document.querySelector('.uv-tab.on').textContent`), (await nights()).length];
-}, [true, 'Season 2 · Week 1', 'Calendar', 4]);
+}, [true, 'Season 2 · Week 1', 'Calendar', 5]);
 
 // ================================================================ save file
 const dir = await mkdtemp(join(tmpdir(), 'uv-'));
@@ -828,7 +828,7 @@ await check('start a new universe (confirmed)', async () => {
   await confirmYes();
   const u = await saved();
   return [u.wrestlers.length, u.seasons.length, u.events.length, (await nights()).map(n => n.split(' | ')[1])];
-}, [0, 1, 0, ['Not planned', 'Not planned', 'Not planned', 'Not planned']]);
+}, [0, 1, 0, ['Not planned', 'Not planned', 'Not planned', 'Not planned', 'Not planned']]);
 await check('a file that isn’t a universe is refused', async () => {
   const junk = join(dir, 'junk.json');
   await writeFile(junk, JSON.stringify({ app: 'arc-markets', version: 1 }));
@@ -1050,7 +1050,7 @@ await check('relegation: WrestleMania on the calendar leads to the season transi
   await page.waitForTimeout(150);
   return [row, await pageKind(), (await saved()).transitions.length,
     await js(`[...document.querySelectorAll('.uv-trsum span')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`)];
-}, ['WrestleMania ends the season Start the season transition: relegation to NXT', 'transition', 1,
+}, ['WrestleMania ends the season Start the season transition: relegation, promotion and the draft', 'transition', 1,
   ['Raw: 1 decision for you', 'SmackDown: ready to book', 'Dynamite: 1 decision for you',
     'NXT: 0 champions eligible; no qualifiers picked', 'Transfer window: not open — 0 eligible']]);
 await check('the season win totals behind the candidates, fewest first', async () => [await trRows('raw'), await trRows('smackdown')],
@@ -1207,7 +1207,7 @@ await check('cycle 2: NXT’s season records suggest the qualifiers; you pick', 
   await body.locator('.uv-trcount .uv-link', { hasText: 'Pick them' }).click();
   await page.waitForTimeout(150);
   const u = await saved();
-  return [rows.slice(0, 5), u.transitions[0].promotion.picked.map(id => u.wrestlers.find(w => w.id === id).name),
+  return [rows.slice(0, 5), u.transitions[0].parts[0].qualifiers.picked.map(id => u.wrestlers.find(w => w.id === id).name),
     await js(`[...document.querySelectorAll('.uv-pair .vs')].map(v => v.firstElementChild.textContent + ' v ' + (v.querySelector('select') ? v.querySelector('select').selectedOptions[0].textContent : ''))`)];
 }, [['1 NA Suggested', '2 NB Suggested', '2 NC Suggested', '4 ND Suggested', '5 N1'], ['NA', 'NB', 'NC', 'ND'], ['NA v NB', 'NC v ND']]);
 await check('you can override the suggestions', async () => {
@@ -1216,7 +1216,7 @@ await check('you can override the suggestions', async () => {
   const flag = await js(`[...document.querySelectorAll('.uv-trshow .uv-flag.decide')].map(${TEXT})`);
   await body.locator('.uv-trshow .uv-tw[data-w]', { hasText: 'N1' }).click();
   await page.waitForTimeout(120);
-  return [flag, (await saved()).transitions[0].promotion.picked.length];
+  return [flag, (await saved()).transitions[0].parts[0].qualifiers.picked.length];
 }, [['Your decision An odd number in the qualifiers (5): N1 has no opponent. Add or take someone out, or change the pairings.'], 4]);
 await check('book the qualifiers on NXT’s first show after WrestleMania', async () => {
   await body.locator('.uv-trnight .uv-btn', { hasText: 'Plan it' }).click();
@@ -1310,8 +1310,8 @@ await check('end the window with eligible wrestlers left undrafted', async () =>
   const u = await saved();
   return [msg, u.transitions[0].window.undrafted.map(id => u.wrestlers.find(w => w.id === id).name),
     await js(`${TEXT}(document.querySelector('.uv-flag.top.ok'))`), (await who('NC')).showId];
-}, ['NC, ND stay on NXT, undrafted — and that’s kept on record.', ['NC', 'ND'],
-  'The window closed in week 5: 4 wrestlers drafted, 2 eligible wrestlers left on NXT (NC, ND).', 'nxt']);
+}, ['NC, ND stay where they are, undrafted — and that’s kept on record.', ['NC', 'ND'],
+  'The window closed in week 5: 4 wrestlers drafted, 2 eligible wrestlers left where they were (NC, ND).', 'nxt']);
 await check('every transfer since WrestleMania, in order, and why', () => js(`[...document.querySelectorAll('.uv-page .uv-tls .uv-tl .x')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())`),
   ['R1 Raw → NXT — relegated', 'NChamp NXT → Raw — draft pick 1', 'NT1 NXT → SmackDown — draft pick 2', 'NT2 NXT → SmackDown — draft pick 2',
     'NA NXT → Dynamite — draft pick 3']);
@@ -1852,9 +1852,10 @@ await check('Go to lists every destination, with where each stands', async () =>
   await page.click('#uvGoBtn');
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-go')].map(g => g.querySelector('b').textContent + ' | ' + g.querySelector('span').textContent)`);
-}, r => r.length === 12 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
-  && r.includes('Rosters | Raw 9 · SmackDown 6 · Dynamite 5 · NXT 7')
-  && r.some(x => /^Season 1 transition · transfer window \| Raw: done — 1 to NXT/.test(x)) && r[11].startsWith('Save & backup'));
+}, r => r.length === 13 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
+  && r.includes('Rosters | Raw 9 · SmackDown 6 · Dynamite 5 · NXT 7 · Evolve 0')
+  && r.some(x => /^Season 1 transition · transfer window \| Raw: done — 1 to NXT/.test(x))
+  && r.includes('Tiers & transfers | 1 Main roster · 2 NXT · 3 Evolve') && r[12].startsWith('Save & backup'));
 await check('Go to reaches champions, relationships, rankings, story and the transfer window', async () => {
   const seen = [];
   await closeSheet();
@@ -2015,6 +2016,150 @@ await check('the other long pickers have it too: a team’s members, an incident
   const team = sample.st.teams[0], title = sample.st.titles.find(t => t.kind === 'singles');
   return [await count(`uvNewTeam()`), await count(`uvIncident('${raw6.id}')`), await count(`uvLineup('${team.id}')`), await count(`uvCrownSheet('${title.id}')`)];
 }, r => r.every(n => n >= 1));
+
+// ================================================================ tiers & transfers
+// The sample season is loaded: its transition (WrestleMania, week 4) is done,
+// with the tiers and rules it started with. Evolve is tier 3, empty.
+const tierPage = () => js(`[...document.querySelectorAll('.uv-page .uv-tier[data-tier]')].map(t =>
+  t.querySelector('.h b').textContent + ': ' + [...t.querySelectorAll('.uv-trow .nm')].map(n => n.textContent).join(', '))`);
+const connLines = id => js(`[...document.querySelectorAll('.uv-page .uv-conn[data-link="${id}"] .uv-rules > div')].map(${TEXT})`);
+await check('Tiers & transfers: the tiers top down, and the rules between each two', async () => {
+  await goTo('Tiers & transfers');
+  return [await pageKind(), await tierPage(), await connLines('link-main-nxt'), await connLines('link-nxt-evolve'),
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-conn[data-link="link-nxt-evolve"] .uv-flag'))`)];
+}, r => r[0] === 'tiers' && JSON.stringify(r[1]) === JSON.stringify(['Main roster: Raw, SmackDown, Dynamite', 'NXT: NXT', 'Evolve: Evolve'])
+  && /^Relegation after WrestleMania, the 2 with the fewest wins on each of Raw, SmackDown and Dynamite face each other; losers go down to NXT right away/.test(r[2][0])
+  && r[2][2] === 'NXT champions draft eligible' && r[2][3] === 'Their titles your call at each move'
+  && r[3][0] === 'Relegation off' && r[3][2] === 'Evolve champions move up by themselves at the transfer window' && r[3][3] === 'Their titles vacated'
+  && r[3][4] === 'Moving up to NXT' && /^Not carried out yet: champions moving up by themselves/.test(r[4]));
+await check('edit a connection’s rules: saved as you go, checked as a whole — the transition already done keeps its own', async () => {
+  await body.locator('.uv-conn[data-link="link-main-nxt"] .uv-btn', { hasText: 'Edit the rules' }).click();
+  await settle();
+  await sheet.locator('.uv-trcount .uv-ic').nth(1).click();                         // 3 candidates a show
+  await page.waitForTimeout(100);
+  await sheet.locator('[data-rule="titles"] [data-v="vacate"]').click();
+  await page.waitForTimeout(100);
+  await sheet.locator('[data-rule="champions"] [data-v="automatic"]').click();        // no set show to move up to: refused, nothing changes
+  await page.waitForTimeout(100);
+  const refused = (await toast());
+  const u = await saved();
+  const l = u.links.find(x => x.id === 'link-main-nxt');
+  await closeSheet();
+  return [l.rules.relegation.candidates, l.rules.titles, l.rules.champions, refused.bad, refused.t, u.transitions[0].parts[0].rules.titles,
+    u.transitions[0].parts[0].rules.relegation.candidates, await sound()];
+}, r => r[0] === 3 && r[1] === 'vacate' && r[2] === 'eligible' && r[3] === true && /Pick the show in Main roster they move up to/.test(r[4])
+  && r[5] === 'ask' && r[6] === 2 && r[7].length === 0);
+await check('add a fourth tier: it connects to the one above with nothing switched on', async () => {
+  await btn(body, 'Add a tier').click();
+  await page.waitForTimeout(150);
+  const u = await saved();
+  const t4 = u.tiers[3];
+  const link = u.links.find(l => l.upper === 'tier-evolve' && l.lower === t4.id);
+  return [(await toast()).t, u.tiers.map(t => t.name), link && [link.rules.relegation.on, link.rules.qualifiers.on, link.rules.champions],
+    link && (await connLines(link.id))[0]];
+}, ['Tier 4 added at the bottom — set its connection’s rules', ['Main roster', 'NXT', 'Evolve', 'Tier 4'], [false, false, 'eligible'], 'Relegation off']);
+let lfgId = null;
+await check('add a show to the new tier; the connection’s destinations follow it', async () => {
+  await btn(body, 'Add a show').click();
+  await settle();
+  await page.fill('#uvShowName', 'LFG');
+  await page.selectOption('#uvShowDay', '3');
+  const t4 = (await saved()).tiers[3];
+  await page.selectOption('#uvShowTierPick', t4.id);
+  await btn(sheet, 'Add the show').click();
+  await settle();
+  const u = await saved();
+  const lfg = u.shows.find(x => x.name === 'LFG');
+  lfgId = lfg.id;
+  const link = u.links.find(l => l.lower === t4.id);
+  return [lfg.day, u.tiers[3].shows, link.rules.relegation.to, (await tierPage())[3]];
+}, r => r[0] === 3 && r[1].length === 1 && r[1][0] === lfgId && r[2] === lfgId && r[3] === 'Tier 4: LFG');
+await check('switch on the new connection’s relegation and qualifiers — no new code, just rules', async () => {
+  const link = (await saved()).links.find(l => l.upper === 'tier-evolve');
+  await body.locator(`.uv-conn[data-link="${link.id}"] .uv-btn`, { hasText: 'Edit the rules' }).click();
+  await settle();
+  await sheet.locator('[data-rule="relegation.on"] [data-v="true"]').click();
+  await page.waitForTimeout(100);
+  await sheet.locator('[data-rule="qualifiers.on"] [data-v="true"]').click();
+  await page.waitForTimeout(100);
+  const r = (await saved()).links.find(l => l.id === link.id).rules;
+  await closeSheet();
+  return [r.relegation.on, r.relegation.to === lfgId, r.qualifiers.on, (await connLines(link.id)).slice(0, 2)];
+}, r => r[0] && r[1] && r[2] && /^Relegation after WrestleMania, the 2 with the fewest wins on each of Evolve face each other; losers go down to LFG/.test(r[3][0])
+  && /^Qualifying matches on LFG after WrestleMania; winners become draft eligible/.test(r[3][1]));
+await check('reorder the lower tiers, rename one, move a show out and back — tier 1 keeps a show', async () => {
+  const t4 = (await saved()).tiers[3];
+  await body.locator(`.uv-tier[data-tier="${t4.id}"] .uv-ic[title="Move up"]`).click();
+  await page.waitForTimeout(120);
+  const order = (await saved()).tiers.map(t => t.name);
+  await body.locator(`.uv-tier[data-tier="${t4.id}"] .uv-ic[title="Move down"]`).click();
+  await page.waitForTimeout(120);
+  await body.locator(`.uv-tier[data-tier="${t4.id}"] .uv-ic[title="Rename"]`).click();
+  await settle();
+  await page.fill('#uvTierName', 'Indies');
+  await btn(sheet, 'Save').click();
+  await settle();
+  await page.selectOption(`select[data-tier-of="${lfgId}"]`, '');
+  await page.waitForTimeout(120);
+  const none = await js(`[...document.querySelectorAll('.uv-page .uv-tier.none .uv-trow .nm')].map(e => e.textContent)`);
+  await page.selectOption(`select[data-tier-of="${lfgId}"]`, t4.id);
+  await page.waitForTimeout(120);
+  const u = await saved();
+  return [order, u.tiers.map(t => t.name), none, u.tiers[3].shows.includes(lfgId), await sound()];
+}, [['Main roster', 'NXT', 'Tier 4', 'Evolve'], ['Main roster', 'NXT', 'Evolve', 'Indies'], ['LFG'], true, []]);
+await check('a new season transition includes the new connection, and keeps a copy of the rules', async () => {
+  const u = await saved();
+  const st = JSON.parse(JSON.stringify(u));
+  // a WrestleMania in a later season, started in the model on a copy - what the page would do
+  M.startNextSeason(st);
+  const wm = M.addEvent(st, { kind: 'ple', name: 'WrestleMania 2', week: 1 });
+  const tr = M.startTransition(st, wm.id);
+  return [tr.parts.map(p => `${p.lowerName}→${p.upperName}`), M.relegationShows(st, tr).map(x => x.name), tr.parts[0].rules.titles, tr.shows.raw.count];
+}, [['NXT→Main roster', 'Evolve→NXT', 'Indies→Evolve'], ['Raw', 'SmackDown', 'Dynamite', 'Evolve'], 'vacate', 3]);
+await check('remove the tier: its show stays, in no tier; an unused show can be deleted', async () => {
+  const t4 = (await saved()).tiers[3];
+  await body.locator(`.uv-tier[data-tier="${t4.id}"] .uv-ic[title="Remove"]`).click();
+  await settle();
+  await confirmYes();
+  const after = await saved();
+  await body.locator('.uv-tier.none .uv-trow .uv-main', { hasText: 'LFG' }).click();
+  await settle();
+  await btn(sheet, 'Delete the show').click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  return [after.tiers.map(t => t.name), after.shows.some(x => x.id === lfgId), u.shows.some(x => x.id === lfgId), u.links.length, await sound()];
+}, [['Main roster', 'NXT', 'Evolve'], true, false, 2, []]);
+await check('the transition page shows the tiers and rules it keeps', async () => {
+  const tr = (await saved()).transitions[0];
+  await js(`uvOpenTransition('${tr.id}')`);
+  await page.waitForTimeout(150);
+  await body.locator('[data-part=rules]').click();
+  await page.waitForTimeout(120);
+  const cards = await js(`[...document.querySelectorAll('.uv-page .uv-conn[data-conn] .h b')].map(e => e.textContent)`);
+  const lines = await js(`[...document.querySelectorAll('.uv-page .uv-conn[data-conn="link-main-nxt"] .uv-rules > div')].map(${TEXT})`);
+  await body.locator('[data-part=relegation]').click();
+  await page.waitForTimeout(80);
+  return [cards, lines[3]];
+}, [['Main roster ⇄ NXT', 'NXT ⇄ Evolve'], 'Their titles your call at each move']);
+await check('a version 8 save imports whole: its transition, records and rules as they were, under the tiers', async () => {
+  // the sample season as version 8 wrote it: four shows, no tiers, promotion on the transition
+  const old = JSON.parse(JSON.stringify(sampleCycle().st));
+  old.version = 8;
+  delete old.tiers; delete old.links;
+  old.shows = old.shows.filter(x => x.id !== 'evolve');
+  old.transitions.forEach(t => { t.promotion = t.parts[0].qualifiers; delete t.parts; });
+  old.events.forEach(e => e.matches.forEach(m => { if (m.qualifier) delete m.qualifier.link; }));
+  old.eligibility.forEach(x => { delete x.link; });
+  old.drafts.forEach(x => { delete x.link; x.titles.forEach(d => { delete d.rule; }); });
+  old.relegations.forEach(x => { delete x.link; delete x.to; });
+  await importState(old, 'v8.json');
+  const u = await saved();
+  const t = u.transitions[0];
+  return [u.version, u.tiers.map(x => x.shows.join('+')), t.parts.length, JSON.stringify(t.parts[0].qualifiers) === JSON.stringify(old.transitions[0].promotion),
+    u.relegations.map(r => r.to), u.drafts.length === old.drafts.length && u.eligibility.length === old.eligibility.length, await sound()];
+}, [M.SCHEMA_VERSION, ['raw+smackdown+dynamite', 'nxt', 'evolve'], 1, true, ['nxt', 'nxt', 'nxt'], true, []]);
+await check('layout anchored', anchored, isAnchored);
 
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {

@@ -8,7 +8,8 @@ relationship and result — not a GM character inside the universe, so there is
 no in-world viewpoint or hidden information anywhere in the model. Around the
 matches, a story director fills in the rest of the story by itself — attacks,
 saves, betrayals, alliances, challenges — from the record, as canon, without
-ever touching a result.
+ever touching a result. Shows sit in tiers — the main roster, NXT, Evolve, and
+any below — with editable rules for moving up and down between each two.
 
 It's a standalone app. It shares this repository with the City Boys Dynasty
 fantasy league (see [README.md](README.md)) only for the build and test
@@ -51,18 +52,20 @@ js/universe/
   relations.js         relationships worked out from the record - pure, runs under Node
   ranks.js             the Rankings tab: standings and booking balance
   standings.js         the arithmetic behind it - pure, runs under Node
-  relegation.js        the season transition page, and its relegation part
-  promotion.js         its NXT promotion and transfer window parts, and the draft
+  relegation.js        the season transition page, its relegation and rules parts
+  promotion.js         its promotion and transfer window parts, and the draft
+  tiers.js             Tiers & transfers: the tiers, their shows, and each connection's rules
   card.js              a show's page and match card; the booking / result form
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       119 model tests     npm run test:universe
-tools/universe-check.mjs      180 browser checks  npm run check:universe
+tools/universe-test.mjs       125 model tests     npm run test:universe
+tools/universe-check.mjs      191 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
+tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -70,7 +73,7 @@ tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ## The workflow
 
 1. **Set up.** Add wrestlers (paste a whole roster at once) to Raw, SmackDown,
-   Dynamite and NXT — any sizes. Add tag teams and titles, and crown the
+   Dynamite, NXT and Evolve — any sizes. Add tag teams and titles, and crown the
    champions. Give wrestlers traits if you like.
 2. **Each week.** The Calendar opens on the week, with **Up next** — today's
    show. Plan an episode: the story director decides what happens **before the
@@ -83,9 +86,10 @@ tools/fixtures/universe-v2.json   of those versions, for the migration tests
    story so far. Rankings (standings and booking balance), Titles, Roster (and
    its Relationships view) and History all read the record. None of them books
    or decides a match.
-4. **After WrestleMania.** Start the season transition from WrestleMania's page:
-   relegation matches on each main show's next episode, NXT qualifiers, then the
-   transfer window and the draft. Close the window, then start the next season.
+4. **After WrestleMania.** Start the season transition from WrestleMania's page.
+   It runs by the tier rules (**Tiers & transfers**): relegation matches on each
+   main show's next episode, NXT qualifiers, then the transfer window and the
+   draft. Close the window, then start the next season.
 5. **Anything wrong?** Correct it where it happened — the result, the incident,
    the pick. Everything built on it follows, or is flagged for you.
 
@@ -109,14 +113,21 @@ in the app's "How it works" sheets.
 - **Rankings**: (W + ½D + 1) ÷ (W + L + D + 2), by show and division; ties to
   more wins, then fewer losses. **Booking balance** flags a rate at most half
   of the show's typical and 2+ matches short. Neither ever limits booking.
-- **Relegation**: on each main show, the fewest wins up to and including
-  WrestleMania (default 2 candidates) face each other on its next episode; the
-  loser moves to NXT on the result. Candidates are fixed when booked; a later
-  correction to the win totals is shown against them, never applied.
-- **NXT promotion**: NXT champions are eligible when the window opens;
-  qualifier winners are eligible on the result. Eligibility moves nobody — the
-  draft does. A qualifier can't change once its winner is drafted, or while the
-  window is closed.
+- **Tiers**: tier 1 (Raw, SmackDown, Dynamite), tier 2 (NXT), tier 3 (Evolve),
+  and any you add. Between each two, editable rules for relegation, qualifying,
+  champions, titles, timing and destinations. A transition keeps the rules it
+  started with.
+- **Relegation** (main roster → NXT, as it starts): on each main show, the
+  fewest wins up to and including WrestleMania (default 2 candidates) face each
+  other on its next episode; the loser moves down on the result. Candidates are
+  fixed when booked; a later correction to the win totals is shown against
+  them, never applied.
+- **Promotion** (NXT → main roster, as it starts): NXT champions are eligible
+  when the window opens; qualifier winners are eligible on the result.
+  Eligibility moves nobody — the draft does. A qualifier can't change once its
+  winner is drafted, or while the window is closed. Evolve's champions are set
+  to move up to NXT by themselves, titles vacated — kept as the rule, not
+  carried out yet.
 - **Relationships** are worked out from the record (losses, title defeats,
   teaming, splits, incidents) plus your edits. Traits never change on their own.
 - **The story director** records what happens around each show by itself, as
@@ -140,15 +151,17 @@ Everything the app won't decide, and where it asks:
 | Traits, and any relationship you want started, set, ended or ignored | A wrestler's page; the page for two wrestlers |
 | What counts as an incident | The show page |
 | Any story event you'd rather hadn't happened: edit it, undo it, or run the show again; the director's pace, or switching it off | The event (tap it), the show page, What happened |
+| The tiers: which shows are in which, their order and names, new tiers and shows | Tiers & transfers |
+| Each connection's rules: relegation, qualifying, champions, titles, timing, destinations | Tiers & transfers → Edit the rules |
 | When WrestleMania is, and starting the transition from it | WrestleMania's page, or the season card |
 | How many relegation candidates each show has (any number, zero included) | The transition page |
 | A tie across the cutoff, an odd candidate out, the pairings | The transition page — booking waits for these |
 | Results still missing before WrestleMania: enter them, or count wins as they stand | The transition page |
 | A relegation match without a winner: rematch, or who (if anyone) goes down | The transition page |
 | Whether a correction to the win totals after booking should change anything | The transition page shows what moved; it changes nothing itself |
-| Who's in the NXT qualifiers (suggestions from the season record), their pairings, a qualifier without a winner | NXT promotion |
+| Who's in the qualifiers (suggestions from the season record), their pairings, a qualifier without a winner | The transition's Promotion part |
 | When the transfer window opens and closes, who's drafted where, how many each show takes | Transfer window |
-| For each pick: keep or vacate every title they (or their team) hold; bring tag partners along or split the team | The draft sheet — the pick waits for an answer |
+| For each pick: bring tag partners along or split the team; keep or vacate a title, where the rules leave it to you | The draft sheet — the pick waits for an answer |
 | Which result is wrong when a title history is flagged | The title's page, then the result |
 | Injuries, alignment and other details | A wrestler's page |
 | When a season ends and the next begins | The season card |
@@ -158,8 +171,8 @@ Everything the app won't decide, and where it asks:
 
 - **Go to** (top right): Up next, this week's shows, results, rosters, tag teams,
   champions, rankings, booking balance, relationships, what happened, the
-  season transition and transfer window, and saving — each with where it
-  stands — plus every "How it works" sheet.
+  season transition and transfer window, tiers & transfers, and saving — each
+  with where it stands — plus every "How it works" sheet.
 - **Up next** on the Calendar is today's show: a show from an earlier week still
   waiting for results comes first; otherwise the first unfinished show from this
   week on, in calendar order.
@@ -186,14 +199,16 @@ so the whole model runs under Node for tests exactly as it does in the page.
 
 | Record    | Holds |
 |-----------|-------|
-| shows     | Raw, SmackDown, Dynamite, NXT. Rosters are uncapped and never expected to match in size. |
+| shows     | Raw, SmackDown, Dynamite, NXT and Evolve to start; more can be added. Rosters are uncapped and never expected to match in size. |
+| tiers     | the shows in tiers, top down — tier 1 is the main roster. A show is in one tier at most |
+| links     | the connection between each tier and the one below it, with its rules: relegation (on, candidates, timing, destination), qualifiers, champions, titles, promotion (timing, destination) |
 | wrestlers | name, division (men's / women's), where they come from (WWE / AEW / NXT / Other — independent of which show they're on), alignment, active or injured, notes, current show |
 | moves     | roster history: one row per change of show, dated, with an optional note |
 | teams     | two or more wrestlers, plus a log of the team forming, disbanding and reuniting. A wrestler can be on several; a team split across shows is allowed and flagged |
 | memberships | team line-up history: one row per spell a wrestler spent on a team, dated when they joined and left |
 | titles    | singles or tag, a division, one show or none, can be retired |
 | reigns    | title history. The reign with no end is the champion |
-| shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite Wednesday, SmackDown Friday |
+| shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite and Evolve Wednesday, SmackDown Friday |
 | seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
 | events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it, and the director's keep their run and their cause |
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
@@ -270,24 +285,92 @@ result show by show, filterable by season and by show (or just the PLEs), each
 with its finish, title and notes; **Everything** puts results, title changes,
 moves and team changes on one timeline. Tap any of it to open the show.
 
+## Tiers and transfers
+
+Shows sit in **tiers**, top down. Tier 1 is the main roster — Raw, SmackDown and
+Dynamite, three separate shows with their own rosters of any size. Tier 2 is NXT
+and tier 3 is Evolve. **Tiers & transfers** (from **Go to**) lets you add tiers at
+the bottom, rename them, reorder the lower ones, remove them, add shows, and
+move shows between tiers. Tier 1 stays at the top and always keeps a show. A
+show in no tier takes no part in promotion or relegation. Removing a tier never
+touches its shows or anyone on them.
+
+Between each tier and the one below it is a **connection** with its own rules.
+Nothing about NXT or Evolve is written into the code; it's all here:
+
+| Rule | Choices |
+|---|---|
+| Relegation matches | On or off; how many candidates on each upper-tier show (the fewest wins); when losers move — right away, on the result, or at the transfer window; which lower-tier show they go to |
+| Qualifying matches | On or off, on the lower tier after WrestleMania; winners become draft eligible, or move up straight away |
+| Champions of the lower tier | Draft eligible, move up by themselves at the transfer window, or stay |
+| A title, when its holder moves up | Your call at each move, vacated, or kept |
+| Moving up to | Your pick of the upper tier's shows (the draft), or a set show |
+
+**As it starts:**
+
+- **Main roster ⇄ NXT** has the rules as they always were. After WrestleMania,
+  each main show holds its own relegation matches between its 2 lowest-win
+  wrestlers, and losers go straight down to NXT. NXT champions and qualifying
+  winners are draft eligible, and are drafted to your pick of the main shows.
+  Their titles are your call at each pick.
+- **NXT ⇄ Evolve:** Evolve champions move up to NXT by themselves at the transfer
+  window, and their titles are **vacated**, so the championship is left with a
+  clear status. No relegation matches and no qualifiers.
+
+A new tier's connection starts with everything off.
+
+**Changes and history.** Each season transition keeps a copy of the tiers and
+rules it started with (its *Rules* part shows them), so what already happened
+always reads the same. Rule changes apply from the next transition. Tiers can be
+reordered and moved away and back: a connection is kept while both its tiers
+are, so its rules come back.
+
+**Not carried out yet.** Three choices are kept as rules but aren't acted on:
+
+- moving down at the transfer window;
+- champions moving up by themselves (Evolve's, as it starts);
+- moving up straight after a qualifying win.
+
+The transition page lists who each would move, with **Not carried out yet**,
+and nobody moves by them. Relegation matches or qualifiers under such a rule
+can't be booked, so nothing happens halfway. Evolve's own annual events come
+next.
+
+**A fourth tier needs no new code.** Add it, put a show in it, set its
+connection's rules, and the same engine that runs the main roster ⇄ NXT runs
+it. `npm run demo:tiers` does exactly that and checks each step:
+
+- a new tier "Indies" with a show "LFG" below Evolve;
+- relegation matches on Evolve send the loser down to LFG, with the reason on
+  record;
+- an LFG qualifying winner and the LFG champion become draft eligible;
+- the champion can only be drafted up to Evolve, and the LFG title is vacated
+  by the rule.
+
+The unit and browser tests do the same.
+
 ## The season transition: relegation after WrestleMania
 
-Once a season, WrestleMania ends it. Each main-roster show — every show but NXT:
-Raw, SmackDown and Dynamite — holds its own relegation matches on its first
-episode after WrestleMania. Whoever loses a relegation match moves to NXT the
-moment the result is saved; the winner stays. The game decides who wins.
+Once a season, WrestleMania ends it. Every show in a tier whose connection to
+the tier below has relegation on — Raw, SmackDown and Dynamite, as it starts —
+holds its own relegation matches on its first episode after WrestleMania.
+Whoever loses a relegation match moves down to the connection's show (NXT, as
+it starts) the moment the result is saved; the winner stays. The game decides
+who wins.
 
 Start it from the season card on the Calendar ("WrestleMania ends the season")
-or from WrestleMania's own page. The transition page has a section per show:
+or from WrestleMania's own page. The transition page has four parts:
+**Relegation**, **Promotion**, **Window** and **Rules**. Relegation has a
+section per show, grouped by connection when more than one has relegation on:
 
 - **The win totals.** Everyone who was on the show at WrestleMania, fewest wins
   first — wins in that season up to and including WrestleMania, singles and tag,
   wherever they happened (relegation matches themselves never count). This is
   the list the candidates come from, shown in full.
-- **Candidates.** The ones with the fewest wins — as many as you set *for that
-  show* (two to start; any number, including none). Tap anyone to make them a
-  candidate or not. Shows never have to match: roster sizes, numbers of
-  candidates and numbers relegated are each show's own.
+- **Candidates.** The ones with the fewest wins — as many as the rules say (two,
+  as it starts), changeable *for that show* (any number, including none). Tap
+  anyone to make them a candidate or not. Shows never have to match: roster
+  sizes, numbers of candidates and numbers relegated are each show's own.
 - **Pairings.** One on one, in win order until you pair them differently.
 - **Relegation night.** The show's first episode after WrestleMania; if there
   isn't one yet, **Plan it** puts one on the calendar. **Book** puts the
@@ -301,69 +384,72 @@ Nothing is decided for you where the rule runs out. Each of these is flagged as
 | A tie across the cutoff | Who takes the spot — or change the number |
 | An odd number of candidates, or someone unpaired | Add or take out a candidate, or re-pair |
 | Matches up to WrestleMania still without a result | Enter them, or count the wins as they stand |
-| A relegation match without a winner (draw or no contest) | Book a rematch, or send one (or neither) to NXT yourself |
+| A relegation match without a winner (draw or no contest) | Book a rematch, or send one (or neither) down yourself |
 
 Also shown, without holding anything up: an injured candidate, a candidate who
 has changed show since WrestleMania, a pairing across divisions, a candidate
 with no matches, and candidates you picked by hand.
 
 **The record.** Every relegation keeps, for good, the show they were relegated
-from, the match and who won it (or that it was your decision, with your note),
-and the win total and place that made them a candidate — or that you picked
-them. It shows on the wrestler's page, on the transition page, and in their
-career history as the move to NXT. A wrong relegation result is corrected like
-any other: the real loser goes down and the other comes back; clearing the
-result or taking the match off the card brings them back — only while it's
-still their latest move, so nothing later is rewritten. A relegation match's
-line-up is its pairing, so it's changed only on the transition page.
+from and the show they went to, the match and who won it (or that it was your
+decision, with your note), and the win total and place that made them a
+candidate — or that you picked them. It shows on the wrestler's page, on the
+transition page, and in their career history as the move down. A wrong
+relegation result is corrected like any other: the real loser goes down and the
+other comes back; clearing the result or taking the match off the card brings
+them back — only while it's still their latest move, so nothing later is
+rewritten. A relegation match's line-up is its pairing, so it's changed only on
+the transition page.
 
-## NXT promotion and the transfer window
+## Promotion and the transfer window
 
-The season transition page has three parts: **Relegation**, **NXT promotion** and
-**Transfer window**.
+**Promotion.** One section per connection that moves anyone up, with its rules
+in a line. Where a connection has qualifying matches, the lower tier's first
+show after WrestleMania holds one-on-one qualifiers (**Plan it** puts that
+episode on the calendar if it isn't there).
 
-**NXT promotion.** NXT's first show after WrestleMania holds one-on-one
-qualifying matches (**Plan it** puts that episode on the calendar if it isn't
-there).
-
-- **Who's in them is your pick.** Everyone who was on NXT at WrestleMania is
-  listed with their season record, ranked exactly as on the Rankings tab. The
-  top few (you set how many), leaving out champions and the injured, are marked
-  *Suggested* — **Pick them** takes all of those, or tap anyone in or out. The
-  order you pick in is the pairing order, and pairings can be changed.
+- **Who's in them is your pick.** Everyone who was on the lower tier at
+  WrestleMania is listed with their season record, ranked exactly as on the
+  Rankings tab. The top few (you set how many), leaving out champions and the
+  injured, are marked *Suggested* — **Pick them** takes all of those, or tap
+  anyone in or out. The order you pick in is the pairing order, and pairings can
+  be changed.
 - **Winners become draft eligible**, the moment the result is saved. A
   qualifier without a winner is your decision: a rematch, or send one, both or
   neither through (with a note). A corrected result changes who's eligible —
   refused once they've been drafted, until that pick is undone.
-- **Every NXT champion is draft eligible without a match** — both members of a
-  team holding an NXT tag title. They're fixed as eligible when the transfer
-  window opens.
+- **Champions**, where the rules make them eligible, are draft eligible without
+  a match — both members of a team holding a tag title. They're fixed as
+  eligible when the transfer window opens. Champions set to move up by
+  themselves are listed as *not carried out yet*.
 - **Eligible moves nobody.**
 
-**The transfer window.** Open it when you're ready (it can be taken back until
-someone's drafted). Tap an eligible wrestler to draft them to Raw, SmackDown or
-Dynamite. Each show can take any number, and rosters never have to come out
-even — the tiles show each show's roster, plus drafted in and relegated out.
-End the window whenever you like: anyone left undrafted stays on NXT, and the
-closed window keeps who that was. It can be reopened to draft more or undo a
-pick; an undone pick goes back to NXT, and a title vacated with it goes back to
-its holder — only while nothing has happened since.
+**The transfer window.** One window per transition, for every connection. Open
+it when you're ready (it can be taken back until someone's drafted). Tap an
+eligible wrestler to draft them up a tier — to your pick of the upper tier's
+shows, or the show the rules set. Each show can take any number, and rosters
+never have to come out even — the tiles show each show's roster, plus drafted
+in and relegated out. End the window whenever you like: anyone left undrafted
+stays where they are, and the closed window keeps who that was. It can be
+reopened to draft more or undo a pick; an undone pick goes back where it came
+from, and a title vacated with it goes back to its holder — only while nothing
+has happened since.
 
-**Decided at every pick, never by the app:**
+**At every pick:**
 
-| Question | How it's asked |
+| Question | How it's settled |
 |---|---|
-| A drafted wrestler (or their team) holds a title | **Keep it** or **Vacate it** — the pick waits for an answer |
-| A drafted wrestler has tag partners | **Bring them too** (eligible or not — noted as your decision), or leave the team split across shows |
+| A drafted wrestler (or their team) holds a title | By the connection's title rule: **vacated**, **kept**, or — "your call" (NXT, as it starts) — **Keep it** or **Vacate it**, and the pick waits for an answer |
+| A drafted wrestler has tag partners | Always your call: **Bring them too** (eligible or not — noted as your decision), or leave the team split across shows |
 
-**The record.** Each eligibility says how it came about: holding an NXT title
-(which one, and with which team), winning a qualifier (against whom), or your
-decision after a qualifier without a winner (with your note). Each pick keeps
-its number, the show, the eligibility it used — or that a partner came along by
-your decision — every title kept or vacated, and a note. The window page lists
-every roster move since WrestleMania in order: relegations, draft picks, and
-any other transfer. Wrestlers' pages show their draft, or that they were
-eligible and left undrafted.
+**The record.** Each eligibility says how it came about and which connection it
+belongs to: holding a title (which one, and with which team), winning a
+qualifier (against whom), or your decision after a qualifier without a winner
+(with your note). Each pick keeps its number, where it came from and went, the
+eligibility it used — or that a partner came along by your decision — every
+title kept or vacated (and whether the rule decided), and a note. The window
+page lists every roster move since WrestleMania in order. Wrestlers' pages show
+their draft, or that they were eligible and left undrafted.
 
 ## Rankings and booking balance
 
@@ -648,7 +734,7 @@ How records are counted, which is the part that matters:
 ## Moving wrestlers and changing line-ups
 
 **Move show** on a profile — or **Select** on the roster to move several at
-once — puts wrestlers on Raw, SmackDown, Dynamite, NXT or unassigned. Shows
+once — puts wrestlers on any show (Raw, SmackDown, Dynamite, NXT, Evolve…) or unassigned. Shows
 have no size limit and can even be emptied. A move is dated (backdating within
 the season is allowed, but moves stay in order) and added to the wrestler's
 history. Nothing they've done changes: a result names the wrestlers who were
@@ -674,11 +760,11 @@ refuses rather than disturb anything else:
 | A show on the wrong week or night | Change it in the show's **Details**; any title change there moves with it, as long as the title's history still reads in order. An episode still called by its default name ("Raw · Week 3") is renamed to match. |
 | The same wrestler entered twice | **Merge a duplicate** on the profile: results, team spells and reigns move over. Refused if the two were ever in the same match or on the same team. |
 | Something added by mistake with no history | Delete it. |
-| A relegation result entered wrong | **Correct** it on its match: the wrestler who really lost goes to NXT, and the other comes back. Clearing it, or taking it off the card, brings them back — while it's still their latest move. |
+| A relegation result entered wrong | **Correct** it on its match: the wrestler who really lost goes down, and the other comes back. Clearing it, or taking it off the card, brings them back — while it's still their latest move. |
 | A relegation decision made wrong | **Undo** it on the transition page. |
 | A season transition started by mistake | **Cancel** it, while nothing is booked or drafted from it. |
 | A qualifier result entered wrong | **Correct** it on its match: eligibility follows the real winner — refused once they've been drafted, until that pick is undone. |
-| A draft pick made wrong | Reopen the window if it's closed, then **Undo** the pick: everyone drafted with it goes back to NXT, and a title vacated with it goes back — while it's still their latest move and the title hasn't changed hands since. |
+| A draft pick made wrong | Reopen the window if it's closed, then **Undo** the pick: everyone drafted with it goes back where they came from, and a title vacated with it goes back — while it's still their latest move and the title hasn't changed hands since. |
 | The transfer window opened too early | **Take back opening the window**, while nobody's been drafted. |
 | An automatic relationship change you don't agree with | **Ignore** it on the timeline. It stays there, crossed out, and doesn't count; **Count it again** brings it back. |
 | A relationship change of your own, made wrong | **Take back** on the timeline. |
@@ -691,6 +777,9 @@ refuses rather than disturb anything else:
 | A title history flagged after a correction | The title's page names the title match the champion of the day wasn't in (or the change the outgoing champion wasn't part of). Correct whichever result is really wrong. |
 | A qualifier result after the transfer window closed | Refused while the window is closed — its record of who was left undrafted rests on it. Reopen the window, correct it, close it again. |
 | A title the draft vacated | Comes back only by undoing that draft pick, never from the title page. |
+| A connection's rule set wrong | Change it back in **Tiers & transfers**. A transition already under way keeps the rules it started with; to use new rules for it, cancel and restart it while nothing is booked from it. |
+| A tier moved or removed by mistake | Move it back, or add it again and put its shows back. Moving tiers away and back keeps their connection's rules; a removed tier's connection starts over. |
+| A show added by mistake | Delete it from its row in **Tiers & transfers**, while nothing on record names it. |
 | The universe itself went wrong (a bad import, a reset, a week to redo) | Save sheet → **Restore points**. |
 
 ## Saving
@@ -749,11 +838,24 @@ nothing, and its incidents name no title or team. **Version 8** replaced
 suggestions with the story director: an accepted suggestion's incidents stay,
 as the owner's, with its reasons as their cause; open and dismissed ones are
 dropped; and the director starts from the save's current week, so nothing
-already played is gone over again.
+already played is gone over again. **Version 9** added tiers. Nothing is
+replaced or dropped. The shows go into the tiers they always worked as: Raw,
+SmackDown and Dynamite in tier 1, NXT in tier 2. Evolve is added as tier 3.
+The rules between them are the ones that used to be written into the code.
+Each season transition keeps its candidates, pairings, qualifiers and window as
+they were, as its main roster ⇄ NXT part. Every relegation, eligibility and
+draft record is marked as belonging to that connection, and each relegation
+keeps where it went (NXT).
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
 ## Not built yet, on purpose
+
+Evolve's annual events aren't built yet. Nor is carrying out the tier rules kept
+for them: Evolve's champions moving up to NXT by themselves at the transfer
+window, moving down at the window, and moving up straight after a qualifier.
+The rules are stored, editable and shown with who they'd move, but nobody moves
+by them.
 
 The story director tells the story around the matches; it doesn't write
 promos, run injuries, handle contracts or book whole cards, and it only goes

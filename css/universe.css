@@ -685,6 +685,44 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-rl em{font-style:normal;color:var(--uv-ink-3);white-space:nowrap}
 .uv-bu .uv-left{font-size:10.5px}
 
+/* ---------- tiers & transfers ---------- */
+.uv-tiers{display:flex;flex-direction:column;gap:0;margin:12px 14px 0}
+.uv-tier{border:1px solid var(--uv-line);border-radius:14px;background:var(--uv-card);overflow:hidden}
+.uv-tier.none{margin:0 14px;border-style:dashed}
+.uv-tier>.h{display:flex;align-items:center;gap:8px;padding:10px 10px 8px 12px;border-bottom:1px solid var(--uv-line-soft)}
+.uv-tier>.h .no{flex:none;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--uv-gold);border:1px solid var(--uv-gold-line);background:var(--uv-gold-soft)}
+.uv-tier>.h b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.3px;cursor:pointer;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-tier>.h .sp{flex:1}
+.uv-tier .uv-none{padding:10px 12px}
+.uv-tier .fine,#uvBody .fine.uv-inset-p{padding:0 12px 10px;font-size:11px;line-height:1.5;color:var(--uv-ink-3)}
+#uvBody .fine.uv-inset-p{padding:6px 16px 0}
+.uv-trow{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;border-top:1px solid var(--uv-line-soft)}
+.uv-trow:first-of-type{border-top:none}
+.uv-trow .uv-dot{flex:none}
+.uv-trow .uv-main{cursor:pointer}
+.uv-trow .uv-main .nm{font-size:14px}
+.uv-trow select.uv-in{flex:none;width:auto;max-width:48%;padding:7px 28px 7px 9px;font-size:12px}
+.uv-conn{position:relative;margin:0 12px;padding:10px 12px 12px;border:1px solid var(--uv-line);border-top:none;border-bottom:none;
+  background:var(--uv-card-2)}
+.uv-conn .uv-btn{margin-top:10px}
+.uv-conn>.h{display:flex;align-items:center;gap:9px}
+.uv-conn>.h>svg{flex:none;width:17px;height:17px;color:var(--uv-gold)}
+.uv-conn>.h b{display:block;font-size:12.5px}
+.uv-conn>.h span{display:block;font-size:11.5px;color:var(--uv-ink-2)}
+.uv-trshow .uv-conn,.uv-page>.uv-conn,.uv-body>.uv-conn{margin:10px 14px 0;border:1px solid var(--uv-line);border-radius:14px}
+.uv-rules{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.uv-rules>div{display:grid;grid-template-columns:16px minmax(0,auto) 1fr;gap:2px 8px;align-items:baseline;font-size:12px;line-height:1.45}
+.uv-rules .d{display:grid;align-self:start;padding-top:3px}
+.uv-rules .d svg{width:13px;height:13px;color:var(--uv-ink-3)}
+.uv-rules b{font-weight:700;color:var(--uv-ink);white-space:nowrap}
+.uv-rules .x{color:var(--uv-ink-2)}
+.uv-rules .off b,.uv-rules .off .x{color:var(--uv-ink-3)}
+.uv-rules .pend .x{color:var(--uv-amber)}
+.uv-conn .uv-flag{margin-top:9px}
+#uvSheetBody h4 svg{width:14px;height:14px;margin-right:6px;vertical-align:-2px;color:var(--uv-gold)}
+
 /* ---------- the story director ---------- */
 .uv-card-row.hot{background:var(--uv-gold-soft)}
 .uv-card-row.hot b{color:var(--uv-gold)}

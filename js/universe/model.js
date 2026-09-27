@@ -25,22 +25,24 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
 }
 function fail(message) { throw new UniverseError(message); }
 
-// The four shows, each with its regular night (0 = Monday ... 6 = Sunday).
-// Roster sizes are whatever the owner makes them - nothing here caps a show
-// or expects them to match.
+// The shows a universe starts with, each with its regular night (0 = Monday
+// ... 6 = Sunday). Roster sizes are whatever the owner makes them - nothing
+// here caps a show or expects them to match. More can be added; see tiers.
 export const SHOW_SEED = [
   { id: 'raw',       name: 'Raw',       promotion: 'WWE', color: '#E23B2E', day: 0 },
   { id: 'smackdown', name: 'SmackDown', promotion: 'WWE', color: '#2F6BFF', day: 4 },
   { id: 'dynamite',  name: 'Dynamite',  promotion: 'AEW', color: '#D8A93B', day: 2 },
   { id: 'nxt',       name: 'NXT',       promotion: 'WWE', color: '#C4CAD3', day: 1 },
+  { id: 'evolve',    name: 'Evolve',    promotion: 'WWE', color: '#2BB3A3', day: 2 },
 ];
+const LEGACY_SHOWS = ['raw', 'smackdown', 'dynamite', 'nxt'];     // what every save before version 9 had
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 export const PLE_DAY = 5;                                     // premium live events default to Saturday
 
@@ -77,15 +79,18 @@ export function createUniverse() {
     reigns: [],             // title history; the open reign (end === null) is the champion
     seasons: [],
     events: [],             // shows and PLEs, each holding its match results
+    tiers: [],              // the shows in tiers, top down: tier 1 is the main roster
+    links: [],              // the rules between each tier and the one below it
     transitions: [],        // the season transition after each WrestleMania: relegation candidates and pairings
-    relegations: [],        // every relegation to NXT, and why - kept for good
+    relegations: [],        // every relegation down a tier, and why - kept for good
     eligibility: [],        // who became draft eligible after WrestleMania, and how
-    drafts: [],             // every draft pick from NXT - kept for good
+    drafts: [],             // every draft pick up a tier - kept for good
     traitLog: [],           // every change to a wrestler's personality, dated (or from the start)
     relEdits: [],           // the owner's own relationship changes, dated; the rest is worked out from the record
     story: newStory(),      // the story director: its settings, seed, and a log of every time it ran
   };
   openSeason(st, 1, '');
+  seedTiers(st);
   return st;
 }
 
@@ -371,7 +376,7 @@ function inTransition(st, id) {
   return st.relegations.some(r => r.wrestler === id || r.opponent === id)
     || st.eligibility.some(e => e.wrestler === id || e.opponent === id) || st.drafts.some(d => d.wrestler === id)
     || st.transitions.some(t => Object.values(t.shows).some(c => (c.picked || []).includes(id) || inPairs(c.pairs))
-      || t.promotion.picked.includes(id) || inPairs(t.promotion.pairs));
+      || t.parts.some(p => p.qualifiers.picked.includes(id) || inPairs(p.qualifiers.pairs)));
 }
 
 export function deleteWrestler(st, id) {
@@ -1463,14 +1468,267 @@ export function resultFor(match, side) {
   return match.winner === side ? 'W' : 'L';
 }
 
+// ---------------------------------------------------------------- tiers
+//
+// Shows sit in tiers, top down: tier 1 is the main roster (Raw, SmackDown,
+// Dynamite), tier 2 NXT, tier 3 Evolve, and the owner can add, rename,
+// reorder and remove the tiers below the top one, and move shows between
+// them. A show is in one tier at most; a show in none takes part in no
+// promotion or relegation.
+//
+// Between each tier and the one below it is a connection (a link) with its
+// own rules - nothing about NXT or Evolve is written into the code:
+//   relegation  { on, candidates, timing, to }  relegation matches on each of
+//               the upper tier's shows after WrestleMania: `candidates` with
+//               the fewest wins; losers move down to show `to` - on the result
+//               ('result'), or at the transfer window ('window')
+//   qualifiers  { on }  qualifying matches on the lower tier after
+//               WrestleMania; winners become eligible to move up
+//   champions   'eligible' (the lower tier's champions are draft eligible),
+//               'automatic' (they move up by themselves at the transfer
+//               window) or 'none'
+//   titles      what happens to a title when its holder moves up: 'ask' (the
+//               owner decides at each move), 'vacate' or 'keep'
+//   promotion   { timing, to }  when wrestlers move up - in the transfer window
+//               ('window'), or straight after a qualifying win ('result') - and
+//               where to: a set show, or null for the owner's pick of the
+//               upper tier's shows (the draft)
+// A connection is kept while both its tiers are, so moving a tier away and
+// back brings its rules back. Each season transition keeps a copy of the tiers
+// and rules it started with (its parts), so what's already happened reads the
+// same whatever changes later.
+//
+// Not carried out yet (the rules are kept, and the transition page lists who
+// they'd move): relegation at the window, champions moving up automatically,
+// and moving up straight after a qualifying win.
+
+export const RELEGATION_TIMINGS = ['result', 'window'];
+export const PROMOTION_TIMINGS = ['window', 'result'];
+export const CHAMPION_RULES = ['eligible', 'automatic', 'none'];
+export const TITLE_RULES = ['ask', 'vacate', 'keep'];
+export const DEFAULT_CANDIDATES = 2;
+const SHOW_COLORS = ['#9B6BFF', '#FF7A45', '#E4577D', '#6FA8DC', '#B5C335', '#F2B84B', '#58C47A', '#C77DDB'];
+
+export const tierById = (st, id) => byId(st.tiers, id);
+export const linkById = (st, id) => byId(st.links, id);
+/** The tier a show is in, or null. */
+export const tierOfShow = (st, showId) => st.tiers.find(t => t.shows.includes(showId)) || null;
+export const linkBetween = (st, upperId, lowerId) => st.links.find(l => l.upper === upperId && l.lower === lowerId) || null;
+/** The connections in use, top down: between each tier and the one below it. */
+export const activeLinks = st => st.tiers.slice(1).map((t, i) => linkBetween(st, st.tiers[i].id, t.id)).filter(Boolean);
+/** A tier's shows, in its order. */
+export const tierShows = (st, t) => t.shows.map(id => showById(st, id)).filter(Boolean);
+/** The main roster's shows - tier 1. */
+export const topShows = st => (st.tiers[0] ? st.tiers[0].shows : []).map(id => showById(st, id)).filter(Boolean);
+
+// nothing switched on: a new connection waits for the owner to set it up
+function blankRules(upper, lower) {
+  return {
+    relegation: { on: false, candidates: DEFAULT_CANDIDATES, timing: 'result', to: lower.shows[0] || null },
+    qualifiers: { on: false },
+    champions: 'eligible',
+    titles: 'ask',
+    promotion: { timing: 'window', to: upper.shows.length === 1 ? upper.shows[0] : null },
+  };
+}
+const copyRules = r => JSON.parse(JSON.stringify(r));
+const TIER_IDS = ['tier-main', 'tier-nxt', 'tier-evolve'];
+// the tiers every universe starts with - and every save from before tiers
+function seedTiers(st) {
+  const have = id => !!showById(st, id);
+  st.tiers = [
+    { id: TIER_IDS[0], name: 'Main roster', shows: ['raw', 'smackdown', 'dynamite'].filter(have) },
+    { id: TIER_IDS[1], name: 'NXT', shows: ['nxt'].filter(have) },
+    { id: TIER_IDS[2], name: 'Evolve', shows: ['evolve'].filter(have) },
+  ];
+  const [main, nxt, evolve] = st.tiers;
+  // the rules as they always were: relegation after WrestleMania on each main show, losers straight down to NXT;
+  // NXT champions and qualifying winners draft eligible, drafted to the owner's pick of the main shows
+  const toNxt = blankRules(main, nxt);
+  Object.assign(toNxt, { champions: 'eligible', titles: 'ask', qualifiers: { on: true } });
+  Object.assign(toNxt.relegation, { on: true });
+  // Evolve: its champions move up to NXT by themselves at the transfer window, and their titles are vacated
+  const toEvolve = blankRules(nxt, evolve);
+  Object.assign(toEvolve, { champions: 'automatic', titles: 'vacate' });
+  st.links = [
+    { id: 'link-main-nxt', upper: main.id, lower: nxt.id, rules: toNxt },
+    { id: 'link-nxt-evolve', upper: nxt.id, lower: evolve.id, rules: toEvolve },
+  ];
+}
+// every pair of neighbouring tiers has its connection - the one they had, if
+// they were neighbours before, or a new one with nothing switched on
+function linkTiers(st) {
+  removeWhere(st.links, l => !tierById(st, l.upper) || !tierById(st, l.lower));
+  st.tiers.slice(1).forEach((t, i) => {
+    const up = st.tiers[i];
+    if (!linkBetween(st, up.id, t.id)) st.links.push({ id: newId(st, 'lk'), upper: up.id, lower: t.id, rules: blankRules(up, t) });
+  });
+  fixDestinations(st);
+}
+// a destination that has left its tier falls back to the tier's first show (or its only one)
+function fixDestinations(st) {
+  st.links.forEach(l => {
+    const up = tierById(st, l.upper), low = tierById(st, l.lower), r = l.rules;
+    if (!low.shows.includes(r.relegation.to)) r.relegation.to = low.shows[0] || null;
+    if (r.promotion.to && !up.shows.includes(r.promotion.to)) r.promotion.to = up.shows.length === 1 ? up.shows[0] : null;
+  });
+}
+function tierAt(st, id, lower = false) {
+  const i = st.tiers.findIndex(t => t.id === id);
+  if (i < 0) fail(`No tier with id "${id}".`);
+  if (lower && i === 0) fail(`${st.tiers[0].name} is tier 1, the main roster — it stays at the top.`);
+  return i;
+}
+
+/** Add a tier at the bottom. It connects to the tier above it with nothing switched on yet. */
+export function addTier(st, { name } = {}) {
+  const t = { id: newId(st, 'ti'), name: checkName(st.tiers, cleanName(name) || `Tier ${st.tiers.length + 1}`, 'tier'), shows: [] };
+  st.tiers.push(t);
+  linkTiers(st);
+  return t;
+}
+export function renameTier(st, id, name) {
+  const t = st.tiers[tierAt(st, id)];
+  t.name = checkName(st.tiers, name, 'tier', id);
+  return t;
+}
+/** Move a lower tier up (-1) or down (+1) among the lower tiers. Tier 1 stays where it is. */
+export function moveTier(st, id, dir) {
+  const i = tierAt(st, id, true);
+  const j = i + (dir < 0 ? -1 : 1);
+  if (j < 1) fail(`${st.tiers[i].name} can't go above tier 2 — tier 1 is the main roster.`);
+  if (j >= st.tiers.length) fail(`${st.tiers[i].name} is already the bottom tier.`);
+  [st.tiers[i], st.tiers[j]] = [st.tiers[j], st.tiers[i]];
+  linkTiers(st);
+  return st.tiers;
+}
+/** Take a lower tier away. Its shows - and everyone on them - stay; they're just not in a tier. */
+export function removeTier(st, id) {
+  const i = tierAt(st, id, true);
+  const [t] = st.tiers.splice(i, 1);
+  linkTiers(st);
+  return t;
+}
+/** Put a show in a tier (null: in none). Tier 1 always keeps at least one show. */
+export function setShowTier(st, showId, tierId) {
+  const show = must(showById(st, showId), 'show', showId);
+  const to = tierId ? st.tiers[tierAt(st, tierId)] : null;
+  const from = tierOfShow(st, showId);
+  if (from === to) return to;
+  if (from && from === st.tiers[0] && from.shows.length === 1) fail(`${from.name} is tier 1 — it needs at least one show. Put another show in it first.`);
+  if (from) from.shows = from.shows.filter(id => id !== showId);
+  if (to) to.shows.push(show.id);
+  fixDestinations(st);
+  return to;
+}
+
+/**
+ * Change a connection's rules - any part of them; the rest stay. Checked as a
+ * whole before anything changes. A season transition already under way keeps
+ * the rules it started with.
+ */
+export function setLinkRules(st, linkId, patch = {}) {
+  const l = must(linkById(st, linkId), 'connection', linkId);
+  const up = tierById(st, l.upper), low = tierById(st, l.lower);
+  const r = copyRules(l.rules);
+  const p = patch || {};
+  if (p.relegation) Object.assign(r.relegation, p.relegation);
+  if (p.qualifiers) Object.assign(r.qualifiers, p.qualifiers);
+  if (p.promotion) Object.assign(r.promotion, p.promotion);
+  if (p.champions !== undefined) r.champions = p.champions;
+  if (p.titles !== undefined) r.titles = p.titles;
+  r.relegation.on = !!r.relegation.on;
+  r.qualifiers.on = !!r.qualifiers.on;
+  const n = Number(r.relegation.candidates);
+  if (!Number.isInteger(n) || n < 0 || n > 60) fail('The number of relegation candidates has to be a whole number from 0 to 60.');
+  r.relegation.candidates = n;
+  oneOf(r.relegation.timing, RELEGATION_TIMINGS, 'relegation timing');
+  oneOf(r.promotion.timing, PROMOTION_TIMINGS, 'promotion timing');
+  oneOf(r.champions, CHAMPION_RULES, 'champion rule');
+  oneOf(r.titles, TITLE_RULES, 'title rule');
+  if (r.relegation.to === '') r.relegation.to = null;
+  if (r.promotion.to === '') r.promotion.to = null;
+  if (r.relegation.to !== null && !low.shows.includes(r.relegation.to)) fail(`Relegated wrestlers go to a show in ${low.name}.`);
+  if (r.relegation.on && !r.relegation.to) fail(`${low.name} has no show for relegated wrestlers to go to. Put a show in it first.`);
+  if (r.promotion.to !== null && !up.shows.includes(r.promotion.to)) fail(`Wrestlers moving up go to a show in ${up.name}.`);
+  // moving up by themselves needs somewhere set to go
+  const alone = r.champions === 'automatic' || (r.qualifiers.on && r.promotion.timing === 'result');
+  if (alone && !r.promotion.to) {
+    if (up.shows.length === 1) r.promotion.to = up.shows[0];
+    else fail(`Pick the show in ${up.name} they move up to — moving up by themselves, nobody drafts them.`);
+  }
+  l.rules = r;
+  return l;
+}
+// a connection's rules have every field, each one something the model knows
+function rulesOk(r) {
+  const showOrNull = v => v === null || typeof v === 'string';
+  return !!r && typeof r === 'object' && !!r.relegation && typeof r.relegation.on === 'boolean' && Number.isInteger(r.relegation.candidates)
+    && r.relegation.candidates >= 0 && RELEGATION_TIMINGS.includes(r.relegation.timing) && showOrNull(r.relegation.to)
+    && !!r.qualifiers && typeof r.qualifiers.on === 'boolean' && CHAMPION_RULES.includes(r.champions) && TITLE_RULES.includes(r.titles)
+    && !!r.promotion && PROMOTION_TIMINGS.includes(r.promotion.timing) && showOrNull(r.promotion.to);
+}
+/** The rules a connection has that aren't carried out yet - kept, and listed on the transition page. */
+export function pendingRules(rules) {
+  const out = [];
+  if (rules.relegation.on && rules.relegation.timing === 'window') out.push('relegated wrestlers moving down at the transfer window');
+  if (rules.champions === 'automatic') out.push('champions moving up by themselves at the transfer window');
+  if (rules.qualifiers.on && rules.promotion.timing === 'result') out.push('qualifying winners moving up straight away');
+  return out;
+}
+
+// ---------------------------------------------------------------- shows
+
+/** Add a show - to a tier, or to none. */
+export function addShow(st, { name, day = 0, tier = null } = {}) {
+  const used = new Set(st.shows.map(x => String(x.color).toLowerCase()));
+  const color = SHOW_COLORS.find(c => !used.has(c.toLowerCase())) || SHOW_COLORS[st.shows.length % SHOW_COLORS.length];
+  const show = { id: newId(st, 'sh'), name: checkName(st.shows, name, 'show'), promotion: 'Other', color, day: checkDay(day) };
+  st.shows.push(show);
+  if (tier) setShowTier(st, show.id, tier);
+  return show;
+}
+/** Rename a show, or change its night. Episodes already on the calendar keep theirs. */
+export function updateShow(st, id, patch = {}) {
+  const show = must(showById(st, id), 'show', id);
+  const name = patch.name !== undefined ? checkName(st.shows, patch.name, 'show', id) : show.name;
+  const day = patch.day !== undefined ? checkDay(patch.day) : show.day;
+  Object.assign(show, { name, day });
+  return show;
+}
+/** What would stop a show being deleted: anything on record that names it. */
+export function showRefs(st, id) {
+  const refs = [];
+  const on = st.wrestlers.filter(w => w.showId === id).length;
+  if (on) refs.push(on === 1 ? 'a wrestler on it' : `${on} wrestlers on it`);
+  if (st.moves.some(m => m.from === id || m.to === id)) refs.push('roster moves');
+  if (st.events.some(e => e.showId === id)) refs.push('episodes on the calendar');
+  if (st.titles.some(t => t.showId === id)) refs.push('a championship');
+  if (st.transitions.some(t => t.shows[id] || (t.parts || []).some(p => p.upper.includes(id) || p.lower.includes(id)))) refs.push('a season transition');
+  return refs;
+}
+/** Delete a show added by mistake - only while nothing on record names it. */
+export function deleteShow(st, id) {
+  const show = must(showById(st, id), 'show', id);
+  const refs = showRefs(st, id);
+  if (refs.length) fail(`${show.name} has history (${refs.join(', ')}), so it can't be deleted.`);
+  const t = tierOfShow(st, id);
+  if (t && t === st.tiers[0] && t.shows.length === 1) fail(`${show.name} is tier 1's only show. Put another show in tier 1 first.`);
+  if (t) t.shows = t.shows.filter(x => x !== id);
+  removeWhere(st.shows, x => x.id === id);
+  fixDestinations(st);
+}
+
 // ---------------------------------------------------------------- the season transition: relegation
 //
-// After WrestleMania, each main-roster show - every show but NXT - holds its
-// own relegation matches on its first episode after it. Its candidates are
-// the wrestlers who were on it at WrestleMania with the fewest wins that
-// season (up to and including WrestleMania), paired off against each other.
-// Whoever loses a relegation match moves to NXT the moment the result is
-// entered; the winner stays. The game decides who wins - nothing here does.
+// After WrestleMania, each show in a tier whose connection to the tier below
+// has relegation on - tier 1's Raw, SmackDown and Dynamite, as it starts -
+// holds its own relegation matches on its first episode after it. Its
+// candidates are the wrestlers who were on it at WrestleMania with the fewest
+// wins that season (up to and including WrestleMania), paired off against
+// each other. Whoever loses a relegation match moves down to the connection's
+// show (NXT, as it starts) the moment the result is entered; the winner stays.
+// The game decides who wins - nothing here does.
 //
 // Where the rule runs out, nothing is decided for the owner: a tie across the
 // cutoff, an odd number of candidates, results still missing, a relegation
@@ -1478,16 +1736,16 @@ export function resultFor(match, side) {
 // settled. The owner sets how many candidates each show has, can pick them by
 // hand and pair them however they like; the shows need not match in anything.
 //
-// A transition: { id, season, event (WrestleMania), ack, at, shows: { [showId]:
-// { count, picked, pairs } } }. `picked` null follows the win totals; `pairs`
-// null pairs the candidates in win order. `ack` is how many unplayed matches
-// the owner chose to count past. A pair: { id, a, b, matches, decision }. A
-// relegation match carries { transition, show, pair }. Every relegation leaves
-// a permanent record in st.relegations, saying why.
+// A transition: { id, season, event (WrestleMania), ack, at, parts, shows:
+// { [showId]: { count, picked, pairs } }, window }. `parts` are the tier
+// connections as they stood when it started, one each: { link, upperName,
+// lowerName, upper, lower (show ids), rules, qualifiers: { picked, pairs } }.
+// `shows` are the shows holding relegation matches. `picked` null follows the
+// win totals; `pairs` null pairs the candidates in win order. `ack` is how many
+// unplayed matches the owner chose to count past. A pair: { id, a, b, matches,
+// decision }. A relegation match carries { transition, show, pair }. Every
+// relegation leaves a permanent record in st.relegations, saying why.
 
-export const RELEGATED_TO = 'nxt';
-export const DEFAULT_CANDIDATES = 2;
-export const mainShows = st => st.shows.filter(s => s.id !== RELEGATED_TO);
 export const transitionById = (st, id) => byId(st.transitions, id);
 export const transitionOfSeason = (st, seasonId) => st.transitions.find(t => t.season === seasonId) || null;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -1496,10 +1754,29 @@ const ordinal = n => {
   return n + (t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th');
 };
 const nameOf = (st, id) => (wrestlerById(st, id) || { name: '(deleted)' }).name;
-const listNames = (st, ids) => {
-  const ns = ids.map(id => nameOf(st, id));
-  return ns.length < 3 ? ns.join(' and ') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`;
-};
+const joinNames = (ns, and = 'and') => (ns.length < 3 ? ns.join(` ${and} `) : `${ns.slice(0, -1).join(', ')} ${and} ${ns[ns.length - 1]}`);
+const listNames = (st, ids) => joinNames(ids.map(id => nameOf(st, id)));
+const showNames = (st, ids, and = 'and') => joinNames(ids.map(id => (showById(st, id) || { name: '?' }).name), and);
+
+/** Some shows' names, in words: "Raw, SmackDown and Dynamite". */
+export const showNamesOf = (st, ids, and = 'and') => showNames(st, ids, and);
+
+// a transition's parts: the one a show relegates through (it's in the upper tier), and the one it promotes through
+export const partOf = (tr, linkId) => (tr.parts || []).find(p => p.link === linkId) || null;
+export const partAbove = (tr, showId) => (tr.parts || []).find(p => p.upper.includes(showId)) || null;
+export const partBelow = (tr, showId) => (tr.parts || []).find(p => p.lower.includes(showId)) || null;
+/** The shows holding relegation matches in a transition, tier by tier. */
+export const relegationShows = (st, tr) => (tr.parts || []).flatMap(p => p.upper.filter(id => tr.shows[id])).map(id => showById(st, id)).filter(Boolean);
+/** Where a show's relegated wrestlers go. */
+export const relegationTo = (tr, showId) => { const p = partAbove(tr, showId); return p ? p.rules.relegation.to : null; };
+// the tiers and rules as they stand now, as a transition keeps them
+function partsNow(st) {
+  return activeLinks(st).map(l => {
+    const up = tierById(st, l.upper), low = tierById(st, l.lower);
+    return { link: l.id, upperName: up.name, lowerName: low.name, upper: [...up.shows], lower: [...low.shows], rules: copyRules(l.rules),
+      qualifiers: { picked: [], pairs: null } };
+  });
+}
 
 /** Everyone's wins in the WrestleMania season, up to and including it: id -> { wins, singles, tag, matches }. */
 export function seasonWins(st, wm) {
@@ -1565,6 +1842,8 @@ export function relegationTable(st, trId, showId) {
   const cfg = tr.shows[showId];
   if (!cfg) fail(`${showById(st, showId) ? showById(st, showId).name : 'That show'} doesn't hold relegation matches.`);
   const show = showById(st, showId);
+  const part = partAbove(tr, showId);
+  const to = showById(st, part.rules.relegation.to);
   const wm = eventById(st, tr.event);
   const totals = seasonWins(st, wm);
   const pool = st.wrestlers.filter(w => showAtStamp(st, w, wm.at) === showId).map(w => ({
@@ -1616,7 +1895,7 @@ export function relegationTable(st, trId, showId) {
   }
   if (cfg.count > 0 && pool.length < 2) check('small', `Only ${plural(pool.length, 'wrestler')} ${pool.length === 1 ? 'was' : 'were'} on ${show.name} at WrestleMania, so there's no relegation match to hold.`);
   pairs.filter(p => p.status === 'no winner').forEach(p => decide('nowinner',
-    `${nameOf(st, p.a)} vs ${nameOf(st, p.b)} ended in ${p.last.m.outcome === 'draw' ? 'a draw' : 'a no contest'}. Book a rematch, or decide who (if anyone) goes to NXT.`));
+    `${nameOf(st, p.a)} vs ${nameOf(st, p.b)} ended in ${p.last.m.outcome === 'draw' ? 'a draw' : 'a no contest'}. Book a rematch, or decide who (if anyone) goes to ${to.name}.`));
   const byIdIn = id => pool.find(r => r.id === id);
   candidates.forEach(id => {
     const r = byIdIn(id);
@@ -1654,7 +1933,7 @@ export function relegationTable(st, trId, showId) {
   const night = after.length ? { event: after[0] }
     : { week: wm.at.season === cur.id ? wm.at.week + (show.day > wm.at.day ? 0 : 1) : cur.week };
   const records = st.relegations.filter(x => x.transition === tr.id && x.show === showId);
-  return { tr, wm, show, count: cfg.count, auto: !cfg.picked, pool, inPool, tied, tiedWins, autoIds, candidates, pairs, unpaired,
+  return { tr, wm, show, part, to, count: cfg.count, auto: !cfg.picked, pool, inPool, tied, tiedWins, autoIds, candidates, pairs, unpaired,
     flags, blocking, night, records };
 }
 
@@ -1676,9 +1955,10 @@ export function startTransition(st, eventId) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   const season = seasonById(st, ev.at.season);
   if (transitionOfSeason(st, season.id)) fail(`${season.name} already has its season transition.`);
-  const tr = { id: newId(st, 'tr'), season: season.id, event: ev.id, ack: 0, at: now(st), shows: {},
-    promotion: { picked: [], pairs: null }, window: null };
-  mainShows(st).forEach(s => { tr.shows[s.id] = { count: DEFAULT_CANDIDATES, picked: null, pairs: null }; });
+  const tr = { id: newId(st, 'tr'), season: season.id, event: ev.id, ack: 0, at: now(st), parts: partsNow(st), shows: {}, window: null };
+  tr.parts.forEach(p => {
+    if (p.rules.relegation.on) p.upper.forEach(id => { tr.shows[id] = { count: p.rules.relegation.candidates, picked: null, pairs: null }; });
+  });
   st.transitions.push(tr);
   return tr;
 }
@@ -1687,7 +1967,7 @@ export function startTransition(st, eventId) {
 export function cancelTransition(st, trId) {
   const tr = must(transitionById(st, trId), 'season transition', trId);
   if (Object.values(tr.shows).some(c => bookedPairs(c).length)) fail('Relegation matches are on the card. Take them off first.');
-  if (bookedQualifiers(tr.promotion).length) fail('Qualifying matches are on the card. Take them off first.');
+  if (tr.parts.some(p => bookedQualifiers(p.qualifiers).length)) fail('Qualifying matches are on the card. Take them off first.');
   if (tr.window) fail('The transfer window has been opened. Take that back first.');
   removeWhere(st.transitions, t => t.id === trId);
 }
@@ -1762,6 +2042,9 @@ export function bookRelegation(st, trId, showId, eventId, pairIds = null) {
   const { tr, cfg } = transitionCfg(st, trId, showId);
   const t = relegationTable(st, trId, showId);
   const ev = must(eventById(st, eventId), 'event', eventId);
+  if (t.part.rules.relegation.timing !== 'result') {
+    fail(`This transition's rules move relegated wrestlers down at the transfer window, which isn't carried out yet — so its relegation matches can't be booked.`);
+  }
   if (ev.kind !== 'weekly' || ev.showId !== showId) fail(`${t.show.name}'s relegation matches go on a ${t.show.name} episode.`);
   if (cmpDate(st, ev.at, t.wm.at) <= 0) fail(`Relegation matches come after ${t.wm.name}.`);
   if (t.blocking.length) fail(t.blocking[0].text);
@@ -1807,9 +2090,9 @@ function relegationBasis(st, t, wid) {
 }
 
 // Everything a relegation will do, checked before anything changes.
-function relegateChecks(st, wid, ev) {
+function relegateChecks(st, t, wid, ev) {
   const w = must(wrestlerById(st, wid), 'wrestler', wid);
-  if (w.showId === RELEGATED_TO) return w;
+  if (w.showId === t.to.id) return w;
   const moves = movesOf(st, wid);
   const last = moves[moves.length - 1];
   if (last && earlierDate(st, ev.at, last.at)) {
@@ -1821,18 +2104,19 @@ function relegate(st, t, pair, ev, m, loser, winner, decided, note) {
   const w = wrestlerById(st, loser);
   const from = w.showId;
   const at = stampAt(st, ev.at.season, ev.at.week, ev.at.day);
+  const to = t.to.id;
   let move = null;
-  if (from !== RELEGATED_TO) {
+  if (from !== to) {
     const why = decided ? 'Relegated by the owner' : `Relegated — lost to ${nameOf(st, winner)}`;
-    move = { id: newId(st, 'mv'), wrestler: loser, from, to: RELEGATED_TO, at: { ...at }, note: why.slice(0, MAX_NAME) };
+    move = { id: newId(st, 'mv'), wrestler: loser, from, to, at: { ...at }, note: why.slice(0, MAX_NAME) };
     st.moves.push(move);
-    w.showId = RELEGATED_TO;
+    w.showId = to;
   }
   const how = decided
-    ? `${t.show.name} relegation match with ${nameOf(st, winner)} at ${ev.name} ended without a winner; sent to NXT by the owner's decision${note ? ` — ${note}` : ''}.`
+    ? `${t.show.name} relegation match with ${nameOf(st, winner)} at ${ev.name} ended without a winner; sent to ${t.to.name} by the owner's decision${note ? ` — ${note}` : ''}.`
     : `Lost the ${t.show.name} relegation match to ${nameOf(st, winner)} at ${ev.name} (${seasonById(st, ev.at.season).name}).`;
   const r = t.pool.find(x => x.id === loser);
-  const rec = { id: newId(st, 'rl'), transition: t.tr.id, show: t.show.id, wrestler: loser, opponent: winner, event: ev.id,
+  const rec = { id: newId(st, 'rl'), transition: t.tr.id, link: t.part.link, show: t.show.id, to, wrestler: loser, opponent: winner, event: ev.id,
     match: m ? m.id : null, pair: pair.id, move: move ? move.id : null, from, wins: r ? r.wins : null,
     place: r ? r.place : null, of: t.pool.length, candidate: t.autoIds.includes(loser) ? 'fewest wins' : 'owner', decided: !!decided,
     reason: `${how} ${relegationBasis(st, t, loser)}`, at };
@@ -1874,7 +2158,7 @@ function relegationPlan(st, ev, m, sides, r) {
   const loser = r && r.outcome === 'win' ? sides[1 - r.winner].wrestlers[0] : null;
   if (old && old.wrestler === loser) return null;                    // the same result, told differently
   const undo = old ? unrelegateChecks(st, old) : null;
-  if (loser) relegateChecks(st, loser, ev);
+  if (loser) relegateChecks(st, t, loser, ev);
   return { undo, t, pair, loser, winner: loser ? sides[r.winner].wrestlers[0] : null };
 }
 function applyRelegation(st, ev, m, plan) {
@@ -1898,7 +2182,7 @@ function relegationRemoval(st, m) {
 
 /**
  * Settle a relegation match that ended without a winner: send one of the two
- * to NXT (`relegateId`), or neither (null). Kept, with `note`, in the record.
+ * down (`relegateId`), or neither (null). Kept, with `note`, in the record.
  */
 export function decidePair(st, trId, showId, pairId, relegateId, note = '') {
   const t = relegationTable(st, trId, showId);
@@ -1910,7 +2194,7 @@ export function decidePair(st, trId, showId, pairId, relegateId, note = '') {
   const { ev, m } = p.last;
   if (relegateId) {
     if (![p.a, p.b].includes(relegateId)) fail('Pick one of the two in that match.');
-    relegateChecks(st, relegateId, ev);
+    relegateChecks(st, t, relegateId, ev);
     relegate(st, t, pair, ev, m, relegateId, relegateId === p.a ? p.b : p.a, true, n);
   }
   pair.decision = { relegate: relegateId || null, note: n, at: now(st) };
@@ -1933,37 +2217,41 @@ export function relegationsOf(st, wrestlerId = null) {
   return st.relegations.filter(r => !wrestlerId || r.wrestler === wrestlerId).sort((a, b) => compareStamps(st, b.at, a.at));
 }
 
-// ---------------------------------------------------------------- the season transition: NXT promotion and the draft
+// ---------------------------------------------------------------- the season transition: promotion and the draft
 //
-// NXT's first show after WrestleMania holds qualifying matches. Every NXT
-// champion is draft eligible; so is whoever wins a qualifying match. Being
-// eligible moves nobody: the owner drafts eligible wrestlers to Raw,
-// SmackDown or Dynamite in the transfer window, as many to each as they like,
-// and can close the window with anyone left undrafted.
+// For each connection with qualifying matches on, the lower tier's first show
+// after WrestleMania holds them (as it starts: NXT). Its champions are draft
+// eligible when the connection says so, and so is whoever wins a qualifying
+// match. Being eligible moves nobody: the owner drafts eligible wrestlers to
+// the upper tier's shows (or the connection's set show) in the transfer
+// window, as many to each as they like, and can close the window with anyone
+// left undrafted.
 //
 // The model never ranks anyone here - who is picked for a qualifier is the
-// owner's choice (the page suggests from NXT's season records), and the game
-// decides who wins. Two things it has no rule for are asked at the draft
-// instead: whether a drafted wrestler's tag partners go too, and whether a
-// title they hold is kept or vacated.
+// owner's choice (the page suggests from the season records), and the game
+// decides who wins. A drafted champion's title follows the connection's title
+// rule: vacated, kept, or - 'ask', as it starts - the owner's call at the
+// pick. Whether a drafted wrestler's tag partners go too is always asked.
 //
-// A transition carries promotion: { picked, pairs } - the qualifier
-// participants in the owner's order, and their pairings (null: in that order)
-// - and window: null | { opened, closed, undrafted }. Qualifying matches carry
-// { transition, pair }. st.eligibility and st.drafts keep, for good, who
-// became eligible and why, and every pick.
+// Each part of a transition carries qualifiers: { picked, pairs } - the
+// qualifier participants in the owner's order, and their pairings (null: in
+// that order). The transition has one window: null | { opened, closed,
+// undrafted }. Qualifying matches carry { transition, link, pair }.
+// st.eligibility and st.drafts keep, for good, who became eligible and why,
+// and every pick - each naming its connection (`link`).
 
-export const PROMOTED_FROM = 'nxt';
-const nxtTitles = st => st.titles.filter(t => t.showId === PROMOTED_FROM && t.active);
 const liveEligibility = (st, trId) => st.eligibility.filter(e => e.transition === trId);
 export const eligibilityOf = (st, trId, wid) => liveEligibility(st, trId).filter(e => e.wrestler === wid);
 export const draftsOf = (st, trId) => st.drafts.filter(d => d.transition === trId).sort((a, b) => a.pick - b.pick);
 
-// The NXT champions right now, as eligibility would record them:
-// [{ wrestler, title, reign, team }] - a tag title makes each of its holders' members eligible.
-export function nxtChampions(st) {
+/**
+ * The champions of some shows right now, as eligibility would record them:
+ * [{ wrestler, title, reign, team }] - a tag title makes each of its holders'
+ * members eligible. Titles with no show aren't any tier's.
+ */
+export function championsOf(st, showIds) {
   const out = [];
-  nxtTitles(st).forEach(title => {
+  st.titles.filter(t => t.active && showIds.includes(t.showId)).forEach(title => {
     const r = currentReign(st, title.id);
     if (!r) return;
     if (r.holder.type === 'team') {
@@ -1974,18 +2262,39 @@ export function nxtChampions(st) {
   return out;
 }
 
+// the part a qualifier call is about: named, or found from a pairing, an episode or a wrestler in its pool
+function qualifierPart(st, tr, { link = null, pair = null, show = null, wrestler = null } = {}) {
+  let part = null;
+  if (link) part = partOf(tr, link);
+  else if (pair) part = tr.parts.find(p => (p.qualifiers.pairs || []).some(x => x.id === pair));
+  else if (show) part = partBelow(tr, show);
+  else if (wrestler) {
+    const wm = eventById(st, tr.event);
+    const w = wrestlerById(st, wrestler);
+    // someone from no tier that moves up: the pool check of the connection with qualifiers says where they'd have to have been
+    part = (w && partBelow(tr, showAtStamp(st, w, wm.at))) || tr.parts.find(p => p.rules.qualifiers.on) || tr.parts[0] || null;
+  } else part = tr.parts[0] || null;
+  if (!part) fail(link ? 'That connection isn\'t part of this season transition.' : pair ? 'That pairing isn\'t part of the qualifiers.'
+    : wrestler ? `${nameOf(st, wrestler)} wasn't on a show that moves up a tier.` : 'That show doesn\'t move up a tier.');
+  return part;
+}
+
 /**
- * NXT's side of the transition, worked out as things stand: { tr, wm, pool,
- * picked, pairs, unpaired, flags, blocking, night, champions, eligible, window }.
- *   pool       wrestlers on NXT at WrestleMania - who can be picked for a qualifier
- *   champions  the NXT champions: live until the window opens, then as fixed
- *   eligible   everyone eligible, one row each: { wrestler, sources: [records], drafted }
+ * One connection's promotion, worked out as things stand: { tr, part, wm,
+ * pool, picked, pairs, unpaired, flags, blocking, night, champions, automatic,
+ * eligible, drafts, window }. `linkId` defaults to the first connection.
+ *   pool       wrestlers on the lower tier's shows at WrestleMania - who can be picked for a qualifier
+ *   champions  the lower tier's champions who are draft eligible: live until the window opens, then as fixed
+ *   automatic  the lower tier's champions who move up by themselves - not carried out yet
+ *   eligible   everyone eligible through this connection, one row each: { wrestler, sources: [records], drafted }
  */
-export function promotionTable(st, trId) {
+export function promotionTable(st, trId, linkId = null) {
   const tr = must(transitionById(st, trId), 'season transition', trId);
+  const part = qualifierPart(st, tr, { link: linkId });
   const wm = eventById(st, tr.event);
-  const p = tr.promotion;
-  const pool = st.wrestlers.filter(w => showAtStamp(st, w, wm.at) === PROMOTED_FROM).map(w => ({
+  const p = part.qualifiers;
+  const lower = showNames(st, part.lower);
+  const pool = st.wrestlers.filter(w => part.lower.includes(showAtStamp(st, w, wm.at))).map(w => ({
     id: w.id, name: w.name, gender: w.gender, injured: w.status === 'injured', now: w.showId,
   })).sort(byName);
   const inPool = new Set(pool.map(r => r.id));
@@ -1997,15 +2306,17 @@ export function promotionTable(st, trId) {
     for (let i = 0; i + 1 < picked.length; i += 2) pairs.push({ id: null, a: picked[i], b: picked[i + 1], matches: [], decision: null });
   }
   pairs.forEach(x => {
-    const s = pairStatus(st, x);
-    Object.assign(x, s, { status: s.status === 'relegated' ? 'qualified' : s.status });
+    const s2 = pairStatus(st, x);
+    Object.assign(x, s2, { status: s2.status === 'relegated' ? 'qualified' : s2.status });
   });
   const paired = new Set(pairs.flatMap(x => [x.a, x.b]));
   const unpaired = picked.filter(id => !paired.has(id));
 
+  const mine = liveEligibility(st, trId).filter(e => e.link === part.link);
   const champions = tr.window
-    ? liveEligibility(st, trId).filter(e => e.source === 'champion').map(e => ({ wrestler: e.wrestler, title: e.title, reign: e.reign, team: e.team }))
-    : nxtChampions(st);
+    ? mine.filter(e => e.source === 'champion').map(e => ({ wrestler: e.wrestler, title: e.title, reign: e.reign, team: e.team }))
+    : part.rules.champions === 'eligible' ? championsOf(st, part.lower) : [];
+  const automatic = part.rules.champions === 'automatic' ? championsOf(st, part.lower) : [];
   const flags = [];
   const decide = (key, text) => flags.push({ level: 'decide', key, text });
   const check = (key, text) => flags.push({ level: 'check', key, text });
@@ -2017,9 +2328,9 @@ export function promotionTable(st, trId) {
     `${nameOf(st, x.a)} vs ${nameOf(st, x.b)} ended in ${x.last.m.outcome === 'draw' ? 'a draw' : 'a no contest'}. Book a rematch, or decide who (if anyone) qualifies.`));
   picked.forEach(id => {
     const r = pool.find(x => x.id === id);
-    if (champions.some(c => c.wrestler === id)) check('champion', `${r.name} is already eligible as an NXT champion.`);
+    if (champions.some(c => c.wrestler === id)) check('champion', `${r.name} is already eligible as a champion of ${part.lowerName}.`);
     if (r.injured) check('injured', `${r.name} is injured.`);
-    if (r.now !== PROMOTED_FROM) check('moved', `${r.name} is on ${r.now ? showById(st, r.now).name : 'no show'} now.`);
+    if (!part.lower.includes(r.now)) check('moved', `${r.name} is on ${r.now ? showById(st, r.now).name : 'no show'} now.`);
   });
   pairs.forEach(x => {
     const [a, b] = [pool.find(r => r.id === x.a), pool.find(r => r.id === x.b)];
@@ -2032,56 +2343,68 @@ export function promotionTable(st, trId) {
   });
   const blocking = flags.filter(f => f.key === 'odd');
 
-  const after = st.events.filter(e => e.kind === 'weekly' && e.showId === PROMOTED_FROM && cmpDate(st, e.at, wm.at) > 0)
+  // the lower tier's first episode after WrestleMania - or the week its first show's next one would fall in
+  const after = st.events.filter(e => e.kind === 'weekly' && part.lower.includes(e.showId) && cmpDate(st, e.at, wm.at) > 0)
     .sort((a, b) => compareStamps(st, a.at, b.at));
   const cur = activeSeason(st);
-  const nxt = showById(st, PROMOTED_FROM);
+  const first = showById(st, part.lower[0]);
   const night = after.length ? { event: after[0] }
-    : { week: wm.at.season === cur.id ? wm.at.week + (nxt.day > wm.at.day ? 0 : 1) : cur.week };
+    : { show: first ? first.id : null, week: wm.at.season === cur.id ? wm.at.week + (first && first.day > wm.at.day ? 0 : 1) : cur.week };
 
   // eligible: the champions (live or fixed), and every qualifier or decision on record
   const byWrestler = new Map();
   const add = (wid, src) => { if (!byWrestler.has(wid)) byWrestler.set(wid, []); byWrestler.get(wid).push(src); };
-  if (!tr.window) champions.forEach(c => add(c.wrestler, { source: 'champion', title: c.title, team: c.team, live: true }));
-  liveEligibility(st, trId).forEach(e => add(e.wrestler, e));
-  const drafts = draftsOf(st, trId);
+  if (!tr.window) champions.forEach(c => add(c.wrestler, { source: 'champion', title: c.title, team: c.team, live: true, link: part.link }));
+  mine.forEach(e => add(e.wrestler, e));
+  const drafts = draftsOf(st, trId).filter(d => d.link === part.link);
   const eligible = [...byWrestler].map(([wrestler, sources]) => ({ wrestler, sources, drafted: drafts.find(d => d.wrestler === wrestler) || null }))
     .sort((a, b) => byName(wrestlerById(st, a.wrestler), wrestlerById(st, b.wrestler)));
-  return { tr, wm, pool, inPool, picked, pairs, unpaired, flags, blocking, night, champions, eligible, drafts, window: tr.window };
+  return { tr, part, lower, wm, pool, inPool, picked, pairs, unpaired, flags, blocking, night, champions, automatic, eligible, drafts,
+    window: tr.window, pending: pendingRules(part.rules) };
 }
 
-const promo = (st, trId) => must(transitionById(st, trId), 'season transition', trId).promotion;
 const bookedQualifiers = p => (p.pairs || []).filter(x => x.matches.length);
 function repairQualifiers(p) {
   const kept = bookedQualifiers(p);
   p.pairs = kept.length ? kept : null;
 }
+function qualifiersOn(part) {
+  if (!part.rules.qualifiers.on) fail(`Qualifying matches are off for ${part.lowerName} → ${part.upperName} in this transition.`);
+}
 
 /** Pick a wrestler for the qualifiers, or take them out. The order picked is the pairing order. */
-export function toggleQualifier(st, trId, wrestlerId) {
-  const p = promo(st, trId);
-  const t = promotionTable(st, trId);
-  if (!t.inPool.has(wrestlerId)) fail(`${nameOf(st, wrestlerId)} wasn't on NXT at ${t.wm.name}.`);
+export function toggleQualifier(st, trId, wrestlerId, linkId = null) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const part = qualifierPart(st, tr, linkId ? { link: linkId } : { wrestler: wrestlerId });
+  qualifiersOn(part);
+  const p = part.qualifiers;
+  const t = promotionTable(st, trId, part.link);
+  if (!t.inPool.has(wrestlerId)) fail(`${nameOf(st, wrestlerId)} wasn't on ${t.lower} at ${t.wm.name}.`);
   if (bookedQualifiers(p).some(x => x.a === wrestlerId || x.b === wrestlerId)) fail(`${nameOf(st, wrestlerId)} is booked in a qualifying match. Take it off the card first.`);
   p.picked = t.picked.includes(wrestlerId) ? t.picked.filter(id => id !== wrestlerId) : [...t.picked, wrestlerId];
   repairQualifiers(p);
   return p;
 }
 /** Set the whole qualifier field at once, in pairing order - e.g. the page's suggestions. */
-export function setQualifiers(st, trId, ids) {
-  const p = promo(st, trId);
-  const t = promotionTable(st, trId);
+export function setQualifiers(st, trId, ids, linkId = null) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const part = qualifierPart(st, tr, linkId ? { link: linkId } : ids && ids.length ? { wrestler: ids[0] } : {});
+  qualifiersOn(part);
+  const p = part.qualifiers;
+  const t = promotionTable(st, trId, part.link);
   if (bookedQualifiers(p).length) fail('Qualifying matches are on the card, so the field is fixed. Take them off first.');
   if (!Array.isArray(ids) || new Set(ids).size !== ids.length) fail('Pick each wrestler once.');
-  ids.forEach(id => { if (!t.inPool.has(id)) fail(`${nameOf(st, id)} wasn't on NXT at ${t.wm.name}.`); });
+  ids.forEach(id => { if (!t.inPool.has(id)) fail(`${nameOf(st, id)} wasn't on ${t.lower} at ${t.wm.name}.`); });
   p.picked = [...ids];
   p.pairs = null;
   return p;
 }
 /** Pair two qualifier participants; their old opponents are paired with each other. */
 export function pairQualifiers(st, trId, aId, bId) {
-  const p = promo(st, trId);
-  const t = promotionTable(st, trId);
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const part = qualifierPart(st, tr, { wrestler: aId });
+  const p = part.qualifiers;
+  const t = promotionTable(st, trId, part.link);
   if (aId === bId) fail('Pick two different wrestlers.');
   [aId, bId].forEach(id => {
     if (!t.picked.includes(id)) fail(`${nameOf(st, id)} isn't in the qualifiers.`);
@@ -2097,12 +2420,21 @@ export function pairQualifiers(st, trId, aId, bId) {
   return p;
 }
 
-/** Put the qualifying matches on NXT's episode after WrestleMania (or, with `pairIds`, their rematches). */
+/** Put the qualifying matches on a lower-tier episode after WrestleMania (or, with `pairIds`, their rematches). */
 export function bookQualifiers(st, trId, eventId, pairIds = null) {
-  const p = promo(st, trId);
-  const t = promotionTable(st, trId);
+  const tr = must(transitionById(st, trId), 'season transition', trId);
   const ev = must(eventById(st, eventId), 'event', eventId);
-  if (ev.kind !== 'weekly' || ev.showId !== PROMOTED_FROM) fail('Qualifying matches go on an NXT episode.');
+  // the part is the pairing's, or the episode's show's - or, for an episode of the wrong show, the one with qualifiers on
+  const part = pairIds && pairIds.length ? qualifierPart(st, tr, { pair: pairIds[0] })
+    : partBelow(tr, ev.showId) || tr.parts.find(p => p.rules.qualifiers.on) || null;
+  if (!part) fail('No tier holds qualifying matches in this transition.');
+  if (ev.kind !== 'weekly' || !part.lower.includes(ev.showId)) fail(`Qualifying matches go on an episode of ${showNames(st, part.lower, 'or')}.`);
+  qualifiersOn(part);
+  if (part.rules.promotion.timing !== 'window') {
+    fail('This transition\'s rules move qualifying winners up straight away, which isn\'t carried out yet — so its qualifying matches can\'t be booked.');
+  }
+  const p = part.qualifiers;
+  const t = promotionTable(st, trId, part.link);
   if (cmpDate(st, ev.at, t.wm.at) <= 0) fail(`Qualifying matches come after ${t.wm.name}.`);
   if (t.blocking.length) fail(t.blocking[0].text);
   const todo = t.pairs.filter(x => (pairIds ? pairIds.includes(x.id) && x.status === 'no winner' : x.status === 'unbooked'));
@@ -2111,7 +2443,7 @@ export function bookQualifiers(st, trId, eventId, pairIds = null) {
   p.pairs = t.pairs.map(x => ({ id: x.id || newId(st, 'rp'), a: x.a, b: x.b, matches: [...x.matches], decision: x.decision }));
   return todo.map(x => {
     const pair = p.pairs.find(y => y.a === x.a && y.b === x.b);
-    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, pair: pair.id },
+    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, link: part.link, pair: pair.id },
       ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Qualifying match' })) };
     ev.matches.push(m);
     pair.matches.push(m.id);
@@ -2129,8 +2461,8 @@ function uneligibleChecks(st, rec) {
   if (d) fail(`${nameOf(st, rec.wrestler)} has been drafted to ${showById(st, d.to).name} since qualifying. Undo that pick first.`);
   return () => removeWhere(st.eligibility, x => x.id === rec.id);
 }
-function qualify(st, tr, pair, ev, m, winner, loser, decided, note) {
-  const rec = { id: newId(st, 'el'), transition: tr.id, wrestler: winner, source: decided ? 'decision' : 'qualifier', title: null,
+function qualify(st, tr, part, pair, ev, m, winner, loser, decided, note) {
+  const rec = { id: newId(st, 'el'), transition: tr.id, link: part.link, wrestler: winner, source: decided ? 'decision' : 'qualifier', title: null,
     reign: null, team: null, match: m ? m.id : null, pair: pair.id, opponent: loser, event: ev.id, note: note || '',
     at: stampAt(st, ev.at.season, ev.at.week, ev.at.day) };
   st.eligibility.push(rec);
@@ -2140,7 +2472,8 @@ function qualify(st, tr, pair, ev, m, winner, loser, decided, note) {
 function qualifierPlan(st, ev, m, sides, r) {
   if (!m.qualifier) return null;
   const tr = transitionById(st, m.qualifier.transition);
-  const pair = tr.promotion.pairs.find(x => x.id === m.qualifier.pair);
+  const part = qualifierPart(st, tr, { pair: m.qualifier.pair });
+  const pair = part.qualifiers.pairs.find(x => x.id === m.qualifier.pair);
   const ids = sides.map(sd => sd.wrestlers);
   if (sides.length !== 2 || ids.some(x => x.length !== 1) || sides.some(sd => sd.team)
     || !ids.flat().includes(pair.a) || !ids.flat().includes(pair.b)) {
@@ -2154,19 +2487,20 @@ function qualifierPlan(st, ev, m, sides, r) {
   if (old && old.wrestler === winner) return null;
   if (old || winner) windowOpenFor(tr);
   const undo = old ? uneligibleChecks(st, old) : null;
-  return { undo, tr, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
+  return { undo, tr, part, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
 }
 function applyQualifier(st, ev, m, plan) {
   if (!plan) return;
   if (plan.undo) plan.undo();
-  if (plan.winner) qualify(st, plan.tr, plan.pair, ev, m, plan.winner, plan.loser, false);
+  if (plan.winner) qualify(st, plan.tr, plan.part, plan.pair, ev, m, plan.winner, plan.loser, false);
 }
 function qualifierRemoval(st, m) {
   if (!m.qualifier) return null;
-  const pair = transitionById(st, m.qualifier.transition).promotion.pairs.find(x => x.id === m.qualifier.pair);
+  const tr = transitionById(st, m.qualifier.transition);
+  const pair = qualifierPart(st, tr, { pair: m.qualifier.pair }).qualifiers.pairs.find(x => x.id === m.qualifier.pair);
   if (pair.decision && pair.matches[pair.matches.length - 1] === m.id) fail('You decided this pairing after this match. Undo that decision first.');
   const rec = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
-  if (rec) windowOpenFor(transitionById(st, m.qualifier.transition));
+  if (rec) windowOpenFor(tr);
   const undo = rec ? uneligibleChecks(st, rec) : null;
   return () => {
     if (undo) undo();
@@ -2176,25 +2510,28 @@ function qualifierRemoval(st, m) {
 
 /** Settle a qualifying match that ended without a winner: who qualifies - one, both, or neither ([]). */
 export function decideQualifier(st, trId, pairId, qualifyIds, note = '') {
-  const t = promotionTable(st, trId);
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const part = qualifierPart(st, tr, { pair: pairId });
+  const t = promotionTable(st, trId, part.link);
   const x = t.pairs.find(y => y.id === pairId);
   if (!x) fail('That pairing isn\'t part of the qualifiers.');
   if (x.status !== 'no winner') fail('Only a qualifying match that ended without a winner needs a decision.');
   const ids = Array.isArray(qualifyIds) ? qualifyIds : [];
   if (ids.some(id => ![x.a, x.b].includes(id)) || new Set(ids).size !== ids.length) fail('Pick from the two in that match.');
   const n = checkNote(note);
-  windowOpenFor(t.tr);
-  const pair = t.tr.promotion.pairs.find(y => y.id === pairId);
-  ids.forEach(id => qualify(st, t.tr, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
+  windowOpenFor(tr);
+  const pair = part.qualifiers.pairs.find(y => y.id === pairId);
+  ids.forEach(id => qualify(st, tr, part, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
   pair.decision = { qualify: [...ids], note: n, at: now(st) };
   return pair;
 }
 export function undoQualifierDecision(st, trId, pairId) {
-  const p = promo(st, trId);
-  const pair = (p.pairs || []).find(x => x.id === pairId);
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const part = qualifierPart(st, tr, { pair: pairId });
+  const pair = (part.qualifiers.pairs || []).find(x => x.id === pairId);
   if (!pair || !pair.decision) fail('There\'s no decision to undo.');
   const recs = st.eligibility.filter(x => x.pair === pairId && x.source === 'decision');
-  if (recs.length) windowOpenFor(transitionById(st, trId));
+  if (recs.length) windowOpenFor(tr);
   const undos = recs.map(r => uneligibleChecks(st, r));
   undos.forEach(f => f());
   pair.decision = null;
@@ -2203,14 +2540,19 @@ export function undoQualifierDecision(st, trId, pairId) {
 
 // ---------------------------------------------------------------- the transfer window
 
-/** Open the transfer window. The NXT champions of this moment are fixed as eligible. */
+/**
+ * Open the transfer window. Champions of each connection whose rule makes them
+ * draft eligible are fixed as eligible at this moment. (Champions set to move
+ * up by themselves don't move yet - that isn't carried out yet.)
+ */
 export function openWindow(st, trId) {
   const tr = must(transitionById(st, trId), 'season transition', trId);
   if (tr.window && !tr.window.closed) fail('The transfer window is already open.');
   if (tr.window) fail('The transfer window has been open already. Reopen it instead.');
   const at = now(st);
-  nxtChampions(st).forEach(c => st.eligibility.push({ id: newId(st, 'el'), transition: tr.id, wrestler: c.wrestler, source: 'champion',
-    title: c.title, reign: c.reign, team: c.team, match: null, pair: null, opponent: null, event: null, note: '', at: { ...at } }));
+  tr.parts.filter(p => p.rules.champions === 'eligible').forEach(p => championsOf(st, p.lower).forEach(c => st.eligibility.push({
+    id: newId(st, 'el'), transition: tr.id, link: p.link, wrestler: c.wrestler, source: 'champion', title: c.title, reign: c.reign, team: c.team,
+    match: null, pair: null, opponent: null, event: null, note: '', at: { ...at } })));
   tr.window = { opened: at, closed: null, undrafted: null };
   return tr.window;
 }
@@ -2236,21 +2578,34 @@ export function draftQuestions(st, wid) {
     .map(t => ({ team: t.id, partners: t.members.filter(id => id !== wid) }));
   return { wrestler: w, titles: heldNow(st, wid), partners };
 }
+/** Where an eligible wrestler can be drafted, and the title rule they move under: { part, shows, titles }. */
+export function draftOptions(st, trId, wid) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  const elig = eligibilityOf(st, trId, wid);
+  const part = elig.length ? partOf(tr, elig[0].link) : null;
+  if (!part) return null;
+  const to = part.rules.promotion.to;
+  return { part, shows: to ? [to] : [...part.upper], titles: part.rules.titles };
+}
 
 /**
- * Draft an eligible wrestler to a main show. `opts.partners` are tag partners
- * the owner brings along (eligible or not - the owner's call); every title any
- * of them holds needs `opts.titles[titleId]` of 'keep' or 'vacate'. Everyone
- * drafted together is one pick group.
+ * Draft an eligible wrestler up a tier, to one of the upper tier's shows (or
+ * the connection's set show). `opts.partners` are tag partners the owner
+ * brings along (eligible or not - the owner's call). Every title any of them
+ * holds follows the connection's title rule; when it's 'ask', each needs
+ * `opts.titles[titleId]` of 'keep' or 'vacate'. Everyone drafted together is
+ * one pick group.
  */
 export function draftWrestler(st, trId, wid, showId, opts = {}) {
   const tr = must(transitionById(st, trId), 'season transition', trId);
   if (!tr.window || tr.window.closed) fail('The transfer window isn\'t open.');
   const to = must(showById(st, showId), 'show', showId);
-  if (to.id === PROMOTED_FROM) fail('Draft picks go to Raw, SmackDown or Dynamite.');
   const w = must(wrestlerById(st, wid), 'wrestler', wid);
   const elig = eligibilityOf(st, trId, wid);
   if (!elig.length) fail(`${w.name} isn't draft eligible.`);
+  const o = draftOptions(st, trId, wid);
+  const part = o.part;
+  if (!o.shows.includes(to.id)) fail(`Draft picks from ${part.lowerName} go to ${showNames(st, o.shows, 'or')}.`);
   const partners = [...new Set(opts.partners || [])];
   const team = draftQuestions(st, wid).partners.flatMap(x => x.partners);
   partners.forEach(id => { if (!team.includes(id)) fail(`${nameOf(st, id)} isn't ${w.name}'s tag partner.`); });
@@ -2258,16 +2613,27 @@ export function draftWrestler(st, trId, wid, showId, opts = {}) {
   const date = { season: activeSeason(st).id, week: activeSeason(st).week };
   group.forEach(id => {
     const x = wrestlerById(st, id);
-    if (x.showId !== PROMOTED_FROM) fail(`${x.name} isn't on NXT.`);
+    if (!part.lower.includes(x.showId)) fail(`${x.name} isn't on ${showNames(st, part.lower, 'or')}.`);
     if (draftsOf(st, trId).some(d => d.wrestler === id)) fail(`${x.name} has already been drafted.`);
     moveChecks(st, id, to.id, date);
   });
   const titles = new Map();
   group.forEach(id => heldNow(st, id).forEach(h => titles.set(h.title, h)));
-  const choices = opts.titles || {};
+  // the connection's title rule decides, unless it leaves it to the owner
+  const rule = part.rules.titles;
+  const choices = {};
   titles.forEach(h => {
-    if (!['keep', 'vacate'].includes(choices[h.title])) {
-      fail(`${titleById(st, h.title).name}: keep it or vacate it? ${h.team ? teamById(st, h.team).name : nameOf(st, wid)} hold${h.team ? '' : 's'} it.`);
+    const asked = (opts.titles || {})[h.title];
+    if (rule === 'ask') {
+      if (!['keep', 'vacate'].includes(asked)) {
+        fail(`${titleById(st, h.title).name}: keep it or vacate it? ${h.team ? teamById(st, h.team).name : nameOf(st, wid)} hold${h.team ? '' : 's'} it.`);
+      }
+      choices[h.title] = asked;
+    } else {
+      if (asked && asked !== rule) {
+        fail(`The rules for ${part.lowerName} → ${part.upperName} ${rule === 'vacate' ? 'vacate' : 'keep'} a title when its holder moves up — change them in Tiers & transfers.`);
+      }
+      choices[h.title] = rule;
     }
     if (choices[h.title] === 'vacate') checkInOrder(st, titleById(st, h.title), currentReign(st, h.title), date);
   });
@@ -2276,13 +2642,14 @@ export function draftWrestler(st, trId, wid, showId, opts = {}) {
   // everything checked: vacate, move, record
   const decisions = [...titles.values()].map(h => {
     if (choices[h.title] === 'vacate') vacateTitle(st, h.title);
-    return { title: h.title, reign: h.reign, choice: choices[h.title] === 'vacate' ? 'vacated' : 'kept' };
+    return { title: h.title, reign: h.reign, choice: choices[h.title] === 'vacate' ? 'vacated' : 'kept', rule: rule === 'ask' ? null : rule };
   });
   const groupId = newId(st, 'dg');
   const pick = Math.max(0, ...draftsOf(st, trId).map(d => d.pick)) + 1;
   return group.map((id, i) => {
-    const move = recordMove(st, wrestlerById(st, id), to.id, `Drafted from NXT${i ? ` with ${w.name}` : ''}`.slice(0, MAX_NAME), date);
-    const rec = { id: newId(st, 'dr'), transition: tr.id, group: groupId, pick, wrestler: id, from: PROMOTED_FROM, to: to.id,
+    const from = wrestlerById(st, id).showId;
+    const move = recordMove(st, wrestlerById(st, id), to.id, `Drafted from ${showById(st, from).name}${i ? ` with ${w.name}` : ''}`.slice(0, MAX_NAME), date);
+    const rec = { id: newId(st, 'dr'), transition: tr.id, link: part.link, group: groupId, pick, wrestler: id, from, to: to.id,
       move: move.id, eligibility: eligibilityOf(st, trId, id).map(e => e.id), with: i ? wid : null,
       titles: decisions.filter(d => heldBy.get(id).includes(d.reign)), note, at: { ...move.at } };
     st.drafts.push(rec);
@@ -2316,13 +2683,18 @@ export function undoDraft(st, draftId) {
   });
 }
 
-/** End the transfer window. Anyone eligible and undrafted stays on NXT - and that's kept too. */
+/** Everyone eligible in a transition, across its connections: [{ wrestler, sources, drafted, part }]. */
+export function allEligible(st, trId) {
+  const tr = must(transitionById(st, trId), 'season transition', trId);
+  return tr.parts.flatMap(p => promotionTable(st, trId, p.link).eligible.map(e => ({ ...e, part: p })));
+}
+/** End the transfer window. Anyone eligible and undrafted stays where they are - and that's kept too. */
 export function closeWindow(st, trId) {
   const tr = must(transitionById(st, trId), 'season transition', trId);
   if (!tr.window || tr.window.closed) fail('The transfer window isn\'t open.');
-  const t = promotionTable(st, trId);
+  const left = allEligible(st, trId).filter(e => !e.drafted).map(e => e.wrestler);
   tr.window.closed = now(st);
-  tr.window.undrafted = t.eligible.filter(e => !e.drafted).map(e => e.wrestler);
+  tr.window.undrafted = left;
   return tr.window;
 }
 export function reopenWindow(st, trId) {
@@ -2927,7 +3299,8 @@ export function migrate(raw) {
   }
   if (!Number.isInteger(st.nextId) || st.nextId < 1) st.nextId = 1;
   if (!Number.isInteger(st.seq) || st.seq < 0) st.seq = 0;
-  SHOW_SEED.forEach(seed => { if (!showById(st, seed.id)) st.shows.push({ ...seed }); });
+  // every save before version 9 had the same four shows; since then the shows are the owner's
+  if (v < 9) SHOW_SEED.filter(x => LEGACY_SHOWS.includes(x.id)).forEach(seed => { if (!showById(st, seed.id)) st.shows.push({ ...seed }); });
   if (!st.seasons.length) openSeason(st, 1, '');
 
   // Each step walks a save forward one version, so any older save arrives at
@@ -3025,6 +3398,34 @@ export function migrate(raw) {
     };
     st.version = 8;
   }
+  if (st.version === 8) {
+    // v9: tiers. The shows are put in the tiers they always worked as - Raw,
+    // SmackDown and Dynamite on the main roster, NXT below it - with Evolve
+    // added below NXT, and the rules between them are the ones that were
+    // written into the code. Nothing is dropped: every transition keeps its
+    // candidates, pairings, qualifiers and window as they were, as the part
+    // between the main roster and NXT, and every relegation, eligibility and
+    // draft record is marked as belonging to it.
+    if (!showById(st, 'evolve') && !st.shows.some(x => nameKey(x.name) === 'evolve')) st.shows.push({ ...SHOW_SEED.find(x => x.id === 'evolve') });
+    seedTiers(st);
+    const link = st.links[0], main = st.tiers[0], nxt = st.tiers[1];
+    (Array.isArray(st.transitions) ? st.transitions : []).forEach(t => {
+      const shows = t.shows && typeof t.shows === 'object' ? Object.keys(t.shows) : [];
+      t.parts = [{ link: link.id, upperName: main.name, lowerName: nxt.name, upper: shows.length ? shows : [...main.shows], lower: ['nxt'],
+        rules: copyRules(link.rules), qualifiers: t.promotion && typeof t.promotion === 'object' ? t.promotion : { picked: [], pairs: null } }];
+      delete t.promotion;
+    });
+    st.events.forEach(e => (Array.isArray(e.matches) ? e.matches : []).forEach(m => { if (m.qualifier) m.qualifier.link = link.id; }));
+    (Array.isArray(st.eligibility) ? st.eligibility : []).forEach(x => { x.link = link.id; });
+    (Array.isArray(st.drafts) ? st.drafts : []).forEach(x => { x.link = link.id; });
+    (Array.isArray(st.relegations) ? st.relegations : []).forEach(x => {
+      const mv = x.move ? st.moves.find(y => y.id === x.move) : null;
+      x.link = link.id;
+      x.to = mv ? mv.to : 'nxt';
+    });
+    st.version = 9;
+  }
+  if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.story || typeof st.story !== 'object') st.story = newStory();
   if (!Array.isArray(st.story.rolls)) st.story.rolls = [];
   if (st.story.since === undefined) st.story.since = null;
@@ -3065,7 +3466,9 @@ export function validate(st) {
   st.events.forEach(e => own(Array.isArray(e.incidents) ? e.incidents : [], 'incident'));
   own(st.story.rolls, 'story director run');
   st.transitions.forEach(t => Object.values(t.shows || {}).forEach(c => own(Array.isArray(c.pairs) ? c.pairs : [], 'relegation pairing')));
-  st.transitions.forEach(t => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], 'qualifier pairing'));
+  st.transitions.forEach(t => (Array.isArray(t.parts) ? t.parts : []).forEach(p =>
+    own(p && p.qualifiers && Array.isArray(p.qualifiers.pairs) ? p.qualifiers.pairs : [], 'qualifier pairing')));
+  own(st.tiers, 'tier'); own(st.links, 'tier connection');
 
   const stamp = (s, where) => {
     if (!s || !seasonById(st, s.season) || !Number.isInteger(s.week) || !Number.isInteger(s.seq)) {
@@ -3283,11 +3686,12 @@ export function validate(st) {
       }
       if (m.qualifier != null) {
         const q = m.qualifier, t = transitionById(st, q.transition);
-        const pair = t && t.promotion && Array.isArray(t.promotion.pairs) && t.promotion.pairs.find(x => x.id === q.pair);
+        const part = t && Array.isArray(t.parts) && t.parts.find(x => x && x.link === q.link);
+        const pair = part && part.qualifiers && Array.isArray(part.qualifiers.pairs) && part.qualifiers.pairs.find(x => x.id === q.pair);
         if (!pair || !pair.matches.includes(m.id)) bad.push(`${where} is a qualifying match for a pairing that doesn't exist.`);
         else if (sides.length !== 2 || sides.some(sd => !sd || sd.team || !Array.isArray(sd.wrestlers) || sd.wrestlers.length !== 1)
           || ![pair.a, pair.b].every(id => sides.some(sd => sd.wrestlers[0] === id))) bad.push(`${where} is a qualifying match between the wrong wrestlers.`);
-        if (e.showId !== PROMOTED_FROM) bad.push(`${where} is a qualifying match off NXT.`);
+        if (part && !part.lower.includes(e.showId)) bad.push(`${where} is a qualifying match on a show that doesn't move up that tier.`);
         if (m.relegation != null) bad.push(`${where} can't be a relegation and a qualifying match at once.`);
       }
       if (m.status === 'scheduled') {
@@ -3308,6 +3712,28 @@ export function validate(st) {
     });
   });
 
+  // tiers: a show in one at most, tier 1 never empty, and a connection between every two neighbours
+  names(st.tiers, 'tier');
+  const tiered = new Set();
+  st.tiers.forEach(t => {
+    if (!Array.isArray(t.shows)) { bad.push(`${t.name} has no list of shows.`); return; }
+    t.shows.forEach(id => {
+      if (!showById(st, id)) bad.push(`${t.name} names a show that doesn't exist.`);
+      if (tiered.has(id)) bad.push(`A show is in two tiers.`);
+      tiered.add(id);
+    });
+  });
+  if (!st.tiers.length || !st.tiers[0].shows || !st.tiers[0].shows.length) bad.push('Tier 1 has no shows.');
+  st.links.forEach(l => {
+    const up = tierById(st, l.upper), low = tierById(st, l.lower);
+    if (!up || !low || up === low) { bad.push(`Tier connection ${l.id} is between tiers that don't exist.`); return; }
+    if (!rulesOk(l.rules)) { bad.push(`The rules between ${up.name} and ${low.name} are unreadable.`); return; }
+    if (l.rules.relegation.to !== null && !low.shows.includes(l.rules.relegation.to)) bad.push(`${up.name} relegates to a show outside ${low.name}.`);
+    if (l.rules.promotion.to !== null && !up.shows.includes(l.rules.promotion.to)) bad.push(`${low.name} promotes to a show outside ${up.name}.`);
+  });
+  if (new Set(st.links.map(l => `${l.upper}>${l.lower}`)).size !== st.links.length) bad.push('Two tiers have two connections.');
+  st.tiers.slice(1).forEach((t, i) => { if (!linkBetween(st, st.tiers[i].id, t.id)) bad.push(`${st.tiers[i].name} and ${t.name} have no rules between them.`); });
+
   st.transitions.forEach(t => {
     const where = `The season transition ${t.id}`;
     if (!seasonById(st, t.season)) bad.push(`${where} is for a season that doesn't exist.`);
@@ -3315,8 +3741,18 @@ export function validate(st) {
     if (!Number.isInteger(t.ack) || t.ack < 0) bad.push(`${where} has a broken count of unplayed matches.`);
     stamp(t.at, where);
     if (!t.shows || typeof t.shows !== 'object') { bad.push(`${where} has no shows.`); return; }
+    const parts = Array.isArray(t.parts) ? t.parts : [];
+    if (!Array.isArray(t.parts)) bad.push(`${where} has no tiers.`);
+    parts.forEach(p => {
+      if (!p || typeof p.link !== 'string' || !Array.isArray(p.upper) || !Array.isArray(p.lower) || !rulesOk(p.rules)
+        || typeof p.upperName !== 'string' || typeof p.lowerName !== 'string') { bad.push(`${where} has an unreadable tier connection.`); return; }
+      if ([...p.upper, ...p.lower].some(id => !showById(st, id))) bad.push(`${where} names a show that doesn't exist.`);
+      if (p.rules.relegation.to !== null && !p.lower.includes(p.rules.relegation.to)) bad.push(`${where} relegates to a show outside the tier below.`);
+      if (p.rules.promotion.to !== null && !p.upper.includes(p.rules.promotion.to)) bad.push(`${where} promotes to a show outside the tier above.`);
+    });
+    if (new Set(parts.map(p => p && p.link)).size !== parts.length) bad.push(`${where} has a tier connection twice.`);
     Object.entries(t.shows).forEach(([sid, c]) => {
-      if (!showById(st, sid) || sid === RELEGATED_TO) bad.push(`${where} names a show that can't hold relegation matches.`);
+      if (!showById(st, sid) || !parts.some(p => p && Array.isArray(p.upper) && p.upper.includes(sid))) bad.push(`${where} names a show that can't hold relegation matches.`);
       if (!c || !Number.isInteger(c.count) || c.count < 0) { bad.push(`${where} has a broken number of candidates.`); return; }
       if (c.picked !== null && !(Array.isArray(c.picked) && c.picked.every(id => wrestlerById(st, id)))) bad.push(`${where} picks a candidate who doesn't exist.`);
       if (c.pairs === null) return;
@@ -3332,19 +3768,21 @@ export function validate(st) {
   });
   st.transitions.forEach(t => {
     const where = `The season transition ${t.id}`;
-    const p = t.promotion;
-    if (!p || !Array.isArray(p.picked) || p.picked.some(id => !wrestlerById(st, id))) { bad.push(`${where} has a broken qualifier field.`); return; }
-    if (p.pairs !== null) {
-      if (!Array.isArray(p.pairs)) bad.push(`${where} has broken qualifier pairings.`);
-      else p.pairs.forEach(x => {
-        if (!wrestlerById(st, x.a) || !wrestlerById(st, x.b) || x.a === x.b) bad.push(`${where} has a qualifier pairing with the wrong wrestlers.`);
-        if (!Array.isArray(x.matches) || x.matches.some(id => !st.events.some(e => e.matches.some(m => m.id === id && m.qualifier && m.qualifier.pair === x.id)))) {
-          bad.push(`${where} has a qualifier pairing whose matches don't exist.`);
-        }
-        if (x.decision != null && !(typeof x.decision.note === 'string' && Array.isArray(x.decision.qualify)
-          && x.decision.qualify.every(id => [x.a, x.b].includes(id)))) bad.push(`${where} has a broken qualifier decision.`);
-      });
-    }
+    (Array.isArray(t.parts) ? t.parts : []).forEach(part => {
+      const p = part && part.qualifiers;
+      if (!p || !Array.isArray(p.picked) || p.picked.some(id => !wrestlerById(st, id))) { bad.push(`${where} has a broken qualifier field.`); return; }
+      if (p.pairs !== null) {
+        if (!Array.isArray(p.pairs)) bad.push(`${where} has broken qualifier pairings.`);
+        else p.pairs.forEach(x => {
+          if (!wrestlerById(st, x.a) || !wrestlerById(st, x.b) || x.a === x.b) bad.push(`${where} has a qualifier pairing with the wrong wrestlers.`);
+          if (!Array.isArray(x.matches) || x.matches.some(id => !st.events.some(e => e.matches.some(m => m.id === id && m.qualifier && m.qualifier.pair === x.id)))) {
+            bad.push(`${where} has a qualifier pairing whose matches don't exist.`);
+          }
+          if (x.decision != null && !(typeof x.decision.note === 'string' && Array.isArray(x.decision.qualify)
+            && x.decision.qualify.every(id => [x.a, x.b].includes(id)))) bad.push(`${where} has a broken qualifier decision.`);
+        });
+      }
+    });
     if (t.window !== null) {
       const w = t.window;
       if (!w || typeof w !== 'object') { bad.push(`${where} has a broken transfer window.`); return; }
@@ -3355,9 +3793,11 @@ export function validate(st) {
       }
     }
   });
+  const partFor = (trId, link) => { const t = transitionById(st, trId); return t && Array.isArray(t.parts) ? t.parts.find(p => p && p.link === link) : null; };
   st.eligibility.forEach(e => {
     const where = `Draft eligibility ${e.id}`;
     if (!transitionById(st, e.transition)) bad.push(`${where} is for a season transition that doesn't exist.`);
+    else if (!partFor(e.transition, e.link)) bad.push(`${where} is for a tier connection that isn't part of its transition.`);
     if (!wrestlerById(st, e.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
     if (!['champion', 'qualifier', 'decision'].includes(e.source)) bad.push(`${where} has an unknown source.`);
     if (e.source === 'champion' && !titleById(st, e.title)) bad.push(`${where} names a title that doesn't exist.`);
@@ -3371,7 +3811,9 @@ export function validate(st) {
     if (!t) bad.push(`${where} is for a season transition that doesn't exist.`);
     else if (!t.window) bad.push(`${where} was made without a transfer window.`);
     if (!wrestlerById(st, d.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
-    if (!showById(st, d.to) || d.to === PROMOTED_FROM) bad.push(`${where} goes to a show that can't take draft picks.`);
+    const part = partFor(d.transition, d.link);
+    if (!part) bad.push(`${where} is for a tier connection that isn't part of its transition.`);
+    else if (!showById(st, d.to) || !part.upper.includes(d.to)) bad.push(`${where} goes to a show that can't take draft picks.`);
     const mv = st.moves.find(x => x.id === d.move);
     if (!mv || mv.wrestler !== d.wrestler || mv.to !== d.to) bad.push(`${where} names a roster move that doesn't match it.`);
     if (!Array.isArray(d.eligibility) || d.eligibility.some(id => !st.eligibility.some(e => e.id === id && e.wrestler === d.wrestler))) bad.push(`${where} names eligibility that doesn't match it.`);
@@ -3384,12 +3826,15 @@ export function validate(st) {
     if (!transitionById(st, r.transition)) bad.push(`${where} is for a season transition that doesn't exist.`);
     if (!wrestlerById(st, r.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
     if (r.opponent != null && !wrestlerById(st, r.opponent)) bad.push(`${where} names an opponent who doesn't exist.`);
-    if (!showById(st, r.show) || r.show === RELEGATED_TO) bad.push(`${where} names a show that doesn't hold relegation matches.`);
+    const part = partFor(r.transition, r.link);
+    if (!part) bad.push(`${where} is for a tier connection that isn't part of its transition.`);
+    else if (!part.upper.includes(r.show)) bad.push(`${where} names a show that doesn't hold relegation matches.`);
+    if (!showById(st, r.to)) bad.push(`${where} goes to a show that doesn't exist.`);
     if (!eventById(st, r.event)) bad.push(`${where} happened at an event that doesn't exist.`);
     if (r.match != null && !st.events.some(e => e.matches.some(m => m.id === r.match))) bad.push(`${where} names a match that doesn't exist.`);
     if (r.move != null) {
       const mv = st.moves.find(x => x.id === r.move);
-      if (!mv || mv.wrestler !== r.wrestler || mv.to !== RELEGATED_TO) bad.push(`${where} names a roster move that doesn't match it.`);
+      if (!mv || mv.wrestler !== r.wrestler || mv.to !== r.to) bad.push(`${where} names a roster move that doesn't match it.`);
     }
     if (typeof r.reason !== 'string' || !r.reason) bad.push(`${where} has no reason.`);
     stamp(r.at, where);

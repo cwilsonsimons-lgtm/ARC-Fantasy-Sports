@@ -1,16 +1,20 @@
 // Universe — the season transition page: relegation after WrestleMania.
 //
-// One section per main-roster show. Each shows the season win totals the
-// candidates come from, who the candidates are and how they're paired, where
-// the matches go, and what happened - and, above all, anything the rule
-// can't settle on its own (a tie at the cutoff, an odd number, results still
-// missing, a match without a winner). Those wait for the owner: booking is
-// held until they're decided. The winner of every relegation match is
-// whoever wins in WWE 2K25; the loser moves to NXT when the result is saved.
+// One section per show holding relegation matches - each show in a tier whose
+// connection to the tier below has relegation on (Raw, SmackDown and Dynamite,
+// as it starts). Each shows the season win totals the candidates come from,
+// who the candidates are and how they're paired, where the matches go, and
+// what happened - and, above all, anything the rule can't settle on its own
+// (a tie at the cutoff, an odd number, results still missing, a match without
+// a winner). Those wait for the owner: booking is held until they're decided.
+// The winner of every relegation match is whoever wins in WWE 2K25; the loser
+// moves down to the connection's show (NXT, as it starts) when the result is
+// saved. The page's Rules part shows the tiers and rules the transition keeps.
 import * as M from './model.js';
 import { ICON, chip, empty, esc, eventWhen, findable, showColor, showName } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, popPage, pushPage, refresh, uni } from './app.js';
 import { uvPromotionPart, uvPromotionSummary, uvWindowPart } from './promotion.js';
+import { uvRuleLines } from './tiers.js';
 
 export function uvOpenTransition(id) { pushPage('transition', id); }
 
@@ -33,7 +37,8 @@ export function uvStartTransition() {
       title: 'Season transition',
       body: `
         <p class="uv-p">Pick the premium live event that ends the season — WrestleMania. Its season’s win totals, up to and including
-          it, decide each main show’s relegation candidates; their matches go on each show’s first episode after it.</p>
+          it, decide each show’s relegation candidates; their matches go on each show’s first episode after it. The tiers and their
+          rules (<span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span>) are kept with the transition as they stand now.</p>
         ${list.length ? list.map(e => `<div class="uv-row" onclick="uvStartTransitionAt('${e.id}')">
             <span class="uv-av sq" style="--c:var(--uv-gold)">${ICON.star}</span>
             <div class="uv-main"><div class="nm">${esc(e.name)}</div>
@@ -64,21 +69,21 @@ export function uvTransitionSummary(st, tr) {
   return [...relegationSummary(st, tr), ...uvPromotionSummary(st, tr)];
 }
 function relegationSummary(st, tr) {
-  return M.mainShows(st).map(s => {
+  return M.relegationShows(st, tr).map(s => {
     const t = M.relegationTable(st, tr.id, s.id);
     const decisions = t.flags.filter(f => f.level === 'decide').length;
     const down = t.records.length;
     let text;
     if (!t.candidates.length && !t.flags.length) text = t.count ? 'no candidates' : 'no relegation this year';
     else if (decisions) text = `${plural(decisions, 'decision')} for you`;
-    else if (t.pairs.length && t.pairs.every(p => ['relegated', 'decided'].includes(p.status))) text = `done — ${down} to NXT`;
+    else if (t.pairs.length && t.pairs.every(p => ['relegated', 'decided'].includes(p.status))) text = `done — ${down} to ${t.to.name}`;
     else if (t.pairs.some(p => p.status === 'booked')) text = 'booked';
     else text = 'ready to book';
     return { label: s.name, color: showColor(st, s.id), text, decisions };
   });
 }
 
-// the page's three parts: relegation on the main shows, NXT's promotion, the transfer window
+// the page's parts: relegation, promotion, the transfer window, and the rules the transition keeps
 let part = 'relegation';
 export function uvTrPart(k) { part = k; refresh(); }
 
@@ -98,30 +103,48 @@ export function uvTransitionPage(id) {
         <div class="uv-trsum">${summary.map(x => `<span class="${x.decisions ? 'warn' : ''}"><i style="--c:${x.color}"></i>
           ${esc(x.label)}: ${esc(x.text)}</span>`).join('')}</div>
       </div>
-      <div class="uv-seg uv-seg-page">${seg('relegation', 'Relegation')}${seg('promotion', 'NXT promotion')}${seg('window', 'Transfer window')}</div>`;
+      <div class="uv-seg uv-seg-page">${seg('relegation', 'Relegation')}${seg('promotion', 'Promotion')}${seg('window', 'Window')}${seg('rules', 'Rules')}</div>`;
   if (part === 'promotion') return { title: `${season.name} transition`, body: head + uvPromotionPart(st, tr) };
   if (part === 'window') return { title: `${season.name} transition`, body: head + uvWindowPart(st, tr) };
-  const tables = M.mainShows(st).map(s => M.relegationTable(st, id, s.id));
+  if (part === 'rules') return { title: `${season.name} transition`, body: head + rulesPart(st, tr) };
+  const tables = M.relegationShows(st, tr).map(s => M.relegationTable(st, id, s.id));
   const incomplete = tables[0] && tables[0].flags.find(f => f.key === 'incomplete');
   const booked = tables.some(t => t.pairs.some(p => p.matches.length));
-  const started = booked || M.promotionTable(st, id).pairs.some(p => p.matches.length) || tr.window;
+  const started = booked || tr.parts.some(p => (p.qualifiers.pairs || []).some(x => x.matches.length)) || tr.window;
+  // a heading per tier connection, when more than one holds relegation matches
+  const parts = tr.parts.filter(p => p.upper.some(sid => tr.shows[sid]));
+  const sections = parts.map(p => `${parts.length > 1 ? `<div class="uv-sub">${esc(p.upperName)} → ${esc(p.lowerName)}</div>` : ''}
+    ${tables.filter(t => t.part === p).map(t => showSection(st, t)).join('')}`).join('');
   return {
     title: `${season.name} transition`,
     body: `${head}
-      <p class="uv-p uv-inset-p">On each main show, the wrestlers with the fewest wins in ${esc(season.name)} — up to and including
-        ${esc(wm.name)} — face each other on its first show after it. Whoever loses goes to NXT; the winner stays. Each show sets
-        its own number. <span class="uv-link gold" onclick="uvHowRelegation()">How relegation works</span></p>
+      <p class="uv-p uv-inset-p">On each show holding relegation matches, the wrestlers with the fewest wins in ${esc(season.name)} —
+        up to and including ${esc(wm.name)} — face each other on its first show after it. Whoever loses goes down a tier
+        (${parts.map(p => `${esc(M.showNamesOf(st, p.upper))} → ${esc(showName(st, p.rules.relegation.to))}`).join('; ') || 'no tier has relegation on'});
+        the winner stays. Each show sets its own number. <span class="uv-link gold" onclick="uvHowRelegation()">How relegation works</span></p>
       ${incomplete ? `<div class="uv-flag decide top"><b>Your decision</b><span>${esc(incomplete.text)}</span>
         <div class="uv-btn sm2" onclick="uvTrCountAsTheyStand('${id}')">Count the wins as they stand</div></div>` : ''}
-      ${tables.map(t => showSection(st, t)).join('')}
+      ${sections || '<div class="uv-none">No tier holds relegation matches in this transition.</div>'}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
         <div class="fine">A wrong relegation result is corrected on its match, like any other: the wrestler who really lost goes
-          to NXT instead, and the one who didn’t comes back. Clearing the result or taking the match off the card brings them back.</div>
+          down instead, and the one who didn’t comes back. Clearing the result or taking the match off the card brings them back.</div>
         ${started ? '' : `<div class="uv-fixrow bad" onclick="uvTrCancel('${id}')">${ICON.x}<div><b>Cancel this transition</b>
           <span>Nothing is booked from it yet</span></div></div>`}
       </div>`,
   };
+}
+
+// the tiers and rules this transition keeps - as they stood when it started
+function rulesPart(st, tr) {
+  return `<p class="uv-p uv-inset-p">These are the tiers and rules as they stood when this transition started — it keeps them, so
+      what happens here always reads the same. Changes in <span class="uv-link gold" onclick="uvOpenTiers()">Tiers & transfers</span>
+      apply from the next transition.</p>
+    ${tr.parts.map(p => `<div class="uv-conn" data-conn="${p.link}">
+      <div class="h">${ICON.move}<div><b>${esc(p.upperName)} ⇄ ${esc(p.lowerName)}</b>
+        <span>${esc(M.showNamesOf(st, p.upper) || 'no shows')} · ${esc(M.showNamesOf(st, p.lower) || 'no shows')}</span></div></div>
+      ${uvRuleLines(st, p.rules, { name: p.upperName, shows: p.upper }, { name: p.lowerName, shows: p.lower })}
+    </div>`).join('') || '<div class="uv-none">There was only one tier when this transition started.</div>'}`;
 }
 
 function showSection(st, t) {
@@ -172,7 +195,7 @@ function showSection(st, t) {
       ${fixed ? '<div class="fine">Candidates are fixed now that matches are booked.</div>' : '<div class="fine">Tap a wrestler to make them a candidate, or not.</div>'}
       ${t.pairs.length || t.unpaired.length ? `<div class="uv-sub">Relegation matches</div><div class="uv-pairs">${pairs}</div>` : ''}
       ${book}
-      ${t.records.map(r => { const d = M.relegationDrift(st, r); return `<div class="uv-relrec"><b>${nm(st, r.wrestler)} → NXT</b><span>${esc(r.reason)}</span>${d
+      ${t.records.map(r => { const d = M.relegationDrift(st, r); return `<div class="uv-relrec"><b>${nm(st, r.wrestler)} → ${esc(showName(st, r.to))}</b><span>${esc(r.reason)}</span>${d
         ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? '' : 's'} now, not ${d.then}. The relegation stands unless you undo it.</span>` : ''}</div>`; }).join('')}
     </div>`;
 }
@@ -193,14 +216,14 @@ function pairRow(st, t, p) {
   const rec = st.relegations.find(r => r.pair === p.id && (r.match === m.id || r.decided));
   let detail = '';
   if (p.status === 'booked') detail = `On <span class="uv-link" onclick="uvOpenEvent('${ev.id}')">${esc(ev.name)}</span>`;
-  if (p.status === 'relegated') detail = `<b>${nm(st, m.sides[m.winner].wrestlers[0])}</b> won at ${esc(ev.name)}${rec ? ` — <b>${nm(st, rec.wrestler)}</b> to NXT` : ''}`;
+  if (p.status === 'relegated') detail = `<b>${nm(st, m.sides[m.winner].wrestlers[0])}</b> won at ${esc(ev.name)}${rec ? ` — <b>${nm(st, rec.wrestler)}</b> to ${esc(showName(st, rec.to))}` : ''}`;
   if (p.status === 'no winner') {
     detail = `${m.outcome === 'draw' ? 'A draw' : 'A no contest'} at ${esc(ev.name)}.
       <div class="uv-pacts"><div class="uv-btn sm2" onclick="uvTrRematch('${trId}','${sid}','${p.id}')">Book a rematch…</div>
         <div class="uv-btn sm2" onclick="uvTrDecide('${trId}','${sid}','${p.id}')">Decide…</div></div>`;
   }
   if (p.status === 'decided') {
-    detail = `${p.decision.relegate ? `You sent <b>${nm(st, p.decision.relegate)}</b> to NXT` : 'You kept both'}${p.decision.note ? ` — ${esc(p.decision.note)}` : ''}.
+    detail = `${p.decision.relegate ? `You sent <b>${nm(st, p.decision.relegate)}</b> to ${esc(t.to.name)}` : 'You kept both'}${p.decision.note ? ` — ${esc(p.decision.note)}` : ''}.
       <span class="uv-link" onclick="uvTrUndoDecision('${trId}','${sid}','${p.id}')">Undo</span>`;
   }
   return `<div class="uv-pair">
@@ -249,7 +272,7 @@ export function uvTrRematch(trId, showId, pairId) {
     const week = Math.max(cur.week, p.last.ev.at.season === cur.id ? p.last.ev.at.week + 1 : 1);
     return {
       title: 'Book a rematch',
-      body: `<p class="uv-p"><b>${nm(st, p.a)}</b> vs <b>${nm(st, p.b)}</b> again — the loser goes to NXT.</p>
+      body: `<p class="uv-p"><b>${nm(st, p.a)}</b> vs <b>${nm(st, p.b)}</b> again — the loser goes to ${esc(t.to.name)}.</p>
         ${later.map(e => `<div class="uv-row" onclick="uvTrRematchOn('${trId}','${showId}','${pairId}','${e.id}')">
           <span class="uv-av sq" style="--c:${showColor(st, showId)}">${ICON.cal}</span>
           <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${esc(eventWhen(st, e))}</div></div>
@@ -287,8 +310,8 @@ export function uvTrDecide(trId, showId, pairId) {
           at ${esc(p.last.ev.name)}, so the rule can’t say who goes down. It’s your call — or book a rematch instead.</p>
         <label class="uv-f wide"><span>Why (kept in the record, optional)</span>
           <input id="uvTrNote" class="uv-in" maxlength="60" placeholder="e.g. Lost the rematch on the tie-break" oninput="uvTrNote(this.value)"></label>
-        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.a}')">Send ${nm(st, p.a)} to NXT</div>
-        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.b}')">Send ${nm(st, p.b)} to NXT</div>
+        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.a}')">Send ${nm(st, p.a)} to ${esc(t.to.name)}</div>
+        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.b}')">Send ${nm(st, p.b)} to ${esc(t.to.name)}</div>
         <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','')">Keep both on ${esc(t.show.name)}</div>`,
     };
   });
@@ -296,11 +319,11 @@ export function uvTrDecide(trId, showId, pairId) {
 export function uvTrNote(v) { decisionNote = v; }
 export function uvTrDecideSave(trId, showId, pairId, wid) {
   const r = commit(st => M.decidePair(st, trId, showId, pairId, wid || null, decisionNote),
-    () => (wid ? `${M.wrestlerById(uni(), wid).name} sent to NXT` : 'Both stay'));
+    () => (wid ? `${M.wrestlerById(uni(), wid).name} sent to ${showName(uni(), M.relegationTo(M.transitionById(uni(), trId), showId))}` : 'Both stay'));
   if (r.ok) closeSheet();
 }
 export function uvTrUndoDecision(trId, showId, pairId) {
-  confirmThen('Undo your decision?', 'Anyone it sent to NXT comes back, and the match is left without a winner again.', 'Undo',
+  confirmThen('Undo your decision?', 'Anyone it sent down comes back, and the match is left without a winner again.', 'Undo',
     () => commit(st => M.undoDecision(st, trId, showId, pairId), 'Decision undone'));
 }
 
@@ -308,15 +331,16 @@ export function uvHowRelegation() {
   openSheet(() => ({
     title: 'How relegation works',
     body: `
-      <p class="uv-p"><b>When.</b> Once a season, after WrestleMania. Each main-roster show — every show but NXT — holds its own
-        relegation matches on its first episode after WrestleMania.</p>
+      <p class="uv-p"><b>When.</b> Once a season, after WrestleMania. Each show in a tier whose connection to the tier below has
+        relegation on — Raw, SmackDown and Dynamite, as it starts — holds its own relegation matches on its first episode after
+        WrestleMania. <span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span> sets which, how many, and where losers go.</p>
       <p class="uv-p"><b>Who.</b> Everyone who was on the show at WrestleMania is ranked by their wins that season, up to and
         including WrestleMania: singles and tag wins, wherever they happened. Draws, losses and no contests aren’t wins. The
-        candidates are the ones with the fewest — as many as you set for that show. Shows don’t have to match: one can have
-        four candidates and another none, whatever their roster sizes.</p>
+        candidates are the ones with the fewest — as many as the rules say, and you can change each show’s number. Shows don’t
+        have to match: one can have four candidates and another none, whatever their roster sizes.</p>
       <p class="uv-p"><b>The matches.</b> Candidates face each other one on one, paired in win order until you pair them
-        differently. The loser moves to NXT the moment you save the result — the winner stays. WWE 2K25 decides who wins;
-        this never does.</p>
+        differently. The loser moves down a tier — to NXT, as it starts — the moment you save the result; the winner stays.
+        WWE 2K25 decides who wins; this never does.</p>
       <p class="uv-p"><b>What waits for you.</b> Nothing is invented where the rule runs out. Booking waits while any of these
         is open, and each is flagged as <i>your decision</i>:</p>
       <div class="uv-calc">

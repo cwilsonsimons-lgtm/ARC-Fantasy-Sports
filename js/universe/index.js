@@ -114,6 +114,7 @@ export function uvGo(where, arg = '') {
     case 'rankings': uvRankFor(arg || null); uvTab('rankings'); return;
     case 'balance': uvRankFor(arg || null, 'balance'); uvTab('rankings'); return;
     case 'story': uvTab('calendar'); pushPage('story', 'all'); return;
+    case 'tiers': uvTab('calendar'); pushPage('tiers', 'all'); return;
     case 'transition': {
       const [id, part] = String(arg).split(':');
       uvTab('calendar');
@@ -143,7 +144,7 @@ function goSheet() {
   const row = (go, icon, head, sub, cls = '') => `<div class="uv-go ${cls}" onclick="${go}">${icon}<div><b>${esc(head)}</b>
     <span>${esc(sub)}</span></div>${ICON.right}</div>`;
   const how = [['uvHowRanked', 'Rankings'], ['uvHowBalance', 'Booking balance'], ['uvHowRelegation', 'Relegation'],
-    ['uvHowPromotion', 'NXT promotion & draft'], ['uvHowRelations', 'Relationships'], ['uvHowStory', 'Story director']];
+    ['uvHowPromotion', 'Promotion & the draft'], ['uvHowTiers', 'Tiers'], ['uvHowRelations', 'Relationships'], ['uvHowStory', 'Story director']];
   return {
     title: 'Go to',
     body: `
@@ -164,7 +165,8 @@ function goSheet() {
         ${tr ? row(`uvGo('transition','${tr.id}:${tr.window ? 'window' : 'relegation'}')`, ICON.move,
           trWin ? 'Transfer window — open' : tr.window ? `${M.seasonById(st, tr.season).name} transition · transfer window` : `${M.seasonById(st, tr.season).name} transition`,
           uvTransitionSummary(st, tr).map(x => `${x.label}: ${x.text}`).join(' · '), trWin ? 'hot' : '')
-          : row(`uvGo('calendar')`, ICON.move, 'Season transition', 'Starts from WrestleMania, on its show page — relegation, NXT promotion, the draft')}
+          : row(`uvGo('calendar')`, ICON.move, 'Season transition', 'Starts from WrestleMania, on its show page — relegation, promotion, the draft')}
+        ${row(`uvGo('tiers')`, ICON.list, 'Tiers & transfers', st.tiers.map((t, i) => `${i + 1} ${t.name}`).join(' · '))}
         ${row(`uvGo('save')`, ICON.save, 'Save & backup', 'Export, import, restore points')}
       </div>
       <div class="uv-sub flush" style="margin-top:14px">How it works</div>

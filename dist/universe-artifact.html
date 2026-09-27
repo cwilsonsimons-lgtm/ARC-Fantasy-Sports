@@ -756,6 +756,44 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-rl em{font-style:normal;color:var(--uv-ink-3);white-space:nowrap}
 .uv-bu .uv-left{font-size:10.5px}
 
+/* ---------- tiers & transfers ---------- */
+.uv-tiers{display:flex;flex-direction:column;gap:0;margin:12px 14px 0}
+.uv-tier{border:1px solid var(--uv-line);border-radius:14px;background:var(--uv-card);overflow:hidden}
+.uv-tier.none{margin:0 14px;border-style:dashed}
+.uv-tier>.h{display:flex;align-items:center;gap:8px;padding:10px 10px 8px 12px;border-bottom:1px solid var(--uv-line-soft)}
+.uv-tier>.h .no{flex:none;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--uv-gold);border:1px solid var(--uv-gold-line);background:var(--uv-gold-soft)}
+.uv-tier>.h b{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:15px;letter-spacing:.3px;cursor:pointer;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uv-tier>.h .sp{flex:1}
+.uv-tier .uv-none{padding:10px 12px}
+.uv-tier .fine,#uvBody .fine.uv-inset-p{padding:0 12px 10px;font-size:11px;line-height:1.5;color:var(--uv-ink-3)}
+#uvBody .fine.uv-inset-p{padding:6px 16px 0}
+.uv-trow{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 12px;border-top:1px solid var(--uv-line-soft)}
+.uv-trow:first-of-type{border-top:none}
+.uv-trow .uv-dot{flex:none}
+.uv-trow .uv-main{cursor:pointer}
+.uv-trow .uv-main .nm{font-size:14px}
+.uv-trow select.uv-in{flex:none;width:auto;max-width:48%;padding:7px 28px 7px 9px;font-size:12px}
+.uv-conn{position:relative;margin:0 12px;padding:10px 12px 12px;border:1px solid var(--uv-line);border-top:none;border-bottom:none;
+  background:var(--uv-card-2)}
+.uv-conn .uv-btn{margin-top:10px}
+.uv-conn>.h{display:flex;align-items:center;gap:9px}
+.uv-conn>.h>svg{flex:none;width:17px;height:17px;color:var(--uv-gold)}
+.uv-conn>.h b{display:block;font-size:12.5px}
+.uv-conn>.h span{display:block;font-size:11.5px;color:var(--uv-ink-2)}
+.uv-trshow .uv-conn,.uv-page>.uv-conn,.uv-body>.uv-conn{margin:10px 14px 0;border:1px solid var(--uv-line);border-radius:14px}
+.uv-rules{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.uv-rules>div{display:grid;grid-template-columns:16px minmax(0,auto) 1fr;gap:2px 8px;align-items:baseline;font-size:12px;line-height:1.45}
+.uv-rules .d{display:grid;align-self:start;padding-top:3px}
+.uv-rules .d svg{width:13px;height:13px;color:var(--uv-ink-3)}
+.uv-rules b{font-weight:700;color:var(--uv-ink);white-space:nowrap}
+.uv-rules .x{color:var(--uv-ink-2)}
+.uv-rules .off b,.uv-rules .off .x{color:var(--uv-ink-3)}
+.uv-rules .pend .x{color:var(--uv-amber)}
+.uv-conn .uv-flag{margin-top:9px}
+#uvSheetBody h4 svg{width:14px;height:14px;margin-right:6px;vertical-align:-2px;color:var(--uv-gold)}
+
 /* ---------- the story director ---------- */
 .uv-card-row.hot{background:var(--uv-gold-soft)}
 .uv-card-row.hot b{color:var(--uv-gold)}
@@ -941,7 +979,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 8;
+  var SCHEMA_VERSION = 9;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -955,8 +993,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     { id: "raw", name: "Raw", promotion: "WWE", color: "#E23B2E", day: 0 },
     { id: "smackdown", name: "SmackDown", promotion: "WWE", color: "#2F6BFF", day: 4 },
     { id: "dynamite", name: "Dynamite", promotion: "AEW", color: "#D8A93B", day: 2 },
-    { id: "nxt", name: "NXT", promotion: "WWE", color: "#C4CAD3", day: 1 }
+    { id: "nxt", name: "NXT", promotion: "WWE", color: "#C4CAD3", day: 1 },
+    { id: "evolve", name: "Evolve", promotion: "WWE", color: "#2BB3A3", day: 2 }
   ];
+  var LEGACY_SHOWS = ["raw", "smackdown", "dynamite", "nxt"];
   var DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   var PLE_DAY = 5;
   var GENDERS = ["male", "female"];
@@ -994,14 +1034,18 @@ body.uv-confirm-open .uv-confirm{display:flex}
       seasons: [],
       events: [],
       // shows and PLEs, each holding its match results
+      tiers: [],
+      // the shows in tiers, top down: tier 1 is the main roster
+      links: [],
+      // the rules between each tier and the one below it
       transitions: [],
       // the season transition after each WrestleMania: relegation candidates and pairings
       relegations: [],
-      // every relegation to NXT, and why - kept for good
+      // every relegation down a tier, and why - kept for good
       eligibility: [],
       // who became draft eligible after WrestleMania, and how
       drafts: [],
-      // every draft pick from NXT - kept for good
+      // every draft pick up a tier - kept for good
       traitLog: [],
       // every change to a wrestler's personality, dated (or from the start)
       relEdits: [],
@@ -1010,6 +1054,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       // the story director: its settings, seed, and a log of every time it ran
     };
     openSeason(st, 1, "");
+    seedTiers(st);
     return st;
   }
   var byId = (list, id) => id == null || id === "" ? null : list.find((x) => x.id === id) || null;
@@ -1215,7 +1260,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function inTransition(st, id) {
     const inPairs = (pairs) => (pairs || []).some((p) => p.a === id || p.b === id);
-    return st.relegations.some((r) => r.wrestler === id || r.opponent === id) || st.eligibility.some((e) => e.wrestler === id || e.opponent === id) || st.drafts.some((d) => d.wrestler === id) || st.transitions.some((t) => Object.values(t.shows).some((c) => (c.picked || []).includes(id) || inPairs(c.pairs)) || t.promotion.picked.includes(id) || inPairs(t.promotion.pairs));
+    return st.relegations.some((r) => r.wrestler === id || r.opponent === id) || st.eligibility.some((e) => e.wrestler === id || e.opponent === id) || st.drafts.some((d) => d.wrestler === id) || st.transitions.some((t) => Object.values(t.shows).some((c) => (c.picked || []).includes(id) || inPairs(c.pairs)) || t.parts.some((p) => p.qualifiers.picked.includes(id) || inPairs(p.qualifiers.pairs)));
   }
   function deleteWrestler(st, id) {
     const w = must(wrestlerById(st, id), "wrestler", id);
@@ -1337,7 +1382,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const otherSpells = st.memberships.some((m) => m !== last.m && m.team === id && m.wrestler === w.id);
       let used = null;
       eachMatch(st, (m, ev) => {
-        if (!used && m.sides.some((sd) => sd.team === id && sd.wrestlers.includes(w.id))) used = { m, ev };
+        if (!used && m.sides.some((sd2) => sd2.team === id && sd2.wrestlers.includes(w.id))) used = { m, ev };
       });
       if (used && !otherSpells) {
         fail(`${w.name} ${used.m.status === "played" ? "wrestled" : "is booked"} for ${t.name} at ${used.ev.name}. Edit that match first.`);
@@ -1605,7 +1650,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function titleChecks(st, titleId) {
     const t = must(titleById(st, titleId), "championship", titleId);
     const hist = titleReigns(st, titleId);
-    const inIt = (h, m) => h.type === "team" ? m.sides.some((sd) => sd.team === h.id) : m.sides.some((sd) => sd.wrestlers.includes(h.id));
+    const inIt = (h, m) => h.type === "team" ? m.sides.some((sd2) => sd2.team === h.id) : m.sides.some((sd2) => sd2.wrestlers.includes(h.id));
     const out = [];
     eachPlayed(st, (m, ev) => {
       if (m.titleId !== titleId) return;
@@ -1879,7 +1924,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!by && !on) return null;
     if (outcome !== "win") fail("Only a win has someone scoring or taking the fall.");
     if (by && !sides[winner].wrestlers.includes(by)) fail(`${must(wrestlerById(st, by), "wrestler", by).name} wasn't on the winning side.`);
-    if (on && !sides.some((sd, i) => i !== winner && sd.wrestlers.includes(on))) {
+    if (on && !sides.some((sd2, i) => i !== winner && sd2.wrestlers.includes(on))) {
       fail(`${must(wrestlerById(st, on), "wrestler", on).name} wasn't on a losing side.`);
     }
     return { by, on };
@@ -2028,7 +2073,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return true;
   }
   function matchKind(match) {
-    const sizes = match.sides.map((sd) => sd.wrestlers.length);
+    const sizes = match.sides.map((sd2) => sd2.wrestlers.length);
     const n = sizes.length, k = sizes[0];
     const K = (key, label) => ({ key, label });
     if (sizes.every((x) => x === k)) {
@@ -2056,7 +2101,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function matchesOf(st, wrestlerId) {
     const out = [];
     eachPlayed(st, (match, event) => {
-      const side = match.sides.findIndex((sd) => sd.wrestlers.includes(wrestlerId));
+      const side = match.sides.findIndex((sd2) => sd2.wrestlers.includes(wrestlerId));
       if (side >= 0) out.push({ event, match, side });
     });
     return out.sort((a, b) => compareStamps(st, b.event.at, a.event.at));
@@ -2065,7 +2110,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = [];
     eachMatch(st, (match, event) => {
       if (match.status !== "scheduled") return;
-      const side = match.sides.findIndex((sd) => sd.wrestlers.includes(wrestlerId));
+      const side = match.sides.findIndex((sd2) => sd2.wrestlers.includes(wrestlerId));
       if (side >= 0) out.push({ event, match, side });
     });
     return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
@@ -2082,9 +2127,183 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (match.outcome === "nc") return "NC";
     return match.winner === side ? "W" : "L";
   }
-  var RELEGATED_TO = "nxt";
+  var RELEGATION_TIMINGS = ["result", "window"];
+  var PROMOTION_TIMINGS = ["window", "result"];
+  var CHAMPION_RULES = ["eligible", "automatic", "none"];
+  var TITLE_RULES = ["ask", "vacate", "keep"];
   var DEFAULT_CANDIDATES = 2;
-  var mainShows = (st) => st.shows.filter((s) => s.id !== RELEGATED_TO);
+  var SHOW_COLORS = ["#9B6BFF", "#FF7A45", "#E4577D", "#6FA8DC", "#B5C335", "#F2B84B", "#58C47A", "#C77DDB"];
+  var tierById = (st, id) => byId(st.tiers, id);
+  var linkById = (st, id) => byId(st.links, id);
+  var tierOfShow = (st, showId) => st.tiers.find((t) => t.shows.includes(showId)) || null;
+  var linkBetween = (st, upperId, lowerId) => st.links.find((l) => l.upper === upperId && l.lower === lowerId) || null;
+  var activeLinks = (st) => st.tiers.slice(1).map((t, i) => linkBetween(st, st.tiers[i].id, t.id)).filter(Boolean);
+  var tierShows = (st, t) => t.shows.map((id) => showById(st, id)).filter(Boolean);
+  function blankRules(upper, lower) {
+    return {
+      relegation: { on: false, candidates: DEFAULT_CANDIDATES, timing: "result", to: lower.shows[0] || null },
+      qualifiers: { on: false },
+      champions: "eligible",
+      titles: "ask",
+      promotion: { timing: "window", to: upper.shows.length === 1 ? upper.shows[0] : null }
+    };
+  }
+  var copyRules = (r) => JSON.parse(JSON.stringify(r));
+  var TIER_IDS = ["tier-main", "tier-nxt", "tier-evolve"];
+  function seedTiers(st) {
+    const have = (id) => !!showById(st, id);
+    st.tiers = [
+      { id: TIER_IDS[0], name: "Main roster", shows: ["raw", "smackdown", "dynamite"].filter(have) },
+      { id: TIER_IDS[1], name: "NXT", shows: ["nxt"].filter(have) },
+      { id: TIER_IDS[2], name: "Evolve", shows: ["evolve"].filter(have) }
+    ];
+    const [main, nxt, evolve] = st.tiers;
+    const toNxt = blankRules(main, nxt);
+    Object.assign(toNxt, { champions: "eligible", titles: "ask", qualifiers: { on: true } });
+    Object.assign(toNxt.relegation, { on: true });
+    const toEvolve = blankRules(nxt, evolve);
+    Object.assign(toEvolve, { champions: "automatic", titles: "vacate" });
+    st.links = [
+      { id: "link-main-nxt", upper: main.id, lower: nxt.id, rules: toNxt },
+      { id: "link-nxt-evolve", upper: nxt.id, lower: evolve.id, rules: toEvolve }
+    ];
+  }
+  function linkTiers(st) {
+    removeWhere(st.links, (l) => !tierById(st, l.upper) || !tierById(st, l.lower));
+    st.tiers.slice(1).forEach((t, i) => {
+      const up = st.tiers[i];
+      if (!linkBetween(st, up.id, t.id)) st.links.push({ id: newId(st, "lk"), upper: up.id, lower: t.id, rules: blankRules(up, t) });
+    });
+    fixDestinations(st);
+  }
+  function fixDestinations(st) {
+    st.links.forEach((l) => {
+      const up = tierById(st, l.upper), low = tierById(st, l.lower), r = l.rules;
+      if (!low.shows.includes(r.relegation.to)) r.relegation.to = low.shows[0] || null;
+      if (r.promotion.to && !up.shows.includes(r.promotion.to)) r.promotion.to = up.shows.length === 1 ? up.shows[0] : null;
+    });
+  }
+  function tierAt(st, id, lower = false) {
+    const i = st.tiers.findIndex((t) => t.id === id);
+    if (i < 0) fail(`No tier with id "${id}".`);
+    if (lower && i === 0) fail(`${st.tiers[0].name} is tier 1, the main roster \u2014 it stays at the top.`);
+    return i;
+  }
+  function addTier(st, { name } = {}) {
+    const t = { id: newId(st, "ti"), name: checkName(st.tiers, cleanName(name) || `Tier ${st.tiers.length + 1}`, "tier"), shows: [] };
+    st.tiers.push(t);
+    linkTiers(st);
+    return t;
+  }
+  function renameTier(st, id, name) {
+    const t = st.tiers[tierAt(st, id)];
+    t.name = checkName(st.tiers, name, "tier", id);
+    return t;
+  }
+  function moveTier(st, id, dir) {
+    const i = tierAt(st, id, true);
+    const j = i + (dir < 0 ? -1 : 1);
+    if (j < 1) fail(`${st.tiers[i].name} can't go above tier 2 \u2014 tier 1 is the main roster.`);
+    if (j >= st.tiers.length) fail(`${st.tiers[i].name} is already the bottom tier.`);
+    [st.tiers[i], st.tiers[j]] = [st.tiers[j], st.tiers[i]];
+    linkTiers(st);
+    return st.tiers;
+  }
+  function removeTier(st, id) {
+    const i = tierAt(st, id, true);
+    const [t] = st.tiers.splice(i, 1);
+    linkTiers(st);
+    return t;
+  }
+  function setShowTier(st, showId, tierId) {
+    const show = must(showById(st, showId), "show", showId);
+    const to = tierId ? st.tiers[tierAt(st, tierId)] : null;
+    const from = tierOfShow(st, showId);
+    if (from === to) return to;
+    if (from && from === st.tiers[0] && from.shows.length === 1) fail(`${from.name} is tier 1 \u2014 it needs at least one show. Put another show in it first.`);
+    if (from) from.shows = from.shows.filter((id) => id !== showId);
+    if (to) to.shows.push(show.id);
+    fixDestinations(st);
+    return to;
+  }
+  function setLinkRules(st, linkId, patch = {}) {
+    const l = must(linkById(st, linkId), "connection", linkId);
+    const up = tierById(st, l.upper), low = tierById(st, l.lower);
+    const r = copyRules(l.rules);
+    const p = patch || {};
+    if (p.relegation) Object.assign(r.relegation, p.relegation);
+    if (p.qualifiers) Object.assign(r.qualifiers, p.qualifiers);
+    if (p.promotion) Object.assign(r.promotion, p.promotion);
+    if (p.champions !== void 0) r.champions = p.champions;
+    if (p.titles !== void 0) r.titles = p.titles;
+    r.relegation.on = !!r.relegation.on;
+    r.qualifiers.on = !!r.qualifiers.on;
+    const n = Number(r.relegation.candidates);
+    if (!Number.isInteger(n) || n < 0 || n > 60) fail("The number of relegation candidates has to be a whole number from 0 to 60.");
+    r.relegation.candidates = n;
+    oneOf(r.relegation.timing, RELEGATION_TIMINGS, "relegation timing");
+    oneOf(r.promotion.timing, PROMOTION_TIMINGS, "promotion timing");
+    oneOf(r.champions, CHAMPION_RULES, "champion rule");
+    oneOf(r.titles, TITLE_RULES, "title rule");
+    if (r.relegation.to === "") r.relegation.to = null;
+    if (r.promotion.to === "") r.promotion.to = null;
+    if (r.relegation.to !== null && !low.shows.includes(r.relegation.to)) fail(`Relegated wrestlers go to a show in ${low.name}.`);
+    if (r.relegation.on && !r.relegation.to) fail(`${low.name} has no show for relegated wrestlers to go to. Put a show in it first.`);
+    if (r.promotion.to !== null && !up.shows.includes(r.promotion.to)) fail(`Wrestlers moving up go to a show in ${up.name}.`);
+    const alone = r.champions === "automatic" || r.qualifiers.on && r.promotion.timing === "result";
+    if (alone && !r.promotion.to) {
+      if (up.shows.length === 1) r.promotion.to = up.shows[0];
+      else fail(`Pick the show in ${up.name} they move up to \u2014 moving up by themselves, nobody drafts them.`);
+    }
+    l.rules = r;
+    return l;
+  }
+  function rulesOk(r) {
+    const showOrNull = (v) => v === null || typeof v === "string";
+    return !!r && typeof r === "object" && !!r.relegation && typeof r.relegation.on === "boolean" && Number.isInteger(r.relegation.candidates) && r.relegation.candidates >= 0 && RELEGATION_TIMINGS.includes(r.relegation.timing) && showOrNull(r.relegation.to) && !!r.qualifiers && typeof r.qualifiers.on === "boolean" && CHAMPION_RULES.includes(r.champions) && TITLE_RULES.includes(r.titles) && !!r.promotion && PROMOTION_TIMINGS.includes(r.promotion.timing) && showOrNull(r.promotion.to);
+  }
+  function pendingRules(rules) {
+    const out = [];
+    if (rules.relegation.on && rules.relegation.timing === "window") out.push("relegated wrestlers moving down at the transfer window");
+    if (rules.champions === "automatic") out.push("champions moving up by themselves at the transfer window");
+    if (rules.qualifiers.on && rules.promotion.timing === "result") out.push("qualifying winners moving up straight away");
+    return out;
+  }
+  function addShow(st, { name, day = 0, tier = null } = {}) {
+    const used = new Set(st.shows.map((x) => String(x.color).toLowerCase()));
+    const color = SHOW_COLORS.find((c) => !used.has(c.toLowerCase())) || SHOW_COLORS[st.shows.length % SHOW_COLORS.length];
+    const show = { id: newId(st, "sh"), name: checkName(st.shows, name, "show"), promotion: "Other", color, day: checkDay(day) };
+    st.shows.push(show);
+    if (tier) setShowTier(st, show.id, tier);
+    return show;
+  }
+  function updateShow(st, id, patch = {}) {
+    const show = must(showById(st, id), "show", id);
+    const name = patch.name !== void 0 ? checkName(st.shows, patch.name, "show", id) : show.name;
+    const day = patch.day !== void 0 ? checkDay(patch.day) : show.day;
+    Object.assign(show, { name, day });
+    return show;
+  }
+  function showRefs(st, id) {
+    const refs = [];
+    const on = st.wrestlers.filter((w) => w.showId === id).length;
+    if (on) refs.push(on === 1 ? "a wrestler on it" : `${on} wrestlers on it`);
+    if (st.moves.some((m) => m.from === id || m.to === id)) refs.push("roster moves");
+    if (st.events.some((e) => e.showId === id)) refs.push("episodes on the calendar");
+    if (st.titles.some((t) => t.showId === id)) refs.push("a championship");
+    if (st.transitions.some((t) => t.shows[id] || (t.parts || []).some((p) => p.upper.includes(id) || p.lower.includes(id)))) refs.push("a season transition");
+    return refs;
+  }
+  function deleteShow(st, id) {
+    const show = must(showById(st, id), "show", id);
+    const refs = showRefs(st, id);
+    if (refs.length) fail(`${show.name} has history (${refs.join(", ")}), so it can't be deleted.`);
+    const t = tierOfShow(st, id);
+    if (t && t === st.tiers[0] && t.shows.length === 1) fail(`${show.name} is tier 1's only show. Put another show in tier 1 first.`);
+    if (t) t.shows = t.shows.filter((x) => x !== id);
+    removeWhere(st.shows, (x) => x.id === id);
+    fixDestinations(st);
+  }
   var transitionById = (st, id) => byId(st.transitions, id);
   var transitionOfSeason = (st, seasonId) => st.transitions.find((t) => t.season === seasonId) || null;
   var plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -2093,10 +2312,32 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return n + (t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th");
   };
   var nameOf = (st, id) => (wrestlerById(st, id) || { name: "(deleted)" }).name;
-  var listNames = (st, ids) => {
-    const ns = ids.map((id) => nameOf(st, id));
-    return ns.length < 3 ? ns.join(" and ") : `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`;
+  var joinNames = (ns, and = "and") => ns.length < 3 ? ns.join(` ${and} `) : `${ns.slice(0, -1).join(", ")} ${and} ${ns[ns.length - 1]}`;
+  var listNames = (st, ids) => joinNames(ids.map((id) => nameOf(st, id)));
+  var showNames = (st, ids, and = "and") => joinNames(ids.map((id) => (showById(st, id) || { name: "?" }).name), and);
+  var showNamesOf = (st, ids, and = "and") => showNames(st, ids, and);
+  var partOf = (tr, linkId) => (tr.parts || []).find((p) => p.link === linkId) || null;
+  var partAbove = (tr, showId) => (tr.parts || []).find((p) => p.upper.includes(showId)) || null;
+  var partBelow = (tr, showId) => (tr.parts || []).find((p) => p.lower.includes(showId)) || null;
+  var relegationShows = (st, tr) => (tr.parts || []).flatMap((p) => p.upper.filter((id) => tr.shows[id])).map((id) => showById(st, id)).filter(Boolean);
+  var relegationTo = (tr, showId) => {
+    const p = partAbove(tr, showId);
+    return p ? p.rules.relegation.to : null;
   };
+  function partsNow(st) {
+    return activeLinks(st).map((l) => {
+      const up = tierById(st, l.upper), low = tierById(st, l.lower);
+      return {
+        link: l.id,
+        upperName: up.name,
+        lowerName: low.name,
+        upper: [...up.shows],
+        lower: [...low.shows],
+        rules: copyRules(l.rules),
+        qualifiers: { picked: [], pairs: null }
+      };
+    });
+  }
   function seasonWins(st, wm) {
     const out = /* @__PURE__ */ new Map();
     const get = (id) => {
@@ -2105,12 +2346,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
     st.events.filter((e) => e.at.season === wm.at.season && compareStamps(st, e.at, wm.at) <= 0).forEach((e) => e.matches.forEach((m) => {
       if (m.status !== "played") return;
-      m.sides.forEach((sd, i) => sd.wrestlers.forEach((id) => {
+      m.sides.forEach((sd2, i) => sd2.wrestlers.forEach((id) => {
         const t = get(id);
         t.matches++;
         if (m.outcome === "win" && m.winner === i) {
           t.wins++;
-          if (sd.wrestlers.length === 1) t.singles++;
+          if (sd2.wrestlers.length === 1) t.singles++;
           else t.tag++;
         }
       }));
@@ -2152,6 +2393,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const cfg = tr.shows[showId];
     if (!cfg) fail(`${showById(st, showId) ? showById(st, showId).name : "That show"} doesn't hold relegation matches.`);
     const show = showById(st, showId);
+    const part2 = partAbove(tr, showId);
+    const to = showById(st, part2.rules.relegation.to);
     const wm = eventById(st, tr.event);
     const totals = seasonWins(st, wm);
     const pool = st.wrestlers.filter((w) => showAtStamp(st, w, wm.at) === showId).map((w) => ({
@@ -2202,7 +2445,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (cfg.count > 0 && pool.length < 2) check("small", `Only ${plural(pool.length, "wrestler")} ${pool.length === 1 ? "was" : "were"} on ${show.name} at WrestleMania, so there's no relegation match to hold.`);
     pairs.filter((p) => p.status === "no winner").forEach((p) => decide(
       "nowinner",
-      `${nameOf(st, p.a)} vs ${nameOf(st, p.b)} ended in ${p.last.m.outcome === "draw" ? "a draw" : "a no contest"}. Book a rematch, or decide who (if anyone) goes to NXT.`
+      `${nameOf(st, p.a)} vs ${nameOf(st, p.b)} ended in ${p.last.m.outcome === "draw" ? "a draw" : "a no contest"}. Book a rematch, or decide who (if anyone) goes to ${to.name}.`
     ));
     const byIdIn = (id) => pool.find((r) => r.id === id);
     candidates.forEach((id) => {
@@ -2239,6 +2482,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       tr,
       wm,
       show,
+      part: part2,
+      to,
       count: cfg.count,
       auto: !cfg.picked,
       pool,
@@ -2270,18 +2515,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const ev = must(eventById(st, eventId), "event", eventId);
     const season = seasonById(st, ev.at.season);
     if (transitionOfSeason(st, season.id)) fail(`${season.name} already has its season transition.`);
-    const tr = {
-      id: newId(st, "tr"),
-      season: season.id,
-      event: ev.id,
-      ack: 0,
-      at: now(st),
-      shows: {},
-      promotion: { picked: [], pairs: null },
-      window: null
-    };
-    mainShows(st).forEach((s) => {
-      tr.shows[s.id] = { count: DEFAULT_CANDIDATES, picked: null, pairs: null };
+    const tr = { id: newId(st, "tr"), season: season.id, event: ev.id, ack: 0, at: now(st), parts: partsNow(st), shows: {}, window: null };
+    tr.parts.forEach((p) => {
+      if (p.rules.relegation.on) p.upper.forEach((id) => {
+        tr.shows[id] = { count: p.rules.relegation.candidates, picked: null, pairs: null };
+      });
     });
     st.transitions.push(tr);
     return tr;
@@ -2289,7 +2527,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function cancelTransition(st, trId) {
     const tr = must(transitionById(st, trId), "season transition", trId);
     if (Object.values(tr.shows).some((c) => bookedPairs(c).length)) fail("Relegation matches are on the card. Take them off first.");
-    if (bookedQualifiers(tr.promotion).length) fail("Qualifying matches are on the card. Take them off first.");
+    if (tr.parts.some((p) => bookedQualifiers(p.qualifiers).length)) fail("Qualifying matches are on the card. Take them off first.");
     if (tr.window) fail("The transfer window has been opened. Take that back first.");
     removeWhere(st.transitions, (t) => t.id === trId);
   }
@@ -2349,6 +2587,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const { tr, cfg } = transitionCfg(st, trId, showId);
     const t = relegationTable(st, trId, showId);
     const ev = must(eventById(st, eventId), "event", eventId);
+    if (t.part.rules.relegation.timing !== "result") {
+      fail(`This transition's rules move relegated wrestlers down at the transfer window, which isn't carried out yet \u2014 so its relegation matches can't be booked.`);
+    }
     if (ev.kind !== "weekly" || ev.showId !== showId) fail(`${t.show.name}'s relegation matches go on a ${t.show.name} episode.`);
     if (cmpDate(st, ev.at, t.wm.at) <= 0) fail(`Relegation matches come after ${t.wm.name}.`);
     if (t.blocking.length) fail(t.blocking[0].text);
@@ -2385,9 +2626,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const where = `${joint}${ordinal(r.place)} fewest of ${t.pool.length} on ${t.show.name}`;
     return t.autoIds.includes(wid) ? `A relegation candidate for the fewest wins: ${plural(r.wins, "win")} in ${season} up to WrestleMania \u2014 ${where}.` : `Picked as a candidate by the owner, with ${plural(r.wins, "win")} in ${season} up to WrestleMania (${where}).`;
   }
-  function relegateChecks(st, wid, ev) {
+  function relegateChecks(st, t, wid, ev) {
     const w = must(wrestlerById(st, wid), "wrestler", wid);
-    if (w.showId === RELEGATED_TO) return w;
+    if (w.showId === t.to.id) return w;
     const moves = movesOf(st, wid);
     const last = moves[moves.length - 1];
     if (last && earlierDate(st, ev.at, last.at)) {
@@ -2399,19 +2640,22 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const w = wrestlerById(st, loser);
     const from = w.showId;
     const at2 = stampAt(st, ev.at.season, ev.at.week, ev.at.day);
+    const to = t.to.id;
     let move = null;
-    if (from !== RELEGATED_TO) {
+    if (from !== to) {
       const why2 = decided ? "Relegated by the owner" : `Relegated \u2014 lost to ${nameOf(st, winner)}`;
-      move = { id: newId(st, "mv"), wrestler: loser, from, to: RELEGATED_TO, at: { ...at2 }, note: why2.slice(0, MAX_NAME) };
+      move = { id: newId(st, "mv"), wrestler: loser, from, to, at: { ...at2 }, note: why2.slice(0, MAX_NAME) };
       st.moves.push(move);
-      w.showId = RELEGATED_TO;
+      w.showId = to;
     }
-    const how = decided ? `${t.show.name} relegation match with ${nameOf(st, winner)} at ${ev.name} ended without a winner; sent to NXT by the owner's decision${note ? ` \u2014 ${note}` : ""}.` : `Lost the ${t.show.name} relegation match to ${nameOf(st, winner)} at ${ev.name} (${seasonById(st, ev.at.season).name}).`;
+    const how = decided ? `${t.show.name} relegation match with ${nameOf(st, winner)} at ${ev.name} ended without a winner; sent to ${t.to.name} by the owner's decision${note ? ` \u2014 ${note}` : ""}.` : `Lost the ${t.show.name} relegation match to ${nameOf(st, winner)} at ${ev.name} (${seasonById(st, ev.at.season).name}).`;
     const r = t.pool.find((x) => x.id === loser);
     const rec = {
       id: newId(st, "rl"),
       transition: t.tr.id,
+      link: t.part.link,
       show: t.show.id,
+      to,
       wrestler: loser,
       opponent: winner,
       event: ev.id,
@@ -2449,8 +2693,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const { transition, show, pair: pairId } = m.relegation;
     const t = relegationTable(st, transition, show);
     const pair = t.tr.shows[show].pairs.find((p) => p.id === pairId);
-    const ids = sides.map((sd) => sd.wrestlers);
-    if (sides.length !== 2 || ids.some((x) => x.length !== 1) || sides.some((sd) => sd.team) || !ids.flat().includes(pair.a) || !ids.flat().includes(pair.b)) {
+    const ids = sides.map((sd2) => sd2.wrestlers);
+    if (sides.length !== 2 || ids.some((x) => x.length !== 1) || sides.some((sd2) => sd2.team) || !ids.flat().includes(pair.a) || !ids.flat().includes(pair.b)) {
       fail("This is a relegation match, so its line-up is its pairing. Change the pairing on the season transition page.");
     }
     const latest = pair.matches[pair.matches.length - 1] === m.id;
@@ -2460,7 +2704,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const loser = r && r.outcome === "win" ? sides[1 - r.winner].wrestlers[0] : null;
     if (old && old.wrestler === loser) return null;
     const undo = old ? unrelegateChecks(st, old) : null;
-    if (loser) relegateChecks(st, loser, ev);
+    if (loser) relegateChecks(st, t, loser, ev);
     return { undo, t, pair, loser, winner: loser ? sides[r.winner].wrestlers[0] : null };
   }
   function applyRelegation(st, ev, m, plan) {
@@ -2490,7 +2734,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const { ev, m } = p.last;
     if (relegateId) {
       if (![p.a, p.b].includes(relegateId)) fail("Pick one of the two in that match.");
-      relegateChecks(st, relegateId, ev);
+      relegateChecks(st, t, relegateId, ev);
       relegate(st, t, pair, ev, m, relegateId, relegateId === p.a ? p.b : p.a, true, n);
     }
     pair.decision = { relegate: relegateId || null, note: n, at: now(st) };
@@ -2509,14 +2753,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function relegationsOf(st, wrestlerId = null) {
     return st.relegations.filter((r) => !wrestlerId || r.wrestler === wrestlerId).sort((a, b) => compareStamps(st, b.at, a.at));
   }
-  var PROMOTED_FROM = "nxt";
-  var nxtTitles = (st) => st.titles.filter((t) => t.showId === PROMOTED_FROM && t.active);
   var liveEligibility = (st, trId) => st.eligibility.filter((e) => e.transition === trId);
   var eligibilityOf = (st, trId, wid) => liveEligibility(st, trId).filter((e) => e.wrestler === wid);
   var draftsOf = (st, trId) => st.drafts.filter((d) => d.transition === trId).sort((a, b) => a.pick - b.pick);
-  function nxtChampions(st) {
+  function championsOf(st, showIds) {
     const out = [];
-    nxtTitles(st).forEach((title2) => {
+    st.titles.filter((t) => t.active && showIds.includes(t.showId)).forEach((title2) => {
       const r = currentReign(st, title2.id);
       if (!r) return;
       if (r.holder.type === "team") {
@@ -2526,11 +2768,26 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
     return out;
   }
-  function promotionTable(st, trId) {
+  function qualifierPart(st, tr, { link = null, pair = null, show = null, wrestler = null } = {}) {
+    let part2 = null;
+    if (link) part2 = partOf(tr, link);
+    else if (pair) part2 = tr.parts.find((p) => (p.qualifiers.pairs || []).some((x) => x.id === pair));
+    else if (show) part2 = partBelow(tr, show);
+    else if (wrestler) {
+      const wm = eventById(st, tr.event);
+      const w = wrestlerById(st, wrestler);
+      part2 = w && partBelow(tr, showAtStamp(st, w, wm.at)) || tr.parts.find((p) => p.rules.qualifiers.on) || tr.parts[0] || null;
+    } else part2 = tr.parts[0] || null;
+    if (!part2) fail(link ? "That connection isn't part of this season transition." : pair ? "That pairing isn't part of the qualifiers." : wrestler ? `${nameOf(st, wrestler)} wasn't on a show that moves up a tier.` : "That show doesn't move up a tier.");
+    return part2;
+  }
+  function promotionTable(st, trId, linkId = null) {
     const tr = must(transitionById(st, trId), "season transition", trId);
+    const part2 = qualifierPart(st, tr, { link: linkId });
     const wm = eventById(st, tr.event);
-    const p = tr.promotion;
-    const pool = st.wrestlers.filter((w) => showAtStamp(st, w, wm.at) === PROMOTED_FROM).map((w) => ({
+    const p = part2.qualifiers;
+    const lower = showNames(st, part2.lower);
+    const pool = st.wrestlers.filter((w) => part2.lower.includes(showAtStamp(st, w, wm.at))).map((w) => ({
       id: w.id,
       name: w.name,
       gender: w.gender,
@@ -2546,12 +2803,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
       for (let i = 0; i + 1 < picked.length; i += 2) pairs.push({ id: null, a: picked[i], b: picked[i + 1], matches: [], decision: null });
     }
     pairs.forEach((x) => {
-      const s = pairStatus(st, x);
-      Object.assign(x, s, { status: s.status === "relegated" ? "qualified" : s.status });
+      const s2 = pairStatus(st, x);
+      Object.assign(x, s2, { status: s2.status === "relegated" ? "qualified" : s2.status });
     });
     const paired = new Set(pairs.flatMap((x) => [x.a, x.b]));
     const unpaired = picked.filter((id) => !paired.has(id));
-    const champions = tr.window ? liveEligibility(st, trId).filter((e) => e.source === "champion").map((e) => ({ wrestler: e.wrestler, title: e.title, reign: e.reign, team: e.team })) : nxtChampions(st);
+    const mine = liveEligibility(st, trId).filter((e) => e.link === part2.link);
+    const champions = tr.window ? mine.filter((e) => e.source === "champion").map((e) => ({ wrestler: e.wrestler, title: e.title, reign: e.reign, team: e.team })) : part2.rules.champions === "eligible" ? championsOf(st, part2.lower) : [];
+    const automatic = part2.rules.champions === "automatic" ? championsOf(st, part2.lower) : [];
     const flags = [];
     const decide = (key, text) => flags.push({ level: "decide", key, text });
     const check = (key, text) => flags.push({ level: "check", key, text });
@@ -2564,9 +2823,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     ));
     picked.forEach((id) => {
       const r = pool.find((x) => x.id === id);
-      if (champions.some((c) => c.wrestler === id)) check("champion", `${r.name} is already eligible as an NXT champion.`);
+      if (champions.some((c) => c.wrestler === id)) check("champion", `${r.name} is already eligible as a champion of ${part2.lowerName}.`);
       if (r.injured) check("injured", `${r.name} is injured.`);
-      if (r.now !== PROMOTED_FROM) check("moved", `${r.name} is on ${r.now ? showById(st, r.now).name : "no show"} now.`);
+      if (!part2.lower.includes(r.now)) check("moved", `${r.name} is on ${r.now ? showById(st, r.now).name : "no show"} now.`);
     });
     pairs.forEach((x) => {
       const [a, b] = [pool.find((r) => r.id === x.a), pool.find((r) => r.id === x.b)];
@@ -2577,51 +2836,80 @@ body.uv-confirm-open .uv-confirm{display:flex}
       check("tagchamps", `${teamById(st, c.team).name} hold the ${titleById(st, c.title).name}: each of them is eligible. Whether they move together is your call when you draft.`);
     });
     const blocking = flags.filter((f) => f.key === "odd");
-    const after = st.events.filter((e) => e.kind === "weekly" && e.showId === PROMOTED_FROM && cmpDate(st, e.at, wm.at) > 0).sort((a, b) => compareStamps(st, a.at, b.at));
+    const after = st.events.filter((e) => e.kind === "weekly" && part2.lower.includes(e.showId) && cmpDate(st, e.at, wm.at) > 0).sort((a, b) => compareStamps(st, a.at, b.at));
     const cur = activeSeason(st);
-    const nxt = showById(st, PROMOTED_FROM);
-    const night = after.length ? { event: after[0] } : { week: wm.at.season === cur.id ? wm.at.week + (nxt.day > wm.at.day ? 0 : 1) : cur.week };
+    const first = showById(st, part2.lower[0]);
+    const night = after.length ? { event: after[0] } : { show: first ? first.id : null, week: wm.at.season === cur.id ? wm.at.week + (first && first.day > wm.at.day ? 0 : 1) : cur.week };
     const byWrestler = /* @__PURE__ */ new Map();
     const add2 = (wid, src) => {
       if (!byWrestler.has(wid)) byWrestler.set(wid, []);
       byWrestler.get(wid).push(src);
     };
-    if (!tr.window) champions.forEach((c) => add2(c.wrestler, { source: "champion", title: c.title, team: c.team, live: true }));
-    liveEligibility(st, trId).forEach((e) => add2(e.wrestler, e));
-    const drafts = draftsOf(st, trId);
+    if (!tr.window) champions.forEach((c) => add2(c.wrestler, { source: "champion", title: c.title, team: c.team, live: true, link: part2.link }));
+    mine.forEach((e) => add2(e.wrestler, e));
+    const drafts = draftsOf(st, trId).filter((d) => d.link === part2.link);
     const eligible = [...byWrestler].map(([wrestler, sources]) => ({ wrestler, sources, drafted: drafts.find((d) => d.wrestler === wrestler) || null })).sort((a, b) => byName(wrestlerById(st, a.wrestler), wrestlerById(st, b.wrestler)));
-    return { tr, wm, pool, inPool, picked, pairs, unpaired, flags, blocking, night, champions, eligible, drafts, window: tr.window };
+    return {
+      tr,
+      part: part2,
+      lower,
+      wm,
+      pool,
+      inPool,
+      picked,
+      pairs,
+      unpaired,
+      flags,
+      blocking,
+      night,
+      champions,
+      automatic,
+      eligible,
+      drafts,
+      window: tr.window,
+      pending: pendingRules(part2.rules)
+    };
   }
-  var promo = (st, trId) => must(transitionById(st, trId), "season transition", trId).promotion;
   var bookedQualifiers = (p) => (p.pairs || []).filter((x) => x.matches.length);
   function repairQualifiers(p) {
     const kept = bookedQualifiers(p);
     p.pairs = kept.length ? kept : null;
   }
-  function toggleQualifier(st, trId, wrestlerId) {
-    const p = promo(st, trId);
-    const t = promotionTable(st, trId);
-    if (!t.inPool.has(wrestlerId)) fail(`${nameOf(st, wrestlerId)} wasn't on NXT at ${t.wm.name}.`);
+  function qualifiersOn(part2) {
+    if (!part2.rules.qualifiers.on) fail(`Qualifying matches are off for ${part2.lowerName} \u2192 ${part2.upperName} in this transition.`);
+  }
+  function toggleQualifier(st, trId, wrestlerId, linkId = null) {
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    const part2 = qualifierPart(st, tr, linkId ? { link: linkId } : { wrestler: wrestlerId });
+    qualifiersOn(part2);
+    const p = part2.qualifiers;
+    const t = promotionTable(st, trId, part2.link);
+    if (!t.inPool.has(wrestlerId)) fail(`${nameOf(st, wrestlerId)} wasn't on ${t.lower} at ${t.wm.name}.`);
     if (bookedQualifiers(p).some((x) => x.a === wrestlerId || x.b === wrestlerId)) fail(`${nameOf(st, wrestlerId)} is booked in a qualifying match. Take it off the card first.`);
     p.picked = t.picked.includes(wrestlerId) ? t.picked.filter((id) => id !== wrestlerId) : [...t.picked, wrestlerId];
     repairQualifiers(p);
     return p;
   }
-  function setQualifiers(st, trId, ids) {
-    const p = promo(st, trId);
-    const t = promotionTable(st, trId);
+  function setQualifiers(st, trId, ids, linkId = null) {
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    const part2 = qualifierPart(st, tr, linkId ? { link: linkId } : ids && ids.length ? { wrestler: ids[0] } : {});
+    qualifiersOn(part2);
+    const p = part2.qualifiers;
+    const t = promotionTable(st, trId, part2.link);
     if (bookedQualifiers(p).length) fail("Qualifying matches are on the card, so the field is fixed. Take them off first.");
     if (!Array.isArray(ids) || new Set(ids).size !== ids.length) fail("Pick each wrestler once.");
     ids.forEach((id) => {
-      if (!t.inPool.has(id)) fail(`${nameOf(st, id)} wasn't on NXT at ${t.wm.name}.`);
+      if (!t.inPool.has(id)) fail(`${nameOf(st, id)} wasn't on ${t.lower} at ${t.wm.name}.`);
     });
     p.picked = [...ids];
     p.pairs = null;
     return p;
   }
   function pairQualifiers(st, trId, aId, bId) {
-    const p = promo(st, trId);
-    const t = promotionTable(st, trId);
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    const part2 = qualifierPart(st, tr, { wrestler: aId });
+    const p = part2.qualifiers;
+    const t = promotionTable(st, trId, part2.link);
     if (aId === bId) fail("Pick two different wrestlers.");
     [aId, bId].forEach((id) => {
       if (!t.picked.includes(id)) fail(`${nameOf(st, id)} isn't in the qualifiers.`);
@@ -2637,10 +2925,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return p;
   }
   function bookQualifiers(st, trId, eventId, pairIds = null) {
-    const p = promo(st, trId);
-    const t = promotionTable(st, trId);
+    const tr = must(transitionById(st, trId), "season transition", trId);
     const ev = must(eventById(st, eventId), "event", eventId);
-    if (ev.kind !== "weekly" || ev.showId !== PROMOTED_FROM) fail("Qualifying matches go on an NXT episode.");
+    const part2 = pairIds && pairIds.length ? qualifierPart(st, tr, { pair: pairIds[0] }) : partBelow(tr, ev.showId) || tr.parts.find((p2) => p2.rules.qualifiers.on) || null;
+    if (!part2) fail("No tier holds qualifying matches in this transition.");
+    if (ev.kind !== "weekly" || !part2.lower.includes(ev.showId)) fail(`Qualifying matches go on an episode of ${showNames(st, part2.lower, "or")}.`);
+    qualifiersOn(part2);
+    if (part2.rules.promotion.timing !== "window") {
+      fail("This transition's rules move qualifying winners up straight away, which isn't carried out yet \u2014 so its qualifying matches can't be booked.");
+    }
+    const p = part2.qualifiers;
+    const t = promotionTable(st, trId, part2.link);
     if (cmpDate(st, ev.at, t.wm.at) <= 0) fail(`Qualifying matches come after ${t.wm.name}.`);
     if (t.blocking.length) fail(t.blocking[0].text);
     const todo = t.pairs.filter((x) => pairIds ? pairIds.includes(x.id) && x.status === "no winner" : x.status === "unbooked");
@@ -2652,7 +2947,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const m = {
         id: newId(st, "m"),
         relegation: null,
-        qualifier: { transition: trId, pair: pair.id },
+        qualifier: { transition: trId, link: part2.link, pair: pair.id },
         ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: "Qualifying match" }))
       };
       ev.matches.push(m);
@@ -2669,10 +2964,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (d) fail(`${nameOf(st, rec.wrestler)} has been drafted to ${showById(st, d.to).name} since qualifying. Undo that pick first.`);
     return () => removeWhere(st.eligibility, (x) => x.id === rec.id);
   }
-  function qualify(st, tr, pair, ev, m, winner, loser, decided, note) {
+  function qualify(st, tr, part2, pair, ev, m, winner, loser, decided, note) {
     const rec = {
       id: newId(st, "el"),
       transition: tr.id,
+      link: part2.link,
       wrestler: winner,
       source: decided ? "decision" : "qualifier",
       title: null,
@@ -2691,9 +2987,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function qualifierPlan(st, ev, m, sides, r) {
     if (!m.qualifier) return null;
     const tr = transitionById(st, m.qualifier.transition);
-    const pair = tr.promotion.pairs.find((x) => x.id === m.qualifier.pair);
-    const ids = sides.map((sd) => sd.wrestlers);
-    if (sides.length !== 2 || ids.some((x) => x.length !== 1) || sides.some((sd) => sd.team) || !ids.flat().includes(pair.a) || !ids.flat().includes(pair.b)) {
+    const part2 = qualifierPart(st, tr, { pair: m.qualifier.pair });
+    const pair = part2.qualifiers.pairs.find((x) => x.id === m.qualifier.pair);
+    const ids = sides.map((sd2) => sd2.wrestlers);
+    if (sides.length !== 2 || ids.some((x) => x.length !== 1) || sides.some((sd2) => sd2.team) || !ids.flat().includes(pair.a) || !ids.flat().includes(pair.b)) {
       fail("This is a qualifying match, so its line-up is its pairing. Change the pairing on the season transition page.");
     }
     const latest = pair.matches[pair.matches.length - 1] === m.id;
@@ -2704,19 +3001,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (old && old.wrestler === winner) return null;
     if (old || winner) windowOpenFor(tr);
     const undo = old ? uneligibleChecks(st, old) : null;
-    return { undo, tr, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
+    return { undo, tr, part: part2, pair, winner, loser: winner ? sides[1 - r.winner].wrestlers[0] : null };
   }
   function applyQualifier(st, ev, m, plan) {
     if (!plan) return;
     if (plan.undo) plan.undo();
-    if (plan.winner) qualify(st, plan.tr, plan.pair, ev, m, plan.winner, plan.loser, false);
+    if (plan.winner) qualify(st, plan.tr, plan.part, plan.pair, ev, m, plan.winner, plan.loser, false);
   }
   function qualifierRemoval(st, m) {
     if (!m.qualifier) return null;
-    const pair = transitionById(st, m.qualifier.transition).promotion.pairs.find((x) => x.id === m.qualifier.pair);
+    const tr = transitionById(st, m.qualifier.transition);
+    const pair = qualifierPart(st, tr, { pair: m.qualifier.pair }).qualifiers.pairs.find((x) => x.id === m.qualifier.pair);
     if (pair.decision && pair.matches[pair.matches.length - 1] === m.id) fail("You decided this pairing after this match. Undo that decision first.");
     const rec = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier");
-    if (rec) windowOpenFor(transitionById(st, m.qualifier.transition));
+    if (rec) windowOpenFor(tr);
     const undo = rec ? uneligibleChecks(st, rec) : null;
     return () => {
       if (undo) undo();
@@ -2724,25 +3022,28 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
   }
   function decideQualifier(st, trId, pairId, qualifyIds, note = "") {
-    const t = promotionTable(st, trId);
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    const part2 = qualifierPart(st, tr, { pair: pairId });
+    const t = promotionTable(st, trId, part2.link);
     const x = t.pairs.find((y) => y.id === pairId);
     if (!x) fail("That pairing isn't part of the qualifiers.");
     if (x.status !== "no winner") fail("Only a qualifying match that ended without a winner needs a decision.");
     const ids = Array.isArray(qualifyIds) ? qualifyIds : [];
     if (ids.some((id) => ![x.a, x.b].includes(id)) || new Set(ids).size !== ids.length) fail("Pick from the two in that match.");
     const n = checkNote(note);
-    windowOpenFor(t.tr);
-    const pair = t.tr.promotion.pairs.find((y) => y.id === pairId);
-    ids.forEach((id) => qualify(st, t.tr, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
+    windowOpenFor(tr);
+    const pair = part2.qualifiers.pairs.find((y) => y.id === pairId);
+    ids.forEach((id) => qualify(st, tr, part2, pair, x.last.ev, x.last.m, id, id === x.a ? x.b : x.a, true, n));
     pair.decision = { qualify: [...ids], note: n, at: now(st) };
     return pair;
   }
   function undoQualifierDecision(st, trId, pairId) {
-    const p = promo(st, trId);
-    const pair = (p.pairs || []).find((x) => x.id === pairId);
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    const part2 = qualifierPart(st, tr, { pair: pairId });
+    const pair = (part2.qualifiers.pairs || []).find((x) => x.id === pairId);
     if (!pair || !pair.decision) fail("There's no decision to undo.");
     const recs = st.eligibility.filter((x) => x.pair === pairId && x.source === "decision");
-    if (recs.length) windowOpenFor(transitionById(st, trId));
+    if (recs.length) windowOpenFor(tr);
     const undos = recs.map((r) => uneligibleChecks(st, r));
     undos.forEach((f) => f());
     pair.decision = null;
@@ -2753,9 +3054,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (tr.window && !tr.window.closed) fail("The transfer window is already open.");
     if (tr.window) fail("The transfer window has been open already. Reopen it instead.");
     const at2 = now(st);
-    nxtChampions(st).forEach((c) => st.eligibility.push({
+    tr.parts.filter((p) => p.rules.champions === "eligible").forEach((p) => championsOf(st, p.lower).forEach((c) => st.eligibility.push({
       id: newId(st, "el"),
       transition: tr.id,
+      link: p.link,
       wrestler: c.wrestler,
       source: "champion",
       title: c.title,
@@ -2767,7 +3069,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       event: null,
       note: "",
       at: { ...at2 }
-    }));
+    })));
     tr.window = { opened: at2, closed: null, undrafted: null };
     return tr.window;
   }
@@ -2786,14 +3088,24 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const partners = st.teams.filter((t) => t.active && t.members.includes(wid)).map((t) => ({ team: t.id, partners: t.members.filter((id) => id !== wid) }));
     return { wrestler: w, titles: heldNow(st, wid), partners };
   }
+  function draftOptions(st, trId, wid) {
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    const elig = eligibilityOf(st, trId, wid);
+    const part2 = elig.length ? partOf(tr, elig[0].link) : null;
+    if (!part2) return null;
+    const to = part2.rules.promotion.to;
+    return { part: part2, shows: to ? [to] : [...part2.upper], titles: part2.rules.titles };
+  }
   function draftWrestler(st, trId, wid, showId, opts = {}) {
     const tr = must(transitionById(st, trId), "season transition", trId);
     if (!tr.window || tr.window.closed) fail("The transfer window isn't open.");
     const to = must(showById(st, showId), "show", showId);
-    if (to.id === PROMOTED_FROM) fail("Draft picks go to Raw, SmackDown or Dynamite.");
     const w = must(wrestlerById(st, wid), "wrestler", wid);
     const elig = eligibilityOf(st, trId, wid);
     if (!elig.length) fail(`${w.name} isn't draft eligible.`);
+    const o = draftOptions(st, trId, wid);
+    const part2 = o.part;
+    if (!o.shows.includes(to.id)) fail(`Draft picks from ${part2.lowerName} go to ${showNames(st, o.shows, "or")}.`);
     const partners = [...new Set(opts.partners || [])];
     const team = draftQuestions(st, wid).partners.flatMap((x) => x.partners);
     partners.forEach((id) => {
@@ -2803,16 +3115,26 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const date = { season: activeSeason(st).id, week: activeSeason(st).week };
     group.forEach((id) => {
       const x = wrestlerById(st, id);
-      if (x.showId !== PROMOTED_FROM) fail(`${x.name} isn't on NXT.`);
+      if (!part2.lower.includes(x.showId)) fail(`${x.name} isn't on ${showNames(st, part2.lower, "or")}.`);
       if (draftsOf(st, trId).some((d) => d.wrestler === id)) fail(`${x.name} has already been drafted.`);
       moveChecks(st, id, to.id, date);
     });
     const titles = /* @__PURE__ */ new Map();
     group.forEach((id) => heldNow(st, id).forEach((h) => titles.set(h.title, h)));
-    const choices = opts.titles || {};
+    const rule = part2.rules.titles;
+    const choices = {};
     titles.forEach((h) => {
-      if (!["keep", "vacate"].includes(choices[h.title])) {
-        fail(`${titleById(st, h.title).name}: keep it or vacate it? ${h.team ? teamById(st, h.team).name : nameOf(st, wid)} hold${h.team ? "" : "s"} it.`);
+      const asked = (opts.titles || {})[h.title];
+      if (rule === "ask") {
+        if (!["keep", "vacate"].includes(asked)) {
+          fail(`${titleById(st, h.title).name}: keep it or vacate it? ${h.team ? teamById(st, h.team).name : nameOf(st, wid)} hold${h.team ? "" : "s"} it.`);
+        }
+        choices[h.title] = asked;
+      } else {
+        if (asked && asked !== rule) {
+          fail(`The rules for ${part2.lowerName} \u2192 ${part2.upperName} ${rule === "vacate" ? "vacate" : "keep"} a title when its holder moves up \u2014 change them in Tiers & transfers.`);
+        }
+        choices[h.title] = rule;
       }
       if (choices[h.title] === "vacate") checkInOrder(st, titleById(st, h.title), currentReign(st, h.title), date);
     });
@@ -2820,19 +3142,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const heldBy = new Map(group.map((id) => [id, heldNow(st, id).map((h) => h.reign)]));
     const decisions = [...titles.values()].map((h) => {
       if (choices[h.title] === "vacate") vacateTitle(st, h.title);
-      return { title: h.title, reign: h.reign, choice: choices[h.title] === "vacate" ? "vacated" : "kept" };
+      return { title: h.title, reign: h.reign, choice: choices[h.title] === "vacate" ? "vacated" : "kept", rule: rule === "ask" ? null : rule };
     });
     const groupId = newId(st, "dg");
     const pick2 = Math.max(0, ...draftsOf(st, trId).map((d) => d.pick)) + 1;
     return group.map((id, i) => {
-      const move = recordMove(st, wrestlerById(st, id), to.id, `Drafted from NXT${i ? ` with ${w.name}` : ""}`.slice(0, MAX_NAME), date);
+      const from = wrestlerById(st, id).showId;
+      const move = recordMove(st, wrestlerById(st, id), to.id, `Drafted from ${showById(st, from).name}${i ? ` with ${w.name}` : ""}`.slice(0, MAX_NAME), date);
       const rec = {
         id: newId(st, "dr"),
         transition: tr.id,
+        link: part2.link,
         group: groupId,
         pick: pick2,
         wrestler: id,
-        from: PROMOTED_FROM,
+        from,
         to: to.id,
         move: move.id,
         eligibility: eligibilityOf(st, trId, id).map((e) => e.id),
@@ -2873,12 +3197,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
       removeWhere(st.drafts, (y) => y.id === x.id);
     });
   }
+  function allEligible(st, trId) {
+    const tr = must(transitionById(st, trId), "season transition", trId);
+    return tr.parts.flatMap((p) => promotionTable(st, trId, p.link).eligible.map((e) => ({ ...e, part: p })));
+  }
   function closeWindow(st, trId) {
     const tr = must(transitionById(st, trId), "season transition", trId);
     if (!tr.window || tr.window.closed) fail("The transfer window isn't open.");
-    const t = promotionTable(st, trId);
+    const left = allEligible(st, trId).filter((e) => !e.drafted).map((e) => e.wrestler);
     tr.window.closed = now(st);
-    tr.window.undrafted = t.eligible.filter((e) => !e.drafted).map((e) => e.wrestler);
+    tr.window.undrafted = left;
     return tr.window;
   }
   function reopenWindow(st, trId) {
@@ -3270,7 +3598,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (keepId === dupId) fail("Pick two different wrestlers.");
     let clash = null;
     eachMatch(st, (m, ev) => {
-      const ws = m.sides.flatMap((sd) => sd.wrestlers);
+      const ws = m.sides.flatMap((sd2) => sd2.wrestlers);
       if (!clash && ws.includes(keepId) && ws.includes(dupId)) clash = ev;
     });
     if (clash) fail(`${keep.name} and ${dup.name} were both in a match at ${clash.name}, so they can't be the same person. Fix that result first.`);
@@ -3314,8 +3642,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (x.basis && x.basis.title) x.basis.title.holder = as(x.basis.title.holder);
     }));
     eachMatch(st, (m) => {
-      m.sides.forEach((sd) => {
-        sd.wrestlers = sd.wrestlers.map((id) => id === dupId ? keepId : id);
+      m.sides.forEach((sd2) => {
+        sd2.wrestlers = sd2.wrestlers.map((id) => id === dupId ? keepId : id);
       });
       if (m.fall) m.fall = { by: m.fall.by === dupId ? keepId : m.fall.by, on: m.fall.on === dupId ? keepId : m.fall.on };
     });
@@ -3404,7 +3732,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }
     if (!Number.isInteger(st.nextId) || st.nextId < 1) st.nextId = 1;
     if (!Number.isInteger(st.seq) || st.seq < 0) st.seq = 0;
-    SHOW_SEED.forEach((seed) => {
+    if (v < 9) SHOW_SEED.filter((x) => LEGACY_SHOWS.includes(x.id)).forEach((seed) => {
       if (!showById(st, seed.id)) st.shows.push({ ...seed });
     });
     if (!st.seasons.length) openSeason(st, 1, "");
@@ -3516,6 +3844,40 @@ body.uv-confirm-open .uv-confirm{display:flex}
       };
       st.version = 8;
     }
+    if (st.version === 8) {
+      if (!showById(st, "evolve") && !st.shows.some((x) => nameKey(x.name) === "evolve")) st.shows.push({ ...SHOW_SEED.find((x) => x.id === "evolve") });
+      seedTiers(st);
+      const link = st.links[0], main = st.tiers[0], nxt = st.tiers[1];
+      (Array.isArray(st.transitions) ? st.transitions : []).forEach((t) => {
+        const shows = t.shows && typeof t.shows === "object" ? Object.keys(t.shows) : [];
+        t.parts = [{
+          link: link.id,
+          upperName: main.name,
+          lowerName: nxt.name,
+          upper: shows.length ? shows : [...main.shows],
+          lower: ["nxt"],
+          rules: copyRules(link.rules),
+          qualifiers: t.promotion && typeof t.promotion === "object" ? t.promotion : { picked: [], pairs: null }
+        }];
+        delete t.promotion;
+      });
+      st.events.forEach((e) => (Array.isArray(e.matches) ? e.matches : []).forEach((m) => {
+        if (m.qualifier) m.qualifier.link = link.id;
+      }));
+      (Array.isArray(st.eligibility) ? st.eligibility : []).forEach((x) => {
+        x.link = link.id;
+      });
+      (Array.isArray(st.drafts) ? st.drafts : []).forEach((x) => {
+        x.link = link.id;
+      });
+      (Array.isArray(st.relegations) ? st.relegations : []).forEach((x) => {
+        const mv2 = x.move ? st.moves.find((y) => y.id === x.move) : null;
+        x.link = link.id;
+        x.to = mv2 ? mv2.to : "nxt";
+      });
+      st.version = 9;
+    }
+    if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
     if (!st.story || typeof st.story !== "object") st.story = newStory();
     if (!Array.isArray(st.story.rolls)) st.story.rolls = [];
     if (st.story.since === void 0) st.story.since = null;
@@ -3568,7 +3930,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     st.events.forEach((e) => own(Array.isArray(e.incidents) ? e.incidents : [], "incident"));
     own(st.story.rolls, "story director run");
     st.transitions.forEach((t) => Object.values(t.shows || {}).forEach((c) => own(Array.isArray(c.pairs) ? c.pairs : [], "relegation pairing")));
-    st.transitions.forEach((t) => own(t.promotion && Array.isArray(t.promotion.pairs) ? t.promotion.pairs : [], "qualifier pairing"));
+    st.transitions.forEach((t) => (Array.isArray(t.parts) ? t.parts : []).forEach((p) => own(p && p.qualifiers && Array.isArray(p.qualifiers.pairs) ? p.qualifiers.pairs : [], "qualifier pairing")));
+    own(st.tiers, "tier");
+    own(st.links, "tier connection");
     const stamp = (s, where) => {
       if (!s || !seasonById(st, s.season) || !Number.isInteger(s.week) || !Number.isInteger(s.seq)) {
         bad.push(`${where} has a broken date.`);
@@ -3795,15 +4159,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
           const c = t && t.shows && t.shows[rl.show];
           const pair = c && Array.isArray(c.pairs) && c.pairs.find((p) => p.id === rl.pair);
           if (!pair || !pair.matches.includes(m.id)) bad.push(`${where} is a relegation match for a pairing that doesn't exist.`);
-          else if (sides.length !== 2 || sides.some((sd) => !sd || sd.team || !Array.isArray(sd.wrestlers) || sd.wrestlers.length !== 1) || ![pair.a, pair.b].every((id) => sides.some((sd) => sd.wrestlers[0] === id))) bad.push(`${where} is a relegation match between the wrong wrestlers.`);
+          else if (sides.length !== 2 || sides.some((sd2) => !sd2 || sd2.team || !Array.isArray(sd2.wrestlers) || sd2.wrestlers.length !== 1) || ![pair.a, pair.b].every((id) => sides.some((sd2) => sd2.wrestlers[0] === id))) bad.push(`${where} is a relegation match between the wrong wrestlers.`);
           if (e.showId !== rl.show) bad.push(`${where} is a relegation match on the wrong show.`);
         }
         if (m.qualifier != null) {
           const q = m.qualifier, t = transitionById(st, q.transition);
-          const pair = t && t.promotion && Array.isArray(t.promotion.pairs) && t.promotion.pairs.find((x) => x.id === q.pair);
+          const part2 = t && Array.isArray(t.parts) && t.parts.find((x) => x && x.link === q.link);
+          const pair = part2 && part2.qualifiers && Array.isArray(part2.qualifiers.pairs) && part2.qualifiers.pairs.find((x) => x.id === q.pair);
           if (!pair || !pair.matches.includes(m.id)) bad.push(`${where} is a qualifying match for a pairing that doesn't exist.`);
-          else if (sides.length !== 2 || sides.some((sd) => !sd || sd.team || !Array.isArray(sd.wrestlers) || sd.wrestlers.length !== 1) || ![pair.a, pair.b].every((id) => sides.some((sd) => sd.wrestlers[0] === id))) bad.push(`${where} is a qualifying match between the wrong wrestlers.`);
-          if (e.showId !== PROMOTED_FROM) bad.push(`${where} is a qualifying match off NXT.`);
+          else if (sides.length !== 2 || sides.some((sd2) => !sd2 || sd2.team || !Array.isArray(sd2.wrestlers) || sd2.wrestlers.length !== 1) || ![pair.a, pair.b].every((id) => sides.some((sd2) => sd2.wrestlers[0] === id))) bad.push(`${where} is a qualifying match between the wrong wrestlers.`);
+          if (part2 && !part2.lower.includes(e.showId)) bad.push(`${where} is a qualifying match on a show that doesn't move up that tier.`);
           if (m.relegation != null) bad.push(`${where} can't be a relegation and a qualifying match at once.`);
         }
         if (m.status === "scheduled") {
@@ -3817,11 +4182,42 @@ body.uv-confirm-open .uv-confirm{display:flex}
         if (m.finish !== null && !FINISHES.includes(m.finish)) bad.push(`${where} has an unknown finish.`);
         if (m.fall != null) {
           const winners = m.outcome === "win" && sides[m.winner] ? sides[m.winner].wrestlers : [];
-          const losers = sides.filter((_, i) => i !== m.winner).flatMap((sd) => sd.wrestlers || []);
+          const losers = sides.filter((_, i) => i !== m.winner).flatMap((sd2) => sd2.wrestlers || []);
           if (m.outcome !== "win") bad.push(`${where} is a ${m.outcome} but names who took the fall.`);
           else if (m.fall.by && !winners.includes(m.fall.by) || m.fall.on && !losers.includes(m.fall.on)) bad.push(`${where} names the fall wrongly.`);
         }
       });
+    });
+    names2(st.tiers, "tier");
+    const tiered = /* @__PURE__ */ new Set();
+    st.tiers.forEach((t) => {
+      if (!Array.isArray(t.shows)) {
+        bad.push(`${t.name} has no list of shows.`);
+        return;
+      }
+      t.shows.forEach((id) => {
+        if (!showById(st, id)) bad.push(`${t.name} names a show that doesn't exist.`);
+        if (tiered.has(id)) bad.push(`A show is in two tiers.`);
+        tiered.add(id);
+      });
+    });
+    if (!st.tiers.length || !st.tiers[0].shows || !st.tiers[0].shows.length) bad.push("Tier 1 has no shows.");
+    st.links.forEach((l) => {
+      const up = tierById(st, l.upper), low = tierById(st, l.lower);
+      if (!up || !low || up === low) {
+        bad.push(`Tier connection ${l.id} is between tiers that don't exist.`);
+        return;
+      }
+      if (!rulesOk(l.rules)) {
+        bad.push(`The rules between ${up.name} and ${low.name} are unreadable.`);
+        return;
+      }
+      if (l.rules.relegation.to !== null && !low.shows.includes(l.rules.relegation.to)) bad.push(`${up.name} relegates to a show outside ${low.name}.`);
+      if (l.rules.promotion.to !== null && !up.shows.includes(l.rules.promotion.to)) bad.push(`${low.name} promotes to a show outside ${up.name}.`);
+    });
+    if (new Set(st.links.map((l) => `${l.upper}>${l.lower}`)).size !== st.links.length) bad.push("Two tiers have two connections.");
+    st.tiers.slice(1).forEach((t, i) => {
+      if (!linkBetween(st, st.tiers[i].id, t.id)) bad.push(`${st.tiers[i].name} and ${t.name} have no rules between them.`);
     });
     st.transitions.forEach((t) => {
       const where = `The season transition ${t.id}`;
@@ -3833,8 +4229,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
         bad.push(`${where} has no shows.`);
         return;
       }
+      const parts = Array.isArray(t.parts) ? t.parts : [];
+      if (!Array.isArray(t.parts)) bad.push(`${where} has no tiers.`);
+      parts.forEach((p) => {
+        if (!p || typeof p.link !== "string" || !Array.isArray(p.upper) || !Array.isArray(p.lower) || !rulesOk(p.rules) || typeof p.upperName !== "string" || typeof p.lowerName !== "string") {
+          bad.push(`${where} has an unreadable tier connection.`);
+          return;
+        }
+        if ([...p.upper, ...p.lower].some((id) => !showById(st, id))) bad.push(`${where} names a show that doesn't exist.`);
+        if (p.rules.relegation.to !== null && !p.lower.includes(p.rules.relegation.to)) bad.push(`${where} relegates to a show outside the tier below.`);
+        if (p.rules.promotion.to !== null && !p.upper.includes(p.rules.promotion.to)) bad.push(`${where} promotes to a show outside the tier above.`);
+      });
+      if (new Set(parts.map((p) => p && p.link)).size !== parts.length) bad.push(`${where} has a tier connection twice.`);
       Object.entries(t.shows).forEach(([sid, c]) => {
-        if (!showById(st, sid) || sid === RELEGATED_TO) bad.push(`${where} names a show that can't hold relegation matches.`);
+        if (!showById(st, sid) || !parts.some((p) => p && Array.isArray(p.upper) && p.upper.includes(sid))) bad.push(`${where} names a show that can't hold relegation matches.`);
         if (!c || !Number.isInteger(c.count) || c.count < 0) {
           bad.push(`${where} has a broken number of candidates.`);
           return;
@@ -3856,21 +4264,23 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
     st.transitions.forEach((t) => {
       const where = `The season transition ${t.id}`;
-      const p = t.promotion;
-      if (!p || !Array.isArray(p.picked) || p.picked.some((id) => !wrestlerById(st, id))) {
-        bad.push(`${where} has a broken qualifier field.`);
-        return;
-      }
-      if (p.pairs !== null) {
-        if (!Array.isArray(p.pairs)) bad.push(`${where} has broken qualifier pairings.`);
-        else p.pairs.forEach((x) => {
-          if (!wrestlerById(st, x.a) || !wrestlerById(st, x.b) || x.a === x.b) bad.push(`${where} has a qualifier pairing with the wrong wrestlers.`);
-          if (!Array.isArray(x.matches) || x.matches.some((id) => !st.events.some((e) => e.matches.some((m) => m.id === id && m.qualifier && m.qualifier.pair === x.id)))) {
-            bad.push(`${where} has a qualifier pairing whose matches don't exist.`);
-          }
-          if (x.decision != null && !(typeof x.decision.note === "string" && Array.isArray(x.decision.qualify) && x.decision.qualify.every((id) => [x.a, x.b].includes(id)))) bad.push(`${where} has a broken qualifier decision.`);
-        });
-      }
+      (Array.isArray(t.parts) ? t.parts : []).forEach((part2) => {
+        const p = part2 && part2.qualifiers;
+        if (!p || !Array.isArray(p.picked) || p.picked.some((id) => !wrestlerById(st, id))) {
+          bad.push(`${where} has a broken qualifier field.`);
+          return;
+        }
+        if (p.pairs !== null) {
+          if (!Array.isArray(p.pairs)) bad.push(`${where} has broken qualifier pairings.`);
+          else p.pairs.forEach((x) => {
+            if (!wrestlerById(st, x.a) || !wrestlerById(st, x.b) || x.a === x.b) bad.push(`${where} has a qualifier pairing with the wrong wrestlers.`);
+            if (!Array.isArray(x.matches) || x.matches.some((id) => !st.events.some((e) => e.matches.some((m) => m.id === id && m.qualifier && m.qualifier.pair === x.id)))) {
+              bad.push(`${where} has a qualifier pairing whose matches don't exist.`);
+            }
+            if (x.decision != null && !(typeof x.decision.note === "string" && Array.isArray(x.decision.qualify) && x.decision.qualify.every((id) => [x.a, x.b].includes(id)))) bad.push(`${where} has a broken qualifier decision.`);
+          });
+        }
+      });
       if (t.window !== null) {
         const w = t.window;
         if (!w || typeof w !== "object") {
@@ -3884,9 +4294,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
         }
       }
     });
+    const partFor = (trId, link) => {
+      const t = transitionById(st, trId);
+      return t && Array.isArray(t.parts) ? t.parts.find((p) => p && p.link === link) : null;
+    };
     st.eligibility.forEach((e) => {
       const where = `Draft eligibility ${e.id}`;
       if (!transitionById(st, e.transition)) bad.push(`${where} is for a season transition that doesn't exist.`);
+      else if (!partFor(e.transition, e.link)) bad.push(`${where} is for a tier connection that isn't part of its transition.`);
       if (!wrestlerById(st, e.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
       if (!["champion", "qualifier", "decision"].includes(e.source)) bad.push(`${where} has an unknown source.`);
       if (e.source === "champion" && !titleById(st, e.title)) bad.push(`${where} names a title that doesn't exist.`);
@@ -3900,7 +4315,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!t) bad.push(`${where} is for a season transition that doesn't exist.`);
       else if (!t.window) bad.push(`${where} was made without a transfer window.`);
       if (!wrestlerById(st, d.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
-      if (!showById(st, d.to) || d.to === PROMOTED_FROM) bad.push(`${where} goes to a show that can't take draft picks.`);
+      const part2 = partFor(d.transition, d.link);
+      if (!part2) bad.push(`${where} is for a tier connection that isn't part of its transition.`);
+      else if (!showById(st, d.to) || !part2.upper.includes(d.to)) bad.push(`${where} goes to a show that can't take draft picks.`);
       const mv2 = st.moves.find((x) => x.id === d.move);
       if (!mv2 || mv2.wrestler !== d.wrestler || mv2.to !== d.to) bad.push(`${where} names a roster move that doesn't match it.`);
       if (!Array.isArray(d.eligibility) || d.eligibility.some((id) => !st.eligibility.some((e) => e.id === id && e.wrestler === d.wrestler))) bad.push(`${where} names eligibility that doesn't match it.`);
@@ -3913,12 +4330,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!transitionById(st, r.transition)) bad.push(`${where} is for a season transition that doesn't exist.`);
       if (!wrestlerById(st, r.wrestler)) bad.push(`${where} is for a wrestler who doesn't exist.`);
       if (r.opponent != null && !wrestlerById(st, r.opponent)) bad.push(`${where} names an opponent who doesn't exist.`);
-      if (!showById(st, r.show) || r.show === RELEGATED_TO) bad.push(`${where} names a show that doesn't hold relegation matches.`);
+      const part2 = partFor(r.transition, r.link);
+      if (!part2) bad.push(`${where} is for a tier connection that isn't part of its transition.`);
+      else if (!part2.upper.includes(r.show)) bad.push(`${where} names a show that doesn't hold relegation matches.`);
+      if (!showById(st, r.to)) bad.push(`${where} goes to a show that doesn't exist.`);
       if (!eventById(st, r.event)) bad.push(`${where} happened at an event that doesn't exist.`);
       if (r.match != null && !st.events.some((e) => e.matches.some((m) => m.id === r.match))) bad.push(`${where} names a match that doesn't exist.`);
       if (r.move != null) {
         const mv2 = st.moves.find((x) => x.id === r.move);
-        if (!mv2 || mv2.wrestler !== r.wrestler || mv2.to !== RELEGATED_TO) bad.push(`${where} names a roster move that doesn't match it.`);
+        if (!mv2 || mv2.wrestler !== r.wrestler || mv2.to !== r.to) bad.push(`${where} names a roster move that doesn't match it.`);
       }
       if (typeof r.reason !== "string" || !r.reason) bad.push(`${where} has no reason.`);
       stamp(r.at, where);
@@ -4104,7 +4524,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return chip(matchKind(m).label, "kind");
   }
   function vsLine(st, m) {
-    return m.sides.map((sd) => `<b>${esc(sideName(st, sd))}</b>`).join(' <span class="uv-muted">vs</span> ');
+    return m.sides.map((sd2) => `<b>${esc(sideName(st, sd2))}</b>`).join(' <span class="uv-muted">vs</span> ');
   }
   var FALL_VERB = {
     pinfall: "pinned",
@@ -4703,10 +5123,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
     st.events.filter((ev) => inPeriod(p, ev)).sort((a, b) => compareStamps(st, a.at, b.at)).forEach((ev) => ev.matches.forEach((m) => {
       if (m.status !== "played") return;
-      m.sides.forEach((sd, i) => {
+      m.sides.forEach((sd2, i) => {
         const r = resultFor(m, i);
-        sd.wrestlers.forEach((id) => add2(sd.wrestlers.length === 1 ? singles : tag2, id, r, ev));
-        if (sd.team) add2(teams, sd.team, r, ev);
+        sd2.wrestlers.forEach((id) => add2(sd2.wrestlers.length === 1 ? singles : tag2, id, r, ev));
+        if (sd2.team) add2(teams, sd2.team, r, ev);
       });
     }));
     return { singles, tag: tag2, teams };
@@ -4774,7 +5194,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = [];
     st.events.forEach((event) => event.matches.forEach((match) => {
       if (match.status !== "scheduled" || event.at.season !== now2.season || event.at.week < now2.week) return;
-      if (match.sides.some((sd) => kind === "team" ? sd.team === id : sd.wrestlers.includes(id))) out.push({ event, match });
+      if (match.sides.some((sd2) => kind === "team" ? sd2.team === id : sd2.wrestlers.includes(id))) out.push({ event, match });
     }));
     return out.sort((a, b) => compareStamps(st, a.event.at, b.event.at));
   }
@@ -4802,8 +5222,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const played = events.flatMap((ev) => ev.matches.filter((m) => m.status === "played").map((m) => ({ ev, m })));
     const wrestlerRow2 = (w) => {
       const on = new Set(weeks.filter((wk) => showAt(st, w, date(wk)) === showId));
-      const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd) => sd.wrestlers.includes(w.id)));
-      const singles = mine.filter(({ m }) => m.sides.find((sd) => sd.wrestlers.includes(w.id)).wrestlers.length === 1).length;
+      const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd2) => sd2.wrestlers.includes(w.id)));
+      const singles = mine.filter(({ m }) => m.sides.find((sd2) => sd2.wrestlers.includes(w.id)).wrestlers.length === 1).length;
       return {
         kind: "wrestler",
         id: w.id,
@@ -4821,7 +5241,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     };
     const teamRow2 = (t) => {
       const on = new Set(weeks.filter((wk) => teamAt(st, t, date(wk)).active && teamOnShow(st, t, showId, date(wk))));
-      const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd) => sd.team === t.id));
+      const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd2) => sd2.team === t.id));
       return {
         kind: "team",
         id: t.id,
@@ -4851,7 +5271,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = { n: 0, a: 0, b: 0, other: 0, last: null };
     st.events.forEach((ev) => ev.matches.forEach((m) => {
       if (m.status !== "played") return;
-      const i = m.sides.findIndex((sd) => onSide(sd, x)), j = m.sides.findIndex((sd) => onSide(sd, y));
+      const i = m.sides.findIndex((sd2) => onSide(sd2, x)), j = m.sides.findIndex((sd2) => onSide(sd2, y));
       if (i < 0 || j < 0 || i === j) return;
       out.n++;
       if (m.outcome === "win" && m.winner === i) out.a++;
@@ -4871,12 +5291,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     let pool, onSide, ranks;
     if (team) {
       pool = st.teams.filter((t) => t.id !== self.id && t.active && !t.members.some((id) => self.members.includes(id)) && t.members.some((id) => (wrestlerById(st, id) || {}).showId === showId) && !t.members.some((id) => (wrestlerById(st, id) || {}).status === "injured"));
-      onSide = (sd, id) => sd.team === id;
+      onSide = (sd2, id) => sd2.team === id;
       ranks = standings(st, { showId, period: season, kind: "teams" });
     } else {
       const partners = new Set(st.teams.filter((t) => t.active && t.members.includes(self.id)).flatMap((t) => t.members));
       pool = st.wrestlers.filter((w) => w.id !== self.id && w.showId === showId && w.status !== "injured" && w.gender === self.gender && !partners.has(w.id));
-      onSide = (sd, id) => sd.wrestlers.includes(id);
+      onSide = (sd2, id) => sd2.wrestlers.includes(id);
       ranks = standings(st, { showId, period: season, kind: "singles" });
     }
     const div = rankRows([...ranks.ranked, ...ranks.unranked].filter((r) => team || r.gender === self.gender));
@@ -5091,7 +5511,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function shortCard(st, showId, r, g, res) {
     const ideas = matchIdeas(st, { kind: r.kind, id: r.id }, { showId, balanceResult: res });
     const open2 = r.kind === "team" ? `uvOpenTeam('${r.id}')` : `uvOpenWrestler('${r.id}')`;
-    const lineup = (i) => i.lineup.map((sd) => (sd.team ? `${sd.team}:` : "") + sd.wrestlers.join(",")).join("|");
+    const lineup = (i) => i.lineup.map((sd2) => (sd2.team ? `${sd2.team}:` : "") + sd2.wrestlers.join(",")).join("|");
     const booked = r.booked[0];
     return `<div class="uv-short" data-id="${r.id}">
     <div class="t"><span class="uv-link nm" onclick="${open2}">${esc(r.name)}</span>${chip(r.severity === "well below" ? "Well below" : "Below", r.severity === "well below" ? "bad" : "warn")}</div>
@@ -5249,8 +5669,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var plural3 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   var nm = (st, id) => esc((wrestlerById(st, id) || { name: "?" }).name);
   var title = (st, id) => esc((titleById(st, id) || { name: "a title" }).name);
-  function sourceText(st, e) {
-    if (e.source === "champion") return `NXT champion \u2014 ${title(st, e.title)}${e.team ? ` (${esc(teamById(st, e.team).name)})` : ""}`;
+  var lowerColor = (st, part2) => part2.lower[0] ? showColor(st, part2.lower[0]) : "var(--uv-ink-3)";
+  var TITLE_RULE = { vacate: "vacated", keep: "kept" };
+  var movesUp = (part2) => part2.rules.qualifiers.on || part2.rules.champions !== "none";
+  var destination = (st, part2) => part2.rules.promotion.to ? showName(st, part2.rules.promotion.to) : showNamesOf(st, part2.upper, "or");
+  function sourceText(st, e, part2) {
+    if (e.source === "champion") return `${part2 ? `${esc(part2.lowerName)} champion` : "Champion"} \u2014 ${title(st, e.title)}${e.team ? ` (${esc(teamById(st, e.team).name)})` : ""}`;
     if (e.source === "qualifier") return `Won a qualifier vs ${nm(st, e.opponent)}`;
     return `Your decision after ${nm(st, e.opponent)}${e.note ? ` \u2014 ${esc(e.note)}` : ""}`;
   }
@@ -5259,62 +5683,96 @@ body.uv-confirm-open .uv-confirm{display:flex}
     e.source === "champion" ? "gold" : "kind"
   );
   function uvPromotionSummary(st, tr) {
-    const t = promotionTable(st, tr.id);
-    const played = t.pairs.filter((p) => ["qualified", "decided"].includes(p.status)).length;
-    const nxt = !t.picked.length ? `${plural3(t.champions.length, "champion")} eligible; no qualifiers picked` : t.flags.some((f) => f.level === "decide") ? `${plural3(t.flags.filter((f) => f.level === "decide").length, "decision")} for you` : t.pairs.every((p) => p.status === "unbooked") ? `${plural3(t.pairs.length, "qualifier")} ready to book` : `${played} of ${plural3(t.pairs.length, "qualifier")} decided`;
-    const undrafted = t.eligible.filter((e) => !e.drafted).length;
-    const win = !t.window ? `not open \u2014 ${t.eligible.length} eligible` : !t.window.closed ? `open \u2014 ${plural3(t.drafts.length, "pick")}, ${undrafted} eligible left` : `closed \u2014 ${plural3(t.drafts.length, "pick")}, ${t.window.undrafted.length} undrafted`;
-    return [
-      { key: "nxt", label: "NXT", color: showColor(st, "nxt"), text: nxt, decisions: t.flags.filter((f) => f.level === "decide").length },
-      { key: "window", label: "Transfer window", color: "var(--uv-gold)", text: win, decisions: 0 }
-    ];
+    const out = tr.parts.filter(movesUp).map((part2) => {
+      const t = promotionTable(st, tr.id, part2.link);
+      if (!part2.rules.qualifiers.on && !t.champions.length && !t.automatic.length && !t.eligible.length) return null;
+      const played = t.pairs.filter((p) => ["qualified", "decided"].includes(p.status)).length;
+      const decisions = t.flags.filter((f) => f.level === "decide").length;
+      const champs = part2.rules.champions === "automatic" ? `${plural3(t.automatic.length, "champion")} to move up (not carried out yet)` : `${plural3(t.champions.length, "champion")} eligible`;
+      const text = !part2.rules.qualifiers.on ? champs : !t.picked.length ? `${champs}; no qualifiers picked` : decisions ? `${plural3(decisions, "decision")} for you` : t.pairs.every((p) => p.status === "unbooked") ? `${plural3(t.pairs.length, "qualifier")} ready to book` : `${played} of ${plural3(t.pairs.length, "qualifier")} decided`;
+      return { key: part2.link, label: part2.lowerName, color: lowerColor(st, part2), text, decisions };
+    }).filter(Boolean);
+    const eligible = allEligible(st, tr.id);
+    const drafts = draftsOf(st, tr.id);
+    const undrafted = eligible.filter((e) => !e.drafted).length;
+    const w = tr.window;
+    const win = !w ? `not open \u2014 ${eligible.length} eligible` : !w.closed ? `open \u2014 ${plural3(drafts.length, "pick")}, ${undrafted} eligible left` : `closed \u2014 ${plural3(drafts.length, "pick")}, ${w.undrafted.length} undrafted`;
+    return [...out, { key: "window", label: "Transfer window", color: "var(--uv-gold)", text: win, decisions: 0 }];
   }
   var suggestN = 4;
   function uvPromotionPart(st, tr) {
-    const t = promotionTable(st, tr.id);
-    const trId = tr.id;
+    const parts = tr.parts.filter(movesUp);
+    if (!parts.length) return '<div class="uv-none">No tier moves anyone up in this transition.</div>';
+    return `<p class="uv-p uv-inset-p">For each tier, as its rules say: qualifying matches on its first show after WrestleMania, and its
+      champions. Being eligible moves nobody \u2014 you draft in the transfer window. <span class="uv-link gold" onclick="uvHowPromotion()">How promotion works</span></p>
+    ${parts.map((part2) => partSection(st, tr, part2)).join("")}`;
+  }
+  function partSection(st, tr, part2) {
+    const t = promotionTable(st, tr.id, part2.link);
+    const trId = tr.id, link = part2.link;
+    const r = part2.rules;
     const season = seasonById(st, tr.season);
     const fixed = t.pairs.some((p) => p.matches.length);
     const decide = t.flags.filter((f) => f.level === "decide"), checks = t.flags.filter((f) => f.level === "check");
-    const table2 = standings(st, { showId: "nxt", period: periodOf(st, tr.season), kind: "singles" });
-    const all = rankRows([...table2.ranked, ...table2.unranked].filter((r) => t.inPool.has(r.id)));
+    const head = `<div class="uv-sec" style="--c:${lowerColor(st, part2)}"><span class="bar"></span><span class="t">${esc(part2.lowerName)} \u2192 ${esc(part2.upperName)}</span></div>`;
+    const how = `<div class="fine">${[
+      r.qualifiers.on ? "Qualifying winners draft eligible" : "No qualifying matches",
+      r.champions === "eligible" ? "champions draft eligible" : r.champions === "automatic" ? "champions move up by themselves" : "champions stay",
+      r.titles === "ask" ? "titles your call" : `titles ${TITLE_RULE[r.titles]}`,
+      `up to ${esc(destination(st, part2))}`
+    ].join(" \xB7 ")}.
+    <span class="uv-link" onclick="uvTrPart('rules')">The rules</span></div>`;
+    const pending = t.pending.length ? `<div class="uv-flag"><span>Not carried out yet: ${esc(t.pending.join("; "))}. Listed below \u2014 nobody moves by it.</span></div>` : "";
+    const champRow = (c, extra = "") => `<div class="uv-el"><div class="uv-main"><div class="nm">${nm(st, c.wrestler)} ${chip("Champion", "gold")}</div>
+      <div class="sub">${title(st, c.title)}${c.team ? ` \xB7 with ${esc(teamById(st, c.team).name)}` : ""}${extra}</div></div></div>`;
+    let champs = "";
+    if (r.champions === "eligible") {
+      champs = `<div class="uv-sub flush">Eligible as champions${t.window ? " \u2014 fixed when the window opened" : " \u2014 fixed when you open the window"}</div>
+      <div class="uv-els">${t.champions.map((c) => champRow(c)).join("") || `<div class="uv-none">${esc(part2.lowerName)} has no champions right now.</div>`}</div>`;
+    } else if (r.champions === "automatic") {
+      const moveText = ` \xB7 would move up to ${esc(destination(st, part2))} at the transfer window, the title ${r.titles === "ask" ? "your call" : TITLE_RULE[r.titles]}`;
+      champs = `<div class="uv-sub flush">Moving up by themselves \u2014 not carried out yet</div>
+      <div class="uv-els">${t.automatic.map((c) => champRow(c, moveText)).join("") || `<div class="uv-none">${esc(part2.lowerName)} has no champions right now.</div>`}</div>`;
+    }
+    if (!r.qualifiers.on) return `${head}<div class="uv-trshow" data-link="${link}">${how}${pending}${champs}</div>`;
+    const rows = part2.lower.flatMap((sid) => {
+      const x = standings(st, { showId: sid, period: periodOf(st, tr.season), kind: "singles" });
+      return [...x.ranked, ...x.unranked];
+    });
+    const all = rankRows(rows.filter((x) => t.inPool.has(x.id)));
     const isChamp = (id) => t.champions.some((c) => c.wrestler === id);
-    const suggested = all.ranked.filter((r) => !isChamp(r.id) && !t.pool.find((p) => p.id === r.id).injured).slice(0, suggestN).map((r) => r.id);
-    const row2 = (r) => {
-      const on = t.picked.includes(r.id);
-      return `<div class="uv-tw${on ? " on pick" : ""}" data-w="${r.id}" onclick="uvQPick('${trId}','${r.id}')">
+    const suggested = all.ranked.filter((x) => !isChamp(x.id) && !t.pool.find((p) => p.id === x.id).injured).slice(0, suggestN).map((x) => x.id);
+    const row2 = (x) => {
+      const on = t.picked.includes(x.id);
+      return `<div class="uv-tw${on ? " on pick" : ""}" data-w="${x.id}" onclick="uvQPick('${trId}','${x.id}')">
       <span class="uv-tick">${on ? ICON.check : ""}</span>
-      <div class="uv-main"><div class="nm">${r.rank ? `<span class="rk">${r.rank}</span>` : ""}${esc(r.name)}
-        ${suggested.includes(r.id) ? chip("Suggested", "kind") : ""}${isChamp(r.id) ? chip("Champion", "gold") : ""}</div>
-        <div class="sub"><span class="uv-form">${r.form.map((x) => `<i class="${x}">${x}</i>`).join("")}</span></div></div>
-      <div class="w"><b>${fmtRec(r.rec)}</b><span>${r.rank ? `${Math.round(r.score * 100)}%` : "unranked"}</span></div>
+      <div class="uv-main"><div class="nm">${x.rank ? `<span class="rk">${x.rank}</span>` : ""}${esc(x.name)}
+        ${suggested.includes(x.id) ? chip("Suggested", "kind") : ""}${isChamp(x.id) ? chip("Champion", "gold") : ""}</div>
+        <div class="sub"><span class="uv-form">${x.form.map((f) => `<i class="${f}">${f}</i>`).join("")}</span></div></div>
+      <div class="w"><b>${fmtRec(x.rec)}</b><span>${x.rank ? `${Math.round(x.score * 100)}%` : "unranked"}</span></div>
     </div>`;
     };
+    const lowerName = showNamesOf(st, part2.lower, "or");
     const night = t.night.event ? `<div class="uv-trnight" onclick="uvOpenEvent('${t.night.event.id}')">${ICON.cal}<div><b>${esc(t.night.event.name)}</b>
-        <span>${esc(eventWhen(st, t.night.event))} \xB7 NXT\u2019s first show after ${esc(t.wm.name)}</span></div>${ICON.right}</div>` : `<div class="uv-trnight none">${ICON.cal}<div><b>No NXT after ${esc(t.wm.name)} yet</b>
+        <span>${esc(eventWhen(st, t.night.event))} \xB7 ${esc(part2.lowerName)}\u2019s first show after ${esc(t.wm.name)}</span></div>${ICON.right}</div>` : t.night.show ? `<div class="uv-trnight none">${ICON.cal}<div><b>No ${esc(lowerName)} after ${esc(t.wm.name)} yet</b>
         <span>Its first episode after it, week ${t.night.week}, holds the qualifying matches</span></div>
-        <div class="uv-btn sm2" onclick="uvTrPlan('${trId}','nxt',${t.night.week})">${ICON.plus}Plan it</div></div>`;
+        <div class="uv-btn sm2" onclick="uvTrPlan('${trId}','${t.night.show}',${t.night.week})">${ICON.plus}Plan it</div></div>` : `<div class="uv-trnight none">${ICON.cal}<div><b>${esc(part2.lowerName)} has no show</b><span>Its qualifying matches have nowhere to go</span></div></div>`;
     const toBook = t.pairs.filter((p) => p.status === "unbooked").length;
-    const book = t.blocking.length ? '<div class="uv-btn full off">Settle the decisions above to book</div>' : !toBook ? "" : t.night.event ? `<div class="uv-btn pri full" onclick="uvQBook('${trId}')">Book ${plural3(toBook, "qualifying match", "qualifying matches")} on ${esc(t.night.event.name)}</div>` : '<div class="uv-btn full off">Plan NXT\u2019s first show after WrestleMania to book</div>';
-    const champs = t.champions.length ? t.champions.map((c) => `<div class="uv-el"><div class="uv-main"><div class="nm">${nm(st, c.wrestler)} ${chip("Champion", "gold")}</div>
-      <div class="sub">${title(st, c.title)}${c.team ? ` \xB7 with ${esc(teamById(st, c.team).name)}` : ""}</div></div></div>`).join("") : '<div class="uv-none">NXT has no champions right now.</div>';
-    return `
-    <p class="uv-p uv-inset-p">NXT\u2019s first show after ${esc(t.wm.name)} holds qualifying matches. Every NXT champion is draft
-      eligible; so is whoever wins a qualifier. Being eligible moves nobody \u2014 you draft in the transfer window.
-      <span class="uv-link gold" onclick="uvHowPromotion()">How promotion works</span></p>
-    <div class="uv-trshow">
+    const book = t.blocking.length ? '<div class="uv-btn full off">Settle the decisions above to book</div>' : !toBook ? "" : t.pending.length ? '<div class="uv-btn full off">Not carried out yet \u2014 change the rules to book</div>' : t.night.event ? `<div class="uv-btn pri full" onclick="uvQBook('${trId}','${link}')">Book ${plural3(toBook, "qualifying match", "qualifying matches")} on ${esc(t.night.event.name)}</div>` : `<div class="uv-btn full off">Plan ${esc(lowerName)}\u2019s first show after ${esc(t.wm.name)} to book</div>`;
+    return `${head}
+    <div class="uv-trshow" data-link="${link}">
+      ${how}${pending}
       ${night}
-      <div class="uv-sub flush">Eligible as champions${t.window ? " \u2014 fixed when the window opened" : " \u2014 fixed when you open the window"}</div>
-      <div class="uv-els">${champs}</div>
+      ${champs}
       ${decide.map((f) => `<div class="uv-flag decide"><b>Your decision</b><span>${esc(f.text)}</span></div>`).join("")}
       ${checks.map((f) => `<div class="uv-flag"><span>${esc(f.text)}</span></div>`).join("")}
       <div class="uv-sub flush">Who\u2019s in the qualifiers</div>
       <div class="uv-trcount"><span>Suggested: the top</span>
         <div class="uv-ic mv" onclick="uvQSuggestN(-1)">${ICON.left}</div><b>${suggestN}</b>
         <div class="uv-ic mv" onclick="uvQSuggestN(1)">${ICON.right}</div><span>by score, champions and the injured aside</span>
-        ${fixed || !suggested.length ? "" : `<span class="uv-link" onclick="uvQUseSuggested('${trId}','${suggested.join(",")}')">Pick them</span>`}</div>
-      <div class="uv-tws"><div class="uv-tw hd"><span></span><div class="uv-main">NXT \xB7 ${esc(season.name)} singles \u2014 ranked as on Rankings</div>
-        <div class="w">W\u2013L\u2013D</div></div>${[...all.ranked, ...all.unranked].map(row2).join("") || `<div class="uv-none">Nobody was on NXT at ${esc(t.wm.name)}.</div>`}</div>
+        ${fixed || !suggested.length ? "" : `<span class="uv-link" onclick="uvQUseSuggested('${trId}','${link}','${suggested.join(",")}')">Pick them</span>`}</div>
+      <div class="uv-tws"><div class="uv-tw hd"><span></span><div class="uv-main">${esc(lowerName)} \xB7 ${esc(season.name)} singles \u2014 ranked as on Rankings</div>
+        <div class="w">W\u2013L\u2013D</div></div>${[...all.ranked, ...all.unranked].map(row2).join("") || `<div class="uv-none">Nobody was on ${esc(lowerName)} at ${esc(t.wm.name)}.</div>`}</div>
       <div class="fine">${fixed ? "The field is fixed now that matches are booked." : "Suggestions are only a guide: tap anyone to put them in or take them out."}
         The order you pick them in is the pairing order.</div>
       ${t.pairs.length || t.unpaired.length ? `<div class="uv-sub flush">Qualifying matches</div><div class="uv-pairs">${t.pairs.map((p) => pairRow(st, t, p)).join("")}
@@ -5330,7 +5788,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     decided: "Decided by you"
   };
   function pairRow(st, t, p) {
-    const trId = t.tr.id;
+    const trId = t.tr.id, link = t.part.link;
     const status = `<span class="uv-pst ${p.status.replace(" ", "-")}">${QSTATUS[p.status]}</span>`;
     if (p.status === "unbooked") {
       return `<div class="uv-pair"><div class="vs"><b>${nm(st, p.a)}</b> vs
@@ -5342,8 +5800,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (p.status === "qualified") detail = `<b>${nm(st, m.sides[m.winner].wrestlers[0])}</b> won at ${esc(ev.name)} \u2014 draft eligible`;
     if (p.status === "no winner") {
       detail = `${m.outcome === "draw" ? "A draw" : "A no contest"} at ${esc(ev.name)}.
-      <div class="uv-pacts"><div class="uv-btn sm2" onclick="uvQRematch('${trId}','${p.id}')">Book a rematch\u2026</div>
-        <div class="uv-btn sm2" onclick="uvQDecide('${trId}','${p.id}')">Decide\u2026</div></div>`;
+      <div class="uv-pacts"><div class="uv-btn sm2" onclick="uvQRematch('${trId}','${link}','${p.id}')">Book a rematch\u2026</div>
+        <div class="uv-btn sm2" onclick="uvQDecide('${trId}','${link}','${p.id}')">Decide\u2026</div></div>`;
     }
     if (p.status === "decided") {
       const q = p.decision.qualify;
@@ -5357,41 +5815,41 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvQSuggestN(d) {
     suggestN = Math.max(0, Math.min(20, suggestN + d));
-    paintPage();
+    refresh();
   }
-  function uvQUseSuggested(trId, ids) {
-    commit((st) => setQualifiers(st, trId, ids.split(",").filter(Boolean)), "Qualifiers picked");
+  function uvQUseSuggested(trId, link, ids) {
+    commit((st) => setQualifiers(st, trId, ids.split(",").filter(Boolean), link), "Qualifiers picked");
   }
   function uvQPair(trId, a, b) {
     commit((st) => pairQualifiers(st, trId, a, b), "Pairing changed");
   }
-  function uvQBook(trId) {
-    const t = promotionTable(uni(), trId);
+  function uvQBook(trId, link) {
+    const t = promotionTable(uni(), trId, link);
     commit(
       (st) => bookQualifiers(st, trId, t.night.event.id),
       (ms) => `${plural3(ms.length, "qualifying match", "qualifying matches")} booked on ${t.night.event.name}`
     );
   }
-  var paintPage = () => refresh();
-  function uvQRematch(trId, pairId) {
+  function uvQRematch(trId, link, pairId) {
     openSheet(() => {
       const st = uni();
-      const t = promotionTable(st, trId);
+      const t = promotionTable(st, trId, link);
       const p = t.pairs.find((x) => x.id === pairId);
       if (!p || p.status !== "no winner") return null;
+      const showId = p.last.ev.showId;
       const cur = activeSeason(st);
-      const later = st.events.filter((e) => e.kind === "weekly" && e.showId === "nxt" && compareStamps(st, e.at, p.last.ev.at) > 0).sort((a, b) => compareStamps(st, a.at, b.at));
+      const later = st.events.filter((e) => e.kind === "weekly" && e.showId === showId && compareStamps(st, e.at, p.last.ev.at) > 0).sort((a, b) => compareStamps(st, a.at, b.at));
       const week = Math.max(cur.week, p.last.ev.at.season === cur.id ? p.last.ev.at.week + 1 : 1);
       return {
         title: "Book a rematch",
         body: `<p class="uv-p"><b>${nm(st, p.a)}</b> vs <b>${nm(st, p.b)}</b> again \u2014 the winner becomes draft eligible.</p>
         ${later.map((e) => `<div class="uv-row" onclick="uvQRematchOn('${trId}','${pairId}','${e.id}')">
-          <span class="uv-av sq" style="--c:${showColor(st, "nxt")}">${ICON.cal}</span>
+          <span class="uv-av sq" style="--c:${showColor(st, showId)}">${ICON.cal}</span>
           <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${esc(eventWhen(st, e))}</div></div>
           <span class="uv-chev">${ICON.right}</span></div>`).join("")}
-        ${later.some((e) => e.at.season === cur.id && e.at.week === week) ? "" : `<div class="uv-row" onclick="uvQRematchPlan('${trId}','${pairId}',${week})">
-          <span class="uv-av sq" style="--c:${showColor(st, "nxt")}">${ICON.plus}</span>
-          <div class="uv-main"><div class="nm">Plan NXT \xB7 Week ${week}</div><div class="sub">A new episode</div></div>
+        ${later.some((e) => e.at.season === cur.id && e.at.week === week) ? "" : `<div class="uv-row" onclick="uvQRematchPlan('${trId}','${showId}','${pairId}',${week})">
+          <span class="uv-av sq" style="--c:${showColor(st, showId)}">${ICON.plus}</span>
+          <div class="uv-main"><div class="nm">Plan ${esc(showName(st, showId))} \xB7 Week ${week}</div><div class="sub">A new episode</div></div>
           <span class="uv-chev">${ICON.right}</span></div>`}`
       };
     });
@@ -5399,20 +5857,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvQRematchOn(trId, pairId, eventId) {
     if (commit((st) => bookQualifiers(st, trId, eventId, [pairId]), "Rematch booked").ok) closeSheet();
   }
-  function uvQRematchPlan(trId, pairId, week) {
+  function uvQRematchPlan(trId, showId, pairId, week) {
     const r = commit((st) => {
-      const ev = addEvent(st, { showId: "nxt", week });
+      const ev = addEvent(st, { showId, week });
       bookQualifiers(st, trId, ev.id, [pairId]);
       return ev;
     }, (e) => `Rematch booked on ${e.name}`);
     if (r.ok) closeSheet();
   }
   var qd = null;
-  function uvQDecide(trId, pairId) {
-    qd = { trId, pairId, pick: [], note: "" };
+  function uvQDecide(trId, link, pairId) {
+    qd = { trId, link, pairId, pick: [], note: "" };
     openSheet(() => {
       const st = uni();
-      const t = promotionTable(st, trId);
+      const t = promotionTable(st, trId, link);
       const p = t.pairs.find((x) => x.id === pairId);
       if (!p || p.status !== "no winner") return null;
       const box = (id) => `<label class="uv-check"><input type="checkbox" id="uvQD-${id}"${qd.pick.includes(id) ? " checked" : ""}
@@ -5448,55 +5906,62 @@ body.uv-confirm-open .uv-confirm{display:flex}
       () => commit((st) => undoQualifierDecision(st, trId, pairId), "Decision undone")
     );
   }
+  var pickShows = (part2) => part2.rules.promotion.to ? [part2.rules.promotion.to] : part2.upper;
+  var drafting = (part2) => part2.rules.champions === "eligible" || part2.rules.qualifiers.on && part2.rules.promotion.timing === "window";
   function uvWindowPart(st, tr) {
-    const t = promotionTable(st, tr.id);
     const trId = tr.id;
-    const w = t.window;
-    const shows = mainShows(st);
-    const moved = (show) => ({
-      in: t.drafts.filter((d) => d.to === show).length,
-      out: st.relegations.filter((r) => r.transition === trId && r.show === show).length
-    });
+    const w = tr.window;
+    const eligible = allEligible(st, trId);
+    const drafts = draftsOf(st, trId);
+    const many = tr.parts.filter(drafting).length > 1;
+    const shows = [...new Set(tr.parts.filter(drafting).flatMap(pickShows))].map((id) => showById(st, id)).filter(Boolean);
     const tiles = `<div class="uv-wtiles">${shows.map((s) => {
-      const x = moved(s.id);
+      const x = { in: drafts.filter((d) => d.to === s.id).length, out: st.relegations.filter((r) => r.transition === trId && r.show === s.id).length };
       return `<div class="uv-wtile" style="--c:${showColor(st, s.id)}"><b>${esc(s.name)}</b>
       <span class="n">${st.wrestlers.filter((y) => y.showId === s.id).length}</span><span>on the roster</span>
       <span class="ch">${x.in ? `+${x.in} drafted` : "none drafted"}${x.out ? ` \xB7 \u2212${x.out} relegated` : ""}</span></div>`;
     }).join("")}</div>`;
-    const pending = t.pairs.filter((p) => ["unbooked", "booked", "no winner"].includes(p.status));
+    const pending = tr.parts.flatMap((p) => promotionTable(st, trId, p.link).pairs.filter((x) => ["unbooked", "booked", "no winner"].includes(x.status)));
     const eligibleRow = (e) => {
       const x = wrestlerById(st, e.wrestler);
       const teams = st.teams.filter((tm) => tm.active && tm.members.includes(x.id));
       const held = st.reigns.filter((r) => !r.end && (r.holder.type === "wrestler" ? r.holder.id === x.id : (teamById(st, r.holder.id) || { members: [] }).members.includes(x.id)));
-      const open2 = w && !w.closed && !e.drafted && x.showId === "nxt";
+      const open2 = w && !w.closed && !e.drafted && e.part.lower.includes(x.showId);
       return `<div class="uv-el${open2 ? " tap" : ""}" data-w="${x.id}"${open2 ? ` onclick="uvDraft('${trId}','${x.id}')"` : ""}>
-      <div class="uv-main"><div class="nm">${esc(x.name)} ${e.sources.map(sourceChip).join("")}</div>
-        <div class="sub">${e.sources.map((s) => sourceText(st, s)).join(" \xB7 ")}</div>
+      <div class="uv-main"><div class="nm">${esc(x.name)} ${e.sources.map(sourceChip).join("")}${many ? chip(`${e.part.lowerName} \u2192 ${e.part.upperName}`) : ""}</div>
+        <div class="sub">${e.sources.map((s) => sourceText(st, s, e.part)).join(" \xB7 ")}</div>
         ${teams.length || held.length ? `<div class="sub warn">${[...teams.map((tm) => `On ${esc(tm.name)}`), ...held.map((r) => `Holds the ${title(st, r.titleId)}`)].join(" \xB7 ")}</div>` : ""}</div>
       ${e.drafted ? `<span class="uv-drafted" style="--c:${showColor(st, e.drafted.to)}">${esc(showName(st, e.drafted.to))}</span>` : open2 ? `<span class="uv-btn sm2 pri">Draft\u2026</span>` : ""}
     </div>`;
     };
-    const undrafted = t.eligible.filter((e) => !e.drafted);
-    const picks = groups(t.drafts).map((g) => `<div class="uv-pick-row">
+    const auto = tr.parts.filter((p) => p.rules.champions === "automatic").flatMap((p) => promotionTable(st, trId, p.link).automatic.map((c) => ({ c, p })));
+    const autoRows = auto.map(({ c, p }) => `<div class="uv-el"><div class="uv-main"><div class="nm">${nm(st, c.wrestler)} ${chip("Champion", "gold")}</div>
+      <div class="sub">${title(st, c.title)} \xB7 ${esc(p.lowerName)} \u2192 ${esc(destination(st, p))}, the title ${p.rules.titles === "ask" ? "your call" : TITLE_RULE[p.rules.titles]}</div></div></div>`).join("");
+    const undrafted = eligible.filter((e) => !e.drafted);
+    const picks = groups(drafts).map((g) => {
+      const part2 = partOf(tr, g[0].link);
+      return `<div class="uv-pick-row">
       <span class="no">${g[0].pick}</span>
       <div class="uv-main"><div class="nm">${g.map((d) => nm(st, d.wrestler)).join(" & ")} \u2192 <span style="color:${showColor(st, g[0].to)}">${esc(showName(st, g[0].to))}</span></div>
         <div class="sub">${g.map((d) => {
-      const src = d.eligibility.map((id) => st.eligibility.find((e) => e.id === id)).filter(Boolean).map((e) => sourceText(st, e));
-      return `${nm(st, d.wrestler)}: ${src.length ? src.join(" \xB7 ") : "not eligible \u2014 brought along by your decision"}`;
-    }).join("<br>")}</div>
-        ${g[0].titles.length ? `<div class="sub">${[...new Map(g.flatMap((d) => d.titles).map((x) => [x.reign, x])).values()].map((x) => `${x.choice === "vacated" ? "Vacated" : "Kept"} the ${title(st, x.title)}`).join(" \xB7 ")}</div>` : ""}
+        const src = d.eligibility.map((id) => st.eligibility.find((e) => e.id === id)).filter(Boolean).map((e) => sourceText(st, e, part2));
+        return `${nm(st, d.wrestler)}: ${src.length ? src.join(" \xB7 ") : "not eligible \u2014 brought along by your decision"}`;
+      }).join("<br>")}</div>
+        ${g[0].titles.length ? `<div class="sub">${[...new Map(g.flatMap((d) => d.titles).map((x) => [x.reign, x])).values()].map((x) => `${x.choice === "vacated" ? "Vacated" : "Kept"} the ${title(st, x.title)}${x.rule ? " \u2014 by the rules" : ""}`).join(" \xB7 ")}</div>` : ""}
         ${g[0].note ? `<div class="sub">\u201C${esc(g[0].note)}\u201D</div>` : ""}</div>
       ${w && !w.closed ? `<span class="uv-link" onclick="uvUndoDraft('${g[0].id}')">Undo</span>` : ""}
-    </div>`).join("");
+    </div>`;
+    }).join("");
     const history2 = transfersSince(st, trId).map((x) => {
       const why2 = x.relegation ? "relegated" : x.draft ? `draft pick ${x.draft.pick}` : x.move.note ? esc(x.move.note) : "transfer";
       return `<div class="uv-tl"><span class="w">S${seasonById(st, x.move.at.season).number} \xB7 W${x.move.at.week}</span>
       <span class="x"><b>${nm(st, x.move.wrestler)}</b> ${esc(showName(st, x.move.from))} \u2192 ${esc(showName(st, x.move.to))} <span class="uv-muted">\u2014 ${why2}</span></span></div>`;
     }).join("");
+    const where = tr.parts.filter(drafting).map((p) => `${esc(p.lowerName)} to ${esc(destination(st, p))}`).join("; ");
     let top;
     if (!w) {
-      top = `<p class="uv-p uv-inset-p">Draft eligible NXT wrestlers to Raw, SmackDown or Dynamite \u2014 as many to each as you like,
-        or none, and end the window whenever you like. Opening it fixes the NXT champions as eligible.
+      top = `<p class="uv-p uv-inset-p">Draft eligible wrestlers up a tier (${where || "no tier drafts anyone"}) \u2014 as many to each show as you
+        like, or none, and end the window whenever you like. Opening it fixes the champions who are eligible.
         <span class="uv-link gold" onclick="uvHowPromotion()">How the draft works</span></p>
       ${pending.length ? `<div class="uv-flag top"><span>${plural3(pending.length, "qualifying match", "qualifying matches")} ${pending.length === 1 ? "has" : "have"} no result yet.
         Its winner can still become eligible after the window opens.</span></div>` : ""}
@@ -5505,18 +5970,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
       top = `<p class="uv-p uv-inset-p">The window is open. Tap an eligible wrestler to draft them. Each show takes as many as
         you like; nobody has to go. <span class="uv-link gold" onclick="uvHowPromotion()">How the draft works</span></p>`;
     } else {
-      top = `<div class="uv-flag top ok"><span>The window closed in week ${w.closed.week}: ${plural3(t.drafts.length, "wrestler")} drafted,
-        ${plural3(w.undrafted.length, "eligible wrestler")} left on NXT${w.undrafted.length ? ` (${w.undrafted.map((id) => nm(st, id)).join(", ")})` : ""}.</span></div>`;
+      top = `<div class="uv-flag top ok"><span>The window closed in week ${w.closed.week}: ${plural3(drafts.length, "wrestler")} drafted,
+        ${plural3(w.undrafted.length, "eligible wrestler")} left where they were${w.undrafted.length ? ` (${w.undrafted.map((id) => nm(st, id)).join(", ")})` : ""}.</span></div>`;
     }
     return `${top}
     ${tiles}
-    <div class="uv-sub">${w ? "Draft eligible" : "Eligible so far"} <span class="uv-muted">${t.eligible.length}</span></div>
-    <div class="uv-els inset">${t.eligible.map(eligibleRow).join("") || '<div class="uv-none">Nobody is eligible yet.</div>'}</div>
-    ${t.drafts.length ? `<div class="uv-sub">Draft picks</div><div class="uv-picks">${picks}</div>` : ""}
+    <div class="uv-sub">${w ? "Draft eligible" : "Eligible so far"} <span class="uv-muted">${eligible.length}</span></div>
+    <div class="uv-els inset">${eligible.map(eligibleRow).join("") || '<div class="uv-none">Nobody is eligible yet.</div>'}</div>
+    ${autoRows ? `<div class="uv-sub">Moving up by themselves \u2014 not carried out yet</div><div class="uv-els inset" data-auto="1">${autoRows}</div>
+      <div class="fine uv-inset-p">The rules say these champions move up by themselves at the transfer window. That isn\u2019t carried out
+        yet, so nobody here moves by it.</div>` : ""}
+    ${drafts.length ? `<div class="uv-sub">Draft picks</div><div class="uv-picks">${picks}</div>` : ""}
     ${w && !w.closed ? `<div class="uv-btn full uv-inset-btn" onclick="uvCloseWindow('${trId}')">End the transfer window${undrafted.length ? ` \u2014 ${undrafted.length} undrafted` : ""}</div>` : ""}
-    ${history2 ? `<div class="uv-sub">Every transfer since ${esc(t.wm.name)}</div><div class="uv-tls">${history2}</div>` : ""}
+    ${history2 ? `<div class="uv-sub">Every transfer since ${esc(eventById(st, tr.event).name)}</div><div class="uv-tls">${history2}</div>` : ""}
     ${w ? `<div class="uv-fix"><div class="h">Fix a mistake</div>
-      ${w.closed ? `<div class="uv-fixrow" onclick="uvReopenWindow('${trId}')">${ICON.undo}<div><b>Reopen the transfer window</b><span>To draft someone after all, or undo a pick</span></div></div>` : t.drafts.length ? '<div class="fine">Undo a pick above: they go back to NXT, and a title vacated with it goes back to them \u2014 while nothing has happened since.</div>' : `<div class="uv-fixrow" onclick="uvUnopenWindow('${trId}')">${ICON.undo}<div><b>Take back opening the window</b><span>Nobody has been drafted yet</span></div></div>`}
+      ${w.closed ? `<div class="uv-fixrow" onclick="uvReopenWindow('${trId}')">${ICON.undo}<div><b>Reopen the transfer window</b><span>To draft someone after all, or undo a pick</span></div></div>` : drafts.length ? '<div class="fine">Undo a pick above: they go back where they came from, and a title vacated with it goes back \u2014 while nothing has happened since.</div>' : `<div class="uv-fixrow" onclick="uvUnopenWindow('${trId}')">${ICON.undo}<div><b>Take back opening the window</b><span>Nobody has been drafted yet</span></div></div>`}
     </div>` : ""}`;
   }
   function groups(drafts) {
@@ -5528,12 +5996,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return [...out.values()];
   }
   function uvOpenWindow(trId) {
-    const t = promotionTable(uni(), trId);
+    const st = uni();
+    const tr = transitionById(st, trId);
+    const n = tr.parts.reduce((k, p) => k + promotionTable(st, trId, p.link).champions.length, 0);
     confirmThen(
       "Open the transfer window?",
-      `${plural3(t.champions.length, "NXT champion")} become${t.champions.length === 1 ? "s" : ""} draft eligible now. Nobody moves until you draft them.`,
+      `${plural3(n, "champion")} become${n === 1 ? "s" : ""} draft eligible now. Nobody moves until you draft them.`,
       "Open it",
-      () => commit((st) => openWindow(st, trId), "Transfer window open")
+      () => commit((s) => openWindow(s, trId), "Transfer window open")
     );
   }
   function uvUnopenWindow(trId) {
@@ -5541,10 +6011,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvCloseWindow(trId) {
     const st = uni();
-    const left = promotionTable(st, trId).eligible.filter((e) => !e.drafted).map((e) => wrestlerById(st, e.wrestler).name);
+    const left = allEligible(st, trId).filter((e) => !e.drafted).map((e) => wrestlerById(st, e.wrestler).name);
     confirmThen(
       "End the transfer window?",
-      left.length ? `${left.join(", ")} ${left.length === 1 ? "stays" : "stay"} on NXT, undrafted \u2014 and that\u2019s kept on record.` : "Everyone eligible has been drafted.",
+      left.length ? `${left.join(", ")} ${left.length === 1 ? "stays" : "stay"} where they are, undrafted \u2014 and that\u2019s kept on record.` : "Everyone eligible has been drafted.",
       "End it",
       () => commit((s) => closeWindow(s, trId), "Transfer window closed")
     );
@@ -5558,27 +6028,30 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const who = st.drafts.filter((x) => x.group === d.group).map((x) => wrestlerById(st, x.wrestler).name);
     confirmThen(
       `Undo pick ${d.pick}?`,
-      `${who.join(" and ")} go${who.length === 1 ? "es" : ""} back to NXT. A title vacated with this pick goes back to its holder.`,
+      `${who.join(" and ")} go${who.length === 1 ? "es" : ""} back to ${showName(st, d.from)}. A title vacated with this pick goes back to its holder.`,
       "Undo pick",
       () => commit((s) => undoDraft(s, draftId), "Pick undone")
     );
   }
   var dr = null;
   function uvDraft(trId, wid) {
-    dr = { trId, wid, to: "", partners: [], titles: {}, note: "" };
+    const o = draftOptions(uni(), trId, wid);
+    dr = { trId, wid, to: o && o.shows.length === 1 ? o.shows[0] : "", partners: [], titles: {}, note: "" };
     openSheet(draftSheet);
   }
   function draftSheet() {
     const st = uni();
     const d = dr;
     const w = wrestlerById(st, d.wid);
-    if (!w || w.showId !== "nxt") return null;
+    const o = w && draftOptions(st, d.trId, d.wid);
+    if (!o || !o.part.lower.includes(w.showId)) return null;
+    const part2 = o.part;
     const q = draftQuestions(st, d.wid);
     const group = [d.wid, ...d.partners];
     const titles = /* @__PURE__ */ new Map();
     group.forEach((id) => draftQuestions(st, id).titles.forEach((h) => titles.set(h.title, h)));
     const elig = eligibilityOf(st, d.trId, d.wid);
-    const tiles = mainShows(st).map((s) => `<div class="uv-tile${d.to === s.id ? " on" : ""}" style="--c:${showColor(st, s.id)}" data-show="${s.id}"
+    const tiles = o.shows.map((id) => showById(st, id)).map((s) => `<div class="uv-tile${d.to === s.id ? " on" : ""}" style="--c:${showColor(st, s.id)}" data-show="${s.id}"
       onclick="uvDraftSet('to','${s.id}')"><span class="uv-dot"></span><b>${esc(s.name)}</b>
       <span>${st.wrestlers.filter((x) => x.showId === s.id).length} on the roster</span></div>`).join("");
     const partners = q.partners.map((p) => {
@@ -5586,24 +6059,29 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return p.partners.map((pid) => {
         const x = wrestlerById(st, pid);
         const eligible = eligibilityOf(st, d.trId, pid).length > 0;
-        const here = x.showId === "nxt";
+        const here = part2.lower.includes(x.showId);
         return `<label class="uv-check"><input type="checkbox"${d.partners.includes(pid) ? " checked" : ""}${here ? "" : " disabled"}
           onchange="uvDraftPartner('${pid}')"><span>Bring <b>${esc(x.name)}</b> too \u2014 ${esc(team.name)}${here ? eligible ? " (draft eligible)" : " (not draft eligible \u2014 your call)" : ` (already on ${esc(showName(st, x.showId))})`}</span></label>`;
       }).join("");
     }).join("");
+    const rule = o.titles;
     const titleQs = [...titles.values()].map((h) => {
       const who = h.team ? esc(teamById(st, h.team).name) : nm(st, st.reigns.find((r) => r.id === h.reign).holder.id);
+      if (rule !== "ask") {
+        return `<div class="uv-tq" data-rule="${rule}"><span>${who} hold${h.team ? "" : "s"} the <b>${title(st, h.title)}</b>. By the rules for
+        ${esc(part2.lowerName)} \u2192 ${esc(part2.upperName)}, it\u2019s <b>${TITLE_RULE[rule]}</b> when they move up.</span></div>`;
+      }
       const seg = (k, lb) => `<div class="${d.titles[h.title] === k ? "on" : ""}" onclick="uvDraftTitle('${h.title}','${k}')">${lb}</div>`;
-      return `<div class="uv-tq"><span>${who} hold${h.team ? "" : "s"} the <b>${title(st, h.title)}</b>. The app has no rule for this \u2014 your call:</span>
+      return `<div class="uv-tq"><span>${who} hold${h.team ? "" : "s"} the <b>${title(st, h.title)}</b>. The rules leave this to you:</span>
       <div class="uv-seg">${seg("keep", "Keep it")}${seg("vacate", "Vacate it")}</div></div>`;
     }).join("");
     const names2 = group.map((id) => wrestlerById(st, id).name).join(" & ");
-    const unanswered = [...titles.values()].some((h) => !d.titles[h.title]);
+    const unanswered = rule === "ask" && [...titles.values()].some((h) => !d.titles[h.title]);
     const ready = d.to && !unanswered;
     return {
       title: `Draft ${esc(w.name)}`,
       body: `
-      <p class="uv-p">${elig.map((e) => sourceText(st, e)).join(" \xB7 ")}</p>
+      <p class="uv-p">${elig.map((e) => sourceText(st, e, part2)).join(" \xB7 ")}</p>
       <h4>To</h4>
       <div class="uv-tiles">${tiles}</div>
       ${partners ? `<h4>Tag partners</h4><p class="uv-p">Whether a team moves together is up to you.</p>${partners}` : ""}
@@ -5628,8 +6106,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvDraftSave() {
     const d = dr;
     if (!d.to) return;
+    const o = draftOptions(uni(), d.trId, d.wid);
+    const titles = o && o.titles === "ask" ? d.titles : {};
     const r = commit(
-      (st) => draftWrestler(st, d.trId, d.wid, d.to, { partners: d.partners, titles: d.titles, note: d.note }),
+      (st) => draftWrestler(st, d.trId, d.wid, d.to, { partners: d.partners, titles, note: d.note }),
       (recs) => `Pick ${recs[0].pick}: ${recs.map((x) => wrestlerById(uni(), x.wrestler).name).join(" & ")} to ${showName(uni(), d.to)}`
     );
     if (r.ok) closeSheet();
@@ -5638,23 +6118,305 @@ body.uv-confirm-open .uv-confirm{display:flex}
     openSheet(() => ({
       title: "How promotion works",
       body: `
-      <p class="uv-p"><b>Qualifiers.</b> NXT\u2019s first show after WrestleMania holds one-on-one qualifying matches. You pick who\u2019s
-        in them, from everyone on NXT at WrestleMania. The page suggests the top of NXT\u2019s season standings \u2014 ranked exactly as
-        on the Rankings tab, champions and the injured aside \u2014 but it\u2019s only a suggestion. Winners become draft eligible. A
-        qualifier without a winner is your call: a rematch, or send one, both or neither through.</p>
-      <p class="uv-p"><b>Champions.</b> Every NXT champion is draft eligible without a match \u2014 both members of a tag team
-        holding an NXT tag title. They\u2019re fixed as eligible when you open the transfer window.</p>
-      <p class="uv-p"><b>The transfer window.</b> Being eligible moves nobody. In the window you draft eligible wrestlers to Raw,
-        SmackDown or Dynamite, in any order, as many to each show as you like \u2014 rosters don\u2019t have to come out even. End it
-        whenever you like: anyone left undrafted stays on NXT, and that\u2019s kept on record too.</p>
-      <p class="uv-p"><b>What you decide at every pick.</b> The app has no rule for these, so it asks:</p>
+      <p class="uv-p"><b>By the rules.</b> Each tier\u2019s connection to the tier above it says who can move up: qualifying winners,
+        champions, or both \u2014 and where to, and what happens to a title. As it starts, NXT to the main roster works as below.
+        <span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span> has each connection\u2019s rules.</p>
+      <p class="uv-p"><b>Qualifiers.</b> The lower tier\u2019s first show after WrestleMania holds one-on-one qualifying matches. You pick
+        who\u2019s in them, from everyone on that tier at WrestleMania. The page suggests the top of its season standings \u2014 ranked
+        exactly as on the Rankings tab, champions and the injured aside \u2014 but it\u2019s only a suggestion. Winners become draft eligible.
+        A qualifier without a winner is your call: a rematch, or send one, both or neither through.</p>
+      <p class="uv-p"><b>Champions.</b> Where the rules make them eligible, every champion of the lower tier is draft eligible without a
+        match \u2014 both members of a tag team holding a tag title. They\u2019re fixed as eligible when you open the transfer window.
+        Champions set to move up by themselves (Evolve\u2019s, as it starts) are listed, but that isn\u2019t carried out yet.</p>
+      <p class="uv-p"><b>The transfer window.</b> Being eligible moves nobody. In the window you draft eligible wrestlers up a tier \u2014
+        to your pick of its shows, or the show the rules set \u2014 in any order, as many to each show as you like; rosters don\u2019t have
+        to come out even. End it whenever you like: anyone left undrafted stays where they are, and that\u2019s kept on record too.</p>
       <div class="uv-calc">
-        <div><span>Titles</span><b>a drafted champion keeps the title or vacates it \u2014 for a tag title, the whole team\u2019s</b></div>
-        <div><span>Teams</span><b>whether tag partners come along \u2014 eligible or not \u2014 or the team is split across shows</b></div>
+        <div><span>Titles</span><b>a drafted champion\u2019s title follows the rules \u2014 vacated, kept, or your call at the pick (as it starts for NXT)</b></div>
+        <div><span>Teams</span><b>whether tag partners come along \u2014 eligible or not \u2014 or the team is split across shows: always your call</b></div>
       </div>
-      <p class="uv-p"><b>The record.</b> Every eligibility says how it came about \u2014 an NXT title, a qualifier win, or your decision
-        \u2014 and every pick keeps its number, show, eligibility, title decisions and note, for good. Every transfer since
-        WrestleMania is listed on the window\u2019s page, and each wrestler\u2019s page shows their draft.</p>`
+      <p class="uv-p"><b>The record.</b> Every eligibility says how it came about \u2014 a title, a qualifier win, or your decision \u2014
+        and every pick keeps its number, show, eligibility, title decisions and note, for good. Every transfer since WrestleMania
+        is listed on the window\u2019s page, and each wrestler\u2019s page shows their draft.</p>`
+    }));
+  }
+
+  // js/universe/tiers.js
+  var tiers_exports = {};
+  __export(tiers_exports, {
+    uvHowTiers: () => uvHowTiers,
+    uvLinkRules: () => uvLinkRules,
+    uvOpenTiers: () => uvOpenTiers,
+    uvRule: () => uvRule,
+    uvRuleLines: () => linesHTML,
+    uvShowAdd: () => uvShowAdd,
+    uvShowDelete: () => uvShowDelete,
+    uvShowSave: () => uvShowSave,
+    uvShowSet: () => uvShowSet,
+    uvShowSheet: () => uvShowSheet,
+    uvShowTier: () => uvShowTier,
+    uvTierAdd: () => uvTierAdd,
+    uvTierMove: () => uvTierMove,
+    uvTierNameSave: () => uvTierNameSave,
+    uvTierNameSet: () => uvTierNameSet,
+    uvTierRemove: () => uvTierRemove,
+    uvTierRename: () => uvTierRename,
+    uvTiersPage: () => uvTiersPage
+  });
+  function uvOpenTiers() {
+    pushPage("tiers", "all");
+  }
+  var plural4 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var showList = (st, ids, and = "and") => {
+    const ns = ids.map((id) => (showById(st, id) || { name: "?" }).name);
+    return ns.length < 3 ? ns.join(` ${and} `) : `${ns.slice(0, -1).join(", ")} ${and} ${ns[ns.length - 1]}`;
+  };
+  var tierNo = (st, t) => st.tiers.indexOf(t) + 1;
+  var TIMING = { result: "right away, on the result", window: "at the transfer window" };
+  var CHAMPS = { eligible: "draft eligible", automatic: "move up by themselves at the transfer window", none: "stay where they are" };
+  var TITLES = { ask: "your call at each move", vacate: "vacated", keep: "kept \u2014 they defend it on their new show" };
+  function ruleLines(st, rules, up, low) {
+    const r = rules;
+    const pending = pendingRules(r);
+    const lines = [];
+    lines.push({
+      dir: "down",
+      label: "Relegation",
+      off: !r.relegation.on,
+      pending: r.relegation.on && r.relegation.timing === "window",
+      text: r.relegation.on ? `after WrestleMania, the ${r.relegation.candidates} with the fewest wins on each of ${showList(st, up.shows, "and") || "its shows"} face each other; losers go down to ${(showById(st, r.relegation.to) || { name: "?" }).name} ${TIMING[r.relegation.timing]}` : "off"
+    });
+    lines.push({
+      dir: "up",
+      label: "Qualifying matches",
+      off: !r.qualifiers.on,
+      pending: r.qualifiers.on && r.promotion.timing === "result",
+      text: r.qualifiers.on ? `on ${showList(st, low.shows, "or") || "its shows"} after WrestleMania; winners ${r.promotion.timing === "result" ? "move up straight away" : "become draft eligible"}` : "off"
+    });
+    lines.push({ dir: "up", label: `${low.name} champions`, off: r.champions === "none", pending: r.champions === "automatic", text: CHAMPS[r.champions] });
+    lines.push({ dir: "up", label: "Their titles", off: false, pending: false, text: TITLES[r.titles] });
+    const to = r.promotion.to ? (showById(st, r.promotion.to) || { name: "?" }).name : `your pick of ${showList(st, up.shows, "or") || "its shows"} \u2014 the draft`;
+    lines.push({ dir: "up", label: "Moving up to", off: false, pending: false, text: to });
+    return { lines, pending };
+  }
+  function linesHTML(st, rules, up, low) {
+    const { lines, pending } = ruleLines(st, rules, up, low);
+    return `<div class="uv-rules">${lines.map((l) => `<div class="${l.off ? "off" : ""}${l.pending ? " pend" : ""}">
+      <span class="d">${l.dir === "down" ? ICON.down : ICON.up}</span><b>${esc(l.label)}</b><span class="x">${esc(l.text)}</span></div>`).join("")}</div>
+    ${pending.length ? `<div class="uv-flag"><span>Not carried out yet: ${esc(pending.join("; "))}. The rule is kept, and the transition page lists who
+      it would move \u2014 for now, nobody moves by it.</span></div>` : ""}`;
+  }
+  function uvTiersPage() {
+    const st = uni();
+    const inNone = st.shows.filter((s) => !tierOfShow(st, s.id));
+    const count = (id) => st.wrestlers.filter((w) => w.showId === id).length;
+    const tierOpts = (cur) => options([...st.tiers.map((t, i) => [t.id, `Tier ${i + 1} \xB7 ${t.name}`]), ["", "No tier"]], cur || "");
+    const showRow = (s) => `<div class="uv-trow" data-show="${s.id}">
+      <span class="uv-dot" style="--c:${showColor(st, s.id)}"></span>
+      <div class="uv-main" onclick="uvShowSheet('${s.id}')"><div class="nm">${esc(s.name)}</div>
+        <div class="sub">${plural4(count(s.id), "wrestler")} \xB7 ${DAYS[s.day]}s</div></div>
+      ${select(`uvShowTier('${s.id}',this.value)`, tierOpts((tierOfShow(st, s.id) || {}).id), ` data-tier-of="${s.id}" aria-label="Tier"`)}
+    </div>`;
+    const tierCard = (t, i) => {
+      const lower = i > 0;
+      return `<div class="uv-tier" data-tier="${t.id}">
+      <div class="h"><span class="no">Tier ${i + 1}</span><b onclick="uvTierRename('${t.id}')">${esc(t.name)}</b>
+        <span class="sp"></span>
+        ${lower && i > 1 ? `<div class="uv-ic mv" title="Move up" onclick="uvTierMove('${t.id}',-1)">${ICON.up}</div>` : ""}
+        ${lower && i < st.tiers.length - 1 ? `<div class="uv-ic mv" title="Move down" onclick="uvTierMove('${t.id}',1)">${ICON.down}</div>` : ""}
+        <div class="uv-ic mv" title="Rename" onclick="uvTierRename('${t.id}')">${ICON.edit}</div>
+        ${lower ? `<div class="uv-ic mv" title="Remove" onclick="uvTierRemove('${t.id}')">${ICON.x}</div>` : ""}</div>
+      ${t.shows.length ? tierShows(st, t).map(showRow).join("") : `<div class="uv-none">No shows yet \u2014 add one below, or move one here.</div>`}
+      ${i === 0 ? '<div class="fine">The main roster. It stays at the top, and always has at least one show.</div>' : ""}
+    </div>`;
+    };
+    const linkCard = (l, i) => {
+      const up = tierById(st, l.upper), low = tierById(st, l.lower);
+      return `<div class="uv-conn" data-link="${l.id}">
+      <div class="h">${ICON.move}<div><b>Tier ${i + 1} \u21C4 Tier ${i + 2}</b><span>${esc(up.name)} and ${esc(low.name)}</span></div></div>
+      ${linesHTML(st, l.rules, up, low)}
+      <div class="uv-btn full" onclick="uvLinkRules('${l.id}')">${ICON.edit}Edit the rules</div>
+    </div>`;
+    };
+    const links = activeLinks(st);
+    const live = st.transitions.find((t) => !(t.window && t.window.closed));
+    return {
+      title: "Tiers & transfers",
+      body: `
+      <div class="uv-storyhead">
+        <div class="k">Tiers & transfers</div>
+        <p>Shows sit in tiers, top down. Between each tier and the one below it are the rules for moving down (relegation) and
+          up (qualifying, champions, the draft). Nothing here moves anyone \u2014 the season transition after WrestleMania does,
+          by these rules.</p>
+        <div class="s">${plural4(st.tiers.length, "tier")} \xB7 ${plural4(links.length, "connection")}${live ? ` \xB7 <span class="uv-link" onclick="uvOpenTransition('${live.id}')">A season transition is under way</span> \u2014 it keeps the rules it started with` : ""} \xB7 <span class="uv-link" onclick="uvHowTiers()">How it works</span></div>
+      </div>
+      <div class="uv-tiers">
+        ${st.tiers.map((t, i) => tierCard(t, i) + (links[i] ? linkCard(links[i], i) : "")).join("")}
+      </div>
+      <div class="uv-page-acts"><div class="uv-btn" onclick="uvTierAdd()">${ICON.plus}Add a tier</div>
+        <div class="uv-btn" onclick="uvShowAdd()">${ICON.plus}Add a show</div></div>
+      ${inNone.length ? `<div class="uv-sub">Shows in no tier</div><div class="uv-tier none">${inNone.map(showRow).join("")}
+        <div class="fine">Nobody on these moves up or down a tier.</div></div>` : ""}`
+    };
+  }
+  function uvTierAdd() {
+    commit((st) => addTier(st, {}), (t) => `${t.name} added at the bottom \u2014 set its connection\u2019s rules`);
+  }
+  function uvTierMove(id, dir) {
+    commit((st) => moveTier(st, id, dir), "Tier moved");
+  }
+  function uvTierRemove(id) {
+    const st = uni();
+    const t = tierById(st, id);
+    confirmThen(
+      `Remove ${t.name}?`,
+      `${t.shows.length ? `${showList(st, t.shows)} stay${t.shows.length === 1 ? "s" : ""}, with everyone on ${t.shows.length === 1 ? "it" : "them"}, in no tier. ` : ""}The tiers either side of it get connected, with the rules they had together before (if any). Nothing that already happened changes.`,
+      "Remove",
+      () => commit((s) => removeTier(s, id), `${t.name} removed`)
+    );
+  }
+  var rename = "";
+  function uvTierRename(id) {
+    rename = tierById(uni(), id).name;
+    openSheet(() => {
+      const t = tierById(uni(), id);
+      if (!t) return null;
+      return {
+        title: `Tier ${tierNo(uni(), t)}`,
+        body: `${field("Name", `<input id="uvTierName" class="uv-in" maxlength="60" value="${esc(rename)}" oninput="uvTierNameSet(this.value)"
+          onkeydown="if(event.key==='Enter')uvTierNameSave('${id}')">`, "wide")}
+        <div class="uv-btn pri full" onclick="uvTierNameSave('${id}')">Save</div>`
+      };
+    });
+  }
+  function uvTierNameSet(v) {
+    rename = v;
+  }
+  function uvTierNameSave(id) {
+    if (commit((st) => renameTier(st, id, rename), "Tier renamed").ok) closeSheet();
+  }
+  function uvShowTier(showId, tierId) {
+    commit((st) => setShowTier(st, showId, tierId || null), (t) => `${showById(uni(), showId).name} ${t ? `is in ${t.name}` : "is in no tier"}`);
+  }
+  var sd = null;
+  function uvShowAdd() {
+    sd = { id: "", name: "", day: "3", tier: "" };
+    openSheet(showSheet);
+  }
+  function uvShowSheet(id) {
+    const s = showById(uni(), id);
+    sd = { id, name: s.name, day: String(s.day), tier: (tierOfShow(uni(), id) || {}).id || "" };
+    openSheet(showSheet);
+  }
+  function showSheet() {
+    const st = uni();
+    if (sd.id && !showById(st, sd.id)) return null;
+    const refs = sd.id ? showRefs(st, sd.id) : [];
+    return {
+      title: sd.id ? "Show" : "Add a show",
+      body: `
+      ${field("Name", `<input id="uvShowName" class="uv-in" maxlength="60" value="${esc(sd.name)}" placeholder="e.g. Main Event" oninput="uvShowSet('name',this.value)">`, "wide")}
+      <div class="uv-grid" style="margin-top:10px">
+        ${field("Night", select(`uvShowSet('day',this.value)`, options(DAYS.map((n, i) => [String(i), n]), sd.day), ' id="uvShowDay"'))}
+        ${sd.id ? "" : field("Tier", select(`uvShowSet('tier',this.value)`, options([...st.tiers.map((t, i) => [t.id, `Tier ${i + 1} \xB7 ${t.name}`]), ["", "No tier"]], sd.tier), ' id="uvShowTierPick"'))}
+      </div>
+      <div class="uv-btn pri full" onclick="uvShowSave()">${sd.id ? "Save" : "Add the show"}</div>
+      ${sd.id ? refs.length ? `<div class="fine">${esc(showById(st, sd.id).name)} has history (${esc(refs.join(", "))}), so it can\u2019t be deleted.</div>` : `<div class="uv-btn bad full" onclick="uvShowDelete('${sd.id}')">Delete the show</div>` : ""}
+      <div class="fine">Episodes already on the calendar keep their name and night.</div>`
+    };
+  }
+  function uvShowSet(k, v) {
+    sd[k] = v;
+  }
+  function uvShowSave() {
+    const d = sd;
+    const r = d.id ? commit((st) => updateShow(st, d.id, { name: d.name, day: d.day }), "Show saved") : commit((st) => addShow(st, { name: d.name, day: d.day, tier: d.tier || null }), (s) => `${s.name} added`);
+    if (r.ok) closeSheet();
+  }
+  function uvShowDelete(id) {
+    const s = showById(uni(), id);
+    confirmThen(`Delete ${s.name}?`, "Nothing on record names it, so nothing else changes.", "Delete", () => {
+      if (commit((st) => deleteShow(st, id), `${s.name} deleted`).ok) closeSheet();
+    });
+  }
+  function uvLinkRules(linkId) {
+    openSheet(() => {
+      const st = uni();
+      const l = linkById(st, linkId);
+      if (!l || !activeLinks(st).includes(l)) return null;
+      const up = tierById(st, l.upper), low = tierById(st, l.lower), r = l.rules;
+      const i = st.tiers.indexOf(up);
+      const seg = (key, items, cur) => `<div class="uv-seg" data-rule="${key}">${items.map(([v, lb]) => `<div class="${String(cur) === String(v) ? "on" : ""}" data-v="${v}"
+      onclick="uvRule('${linkId}','${key}','${v}')">${esc(lb)}</div>`).join("")}</div>`;
+      const showPick = (key, ids, cur, blank) => select(
+        `uvRule('${linkId}','${key}',this.value)`,
+        options([...blank ? [["", blank]] : [], ...ids.map((id) => [id, showById(st, id).name])], cur || ""),
+        ` data-rule="${key}"`
+      );
+      const { pending } = ruleLines(st, r, up, low);
+      return {
+        title: `Tier ${i + 1} \u21C4 Tier ${i + 2}`,
+        body: `
+        <p class="uv-p">The rules between <b>${esc(up.name)}</b> and <b>${esc(low.name)}</b>. Each change is saved as you make it, for the
+          next season transition \u2014 one already under way keeps the rules it started with.</p>
+        <h4>${ICON.down}Relegation matches</h4>
+        ${seg("relegation.on", [["true", "On"], ["false", "Off"]], r.relegation.on)}
+        ${r.relegation.on ? `
+          <div class="uv-trcount"><span>Candidates on each ${esc(up.name)} show: the</span>
+            <div class="uv-ic mv" onclick="uvRule('${linkId}','relegation.candidates','${Math.max(0, r.relegation.candidates - 1)}')">${ICON.left}</div>
+            <b>${r.relegation.candidates}</b>
+            <div class="uv-ic mv" onclick="uvRule('${linkId}','relegation.candidates','${r.relegation.candidates + 1}')">${ICON.right}</div>
+            <span>with the fewest wins</span></div>
+          <div class="uv-sub flush">Losers move down</div>
+          ${seg("relegation.timing", [["result", "Right away"], ["window", "At the transfer window"]], r.relegation.timing)}
+          ${field("Down to", low.shows.length ? showPick("relegation.to", low.shows, r.relegation.to) : `<div class="uv-in ro">${esc(low.name)} has no shows</div>`, "wide")}` : ""}
+        <h4>${ICON.up}Qualifying matches on ${esc(low.name)}</h4>
+        ${seg("qualifiers.on", [["true", "On"], ["false", "Off"]], r.qualifiers.on)}
+        ${r.qualifiers.on ? `<div class="uv-sub flush">Winners</div>
+          ${seg("promotion.timing", [["window", "Draft eligible"], ["result", "Move up straight away"]], r.promotion.timing)}` : ""}
+        <h4>${ICON.up}${esc(low.name)} champions</h4>
+        ${seg("champions", [["eligible", "Draft eligible"], ["automatic", "Move up by themselves"], ["none", "Stay"]], r.champions)}
+        <div class="uv-sub flush">A title, when its holder moves up</div>
+        ${seg("titles", [["ask", "Your call"], ["vacate", "Vacated"], ["keep", "Kept"]], r.titles)}
+        <div class="fine">${esc(r.titles === "ask" ? "You decide at each move whether the title is kept or vacated." : r.titles === "vacate" ? "The title is vacated the moment its holder moves up \u2014 ready for a new champion." : "The holder keeps it, and defends it on their new show.")}</div>
+        <h4>${ICON.up}Moving up to</h4>
+        ${showPick("promotion.to", up.shows, r.promotion.to, `Your pick of ${showList(st, up.shows, "or")} \u2014 the draft`)}
+        ${pending.length ? `<div class="uv-flag" style="margin-top:12px"><span>Not carried out yet: ${esc(pending.join("; "))}. The rule is kept and
+          the transition page lists who it would move, but nobody moves by it yet.</span></div>` : ""}`
+      };
+    });
+  }
+  function uvRule(linkId, key, value) {
+    const [part2, sub] = key.split(".");
+    const v = value === "true" ? true : value === "false" ? false : key === "relegation.candidates" ? Number(value) : value === "" ? null : value;
+    const patch = sub ? { [part2]: { [sub]: v } } : { [part2]: v };
+    commit((st) => setLinkRules(st, linkId, patch), "Rules saved");
+  }
+  function uvHowTiers() {
+    openSheet(() => ({
+      title: "How tiers work",
+      body: `
+      <p class="uv-p"><b>Tiers.</b> Every show can sit in one tier. Tier 1 is the main roster \u2014 Raw, SmackDown and Dynamite, as it
+        starts \u2014 and stays at the top. Below it, as it starts: NXT, then Evolve. Add tiers at the bottom, rename them, reorder the
+        lower ones, remove them, and move shows between them. A show in no tier takes no part in promotion or relegation.</p>
+      <p class="uv-p"><b>Connections.</b> Between each tier and the one below it are that pair\u2019s own rules:</p>
+      <div class="uv-calc">
+        <div><span>Down</span><b>relegation matches after WrestleMania \u2014 on or off, how many candidates on each upper show, when losers
+          move (right away or at the transfer window) and to which lower show</b></div>
+        <div><span>Up</span><b>qualifying matches on the lower tier \u2014 winners draft eligible, or moving up straight away</b></div>
+        <div><span>Champs</span><b>the lower tier\u2019s champions: draft eligible, moving up by themselves at the transfer window, or staying</b></div>
+        <div><span>Titles</span><b>when a champion moves up: your call at each move, vacated, or kept</b></div>
+        <div><span>Where</span><b>up to your pick of the upper tier\u2019s shows (the draft), or a set show</b></div>
+      </div>
+      <p class="uv-p"><b>As it starts.</b> Main roster \u21C4 NXT is the rules as they always were: two candidates with the fewest wins on
+        each main show, losers straight down to NXT; NXT champions and qualifying winners draft eligible; titles your call; drafted to
+        your pick. NXT \u21C4 Evolve: Evolve\u2019s champions move up to NXT by themselves at the transfer window, their titles vacated.</p>
+      <p class="uv-p"><b>When rules change.</b> Each season transition keeps a copy of the tiers and rules it started with, so what
+        already happened always reads the same. Changes here apply from the next transition. A new tier\u2019s connection starts
+        with everything off.</p>
+      <p class="uv-p"><b>Not carried out yet.</b> Moving down at the transfer window, champions moving up by themselves, and moving up
+        straight after a qualifying win are kept as rules and shown on the transition page with who they\u2019d move \u2014 but nobody moves
+        by them yet. Relegation matches or qualifiers under those rules can\u2019t be booked, so nothing happens halfway.</p>`
     }));
   }
 
@@ -5662,7 +6424,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvOpenTransition(id) {
     pushPage("transition", id);
   }
-  var plural4 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var plural5 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   var nm2 = (st, id) => esc((wrestlerById(st, id) || { name: "?" }).name);
   function uvStartTransition() {
     openSheet(() => {
@@ -5676,7 +6438,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         title: "Season transition",
         body: `
         <p class="uv-p">Pick the premium live event that ends the season \u2014 WrestleMania. Its season\u2019s win totals, up to and including
-          it, decide each main show\u2019s relegation candidates; their matches go on each show\u2019s first episode after it.</p>
+          it, decide each show\u2019s relegation candidates; their matches go on each show\u2019s first episode after it. The tiers and their
+          rules (<span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span>) are kept with the transition as they stand now.</p>
         ${list.length ? list.map((e) => `<div class="uv-row" onclick="uvStartTransitionAt('${e.id}')">
             <span class="uv-av sq" style="--c:var(--uv-gold)">${ICON.star}</span>
             <div class="uv-main"><div class="nm">${esc(e.name)}</div>
@@ -5700,14 +6463,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return [...relegationSummary(st, tr), ...uvPromotionSummary(st, tr)];
   }
   function relegationSummary(st, tr) {
-    return mainShows(st).map((s) => {
+    return relegationShows(st, tr).map((s) => {
       const t = relegationTable(st, tr.id, s.id);
       const decisions = t.flags.filter((f) => f.level === "decide").length;
       const down = t.records.length;
       let text;
       if (!t.candidates.length && !t.flags.length) text = t.count ? "no candidates" : "no relegation this year";
-      else if (decisions) text = `${plural4(decisions, "decision")} for you`;
-      else if (t.pairs.length && t.pairs.every((p) => ["relegated", "decided"].includes(p.status))) text = `done \u2014 ${down} to NXT`;
+      else if (decisions) text = `${plural5(decisions, "decision")} for you`;
+      else if (t.pairs.length && t.pairs.every((p) => ["relegated", "decided"].includes(p.status))) text = `done \u2014 ${down} to ${t.to.name}`;
       else if (t.pairs.some((p) => p.status === "booked")) text = "booked";
       else text = "ready to book";
       return { label: s.name, color: showColor(st, s.id), text, decisions };
@@ -5734,30 +6497,45 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="uv-trsum">${summary2.map((x) => `<span class="${x.decisions ? "warn" : ""}"><i style="--c:${x.color}"></i>
           ${esc(x.label)}: ${esc(x.text)}</span>`).join("")}</div>
       </div>
-      <div class="uv-seg uv-seg-page">${seg("relegation", "Relegation")}${seg("promotion", "NXT promotion")}${seg("window", "Transfer window")}</div>`;
+      <div class="uv-seg uv-seg-page">${seg("relegation", "Relegation")}${seg("promotion", "Promotion")}${seg("window", "Window")}${seg("rules", "Rules")}</div>`;
     if (part === "promotion") return { title: `${season.name} transition`, body: head + uvPromotionPart(st, tr) };
     if (part === "window") return { title: `${season.name} transition`, body: head + uvWindowPart(st, tr) };
-    const tables = mainShows(st).map((s) => relegationTable(st, id, s.id));
+    if (part === "rules") return { title: `${season.name} transition`, body: head + rulesPart(st, tr) };
+    const tables = relegationShows(st, tr).map((s) => relegationTable(st, id, s.id));
     const incomplete = tables[0] && tables[0].flags.find((f) => f.key === "incomplete");
     const booked = tables.some((t) => t.pairs.some((p) => p.matches.length));
-    const started = booked || promotionTable(st, id).pairs.some((p) => p.matches.length) || tr.window;
+    const started = booked || tr.parts.some((p) => (p.qualifiers.pairs || []).some((x) => x.matches.length)) || tr.window;
+    const parts = tr.parts.filter((p) => p.upper.some((sid) => tr.shows[sid]));
+    const sections = parts.map((p) => `${parts.length > 1 ? `<div class="uv-sub">${esc(p.upperName)} \u2192 ${esc(p.lowerName)}</div>` : ""}
+    ${tables.filter((t) => t.part === p).map((t) => showSection(st, t)).join("")}`).join("");
     return {
       title: `${season.name} transition`,
       body: `${head}
-      <p class="uv-p uv-inset-p">On each main show, the wrestlers with the fewest wins in ${esc(season.name)} \u2014 up to and including
-        ${esc(wm.name)} \u2014 face each other on its first show after it. Whoever loses goes to NXT; the winner stays. Each show sets
-        its own number. <span class="uv-link gold" onclick="uvHowRelegation()">How relegation works</span></p>
+      <p class="uv-p uv-inset-p">On each show holding relegation matches, the wrestlers with the fewest wins in ${esc(season.name)} \u2014
+        up to and including ${esc(wm.name)} \u2014 face each other on its first show after it. Whoever loses goes down a tier
+        (${parts.map((p) => `${esc(showNamesOf(st, p.upper))} \u2192 ${esc(showName(st, p.rules.relegation.to))}`).join("; ") || "no tier has relegation on"});
+        the winner stays. Each show sets its own number. <span class="uv-link gold" onclick="uvHowRelegation()">How relegation works</span></p>
       ${incomplete ? `<div class="uv-flag decide top"><b>Your decision</b><span>${esc(incomplete.text)}</span>
         <div class="uv-btn sm2" onclick="uvTrCountAsTheyStand('${id}')">Count the wins as they stand</div></div>` : ""}
-      ${tables.map((t) => showSection(st, t)).join("")}
+      ${sections || '<div class="uv-none">No tier holds relegation matches in this transition.</div>'}
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
         <div class="fine">A wrong relegation result is corrected on its match, like any other: the wrestler who really lost goes
-          to NXT instead, and the one who didn\u2019t comes back. Clearing the result or taking the match off the card brings them back.</div>
+          down instead, and the one who didn\u2019t comes back. Clearing the result or taking the match off the card brings them back.</div>
         ${started ? "" : `<div class="uv-fixrow bad" onclick="uvTrCancel('${id}')">${ICON.x}<div><b>Cancel this transition</b>
           <span>Nothing is booked from it yet</span></div></div>`}
       </div>`
     };
+  }
+  function rulesPart(st, tr) {
+    return `<p class="uv-p uv-inset-p">These are the tiers and rules as they stood when this transition started \u2014 it keeps them, so
+      what happens here always reads the same. Changes in <span class="uv-link gold" onclick="uvOpenTiers()">Tiers & transfers</span>
+      apply from the next transition.</p>
+    ${tr.parts.map((p) => `<div class="uv-conn" data-conn="${p.link}">
+      <div class="h">${ICON.move}<div><b>${esc(p.upperName)} \u21C4 ${esc(p.lowerName)}</b>
+        <span>${esc(showNamesOf(st, p.upper) || "no shows")} \xB7 ${esc(showNamesOf(st, p.lower) || "no shows")}</span></div></div>
+      ${linesHTML(st, p.rules, { name: p.upperName, shows: p.upper }, { name: p.lowerName, shows: p.lower })}
+    </div>`).join("") || '<div class="uv-none">There was only one tier when this transition started.</div>'}`;
   }
   function showSection(st, t) {
     const tr = t.tr, sid = t.show.id, trId = tr.id;
@@ -5776,7 +6554,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return `<div class="uv-tw${on ? " on" : ""}${tied ? " tied" : ""}${line2}" data-w="${r.id}" onclick="uvTrPick('${trId}','${sid}','${r.id}')">
       <span class="uv-tick">${on ? ICON.check : ""}</span>
       <div class="uv-main"><div class="nm">${esc(r.name)}${tied ? ' <span class="uv-chip warn">Tied</span>' : ""}</div>
-        <div class="sub">${esc(notes.join(" \xB7 ") || `${plural4(r.matches, "match", "matches")}`)}</div></div>
+        <div class="sub">${esc(notes.join(" \xB7 ") || `${plural5(r.matches, "match", "matches")}`)}</div></div>
       <div class="w"><b>${r.wins}</b><span>${r.wins ? [r.singles && `singles ${r.singles}`, r.tag && `tag ${r.tag}`].filter(Boolean).join(" \xB7 ") : ""}</span></div>
     </div>`;
     }).join("");
@@ -5786,9 +6564,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${fixed ? "" : `<span class="uv-link" onclick="uvTrAuto('${trId}','${sid}')">Use the win totals</span>`}</div>`;
     const pairs = t.pairs.map((p) => pairRow2(st, t, p)).join("") + t.unpaired.map((id) => `<div class="uv-pair odd"><div class="vs"><b>${nm2(st, id)}</b> <span class="uv-muted">\u2014 no opponent</span></div></div>`).join("");
     const toBook = t.pairs.filter((p) => p.status === "unbooked").length;
-    const book = t.blocking.length && (toBook || t.tied.length) ? `<div class="uv-btn full off">Settle the decisions above to book</div>` : !toBook ? "" : t.night.event ? `<div class="uv-btn pri full" onclick="uvTrBook('${trId}','${sid}')">Book ${plural4(toBook, "relegation match", "relegation matches")} on ${esc(t.night.event.name)}</div>` : `<div class="uv-btn full off">Plan ${esc(t.show.name)}\u2019s first show after ${esc(t.wm.name)} to book</div>`;
+    const book = t.blocking.length && (toBook || t.tied.length) ? `<div class="uv-btn full off">Settle the decisions above to book</div>` : !toBook ? "" : t.night.event ? `<div class="uv-btn pri full" onclick="uvTrBook('${trId}','${sid}')">Book ${plural5(toBook, "relegation match", "relegation matches")} on ${esc(t.night.event.name)}</div>` : `<div class="uv-btn full off">Plan ${esc(t.show.name)}\u2019s first show after ${esc(t.wm.name)} to book</div>`;
     return `<div class="uv-sec" style="--c:${showColor(st, sid)}"><span class="bar"></span><span class="t">${esc(t.show.name)}</span>
-      <span class="n">${plural4(t.candidates.length, "candidate")}</span></div>
+      <span class="n">${plural5(t.candidates.length, "candidate")}</span></div>
     <div class="uv-trshow" data-show="${sid}">
       ${night}
       ${decide.map((f) => `<div class="uv-flag decide"><b>Your decision</b><span>${esc(f.text)}</span></div>`).join("")}
@@ -5801,7 +6579,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${book}
       ${t.records.map((r) => {
       const d = relegationDrift(st, r);
-      return `<div class="uv-relrec"><b>${nm2(st, r.wrestler)} \u2192 NXT</b><span>${esc(r.reason)}</span>${d ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? "" : "s"} now, not ${d.then}. The relegation stands unless you undo it.</span>` : ""}</div>`;
+      return `<div class="uv-relrec"><b>${nm2(st, r.wrestler)} \u2192 ${esc(showName(st, r.to))}</b><span>${esc(r.reason)}</span>${d ? `<span class="uv-drift">Corrected results have changed this since: ${d.now} win${d.now === 1 ? "" : "s"} now, not ${d.then}. The relegation stands unless you undo it.</span>` : ""}</div>`;
     }).join("")}
     </div>`;
   }
@@ -5820,14 +6598,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const rec = st.relegations.find((r) => r.pair === p.id && (r.match === m.id || r.decided));
     let detail = "";
     if (p.status === "booked") detail = `On <span class="uv-link" onclick="uvOpenEvent('${ev.id}')">${esc(ev.name)}</span>`;
-    if (p.status === "relegated") detail = `<b>${nm2(st, m.sides[m.winner].wrestlers[0])}</b> won at ${esc(ev.name)}${rec ? ` \u2014 <b>${nm2(st, rec.wrestler)}</b> to NXT` : ""}`;
+    if (p.status === "relegated") detail = `<b>${nm2(st, m.sides[m.winner].wrestlers[0])}</b> won at ${esc(ev.name)}${rec ? ` \u2014 <b>${nm2(st, rec.wrestler)}</b> to ${esc(showName(st, rec.to))}` : ""}`;
     if (p.status === "no winner") {
       detail = `${m.outcome === "draw" ? "A draw" : "A no contest"} at ${esc(ev.name)}.
       <div class="uv-pacts"><div class="uv-btn sm2" onclick="uvTrRematch('${trId}','${sid}','${p.id}')">Book a rematch\u2026</div>
         <div class="uv-btn sm2" onclick="uvTrDecide('${trId}','${sid}','${p.id}')">Decide\u2026</div></div>`;
     }
     if (p.status === "decided") {
-      detail = `${p.decision.relegate ? `You sent <b>${nm2(st, p.decision.relegate)}</b> to NXT` : "You kept both"}${p.decision.note ? ` \u2014 ${esc(p.decision.note)}` : ""}.
+      detail = `${p.decision.relegate ? `You sent <b>${nm2(st, p.decision.relegate)}</b> to ${esc(t.to.name)}` : "You kept both"}${p.decision.note ? ` \u2014 ${esc(p.decision.note)}` : ""}.
       <span class="uv-link" onclick="uvTrUndoDecision('${trId}','${sid}','${p.id}')">Undo</span>`;
     }
     return `<div class="uv-pair">
@@ -5863,7 +6641,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const t = relegationTable(uni(), trId, showId);
     commit(
       (st) => bookRelegation(st, trId, showId, t.night.event.id),
-      (ms) => `${plural4(ms.length, "relegation match", "relegation matches")} booked on ${t.night.event.name}`
+      (ms) => `${plural5(ms.length, "relegation match", "relegation matches")} booked on ${t.night.event.name}`
     );
   }
   function uvTrCancel(trId) {
@@ -5887,7 +6665,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const week = Math.max(cur.week, p.last.ev.at.season === cur.id ? p.last.ev.at.week + 1 : 1);
       return {
         title: "Book a rematch",
-        body: `<p class="uv-p"><b>${nm2(st, p.a)}</b> vs <b>${nm2(st, p.b)}</b> again \u2014 the loser goes to NXT.</p>
+        body: `<p class="uv-p"><b>${nm2(st, p.a)}</b> vs <b>${nm2(st, p.b)}</b> again \u2014 the loser goes to ${esc(t.to.name)}.</p>
         ${later.map((e) => `<div class="uv-row" onclick="uvTrRematchOn('${trId}','${showId}','${pairId}','${e.id}')">
           <span class="uv-av sq" style="--c:${showColor(st, showId)}">${ICON.cal}</span>
           <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${esc(eventWhen(st, e))}</div></div>
@@ -5924,8 +6702,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
           at ${esc(p.last.ev.name)}, so the rule can\u2019t say who goes down. It\u2019s your call \u2014 or book a rematch instead.</p>
         <label class="uv-f wide"><span>Why (kept in the record, optional)</span>
           <input id="uvTrNote" class="uv-in" maxlength="60" placeholder="e.g. Lost the rematch on the tie-break" oninput="uvTrNote(this.value)"></label>
-        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.a}')">Send ${nm2(st, p.a)} to NXT</div>
-        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.b}')">Send ${nm2(st, p.b)} to NXT</div>
+        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.a}')">Send ${nm2(st, p.a)} to ${esc(t.to.name)}</div>
+        <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','${p.b}')">Send ${nm2(st, p.b)} to ${esc(t.to.name)}</div>
         <div class="uv-btn full" onclick="uvTrDecideSave('${trId}','${showId}','${pairId}','')">Keep both on ${esc(t.show.name)}</div>`
       };
     });
@@ -5936,14 +6714,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvTrDecideSave(trId, showId, pairId, wid) {
     const r = commit(
       (st) => decidePair(st, trId, showId, pairId, wid || null, decisionNote),
-      () => wid ? `${wrestlerById(uni(), wid).name} sent to NXT` : "Both stay"
+      () => wid ? `${wrestlerById(uni(), wid).name} sent to ${showName(uni(), relegationTo(transitionById(uni(), trId), showId))}` : "Both stay"
     );
     if (r.ok) closeSheet();
   }
   function uvTrUndoDecision(trId, showId, pairId) {
     confirmThen(
       "Undo your decision?",
-      "Anyone it sent to NXT comes back, and the match is left without a winner again.",
+      "Anyone it sent down comes back, and the match is left without a winner again.",
       "Undo",
       () => commit((st) => undoDecision(st, trId, showId, pairId), "Decision undone")
     );
@@ -5952,15 +6730,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
     openSheet(() => ({
       title: "How relegation works",
       body: `
-      <p class="uv-p"><b>When.</b> Once a season, after WrestleMania. Each main-roster show \u2014 every show but NXT \u2014 holds its own
-        relegation matches on its first episode after WrestleMania.</p>
+      <p class="uv-p"><b>When.</b> Once a season, after WrestleMania. Each show in a tier whose connection to the tier below has
+        relegation on \u2014 Raw, SmackDown and Dynamite, as it starts \u2014 holds its own relegation matches on its first episode after
+        WrestleMania. <span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span> sets which, how many, and where losers go.</p>
       <p class="uv-p"><b>Who.</b> Everyone who was on the show at WrestleMania is ranked by their wins that season, up to and
         including WrestleMania: singles and tag wins, wherever they happened. Draws, losses and no contests aren\u2019t wins. The
-        candidates are the ones with the fewest \u2014 as many as you set for that show. Shows don\u2019t have to match: one can have
-        four candidates and another none, whatever their roster sizes.</p>
+        candidates are the ones with the fewest \u2014 as many as the rules say, and you can change each show\u2019s number. Shows don\u2019t
+        have to match: one can have four candidates and another none, whatever their roster sizes.</p>
       <p class="uv-p"><b>The matches.</b> Candidates face each other one on one, paired in win order until you pair them
-        differently. The loser moves to NXT the moment you save the result \u2014 the winner stays. WWE 2K25 decides who wins;
-        this never does.</p>
+        differently. The loser moves down a tier \u2014 to NXT, as it starts \u2014 the moment you save the result; the winner stays.
+        WWE 2K25 decides who wins; this never does.</p>
       <p class="uv-p"><b>What waits for you.</b> Nothing is invented where the rule runs out. Booking waits while any of these
         is open, and each is flagged as <i>your decision</i>:</p>
       <div class="uv-calc">
@@ -6127,9 +6906,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const base = { at: ev.at, event: ev.id, match: m.id };
         if (m.outcome === "win") {
           const W2 = m.sides[m.winner].wrestlers;
-          m.sides.forEach((sd, i) => {
+          m.sides.forEach((sd2, i) => {
             if (i === m.winner) return;
-            sd.wrestlers.forEach((l) => W2.forEach((w) => {
+            sd2.wrestlers.forEach((l) => W2.forEach((w) => {
               streak.set(`${w}>${l}`, 0);
               const n = (streak.get(`${l}>${w}`) || 0) + 1;
               const need = has3(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has3(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
@@ -6142,10 +6921,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
           const reign = reignOf.get(m.id);
           const prev = reign && st.reigns.find((r) => r.titleId === reign.titleId && r.end && r.end.seq === reign.start.seq);
           if (prev) {
-            const held = (sd) => prev.holder.type === "team" ? sd.team === prev.holder.id : sd.wrestlers.includes(prev.holder.id);
-            m.sides.forEach((sd, i) => {
-              if (i === m.winner || !held(sd)) return;
-              sd.wrestlers.forEach((l) => W2.forEach((w) => {
+            const held = (sd2) => prev.holder.type === "team" ? sd2.team === prev.holder.id : sd2.wrestlers.includes(prev.holder.id);
+            m.sides.forEach((sd2, i) => {
+              if (i === m.winner || !held(sd2)) return;
+              sd2.wrestlers.forEach((l) => W2.forEach((w) => {
                 const cause = { ...base, key: `title:${reign.id}:${l}>${w}`, type: "title", loser: l, winner: w, title: reign.titleId };
                 auto("grudge", l, w, "raise", has3(l, "ambitious", ev.at) ? 2 : 1, cause);
                 auto("rivals", l, w, "raise", 1, { ...cause, key: `title:${reign.id}:${pairOf(l, w)}` });
@@ -6153,8 +6932,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
             });
           }
         }
-        m.sides.forEach((sd) => {
-          const ids = sd.wrestlers;
+        m.sides.forEach((sd2) => {
+          const ids = sd2.wrestlers;
           for (let i = 0; i < ids.length; i++) {
             for (let j = i + 1; j < ids.length; j++) {
               const [x, y] = [ids[i], ids[j]], p = pairOf(x, y);
@@ -6443,7 +7222,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var when = (st, at2) => at2 ? stampLabel(st, at2) : "Start";
   var nm4 = (st, id) => (wrestlerById(st, id) || { name: "(deleted)" }).name;
   var other = (r, wid) => r.a === wid ? r.b : r.a;
-  var plural5 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var plural6 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   function uvOpenPair(a, b) {
     pushPage("pair", `${a}+${b}`);
   }
@@ -6472,7 +7251,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const alliesAt = d.has(x, "loyal", null) || d.has(y, "loyal", null) ? RULES2.alliesLoyal : RULES2.allies;
       const on = (kind) => (d.rels.get(relKey(kind, x, y)) || {}).active;
       const opportunist = d.has(x, "opportunistic", null) || d.has(y, "opportunistic", null);
-      const teamed = `Teamed with ${nm4(st, mate)} ${plural5(n, "time")}`;
+      const teamed = `Teamed with ${nm4(st, mate)} ${plural6(n, "time")}`;
       if (n < alliesAt && !on("allies")) out.push({ other: mate, left: alliesAt - n, n, of: alliesAt, text: `${teamed} \u2014 allies at ${alliesAt}` });
       else if (n < RULES2.friends && !on("friends") && !opportunist) {
         out.push({ other: mate, left: RULES2.friends - n, n, of: RULES2.friends, text: `${teamed} \u2014 friends at ${RULES2.friends}` });
@@ -6565,7 +7344,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div class="uv-build">
         ${runs.length ? runs.map((x) => `<div>${esc(nm4(st, x.loser))} has lost ${x.n} in a row to ${esc(nm4(st, x.winner))} \u2014
           ${(d.rels.get(relKey("grudge", x.loser, x.winner)) || {}).active ? "more heat" : "a grudge"} at ${x.need}</div>`).join("") : "<div>No losing run between them. A win resets one.</div>"}
-        <div>${p.together ? `On the same side ${plural5(p.together, "time")}.` : "Never on the same side."} Allies at ${p.alliesAt}${opportunist ? "; never friends from teaming up (opportunistic)" : `, friends at ${p.friendsAt}`}.</div>
+        <div>${p.together ? `On the same side ${plural6(p.together, "time")}.` : "Never on the same side."} Allies at ${p.alliesAt}${opportunist ? "; never friends from teaming up (opportunistic)" : `, friends at ${p.friendsAt}`}.</div>
       </div>
 
       ${section("Timeline", pv.entries.length || null)}
@@ -6764,7 +7543,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var matchName = (st, ev, id) => {
     const i = ev.matches.findIndex((m) => m.id === id);
-    return i < 0 ? "" : `Match ${i + 1}: ${ev.matches[i].sides.map((sd) => sideName(st, sd)).join(" vs ")}`;
+    return i < 0 ? "" : `Match ${i + 1}: ${ev.matches[i].sides.map((sd2) => sideName(st, sd2)).join(" vs ")}`;
   };
   function uvIncidentsBlock(st, ev) {
     const d = relationships(st);
@@ -6963,7 +7742,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return `<div class="uv-row" data-rel="${esc(r.key)}" onclick="uvOpenPair('${r.a}','${r.b}')">
       <span class="uv-av2">${avatar(st, A)}${avatar(st, B)}</span>
       <div class="uv-main"><div class="nm">${esc(A.name)} ${r.kind === "grudge" ? "\u2192" : "&amp;"} ${esc(B.name)}</div>
-        <div class="sub">${kindChip2(r.kind)}<span class="uv-rt">since ${when(st, r.since)} \xB7 ${plural5(r.entries.length, "change")}</span></div></div>
+        <div class="sub">${kindChip2(r.kind)}<span class="uv-rt">since ${when(st, r.since)} \xB7 ${plural6(r.entries.length, "change")}</span></div></div>
       ${dots(r)}<span class="uv-chev">${ICON.right}</span></div>`;
     };
     const latest = d.entries.slice(-12).reverse();
@@ -7112,7 +7891,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var winnersOf = (m) => m.outcome === "win" ? m.sides[m.winner].wrestlers : [];
   function history(st, upTo2) {
     const hist = /* @__PURE__ */ new Map();
-    st.events.filter((e) => !upTo2 || compareStamps(st, e.at, upTo2) <= 0).sort((a, b) => compareStamps(st, a.at, b.at)).forEach((e) => e.matches.filter((m) => m.status === "played").forEach((m) => m.sides.forEach((sd, i) => sd.wrestlers.forEach((id) => {
+    st.events.filter((e) => !upTo2 || compareStamps(st, e.at, upTo2) <= 0).sort((a, b) => compareStamps(st, a.at, b.at)).forEach((e) => e.matches.filter((m) => m.status === "played").forEach((m) => m.sides.forEach((sd2, i) => sd2.wrestlers.forEach((id) => {
       if (!hist.has(id)) hist.set(id, []);
       hist.get(id).push({ ev: e, m, side: i, res: resultFor(m, i), wk: weekNo(st, e.at) });
     }))));
@@ -7126,7 +7905,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     h.forEach((x) => {
       if (x.res === "W") {
         score += 1;
-        const beaten = x.m.sides.filter((_, i) => i !== x.side).flatMap((sd) => sd.wrestlers).filter((id) => championOn(st, id, x.ev) && !championOn(st, wid, x.ev));
+        const beaten = x.m.sides.filter((_, i) => i !== x.side).flatMap((sd2) => sd2.wrestlers).filter((id) => championOn(st, id, x.ev) && !championOn(st, wid, x.ev));
         if (beaten.length) {
           score += 1;
           reasons2.push(`beat ${(wrestlerById(st, beaten[0]) || { name: "a champion" }).name}, a champion, at ${x.ev.name}`);
@@ -7166,7 +7945,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const hist = history(st, ev.at);
     const tonight = ev.matches.filter((m) => m.status === "played");
     const booked = ev.matches.filter((m) => m.status === "scheduled");
-    const onCard = new Set((phase === "post" ? tonight : booked).flatMap((m) => m.sides.flatMap((sd) => sd.wrestlers)));
+    const onCard = new Set((phase === "post" ? tonight : booked).flatMap((m) => m.sides.flatMap((sd2) => sd2.wrestlers)));
     const around = ev.showId ? st.wrestlers.filter((w) => w.showId === ev.showId || onCard.has(w.id)) : st.wrestlers.filter((w) => onCard.has(w.id));
     const incidents = allIncidents(st).filter((x) => compareStamps(st, x.event.at, ev.at) <= 0).map((x) => ({ ...x, wk: weekNo(st, x.event.at) }));
     const picks = st.story.rolls.filter((r) => !r.undone && !(r.event === ev.id && r.phase === phase)).flatMap((r) => {
@@ -7216,7 +7995,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return { res, n };
   }
   function lossesTo(c, id, ws) {
-    const h = (c.hist.get(id) || []).filter((x) => x.m.sides.some((sd, i) => i !== x.side && sd.wrestlers.some((w) => ws.includes(w))));
+    const h = (c.hist.get(id) || []).filter((x) => x.m.sides.some((sd2, i) => i !== x.side && sd2.wrestlers.some((w) => ws.includes(w))));
     let n = 0;
     for (let i = h.length - 1; i >= 0 && h[i].res === "L"; i--) n++;
     return n;
@@ -7270,9 +8049,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const Ws = winnersOf(m);
       const reign = c.st.reigns.find((r) => r.matchId === m.id);
       const best = [];
-      m.sides.forEach((sd, i) => {
+      m.sides.forEach((sd2, i) => {
         if (i === m.winner) return;
-        sd.wrestlers.forEach((l) => {
+        sd2.wrestlers.forEach((l) => {
           if (c.st.teams.some((t) => t.active && t.members.includes(l) && Ws.some((w) => t.members.includes(w)))) return;
           const cand = candidate(c, "attack", `attack:${l}>${[...Ws].sort().join("+")}`, [l, ...Ws]);
           const L = nm5(c, l), V = names(c, Ws);
@@ -7391,9 +8170,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function betrayals(c) {
     const out = [];
     const pairs = [];
-    c.tonight.forEach((m) => m.sides.forEach((sd, i) => {
-      if (sd.wrestlers.length < 2) return;
-      sd.wrestlers.forEach((x) => sd.wrestlers.forEach((y) => {
+    c.tonight.forEach((m) => m.sides.forEach((sd2, i) => {
+      if (sd2.wrestlers.length < 2) return;
+      sd2.wrestlers.forEach((x) => sd2.wrestlers.forEach((y) => {
         if (x !== y) pairs.push({ x, y, m, lost: resultFor(m, i) === "L" });
       }));
     }));
@@ -7441,7 +8220,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function brawls(c) {
     const out = [];
     const ids = [...c.onCard].sort();
-    const together = (a, b) => c.tonight.find((m) => m.sides.some((sd) => sd.wrestlers.includes(a)) && m.sides.some((sd) => sd.wrestlers.includes(b)));
+    const together = (a, b) => c.tonight.find((m) => m.sides.some((sd2) => sd2.wrestlers.includes(a)) && m.sides.some((sd2) => sd2.wrestlers.includes(b)));
     ids.forEach((a, i) => ids.slice(i + 1).forEach((b) => {
       const rv = rel(c, "rivals", a, b), ha = heat(c, a, b), hb = heat(c, b, a);
       const bad = (rv ? rv.level : 0) + ha + hb;
@@ -7560,7 +8339,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     c.tonight.forEach((m) => winnersOf(m).forEach((id) => {
       const r = run(c, id);
       const rk = c.rank.get(id);
-      const beaten = m.sides.filter((_, i) => i !== m.winner).flatMap((sd) => sd.wrestlers);
+      const beaten = m.sides.filter((_, i) => i !== m.winner).flatMap((sd2) => sd2.wrestlers);
       const champBeaten = beaten.filter((b) => championOn(c.st, b, c.ev) && !championOn(c.st, id, c.ev));
       const reign = c.st.reigns.find((x) => x.matchId === m.id);
       const before = (c.hist.get(id) || []).slice(0, -r.n).slice(-10);
@@ -7589,7 +8368,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = [];
     c.tonight.forEach((m) => {
       if (m.sides.length !== 2) return;
-      const [A, B] = m.sides.map((sd) => sd.wrestlers);
+      const [A, B] = m.sides.map((sd2) => sd2.wrestlers);
       A.forEach((a) => B.forEach((b) => {
         const bad = [rel(c, "rivals", a, b), rel(c, "grudge", a, b), rel(c, "grudge", b, a)].filter(Boolean);
         if (!bad.length || bad.some((r) => r.kind === "grudge" && r.level >= 3)) return;
@@ -7633,7 +8412,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         w += 1;
         reasons2.push(`${k.name} and ${champName} are rivals`);
       }
-      const beat = (c.hist.get(lead) || []).filter((e) => c.wk - e.wk < 6 && e.res === "W" && e.m.sides.some((sd, i) => i !== e.side && sd.wrestlers.some((id) => champs.includes(id))));
+      const beat = (c.hist.get(lead) || []).filter((e) => c.wk - e.wk < 6 && e.res === "W" && e.m.sides.some((sd2, i) => i !== e.side && sd2.wrestlers.some((id) => champs.includes(id))));
       if (beat.length) {
         w += 2;
         reasons2.push(`${k.name} beat ${champName} at ${beat[beat.length - 1].ev.name}`);
@@ -7729,7 +8508,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = [];
     const ids = c.around.filter((w) => w.status !== "injured").map((w) => w.id).sort();
     const facing = (a, b) => c.booked.find((m) => {
-      const sa = m.sides.findIndex((sd) => sd.wrestlers.includes(a)), sb = m.sides.findIndex((sd) => sd.wrestlers.includes(b));
+      const sa = m.sides.findIndex((sd2) => sd2.wrestlers.includes(a)), sb = m.sides.findIndex((sd2) => sd2.wrestlers.includes(b));
       return sa >= 0 && sb >= 0 && sa !== sb;
     });
     ids.forEach((a, i) => ids.slice(i + 1).forEach((b) => {
@@ -7767,7 +8546,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const ambitious = w.traits.includes("ambitious");
         if (mo.label === "hot") why(cand, 3, `${w.name} is hot \u2014 ${mo.reasons[0] || mo.form}`);
         else if (mo.label === "rising") why(cand, 2, `${w.name} is on the rise${mo.reasons[0] ? ` \u2014 ${mo.reasons[0]}` : ""}`);
-        const beat = (c.hist.get(w.id) || []).some((e) => c.wk - e.wk < 6 && e.res === "W" && e.m.sides.some((sd, i) => i !== e.side && sd.wrestlers.some((id) => champs.includes(id))));
+        const beat = (c.hist.get(w.id) || []).some((e) => c.wk - e.wk < 6 && e.res === "W" && e.m.sides.some((sd2, i) => i !== e.side && sd2.wrestlers.some((id) => champs.includes(id))));
         if (beat) why(cand, 2, `${w.name} has beaten ${holderName(st, reign.holder)} lately`);
         if (!mo.label.match(/hot|rising/) && !beat && !ambitious) return;
         if (ambitious) why(cand, 1.8, `${w.name} is ambitious`);
@@ -7845,7 +8624,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (seen.has(`${a}+${b}`)) return;
       seen.add(`${a}+${b}`);
       if (!c.around.some((w) => w.id === a || w.id === b)) return;
-      const lastMeet = Math.max(-99, ...(c.hist.get(a) || []).filter((e) => e.m.sides.some((sd) => sd.wrestlers.includes(b))).map((e) => e.wk));
+      const lastMeet = Math.max(-99, ...(c.hist.get(a) || []).filter((e) => e.m.sides.some((sd2) => sd2.wrestlers.includes(b))).map((e) => e.wk));
       const lastInc = Math.max(-99, ...c.incidents.filter((x) => [...x.incident.by, ...x.incident.on].includes(a) && [...x.incident.by, ...x.incident.on].includes(b)).map((x) => x.wk));
       const quiet = c.wk - Math.max(lastMeet, lastInc);
       if (quiet < RULES3.dormantWeeks) return;
@@ -8025,7 +8804,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var chanceText = (x) => x >= 0.1 ? `${Math.round(x * 100)}%` : x >= 0.01 ? `${(x * 100).toFixed(1)}%` : `${(x * 100).toFixed(2)}%`;
   var matchName2 = (st, ev, id) => {
     const i = ev.matches.findIndex((m) => m.id === id);
-    return i < 0 ? "" : `Match ${i + 1}: ${ev.matches[i].sides.map((sd) => sideName(st, sd)).join(" vs ")}`;
+    return i < 0 ? "" : `Match ${i + 1}: ${ev.matches[i].sides.map((sd2) => sideName(st, sd2)).join(" vs ")}`;
   };
   function feedRow(st, g, { where = true } = {}) {
     const k = INCIDENT[kindOf(g)];
@@ -8475,7 +9254,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       uvTransitionSummary(st, t).map((x) => `${x.label}: ${x.text}`).join(" \xB7 ")
     ));
     const mania = !recent.some((t) => t.season === s.id) && eventsIn(st, s.id).filter((e) => e.kind === "ple" && /wrestlemania/i.test(e.name)).pop();
-    if (mania) rows.push(row2(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, "Start the season transition: relegation to NXT"));
+    if (mania) rows.push(row2(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, "Start the season transition: relegation, promotion and the draft"));
     return rows.join("");
   }
   function nightRow(st, s, week, r) {
@@ -9001,6 +9780,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     partial: (c) => `${c.played} of ${c.total} results in`,
     complete: (c) => `Complete \u2014 ${c.total} result${c.total === 1 ? "" : "s"}`
   };
+  var downTo = (st, m) => showName(st, relegationTo(transitionById(st, m.relegation.transition), m.relegation.show));
   function matchCard(st, ev, m, i) {
     const played = m.status === "played";
     const title2 = m.titleId && titleById(st, m.titleId);
@@ -9015,8 +9795,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ""}
     ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title2.name)} ${reign.holder.type === "team" ? "champions" : "champion"}</div>` : ""}
-    ${rel2 ? `<div class="uv-mc-d bad">${esc(wrestlerById(st, rel2.wrestler).name)} relegated to NXT</div>` : ""}
-    ${m.relegation && !played ? '<div class="uv-mc-d">Relegation match: the loser goes to NXT when you save the result.</div>' : ""}
+    ${rel2 ? `<div class="uv-mc-d bad">${esc(wrestlerById(st, rel2.wrestler).name)} relegated to ${esc(showName(st, rel2.to))}</div>` : ""}
+    ${m.relegation && !played ? `<div class="uv-mc-d">Relegation match: the loser goes to ${esc(downTo(st, m))} when you save the result.</div>` : ""}
     ${qual ? `<div class="uv-mc-d uv-gold">${esc(wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ""}
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ""}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ""}
@@ -9069,7 +9849,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const tr = own || night && transitionById(st, (night.relegation || night.qualifier).transition);
     if (tr) {
       return `<div class="uv-trlink" onclick="uvOpenTransition('${tr.id}')">${ICON.move}<div><b>Season transition</b>
-      <span>${own ? "Relegation, NXT promotion and the draft after this event" : night.relegation ? "Relegation matches are on this card" : "Qualifying matches for the draft are on this card"}</span></div>${ICON.right}</div>`;
+      <span>${own ? "Relegation, promotion and the draft after this event" : night.relegation ? "Relegation matches are on this card" : "Qualifying matches for the draft are on this card"}</span></div>${ICON.right}</div>`;
     }
     if (e.kind !== "ple" || transitionOfSeason(st, e.at.season)) return "";
     const mania = /wrestlemania/i.test(e.name);
@@ -9117,7 +9897,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     "Gauntlet",
     "Special Guest Referee"
   ];
-  var fromMatch = (m) => m.sides.map((sd) => ({ team: sd.team || "", wrestlers: [...sd.wrestlers] }));
+  var fromMatch = (m) => m.sides.map((sd2) => ({ team: sd2.team || "", wrestlers: [...sd2.wrestlers] }));
   function openForm(mode2, eventId, m, lineup = null, titleId = "") {
     const st = uni();
     const linked = m && st.reigns.some((r) => r.matchId === m.id);
@@ -9174,14 +9954,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (side.team || ids.length < 2) return [];
     return st.teams.filter((t) => t.active && ids.every((id) => t.members.includes(id)));
   }
-  var TITLES = { book: "Book a match", edit: "Edit the booking", result: "Enter the result", correct: "Correct the result" };
+  var TITLES2 = { book: "Book a match", edit: "Edit the booking", result: "Enter the result", correct: "Correct the result" };
   function formSheet() {
     const st = uni();
     const e = eventById(st, md.eventId);
     if (!e) return null;
     if (md.matchId && !e.matches.some((m) => m.id === md.matchId)) return null;
     if (st.wrestlers.length < 2) {
-      return { title: TITLES[md.mode], body: empty(ICON.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
+      return { title: TITLES2[md.mode], body: empty(ICON.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
     }
     const withResult = md.mode === "result" || md.mode === "correct";
     const label = (s, i) => {
@@ -9253,17 +10033,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${title2 && cur && !champIn ? `<div class="fine">The current ${esc(title2.name)} ${cur.holder.type === "team" ? "champions" : "champion"}, ${esc(holderName(st, cur.holder))}, ${cur.holder.type === "team" ? "aren\u2019t" : "isn\u2019t"} in this match.</div>` : ""}`;
     const summary2 = `<div class="uv-mc uv-mc-sum">
       <div class="uv-mc-top">${kindChip({ sides: md.sides })}${title2 ? chip(title2.name, "gold") : ""}${md.stip.trim() ? chip(md.stip.trim()) : ""}</div>
-      <div class="uv-mc-body">${md.sides.map((sd, i) => `<b>${esc(label(sd, i))}</b>`).join(' <span class="uv-muted">vs</span> ')}</div>
+      <div class="uv-mc-body">${md.sides.map((sd2, i) => `<b>${esc(label(sd2, i))}</b>`).join(' <span class="uv-muted">vs</span> ')}</div>
     </div>`;
     return {
-      title: TITLES[md.mode],
+      title: TITLES2[md.mode],
       body: `
       <p class="uv-p">${esc(e.name)} \xB7 ${esc(eventWhen(st, e))}${withResult ? " \u2014 enter what the CPU produced. Nothing is filled in for you." : ""}</p>
       ${md.lineup ? lineup : summary2}
       ${result}
       ${md.relegation || md.qualifier ? (() => {
         const mm = eventById(st, md.eventId).matches.find((x) => x.id === md.matchId);
-        const what = md.relegation ? `A relegation match: ${withResult ? "the loser moves to NXT as soon as you save. " : ""}` : `A qualifying match: ${withResult ? "the winner becomes draft eligible when you save \u2014 nobody moves. " : ""}`;
+        const what = md.relegation ? `A relegation match: ${withResult ? `the loser moves to ${downTo(st, mm)} as soon as you save. ` : ""}` : `A qualifying match: ${withResult ? "the winner becomes draft eligible when you save \u2014 nobody moves. " : ""}`;
         return `<div class="fine">${what}Its line-up is its pairing \u2014 change that on the <span class="uv-link"
             onclick="uvOpenTransition('${(mm.relegation || mm.qualifier).transition}')">season transition page</span>.</div>`;
       })() : md.lineup ? "" : `<div class="uv-add" onclick="uvMLineup()">${ICON.edit}Change the line-up, title or stipulation</div>`}
@@ -9384,7 +10164,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const saved = d.mode === "result" ? "Result saved" : "Result corrected";
       const rel2 = st.relegations.find((x) => x.match === m.id);
       const q = st.eligibility.find((x) => x.match === m.id && x.source === "qualifier");
-      const what = rel2 ? `${wrestlerById(st, rel2.wrestler).name} relegated to NXT` : q ? `${wrestlerById(st, q.wrestler).name} is draft eligible` : reign ? `${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}` : "";
+      const what = rel2 ? `${wrestlerById(st, rel2.wrestler).name} relegated to ${showName(st, rel2.to)}` : q ? `${wrestlerById(st, q.wrestler).name} is draft eligible` : reign ? `${holderName(st, reign.holder)} ${reign.holder.type === "team" ? "hold" : "holds"} the ${titleById(st, reign.titleId).name}` : "";
       const news = uvRelNews(before).replace(/^ — /, "");
       const checks = m.titleId ? titleChecks(st, m.titleId).length : 0;
       const heads = checks ? `Check the ${titleById(st, m.titleId).name} history: ${checks} thing${checks === 1 ? " doesn\u2019t" : "s don\u2019t"} add up` : "";
@@ -9460,7 +10240,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     pushPage("title", id);
   }
   function uvPageView(kind, id) {
-    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : kind === "story" ? uvStoryPage() : null;
+    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : kind === "story" ? uvStoryPage() : kind === "tiers" ? uvTiersPage() : null;
   }
   var expanded = /* @__PURE__ */ new Set();
   function uvShowAll(key) {
@@ -9621,7 +10401,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${drafted.length || eligibleOnly.length ? section("Draft", null) + drafted.map((d) => {
         const how = d.eligibility.map((x) => st.eligibility.find((e) => e.id === x)).filter(Boolean).map(eligibilityText).join("; ") || "brought along by the owner\u2019s decision";
         const titles = d.titles.map((x) => `${x.choice === "vacated" ? "vacated" : "kept"} the ${esc(titleById(st, x.title).name)}`).join(", ");
-        return `<div class="uv-relrec in draft" onclick="uvOpenTransition('${d.transition}')"><b>Drafted to ${esc(showName(st, d.to))} from NXT \xB7 pick ${d.pick} \xB7 ${stampLabel(st, d.at)}</b>
+        return `<div class="uv-relrec in draft" onclick="uvOpenTransition('${d.transition}')"><b>Drafted to ${esc(showName(st, d.to))} from ${esc(showName(st, d.from))} \xB7 pick ${d.pick} \xB7 ${stampLabel(st, d.at)}</b>
           <span>Eligible: ${esc(how)}${titles ? `. ${titles.charAt(0).toUpperCase()}${titles.slice(1)}` : ""}.${d.note ? ` \u201C${esc(d.note)}\u201D` : ""}</span></div>`;
       }).join("") + [...new Set(eligibleOnly.map((e) => e.transition))].map((trId) => {
         const tr = transitionById(st, trId);
@@ -9631,7 +10411,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
           <span>${esc(how)}.${left ? " Left undrafted when the transfer window closed." : ""}</span></div>`;
       }).join("") : ""}
       ${relegated.length ? section("Relegation", relegated.length) + relegated.map((r) => `<div class="uv-relrec in" onclick="uvOpenTransition('${r.transition}')">
-        <b>${esc(showName(st, r.show))} \u2192 NXT \xB7 ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span>${driftNote(st, r)}</div>`).join("") : ""}
+        <b>${esc(showName(st, r.show))} \u2192 ${esc(showName(st, r.to))} \xB7 ${stampLabel(st, r.at)}</b><span>${esc(r.reason)}</span>${driftNote(st, r)}</div>`).join("") : ""}
 
       ${section("Championships", champs.length || null)}
       ${champs.length ? current.map(champRow).join("") + (former.length ? `<div class="uv-sub">Former</div>` + capped(`c-${id}`, former, 5, champRow) : "") : '<div class="uv-none">Never held a title.</div>'}
@@ -10340,6 +11120,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         uvTab("calendar");
         pushPage("story", "all");
         return;
+      case "tiers":
+        uvTab("calendar");
+        pushPage("tiers", "all");
+        return;
       case "transition": {
         const [id, part2] = String(arg).split(":");
         uvTab("calendar");
@@ -10375,7 +11159,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ["uvHowRanked", "Rankings"],
       ["uvHowBalance", "Booking balance"],
       ["uvHowRelegation", "Relegation"],
-      ["uvHowPromotion", "NXT promotion & draft"],
+      ["uvHowPromotion", "Promotion & the draft"],
+      ["uvHowTiers", "Tiers"],
       ["uvHowRelations", "Relationships"],
       ["uvHowStory", "Story director"]
     ];
@@ -10399,7 +11184,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         trWin ? "Transfer window \u2014 open" : tr.window ? `${seasonById(st, tr.season).name} transition \xB7 transfer window` : `${seasonById(st, tr.season).name} transition`,
         uvTransitionSummary(st, tr).map((x) => `${x.label}: ${x.text}`).join(" \xB7 "),
         trWin ? "hot" : ""
-      ) : row2(`uvGo('calendar')`, ICON.move, "Season transition", "Starts from WrestleMania, on its show page \u2014 relegation, NXT promotion, the draft")}
+      ) : row2(`uvGo('calendar')`, ICON.move, "Season transition", "Starts from WrestleMania, on its show page \u2014 relegation, promotion, the draft")}
+        ${row2(`uvGo('tiers')`, ICON.list, "Tiers & transfers", st.tiers.map((t, i) => `${i + 1} ${t.name}`).join(" \xB7 "))}
         ${row2(`uvGo('save')`, ICON.save, "Save & backup", "Export, import, restore points")}
       </div>
       <div class="uv-sub flush" style="margin-top:14px">How it works</div>
@@ -11117,7 +11903,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports, find_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports, find_exports, tiers_exports);
   initUniverse();
 })();
 
