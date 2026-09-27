@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -49,7 +49,7 @@ export const PLE_DAY = 5;                                     // premium live ev
 export const GENDERS     = ['male', 'female'];
 export const ORIGINS     = ['WWE', 'AEW', 'NXT', 'Other'];   // where a wrestler comes from, not where they are
 export const ALIGNMENTS  = ['face', 'heel', 'tweener'];
-export const STATUSES    = ['active', 'injured'];
+export const STATUSES    = ['active', 'injured', 'away'];   // away: not appearing for now, for any reason
 export const TITLE_KINDS = ['singles', 'tag'];
 export const DIVISIONS   = ['men', 'women', 'open'];
 export const EVENT_KINDS = ['weekly', 'ple'];                 // a weekly episode, or a premium live event
@@ -88,6 +88,7 @@ export function createUniverse() {
     traitLog: [],           // every change to a wrestler's personality, dated (or from the start)
     relEdits: [],           // the owner's own relationship changes, dated; the rest is worked out from the record
     story: newStory(),      // the story director: its settings, seed, and a log of every time it ran
+    booker: newBooker(),    // the auto booker's settings, per show: only what the owner has changed
   };
   openSeason(st, 1, '');
   seedTiers(st);
@@ -386,6 +387,7 @@ export function deleteWrestler(st, id) {
   removeWhere(st.wrestlers, x => x.id === id);
   removeWhere(st.moves, m => m.wrestler === id);
   removeWhere(st.traitLog, e => e.wrestler === id);
+  scrubDrafts(st, { wrestler: id });
 }
 
 export function rosterOf(st, showId) {
@@ -560,6 +562,7 @@ export function deleteTeam(st, id) {
   if (refs.length) fail(`${t.name} are part of the history (${refs.join(', ')}), so they can't be deleted. Disband them instead.`);
   removeWhere(st.teams, x => x.id === id);
   removeWhere(st.memberships, m => m.team === id);
+  scrubDrafts(st, { team: id });
 }
 
 /** Teams a wrestler is on right now. */
@@ -683,6 +686,7 @@ export function deleteTitle(st, id) {
   const refs = titleRefs(st, id);
   if (refs.length) fail(`The ${t.name} has history (${refs.join(', ')}), so it can't be deleted. Retire it instead.`);
   removeWhere(st.titles, x => x.id === id);
+  scrubDrafts(st, { title: id });
 }
 
 export function titleReigns(st, titleId) {
@@ -1026,7 +1030,7 @@ export function addEvent(st, input = {}) {
   const day = input.day == null || input.day === '' ? defaultDay(st, kind, showId) : checkDay(input.day);
   const name = eventName(st, kind, showId, week, input.name);
   const notes = checkText(input.notes, 'Notes');
-  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [] };
+  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [], draft: null };
   st.events.push(ev);
   return ev;
 }
@@ -1271,7 +1275,7 @@ function findMatch(st, eventId, matchId) {
 /** Put a match on an event's card: who's in it, what's at stake. The result comes later, from the game. */
 export function bookMatch(st, eventId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, ...bookedRecord(bookingFields(st, input)) };
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...bookedRecord(bookingFields(st, input)) };
   ev.matches.push(m);
   return m;
 }
@@ -1283,7 +1287,9 @@ export function updateBooking(st, eventId, matchId, input = {}) {
   const b = bookingFields(st, bookingInput(m, input), m.titleId);
   relegationPlan(st, null, m, b.sides, null);                       // a relegation or qualifying match keeps its pairing
   qualifierPlan(st, null, m, b.sides, null);
+  const before = JSON.stringify([m.sides, m.titleId, m.stip, m.notes]);
   Object.assign(m, bookedRecord(b));
+  if (m.auto && JSON.stringify([m.sides, m.titleId, m.stip, m.notes]) !== before) m.auto.edited = true;   // the auto booker's, changed by the owner
   return m;
 }
 
@@ -1317,7 +1323,7 @@ export function recordMatch(st, eventId, input = {}, opts = {}) {
   const b = bookingFields(st, input);
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
-  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, ...playedRecord(b, r) };
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...playedRecord(b, r) };
   ev.matches.push(m);
   applyPlan(st, ev, m, plan, null);
   return m;
@@ -1466,6 +1472,244 @@ export function resultFor(match, side) {
   if (match.outcome === 'draw') return 'D';
   if (match.outcome === 'nc') return 'NC';
   return match.winner === side ? 'W' : 'L';
+}
+
+// ---------------------------------------------------------------- draft cards
+//
+// The auto booker (booker.js) drafts a card for an episode, and the draft waits
+// on the event until the owner books it. A draft is a plan and nothing more:
+// it counts toward nothing, the story director never reads it, and it never
+// holds a result. Every part of it is the owner's - any match, anyone in it,
+// the order, the stipulation, the title at stake - to change, delete, add to,
+// or draw again one match at a time. Booking it puts exactly what it says on
+// the card, the owner's changes and all, each match keeping why it was chosen.
+//
+// How a show's cards are drafted is set per show - how many matches, which
+// kinds, how many title matches, how often a stipulation - and stored only
+// where the owner changed something, so a show added later, or moved to
+// another tier, starts from the defaults for where it is.
+
+export const MATCH_TYPES = ['singles', 'tag', 'triple', 'fourway', 'trios', 'handicap'];
+export const TYPE_LEVELS = ['often', 'sometimes', 'rarely', 'never'];
+export const STIP_USES = ['never', 'feuds', 'often'];
+export const MAX_CARD = 15;
+export const MAX_TITLE_MATCHES = 5;
+const MAX_DRAFT = 40, MAX_WHY = 6, MAX_WHY_TEXT = 300, MAX_PASSED = 300;
+const TIER_SIZES = [6, 5, 4];              // matches on an episode by default: tier 1, tier 2, any tier below
+const NO_TIER_SIZE = 5;
+const ALL_SHOWS_SIZE = 10;                 // a premium live event for every show
+const BOOKER_BASE = {
+  mix: { singles: 'often', tag: 'often', triple: 'sometimes', fourway: 'rarely', trios: 'rarely', handicap: 'never' },
+  titles: 1, stips: 'feuds',
+};
+function newBooker() { return { shows: {}, all: {} }; }
+
+/**
+ * How a show's cards are drafted: { size, pleSize, mix, titles, stips, changed }.
+ * `showId` null is a premium live event for every show. What the owner hasn't
+ * set follows the show's tier: 6 matches an episode in tier 1, 5 in tier 2, 4
+ * below that (5 for a show in no tier), and 2 more at a premium live event.
+ */
+export function bookerSettings(st, showId) {
+  const own = (showId ? st.booker.shows[showId] : st.booker.all) || {};
+  const t = showId ? st.tiers.findIndex(x => x.shows.includes(showId)) : -1;
+  const size = t < 0 ? NO_TIER_SIZE : TIER_SIZES[Math.min(t, TIER_SIZES.length - 1)];
+  const base = { size: showId ? size : ALL_SHOWS_SIZE, pleSize: showId ? size + 2 : ALL_SHOWS_SIZE, titles: BOOKER_BASE.titles, stips: BOOKER_BASE.stips };
+  return { ...base, ...own, mix: { ...BOOKER_BASE.mix, ...(own.mix || {}) }, changed: Object.keys(own).length > 0 };
+}
+
+function cardCount(v, what) {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > MAX_CARD) fail(`${what} holds 1 to ${MAX_CARD} matches.`);
+  return n;
+}
+
+/** Change how a show's cards are drafted (`showId` null: premium live events for every show). */
+export function setBookerSettings(st, showId, patch = {}) {
+  if (showId) must(showById(st, showId), 'show', showId);
+  const cur = (showId ? st.booker.shows[showId] : st.booker.all) || {};
+  const next = { ...cur, mix: { ...(cur.mix || {}) } };
+  if (has(patch, 'size')) next.size = cardCount(patch.size, 'An episode');
+  if (has(patch, 'pleSize')) next.pleSize = cardCount(patch.pleSize, 'A premium live event');
+  if (has(patch, 'titles')) {
+    const n = Number(patch.titles);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_TITLE_MATCHES) fail(`Title matches on an episode: 0 to ${MAX_TITLE_MATCHES}.`);
+    next.titles = n;
+  }
+  if (has(patch, 'stips')) next.stips = oneOf(patch.stips, STIP_USES, 'stipulation setting');
+  Object.entries(patch.mix || {}).forEach(([k, v]) => { next.mix[oneOf(k, MATCH_TYPES, 'kind of match')] = oneOf(v, TYPE_LEVELS, 'preference'); });
+  if (MATCH_TYPES.every(k => (next.mix[k] || BOOKER_BASE.mix[k]) === 'never')) fail('Leave at least one kind of match on — a card needs something to draft.');
+  if (!Object.keys(next.mix).length) delete next.mix;
+  if (showId) st.booker.shows[showId] = next; else st.booker.all = next;
+  return bookerSettings(st, showId);
+}
+/** Back to the defaults for the show's tier. */
+export function resetBookerSettings(st, showId) {
+  if (showId) { must(showById(st, showId), 'show', showId); delete st.booker.shows[showId]; } else st.booker.all = {};
+}
+/** How many matches an event's card holds when it's drafted. */
+export function cardSize(st, ev) {
+  const s = bookerSettings(st, ev.showId);
+  return ev.kind === 'ple' ? s.pleSize : s.size;
+}
+
+function draftEvent(st, eventId) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  if (!ev.draft) fail(`${ev.name} has no draft card.`);
+  return ev;
+}
+function draftMatchOf(st, eventId, dmId) {
+  const ev = draftEvent(st, eventId);
+  return { ev, dm: must(ev.draft.matches.find(x => x.id === dmId), 'draft match', dmId) };
+}
+// a draft match's line-up and stakes, checked exactly as a booking is
+function draftFields(st, input) {
+  const b = bookingFields(st, input);
+  return { sides: b.sides, titleId: b.title ? b.title.id : null, stip: b.stip, notes: b.notes };
+}
+// why the booker chose a match: its kind, a key naming who and what, and a few short sentences
+function autoFields(auto) {
+  if (auto == null) return null;
+  const kind = String(auto.kind || '');
+  if (!/^[a-z][a-z-]{0,23}$/.test(kind)) fail('That drafted match has an unknown kind.');
+  const why = (Array.isArray(auto.why) ? auto.why : []).map(x => cleanName(x).slice(0, MAX_WHY_TEXT)).filter(Boolean).slice(0, MAX_WHY);
+  return { kind, key: String(auto.key || '').slice(0, 400), why, edited: !!auto.edited };
+}
+const lineupOf = dm => JSON.stringify([dm.sides, dm.titleId, dm.stip, dm.notes]);
+// a drafted match the owner took off or drew again isn't offered again on this draft
+function pass(d, dm) {
+  if (!dm.auto || !dm.auto.key || d.passed.includes(dm.auto.key)) return;
+  d.passed.push(dm.auto.key);
+  if (d.passed.length > MAX_PASSED) d.passed.splice(0, d.passed.length - MAX_PASSED);
+}
+
+/**
+ * Put a draft card on an event, or draw it again. `list` is the whole draft in
+ * card order, each entry either { keep: id } - a match already on the draft,
+ * kept exactly as it is - or a new match { sides, titleId, stip, notes, auto }
+ * (auto null: the owner's own). Draft matches left out are dropped. Who's out
+ * tonight, and the matches the owner has turned down, stay with the draft.
+ */
+export function setDraft(st, eventId, list = [], { nonce = 0 } = {}) {
+  const ev = must(eventById(st, eventId), 'event', eventId);
+  if (!Array.isArray(list)) fail('A draft card is a list of matches.');
+  if (list.length > MAX_DRAFT) fail(`A draft card holds at most ${MAX_DRAFT} matches.`);
+  const n = Number(nonce);
+  if (!Number.isInteger(n) || n < 0) fail('That draw number is unreadable.');
+  const old = ev.draft;
+  const kept = new Set();
+  const built = list.map(x => {
+    if (x && x.keep) {
+      const dm = old && old.matches.find(y => y.id === x.keep);
+      if (!dm) fail(`No draft match with id "${x.keep}".`);
+      if (kept.has(dm.id)) fail('The same draft match is in the list twice.');
+      kept.add(dm.id);
+      return dm;
+    }
+    return { ...draftFields(st, x || {}), auto: autoFields(x && x.auto) };
+  });
+  ev.draft = {
+    made: nowDate(st), nonce: n,
+    matches: built.map(x => (x.id ? x : { id: newId(st, 'dm'), ...x })),
+    passed: old ? old.passed : [], out: old ? old.out : [],
+  };
+  return ev.draft;
+}
+/** Add a match of the owner's own to the draft, at the end. */
+export function addDraftMatch(st, eventId, input = {}) {
+  const ev = draftEvent(st, eventId);
+  if (ev.draft.matches.length >= MAX_DRAFT) fail(`A draft card holds at most ${MAX_DRAFT} matches.`);
+  const dm = { id: newId(st, 'dm'), ...draftFields(st, input), auto: null };
+  ev.draft.matches.push(dm);
+  return dm;
+}
+/** Change a draft match - who's in it, the title, the stipulation, the notes. A drafted one is marked as changed by the owner. */
+export function editDraftMatch(st, eventId, dmId, input = {}) {
+  const { dm } = draftMatchOf(st, eventId, dmId);
+  const f = draftFields(st, bookingInput(dm, input));
+  const before = lineupOf(dm);
+  Object.assign(dm, f);
+  if (dm.auto && lineupOf(dm) !== before) dm.auto.edited = true;
+  return dm;
+}
+/** Swap one draft match for another the booker drew, in the same place. The one it replaces isn't offered again on this draft. */
+export function redrawDraftMatch(st, eventId, dmId, input = {}) {
+  const { ev, dm } = draftMatchOf(st, eventId, dmId);
+  const f = { ...draftFields(st, input), auto: autoFields(input.auto) };
+  if (!f.auto) fail('A match drawn again comes from the auto booker.');
+  pass(ev.draft, dm);
+  const next = { id: newId(st, 'dm'), ...f };
+  ev.draft.matches.splice(ev.draft.matches.indexOf(dm), 1, next);
+  return next;
+}
+/** Take a match off the draft. A drafted one isn't offered again on this draft. */
+export function deleteDraftMatch(st, eventId, dmId) {
+  const { ev, dm } = draftMatchOf(st, eventId, dmId);
+  pass(ev.draft, dm);
+  removeWhere(ev.draft.matches, x => x.id === dmId);
+}
+/** Move a draft match one place up (-1) or down (+1). False at either end. */
+export function moveDraftMatch(st, eventId, dmId, delta) {
+  const { ev, dm } = draftMatchOf(st, eventId, dmId);
+  const list = ev.draft.matches, i = list.indexOf(dm), j = i + Math.sign(Number(delta) || 0);
+  if (j === i || j < 0 || j >= list.length) return false;
+  list.splice(i, 1);
+  list.splice(j, 0, dm);
+  return true;
+}
+/** Who isn't at this show - left out of anything drawn for it from now on. */
+export function setDraftOut(st, eventId, ids = []) {
+  const ev = draftEvent(st, eventId);
+  const list = [...new Set((Array.isArray(ids) ? ids : []).filter(Boolean))];
+  list.forEach(id => must(wrestlerById(st, id), 'wrestler', id));
+  ev.draft.out = list;
+  return list;
+}
+/** Throw the draft away. Nothing on the card changes. */
+export function discardDraft(st, eventId) {
+  draftEvent(st, eventId).draft = null;
+}
+/**
+ * Book the draft: every match on it goes on the card, after anything already
+ * booked there, exactly as the draft has it - the owner's changes and all -
+ * each keeping why it was chosen. It's checked in full first, so a draft that
+ * can't all be booked books nothing. The draft is done with afterwards.
+ */
+export function bookDraft(st, eventId) {
+  const ev = draftEvent(st, eventId);
+  const d = ev.draft;
+  if (!d.matches.length) fail('The draft is empty — add a match, or draw the card again.');
+  const checked = d.matches.map((dm, i) => {
+    try { return bookingFields(st, dm); } catch (e) {
+      if (e instanceof UniverseError) fail(`Match ${i + 1} on the draft: ${e.message}`);
+      throw e;
+    }
+  });
+  const made = checked.map((b, i) => ({ id: newId(st, 'm'), relegation: null, qualifier: null,
+    auto: d.matches[i].auto ? { ...d.matches[i].auto, why: [...d.matches[i].auto.why] } : null, ...bookedRecord(b) }));
+  ev.matches.push(...made);
+  ev.draft = null;
+  return made;
+}
+
+// Drafts are only plans: a wrestler, team or title deleted (or merged away)
+// is simply taken out of them, and a match left with fewer than two sides goes.
+function scrubDrafts(st, { wrestler = null, keep = null, team = null, title = null }) {
+  st.events.forEach(e => {
+    const d = e.draft;
+    if (!d) return;
+    if (wrestler) d.out = [...new Set(d.out.map(id => (id === wrestler ? keep : id)).filter(Boolean))];
+    d.matches = d.matches.filter(dm => {
+      if (title && dm.titleId === title) dm.titleId = null;
+      const seen = new Set();
+      dm.sides = dm.sides.map(sd => {
+        const wrestlers = sd.wrestlers.map(id => (id === wrestler ? keep : id)).filter(id => id && !seen.has(id) && seen.add(id));
+        const t = team && sd.team === team ? null : sd.team;
+        return { wrestlers, team: t && wrestlers.length >= 2 ? t : null };
+      }).filter(sd => sd.wrestlers.length);
+      return dm.sides.length >= 2;
+    });
+  });
 }
 
 // ---------------------------------------------------------------- tiers
@@ -1716,6 +1960,7 @@ export function deleteShow(st, id) {
   if (t && t === st.tiers[0] && t.shows.length === 1) fail(`${show.name} is tier 1's only show. Put another show in tier 1 first.`);
   if (t) t.shows = t.shows.filter(x => x !== id);
   removeWhere(st.shows, x => x.id === id);
+  delete st.booker.shows[id];
   fixDestinations(st);
 }
 
@@ -1847,7 +2092,7 @@ export function relegationTable(st, trId, showId) {
   const wm = eventById(st, tr.event);
   const totals = seasonWins(st, wm);
   const pool = st.wrestlers.filter(w => showAtStamp(st, w, wm.at) === showId).map(w => ({
-    id: w.id, name: w.name, gender: w.gender, injured: w.status === 'injured', now: w.showId,
+    id: w.id, name: w.name, gender: w.gender, injured: w.status !== 'active', status: w.status, now: w.showId,
     ...(totals.get(w.id) || { wins: 0, singles: 0, tag: 0, matches: 0 }),
   })).sort((a, b) => a.wins - b.wins || byName(a, b));
   pool.forEach(r => { r.place = pool.filter(x => x.wins < r.wins).length + 1; });
@@ -1899,7 +2144,7 @@ export function relegationTable(st, trId, showId) {
   const byIdIn = id => pool.find(r => r.id === id);
   candidates.forEach(id => {
     const r = byIdIn(id);
-    if (r.injured) check('injured', `${r.name} is injured.`);
+    if (r.injured) check('injured', `${r.name} is ${r.status === 'away' ? 'away' : 'injured'}.`);
     const done = st.relegations.some(x => x.transition === tr.id && x.wrestler === id);
     if (!done && r.now !== showId) check('moved', `${r.name} is on ${r.now ? showById(st, r.now).name : 'no show'} now.`);
     if (!r.matches) check('idle', `${r.name} didn't have a match this season before WrestleMania.`);
@@ -2056,7 +2301,7 @@ export function bookRelegation(st, trId, showId, eventId, pairIds = null) {
   cfg.pairs = t.pairs.map(p => ({ id: p.id || newId(st, 'rp'), a: p.a, b: p.b, matches: [...p.matches], decision: p.decision }));
   return todo.map(p => {
     const pair = cfg.pairs.find(x => x.a === p.a && x.b === p.b);
-    const m = { id: newId(st, 'm'), relegation: { transition: tr.id, show: showId, pair: pair.id }, qualifier: null,
+    const m = { id: newId(st, 'm'), relegation: { transition: tr.id, show: showId, pair: pair.id }, qualifier: null, auto: null,
       ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Relegation match' })) };
     ev.matches.push(m);
     pair.matches.push(m.id);
@@ -2295,7 +2540,7 @@ export function promotionTable(st, trId, linkId = null) {
   const p = part.qualifiers;
   const lower = showNames(st, part.lower);
   const pool = st.wrestlers.filter(w => part.lower.includes(showAtStamp(st, w, wm.at))).map(w => ({
-    id: w.id, name: w.name, gender: w.gender, injured: w.status === 'injured', now: w.showId,
+    id: w.id, name: w.name, gender: w.gender, injured: w.status !== 'active', status: w.status, now: w.showId,
   })).sort(byName);
   const inPool = new Set(pool.map(r => r.id));
   const picked = p.picked.filter(id => inPool.has(id));
@@ -2329,7 +2574,7 @@ export function promotionTable(st, trId, linkId = null) {
   picked.forEach(id => {
     const r = pool.find(x => x.id === id);
     if (champions.some(c => c.wrestler === id)) check('champion', `${r.name} is already eligible as a champion of ${part.lowerName}.`);
-    if (r.injured) check('injured', `${r.name} is injured.`);
+    if (r.injured) check('injured', `${r.name} is ${r.status === 'away' ? 'away' : 'injured'}.`);
     if (!part.lower.includes(r.now)) check('moved', `${r.name} is on ${r.now ? showById(st, r.now).name : 'no show'} now.`);
   });
   pairs.forEach(x => {
@@ -2443,7 +2688,7 @@ export function bookQualifiers(st, trId, eventId, pairIds = null) {
   p.pairs = t.pairs.map(x => ({ id: x.id || newId(st, 'rp'), a: x.a, b: x.b, matches: [...x.matches], decision: x.decision }));
   return todo.map(x => {
     const pair = p.pairs.find(y => y.a === x.a && y.b === x.b);
-    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, link: part.link, pair: pair.id },
+    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, link: part.link, pair: pair.id }, auto: null,
       ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Qualifying match' })) };
     ev.matches.push(m);
     pair.matches.push(m.id);
@@ -3207,6 +3452,7 @@ export function mergeWrestlers(st, keepId, dupId) {
   st.reigns.forEach(r => { r.holder = as(r.holder); });
   removeWhere(st.moves, m => m.wrestler === dupId);
   removeWhere(st.wrestlers, w => w.id === dupId);
+  scrubDrafts(st, { wrestler: dupId, keep: keepId });
   return keep;
 }
 
@@ -3425,7 +3671,22 @@ export function migrate(raw) {
     });
     st.version = 9;
   }
+  if (st.version === 9) {
+    // v10: the auto booker. Nothing in a v9 save had been drafted or
+    // auto-booked, and every show drafts by the defaults for its tier.
+    st.booker = newBooker();
+    st.events.forEach(e => {
+      e.draft = null;
+      (Array.isArray(e.matches) ? e.matches : []).forEach(m => { m.auto = null; });
+    });
+    st.version = 10;
+  }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
+  if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();
+  st.events.forEach(e => {
+    if (e.draft === undefined) e.draft = null;
+    (Array.isArray(e.matches) ? e.matches : []).forEach(m => { if (m.auto === undefined) m.auto = null; });
+  });
   if (!st.story || typeof st.story !== 'object') st.story = newStory();
   if (!Array.isArray(st.story.rolls)) st.story.rolls = [];
   if (st.story.since === undefined) st.story.since = null;
@@ -3460,6 +3721,7 @@ export function validate(st) {
   own(st.titles, 'championship'); own(st.reigns, 'title reign'); own(st.seasons, 'season'); own(st.events, 'event');
   own(st.memberships, 'team membership');
   st.events.forEach(e => own(e.matches || [], 'match'));
+  st.events.forEach(e => own(e.draft && Array.isArray(e.draft.matches) ? e.draft.matches : [], 'draft match'));
   own(st.transitions, 'season transition'); own(st.relegations, 'relegation record');
   own(st.eligibility, 'draft eligibility record'); own(st.drafts, 'draft pick');
   own(st.traitLog, 'personality change'); own(st.relEdits, 'relationship change');
@@ -3486,6 +3748,25 @@ export function validate(st) {
     });
   };
   const showOk = id => id === null || !!showById(st, id);
+  const autoOk = a => !!a && typeof a === 'object' && typeof a.kind === 'string' && typeof a.key === 'string'
+    && Array.isArray(a.why) && a.why.every(x => typeof x === 'string') && typeof a.edited === 'boolean';
+
+  // the auto booker's settings: only what the owner changed, per show
+  const settingOk = ([k, v]) => ((k === 'size' || k === 'pleSize') ? Number.isInteger(v) && v >= 1 && v <= MAX_CARD
+    : k === 'titles' ? Number.isInteger(v) && v >= 0 && v <= MAX_TITLE_MATCHES
+    : k === 'stips' ? STIP_USES.includes(v)
+    : k === 'mix' ? !!v && typeof v === 'object' && !Array.isArray(v) && Object.entries(v).every(([t, l]) => MATCH_TYPES.includes(t) && TYPE_LEVELS.includes(l))
+    : false);
+  const settingsOk = o => !!o && typeof o === 'object' && !Array.isArray(o) && Object.entries(o).every(settingOk);
+  if (!st.booker || typeof st.booker !== 'object' || !st.booker.shows || typeof st.booker.shows !== 'object'
+    || Array.isArray(st.booker.shows) || !settingsOk(st.booker.all)) {
+    bad.push('The auto booker’s settings are unreadable.');
+  } else {
+    Object.entries(st.booker.shows).forEach(([id, o]) => {
+      if (!showById(st, id)) bad.push('The auto booker has settings for a show that doesn’t exist.');
+      else if (!settingsOk(o)) bad.push(`The auto booker’s settings for ${showById(st, id).name} are unreadable.`);
+    });
+  }
 
   names(st.shows, 'show');
   const night = d => Number.isInteger(d) && d >= 0 && d <= 6;
@@ -3658,15 +3939,14 @@ export function validate(st) {
     if (!showOk(e.showId) || (e.kind === 'weekly' && !e.showId)) bad.push(`${e.name} is on a show that doesn't exist.`);
     stamp(e.at, e.name);
     if (e.at && !night(e.at.day)) bad.push(`${e.name} has no night of the week.`);
-    (e.matches || []).forEach(m => {
-      const where = `A match at ${e.name}`;
-      if (!MATCH_STATUSES.includes(m.status)) { bad.push(`${where} is neither booked nor played.`); return; }
+    // who's in a match (or a draft of one) and what's at stake
+    const lineup = (m, where) => {
       if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} is for a title that doesn't exist.`);
       const sides = Array.isArray(m.sides) ? m.sides : [];
       if (sides.length < 2) bad.push(`${where} has fewer than two sides.`);
       const seen = new Set();
       sides.forEach(s => {
-        const ws = (s && s.wrestlers) || [];
+        const ws = (s && Array.isArray(s.wrestlers)) ? s.wrestlers : [];
         if (!ws.length) bad.push(`${where} has an empty side.`);
         ws.forEach(id => {
           if (!wrestlerById(st, id)) bad.push(`${where} includes a wrestler who doesn't exist.`);
@@ -3675,6 +3955,27 @@ export function validate(st) {
         });
         if (s && s.team && !teamById(st, s.team)) bad.push(`${where} names a tag team that doesn't exist.`);
       });
+      if (!(m.auto === null || autoOk(m.auto))) bad.push(`${where} has an unreadable reason from the auto booker.`);
+      return sides;
+    };
+    if (e.draft !== null) {
+      const d = e.draft;
+      if (!d || typeof d !== 'object' || !Array.isArray(d.matches) || !Array.isArray(d.passed) || !Array.isArray(d.out)
+        || !Number.isInteger(d.nonce) || d.nonce < 0 || !d.made || !seasonById(st, d.made.season) || !Number.isInteger(d.made.week)
+        || d.passed.some(k => typeof k !== 'string')) {
+        bad.push(`${e.name}'s draft card is unreadable.`);
+      } else {
+        if (d.out.some(id => !wrestlerById(st, id))) bad.push(`${e.name}'s draft card leaves out a wrestler who doesn't exist.`);
+        d.matches.forEach(dm => {
+          if (typeof dm.stip !== 'string' || typeof dm.notes !== 'string') bad.push(`A draft match at ${e.name} is unreadable.`);
+          lineup(dm, `A draft match at ${e.name}`);
+        });
+      }
+    }
+    (e.matches || []).forEach(m => {
+      const where = `A match at ${e.name}`;
+      if (!MATCH_STATUSES.includes(m.status)) { bad.push(`${where} is neither booked nor played.`); return; }
+      const sides = lineup(m, where);
       if (m.relegation != null) {
         const rl = m.relegation, t = transitionById(st, rl.transition);
         const c = t && t.shows && t.shows[rl.show];

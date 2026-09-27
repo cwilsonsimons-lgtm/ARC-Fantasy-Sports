@@ -19,6 +19,7 @@ import * as personality from './personality.js';
 import * as story from './story.js';
 import * as find from './find.js';
 import * as tiers from './tiers.js';
+import * as autobook from './autobook.js';
 
-Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality, story, find, tiers);
+Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality, story, find, tiers, autobook);
 shell.initUniverse();

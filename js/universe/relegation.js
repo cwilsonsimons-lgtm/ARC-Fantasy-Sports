@@ -162,7 +162,7 @@ function showSection(st, t) {
   const rows = t.pool.map((r, i) => {
     const on = t.candidates.includes(r.id), tied = t.auto && t.tied.some(x => x.id === r.id);
     const line = t.auto && i === cutoff - 1 && i < t.pool.length - 1 ? ' cut' : '';
-    const notes = [r.injured && 'injured', r.now !== sid && (r.now ? `now ${showName(st, r.now)}` : 'now unassigned')].filter(Boolean);
+    const notes = [r.injured && (r.status === 'away' ? 'away' : 'injured'), r.now !== sid && (r.now ? `now ${showName(st, r.now)}` : 'now unassigned')].filter(Boolean);
     return `<div class="uv-tw${on ? ' on' : ''}${tied ? ' tied' : ''}${line}" data-w="${r.id}" onclick="uvTrPick('${trId}','${sid}','${r.id}')">
       <span class="uv-tick">${on ? ICON.check : ''}</span>
       <div class="uv-main"><div class="nm">${esc(r.name)}${tied ? ' <span class="uv-chip warn">Tied</span>' : ''}</div>

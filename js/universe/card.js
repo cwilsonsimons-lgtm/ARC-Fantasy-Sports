@@ -18,6 +18,7 @@ import {
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
 import { uvDirect, uvDirectedToast, uvStoryBlock } from './story.js';
+import { uvAutoLine, uvDraftBlock } from './autobook.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
 /** Move to another show from a show's page, without stacking up Back steps. */
@@ -146,6 +147,7 @@ function matchCard(st, ev, m, i) {
     ${qual ? `<div class="uv-mc-d uv-gold">${esc(M.wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ''}
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ''}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ''}
+    ${uvAutoLine(m)}
     <div class="uv-mc-acts">
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>`
         : `<div class="uv-btn pri sm2" onclick="uvEnterResult('${ev.id}','${m.id}')">Enter result</div>
@@ -170,18 +172,20 @@ export function uvEventPage(id) {
         <div class="k">${esc(LABEL.event[e.kind])} · ${esc(e.showId ? showName(st, e.showId) : 'All shows')}</div>
         <div class="nm">${esc(e.name)}</div>
         <div class="s">${esc(eventWhen(st, e, true))}${M.calendarDate(st, e.at.season, e.at.week, e.at.day) ? ` · week ${e.at.week}` : ''} · ${esc(season.name)}</div>
-        <div class="st"><span class="uv-state ${c.state}"></span>${STATUS_TEXT[c.state](c)}</div>
+        <div class="st"><span class="uv-state ${e.draft && !c.total ? 'draft' : c.state}"></span>${e.draft && !c.total ? 'Draft card waiting — nothing booked yet' : STATUS_TEXT[c.state](c)}</div>
       </div>
       <div class="uv-page-acts">
         <div class="uv-btn pri" onclick="uvBookMatch('${id}')">${ICON.plus}Book a match</div>
         <div class="uv-btn" onclick="uvEventDetails('${id}')">${ICON.edit}Details</div>
       </div>
+      ${e.draft ? '' : uvDraftBlock(st, e)}
       ${transitionLink(st, e)}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ''}
       ${uvStoryBlock(st, e, 'pre')}
-      <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>
+      ${c.total || !e.draft ? `<div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>` : ''}
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join('')}</div>`
-        : empty(ICON.cal, 'Nothing booked yet', 'Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.')}
+        : e.draft ? '' : empty(ICON.cal, 'Nothing booked yet', 'Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.')}
+      ${e.draft ? uvDraftBlock(st, e) : ''}
       ${uvStoryBlock(st, e, 'post')}
       ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
@@ -248,14 +252,19 @@ function openForm(mode, eventId, m, lineup = null, titleId = '') {
     // entering a result starts from the booking as it stands; the line-up
     // opens only if the owner asks (a run-in, a late change). A relegation
     // match's line-up is its pairing, and never opens here.
-    lineup: (mode === 'book' || mode === 'edit') && !(m && (m.relegation || m.qualifier)),
+    lineup: ['book', 'edit', 'dedit', 'dadd'].includes(mode) && !(m && (m.relegation || m.qualifier)),
+    auto: mode === 'dedit' && m.auto ? m.auto : null,
     relegation: !!(m && m.relegation),
     qualifier: !!(m && m.qualifier),
   };
   openSheet(formSheet);
 }
 const matchOf = (eventId, matchId) => M.eventById(uni(), eventId).matches.find(x => x.id === matchId);
+const draftOf = (eventId, id) => { const e = M.eventById(uni(), eventId); return e && e.draft ? e.draft.matches.find(x => x.id === id) : null; };
 export function uvBookMatch(eventId) { openForm('book', eventId, null); }
+// a match on a draft card: the same form, saving to the draft instead of the card
+export function uvDraftEdit(eventId, dmId) { openForm('dedit', eventId, draftOf(eventId, dmId)); }
+export function uvDraftAdd(eventId) { openForm('dadd', eventId, null); }
 export function uvEditBooking(eventId, matchId) { openForm('edit', eventId, matchOf(eventId, matchId)); }
 export function uvEnterResult(eventId, matchId) { openForm('result', eventId, matchOf(eventId, matchId)); }
 export function uvCorrectResult(eventId, matchId) { openForm('correct', eventId, matchOf(eventId, matchId)); }
@@ -282,13 +291,16 @@ function teamGuesses(st, side) {
   return st.teams.filter(t => t.active && ids.every(id => t.members.includes(id)));
 }
 
-const TITLES = { book: 'Book a match', edit: 'Edit the booking', result: 'Enter the result', correct: 'Correct the result' };
+const TITLES = { book: 'Book a match', edit: 'Edit the booking', result: 'Enter the result', correct: 'Correct the result',
+  dedit: 'Edit the draft match', dadd: 'Add to the draft' };
+const onDraft = mode => mode === 'dedit' || mode === 'dadd';
 
 function formSheet() {
   const st = uni();
   const e = M.eventById(st, md.eventId);
   if (!e) return null;
-  if (md.matchId && !e.matches.some(m => m.id === md.matchId)) return null;
+  if (onDraft(md.mode) && !e.draft) return null;
+  if (md.matchId && !(md.mode === 'dedit' ? e.draft.matches : e.matches).some(m => m.id === md.matchId)) return null;
   if (st.wrestlers.length < 2) {
     return { title: TITLES[md.mode], body: empty(ICON.user, 'Add wrestlers first', 'A match needs at least two wrestlers on the roster.') };
   }
@@ -342,13 +354,16 @@ function formSheet() {
     edit: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the booking</div>
       <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the card</div>`,
     result: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the result</div>`,
+    dedit: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save to the draft</div>
+      <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the draft</div>`,
+    dadd: `<div class="uv-btn pri full" onclick="uvMSave(false)">Add to the draft</div>`,
     correct: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the correction</div>
       <div class="uv-btn full" onclick="uvMClear()">Clear the result — keep it booked</div>
       <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the card</div>`,
   }[md.mode];
 
   const lineup = `
-      ${md.mode === 'book' || md.mode === 'edit' ? `<div class="uv-pills tight">${PRESETS.map(([lb, sz]) =>
+      ${['book', 'edit', 'dedit', 'dadd'].includes(md.mode) ? `<div class="uv-pills tight">${PRESETS.map(([lb, sz]) =>
         `<div class="uv-pill${sz.join(',') === shape ? ' on' : ''}" onclick="uvMPreset('${sz.join(',')}')">${lb}</div>`).join('')}</div>` : ''}
       ${PRESETS.some(([, sz]) => sz.join(',') === shape) && md.mode !== 'result' && md.mode !== 'correct' ? ''
         : `<div class="uv-kindline">${kindChip({ sides: md.sides })}</div>`}
@@ -370,7 +385,9 @@ function formSheet() {
   return {
     title: TITLES[md.mode],
     body: `
-      <p class="uv-p">${esc(e.name)} · ${esc(eventWhen(st, e))}${withResult ? ' — enter what the CPU produced. Nothing is filled in for you.' : ''}</p>
+      <p class="uv-p">${esc(e.name)} · ${esc(eventWhen(st, e))}${withResult ? ' — enter what the CPU produced. Nothing is filled in for you.'
+        : onDraft(md.mode) ? ' — on the draft card: nothing is booked until you book the card.' : ''}</p>
+      ${md.auto && md.auto.why.length ? `<div class="uv-why"><b>Drafted because</b> ${esc(md.auto.why[0])}${md.auto.edited ? '' : ' — change anything; it stays as you have it when the rest is drawn again'}</div>` : ''}
       ${md.lineup ? lineup : summary}
       ${result}
       ${md.relegation || md.qualifier ? (() => {
@@ -445,6 +462,14 @@ export function uvMSave(thenResult) {
     if (commit(st => M.updateBooking(st, d.eventId, d.matchId, booking), 'Booking saved').ok) closeSheet();
     return;
   }
+  if (d.mode === 'dedit') {
+    if (commit(st => M.editDraftMatch(st, d.eventId, d.matchId, booking), 'Saved to the draft').ok) closeSheet();
+    return;
+  }
+  if (d.mode === 'dadd') {
+    if (commit(st => M.addDraftMatch(st, d.eventId, booking), 'Added to the draft').ok) closeSheet();
+    return;
+  }
   const isWin = d.result !== '' && !isNaN(Number(d.result));
   const input = {
     ...booking,
@@ -492,6 +517,10 @@ export function uvMClear() {
 export function uvMDelete() {
   const d = md;
   const st = uni();
+  if (d.mode === 'dedit') {
+    if (commit(s => M.deleteDraftMatch(s, d.eventId, d.matchId), 'Taken off the draft — it won’t be drawn again for this show').ok) closeSheet();
+    return;
+  }
   const m = matchOf(d.eventId, d.matchId);
   const linked = st.reigns.find(x => x.matchId === d.matchId);
   confirmThen('Take this match off the card?',

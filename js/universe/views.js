@@ -79,6 +79,7 @@ export function uvCalendarView() {
     </div>
     ${off ? `<div class="uv-back-now" onclick="uvCalGo(${s.week})">Back to this week (week ${s.week})</div>` : ''}
     <div class="uv-nights">${rows.map(r => nightRow(st, s, week, r)).join('')}</div>
+    <div class="uv-weekdraft" onclick="uvDraftWeek(${week})">${ICON.spark}Draft week ${week}’s cards with the auto booker</div>
     <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
     ${seasonGrid(st, s, week)}`;
 }
@@ -96,7 +97,7 @@ export function uvUpNext(st) {
   const e = overdue || evs.find(x => x.at.week >= s.week && cardStatus(x).state !== 'complete');
   if (!e) return null;
   const c = cardStatus(e);
-  const text = { empty: 'Planned — nothing booked yet', booked: `${c.total} booked — waiting for results`,
+  const text = { empty: e.draft ? 'A draft card is waiting — change it and book it' : 'Planned — nothing booked yet', booked: `${c.total} booked — waiting for results`,
     partial: `${c.played} of ${c.total} results in — enter the rest`, complete: '' }[c.state];
   return { event: e, state: c.state, text, overdue: e.at.week < s.week };
 }
@@ -135,9 +136,10 @@ function nightRow(st, s, week, r) {
       <div class="uv-btn sm2" onclick="uvPlanShow('${r.show.id}',${week})">${ICON.plus}Plan</div></div>`;
   }
   const e = r.e, c = cardStatus(e);
+  const draft = e.draft ? `Draft card: ${e.draft.matches.length} match${e.draft.matches.length === 1 ? '' : 'es'} — not booked yet` : '';
   return `<div class="uv-night" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">${dt}
     <div class="uv-main"><div class="nm">${e.kind === 'ple' ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}</div>
-      <div class="sub"><span class="uv-state ${c.state}"></span>${esc(cardText(c))}</div></div>
+      <div class="sub"><span class="uv-state ${draft && !c.total ? 'draft' : c.state}"></span>${esc(draft && !c.total ? draft : cardText(c) + (draft ? ` · ${draft.toLowerCase()}` : ''))}</div></div>
     <span class="uv-chev">${ICON.right}</span></div>`;
 }
 
@@ -245,7 +247,7 @@ function wrestlerRow(st, w) {
   const tags = [tag(w.origin)];
   if (w.gender === 'female') tags.push(tag('F'));
   if (w.alignment) tags.push(tag(LABEL.alignment[w.alignment], w.alignment));
-  if (w.status === 'injured') tags.push(tag('Injured', 'inj'));
+  if (w.status !== 'active') tags.push(tag(LABEL.status[w.status], 'inj'));
   const on = picking && picking.has(w.id);
   return `<div class="uv-row${on ? ' picked' : ''}" data-w="${w.id}" onclick="${picking ? `uvPick('${w.id}')` : `uvOpenWrestler('${w.id}')`}">
     ${picking ? `<span class="uv-tick">${on ? ICON.check : ''}</span>` : ''}

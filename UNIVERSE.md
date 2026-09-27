@@ -9,7 +9,9 @@ no in-world viewpoint or hidden information anywhere in the model. Around the
 matches, a story director fills in the rest of the story by itself — attacks,
 saves, betrayals, alliances, challenges — from the record, as canon, without
 ever touching a result. Shows sit in tiers — the main roster, NXT, Evolve, and
-any below — with editable rules for moving up and down between each two.
+any below — with editable rules for moving up and down between each two. An
+auto booker drafts a whole card for any show, each match with why it was
+chosen, for the owner to change and book.
 
 It's a standalone app. It shares this repository with the City Boys Dynasty
 fantasy league (see [README.md](README.md)) only for the build and test
@@ -55,17 +57,20 @@ js/universe/
   relegation.js        the season transition page, its relegation and rules parts
   promotion.js         its promotion and transfer window parts, and the draft
   tiers.js             Tiers & transfers: the tiers, their shows, and each connection's rules
-  card.js              a show's page and match card; the booking / result form
+  card.js              a show's page and match card; the booking / result form (and a draft match's)
+  booker.js            the auto booker itself - pure, seeded, runs under Node
+  autobook.js          the auto booker on screen: a show's draft card, drafting a week, each show's settings
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       125 model tests     npm run test:universe
-tools/universe-check.mjs      191 browser checks  npm run check:universe
+tools/universe-test.mjs       137 model tests     npm run test:universe
+tools/universe-check.mjs      205 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
+tools/universe-booker-demo.mjs a week of draft cards on every show, printed  npm run demo:booker
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -78,8 +83,10 @@ tools/fixtures/universe-v2.json   of those versions, for the migration tests
 2. **Each week.** The Calendar opens on the week, with **Up next** — today's
    show. Plan an episode: the story director decides what happens **before the
    show** (a confrontation, a title demand…), so you can book the card around
-   it. Play the matches in WWE 2K25, then enter each result as the game produced
-   it; once the card is complete the director decides what happens **after**
+   it. Book it yourself, or **Draft the card** (or the whole week's cards) with
+   the auto booker, change what you like, and book that. Play the matches in
+   WWE 2K25, then enter each result as the game produced it; once the card is
+   complete the director decides what happens **after**
    (an attack, a save, a betrayal…). Record anything else you saw yourself. Tap
    **Next week** when it's done.
 3. **Keep track.** **What happened** (on the Calendar's season card) is the
@@ -128,6 +135,9 @@ in the app's "How it works" sheets.
   winner is drafted, or while the window is closed. Evolve's champions are set
   to move up to NXT by themselves, titles vacated — kept as the rule, not
   carried out yet.
+- **The auto booker** drafts; it never books. A draft is on the show's page
+  until you book it, counts for nothing meanwhile, and books exactly as you
+  left it. It never picks a winner.
 - **Relationships** are worked out from the record (losses, title defeats,
   teaming, splits, incidents) plus your edits. Traits never change on their own.
 - **The story director** records what happens around each show by itself, as
@@ -146,7 +156,9 @@ Everything the app won't decide, and where it asks:
 | Decision | Where |
 |---|---|
 | Every result: the winner, the finish, who took the fall, whether a title changed hands (a DQ or a cash-in is your call) | The result form |
-| Who wrestles whom, which titles are on the line, when shows air | The calendar and the card — rankings and booking balance only inform, and a story event's **Book the match** only fills in the form |
+| Who wrestles whom, which titles are on the line, when shows air | The calendar and the card — rankings and booking balance only inform, a story event's **Book the match** only fills in the form, and the auto booker only drafts |
+| Anything on a draft card: every match, who's in it, the order, the stipulation, the title, taking one off, adding your own, drawing one again, who isn't at the show — and whether to book it | The show's page |
+| How each show's cards are drafted: how many matches (weekly and at a premium live event), which kinds, how many title matches, how often a stipulation | Auto booker → the show (or the draft's **Settings**) |
 | Whether a pairing wrestled as a registered tag team | The result form ("Wrestling as …?") |
 | Traits, and any relationship you want started, set, ended or ignored | A wrestler's page; the page for two wrestlers |
 | What counts as an incident | The show page |
@@ -171,7 +183,7 @@ Everything the app won't decide, and where it asks:
 
 - **Go to** (top right): Up next, this week's shows, results, rosters, tag teams,
   champions, rankings, booking balance, relationships, what happened, the
-  season transition and transfer window, tiers & transfers, and saving — each
+  season transition and transfer window, tiers & transfers, the auto booker, and saving — each
   with where it stands — plus every "How it works" sheet.
 - **Up next** on the Calendar is today's show: a show from an earlier week still
   waiting for results comes first; otherwise the first unfinished show from this
@@ -202,7 +214,7 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | shows     | Raw, SmackDown, Dynamite, NXT and Evolve to start; more can be added. Rosters are uncapped and never expected to match in size. |
 | tiers     | the shows in tiers, top down — tier 1 is the main roster. A show is in one tier at most |
 | links     | the connection between each tier and the one below it, with its rules: relegation (on, candidates, timing, destination), qualifiers, champions, titles, promotion (timing, destination) |
-| wrestlers | name, division (men's / women's), where they come from (WWE / AEW / NXT / Other — independent of which show they're on), alignment, active or injured, notes, current show |
+| wrestlers | name, division (men's / women's), where they come from (WWE / AEW / NXT / Other — independent of which show they're on), alignment, active, injured or away, notes, current show |
 | moves     | roster history: one row per change of show, dated, with an optional note |
 | teams     | two or more wrestlers, plus a log of the team forming, disbanding and reuniting. A wrestler can be on several; a team split across shows is allowed and flagged |
 | memberships | team line-up history: one row per spell a wrestler spent on a team, dated when they joined and left |
@@ -214,6 +226,13 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
 | relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start) and the automatic changes they've chosen to ignore |
 | story     | the story director: on or off, its pace, the save's seed, the week it started from, and a log of every run — the show, before or after, the seed and run number, every possibility it weighed with its chance and draw, and what it recorded |
+| booker    | the auto booker's settings, per show — only what you've changed; the rest follows the show's tier — plus one set for premium live events on every show |
+
+An event can also hold a **draft card**: the auto booker's matches (each with
+why it was chosen, and whether you've changed it) and your own, in order; who
+isn't at the show; the draft's draw number; and the drafted matches you took
+off, so they aren't offered again. A draft is never a booking and never holds a
+result. A booked match keeps why the booker chose it, if it did.
 
 A **match** is one record from the moment it's booked: its sides — each a set
 of wrestlers, plus the tag team they wrestled as — the title on the line, a
@@ -454,9 +473,10 @@ their draft, or that they were eligible and left undrafted.
 ## Rankings and booking balance
 
 The **Rankings** tab reads the results you've entered and nothing else. It never
-feeds back into booking: anyone can be booked against anyone with any title on
-the line, and win it — the tests book the bottom of a table for the world title
-and crown them. `model.js` and `card.js` don't use the standings at all.
+limits booking: anyone can be booked against anyone with any title on the line,
+and win it — the tests book the bottom of a table for the world title and crown
+them. `model.js` and `card.js` don't use the standings at all; the auto booker
+reads them only to suggest (see below), and its draft is yours to change.
 
 **Standings** — pick a show (or every show), a season or all time, and singles
 or tag. Men's and women's divisions are ranked separately; tag shows the
@@ -502,6 +522,88 @@ opens the booking form with the line-up filled in, on an upcoming episode or a
 new one; nothing is booked until you add it, and the result still comes from
 the game. Both calculations are explained in the app ("How rankings work",
 "How this is worked out").
+
+## The auto booker
+
+**Draft the card** on a show's page — or **Draft week N's cards** on the
+Calendar, which plans any show not on the calendar yet and drafts each — and
+the auto booker fills the card up to the show's size, after anything already
+booked there. It works for every show: Raw, SmackDown, Dynamite, NXT, Evolve,
+and any show you add, by its own settings. It never books anything and never
+picks a winner: the draft waits on the show's page, counts for nothing, and the
+story director doesn't read it. **Book this card** puts it on the card exactly
+as it stands, after anything already booked; then the game plays it.
+
+**What it reads.** The show's roster (injured, away, and anyone you mark as not
+at this show, left out); its tier, for the card's size; the championships it can
+put on the line (its own, and any show-less title whose champion is on it); this
+season's standings and results; who's short of matches (as Booking balance
+counts them) and who wrestled lately; grudges, rivalries, friendships and
+alliances; tag teams and factions (a team of three or more); what each wrestler
+is after (as on their page: keep the title, revenge, a title, tag team gold,
+turn it around); who has arrived from another show lately (drafted, relegated,
+moved); and the calendar — a premium live event ahead, or tonight being one.
+
+**What it looks for**, each match with why it was chosen:
+
+| Idea | How it reads |
+|---|---|
+| Title match | the champion against the best contender: high in the standings, a recent win over the champion, a grudge or rivalry, after that title, hot. A title idle for weeks is due; one just defended — or a champion who can't be here — sends the top contenders into a #1 contender's match (in the notes). A vacant title: the top contenders meet for it. |
+| Feud | rivals, or a grudge, one on one — but a feud **builds across shows**: after a singles meeting last week it goes another way this time; with a premium live event ahead the singles match waits for it ("this could wait"); a third meeting in four weeks, or a heated one at a premium live event, gets a stipulation to settle it, and at a premium live event a champion's feud is fought for the title |
+| Allies and partners | rivals face each other's allies, tag partners or friends, or meet in a tag match with a partner each |
+| A friend steps in | a friend stands up to a friend's rival |
+| Teams | teams at odds, or close in the tag standings; factions three on three; a tag partner against a member of a team they're at odds with; someone with a grudge against a faction, alone, handicap |
+| Upset | a win from three or more places lower, or over a champion: a rematch, or a step up against the top three |
+| Opportunity | someone short of matches gets a chance, against an opponent picked as Booking balance's match ideas pick them; someone cold gets one to turn it around; a new arrival gets a first match on the show |
+| Fresh matchup | everyone else: close in the standings, not met lately; three or four free for a while in one match; the top three of a division at once |
+
+**Putting the card together.** Nobody is in two matches. The card leans toward
+the show's mix of match types and each division's share of who's available,
+favours whoever has gone longest without a match, never repeats last week's
+singles match (a rematch after an upset aside), keeps a weekly episode to its
+number of title matches (every title with a contender at a premium live event),
+takes at most two matches from one feud, and only picks a big multi-person match
+while enough people are left for the rest of the card. When nothing with a story
+fits, whoever's left gets a match of a kind the show allows. The biggest match
+goes last, something with a crowd of people opens. Close calls are settled by a
+hash of the show, the draw number and the match — so the same universe drafts
+the same card, and drawing again draws a different one. A roster too small for
+the card gets as many matches as it can make, and the draft says so.
+
+**Each show's settings** (Go to → Auto booker, or **Settings** on a draft):
+
+| Setting | Default |
+|---|---|
+| Matches on a weekly episode | 6 in tier 1, 5 in tier 2, 4 below that (5 in no tier) |
+| Matches at a premium live event | 2 more than weekly; 10 for an event for every show |
+| Title matches on an episode, at most | 1 |
+| Singles · tag team · triple threat · fatal 4-way · 6-person tag · handicap | often · often · sometimes · rarely · rarely · never (each: often, sometimes, rarely or never) |
+| Stipulations | only to settle a feud (or never, or often) |
+
+Only what you change is kept for a show, so a show added later — or moved to
+another tier — starts from its tier's defaults. A draft already made stays as
+it is; draw it again to use new settings.
+
+**Yours to change.** On the draft, every match can be edited in the booking form
+— who's in it, the title, the stipulation, the notes (it's then marked
+*changed*); **Draw again** swaps one match for another in the same place,
+without touching the rest; the arrows move a match; ✕ takes it off (it isn't
+offered again on that draft); **Add your own match**; **Not at this show** leaves
+someone out of anything drawn for it, drawing their matches again without them.
+**Draw the rest again** keeps every match you changed or added, in its order,
+and draws the others. **Discard the draft** throws it away. A draft match that
+needs a look says so — someone injured, away, not at the show, on another show
+now, in two matches, or a title match without its champion — but nothing is
+refused until you book it, and booking checks the whole draft first: it books
+all of it or none.
+
+`npm run demo:booker` drafts week 5 of a sample universe on every show, plus a
+premium live event, prints each match with why, then changes, draws, adds to
+and books a draft, checking at each step.
+
+**Not yet.** It doesn't read or start the story director's events: a title
+demand or a confrontation doesn't book a match by itself yet — the booker sees
+only the relationships they leave behind.
 
 ## Personalities and relationships
 
@@ -764,6 +866,9 @@ refuses rather than disturb anything else:
 | A relegation decision made wrong | **Undo** it on the transition page. |
 | A season transition started by mistake | **Cancel** it, while nothing is booked or drafted from it. |
 | A qualifier result entered wrong | **Correct** it on its match: eligibility follows the real winner — refused once they've been drafted, until that pick is undone. |
+| A drafted match you don't want | Change it, **Draw again**, or take it off the draft. |
+| A whole draft card you don't like | **Draw the rest again** (what you changed or added stays), or **Discard the draft**. |
+| An auto-booked match, once it's on the card | Edit or take it off like any booking — it's marked as changed by you. |
 | A draft pick made wrong | Reopen the window if it's closed, then **Undo** the pick: everyone drafted with it goes back where they came from, and a title vacated with it goes back — while it's still their latest move and the title hasn't changed hands since. |
 | The transfer window opened too early | **Take back opening the window**, while nobody's been drafted. |
 | An automatic relationship change you don't agree with | **Ignore** it on the timeline. It stays there, crossed out, and doesn't count; **Count it again** brings it back. |
@@ -845,7 +950,9 @@ The rules between them are the ones that used to be written into the code.
 Each season transition keeps its candidates, pairings, qualifiers and window as
 they were, as its main roster ⇄ NXT part. Every relegation, eligibility and
 draft record is marked as belonging to that connection, and each relegation
-keeps where it went (NXT).
+keeps where it went (NXT). **Version 10** added the auto booker: nothing in an
+older save had been drafted or auto-booked, every show drafts by its tier's
+defaults, and wrestlers can be away as well as active or injured.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
@@ -856,6 +963,9 @@ for them: Evolve's champions moving up to NXT by themselves at the transfer
 window, moving down at the window, and moving up straight after a qualifier.
 The rules are stored, editable and shown with who they'd move, but nobody moves
 by them.
+
+The auto booker isn't connected to the story director yet: neither reads nor
+starts the other's work.
 
 The story director tells the story around the matches; it doesn't write
 promos, run injuries, handle contracts or book whole cards, and it only goes

@@ -821,3 +821,59 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-ranklink svg:last-child{margin-left:auto;color:var(--uv-ink-3)}
 .uv-savenote{margin-top:10px;font-size:12px;line-height:1.5;color:var(--uv-ink-3)}
 .uv-savenote.warn{color:var(--uv-amber)}
+
+/* ---------- the auto booker ---------- */
+.uv-autorow{display:flex;align-items:center;gap:10px;margin:10px 14px 0;padding:11px 12px;border-radius:13px;cursor:pointer;
+  border:1px dashed var(--uv-gold-line);background:linear-gradient(90deg,var(--uv-gold-soft),transparent 85%),var(--uv-card)}
+.uv-autorow.quiet{border-color:var(--uv-line);background:var(--uv-card)}
+.uv-autorow>svg:first-child{flex:none;width:18px;height:18px;color:var(--uv-gold)}
+.uv-autorow>svg:last-child{flex:none;width:15px;height:15px;color:var(--uv-ink-3)}
+.uv-autorow div{flex:1;min-width:0}
+.uv-autorow b{display:block;font-size:13.5px}
+.uv-autorow span{display:block;margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--uv-ink-2)}
+.uv-weekdraft{display:flex;align-items:center;justify-content:center;gap:7px;margin:10px 14px 0;padding:11px;border-radius:13px;
+  border:1px dashed var(--uv-gold-line);background:var(--uv-gold-soft);font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-weekdraft svg{width:15px;height:15px}
+.uv-state.draft{border:2px dashed var(--uv-gold)}
+.uv-draft-note{display:flex;gap:9px;margin:0 14px 10px;padding:10px 12px;border-radius:12px;border:1px solid var(--uv-gold-line);
+  background:var(--uv-gold-soft);font-size:12px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-draft-note svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--uv-gold)}
+.uv-mc.draft{border:1px dashed var(--uv-gold-line);background:linear-gradient(180deg,rgba(232,185,49,.05),transparent 60%),var(--uv-card-2)}
+.uv-mc.draft .uv-mc-top .st{color:var(--uv-gold)}
+.uv-mc.draft.own{border-color:var(--uv-line)}
+.uv-why{margin-top:8px;padding:6px 9px;border-left:2px solid var(--uv-gold-line);font-size:12px;line-height:1.45;color:var(--uv-ink-2);
+  overflow-wrap:anywhere}
+.uv-why b{margin-right:4px;font-weight:700;color:var(--uv-gold)}
+.uv-why ul{margin:3px 0 0 15px;padding:0;font-size:11.5px;color:var(--uv-ink-3)}
+.uv-why li{margin-top:2px}
+.uv-why.small{margin-top:6px;padding:3px 8px;font-size:11.5px}
+.uv-why.small i{color:var(--uv-ink-3)}
+.uv-sheet .uv-why{margin:0 0 12px}
+.uv-mc-d.warn{color:var(--uv-amber)}
+.uv-add.inset{margin:12px 14px 0}
+.uv-draft-out{margin:12px 14px 0;font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-draft-out b{color:var(--uv-ink)}
+.uv-draft-out .uv-link{margin-left:6px;color:var(--uv-gold);text-decoration-color:var(--uv-gold-line)}
+.uv-draft-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;margin:14px 16px 0;font-size:12px}
+.uv-draft-foot .uv-link{color:var(--uv-ink-3)}
+.uv-checks{display:flex;flex-direction:column;margin-top:2px}
+.uv-checks .uv-check{margin-top:9px}
+.uv-check.dim{opacity:.55}
+.uv-plan{display:flex;flex-direction:column;gap:6px;margin:4px 0 14px}
+.uv-planrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;border:1px solid var(--uv-line);
+  box-shadow:inset 3px 0 0 var(--c);background:var(--uv-card)}
+.uv-planrow.off{opacity:.55}
+.uv-planrow .uv-main{flex:1;min-width:0}
+.uv-planrow .nm{font-size:13.5px;font-weight:700}
+.uv-planrow .sub{margin-top:2px;font-size:11.5px;color:var(--uv-ink-2)}
+.uv-planrow>svg{flex:none;width:16px;height:16px;color:var(--uv-gold)}
+.uv-list{margin:0 14px;border:1px solid var(--uv-line);border-radius:14px;overflow:hidden;background:var(--uv-card)}
+.uv-list .uv-row{box-shadow:inset 3px 0 0 var(--c,transparent)}
+.uv-list .uv-row:last-child{border-bottom:none}
+.uv-list .uv-row .uv-main{flex:1;min-width:0}
+.uv-list .uv-row .nm{font-size:13.5px;font-weight:700;overflow-wrap:anywhere}
+.uv-list .uv-row .nm .uv-muted{font-weight:600;font-size:11.5px}
+.uv-list .uv-row .sub{margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--uv-ink-2)}
+.uv-list .uv-row>svg{flex:none;width:15px;height:15px;color:var(--uv-ink-3)}
+#uvSheetBody .uv-trcount[data-set]{margin:4px 0}
+#uvSheetBody .uv-trcount[data-set]>span{flex:1}

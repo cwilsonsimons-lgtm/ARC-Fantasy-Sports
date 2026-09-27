@@ -234,7 +234,7 @@ function judge(rows) {
  *             (a team: only matches as the team)
  *   rate      matches / weeks
  *   typical   the median rate of the group, counting only those on the show
- *             for at least MIN_WEEKS and not injured; needs MIN_GROUP of them
+ *             for at least MIN_WEEKS and not injured or away; needs MIN_GROUP of them
  *   flagged   rate at most half of typical AND at least MIN_SHORT matches
  *             fewer than typical x their weeks - so a quiet show flags nobody
  *
@@ -250,14 +250,15 @@ export function balance(st, { showId, period }) {
     const on = new Set(weeks.filter(wk => showAt(st, w, date(wk)) === showId));
     const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some(sd => sd.wrestlers.includes(w.id)));
     const singles = mine.filter(({ m }) => m.sides.find(sd => sd.wrestlers.includes(w.id)).wrestlers.length === 1).length;
-    return { kind: 'wrestler', id: w.id, name: w.name, gender: w.gender, injured: w.status === 'injured', weeks: on.size,
+    return { kind: 'wrestler', id: w.id, name: w.name, gender: w.gender, injured: w.status !== 'active', status: w.status, weeks: on.size,
       matches: mine.length, singles, tag: mine.length - singles, rate: on.size ? mine.length / on.size : 0,
       last: lastOf(st, mine), booked: pendingFor(st, 'wrestler', w.id) };
   };
   const teamRow = t => {
     const on = new Set(weeks.filter(wk => teamAt(st, t, date(wk)).active && teamOnShow(st, t, showId, date(wk))));
     const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some(sd => sd.team === t.id));
-    return { kind: 'team', id: t.id, name: t.name, injured: t.members.some(id => (wrestlerById(st, id) || {}).status === 'injured'),
+    const out = t.members.map(id => (wrestlerById(st, id) || {}).status).find(x => x && x !== 'active') || null;
+    return { kind: 'team', id: t.id, name: t.name, injured: !!out, status: out || 'active',
       weeks: on.size, matches: mine.length, rate: on.size ? mine.length / on.size : 0, last: lastOf(st, mine),
       booked: pendingFor(st, 'team', t.id) };
   };
@@ -323,12 +324,12 @@ export function matchIdeas(st, subject, { showId, balanceResult }) {
   if (team) {
     pool = st.teams.filter(t => t.id !== self.id && t.active && !t.members.some(id => self.members.includes(id))
       && t.members.some(id => (wrestlerById(st, id) || {}).showId === showId)
-      && !t.members.some(id => (wrestlerById(st, id) || {}).status === 'injured'));
+      && t.members.every(id => (wrestlerById(st, id) || {}).status === 'active'));
     onSide = (sd, id) => sd.team === id;
     ranks = standings(st, { showId, period: season, kind: 'teams' });
   } else {
     const partners = new Set(st.teams.filter(t => t.active && t.members.includes(self.id)).flatMap(t => t.members));
-    pool = st.wrestlers.filter(w => w.id !== self.id && w.showId === showId && w.status !== 'injured'
+    pool = st.wrestlers.filter(w => w.id !== self.id && w.showId === showId && w.status === 'active'
       && w.gender === self.gender && !partners.has(w.id));
     onSide = (sd, id) => sd.wrestlers.includes(id);
     ranks = standings(st, { showId, period: season, kind: 'singles' });

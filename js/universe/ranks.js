@@ -195,7 +195,7 @@ function shortCard(st, showId, r, g, res) {
 function groupTable(st, g) {
   const max = Math.max(...g.rows.map(r => r.rate), g.typical || 0, 0.01);
   const open = r => (r.kind === 'team' ? `uvOpenTeam('${r.id}')` : `uvOpenWrestler('${r.id}')`);
-  const note = r => (r.injured ? 'Injured — not counted' : r.weeks < MIN_WEEKS ? `Here ${plural(r.weeks, 'week')} — not judged yet` : '');
+  const note = r => (r.injured ? `${r.status === 'away' ? 'Away' : 'Injured'} — not counted` : r.weeks < MIN_WEEKS ? `Here ${plural(r.weeks, 'week')} — not judged yet` : '');
   const rowHtml = r => `<div class="uv-bl${r.flagged ? ' flag' : ''}${r.judged ? '' : ' dim'}" onclick="${open(r)}">
       <div class="uv-main"><div class="nm">${esc(r.name)}</div><div class="sub">${note(r) || `${plural(r.matches, 'match', 'matches')} in ${plural(r.weeks, 'week')}`}</div></div>
       <div class="bar"><i style="width:${Math.round((r.rate / max) * 100)}%"></i>${g.typical ? `<u style="left:${Math.round((g.typical / max) * 100)}%"></u>` : ''}</div>
@@ -267,7 +267,7 @@ export function uvHowBalance() {
       </div>
       <p class="uv-p">Rule 2 means a quiet show or division flags nobody, and small gaps are left alone — nobody is expected to
         wrestle as often as everyone else. <i>Well below</i> is a rate at most a quarter of typical.</p>
-      <p class="uv-p"><b>Match ideas</b> are opponents on the same show and division, not injured and not their own tag
+      <p class="uv-p"><b>Match ideas</b> are opponents on the same show and division, not injured or away and not their own tag
         partners (a team: another team with nobody in common). Each is scored on: both being short of matches (+3); a
         rivalry — met two or more times (+2) — or a recent first meeting (+1.5); being close in this season’s standings
         (up to +1.5); a shot at someone in the top three (+0.75); never having met (+0.75); holding a title (+0.5). An

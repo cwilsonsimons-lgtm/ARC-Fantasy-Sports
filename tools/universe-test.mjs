@@ -15,8 +15,9 @@ import { createCloud } from '../js/universe/cloud.js';
 import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
 import * as DR from '../js/universe/director.js';
+import * as B from '../js/universe/booker.js';
 import { FIND_FROM, findable } from '../js/universe/ui.js';
-import { sampleCycle, sampleSeason } from './universe-sample.mjs';
+import { bookingSample, sampleCycle, sampleSeason } from './universe-sample.mjs';
 
 const sound = st => assert.deepEqual(M.validate(st), []);
 const throwsUE = (fn, re) => assert.throws(fn, e => e instanceof M.UniverseError && (!re || re.test(e.message)));
@@ -3151,4 +3152,335 @@ test('restore points: kept before big changes, the newest weekly one only, never
   assert.equal(P.lastExported(store), null);
   P.noteExported(store, '2026-09-26T12:00:00Z');
   assert.equal(P.lastExported(store), '2026-09-26T12:00:00Z');
+});
+
+// ---------------------------------------------------------------- the auto booker
+
+const lineupOf = (st, m) => m.sides.map(sd => sd.wrestlers.map(id => M.wrestlerById(st, id).name).join(' & ')).join(' vs ');
+const who = m => m.sides.flatMap(sd => sd.wrestlers);
+const pairIs = (st, m, a, b) => m.sides.length === 2 && m.sides.every(sd => sd.wrestlers.length === 1)
+  && [a, b].every(n => who(m).includes(st.wrestlers.find(w => w.name === n).id));
+const draftWeek = st => Object.fromEntries(st.shows.map(sh => {
+  const ev = st.events.find(e => e.kind === 'weekly' && e.showId === sh.id && e.at.week === 5) || M.addEvent(st, { showId: sh.id });
+  const r = B.draftCard(st, ev.id);
+  M.setDraft(st, ev.id, r.matches.map(B.toSpec));
+  return [sh.id, { ev, r }];
+}));
+
+test('booker settings: defaults follow each show’s tier, and each show keeps its own', () => {
+  const { st, lfg } = bookingSample();
+  const size = id => [M.bookerSettings(st, id).size, M.bookerSettings(st, id).pleSize];
+  assert.deepEqual([size('raw'), size('dynamite'), size('nxt'), size('evolve'), size(lfg.id)], [[6, 8], [6, 8], [5, 7], [4, 6], [4, 6]]);
+  assert.equal(M.bookerSettings(st, null).pleSize, 10);
+  const sat = M.addShow(st, { name: 'Saturday Night', day: 5 });             // in no tier
+  assert.deepEqual(size(sat.id), [5, 7]);
+  M.setShowTier(st, 'evolve', st.tiers[1].id);                              // moved up: its defaults follow
+  assert.deepEqual(size('evolve'), [5, 7]);
+  M.setBookerSettings(st, 'nxt', { size: 7, titles: 2, stips: 'often', mix: { singles: 'sometimes', trios: 'never' } });
+  const n = M.bookerSettings(st, 'nxt');
+  assert.deepEqual([n.size, n.pleSize, n.titles, n.stips, n.mix.singles, n.mix.trios, n.mix.tag, n.changed], [7, 9 - 2, 2, 'often', 'sometimes', 'never', 'often', true]);
+  assert.deepEqual(M.bookerSettings(st, 'raw').mix.singles, 'often');        // nobody else changed
+  const before = frozen(st);
+  throwsUE(() => M.setBookerSettings(st, 'raw', { size: 0 }), /1 to 15 matches/);
+  throwsUE(() => M.setBookerSettings(st, 'raw', { titles: 9 }), /0 to 5/);
+  throwsUE(() => M.setBookerSettings(st, 'raw', { mix: { ladder: 'often' } }), /kind of match/);
+  throwsUE(() => M.setBookerSettings(st, 'raw', { mix: Object.fromEntries(M.MATCH_TYPES.map(k => [k, 'never'])) }), /at least one kind/);
+  assert.equal(frozen(st), before);
+  M.resetBookerSettings(st, 'nxt');
+  assert.equal(M.bookerSettings(st, 'nxt').changed, false);
+  M.setBookerSettings(st, sat.id, { size: 3 });
+  M.deleteShow(st, sat.id);                                                 // its settings go with it
+  assert.equal(st.booker.shows[sat.id], undefined);
+  sound(st);
+});
+
+test('a draft for every show — Raw, SmackDown, Dynamite, NXT, Evolve and a show added later — full, sound, and never a result', () => {
+  const { st, lfg } = bookingSample();
+  const before = frozen(st);
+  const evs = st.shows.map(sh => M.addEvent(st, { showId: sh.id }));
+  const planned = frozen(st);
+  const drafts = evs.map(ev => B.draftCard(st, ev.id));
+  assert.equal(frozen(st), planned, 'drafting reads the universe and changes nothing');
+  assert.notEqual(before, planned);
+  drafts.forEach((r, i) => {
+    const ev = evs[i];
+    const roster = st.wrestlers.filter(w => w.showId === ev.showId && w.status === 'active');
+    const ids = r.matches.flatMap(who);
+    assert.ok(r.matches.length >= 1, ev.name);
+    assert.ok(r.matches.length <= M.cardSize(st, ev), ev.name);
+    assert.equal(new Set(ids).size, ids.length, `${ev.name}: nobody twice`);
+    assert.ok(ids.every(id => roster.some(w => w.id === id)), `${ev.name}: only the show’s available roster`);
+    assert.ok(r.matches.every(m => m.why.length && m.why.every(x => typeof x === 'string' && x.length)), `${ev.name}: every match says why`);
+    assert.ok(r.matches.every(m => !('winner' in m) && !('outcome' in m)), 'no result, ever');
+    // full: as many matches as the card holds, or nobody left in any division who could make another
+    const left = roster.filter(w => !ids.includes(w.id));
+    assert.ok(r.matches.length === M.cardSize(st, ev) || M.GENDERS.every(g => left.filter(w => w.gender === g).length < 2), `${ev.name}: a full card`);
+    assert.equal(!!r.short, r.matches.length < M.cardSize(st, ev));
+  });
+  const [raw, , , , evolve, lfgR] = drafts;
+  assert.equal(raw.matches.length, 6);
+  assert.equal(evolve.matches.length, 3);                                   // 6 wrestlers, 4 slots: as many as fit
+  assert.equal(lfgR.matches.length, 2);
+  assert.match(lfgR.short, /Only 2 matches fit with 4 wrestlers available on LFG/);
+  assert.ok(!raw.matches.some(m => who(m).some(id => ['Punk', 'Brock'].includes(M.wrestlerById(st, id).name))), 'injured and away left out');
+  assert.equal(evs[5].showId, lfg.id);
+  // the same universe drafts the same card
+  assert.deepEqual(B.draftCard(st, evs[0].id).matches.map(m => m.key), raw.matches.map(m => m.key));
+});
+
+test('logical matches: titles and contenders, feuds and their allies, friends, teams, upsets, someone short of matches, a new arrival', () => {
+  const { st, C } = bookingSample();
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const ideas = B.ideasFor(st, ev.id);
+  const find = (kind, a, b) => ideas.find(x => x.kind === kind && pairIs(st, x, a, b));
+  const said = re => ideas.some(x => x.why.some(w => re.test(w)));
+  // titles: the champion against the best contender, with the case for them
+  const world = ideas.find(x => x.kind === 'title' && x.titleId === C.world.id && x.sides.length === 2);
+  assert.equal(lineupOf(st, world), 'Gunther vs Cody');
+  assert.match(world.why[1], /^Challenger Cody: #1 in the men’s standings, a grudge against Gunther, hot/);
+  const tagTitle = ideas.find(x => x.kind === 'title' && x.titleId === C.rawTag.id);
+  assert.deepEqual(tagTitle.sides.map(sd => M.teamById(st, sd.team).name), ['Judgment Day', 'KO & Sami']);
+  // rivals who met one on one last week, with Backlash ahead: the feud builds through allies instead
+  const direct = find('feud', 'Seth', 'Kevin');
+  const proxy = find('build', 'Seth', 'Sami');
+  assert.ok(proxy.score > direct.score + 3, `${proxy.score} vs ${direct.score}`);
+  assert.match(proxy.why[0], /Rivals face each other’s allies: Seth against Sami, Kevin’s tag partner/);
+  assert.match(proxy.why.join(' '), /They met one on one last week — the feud builds another way this time/);
+  assert.match(direct.why.join(' '), /Backlash is in 2 weeks — this could wait for it/);
+  // a friend steps in against a friend's rival (Jey for Cody, against Gunther)
+  assert.ok(said(/^Jey stands up for a friend: Cody’s feud with Gunther/));
+  // tag partners against a member of the team they're at odds with
+  assert.ok(find('teams', 'Sami', 'Finn') || ideas.some(x => x.kind === 'build' && pairIs(st, x, 'Sami', 'Finn')));
+  // an upset: a rematch, and a step up
+  assert.match(find('rematch', 'Jey', 'Gunther').why[0], /^Rematch: Jey upset Gunther last week/);
+  assert.ok(ideas.some(x => x.kind === 'step' && who(x).includes(st.wrestlers.find(w => w.name === 'Jey').id)));
+  // someone short of matches gets a chance
+  assert.ok(ideas.some(x => x.kind === 'chance' && /^A chance: Idle has had 0 matches in 4 weeks/.test(x.why[0])));
+  // a call-up gets a first match
+  assert.ok(ideas.some(x => x.kind === 'arrival' && /^New arrival: Oba, up from NXT .* a first match on Raw/.test(x.why[0])));
+  // nobody injured or away, in anything
+  assert.ok(!ideas.some(x => who(x).some(id => M.wrestlerById(st, id).status !== 'active')));
+  // SmackDown: two meetings in four weeks - settle it with a stipulation
+  const sd = B.ideasFor(st, M.addEvent(st, { showId: 'smackdown' }).id);
+  const settle = sd.find(x => x.kind === 'feud' && pairIs(st, x, 'Roman', 'Solo'));
+  assert.ok(settle.stip);
+  assert.match(settle.why.join(' | '), /2 meetings in the last four weeks/);
+  // Dynamite: teams at odds
+  const dyn = B.ideasFor(st, M.addEvent(st, { showId: 'dynamite' }).id);
+  assert.ok(dyn.some(x => x.kind === 'title' && x.titleId === C.aewTag.id && /rivals with FTR/.test(x.why.join(' '))));
+  // NXT: a vacant title
+  const nxt = B.ideasFor(st, M.addEvent(st, { showId: 'nxt' }).id);
+  const vacant = nxt.find(x => x.titleId === C.nxt.id);
+  assert.deepEqual([vacant.kind, vacant.notes], ['vacant', 'For the vacant NXT Championship']);
+  sound(st);
+});
+
+test('the premium live event: every title with a contender, the feuds’ big matches for the title, a stipulation where the heat is', () => {
+  const { st, C, backlash } = bookingSample();
+  const r = B.draftCard(st, backlash.id);
+  const byTitle = id => r.matches.find(m => m.titleId === id);
+  assert.equal(lineupOf(st, byTitle(C.world.id)), 'Cody vs Gunther');
+  assert.ok(byTitle(C.world.id).stip);
+  assert.match(byTitle(C.world.id).why.join(' | '), /The feud’s big match, at Backlash/);
+  assert.equal(lineupOf(st, byTitle(C.women.id)), 'Liv vs Becky');
+  assert.ok(byTitle(C.rawTag.id));
+  assert.equal(r.matches[r.matches.length - 1].titleId, C.world.id, 'the World title main-events');
+  M.setBookerSettings(st, 'raw', { stips: 'never' });
+  assert.ok(B.draftCard(st, backlash.id).matches.every(m => !m.stip), 'no stipulations when the show says never');
+});
+
+test('a feud builds across weeks: last week’s singles match isn’t drafted again, week after week', () => {
+  const { st } = bookingSample();
+  const ev5 = M.addEvent(st, { showId: 'raw' });
+  M.setDraft(st, ev5.id, B.draftCard(st, ev5.id).matches.map(B.toSpec));
+  const booked = M.bookDraft(st, ev5.id);
+  booked.forEach(m => M.enterResult(st, ev5.id, m.id, { outcome: 'win', winner: 0 }));   // the test plays the games, not the booker
+  M.setWeek(st, 6);
+  const ev6 = M.addEvent(st, { showId: 'raw' });
+  const next = B.draftCard(st, ev6.id).matches;
+  const singles = booked.filter(m => m.sides.length === 2 && m.sides.every(sd => sd.wrestlers.length === 1));
+  next.filter(m => m.kind !== 'rematch').forEach(m => {
+    assert.ok(!singles.some(p => B.matchKey(p) === B.matchKey({ ...m, titleId: p.titleId })), `repeated: ${lineupOf(st, m)}`);
+  });
+  sound(st);
+});
+
+test('settings shape the card: its size, its kinds of match, its title matches', () => {
+  const { st } = bookingSample();
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.setBookerSettings(st, 'raw', { size: 3 });
+  assert.equal(B.draftCard(st, ev.id).matches.length, 3);
+  M.setBookerSettings(st, 'raw', { size: 6, titles: 0 });
+  assert.ok(B.draftCard(st, ev.id).matches.every(m => !m.titleId));
+  M.setBookerSettings(st, 'raw', { titles: 2 });
+  assert.ok(B.draftCard(st, ev.id).matches.filter(m => m.titleId).length <= 2);
+  M.setBookerSettings(st, 'raw', { mix: { singles: 'never', triple: 'often', fourway: 'often', tag: 'often' } });
+  const r = B.draftCard(st, ev.id);
+  assert.ok(r.matches.length >= 4);
+  assert.ok(r.matches.every(m => m.type !== 'singles'), r.matches.map(m => m.type).join());
+  // what's booked already counts toward the size, and its wrestlers are taken
+  M.resetBookerSettings(st, 'raw');
+  const cody = st.wrestlers.find(w => w.name === 'Cody').id, seth = st.wrestlers.find(w => w.name === 'Seth').id;
+  M.bookMatch(st, ev.id, { sides: [{ wrestlers: [cody] }, { wrestlers: [seth] }] });
+  const rest = B.draftCard(st, ev.id);
+  assert.equal(rest.matches.length, 5);
+  assert.ok(!rest.matches.some(m => who(m).includes(cody) || who(m).includes(seth)));
+});
+
+test('the draft is the owner’s: edit, add, draw one again, take off, move, who’s out — and drawing the rest again keeps their changes', () => {
+  const { st, id } = bookingSample();
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.setDraft(st, ev.id, B.draftCard(st, ev.id).matches.map(B.toSpec));
+  const d = () => M.eventById(st, ev.id).draft;
+  const [a, b, c2] = d().matches;
+  // edit: marked as changed; an unchanged save isn't
+  M.editDraftMatch(st, ev.id, a.id, { notes: a.notes });
+  assert.equal(d().matches[0].auto.edited, false);
+  M.editDraftMatch(st, ev.id, a.id, { stip: 'Ladder' });
+  assert.deepEqual([d().matches[0].stip, d().matches[0].auto.edited], ['Ladder', true]);
+  // take one off: it's not offered again on this draft
+  M.deleteDraftMatch(st, ev.id, c2.id);
+  assert.ok(d().passed.includes(c2.auto.key));
+  assert.ok(!B.ideasFor(st, ev.id).some(x => x.key === c2.auto.key));
+  // draw one again: something else, in the same place
+  const again = B.redrawOne(st, ev.id, b.id);
+  assert.ok(again && again.key !== b.auto.key);
+  M.redrawDraftMatch(st, ev.id, b.id, B.toSpec(again));
+  assert.equal(d().matches[1].auto.key, again.key);
+  assert.ok(!d().matches.some(m => m.id === b.id));
+  // move, add their own
+  assert.equal(M.moveDraftMatch(st, ev.id, d().matches[1].id, -1), true);
+  assert.equal(M.moveDraftMatch(st, ev.id, d().matches[0].id, -1), false);
+  const own = M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [id('Punk')] }, { wrestlers: [id('Idle')] }], stip: 'Street Fight' });
+  assert.equal(own.auto, null);
+  assert.match(B.draftNotes(st, M.eventById(st, ev.id)).get(own.id).join(' · '), /Punk is injured/);
+  // who's out tonight is left out of whatever is drawn next
+  M.setDraftOut(st, ev.id, [id('Cody')]);
+  const kept = d().matches.filter(m => !m.auto || m.auto.edited).map(m => [m.id, d().matches.indexOf(m)]);
+  const r = B.redraft(st, ev.id);
+  M.setDraft(st, ev.id, r.list, { nonce: r.nonce });
+  assert.equal(d().nonce, 1);
+  const order = d().matches.map(m => m.id).filter(x => kept.some(([mid]) => mid === x));
+  assert.deepEqual(order, kept.map(([mid]) => mid), 'what the owner changed or added stays, in its order');
+  assert.ok(!d().matches.filter(m => m.auto && !m.auto.edited).some(m => who(m).includes(id('Cody'))));
+  assert.deepEqual(d().out, [id('Cody')]);
+  sound(st);
+});
+
+test('booking a draft puts exactly the draft on the card — the owner’s edits, why it was chosen, and no result', () => {
+  const { st, id } = bookingSample();
+  const ev = M.addEvent(st, { showId: 'smackdown' });
+  const pre = M.bookMatch(st, ev.id, { sides: [{ wrestlers: [id('Randy')] }, { wrestlers: [id('Bron')] }] });
+  M.setDraft(st, ev.id, B.draftCard(st, ev.id).matches.map(B.toSpec));
+  const first = M.eventById(st, ev.id).draft.matches[0];
+  M.editDraftMatch(st, ev.id, first.id, { notes: 'Winner faces Randy' });
+  M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [id('Nia')] }, { wrestlers: [id('Jade')] }] });
+  const draft = JSON.parse(JSON.stringify(M.eventById(st, ev.id).draft.matches));
+  const records = st.wrestlers.map(w => JSON.stringify(M.wrestlerRecord(st, w.id)));
+  const made = M.bookDraft(st, ev.id);
+  const e = M.eventById(st, ev.id);
+  assert.equal(e.draft, null);
+  assert.equal(e.matches[0].id, pre.id, 'what was booked stays first');
+  assert.equal(made.length, draft.length);
+  made.forEach((m, i) => {
+    assert.deepEqual([m.sides, m.titleId, m.stip, m.notes], [draft[i].sides, draft[i].titleId, draft[i].stip, draft[i].notes]);
+    assert.deepEqual([m.status, m.outcome, m.winner, m.finish, m.fall], ['scheduled', null, null, null, null]);
+  });
+  assert.deepEqual(made[0].auto.why, draft[0].auto.why);
+  assert.equal(made[0].auto.edited, true);
+  assert.equal(made[made.length - 1].auto, null);
+  assert.deepEqual(st.wrestlers.map(w => JSON.stringify(M.wrestlerRecord(st, w.id))), records, 'booking counts for nothing');
+  // editing an auto-booked match afterwards marks it too
+  const plain = made.find(m => m.auto && !m.auto.edited);
+  M.updateBooking(st, ev.id, plain.id, { stip: 'Tables' });
+  assert.equal(plain.auto.edited, true);
+  sound(st);
+});
+
+test('drafts are checked like bookings, count for nothing, and follow deletes and merges', () => {
+  const { st, id } = bookingSample();
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const before = frozen(st);
+  throwsUE(() => M.setDraft(st, ev.id, [{ sides: [{ wrestlers: [id('Cody')] }] }]), /at least two sides/);
+  throwsUE(() => M.setDraft(st, ev.id, [{ sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Cody')] }] }]), /same match twice/);
+  throwsUE(() => M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Seth')] }] }), /has no draft card/);
+  throwsUE(() => M.bookDraft(st, ev.id), /has no draft card/);
+  assert.equal(frozen(st), before);
+  M.setDraft(st, ev.id, []);
+  throwsUE(() => M.bookDraft(st, ev.id), /The draft is empty/);
+  // a draft that can't all be booked books nothing
+  const t = M.addTitle(st, { name: 'Old Belt', showId: 'raw', kind: 'singles', division: 'men' });
+  M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [id('Drew')] }, { wrestlers: [id('Priest')] }] });
+  M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Seth')] }], titleId: t.id });
+  M.updateTitle(st, t.id, { active: false });
+  throwsUE(() => M.bookDraft(st, ev.id), /^Match 2 on the draft: The Old Belt is retired/);
+  assert.equal(M.eventById(st, ev.id).matches.length, 0);
+  // drafts count for nothing: not a booking, not a card
+  assert.equal(M.bookingsOf(st, id('Drew')).length, 0);
+  assert.equal(M.cardStatus(M.eventById(st, ev.id)).state, 'empty');
+  // deleting what a draft names takes it out of the draft
+  M.deleteTitle(st, t.id);
+  assert.equal(M.eventById(st, ev.id).draft.matches[1].titleId, null);
+  const temp = M.addWrestler(st, { name: 'Temp', showId: 'raw' });
+  M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [temp.id] }, { wrestlers: [id('Rhea')] }] });
+  M.setDraftOut(st, ev.id, [temp.id]);
+  M.deleteWrestler(st, temp.id);
+  assert.equal(M.eventById(st, ev.id).draft.matches.length, 2);
+  assert.deepEqual(M.eventById(st, ev.id).draft.out, []);
+  const dup = M.addWrestler(st, { name: 'Drew Again', showId: 'raw' });
+  M.addDraftMatch(st, ev.id, { sides: [{ wrestlers: [dup.id] }, { wrestlers: [id('Liv')] }] });
+  M.mergeWrestlers(st, id('Drew'), dup.id);
+  assert.deepEqual(M.eventById(st, ev.id).draft.matches[2].sides[0].wrestlers, [id('Drew')]);
+  sound(st);
+  // a broken draft in a save is caught
+  const bad = JSON.parse(JSON.stringify(st));
+  bad.events.find(e => e.id === ev.id).draft.matches[0].sides[0].wrestlers = ['w9999'];
+  assert.ok(M.validate(bad).some(x => /draft match .* includes a wrestler who doesn't exist/.test(x)));
+  const bad2 = JSON.parse(JSON.stringify(st));
+  bad2.booker.shows.raw = { size: 99 };
+  assert.ok(M.validate(bad2).some(x => /auto booker’s settings for Raw are unreadable/.test(x)));
+});
+
+test('away: left out of drafts, of booking balance and match ideas, and flagged on the season transition', () => {
+  const { st, id } = bookingSample();
+  M.updateWrestler(st, id('Seth'), { status: 'away' });
+  const ev = M.addEvent(st, { showId: 'raw' });
+  assert.ok(!B.ideasFor(st, ev.id).some(x => who(x).includes(id('Seth'))));
+  const bal = SD.balance(st, { showId: 'raw', period: SD.periodOf(st, 'last4') });
+  const row = bal.groups[0].rows.find(r => r.id === id('Seth'));
+  assert.deepEqual([row.injured, row.status, row.judged], [true, 'away', false]);
+  const idle = bal.groups[0].rows.find(r => r.id === id('Idle'));
+  assert.ok(!SD.matchIdeas(st, { kind: 'wrestler', id: idle.id }, { showId: 'raw', balanceResult: bal }).some(x => x.opponent.id === id('Seth')));
+  sound(st);
+});
+
+test('a version 9 save: nothing drafted, nothing auto-booked, every show on its tier’s defaults — and nothing else changed', () => {
+  const { st } = bookingSample();
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 9;
+  delete old.booker;
+  old.events.forEach(e => { delete e.draft; e.matches.forEach(m => { delete m.auto; }); });
+  const up = M.migrate(old);
+  assert.equal(up.version, M.SCHEMA_VERSION);
+  assert.deepEqual(up.booker, { shows: {}, all: {} });
+  assert.ok(up.events.every(e => e.draft === null && e.matches.every(m => m.auto === null)));
+  assert.deepEqual(up, st);
+  sound(up);
+});
+
+test('drafting a week: each show planned or drafted, or why not', () => {
+  const { st, lfg } = bookingSample();
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, M.addEvent(st, { showId: 'nxt' }).id, { sides: [{ wrestlers: [st.wrestlers.find(w => w.name === 'Je').id] },
+    { wrestlers: [st.wrestlers.find(w => w.name === 'Tony').id] }], winner: 0 });
+  M.setDraft(st, M.addEvent(st, { showId: 'dynamite' }).id, []);
+  const plan = B.weekPlan(st, 5);
+  const row = name => plan.find(r => (r.event ? r.event.name : r.show.name).startsWith(name));
+  assert.deepEqual([row('Raw').action, row('NXT').action, row('Dynamite').action, row('SmackDown').action, row('LFG').action],
+    ['draft', 'skip', 'skip', 'plan', 'plan']);
+  assert.match(row('NXT').text, /Results are in/);
+  assert.equal(row('Raw').event.id, ev.id);
+  assert.equal(plan.filter(r => r.show && r.show.id === lfg.id).length, 1);
+  const days = plan.map(r => r.day);
+  assert.deepEqual(days, [...days].sort((a, b) => a - b));
 });

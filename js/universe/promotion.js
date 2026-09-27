@@ -142,7 +142,7 @@ function partSection(st, tr, part) {
       <div class="uv-sub flush">Who’s in the qualifiers</div>
       <div class="uv-trcount"><span>Suggested: the top</span>
         <div class="uv-ic mv" onclick="uvQSuggestN(-1)">${ICON.left}</div><b>${suggestN}</b>
-        <div class="uv-ic mv" onclick="uvQSuggestN(1)">${ICON.right}</div><span>by score, champions and the injured aside</span>
+        <div class="uv-ic mv" onclick="uvQSuggestN(1)">${ICON.right}</div><span>by score, champions and anyone injured or away aside</span>
         ${fixed || !suggested.length ? '' : `<span class="uv-link" onclick="uvQUseSuggested('${trId}','${link}','${suggested.join(',')}')">Pick them</span>`}</div>
       <div class="uv-tws"><div class="uv-tw hd"><span></span><div class="uv-main">${esc(lowerName)} · ${esc(season.name)} singles — ranked as on Rankings</div>
         <div class="w">W–L–D</div></div>${[...all.ranked, ...all.unranked].map(row).join('') || `<div class="uv-none">Nobody was on ${esc(lowerName)} at ${esc(t.wm.name)}.</div>`}</div>
@@ -470,7 +470,7 @@ export function uvHowPromotion() {
         <span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span> has each connection’s rules.</p>
       <p class="uv-p"><b>Qualifiers.</b> The lower tier’s first show after WrestleMania holds one-on-one qualifying matches. You pick
         who’s in them, from everyone on that tier at WrestleMania. The page suggests the top of its season standings — ranked
-        exactly as on the Rankings tab, champions and the injured aside — but it’s only a suggestion. Winners become draft eligible.
+        exactly as on the Rankings tab, champions and anyone injured or away aside — but it’s only a suggestion. Winners become draft eligible.
         A qualifier without a winner is your call: a rematch, or send one, both or neither through.</p>
       <p class="uv-p"><b>Champions.</b> Where the rules make them eligible, every champion of the lower tier is draft eligible without a
         match — both members of a tag team holding a tag title. They’re fixed as eligible when you open the transfer window.

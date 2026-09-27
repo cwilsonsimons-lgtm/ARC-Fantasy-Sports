@@ -31,13 +31,15 @@ export const ICON = {
   down:   svg('<path d="m6 9 6 6 6-6"/>'),
   star:   svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
   list:   svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'),
+  redraw: svg('<path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/>'),
+  spark:  svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5"/>'),
 };
 
 export const LABEL = {
   gender:    { male: 'Men’s', female: 'Women’s' },   // shown as the wrestler's division
   origin:    { WWE: 'WWE', AEW: 'AEW', NXT: 'NXT', Other: 'Other' },
   alignment: { face: 'Face', heel: 'Heel', tweener: 'Tweener' },
-  status:    { active: 'Active', injured: 'Injured' },
+  status:    { active: 'Active', injured: 'Injured', away: 'Away' },
   kind:      { singles: 'Singles', tag: 'Tag team' },
   division:  { men: "Men's", women: "Women's", open: 'Open' },
   event:     { weekly: 'Weekly show', ple: 'Premium live event' },

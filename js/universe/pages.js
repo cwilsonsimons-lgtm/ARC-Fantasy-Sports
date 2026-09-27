@@ -21,6 +21,7 @@ import { uvTransitionPage } from './relegation.js';
 import { uvPairPage, uvProfilePersonality } from './personality.js';
 import { uvProfileStory, uvStoryPage } from './story.js';
 import { uvTiersPage } from './tiers.js';
+import { uvBookerPage } from './autobook.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -30,7 +31,7 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 export function uvPageView(kind, id) {
   return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
     : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : kind === 'story' ? uvStoryPage()
-    : kind === 'tiers' ? uvTiersPage() : null;
+    : kind === 'tiers' ? uvTiersPage() : kind === 'booker' ? uvBookerPage() : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.
@@ -152,7 +153,7 @@ function wrestlerPage(id) {
   const lastMove = moves[moves.length - 1];
   const refs = M.wrestlerRefs(st, id);
   const tags = [tag(w.origin), w.gender === 'female' ? tag('Women’s division') : tag('Men’s division'),
-    w.alignment ? tag(LABEL.alignment[w.alignment], w.alignment) : '', w.status === 'injured' ? tag('Injured', 'inj') : ''].join('');
+    w.alignment ? tag(LABEL.alignment[w.alignment], w.alignment) : '', w.status !== 'active' ? tag(LABEL.status[w.status], 'inj') : ''].join('');
 
   const champRow = c => reignRow(st, c.reign, `${esc(c.title.name)}${c.team ? ` <span class="uv-muted">with ${esc(c.team.name)}</span>` : ''}`);
   const mateRow = m => {

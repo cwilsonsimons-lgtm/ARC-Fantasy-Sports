@@ -13,7 +13,8 @@
     "test:universe": "node --test tools/universe-test.mjs",
     "check:universe": "node tools/universe-check.mjs",
     "demo:story": "node tools/universe-story-demo.mjs",
-    "demo:tiers": "node tools/universe-tiers-demo.mjs"
+    "demo:tiers": "node tools/universe-tiers-demo.mjs",
+    "demo:booker": "node tools/universe-booker-demo.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

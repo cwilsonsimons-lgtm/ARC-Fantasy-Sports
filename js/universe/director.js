@@ -72,7 +72,7 @@ export function draw(...parts) {
 }
 
 // weeks counted across seasons, so "the last two weeks" works over a season break
-function weekNo(st, stamp) {
+export function weekNo(st, stamp) {
   let n = 0;
   for (const s of [...st.seasons].sort((a, b) => a.number - b.number)) {
     if (s.id === stamp.season) return n + stamp.week;
@@ -89,7 +89,7 @@ const winnersOf = m => (m.outcome === 'win' ? m.sides[m.winner].wrestlers : []);
 
 // ---------------------------------------------------------------- momentum and goals (also shown on profiles)
 
-function history(st, upTo) {
+export function history(st, upTo) {
   const hist = new Map();
   st.events.filter(e => !upTo || M.compareStamps(st, e.at, upTo) <= 0).sort((a, b) => M.compareStamps(st, a.at, b.at))
     .forEach(e => e.matches.filter(m => m.status === 'played').forEach(m => m.sides.forEach((sd, i) => sd.wrestlers.forEach(id => {
@@ -280,7 +280,7 @@ function attacks(c) {
 // who'd run in to save the victims from an attacker - the strongest bond wins
 function saverFor(c, attacker, victims, matchId) {
   const ev = c.ev;
-  const pool = c.around.filter(z => z.status !== 'injured' && z.id !== attacker && !victims.includes(z.id));
+  const pool = c.around.filter(z => z.status === 'active' && z.id !== attacker && !victims.includes(z.id));
   let best = null;
   pool.forEach(z => {
     const reasons = [];
@@ -551,9 +551,9 @@ function contendersOf(c, t, reign, showId) {
   const champName = M.holderName(st, reign.holder);
   const pool = t.kind === 'tag'
     ? st.teams.filter(tm => tm.active && tm.id !== reign.holder.id && !tm.members.some(id => champs.includes(id))
-      && tm.members.every(id => { const w = W(c, id); return w && w.showId === showId && w.status !== 'injured' && fits(w, t); }))
+      && tm.members.every(id => { const w = W(c, id); return w && w.showId === showId && w.status === 'active' && fits(w, t); }))
       .map(tm => ({ ids: [...tm.members], name: tm.name, team: tm.id }))
-    : st.wrestlers.filter(w => w.showId === showId && w.status !== 'injured' && !champs.includes(w.id) && fits(w, t))
+    : st.wrestlers.filter(w => w.showId === showId && w.status === 'active' && !champs.includes(w.id) && fits(w, t))
       .map(w => ({ ids: [w.id], name: w.name }));
   return pool.map(k => {
     const reasons = [];
@@ -648,7 +648,7 @@ function turns(c) {
 
 function confrontations(c) {
   const out = [];
-  const ids = c.around.filter(w => w.status !== 'injured').map(w => w.id).sort();
+  const ids = c.around.filter(w => w.status === 'active').map(w => w.id).sort();
   const facing = (a, b) => c.booked.find(m => {
     const sa = m.sides.findIndex(sd => sd.wrestlers.includes(a)), sb = m.sides.findIndex(sd => sd.wrestlers.includes(b));
     return sa >= 0 && sb >= 0 && sa !== sb;
@@ -684,7 +684,7 @@ function demands(c) {
     if (c.ev.showId && showId !== c.ev.showId) return;
     const champs = holders(st, reign.holder);
     const best = [];
-    c.around.filter(w => w.showId === showId && w.status !== 'injured' && !champs.includes(w.id) && fits(w, t)).forEach(w => {
+    c.around.filter(w => w.showId === showId && w.status === 'active' && !champs.includes(w.id) && fits(w, t)).forEach(w => {
       const mo = momentumOf(st, w.id, c.hist);
       const cand = candidate(c, 'demand', `demand:${w.id}:${t.id}`, [w.id, ...champs]);
       const ambitious = w.traits.includes('ambitious');
@@ -713,7 +713,7 @@ function demands(c) {
 // a champion who wants a fight, or anyone who needs one, lays down an open challenge
 function openChallenges(c) {
   const st = c.st, out = [];
-  c.around.filter(w => w.status !== 'injured').forEach(w => {
+  c.around.filter(w => w.status === 'active').forEach(w => {
     const held = st.titles.find(t => t.active && t.kind === 'singles' && (() => { const r = M.currentReign(st, t.id); return r && holders(st, r.holder).includes(w.id); })());
     const mo = momentumOf(st, w.id, c.hist);
     const cand = candidate(c, 'open-challenge', `open:${w.id}`, [w.id]);
@@ -743,7 +743,7 @@ function openChallenges(c) {
 // the enemy of my enemy: two with a grudge against the same person join forces
 function alliances(c) {
   const out = [];
-  const ids = c.around.filter(w => w.status !== 'injured').map(w => w.id).sort();
+  const ids = c.around.filter(w => w.status === 'active').map(w => w.id).sort();
   ids.forEach((a, i) => ids.slice(i + 1).forEach(b => {
     // already on a team together, they're partners - nothing new to join
     if (heat(c, a, b) || heat(c, b, a) || rel(c, 'allies', a, b) || rel(c, 'rivals', a, b) || teamOf(c, a, b)) return;

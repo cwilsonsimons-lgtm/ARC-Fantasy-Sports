@@ -901,6 +901,62 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-savenote{margin-top:10px;font-size:12px;line-height:1.5;color:var(--uv-ink-3)}
 .uv-savenote.warn{color:var(--uv-amber)}
 
+/* ---------- the auto booker ---------- */
+.uv-autorow{display:flex;align-items:center;gap:10px;margin:10px 14px 0;padding:11px 12px;border-radius:13px;cursor:pointer;
+  border:1px dashed var(--uv-gold-line);background:linear-gradient(90deg,var(--uv-gold-soft),transparent 85%),var(--uv-card)}
+.uv-autorow.quiet{border-color:var(--uv-line);background:var(--uv-card)}
+.uv-autorow>svg:first-child{flex:none;width:18px;height:18px;color:var(--uv-gold)}
+.uv-autorow>svg:last-child{flex:none;width:15px;height:15px;color:var(--uv-ink-3)}
+.uv-autorow div{flex:1;min-width:0}
+.uv-autorow b{display:block;font-size:13.5px}
+.uv-autorow span{display:block;margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--uv-ink-2)}
+.uv-weekdraft{display:flex;align-items:center;justify-content:center;gap:7px;margin:10px 14px 0;padding:11px;border-radius:13px;
+  border:1px dashed var(--uv-gold-line);background:var(--uv-gold-soft);font-size:12.5px;font-weight:700;color:var(--uv-gold);cursor:pointer}
+.uv-weekdraft svg{width:15px;height:15px}
+.uv-state.draft{border:2px dashed var(--uv-gold)}
+.uv-draft-note{display:flex;gap:9px;margin:0 14px 10px;padding:10px 12px;border-radius:12px;border:1px solid var(--uv-gold-line);
+  background:var(--uv-gold-soft);font-size:12px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-draft-note svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--uv-gold)}
+.uv-mc.draft{border:1px dashed var(--uv-gold-line);background:linear-gradient(180deg,rgba(232,185,49,.05),transparent 60%),var(--uv-card-2)}
+.uv-mc.draft .uv-mc-top .st{color:var(--uv-gold)}
+.uv-mc.draft.own{border-color:var(--uv-line)}
+.uv-why{margin-top:8px;padding:6px 9px;border-left:2px solid var(--uv-gold-line);font-size:12px;line-height:1.45;color:var(--uv-ink-2);
+  overflow-wrap:anywhere}
+.uv-why b{margin-right:4px;font-weight:700;color:var(--uv-gold)}
+.uv-why ul{margin:3px 0 0 15px;padding:0;font-size:11.5px;color:var(--uv-ink-3)}
+.uv-why li{margin-top:2px}
+.uv-why.small{margin-top:6px;padding:3px 8px;font-size:11.5px}
+.uv-why.small i{color:var(--uv-ink-3)}
+.uv-sheet .uv-why{margin:0 0 12px}
+.uv-mc-d.warn{color:var(--uv-amber)}
+.uv-add.inset{margin:12px 14px 0}
+.uv-draft-out{margin:12px 14px 0;font-size:12.5px;line-height:1.5;color:var(--uv-ink-2)}
+.uv-draft-out b{color:var(--uv-ink)}
+.uv-draft-out .uv-link{margin-left:6px;color:var(--uv-gold);text-decoration-color:var(--uv-gold-line)}
+.uv-draft-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;margin:14px 16px 0;font-size:12px}
+.uv-draft-foot .uv-link{color:var(--uv-ink-3)}
+.uv-checks{display:flex;flex-direction:column;margin-top:2px}
+.uv-checks .uv-check{margin-top:9px}
+.uv-check.dim{opacity:.55}
+.uv-plan{display:flex;flex-direction:column;gap:6px;margin:4px 0 14px}
+.uv-planrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;border:1px solid var(--uv-line);
+  box-shadow:inset 3px 0 0 var(--c);background:var(--uv-card)}
+.uv-planrow.off{opacity:.55}
+.uv-planrow .uv-main{flex:1;min-width:0}
+.uv-planrow .nm{font-size:13.5px;font-weight:700}
+.uv-planrow .sub{margin-top:2px;font-size:11.5px;color:var(--uv-ink-2)}
+.uv-planrow>svg{flex:none;width:16px;height:16px;color:var(--uv-gold)}
+.uv-list{margin:0 14px;border:1px solid var(--uv-line);border-radius:14px;overflow:hidden;background:var(--uv-card)}
+.uv-list .uv-row{box-shadow:inset 3px 0 0 var(--c,transparent)}
+.uv-list .uv-row:last-child{border-bottom:none}
+.uv-list .uv-row .uv-main{flex:1;min-width:0}
+.uv-list .uv-row .nm{font-size:13.5px;font-weight:700;overflow-wrap:anywhere}
+.uv-list .uv-row .nm .uv-muted{font-weight:600;font-size:11.5px}
+.uv-list .uv-row .sub{margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--uv-ink-2)}
+.uv-list .uv-row>svg{flex:none;width:15px;height:15px;color:var(--uv-ink-3)}
+#uvSheetBody .uv-trcount[data-set]{margin:4px 0}
+#uvSheetBody .uv-trcount[data-set]>span{flex:1}
+
 </style>
 </head>
 <body>
@@ -981,7 +1037,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 9;
+  var SCHEMA_VERSION = 10;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -1004,7 +1060,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var GENDERS = ["male", "female"];
   var ORIGINS = ["WWE", "AEW", "NXT", "Other"];
   var ALIGNMENTS = ["face", "heel", "tweener"];
-  var STATUSES = ["active", "injured"];
+  var STATUSES = ["active", "injured", "away"];
   var TITLE_KINDS = ["singles", "tag"];
   var DIVISIONS = ["men", "women", "open"];
   var EVENT_KINDS = ["weekly", "ple"];
@@ -1052,8 +1108,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       // every change to a wrestler's personality, dated (or from the start)
       relEdits: [],
       // the owner's own relationship changes, dated; the rest is worked out from the record
-      story: newStory()
+      story: newStory(),
       // the story director: its settings, seed, and a log of every time it ran
+      booker: newBooker()
+      // the auto booker's settings, per show: only what the owner has changed
     };
     openSeason(st, 1, "");
     seedTiers(st);
@@ -1271,6 +1329,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     removeWhere(st.wrestlers, (x) => x.id === id);
     removeWhere(st.moves, (m) => m.wrestler === id);
     removeWhere(st.traitLog, (e) => e.wrestler === id);
+    scrubDrafts(st, { wrestler: id });
   }
   function rosterOf(st, showId) {
     const key = showId || null;
@@ -1350,8 +1409,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const t = must(teamById(st, id), "tag team", id);
     if (!!active === t.active) return t;
     if (!active) {
-      const held = titlesHeldBy(st, { type: "team", id });
-      if (held.length) fail(`${t.name} hold the ${held[0].name}. Vacate it or crown new champions first.`);
+      const held2 = titlesHeldBy(st, { type: "team", id });
+      if (held2.length) fail(`${t.name} hold the ${held2[0].name}. Vacate it or crown new champions first.`);
     }
     t.active = !!active;
     t.log.push({ type: active ? "reunited" : "disbanded", at: now(st) });
@@ -1375,8 +1434,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (last.kind === "disbanded") {
       t.active = true;
     } else if (last.kind === "reunited") {
-      const held = titlesHeldBy(st, { type: "team", id });
-      if (held.length) fail(`${t.name} hold the ${held[0].name} since reuniting, so they can't go back to being disbanded.`);
+      const held2 = titlesHeldBy(st, { type: "team", id });
+      if (held2.length) fail(`${t.name} hold the ${held2[0].name} since reuniting, so they can't go back to being disbanded.`);
       t.active = false;
     } else if (last.kind === "joined") {
       const w = wrestlerById(st, last.m.wrestler);
@@ -1418,6 +1477,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (refs.length) fail(`${t.name} are part of the history (${refs.join(", ")}), so they can't be deleted. Disband them instead.`);
     removeWhere(st.teams, (x) => x.id === id);
     removeWhere(st.memberships, (m) => m.team === id);
+    scrubDrafts(st, { team: id });
   }
   function teamsOf(st, wrestlerId) {
     return st.teams.filter((t) => t.members.includes(wrestlerId));
@@ -1514,6 +1574,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const refs = titleRefs(st, id);
     if (refs.length) fail(`The ${t.name} has history (${refs.join(", ")}), so it can't be deleted. Retire it instead.`);
     removeWhere(st.titles, (x) => x.id === id);
+    scrubDrafts(st, { title: id });
   }
   function titleReigns(st, titleId) {
     return st.reigns.filter((r) => r.titleId === titleId).sort((a, b) => a.start.seq - b.start.seq);
@@ -1788,7 +1849,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const day = input.day == null || input.day === "" ? defaultDay(st, kind, showId) : checkDay(input.day);
     const name = eventName(st, kind, showId, week, input.name);
     const notes = checkText(input.notes, "Notes");
-    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [] };
+    const ev = { id: newId(st, "ev"), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [], draft: null };
     st.events.push(ev);
     return ev;
   }
@@ -1997,7 +2058,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function bookMatch(st, eventId, input = {}) {
     const ev = must(eventById(st, eventId), "event", eventId);
-    const m = { id: newId(st, "m"), relegation: null, qualifier: null, ...bookedRecord(bookingFields(st, input)) };
+    const m = { id: newId(st, "m"), relegation: null, qualifier: null, auto: null, ...bookedRecord(bookingFields(st, input)) };
     ev.matches.push(m);
     return m;
   }
@@ -2007,7 +2068,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const b = bookingFields(st, bookingInput(m, input), m.titleId);
     relegationPlan(st, null, m, b.sides, null);
     qualifierPlan(st, null, m, b.sides, null);
+    const before = JSON.stringify([m.sides, m.titleId, m.stip, m.notes]);
     Object.assign(m, bookedRecord(b));
+    if (m.auto && JSON.stringify([m.sides, m.titleId, m.stip, m.notes]) !== before) m.auto.edited = true;
     return m;
   }
   function enterResult(st, eventId, matchId, input = {}, opts = {}) {
@@ -2128,6 +2191,209 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (match.outcome === "draw") return "D";
     if (match.outcome === "nc") return "NC";
     return match.winner === side ? "W" : "L";
+  }
+  var MATCH_TYPES = ["singles", "tag", "triple", "fourway", "trios", "handicap"];
+  var TYPE_LEVELS = ["often", "sometimes", "rarely", "never"];
+  var STIP_USES = ["never", "feuds", "often"];
+  var MAX_CARD = 15;
+  var MAX_TITLE_MATCHES = 5;
+  var MAX_DRAFT = 40;
+  var MAX_WHY = 6;
+  var MAX_WHY_TEXT = 300;
+  var MAX_PASSED = 300;
+  var TIER_SIZES = [6, 5, 4];
+  var NO_TIER_SIZE = 5;
+  var ALL_SHOWS_SIZE = 10;
+  var BOOKER_BASE = {
+    mix: { singles: "often", tag: "often", triple: "sometimes", fourway: "rarely", trios: "rarely", handicap: "never" },
+    titles: 1,
+    stips: "feuds"
+  };
+  function newBooker() {
+    return { shows: {}, all: {} };
+  }
+  function bookerSettings(st, showId) {
+    const own = (showId ? st.booker.shows[showId] : st.booker.all) || {};
+    const t = showId ? st.tiers.findIndex((x) => x.shows.includes(showId)) : -1;
+    const size = t < 0 ? NO_TIER_SIZE : TIER_SIZES[Math.min(t, TIER_SIZES.length - 1)];
+    const base = { size: showId ? size : ALL_SHOWS_SIZE, pleSize: showId ? size + 2 : ALL_SHOWS_SIZE, titles: BOOKER_BASE.titles, stips: BOOKER_BASE.stips };
+    return { ...base, ...own, mix: { ...BOOKER_BASE.mix, ...own.mix || {} }, changed: Object.keys(own).length > 0 };
+  }
+  function cardCount(v, what) {
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_CARD) fail(`${what} holds 1 to ${MAX_CARD} matches.`);
+    return n;
+  }
+  function setBookerSettings(st, showId, patch = {}) {
+    if (showId) must(showById(st, showId), "show", showId);
+    const cur = (showId ? st.booker.shows[showId] : st.booker.all) || {};
+    const next = { ...cur, mix: { ...cur.mix || {} } };
+    if (has(patch, "size")) next.size = cardCount(patch.size, "An episode");
+    if (has(patch, "pleSize")) next.pleSize = cardCount(patch.pleSize, "A premium live event");
+    if (has(patch, "titles")) {
+      const n = Number(patch.titles);
+      if (!Number.isInteger(n) || n < 0 || n > MAX_TITLE_MATCHES) fail(`Title matches on an episode: 0 to ${MAX_TITLE_MATCHES}.`);
+      next.titles = n;
+    }
+    if (has(patch, "stips")) next.stips = oneOf(patch.stips, STIP_USES, "stipulation setting");
+    Object.entries(patch.mix || {}).forEach(([k, v]) => {
+      next.mix[oneOf(k, MATCH_TYPES, "kind of match")] = oneOf(v, TYPE_LEVELS, "preference");
+    });
+    if (MATCH_TYPES.every((k) => (next.mix[k] || BOOKER_BASE.mix[k]) === "never")) fail("Leave at least one kind of match on \u2014 a card needs something to draft.");
+    if (!Object.keys(next.mix).length) delete next.mix;
+    if (showId) st.booker.shows[showId] = next;
+    else st.booker.all = next;
+    return bookerSettings(st, showId);
+  }
+  function resetBookerSettings(st, showId) {
+    if (showId) {
+      must(showById(st, showId), "show", showId);
+      delete st.booker.shows[showId];
+    } else st.booker.all = {};
+  }
+  function cardSize(st, ev) {
+    const s = bookerSettings(st, ev.showId);
+    return ev.kind === "ple" ? s.pleSize : s.size;
+  }
+  function draftEvent(st, eventId) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    if (!ev.draft) fail(`${ev.name} has no draft card.`);
+    return ev;
+  }
+  function draftMatchOf(st, eventId, dmId) {
+    const ev = draftEvent(st, eventId);
+    return { ev, dm: must(ev.draft.matches.find((x) => x.id === dmId), "draft match", dmId) };
+  }
+  function draftFields(st, input) {
+    const b = bookingFields(st, input);
+    return { sides: b.sides, titleId: b.title ? b.title.id : null, stip: b.stip, notes: b.notes };
+  }
+  function autoFields(auto) {
+    if (auto == null) return null;
+    const kind = String(auto.kind || "");
+    if (!/^[a-z][a-z-]{0,23}$/.test(kind)) fail("That drafted match has an unknown kind.");
+    const why2 = (Array.isArray(auto.why) ? auto.why : []).map((x) => cleanName(x).slice(0, MAX_WHY_TEXT)).filter(Boolean).slice(0, MAX_WHY);
+    return { kind, key: String(auto.key || "").slice(0, 400), why: why2, edited: !!auto.edited };
+  }
+  var lineupOf = (dm) => JSON.stringify([dm.sides, dm.titleId, dm.stip, dm.notes]);
+  function pass(d, dm) {
+    if (!dm.auto || !dm.auto.key || d.passed.includes(dm.auto.key)) return;
+    d.passed.push(dm.auto.key);
+    if (d.passed.length > MAX_PASSED) d.passed.splice(0, d.passed.length - MAX_PASSED);
+  }
+  function setDraft(st, eventId, list = [], { nonce = 0 } = {}) {
+    const ev = must(eventById(st, eventId), "event", eventId);
+    if (!Array.isArray(list)) fail("A draft card is a list of matches.");
+    if (list.length > MAX_DRAFT) fail(`A draft card holds at most ${MAX_DRAFT} matches.`);
+    const n = Number(nonce);
+    if (!Number.isInteger(n) || n < 0) fail("That draw number is unreadable.");
+    const old = ev.draft;
+    const kept = /* @__PURE__ */ new Set();
+    const built = list.map((x) => {
+      if (x && x.keep) {
+        const dm = old && old.matches.find((y) => y.id === x.keep);
+        if (!dm) fail(`No draft match with id "${x.keep}".`);
+        if (kept.has(dm.id)) fail("The same draft match is in the list twice.");
+        kept.add(dm.id);
+        return dm;
+      }
+      return { ...draftFields(st, x || {}), auto: autoFields(x && x.auto) };
+    });
+    ev.draft = {
+      made: nowDate(st),
+      nonce: n,
+      matches: built.map((x) => x.id ? x : { id: newId(st, "dm"), ...x }),
+      passed: old ? old.passed : [],
+      out: old ? old.out : []
+    };
+    return ev.draft;
+  }
+  function addDraftMatch(st, eventId, input = {}) {
+    const ev = draftEvent(st, eventId);
+    if (ev.draft.matches.length >= MAX_DRAFT) fail(`A draft card holds at most ${MAX_DRAFT} matches.`);
+    const dm = { id: newId(st, "dm"), ...draftFields(st, input), auto: null };
+    ev.draft.matches.push(dm);
+    return dm;
+  }
+  function editDraftMatch(st, eventId, dmId, input = {}) {
+    const { dm } = draftMatchOf(st, eventId, dmId);
+    const f = draftFields(st, bookingInput(dm, input));
+    const before = lineupOf(dm);
+    Object.assign(dm, f);
+    if (dm.auto && lineupOf(dm) !== before) dm.auto.edited = true;
+    return dm;
+  }
+  function redrawDraftMatch(st, eventId, dmId, input = {}) {
+    const { ev, dm } = draftMatchOf(st, eventId, dmId);
+    const f = { ...draftFields(st, input), auto: autoFields(input.auto) };
+    if (!f.auto) fail("A match drawn again comes from the auto booker.");
+    pass(ev.draft, dm);
+    const next = { id: newId(st, "dm"), ...f };
+    ev.draft.matches.splice(ev.draft.matches.indexOf(dm), 1, next);
+    return next;
+  }
+  function deleteDraftMatch(st, eventId, dmId) {
+    const { ev, dm } = draftMatchOf(st, eventId, dmId);
+    pass(ev.draft, dm);
+    removeWhere(ev.draft.matches, (x) => x.id === dmId);
+  }
+  function moveDraftMatch(st, eventId, dmId, delta) {
+    const { ev, dm } = draftMatchOf(st, eventId, dmId);
+    const list = ev.draft.matches, i = list.indexOf(dm), j = i + Math.sign(Number(delta) || 0);
+    if (j === i || j < 0 || j >= list.length) return false;
+    list.splice(i, 1);
+    list.splice(j, 0, dm);
+    return true;
+  }
+  function setDraftOut(st, eventId, ids = []) {
+    const ev = draftEvent(st, eventId);
+    const list = [...new Set((Array.isArray(ids) ? ids : []).filter(Boolean))];
+    list.forEach((id) => must(wrestlerById(st, id), "wrestler", id));
+    ev.draft.out = list;
+    return list;
+  }
+  function discardDraft(st, eventId) {
+    draftEvent(st, eventId).draft = null;
+  }
+  function bookDraft(st, eventId) {
+    const ev = draftEvent(st, eventId);
+    const d = ev.draft;
+    if (!d.matches.length) fail("The draft is empty \u2014 add a match, or draw the card again.");
+    const checked = d.matches.map((dm, i) => {
+      try {
+        return bookingFields(st, dm);
+      } catch (e) {
+        if (e instanceof UniverseError) fail(`Match ${i + 1} on the draft: ${e.message}`);
+        throw e;
+      }
+    });
+    const made = checked.map((b, i) => ({
+      id: newId(st, "m"),
+      relegation: null,
+      qualifier: null,
+      auto: d.matches[i].auto ? { ...d.matches[i].auto, why: [...d.matches[i].auto.why] } : null,
+      ...bookedRecord(b)
+    }));
+    ev.matches.push(...made);
+    ev.draft = null;
+    return made;
+  }
+  function scrubDrafts(st, { wrestler = null, keep = null, team = null, title: title2 = null }) {
+    st.events.forEach((e) => {
+      const d = e.draft;
+      if (!d) return;
+      if (wrestler) d.out = [...new Set(d.out.map((id) => id === wrestler ? keep : id).filter(Boolean))];
+      d.matches = d.matches.filter((dm) => {
+        if (title2 && dm.titleId === title2) dm.titleId = null;
+        const seen = /* @__PURE__ */ new Set();
+        dm.sides = dm.sides.map((sd2) => {
+          const wrestlers = sd2.wrestlers.map((id) => id === wrestler ? keep : id).filter((id) => id && !seen.has(id) && seen.add(id));
+          const t = team && sd2.team === team ? null : sd2.team;
+          return { wrestlers, team: t && wrestlers.length >= 2 ? t : null };
+        }).filter((sd2) => sd2.wrestlers.length);
+        return dm.sides.length >= 2;
+      });
+    });
   }
   var RELEGATION_TIMINGS = ["result", "window"];
   var PROMOTION_TIMINGS = ["window", "result"];
@@ -2304,6 +2570,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (t && t === st.tiers[0] && t.shows.length === 1) fail(`${show.name} is tier 1's only show. Put another show in tier 1 first.`);
     if (t) t.shows = t.shows.filter((x) => x !== id);
     removeWhere(st.shows, (x) => x.id === id);
+    delete st.booker.shows[id];
     fixDestinations(st);
   }
   var transitionById = (st, id) => byId(st.transitions, id);
@@ -2403,7 +2670,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       id: w.id,
       name: w.name,
       gender: w.gender,
-      injured: w.status === "injured",
+      injured: w.status !== "active",
+      status: w.status,
       now: w.showId,
       ...totals.get(w.id) || { wins: 0, singles: 0, tag: 0, matches: 0 }
     })).sort((a, b) => a.wins - b.wins || byName(a, b));
@@ -2452,7 +2720,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const byIdIn = (id) => pool.find((r) => r.id === id);
     candidates.forEach((id) => {
       const r = byIdIn(id);
-      if (r.injured) check("injured", `${r.name} is injured.`);
+      if (r.injured) check("injured", `${r.name} is ${r.status === "away" ? "away" : "injured"}.`);
       const done = st.relegations.some((x) => x.transition === tr.id && x.wrestler === id);
       if (!done && r.now !== showId) check("moved", `${r.name} is on ${r.now ? showById(st, r.now).name : "no show"} now.`);
       if (!r.matches) check("idle", `${r.name} didn't have a match this season before WrestleMania.`);
@@ -2606,6 +2874,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         id: newId(st, "m"),
         relegation: { transition: tr.id, show: showId, pair: pair.id },
         qualifier: null,
+        auto: null,
         ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: "Relegation match" }))
       };
       ev.matches.push(m);
@@ -2793,7 +3062,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       id: w.id,
       name: w.name,
       gender: w.gender,
-      injured: w.status === "injured",
+      injured: w.status !== "active",
+      status: w.status,
       now: w.showId
     })).sort(byName);
     const inPool = new Set(pool.map((r) => r.id));
@@ -2826,7 +3096,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     picked.forEach((id) => {
       const r = pool.find((x) => x.id === id);
       if (champions.some((c) => c.wrestler === id)) check("champion", `${r.name} is already eligible as a champion of ${part2.lowerName}.`);
-      if (r.injured) check("injured", `${r.name} is injured.`);
+      if (r.injured) check("injured", `${r.name} is ${r.status === "away" ? "away" : "injured"}.`);
       if (!part2.lower.includes(r.now)) check("moved", `${r.name} is on ${r.now ? showById(st, r.now).name : "no show"} now.`);
     });
     pairs.forEach((x) => {
@@ -2950,6 +3220,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         id: newId(st, "m"),
         relegation: null,
         qualifier: { transition: trId, link: part2.link, pair: pair.id },
+        auto: null,
         ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: "Qualifying match" }))
       };
       ev.matches.push(m);
@@ -3660,6 +3931,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
     removeWhere(st.moves, (m) => m.wrestler === dupId);
     removeWhere(st.wrestlers, (w) => w.id === dupId);
+    scrubDrafts(st, { wrestler: dupId, keep: keepId });
     return keep;
   }
   function careerOf(st, wrestlerId) {
@@ -3879,7 +4151,24 @@ body.uv-confirm-open .uv-confirm{display:flex}
       });
       st.version = 9;
     }
+    if (st.version === 9) {
+      st.booker = newBooker();
+      st.events.forEach((e) => {
+        e.draft = null;
+        (Array.isArray(e.matches) ? e.matches : []).forEach((m) => {
+          m.auto = null;
+        });
+      });
+      st.version = 10;
+    }
     if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
+    if (!st.booker || typeof st.booker !== "object") st.booker = newBooker();
+    st.events.forEach((e) => {
+      if (e.draft === void 0) e.draft = null;
+      (Array.isArray(e.matches) ? e.matches : []).forEach((m) => {
+        if (m.auto === void 0) m.auto = null;
+      });
+    });
     if (!st.story || typeof st.story !== "object") st.story = newStory();
     if (!Array.isArray(st.story.rolls)) st.story.rolls = [];
     if (st.story.since === void 0) st.story.since = null;
@@ -3923,6 +4212,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     own(st.events, "event");
     own(st.memberships, "team membership");
     st.events.forEach((e) => own(e.matches || [], "match"));
+    st.events.forEach((e) => own(e.draft && Array.isArray(e.draft.matches) ? e.draft.matches : [], "draft match"));
     own(st.transitions, "season transition");
     own(st.relegations, "relegation record");
     own(st.eligibility, "draft eligibility record");
@@ -3954,6 +4244,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
       });
     };
     const showOk = (id) => id === null || !!showById(st, id);
+    const autoOk = (a) => !!a && typeof a === "object" && typeof a.kind === "string" && typeof a.key === "string" && Array.isArray(a.why) && a.why.every((x) => typeof x === "string") && typeof a.edited === "boolean";
+    const settingOk = ([k, v]) => k === "size" || k === "pleSize" ? Number.isInteger(v) && v >= 1 && v <= MAX_CARD : k === "titles" ? Number.isInteger(v) && v >= 0 && v <= MAX_TITLE_MATCHES : k === "stips" ? STIP_USES.includes(v) : k === "mix" ? !!v && typeof v === "object" && !Array.isArray(v) && Object.entries(v).every(([t, l]) => MATCH_TYPES.includes(t) && TYPE_LEVELS.includes(l)) : false;
+    const settingsOk = (o) => !!o && typeof o === "object" && !Array.isArray(o) && Object.entries(o).every(settingOk);
+    if (!st.booker || typeof st.booker !== "object" || !st.booker.shows || typeof st.booker.shows !== "object" || Array.isArray(st.booker.shows) || !settingsOk(st.booker.all)) {
+      bad.push("The auto booker\u2019s settings are unreadable.");
+    } else {
+      Object.entries(st.booker.shows).forEach(([id, o]) => {
+        if (!showById(st, id)) bad.push("The auto booker has settings for a show that doesn\u2019t exist.");
+        else if (!settingsOk(o)) bad.push(`The auto booker\u2019s settings for ${showById(st, id).name} are unreadable.`);
+      });
+    }
     names2(st.shows, "show");
     const night = (d) => Number.isInteger(d) && d >= 0 && d <= 6;
     st.shows.forEach((s) => {
@@ -4136,18 +4437,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!showOk(e.showId) || e.kind === "weekly" && !e.showId) bad.push(`${e.name} is on a show that doesn't exist.`);
       stamp(e.at, e.name);
       if (e.at && !night(e.at.day)) bad.push(`${e.name} has no night of the week.`);
-      (e.matches || []).forEach((m) => {
-        const where = `A match at ${e.name}`;
-        if (!MATCH_STATUSES.includes(m.status)) {
-          bad.push(`${where} is neither booked nor played.`);
-          return;
-        }
+      const lineup = (m, where) => {
         if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} is for a title that doesn't exist.`);
         const sides = Array.isArray(m.sides) ? m.sides : [];
         if (sides.length < 2) bad.push(`${where} has fewer than two sides.`);
         const seen = /* @__PURE__ */ new Set();
         sides.forEach((s) => {
-          const ws = s && s.wrestlers || [];
+          const ws = s && Array.isArray(s.wrestlers) ? s.wrestlers : [];
           if (!ws.length) bad.push(`${where} has an empty side.`);
           ws.forEach((id) => {
             if (!wrestlerById(st, id)) bad.push(`${where} includes a wrestler who doesn't exist.`);
@@ -4156,6 +4452,28 @@ body.uv-confirm-open .uv-confirm{display:flex}
           });
           if (s && s.team && !teamById(st, s.team)) bad.push(`${where} names a tag team that doesn't exist.`);
         });
+        if (!(m.auto === null || autoOk(m.auto))) bad.push(`${where} has an unreadable reason from the auto booker.`);
+        return sides;
+      };
+      if (e.draft !== null) {
+        const d = e.draft;
+        if (!d || typeof d !== "object" || !Array.isArray(d.matches) || !Array.isArray(d.passed) || !Array.isArray(d.out) || !Number.isInteger(d.nonce) || d.nonce < 0 || !d.made || !seasonById(st, d.made.season) || !Number.isInteger(d.made.week) || d.passed.some((k) => typeof k !== "string")) {
+          bad.push(`${e.name}'s draft card is unreadable.`);
+        } else {
+          if (d.out.some((id) => !wrestlerById(st, id))) bad.push(`${e.name}'s draft card leaves out a wrestler who doesn't exist.`);
+          d.matches.forEach((dm) => {
+            if (typeof dm.stip !== "string" || typeof dm.notes !== "string") bad.push(`A draft match at ${e.name} is unreadable.`);
+            lineup(dm, `A draft match at ${e.name}`);
+          });
+        }
+      }
+      (e.matches || []).forEach((m) => {
+        const where = `A match at ${e.name}`;
+        if (!MATCH_STATUSES.includes(m.status)) {
+          bad.push(`${where} is neither booked nor played.`);
+          return;
+        }
+        const sides = lineup(m, where);
         if (m.relegation != null) {
           const rl = m.relegation, t = transitionById(st, rl.transition);
           const c = t && t.shows && t.shows[rl.show];
@@ -4371,14 +4689,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
     up: svg('<path d="m6 15 6-6 6 6"/>'),
     down: svg('<path d="m6 9 6 6 6-6"/>'),
     star: svg('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
-    list: svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>')
+    list: svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'),
+    redraw: svg('<path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/>'),
+    spark: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5"/>')
   };
   var LABEL = {
     gender: { male: "Men\u2019s", female: "Women\u2019s" },
     // shown as the wrestler's division
     origin: { WWE: "WWE", AEW: "AEW", NXT: "NXT", Other: "Other" },
     alignment: { face: "Face", heel: "Heel", tweener: "Tweener" },
-    status: { active: "Active", injured: "Injured" },
+    status: { active: "Active", injured: "Injured", away: "Away" },
     kind: { singles: "Singles", tag: "Tag team" },
     division: { men: "Men's", women: "Women's", open: "Open" },
     event: { weekly: "Weekly show", ple: "Premium live event" },
@@ -5231,7 +5551,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         id: w.id,
         name: w.name,
         gender: w.gender,
-        injured: w.status === "injured",
+        injured: w.status !== "active",
+        status: w.status,
         weeks: on.size,
         matches: mine.length,
         singles,
@@ -5244,11 +5565,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const teamRow2 = (t) => {
       const on = new Set(weeks.filter((wk) => teamAt(st, t, date(wk)).active && teamOnShow(st, t, showId, date(wk))));
       const mine = played.filter(({ ev, m }) => on.has(ev.at.week) && m.sides.some((sd2) => sd2.team === t.id));
+      const out = t.members.map((id) => (wrestlerById(st, id) || {}).status).find((x) => x && x !== "active") || null;
       return {
         kind: "team",
         id: t.id,
         name: t.name,
-        injured: t.members.some((id) => (wrestlerById(st, id) || {}).status === "injured"),
+        injured: !!out,
+        status: out || "active",
         weeks: on.size,
         matches: mine.length,
         rate: on.size ? mine.length / on.size : 0,
@@ -5292,12 +5615,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!self) return [];
     let pool, onSide, ranks;
     if (team) {
-      pool = st.teams.filter((t) => t.id !== self.id && t.active && !t.members.some((id) => self.members.includes(id)) && t.members.some((id) => (wrestlerById(st, id) || {}).showId === showId) && !t.members.some((id) => (wrestlerById(st, id) || {}).status === "injured"));
+      pool = st.teams.filter((t) => t.id !== self.id && t.active && !t.members.some((id) => self.members.includes(id)) && t.members.some((id) => (wrestlerById(st, id) || {}).showId === showId) && t.members.every((id) => (wrestlerById(st, id) || {}).status === "active"));
       onSide = (sd2, id) => sd2.team === id;
       ranks = standings(st, { showId, period: season, kind: "teams" });
     } else {
       const partners = new Set(st.teams.filter((t) => t.active && t.members.includes(self.id)).flatMap((t) => t.members));
-      pool = st.wrestlers.filter((w) => w.id !== self.id && w.showId === showId && w.status !== "injured" && w.gender === self.gender && !partners.has(w.id));
+      pool = st.wrestlers.filter((w) => w.id !== self.id && w.showId === showId && w.status === "active" && w.gender === self.gender && !partners.has(w.id));
       onSide = (sd2, id) => sd2.wrestlers.includes(id);
       ranks = standings(st, { showId, period: season, kind: "singles" });
     }
@@ -5313,11 +5636,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
         reasons2.push("Both are short of matches");
       }
       const h = headToHead(st, onSide, self.id, o.id);
-      const ago2 = h.last ? weeksBetween(st, h.last.at, now2) : null;
+      const ago3 = h.last ? weeksBetween(st, h.last.at, now2) : null;
       if (h.n >= 2) {
         score += 2;
         reasons2.push(`Rivalry: met ${h.n} times \u2014 ${self.name} ${h.a}, ${o.name} ${h.b}${h.other ? `, ${h.other} other` : ""}`);
-      } else if (h.n === 1 && ago2 <= 6) {
+      } else if (h.n === 1 && ago3 <= 6) {
         score += 1.5;
         reasons2.push(h.a ? `Rematch: ${self.name} won in week ${h.last.at.week}` : h.b ? `Rematch: ${o.name} won in week ${h.last.at.week}` : `Unfinished: no winner in week ${h.last.at.week}`);
       } else if (!h.n) {
@@ -5337,19 +5660,19 @@ body.uv-confirm-open .uv-confirm{display:flex}
         score += 0.75;
         reasons2.push(`A shot at #${them.rank} ${o.name}`);
       }
-      const held = heldAt(st, { type: team ? "team" : "wrestler", id: o.id }, null);
-      if (held.length) {
+      const held2 = heldAt(st, { type: team ? "team" : "wrestler", id: o.id }, null);
+      if (held2.length) {
         score += 0.5;
-        reasons2.push(`${o.name} ${team ? "hold" : "holds"} the ${held[0].name}`);
+        reasons2.push(`${o.name} ${team ? "hold" : "holds"} the ${held2[0].name}`);
       }
       const upcoming2 = pendingFor(st, subject.kind, o.id);
       if (upcoming2.length) {
         score -= 1;
         note = `${o.name} ${team ? "are" : "is"} already booked: ${upcoming2[0].event.name}`;
       }
-      if (h.last && ago2 <= 1) {
+      if (h.last && ago3 <= 1) {
         score -= 1;
-        note = note || (ago2 === 0 ? "They already met this week" : "They met last week");
+        note = note || (ago3 === 0 ? "They already met this week" : "They met last week");
       }
       const side = (x) => team ? { team: x.id, wrestlers: [...x.members] } : { team: "", wrestlers: [x.id] };
       return { opponent: { kind: subject.kind, id: o.id, name: o.name }, lineup: [side(self), side(o)], score, reasons: reasons2, note };
@@ -5495,7 +5818,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const show = showName(st, showId);
     const shows = `<div class="uv-pills">${st.shows.map((s) => pill(s.id === showId, `uvBalShow('${s.id}')`, s.name, showColor(st, s.id))).join("")}</div>`;
     const periods = `<div class="uv-pills tight2">${BAL_PERIODS.map(([k, lb]) => pill(k === balPeriod, `uvBalPeriod('${k}')`, lb)).join("")}</div>`;
-    const summary2 = res.groups.map((g) => `<div class="ln"><span>${esc(g.label)}</span><b>${g.enough ? `typically ${perWeek(g.typical)} a week` : `too few to compare (${g.judged} judged)`}</b></div>`).join("");
+    const summary3 = res.groups.map((g) => `<div class="ln"><span>${esc(g.label)}</span><b>${g.enough ? `typically ${perWeek(g.typical)} a week` : `too few to compare (${g.judged} judged)`}</b></div>`).join("");
     const flagged = res.groups.flatMap((g) => g.rows.filter((r) => r.flagged).map((r) => ({ r, g })));
     const head = `<div class="uv-rk-head"><b>${esc(show)} \xB7 weeks ${p.from}\u2013${p.to} of ${esc(seasonById(st, p.seasonId).name)}</b>
     <span>Who has had far fewer matches than is typical for their division on ${esc(show)}.
@@ -5505,7 +5828,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }
     const cards = flagged.length ? flagged.map(({ r, g }) => shortCard(st, showId, r, g, res)).join("") : `<div class="uv-note uv-inset ok">Nobody on ${esc(show)} is well short of matches over ${esc(p.label.toLowerCase())}.</div>`;
     return `${shows}${periods}${head}
-    <div class="uv-bal-sum">${summary2}</div>
+    <div class="uv-bal-sum">${summary3}</div>
     ${section("Short of matches", flagged.length || null)}
     ${cards}
     ${res.groups.map((g) => groupTable(st, g)).join("")}`;
@@ -5531,7 +5854,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function groupTable(st, g) {
     const max = Math.max(...g.rows.map((r) => r.rate), g.typical || 0, 0.01);
     const open2 = (r) => r.kind === "team" ? `uvOpenTeam('${r.id}')` : `uvOpenWrestler('${r.id}')`;
-    const note = (r) => r.injured ? "Injured \u2014 not counted" : r.weeks < MIN_WEEKS ? `Here ${plural2(r.weeks, "week")} \u2014 not judged yet` : "";
+    const note = (r) => r.injured ? `${r.status === "away" ? "Away" : "Injured"} \u2014 not counted` : r.weeks < MIN_WEEKS ? `Here ${plural2(r.weeks, "week")} \u2014 not judged yet` : "";
     const rowHtml = (r) => `<div class="uv-bl${r.flagged ? " flag" : ""}${r.judged ? "" : " dim"}" onclick="${open2(r)}">
       <div class="uv-main"><div class="nm">${esc(r.name)}</div><div class="sub">${note(r) || `${plural2(r.matches, "match", "matches")} in ${plural2(r.weeks, "week")}`}</div></div>
       <div class="bar"><i style="width:${Math.round(r.rate / max * 100)}%"></i>${g.typical ? `<u style="left:${Math.round(g.typical / max * 100)}%"></u>` : ""}</div>
@@ -5600,7 +5923,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       </div>
       <p class="uv-p">Rule 2 means a quiet show or division flags nobody, and small gaps are left alone \u2014 nobody is expected to
         wrestle as often as everyone else. <i>Well below</i> is a rate at most a quarter of typical.</p>
-      <p class="uv-p"><b>Match ideas</b> are opponents on the same show and division, not injured and not their own tag
+      <p class="uv-p"><b>Match ideas</b> are opponents on the same show and division, not injured or away and not their own tag
         partners (a team: another team with nobody in common). Each is scored on: both being short of matches (+3); a
         rivalry \u2014 met two or more times (+2) \u2014 or a recent first meeting (+1.5); being close in this season\u2019s standings
         (up to +1.5); a shot at someone in the top three (+0.75); never having met (+0.75); holding a title (+0.5). An
@@ -5771,7 +6094,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div class="uv-sub flush">Who\u2019s in the qualifiers</div>
       <div class="uv-trcount"><span>Suggested: the top</span>
         <div class="uv-ic mv" onclick="uvQSuggestN(-1)">${ICON.left}</div><b>${suggestN}</b>
-        <div class="uv-ic mv" onclick="uvQSuggestN(1)">${ICON.right}</div><span>by score, champions and the injured aside</span>
+        <div class="uv-ic mv" onclick="uvQSuggestN(1)">${ICON.right}</div><span>by score, champions and anyone injured or away aside</span>
         ${fixed || !suggested.length ? "" : `<span class="uv-link" onclick="uvQUseSuggested('${trId}','${link}','${suggested.join(",")}')">Pick them</span>`}</div>
       <div class="uv-tws"><div class="uv-tw hd"><span></span><div class="uv-main">${esc(lowerName)} \xB7 ${esc(season.name)} singles \u2014 ranked as on Rankings</div>
         <div class="w">W\u2013L\u2013D</div></div>${[...all.ranked, ...all.unranked].map(row2).join("") || `<div class="uv-none">Nobody was on ${esc(lowerName)} at ${esc(t.wm.name)}.</div>`}</div>
@@ -5927,12 +6250,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const eligibleRow = (e) => {
       const x = wrestlerById(st, e.wrestler);
       const teams = st.teams.filter((tm) => tm.active && tm.members.includes(x.id));
-      const held = st.reigns.filter((r) => !r.end && (r.holder.type === "wrestler" ? r.holder.id === x.id : (teamById(st, r.holder.id) || { members: [] }).members.includes(x.id)));
+      const held2 = st.reigns.filter((r) => !r.end && (r.holder.type === "wrestler" ? r.holder.id === x.id : (teamById(st, r.holder.id) || { members: [] }).members.includes(x.id)));
       const open2 = w && !w.closed && !e.drafted && e.part.lower.includes(x.showId);
       return `<div class="uv-el${open2 ? " tap" : ""}" data-w="${x.id}"${open2 ? ` onclick="uvDraft('${trId}','${x.id}')"` : ""}>
       <div class="uv-main"><div class="nm">${esc(x.name)} ${e.sources.map(sourceChip).join("")}${many ? chip(`${e.part.lowerName} \u2192 ${e.part.upperName}`) : ""}</div>
         <div class="sub">${e.sources.map((s) => sourceText(st, s, e.part)).join(" \xB7 ")}</div>
-        ${teams.length || held.length ? `<div class="sub warn">${[...teams.map((tm) => `On ${esc(tm.name)}`), ...held.map((r) => `Holds the ${title(st, r.titleId)}`)].join(" \xB7 ")}</div>` : ""}</div>
+        ${teams.length || held2.length ? `<div class="sub warn">${[...teams.map((tm) => `On ${esc(tm.name)}`), ...held2.map((r) => `Holds the ${title(st, r.titleId)}`)].join(" \xB7 ")}</div>` : ""}</div>
       ${e.drafted ? `<span class="uv-drafted" style="--c:${showColor(st, e.drafted.to)}">${esc(showName(st, e.drafted.to))}</span>` : open2 ? `<span class="uv-btn sm2 pri">Draft\u2026</span>` : ""}
     </div>`;
     };
@@ -6125,7 +6448,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <span class="uv-link" onclick="uvOpenTiers()">Tiers & transfers</span> has each connection\u2019s rules.</p>
       <p class="uv-p"><b>Qualifiers.</b> The lower tier\u2019s first show after WrestleMania holds one-on-one qualifying matches. You pick
         who\u2019s in them, from everyone on that tier at WrestleMania. The page suggests the top of its season standings \u2014 ranked
-        exactly as on the Rankings tab, champions and the injured aside \u2014 but it\u2019s only a suggestion. Winners become draft eligible.
+        exactly as on the Rankings tab, champions and anyone injured or away aside \u2014 but it\u2019s only a suggestion. Winners become draft eligible.
         A qualifier without a winner is your call: a rematch, or send one, both or neither through.</p>
       <p class="uv-p"><b>Champions.</b> Where the rules make them eligible, every champion of the lower tier is draft eligible without a
         match \u2014 both members of a tag team holding a tag title. They\u2019re fixed as eligible when you open the transfer window.
@@ -6489,14 +6812,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!tr) return null;
     const wm = eventById(st, tr.event);
     const season = seasonById(st, tr.season);
-    const summary2 = uvTransitionSummary(st, tr);
+    const summary3 = uvTransitionSummary(st, tr);
     const seg = (k, lb) => `<div class="${part === k ? "on" : ""}" data-part="${k}" onclick="uvTrPart('${k}')">${lb}</div>`;
     const head = `
       <div class="uv-evhead" style="--c:var(--uv-gold)">
         <div class="k">Season transition \xB7 ${esc(season.name)}</div>
         <div class="nm">After ${esc(wm.name)}</div>
         <div class="s"><span class="uv-link" onclick="uvOpenEvent('${wm.id}')">${esc(wm.name)}</span> \xB7 ${esc(eventWhen(st, wm, true))}</div>
-        <div class="uv-trsum">${summary2.map((x) => `<span class="${x.decisions ? "warn" : ""}"><i style="--c:${x.color}"></i>
+        <div class="uv-trsum">${summary3.map((x) => `<span class="${x.decisions ? "warn" : ""}"><i style="--c:${x.color}"></i>
           ${esc(x.label)}: ${esc(x.text)}</span>`).join("")}</div>
       </div>
       <div class="uv-seg uv-seg-page">${seg("relegation", "Relegation")}${seg("promotion", "Promotion")}${seg("window", "Window")}${seg("rules", "Rules")}</div>`;
@@ -6552,7 +6875,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const rows = t.pool.map((r, i) => {
       const on = t.candidates.includes(r.id), tied = t.auto && t.tied.some((x) => x.id === r.id);
       const line2 = t.auto && i === cutoff - 1 && i < t.pool.length - 1 ? " cut" : "";
-      const notes = [r.injured && "injured", r.now !== sid && (r.now ? `now ${showName(st, r.now)}` : "now unassigned")].filter(Boolean);
+      const notes = [r.injured && (r.status === "away" ? "away" : "injured"), r.now !== sid && (r.now ? `now ${showName(st, r.now)}` : "now unassigned")].filter(Boolean);
       return `<div class="uv-tw${on ? " on" : ""}${tied ? " tied" : ""}${line2}" data-w="${r.id}" onclick="uvTrPick('${trId}','${sid}','${r.id}')">
       <span class="uv-tick">${on ? ICON.check : ""}</span>
       <div class="uv-main"><div class="nm">${esc(r.name)}${tied ? ' <span class="uv-chip warn">Tied</span>' : ""}</div>
@@ -6907,14 +7230,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const { ev, m } = it;
         const base = { at: ev.at, event: ev.id, match: m.id };
         if (m.outcome === "win") {
-          const W2 = m.sides[m.winner].wrestlers;
+          const W3 = m.sides[m.winner].wrestlers;
           m.sides.forEach((sd2, i) => {
             if (i === m.winner) return;
-            sd2.wrestlers.forEach((l) => W2.forEach((w) => {
+            sd2.wrestlers.forEach((l) => W3.forEach((w) => {
               streak.set(`${w}>${l}`, 0);
               const n = (streak.get(`${l}>${w}`) || 0) + 1;
-              const need = has3(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has3(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
-              if (n >= need) {
+              const need2 = has3(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has3(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
+              if (n >= need2) {
                 auto("grudge", l, w, "raise", 1, { ...base, key: `loss:${m.id}:${l}>${w}`, type: "losses", loser: l, winner: w, n });
                 streak.set(`${l}>${w}`, 0);
               } else streak.set(`${l}>${w}`, n);
@@ -6923,10 +7246,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
           const reign = reignOf.get(m.id);
           const prev = reign && st.reigns.find((r) => r.titleId === reign.titleId && r.end && r.end.seq === reign.start.seq);
           if (prev) {
-            const held = (sd2) => prev.holder.type === "team" ? sd2.team === prev.holder.id : sd2.wrestlers.includes(prev.holder.id);
+            const held2 = (sd2) => prev.holder.type === "team" ? sd2.team === prev.holder.id : sd2.wrestlers.includes(prev.holder.id);
             m.sides.forEach((sd2, i) => {
-              if (i === m.winner || !held(sd2)) return;
-              sd2.wrestlers.forEach((l) => W2.forEach((w) => {
+              if (i === m.winner || !held2(sd2)) return;
+              sd2.wrestlers.forEach((l) => W3.forEach((w) => {
                 const cause = { ...base, key: `title:${reign.id}:${l}>${w}`, type: "title", loser: l, winner: w, title: reign.titleId };
                 auto("grudge", l, w, "raise", has3(l, "ambitious", ev.at) ? 2 : 1, cause);
                 auto("rivals", l, w, "raise", 1, { ...cause, key: `title:${reign.id}:${pairOf(l, w)}` });
@@ -7040,13 +7363,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function pairView(st, a, b, derived = relationships(st)) {
     const rels = [...derived.rels.values()].filter((r) => r.a === a && r.b === b || r.a === b && r.b === a);
     const entries = derived.entries.filter((e) => e.a === a && e.b === b || e.a === b && e.b === a);
-    const need = (w) => derived.has(w, "hot-headed", null) ? RULES.streakHotHeaded : derived.has(w, "patient", null) ? RULES.streakPatient : RULES.streak;
+    const need2 = (w) => derived.has(w, "hot-headed", null) ? RULES.streakHotHeaded : derived.has(w, "patient", null) ? RULES.streakPatient : RULES.streak;
     const loyal = derived.has(a, "loyal", null) || derived.has(b, "loyal", null);
     return {
       rels,
       entries,
       progress: {
-        losses: [[a, b], [b, a]].map(([l, w]) => ({ loser: l, winner: w, n: derived.streak.get(`${l}>${w}`) || 0, need: need(l) })),
+        losses: [[a, b], [b, a]].map(([l, w]) => ({ loser: l, winner: w, n: derived.streak.get(`${l}>${w}`) || 0, need: need2(l) })),
         together: derived.together.get(pairOf(a, b)) || 0,
         alliesAt: loyal ? RULES.alliesLoyal : RULES.allies,
         friendsAt: RULES.friends
@@ -7234,15 +7557,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
     d.streak.forEach((n, key) => {
       const [l, w] = key.split(">");
       if (!n || l !== wid && w !== wid) return;
-      const need = needOf(l);
+      const need2 = needOf(l);
       const g = d.rels.get(relKey("grudge", l, w));
-      const next = `${need - n} more in a row ${g && g.active ? "adds heat" : "makes a grudge"}`;
+      const next = `${need2 - n} more in a row ${g && g.active ? "adds heat" : "makes a grudge"}`;
       const run2 = n === 1 ? "last time" : `the last ${n} times`;
       out.push({
         other: l === wid ? w : l,
-        left: need - n,
+        left: need2 - n,
         n,
-        of: need,
+        of: need2,
         text: l === wid ? `Lost to ${nm4(st, w)} ${run2} \u2014 ${next}` : `${nm4(st, l)} lost to them ${run2} \u2014 ${next}`
       });
     });
@@ -7926,11 +8249,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function goalOf(st, wid, d = relationships(st), hist = history(st, null)) {
     const w = wrestlerById(st, wid);
     if (!w) return null;
-    const held = st.titles.filter((t) => {
+    const held2 = st.titles.filter((t) => {
       const r = currentReign(st, t.id);
       return r && holders(st, r.holder).includes(wid);
     });
-    if (held.length) return `Keep the ${held[0].name}`;
+    if (held2.length) return `Keep the ${held2[0].name}`;
     const grudges = [...d.rels.values()].filter((r) => r.active && r.kind === "grudge" && r.a === wid).sort((a, b) => b.level - a.level);
     if (grudges[0] && grudges[0].level >= 2) return `Revenge on ${(wrestlerById(st, grudges[0].b) || { name: "?" }).name}`;
     const mo = momentumOf(st, wid, hist);
@@ -8089,7 +8412,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function saverFor(c, attacker, victims, matchId) {
     const ev = c.ev;
-    const pool = c.around.filter((z) => z.status !== "injured" && z.id !== attacker && !victims.includes(z.id));
+    const pool = c.around.filter((z) => z.status === "active" && z.id !== attacker && !victims.includes(z.id));
     let best = null;
     pool.forEach((z) => {
       const reasons2 = [];
@@ -8399,8 +8722,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const champName = holderName(st, reign.holder);
     const pool = t.kind === "tag" ? st.teams.filter((tm) => tm.active && tm.id !== reign.holder.id && !tm.members.some((id) => champs.includes(id)) && tm.members.every((id) => {
       const w = W(c, id);
-      return w && w.showId === showId && w.status !== "injured" && fits(w, t);
-    })).map((tm) => ({ ids: [...tm.members], name: tm.name, team: tm.id })) : st.wrestlers.filter((w) => w.showId === showId && w.status !== "injured" && !champs.includes(w.id) && fits(w, t)).map((w) => ({ ids: [w.id], name: w.name }));
+      return w && w.showId === showId && w.status === "active" && fits(w, t);
+    })).map((tm) => ({ ids: [...tm.members], name: tm.name, team: tm.id })) : st.wrestlers.filter((w) => w.showId === showId && w.status === "active" && !champs.includes(w.id) && fits(w, t)).map((w) => ({ ids: [w.id], name: w.name }));
     return pool.map((k) => {
       const reasons2 = [];
       let w = 1;
@@ -8454,11 +8777,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const showId = titleShow(c, t, reign);
       if (!champAppeared && c.ev.showId && showId !== c.ev.showId) return;
       const champName = holderName(st, reign.holder);
-      const contenders = contendersOf(c, t, reign, showId);
-      if (!contenders.length) return;
-      const total = contenders.reduce((n, k) => n + k.w, 0);
+      const contenders2 = contendersOf(c, t, reign, showId);
+      if (!contenders2.length) return;
+      const total = contenders2.reduce((n, k) => n + k.w, 0);
       let x = draw(c.seed, c.ev.id, c.phase, c.nonce, "contender", t.id) * total;
-      const pick2 = contenders.find((k) => (x -= k.w) < 0) || contenders[contenders.length - 1];
+      const pick2 = contenders2.find((k) => (x -= k.w) < 0) || contenders2[contenders2.length - 1];
       const cand = candidate(c, "challenge", `challenge:${t.id}:${[...pick2.ids].sort().join("+")}`, [...pick2.ids, ...champs]);
       why(cand, 1, `${champName} ${champs.length > 1 ? "hold" : "holds"} the ${t.name}`);
       if (champAppeared) why(cand, 1.4, `${champName} wrestled at ${c.ev.name}`);
@@ -8466,7 +8789,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const quiet = lastTitleMatch == null ? c.wk - weekNo(st, reign.start) : c.wk - lastTitleMatch;
       if (quiet >= 4) why(cand, 1.5, `The ${t.name} hasn't been on the line in ${quiet} weeks`);
       pick2.reasons.forEach((r) => why(cand, 1, r));
-      why(cand, 1, `${pick2.name} came up from ${contenders.length} possible challenger${contenders.length === 1 ? "" : "s"} \u2014 anyone eligible can, and the rankings don't decide it (${pct2(pick2.w / total)} of the draw)`);
+      why(cand, 1, `${pick2.name} came up from ${contenders2.length} possible challenger${contenders2.length === 1 ? "" : "s"} \u2014 anyone eligible can, and the rankings don't decide it (${pct2(pick2.w / total)} of the draw)`);
       if (weekNo(st, reign.start) >= c.wk - 1) why(cand, 0.5, `Less likely: ${champName} only just won it`);
       cand.plan = { incidents: [{ kind: "challenge", by: [...pick2.ids], on: [...champs], title: t.id }] };
       cand.basis = { title: { id: t.id, holder: reign.holder } };
@@ -8508,7 +8831,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function confrontations(c) {
     const out = [];
-    const ids = c.around.filter((w) => w.status !== "injured").map((w) => w.id).sort();
+    const ids = c.around.filter((w) => w.status === "active").map((w) => w.id).sort();
     const facing = (a, b) => c.booked.find((m) => {
       const sa = m.sides.findIndex((sd2) => sd2.wrestlers.includes(a)), sb = m.sides.findIndex((sd2) => sd2.wrestlers.includes(b));
       return sa >= 0 && sb >= 0 && sa !== sb;
@@ -8542,7 +8865,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (c.ev.showId && showId !== c.ev.showId) return;
       const champs = holders(st, reign.holder);
       const best = [];
-      c.around.filter((w) => w.showId === showId && w.status !== "injured" && !champs.includes(w.id) && fits(w, t)).forEach((w) => {
+      c.around.filter((w) => w.showId === showId && w.status === "active" && !champs.includes(w.id) && fits(w, t)).forEach((w) => {
         const mo = momentumOf(st, w.id, c.hist);
         const cand = candidate(c, "demand", `demand:${w.id}:${t.id}`, [w.id, ...champs]);
         const ambitious = w.traits.includes("ambitious");
@@ -8569,17 +8892,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function openChallenges(c) {
     const st = c.st, out = [];
-    c.around.filter((w) => w.status !== "injured").forEach((w) => {
-      const held = st.titles.find((t) => t.active && t.kind === "singles" && (() => {
+    c.around.filter((w) => w.status === "active").forEach((w) => {
+      const held2 = st.titles.find((t) => t.active && t.kind === "singles" && (() => {
         const r = currentReign(st, t.id);
         return r && holders(st, r.holder).includes(w.id);
       })());
       const mo = momentumOf(st, w.id, c.hist);
       const cand = candidate(c, "open-challenge", `open:${w.id}`, [w.id]);
-      if (held) {
-        const last = st.events.filter((e) => e.matches.some((m) => m.status === "played" && m.titleId === held.id)).map((e) => weekNo(st, e.at)).filter((n) => n <= c.wk).sort((a, b) => b - a)[0];
+      if (held2) {
+        const last = st.events.filter((e) => e.matches.some((m) => m.status === "played" && m.titleId === held2.id)).map((e) => weekNo(st, e.at)).filter((n) => n <= c.wk).sort((a, b) => b - a)[0];
         const quiet = last == null ? 99 : c.wk - last;
-        why(cand, 1, `${w.name} holds the ${held.name}`);
+        why(cand, 1, `${w.name} holds the ${held2.name}`);
         if (quiet >= 3) why(cand, 1.8, quiet >= 99 ? "They haven't defended it yet" : `No defence in ${quiet} weeks`);
         if (w.traits.includes("proud")) why(cand, 1.8, `${w.name} is proud`);
         if (w.traits.includes("cowardly")) why(cand, 0.2, `Less likely: ${w.name} is cowardly`);
@@ -8590,8 +8913,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         if (w.traits.includes("proud") || w.traits.includes("ambitious")) why(cand, 1.5, `${w.name} is ${w.traits.includes("proud") ? "proud" : "ambitious"}`);
       }
       outOfNowhere(cand, 0.4);
-      cand.plan = { incidents: [{ kind: "open-challenge", by: [w.id], title: held ? held.id : null }] };
-      cand.basis = held ? { title: { id: held.id, holder: currentReign(st, held.id).holder } } : null;
+      cand.plan = { incidents: [{ kind: "open-challenge", by: [w.id], title: held2 ? held2.id : null }] };
+      cand.basis = held2 ? { title: { id: held2.id, holder: currentReign(st, held2.id).holder } } : null;
       if (!freshness(c, cand)) return;
       out.push(finish(c, cand, KIND2["open-challenge"].base));
     });
@@ -8599,7 +8922,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function alliances(c) {
     const out = [];
-    const ids = c.around.filter((w) => w.status !== "injured").map((w) => w.id).sort();
+    const ids = c.around.filter((w) => w.status === "active").map((w) => w.id).sort();
     ids.forEach((a, i) => ids.slice(i + 1).forEach((b) => {
       if (heat(c, a, b) || heat(c, b, a) || rel(c, "allies", a, b) || rel(c, "rivals", a, b) || teamOf(c, a, b)) return;
       const foes = [...c.d.rels.values()].filter((r) => r.active && r.kind === "grudge" && r.a === a && heat(c, b, r.b)).map((r) => r.b);
@@ -9108,13 +9431,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
     commit((st) => setStory(st, { pace: v }), `${PACE[v].label} pace`);
   }
   function uvProfileStory(st, w) {
-    const goal2 = goalOf(st, w.id);
+    const goal3 = goalOf(st, w.id);
     const mo = momentumOf(st, w.id);
     const mine = storyEvents(st, { wrestler: w.id }).slice(0, 4);
     const label = { hot: "Hot", rising: "Rising", steady: "Steady", cold: "Cold" }[mo.label];
     return `${section("Story", null)}
-    <div class="uv-story1" data-goal="${esc(goal2 || "")}" data-momentum="${mo.label}">
-      <div><span>Goal</span><b>${esc(goal2 || "Nothing in particular")}</b></div>
+    <div class="uv-story1" data-goal="${esc(goal3 || "")}" data-momentum="${mo.label}">
+      <div><span>Goal</span><b>${esc(goal3 || "Nothing in particular")}</b></div>
       <div><span>Momentum</span><b class="mo ${mo.label}">${label}${mo.form ? ` \xB7 ${esc(mo.form.split("").join(" "))}` : ""}</b>
         ${mo.reasons.length ? `<em>${esc(mo.reasons.join(" \xB7 "))}</em>` : ""}</div>
     </div>
@@ -9216,6 +9539,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     </div>
     ${off ? `<div class="uv-back-now" onclick="uvCalGo(${s.week})">Back to this week (week ${s.week})</div>` : ""}
     <div class="uv-nights">${rows.map((r) => nightRow(st, s, week, r)).join("")}</div>
+    <div class="uv-weekdraft" onclick="uvDraftWeek(${week})">${ICON.spark}Draft week ${week}\u2019s cards with the auto booker</div>
     <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
     ${seasonGrid(st, s, week)}`;
   }
@@ -9227,7 +9551,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!e) return null;
     const c = cardStatus(e);
     const text = {
-      empty: "Planned \u2014 nothing booked yet",
+      empty: e.draft ? "A draft card is waiting \u2014 change it and book it" : "Planned \u2014 nothing booked yet",
       booked: `${c.total} booked \u2014 waiting for results`,
       partial: `${c.played} of ${c.total} results in \u2014 enter the rest`,
       complete: ""
@@ -9268,9 +9592,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div class="uv-btn sm2" onclick="uvPlanShow('${r.show.id}',${week})">${ICON.plus}Plan</div></div>`;
     }
     const e = r.e, c = cardStatus(e);
+    const draft = e.draft ? `Draft card: ${e.draft.matches.length} match${e.draft.matches.length === 1 ? "" : "es"} \u2014 not booked yet` : "";
     return `<div class="uv-night" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">${dt}
     <div class="uv-main"><div class="nm">${e.kind === "ple" ? `<span class="uv-star">${ICON.star}</span>` : ""}${esc(e.name)}</div>
-      <div class="sub"><span class="uv-state ${c.state}"></span>${esc(cardText(c))}</div></div>
+      <div class="sub"><span class="uv-state ${draft && !c.total ? "draft" : c.state}"></span>${esc(draft && !c.total ? draft : cardText(c) + (draft ? ` \xB7 ${draft.toLowerCase()}` : ""))}</div></div>
     <span class="uv-chev">${ICON.right}</span></div>`;
   }
   var SHORT = { raw: "Raw", smackdown: "SD", dynamite: "Dyn", nxt: "NXT" };
@@ -9368,17 +9693,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return html || `<div class="uv-none">No wrestler matches <b>${esc(rosterQ)}</b>.</div>`;
   }
   function wrestlerRow(st, w) {
-    const held = titlesOfWrestler(st, w.id);
+    const held2 = titlesOfWrestler(st, w.id);
     const tags = [tag(w.origin)];
     if (w.gender === "female") tags.push(tag("F"));
     if (w.alignment) tags.push(tag(LABEL.alignment[w.alignment], w.alignment));
-    if (w.status === "injured") tags.push(tag("Injured", "inj"));
+    if (w.status !== "active") tags.push(tag(LABEL.status[w.status], "inj"));
     const on = picking && picking.has(w.id);
     return `<div class="uv-row${on ? " picked" : ""}" data-w="${w.id}" onclick="${picking ? `uvPick('${w.id}')` : `uvOpenWrestler('${w.id}')`}">
     ${picking ? `<span class="uv-tick">${on ? ICON.check : ""}</span>` : ""}
     ${avatar(st, w)}
     <div class="uv-main"><div class="nm">${esc(w.name)}</div><div class="sub">${tags.join("")}</div></div>
-    ${held.length ? `<span class="uv-belt" title="${esc(held.map((h) => h.title.name).join(", "))}">${ICON.belt}${held.length > 1 ? held.length : ""}</span>` : ""}
+    ${held2.length ? `<span class="uv-belt" title="${esc(held2.map((h) => h.title.name).join(", "))}">${ICON.belt}${held2.length > 1 ? held2.length : ""}</span>` : ""}
     ${picking ? "" : `<span class="uv-chev">${ICON.right}</span>`}
   </div>`;
   }
@@ -9431,11 +9756,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function teamRow(st, t) {
     const shows = teamShows(st, t);
-    const held = titlesHeldBy(st, { type: "team", id: t.id });
+    const held2 = titlesHeldBy(st, { type: "team", id: t.id });
     const members = t.members.map((id) => (wrestlerById(st, id) || { name: "?" }).name).join(" & ");
     return `<div class="uv-row${t.active ? "" : " dim"}" onclick="uvOpenTeam('${t.id}')">
     <span class="uv-av sq">${ICON.team}</span>
-    <div class="uv-main"><div class="nm">${esc(t.name)}${held.length ? ` <span class="uv-belt in">${ICON.belt}</span>` : ""}</div>
+    <div class="uv-main"><div class="nm">${esc(t.name)}${held2.length ? ` <span class="uv-belt in">${ICON.belt}</span>` : ""}</div>
       <div class="sub">${shows.map((id) => showDot(st, id)).join("")}${esc(members)}${shows.length > 1 ? tag("Split", "warn") : ""}</div></div>
     <div class="uv-champ"><div class="h">${fmtRec(teamRecord(st, t.id))}</div><div class="s">W\u2013L\u2013D</div></div>
   </div>`;
@@ -9650,6 +9975,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvCorrectResult: () => uvCorrectResult,
     uvCreatePle: () => uvCreatePle,
     uvDeleteEvent: () => uvDeleteEvent,
+    uvDraftAdd: () => uvDraftAdd,
+    uvDraftEdit: () => uvDraftEdit,
     uvEditBooking: () => uvEditBooking,
     uvEnterResult: () => uvEnterResult,
     uvEventDetails: () => uvEventDetails,
@@ -9678,6 +10005,1211 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvSetEvent: () => uvSetEvent,
     uvSwapEvent: () => uvSwapEvent
   });
+
+  // js/universe/autobook.js
+  var autobook_exports = {};
+  __export(autobook_exports, {
+    uvAutoLine: () => uvAutoLine,
+    uvBookerPage: () => uvBookerPage,
+    uvBookerReset: () => uvBookerReset,
+    uvBookerSet: () => uvBookerSet,
+    uvBookerSettings: () => uvBookerSettings,
+    uvDraftAgain: () => uvDraftAgain,
+    uvDraftBlock: () => uvDraftBlock,
+    uvDraftBook: () => uvDraftBook,
+    uvDraftCard: () => uvDraftCard,
+    uvDraftDiscard: () => uvDraftDiscard,
+    uvDraftDrop: () => uvDraftDrop,
+    uvDraftMove: () => uvDraftMove,
+    uvDraftOut: () => uvDraftOut,
+    uvDraftOutPick: () => uvDraftOutPick,
+    uvDraftOutSave: () => uvDraftOutSave,
+    uvDraftRedraw: () => uvDraftRedraw,
+    uvDraftWeek: () => uvDraftWeek,
+    uvDraftWeekGo: () => uvDraftWeekGo,
+    uvHowBooker: () => uvHowBooker,
+    uvOpenBooker: () => uvOpenBooker
+  });
+
+  // js/universe/booker.js
+  var TYPE_LABEL = { singles: "Singles", tag: "Tag team", triple: "Triple threat", fourway: "Fatal 4-way", trios: "6-person tag", handicap: "Handicap" };
+  var LEVEL_LABEL = { often: "Often", sometimes: "Sometimes", rarely: "Rarely", never: "Never" };
+  var STIP_LABEL = { never: "Never", feuds: "Settling feuds", often: "Often" };
+  var KIND_LABEL2 = {
+    title: "Title match",
+    vacant: "Vacant title",
+    contender: "Contenders",
+    feud: "Feud",
+    build: "Feud builds",
+    defend: "Friend steps in",
+    teams: "Teams collide",
+    rematch: "Rematch",
+    step: "Step up",
+    chance: "Opportunity",
+    turn: "Turn it around",
+    arrival: "New arrival",
+    fresh: "Fresh matchup",
+    "multi": "Multi-person"
+  };
+  var MIX_WEIGHT = { often: 1, sometimes: 0.5, rarely: 0.2, never: 0 };
+  var RULES4 = {
+    mixPull: 1.2,
+    // how hard the card leans toward each kind's share
+    divisionPull: 1,
+    // ... and toward each division's share of who's available
+    jitter: 0.8,
+    // how far a draw can move a score either way, for variety
+    pleAhead: 4,
+    // weeks ahead a premium live event shapes a feud
+    recentWeeks: 6,
+    // how far back "lately" looks
+    sameFeud: 2
+    // at most this many matches from one feud on a card
+  };
+  var FEUD_STIPS = ["No Disqualification", "Street Fight", "Last Man Standing", "Falls Count Anywhere", "Extreme Rules", "Steel Cage"];
+  var PLE_STIPS = ["Hell in a Cell", "Steel Cage", "Last Man Standing", "Street Fight", "No Disqualification"];
+  var TAG_STIPS = ["Tables", "Street Fight", "No Disqualification"];
+  function typeOf(m) {
+    const k = matchKind(m).key;
+    if (k === "team-tag") return m.sides[0].wrestlers.length === 3 ? "trios" : "other";
+    return { singles: "singles", tag: "tag", "triple-threat": "triple", "fatal-4-way": "fourway", handicap: "handicap" }[k] || "other";
+  }
+  var lineupKey = (sides) => sides.map((sd2) => [...sd2.wrestlers].sort().join("+")).sort().join("|");
+  var matchKey = (m) => `${m.titleId || "-"}:${lineupKey(m.sides)}`;
+  var inMatch = (m) => m.sides.flatMap((sd2) => sd2.wrestlers);
+  var isSingles = (m) => m.sides.length === 2 && m.sides.every((sd2) => sd2.wrestlers.length === 1);
+  function upcomingPle(st, ev, wk) {
+    return st.events.filter((e) => e.kind === "ple" && e.id !== ev.id && (e.showId === ev.showId || e.showId === null) && compareStamps(st, e.at, ev.at) > 0 && weekNo(st, e.at) - wk <= RULES4.pleAhead).sort((a, b) => compareStamps(st, a.at, b.at)).map((e) => ({ ev: e, weeks: weekNo(st, e.at) - wk }))[0] || null;
+  }
+  function context2(st, ev, { nonce = 0, keep = [] } = {}) {
+    const draft = ev.draft || { passed: [], out: [] };
+    const showId = ev.showId || null;
+    const settings = bookerSettings(st, showId);
+    const ple = ev.kind === "ple";
+    const taken = /* @__PURE__ */ new Set([...ev.matches.flatMap(inMatch), ...keep.flatMap(inMatch)]);
+    const out = new Set(draft.out);
+    const roster = st.wrestlers.filter((w) => showId ? w.showId === showId : !!w.showId);
+    const avail = roster.filter((w) => w.status === "active" && !out.has(w.id));
+    const free = new Set(avail.filter((w) => !taken.has(w.id)).map((w) => w.id));
+    const wk = weekNo(st, ev.at);
+    const period = periodOf(st, ev.at.season);
+    const table2 = standings(st, { showId, period, kind: "singles" });
+    const rows = [...table2.ranked, ...table2.unranked];
+    const rank = /* @__PURE__ */ new Map();
+    GENDERS.forEach((g) => {
+      const div = rankRows(rows.filter((r) => r.gender === g));
+      div.ranked.forEach((r) => rank.set(r.id, { rank: r.rank, score: r.score, of: div.ranked.length }));
+    });
+    const teamTable = standings(st, { showId, period, kind: "teams" });
+    const teamRank = new Map(teamTable.ranked.map((r) => [r.id, { rank: r.rank, score: r.score, of: teamTable.ranked.length }]));
+    return {
+      st,
+      ev,
+      showId,
+      settings,
+      ple,
+      nonce,
+      keep,
+      taken,
+      out,
+      roster,
+      avail,
+      free,
+      wk,
+      rank,
+      teamRank,
+      size: ple ? settings.pleSize : settings.size,
+      show: showId ? showById(st, showId) : null,
+      d: relationships(st),
+      hist: history(st, ev.at),
+      balance: showId ? balance(st, { showId, period: periodOf(st, "last4") }) : { groups: [] },
+      nextPle: ple ? null : upcomingPle(st, ev, wk),
+      passed: new Set(draft.passed),
+      goals: /* @__PURE__ */ new Map(),
+      moods: /* @__PURE__ */ new Map()
+    };
+  }
+  var W2 = (c, id) => wrestlerById(c.st, id);
+  var nm6 = (c, id) => (W2(c, id) || { name: "?" }).name;
+  var genderOf = (c, ids) => {
+    const g = new Set(ids.map((id) => (W2(c, id) || {}).gender));
+    return g.size === 1 ? [...g][0] : "mixed";
+  };
+  var division = (g) => g === "female" ? "women\u2019s" : "men\u2019s";
+  var fits2 = (w, t) => !!w && (t.division === "open" || t.division === "men" === (w.gender === "male"));
+  var lvl = (c, kind, a, b) => {
+    const r = c.d.rels.get(relKey(kind, a, b));
+    return r && r.active ? r.level || 1 : 0;
+  };
+  var heatOf = (c, a, b) => Math.max(lvl(c, "grudge", a, b), lvl(c, "grudge", b, a), lvl(c, "rivals", a, b));
+  var bondOf = (c, a, b) => Math.max(lvl(c, "friends", a, b), lvl(c, "allies", a, b));
+  var teamsOf2 = (c, id) => c.st.teams.filter((t) => t.active && t.members.includes(id));
+  var partnered = (c, a, b) => teamsOf2(c, a).some((t) => t.members.includes(b));
+  var goal2 = (c, id) => {
+    if (!c.goals.has(id)) c.goals.set(id, goalOf(c.st, id, c.d, c.hist));
+    return c.goals.get(id);
+  };
+  var mood = (c, id) => {
+    if (!c.moods.has(id)) c.moods.set(id, momentumOf(c.st, id, c.hist));
+    return c.moods.get(id);
+  };
+  var rankLine = (c, id) => {
+    const r = c.rank.get(id);
+    return r ? `#${r.rank} in the ${division((W2(c, id) || {}).gender)} standings` : "";
+  };
+  var ago = (c, wk) => c.wk - wk <= 0 ? "earlier this week" : c.wk - wk === 1 ? "last week" : `${c.wk - wk} weeks ago`;
+  var plural7 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var listOf = (xs) => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] || "";
+  function meetings(c, a, b, weeks = 99) {
+    return (c.hist.get(a) || []).filter((x) => c.wk - x.wk < weeks && x.m.sides.some((sd2, i) => i !== x.side && sd2.wrestlers.includes(b)));
+  }
+  var lastMatch = (c, id) => {
+    const h = c.hist.get(id) || [];
+    return h.length ? h[h.length - 1].wk : null;
+  };
+  function backers(c, id, not = []) {
+    const g = (W2(c, id) || {}).gender;
+    return [...c.free].filter((x) => x !== id && !not.includes(x) && (W2(c, x) || {}).gender === g).map((x) => ({ id: x, partner: partnered(c, id, x), bond: bondOf(c, id, x) })).filter((x) => x.partner || x.bond).sort((a, b) => b.partner - a.partner || b.bond - a.bond || nm6(c, a.id).localeCompare(nm6(c, b.id))).map((x) => ({ ...x, how: x.partner ? "tag partner" : lvl(c, "friends", id, x.id) ? "friend" : "ally" }));
+  }
+  function pairSide(c, a, b) {
+    const t = teamsOf2(c, a).find((x) => x.members.includes(b));
+    return { team: t ? t.id : null, wrestlers: [a, b] };
+  }
+  var solo = (id) => ({ team: null, wrestlers: [id] });
+  var freeOf = (c, t, n) => t.members.filter((id) => c.free.has(id)).slice(0, n);
+  function idea(c, kind, sides, { titleId = null, stip = "", notes = "", score, weight = 3, why: why2 = [], feud = null }) {
+    const m = { sides: sides.map((sd2) => ({ team: sd2.team || null, wrestlers: [...sd2.wrestlers] })), titleId };
+    const people = inMatch(m);
+    let s = score;
+    if (kind !== "rematch" && isSingles(m)) {
+      const met = meetings(c, people[0], people[1], 3).filter((x) => isSingles(x.m));
+      const last = met.length ? met[met.length - 1].wk : null;
+      if (last != null && c.wk - last <= 1) s -= kind === "title" ? 1.5 : 2.5;
+      else if (last != null && c.wk - last <= 2) s -= 1;
+    }
+    return {
+      key: matchKey(m),
+      kind,
+      type: typeOf(m),
+      gender: genderOf(c, people),
+      sides: m.sides,
+      titleId,
+      stip,
+      notes,
+      score: s,
+      weight,
+      why: why2.filter(Boolean),
+      feud,
+      people
+    };
+  }
+  function titlesFor(c) {
+    const st = c.st;
+    return st.titles.filter((t) => {
+      if (!t.active) return false;
+      if (!c.showId || t.showId === c.showId) return true;
+      if (t.showId) return false;
+      const r = currentReign(st, t.id);
+      const ids = r ? r.holder.type === "team" ? (teamById(st, r.holder.id) || { members: [] }).members : [r.holder.id] : [];
+      return ids.some((id) => (W2(c, id) || {}).showId === c.showId);
+    });
+  }
+  function titleIdle(c, t, reign) {
+    const wks = c.st.events.filter((e) => e.matches.some((m) => m.status === "played" && m.titleId === t.id) && compareStamps(c.st, e.at, c.ev.at) < 0).map((e) => weekNo(c.st, e.at));
+    const since = wks.length ? Math.max(...wks) : reign ? weekNo(c.st, reign.start) : c.wk;
+    return Math.max(0, c.wk - since);
+  }
+  function contenders(c, t, champIds, champName) {
+    const st = c.st;
+    const pool = t.kind === "tag" ? st.teams.filter((tm) => tm.active && !tm.members.some((id) => champIds.includes(id))).map((tm) => {
+      const ids = freeOf(c, tm, 2);
+      return ids.length === 2 && ids.every((id) => fits2(W2(c, id), t)) ? { ids, team: tm.id, name: tm.name, side: { team: tm.id, wrestlers: ids } } : null;
+    }).filter(Boolean) : [...c.free].filter((id) => !champIds.includes(id) && fits2(W2(c, id), t)).map((id) => ({ ids: [id], team: null, name: nm6(c, id), side: solo(id) }));
+    return pool.map((k) => {
+      const reasons2 = [];
+      let s = 0;
+      const rk = k.team ? c.teamRank.get(k.team) : c.rank.get(k.ids[0]);
+      if (rk && rk.rank === 1) {
+        s += 2;
+        reasons2.push(k.team ? "#1 in the tag team standings" : rankLine(c, k.ids[0]));
+      } else if (rk && rk.rank <= 3) {
+        s += 1;
+        reasons2.push(k.team ? `#${rk.rank} in the tag team standings` : rankLine(c, k.ids[0]));
+      }
+      const wins = k.ids.flatMap((x) => champIds.flatMap((y) => meetings(c, x, y, RULES4.recentWeeks).filter((e) => e.res === "W")));
+      if (wins.length) {
+        s += 2.5;
+        reasons2.push(`beat ${champName} ${ago(c, Math.max(...wins.map((e) => e.wk)))}`);
+      }
+      const h = Math.max(0, ...k.ids.flatMap((x) => champIds.map((y) => heatOf(c, x, y))));
+      if (h) {
+        s += 1.2 * h;
+        reasons2.push(k.ids.some((x) => champIds.some((y) => lvl(c, "grudge", x, y))) ? `a grudge against ${champName}` : `rivals with ${champName}`);
+      }
+      const want = k.team ? `Tag team gold with ${k.name}` : `Win the ${t.name}`;
+      if (k.ids.some((x) => goal2(c, x) === want)) {
+        s += 1;
+        reasons2.push(k.team ? "chasing tag team gold" : `after the ${t.name}`);
+      }
+      const mo = mood(c, k.ids[0]);
+      if (!k.team && mo.label === "hot") {
+        s += 1.5;
+        reasons2.push(`hot \u2014 ${mo.form.slice(-4)}`);
+      } else if (!k.team && mo.label === "rising") {
+        s += 0.75;
+        reasons2.push("on the rise");
+      }
+      const shots = c.st.events.flatMap((e) => e.matches.filter((m) => m.status === "played" && m.titleId === t.id && compareStamps(c.st, e.at, c.ev.at) < 0 && c.wk - weekNo(c.st, e.at) < 4 && m.sides.some((sd2) => k.ids.every((id) => sd2.wrestlers.includes(id)))).map((m) => ({ m, wk: weekNo(c.st, e.at) })));
+      const last = shots.sort((a, b) => a.wk - b.wk).pop();
+      if (last && last.m.outcome !== "win") {
+        s += 1;
+        reasons2.push(`no winner when they met for it ${ago(c, last.wk)}`);
+      } else if (last && !last.m.sides[last.m.winner].wrestlers.some((id) => k.ids.includes(id))) {
+        s -= 2;
+        reasons2.push(`already had a shot ${ago(c, last.wk)}`);
+      }
+      return { ...k, s, reasons: reasons2 };
+    }).sort((a, b) => b.s - a.s || a.name.localeCompare(b.name));
+  }
+  var caseFor = (k) => k.reasons.length ? `${k.name}: ${k.reasons.slice(0, 3).join(", ")}` : `${k.name}: the best available contender`;
+  function titleIdeas(c) {
+    const out = [];
+    const st = c.st;
+    titlesFor(c).forEach((t) => {
+      const reign = currentReign(st, t.id);
+      if (!reign) {
+        vacantIdeas(c, t, out);
+        return;
+      }
+      const champIds = reign.holder.type === "team" ? (teamById(st, reign.holder.id) || { members: [] }).members : [reign.holder.id];
+      const champName = holderName(st, reign.holder);
+      const here = champIds.filter((id) => c.free.has(id));
+      const need2 = t.kind === "tag" ? 2 : 1;
+      const list = contenders(c, t, champIds, champName);
+      const idle = titleIdle(c, t, reign);
+      const top = list.filter((k) => k.s > -1);
+      if (here.length < need2) {
+        const absent = champIds.some((id) => (W2(c, id) || {}).status !== "active" || c.out.has(id));
+        if (absent) contenderIdeas(c, t, top, out, `${champName} can\u2019t defend tonight \u2014 the contenders settle who\u2019s next`);
+        return;
+      }
+      const champSide = t.kind === "tag" ? { team: reign.holder.id, wrestlers: here.slice(0, 2) } : solo(here[0]);
+      const lead = c.ple ? `${champName} ${champIds.length > 1 ? "defend" : "defends"} the ${t.name} at ${c.ev.name}` : idle >= 3 ? `The ${t.name} hasn\u2019t been on the line for ${plural7(idle, "week")}` : `${champName} ${champIds.length > 1 ? "defend" : "defends"} the ${t.name}`;
+      const base = c.ple ? 6 : 2 + (idle >= 4 ? 1 : idle <= 1 ? -1.5 : 0);
+      const weight = (c.ple ? 9 : 7) + (t.kind === "singles" ? 0.5 : 0);
+      if (top[0]) {
+        const k = top[0];
+        const stip = stipFor(c, "title", Math.max(0, ...k.ids.flatMap((x) => champIds.map((y) => heatOf(c, x, y)))), `${t.id}:${k.ids.join("+")}`);
+        out.push(idea(c, "title", [champSide, k.side], {
+          titleId: t.id,
+          stip: stip.stip,
+          score: base + 0.8 * k.s,
+          weight,
+          why: [lead, `Challenger ${caseFor(k)}`, stip.why]
+        }));
+      }
+      if (t.kind === "singles" && top[1] && top[1].s >= top[0].s - 1.5) {
+        out.push(idea(c, "title", [champSide, top[0].side, top[1].side], {
+          titleId: t.id,
+          score: base - 0.3 + 0.4 * (top[0].s + top[1].s),
+          weight,
+          why: [`Two contenders with a claim to the ${t.name}`, caseFor(top[0]), caseFor(top[1])]
+        }));
+      }
+      contenderIdeas(c, t, top, out, idle <= 1 ? `The ${t.name} was just defended \u2014 the contenders settle who\u2019s next` : null);
+    });
+    return out;
+  }
+  function contenderIdeas(c, t, top, out, lead) {
+    const note = `#1 contender\u2019s match for the ${t.name}`;
+    if (top.length >= 2) {
+      const [a, b] = top;
+      out.push(idea(c, "contender", [a.side, b.side], {
+        notes: note,
+        score: 1.5 + 0.5 * (a.s + b.s) / 2 + (lead ? 1 : 0),
+        weight: 5.5,
+        why: [lead || `The two leading contenders for the ${t.name}`, caseFor(a), caseFor(b)]
+      }));
+    }
+    if (t.kind === "singles" && top.length >= 4) {
+      const four = top.slice(0, 4);
+      out.push(idea(c, "contender", four.map((k) => k.side), {
+        notes: note,
+        score: 1 + 0.4 * four.reduce((n, k) => n + k.s, 0) / 4 + (lead ? 1 : 0),
+        weight: 5.5,
+        why: [lead || `Four contenders for the ${t.name}, one shot`, ...four.slice(0, 2).map(caseFor)]
+      }));
+    }
+  }
+  function vacantIdeas(c, t, out) {
+    const list = contenders(c, t, [], "the last champion");
+    if (list.length < 2) return;
+    const lead = `The ${t.name} is vacant`;
+    const [a, b, x] = list;
+    out.push(idea(c, "vacant", [a.side, b.side], {
+      titleId: t.id,
+      notes: `For the vacant ${t.name}`,
+      score: c.ple ? 6 : 3.5,
+      weight: c.ple ? 9.5 : 7,
+      why: [`${lead} \u2014 the top two contenders meet for it`, caseFor(a), caseFor(b)]
+    }));
+    if (t.kind === "singles" && x) {
+      out.push(idea(c, "vacant", [a.side, b.side, x.side], {
+        titleId: t.id,
+        notes: `For the vacant ${t.name}`,
+        score: c.ple ? 5.8 : 3.3,
+        weight: c.ple ? 9.5 : 7,
+        why: [`${lead} \u2014 three contenders for it`, caseFor(a), caseFor(b), caseFor(x)]
+      }));
+    }
+  }
+  function stipFor(c, kind, heat2, key, { blowoff = false, tag: tag2 = false } = {}) {
+    const use = c.settings.stips;
+    const due2 = use === "often" ? heat2 >= 2 || blowoff : use === "feuds" ? blowoff || c.ple && heat2 >= 2 : false;
+    if (!due2 || kind === "title" && !c.ple && use !== "often") return { stip: "", why: "" };
+    const list = tag2 ? TAG_STIPS : c.ple ? PLE_STIPS : FEUD_STIPS;
+    const stip = list[Math.floor(draw("stip", c.ev.id, c.nonce, key) * list.length)];
+    return { stip, why: `${stip}: ${blowoff ? "this feud needs settling" : `the heat between them is ${heat2 >= 3 ? "at its peak" : "high"}`}` };
+  }
+  function feudIdeas(c) {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    [...c.d.rels.values()].filter((r) => r.active && (r.kind === "grudge" || r.kind === "rivals")).forEach((r) => {
+      const [a, b] = [r.a, r.b].sort();
+      const key = `${a}+${b}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (!c.free.has(a) || !c.free.has(b) || genderOf(c, [a, b]) === "mixed" || partnered(c, a, b)) return;
+      const heat2 = heatOf(c, a, b);
+      const both = lvl(c, "grudge", a, b) && lvl(c, "grudge", b, a);
+      const what = both ? `${nm6(c, a)} and ${nm6(c, b)} hold grudges against each other` : lvl(c, "grudge", a, b) ? `${nm6(c, a)} holds a grudge against ${nm6(c, b)}` : lvl(c, "grudge", b, a) ? `${nm6(c, b)} holds a grudge against ${nm6(c, a)}` : `${nm6(c, a)} and ${nm6(c, b)} are rivals`;
+      const lead = `${what} (heat ${heat2})`;
+      const met = meetings(c, a, b, RULES4.recentWeeks);
+      const one = met.filter((x) => isSingles(x.m));
+      const last = met.length ? met[met.length - 1].wk : null;
+      const lastOne = one.length ? one[one.length - 1].wk : null;
+      const recentOnes = one.filter((x) => c.wk - x.wk < 4).length;
+      const blowoff = recentOnes >= 2 || heat2 >= 3 && met.length >= 1;
+      const hold = c.nextPle && !c.ple ? c.nextPle : null;
+      const justMet = lastOne != null && c.wk - lastOne <= 1;
+      const revenge = [a, b].filter((x) => goal2(c, x) === `Revenge on ${nm6(c, x === a ? b : a)}`);
+      const revengeWhy = revenge.length ? `${nm6(c, revenge[0])} wants revenge` : "";
+      let s = 2 + heat2 + (both ? 0.5 : 0) + (revenge.length ? 1 : 0);
+      const why2 = [lead];
+      if (c.ple) {
+        s += 3;
+        why2.push(`The feud\u2019s big match, at ${c.ev.name}`);
+      } else if (hold) {
+        s -= 3.5;
+        why2.push(`${hold.ev.name} is ${hold.weeks === 1 ? "next week" : `in ${hold.weeks} weeks`} \u2014 this could wait for it`);
+      }
+      if (!meetings(c, a, b).some((x) => isSingles(x.m))) {
+        s += 1;
+        why2.push("They haven\u2019t met one on one yet");
+      }
+      if (recentOnes >= 2) why2.push(`${plural7(recentOnes, "meeting")} in the last four weeks`);
+      const stip = stipFor(c, "feud", heat2, key, { blowoff });
+      if (recentOnes >= 2 && !stip.stip && !c.ple) s -= 2;
+      if (stip.stip) s += 1;
+      const belt = c.ple ? titlesFor(c).find((t) => t.kind === "singles" && [[a, b], [b, a]].some(([x, y]) => {
+        const r2 = currentReign(c.st, t.id);
+        return r2 && r2.holder.type === "wrestler" && r2.holder.id === x && fits2(W2(c, y), t);
+      })) : null;
+      if (belt) {
+        s += 1;
+        why2.push(`The ${belt.name} on the line`);
+      }
+      why2.push(revengeWhy, stip.why);
+      out.push(idea(c, belt ? "title" : "feud", [solo(a), solo(b)], {
+        titleId: belt ? belt.id : null,
+        stip: stip.stip,
+        score: s,
+        weight: belt ? 9.5 : c.ple ? 8.5 : 6 + (stip.stip ? 1 : 0),
+        why: why2,
+        feud: key
+      }));
+      const build = justMet || hold ? 1.5 : 0;
+      const buildWhy = justMet ? `They met one on one ${ago(c, lastOne)} \u2014 the feud builds another way this time` : hold ? `Building to ${hold.ev.name} in ${plural7(hold.weeks, "week")} without giving the singles match away` : "";
+      const ba = backers(c, a, [b]).filter((x) => !heatOf(c, x.id, a) && !bondOf(c, x.id, b));
+      const bb = backers(c, b, [a]).filter((x) => !heatOf(c, x.id, b) && !bondOf(c, x.id, a));
+      [[a, b, bb], [b, a, ba]].forEach(([x, y, hers]) => hers.slice(0, 2).forEach((h) => {
+        out.push(idea(c, "build", [solo(x), solo(h.id)], {
+          score: 1.2 + 0.6 * heat2 + build + 0.2 * (h.bond || 1),
+          weight: 5,
+          why: [`Rivals face each other\u2019s allies: ${nm6(c, x)} against ${nm6(c, h.id)}, ${nm6(c, y)}\u2019s ${h.how}`, lead, buildWhy],
+          feud: key
+        }));
+      }));
+      if (ba[0] && bb[0] && ba[0].id !== bb[0].id) {
+        const sa = pairSide(c, a, ba[0].id), sb = pairSide(c, b, bb[0].id);
+        const tstip = stipFor(c, "tag", heat2, `${key}:tag`, { tag: true });
+        out.push(idea(c, "build", [sa, sb], {
+          stip: tstip.stip,
+          score: 1.5 + 0.7 * heat2 + build + (sa.team && sb.team ? 0.5 : 0),
+          weight: 5.5,
+          why: [`${nm6(c, a)} and ${nm6(c, b)} on opposite sides, each with a ${ba[0].how === bb[0].how ? ba[0].how : "partner"}`, lead, buildWhy, tstip.why],
+          feud: key
+        }));
+      }
+      [[a, b], [b, a]].forEach(([x, y]) => backers(c, x, [y]).filter((f) => !f.partner && lvl(c, "friends", x, f.id) && !bondOf(c, f.id, y)).slice(0, 1).forEach((f) => {
+        out.push(idea(c, "defend", [solo(f.id), solo(y)], {
+          score: 1.3 + 0.5 * lvl(c, "friends", x, f.id) + 0.5 * heat2 + build * 0.5,
+          weight: 5,
+          why: [`${nm6(c, f.id)} stands up for a friend: ${nm6(c, x)}\u2019s ${lvl(c, "grudge", x, y) || lvl(c, "grudge", y, x) ? "feud" : "rivalry"} with ${nm6(c, y)}`, lead],
+          feud: key
+        }));
+      }));
+    });
+    return out;
+  }
+  function teamIdeas(c) {
+    const out = [];
+    const teams = c.st.teams.filter((t) => t.active && freeOf(c, t, 9).length >= 2).map((t) => ({ t, ids: freeOf(c, t, 9) })).filter((x) => genderOf(c, x.ids) !== "mixed");
+    const teamHeat = (x, y) => Math.max(0, ...x.t.members.flatMap((p) => y.t.members.map((q) => heatOf(c, p, q))));
+    teams.forEach((x, i) => teams.slice(i + 1).forEach((y) => {
+      if (x.t.members.some((id) => y.t.members.includes(id)) || genderOf(c, x.ids) !== genderOf(c, y.ids)) return;
+      const heat2 = teamHeat(x, y);
+      const [rx, ry] = [c.teamRank.get(x.t.id), c.teamRank.get(y.t.id)];
+      const why2 = [];
+      let s = 1;
+      if (heat2) {
+        s += heat2;
+        why2.push(`${x.t.name} and ${y.t.name} are at odds (heat ${heat2} between them)`);
+      }
+      if (rx && ry) {
+        const close2 = 1 - Math.min(1, Math.abs(rx.score - ry.score) / 0.3);
+        s += close2;
+        if (close2 >= 0.5) why2.push(`Close in the tag team standings: #${rx.rank} and #${ry.rank}`);
+      }
+      const chasing = [x, y].find((z) => z.t.members.some((id) => goal2(c, id) === `Tag team gold with ${z.t.name}`));
+      if (chasing) {
+        s += 0.5;
+        why2.push(`${chasing.t.name} are chasing tag team gold`);
+      }
+      const met = meetings(c, x.ids[0], y.ids[0], 2);
+      if (met.length) s -= 1.5;
+      if (!why2.length) why2.push(`${x.t.name} against ${y.t.name}: two teams on the show`);
+      const tstip = stipFor(c, "tag", heat2, `${x.t.id}:${y.t.id}`, { tag: true });
+      out.push(idea(
+        c,
+        "teams",
+        [{ team: x.t.id, wrestlers: x.ids.slice(0, 2) }, { team: y.t.id, wrestlers: y.ids.slice(0, 2) }],
+        { stip: tstip.stip, score: s, weight: 5 + (heat2 ? 0.5 : 0), why: [...why2, tstip.why] }
+      ));
+      if (x.ids.length >= 3 && y.ids.length >= 3) {
+        out.push(idea(
+          c,
+          "teams",
+          [{ team: x.t.id, wrestlers: x.ids.slice(0, 3) }, { team: y.t.id, wrestlers: y.ids.slice(0, 3) }],
+          { score: s + 0.3, weight: 6, why: [`Faction against faction: ${x.t.name} and ${y.t.name}`, ...why2] }
+        ));
+      }
+      if (heat2) {
+        const pairs = x.ids.flatMap((p) => y.ids.map((q) => [p, q])).sort((u, v) => heatOf(c, v[0], v[1]) - heatOf(c, u[0], u[1]));
+        pairs.slice(0, 2).forEach(([p, q]) => {
+          if (genderOf(c, [p, q]) === "mixed") return;
+          out.push(idea(c, "teams", [solo(p), solo(q)], {
+            score: 1 + 0.5 * heat2 + 0.3 * heatOf(c, p, q),
+            weight: 4.5,
+            why: [`${nm6(c, p)} of ${x.t.name} against ${nm6(c, q)} of ${y.t.name} \u2014 their teams are at odds`, ...why2.slice(0, 1)]
+          }));
+        });
+      }
+    }));
+    teams.filter((x) => x.ids.length >= 2).forEach((x) => [...c.free].filter((id) => !x.t.members.includes(id) && genderOf(c, [id, ...x.ids]) !== "mixed").forEach((id) => {
+      const h = Math.max(0, ...x.t.members.map((p) => lvl(c, "grudge", id, p)));
+      if (h < 1 || backers(c, id).length) return;
+      out.push(idea(c, "teams", [solo(id), { team: x.t.id, wrestlers: x.ids.slice(0, 2) }], {
+        score: 0.9 + 0.5 * h,
+        weight: 4.5,
+        why: [`${nm6(c, id)} holds a grudge against ${x.t.name} \u2014 and has nobody to stand with`]
+      }));
+    }));
+    return out;
+  }
+  function upsetIdeas(c) {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    [...c.free].forEach((id) => (c.hist.get(id) || []).filter((x) => c.wk - x.wk <= 2 && x.res === "W" && isSingles(x.m)).forEach((x) => {
+      const loser = x.m.sides[1 - x.side].wrestlers[0];
+      const [rw, rl] = [c.rank.get(id), c.rank.get(loser)];
+      const champ = held(c, loser);
+      const upset = rw && rl && rw.rank >= rl.rank + 3 || !held(c, id).length && champ.length;
+      if (!upset || seen.has(`${id}>${loser}`)) return;
+      seen.add(`${id}>${loser}`);
+      const how = `${nm6(c, id)} upset ${nm6(c, loser)} ${ago(c, x.wk)}${rw && rl ? ` (#${rw.rank} over #${rl.rank})` : champ.length ? `, the ${champ[0].name} holder` : ""}`;
+      if (c.free.has(loser)) {
+        const proud = (W2(c, loser) || { traits: [] }).traits.some((tr) => tr === "proud" || tr === "hot-headed");
+        out.push(idea(c, "rematch", [solo(id), solo(loser)], {
+          score: 2.2 + (proud ? 0.5 : 0),
+          weight: 5,
+          why: [`Rematch: ${how}`, proud ? `${nm6(c, loser)} won\u2019t let it go` : ""]
+        }));
+      }
+      const g = (W2(c, id) || {}).gender;
+      [...c.free].filter((o) => o !== id && o !== loser && (W2(c, o) || {}).gender === g && (c.rank.get(o) || { rank: 99 }).rank <= 3).slice(0, 2).forEach((o) => {
+        out.push(idea(c, "step", [solo(id), solo(o)], {
+          score: 1.8,
+          weight: 4.5,
+          why: [`A step up after an upset: ${how}`, `${nm6(c, o)} is ${rankLine(c, o)}`]
+        }));
+      });
+    }));
+    return out;
+  }
+  var held = (c, id) => c.st.titles.filter((t) => {
+    const r = currentReign(c.st, t.id);
+    return r && r.holder.type === "wrestler" && r.holder.id === id;
+  });
+  function chanceIdeas(c) {
+    const out = [];
+    c.balance.groups.forEach((g) => g.rows.filter((r) => r.flagged && (r.kind === "team" || c.free.has(r.id))).forEach((r) => {
+      const ideas = matchIdeas(c.st, { kind: r.kind, id: r.id }, { showId: c.showId, balanceResult: c.balance });
+      const typical = Math.round(g.typical * r.weeks * 10) / 10;
+      const short = `${r.name} ${r.kind === "team" ? "have" : "has"} had ${plural7(r.matches, "match", "matches")} in ${plural7(r.weeks, "week")} \u2014 about ${typical} is typical here`;
+      ideas.forEach((x, i) => {
+        const sides = x.lineup.map((sd2) => ({ team: sd2.team || null, wrestlers: sd2.team ? sd2.wrestlers.filter((id) => c.free.has(id)).slice(0, 2) : sd2.wrestlers }));
+        if (sides.some((sd2) => sd2.wrestlers.length < (r.kind === "team" ? 2 : 1) || sd2.wrestlers.some((id) => !c.free.has(id)))) return;
+        out.push(idea(c, "chance", sides, {
+          score: 1.8 + (r.severity === "well below" ? 0.7 : 0) + 0.3 * x.score - 0.2 * i,
+          weight: 3.5,
+          why: [`A chance: ${short}`, x.reasons[0] ? `Against ${x.opponent.name}: ${x.reasons[0].charAt(0).toLowerCase()}${x.reasons[0].slice(1)}` : ""]
+        }));
+      });
+    }));
+    return out;
+  }
+  function turnIdeas(c) {
+    const out = [];
+    [...c.free].filter((id) => mood(c, id).label === "cold").forEach((id) => {
+      const me = c.rank.get(id);
+      const g = (W2(c, id) || {}).gender;
+      [...c.free].filter((o) => o !== id && (W2(c, o) || {}).gender === g && mood(c, o).label !== "hot" && !partnered(c, id, o)).map((o) => ({ o, gap: me && c.rank.get(o) ? Math.abs(c.rank.get(o).rank - me.rank) : 5 })).sort((a, b) => a.gap - b.gap || nm6(c, a.o).localeCompare(nm6(c, b.o))).slice(0, 2).forEach(({ o }) => {
+        out.push(idea(c, "turn", [solo(id), solo(o)], {
+          score: 1.2,
+          weight: 3,
+          why: [`${nm6(c, id)} is cold (${mood(c, id).form.slice(-5)}) \u2014 a chance to turn it around`, rankLine(c, o) ? `${nm6(c, o)} is ${rankLine(c, o)}` : ""]
+        }));
+      });
+    });
+    return out;
+  }
+  function arrivalIdeas(c) {
+    if (!c.showId) return [];
+    const out = [];
+    const tierNo2 = (id) => c.st.tiers.findIndex((t) => t.shows.includes(id));
+    c.st.moves.filter((mv2) => mv2.to === c.showId && c.free.has(mv2.wrestler) && c.wk - weekNo(c.st, mv2.at) <= 2 && c.wk >= weekNo(c.st, mv2.at)).forEach((mv2) => {
+      const id = mv2.wrestler;
+      const since = (c.hist.get(id) || []).some((x) => x.ev.showId === c.showId && compareStamps(c.st, x.ev.at, mv2.at) > 0);
+      const moves = movesOf(c.st, id);
+      if (since || moves[moves.length - 1] !== mv2) return;
+      const from = mv2.from ? showById(c.st, mv2.from) : null;
+      const how = c.st.drafts.some((x) => x.move === mv2.id) ? `drafted from ${from ? from.name : "another show"}` : c.st.relegations.some((x) => x.move === mv2.id) ? `relegated from ${from ? from.name : "another show"}` : from ? tierNo2(mv2.from) > tierNo2(c.showId) && tierNo2(c.showId) >= 0 ? `up from ${from.name}` : `over from ${from.name}` : "new to the roster";
+      const g = (W2(c, id) || {}).gender;
+      const pool = [...c.free].filter((o) => o !== id && (W2(c, o) || {}).gender === g && !held(c, o).length);
+      const mid = pool.map((o) => ({ o, r: (c.rank.get(o) || { rank: 50 }).rank })).sort((a, b) => Math.abs(a.r - 4) - Math.abs(b.r - 4) || nm6(c, a.o).localeCompare(nm6(c, b.o)));
+      mid.slice(0, 2).forEach(({ o }) => out.push(idea(c, "arrival", [solo(id), solo(o)], {
+        score: 2,
+        weight: 4,
+        why: [`New arrival: ${nm6(c, id)}, ${how} ${ago(c, weekNo(c.st, mv2.at))} \u2014 a first match on ${c.show.name}`, rankLine(c, o) ? `${nm6(c, o)} is ${rankLine(c, o)}` : ""]
+      })));
+    });
+    return out;
+  }
+  function freshIdeas(c) {
+    const out = [];
+    const ids = [...c.free].sort();
+    ids.forEach((a) => {
+      const g = (W2(c, a) || {}).gender;
+      const ra = c.rank.get(a);
+      ids.filter((b) => b !== a && (W2(c, b) || {}).gender === g && !partnered(c, a, b) && !bondOf(c, a, b)).map((b) => {
+        const rb = c.rank.get(b);
+        const close2 = ra && rb ? 1 - Math.min(1, Math.abs(ra.score - rb.score) / 0.3) : 0.3;
+        const met = meetings(c, a, b);
+        const last = met.length ? met[met.length - 1].wk : null;
+        const both = `${nm6(c, a)} and ${nm6(c, b)}`;
+        const why2 = [last != null && c.wk - last <= 2 ? `${both} are both free tonight \u2014 they met ${ago(c, last)}` : ra && rb && close2 >= 0.5 ? ra.rank === rb.rank ? `Fresh matchup, level at #${ra.rank} in the ${division(g)} standings` : `Fresh matchup, close in the ${division(g)} standings: #${Math.min(ra.rank, rb.rank)} and #${Math.max(ra.rank, rb.rank)}` : last == null ? `Fresh matchup: ${both} haven\u2019t met` : `${both} are both free tonight \u2014 last met ${ago(c, last)}`];
+        return { b, s: 0.3 + 0.8 * close2 + (last == null ? 0.3 : 0), why: why2 };
+      }).filter((x) => x.b > a).forEach((x) => {
+        out.push(idea(c, "fresh", [solo(a), solo(x.b)], { score: x.s, weight: 2, why: x.why }));
+      });
+    });
+    GENDERS.forEach((g) => {
+      const idle = [...c.free].filter((id) => (W2(c, id) || {}).gender === g).map((id) => ({ id, gap: lastMatch(c, id) == null ? 9 : c.wk - lastMatch(c, id) })).filter((x) => x.gap >= 2).sort((a, b) => b.gap - a.gap || a.id.localeCompare(b.id));
+      if (idle.length >= 3) {
+        out.push(idea(c, "multi", idle.slice(0, 3).map((x) => solo(x.id)), {
+          score: 0.9,
+          weight: 3,
+          why: [`Three who haven\u2019t wrestled for a while: ${listOf(idle.slice(0, 3).map((x) => nm6(c, x.id)))}`]
+        }));
+      }
+      if (idle.length >= 4) {
+        out.push(idea(c, "multi", idle.slice(0, 4).map((x) => solo(x.id)), {
+          score: 0.8,
+          weight: 3,
+          why: ["Four who haven\u2019t wrestled for a while, in one match"]
+        }));
+      }
+      const byRank = [...c.free].filter((id) => (W2(c, id) || {}).gender === g).sort((x, y) => (c.rank.get(x) || { rank: 99 }).rank - (c.rank.get(y) || { rank: 99 }).rank || x.localeCompare(y));
+      const at2 = (id) => c.rank.get(id) ? `#${c.rank.get(id).rank} ${nm6(c, id)}` : nm6(c, id);
+      byRank.forEach((_, i) => {
+        const three = byRank.slice(i, i + 3), four = byRank.slice(i, i + 4);
+        if (three.length === 3) {
+          out.push(idea(c, "fresh", three.map(solo), {
+            score: 0.4,
+            weight: 3,
+            why: [`A triple threat, close in the ${division(g)} standings: ${listOf(three.map(at2))}`]
+          }));
+        }
+        if (four.length === 4) {
+          out.push(idea(c, "fresh", four.map(solo), {
+            score: 0.3,
+            weight: 3,
+            why: [`A fatal 4-way, close in the ${division(g)} standings: ${listOf(four.map(at2))}`]
+          }));
+          const [p, q, r, t] = four;
+          out.push(idea(c, "fresh", [pairSide(c, p, t), pairSide(c, q, r)], {
+            score: 0.2,
+            weight: 3,
+            why: [`A tag match between four close in the ${division(g)} standings: ${listOf(four.map(at2))}`]
+          }));
+        }
+      });
+      const top = [...c.free].filter((id) => (W2(c, id) || {}).gender === g && c.rank.get(id) && !held(c, id).length).sort((a, b) => c.rank.get(a).rank - c.rank.get(b).rank).slice(0, 3);
+      if (top.length === 3) {
+        out.push(idea(c, "multi", top.map(solo), {
+          score: 1.1,
+          weight: 4.5,
+          why: [`The top of the ${division(g)} standings in one match: ${top.map((id) => `#${c.rank.get(id).rank} ${nm6(c, id)}`).join(", ")}`]
+        }));
+      }
+    });
+    return out;
+  }
+  function allIdeas(c) {
+    const ideas = [
+      ...titleIdeas(c),
+      ...feudIdeas(c),
+      ...teamIdeas(c),
+      ...upsetIdeas(c),
+      ...chanceIdeas(c),
+      ...turnIdeas(c),
+      ...arrivalIdeas(c),
+      ...freshIdeas(c)
+    ];
+    const best = /* @__PURE__ */ new Map();
+    ideas.forEach((x) => {
+      const b = best.get(x.key);
+      if (!b) {
+        best.set(x.key, x);
+        return;
+      }
+      const [top, other2] = x.score > b.score ? [x, b] : [b, x];
+      const leads = (y) => y.leads || [y.why[0]];
+      best.set(x.key, other2.kind === "fresh" ? top : { ...top, leads: [.../* @__PURE__ */ new Set([...leads(top), ...leads(other2)])], why: [.../* @__PURE__ */ new Set([...top.why, ...leads(other2)])] });
+    });
+    return [...best.values()].filter((x) => !c.passed.has(x.key) && x.people.length === new Set(x.people).size);
+  }
+  function need(c, ids) {
+    return ids.reduce((n, id) => {
+      const last = lastMatch(c, id);
+      return n + Math.min(4, last == null ? 4 : c.wk - last) * 0.15;
+    }, 0) / Math.max(1, ids.length);
+  }
+  function assemble(c, ideas, slots, counted, prefer = null) {
+    const types = Object.fromEntries(Object.entries(c.settings.mix).map(([k, v]) => [k, MIX_WEIGHT[v]]));
+    types.other = 0.2;
+    const offered = new Set(ideas.map((x) => x.type));
+    const sum = Object.entries(types).filter(([k]) => offered.has(k)).reduce((n, [, w]) => n + w, 0) || 1;
+    const genders = GENDERS.map((g) => [g, [...c.free].filter((id) => (W2(c, id) || {}).gender === g).length]).filter(([, n]) => n >= 2);
+    const people = genders.reduce((n, [, k]) => n + k, 0) || 1;
+    const total = counted.length + slots;
+    const count = { type: {}, gender: {}, feud: {}, titles: /* @__PURE__ */ new Set() };
+    const note = (x) => {
+      count.type[x.type] = (count.type[x.type] || 0) + 1;
+      count.gender[x.gender] = (count.gender[x.gender] || 0) + 1;
+      if (x.feud) count.feud[x.feud] = (count.feud[x.feud] || 0) + 1;
+      if (x.titleId) count.titles.add(x.titleId);
+    };
+    counted.forEach((m) => note({ type: typeOf(m), gender: genderOf(c, inMatch(m)), titleId: m.titleId, feud: null }));
+    const cap = c.ple ? Infinity : c.settings.titles;
+    const used = /* @__PURE__ */ new Set();
+    const picked = [];
+    const rate = (x) => {
+      if (picked.includes(x) || x.people.some((id) => used.has(id) || !c.free.has(id)) || !types[x.type]) return null;
+      if (x.titleId && (count.titles.has(x.titleId) || count.titles.size >= cap)) return null;
+      if (x.feud && (count.feud[x.feud] || 0) >= RULES4.sameFeud) return null;
+      let s = x.score + (draw("book", c.ev.id, c.nonce, x.key) - 0.5) * RULES4.jitter;
+      s += RULES4.mixPull * (types[x.type] / sum * total - (count.type[x.type] || 0));
+      const share = genders.find(([g]) => g === x.gender);
+      if (share) s += RULES4.divisionPull * (share[1] / people * total - (count.gender[x.gender] || 0));
+      if (x.feud && count.feud[x.feud]) s -= 2;
+      const left = c.free.size - used.size - x.people.length, after = slots - picked.length - 1;
+      if (left < 2 * after && x.people.length > 2) s -= 3;
+      s += need(c, x.people);
+      if (prefer) s += (x.type === prefer.type ? 0.6 : 0) + (x.gender === prefer.gender ? 0.6 : 0);
+      return s;
+    };
+    const bestOf = (list) => list.reduce((best, x) => {
+      const s = rate(x);
+      return s != null && (!best || s > best.s) ? { x, s } : best;
+    }, null);
+    for (let n = 0; n < slots; n++) {
+      const best = bestOf(ideas) || bestOf(filler(c, [...c.free].filter((id) => !used.has(id)), types).filter((x) => !c.passed.has(x.key)));
+      if (!best) break;
+      picked.push(best.x);
+      best.x.people.forEach((id) => used.add(id));
+      note(best.x);
+    }
+    return picked;
+  }
+  function filler(c, left, types) {
+    const out = [];
+    GENDERS.forEach((g) => {
+      const ids = left.filter((id) => (W2(c, id) || {}).gender === g).sort((x, y) => (c.rank.get(x) || { rank: 99 }).rank - (c.rank.get(y) || { rank: 99 }).rank || x.localeCompare(y));
+      const who = (n) => listOf(ids.slice(0, n).map((id) => nm6(c, id)));
+      const add2 = (type, n, sides, why2) => {
+        if (types[type] && ids.length >= n) out.push(idea(c, "fresh", sides(ids.slice(0, n)), { score: 0, weight: 2, why: [why2] }));
+      };
+      add2("singles", 2, (x) => x.map(solo), `${who(2)} are both free tonight`);
+      add2("triple", 3, (x) => x.map(solo), `A triple threat for three who are free tonight: ${who(3)}`);
+      add2("fourway", 4, (x) => x.map(solo), `A fatal 4-way for four who are free tonight: ${who(4)}`);
+      add2("tag", 4, ([p, q, r, t]) => [pairSide(c, p, t), pairSide(c, q, r)], `A tag match for four who are free tonight: ${who(4)}`);
+      add2(
+        "trios",
+        6,
+        (x) => [x.filter((_, i) => i % 2 === 0), x.filter((_, i) => i % 2)].map((ws) => ({ team: null, wrestlers: ws })),
+        `Six free tonight, three on three: ${who(6)}`
+      );
+    });
+    return out;
+  }
+  function runningOrder(picked) {
+    const list = [...picked].sort((a, b) => a.weight - b.weight || a.score - b.score);
+    if (list.length < 3) return list;
+    const main = list.pop();
+    const opener = list.findIndex((x) => x.type !== "singles");
+    if (opener > 0) list.unshift(list.splice(opener, 1)[0]);
+    return [...list, main];
+  }
+  function toSpec(x) {
+    return { sides: x.sides, titleId: x.titleId, stip: x.stip, notes: x.notes, auto: { kind: x.kind, key: x.key, why: x.why.slice(0, 4) } };
+  }
+  function draftCard(st, eventId, { nonce = 0, keep = [] } = {}) {
+    const ev = eventById(st, eventId);
+    if (!ev) return { size: 0, slots: 0, matches: [], short: "That show isn\u2019t on the calendar." };
+    const c = context2(st, ev, { nonce, keep });
+    const slots = c.size - ev.matches.length - keep.length;
+    const where = c.show ? c.show.name : "the roster";
+    if (slots <= 0) return { size: c.size, slots: 0, matches: [], short: `The card already holds ${plural7(ev.matches.length + keep.length, "match", "matches")} of ${c.size}.` };
+    const picked = runningOrder(assemble(c, allIdeas(c), slots, [...ev.matches, ...keep]));
+    const away = c.roster.length - c.avail.length;
+    const short = picked.length >= slots ? null : !picked.length ? `Nothing fits: ${c.free.size ? `only ${plural7(c.free.size, "wrestler")}` : "nobody"} available on ${where}${away ? ` (${away} injured, away or out)` : ""}.` : `Only ${plural7(picked.length, "match", "matches")} ${picked.length === 1 ? "fits" : "fit"} with ${plural7(c.free.size, "wrestler")} available on ${where}${away ? ` (${away} injured, away or out)` : ""}.`;
+    return { size: c.size, slots, matches: picked, short };
+  }
+  function redraft(st, eventId) {
+    const ev = eventById(st, eventId);
+    const d = ev && ev.draft;
+    if (!d) return { list: [], nonce: 0, short: null };
+    const keep = d.matches.filter((x) => !x.auto || x.auto.edited);
+    const nonce = d.nonce + 1;
+    const res = draftCard(st, eventId, { nonce, keep });
+    const fresh = [...res.matches];
+    const list = d.matches.map((x) => keep.includes(x) ? { keep: x.id } : fresh.length ? toSpec(fresh.shift()) : null).filter(Boolean);
+    fresh.forEach((x) => list.push(toSpec(x)));
+    return { list, nonce, short: res.short };
+  }
+  function redrawOne(st, eventId, dmId) {
+    const ev = eventById(st, eventId);
+    const d = ev && ev.draft;
+    const dm = d && d.matches.find((x) => x.id === dmId);
+    if (!dm) return null;
+    const others = d.matches.filter((x) => x !== dm);
+    const c = context2(st, ev, { nonce: d.nonce + d.passed.length + 1, keep: others });
+    const old = dm.auto ? dm.auto.key : matchKey(dm);
+    const ideas = allIdeas(c).filter((x) => x.key !== old && x.key !== matchKey(dm));
+    const picked = assemble(c, ideas, 1, [...ev.matches, ...others], { type: typeOf(dm), gender: genderOf(c, inMatch(dm)) });
+    return picked[0] || null;
+  }
+  function draftNotes(st, ev) {
+    const out = /* @__PURE__ */ new Map();
+    if (!ev.draft) return out;
+    const count = /* @__PURE__ */ new Map();
+    [...ev.matches, ...ev.draft.matches].forEach((m) => inMatch(m).forEach((id) => count.set(id, (count.get(id) || 0) + 1)));
+    ev.draft.matches.forEach((dm) => {
+      const notes = [];
+      inMatch(dm).forEach((id) => {
+        const w = wrestlerById(st, id);
+        if (!w) return;
+        if (w.status !== "active") notes.push(`${w.name} is ${w.status}`);
+        else if (ev.draft.out.includes(id)) notes.push(`${w.name} isn\u2019t at this show`);
+        if (ev.showId && w.showId !== ev.showId) notes.push(`${w.name} is on ${w.showId ? showById(st, w.showId).name : "no show"} now`);
+        if (count.get(id) > 1) notes.push(`${w.name} is in another match on this card`);
+      });
+      const t = dm.titleId && titleById(st, dm.titleId);
+      const r = t && currentReign(st, t.id);
+      if (t && !t.active) notes.push(`The ${t.name} is retired`);
+      if (r && !dm.sides.some((sd2) => r.holder.type === "team" ? sd2.team === r.holder.id : sd2.wrestlers.includes(r.holder.id))) {
+        notes.push(`The ${t.name} ${r.holder.type === "team" ? "champions" : "champion"}, ${holderName(st, r.holder)}, ${r.holder.type === "team" ? "aren\u2019t" : "isn\u2019t"} in it`);
+      }
+      if (notes.length) out.set(dm.id, [...new Set(notes)]);
+    });
+    return out;
+  }
+  function weekPlan(st, week) {
+    const season = activeSeason(st);
+    const evs = st.events.filter((e) => e.at.season === season.id && e.at.week === week);
+    const rows = [];
+    st.shows.forEach((sh) => {
+      const e = evs.find((x) => x.kind === "weekly" && x.showId === sh.id) || null;
+      const avail = st.wrestlers.filter((w) => w.showId === sh.id && w.status === "active").length;
+      rows.push({ show: sh, event: e, day: e ? e.at.day : sh.day, ...planFor(st, e, avail, sh.name) });
+    });
+    evs.filter((e) => e.kind === "ple").forEach((e) => {
+      const avail = st.wrestlers.filter((w) => (e.showId ? w.showId === e.showId : !!w.showId) && w.status === "active").length;
+      rows.push({ show: e.showId ? showById(st, e.showId) : null, event: e, day: e.at.day, ...planFor(st, e, avail, e.name) });
+    });
+    return rows.sort((a, b) => a.day - b.day);
+  }
+  function planFor(st, e, avail, name) {
+    if (avail < 2) return { action: "skip", text: `${avail ? "Only one wrestler" : "Nobody"} available on ${name}` };
+    if (!e) return { action: "plan", text: "Plan the episode and draft its card" };
+    const cs = cardStatus(e);
+    if (cs.played) return { action: "skip", text: "Results are in \u2014 nothing to draft" };
+    if (e.draft) return { action: "skip", text: "A draft is waiting \u2014 draw it again from its page" };
+    const size = cardSize(st, e);
+    if (cs.total >= size) return { action: "skip", text: `Already booked: ${plural7(cs.total, "match", "matches")}` };
+    return { action: "draft", text: cs.total ? `Draft the rest: ${cs.total} of ${size} booked` : `Draft ${plural7(size, "match", "matches")}` };
+  }
+
+  // js/universe/autobook.js
+  var plural8 = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  var nope = (msg) => {
+    throw new UniverseError(msg);
+  };
+  function uvDraftCard(eventId) {
+    commit((st) => {
+      const r = draftCard(st, eventId);
+      if (!r.matches.length) nope(r.short || "Nothing to draft.");
+      setDraft(st, eventId, r.matches.map(toSpec));
+      return r;
+    }, (r) => `Draft card: ${plural8(r.matches.length, "match", "matches")}${r.short ? ` \u2014 ${r.short}` : ""}. Nothing is booked until you book it`);
+  }
+  function uvDraftAgain(eventId) {
+    const ev = eventById(uni(), eventId);
+    const kept = ev.draft.matches.filter((x) => !x.auto || x.auto.edited).length;
+    const redo = ev.draft.matches.length - kept;
+    confirmThen(
+      "Draw the rest again?",
+      `${kept ? `The ${plural8(kept, "match", "matches")} you changed or added stay${kept === 1 ? "s" : ""} as ${kept === 1 ? "it is" : "they are"}. ` : ""}${redo ? `The other ${plural8(redo, "match", "matches")} ${redo === 1 ? "is" : "are"} drawn again` : "The card is filled up again"}; anything you took off stays off.`,
+      "Draw again",
+      () => commit((st) => {
+        const r = redraft(st, eventId);
+        setDraft(st, eventId, r.list, { nonce: r.nonce });
+        return r;
+      }, (r) => `Drawn again${r.short ? ` \u2014 ${r.short}` : ""}`)
+    );
+  }
+  function uvDraftRedraw(eventId, dmId) {
+    commit((st) => {
+      const x = redrawOne(st, eventId, dmId);
+      if (!x) nope("Nothing else fits here: everyone else available is already on the card. Change this one by hand, or take it off.");
+      redrawDraftMatch(st, eventId, dmId, toSpec(x));
+      return x;
+    }, (x) => `Drawn again \u2014 ${x.why[0]}`);
+  }
+  function uvDraftDrop(eventId, dmId) {
+    commit((st) => deleteDraftMatch(st, eventId, dmId), "Taken off the draft \u2014 it won\u2019t be drawn again for this show");
+  }
+  function uvDraftMove(eventId, dmId, d) {
+    commit((st) => moveDraftMatch(st, eventId, dmId, d));
+  }
+  function uvDraftDiscard(eventId) {
+    confirmThen(
+      "Discard this draft?",
+      "The draft goes, with any changes you made to it. Nothing on the card changes.",
+      "Discard",
+      () => commit((st) => discardDraft(st, eventId), "Draft discarded")
+    );
+  }
+  function uvDraftBook(eventId) {
+    const st = uni();
+    const ev = eventById(st, eventId);
+    const n = ev.draft.matches.length;
+    confirmThen(
+      `Book ${plural8(n, "match", "matches")}?`,
+      `${ev.matches.length ? `They go on the card after the ${plural8(ev.matches.length, "match", "matches")} already there, ` : "They go on the card "}exactly as the draft has them. Then play them in WWE 2K25 and enter each result \u2014 nothing is decided for you.`,
+      "Book them",
+      () => commit((s) => bookDraft(s, eventId), (made) => `${plural8(made.length, "match", "matches")} booked on ${ev.name}`)
+    );
+  }
+  var kindLabel = (a) => a ? KIND_LABEL2[a.kind] || "Drafted" : "Yours";
+  function draftMatch(st, ev, dm, i, first, notes) {
+    const title2 = dm.titleId && titleById(st, dm.titleId);
+    const a = dm.auto;
+    const move = (d) => `<div class="uv-ic mv" title="Move ${d < 0 ? "up" : "down"}" onclick="uvDraftMove('${ev.id}','${dm.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
+    const why2 = a ? a.why : [];
+    return `<div class="uv-mc draft${a ? "" : " own"}" data-dm="${dm.id}">
+    <div class="uv-mc-top"><span class="n">${first + i + 1}</span>${kindChip(dm)}${title2 ? chip(title2.name, "gold") : ""}${dm.stip ? chip(dm.stip) : ""}
+      <span class="st">${a ? a.edited ? "Draft \xB7 changed" : "Draft" : "Draft \xB7 yours"}</span></div>
+    <div class="uv-mc-body">${vsLine(st, dm)}</div>
+    ${dm.notes ? `<div class="uv-mc-n">${esc(dm.notes)}</div>` : ""}
+    ${why2.length ? `<div class="uv-why" title="${esc(kindLabel(a))}"><b>Why</b> ${esc(why2[0])}${why2.length > 1 ? `<ul>${why2.slice(1, 4).map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}</div>` : ""}
+    ${a && a.edited ? '<div class="uv-mc-d">You changed it, so it stays as you have it when the rest is drawn again.</div>' : ""}
+    ${notes ? `<div class="uv-mc-d warn">${notes.map(esc).join(" \xB7 ")}</div>` : ""}
+    <div class="uv-mc-acts">
+      <div class="uv-btn sm2" onclick="uvDraftEdit('${ev.id}','${dm.id}')">${ICON.edit}Edit</div>
+      <div class="uv-btn sm2" onclick="uvDraftRedraw('${ev.id}','${dm.id}')">${ICON.redraw}Draw again</div>
+      <span class="sp"></span>${move(-1)}${move(1)}
+      <div class="uv-ic mv" title="Take it off the draft" onclick="uvDraftDrop('${ev.id}','${dm.id}')">${ICON.x}</div>
+    </div>
+  </div>`;
+  }
+  function uvDraftBlock(st, ev) {
+    const d = ev.draft;
+    if (!d) {
+      if (cardStatus(ev).state === "complete") return "";
+      const size2 = cardSize(st, ev);
+      const room = size2 - ev.matches.length;
+      return `<div class="uv-autorow${room > 0 ? "" : " quiet"}" onclick="uvDraftCard('${ev.id}')">${ICON.spark}<div><b>Draft the card</b>
+      <span>${room > 0 ? `The auto booker suggests ${ev.matches.length ? `the other ${plural8(room, "match", "matches")}` : `${plural8(size2, "match", "matches")}`}, each with why \u2014 you change anything, then book it` : `Already ${plural8(ev.matches.length, "match", "matches")} of ${size2} \u2014 raise the size in its settings to draft more`}</span></div>${ICON.right}</div>`;
+    }
+    const notes = draftNotes(st, ev);
+    const out = d.out.map((id) => wrestlerById(st, id)).filter(Boolean);
+    const size = cardSize(st, ev);
+    const total = ev.matches.length + d.matches.length;
+    return `${section("Draft card", d.matches.length, "var(--uv-gold)")}
+    <div class="uv-draft" data-draft="${ev.id}">
+      <div class="uv-draft-note">${ICON.spark}<span>Drafted by the auto booker${d.nonce ? ` (draw ${d.nonce + 1})` : ""} for a ${size}-match card.
+        Nothing here is booked yet and no winner is picked. Change anything \u2014 every match, who\u2019s in it, the order, the stipulation,
+        the title \u2014 then book it.${total !== size ? ` ${total < size ? `The card comes to ${total} of ${size}.` : `The card comes to ${total}, over its ${size}.`}` : ""}</span></div>
+      ${d.matches.length ? `<div class="uv-cards">${d.matches.map((dm, i) => draftMatch(st, ev, dm, i, ev.matches.length, notes.get(dm.id))).join("")}</div>` : empty(ICON.spark, "The draft is empty", "Add a match of your own, or draw the card again.")}
+      <div class="uv-add inset" onclick="uvDraftAdd('${ev.id}')">${ICON.plus}Add your own match</div>
+      <div class="uv-draft-out">Not at this show: <b>${out.length ? esc(out.map((w) => w.name).join(", ")) : "nobody"}</b>
+        <span class="uv-link" onclick="uvDraftOut('${ev.id}')">Change</span></div>
+      <div class="uv-page-acts"><div class="uv-btn pri" onclick="uvDraftBook('${ev.id}')">${ICON.check}Book this card</div></div>
+      <div class="uv-page-acts">
+        <div class="uv-btn" onclick="uvDraftAgain('${ev.id}')">${ICON.redraw}Draw the rest again</div>
+        <div class="uv-btn" onclick="uvBookerSettings('${ev.showId || ""}')">Settings</div>
+      </div>
+      <div class="uv-draft-foot"><span class="uv-link" onclick="uvDraftDiscard('${ev.id}')">Discard the draft</span>
+        <span class="uv-link" onclick="uvHowBooker()">How the auto booker works</span></div>
+    </div>`;
+  }
+  function uvAutoLine(m) {
+    if (!m.auto || !m.auto.why.length) return "";
+    return `<div class="uv-why small"><b>Auto-booked</b> ${esc(m.auto.why[0])}${m.auto.edited ? " <i>\xB7 changed by you</i>" : ""}</div>`;
+  }
+  var outPick = null;
+  function uvDraftOut(eventId) {
+    outPick = { eventId, ids: new Set(eventById(uni(), eventId).draft.out) };
+    openSheet(() => {
+      const st = uni();
+      const ev = eventById(st, outPick.eventId);
+      if (!ev || !ev.draft) return null;
+      const roster = st.wrestlers.filter((w) => ev.showId ? w.showId === ev.showId : !!w.showId).sort(byName);
+      const row2 = (w) => {
+        const off = w.status !== "active";
+        return `<label class="uv-check${off ? " dim" : ""}"><input type="checkbox"${outPick.ids.has(w.id) || off ? " checked" : ""}${off ? " disabled" : ""}
+        onchange="uvDraftOutPick('${w.id}',this.checked)"><span>${esc(w.name)}${off ? ` \u2014 ${w.status}` : ""}</span></label>`;
+      };
+      return {
+        title: "Not at this show",
+        body: `<p class="uv-p">Who isn\u2019t at ${esc(ev.name)} \u2014 for this show only. Anyone ticked is left out of whatever\u2019s drawn for it; a drafted
+          match they\u2019re in is drawn again without them. Injured and away wrestlers are left out anyway (change that on their page).</p>
+        <div class="uv-checks">${roster.map(row2).join("") || '<div class="fine">Nobody on the roster.</div>'}</div>
+        <div class="uv-btn pri full" onclick="uvDraftOutSave()">Save</div>`
+      };
+    });
+  }
+  function uvDraftOutPick(id, on) {
+    if (on) outPick.ids.add(id);
+    else outPick.ids.delete(id);
+  }
+  function uvDraftOutSave() {
+    const { eventId, ids } = outPick;
+    const r = commit((st) => {
+      setDraftOut(st, eventId, [...ids]);
+      let redrawn = 0, dropped = 0;
+      eventById(st, eventId).draft.matches.filter((dm) => dm.auto && !dm.auto.edited && dm.sides.some((sd2) => sd2.wrestlers.some((id) => ids.has(id)))).forEach((dm) => {
+        const x = redrawOne(st, eventId, dm.id);
+        if (x) {
+          redrawDraftMatch(st, eventId, dm.id, toSpec(x));
+          redrawn++;
+        } else {
+          deleteDraftMatch(st, eventId, dm.id);
+          dropped++;
+        }
+      });
+      return { redrawn, dropped };
+    }, (x) => `Saved${x.redrawn ? ` \u2014 ${plural8(x.redrawn, "match", "matches")} drawn again without them` : ""}${x.dropped ? ` \u2014 ${plural8(x.dropped, "match", "matches")} taken off: nothing else fits` : ""}`);
+    if (r.ok) closeSheet();
+  }
+  function uvDraftWeek(week) {
+    openSheet(() => {
+      const st = uni();
+      const rows = weekPlan(st, week);
+      const todo = rows.filter((r) => r.action !== "skip");
+      return {
+        title: `Draft week ${week}`,
+        body: `<p class="uv-p">The auto booker drafts a card for each show below, each by its own settings and roster. Nothing is booked:
+          each draft waits on its show\u2019s page for you to change and book. No winner is ever picked.</p>
+        <div class="uv-plan">${rows.map((r) => `<div class="uv-planrow${r.action === "skip" ? " off" : ""}" style="--c:${showColor(st, r.show ? r.show.id : null)}">
+          <div class="uv-main"><div class="nm">${esc(r.event ? r.event.name : `${r.show.name} \xB7 Week ${week}`)}</div><div class="sub">${esc(r.text)}</div></div>
+          ${r.action === "skip" ? "" : ICON.check}</div>`).join("")}</div>
+        ${todo.length ? `<div class="uv-btn pri full" onclick="uvDraftWeekGo(${week})">${ICON.spark}Draft ${plural8(todo.length, "card")}</div>` : '<div class="fine">Nothing to draft this week.</div>'}
+        <div class="fine">Planning an episode here is the same as tapping Plan on the calendar.</div>`
+      };
+    });
+  }
+  function uvDraftWeekGo(week) {
+    let runs = [];
+    const r = commit((st) => {
+      const rows = weekPlan(st, week).filter((x) => x.action !== "skip");
+      const evs = rows.map((x) => x.event || addEvent(st, { showId: x.show.id, week }));
+      runs = uvDirect(st);
+      let drafted = 0;
+      evs.forEach((ev) => {
+        const res = draftCard(st, ev.id);
+        if (!res.matches.length) return;
+        setDraft(st, ev.id, res.matches.map(toSpec));
+        drafted++;
+      });
+      return drafted;
+    }, (n) => `${plural8(n, "card")} drafted \u2014 each waits on its show\u2019s page until you book it${uvDirectedToast(runs)}`);
+    if (r.ok) closeSheet();
+  }
+  var TYPES = MATCH_TYPES;
+  function uvBookerSettings(showId) {
+    openSheet(() => {
+      const st = uni();
+      const id = showId || null;
+      const show = id ? showById(st, id) : null;
+      if (id && !show) return null;
+      const s = bookerSettings(st, id);
+      const t = id ? st.tiers.findIndex((x) => x.shows.includes(id)) : -1;
+      const seg = (key, items, cur) => `<div class="uv-seg" data-set="${key}">${items.map(([v, lb]) => `<div class="${cur === v ? "on" : ""}" data-v="${v}"
+      onclick="uvBookerSet('${showId}','${key}','${v}')">${esc(lb)}</div>`).join("")}</div>`;
+      const step = (key, v, min, max, label) => `<div class="uv-trcount" data-set="${key}"><span>${esc(label)}</span>
+      <div class="uv-ic mv" onclick="uvBookerSet('${showId}','${key}','${Math.max(min, v - 1)}')">${ICON.left}</div><b>${v}</b>
+      <div class="uv-ic mv" onclick="uvBookerSet('${showId}','${key}','${Math.min(max, v + 1)}')">${ICON.right}</div></div>`;
+      const levels = Object.entries(LEVEL_LABEL);
+      return {
+        title: show ? `${show.name}: auto booker` : "All-shows events",
+        body: `
+        <p class="uv-p">${show ? `How ${esc(show.name)}\u2019s cards are drafted. Anything you haven\u2019t set follows its tier${t >= 0 ? ` (tier ${t + 1})` : " (it\u2019s in none)"}.` : "How a premium live event for every show is drafted: everyone on any show can be in it, and any title."}
+          A draft already made stays as it is \u2014 draw it again to use new settings.</p>
+        <h4>${ICON.list}Matches on a card</h4>
+        ${show ? step("size", s.size, 1, MAX_CARD, "A weekly episode:") : ""}
+        ${step("pleSize", s.pleSize, 1, MAX_CARD, "A premium live event:")}
+        ${show ? step("titles", s.titles, 0, MAX_TITLE_MATCHES, "Title matches on an episode, at most:") : ""}
+        <div class="fine">At a premium live event, every title with a contender is on the line. A roster too small for the card gets as many
+          matches as it can fill.</div>
+        <h4>${ICON.team}Kinds of match</h4>
+        ${TYPES.map((k) => `<div class="uv-sub flush">${esc(TYPE_LABEL[k])}</div>${seg(`mix.${k}`, levels, s.mix[k])}`).join("")}
+        <h4>${ICON.star}Stipulations</h4>
+        ${seg("stips", Object.entries(STIP_LABEL), s.stips)}
+        <div class="fine">${esc({
+          never: "No stipulations \u2014 add your own on any match.",
+          feuds: "Only to settle a feud: a third meeting in a few weeks, or a heated one at a premium live event.",
+          often: "Also on heated feuds and tag feuds from week to week."
+        }[s.stips])}</div>
+        ${s.changed ? `<div class="uv-btn full" onclick="uvBookerReset('${showId}')">Back to the defaults${show ? " for its tier" : ""}</div>` : ""}`
+      };
+    });
+  }
+  function uvBookerSet(showId, key, value) {
+    const [k, sub] = key.split(".");
+    const patch = sub ? { mix: { [sub]: value } } : { [k]: k === "stips" ? value : Number(value) };
+    commit((st) => setBookerSettings(st, showId || null, patch), "Settings saved");
+  }
+  function uvBookerReset(showId) {
+    commit((st) => resetBookerSettings(st, showId || null), "Back to the defaults");
+  }
+  var summary2 = (s) => [
+    `${s.size} a week`,
+    `${s.pleSize} at a PLE`,
+    s.titles ? `up to ${plural8(s.titles, "title match", "title matches")}` : "no title matches weekly",
+    `stipulations: ${STIP_LABEL[s.stips].toLowerCase()}`
+  ].join(" \xB7 ");
+  function uvOpenBooker() {
+    pushPage("booker", "all");
+  }
+  function uvBookerPage() {
+    const st = uni();
+    const season = activeSeason(st);
+    const drafts = st.events.filter((e) => e.draft).sort((a, b) => compareStamps(st, a.at, b.at));
+    const tierOf = (id) => {
+      const i = st.tiers.findIndex((t) => t.shows.includes(id));
+      return i < 0 ? "No tier" : `Tier ${i + 1}`;
+    };
+    const all = bookerSettings(st, null);
+    return {
+      title: "Auto booker",
+      body: `
+      <div class="uv-rk-head"><b>Auto booker</b><span>Drafts a whole card for any show from the record \u2014 rosters, titles, standings,
+        rivalries and friendships, teams, goals, who\u2019s short of matches, injuries and the calendar \u2014 with why for every match. It never books
+        anything or picks a winner: you change the draft, then book it. <span class="uv-link" onclick="uvHowBooker()">How it works</span></span></div>
+      <div class="uv-autorow" onclick="uvDraftWeek(${season.week})">${ICON.spark}<div><b>Draft this week\u2019s cards</b>
+        <span>Week ${season.week}: every show, planned if it isn\u2019t yet</span></div>${ICON.right}</div>
+      ${drafts.length ? `${section("Drafts waiting", drafts.length)}<div class="uv-list">${drafts.map((e) => `<div class="uv-row" style="--c:${showColor(st, e.showId)}"
+        onclick="uvOpenEvent('${e.id}')"><div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${esc(eventWhen(st, e))} \xB7
+        ${plural8(e.draft.matches.length, "match", "matches")} drafted</div></div>${ICON.right}</div>`).join("")}</div>` : ""}
+      ${section("Each show", st.shows.length)}
+      <div class="uv-list">${st.shows.map((sh) => {
+        const s = bookerSettings(st, sh.id);
+        return `<div class="uv-row" data-booker="${sh.id}" style="--c:${showColor(st, sh.id)}" onclick="uvBookerSettings('${sh.id}')">
+          <div class="uv-main"><div class="nm">${esc(sh.name)} <span class="uv-muted">${esc(tierOf(sh.id))}</span>${s.changed ? " " + chip("Set by you", "gold") : ""}</div>
+          <div class="sub">${esc(summary2(s))}</div></div>${ICON.right}</div>`;
+      }).join("")}
+        <div class="uv-row" data-booker="all" onclick="uvBookerSettings('')"><div class="uv-main"><div class="nm">Premium live events for every show
+          ${all.changed ? chip("Set by you", "gold") : ""}</div><div class="sub">${esc(`${all.pleSize} matches \xB7 stipulations: ${STIP_LABEL[all.stips].toLowerCase()}`)}</div></div>${ICON.right}</div>
+      </div>
+      <p class="uv-p uv-inset-p fine">A show you add later starts with the defaults for its tier: 6 matches a week in tier 1, 5 in tier 2,
+        4 below that (5 in no tier), and 2 more at a premium live event.</p>`
+    };
+  }
+  function uvHowBooker() {
+    openSheet(() => ({
+      title: "How the auto booker works",
+      body: `
+      <p class="uv-p"><b>A draft, never a booking.</b> It drafts a card for a show \u2014 up to that show\u2019s size, after anything already
+        booked \u2014 and leaves it on the show\u2019s page. Nothing on a draft counts, the story director doesn\u2019t read it, and it never has a
+        result. <b>Book this card</b> puts it on the card exactly as it stands; then the game decides every match.</p>
+      <p class="uv-p"><b>What it reads.</b> The show\u2019s roster \u2014 injured, away and anyone you mark as not at the show left out \u2014 its tier
+        (for the card\u2019s size), the titles it can put on the line, this season\u2019s standings, recent results and who is short of matches,
+        rivalries, grudges, friendships and alliances, tag teams and factions (a team of three or more), what each wrestler is after,
+        arrivals from another show, and the calendar: a premium live event ahead, or tonight being one.</p>
+      <p class="uv-p"><b>What it looks for.</b></p>
+      <div class="uv-calc">
+        <div><b>Titles</b><span>the champion against the best contender: high in the standings, a recent win over the champion, a grudge,
+          after the title, hot. A title left alone for weeks is due; just defended, the contenders meet instead. At a premium live event,
+          every title with a contender. A vacant title: the top contenders meet for it.</span></div>
+        <div><b>Feuds</b><span>rivals face each other \u2014 or each other\u2019s allies and tag partners, or meet in a tag match. A feud builds
+          across shows: after a one-on-one meeting it goes another way, and with a premium live event ahead the singles match waits for
+          it. A third meeting in a few weeks, or a heated one at a premium live event, gets a stipulation to settle it (if the show\u2019s
+          settings allow).</span></div>
+        <div><b>Friends</b><span>a friend stands up to a friend\u2019s rival.</span></div>
+        <div><b>Teams</b><span>teams at odds, or close in the tag standings, face each other; factions go three on three; partners face
+          members of a team they\u2019re at odds with.</span></div>
+        <div><b>Upsets</b><span>a win from well down the standings, or over a champion, earns a rematch or a step up.</span></div>
+        <div><b>Opportunities</b><span>anyone short of matches (as Booking balance counts them) gets a chance; someone cold gets one to
+          turn it around; a new arrival gets a first match on the show.</span></div>
+        <div><b>Everyone else</b><span>fresh matchups, close in the standings and not met lately.</span></div>
+      </div>
+      <p class="uv-p"><b>Putting a card together.</b> Nobody is in two matches. The card leans toward each show\u2019s mix of match types and
+        each division\u2019s share of who\u2019s available, rests people who wrestled lately, never repeats last week\u2019s singles match, and keeps a
+        weekly show to its number of title matches. The biggest match goes last. Close calls are settled by a seeded draw, so the same
+        universe drafts the same card \u2014 and <b>Draw again</b> gives a different one.</p>
+      <p class="uv-p"><b>Yours to change.</b> Edit any match \u2014 who\u2019s in it, the title, the stipulation, the notes \u2014 draw one match again,
+        move it, take it off (it won\u2019t come back on that draft), add your own, or say who isn\u2019t at the show. <b>Draw the rest again</b>
+        keeps everything you changed or added. Every match says why it was chosen, and keeps that once it\u2019s booked.</p>
+      <p class="uv-p"><b>Not yet.</b> It doesn\u2019t read or start the story director\u2019s events \u2014 a title demand or a confrontation doesn\u2019t book
+        a match by itself yet. It reads only the relationships they leave behind.</p>`
+    }));
+  }
+
+  // js/universe/card.js
   function uvOpenEvent(id) {
     pushPage("event", id);
   }
@@ -9802,6 +11334,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     ${qual ? `<div class="uv-mc-d uv-gold">${esc(wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ""}
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ""}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ""}
+    ${uvAutoLine(m)}
     <div class="uv-mc-acts">
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>` : `<div class="uv-btn pri sm2" onclick="uvEnterResult('${ev.id}','${m.id}')">Enter result</div>
            <div class="uv-btn sm2" onclick="uvEditBooking('${ev.id}','${m.id}')">${ICON.edit}Edit</div>`}
@@ -9823,17 +11356,19 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="k">${esc(LABEL.event[e.kind])} \xB7 ${esc(e.showId ? showName(st, e.showId) : "All shows")}</div>
         <div class="nm">${esc(e.name)}</div>
         <div class="s">${esc(eventWhen(st, e, true))}${calendarDate(st, e.at.season, e.at.week, e.at.day) ? ` \xB7 week ${e.at.week}` : ""} \xB7 ${esc(season.name)}</div>
-        <div class="st"><span class="uv-state ${c.state}"></span>${STATUS_TEXT[c.state](c)}</div>
+        <div class="st"><span class="uv-state ${e.draft && !c.total ? "draft" : c.state}"></span>${e.draft && !c.total ? "Draft card waiting \u2014 nothing booked yet" : STATUS_TEXT[c.state](c)}</div>
       </div>
       <div class="uv-page-acts">
         <div class="uv-btn pri" onclick="uvBookMatch('${id}')">${ICON.plus}Book a match</div>
         <div class="uv-btn" onclick="uvEventDetails('${id}')">${ICON.edit}Details</div>
       </div>
+      ${e.draft ? "" : uvDraftBlock(st, e)}
       ${transitionLink(st, e)}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ""}
       ${uvStoryBlock(st, e, "pre")}
-      <div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ""}</div>
-      ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join("")}</div>` : empty(ICON.cal, "Nothing booked yet", "Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.")}
+      ${c.total || !e.draft ? `<div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ""}</div>` : ""}
+      ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join("")}</div>` : e.draft ? "" : empty(ICON.cal, "Nothing booked yet", "Book the matches for this show, watch the CPU play them in WWE 2K25, then enter each result here.")}
+      ${e.draft ? uvDraftBlock(st, e) : ""}
       ${uvStoryBlock(st, e, "post")}
       ${uvIncidentsBlock(st, e)}
       <div class="uv-fix">
@@ -9920,15 +11455,26 @@ body.uv-confirm-open .uv-confirm{display:flex}
       // entering a result starts from the booking as it stands; the line-up
       // opens only if the owner asks (a run-in, a late change). A relegation
       // match's line-up is its pairing, and never opens here.
-      lineup: (mode2 === "book" || mode2 === "edit") && !(m && (m.relegation || m.qualifier)),
+      lineup: ["book", "edit", "dedit", "dadd"].includes(mode2) && !(m && (m.relegation || m.qualifier)),
+      auto: mode2 === "dedit" && m.auto ? m.auto : null,
       relegation: !!(m && m.relegation),
       qualifier: !!(m && m.qualifier)
     };
     openSheet(formSheet);
   }
   var matchOf = (eventId, matchId) => eventById(uni(), eventId).matches.find((x) => x.id === matchId);
+  var draftOf = (eventId, id) => {
+    const e = eventById(uni(), eventId);
+    return e && e.draft ? e.draft.matches.find((x) => x.id === id) : null;
+  };
   function uvBookMatch(eventId) {
     openForm("book", eventId, null);
+  }
+  function uvDraftEdit(eventId, dmId) {
+    openForm("dedit", eventId, draftOf(eventId, dmId));
+  }
+  function uvDraftAdd(eventId) {
+    openForm("dadd", eventId, null);
   }
   function uvEditBooking(eventId, matchId) {
     openForm("edit", eventId, matchOf(eventId, matchId));
@@ -9956,12 +11502,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (side.team || ids.length < 2) return [];
     return st.teams.filter((t) => t.active && ids.every((id) => t.members.includes(id)));
   }
-  var TITLES2 = { book: "Book a match", edit: "Edit the booking", result: "Enter the result", correct: "Correct the result" };
+  var TITLES2 = {
+    book: "Book a match",
+    edit: "Edit the booking",
+    result: "Enter the result",
+    correct: "Correct the result",
+    dedit: "Edit the draft match",
+    dadd: "Add to the draft"
+  };
+  var onDraft = (mode2) => mode2 === "dedit" || mode2 === "dadd";
   function formSheet() {
     const st = uni();
     const e = eventById(st, md.eventId);
     if (!e) return null;
-    if (md.matchId && !e.matches.some((m) => m.id === md.matchId)) return null;
+    if (onDraft(md.mode) && !e.draft) return null;
+    if (md.matchId && !(md.mode === "dedit" ? e.draft.matches : e.matches).some((m) => m.id === md.matchId)) return null;
     if (st.wrestlers.length < 2) {
       return { title: TITLES2[md.mode], body: empty(ICON.user, "Add wrestlers first", "A match needs at least two wrestlers on the roster.") };
     }
@@ -10018,12 +11573,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
       edit: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the booking</div>
       <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the card</div>`,
       result: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the result</div>`,
+      dedit: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save to the draft</div>
+      <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the draft</div>`,
+      dadd: `<div class="uv-btn pri full" onclick="uvMSave(false)">Add to the draft</div>`,
       correct: `<div class="uv-btn pri full" onclick="uvMSave(false)">Save the correction</div>
       <div class="uv-btn full" onclick="uvMClear()">Clear the result \u2014 keep it booked</div>
       <div class="uv-btn bad full" onclick="uvMDelete()">Take it off the card</div>`
     }[md.mode];
     const lineup = `
-      ${md.mode === "book" || md.mode === "edit" ? `<div class="uv-pills tight">${PRESETS.map(([lb, sz]) => `<div class="uv-pill${sz.join(",") === shape ? " on" : ""}" onclick="uvMPreset('${sz.join(",")}')">${lb}</div>`).join("")}</div>` : ""}
+      ${["book", "edit", "dedit", "dadd"].includes(md.mode) ? `<div class="uv-pills tight">${PRESETS.map(([lb, sz]) => `<div class="uv-pill${sz.join(",") === shape ? " on" : ""}" onclick="uvMPreset('${sz.join(",")}')">${lb}</div>`).join("")}</div>` : ""}
       ${PRESETS.some(([, sz]) => sz.join(",") === shape) && md.mode !== "result" && md.mode !== "correct" ? "" : `<div class="uv-kindline">${kindChip({ sides: md.sides })}</div>`}
       ${sides}
       <div class="uv-add" onclick="uvMAddSide()">${ICON.plus}Add another side</div>
@@ -10033,15 +11591,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
           oninput="uvMText('stip',this.value)"><datalist id="uvStips">${STIPULATIONS.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`, "wide")}
       </div>
       ${title2 && cur && !champIn ? `<div class="fine">The current ${esc(title2.name)} ${cur.holder.type === "team" ? "champions" : "champion"}, ${esc(holderName(st, cur.holder))}, ${cur.holder.type === "team" ? "aren\u2019t" : "isn\u2019t"} in this match.</div>` : ""}`;
-    const summary2 = `<div class="uv-mc uv-mc-sum">
+    const summary3 = `<div class="uv-mc uv-mc-sum">
       <div class="uv-mc-top">${kindChip({ sides: md.sides })}${title2 ? chip(title2.name, "gold") : ""}${md.stip.trim() ? chip(md.stip.trim()) : ""}</div>
       <div class="uv-mc-body">${md.sides.map((sd2, i) => `<b>${esc(label(sd2, i))}</b>`).join(' <span class="uv-muted">vs</span> ')}</div>
     </div>`;
     return {
       title: TITLES2[md.mode],
       body: `
-      <p class="uv-p">${esc(e.name)} \xB7 ${esc(eventWhen(st, e))}${withResult ? " \u2014 enter what the CPU produced. Nothing is filled in for you." : ""}</p>
-      ${md.lineup ? lineup : summary2}
+      <p class="uv-p">${esc(e.name)} \xB7 ${esc(eventWhen(st, e))}${withResult ? " \u2014 enter what the CPU produced. Nothing is filled in for you." : onDraft(md.mode) ? " \u2014 on the draft card: nothing is booked until you book the card." : ""}</p>
+      ${md.auto && md.auto.why.length ? `<div class="uv-why"><b>Drafted because</b> ${esc(md.auto.why[0])}${md.auto.edited ? "" : " \u2014 change anything; it stays as you have it when the rest is drawn again"}</div>` : ""}
+      ${md.lineup ? lineup : summary3}
       ${result}
       ${md.relegation || md.qualifier ? (() => {
         const mm = eventById(st, md.eventId).matches.find((x) => x.id === md.matchId);
@@ -10145,6 +11704,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (commit((st) => updateBooking(st, d.eventId, d.matchId, booking), "Booking saved").ok) closeSheet();
       return;
     }
+    if (d.mode === "dedit") {
+      if (commit((st) => editDraftMatch(st, d.eventId, d.matchId, booking), "Saved to the draft").ok) closeSheet();
+      return;
+    }
+    if (d.mode === "dadd") {
+      if (commit((st) => addDraftMatch(st, d.eventId, booking), "Added to the draft").ok) closeSheet();
+      return;
+    }
     const isWin = d.result !== "" && !isNaN(Number(d.result));
     const input = {
       ...booking,
@@ -10191,6 +11758,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function uvMDelete() {
     const d = md;
     const st = uni();
+    if (d.mode === "dedit") {
+      if (commit((s) => deleteDraftMatch(s, d.eventId, d.matchId), "Taken off the draft \u2014 it won\u2019t be drawn again for this show").ok) closeSheet();
+      return;
+    }
     const m = matchOf(d.eventId, d.matchId);
     const linked = st.reigns.find((x) => x.matchId === d.matchId);
     confirmThen(
@@ -10242,7 +11813,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     pushPage("title", id);
   }
   function uvPageView(kind, id) {
-    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : kind === "story" ? uvStoryPage() : kind === "tiers" ? uvTiersPage() : null;
+    return kind === "wrestler" ? wrestlerPage(id) : kind === "team" ? teamPage(id) : kind === "title" ? titlePage(id) : kind === "event" ? uvEventPage(id) : kind === "transition" ? uvTransitionPage(id) : kind === "pair" ? uvPairPage(id) : kind === "story" ? uvStoryPage() : kind === "tiers" ? uvTiersPage() : kind === "booker" ? uvBookerPage() : null;
   }
   var expanded = /* @__PURE__ */ new Set();
   function uvShowAll(key) {
@@ -10287,7 +11858,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const opp = (wrestlerById(st, e.opponent) || { name: "?" }).name;
     return e.source === "qualifier" ? `won a qualifying match against ${opp}` : `owner's decision after a qualifier with ${opp}${e.note ? ` (${e.note})` : ""}`;
   }
-  function rankLine(st, w) {
+  function rankLine2(st, w) {
     if (!w.showId) return "";
     const season = activeSeason(st);
     const t = standings(st, { showId: w.showId, period: periodOf(st, season.id), kind: "singles" });
@@ -10357,7 +11928,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       tag(w.origin),
       w.gender === "female" ? tag("Women\u2019s division") : tag("Men\u2019s division"),
       w.alignment ? tag(LABEL.alignment[w.alignment], w.alignment) : "",
-      w.status === "injured" ? tag("Injured", "inj") : ""
+      w.status !== "active" ? tag(LABEL.status[w.status], "inj") : ""
     ].join("");
     const champRow = (c) => reignRow(st, c.reign, `${esc(c.title.name)}${c.team ? ` <span class="uv-muted">with ${esc(c.team.name)}</span>` : ""}`);
     const mateRow = (m) => {
@@ -10371,7 +11942,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div class="uv-champ"><div class="h">${fmtRec(together)}</div><div class="s">as the team</div></div>
     </div>`;
     };
-    const typeOf = (x) => {
+    const typeOf2 = (x) => {
       const s = x.match.sides[x.side];
       if (s.wrestlers.length === 1) return "Singles";
       return s.team ? `with ${(teamById(st, s.team) || { name: "team" }).name}` : "Tag";
@@ -10394,7 +11965,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${recTile("Singles", rec.singles)}${recTile("Tag", rec.tag)}
         ${numTile("Title reigns", champs.length, current.length ? `${current.length} held now` : champs.length ? "none held now" : "never a champion")}
       </div>
-      ${rankLine(st, w)}
+      ${rankLine2(st, w)}
       ${w.notes ? `<div class="uv-note">${esc(w.notes)}</div>` : ""}
 
       ${upcoming(st, booked)}
@@ -10426,7 +11997,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div class="uv-tls">${career.length ? capped(`h-${id}`, career, 12, (e) => histLine(st, e, careerText(st, e))) : '<div class="uv-none">Nothing yet.</div>'}</div>
 
       ${section("Results", results.length || null)}
-      ${results.length ? capped(`r-${id}`, results, 10, (x) => resultRow(st, x, typeOf(x))) : '<div class="uv-none">No results recorded yet.</div>'}
+      ${results.length ? capped(`r-${id}`, results, 10, (x) => resultRow(st, x, typeOf2(x))) : '<div class="uv-none">No results recorded yet.</div>'}
 
       <div class="uv-fix">
         <div class="h">Fix a mistake</div>
@@ -10484,7 +12055,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const spells = membershipsOf(st, id);
     const former = spells.filter((m) => m.end).sort((a, b) => b.end.seq - a.end.seq);
     const reigns = st.reigns.filter((r) => r.holder.type === "team" && r.holder.id === id).sort((a, b) => compareStamps(st, b.start, a.start));
-    const held = reigns.filter((r) => !r.end).length;
+    const held2 = reigns.filter((r) => !r.end).length;
     const hist = teamHistoryOf(st, id);
     const results = teamMatches(st, id);
     const booked = teamBookings(st, id);
@@ -10514,7 +12085,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       </div>
       <div class="uv-recs">
         ${recTile("Team record", rec)}
-        ${numTile("Title reigns", reigns.length, held ? `${held} held now` : reigns.length ? "none held now" : "never champions")}
+        ${numTile("Title reigns", reigns.length, held2 ? `${held2} held now` : reigns.length ? "none held now" : "never champions")}
         ${numTile("Members", t.members.length, former.length ? `${former.length} former` : "original line-up")}
       </div>
       <div class="uv-note">Counts only matches wrestled as ${esc(t.name)}. Members\u2019 singles matches, and tag matches with other partners, go on their own records \u2014 not the team\u2019s.</div>
@@ -11126,6 +12697,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
         uvTab("calendar");
         pushPage("tiers", "all");
         return;
+      case "booker":
+        uvTab("calendar");
+        pushPage("booker", "all");
+        return;
       case "transition": {
         const [id, part2] = String(arg).split(":");
         uvTab("calendar");
@@ -11148,13 +12723,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const s = activeSeason(st);
     const next = uvUpNext(st);
     const count = (id) => st.wrestlers.filter((w) => w.showId === id).length;
-    const held = st.titles.filter((t) => t.active && currentReign(st, t.id));
+    const held2 = st.titles.filter((t) => t.active && currentReign(st, t.id));
     const active = st.titles.filter((t) => t.active);
     const rels = [...relationships(st).rels.values()].filter((r) => r.active);
     const thisWeek2 = st.events.filter((e) => e.at.season === s.id && e.at.week === s.week).reduce((n, e) => n + e.incidents.length, 0);
     const played = st.events.filter((e) => e.at.season === s.id).reduce((n, e) => n + e.matches.filter((m) => m.status === "played").length, 0);
     const tr = [...st.transitions].sort((a, b) => seasonById(st, b.season).number - seasonById(st, a.season).number)[0];
     const trWin = tr && tr.window && !tr.window.closed;
+    const drafts = st.events.filter((e) => e.draft).length;
     const row2 = (go, icon, head, sub, cls = "") => `<div class="uv-go ${cls}" onclick="${go}">${icon}<div><b>${esc(head)}</b>
     <span>${esc(sub)}</span></div>${ICON.right}</div>`;
     const how = [
@@ -11164,7 +12740,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ["uvHowPromotion", "Promotion & the draft"],
       ["uvHowTiers", "Tiers"],
       ["uvHowRelations", "Relationships"],
-      ["uvHowStory", "Story director"]
+      ["uvHowStory", "Story director"],
+      ["uvHowBooker", "Auto booker"]
     ];
     return {
       title: "Go to",
@@ -11175,7 +12752,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${row2(`uvGo('history')`, ICON.list, "Results", `${played} result${played === 1 ? "" : "s"} this season, show by show`)}
         ${row2(`uvGo('roster')`, ICON.user, "Rosters", st.shows.map((x) => `${x.name} ${count(x.id)}`).join(" \xB7 "))}
         ${row2(`uvGo('teams')`, ICON.team, "Tag teams", `${st.teams.filter((t) => t.active).length} active`)}
-        ${row2(`uvGo('titles')`, ICON.belt, "Champions", active.length ? `${held.length} of ${active.length} titles held \u2014 ` + held.slice(0, 2).map((t) => `${t.name}: ${holderName(st, currentReign(st, t.id).holder)}`).join(" \xB7 ") : "No titles yet")}
+        ${row2(`uvGo('titles')`, ICON.belt, "Champions", active.length ? `${held2.length} of ${active.length} titles held \u2014 ` + held2.slice(0, 2).map((t) => `${t.name}: ${holderName(st, currentReign(st, t.id).holder)}`).join(" \xB7 ") : "No titles yet")}
         ${row2(`uvGo('rankings')`, ICON.list, "Rankings", "Standings by show, singles and tag")}
         ${row2(`uvGo('balance')`, ICON.list, "Booking balance", "Who\u2019s short of matches on each show")}
         ${row2(`uvGo('relations')`, ICON.team, "Relationships", `${rels.length} now \u2014 ${rels.filter((r) => r.kind === "grudge").length} grudges, ${rels.filter((r) => r.kind === "rivals").length} rivalries`)}
@@ -11188,6 +12765,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         trWin ? "hot" : ""
       ) : row2(`uvGo('calendar')`, ICON.move, "Season transition", "Starts from WrestleMania, on its show page \u2014 relegation, promotion, the draft")}
         ${row2(`uvGo('tiers')`, ICON.list, "Tiers & transfers", st.tiers.map((t, i) => `${i + 1} ${t.name}`).join(" \xB7 "))}
+        ${row2(`uvGo('booker')`, ICON.spark, "Auto booker", drafts ? `${drafts} draft card${drafts === 1 ? "" : "s"} waiting to be booked` : "Draft a card for any show \u2014 each show\u2019s size and kinds of match")}
         ${row2(`uvGo('save')`, ICON.save, "Save & backup", "Export, import, restore points")}
       </div>
       <div class="uv-sub flush" style="margin-top:14px">How it works</div>
@@ -11251,7 +12829,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         controls the game. Stored under ${esc(STORAGE_KEY)}, format v${SCHEMA_VERSION}.</div>`
     };
   }
-  function ago(iso) {
+  function ago2(iso) {
     const t = Date.parse(iso);
     if (!t) return "";
     const min = Math.round((Date.now() - t) / 6e4);
@@ -11266,7 +12844,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const s = browserStorage();
     const when2 = s && lastExported(s);
     const n = summary(uni()).matches;
-    if (when2) return `<div class="uv-savenote" data-exported="1">Last save file exported ${esc(ago(when2))} from this browser.</div>`;
+    if (when2) return `<div class="uv-savenote" data-exported="1">Last save file exported ${esc(ago2(when2))} from this browser.</div>`;
     return n ? `<div class="uv-savenote warn" data-exported="0">No save file exported from this browser yet \u2014 export one so ${n} result${n === 1 ? "" : "s"} can\u2019t be lost.</div>` : "";
   }
   function restoreSection() {
@@ -11277,7 +12855,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     <p class="uv-p">Copies kept in this browser \u2014 taken before an import, a reset or a restore, and each time the week moves on (the
       newest of those). Up to four; the oldest go first, and they give way if storage runs short.</p>
     ${points.length ? `<div class="uv-gos">${points.map((p) => `<div class="uv-go" data-restore="${p.id}" onclick="uvRestorePoint(${p.id})">${ICON.undo}
-      <div><b>${esc(p.label)}</b><span>${esc([p.clock, p.counts && `${p.counts.wrestlers} wrestlers, ${p.counts.results} results`, ago(p.when)].filter(Boolean).join(" \xB7 "))}</span></div>
+      <div><b>${esc(p.label)}</b><span>${esc([p.clock, p.counts && `${p.counts.wrestlers} wrestlers, ${p.counts.results} results`, ago2(p.when)].filter(Boolean).join(" \xB7 "))}</span></div>
       ${ICON.right}</div>`).join("")}</div>` : '<div class="uv-none">None yet.</div>'}
     <div class="uv-btn full" onclick="uvKeepRestore()">Keep a restore point now</div>`;
   }
@@ -11905,7 +13483,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
 
   // js/universe/main.js
-  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports, find_exports, tiers_exports);
+  Object.assign(window, views_exports, sheets_exports, index_exports, pages_exports, edits_exports, card_exports, ranks_exports, relegation_exports, promotion_exports, personality_exports, story_exports, find_exports, tiers_exports, autobook_exports);
   initUniverse();
 })();
 

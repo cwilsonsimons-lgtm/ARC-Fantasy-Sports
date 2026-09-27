@@ -22,7 +22,7 @@ import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
 import * as DR from '../js/universe/director.js';
 import { incidentText } from '../js/universe/ui.js';
-import { sampleCycle } from './universe-sample.mjs';
+import { bookingSample, sampleCycle } from './universe-sample.mjs';
 const { validate, wrestlerRecord, teamRecord } = M;
 
 const url = process.argv[2] || 'file://' + process.cwd() + '/dist/universe.html';
@@ -1852,10 +1852,11 @@ await check('Go to lists every destination, with where each stands', async () =>
   await page.click('#uvGoBtn');
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-go')].map(g => g.querySelector('b').textContent + ' | ' + g.querySelector('span').textContent)`);
-}, r => r.length === 13 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
+}, r => r.length === 14 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
   && r.includes('Rosters | Raw 9 · SmackDown 6 · Dynamite 5 · NXT 7 · Evolve 0')
   && r.some(x => /^Season 1 transition · transfer window \| Raw: done — 1 to NXT/.test(x))
-  && r.includes('Tiers & transfers | 1 Main roster · 2 NXT · 3 Evolve') && r[12].startsWith('Save & backup'));
+  && r.includes('Tiers & transfers | 1 Main roster · 2 NXT · 3 Evolve')
+  && r[12] === 'Auto booker | Draft a card for any show — each show’s size and kinds of match' && r[13].startsWith('Save & backup'));
 await check('Go to reaches champions, relationships, rankings, story and the transfer window', async () => {
   const seen = [];
   await closeSheet();
@@ -2159,6 +2160,174 @@ await check('a version 8 save imports whole: its transition, records and rules a
   return [u.version, u.tiers.map(x => x.shows.join('+')), t.parts.length, JSON.stringify(t.parts[0].qualifiers) === JSON.stringify(old.transitions[0].promotion),
     u.relegations.map(r => r.to), u.drafts.length === old.drafts.length && u.eligibility.length === old.eligibility.length, await sound()];
 }, [M.SCHEMA_VERSION, ['raw+smackdown+dynamite', 'nxt', 'evolve'], 1, true, ['nxt', 'nxt', 'nxt'], true, []]);
+await check('layout anchored', anchored, isAnchored);
+
+// ================================================================ the auto booker
+// The booking sample (universe-sample.mjs): week 5 to book on every show, each
+// with a story going on - feuds, friends, factions, an upset, someone never
+// booked, a call-up, one injured and one away - plus LFG, a show added later
+// in a tier of its own.
+const bk = bookingSample();
+const draftOn = (u, showId) => u.events.find(e => e.kind === 'weekly' && e.showId === showId && e.at.week === 5);
+const people = m => m.sides.flatMap(sd => sd.wrestlers);
+const dmCards = () => js(`[...document.querySelectorAll('.uv-page .uv-mc.draft')].map(c => ({ id: c.dataset.dm,
+  st: c.querySelector('.st').textContent, why: (c.querySelector('.uv-why') || {}).textContent || '' }))`);
+const dmCard = i => body.locator('.uv-page .uv-mc.draft').nth(i);
+await check('auto booker: draft week 5 — every show planned and drafted, LFG too, and nothing booked', async () => {
+  await importState(bk.st, 'booking.json');
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('.uv-weekdraft').click();
+  await settle();
+  const rows = await js(`[...document.querySelectorAll('#uvSheetBody .uv-planrow .nm')].map(e => e.textContent)`);
+  await btn(sheet, /^\s*Draft 6 cards\s*$/).click();
+  await settle();
+  const u = await saved();
+  const wk = u.events.filter(e => e.at.week === 5 && e.kind === 'weekly');
+  const nights = await js(`[...document.querySelectorAll('.uv-night[data-ev] .sub')].map(e => e.textContent)`);
+  return [rows, (await toast()).t, wk.length, wk.every(e => e.draft && e.draft.matches.length && !e.matches.length), nights[0], await sound()];
+}, r => JSON.stringify(r[0]) === JSON.stringify(['Raw · Week 5', 'NXT · Week 5', 'Dynamite · Week 5', 'Evolve · Week 5', 'LFG · Week 5', 'SmackDown · Week 5'])
+  && /^6 cards drafted — each waits on its show’s page until you book it/.test(r[1]) && r[2] === 6 && r[3] === true
+  && r[4] === 'Draft card: 6 matches — not booked yet' && r[5].length === 0);
+await check('a show’s draft: every match with why, nobody twice, nobody injured, away or on another show', async () => {
+  await openShow('Raw');
+  const u = await saved();
+  const ev = draftOn(u, 'raw');
+  const ids = ev.draft.matches.flatMap(people);
+  const names = ids.map(id => u.wrestlers.find(w => w.id === id));
+  const cards = await dmCards();
+  return [await js(`${TEXT}(document.querySelector('.uv-evhead .st'))`), cards.length, cards.every(c => /^Why /.test(c.why)),
+    new Set(ids).size === ids.length, names.every(w => w.showId === 'raw' && w.status === 'active'),
+    ev.draft.matches.every(m => m.auto && m.auto.why.length && m.outcome === undefined)];
+}, ['Draft card waiting — nothing booked yet', 6, true, true, true, true]);
+let rawDraft = null;
+await check('edit a drafted match: saved to the draft as yours, marked changed', async () => {
+  await dmCard(1).locator('.uv-btn', { hasText: 'Edit' }).click();
+  await settle();
+  const title = await js(`document.getElementById('uvSheetTitle').textContent`);
+  const why = await js(`${TEXT}(document.querySelector('#uvSheetBody .uv-why'))`);
+  await sheet.locator('#uvMStip').fill('Ladder');
+  await btn(sheet, 'Save to the draft').click();
+  await settle();
+  rawDraft = draftOn(await saved(), 'raw').draft;
+  return [title, /^Drafted because /.test(why), rawDraft.matches[1].stip, rawDraft.matches[1].auto.edited, (await dmCards())[1].st, (await toast()).t];
+}, ['Edit the draft match', true, 'Ladder', true, 'Draft · changed', 'Saved to the draft']);
+await check('take one off and move one: it won’t be drawn again for this show', async () => {
+  const gone = rawDraft.matches[3], first = rawDraft.matches[0].id;
+  await dmCard(3).locator('.uv-ic[title="Take it off the draft"]').click();
+  await page.waitForTimeout(120);
+  await dmCard(0).locator('.uv-ic[title="Move down"]').click();
+  await page.waitForTimeout(120);
+  const d = draftOn(await saved(), 'raw').draft;
+  rawDraft = d;
+  return [d.matches.length, d.passed.includes(gone.auto.key), d.matches[1].id === first, await sound()];
+}, [5, true, true, []]);
+await check('draw one match again: something else in the same place, the rest untouched', async () => {
+  const before = rawDraft.matches;
+  await dmCard(2).locator('.uv-btn', { hasText: 'Draw again' }).click();
+  await page.waitForTimeout(150);
+  const t = await toast();
+  const after = draftOn(await saved(), 'raw').draft;
+  const same = i => JSON.stringify(after.matches[i]) === JSON.stringify(before[i]);
+  rawDraft = after;
+  return [/^Drawn again — /.test(t.t), after.matches.length, after.matches[2].id !== before[2].id, after.matches[2].auto.key !== before[2].auto.key,
+    after.passed.includes(before[2].auto.key), [0, 1, 3, 4].every(same), await sound()];
+}, [true, 5, true, true, true, true, []]);
+await check('add your own match: on the draft as yours, flagged where it needs a look', async () => {
+  await body.locator('.uv-page .uv-add', { hasText: 'Add your own match' }).click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Punk' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Idle' });
+  await btn(sheet, 'Add to the draft').click();
+  await settle();
+  const d = draftOn(await saved(), 'raw').draft;
+  rawDraft = d;
+  const cards = await dmCards();
+  const warn = await js(`${TEXT}(document.querySelector('.uv-page .uv-mc.draft.own .uv-mc-d.warn'))`);
+  return [d.matches.length, d.matches[5].auto, cards[5].st, warn, await sound()];
+}, r => r[0] === 6 && r[1] === null && r[2] === 'Draft · yours' && /Punk is injured/.test(r[3]) && r[4].length === 0);
+await check('not at this show: marked out, and their drafted matches drawn again without them', async () => {
+  const u = await saved();
+  const auto = rawDraft.matches.find(m => m.auto && !m.auto.edited);
+  const who = u.wrestlers.find(w => w.id === people(auto)[0]);
+  await body.locator('.uv-draft-out .uv-link', { hasText: 'Change' }).click();
+  await settle();
+  await sheet.locator('.uv-check', { hasText: new RegExp(`^\\s*${who.name}\\s*$`) }).locator('input').check();
+  await btn(sheet, 'Save').click();
+  await settle();
+  const d = draftOn(await saved(), 'raw').draft;
+  rawDraft = d;
+  return [d.out, d.matches.filter(m => m.auto && !m.auto.edited).some(m => people(m).includes(who.id)), await js(`${TEXT}(document.querySelector('.uv-draft-out'))`), who.name];
+}, r => r[0].length === 1 && r[1] === false && r[2] === `Not at this show: ${r[3]} Change`);
+await check('draw the rest again: what you changed or added stays, where it was', async () => {
+  const keep = rawDraft.matches.map((m, i) => [m, i]).filter(([m]) => !m.auto || m.auto.edited);
+  await btn(body, /Draw the rest again/).click();
+  await settle();
+  const msg = await js(`document.getElementById('uvConfirmText').textContent`);
+  await confirmYes();
+  const d = draftOn(await saved(), 'raw').draft;
+  rawDraft = d;
+  return [/The 2 matches you changed or added stay as they are/.test(msg), d.nonce, keep.every(([m, i]) => d.matches[i] && d.matches[i].id === m.id),
+    d.matches.filter(m => m.auto && !m.auto.edited).every(m => !people(m).some(id => d.out.includes(id))), await sound()];
+}, [true, 1, true, true, []]);
+await check('book this card: exactly the draft goes on the card, no results, each keeping why', async () => {
+  const draft = JSON.parse(JSON.stringify(rawDraft.matches));
+  await btn(body, /Book this card/).click();
+  await settle();
+  await confirmYes();
+  const ev = draftOn(await saved(), 'raw');
+  const lines = await js(`[...document.querySelectorAll('.uv-page .uv-mc.scheduled .uv-why')].map(e => e.textContent)`);
+  return [ev.draft, ev.matches.length, ev.matches.every((m, i) => JSON.stringify([m.sides, m.titleId, m.stip, m.notes])
+      === JSON.stringify([draft[i].sides, draft[i].titleId, draft[i].stip, draft[i].notes])),
+    ev.matches.every(m => m.status === 'scheduled' && m.outcome === null && m.winner === null),
+    ev.matches.map(m => (m.auto ? (m.auto.edited ? 'changed' : 'auto') : 'own')).join(','), lines.length, /^Auto-booked /.test(lines[0] || ''),
+    (await toast()).t, await sound()];
+}, r => r[0] === null && r[1] === 6 && r[2] && r[3] && /changed/.test(r[4]) && /own/.test(r[4]) && r[5] === 5 && r[6]
+  && r[7] === '6 matches booked on Raw · Week 5' && r[8].length === 0);
+await check('settings: each show its own card size and kinds — SmackDown down to 4, no singles', async () => {
+  await goTo('Auto booker');
+  const rows = await js(`[...document.querySelectorAll('.uv-page [data-booker]')].map(r => r.dataset.booker + ': ' + r.querySelector('.sub').textContent)`);
+  await body.locator('[data-booker="smackdown"]').click();
+  await settle();
+  for (let i = 0; i < 2; i++) { await sheet.locator('[data-set="size"] .uv-ic').first().click(); await page.waitForTimeout(80); }
+  await sheet.locator('[data-set="mix.singles"] [data-v="never"]').click();
+  await page.waitForTimeout(80);
+  await closeSheet();
+  const u = await saved();
+  return [rows, u.booker.shows.smackdown, await sound()];
+}, r => r[0].length === 7 && r[0][0] === 'raw: 6 a week · 8 at a PLE · up to 1 title match · stipulations: settling feuds'
+  && r[0].some(x => x.startsWith(`${bk.lfg.id}: 4 a week · 6 at a PLE`)) && r[0][6].startsWith('all: 10 matches')
+  && JSON.stringify(r[1]) === JSON.stringify({ size: 4, mix: { singles: 'never' } }) && r[2].length === 0);
+await check('SmackDown drawn again by its new settings: no singles — as many matches as 8 men and 4 women make', async () => {
+  await openShow('SmackDown');
+  await btn(body, /Draw the rest again/).click();
+  await settle();
+  await confirmYes();
+  const u = await saved();
+  const d = draftOn(u, 'smackdown').draft;
+  return [d.matches.length, d.matches.map(m => M.matchKind(m).key).filter(k => k === 'singles').length, await sound()];
+}, [3, 0, []]);
+await check('discard a draft, then draft the card again from the show’s page', async () => {
+  await openShow('NXT');
+  await body.locator('.uv-draft-foot .uv-link', { hasText: 'Discard the draft' }).click();
+  await settle();
+  await confirmYes();
+  const gone = draftOn(await saved(), 'nxt').draft;
+  const row = await js(`${TEXT}(document.querySelector('.uv-page .uv-autorow'))`);
+  await body.locator('.uv-page .uv-autorow').click();
+  await page.waitForTimeout(150);
+  const d = draftOn(await saved(), 'nxt').draft;
+  const vacant = d.matches.find(m => m.titleId === bk.C.nxt.id);
+  return [gone, /^Draft the card The auto booker suggests 5 matches/.test(row), d.matches.length, !!vacant && vacant.notes, await sound()];
+}, [null, true, 4, 'For the vacant NXT Championship', []]);
+await check('a version 9 save imports with nothing drafted and every show on its tier’s defaults', async () => {
+  const old = JSON.parse(JSON.stringify(bookingSample().st));
+  old.version = 9;
+  delete old.booker;
+  old.events.forEach(e => { delete e.draft; e.matches.forEach(m => { delete m.auto; }); });
+  await importState(old, 'v9.json');
+  const u = await saved();
+  return [u.version, u.booker, u.events.every(e => e.draft === null && e.matches.every(m => m.auto === null)), await sound()];
+}, [M.SCHEMA_VERSION, { shows: {}, all: {} }, true, []]);
 await check('layout anchored', anchored, isAnchored);
 
 // ================================================================ wider screens

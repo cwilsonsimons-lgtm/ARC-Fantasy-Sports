@@ -79,3 +79,100 @@ export function sampleCycle() {
   return { ...x, tr, table, rel, nxtEv, quals, result };
 }
 
+
+// A week to book, for the auto booker: every show with a story going on.
+// Raw: a feud whose rivals met one on one last week (Seth and Kevin), a grudge
+// against the champion with Backlash three weeks away (Cody and Gunther), a
+// friend of Cody's, an upset of the champion (Jey over Gunther), a faction
+// holding the tag titles, someone never booked (Idle), a call-up from NXT this
+// week (Oba), one injured (Punk) and one away (Brock), and a women's division.
+// SmackDown: a feud that has met twice lately and needs settling (Roman and
+// Solo). Dynamite: two tag teams at odds. NXT: a vacant title. Evolve: a small
+// roster. LFG: a show added later, in a tier of its own.
+export function bookingSample() {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const roster = {
+    raw: [['Cody', 'Gunther', 'Seth', 'Kevin', 'Sami', 'Jey', 'Drew', 'Damian', 'Finn', 'Priest', 'Idle', 'Punk', 'Brock'], ['Rhea', 'Liv', 'Becky', 'Iyo']],
+    smackdown: [['Roman', 'Solo', 'Randy', 'LA', 'Bron', 'Carmelo', 'Jacob', 'Tama'], ['Bianca', 'Jade', 'Tiffany', 'Nia']],
+    dynamite: [['Moxley', 'Hangman', 'Ospreay', 'Swerve', 'Matt', 'Nick', 'Dax', 'Cash'], ['Toni', 'Mariah', 'Mercedes']],
+    nxt: [['Oba', 'Trick', 'Je', 'Ethan', 'Wes', 'Tony'], ['Roxanne', 'Giulia', 'Stephanie', 'Jaida']],
+    evolve: [['Kali', 'Jackson', 'Keanu', 'Edris'], ['Kendal', 'Wren']],
+  };
+  Object.entries(roster).forEach(([showId, [men, women]]) => {
+    men.forEach(name => M.addWrestler(st, { name, showId, gender: 'male' }));
+    women.forEach(name => M.addWrestler(st, { name, showId, gender: 'female' }));
+  });
+  const indies = M.addTier(st, { name: 'Indies' });
+  const lfg = M.addShow(st, { name: 'LFG', day: 3, tier: indies.id });
+  ['Rookie A', 'Rookie B', 'Rookie C', 'Rookie D'].forEach(name => M.addWrestler(st, { name, showId: lfg.id, gender: 'male' }));
+  const W = n => st.wrestlers.find(w => w.name === n);
+  const id = n => W(n).id;
+  const team = (name, members) => M.addTeam(st, { name, members: members.map(id) });
+  const T = {
+    ko: team('KO & Sami', ['Kevin', 'Sami']), jd: team('Judgment Day', ['Damian', 'Finn', 'Priest']),
+    bloodline: team('Bloodline', ['Solo', 'Jacob', 'Tama']), bucks: team('Young Bucks', ['Matt', 'Nick']), ftr: team('FTR', ['Dax', 'Cash']),
+  };
+  const title = (name, showId, kind = 'singles', division = 'men') => M.addTitle(st, { name, showId, kind, division });
+  const C = {
+    world: title('World Heavyweight Championship', 'raw'), women: title('Women’s World Championship', 'raw', 'singles', 'women'),
+    rawTag: title('World Tag Team Championship', 'raw', 'tag'), wwe: title('WWE Championship', 'smackdown'),
+    sdWomen: title('WWE Women’s Championship', 'smackdown', 'singles', 'women'), aew: title('AEW World Championship', 'dynamite'),
+    aewTag: title('AEW Tag Team Championship', 'dynamite', 'tag'), nxt: title('NXT Championship', 'nxt'), evolve: title('Evolve Championship', 'evolve'),
+  };
+  const crown = (t, holder) => M.setChampion(st, t.id, holder);
+  crown(C.world, { type: 'wrestler', id: id('Gunther') }); crown(C.women, { type: 'wrestler', id: id('Liv') });
+  crown(C.rawTag, { type: 'team', id: T.jd.id }); crown(C.wwe, { type: 'wrestler', id: id('Randy') });
+  crown(C.sdWomen, { type: 'wrestler', id: id('Tiffany') }); crown(C.aew, { type: 'wrestler', id: id('Moxley') });
+  crown(C.aewTag, { type: 'team', id: T.ftr.id }); crown(C.evolve, { type: 'wrestler', id: id('Jackson') });
+  // relationships the owner set up at the start of the universe
+  const rel = (kind, a, b, level) => M.editRelationship(st, { action: 'form', kind, a: id(a), b: id(b), level, since: 'start' });
+  rel('grudge', 'Cody', 'Gunther', 2); rel('rivals', 'Cody', 'Gunther', 2);
+  rel('rivals', 'Seth', 'Kevin', 2); rel('friends', 'Cody', 'Jey', 2); rel('friends', 'Kevin', 'Sami', 2);
+  rel('grudge', 'Sami', 'Finn', 1); rel('grudge', 'Becky', 'Liv', 2);
+  rel('grudge', 'Roman', 'Solo', 3); rel('grudge', 'Solo', 'Roman', 3); rel('allies', 'Roman', 'LA', 2);
+  rel('rivals', 'Matt', 'Dax', 2);
+  // four weeks of results
+  const one = (ev, w, l, extra = {}) => M.recordMatch(st, ev.id, { sides: [{ wrestlers: [id(w)] }, { wrestlers: [id(l)] }], winner: 0, ...extra });
+  const two = (ev, a, b) => M.recordMatch(st, ev.id, { sides: [{ team: a.id, wrestlers: a.members.slice(0, 2) }, { team: b.id, wrestlers: b.members.slice(0, 2) }], winner: 0 });
+  const ep = (show, week) => { M.setWeek(st, week); return M.addEvent(st, { showId: show }); };
+  const weeks = {
+    raw: [
+      e => { one(e, 'Cody', 'Drew'); one(e, 'Seth', 'Jey'); one(e, 'Gunther', 'Kevin'); two(e, T.jd, T.ko); one(e, 'Rhea', 'Iyo'); },
+      e => { one(e, 'Kevin', 'Drew'); one(e, 'Cody', 'Finn'); one(e, 'Gunther', 'Sami'); one(e, 'Damian', 'Jey'); one(e, 'Liv', 'Becky'); one(e, 'Priest', 'Seth'); },
+      e => { one(e, 'Cody', 'Priest'); one(e, 'Seth', 'Drew'); two(e, T.ko, T.jd); one(e, 'Becky', 'Iyo'); one(e, 'Gunther', 'Damian'); },
+      e => { one(e, 'Jey', 'Gunther'); one(e, 'Seth', 'Kevin'); one(e, 'Drew', 'Finn'); one(e, 'Liv', 'Rhea'); one(e, 'Iyo', 'Rhea'); one(e, 'Cody', 'Sami'); },
+    ],
+    smackdown: [
+      e => { one(e, 'Randy', 'Carmelo'); one(e, 'Bron', 'LA'); one(e, 'Tiffany', 'Jade'); one(e, 'Jacob', 'Tama'); },
+      e => { one(e, 'Roman', 'Solo'); one(e, 'Randy', 'Bron'); one(e, 'Bianca', 'Nia'); one(e, 'Carmelo', 'Jacob'); },
+      e => { one(e, 'Solo', 'Roman', { finish: 'dq' }); one(e, 'LA', 'Carmelo'); one(e, 'Jade', 'Nia'); one(e, 'Tama', 'Bron'); },
+      e => { one(e, 'Randy', 'LA'); one(e, 'Bron', 'Jacob'); one(e, 'Tiffany', 'Bianca'); },
+    ],
+    dynamite: [
+      e => { one(e, 'Moxley', 'Hangman'); two(e, T.ftr, T.bucks); one(e, 'Toni', 'Mariah'); },
+      e => { one(e, 'Ospreay', 'Swerve'); one(e, 'Hangman', 'Matt'); one(e, 'Mercedes', 'Toni'); },
+      e => { two(e, T.bucks, T.ftr); one(e, 'Moxley', 'Ospreay'); one(e, 'Swerve', 'Cash'); },
+      e => { one(e, 'Hangman', 'Swerve'); one(e, 'Mariah', 'Mercedes'); one(e, 'Ospreay', 'Nick'); },
+    ],
+    nxt: [
+      e => { one(e, 'Trick', 'Je'); one(e, 'Ethan', 'Wes'); one(e, 'Roxanne', 'Giulia'); },
+      e => { one(e, 'Oba', 'Tony'); one(e, 'Trick', 'Ethan'); one(e, 'Giulia', 'Stephanie'); },
+      e => { one(e, 'Je', 'Wes'); one(e, 'Tony', 'Ethan'); one(e, 'Jaida', 'Roxanne'); },
+      e => { one(e, 'Trick', 'Tony'); one(e, 'Oba', 'Je'); one(e, 'Giulia', 'Jaida'); },
+    ],
+    evolve: [
+      e => { one(e, 'Kali', 'Keanu'); one(e, 'Kendal', 'Wren'); },
+      e => { one(e, 'Jackson', 'Edris'); },
+      e => { one(e, 'Keanu', 'Edris'); one(e, 'Wren', 'Kendal'); },
+      e => { one(e, 'Jackson', 'Kali'); },
+    ],
+  };
+  for (let w = 1; w <= 4; w++) Object.entries(weeks).forEach(([show, list]) => list[w - 1](ep(show, w)));
+  M.setWeek(st, 5);
+  M.updateWrestler(st, id('Punk'), { status: 'injured' });
+  M.updateWrestler(st, id('Brock'), { status: 'away' });
+  M.assignWrestler(st, id('Oba'), 'raw', 'Called up');
+  const backlash = M.addEvent(st, { kind: 'ple', name: 'Backlash', showId: 'raw', week: 7 });
+  return { st, W, id, T, C, lfg, indies, backlash };
+}
