@@ -113,7 +113,7 @@ export function storylines(st, { at = null, d = RL.relationships(st), hist = nul
       const format = formatOf(x.m, x.side, j);
       const winner = x.m.outcome === 'win' ? (x.m.winner === x.side ? l.a : x.m.winner === j ? l.b : null) : null;
       l.beats.push({ wk: x.wk, ev: x.ev, order: 1, kind: 'match', match: x.m.id, format, winner, outcome: x.m.outcome, stip: x.m.stip || '',
-        titleId: x.m.titleId || null, upset: winner ? unexpected(h, winner, winner === l.a ? l.b : l.a, x) : false,
+        titleId: x.m.titleId || null, upset: winner ? unexpected(h, winner, winner === l.a ? l.b : l.a, x, st) : false,
         text: `${matchText(st, x.m, winner)} at ${x.ev.name}`, weight: 0.5 });
       // partners who stood with one of them against the other are drawn in
       [[x.side, l.a, l.b], [j, l.b, l.a]].forEach(([si, who, foe]) => x.m.sides[si].wrestlers.filter(p => p !== who).forEach(p => {
@@ -176,8 +176,13 @@ function matchText(st, m, winner) {
   return `${sides.join(' vs ')} — ${m.outcome === 'draw' ? 'a draw' : 'no contest'}`;
 }
 
-// nobody expected it: the winner came in with a clearly worse run than the loser
-function unexpected(h, winner, loser, x) {
+// nobody expected it: the winner came in with a clearly worse run than the loser, or beat a champion without being one
+function unexpected(h, winner, loser, x, st = null) {
+  if (st) {
+    const held = id => st.reigns.some(r => M.compareStamps(st, r.start, x.ev.at) < 0 && (!r.end || M.compareStamps(st, r.end, x.ev.at) >= 0)
+      && (r.holder.type === 'team' ? (M.teamById(st, r.holder.id) || { members: [] }).members.includes(id) : r.holder.id === id));
+    if (held(loser) && !held(winner)) return true;
+  }
   const form = id => {
     const prior = (h.get(id) || []).filter(e => e.m !== x.m && (e.wk < x.wk || (e.wk === x.wk && e.ev !== x.ev && e.ev.at.day < x.ev.at.day))).slice(-6);
     return prior.reduce((n, e) => n + (e.res === 'W' ? 1 : e.res === 'L' ? -1 : 0), 0);

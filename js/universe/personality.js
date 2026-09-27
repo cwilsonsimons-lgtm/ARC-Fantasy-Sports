@@ -13,6 +13,7 @@
 // (story.js shows those); either can be edited or deleted here.
 import * as M from './model.js';
 import * as RL from './relations.js';
+import * as SL from './storylines.js';
 import {
   ICON, INCIDENT, LABEL, avatar, empty, esc, field, findable, incidentText, options, section, select, showColor, showName, sideName, stampLabel,
   wrestlerOptions,
@@ -150,6 +151,23 @@ function entryRow(st, e, pairLink = false) {
 }
 
 /** The page for two wrestlers: what's between them now, what's building, and the whole timeline. */
+// the storyline between them, if there is one: where it stands, how often it has advanced, who has taken a side and why
+function storyBlock(st, d, a, b) {
+  const l = SL.storyOf(SL.storylines(st, { d }), a, b);
+  if (!l) return '';
+  const sideOf = (who, foe) => SL.drawnIn(st, d, l, who, foe);
+  const sides = [[a, b], [b, a]].map(([who, foe]) => ({ who, list: sideOf(who, foe) })).filter(x => x.list.length);
+  const chapters = l.beats.filter(x => x.kind === 'match').slice(-4);
+  return `${section('Storyline', null)}
+    <div class="uv-build" data-storyline="${l.key}">
+      <div><b>${esc(SL.STAGE_LABEL[l.stage])}</b> — ${esc(SL.storyText(st, l))}</div>
+      ${chapters.length ? `<div>Chapters lately: ${esc(chapters.map(x => `${SL.FORMAT_LABEL[x.format]} (${x.ev.name})`).join(', '))}</div>` : ''}
+      ${sides.map(x => `<div>Standing with ${esc(nm(st, x.who))}: ${esc(x.list.slice(0, 3).map(p => `${nm(st, p.id)} — ${p.why}`).join('; '))}</div>`).join('')}
+      <div>The auto booker reads this: how pressing it is (${l.priority.toFixed(1)}, fading by half every ${SL.RULES.halfLife} weeks), what it
+        has done, and who has a reason to join in.</div>
+    </div>`;
+}
+
 export function uvPairPage(id) {
   const st = uni();
   const [a, b] = String(id).split('+');
@@ -178,6 +196,8 @@ export function uvPairPage(id) {
         ${kindChip(r.kind)}<div class="uv-main"><div class="nm">${esc(RL.relText(st, r))}</div>
         <div class="sub">${RL.levelText(r) ? `${esc(RL.levelText(r))} of 3 · ` : ''}since ${when(st, r.since)}</div></div>${dots(r)}</div>`).join('')}</div>`
         : '<div class="uv-none">Nothing between them right now.</div>'}
+
+      ${storyBlock(st, d, a, b)}
 
       ${section('Building up', null)}
       <div class="uv-build">

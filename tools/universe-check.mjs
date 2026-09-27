@@ -2330,6 +2330,73 @@ await check('a version 9 save imports with nothing drafted and every show on its
 }, [M.SCHEMA_VERSION, { shows: {}, all: {} }, true, []]);
 await check('layout anchored', anchored, isAnchored);
 
+// ================================================================ the booker reads the story
+// The booking sample again, with a story on record after Raw week 4: Gunther
+// attacked Cody, and Jey made the save. No premium live event ahead.
+const sk = bookingSample();
+M.deleteEvent(sk.st, sk.backlash.id);
+const sk4 = sk.st.events.find(e => e.showId === 'raw' && e.at.week === 4);
+const skAttack = M.recordIncident(sk.st, sk4.id, { kind: 'attack', by: [sk.id('Gunther')], on: [sk.id('Cody')], phase: 'post' });
+M.recordIncident(sk.st, sk4.id, { kind: 'save', by: [sk.id('Jey')], on: [sk.id('Gunther')], helped: [sk.id('Cody')], phase: 'post' });
+const whys = () => js(`[...document.querySelectorAll('.uv-page .uv-mc.draft .uv-why')].map(${TEXT})`);
+await check('the story reaches the draft: the attack is why — and every match says why', async () => {
+  await importState(sk.st, 'story-booking.json');
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('.uv-weekdraft').click();
+  await settle();
+  await btn(sheet, /Draft \d+ cards/).click();
+  await settle();
+  await openShow('Raw');
+  const w = await whys();
+  const ev = draftOn(await saved(), 'raw');
+  const revenge = ev.draft.matches.find(m => m.auto && m.auto.why[0].startsWith('Revenge: Gunther attacked Cody last week'));
+  return [w.some(x => x.startsWith('Why Revenge: Gunther attacked Cody last week')), w.length === ev.draft.matches.length,
+    !!revenge && revenge.auto.events.includes(skAttack.id), await sound()];
+}, [true, true, true, []]);
+await check('a story event after the draft: the draft says what’s new, and drawing the rest again takes it in', async () => {
+  await btn(body, 'Record something yourself').click();
+  await settle();
+  await sheet.locator('.uv-pill[data-v=confrontation]').click();
+  await page.waitForTimeout(80);
+  await page.selectOption('#uvSheetBody select[data-by="0"]', await idOf('Becky'));
+  await page.selectOption('#uvSheetBody select[data-on="0"]', await idOf('Rhea'));
+  await page.waitForTimeout(80);
+  const pre = await js(`(document.querySelector('#uvSheetBody .uv-seg .on') || { dataset: {} }).dataset.v`);
+  if (pre !== 'pre') await sheet.locator('.uv-seg [data-v=pre]').click();
+  await btn(sheet, 'Record it').click();
+  await settle();
+  const note = await js(`${TEXT}(document.querySelector('.uv-page .uv-draft-since'))`);
+  await body.locator('.uv-draft-since .uv-link', { hasText: 'Draw the rest again' }).click();
+  await settle();
+  await confirmYes();
+  const ev = draftOn(await saved(), 'raw');
+  const tonight = ev.draft.matches.find(m => m.auto && m.auto.why[0] === 'Becky confronted Rhea before the show tonight — the match is tonight');
+  return [/^Since this draft: Becky confronted Rhea \(Raw · Week 5, before the show\)\. Draw the rest again/.test(note), !!tonight,
+    await js(`!!document.querySelector('.uv-page .uv-draft-since')`), await sound()];
+}, [true, true, false, []]);
+await check('storylines: on the auto booker page, and on the page for the two of them — with who stands with whom, and why', async () => {
+  await goTo('Auto booker');
+  const rows = await js(`[...document.querySelectorAll('.uv-page [data-story]')].map(${TEXT})`);
+  const cg = rows.find(r => /^Cody vs Gunther /.test(r));
+  await body.locator('.uv-page [data-story]', { hasText: /^\s*Cody vs Gunther/ }).first().click();
+  await page.waitForTimeout(150);
+  const block = await js(`${TEXT}(document.querySelector('.uv-page [data-storyline]'))`);
+  return [!!cg && /heat \d/.test(cg), await pageKind(), /Standing with Cody: Jey — made the save for Cody against Gunther at Raw · Week 4/.test(block), block];
+}, r => r[0] && r[1] === 'pair' && r[2]);
+await check('undo the story event: the drafted match it followed says so', async () => {
+  await openShow('Raw', 4);
+  await page.locator('.uv-page .uv-wh[data-kind=attack]').first().click();
+  await settle();
+  await btn(sheet, /^\s*Undo it/).click();
+  await settle();
+  await confirmYes();
+  const gone = !(await saved()).events.some(e => e.incidents.some(x => x.id === skAttack.id));
+  await openShow('Raw', 5);
+  const warns = await js(`[...document.querySelectorAll('.uv-page .uv-mc.draft .uv-mc-d.warn')].map(${TEXT})`);
+  return [gone, warns.some(w => /The story event it followed has been undone/.test(w)), await sound()];
+}, [true, true, []]);
+await check('layout anchored', anchored, isAnchored);
+
 // ================================================================ wider screens
 await check('on a laptop it’s a centred column', async () => {
   await page.setViewportSize({ width: 1280, height: 900 });

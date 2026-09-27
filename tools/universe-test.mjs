@@ -16,6 +16,7 @@ import * as SD from '../js/universe/standings.js';
 import * as RL from '../js/universe/relations.js';
 import * as DR from '../js/universe/director.js';
 import * as B from '../js/universe/booker.js';
+import * as SL from '../js/universe/storylines.js';
 import { FIND_FROM, findable } from '../js/universe/ui.js';
 import { bookingSample, sampleCycle, sampleSeason } from './universe-sample.mjs';
 
@@ -3485,4 +3486,241 @@ test('drafting a week: each show planned or drafted, or why not', () => {
   assert.equal(plan.filter(r => r.show && r.show.id === lfg.id).length, 1);
   const days = plan.map(r => r.day);
   assert.deepEqual(days, [...days].sort((a, b) => a - b));
+});
+
+// ---------------------------------------------------------------- the booker reads the story
+
+// the booking sample with story events recorded after Raw week 4, as the director (or the owner) would
+function storySample() {
+  const x = bookingSample();
+  const { st, id } = x;
+  x.raw4 = st.events.find(e => e.showId === 'raw' && e.at.week === 4);
+  x.inc = (ev, kind, by, on = [], extra = {}) => M.recordIncident(st, ev.id, { kind, by: by.map(id), on: on.map(id), phase: 'post', ...extra });
+  return x;
+}
+const whyOf = x => x.why.join(' | ');
+
+test('storylines: worked out from story events and matches — beats, chapters, formats, a priority that fades, who is drawn in', () => {
+  const { st, id, raw4, inc } = storySample();
+  const attack = inc(raw4, 'attack', ['Gunther'], ['Cody']);
+  inc(raw4, 'save', ['Jey'], ['Gunther'], { helped: [id('Cody')] });
+  const lines = SL.storylines(st);
+  const cg = SL.storyOf(lines, id('Cody'), id('Gunther'));
+  assert.ok(cg.beats.some(b => b.kind === 'attack' && b.incident === attack.id));
+  assert.equal(cg.hook.kind, 'attack');
+  assert.match(cg.hook.text, /^Gunther attacked Cody at Raw · Week 4, after the show$/);
+  // the saver is drawn in on Cody's side, with the reason; nobody stands with Gunther without one
+  const d = RL.relationships(st);
+  const cody = SL.drawnIn(st, d, cg, id('Cody'), id('Gunther'));
+  assert.deepEqual(cody.map(p => p.id), [id('Jey')]);
+  assert.equal(cody[0].path, 'Gunther → Cody (rival) → Jey (made the save for Cody against Gunther at Raw · Week 4)');
+  assert.deepEqual(SL.drawnIn(st, d, cg, id('Gunther'), id('Cody')), []);
+  // a tag partner stands with a rival; a friend who's close to both sides stays out of it
+  const sk = SL.storyOf(lines, id('Seth'), id('Kevin'));
+  assert.deepEqual(SL.drawnIn(st, d, sk, id('Kevin'), id('Seth')).map(p => [p.id, p.how]), [[id('Sami'), 'tag partner']]);
+  M.editRelationship(st, { action: 'form', kind: 'friends', a: id('Sami'), b: id('Seth'), level: 1 });
+  const torn = SL.storyOf(SL.storylines(st), id('Seth'), id('Kevin'));
+  assert.deepEqual(SL.drawnIn(st, RL.relationships(st), torn, id('Kevin'), id('Seth')), []);
+  // the matches: SmackDown's Roman and Solo have met one on one twice
+  const rs = SL.storyOf(lines, id('Roman'), id('Solo'));
+  assert.deepEqual([rs.chapters, rs.direct, rs.formats], [2, 2, ['singles', 'singles']]);
+  // big events fade over weeks rather than vanish: the attack still counts three weeks on, at half
+  const now = cg.priority;
+  M.setWeek(st, 7);
+  const later = SL.storyOf(SL.storylines(st), id('Cody'), id('Gunther'));
+  assert.ok(later.priority < now && later.priority > now / 2 - 1, `${later.priority} vs ${now}`);
+  assert.ok(later.beats.some(b => b.incident === attack.id));
+  sound(st);
+});
+
+test('story events make matches: revenge after an attack, a feud after a betrayal, tonight’s confrontation tonight, a title shot after a demand', () => {
+  const { st, id, raw4, inc, backlash, T, C } = storySample();
+  M.deleteEvent(st, backlash.id);                                           // no premium live event ahead to hold anything back
+  const attack = inc(raw4, 'attack', ['Gunther'], ['Cody']);
+  const betray = inc(raw4, 'betrayal', ['Kevin'], ['Sami']);
+  inc(raw4, 'breakup', ['Kevin'], ['Sami'], { team: T.ko.id });
+  M.setTeamActive(st, T.ko.id, false);
+  const demand = inc(raw4, 'demand', ['Oba'], ['Gunther'], { title: C.world.id });
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const conf = M.recordIncident(st, ev.id, { kind: 'confrontation', by: [id('Becky')], on: [id('Liv')], phase: 'pre' });
+  const ideas = B.ideasFor(st, ev.id);
+  const pair = (a, b) => ideas.find(x => pairIs(st, x, a, b));
+  // an attack: a revenge match, the attack named and kept as the reason
+  const revenge = ideas.find(x => pairIs(st, x, 'Cody', 'Gunther') && x.why[0].startsWith('Revenge: Gunther attacked Cody last week'));
+  assert.ok(revenge, ideas.filter(x => pairIs(st, x, 'Cody', 'Gunther')).map(whyOf).join('\n'));
+  assert.ok(revenge.events.includes(attack.id));
+  // a betrayal: the team is done and a feud starts
+  const feud = pair('Sami', 'Kevin');
+  assert.equal(feud.why[0], 'Betrayal: Kevin turned on Sami last week');
+  assert.ok(feud.events.includes(betray.id));
+  // a confrontation before tonight's show: the match is tonight, and it's likely
+  const tonight = pair('Liv', 'Becky');
+  assert.equal(tonight.why[0], 'Becky confronted Liv before the show tonight — the match is tonight');
+  assert.ok(tonight.events.includes(conf.id));
+  assert.ok(ideas.indexOf(tonight) < 6, 'among the likeliest');
+  // a title demand: the demand leads the challenger's case
+  const shot = ideas.find(x => x.kind === 'title' && x.titleId === C.world.id && x.people.includes(id('Oba')));
+  assert.match(whyOf(shot), /Oba: demanded a shot last week/);
+  assert.ok(shot.events.includes(demand.id));
+  // and the draft keeps the story events behind each match, through booking
+  const r = B.draftCard(st, ev.id);
+  M.setDraft(st, ev.id, r.matches.map(B.toSpec), { seen: r.seen, played: r.played });
+  const made = M.bookDraft(st, ev.id);
+  assert.ok(made.some(m => m.auto.events.includes(conf.id)), 'tonight’s confrontation is on the card');
+  sound(st);
+});
+
+test('a save becomes a tag match; new allies take on a common enemy; a friend is drawn in only with a reason', () => {
+  const { st, id, raw4, inc } = storySample();
+  const ev0 = M.addEvent(st, { showId: 'raw' });
+  // before anything happens, Jey (Cody's friend) isn't set against Gunther for Cody
+  assert.ok(!B.ideasFor(st, ev0.id).some(x => x.kind === 'defend' && pairIs(st, x, 'Jey', 'Gunther')));
+  M.deleteEvent(st, ev0.id);
+  inc(raw4, 'attack', ['Gunther'], ['Cody']);
+  const save = inc(raw4, 'save', ['Jey'], ['Gunther'], { helped: [id('Cody')] });
+  M.editRelationship(st, { action: 'form', kind: 'allies', a: id('Gunther'), b: id('Drew'), level: 2 });
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const ideas = B.ideasFor(st, ev.id);
+  // (the storyline's own tag idea is the same four people: one idea, with both reasons)
+  const tag = ideas.find(x => x.type === 'tag' && x.events.includes(save.id) && x.why.some(w => w.startsWith('From the save:')));
+  assert.ok(tag, 'the save makes a tag match');
+  assert.ok(tag.why.includes('From the save: Jey saved Cody from Gunther last week — now they team up'), whyOf(tag));
+  assert.ok(tag.why.some(w => /^Connection: Cody → Gunther \(rival\) → Drew \(Gunther’s ally — the feud is at its hottest\)$/.test(w)), whyOf(tag));
+  assert.deepEqual(new Set(tag.people), new Set([id('Jey'), id('Cody'), id('Gunther'), id('Drew')]));
+  // Jey is drawn in now, and the connection says why
+  const jey = ideas.find(x => pairIs(st, x, 'Jey', 'Gunther') && ['defend', 'build', 'feud'].includes(x.kind));
+  assert.ok(jey.why.some(w => /made the save/.test(w)), whyOf(jey));
+  // new allies against a common enemy
+  const drewIdle = M.recordIncident(st, raw4.id, { kind: 'alliance', by: [id('Drew')], on: [id('Idle')], phase: 'post' });
+  M.editRelationship(st, { action: 'form', kind: 'grudge', a: id('Idle'), b: id('Finn'), level: 2 });
+  const allied = B.ideasFor(st, ev.id).find(x => x.events.includes(drewIdle.id));
+  assert.ok(allied && allied.type === 'tag' && allied.people.includes(id('Finn')), allied && whyOf(allied));
+  assert.match(allied.why[0], /^New allies: Drew and Idle joined forces last week$/);
+  sound(st);
+});
+
+test('no repeats: last week’s line-up in any format waits, a feud that went one way twice goes another, and a lost title shot waits its turn', () => {
+  const { st, id, T, C } = storySample();
+  const ev5 = M.addEvent(st, { showId: 'raw' });
+  // last week, on this show: KO & Sami beat Judgment Day in a tag match for the titles... and lost it the week before
+  const tagKey = B.matchKey({ titleId: null, sides: [{ wrestlers: [id('Kevin'), id('Sami')] }, { wrestlers: [id('Damian'), id('Finn')] }] });
+  const before = B.ideasFor(st, ev5.id).find(x => B.matchKey({ ...x, titleId: null }) === tagKey);
+  M.recordMatch(st, st.events.find(e => e.showId === 'raw' && e.at.week === 4).id, {
+    sides: [{ team: T.jd.id, wrestlers: [id('Damian'), id('Finn')] }, { team: T.ko.id, wrestlers: [id('Kevin'), id('Sami')] }], titleId: C.rawTag.id, winner: 0 });
+  const after = B.ideasFor(st, ev5.id).filter(x => B.matchKey({ ...x, titleId: null }) === tagKey);
+  assert.ok(after.every(x => x.score < before.score - 2), 'the same four, last week, in any format: much less likely');
+  assert.ok(!after.some(x => x.titleId === C.rawTag.id), 'KO & Sami just lost a shot: they wait their turn');
+  // Sami and Finn's feud has gone through tag matches twice running: this time one on one, and it says so
+  const ideas = B.ideasFor(st, ev5.id);
+  const direct = ideas.find(x => pairIs(st, x, 'Sami', 'Finn'));
+  assert.ok(direct.why.includes('A tag match twice running — this time one on one'), whyOf(direct));
+  sound(st);
+});
+
+test('a feud across weeks, with the CPU deciding: it moves on through different matches, and an unexpected winner changes what comes next', () => {
+  const { st, id, backlash } = storySample();
+  M.deleteEvent(st, backlash.id);
+  const A = id('Cody'), G = id('Gunther');
+  const rating = x => { const r = M.wrestlerRecord(st, x); const w = r.singles.w + r.tag.w, l = r.singles.l + r.tag.l; return (w + 1) / (w + l + 2); };
+  const strength = sd => sd.wrestlers.reduce((n, x) => n + rating(x), 0) / sd.wrestlers.length;
+  let upset = null;
+  const later = [];
+  for (let week = 5; week <= 9; week++) {
+    M.setWeek(st, week);
+    const ev = M.addEvent(st, { showId: 'raw' });
+    const r = B.draftCard(st, ev.id);
+    M.setDraft(st, ev.id, r.matches.map(B.toSpec), { seen: r.seen, played: r.played });
+    const made = M.bookDraft(st, ev.id);
+    const key = SL.storyOf(SL.storylines(st), A, G).key;
+    const chapter = made.find((m, i) => r.matches[i].feud === key);
+    if (upset) later.push(...made.filter(m => m.auto && m.sides.flat().length && m.sides.some(sd => sd.wrestlers.some(x => upset.people.includes(x)))));
+    // the CPU: the better record wins - except once, when the feud's chapter goes to the underdog
+    made.forEach(m => {
+      const order = m.sides.map((sd, i) => ({ i, s: strength(sd) })).sort((p, q) => q.s - p.s || p.i - q.i);
+      const flip = !upset && week >= 6 && m === chapter;
+      const winner = flip ? order[order.length - 1].i : order[0].i;
+      M.enterResult(st, ev.id, m.id, { outcome: 'win', winner }, {});
+      if (flip) upset = { week, people: m.sides.flatMap(sd => sd.wrestlers) };
+    });
+    if (week === 5) M.recordIncident(st, ev.id, { kind: 'attack', by: [G], on: [A], phase: 'post' });   // the story, as the director might tell it
+  }
+  const story = SL.storyOf(SL.storylines(st), A, G);
+  const chapters = story.beats.filter(b => b.kind === 'match' && b.wk >= 5);
+  assert.ok(chapters.length >= 3, story.beats.map(b => `${b.wk} ${b.format} ${b.text}`).join('\n'));
+  chapters.forEach((b, i) => { if (i) assert.ok(!(b.format === chapters[i - 1].format && b.via === chapters[i - 1].via && b.wk - chapters[i - 1].wk <= 1 && b.format !== 'proxy'), `week ${b.wk} repeats`); });
+  assert.ok(new Set(chapters.map(b => `${b.format}:${b.via || ''}`)).size >= 2, 'different matches along the way');
+  assert.ok(upset, 'the CPU handed a chapter to the underdog');
+  assert.ok(later.some(m => m.auto.why.some(w => /nobody saw it coming|isn’t over|beat /.test(w))), later.map(m => m.auto.why.join(' | ')).join('\n'));
+  assert.ok(st.events.every(e => e.matches.every(m => m.status === 'played')), 'every result entered, none picked by the booker');
+  sound(st);
+});
+
+test('a draft says what’s new since it was drawn, and flags a match whose story event was undone', () => {
+  const { st, id, raw4, inc, backlash } = storySample();
+  M.deleteEvent(st, backlash.id);
+  const attack = inc(raw4, 'attack', ['Gunther'], ['Cody']);
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const r = B.draftCard(st, ev.id);
+  M.setDraft(st, ev.id, r.matches.map(B.toSpec), { seen: r.seen, played: r.played });
+  const e = () => M.eventById(st, ev.id);
+  assert.deepEqual(B.sinceDraft(st, e()), { incidents: [], results: 0 });
+  const conf = M.recordIncident(st, ev.id, { kind: 'confrontation', by: [id('Seth')], on: [id('Kevin')], phase: 'pre' });
+  M.recordMatch(st, M.addEvent(st, { showId: 'smackdown' }).id, { sides: [{ wrestlers: [id('Roman')] }, { wrestlers: [id('LA')] }], winner: 0 });
+  const since = B.sinceDraft(st, e());
+  assert.deepEqual([since.incidents.map(x => x.incident.id), since.results], [[conf.id], 1]);
+  // undo the attack the revenge match followed: the draft says so
+  const dm = e().draft.matches.find(m => m.auto && m.auto.events.includes(attack.id));
+  assert.ok(dm, 'a drafted match follows the attack');
+  M.deleteIncident(st, raw4.id, attack.id);
+  assert.ok(B.draftNotes(st, e()).get(dm.id).includes('The story event it followed has been undone'));
+  // drawing the rest again starts from what's on record now
+  const again = B.redraft(st, ev.id);
+  M.setDraft(st, ev.id, again.list, { nonce: again.nonce, seen: again.seen, played: again.played });
+  assert.deepEqual(B.sinceDraft(st, e()), { incidents: [], results: 0 });
+  assert.ok(!e().draft.matches.some(m => m.auto && !m.auto.edited && m.auto.events.includes(attack.id)));
+  sound(st);
+});
+
+test('the rare surprise: one at most, only when the card’s draw allows it, and always with a hook', () => {
+  const { st, id, raw4, inc } = storySample();
+  // two with a common enemy: both at war with Gunther
+  inc(raw4, 'attack', ['Gunther'], ['Drew']);
+  inc(raw4, 'attack', ['Gunther'], ['Priest']);
+  let seenOpen = 0, seenClosed = 0;
+  for (let n = 0; n < 12; n++) {
+    const ev = M.addEvent(st, { showId: 'raw' });
+    const r = B.draftCard(st, ev.id, { nonce: n });
+    const s = r.matches.filter(m => m.kind === 'surprise');
+    assert.ok(s.length <= 1);
+    s.forEach(m => assert.match(m.why[0], /^A surprise pairing — /));
+    const ideas = B.ideasFor(st, ev.id, { nonce: n }).filter(x => x.kind === 'surprise');
+    if (ideas.length) seenOpen++; else seenClosed++;
+    M.deleteEvent(st, ev.id);
+  }
+  assert.ok(seenOpen > 0 && seenClosed > seenOpen, `open on ${seenOpen} of 12 draws`);
+});
+
+test('a version 10 save: drafted and booked matches get no story events, drafts don’t know what they saw', () => {
+  const { st, id } = storySample();
+  const ev = M.addEvent(st, { showId: 'raw' });
+  const r = B.draftCard(st, ev.id);
+  M.setDraft(st, ev.id, r.matches.map(B.toSpec), { seen: r.seen, played: r.played });
+  const ev2 = M.addEvent(st, { showId: 'nxt' });
+  M.setDraft(st, ev2.id, B.draftCard(st, ev2.id).matches.map(B.toSpec));
+  M.bookDraft(st, ev2.id);
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 10;
+  old.events.forEach(e => {
+    e.matches.forEach(m => { if (m.auto) delete m.auto.events; });
+    if (e.draft) { delete e.draft.seen; delete e.draft.played; e.draft.matches.forEach(m => { if (m.auto) delete m.auto.events; }); }
+  });
+  const up = M.migrate(old);
+  assert.equal(up.version, M.SCHEMA_VERSION);
+  const e = up.events.find(x => x.id === ev.id);
+  assert.deepEqual([e.draft.seen, e.draft.played], [null, null]);
+  assert.ok(e.draft.matches.every(m => Array.isArray(m.auto.events) && !m.auto.events.length));
+  assert.ok(up.events.find(x => x.id === ev2.id).matches.every(m => m.auto && Array.isArray(m.auto.events)));
+  assert.deepEqual(B.sinceDraft(up, e), { incidents: [], results: 0 });
+  sound(up);
+  assert.ok(id('Cody'));
 });

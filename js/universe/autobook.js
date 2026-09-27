@@ -10,7 +10,8 @@
 // winner, and nothing here enters a result.
 import * as M from './model.js';
 import * as B from './booker.js';
-import { ICON, chip, empty, esc, eventWhen, kindChip, section, showColor, showName, vsLine } from './ui.js';
+import * as SL from './storylines.js';
+import { ICON, chip, empty, esc, eventWhen, incidentText, kindChip, section, showColor, showName, vsLine } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, pushPage, uni } from './app.js';
 import { uvDirect, uvDirectedToast } from './story.js';
 
@@ -24,7 +25,7 @@ export function uvDraftCard(eventId) {
   commit(st => {
     const r = B.draftCard(st, eventId);
     if (!r.matches.length) nope(r.short || 'Nothing to draft.');
-    M.setDraft(st, eventId, r.matches.map(B.toSpec));
+    M.setDraft(st, eventId, r.matches.map(B.toSpec), { seen: r.seen, played: r.played });
     return r;
   }, r => `Draft card: ${plural(r.matches.length, 'match', 'matches')}${r.short ? ` — ${r.short}` : ''}. Nothing is booked until you book it`);
 }
@@ -39,7 +40,7 @@ export function uvDraftAgain(eventId) {
     + `${redo ? `The other ${plural(redo, 'match', 'matches')} ${redo === 1 ? 'is' : 'are'} drawn again` : 'The card is filled up again'}; anything you took off stays off.`,
     'Draw again', () => commit(st => {
       const r = B.redraft(st, eventId);
-      M.setDraft(st, eventId, r.list, { nonce: r.nonce });
+      M.setDraft(st, eventId, r.list, { nonce: r.nonce, seen: r.seen, played: r.played });
       return r;
     }, r => `Drawn again${r.short ? ` — ${r.short}` : ''}`));
 }
@@ -114,6 +115,9 @@ export function uvDraftBlock(st, ev) {
   }
   const notes = B.draftNotes(st, ev);
   const out = d.out.map(id => M.wrestlerById(st, id)).filter(Boolean);
+  const since = B.sinceDraft(st, ev);
+  const news = [...since.incidents.slice(-3).map(x => `${incidentText(st, x.incident)} (${x.event.name}${x.incident.phase === 'pre' ? ', before the show' : ''})`),
+    ...(since.incidents.length > 3 ? [`${since.incidents.length - 3} more`] : []), ...(since.results ? [`${plural(since.results, 'new result')}`] : [])];
   const size = M.cardSize(st, ev);
   const total = ev.matches.length + d.matches.length;
   return `${section('Draft card', d.matches.length, 'var(--uv-gold)')}
@@ -121,6 +125,8 @@ export function uvDraftBlock(st, ev) {
       <div class="uv-draft-note">${ICON.spark}<span>Drafted by the auto booker${d.nonce ? ` (draw ${d.nonce + 1})` : ''} for a ${size}-match card.
         Nothing here is booked yet and no winner is picked. Change anything — every match, who’s in it, the order, the stipulation,
         the title — then book it.${total !== size ? ` ${total < size ? `The card comes to ${total} of ${size}.` : `The card comes to ${total}, over its ${size}.`}` : ''}</span></div>
+      ${news.length ? `<div class="uv-draft-since" data-since="${since.incidents.length}">${ICON.star}<span><b>Since this draft:</b> ${esc(news.join(' · '))}.
+        <span class="uv-link" onclick="uvDraftAgain('${ev.id}')">Draw the rest again</span> to take ${news.length === 1 ? 'it' : 'them'} into account — what you changed stays.</span></div>` : ''}
       ${d.matches.length ? `<div class="uv-cards">${d.matches.map((dm, i) => draftMatch(st, ev, dm, i, ev.matches.length, notes.get(dm.id))).join('')}</div>`
         : empty(ICON.spark, 'The draft is empty', 'Add a match of your own, or draw the card again.')}
       <div class="uv-add inset" onclick="uvDraftAdd('${ev.id}')">${ICON.plus}Add your own match</div>
@@ -214,7 +220,7 @@ export function uvDraftWeekGo(week) {
     evs.forEach(ev => {
       const res = B.draftCard(st, ev.id);
       if (!res.matches.length) return;
-      M.setDraft(st, ev.id, res.matches.map(B.toSpec));
+      M.setDraft(st, ev.id, res.matches.map(B.toSpec), { seen: res.seen, played: res.played });
       drafted++;
     });
     return drafted;
@@ -294,6 +300,7 @@ export function uvBookerPage() {
       ${drafts.length ? `${section('Drafts waiting', drafts.length)}<div class="uv-list">${drafts.map(e => `<div class="uv-row" style="--c:${showColor(st, e.showId)}"
         onclick="uvOpenEvent('${e.id}')"><div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${esc(eventWhen(st, e))} ·
         ${plural(e.draft.matches.length, 'match', 'matches')} drafted</div></div>${ICON.right}</div>`).join('')}</div>` : ''}
+      ${storylineList(st)}
       ${section('Each show', st.shows.length)}
       <div class="uv-list">${st.shows.map(sh => {
         const s = M.bookerSettings(st, sh.id);
@@ -307,6 +314,19 @@ export function uvBookerPage() {
       <p class="uv-p uv-inset-p fine">A show you add later starts with the defaults for its tier: 6 matches a week in tier 1, 5 in tier 2,
         4 below that (5 in no tier), and 2 more at a premium live event.</p>`,
   };
+}
+
+// the feuds that matter most now, with where each stands - tap one for the two of them
+function storylineList(st) {
+  const lines = SL.storylines(st).filter(l => l.priority >= 1.5 || l.stage === 'peak').slice(0, 12);
+  if (!lines.length) return '';
+  const nm = id => (M.wrestlerById(st, id) || { name: '?' }).name;
+  return `${section('Storylines', lines.length)}<div class="uv-list">${lines.map(l => `<div class="uv-row" data-story="${l.key}"
+    style="--c:${showColor(st, (M.wrestlerById(st, l.a) || {}).showId)}" onclick="uvOpenPair('${l.a}','${l.b}')"><div class="uv-main">
+    <div class="nm">${esc(nm(l.a))} vs ${esc(nm(l.b))} ${chip(SL.STAGE_LABEL[l.stage], l.stage === 'peak' ? 'gold' : '')}</div>
+    <div class="sub">${esc(SL.storyText(st, l))}</div></div>${ICON.right}</div>`).join('')}</div>
+    <p class="uv-p uv-inset-p fine">Worked out from the record — story events, results, relationships — like relationships are, so an
+      undone event or a corrected result changes them too. Each event fades by half every ${SL.RULES.halfLife} weeks.</p>`;
 }
 
 // ================================================================ how it works
@@ -346,7 +366,23 @@ export function uvHowBooker() {
       <p class="uv-p"><b>Yours to change.</b> Edit any match — who’s in it, the title, the stipulation, the notes — draw one match again,
         move it, take it off (it won’t come back on that draft), add your own, or say who isn’t at the show. <b>Draw the rest again</b>
         keeps everything you changed or added. Every match says why it was chosen, and keeps that once it’s booked.</p>
-      <p class="uv-p"><b>Not yet.</b> It doesn’t read or start the story director’s events — a title demand or a confrontation doesn’t book
-        a match by itself yet. It reads only the relationships they leave behind.</p>`,
+      <p class="uv-p"><b>The story.</b> The story director’s events are canon, and the booker reads them. An attack makes a revenge match
+        likely; a save, a tag match with the one saved; a betrayal, a feud; a confrontation before the show, the match that night; a title
+        demand or challenge, a title shot; new allies take on a common enemy; a team in trouble has to hold it together. Big events fade
+        over weeks rather than being forgotten after one.</p>
+      <p class="uv-p"><b>Storylines.</b> Every feud is worked out from the record — its events, its matches, how often it has advanced
+        and in which kinds of match — so it moves on instead of repeating: after a singles match it goes through partners or a tag match,
+        the same way twice running goes another way, a premium live event ahead holds the big match back, a feud at its peak gets a
+        stipulation, one settled lately cools off, and an unexpected winner keeps it going. A rival’s tag partner stands with them; a
+        friend is drawn in only by something on record (a save, an interference, a grudge of their own) or once the feud is at its
+        hottest; someone close to both stays out of it. Every such connection is spelled out: <i>Gunther → Cody (rival) → Jey (made the
+        save for Cody against Gunther)</i>.</p>
+      <p class="uv-p"><b>Not the same again.</b> It tracks who has faced whom lately, in any kind of match, and the kind of match each
+        wrestler had last; a line-up from the last two weeks, or a fourth match of the same kind in a row, is less likely. Now and then —
+        a seeded draw per card — it allows one surprise pairing, with a hook: a common enemy, the same champion beaten, two hot runs that
+        haven’t crossed.</p>
+      <p class="uv-p"><b>After the results.</b> Nothing is stored for any of this: once you enter what the CPU did, records,
+        relationships, the story director’s next events and the booker’s priorities all follow from it. A draft drawn before new results or
+        story events says so; a drafted match whose story event you undo says so too.</p>`,
   }));
 }

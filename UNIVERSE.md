@@ -11,7 +11,9 @@ saves, betrayals, alliances, challenges — from the record, as canon, without
 ever touching a result. Shows sit in tiers — the main roster, NXT, Evolve, and
 any below — with editable rules for moving up and down between each two. An
 auto booker drafts a whole card for any show, each match with why it was
-chosen, for the owner to change and book.
+chosen, for the owner to change and book — and it follows the story: what the
+director does makes matches likely, feuds move on through different matches
+over weeks, and whatever the CPU decides changes what comes next.
 
 It's a standalone app. It shares this repository with the City Boys Dynasty
 fantasy league (see [README.md](README.md)) only for the build and test
@@ -59,18 +61,20 @@ js/universe/
   tiers.js             Tiers & transfers: the tiers, their shows, and each connection's rules
   card.js              a show's page and match card; the booking / result form (and a draft match's)
   booker.js            the auto booker itself - pure, seeded, runs under Node
+  storylines.js        every feud worked out from the record: beats, chapters, who's drawn in - pure, runs under Node
   autobook.js          the auto booker on screen: a show's draft card, drafting a week, each show's settings
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       137 model tests     npm run test:universe
-tools/universe-check.mjs      205 browser checks  npm run check:universe
+tools/universe-test.mjs       145 model tests     npm run test:universe
+tools/universe-check.mjs      210 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
 tools/universe-booker-demo.mjs a week of draft cards on every show, printed  npm run demo:booker
+tools/universe-feud-demo.mjs  a feud over five weeks: director, booker, the CPU  npm run demo:feud
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -137,7 +141,8 @@ in the app's "How it works" sheets.
   carried out yet.
 - **The auto booker** drafts; it never books. A draft is on the show's page
   until you book it, counts for nothing meanwhile, and books exactly as you
-  left it. It never picks a winner.
+  left it. It never picks a winner. It reads the story director's events and
+  every feud's storyline, so they shape the next cards.
 - **Relationships** are worked out from the record (losses, title defeats,
   teaming, splits, incidents) plus your edits. Traits never change on their own.
 - **The story director** records what happens around each show by itself, as
@@ -232,7 +237,10 @@ An event can also hold a **draft card**: the auto booker's matches (each with
 why it was chosen, and whether you've changed it) and your own, in order; who
 isn't at the show; the draft's draw number; and the drafted matches you took
 off, so they aren't offered again. A draft is never a booking and never holds a
-result. A booked match keeps why the booker chose it, if it did.
+result. Each drafted match names the story events behind it, and the draft
+remembers which story events and how many results it knew of, so anything newer
+can be pointed out. A booked match keeps why the booker chose it, and the story
+events behind it, if it did.
 
 A **match** is one record from the moment it's booked: its sides — each a set
 of wrestlers, plus the tag team they wrestled as — the title on the line, a
@@ -534,8 +542,9 @@ picks a winner: the draft waits on the show's page, counts for nothing, and the
 story director doesn't read it. **Book this card** puts it on the card exactly
 as it stands, after anything already booked; then the game plays it.
 
-**What it reads.** The show's roster (injured, away, and anyone you mark as not
-at this show, left out); its tier, for the card's size; the championships it can
+**What it reads.** The story — the director's events and your own, and every
+feud's storyline (below); the show's roster (injured, away, and anyone you mark
+as not at this show, left out); its tier, for the card's size; the championships it can
 put on the line (its own, and any show-less title whose champion is on it); this
 season's standings and results; who's short of matches (as Booking balance
 counts them) and who wrestled lately; grudges, rivalries, friendships and
@@ -548,10 +557,10 @@ moved); and the calendar — a premium live event ahead, or tonight being one.
 
 | Idea | How it reads |
 |---|---|
-| Title match | the champion against the best contender: high in the standings, a recent win over the champion, a grudge or rivalry, after that title, hot. A title idle for weeks is due; one just defended — or a champion who can't be here — sends the top contenders into a #1 contender's match (in the notes). A vacant title: the top contenders meet for it. |
-| Feud | rivals, or a grudge, one on one — but a feud **builds across shows**: after a singles meeting last week it goes another way this time; with a premium live event ahead the singles match waits for it ("this could wait"); a third meeting in four weeks, or a heated one at a premium live event, gets a stipulation to settle it, and at a premium live event a champion's feud is fought for the title |
-| Allies and partners | rivals face each other's allies, tag partners or friends, or meet in a tag match with a partner each |
-| A friend steps in | a friend stands up to a friend's rival |
+| Title match | the champion against the best contender. The story comes first in the case: a title demand or challenge, a title lost lately (they want it back), the story event between them ("Revenge: Gunther attacked Cody last week"), a run everyone's talking about; then high in the standings, a recent win over the champion or one of the top three, a grudge or rivalry, after that title, hot. A champion's open challenge gets answered. A title idle for weeks is due; one just defended — or a champion who can't be here — sends the top contenders into a #1 contender's match (in the notes). Whoever lost a shot at it, or met the champion one on one, in the last week or two waits their turn. A vacant title: the top contenders meet for it. |
+| Feud | a storyline's next chapter (see Storylines): one on one, through someone who stands with the other, or a tag match with backup on both sides — whichever moves it on |
+| From the story | a save becomes a tag match — the one saved and the one who saved them against the attacker and whoever stands with the attacker (or the attacker outnumbered); new allies take on a common enemy; a team in trouble has to hold it together against another team |
+| Surprise | now and then, one pairing nobody would predict, with a hook (see Storylines) |
 | Teams | teams at odds, or close in the tag standings; factions three on three; a tag partner against a member of a team they're at odds with; someone with a grudge against a faction, alone, handicap |
 | Upset | a win from three or more places lower, or over a champion: a rematch, or a step up against the top three |
 | Opportunity | someone short of matches gets a chance, against an opponent picked as Booking balance's match ideas pick them; someone cold gets one to turn it around; a new arrival gets a first match on the show |
@@ -559,8 +568,11 @@ moved); and the calendar — a premium live event ahead, or tonight being one.
 
 **Putting the card together.** Nobody is in two matches. The card leans toward
 the show's mix of match types and each division's share of who's available,
-favours whoever has gone longest without a match, never repeats last week's
-singles match (a rematch after an upset aside), keeps a weekly episode to its
+favours whoever has gone longest without a match, and keeps away from what just
+happened: a line-up from the last two weeks, in any format, is much less likely
+(a rematch after an upset aside); facing the same people again so soon needs a
+story behind it; and someone whose last three matches were all one kind gets
+something different. It keeps a weekly episode to its
 number of title matches (every title with a contender at a premium live event),
 takes at most two matches from one feud, and only picks a big multi-person match
 while enough people are left for the rest of the card. When nothing with a story
@@ -601,9 +613,96 @@ all of it or none.
 premium live event, prints each match with why, then changes, draws, adds to
 and books a draft, checking at each step.
 
-**Not yet.** It doesn't read or start the story director's events: a title
-demand or a confrontation doesn't book a match by itself yet — the booker sees
-only the relationships they leave behind.
+**After the results.** Nothing the booker knows is stored: once you enter what
+the CPU did, records, relationships, the story director's next events and the
+booker's priorities all follow from it. A draft drawn before new story events
+or results says so (**Since this draft: …**), and **Draw the rest again** takes
+them in, keeping what you changed. A drafted match whose story event you undo
+or edit says so too.
+
+## Storylines
+
+Every feud is a **storyline**, worked out from the record rather than stored
+(`storylines.js`), the way relationships are — so an undone story event or a
+corrected result changes it too. Two wrestlers have one when there's a grudge
+or rivalry between them, or when something hostile happened between them: an
+attack, a betrayal, a brawl, a confrontation, an interference, a save (the
+attacker and the saver), a title challenge or demand, a walk-out, tension
+between partners.
+
+- **Beats**: those story events, and every match that advanced it — one on one,
+  on opposite sides of a tag or multi-person match, or through someone standing
+  with the other one (a proxy). **Chapters** are its matches, and the storyline
+  knows how many and in which formats.
+- **Priority**: its heat, plus every beat — a betrayal 5, a walk-out 4, an
+  attack or brawl 3, an interference or challenge 2.5, a demand, confrontation or
+  save 2, tension 1.5, a truce −3 — each fading by half every 3 weeks. So big
+  events shape cards for weeks rather than being forgotten after one.
+- **Stage**: a *spark* (nothing in the ring yet), *building*, *at its peak*
+  (three chapters, or heat 3 with one, or very pressing — due a blow-off), or
+  *settled* (a stipulation match won, or a truce, in the last 3 weeks, with
+  nothing hostile since — it cools off).
+
+**The next chapter** is picked to move it on:
+
+- The story event behind it leads: *Revenge: Gunther attacked Cody last week*,
+  *Betrayal: Kevin turned on Sami*, *Former partners: …*, and a confrontation
+  before tonight's show makes the match tonight.
+- After a one-on-one meeting last week, or the same format twice running, it
+  goes another way; with a premium live event ahead the singles match waits;
+  at its peak it gets a stipulation (if the show's settings allow); a feud with
+  a champion in it is fought for the title at a premium live event.
+- An unexpected result — a win over a champion, or from a clearly worse run —
+  keeps it going: *Gunther beat Cody 2 weeks ago — nobody saw it coming, and it
+  isn't over*. A pin in a tag match that nobody expected earns a one-on-one.
+
+**Who is drawn in.** Someone joins a side only with a reason, and every
+connection is spelled out as a path:
+*Connection: Gunther → Cody (rival) → Jey (made the save for Cody against
+Gunther at Raw · Week 4)*.
+
+| Standing with one of them | Counts |
+|---|---|
+| Made a save for them, interfered for them, teamed with them against the other, or has a grudge of their own against the other | fully — drawn in |
+| Their tag partner | stands with them |
+| Their friend or ally, nothing more | only once the feud is at its hottest |
+| Close to both of them | never — they're torn, and stay out of it |
+
+A rival's friends and partners are not enemies by default.
+
+**A surprise, now and then.** A seeded draw per card (about 3 cards in 10 at a
+normal story pace; fewer when quiet, more when wild) allows one pairing between
+two with nothing between them and no meeting lately — but only with a hook: a
+common enemy (both at war with the same wrestler), the same champion beaten
+lately, or two hot runs that haven't crossed. At most one a card.
+
+**The Auto booker page** lists the storylines that matter now, with where each
+stands; tap one for the page for the two of them, which shows its stage, its
+chapters and who stands with whom, and why.
+
+`npm run demo:feud` plays Raw from week 5 to week 9, Backlash included: the
+director runs before and after each show, the booker drafts every card and it's
+booked as drafted, and a stand-in for the CPU decides every match (the better
+record wins — except once, when the feud's chapter goes to the underdog). From
+it (seed 7):
+
+```
+Raw · Week 6   Gunther vs Cody (World Heavyweight Championship) — the CPU: Gunther won   ← nobody saw that coming
+Raw · Week 7   before the show: Seth confronted Kevin
+               Cody and Gunther sit this one out · also from the story: Seth vs Kevin — the match is tonight
+Backlash       Gunther vs Seth (title) · Cody vs Priest
+Raw · Week 8   Cody vs Gunther — Gunther beat Cody 2 weeks ago — nobody saw it coming, and it isn't over
+               after the show: Cody and Gunther brawled
+Raw · Week 9   Gunther vs Jey — Connection: Gunther → Cody (grudges both ways) → Jey (Cody's friend — the feud is at its hottest)
+               · Cody and Gunther brawled last week — it needs settling in the ring
+               · They met one on one last week — the feud moves on another way
+```
+
+It checks that the feud moved on through different matches, that no line-up from
+it came back the next week, that the unexpected result was picked up, that the
+director's events became reasons for matches, and that every result came from
+the CPU stand-in. Other seeds tell other stories — a truce can cool the feud
+first — and the checks allow for that.
 
 ## Personalities and relationships
 
@@ -739,6 +838,10 @@ alignment are left alone. A true **shock** — a betrayal from nowhere — is a
 0.4% long shot at most once every 8 weeks. At a normal pace, the demo comes
 to about one big moment every 30–35 shows.
 
+**The auto booker reads it.** Its events are canon for the booker too: they make
+matches likely on the next cards (see Storylines). The director doesn't read
+drafts; it sees a match once it's booked, as it always has.
+
 **It never** enters, invents or changes a match or its winner; never awards a
 title (titles change only on a result you enter); never moves anyone between
 shows (only relegation and the draft do); never books a match. A breakup
@@ -869,6 +972,7 @@ refuses rather than disturb anything else:
 | A drafted match you don't want | Change it, **Draw again**, or take it off the draft. |
 | A whole draft card you don't like | **Draw the rest again** (what you changed or added stays), or **Discard the draft**. |
 | An auto-booked match, once it's on the card | Edit or take it off like any booking — it's marked as changed by you. |
+| A story event the booker followed, that shouldn't have happened | Undo it (or edit it) on its show as usual. A drafted match that followed it says so; **Draw the rest again** starts from what's on record now. |
 | A draft pick made wrong | Reopen the window if it's closed, then **Undo** the pick: everyone drafted with it goes back where they came from, and a title vacated with it goes back — while it's still their latest move and the title hasn't changed hands since. |
 | The transfer window opened too early | **Take back opening the window**, while nobody's been drafted. |
 | An automatic relationship change you don't agree with | **Ignore** it on the timeline. It stays there, crossed out, and doesn't count; **Count it again** brings it back. |
@@ -952,7 +1056,10 @@ they were, as its main roster ⇄ NXT part. Every relegation, eligibility and
 draft record is marked as belonging to that connection, and each relegation
 keeps where it went (NXT). **Version 10** added the auto booker: nothing in an
 older save had been drafted or auto-booked, every show drafts by its tier's
-defaults, and wrestlers can be away as well as active or injured.
+defaults, and wrestlers can be away as well as active or injured. **Version 11**
+connected it to the story: drafted and auto-booked matches name the story events
+behind them (none, for anything drafted before), and a draft remembers what it
+had seen (one drafted before doesn't know, so it points out nothing).
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
@@ -964,8 +1071,9 @@ window, moving down at the window, and moving up straight after a qualifier.
 The rules are stored, editable and shown with who they'd move, but nobody moves
 by them.
 
-The auto booker isn't connected to the story director yet: neither reads nor
-starts the other's work.
+The auto booker reads the story director's events, but never makes one, and the
+director doesn't read drafts. Neither writes promos or segments: a story event
+is something on record, and a match is always one the owner books.
 
 The story director tells the story around the matches; it doesn't write
 promos, run injuries, handle contracts or book whole cards, and it only goes

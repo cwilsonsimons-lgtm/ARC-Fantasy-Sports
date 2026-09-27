@@ -125,6 +125,7 @@ function context(st, ev, { nonce = 0, keep = [] } = {}) {
     seen: recent.filter(x => [...x.incident.by, ...x.incident.on, ...x.incident.helped].some(id => onRoster.has(id))).map(x => x.incident.id),
     surprise: draw('surprise', ev.id, nonce) < (SURPRISE[st.story.pace] || SURPRISE.normal),
     types: new Map(),
+    lineups: recentLineups(st, hist, wk),
     balance: showId ? SD.balance(st, { showId, period: SD.periodOf(st, 'last4') }) : { groups: [] },
     nextPle: ple ? null : upcomingPle(st, ev, wk),
     passed: new Set(draft.passed),
@@ -194,15 +195,22 @@ function idea(c, kind, sides, { titleId = null, stip = '', notes = '', score, we
   s -= (story ? 0.4 : 1) * stale.length / people.length;
   const change = story && people.find(p => { const t = lastTypes(c, p); return t.length === 3 && t.every(x => x === t[0] && x !== type); });
   if (change) { s += 0.3; extra.push(`${nm(c, change)}’s last three matches were ${TYPE_LABEL[lastTypes(c, change)[0]] ? TYPE_LABEL[lastTypes(c, change)[0]].toLowerCase() : 'the same kind'} — something different this time`); }
-  // the same match every week is exactly what a card shouldn't be
-  if (kind !== 'rematch' && isSingles(m)) {
-    const met = meetings(c, people[0], people[1], 3).filter(x => isSingles(x.m));
-    const last = met.length ? met[met.length - 1].wk : null;
-    if (last != null && c.wk - last <= 1) s -= kind === 'title' ? 1.5 : 2.5;
-    else if (last != null && c.wk - last <= 2) s -= 1;
-  }
+  // the same match every week is exactly what a card shouldn't be - in any format (a rematch after an upset aside)
+  const last = kind === 'rematch' ? null : c.lineups.get(lineupKey(m.sides));
+  if (last != null && c.wk - last <= 1) s -= 2.5;
+  else if (last != null && c.wk - last <= 2) s -= 1;
   return { key: matchKey(m), kind, type, gender: genderOf(c, people), sides: m.sides, titleId, stip, notes,
     score: s, weight, why: [...why, ...extra].filter(Boolean), feud, people, events: [...new Set(events)] };
+}
+// every line-up played lately, by who was in it (title aside): the week it last happened
+function recentLineups(st, hist, wk) {
+  const out = new Map();
+  hist.forEach(list => list.forEach(x => {
+    if (wk - x.wk > 2) return;
+    const k = lineupKey(x.m.sides);
+    if (!out.has(k) || out.get(k) < x.wk) out.set(k, x.wk);
+  }));
+  return out;
 }
 // the kinds of match someone had last, oldest first (up to three)
 function lastTypes(c, id) {
@@ -249,6 +257,13 @@ function contenders(c, t, champIds, champName) {
     else if (rk && rk.rank <= 3) { s += 1; reasons.push(k.team ? `#${rk.rank} in the tag team standings` : rankLine(c, k.ids[0])); }
     const wins = k.ids.flatMap(x => champIds.flatMap(y => meetings(c, x, y, RULES.recentWeeks).filter(e => e.res === 'W')));
     if (wins.length) { s += 2.5; reasons.push(`beat ${champName} ${ago(c, Math.max(...wins.map(e => e.wk)))}`); }
+    // a win over one of the top three lately, from further down: that's a case too
+    else if (!k.team) {
+      const top3 = (c.hist.get(k.ids[0]) || []).filter(e => c.wk - e.wk <= 2 && e.res === 'W')
+        .flatMap(e => e.m.sides.filter((_, i) => i !== e.side).flatMap(sd => sd.wrestlers).map(id => ({ id, wk: e.wk })))
+        .find(x => !champIds.includes(x.id) && c.rank.get(x.id) && c.rank.get(x.id).rank <= 3 && (!rk || rk.rank > c.rank.get(x.id).rank));
+      if (top3) { s += 1.5; reasons.push(`beat #${c.rank.get(top3.id).rank} ${nm(c, top3.id)} ${ago(c, top3.wk)}`); }
+    }
     const h = Math.max(0, ...k.ids.flatMap(x => champIds.map(y => heatOf(c, x, y))));
     if (h) { s += 1.2 * h; reasons.push(k.ids.some(x => champIds.some(y => lvl(c, 'grudge', x, y))) ? `a grudge against ${champName}` : `rivals with ${champName}`); }
     const want = k.team ? `Tag team gold with ${k.name}` : `Win the ${t.name}`;
@@ -269,6 +284,10 @@ function contenders(c, t, champIds, champName) {
     if (lost) { s += 2.5; reasons.unshift(`lost the title ${ago(c, weekNo(st, lost.end))} and wants it back`); }
     // a storyline with the champion: its story event is the case
     const line = !k.team && champIds.length === 1 ? SL.storyOf(c.lines, k.ids[0], champIds[0]) : null;
+    if (line) k.feud = line.key;                       // a title match between them is a chapter of their feud
+    // they met one on one last week: the title match can wait while the feud builds another way
+    const metLately = champIds.length === 1 && !k.team && meetings(c, k.ids[0], champIds[0], 2).some(e => isSingles(e.m) && c.wk - e.wk <= 1);
+    if (metLately) k.metLately = true;
     if (line && line.hook && c.wk - line.hook.wk <= 4) {
       s += 1 + line.hook.weight * 0.3;
       k.hook = hookText(c, line.hook);
@@ -280,8 +299,9 @@ function contenders(c, t, champIds, champName) {
       && m.sides.some(sd => k.ids.every(id => sd.wrestlers.includes(id)))).map(m => ({ m, wk: weekNo(c.st, e.at) })));
     const last = shots.sort((a, b) => a.wk - b.wk).pop();
     if (last && last.m.outcome !== 'win') { s += 1; reasons.push(`no winner when they met for it ${ago(c, last.wk)}`); }
-    else if (last && !last.m.sides[last.m.winner].wrestlers.some(id => k.ids.includes(id))) { s -= 2; reasons.push(`already had a shot ${ago(c, last.wk)}`); }
-    return { ...k, s, reasons, events: k.events || [], hook: k.hook || '' };
+    else if (last && !last.m.sides[last.m.winner].wrestlers.some(id => k.ids.includes(id))) { s -= 2; reasons.push(`already had a shot ${ago(c, last.wk)}`); k.lostShot = last.wk; }
+    return { ...k, s, reasons, events: k.events || [], hook: k.hook || '', feud: k.feud || null, lostShot: k.lostShot == null ? null : k.lostShot,
+      metLately: !!k.metLately };
   }).sort((a, b) => b.s - a.s || a.name.localeCompare(b.name));
 }
 const caseFor = k => (k.reasons.length ? `${k.name}: ${k.reasons.slice(0, 3).join(', ')}` : `${k.name}: the best available contender`);
@@ -298,7 +318,9 @@ function titleIdeas(c) {
     const need = t.kind === 'tag' ? 2 : 1;
     const list = contenders(c, t, champIds, champName);
     const idle = titleIdle(c, t, reign);
-    const top = list.filter(k => k.s > -1);
+    // anyone who lost a shot at it in the last two weeks waits their turn
+    // ...and so does anyone who met the champion one on one last week: the feud builds another way first
+    const top = list.filter(k => k.s > -1 && !(k.lostShot != null && c.wk - k.lostShot <= 2) && !k.metLately);
     if (here.length < need) {
       const absent = champIds.some(id => (W(c, id) || {}).status !== 'active' || c.out.has(id));
       if (absent) contenderIdeas(c, t, top, out, `${champName} can’t defend tonight — the contenders settle who’s next`);
@@ -318,7 +340,7 @@ function titleIdeas(c) {
       const stip = stipFor(c, 'title', Math.max(0, ...k.ids.flatMap(x => champIds.map(y => heatOf(c, x, y)))), `${t.id}:${k.ids.join('+')}`);
       out.push(idea(c, 'title', [champSide, k.side], { titleId: t.id, stip: stip.stip, score: base + 0.8 * k.s, weight,
         why: [open ? `${champName} laid down an open challenge ${when(c, { ev: open.event, wk: open.wk })} — ${k.name} answers it` : k.hook || lead,
-          `Challenger ${caseFor(k)}`, k.hook ? lead : '', stip.why], events: [...k.events, ...(open ? [open.incident.id] : [])] }));
+          `Challenger ${caseFor(k)}`, k.hook ? lead : '', stip.why], events: [...k.events, ...(open ? [open.incident.id] : [])], feud: k.feud }));
     }
     if (t.kind === 'singles' && top[1] && top[1].s >= top[0].s - 1.5) {
       out.push(idea(c, 'title', [champSide, top[0].side, top[1].side], { titleId: t.id, score: base - 0.3 + 0.4 * (top[0].s + top[1].s), weight,
@@ -424,6 +446,9 @@ function storyIdeas(c) {
     const lastDirect = l.beats.filter(x => x.kind === 'match' && x.format !== 'proxy').pop();
     const justMet = lastDirect && lastDirect.format === 'singles' && c.wk - lastDirect.wk <= 1;
     const twoInARow = l.formats.length >= 2 && l.formats.slice(-2).every(f => f === 'singles');
+    // the same way twice running, lately: that way waits, and the others are welcome
+    const rut = l.formats.length >= 2 && l.formats.slice(-2).every(f => f === l.formats[l.formats.length - 1])
+      && lastDirect && c.wk - l.beats.filter(x => x.kind === 'match').pop().wk <= 2 ? l.formats[l.formats.length - 1] : null;
     const hold = c.nextPle && !c.ple && !tonight ? c.nextPle : null;
     const due = l.stage === 'peak' && !justMet;
     const upset = l.upset && l.upset.winner ? `${l.upset.text.replace(/ at [^—]*$/, '')} ${ago(c, l.upset.wk)} — nobody saw it coming, and it isn’t over` : '';
@@ -438,6 +463,7 @@ function storyIdeas(c) {
       else if (hold) { s -= 3.5; why.push(`${hold.ev.name} is ${hold.weeks === 1 ? 'next week' : `in ${hold.weeks} weeks`} — this could wait for it`); }
       if (justMet) s -= 3;
       else if (twoInARow) s -= 1.5;
+      else if (rut && rut !== 'singles') { s += 1; why.push(`${SL.FORMAT_LABEL[rut].replace(/^./, x => x.toUpperCase())} twice running — this time one on one`); }
       if (upset) { s += 1.5; why.push(upset); }
       if (!l.direct) { s += 0.5; why.push('They haven’t met in the ring yet'); }
       const revenge = [a, b].find(x => goal(c, x) === `Revenge on ${nm(c, x === a ? b : a)}`);
@@ -461,17 +487,19 @@ function storyIdeas(c) {
     // moving it on another way: someone who stands with the other one, or a tag match with backup on both sides
     const alt = justMet ? `They met one on one ${ago(c, lastDirect.wk)} — the feud moves on another way`
       : hold ? `Building to ${hold.ev.name} without giving the singles match away`
-        : twoInARow ? 'Two singles matches in a row — something different this time' : '';
-    const altBonus = justMet || hold ? 1.5 : twoInARow ? 1 : 0;
+        : twoInARow ? 'Two singles matches in a row — something different this time'
+          : rut ? `${SL.FORMAT_LABEL[rut].replace(/^./, x => x.toUpperCase())} twice running — something different this time` : '';
+    const altBonus = justMet || hold ? 1.5 : twoInARow || rut ? 1 : 0;
+    const ruts = f => (rut === f ? -2 : 0);
     const standing = (who, foe) => SL.drawnIn(c.st, c.d, l, who, foe)
       .filter(p => c.free.has(p.id) && sameDivision(c, foe, p.id) && !partnered(c, foe, p.id) && !bondOf(c, foe, p.id));
     [[a, b], [b, a]].forEach(([x, y]) => {
       if (!c.free.has(x)) return;
       standing(y, x).slice(0, 2).forEach(p => {
         const friend = p.how === 'drawn in' && lvl(c, 'friends', y, p.id);
-        out.push(idea(c, friend ? 'defend' : 'build', [solo(x), solo(p.id)], { score: 0.8 + 0.45 * l.priority * p.weight + altBonus, weight: 5,
+        out.push(idea(c, friend ? 'defend' : 'build', [solo(x), solo(p.id)], { score: 0.8 + 0.45 * l.priority * p.weight + altBonus + ruts('proxy'), weight: 5,
           why: [friend ? `${nm(c, p.id)} stands up for a friend: ${nm(c, y)}’s feud with ${nm(c, x)}`
-            : `${nm(c, x)} against ${nm(c, p.id)}, who stands with ${nm(c, y)}`, `Connection: ${p.path}`, lead, alt || chapter], events, feud: key }));
+            : `${nm(c, x)} against ${nm(c, p.id)}, who stands with ${nm(c, y)}`, `Connection: ${p.path}`, lead, upset, alt || chapter], events, feud: key }));
       });
     });
     if (c.free.has(a) && c.free.has(b) && sameDivision(c, a, b)) {
@@ -479,8 +507,8 @@ function storyIdeas(c) {
       if (pa && pb && sameDivision(c, a, b, pa.id, pb.id)) {
         const sa = pairSide(c, a, pa.id), sb = pairSide(c, b, pb.id);
         const tstip = stipFor(c, 'tag', l.heat, `${key}:tag`, { tag: true });
-        out.push(idea(c, 'build', [sa, sb], { stip: tstip.stip, score: 1.1 + 0.5 * l.priority + altBonus + (sa.team && sb.team ? 0.5 : 0), weight: 5.5,
-          why: [`${nm(c, a)} and ${nm(c, b)} on opposite sides, each with backup`, `Connection: ${pa.path}`, `Connection: ${pb.path}`, lead, alt, tstip.why],
+        out.push(idea(c, 'build', [sa, sb], { stip: tstip.stip, score: 1.1 + 0.5 * l.priority + altBonus + ruts('tag') + (sa.team && sb.team ? 0.5 : 0), weight: 5.5,
+          why: [`${nm(c, a)} and ${nm(c, b)} on opposite sides, each with backup`, `Connection: ${pa.path}`, `Connection: ${pb.path}`, lead, upset, alt, tstip.why],
           events, feud: key }));
       }
     }
@@ -646,7 +674,9 @@ function upsetIdeas(c) {
     if (!upset || seen.has(`${id}>${loser}`)) return;
     seen.add(`${id}>${loser}`);
     const how = `${nm(c, id)} ${tag ? 'pinned' : 'upset'} ${nm(c, loser)} ${tag ? 'in a tag match ' : ''}${ago(c, x.wk)}${rw && rl && rw.rank > rl.rank ? ` (#${rw.rank} over #${rl.rank})` : champ.length ? `, the ${champ[0].name} holder` : ''}`;
-    if (c.free.has(loser)) {
+    // a rematch - unless they've met again since, or they're a storyline (which carries the upset itself, and paces it)
+    const since = meetings(c, id, loser).some(e => M.compareStamps(c.st, e.ev.at, x.ev.at) > 0);
+    if (c.free.has(loser) && !since && !SL.storyOf(c.lines, id, loser)) {
       const proud = (W(c, loser) || { traits: [] }).traits.some(tr => tr === 'proud' || tr === 'hot-headed');
       out.push(idea(c, 'rematch', [solo(id), solo(loser)], { score: 2.2 + (proud ? 0.5 : 0) + (tag ? 0.5 : 0), weight: 5,
         why: [tag ? `Unfinished: ${how} — ${nm(c, loser)} wants ${nm(c, id)} one on one` : `Rematch: ${how} — nobody saw it coming`,
@@ -655,7 +685,7 @@ function upsetIdeas(c) {
     const g = (W(c, id) || {}).gender;
     [...c.free].filter(o => o !== id && o !== loser && (W(c, o) || {}).gender === g && (c.rank.get(o) || { rank: 99 }).rank <= 3)
       .slice(0, 2).forEach(o => {
-        out.push(idea(c, 'step', [solo(id), solo(o)], { score: 1.8, weight: 4.5,
+        out.push(idea(c, 'step', [solo(id), solo(o)], { score: 1.8 + ((rl && rl.rank <= 3) || champ.length ? 0.7 : 0), weight: 4.5,
           why: [`A step up after an upset: ${how}`, `${nm(c, o)} is ${rankLine(c, o)}`] }));
       });
   }));

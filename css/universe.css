@@ -877,3 +877,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-list .uv-row>svg{flex:none;width:15px;height:15px;color:var(--uv-ink-3)}
 #uvSheetBody .uv-trcount[data-set]{margin:4px 0}
 #uvSheetBody .uv-trcount[data-set]>span{flex:1}
+.uv-draft-since{display:flex;gap:9px;margin:0 14px 10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(240,165,58,.45);
+  background:rgba(240,165,58,.08);font-size:12px;line-height:1.5;color:#F6CB8F}
+.uv-draft-since svg{flex:none;width:15px;height:15px;margin-top:2px;color:var(--uv-amber)}
+.uv-draft-since .uv-link{color:var(--uv-amber);text-decoration-color:rgba(240,165,58,.5)}
