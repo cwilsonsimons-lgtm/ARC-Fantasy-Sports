@@ -762,6 +762,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-rl{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:12px;line-height:1.35;color:var(--uv-ink-2)}
 .uv-rl>span:not(.uv-rk):not(.uv-lv){flex:1;min-width:0}
 .uv-rl em{font-style:normal;color:var(--uv-ink-3);white-space:nowrap}
+.uv-rl em.via{white-space:normal}
 .uv-bu .uv-left{font-size:10.5px}
 
 /* ---------- tiers & transfers ---------- */
@@ -1041,7 +1042,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 11;
+  var SCHEMA_VERSION = 12;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -1319,7 +1320,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (inTransition(st, id)) refs.push("a season transition");
     const incidents = st.events.reduce((n, e) => n + e.incidents.filter((x) => [...x.by, ...x.on, ...x.helped].includes(id)).length, 0);
     if (incidents) refs.push(incidents === 1 ? "an incident" : `${incidents} incidents`);
-    if (st.relEdits.some((e) => e.a === id || e.b === id)) refs.push("a relationship");
+    if (st.relEdits.some((e) => !e.teams && (e.a === id || e.b === id))) refs.push("a relationship");
     return refs;
   }
   function inTransition(st, id) {
@@ -1473,6 +1474,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     });
     if (matches2) refs.push(matches2 === 1 ? "a match" : `${matches2} matches`);
     if (st.events.some((e) => e.incidents.some((x) => x.team === id))) refs.push("an incident");
+    if (st.relEdits.some((e) => e.teams && (e.a === id || e.b === id))) refs.push("a relationship");
     return refs;
   }
   function deleteTeam(st, id) {
@@ -3512,6 +3514,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var TRAITS = ["ambitious", "loyal", "opportunistic", "hot-headed", "patient", "proud", "cowardly", "respectful"];
   var REL_KINDS = ["grudge", "rivals", "allies", "friends", "former-partners"];
+  var TEAM_REL_KINDS = ["grudge", "rivals", "allies"];
   var INCIDENT_KINDS = [
     "betrayal",
     "interference",
@@ -3667,9 +3670,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function editRelationship(st, input = {}) {
     const action = oneOf(input.action, ["form", "level", "end", "note"], "change");
-    const kind = oneOf(input.kind, REL_KINDS, "relationship");
-    const a = must(wrestlerById(st, input.a), "wrestler", input.a), b = must(wrestlerById(st, input.b), "wrestler", input.b);
-    if (a.id === b.id) fail("A relationship needs two different wrestlers.");
+    const teams = !!input.teams;
+    const kind = oneOf(input.kind, teams ? TEAM_REL_KINDS : REL_KINDS, "relationship");
+    const find = teams ? teamById : wrestlerById;
+    const what = teams ? "tag team" : "wrestler";
+    const a = must(find(st, input.a), what, input.a), b = must(find(st, input.b), what, input.b);
+    if (a.id === b.id) fail(teams ? "A relationship needs two different tag teams." : "A relationship needs two different wrestlers.");
+    if (teams && a.members.some((id) => b.members.includes(id))) fail(`${a.name} and ${b.name} share a member \u2014 a relationship between them would be with themselves.`);
     let level = null;
     if (action === "form" || action === "level") {
       level = kind === "former-partners" ? 1 : Number(input.level == null ? 1 : input.level);
@@ -3689,6 +3696,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       level,
       key: null,
       note,
+      teams,
       at: input.since === "start" ? null : now(st)
     };
     st.relEdits.push(e);
@@ -3697,7 +3705,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function dismissChange(st, key, note = "") {
     if (typeof key !== "string" || !key) fail("That change can't be found.");
     if (st.relEdits.some((e2) => e2.action === "dismiss" && e2.key === key)) fail("That change is already ignored.");
-    const e = { id: newId(st, "re"), action: "dismiss", kind: null, a: null, b: null, level: null, key, note: checkNote(note), at: now(st) };
+    const e = { id: newId(st, "re"), action: "dismiss", kind: null, a: null, b: null, level: null, key, note: checkNote(note), teams: false, at: now(st) };
     st.relEdits.push(e);
     return e;
   }
@@ -3908,7 +3916,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         fail(`${keep.name} and ${dup.name} are on opposite sides of an incident at ${e.name}, so they can't be the same person. Fix that incident first.`);
       }
     }));
-    if (st.relEdits.some((r) => r.a === keepId && r.b === dupId || r.a === dupId && r.b === keepId)) {
+    if (st.relEdits.some((r) => !r.teams && (r.a === keepId && r.b === dupId || r.a === dupId && r.b === keepId))) {
       fail(`You've set a relationship between ${keep.name} and ${dup.name}, so they can't be the same person. Take it back first.`);
     }
     st.events.forEach((e) => e.incidents.forEach((x) => {
@@ -3917,6 +3925,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       x.helped = swap(x.helped);
     }));
     st.relEdits.forEach((r) => {
+      if (r.teams) return;
       if (r.a === dupId) r.a = keepId;
       if (r.b === dupId) r.b = keepId;
       if (r.key) r.key = rekey(r.key, dupId, keepId);
@@ -4186,6 +4195,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
       });
       st.version = 11;
     }
+    if (st.version === 11) {
+      (Array.isArray(st.relEdits) ? st.relEdits : []).forEach((e) => {
+        if (e && typeof e === "object") e.teams = false;
+      });
+      st.version = 12;
+    }
     if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
     if (!st.booker || typeof st.booker !== "object") st.booker = newBooker();
     st.events.forEach((e) => {
@@ -4313,11 +4328,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }
       if (e.at !== null) stamp(e.at, where);
       if (e.action === "dismiss") {
-        if (typeof e.key !== "string" || !e.key) bad.push(`${where} ignores nothing.`);
+        if (typeof e.key !== "string" || !e.key || e.teams !== false) bad.push(`${where} ignores nothing.`);
         return;
       }
-      if (!REL_KINDS.includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
-      if (!wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong wrestlers.`);
+      if (typeof e.teams !== "boolean") bad.push(`${where} is unreadable.`);
+      if (!(e.teams ? TEAM_REL_KINDS : REL_KINDS).includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
+      if (e.teams ? !teamById(st, e.a) || !teamById(st, e.b) || e.a === e.b : !wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong ${e.teams ? "tag teams" : "wrestlers"}.`);
       if (["form", "level"].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
     });
     const sto = st.story;
@@ -5714,8 +5730,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
   var balPeriod = "last4";
   function uvRankingsView() {
     const st = uni();
-    const seg = (k, lb) => `<div class="${mode === k ? "on" : ""}" onclick="uvRankMode('${k}')">${lb}</div>`;
-    return `<div class="uv-seg uv-seg-page">${seg("standings", "Standings")}${seg("balance", "Booking balance")}</div>` + (mode === "standings" ? standingsView(st) : balanceView(st));
+    const seg2 = (k, lb) => `<div class="${mode === k ? "on" : ""}" onclick="uvRankMode('${k}')">${lb}</div>`;
+    return `<div class="uv-seg uv-seg-page">${seg2("standings", "Standings")}${seg2("balance", "Booking balance")}</div>` + (mode === "standings" ? standingsView(st) : balanceView(st));
   }
   function uvRankMode(k) {
     mode = k;
@@ -6421,9 +6437,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
         return `<div class="uv-tq" data-rule="${rule}"><span>${who} hold${h.team ? "" : "s"} the <b>${title(st, h.title)}</b>. By the rules for
         ${esc(part2.lowerName)} \u2192 ${esc(part2.upperName)}, it\u2019s <b>${TITLE_RULE[rule]}</b> when they move up.</span></div>`;
       }
-      const seg = (k, lb) => `<div class="${d.titles[h.title] === k ? "on" : ""}" onclick="uvDraftTitle('${h.title}','${k}')">${lb}</div>`;
+      const seg2 = (k, lb) => `<div class="${d.titles[h.title] === k ? "on" : ""}" onclick="uvDraftTitle('${h.title}','${k}')">${lb}</div>`;
       return `<div class="uv-tq"><span>${who} hold${h.team ? "" : "s"} the <b>${title(st, h.title)}</b>. The rules leave this to you:</span>
-      <div class="uv-seg">${seg("keep", "Keep it")}${seg("vacate", "Vacate it")}</div></div>`;
+      <div class="uv-seg">${seg2("keep", "Keep it")}${seg2("vacate", "Vacate it")}</div></div>`;
     }).join("");
     const names2 = group.map((id) => wrestlerById(st, id).name).join(" & ");
     const unanswered = rule === "ask" && [...titles.values()].some((h) => !d.titles[h.title]);
@@ -6696,7 +6712,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!l || !activeLinks(st).includes(l)) return null;
       const up = tierById(st, l.upper), low = tierById(st, l.lower), r = l.rules;
       const i = st.tiers.indexOf(up);
-      const seg = (key, items, cur) => `<div class="uv-seg" data-rule="${key}">${items.map(([v, lb]) => `<div class="${String(cur) === String(v) ? "on" : ""}" data-v="${v}"
+      const seg2 = (key, items, cur) => `<div class="uv-seg" data-rule="${key}">${items.map(([v, lb]) => `<div class="${String(cur) === String(v) ? "on" : ""}" data-v="${v}"
       onclick="uvRule('${linkId}','${key}','${v}')">${esc(lb)}</div>`).join("")}</div>`;
       const showPick = (key, ids, cur, blank) => select(
         `uvRule('${linkId}','${key}',this.value)`,
@@ -6710,7 +6726,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <p class="uv-p">The rules between <b>${esc(up.name)}</b> and <b>${esc(low.name)}</b>. Each change is saved as you make it, for the
           next season transition \u2014 one already under way keeps the rules it started with.</p>
         <h4>${ICON.down}Relegation matches</h4>
-        ${seg("relegation.on", [["true", "On"], ["false", "Off"]], r.relegation.on)}
+        ${seg2("relegation.on", [["true", "On"], ["false", "Off"]], r.relegation.on)}
         ${r.relegation.on ? `
           <div class="uv-trcount"><span>Candidates on each ${esc(up.name)} show: the</span>
             <div class="uv-ic mv" onclick="uvRule('${linkId}','relegation.candidates','${Math.max(0, r.relegation.candidates - 1)}')">${ICON.left}</div>
@@ -6718,16 +6734,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
             <div class="uv-ic mv" onclick="uvRule('${linkId}','relegation.candidates','${r.relegation.candidates + 1}')">${ICON.right}</div>
             <span>with the fewest wins</span></div>
           <div class="uv-sub flush">Losers move down</div>
-          ${seg("relegation.timing", [["result", "Right away"], ["window", "At the transfer window"]], r.relegation.timing)}
+          ${seg2("relegation.timing", [["result", "Right away"], ["window", "At the transfer window"]], r.relegation.timing)}
           ${field("Down to", low.shows.length ? showPick("relegation.to", low.shows, r.relegation.to) : `<div class="uv-in ro">${esc(low.name)} has no shows</div>`, "wide")}` : ""}
         <h4>${ICON.up}Qualifying matches on ${esc(low.name)}</h4>
-        ${seg("qualifiers.on", [["true", "On"], ["false", "Off"]], r.qualifiers.on)}
+        ${seg2("qualifiers.on", [["true", "On"], ["false", "Off"]], r.qualifiers.on)}
         ${r.qualifiers.on ? `<div class="uv-sub flush">Winners</div>
-          ${seg("promotion.timing", [["window", "Draft eligible"], ["result", "Move up straight away"]], r.promotion.timing)}` : ""}
+          ${seg2("promotion.timing", [["window", "Draft eligible"], ["result", "Move up straight away"]], r.promotion.timing)}` : ""}
         <h4>${ICON.up}${esc(low.name)} champions</h4>
-        ${seg("champions", [["eligible", "Draft eligible"], ["automatic", "Move up by themselves"], ["none", "Stay"]], r.champions)}
+        ${seg2("champions", [["eligible", "Draft eligible"], ["automatic", "Move up by themselves"], ["none", "Stay"]], r.champions)}
         <div class="uv-sub flush">A title, when its holder moves up</div>
-        ${seg("titles", [["ask", "Your call"], ["vacate", "Vacated"], ["keep", "Kept"]], r.titles)}
+        ${seg2("titles", [["ask", "Your call"], ["vacate", "Vacated"], ["keep", "Kept"]], r.titles)}
         <div class="fine">${esc(r.titles === "ask" ? "You decide at each move whether the title is kept or vacated." : r.titles === "vacate" ? "The title is vacated the moment its holder moves up \u2014 ready for a new champion." : "The holder keeps it, and defends it on their new show.")}</div>
         <h4>${ICON.up}Moving up to</h4>
         ${showPick("promotion.to", up.shows, r.promotion.to, `Your pick of ${showList(st, up.shows, "or")} \u2014 the draft`)}
@@ -6838,7 +6854,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const wm = eventById(st, tr.event);
     const season = seasonById(st, tr.season);
     const summary3 = uvTransitionSummary(st, tr);
-    const seg = (k, lb) => `<div class="${part === k ? "on" : ""}" data-part="${k}" onclick="uvTrPart('${k}')">${lb}</div>`;
+    const seg2 = (k, lb) => `<div class="${part === k ? "on" : ""}" data-part="${k}" onclick="uvTrPart('${k}')">${lb}</div>`;
     const head = `
       <div class="uv-evhead" style="--c:var(--uv-gold)">
         <div class="k">Season transition \xB7 ${esc(season.name)}</div>
@@ -6847,7 +6863,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="uv-trsum">${summary3.map((x) => `<span class="${x.decisions ? "warn" : ""}"><i style="--c:${x.color}"></i>
           ${esc(x.label)}: ${esc(x.text)}</span>`).join("")}</div>
       </div>
-      <div class="uv-seg uv-seg-page">${seg("relegation", "Relegation")}${seg("promotion", "Promotion")}${seg("window", "Window")}${seg("rules", "Rules")}</div>`;
+      <div class="uv-seg uv-seg-page">${seg2("relegation", "Relegation")}${seg2("promotion", "Promotion")}${seg2("window", "Window")}${seg2("rules", "Rules")}</div>`;
     if (part === "promotion") return { title: `${season.name} transition`, body: head + uvPromotionPart(st, tr) };
     if (part === "window") return { title: `${season.name} transition`, body: head + uvWindowPart(st, tr) };
     if (part === "rules") return { title: `${season.name} transition`, body: head + rulesPart(st, tr) };
@@ -7139,6 +7155,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvRelationsView: () => uvRelationsView,
     uvRestoreChange: () => uvRestoreChange,
     uvTakeBackRel: () => uvTakeBackRel,
+    uvTeamRelAction: () => uvTeamRelAction,
+    uvTeamRelDir: () => uvTeamRelDir,
+    uvTeamRelLevel: () => uvTeamRelLevel,
+    uvTeamRelNote: () => uvTeamRelNote,
+    uvTeamRelSave: () => uvTeamRelSave,
+    uvTeamRelSet: () => uvTeamRelSet,
+    uvTeamRelSheet: () => uvTeamRelSheet,
+    uvTeamRelSince: () => uvTeamRelSince,
+    uvTeamRelations: () => uvTeamRelations,
     uvTraitNote: () => uvTraitNote,
     uvTraitSave: () => uvTraitSave,
     uvTraitSince: () => uvTraitSince,
@@ -7158,9 +7183,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
     relText: () => relText,
     relationsOf: () => relationsOf,
     relationships: () => relationships,
-    snapshot: () => snapshot
+    snapshot: () => snapshot,
+    teamEntryText: () => teamEntryText,
+    teamRelKey: () => teamRelKey,
+    teamRelText: () => teamRelText,
+    teamRelationsOf: () => teamRelationsOf,
+    viaText: () => viaText
   });
-  var RULES = { streak: 3, streakHotHeaded: 2, streakPatient: 4, allies: 5, alliesLoyal: 3, friends: 12 };
+  var teamRelKey = (kind, a, b) => `team:${kind === "grudge" ? `${kind}:${a}>${b}` : `${kind}:${a < b ? `${a}+${b}` : `${b}+${a}`}`}`;
+  var RULES = { streak: 3, streakHotHeaded: 2, streakPatient: 4, allies: 5, alliesLoyal: 3, friends: 12, teammates: 3, teamStreak: 3 };
   var KIND_LABEL = { grudge: "Grudge", rivals: "Rivals", allies: "Allies", friends: "Friends", "former-partners": "Former partners" };
   var LEVEL_WORD = { grudge: "heat", rivals: "heat", allies: "strength", friends: "strength" };
   var pairOf = (a, b) => a < b ? `${a}+${b}` : `${b}+${a}`;
@@ -7171,6 +7202,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const entries = [];
     const dismissed = new Map(st.relEdits.filter((e) => e.action === "dismiss").map((e) => [e.key, e]));
     const streak = /* @__PURE__ */ new Map();
+    const tstreak = /* @__PURE__ */ new Map();
     const together = /* @__PURE__ */ new Map();
     const logs = /* @__PURE__ */ new Map();
     st.traitLog.forEach((e) => {
@@ -7194,10 +7226,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }
       return rels.get(key);
     };
+    const teams = /* @__PURE__ */ new Map();
+    const teamEntries = [];
+    const tget = (kind, a, b) => {
+      const key = teamRelKey(kind, a, b);
+      if (!teams.has(key)) {
+        const [x, y] = kind === "grudge" ? [a, b] : [a, b].sort();
+        teams.set(key, { key, kind, a: x, b: y, active: false, level: 0, since: null, entries: [], team: true });
+      }
+      return teams.get(key);
+    };
     const outcome = (r, op, amount) => {
       if (op === "end") return r.active ? { active: false, level: 0, change: "ended" } : null;
       if (op === "form") return r.active ? null : { active: true, level: Math.max(1, amount), change: "formed" };
       if (op === "set") return { active: true, level: amount, change: r.active ? "set" : "formed" };
+      if (op === "atleast") return !r.active ? { active: true, level: amount, change: "formed" } : r.level < amount ? { active: true, level: amount, change: "raised" } : null;
       if (op === "lower") {
         if (!r.active) return null;
         return r.level - amount > 0 ? { active: true, level: r.level - amount, change: "cooled" } : { active: false, level: 0, change: "ended" };
@@ -7208,7 +7251,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const record = (r, next, at2, extra) => {
       const e = { rel: r.key, kind: r.kind, a: r.a, b: r.b, at: at2, change: next.change, level: next.level, ...extra };
       r.entries.push(e);
-      entries.push(e);
+      (r.team ? teamEntries : entries).push(e);
+      if (r.team) e.team = true;
       return e;
     };
     const auto = (kind, a, b, op, amount, cause) => {
@@ -7224,6 +7268,39 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }
       record(r, next, cause.at, { key, auto: true, ignored, cause });
     };
+    const tauto = (kind, a, b, op, amount, cause) => {
+      const r = tget(kind, a, b);
+      const next = outcome(r, op, amount);
+      if (!next) return;
+      const key = `${cause.key}|${r.key}`;
+      const ignored = dismissed.get(key) || null;
+      if (!ignored) {
+        if (next.active && !r.active) r.since = cause.at;
+        r.active = next.active;
+        r.level = next.level;
+      }
+      record(r, next, cause.at, { key, auto: true, ignored, cause });
+    };
+    const distrust = (x, y, n, cause) => {
+      auto("allies", x, y, "lower", n, cause);
+      if (n >= 2) auto("friends", x, y, "lower", 1, cause);
+    };
+    const activeAt = (t, at2) => {
+      let on = false;
+      t.log.forEach((l) => {
+        if (!at2 || compareStamps(st, l.at, at2) <= 0) on = l.type !== "disbanded";
+      });
+      return on;
+    };
+    const teamsAt = (x, at2) => st.teams.filter((t) => activeAt(t, at2) && st.memberships.some((ms) => ms.team === t.id && ms.wrestler === x && compareStamps(st, ms.start, at2) <= 0 && (!ms.end || compareStamps(st, ms.end, at2) > 0)));
+    const teamPairs = (xs, ys, at2) => {
+      const out = /* @__PURE__ */ new Map();
+      xs.forEach((x) => ys.forEach((y) => teamsAt(x, at2).forEach((A) => teamsAt(y, at2).forEach((B) => {
+        if (A.id === B.id || A.members.includes(y) || B.members.includes(x)) return;
+        out.set(`${A.id}>${B.id}`, [A.id, B.id]);
+      }))));
+      return [...out.values()];
+    };
     const items = [];
     st.relEdits.filter((e) => e.action !== "dismiss").forEach((e) => items.push({ at: e.at, order: 0, type: "edit", e }));
     st.events.forEach((ev) => {
@@ -7235,15 +7312,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     st.memberships.forEach((ms) => {
       if (ms.end) items.push({ at: ms.end, order: 0, type: "left", ms });
     });
+    st.memberships.forEach((ms) => items.push({ at: ms.start, order: -1, type: "joined", ms }));
     st.teams.forEach((t) => t.log.forEach((l) => {
       if (l.type === "disbanded") items.push({ at: l.at, order: 0, type: "disbanded", t, l });
+      if (l.type === "reunited") items.push({ at: l.at, order: -1, type: "reunited", t, l });
     }));
     items.sort((x, y) => !x.at && !y.at ? 0 : !x.at ? -1 : !y.at ? 1 : compareStamps(st, x.at, y.at) || x.order - y.order);
     const reignOf = new Map(st.reigns.filter((r) => r.matchId).map((r) => [r.matchId, r]));
     for (const it of items) {
       if (it.type === "edit") {
         const e = it.e;
-        const r = get(e.kind, e.a, e.b);
+        const r = e.teams ? tget(e.kind, e.a, e.b) : get(e.kind, e.a, e.b);
         const next = e.action === "end" ? outcome(r, "end") || { active: false, level: 0, change: "nothing" } : e.action === "note" ? { active: r.active, level: r.level, change: "note" } : outcome(r, "set", e.level);
         if (next.active && !r.active) r.since = e.at;
         r.active = next.active;
@@ -7263,7 +7342,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
               const n = (streak.get(`${l}>${w}`) || 0) + 1;
               const need2 = has3(l, "hot-headed", ev.at) ? RULES.streakHotHeaded : has3(l, "patient", ev.at) ? RULES.streakPatient : RULES.streak;
               if (n >= need2) {
-                auto("grudge", l, w, "raise", 1, { ...base, key: `loss:${m.id}:${l}>${w}`, type: "losses", loser: l, winner: w, n });
+                const cause = { ...base, key: `loss:${m.id}:${l}>${w}`, type: "losses", loser: l, winner: w, n };
+                auto("grudge", l, w, "raise", 1, cause);
+                distrust(l, w, 1, cause);
                 streak.set(`${l}>${w}`, 0);
               } else streak.set(`${l}>${w}`, n);
             }));
@@ -7278,7 +7359,26 @@ body.uv-confirm-open .uv-confirm{display:flex}
                 const cause = { ...base, key: `title:${reign.id}:${l}>${w}`, type: "title", loser: l, winner: w, title: reign.titleId };
                 auto("grudge", l, w, "raise", has3(l, "ambitious", ev.at) ? 2 : 1, cause);
                 auto("rivals", l, w, "raise", 1, { ...cause, key: `title:${reign.id}:${pairOf(l, w)}` });
+                distrust(l, w, 1, cause);
               }));
+            });
+            const wt = m.sides[m.winner].team || (reign.holder.type === "team" ? reign.holder.id : null);
+            if (prev.holder.type === "team" && wt && wt !== prev.holder.id) {
+              const cause = { ...base, key: `teamtitle:${reign.id}`, type: "team-title", loser: prev.holder.id, winner: wt, title: reign.titleId };
+              tauto("grudge", prev.holder.id, wt, "raise", 1, cause);
+              tauto("rivals", prev.holder.id, wt, "raise", 1, cause);
+            }
+          }
+          const WT = m.sides[m.winner].team;
+          if (WT) {
+            m.sides.forEach((sd2, i) => {
+              if (i === m.winner || !sd2.team || sd2.team === WT) return;
+              tstreak.set(`${WT}>${sd2.team}`, 0);
+              const n = (tstreak.get(`${sd2.team}>${WT}`) || 0) + 1;
+              if (n >= RULES.teamStreak) {
+                tauto("grudge", sd2.team, WT, "raise", 1, { ...base, key: `teamloss:${m.id}:${sd2.team}>${WT}`, type: "team-losses", loser: sd2.team, winner: WT, n });
+                tstreak.set(`${sd2.team}>${WT}`, 0);
+              } else tstreak.set(`${sd2.team}>${WT}`, n);
             });
           }
         }
@@ -7313,16 +7413,19 @@ body.uv-confirm-open .uv-confirm{display:flex}
               break;
             case "attack":
               auto("grudge", y, x, "raise", has3(y, "hot-headed", ev.at) ? 2 : 1, cause);
+              distrust(x, y, 2, cause);
               break;
             case "brawl":
               auto("grudge", y, x, "raise", 1, cause);
               auto("grudge", x, y, "raise", 1, cause);
               auto("rivals", x, y, "raise", 1, cause);
+              distrust(x, y, 2, cause);
               break;
             case "challenge":
             case "demand":
             case "confrontation":
               auto("rivals", x, y, "raise", 1, cause);
+              distrust(x, y, 1, cause);
               break;
             case "alliance":
               auto("allies", x, y, "raise", 1, cause);
@@ -7343,8 +7446,54 @@ body.uv-confirm-open .uv-confirm{display:flex}
               break;
             default:
               auto("grudge", y, x, "raise", 1, cause);
+              distrust(x, y, inc.kind === "interference" ? 2 : 1, cause);
           }
         }));
+        const tcause = (A, B, extra = "") => ({ ...base, key: `tinc:${inc.id}:${A}>${B}${extra}`, type: inc.kind, by: inc.by[0], on: inc.on[0], byTeam: A, onTeam: B });
+        teamPairs(inc.by, inc.on, ev.at).forEach(([A, B]) => {
+          const c = tcause(A, B);
+          switch (inc.kind) {
+            case "attack":
+            case "interference":
+              tauto("grudge", B, A, "raise", 1, c);
+              tauto("allies", A, B, "lower", 2, c);
+              break;
+            case "betrayal":
+            case "breakup":
+              tauto("grudge", B, A, "raise", 1, c);
+              tauto("allies", A, B, "end", 0, c);
+              break;
+            case "save":
+              tauto("grudge", B, A, "raise", 1, c);
+              tauto("allies", A, B, "lower", 1, c);
+              break;
+            // the attacker's team, against the saver's
+            case "brawl":
+              tauto("grudge", B, A, "raise", 1, c);
+              tauto("grudge", A, B, "raise", 1, c);
+              tauto("rivals", A, B, "raise", 1, c);
+              tauto("allies", A, B, "lower", 2, c);
+              break;
+            case "confrontation":
+            case "challenge":
+            case "demand":
+              tauto("rivals", A, B, "raise", 1, c);
+              tauto("allies", A, B, "lower", 1, c);
+              break;
+            case "alliance":
+              tauto("allies", A, B, "raise", 1, c);
+              break;
+            case "truce":
+              tauto("grudge", A, B, "lower", 1, c);
+              tauto("grudge", B, A, "lower", 1, c);
+              tauto("rivals", A, B, "lower", 1, c);
+              break;
+            default:
+          }
+        });
+        if (inc.kind === "interference" || inc.kind === "save") {
+          teamPairs(inc.by, inc.helped, ev.at).forEach(([A, B]) => tauto("allies", A, B, "raise", 1, { ...tcause(A, B, ":helped"), type: inc.kind === "save" ? "saved" : "helped", helped: inc.helped[0] }));
+        }
         if (inc.kind === "interference" || inc.kind === "save") {
           inc.by.forEach((x) => inc.helped.forEach((h) => auto(
             "allies",
@@ -7357,16 +7506,49 @@ body.uv-confirm-open .uv-confirm{display:flex}
         }
         continue;
       }
-      if (it.type === "left") {
+      if (it.type === "joined") {
         const { ms } = it;
-        st.memberships.filter((o) => o.team === ms.team && o.wrestler !== ms.wrestler && compareStamps(st, o.start, ms.end) < 0 && (!o.end || compareStamps(st, ms.start, o.end) < 0)).forEach((o) => auto(
-          "former-partners",
+        const t = st.teams.find((x) => x.id === ms.team);
+        if (!t || !activeAt(t, ms.start)) continue;
+        const before = (o) => {
+          const c = compareStamps(st, o.start, ms.start);
+          return c < 0 || c === 0 && o.id < ms.id;
+        };
+        st.memberships.filter((o) => o.team === ms.team && o.wrestler !== ms.wrestler && before(o) && (!o.end || compareStamps(st, ms.start, o.end) < 0)).forEach((o) => auto(
+          "allies",
           ms.wrestler,
           o.wrestler,
-          "form",
-          1,
-          { at: ms.end, key: `left:${ms.id}:${pairOf(ms.wrestler, o.wrestler)}`, type: "left", who: ms.wrestler, team: ms.team }
+          "atleast",
+          RULES.teammates,
+          {
+            at: ms.start,
+            key: `teamed:${ms.id}:${pairOf(ms.wrestler, o.wrestler)}`,
+            type: "teamed",
+            x: ms.wrestler,
+            y: o.wrestler,
+            team: ms.team,
+            joined: compareStamps(st, o.start, ms.start) < 0
+          }
         ));
+        continue;
+      }
+      if (it.type === "reunited") {
+        const { t, l } = it;
+        const on = st.memberships.filter((o) => o.team === t.id && compareStamps(st, o.start, l.at) <= 0 && (!o.end || compareStamps(st, o.end, l.at) > 0)).map((o) => o.wrestler);
+        for (let i = 0; i < on.length; i++) {
+          for (let j = i + 1; j < on.length; j++) {
+            auto("allies", on[i], on[j], "atleast", RULES.teammates, { at: l.at, key: `reunited:${t.id}:${l.at.seq}:${pairOf(on[i], on[j])}`, type: "reunited", team: t.id });
+          }
+        }
+        continue;
+      }
+      if (it.type === "left") {
+        const { ms } = it;
+        st.memberships.filter((o) => o.team === ms.team && o.wrestler !== ms.wrestler && compareStamps(st, o.start, ms.end) < 0 && (!o.end || compareStamps(st, ms.start, o.end) < 0)).forEach((o) => {
+          const cause = { at: ms.end, key: `left:${ms.id}:${pairOf(ms.wrestler, o.wrestler)}`, type: "left", who: ms.wrestler, team: ms.team };
+          auto("former-partners", ms.wrestler, o.wrestler, "form", 1, cause);
+          auto("allies", ms.wrestler, o.wrestler, "lower", 1, cause);
+        });
         continue;
       }
       if (it.type === "disbanded") {
@@ -7374,12 +7556,39 @@ body.uv-confirm-open .uv-confirm{display:flex}
         const on = st.memberships.filter((o) => o.team === t.id && compareStamps(st, o.start, l.at) <= 0 && (!o.end || compareStamps(st, o.end, l.at) > 0)).map((o) => o.wrestler);
         for (let i = 0; i < on.length; i++) {
           for (let j = i + 1; j < on.length; j++) {
-            auto("former-partners", on[i], on[j], "form", 1, { at: l.at, key: `disband:${t.id}:${l.at.seq}:${pairOf(on[i], on[j])}`, type: "disbanded", team: t.id });
+            const cause = { at: l.at, key: `disband:${t.id}:${l.at.seq}:${pairOf(on[i], on[j])}`, type: "disbanded", team: t.id };
+            auto("former-partners", on[i], on[j], "form", 1, cause);
+            auto("allies", on[i], on[j], "lower", 1, cause);
           }
         }
       }
     }
-    return { rels, entries, streak, together, has: has3 };
+    teams.forEach((tr) => {
+      if (!tr.active) return;
+      const A = teamById(st, tr.a), B = teamById(st, tr.b);
+      if (!A || !B || !A.active || !B.active) return;
+      A.members.forEach((x) => B.members.forEach((y) => {
+        if (x === y || A.members.includes(y) || B.members.includes(x)) return;
+        if (tr.kind === "allies" && (get("grudge", x, y).active || get("grudge", y, x).active)) return;
+        const r = get(tr.kind, x, y);
+        if (r.active && r.level >= tr.level) return;
+        if (r.own === void 0) r.own = r.active ? r.level : 0;
+        if (!r.active) r.since = tr.since;
+        r.active = true;
+        r.level = tr.level;
+        r.via = { key: tr.key, a: A.id, b: B.id, level: tr.level };
+      }));
+    });
+    return { rels, entries, streak, together, has: has3, teams, teamEntries };
+  }
+  function teamRelationsOf(st, teamId, derived = relationships(st)) {
+    const order = { grudge: 0, rivals: 1, allies: 2 };
+    return [...derived.teams.values()].filter((r) => r.active && (r.a === teamId || r.b === teamId)).sort((x, y) => order[x.kind] - order[y.kind] || y.level - x.level);
+  }
+  function viaText(st, r) {
+    if (!r.via) return "";
+    const tn2 = (id) => (teamById(st, id) || { name: "their team" }).name;
+    return `through ${tn2(r.via.a)} and ${tn2(r.via.b)}`;
   }
   function relationsOf(st, wid, derived = relationships(st)) {
     const order = { grudge: 0, rivals: 1, allies: 2, friends: 3, "former-partners": 4 };
@@ -7387,7 +7596,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function pairView(st, a, b, derived = relationships(st)) {
     const rels = [...derived.rels.values()].filter((r) => r.a === a && r.b === b || r.a === b && r.b === a);
-    const entries = derived.entries.filter((e) => e.a === a && e.b === b || e.a === b && e.b === a);
+    const via = new Set(rels.filter((r) => r.active && r.via).map((r) => r.via.key));
+    const entries = [
+      ...derived.entries.filter((e) => e.a === a && e.b === b || e.a === b && e.b === a),
+      ...derived.teamEntries.filter((e) => via.has(e.rel))
+    ].sort((x, y) => !x.at && !y.at ? 0 : !x.at ? -1 : !y.at ? 1 : compareStamps(st, x.at, y.at));
     const need2 = (w) => derived.has(w, "hot-headed", null) ? RULES.streakHotHeaded : derived.has(w, "patient", null) ? RULES.streakPatient : RULES.streak;
     const loyal = derived.has(a, "loyal", null) || derived.has(b, "loyal", null);
     return {
@@ -7403,7 +7616,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var nm3 = (st, id) => (wrestlerById(st, id) || { name: "(deleted)" }).name;
   var at = (st, id) => (eventById(st, id) || { name: "a show" }).name;
+  var tn = (st, id) => (teamById(st, id) || { name: "(deleted team)" }).name;
+  function teamRelText(st, r) {
+    const [A, B] = [tn(st, r.a), tn(st, r.b)];
+    return { grudge: `${A} hold a grudge against ${B}`, rivals: `${A} and ${B} are rivals`, allies: `${A} and ${B} are allies` }[r.kind];
+  }
+  var teamEndText = (st, r) => {
+    const [A, B] = [tn(st, r.a), tn(st, r.b)];
+    return { grudge: `${A} let the grudge against ${B} go`, rivals: `${A} and ${B} are no longer rivals`, allies: `${A} and ${B} are no longer allies` }[r.kind];
+  };
   function relText(st, r) {
+    if (r.team) return teamRelText(st, r);
     const [A, B] = [nm3(st, r.a), nm3(st, r.b)];
     return {
       grudge: `${A} holds a grudge against ${B}`,
@@ -7425,10 +7648,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
   };
   var levelText = (r) => LEVEL_WORD[r.kind] ? `${LEVEL_WORD[r.kind]} ${r.level}` : "";
   function entryText(st, e) {
+    if (e.team) return teamEntryText(st, e);
     const c = e.cause;
     const A = nm3(st, e.a), B = nm3(st, e.b);
     let cause;
     switch (c.type) {
+      case "teamed": {
+        const t = teamById(st, c.team) || { name: "a team" };
+        const first = (w) => st.memberships.findIndex((m) => m.team === c.team && m.wrestler === w);
+        const [p, q] = !c.joined && first(c.y) < first(c.x) ? [c.y, c.x] : [c.x, c.y];
+        cause = c.joined ? `${nm3(st, c.x)} joined ${t.name}, alongside ${nm3(st, c.y)}` : `${nm3(st, p)} and ${nm3(st, q)} teamed up as ${t.name}`;
+        break;
+      }
+      case "reunited":
+        cause = `${(teamById(st, c.team) || { name: "Their team" }).name} reunited`;
+        break;
       case "losses":
         cause = `${nm3(st, c.loser)} lost to ${nm3(st, c.winner)} for the ${nth(c.n)} time running at ${at(st, c.event)}`;
         break;
@@ -7512,9 +7746,83 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }[e.change];
     return { cause, result };
   }
+  function teamEntryText(st, e) {
+    const c = e.cause;
+    const who = (w, t) => `${nm3(st, w)}${t ? ` (${tn(st, t)})` : ""}`;
+    let cause;
+    switch (c.type) {
+      case "team-losses":
+        cause = `${tn(st, c.loser)} lost to ${tn(st, c.winner)} for the ${nth(c.n)} time running at ${at(st, c.event)}`;
+        break;
+      case "team-title":
+        cause = `${tn(st, c.loser)} lost the ${(titleById(st, c.title) || { name: "title" }).name} to ${tn(st, c.winner)} at ${at(st, c.event)}`;
+        break;
+      case "attack":
+        cause = `${who(c.by, c.byTeam)} attacked ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "interference":
+        cause = `${who(c.by, c.byTeam)} interfered against ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "betrayal":
+        cause = `${who(c.by, c.byTeam)} betrayed ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "breakup":
+        cause = `${who(c.by, c.byTeam)} walked out on ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "save":
+        cause = `${who(c.by, c.byTeam)} made the save against ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "saved":
+        cause = `${who(c.by, c.byTeam)} made the save for ${who(c.helped, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "helped":
+        cause = `${who(c.by, c.byTeam)} interfered to help ${who(c.helped, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "brawl":
+        cause = `${who(c.by, c.byTeam)} and ${who(c.on, c.onTeam)} brawled at ${at(st, c.event)}`;
+        break;
+      case "confrontation":
+        cause = `${who(c.by, c.byTeam)} confronted ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "challenge":
+      case "demand":
+        cause = `${who(c.by, c.byTeam)} called out ${who(c.on, c.onTeam)} at ${at(st, c.event)}`;
+        break;
+      case "alliance":
+        cause = `${who(c.by, c.byTeam)} and ${who(c.on, c.onTeam)} joined forces at ${at(st, c.event)}`;
+        break;
+      case "truce":
+        cause = `${who(c.by, c.byTeam)} and ${who(c.on, c.onTeam)} called a truce at ${at(st, c.event)}`;
+        break;
+      default: {
+        const ed = c.edit;
+        cause = e.at ? "Your change" : "Your change, counted from the start";
+        if (ed && ed.note) cause += ` \u2014 ${ed.note}`;
+      }
+    }
+    const word = LEVEL_WORD[e.kind];
+    const [A, B] = [tn(st, e.a), tn(st, e.b)];
+    const what = { grudge: `${A}'s grudge against ${B}`, rivals: `${A} and ${B}'s rivalry`, allies: `${A} and ${B}'s alliance` }[e.kind];
+    const result = {
+      formed: teamRelText(st, e) + (e.level > 1 ? ` (${word} ${e.level})` : ""),
+      raised: `${what} grows to ${word} ${e.level}`,
+      fuelled: `${what} is already at its hottest`,
+      set: `${what} set to ${word} ${e.level}`,
+      ended: teamEndText(st, e),
+      note: `A note on ${what}`,
+      cooled: `${what} cools to ${word} ${e.level}`,
+      nothing: `${what.charAt(0).toUpperCase()}${what.slice(1)} had already ended \u2014 nothing to end`
+    }[e.change];
+    return { cause, result };
+  }
   function snapshot(st) {
     const out = /* @__PURE__ */ new Map();
-    relationships(st).rels.forEach((r) => {
+    const d = relationships(st);
+    d.rels.forEach((r) => {
+      const own = r.via ? r.own : r.level;
+      if (r.active && own) out.set(r.key, own);
+    });
+    d.teams.forEach((r) => {
       if (r.active) out.set(r.key, r.level);
     });
     return out;
@@ -7522,9 +7830,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function changesBetween(st, before, after) {
     const out = [];
     const rel2 = (key) => {
-      const [kind, rest] = key.split(":");
+      const team = key.startsWith("team:");
+      const [kind, rest] = (team ? key.slice(5) : key).split(":");
       const [a, b] = kind === "grudge" ? rest.split(">") : rest.split("+");
-      return { kind, a, b };
+      return { kind, a, b, team };
     };
     after.forEach((level, key) => {
       const r = { ...rel2(key), level };
@@ -7532,7 +7841,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       else if (before.get(key) !== level) out.push(`${relText(st, r)} \u2014 now ${LEVEL_WORD[r.kind]} ${level}`);
     });
     before.forEach((level, key) => {
-      if (!after.has(key)) out.push(endText(st, rel2(key)));
+      if (!after.has(key)) {
+        const r = rel2(key);
+        out.push(r.team ? teamEndText(st, r) : endText(st, r));
+      }
     });
     return out;
   }
@@ -7910,6 +8222,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       why(cand, 1, `${X} teamed with ${Y} at ${c.ev.name}`);
       if (has2(c, x, "loyal")) why(cand, 0.2, `Less likely: ${X} is loyal`);
       if (rel(c, "friends", x, y)) why(cand, 0.5, `Less likely: ${X} and ${Y} are friends`);
+      const trust = teamOf(c, x, y) ? rel(c, "allies", x, y) : null;
+      if (trust && trust.level >= 3) why(cand, 0.6, `Less likely: ${X} and ${Y} still trust each other (allies ${trust.level})`);
+      else if (teamOf(c, x, y)) why(cand, 1.3, trust ? `The trust between them is down to ${trust.level}` : `There's no trust left between them`);
       const incs = [{ kind: "betrayal", by: [x], on: [y], match: m.id }];
       if (align(c, x) === "face" && b.n >= RULES2.betrayalBuildup + 2 && spaced(c, "turn") && turnGapOk(c, x)) {
         incs.push({ kind: "turn", by: [x], to: "heel" });
@@ -8505,7 +8820,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return r && r.active ? r.level || 1 : 0;
     };
     const heatOf2 = (a, b) => Math.max(lvl2("grudge", a, b), lvl2("grudge", b, a), lvl2("rivals", a, b));
-    [...d.rels.values()].filter((r) => r.active && (r.kind === "grudge" || r.kind === "rivals")).forEach((r) => line2(r.a, r.b));
+    [...d.rels.values()].filter((r) => r.active && (r.kind === "grudge" || r.kind === "rivals") && (!r.via || r.own)).forEach((r) => line2(r.a, r.b));
     allIncidents(st).forEach(({ event, incident: inc }) => {
       if (!before(event)) return;
       const wk = weekNo(st, event.at);
@@ -8771,7 +9086,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return `<div class="uv-row uv-relrow" data-pair="${oid}" onclick="uvOpenPair('${wid}','${oid}')">${avatar(st, o)}
       <div class="uv-main"><div class="nm">${esc(o.name)}</div>
         ${list.map((r) => `<div class="uv-rl" data-rel="${esc(r.key)}">${kindChip2(r.kind)}<span>${esc(relText(st, r))}
-          <em>since ${when(st, r.since)}</em></span>${dots(r)}</div>`).join("")}</div>
+          ${r.via ? `<em class="via">${esc(viaText(st, r))}</em> ` : ""}<em>since ${when(st, r.since)}</em></span>${dots(r)}</div>`).join("")}</div>
       <span class="uv-chev">${ICON.right}</span></div>`;
     }).join("");
   }
@@ -8803,8 +9118,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const { cause, result } = entryText(st, e);
     const ev = e.cause.event;
     const act = e.auto ? e.ignored ? `<span class="uv-link" onclick="event.stopPropagation();uvRestoreChange('${esc(e.key)}')">Count it again</span>` : `<span class="uv-link" onclick="event.stopPropagation();uvIgnoreChange('${esc(e.key)}')">Ignore</span>` : `<span class="uv-link" onclick="event.stopPropagation();uvTakeBackRel('${e.cause.edit.id}')">Take back</span>`;
-    return `<div class="uv-ent${e.ignored ? " ignored" : ""}${e.auto ? "" : " own"}" style="--k:${KIND2[e.kind].color}" data-entry="${esc(e.key)}"
-      ${pairLink ? `onclick="uvOpenPair('${e.a}','${e.b}')"` : ""}>
+    return `<div class="uv-ent${e.ignored ? " ignored" : ""}${e.auto ? "" : " own"}${e.team ? " tm" : ""}" style="--k:${KIND2[e.kind].color}" data-entry="${esc(e.key)}"
+      ${pairLink ? `onclick="${e.team ? `uvOpenTeam('${e.a}')` : `uvOpenPair('${e.a}','${e.b}')`}"` : ""}>
     <div class="w">${when(st, e.at)}</div>
     <div class="x"><div class="c">${esc(cause)}</div>
       <div class="r">\u2192 ${esc(result)}</div>
@@ -8826,6 +9141,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
       <div>The auto booker reads this: how pressing it is (${l.priority.toFixed(1)}, fading by half every ${RULES3.halfLife} weeks), what it
         has done, and who has a reason to join in.</div>
     </div>`;
+  }
+  function trustLine(st, d, a, b) {
+    const shared = st.teams.filter((t) => t.active && t.members.includes(a) && t.members.includes(b));
+    if (!shared.length) return "";
+    const r = d.rels.get(relKey("allies", a, b));
+    const lv = r && r.active ? r.level : 0;
+    const trust = lv >= RULES4.teammates ? "They trust each other fully." : lv ? `Trust has slipped to strength ${lv} \u2014 the timeline says why.` : "No trust left between them, though they\u2019re still a team.";
+    return `<div data-trust="${lv}">Together in ${esc(shared.map((t) => t.name).join(" and "))}: teammates start as allies at strength ${RULES4.teammates}. ${trust}</div>`;
   }
   function uvPairPage(id) {
     const st = uni();
@@ -8853,7 +9176,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${section("Now", now2.length || null)}
       ${now2.length ? `<div class="uv-rels">${now2.map((r) => `<div class="uv-relnow" style="--k:${KIND2[r.kind].color}" data-rel="${esc(r.key)}">
         ${kindChip2(r.kind)}<div class="uv-main"><div class="nm">${esc(relText(st, r))}</div>
-        <div class="sub">${levelText(r) ? `${esc(levelText(r))} of 3 \xB7 ` : ""}since ${when(st, r.since)}</div></div>${dots(r)}</div>`).join("")}</div>` : '<div class="uv-none">Nothing between them right now.</div>'}
+        <div class="sub">${levelText(r) ? `${esc(levelText(r))} of 3 \xB7 ` : ""}${r.via ? `${esc(viaText(st, r))}${r.own ? ` (${esc(levelText({ ...r, level: r.own }))} of their own)` : ""} \xB7 ` : ""}since ${when(st, r.since)}</div></div>${dots(r)}</div>`).join("")}</div>` : '<div class="uv-none">Nothing between them right now.</div>'}
 
       ${storyBlock(st, d, a, b)}
 
@@ -8862,6 +9185,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         ${runs.length ? runs.map((x) => `<div>${esc(nm6(st, x.loser))} has lost ${x.n} in a row to ${esc(nm6(st, x.winner))} \u2014
           ${(d.rels.get(relKey("grudge", x.loser, x.winner)) || {}).active ? "more heat" : "a grudge"} at ${x.need}</div>`).join("") : "<div>No losing run between them. A win resets one.</div>"}
         <div>${p.together ? `On the same side ${plural6(p.together, "time")}.` : "Never on the same side."} Allies at ${p.alliesAt}${opportunist ? "; never friends from teaming up (opportunistic)" : `, friends at ${p.friendsAt}`}.</div>
+        ${trustLine(st, d, a, b)}
       </div>
 
       ${section("Timeline", pv.entries.length || null)}
@@ -8874,9 +9198,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
       </div>`
     };
   }
+  var allEntries = (st) => {
+    const d = relationships(st);
+    return [...d.entries, ...d.teamEntries];
+  };
   function uvIgnoreChange(key) {
     const st = uni();
-    const e = relationships(st).entries.find((x) => x.key === key);
+    const e = allEntries(st).find((x) => x.key === key);
     if (!e) return;
     confirmThen(
       "Ignore this change?",
@@ -8894,7 +9222,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function uvTakeBackRel(editId) {
     const st = uni();
-    const e = relationships(st).entries.find((x) => !x.auto && x.cause.edit.id === editId);
+    const e = allEntries(st).find((x) => !x.auto && x.cause.edit.id === editId);
     confirmThen(
       "Take back your change?",
       `${e ? `\u201C${entryText(st, e).result}\u201D comes off the timeline. ` : ""}Everything after it is worked out again without it.`,
@@ -8925,6 +9253,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     }
   }
   var previewBox = (news, idle) => `<div class="uv-prev"><b>What it changes</b>${news == null ? `<span>${esc(idle)}</span>` : news.length ? news.map((x) => `<span>${esc(x)}</span>`).join("") : "<span>No relationship changes.</span>"}</div>`;
+  var seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${String(cur) === String(k) ? "on" : ""}" data-v="${k}"
+  onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
   var rd = null;
   function uvRelSheet(a = "", b = "", kind = "") {
     rd = { a, b, fixA: !!a, fixB: !!b, kind: kind || "grudge", dir: "ab", action: "", level: 1, since: "now", note: "" };
@@ -8943,8 +9273,6 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const lv = KIND2[rd.kind].level;
     const acts = active ? [...lv ? [["level", `Set the ${lv}`]] : [], ["end", "End it"], ["note", "Add a note"]] : [["form", "Start it"], ["note", "Add a note"]];
     if (!acts.some(([k]) => k === rd.action)) rd.action = acts[0][0];
-    const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${String(cur) === String(k) ? "on" : ""}" data-v="${k}"
-    onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
     const s = activeSeason(st);
     if (rd.action === "end" || rd.action === "note") rd.since = "now";
     const input = { action: rd.action, kind: rd.kind, a: x, b: y, level: rd.level, since: rd.since, note: rd.note };
@@ -9005,6 +9333,129 @@ body.uv-confirm-open .uv-confirm{display:flex}
     );
     if (r.ok) closeSheet();
   }
+  var TEAM_ORDER = TEAM_REL_KINDS;
+  var tname = (st, id) => (teamById(st, id) || { name: "(deleted team)" }).name;
+  function uvTeamRelations(st, t) {
+    const d = relationships(st);
+    const rels = teamRelationsOf(st, t.id, d);
+    const pairs = t.active ? t.members.flatMap((x, i) => t.members.slice(i + 1).map((y) => [x, y])) : [];
+    const trustRow = ([x, y]) => {
+      const r = d.rels.get(relKey("allies", x, y));
+      const lv = r && r.active ? r.level : 0;
+      const X = wrestlerById(st, x), Y = wrestlerById(st, y);
+      return `<div class="uv-row" data-trust="${x}+${y}" onclick="uvOpenPair('${x}','${y}')"><span class="uv-av2">${avatar(st, X)}${avatar(st, Y)}</span>
+      <div class="uv-main"><div class="nm">${esc(X.name)} &amp; ${esc(Y.name)}</div>
+        <div class="sub">${lv >= RULES4.teammates ? "Full trust \u2014 allies at strength 3" : lv ? `Trust slipping \u2014 allies at strength ${lv}` : "No trust left"}</div></div>
+      ${lv ? dots(r) : '<span class="uv-rk" style="--k:#98A3B3">None</span>'}<span class="uv-chev">${ICON.right}</span></div>`;
+    };
+    const relRow = (r) => {
+      const o = r.a === t.id ? r.b : r.a;
+      const O = teamById(st, o);
+      const members = O ? t.members.filter((x) => !O.members.includes(x)).length * O.members.filter((y) => !t.members.includes(y)).length : 0;
+      return `<div class="uv-row uv-relrow" data-teamrel="${esc(r.key)}" onclick="uvOpenTeam('${o}')"><span class="uv-av sq">${ICON.team}</span>
+      <div class="uv-main"><div class="nm">${esc(tname(st, o))}</div>
+        <div class="uv-rl">${kindChip2(r.kind)}<span>${esc(teamRelText(st, r))} <em>since ${when(st, r.since)}</em></span>${dots(r)}</div>
+        <div class="uv-rl"><span class="uv-muted">${t.active && O && O.active ? `Extends to their members \u2014 ${plural6(members, "pair")}` : "On hold while a team is disbanded"}</span></div></div>
+      <span class="uv-chev">${ICON.right}</span></div>`;
+    };
+    const timeline2 = d.teamEntries.filter((e) => e.a === t.id || e.b === t.id).slice().reverse();
+    return `
+    ${pairs.length ? `${section("Trust inside the team", pairs.length)}
+      ${pairs.map(trustRow).join("")}
+      <div class="uv-note">Teammates start as allies at strength ${RULES4.teammates} with everyone in the group. It drops when one gives another a
+        reason not to trust them \u2014 tension, a confrontation, losing to them again and again, an attack \u2014 and a betrayal or a walk-out ends it.</div>` : ""}
+
+    ${section("Relationships with other teams", rels.length || null)}
+    ${rels.length ? rels.map(relRow).join("") : '<div class="uv-none">None right now. They grow out of tag matches, tag titles and incidents between members \u2014 or add one yourself.</div>'}
+    <div class="uv-page-acts"><div class="uv-btn" onclick="uvTeamRelSheet('${t.id}')">${ICON.plus}Add or change a relationship</div></div>
+    ${timeline2.length ? `<div class="uv-sub">Between teams \u2014 timeline</div><div class="uv-ents">${timeline2.slice(0, 12).map((e) => entryRow(st, e)).join("")}</div>` : ""}`;
+  }
+  var trd = null;
+  function uvTeamRelSheet(a = "", b = "", kind = "") {
+    trd = { a, b, fixA: !!a, fixB: !!b, kind: kind || "grudge", dir: "ab", action: "", level: 1, since: "now", note: "" };
+    openSheet(teamRelSheet);
+  }
+  function teamRelSheet() {
+    const st = uni();
+    if (!trd) return null;
+    if (trd.fixA && !teamById(st, trd.a) || trd.fixB && !teamById(st, trd.b)) return null;
+    const A = teamById(st, trd.a);
+    const apart = (t, u) => !t || !u || !t.members.some((id) => u.members.includes(id));
+    const pick2 = (cur, not) => {
+      const N = teamById(st, not);
+      const list = st.teams.filter((t) => t.id !== not && (t.active || t.id === cur) && apart(t, N)).sort((x2, y2) => x2.name.localeCompare(y2.name));
+      return `<option value="">\u2014 Pick a tag team \u2014</option>${options(list.map((t) => [t.id, t.name]), cur)}`;
+    };
+    if (st.teams.filter((t) => t.active).length < 2) return { title: "Relationship", body: empty(ICON.team, "Add another tag team first", "A relationship between teams needs two of them.") };
+    const both = trd.a && trd.b && trd.a !== trd.b;
+    const [x, y] = trd.kind === "grudge" && trd.dir === "ba" ? [trd.b, trd.a] : [trd.a, trd.b];
+    const r = both ? relationships(st).teams.get(teamRelKey(trd.kind, x, y)) : null;
+    const active = !!(r && r.active);
+    const lv = KIND2[trd.kind].level;
+    const acts = active ? [["level", `Set the ${lv}`], ["end", "End it"], ["note", "Add a note"]] : [["form", "Start it"], ["note", "Add a note"]];
+    if (!acts.some(([k]) => k === trd.action)) trd.action = acts[0][0];
+    const s = activeSeason(st);
+    if (trd.action === "end" || trd.action === "note") trd.since = "now";
+    const input = { teams: true, action: trd.action, kind: trd.kind, a: x, b: y, level: trd.level, since: trd.since, note: trd.note };
+    const news = both ? preview((copy) => editRelationship(copy, input)) : null;
+    const B = teamById(st, trd.b);
+    const reach = both && A && B ? `It extends to every pair of their members: ${A.members.filter((p) => !B.members.includes(p)).map((p) => nm6(st, p)).join(", ")}
+    with ${B.members.filter((q) => !A.members.includes(q)).map((q) => nm6(st, q)).join(", ")} \u2014 while they\u2019re on their teams.` : "";
+    return {
+      title: trd.fixA && trd.fixB ? `${esc(tname(st, trd.a))} & ${esc(tname(st, trd.b))}` : "Relationship between teams",
+      body: `
+      <div class="uv-grid">
+        ${field("Tag team", trd.fixA ? `<div class="uv-in ro">${esc(tname(st, trd.a))}</div>` : findable(select("uvTeamRelSet('a',this.value)", pick2(trd.a, trd.b), ' id="uvTeamRelA"')), "wide")}
+        ${field("And", trd.fixB ? `<div class="uv-in ro">${esc(tname(st, trd.b))}</div>` : findable(select("uvTeamRelSet('b',this.value)", pick2(trd.b, trd.a), ' id="uvTeamRelB"')), "wide")}
+      </div>
+      <div class="uv-pills tight">${TEAM_ORDER.map((k) => `<div class="uv-pill${trd.kind === k ? " on" : ""}" data-kind="${k}" onclick="uvTeamRelSet('kind','${k}')">
+        <span class="uv-dot" style="--c:${KIND2[k].color}"></span>${KIND2[k].label}</div>`).join("")}</div>
+      ${both && trd.kind === "grudge" ? `<div class="uv-sub flush">Who holds it</div>${seg([["ab", `${tname(st, trd.a)} \u2192 ${tname(st, trd.b)}`], ["ba", `${tname(st, trd.b)} \u2192 ${tname(st, trd.a)}`]], trd.dir, "uvTeamRelDir")}` : ""}
+      ${both ? `<div class="uv-note">${active ? `Now: <b>${esc(teamRelText(st, r))}</b> \u2014 ${esc(levelText(r))} of 3.` : `Not now: ${esc(teamRelText(st, { kind: trd.kind, a: x, b: y }).replace(" hold a grudge", " hold no grudge").replace(" are ", " are not "))}.`} ${esc(reach)}</div>
+      <div class="uv-sub flush">Change</div>${seg(acts, trd.action, "uvTeamRelAction")}
+      ${trd.action === "form" || trd.action === "level" ? `<div class="uv-sub flush">${lv === "heat" ? "Heat" : "Strength"}</div>
+        ${seg([[1, "1 \xB7 mild"], [2, "2"], [3, "3 \xB7 all-out"]], trd.level, "uvTeamRelLevel")}
+        <div class="uv-sub flush">Counts from</div>
+        ${seg([["now", `This week (W${s.week})`], ["start", "The start"]], trd.since, "uvTeamRelSince")}` : ""}
+      <div style="margin-top:10px">${field(trd.action === "note" ? "Note" : "Why (optional)", `<input id="uvTeamRelNote" class="uv-in" maxlength="60" value="${esc(trd.note)}"
+        placeholder="${trd.action === "note" ? "e.g. Still bitter about the tag titles" : "e.g. Feud from before the universe"}" oninput="uvTeamRelNote(this.value)">`, "wide")}</div>
+      ${previewBox(news, trd.action === "note" ? "Only a note on the timeline." : "")}
+      <div class="uv-btn pri full" onclick="uvTeamRelSave()">Save</div>` : '<p class="uv-p">Pick two tag teams with no one in common.</p>'}`
+    };
+  }
+  function uvTeamRelSet(k, v) {
+    trd[k] = v;
+    if (k !== "kind") trd.dir = "ab";
+    paintSheet();
+  }
+  function uvTeamRelDir(v) {
+    trd.dir = v;
+    paintSheet();
+  }
+  function uvTeamRelAction(v) {
+    trd.action = v;
+    paintSheet();
+  }
+  function uvTeamRelLevel(v) {
+    trd.level = Number(v);
+    paintSheet();
+  }
+  function uvTeamRelSince(v) {
+    trd.since = v;
+    paintSheet();
+  }
+  function uvTeamRelNote(v) {
+    trd.note = v;
+  }
+  function uvTeamRelSave() {
+    const [x, y] = trd.kind === "grudge" && trd.dir === "ba" ? [trd.b, trd.a] : [trd.a, trd.b];
+    const before = snapshot(uni());
+    const r = commit(
+      (st) => editRelationship(st, { teams: true, action: trd.action, kind: trd.kind, a: x, b: y, level: trd.level, since: trd.since, note: trd.note }),
+      () => `Saved${uvRelNews(before)}`
+    );
+    if (r.ok) closeSheet();
+  }
   var td = null;
   function uvEditTraits(id) {
     const st = uni();
@@ -9020,7 +9471,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const adds = TRAITS.filter((t) => td.on.has(t) && !w.traits.includes(t));
     const drops = w.traits.filter((t) => !td.on.has(t));
     const s = activeSeason(st);
-    const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${cur === k ? "on" : ""}" data-v="${k}"
+    const seg2 = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${cur === k ? "on" : ""}" data-v="${k}"
     onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
     const news = adds.length || drops.length ? preview((copy) => setTraits(copy, td.id, [...td.on], { since: td.since })) : [];
     return {
@@ -9033,7 +9484,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${adds.length || drops.length ? `
         <div class="uv-note">${[adds.length && `Adds ${adds.map(traitName).join(", ")}`, drops.length && `Removes ${drops.map(traitName).join(", ")}`].filter(Boolean).join(" \xB7 ")}.</div>
         <div class="uv-sub flush">Counts from</div>
-        ${seg([["now", `This week (W${s.week})`], ["start", "The start"]], td.since, "uvTraitSince")}
+        ${seg2([["now", `This week (W${s.week})`], ["start", "The start"]], td.since, "uvTraitSince")}
         <div class="fine">${td.since === "start" ? "From the start: as if they\u2019d always been this way. Past relationships are worked out again with it." : "This week: from now on. What already happened stays as it was \u2014 traits count as they were at the time."}</div>
         <div style="margin-top:10px">${field("Why (optional)", `<input id="uvTraitNote" class="uv-in" maxlength="60" value="${esc(td.note)}"
           placeholder="e.g. Snapped after WrestleMania" oninput="uvTraitNote(this.value)">`, "wide")}</div>
@@ -9139,7 +9590,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const teams = st.teams.filter((t) => t.members.length || t.id === ic.team);
     const news = preview((copy) => saveIncident(copy));
     const turner = ic.kind === "turn" && wrestlerById(st, ic.by[0]);
-    const seg = (items, cur, fn) => `<div class="uv-seg">${items.map(([k2, lb]) => `<div class="${cur === k2 ? "on" : ""}" data-v="${k2}"
+    const seg2 = (items, cur, fn) => `<div class="uv-seg">${items.map(([k2, lb]) => `<div class="${cur === k2 ? "on" : ""}" data-v="${k2}"
     onclick="${fn}('${k2}')">${esc(lb)}</div>`).join("")}</div>`;
     return {
       title: ic.incId ? "Edit the incident" : "Record an incident",
@@ -9149,7 +9600,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <span class="uv-dot" style="--c:${INCIDENT[x].color}"></span>${INCIDENT[x].label}</div>`).join("")}</div>
       <div class="fine" style="margin:4px 0 10px">${esc(k.text)}</div>
       <div class="uv-sub flush">When</div>
-      ${seg([["pre", "Before the show"], ["post", "During or after"]], ic.phase === "pre" ? "pre" : "post", "uvIcPhase")}
+      ${seg2([["pre", "Before the show"], ["post", "During or after"]], ic.phase === "pre" ? "pre" : "post", "uvIcPhase")}
       ${k.turn ? `<div style="margin-top:10px">${field(
         turner && turner.alignment ? `Turned (from ${LABEL.alignment[turner.alignment].toLowerCase()})` : "Turned",
         select("uvIcSet('to',this.value)", options([["", "\u2014 Pick the new alignment \u2014"], ...ALIGNMENTS.map((a) => [a, LABEL.alignment[a]])], ic.to), ' id="uvIcTo"'),
@@ -9262,7 +9713,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="sub">${kindChip2(r.kind)}<span class="uv-rt">since ${when(st, r.since)} \xB7 ${plural6(r.entries.length, "change")}</span></div></div>
       ${dots(r)}<span class="uv-chev">${ICON.right}</span></div>`;
     };
-    const latest = d.entries.slice(-12).reverse();
+    const teamRels = [...d.teams.values()].filter((r) => r.active && (!relKind || r.kind === relKind)).sort((x, y) => ORDER.indexOf(x.kind) - ORDER.indexOf(y.kind) || y.level - x.level);
+    const teamRow2 = (r) => `<div class="uv-row" data-teamrel="${esc(r.key)}" onclick="uvOpenTeam('${r.a}')">
+      <span class="uv-av sq">${ICON.team}</span>
+      <div class="uv-main"><div class="nm">${esc(tname(st, r.a))} ${r.kind === "grudge" ? "\u2192" : "&amp;"} ${esc(tname(st, r.b))}</div>
+        <div class="sub">${kindChip2(r.kind)}<span class="uv-rt">since ${when(st, r.since)} \xB7 extends to their members</span></div></div>
+      ${dots(r)}<span class="uv-chev">${ICON.right}</span></div>`;
+    const at2 = (e) => e.at;
+    const latest = [...d.entries, ...d.teamEntries].sort((x, y) => !at2(x) || !at2(y) ? !at2(y) - !at2(x) : compareStamps(st, x.at, y.at)).slice(-12).reverse();
     return `
     <div class="uv-bar"><div class="uv-bar-t">Relationships</div>
       <div class="uv-btn pri" onclick="uvRelSheet()">${ICON.plus}Add</div></div>
@@ -9270,6 +9728,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       Tap one to see exactly why it exists. <span class="uv-link" onclick="uvHowRelations()">How relationships work</span></p>
     <div class="uv-pills">${pill2("", "All", active.length)}${ORDER.map((k) => pill2(k, KIND2[k].label, count(k), KIND2[k].color)).join("")}</div>
     ${shown2.length ? shown2.map(row2).join("") : `<div class="uv-none">${active.length ? "None of these right now." : "None yet. They grow out of results, teams and incidents \u2014 or add one yourself."}</div>`}
+    ${teamRels.length ? `${section("Between tag teams", teamRels.length)}${teamRels.map(teamRow2).join("")}` : ""}
     ${latest.length ? `${section("Latest changes", null)}<div class="uv-ents">${latest.map((e) => entryRow(st, e, true)).join("")}</div>` : ""}`;
   }
   function uvHowRelations() {
@@ -9296,9 +9755,24 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div><span>Tension</span><b>partners clashing: an alliance or friendship between them weakens a step</b></div>
         <div><span>Truce</span><b>a rivalry cooling off: each grudge between them, and the rivalry, drops a step</b></div>
         <div><span>Walk-out</span><b>anyone left behind holds a grudge against whoever walked out; any friendship or alliance between them ends</b></div>
-        <div><span>Teaming</span><b>${RULES4.allies} matches on the same side, win or lose: allies (loyal: ${RULES4.alliesLoyal}).
+        <div><span>Teammates</span><b>on a tag team or faction together: allies at strength ${RULES4.teammates} with everyone in the
+          group, from the day they team up (or reunite)</b></div>
+        <div><span>Distrust</span><b>between allies \u2014 teammates or not \u2014 a reason not to trust the other lowers it: tension, a
+          confrontation, a challenge, a grudge forming or a save against them, one step; an attack, an interference against them or
+          a brawl, two (and a friendship one). A betrayal or a walk-out ends it. At nothing it ends, even on the same team</b></div>
+        <div><span>Teaming</span><b>without a team: ${RULES4.allies} matches on the same side, win or lose: allies (loyal: ${RULES4.alliesLoyal}).
           ${RULES4.friends}: friends \u2014 unless either is opportunistic, or there\u2019s a grudge between them</b></div>
-        <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners</b></div>
+        <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners, and the alliance drops a step</b></div>
+      </div>
+      <p class="uv-p"><b>Between tag teams.</b> Teams have grudges, rivalries and alliances with other teams too, and each one
+        extends to every pair of their members while they\u2019re on their teams \u2014 \u201Cthrough their teams\u201D \u2014 unless the two have a
+        stronger one of their own. An alliance doesn\u2019t reach two members with a grudge between them.</p>
+      <div class="uv-calc">
+        <div><span>Losses</span><b>${RULES4.teamStreak} straight losses to the same team, as teams: a grudge against them, or 1 more heat</b></div>
+        <div><span>Tag title</span><b>losing a tag title to another team: a grudge against them, and they\u2019re rivals</b></div>
+        <div><span>Incidents</span><b>a member of one team attacking, interfering against or betraying a member of another: a grudge;
+          a brawl: grudges and rivals; a confrontation or challenge: rivals; a save, an interference to help, or joining forces: allies;
+          a truce: it all cools. An alliance between teams loses trust like one between two wrestlers</b></div>
       </div>
       <p class="uv-p"><b>Heat and strength</b> run from 1 to 3. A grudge goes one way \u2014 one wrestler holds it against another.
         Rivals, allies and friends go both ways.</p>
@@ -9665,7 +10139,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const list = all.filter((g) => !only || (only === "yours" ? !g.roll : g.roll && g.phase === only));
     const runs = sto.rolls.filter((r) => eventById(st, r.event));
     const due2 = sto.on ? due(st).length : 0;
-    const seg = (items, cur, fn) => `<div class="uv-seg">${items.map(([k, lb]) => `<div class="${String(cur) === String(k) ? "on" : ""}" data-v="${k}"
+    const seg2 = (items, cur, fn) => `<div class="uv-seg">${items.map(([k, lb]) => `<div class="${String(cur) === String(k) ? "on" : ""}" data-v="${k}"
     onclick="${fn}('${k}')">${esc(lb)}</div>`).join("")}</div>`;
     let wk = null;
     const rows = list.slice(0, shown).map((g) => {
@@ -9681,8 +10155,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="k">Story director</div>
         <p>Around every show it decides what else happens \u2014 attacks, saves, betrayals, alliances, challenges, turns \u2014 from the
           record, and makes it part of the story. No approval needed: edit, undo or rerun anything. It never decides a match.</p>
-        ${seg([["on", "On"], ["off", "Off"]], sto.on ? "on" : "off", "uvStoryOn")}
-        ${sto.on ? `<div class="uv-sub flush">Pace</div>${seg(Object.entries(PACE).map(([k, p]) => [k, p.label]), sto.pace, "uvStoryPace")}
+        ${seg2([["on", "On"], ["off", "Off"]], sto.on ? "on" : "off", "uvStoryOn")}
+        ${sto.on ? `<div class="uv-sub flush">Pace</div>${seg2(Object.entries(PACE).map(([k, p]) => [k, p.label]), sto.pace, "uvStoryPace")}
           <div class="s">${esc(pace.text)} At most ${pace.pre} before a show, ${pace.post} after, and ${pace.perWeek} a week.</div>` : ""}
         <div class="s">${all.length} event${all.length === 1 ? "" : "s"} in ${esc(s.name)} \xB7 ${runs.length} run${runs.length === 1 ? "" : "s"} logged${sto.seed ? ` \xB7 seed ${sto.seed}` : ""}
           \xB7 <span class="uv-link" onclick="uvHowStory()">How it works</span></div>
@@ -9934,8 +10408,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return rosterShow === "all" ? "" : rosterShow;
   }
   function uvRosterView() {
-    const seg = (k, lb) => `<div class="${rosterMode === k ? "on" : ""}" data-mode="${k}" onclick="uvRosterMode('${k}')">${lb}</div>`;
-    const top = `<div class="uv-seg uv-seg-page">${seg("wrestlers", "Wrestlers")}${seg("relations", "Relationships")}</div>`;
+    const seg2 = (k, lb) => `<div class="${rosterMode === k ? "on" : ""}" data-mode="${k}" onclick="uvRosterMode('${k}')">${lb}</div>`;
+    const top = `<div class="uv-seg uv-seg-page">${seg2("wrestlers", "Wrestlers")}${seg2("relations", "Relationships")}</div>`;
     if (rosterMode === "relations") return top + uvRelationsView();
     const st = uni();
     const counts = rosterCounts(st);
@@ -10089,9 +10563,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const st = uni();
     const cur = activeSeason(st);
     const seasonId = viewSeason && seasonById(st, viewSeason) ? viewSeason : cur.id;
-    const seg = (k, lb) => `<div class="${histMode === k ? "on" : ""}" onclick="uvHistMode('${k}')">${lb}</div>`;
+    const seg2 = (k, lb) => `<div class="${histMode === k ? "on" : ""}" onclick="uvHistMode('${k}')">${lb}</div>`;
     const pills = st.seasons.length > 1 ? `<div class="uv-pills">${[...st.seasons].reverse().map((s) => `<div class="uv-pill${s.id === seasonId ? " on" : ""}" onclick="uvViewSeason('${s.id}')">${esc(s.name)}</div>`).join("")}</div>` : "";
-    return `<div class="uv-seg uv-seg-page">${seg("results", "Results")}${seg("all", "Everything")}</div>
+    return `<div class="uv-seg uv-seg-page">${seg2("results", "Results")}${seg2("all", "Everything")}</div>
     ${pills}
     ${histMode === "results" ? resultsView(st, seasonId) : everythingView(st, seasonId)}`;
   }
@@ -10987,15 +11461,25 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = [];
     const teams = c.st.teams.filter((t) => t.active && freeOf(c, t, 9).length >= 2).map((t) => ({ t, ids: freeOf(c, t, 9) })).filter((x) => genderOf(c, x.ids) !== "mixed");
     const teamHeat = (x, y) => Math.max(0, ...x.t.members.flatMap((p) => y.t.members.map((q) => heatOf(c, p, q))));
+    const between2 = (kind, x, y) => {
+      const r = c.d.teams.get(teamRelKey(kind, x, y));
+      return r && r.active ? r : null;
+    };
     teams.forEach((x, i) => teams.slice(i + 1).forEach((y) => {
       if (x.t.members.some((id) => y.t.members.includes(id)) || genderOf(c, x.ids) !== genderOf(c, y.ids)) return;
       const heat2 = teamHeat(x, y);
       const [rx, ry] = [c.teamRank.get(x.t.id), c.teamRank.get(y.t.id)];
       const why2 = [];
       let s = 1;
+      const own = [between2("grudge", x.t.id, y.t.id), between2("grudge", y.t.id, x.t.id), between2("rivals", x.t.id, y.t.id)].filter(Boolean).sort((u, v) => v.level - u.level)[0];
       if (heat2) {
         s += heat2;
-        why2.push(`${x.t.name} and ${y.t.name} are at odds (heat ${heat2} between them)`);
+        why2.push(own ? `${teamRelText(c.st, own)} (heat ${own.level})` : `${x.t.name} and ${y.t.name} are at odds (heat ${heat2} between them)`);
+      }
+      const allied = between2("allies", x.t.id, y.t.id);
+      if (allied) {
+        s -= 1 + allied.level;
+        why2.push(`${teamRelText(c.st, allied)} (strength ${allied.level}) \u2014 a friendly contest at most`);
       }
       if (rx && ry) {
         const close2 = 1 - Math.min(1, Math.abs(rx.score - ry.score) / 0.3);
@@ -11653,7 +12137,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (id && !show) return null;
       const s = bookerSettings(st, id);
       const t = id ? st.tiers.findIndex((x) => x.shows.includes(id)) : -1;
-      const seg = (key, items, cur) => `<div class="uv-seg" data-set="${key}">${items.map(([v, lb]) => `<div class="${cur === v ? "on" : ""}" data-v="${v}"
+      const seg2 = (key, items, cur) => `<div class="uv-seg" data-set="${key}">${items.map(([v, lb]) => `<div class="${cur === v ? "on" : ""}" data-v="${v}"
       onclick="uvBookerSet('${showId}','${key}','${v}')">${esc(lb)}</div>`).join("")}</div>`;
       const step = (key, v, min, max, label) => `<div class="uv-trcount" data-set="${key}"><span>${esc(label)}</span>
       <div class="uv-ic mv" onclick="uvBookerSet('${showId}','${key}','${Math.max(min, v - 1)}')">${ICON.left}</div><b>${v}</b>
@@ -11671,9 +12155,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
         <div class="fine">At a premium live event, every title with a contender is on the line. A roster too small for the card gets as many
           matches as it can fill.</div>
         <h4>${ICON.team}Kinds of match</h4>
-        ${TYPES.map((k) => `<div class="uv-sub flush">${esc(TYPE_LABEL[k])}</div>${seg(`mix.${k}`, levels, s.mix[k])}`).join("")}
+        ${TYPES.map((k) => `<div class="uv-sub flush">${esc(TYPE_LABEL[k])}</div>${seg2(`mix.${k}`, levels, s.mix[k])}`).join("")}
         <h4>${ICON.star}Stipulations</h4>
-        ${seg("stips", Object.entries(STIP_LABEL), s.stips)}
+        ${seg2("stips", Object.entries(STIP_LABEL), s.stips)}
         <div class="fine">${esc({
           never: "No stipulations \u2014 add your own on any match.",
           feuds: "Only to settle a feud: a third meeting in a few weeks, or a heated one at a premium live event.",
@@ -12689,6 +13173,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ${t.members.map((wid) => memberRow(spells.find((m) => m.wrestler === wid && !m.end))).join("")}
       ${former.length ? `<div class="uv-sub">Former</div>${former.map(memberRow).join("")}` : ""}
 
+      ${uvTeamRelations(st, t)}
+
       ${section("Championships", reigns.length || null)}
       ${reigns.length ? reigns.map((r) => reignRow(st, r, esc(titleById(st, r.titleId).name))).join("") : '<div class="uv-none">Never champions.</div>'}
 
@@ -12787,14 +13273,14 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function addSheet() {
     const st = uni();
     const d = add;
-    const seg = (k, lb) => `<div class="${d.mode === k ? "on" : ""}" onclick="uvAddMode('${k}')">${lb}</div>`;
+    const seg2 = (k, lb) => `<div class="${d.mode === k ? "on" : ""}" onclick="uvAddMode('${k}')">${lb}</div>`;
     const main = d.mode === "one" ? field("Name", `<input id="uvAddName" class="uv-in" maxlength="60" value="${esc(d.name)}" placeholder="e.g. Cody Rhodes"
         oninput="uvAddSet('name',this.value)" onkeydown="if(event.key==='Enter')uvAddSave()">`, "wide") : field("Names \u2014 one per line", `<textarea id="uvAddList" class="uv-in" rows="7" oninput="uvAddSet('list',this.value)"
         placeholder="Cody Rhodes&#10;Kenny Omega&#10;Iyo Sky">${esc(d.list)}</textarea>`, "wide");
     return {
       title: "Add wrestlers",
       body: `
-      <div class="uv-seg">${seg("one", "One at a time")}${seg("list", "Paste a list")}</div>
+      <div class="uv-seg">${seg2("one", "One at a time")}${seg2("list", "Paste a list")}</div>
       ${main}
       <p class="uv-p">${d.mode === "one" ? "These stay set between adds, so a whole show goes in quickly." : "Everyone in the list gets these details. Change any of them afterwards."}</p>
       <div class="uv-grid">

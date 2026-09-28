@@ -2513,20 +2513,24 @@ test('incidents: a betrayal ends a friendship, an interference makes allies, an 
 test('a long partnership makes allies, then friends; splitting up leaves former partners', () => {
   const { st, A, B, C, D, E, show, now } = relWorld();
   const team = M.addTeam(st, { name: 'AB', members: [A.id, B.id] });
+  assert.deepEqual(now('allies'), ['A+B:allies:3']);                                       // a team: allies at 3 from the day it forms
   const ev = show();
   const tag = w => M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [A.id, B.id] }, { wrestlers: [C.id, D.id] }], winner: w });
   for (let i = 0; i < 4; i++) tag(i % 2);
-  assert.deepEqual(now('allies'), []);
+  assert.deepEqual(now('allies'), ['A+B:allies:3']);
   tag(0);                                                                                  // the 5th match together, win or lose
-  assert.deepEqual(now('allies'), ['A+B:allies:1', 'C+D:allies:1']);
+  assert.deepEqual(now('allies'), ['A+B:allies:3', 'C+D:allies:1']);                       // partners without a team take longer
   for (let i = 0; i < 7; i++) tag(0);
   assert.deepEqual(now('friends'), ['A+B:friends:1', 'C+D:friends:1']);                    // losing together still counts; their grudges are against A and B
   M.setWeek(st, 4);
   M.setTeamActive(st, team.id, false);
   assert.deepEqual(now('former-partners'), ['A+B:former-partners:1']);
+  assert.deepEqual(now('allies'), ['A+B:allies:2', 'C+D:allies:1']);                       // splitting up cools the alliance
   const trio = M.addTeam(st, { name: 'CDE', members: [C.id, D.id, E.id] });
+  assert.deepEqual(now('allies'), ['A+B:allies:2', 'C+D:allies:3', 'C+E:allies:3', 'D+E:allies:3']);   // everyone in the group
   M.removeTeamMember(st, trio.id, E.id, { week: 4 });                                     // leaving a team, too
   assert.deepEqual(now('former-partners'), ['A+B:former-partners:1', 'C+E:former-partners:1', 'D+E:former-partners:1']);
+  assert.deepEqual(now('allies'), ['A+B:allies:2', 'C+D:allies:3', 'C+E:allies:2', 'D+E:allies:2']);
   // loyal partners are allies sooner; the opportunistic never become friends on their own
   const w = relWorld();
   M.setTraits(w.st, w.A.id, ['loyal', 'opportunistic'], { since: 'start' });
@@ -2536,6 +2540,202 @@ test('a long partnership makes allies, then friends; splitting up leaves former 
     if (i === 2) assert.deepEqual(w.now('allies'), ['A+B:allies:1']);                     // 3 matches: only the loyal pair
   }
   assert.deepEqual(w.now('friends'), ['C+D:friends:1']);
+});
+
+// ---------------------------------------------------------------- teammates, trust, and relationships between teams
+
+// three teams on Raw: T1 (A, B), T2 (C, D), T3 (E, F); G on their own
+function teamRelWorld() {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const [A, B, C, D, E, F, G] = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(n => M.addWrestler(st, { name: n, showId: 'raw', gender: 'male' }));
+  const T1 = M.addTeam(st, { name: 'T1', members: [A.id, B.id] });
+  const T2 = M.addTeam(st, { name: 'T2', members: [C.id, D.id] });
+  const T3 = M.addTeam(st, { name: 'T3', members: [E.id, F.id] });
+  let week = 0;
+  const show = () => { M.setWeek(st, ++week); return M.addEvent(st, { showId: 'raw' }); };
+  const name = id => (M.wrestlerById(st, id) || M.teamById(st, id)).name;
+  const key = r => (r.kind === 'grudge' ? `${name(r.a)}>${name(r.b)}` : [name(r.a), name(r.b)].sort().join('+'));
+  // wrestlers now (through their teams: marked "~"), and teams now
+  const now = kind => [...RL.relationships(st).rels.values()].filter(r => r.active && (!kind || r.kind === kind))
+    .map(r => `${key(r)}:${r.kind}:${r.level}${r.via ? '~' : ''}`).sort();
+  const teams = () => [...RL.relationships(st).teams.values()].filter(r => r.active).map(r => `${key(r)}:${r.kind}:${r.level}`).sort();
+  const texts = () => { const d = RL.relationships(st); return [...d.entries, ...d.teamEntries].map(e => RL.entryText(st, e)).map(t => `${t.cause} → ${t.result}`); };
+  return { st, A, B, C, D, E, F, G, T1, T2, T3, show, now, teams, texts };
+}
+
+test('teammates: allies at strength 3 with everyone in the group, from the day they team up, join or reunite', () => {
+  const { st, A, B, C, D, E, G, T1, show, now, texts } = teamRelWorld();
+  assert.deepEqual(now('allies'), ['A+B:allies:3', 'C+D:allies:3', 'E+F:allies:3']);
+  assert.ok(texts().includes('A and B teamed up as T1 → A and B are allies (strength 3)'));
+  const trio = M.addTeam(st, { name: 'Faction', members: [C.id, E.id, G.id] });              // a faction: every pair
+  assert.deepEqual(now('allies').filter(x => /G/.test(x)), ['C+G:allies:3', 'E+G:allies:3']);
+  show();
+  M.addTeamMember(st, T1.id, D.id);                                                          // joining later: with each of them
+  assert.deepEqual(now('allies').filter(x => /D/.test(x)).sort(), ['A+D:allies:3', 'B+D:allies:3', 'C+D:allies:3']);
+  assert.ok(texts().includes('D joined T1, alongside A → A and D are allies (strength 3)'));
+  M.setWeek(st, 3);
+  M.setTeamActive(st, trio.id, false);                                                       // disbanding: a step down
+  assert.deepEqual(now('allies').filter(x => /G/.test(x)), ['C+G:allies:2', 'E+G:allies:2']);
+  M.setWeek(st, 5);
+  M.setTeamActive(st, trio.id, true);                                                        // reunited: full trust again
+  assert.deepEqual(now('allies').filter(x => /G/.test(x)), ['C+G:allies:3', 'E+G:allies:3']);
+  assert.ok(texts().some(t => /^Faction reunited → (C and G|G and C)'s alliance grows to strength 3$/.test(t)));
+  sound(st);
+});
+
+test('distrust: a reason not to trust a teammate lowers it; at nothing it ends, even on the same team', () => {
+  const { st, A, B, C, D, T1, show, now, texts } = teamRelWorld();
+  const ev = show();
+  M.recordIncident(st, ev.id, { kind: 'tension', by: [A.id], on: [B.id], team: T1.id });
+  assert.deepEqual(now('allies').filter(x => x.startsWith('A+B')), ['A+B:allies:2']);
+  M.recordIncident(st, ev.id, { kind: 'confrontation', by: [A.id], on: [B.id] });
+  assert.deepEqual(now('allies').filter(x => x.startsWith('A+B')), ['A+B:allies:1']);
+  const ev2 = show();
+  M.recordIncident(st, ev2.id, { kind: 'attack', by: [A.id], on: [B.id] });
+  assert.deepEqual(now('allies').filter(x => x.startsWith('A+B')), []);                     // gone - and they're still a team
+  assert.ok(M.teamById(st, T1.id).active);
+  assert.ok(texts().some(t => /^A attacked B at .* → A and B are no longer allies$/.test(t)));
+  // correcting the record puts the trust back
+  M.deleteIncident(st, ev2.id, ev2.incidents[0].id);
+  assert.deepEqual(now('allies').filter(x => x.startsWith('A+B')), ['A+B:allies:1']);
+  // losing to a teammate again and again: a grudge forms, and trust slips
+  const ev3 = show();
+  for (let i = 0; i < 3; i++) M.recordMatch(st, ev3.id, { sides: S([D.id, C.id]), winner: 0 });
+  assert.deepEqual(now().filter(x => /^[CD]/.test(x)), ['C+D:allies:2', 'C>D:grudge:1']);
+  // a betrayal ends it at once
+  M.recordIncident(st, ev3.id, { kind: 'betrayal', by: [D.id], on: [C.id] });
+  assert.deepEqual(now('allies').filter(x => /^C\+D/.test(x)), []);
+  // an interference against a partner costs two steps; a save one
+  const w = teamRelWorld();
+  const e = w.show();
+  const m = M.recordMatch(w.st, e.id, { sides: S([w.A.id, w.G.id]), winner: 1 });
+  M.recordIncident(w.st, e.id, { kind: 'interference', by: [w.B.id], on: [w.A.id], helped: [w.G.id], match: m.id });
+  assert.deepEqual(w.now('allies').filter(x => x.startsWith('A+B')), ['A+B:allies:1']);
+  sound(st);
+});
+
+test('between tag teams: a losing run, a tag title and what members do to each other', () => {
+  const { st, A, B, C, D, E, F, T1, T2, T3, show, teams, texts } = teamRelWorld();
+  const ev = show();
+  const tag = (w, l) => M.recordMatch(st, ev.id, { sides: [{ team: w.id, wrestlers: w.members }, { team: l.id, wrestlers: l.members }], winner: 0 });
+  tag(T2, T1); tag(T2, T1);
+  assert.deepEqual(teams(), []);
+  tag(T2, T1);                                                                               // three running, as teams
+  assert.deepEqual(teams(), ['T1>T2:grudge:1']);
+  assert.ok(texts().some(t => /^T1 lost to T2 for the 3rd time running at .* → T1 hold a grudge against T2$/.test(t)));
+  // a tag title changing hands between teams
+  const belts = M.addTitle(st, { name: 'Tag Titles', showId: 'raw', division: 'men', kind: 'tag' });
+  M.setChampion(st, belts.id, { type: 'team', id: T3.id });
+  M.recordMatch(st, ev.id, { sides: [{ team: T2.id, wrestlers: T2.members }, { team: T3.id, wrestlers: T3.members }], winner: 0, titleId: belts.id }, { titleChange: true });
+  assert.deepEqual(teams(), ['T1>T2:grudge:1', 'T2+T3:rivals:1', 'T3>T2:grudge:1']);
+  // incidents between members of different teams
+  const ev2 = show();
+  M.recordIncident(st, ev2.id, { kind: 'save', by: [E.id], on: [C.id], helped: [A.id] });   // E (T3) saves A (T1) from C (T2)
+  assert.deepEqual(teams(), ['T1+T3:allies:1', 'T1>T2:grudge:1', 'T2+T3:rivals:1', 'T2>T3:grudge:1', 'T3>T2:grudge:1']);
+  M.recordIncident(st, ev2.id, { kind: 'brawl', by: [B.id], on: [F.id] });                  // and then T1 and T3 fall out
+  assert.deepEqual(teams().filter(x => /T1.*T3|T3.*T1/.test(x)), ['T1+T3:rivals:1', 'T1>T3:grudge:1', 'T3>T1:grudge:1']);
+  assert.ok(texts().some(t => /^B \(T1\) and F \(T3\) brawled at .* → T1 and T3 are no longer allies$/.test(t)));
+  M.recordIncident(st, ev2.id, { kind: 'truce', by: [A.id], on: [E.id] });
+  assert.deepEqual(teams().filter(x => /T1.*T3|T3.*T1/.test(x)), []);
+  // two on the same team never make a relationship between their team and itself
+  M.recordIncident(st, ev2.id, { kind: 'attack', by: [C.id], on: [D.id] });
+  assert.ok(teams().every(x => !/T2\+T2|T2>T2/.test(x)));
+  sound(st);
+});
+
+test('a relationship between teams extends to every pair of their members, while they’re on them', () => {
+  const { st, A, B, C, D, E, G, T1, T2, T3, show, now, teams } = teamRelWorld();
+  M.editRelationship(st, { teams: true, action: 'form', kind: 'grudge', a: T1.id, b: T2.id, level: 2, since: 'start' });
+  assert.deepEqual(teams(), ['T1>T2:grudge:2']);
+  assert.deepEqual(now('grudge'), ['A>C:grudge:2~', 'A>D:grudge:2~', 'B>C:grudge:2~', 'B>D:grudge:2~']);
+  const r = RL.relationships(st).rels.get(RL.relKey('grudge', A.id, C.id));
+  assert.equal(RL.viaText(st, r), 'through T1 and T2');
+  // their own relationship, when stronger, stands; when weaker, the team's shows, and theirs is kept underneath
+  const ev = show();
+  M.recordIncident(st, ev.id, { kind: 'attack', by: [C.id], on: [A.id] });                  // A's own grudge: heat 1 - and T1's grows to 3
+  assert.deepEqual(teams(), ['T1>T2:grudge:3']);
+  const ac = RL.relationships(st).rels.get(RL.relKey('grudge', A.id, C.id));
+  assert.deepEqual([ac.level, ac.own, !!ac.via], [3, 1, true]);
+  M.editRelationship(st, { action: 'level', kind: 'grudge', a: A.id, b: C.id, level: 3 });
+  assert.ok(now('grudge').includes('A>C:grudge:3'));                                        // their own, not through the teams
+  // it follows the line-ups: a new member is in, someone who left is out, a disbanded team is on hold
+  M.addTeamMember(st, T1.id, G.id);
+  assert.ok(now('grudge').includes('G>C:grudge:3~'));
+  M.setWeek(st, 2);
+  M.removeTeamMember(st, T1.id, B.id);
+  assert.ok(!now('grudge').some(x => x.startsWith('B>')));
+  M.setTeamActive(st, T2.id, false);
+  assert.deepEqual(now('grudge'), ['A>C:grudge:3']);
+  M.setTeamActive(st, T2.id, true);
+  // an alliance between teams doesn't reach two members with a grudge between them
+  M.editRelationship(st, { teams: true, action: 'form', kind: 'allies', a: T1.id, b: T3.id, level: 2 });
+  M.recordIncident(st, ev.id, { kind: 'attack', by: [E.id], on: [G.id] });
+  const allies = now('allies').filter(x => x.endsWith('~'));
+  assert.ok(allies.includes('A+E:allies:2~') && !allies.includes('E+G:allies:2~'));
+  // the storyline list isn't flooded: a feud between teams is booked team against team
+  const pair = (x, y) => [x.id, y.id].sort().join('+');
+  const lines = SL.storylines(st).map(l => [l.a, l.b].sort().join('+'));
+  assert.ok(lines.includes(pair(A, C)) && !lines.includes(pair(A, D)) && !lines.includes(pair(G, C)) && !lines.includes(pair(G, D)));
+  sound(st);
+});
+
+test('the owner edits team relationships like any other; teams can’t have one with themselves', () => {
+  const { st, A, C, T1, T2, T3, show, teams, texts } = teamRelWorld();
+  throwsUE(() => M.editRelationship(st, { teams: true, action: 'form', kind: 'friends', a: T1.id, b: T2.id }), /Unknown relationship/);
+  throwsUE(() => M.editRelationship(st, { teams: true, action: 'form', kind: 'rivals', a: T1.id, b: T1.id }), /two different tag teams/);
+  const both = M.addTeam(st, { name: 'Both', members: [A.id, C.id] });
+  throwsUE(() => M.editRelationship(st, { teams: true, action: 'form', kind: 'rivals', a: T1.id, b: both.id }), /share a member/);
+  throwsUE(() => M.editRelationship(st, { teams: true, action: 'form', kind: 'rivals', a: T1.id, b: A.id }), /tag team/);
+  show();
+  const before = RL.snapshot(st);
+  const e = M.editRelationship(st, { teams: true, action: 'form', kind: 'rivals', a: T1.id, b: T2.id, level: 2, note: 'Tag division feud' });
+  assert.deepEqual(RL.changesBetween(st, before, RL.snapshot(st)), ['T1 and T2 are rivals (heat 2)']);
+  assert.ok(texts().includes('Your change — Tag division feud → T1 and T2 are rivals (heat 2)'));
+  M.editRelationship(st, { teams: true, action: 'end', kind: 'rivals', a: T1.id, b: T2.id });
+  assert.deepEqual(teams(), []);
+  // a team in a relationship edit is part of the history
+  assert.ok(M.teamRefs(st, T2.id).includes('a relationship'));
+  throwsUE(() => M.deleteTeam(st, T2.id));
+  M.deleteRelEdit(st, st.relEdits[1].id);
+  M.deleteRelEdit(st, e.id);
+  assert.deepEqual(teams(), []);
+  M.deleteTeam(st, T3.id);
+  sound(st);
+  // an ignored automatic change between teams doesn't count
+  const w = teamRelWorld();
+  const ev = w.show();
+  for (let i = 0; i < 3; i++) M.recordMatch(w.st, ev.id, { sides: [{ team: w.T2.id, wrestlers: w.T2.members }, { team: w.T1.id, wrestlers: w.T1.members }], winner: 0 });
+  const auto = RL.relationships(w.st).teamEntries.find(x => x.auto);
+  M.dismissChange(w.st, auto.key);
+  assert.deepEqual(w.teams(), []);
+  sound(w.st);
+});
+
+test('the auto booker: allied teams are unlikely opponents; a feud between teams says so', () => {
+  const { st, T1, T2, T3, show } = teamRelWorld();
+  M.editRelationship(st, { teams: true, action: 'form', kind: 'grudge', a: T1.id, b: T2.id, level: 2, since: 'start' });
+  M.editRelationship(st, { teams: true, action: 'form', kind: 'allies', a: T1.id, b: T3.id, level: 3, since: 'start' });
+  const ev = show();
+  const ideas = B.ideasFor(st, ev.id, {}).filter(x => x.kind === 'teams' && x.sides.every(sd => sd.team));
+  const of = (x, y) => ideas.find(i => i.sides.map(sd => sd.team).sort().join() === [x.id, y.id].sort().join());
+  assert.ok(of(T1, T2).why.includes('T1 hold a grudge against T2 (heat 2)'));
+  assert.ok(of(T1, T3).why.includes('T1 and T3 are allies (strength 3) — a friendly contest at most'));
+  assert.ok(of(T1, T2).score > of(T2, T3).score && of(T2, T3).score > of(T1, T3).score);
+});
+
+test('a version 11 save: every relationship edit is between wrestlers', () => {
+  const { st, A, B } = teamRelWorld();
+  M.editRelationship(st, { action: 'form', kind: 'rivals', a: A.id, b: B.id });
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 11;
+  old.relEdits.forEach(e => delete e.teams);
+  const up = M.migrate(old);
+  assert.deepEqual([up.version, up.relEdits.map(e => e.teams)], [M.SCHEMA_VERSION, [false]]);
+  sound(up);
+  const bad = JSON.parse(JSON.stringify(up));
+  bad.relEdits[0].teams = true;                                                              // two wrestlers, called teams
+  assert.ok(M.validate(bad).length > 0);
 });
 
 test('a corrected result corrects the relationship it built', () => {
@@ -2983,10 +3183,11 @@ test('new incidents: confrontations, alliances, tension, truces, open challenges
   M.recordIncident(st, ev.id, { kind: 'confrontation', by: [G.id], on: [J.id] });
   M.recordIncident(st, ev.id, { kind: 'brawl', by: [G.id], on: [J.id] });
   M.recordIncident(st, ev.id, { kind: 'alliance', by: [Se.id], on: [G.id] });
-  assert.deepEqual(rel(), ['Gunther and Jey are rivals 2', 'Gunther holds a grudge against Jey 1', 'Jey holds a grudge against Gunther 1', 'Seth and Gunther are allies 1'].sort());
+  assert.deepEqual(rel(), ['Gunther and Jey are rivals 2', 'Gunther holds a grudge against Jey 1', 'Jey holds a grudge against Gunther 1', 'Kevin and Sami are allies 3', 'Seth and Gunther are allies 1'].sort());
   M.recordIncident(st, ev.id, { kind: 'truce', by: [J.id], on: [G.id] });
-  assert.deepEqual(rel(), ['Gunther and Jey are rivals 1', 'Seth and Gunther are allies 1'].sort());
+  assert.deepEqual(rel(), ['Gunther and Jey are rivals 1', 'Kevin and Sami are allies 3', 'Seth and Gunther are allies 1'].sort());
   M.recordIncident(st, ev.id, { kind: 'tension', by: [K.id], on: [Sa.id], team: team.id });
+  assert.ok(rel().includes('Kevin and Sami are allies 2'), 'tension inside a team costs a little trust');
   M.recordIncident(st, ev.id, { kind: 'open-challenge', by: [G.id], title: title.id });
   const turn = M.recordIncident(st, ev.id, { kind: 'turn', by: [J.id], to: 'heel' });
   assert.deepEqual([J.alignment, turn.turn], ['heel', { from: 'face', to: 'heel' }]);

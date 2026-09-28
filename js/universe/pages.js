@@ -18,7 +18,7 @@ import {
 import { pushPage, refresh, uni } from './app.js';
 import { uvEventPage } from './card.js';
 import { uvTransitionPage } from './relegation.js';
-import { uvPairPage, uvProfilePersonality } from './personality.js';
+import { uvPairPage, uvProfilePersonality, uvTeamRelations } from './personality.js';
 import { uvProfileStory, uvStoryPage } from './story.js';
 import { uvTiersPage } from './tiers.js';
 import { uvBookerPage } from './autobook.js';
@@ -321,6 +321,8 @@ function teamPage(id) {
       ${section('Members', t.members.length)}
       ${t.members.map(wid => memberRow(spells.find(m => m.wrestler === wid && !m.end))).join('')}
       ${former.length ? `<div class="uv-sub">Former</div>${former.map(memberRow).join('')}` : ''}
+
+      ${uvTeamRelations(st, t)}
 
       ${section('Championships', reigns.length || null)}
       ${reigns.length ? reigns.map(r => reignRow(st, r, esc(M.titleById(st, r.titleId).name))).join('') : '<div class="uv-none">Never champions.</div>'}

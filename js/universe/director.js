@@ -350,6 +350,10 @@ function betrayals(c) {
     why(cand, 1, `${X} teamed with ${Y} at ${c.ev.name}`);
     if (has(c, x, 'loyal')) why(cand, 0.2, `Less likely: ${X} is loyal`);
     if (rel(c, 'friends', x, y)) why(cand, 0.5, `Less likely: ${X} and ${Y} are friends`);
+    // partners in a team trust each other fully until something gives them a reason not to
+    const trust = teamOf(c, x, y) ? rel(c, 'allies', x, y) : null;
+    if (trust && trust.level >= 3) why(cand, 0.6, `Less likely: ${X} and ${Y} still trust each other (allies ${trust.level})`);
+    else if (teamOf(c, x, y)) why(cand, 1.3, trust ? `The trust between them is down to ${trust.level}` : `There's no trust left between them`);
     const incs = [{ kind: 'betrayal', by: [x], on: [y], match: m.id }];
     // a face who turns on a partner after all that has turned heel
     if (align(c, x) === 'face' && b.n >= RULES.betrayalBuildup + 2 && spaced(c, 'turn') && turnGapOk(c, x)) {

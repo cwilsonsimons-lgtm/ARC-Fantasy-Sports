@@ -68,8 +68,8 @@ js/universe/
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       145 model tests     npm run test:universe
-tools/universe-check.mjs      210 browser checks  npm run check:universe
+tools/universe-test.mjs       152 model tests     npm run test:universe
+tools/universe-check.mjs      218 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
@@ -229,7 +229,7 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
 | events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it, and the director's keep their run and their cause |
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
-| relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start) and the automatic changes they've chosen to ignore |
+| relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start), between two wrestlers or two tag teams (`teams`), and the automatic changes they've chosen to ignore |
 | story     | the story director: on or off, its pace, the save's seed, the week it started from, and a log of every run — the show, before or after, the seed and run number, every possibility it weighed with its chance and draw, and what it recorded |
 | booker    | the auto booker's settings, per show — only what you've changed; the rest follows the show's tier — plus one set for premium live events on every show |
 
@@ -561,7 +561,7 @@ moved); and the calendar — a premium live event ahead, or tonight being one.
 | Feud | a storyline's next chapter (see Storylines): one on one, through someone who stands with the other, or a tag match with backup on both sides — whichever moves it on |
 | From the story | a save becomes a tag match — the one saved and the one who saved them against the attacker and whoever stands with the attacker (or the attacker outnumbered); new allies take on a common enemy; a team in trouble has to hold it together against another team |
 | Surprise | now and then, one pairing nobody would predict, with a hook (see Storylines) |
-| Teams | teams at odds, or close in the tag standings; factions three on three; a tag partner against a member of a team they're at odds with; someone with a grudge against a faction, alone, handicap |
+| Teams | teams at odds — the teams' own grudge or rivalry named when there is one — or close in the tag standings; factions three on three; a tag partner against a member of a team they're at odds with; someone with a grudge against a faction, alone, handicap. Allied teams are unlikely opponents ("a friendly contest at most") |
 | Upset | a win from three or more places lower, or over a champion: a rematch, or a step up against the top three |
 | Opportunity | someone short of matches gets a chance, against an opponent picked as Booking balance's match ideas pick them; someone cold gets one to turn it around; a new arrival gets a first match on the show |
 | Fresh matchup | everyone else: close in the standings, not met lately; three or four free for a while in one match; the top three of a division at once |
@@ -628,7 +628,9 @@ corrected result changes it too. Two wrestlers have one when there's a grudge
 or rivalry between them, or when something hostile happened between them: an
 attack, a betrayal, a brawl, a confrontation, an interference, a save (the
 attacker and the saver), a title challenge or demand, a walk-out, tension
-between partners.
+between partners. A grudge or rivalry they have only through their teams doesn't
+start one — a feud between two teams is booked team against team — but it adds
+its heat to any storyline two members already have.
 
 - **Beats**: those story events, and every match that advanced it — one on one,
   on opposite sides of a tag or multi-person match, or through someone standing
@@ -735,10 +737,38 @@ relationships work"), with traits counted as they were at the time:
 | A title challenge, calling someone out, or a confrontation | they're rivals (or 1 more heat) |
 | An alliance | allies (or stronger ones) |
 | Tension between partners | an alliance or friendship between them weakens a step |
+| On a tag team or faction together | allies at strength 3 with everyone in the group, from the day they team up — or join, or the team reunites |
+| A reason not to trust an ally (teammate or not) | the alliance weakens: a step for tension, a confrontation, a challenge, a save against them or a grudge forming (losing to them again and again, a title lost to them); two for an attack, an interference against them or a brawl (and a friendship a step). A betrayal or a walk-out ends it. At nothing it ends — even while they're still a team |
 | A truce | each grudge between them, and the rivalry, cools a step |
 | Walking out on a team | anyone left behind holds a grudge; any friendship or alliance between them ends |
 | 5 matches on the same side, win or lose | allies (either loyal: 3). At 12, friends — never for the opportunistic, or with a grudge between them |
-| Leaving a tag team, or it disbanding | former partners |
+| Leaving a tag team, or it disbanding | former partners, and the alliance drops a step |
+
+**Between tag teams.** Teams have relationships of their own — a grudge (one
+team against another), rivals, allies — worked out the same way, and each
+extends to every pair of their members while both are on their teams: the
+wrestler's page says "Kofi and Sami are allies — through KO & Sami and New
+Day". A pair's own relationship shows when it's stronger; an alliance between
+teams doesn't reach two members with a grudge between them; a disbanded team's
+are on hold; and a new member is in at once, someone who left is out.
+
+| Between two teams | What it does |
+|---|---|
+| 3 straight losses to the same team, as teams | a grudge against them, or 1 more heat |
+| A tag title lost to another team | a grudge against them, and they're rivals |
+| A member of one attacking, interfering against, betraying or walking out on a member of the other | a grudge against that team |
+| A brawl between members | a grudge each way, and they're rivals |
+| A confrontation, challenge or call-out between members | rivals |
+| A save, or an interference to help, a member of another team; joining forces across teams | allies |
+| A truce between members | the grudges and the rivalry cool a step |
+| Anything that costs trust between two wrestlers, between members | the alliance between the teams loses it the same way; a betrayal or a walk-out ends it |
+
+A team's page shows **Trust inside the team** (every pair of members and how
+much they trust each other), its **Relationships with other teams**, and their
+timeline — each change with Ignore or Take back; **Add or change a
+relationship** starts, sets, ends or notes one, with what it would change
+first. The Roster tab's **Relationships** view lists them under **Between tag
+teams**.
 
 **Incidents** go on the show they happened on — the story director records
 most of them, and you can add your own (**Record something yourself**): who did
@@ -795,7 +825,7 @@ and its own page). The toast says what happened.
 |---|---|---|
 | Post-match attack | a loser lashing out: hot-headed, proud, a heel, a grudge, a losing run against them, a title just lost, revenge | a grudge |
 | Surprise save | someone stopping that attack: a friend, ally, partner, or someone with their own grudge against the attacker | a grudge, allies |
-| Betrayal | a partner who has had enough — only after buildup (below) | a grudge; friendship and alliance end |
+| Betrayal | a partner who has had enough — only after buildup (below); less likely while teammates still trust each other fully, likelier once that trust has slipped | a grudge; friendship and alliance end |
 | Rivalry escalates | rivals or grudges, especially after sharing a ring | grudges both ways, rivals |
 | Team tension | losing, a partner winning alone, opportunism, ambition, a grudge inside the team | weakens the alliance |
 | Team breakup | only after repeated tension (below); never champions | a walk-out; the team disbands |
@@ -1060,6 +1090,10 @@ defaults, and wrestlers can be away as well as active or injured. **Version 11**
 connected it to the story: drafted and auto-booked matches name the story events
 behind them (none, for anything drafted before), and a draft remembers what it
 had seen (one drafted before doesn't know, so it points out nothing).
+**Version 12** added relationships between tag teams: every relationship change
+in an older save is between two wrestlers. Teammates being allies at strength 3
+is worked out from the record, like every relationship, so an older save shows
+it at once.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 

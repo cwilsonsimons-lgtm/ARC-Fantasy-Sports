@@ -612,13 +612,19 @@ function teamIdeas(c) {
   const teams = c.st.teams.filter(t => t.active && freeOf(c, t, 9).length >= 2)
     .map(t => ({ t, ids: freeOf(c, t, 9) })).filter(x => genderOf(c, x.ids) !== 'mixed');
   const teamHeat = (x, y) => Math.max(0, ...x.t.members.flatMap(p => y.t.members.map(q => heatOf(c, p, q))));
+  const between = (kind, x, y) => { const r = c.d.teams.get(RL.teamRelKey(kind, x, y)); return r && r.active ? r : null; };
   teams.forEach((x, i) => teams.slice(i + 1).forEach(y => {
     if (x.t.members.some(id => y.t.members.includes(id)) || genderOf(c, x.ids) !== genderOf(c, y.ids)) return;
     const heat = teamHeat(x, y);
     const [rx, ry] = [c.teamRank.get(x.t.id), c.teamRank.get(y.t.id)];
     const why = [];
     let s = 1;
-    if (heat) { s += heat; why.push(`${x.t.name} and ${y.t.name} are at odds (heat ${heat} between them)`); }
+    // the teams' own relationship says it best; heat between members says the rest
+    const own = [between('grudge', x.t.id, y.t.id), between('grudge', y.t.id, x.t.id), between('rivals', x.t.id, y.t.id)].filter(Boolean)
+      .sort((u, v) => v.level - u.level)[0];
+    if (heat) { s += heat; why.push(own ? `${RL.teamRelText(c.st, own)} (heat ${own.level})` : `${x.t.name} and ${y.t.name} are at odds (heat ${heat} between them)`); }
+    const allied = between('allies', x.t.id, y.t.id);
+    if (allied) { s -= 1 + allied.level; why.push(`${RL.teamRelText(c.st, allied)} (strength ${allied.level}) — a friendly contest at most`); }
     if (rx && ry) {
       const close = 1 - Math.min(1, Math.abs(rx.score - ry.score) / 0.3);
       s += close;

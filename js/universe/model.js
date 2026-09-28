@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -362,7 +362,7 @@ export function wrestlerRefs(st, id) {
   if (inTransition(st, id)) refs.push('a season transition');
   const incidents = st.events.reduce((n, e) => n + e.incidents.filter(x => [...x.by, ...x.on, ...x.helped].includes(id)).length, 0);
   if (incidents) refs.push(incidents === 1 ? 'an incident' : `${incidents} incidents`);
-  if (st.relEdits.some(e => e.a === id || e.b === id)) refs.push('a relationship');
+  if (st.relEdits.some(e => !e.teams && (e.a === id || e.b === id))) refs.push('a relationship');
   return refs;
 }
 
@@ -553,6 +553,7 @@ export function teamRefs(st, id) {
   eachMatch(st, (m) => { if (m.sides.some(s => s.team === id)) matches++; });
   if (matches) refs.push(matches === 1 ? 'a match' : `${matches} matches`);
   if (st.events.some(e => e.incidents.some(x => x.team === id))) refs.push('an incident');
+  if (st.relEdits.some(e => e.teams && (e.a === id || e.b === id))) refs.push('a relationship');
   return refs;
 }
 
@@ -2980,6 +2981,7 @@ export function transfersSince(st, trId) {
 
 export const TRAITS = ['ambitious', 'loyal', 'opportunistic', 'hot-headed', 'patient', 'proud', 'cowardly', 'respectful'];
 export const REL_KINDS = ['grudge', 'rivals', 'allies', 'friends', 'former-partners'];   // a grudge is one-way: a holds it against b
+export const TEAM_REL_KINDS = ['grudge', 'rivals', 'allies'];                              // between two tag teams
 export const INCIDENT_KINDS = ['betrayal', 'interference', 'attack', 'save', 'brawl', 'confrontation', 'challenge', 'open-challenge',
   'demand', 'alliance', 'tension', 'breakup', 'truce', 'turn', 'momentum'];
 export const INCIDENT_PHASES = ['pre', 'post'];       // before the show's matches, or after them
@@ -3147,9 +3149,13 @@ function reunite(st, split, check = false) {
  */
 export function editRelationship(st, input = {}) {
   const action = oneOf(input.action, ['form', 'level', 'end', 'note'], 'change');
-  const kind = oneOf(input.kind, REL_KINDS, 'relationship');
-  const a = must(wrestlerById(st, input.a), 'wrestler', input.a), b = must(wrestlerById(st, input.b), 'wrestler', input.b);
-  if (a.id === b.id) fail('A relationship needs two different wrestlers.');
+  const teams = !!input.teams;                       // between two tag teams - it extends to their members
+  const kind = oneOf(input.kind, teams ? TEAM_REL_KINDS : REL_KINDS, 'relationship');
+  const find = teams ? teamById : wrestlerById;
+  const what = teams ? 'tag team' : 'wrestler';
+  const a = must(find(st, input.a), what, input.a), b = must(find(st, input.b), what, input.b);
+  if (a.id === b.id) fail(teams ? 'A relationship needs two different tag teams.' : 'A relationship needs two different wrestlers.');
+  if (teams && a.members.some(id => b.members.includes(id))) fail(`${a.name} and ${b.name} share a member — a relationship between them would be with themselves.`);
   let level = null;
   if (action === 'form' || action === 'level') {
     level = kind === 'former-partners' ? 1 : Number(input.level == null ? 1 : input.level);
@@ -3160,7 +3166,7 @@ export function editRelationship(st, input = {}) {
   if (action === 'end' && input.since === 'start') {
     fail('A relationship can only be ended from this week on. To wipe one out from the start, ignore the changes that built it.');
   }
-  const e = { id: newId(st, 're'), action, kind, a: a.id, b: b.id, level, key: null, note,
+  const e = { id: newId(st, 're'), action, kind, a: a.id, b: b.id, level, key: null, note, teams,
     at: input.since === 'start' ? null : now(st) };
   st.relEdits.push(e);
   return e;
@@ -3169,7 +3175,7 @@ export function editRelationship(st, input = {}) {
 export function dismissChange(st, key, note = '') {
   if (typeof key !== 'string' || !key) fail('That change can\'t be found.');
   if (st.relEdits.some(e => e.action === 'dismiss' && e.key === key)) fail('That change is already ignored.');
-  const e = { id: newId(st, 're'), action: 'dismiss', kind: null, a: null, b: null, level: null, key, note: checkNote(note), at: now(st) };
+  const e = { id: newId(st, 're'), action: 'dismiss', kind: null, a: null, b: null, level: null, key, note: checkNote(note), teams: false, at: now(st) };
   st.relEdits.push(e);
   return e;
 }
@@ -3436,11 +3442,12 @@ export function mergeWrestlers(st, keepId, dupId) {
       fail(`${keep.name} and ${dup.name} are on opposite sides of an incident at ${e.name}, so they can't be the same person. Fix that incident first.`);
     }
   }));
-  if (st.relEdits.some(r => (r.a === keepId && r.b === dupId) || (r.a === dupId && r.b === keepId))) {
+  if (st.relEdits.some(r => !r.teams && ((r.a === keepId && r.b === dupId) || (r.a === dupId && r.b === keepId)))) {
     fail(`You've set a relationship between ${keep.name} and ${dup.name}, so they can't be the same person. Take it back first.`);
   }
   st.events.forEach(e => e.incidents.forEach(x => { x.by = swap(x.by); x.on = swap(x.on); x.helped = swap(x.helped); }));
   st.relEdits.forEach(r => {
+    if (r.teams) return;
     if (r.a === dupId) r.a = keepId;
     if (r.b === dupId) r.b = keepId;
     if (r.key) r.key = rekey(r.key, dupId, keepId);
@@ -3699,6 +3706,12 @@ export function migrate(raw) {
     });
     st.version = 11;
   }
+  if (st.version === 11) {
+    // v12: tag teams have relationships with each other. Every change the owner
+    // made so far was between two wrestlers.
+    (Array.isArray(st.relEdits) ? st.relEdits : []).forEach(e => { if (e && typeof e === 'object') e.teams = false; });
+    st.version = 12;
+  }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();
   st.events.forEach(e => {
@@ -3818,9 +3831,11 @@ export function validate(st) {
     const where = `Relationship change ${e.id}`;
     if (!REL_ACTIONS.includes(e.action)) { bad.push(`${where} is unreadable.`); return; }
     if (e.at !== null) stamp(e.at, where);
-    if (e.action === 'dismiss') { if (typeof e.key !== 'string' || !e.key) bad.push(`${where} ignores nothing.`); return; }
-    if (!REL_KINDS.includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
-    if (!wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong wrestlers.`);
+    if (e.action === 'dismiss') { if (typeof e.key !== 'string' || !e.key || e.teams !== false) bad.push(`${where} ignores nothing.`); return; }
+    if (typeof e.teams !== 'boolean') bad.push(`${where} is unreadable.`);
+    if (!(e.teams ? TEAM_REL_KINDS : REL_KINDS).includes(e.kind)) bad.push(`${where} is for an unknown relationship.`);
+    if (e.teams ? !teamById(st, e.a) || !teamById(st, e.b) || e.a === e.b
+      : !wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong ${e.teams ? 'tag teams' : 'wrestlers'}.`);
     if (['form', 'level'].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
   });
   const sto = st.story;

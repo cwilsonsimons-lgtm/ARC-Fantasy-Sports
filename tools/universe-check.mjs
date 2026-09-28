@@ -1542,9 +1542,103 @@ await check('How relationships work explains every rule', async () => {
   await page.locator('.uv-page .uv-link', { hasText: 'How relationships work' }).click();
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-calc span')].map(e => e.textContent)`);
-}, ['Losses', 'Title', 'Betrayal', 'Interference', 'Attack', 'Save', 'Brawl', 'Challenge', 'Alliance', 'Tension', 'Truce', 'Walk-out', 'Teaming', 'Split']);
+}, ['Losses', 'Title', 'Betrayal', 'Interference', 'Attack', 'Save', 'Brawl', 'Challenge', 'Alliance', 'Tension', 'Truce', 'Walk-out', 'Teammates', 'Distrust',
+  'Teaming', 'Split', 'Losses', 'Tag title', 'Incidents']);
 await check('saved universe is sound after the relationship edits', sound, []);
 await check('layout anchored', async () => { await closeSheet(); return anchored(); }, isAnchored);
+
+// ---------------------------------------------------------------- tag teams: trust inside, relationships between
+// Raw, week 1: Judgment Day beat KO & Sami three times running, as teams; then
+// Kevin and Sami clash. New Day are on the show too, with nothing between them yet.
+function teamRelationsWorld() {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const [Sami, Kevin, Finn, Damian, Kofi, Xavier] = ['Sami', 'Kevin', 'Finn', 'Damian', 'Kofi', 'Xavier'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  const ko = M.addTeam(st, { name: 'KO & Sami', members: [Sami.id, Kevin.id] });
+  const jd = M.addTeam(st, { name: 'Judgment Day', members: [Finn.id, Damian.id] });
+  M.addTeam(st, { name: 'New Day', members: [Kofi.id, Xavier.id] });
+  const ev = M.addEvent(st, { showId: 'raw' });
+  for (let i = 0; i < 3; i++) {
+    M.recordMatch(st, ev.id, { sides: [{ team: jd.id, wrestlers: [Finn.id, Damian.id] }, { team: ko.id, wrestlers: [Sami.id, Kevin.id] }], winner: 0 });
+  }
+  M.recordIncident(st, ev.id, { kind: 'tension', by: [Kevin.id], on: [Sami.id], team: ko.id });
+  return st;
+}
+const teamRels = () => js(`[...document.querySelectorAll('.uv-page [data-teamrel]')].map(e => ${TEXT}(e.querySelector('.uv-rl > span:not(.uv-rk):not(.uv-lv)')))`);
+const trust = () => js(`[...document.querySelectorAll('.uv-page [data-trust]')].map(e => [e.querySelector('.nm').textContent.trim(), e.querySelector('.sub').textContent.trim()])`);
+await check('tag teams: teammates trust each other until given a reason not to; teams have relationships of their own', async () => {
+  await noSheet();
+  const file = join(dir, 'team-relations.json');
+  await writeFile(file, JSON.stringify(teamRelationsWorld()));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await openRow('KO & Sami', 'teams');
+  return [(await secs()).filter(t => /Trust|Relationships/.test(t)), await trust(), await teamRels()];
+}, [['Trust inside the team', 'Relationships with other teams'], [['Sami & Kevin', 'Trust slipping — allies at strength 2']],
+  ['KO & Sami hold a grudge against Judgment Day since S1 · W1']]);
+await check('the owner makes two teams allies: the preview, the save', async () => {
+  await btn(body, 'Add or change a relationship').click();
+  await settle();
+  await page.selectOption('#uvTeamRelB', (await T('New Day')).id);
+  await page.waitForTimeout(80);
+  await sheet.locator('.uv-pill[data-kind=allies]').click();
+  await page.waitForTimeout(80);
+  await sheet.locator('.uv-seg div[data-v="2"]').click();
+  await page.waitForTimeout(80);
+  const reach = await js(`${TEXT}(document.querySelector('#uvSheetBody .uv-note'))`);
+  const prev = await js(`[...document.querySelectorAll('#uvSheetBody .uv-prev span')].map(e => e.textContent)`);
+  await btn(sheet, 'Save').click();
+  await settle();
+  const u = await saved();
+  return [reach, prev, (await toast()).t, u.relEdits.map(e => [e.teams, e.action, e.kind, e.level]), await teamRels()];
+}, r => Array.isArray(r) && /^Not now: KO & Sami and New Day are not allies\. It extends to every pair of their members: Sami, Kevin with Kofi, Xavier/.test(r[0])
+  && r[1].join() === 'KO & Sami and New Day are allies (strength 2)' && r[2] === 'Saved — KO & Sami and New Day are allies (strength 2)'
+  && JSON.stringify(r[3]) === JSON.stringify([[true, 'form', 'allies', 2]]) && r[4].length === 2 && r[4][1].startsWith('KO & Sami and New Day are allies'));
+await check('…and it reaches their members: a wrestler’s page says it’s through their teams', async () => {
+  await page.click('#uvTabs [data-uvtab=roster]');
+  await body.locator('.uv-seg [data-mode=wrestlers]').click();
+  await page.waitForTimeout(100);
+  await openRow('Kofi');
+  return js(`[...document.querySelectorAll('.uv-page .uv-relrow .uv-rl')].map(${TEXT})`);
+}, r => Array.isArray(r) && r.length === 3 && r[0] === 'Allies Kofi and Xavier are allies since S1 · W1'          // teammates: their own, at 3
+  && r.slice(1).every(t => /^Allies Kofi and (Sami|Kevin) are allies through KO & Sami and New Day since S1 · W1$/.test(t)));
+await check('the pair page: through their teams, and the teams’ timeline', async () => {
+  await body.locator(`.uv-relrow[data-pair="${await idOf('Sami')}"]`).click();
+  await page.waitForTimeout(150);
+  const sub = await js(`${TEXT}(document.querySelector('.uv-page .uv-relnow .sub'))`);
+  return [await nowRels(), sub, (await ents('.uv-page')).map(e => [e[1], e[3]])];
+}, r => Array.isArray(r) && r[0].join() === 'Kofi and Sami are allies' && /^strength 2 of 3 · through KO & Sami and New Day · since S1 · W1$/.test(r[1])
+  && JSON.stringify(r[2]) === JSON.stringify([['→ KO & Sami and New Day are allies (strength 2)', true]]));
+await check('the teams’ own timeline, on the team page: the owner’s change taken back', async () => {
+  await openRow('KO & Sami', 'teams');
+  await page.locator('.uv-page .uv-ent.own .uv-link', { hasText: 'Take back' }).click();
+  await settle();
+  await confirmYes();
+  return [(await toast()).t, (await saved()).relEdits.length, await teamRels()];
+}, ['Taken back — KO & Sami and New Day are no longer allies', 0, ['KO & Sami hold a grudge against Judgment Day since S1 · W1']]);
+await check('an automatic change between teams can be ignored, and counted again', async () => {
+  await page.locator('.uv-page .uv-ent .uv-link', { hasText: /^Ignore$/ }).first().click();
+  await settle();
+  await confirmYes();
+  const ignored = [(await toast()).t, await teamRels(), (await saved()).relEdits.map(e => [e.action, e.teams])];
+  await page.locator('.uv-page .uv-ent .uv-link', { hasText: 'Count it again' }).click();
+  await page.waitForTimeout(150);
+  return [...ignored, (await toast()).t];
+}, ['Ignored — KO & Sami let the grudge against Judgment Day go', [], [['dismiss', false]], 'Counted again — KO & Sami hold a grudge against Judgment Day']);
+await check('the Roster tab lists relationships between teams, below the wrestlers', async () => {
+  await page.click('#uvTabs [data-uvtab=roster]');
+  await body.locator('.uv-seg [data-mode=relations]').click();
+  await page.waitForTimeout(120);
+  await body.locator('.uv-pill[data-kind=""]').click();
+  await page.waitForTimeout(100);
+  return [(await js(`[...document.querySelectorAll('#uvBody .uv-sec .t')].map(e => e.textContent)`)).includes('Between tag teams'),
+    await js(`[...document.querySelectorAll('#uvBody .uv-row[data-teamrel] .nm')].map(${TEXT})`)];
+}, [true, ['KO & Sami → Judgment Day']]);
+await check('saved universe is sound after the team relationship edits', sound, []);
 
 // ================================================================ the story director
 // Raw, week 1, the director on at a wild pace with a known seed: two results

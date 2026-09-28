@@ -81,8 +81,10 @@ export function storylines(st, { at = null, d = RL.relationships(st), hist = nul
   const lvl = (kind, a, b) => { const r = d.rels.get(RL.relKey(kind, a, b)); return r && r.active ? r.level || 1 : 0; };
   const heatOf = (a, b) => Math.max(lvl('grudge', a, b), lvl('grudge', b, a), lvl('rivals', a, b));
 
-  // grudges and rivalries on record start a storyline, whatever else has happened
-  [...d.rels.values()].filter(r => r.active && (r.kind === 'grudge' || r.kind === 'rivals')).forEach(r => line(r.a, r.b));
+  // grudges and rivalries on record start a storyline, whatever else has happened - their own, not
+  // only their teams' (a feud between two teams is booked team against team; it adds heat to any
+  // storyline its members have with each other)
+  [...d.rels.values()].filter(r => r.active && (r.kind === 'grudge' || r.kind === 'rivals') && (!r.via || r.own)).forEach(r => line(r.a, r.b));
   // story events: hostile ones are beats; saves, interferences and alliances draw people in
   M.allIncidents(st).forEach(({ event, incident: inc }) => {
     if (!before(event)) return;

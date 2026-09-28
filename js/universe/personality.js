@@ -97,7 +97,7 @@ function relRows(st, rels, wid) {
     return `<div class="uv-row uv-relrow" data-pair="${oid}" onclick="uvOpenPair('${wid}','${oid}')">${avatar(st, o)}
       <div class="uv-main"><div class="nm">${esc(o.name)}</div>
         ${list.map(r => `<div class="uv-rl" data-rel="${esc(r.key)}">${kindChip(r.kind)}<span>${esc(RL.relText(st, r))}
-          <em>since ${when(st, r.since)}</em></span>${dots(r)}</div>`).join('')}</div>
+          ${r.via ? `<em class="via">${esc(RL.viaText(st, r))}</em> ` : ''}<em>since ${when(st, r.since)}</em></span>${dots(r)}</div>`).join('')}</div>
       <span class="uv-chev">${ICON.right}</span></div>`;
   }).join('');
 }
@@ -140,8 +140,8 @@ function entryRow(st, e, pairLink = false) {
     ? (e.ignored ? `<span class="uv-link" onclick="event.stopPropagation();uvRestoreChange('${esc(e.key)}')">Count it again</span>`
       : `<span class="uv-link" onclick="event.stopPropagation();uvIgnoreChange('${esc(e.key)}')">Ignore</span>`)
     : `<span class="uv-link" onclick="event.stopPropagation();uvTakeBackRel('${e.cause.edit.id}')">Take back</span>`;
-  return `<div class="uv-ent${e.ignored ? ' ignored' : ''}${e.auto ? '' : ' own'}" style="--k:${KIND[e.kind].color}" data-entry="${esc(e.key)}"
-      ${pairLink ? `onclick="uvOpenPair('${e.a}','${e.b}')"` : ''}>
+  return `<div class="uv-ent${e.ignored ? ' ignored' : ''}${e.auto ? '' : ' own'}${e.team ? ' tm' : ''}" style="--k:${KIND[e.kind].color}" data-entry="${esc(e.key)}"
+      ${pairLink ? `onclick="${e.team ? `uvOpenTeam('${e.a}')` : `uvOpenPair('${e.a}','${e.b}')`}"` : ''}>
     <div class="w">${when(st, e.at)}</div>
     <div class="x"><div class="c">${esc(cause)}</div>
       <div class="r">→ ${esc(result)}</div>
@@ -166,6 +166,17 @@ function storyBlock(st, d, a, b) {
       <div>The auto booker reads this: how pressing it is (${l.priority.toFixed(1)}, fading by half every ${SL.RULES.halfLife} weeks), what it
         has done, and who has a reason to join in.</div>
     </div>`;
+}
+
+// two on a tag team together: how much they trust each other
+function trustLine(st, d, a, b) {
+  const shared = st.teams.filter(t => t.active && t.members.includes(a) && t.members.includes(b));
+  if (!shared.length) return '';
+  const r = d.rels.get(RL.relKey('allies', a, b));
+  const lv = r && r.active ? r.level : 0;
+  const trust = lv >= RULES.teammates ? 'They trust each other fully.'
+    : lv ? `Trust has slipped to strength ${lv} — the timeline says why.` : 'No trust left between them, though they’re still a team.';
+  return `<div data-trust="${lv}">Together in ${esc(shared.map(t => t.name).join(' and '))}: teammates start as allies at strength ${RULES.teammates}. ${trust}</div>`;
 }
 
 export function uvPairPage(id) {
@@ -194,7 +205,7 @@ export function uvPairPage(id) {
       ${section('Now', now.length || null)}
       ${now.length ? `<div class="uv-rels">${now.map(r => `<div class="uv-relnow" style="--k:${KIND[r.kind].color}" data-rel="${esc(r.key)}">
         ${kindChip(r.kind)}<div class="uv-main"><div class="nm">${esc(RL.relText(st, r))}</div>
-        <div class="sub">${RL.levelText(r) ? `${esc(RL.levelText(r))} of 3 · ` : ''}since ${when(st, r.since)}</div></div>${dots(r)}</div>`).join('')}</div>`
+        <div class="sub">${RL.levelText(r) ? `${esc(RL.levelText(r))} of 3 · ` : ''}${r.via ? `${esc(RL.viaText(st, r))}${r.own ? ` (${esc(RL.levelText({ ...r, level: r.own }))} of their own)` : ''} · ` : ''}since ${when(st, r.since)}</div></div>${dots(r)}</div>`).join('')}</div>`
         : '<div class="uv-none">Nothing between them right now.</div>'}
 
       ${storyBlock(st, d, a, b)}
@@ -206,6 +217,7 @@ export function uvPairPage(id) {
           : '<div>No losing run between them. A win resets one.</div>'}
         <div>${p.together ? `On the same side ${plural(p.together, 'time')}.` : 'Never on the same side.'} Allies at ${p.alliesAt}${opportunist
           ? '; never friends from teaming up (opportunistic)' : `, friends at ${p.friendsAt}`}.</div>
+        ${trustLine(st, d, a, b)}
       </div>
 
       ${section('Timeline', pv.entries.length || null)}
@@ -220,9 +232,10 @@ export function uvPairPage(id) {
   };
 }
 
+const allEntries = st => { const d = RL.relationships(st); return [...d.entries, ...d.teamEntries]; };
 export function uvIgnoreChange(key) {
   const st = uni();
-  const e = RL.relationships(st).entries.find(x => x.key === key);
+  const e = allEntries(st).find(x => x.key === key);
   if (!e) return;
   confirmThen('Ignore this change?',
     `“${RL.entryText(st, e).result}” won’t count. It stays on the timeline, crossed out, and you can count it again any time. Everything after it is worked out again without it.`,
@@ -234,7 +247,7 @@ export function uvRestoreChange(key) {
 }
 export function uvTakeBackRel(editId) {
   const st = uni();
-  const e = RL.relationships(st).entries.find(x => !x.auto && x.cause.edit.id === editId);
+  const e = allEntries(st).find(x => !x.auto && x.cause.edit.id === editId);
   confirmThen('Take back your change?',
     `${e ? `“${RL.entryText(st, e).result}” comes off the timeline. ` : ''}Everything after it is worked out again without it.`,
     'Take it back', () => { const before = RL.snapshot(uni()); commit(s => M.deleteRelEdit(s, editId), () => `Taken back${uvRelNews(before)}`); });
@@ -266,6 +279,9 @@ const previewBox = (news, idle) => `<div class="uv-prev"><b>What it changes</b>$
 
 // ================================================================ editing a relationship
 
+const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${String(cur) === String(k) ? 'on' : ''}" data-v="${k}"
+  onclick="${fn}('${k}')">${esc(lb)}</div>`).join('')}</div>`;
+
 let rd = null;
 
 /** Start, set, end or note a relationship - two wrestlers fixed, one, or none. */
@@ -287,8 +303,6 @@ function relSheet() {
   const lv = KIND[rd.kind].level;
   const acts = active ? [...(lv ? [['level', `Set the ${lv}`]] : []), ['end', 'End it'], ['note', 'Add a note']] : [['form', 'Start it'], ['note', 'Add a note']];
   if (!acts.some(([k]) => k === rd.action)) rd.action = acts[0][0];
-  const seg = (list, cur, fn) => `<div class="uv-seg">${list.map(([k, lb]) => `<div class="${String(cur) === String(k) ? 'on' : ''}" data-v="${k}"
-    onclick="${fn}('${k}')">${esc(lb)}</div>`).join('')}</div>`;
   const s = M.activeSeason(st);
   if (rd.action === 'end' || rd.action === 'note') rd.since = 'now';   // an ending, or a note, is dated
   const input = { action: rd.action, kind: rd.kind, a: x, b: y, level: rd.level, since: rd.since, note: rd.note };
@@ -328,6 +342,119 @@ export function uvRelSave() {
   const [x, y] = rd.kind === 'grudge' && rd.dir === 'ba' ? [rd.b, rd.a] : [rd.a, rd.b];
   const before = RL.snapshot(uni());
   const r = commit(st => M.editRelationship(st, { action: rd.action, kind: rd.kind, a: x, b: y, level: rd.level, since: rd.since, note: rd.note }),
+    () => `Saved${uvRelNews(before)}`);
+  if (r.ok) closeSheet();
+}
+
+// ================================================================ a tag team's relationships
+
+const TEAM_ORDER = M.TEAM_REL_KINDS;
+const tname = (st, id) => (M.teamById(st, id) || { name: '(deleted team)' }).name;
+
+/** The team page's relationship sections: trust inside the team, and its relationships with other teams. */
+export function uvTeamRelations(st, t) {
+  const d = RL.relationships(st);
+  const rels = RL.teamRelationsOf(st, t.id, d);
+  const pairs = t.active ? t.members.flatMap((x, i) => t.members.slice(i + 1).map(y => [x, y])) : [];
+  const trustRow = ([x, y]) => {
+    const r = d.rels.get(RL.relKey('allies', x, y));
+    const lv = r && r.active ? r.level : 0;
+    const X = M.wrestlerById(st, x), Y = M.wrestlerById(st, y);
+    return `<div class="uv-row" data-trust="${x}+${y}" onclick="uvOpenPair('${x}','${y}')"><span class="uv-av2">${avatar(st, X)}${avatar(st, Y)}</span>
+      <div class="uv-main"><div class="nm">${esc(X.name)} &amp; ${esc(Y.name)}</div>
+        <div class="sub">${lv >= RULES.teammates ? 'Full trust — allies at strength 3' : lv ? `Trust slipping — allies at strength ${lv}` : 'No trust left'}</div></div>
+      ${lv ? dots(r) : '<span class="uv-rk" style="--k:#98A3B3">None</span>'}<span class="uv-chev">${ICON.right}</span></div>`;
+  };
+  const relRow = r => {
+    const o = r.a === t.id ? r.b : r.a;
+    const O = M.teamById(st, o);
+    const members = O ? t.members.filter(x => !O.members.includes(x)).length * O.members.filter(y => !t.members.includes(y)).length : 0;
+    return `<div class="uv-row uv-relrow" data-teamrel="${esc(r.key)}" onclick="uvOpenTeam('${o}')"><span class="uv-av sq">${ICON.team}</span>
+      <div class="uv-main"><div class="nm">${esc(tname(st, o))}</div>
+        <div class="uv-rl">${kindChip(r.kind)}<span>${esc(RL.teamRelText(st, r))} <em>since ${when(st, r.since)}</em></span>${dots(r)}</div>
+        <div class="uv-rl"><span class="uv-muted">${t.active && O && O.active ? `Extends to their members — ${plural(members, 'pair')}` : 'On hold while a team is disbanded'}</span></div></div>
+      <span class="uv-chev">${ICON.right}</span></div>`;
+  };
+  const timeline = d.teamEntries.filter(e => e.a === t.id || e.b === t.id).slice().reverse();
+  return `
+    ${pairs.length ? `${section('Trust inside the team', pairs.length)}
+      ${pairs.map(trustRow).join('')}
+      <div class="uv-note">Teammates start as allies at strength ${RULES.teammates} with everyone in the group. It drops when one gives another a
+        reason not to trust them — tension, a confrontation, losing to them again and again, an attack — and a betrayal or a walk-out ends it.</div>` : ''}
+
+    ${section('Relationships with other teams', rels.length || null)}
+    ${rels.length ? rels.map(relRow).join('') : '<div class="uv-none">None right now. They grow out of tag matches, tag titles and incidents between members — or add one yourself.</div>'}
+    <div class="uv-page-acts"><div class="uv-btn" onclick="uvTeamRelSheet('${t.id}')">${ICON.plus}Add or change a relationship</div></div>
+    ${timeline.length ? `<div class="uv-sub">Between teams — timeline</div><div class="uv-ents">${timeline.slice(0, 12).map(e => entryRow(st, e)).join('')}</div>` : ''}`;
+}
+
+let trd = null;
+
+/** Start, set, end or note a relationship between two tag teams. */
+export function uvTeamRelSheet(a = '', b = '', kind = '') {
+  trd = { a, b, fixA: !!a, fixB: !!b, kind: kind || 'grudge', dir: 'ab', action: '', level: 1, since: 'now', note: '' };
+  openSheet(teamRelSheet);
+}
+
+function teamRelSheet() {
+  const st = uni();
+  if (!trd) return null;
+  if ((trd.fixA && !M.teamById(st, trd.a)) || (trd.fixB && !M.teamById(st, trd.b))) return null;
+  const A = M.teamById(st, trd.a);
+  const apart = (t, u) => !t || !u || !t.members.some(id => u.members.includes(id));
+  const pick = (cur, not) => {
+    const N = M.teamById(st, not);
+    const list = st.teams.filter(t => t.id !== not && (t.active || t.id === cur) && apart(t, N)).sort((x, y) => x.name.localeCompare(y.name));
+    return `<option value="">— Pick a tag team —</option>${options(list.map(t => [t.id, t.name]), cur)}`;
+  };
+  if (st.teams.filter(t => t.active).length < 2) return { title: 'Relationship', body: empty(ICON.team, 'Add another tag team first', 'A relationship between teams needs two of them.') };
+  const both = trd.a && trd.b && trd.a !== trd.b;
+  const [x, y] = trd.kind === 'grudge' && trd.dir === 'ba' ? [trd.b, trd.a] : [trd.a, trd.b];
+  const r = both ? RL.relationships(st).teams.get(RL.teamRelKey(trd.kind, x, y)) : null;
+  const active = !!(r && r.active);
+  const lv = KIND[trd.kind].level;
+  const acts = active ? [['level', `Set the ${lv}`], ['end', 'End it'], ['note', 'Add a note']] : [['form', 'Start it'], ['note', 'Add a note']];
+  if (!acts.some(([k]) => k === trd.action)) trd.action = acts[0][0];
+  const s = M.activeSeason(st);
+  if (trd.action === 'end' || trd.action === 'note') trd.since = 'now';
+  const input = { teams: true, action: trd.action, kind: trd.kind, a: x, b: y, level: trd.level, since: trd.since, note: trd.note };
+  const news = both ? preview(copy => M.editRelationship(copy, input)) : null;
+  const B = M.teamById(st, trd.b);
+  const reach = both && A && B ? `It extends to every pair of their members: ${A.members.filter(p => !B.members.includes(p)).map(p => nm(st, p)).join(', ')}
+    with ${B.members.filter(q => !A.members.includes(q)).map(q => nm(st, q)).join(', ')} — while they’re on their teams.` : '';
+  return {
+    title: trd.fixA && trd.fixB ? `${esc(tname(st, trd.a))} & ${esc(tname(st, trd.b))}` : 'Relationship between teams',
+    body: `
+      <div class="uv-grid">
+        ${field('Tag team', trd.fixA ? `<div class="uv-in ro">${esc(tname(st, trd.a))}</div>` : findable(select("uvTeamRelSet('a',this.value)", pick(trd.a, trd.b), ' id="uvTeamRelA"')), 'wide')}
+        ${field('And', trd.fixB ? `<div class="uv-in ro">${esc(tname(st, trd.b))}</div>` : findable(select("uvTeamRelSet('b',this.value)", pick(trd.b, trd.a), ' id="uvTeamRelB"')), 'wide')}
+      </div>
+      <div class="uv-pills tight">${TEAM_ORDER.map(k => `<div class="uv-pill${trd.kind === k ? ' on' : ''}" data-kind="${k}" onclick="uvTeamRelSet('kind','${k}')">
+        <span class="uv-dot" style="--c:${KIND[k].color}"></span>${KIND[k].label}</div>`).join('')}</div>
+      ${both && trd.kind === 'grudge' ? `<div class="uv-sub flush">Who holds it</div>${seg([['ab', `${tname(st, trd.a)} → ${tname(st, trd.b)}`], ['ba', `${tname(st, trd.b)} → ${tname(st, trd.a)}`]], trd.dir, 'uvTeamRelDir')}` : ''}
+      ${both ? `<div class="uv-note">${active ? `Now: <b>${esc(RL.teamRelText(st, r))}</b> — ${esc(RL.levelText(r))} of 3.`
+        : `Not now: ${esc(RL.teamRelText(st, { kind: trd.kind, a: x, b: y }).replace(' hold a grudge', ' hold no grudge').replace(' are ', ' are not '))}.`} ${esc(reach)}</div>
+      <div class="uv-sub flush">Change</div>${seg(acts, trd.action, 'uvTeamRelAction')}
+      ${trd.action === 'form' || trd.action === 'level' ? `<div class="uv-sub flush">${lv === 'heat' ? 'Heat' : 'Strength'}</div>
+        ${seg([[1, '1 · mild'], [2, '2'], [3, '3 · all-out']], trd.level, 'uvTeamRelLevel')}
+        <div class="uv-sub flush">Counts from</div>
+        ${seg([['now', `This week (W${s.week})`], ['start', 'The start']], trd.since, 'uvTeamRelSince')}` : ''}
+      <div style="margin-top:10px">${field(trd.action === 'note' ? 'Note' : 'Why (optional)', `<input id="uvTeamRelNote" class="uv-in" maxlength="60" value="${esc(trd.note)}"
+        placeholder="${trd.action === 'note' ? 'e.g. Still bitter about the tag titles' : 'e.g. Feud from before the universe'}" oninput="uvTeamRelNote(this.value)">`, 'wide')}</div>
+      ${previewBox(news, trd.action === 'note' ? 'Only a note on the timeline.' : '')}
+      <div class="uv-btn pri full" onclick="uvTeamRelSave()">Save</div>` : '<p class="uv-p">Pick two tag teams with no one in common.</p>'}`,
+  };
+}
+export function uvTeamRelSet(k, v) { trd[k] = v; if (k !== 'kind') trd.dir = 'ab'; paintSheet(); }
+export function uvTeamRelDir(v) { trd.dir = v; paintSheet(); }
+export function uvTeamRelAction(v) { trd.action = v; paintSheet(); }
+export function uvTeamRelLevel(v) { trd.level = Number(v); paintSheet(); }
+export function uvTeamRelSince(v) { trd.since = v; paintSheet(); }
+export function uvTeamRelNote(v) { trd.note = v; }
+export function uvTeamRelSave() {
+  const [x, y] = trd.kind === 'grudge' && trd.dir === 'ba' ? [trd.b, trd.a] : [trd.a, trd.b];
+  const before = RL.snapshot(uni());
+  const r = commit(st => M.editRelationship(st, { teams: true, action: trd.action, kind: trd.kind, a: x, b: y, level: trd.level, since: trd.since, note: trd.note }),
     () => `Saved${uvRelNews(before)}`);
   if (r.ok) closeSheet();
 }
@@ -534,7 +661,16 @@ export function uvRelationsView() {
         <div class="sub">${kindChip(r.kind)}<span class="uv-rt">since ${when(st, r.since)} · ${plural(r.entries.length, 'change')}</span></div></div>
       ${dots(r)}<span class="uv-chev">${ICON.right}</span></div>`;
   };
-  const latest = d.entries.slice(-12).reverse();
+  // between tag teams, below the wrestlers
+  const teamRels = [...d.teams.values()].filter(r => r.active && (!relKind || r.kind === relKind))
+    .sort((x, y) => ORDER.indexOf(x.kind) - ORDER.indexOf(y.kind) || y.level - x.level);
+  const teamRow = r => `<div class="uv-row" data-teamrel="${esc(r.key)}" onclick="uvOpenTeam('${r.a}')">
+      <span class="uv-av sq">${ICON.team}</span>
+      <div class="uv-main"><div class="nm">${esc(tname(st, r.a))} ${r.kind === 'grudge' ? '→' : '&amp;'} ${esc(tname(st, r.b))}</div>
+        <div class="sub">${kindChip(r.kind)}<span class="uv-rt">since ${when(st, r.since)} · extends to their members</span></div></div>
+      ${dots(r)}<span class="uv-chev">${ICON.right}</span></div>`;
+  const at = e => e.at;
+  const latest = [...d.entries, ...d.teamEntries].sort((x, y) => (!at(x) || !at(y) ? !at(y) - !at(x) : M.compareStamps(st, x.at, y.at))).slice(-12).reverse();
   return `
     <div class="uv-bar"><div class="uv-bar-t">Relationships</div>
       <div class="uv-btn pri" onclick="uvRelSheet()">${ICON.plus}Add</div></div>
@@ -543,6 +679,7 @@ export function uvRelationsView() {
     <div class="uv-pills">${pill('', 'All', active.length)}${ORDER.map(k => pill(k, KIND[k].label, count(k), KIND[k].color)).join('')}</div>
     ${shown.length ? shown.map(row).join('')
       : `<div class="uv-none">${active.length ? 'None of these right now.' : 'None yet. They grow out of results, teams and incidents — or add one yourself.'}</div>`}
+    ${teamRels.length ? `${section('Between tag teams', teamRels.length)}${teamRels.map(teamRow).join('')}` : ''}
     ${latest.length ? `${section('Latest changes', null)}<div class="uv-ents">${latest.map(e => entryRow(st, e, true)).join('')}</div>` : ''}`;
 }
 
@@ -572,9 +709,24 @@ export function uvHowRelations() {
         <div><span>Tension</span><b>partners clashing: an alliance or friendship between them weakens a step</b></div>
         <div><span>Truce</span><b>a rivalry cooling off: each grudge between them, and the rivalry, drops a step</b></div>
         <div><span>Walk-out</span><b>anyone left behind holds a grudge against whoever walked out; any friendship or alliance between them ends</b></div>
-        <div><span>Teaming</span><b>${RULES.allies} matches on the same side, win or lose: allies (loyal: ${RULES.alliesLoyal}).
+        <div><span>Teammates</span><b>on a tag team or faction together: allies at strength ${RULES.teammates} with everyone in the
+          group, from the day they team up (or reunite)</b></div>
+        <div><span>Distrust</span><b>between allies — teammates or not — a reason not to trust the other lowers it: tension, a
+          confrontation, a challenge, a grudge forming or a save against them, one step; an attack, an interference against them or
+          a brawl, two (and a friendship one). A betrayal or a walk-out ends it. At nothing it ends, even on the same team</b></div>
+        <div><span>Teaming</span><b>without a team: ${RULES.allies} matches on the same side, win or lose: allies (loyal: ${RULES.alliesLoyal}).
           ${RULES.friends}: friends — unless either is opportunistic, or there’s a grudge between them</b></div>
-        <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners</b></div>
+        <div><span>Split</span><b>leaving a tag team, or it disbanding: former partners, and the alliance drops a step</b></div>
+      </div>
+      <p class="uv-p"><b>Between tag teams.</b> Teams have grudges, rivalries and alliances with other teams too, and each one
+        extends to every pair of their members while they’re on their teams — “through their teams” — unless the two have a
+        stronger one of their own. An alliance doesn’t reach two members with a grudge between them.</p>
+      <div class="uv-calc">
+        <div><span>Losses</span><b>${RULES.teamStreak} straight losses to the same team, as teams: a grudge against them, or 1 more heat</b></div>
+        <div><span>Tag title</span><b>losing a tag title to another team: a grudge against them, and they’re rivals</b></div>
+        <div><span>Incidents</span><b>a member of one team attacking, interfering against or betraying a member of another: a grudge;
+          a brawl: grudges and rivals; a confrontation or challenge: rivals; a save, an interference to help, or joining forces: allies;
+          a truce: it all cools. An alliance between teams loses trust like one between two wrestlers</b></div>
       </div>
       <p class="uv-p"><b>Heat and strength</b> run from 1 to 3. A grudge goes one way — one wrestler holds it against another.
         Rivals, allies and friends go both ways.</p>

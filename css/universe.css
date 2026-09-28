@@ -683,6 +683,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-rl{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:12px;line-height:1.35;color:var(--uv-ink-2)}
 .uv-rl>span:not(.uv-rk):not(.uv-lv){flex:1;min-width:0}
 .uv-rl em{font-style:normal;color:var(--uv-ink-3);white-space:nowrap}
+.uv-rl em.via{white-space:normal}
 .uv-bu .uv-left{font-size:10.5px}
 
 /* ---------- tiers & transfers ---------- */
