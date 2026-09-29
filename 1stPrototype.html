@@ -16345,7 +16345,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function taItem(a, sender) {
     if (a.kind === "money") {
       const m = a.money || {};
-      return { kind: "money", title: moneyAmount(m), meta: moneyUnitLabel(m) };
+      // FAAB reads as part of the amount ("$40 FAAB"); cash is labelled beneath
+      return m.unit === "faab" ? { kind: "money", title: `${moneyAmount(m)} FAAB`, meta: "" } : { kind: "money", title: moneyAmount(m), meta: moneyUnitLabel(m) };
     }
     if (a.kind === "pick") {
       const pk = a.pick || {};
@@ -16354,7 +16355,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (pk.originalTeam && pk.originalTeam !== sender && T[pk.originalTeam]) bits.push(`via ${T[pk.originalTeam].n}`);
       if (c) bits.push(`Becomes ${triggerLabel(c)}`);
       // drawn as two tiers where there is room: the year small, the round large
-      return { kind: "pick", year: String(pk.year || ""), ord: ordRound(pk.round), title: `${pk.year} ${ordRound(pk.round)}-Round Pick`, first: String(pk.year || ""), last: `${ordRound(pk.round)}-Round Pick`, meta: bits.join(" · ") };
+      return { kind: "pick", year: String(pk.year || ""), ord: ordRound(pk.round), title: `${pk.year} ${ordRound(pk.round)}-round pick`, meta: bits.join(" · ") };
     }
     if (a.kind === "player") {
       const p = a.player || {}, rec = taPlayerRec(p);
@@ -16368,6 +16369,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         first: words.length > 1 ? words[0] : "",
         last: words.length > 1 ? words.slice(1).join(" ") : full,
         meta: [p.pos || rec && rec.pos, p.tm || rec && rec.tm].filter(Boolean).join(" · "),
+        tm: p.tm || rec && rec.tm || "",
         photo: playerPhoto(pid) || playerPhoto(p.n || "") || headshotFor(pid) || "",
         ini: initials(full || "?")
       };
@@ -16449,7 +16451,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     name: (s) => `700 ${s}px 'Oswald','Arial Narrow',sans-serif`,
     first: (s) => `500 ${s}px 'Oswald','Arial Narrow',sans-serif`,
     meta: (s) => `600 ${s}px 'Barlow',system-ui,sans-serif`,
-    big: (s) => `400 ${s}px 'Anton','Oswald',sans-serif`
+    big: (s) => `400 ${s}px 'Anton','Oswald',sans-serif`,
+    bold: (s) => `700 ${s}px 'Barlow',system-ui,sans-serif`
   };
   function taTeamFont(f) {
     return (s) => `${f.w} ${Math.round(s * (f.sc || 1))}px ${f.ff},'Oswald',sans-serif`;
@@ -16527,32 +16530,37 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
 
   // ---- layout ------------------------------------------------------------
-  // Each side picks the roomiest tier its own asset count allows, so a star
-  // player traded for a package still gets a large portrait. Past ten assets a
-  // side switches to a two-column list, and past twenty the image grows taller
-  // instead of shrinking the type any further.
-  var TA_HEAD_H = 236, TA_STRIPE = 10, TA_PAD = 40, TA_CW = 460, TA_TEAM_H = 104, TA_AREA_TOP = 432, TA_BOTTOM = 40;
-  var TA_TIERS = [
-    { k: "card", gap: 14, max: 200, min: 150 },
-    { k: "row", gap: 12, max: 128, min: 84 },
-    { k: "compact", gap: 8, max: 76, min: 52 }
-  ];
-  function taPlan(n, areaH) {
-    if (n <= 1) return { k: n ? "feature" : "none", n, rowH: areaH, gap: 0, cols: 1, need: n ? 0 : 60 };
-    for (const t of TA_TIERS) {
-      const h = Math.min(t.max, (areaH - (n - 1) * t.gap) / n);
-      if (h >= t.min) return { k: t.k, n, rowH: Math.floor(h), gap: t.gap, cols: 1, need: n * Math.floor(h) + (n - 1) * t.gap };
-    }
-    const rows = Math.ceil(n / 2), gap = 8;
-    const h = Math.max(52, Math.min(64, Math.floor((areaH - (rows - 1) * gap) / rows)));
-    return { k: "grid", n, rowH: h, gap, cols: 2, rows, need: rows * h + (rows - 1) * gap };
+  // A broadcast-poster composition: a split metallic headline over two night
+  // stadium scenes, each with its team's crest and wordmark, and below them a
+  // framed "RECEIVES" panel per team. The panels share one height, sized to the
+  // busier side; the crests take whatever room is left. A side with more than
+  // seven assets switches to a two-column list, and past what fits even then
+  // the image grows taller instead of shrinking the type any further.
+  var TA_HEAD_H = 214, TA_PAD = 26, TA_PLAQUE = 100, TA_BOTTOM = 26, TA_AMIN = 250, TA_AMAX = 498;
+  function taNeed(side) {
+    const n = side.gets.length;
+    if (!n) return 70;
+    if (n === 1 && side.gets[0].kind === "player") return 330;
+    const pref = n * 100 + (n - 1) * 8;
+    if (n * 60 + (n - 1) * 8 <= TA_AMAX) return Math.min(pref, TA_AMAX);
+    const r = Math.ceil(n / 2);
+    return Math.max(Math.min(r * 64 + (r - 1) * 8, TA_AMAX), r * 52 + (r - 1) * 8);
+  }
+  function taPlan(side, A) {
+    const n = side.gets.length;
+    if (!n) return { k: "none", n };
+    if (n === 1 && side.gets[0].kind === "player") return { k: "feature", n };
+    const h = Math.min(100, Math.floor((A - (n - 1) * 8) / n));
+    if (h >= 60) return { k: "row", n, rowH: h, gap: 8, cols: 1, need: n * h + (n - 1) * 8 };
+    const rows = Math.ceil(n / 2);
+    const rh = Math.max(52, Math.min(64, Math.floor((A - (rows - 1) * 8) / rows)));
+    return { k: "grid", n, rowH: rh, gap: 8, cols: 2, rows, need: rows * rh + (rows - 1) * 8 };
   }
   function taLayout(model) {
-    const baseArea = TA_W - TA_AREA_TOP - TA_BOTTOM;
-    const plans = model.sides.map((s) => taPlan(s.gets.length, baseArea));
-    const extra = Math.max(0, ...plans.map((p) => p.need - baseArea));
-    const H = TA_W + Math.ceil(extra);
-    return { W: TA_W, H, areaH: H - TA_AREA_TOP - TA_BOTTOM, plans };
+    const A = Math.max(TA_AMIN, ...model.sides.map(taNeed));
+    const H = TA_W + Math.max(0, A - TA_AMAX);
+    const panelTop = H - TA_BOTTOM - TA_PLAQUE - A - 14;
+    return { W: TA_W, H, A, panelTop, areaTop: panelTop + TA_PLAQUE, plans: model.sides.map((s) => taPlan(s, A)) };
   }
 
   // ---- drawing -----------------------------------------------------------
@@ -16566,6 +16574,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
+  // a plate with clipped corners, the shape the panels and name plates use
+  function taPlate(ctx, x, y, w, h, c) {
+    ctx.beginPath();
+    ctx.moveTo(x + c, y);
+    ctx.lineTo(x + w - c, y);
+    ctx.lineTo(x + w, y + c);
+    ctx.lineTo(x + w, y + h - c);
+    ctx.lineTo(x + w - c, y + h);
+    ctx.lineTo(x + c, y + h);
+    ctx.lineTo(x, y + h - c);
+    ctx.lineTo(x, y + c);
+    ctx.closePath();
+  }
   function taText(ctx, log, side, role, s, x, y, opts) {
     opts = opts || {};
     ctx.fillStyle = opts.color;
@@ -16573,13 +16594,138 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     taSpaced(ctx, s, x, y, opts.sp || 0, opts.align);
     log.push({ side, role, text: s, size: opts.size || 0 });
   }
+  function taSeed(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return () => {
+      h = Math.imul(h ^ h >>> 15, 2246822507) ^ Math.imul(h ^ h >>> 13, 3266489909);
+      return ((h ^= h >>> 16) >>> 0) / 4294967296;
+    };
+  }
+  // chrome-style fill for display type: a bright top, the colour through the
+  // middle, a dark band under the waist and a lighter lip at the bottom
+  function taMetal(ctx, ac, y0, y1) {
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, "#FFFFFF");
+    g.addColorStop(0.28, taShade(ac, 0.55));
+    g.addColorStop(0.52, ac);
+    g.addColorStop(0.56, taShade(ac, -0.45));
+    g.addColorStop(0.82, taShade(ac, -0.1));
+    g.addColorStop(1, taShade(ac, 0.4));
+    return g;
+  }
+  // display type: skewed, with a heavy dark outline and a drop shadow
+  function taDisplay(ctx, s, x, y, size, font, ac, align) {
+    ctx.save();
+    ctx.font = font(size);
+    ctx.textAlign = align || "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.translate(x, y);
+    ctx.transform(1, 0, -0.16, 1, 0, 0);
+    ctx.lineJoin = "round";
+    ctx.shadowColor = "rgba(0,0,0,.6)";
+    ctx.shadowBlur = size * 0.14;
+    ctx.shadowOffsetY = size * 0.05;
+    ctx.strokeStyle = "#08070A";
+    ctx.lineWidth = Math.max(6, size * 0.12);
+    ctx.strokeText(s, 0, 0);
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = taMetal(ctx, ac, -size * 0.78, size * 0.05);
+    ctx.fillText(s, 0, 0);
+    ctx.strokeStyle = "rgba(255,255,255,.28)";
+    ctx.lineWidth = Math.max(1.5, size * 0.018);
+    ctx.strokeText(s, 0, 0);
+    ctx.restore();
+  }
+  function taSkewW(ctx, s, font, size) {
+    ctx.font = font(size);
+    return ctx.measureText(s).width + size * 0.16 * 0.7 + size * 0.12;
+  }
+  // one half of the night scene: tinted sky, stadium lights in the outer
+  // corner, a skyline, and field lines along the bottom
+  function taScene(ctx, x0, H, horizon, pal, key, outer) {
+    const w = TA_W / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0, 0, w, H);
+    ctx.clip();
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, taShade(pal.bg, -0.55));
+    g.addColorStop(0.45, taShade(pal.bg, -0.2));
+    g.addColorStop(1, "#050506");
+    ctx.fillStyle = g;
+    ctx.fillRect(x0, 0, w, H);
+    const lx = outer < 0 ? x0 + 40 : x0 + w - 40;
+    const glow = ctx.createRadialGradient(lx, 70, 10, lx, 70, 560);
+    glow.addColorStop(0, taRGBA(pal.ac, 0.42));
+    glow.addColorStop(0.5, taRGBA(pal.ac, 0.1));
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(x0, 0, w, H);
+    // light beams
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(lx, 60);
+      const a = 0.5 + i * 0.28;
+      ctx.lineTo(lx - outer * Math.cos(a) * 900 - 40, 60 + Math.sin(a) * 900);
+      ctx.lineTo(lx - outer * Math.cos(a) * 900 + 40, 60 + Math.sin(a) * 900 + 60);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255,255,255,.035)";
+      ctx.fill();
+    }
+    // light bank
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+      const bx = lx - 33 + c * 22, by = 34 + r * 20;
+      const bg = ctx.createRadialGradient(bx, by, 0, bx, by, 16);
+      bg.addColorStop(0, "rgba(255,255,255,.95)");
+      bg.addColorStop(0.35, "rgba(255,250,235,.55)");
+      bg.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(bx - 16, by - 16, 32, 32);
+    }
+    ctx.globalCompositeOperation = "source-over";
+    // skyline
+    const rnd = taSeed(key + ":sky");
+    let bx = x0 - 10;
+    ctx.fillStyle = taShade(pal.bg, -0.72);
+    while (bx < x0 + w) {
+      const bw = 26 + rnd() * 46, bh = 60 + rnd() * rnd() * 250;
+      ctx.fillRect(bx, horizon - bh, bw, bh + 4);
+      if (rnd() > 0.72) ctx.fillRect(bx + bw * 0.4, horizon - bh - 30, 3, 30);
+      ctx.save();
+      ctx.fillStyle = taRGBA(pal.ac, 0.22);
+      for (let wy = horizon - bh + 10; wy < horizon - 8; wy += 12) for (let wx = bx + 5; wx < bx + bw - 6; wx += 9) if (rnd() > 0.62) ctx.fillRect(wx, wy, 3, 4);
+      ctx.restore();
+      bx += bw + 2 + rnd() * 6;
+    }
+    const haze = ctx.createLinearGradient(0, horizon - 120, 0, horizon + 40);
+    haze.addColorStop(0, "rgba(0,0,0,0)");
+    haze.addColorStop(1, taRGBA(taShade(pal.bg, -0.7), 0.95));
+    ctx.fillStyle = haze;
+    ctx.fillRect(x0, horizon - 120, w, 160);
+    // field lines in perspective
+    ctx.strokeStyle = "rgba(255,255,255,.07)";
+    ctx.lineWidth = 2;
+    const vx = TA_W / 2;
+    for (let i = -8; i <= 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(vx + i * 26, horizon + 10);
+      ctx.lineTo(vx + i * 150, H);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   function taPortrait(ctx, img, x, y, w, h, r, crop, pal, ini) {
     ctx.save();
     taRR(ctx, x, y, w, h, r);
     ctx.clip();
     const g = ctx.createLinearGradient(x, y, x, y + h);
-    g.addColorStop(0, taRGBA(pal.ac, 0.55));
-    g.addColorStop(1, taRGBA(taShade(pal.bg, -0.35), 1));
+    g.addColorStop(0, taRGBA(pal.ac, 0.5));
+    g.addColorStop(1, "#111014");
     ctx.fillStyle = g;
     ctx.fillRect(x, y, w, h);
     if (img) {
@@ -16589,9 +16735,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const dx = x - (dw - w) * (0.5 + (+c.x || 0) / 200), dy = y - (dh - h) * (0.5 + (+c.y || 0) / 200);
       ctx.drawImage(img, dx, dy, dw, dh);
     } else {
-      ctx.fillStyle = pal.ink;
+      ctx.fillStyle = "#FFFFFF";
       ctx.globalAlpha = 0.9;
-      ctx.font = TA_F.big(Math.round(h * 0.4));
+      ctx.font = TA_F.big(Math.round(Math.min(w, h) * 0.4));
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(ini, x + w / 2, y + h / 2 + h * 0.02);
@@ -16600,238 +16746,317 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     ctx.restore();
   }
-  // picks and money draw a flat accent tile in the portrait's place
-  function taTile(ctx, it, x, y, s, r, pal) {
+  // icons for the cell at the left of a row
+  function taPickIcon(ctx, it, cx, cy, s, pal) {
+    const w = s * 0.62, h = s * 0.72, x = cx - w / 2, y = cy - h / 2;
     ctx.save();
-    taRR(ctx, x, y, s, s, r);
-    ctx.fillStyle = pal.ac;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.12);
+    ctx.lineTo(cx, y);
+    ctx.lineTo(x + w, y + h * 0.12);
+    ctx.lineTo(x + w, y + h * 0.6);
+    ctx.quadraticCurveTo(x + w, y + h * 0.88, cx, y + h);
+    ctx.quadraticCurveTo(x, y + h * 0.88, x, y + h * 0.6);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255,255,255,.06)";
     ctx.fill();
-    ctx.fillStyle = pal.onAc;
+    ctx.lineWidth = Math.max(2, s * 0.035);
+    ctx.strokeStyle = taShade(pal.ac, 0.35);
+    ctx.stroke();
+    ctx.fillStyle = "#FFFFFF";
     ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    const cx = x + s / 2;
-    // the ordinal is sized to the tile's width as well as its height
-    const ordFont = (hs) => {
-      let z = Math.round(hs);
-      ctx.font = TA_F.big(z);
-      const w = ctx.measureText(it.ord.toUpperCase()).width;
-      if (w > s * 0.8) z = Math.floor(z * s * 0.8 / w);
-      ctx.font = TA_F.big(z);
-    };
-    if (it.kind === "pick") {
-      if (s >= 90) {
-        ctx.font = TA_F.cap(Math.round(s * 0.15));
-        taSpaced(ctx, it.year, cx, y + s * 0.27, s * 0.012, "center");
-        ordFont(s * 0.38);
-        ctx.textAlign = "center";
-        ctx.fillText(it.ord.toUpperCase(), cx, y + s * 0.68);
-        ctx.font = TA_F.cap(Math.round(s * 0.11));
-        taSpaced(ctx, "ROUND", cx, y + s * 0.87, s * 0.02, "center");
-      } else {
-        ordFont(s * 0.42);
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(it.ord.toUpperCase(), cx, y + s / 2 + s * 0.03);
-      }
-    } else {
-      ctx.font = TA_F.big(Math.round(s * 0.56));
-      ctx.textBaseline = "middle";
-      ctx.fillText(it.kind === "money" ? "$" : "+", cx, y + s / 2 + s * 0.03);
-    }
+    ctx.font = TA_F.cap(Math.round(s * 0.12));
+    taSpaced(ctx, it.year, cx, y + h * 0.3, s * 0.01, "center");
+    ctx.textAlign = "center";
+    let z = Math.round(s * 0.26);
+    ctx.font = TA_F.big(z);
+    const ww = ctx.measureText(it.ord.toUpperCase()).width;
+    if (ww > w * 0.82) z = Math.floor(z * w * 0.82 / ww);
+    ctx.font = TA_F.big(z);
+    ctx.fillText(it.ord.toUpperCase(), cx, y + h * 0.66);
+    ctx.font = TA_F.cap(Math.round(s * 0.09));
+    taSpaced(ctx, "PICK", cx, y + h * 0.83, s * 0.012, "center");
     ctx.restore();
   }
-  function taMedia(ctx, it, x, y, s, r, pal, imgs, crops) {
-    if (it.kind === "player") taPortrait(ctx, imgs[it.photoSrc] || null, x, y, s, s, r, crops[it.pid], pal, it.ini);
-    else taTile(ctx, it, x, y, s, r, pal);
-  }
-  function taLogo(ctx, team, img, x, y, s, pal) {
-    if (img) {
-      // contain, never crop: the logo keeps its own proportions
-      const k = Math.min(s / img.naturalWidth, s / img.naturalHeight);
-      const w = img.naturalWidth * k, h = img.naturalHeight * k;
-      ctx.drawImage(img, x + (s - w) / 2, y + (s - h) / 2, w, h);
-      return;
-    }
+  function taCashIcon(ctx, cx, cy, s) {
+    const w = s * 0.62, h = s * 0.34;
     ctx.save();
-    taRR(ctx, x, y, s, s, s * 0.24);
-    const g = ctx.createLinearGradient(x, y, x + s, y + s);
-    g.addColorStop(0, team.bg);
-    g.addColorStop(1, "#171416");
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = pal.ac;
+    for (let i = 2; i >= 0; i--) {
+      const x = cx - w / 2 + i * s * 0.04, y = cy - h / 2 - i * s * 0.06;
+      taRR(ctx, x, y, w, h, s * 0.03);
+      ctx.fillStyle = i ? "#3F5A45" : "#5E8A66";
+      ctx.fill();
+      ctx.lineWidth = Math.max(1.5, s * 0.02);
+      ctx.strokeStyle = "#1C2A1F";
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, h * 0.3, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,.75)";
     ctx.stroke();
-    ctx.fillStyle = pal.ac;
-    ctx.font = taTeamFont(team.font)(Math.round(s * 0.52));
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = TA_F.big(Math.round(h * 0.42));
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(team.mono, x + s / 2, y + s / 2 + s * 0.03);
+    ctx.fillText("$", cx, cy + 1);
     ctx.restore();
   }
-  // one asset in a row-shaped slot (card, row, compact and grid tiers)
-  function taRow(ctx, log, si, it, x, y, w, h, k, pal, imgs, crops) {
+  function taCell(ctx, it, x, y, s, pal, imgs, crops) {
+    if (it.kind === "player") return taPortrait(ctx, imgs[it.photoSrc] || null, x + 5, y + 5, s - 10, s - 10, 6, crops[it.pid], pal, it.ini);
+    if (it.kind === "pick") return taPickIcon(ctx, it, x + s / 2, y + s / 2, s, pal);
+    if (it.kind === "money") return taCashIcon(ctx, x + s / 2, y + s / 2, s);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = TA_F.big(Math.round(s * 0.4));
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("+", x + s / 2, y + s / 2);
+    ctx.textBaseline = "alphabetic";
+  }
+  // one asset as a row: icon cell, then the asset in plain bold type
+  function taRow(ctx, log, si, it, x, y, w, h, grid, pal, imgs, crops) {
     ctx.save();
-    taRR(ctx, x, y, w, h, k === "grid" ? 10 : 14);
-    ctx.fillStyle = pal.card;
+    ctx.fillStyle = "rgba(255,255,255,.045)";
+    ctx.strokeStyle = "rgba(255,255,255,.13)";
+    ctx.lineWidth = 1.5;
+    taRR(ctx, x, y, w, h, 6);
     ctx.fill();
-    ctx.clip();
-    ctx.fillStyle = pal.ac;
-    ctx.fillRect(x, y, k === "grid" ? 5 : 6, h);
+    ctx.stroke();
+    // in the two-column list the cell narrows so names keep their width
+    const cw = grid ? Math.round(h * 0.78) : h;
+    ctx.beginPath();
+    ctx.moveTo(x + cw, y + 6);
+    ctx.lineTo(x + cw, y + h - 6);
+    ctx.stroke();
     ctx.restore();
-    const pad = h >= 150 ? 14 : h >= 84 ? 10 : 7;
-    const showMedia = k !== "grid";
-    // capped so the name keeps enough width in the roomiest rows
-    const m = showMedia ? Math.min(h - pad * 2, 144) : 0;
-    if (showMedia) taMedia(ctx, it, x + 16, y + pad, m, h >= 84 ? 12 : 8, pal, imgs, crops);
-    const tx = x + (showMedia ? 16 + m + 18 : 18), tw = x + w - 14 - tx;
-    const title = it.title;
-    if (k === "card" && it.first) {
-      // two-tier name: first name small, surname large
-      const f1 = Math.round(Math.min(30, h * 0.16));
-      // a pick's round reads as one phrase, so it shrinks before it wraps
-      let nm = taFit(ctx, taCase(it.last, true), TA_F.name, tw, Math.round(Math.min(58, h * 0.3)), 30, it.kind === "pick" ? 1 : 2);
-      let mt = it.meta ? 26 : 0;
-      const need = () => f1 + 8 + nm.lines.length * nm.size * 1.02 + (mt ? 14 + mt : 0);
-      // keep the block inside the card: one line of name before losing the meta
-      if (need() > h - 16 && nm.lines.length > 1) nm = taFit(ctx, taCase(it.last, true), TA_F.name, tw, Math.round(Math.min(58, h * 0.3)), 30, 1);
-      if (need() > h - 16) mt = 0;
-      const lh = nm.size * 1.02;
-      const block = need();
-      let by = y + (h - block) / 2 + f1;
-      ctx.font = TA_F.first(f1);
-      taText(ctx, log, si, "first", taCase(it.first, true), tx, by, { color: pal.ink2, sp: 1.5, size: f1 });
-      by += 8;
-      ctx.font = TA_F.name(nm.size);
-      nm.lines.forEach((l) => {
-        by += lh;
-        taText(ctx, log, si, "name", l, tx, by - lh * 0.12, { color: pal.ink, size: nm.size });
-      });
-      if (mt) {
-        by += 14 + mt;
-        ctx.font = TA_F.meta(mt);
-        taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 4, { color: pal.ink2, size: mt });
-      }
-      return;
-    }
-    const maxS = k === "card" ? Math.round(Math.min(50, h * 0.26)) : k === "row" ? Math.round(Math.min(40, h * 0.34)) : k === "compact" ? Math.round(Math.min(32, h * 0.44)) : 26;
-    const minS = k === "grid" ? 22 : k === "compact" ? 24 : 28;
-    const lines = k === "card" || k === "row" && h >= 100 ? 2 : 1;
-    const nm = taFit(ctx, taCase(title, true), TA_F.name, tw, maxS, minS, lines);
-    const metaS = k === "grid" ? 17 : k === "compact" ? 19 : k === "row" ? 22 : 25;
-    const hasMeta = !!it.meta && h >= nm.lines.length * nm.size * 1.02 + metaS + pad * 2 - 4;
-    const lh = nm.size * 1.02;
-    const block = nm.lines.length * lh + (hasMeta ? 6 + metaS : 0);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, cw, h);
+    ctx.clip();
+    taCell(ctx, it, x + (cw - h) / 2, y, h, pal, imgs, crops);
+    ctx.restore();
+    const tx = x + cw + (grid ? 8 : 18), tw = x + w - 10 - tx;
+    const maxS = grid ? 21 : Math.round(Math.min(34, h * 0.36)), minS = grid ? 18 : 22;
+    const nm = taFit(ctx, it.title, TA_F.bold, tw, maxS, minS, h < 84 && !grid ? 1 : 2);
+    const metaS = grid ? 17 : Math.round(Math.min(21, h * 0.22));
+    const lh = nm.size * 1.1;
+    const hasMeta = !!it.meta && h >= nm.lines.length * lh + metaS + 14;
+    const block = nm.lines.length * lh + (hasMeta ? 4 + metaS : 0);
     let by = y + (h - block) / 2;
-    ctx.font = TA_F.name(nm.size);
+    ctx.font = TA_F.bold(nm.size);
     nm.lines.forEach((l) => {
       by += lh;
-      taText(ctx, log, si, "name", l, tx, by - lh * 0.14, { color: pal.ink, size: nm.size });
+      taText(ctx, log, si, "name", l, tx, by - lh * 0.2, { color: "#FFFFFF", size: nm.size });
     });
     if (hasMeta) {
-      by += 6 + metaS;
+      by += 4 + metaS;
       ctx.font = TA_F.meta(metaS);
-      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 3, { color: pal.ink2, size: metaS });
+      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 3, { color: pal.acText === pal.ink ? "rgba(255,255,255,.7)" : taShade(pal.ac, 0.3), size: metaS });
     }
   }
-  // a side receiving one asset: a large centred card
+  // a side receiving one player: a big card with a colour splash behind the
+  // portrait and a name plate across the bottom
   function taFeature(ctx, log, si, it, x, y, w, h, pal, imgs, crops) {
-    const isPl = it.kind === "player", tiered = !!it.first;
-    const media = isPl ? Math.min(300, h - 250) : Math.min(230, h - 230);
-    let nameLines, nameS;
-    let cy;
-    if (tiered) {
-      const nm = taFit(ctx, taCase(it.last, true), TA_F.name, w - 40, 64, 34, it.kind === "pick" ? 1 : 2);
-      nameLines = nm.lines;
-      nameS = nm.size;
-    } else {
-      const big = it.kind === "money" ? 92 : 54;
-      const nm = taFit(ctx, taCase(it.title, true), it.kind === "money" ? TA_F.big : TA_F.name, w - 40, big, 34, 2);
-      nameLines = nm.lines;
-      nameS = nm.size;
-    }
-    const f1 = tiered ? 32 : 0, mt = it.meta ? 26 : 0;
-    const block = media + 26 + (f1 ? f1 + 8 : 0) + nameLines.length * nameS * 1.04 + (mt ? 14 + mt : 0) + 40;
-    const cardH = Math.min(h, block + 20);
-    const top = y + (h - cardH) / 2;
+    const nflc = typeof TEAM_COLOR !== "undefined" && TEAM_COLOR[it.tm] || pal.ac;
     ctx.save();
-    taRR(ctx, x, top, w, cardH, 18);
-    ctx.fillStyle = pal.card;
-    ctx.fill();
+    taRR(ctx, x, y, w, h, 8);
     ctx.clip();
-    ctx.fillStyle = pal.ac;
-    ctx.fillRect(x, top, w, 6);
-    ctx.restore();
-    const cx = x + w / 2;
-    cy = top + 30;
-    taMedia(ctx, it, cx - media / 2, cy, media, 16, pal, imgs, crops);
-    cy += media + 26;
-    if (f1) {
-      cy += f1;
-      ctx.font = TA_F.first(f1);
-      taText(ctx, log, si, "first", taCase(it.first, true), cx, cy, { color: pal.ink2, sp: 2, align: "center", size: f1 });
-      cy += 8;
+    const g = ctx.createLinearGradient(x, y, x + w, y + h);
+    g.addColorStop(0, taShade(nflc, -0.55));
+    g.addColorStop(1, "#0C0B0E");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+    // paint splash in the team's accent and the player's NFL colour
+    const rnd = taSeed(it.pid + ":splash");
+    for (let i = 0; i < 26; i++) {
+      const c = i % 2 ? pal.ac : nflc;
+      ctx.fillStyle = taRGBA(c, 0.18 + rnd() * 0.35);
+      ctx.save();
+      ctx.translate(x + rnd() * w, y + rnd() * h * 0.8);
+      ctx.rotate(-0.6 + rnd() * 0.4);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 20 + rnd() * 110, 4 + rnd() * 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
-    ctx.font = (it.kind === "money" ? TA_F.big : TA_F.name)(nameS);
-    nameLines.forEach((l) => {
-      cy += nameS * 1.04;
-      taText(ctx, log, si, "name", l, cx, cy - nameS * 0.12, { color: pal.ink, align: "center", size: nameS });
-    });
-    if (mt) {
-      cy += 14 + mt;
-      ctx.font = TA_F.meta(mt);
-      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, w - 40), cx, cy - 4, { color: pal.ink2, align: "center", size: mt });
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = taRGBA(i % 2 ? pal.ac : nflc, 0.5);
+      ctx.beginPath();
+      ctx.arc(x + rnd() * w, y + rnd() * h, 1 + rnd() * 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (it.tm) {
+      ctx.font = TA_F.big(Math.round(h * 0.5));
+      ctx.textAlign = "right";
+      ctx.fillStyle = "rgba(255,255,255,.08)";
+      ctx.fillText(it.tm, x + w - 14, y + h * 0.6);
+    }
+    const plateH = Math.min(96, h * 0.3);
+    const img = imgs[it.photoSrc] || null;
+    const ph = h - plateH + 20;
+    if (img) {
+      const c = crops[it.pid] || {}, z = Math.max(1, +c.z || 1);
+      const bw = Math.min(w, ph * 1.1), bx = x + (w - bw) / 2;
+      const s = Math.max(bw / img.naturalWidth, ph / img.naturalHeight) * z;
+      const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+      ctx.drawImage(img, bx - (dw - bw) * (0.5 + (+c.x || 0) / 200), y - (dh - ph) * (0.5 + (+c.y || 0) / 200), dw, dh);
+      // fade the photo's edges into the card
+      const fs = ctx.createLinearGradient(bx, 0, bx + bw, 0), fc = taShade(nflc, -0.6);
+      fs.addColorStop(0, taRGBA(fc, 0.9));
+      fs.addColorStop(0.12, taRGBA(fc, 0));
+      fs.addColorStop(0.88, taRGBA(fc, 0));
+      fs.addColorStop(1, taRGBA(fc, 0.9));
+      ctx.fillStyle = fs;
+      ctx.fillRect(bx - 1, y, bw + 2, ph);
+      const fb = ctx.createLinearGradient(0, y + ph * 0.55, 0, y + ph);
+      fb.addColorStop(0, "rgba(10,10,12,0)");
+      fb.addColorStop(1, "rgba(10,10,12,.95)");
+      ctx.fillStyle = fb;
+      ctx.fillRect(x, y + ph * 0.55, w, ph * 0.45 + 2);
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,.9)";
+      ctx.font = TA_F.big(Math.round(ph * 0.42));
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(it.ini, x + w / 2, y + ph * 0.46);
+      ctx.textBaseline = "alphabetic";
+    }
+    ctx.restore();
+    // name plate
+    const px = x + 14, pw = w - 28, py = y + h - plateH - 12;
+    ctx.save();
+    taPlate(ctx, px, py, pw, plateH, 12);
+    ctx.fillStyle = "rgba(8,8,10,.9)";
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = pal.ac;
+    ctx.stroke();
+    ctx.restore();
+    const nm = taFit(ctx, it.title.toUpperCase(), TA_F.big, pw - 30, Math.round(plateH * 0.46), 24, 1);
+    const metaS = it.meta ? Math.round(plateH * 0.2) : 0;
+    const top = py + (plateH - nm.size * 0.9 - (metaS ? metaS + 8 : 0)) / 2 + nm.size * 0.9;
+    ctx.font = TA_F.big(nm.size);
+    taText(ctx, log, si, "name", nm.lines[0], x + w / 2, top, { color: "#FFFFFF", sp: 1.5, align: "center", size: nm.size });
+    if (metaS) {
+      ctx.font = TA_F.cap(metaS);
+      taText(ctx, log, si, "meta", it.meta.toUpperCase(), x + w / 2, top + metaS + 8, { color: taShade(pal.ac, 0.35), sp: 3, align: "center", size: metaS });
     }
   }
-  function taSide(ctx, log, si, side, plan, x0, areaTop, areaH, pal, imgs, crops) {
-    const x = x0 + TA_PAD, t = side.team;
-    // team header: logo, then the name beside it (up to two lines)
-    const ly = TA_HEAD_H + TA_STRIPE + 24;
-    taLogo(ctx, t, imgs[t.logo] || null, x, ly, TA_TEAM_H, pal);
-    // the right edge stops short of the centre badge
-    const nx = x + TA_TEAM_H + 20, nw = TA_CW - TA_TEAM_H - 34;
-    const tf = taTeamFont(t.font), upper = t.font.tt === "uppercase";
-    const nm = taFit(ctx, taCase(t.n, upper), tf, nw, 50, 28, 2);
-    const lh = nm.size * (t.font.sc || 1) * 1.08;
-    let ny = ly + (TA_TEAM_H - nm.lines.length * lh) / 2;
-    ctx.font = tf(nm.size);
-    nm.lines.forEach((l) => {
-      ny += lh;
-      taText(ctx, log, si, "team", l, nx, ny - lh * 0.2, { color: pal.ink, size: nm.size });
-    });
-    // "receives" label, with an arrow down into the list
-    const ry = ly + TA_TEAM_H + 40;
-    ctx.fillStyle = pal.acText;
-    ctx.beginPath();
-    ctx.moveTo(x + 2, ry - 17);
-    ctx.lineTo(x + 20, ry - 17);
-    ctx.lineTo(x + 11, ry - 4);
-    ctx.closePath();
+  // the crest: an uploaded logo at its own proportions, or a drawn shield
+  function taCrest(ctx, team, img, cx, top, s, pal) {
+    if (img) {
+      const k = Math.min(s / img.naturalWidth, s / img.naturalHeight);
+      const w = img.naturalWidth * k, h = img.naturalHeight * k;
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,.6)";
+      ctx.shadowBlur = 30;
+      ctx.drawImage(img, cx - w / 2, top + (s - h) / 2, w, h);
+      ctx.restore();
+      return;
+    }
+    const w = s * 0.82, h = s, x = cx - w / 2, y = top;
+    const shield = () => {
+      ctx.beginPath();
+      ctx.moveTo(x, y + h * 0.1);
+      ctx.lineTo(cx, y);
+      ctx.lineTo(x + w, y + h * 0.1);
+      ctx.lineTo(x + w, y + h * 0.55);
+      ctx.quadraticCurveTo(x + w, y + h * 0.86, cx, y + h);
+      ctx.quadraticCurveTo(x, y + h * 0.86, x, y + h * 0.55);
+      ctx.closePath();
+    };
+    ctx.save();
+    shield();
+    ctx.shadowColor = "rgba(0,0,0,.65)";
+    ctx.shadowBlur = 30;
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, taShade(team.bg, 0.12));
+    g.addColorStop(1, taShade(team.bg, -0.6));
+    ctx.fillStyle = g;
     ctx.fill();
-    ctx.font = TA_F.cap(24);
-    taText(ctx, log, si, "label", "RECEIVES", x + 30, ry, { color: pal.acText, sp: 5, size: 24 });
-    // assets
+    ctx.shadowColor = "transparent";
+    ctx.lineWidth = s * 0.045;
+    ctx.strokeStyle = taMetal(ctx, pal.ac, y, y + h);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,.25)";
+    ctx.save();
+    ctx.translate(cx, y + h * 0.5);
+    ctx.scale(0.86, 0.86);
+    ctx.translate(-cx, -(y + h * 0.5));
+    shield();
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+    taDisplay(ctx, team.mono, cx, y + h * 0.66, Math.round(s * 0.5), taTeamFont(team.font), pal.ac, "center");
+  }
+  // the framed "TEAM / RECEIVES" panel and its assets
+  function taPanel(ctx, log, si, side, plan, x0, lay, pal, imgs, crops) {
+    const x = x0 + TA_PAD, w = TA_W / 2 - TA_PAD * 2, y = lay.panelTop, h = lay.H - TA_BOTTOM - y;
+    ctx.save();
+    taPlate(ctx, x, y, w, h, 16);
+    ctx.fillStyle = "rgba(10,10,13,.88)";
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = taMetal(ctx, pal.ac, y, y + h);
+    ctx.stroke();
+    ctx.clip();
+    const pg = ctx.createLinearGradient(0, y, 0, y + TA_PLAQUE);
+    pg.addColorStop(0, "rgba(255,255,255,.1)");
+    pg.addColorStop(1, "rgba(255,255,255,.02)");
+    ctx.fillStyle = pg;
+    ctx.fillRect(x, y, w, TA_PLAQUE - 12);
+    ctx.fillStyle = pal.ac;
+    ctx.fillRect(x, y + TA_PLAQUE - 14, w, 3);
+    ctx.restore();
+    const t = side.team, upper = true;
+    const nm = taFit(ctx, taCase(t.n, upper), TA_F.big, w - 40, 46, 24, 1);
+    taDisplay(ctx, nm.lines[0], x + w / 2, y + 56, nm.size, TA_F.big, pal.ac, "center");
+    log.push({ side: si, role: "team", text: nm.lines[0], size: nm.size });
+    ctx.font = TA_F.cap(19);
+    taText(ctx, log, si, "label", "RECEIVES", x + w / 2, y + 78, { color: "rgba(255,255,255,.72)", sp: 8, align: "center", size: 19 });
     const items = side.gets;
-    if (!items.length) {
-      ctx.font = TA_F.meta(26);
-      taText(ctx, log, si, "empty", "Nothing", x, areaTop + 40, { color: pal.ink2, size: 26 });
-      return;
-    }
     items.forEach((it) => log.push({ side: si, role: "asset", text: it.title, kind: it.kind, meta: it.meta, size: 0 }));
-    if (plan.k === "feature") {
-      taFeature(ctx, log, si, items[0], x, areaTop, TA_CW, areaH, pal, imgs, crops);
+    const ax = x + 14, aw = w - 28, at = lay.areaTop, ah = lay.A;
+    if (!items.length) {
+      ctx.font = TA_F.meta(24);
+      taText(ctx, log, si, "empty", "Nothing", ax + aw / 2, at + 44, { color: "rgba(255,255,255,.6)", align: "center", size: 24 });
       return;
     }
-    const top = areaTop + Math.max(0, (areaH - plan.need) / 2);
+    if (plan.k === "feature") return taFeature(ctx, log, si, items[0], ax, at, aw, ah, pal, imgs, crops);
+    const top = at + Math.max(0, (ah - plan.need) / 2);
     if (plan.cols === 2) {
-      const cw = (TA_CW - 12) / 2;
+      const cw = (aw - 8) / 2;
       items.forEach((it, i) => {
         const col = i < plan.rows ? 0 : 1, row = col ? i - plan.rows : i;
-        taRow(ctx, log, si, it, x + col * (cw + 12), top + row * (plan.rowH + plan.gap), cw, plan.rowH, "grid", pal, imgs, crops);
+        taRow(ctx, log, si, it, ax + col * (cw + 8), top + row * (plan.rowH + plan.gap), cw, plan.rowH, true, pal, imgs, crops);
       });
       return;
     }
-    items.forEach((it, i) => taRow(ctx, log, si, it, x, top + i * (plan.rowH + plan.gap), TA_CW, plan.rowH, plan.k, pal, imgs, crops));
+    items.forEach((it, i) => taRow(ctx, log, si, it, ax, top + i * (plan.rowH + plan.gap), aw, plan.rowH, false, pal, imgs, crops));
+  }
+  // the two crossing arrows between the crests
+  function taArrow(ctx, cx, cy, dir, ac) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(dir, 1);
+    const g = ctx.createLinearGradient(-60, 0, 60, 0);
+    g.addColorStop(0, taRGBA(ac, 0));
+    g.addColorStop(0.45, taRGBA(ac, 0.9));
+    g.addColorStop(1, taShade(ac, 0.5));
+    ctx.shadowColor = ac;
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-70, -8);
+    ctx.lineTo(22, -8);
+    ctx.lineTo(22, -24);
+    ctx.lineTo(62, 0);
+    ctx.lineTo(22, 24);
+    ctx.lineTo(22, 8);
+    ctx.lineTo(-70, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
   // Draws the whole graphic at scale k (1 = 1080px wide). Returns the text it
   // drew, side by side, so a check can read the image back as data.
@@ -16839,83 +17064,76 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const lay = taLayout(model), log = [];
     const order = opts.flip ? [1, 0] : [0, 1];
     const sides = order.map((i) => model.sides[i]);
+    const plans = order.map((i) => lay.plans[i]);
     const pals = sides.map((s) => {
       const c = opts.col && opts.col[s.team.key] || {};
       return taPalette(taHex(c.bg) || s.team.bg, taHex(c.ac) || s.team.c);
     });
+    const heroTop = TA_HEAD_H + 6, heroBot = lay.panelTop - 10, heroH = heroBot - heroTop;
     ctx.save();
     ctx.scale(k, k);
-    // panels
-    sides.forEach((s, i) => {
-      const x = i * TA_W / 2, p = pals[i];
-      const g = ctx.createLinearGradient(x, TA_HEAD_H, x + TA_W / 2, lay.H);
-      g.addColorStop(0, taShade(p.bg, 0.06));
-      g.addColorStop(1, taShade(p.bg, -0.22));
-      ctx.fillStyle = g;
-      ctx.fillRect(x, TA_HEAD_H, TA_W / 2, lay.H - TA_HEAD_H);
-      // a faint oversized initial for texture
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(x, TA_HEAD_H, TA_W / 2, lay.H - TA_HEAD_H);
-      ctx.clip();
-      ctx.globalAlpha = 0.05;
-      ctx.fillStyle = p.ink;
-      ctx.font = TA_F.big(620);
-      ctx.textAlign = "center";
-      ctx.fillText(s.team.mono, x + TA_W / 4, lay.H - 40);
-      ctx.restore();
-    });
-    // header band
-    const hg = ctx.createLinearGradient(0, 0, 0, TA_HEAD_H);
-    hg.addColorStop(0, "#0B0A0C");
-    hg.addColorStop(1, "#18151A");
-    ctx.fillStyle = hg;
-    ctx.fillRect(0, 0, TA_W, TA_HEAD_H);
-    pals.forEach((p, i) => {
-      ctx.fillStyle = p.ac;
-      ctx.fillRect(i * TA_W / 2, TA_HEAD_H, TA_W / 2, TA_STRIPE);
-    });
+    sides.forEach((s, i) => taScene(ctx, i * TA_W / 2, lay.H, Math.min(heroBot, heroTop + heroH * 0.62), pals[i], s.team.key, i ? 1 : -1));
+    // seam
+    const sg = ctx.createLinearGradient(0, 0, 0, lay.H);
+    sg.addColorStop(0, "rgba(255,255,255,0)");
+    sg.addColorStop(0.4, "rgba(255,255,255,.22)");
+    sg.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sg;
+    ctx.fillRect(TA_W / 2 - 1, 0, 2, lay.H);
+    // headline: first half of the words in the left team's colour, the rest
+    // in the right team's
+    const words = opts.head.toUpperCase().split(/\s+/).filter(Boolean);
+    const cut = Math.max(1, Math.ceil(words.length / 2));
+    const w1 = words.slice(0, cut).join(" "), w2 = words.slice(cut).join(" ");
+    let hs = 150;
+    const gap = () => w2 ? hs * 0.12 : 0;
+    while (hs > 72 && taSkewW(ctx, w1, TA_F.head, hs) + (w2 ? taSkewW(ctx, w2, TA_F.head, hs) : 0) + gap() > TA_W - 70) hs -= 4;
+    const tw1 = taSkewW(ctx, w1, TA_F.head, hs), tw2 = w2 ? taSkewW(ctx, w2, TA_F.head, hs) : 0;
+    const hx = (TA_W - (tw1 + tw2 + gap())) / 2, hy = 22 + hs * 0.86;
+    taDisplay(ctx, w1, hx + tw1 / 2, hy, hs, TA_F.head, pals[0].ac, "center");
+    if (w2) taDisplay(ctx, w2, hx + tw1 + gap() + tw2 / 2, hy, hs, TA_F.head, pals[1].ac, "center");
+    log.push({ side: -1, role: "headline", text: words.join(" "), size: hs });
+    let ky = hy + 34;
     if (model.league) {
-      ctx.font = TA_F.cap(26);
-      taText(ctx, log, -1, "league", taEllipsis(ctx, model.league.toUpperCase(), TA_W - 160), TA_W / 2, 52, { color: "rgba(255,255,255,.62)", sp: 6, align: "center", size: 26 });
+      ctx.font = TA_F.cap(22);
+      const lg = taEllipsis(ctx, model.league.toUpperCase(), TA_W - 260);
+      taText(ctx, log, -1, "league", lg, TA_W / 2, ky, { color: "rgba(255,255,255,.72)", sp: 7, align: "center", size: 22 });
+      const lw = taSpacedW(ctx, lg, 7) / 2 + 18;
+      ctx.fillStyle = "rgba(255,255,255,.35)";
+      ctx.fillRect(TA_W / 2 - lw - 70, ky - 8, 70, 2);
+      ctx.fillRect(TA_W / 2 + lw, ky - 8, 70, 2);
+      ky += 24;
     }
-    const hd = taFit(ctx, opts.head.toUpperCase(), TA_F.head, TA_W - 120, 104, 68, 1);
-    ctx.font = TA_F.head(hd.size);
-    taText(ctx, log, -1, "headline", hd.lines[0], TA_W / 2, 178, { color: "#FFFFFF", sp: 3, align: "center", size: hd.size });
     if (model.when) {
-      ctx.font = TA_F.meta(24);
-      taText(ctx, log, -1, "when", model.when, TA_W / 2, 218, { color: "rgba(255,255,255,.6)", align: "center", size: 24 });
+      ctx.font = TA_F.meta(18);
+      taText(ctx, log, -1, "when", model.when, TA_W / 2, Math.min(ky + 2, heroTop + 10), { color: "rgba(255,255,255,.55)", align: "center", size: 18 });
     }
-    // sides
-    sides.forEach((s, i) => taSide(ctx, log, i, s, lay.plans[order[i]], i * TA_W / 2, TA_AREA_TOP, lay.areaH, pals[i], imgs, opts.crop || {}));
-    // seam and swap badge
-    ctx.fillStyle = "rgba(0,0,0,.35)";
-    ctx.fillRect(TA_W / 2 - 1.5, TA_HEAD_H + TA_STRIPE, 3, lay.H - TA_HEAD_H - TA_STRIPE);
-    const by = TA_HEAD_H + TA_STRIPE + 24 + TA_TEAM_H / 2;
-    ctx.beginPath();
-    ctx.arc(TA_W / 2, by, 34, 0, Math.PI * 2);
-    ctx.fillStyle = "#0E0C0E";
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,255,255,.18)";
-    ctx.stroke();
-    ctx.strokeStyle = "#FFFFFF";
-    ctx.lineWidth = 3.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(TA_W / 2 - 14, by - 7);
-    ctx.lineTo(TA_W / 2 + 14, by - 7);
-    ctx.lineTo(TA_W / 2 + 7, by - 14);
-    ctx.moveTo(TA_W / 2 + 14, by + 7);
-    ctx.lineTo(TA_W / 2 - 14, by + 7);
-    ctx.lineTo(TA_W / 2 - 7, by + 14);
-    ctx.stroke();
+    // crests and wordmarks
+    const crestTop = Math.max(heroTop + 34, ky + 14);
+    sides.forEach((s, i) => {
+      const cx = i * TA_W / 2 + TA_W / 4, t = s.team;
+      const wmMax = Math.max(40, Math.min(96, heroH * 0.26));
+      const tf = taTeamFont(t.font), up = t.font.tt === "uppercase";
+      const wm = taFit(ctx, taCase(t.n, up), tf, TA_W / 2 - 60, wmMax, 34, 2);
+      const wmH = wm.lines.length * wm.size * (t.font.sc || 1) * 0.95;
+      const L = Math.max(90, Math.min(300, heroBot - crestTop - wmH * 0.55));
+      taCrest(ctx, t, imgs[t.logo] || null, cx, crestTop, L, pals[i]);
+      let wy = heroBot - wmH + wm.size * (t.font.sc || 1) * 0.82;
+      wm.lines.forEach((l) => {
+        taDisplay(ctx, l, cx, wy, wm.size, tf, pals[i].ac, "center");
+        log.push({ side: i, role: "wordmark", text: l, size: wm.size });
+        wy += wm.size * (t.font.sc || 1) * 0.95;
+      });
+    });
+    const ay = crestTop + Math.min(300, heroH) * 0.45;
+    taArrow(ctx, TA_W / 2, ay - 22, 1, pals[1].ac);
+    taArrow(ctx, TA_W / 2, ay + 26, -1, pals[0].ac);
+    sides.forEach((s, i) => taPanel(ctx, log, i, s, plans[i], i * TA_W / 2, lay, pals[i], imgs, opts.crop || {}));
     ctx.restore();
     return {
       W: lay.W,
       H: lay.H,
-      tiers: order.map((i) => lay.plans[i].k),
+      tiers: plans.map((p) => p.k),
       teams: sides.map((s) => s.team.n),
       texts: log
     };
