@@ -7912,11 +7912,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const picks = picksFor(key).map((pk) => ({ kind: "pick", pick: pk }));
     const rows2 = players.concat(picks).map((a) => {
       const on = inTrade(side, a);
-      return `<div class="tb-row${on ? " on" : ""}" onclick="toggleAsset('${which}','${assetId(a)}')">
-      ${assetChipHTML(on ? stagedAsset(side, a) : a, { on, holder: key })}
-      <span class="tb-v">${assetValue(a)}</span>
-      ${a.kind === "pick" && on ? `<span class="tb-cond" onclick="event.stopPropagation();openCond('${which}','${assetId(a)}')">\u2301</span>` : ""}
-    </div>`;
+      return `<div class="tb-row${on ? " on" : ""}" data-aid="${escAttr(assetId(a))}" onclick="toggleAsset('${which}','${assetId(a)}')">${rowInner(key, side, which, a)}</div>`;
     }).join("");
     const cash = side.filter((a) => a.kind === "money").map((a) => `<div class="tb-row on" onclick="openMoney('${which}','${a.money.unit}')">
       ${assetChipHTML(a, { on: true, holder: key })}
@@ -7927,6 +7923,31 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="tb-money" onclick="openMoney('${which}')">+ Money</div>
     </div>
   </div>`;
+  }
+  function rowInner(key, side, which, a) {
+    const on = inTrade(side, a);
+    return `${assetChipHTML(on ? stagedAsset(side, a) : a, { on, holder: key })}
+      <span class="tb-v">${assetValue(a)}</span>
+      ${a.kind === "pick" && on ? `<span class="tb-cond" onclick="event.stopPropagation();openCond('${which}','${assetId(a)}')">\u2301</span>` : ""}`;
+  }
+  // A tap changes one row and the value bar, so only those are redrawn.
+  // Rebuilding both lists on every tap re-created every headshot <img>, and
+  // decoding forty full-size photos per tap is what took iPhone Safari down.
+  function patchTrade(which, a) {
+    const col = document.querySelectorAll("#tradeBody .tb-col")[which === "give" ? 0 : 1];
+    const row = col && Array.from(col.querySelectorAll(".tb-row[data-aid]")).find((r) => r.dataset.aid === assetId(a));
+    if (!row) return renderTrade();
+    const key = which === "give" ? TB.from : TB.to, side = which === "give" ? TB.give : TB.get;
+    row.classList.toggle("on", inTrade(side, a));
+    row.innerHTML = rowInner(key, side, which, a);
+    const ev = document.querySelector("#tradeBody .tb-eval");
+    if (!ev) return renderTrade();
+    const mineIsFrom = TB.from === MY_TEAM;
+    const outV = sideValue(mineIsFrom ? TB.give : TB.get), inV = sideValue(mineIsFrom ? TB.get : TB.give);
+    const v = verdictFor(inV, outV);
+    ev.className = `tb-eval ${v.tone}`;
+    ev.innerHTML = `<div class="tb-bar"><i style="width:${v.pct}%"></i></div>
+      <div class="tb-nums"><span>${outV}</span><b>${v.line}</b><span>${inV}</span></div>`;
   }
   function renderTrade() {
     if (!TB) return;
@@ -7976,15 +7997,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const side = which === "give" ? TB.give : TB.get;
     const i = side.findIndex((a2) => assetId(a2) === id);
     if (i > -1) {
-      side.splice(i, 1);
-      renderTrade();
+      const gone = side.splice(i, 1)[0];
+      patchTrade(which, gone);
       return;
     }
     const roster = rosterFor(key) || [];
     const all = roster.map((p) => ({ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: p.tm } })).concat(picksFor(key).map((pk) => ({ kind: "pick", pick: pk })));
     const a = all.find((x) => assetId(x) === id);
-    if (a) side.push(clone(a));
-    renderTrade();
+    if (!a) return;
+    side.push(clone(a));
+    patchTrade(which, a);
   }
   function cancelTrade() {
     TB = null;
