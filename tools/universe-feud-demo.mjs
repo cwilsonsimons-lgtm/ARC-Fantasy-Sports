@@ -38,7 +38,7 @@ let failed = 0;
 const expect = (ok, what) => { if (!ok) failed++; say(`   ${ok ? 'ok  ' : 'FAIL'} ${what}`); };
 const nm = id => M.wrestlerById(st, id).name;
 const side = sd => (sd.team ? M.teamById(st, sd.team).name : sd.wrestlers.map(nm).join(' & '));
-const line = m => `${m.sides.map(side).join(' vs ')}${m.titleId ? ` (${M.titleById(st, m.titleId).name})` : ''}${m.stip ? ` — ${m.stip}` : ''}`;
+const line = m => `${m.sides.map(side).join(' vs ')}${m.titleId ? ` (${M.titleById(st, m.titleId).name})` : ''}${m.contender ? ` (#1 contender, ${M.titleById(st, m.contender).name})` : ''}${m.stip ? ` — ${m.stip}` : ''}`;
 const who = m => m.sides.flatMap(sd => sd.wrestlers);
 
 // the stand-in CPU: the better record wins; a title changes hands when its challenger wins

@@ -65,6 +65,9 @@ function reignRow(st, r, lead) {
   </div>`;
 }
 
+// a #1 contender's match, as a chip
+const contenderChip = (st, m) => { const t = m.contender && M.titleById(st, m.contender); return t ? chip(`#1 contender · ${t.name}`, 'gold') : ''; };
+
 function resultRow(st, x, label) {
   const r = M.resultFor(x.match, x.side);
   return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res ${r}">${r}</span>
@@ -76,7 +79,7 @@ function bookingRow(st, x) {
   const t = x.match.titleId && M.titleById(st, x.match.titleId);
   return `<div class="uv-li" onclick="uvOpenEvent('${x.event.id}')"><span class="uv-res up">vs</span>
     <span>${vsLine(st, x.match)}<span class="uv-muted d">${esc(x.event.name)} · ${esc(eventWhen(st, x.event))}</span>
-      <span class="uv-chips">${kindChip(x.match)}${t ? chip(t.name, 'gold') : ''}${x.match.stip ? chip(x.match.stip) : ''}</span></span></div>`;
+      <span class="uv-chips">${kindChip(x.match)}${t ? chip(t.name, 'gold') : ''}${contenderChip(st, x.match)}${x.match.stip ? chip(x.match.stip) : ''}</span></span></div>`;
 }
 const upcoming = (st, list) => (list.length ? section('Booked', list.length) + list.map(x => bookingRow(st, x)).join('') : '');
 
@@ -153,7 +156,8 @@ function wrestlerPage(id) {
   const lastMove = moves[moves.length - 1];
   const refs = M.wrestlerRefs(st, id);
   const tags = [tag(w.origin), w.gender === 'female' ? tag('Women’s division') : tag('Men’s division'),
-    w.alignment ? tag(LABEL.alignment[w.alignment], w.alignment) : '', w.status !== 'active' ? tag(LABEL.status[w.status], 'inj') : ''].join('');
+    w.alignment ? tag(LABEL.alignment[w.alignment], w.alignment) : '', w.status !== 'active' ? tag(LABEL.status[w.status], 'inj') : '',
+    ...M.contenderFor(st, { type: 'wrestler', id }).map(t => tag(`#1 contender · ${t.name}`, 'ple'))].join('');
 
   const champRow = c => reignRow(st, c.reign, `${esc(c.title.name)}${c.team ? ` <span class="uv-muted">with ${esc(c.team.name)}</span>` : ''}`);
   const mateRow = m => {
@@ -302,7 +306,7 @@ function teamPage(id) {
           <div class="uv-prof-id"><div class="nm">${esc(t.name)}</div>
             <div class="show">${t.active ? shows.map(s => `<span class="uv-dot" style="--c:${showColor(st, s)}"></span>${esc(showName(st, s))}`).join(' &nbsp;')
               : `Disbanded ${stampLabel(st, lastLog.at)}`}</div>
-            <div class="tags">${t.active ? tag('Active') : tag('Disbanded', 'warn')}${shows.length > 1 && t.active ? tag('Split across shows', 'warn') : ''}</div></div></div>
+            <div class="tags">${t.active ? tag('Active') : tag('Disbanded', 'warn')}${shows.length > 1 && t.active ? tag('Split across shows', 'warn') : ''}${M.contenderFor(st, { type: 'team', id }).map(x => tag(`#1 contender · ${x.name}`, 'ple')).join('')}</div></div></div>
         <div class="uv-prof-acts">
           <div class="uv-btn pri" onclick="uvLineup('${id}')">${ICON.team}Line-up</div>
           <div class="uv-btn" onclick="uvRenameTeam('${id}')">${ICON.edit}Rename</div>
@@ -357,6 +361,7 @@ function titlePage(id) {
   const holders = new Set(reigns.map(r => `${r.holder.type}:${r.holder.id}`)).size;
   const kindWord = t.kind === 'tag' ? 'Champions' : 'Champion';
   const booked = titleBookings(st, id);
+  const next = M.numberOneContender(st, id);
 
   const historyRow = (r, n) => {
     const weeks = M.reignWeeks(st, r), def = M.defencesOf(st, r);
@@ -390,6 +395,9 @@ function titlePage(id) {
         ${numTile('Longest', longest ? M.reignWeeks(st, longest) : 0, longest ? M.holderName(st, longest.holder) : '—')}
         ${numTile('Title matches', countTitleMatches(st, id), booked.length ? `${booked.length} booked` : 'with a result')}
       </div>
+      ${next ? `<div class="uv-note uv-inset" data-contender="${next.holder.id}" onclick="uvOpenEvent('${next.event.id}')"><b>#1 contender: ${esc(M.holderName(st, next.holder))}</b>
+        — won the #1 contender’s match at ${esc(next.event.name)}. Next in line for a shot; it’s theirs until they’ve had it.</div>`
+        : t.active ? `<div class="uv-note uv-inset" data-contender="">No #1 contender right now. Book a #1 contender’s match (on the match form) — its winner is next in line.</div>` : ''}
       <p class="uv-p">A title that changes hands on a show is best recorded on that match’s result, so the reign is dated to it and the defences count.</p>
       ${M.titleChecks(st, id).map(x => `<div class="uv-note warn uv-inset" data-check="1" onclick="uvOpenEvent('${x.event.id}')">${esc(x.text)} Check that result.</div>`).join('')}
 

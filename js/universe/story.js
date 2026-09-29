@@ -466,14 +466,22 @@ export function uvHowStory() {
           on the show: in the What happened feed, on the timeline, on each wrestler’s page, and in their relationships. Nothing waits
           for approval.</p>
         <div class="uv-calc">
-          <div><span>Before a show</span><b>a ${K.confrontation.label.toLowerCase()}, a ${K.demand.label.toLowerCase()}, an ${K['open-challenge'].label.toLowerCase()},
+          <div><span>Before a show</span><b>a ${K.confrontation.label.toLowerCase()} (two tag teams at odds face off as teams), a
+            ${K.demand.label.toLowerCase()} (a #1 contender wants their match), an ${K['open-challenge'].label.toLowerCase()},
             a ${K.alliance.label.toLowerCase()}, team tension, a rivalry cooling, a turn — so they can shape the card you book</b></div>
-          <div><span>After the results</span><b>a ${K.attack.label.toLowerCase()} (sometimes stopped by a ${K.save.label.toLowerCase()}), a ${K.betrayal.label.toLowerCase()},
-            a rivalry boiling over, a team breakup, a handshake, a title challenge, an underdog on the rise, a turn</b></div>
+          <div><span>After the results</span><b>an ${K.interference.label.toLowerCase()} — a friend, tag partner or ally running in to help
+            someone win, or a rival costing someone the match — a ${K.attack.label.toLowerCase()} (partners joining in; sometimes stopped
+            by a ${K.save.label.toLowerCase()}), a ${K.betrayal.label.toLowerCase()}, a rivalry boiling over, a team breakup, a handshake,
+            a title challenge (a new #1 contender above all), an underdog on the rise, a turn</b></div>
         </div>
         <p class="uv-p"><b>Every event has a cause.</b> It comes from the record: personalities, relationships and grudges, goals, momentum,
           tag teams, champions, recent results and what’s already happened. The reasons stay with it — tap any event to see them, and
           what it changed.</p>
+        <p class="uv-p"><b>Personalities decide who does what.</b> The hot-headed attack and confront; the proud hate to lose; the cowardly
+          strike from outside the ring, bring their partners, and need the help; the opportunistic run in when there’s something in it;
+          the loyal stand by partners and make saves; the patient hold back; the respectful shake hands and stay out of other people’s
+          fights. Friends, tag partners and allies run in for each other and make the saves; rivals and grudges cost each other
+          matches and confront each other; teammates who stop trusting each other clash, and then split.</p>
         <p class="uv-p"><b>Occasional and varied.</b> Every chance starts small, and the pace scales it (Quiet ×${P.quiet.mult}, Normal ×1,
           Wild ×${P.wild.mult}). At this pace a show gets at most ${pace.pre} before and ${pace.post} after, and a week ${pace.perWeek} — never
           two of a kind on a show, or one wrestler twice. Anyone in something in the last ${R.recentWeeks} weeks is less likely to be in more,

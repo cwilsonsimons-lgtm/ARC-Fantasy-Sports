@@ -75,8 +75,8 @@ export function typeOf(m) {
   return { singles: 'singles', tag: 'tag', 'triple-threat': 'triple', 'fatal-4-way': 'fourway', handicap: 'handicap' }[k] || 'other';
 }
 const lineupKey = sides => sides.map(sd => [...sd.wrestlers].sort().join('+')).sort().join('|');
-/** The key a drafted match goes by: who's in it and the title at stake. */
-export const matchKey = m => `${m.titleId || '-'}:${lineupKey(m.sides)}`;
+/** The key a drafted match goes by: who's in it and what's at stake (a title, or a #1 contender's spot for one). */
+export const matchKey = m => `${m.titleId || (m.contender ? `#${m.contender}` : '-')}:${lineupKey(m.sides)}`;
 const inMatch = m => m.sides.flatMap(sd => sd.wrestlers);
 const isSingles = m => m.sides.length === 2 && m.sides.every(sd => sd.wrestlers.length === 1);
 
@@ -177,8 +177,8 @@ const solo = id => ({ team: null, wrestlers: [id] });
 const freeOf = (c, t, n) => t.members.filter(id => c.free.has(id)).slice(0, n);
 
 // an idea: a line-up, its stakes, its score and why
-function idea(c, kind, sides, { titleId = null, stip = '', notes = '', score, weight = 3, why = [], feud = null, events = [] }) {
-  const m = { sides: sides.map(sd => ({ team: sd.team || null, wrestlers: [...sd.wrestlers] })), titleId };
+function idea(c, kind, sides, { titleId = null, contender = null, stip = '', notes = '', score, weight = 3, why = [], feud = null, events = [] }) {
+  const m = { sides: sides.map(sd => ({ team: sd.team || null, wrestlers: [...sd.wrestlers] })), titleId, contender };
   const people = inMatch(m);
   const type = typeOf(m);
   let s = score;
@@ -199,7 +199,7 @@ function idea(c, kind, sides, { titleId = null, stip = '', notes = '', score, we
   const last = kind === 'rematch' ? null : c.lineups.get(lineupKey(m.sides));
   if (last != null && c.wk - last <= 1) s -= 2.5;
   else if (last != null && c.wk - last <= 2) s -= 1;
-  return { key: matchKey(m), kind, type, gender: genderOf(c, people), sides: m.sides, titleId, stip, notes,
+  return { key: matchKey(m), kind, type, gender: genderOf(c, people), sides: m.sides, titleId, contender, stip, notes,
     score: s, weight, why: [...why, ...extra].filter(Boolean), feud, people, events: [...new Set(events)] };
 }
 // every line-up played lately, by who was in it (title aside): the week it last happened
@@ -249,10 +249,17 @@ function contenders(c, t, champIds, champName) {
       return ids.length === 2 && ids.every(id => fits(W(c, id), t)) ? { ids, team: tm.id, name: tm.name, side: { team: tm.id, wrestlers: ids } } : null;
     }).filter(Boolean)
     : [...c.free].filter(id => !champIds.includes(id) && fits(W(c, id), t)).map(id => ({ ids: [id], team: null, name: nm(c, id), side: solo(id) }));
+  const nc = M.numberOneContender(st, t.id);
   return pool.map(k => {
     const reasons = [];
     let s = 0;
     const rk = k.team ? c.teamRank.get(k.team) : c.rank.get(k.ids[0]);
+    // whoever won the #1 contender's match has earned the next shot
+    if (nc &&(nc.holder.type === 'team' ? nc.holder.id === k.team : !k.team && nc.holder.id === k.ids[0])) {
+      s += 5;
+      reasons.push(`#1 contender — won the #1 contender’s match ${ago(c, weekNo(st, nc.event.at))}`);
+      k.earned = true;
+    }
     if (rk && rk.rank === 1) { s += 2; reasons.push(k.team ? '#1 in the tag team standings' : rankLine(c, k.ids[0])); }
     else if (rk && rk.rank <= 3) { s += 1; reasons.push(k.team ? `#${rk.rank} in the tag team standings` : rankLine(c, k.ids[0])); }
     const wins = k.ids.flatMap(x => champIds.flatMap(y => meetings(c, x, y, RULES.recentWeeks).filter(e => e.res === 'W')));
@@ -301,7 +308,7 @@ function contenders(c, t, champIds, champName) {
     if (last && last.m.outcome !== 'win') { s += 1; reasons.push(`no winner when they met for it ${ago(c, last.wk)}`); }
     else if (last && !last.m.sides[last.m.winner].wrestlers.some(id => k.ids.includes(id))) { s -= 2; reasons.push(`already had a shot ${ago(c, last.wk)}`); k.lostShot = last.wk; }
     return { ...k, s, reasons, events: k.events || [], hook: k.hook || '', feud: k.feud || null, lostShot: k.lostShot == null ? null : k.lostShot,
-      metLately: !!k.metLately };
+      metLately: !!k.metLately, earned: !!k.earned };
   }).sort((a, b) => b.s - a.s || a.name.localeCompare(b.name));
 }
 const caseFor = k => (k.reasons.length ? `${k.name}: ${k.reasons.slice(0, 3).join(', ')}` : `${k.name}: the best available contender`);
@@ -320,10 +327,12 @@ function titleIdeas(c) {
     const idle = titleIdle(c, t, reign);
     // anyone who lost a shot at it in the last two weeks waits their turn
     // ...and so does anyone who met the champion one on one last week: the feud builds another way first
-    const top = list.filter(k => k.s > -1 && !(k.lostShot != null && c.wk - k.lostShot <= 2) && !k.metLately);
+    const top = list.filter(k => k.s > -1 && !(k.lostShot != null && c.wk - k.lostShot <= 2) && (!k.metLately || k.earned));
+    // someone has already earned the next shot: no more #1 contender's matches until they've had it
+    const waiting = M.numberOneContender(st, t.id);
     if (here.length < need) {
       const absent = champIds.some(id => (W(c, id) || {}).status !== 'active' || c.out.has(id));
-      if (absent) contenderIdeas(c, t, top, out, `${champName} can’t defend tonight — the contenders settle who’s next`);
+      if (absent && !waiting) contenderIdeas(c, t, top, out, `${champName} can’t defend tonight — the contenders settle who’s next`);
       return;
     }
     const champSide = t.kind === 'tag' ? { team: reign.holder.id, wrestlers: here.slice(0, 2) } : solo(here[0]);
@@ -339,7 +348,8 @@ function titleIdeas(c) {
       const k = top[0];
       const stip = stipFor(c, 'title', Math.max(0, ...k.ids.flatMap(x => champIds.map(y => heatOf(c, x, y)))), `${t.id}:${k.ids.join('+')}`);
       out.push(idea(c, 'title', [champSide, k.side], { titleId: t.id, stip: stip.stip, score: base + 0.8 * k.s, weight,
-        why: [open ? `${champName} laid down an open challenge ${when(c, { ev: open.event, wk: open.wk })} — ${k.name} answers it` : k.hook || lead,
+        why: [open ? `${champName} laid down an open challenge ${when(c, { ev: open.event, wk: open.wk })} — ${k.name} answers it`
+          : k.earned ? `${k.name} earned the shot: ${k.reasons[0]}` : k.hook || lead,
           `Challenger ${caseFor(k)}`, k.hook ? lead : '', stip.why], events: [...k.events, ...(open ? [open.incident.id] : [])], feud: k.feud }));
     }
     if (t.kind === 'singles' && top[1] && top[1].s >= top[0].s - 1.5) {
@@ -347,21 +357,21 @@ function titleIdeas(c) {
         why: [`Two contenders with a claim to the ${t.name}`, caseFor(top[0]), caseFor(top[1])], events: [...top[0].events, ...top[1].events] }));
     }
     // the champion just defended: the contenders settle who's next
-    contenderIdeas(c, t, top, out, idle <= 1 ? `The ${t.name} was just defended — the contenders settle who’s next` : null);
+    if (!waiting) contenderIdeas(c, t, top, out, idle <= 1 ? `The ${t.name} was just defended — the contenders settle who’s next` : null);
   });
   return out;
 }
 
+// a #1 contender's match: its winner is next in line for the title
 function contenderIdeas(c, t, top, out, lead) {
-  const note = `#1 contender’s match for the ${t.name}`;
   if (top.length >= 2) {
     const [a, b] = top;
-    out.push(idea(c, 'contender', [a.side, b.side], { notes: note, score: 1.5 + 0.5 * (a.s + b.s) / 2 + (lead ? 1 : 0), weight: 5.5,
+    out.push(idea(c, 'contender', [a.side, b.side], { contender: t.id, score: 1.5 + 0.5 * (a.s + b.s) / 2 + (lead ? 1 : 0), weight: 5.5,
       why: [lead || `The two leading contenders for the ${t.name}`, caseFor(a), caseFor(b)], events: [...a.events, ...b.events] }));
   }
   if (t.kind === 'singles' && top.length >= 4) {
     const four = top.slice(0, 4);
-    out.push(idea(c, 'contender', four.map(k => k.side), { notes: note, score: 1 + 0.4 * four.reduce((n, k) => n + k.s, 0) / 4 + (lead ? 1 : 0), weight: 5.5,
+    out.push(idea(c, 'contender', four.map(k => k.side), { contender: t.id, score: 1 + 0.4 * four.reduce((n, k) => n + k.s, 0) / 4 + (lead ? 1 : 0), weight: 5.5,
       why: [lead || `Four contenders for the ${t.name}, one shot`, ...four.slice(0, 2).map(caseFor)] }));
   }
 }
@@ -874,20 +884,23 @@ function assemble(c, ideas, slots, counted, prefer = null) {
   const genders = M.GENDERS.map(g => [g, [...c.free].filter(id => (W(c, id) || {}).gender === g).length]).filter(([, n]) => n >= 2);
   const people = genders.reduce((n, [, k]) => n + k, 0) || 1;
   const total = counted.length + slots;
-  const count = { type: {}, gender: {}, feud: {}, titles: new Set() };
+  const count = { type: {}, gender: {}, feud: {}, titles: new Set(), contenders: new Set() };
   const note = x => {
     count.type[x.type] = (count.type[x.type] || 0) + 1;
     count.gender[x.gender] = (count.gender[x.gender] || 0) + 1;
     if (x.feud) count.feud[x.feud] = (count.feud[x.feud] || 0) + 1;
     if (x.titleId) count.titles.add(x.titleId);
+    if (x.contender) count.contenders.add(x.contender);
   };
-  counted.forEach(m => note({ type: typeOf(m), gender: genderOf(c, inMatch(m)), titleId: m.titleId, feud: null }));
+  counted.forEach(m => note({ type: typeOf(m), gender: genderOf(c, inMatch(m)), titleId: m.titleId, contender: m.contender, feud: null }));
   const cap = c.ple ? Infinity : c.settings.titles;
   const used = new Set();
   const picked = [];
   const rate = x => {
     if (picked.includes(x) || x.people.some(id => used.has(id) || !c.free.has(id)) || !types[x.type]) return null;
-    if (x.titleId && (count.titles.has(x.titleId) || count.titles.size >= cap)) return null;
+    if (x.titleId && (count.titles.has(x.titleId) || count.titles.size >= cap || count.contenders.has(x.titleId))) return null;
+    // one card never has both a title's match and a #1 contender's match for it
+    if (x.contender && (count.titles.has(x.contender) || count.contenders.has(x.contender))) return null;
     if (x.feud && (count.feud[x.feud] || 0) >= RULES.sameFeud) return null;
     if (x.kind === 'surprise' && picked.some(y => y.kind === 'surprise')) return null;
     let s = x.score + (draw('book', c.ev.id, c.nonce, x.key) - 0.5) * RULES.jitter;
@@ -944,7 +957,8 @@ function runningOrder(picked) {
 
 /** A drafted idea as the model takes it: a line-up, its stakes, and why. */
 export function toSpec(x) {
-  return { sides: x.sides, titleId: x.titleId, stip: x.stip, notes: x.notes, auto: { kind: x.kind, key: x.key, why: x.why.slice(0, 5), events: x.events.slice(0, 12) } };
+  return { sides: x.sides, titleId: x.titleId, contender: x.contender || null, stip: x.stip, notes: x.notes,
+    auto: { kind: x.kind, key: x.key, why: x.why.slice(0, 5), events: x.events.slice(0, 12) } };
 }
 
 /**
@@ -1031,6 +1045,14 @@ export function draftNotes(st, ev) {
     if (r && !dm.sides.some(sd => (r.holder.type === 'team' ? sd.team === r.holder.id : sd.wrestlers.includes(r.holder.id)))) {
       notes.push(`The ${t.name} ${r.holder.type === 'team' ? 'champions' : 'champion'}, ${M.holderName(st, r.holder)}, ${r.holder.type === 'team' ? 'aren’t' : 'isn’t'} in it`);
     }
+    const ct = dm.contender && M.titleById(st, dm.contender);
+    const cr = ct && M.currentReign(st, ct.id);
+    if (ct && !ct.active) notes.push(`The ${ct.name} is retired`);
+    if (cr && dm.sides.some(sd => (cr.holder.type === 'team' ? sd.team === cr.holder.id : sd.wrestlers.includes(cr.holder.id)))) {
+      notes.push(`${M.holderName(st, cr.holder)} ${cr.holder.type === 'team' ? 'hold' : 'holds'} the ${ct.name} now — a #1 contender’s match is for the challengers`);
+    }
+    const nc = ct && M.numberOneContender(st, ct.id);
+    if (nc) notes.push(`${M.holderName(st, nc.holder)} ${nc.holder.type === 'team' ? 'are' : 'is'} already #1 contender for the ${ct.name}`);
     const story = dm.auto ? storyState(st, dm.auto.events) : { gone: 0, edited: 0 };
     if (story.gone) notes.push(`The story event it followed has been undone`);
     else if (story.edited) notes.push(`The story event it followed has been edited since`);

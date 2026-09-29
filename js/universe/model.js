@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -678,6 +678,9 @@ export function titleRefs(st, id) {
   let matches = 0;
   eachMatch(st, m => { if (m.titleId === id) matches++; });
   if (matches) refs.push(matches === 1 ? 'a title match' : `${matches} title matches`);
+  let contenders = 0;
+  eachMatch(st, m => { if (m.contender === id) contenders++; });
+  if (contenders) refs.push(contenders === 1 ? 'a #1 contender’s match' : `${contenders} #1 contender’s matches`);
   if (st.events.some(e => e.incidents.some(x => x.title === id))) refs.push('an incident');
   return refs;
 }
@@ -702,6 +705,39 @@ const sameHolder = (a, b) => !!a && !!b && a.type === b.type && a.id === b.id;
 export function titlesHeldBy(st, holder) {
   return st.reigns.filter(r => r.end === null && sameHolder(r.holder, holder))
     .map(r => titleById(st, r.titleId));
+}
+/**
+ * Who's #1 contender for a title now: whoever won its latest #1 contender's
+ * match, until they've had their shot - a title match for it, played after,
+ * with them in it, whatever the result - or hold it. A draw or no contest names
+ * nobody, and leaves whoever was next in line there. { holder, event, match }
+ * or null.
+ */
+export function numberOneContender(st, titleId) {
+  const t = titleById(st, titleId);
+  if (!t) return null;
+  const order = [];
+  st.events.forEach(ev => ev.matches.forEach((m, i) => { if (m.status === 'played' && (m.contender === titleId || m.titleId === titleId)) order.push({ ev, m, i }); }));
+  order.sort((x, y) => compareStamps(st, x.ev.at, y.ev.at) || x.i - y.i);
+  const inIt = (m, h) => m.sides.some(sd => (h.type === 'team' ? sd.team === h.id : sd.wrestlers.includes(h.id)));
+  let cur = null;
+  order.forEach(({ ev, m }) => {
+    if (m.contender === titleId) {
+      if (m.outcome !== 'win') return;
+      const sd = m.sides[m.winner];
+      const holder = t.kind === 'tag' ? (sd.team ? { type: 'team', id: sd.team } : null) : (sd.wrestlers.length === 1 ? { type: 'wrestler', id: sd.wrestlers[0] } : null);
+      if (holder) cur = { holder, event: ev, match: m };
+    } else if (cur && inIt(m, cur.holder)) cur = null;                   // they've had their shot
+  });
+  if (!cur) return null;
+  const reign = currentReign(st, titleId);
+  if (reign && sameHolder(reign.holder, cur.holder)) return null;
+  if (cur.holder.type === 'team' ? !(teamById(st, cur.holder.id) || {}).active : !wrestlerById(st, cur.holder.id)) return null;
+  return cur;
+}
+/** The titles a holder ({ type, id }) is #1 contender for right now. */
+export function contenderFor(st, holder) {
+  return st.titles.filter(t => { const c = numberOneContender(st, t.id); return c && sameHolder(c.holder, holder); });
 }
 /** Titles a wrestler holds, directly or through a team: [{ title, team }]. */
 export function titlesOfWrestler(st, wrestlerId) {
@@ -1131,8 +1167,10 @@ export function eventsIn(st, seasonId) {
 // ---------------------------------------------------------------- the card: bookings and results
 //
 // A match is one record from the moment it's booked until long after its
-// result is in: { id, status, sides, titleId, stip, notes, outcome, winner,
-// finish, fall }. 'scheduled' means it's on the card and nothing about who
+// result is in: { id, status, sides, titleId, contender, stip, notes, outcome,
+// winner, finish, fall }. `contender` names the title a #1 contender's match
+// is for - its winner is next in line (numberOneContender) - and a match is
+// one or the other, never both. 'scheduled' means it's on the card and nothing about who
 // won exists yet; 'played' means the owner has entered what WWE 2K25
 // produced. It keeps its id and its place on the card throughout, so a
 // correction never rebuilds anything. Only played matches count - toward
@@ -1166,16 +1204,41 @@ function normalizeSides(st, sides) {
   });
 }
 
-// Who's in it and what's at stake - everything a booking has. `keepTitleId`
-// lets a correction to an old match keep a title that has since retired.
-function bookingFields(st, input, keepTitleId = null) {
+// Who's in it and what's at stake - everything a booking has. `keep` (the
+// match being changed) lets a correction to an old match keep a title that
+// has since retired.
+function bookingFields(st, input, keep = null) {
   const sides = normalizeSides(st, input.sides);
   const title = input.titleId ? must(titleById(st, input.titleId), 'championship', input.titleId) : null;
-  if (title && !title.active && title.id !== keepTitleId) fail(`The ${title.name} is retired.`);
+  if (title && !title.active && title.id !== (keep && keep.titleId)) fail(`The ${title.name} is retired.`);
+  const contender = input.contender ? must(titleById(st, input.contender), 'championship', input.contender) : null;
+  if (contender) {
+    if (title) fail('A match is either for a title or a #1 contender’s match for one — not both.');
+    if (!contender.active && contender.id !== (keep && keep.contender)) fail(`The ${contender.name} is retired.`);
+    if (contender.kind === 'tag' && sides.some(sd => !sd.team)) {
+      fail(`A #1 contender’s match for the ${contender.name} is team against team — every side wrestling as a tag team.`);
+    }
+    if (contender.kind !== 'tag' && sides.some(sd => sd.wrestlers.length !== 1)) {
+      fail(`A #1 contender’s match for the ${contender.name} is every one for themselves — one wrestler a side.`);
+    }
+  }
   const stip = cleanName(input.stip);
   if (stip.length > MAX_NAME) fail(`That stipulation is too long (${MAX_NAME} characters max).`);
   const notes = checkText(input.notes, 'Notes');
-  return { sides, title, stip, notes };
+  return { sides, title, contender, stip, notes };
+}
+// the champions of a title on an event's date (every holder that night)
+function championsOn(st, titleId, ev) {
+  return st.reigns.filter(r => r.titleId === titleId && compareStamps(st, r.start, ev.at) <= 0 && (!r.end || compareStamps(st, r.end, ev.at) >= 0));
+}
+// a #1 contender's match is for the challengers: nobody holding the title that night is in it
+function contenderCheck(st, ev, b) {
+  if (!b.contender) return;
+  championsOn(st, b.contender.id, ev).forEach(r => {
+    const ids = r.holder.type === 'team' ? (teamById(st, r.holder.id) || { members: [] }).members : [r.holder.id];
+    const inIt = b.sides.some(sd => (r.holder.type === 'team' && sd.team === r.holder.id) || ids.some(id => sd.wrestlers.includes(id)));
+    if (inIt) fail(`${holderName(st, r.holder)} ${r.holder.type === 'team' ? 'hold' : 'holds'} the ${b.contender.name} — a #1 contender’s match is for the challengers.`);
+  });
 }
 
 // What happened, checked against the sides it happened to. The outcome is
@@ -1214,7 +1277,7 @@ function checkFall(st, fall, sides, outcome, winner) {
   return { by, on };
 }
 
-const bookedRecord = b => ({ status: 'scheduled', sides: b.sides, titleId: b.title ? b.title.id : null,
+const bookedRecord = b => ({ status: 'scheduled', sides: b.sides, titleId: b.title ? b.title.id : null, contender: b.contender ? b.contender.id : null,
   stip: b.stip, notes: b.notes, outcome: null, winner: null, finish: null, fall: null });
 const playedRecord = (b, r) => ({ ...bookedRecord(b), status: 'played',
   outcome: r.outcome, winner: r.winner, finish: r.finish, fall: r.fall });
@@ -1222,6 +1285,7 @@ const playedRecord = (b, r) => ({ ...bookedRecord(b), status: 'played',
 const bookingInput = (m, input) => ({
   sides: has(input, 'sides') ? input.sides : m.sides,
   titleId: has(input, 'titleId') ? input.titleId : m.titleId,
+  contender: has(input, 'contender') ? input.contender : m.contender,
   stip: has(input, 'stip') ? input.stip : m.stip,
   notes: has(input, 'notes') ? input.notes : m.notes,
 });
@@ -1276,21 +1340,24 @@ function findMatch(st, eventId, matchId) {
 /** Put a match on an event's card: who's in it, what's at stake. The result comes later, from the game. */
 export function bookMatch(st, eventId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
-  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...bookedRecord(bookingFields(st, input)) };
+  const b = bookingFields(st, input);
+  contenderCheck(st, ev, b);
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...bookedRecord(b) };
   ev.matches.push(m);
   return m;
 }
 
 /** Change a booked match before it's played. A played match is corrected with updateMatch. */
 export function updateBooking(st, eventId, matchId, input = {}) {
-  const { m } = findMatch(st, eventId, matchId);
+  const { ev, m } = findMatch(st, eventId, matchId);
   if (m.status !== 'scheduled') fail('This match already has a result - correct the result instead.');
-  const b = bookingFields(st, bookingInput(m, input), m.titleId);
+  const b = bookingFields(st, bookingInput(m, input), m);
+  contenderCheck(st, ev, b);
   relegationPlan(st, null, m, b.sides, null);                       // a relegation or qualifying match keeps its pairing
   qualifierPlan(st, null, m, b.sides, null);
-  const before = JSON.stringify([m.sides, m.titleId, m.stip, m.notes]);
+  const before = JSON.stringify([m.sides, m.titleId, m.contender, m.stip, m.notes]);
   Object.assign(m, bookedRecord(b));
-  if (m.auto && JSON.stringify([m.sides, m.titleId, m.stip, m.notes]) !== before) m.auto.edited = true;   // the auto booker's, changed by the owner
+  if (m.auto && JSON.stringify([m.sides, m.titleId, m.contender, m.stip, m.notes]) !== before) m.auto.edited = true;   // the auto booker's, changed by the owner
   return m;
 }
 
@@ -1303,7 +1370,8 @@ export function updateBooking(st, eventId, matchId, input = {}) {
 export function enterResult(st, eventId, matchId, input = {}, opts = {}) {
   const { ev, m } = findMatch(st, eventId, matchId);
   if (m.status === 'played') fail('This match already has a result - correct it instead.');
-  const b = bookingFields(st, bookingInput(m, input), m.titleId);
+  const b = bookingFields(st, bookingInput(m, input), m);
+  contenderCheck(st, ev, b);
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
   const rel = relegationPlan(st, ev, m, b.sides, r);
@@ -1322,6 +1390,7 @@ export function enterResult(st, eventId, matchId, input = {}, opts = {}) {
 export function recordMatch(st, eventId, input = {}, opts = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   const b = bookingFields(st, input);
+  contenderCheck(st, ev, b);
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
   const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...playedRecord(b, r) };
@@ -1343,7 +1412,9 @@ export function updateMatch(st, eventId, matchId, input = {}, opts = {}) {
   const { ev, m } = findMatch(st, eventId, matchId);
   if (m.status !== 'played') fail("This match hasn't been played yet - enter its result instead.");
   const linked = st.reigns.find(r => r.matchId === matchId) || null;
-  const b = bookingFields(st, input, m.titleId);
+  // (a correction that doesn't mention the #1 contender's stakes keeps them)
+  const b = bookingFields(st, { ...input, contender: has(input, 'contender') ? input.contender : m.contender }, m);
+  contenderCheck(st, ev, b);
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, linked, b, r, opts.titleChange);
   const rel = relegationPlan(st, ev, m, b.sides, r);
@@ -1367,7 +1438,7 @@ export function clearResult(st, eventId, matchId) {
   const revert = linked ? removableReigns(st, [linked], 'this match') : null;
   const rel = relegationPlan(st, ev, m, m.sides, null);
   const qual = qualifierPlan(st, ev, m, m.sides, null);
-  Object.assign(m, bookedRecord({ sides: m.sides, title: titleById(st, m.titleId), stip: m.stip, notes: m.notes }));
+  Object.assign(m, bookedRecord({ sides: m.sides, title: titleById(st, m.titleId), contender: titleById(st, m.contender), stip: m.stip, notes: m.notes }));
   if (revert) revert();
   applyRelegation(st, ev, m, rel);
   applyQualifier(st, ev, m, qual);
@@ -1564,9 +1635,10 @@ function draftMatchOf(st, eventId, dmId) {
   return { ev, dm: must(ev.draft.matches.find(x => x.id === dmId), 'draft match', dmId) };
 }
 // a draft match's line-up and stakes, checked exactly as a booking is
-function draftFields(st, input) {
+function draftFields(st, input, ev = null) {
   const b = bookingFields(st, input);
-  return { sides: b.sides, titleId: b.title ? b.title.id : null, stip: b.stip, notes: b.notes };
+  if (ev) contenderCheck(st, ev, b);
+  return { sides: b.sides, titleId: b.title ? b.title.id : null, contender: b.contender ? b.contender.id : null, stip: b.stip, notes: b.notes };
 }
 // why the booker chose a match: its kind, a key naming who and what, a few short sentences, and
 // the story events behind it (ids - kept even if an event is undone later, so the draft can say so)
@@ -1578,7 +1650,7 @@ function autoFields(auto) {
   const events = [...new Set((Array.isArray(auto.events) ? auto.events : []).map(String).filter(x => /^[a-z][a-z0-9-]{0,39}$/i.test(x)))].slice(0, MAX_EVENTS);
   return { kind, key: String(auto.key || '').slice(0, 400), why, events, edited: !!auto.edited };
 }
-const lineupOf = dm => JSON.stringify([dm.sides, dm.titleId, dm.stip, dm.notes]);
+const lineupOf = dm => JSON.stringify([dm.sides, dm.titleId, dm.contender, dm.stip, dm.notes]);
 // a drafted match the owner took off or drew again isn't offered again on this draft
 function pass(d, dm) {
   if (!dm.auto || !dm.auto.key || d.passed.includes(dm.auto.key)) return;
@@ -1611,7 +1683,7 @@ export function setDraft(st, eventId, list = [], { nonce = 0, seen = null, playe
       kept.add(dm.id);
       return dm;
     }
-    return { ...draftFields(st, x || {}), auto: autoFields(x && x.auto) };
+    return { ...draftFields(st, x || {}, ev), auto: autoFields(x && x.auto) };
   });
   const known = Array.isArray(seen) ? [...new Set(seen.map(String))].slice(0, MAX_SEEN) : null;
   const count = played == null ? null : Number(played);
@@ -1627,14 +1699,14 @@ export function setDraft(st, eventId, list = [], { nonce = 0, seen = null, playe
 export function addDraftMatch(st, eventId, input = {}) {
   const ev = draftEvent(st, eventId);
   if (ev.draft.matches.length >= MAX_DRAFT) fail(`A draft card holds at most ${MAX_DRAFT} matches.`);
-  const dm = { id: newId(st, 'dm'), ...draftFields(st, input), auto: null };
+  const dm = { id: newId(st, 'dm'), ...draftFields(st, input, ev), auto: null };
   ev.draft.matches.push(dm);
   return dm;
 }
 /** Change a draft match - who's in it, the title, the stipulation, the notes. A drafted one is marked as changed by the owner. */
 export function editDraftMatch(st, eventId, dmId, input = {}) {
-  const { dm } = draftMatchOf(st, eventId, dmId);
-  const f = draftFields(st, bookingInput(dm, input));
+  const { ev, dm } = draftMatchOf(st, eventId, dmId);
+  const f = draftFields(st, bookingInput(dm, input), ev);
   const before = lineupOf(dm);
   Object.assign(dm, f);
   if (dm.auto && lineupOf(dm) !== before) dm.auto.edited = true;
@@ -1643,7 +1715,7 @@ export function editDraftMatch(st, eventId, dmId, input = {}) {
 /** Swap one draft match for another the booker drew, in the same place. The one it replaces isn't offered again on this draft. */
 export function redrawDraftMatch(st, eventId, dmId, input = {}) {
   const { ev, dm } = draftMatchOf(st, eventId, dmId);
-  const f = { ...draftFields(st, input), auto: autoFields(input.auto) };
+  const f = { ...draftFields(st, input, ev), auto: autoFields(input.auto) };
   if (!f.auto) fail('A match drawn again comes from the auto booker.');
   pass(ev.draft, dm);
   const next = { id: newId(st, 'dm'), ...f };
@@ -1688,7 +1760,7 @@ export function bookDraft(st, eventId) {
   const d = ev.draft;
   if (!d.matches.length) fail('The draft is empty — add a match, or draw the card again.');
   const checked = d.matches.map((dm, i) => {
-    try { return bookingFields(st, dm); } catch (e) {
+    try { const b = bookingFields(st, dm); contenderCheck(st, ev, b); return b; } catch (e) {
       if (e instanceof UniverseError) fail(`Match ${i + 1} on the draft: ${e.message}`);
       throw e;
     }
@@ -1709,6 +1781,7 @@ function scrubDrafts(st, { wrestler = null, keep = null, team = null, title = nu
     if (wrestler) d.out = [...new Set(d.out.map(id => (id === wrestler ? keep : id)).filter(Boolean))];
     d.matches = d.matches.filter(dm => {
       if (title && dm.titleId === title) dm.titleId = null;
+      if (title && dm.contender === title) dm.contender = null;
       const seen = new Set();
       dm.sides = dm.sides.map(sd => {
         const wrestlers = sd.wrestlers.map(id => (id === wrestler ? keep : id)).filter(id => id && !seen.has(id) && seen.add(id));
@@ -3712,6 +3785,12 @@ export function migrate(raw) {
     (Array.isArray(st.relEdits) ? st.relEdits : []).forEach(e => { if (e && typeof e === 'object') e.teams = false; });
     st.version = 12;
   }
+  if (st.version === 12) {
+    // v13: #1 contender's matches. Nothing before was one.
+    st.events.forEach(e => [...(Array.isArray(e.matches) ? e.matches : []), ...(e.draft && Array.isArray(e.draft.matches) ? e.draft.matches : [])]
+      .forEach(m => { if (m && typeof m === 'object') m.contender = null; }));
+    st.version = 13;
+  }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();
   st.events.forEach(e => {
@@ -3976,6 +4055,8 @@ export function validate(st) {
     // who's in a match (or a draft of one) and what's at stake
     const lineup = (m, where) => {
       if (m.titleId && !titleById(st, m.titleId)) bad.push(`${where} is for a title that doesn't exist.`);
+      if (m.contender !== null && !titleById(st, m.contender)) bad.push(`${where} is a #1 contender’s match for a title that doesn't exist.`);
+      if (m.titleId && m.contender) bad.push(`${where} is both a title match and a #1 contender’s match.`);
       const sides = Array.isArray(m.sides) ? m.sides : [];
       if (sides.length < 2) bad.push(`${where} has fewer than two sides.`);
       const seen = new Set();

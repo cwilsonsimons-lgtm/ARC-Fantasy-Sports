@@ -13,6 +13,9 @@
 //                 Hot-headed: 2 times. Patient: 4.
 //   Title defeat  losing a title to someone in a match - a grudge against the
 //                 new champion (ambitious: 2 heat), and they're rivals.
+//   #1 contender  losing a #1 contender's match - the same as losing a title:
+//                 a grudge against whoever won it (ambitious: 2 heat), and
+//                 they're rivals.
 //   Betrayal      a grudge against the betrayer, 2 heat (loyal: 3); any
 //                 friendship or alliance between them ends.
 //   Interference  a grudge against whoever interfered against them; whoever
@@ -50,7 +53,8 @@
 // both are on their teams: "through their teams". Between two teams:
 //   Losses        a team losing 3 times running to the same team, as teams - a
 //                 grudge against them.
-//   Title defeat  a tag title lost to another team - a grudge, and rivals.
+//   Title defeat  a tag title lost to another team - a grudge, and rivals; the
+//                 same for a #1 contender's match for a tag title.
 //   Story         an attack, an interference or a betrayal by a member of one
 //                 team on a member of another - a grudge; a brawl - grudges
 //                 and rivals; a confrontation or challenge - rivals; a save or
@@ -260,6 +264,24 @@ export function relationships(st) {
             tauto('grudge', prev.holder.id, wt, 'raise', 1, cause);
             tauto('rivals', prev.holder.id, wt, 'raise', 1, cause);
           }
+        }
+        // a #1 contender's match: losing it is like losing a title - to whoever is next in line now
+        if (m.contender) {
+          const wt = m.sides[m.winner].team;
+          m.sides.forEach((sd, i) => {
+            if (i === m.winner) return;
+            sd.wrestlers.forEach(l => W.forEach(w => {
+              const cause = { ...base, key: `contender:${m.id}:${l}>${w}`, type: 'contender', loser: l, winner: w, title: m.contender };
+              auto('grudge', l, w, 'raise', has(l, 'ambitious', ev.at) ? 2 : 1, cause);
+              auto('rivals', l, w, 'raise', 1, { ...cause, key: `contender:${m.id}:${pairOf(l, w)}` });
+              distrust(l, w, 1, cause);
+            }));
+            if (sd.team && wt && sd.team !== wt) {
+              const cause = { ...base, key: `teamcontender:${m.id}:${sd.team}>${wt}`, type: 'team-contender', loser: sd.team, winner: wt, title: m.contender };
+              tauto('grudge', sd.team, wt, 'raise', 1, cause);
+              tauto('rivals', sd.team, wt, 'raise', 1, cause);
+            }
+          });
         }
         // teams, as teams: a losing run against the same team
         const WT = m.sides[m.winner].team;
@@ -521,6 +543,7 @@ export function entryText(st, e) {
     case 'reunited': cause = `${(teamById(st, c.team) || { name: 'Their team' }).name} reunited`; break;
     case 'losses': cause = `${nm(st, c.loser)} lost to ${nm(st, c.winner)} for the ${nth(c.n)} time running at ${at(st, c.event)}`; break;
     case 'title': cause = `${nm(st, c.loser)} lost the ${(titleById(st, c.title) || { name: 'title' }).name} to ${nm(st, c.winner)} at ${at(st, c.event)}`; break;
+    case 'contender': cause = `${nm(st, c.loser)} lost the #1 contender’s match for the ${(titleById(st, c.title) || { name: 'title' }).name} to ${nm(st, c.winner)} at ${at(st, c.event)}`; break;
     case 'betrayal': cause = `${nm(st, c.by)} betrayed ${nm(st, c.on)} at ${at(st, c.event)}`; break;
     case 'interference': cause = `${nm(st, c.by)} interfered against ${nm(st, c.on)} at ${at(st, c.event)}`; break;
     case 'attack': cause = `${nm(st, c.by)} attacked ${nm(st, c.on)} at ${at(st, c.event)}`; break;
@@ -568,6 +591,7 @@ export function teamEntryText(st, e) {
   switch (c.type) {
     case 'team-losses': cause = `${tn(st, c.loser)} lost to ${tn(st, c.winner)} for the ${nth(c.n)} time running at ${at(st, c.event)}`; break;
     case 'team-title': cause = `${tn(st, c.loser)} lost the ${(titleById(st, c.title) || { name: 'title' }).name} to ${tn(st, c.winner)} at ${at(st, c.event)}`; break;
+    case 'team-contender': cause = `${tn(st, c.loser)} lost the #1 contender’s match for the ${(titleById(st, c.title) || { name: 'title' }).name} to ${tn(st, c.winner)} at ${at(st, c.event)}`; break;
     case 'attack': cause = `${who(c.by, c.byTeam)} attacked ${who(c.on, c.onTeam)} at ${at(st, c.event)}`; break;
     case 'interference': cause = `${who(c.by, c.byTeam)} interfered against ${who(c.on, c.onTeam)} at ${at(st, c.event)}`; break;
     case 'betrayal': cause = `${who(c.by, c.byTeam)} betrayed ${who(c.on, c.onTeam)} at ${at(st, c.event)}`; break;

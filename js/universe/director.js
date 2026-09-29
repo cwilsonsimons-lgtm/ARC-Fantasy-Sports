@@ -4,10 +4,13 @@
 // director fills in the rest of the story, as canon, with no approval step.
 // Before a show (once it's the next one up) it can have wrestlers confront
 // each other, demand a title shot, lay down an open challenge, join forces,
-// argue with a partner, let a rivalry cool, or turn. After the results it can
-// have a loser attack the winner (and someone make the save), a partner turn
-// traitor, a rivalry boil over, a team split, a rival shake hands, someone
-// step up to a champion, or an underdog's run get noticed.
+// argue with a partner, let a rivalry cool, or turn - and tag teams at odds
+// face off. After the results it can have someone run in (a friend, partner
+// or ally helping them win; a rival costing someone the match), a loser attack
+// the winner (their partners joining in, and someone make the save), a
+// partner turn traitor, a rivalry boil over, a team split, a rival shake
+// hands, someone step up to a champion - a new #1 contender first of all - or
+// an underdog's run get noticed.
 //
 // Everything comes from the record: personalities, relationships, goals,
 // momentum, champions, teams, recent results and what has already happened.
@@ -39,6 +42,7 @@ export const PACE = {
 };
 export const KIND = {
   attack: { label: 'Post-match attack', phase: 'post', base: 0.02 },
+  interference: { label: 'Interference', phase: 'post', base: 0.02 },
   save: { label: 'Surprise save', phase: 'post', base: 0.35 },
   betrayal: { label: 'Betrayal', phase: 'post', base: 0.25, spacing: 3 },
   brawl: { label: 'Rivalry escalates', phase: 'post', base: 0.012 },
@@ -257,6 +261,7 @@ function attacks(c) {
         if (h) why(cand, 1 + 0.7 * h, `${L} holds a grudge against ${V} (heat ${h})`);
         if (Ws.some(w => rel(c, 'rivals', l, w))) why(cand, 1.4, `${L} and ${V} are rivals`);
         if (reign) why(cand, 2.5, `${L} just lost the ${M.titleById(c.st, reign.titleId).name}`);
+        else if (m.contender) why(cand, 1.8, `${L} just lost a #1 contender’s match for the ${(M.titleById(c.st, m.contender) || { name: 'title' }).name}`);
         const n = lossesTo(c, l, Ws);
         if (n >= 2) why(cand, 1 + 0.35 * n, `${L} has lost ${n} straight to ${V}`);
         if (Ws.some(w => between(c, l, w, ['confrontation'], 1))) why(cand, 1.5, `They'd already confronted each other before the show`);
@@ -264,12 +269,97 @@ function attacks(c) {
         outOfNowhere(cand);
         if (Ws.some(w => rel(c, 'friends', l, w))) why(cand, 0.15, `Less likely: ${L} and ${V} are friends`);
         else if (Ws.some(w => rel(c, 'allies', l, w))) why(cand, 0.4, `Less likely: ${L} and ${V} are allies`);
-        cand.plan = { incidents: [{ kind: 'attack', by: [l], on: [...Ws], match: m.id }] };
+        // partners join in: whoever lost alongside them, or a teammate who'd stand with them
+        const backup = backupFor(c, l, Ws, m);
+        if (backup.length) {
+          why(cand, has(c, l, 'cowardly') ? 1.4 : 1.15, `${names(c, backup.map(b => b.id))} ${backup.length > 1 ? 'join' : 'joins'} in — ${backup.map(b => b.why).join('; ')}`);
+          cand.people.push(...backup.map(b => b.id));
+        }
+        cand.plan = { incidents: [{ kind: 'attack', by: [l, ...backup.map(b => b.id)], on: [...Ws], match: m.id }] };
         cand.basis = { match: m.id, winners: Ws };
         if (!freshness(c, cand)) return;
         cand.extra = saverFor(c, l, Ws, m.id);
         best.push(finish(c, cand, KIND.attack.base));
       });
+    });
+    const top = best.sort((a, b) => b.chance - a.chance)[0];
+    if (top) out.push(top);
+  });
+  return out;
+}
+
+// who joins an attack: a partner who lost alongside them, or a teammate - loyal, or backing up a coward -
+// never anyone close to the ones attacked, and never the respectful
+function backupFor(c, attacker, victims, m) {
+  const out = [];
+  const lostWith = m.sides.find(sd => sd.wrestlers.includes(attacker)).wrestlers;
+  const close = z => victims.some(v => rel(c, 'friends', z, v) || rel(c, 'allies', z, v) || teamOf(c, z, v));
+  c.around.filter(z => z.status === 'active' && z.id !== attacker && !victims.includes(z.id)).forEach(z => {
+    if (has(c, z.id, 'respectful') || close(z.id)) return;
+    const team = teamOf(c, attacker, z.id);
+    const ally = rel(c, 'allies', attacker, z.id);
+    if (lostWith.includes(z.id)) {
+      if (team || (ally && ally.level >= 2)) out.push({ id: z.id, why: `${z.name} lost alongside ${nm(c, attacker)}${team ? `, their partner in ${team.name}` : ''}` });
+      return;
+    }
+    if (!team || m.sides.some(sd => sd.wrestlers.includes(z.id))) return;
+    if (has(c, z.id, 'loyal')) out.push({ id: z.id, why: `${z.name} is loyal to ${nm(c, attacker)}, their partner in ${team.name}` });
+    else if (has(c, attacker, 'cowardly')) out.push({ id: z.id, why: `${nm(c, attacker)} is cowardly and brings ${team.name} backup` });
+    else if (team.members.length >= 3) out.push({ id: z.id, why: `${team.name} stick together` });
+  });
+  return out.slice(0, 2);
+}
+
+// someone not in the match gets involved: a friend, partner or ally helps them win, or a rival costs someone the match
+function interferences(c) {
+  const out = [];
+  c.tonight.forEach(m => {
+    if (m.outcome !== 'win') return;
+    const Ws = winnersOf(m);
+    const inMatch = new Set(m.sides.flatMap(sd => sd.wrestlers));
+    const losers = m.sides.filter((_, i) => i !== m.winner).flatMap(sd => sd.wrestlers);
+    const reign = c.st.reigns.find(r => r.matchId === m.id);
+    const best = [];
+    c.around.filter(z => z.status === 'active' && !inMatch.has(z.id)).forEach(z => {
+      if (losers.some(y => rel(c, 'friends', z.id, y) || rel(c, 'allies', z.id, y) || teamOf(c, z.id, y))) return;   // never against their own
+      const Z = z.name;
+      const bonds = [], helped = [];
+      let w = 0;
+      Ws.forEach(x => {
+        const X = nm(c, x), team = teamOf(c, z.id, x), ally = rel(c, 'allies', z.id, x);
+        if (rel(c, 'friends', z.id, x)) { w += 2.5; bonds.push(`${Z} and ${X} are friends`); }
+        else if (team) { w += 2.2; bonds.push(`${Z} is in ${team.name} with ${X}`); }
+        else if (ally) { w += 1 + 0.4 * ally.level; bonds.push(`${Z} and ${X} are allies${ally.via ? ` ${RL.viaText(c.st, ally)}` : ''}`); }
+        else return;
+        helped.push(x);
+      });
+      const against = losers.filter(y => heat(c, z.id, y) || rel(c, 'rivals', z.id, y));
+      against.forEach(y => {
+        const h = heat(c, z.id, y);
+        w += h ? 0.8 + 0.6 * h : 0.8;
+        bonds.push(h ? `${Z} holds a grudge against ${nm(c, y)} (heat ${h})` : `${Z} and ${nm(c, y)} are rivals`);
+      });
+      if (!w) return;
+      const on = against.length ? against : m.fall && m.fall.on ? [m.fall.on] : losers;
+      const cand = candidate(c, 'interference', `interference:${z.id}:${m.id}`, [z.id, ...Ws, ...on]);
+      why(cand, 1 + 0.3 * w, bonds[0]);
+      bonds.slice(1).forEach(t => why(cand, 1, t));
+      why(cand, 1, `${helped.length ? `${names(c, helped)} beat` : `${names(c, on)} lost to`} ${helped.length ? names(c, on) : names(c, Ws)} at ${c.ev.name}`);
+      if (has(c, z.id, 'opportunistic')) why(cand, 1.5, `${Z} is opportunistic — ${helped.length ? 'and will want something for it' : 'and sees an opening'}`);
+      if (has(c, z.id, 'cowardly')) why(cand, 1.3, `${Z} is cowardly — happier striking from outside the ring`);
+      if (helped.length && has(c, z.id, 'loyal')) why(cand, 1.4, `${Z} is loyal`);
+      if (against.length && has(c, z.id, 'hot-headed')) why(cand, 1.3, `${Z} is hot-headed`);
+      if (align(c, z.id) === 'heel') why(cand, 1.3, `${Z} is a heel`);
+      const needy = Ws.find(x => has(c, x, 'cowardly'));
+      if (needy && helped.includes(needy)) why(cand, 1.4, `${nm(c, needy)} is cowardly — and needed the help`);
+      if (reign || m.titleId) why(cand, 1.6, `The ${M.titleById(c.st, m.titleId).name} was on the line`);
+      else if (m.contender) why(cand, 1.4, `A #1 contender’s match for the ${(M.titleById(c.st, m.contender) || { name: 'title' }).name}`);
+      if (has(c, z.id, 'patient')) why(cand, 0.7, `Less likely: ${Z} is patient`);
+      if (has(c, z.id, 'respectful')) why(cand, 0.3, `Less likely: ${Z} is respectful — it’s not their fight`);
+      cand.plan = { incidents: [{ kind: 'interference', by: [z.id], on, helped, match: m.id }] };
+      cand.basis = { match: m.id, winners: Ws };
+      if (!freshness(c, cand)) return;
+      best.push(finish(c, cand, KIND.interference.base));
     });
     const top = best.sort((a, b) => b.chance - a.chance)[0];
     if (top) out.push(top);
@@ -559,6 +649,7 @@ function contendersOf(c, t, reign, showId) {
       .map(tm => ({ ids: [...tm.members], name: tm.name, team: tm.id }))
     : st.wrestlers.filter(w => w.showId === showId && w.status === 'active' && !champs.includes(w.id) && fits(w, t))
       .map(w => ({ ids: [w.id], name: w.name }));
+  const nc = M.numberOneContender(st, t.id);
   return pool.map(k => {
     const reasons = [];
     let w = 1;
@@ -572,6 +663,11 @@ function contendersOf(c, t, reign, showId) {
     const mo = momentumOf(st, lead, c.hist);
     if (mo.label === 'hot') { w += 2; reasons.push(`${k.name} is hot — ${mo.form.slice(-4)}`); }
     else if (mo.label === 'rising') { w += 1; reasons.push(`${k.name} is on the rise`); }
+    if (nc &&(nc.holder.type === 'team' ? nc.holder.id === k.team : k.ids.length === 1 && k.ids[0] === nc.holder.id)) {
+      w += 4;
+      reasons.unshift(`${k.name} won the #1 contender’s match at ${nc.event.name}`);
+      k.contender = nc;
+    }
     const lately = kind => c.incidents.some(x => x.incident.kind === kind && x.incident.by.some(id => k.ids.includes(id)) && c.wk - x.wk < RULES.repeatWeeks);
     if (lately('momentum')) { w += 1.5; reasons.push(`${k.name}'s run has everyone talking`); }
     if (lately('demand') || lately('open-challenge')) { w += 1.5; reasons.push(`${k.name} demanded an opportunity recently`); }
@@ -604,6 +700,7 @@ function challenges(c) {
     const quiet = lastTitleMatch == null ? c.wk - weekNo(st, reign.start) : c.wk - lastTitleMatch;
     if (quiet >= 4) why(cand, 1.5, `The ${t.name} hasn't been on the line in ${quiet} weeks`);
     pick.reasons.forEach(r => why(cand, 1, r));
+    if (pick.contender && pick.contender.event.id === c.ev.id) why(cand, 3, `${pick.name} just earned the shot`);
     why(cand, 1, `${pick.name} came up from ${contenders.length} possible challenger${contenders.length === 1 ? '' : 's'} — anyone eligible can, and the rankings don't decide it (${pct(pick.w / total)} of the draw)`);
     if (weekNo(st, reign.start) >= c.wk - 1) why(cand, 0.5, `Less likely: ${champName} only just won it`);
     cand.plan = { incidents: [{ kind: 'challenge', by: [...pick.ids], on: [...champs], title: t.id }] };
@@ -657,10 +754,11 @@ function confrontations(c) {
     const sa = m.sides.findIndex(sd => sd.wrestlers.includes(a)), sb = m.sides.findIndex(sd => sd.wrestlers.includes(b));
     return sa >= 0 && sb >= 0 && sa !== sb;
   });
+  const own = r => (!r ? 0 : r.via ? r.own || 0 : r.level);          // bad blood only through their teams: the teams face off instead
   ids.forEach((a, i) => ids.slice(i + 1).forEach(b => {
     const rv = rel(c, 'rivals', a, b), ha = heat(c, a, b), hb = heat(c, b, a);
     const bad = (rv ? rv.level : 0) + ha + hb;
-    if (!bad) return;
+    if (!bad || !(own(rv) + own(rel(c, 'grudge', a, b)) + own(rel(c, 'grudge', b, a)))) return;
     if (between(c, a, b, ['confrontation', 'brawl'], 2)) return;
     const [x, y] = ha >= hb ? [a, b] : [b, a];
     const cand = candidate(c, 'confrontation', `confrontation:${[a, b].sort().join('+')}`, [a, b]);
@@ -678,6 +776,38 @@ function confrontations(c) {
   return out;
 }
 
+// two tag teams at odds, both here, face off as teams
+function teamConfrontations(c) {
+  const out = [];
+  const here = new Set(c.around.filter(w => w.status === 'active').map(w => w.id));
+  const trel = (kind, x, y) => { const r = c.d.teams.get(RL.teamRelKey(kind, x, y)); return r && r.active ? r : null; };
+  const seen = new Set();
+  [...c.d.teams.values()].filter(r => r.active && r.kind !== 'allies').forEach(r => {
+    const key = [r.a, r.b].sort().join('+');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const A = M.teamById(c.st, r.a), B = M.teamById(c.st, r.b);
+    if (!A || !B || !A.active || !B.active || ![A, B].every(t => t.members.every(id => here.has(id)))) return;
+    if (A.members.some(a => B.members.some(b => between(c, a, b, ['confrontation', 'brawl'], 2)))) return;
+    const ga = trel('grudge', A.id, B.id), gb = trel('grudge', B.id, A.id), rv = trel('rivals', A.id, B.id);
+    const [x, y] = (ga ? ga.level : 0) >= (gb ? gb.level : 0) ? [A, B] : [B, A];
+    const cand = candidate(c, 'confrontation', `confrontation:${key}`, [...A.members, ...B.members]);
+    [ga, gb, rv].filter(Boolean).forEach(z => why(cand, 1 + 0.4 * z.level, `${RL.teamRelText(c.st, z)} (heat ${z.level})`));
+    const facing = c.booked.find(m => {
+      const sa = m.sides.findIndex(sd => sd.wrestlers.some(id => A.members.includes(id))), sb = m.sides.findIndex(sd => sd.wrestlers.some(id => B.members.includes(id)));
+      return sa >= 0 && sb >= 0 && sa !== sb;
+    });
+    if (facing) why(cand, 2.5, `They're booked against each other at ${c.ev.name}`);
+    const hot = x.members.find(id => has(c, id, 'hot-headed'));
+    if (hot) why(cand, 1.3, `${nm(c, hot)} of ${x.name} is hot-headed`);
+    if (x.members.every(id => has(c, id, 'cowardly'))) why(cand, 0.5, `Less likely: ${x.name} are cowardly`);
+    cand.plan = { incidents: [{ kind: 'confrontation', by: [...x.members], on: [...y.members] }] };
+    if (!freshness(c, cand)) return;
+    out.push(finish(c, cand, KIND.confrontation.base));
+  });
+  return out;
+}
+
 // someone on a run - or hungry for gold - demands a shot at a title on their show
 function demands(c) {
   const st = c.st, out = [];
@@ -688,6 +818,7 @@ function demands(c) {
     if (c.ev.showId && showId !== c.ev.showId) return;
     const champs = holders(st, reign.holder);
     const best = [];
+    const nc = M.numberOneContender(st, t.id);
     c.around.filter(w => w.showId === showId && w.status === 'active' && !champs.includes(w.id) && fits(w, t)).forEach(w => {
       const mo = momentumOf(st, w.id, c.hist);
       const cand = candidate(c, 'demand', `demand:${w.id}:${t.id}`, [w.id, ...champs]);
@@ -696,7 +827,9 @@ function demands(c) {
       else if (mo.label === 'rising') why(cand, 2, `${w.name} is on the rise${mo.reasons[0] ? ` — ${mo.reasons[0]}` : ''}`);
       const beat = (c.hist.get(w.id) || []).some(e => c.wk - e.wk < 6 && e.res === 'W' && e.m.sides.some((sd, i) => i !== e.side && sd.wrestlers.some(id => champs.includes(id))));
       if (beat) why(cand, 2, `${w.name} has beaten ${M.holderName(st, reign.holder)} lately`);
-      if (!mo.label.match(/hot|rising/) && !beat && !ambitious) return;
+      const next = nc &&nc.holder.type === 'wrestler' && nc.holder.id === w.id;
+      if (next) why(cand, 3, `${w.name} is #1 contender — won the #1 contender’s match at ${nc.event.name} — and wants the match`);
+      if (!mo.label.match(/hot|rising/) && !beat && !ambitious && !next) return;
       if (ambitious) why(cand, 1.8, `${w.name} is ambitious`);
       if (w.traits.includes('proud')) why(cand, 1.3, `${w.name} is proud`);
       if (w.traits.includes('patient')) why(cand, 0.5, `Less likely: ${w.name} is patient`);
@@ -799,6 +932,23 @@ function coolings(c) {
 
 // ================================================================ a show, before or after
 
+// every possibility for a show's phase, with its plan, its reasons and its chance
+function possible(c) {
+  return c.phase === 'post'
+    ? [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)]
+    : [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
+}
+/**
+ * Everything the director would weigh around a show, before any draw: [{ kind,
+ * key, incidents, why, chance }] - what each would record, and why.
+ */
+export function possibilities(st, eventId, phase) {
+  const ev = M.eventById(st, eventId);
+  if (!ev) return [];
+  return possible(context(st, ev, phase, 0)).map(k => ({ kind: k.kind, key: k.key, incidents: k.plan.incidents, why: k.factors.map(f => f.text),
+    chance: k.chance, extra: k.extra }));
+}
+
 /**
  * What the director does around a show: `phase` 'pre' (before its matches) or
  * 'post' (after its results). `nonce` is 0 the first time, and counts up when
@@ -810,9 +960,7 @@ export function lookAt(st, eventId, phase, nonce = 0) {
   const ev = M.eventById(st, eventId);
   if (!ev) return { pool: 0, picked: [], considered: [], cap: 0 };
   const c = context(st, ev, phase, nonce);
-  const all = phase === 'post'
-    ? [...attacks(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)]
-    : [...confrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
+  const all = possible(c);
   // after an eventful episode of this show, the next one is calmer
   const prevEp = st.events.filter(e => e.showId === ev.showId && e.kind === ev.kind && M.compareStamps(st, e.at, ev.at) < 0)
     .sort((a, b) => M.compareStamps(st, b.at, a.at))[0];

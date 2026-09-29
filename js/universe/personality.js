@@ -699,6 +699,8 @@ export function uvHowRelations() {
           Hot-headed: ${RULES.streakHotHeaded}. Patient: ${RULES.streakPatient}. A win over them starts the count again.</b></div>
         <div><span>Title</span><b>losing a title to someone in a match: a grudge against the new champion (ambitious: heat 2), and
           they’re rivals</b></div>
+        <div><span>#1 contender</span><b>losing a #1 contender’s match: just like losing a title — a grudge against whoever won it
+          (ambitious: heat 2), and they’re rivals</b></div>
         <div><span>Betrayal</span><b>a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends</b></div>
         <div><span>Interference</span><b>a grudge against whoever interfered; whoever it helped becomes their ally</b></div>
         <div><span>Attack</span><b>a grudge against the attacker (hot-headed: heat 2)</b></div>
@@ -723,7 +725,8 @@ export function uvHowRelations() {
         stronger one of their own. An alliance doesn’t reach two members with a grudge between them.</p>
       <div class="uv-calc">
         <div><span>Losses</span><b>${RULES.teamStreak} straight losses to the same team, as teams: a grudge against them, or 1 more heat</b></div>
-        <div><span>Tag title</span><b>losing a tag title to another team: a grudge against them, and they’re rivals</b></div>
+        <div><span>Tag title</span><b>losing a tag title — or a #1 contender’s match for one — to another team: a grudge against them,
+          and they’re rivals</b></div>
         <div><span>Incidents</span><b>a member of one team attacking, interfering against or betraying a member of another: a grudge;
           a brawl: grudges and rivals; a confrontation or challenge: rivals; a save, an interference to help, or joining forces: allies;
           a truce: it all cools. An alliance between teams loses trust like one between two wrestlers</b></div>

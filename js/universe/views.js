@@ -407,7 +407,7 @@ function eventBlock(st, g) {
     const bits = [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(' · ');
     return `<div class="uv-hm" data-m="${m.id}" onclick="uvOpenEvent('${e.id}')"><span class="n">${x.n}</span>
       <div class="b"><div class="l">${matchLine(st, m)}</div>
-        <div class="uv-chips">${kindChip(m)}${t ? chip(won ? `${t.name} · new champion` : t.name, 'gold') : ''}${m.stip ? chip(m.stip) : ''}</div>
+        <div class="uv-chips">${kindChip(m)}${t ? chip(won ? `${t.name} · new champion` : t.name, 'gold') : ''}${m.contender && titleById(st, m.contender) ? chip(`#1 contender · ${titleById(st, m.contender).name}`, 'gold') : ''}${m.stip ? chip(m.stip) : ''}</div>
         ${bits ? `<div class="d">${bits}</div>` : ''}${m.notes ? `<div class="d nt">${esc(m.notes)}</div>` : ''}</div></div>`;
   }).join('');
   return `<div class="uv-hev" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">

@@ -85,7 +85,7 @@ function draftMatch(st, ev, dm, i, first, notes) {
   const move = d => `<div class="uv-ic mv" title="Move ${d < 0 ? 'up' : 'down'}" onclick="uvDraftMove('${ev.id}','${dm.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
   const why = a ? a.why : [];
   return `<div class="uv-mc draft${a ? '' : ' own'}" data-dm="${dm.id}">
-    <div class="uv-mc-top"><span class="n">${first + i + 1}</span>${kindChip(dm)}${title ? chip(title.name, 'gold') : ''}${dm.stip ? chip(dm.stip) : ''}
+    <div class="uv-mc-top"><span class="n">${first + i + 1}</span>${kindChip(dm)}${title ? chip(title.name, 'gold') : ''}${dm.contender && M.titleById(st, dm.contender) ? chip(`#1 contender · ${M.titleById(st, dm.contender).name}`, 'gold') : ''}${dm.stip ? chip(dm.stip) : ''}
       <span class="st">${a ? (a.edited ? 'Draft · changed' : 'Draft') : 'Draft · yours'}</span></div>
     <div class="uv-mc-body">${vsLine(st, dm)}</div>
     ${dm.notes ? `<div class="uv-mc-n">${esc(dm.notes)}</div>` : ''}
@@ -344,9 +344,11 @@ export function uvHowBooker() {
         arrivals from another show, and the calendar: a premium live event ahead, or tonight being one.</p>
       <p class="uv-p"><b>What it looks for.</b></p>
       <div class="uv-calc">
-        <div><b>Titles</b><span>the champion against the best contender: high in the standings, a recent win over the champion, a grudge,
-          after the title, hot. A title left alone for weeks is due; just defended, the contenders meet instead. At a premium live event,
-          every title with a contender. A vacant title: the top contenders meet for it.</span></div>
+        <div><b>Titles</b><span>the champion against the best contender — the #1 contender first, if someone has won a #1 contender’s
+          match and not had their shot yet; then high in the standings, a recent win over the champion, a grudge, after the title, hot.
+          A title left alone for weeks is due; just defended, the contenders meet in a #1 contender’s match instead (never while a #1
+          contender is still waiting). At a premium live event, every title with a contender. A vacant title: the top contenders meet
+          for it.</span></div>
         <div><b>Feuds</b><span>rivals face each other — or each other’s allies and tag partners, or meet in a tag match. A feud builds
           across shows: after a one-on-one meeting it goes another way, and with a premium live event ahead the singles match waits for
           it. A third meeting in a few weeks, or a heated one at a premium live event, gets a stipulation to settle it (if the show’s

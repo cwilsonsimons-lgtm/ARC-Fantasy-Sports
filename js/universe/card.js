@@ -13,7 +13,7 @@
 import * as M from './model.js';
 import {
   ICON, LABEL, chip, empty, esc, eventWhen, fallLine, field, isoText, kindChip, labelPairs, matchLine, options,
-  findable, select, showColor, showName, showPairs, teamOptions, titleOptions, vsLine, wrestlerOptions,
+  findable, select, showColor, showName, showPairs, sideName, teamOptions, titleOptions, vsLine, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
@@ -131,17 +131,21 @@ const downTo = (st, m) => showName(st, M.relegationTo(M.transitionById(st, m.rel
 function matchCard(st, ev, m, i) {
   const played = m.status === 'played';
   const title = m.titleId && M.titleById(st, m.titleId);
+  const cfor = m.contender && M.titleById(st, m.contender);
   const reign = played && st.reigns.find(r => r.matchId === m.id);
   const detail = played ? [m.finish && LABEL.finish[m.finish], fallLine(st, m)].filter(Boolean).join(' · ') : '';
   const rel = m.relegation && st.relegations.find(r => r.match === m.id);
   const qual = m.qualifier && st.eligibility.find(e => e.match === m.id && e.source === 'qualifier');
   const move = d => `<div class="uv-ic mv" title="Move ${d < 0 ? 'up' : 'down'}" onclick="uvMoveMatch('${ev.id}','${m.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
   return `<div class="uv-mc ${m.status}" data-m="${m.id}">
-    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.relegation ? chip('Relegation', 'bad') : ''}${m.qualifier ? chip('Qualifier', 'gold') : ''}${title ? chip(title.name, 'gold') : ''}${m.stip && !m.relegation && !m.qualifier ? chip(m.stip) : ''}
+    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.relegation ? chip('Relegation', 'bad') : ''}${m.qualifier ? chip('Qualifier', 'gold') : ''}${title ? chip(title.name, 'gold') : ''}${cfor ? chip(`#1 contender · ${cfor.name}`, 'gold') : ''}${m.stip && !m.relegation && !m.qualifier ? chip(m.stip) : ''}
       <span class="st">${played ? 'Result' : 'Booked'}</span></div>
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ''}
     ${reign ? `<div class="uv-mc-d uv-gold">New ${esc(title.name)} ${reign.holder.type === 'team' ? 'champions' : 'champion'}</div>` : ''}
+    ${cfor ? `<div class="uv-mc-d${played && m.outcome === 'win' ? ' uv-gold' : ''}">${played ? m.outcome === 'win'
+      ? `${esc(sideName(st, m.sides[m.winner]))} earned a shot at the ${esc(cfor.name)}` : 'No winner — nobody earned the shot'
+      : `The winner is next in line for the ${esc(cfor.name)}. Losing it counts like losing the title.`}</div>` : ''}
     ${rel ? `<div class="uv-mc-d bad">${esc(M.wrestlerById(st, rel.wrestler).name)} relegated to ${esc(showName(st, rel.to))}</div>` : ''}
     ${m.relegation && !played ? `<div class="uv-mc-d">Relegation match: the loser goes to ${esc(downTo(st, m))} when you save the result.</div>` : ''}
     ${qual ? `<div class="uv-mc-d uv-gold">${esc(M.wrestlerById(st, qual.wrestler).name)} is draft eligible</div>` : ''}
@@ -244,7 +248,7 @@ function openForm(mode, eventId, m, lineup = null, titleId = '') {
   md = {
     mode, eventId, matchId: m ? m.id : null,
     sides: m ? fromMatch(m) : lineup || [blankSide(), blankSide()],
-    titleId: (m && m.titleId) || titleId || '', stip: (m && m.stip) || '', notes: (m && m.notes) || '',
+    titleId: (m && m.titleId) || titleId || '', contender: (m && m.contender) || '', stip: (m && m.stip) || '', notes: (m && m.notes) || '',
     // a result is never pre-filled for a match that hasn't got one
     result: m && m.status === 'played' ? (m.outcome === 'win' ? String(m.winner) : m.outcome) : '',
     finish: (m && m.finish) || '', by: (m && m.fall && m.fall.by) || '', on: (m && m.fall && m.fall.on) || '',
@@ -312,6 +316,8 @@ function formSheet() {
   };
   const shape = md.sides.map(s => s.wrestlers.length).join(',');
   const title = md.titleId ? M.titleById(st, md.titleId) : null;
+  const cfor = md.contender ? M.titleById(st, md.contender) : null;
+  const next = cfor && M.numberOneContender(st, cfor.id);
   const cur = title && M.currentReign(st, title.id);
   const champIn = cur && md.sides.some(s => (cur.holder.type === 'team' ? s.team === cur.holder.id : s.wrestlers.includes(cur.holder.id)));
   const w = md.result !== '' && !isNaN(Number(md.result)) ? Number(md.result) : null;
@@ -371,14 +377,18 @@ function formSheet() {
       <div class="uv-add" onclick="uvMAddSide()">${ICON.plus}Add another side</div>
       <div class="uv-grid" style="margin-top:14px">
         ${field('Championship at stake', select(`uvMSet('titleId',this.value)`, titleOptions(st, md.titleId, 'None'), ' id="uvMTitle"'), 'wide')}
+        ${field('#1 contender’s match for', select(`uvMSet('contender',this.value)`, titleOptions(st, md.contender, 'Not a #1 contender’s match'), ' id="uvMContender"'), 'wide')}
         ${field('Stipulation', `<input id="uvMStip" class="uv-in" maxlength="60" list="uvStips" value="${esc(md.stip)}" placeholder="e.g. Ladder"
           oninput="uvMText('stip',this.value)"><datalist id="uvStips">${STIPULATIONS.map(x => `<option value="${esc(x)}">`).join('')}</datalist>`, 'wide')}
       </div>
+      ${cfor ? `<div class="fine">The winner becomes #1 contender for the ${esc(cfor.name)} — next in line for a shot. Losing it counts like losing
+        the title: a grudge against the winner, and they’re rivals.${next ? ` Right now it’s ${esc(M.holderName(st, next.holder))}, from ${esc(next.event.name)}.` : ''}
+        ${cfor.kind === 'tag' ? 'Every side wrestles as a tag team.' : 'One wrestler a side.'}</div>` : ''}
       ${title && cur && !champIn ? `<div class="fine">The current ${esc(title.name)} ${cur.holder.type === 'team' ? 'champions' : 'champion'}, ${esc(M.holderName(st, cur.holder))}, ${cur.holder.type === 'team' ? 'aren’t' : 'isn’t'} in this match.</div>` : ''}`;
 
   // entering a result: the match as booked on top, the result straight under it
   const summary = `<div class="uv-mc uv-mc-sum">
-      <div class="uv-mc-top">${kindChip({ sides: md.sides })}${title ? chip(title.name, 'gold') : ''}${md.stip.trim() ? chip(md.stip.trim()) : ''}</div>
+      <div class="uv-mc-top">${kindChip({ sides: md.sides })}${title ? chip(title.name, 'gold') : ''}${cfor ? chip(`#1 contender · ${cfor.name}`, 'gold') : ''}${md.stip.trim() ? chip(md.stip.trim()) : ''}</div>
       <div class="uv-mc-body">${md.sides.map((sd, i) => `<b>${esc(label(sd, i))}</b>`).join(' <span class="uv-muted">vs</span> ')}</div>
     </div>`;
 
@@ -400,7 +410,7 @@ function formSheet() {
         : md.lineup ? '' : `<div class="uv-add" onclick="uvMLineup()">${ICON.edit}Change the line-up, title or stipulation</div>`}
       <div style="margin-top:12px">${field(withResult ? 'What happened (optional)' : 'Notes (optional)',
         `<textarea id="uvMNotes" class="uv-in" rows="2" maxlength="2000" oninput="uvMText('notes',this.value)"
-          placeholder="${withResult ? 'e.g. Run-in, botched finish, crowd went wild' : 'e.g. #1 contender’s match'}">${esc(md.notes)}</textarea>`, 'wide')}</div>
+          placeholder="${withResult ? 'e.g. Run-in, botched finish, crowd went wild' : 'e.g. Rematch from Backlash'}">${esc(md.notes)}</textarea>`, 'wide')}</div>
       ${buttons}`,
   };
 }
@@ -432,6 +442,8 @@ export function uvMDropSide(i) { md.sides.splice(i, 1); resetResult(); paintShee
 export function uvMSet(k, v) {
   md[k] = v;
   if (k === 'titleId' && !v) md.titleChange = false;
+  if (k === 'titleId' && v) md.contender = '';                // one or the other: a title match, or a #1 contender's match for one
+  if (k === 'contender' && v) { md.titleId = ''; md.titleChange = false; }
   if (k === 'result') { md.by = ''; md.on = ''; if (isNaN(Number(v)) || v === '') md.titleChange = false; }
   paintSheet();
 }
@@ -450,7 +462,7 @@ export function uvMSave(thenResult) {
   const d = md;
   const booking = {
     sides: d.sides.map(s => ({ team: s.team || null, wrestlers: s.wrestlers.filter(Boolean) })),
-    titleId: d.titleId || null, stip: d.stip, notes: d.notes,
+    titleId: d.titleId || null, contender: d.contender || null, stip: d.stip, notes: d.notes,
   };
   if (d.mode === 'book') {
     const r = commit(st => M.bookMatch(st, d.eventId, booking), 'Match booked');
@@ -490,9 +502,11 @@ export function uvMSave(thenResult) {
     const saved = d.mode === 'result' ? 'Result saved' : 'Result corrected';
     const rel = st.relegations.find(x => x.match === m.id);
     const q = st.eligibility.find(x => x.match === m.id && x.source === 'qualifier');
+    const nc = m.contender && m.outcome === 'win' && M.numberOneContender(st, m.contender);
     const what = rel ? `${M.wrestlerById(st, rel.wrestler).name} relegated to ${showName(st, rel.to)}`
       : q ? `${M.wrestlerById(st, q.wrestler).name} is draft eligible`
-        : reign ? `${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}` : '';
+        : reign ? `${M.holderName(st, reign.holder)} ${reign.holder.type === 'team' ? 'hold' : 'holds'} the ${M.titleById(st, reign.titleId).name}`
+          : nc && nc.match.id === m.id ? `${M.holderName(st, nc.holder)} ${nc.holder.type === 'team' ? 'are' : 'is'} #1 contender for the ${M.titleById(st, m.contender).name}` : '';
     const news = uvRelNews(before).replace(/^ — /, '');
     const checks = m.titleId ? M.titleChecks(st, m.titleId).length : 0;
     const heads = checks ? `Check the ${M.titleById(st, m.titleId).name} history: ${checks} thing${checks === 1 ? ' doesn’t' : 's don’t'} add up` : '';

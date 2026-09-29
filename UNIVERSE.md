@@ -68,8 +68,8 @@ js/universe/
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       152 model tests     npm run test:universe
-tools/universe-check.mjs      218 browser checks  npm run check:universe
+tools/universe-test.mjs       160 model tests     npm run test:universe
+tools/universe-check.mjs      224 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
@@ -243,9 +243,10 @@ can be pointed out. A booked match keeps why the booker chose it, and the story
 events behind it, if it did.
 
 A **match** is one record from the moment it's booked: its sides — each a set
-of wrestlers, plus the tag team they wrestled as — the title on the line, a
-stipulation and notes. While it's `scheduled` it has no result at all. Entering
-the result makes it `played`: a win (with the winning side), a draw or a no
+of wrestlers, plus the tag team they wrestled as — the title on the line (or,
+for a **#1 contender's match**, the title it's for), a stipulation and notes.
+While it's `scheduled` it has no result at all. Entering the result makes it
+`played`: a win (with the winning side), a draw or a no
 contest, and optionally the finish and who scored or took the fall. Only
 played matches count — toward records, defences and history. Whether it's
 singles, a tag match, a triple threat, a handicap match and so on is worked out
@@ -290,9 +291,10 @@ The **Calendar** tab is where a week is run:
    own name, for one show or all of them, on any night (Saturday by default).
 2. On the show's page, **Book a match**: pick a shape (singles, tag team,
    triple threat, fatal 4-way, handicap, 3-on-3, triple threat tag, battle
-   royal) or build any line-up side by side, then the title on the line and a
-   stipulation. Booked matches can be edited, reordered or taken off the card,
-   and they count for nothing yet.
+   royal) or build any line-up side by side, then the title on the line — or
+   the title a **#1 contender's match** is for — and a stipulation. Booked
+   matches can be edited, reordered or taken off the card, and they count for
+   nothing yet.
 3. Watch the CPU play it in WWE 2K25, then **Enter result**: who won, a draw or
    a no contest; the finish and who took the fall if you want them; whether
    the title changed hands; and notes on what happened. The form shows the
@@ -301,6 +303,19 @@ The **Calendar** tab is where a week is run:
    the same form.)
 4. **Next week** moves the clock on. Browsing other weeks with the arrows, or
    from the season grid, never moves it.
+
+**#1 contender's matches.** Pick the title under **#1 contender's match for**
+on the match form (a match is for a title or a #1 contender's spot, never
+both). Its winner is the title's **#1 contender** — named on the title's page,
+on their own page and in the result's toast — until they've had their shot: a
+title match for it with them in it, win or lose, or winning it some other way.
+A later #1 contender's match names someone new; a draw or no contest names
+nobody, and whoever was next in line stays there. Nobody holding the title that
+night can be in one; for a singles title it's one wrestler a side, for a tag
+title every side wrestles as a tag team. Losing one counts like losing the
+title (Personalities and relationships), the auto booker gives the #1
+contender the next shot, and the story director has them step up to the
+champion.
 
 Each show's row, its page and the season grid say where its card stands:
 planned, booked, some results in, or complete. **Set dates** pins a season to
@@ -557,7 +572,7 @@ moved); and the calendar — a premium live event ahead, or tonight being one.
 
 | Idea | How it reads |
 |---|---|
-| Title match | the champion against the best contender. The story comes first in the case: a title demand or challenge, a title lost lately (they want it back), the story event between them ("Revenge: Gunther attacked Cody last week"), a run everyone's talking about; then high in the standings, a recent win over the champion or one of the top three, a grudge or rivalry, after that title, hot. A champion's open challenge gets answered. A title idle for weeks is due; one just defended — or a champion who can't be here — sends the top contenders into a #1 contender's match (in the notes). Whoever lost a shot at it, or met the champion one on one, in the last week or two waits their turn. A vacant title: the top contenders meet for it. |
+| Title match | the champion against the best contender. The story comes first in the case: a title demand or challenge, a title lost lately (they want it back), the story event between them ("Revenge: Gunther attacked Cody last week"), a run everyone's talking about; then high in the standings, a recent win over the champion or one of the top three, a grudge or rivalry, after that title, hot. A champion's open challenge gets answered. The #1 contender, if someone has won a #1 contender's match and not had their shot yet, comes first of all ("Seth earned the shot: #1 contender — won the #1 contender's match last week"). A title idle for weeks is due; one just defended — or a champion who can't be here — sends the top contenders into a #1 contender's match, never while a #1 contender is still waiting, and never on the same card as that title's match. Whoever lost a shot at it, or met the champion one on one, in the last week or two waits their turn. A vacant title: the top contenders meet for it. |
 | Feud | a storyline's next chapter (see Storylines): one on one, through someone who stands with the other, or a tag match with backup on both sides — whichever moves it on |
 | From the story | a save becomes a tag match — the one saved and the one who saved them against the attacker and whoever stands with the attacker (or the attacker outnumbered); new allies take on a common enemy; a team in trouble has to hold it together against another team |
 | Surprise | now and then, one pairing nobody would predict, with a hook (see Storylines) |
@@ -729,6 +744,7 @@ relationships work"), with traits counted as they were at the time:
 |---|---|
 | 3 straight losses to the same wrestler (no win over them in between) | a grudge against them, or 1 more heat. Hot-headed: 2 losses. Patient: 4 |
 | Losing a title to someone in a match | a grudge against the new champion (ambitious: heat 2), and they're rivals |
+| Losing a #1 contender's match | the same as losing a title: a grudge against whoever won it (ambitious: heat 2), and they're rivals — every loser, in a multi-person one |
 | A betrayal (logged on the show) | a grudge against the betrayer, heat 2 (loyal: 3); any friendship or alliance between them ends |
 | An interference | a grudge against whoever interfered; whoever it helped becomes their ally |
 | An attack | a grudge against the attacker (hot-headed: heat 2) |
@@ -755,7 +771,7 @@ are on hold; and a new member is in at once, someone who left is out.
 | Between two teams | What it does |
 |---|---|
 | 3 straight losses to the same team, as teams | a grudge against them, or 1 more heat |
-| A tag title lost to another team | a grudge against them, and they're rivals |
+| A tag title — or a #1 contender's match for one — lost to another team | a grudge against them, and they're rivals |
 | A member of one attacking, interfering against, betraying or walking out on a member of the other | a grudge against that team |
 | A brawl between members | a grudge each way, and they're rivals |
 | A confrontation, challenge or call-out between members | rivals |
@@ -814,8 +830,8 @@ and its own page). The toast says what happened.
 
 | Before a show | Comes from | Changes |
 |---|---|---|
-| Backstage confrontation | rivals and grudges on the show — much likelier if they're booked against each other | rivals |
-| Title demand | someone hot or rising, ambitious, or who has beaten the champion lately — however low they're ranked | rivals with the champion |
+| Backstage confrontation | rivals and grudges on the show — much likelier if they're booked against each other. Two tag teams at odds face off as teams (not pair by pair) | rivals |
+| Title demand | someone hot or rising, ambitious, or who has beaten the champion lately — however low they're ranked; a #1 contender wants their match | rivals with the champion |
 | Open challenge | a champion who's proud, a fighting face, or hasn't defended lately; or someone red-hot | nothing — who answers is yours |
 | New alliance | two with a grudge against the same person, or one who saved the other; never current partners | allies |
 | Rivalry cools | a rivalry nobody has touched for 6+ weeks — likelier across shows, or for the patient | cools a step |
@@ -823,14 +839,15 @@ and its own page). The toast says what happened.
 
 | After a show | Comes from | Changes |
 |---|---|---|
-| Post-match attack | a loser lashing out: hot-headed, proud, a heel, a grudge, a losing run against them, a title just lost, revenge | a grudge |
+| Interference | someone not in the match gets involved: a friend, tag partner or ally runs in to help them win (the loyal, the opportunistic, heels, and anyone helping a coward more so), or someone with a grudge or rivalry costs the loser the match (the hot-headed more so) — never against their own friend, ally or partner; the patient and the respectful mostly stay out of it | a grudge against whoever interfered; whoever it helped becomes their ally |
+| Post-match attack | a loser lashing out: hot-headed, proud, a heel, a grudge, a losing run against them, a title or #1 contender's match just lost, revenge. A partner who lost alongside them joins in, and so does a teammate who's loyal, backing up a coward, or in a faction — never the respectful | a grudge |
 | Surprise save | someone stopping that attack: a friend, ally, partner, or someone with their own grudge against the attacker | a grudge, allies |
 | Betrayal | a partner who has had enough — only after buildup (below); less likely while teammates still trust each other fully, likelier once that trust has slipped | a grudge; friendship and alliance end |
 | Rivalry escalates | rivals or grudges, especially after sharing a ring | grudges both ways, rivals |
 | Team tension | losing, a partner winning alone, opportunism, ambition, a grudge inside the team | weakens the alliance |
 | Team breakup | only after repeated tension (below); never champions | a walk-out; the team disbands |
 | Rivalry cools | a hard-fought match between rivals, a respectful or patient one among them | cools a step |
-| Title challenge | a challenger drawn from everyone eligible (below) | rivals |
+| Title challenge | a challenger drawn from everyone eligible (below) — a new #1 contender above all | rivals |
 | On the rise | an upset over a champion from low in the standings (or after a losing record), or a winning run after losing more than winning | nothing — it's remembered for title shots |
 | Turn | a record of it (below) | the alignment |
 
@@ -839,13 +856,25 @@ one ("Gunther lost to Akira Tozawa at Raw · Week 5"); tapping it shows them
 all, what it changed — each relationship, an alignment, a team — and its chance
 and draw.
 
+**Personalities and relationships decide who does what.** You don't have to
+record incidents: the director makes them from who everyone is. The
+hot-headed attack and confront; the proud hate to lose; the cowardly strike
+from outside the ring, bring their partners and need the help; the
+opportunistic run in when there's something in it; the loyal stand by partners
+and make saves; the patient hold back; the respectful shake hands and stay out
+of other people's fights. Friends, tag partners and allies (their own, or
+through their teams) run in for each other and make the saves; rivals and
+grudges cost each other matches and confront each other; tag teams at odds face
+off as teams; teammates who stop trusting each other clash, and then split.
+Anything you record yourself counts the same way.
+
 **Occasional and varied.** Every chance starts small, and the pace scales it.
 
 | Pace | Chances | At most, before a show / after / a week | Measured* |
 |---|---|---|---|
 | Quiet | ×0.5 | 1 / 1 / 2 | 0.4 a show (0.2–0.5) |
-| Normal | ×1 | 1 / 2 / 3 | 0.7 a show (0.6–0.9) |
-| Wild | ×2 | 2 / 3 / 6 | 1.1 a show (1.0–1.4) |
+| Normal | ×1 | 1 / 2 / 3 | 0.8 a show (0.6–1.0) |
+| Wild | ×2 | 2 / 3 / 6 | 1.2 a show (0.9–1.5) |
 
 \* `tools/universe-story-demo.mjs`, 12 weeks of Raw and SmackDown, 16 seeds.
 
@@ -1093,7 +1122,8 @@ had seen (one drafted before doesn't know, so it points out nothing).
 **Version 12** added relationships between tag teams: every relationship change
 in an older save is between two wrestlers. Teammates being allies at strength 3
 is worked out from the record, like every relationship, so an older save shows
-it at once.
+it at once. **Version 13** added #1 contender's matches: no match in an older save
+was one.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 

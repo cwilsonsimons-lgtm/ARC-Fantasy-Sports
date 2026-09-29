@@ -21,7 +21,7 @@ let failed = 0;
 const expect = (ok, what) => { if (!ok) failed++; say(`   ${ok ? 'ok  ' : 'FAIL'} ${what}`); };
 const nm = x => M.wrestlerById(st, x).name;
 const sideName = sd => (sd.team ? M.teamById(st, sd.team).name : sd.wrestlers.map(nm).join(' & '));
-const line = m => `${m.sides.map(sideName).join(' vs ')}${m.titleId ? ` — ${M.titleById(st, m.titleId).name}` : ''}${m.stip ? ` (${m.stip})` : ''}`;
+const line = m => `${m.sides.map(sideName).join(' vs ')}${m.titleId ? ` — ${M.titleById(st, m.titleId).name}` : ''}${m.contender ? ` — #1 contender’s match for the ${M.titleById(st, m.contender).name}` : ''}${m.stip ? ` (${m.stip})` : ''}`;
 const who = m => m.sides.flatMap(sd => sd.wrestlers);
 const printCard = (ev, matches) => matches.forEach((m, i) => {
   say(`   ${i + 1}. ${line(m)}${m.notes ? `  [${m.notes}]` : ''}`);
@@ -76,7 +76,7 @@ const draft = JSON.parse(JSON.stringify(d().matches));
 const made = M.bookDraft(st, raw.id);
 say('   booked:');
 made.forEach((m, i) => say(`   ${i + 1}. ${line(m)}${m.auto ? `${m.auto.edited ? ' (changed by the owner)' : ''} — ${m.auto.why[0]}` : ' (the owner’s own)'}`));
-expect(made.every((m, i) => JSON.stringify([m.sides, m.titleId, m.stip, m.notes]) === JSON.stringify([draft[i].sides, draft[i].titleId, draft[i].stip, draft[i].notes])),
+expect(made.every((m, i) => JSON.stringify([m.sides, m.titleId, m.contender, m.stip, m.notes]) === JSON.stringify([draft[i].sides, draft[i].titleId, draft[i].contender, draft[i].stip, draft[i].notes])),
   'the card is exactly the draft');
 expect(made.every(m => m.status === 'scheduled' && m.outcome === null && m.winner === null) && results() === played, 'no result anywhere — the game decides');
 expect(M.validate(st).length === 0, 'the universe is consistent (validate)');

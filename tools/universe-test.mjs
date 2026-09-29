@@ -3175,6 +3175,240 @@ test('momentum and goals come from the record', () => {
   assert.equal(DR.goalOf(st, J.id), 'Revenge on Nobody');
 });
 
+// ---------------------------------------------------------------- #1 contender's matches
+
+// Raw: Gunther holds the World title; Cody, Seth (ambitious), Jey, Drew, Sami; two tag teams and a tag title
+function contenderWorld() {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const [G, C, Se, J, D, Sa, K, F, Da] = ['Gunther', 'Cody', 'Seth', 'Jey', 'Drew', 'Sami', 'Kevin', 'Finn', 'Damian']
+    .map(n => M.addWrestler(st, { name: n, showId: 'raw', gender: 'male' }));
+  M.setTraits(st, Se.id, ['ambitious'], { since: 'start' });
+  const world = M.addTitle(st, { name: 'World Title', showId: 'raw', division: 'men' });
+  M.setChampion(st, world.id, { type: 'wrestler', id: G.id });
+  const ko = M.addTeam(st, { name: 'KO & Sami', members: [Sa.id, K.id] });
+  const jd = M.addTeam(st, { name: 'Judgment Day', members: [F.id, Da.id] });
+  const tag = M.addTitle(st, { name: 'Tag Titles', showId: 'raw', division: 'men', kind: 'tag' });
+  let week = 0;
+  const show = () => { M.setWeek(st, ++week); return M.addEvent(st, { showId: 'raw' }); };
+  return { st, G, C, Se, J, D, Sa, K, F, Da, world, ko, jd, tag, show };
+}
+const nextUp = (st, h) => (h ? M.holderName(st, h.holder) : null);
+
+test('a #1 contender’s match: what can be one', () => {
+  const { st, G, C, Se, J, Sa, K, F, Da, world, ko, jd, tag, show } = contenderWorld();
+  const ev = show();
+  const one = (a, b, extra = {}) => ({ sides: S([a.id, b.id]), contender: world.id, ...extra });
+  throwsUE(() => M.bookMatch(st, ev.id, one(C, Se, { titleId: world.id })), /either for a title or a #1 contender’s match/);
+  throwsUE(() => M.bookMatch(st, ev.id, one(G, C)), /Gunther holds the World Title — a #1 contender’s match is for the challengers/);
+  throwsUE(() => M.bookMatch(st, ev.id, { sides: S([[C.id, J.id], Se.id]), contender: world.id }), /one wrestler a side/);
+  throwsUE(() => M.bookMatch(st, ev.id, { sides: S([[Sa.id, K.id], [F.id, Da.id]]), contender: tag.id }), /every side wrestling as a tag team/);
+  throwsUE(() => M.bookMatch(st, ev.id, { sides: S([C.id, Se.id]), contender: 'nope' }), /championship/);
+  const m = M.bookMatch(st, ev.id, one(C, Se));
+  assert.deepEqual([m.contender, m.titleId], [world.id, null]);
+  const fours = M.bookMatch(st, ev.id, { sides: S([C.id, Se.id, J.id]), contender: world.id });
+  assert.equal(fours.sides.length, 3);
+  const teams = M.bookMatch(st, ev.id, { sides: [{ team: ko.id, wrestlers: ko.members }, { team: jd.id, wrestlers: jd.members }], contender: tag.id });
+  assert.equal(teams.contender, tag.id);
+  // edits keep it unless told otherwise; one or the other
+  M.updateBooking(st, ev.id, m.id, { stip: 'Ladder' });
+  assert.equal(M.eventById(st, ev.id).matches[0].contender, world.id);
+  throwsUE(() => M.updateBooking(st, ev.id, m.id, { titleId: world.id }), /not both/);
+  M.updateBooking(st, ev.id, m.id, { contender: null, titleId: world.id, sides: S([G.id, C.id]) });
+  assert.deepEqual([m.contender, m.titleId], [null, world.id]);
+  // a title with #1 contender's matches is part of the history
+  assert.ok(M.titleRefs(st, tag.id).includes('a #1 contender’s match'));
+  throwsUE(() => M.deleteTitle(st, tag.id), /can't be deleted/);
+  // retired: no new ones; an old one keeps its stakes when corrected
+  M.vacateTitle(st, world.id);
+  sound(st);
+});
+
+test('the #1 contender: the winner is next in line until they’ve had their shot', () => {
+  const { st, G, C, Se, J, D, world, show } = contenderWorld();
+  const ev = show();
+  assert.equal(M.numberOneContender(st, world.id), null);
+  const m1 = M.recordMatch(st, ev.id, { sides: S([C.id, Se.id]), contender: world.id, winner: 0 });
+  assert.equal(nextUp(st, M.numberOneContender(st, world.id)), 'Cody');
+  assert.deepEqual(M.contenderFor(st, { type: 'wrestler', id: C.id }).map(t => t.name), ['World Title']);
+  // a draw names nobody, and leaves Cody where he is
+  M.recordMatch(st, ev.id, { sides: S([J.id, D.id]), contender: world.id, outcome: 'draw' });
+  assert.equal(nextUp(st, M.numberOneContender(st, world.id)), 'Cody');
+  // a later one names someone new
+  const ev2 = show();
+  const m2 = M.recordMatch(st, ev2.id, { sides: S([J.id, D.id, Se.id]), contender: world.id, winner: 2 });
+  assert.equal(nextUp(st, M.numberOneContender(st, world.id)), 'Seth');
+  // correcting it corrects who's next; a correction that doesn't mention the stakes keeps them
+  M.updateMatch(st, ev2.id, m2.id, { sides: m2.sides, outcome: 'win', winner: 0 });
+  assert.equal(nextUp(st, M.numberOneContender(st, world.id)), 'Jey');
+  assert.equal(m2.contender, world.id);
+  // their shot, win or lose, uses it up
+  const ev3 = show();
+  M.recordMatch(st, ev3.id, { sides: S([G.id, J.id]), titleId: world.id, winner: 0 });
+  assert.equal(M.numberOneContender(st, world.id), null);
+  // a title match someone else had doesn't
+  M.recordMatch(st, ev3.id, { sides: S([C.id, D.id]), contender: world.id, winner: 1 });
+  M.recordMatch(st, ev3.id, { sides: S([G.id, Se.id]), titleId: world.id, winner: 0 });
+  assert.equal(nextUp(st, M.numberOneContender(st, world.id)), 'Drew');
+  // winning the title some other way ends it too
+  M.setChampion(st, world.id, { type: 'wrestler', id: D.id });
+  assert.equal(M.numberOneContender(st, world.id), null);
+  // clearing a result takes it back
+  M.clearResult(st, ev.id, m1.id);
+  assert.equal(M.eventById(st, ev.id).matches[0].contender, world.id);
+  sound(st);
+});
+
+test('losing a #1 contender’s match is like losing a title: a grudge against the winner, and rivals', () => {
+  const { st, C, Se, J, ko, jd, tag, world, show } = contenderWorld();
+  const ev = show();
+  const d0 = RL.snapshot(st);
+  M.recordMatch(st, ev.id, { sides: S([C.id, Se.id, J.id]), contender: world.id, winner: 0 });
+  const d = RL.relationships(st);
+  const lvl = (kind, a, b) => { const r = d.rels.get(RL.relKey(kind, a.id, b.id)); return r && r.active ? r.level : 0; };
+  assert.deepEqual([lvl('grudge', Se, C), lvl('grudge', J, C), lvl('rivals', Se, C), lvl('rivals', J, C), lvl('grudge', Se, J)], [2, 1, 1, 1, 0]);   // Seth is ambitious
+  assert.ok(RL.changesBetween(st, d0, RL.snapshot(st)).includes('Seth holds a grudge against Cody (heat 2)'));
+  assert.ok(d.entries.some(e => RL.entryText(st, e).cause === `Seth lost the #1 contender’s match for the World Title to Cody at ${ev.name}`));
+  // a draw: nothing
+  const ev2 = show();
+  M.recordMatch(st, ev2.id, { sides: S([J.id, Se.id]), contender: world.id, outcome: 'draw' });
+  assert.equal((RL.relationships(st).rels.get(RL.relKey('grudge', J.id, Se.id)) || {}).active || false, false);
+  // for a tag title: the teams too
+  M.recordMatch(st, ev2.id, { sides: [{ team: ko.id, wrestlers: ko.members }, { team: jd.id, wrestlers: jd.members }], contender: tag.id, winner: 1 });
+  const t = RL.relationships(st);
+  assert.deepEqual(['grudge', 'rivals'].map(k => (t.teams.get(RL.teamRelKey(k, ko.id, jd.id)) || {}).level), [1, 1]);
+  assert.ok(t.teamEntries.some(e => RL.entryText(st, e).cause === `KO & Sami lost the #1 contender’s match for the Tag Titles to Judgment Day at ${ev2.name}`));
+  assert.equal(nextUp(st, M.numberOneContender(st, tag.id)), 'Judgment Day');
+  sound(st);
+});
+
+test('drafts carry a #1 contender’s match; the booker books them, and gives the #1 contender the next shot', () => {
+  const { st, G, C, Se, J, D, world, show } = contenderWorld();
+  const ev = show();
+  M.recordMatch(st, ev.id, { sides: S([G.id, J.id]), titleId: world.id, winner: 0 });              // just defended
+  const ev2 = show();
+  const ideas = B.ideasFor(st, ev2.id);
+  const cont = ideas.filter(x => x.kind === 'contender');
+  assert.ok(cont.length && cont.every(x => x.contender === world.id && !x.titleId && !x.people.includes(G.id)));
+  // on a draft and booked, it stays one
+  M.setDraft(st, ev2.id, [B.toSpec(cont[0])]);
+  assert.equal(M.eventById(st, ev2.id).draft.matches[0].contender, world.id);
+  const [booked] = M.bookDraft(st, ev2.id);
+  assert.equal(booked.contender, world.id);
+  M.enterResult(st, ev2.id, booked.id, { winner: 0 });
+  const next = M.numberOneContender(st, world.id);
+  // next week: the #1 contender gets the shot, and there's no other #1 contender's match for it
+  const ev3 = show();
+  const later = B.ideasFor(st, ev3.id);
+  assert.equal(later.filter(x => x.kind === 'contender' && x.contender === world.id).length, 0);
+  const shot = later.find(x => x.kind === 'title' && x.titleId === world.id && x.sides.length === 2);
+  assert.ok(shot.people.includes(next.holder.id));
+  assert.match(shot.why[0], new RegExp(`^${M.holderName(st, next.holder)} earned the shot: #1 contender — won the #1 contender’s match last week$`));
+  // a card never has a title's match and a #1 contender's match for it
+  const r = B.draftCard(st, ev3.id);
+  assert.ok(!(r.matches.some(x => x.titleId === world.id) && r.matches.some(x => x.contender === world.id)));
+  // a draft that names the champion is pointed out
+  M.setDraft(st, ev3.id, [{ sides: S([C.id, Se.id]), contender: world.id }]);
+  M.setChampion(st, world.id, { type: 'wrestler', id: C.id });
+  assert.ok([...B.draftNotes(st, M.eventById(st, ev3.id)).values()][0].includes('Cody holds the World Title now — a #1 contender’s match is for the challengers'));
+  assert.ok(D && J);
+});
+
+test('a version 12 save: no match was a #1 contender’s match', () => {
+  const { st, C, Se, show } = contenderWorld();
+  const ev = show();
+  M.recordMatch(st, ev.id, { sides: S([C.id, Se.id]), winner: 0 });
+  M.setDraft(st, ev.id, [{ sides: S([C.id, Se.id]) }]);
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 12;
+  old.events.forEach(e => { e.matches.forEach(m => delete m.contender); if (e.draft) e.draft.matches.forEach(m => delete m.contender); });
+  const up = M.migrate(old);
+  assert.deepEqual([up.version, up.events[0].matches[0].contender, up.events[0].draft.matches[0].contender], [M.SCHEMA_VERSION, null, null]);
+  sound(up);
+  const bad = JSON.parse(JSON.stringify(up));
+  bad.events[0].matches[0].contender = bad.titles[0].id;
+  bad.events[0].matches[0].titleId = bad.titles[0].id;
+  assert.ok(M.validate(bad).some(x => /both a title match and a #1 contender’s match/.test(x)));
+});
+
+// ---------------------------------------------------------------- the director: personalities, friends, partners and rivals
+
+test('the director: friends, partners and allies run in to help someone win; rivals cost someone the match — never against their own', () => {
+  const { st, G, J, Sa, K, Se, N, show } = directorWorld();
+  M.setStory(st, { on: false });
+  M.editRelationship(st, { action: 'form', kind: 'friends', a: Se.id, b: G.id, since: 'start' });
+  M.editRelationship(st, { action: 'form', kind: 'allies', a: N.id, b: J.id, since: 'start' });
+  M.setTraits(st, Se.id, ['loyal'], { since: 'start' });
+  const ev = show();
+  const m = M.recordMatch(st, ev.id, { sides: S([G.id, J.id]), winner: 0 });
+  const runIns = DR.possibilities(st, ev.id, 'post').filter(p => p.kind === 'interference');
+  const seth = runIns.find(p => p.key === `interference:${Se.id}:${m.id}`);
+  assert.deepEqual(seth.incidents, [{ kind: 'interference', by: [Se.id], on: [J.id], helped: [G.id], match: m.id }]);
+  assert.ok(['Seth and Gunther are friends', 'Seth is loyal', 'Seth is a heel'].every(t => seth.why.includes(t)));
+  assert.ok(!runIns.some(p => p.incidents[0].by.includes(N.id)), 'Nobody never interferes against their ally Jey');
+  // a partner helps a partner: Kevin for Sami
+  const m2 = M.recordMatch(st, ev.id, { sides: S([Sa.id, N.id]), winner: 0 });
+  const kev = DR.possibilities(st, ev.id, 'post').find(p => p.key === `interference:${K.id}:${m2.id}`);
+  assert.ok(kev.why[0] === 'Kevin is in KO & Sami with Sami' && kev.why.some(t => /^Kevin is opportunistic/.test(t)));
+  // a rival costs someone the match - helping nobody in particular (a newcomer beats Seth; Nobody has it in for Seth)
+  M.editRelationship(st, { action: 'form', kind: 'grudge', a: N.id, b: Se.id, level: 2, since: 'start' });
+  const X = M.addWrestler(st, { name: 'Xavier', showId: 'raw', alignment: 'face' });
+  const m3 = M.recordMatch(st, ev.id, { sides: S([X.id, Se.id]), winner: 0 });
+  const nob = DR.possibilities(st, ev.id, 'post').find(p => p.key === `interference:${N.id}:${m3.id}`);
+  assert.deepEqual([nob.incidents[0].on, nob.incidents[0].helped, nob.why[0]], [[Se.id], [], 'Nobody holds a grudge against Seth (heat 2)']);
+  // made canon, it does what an interference does
+  M.recordIncident(st, ev.id, seth.incidents[0]);
+  assert.ok(RL.relationships(st).rels.get(RL.relKey('grudge', J.id, Se.id)).active);
+});
+
+test('the director: partners join a post-match attack; tag teams at odds face off as teams', () => {
+  const { st, G, J, Sa, K, Se, N, team, show } = directorWorld();
+  M.setStory(st, { on: false });
+  const ev = show();
+  // Kevin and Sami lose together: an attack by either brings the other
+  const m = M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [G.id, Se.id] }], winner: 1 });
+  const attack = DR.possibilities(st, ev.id, 'post').find(p => p.kind === 'attack' && p.incidents[0].match === m.id);
+  assert.deepEqual([...attack.incidents[0].by].sort(), [K.id, Sa.id].sort());
+  assert.ok(attack.why.some(t => /joins in — (Sami|Kevin) lost alongside (Kevin|Sami), their partner in KO & Sami$/.test(t)));
+  // a coward brings the team (Sami isn't loyal here, so it's Kevin's doing)
+  M.setTraits(st, K.id, ['cowardly'], { since: 'start' });
+  M.setTraits(st, Sa.id, [], { since: 'start' });
+  const m2 = M.recordMatch(st, ev.id, { sides: S([J.id, K.id]), winner: 0 });
+  const a2 = DR.possibilities(st, ev.id, 'post').find(p => p.kind === 'attack' && p.incidents[0].match === m2.id);
+  assert.deepEqual(a2.incidents[0].by, [K.id, Sa.id]);
+  assert.ok(a2.why.includes('Sami joins in — Kevin is cowardly and brings KO & Sami backup'));
+  // two teams with a grudge: before the next show they face off as teams, not pair by pair
+  const other = M.addTeam(st, { name: 'Bloodline', members: [J.id, N.id] });
+  M.editRelationship(st, { teams: true, action: 'form', kind: 'grudge', a: team.id, b: other.id, level: 2, since: 'start' });
+  M.setWeek(st, 2);
+  const ev2 = M.addEvent(st, { showId: 'raw' });
+  const pre = DR.possibilities(st, ev2.id, 'pre').filter(p => p.kind === 'confrontation');
+  const faceOff = pre.find(p => p.key === `confrontation:${[team.id, other.id].sort().join('+')}`);
+  assert.deepEqual([faceOff.incidents[0].by, faceOff.incidents[0].on], [team.members, other.members]);
+  assert.equal(faceOff.why[0], 'KO & Sami hold a grudge against Bloodline (heat 2)');
+  assert.ok(!pre.some(p => p.incidents[0].by.length === 1 && [Sa.id, K.id].includes(p.incidents[0].by[0]) && [J.id, N.id].includes(p.incidents[0].on[0])),
+    'no pair-by-pair confrontations for bad blood that is only between their teams');
+});
+
+test('the director: a new #1 contender steps up to the champion', () => {
+  const { st, G, J, Se, N, title, show } = directorWorld();
+  M.setStory(st, { on: false });
+  const ev = show();
+  const m = M.recordMatch(st, ev.id, { sides: S([N.id, Se.id]), contender: title.id, winner: 0 });
+  const odds = DR.titleContenders(st, ev.id, title.id).sort((a, b) => b.share - a.share);
+  assert.equal(odds[0].name, 'Nobody');
+  assert.equal(odds[0].reasons[0], `Nobody won the #1 contender’s match at ${ev.name}`);
+  // the loser may attack - it's like losing a title
+  const attack = DR.possibilities(st, ev.id, 'post').find(p => p.kind === 'attack' && p.incidents[0].match === m.id);
+  assert.ok(attack.why.includes('Seth just lost a #1 contender’s match for the World Heavyweight Championship'));
+  // before the next show, the #1 contender wants the match, hot or not
+  M.setWeek(st, 2);
+  const ev2 = M.addEvent(st, { showId: 'raw' });
+  const demand = DR.possibilities(st, ev2.id, 'pre').find(p => p.key === `demand:${N.id}:${title.id}`);
+  assert.ok(demand.why.includes(`Nobody is #1 contender — won the #1 contender’s match at ${ev.name} — and wants the match`));
+  assert.ok(G && J);
+});
+
 test('new incidents: confrontations, alliances, tension, truces, open challenges and turns', () => {
   const { st, G, J, Sa, K, Se, title, team, show } = directorWorld({ pace: 'quiet' });
   M.setStory(st, { on: false });

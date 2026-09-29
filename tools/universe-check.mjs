@@ -1542,8 +1542,8 @@ await check('How relationships work explains every rule', async () => {
   await page.locator('.uv-page .uv-link', { hasText: 'How relationships work' }).click();
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-calc span')].map(e => e.textContent)`);
-}, ['Losses', 'Title', 'Betrayal', 'Interference', 'Attack', 'Save', 'Brawl', 'Challenge', 'Alliance', 'Tension', 'Truce', 'Walk-out', 'Teammates', 'Distrust',
-  'Teaming', 'Split', 'Losses', 'Tag title', 'Incidents']);
+}, ['Losses', 'Title', '#1 contender', 'Betrayal', 'Interference', 'Attack', 'Save', 'Brawl', 'Challenge', 'Alliance', 'Tension', 'Truce', 'Walk-out',
+  'Teammates', 'Distrust', 'Teaming', 'Split', 'Losses', 'Tag title', 'Incidents']);
 await check('saved universe is sound after the relationship edits', sound, []);
 await check('layout anchored', async () => { await closeSheet(); return anchored(); }, isAnchored);
 
@@ -1639,6 +1639,105 @@ await check('the Roster tab lists relationships between teams, below the wrestle
     await js(`[...document.querySelectorAll('#uvBody .uv-row[data-teamrel] .nm')].map(${TEXT})`)];
 }, [true, ['KO & Sami → Judgment Day']]);
 await check('saved universe is sound after the team relationship edits', sound, []);
+
+// ---------------------------------------------------------------- #1 contender's matches
+// Raw, week 1: Gunther holds the World Heavyweight Championship; Cody, Seth
+// (ambitious) and Jey want it. Nothing booked yet.
+function contenderWorld() {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const [Gunther, , Seth] = ['Gunther', 'Cody', 'Seth', 'Jey'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  M.setTraits(st, Seth.id, ['ambitious'], { since: 'start' });
+  const t = M.addTitle(st, { name: 'World Heavyweight Championship', showId: 'raw', division: 'men' });
+  M.setChampion(st, t.id, { type: 'wrestler', id: Gunther.id });
+  M.addEvent(st, { showId: 'raw' });
+  return st;
+}
+await check('a #1 contender’s match: booked from the match form, one or the other with a title', async () => {
+  await noSheet();
+  const file = join(dir, 'contender.json');
+  await writeFile(file, JSON.stringify(contenderWorld()));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await closeSheet();
+  await openShow('Raw');
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Cody' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Seth' });
+  await page.selectOption('#uvMTitle', { label: 'World Heavyweight Championship' });
+  await page.waitForTimeout(60);
+  await page.selectOption('#uvMContender', { label: 'World Heavyweight Championship' });
+  await page.waitForTimeout(80);
+  const form = [await js(`document.getElementById('uvMTitle').value`), await js(`[...document.querySelectorAll('#uvSheetBody .fine')].map(e => e.textContent.replace(/\\s+/g, ' ').trim())[0]`)];
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  const u = await saved();
+  const m = u.events[0].matches[0];
+  return [...form, m.contender === u.titles[0].id, m.titleId, await js(`[...document.querySelectorAll('.uv-page .uv-mc .uv-chip')].map(e => e.textContent)`),
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-mc .uv-mc-d'))`)];
+}, r => Array.isArray(r) && r[0] === '' && /^The winner becomes #1 contender for the World Heavyweight Championship — next in line for a shot\. Losing it counts like losing the title/.test(r[1])
+  && r[2] === true && r[3] === null && r[4].includes('#1 contender · World Heavyweight Championship')
+  && r[5] === 'The winner is next in line for the World Heavyweight Championship. Losing it counts like losing the title.');
+await check('the champion can’t be in a #1 contender’s match for their own title', async () => {
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Gunther' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Jey' });
+  await page.selectOption('#uvMContender', { label: 'World Heavyweight Championship' });
+  await page.waitForTimeout(60);
+  await btn(sheet, 'Add to the card').click();
+  await page.waitForTimeout(150);
+  const t = await toast();
+  await closeSheet();
+  return [t.bad, t.t, (await saved()).events[0].matches.length];
+}, [true, 'Gunther holds the World Heavyweight Championship — a #1 contender’s match is for the challengers.', 1]);
+await check('its result: the winner is #1 contender, and losing it counts like losing the title', async () => {
+  await btn(mc(0), 'Enter result').click();
+  await settle();
+  const chipsOnForm = await js(`[...document.querySelectorAll('#uvSheetBody .uv-mc-sum .uv-chip')].map(e => e.textContent)`);
+  await page.selectOption('#uvMResult', '0');
+  await page.waitForTimeout(60);
+  const box = await js(`!!document.getElementById('uvMTitleChange')`);
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const { u, d } = await derived();
+  const [cody, seth] = [(await W('Cody')).id, (await W('Seth')).id];
+  const g = d.rels.get(RL.relKey('grudge', seth, cody)), rv = d.rels.get(RL.relKey('rivals', seth, cody));
+  return [chipsOnForm.includes('#1 contender · World Heavyweight Championship'), box, (await toast()).t, g && g.active && g.level, rv && rv.active,
+    await js(`${TEXT}(document.querySelector('.uv-page .uv-mc .uv-mc-d.uv-gold'))`), M.numberOneContender(u, u.titles[0].id).holder.id === cody];
+}, r => Array.isArray(r) && r[0] && r[1] === false && /^Result saved — Cody is #1 contender for the World Heavyweight Championship\. /.test(r[2])
+  && r[3] === 2 && r[4] === true && r[5] === 'Cody earned a shot at the World Heavyweight Championship' && r[6]);
+await check('the title page names the #1 contender, and so does their own page', async () => {
+  await openRow('World Heavyweight Championship', 'titles');
+  const title = await js(`${TEXT}(document.querySelector('.uv-page [data-contender]'))`);
+  await page.click('#uvTabs [data-uvtab=roster]');
+  await body.locator('.uv-seg [data-mode=wrestlers]').click();
+  await page.waitForTimeout(100);
+  await openRow('Cody');
+  return [title, await js(`[...document.querySelectorAll('.uv-page .uv-prof-id .tags .uv-tag')].map(e => e.textContent)`)];
+}, r => Array.isArray(r) && /^#1 contender: Cody — won the #1 contender’s match at Raw · Week 1\. Next in line for a shot/.test(r[0])
+  && r[1].includes('#1 contender · World Heavyweight Championship'));
+await check('their title shot uses it up — whatever the result', async () => {
+  await openShow('Raw');
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Gunther' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Cody' });
+  await page.selectOption('#uvMTitle', { label: 'World Heavyweight Championship' });
+  await btn(sheet, 'Add, and enter its result').click();
+  await settle();
+  await page.selectOption('#uvMResult', '0');
+  await page.waitForTimeout(60);
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  await openRow('World Heavyweight Championship', 'titles');
+  return js(`${TEXT}(document.querySelector('.uv-page [data-contender]'))`);
+}, r => /^No #1 contender right now\./.test(r));
+await check('saved universe is sound after the #1 contender’s matches', sound, []);
 
 // ================================================================ the story director
 // Raw, week 1, the director on at a wild pace with a known seed: two results
