@@ -2047,6 +2047,7 @@ body.forming .tabs{display:none}
 .ta-dl,.ta-sh{text-align:center;padding:12px 0;border-radius:11px;cursor:pointer;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.8px;text-transform:uppercase}
 .ta-dl{flex:2;background:var(--accent);color:#fff}
+.ta-dl.busy,.ta-sh.busy{opacity:.55;pointer-events:none}
 .ta-sh{flex:1;background:var(--card);border:1px solid var(--line);color:var(--ink-2)}
 
 /* ===== PLAYER CARD OWNERSHIP ===== */
@@ -17238,6 +17239,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (document.body.classList.contains("open")) toggleDrawer();
   }
   function closeTradeArt() {
+    taFree(document.getElementById("taCanvas"));
     const back = TA && TA.back || "chat";
     TA = null;
     if (back === "log") {
@@ -17311,6 +17313,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div class="ta-sl"><span>Up ↕ down</span><input type="range" min="-100" max="100" step="2" value="${c.y || 0}" oninput="taCrop('${pid}','y',this.value)"></div>
       </div>`;
     }).join("");
+    taFree(document.getElementById("taCanvas"));
     el.innerHTML = `
     <div class="ta-hd">
       <div class="tb-back" onclick="closeTradeArt()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
@@ -17329,16 +17332,36 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     </div>`;
     const sh = document.getElementById("taShareBtn");
     if (sh) sh.style.display = navigator.canShare && window.File ? "" : "none";
-    taPaint();
+    taPaintSoon();
   }
-  var taQueued = false;
+  // iPhone Safari is slow to draw the glows and quick to kill a page that
+  // piles up work, so a colour picker or slider being dragged never queues
+  // more than one redraw: changes that arrive mid-paint fold into the next.
+  var taBusy = false, taDirty = false;
   function taPaintSoon() {
-    if (taQueued) return;
-    taQueued = true;
-    requestAnimationFrame(() => {
-      taQueued = false;
-      taPaint();
+    if (taBusy) {
+      taDirty = true;
+      return;
+    }
+    taBusy = true;
+    requestAnimationFrame(async () => {
+      try {
+        await taPaint();
+      } catch (e) {
+      }
+      taBusy = false;
+      if (taDirty) {
+        taDirty = false;
+        taPaintSoon();
+      }
     });
+  }
+  // Safari holds on to a canvas's pixels until it is resized to nothing, so a
+  // canvas that is done with is emptied rather than left for the collector
+  function taFree(cv) {
+    if (!cv) return;
+    cv.width = 0;
+    cv.height = 0;
   }
   async function taPaint() {
     const cv = document.getElementById("taCanvas");
@@ -17348,8 +17371,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const imgs = await taAssets(model);
     if (seq !== taSeq || !TA) return;
     const lay = taLayout(model);
-    const dpr = window.devicePixelRatio || 1;
-    const k = Math.min(2, Math.max(0.5, (cv.clientWidth || 360) * dpr / TA_W));
+    // the preview never needs more than the screen shows, and never more
+    // than the 1080px design size; the download is drawn separately
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const k = Math.min(1, Math.max(0.4, (cv.clientWidth || 360) * dpr / TA_W));
     const w = Math.round(TA_W * k), h = Math.round(lay.H * k);
     if (cv.width !== w || cv.height !== h) {
       cv.width = w;
@@ -17442,18 +17467,32 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     cv.width = Math.round(TA_W * k);
     cv.height = Math.round(lay.H * k);
     drawTradeArt(cv.getContext("2d"), model, TA.opts, imgs, k);
-    return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
+    return new Promise((res) => cv.toBlob((b) => {
+      taFree(cv);
+      res(b);
+    }, "image/png"));
   }
   function taFileName() {
     const m = taModel(), slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     return `trade-${m ? m.sides.map((s) => slug(s.team.n)).join("-") : "graphic"}.png`;
   }
-  async function taDownload() {
-    const b = await tradeArtBlob(2);
-    if (!b) {
-      toast("Couldn't make the image");
-      return;
+  // one export at a time: a second tap while the big image is being made
+  // would build a second one alongside it
+  var taExporting = false;
+  async function taExport() {
+    if (taExporting) return null;
+    taExporting = true;
+    document.querySelectorAll(".ta-dl,.ta-sh").forEach((e) => e.classList.add("busy"));
+    try {
+      return await tradeArtBlob(2);
+    } catch (e) {
+      return null;
+    } finally {
+      taExporting = false;
+      document.querySelectorAll(".ta-dl,.ta-sh").forEach((e) => e.classList.remove("busy"));
     }
+  }
+  function taSaveBlob(b) {
     const url = URL.createObjectURL(b), a = document.createElement("a");
     a.href = url;
     a.download = taFileName();
@@ -17462,16 +17501,29 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 6e4);
   }
+  async function taDownload() {
+    if (taExporting) return;
+    const b = await taExport();
+    if (!b) {
+      toast("Couldn't make the image");
+      return;
+    }
+    taSaveBlob(b);
+  }
   async function taShare() {
-    const b = await tradeArtBlob(2);
-    if (!b) return;
+    if (taExporting) return;
+    const b = await taExport();
+    if (!b) {
+      toast("Couldn't make the image");
+      return;
+    }
     const file = new File([b], taFileName(), { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
       } catch (e) {
       }
-    } else taDownload();
+    } else taSaveBlob(b);
   }
   function tradeArtLayout() {
     return TA_LAST;
