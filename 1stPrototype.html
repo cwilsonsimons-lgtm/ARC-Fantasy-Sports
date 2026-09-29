@@ -1055,6 +1055,7 @@ body.open .drawer{transform:translateX(0)}
 .tbk-ts{flex:none;font-size:8.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3)}
 .tbk-ts.proposed{color:var(--accent)}
 .tbk-ts.countered{color:var(--amber,#E6A85A)}
+.tbk-ts.review{color:var(--ink)}
 .tbk-none-lg{padding:26px 12px;text-align:center;color:var(--ink-3)}
 .tbk-none-lg svg{width:52px;height:52px;opacity:.35;margin-bottom:10px}
 .tbk-none-lg div{font-size:12px;margin-bottom:14px}
@@ -1978,6 +1979,76 @@ body.forming .tabs{display:none}
 .tx-kind.waiver{color:var(--accent);border-color:rgba(var(--accent-rgb),.3)}
 .tx-kind.commish{color:#E6D15A;border-color:rgba(230,209,90,.4)}
 
+/* css/trade-art.css */
+/* ===== TRADE GRAPHIC =====
+   The editor around the canvas. The canvas is the artwork itself, drawn by
+   js/trade-art.js; nothing here styles the image, only the controls. */
+.tc-rev{margin-top:10px;font-size:11px;font-weight:600;color:var(--ink-2)}
+.tc-st.rev{color:var(--accent);border-color:rgba(var(--accent-rgb),.55);background:rgba(var(--accent-rgb),.12)}
+.tc-art{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:9px;padding:8px 0;border-radius:10px;
+  border:1px dashed var(--line);color:var(--ink-2);cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+.tc-art svg{width:14px;height:14px}
+.tx-art{margin-left:auto;font-size:9.5px;font-weight:700;color:var(--accent);cursor:pointer;letter-spacing:.3px}
+.tb-money{padding:7px 8px;border-radius:9px;border:1px dashed var(--line);color:var(--ink-3);cursor:pointer;
+  font-size:11px;font-weight:700;text-align:center}
+
+.ta-hd{display:flex;align-items:center;gap:10px;padding:2px 0 12px;border-bottom:1px solid var(--line-soft)}
+.ta-title{flex:1;min-width:0;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;
+  text-transform:uppercase;letter-spacing:.4px}
+.ta-title span{display:block;font-family:'Barlow',system-ui,sans-serif;font-size:10.5px;font-weight:600;color:var(--ink-3);
+  text-transform:none;letter-spacing:0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ta-stage{margin:12px 0 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#0B0A0C;line-height:0}
+.ta-stage canvas{width:100%;height:auto;display:block}
+.ta-note{display:none;margin-top:8px;font-size:11px;line-height:1.45;color:var(--ink-2);background:var(--card-2);
+  border-left:2px solid var(--accent);border-radius:0 8px 8px 0;padding:7px 10px}
+.ta-note.show{display:block}
+.ta-sec{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.4px;
+  text-transform:uppercase;color:var(--ink-3)}
+.ta-flip{font-family:'Barlow',system-ui,sans-serif;letter-spacing:0;text-transform:none;font-size:11.5px;font-weight:700;
+  color:var(--accent);cursor:pointer}
+.ta-chips{display:flex;flex-wrap:wrap;gap:7px}
+.ta-chip{padding:9px 13px;border-radius:10px;background:var(--card);border:1px solid var(--line);cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--ink-2)}
+.ta-chip.on{color:var(--ink);border-color:rgba(var(--accent-rgb),.7);background:rgba(var(--accent-rgb),.16)}
+.ta-sides{display:grid;grid-template-columns:1fr;gap:9px}
+.ta-side{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:11px 12px}
+.ta-sn{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12.5px;text-transform:uppercase;
+  letter-spacing:.3px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ta-ctl{display:flex;align-items:center;gap:9px;padding:6px 0}
+.ta-lb{width:78px;flex:none;font-size:12px;font-weight:600;color:var(--ink-2)}
+.ta-sw{position:relative;width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.25);flex:none;
+  cursor:pointer;overflow:hidden}
+.ta-sw input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.ta-hex{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--ink-3);
+  width:62px;flex:none}
+.ta-pre{display:flex;gap:6px;margin-left:auto}
+.ta-pre i{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.22);cursor:pointer;display:block}
+.ta-reset{font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;flex:none}
+.ta-side .ta-reset{display:inline-block;margin-top:4px}
+.ta-pls{display:flex;flex-direction:column;gap:9px}
+.ta-pl{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px}
+.ta-plh{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.ta-face{width:30px;height:30px;border-radius:8px;overflow:hidden;flex:none;background:#171416;display:grid;
+  place-items:center;font-size:10px;font-weight:700;color:var(--ink-3)}
+.ta-face img{width:100%;height:100%;object-fit:cover}
+.ta-pn{flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ta-up{position:relative;flex:none;font-size:11px;font-weight:700;color:var(--ink-2);border:1px solid var(--line);
+  border-radius:8px;padding:5px 9px;cursor:pointer;overflow:hidden}
+.ta-up input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ta-sl{display:flex;align-items:center;gap:10px;padding:3px 0}
+.ta-sl span{width:84px;flex:none;font-size:11px;font-weight:600;color:var(--ink-3)}
+.ta-sl input{flex:1;min-width:0;accent-color:var(--accent);height:28px}
+#taBody{padding-bottom:84px}
+.ta-bar{position:absolute;left:0;right:0;bottom:var(--navh,84px);z-index:40;display:flex;gap:8px;
+  padding:10px 16px 12px;background:rgba(21,19,21,.97);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.ta-dl,.ta-sh{text-align:center;padding:12px 0;border-radius:11px;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.8px;text-transform:uppercase}
+.ta-dl{flex:2;background:var(--accent);color:#fff}
+.ta-sh{flex:1;background:var(--card);border:1px solid var(--line);color:var(--ink-2)}
+
 /* ===== PLAYER CARD OWNERSHIP ===== */
 .pc-own{display:flex;align-items:center;gap:8px;margin:0 12px 10px;padding:9px 11px;border-radius:11px;
   background:var(--card-2);border:1px solid var(--line)}
@@ -2643,6 +2714,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         <div id="tradeBody"></div>
       </div>
 
+      <!-- ===== TRADE GRAPHIC ===== -->
+      <div class="view" data-view="tradeart">
+        <div id="taBody"></div>
+      </div>
+
       <!-- ===== NOTIFICATION CENTER ===== -->
       <div class="view" data-view="notifs">
         <div id="notifBody"></div>
@@ -3131,6 +3207,8 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     // days a dropped player sits on waivers (0 = none)
     tradeDeadline: 11,
     // week number, 0 = no deadline
+    tradeReview: 0,
+    // days an accepted trade waits before it processes (0 = processes at once)
     standings: "record",
     // record | table (3 for a win) | kart (finish order)
     playoffStart: 15,
@@ -4717,7 +4795,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     counterTrade: () => counterTrade,
     declineTrade: () => declineTrade,
     expireTrade: () => expireTrade,
+    finalizeTrade: () => finalizeTrade,
     findMsg: () => findMsg,
+    processTradeNow: () => processTradeNow,
+    processTradeReviews: () => processTradeReviews,
+    vetoTrade: () => vetoTrade,
     teamName: () => teamName,
     validateTrade: () => validateTrade,
     withoutRosterChange: () => withoutRosterChange,
@@ -6687,7 +6769,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // proposals still live in chat; the panel surfaces the open ones
   function activeTrades() {
     return chatLog().filter((m) => m.kind === "trade" && m.trade &&
-      (m.trade.status === "proposed" || m.trade.status === "countered"));
+      (m.trade.status === "proposed" || m.trade.status === "countered" || m.trade.status === "review"));
   }
   function renderTrades() {
     const block = blockPlayers();
@@ -7442,11 +7524,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     buildTrade: () => buildTrade,
     cancelTrade: () => cancelTrade,
     clearCond: () => clearCond,
+    clearMoney: () => clearMoney,
     closeCond: () => closeCond,
     closeNote: () => closeNote,
     condTarget: () => condTarget,
     finishTrade: () => finishTrade,
+    moneyAmount: () => moneyAmount,
+    moneyUnitLabel: () => moneyUnitLabel,
     openCond: () => openCond,
+    openMoney: () => openMoney,
     openNote: () => openNote,
     ordRound: () => ordRound,
     pickBag: () => pickBag,
@@ -7457,6 +7543,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     picksFor: () => picksFor,
     renderTrade: () => renderTrade,
     saveCond: () => saveCond,
+    saveMoney: () => saveMoney,
     sendNote: () => sendNote,
     submitTrade: () => submitTrade,
     syncCond: () => syncCond,
@@ -7687,8 +7774,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     return v;
   }
+  // money carries no player or pick value, so the evaluator counts it as zero
+  // rather than guessing what a dollar is worth in this league
   function assetValue(a) {
-    return a.kind === "pick" ? pickValue(a.pick) : playerValue(a.player);
+    return a.kind === "pick" ? pickValue(a.pick) : a.kind === "money" ? 0 : playerValue(a.player);
   }
   function sideValue(list) {
     return (list || []).reduce((n, a) => n + assetValue(a), 0);
@@ -7721,7 +7810,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return r === 1 ? "1st" : r === 2 ? "2nd" : r === 3 ? "3rd" : r + "th";
   }
   function assetId(a) {
+    if (a.kind === "money") return `mn:${a.money && a.money.unit || ""}`;
     return a.kind === "pick" ? `pk:${a.pick.year}:${a.pick.round}:${a.pick.originalTeam}` : `pl:${a.player && (a.player.id || a.player.n) || ""}`;
+  }
+  // Money is its own asset: an amount plus the unit the trade names. The unit is
+  // only ever "faab" when someone chose FAAB for it; anything else is shown as a
+  // plain dollar amount, never relabelled.
+  var MONEY_UNITS = { cash: "Cash", faab: "FAAB" };
+  function moneyAmount(m) {
+    const v = +(m && m.amount) || 0;
+    return "$" + v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  }
+  function moneyUnitLabel(m) {
+    return MONEY_UNITS[m && m.unit] || "";
   }
   function pickLabel(pk, holder) {
     const foreign = pk.originalTeam && pk.originalTeam !== holder && T[pk.originalTeam];
@@ -7731,6 +7832,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function assetChipHTML(a, opts) {
     opts = opts || {};
     const rm = opts.onRemove ? ` onclick="${opts.onRemove}"` : "";
+    if (a.kind === "money") {
+      const u = moneyUnitLabel(a.money);
+      return `<span class="as as-mn${opts.on ? " on" : ""}"${rm}>
+      <span class="as-ic">$</span>
+      <span class="as-nm">${escHtml(moneyAmount(a.money))}</span>
+      ${u ? `<span class="as-mt">${escHtml(u)}</span>` : ""}
+    </span>`;
+    }
     if (a.kind === "pick") {
       const c = a.pick.cond || pickCond(pickId(a.pick));
       return `<span class="as as-pick${opts.on ? " on" : ""}"${rm}>
@@ -7808,9 +7917,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${a.kind === "pick" && on ? `<span class="tb-cond" onclick="event.stopPropagation();openCond('${which}','${assetId(a)}')">\u2301</span>` : ""}
     </div>`;
     }).join("");
+    const cash = side.filter((a) => a.kind === "money").map((a) => `<div class="tb-row on" onclick="openMoney('${which}','${a.money.unit}')">
+      ${assetChipHTML(a, { on: true, holder: key })}
+    </div>`).join("");
     return `<div class="tb-col">
     <div class="tb-ch" style="color:${t.c}">${escHtml(t.n)}</div>
-    <div class="tb-list">${rows2}</div>
+    <div class="tb-list">${rows2}${cash}
+      <div class="tb-money" onclick="openMoney('${which}')">+ Money</div>
+    </div>
   </div>`;
   }
   function renderTrade() {
@@ -7961,6 +8075,60 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const side = condTarget.which === "give" ? TB.give : TB.get;
     const a = side.find((x) => assetId(x) === condTarget.id);
     if (a) delete a.pick.cond;
+    closeCond();
+    renderTrade();
+  }
+  // Money rides in the builder the same way a pick condition does: a small sheet
+  // on the shared condition sheet. FAAB is offered only in a FAAB league, and the
+  // unit has to be chosen there, so nothing becomes FAAB by default.
+  var moneyTarget = null;
+  function openMoney(which, unit) {
+    if (!TB) return;
+    const side = which === "give" ? TB.give : TB.get;
+    const cur = unit ? side.find((a) => a.kind === "money" && a.money.unit === unit) : null;
+    const faabLeague = LG().waiver === "faab";
+    const units = faabLeague ? [["", "Choose\u2026"], ["faab", "FAAB"], ["cash", "Cash"]] : [["cash", "Cash"]];
+    const sel = cur ? cur.money.unit : faabLeague ? "" : "cash";
+    moneyTarget = { which, unit: cur ? cur.money.unit : null };
+    document.getElementById("condTitle").textContent = `${(T[which === "give" ? TB.from : TB.to] || {}).n || ""} sends money`;
+    document.getElementById("condBody").innerHTML = `
+    <div class="cond-row"><input id="moneyAmt" class="set-ctl" type="number" inputmode="decimal" min="0" step="1" placeholder="Amount ($)" value="${cur ? cur.money.amount : ""}"></div>
+    <div class="cond-row"><select id="moneyUnit" class="set-ctl">${units.map((u) => `<option value="${u[0]}"${u[0] === sel ? " selected" : ""}>${u[1]}</option>`).join("")}</select></div>
+    <div class="cond-btns">
+      ${cur ? `<div class="tc-btn dec" onclick="clearMoney()">Remove</div>` : ""}
+      <div class="tc-btn acc" onclick="saveMoney()">Save</div>
+    </div>`;
+    document.getElementById("condScrim").classList.add("show");
+    document.getElementById("condSheet").classList.add("show");
+  }
+  function saveMoney() {
+    if (!TB || !moneyTarget) return;
+    const amt = Math.round(+document.getElementById("moneyAmt").value * 100) / 100;
+    const unit = document.getElementById("moneyUnit").value;
+    if (!(amt > 0)) {
+      toast("Enter an amount above $0");
+      return;
+    }
+    if (!MONEY_UNITS[unit]) {
+      toast("Choose FAAB or Cash");
+      return;
+    }
+    const side = moneyTarget.which === "give" ? TB.give : TB.get;
+    for (let i = side.length - 1; i >= 0; i--) {
+      const a = side[i];
+      if (a.kind === "money" && (a.money.unit === unit || a.money.unit === moneyTarget.unit)) side.splice(i, 1);
+    }
+    side.push({ kind: "money", money: { amount: amt, unit } });
+    moneyTarget = null;
+    closeCond();
+    renderTrade();
+  }
+  function clearMoney() {
+    if (!TB || !moneyTarget) return;
+    const side = moneyTarget.which === "give" ? TB.give : TB.get;
+    const i = side.findIndex((a) => a.kind === "money" && a.money.unit === moneyTarget.unit);
+    if (i > -1) side.splice(i, 1);
+    moneyTarget = null;
     closeCond();
     renderTrade();
   }
@@ -8985,8 +9153,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const teams = t.teams || [], as = t.assets || {};
     const when = t.ts ? timeLabel(t.ts) : t.round ? `R${t.round} \xB7 P${t.pick}` : "";
     const body2 = teams.length > 1 ? txLine(teams[0], as.give) + txLine(teams[1], as.get) : txLine(teams[0], (as.get && as.get.length ? as.get : as.give) || []);
+    const art = t.type === "trade" && teams.length > 1 ? `<span class="tx-art" onclick="openTradeArtTx('${t.id}')">Create graphic</span>` : "";
     return `<div class="tx">
-    <div class="tx-hd"><span class="tx-kind ${t.type}">${TX_LABEL[t.type] || t.type}</span><span class="tx-ts">${when}</span></div>
+    <div class="tx-hd"><span class="tx-kind ${t.type}">${TX_LABEL[t.type] || t.type}</span>${art}<span class="tx-ts">${when}</span></div>
     ${body2}
   </div>`;
   }
@@ -9305,7 +9474,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
 
   // js/chat.js
-  var TRADE_STATUS = ["proposed", "countered", "accepted", "declined", "expired"];
+  // "review" is an accepted trade waiting out the league's review period: both
+  // managers have agreed, nothing has moved yet. "accepted" means processed.
+  var TRADE_STATUS = ["proposed", "countered", "review", "accepted", "declined", "vetoed", "expired"];
   function chatLog(id) {
     const lid = id || activeLeagueId();
     if (!store.chat) store.chat = {};
@@ -9367,8 +9538,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return sameDay ? t : `${d.getMonth() + 1}/${d.getDate()} ${t}`;
   }
   function statusPill(st) {
-    const cls = { proposed: "prop", countered: "cnt", accepted: "acc", declined: "dec", expired: "exp" }[st] || "prop";
-    return `<span class="tc-st ${cls}">${st}</span>`;
+    const cls = { proposed: "prop", countered: "cnt", review: "rev", accepted: "acc", declined: "dec", vetoed: "dec", expired: "exp" }[st] || "prop";
+    const lb = { review: "under review", accepted: "complete" }[st] || st;
+    return `<span class="tc-st ${cls}">${lb}</span>`;
   }
   function sideBlock(key, list, label) {
     const t = T[key] || { n: key, c: "var(--ink-2)", bg: "#262123", mono: "?" };
@@ -9387,13 +9559,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="tc-btn dec" onclick="event.stopPropagation();declineTrade('${m.id}')">Decline</div>
     </div>` : "";
     const note = tr.note ? `<div class="tc-note">${escHtml(tr.note)}</div>` : "";
+    const review = tr.status === "review" ? `<div class="tc-rev">Agreed \u00B7 processes ${escHtml(fmtLocal(tr.reviewEnds))}</div>
+      ${ownsCommish() ? `<div class="tc-acts">
+        <div class="tc-btn acc" onclick="event.stopPropagation();processTradeNow('${m.id}')">Process now</div>
+        <div class="tc-btn dec" onclick="event.stopPropagation();vetoTrade('${m.id}')">Veto</div>
+      </div>` : ""}` : "";
+    const art = TRADE_ART_STATUS[tr.status] ? `<div class="tc-art" onclick="event.stopPropagation();openTradeArt('${m.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+      Create graphic</div>` : "";
     return `<div class="tc">
     <div class="tc-hd">${statusPill(tr.status)}<span class="tc-ts">${timeLabel(m.ts)}</span></div>
     ${sideBlock(tr.from, tr.give, "sends")}
     <div class="tc-swap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
     ${sideBlock(tr.to, tr.get, "sends")}
     ${note}
+    ${review}
     ${acts}
+    ${art}
   </div>`;
   }
   function pollHTML(m) {
@@ -9442,6 +9624,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function renderChat() {
     const el = document.getElementById("chatBody");
     if (!el) return;
+    processTradeReviews();
     const thread = S.chatThread;
     const log = chatLog().filter((m) => thread ? m.to === thread && (m.from === MY_TEAM || m.from === thread) || m.from === thread && m.to === MY_TEAM : !m.to);
     const t = thread ? T[thread] : null;
@@ -9549,6 +9732,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           if (pickOwner(a.pick) !== side.owner) return { ok: false, reason: `${pickLabel(a.pick, side.owner)} is no longer owned by ${teamName(side.owner)}.` };
           continue;
         }
+        if (a.kind === "money") {
+          // cash is settled between managers outside the app; FAAB comes out of
+          // the sender's waiver budget, so it has to be there
+          if (a.money && a.money.unit === "faab") {
+            const have = waiverBag().faab[side.owner] || 0;
+            if (have < +a.money.amount) return { ok: false, reason: `${teamName(side.owner)} has ${have} FAAB left and would send ${+a.money.amount}.` };
+          }
+          continue;
+        }
         const key = pKeyOf(a.player || {});
         const spot = key ? rosterSpotOf(side.owner, key) : null;
         if (!spot) return { ok: false, reason: `${(a.player || {}).n || "A player"} is no longer on ${teamName(side.owner)}.` };
@@ -9605,6 +9797,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     settle(tr.give, from, to);
     settle(tr.get, to, from);
+    const purse = waiverBag().faab;
+    const pay = (list, owner, dest) => (list || []).forEach((a) => {
+      if (a.kind !== "money" || !a.money || a.money.unit !== "faab") return;
+      const amt = +a.money.amount || 0;
+      purse[owner] = (purse[owner] || 0) - amt;
+      purse[dest] = (purse[dest] || 0) + amt;
+    });
+    pay(tr.give, from, to);
+    pay(tr.get, to, from);
     return { ok: true };
   }
   function rosterFingerprint() {
@@ -9622,18 +9823,52 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     return out;
   }
+  // Accepting a trade either processes it at once, or, when the league has a
+  // review period, marks it agreed ("review") and leaves rosters alone until the
+  // period ends, the commissioner processes it early, or vetoes it.
   function acceptTrade(id) {
     const m = findMsg(id);
     if (!m || !m.trade) return;
     const tr = m.trade;
     if (tr.status !== "proposed" && tr.status !== "countered") return;
+    const days = +LG().tradeReview || 0;
+    if (days > 0) {
+      const v = validateTrade(tr);
+      if (!v.ok) {
+        expireTrade(m, v.reason);
+        return;
+      }
+      const now = Date.now();
+      tr.status = "review";
+      tr.agreedAt = now;
+      tr.reviewEnds = now + days * 864e5;
+      pushMsg({
+        kind: "system",
+        from: "league",
+        to: null,
+        body: `${teamName(tr.from)} and ${teamName(tr.to)} agreed to a trade. It processes ${fmtLocal(tr.reviewEnds)} unless the commissioner vetoes it.`
+      });
+      pushNotif({ type: "trade", title: "Trade agreed", body: `${teamName(tr.from)} \u2194 ${teamName(tr.to)}`, leagueId: activeLeagueId(), msgId: m.id });
+      saveStore();
+      renderChat();
+      return;
+    }
+    if (!finalizeTrade(m)) return;
+    refreshRosterViews();
+    renderChat();
+  }
+  // Move the assets and record the trade. Returns false (and expires the trade)
+  // when it can no longer go through. Draws nothing; callers repaint.
+  function finalizeTrade(m) {
+    const tr = m.trade;
     const a = teamName(tr.from), b = teamName(tr.to);
     const res = applyTrade(tr);
     if (!res.ok) {
-      expireTrade(m, res.reason);
-      return;
+      expireTrade(m, res.reason, true);
+      return false;
     }
     tr.status = "accepted";
+    tr.processedAt = Date.now();
     const sys = pushMsg({
       kind: "system",
       from: "league",
@@ -9641,7 +9876,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       body: `${a} and ${b} completed a trade.`,
       poll: { question: "Who won this trade?", options: [a, b, "Even"], votes: seedVotes(tr) }
     });
-    pushTx({ type: "trade", teams: [tr.from, tr.to], assets: { give: tr.give || [], get: tr.get || [] }, msgId: sys.id });
+    pushTx({ type: "trade", teams: [tr.from, tr.to], assets: { give: tr.give || [], get: tr.get || [] }, msgId: sys.id, tradeMsgId: m.id });
     pushNotif({
       type: "trade",
       title: "Trade accepted",
@@ -9653,10 +9888,38 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     invalidateRosters();
     persistRoster();
     saveStore();
-    refreshRosterViews();
+    return true;
+  }
+  // Trades whose review period has run out process the next time the league's
+  // chat is drawn. Only for the league whose rosters are loaded.
+  function processTradeReviews() {
+    if (activeLeagueId() !== rosterLeagueId()) return 0;
+    const now = Date.now();
+    let n = 0;
+    chatLog().forEach((m) => {
+      if (m.kind === "trade" && m.trade && m.trade.status === "review" && m.trade.reviewEnds <= now) {
+        finalizeTrade(m);
+        n++;
+      }
+    });
+    if (n) refreshRosterViews();
+    return n;
+  }
+  function processTradeNow(id) {
+    const m = findMsg(id);
+    if (!m || !m.trade || m.trade.status !== "review" || !ownsCommish()) return;
+    if (finalizeTrade(m)) refreshRosterViews();
     renderChat();
   }
-  function expireTrade(m, reason) {
+  function vetoTrade(id) {
+    const m = findMsg(id);
+    if (!m || !m.trade || m.trade.status !== "review" || !ownsCommish()) return;
+    m.trade.status = "vetoed";
+    pushMsg({ kind: "system", from: "league", to: null, body: `The commissioner vetoed the trade between ${teamName(m.trade.from)} and ${teamName(m.trade.to)}.` });
+    saveStore();
+    renderChat();
+  }
+  function expireTrade(m, reason, quiet) {
     withoutRosterChange(() => {
       m.trade.status = "expired";
       pushMsg({
@@ -9667,7 +9930,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       });
       saveStore();
     });
-    renderChat();
+    if (!quiet) renderChat();
   }
   function declineTrade(id) {
     const m = findMsg(id);
@@ -10797,6 +11060,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="set-card">
       <div class="set-title">Trades</div>
       ${setRow("Trade deadline", setSel("tradeDeadline", [[0, "No deadline"]].concat(rangeOpts(MINW, MAXW, (w) => "Week " + w)), L.tradeDeadline, 1))}
+      ${setRow("Trade review", setSel("tradeReview", [[0, "None"], [1, "1 day"], [2, "2 days"]], L.tradeReview || 0, 1))}
     </div>`;
   }
   function leagueCrestCard() {
@@ -16022,6 +16286,979 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     initOrders();
   }
 
+  // js/trade-art.js — a shareable graphic for a trade
+  //
+  // Everything on the image comes from the trade record: team names, logos and
+  // colours from T, and the assets exactly as the trade card lists them, run
+  // through the same labels (ordRound, triggerLabel, moneyAmount). The artwork
+  // is drawn on a canvas as real text, so the preview and the downloaded PNG
+  // are the same drawing, only at different sizes.
+  //
+  // Which team receives what: `give` is what `from` sends, so `to` receives it,
+  // and `from` receives `get`.
+  var trade_art_exports = {};
+  __export(trade_art_exports, {
+    TRADE_ART_STATUS: () => TRADE_ART_STATUS,
+    closeTradeArt: () => closeTradeArt,
+    openTradeArt: () => openTradeArt,
+    openTradeArtTx: () => openTradeArtTx,
+    taColor: () => taColor,
+    taCrop: () => taCrop,
+    taCropReset: () => taCropReset,
+    taDownload: () => taDownload,
+    taFlip: () => taFlip,
+    taHead: () => taHead,
+    taPhoto: () => taPhoto,
+    taResetColors: () => taResetColors,
+    taShare: () => taShare,
+    tradeArtBlob: () => tradeArtBlob,
+    tradeArtLayout: () => tradeArtLayout,
+    tradeArtModel: () => tradeArtModel
+  });
+  // Headlines a trade may carry, by status. Only true ones are offered: a trade
+  // still under review can say it was agreed, never that it is complete.
+  var TRADE_ART_STATUS = {
+    proposed: ["Trade Offer", "Trade Proposal"],
+    countered: ["Counter Offer", "Trade Offer"],
+    review: ["Trade Agreed", "Deal Agreed", "Pending Review"],
+    accepted: ["Trade Complete", "Trade Official", "Deal Done"]
+  };
+  var TA_W = 1080;
+  var TA = null;
+  var TA_IMG = {};
+  var TA_LAST = null;
+  var taSeq = 0;
+  var taSaveTimer = null;
+
+  // ---- the trade, as data ------------------------------------------------
+  function taTeam(key) {
+    const t = T[key] || { n: key, c: "#A5ABB0", bg: "#262123" };
+    const n = t.n || String(key);
+    return { key, n, mgr: t.mgr || "", c: t.c || "#A5ABB0", bg: t.bg || "#262123", logo: t.logo || null, mono: t.mono || n.charAt(0).toUpperCase(), font: teamFont(key) };
+  }
+  function taPlayerRec(p) {
+    const id = p.id || pkey(p.n || "");
+    if (NFL_BY_ID[id]) return NFL_BY_ID[id];
+    const m = NFL_BY_NAME[p.n];
+    return m && m.length === 1 ? m[0] : null;
+  }
+  function taItem(a, sender) {
+    if (a.kind === "money") {
+      const m = a.money || {};
+      return { kind: "money", title: moneyAmount(m), meta: moneyUnitLabel(m) };
+    }
+    if (a.kind === "pick") {
+      const pk = a.pick || {};
+      const c = pk.cond || pickCond(pickId(pk));
+      const bits = [];
+      if (pk.originalTeam && pk.originalTeam !== sender && T[pk.originalTeam]) bits.push(`via ${T[pk.originalTeam].n}`);
+      if (c) bits.push(`Becomes ${triggerLabel(c)}`);
+      // drawn as two tiers where there is room: the year small, the round large
+      return { kind: "pick", year: String(pk.year || ""), ord: ordRound(pk.round), title: `${pk.year} ${ordRound(pk.round)}-Round Pick`, first: String(pk.year || ""), last: `${ordRound(pk.round)}-Round Pick`, meta: bits.join(" · ") };
+    }
+    if (a.kind === "player") {
+      const p = a.player || {}, rec = taPlayerRec(p);
+      const full = p.full || rec && rec.full || p.n || "";
+      const pid = p.id || rec && rec.id || p.n || "";
+      const words = full.split(" ");
+      return {
+        kind: "player",
+        pid,
+        title: full,
+        first: words.length > 1 ? words[0] : "",
+        last: words.length > 1 ? words.slice(1).join(" ") : full,
+        meta: [p.pos || rec && rec.pos, p.tm || rec && rec.tm].filter(Boolean).join(" · "),
+        photo: playerPhoto(pid) || playerPhoto(p.n || "") || headshotFor(pid) || "",
+        ini: initials(full || "?")
+      };
+    }
+    return { kind: "other", title: String(a.label || a.kind || "Asset"), meta: "" };
+  }
+  function taDate(ts) {
+    return ts ? new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+  }
+  // tr: { from, to, give, get, status, ts, agreedAt, processedAt }
+  function tradeArtModel(tr) {
+    const a = taTeam(tr.from), b = taTeam(tr.to);
+    const st = tr.status;
+    let when = "";
+    if (st === "review") when = [tr.agreedAt ? `Agreed ${taDate(tr.agreedAt)}` : "", "Pending league review"].filter(Boolean).join(" · ");
+    else if (st === "accepted") when = tr.processedAt ? `Processed ${taDate(tr.processedAt)}` : "";
+    else if (st === "countered") when = tr.ts ? `Countered ${taDate(tr.ts)}` : "";
+    else if (st === "proposed") when = tr.ts ? `Proposed ${taDate(tr.ts)}` : "";
+    const lg = activeLeague2();
+    return {
+      status: st,
+      heads: TRADE_ART_STATUS[st] || [],
+      league: lg && lg.name || "",
+      when,
+      sides: [
+        { team: a, gets: (tr.get || []).map((x) => taItem(x, tr.to)) },
+        { team: b, gets: (tr.give || []).map((x) => taItem(x, tr.from)) }
+      ]
+    };
+  }
+
+  // ---- colour ------------------------------------------------------------
+  function taRGB(hex) {
+    const h = String(hex || "").replace("#", "");
+    const f = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.padEnd(6, "0");
+    return [0, 2, 4].map((i) => parseInt(f.substr(i, 2), 16) || 0);
+  }
+  function taLum(hex) {
+    const c = taRGB(hex).map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function taContrast(a, b) {
+    const x = taLum(a), y = taLum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function taRGBA(hex, al) {
+    const c = taRGB(hex);
+    return `rgba(${c[0]},${c[1]},${c[2]},${al})`;
+  }
+  function taShade(hex, k) {
+    const c = taRGB(hex).map((v) => Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k));
+    return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+  function taHex(v) {
+    return /^#[0-9a-f]{6}$/i.test(v || "") ? v.toUpperCase() : null;
+  }
+  // text on a panel: dark ink on a light background, white otherwise
+  function taPalette(bg, ac) {
+    const light = taLum(bg) > 0.4;
+    const ink = light ? "#141214" : "#FFFFFF";
+    return {
+      bg,
+      ac,
+      ink,
+      ink2: light ? "rgba(20,18,20,.68)" : "rgba(255,255,255,.7)",
+      card: light ? "rgba(20,18,20,.07)" : "rgba(255,255,255,.07)",
+      acText: taContrast(ac, bg) >= 3 ? ac : ink,
+      onAc: taLum(ac) > 0.4 ? "#141214" : "#FFFFFF"
+    };
+  }
+
+  // ---- text --------------------------------------------------------------
+  var TA_F = {
+    head: (s) => `400 ${s}px 'Anton','Oswald',sans-serif`,
+    cap: (s) => `600 ${s}px 'Oswald','Arial Narrow',sans-serif`,
+    name: (s) => `700 ${s}px 'Oswald','Arial Narrow',sans-serif`,
+    first: (s) => `500 ${s}px 'Oswald','Arial Narrow',sans-serif`,
+    meta: (s) => `600 ${s}px 'Barlow',system-ui,sans-serif`,
+    big: (s) => `400 ${s}px 'Anton','Oswald',sans-serif`
+  };
+  function taTeamFont(f) {
+    return (s) => `${f.w} ${Math.round(s * (f.sc || 1))}px ${f.ff},'Oswald',sans-serif`;
+  }
+  function taCase(s, upper) {
+    return upper ? String(s).toUpperCase() : String(s);
+  }
+  function taSpacedW(ctx, s, sp) {
+    return ctx.measureText(s).width + Math.max(0, s.length - 1) * sp;
+  }
+  // canvas letterSpacing is not in every Safari, so tracking is drawn by hand
+  function taSpaced(ctx, s, x, y, sp, align) {
+    if (!sp) {
+      ctx.textAlign = align || "left";
+      ctx.fillText(s, x, y);
+      return;
+    }
+    const w = taSpacedW(ctx, s, sp);
+    let cx = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
+    ctx.textAlign = "left";
+    for (const ch of s) {
+      ctx.fillText(ch, cx, y);
+      cx += ctx.measureText(ch).width + sp;
+    }
+  }
+  function taWrap(ctx, text, maxW, maxLines) {
+    const words = String(text).split(/\s+/).filter(Boolean), lines = [];
+    let cur = "";
+    for (const w of words) {
+      const t = cur ? cur + " " + w : w;
+      if (ctx.measureText(t).width <= maxW) cur = t;
+      else {
+        if (!cur || ctx.measureText(w).width > maxW) return null;
+        lines.push(cur);
+        cur = w;
+        if (lines.length >= maxLines) return null;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.length <= maxLines ? lines : null;
+  }
+  function taEllipsis(ctx, s, maxW) {
+    if (ctx.measureText(s).width <= maxW) return s;
+    while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
+    return s.trimEnd() + "…";
+  }
+  // Largest size that fits, preferring fewer lines: a line is only added once
+  // the text would have to shrink by more than a quarter to stay on fewer. At
+  // the floor, the last line is cut with an ellipsis rather than shrinking on.
+  function taFit(ctx, text, font, maxW, maxS, minS, maxLines) {
+    for (let n = 1; n <= maxLines; n++) {
+      const lo = n === maxLines ? minS : Math.max(minS, Math.round(maxS * 0.75));
+      for (let s = maxS; s >= lo; s -= 2) {
+        ctx.font = font(s);
+        const lines = taWrap(ctx, text, maxW, n);
+        if (lines) return { size: s, lines, cut: false };
+      }
+    }
+    ctx.font = font(minS);
+    const words = String(text).split(/\s+/), lines = [];
+    let cur = "";
+    for (const w of words) {
+      const t = cur ? cur + " " + w : w;
+      if (ctx.measureText(t).width <= maxW || !cur) cur = t;
+      else {
+        lines.push(cur);
+        cur = w;
+      }
+    }
+    if (cur) lines.push(cur);
+    const out = lines.slice(0, maxLines);
+    if (lines.length > maxLines) out[maxLines - 1] = out[maxLines - 1] + " " + lines.slice(maxLines).join(" ");
+    out[out.length - 1] = taEllipsis(ctx, out[out.length - 1], maxW);
+    return { size: minS, lines: out.map((l) => taEllipsis(ctx, l, maxW)), cut: true };
+  }
+
+  // ---- layout ------------------------------------------------------------
+  // Each side picks the roomiest tier its own asset count allows, so a star
+  // player traded for a package still gets a large portrait. Past ten assets a
+  // side switches to a two-column list, and past twenty the image grows taller
+  // instead of shrinking the type any further.
+  var TA_HEAD_H = 236, TA_STRIPE = 10, TA_PAD = 40, TA_CW = 460, TA_TEAM_H = 104, TA_AREA_TOP = 432, TA_BOTTOM = 40;
+  var TA_TIERS = [
+    { k: "card", gap: 14, max: 200, min: 150 },
+    { k: "row", gap: 12, max: 128, min: 84 },
+    { k: "compact", gap: 8, max: 76, min: 52 }
+  ];
+  function taPlan(n, areaH) {
+    if (n <= 1) return { k: n ? "feature" : "none", n, rowH: areaH, gap: 0, cols: 1, need: n ? 0 : 60 };
+    for (const t of TA_TIERS) {
+      const h = Math.min(t.max, (areaH - (n - 1) * t.gap) / n);
+      if (h >= t.min) return { k: t.k, n, rowH: Math.floor(h), gap: t.gap, cols: 1, need: n * Math.floor(h) + (n - 1) * t.gap };
+    }
+    const rows = Math.ceil(n / 2), gap = 8;
+    const h = Math.max(52, Math.min(64, Math.floor((areaH - (rows - 1) * gap) / rows)));
+    return { k: "grid", n, rowH: h, gap, cols: 2, rows, need: rows * h + (rows - 1) * gap };
+  }
+  function taLayout(model) {
+    const baseArea = TA_W - TA_AREA_TOP - TA_BOTTOM;
+    const plans = model.sides.map((s) => taPlan(s.gets.length, baseArea));
+    const extra = Math.max(0, ...plans.map((p) => p.need - baseArea));
+    const H = TA_W + Math.ceil(extra);
+    return { W: TA_W, H, areaH: H - TA_AREA_TOP - TA_BOTTOM, plans };
+  }
+
+  // ---- drawing -----------------------------------------------------------
+  function taRR(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function taText(ctx, log, side, role, s, x, y, opts) {
+    opts = opts || {};
+    ctx.fillStyle = opts.color;
+    ctx.textBaseline = "alphabetic";
+    taSpaced(ctx, s, x, y, opts.sp || 0, opts.align);
+    log.push({ side, role, text: s, size: opts.size || 0 });
+  }
+  function taPortrait(ctx, img, x, y, w, h, r, crop, pal, ini) {
+    ctx.save();
+    taRR(ctx, x, y, w, h, r);
+    ctx.clip();
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, taRGBA(pal.ac, 0.55));
+    g.addColorStop(1, taRGBA(taShade(pal.bg, -0.35), 1));
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+    if (img) {
+      const c = crop || {}, z = Math.max(1, +c.z || 1);
+      const s = Math.max(w / img.naturalWidth, h / img.naturalHeight) * z;
+      const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+      const dx = x - (dw - w) * (0.5 + (+c.x || 0) / 200), dy = y - (dh - h) * (0.5 + (+c.y || 0) / 200);
+      ctx.drawImage(img, dx, dy, dw, dh);
+    } else {
+      ctx.fillStyle = pal.ink;
+      ctx.globalAlpha = 0.9;
+      ctx.font = TA_F.big(Math.round(h * 0.4));
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ini, x + w / 2, y + h / 2 + h * 0.02);
+      ctx.globalAlpha = 1;
+      ctx.textBaseline = "alphabetic";
+    }
+    ctx.restore();
+  }
+  // picks and money draw a flat accent tile in the portrait's place
+  function taTile(ctx, it, x, y, s, r, pal) {
+    ctx.save();
+    taRR(ctx, x, y, s, s, r);
+    ctx.fillStyle = pal.ac;
+    ctx.fill();
+    ctx.fillStyle = pal.onAc;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    const cx = x + s / 2;
+    // the ordinal is sized to the tile's width as well as its height
+    const ordFont = (hs) => {
+      let z = Math.round(hs);
+      ctx.font = TA_F.big(z);
+      const w = ctx.measureText(it.ord.toUpperCase()).width;
+      if (w > s * 0.8) z = Math.floor(z * s * 0.8 / w);
+      ctx.font = TA_F.big(z);
+    };
+    if (it.kind === "pick") {
+      if (s >= 90) {
+        ctx.font = TA_F.cap(Math.round(s * 0.15));
+        taSpaced(ctx, it.year, cx, y + s * 0.27, s * 0.012, "center");
+        ordFont(s * 0.38);
+        ctx.textAlign = "center";
+        ctx.fillText(it.ord.toUpperCase(), cx, y + s * 0.68);
+        ctx.font = TA_F.cap(Math.round(s * 0.11));
+        taSpaced(ctx, "ROUND", cx, y + s * 0.87, s * 0.02, "center");
+      } else {
+        ordFont(s * 0.42);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(it.ord.toUpperCase(), cx, y + s / 2 + s * 0.03);
+      }
+    } else {
+      ctx.font = TA_F.big(Math.round(s * 0.56));
+      ctx.textBaseline = "middle";
+      ctx.fillText(it.kind === "money" ? "$" : "+", cx, y + s / 2 + s * 0.03);
+    }
+    ctx.restore();
+  }
+  function taMedia(ctx, it, x, y, s, r, pal, imgs, crops) {
+    if (it.kind === "player") taPortrait(ctx, imgs[it.photoSrc] || null, x, y, s, s, r, crops[it.pid], pal, it.ini);
+    else taTile(ctx, it, x, y, s, r, pal);
+  }
+  function taLogo(ctx, team, img, x, y, s, pal) {
+    if (img) {
+      // contain, never crop: the logo keeps its own proportions
+      const k = Math.min(s / img.naturalWidth, s / img.naturalHeight);
+      const w = img.naturalWidth * k, h = img.naturalHeight * k;
+      ctx.drawImage(img, x + (s - w) / 2, y + (s - h) / 2, w, h);
+      return;
+    }
+    ctx.save();
+    taRR(ctx, x, y, s, s, s * 0.24);
+    const g = ctx.createLinearGradient(x, y, x + s, y + s);
+    g.addColorStop(0, team.bg);
+    g.addColorStop(1, "#171416");
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = pal.ac;
+    ctx.stroke();
+    ctx.fillStyle = pal.ac;
+    ctx.font = taTeamFont(team.font)(Math.round(s * 0.52));
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(team.mono, x + s / 2, y + s / 2 + s * 0.03);
+    ctx.restore();
+  }
+  // one asset in a row-shaped slot (card, row, compact and grid tiers)
+  function taRow(ctx, log, si, it, x, y, w, h, k, pal, imgs, crops) {
+    ctx.save();
+    taRR(ctx, x, y, w, h, k === "grid" ? 10 : 14);
+    ctx.fillStyle = pal.card;
+    ctx.fill();
+    ctx.clip();
+    ctx.fillStyle = pal.ac;
+    ctx.fillRect(x, y, k === "grid" ? 5 : 6, h);
+    ctx.restore();
+    const pad = h >= 150 ? 14 : h >= 84 ? 10 : 7;
+    const showMedia = k !== "grid";
+    // capped so the name keeps enough width in the roomiest rows
+    const m = showMedia ? Math.min(h - pad * 2, 144) : 0;
+    if (showMedia) taMedia(ctx, it, x + 16, y + pad, m, h >= 84 ? 12 : 8, pal, imgs, crops);
+    const tx = x + (showMedia ? 16 + m + 18 : 18), tw = x + w - 14 - tx;
+    const title = it.title;
+    if (k === "card" && it.first) {
+      // two-tier name: first name small, surname large
+      const f1 = Math.round(Math.min(30, h * 0.16));
+      // a pick's round reads as one phrase, so it shrinks before it wraps
+      let nm = taFit(ctx, taCase(it.last, true), TA_F.name, tw, Math.round(Math.min(58, h * 0.3)), 30, it.kind === "pick" ? 1 : 2);
+      let mt = it.meta ? 26 : 0;
+      const need = () => f1 + 8 + nm.lines.length * nm.size * 1.02 + (mt ? 14 + mt : 0);
+      // keep the block inside the card: one line of name before losing the meta
+      if (need() > h - 16 && nm.lines.length > 1) nm = taFit(ctx, taCase(it.last, true), TA_F.name, tw, Math.round(Math.min(58, h * 0.3)), 30, 1);
+      if (need() > h - 16) mt = 0;
+      const lh = nm.size * 1.02;
+      const block = need();
+      let by = y + (h - block) / 2 + f1;
+      ctx.font = TA_F.first(f1);
+      taText(ctx, log, si, "first", taCase(it.first, true), tx, by, { color: pal.ink2, sp: 1.5, size: f1 });
+      by += 8;
+      ctx.font = TA_F.name(nm.size);
+      nm.lines.forEach((l) => {
+        by += lh;
+        taText(ctx, log, si, "name", l, tx, by - lh * 0.12, { color: pal.ink, size: nm.size });
+      });
+      if (mt) {
+        by += 14 + mt;
+        ctx.font = TA_F.meta(mt);
+        taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 4, { color: pal.ink2, size: mt });
+      }
+      return;
+    }
+    const maxS = k === "card" ? Math.round(Math.min(50, h * 0.26)) : k === "row" ? Math.round(Math.min(40, h * 0.34)) : k === "compact" ? Math.round(Math.min(32, h * 0.44)) : 26;
+    const minS = k === "grid" ? 22 : k === "compact" ? 24 : 28;
+    const lines = k === "card" || k === "row" && h >= 100 ? 2 : 1;
+    const nm = taFit(ctx, taCase(title, true), TA_F.name, tw, maxS, minS, lines);
+    const metaS = k === "grid" ? 17 : k === "compact" ? 19 : k === "row" ? 22 : 25;
+    const hasMeta = !!it.meta && h >= nm.lines.length * nm.size * 1.02 + metaS + pad * 2 - 4;
+    const lh = nm.size * 1.02;
+    const block = nm.lines.length * lh + (hasMeta ? 6 + metaS : 0);
+    let by = y + (h - block) / 2;
+    ctx.font = TA_F.name(nm.size);
+    nm.lines.forEach((l) => {
+      by += lh;
+      taText(ctx, log, si, "name", l, tx, by - lh * 0.14, { color: pal.ink, size: nm.size });
+    });
+    if (hasMeta) {
+      by += 6 + metaS;
+      ctx.font = TA_F.meta(metaS);
+      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 3, { color: pal.ink2, size: metaS });
+    }
+  }
+  // a side receiving one asset: a large centred card
+  function taFeature(ctx, log, si, it, x, y, w, h, pal, imgs, crops) {
+    const isPl = it.kind === "player", tiered = !!it.first;
+    const media = isPl ? Math.min(300, h - 250) : Math.min(230, h - 230);
+    let nameLines, nameS;
+    let cy;
+    if (tiered) {
+      const nm = taFit(ctx, taCase(it.last, true), TA_F.name, w - 40, 64, 34, it.kind === "pick" ? 1 : 2);
+      nameLines = nm.lines;
+      nameS = nm.size;
+    } else {
+      const big = it.kind === "money" ? 92 : 54;
+      const nm = taFit(ctx, taCase(it.title, true), it.kind === "money" ? TA_F.big : TA_F.name, w - 40, big, 34, 2);
+      nameLines = nm.lines;
+      nameS = nm.size;
+    }
+    const f1 = tiered ? 32 : 0, mt = it.meta ? 26 : 0;
+    const block = media + 26 + (f1 ? f1 + 8 : 0) + nameLines.length * nameS * 1.04 + (mt ? 14 + mt : 0) + 40;
+    const cardH = Math.min(h, block + 20);
+    const top = y + (h - cardH) / 2;
+    ctx.save();
+    taRR(ctx, x, top, w, cardH, 18);
+    ctx.fillStyle = pal.card;
+    ctx.fill();
+    ctx.clip();
+    ctx.fillStyle = pal.ac;
+    ctx.fillRect(x, top, w, 6);
+    ctx.restore();
+    const cx = x + w / 2;
+    cy = top + 30;
+    taMedia(ctx, it, cx - media / 2, cy, media, 16, pal, imgs, crops);
+    cy += media + 26;
+    if (f1) {
+      cy += f1;
+      ctx.font = TA_F.first(f1);
+      taText(ctx, log, si, "first", taCase(it.first, true), cx, cy, { color: pal.ink2, sp: 2, align: "center", size: f1 });
+      cy += 8;
+    }
+    ctx.font = (it.kind === "money" ? TA_F.big : TA_F.name)(nameS);
+    nameLines.forEach((l) => {
+      cy += nameS * 1.04;
+      taText(ctx, log, si, "name", l, cx, cy - nameS * 0.12, { color: pal.ink, align: "center", size: nameS });
+    });
+    if (mt) {
+      cy += 14 + mt;
+      ctx.font = TA_F.meta(mt);
+      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, w - 40), cx, cy - 4, { color: pal.ink2, align: "center", size: mt });
+    }
+  }
+  function taSide(ctx, log, si, side, plan, x0, areaTop, areaH, pal, imgs, crops) {
+    const x = x0 + TA_PAD, t = side.team;
+    // team header: logo, then the name beside it (up to two lines)
+    const ly = TA_HEAD_H + TA_STRIPE + 24;
+    taLogo(ctx, t, imgs[t.logo] || null, x, ly, TA_TEAM_H, pal);
+    // the right edge stops short of the centre badge
+    const nx = x + TA_TEAM_H + 20, nw = TA_CW - TA_TEAM_H - 34;
+    const tf = taTeamFont(t.font), upper = t.font.tt === "uppercase";
+    const nm = taFit(ctx, taCase(t.n, upper), tf, nw, 50, 28, 2);
+    const lh = nm.size * (t.font.sc || 1) * 1.08;
+    let ny = ly + (TA_TEAM_H - nm.lines.length * lh) / 2;
+    ctx.font = tf(nm.size);
+    nm.lines.forEach((l) => {
+      ny += lh;
+      taText(ctx, log, si, "team", l, nx, ny - lh * 0.2, { color: pal.ink, size: nm.size });
+    });
+    // "receives" label, with an arrow down into the list
+    const ry = ly + TA_TEAM_H + 40;
+    ctx.fillStyle = pal.acText;
+    ctx.beginPath();
+    ctx.moveTo(x + 2, ry - 17);
+    ctx.lineTo(x + 20, ry - 17);
+    ctx.lineTo(x + 11, ry - 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = TA_F.cap(24);
+    taText(ctx, log, si, "label", "RECEIVES", x + 30, ry, { color: pal.acText, sp: 5, size: 24 });
+    // assets
+    const items = side.gets;
+    if (!items.length) {
+      ctx.font = TA_F.meta(26);
+      taText(ctx, log, si, "empty", "Nothing", x, areaTop + 40, { color: pal.ink2, size: 26 });
+      return;
+    }
+    items.forEach((it) => log.push({ side: si, role: "asset", text: it.title, kind: it.kind, meta: it.meta, size: 0 }));
+    if (plan.k === "feature") {
+      taFeature(ctx, log, si, items[0], x, areaTop, TA_CW, areaH, pal, imgs, crops);
+      return;
+    }
+    const top = areaTop + Math.max(0, (areaH - plan.need) / 2);
+    if (plan.cols === 2) {
+      const cw = (TA_CW - 12) / 2;
+      items.forEach((it, i) => {
+        const col = i < plan.rows ? 0 : 1, row = col ? i - plan.rows : i;
+        taRow(ctx, log, si, it, x + col * (cw + 12), top + row * (plan.rowH + plan.gap), cw, plan.rowH, "grid", pal, imgs, crops);
+      });
+      return;
+    }
+    items.forEach((it, i) => taRow(ctx, log, si, it, x, top + i * (plan.rowH + plan.gap), TA_CW, plan.rowH, plan.k, pal, imgs, crops));
+  }
+  // Draws the whole graphic at scale k (1 = 1080px wide). Returns the text it
+  // drew, side by side, so a check can read the image back as data.
+  function drawTradeArt(ctx, model, opts, imgs, k) {
+    const lay = taLayout(model), log = [];
+    const order = opts.flip ? [1, 0] : [0, 1];
+    const sides = order.map((i) => model.sides[i]);
+    const pals = sides.map((s) => {
+      const c = opts.col && opts.col[s.team.key] || {};
+      return taPalette(taHex(c.bg) || s.team.bg, taHex(c.ac) || s.team.c);
+    });
+    ctx.save();
+    ctx.scale(k, k);
+    // panels
+    sides.forEach((s, i) => {
+      const x = i * TA_W / 2, p = pals[i];
+      const g = ctx.createLinearGradient(x, TA_HEAD_H, x + TA_W / 2, lay.H);
+      g.addColorStop(0, taShade(p.bg, 0.06));
+      g.addColorStop(1, taShade(p.bg, -0.22));
+      ctx.fillStyle = g;
+      ctx.fillRect(x, TA_HEAD_H, TA_W / 2, lay.H - TA_HEAD_H);
+      // a faint oversized initial for texture
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, TA_HEAD_H, TA_W / 2, lay.H - TA_HEAD_H);
+      ctx.clip();
+      ctx.globalAlpha = 0.05;
+      ctx.fillStyle = p.ink;
+      ctx.font = TA_F.big(620);
+      ctx.textAlign = "center";
+      ctx.fillText(s.team.mono, x + TA_W / 4, lay.H - 40);
+      ctx.restore();
+    });
+    // header band
+    const hg = ctx.createLinearGradient(0, 0, 0, TA_HEAD_H);
+    hg.addColorStop(0, "#0B0A0C");
+    hg.addColorStop(1, "#18151A");
+    ctx.fillStyle = hg;
+    ctx.fillRect(0, 0, TA_W, TA_HEAD_H);
+    pals.forEach((p, i) => {
+      ctx.fillStyle = p.ac;
+      ctx.fillRect(i * TA_W / 2, TA_HEAD_H, TA_W / 2, TA_STRIPE);
+    });
+    if (model.league) {
+      ctx.font = TA_F.cap(26);
+      taText(ctx, log, -1, "league", taEllipsis(ctx, model.league.toUpperCase(), TA_W - 160), TA_W / 2, 52, { color: "rgba(255,255,255,.62)", sp: 6, align: "center", size: 26 });
+    }
+    const hd = taFit(ctx, opts.head.toUpperCase(), TA_F.head, TA_W - 120, 104, 68, 1);
+    ctx.font = TA_F.head(hd.size);
+    taText(ctx, log, -1, "headline", hd.lines[0], TA_W / 2, 178, { color: "#FFFFFF", sp: 3, align: "center", size: hd.size });
+    if (model.when) {
+      ctx.font = TA_F.meta(24);
+      taText(ctx, log, -1, "when", model.when, TA_W / 2, 218, { color: "rgba(255,255,255,.6)", align: "center", size: 24 });
+    }
+    // sides
+    sides.forEach((s, i) => taSide(ctx, log, i, s, lay.plans[order[i]], i * TA_W / 2, TA_AREA_TOP, lay.areaH, pals[i], imgs, opts.crop || {}));
+    // seam and swap badge
+    ctx.fillStyle = "rgba(0,0,0,.35)";
+    ctx.fillRect(TA_W / 2 - 1.5, TA_HEAD_H + TA_STRIPE, 3, lay.H - TA_HEAD_H - TA_STRIPE);
+    const by = TA_HEAD_H + TA_STRIPE + 24 + TA_TEAM_H / 2;
+    ctx.beginPath();
+    ctx.arc(TA_W / 2, by, 34, 0, Math.PI * 2);
+    ctx.fillStyle = "#0E0C0E";
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,.18)";
+    ctx.stroke();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(TA_W / 2 - 14, by - 7);
+    ctx.lineTo(TA_W / 2 + 14, by - 7);
+    ctx.lineTo(TA_W / 2 + 7, by - 14);
+    ctx.moveTo(TA_W / 2 + 14, by + 7);
+    ctx.lineTo(TA_W / 2 - 14, by + 7);
+    ctx.lineTo(TA_W / 2 - 7, by + 14);
+    ctx.stroke();
+    ctx.restore();
+    return {
+      W: lay.W,
+      H: lay.H,
+      tiers: order.map((i) => lay.plans[i].k),
+      teams: sides.map((s) => s.team.n),
+      texts: log
+    };
+  }
+
+  // ---- images and fonts ----------------------------------------------------
+  // Remote headshots load with CORS so the canvas stays exportable; a server
+  // that will not allow that simply gets the initials fallback, in the preview
+  // and the download alike.
+  function taImg(src) {
+    if (!src) return Promise.resolve(null);
+    if (!TA_IMG[src]) TA_IMG[src] = new Promise((res) => {
+      const im = new Image();
+      if (!/^(data|blob):/.test(src)) im.crossOrigin = "anonymous";
+      const t = setTimeout(() => res(null), 8e3);
+      im.onload = () => {
+        clearTimeout(t);
+        res(im.naturalWidth ? im : null);
+      };
+      im.onerror = () => {
+        clearTimeout(t);
+        res(null);
+      };
+      im.src = src;
+    });
+    return TA_IMG[src];
+  }
+  async function taAssets(model) {
+    const fonts = ["400 40px 'Anton'", "500 40px 'Oswald'", "600 40px 'Oswald'", "700 40px 'Oswald'", "600 40px 'Barlow'"];
+    const srcs = [];
+    model.sides.forEach((s) => {
+      fonts.push(taTeamFont(s.team.font)(40));
+      if (s.team.logo) srcs.push(s.team.logo);
+      s.gets.forEach((it) => {
+        if (it.kind !== "player") return;
+        it.photoSrc = TA && TA.photos[it.pid] || it.photo;
+        if (it.photoSrc) srcs.push(it.photoSrc);
+      });
+    });
+    if (document.fonts && document.fonts.load) await Promise.all(fonts.map((f) => document.fonts.load(f).catch(() => null)));
+    const imgs = {};
+    await Promise.all(srcs.map((s) => taImg(s).then((im) => imgs[s] = im)));
+    return imgs;
+  }
+
+  // ---- editor --------------------------------------------------------------
+  function taBag() {
+    const lid = activeLeagueId();
+    if (!store.tradeArt) store.tradeArt = {};
+    if (!store.tradeArt[lid]) store.tradeArt[lid] = {};
+    return store.tradeArt[lid];
+  }
+  function taSave() {
+    clearTimeout(taSaveTimer);
+    taSaveTimer = setTimeout(() => {
+      if (!TA) return;
+      taBag()[TA.key] = TA.opts;
+      saveStore();
+    }, 500);
+  }
+  function taTrade() {
+    if (!TA) return null;
+    if (TA.src === "msg") {
+      const m = findMsg(TA.id);
+      return m && m.trade ? Object.assign({}, m.trade, { ts: m.ts }) : null;
+    }
+    const t = txLog().find((x) => x.id === TA.id);
+    if (!t) return null;
+    const as = t.assets || {};
+    return { from: t.teams[0], to: t.teams[1], give: as.give || [], get: as.get || [], status: "accepted", processedAt: t.ts };
+  }
+  function openTradeArt(msgId) {
+    processTradeReviews();
+    const m = findMsg(msgId);
+    if (!m || !m.trade || !TRADE_ART_STATUS[m.trade.status]) {
+      toast("That trade can't be turned into a graphic");
+      return;
+    }
+    taStart("msg", msgId);
+  }
+  function openTradeArtTx(txId) {
+    const t = txLog().find((x) => x.id === txId);
+    if (!t || t.type !== "trade" || (t.teams || []).length < 2) return;
+    if (t.tradeMsgId && findMsg(t.tradeMsgId)) return openTradeArt(t.tradeMsgId);
+    taStart("tx", txId);
+  }
+  function taStart(src, id) {
+    const key = src + ":" + id;
+    const saved = taBag()[key] || {};
+    TA = {
+      src,
+      id,
+      key,
+      back: currentViewName(),
+      photos: {},
+      opts: { head: saved.head || "", flip: !!saved.flip, col: saved.col || {}, crop: saved.crop || {} }
+    };
+    renderTradeArt();
+    showView2("tradeart");
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
+    document.getElementById("scroll").scrollTop = 0;
+    if (document.body.classList.contains("open")) toggleDrawer();
+  }
+  function closeTradeArt() {
+    const back = TA && TA.back || "chat";
+    TA = null;
+    if (back === "log") {
+      renderLog();
+      showView2("log");
+    } else if (back === "chat") {
+      renderChat();
+      showView2("chat");
+    } else showView2(back);
+  }
+  function taModel() {
+    const tr = taTrade();
+    if (!tr) return null;
+    const model = tradeArtModel(tr);
+    // a headline stays only while it is still true for the trade's status
+    if (model.heads.indexOf(TA.opts.head) < 0) TA.opts.head = model.heads[0] || "Trade";
+    return model;
+  }
+  function taSwatch(team, which, cur) {
+    const t = T[team] || {};
+    const presets = [];
+    [t.bg, t.c, "#0E0C0E", "#FFFFFF"].forEach((c) => {
+      const h = taHex(c);
+      if (h && presets.indexOf(h) < 0) presets.push(h);
+    });
+    return `<div class="ta-ctl" data-team="${team}" data-which="${which}">
+      <span class="ta-lb">${which === "bg" ? "Background" : "Accent"}</span>
+      <label class="ta-sw" style="background:${cur}"><input type="color" value="${cur}" oninput="taColor('${team}','${which}',this.value)"></label>
+      <span class="ta-hex">${cur}</span>
+      <span class="ta-pre">${presets.map((c) => `<i style="background:${c}" onclick="taColor('${team}','${which}','${c}')"></i>`).join("")}</span>
+    </div>`;
+  }
+  function renderTradeArt() {
+    const el = document.getElementById("taBody");
+    if (!el || !TA) return;
+    const model = taModel();
+    if (!model) {
+      el.innerHTML = `<div class="ta-hd"><div class="tb-back" onclick="closeTradeArt()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div><div class="ta-title">Trade graphic</div></div>
+        <div class="ta-note show">This trade is no longer available.</div>`;
+      return;
+    }
+    const order = TA.opts.flip ? [1, 0] : [0, 1];
+    const sides = order.map((i) => model.sides[i]);
+    const heads = model.heads.map((h) => `<span class="ta-chip${h === TA.opts.head ? " on" : ""}" onclick="taHead('${escAttr(h)}')">${escHtml(h)}</span>`).join("");
+    const colors = sides.map((s) => {
+      const c = TA.opts.col[s.team.key] || {};
+      const bg = taHex(c.bg) || taHex(s.team.bg) || "#262123", ac = taHex(c.ac) || taHex(s.team.c) || "#A5ABB0";
+      return `<div class="ta-side" data-team="${s.team.key}">
+        <div class="ta-sn" style="color:${ac}">${escHtml(s.team.n)}</div>
+        ${taSwatch(s.team.key, "bg", bg)}
+        ${taSwatch(s.team.key, "ac", ac)}
+        <span class="ta-reset" onclick="taResetColors('${s.team.key}')">Team colors</span>
+      </div>`;
+    }).join("");
+    const players = [];
+    sides.forEach((s) => s.gets.forEach((it) => {
+      if (it.kind === "player" && !players.some((p) => p.pid === it.pid)) players.push(it);
+    }));
+    const crops = players.map((it) => {
+      const c = TA.opts.crop[it.pid] || {};
+      const pid = esc(it.pid);
+      return `<div class="ta-pl">
+        <div class="ta-plh">
+          <span class="ta-face">${TA.photos[it.pid] ? `<img src="${TA.photos[it.pid]}" alt="">` : faceInner(it.pid)}</span>
+          <span class="ta-pn">${escHtml(it.title)}</span>
+          <label class="ta-up">Photo<input type="file" accept="image/*" onchange="taPhoto('${pid}',this)"></label>
+          <span class="ta-reset" onclick="taCropReset('${pid}')">Reset</span>
+        </div>
+        <div class="ta-sl"><span>Zoom</span><input type="range" min="1" max="2.5" step="0.05" value="${c.z || 1}" oninput="taCrop('${pid}','z',this.value)"></div>
+        <div class="ta-sl"><span>Left ↔ right</span><input type="range" min="-100" max="100" step="2" value="${c.x || 0}" oninput="taCrop('${pid}','x',this.value)"></div>
+        <div class="ta-sl"><span>Up ↕ down</span><input type="range" min="-100" max="100" step="2" value="${c.y || 0}" oninput="taCrop('${pid}','y',this.value)"></div>
+      </div>`;
+    }).join("");
+    el.innerHTML = `
+    <div class="ta-hd">
+      <div class="tb-back" onclick="closeTradeArt()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
+      <div class="ta-title">Trade graphic<span>${escHtml(sides[0].team.n)} ↔ ${escHtml(sides[1].team.n)}</span></div>
+    </div>
+    <div class="ta-stage"><canvas id="taCanvas" width="1080" height="1080"></canvas></div>
+    <div class="ta-note" id="taNote"></div>
+    <div class="ta-sec">Headline</div>
+    <div class="ta-chips">${heads}</div>
+    <div class="ta-sec">Colors<span class="ta-flip" onclick="taFlip()">Swap sides</span></div>
+    <div class="ta-sides">${colors}</div>
+    ${players.length ? `<div class="ta-sec">Portraits</div><div class="ta-pls">${crops}</div>` : ""}
+    <div class="ta-bar">
+      <div class="ta-dl" onclick="taDownload()">Download image</div>
+      <div class="ta-sh" id="taShareBtn" onclick="taShare()">Share</div>
+    </div>`;
+    const sh = document.getElementById("taShareBtn");
+    if (sh) sh.style.display = navigator.canShare && window.File ? "" : "none";
+    taPaint();
+  }
+  var taQueued = false;
+  function taPaintSoon() {
+    if (taQueued) return;
+    taQueued = true;
+    requestAnimationFrame(() => {
+      taQueued = false;
+      taPaint();
+    });
+  }
+  async function taPaint() {
+    const cv = document.getElementById("taCanvas");
+    if (!cv || !TA) return;
+    const seq = ++taSeq, model = taModel();
+    if (!model) return;
+    const imgs = await taAssets(model);
+    if (seq !== taSeq || !TA) return;
+    const lay = taLayout(model);
+    const dpr = window.devicePixelRatio || 1;
+    const k = Math.min(2, Math.max(0.5, (cv.clientWidth || 360) * dpr / TA_W));
+    const w = Math.round(TA_W * k), h = Math.round(lay.H * k);
+    if (cv.width !== w || cv.height !== h) {
+      cv.width = w;
+      cv.height = h;
+    }
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    TA_LAST = drawTradeArt(ctx, model, TA.opts, imgs, k);
+    const miss = [];
+    model.sides.forEach((s) => s.gets.forEach((it) => {
+      if (it.kind === "player" && !imgs[it.photoSrc]) miss.push(it.title);
+    }));
+    const notes = [];
+    if (miss.length) notes.push(`No portrait for ${miss.join(", ")} — initials are shown. Use Photo to add one.`);
+    if (lay.H > TA_W) notes.push("This trade has too many assets for a square, so the image is taller.");
+    const n = document.getElementById("taNote");
+    if (n) {
+      n.textContent = notes.join(" ");
+      n.classList.toggle("show", notes.length > 0);
+    }
+  }
+  function taHead(h) {
+    if (!TA) return;
+    TA.opts.head = h;
+    taSave();
+    document.querySelectorAll(".ta-chip").forEach((c) => c.classList.toggle("on", c.textContent === h));
+    taPaintSoon();
+  }
+  function taColor(team, which, v) {
+    if (!TA || !taHex(v)) return;
+    const c = TA.opts.col[team] = TA.opts.col[team] || {};
+    c[which] = taHex(v);
+    taSave();
+    // repaint the swatch in place so a dragging colour picker keeps its grip
+    document.querySelectorAll(`.ta-ctl[data-team="${team}"][data-which="${which}"]`).forEach((ctl) => {
+      const inp = ctl.querySelector("input");
+      ctl.querySelector(".ta-sw").style.background = c[which];
+      ctl.querySelector(".ta-hex").textContent = c[which];
+      if (inp && inp.value.toUpperCase() !== c[which]) inp.value = c[which].toLowerCase();
+    });
+    const sn = document.querySelector(`.ta-side[data-team="${team}"] .ta-sn`);
+    if (sn && which === "ac") sn.style.color = c.ac;
+    taPaintSoon();
+  }
+  function taResetColors(team) {
+    if (!TA) return;
+    delete TA.opts.col[team];
+    taSave();
+    renderTradeArt();
+  }
+  function taFlip() {
+    if (!TA) return;
+    TA.opts.flip = !TA.opts.flip;
+    taSave();
+    renderTradeArt();
+  }
+  function taCrop(pid, k, v) {
+    if (!TA) return;
+    const c = TA.opts.crop[pid] = TA.opts.crop[pid] || {};
+    c[k] = +v;
+    taSave();
+    taPaintSoon();
+  }
+  function taCropReset(pid) {
+    if (!TA) return;
+    delete TA.opts.crop[pid];
+    delete TA.photos[pid];
+    taSave();
+    renderTradeArt();
+  }
+  // a photo added here is used for this graphic only; it is not saved
+  function taPhoto(pid, input) {
+    const f = input && input.files && input.files[0];
+    if (!f || !TA) return;
+    processImage(f, 900, "image/jpeg", 0.9, (url) => {
+      if (!TA) return;
+      TA.photos[pid] = url;
+      renderTradeArt();
+    });
+  }
+  // The export is drawn fresh at twice the base size: 2160px square.
+  async function tradeArtBlob(k) {
+    if (!TA) return null;
+    const model = taModel();
+    if (!model) return null;
+    const imgs = await taAssets(model);
+    const lay = taLayout(model);
+    k = k || 2;
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(TA_W * k);
+    cv.height = Math.round(lay.H * k);
+    drawTradeArt(cv.getContext("2d"), model, TA.opts, imgs, k);
+    return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
+  }
+  function taFileName() {
+    const m = taModel(), slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return `trade-${m ? m.sides.map((s) => slug(s.team.n)).join("-") : "graphic"}.png`;
+  }
+  async function taDownload() {
+    const b = await tradeArtBlob(2);
+    if (!b) {
+      toast("Couldn't make the image");
+      return;
+    }
+    const url = URL.createObjectURL(b), a = document.createElement("a");
+    a.href = url;
+    a.download = taFileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 6e4);
+  }
+  async function taShare() {
+    const b = await tradeArtBlob(2);
+    if (!b) return;
+    const file = new File([b], taFileName(), { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+      } catch (e) {
+      }
+    } else taDownload();
+  }
+  function tradeArtLayout() {
+    return TA_LAST;
+  }
+
   // js/main.js
   Object.assign(
     window,
@@ -16059,6 +17296,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     waivers_exports,
     log_exports,
     chat_exports,
+    trade_art_exports,
     home_exports,
     create_exports,
     kart_exports,
