@@ -1,0 +1,26 @@
+{
+  "name": "card-factory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Foil & Ink: a sports-card manufacturer management simulator",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check:ui": "node tools/ui-check.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.62.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
