@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League Values</title>
+<link rel="stylesheet" href="css/values.css">
+</head>
+<body>
+<header class="lv-top">
+  <div class="lv-brand">
+    <div class="lv-title">League Values</div>
+    <div class="lv-sub" id="lv-league">No league connected</div>
+  </div>
+  <div class="lv-sync">
+    <span id="lv-status" class="lv-status"></span>
+    <button id="lv-sync" class="lv-btn">Sync</button>
+  </div>
+</header>
+
+<nav class="lv-tabs" role="tablist">
+  <button class="lv-tab on" data-tab="values">Values</button>
+  <button class="lv-tab" data-tab="trades">Trades</button>
+  <button class="lv-tab" data-tab="calc">Trade check</button>
+  <button class="lv-tab" data-tab="setup">Setup</button>
+</nav>
+
+<main>
+  <section class="lv-pane on" id="pane-values">
+    <div class="lv-empty" id="values-empty" hidden></div>
+    <div class="lv-filters">
+      <input id="f-search" class="lv-input" type="search" placeholder="Search players">
+      <div class="lv-chips" id="f-pos">
+        <button class="on" data-pos="">All</button><button data-pos="QB">QB</button><button data-pos="RB">RB</button>
+        <button data-pos="WR">WR</button><button data-pos="TE">TE</button><button data-pos="PICK">Picks</button>
+      </div>
+      <select id="f-owner" class="lv-input"></select>
+      <select id="f-sort" class="lv-input">
+        <option value="league">Sort: league value</option>
+        <option value="dd">Sort: Dynasty Daddy</option>
+        <option value="up">Sort: league likes more</option>
+        <option value="down">Sort: league likes less</option>
+      </select>
+    </div>
+    <div class="lv-groups" id="groups"></div>
+    <div class="lv-table-wrap">
+      <table class="lv-table">
+        <thead><tr>
+          <th class="num">#</th><th>Player</th><th class="hide-sm">Owner</th>
+          <th class="num">Dynasty Daddy</th><th class="num">League</th><th class="num">Diff</th><th class="hide-sm">Trend</th>
+        </tr></thead>
+        <tbody id="values-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="lv-pane" id="pane-trades">
+    <div class="lv-card">
+      <h2>Log a rejected offer</h2>
+      <p class="lv-note">Sleeper doesn't share declined offers, so add the ones you hear about. A rejection only moves values when the model thought the deal was fair or better for the side that said no.</p>
+      <div class="lv-form" id="reject-form">
+        <label>Date <input type="date" id="rj-date" class="lv-input"></label>
+        <div class="lv-split">
+          <div>
+            <div class="lv-label">Offered (what the rejecting team would get)</div>
+            <div class="lv-assets" id="rj-offered"></div>
+          </div>
+          <div>
+            <div class="lv-label">Asked for (what they'd give up)</div>
+            <div class="lv-assets" id="rj-asked"></div>
+          </div>
+        </div>
+        <label>Note <input type="text" id="rj-note" class="lv-input" placeholder="Optional — who, context"></label>
+        <button class="lv-btn" id="rj-add">Add rejected offer</button>
+      </div>
+    </div>
+    <h2 class="lv-h">Trade log</h2>
+    <div id="trade-list"></div>
+  </section>
+
+  <section class="lv-pane" id="pane-calc">
+    <div class="lv-card">
+      <h2>Trade check</h2>
+      <p class="lv-note">Price a deal the way this league does, next to the Dynasty Daddy number.</p>
+      <div class="lv-split">
+        <div><div class="lv-label">Side A gets</div><div class="lv-assets" id="calc-a"></div></div>
+        <div><div class="lv-label">Side B gets</div><div class="lv-assets" id="calc-b"></div></div>
+      </div>
+      <div id="calc-out" class="lv-calc-out"></div>
+    </div>
+  </section>
+
+  <section class="lv-pane" id="pane-setup">
+    <div class="lv-card">
+      <h2>Sleeper league</h2>
+      <div class="lv-row">
+        <input id="s-league" class="lv-input" placeholder="League ID (from sleeper.com/leagues/<id>)">
+        <label class="lv-inline">Seasons of trades <select id="s-seasons" class="lv-input"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+        <button class="lv-btn" id="s-save">Save &amp; sync</button>
+      </div>
+      <div id="s-scoring" class="lv-pills"></div>
+    </div>
+
+    <div class="lv-card">
+      <h2>Dynasty Daddy values</h2>
+      <p class="lv-note" id="dd-status"></p>
+      <div class="lv-row">
+        <button class="lv-btn" id="dd-fetch">Fetch today's values</button>
+        <button class="lv-btn ghost" id="dd-fetch-prev">Fetch last 3 months</button>
+      </div>
+      <details class="lv-details">
+        <summary>Fetch blocked? Paste the values instead</summary>
+        <p class="lv-note">Open <a id="dd-link" target="_blank" rel="noopener"></a> in a new tab, select all, copy, and paste here. The <a id="dd-link-prev" target="_blank" rel="noopener">3-month history</a> works the same way and fills in the chart.</p>
+        <textarea id="dd-paste" class="lv-input" rows="5" placeholder='[{"sleeper_id":"4984","sf_trade_value":9100,...}]'></textarea>
+        <div class="lv-row"><button class="lv-btn" id="dd-import">Import pasted values</button>
+          <label class="lv-btn ghost">Upload file<input type="file" id="dd-file" accept=".json,application/json" hidden></label></div>
+      </details>
+      <label class="lv-inline">API address <input id="dd-url" class="lv-input" placeholder="https://dynasty-daddy.com/api/v1/player/all/today"></label>
+    </div>
+
+    <div class="lv-card">
+      <h2>Model</h2>
+      <p class="lv-note">How hard each kind of evidence pushes. Defaults are deliberately gentle: a 10-team league only makes a few dozen trades a year.</p>
+      <div class="lv-params" id="s-params"></div>
+      <button class="lv-btn ghost" id="s-reset">Reset to defaults</button>
+    </div>
+
+    <div class="lv-card">
+      <h2>Backup</h2>
+      <p class="lv-note">Rejected offers, ignored trades, settings and value history live only in this browser. Export them now and then.</p>
+      <div class="lv-row">
+        <button class="lv-btn" id="b-export">Export</button>
+        <label class="lv-btn ghost">Import<input type="file" id="b-import" accept=".json" hidden></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<aside class="lv-sheet" id="sheet" hidden>
+  <div class="lv-sheet-in">
+    <button class="lv-x" id="sheet-x" aria-label="Close">×</button>
+    <div id="sheet-body"></div>
+  </div>
+</aside>
+
+<script type="module" src="js/values/main.js"></script>
+</body>
+</html>
