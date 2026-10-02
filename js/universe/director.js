@@ -10,7 +10,11 @@
 // the winner (their partners joining in, and someone make the save), a
 // partner turn traitor, a rivalry boil over, a team split, a rival shake
 // hands, someone step up to a champion - a new #1 contender first of all - or
-// an underdog's run get noticed.
+// an underdog's run get noticed. That happens straight after each match, as
+// soon as its result is in, about that match; once the whole card is in (or
+// its week is over) it looks once more at what wasn't about one match: bad
+// blood between people in different matches, and a champion who didn't
+// wrestle being called out.
 //
 // Everything comes from the record: personalities, relationships, goals,
 // momentum, champions, teams, recent results and what has already happened.
@@ -147,18 +151,22 @@ export function goalOf(st, wid, d = RL.relationships(st), hist = history(st, nul
 
 // ---------------------------------------------------------------- what the director knows about a show
 
-function context(st, ev, phase, nonce) {
+// `matchId`: straight after that match - only it, and the people in it, are "tonight"
+function context(st, ev, phase, nonce, matchId = null) {
   const d = RL.relationships(st);
   const wk = weekNo(st, ev.at);
   const hist = history(st, ev.at);
-  const tonight = ev.matches.filter(m => m.status === 'played');
+  const focus = matchId ? ev.matches.find(m => m.id === matchId && m.status === 'played') || null : null;
+  const tonight = focus ? [focus] : ev.matches.filter(m => m.status === 'played');
   const booked = ev.matches.filter(m => m.status === 'scheduled');
   const onCard = new Set((phase === 'post' ? tonight : booked).flatMap(m => m.sides.flatMap(sd => sd.wrestlers)));
   // who's around: the show's roster, or for an all-shows event everyone on its card
-  const around = ev.showId ? st.wrestlers.filter(w => w.showId === ev.showId || onCard.has(w.id)) : st.wrestlers.filter(w => onCard.has(w.id));
+  const card = new Set(ev.matches.flatMap(m => m.sides.flatMap(sd => sd.wrestlers)));
+  const around = ev.showId ? st.wrestlers.filter(w => w.showId === ev.showId || card.has(w.id)) : st.wrestlers.filter(w => card.has(w.id));
   const incidents = M.allIncidents(st).filter(x => M.compareStamps(st, x.event.at, ev.at) <= 0).map(x => ({ ...x, wk: weekNo(st, x.event.at) }));
-  // what the director has done before: every event it picked, by kind and key
-  const picks = st.story.rolls.filter(r => !r.undone && !(r.event === ev.id && r.phase === phase)).flatMap(r => {
+  // what the director has done before: every event it picked, by kind and key (this part of this show aside)
+  const same = r => r.event === ev.id && r.phase === phase && (r.match || null) === (matchId || null);
+  const picks = st.story.rolls.filter(r => !r.undone && !same(r)).flatMap(r => {
     const e = M.eventById(st, r.event);
     return e ? r.considered.filter(k => k.picked).map(k => ({ ...k, wk: weekNo(st, e.at), ev: e, phase: r.phase })) : [];
   });
@@ -167,7 +175,7 @@ function context(st, ev, phase, nonce) {
   const table = SD.standings(st, { showId: ev.showId || null, period: SD.periodOf(st, season.id) });
   const size = table.ranked.length + table.unranked.length;
   const rank = new Map(table.ranked.map(r => [r.id, r.rank]));
-  return { st, ev, phase, nonce, d, wk, hist, tonight, booked, onCard, around, incidents, picks, rank, size,
+  return { st, ev, phase, nonce, focus, matchId, d, wk, hist, tonight, booked, onCard, around, incidents, picks, rank, size,
     seed: st.story.seed, pace: PACE[st.story.pace] };
 }
 
@@ -479,6 +487,7 @@ function brawls(c) {
     const bad = (rv ? rv.level : 0) + ha + hb;
     const m = together(a, b);
     if (bad < 2 || (!m && bad < 4)) return;
+    if (m && !c.focus && c.phase === 'post' && c.st.story.rolls.some(r => r.event === c.ev.id && r.match === m.id)) return;   // dealt with straight after it
     const [x, y] = ha >= hb ? [a, b] : [b, a];
     const cand = candidate(c, 'brawl', `brawl:${a}+${b}`, [a, b]);
     const A = nm(c, a), B = nm(c, b);
@@ -685,6 +694,9 @@ function challenges(c) {
     const champs = holders(st, reign.holder);
     const champAppeared = champs.some(id => c.onCard.has(id));
     const showId = titleShow(c, t, reign);
+    const about = m => m.titleId === t.id || m.contender === t.id || m.sides.some(sd => sd.wrestlers.some(id => champs.includes(id)));
+    if (c.focus && !about(c.focus)) return;                       // straight after a match: only a title it was about
+    if (!c.focus && c.st.story.rolls.some(r => r.event === c.ev.id && r.match && c.tonight.some(m => m.id === r.match && about(m)))) return;
     if (!champAppeared && c.ev.showId && showId !== c.ev.showId) return;
     const champName = M.holderName(st, reign.holder);
     const contenders = contendersOf(c, t, reign, showId);
@@ -932,20 +944,25 @@ function coolings(c) {
 
 // ================================================================ a show, before or after
 
-// every possibility for a show's phase, with its plan, its reasons and its chance
+// every possibility for a part of a show, with its plan, its reasons and its chance
 function possible(c) {
-  return c.phase === 'post'
-    ? [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)]
-    : [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
+  if (c.phase === 'pre') return [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
+  // after the show: only what wasn't about one match (brawls and challenges leave out what came up straight after one)
+  if (!c.focus) return [...brawls(c), ...challenges(c)];
+  // straight after a match: everything about it happens then and there
+  const all = [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)];
+  all.forEach(k => { k.plan.incidents = k.plan.incidents.map(i => ({ ...i, match: i.match || c.focus.id })); });
+  return all;
 }
 /**
  * Everything the director would weigh around a show, before any draw: [{ kind,
- * key, incidents, why, chance }] - what each would record, and why.
+ * key, incidents, why, chance }] - what each would record, and why. `matchId`:
+ * straight after that match.
  */
-export function possibilities(st, eventId, phase) {
+export function possibilities(st, eventId, phase, matchId = null) {
   const ev = M.eventById(st, eventId);
   if (!ev) return [];
-  return possible(context(st, ev, phase, 0)).map(k => ({ kind: k.kind, key: k.key, incidents: k.plan.incidents, why: k.factors.map(f => f.text),
+  return possible(context(st, ev, phase, 0, matchId)).map(k => ({ kind: k.kind, key: k.key, incidents: k.plan.incidents, why: k.factors.map(f => f.text),
     chance: k.chance, extra: k.extra }));
 }
 
@@ -956,23 +973,27 @@ export function possibilities(st, eventId, phase) {
  * considered, cap } - `picked` ready for model.saveDirectorRoll, `considered`
  * every possibility with its chance and draw, for the log.
  */
-export function lookAt(st, eventId, phase, nonce = 0) {
+export function lookAt(st, eventId, phase, nonce = 0, matchId = null) {
   const ev = M.eventById(st, eventId);
   if (!ev) return { pool: 0, picked: [], considered: [], cap: 0 };
-  const c = context(st, ev, phase, nonce);
+  const c = context(st, ev, phase, nonce, matchId);
   const all = possible(c);
+  // the rest of this show's part (after its other matches, or after it): one show's limits, kinds and people across them
+  const others = st.story.rolls.filter(r => r.event === ev.id && r.phase === phase && !r.undone && (r.match || null) !== (matchId || null));
+  const slot = matchId ? `${phase}:${matchId}` : phase;
   // after an eventful episode of this show, the next one is calmer
   const prevEp = st.events.filter(e => e.showId === ev.showId && e.kind === ev.kind && M.compareStamps(st, e.at, ev.at) < 0)
     .sort((a, b) => M.compareStamps(st, b.at, a.at))[0];
   const busy = prevEp ? st.story.rolls.filter(r => r.event === prevEp.id && !r.undone).reduce((n, r) => n + r.considered.filter(k => k.picked).length, 0) : 0;
   if (busy >= 2) all.forEach(k => { k.chance *= RULES.calmFactor; why(k, 1, `Less likely: the last ${prevEp.name} was eventful`); });
   const thisWeek = c.picks.filter(p => p.wk === c.wk).length;
-  const cap = Math.max(0, Math.min(c.pace[phase], c.pace.perWeek - thisWeek));
+  const already = others.reduce((n, r) => n + r.considered.filter(k => k.picked).length, 0);
+  const cap = Math.max(0, Math.min(c.pace[phase] - already, c.pace.perWeek - thisWeek));
   const passed = [];
   all.forEach(k => {
-    k.roll = draw(c.seed, ev.id, phase, nonce, k.key);
+    k.roll = draw(c.seed, ev.id, slot, nonce, k.key);
     if (k.roll >= k.chance) return;
-    if (k.kind === 'attack' && k.extra && draw(c.seed, ev.id, phase, nonce, k.key, 'save') < k.extra.chance) {
+    if (k.kind === 'attack' && k.extra && draw(c.seed, ev.id, slot, nonce, k.key, 'save') < k.extra.chance) {
       k.kind = 'save';
       k.plan = { incidents: [...k.plan.incidents, k.extra.save] };
       k.people = [...k.people, k.extra.saver];
@@ -982,12 +1003,15 @@ export function lookAt(st, eventId, phase, nonce = 0) {
   });
   // everything that came up has an equal shot at the show's places
   passed.sort((a, b) => a.roll / a.chance - b.roll / b.chance);
-  const picked = [], used = new Set(), kinds = new Set();
+  const family = kind => (kind === 'save' ? 'attack' : kind === 'cooling' || kind === 'respect' ? 'truce' : kind);
+  const picked = [];
+  const kinds = new Set(others.flatMap(r => r.considered.filter(k => k.picked).map(k => family(k.kind))));
+  const used = new Set(ev.incidents.filter(x => others.some(r => r.made.includes(x.id))).flatMap(x => [...x.by, ...x.on, ...x.helped]));
   for (const k of passed) {
     if (picked.length >= cap) break;
-    const family = k.kind === 'save' ? 'attack' : k.kind === 'cooling' || k.kind === 'respect' ? 'truce' : k.kind;
-    if (kinds.has(family) || k.people.some(id => used.has(id))) continue;
-    kinds.add(family);
+    const fam = family(k.kind);
+    if (kinds.has(fam) || k.people.some(id => used.has(id))) continue;
+    kinds.add(fam);
     k.people.forEach(id => used.add(id));
     k.picked = true;
     picked.push({ kind: k.kind, key: k.key, plan: k.plan, why: k.factors.map(f => f.text), chance: k.chance, draw: k.roll, basis: k.basis, shock: k.shock });
@@ -1017,13 +1041,18 @@ export function due(st) {
   const out = [];
   const played = e => e.matches.some(m => m.status === 'played');
   evs.forEach(e => {
-    if (!played(e) || M.directorRollOf(st, e.id, 'post')) return;
-    if (M.cardStatus(e).state === 'complete' || e.at.week < s.week) out.push({ event: e, phase: 'post' });
+    if (!played(e)) return;
+    const whole = M.directorRollOf(st, e.id, 'post');
+    if (whole && !st.story.rolls.some(r => r.event === e.id && r.match)) return;   // gone through as a whole, the old way: done
+    // straight after each match, as soon as its result is in - in card order, and for one added later too
+    e.matches.forEach(m => { if (m.status === 'played' && !M.directorRollOf(st, e.id, 'post', m.id)) out.push({ event: e, phase: 'post', match: m }); });
+    // and once the card is complete, or its week is over, what wasn't about one match
+    if (!whole && (M.cardStatus(e).state === 'complete' || e.at.week < s.week)) out.push({ event: e, phase: 'post', match: null });
   });
   const next = evs.find(e => e.at.week === s.week && !played(e));
   if (next && !M.directorRollOf(st, next.id, 'pre')
     && evs.filter(e => M.compareStamps(st, e.at, next.at) < 0 && played(e)).every(e => M.directorRollOf(st, e.id, 'post'))) {
-    out.push({ event: next, phase: 'pre' });
+    out.push({ event: next, phase: 'pre', match: null });
   }
   return out;
 }
@@ -1038,18 +1067,19 @@ export function tick(st, { seed = null } = {}) {
   if (seed != null) M.seedStory(st, seed);
   if (!st.story.seed) return [];
   const runs = [];
-  for (let guard = 0; guard < 40; guard++) {
+  for (let guard = 0; guard < 400; guard++) {
     const d = due(st)[0];
     if (!d) break;
-    const r = lookAt(st, d.event.id, d.phase, 0);
+    const match = d.match ? d.match.id : null;
+    const r = lookAt(st, d.event.id, d.phase, 0, match);
     try {
-      runs.push(M.saveDirectorRoll(st, d.event.id, d.phase, r, { nonce: 0 }));
+      runs.push(M.saveDirectorRoll(st, d.event.id, d.phase, r, { nonce: 0, match }));
     } catch (e) {
       if (!(e instanceof M.UniverseError)) throw e;
       // what it picked couldn't be recorded: log the run with nothing made, and why - so it can be looked into, and
       // nothing after it is held up
       const none = { ...r, picked: [], considered: r.considered.map(k => ({ ...k, picked: false })) };
-      runs.push(M.saveDirectorRoll(st, d.event.id, d.phase, none, { nonce: 0, problem: e.message }));
+      runs.push(M.saveDirectorRoll(st, d.event.id, d.phase, none, { nonce: 0, problem: e.message, match }));
     }
   }
   return runs;
@@ -1064,9 +1094,10 @@ export function rerun(st, rollId) {
   const old = M.rollById(st, rollId);
   if (!old) throw new M.UniverseError('That story director run isn\'t on record.');
   if (!old.undone) M.undoDirectorRoll(st, rollId);
-  const nonce = Math.max(...st.story.rolls.filter(r => r.event === old.event && r.phase === old.phase).map(r => r.nonce)) + 1;
-  const r = lookAt(st, old.event, old.phase, nonce);
-  return M.saveDirectorRoll(st, old.event, old.phase, r, { nonce });
+  const match = old.match || null;
+  const nonce = Math.max(...st.story.rolls.filter(r => r.event === old.event && r.phase === old.phase && (r.match || null) === match).map(r => r.nonce)) + 1;
+  const r = lookAt(st, old.event, old.phase, nonce, match);
+  return M.saveDirectorRoll(st, old.event, old.phase, r, { nonce, match });
 }
 
 /** Everyone who could challenge for a title after a show, with their share of the draw. */

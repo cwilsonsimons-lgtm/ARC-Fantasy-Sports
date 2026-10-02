@@ -1744,10 +1744,11 @@ await check('saved universe is sound after the #1 contender’s matches', sound,
 // in, and Jey Uso vs Gunther for the world title still booked. Gunther is
 // hot-headed and holds a grudge against Jey; Jey and Seth are friends; Kevin
 // Owens and Sami Zayn are a team. The director has already been through what
-// happens before the show. The draw is seeded, so what it does next is known
-// in advance: each check works it out with the director itself, on a copy of
-// what's saved, and then does it through the screens.
-const STORY_SEED = 3859;
+// happens before the show, and straight after each of the first two matches.
+// The draw is seeded, so what it does next is known in advance: each check
+// works it out with the director itself, on a copy of what's saved, and then
+// does it through the screens.
+const STORY_SEED = 454;
 function storyWorld(seed) {
   const st = M.createUniverse();
   M.setStory(st, { pace: 'wild' });
@@ -1765,13 +1766,25 @@ function storyWorld(seed) {
   M.recordMatch(st, ev.id, { sides: [{ wrestlers: [Se.id] }, { wrestlers: [N.id] }], winner: 0 });
   M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [Se.id, N.id] }], winner: 1 });
   const m = M.bookMatch(st, ev.id, { sides: [{ wrestlers: [J.id] }, { wrestlers: [G.id] }], titleId: title.id });
+  DR.tick(st);                                                     // straight after each of the first two
   return { st, ev, m, title, G, J };
 }
 const sw = storyWorld(STORY_SEED);
 const SEED = sw.st.story.seed;                                     // as the model keeps it
 const copyOf = u => JSON.parse(JSON.stringify(u));
 const madeBy = (u, roll) => u.events.flatMap(e => e.incidents.filter(i => i.story === roll.id));
-const lastRoll = (u, eventId, phase) => u.story.rolls.filter(r => r.event === eventId && r.phase === phase).pop();
+const lastRoll = (u, eventId, phase, match = null) => u.story.rolls.filter(r => r.event === eventId && r.phase === phase && (r.match || null) === match).pop();
+// what some runs made, one line per event, in the order they were made - as the toast and the feed group them
+function runGroups(u, rolls) {
+  return rolls.flatMap(roll => {
+    const list = [];
+    u.events.find(e => e.id === roll.event).incidents.filter(i => i.story === roll.id).forEach(i => {
+      const last = list[list.length - 1];
+      if (last && JSON.stringify(last[0].cause) === JSON.stringify(i.cause)) last.push(i); else list.push([i]);
+    });
+    return list.map(g => [incidentText(u, g[0]), ...g.slice(1).map(i => (i.kind === 'save' ? `${names(u, i.by)} made the save` : incidentText(u, i)))].join(' — '));
+  });
+}
 const savedStory = async () => (await saved()).story;
 const feedRows = where => js(`[...document.querySelectorAll('${where} .uv-wh[data-wh]')].map(r => ({ kind: r.dataset.kind,
   nm: r.querySelector('.nm').textContent, sub: (r.querySelector('.sub') || { textContent: '' }).textContent }))`);
@@ -1804,19 +1817,28 @@ const importState = async (st, name) => {
   await closeSheet();
 };
 
-await check('story: before the show is done already — after waits for the results', async () => {
+await check('story: before the show is done already, and straight after each of the first two matches — on their cards', async () => {
   await importState(sw.st, 'story.json');
   await openShow('Raw');
+  const ev = sw.st.events.find(e => e.id === sw.ev.id);
   return [await js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`),
-    await js(`[...document.querySelectorAll('.uv-page .uv-runl')].map(${TEXT})`), (await savedStory()).rolls.map(r => r.phase)];
-}, r => r[0].join('|').startsWith('Before the show|The card|During & after') && r[2].join() === 'pre'
-  && /^Nothing happened before the show\. The director’s log$/.test(r[1][0]) && /^Once every result is in — or the week is over —/.test(r[1][1]));
+    await js(`[...document.querySelectorAll('.uv-page .uv-runl')].map(${TEXT})`),
+    (await savedStory()).rolls.map(r => [r.phase, r.match ? ev.matches.findIndex(m => m.id === r.match) + 1 : null]),
+    await js(`[...document.querySelectorAll('.uv-page .uv-mc')].map(c => { const s = c.querySelector('.uv-mstory');
+      return s ? [s.querySelector('.h') ? s.querySelector('.h').textContent : '', [...s.querySelectorAll('.uv-wh')].map(w => w.dataset.kind)] : null; })`)];
+}, r => Array.isArray(r) && r[0].join('|').startsWith('Before the show|The card|After the show') && JSON.stringify(r[2]) === '[["pre",null],["post",1],["post",2]]'
+  && /^Nothing happened before the show\. The director’s log$/.test(r[1][0]) && /^Nothing happened straight after it\. The director’s log/.test(r[1][1])
+  && /^Straight after each match, as its result goes in, the story director decides what happens; once every result is in/.test(r[1].at(-1))
+  && JSON.stringify(r[3]) === '[["",[]],["Straight after",["tension"]],null]');
 let before1 = null, pred1 = null;
-await check('the last result goes in: the director follows it by itself, and the toast says what happened', async () => {
+await check('the last result goes in: the director goes straight after it, by itself, and the toast says what happened', async () => {
   before1 = await saved();
   pred1 = copyOf(before1);
   M.enterResult(pred1, sw.ev.id, sw.m.id, { sides: sw.m.sides, outcome: 'win', winner: 0, titleId: sw.title.id }, { titleChange: true });
+  const n = pred1.story.rolls.length;
   DR.tick(pred1);
+  const runs = pred1.story.rolls.slice(n);
+  const lines = runGroups(pred1, runs);
   await mc(2).locator('.uv-btn', { hasText: 'Enter result' }).click();
   await settle();
   await page.selectOption('#uvMResult', '0');
@@ -1824,21 +1846,23 @@ await check('the last result goes in: the director follows it by itself, and the
   await btn(sheet, 'Save the result').click();
   await settle();
   const u = await saved();
-  const want = madeBy(pred1, lastRoll(pred1, sw.ev.id, 'post'));
+  const want = madeBy(pred1, lastRoll(pred1, sw.ev.id, 'post', sw.m.id));
   const t = (await toast()).t;
   return [t.startsWith('Result saved — Jey Uso holds the World Heavyweight Championship'),
-    t.endsWith(` · After Raw · Week 1: ${storyGroups(pred1)[0]} (+1 more)`),
-    madeBy(u, lastRoll(u, sw.ev.id, 'post')).map(i => i.kind), want.map(i => i.kind), u.story.seed];
-}, r => r[0] && r[1] && JSON.stringify(r[2]) === JSON.stringify(r[3]) && r[2].includes('save') && r[4] === SEED);
+    t.endsWith(` · Straight after the match: ${lines[0]}${lines.length > 1 ? ` (+${lines.length - 1} more)` : ''}`),
+    madeBy(u, lastRoll(u, sw.ev.id, 'post', sw.m.id)).map(i => i.kind), want.map(i => i.kind), u.story.seed,
+    runs.map(r => r.match), u.story.rolls.slice(n).map(r => r.match)];
+}, r => r[0] && r[1] && JSON.stringify(r[2]) === JSON.stringify(r[3]) && r[2].includes('save') && r[4] === SEED
+  && JSON.stringify(r[5]) === JSON.stringify([sw.m.id, null]) && JSON.stringify(r[6]) === JSON.stringify(r[5]));
 await check('it’s canon on the show, with causes — the result, the title and the rosters exactly as entered', async () => {
   const u = await saved();
   const ev = u.events.find(e => e.id === sw.ev.id);
-  const made = madeBy(u, lastRoll(u, sw.ev.id, 'post'));
+  const made = madeBy(u, lastRoll(u, sw.ev.id, 'post', sw.m.id));
   return [ev.matches.map(m => [m.status, m.winner]), M.currentReign(u, sw.title.id).holder.id === sw.J.id, u.reigns.length - before1.reigns.length,
-    u.moves.length - before1.moves.length, made.every(i => i.phase === 'post' && i.cause.length > 0), (await feedRows('.uv-page')).map(x => x.nm),
-    storyGroups(u), await sound()];
+    u.moves.length - before1.moves.length, made.every(i => i.phase === 'post' && i.cause.length > 0 && i.match === sw.m.id), (await feedRows('.uv-page')).map(x => x.nm),
+    storyGroups(u), await sound(), await js(`[...document.querySelectorAll('.uv-page .uv-mc')][2].querySelectorAll('.uv-mstory .uv-wh').length`)];
 }, r => JSON.stringify(r[0]) === '[["played",0],["played",1],["played",0]]' && r[1] && r[2] === 1 && r[3] === 0 && r[4]
-  && r[5].length === 2 && JSON.stringify(r[5]) === JSON.stringify(r[6]) && r[7].length === 0);
+  && r[5].length === 2 && JSON.stringify(r[5]) === JSON.stringify(r[6]) && r[7].length === 0 && r[8] === 1);
 await check('tap an event: why it happened, what it changed, its chance and draw', async () => {
   await row('save').click();
   await settle();
@@ -1852,12 +1876,13 @@ await check('tap an event: why it happened, what it changed, its chance and draw
 await check('the director’s log: the seed, every possibility, its chance and draw', async () => {
   await sheet.locator('.uv-odds .uv-link').click();
   await settle();
-  const roll = lastRoll(await saved(), sw.ev.id, 'post');
+  const roll = lastRoll(await saved(), sw.ev.id, 'post', sw.m.id);
   return [await js(`[...document.querySelectorAll('#uvSheetBody .uv-logh b')].map(e => e.textContent)`),
     await js(`document.querySelectorAll('#uvSheetBody .uv-log > div').length`), await js(`document.querySelectorAll('#uvSheetBody .uv-log > div.on').length`),
     roll.considered.length, roll.considered.filter(k => k.picked).length,
-    roll.considered.every(k => k.draw === DR.draw(SEED, sw.ev.id, 'post', 0, k.key))];
-}, r => r[0][0] === String(SEED) && r[0][1] === 'first' && r[0][2] === 'Wild' && r[1] === r[3] && r[2] === 2 && r[4] === 2 && r[5]);
+    roll.considered.every(k => k.draw === DR.draw(SEED, sw.ev.id, `post:${sw.m.id}`, 0, k.key)), await js(`document.getElementById('uvSheetTitle').textContent`)];
+}, r => r[0][0] === String(SEED) && r[0][1] === 'first' && r[0][2] === 'Wild' && r[1] === r[3] && r[2] === 1 && r[4] === 1 && r[5]
+  && r[6] === 'After Jey Uso vs Gunther');
 await check('edit what the director did: it stays, marked as edited by you', async () => {
   await closeSheet();
   await row('tension').click();
@@ -1884,19 +1909,19 @@ await check('undo an event: it comes off, and so does what it did to relationshi
   await confirmYes();
   const { u, d } = await derived();
   return [(await toast()).t.startsWith('Undone'), u.events.find(e => e.id === sw.ev.id).incidents.map(i => i.kind),
-    lastRoll(u, sw.ev.id, 'post').made.length, JSON.stringify([...d.rels.values()].filter(r => r.active).map(r => RL.relText(u, r)).sort()) === JSON.stringify(want),
+    lastRoll(u, sw.ev.id, 'post', sw.m.id).made.length, JSON.stringify([...d.rels.values()].filter(r => r.active).map(r => RL.relText(u, r)).sort()) === JSON.stringify(want),
     (await feedRows('.uv-page')).map(x => x.kind)];
-}, [true, ['tension'], 1, true, ['tension']]);
+}, [true, ['tension'], 0, true, ['tension']]);
 await check('run it again: the next draw, just as reproducible', async () => {
   const u0 = await saved();
-  const old = lastRoll(u0, sw.ev.id, 'post');
+  const old = lastRoll(u0, sw.ev.id, 'post', sw.m.id);
   const pred = copyOf(u0);
   const r = DR.rerun(pred, old.id);
   await body.locator(`.uv-runl[data-run="${old.id}"] .uv-link`, { hasText: 'Run it again' }).click();
   await settle();
   await confirmYes();
   const u = await saved();
-  const now = lastRoll(u, sw.ev.id, 'post');
+  const now = lastRoll(u, sw.ev.id, 'post', sw.m.id);
   return [(await toast()).t.startsWith('Ran again'), u.story.rolls.find(x => x.id === old.id).undone, now.nonce,
     madeBy(u, now).map(i => [i.kind, i.cause.length > 0]), madeBy(pred, r).map(i => [i.kind, true]), await sound()];
 }, r => r[0] && r[1] === true && r[2] === 1 && JSON.stringify(r[3]) === JSON.stringify(r[4]) && r[3].some(x => x[0] === 'challenge') && !r[5].length);
@@ -1913,9 +1938,9 @@ await check('a title challenge can be booked — the form filled in, booked, nev
   const w2 = u.events.find(e => e.at.week === 2 && e.showId === 'raw');
   const inc = u.events.find(e => e.id === sw.ev.id).incidents.find(i => i.kind === 'challenge');
   return [label, form, w2 && w2.matches.map(m => [m.titleId === sw.title.id, m.status, m.outcome, m.winner,
-    JSON.stringify(m.sides.map(sd => sd.wrestlers)) === JSON.stringify([inc.by, inc.on])]), u.story.rolls.length];
+    JSON.stringify(m.sides.map(sd => sd.wrestlers)) === JSON.stringify([inc.by, inc.on])]), inc.match === sw.m.id];
 }, r => r[0] === 'Book the title match on Raw · Week 2' && JSON.stringify(r[1]) === '["Book a match","World Heavyweight Championship"]'
-  && JSON.stringify(r[2]) === '[[true,"scheduled",null,null,true]]' && r[3] === 3);
+  && JSON.stringify(r[2]) === '[[true,"scheduled",null,null,true]]' && r[3] === true);
 let pred2 = null;
 await check('Next week: the next show is up, and what happens before it has happened', async () => {
   pred2 = copyOf(await saved());
@@ -1951,7 +1976,7 @@ await check('What happened: the whole feed a week at a time, with filters, and t
   const yours = await feedRows('.uv-page [data-feed]');
   await body.locator('.uv-pill[data-only=""]').click();
   await page.waitForTimeout(100);
-  return [await pageKind(), JSON.stringify(all) === JSON.stringify(storyGroups(u)), weeks.at(-1), post.every(x => x.sub.startsWith('After ')) && post.length > 0,
+  return [await pageKind(), JSON.stringify(all) === JSON.stringify(storyGroups(u)), weeks.at(-1), post.every(x => /^(After|Straight after) /.test(x.sub)) && post.length > 0,
     yours.length, await js(`document.querySelectorAll('.uv-page [data-log]').length`), u.story.rolls.length];
 }, r => r[0] === 'story' && r[1] && r[2] === 'Week 1' && r[3] && r[4] === 0 && r[5] === r[6]);
 await check('pace, and on or off: switched back on, it starts from this week', async () => {

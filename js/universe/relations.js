@@ -199,8 +199,12 @@ export function relationships(st) {
   st.relEdits.filter(e => e.action !== 'dismiss').forEach(e => items.push({ at: e.at, order: 0, type: 'edit', e }));
   st.events.forEach(ev => {
     ev.matches.forEach((m, i) => { if (m.status === 'played') items.push({ at: ev.at, order: i + 1, type: 'match', ev, m }); });
-    // what happened before the show comes before its matches; everything else after
-    ev.incidents.forEach((inc, j) => items.push({ at: ev.at, order: inc.phase === 'pre' ? 0.5 + j / 1000 : 1000 + j, type: 'incident', ev, inc }));
+    // what happened before the show comes before its matches; what happened in or straight after a match, right after
+    // that match; anything else after them all
+    ev.incidents.forEach((inc, j) => {
+      const after = inc.phase !== 'pre' && inc.match ? ev.matches.findIndex(m => m.id === inc.match) : -1;
+      items.push({ at: ev.at, order: inc.phase === 'pre' ? 0.5 + j / 1000 : after >= 0 ? after + 1.5 + j / 1000 : 1000 + j, type: 'incident', ev, inc });
+    });
   });
   st.memberships.forEach(ms => { if (ms.end) items.push({ at: ms.end, order: 0, type: 'left', ms }); });
   st.memberships.forEach(ms => items.push({ at: ms.start, order: -1, type: 'joined', ms }));

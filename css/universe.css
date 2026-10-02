@@ -740,6 +740,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-wh .uv-main .sub.warn{color:var(--uv-amber)}
 .uv-wh.stale .uv-main .nm{color:var(--uv-ink-2)}
 .uv-sheet .uv-wh{padding-left:0;padding-right:0}
+/* what happened straight after a match, on its card */
+.uv-mstory{margin-top:10px;padding-top:8px;border-top:1px dashed var(--uv-line)}
+.uv-mstory .h{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--uv-ink-3);margin-bottom:2px}
+.uv-mstory .uv-wh{padding:7px 0;border-bottom:0}
+.uv-mstory .uv-runl{margin:4px 0 0;padding:0}
 .uv-runl{padding:8px 14px 2px;font-size:12px;line-height:1.5;color:var(--uv-ink-3)}
 .uv-runl .uv-link{color:var(--uv-ink-2)}
 .uv-whf{padding-top:12px}

@@ -68,7 +68,7 @@ js/universe/
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       160 model tests     npm run test:universe
+tools/universe-test.mjs       163 model tests     npm run test:universe
 tools/universe-check.mjs      224 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
@@ -227,10 +227,10 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | reigns    | title history. The reign with no end is the champion |
 | shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite and Evolve Wednesday, SmackDown Friday |
 | seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
-| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it, and the director's keep their run and their cause |
+| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it — on a match, if it happened in or straight after one — and the director's keep their run and their cause |
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
 | relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start), between two wrestlers or two tag teams (`teams`), and the automatic changes they've chosen to ignore |
-| story     | the story director: on or off, its pace, the save's seed, the week it started from, and a log of every run — the show, before or after, the seed and run number, every possibility it weighed with its chance and draw, and what it recorded |
+| story     | the story director: on or off, its pace, the save's seed, the week it started from, and a log of every run — the show, before it, straight after one of its matches, or after it, the seed and run number, every possibility it weighed with its chance and draw, and what it recorded |
 | booker    | the auto booker's settings, per show — only what you've changed; the rest follows the show's tier — plus one set for premium live events on every show |
 
 An event can also hold a **draft card**: the auto booker's matches (each with
@@ -811,22 +811,36 @@ universe began. Those are entries on the same timeline, and can be taken back.
 ## The story director
 
 You watch; it tells the story around the matches, in the spirit of SmackDown
-vs. Raw 2011's Universe Mode. It runs by itself, at two moments, and nothing it
-does waits for approval:
+vs. Raw 2011's Universe Mode. It runs by itself, and nothing it does waits for
+approval:
 
 - **Before a show**, once it's the next one up — planned for this week, with
   every show before it through. What happens here comes before you book the
   card, so it can shape it: a confrontation is a match waiting to happen, and a
   title demand or challenge offers **Book the title match** (the booking form,
   filled in).
-- **After a show**, once its card is complete, or its week has gone by.
+- **Straight after each match**, the moment you enter its result — whatever
+  order the results go in, and for a match added to the card later too. Only
+  that match and the people in it are in play: a loser lashing out, someone
+  running in, a partner turning, a handshake, a title challenge for a title it
+  was about. What it makes goes on that match, under it on the show's page
+  ("Straight after"), and counts in relationships right after that match —
+  before the next one.
+- **After the show**, once its card is complete, or its week has gone by: what
+  wasn't about one match — bad blood between people who were in different
+  matches, a champion who didn't wrestle being called out.
 
 It runs when a result goes in, when a show is planned, when you move on a
 week, and when it's switched on. What it decides is canon at once: incidents
 on the show, each with its cause, so relationships follow and it's on the
-History timeline, each wrestler's page, the show's **Before the show** and
-**During & after**, and the **What happened** feed (the Calendar's season card,
-and its own page). The toast says what happened.
+History timeline, each wrestler's page, the show's **Before the show**, each
+match's **Straight after** and **After the show**, and the **What happened**
+feed (the Calendar's season card, and its own page). The toast says what
+happened ("Result saved — … · Straight after the match: Gunther attacked Jey
+Uso — Seth Rollins made the save"). One show's limits hold across all its
+matches together: at most so many after its matches, never two of a kind, and
+never one wrestler twice. Each match's run has its own log, and can be undone
+or run again on its own.
 
 | Before a show | Comes from | Changes |
 |---|---|---|
@@ -837,7 +851,7 @@ and its own page). The toast says what happened.
 | Rivalry cools | a rivalry nobody has touched for 6+ weeks — likelier across shows, or for the patient | cools a step |
 | Team tension, turn | as after a show | |
 
-| After a show | Comes from | Changes |
+| Straight after a match (and after the show) | Comes from | Changes |
 |---|---|---|
 | Interference | someone not in the match gets involved: a friend, tag partner or ally runs in to help them win (the loyal, the opportunistic, heels, and anyone helping a coward more so), or someone with a grudge or rivalry costs the loser the match (the hot-headed more so) — never against their own friend, ally or partner; the patient and the respectful mostly stay out of it | a grudge against whoever interfered; whoever it helped becomes their ally |
 | Post-match attack | a loser lashing out: hot-headed, proud, a heel, a grudge, a losing run against them, a title or #1 contender's match just lost, revenge. A partner who lost alongside them joins in, and so does a teammate who's loyal, backing up a coward, or in a faction — never the respectful | a grudge |
@@ -870,11 +884,11 @@ Anything you record yourself counts the same way.
 
 **Occasional and varied.** Every chance starts small, and the pace scales it.
 
-| Pace | Chances | At most, before a show / after / a week | Measured* |
+| Pace | Chances | At most, before a show / after its matches (all together) / a week | Measured* |
 |---|---|---|---|
-| Quiet | ×0.5 | 1 / 1 / 2 | 0.4 a show (0.2–0.5) |
-| Normal | ×1 | 1 / 2 / 3 | 0.8 a show (0.6–1.0) |
-| Wild | ×2 | 2 / 3 / 6 | 1.2 a show (0.9–1.5) |
+| Quiet | ×0.5 | 1 / 1 / 2 | 0.4 a show (0.3–0.6) |
+| Normal | ×1 | 1 / 2 / 3 | 0.7 a show (0.5–1.0) |
+| Wild | ×2 | 2 / 3 / 6 | 1.2 a show (1.0–1.5) |
 
 \* `tools/universe-story-demo.mjs`, 12 weeks of Raw and SmackDown, 16 seeds.
 
@@ -1123,7 +1137,9 @@ had seen (one drafted before doesn't know, so it points out nothing).
 in an older save is between two wrestlers. Teammates being allies at strength 3
 is worked out from the record, like every relationship, so an older save shows
 it at once. **Version 13** added #1 contender's matches: no match in an older save
-was one.
+was one. **Version 14** has the director run straight after each match: every
+run in an older save was for a whole show's part, and a show already gone
+through that way isn't gone over again match by match.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 

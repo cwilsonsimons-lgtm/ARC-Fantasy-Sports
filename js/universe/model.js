@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -3282,9 +3282,13 @@ export const STORY_PACES = ['quiet', 'normal', 'wild'];
 function newStory(since = null) { return { on: true, pace: 'normal', seed: 0, since, rolls: [] }; }
 
 export const rollById = (st, id) => byId(st.story.rolls, id);
-/** The latest time the director ran for a show's phase - 'pre' or 'post' - or null. */
-export const directorRollOf = (st, eventId, phase) =>
-  st.story.rolls.filter(r => r.event === eventId && r.phase === phase).pop() || null;
+/**
+ * The latest time the director ran for a part of a show - 'pre' (before it),
+ * 'post' with a match (straight after that match), or 'post' without one
+ * (after the show) - or null.
+ */
+export const directorRollOf = (st, eventId, phase, matchId = null) =>
+  st.story.rolls.filter(r => r.event === eventId && r.phase === phase && (r.match || null) === (matchId || null)).pop() || null;
 
 /**
  * Switch the director on or off, or set its pace. Switched back on, it starts
@@ -3317,18 +3321,22 @@ function basisFields(b) {
 
 /**
  * Record what the director decided for a show - `phase` 'pre' (before its
- * matches) or 'post' (after its results) - as canon. `result` comes from
+ * matches) or 'post' (after its results: straight after one match, with
+ * `match`, or after the show) - as canon. `result` comes from
  * director.js: { pool, picked: [{ kind, key, why, chance, draw, basis, plan:
  * { incidents, disband } }], considered: [{ kind, key, chance, draw, picked }] }.
  * Everything is checked before anything changes. Returns the run's log entry.
  */
-export function saveDirectorRoll(st, eventId, phase, result = {}, { nonce = 0, problem = null } = {}) {
+export function saveDirectorRoll(st, eventId, phase, result = {}, { nonce = 0, problem = null, match = null } = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   oneOf(phase, INCIDENT_PHASES, 'phase');
   if (!st.story.on) fail('The story director is switched off.');
-  const prev = directorRollOf(st, eventId, phase);
-  if (prev && !prev.undone) fail(`The story director has already been through ${ev.name}${phase === 'pre' ? ' before the show' : ''}.`);
-  const played = ev.matches.some(m => m.status === 'played');
+  const m = match ? must(ev.matches.find(x => x.id === match), 'match', match) : null;
+  if (m && phase !== 'post') fail('Only what happens after a match belongs to it.');
+  if (m && m.status !== 'played') fail('That match has no result yet.');
+  const prev = directorRollOf(st, eventId, phase, match);
+  if (prev && !prev.undone) fail(`The story director has already been through ${ev.name}${phase === 'pre' ? ' before the show' : m ? ' after that match' : ''}.`);
+  const played = ev.matches.some(x => x.status === 'played');
   if (phase === 'pre' && played) fail(`${ev.name} already has results — too late for what happens before it.`);
   if (phase === 'post' && !played) fail(`${ev.name} has no results yet.`);
   const turning = new Set();
@@ -3370,7 +3378,7 @@ export function saveDirectorRoll(st, eventId, phase, result = {}, { nonce = 0, p
   const considered = (Array.isArray(result.considered) ? result.considered : []).slice(0, 80).map(k => ({
     kind: String(k.kind), key: String(k.key), chance: Number(k.chance) || 0, draw: Number(k.draw) || 0, picked: !!k.picked, shock: !!k.shock }));
   // `problem`: why what it picked couldn't be recorded, when it had to be logged with nothing made
-  const roll = { id, event: ev.id, phase, at: now(st), nonce: Math.max(0, Math.floor(Number(nonce) || 0)), pace: st.story.pace,
+  const roll = { id, event: ev.id, phase, match: m ? m.id : null, at: now(st), nonce: Math.max(0, Math.floor(Number(nonce) || 0)), pace: st.story.pace,
     seed: st.story.seed, pool: Math.max(0, Math.floor(Number(result.pool) || 0)), made, disbanded, considered, undone: false,
     problem: problem == null ? null : String(problem) };
   st.story.rolls.push(roll);
@@ -3791,6 +3799,11 @@ export function migrate(raw) {
       .forEach(m => { if (m && typeof m === 'object') m.contender = null; }));
     st.version = 13;
   }
+  if (st.version === 13) {
+    // v14: the director runs straight after each match. Every run so far was for a whole show's part.
+    (st.story && Array.isArray(st.story.rolls) ? st.story.rolls : []).forEach(r => { if (r && typeof r === 'object') r.match = null; });
+    st.version = 14;
+  }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();
   st.events.forEach(e => {
@@ -3926,11 +3939,13 @@ export function validate(st) {
   sto.rolls.forEach(r => {
     const where = `Story director run ${r.id}`;
     const ev = eventById(st, r.event);
-    if (!ev || !INCIDENT_PHASES.includes(r.phase) || ![r.made, r.disbanded, r.considered].every(Array.isArray)) { bad.push(`${where} is unreadable.`); return; }
+    if (!ev || !INCIDENT_PHASES.includes(r.phase) || ![r.made, r.disbanded, r.considered].every(Array.isArray)
+      || !(r.match === null || (typeof r.match === 'string' && r.phase === 'post'))) { bad.push(`${where} is unreadable.`); return; }
     stamp(r.at, where);
     if (!r.undone) {
-      if (live.has(`${r.event}:${r.phase}`)) bad.push(`${where} is a second run for the same part of ${ev.name}.`);
-      live.add(`${r.event}:${r.phase}`);
+      const slot = `${r.event}:${r.phase}:${r.match || ''}`;           // (a match since taken off the card keeps its run)
+      if (live.has(slot)) bad.push(`${where} is a second run for the same part of ${ev.name}.`);
+      live.add(slot);
     }
     if (r.made.some(id => !ev.incidents.some(x => x.id === id && x.story === r.id))) bad.push(`${where} lists an event that isn't on ${ev.name}.`);
     if (r.disbanded.some(d => !teamById(st, d.team))) bad.push(`${where} split a team that doesn't exist.`);

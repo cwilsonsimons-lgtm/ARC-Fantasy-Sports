@@ -4,7 +4,8 @@
 // Usage: node tools/universe-feud-demo.mjs [seed=7] [upsetWeek=6]     (npm run demo:feud)
 //
 // Takes the booking sample (universe-sample.mjs) and plays Raw forward from
-// week 5 to week 9, Backlash included, the way the owner would: plan the show
+// week 5 to week 9 (a week or two more if the upset only comes in week 9),
+// Backlash included, the way the owner would: plan the show
 // (the story director decides what happens before it), draft the card with
 // the auto booker and book it as drafted, play it (a stand-in for WWE 2K25's
 // CPU), enter the results (the director decides what happens after), and move
@@ -69,7 +70,8 @@ const inFeud = m => who(m).includes(A) || who(m).includes(B2);
 say(`Following ${nm(A)} vs ${nm(B2)} — ${SL.storyText(st, track)}`);
 
 let lastFeudLineups = [], upsetDone = null, adapted = null, fromDirector = 0, booked = 0, played = 0;
-for (let week = 5; week <= 9; week++) {
+// (if the upset only comes on the last show, a week or two more, so a card can follow it)
+for (let week = 5; week <= 9 || (upsetDone && !adapted && week <= 11 && M.compareStamps(st, upsetDone.ev.at, { ...upsetDone.ev.at, week: 9 }) >= 0); week++) {
   M.setWeek(st, week);
   const planned = st.events.filter(e => e.at.week === week && e.at.season === M.activeSeason(st).id);
   if (!planned.some(e => e.kind === 'weekly' && e.showId === 'raw')) M.addEvent(st, { showId: 'raw' });

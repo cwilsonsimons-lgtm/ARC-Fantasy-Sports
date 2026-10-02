@@ -819,6 +819,11 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-wh .uv-main .sub.warn{color:var(--uv-amber)}
 .uv-wh.stale .uv-main .nm{color:var(--uv-ink-2)}
 .uv-sheet .uv-wh{padding-left:0;padding-right:0}
+/* what happened straight after a match, on its card */
+.uv-mstory{margin-top:10px;padding-top:8px;border-top:1px dashed var(--uv-line)}
+.uv-mstory .h{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--uv-ink-3);margin-bottom:2px}
+.uv-mstory .uv-wh{padding:7px 0;border-bottom:0}
+.uv-mstory .uv-runl{margin:4px 0 0;padding:0}
 .uv-runl{padding:8px 14px 2px;font-size:12px;line-height:1.5;color:var(--uv-ink-3)}
 .uv-runl .uv-link{color:var(--uv-ink-2)}
 .uv-whf{padding-top:12px}
@@ -1042,7 +1047,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 13;
+  var SCHEMA_VERSION = 14;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -3790,7 +3795,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return { on: true, pace: "normal", seed: 0, since, rolls: [] };
   }
   var rollById = (st, id) => byId(st.story.rolls, id);
-  var directorRollOf = (st, eventId, phase) => st.story.rolls.filter((r) => r.event === eventId && r.phase === phase).pop() || null;
+  var directorRollOf = (st, eventId, phase, matchId = null) => st.story.rolls.filter((r) => r.event === eventId && r.phase === phase && (r.match || null) === (matchId || null)).pop() || null;
   function setStory(st, { on, pace } = {}) {
     if (on !== void 0) {
       if (on && !st.story.on) {
@@ -3815,13 +3820,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
       team: b.team || null
     };
   }
-  function saveDirectorRoll(st, eventId, phase, result = {}, { nonce = 0, problem = null } = {}) {
+  function saveDirectorRoll(st, eventId, phase, result = {}, { nonce = 0, problem = null, match = null } = {}) {
     const ev = must(eventById(st, eventId), "event", eventId);
     oneOf(phase, INCIDENT_PHASES, "phase");
     if (!st.story.on) fail("The story director is switched off.");
-    const prev = directorRollOf(st, eventId, phase);
-    if (prev && !prev.undone) fail(`The story director has already been through ${ev.name}${phase === "pre" ? " before the show" : ""}.`);
-    const played = ev.matches.some((m) => m.status === "played");
+    const m = match ? must(ev.matches.find((x) => x.id === match), "match", match) : null;
+    if (m && phase !== "post") fail("Only what happens after a match belongs to it.");
+    if (m && m.status !== "played") fail("That match has no result yet.");
+    const prev = directorRollOf(st, eventId, phase, match);
+    if (prev && !prev.undone) fail(`The story director has already been through ${ev.name}${phase === "pre" ? " before the show" : m ? " after that match" : ""}.`);
+    const played = ev.matches.some((x) => x.status === "played");
     if (phase === "pre" && played) fail(`${ev.name} already has results \u2014 too late for what happens before it.`);
     if (phase === "post" && !played) fail(`${ev.name} has no results yet.`);
     const turning = /* @__PURE__ */ new Set();
@@ -3872,6 +3880,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       id,
       event: ev.id,
       phase,
+      match: m ? m.id : null,
       at: now(st),
       nonce: Math.max(0, Math.floor(Number(nonce) || 0)),
       pace: st.story.pace,
@@ -4275,6 +4284,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
       }));
       st.version = 13;
     }
+    if (st.version === 13) {
+      (st.story && Array.isArray(st.story.rolls) ? st.story.rolls : []).forEach((r) => {
+        if (r && typeof r === "object") r.match = null;
+      });
+      st.version = 14;
+    }
     if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
     if (!st.booker || typeof st.booker !== "object") st.booker = newBooker();
     st.events.forEach((e) => {
@@ -4418,14 +4433,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
     sto.rolls.forEach((r) => {
       const where = `Story director run ${r.id}`;
       const ev = eventById(st, r.event);
-      if (!ev || !INCIDENT_PHASES.includes(r.phase) || ![r.made, r.disbanded, r.considered].every(Array.isArray)) {
+      if (!ev || !INCIDENT_PHASES.includes(r.phase) || ![r.made, r.disbanded, r.considered].every(Array.isArray) || !(r.match === null || typeof r.match === "string" && r.phase === "post")) {
         bad.push(`${where} is unreadable.`);
         return;
       }
       stamp(r.at, where);
       if (!r.undone) {
-        if (live.has(`${r.event}:${r.phase}`)) bad.push(`${where} is a second run for the same part of ${ev.name}.`);
-        live.add(`${r.event}:${r.phase}`);
+        const slot = `${r.event}:${r.phase}:${r.match || ""}`;
+        if (live.has(slot)) bad.push(`${where} is a second run for the same part of ${ev.name}.`);
+        live.add(slot);
       }
       if (r.made.some((id) => !ev.incidents.some((x) => x.id === id && x.story === r.id))) bad.push(`${where} lists an event that isn't on ${ev.name}.`);
       if (r.disbanded.some((d) => !teamById(st, d.team))) bad.push(`${where} split a team that doesn't exist.`);
@@ -7383,7 +7399,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ev.matches.forEach((m, i) => {
         if (m.status === "played") items.push({ at: ev.at, order: i + 1, type: "match", ev, m });
       });
-      ev.incidents.forEach((inc, j) => items.push({ at: ev.at, order: inc.phase === "pre" ? 0.5 + j / 1e3 : 1e3 + j, type: "incident", ev, inc }));
+      ev.incidents.forEach((inc, j) => {
+        const after = inc.phase !== "pre" && inc.match ? ev.matches.findIndex((m) => m.id === inc.match) : -1;
+        items.push({ at: ev.at, order: inc.phase === "pre" ? 0.5 + j / 1e3 : after >= 0 ? after + 1.5 + j / 1e3 : 1e3 + j, type: "incident", ev, inc });
+      });
     });
     st.memberships.forEach((ms) => {
       if (ms.end) items.push({ at: ms.end, order: 0, type: "left", ms });
@@ -8066,16 +8085,19 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (mo.label === "cold") return "Turn it around";
     return null;
   }
-  function context(st, ev, phase, nonce) {
+  function context(st, ev, phase, nonce, matchId = null) {
     const d = relationships(st);
     const wk = weekNo(st, ev.at);
     const hist = history(st, ev.at);
-    const tonight = ev.matches.filter((m) => m.status === "played");
+    const focus = matchId ? ev.matches.find((m) => m.id === matchId && m.status === "played") || null : null;
+    const tonight = focus ? [focus] : ev.matches.filter((m) => m.status === "played");
     const booked = ev.matches.filter((m) => m.status === "scheduled");
     const onCard = new Set((phase === "post" ? tonight : booked).flatMap((m) => m.sides.flatMap((sd2) => sd2.wrestlers)));
-    const around = ev.showId ? st.wrestlers.filter((w) => w.showId === ev.showId || onCard.has(w.id)) : st.wrestlers.filter((w) => onCard.has(w.id));
+    const card = new Set(ev.matches.flatMap((m) => m.sides.flatMap((sd2) => sd2.wrestlers)));
+    const around = ev.showId ? st.wrestlers.filter((w) => w.showId === ev.showId || card.has(w.id)) : st.wrestlers.filter((w) => card.has(w.id));
     const incidents = allIncidents(st).filter((x) => compareStamps(st, x.event.at, ev.at) <= 0).map((x) => ({ ...x, wk: weekNo(st, x.event.at) }));
-    const picks = st.story.rolls.filter((r) => !r.undone && !(r.event === ev.id && r.phase === phase)).flatMap((r) => {
+    const same = (r) => r.event === ev.id && r.phase === phase && (r.match || null) === (matchId || null);
+    const picks = st.story.rolls.filter((r) => !r.undone && !same(r)).flatMap((r) => {
       const e = eventById(st, r.event);
       return e ? r.considered.filter((k) => k.picked).map((k) => ({ ...k, wk: weekNo(st, e.at), ev: e, phase: r.phase })) : [];
     });
@@ -8088,6 +8110,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
       ev,
       phase,
       nonce,
+      focus,
+      matchId,
       d,
       wk,
       hist,
@@ -8442,6 +8466,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const bad = (rv ? rv.level : 0) + ha + hb;
       const m = together(a, b);
       if (bad < 2 || !m && bad < 4) return;
+      if (m && !c.focus && c.phase === "post" && c.st.story.rolls.some((r) => r.event === c.ev.id && r.match === m.id)) return;
       const [x, y] = ha >= hb ? [a, b] : [b, a];
       const cand = candidate(c, "brawl", `brawl:${a}+${b}`, [a, b]);
       const A = nm4(c, a), B = nm4(c, b);
@@ -8672,6 +8697,9 @@ body.uv-confirm-open .uv-confirm{display:flex}
       const champs = holders(st, reign.holder);
       const champAppeared = champs.some((id) => c.onCard.has(id));
       const showId = titleShow(c, t, reign);
+      const about = (m) => m.titleId === t.id || m.contender === t.id || m.sides.some((sd2) => sd2.wrestlers.some((id) => champs.includes(id)));
+      if (c.focus && !about(c.focus)) return;
+      if (!c.focus && c.st.story.rolls.some((r) => r.event === c.ev.id && r.match && c.tonight.some((m) => m.id === r.match && about(m)))) return;
       if (!champAppeared && c.ev.showId && showId !== c.ev.showId) return;
       const champName = holderName(st, reign.holder);
       const contenders2 = contendersOf(c, t, reign, showId);
@@ -8903,13 +8931,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
     return out;
   }
   function possible(c) {
-    return c.phase === "post" ? [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)] : [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
+    if (c.phase === "pre") return [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
+    if (!c.focus) return [...brawls(c), ...challenges(c)];
+    const all = [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)];
+    all.forEach((k) => {
+      k.plan.incidents = k.plan.incidents.map((i) => ({ ...i, match: i.match || c.focus.id }));
+    });
+    return all;
   }
-  function lookAt(st, eventId, phase, nonce = 0) {
+  function lookAt(st, eventId, phase, nonce = 0, matchId = null) {
     const ev = eventById(st, eventId);
     if (!ev) return { pool: 0, picked: [], considered: [], cap: 0 };
-    const c = context(st, ev, phase, nonce);
+    const c = context(st, ev, phase, nonce, matchId);
     const all = possible(c);
+    const others = st.story.rolls.filter((r) => r.event === ev.id && r.phase === phase && !r.undone && (r.match || null) !== (matchId || null));
+    const slot = matchId ? `${phase}:${matchId}` : phase;
     const prevEp = st.events.filter((e) => e.showId === ev.showId && e.kind === ev.kind && compareStamps(st, e.at, ev.at) < 0).sort((a, b) => compareStamps(st, b.at, a.at))[0];
     const busy = prevEp ? st.story.rolls.filter((r) => r.event === prevEp.id && !r.undone).reduce((n, r) => n + r.considered.filter((k) => k.picked).length, 0) : 0;
     if (busy >= 2) all.forEach((k) => {
@@ -8917,12 +8953,13 @@ body.uv-confirm-open .uv-confirm{display:flex}
       why(k, 1, `Less likely: the last ${prevEp.name} was eventful`);
     });
     const thisWeek2 = c.picks.filter((p) => p.wk === c.wk).length;
-    const cap = Math.max(0, Math.min(c.pace[phase], c.pace.perWeek - thisWeek2));
+    const already = others.reduce((n, r) => n + r.considered.filter((k) => k.picked).length, 0);
+    const cap = Math.max(0, Math.min(c.pace[phase] - already, c.pace.perWeek - thisWeek2));
     const passed = [];
     all.forEach((k) => {
-      k.roll = draw(c.seed, ev.id, phase, nonce, k.key);
+      k.roll = draw(c.seed, ev.id, slot, nonce, k.key);
       if (k.roll >= k.chance) return;
-      if (k.kind === "attack" && k.extra && draw(c.seed, ev.id, phase, nonce, k.key, "save") < k.extra.chance) {
+      if (k.kind === "attack" && k.extra && draw(c.seed, ev.id, slot, nonce, k.key, "save") < k.extra.chance) {
         k.kind = "save";
         k.plan = { incidents: [...k.plan.incidents, k.extra.save] };
         k.people = [...k.people, k.extra.saver];
@@ -8931,12 +8968,15 @@ body.uv-confirm-open .uv-confirm{display:flex}
       passed.push(k);
     });
     passed.sort((a, b) => a.roll / a.chance - b.roll / b.chance);
-    const picked = [], used = /* @__PURE__ */ new Set(), kinds = /* @__PURE__ */ new Set();
+    const family = (kind) => kind === "save" ? "attack" : kind === "cooling" || kind === "respect" ? "truce" : kind;
+    const picked = [];
+    const kinds = new Set(others.flatMap((r) => r.considered.filter((k) => k.picked).map((k) => family(k.kind))));
+    const used = new Set(ev.incidents.filter((x) => others.some((r) => r.made.includes(x.id))).flatMap((x) => [...x.by, ...x.on, ...x.helped]));
     for (const k of passed) {
       if (picked.length >= cap) break;
-      const family = k.kind === "save" ? "attack" : k.kind === "cooling" || k.kind === "respect" ? "truce" : k.kind;
-      if (kinds.has(family) || k.people.some((id) => used.has(id))) continue;
-      kinds.add(family);
+      const fam = family(k.kind);
+      if (kinds.has(fam) || k.people.some((id) => used.has(id))) continue;
+      kinds.add(fam);
       k.people.forEach((id) => used.add(id));
       k.picked = true;
       picked.push({ kind: k.kind, key: k.key, plan: k.plan, why: k.factors.map((f) => f.text), chance: k.chance, draw: k.roll, basis: k.basis, shock: k.shock });
@@ -8953,12 +8993,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const out = [];
     const played = (e) => e.matches.some((m) => m.status === "played");
     evs.forEach((e) => {
-      if (!played(e) || directorRollOf(st, e.id, "post")) return;
-      if (cardStatus(e).state === "complete" || e.at.week < s.week) out.push({ event: e, phase: "post" });
+      if (!played(e)) return;
+      const whole = directorRollOf(st, e.id, "post");
+      if (whole && !st.story.rolls.some((r) => r.event === e.id && r.match)) return;
+      e.matches.forEach((m) => {
+        if (m.status === "played" && !directorRollOf(st, e.id, "post", m.id)) out.push({ event: e, phase: "post", match: m });
+      });
+      if (!whole && (cardStatus(e).state === "complete" || e.at.week < s.week)) out.push({ event: e, phase: "post", match: null });
     });
     const next = evs.find((e) => e.at.week === s.week && !played(e));
     if (next && !directorRollOf(st, next.id, "pre") && evs.filter((e) => compareStamps(st, e.at, next.at) < 0 && played(e)).every((e) => directorRollOf(st, e.id, "post"))) {
-      out.push({ event: next, phase: "pre" });
+      out.push({ event: next, phase: "pre", match: null });
     }
     return out;
   }
@@ -8967,16 +9012,17 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (seed != null) seedStory(st, seed);
     if (!st.story.seed) return [];
     const runs = [];
-    for (let guard = 0; guard < 40; guard++) {
+    for (let guard = 0; guard < 400; guard++) {
       const d = due(st)[0];
       if (!d) break;
-      const r = lookAt(st, d.event.id, d.phase, 0);
+      const match = d.match ? d.match.id : null;
+      const r = lookAt(st, d.event.id, d.phase, 0, match);
       try {
-        runs.push(saveDirectorRoll(st, d.event.id, d.phase, r, { nonce: 0 }));
+        runs.push(saveDirectorRoll(st, d.event.id, d.phase, r, { nonce: 0, match }));
       } catch (e) {
         if (!(e instanceof UniverseError)) throw e;
         const none = { ...r, picked: [], considered: r.considered.map((k) => ({ ...k, picked: false })) };
-        runs.push(saveDirectorRoll(st, d.event.id, d.phase, none, { nonce: 0, problem: e.message }));
+        runs.push(saveDirectorRoll(st, d.event.id, d.phase, none, { nonce: 0, problem: e.message, match }));
       }
     }
     return runs;
@@ -8985,9 +9031,10 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const old = rollById(st, rollId);
     if (!old) throw new UniverseError("That story director run isn't on record.");
     if (!old.undone) undoDirectorRoll(st, rollId);
-    const nonce = Math.max(...st.story.rolls.filter((r2) => r2.event === old.event && r2.phase === old.phase).map((r2) => r2.nonce)) + 1;
-    const r = lookAt(st, old.event, old.phase, nonce);
-    return saveDirectorRoll(st, old.event, old.phase, r, { nonce });
+    const match = old.match || null;
+    const nonce = Math.max(...st.story.rolls.filter((r2) => r2.event === old.event && r2.phase === old.phase && (r2.match || null) === match).map((r2) => r2.nonce)) + 1;
+    const r = lookAt(st, old.event, old.phase, nonce, match);
+    return saveDirectorRoll(st, old.event, old.phase, r, { nonce, match });
   }
 
   // js/universe/storylines.js
@@ -10029,6 +10076,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     uvDirect: () => uvDirect,
     uvDirectedToast: () => uvDirectedToast,
     uvHowStory: () => uvHowStory,
+    uvMatchStory: () => uvMatchStory,
     uvOpenStory: () => uvOpenStory,
     uvProfileStory: () => uvProfileStory,
     uvStoryBlock: () => uvStoryBlock,
@@ -10066,7 +10114,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const evs = (runs || []).flatMap((r) => storyEvents(st, { roll: r.id }));
     if (!evs.length) return "";
     const g = evs[0];
-    return ` \xB7 ${g.phase === "pre" ? "Before" : "After"} ${g.event.name}: ${headline(st, g)}${evs.length > 1 ? ` (+${evs.length - 1} more)` : ""}`;
+    const when3 = g.phase === "pre" ? `Before ${g.event.name}` : g.roll && g.roll.match ? "Straight after the match" : `After ${g.event.name}`;
+    return ` \xB7 ${when3}: ${headline(st, g)}${evs.length > 1 ? ` (+${evs.length - 1} more)` : ""}`;
   }
   function uvStoryCatchUp() {
     commit((st) => uvDirect(st), (runs) => {
@@ -10076,9 +10125,16 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   function canRerun(st, roll) {
     const ev = roll && eventById(st, roll.event);
-    if (!ev || !st.story.on || directorRollOf(st, roll.event, roll.phase) !== roll) return false;
+    if (!ev || !st.story.on || directorRollOf(st, roll.event, roll.phase, roll.match) !== roll) return false;
+    if (roll.match) return ev.matches.some((m) => m.id === roll.match && m.status === "played");
     const played = ev.matches.some((m) => m.status === "played");
     return roll.phase === "pre" ? !played : played;
+  }
+  function partText(st, roll) {
+    const ev = eventById(st, roll.event);
+    if (roll.phase === "pre") return `before ${ev.name}`;
+    const m = roll.match && ev.matches.find((x) => x.id === roll.match);
+    return m ? `after ${m.sides.map((sd2) => sideName(st, sd2)).join(" vs ")}` : roll.match ? "after a match since taken off the card" : `after ${ev.name}`;
   }
   function storyEvents(st, { event = null, roll = null, phase = null, wrestler = null, season = null } = {}) {
     const out = [];
@@ -10114,7 +10170,12 @@ body.uv-confirm-open .uv-confirm{display:flex}
   }
   var kindOf = (g) => g.incs.some((i) => i.kind === "save") ? "save" : g.incs[0].kind;
   var reasons = (g) => [...g.cause.filter((w) => !/^Less likely/.test(w)), ...g.cause.filter((w) => /^Less likely/.test(w))];
-  var whenText = (g) => `${g.phase === "pre" ? "Before" : g.incs[0].phase ? "After" : "At"} ${g.event.name}`;
+  var whenText = (g) => {
+    if (g.phase === "pre") return `Before ${g.event.name}`;
+    const m = g.incs[0].match && g.event.matches.find((x) => x.id === g.incs[0].match);
+    if (m && g.roll && g.roll.match) return `Straight after ${m.sides.map((sd2) => sideName(uni(), sd2)).join(" vs ")} at ${g.event.name}`;
+    return `${g.incs[0].phase ? "After" : "At"} ${g.event.name}`;
+  };
   var PICKED_AS = { momentum: ["rise"], truce: ["respect", "cooling"], attack: ["attack", "save"] };
   function pickOf(g) {
     if (!g.roll) return null;
@@ -10255,7 +10316,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const ev = roll && eventById(st, roll.event);
     if (!ev) return;
     confirmThen(
-      `Run ${roll.phase === "pre" ? "before" : "after"} ${ev.name} again?`,
+      `Run ${partText(st, roll)} again?`,
       `${roll.undone ? "The director" : "Everything the director did there comes off, and it"} decides again with the next draw \u2014 just as reproducible. Anything you recorded yourself stays.`,
       "Run it again",
       () => {
@@ -10274,7 +10335,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     if (!ev) return;
     const n = storyEvents(st, { roll: rollId }).length;
     confirmThen(
-      `Undo everything ${roll.phase === "pre" ? "before" : "after"} ${ev.name}?`,
+      `Undo everything ${partText(st, roll)}?`,
       `The director\u2019s ${n} event${n === 1 ? "" : "s"} there come off: turns go back, teams it split are back together, and relationships are worked out again. The run stays in the log as undone, and the director won\u2019t redo it by itself.`,
       "Undo them",
       () => {
@@ -10295,7 +10356,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       if (!ev) return null;
       const made = storyEvents(st, { roll: roll.id });
       return {
-        title: `${roll.phase === "pre" ? "Before" : "After"} ${ev.name}`,
+        title: `${partText(st, roll).replace(/^./, (x) => x.toUpperCase())}`,
         body: `
         <div class="uv-logh" data-log="${roll.id}">
           <div><span>Seed</span><b>${roll.seed}</b></div><div><span>Run</span><b>${roll.nonce ? `again \xD7${roll.nonce}` : "first"}</b></div>
@@ -10320,7 +10381,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
   function runLine(st, ev, phase, roll) {
     if (roll) {
       const n = storyEvents(st, { roll: roll.id }).length;
-      const what = roll.undone ? "You undid what the director did here." : n ? "" : `Nothing happened ${phase === "pre" ? "before the show" : "after the results"}.`;
+      const what = roll.undone ? "You undid what the director did here." : n ? "" : `Nothing happened ${phase === "pre" ? "before the show" : roll.match ? "straight after it" : "after the show"}.`;
       const links = [
         `<span class="uv-link" onclick="uvStoryLog('${roll.id}')">The director\u2019s log</span>`,
         !roll.undone && n ? `<span class="uv-link" onclick="uvStoryUndoRun('${roll.id}')">Undo all</span>` : "",
@@ -10329,7 +10390,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
       return `<div class="uv-runl" data-run="${roll.id}">${what ? `${esc(what)} ` : ""}${links.join(" \xB7 ")}</div>`;
     }
     if (!st.story.on) return "";
-    if (due(st).some((d) => d.event.id === ev.id && d.phase === phase)) {
+    if (due(st).some((d) => d.event.id === ev.id && d.phase === phase && !d.match)) {
       return '<div class="uv-runl">The story director hasn\u2019t been through this yet. <span class="uv-link" onclick="uvStoryCatchUp()">Catch up now</span></div>';
     }
     const s = activeSeason(st);
@@ -10338,15 +10399,23 @@ body.uv-confirm-open .uv-confirm{display:flex}
     const played = ev.matches.some((m) => m.status === "played");
     if (!inScope) return "";
     if (phase === "pre") return played ? "" : '<div class="uv-runl">The story director decides what happens before the show once it\u2019s the next one up.</div>';
-    return `<div class="uv-runl">${played ? "Once every result is in \u2014 or the week is over \u2014 the story director decides what happens after." : "After the results, the story director decides what else happens."}</div>`;
+    return `<div class="uv-runl">${played ? "Straight after each match, as its result goes in, the story director decides what happens; once every result is in \u2014 or the week is over \u2014 it looks at the rest of the show." : "Straight after each match, as its result goes in, the story director decides what else happens."}</div>`;
   }
   function uvStoryBlock(st, ev, phase) {
-    const list = storyEvents(st, { event: ev.id, phase });
+    const list = storyEvents(st, { event: ev.id, phase }).filter((g) => phase === "pre" || !onMatch(ev, g));
     const line2 = runLine(st, ev, phase, directorRollOf(st, ev.id, phase));
     if (!list.length && !line2) return "";
-    return `${section(phase === "pre" ? "Before the show" : "During & after", list.length || null)}
+    return `${section(phase === "pre" ? "Before the show" : "After the show", list.length || null)}
     ${list.length ? `<div class="uv-whs" data-phase="${phase}">${list.map((g) => feedRow(st, g, { where: false })).join("")}</div>` : ""}
     ${line2}`;
+  }
+  var onMatch = (ev, g) => g.phase === "post" && !!g.incs[0].match && ev.matches.some((m) => m.id === g.incs[0].match);
+  function uvMatchStory(st, ev, m) {
+    const list = storyEvents(st, { event: ev.id, phase: "post" }).filter((g) => g.incs[0].match === m.id);
+    const roll = directorRollOf(st, ev.id, "post", m.id);
+    if (!list.length && !roll) return "";
+    return `<div class="uv-mstory" data-mstory="${m.id}">${list.length ? `<div class="h">Straight after</div><div class="uv-whs">${list.map((g) => feedRow(st, g, { where: false })).join("")}</div>` : ""}
+    ${roll ? runLine(st, ev, "post", roll) : ""}</div>`;
   }
   function uvStoryRow(st) {
     const s = activeSeason(st);
@@ -10447,17 +10516,20 @@ body.uv-confirm-open .uv-confirm{display:flex}
         title: "How the story director works",
         body: `
         <p class="uv-p"><b>You watch; it tells the story around the matches.</b> Before the next show up \u2014 once it\u2019s planned, or you move to
-          its week \u2014 and after each show\u2019s results are in, the director may decide what else happened. It\u2019s recorded at once, as canon,
-          on the show: in the What happened feed, on the timeline, on each wrestler\u2019s page, and in their relationships. Nothing waits
-          for approval.</p>
+          its week \u2014 and straight after each match, the moment you enter its result, the director may decide what else happened. It\u2019s
+          recorded at once, as canon: under that match on the show\u2019s page, in the What happened feed, on the timeline, on each wrestler\u2019s
+          page, and in their relationships \u2014 counted right after that match, before the next one. Once every result is in (or the week
+          is over) it looks once more at what wasn\u2019t about one match. Nothing waits for approval.</p>
         <div class="uv-calc">
           <div><span>Before a show</span><b>a ${K.confrontation.label.toLowerCase()} (two tag teams at odds face off as teams), a
             ${K.demand.label.toLowerCase()} (a #1 contender wants their match), an ${K["open-challenge"].label.toLowerCase()},
             a ${K.alliance.label.toLowerCase()}, team tension, a rivalry cooling, a turn \u2014 so they can shape the card you book</b></div>
-          <div><span>After the results</span><b>an ${K.interference.label.toLowerCase()} \u2014 a friend, tag partner or ally running in to help
+          <div><span>Straight after a match</span><b>an ${K.interference.label.toLowerCase()} \u2014 a friend, tag partner or ally running in to help
             someone win, or a rival costing someone the match \u2014 a ${K.attack.label.toLowerCase()} (partners joining in; sometimes stopped
             by a ${K.save.label.toLowerCase()}), a ${K.betrayal.label.toLowerCase()}, a rivalry boiling over, a team breakup, a handshake,
-            a title challenge (a new #1 contender above all), an underdog on the rise, a turn</b></div>
+            a title challenge (a new #1 contender above all), an underdog on the rise, a turn \u2014 each about that match</b></div>
+          <div><span>After the show</span><b>bad blood between people who were in different matches boiling over, and a champion who
+            didn\u2019t wrestle being called out</b></div>
         </div>
         <p class="uv-p"><b>Every event has a cause.</b> It comes from the record: personalities, relationships and grudges, goals, momentum,
           tag teams, champions, recent results and what\u2019s already happened. The reasons stay with it \u2014 tap any event to see them, and
@@ -10468,8 +10540,8 @@ body.uv-confirm-open .uv-confirm{display:flex}
           fights. Friends, tag partners and allies run in for each other and make the saves; rivals and grudges cost each other
           matches and confront each other; teammates who stop trusting each other clash, and then split.</p>
         <p class="uv-p"><b>Occasional and varied.</b> Every chance starts small, and the pace scales it (Quiet \xD7${P.quiet.mult}, Normal \xD71,
-          Wild \xD7${P.wild.mult}). At this pace a show gets at most ${pace.pre} before and ${pace.post} after, and a week ${pace.perWeek} \u2014 never
-          two of a kind on a show, or one wrestler twice. Anyone in something in the last ${R.recentWeeks} weeks is less likely to be in more,
+          Wild \xD7${P.wild.mult}). At this pace a show gets at most ${pace.pre} before and ${pace.post} after its matches (all of them together),
+          and a week ${pace.perWeek} \u2014 never two of a kind on a show, or one wrestler twice. Anyone in something in the last ${R.recentWeeks} weeks is less likely to be in more,
           and the same thing between the same people doesn\u2019t happen again for ${R.repeatWeeks} weeks. After an eventful episode, a show\u2019s
           next one is calmer.</p>
         <p class="uv-p"><b>Big moments are earned.</b> A betrayal needs buildup \u2014 tension between them, a grudge, losing together. A
@@ -12685,6 +12757,7 @@ body.uv-confirm-open .uv-confirm{display:flex}
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ""}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ""}
     ${uvAutoLine(m)}
+    ${uvMatchStory(st, ev, m)}
     <div class="uv-mc-acts">
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>` : `<div class="uv-btn pri sm2" onclick="uvEnterResult('${ev.id}','${m.id}')">Enter result</div>
            <div class="uv-btn sm2" onclick="uvEditBooking('${ev.id}','${m.id}')">${ICON.edit}Edit</div>`}

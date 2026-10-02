@@ -39,13 +39,14 @@ export function uvDirect(st) {
   return st.story.rolls.slice(n);
 }
 
-/** A toast's tail for what the director just did: " · After Raw: Roman attacked Solo (+1 more)". */
+/** A toast's tail for what the director just did: " · Straight after the match: Roman attacked Solo (+1 more)". */
 export function uvDirectedToast(runs) {
   const st = uni();
   const evs = (runs || []).flatMap(r => storyEvents(st, { roll: r.id }));
   if (!evs.length) return '';
   const g = evs[0];
-  return ` · ${g.phase === 'pre' ? 'Before' : 'After'} ${g.event.name}: ${headline(st, g)}${evs.length > 1 ? ` (+${evs.length - 1} more)` : ''}`;
+  const when = g.phase === 'pre' ? `Before ${g.event.name}` : g.roll && g.roll.match ? 'Straight after the match' : `After ${g.event.name}`;
+  return ` · ${when}: ${headline(st, g)}${evs.length > 1 ? ` (+${evs.length - 1} more)` : ''}`;
 }
 
 export function uvStoryCatchUp() {
@@ -59,9 +60,17 @@ export function uvStoryCatchUp() {
 // unplayed show, after a played one
 function canRerun(st, roll) {
   const ev = roll && M.eventById(st, roll.event);
-  if (!ev || !st.story.on || M.directorRollOf(st, roll.event, roll.phase) !== roll) return false;
+  if (!ev || !st.story.on || M.directorRollOf(st, roll.event, roll.phase, roll.match) !== roll) return false;
+  if (roll.match) return ev.matches.some(m => m.id === roll.match && m.status === 'played');
   const played = ev.matches.some(m => m.status === 'played');
   return roll.phase === 'pre' ? !played : played;
+}
+// a run's part of the show, in words: "before Raw", "after Gunther vs Jey", "after Raw"
+function partText(st, roll) {
+  const ev = M.eventById(st, roll.event);
+  if (roll.phase === 'pre') return `before ${ev.name}`;
+  const m = roll.match && ev.matches.find(x => x.id === roll.match);
+  return m ? `after ${m.sides.map(sd => sideName(st, sd)).join(' vs ')}` : roll.match ? 'after a match since taken off the card' : `after ${ev.name}`;
 }
 
 // ================================================================ story events
@@ -110,7 +119,12 @@ function headline(st, g) {
 const kindOf = g => (g.incs.some(i => i.kind === 'save') ? 'save' : g.incs[0].kind);
 // the reasons: what drove it, then what held it back
 const reasons = g => [...g.cause.filter(w => !/^Less likely/.test(w)), ...g.cause.filter(w => /^Less likely/.test(w))];
-const whenText = g => `${g.phase === 'pre' ? 'Before' : g.incs[0].phase ? 'After' : 'At'} ${g.event.name}`;
+const whenText = g => {
+  if (g.phase === 'pre') return `Before ${g.event.name}`;
+  const m = g.incs[0].match && g.event.matches.find(x => x.id === g.incs[0].match);
+  if (m && g.roll && g.roll.match) return `Straight after ${m.sides.map(sd => sideName(uni(), sd)).join(' vs ')} at ${g.event.name}`;
+  return `${g.incs[0].phase ? 'After' : 'At'} ${g.event.name}`;
+};
 
 // the logged possibility behind a director event, for its chance and draw
 const PICKED_AS = { momentum: ['rise'], truce: ['respect', 'cooling'], attack: ['attack', 'save'] };
@@ -258,7 +272,7 @@ export function uvStoryRerun(rollId) {
   const roll = M.rollById(st, rollId);
   const ev = roll && M.eventById(st, roll.event);
   if (!ev) return;
-  confirmThen(`Run ${roll.phase === 'pre' ? 'before' : 'after'} ${ev.name} again?`,
+  confirmThen(`Run ${partText(st, roll)} again?`,
     `${roll.undone ? 'The director' : 'Everything the director did there comes off, and it'} decides again with the next draw — just as reproducible.`
     + ' Anything you recorded yourself stays.',
     'Run it again', () => {
@@ -275,7 +289,7 @@ export function uvStoryUndoRun(rollId) {
   const ev = roll && M.eventById(st, roll.event);
   if (!ev) return;
   const n = storyEvents(st, { roll: rollId }).length;
-  confirmThen(`Undo everything ${roll.phase === 'pre' ? 'before' : 'after'} ${ev.name}?`,
+  confirmThen(`Undo everything ${partText(st, roll)}?`,
     `The director’s ${n} event${n === 1 ? '' : 's'} there come off: turns go back, teams it split are back together, and relationships are worked out again.`
     + ' The run stays in the log as undone, and the director won’t redo it by itself.',
     'Undo them', () => {
@@ -300,7 +314,7 @@ export function uvStoryLog(rollId) {
     if (!ev) return null;
     const made = storyEvents(st, { roll: roll.id });
     return {
-      title: `${roll.phase === 'pre' ? 'Before' : 'After'} ${ev.name}`,
+      title: `${partText(st, roll).replace(/^./, x => x.toUpperCase())}`,
       body: `
         <div class="uv-logh" data-log="${roll.id}">
           <div><span>Seed</span><b>${roll.seed}</b></div><div><span>Run</span><b>${roll.nonce ? `again ×${roll.nonce}` : 'first'}</b></div>
@@ -330,14 +344,15 @@ export function uvStoryLog(rollId) {
 function runLine(st, ev, phase, roll) {
   if (roll) {
     const n = storyEvents(st, { roll: roll.id }).length;
-    const what = roll.undone ? 'You undid what the director did here.' : n ? '' : `Nothing happened ${phase === 'pre' ? 'before the show' : 'after the results'}.`;
+    const what = roll.undone ? 'You undid what the director did here.' : n ? ''
+      : `Nothing happened ${phase === 'pre' ? 'before the show' : roll.match ? 'straight after it' : 'after the show'}.`;
     const links = [`<span class="uv-link" onclick="uvStoryLog('${roll.id}')">The director’s log</span>`,
       !roll.undone && n ? `<span class="uv-link" onclick="uvStoryUndoRun('${roll.id}')">Undo all</span>` : '',
       canRerun(st, roll) ? `<span class="uv-link" onclick="uvStoryRerun('${roll.id}')">Run it again</span>` : ''].filter(Boolean);
     return `<div class="uv-runl" data-run="${roll.id}">${what ? `${esc(what)} ` : ''}${links.join(' · ')}</div>`;
   }
   if (!st.story.on) return '';
-  if (DR.due(st).some(d => d.event.id === ev.id && d.phase === phase)) {
+  if (DR.due(st).some(d => d.event.id === ev.id && d.phase === phase && !d.match)) {
     return '<div class="uv-runl">The story director hasn’t been through this yet. <span class="uv-link" onclick="uvStoryCatchUp()">Catch up now</span></div>';
   }
   const s = M.activeSeason(st);
@@ -346,21 +361,34 @@ function runLine(st, ev, phase, roll) {
   const played = ev.matches.some(m => m.status === 'played');
   if (!inScope) return '';
   if (phase === 'pre') return played ? '' : '<div class="uv-runl">The story director decides what happens before the show once it’s the next one up.</div>';
-  return `<div class="uv-runl">${played ? 'Once every result is in — or the week is over — the story director decides what happens after.'
-    : 'After the results, the story director decides what else happens.'}</div>`;
+  return `<div class="uv-runl">${played ? 'Straight after each match, as its result goes in, the story director decides what happens; once every result is in — or the week is over — it looks at the rest of the show.'
+    : 'Straight after each match, as its result goes in, the story director decides what else happens.'}</div>`;
 }
 
 /**
- * A show's story: 'pre' (Before the show, above the card) or 'post' (During &
- * after, below it) - every event with its cause, and where the director is.
+ * A show's story: 'pre' (Before the show, above the card) or 'post' (After the
+ * show, below it) - every event with its cause, and where the director is.
+ * What happened in or straight after a match is on that match instead.
  */
 export function uvStoryBlock(st, ev, phase) {
-  const list = storyEvents(st, { event: ev.id, phase });
+  const list = storyEvents(st, { event: ev.id, phase }).filter(g => phase === 'pre' || !onMatch(ev, g));
   const line = runLine(st, ev, phase, M.directorRollOf(st, ev.id, phase));
   if (!list.length && !line) return '';
-  return `${section(phase === 'pre' ? 'Before the show' : 'During & after', list.length || null)}
+  return `${section(phase === 'pre' ? 'Before the show' : 'After the show', list.length || null)}
     ${list.length ? `<div class="uv-whs" data-phase="${phase}">${list.map(g => feedRow(st, g, { where: false })).join('')}</div>` : ''}
     ${line}`;
+}
+
+// an event that belongs on a match: in it, or straight after it
+const onMatch = (ev, g) => g.phase === 'post' && !!g.incs[0].match && ev.matches.some(m => m.id === g.incs[0].match);
+
+/** On a match's card: what happened in it or straight after it, and the director's run for it. */
+export function uvMatchStory(st, ev, m) {
+  const list = storyEvents(st, { event: ev.id, phase: 'post' }).filter(g => g.incs[0].match === m.id);
+  const roll = M.directorRollOf(st, ev.id, 'post', m.id);
+  if (!list.length && !roll) return '';
+  return `<div class="uv-mstory" data-mstory="${m.id}">${list.length ? `<div class="h">Straight after</div><div class="uv-whs">${list.map(g => feedRow(st, g, { where: false })).join('')}</div>` : ''}
+    ${roll ? runLine(st, ev, 'post', roll) : ''}</div>`;
 }
 
 // ================================================================ the feed
@@ -462,17 +490,20 @@ export function uvHowStory() {
       title: 'How the story director works',
       body: `
         <p class="uv-p"><b>You watch; it tells the story around the matches.</b> Before the next show up — once it’s planned, or you move to
-          its week — and after each show’s results are in, the director may decide what else happened. It’s recorded at once, as canon,
-          on the show: in the What happened feed, on the timeline, on each wrestler’s page, and in their relationships. Nothing waits
-          for approval.</p>
+          its week — and straight after each match, the moment you enter its result, the director may decide what else happened. It’s
+          recorded at once, as canon: under that match on the show’s page, in the What happened feed, on the timeline, on each wrestler’s
+          page, and in their relationships — counted right after that match, before the next one. Once every result is in (or the week
+          is over) it looks once more at what wasn’t about one match. Nothing waits for approval.</p>
         <div class="uv-calc">
           <div><span>Before a show</span><b>a ${K.confrontation.label.toLowerCase()} (two tag teams at odds face off as teams), a
             ${K.demand.label.toLowerCase()} (a #1 contender wants their match), an ${K['open-challenge'].label.toLowerCase()},
             a ${K.alliance.label.toLowerCase()}, team tension, a rivalry cooling, a turn — so they can shape the card you book</b></div>
-          <div><span>After the results</span><b>an ${K.interference.label.toLowerCase()} — a friend, tag partner or ally running in to help
+          <div><span>Straight after a match</span><b>an ${K.interference.label.toLowerCase()} — a friend, tag partner or ally running in to help
             someone win, or a rival costing someone the match — a ${K.attack.label.toLowerCase()} (partners joining in; sometimes stopped
             by a ${K.save.label.toLowerCase()}), a ${K.betrayal.label.toLowerCase()}, a rivalry boiling over, a team breakup, a handshake,
-            a title challenge (a new #1 contender above all), an underdog on the rise, a turn</b></div>
+            a title challenge (a new #1 contender above all), an underdog on the rise, a turn — each about that match</b></div>
+          <div><span>After the show</span><b>bad blood between people who were in different matches boiling over, and a champion who
+            didn’t wrestle being called out</b></div>
         </div>
         <p class="uv-p"><b>Every event has a cause.</b> It comes from the record: personalities, relationships and grudges, goals, momentum,
           tag teams, champions, recent results and what’s already happened. The reasons stay with it — tap any event to see them, and
@@ -483,8 +514,8 @@ export function uvHowStory() {
           fights. Friends, tag partners and allies run in for each other and make the saves; rivals and grudges cost each other
           matches and confront each other; teammates who stop trusting each other clash, and then split.</p>
         <p class="uv-p"><b>Occasional and varied.</b> Every chance starts small, and the pace scales it (Quiet ×${P.quiet.mult}, Normal ×1,
-          Wild ×${P.wild.mult}). At this pace a show gets at most ${pace.pre} before and ${pace.post} after, and a week ${pace.perWeek} — never
-          two of a kind on a show, or one wrestler twice. Anyone in something in the last ${R.recentWeeks} weeks is less likely to be in more,
+          Wild ×${P.wild.mult}). At this pace a show gets at most ${pace.pre} before and ${pace.post} after its matches (all of them together),
+          and a week ${pace.perWeek} — never two of a kind on a show, or one wrestler twice. Anyone in something in the last ${R.recentWeeks} weeks is less likely to be in more,
           and the same thing between the same people doesn’t happen again for ${R.repeatWeeks} weeks. After an eventful episode, a show’s
           next one is calmer.</p>
         <p class="uv-p"><b>Big moments are earned.</b> A betrayal needs buildup — tension between them, a grudge, losing together. A

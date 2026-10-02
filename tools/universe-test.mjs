@@ -3050,22 +3050,30 @@ test('undo a run, run it again, edit or delete one event: the owner overrides an
   sound(st);
 });
 
-test('before a show is for the next show up; after is once its results are in', () => {
+test('before a show is for the next show up; straight after each match once its result is in; after the show once the card is', () => {
   const st = M.createUniverse();
   M.seedStory(st, 3);
   const [a, b] = ['A', 'B'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
   const [c, d] = ['C', 'D'].map(n => M.addWrestler(st, { name: n, showId: 'smackdown' }));
   const raw = M.addEvent(st, { showId: 'raw' }), sd = M.addEvent(st, { showId: 'smackdown' });
-  assert.deepEqual(DR.due(st).map(x => `${x.event.name}:${x.phase}`), ['Raw · Week 1:pre']);
+  const dueNow = () => DR.due(st).map(x => `${x.event.name}:${x.phase}${x.match ? `:${raw.matches.indexOf(x.match) + 1}` : ''}`);
+  assert.deepEqual(dueNow(), ['Raw · Week 1:pre']);
   DR.tick(st);
   const m = M.bookMatch(st, raw.id, { sides: S([a.id, b.id]) });
-  M.bookMatch(st, raw.id, { sides: S([b.id, a.id]) });
+  const m2 = M.bookMatch(st, raw.id, { sides: S([b.id, a.id]) });
+  M.enterResult(st, raw.id, m2.id, { sides: m2.sides, outcome: 'win', winner: 1 });
+  assert.deepEqual(dueNow(), ['Raw · Week 1:post:2'], 'match 2 is in: straight after it, whatever order the results come in');
+  const [after2] = DR.tick(st);
+  assert.deepEqual([after2.phase, after2.match], ['post', m2.id]);
+  assert.equal(M.directorRollOf(st, raw.id, 'post', m2.id), after2);
+  assert.deepEqual(dueNow(), [], 'half a card: nothing more yet');
   M.enterResult(st, raw.id, m.id, { sides: m.sides, outcome: 'win', winner: 0 });
-  assert.deepEqual(DR.due(st), [], 'half a card: not yet');
-  M.enterResult(st, raw.id, raw.matches[1].id, { sides: raw.matches[1].sides, outcome: 'win', winner: 1 });
-  assert.deepEqual(DR.due(st).map(x => `${x.event.name}:${x.phase}`), ['Raw · Week 1:post']);
+  assert.deepEqual(dueNow(), ['Raw · Week 1:post:1', 'Raw · Week 1:post'], 'then match 1, and the card is complete: after the show');
   DR.tick(st);
+  assert.ok(M.directorRollOf(st, raw.id, 'post'), 'after the show');
   assert.ok(M.directorRollOf(st, sd.id, 'pre'), 'then SmackDown is next up');
+  throwsUE(() => M.saveDirectorRoll(st, raw.id, 'post', { picked: [] }, { match: m.id }), /already been through Raw · Week 1 after that match/);
+  throwsUE(() => M.saveDirectorRoll(st, sd.id, 'pre', { picked: [] }, { match: m.id }), /match/);
   // switched off, nothing happens at all
   M.setStory(st, { on: false });
   M.recordMatch(st, sd.id, { sides: S([c.id, d.id]), winner: 0 });
@@ -3106,7 +3114,7 @@ test('an underdog can rise: upsets are noticed, and anyone can be drawn to chall
   // Nobody beats the champion: the upset is noticed, from the bottom of the rankings
   const ev2 = show();
   const upset = M.recordMatch(st, ev2.id, { sides: S([N.id, G.id]), winner: 0 });
-  const r = DR.lookAt(st, ev2.id, 'post', 0);
+  const r = DR.lookAt(st, ev2.id, 'post', 0, upset.id);                          // straight after the upset
   const rise = r.considered.find(k => k.key === `rise:${N.id}`);
   assert.ok(rise && rise.chance > 0);
   assert.equal(M.currentReign(st, title.id).holder.id, G.id, 'a non-title win changes no title');
@@ -3129,12 +3137,13 @@ test('alliances form between people who aren’t partners already; early on, an 
   assert.ok(!allies.includes(`alliance:${[Sa.id, K.id].sort().join('+')}`), 'KO & Sami are a team already');
   assert.ok(allies.includes(`alliance:${[J.id, Sa.id].sort().join('+')}`), 'Jey and Sami share an enemy');
   // Jey beats the champion in his first match: no record to speak of, so no upset
-  one(ev, J, G);
-  assert.ok(!DR.lookAt(st, ev.id, 'post', 0).considered.some(k => k.key === `rise:${J.id}`));
+  const first = one(ev, J, G);
+  assert.ok(!DR.lookAt(st, ev.id, 'post', 0, first.id).considered.some(k => k.key === `rise:${J.id}`));
   // Nobody loses twice, then beats the champion: that's an upset
   const ev2 = show();
-  one(ev2, J, N); one(ev2, Se, N); one(ev2, N, G);
-  const rise = DR.lookAt(st, ev2.id, 'post', 0).considered.find(k => k.key === `rise:${N.id}`);
+  one(ev2, J, N); one(ev2, Se, N);
+  const win = one(ev2, N, G);
+  const rise = DR.lookAt(st, ev2.id, 'post', 0, win.id).considered.find(k => k.key === `rise:${N.id}`);
   assert.ok(rise && rise.chance > 0);
 });
 
@@ -3341,20 +3350,20 @@ test('the director: friends, partners and allies run in to help someone win; riv
   M.setTraits(st, Se.id, ['loyal'], { since: 'start' });
   const ev = show();
   const m = M.recordMatch(st, ev.id, { sides: S([G.id, J.id]), winner: 0 });
-  const runIns = DR.possibilities(st, ev.id, 'post').filter(p => p.kind === 'interference');
+  const runIns = DR.possibilities(st, ev.id, 'post', m.id).filter(p => p.kind === 'interference');
   const seth = runIns.find(p => p.key === `interference:${Se.id}:${m.id}`);
   assert.deepEqual(seth.incidents, [{ kind: 'interference', by: [Se.id], on: [J.id], helped: [G.id], match: m.id }]);
   assert.ok(['Seth and Gunther are friends', 'Seth is loyal', 'Seth is a heel'].every(t => seth.why.includes(t)));
   assert.ok(!runIns.some(p => p.incidents[0].by.includes(N.id)), 'Nobody never interferes against their ally Jey');
   // a partner helps a partner: Kevin for Sami
   const m2 = M.recordMatch(st, ev.id, { sides: S([Sa.id, N.id]), winner: 0 });
-  const kev = DR.possibilities(st, ev.id, 'post').find(p => p.key === `interference:${K.id}:${m2.id}`);
+  const kev = DR.possibilities(st, ev.id, 'post', m2.id).find(p => p.key === `interference:${K.id}:${m2.id}`);
   assert.ok(kev.why[0] === 'Kevin is in KO & Sami with Sami' && kev.why.some(t => /^Kevin is opportunistic/.test(t)));
   // a rival costs someone the match - helping nobody in particular (a newcomer beats Seth; Nobody has it in for Seth)
   M.editRelationship(st, { action: 'form', kind: 'grudge', a: N.id, b: Se.id, level: 2, since: 'start' });
   const X = M.addWrestler(st, { name: 'Xavier', showId: 'raw', alignment: 'face' });
   const m3 = M.recordMatch(st, ev.id, { sides: S([X.id, Se.id]), winner: 0 });
-  const nob = DR.possibilities(st, ev.id, 'post').find(p => p.key === `interference:${N.id}:${m3.id}`);
+  const nob = DR.possibilities(st, ev.id, 'post', m3.id).find(p => p.key === `interference:${N.id}:${m3.id}`);
   assert.deepEqual([nob.incidents[0].on, nob.incidents[0].helped, nob.why[0]], [[Se.id], [], 'Nobody holds a grudge against Seth (heat 2)']);
   // made canon, it does what an interference does
   M.recordIncident(st, ev.id, seth.incidents[0]);
@@ -3367,14 +3376,14 @@ test('the director: partners join a post-match attack; tag teams at odds face of
   const ev = show();
   // Kevin and Sami lose together: an attack by either brings the other
   const m = M.recordMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [G.id, Se.id] }], winner: 1 });
-  const attack = DR.possibilities(st, ev.id, 'post').find(p => p.kind === 'attack' && p.incidents[0].match === m.id);
+  const attack = DR.possibilities(st, ev.id, 'post', m.id).find(p => p.kind === 'attack' && p.incidents[0].match === m.id);
   assert.deepEqual([...attack.incidents[0].by].sort(), [K.id, Sa.id].sort());
   assert.ok(attack.why.some(t => /joins in — (Sami|Kevin) lost alongside (Kevin|Sami), their partner in KO & Sami$/.test(t)));
   // a coward brings the team (Sami isn't loyal here, so it's Kevin's doing)
   M.setTraits(st, K.id, ['cowardly'], { since: 'start' });
   M.setTraits(st, Sa.id, [], { since: 'start' });
   const m2 = M.recordMatch(st, ev.id, { sides: S([J.id, K.id]), winner: 0 });
-  const a2 = DR.possibilities(st, ev.id, 'post').find(p => p.kind === 'attack' && p.incidents[0].match === m2.id);
+  const a2 = DR.possibilities(st, ev.id, 'post', m2.id).find(p => p.kind === 'attack' && p.incidents[0].match === m2.id);
   assert.deepEqual(a2.incidents[0].by, [K.id, Sa.id]);
   assert.ok(a2.why.includes('Sami joins in — Kevin is cowardly and brings KO & Sami backup'));
   // two teams with a grudge: before the next show they face off as teams, not pair by pair
@@ -3390,6 +3399,91 @@ test('the director: partners join a post-match attack; tag teams at odds face of
     'no pair-by-pair confrontations for bad blood that is only between their teams');
 });
 
+test('straight after each match: its events are about it, on it, and one show’s limits hold across its matches', () => {
+  let shows = 0, made = 0;
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const { st, G, J, Sa, K, Se, N, team, show } = directorWorld({ pace: 'wild', seed });
+    [[J, G, 3], [Sa, Se, 2], [N, K, 2]].forEach(([a, b, level]) => M.editRelationship(st, { action: 'form', kind: 'grudge', a: a.id, b: b.id, level, since: 'start' }));
+    for (let w = 0; w < 3; w++) {
+      const ev = show();
+      // the card booked first, then each result in: the director goes straight away, for that match
+      const card = [[G, J], [Se, Sa], [K, N]].map(([a, b]) => M.bookMatch(st, ev.id, { sides: S([a.id, b.id]) }));
+      card.push(M.bookMatch(st, ev.id, { sides: [{ team: team.id, wrestlers: [Sa.id, K.id] }, { wrestlers: [J.id, N.id] }] }));
+      card.forEach((m, i) => {
+        const before = st.story.rolls.length;
+        M.enterResult(st, ev.id, m.id, { winner: i % 2 });
+        DR.tick(st);
+        const runs = st.story.rolls.slice(before);
+        assert.deepEqual(runs.map(r => r.match), i < card.length - 1 ? [m.id] : [m.id, null], 'straight after it - and after the show once the card is in');
+      });
+      shows++;
+      const rolls = st.story.rolls.filter(r => r.event === ev.id && r.phase === 'post');
+      assert.deepEqual(rolls.map(r => r.match), [...ev.matches.map(m => m.id), null], 'one run after each match, in card order, then one after the show');
+      const picks = rolls.flatMap(r => r.considered.filter(k => k.picked));
+      assert.ok(picks.length <= DR.PACE.wild.post, 'the show’s limit, across its matches');
+      const fam = k => (k === 'save' ? 'attack' : k === 'cooling' || k === 'respect' ? 'truce' : k);
+      assert.equal(new Set(picks.map(k => fam(k.kind))).size, picks.length, 'never two of a kind on a show');
+      const theirs = ev.incidents.filter(x => x.story);
+      made += theirs.length;
+      rolls.filter(r => r.match).forEach(r => theirs.filter(x => r.made.includes(x.id)).forEach(x => assert.equal(x.match, r.match, 'each on the match it followed')));
+      // nobody in two of the director's events on one show
+      const groups = rolls.flatMap(r => r.made.length ? [ev.incidents.filter(x => r.made.includes(x.id))] : []);
+      const seen = new Set();
+      groups.forEach(g => {
+        const people = new Set(g.flatMap(x => [...x.by, ...x.on, ...x.helped]));
+        people.forEach(id => assert.ok(!seen.has(id), 'one wrestler, one event a show'));
+        people.forEach(id => seen.add(id));
+      });
+    }
+    sound(st);
+  }
+  assert.ok(made > 0, `${made} events over ${shows} shows`);
+});
+
+test('what happens straight after a match counts right after it — before the next match', () => {
+  const { st, A, B, show } = relWorld();
+  const ev = show();
+  const m1 = M.recordMatch(st, ev.id, { sides: S([A.id, B.id]), winner: 0 });
+  M.recordMatch(st, ev.id, { sides: S([A.id, B.id]), winner: 0 });
+  M.recordMatch(st, ev.id, { sides: S([A.id, B.id]), winner: 0 });               // B's third loss in a row: a grudge, or more
+  M.recordIncident(st, ev.id, { kind: 'attack', by: [A.id], on: [B.id], match: m1.id });   // straight after the first
+  const grudge = RL.relationships(st).entries.filter(e => e.rel === RL.relKey('grudge', B.id, A.id)).map(e => `${e.cause.type}:${e.change}`);
+  assert.deepEqual(grudge, ['attack:formed', 'losses:raised']);
+  // an incident that isn't tied to a match still counts after them all
+  const ev2 = show();
+  M.recordMatch(st, ev2.id, { sides: S([B.id, A.id]), winner: 0 });
+  M.recordIncident(st, ev2.id, { kind: 'truce', by: [A.id], on: [B.id] });
+  assert.equal(RL.relationships(st).entries.filter(e => e.at === ev2.at || (e.at && e.at.seq === ev2.at.seq)).pop().cause.type, 'truce');
+});
+
+test('one match’s run can be undone or run again on its own; a v13 save’s runs were for whole shows', () => {
+  const { st, G, J, Se, N, show, one } = directorWorld({ pace: 'wild', seed: 11 });
+  [[J, G, 3], [N, Se, 3]].forEach(([a, b, level]) => M.editRelationship(st, { action: 'form', kind: 'grudge', a: a.id, b: b.id, level, since: 'start' }));
+  const ev = show();
+  const m1 = one(ev, G, J), m2 = one(ev, Se, N);
+  const r1 = M.directorRollOf(st, ev.id, 'post', m1.id), r2 = M.directorRollOf(st, ev.id, 'post', m2.id);
+  const again = DR.rerun(st, r1.id);
+  assert.deepEqual([again.match, again.nonce, r1.undone, M.directorRollOf(st, ev.id, 'post', m1.id).id], [m1.id, 1, true, again.id]);
+  assert.equal(M.directorRollOf(st, ev.id, 'post', m2.id), r2, 'the other match’s run is untouched');
+  M.undoDirectorRoll(st, again.id);
+  assert.deepEqual(DR.due(st).filter(d => d.match && d.match.id === m1.id), [], 'undone stays undone');
+  sound(st);
+  // older saves: every run was for a whole show's part
+  const old = JSON.parse(exportUniverse(st));
+  old.version = 13;
+  old.story.rolls.forEach(r => delete r.match);
+  const up = M.migrate(old);
+  assert.ok(up.story.rolls.every(r => r.match === null));
+  // a show already gone through as a whole isn't gone over again match by match
+  assert.deepEqual(DR.due(up).filter(d => d.event.id === ev.id), []);
+  // a match recorded straight onto the card later still gets its own run
+  const m3 = one(ev, J, N);
+  assert.ok(M.directorRollOf(st, ev.id, 'post', m3.id));
+  const bad = JSON.parse(exportUniverse(st));
+  bad.story.rolls.push({ ...bad.story.rolls.find(r => r.match === m2.id && !r.undone), id: 'dr999', made: [] });
+  assert.ok(M.validate(bad).some(x => /second run for the same part/.test(x)));
+});
+
 test('the director: a new #1 contender steps up to the champion', () => {
   const { st, G, J, Se, N, title, show } = directorWorld();
   M.setStory(st, { on: false });
@@ -3399,7 +3493,7 @@ test('the director: a new #1 contender steps up to the champion', () => {
   assert.equal(odds[0].name, 'Nobody');
   assert.equal(odds[0].reasons[0], `Nobody won the #1 contender’s match at ${ev.name}`);
   // the loser may attack - it's like losing a title
-  const attack = DR.possibilities(st, ev.id, 'post').find(p => p.kind === 'attack' && p.incidents[0].match === m.id);
+  const attack = DR.possibilities(st, ev.id, 'post', m.id).find(p => p.kind === 'attack' && p.incidents[0].match === m.id);
   assert.ok(attack.why.includes('Seth just lost a #1 contender’s match for the World Heavyweight Championship'));
   // before the next show, the #1 contender wants the match, hot or not
   M.setWeek(st, 2);

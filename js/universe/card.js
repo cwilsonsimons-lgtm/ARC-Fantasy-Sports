@@ -17,7 +17,7 @@ import {
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
-import { uvDirect, uvDirectedToast, uvStoryBlock } from './story.js';
+import { uvDirect, uvDirectedToast, uvMatchStory, uvStoryBlock } from './story.js';
 import { uvAutoLine, uvDraftBlock } from './autobook.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
@@ -152,6 +152,7 @@ function matchCard(st, ev, m, i) {
     ${m.qualifier && !played ? '<div class="uv-mc-d">Qualifying match: the winner becomes draft eligible. Nobody moves until you draft them.</div>' : ''}
     ${m.notes ? `<div class="uv-mc-n">${esc(m.notes)}</div>` : ''}
     ${uvAutoLine(m)}
+    ${uvMatchStory(st, ev, m)}
     <div class="uv-mc-acts">
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>`
         : `<div class="uv-btn pri sm2" onclick="uvEnterResult('${ev.id}','${m.id}')">Enter result</div>
