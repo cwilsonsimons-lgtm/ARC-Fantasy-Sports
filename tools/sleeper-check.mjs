@@ -60,6 +60,19 @@ const rr = JSON.parse(fs.readFileSync(R + 'league/rosters.json')).find(x => x.ro
 ok('roster sizes match Sleeper', roster.bench + roster.taxi.length + roster.ir.length + roster.starters.filter(s => !/-$/.test(s)).length === rr.players.length, `${rr.players.length} players`);
 const um = await p.evaluate(() => { const r = myLeagues().find(l => l.sleeper); let n = 0; const miss = []; r.teams.forEach(t => { const ro = rosterOf(t.key); [ro.starters.map(x => x.player), ro.bench, ro.taxi, ro.ir].forEach(a => a.forEach(pl => { if (!pl) return; n++; if (String(pl.id).startsWith('sl:')) miss.push(pl.full + ' ' + pl.pos + ' ' + pl.tm); })); }); return { n, miss }; });
 ok(`players linked to the app: ${um.n - um.miss.length}/${um.n}`, um.miss.length <= um.n * 0.03, um.miss.join(', '));
+
+// League tab after import shows Sleeper's real pairings for the live week
+await p.evaluate(`showTab('league')`).catch(() => {});
+await p.waitForTimeout(400);
+const tab = await p.evaluate(() => [...document.querySelectorAll('#leagueBody .lg-hero')].map(e => e.innerText.replace(/\s+/g, ' ')));
+const names = await p.evaluate(() => { const r = myLeagues().find(l => l.sleeper); const n = {}; r.teams.forEach(t => n[t.key] = t.n); return n; });
+const want = {}; raw(4).forEach(m => (want[m.matchup_id] = want[m.matchup_id] || []).push(names['s' + m.roster_id]));
+const pairsOk = Object.values(want).every(([a, x]) => tab.some(t => t.includes(a.toUpperCase()) && t.includes(x.toUpperCase()) || t.includes(a) && t.includes(x)));
+ok('League tab pairings = Sleeper week 4', pairsOk && tab.length === 5, tab.map(t => t.slice(0, 80)).join(' || '));
+const odds = await p.evaluate(() => [3, 4, 5].map(w => getGames(w).map(g => `${g.as}:${g.xs} ${g.aw}%`)));
+console.log('   odds wk3', JSON.stringify(odds[0])); console.log('   odds wk4', JSON.stringify(odds[1])); console.log('   odds wk5', JSON.stringify(odds[2]));
+ok('finished week: winner 100%, loser 0%', odds[0].every(o => { const [a, x] = o.split(' ')[0].split(':').map(Number); const w = +o.split(' ')[1].replace('%', ''); return a > x ? w === 100 : a < x ? w === 0 : w === 50; }));
+ok('live week: odds between 0 and 100, not all 50', odds[1].some(o => !/ 50%$/.test(o)));
 await p.evaluate(`showView('matchup'); renderUserMatchup()`); await p.waitForTimeout(500);
 await p.screenshot({ path: OUT + '/S2-matchup.png' });
 await p.evaluate(`showTab('standings')`).catch(() => {}); await p.waitForTimeout(500);
