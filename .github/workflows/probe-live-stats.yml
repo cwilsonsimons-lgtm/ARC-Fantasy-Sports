@@ -16,10 +16,10 @@ jobs:
       - name: Fetch
         run: |
           mkdir -p docs/probe && cd docs/probe
-          curl -sS -m 60 "https://api.sleeper.com/stats/nfl/2026/3?season_type=regular" -o s3.raw
-          curl -sS -m 60 "https://api.sleeper.com/projections/nfl/2026/4?season_type=regular" -o p4.raw
-          curl -sS -m 60 https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard -o sb.raw
-          curl -sS -m 60 "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20260924-20260929" -o sb3.raw
+          curl -sS --compressed -m 60 "https://api.sleeper.com/stats/nfl/2026/3?season_type=regular" -o s3.raw
+          curl -sS --compressed -m 60 "https://api.sleeper.com/projections/nfl/2026/4?season_type=regular" -o p4.raw
+          curl -sS --compressed -m 60 https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard -o sb.raw
+          curl -sS --compressed -m 60 "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20260924-20260929" -o sb3.raw
           python3 - <<'PY'
           import json, collections
           s3 = json.load(open('s3.raw')); p4 = json.load(open('p4.raw'))
