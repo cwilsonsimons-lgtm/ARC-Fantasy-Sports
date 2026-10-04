@@ -1,0 +1,228 @@
+{
+ "live": {
+  "n": 16,
+  "week": {
+   "number": 4
+  },
+  "event_keys": [
+   "id",
+   "uid",
+   "date",
+   "name",
+   "shortName",
+   "season",
+   "week",
+   "competitions",
+   "links",
+   "weather",
+   "status",
+   "tuneInPrompt"
+  ],
+  "comp_keys": [
+   "id",
+   "uid",
+   "date",
+   "attendance",
+   "type",
+   "timeValid",
+   "neutralSite",
+   "conferenceCompetition",
+   "playByPlayAvailable",
+   "recent",
+   "venue",
+   "competitors",
+   "notes",
+   "situation",
+   "status",
+   "broadcasts",
+   "leaders",
+   "format",
+   "startDate",
+   "broadcast",
+   "geoBroadcasts",
+   "highlights"
+  ],
+  "status": {
+   "clock": 204.0,
+   "displayClock": "3:24",
+   "period": 3,
+   "type": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "3:24 - 3rd Quarter",
+    "shortDetail": "3:24 - 3rd"
+   },
+   "isTBDFlex": false
+  },
+  "competitors": [
+   {
+    "homeAway": "home",
+    "abbr": "BUF",
+    "score": "17"
+   },
+   {
+    "homeAway": "away",
+    "abbr": "NE",
+    "score": "21"
+   }
+  ],
+  "all": [
+   {
+    "id": "401872971",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "BUF",
+     "NE"
+    ]
+   },
+   {
+    "id": "401872972",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "CHI",
+     "NYJ"
+    ]
+   },
+   {
+    "id": "401872969",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "CIN",
+     "JAX"
+    ]
+   },
+   {
+    "id": "401872966",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "NYG",
+     "ARI"
+    ]
+   },
+   {
+    "id": "401872970",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "PHI",
+     "LAR"
+    ]
+   },
+   {
+    "id": "401872968",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "TB",
+     "GB"
+    ]
+   },
+   {
+    "id": "401872973",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "BAL",
+     "TEN"
+    ]
+   },
+   {
+    "id": "401872967",
+    "date": "2026-10-04T17:00Z",
+    "state": "in",
+    "abbr": [
+     "HOU",
+     "DAL"
+    ]
+   },
+   {
+    "id": "401872965",
+    "date": "2026-10-04T13:30Z",
+    "state": "post",
+    "abbr": [
+     "WSH",
+     "IND"
+    ]
+   },
+   {
+    "id": "401872974",
+    "date": "2026-10-04T20:05Z",
+    "state": "pre",
+    "abbr": [
+     "MIN",
+     "MIA"
+    ]
+   },
+   {
+    "id": "401872976",
+    "date": "2026-10-04T20:25Z",
+    "state": "pre",
+    "abbr": [
+     "LV",
+     "KC"
+    ]
+   },
+   {
+    "id": "401872975",
+    "date": "2026-10-04T20:25Z",
+    "state": "pre",
+    "abbr": [
+     "SF",
+     "DEN"
+    ]
+   },
+   {
+    "id": "401872977",
+    "date": "2026-10-04T20:25Z",
+    "state": "pre",
+    "abbr": [
+     "SEA",
+     "LAC"
+    ]
+   },
+   {
+    "id": "401872978",
+    "date": "2026-10-05T00:20Z",
+    "state": "pre",
+    "abbr": [
+     "CAR",
+     "DET"
+    ]
+   },
+   {
+    "id": "401872964",
+    "date": "2026-10-02T00:15Z",
+    "state": "post",
+    "abbr": [
+     "CLE",
+     "PIT"
+    ]
+   },
+   {
+    "id": "401872979",
+    "date": "2026-10-06T00:15Z",
+    "state": "pre",
+    "abbr": [
+     "NO",
+     "ATL"
+    ]
+   }
+  ]
+ },
+ "wk3": {
+  "n": 0,
+  "week": null,
+  "event_keys": [],
+  "comp_keys": [],
+  "status": null,
+  "competitors": [],
+  "all": []
+ }
+}
