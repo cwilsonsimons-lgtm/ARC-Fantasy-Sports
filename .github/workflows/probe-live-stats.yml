@@ -16,52 +16,37 @@ jobs:
       - name: Fetch
         run: |
           mkdir -p docs/probe && cd docs/probe
-          H='Origin: https://raw.githack.com'
-          get() { curl -sS -m 60 -D "$1.headers" -H "$H" "$2" -o "$1.raw" || true; }
-          get state      https://api.sleeper.app/v1/state/nfl
-          get stats_v1   https://api.sleeper.app/v1/stats/nfl/regular/2026/3
-          get stats_new  "https://api.sleeper.com/stats/nfl/2026/3?season_type=regular"
-          get live_new   "https://api.sleeper.com/stats/nfl/2026/4?season_type=regular"
-          get proj_v1    https://api.sleeper.app/v1/projections/nfl/regular/2026/4
-          get proj_new   "https://api.sleeper.com/projections/nfl/2026/4?season_type=regular"
-          get players    https://api.sleeper.app/v1/players/nfl
-          get espn_board https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard
-          ls -la
+          curl -sS -m 60 "https://api.sleeper.com/stats/nfl/2026/3?season_type=regular" -o s3.raw
+          curl -sS -m 60 "https://api.sleeper.com/projections/nfl/2026/4?season_type=regular" -o p4.raw
+          curl -sS -m 60 https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard -o sb.raw
+          curl -sS -m 60 "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20260924-20260929" -o sb3.raw
           python3 - <<'PY'
-          import json, os
-          def load(n):
-              try: return json.load(open(n + '.raw'))
-              except Exception as e: return {'_error': str(e), '_head': open(n + '.raw', errors='ignore').read(400) if os.path.exists(n + '.raw') else None}
-          out = {}
-          for n in ['state','stats_v1','stats_new','live_new','proj_v1','proj_new','espn_board']:
-              d = load(n)
-              if isinstance(d, dict) and not d.get('_error'):
-                  ks = list(d.keys())
-                  out[n] = {'type': 'dict', 'len': len(ks), 'first_keys': ks[:5], 'sample': {k: d[k] for k in ks[:3]} if n != 'espn_board' else None}
-              elif isinstance(d, list):
-                  out[n] = {'type': 'list', 'len': len(d), 'sample': d[:3]}
-              else:
-                  out[n] = d
-          json.dump(out, open('samples.json', 'w'), indent=1, default=str)
-          # players: just the shape of a few and a gsis map size
-          p = load('players')
-          if isinstance(p, dict) and not p.get('_error'):
-              some = {k: p[k] for k in list(p)[:2]}
-              og = [v for v in p.values() if isinstance(v, dict) and (v.get('full_name') or '').startswith('Ollie Gordon')]
-              gs = sum(1 for v in p.values() if isinstance(v, dict) and v.get('gsis_id'))
-              json.dump({'count': len(p), 'with_gsis': gs, 'sample': some, 'ollie': og}, open('players.json', 'w'), indent=1)
-          # ESPN: event ids, statuses, and one summary
-          b = load('espn_board')
-          if isinstance(b, dict) and b.get('events'):
-              ev = [{'id': e['id'], 'name': e['name'], 'date': e['date'], 'status': e['status']['type']} for e in b['events']]
-              json.dump({'week': b.get('week'), 'events': ev}, open('espn.json', 'w'), indent=1)
-              os.system(f"curl -sS -m 60 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={ev[0]['id']}' -o summary.raw")
-              s = json.load(open('summary.raw'))
-              json.dump({'keys': list(s.keys()), 'scoringPlays': (s.get('scoringPlays') or [])[:3], 'header_status': s.get('header', {}).get('competitions', [{}])[0].get('status')}, open('espn_summary.json', 'w'), indent=1)
+          import json, collections
+          s3 = json.load(open('s3.raw')); p4 = json.load(open('p4.raw'))
+          keys = collections.Counter()
+          ex = {}
+          for r in s3:
+              pos = (r.get('player') or {}).get('position')
+              if pos in ('QB','RB','WR','TE'):
+                  keys.update(r['stats'].keys())
+                  if pos not in ex and r['stats'].get('pts_ppr', 0) > 15: ex[pos] = r
+          og = [r for r in s3 + p4 if (r.get('player') or {}).get('last_name','').startswith('Gordon') and (r.get('player') or {}).get('first_name') == 'Ollie']
+          pk = collections.Counter()
+          for r in p4:
+              if (r.get('player') or {}).get('position') in ('QB','RB','WR','TE'): pk.update(r['stats'].keys())
+          json.dump({'stat_keys': sorted(keys), 'proj_keys': sorted(pk), 'examples': ex, 'ollie': og[:2],
+                     'player_fields': sorted({k for r in s3 for k in (r.get('player') or {})})}, open('offense.json','w'), indent=1)
+          def board(f):
+              b = json.load(open(f)); ev = b.get('events', [])
+              e = ev[0] if ev else {}
+              c = (e.get('competitions') or [{}])[0]
+              return {'n': len(ev), 'week': b.get('week'), 'event_keys': list(e.keys()), 'comp_keys': list(c.keys()),
+                      'status': c.get('status'), 'competitors': [{'homeAway': t.get('homeAway'), 'abbr': t['team'].get('abbreviation'), 'score': t.get('score')} for t in c.get('competitors', [])],
+                      'all': [{'id': x['id'], 'date': x['date'], 'state': x['status']['type']['state'], 'abbr': [t['team']['abbreviation'] for t in x['competitions'][0]['competitors']]} for x in ev]}
+          json.dump({'live': board('sb.raw'), 'wk3': board('sb3.raw')}, open('board.json','w'), indent=1)
           PY
-          for f in *.headers; do echo "== $f"; grep -iE '^(HTTP|access-control|content-type|content-length)' "$f"; done > headers.txt
-          rm -f *.raw *.headers
+          rm -f *.raw
       - name: Commit
         run: |
           git config user.name "probe-bot"; git config user.email "probe-bot@users.noreply.github.com"
-          git add docs/probe && git commit -m "Probe: live-stats API samples" && git push || echo nothing
+          git add docs/probe && git commit -m "Probe: offensive stat keys and scoreboard" && git push || echo nothing
