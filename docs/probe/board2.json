@@ -1,0 +1,538 @@
+{
+ "a": {
+  "n": 16,
+  "week": {
+   "number": 3
+  },
+  "games": [
+   [
+    "401872948",
+    "2026-09-25T00:15Z",
+    "post",
+    [
+     "GB",
+     "ATL"
+    ]
+   ],
+   [
+    "401872953",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "BUF",
+     "LAC"
+    ]
+   ],
+   [
+    "401872949",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "CLE",
+     "CAR"
+    ]
+   ],
+   [
+    "401872954",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "DET",
+     "NYJ"
+    ]
+   ],
+   [
+    "401872951",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "IND",
+     "HOU"
+    ]
+   ],
+   [
+    "401872952",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "MIA",
+     "KC"
+    ]
+   ],
+   [
+    "401872956",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "NYG",
+     "TEN"
+    ]
+   ],
+   [
+    "401872950",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "PIT",
+     "CIN"
+    ]
+   ],
+   [
+    "401872955",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "WSH",
+     "SEA"
+    ]
+   ],
+   [
+    "401872957",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "JAX",
+     "NE"
+    ]
+   ],
+   [
+    "401872958",
+    "2026-09-27T20:05Z",
+    "post",
+    [
+     "SF",
+     "ARI"
+    ]
+   ],
+   [
+    "401872959",
+    "2026-09-27T20:05Z",
+    "post",
+    [
+     "TB",
+     "MIN"
+    ]
+   ],
+   [
+    "401872960",
+    "2026-09-27T20:25Z",
+    "post",
+    [
+     "DAL",
+     "BAL"
+    ]
+   ],
+   [
+    "401872961",
+    "2026-09-27T20:25Z",
+    "post",
+    [
+     "NO",
+     "LV"
+    ]
+   ],
+   [
+    "401872962",
+    "2026-09-28T00:20Z",
+    "post",
+    [
+     "DEN",
+     "LAR"
+    ]
+   ],
+   [
+    "401872963",
+    "2026-09-29T00:15Z",
+    "post",
+    [
+     "CHI",
+     "PHI"
+    ]
+   ]
+  ]
+ },
+ "b": {
+  "n": 14,
+  "week": {
+   "number": 3
+  },
+  "games": [
+   [
+    "401872953",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "BUF",
+     "LAC"
+    ]
+   ],
+   [
+    "401872949",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "CLE",
+     "CAR"
+    ]
+   ],
+   [
+    "401872954",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "DET",
+     "NYJ"
+    ]
+   ],
+   [
+    "401872951",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "IND",
+     "HOU"
+    ]
+   ],
+   [
+    "401872952",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "MIA",
+     "KC"
+    ]
+   ],
+   [
+    "401872956",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "NYG",
+     "TEN"
+    ]
+   ],
+   [
+    "401872950",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "PIT",
+     "CIN"
+    ]
+   ],
+   [
+    "401872955",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "WSH",
+     "SEA"
+    ]
+   ],
+   [
+    "401872957",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "JAX",
+     "NE"
+    ]
+   ],
+   [
+    "401872958",
+    "2026-09-27T20:05Z",
+    "post",
+    [
+     "SF",
+     "ARI"
+    ]
+   ],
+   [
+    "401872959",
+    "2026-09-27T20:05Z",
+    "post",
+    [
+     "TB",
+     "MIN"
+    ]
+   ],
+   [
+    "401872960",
+    "2026-09-27T20:25Z",
+    "post",
+    [
+     "DAL",
+     "BAL"
+    ]
+   ],
+   [
+    "401872961",
+    "2026-09-27T20:25Z",
+    "post",
+    [
+     "NO",
+     "LV"
+    ]
+   ],
+   [
+    "401872962",
+    "2026-09-28T00:20Z",
+    "post",
+    [
+     "DEN",
+     "LAR"
+    ]
+   ]
+  ]
+ },
+ "c": {
+  "n": 16,
+  "week": {
+   "number": 3
+  },
+  "games": [
+   [
+    "401872948",
+    "2026-09-25T00:15Z",
+    "post",
+    [
+     "GB",
+     "ATL"
+    ]
+   ],
+   [
+    "401872953",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "BUF",
+     "LAC"
+    ]
+   ],
+   [
+    "401872949",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "CLE",
+     "CAR"
+    ]
+   ],
+   [
+    "401872954",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "DET",
+     "NYJ"
+    ]
+   ],
+   [
+    "401872951",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "IND",
+     "HOU"
+    ]
+   ],
+   [
+    "401872952",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "MIA",
+     "KC"
+    ]
+   ],
+   [
+    "401872956",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "NYG",
+     "TEN"
+    ]
+   ],
+   [
+    "401872950",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "PIT",
+     "CIN"
+    ]
+   ],
+   [
+    "401872955",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "WSH",
+     "SEA"
+    ]
+   ],
+   [
+    "401872957",
+    "2026-09-27T17:00Z",
+    "post",
+    [
+     "JAX",
+     "NE"
+    ]
+   ],
+   [
+    "401872958",
+    "2026-09-27T20:05Z",
+    "post",
+    [
+     "SF",
+     "ARI"
+    ]
+   ],
+   [
+    "401872959",
+    "2026-09-27T20:05Z",
+    "post",
+    [
+     "TB",
+     "MIN"
+    ]
+   ],
+   [
+    "401872960",
+    "2026-09-27T20:25Z",
+    "post",
+    [
+     "DAL",
+     "BAL"
+    ]
+   ],
+   [
+    "401872961",
+    "2026-09-27T20:25Z",
+    "post",
+    [
+     "NO",
+     "LV"
+    ]
+   ],
+   [
+    "401872962",
+    "2026-09-28T00:20Z",
+    "post",
+    [
+     "DEN",
+     "LAR"
+    ]
+   ],
+   [
+    "401872963",
+    "2026-09-29T00:15Z",
+    "post",
+    [
+     "CHI",
+     "PHI"
+    ]
+   ]
+  ]
+ },
+ "summary": [
+  {
+   "text": "Christian Watson 4 Yd pass from Jordan Love (Trey Smack Kick)",
+   "period": {
+    "number": 1
+   },
+   "clock": {
+    "value": 313.0,
+    "displayValue": "5:13"
+   },
+   "team": "GB",
+   "type": "Passing Touchdown"
+  },
+  {
+   "text": "Bijan Robinson 3 Yd Rush (Nick Folk Kick)",
+   "period": {
+    "number": 1
+   },
+   "clock": {
+    "value": 92.0,
+    "displayValue": "1:32"
+   },
+   "team": "ATL",
+   "type": "Rushing Touchdown"
+  },
+  {
+   "text": "Nick Folk 44 Yd Field Goal",
+   "period": {
+    "number": 2
+   },
+   "clock": {
+    "value": 288.0,
+    "displayValue": "4:48"
+   },
+   "team": "ATL",
+   "type": "Field Goal Good"
+  },
+  {
+   "text": "Austin Hooper 5 Yd pass from Michael Penix Jr. (Nick Folk Kick)",
+   "period": {
+    "number": 2
+   },
+   "clock": {
+    "value": 59.0,
+    "displayValue": "0:59"
+   },
+   "team": "ATL",
+   "type": "Passing Touchdown"
+  },
+  {
+   "text": "Brian Robinson Jr. 7 Yd Rush (Nick Folk Kick)",
+   "period": {
+    "number": 3
+   },
+   "clock": {
+    "value": 218.0,
+    "displayValue": "3:38"
+   },
+   "team": "ATL",
+   "type": "Rushing Touchdown"
+  },
+  {
+   "text": "Nick Folk 31 Yd Field Goal",
+   "period": {
+    "number": 4
+   },
+   "clock": {
+    "value": 657.0,
+    "displayValue": "10:57"
+   },
+   "team": "ATL",
+   "type": "Field Goal Good"
+  },
+  {
+   "text": "Matthew Golden 15 Yd pass from Jordan Love (Trey Smack Kick)",
+   "period": {
+    "number": 4
+   },
+   "clock": {
+    "value": 498.0,
+    "displayValue": "8:18"
+   },
+   "team": "GB",
+   "type": "Passing Touchdown"
+  },
+  {
+   "text": "Bijan Robinson 2 Yd Rush (Michael Penix Jr. Pass to Chris Blair for Two-Point Conversion)",
+   "period": {
+    "number": 4
+   },
+   "clock": {
+    "value": 213.0,
+    "displayValue": "3:33"
+   },
+   "team": "ATL",
+   "type": "Rushing Touchdown"
+  }
+ ]
+}
