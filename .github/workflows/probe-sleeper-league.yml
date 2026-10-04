@@ -1,0 +1,47 @@
+# One-off: fetch the owner's Sleeper league (the dev container cannot reach
+# Sleeper) and build a Sleeper-id -> player table for the app.
+name: Probe Sleeper league
+on:
+  push:
+    branches: [claude/gifted-meitner-r7wwin]
+    paths: [.github/workflows/probe-sleeper-league.yml]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch
+        run: |
+          L=1312045587541020672
+          mkdir -p tools/fixtures/league && cd tools/fixtures/league
+          C='curl -sS --compressed -m 90'
+          $C https://api.sleeper.app/v1/league/$L -o league.json
+          $C https://api.sleeper.app/v1/league/$L/users -o users.json
+          $C https://api.sleeper.app/v1/league/$L/rosters -o rosters.json
+          for w in 1 2 3 4; do $C https://api.sleeper.app/v1/league/$L/matchups/$w -o matchups_$w.json; done
+          $C https://api.sleeper.app/v1/league/$L/traded_picks -o traded_picks.json
+          $C https://api.sleeper.app/v1/players/nfl -o players.raw
+          python3 - <<'PY'
+          import json
+          p = json.load(open('players.raw'))
+          # sleeper id -> [gsis id, full name, position, team] for offensive players
+          out = {}
+          for k, v in p.items():
+              if not isinstance(v, dict): continue
+              pos = v.get('position')
+              if pos not in ('QB', 'RB', 'WR', 'TE', 'K', 'DEF'): continue
+              g = (v.get('gsis_id') or '').strip()
+              name = v.get('full_name') or ((v.get('first_name') or '') + ' ' + (v.get('last_name') or '')).strip()
+              if pos != 'DEF' and not g and not v.get('team'): continue
+              out[k] = [g, name, pos, v.get('team')]
+          json.dump(out, open('../sleeper_players.json', 'w'), separators=(',', ':'))
+          print('players kept', len(out))
+          PY
+          rm -f players.raw
+          ls -la; du -sh . ../sleeper_players.json
+      - name: Commit
+        run: |
+          git config user.name "probe-bot"; git config user.email "probe-bot@users.noreply.github.com"
+          git add tools/fixtures && git commit -m "Sleeper league sample and player id table" && git push || echo nothing
