@@ -47,3 +47,30 @@ progress). `node tools/live-check.mjs` runs the app against them.
 - Kickers and defenses are not on rosters, so their stats are not mapped.
 - A handful of players whose names differ between sources may not match
   (about 3% of scorers in week 3).
+
+## Sleeper league import
+
+Home ▸ **Import from Sleeper** takes a league ID, lists its teams, and asks
+which one is yours. The league becomes a created league (`js/sleeper.js`)
+whose teams, records, roster spots, rosters (starters, IR, taxi, bench) and
+weekly schedule come from Sleeper's public API:
+
+| What | URL |
+|---|---|
+| League | `https://api.sleeper.app/v1/league/<id>` |
+| Managers / team names / avatars | `.../league/<id>/users` |
+| Rosters, records | `.../league/<id>/rosters` |
+| Pairings and points | `.../league/<id>/matchups/<week>` |
+
+Every score in an imported league is Sleeper's own (`players_points`,
+`points`), so it matches the Sleeper app to the hundredth under the league's
+own scoring. Rosters and the live week's matchups re-sync when the league is
+opened and with the live refresh (every ~60s during games); league settings
+and managers re-sync every few hours. Sleeper has no write API, so changes made
+here (lineups, trades) do not reach Sleeper and are replaced at the next sync.
+
+Sleeper ids map to the app's players through `SLEEPER_PLAYERS` (built from
+Sleeper's full player list, `tools/fixtures/sleeper_players.json`), then by name
+and position. Rookies missing from the app's player pool still show with their
+name and Sleeper points. `node tools/sleeper-check.mjs` imports the real City
+Boys Dynasty league from `tools/fixtures/league/`.
