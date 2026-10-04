@@ -16,37 +16,28 @@ jobs:
       - name: Fetch
         run: |
           mkdir -p docs/probe && cd docs/probe
-          curl -sS --compressed -m 60 "https://api.sleeper.com/stats/nfl/2026/3?season_type=regular" -o s3.raw
-          curl -sS --compressed -m 60 "https://api.sleeper.com/projections/nfl/2026/4?season_type=regular" -o p4.raw
-          curl -sS --compressed -m 60 https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard -o sb.raw
-          curl -sS --compressed -m 60 "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20260924-20260929" -o sb3.raw
+          C='curl -sS --compressed -m 60'
+          $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=3" -o a.raw
+          $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20260927" -o b.raw
+          $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=3" -o c.raw
           python3 - <<'PY'
-          import json, collections
-          s3 = json.load(open('s3.raw')); p4 = json.load(open('p4.raw'))
-          keys = collections.Counter()
-          ex = {}
-          for r in s3:
-              pos = (r.get('player') or {}).get('position')
-              if pos in ('QB','RB','WR','TE'):
-                  keys.update(r['stats'].keys())
-                  if pos not in ex and r['stats'].get('pts_ppr', 0) > 15: ex[pos] = r
-          og = [r for r in s3 + p4 if (r.get('player') or {}).get('last_name','').startswith('Gordon') and (r.get('player') or {}).get('first_name') == 'Ollie']
-          pk = collections.Counter()
-          for r in p4:
-              if (r.get('player') or {}).get('position') in ('QB','RB','WR','TE'): pk.update(r['stats'].keys())
-          json.dump({'stat_keys': sorted(keys), 'proj_keys': sorted(pk), 'examples': ex, 'ollie': og[:2],
-                     'player_fields': sorted({k for r in s3 for k in (r.get('player') or {})})}, open('offense.json','w'), indent=1)
-          def board(f):
-              b = json.load(open(f)); ev = b.get('events', [])
-              e = ev[0] if ev else {}
-              c = (e.get('competitions') or [{}])[0]
-              return {'n': len(ev), 'week': b.get('week'), 'event_keys': list(e.keys()), 'comp_keys': list(c.keys()),
-                      'status': c.get('status'), 'competitors': [{'homeAway': t.get('homeAway'), 'abbr': t['team'].get('abbreviation'), 'score': t.get('score')} for t in c.get('competitors', [])],
-                      'all': [{'id': x['id'], 'date': x['date'], 'state': x['status']['type']['state'], 'abbr': [t['team']['abbreviation'] for t in x['competitions'][0]['competitors']]} for x in ev]}
-          json.dump({'live': board('sb.raw'), 'wk3': board('sb3.raw')}, open('board.json','w'), indent=1)
+          import json, subprocess
+          out = {}
+          for n in 'abc':
+              try:
+                  d = json.load(open(n + '.raw')); ev = d.get('events', [])
+                  out[n] = {'n': len(ev), 'week': d.get('week'), 'games': [[e['id'], e['date'], e['status']['type']['state'], [t['team']['abbreviation'] for t in e['competitions'][0]['competitors']]] for e in ev]}
+              except Exception as e:
+                  out[n] = str(e)
+          ev = (out.get('a') or {}).get('games') or (out.get('b') or {}).get('games') or []
+          if ev:
+              subprocess.run(['bash', '-c', f"curl -sS --compressed -m 60 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={ev[0][0]}' -o s.raw"])
+              s = json.load(open('s.raw'))
+              out['summary'] = [{'text': x['text'], 'period': x['period'], 'clock': x['clock'], 'team': x['team']['abbreviation'], 'type': x['type']['text']} for x in s.get('scoringPlays', [])]
+          json.dump(out, open('board2.json', 'w'), indent=1)
           PY
           rm -f *.raw
       - name: Commit
         run: |
           git config user.name "probe-bot"; git config user.email "probe-bot@users.noreply.github.com"
-          git add docs/probe && git commit -m "Probe: offensive stat keys and scoreboard" && git push || echo nothing
+          git add docs/probe && git commit -m "Probe: ESPN by week" && git push || echo nothing
