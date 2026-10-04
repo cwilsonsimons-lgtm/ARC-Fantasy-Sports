@@ -4372,11 +4372,12 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     });
     return [...set].sort((p, q) => p - q);
   }
+  // The clock is the real one: before the live week's first kickoff nothing is
+  // locked, after its last game everything is, and in between a player locks
+  // at their own game's kickoff.
   function simKick() {
-    const stops = simStops(), i = store.simIdx;
-    if (i < 0) return -1;
-    if (i >= stops.length) return Infinity;
-    return stops[i];
+    const st = liveStatus(LIVE_WEEK);
+    return st === "sched" ? -1 : st === "final" ? Infinity : lvNowOrd();
   }
   function pOrd(p) {
     return p && p.ord != null ? p.ord : kickoffOrd(p && p.g);
@@ -4384,13 +4385,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   function isLocked(p) {
     return !!(p && pOrd(p) <= simKick());
   }
-  function pLive(proj, name) {
-    let h = 2166136261;
-    for (let i = 0; i < name.length; i++) {
-      h ^= name.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return Math.round(proj * (0.15 + (h >>> 0) % 120 / 100) * 10) / 10;
+  // Real fantasy points (js/live.js), under this league's scoring. 0 until the
+  // week's stats arrive or when the player has none; never invented.
+  function pLive(proj, name, p, w) {
+    const v = lvPoints(p || name, w);
+    return v == null ? 0 : Math.round(v * 10) / 10;
   }
   function onField(name) {
     let h = 5381;
@@ -4408,15 +4407,15 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     let a = 0, x = 0, ap = 0, xp = 0, remA = 0, remX = 0;
     starterPlayers(sides[0]).forEach((p) => {
       const on = isLocked(p);
-      a += on ? pLive(p.proj, p.n) : 0;
+      a += on ? pLive(p.proj, p.n, p) : 0;
       ap += p.proj;
-      remA += on ? 0 : p.proj;
+      remA += on ? p.proj * lvLeft(p.tm) : p.proj;
     });
     starterPlayers(sides[1]).forEach((p) => {
       const on = isLocked(p);
-      x += on ? pLive(p.proj, p.n) : 0;
+      x += on ? pLive(p.proj, p.n, p) : 0;
       xp += p.proj;
-      remX += on ? 0 : p.proj;
+      remX += on ? p.proj * lvLeft(p.tm) : p.proj;
     });
     const rnd = (v) => Math.round(v * 10) / 10;
     const aw = winProbability(a + remA - (x + remX), remA + remX);
@@ -5014,6 +5013,8 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     return `${DAYS[(day + 4) % 7]} ${h}:${String(m).padStart(2, "0")} ${ap}`;
   }
   function jumpsFor(name) {
+    const real = lvJumps(name);
+    if (real) return real;
     let h = 2166136261;
     for (let i = 0; i < name.length; i++) {
       h ^= name.charCodeAt(i);
@@ -5037,7 +5038,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   var TD_PTS = 6;
   function touchdowns(A, X) {
     const out = [];
-    const add = (list, side) => list.forEach((p) => jumpsFor(p.name).forEach((j) => {
+    const add = (list, side) => list.forEach((p) => jumpsFor(p.key || p.name).forEach((j) => {
       const pts = Math.round(p.total * j.share * 10) / 10;
       if (pts < TD_PTS) return;
       out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
@@ -5085,13 +5086,13 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       if (!lastW || lastW[1] < frame.mnf) windows.push([frame.mnf, closes]);
       else lastW[1] = closes;
     }
-    const side = (list) => list.filter((p) => isFinite(pOrd(p))).map((p) => ({ name: p.n, total: pLive(p.proj, p.n), proj: p.proj, kick: absMin(pOrd(p)) }));
+    const side = (list) => list.filter((p) => isFinite(pOrd(p))).map((p) => ({ name: p.n, key: p.id || p.n, total: pLive(p.proj, p.n, p), proj: p.proj, kick: absMin(pOrd(p)) }));
     const A = side(lists[0]), X = side(lists[1]);
-    const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.name, (t - p.kick) / GAME_MIN), 0);
+    const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.key, (t - p.kick) / GAME_MIN), 0);
     const expect = (list, t) => list.reduce((n, p) => {
       const f = (t - p.kick) / GAME_MIN;
       const done = Math.max(0, Math.min(1, f));
-      return n + (f >= 1 ? p.total : accrued(p.total, p.name, f) + p.proj * (1 - done));
+      return n + (f >= 1 ? p.total : accrued(p.total, p.key, f) + p.proj * (1 - done));
     }, 0);
     const remain = (list, t) => list.reduce((n, p) => {
       const done = Math.max(0, Math.min(1, (t - p.kick) / GAME_MIN));
@@ -5130,6 +5131,15 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev, ko: kickoff(t) });
       });
     });
+    // the live week is drawn up to now, not to the end of Monday night
+    if (S.week === LIVE_WEEK && liveStatus(LIVE_WEEK) === "live") {
+      const now = absMin(lvNowOrd());
+      const past = out.filter((q) => q.abs < now);
+      // end on the live score itself
+      const a = sum(A, now), x = sum(X, now);
+      past.push({ abs: now, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win: winProbability(expect(A, now) - expect(X, now), remain(A, now) + remain(X, now)), w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
+      return past.length >= 2 ? past : out.slice(0, 2);
+    }
     return out;
   }
   // Prime-time windows get their broadcast name; anything else is its slot.
@@ -5372,9 +5382,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const root = document.getElementById("userLineup");
     if (!root) return;
     root.querySelectorAll(".st-pts[data-n]").forEach((c) => {
-      const name = c.dataset.n, proj = +c.dataset.proj, ord = +c.dataset.ord;
+      const name = c.dataset.n, id = c.dataset.id || name, proj = +c.dataset.proj, ord = +c.dataset.ord;
       const started = isFinite(ord) && abs >= absMin(ord);
-      const pts = started ? accrued(pLive(proj, name), name, (abs - absMin(ord)) / GAME_MIN) : 0;
+      const pts = started ? accrued(pLive(proj, name, { id: c.dataset.id || null, n: name }), id, (abs - absMin(ord)) / GAME_MIN) : 0;
       c.firstChild.nodeValue = (Math.round(pts * 10) / 10).toFixed(1);
       c.classList.toggle("pre", !started);
     });
@@ -6568,6 +6578,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function wkProj(p, w) {
     if (byeFor(p.tm) === +w) return 0;
+    const real = lvProj(p, w);
+    if (real != null) return real;
     const base = p.proj != null ? p.proj : (p.sproj || 0) / 17;
     let h = 2166136261;
     const str = (p.id || p.n || "") + "#" + w;
@@ -6580,7 +6592,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function wkPts(p, w) {
     if (+w > LIVE_WEEK) return null;
     if (byeFor(p.tm) === +w) return 0;
-    return pLive(wkProj(p, w), p.full || p.n || "");
+    return pLive(wkProj(p, w), p.full || p.n || "", p, w);
   }
   function seasonPts(p) {
     let t = 0, any = false;
@@ -10655,61 +10667,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     return { total: Math.round(total * 100) / 100, lines };
   }
+  // The player's real stat line for the week, in the app's stat keys; empty
+  // until it arrives (or if they did not play).
   function statLineFor(p, week) {
-    const key = p && (p.id || p.n) || "";
-    let h = 2166136261;
-    const s = key + "#" + (week || 1);
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    const r = (n) => ((h = Math.imul(h ^ h >>> 15, 2246822507)) >>> 0) % n;
-    const proj = Math.max(0, +p.proj || 0);
-    const pos = p.pos || "WR";
-    const out = {};
-    if (pos === "QB") {
-      out.passYd = Math.round(proj * 11 + r(60));
-      out.passTD = Math.round(proj / 9);
-      out.passComp = Math.round(out.passYd / 11);
-      out.passAtt = out.passComp + 8 + r(8);
-      out.passInc = out.passAtt - out.passComp;
-      out.passInt = r(10) < 4 ? 1 : 0;
-      out.passFD = Math.round(out.passComp * 0.45);
-      out.rushYd = r(30);
-      out.rushAtt = 2 + r(4);
-      out.passSacked = r(4);
-      if (out.passYd >= 400) out.bPass400 = 1;
-      else if (out.passYd >= 300) out.bPass300 = 1;
-      if (out.passComp >= 25) out.bComp25 = 1;
-    } else if (pos === "RB") {
-      out.rushYd = Math.round(proj * 4.5 + r(25));
-      out.rushAtt = Math.round(out.rushYd / 4.3) + 1;
-      out.rushTD = r(10) < 5 ? 1 : 0;
-      out.rec = 1 + r(5);
-      out.recYd = out.rec * (5 + r(7));
-      out.rushFD = Math.round(out.rushAtt * 0.22);
-      out.recFD = Math.round(out.rec * 0.5);
-      if (out.rushYd >= 200) out.bRush200 = 1;
-      else if (out.rushYd >= 100) out.bRush100 = 1;
-      if (out.rushAtt >= 20) out.bCarry20 = 1;
-    } else {
-      out.rec = Math.max(1, Math.round(proj / 3));
-      out.recYd = Math.round(proj * 6 + r(20));
-      out.recTD = r(10) < 4 ? 1 : 0;
-      out.recFD = Math.round(out.rec * 0.6);
-      if (out.recYd >= 200) out.bRec200 = 1;
-      else if (out.recYd >= 100) out.bRec100 = 1;
-    }
-    const comb = (out.rushYd || 0) + (out.recYd || 0);
-    if (pos !== "QB") {
-      if (comb >= 200) out.bComb200 = 1;
-      else if (comb >= 100) out.bComb100 = 1;
-    }
-    if (r(20) === 0) {
-      out.fum = 1;
-      out.fumLost = 1;
-    }
-    return out;
+    const line = lvLine(p, week || S.week);
+    return line ? Object.assign({}, line) : {};
   }
   function scorePlayer(p, week) {
     return scoreStats(statLineFor(p, week), { pos: p && p.pos });
@@ -11808,10 +11770,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function scoreCell(p, phased) {
     if (!p) return `<div class="st-pts">\u2014</div>`;
     if (phased) {
-      const locked = isLocked(p), pts = locked ? pLive(p.proj, p.n) : 0;
-      return `<div class="st-pts${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-proj="${p.proj}" data-ord="${pOrd(p)}">${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+      const locked = isLocked(p), pts = locked ? pLive(p.proj, p.n, p) : 0;
+      return `<div class="st-pts${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-id="${escAttr(p.id || "")}" data-proj="${p.proj}" data-ord="${pOrd(p)}">${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
     }
-    return `<div class="st-pts">${pLive(p.proj, p.n).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+    return `<div class="st-pts">${pLive(p.proj, p.n, p).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
   }
   function hhRow(a, x, badge2, opts) {
     opts = opts || {};
@@ -11853,7 +11815,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <span class="st-pos" style="width:40px">${p.pos}</span>
       <div class="bnch-nm"><div class="n">${p.n}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}</div>
         <div class="m">${p.tm} \xB7 ${gameClock(p.n)}</div></div>
-      <div class="bnch-pts">${pLive(p.proj, p.n).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>
+      <div class="bnch-pts">${pLive(p.proj, p.n, p).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>
     </div>`).join("") + `</div>`;
   }
   function zipReserve(A, X) {
@@ -11938,17 +11900,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const ov = scoreOverride(week, key);
     if (ov != null) return ov;
     if (week > LIVE_WEEK) return 0;
-    let h = 2166136261;
-    const s = key + "#" + week;
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return Math.round((85 + (h >>> 0) % 700 / 10) * 10) / 10;
+    // what the team's current starters scored that week (leagues drafted
+    // mid-season show what today's lineup would have put up)
+    let t = 0;
+    (rosterOf(key).starters || []).forEach((s) => {
+      if (s.player) t += lvPoints(s.player, week) || 0;
+    });
+    return Math.round(t * 10) / 10;
   }
   function getGames(week) {
     if (week === LIVE_WEEK) return GAMES.map((g) => {
-      const base = { ...g, status: g.live ? "live" : "final" };
+      const base = { ...g, status: liveStatus(week) };
+      if (!g.me) {
+        base.as = seededScore(week, g.a);
+        base.xs = seededScore(week, g.x);
+        base.aw = base.as || base.xs ? Math.max(1, Math.min(99, Math.round(50 + (base.as - base.xs) * 1.3))) : 50;
+        base.xw = 100 - base.aw;
+      }
       if (g.me) {
         base.as = LT.a;
         base.xs = LT.x;
@@ -13399,7 +13367,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rec = NFL_BY_ID[p.id] || null;
     const jersey = rec && rec.num ? rec.num : seedHash(name) % 99 + 1;
     const cardNo = String(1 + seedHash(String(key) + "c") % 500).padStart(3, "0");
-    const live = pLive(p.proj || 0, name);
+    const live = pLive(p.proj || 0, name, p);
     const shot = photo || headshotFor(key);
     const hero = shot ? `<img class="pc-img" src="${shot}" alt="" loading="lazy">` : `<div class="pc-noimg">${initials(name)}</div>`;
     const nickBanner = nick ? `<div class="pc-nick">\u201C${nick}\u201D</div>` : "";
@@ -13658,6 +13626,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     p.bye = byeFor(p.tm);
     p.g = gameLabel(p.tm, wk);
     p.ord = g ? g.ord : Infinity;
+    // this week's real projection when Sleeper has one; the season figure otherwise
+    if (p.bp == null && p.proj != null) p.bp = p.proj;
+    const rp = lvProj(p, wk);
+    if (rp != null) p.proj = rp;
+    else if (p.bp != null) p.proj = p.bp;
     return p;
   }
   function hydrateRosters(wk) {
@@ -17551,6 +17524,417 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return TA_LAST;
   }
 
+  // js/live.js — real 2026 stats, projections and game state
+  //
+  // Sources (shapes checked against real responses, see docs/probe/):
+  //   Sleeper  api.sleeper.com/stats|projections/nfl/2026/<wk>?season_type=regular
+  //            -> [{ player_id, stats:{pass_yd,...}, player:{first_name,last_name,position,team} }]
+  //   ESPN     site.api.espn.com/.../nfl/scoreboard?week=<wk>  (game state, clock)
+  //            site.api.espn.com/.../nfl/summary?event=<id>     (scoring plays)
+  // Both send Access-Control-Allow-Origin: *, so the phone fetches them directly.
+  //
+  // Sleeper records are matched to the app's players (GSIS ids) by name and
+  // position, falling back to surname + team + position. Stat lines are
+  // translated into the app's stat keys and scored by scoreStats, so each
+  // league's own scoring applies. Finished weeks are cached on the device.
+  var live_exports = {};
+  __export(live_exports, {
+    LIVE: () => LIVE,
+    liveRefresh: () => liveRefresh,
+    liveStatus: () => liveStatus,
+    lvLine: () => lvLine,
+    lvState: () => lvState,
+    lvJumps: () => lvJumps,
+    lvLeft: () => lvLeft,
+    lvMatch: () => lvMatch,
+    lvPoints: () => lvPoints,
+    lvProj: () => lvProj,
+    lvNowOrd: () => lvNowOrd,
+    lvCurrentWeek: () => lvCurrentWeek
+  });
+  var LV_SEASON = 2026;
+  var LV_CACHE = "arc_live_v1";
+  var LV_TEAM = { LAR: "LA", WSH: "WAS", JAC: "JAX" };
+  // Sleeper stat key -> app stat key. Yardage bonuses are derived below the way
+  // the app always has (300-399 / 400+ and so on), not taken from Sleeper.
+  var LV_MAP = {
+    pass_yd: "passYd", pass_td: "passTD", pass_int: "passInt", pass_int_td: "passPick6", pass_cmp: "passComp",
+    pass_inc: "passInc", pass_att: "passAtt", pass_sack: "passSacked", pass_2pt: "pass2pt", pass_fd: "passFD",
+    pass_cmp_40p: "passCmp40", pass_td_40p: "passTD40", pass_td_50p: "passTD50",
+    rush_yd: "rushYd", rush_td: "rushTD", rush_att: "rushAtt", rush_2pt: "rush2pt", rush_fd: "rushFD",
+    rush_40p: "rush40", rush_td_40p: "rushTD40", rush_td_50p: "rushTD50",
+    rec: "rec", rec_yd: "recYd", rec_td: "recTD", rec_2pt: "rec2pt", rec_fd: "recFD",
+    rec_0_4: "recB0", rec_5_9: "recB5", rec_10_19: "recB10", rec_20_29: "recB20", rec_30_39: "recB30", rec_40p: "recB40",
+    rec_td_40p: "recTD40", rec_td_50p: "recTD50",
+    fum: "fum", fum_lost: "fumLost", fum_rec_td: "fumTD",
+    st_td: "stpTD", kr_yd: "stpKRYd", pr_yd: "stpPRYd", st_fum_rec: "stpFR", st_ff: "stpFF", st_tkl_solo: "stpSolo"
+  };
+  var LIVE = {
+    week: 1,
+    stats: {},   // week -> { gsisId: appStatLine }
+    proj: {},    // week -> { gsisId: appStatLine }
+    games: {},   // week -> { team: { id, state, period, clock, kick } }
+    plays: {},   // week -> { team: [{ min, text, type }] }
+    loaded: {},  // "stats:3" -> timestamp
+    error: null,
+    at: 0
+  };
+  // ---- time ----------------------------------------------------------------
+  // The schedule's kickoffs are US Eastern. "ord" is the app's kickoff index:
+  // day number * 2000 + minutes past midnight Eastern (see kickOrd).
+  function lvEastern(ms) {
+    // EDT until 2am on the first Sunday of November 2026, EST after
+    return ms + (ms < Date.UTC(2026, 10, 1, 6) ? -4 : -5) * 36e5;
+  }
+  function lvNowOrd(ms) {
+    const e = lvEastern(ms == null ? Date.now() : ms);
+    return Math.floor(e / 864e5) * 2e3 + Math.floor(e % 864e5 / 6e4);
+  }
+  function lvOrdToMs(ord) {
+    const day = Math.floor(ord / 2e3), min = ord % 2e3;
+    const local = day * 864e5 + min * 6e4;
+    // invert lvEastern (an hour's ambiguity at the switch does not matter here)
+    return local + (local < Date.UTC(2026, 10, 1, 2) ? 4 : 5) * 36e5;
+  }
+  function lvBounds(w) {
+    const gs = NFL_WEEKS[w] || [];
+    const ords = gs.map((g) => kickOrd(g.dt, g.t));
+    return ords.length ? { first: Math.min(...ords), last: Math.max(...ords) } : null;
+  }
+  var LV_GAME_SPAN = 240; // minutes from kickoff after which a game is treated as over
+  // The live week: the one whose first kickoff to last game's end holds now,
+  // or the next one to start. Past weeks are final, later ones projections.
+  function lvCurrentWeek(ms) {
+    const now = lvNowOrd(ms), ws = Object.keys(NFL_WEEKS).map(Number).sort((a, b) => a - b);
+    for (const w of ws) {
+      const b = lvBounds(w);
+      if (b && now <= b.last + LV_GAME_SPAN) return w;
+    }
+    return ws[ws.length - 1] || 1;
+  }
+  function liveStatus(w) {
+    w = w || LIVE_WEEK;
+    if (w < LIVE_WEEK) return "final";
+    if (w > LIVE_WEEK) return "sched";
+    const b = lvBounds(w), now = lvNowOrd();
+    if (!b || now < b.first) return "sched";
+    if (now > b.last + LV_GAME_SPAN) return "final";
+    return "live";
+  }
+  // ---- matching ------------------------------------------------------------
+  function lvNorm(s) {
+    return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[.'’]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\b(jr|sr|ii|iii|iv|v)\b/g, "").replace(/\s+/g, " ").trim();
+  }
+  var LV_IDX = null;
+  function lvIndex() {
+    if (LV_IDX) return LV_IDX;
+    const byName = {}, byLast = {};
+    NFL_PLAYERS.forEach((p) => {
+      const nm = lvNorm(p.full || p.n);
+      (byName[nm + "|" + p.pos] = byName[nm + "|" + p.pos] || []).push(p.id);
+      const last = nm.split(" ").slice(1).join(" ");
+      const lk = last + "|" + p.pos + "|" + p.tm;
+      (byLast[lk] = byLast[lk] || []).push(p.id);
+    });
+    LV_IDX = { byName, byLast };
+    return LV_IDX;
+  }
+  function lvMatch(rec) {
+    const pl = rec.player || {}, pos = pl.position;
+    if (!pos || ["QB", "RB", "WR", "TE"].indexOf(pos) < 0) return null;
+    const ix = lvIndex(), nm = lvNorm((pl.first_name || "") + " " + (pl.last_name || ""));
+    const a = ix.byName[nm + "|" + pos];
+    if (a && a.length === 1) return a[0];
+    const tm = LV_TEAM[rec.team || pl.team] || rec.team || pl.team;
+    const b = ix.byLast[lvNorm(pl.last_name) + "|" + pos + "|" + tm];
+    if (b && b.length === 1) return b[0];
+    if (a && a.length > 1) {
+      const c = a.filter((id) => (NFL_BY_ID[id] || {}).tm === tm);
+      if (c.length === 1) return c[0];
+    }
+    return null;
+  }
+  function lvTranslate(st) {
+    const out = {};
+    Object.keys(LV_MAP).forEach((k) => {
+      const v = +st[k];
+      if (v) out[LV_MAP[k]] = Math.round(v * 100) / 100;
+    });
+    const py = out.passYd || 0, ry = out.rushYd || 0, cy = out.recYd || 0;
+    if (py >= 400) out.bPass400 = 1;
+    else if (py >= 300) out.bPass300 = 1;
+    if (ry >= 200) out.bRush200 = 1;
+    else if (ry >= 100) out.bRush100 = 1;
+    if (cy >= 200) out.bRec200 = 1;
+    else if (cy >= 100) out.bRec100 = 1;
+    if (ry + cy >= 200) out.bComb200 = 1;
+    else if (ry + cy >= 100) out.bComb100 = 1;
+    if ((out.passComp || 0) >= 25) out.bComp25 = 1;
+    if ((out.rushAtt || 0) >= 20) out.bCarry20 = 1;
+    return out;
+  }
+  // ---- cache ----------------------------------------------------------------
+  function lvLoadCache() {
+    try {
+      const c = JSON.parse(localStorage.getItem(LV_CACHE) || "null");
+      if (!c || c.season !== LV_SEASON) return;
+      Object.keys(c.stats || {}).forEach((w) => {
+        LIVE.stats[w] = c.stats[w];
+        LIVE.loaded["stats:" + w] = 1;
+      });
+      Object.keys(c.plays || {}).forEach((w) => LIVE.plays[w] = c.plays[w]);
+      Object.keys(c.games || {}).forEach((w) => LIVE.games[w] = c.games[w]);
+    } catch (e) {
+    }
+  }
+  // only finished weeks are kept; the live week is always fetched fresh
+  function lvSaveCache() {
+    const done = Object.keys(LIVE.stats).filter((w) => +w < LIVE_WEEK);
+    const pick = (o) => {
+      const r = {};
+      done.forEach((w) => {
+        if (o[w]) r[w] = o[w];
+      });
+      return r;
+    };
+    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games) };
+    try {
+      localStorage.setItem(LV_CACHE, JSON.stringify(c));
+    } catch (e) {
+      try {
+        localStorage.removeItem(LV_CACHE);
+      } catch (e2) {
+      }
+    }
+  }
+  // ---- fetching -------------------------------------------------------------
+  async function lvJSON(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status + " " + url);
+    return r.json();
+  }
+  async function lvFetchSleeper(kind, w) {
+    const list = await lvJSON(`https://api.sleeper.com/${kind === "proj" ? "projections" : "stats"}/nfl/${LV_SEASON}/${w}?season_type=regular`);
+    const out = {};
+    (Array.isArray(list) ? list : []).forEach((rec) => {
+      const id = lvMatch(rec);
+      if (!id || !rec.stats) return;
+      out[id] = lvTranslate(rec.stats);
+    });
+    (kind === "proj" ? LIVE.proj : LIVE.stats)[w] = out;
+    LIVE.loaded[kind + ":" + w] = Date.now();
+  }
+  function lvTeam(abbr) {
+    return LV_TEAM[abbr] || abbr;
+  }
+  async function lvFetchBoard(w) {
+    const b = await lvJSON(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${w}&seasontype=2`);
+    const out = {};
+    (b.events || []).forEach((e) => {
+      const c = (e.competitions || [])[0] || {}, st = c.status || e.status || {}, t = st.type || {};
+      const g = { id: e.id, state: t.state, period: st.period || 0, clock: st.clock || 0, detail: t.shortDetail || "", kick: Date.parse(e.date) };
+      (c.competitors || []).forEach((x) => out[lvTeam(x.team.abbreviation)] = g);
+    });
+    LIVE.games[w] = out;
+  }
+  // Scoring plays for the games the two sides of my matchup play in.
+  async function lvFetchPlays(w, teams) {
+    const games = LIVE.games[w] || {}, bag = LIVE.plays[w] = LIVE.plays[w] || {};
+    const ids = {};
+    teams.forEach((tm) => {
+      const g = games[tm];
+      if (g && g.state !== "pre" && (!bag[tm] || g.state === "in")) ids[g.id] = 1;
+    });
+    for (const id of Object.keys(ids)) {
+      try {
+        const s = await lvJSON(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${id}`);
+        const plays = (s.scoringPlays || []).map((p) => {
+          const per = p.period && p.period.number || 1, left = p.clock && +p.clock.value || 0;
+          // minutes of game clock elapsed (overtime is 10 minutes)
+          const min = per <= 4 ? (per - 1) * 15 + (15 - left / 60) : 60 + (10 - left / 60);
+          return { min: Math.round(min * 10) / 10, text: p.text || "", type: p.type && p.type.text || "" };
+        });
+        const teamsIn = Object.keys(games).filter((tm) => games[tm].id === id);
+        teamsIn.forEach((tm) => bag[tm] = plays);
+      } catch (e) {
+      }
+    }
+  }
+  // ---- reading ----------------------------------------------------------------
+  function lvId(p) {
+    if (!p) return null;
+    if (typeof p === "string") return NFL_BY_ID[p] ? p : pkey(p);
+    return p.id || pkey(p.n || "");
+  }
+  function lvLine(p, w) {
+    if (!LIVE) return null;
+    w = +(w || S.week);
+    const bag = LIVE.stats[w], id = lvId(p);
+    if (!bag || !id) return null;
+    return bag[id] || {};
+  }
+  // Fantasy points for a player in a week under this league's scoring: null
+  // while that week's stats have not arrived, 0 if the player has no line.
+  function lvPoints(p, w) {
+    w = +(w || S.week);
+    if (w > LIVE_WEEK) return null;
+    const line = lvLine(p, w);
+    if (!line) return null;
+    const id = lvId(p), rec = NFL_BY_ID[id] || {};
+    return scoreStats(line, { pos: p && p.pos || rec.pos }).total;
+  }
+  function lvProj(p, w) {
+    if (!LIVE) return null;
+    w = +(w || S.week);
+    const bag = LIVE.proj[w], id = lvId(p);
+    if (!bag || !id || !bag[id]) return null;
+    const rec = NFL_BY_ID[id] || {};
+    return Math.round(scoreStats(bag[id], { pos: p && p.pos || rec.pos }).total * 10) / 10;
+  }
+  // share of a player's game still to play: 1 before kickoff, 0 when final
+  function lvLeft(tm, w) {
+    if (!LIVE) return 1;
+    w = +(w || LIVE_WEEK);
+    if (w < LIVE_WEEK) return 0;
+    const g = (LIVE.games[w] || {})[tm];
+    if (!g) return liveStatus(w) === "final" ? 0 : 1;
+    if (g.state === "post") return 0;
+    if (g.state !== "in") return 1;
+    const per = g.period || 1, el = per <= 4 ? (per - 1) * 15 + (15 - (g.clock || 0) / 60) : 60;
+    return Math.max(0, Math.min(1, 1 - el / 60));
+  }
+  // Real scoring moments for a player, as the Rewind's jumps: each touchdown
+  // the player is named in lands at its game time, and the rest of their points
+  // accrue at the quarter breaks. Null when the plays are not loaded.
+  function lvJumps(p, w) {
+    if (!LIVE) return null;
+    w = +(w || S.week);
+    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm;
+    const plays = (LIVE.plays[w] || {})[tm];
+    if (!plays) return null;
+    const total = lvPoints(p, w);
+    if (total == null) return null;
+    const full = lvNorm(rec.full || p && (p.full || p.n) || ""), sc = scoringBag();
+    const hits = [];
+    plays.forEach((pl) => {
+      const t = lvNorm(pl.text);
+      if (!full || t.indexOf(full) < 0) return;
+      const passer = new RegExp("pass from " + full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(t);
+      const pts = /touchdown/i.test(pl.type) ? passer ? +sc.passTD || 0 : /rush/i.test(pl.type) ? +sc.rushTD || 0 : +sc.recTD || 0 : 0;
+      if (pts) hits.push({ at: Math.max(0.02, Math.min(0.98, pl.min / 60)), pts });
+    });
+    if (!total) return [{ at: 0.5, share: 0 }];
+    // Place game-clock moments on the chart's wall clock. A finished game spans
+    // its whole slot; one in progress has only reached "now", which is however
+    // far into the game ESPN's clock says it is.
+    const g = weekGame(tm, w), left = lvLeft(tm, w), played = 1 - left;
+    let reach = 0.98;
+    if (w === LIVE_WEEK && left > 0 && g) {
+      const real = (absMin(lvNowOrd()) - absMin(g.ord)) / GAME_MIN;
+      reach = Math.max(0.02, Math.min(0.98, real));
+    }
+    const scale = played > 0 ? reach / played : 1;
+    hits.forEach((h) => h.at = Math.max(0.01, Math.min(reach, h.at * scale)));
+    const tdPts = hits.reduce((n, h) => n + h.pts, 0);
+    const rest = total - Math.min(tdPts, total);
+    const out = hits.map((h) => ({ at: h.at, share: Math.min(h.pts, total) / total }));
+    // yardage and catches land through the part of the game played so far
+    if (rest > 0.001) [0.25, 0.5, 0.75, 1].forEach((f) => out.push({ at: Math.max(0.01, reach * f - 0.001), share: rest / total / 4 }));
+    return out.sort((a, b) => a.at - b.at);
+  }
+  // read-only snapshot for the checks in tools/
+  function lvState() {
+    return { week: LIVE_WEEK, viewWeek: S.week, status: liveStatus(LIVE_WEEK), LT: Object.assign({}, LT), at: LIVE.at, error: LIVE.error };
+  }
+  // ---- refresh loop -----------------------------------------------------------
+  var lvTimer = null, lvBusy = false;
+  function lvMatchTeams(w) {
+    const out = {};
+    try {
+      liveSides().forEach((k) => starterPlayers(k).forEach((p) => {
+        if (p && p.tm) out[p.tm] = 1;
+      }));
+    } catch (e) {
+    }
+    return Object.keys(out);
+  }
+  function lvRepaint() {
+    S.pidx = null;
+    try {
+      hydrateRosters(S.week);
+      recomputeLT();
+      if (document.querySelector('.view.on[data-view="matchup"]') || document.querySelector('.view.on[data-view="league"]') || document.querySelector('.view.on[data-view="standings"]')) refreshApp();
+      else refreshMatchups();
+    } catch (e) {
+    }
+  }
+  // Loads what the visible week needs, then keeps the live week current: every
+  // 60 seconds while a game in it is under way.
+  async function liveRefresh(force) {
+    if (lvBusy) return;
+    lvBusy = true;
+    const w = LIVE_WEEK;
+    try {
+      const jobs = [];
+      for (let k = 1; k <= w; k++) if (k === w ? force || !LIVE.loaded["stats:" + k] || liveStatus(w) === "live" : !LIVE.loaded["stats:" + k]) jobs.push(["stats", k]);
+      [w, w + 1, S.week].forEach((k) => {
+        if (k >= w && !LIVE.loaded["proj:" + k] && NFL_WEEKS[k]) jobs.push(["proj", k]);
+      });
+      const seen = {};
+      for (const [kind, k] of jobs) {
+        if (seen[kind + k]) continue;
+        seen[kind + k] = 1;
+        try {
+          await lvFetchSleeper(kind, k);
+        } catch (e) {
+          LIVE.error = String(e);
+        }
+      }
+      for (const k of [w, S.week]) {
+        if (k > w) continue;
+        try {
+          if (!LIVE.games[k] || k === w) await lvFetchBoard(k);
+          await lvFetchPlays(k, lvMatchTeams(k));
+        } catch (e) {
+          LIVE.error = String(e);
+        }
+      }
+      LIVE.at = Date.now();
+      lvSaveCache();
+    } finally {
+      lvBusy = false;
+    }
+    lvRepaint();
+  }
+  function lvTick() {
+    if (document.hidden) return;
+    const live = liveStatus(LIVE_WEEK) === "live";
+    const age = Date.now() - (LIVE.at || 0);
+    if (live && age > 55e3 || age > 15 * 6e4) liveRefresh();
+  }
+  function lvStart() {
+    LIVE_WEEK = lvCurrentWeek();
+    LIVE.week = LIVE_WEEK;
+    S.week = LIVE_WEEK;
+    lvLoadCache();
+    // City Boys' week games are its schedule for the live week
+    if (loadedLeague() === "cbd") {
+      const pairs = scheduleForWeek(LIVE_WEEK);
+      GAMES.length = 0;
+      pairs.forEach(([a, x]) => {
+        if (!T[a] || !T[x]) return;
+        const me = a === MY_TEAM || x === MY_TEAM;
+        GAMES.push({ a: x === MY_TEAM ? x : a, x: x === MY_TEAM ? a : x, as: 0, aw: 50, xs: 0, xw: 50, live: false, me });
+      });
+    }
+    setTimeout(() => liveRefresh(), 50);
+    if (!lvTimer) lvTimer = setInterval(lvTick, 15e3);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) lvTick();
+    });
+  }
+  lvStart();
+
   // js/main.js
   Object.assign(
     window,
@@ -17589,6 +17973,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     log_exports,
     chat_exports,
     trade_art_exports,
+    live_exports,
     home_exports,
     create_exports,
     kart_exports,
