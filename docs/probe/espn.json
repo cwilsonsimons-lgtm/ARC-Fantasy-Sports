@@ -1,0 +1,231 @@
+{
+ "week": {
+  "number": 4
+ },
+ "events": [
+  {
+   "id": "401872971",
+   "name": "New England Patriots at Buffalo Bills",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "6:23 - 3rd Quarter",
+    "shortDetail": "6:23 - 3rd"
+   }
+  },
+  {
+   "id": "401872972",
+   "name": "New York Jets at Chicago Bears",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "4:18 - 3rd Quarter",
+    "shortDetail": "4:18 - 3rd"
+   }
+  },
+  {
+   "id": "401872969",
+   "name": "Jacksonville Jaguars at Cincinnati Bengals",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "3:00 - 3rd Quarter",
+    "shortDetail": "3:00 - 3rd"
+   }
+  },
+  {
+   "id": "401872966",
+   "name": "Arizona Cardinals at New York Giants",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "6:35 - 3rd Quarter",
+    "shortDetail": "6:35 - 3rd"
+   }
+  },
+  {
+   "id": "401872970",
+   "name": "Los Angeles Rams at Philadelphia Eagles",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "8:41 - 3rd Quarter",
+    "shortDetail": "8:41 - 3rd"
+   }
+  },
+  {
+   "id": "401872968",
+   "name": "Green Bay Packers at Tampa Bay Buccaneers",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "1:29 - 3rd Quarter",
+    "shortDetail": "1:29 - 3rd"
+   }
+  },
+  {
+   "id": "401872973",
+   "name": "Tennessee Titans at Baltimore Ravens",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "6:17 - 3rd Quarter",
+    "shortDetail": "6:17 - 3rd"
+   }
+  },
+  {
+   "id": "401872967",
+   "name": "Dallas Cowboys at Houston Texans",
+   "date": "2026-10-04T17:00Z",
+   "status": {
+    "id": "2",
+    "name": "STATUS_IN_PROGRESS",
+    "state": "in",
+    "completed": false,
+    "description": "In Progress",
+    "detail": "6:49 - 3rd Quarter",
+    "shortDetail": "6:49 - 3rd"
+   }
+  },
+  {
+   "id": "401872965",
+   "name": "Indianapolis Colts at Washington Commanders",
+   "date": "2026-10-04T13:30Z",
+   "status": {
+    "id": "3",
+    "name": "STATUS_FINAL",
+    "state": "post",
+    "completed": true,
+    "description": "Final",
+    "detail": "Final",
+    "shortDetail": "Final"
+   }
+  },
+  {
+   "id": "401872974",
+   "name": "Miami Dolphins at Minnesota Vikings",
+   "date": "2026-10-04T20:05Z",
+   "status": {
+    "id": "1",
+    "name": "STATUS_SCHEDULED",
+    "state": "pre",
+    "completed": false,
+    "description": "Scheduled",
+    "detail": "Sun, October 4th at 4:05 PM EDT",
+    "shortDetail": "10/4 - 4:05 PM EDT"
+   }
+  },
+  {
+   "id": "401872976",
+   "name": "Kansas City Chiefs at Las Vegas Raiders",
+   "date": "2026-10-04T20:25Z",
+   "status": {
+    "id": "1",
+    "name": "STATUS_SCHEDULED",
+    "state": "pre",
+    "completed": false,
+    "description": "Scheduled",
+    "detail": "Sun, October 4th at 4:25 PM EDT",
+    "shortDetail": "10/4 - 4:25 PM EDT"
+   }
+  },
+  {
+   "id": "401872975",
+   "name": "Denver Broncos at San Francisco 49ers",
+   "date": "2026-10-04T20:25Z",
+   "status": {
+    "id": "1",
+    "name": "STATUS_SCHEDULED",
+    "state": "pre",
+    "completed": false,
+    "description": "Scheduled",
+    "detail": "Sun, October 4th at 4:25 PM EDT",
+    "shortDetail": "10/4 - 4:25 PM EDT"
+   }
+  },
+  {
+   "id": "401872977",
+   "name": "Los Angeles Chargers at Seattle Seahawks",
+   "date": "2026-10-04T20:25Z",
+   "status": {
+    "id": "1",
+    "name": "STATUS_SCHEDULED",
+    "state": "pre",
+    "completed": false,
+    "description": "Scheduled",
+    "detail": "Sun, October 4th at 4:25 PM EDT",
+    "shortDetail": "10/4 - 4:25 PM EDT"
+   }
+  },
+  {
+   "id": "401872978",
+   "name": "Detroit Lions at Carolina Panthers",
+   "date": "2026-10-05T00:20Z",
+   "status": {
+    "id": "1",
+    "name": "STATUS_SCHEDULED",
+    "state": "pre",
+    "completed": false,
+    "description": "Scheduled",
+    "detail": "Sun, October 4th at 8:20 PM EDT",
+    "shortDetail": "10/4 - 8:20 PM EDT"
+   }
+  },
+  {
+   "id": "401872964",
+   "name": "Pittsburgh Steelers at Cleveland Browns",
+   "date": "2026-10-02T00:15Z",
+   "status": {
+    "id": "3",
+    "name": "STATUS_FINAL",
+    "state": "post",
+    "completed": true,
+    "description": "Final",
+    "detail": "Final",
+    "shortDetail": "Final"
+   }
+  },
+  {
+   "id": "401872979",
+   "name": "Atlanta Falcons at New Orleans Saints",
+   "date": "2026-10-06T00:15Z",
+   "status": {
+    "id": "1",
+    "name": "STATUS_SCHEDULED",
+    "state": "pre",
+    "completed": false,
+    "description": "Scheduled",
+    "detail": "Mon, October 5th at 8:15 PM EDT",
+    "shortDetail": "10/5 - 8:15 PM EDT"
+   }
+  }
+ ]
+}

@@ -1,0 +1,639 @@
+{
+ "state": {
+  "type": "dict",
+  "len": 10,
+  "first_keys": [
+   "week",
+   "season_type",
+   "season",
+   "leg",
+   "league_season"
+  ],
+  "sample": {
+   "week": 4,
+   "season_type": "regular",
+   "season": "2026"
+  }
+ },
+ "stats_v1": {
+  "type": "dict",
+  "len": 2357,
+  "first_keys": [
+   "8478",
+   "11533",
+   "2064",
+   "13569",
+   "13618"
+  ],
+  "sample": {
+   "8478": {
+    "gms_active": 1.0,
+    "pos_rank_half_ppr": 999.0,
+    "pos_rank_ppr": 999.0,
+    "pos_rank_std": 999.0
+   },
+   "11533": {
+    "fg_blkd": 1.0,
+    "fga": 4.0,
+    "fgm": 3.0,
+    "fgm_20_29": 2.0,
+    "fgm_30_39": 1.0,
+    "fgm_lng": 38.0,
+    "fgm_pct": 75.0,
+    "fgm_yds": 89.0,
+    "fgm_yds_over_30": 8.0,
+    "fgmiss": 1.0,
+    "fgmiss_50_59": 1.0,
+    "fgmiss_50p": 1.0,
+    "gms_active": 1.0,
+    "gp": 1.0,
+    "kick_pts": 11.0,
+    "penalty": 2.0,
+    "pos_rank_half_ppr": 999.0,
+    "pos_rank_ppr": 999.0,
+    "pos_rank_std": 999.0,
+    "pts_half_ppr": 10.0,
+    "pts_ppr": 10.0,
+    "pts_std": 10.0,
+    "st_snp": 13.0,
+    "tm_def_snp": 64.0,
+    "tm_off_snp": 74.0,
+    "tm_st_snp": 30.0,
+    "xpa": 2.0,
+    "xpm": 2.0
+   },
+   "2064": {
+    "def_snp": 45.0,
+    "gms_active": 1.0,
+    "gp": 1.0,
+    "gs": 1.0,
+    "idp_qb_hit": 3.0,
+    "idp_tkl": 5.0,
+    "idp_tkl_ast": 3.0,
+    "idp_tkl_loss": 1.0,
+    "idp_tkl_solo": 2.0,
+    "pos_rank_half_ppr": 999.0,
+    "pos_rank_ppr": 999.0,
+    "pos_rank_std": 999.0,
+    "pts_idp": 12.0,
+    "st_snp": 6.0,
+    "tm_def_snp": 69.0,
+    "tm_off_snp": 67.0,
+    "tm_st_snp": 34.0
+   }
+  }
+ },
+ "stats_new": {
+  "type": "list",
+  "len": 2357,
+  "sample": [
+   {
+    "status": null,
+    "date": "2026-09-24",
+    "stats": {
+     "def_snp": 49.0,
+     "gms_active": 1.0,
+     "gp": 1.0,
+     "gs": 1.0,
+     "idp_qb_hit": 1.0,
+     "idp_tkl": 4.0,
+     "idp_tkl_ast": 3.0,
+     "idp_tkl_solo": 1.0,
+     "pos_rank_half_ppr": 999.0,
+     "pos_rank_ppr": 999.0,
+     "pos_rank_std": 999.0,
+     "pts_idp": 6.0,
+     "tm_def_snp": 71.0,
+     "tm_off_snp": 66.0,
+     "tm_st_snp": 25.0
+    },
+    "category": "stat",
+    "last_modified": 1790348926278,
+    "week": 3,
+    "sport": "nfl",
+    "season_type": "regular",
+    "season": "2026",
+    "player": {
+     "fantasy_positions": [
+      "DL"
+     ],
+     "first_name": "Lukas",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Van Ness",
+     "metadata": {
+      "channel_id": "1113708797081186304",
+      "genius_id": "1398587",
+      "rookie_year": "2023"
+     },
+     "news_updated": 1790980540784,
+     "position": "DL",
+     "team": "GB",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 3
+    },
+    "team": "GB",
+    "player_id": "10885",
+    "game_id": "202610312",
+    "updated_at": 1790348926278,
+    "opponent": "ATL",
+    "week_shard": "3_5",
+    "company": "sportradar"
+   },
+   {
+    "status": null,
+    "date": "2026-09-24",
+    "stats": {
+     "gms_active": 1.0,
+     "pos_rank_half_ppr": 999.0,
+     "pos_rank_ppr": 999.0,
+     "pos_rank_std": 999.0
+    },
+    "category": "stat",
+    "last_modified": 1790295344628,
+    "week": 3,
+    "sport": "nfl",
+    "season_type": "regular",
+    "season": "2026",
+    "player": {
+     "fantasy_positions": [
+      "OL"
+     ],
+     "first_name": "Colby",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Sorsdal",
+     "metadata": {
+      "channel_id": "1113708811178242048",
+      "genius_id": "1081355",
+      "rookie_year": "2023"
+     },
+     "news_updated": 1785455725351,
+     "position": "OL",
+     "team": "ATL",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 3
+    },
+    "team": "ATL",
+    "player_id": "10981",
+    "game_id": "202610312",
+    "updated_at": 1790295344628,
+    "opponent": "GB",
+    "week_shard": "3_5",
+    "company": "sportradar"
+   },
+   {
+    "status": null,
+    "date": "2026-09-24",
+    "stats": {
+     "def_snp": 1.0,
+     "gms_active": 1.0,
+     "gp": 1.0,
+     "pos_rank_half_ppr": 999.0,
+     "pos_rank_ppr": 999.0,
+     "pos_rank_std": 999.0,
+     "st_snp": 20.0,
+     "tm_def_snp": 66.0,
+     "tm_off_snp": 71.0,
+     "tm_st_snp": 25.0
+    },
+    "category": "stat",
+    "last_modified": 1790759303780,
+    "week": 3,
+    "sport": "nfl",
+    "season_type": "regular",
+    "season": "2026",
+    "player": {
+     "fantasy_positions": [
+      "DB"
+     ],
+     "first_name": "DeMarcco",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Hellams",
+     "metadata": {
+      "channel_id": "1113708862952730624",
+      "genius_id": "1399267",
+      "rookie_year": "2023"
+     },
+     "news_updated": 1786807860387,
+     "position": "DB",
+     "team": "ATL",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 3
+    },
+    "team": "ATL",
+    "player_id": "11050",
+    "game_id": "202610312",
+    "updated_at": 1790759303780,
+    "opponent": "GB",
+    "week_shard": "3_5",
+    "company": "sportradar"
+   }
+  ]
+ },
+ "live_new": {
+  "type": "list",
+  "len": 1478,
+  "sample": [
+   {
+    "status": null,
+    "date": "2026-10-01",
+    "stats": {
+     "def_snp": 43.0,
+     "gms_active": 1.0,
+     "gp": 1.0,
+     "gs": 1.0,
+     "idp_qb_hit": 1.0,
+     "idp_sack": 1.0,
+     "idp_sack_yd": 6.0,
+     "idp_tkl": 3.0,
+     "idp_tkl_ast": 1.0,
+     "idp_tkl_loss": 1.0,
+     "idp_tkl_solo": 2.0,
+     "pos_rank_half_ppr": 999.0,
+     "pos_rank_ppr": 999.0,
+     "pos_rank_std": 999.0,
+     "pts_idp": 14.0,
+     "tm_def_snp": 72.0,
+     "tm_off_snp": 64.0,
+     "tm_st_snp": 28.0
+    },
+    "category": "stat",
+    "last_modified": 1790953706951,
+    "week": 4,
+    "season": "2026",
+    "season_type": "regular",
+    "sport": "nfl",
+    "player": {
+     "fantasy_positions": [
+      "DL"
+     ],
+     "first_name": "Isaiah",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "McGuire",
+     "metadata": {
+      "channel_id": "1113708840827777025",
+      "genius_id": "1399131",
+      "rookie_year": "2023"
+     },
+     "news_updated": 1765128346563,
+     "position": "DL",
+     "team": "CLE",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 3
+    },
+    "team": "CLE",
+    "player_id": "10943",
+    "opponent": "PIT",
+    "updated_at": 1790953706951,
+    "game_id": "202610408",
+    "week_shard": "4_5",
+    "company": "sportradar"
+   },
+   {
+    "status": null,
+    "date": "2026-10-01",
+    "stats": {
+     "fga": 2.0,
+     "fgm": 2.0,
+     "fgm_40_49": 1.0,
+     "fgm_50_59": 1.0,
+     "fgm_50p": 1.0,
+     "fgm_lng": 56.0,
+     "fgm_pct": 100.0,
+     "fgm_yds": 100.0,
+     "fgm_yds_over_30": 40.0,
+     "gms_active": 1.0,
+     "gp": 1.0,
+     "kick_pts": 9.0,
+     "pos_rank_half_ppr": 999.0,
+     "pos_rank_ppr": 999.0,
+     "pos_rank_std": 999.0,
+     "pts_half_ppr": 12.0,
+     "pts_ppr": 12.0,
+     "pts_std": 12.0,
+     "st_snp": 11.0,
+     "tm_def_snp": 72.0,
+     "tm_off_snp": 64.0,
+     "tm_st_snp": 28.0,
+     "xpa": 3.0,
+     "xpm": 3.0
+    },
+    "category": "stat",
+    "last_modified": 1790953706968,
+    "week": 4,
+    "season": "2026",
+    "season_type": "regular",
+    "sport": "nfl",
+    "player": {
+     "fantasy_positions": [
+      "K"
+     ],
+     "first_name": "Andre",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Szmyt",
+     "metadata": {
+      "channel_id": "1116852669667868672",
+      "genius_id": "1017617",
+      "rookie_year": "2023",
+      "years_exp_shift": "1"
+     },
+     "news_updated": 1790943922360,
+     "position": "K",
+     "team": "CLE",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 4
+    },
+    "team": "CLE",
+    "player_id": "11261",
+    "opponent": "PIT",
+    "updated_at": 1790953706968,
+    "game_id": "202610408",
+    "week_shard": "4_5",
+    "company": "sportradar"
+   },
+   {
+    "status": null,
+    "date": "2026-10-01",
+    "stats": {
+     "gms_active": 1.0,
+     "gp": 1.0,
+     "off_snp": 1.0,
+     "pos_rank_half_ppr": 999.0,
+     "pos_rank_ppr": 999.0,
+     "pos_rank_std": 999.0,
+     "st_snp": 5.0,
+     "tm_def_snp": 72.0,
+     "tm_off_snp": 64.0,
+     "tm_st_snp": 28.0
+    },
+    "category": "stat",
+    "last_modified": 1790953706931,
+    "week": 4,
+    "season": "2026",
+    "season_type": "regular",
+    "sport": "nfl",
+    "player": {
+     "fantasy_positions": [
+      "OL"
+     ],
+     "first_name": "Zak",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Zinter",
+     "metadata": {
+      "channel_id": "1113708842392252416",
+      "genius_id": "1463903",
+      "rookie_year": "2024"
+     },
+     "news_updated": 1766188520395,
+     "position": "OL",
+     "team": "CLE",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 2
+    },
+    "team": "CLE",
+    "player_id": "11715",
+    "opponent": "PIT",
+    "updated_at": 1790953706931,
+    "game_id": "202610408",
+    "week_shard": "4_5",
+    "company": "sportradar"
+   }
+  ]
+ },
+ "proj_v1": {
+  "type": "dict",
+  "len": 9422,
+  "first_keys": [
+   "6462",
+   "11255",
+   "8842",
+   "13940",
+   "7926"
+  ],
+  "sample": {
+   "6462": {
+    "adp_dd_ppr": 1000.0
+   },
+   "11255": {
+    "adp_dd_ppr": 1000.0
+   },
+   "8842": {
+    "adp_dd_ppr": 1000.0
+   }
+  }
+ },
+ "proj_new": {
+  "type": "list",
+  "len": 9422,
+  "sample": [
+   {
+    "status": null,
+    "date": "2026-10-01",
+    "stats": {
+     "adp_dd_ppr": 999.0,
+     "gp": 1.0,
+     "idp_ff": 0.05,
+     "idp_qb_hit": 0.36,
+     "idp_sack": 0.13,
+     "idp_sack_yd": 0.72,
+     "idp_tkl": 1.64,
+     "idp_tkl_ast": 0.77,
+     "idp_tkl_loss": 0.41,
+     "idp_tkl_solo": 0.87,
+     "pos_adp_dd_ppr": 999.0,
+     "pts_half_ppr": 0.18,
+     "pts_ppr": 0.18,
+     "pts_std": 0.18
+    },
+    "category": "proj",
+    "last_modified": 1791140775196,
+    "week": 4,
+    "season": "2026",
+    "season_type": "regular",
+    "sport": "nfl",
+    "player_id": "10943",
+    "player": {
+     "fantasy_positions": [
+      "DL"
+     ],
+     "first_name": "Isaiah",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "McGuire",
+     "metadata": {
+      "channel_id": "1113708840827777025",
+      "genius_id": "1399131",
+      "rookie_year": "2023"
+     },
+     "news_updated": 1765128346563,
+     "position": "DL",
+     "team": "CLE",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 3
+    },
+    "team": "CLE",
+    "opponent": "PIT",
+    "updated_at": 1791140775196,
+    "game_id": "202610408",
+    "week_shard": "4_5",
+    "company": "rotowire"
+   },
+   {
+    "status": null,
+    "date": "2026-10-01",
+    "stats": {
+     "adp_dd_ppr": 999.0,
+     "fga": 1.85,
+     "fgm": 1.54,
+     "fgm_20_29": 0.27,
+     "fgm_30_39": 0.37,
+     "fgm_40_49": 0.37,
+     "fgm_50p": 0.27,
+     "fgm_yds": 53.66,
+     "fgmiss_30_39": 0.04,
+     "fgmiss_40_49": 0.04,
+     "fgmiss_50p": 0.13,
+     "gp": 1.0,
+     "pos_adp_dd_ppr": 999.0,
+     "pts_half_ppr": 6.63,
+     "pts_ppr": 6.63,
+     "pts_std": 6.63,
+     "xpa": 2.03,
+     "xpm": 1.97,
+     "xpmiss": 0.06
+    },
+    "category": "proj",
+    "last_modified": 1791140775188,
+    "week": 4,
+    "season": "2026",
+    "season_type": "regular",
+    "sport": "nfl",
+    "player_id": "11261",
+    "player": {
+     "fantasy_positions": [
+      "K"
+     ],
+     "first_name": "Andre",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Szmyt",
+     "metadata": {
+      "channel_id": "1116852669667868672",
+      "genius_id": "1017617",
+      "rookie_year": "2023",
+      "years_exp_shift": "1"
+     },
+     "news_updated": 1790943922360,
+     "position": "K",
+     "team": "CLE",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 4
+    },
+    "team": "CLE",
+    "opponent": "PIT",
+    "updated_at": 1791140775188,
+    "game_id": "202610408",
+    "week_shard": "4_5",
+    "company": "rotowire"
+   },
+   {
+    "status": null,
+    "date": "2026-10-01",
+    "stats": {
+     "adp_dd_ppr": 999.0,
+     "gp": 1.0,
+     "idp_fum_rec": 0.05,
+     "idp_int": 0.05,
+     "idp_pass_def": 0.15,
+     "idp_qb_hit": 0.25,
+     "idp_sack": 0.1,
+     "idp_sack_yd": 0.66,
+     "idp_tkl": 5.31,
+     "idp_tkl_ast": 1.52,
+     "idp_tkl_loss": 0.25,
+     "idp_tkl_solo": 3.8,
+     "pos_adp_dd_ppr": 999.0,
+     "pts_half_ppr": 0.3,
+     "pts_ppr": 0.3,
+     "pts_std": 0.3
+    },
+    "category": "proj",
+    "last_modified": 1791140775326,
+    "week": 4,
+    "season": "2026",
+    "season_type": "regular",
+    "sport": "nfl",
+    "player_id": "11727",
+    "player": {
+     "fantasy_positions": [
+      "LB"
+     ],
+     "first_name": "Payton",
+     "injury_body_part": null,
+     "injury_notes": null,
+     "injury_start_date": null,
+     "injury_status": null,
+     "last_name": "Wilson",
+     "metadata": {
+      "channel_id": "1113708818707017728",
+      "genius_id": "1463668",
+      "rookie_year": "2024"
+     },
+     "news_updated": 1790991916976,
+     "position": "LB",
+     "team": "PIT",
+     "team_abbr": null,
+     "team_changed_at": null,
+     "years_exp": 2
+    },
+    "team": "PIT",
+    "opponent": "CLE",
+    "updated_at": 1791140775326,
+    "game_id": "202610408",
+    "week_shard": "4_5",
+    "company": "rotowire"
+   }
+  ]
+ },
+ "espn_board": {
+  "type": "dict",
+  "len": 5,
+  "first_keys": [
+   "leagues",
+   "season",
+   "week",
+   "events",
+   "provider"
+  ],
+  "sample": null
+ }
+}
