@@ -15,29 +15,41 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch
         run: |
-          mkdir -p docs/probe && cd docs/probe
-          C='curl -sS --compressed -m 60'
-          $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=3" -o a.raw
-          $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20260927" -o b.raw
-          $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=3" -o c.raw
+          mkdir -p tools/fixtures/live && cd tools/fixtures/live
+          C='curl -sS --compressed -m 90'
+          for w in 1 2 3 4; do $C "https://api.sleeper.com/stats/nfl/2026/$w?season_type=regular" -o stats_$w.raw; done
+          for w in 4 5; do $C "https://api.sleeper.com/projections/nfl/2026/$w?season_type=regular" -o proj_$w.raw; done
+          for w in 3 4; do $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=$w&seasontype=2" -o board_$w.raw; done
           python3 - <<'PY'
           import json, subprocess
-          out = {}
-          for n in 'abc':
-              try:
-                  d = json.load(open(n + '.raw')); ev = d.get('events', [])
-                  out[n] = {'n': len(ev), 'week': d.get('week'), 'games': [[e['id'], e['date'], e['status']['type']['state'], [t['team']['abbreviation'] for t in e['competitions'][0]['competitors']]] for e in ev]}
-              except Exception as e:
-                  out[n] = str(e)
-          ev = (out.get('a') or {}).get('games') or (out.get('b') or {}).get('games') or []
-          if ev:
-              subprocess.run(['bash', '-c', f"curl -sS --compressed -m 60 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={ev[0][0]}' -o s.raw"])
-              s = json.load(open('s.raw'))
-              out['summary'] = [{'text': x['text'], 'period': x['period'], 'clock': x['clock'], 'team': x['team']['abbreviation'], 'type': x['type']['text']} for x in s.get('scoringPlays', [])]
-          json.dump(out, open('board2.json', 'w'), indent=1)
+          keep = {'QB','RB','WR','TE'}
+          def slim(n, out):
+              d = json.load(open(n))
+              r = [{'player_id': x['player_id'], 'team': x.get('team'), 'stats': x['stats'],
+                    'player': {k: (x.get('player') or {}).get(k) for k in ('first_name','last_name','position','team')}}
+                   for x in d if (x.get('player') or {}).get('position') in keep]
+              json.dump(r, open(out, 'w'), separators=(',', ':'))
+          for w in (1,2,3,4): slim(f'stats_{w}.raw', f'stats_{w}.json')
+          for w in (4,5): slim(f'proj_{w}.raw', f'proj_{w}.json')
+          for w in (3,4):
+              b = json.load(open(f'board_{w}.raw'))
+              ev = [{'id': e['id'], 'date': e['date'], 'status': e['status'],
+                     'competitions': [{'status': e['competitions'][0].get('status'),
+                                       'competitors': [{'homeAway': c['homeAway'], 'score': c.get('score'), 'team': {'abbreviation': c['team']['abbreviation']}} for c in e['competitions'][0]['competitors']]}]}
+                    for e in b.get('events', [])]
+              json.dump({'week': b.get('week'), 'events': ev}, open(f'board_{w}.json', 'w'), separators=(',', ':'))
+              for e in ev:
+                  subprocess.run(['bash','-c', f"curl -sS --compressed -m 60 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={e['id']}' -o s.raw"])
+                  try:
+                      s = json.load(open('s.raw'))
+                      sp = [{'text': x.get('text'), 'type': {'text': x['type']['text']}, 'period': x['period'], 'clock': x['clock']} for x in s.get('scoringPlays', [])]
+                  except Exception:
+                      sp = []
+                  json.dump({'scoringPlays': sp}, open(f"summary_{e['id']}.json", 'w'), separators=(',', ':'))
           PY
           rm -f *.raw
+          ls -la | head -50; du -sh .
       - name: Commit
         run: |
           git config user.name "probe-bot"; git config user.email "probe-bot@users.noreply.github.com"
-          git add docs/probe && git commit -m "Probe: ESPN by week" && git push || echo nothing
+          git add docs/probe tools/fixtures && git commit -m "Live-stats test fixtures from Sleeper and ESPN" && git push || echo nothing
