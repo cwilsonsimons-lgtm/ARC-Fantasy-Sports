@@ -74,14 +74,14 @@ js/universe/
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       177 model tests     npm run test:universe
+tools/universe-test.mjs       178 model tests     npm run test:universe
 tools/universe-check.mjs      241 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
 tools/universe-booker-demo.mjs a week of draft cards on every show, printed  npm run demo:booker
 tools/universe-feud-demo.mjs  a feud over five weeks: director, booker, the CPU  npm run demo:feud
-tools/universe-calendar-demo.mjs  a whole four-week month, then into the next; an event rescheduled  npm run demo:calendar
+tools/universe-calendar-demo.mjs  May, a whole four-week month (each show's Last Stand in its last week), then June; an event rescheduled  npm run demo:calendar
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -362,9 +362,10 @@ moves and team changes on one timeline. Tap any of it to open the show.
 
 The universe keeps its own calendar: **twelve months of exactly four weeks**,
 seven days a week, Monday to Sunday — so every month has 28 days and a year
-has 48 weeks, whatever the real calendar says. Pick the month and year the
-universe began in (**Calendar** on the season card): season 1's week 1 is that
-month's first week, and every week since — across seasons, each running
+has 48 weeks, whatever the real calendar says. A universe begins in **May**
+(May 2026 to start with): a season runs from May to WrestleMania in April. Pick
+another month and year (**Calendar** on the season card) and season 1's week 1
+is that month's first week, and every week since — across seasons, each running
 straight into the next — is a week of a month. Changing it relabels every
 week; nothing on record moves.
 
@@ -400,6 +401,11 @@ Its page shows its date, status and shows, then **Building toward it**: each
 phase with its weeks (now, done or to come), who has qualified, and every match
 booked toward it, wherever it is. Its card is edited like any other.
 
+Changing when the universe began moves the annual events to their dates in the
+new calendar the same way: a year still to come follows its date; one whose
+date is now before the universe began, or more than a year off, comes off if
+nothing has happened on it, or stays where it is if something has.
+
 **Rescheduling.** **Reschedule** on its page moves it to another universe
 date. Its card and results go with it (a title change made there moves too, as
 long as the title's history still reads in order); its build-up follows the new
@@ -409,9 +415,10 @@ result, never one you've locked, and never one on a show from an earlier week
 or deleting it, works the same way.
 
 **Annual events.** Royal Rumble (January), Elimination Chamber (February),
-WrestleMania (April), Money in the Bank (June), Blood and Guts (July, a special
-event on Dynamite's night), WarGames (November) and **each show's Last Stand**
-(April, a special event on its own night) are set up, each with its date, its
+WrestleMania (April), **each show's Last Stand** (May — the last week, after
+WrestleMania — a special event on the show's own night, in place of that week's
+episode), Money in the Bank (June), Blood and Guts (July, a special event on
+Dynamite's night) and WarGames (November) are set up, each with its date, its
 shows (WWE's main roster for WWE's events, AEW's for Blood and Guts) and its
 build-up. Each year's goes on the calendar as the year comes round — up to a
 year ahead, when the app opens and on **Next week** — as an ordinary event with
@@ -1311,12 +1318,20 @@ run in an older save was for a whole show's part, and a show already gone
 through that way isn't gone over again match by match. **Version 15** added the
 universe calendar. Nothing recorded moves — every event keeps its week and
 night, every match its result. The calendar begins in the month and year the
-first season's real start date fell in, if one was set, or January 2026. Every
+first season's real start date fell in, if one was set, or May 2026. Every
 premium live event so far named one show or every show, and is built toward
 for four weeks (rivalries and #1 contender's matches), as the booker always
 did; no match was locked or booked toward an event; the standard annual events
 are set up, and go on the calendar the next time the app opens — a premium
 live event of the same name already planned that year is taken as that year's.
+**Version 16** moved the defaults: a universe begins in May (a season runs from
+May to WrestleMania in April), and each show's Last Stand is in May's last week,
+after WrestleMania. A universe still on the first defaults — a calendar
+beginning in January 2026, a Last Stand in April's second week — moves to the
+new ones; nothing recorded moves. When the app next opens, the annual events
+follow their dates: a year whose date is now before the universe began comes
+off if nothing has happened on it (next year's goes on instead), or stays where
+it is, for you to move, if something has.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 

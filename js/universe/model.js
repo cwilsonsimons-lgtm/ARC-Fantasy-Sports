@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -196,11 +196,12 @@ export function weeksBetween(st, a, b) {
 // the universe began in (season 1's week 1); every week since, across
 // seasons (each runs straight into the next), is a week of a month. It labels
 // the season, week and night every record already carries: nothing recorded
-// moves because of it.
+// moves because of it. By default it begins in May: a season runs from May to
+// WrestleMania in April.
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const WEEKS_PER_MONTH = 4;
 export const DAYS_PER_MONTH = WEEKS_PER_MONTH * 7;
-const DEFAULT_CALENDAR = { month: 0, year: 2026 };
+const DEFAULT_CALENDAR = { month: 4, year: 2026 };
 const MIN_YEAR = 1, MAX_YEAR = 9999;
 
 // weeks of the universe before a season's week 1
@@ -448,7 +449,7 @@ const ANNUAL_BASE = [
   { key: 'blood-and-guts', name: 'Blood and Guts', kind: 'special', month: 6, week: 2, day: null, brands: 'aew', prep: { weeks: 3, focus: ['teams', 'feuds'], spots: 0 } },
   { key: 'wargames', name: 'WarGames', kind: 'ple', month: 10, week: 4, day: 5, brands: 'wwe', prep: { weeks: 4, focus: ['teams', 'feuds'], spots: 0 } },
 ];
-const LAST_STAND = { month: 3, week: 2, prep: { weeks: 2, focus: ['feuds', 'contenders'], spots: 0 } };
+const LAST_STAND = { month: 4, week: 4, prep: { weeks: 2, focus: ['feuds', 'contenders'], spots: 0 } };      // May, after WrestleMania
 // the shows an annual event is for by default: WWE's main roster, or AEW's
 function brandShows(st, brand) {
   const top = st.tiers[0] ? st.tiers[0].shows : st.shows.map(s => s.id);
@@ -501,8 +502,7 @@ export function updateAnnual(st, id, patch = {}) {
     e.prep = copyPrep(rule.prep);
   });
   // switched off: the years to come that nothing has happened on yet come off the calendar
-  if (!rule.on) instancesOf(st, rule).filter(e => eventStatus(e) === 'scheduled' && !e.matches.length && !e.draft && !e.incidents.length && !e.moved)
-    .forEach(e => { removeWhere(st.events, x => x.id === e.id); removeWhere(st.story.rolls, r => r.event === e.id); });
+  if (!rule.on) instancesOf(st, rule).filter(e => untouched(e) && !e.moved).forEach(e => unschedule(st, e));
   scheduleAnnual(st);
   return rule;
 }
@@ -513,13 +513,26 @@ export function deleteAnnual(st, id) {
   removeWhere(st.annual, r => r.id === id);
 }
 const instancesOf = (st, rule) => st.events.filter(e => e.recurring === rule.id);
+// an annual year nothing has happened on: no card, no draft, no story
+const untouched = e => eventStatus(e) === 'scheduled' && !e.matches.length && !e.draft && !e.incidents.length;
+// off the calendar, and so is anything booked toward it on a show still to come (never a result, never a locked match)
+function unschedule(st, e) {
+  removeWhere(st.events, x => x.id === e.id);
+  removeWhere(st.story.rolls, r => r.event === e.id);
+  st.events.forEach(x => {
+    if (stillToCome(st, x)) removeWhere(x.matches, m => m.status === 'scheduled' && !m.locked && m.prep && m.prep.event === e.id);
+    if (x.draft) x.draft.matches.forEach(dm => { if (dm.prep && dm.prep.event === e.id) dm.prep = null; });
+  });
+}
 /**
  * Put every annual event on the calendar for the year ahead: each one from
  * this week on, up to 48 weeks out, that isn't there yet (an event of the same
  * name already planned that year is taken as it), and each year's still to
- * come follows its annual date unless it was rescheduled by hand. Results,
- * cards and drafts go with any event that moves. Returns the events it put on
- * the calendar or moved.
+ * come follows its annual date unless it was rescheduled by hand. A year whose
+ * date is no longer in the season from now on (the calendar changed) comes off
+ * if nothing has happened on it, or stays where it is, as the owner's, if
+ * something has. Results, cards and drafts go with any event that moves.
+ * Returns the events it put on the calendar or moved.
  */
 export function scheduleAnnual(st) {
   const s = activeSeason(st);
@@ -531,8 +544,11 @@ export function scheduleAnnual(st) {
       const week = weekOfDate(st, { year, month: rule.month, week: rule.week });
       const mine = st.events.find(e => e.recurring === rule.id && e.year === year);
       if (mine) {
-        if (!mine.moved && eventStatus(mine) === 'scheduled' && mine.at.season === s.id && week != null && week >= s.week
-          && (mine.at.week !== week || mine.at.day !== rule.day)) {
+        if (mine.moved || eventStatus(mine) !== 'scheduled' || !stillToCome(st, mine)) return;
+        const gone = week == null || week < s.week, far = !gone && universeDate(st, s.id, week).abs - now.abs >= 48;
+        if ((gone || far) && untouched(mine)) unschedule(st, mine);         // it comes back when its date comes round
+        else if (gone) mine.moved = true;                                    // something happened on it: it stays, as the owner's
+        else if (mine.at.week !== week || mine.at.day !== rule.day) {
           updateEvent(st, mine.id, { week, day: rule.day });
           syncPrep(st, mine);
           touched.push(mine);
@@ -4219,7 +4235,7 @@ export function migrate(raw) {
     st.version = 14;
   }
   if (st.version === 14) {
-    // v15: the universe calendar. It begins in the month and year the first dated season began in (or January 2026), and
+    // v15: the universe calendar. It begins in the month and year the first dated season began in (or May 2026), and
     // nothing recorded moves. Every PLE so far named one show or every show, and was built toward for 4 weeks, as the
     // booker always did; nothing was locked, recurring or booked for an event; the standard annual events are set up,
     // and go on the calendar from now on.
@@ -4236,6 +4252,17 @@ export function migrate(raw) {
     if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
     st.annual = annualSeed(st);
     st.version = 15;
+  }
+  if (st.version === 15) {
+    // v16: the calendar begins in May by default - a season runs from May to WrestleMania in April - and each show's
+    // Last Stand is in May, after WrestleMania. A universe still on the first defaults moves to the new ones: a calendar
+    // beginning in January 2026 begins in May 2026, and a Last Stand still in April's second week goes to May's fourth.
+    // Nothing recorded moves; the annual events follow their dates the next time the app opens.
+    if (st.calendar && st.calendar.month === 0 && st.calendar.year === 2026) st.calendar = { ...DEFAULT_CALENDAR };
+    (Array.isArray(st.annual) ? st.annual : []).forEach(r => {
+      if (r && typeof r.key === 'string' && r.key.startsWith('last-stand:') && r.month === 3 && r.week === 2) Object.assign(r, { month: LAST_STAND.month, week: LAST_STAND.week });
+    });
+    st.version = 16;
   }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();

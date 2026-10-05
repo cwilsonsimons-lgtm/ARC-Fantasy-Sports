@@ -4443,25 +4443,59 @@ test('a complete four-week month on the calendar, and advancing into the next on
 
 test('setting when the universe began relabels every week, moves nothing on record, and brings the annual events with it', () => {
   const { st, id } = calWorld();
+  assert.deepEqual(st.calendar, { month: 4, year: 2026 }, 'a new universe begins in May 2026');
   M.setWeek(st, 3);
   const ev = M.addEvent(st, { showId: 'raw' });
   M.recordMatch(st, ev.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Jey')] }], winner: 0 });
   M.scheduleAnnual(st);
-  const mania = st.events.find(e => e.name === 'WrestleMania');
-  assert.equal(ud(st, mania.at.week), 'April 2026 w3');
-  assert.equal(mania.at.week, 15);
+  const ann = n => st.events.filter(e => e.recurring && e.name === n).map(e => ud(st, e.at.week));
+  // a season from May to WrestleMania in April; each show's Last Stand in May, after it
+  assert.deepEqual([ann('Raw: Last Stand'), ann('Money in the Bank'), ann('WrestleMania')], [['May 2026 w4'], ['June 2026 w4'], ['April 2027 w3']]);
+  assert.equal(st.events.find(e => e.name === 'WrestleMania').at.week, 47);
+  const mitb = st.events.find(e => e.name === 'Money in the Bank');
+  M.bookMatch(st, mitb.id, { sides: [{ wrestlers: [id('Seth')] }, { wrestlers: [id('Drew')] }] });
   const kept = JSON.stringify(ev);
-  const moved = M.setCalendar(st, { month: 1, year: 2026 });          // began in February: April is two months sooner
+  const moved = M.setCalendar(st, { month: 7, year: 2026 });          // began in August instead: everything is three months later
   assert.equal(JSON.stringify(ev), kept, 'the episode keeps its week, night and result');
-  assert.equal(ud(st, 3), 'February 2026 w3');
-  assert.equal(mania.at.week, 11, 'WrestleMania follows its annual date');
-  assert.ok(moved.includes(mania));
-  // the Royal Rumble (January) has gone by in this calendar: next year's goes on instead
-  const rumbles = st.events.filter(e => e.name === 'Royal Rumble');
-  assert.ok(rumbles.some(e => e.year === 2027));
+  assert.equal(ud(st, 3), 'August 2026 w3');
+  assert.deepEqual(ann('WrestleMania'), ['April 2027 w3'], 'WrestleMania follows its annual date');
+  assert.ok(moved.includes(st.events.find(e => e.name === 'WrestleMania')));
+  assert.deepEqual(ann('Raw: Last Stand'), ['May 2027 w4'], 'May 2026 has gone by: nothing was on it, so next year’s goes on instead');
+  // Money in the Bank 2026 is before the universe began now; it has a match on it, so it stays where it was, as the owner's
+  assert.deepEqual([mitb.at.week, mitb.moved, mitb.matches.length], [8, true, 1]);
+  assert.deepEqual(ann('Money in the Bank'), ['September 2026 w4', 'June 2027 w4']);
+  // back to May: what's out of reach again comes off until its date comes round
+  M.setCalendar(st, { month: 4, year: 2026 });
+  assert.deepEqual([ann('Raw: Last Stand'), ann('WrestleMania')], [['May 2026 w4'], ['April 2027 w3']]);
   throwsUE(() => M.setCalendar(st, { month: 12, year: 2026 }), /month/);
   throwsUE(() => M.setCalendar(st, { month: 0, year: 0 }), /year/);
   sound(st);
+});
+
+test('a v15 save on the first defaults: it begins in May, and each Last Stand is in May, after WrestleMania', () => {
+  const { st, id } = calWorld();
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 15;
+  old.calendar = { month: 0, year: 2026 };                              // the first default: January 2026
+  old.annual.filter(r => r.key.startsWith('last-stand:')).forEach(r => Object.assign(r, { month: 3, week: 2 }));
+  M.scheduleAnnual(old);                                                // its annual events, as the app put them on the calendar
+  const rumble = old.events.find(e => e.name === 'Royal Rumble');
+  M.bookMatch(old, rumble.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Gunther')] }] });
+  const up = M.migrate(JSON.parse(JSON.stringify(old)));
+  assert.equal(up.version, M.SCHEMA_VERSION);
+  assert.deepEqual(up.calendar, { month: 4, year: 2026 });
+  assert.ok(up.annual.filter(r => r.key.startsWith('last-stand:')).every(r => r.month === 4 && r.week === 4));
+  M.scheduleAnnual(up);                                                 // as the app does when it opens
+  const at = n => up.events.filter(e => e.name === n).map(e => `${ud(up, e.at.week)}${e.moved ? ' (kept)' : ''}`);
+  assert.deepEqual(at('Raw: Last Stand'), ['May 2026 w4']);
+  assert.deepEqual(at('WrestleMania'), ['April 2027 w3'], 'last year’s WrestleMania, with nothing on it, made way for next April’s');
+  assert.deepEqual(at('Royal Rumble'), ['May 2026 w4 (kept)', 'January 2027 w4'],
+    'the Royal Rumble with a match booked stays where it was, for the owner to move; next January’s goes on too');
+  // a universe set to another month is left alone
+  const other = JSON.parse(JSON.stringify(old));
+  other.calendar = { month: 2, year: 2026 };
+  assert.deepEqual(M.migrate(other).calendar, { month: 2, year: 2026 });
+  sound(up);
 });
 
 test('annual events: the standard set, on their dates, once each; a year deleted stays gone; one moved by hand stays put', () => {
@@ -4477,7 +4511,7 @@ test('annual events: the standard set, on their dates, once each; a year deleted
   assert.deepEqual(M.eventShows(st, ev('WrestleMania')), ['raw', 'smackdown']);
   assert.deepEqual(M.eventShows(st, ev('Blood and Guts')), ['dynamite']);
   assert.equal(ev('Blood and Guts').kind, 'special');
-  assert.deepEqual([ev('Raw: Last Stand').kind, ev('Raw: Last Stand').at.day, ud(st, ev('Raw: Last Stand').at.week)], ['special', 0, 'April 2026 w2']);
+  assert.deepEqual([ev('Raw: Last Stand').kind, ev('Raw: Last Stand').at.day, ud(st, ev('Raw: Last Stand').at.week)], ['special', 0, 'May 2026 w4']);
   assert.deepEqual([ev('NXT: Last Stand').at.day], [1]);
   assert.deepEqual(ev('Money in the Bank').prep, { weeks: 4, focus: ['qualifiers', 'feuds'], spots: 6 });
   // one year deleted doesn't come back
@@ -4490,7 +4524,7 @@ test('annual events: the standard set, on their dates, once each; a year deleted
   assert.equal(mitb.moved, true);
   const rumbleRule = st.annual.find(r => r.key === 'royal-rumble');
   M.updateAnnual(st, rumbleRule.id, { month: 1, week: 1 });           // the Royal Rumble moves to February
-  assert.equal(ud(st, ev('Royal Rumble').at.week), 'February 2026 w1');
+  assert.equal(ud(st, ev('Royal Rumble').at.week), 'February 2027 w1');
   M.updateAnnual(st, st.annual.find(r => r.key === 'money-in-the-bank').id, { week: 2 });
   assert.equal(ud(st, mitb.at.week), 'July 2026 w1', 'moved by hand: it stays');
   // a new annual event goes on the calendar; a same-named event already planned that year is taken as this year's

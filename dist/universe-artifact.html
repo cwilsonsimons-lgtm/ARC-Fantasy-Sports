@@ -1132,7 +1132,7 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
 
   // js/universe/model.js
   var APP_ID = "wwe-universe";
-  var SCHEMA_VERSION = 15;
+  var SCHEMA_VERSION = 16;
   var UniverseError = class extends Error {
     constructor(message) {
       super(message);
@@ -1276,7 +1276,7 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
   var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   var WEEKS_PER_MONTH = 4;
   var DAYS_PER_MONTH = WEEKS_PER_MONTH * 7;
-  var DEFAULT_CALENDAR = { month: 0, year: 2026 };
+  var DEFAULT_CALENDAR = { month: 4, year: 2026 };
   var MIN_YEAR = 1;
   var MAX_YEAR = 9999;
   function seasonOffset(st, seasonId) {
@@ -1460,7 +1460,7 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
     { key: "blood-and-guts", name: "Blood and Guts", kind: "special", month: 6, week: 2, day: null, brands: "aew", prep: { weeks: 3, focus: ["teams", "feuds"], spots: 0 } },
     { key: "wargames", name: "WarGames", kind: "ple", month: 10, week: 4, day: 5, brands: "wwe", prep: { weeks: 4, focus: ["teams", "feuds"], spots: 0 } }
   ];
-  var LAST_STAND = { month: 3, week: 2, prep: { weeks: 2, focus: ["feuds", "contenders"], spots: 0 } };
+  var LAST_STAND = { month: 4, week: 4, prep: { weeks: 2, focus: ["feuds", "contenders"], spots: 0 } };
   function brandShows(st, brand) {
     const top = st.tiers[0] ? st.tiers[0].shows : st.shows.map((s) => s.id);
     const pick2 = st.shows.filter((s) => top.includes(s.id) && (brand === "aew" ? s.promotion === "AEW" : s.promotion === "WWE")).map((s) => s.id);
@@ -1523,10 +1523,7 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
       }
       e.prep = copyPrep(rule.prep);
     });
-    if (!rule.on) instancesOf(st, rule).filter((e) => eventStatus(e) === "scheduled" && !e.matches.length && !e.draft && !e.incidents.length && !e.moved).forEach((e) => {
-      removeWhere(st.events, (x) => x.id === e.id);
-      removeWhere(st.story.rolls, (r) => r.event === e.id);
-    });
+    if (!rule.on) instancesOf(st, rule).filter((e) => untouched(e) && !e.moved).forEach((e) => unschedule(st, e));
     scheduleAnnual(st);
     return rule;
   }
@@ -1538,6 +1535,17 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
     removeWhere(st.annual, (r) => r.id === id);
   }
   var instancesOf = (st, rule) => st.events.filter((e) => e.recurring === rule.id);
+  var untouched = (e) => eventStatus(e) === "scheduled" && !e.matches.length && !e.draft && !e.incidents.length;
+  function unschedule(st, e) {
+    removeWhere(st.events, (x) => x.id === e.id);
+    removeWhere(st.story.rolls, (r) => r.event === e.id);
+    st.events.forEach((x) => {
+      if (stillToCome(st, x)) removeWhere(x.matches, (m) => m.status === "scheduled" && !m.locked && m.prep && m.prep.event === e.id);
+      if (x.draft) x.draft.matches.forEach((dm) => {
+        if (dm.prep && dm.prep.event === e.id) dm.prep = null;
+      });
+    });
+  }
   function scheduleAnnual(st) {
     const s = activeSeason(st);
     const now2 = universeDate(st, s.id, s.week);
@@ -1548,7 +1556,11 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
         const week = weekOfDate(st, { year, month: rule.month, week: rule.week });
         const mine = st.events.find((e) => e.recurring === rule.id && e.year === year);
         if (mine) {
-          if (!mine.moved && eventStatus(mine) === "scheduled" && mine.at.season === s.id && week != null && week >= s.week && (mine.at.week !== week || mine.at.day !== rule.day)) {
+          if (mine.moved || eventStatus(mine) !== "scheduled" || !stillToCome(st, mine)) return;
+          const gone = week == null || week < s.week, far = !gone && universeDate(st, s.id, week).abs - now2.abs >= 48;
+          if ((gone || far) && untouched(mine)) unschedule(st, mine);
+          else if (gone) mine.moved = true;
+          else if (mine.at.week !== week || mine.at.day !== rule.day) {
             updateEvent(st, mine.id, { week, day: rule.day });
             syncPrep(st, mine);
             touched.push(mine);
@@ -4751,6 +4763,13 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
       if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
       st.annual = annualSeed(st);
       st.version = 15;
+    }
+    if (st.version === 15) {
+      if (st.calendar && st.calendar.month === 0 && st.calendar.year === 2026) st.calendar = { ...DEFAULT_CALENDAR };
+      (Array.isArray(st.annual) ? st.annual : []).forEach((r) => {
+        if (r && typeof r.key === "string" && r.key.startsWith("last-stand:") && r.month === 3 && r.week === 2) Object.assign(r, { month: LAST_STAND.month, week: LAST_STAND.week });
+      });
+      st.version = 16;
     }
     if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
     if (!st.booker || typeof st.booker !== "object") st.booker = newBooker();
@@ -15647,12 +15666,18 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
     bootUniverse(paint);
     if (!uni().wrestlers.length) tab = "roster";
     const L = loadState();
-    if (!L.readOnly && scheduleAnnual(JSON.parse(JSON.stringify(uni()))).length) commit((st) => scheduleAnnual(st));
+    scheduleYear();
     paint();
     if (L.status === "recovered" || L.readOnly || L.problems.length) {
       toast("There was a problem loading your saved universe \u2014 see the save menu.", true);
     }
     startCloud();
+  }
+  function scheduleYear() {
+    if (loadState().readOnly) return;
+    const copy = JSON.parse(JSON.stringify(uni()));
+    scheduleAnnual(copy);
+    if (JSON.stringify(copy) !== JSON.stringify(uni())) commit((st) => scheduleAnnual(st));
   }
   function startCloud() {
     const c = window.claude;
@@ -15662,7 +15687,10 @@ select.uv-in.sm{min-width:128px;padding-right:26px}
       store = window.localStorage;
     } catch (e) {
     }
-    cloud = createCloud({ claude: c, storage: store, current: uni, adopt: adoptUniverse, onStatus: cloudChanged, toast });
+    cloud = createCloud({ claude: c, storage: store, current: uni, adopt: (st) => {
+      adoptUniverse(st);
+      scheduleYear();
+    }, onStatus: cloudChanged, toast });
     onSaved((st) => cloud.changed(st));
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) cloud.flush();

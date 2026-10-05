@@ -31,13 +31,21 @@ export function initUniverse() {
   // a new universe starts where it needs filling in: the roster
   if (!uni().wrestlers.length) tab = 'roster';
   const L = loadState();
-  // the year's annual events, on the calendar as the year comes round (a save from before the calendar gets them now)
-  if (!L.readOnly && M.scheduleAnnual(JSON.parse(JSON.stringify(uni()))).length) commit(st => M.scheduleAnnual(st));
+  scheduleYear();
   paint();
   if (L.status === 'recovered' || L.readOnly || L.problems.length) {
     toast('There was a problem loading your saved universe — see the save menu.', true);
   }
   startCloud();
+}
+
+// The year's annual events, on the calendar as the year comes round - and each where its date is now, if the calendar
+// changed (a save from before the calendar gets them now). Saved only if something changed.
+function scheduleYear() {
+  if (loadState().readOnly) return;
+  const copy = JSON.parse(JSON.stringify(uni()));
+  M.scheduleAnnual(copy);
+  if (JSON.stringify(copy) !== JSON.stringify(uni())) commit(st => M.scheduleAnnual(st));
 }
 
 // Only a published artifact has window.claude; opened as a file, this is skipped.
@@ -46,7 +54,8 @@ function startCloud() {
   if (!c || typeof c.use !== 'function') return;
   let store = null;
   try { store = window.localStorage; } catch (e) { /* blocked: the claude.ai copy is all there is */ }
-  cloud = createCloud({ claude: c, storage: store, current: uni, adopt: adoptUniverse, onStatus: cloudChanged, toast });
+  // the claude.ai copy, once taken, gets the year's annual events too
+  cloud = createCloud({ claude: c, storage: store, current: uni, adopt: st => { adoptUniverse(st); scheduleYear(); }, onStatus: cloudChanged, toast });
   onSaved(st => cloud.changed(st));
   document.addEventListener('visibilitychange', () => { if (document.hidden) cloud.flush(); });
   cloud.start();
