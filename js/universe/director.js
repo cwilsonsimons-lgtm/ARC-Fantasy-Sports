@@ -175,7 +175,9 @@ function context(st, ev, phase, nonce, matchId = null) {
   const table = SD.standings(st, { showId: ev.showId || null, period: SD.periodOf(st, season.id) });
   const size = table.ranked.length + table.unranked.length;
   const rank = new Map(table.ranked.map(r => [r.id, r.rank]));
-  return { st, ev, phase, nonce, focus, matchId, d, wk, hist, tonight, booked, onCard, around, incidents, picks, rank, size,
+  // the calendar: the big events these shows are building toward, whose preparation has begun
+  const ahead = M.approaching(st, ev.at, M.eventShows(st, ev)).filter(x => x.event.id !== ev.id);
+  return { st, ev, phase, nonce, focus, matchId, d, wk, hist, tonight, booked, onCard, around, incidents, picks, rank, size, ahead,
     seed: st.story.seed, pace: PACE[st.story.pace] };
 }
 
@@ -234,6 +236,7 @@ function freshness(c, cand) {
   return true;
 }
 function finish(c, cand, base) {
+  cand.base = base;
   let x = base * c.pace.mult;
   cand.factors.forEach(f => { x *= f.factor; });
   cand.chance = Math.min(RULES.maxChance, x);
@@ -942,16 +945,70 @@ function coolings(c) {
   return out;
 }
 
+// ================================================================ building toward the events ahead
+//
+// The universe calendar: a premium live event or special event these shows
+// are building toward, once its preparation has begun, makes some things
+// likelier - bad blood between two booked to meet there heats up (most of all
+// the week of it), contenders speak up for the titles that could be on the
+// line there, new alliances form before a team event - and a rivalry headed
+// for one doesn't cool off. Only the soonest event that bears on each
+// possibility counts.
+
+const HEAT_KINDS = new Set(['confrontation', 'brawl', 'attack', 'interference']);
+const COOL_KINDS = new Set(['cooling', 'respect']);
+// the titles an event could put on the line: its shows' own, and any with no show whose champion is on one
+function titlesAt(st, ev) {
+  const shows = M.eventShows(st, ev);
+  const every = st.shows.every(s => shows.includes(s.id));
+  return st.titles.filter(t => t.active && (every || shows.includes(t.showId) || (!t.showId && (() => {
+    const r = M.currentReign(st, t.id);
+    return r && holders(st, r.holder).some(id => shows.includes((M.wrestlerById(st, id) || {}).showId));
+  })())));
+}
+// booked against each other on an event's card or its draft
+function meetAt(ev, a, b) {
+  const list = [...ev.matches.filter(m => m.status === 'scheduled'), ...(ev.draft ? ev.draft.matches : [])];
+  return list.some(m => {
+    const sa = m.sides.findIndex(sd => a.some(id => sd.wrestlers.includes(id))), sb = m.sides.findIndex(sd => b.some(id => sd.wrestlers.includes(id)));
+    return sa >= 0 && sb >= 0 && sa !== sb;
+  });
+}
+const toGoText = w => (w <= 0 ? 'this week' : w === 1 ? 'next week' : `in ${w} weeks`);
+function calendarFactors(c, cand) {
+  const p = cand.plan.incidents[0];
+  const by = p.by || [], on = p.on || [];
+  const during = (x, f) => x.phases.some(ph => ph.focus === f);
+  for (const x of c.ahead) {
+    const ev = x.event, when = `${ev.name} is ${toGoText(x.weeks)}`;
+    if (during(x, 'feuds') && (HEAT_KINDS.has(cand.kind) || COOL_KINDS.has(cand.kind)) && on.length && meetAt(ev, by, on)) {
+      if (COOL_KINDS.has(cand.kind)) { why(cand, 0.4, `Less likely: they meet at ${ev.name}, ${toGoText(x.weeks)}`); return; }
+      why(cand, x.weeks === 0 ? 2.5 : 1.8, `They meet at ${ev.name} — ${x.weeks === 0 ? 'the go-home show, one last chance to get at each other' : `${toGoText(x.weeks)}, and it’s building`}`);
+      return;
+    }
+    if (during(x, 'contenders') && (cand.kind === 'demand' || cand.kind === 'challenge') && p.title && titlesAt(c.st, ev).some(t => t.id === p.title)) {
+      why(cand, 1.8, `${when} — the ${M.titleById(c.st, p.title).name} could be on the line there, and contenders are making their case`);
+      return;
+    }
+    if (during(x, 'teams') && cand.kind === 'alliance') {
+      why(cand, 2, `${when} — teams are forming for it`);
+      return;
+    }
+  }
+}
+
 // ================================================================ a show, before or after
 
 // every possibility for a part of a show, with its plan, its reasons and its chance
 function possible(c) {
-  if (c.phase === 'pre') return [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)];
-  // after the show: only what wasn't about one match (brawls and challenges leave out what came up straight after one)
-  if (!c.focus) return [...brawls(c), ...challenges(c)];
-  // straight after a match: everything about it happens then and there
-  const all = [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)];
-  all.forEach(k => { k.plan.incidents = k.plan.incidents.map(i => ({ ...i, match: i.match || c.focus.id })); });
+  const all = c.phase === 'pre' ? [...confrontations(c), ...teamConfrontations(c), ...demands(c), ...openChallenges(c), ...alliances(c), ...coolings(c), ...tensions(c), ...turns(c)]
+    // after the show: only what wasn't about one match (brawls and challenges leave out what came up straight after one)
+    : !c.focus ? [...brawls(c), ...challenges(c)]
+      // straight after a match: everything about it happens then and there
+      : [...attacks(c), ...interferences(c), ...betrayals(c), ...brawls(c), ...tensions(c), ...breakups(c), ...rises(c), ...respects(c), ...challenges(c), ...turns(c)];
+  if (c.focus) all.forEach(k => { k.plan.incidents = k.plan.incidents.map(i => ({ ...i, match: i.match || c.focus.id })); });
+  // the calendar: what the events ahead make likelier (or less)
+  if (c.ahead.length) all.forEach(k => { const n = k.factors.length; calendarFactors(c, k); if (k.factors.length > n) finish(c, k, k.base); });
   return all;
 }
 /**

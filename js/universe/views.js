@@ -5,14 +5,15 @@
 // profile (pages.js). The roster also has a select mode for moving several
 // wrestlers between shows at once.
 import {
-  activeSeason, byName, calendarDate, cardStatus, currentReign, eventsIn, holderName, reignWeeks, resultsHistory,
+  activeSeason, byName, cardStatus, currentReign, eventShows, eventsIn, holderName, isBigEvent, reignWeeks, resultsHistory,
   rosterCounts, rosterOf, seasonById, teamById, teamRecord, teamShows, timeline, titleById, titlesHeldBy,
-  titlesOfWrestler, wrestlerById,
+  titlesOfWrestler, universeDate, wrestlerById,
 } from './model.js';
 import {
-  ICON, LABEL, NIGHT, avatar, chip, empty, esc, eventWhen, fallLine, fmtRec, incidentText, isoText, kindChip, matchLine, section,
-  showColor, showDot, showName, stampLabel, tag, weeksText,
+  ICON, LABEL, NIGHT, avatar, chip, dateText, empty, esc, eventShowsText, eventWhen, fallLine, fmtRec, incidentText, kindChip, matchLine, section,
+  showColor, showDot, showName, stampLabel, statusBadge, tag, weekText, weeksText,
 } from './ui.js';
+import { calendarMode, uvComingUp, uvMonthFollow, uvMonthView } from './calendar.js';
 import { refresh, uni } from './app.js';
 import { uvRankFollow } from './ranks.js';
 import { uvTransitionSummary } from './relegation.js';
@@ -21,9 +22,10 @@ import { uvStoryRow } from './story.js';
 
 // ---------------------------------------------------------------- calendar
 //
-// The week at a glance: each show on its night, planned or not, and where
-// its card stands. The season's clock (the current week) is only moved by
-// Next week / Back a week; browsing other weeks here never moves it.
+// The week at a glance - each show on its night, planned or not, and where its
+// card stands - or the month (calendar.js), on the universe calendar. The
+// season's clock (the current week) is only moved by Next week / Back a week;
+// browsing other weeks or months here never moves it.
 
 let calWeek = null;          // the week on screen; null follows the current week
 
@@ -35,10 +37,7 @@ const CARD_TEXT = {
 };
 const cardText = c => CARD_TEXT[c.state](c);
 
-function weekRange(st, seasonId, week) {
-  const a = calendarDate(st, seasonId, week, 0);
-  return a ? `${isoText(a, false)} – ${isoText(calendarDate(st, seasonId, week, 6))}` : '';
-}
+const weekRange = (st, seasonId, week) => weekText(st, seasonId, week);
 
 export function uvCalendarView() {
   const st = uni();
@@ -52,7 +51,7 @@ export function uvCalendarView() {
 
   const card = `<div class="uv-card">
     <div class="uv-season">
-      <div><div class="k">${esc(s.name)}</div><div class="v">Week ${s.week}</div>${range ? `<div class="s">${esc(range)}</div>` : ''}</div>
+      <div><div class="k">${esc(s.name)}</div><div class="v">Week ${s.week}</div>${range ? `<div class="s" data-today>${esc(range)}</div>` : ''}</div>
       <div class="uv-step">
         <div class="uv-ic" onclick="uvStepWeek(-1)" title="Back a week">${ICON.left}</div>
         <div class="uv-btn" onclick="uvStepWeek(1)">Next week${ICON.right}</div>
@@ -60,18 +59,31 @@ export function uvCalendarView() {
     </div>
     ${transitionRows(st, s)}
     ${uvStoryRow(st)}
-    <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? 'Dates' : 'Set dates'}</span>
+    <div class="uv-card-f"><span onclick="uvOpenCalendar()" data-callink>Calendar</span>
       <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvGo('sim')" data-simlink>Simulate ahead…</span><span onclick="uvNextSeason()">Start Season ${next}…</span></div>
   </div>`;
 
   // this week's episodes, and a row to plan each show that has none yet
   const evs = eventsIn(st, s.id).filter(e => e.at.week === week);
   const rows = evs.map(e => ({ day: e.at.day, e }));
-  st.shows.forEach(sh => { if (!evs.some(e => e.kind === 'weekly' && e.showId === sh.id)) rows.push({ day: sh.day, show: sh }); });
+  // a show with no episode this week, unless a special event for it takes the episode's place on its night
+  st.shows.forEach(sh => {
+    if (!evs.some(e => (e.kind === 'weekly' && e.showId === sh.id) || (e.kind === 'special' && e.at.day === sh.day && eventShows(st, e).includes(sh.id)))) {
+      rows.push({ day: sh.day, show: sh });
+    }
+  });
   rows.sort((a, b) => (a.day ?? 9) - (b.day ?? 9));     // stable: a night's episodes before its unplanned shows
 
   const wr = weekRange(st, s.id, week);
-  return card + upNextCard(st) + `
+  const mode = calendarMode();
+  const seg = `<div class="uv-seg uv-seg-page small" data-calmode>${[['week', 'Week'], ['month', 'Month']].map(([k, lb]) =>
+    `<div class="${mode === k ? 'on' : ''}" data-v="${k}" onclick="uvCalMode('${k}')">${lb}</div>`).join('')}</div>`;
+  if (mode === 'month') {
+    return card + upNextCard(st) + seg + uvMonthView(st) + `
+      <div class="uv-addrow" onclick="uvNewEvent()">${ICON.star}Schedule a premium live event or special event</div>
+      ${uvComingUp(st)}`;
+  }
+  return card + upNextCard(st) + seg + `
     <div class="uv-weeknav">
       <div class="uv-ic" onclick="uvCalWeek(-1)" title="Previous week">${ICON.left}</div>
       <div class="c"><div class="t">Week ${week}</div><div class="s">${esc(rel)}${wr ? ` · ${esc(wr)}` : ''}</div></div>
@@ -80,7 +92,8 @@ export function uvCalendarView() {
     ${off ? `<div class="uv-back-now" onclick="uvCalGo(${s.week})">Back to this week (week ${s.week})</div>` : ''}
     <div class="uv-nights">${rows.map(r => nightRow(st, s, week, r)).join('')}</div>
     <div class="uv-weekdraft" onclick="uvDraftWeek(${week})">${ICON.spark}Draft week ${week}’s cards with the auto booker</div>
-    <div class="uv-addrow" onclick="uvNewPle(${week})">${ICON.star}Add a premium live event to week ${week}</div>
+    <div class="uv-addrow" onclick="uvNewEvent(${week})">${ICON.star}Schedule a premium live event or special event</div>
+    ${uvComingUp(st)}
     ${seasonGrid(st, s, week)}`;
 }
 
@@ -122,14 +135,16 @@ function transitionRows(st, s) {
     <span>${esc(sub)}</span></div>${ICON.right}</div>`;
   const rows = recent.map(t => row(`uvOpenTransition('${t.id}')`, `${seasonById(st, t.season).name} transition · relegation`,
     uvTransitionSummary(st, t).map(x => `${x.label}: ${x.text}`).join(' · ')));
-  const mania = !recent.some(t => t.season === s.id) && eventsIn(st, s.id).filter(e => e.kind === 'ple' && /wrestlemania/i.test(e.name)).pop();
+  // (WrestleMania is on the calendar a year ahead now: the way in shows from four weeks before it)
+  const mania = !recent.some(t => t.season === s.id) && eventsIn(st, s.id).filter(e => e.kind === 'ple' && /wrestlemania/i.test(e.name)
+    && e.at.week <= s.week + 4).pop();
   if (mania) rows.push(row(`uvStartTransitionAt('${mania.id}')`, `${mania.name} ends the season`, 'Start the season transition: relegation, promotion and the draft'));
   return rows.join('');
 }
 
 function nightRow(st, s, week, r) {
-  const iso = r.day == null ? null : calendarDate(st, s.id, week, r.day);
-  const dt = `<div class="dt"><b>${r.day == null ? '—' : NIGHT[r.day]}</b>${iso ? `<span>${isoText(iso, false)}</span>` : ''}</div>`;
+  const ud = r.day == null ? null : universeDate(st, s.id, week, r.day);
+  const dt = `<div class="dt"><b>${r.day == null ? '—' : NIGHT[r.day]}</b>${ud ? `<span>${esc(dateText(ud, false))}</span>` : ''}</div>`;
   if (r.show) {
     return `<div class="uv-night open" style="--c:${showColor(st, r.show.id)}" data-plan="${r.show.id}">${dt}
       <div class="uv-main"><div class="nm">${esc(r.show.name)}</div><div class="sub">Not planned</div></div>
@@ -137,9 +152,10 @@ function nightRow(st, s, week, r) {
   }
   const e = r.e, c = cardStatus(e);
   const draft = e.draft ? `Draft card: ${e.draft.matches.length} match${e.draft.matches.length === 1 ? '' : 'es'} — not booked yet` : '';
-  return `<div class="uv-night" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">${dt}
-    <div class="uv-main"><div class="nm">${e.kind === 'ple' ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}</div>
-      <div class="sub"><span class="uv-state ${draft && !c.total ? 'draft' : c.state}"></span>${esc(draft && !c.total ? draft : cardText(c) + (draft ? ` · ${draft.toLowerCase()}` : ''))}</div></div>
+  const big = isBigEvent(e);
+  return `<div class="uv-night${big ? ' big' : ''}" style="--c:${big ? 'var(--uv-gold)' : showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">${dt}
+    <div class="uv-main"><div class="nm">${big ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}${big ? ` ${statusBadge(e)}` : ''}</div>
+      <div class="sub"><span class="uv-state ${draft && !c.total ? 'draft' : c.state}"></span>${esc(draft && !c.total ? draft : cardText(c) + (draft ? ` · ${draft.toLowerCase()}` : ''))}${big ? ` · ${esc(eventShowsText(st, e))}` : ''}</div></div>
     <span class="uv-chev">${ICON.right}</span></div>`;
 }
 
@@ -149,11 +165,12 @@ const SHORT = { raw: 'Raw', smackdown: 'SD', dynamite: 'Dyn', nxt: 'NXT' };
 function seasonGrid(st, s, week) {
   const evs = eventsIn(st, s.id);
   if (!evs.length) return '';
-  const last = Math.max(s.week, week, ...evs.map(e => e.at.week));
+  // an annual event far ahead with nothing on it yet doesn't stretch the grid (the month view has it)
+  const last = Math.max(s.week, week, ...evs.filter(e => e.at.week <= s.week + 4 || !e.recurring || e.matches.length || e.draft).map(e => e.at.week));
   const cols = [...st.shows.map(sh => ({ key: sh.id, label: SHORT[sh.id] || sh.name.slice(0, 3), color: showColor(st, sh.id) })),
     { key: 'ple', label: 'PLE', color: 'var(--uv-gold)' }];
   const cell = (w, col) => {
-    const here = evs.filter(e => e.at.week === w && (col.key === 'ple' ? e.kind === 'ple' : e.kind === 'weekly' && e.showId === col.key));
+    const here = evs.filter(e => e.at.week === w && (col.key === 'ple' ? isBigEvent(e) : e.kind === 'weekly' && e.showId === col.key));
     if (!here.length) return '<span class="uv-cell"></span>';
     const c = cardStatus({ matches: here.flatMap(e => e.matches) });
     return `<span class="uv-cell ${c.state}" style="--c:${col.color}"></span>`;
@@ -173,6 +190,7 @@ function seasonGrid(st, s, week) {
 }
 
 export function uvCalWeek(d) {
+  uvMonthFollow();
   const s = activeSeason(uni());
   calWeek = Math.max(1, Math.min(999, (calWeek || s.week) + d));
   if (calWeek === s.week) calWeek = null;
@@ -185,7 +203,7 @@ export function uvCalGo(w) {
   if (sc) sc.scrollTop = 0;
 }
 /** When the clock moves, the calendar goes with it. */
-export function uvCalFollow() { calWeek = null; }
+export function uvCalFollow() { calWeek = null; uvMonthFollow(); }
 
 
 // ---------------------------------------------------------------- roster
@@ -375,7 +393,7 @@ export function uvHistoryView() {
 function resultsView(st, seasonId) {
   const pill = (k, label, color) => `<div class="uv-pill${histShow === k ? ' on' : ''}" onclick="uvHistShow('${k}')">`
     + `${color ? `<span class="uv-dot" style="--c:${color}"></span>` : ''}${esc(label)}</div>`;
-  const shows = `<div class="uv-pills">${pill('', 'All shows')}${st.shows.map(s => pill(s.id, s.name, showColor(st, s.id))).join('')}${pill('ple', 'PLEs')}</div>`;
+  const shows = `<div class="uv-pills">${pill('', 'All shows')}${st.shows.map(s => pill(s.id, s.name, showColor(st, s.id))).join('')}${pill('ple', 'PLEs & specials')}</div>`;
   const rows = resultsHistory(st, { seasonId, showId: histShow || undefined });
   const groups = [];
   rows.forEach(x => {
@@ -411,8 +429,8 @@ function eventBlock(st, g) {
         ${bits ? `<div class="d">${bits}</div>` : ''}${m.notes ? `<div class="d nt">${esc(m.notes)}</div>` : ''}</div></div>`;
   }).join('');
   return `<div class="uv-hev" style="--c:${showColor(st, e.showId)}" data-ev="${e.id}" onclick="uvOpenEvent('${e.id}')">
-      <div class="uv-main"><div class="nm">${e.kind === 'ple' ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}</div>
-        <div class="sub">${esc(eventWhen(st, e))} · ${esc(e.showId ? showName(st, e.showId) : 'All shows')}${c.booked ? ` · ${c.booked} still to enter` : ''}</div></div>
+      <div class="uv-main"><div class="nm">${isBigEvent(e) ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(e.name)}</div>
+        <div class="sub">${esc(eventWhen(st, e))} · ${esc(eventShowsText(st, e))}${c.booked ? ` · ${c.booked} still to enter` : ''}</div></div>
       <span class="uv-chev">${ICON.right}</span></div>
     <div class="uv-hms">${lines}</div>`;
 }

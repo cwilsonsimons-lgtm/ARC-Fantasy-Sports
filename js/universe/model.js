@@ -25,7 +25,7 @@
 // and refuse when the fix would disturb anything else.
 
 export const APP_ID = 'wwe-universe';
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export class UniverseError extends Error {
   constructor(message) { super(message); this.name = 'UniverseError'; }
@@ -52,7 +52,8 @@ export const ALIGNMENTS  = ['face', 'heel', 'tweener'];
 export const STATUSES    = ['active', 'injured', 'away'];   // away: not appearing for now, for any reason
 export const TITLE_KINDS = ['singles', 'tag'];
 export const DIVISIONS   = ['men', 'women', 'open'];
-export const EVENT_KINDS = ['weekly', 'ple'];                 // a weekly episode, or a premium live event
+// a weekly episode, a premium live event, or a special event: a show's themed episode in place of its usual one that week
+export const EVENT_KINDS = ['weekly', 'ple', 'special'];
 export const OUTCOMES    = ['win', 'draw', 'nc'];             // nc = no contest
 export const FINISHES    = ['pinfall', 'submission', 'ko', 'dq', 'countout', 'elimination', 'escape', 'retrieval', 'other'];
 export const MATCH_STATUSES = ['scheduled', 'played'];        // on the card, or result entered
@@ -89,9 +90,12 @@ export function createUniverse() {
     relEdits: [],           // the owner's own relationship changes, dated; the rest is worked out from the record
     story: newStory(),      // the story director: its settings, seed, and a log of every time it ran
     booker: newBooker(),    // the auto booker's settings, per show: only what the owner has changed
+    calendar: { ...DEFAULT_CALENDAR },   // the universe's own calendar: the month and year it began in
+    annual: [],             // the recurring annual events: Royal Rumble, WrestleMania, each show's Last Stand...
   };
   openSeason(st, 1, '');
   seedTiers(st);
+  st.annual = annualSeed(st);
   return st;
 }
 
@@ -182,6 +186,369 @@ export function weeksBetween(st, a, b) {
   let n = lastWeek(sa) - a.week;
   st.seasons.filter(s => s.number > sa.number && s.number < sb.number).forEach(s => { n += lastWeek(s); });
   return Math.max(0, n + b.week);
+}
+
+// ---------------------------------------------------------------- the universe calendar
+//
+// The universe keeps its own calendar: twelve months of exactly four weeks,
+// seven days a week, Monday to Sunday - so a month is 28 days and a year 48
+// weeks, whatever the real calendar says. The owner picks the month and year
+// the universe began in (season 1's week 1); every week since, across
+// seasons (each runs straight into the next), is a week of a month. It labels
+// the season, week and night every record already carries: nothing recorded
+// moves because of it.
+export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const WEEKS_PER_MONTH = 4;
+export const DAYS_PER_MONTH = WEEKS_PER_MONTH * 7;
+const DEFAULT_CALENDAR = { month: 0, year: 2026 };
+const MIN_YEAR = 1, MAX_YEAR = 9999;
+
+// weeks of the universe before a season's week 1
+function seasonOffset(st, seasonId) {
+  const s = seasonById(st, seasonId);
+  if (!s) return 0;
+  return st.seasons.filter(x => x.number < s.number).reduce((n, x) => n + (x.ended ? x.ended.week : x.week), 0);
+}
+/**
+ * A season's week (and night) on the universe calendar: { year, month (0-11),
+ * week (1-4 of the month), day (0-6 or null), date (1-28 or null), abs (the
+ * universe's week number, from 1) }.
+ */
+export function universeDate(st, seasonId, week, day = null) {
+  const cal = st.calendar || DEFAULT_CALENDAR;
+  const abs = seasonOffset(st, seasonId) + week;
+  const m = cal.month + Math.floor((abs - 1) / WEEKS_PER_MONTH);
+  const wom = ((abs - 1) % WEEKS_PER_MONTH) + 1;
+  return { year: cal.year + Math.floor(m / 12), month: ((m % 12) + 12) % 12, week: wom, day: day == null ? null : day,
+    date: day == null ? null : (wom - 1) * 7 + day + 1, abs };
+}
+/** The universe date of a stamp (an event's `at`, a reign's start...). */
+export const stampDate = (st, at) => universeDate(st, at.season, at.week, at.day == null ? null : at.day);
+/** The active season's week for a universe month, year and week of the month - or null if it's before the season began. */
+export function weekOfDate(st, { year, month, week }) {
+  const cal = st.calendar || DEFAULT_CALENDAR;
+  const abs = ((Number(year) - cal.year) * 12 + (Number(month) - cal.month)) * WEEKS_PER_MONTH + Number(week);
+  const w = abs - seasonOffset(st, activeSeason(st).id);
+  return Number.isInteger(w) && w >= 1 && w <= MAX_WEEK ? w : null;
+}
+/** Which season and week a universe week falls in - an earlier season's, or the active one's: { season, week } or null. */
+export function seasonWeekOf(st, { year, month, week }) {
+  const cal = st.calendar || DEFAULT_CALENDAR;
+  const abs = ((Number(year) - cal.year) * 12 + (Number(month) - cal.month)) * WEEKS_PER_MONTH + Number(week);
+  if (!Number.isInteger(abs) || abs < 1) return null;
+  const active = activeSeason(st);
+  for (const x of [...st.seasons].sort((a, b) => a.number - b.number)) {
+    const w = abs - seasonOffset(st, x.id);
+    if (x.id === active.id) return w >= 1 && w <= MAX_WEEK ? { season: x.id, week: w } : null;
+    if (w >= 1 && w <= (x.ended ? x.ended.week : x.week)) return { season: x.id, week: w };
+  }
+  return null;
+}
+function checkCalendarDate(st, d) {
+  const month = Number(d && d.month), year = Number(d && d.year), week = Number(d && d.week);
+  if (!Number.isInteger(month) || month < 0 || month > 11) fail('Pick a month.');
+  if (!Number.isInteger(year) || year < MIN_YEAR || year > MAX_YEAR) fail('Pick a year.');
+  if (!Number.isInteger(week) || week < 1 || week > WEEKS_PER_MONTH) fail(`Pick a week of the month, 1 to ${WEEKS_PER_MONTH}.`);
+  const w = weekOfDate(st, { year, month, week });
+  if (w == null) fail(`${MONTHS[month]} ${year} is before ${activeSeason(st).name} began.`);
+  return w;
+}
+/**
+ * Set the month and year the universe began in. Everything on record keeps its
+ * week and night; only the months and years they fall in change. Annual events
+ * still to come move to their own dates in the new calendar.
+ */
+export function setCalendar(st, { month, year } = {}) {
+  const m = Number(month), y = Number(year);
+  if (!Number.isInteger(m) || m < 0 || m > 11) fail('Pick a month.');
+  if (!Number.isInteger(y) || y < MIN_YEAR || y > MAX_YEAR) fail('Pick a year.');
+  st.calendar = { month: m, year: y };
+  return scheduleAnnual(st);
+}
+
+// ---------------------------------------------------------------- big events, and building toward them
+//
+// A premium live event or special event names the shows taking part (none
+// named: every show), and how it's built toward: `prep` - how many weeks ahead
+// the preparation begins, what it's for (qualifying matches, #1 contender's
+// matches, rivalries, team formation) and, for qualifiers, how many spots there
+// are. The preparation schedule is worked out from the event's date, so moving
+// the event moves it; what was booked for it and not played yet goes if it no
+// longer fits, and nothing played or locked is ever touched.
+export const PREP_FOCUS = ['qualifiers', 'contenders', 'feuds', 'teams'];
+export const PREP_KINDS = ['qualifier', 'contender', 'feud', 'team'];   // what a match booked for an event is for
+export const MAX_PREP_WEEKS = 16;
+export const MAX_SPOTS = 30;
+export const PREP_DEFAULTS = { ple: { weeks: 4, focus: ['feuds', 'contenders'], spots: 0 }, special: { weeks: 2, focus: ['feuds', 'contenders'], spots: 0 } };
+const copyPrep = p => (p ? { weeks: p.weeks, focus: [...p.focus], spots: p.spots } : null);
+
+/** The shows taking part in an event: a weekly episode's own show; a big event's named shows, or every show. */
+export function eventShows(st, ev) {
+  if (ev.kind === 'weekly') return ev.showId ? [ev.showId] : [];
+  const named = (Array.isArray(ev.shows) ? ev.shows : []).filter(id => showById(st, id));
+  return named.length ? named : ev.showId ? [ev.showId] : st.shows.map(s => s.id);
+}
+export const isBigEvent = ev => ev.kind !== 'weekly';
+/** Where an event stands: 'scheduled' (no results yet), 'in-progress' (some), 'completed' (every match has one). */
+export function eventStatus(ev) {
+  const c = cardStatus(ev);
+  return c.state === 'complete' ? 'completed' : c.played ? 'in-progress' : 'scheduled';
+}
+function checkShows(st, list) {
+  const ids = [...new Set((Array.isArray(list) ? list : []).filter(Boolean))];
+  ids.forEach(id => must(showById(st, id), 'show', id));
+  return ids;
+}
+function checkPrep(input, fallback) {
+  if (input === null) return null;
+  if (input === undefined) return copyPrep(fallback);
+  const weeks = Number(input.weeks == null ? (fallback ? fallback.weeks : 0) : input.weeks);
+  if (!Number.isInteger(weeks) || weeks < 0 || weeks > MAX_PREP_WEEKS) fail(`Preparation begins 0 to ${MAX_PREP_WEEKS} weeks ahead.`);
+  const focus = [...new Set(Array.isArray(input.focus) ? input.focus : fallback ? fallback.focus : [])];
+  focus.forEach(f => oneOf(f, PREP_FOCUS, 'kind of preparation'));
+  const spots = Number(input.spots == null ? (fallback ? fallback.spots : 0) : input.spots);
+  if (!Number.isInteger(spots) || spots < 0 || spots > MAX_SPOTS) fail(`Qualifying spots: 0 to ${MAX_SPOTS}.`);
+  if (focus.includes('qualifiers') && !spots) fail('Say how many spots the qualifying matches are for.');
+  return { weeks, focus: PREP_FOCUS.filter(f => focus.includes(f)), spots: focus.includes('qualifiers') ? spots : 0 };
+}
+
+const prepOk = p => !!p && typeof p === 'object' && Number.isInteger(p.weeks) && p.weeks >= 0 && p.weeks <= MAX_PREP_WEEKS
+  && Array.isArray(p.focus) && p.focus.every(f => PREP_FOCUS.includes(f)) && Number.isInteger(p.spots) && p.spots >= 0 && p.spots <= MAX_SPOTS;
+// where a date falls against an event: weeks to go (0: the event's own week), and whether it's before the event itself
+function toGo(st, ev, at) {
+  const a = stampDate(st, at), e = stampDate(st, ev.at);
+  const weeks = e.abs - a.abs;
+  const before = weeks > 0 || (weeks === 0 && a.day != null && e.day != null && a.day < e.day);
+  return { weeks, before };
+}
+/**
+ * The phases of an event's preparation, as weeks to go before it (0: its own
+ * week, before the night): each { focus, from, to, label }. Worked out from the
+ * event's date and its `prep`, so a new date is a new schedule.
+ */
+export function prepPhases(ev) {
+  const p = ev.prep;
+  if (!p || !p.weeks) return [];
+  const W = p.weeks, out = [];
+  if (p.focus.includes('feuds')) out.push({ focus: 'feuds', from: W, to: 0, label: 'Rivalries build toward it' });
+  if (p.focus.includes('teams')) out.push({ focus: 'teams', from: W, to: Math.max(1, Math.ceil(W / 2)), label: 'Teams form' });
+  if (p.focus.includes('qualifiers')) out.push({ focus: 'qualifiers', from: W, to: 1, label: 'Qualifying matches' });
+  if (p.focus.includes('contenders')) out.push({ focus: 'contenders', from: Math.min(W, 3), to: 1, label: '#1 contender’s matches for the titles on the line' });
+  out.push({ focus: 'go-home', from: 0, to: 0, label: 'The go-home shows, the week of it' });
+  return out;
+}
+/**
+ * The big events a date is building toward, for some shows: every event
+ * taking part any of them whose preparation window holds the date, soonest
+ * first - [{ event, weeks (to go), phases (the phases active now) }].
+ */
+export function approaching(st, at, showIds = null) {
+  return st.events.filter(e => isBigEvent(e) && e.prep && e.prep.weeks && eventStatus(e) !== 'completed'
+      && (!showIds || eventShows(st, e).some(id => showIds.includes(id))))
+    .map(e => ({ event: e, ...toGo(st, e, at) }))
+    .filter(x => x.before && x.weeks <= x.event.prep.weeks)
+    .sort((a, b) => a.weeks - b.weeks || compareStamps(st, a.event.at, b.event.at))
+    .map(x => ({ event: x.event, weeks: x.weeks, phases: prepPhases(x.event).filter(ph => x.weeks <= ph.from && x.weeks >= ph.to) }));
+}
+/** Is a date inside an event's preparation window (and before the event)? */
+export function inPrep(st, ev, at) {
+  if (!ev.prep || !ev.prep.weeks) return false;
+  const g = toGo(st, ev, at);
+  return g.before && g.weeks <= ev.prep.weeks;
+}
+/** Who has qualified for an event: the winners of its qualifying matches, in order - [{ wrestler, event, match }]. */
+export function qualifiedFor(st, eventId) {
+  const ev = eventById(st, eventId);
+  const out = [];
+  st.events.filter(e => !ev || compareStamps(st, e.at, ev.at) < 0).sort((a, b) => compareStamps(st, a.at, b.at)).forEach(e => e.matches.forEach(m => {
+    if (m.status !== 'played' || !m.prep || m.prep.event !== eventId || m.prep.kind !== 'qualifier' || m.outcome !== 'win') return;
+    m.sides[m.winner].wrestlers.forEach(id => { if (!out.some(x => x.wrestler === id)) out.push({ wrestler: id, event: e, match: m }); });
+  }));
+  return out;
+}
+/** Everything booked for an event's preparation: [{ event (the show it's on), match }], in calendar order. */
+export function prepMatches(st, eventId) {
+  return st.events.flatMap(e => e.matches.filter(m => m.prep && m.prep.event === eventId).map(m => ({ event: e, match: m })))
+    .sort((a, b) => compareStamps(st, a.event.at, b.event.at));
+}
+// a show from this week on: what's booked there can still change (an earlier one's card is history, results entered or not)
+const stillToCome = (st, e) => { const s = activeSeason(st); return e.at.season === s.id && e.at.week >= s.week; };
+// a match booked for an event that has moved: off the card if it no longer fits - never one with a result, one the owner
+// locked, or one on a show from an earlier week
+function syncPrep(st, ev) {
+  let removed = 0;
+  st.events.forEach(e => {
+    if (e.id === ev.id || !stillToCome(st, e)) return;
+    const fits = inPrep(st, ev, e.at);
+    const before = e.matches.length;
+    removeWhere(e.matches, m => m.status === 'scheduled' && !m.locked && m.prep && m.prep.event === ev.id && !fits);
+    removed += before - e.matches.length;
+    if (e.draft) {
+      const n = e.draft.matches.length;
+      removeWhere(e.draft.matches, dm => dm.prep && dm.prep.event === ev.id && !fits && !(dm.auto && dm.auto.edited));
+      removed += n - e.draft.matches.length;
+    }
+  });
+  return removed;
+}
+/**
+ * Reschedule an event - a new week and night, or a universe date ({ year,
+ * month, week } plus day). Its card and results go with it; its preparation
+ * follows its new date: matches booked for it that no longer fit come off
+ * (never one with a result or one locked). Returns { event, removed }.
+ */
+export function moveEvent(st, id, to = {}) {
+  const ev = must(eventById(st, id), 'event', id);
+  const week = to.date ? checkCalendarDate(st, to.date) : to.week == null ? ev.at.week : checkWeek(to.week);
+  const day = to.day == null || to.day === '' ? ev.at.day : checkDay(to.day);
+  if (ev.at.season !== activeSeason(st).id) fail(`${ev.name} is in an earlier season.`);
+  updateEvent(st, id, { week, day });
+  if (ev.recurring) ev.moved = true;                                 // its annual date no longer moves it
+  return { event: ev, removed: syncPrep(st, ev) };
+}
+/**
+ * Change how an event is built toward (`prep`: { weeks, focus, spots }, or
+ * null for nothing). The preparation schedule follows: matches booked toward
+ * it that no longer fit come off - never one with a result, or one locked.
+ * Returns { event, removed }.
+ */
+export function setEventPrep(st, id, prep) {
+  const ev = must(eventById(st, id), 'event', id);
+  if (!isBigEvent(ev)) fail('Only a premium live event or special event is built toward.');
+  updateEvent(st, id, { prep });
+  return { event: ev, removed: syncPrep(st, ev) };
+}
+/** Lock a match on the card, or unlock it: nothing automatic changes or removes a locked match. */
+export function setMatchLocked(st, eventId, matchId, locked) {
+  const { m } = findMatch(st, eventId, matchId);
+  m.locked = !!locked;
+  return m;
+}
+// what a booked match is for, checked: { event, kind, name }
+function prepField(st, input) {
+  if (!input) return null;
+  const ev = must(eventById(st, input.event), 'event', input.event);
+  if (!isBigEvent(ev)) fail('Only a premium live event or special event is built toward.');
+  return { event: ev.id, kind: oneOf(input.kind, PREP_KINDS, 'kind of preparation'), name: ev.name };
+}
+
+// ---------------------------------------------------------------- annual events
+//
+// Recurring events, on the same universe date every year: the month, the
+// week of the month and the night. Each year's is put on the calendar ahead
+// of time (up to a year ahead) as an ordinary event - its own card, results
+// and preparation. Rescheduling one year's leaves the rest alone; changing the
+// annual date moves the ones still to come that haven't been moved by hand;
+// deleting one year's keeps it from coming back.
+const ANNUAL_BASE = [
+  { key: 'royal-rumble', name: 'Royal Rumble', kind: 'ple', month: 0, week: 4, day: 5, brands: 'wwe', prep: { weeks: 4, focus: ['feuds', 'contenders'], spots: 0 } },
+  { key: 'elimination-chamber', name: 'Elimination Chamber', kind: 'ple', month: 1, week: 4, day: 5, brands: 'wwe', prep: { weeks: 4, focus: ['qualifiers', 'feuds'], spots: 6 } },
+  { key: 'wrestlemania', name: 'WrestleMania', kind: 'ple', month: 3, week: 3, day: 5, brands: 'wwe', prep: { weeks: 8, focus: ['feuds', 'contenders', 'teams'], spots: 0 } },
+  { key: 'money-in-the-bank', name: 'Money in the Bank', kind: 'ple', month: 5, week: 4, day: 5, brands: 'wwe', prep: { weeks: 4, focus: ['qualifiers', 'feuds'], spots: 6 } },
+  { key: 'blood-and-guts', name: 'Blood and Guts', kind: 'special', month: 6, week: 2, day: null, brands: 'aew', prep: { weeks: 3, focus: ['teams', 'feuds'], spots: 0 } },
+  { key: 'wargames', name: 'WarGames', kind: 'ple', month: 10, week: 4, day: 5, brands: 'wwe', prep: { weeks: 4, focus: ['teams', 'feuds'], spots: 0 } },
+];
+const LAST_STAND = { month: 3, week: 2, prep: { weeks: 2, focus: ['feuds', 'contenders'], spots: 0 } };
+// the shows an annual event is for by default: WWE's main roster, or AEW's
+function brandShows(st, brand) {
+  const top = st.tiers[0] ? st.tiers[0].shows : st.shows.map(s => s.id);
+  const pick = st.shows.filter(s => top.includes(s.id) && (brand === 'aew' ? s.promotion === 'AEW' : s.promotion === 'WWE')).map(s => s.id);
+  return pick.length ? pick : top.slice(0, 1);
+}
+// the standard ones go by their key (an-wrestlemania, an-last-stand-raw), so setting them up takes no number from the universe's ids
+const keyId = key => `an-${key.replace(/[^a-z0-9-]/gi, '-')}`;
+const lastStandRule = (st, show) => ({ id: keyId(`last-stand:${show.id}`), key: `last-stand:${show.id}`, name: `${show.name}: Last Stand`, kind: 'special',
+  month: LAST_STAND.month, week: LAST_STAND.week, day: show.day, shows: [show.id], prep: copyPrep(LAST_STAND.prep), on: true, skip: [] });
+// the standard annual events, for the shows there are
+function annualSeed(st) {
+  const out = ANNUAL_BASE.map(b => {
+    const shows = brandShows(st, b.brands);
+    const day = b.day == null ? (showById(st, shows[0]) || { day: PLE_DAY }).day : b.day;
+    return { id: keyId(b.key), key: b.key, name: b.name, kind: b.kind, month: b.month, week: b.week, day, shows, prep: copyPrep(b.prep), on: true, skip: [] };
+  });
+  st.shows.forEach(sh => out.push(lastStandRule(st, sh)));
+  return out;
+}
+export const annualById = (st, id) => byId(st.annual, id);
+function annualFields(st, input, self = null) {
+  const base = self || { kind: 'ple', month: 0, week: 1, day: PLE_DAY, shows: [], prep: copyPrep(PREP_DEFAULTS.ple), on: true };
+  const name = has(input, 'name') ? cleanName(input.name) : self ? self.name : '';
+  if (!name) fail('Give the annual event a name.');
+  if (name.length > MAX_NAME) fail(`That name is too long (${MAX_NAME} characters max).`);
+  const kind = has(input, 'kind') ? oneOf(input.kind, ['ple', 'special'], 'event type') : base.kind;
+  const month = has(input, 'month') ? Number(input.month) : base.month;
+  if (!Number.isInteger(month) || month < 0 || month > 11) fail('Pick a month.');
+  const week = has(input, 'week') ? Number(input.week) : base.week;
+  if (!Number.isInteger(week) || week < 1 || week > WEEKS_PER_MONTH) fail(`Pick a week of the month, 1 to ${WEEKS_PER_MONTH}.`);
+  const day = has(input, 'day') ? checkDay(input.day) : base.day;
+  const shows = has(input, 'shows') ? checkShows(st, input.shows) : base.shows;
+  const prep = has(input, 'prep') ? checkPrep(input.prep, base.prep) : copyPrep(base.prep);
+  return { name, kind, month, week, day, shows, prep, on: has(input, 'on') ? !!input.on : base.on };
+}
+/** Add a recurring annual event; it goes on the calendar for the year ahead. */
+export function addAnnual(st, input = {}) {
+  const rule = { id: newId(st, 'an'), key: null, ...annualFields(st, input), skip: [] };
+  st.annual.push(rule);
+  scheduleAnnual(st);
+  return rule;
+}
+/** Change an annual event: the years still to come that haven't been rescheduled by hand follow it. */
+export function updateAnnual(st, id, patch = {}) {
+  const rule = must(annualById(st, id), 'annual event', id);
+  Object.assign(rule, annualFields(st, patch, rule));
+  instancesOf(st, rule).filter(e => eventStatus(e) === 'scheduled').forEach(e => {
+    if (!e.moved) { e.name = rule.name; e.kind = rule.kind; e.shows = [...rule.shows]; e.showId = rule.shows.length === 1 ? rule.shows[0] : null; }
+    e.prep = copyPrep(rule.prep);
+  });
+  // switched off: the years to come that nothing has happened on yet come off the calendar
+  if (!rule.on) instancesOf(st, rule).filter(e => eventStatus(e) === 'scheduled' && !e.matches.length && !e.draft && !e.incidents.length && !e.moved)
+    .forEach(e => { removeWhere(st.events, x => x.id === e.id); removeWhere(st.story.rolls, r => r.event === e.id); });
+  scheduleAnnual(st);
+  return rule;
+}
+/** Stop an event recurring. Each year already on the calendar stays, as a one-off. */
+export function deleteAnnual(st, id) {
+  must(annualById(st, id), 'annual event', id);
+  st.events.forEach(e => { if (e.recurring === id) e.recurring = null; });
+  removeWhere(st.annual, r => r.id === id);
+}
+const instancesOf = (st, rule) => st.events.filter(e => e.recurring === rule.id);
+/**
+ * Put every annual event on the calendar for the year ahead: each one from
+ * this week on, up to 48 weeks out, that isn't there yet (an event of the same
+ * name already planned that year is taken as it), and each year's still to
+ * come follows its annual date unless it was rescheduled by hand. Results,
+ * cards and drafts go with any event that moves. Returns the events it put on
+ * the calendar or moved.
+ */
+export function scheduleAnnual(st) {
+  const s = activeSeason(st);
+  const now = universeDate(st, s.id, s.week);
+  const touched = [];
+  (st.annual || []).filter(r => r.on).forEach(rule => {
+    [now.year, now.year + 1].forEach(year => {
+      if (rule.skip.includes(year)) return;
+      const week = weekOfDate(st, { year, month: rule.month, week: rule.week });
+      const mine = st.events.find(e => e.recurring === rule.id && e.year === year);
+      if (mine) {
+        if (!mine.moved && eventStatus(mine) === 'scheduled' && mine.at.season === s.id && week != null && week >= s.week
+          && (mine.at.week !== week || mine.at.day !== rule.day)) {
+          updateEvent(st, mine.id, { week, day: rule.day });
+          syncPrep(st, mine);
+          touched.push(mine);
+        }
+        return;
+      }
+      if (week == null || week < s.week || universeDate(st, s.id, week).abs - now.abs >= 48) return;
+      const same = st.events.find(e => !e.recurring && isBigEvent(e) && e.at.season === s.id && nameKey(e.name) === nameKey(rule.name)
+        && universeDate(st, e.at.season, e.at.week).year === year);
+      if (same) { Object.assign(same, { recurring: rule.id, year, moved: true }); if (!same.prep) same.prep = copyPrep(rule.prep); touched.push(same); return; }
+      const ev = addEvent(st, { kind: rule.kind, name: rule.name, shows: rule.shows, week, day: rule.day, prep: rule.prep });
+      Object.assign(ev, { recurring: rule.id, year });
+      touched.push(ev);
+    });
+  });
+  return touched;
 }
 
 // ---------------------------------------------------------------- field checks
@@ -1043,13 +1410,14 @@ function eventName(st, kind, showId, week, value) {
   if (name.length > MAX_NAME) fail(`That name is too long (${MAX_NAME} characters max).`);
   if (name) return name;
   if (kind === 'ple') fail('Give the premium live event a name.');
+  if (kind === 'special') fail('Give the special event a name.');
   return `${showById(st, showId).name} · Week ${week}`;
 }
 
-/** The night an episode normally airs: its show's night, or Saturday for a PLE. */
+/** The night an episode normally airs: its show's night (a special event too, for one show), or Saturday for a PLE. */
 export function defaultDay(st, kind, showId) {
   const show = showById(st, showId);
-  return kind === 'weekly' && show ? show.day : PLE_DAY;
+  return (kind === 'weekly' || kind === 'special') && show ? show.day : PLE_DAY;
 }
 
 /**
@@ -1061,13 +1429,19 @@ export function defaultDay(st, kind, showId) {
 export function addEvent(st, input = {}) {
   const season = activeSeason(st);
   const kind = oneOf(input.kind || 'weekly', EVENT_KINDS, 'event type');
-  const showId = checkShowId(st, input.showId);
+  // a big event names its shows (none: every show); a weekly episode is one show's
+  const shows = kind === 'weekly' ? [] : has(input, 'shows') ? checkShows(st, input.shows) : input.showId ? checkShows(st, [input.showId]) : [];
+  const showId = kind === 'weekly' ? checkShowId(st, input.showId) : shows.length === 1 ? shows[0] : null;
   if (kind === 'weekly' && !showId) fail('Pick which show this episode is.');
-  const week = input.week == null || input.week === '' ? season.week : checkWeek(input.week);
-  const day = input.day == null || input.day === '' ? defaultDay(st, kind, showId) : checkDay(input.day);
+  if (kind === 'special' && !shows.length) fail('Pick the show (or shows) the special event is for.');
+  const week = input.date ? checkCalendarDate(st, input.date) : input.week == null || input.week === '' ? season.week : checkWeek(input.week);
+  const dayIn = input.date && input.date.day != null ? input.date.day : input.day;
+  const day = dayIn == null || dayIn === '' ? defaultDay(st, kind, showId) : checkDay(dayIn);
   const name = eventName(st, kind, showId, week, input.name);
   const notes = checkText(input.notes, 'Notes');
-  const ev = { id: newId(st, 'ev'), name, kind, showId, at: stampAt(st, season.id, week, day), notes, matches: [], incidents: [], draft: null };
+  const prep = kind === 'weekly' ? null : checkPrep(input.prep, PREP_DEFAULTS[kind]);
+  const ev = { id: newId(st, 'ev'), name, kind, showId, shows: kind === 'weekly' ? [showId] : shows, at: stampAt(st, season.id, week, day), notes,
+    matches: [], incidents: [], draft: null, prep, recurring: null, year: null, moved: false };
   st.events.push(ev);
   return ev;
 }
@@ -1075,8 +1449,13 @@ export function addEvent(st, input = {}) {
 export function updateEvent(st, id, patch = {}) {
   const ev = must(eventById(st, id), 'event', id);
   const kind = has(patch, 'kind') ? oneOf(patch.kind, EVENT_KINDS, 'event type') : ev.kind;
-  const showId = has(patch, 'showId') ? checkShowId(st, patch.showId) : ev.showId;
+  // a big event's shows: as named (a single show given the old way counts as one named); a weekly episode's, its own
+  const shows = kind === 'weekly' ? null : has(patch, 'shows') ? checkShows(st, patch.shows)
+    : has(patch, 'showId') ? (patch.showId ? checkShows(st, [patch.showId]) : []) : (ev.shows || (ev.showId ? [ev.showId] : []));
+  const showId = kind === 'weekly' ? (has(patch, 'showId') ? checkShowId(st, patch.showId) : ev.showId) : shows.length === 1 ? shows[0] : null;
   if (kind === 'weekly' && !showId) fail('A weekly episode needs a show.');
+  if (kind === 'special' && !shows.length) fail('Pick the show (or shows) the special event is for.');
+  const prep = kind === 'weekly' ? null : has(patch, 'prep') ? checkPrep(patch.prep, ev.prep || PREP_DEFAULTS[kind]) : ev.prep || copyPrep(PREP_DEFAULTS[kind]);
   const week = has(patch, 'week') ? checkWeek(patch.week) : ev.at.week;
   const day = has(patch, 'day') ? checkDay(patch.day) : ev.at.day;
   const linked = st.reigns.filter(r => r.eventId === id);
@@ -1125,7 +1504,7 @@ export function updateEvent(st, id, patch = {}) {
   const name = has(patch, 'name') ? eventName(st, kind, showId, week, patch.name)
     : autoNamed && kind === 'weekly' ? eventName(st, kind, showId, week, '') : ev.name;
   const notes = has(patch, 'notes') ? checkText(patch.notes, 'Notes') : ev.notes;
-  Object.assign(ev, { kind, showId, name, notes });
+  Object.assign(ev, { kind, showId, name, notes, shows: kind === 'weekly' ? [showId] : shows, prep });
   if (moved) {
     const place = x => { x.week = week; if (day == null) delete x.day; else x.day = day; };
     linked.forEach(r => {
@@ -1157,6 +1536,13 @@ export function deleteEvent(st, id) {
   unrel.forEach(f => f());
   ev.incidents.forEach(x => unturn(st, x));                   // turns made there go back with it
   removeWhere(st.story.rolls, r => r.event === id);
+  // an annual event's year, deleted, doesn't come back; what was booked toward it and not played comes off
+  const rule = ev.recurring && annualById(st, ev.recurring);
+  if (rule && ev.year != null && !rule.skip.includes(ev.year)) rule.skip.push(ev.year);
+  st.events.forEach(e => {
+    if (stillToCome(st, e)) removeWhere(e.matches, m => m.status === 'scheduled' && !m.locked && m.prep && m.prep.event === id);
+    if (e.draft) e.draft.matches.forEach(dm => { if (dm.prep && dm.prep.event === id) dm.prep = null; });     // a drafted match stays, for nothing
+  });
 }
 
 /** Events in a season, oldest first: by week, then night, then the order they were added. */
@@ -1342,7 +1728,7 @@ export function bookMatch(st, eventId, input = {}) {
   const ev = must(eventById(st, eventId), 'event', eventId);
   const b = bookingFields(st, input);
   contenderCheck(st, ev, b);
-  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...bookedRecord(b) };
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, locked: !!input.locked, prep: prepField(st, input.prep), ...bookedRecord(b) };
   ev.matches.push(m);
   return m;
 }
@@ -1393,7 +1779,7 @@ export function recordMatch(st, eventId, input = {}, opts = {}) {
   contenderCheck(st, ev, b);
   const r = resultFields(st, input, b.sides);
   const plan = titlePlan(st, ev, null, b, r, opts.titleChange);
-  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, ...playedRecord(b, r) };
+  const m = { id: newId(st, 'm'), relegation: null, qualifier: null, auto: null, locked: false, prep: prepField(st, input.prep), ...playedRecord(b, r) };
   ev.matches.push(m);
   applyPlan(st, ev, m, plan, null);
   return m;
@@ -1534,7 +1920,7 @@ export function resultsHistory(st, filter = {}) {
   const out = [];
   st.events
     .filter(e => (!filter.seasonId || e.at.season === filter.seasonId)
-      && (!filter.showId || (filter.showId === 'ple' ? e.kind === 'ple' : e.showId === filter.showId)))
+      && (!filter.showId || (filter.showId === 'ple' ? isBigEvent(e) : e.showId === filter.showId)))
     .sort((a, b) => compareStamps(st, b.at, a.at))
     .forEach(event => event.matches.forEach((match, i) => { if (match.status === 'played') out.push({ event, match, n: i + 1 }); }));
   return out;
@@ -1619,10 +2005,10 @@ export function setBookerSettings(st, showId, patch = {}) {
 export function resetBookerSettings(st, showId) {
   if (showId) { must(showById(st, showId), 'show', showId); delete st.booker.shows[showId]; } else st.booker.all = {};
 }
-/** How many matches an event's card holds when it's drafted. */
+/** How many matches an event's card holds when it's drafted: a premium live event's or special event's size for a big event. */
 export function cardSize(st, ev) {
-  const s = bookerSettings(st, ev.showId);
-  return ev.kind === 'ple' ? s.pleSize : s.size;
+  const s = bookerSettings(st, ev.showId);                     // a big event for one show: that show's; for more, every show's
+  return isBigEvent(ev) ? s.pleSize : s.size;
 }
 
 function draftEvent(st, eventId) {
@@ -1638,7 +2024,8 @@ function draftMatchOf(st, eventId, dmId) {
 function draftFields(st, input, ev = null) {
   const b = bookingFields(st, input);
   if (ev) contenderCheck(st, ev, b);
-  return { sides: b.sides, titleId: b.title ? b.title.id : null, contender: b.contender ? b.contender.id : null, stip: b.stip, notes: b.notes };
+  return { sides: b.sides, titleId: b.title ? b.title.id : null, contender: b.contender ? b.contender.id : null, stip: b.stip, notes: b.notes,
+    prep: input.prep ? prepField(st, input.prep) : null };
 }
 // why the booker chose a match: its kind, a key naming who and what, a few short sentences, and
 // the story events behind it (ids - kept even if an event is undone later, so the draft can say so)
@@ -1706,7 +2093,7 @@ export function addDraftMatch(st, eventId, input = {}) {
 /** Change a draft match - who's in it, the title, the stipulation, the notes. A drafted one is marked as changed by the owner. */
 export function editDraftMatch(st, eventId, dmId, input = {}) {
   const { ev, dm } = draftMatchOf(st, eventId, dmId);
-  const f = draftFields(st, bookingInput(dm, input), ev);
+  const f = draftFields(st, { ...bookingInput(dm, input), prep: has(input, 'prep') ? input.prep : dm.prep }, ev);
   const before = lineupOf(dm);
   Object.assign(dm, f);
   if (dm.auto && lineupOf(dm) !== before) dm.auto.edited = true;
@@ -1766,7 +2153,8 @@ export function bookDraft(st, eventId) {
     }
   });
   const made = checked.map((b, i) => ({ id: newId(st, 'm'), relegation: null, qualifier: null,
-    auto: d.matches[i].auto ? { ...d.matches[i].auto, why: [...d.matches[i].auto.why], events: [...d.matches[i].auto.events] } : null, ...bookedRecord(b) }));
+    auto: d.matches[i].auto ? { ...d.matches[i].auto, why: [...d.matches[i].auto.why], events: [...d.matches[i].auto.events] } : null,
+    locked: false, prep: d.matches[i].prep ? { ...d.matches[i].prep } : null, ...bookedRecord(b) }));
   ev.matches.push(...made);
   ev.draft = null;
   return made;
@@ -2011,15 +2399,37 @@ export function addShow(st, { name, day = 0, tier = null } = {}) {
   const show = { id: newId(st, 'sh'), name: checkName(st.shows, name, 'show'), promotion: 'Other', color, day: checkDay(day) };
   st.shows.push(show);
   if (tier) setShowTier(st, show.id, tier);
+  st.annual.push(lastStandRule(st, show));                          // every show has its Last Stand
   return show;
 }
-/** Rename a show, or change its night. Episodes already on the calendar keep theirs. */
+/** Rename a show, or change its night. Episodes already on the calendar keep theirs (setShowDay moves them). */
 export function updateShow(st, id, patch = {}) {
   const show = must(showById(st, id), 'show', id);
   const name = patch.name !== undefined ? checkName(st.shows, patch.name, 'show', id) : show.name;
   const day = patch.day !== undefined ? checkDay(patch.day) : show.day;
+  const rule = st.annual.find(r => r.key === `last-stand:${id}`);
+  if (rule && name !== show.name && rule.name === `${show.name}: Last Stand`) rule.name = `${name}: Last Stand`;
   Object.assign(show, { name, day });
   return show;
+}
+/**
+ * Put a weekly show on another night of the week, from now on: its episodes
+ * from this week on that have no results yet move to the new night, and so
+ * do its specials that were on its old night (its Last Stand too). Nothing
+ * with a result moves. Returns how many moved.
+ */
+export function setShowDay(st, id, day) {
+  const show = must(showById(st, id), 'show', id);
+  const old = show.day, to = checkDay(day);
+  if (old === to) return 0;
+  updateShow(st, id, { day: to });
+  const s = activeSeason(st);
+  let moved = 0;
+  st.events.filter(e => e.at.season === s.id && e.at.week >= s.week && e.at.day === old && !cardStatus(e).played
+    && (e.kind === 'weekly' ? e.showId === id : e.kind === 'special' && eventShows(st, e).length === 1 && eventShows(st, e)[0] === id))
+    .forEach(e => { updateEvent(st, e.id, { day: to }); syncPrep(st, e); moved++; });
+  st.annual.filter(r => r.kind === 'special' && r.shows.length === 1 && r.shows[0] === id && r.day === old).forEach(r => { r.day = to; });
+  return moved;
 }
 /** What would stop a show being deleted: anything on record that names it. */
 export function showRefs(st, id) {
@@ -2027,7 +2437,7 @@ export function showRefs(st, id) {
   const on = st.wrestlers.filter(w => w.showId === id).length;
   if (on) refs.push(on === 1 ? 'a wrestler on it' : `${on} wrestlers on it`);
   if (st.moves.some(m => m.from === id || m.to === id)) refs.push('roster moves');
-  if (st.events.some(e => e.showId === id)) refs.push('episodes on the calendar');
+  if (st.events.some(e => e.showId === id || (e.kind === 'special' && (e.shows || []).includes(id)))) refs.push('episodes on the calendar');
   if (st.titles.some(t => t.showId === id)) refs.push('a championship');
   if (st.transitions.some(t => t.shows[id] || (t.parts || []).some(p => p.upper.includes(id) || p.lower.includes(id)))) refs.push('a season transition');
   return refs;
@@ -2042,6 +2452,10 @@ export function deleteShow(st, id) {
   if (t) t.shows = t.shows.filter(x => x !== id);
   removeWhere(st.shows, x => x.id === id);
   delete st.booker.shows[id];
+  // its Last Stand goes with it; other annual events and big events stop naming it
+  st.annual.filter(r => r.key === `last-stand:${id}`).forEach(r => deleteAnnual(st, r.id));
+  st.annual.forEach(r => { r.shows = r.shows.filter(x => x !== id); });
+  st.events.forEach(e => { if (Array.isArray(e.shows)) e.shows = e.shows.filter(x => x !== id); });
   fixDestinations(st);
 }
 
@@ -2382,7 +2796,7 @@ export function bookRelegation(st, trId, showId, eventId, pairIds = null) {
   cfg.pairs = t.pairs.map(p => ({ id: p.id || newId(st, 'rp'), a: p.a, b: p.b, matches: [...p.matches], decision: p.decision }));
   return todo.map(p => {
     const pair = cfg.pairs.find(x => x.a === p.a && x.b === p.b);
-    const m = { id: newId(st, 'm'), relegation: { transition: tr.id, show: showId, pair: pair.id }, qualifier: null, auto: null,
+    const m = { id: newId(st, 'm'), relegation: { transition: tr.id, show: showId, pair: pair.id }, qualifier: null, auto: null, locked: false, prep: null,
       ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Relegation match' })) };
     ev.matches.push(m);
     pair.matches.push(m.id);
@@ -2769,7 +3183,7 @@ export function bookQualifiers(st, trId, eventId, pairIds = null) {
   p.pairs = t.pairs.map(x => ({ id: x.id || newId(st, 'rp'), a: x.a, b: x.b, matches: [...x.matches], decision: x.decision }));
   return todo.map(x => {
     const pair = p.pairs.find(y => y.a === x.a && y.b === x.b);
-    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, link: part.link, pair: pair.id }, auto: null,
+    const m = { id: newId(st, 'm'), relegation: null, qualifier: { transition: trId, link: part.link, pair: pair.id }, auto: null, locked: false, prep: null,
       ...bookedRecord(bookingFields(st, { sides: [{ wrestlers: [pair.a] }, { wrestlers: [pair.b] }], stip: 'Qualifying match' })) };
     ev.matches.push(m);
     pair.matches.push(m.id);
@@ -3804,6 +4218,25 @@ export function migrate(raw) {
     (st.story && Array.isArray(st.story.rolls) ? st.story.rolls : []).forEach(r => { if (r && typeof r === 'object') r.match = null; });
     st.version = 14;
   }
+  if (st.version === 14) {
+    // v15: the universe calendar. It begins in the month and year the first dated season began in (or January 2026), and
+    // nothing recorded moves. Every PLE so far named one show or every show, and was built toward for 4 weeks, as the
+    // booker always did; nothing was locked, recurring or booked for an event; the standard annual events are set up,
+    // and go on the calendar from now on.
+    const dated = [...st.seasons].sort((a, b) => a.number - b.number).find(x => x && isIsoDate(x.start));
+    st.calendar = dated ? { month: Number(dated.start.slice(5, 7)) - 1, year: Number(dated.start.slice(0, 4)) } : { ...DEFAULT_CALENDAR };
+    st.events.forEach(e => {
+      if (!e || typeof e !== 'object') return;
+      e.shows = e.kind === 'weekly' ? [e.showId] : e.showId ? [e.showId] : [];
+      e.prep = e.kind === 'weekly' ? null : copyPrep(PREP_DEFAULTS.ple);
+      Object.assign(e, { recurring: null, year: null, moved: false });
+      (Array.isArray(e.matches) ? e.matches : []).forEach(m => { if (m && typeof m === 'object') { m.locked = false; m.prep = null; } });
+      if (e.draft && Array.isArray(e.draft.matches)) e.draft.matches.forEach(m => { if (m && typeof m === 'object') m.prep = null; });
+    });
+    if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
+    st.annual = annualSeed(st);
+    st.version = 15;
+  }
   if (!Array.isArray(st.tiers) || !Array.isArray(st.links)) seedTiers(st);
   if (!st.booker || typeof st.booker !== 'object') st.booker = newBooker();
   st.events.forEach(e => {
@@ -3819,6 +4252,8 @@ export function migrate(raw) {
     for (const [k, v] of [['cause', []], ['basis', null], ['phase', null], ['turn', null], ['edited', false], ['story', null]]) if (x[k] === undefined) x[k] = v;
   }));
   for (const k of ['transitions', 'relegations', 'eligibility', 'drafts', 'traitLog', 'relEdits']) if (!Array.isArray(st[k])) st[k] = [];
+  if (!st.calendar || typeof st.calendar !== 'object') st.calendar = { ...DEFAULT_CALENDAR };
+  if (!Array.isArray(st.annual)) st.annual = [];
   return st;
 }
 
@@ -3929,6 +4364,19 @@ export function validate(st) {
     if (e.teams ? !teamById(st, e.a) || !teamById(st, e.b) || e.a === e.b
       : !wrestlerById(st, e.a) || !wrestlerById(st, e.b) || e.a === e.b) bad.push(`${where} names the wrong ${e.teams ? 'tag teams' : 'wrestlers'}.`);
     if (['form', 'level'].includes(e.action) && ![1, 2, 3].includes(e.level)) bad.push(`${where} has a broken level.`);
+  });
+  const cal = st.calendar;
+  if (!cal || !Number.isInteger(cal.month) || cal.month < 0 || cal.month > 11 || !Number.isInteger(cal.year) || cal.year < MIN_YEAR || cal.year > MAX_YEAR) {
+    bad.push('The universe calendar is unreadable.');
+  }
+  if (!Array.isArray(st.annual)) bad.push('The annual events are unreadable.');
+  else st.annual.forEach(r => {
+    if (!r || typeof r.id !== 'string' || typeof r.name !== 'string' || !r.name || !['ple', 'special'].includes(r.kind)
+      || !Number.isInteger(r.month) || r.month < 0 || r.month > 11 || !Number.isInteger(r.week) || r.week < 1 || r.week > WEEKS_PER_MONTH
+      || !night(r.day) || !Array.isArray(r.shows) || r.shows.some(id => !showById(st, id)) || !prepOk(r.prep) || typeof r.on !== 'boolean'
+      || !Array.isArray(r.skip) || r.skip.some(y => !Number.isInteger(y)) || !(r.key === null || typeof r.key === 'string')) {
+      bad.push(`The annual event ${r && r.name ? r.name : ''} is unreadable.`);
+    }
   });
   const sto = st.story;
   if (typeof sto.on !== 'boolean' || !STORY_PACES.includes(sto.pace) || !Number.isInteger(sto.seed) || sto.seed < 0
@@ -4065,6 +4513,12 @@ export function validate(st) {
     if (!Array.isArray(e.matches)) bad.push(`${e.name} has no results list.`);
     if (!EVENT_KINDS.includes(e.kind)) bad.push(`${e.name} has an unknown type.`);
     if (!showOk(e.showId) || (e.kind === 'weekly' && !e.showId)) bad.push(`${e.name} is on a show that doesn't exist.`);
+    if (!Array.isArray(e.shows) || e.shows.some(id => !showById(st, id)) || new Set(e.shows).size !== e.shows.length
+      || (e.kind === 'weekly' ? e.shows.length !== 1 || e.shows[0] !== e.showId : e.showId !== (e.shows.length === 1 ? e.shows[0] : null))
+      || (e.kind === 'special' && !e.shows.length)) bad.push(`${e.name} names its shows wrongly.`);
+    if (e.kind === 'weekly' ? e.prep !== null : !prepOk(e.prep)) bad.push(`${e.name} has an unreadable preparation schedule.`);
+    if (!(e.recurring === null || annualById(st, e.recurring)) || !(e.year === null || Number.isInteger(e.year)) || typeof e.moved !== 'boolean'
+      || (e.recurring && e.kind === 'weekly')) bad.push(`${e.name} is linked to an annual event wrongly.`);
     stamp(e.at, e.name);
     if (e.at && !night(e.at.day)) bad.push(`${e.name} has no night of the week.`);
     // who's in a match (or a draft of one) and what's at stake
@@ -4086,6 +4540,8 @@ export function validate(st) {
         if (s && s.team && !teamById(st, s.team)) bad.push(`${where} names a tag team that doesn't exist.`);
       });
       if (!(m.auto === null || autoOk(m.auto))) bad.push(`${where} has an unreadable reason from the auto booker.`);
+      if (!(m.prep === null || (m.prep && typeof m.prep === 'object' && PREP_KINDS.includes(m.prep.kind) && typeof m.prep.name === 'string'
+        && (m.prep.event === null || typeof m.prep.event === 'string')))) bad.push(`${where} says it was booked toward an event, unreadably.`);
       return sides;
     };
     if (e.draft !== null) {
@@ -4107,6 +4563,7 @@ export function validate(st) {
     (e.matches || []).forEach(m => {
       const where = `A match at ${e.name}`;
       if (!MATCH_STATUSES.includes(m.status)) { bad.push(`${where} is neither booked nor played.`); return; }
+      if (typeof m.locked !== 'boolean') bad.push(`${where} is unreadable.`);
       const sides = lineup(m, where);
       if (m.relegation != null) {
         const rl = m.relegation, t = transitionById(st, rl.transition);

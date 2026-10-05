@@ -12,13 +12,14 @@
 // later depends on it.
 import * as M from './model.js';
 import {
-  ICON, LABEL, chip, empty, esc, eventWhen, fallLine, field, isoText, kindChip, labelPairs, matchLine, options,
-  findable, select, showColor, showName, showPairs, sideName, teamOptions, titleOptions, vsLine, wrestlerOptions,
+  ICON, LABEL, chip, empty, esc, eventShowsText, eventWhen, fallLine, field, kindChip, labelPairs, matchLine, options,
+  findable, select, showColor, showName, showPairs, sideName, statusBadge, teamOptions, titleOptions, vsLine, wrestlerOptions,
 } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, paintSheet, pushPage, swapPage, toast, uni } from './app.js';
 import { uvIncidentsBlock, uvRelBefore, uvRelNews } from './personality.js';
 import { uvDirect, uvDirectedToast, uvMatchStory, uvStoryBlock } from './story.js';
 import { uvAutoLine, uvDraftBlock } from './autobook.js';
+import { PREP_LABEL, uvBigEventDetails, uvPrepBlock } from './calendar.js';
 
 export function uvOpenEvent(id) { pushPage('event', id); }
 /** Move to another show from a show's page, without stacking up Back steps. */
@@ -49,37 +50,9 @@ export function uvPlanShow(showId, week) {
   if (r.ok) uvOpenEvent(r.value.id);
 }
 
-let pleDraft = null;
-
-/** A premium live event: its own name, any show or all of them, any night. */
-export function uvNewPle(week) {
-  pleDraft = { name: '', showId: '', week: String(week), day: String(M.PLE_DAY) };
-  openSheet(() => {
-    const st = uni();
-    const d = pleDraft;
-    return {
-      title: 'Premium live event',
-      body: `
-        ${field('Name', `<input id="uvPleName" class="uv-in" maxlength="60" value="${esc(d.name)}" placeholder="e.g. WrestleMania"
-          oninput="uvPleSet('name',this.value)">`, 'wide')}
-        <div class="uv-grid" style="margin-top:10px">
-          ${field('Show', select(`uvPleSet('showId',this.value)`, options(showPairs(st, 'All shows'), d.showId)), 'wide')}
-          ${field('Week', `<input class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${esc(d.week)}"
-            oninput="uvPleSet('week',this.value)">`)}
-          ${field('Night', select(`uvPleSet('day',this.value)`, options(M.DAYS.map((n, i) => [String(i), n]), d.day)))}
-        </div>
-        <div class="uv-btn pri full" onclick="uvCreatePle()">Add to the calendar</div>`,
-    };
-  });
-}
-export function uvPleSet(k, v) { pleDraft[k] = v; }
-export function uvCreatePle() {
-  const d = pleDraft;
-  const r = planEvent({ kind: 'ple', name: d.name, showId: d.showId, week: d.week, day: d.day }, e => `${e.name} added`);
-  if (r.ok) { closeSheet(); uvOpenEvent(r.value.id); }
-}
-
 export function uvEventDetails(id) {
+  const ev = M.eventById(uni(), id);
+  if (ev && M.isBigEvent(ev)) { uvBigEventDetails(id); return; }
   openSheet(() => {
     const st = uni();
     const e = M.eventById(st, id);
@@ -91,14 +64,14 @@ export function uvEventDetails(id) {
       body: `
         ${field('Name', `<input class="uv-in" maxlength="60" value="${esc(e.name)}" onchange="${set('name')}">`, 'wide')}
         <div class="uv-grid" style="margin-top:10px">
-          ${field('Show', select(set('showId'), options(showPairs(st, e.kind === 'ple' ? 'All shows' : ''), e.showId || '')), 'wide')}
+          ${field('Show', select(set('showId'), options(showPairs(st, ''), e.showId || '')), 'wide')}
           ${field('Week', `<input id="uvEvWeek" class="uv-in" type="number" min="1" max="999" inputmode="numeric" value="${e.at.week}" onchange="${set('week')}">`)}
           ${field('Night', select(set('day'), options(M.DAYS.map((n, i) => [String(i), n]), String(e.at.day)), ' id="uvEvDay"'))}
           ${field('Notes', `<textarea class="uv-in" rows="2" maxlength="2000" onchange="${set('notes')}">${esc(e.notes)}</textarea>`, 'wide')}
         </div>
         ${changed ? '<div class="fine">A title changed hands here, so a new week or night moves that title change with it — as long as the title’s history still reads in order.</div>' : ''}
         <div class="uv-btn full" onclick="uvCloseSheet()">Done</div>
-        <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete this ${e.kind === 'ple' ? 'event' : 'episode'}</div>`,
+        <div class="uv-btn bad full" onclick="uvDeleteEvent('${id}')">Delete this episode</div>`,
     };
   });
 }
@@ -110,9 +83,12 @@ export function uvDeleteEvent(id) {
   const { played, booked } = M.cardStatus(e);
   const titles = st.reigns.filter(r => r.eventId === id).map(r => M.titleById(st, r.titleId).name);
   const parts = [played && `${played} result${played === 1 ? '' : 's'}`, booked && `${booked} booked match${booked === 1 ? '' : 'es'}`].filter(Boolean);
+  const toward = M.prepMatches(st, id).filter(x => x.match.status === 'scheduled' && !x.match.locked).length;
   confirmThen(`Delete ${e.name}?`,
     (parts.length ? `Its ${parts.join(' and ')} go with it.` : 'Nothing is booked on it yet.')
-    + (titles.length ? ` The ${titles.join(' and the ')} will go back to whoever held ${titles.length === 1 ? 'it' : 'them'} before.` : ''),
+    + (titles.length ? ` The ${titles.join(' and the ')} will go back to whoever held ${titles.length === 1 ? 'it' : 'them'} before.` : '')
+    + (toward ? ` ${toward === 1 ? 'A match' : `${toward} matches`} booked toward it and not played come${toward === 1 ? 's' : ''} off too (locked ones stay).` : '')
+    + (e.recurring ? ' It’s an annual event: this year’s won’t come back.' : ''),
     'Delete', () => { if (commit(s => M.deleteEvent(s, id), `${e.name} deleted`).ok) closeSheet(); });
 }
 
@@ -138,7 +114,7 @@ function matchCard(st, ev, m, i) {
   const qual = m.qualifier && st.eligibility.find(e => e.match === m.id && e.source === 'qualifier');
   const move = d => `<div class="uv-ic mv" title="Move ${d < 0 ? 'up' : 'down'}" onclick="uvMoveMatch('${ev.id}','${m.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
   return `<div class="uv-mc ${m.status}" data-m="${m.id}">
-    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.relegation ? chip('Relegation', 'bad') : ''}${m.qualifier ? chip('Qualifier', 'gold') : ''}${title ? chip(title.name, 'gold') : ''}${cfor ? chip(`#1 contender · ${cfor.name}`, 'gold') : ''}${m.stip && !m.relegation && !m.qualifier ? chip(m.stip) : ''}
+    <div class="uv-mc-top"><span class="n">${i + 1}</span>${kindChip(m)}${m.locked ? chip('Locked', 'lock') : ''}${m.prep ? prepChip(st, m) : ''}${m.relegation ? chip('Relegation', 'bad') : ''}${m.qualifier ? chip('Qualifier', 'gold') : ''}${title ? chip(title.name, 'gold') : ''}${cfor ? chip(`#1 contender · ${cfor.name}`, 'gold') : ''}${m.stip && !m.relegation && !m.qualifier ? chip(m.stip) : ''}
       <span class="st">${played ? 'Result' : 'Booked'}</span></div>
     <div class="uv-mc-body">${played ? matchLine(st, m) : vsLine(st, m)}</div>
     ${detail ? `<div class="uv-mc-d">${detail}</div>` : ''}
@@ -157,9 +133,15 @@ function matchCard(st, ev, m, i) {
       ${played ? `<div class="uv-btn sm2" onclick="uvCorrectResult('${ev.id}','${m.id}')">${ICON.edit}Correct</div>`
         : `<div class="uv-btn pri sm2" onclick="uvEnterResult('${ev.id}','${m.id}')">Enter result</div>
            <div class="uv-btn sm2" onclick="uvEditBooking('${ev.id}','${m.id}')">${ICON.edit}Edit</div>`}
-      <span class="sp"></span>${move(-1)}${move(1)}
+      <span class="sp"></span>${played ? '' : `<div class="uv-ic mv${m.locked ? ' on' : ''}" data-lock="${m.id}" title="${m.locked ? 'Unlock' : 'Lock: nothing automatic changes or removes it'}"
+        onclick="uvLockMatch('${ev.id}','${m.id}',${!m.locked})">${m.locked ? ICON.lock : ICON.unlock}</div>`}${move(-1)}${move(1)}
     </div>
   </div>`;
+}
+/** What a match was booked toward: "Qualifier · Money in the Bank". */
+export function prepChip(st, m) {
+  const ev = M.eventById(st, m.prep.event);
+  return chip(`${PREP_LABEL[m.prep.kind] || m.prep.kind} · ${ev ? ev.name : m.prep.name}`, 'gold');
 }
 
 /** The event page: when and where, where the card stands, and the card itself. */
@@ -173,11 +155,11 @@ export function uvEventPage(id) {
     title: e.name,
     body: `
       ${showNav(st, e)}
-      <div class="uv-evhead" style="--c:${showColor(st, e.showId)}">
-        <div class="k">${esc(LABEL.event[e.kind])} · ${esc(e.showId ? showName(st, e.showId) : 'All shows')}</div>
+      <div class="uv-evhead" style="--c:${M.isBigEvent(e) ? 'var(--uv-gold)' : showColor(st, e.showId)}">
+        <div class="k">${esc(LABEL.event[e.kind])} · ${esc(eventShowsText(st, e))}${e.recurring ? ' · every year' : ''}</div>
         <div class="nm">${esc(e.name)}</div>
-        <div class="s">${esc(eventWhen(st, e, true))}${M.calendarDate(st, e.at.season, e.at.week, e.at.day) ? ` · week ${e.at.week}` : ''} · ${esc(season.name)}</div>
-        <div class="st"><span class="uv-state ${e.draft && !c.total ? 'draft' : c.state}"></span>${e.draft && !c.total ? 'Draft card waiting — nothing booked yet' : STATUS_TEXT[c.state](c)}</div>
+        <div class="s">${esc(eventWhen(st, e, true))} · week ${e.at.week} · ${esc(season.name)}</div>
+        <div class="st">${statusBadge(e)}<span class="uv-state ${e.draft && !c.total ? 'draft' : c.state}"></span>${e.draft && !c.total ? 'Draft card waiting — nothing booked yet' : STATUS_TEXT[c.state](c)}</div>
       </div>
       <div class="uv-page-acts">
         <div class="uv-btn pri" onclick="uvBookMatch('${id}')">${ICON.plus}Book a match</div>
@@ -186,6 +168,7 @@ export function uvEventPage(id) {
       ${e.draft ? '' : uvDraftBlock(st, e)}
       ${transitionLink(st, e)}
       ${e.notes ? `<div class="uv-note">${esc(e.notes)}</div>` : ''}
+      ${uvPrepBlock(st, e)}
       ${uvStoryBlock(st, e, 'pre')}
       ${c.total || !e.draft ? `<div class="uv-sec"><span class="t">The card</span>${c.total ? `<span class="n">${c.total}</span>` : ''}</div>` : ''}
       ${c.total ? `<div class="uv-cards">${e.matches.map((m, i) => matchCard(st, e, m, i)).join('')}</div>`
@@ -197,7 +180,7 @@ export function uvEventPage(id) {
         <div class="h">Fix a mistake</div>
         <div class="fine">A result entered wrong: tap <b>Correct</b> on it. You can change anything, clear the result
           so the match is booked again, or take the match off the card. Records and title histories follow.</div>
-        <div class="uv-fixrow bad" onclick="uvDeleteEvent('${id}')">${ICON.x}<div><b>Delete this ${e.kind === 'ple' ? 'event' : 'episode'}</b>
+        <div class="uv-fixrow bad" onclick="uvDeleteEvent('${id}')">${ICON.x}<div><b>Delete this ${M.isBigEvent(e) ? 'event' : 'episode'}</b>
           <span>Takes its bookings and results with it</span></div></div>
       </div>`,
   };
@@ -546,31 +529,3 @@ export function uvMDelete() {
       if (commit(s => M.deleteMatch(s, d.eventId, d.matchId), () => `Match removed${uvRelNews(before)}`).ok) closeSheet();
     });
 }
-
-// ================================================================ season dates
-
-export function uvSeasonDates(id) {
-  openSheet(() => {
-    const s = M.seasonById(uni(), id);
-    if (!s) return null;
-    return {
-      title: 'Season dates',
-      body: `
-        <p class="uv-p">Pin ${esc(s.name)} to the calendar so every show gets a date — match it to your WWE 2K25 Universe
-          calendar. Pick any day in week 1; weeks run Monday to Sunday.</p>
-        ${field('Week 1 includes', `<input id="uvSeasonStart" class="uv-in" type="date" value="${esc(s.start || '')}">`, 'wide')}
-        ${s.start ? `<p class="uv-p">Week 1 is the week of ${esc(isoText(M.calendarDate(uni(), id, 1, 0)))}.</p>` : ''}
-        <div class="uv-btn pri full" onclick="uvSaveSeasonStart('${id}')">Save</div>
-        ${s.start ? `<div class="uv-btn full" onclick="uvClearSeasonStart('${id}')">Go back to plain weeks</div>` : ''}`,
-    };
-  });
-}
-export function uvSaveSeasonStart(id) {
-  const v = document.getElementById('uvSeasonStart').value;
-  if (!v) { toast('Pick a date first.', true); return; }
-  if (commit(st => M.setSeasonStart(st, id, v), 'Dates set').ok) closeSheet();
-}
-export function uvClearSeasonStart(id) {
-  if (commit(st => M.setSeasonStart(st, id, ''), 'Back to plain weeks').ok) closeSheet();
-}
-

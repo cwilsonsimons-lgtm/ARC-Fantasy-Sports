@@ -162,8 +162,11 @@ export function uvStepWeek(d) {
   if (d > 0) keepRestore(`End of ${season.name} · Week ${season.week}`, 'weekly');     // one to go back to, if the week goes wrong
   uvCalFollow();
   let runs = [];
-  // moving on: last week's shows are done, and this week's first show is next up - the story director catches up
-  commit(st => { M.setWeek(st, week); if (d > 0) runs = uvDirect(st); }, () => `Week ${week}${uvDirectedToast(runs)}`);
+  // moving on: last week's shows are done, and this week's first show is next up - the story director catches up.
+  // The year's annual events go on the calendar as it comes round; no match gets a result it wasn't given.
+  let added = [];
+  commit(st => { M.setWeek(st, week); added = M.scheduleAnnual(st); if (d > 0) runs = uvDirect(st); },
+    () => `Week ${week}${added.length ? ` — ${added.map(e => e.name).join(', ')} on the calendar` : ''}${uvDirectedToast(runs)}`);
 }
 export function uvNextSeason() {
   const st = uni();
@@ -173,7 +176,7 @@ export function uvNextSeason() {
     `${cur.name} ends at week ${cur.week}. Rosters, tag teams and champions all carry over; its events stay in the history.`,
     `Start Season ${next}`, () => {
       uvFollowActiveSeason();
-      commit(s => M.startNextSeason(s), s => `${s.name} has begun`);
+      commit(s => { const x = M.startNextSeason(s); M.scheduleAnnual(s); return x; }, s => `${s.name} has begun`);
     });
 }
 export function uvRenameSeason(id) {

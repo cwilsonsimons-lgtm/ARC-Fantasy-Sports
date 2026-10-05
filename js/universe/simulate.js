@@ -93,7 +93,8 @@ export function stepWeek(sim) {
   if (sim.week > sim.to) return false;
   const st = sim.copy, w = sim.week;
   if (M.activeSeason(st).week !== w) M.setWeek(st, w);
-  // every show's episode on the calendar, as the owner would plan the week
+  M.scheduleAnnual(st);                                           // the year's annual events, as the app puts them on the calendar
+  // every show's episode on the calendar (a special event in its place), as the owner would plan the week
   B.weekPlan(st, w).forEach(r => { if (r.action === 'plan') M.addEvent(st, { showId: r.show.id, week: w }); });
   const season = M.activeSeason(st).id;
   const evs = st.events.filter(e => e.at.season === season && e.at.week === w).sort((a, b) => M.compareStamps(st, a.at, b.at));

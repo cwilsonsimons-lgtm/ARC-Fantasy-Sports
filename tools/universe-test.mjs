@@ -3225,7 +3225,7 @@ test('simulate ahead: favourites usually win; "anyone can win" is even', () => {
   M.setStory(st, { on: false });
   const [A, B] = ['Ace', 'Jobber'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
   const ev = M.addEvent(st, { showId: 'raw' });
-  for (let i = 0; i < 10; i++) M.recordMatch(st, ev.id, { sides: S([A.id, B.id]), winner: 0 });
+  for (let i = 0; i < 10; i++) M.recordMatch(st, ev.id, { sides: S([A.id, B.id]), winner: i % 3 === 2 ? 1 : 0 });   // 7-3
   const tally = results => {
     const won = [0, 0, 0];
     for (let seed = 1; seed <= 300; seed++) {
@@ -3238,7 +3238,7 @@ test('simulate ahead: favourites usually win; "anyone can win" is even', () => {
     return won;
   };
   const form = tally('form'), even = tally('even');
-  assert.ok(form[0] > 0.75 * 300 && form[1] > 0, `favourite ${form[0]}, upsets ${form[1]}`);
+  assert.ok(form[0] > 0.6 * 300 && form[1] > 0.08 * 300, `favourite ${form[0]}, upsets ${form[1]}`);
   assert.ok(Math.abs(even[0] - even[1]) < 60, `even ${even}`);
   assert.ok(form[2] > 0 && form[2] < 30, 'a draw or no contest now and then');
   // a title changes hands when the challenger wins it, and only then
@@ -3597,13 +3597,15 @@ test('new incidents: confrontations, alliances, tension, truces, open challenges
   const { st, G, J, Sa, K, Se, title, team, show } = directorWorld({ pace: 'quiet' });
   M.setStory(st, { on: false });
   const ev = show();
-  const rel = () => [...RL.relationships(st).rels.values()].filter(r => r.active).map(r => `${RL.relText(st, r)}${RL.levelText(r) ? ` ${r.level}` : ''}`).sort();
+  // (two-way relationships with their names in alphabetical order: "Kevin and Sami are allies")
+  const both = t => t.replace(/^(\S+) and (\S+) are /, (x, a, b) => `${[a, b].sort().join(' and ')} are `);
+  const rel = () => [...RL.relationships(st).rels.values()].filter(r => r.active).map(r => both(`${RL.relText(st, r)}${RL.levelText(r) ? ` ${r.level}` : ''}`)).sort();
   M.recordIncident(st, ev.id, { kind: 'confrontation', by: [G.id], on: [J.id] });
   M.recordIncident(st, ev.id, { kind: 'brawl', by: [G.id], on: [J.id] });
   M.recordIncident(st, ev.id, { kind: 'alliance', by: [Se.id], on: [G.id] });
-  assert.deepEqual(rel(), ['Gunther and Jey are rivals 2', 'Gunther holds a grudge against Jey 1', 'Jey holds a grudge against Gunther 1', 'Kevin and Sami are allies 3', 'Seth and Gunther are allies 1'].sort());
+  assert.deepEqual(rel(), ['Gunther and Jey are rivals 2', 'Gunther holds a grudge against Jey 1', 'Jey holds a grudge against Gunther 1', 'Kevin and Sami are allies 3', 'Gunther and Seth are allies 1'].sort());
   M.recordIncident(st, ev.id, { kind: 'truce', by: [J.id], on: [G.id] });
-  assert.deepEqual(rel(), ['Gunther and Jey are rivals 1', 'Kevin and Sami are allies 3', 'Seth and Gunther are allies 1'].sort());
+  assert.deepEqual(rel(), ['Gunther and Jey are rivals 1', 'Kevin and Sami are allies 3', 'Gunther and Seth are allies 1'].sort());
   M.recordIncident(st, ev.id, { kind: 'tension', by: [K.id], on: [Sa.id], team: team.id });
   assert.ok(rel().includes('Kevin and Sami are allies 2'), 'tension inside a team costs a little trust');
   M.recordIncident(st, ev.id, { kind: 'open-challenge', by: [G.id], title: title.id });
@@ -4086,7 +4088,9 @@ test('a version 9 save: nothing drafted, nothing auto-booked, every show on its 
   assert.equal(up.version, M.SCHEMA_VERSION);
   assert.deepEqual(up.booker, { shows: {}, all: {} });
   assert.ok(up.events.every(e => e.draft === null && e.matches.every(m => m.auto === null)));
-  assert.deepEqual(up, st);
+  // (the annual events are set up afresh on the way, with new ids)
+  const same = x => ({ ...x, nextId: 0, annual: x.annual.map(({ id, ...r }) => r) });
+  assert.deepEqual(same(up), same(st));
   sound(up);
 });
 
@@ -4342,4 +4346,375 @@ test('a version 10 save: drafted and booked matches get no story events, drafts 
   assert.deepEqual(B.sinceDraft(up, e), { incidents: [], results: 0 });
   sound(up);
   assert.ok(id('Cody'));
+});
+
+// ---------------------------------------------------------------- the universe calendar
+//
+// Twelve months of exactly four weeks, seven days a week. Big events name
+// their shows and how they're built toward; annual events recur; the booker
+// and the story director read it all; moving an event moves its build-up -
+// never a result, never a locked match.
+
+const calWorld = () => {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const add = (name, showId, gender = 'male') => M.addWrestler(st, { name, showId, gender });
+  ['Cody', 'Gunther', 'Jey', 'Seth', 'Drew', 'Sami'].forEach(n => add(n, 'raw'));
+  ['Roman', 'Solo', 'LA', 'Randy'].forEach(n => add(n, 'smackdown'));
+  ['Moxley', 'Hangman', 'Swerve', 'Darby'].forEach(n => add(n, 'dynamite'));
+  ['Oba', 'Trick'].forEach(n => add(n, 'nxt'));
+  ['Kali', 'Jackson'].forEach(n => add(n, 'evolve'));
+  const id = n => st.wrestlers.find(w => w.name === n).id;
+  return { st, id };
+};
+const ud = (st, week, day = null) => { const d = M.universeDate(st, M.activeSeason(st).id, week, day); return `${M.MONTHS[d.month]} ${d.year} w${d.week}${day == null ? '' : ` d${d.date}`}`; };
+const played = st => st.events.reduce((n, e) => n + e.matches.filter(m => m.status === 'played').length, 0);
+
+test('the universe calendar: four weeks a month, seven days a week, and on into the next month and year', () => {
+  const { st } = calWorld();
+  M.setCalendar(st, { month: 2, year: 2026 });                       // the universe began in March 2026
+  // a whole month: weeks 1-4 are March's weeks 1-4, Monday to Sunday, days 1 to 28
+  for (let w = 1; w <= 4; w++) {
+    assert.equal(ud(st, w), `March 2026 w${w}`);
+    assert.equal(ud(st, w, 0), `March 2026 w${w} d${(w - 1) * 7 + 1}`, 'Monday');
+    assert.equal(ud(st, w, 6), `March 2026 w${w} d${w * 7}`, 'Sunday');
+  }
+  assert.equal(M.DAYS_PER_MONTH, 28);
+  // ...and the next: week 5 is the first week of April, day 1 - whatever the real calendar says about March having 31 days
+  assert.equal(ud(st, 5, 0), 'April 2026 w1 d1');
+  assert.equal(ud(st, 8, 6), 'April 2026 w4 d28');
+  // a year is 48 weeks: December's last week, then January of the next year
+  assert.equal(ud(st, 40), 'December 2026 w4');
+  assert.equal(ud(st, 41, 0), 'January 2027 w1 d1');
+  assert.equal(M.weekOfDate(st, { year: 2027, month: 0, week: 1 }), 41);
+  assert.equal(M.weekOfDate(st, { year: 2026, month: 1, week: 4 }), null, 'February 2026 is before the universe began');
+  // seasons run straight on: a second season begins in the week after the first ended
+  M.setWeek(st, 10);
+  M.startNextSeason(st);
+  assert.equal(ud(st, 1), 'May 2026 w3', 'season 1 had 10 weeks: season 2 starts in its 11th');
+  const s1 = st.seasons[0].id;
+  assert.deepEqual(M.seasonWeekOf(st, { year: 2026, month: 3, week: 2 }), { season: s1, week: 6 });
+  assert.deepEqual(M.seasonWeekOf(st, { year: 2026, month: 4, week: 3 }), { season: M.activeSeason(st).id, week: 1 });
+  sound(st);
+});
+
+test('a complete four-week month on the calendar, and advancing into the next one invents nothing', () => {
+  const { st, id } = calWorld();
+  M.setCalendar(st, { month: 0, year: 2026 });
+  const s = M.activeSeason(st);
+  const one = (ev, w, l) => M.recordMatch(st, ev.id, { sides: [{ wrestlers: [id(w)] }, { wrestlers: [id(l)] }], winner: 0 });
+  // January: every show's episode every week, on its night; the Royal Rumble on its annual date
+  const month = [];
+  for (let w = 1; w <= 4; w++) {
+    M.setWeek(st, w);
+    M.scheduleAnnual(st);
+    B.weekPlan(st, w).forEach(r => { if (r.action === 'plan') M.addEvent(st, { showId: r.show.id, week: w }); });
+    month.push(M.eventsIn(st, s.id).filter(e => e.at.week === w).map(e => `${M.DAYS[e.at.day].slice(0, 3)} ${M.stampDate(st, e.at).date} ${e.name}`));
+  }
+  assert.deepEqual(month[0], ['Mon 1 Raw · Week 1', 'Tue 2 NXT · Week 1', 'Wed 3 Dynamite · Week 1', 'Wed 3 Evolve · Week 1', 'Fri 5 SmackDown · Week 1']);
+  assert.deepEqual(month[3], ['Mon 22 Raw · Week 4', 'Tue 23 NXT · Week 4', 'Wed 24 Dynamite · Week 4', 'Wed 24 Evolve · Week 4', 'Fri 26 SmackDown · Week 4',
+    'Sat 27 Royal Rumble']);
+  // results come only from the owner: one in week 1, one in week 3
+  one(M.eventsIn(st, s.id).find(e => e.name === 'Raw · Week 1'), 'Cody', 'Jey');
+  one(M.eventsIn(st, s.id).find(e => e.name === 'SmackDown · Week 3'), 'Roman', 'Solo');
+  const rumble = M.eventsIn(st, s.id).find(e => e.name === 'Royal Rumble');
+  M.bookMatch(st, rumble.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Gunther')] }] });
+  const before = played(st);
+  // the next month: February's first week, an untouched calendar of results
+  M.setWeek(st, 5);
+  M.scheduleAnnual(st);
+  assert.equal(M.weekOfDate(st, { year: 2026, month: 1, week: 1 }), 5);
+  assert.equal(ud(st, M.activeSeason(st).week, 0), 'February 2026 w1 d1');
+  assert.equal(played(st), before, 'moving the date on entered no result');
+  assert.ok(rumble.matches.every(m => m.status === 'scheduled' && m.outcome == null), 'the booked match is still waiting for the game');
+  // where each event stands
+  const status = n => M.eventStatus(M.eventsIn(st, s.id).find(e => e.name === n));
+  assert.deepEqual([status('Raw · Week 1'), status('Raw · Week 2'), status('Royal Rumble')], ['completed', 'scheduled', 'scheduled']);
+  M.bookMatch(st, rumble.id, { sides: [{ wrestlers: [id('Seth')] }, { wrestlers: [id('Drew')] }] });
+  M.enterResult(st, rumble.id, rumble.matches[1].id, { outcome: 'win', winner: 0 });
+  assert.equal(M.eventStatus(rumble), 'in-progress');
+  M.enterResult(st, rumble.id, rumble.matches[0].id, { outcome: 'win', winner: 1 });
+  assert.equal(M.eventStatus(rumble), 'completed');
+  // February's annual event, already on the calendar a year ahead
+  const chamber = st.events.find(e => e.name === 'Elimination Chamber');
+  assert.equal(`${M.DAYS[chamber.at.day]} ${ud(st, chamber.at.week, chamber.at.day)}`, 'Saturday February 2026 w4 d27');
+  sound(st);
+});
+
+test('setting when the universe began relabels every week, moves nothing on record, and brings the annual events with it', () => {
+  const { st, id } = calWorld();
+  M.setWeek(st, 3);
+  const ev = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, ev.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Jey')] }], winner: 0 });
+  M.scheduleAnnual(st);
+  const mania = st.events.find(e => e.name === 'WrestleMania');
+  assert.equal(ud(st, mania.at.week), 'April 2026 w3');
+  assert.equal(mania.at.week, 15);
+  const kept = JSON.stringify(ev);
+  const moved = M.setCalendar(st, { month: 1, year: 2026 });          // began in February: April is two months sooner
+  assert.equal(JSON.stringify(ev), kept, 'the episode keeps its week, night and result');
+  assert.equal(ud(st, 3), 'February 2026 w3');
+  assert.equal(mania.at.week, 11, 'WrestleMania follows its annual date');
+  assert.ok(moved.includes(mania));
+  // the Royal Rumble (January) has gone by in this calendar: next year's goes on instead
+  const rumbles = st.events.filter(e => e.name === 'Royal Rumble');
+  assert.ok(rumbles.some(e => e.year === 2027));
+  throwsUE(() => M.setCalendar(st, { month: 12, year: 2026 }), /month/);
+  throwsUE(() => M.setCalendar(st, { month: 0, year: 0 }), /year/);
+  sound(st);
+});
+
+test('annual events: the standard set, on their dates, once each; a year deleted stays gone; one moved by hand stays put', () => {
+  const { st } = calWorld();
+  const touched = M.scheduleAnnual(st);
+  const names = st.events.filter(e => e.recurring).map(e => e.name);
+  ['Royal Rumble', 'Elimination Chamber', 'WrestleMania', 'Money in the Bank', 'WarGames', 'Blood and Guts',
+    'Raw: Last Stand', 'SmackDown: Last Stand', 'Dynamite: Last Stand', 'NXT: Last Stand', 'Evolve: Last Stand'].forEach(n => assert.ok(names.includes(n), n));
+  assert.equal(touched.length, names.length);
+  assert.deepEqual(M.scheduleAnnual(st), [], 'twice is the same as once');
+  const ev = n => st.events.find(e => e.name === n);
+  // shows: WWE's main roster for WWE's, AEW's for AEW's, each show's own Last Stand on its own night
+  assert.deepEqual(M.eventShows(st, ev('WrestleMania')), ['raw', 'smackdown']);
+  assert.deepEqual(M.eventShows(st, ev('Blood and Guts')), ['dynamite']);
+  assert.equal(ev('Blood and Guts').kind, 'special');
+  assert.deepEqual([ev('Raw: Last Stand').kind, ev('Raw: Last Stand').at.day, ud(st, ev('Raw: Last Stand').at.week)], ['special', 0, 'April 2026 w2']);
+  assert.deepEqual([ev('NXT: Last Stand').at.day], [1]);
+  assert.deepEqual(ev('Money in the Bank').prep, { weeks: 4, focus: ['qualifiers', 'feuds'], spots: 6 });
+  // one year deleted doesn't come back
+  M.deleteEvent(st, ev('WarGames').id);
+  M.scheduleAnnual(st);
+  assert.equal(ev('WarGames'), undefined);
+  // one year moved by hand stays where it was put when the annual date changes; the others follow
+  const mitb = ev('Money in the Bank');
+  M.moveEvent(st, mitb.id, { date: { year: 2026, month: 6, week: 1 }, day: 6 });
+  assert.equal(mitb.moved, true);
+  const rumbleRule = st.annual.find(r => r.key === 'royal-rumble');
+  M.updateAnnual(st, rumbleRule.id, { month: 1, week: 1 });           // the Royal Rumble moves to February
+  assert.equal(ud(st, ev('Royal Rumble').at.week), 'February 2026 w1');
+  M.updateAnnual(st, st.annual.find(r => r.key === 'money-in-the-bank').id, { week: 2 });
+  assert.equal(ud(st, mitb.at.week), 'July 2026 w1', 'moved by hand: it stays');
+  // a new annual event goes on the calendar; a same-named event already planned that year is taken as this year's
+  const summer = M.addEvent(st, { kind: 'ple', name: 'SummerSlam', date: { year: 2026, month: 7, week: 1 }, day: 5 });
+  const rule = M.addAnnual(st, { name: 'SummerSlam', kind: 'ple', month: 7, week: 1, day: 5 });
+  assert.equal(st.events.filter(e => e.name === 'SummerSlam').length, 1);
+  assert.equal(summer.recurring, rule.id);
+  // switched off: the years to come that nothing has happened on come off the calendar
+  M.updateAnnual(st, st.annual.find(r => r.key === 'blood-and-guts').id, { on: false });
+  assert.equal(ev('Blood and Guts'), undefined);
+  // stop it recurring: what's on the calendar stays, as a one-off
+  M.deleteAnnual(st, rule.id);
+  assert.equal(summer.recurring, null);
+  sound(st);
+});
+
+test('a show’s night: its episodes still to come move, its Last Stand too; nothing with a result moves', () => {
+  const { st, id } = calWorld();
+  M.scheduleAnnual(st);
+  const done = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, done.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Jey')] }], winner: 0 });
+  const next = M.addEvent(st, { showId: 'raw', week: 2 });
+  const moved = M.setShowDay(st, 'raw', 1);
+  assert.equal(moved, 2, 'week 2’s episode and the Last Stand');
+  assert.deepEqual([done.at.day, next.at.day, st.events.find(e => e.name === 'Raw: Last Stand').at.day], [0, 1, 1]);
+  assert.equal(st.annual.find(r => r.key === 'last-stand:raw').day, 1);
+  assert.equal(M.showById(st, 'raw').day, 1);
+  sound(st);
+});
+
+test('building toward an event: its phases, what’s approaching, who qualified', () => {
+  const { st, id } = calWorld();
+  const ev = M.addEvent(st, { kind: 'ple', name: 'Money in the Bank', week: 10, day: 5, shows: ['raw', 'smackdown'],
+    prep: { weeks: 4, focus: ['qualifiers', 'contenders', 'feuds', 'teams'], spots: 2 } });
+  assert.deepEqual(M.prepPhases(ev).map(p => [p.focus, p.from, p.to]),
+    [['feuds', 4, 0], ['teams', 4, 2], ['qualifiers', 4, 1], ['contenders', 3, 1], ['go-home', 0, 0]]);
+  const at = (week, day = 0) => ({ season: ev.at.season, week, day });
+  const phases = (week, day = 0, shows = null) => (M.approaching(st, at(week, day), shows)[0] || { phases: [] }).phases.map(p => p.focus);
+  assert.deepEqual(phases(5), [], 'five weeks out: not yet');
+  assert.deepEqual(phases(6), ['feuds', 'teams', 'qualifiers']);
+  assert.deepEqual(phases(8), ['feuds', 'teams', 'qualifiers', 'contenders']);
+  assert.deepEqual(phases(9), ['feuds', 'qualifiers', 'contenders']);
+  assert.deepEqual(phases(10, 0), ['feuds', 'go-home'], 'the week of it, before the night');
+  assert.deepEqual(phases(10, 6), [], 'after the night');
+  assert.deepEqual(phases(8, 0, ['dynamite']), [], 'a show not taking part isn’t building toward it');
+  assert.equal(M.inPrep(st, ev, at(6)), true);
+  // a qualifier's winner has qualified
+  M.setWeek(st, 7);
+  const raw = M.addEvent(st, { showId: 'raw' });
+  M.recordMatch(st, raw.id, { sides: [{ wrestlers: [id('Seth')] }, { wrestlers: [id('Drew')] }], winner: 1, prep: { event: ev.id, kind: 'qualifier' } });
+  assert.deepEqual(M.qualifiedFor(st, ev.id).map(q => q.wrestler), [id('Drew')]);
+  assert.equal(M.prepMatches(st, ev.id).length, 1);
+  throwsUE(() => M.bookMatch(st, raw.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Jey')] }], prep: { event: raw.id, kind: 'qualifier' } }), /built toward/);
+  sound(st);
+});
+
+test('rescheduling an event: its build-up follows; results and locked matches are never touched', () => {
+  const { st, id } = calWorld();
+  const ev = M.addEvent(st, { kind: 'ple', name: 'Money in the Bank', week: 6, day: 5, shows: ['raw'], prep: { weeks: 4, focus: ['qualifiers'], spots: 3 } });
+  const S = (a, b) => [{ wrestlers: [id(a)] }, { wrestlers: [id(b)] }];
+  const prep = { event: ev.id, kind: 'qualifier' };
+  M.setWeek(st, 3);
+  const w3 = M.addEvent(st, { showId: 'raw' });
+  const playedQ = M.recordMatch(st, w3.id, { sides: S('Cody', 'Jey'), winner: 0, prep });
+  const w4 = M.addEvent(st, { showId: 'raw', week: 4 });
+  const lockedQ = M.bookMatch(st, w4.id, { sides: S('Seth', 'Drew'), prep });
+  M.setMatchLocked(st, w4.id, lockedQ.id, true);
+  const w5 = M.addEvent(st, { showId: 'raw', week: 5 });
+  const openQ = M.bookMatch(st, w5.id, { sides: S('Gunther', 'Sami'), prep });
+  const other = M.bookMatch(st, w5.id, { sides: S('Seth', 'Jey') });        // nothing to do with the event
+  // the event's own card: one result in already (it's in progress), one still to play
+  const own1 = M.recordMatch(st, ev.id, { sides: S('Drew', 'Sami'), winner: 0 });
+  const own2 = M.bookMatch(st, ev.id, { sides: S('Cody', 'Gunther') });
+  assert.equal(M.eventStatus(ev), 'in-progress');
+  const res = JSON.stringify([playedQ, own1]);
+  const r = M.moveEvent(st, ev.id, { date: M.universeDate(st, ev.at.season, 12), day: 6 });
+  assert.equal(r.removed, 1, 'week 5’s qualifier no longer fits the build-up');
+  assert.deepEqual([ev.at.week, ev.at.day], [12, 6]);
+  assert.equal(JSON.stringify([playedQ, own1]), res, 'results untouched');
+  assert.ok(w4.matches.includes(lockedQ) && lockedQ.status === 'scheduled', 'the locked match stays');
+  assert.ok(!w5.matches.includes(openQ) && w5.matches.includes(other));
+  assert.ok(ev.matches.includes(own2), 'its own card goes with it');
+  assert.deepEqual(M.qualifiedFor(st, ev.id).map(q => q.wrestler), [id('Cody')]);
+  // the new schedule: the build-up is weeks 8 to 12 now
+  assert.equal(M.inPrep(st, ev, { season: ev.at.season, week: 8, day: 0 }), true);
+  assert.equal(M.inPrep(st, ev, { season: ev.at.season, week: 5, day: 0 }), false);
+  // a shorter build-up: same rule
+  const w8 = M.addEvent(st, { showId: 'raw', week: 8 });
+  const past = M.bookMatch(st, w8.id, { sides: S('Drew', 'Jey'), prep });
+  M.setWeek(st, 9);
+  const w10 = M.addEvent(st, { showId: 'raw', week: 10 });
+  M.bookMatch(st, w10.id, { sides: S('Seth', 'Sami'), prep });
+  assert.equal(M.setEventPrep(st, ev.id, { weeks: 1, focus: ['qualifiers'], spots: 3 }).removed, 1);
+  assert.ok(w8.matches.includes(past), 'a show from an earlier week is history: its card stays, result or not');
+  // deleting the event: what was booked toward it and not played comes off, but a locked match stays
+  M.deleteEvent(st, ev.id);
+  assert.ok(w4.matches.includes(lockedQ));
+  assert.ok(w3.matches.includes(playedQ));
+  sound(st);
+});
+
+test('a v14 save: nothing recorded moves; its PLEs are built toward as before; the annual events are set up', () => {
+  const { st } = sampleSeason();
+  M.setSeasonStart(st, st.seasons[0].id, '2025-09-03');
+  const old = JSON.parse(JSON.stringify(st));
+  old.version = 14;
+  delete old.calendar; delete old.annual;
+  old.events.forEach(e => {
+    ['shows', 'prep', 'recurring', 'year', 'moved'].forEach(k => delete e[k]);
+    e.matches.forEach(m => { delete m.locked; delete m.prep; });
+  });
+  const up = M.migrate(old);
+  assert.equal(up.version, M.SCHEMA_VERSION);
+  assert.deepEqual(up.calendar, { month: 8, year: 2025 }, 'it began in the month the dated season began');
+  assert.equal(up.events.length, st.events.length);
+  up.events.forEach((e, i) => {
+    assert.deepEqual([e.at, e.matches.map(m => [m.status, m.winner, m.sides])], [st.events[i].at, st.events[i].matches.map(m => [m.status, m.winner, m.sides])]);
+    assert.ok(e.matches.every(m => m.locked === false && m.prep === null));
+  });
+  const wm = up.events.find(e => e.name === 'WrestleMania');
+  assert.deepEqual([wm.shows, wm.prep, wm.recurring], [[], { weeks: 4, focus: ['feuds', 'contenders'], spots: 0 }, null]);
+  assert.ok(up.annual.some(r => r.key === 'wrestlemania') && up.annual.some(r => r.key === 'last-stand:raw'));
+  assert.equal(up.events.filter(e => e.recurring).length, 0, 'nothing goes on the calendar until the app does it');
+  sound(up);
+  // the app puts this year's annual events on the calendar; the WrestleMania already there is taken as this year's
+  M.scheduleAnnual(up);
+  sound(up);
+});
+
+test('the auto booker builds toward the events ahead: #1 contenders, qualifiers, teams forming, the title held back', () => {
+  const { st, id, backlash } = bookingSample();
+  const mitb = M.addEvent(st, { kind: 'ple', name: 'Money in the Bank', week: 8, day: 5, shows: ['raw', 'smackdown'],
+    prep: { weeks: 4, focus: ['qualifiers', 'teams'], spots: 2 } });
+  const raw = M.addEvent(st, { showId: 'raw' });
+  const ideas = B.ideasFor(st, raw.id);
+  const toward = (ev, kind) => ideas.filter(x => x.prep && x.prep.event === ev.id && x.prep.kind === kind);
+  // Backlash (Raw's, in two weeks, built toward for 4): a #1 contender's match for each title, and the title matches wait for the night
+  const nc = toward(backlash, 'contender').find(x => x.contender === st.titles[0].id);
+  assert.match(nc.why[0], /^#1 contender’s match: the winner faces Gunther for the World Heavyweight Championship at Backlash \(in 2 weeks\)$/);
+  ideas.filter(x => x.kind === 'title' && x.titleId === st.titles[0].id).forEach(x => assert.ok(x.why.some(w => /Backlash is in 2 weeks — the World Heavyweight Championship could wait for it/.test(w))));
+  assert.ok(nc.score > Math.max(...ideas.filter(x => x.kind === 'title' && x.titleId === st.titles[0].id).map(x => x.score)), 'the contender’s match comes first');
+  // Money in the Bank (Raw and SmackDown, in three weeks): qualifying matches in each division, champions left out
+  const quals = toward(mitb, 'qualifier');
+  assert.ok(quals.length >= 2);
+  quals.forEach(x => assert.match(x.why[0], /^Qualifying match for Money in the Bank \(in 3 weeks\) — the winner takes one of the (men|women)’s spots/));
+  assert.ok(!quals.some(x => x.people.includes(id('Gunther')) || x.people.includes(id('Liv'))), 'champions don’t need to qualify');
+  // ...and teams form: friends who aren't a team yet team up
+  const team = toward(mitb, 'team').find(x => x.kind === 'formation' && x.sides.some(sd => [id('Cody'), id('Jey')].every(p => sd.wrestlers.includes(p))));
+  assert.match(team.why[0], /^Teams form for Money in the Bank \(in 3 weeks\): Cody and Jey, friends \(level 2\), team up$/);
+  // the draft: one qualifier a division, each booked toward its event
+  const d = B.draftCard(st, raw.id);
+  const qs = d.matches.filter(x => x.prep && x.prep.kind === 'qualifier');
+  assert.ok(qs.length >= 1 && new Set(qs.map(x => x.gender)).size === qs.length);
+  M.setDraft(st, raw.id, d.matches.map(B.toSpec), { seen: d.seen, played: d.played });
+  const booked = M.bookDraft(st, raw.id);
+  assert.ok(booked.some(m => m.prep && m.prep.event === mitb.id && m.prep.kind === 'qualifier' && m.prep.name === 'Money in the Bank'));
+  // a qualifier's winner has qualified, and isn't offered another
+  const q = booked.find(m => m.prep && m.prep.kind === 'qualifier');
+  M.enterResult(st, raw.id, q.id, { outcome: 'win', winner: 0 });
+  const winner = q.sides[0].wrestlers[0];
+  assert.deepEqual(M.qualifiedFor(st, mitb.id).map(x => x.wrestler), [winner]);
+  M.setWeek(st, 6);
+  const next = M.addEvent(st, { showId: 'raw' });
+  const later = B.ideasFor(st, next.id).filter(x => x.prep && x.prep.kind === 'qualifier');
+  assert.ok(later.length && !later.some(x => x.people.includes(winner)));
+  const division = later.filter(x => x.gender === genderOfIds(st, q.sides.flatMap(sd => sd.wrestlers)));
+  assert.ok(division.length && division.every(x => /^Qualifying match for Money in the Bank \(in 2 weeks\)/.test(x.why[0]) && x.why.includes('1 spot of 2 still open, 1 qualified so far')));
+  // moving Money in the Bank: what's booked toward it on a show still to come and no longer fits comes off;
+  // last week's card is history, and the result stays
+  const toCome = [M.bookMatch(st, next.id, { sides: [{ wrestlers: [id('Kali')] }, { wrestlers: [id('Edris')] }], prep: { event: mitb.id, kind: 'qualifier' } })];
+  const lastWeek = booked.filter(m => m.prep && m.prep.event === mitb.id && m.status === 'scheduled');
+  const r = M.moveEvent(st, mitb.id, { week: 20 });
+  assert.equal(r.removed, toCome.length);
+  assert.ok(toCome.every(m => !next.matches.includes(m)) && lastWeek.every(m => raw.matches.includes(m)));
+  assert.equal(M.qualifiedFor(st, mitb.id).length, 1);
+  sound(st);
+});
+function genderOfIds(st, ids) { const g = new Set(ids.map(x => M.wrestlerById(st, x).gender)); return g.size === 1 ? [...g][0] : 'mixed'; }
+
+test('on the night: everyone who qualified meets; a special event for one show takes its episode’s place', () => {
+  const { st, id } = bookingSample();
+  const ev = M.addEvent(st, { kind: 'ple', name: 'Money in the Bank', week: 7, day: 5, shows: ['raw'], prep: { weeks: 3, focus: ['qualifiers'], spots: 3 } });
+  const raw = M.addEvent(st, { showId: 'raw' });
+  [['Seth', 'Drew'], ['Jey', 'Damian'], ['Finn', 'Sami']].forEach(([w, l]) => M.recordMatch(st, raw.id,
+    { sides: [{ wrestlers: [id(w)] }, { wrestlers: [id(l)] }], winner: 0, prep: { event: ev.id, kind: 'qualifier' } }));
+  M.setWeek(st, 7);
+  const night = B.ideasFor(st, ev.id).find(x => x.kind === 'qualified');
+  assert.deepEqual(night.people.map(p => M.wrestlerById(st, p).name).sort(), ['Finn', 'Jey', 'Seth']);
+  assert.match(night.why[0], /^The men’s Money in the Bank match: the 3 wrestlers who qualified$/);
+  assert.ok(!B.ideasFor(st, ev.id).some(x => x.prep && x.prep.event === ev.id), 'no more qualifiers on the night itself');
+  // a special event for Raw on Raw's night, in week 8: the week's plan has it instead of an episode
+  const last = M.addEvent(st, { kind: 'special', name: 'Raw: Spring Special', shows: ['raw'], week: 8 });
+  assert.equal(last.at.day, 0, 'on Raw’s night');
+  const plan = B.weekPlan(st, 8);
+  const rawRow = plan.find(r => r.show && r.show.id === 'raw');
+  assert.equal(rawRow.event, last);
+  assert.equal(plan.filter(r => r.event === last).length, 1);
+  assert.equal(M.cardSize(st, last), M.bookerSettings(st, 'raw').pleSize);
+  sound(st);
+});
+
+test('the story director builds toward the events ahead: bad blood heats up, contenders speak up, teams form', () => {
+  const { st, id, backlash } = bookingSample();
+  M.setStory(st, { on: true });
+  M.seedStory(st, 5);
+  M.editRelationship(st, { action: 'form', kind: 'grudge', a: id('Jey'), b: id('Gunther'), level: 2, since: 'start' });
+  const raw = M.addEvent(st, { showId: 'raw' });
+  const look = (kind, key) => DR.possibilities(st, raw.id, 'pre').find(k => k.kind === kind && k.key === key);
+  const conf = `confrontation:${[id('Cody'), id('Gunther')].sort().join('+')}`;
+  const ally = `alliance:${[id('Cody'), id('Jey')].sort().join('+')}`;
+  const before = { conf: look('confrontation', conf), ally: look('alliance', ally) };
+  assert.ok(!before.conf.why.some(w => /Backlash/.test(w)));
+  // contenders make their case: the World title could be on the line at Backlash
+  assert.ok(look('demand', `demand:${id('Cody')}:${st.titles[0].id}`).why.includes('Backlash is in 2 weeks — the World Heavyweight Championship could be on the line there, and contenders are making their case'));
+  // booked to meet there: the confrontation is likelier; a team event ahead: so is a new alliance
+  M.bookMatch(st, backlash.id, { sides: [{ wrestlers: [id('Cody')] }, { wrestlers: [id('Gunther')] }], titleId: st.titles[0].id });
+  M.setEventPrep(st, backlash.id, { weeks: 4, focus: ['feuds', 'contenders', 'teams'], spots: 0 });
+  const after = { conf: look('confrontation', conf), ally: look('alliance', ally) };
+  assert.ok(after.conf.why.includes('They meet at Backlash — in 2 weeks, and it’s building'));
+  assert.ok(after.conf.chance > before.conf.chance);
+  assert.ok(after.ally.why.includes('Backlash is in 2 weeks — teams are forming for it'));
+  assert.ok(after.ally.chance > before.ally.chance);
+  // the build-up hasn't begun for an event further off: nothing changes
+  M.moveEvent(st, backlash.id, { week: 15 });
+  assert.ok(!look('confrontation', conf).why.some(w => /Backlash/.test(w)));
+  sound(st);
 });

@@ -222,7 +222,7 @@ export function uvIdeaBook(showId, lineup) {
       return t ? t.name : list.split(',').map(id => (M.wrestlerById(st, id) || { name: '?' }).name).join(' & ');
     });
     const upcoming = M.eventsIn(st, cur.id).filter(e => e.at.week >= cur.week
-      && (e.showId === showId || (e.kind === 'ple' && !e.showId)));
+      && M.eventShows(st, e).includes(showId));
     const open = [];
     for (let wk = cur.week; open.length < 2 && wk < cur.week + 8; wk++) {
       if (!st.events.some(e => e.at.season === cur.id && e.at.week === wk && e.kind === 'weekly' && e.showId === showId)) open.push(wk);
@@ -234,7 +234,7 @@ export function uvIdeaBook(showId, lineup) {
         <p class="uv-p"><b>${names.map(esc).join('</b> vs <b>')}</b> — pick where it goes. The booking form opens with them
           filled in; change anything before you add it, or don’t book it at all.</p>
         ${upcoming.map(e => `<div class="uv-row" onclick="uvBookLineup('${e.id}','${lineup}')">
-          <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${e.kind === 'ple' ? ICON.star : ICON.cal}</span>
+          <span class="uv-av sq" style="--c:${showColor(st, e.showId)}">${M.isBigEvent(e) ? ICON.star : ICON.cal}</span>
           <div class="uv-main"><div class="nm">${esc(e.name)}</div><div class="sub">${when(e)}</div></div>
           <span class="uv-chev">${ICON.right}</span></div>`).join('')}
         ${open.map(wk => `<div class="uv-row" onclick="uvPlanAndBook('${showId}',${wk},'${lineup}')">

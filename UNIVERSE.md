@@ -13,7 +13,10 @@ any below — with editable rules for moving up and down between each two. An
 auto booker drafts a whole card for any show, each match with why it was
 chosen, for the owner to change and book — and it follows the story: what the
 director does makes matches likely, feuds move on through different matches
-over weeks, and whatever the CPU decides changes what comes next.
+over weeks, and whatever the CPU decides changes what comes next. The universe
+keeps its own calendar — twelve months of exactly four weeks — with premium live
+events, special events and annual events like WrestleMania on it, and the auto
+booker and the story director build toward each one as it approaches.
 
 It's a standalone app. It shares this repository with the City Boys Dynasty
 fantasy league (see [README.md](README.md)) only for the build and test
@@ -50,6 +53,7 @@ js/universe/
   app.js               commit (change + save + repaint), sheets, the page stack
   index.js             start-up, tabs, the Go to sheet, the save-file sheet and restore points
   views.js             the tabs: Calendar, Roster, Teams, Titles, History
+  calendar.js          the universe calendar: the month view, events ahead, scheduling and rescheduling, annual events, its settings
   personality.js       traits, relationships, the page for two wrestlers, incidents
   story.js             the story director on screen: What happened, a show's Before/After, the log, settings
   director.js          the story director itself - pure, seeded, runs under Node
@@ -70,13 +74,14 @@ js/universe/
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       166 model tests     npm run test:universe
-tools/universe-check.mjs      228 browser checks  npm run check:universe
+tools/universe-test.mjs       177 model tests     npm run test:universe
+tools/universe-check.mjs      241 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
 tools/universe-booker-demo.mjs a week of draft cards on every show, printed  npm run demo:booker
 tools/universe-feud-demo.mjs  a feud over five weeks: director, booker, the CPU  npm run demo:feud
+tools/universe-calendar-demo.mjs  a whole four-week month, then into the next; an event rescheduled  npm run demo:calendar
 tools/fixtures/universe-v1.json   real version 1 and 2 saves, written by the code
 tools/fixtures/universe-v2.json   of those versions, for the migration tests
 ```
@@ -87,14 +92,16 @@ tools/fixtures/universe-v2.json   of those versions, for the migration tests
    Dynamite, NXT and Evolve — any sizes. Add tag teams and titles, and crown the
    champions. Give wrestlers traits if you like.
 2. **Each week.** The Calendar opens on the week, with **Up next** — today's
-   show. Plan an episode: the story director decides what happens **before the
+   show — and the events ahead (switch to **Month** for the whole month). Plan an episode: the story director decides what happens **before the
    show** (a confrontation, a title demand…), so you can book the card around
    it. Book it yourself, or **Draft the card** (or the whole week's cards) with
    the auto booker, change what you like, and book that. Play the matches in
    WWE 2K25, then enter each result as the game produced it; once the card is
    complete the director decides what happens **after**
    (an attack, a save, a betrayal…). Record anything else you saw yourself. Tap
-   **Next week** when it's done.
+   **Next week** when it's done: the date moves on (and the year's annual events
+   come onto the calendar as it comes round) — nothing gets a result you didn't
+   enter.
 3. **Keep track.** **What happened** (on the Calendar's season card) is the
    story so far. Rankings (standings and booking balance), Titles, Roster (and
    its Relationships view) and History all read the record. None of them books
@@ -152,6 +159,14 @@ in the app's "How it works" sheets.
   turns only after buildup; seeded and logged. It never enters or changes a
   result, never awards a title, never moves anyone between shows. Anything it
   does can be edited, undone or run again.
+- **The calendar**: twelve months of exactly four weeks, seven days a week
+  (28-day months, 48-week years), from the month and year you pick. Premium live
+  events and special events name their shows, a date and how far ahead they're
+  built toward; annual events (Royal Rumble, Elimination Chamber, WrestleMania,
+  Money in the Bank, WarGames, Blood and Guts, each show's Last Stand) go on the
+  calendar a year ahead. Rescheduling one moves its build-up — never a result,
+  never a locked match, never anything on an earlier week's show. Advancing the
+  date never enters a result.
 - **Saving** is automatic in the browser (and to your claude.ai account when
   published); save files are checked before they're imported; restore points
   are kept in the browser before anything big replaces the universe.
@@ -164,6 +179,10 @@ Everything the app won't decide, and where it asks:
 |---|---|
 | Every result: the winner, the finish, who took the fall, whether a title changed hands (a DQ or a cash-in is your call) | The result form |
 | Who wrestles whom, which titles are on the line, when shows air | The calendar and the card — rankings and booking balance only inform, a story event's **Book the match** only fills in the form, and the auto booker only drafts |
+| When the universe began (month and year), and each show's night | Universe calendar (the season card's **Calendar**) |
+| Every premium live event and special event: its name, date, the shows taking part, its card, how far ahead it's built toward and what for (qualifying matches and how many spots, #1 contender's matches, rivalries, team formation) — and rescheduling it | **Schedule a premium live event or special event** on the Calendar; the event's **Details** and **Reschedule** |
+| Which events recur every year, and on what date; skipping a year (delete that year's) | Universe calendar → Annual events |
+| Locking a match so nothing automatic changes or removes it | The lock on the match |
 | Anything on a draft card: every match, who's in it, the order, the stipulation, the title, taking one off, adding your own, drawing one again, who isn't at the show — and whether to book it | The show's page |
 | How each show's cards are drafted: how many matches (weekly and at a premium live event), which kinds, how many title matches, how often a stipulation | Auto booker → the show (or the draft's **Settings**) |
 | Whether a pairing wrestled as a registered tag team | The result form ("Wrestling as …?") |
@@ -188,7 +207,7 @@ Everything the app won't decide, and where it asks:
 
 ## Getting around
 
-- **Go to** (top right): Up next, this week's shows, results, rosters, tag teams,
+- **Go to** (top right): Up next, this week's shows, the universe calendar, results, rosters, tag teams,
   champions, rankings, booking balance, relationships, what happened, the
   season transition and transfer window, tiers & transfers, the auto booker, and saving — each
   with where it stands — plus every "How it works" sheet.
@@ -228,8 +247,10 @@ so the whole model runs under Node for tests exactly as it does in the page.
 | titles    | singles or tag, a division, one show or none, can be retired |
 | reigns    | title history. The reign with no end is the champion |
 | shows     | also the night each airs: Raw Monday, NXT Tuesday, Dynamite and Evolve Wednesday, SmackDown Friday |
-| seasons   | always exactly one active, each with its own week counter (the clock), and optionally the real date its week 1 falls in |
-| events    | weekly episodes (one show) and premium live events (one show, or all), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it — on a match, if it happened in or straight after one — and the director's keep their run and their cause |
+| calendar  | the month and year the universe began in. Every week of every season is a week of a month from there (seasons run straight on) |
+| annual    | the annual events: name, premium live event or special event, the month, week of the month and night, the shows, its build-up, whether it's on, and the years skipped |
+| seasons   | always exactly one active, each with its own week counter (the clock) — and, from before version 15, the real date its week 1 fell in, if one was set |
+| events    | weekly episodes (one show), premium live events and special events (the shows taking part — none named is every show — and their build-up: how many weeks ahead, what for, how many qualifying spots; the annual event and year they're from, and whether they were moved by hand), each on a week and a night, each holding its card — and its incidents: betrayals, interferences, attacks, saves, brawls, confrontations, challenges, open challenges, demands, alliances, tension, walk-outs, truces, turns and runs of momentum. Each is before the show or after it — on a match, if it happened in or straight after one — and the director's keep their run and their cause |
 | traitLog  | every change to a wrestler's personality, one trait at a time: dated, or counted from the start. A wrestler's `traits` are where it ends up |
 | relEdits  | the owner's own relationship changes (start, set, end, note — dated, or from the start), between two wrestlers or two tag teams (`teams`), and the automatic changes they've chosen to ignore |
 | story     | the story director: on or off, its pace, the save's seed, the week it started from, and a log of every run — the show, before it, straight after one of its matches, or after it, the seed and run number, every possibility it weighed with its chance and draw, and what it recorded |
@@ -246,7 +267,10 @@ events behind it, if it did.
 
 A **match** is one record from the moment it's booked: its sides — each a set
 of wrestlers, plus the tag team they wrestled as — the title on the line (or,
-for a **#1 contender's match**, the title it's for), a stipulation and notes.
+for a **#1 contender's match**, the title it's for), a stipulation and notes,
+whether it's locked, and the premium live event or special event it was booked
+toward (a qualifier, a #1 contender's match, a feud's build-up, teams forming),
+if any.
 While it's `scheduled` it has no result at all. Entering the result makes it
 `played`: a win (with the winning side), a draw or a no
 contest, and optionally the finish and who scored or took the fall. Only
@@ -288,9 +312,9 @@ What the model enforces, so the data stays trustworthy as it grows:
 
 The **Calendar** tab is where a week is run:
 
-1. The week's four shows sit on their nights. **Plan** puts an episode on the
-   calendar and opens its page; **Add a premium live event** adds one with its
-   own name, for one show or all of them, on any night (Saturday by default).
+1. The week's shows sit on their nights, each with its universe date. **Plan**
+   puts an episode on the calendar and opens its page; **Schedule a premium live
+   event or special event** adds one (see The universe calendar).
 2. On the show's page, **Book a match**: pick a shape (singles, tag team,
    triple threat, fatal 4-way, handicap, 3-on-3, triple threat tag, battle
    royal) or build any line-up side by side, then the title on the line — or
@@ -320,14 +344,89 @@ contender the next shot, and the story director has them step up to the
 champion.
 
 Each show's row, its page and the season grid say where its card stands:
-planned, booked, some results in, or complete. **Set dates** pins a season to
-the real calendar — pick any day in its week 1 — so every show shows its date;
-without one, shows are labelled by week and night.
+planned, booked, some results in, or complete. Every show is labelled with its
+universe date ("Mon 15 Jan 2026").
+
+**Locking a match.** The lock on a booked match (beside the arrows) means
+nothing automatic changes or removes it: rescheduling or deleting the event it
+was booked toward, or shortening that event's build-up, leaves it where it is.
+You can still edit, move or take off a locked match yourself.
 
 The **History** tab browses the past, newest first: **Results** lists every
-result show by show, filterable by season and by show (or just the PLEs), each
+result show by show, filterable by season and by show (or just the PLEs and
+special events), each
 with its finish, title and notes; **Everything** puts results, title changes,
 moves and team changes on one timeline. Tap any of it to open the show.
+
+## The universe calendar
+
+The universe keeps its own calendar: **twelve months of exactly four weeks**,
+seven days a week, Monday to Sunday — so every month has 28 days and a year
+has 48 weeks, whatever the real calendar says. Pick the month and year the
+universe began in (**Calendar** on the season card): season 1's week 1 is that
+month's first week, and every week since — across seasons, each running
+straight into the next — is a week of a month. Changing it relabels every
+week; nothing on record moves.
+
+**Week and Month.** The Calendar tab shows the week (each show on its night) or
+the month: four rows of seven days, every event on its night with where it
+stands — **Scheduled** (an outline: no results yet), **In progress** (half
+filled: some results in) or **Completed** (filled: every match has a result) —
+and, on each week, the events it's building toward. Tap an event to open it,
+a week to open that week, and an empty night (from this week on) to schedule
+something there. **Events ahead** lists the premium live events and special
+events coming up, each with its status and where its build-up stands.
+
+**Show nights.** Each weekly show airs on its own night (on the calendar's
+page). A new night applies from this week on: episodes still to come with no
+results move to it, and so does the show's Last Stand. Nothing with a result
+moves.
+
+**Premium live events and special events.** **Schedule a premium live event or
+special event** asks for its name, its universe date (month, year, week of the
+month, night), the **shows taking part** — a premium live event with none
+ticked is for every show; a special event needs at least one, and for one show
+on its night it takes the place of that week's episode — and its **build-up**:
+how many weeks ahead it begins (0–16) and what for:
+
+| Build-up | In the weeks before it |
+|---|---|
+| Qualifying matches | qualifying matches on the shows taking part until its spots are filled — so many in each division; champions don't need to qualify. On the night, everyone who qualified meets |
+| #1 contender's matches | in the last three weeks, a #1 contender's match for each title that could be on the line there (its shows' own) with no #1 contender yet |
+| Rivalries | feuds build toward it without giving the big match away; the week of it is the go-home show |
+| Team formation | in the first half of the build-up, friends and allies who aren't a team yet team up, and factions work as units |
+
+Its page shows its date, status and shows, then **Building toward it**: each
+phase with its weeks (now, done or to come), who has qualified, and every match
+booked toward it, wherever it is. Its card is edited like any other.
+
+**Rescheduling.** **Reschedule** on its page moves it to another universe
+date. Its card and results go with it (a title change made there moves too, as
+long as the title's history still reads in order); its build-up follows the new
+date. A match booked toward it that no longer fits comes off — never one with a
+result, never one you've locked, and never one on a show from an earlier week
+(that show's card is history, results entered or not). Shortening its build-up,
+or deleting it, works the same way.
+
+**Annual events.** Royal Rumble (January), Elimination Chamber (February),
+WrestleMania (April), Money in the Bank (June), Blood and Guts (July, a special
+event on Dynamite's night), WarGames (November) and **each show's Last Stand**
+(April, a special event on its own night) are set up, each with its date, its
+shows (WWE's main roster for WWE's events, AEW's for Blood and Guts) and its
+build-up. Each year's goes on the calendar as the year comes round — up to a
+year ahead, when the app opens and on **Next week** — as an ordinary event with
+its own card and results. Reschedule one year's and the others stay put; change
+the annual date and the years still to come follow it, unless you moved them
+by hand; delete one year's and it doesn't come back; switch one off and the
+years to come that nothing has happened on come off the calendar. Add your own
+(or tick **Every year** when scheduling an event); **Stop it recurring** keeps
+the years already on the calendar as one-offs. A same-named event you already
+planned for that year is taken as that year's.
+
+**Advancing the date never invents a result.** Next week moves the clock and
+puts the year's annual events on the calendar; a match with no result stays
+booked until you enter one, and an event whose date has passed stays
+Scheduled or In progress until you do.
 
 ## Tiers and transfers
 
@@ -568,7 +667,24 @@ counts them) and who wrestled lately; grudges, rivalries, friendships and
 alliances; tag teams and factions (a team of three or more); what each wrestler
 is after (as on their page: keep the title, revenge, a title, tag team gold,
 turn it around); who has arrived from another show lately (drafted, relegated,
-moved); and the calendar — a premium live event ahead, or tonight being one.
+moved); and the universe calendar — the premium live events and special events
+the show is building toward, or tonight being one.
+
+**Building toward an event.** Each premium live event or special event says how
+far ahead its build-up begins and what for (The universe calendar). In those
+weeks, on the shows taking part, the booker drafts **qualifying matches** until
+the spots are filled (one a division a card, champions left out, the tally in
+the reasons: "2 spots of 6 still open, 4 qualified so far"); **#1 contender's
+matches** for the titles that could be on the line there ("the winner faces
+Gunther for the World Heavyweight Championship at Backlash (in 2 weeks)") — the
+winner's shot is then on the night, never on a weekly show before it — and a
+weekly defence of such a title is less likely: it could wait for the night; **teams forming** — friends
+and allies who aren't a team yet team up, factions go three on three; and
+**feuds** that hold the singles match back for the night, with one last chapter
+on the go-home show. Each such match is booked toward the event (a chip on the
+match says so), so moving the event moves it. At the event itself, everyone
+who qualified meets in one match, and every title with a contender is on the
+line.
 
 **What it looks for**, each match with why it was chosen:
 
@@ -866,6 +982,18 @@ or run again on its own.
 | Title challenge | a challenger drawn from everyone eligible (below) — a new #1 contender above all | rivals |
 | On the rise | an upset over a champion from low in the standings (or after a losing record), or a winning run after losing more than winning | nothing — it's remembered for title shots |
 | Turn | a record of it (below) | the alignment |
+
+**Building toward the events ahead.** The director reads the universe calendar
+too. While a premium live event or special event the show takes part in is
+being built toward (The universe calendar), bad blood between two booked to
+meet there is likelier to boil over — a confrontation, a brawl, an attack, a
+run-in — most of all on the go-home show the week of it ("They meet at
+WrestleMania — the go-home show, one last chance to get at each other"), and
+such a rivalry is less likely to cool off; in its #1 contender's phase,
+contenders demand and challenge for the titles that could be on the line
+there; and before a team event, new alliances are likelier ("WarGames is in 3
+weeks — teams are forming for it"). Only the soonest event that bears on each
+possibility counts, and the reason is always on the event.
 
 **Every event has a cause.** Its reasons come with it: the feed shows the lead
 one ("Gunther lost to Akira Tozawa at Raw · Week 5"); tapping it shows them
@@ -1180,15 +1308,27 @@ is worked out from the record, like every relationship, so an older save shows
 it at once. **Version 13** added #1 contender's matches: no match in an older save
 was one. **Version 14** has the director run straight after each match: every
 run in an older save was for a whole show's part, and a show already gone
-through that way isn't gone over again match by match.
+through that way isn't gone over again match by match. **Version 15** added the
+universe calendar. Nothing recorded moves — every event keeps its week and
+night, every match its result. The calendar begins in the month and year the
+first season's real start date fell in, if one was set, or January 2026. Every
+premium live event so far named one show or every show, and is built toward
+for four weeks (rivalries and #1 contender's matches), as the booker always
+did; no match was locked or booked toward an event; the standard annual events
+are set up, and go on the calendar the next time the app opens — a premium
+live event of the same name already planned that year is taken as that year's.
 `tools/fixtures/` holds real version 1 and 2 saves, written by that version's
 code, and the tests load both.
 
 ## Not built yet, on purpose
 
-Evolve's annual events aren't built yet. Nor is carrying out the tier rules kept
-for them: Evolve's champions moving up to NXT by themselves at the transfer
-window, moving down at the window, and moving up straight after a qualifier.
+Special match types — ladder, Elimination Chamber, WarGames, Rumble rules — are
+the next stage: an event's card is made of the same matches as any show's, and
+an event's name never changes how a match works.
+
+Some tier rules are kept but not carried out yet: Evolve's champions moving up
+to NXT by themselves at the transfer window, moving down at the window, and
+moving up straight after a qualifier.
 The rules are stored, editable and shown with who they'd move, but nobody moves
 by them.
 

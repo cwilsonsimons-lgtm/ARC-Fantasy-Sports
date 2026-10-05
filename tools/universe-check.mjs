@@ -116,10 +116,20 @@ const fantasyBefore = await js(`[localStorage.getItem('cbd_team_v1'), localStora
 // aren't about it run with it off; the story section brings its own seeded universe
 await js(`uvStoryOn('off')`);
 await page.waitForTimeout(100);
+// the annual events go on the calendar as soon as the app opens (a year ahead); the sections that aren't about
+// the calendar run without them - each annual event switched off on its sheet, as the owner would - and so do
+// the universes they import. The universe calendar's own section switches them back on.
+const annualOn = await js(`JSON.parse(localStorage.getItem('wwe_universe_v1')).events.filter(e => e.recurring).map(e => e.name)`);
+for (const r of (await saved()).annual) await js(`uvAnnualSheet('${r.id}'); uvAnSet('on', false); uvAnSave()`);
+await page.waitForTimeout(300);
+function quiet(st) { st.annual.forEach(r => { r.on = false; }); return st; }
 
 // ================================================================ open
 await check('opens straight into the app', () => js(`[document.title, document.querySelector('.uv-tab.on').textContent]`),
   ['Universe — WWE 2K25 companion', 'Roster']);
+await check('a new universe opens with the year’s annual events on the calendar', async () => [annualOn.length,
+  ['Royal Rumble', 'WrestleMania', 'Money in the Bank', 'WarGames', 'Blood and Guts', 'Raw: Last Stand'].every(n => annualOn.includes(n)),
+  (await saved()).events.length, (await saved()).annual.every(r => !r.on)], [11, true, 0, true]);
 await check('nothing of the fantasy app on the page', () => js(`[
   !!document.querySelector('.phone, .nav, .shift, .drawer, #hint, .mk'),
   ['showTab', 'openMarkets', 'renderWeek', 'LG'].filter(n => n in window)]`), [false, []]);
@@ -347,22 +357,35 @@ await check('the calendar: each show on its own night, not yet planned', async (
     await js(`document.querySelector('.uv-weeknav .t').textContent`), await nights()];
 }, ['Season 1 · Week 3', 3, 'Week 3',
   ['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned']]);
-await check('pin the season to real dates', async () => {
-  await body.locator('.uv-card-f span', { hasText: 'Set dates' }).click();
-  await settle();
-  await page.fill('#uvSeasonStart', '2026-01-07');                   // a Wednesday: week 1 is 5–11 Jan
-  await btn(sheet, 'Save').click();
-  await settle();
-  return [(await saved()).seasons[0].start, await js(`document.querySelector('.uv-weeknav .s').textContent`),
-    await js(`[...document.querySelectorAll('#uvBody .uv-night .dt span')].map(e => e.textContent)`)];
-}, ['2026-01-07', 'This week · 19 Jan – 25 Jan 2026', ['19 Jan', '20 Jan', '21 Jan', '21 Jan', '23 Jan']]);
+await check('the universe calendar: four-week months, from the month and year it began', async () => {
+  const dates = () => js(`[...document.querySelectorAll('#uvBody .uv-night .dt span')].map(e => e.textContent)`);
+  const nav = () => js(`document.querySelector('.uv-weeknav .s').textContent`);
+  const before = [await nav(), await dates()];
+  await body.locator('[data-callink]').click();
+  await page.waitForTimeout(150);
+  await page.selectOption('#uvCalMonth', '2');                              // it began in March instead
+  await page.waitForTimeout(150);
+  const now = await js(`document.querySelector('[data-calnow]').textContent.replace(/\\s+/g, ' ').trim()`);
+  await page.click('.uv-back');
+  await page.waitForTimeout(120);
+  const march = [await nav(), await dates()];
+  await body.locator('[data-callink]').click();
+  await page.waitForTimeout(150);
+  await page.selectOption('#uvCalMonth', '0');                              // back to January
+  await page.waitForTimeout(150);
+  await page.click('.uv-back');
+  await page.waitForTimeout(120);
+  return [...before, now, ...march, (await saved()).calendar];
+}, ['This week · Week 3 of January 2026 · 15–21 Jan', ['15 Jan', '16 Jan', '17 Jan', '17 Jan', '19 Jan'],
+  'Season 1 began in Week 1 of March 2026. This week — Season 1, week 3 — is Week 3 of March 2026. Changing it relabels every week; nothing on record moves.',
+  'This week · Week 3 of March 2026 · 15–21 Mar', ['15 Mar', '16 Mar', '17 Mar', '17 Mar', '19 Mar'], { month: 0, year: 2026 }]);
 await check('Plan puts Raw on the calendar and opens its card', async () => {
   await body.locator('.uv-night[data-plan=raw]').locator('.uv-btn').click();
   await page.waitForTimeout(150);
   const e = (await saved()).events[0];
   return [e.name, e.at.week, e.at.day, e.matches.length, await pageKind(), await evTitle(),
     await js(`document.querySelector('.uv-evhead .s').textContent`), await js(`document.querySelector('.uv-back').textContent.trim()`)];
-}, ['Raw · Week 3', 3, 0, 0, 'event', 'Raw · Week 3', 'Monday 19 Jan 2026 · week 3 · Season 1', 'Calendar']);
+}, ['Raw · Week 3', 3, 0, 0, 'event', 'Raw · Week 3', 'Monday 15 Jan 2026 · week 3 · Season 1', 'Calendar']);
 
 // ================================================================ booking, then results
 await check('book a title match: it counts for nothing until it’s played', async () => {
@@ -465,12 +488,12 @@ await check('a handicap match left booked: card and calendar say where it stands
   const kind = await mc(3).locator('.uv-chip.kind').textContent();
   await page.click('.uv-back');
   return [head, kind, (await nights())[0], await js(`document.querySelector('.uv-gr.now .uv-cell').className`)];
-}, ['3 of 4 results in', 'Handicap 1-on-2', 'Mon Raw · Week 3 | 3 of 4 results in', 'uv-cell partial']);
+}, ['In progress 3 of 4 results in', 'Handicap 1-on-2', 'Mon Raw · Week 3 | 3 of 4 results in', 'uv-cell partial']);
 await check('a booked wrestler’s page lists the match, with no record for it', async () => {
   await openRow('Giulia', 'roster');
   return [(await recs())[0], await js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`),
     await js(`${TEXT}(document.querySelector('.uv-page .uv-li'))`)];
-}, r => r[0] === 'Singles 0–0–0' && r[1][0] === 'Booked' && /^vs Giulia vs Iyo Sky & Rhea Ripley Raw · Week 3 · Mon 19 Jan 2026 Handicap 1-on-2$/.test(r[2]));
+}, r => r[0] === 'Singles 0–0–0' && r[1][0] === 'Booked' && /^vs Giulia vs Iyo Sky & Rhea Ripley Raw · Week 3 · Mon 15 Jan 2026 Handicap 1-on-2$/.test(r[2]));
 await check('…and opens the show it’s booked on', async () => {
   await body.locator('.uv-page .uv-li').first().click();
   await page.waitForTimeout(120);
@@ -572,7 +595,7 @@ await check('a booked match can be taken off the card', async () => {
   await confirmYes();
   return [/hasn’t been played, so nothing else changes/.test(msg), (await saved()).events[0].matches.length,
     await js(`${TEXT}(document.querySelector('.uv-evhead .st'))`)];
-}, [true, 3, '2 of 3 results in']);
+}, [true, 3, 'In progress 2 of 3 results in']);
 await check('the running order can be changed', async () => {
   const ids = async () => (await saved()).events[0].matches.map(m => m.id);
   const before = await ids();
@@ -657,7 +680,7 @@ await check('a premium live event goes on the calendar, on a Saturday', async ()
   await page.click('#uvTabs [data-uvtab=calendar]');
   await body.locator('.uv-addrow').click();
   await settle();
-  await page.fill('#uvPleName', 'WrestleMania');
+  await page.fill('#uvEvName', 'WrestleMania');
   await btn(sheet, 'Add to the calendar').click();
   await settle();
   const e = (await saved()).events.find(x => x.name === 'WrestleMania');
@@ -689,7 +712,7 @@ await check('the calendar shows the week at a glance', async () => {
   return [await nights(), await js(`[...document.querySelectorAll('.uv-gr')].map(r => r.querySelector('.w').textContent + ':'
     + [...r.querySelectorAll('.uv-cell')].map(c => c.className.replace('uv-cell', '').trim() || '-').join(','))`)];
 }, [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned',
-  'Sat WrestleMania | 1 result in'], [':', 'W3:-,-,-,-,-,complete', 'W2:partial,-,-,-,-,-', 'W1:-,-,-,-,-,-']]);
+  'Sat WrestleMania Completed | 1 result in · All shows'], [':', 'W3:-,-,-,-,-,complete', 'W2:partial,-,-,-,-,-', 'W1:-,-,-,-,-,-']]);
 
 // ================================================================ history
 await check('History: every result, newest show first', async () => {
@@ -701,7 +724,7 @@ await check('History: every result, newest show first', async () => {
     ['The Elite Two def. Jey Uso & Seth Rollins', 'Iyo Sky vs Rhea Ripley vs Roxanne Perez — No contest', 'Kenny Omega def. Will Ospreay']]]);
 await check('History: filter by show', async () => {
   const pick = async k => { await body.locator('.uv-pill', { hasText: k }).click(); return shows(); };
-  const r = [await pick('Raw'), await pick('PLEs'), await pick('Dynamite'), await js(`document.querySelector('#uvBody .uv-empty .t').textContent`)];
+  const r = [await pick('Raw'), await pick('PLEs & specials'), await pick('Dynamite'), await js(`document.querySelector('#uvBody .uv-empty .t').textContent`)];
   await pick('All shows');
   return r;
 }, [['Raw · Week 2'], ['WrestleMania'], [], 'No results yet']);
@@ -710,8 +733,8 @@ await check('History: everything on one timeline', async () => {
   const lines = await js(`[...document.querySelectorAll('#uvBody .uv-tl')].map(e => ${TEXT}(e))`);
   await body.locator('.uv-seg-page div', { hasText: 'Results' }).click();
   return [...lines.slice(0, 2), lines.find(l => /Raw · Week 2/.test(l))];
-}, ['S1 · W3 WrestleMania Sat 24 Jan 2026 — 1 result', 'S1 · W3 Mercedes Moné joined The Elite Two',
-  'S1 · W2 Raw · Week 2 Tue 13 Jan 2026 — 3 results, 1 still to enter']);
+}, ['S1 · W3 WrestleMania Sat 20 Jan 2026 — 1 result', 'S1 · W3 Mercedes Moné joined The Elite Two',
+  'S1 · W2 Raw · Week 2 Tue 9 Jan 2026 — 3 results, 1 still to enter']);
 
 // ================================================================ reigns, merging, deleting
 await check('correct an old reign from the title history', async () => {
@@ -780,7 +803,8 @@ await check('start Season 2 after confirming', async () => {
   return [u.seasons.map(s => `${s.name}:${s.status}:${s.week}`), await js(`document.getElementById('uvClock').textContent`)];
 }, [['Season 1:complete:3', 'Season 2:active:1'], 'Season 2 · Week 1']);
 await check('the calendar moves on to the new season', async () => [await nights(), await js(`document.querySelector('.uv-weeknav .s').textContent`)],
-  [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned'], 'This week']);
+  [['Mon Raw | Not planned', 'Tue NXT | Not planned', 'Wed Dynamite | Not planned', 'Wed Evolve | Not planned', 'Fri SmackDown | Not planned'],
+    'This week · Week 4 of January 2026 · 22–28 Jan']);                   // season 1 ran 3 weeks: season 2 carries on from there
 await check('a past season’s results are still browsable', async () => {
   await page.click('#uvTabs [data-uvtab=history]');
   const now = await js(`document.querySelector('#uvBody .uv-empty .t').textContent`);
@@ -907,7 +931,7 @@ const rkRows = sel => js(`[...document.querySelectorAll('${sel} .uv-st:not(.hd)'
 await check('Rankings: import a known universe', async () => {
   await noSheet();
   const file = join(dir, 'rankings.json');
-  await writeFile(file, JSON.stringify(rankingsWorld()));
+  await writeFile(file, JSON.stringify(quiet(rankingsWorld())));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -1037,7 +1061,7 @@ const trShow = sid => page.locator(`.uv-trshow[data-show=${sid}]`);
 await check('relegation: WrestleMania on the calendar leads to the season transition', async () => {
   await noSheet();
   const file = join(dir, 'relegation.json');
-  await writeFile(file, JSON.stringify(relegationWorld()));
+  await writeFile(file, JSON.stringify(quiet(relegationWorld())));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -1170,7 +1194,7 @@ const who = n => saved().then(u => u.wrestlers.find(w => w.name === n));
 await check('cycle: the transition covers relegation, NXT and the transfer window', async () => {
   await noSheet();
   const file = join(dir, 'cycle.json');
-  await writeFile(file, JSON.stringify(cycleWorld()));
+  await writeFile(file, JSON.stringify(quiet(cycleWorld())));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -1367,7 +1391,7 @@ const idOf = async n => (await W(n)).id;
 await check('relationships: a fresh world, nothing set yet', async () => {
   await noSheet();
   const file = join(dir, 'relations.json');
-  await writeFile(file, JSON.stringify(relationsWorld()));
+  await writeFile(file, JSON.stringify(quiet(relationsWorld())));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -1569,7 +1593,7 @@ const trust = () => js(`[...document.querySelectorAll('.uv-page [data-trust]')].
 await check('tag teams: teammates trust each other until given a reason not to; teams have relationships of their own', async () => {
   await noSheet();
   const file = join(dir, 'team-relations.json');
-  await writeFile(file, JSON.stringify(teamRelationsWorld()));
+  await writeFile(file, JSON.stringify(quiet(teamRelationsWorld())));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -1656,7 +1680,7 @@ function contenderWorld() {
 await check('a #1 contender’s match: booked from the match form, one or the other with a title', async () => {
   await noSheet();
   const file = join(dir, 'contender.json');
-  await writeFile(file, JSON.stringify(contenderWorld()));
+  await writeFile(file, JSON.stringify(quiet(contenderWorld())));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -1808,7 +1832,7 @@ function storyGroups(u) {
 const importState = async (st, name) => {
   await noSheet();
   const file = join(dir, name);
-  await writeFile(file, JSON.stringify(st));
+  await writeFile(file, JSON.stringify(quiet(st)));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -2056,7 +2080,7 @@ const activeTab = () => js(`document.querySelector('.uv-tab.on').dataset.uvtab`)
 await check('season: imported, it opens on today’s show', async () => {
   await noSheet();
   const file = join(dir, 'sample.json');
-  await writeFile(file, JSON.stringify(sample.st));
+  await writeFile(file, JSON.stringify(quiet(sample.st)));
   await page.click('#uvDataBtn');
   await settle();
   await page.setInputFiles('#uvImport', file);
@@ -2065,17 +2089,18 @@ await check('season: imported, it opens on today’s show', async () => {
   await closeSheet();
   await page.click('#uvTabs [data-uvtab=calendar]');
   return js(`(() => { const u = document.querySelector('.uv-upnext'); return [u.dataset.upnext, ${TEXT}(u)]; })()`);
-}, r => r[0] === raw6.id && /^Up next Raw · Week 6 Mon · Week 6 · Planned — nothing booked yet/.test(r[1]));
+}, r => r[0] === raw6.id && /^Up next Raw · Week 6 Mon 8 Feb 2026 · Planned — nothing booked yet/.test(r[1]));
 await check('Go to lists every destination, with where each stands', async () => {
   await page.click('#uvGoBtn');
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-go')].map(g => g.querySelector('b').textContent + ' | ' + g.querySelector('span').textContent)`);
-}, r => r.length === 15 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
+}, r => r.length === 16 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
   && r.includes('Rosters | Raw 9 · SmackDown 6 · Dynamite 5 · NXT 7 · Evolve 0')
   && r.some(x => /^Season 1 transition · transfer window \| Raw: done — 1 to NXT/.test(x))
   && r.includes('Tiers & transfers | 1 Main roster · 2 NXT · 3 Evolve')
-  && r[12] === 'Auto booker | Draft a card for any show — each show’s size and kinds of match'
-  && r[13] === 'Simulate ahead | Play the next weeks on a copy and see what changes — nothing is saved' && r[14].startsWith('Save & backup'));
+  && r[2] === 'Universe calendar | Months, annual events, show nights'
+  && r[13] === 'Auto booker | Draft a card for any show — each show’s size and kinds of match'
+  && r[14] === 'Simulate ahead | Play the next weeks on a copy and see what changes — nothing is saved' && r[15].startsWith('Save & backup'));
 await check('Go to reaches champions, relationships, rankings, story and the transfer window', async () => {
   const seen = [];
   await closeSheet();
@@ -2417,7 +2442,7 @@ await check('a show’s draft: every match with why, nobody twice, nobody injure
   return [await js(`${TEXT}(document.querySelector('.uv-evhead .st'))`), cards.length, cards.every(c => /^Why /.test(c.why)),
     new Set(ids).size === ids.length, names.every(w => w.showId === 'raw' && w.status === 'active'),
     ev.draft.matches.every(m => m.auto && m.auto.why.length && m.outcome === undefined)];
-}, ['Draft card waiting — nothing booked yet', 6, true, true, true, true]);
+}, ['Scheduled Draft card waiting — nothing booked yet', 6, true, true, true, true]);
 let rawDraft = null;
 await check('edit a drafted match: saved to the draft as yours, marked changed', async () => {
   await dmCard(1).locator('.uv-btn', { hasText: 'Edit' }).click();
@@ -2655,6 +2680,158 @@ await check('undo the story event: the drafted match it followed says so', async
   const warns = await js(`[...document.querySelectorAll('.uv-page .uv-mc.draft .uv-mc-d.warn')].map(${TEXT})`);
   return [gone, warns.some(w => /The story event it followed has been undone/.test(w)), await sound()];
 }, [true, true, []]);
+await check('layout anchored', anchored, isAnchored);
+
+// ================================================================ the universe calendar
+// The booking sample (week 5, the first week of February 2026), with its annual
+// events left on: the app puts them on the calendar when it opens.
+const cal = bookingSample();
+await check('calendar: the annual events go on the calendar when the app opens', async () => {
+  await noSheet();
+  const file = join(dir, 'calendar.json');
+  await writeFile(file, JSON.stringify(cal.st));
+  await page.click('#uvDataBtn');
+  await settle();
+  await page.setInputFiles('#uvImport', file);
+  await page.waitForTimeout(200);
+  await confirmYes();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  const u = await saved();
+  const at = n => { const e = u.events.find(x => x.name === n); return e ? `${e.kind} w${e.at.week} d${e.at.day} ${e.recurring ? 'annual' : ''}`.trim() : null; };
+  return [at('Elimination Chamber'), at('WrestleMania'), at('Raw: Last Stand'), at('Blood and Guts'), at('Royal Rumble'), at('Backlash'), await sound()];
+}, ['ple w8 d5 annual', 'ple w15 d5 annual', 'special w14 d0 annual', 'special w26 d2 annual', 'ple w52 d5 annual', 'ple w7 d5', []]);
+await check('calendar: the month view — four weeks of seven days, every event on its night', async () => {
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('[data-calmode] [data-v=month]').click();
+  await page.waitForTimeout(150);
+  return js(`[document.querySelector('[data-month]').dataset.month, document.querySelector('.uv-weeknav .t').textContent,
+    [...document.querySelectorAll('.uv-mrow[data-mweek]')].map(r => [...r.querySelectorAll('.uv-mday')].map(d => d.dataset.date).join(',')),
+    [...document.querySelectorAll('.uv-mday')].filter(d => d.querySelector('.uv-mev.big')).map(d => d.dataset.date + ' ' + d.querySelector('.uv-mev.big').textContent.trim()),
+    [...document.querySelectorAll('.uv-mrow[data-mweek] .wk')].map(w => w.textContent.trim()),
+    [...document.querySelectorAll('[data-evrow]')].map(r => r.querySelector('.nm').textContent.trim())]`);
+}, ['2026-2', 'February 2026', ['1,2,3,4,5,6,7', '8,9,10,11,12,13,14', '15,16,17,18,19,20,21', '22,23,24,25,26,27,28'],
+  ['20 Backlash', '27 Elimination Chamber'], ['W1wk 5', 'W2wk 6', 'W3wk 7', 'W4wk 8'],
+  ['Backlash Scheduled', 'Elimination Chamber Scheduled', 'Backlash Scheduled', 'Elimination Chamber Scheduled', 'Raw: Last Stand Scheduled',
+    'NXT: Last Stand Scheduled', 'Dynamite: Last Stand Scheduled', 'Evolve: Last Stand Scheduled']]);
+await check('calendar: into March, and back to this month', async () => {
+  await body.locator('.uv-weeknav .uv-ic').nth(1).click();
+  await page.waitForTimeout(120);
+  const march = await js(`[document.querySelector('.uv-weeknav .t').textContent, document.querySelector('.uv-weeknav .s').textContent,
+    document.querySelector('.uv-mday').dataset.date, [...document.querySelectorAll('.uv-mrow[data-mweek] .wk')].map(w => w.textContent.trim()).join(' ')]`);
+  await body.locator('.uv-back-now').click();
+  await page.waitForTimeout(120);
+  return [...march, await js(`document.querySelector('.uv-weeknav .t').textContent`)];
+}, ['March 2026', 'Next month · 4 weeks · 28 days', '1', 'W1wk 9 W2wk 10 W3wk 11 W4wk 12', 'February 2026']);
+await check('calendar: schedule a special event — name, date, shows, build-up', async () => {
+  await body.locator('.uv-addrow').click();
+  await settle();
+  await sheet.locator('[data-evkind] [data-v=special]').click();
+  await page.waitForTimeout(80);
+  await page.fill('#uvEvName', 'SmackDown: Spring Spectacular');
+  await sheet.locator('select').nth(1).selectOption('3');                  // week 3 of the month (month, week, night)
+  await page.waitForTimeout(80);
+  await sheet.locator('[data-show=smackdown]').check();
+  await page.waitForTimeout(120);
+  const note = await js(`document.querySelector('#uvSheetBody [data-datenote]').textContent`);
+  await btn(sheet, 'Add to the calendar').click();
+  await settle();
+  const e = (await saved()).events.find(x => x.name === 'SmackDown: Spring Spectacular');
+  return [note, e.kind, e.shows, e.at.week, e.at.day, e.prep, await pageKind(), await js(`${TEXT}(document.querySelector('.uv-evhead'))`)];
+}, ['Friday 19 Feb 2026 — week 7 of Season 1.', 'special', ['smackdown'], 7, 4, { weeks: 2, focus: ['contenders', 'feuds'], spots: 0 }, 'event',
+  'Special event · SmackDown SmackDown: Spring Spectacular Friday 19 Feb 2026 · week 7 · Season 1 Scheduled Nothing booked yet']);
+await check('calendar: its build-up, phase by phase', async () => js(`[${TEXT}(document.querySelector('.uv-prep .h')),
+  [...document.querySelectorAll('.uv-phase')].map(p => ${TEXT}(p))]`),
+['Being built toward — in 2 weeks', ['Weeks 5–7 Rivalries build toward it Now', 'Weeks 5–6 #1 contender’s matches for the titles on the line Now',
+  'Week 7 The go-home shows, the week of it']]);
+await check('calendar: a match locked on its card', async () => {
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Roman' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'Solo' });
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  await btn(body, 'Book a match').click();
+  await settle();
+  await side(0).locator('select[data-w="0"]').selectOption({ label: 'Randy' });
+  await side(1).locator('select[data-w="0"]').selectOption({ label: 'LA' });
+  await btn(sheet, 'Add to the card').click();
+  await settle();
+  await mc(0).locator('[data-lock]').click();
+  await page.waitForTimeout(150);
+  const m = (await saved()).events.find(x => x.name === 'SmackDown: Spring Spectacular').matches;
+  return [m.map(x => x.locked), await mc(0).locator('.uv-chip.lock').count(), (await toast()).t];
+}, [[true, false], 1, 'Locked — nothing automatic will change or remove it']);
+await check('calendar: rescheduled — its card goes with it, the build-up follows', async () => {
+  await body.locator('.uv-prep .uv-btn', { hasText: 'Reschedule' }).click();
+  await settle();
+  await sheet.locator('select').nth(1).selectOption('4');                  // week 4 of the month
+  await page.waitForTimeout(100);
+  const note = await js(`document.querySelector('#uvSheetBody [data-datenote]').textContent`);
+  await btn(sheet, 'Move it').click();
+  await settle();
+  const e = (await saved()).events.find(x => x.name === 'SmackDown: Spring Spectacular');
+  return [note, (await toast()).t, e.at.week, e.matches.map(m => m.locked), await js(`${TEXT}(document.querySelector('.uv-prep .h'))`),
+    await js(`[...document.querySelectorAll('.uv-phase .w')].map(w => w.textContent)`)];
+}, ['Friday 26 Feb 2026 — week 8 of Season 1.', 'SmackDown: Spring Spectacular moved to Fri 26 Feb 2026', 8, [true, false],
+  'The build-up begins week 6 (Week 2 of February 2026), 2 weeks ahead', ['Weeks 6–8', 'Weeks 6–7', 'Week 8']]);
+await check('calendar: scheduled, in progress, completed', async () => {
+  const badge = () => js(`document.querySelector('.uv-evhead .uv-evst').textContent`);
+  const a = await badge();
+  await mc(1).locator('.uv-btn', { hasText: 'Enter result' }).click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'Randy won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  const b = await badge();
+  await page.click('.uv-back');
+  await page.waitForTimeout(120);
+  const cell = await js(`document.querySelector('[data-mev].in-progress') && document.querySelector('[data-mev].in-progress').textContent.trim()`);
+  await body.locator('[data-mev]', { hasText: 'Spring Spectacular' }).click();
+  await page.waitForTimeout(120);
+  await mc(0).locator('.uv-btn', { hasText: 'Enter result' }).click();
+  await settle();
+  await page.selectOption('#uvMResult', { label: 'Solo won' });
+  await btn(sheet, 'Save the result').click();
+  await settle();
+  return [a, b, cell, await badge(), await sound()];
+}, ['Scheduled', 'In progress', 'SmackDown: Spring Spectacular', 'Completed', []]);
+await check('calendar: its page — when it began, show nights, annual events', async () => {
+  await page.click('.uv-back');
+  await page.waitForTimeout(120);
+  await body.locator('[data-callink]').click();
+  await page.waitForTimeout(150);
+  await body.locator('[data-shownight=smackdown] select').selectOption('5');
+  await page.waitForTimeout(150);
+  const u = await saved();
+  const rows = await js(`[...document.querySelectorAll('[data-annual]')].map(r => r.querySelector('.nm').textContent.trim() + ' | ' + r.querySelector('.sub').textContent)`);
+  return [(await toast()).t.replace(/ — .*/, ''), M.showById(u, 'smackdown').day, rows.slice(0, 3), rows.includes('Blood and Guts | July · week 2 · Wednesday · Special event · Dynamite')];
+}, ['SmackDown is on Saturdays now', 5, ['Royal Rumble | January · week 4 · Saturday · Premium live event · Raw & SmackDown',
+  'Elimination Chamber | February · week 4 · Saturday · Premium live event · Raw & SmackDown', 'Raw: Last Stand | April · week 2 · Monday · Special event · Raw'], true]);
+await check('calendar: an annual event moved — the year’s goes with it', async () => {
+  await body.locator('[data-annual=wrestlemania]').click();
+  await settle();
+  await sheet.locator('select').nth(1).selectOption('4');                  // the last week of April
+  await page.waitForTimeout(80);
+  await btn(sheet, 'Save').click();
+  await settle();
+  const e = (await saved()).events.find(x => x.name === 'WrestleMania');
+  await body.locator('[data-shownight=smackdown] select').selectOption('4');  // SmackDown back on Fridays
+  await page.waitForTimeout(120);
+  return [(await toast()).t.replace(/ — .*/, ''), e.at.week, await sound()];
+}, ['SmackDown is on Fridays now', 16, []]);
+await check('calendar: Next week — into the second week of February; no result is entered', async () => {
+  await page.click('.uv-back');
+  await page.waitForTimeout(120);
+  const played = u => u.events.reduce((n, e) => n + e.matches.filter(m => m.status === 'played').length, 0);
+  const before = played(await saved());
+  await body.locator('[data-calmode] [data-v=week]').click();
+  await btn(body, 'Next week').click();
+  await page.waitForTimeout(250);
+  const u = await saved();
+  return [await js(`document.getElementById('uvClock').textContent`), await js(`document.querySelector('.uv-weeknav .s').textContent`),
+    played(u) === before, u.events.filter(e => e.at.week === 5).every(e => e.matches.every(m => m.status === 'played' || m.outcome == null)), await sound()];
+}, ['Season 1 · Week 6', 'This week · Week 2 of February 2026 · 8–14 Feb', true, true, []]);
 await check('layout anchored', anchored, isAnchored);
 
 // ================================================================ wider screens

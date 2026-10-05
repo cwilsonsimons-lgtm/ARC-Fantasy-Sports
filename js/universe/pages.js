@@ -23,6 +23,7 @@ import { uvProfileStory, uvStoryPage } from './story.js';
 import { uvTiersPage } from './tiers.js';
 import { uvBookerPage } from './autobook.js';
 import { uvSimPage } from './ahead.js';
+import { uvCalendarPage } from './calendar.js';
 
 export function uvOpenWrestler(id) { pushPage('wrestler', id); }
 export function uvOpenTeam(id) { pushPage('team', id); }
@@ -32,7 +33,7 @@ export function uvOpenTitle(id) { pushPage('title', id); }
 export function uvPageView(kind, id) {
   return kind === 'wrestler' ? wrestlerPage(id) : kind === 'team' ? teamPage(id) : kind === 'title' ? titlePage(id)
     : kind === 'event' ? uvEventPage(id) : kind === 'transition' ? uvTransitionPage(id) : kind === 'pair' ? uvPairPage(id) : kind === 'story' ? uvStoryPage()
-    : kind === 'tiers' ? uvTiersPage() : kind === 'booker' ? uvBookerPage() : kind === 'sim' ? uvSimPage() : null;
+    : kind === 'tiers' ? uvTiersPage() : kind === 'booker' ? uvBookerPage() : kind === 'sim' ? uvSimPage() : kind === 'calendar' ? uvCalendarPage() : null;
 }
 
 // Long lists start short; "Show all" opens one list on one page.

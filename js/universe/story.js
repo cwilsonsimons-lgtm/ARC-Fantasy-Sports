@@ -505,6 +505,9 @@ export function uvHowStory() {
           <div><span>After the show</span><b>bad blood between people who were in different matches boiling over, and a champion who
             didn’t wrestle being called out</b></div>
         </div>
+        <p class="uv-p"><b>Building toward the events ahead.</b> While a premium live event or special event the show takes part in is being
+          built toward, bad blood between two booked to meet there is likelier to boil over — most of all on the go-home show — and less likely
+          to cool off; contenders speak up for the titles that could be on the line there; and before a team event, new alliances are likelier.</p>
         <p class="uv-p"><b>Every event has a cause.</b> It comes from the record: personalities, relationships and grudges, goals, momentum,
           tag teams, champions, recent results and what’s already happened. The reasons stay with it — tap any event to see them, and
           what it changed.</p>

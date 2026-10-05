@@ -3,7 +3,8 @@
 // Everything the owner types - names, notes, stipulations - goes through esc()
 // before it reaches innerHTML. Inline handlers only ever carry record ids,
 // which the model generates, never names.
-import { DAYS, calendarDate, seasonById, showById, wrestlerById, teamById, titleById, byName, blankRecord, matchKind } from './model.js';
+import { DAYS, MONTHS as MONTH_NAMES, eventShows, eventStatus, isBigEvent, seasonById, showById, stampDate, universeDate, wrestlerById, teamById,
+  titleById, byName, blankRecord, matchKind } from './model.js';
 
 export function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -33,6 +34,9 @@ export const ICON = {
   list:   svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'),
   redraw: svg('<path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/>'),
   spark:  svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5"/>'),
+  lock:   svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+  unlock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>'),
+  gear:   svg('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'),
 };
 
 export const LABEL = {
@@ -42,7 +46,7 @@ export const LABEL = {
   status:    { active: 'Active', injured: 'Injured', away: 'Away' },
   kind:      { singles: 'Singles', tag: 'Tag team' },
   division:  { men: "Men's", women: "Women's", open: 'Open' },
-  event:     { weekly: 'Weekly show', ple: 'Premium live event' },
+  event:     { weekly: 'Weekly show', ple: 'Premium live event', special: 'Special event' },
   finish:    { pinfall: 'Pinfall', submission: 'Submission', ko: 'Knockout / ref stoppage', dq: 'Disqualification',
                countout: 'Count-out', elimination: 'Elimination', escape: 'Escape', retrieval: 'Retrieved the object', other: 'Other' },
 };
@@ -181,27 +185,45 @@ export function histLine(st, e, html) {
 
 export const NIGHT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** '2026-01-19' -> '19 Jan 2026' (no locale: the same everywhere). */
-export function isoText(iso, year = true) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${MONTHS[m - 1]}${year ? ` ${y}` : ''}`;
+export { MONTH_NAMES };
+
+// Dates are universe dates: twelve months of four weeks, 28 days each (model.js).
+/** A universe date: "15 Jan 2026" (a night), or "Week 3 of January 2026" (a whole week). */
+export function dateText(d, year = true) {
+  return d.day == null ? `Week ${d.week} of ${MONTH_NAMES[d.month]}${year ? ` ${d.year}` : ''}` : `${d.date} ${MONTHS[d.month]}${year ? ` ${d.year}` : ''}`;
 }
-/**
- * When an event airs. With a season start date: "Mon 19 Jan 2026" (long:
- * "Monday 19 Jan 2026"); without: "Mon · Week 3".
- */
+export const monthText = d => `${MONTH_NAMES[d.month]} ${d.year}`;
+/** When an event airs, on the universe calendar: "Mon 15 Jan 2026" (long: "Monday 15 Jan 2026"). */
 export function eventWhen(st, ev, long = false) {
   const day = ev.at.day;
-  const night = day == null ? '' : long ? DAYS[day] : NIGHT[day];
-  const iso = calendarDate(st, ev.at.season, ev.at.week, day);
-  if (iso) return `${night} ${isoText(iso)}`;
-  return `${night}${night ? ' · ' : ''}Week ${ev.at.week}`;
+  const d = stampDate(st, ev.at);
+  if (day == null) return dateText(d);
+  return `${long ? DAYS[day] : NIGHT[day]} ${dateText(d)}`;
 }
 
-/** A night on a season's calendar: "Mon 19 Jan" with dates, else "Mon". */
+/** A night on a season's calendar: "Mon 15 Jan". */
 export function nightLabel(st, seasonId, week, day) {
-  const iso = calendarDate(st, seasonId, week, day);
-  return iso ? `${NIGHT[day]} ${isoText(iso, false)}` : NIGHT[day];
+  return `${NIGHT[day]} ${dateText(universeDate(st, seasonId, week, day), false)}`;
+}
+/** A season's week on the universe calendar: "Week 3 of January 2026 · 15–21 Jan". */
+export function weekText(st, seasonId, week, long = true) {
+  const a = universeDate(st, seasonId, week, 0), b = universeDate(st, seasonId, week, 6);
+  return `${long ? `${dateText(universeDate(st, seasonId, week))} · ` : ''}${a.date}–${b.date} ${MONTHS[a.month]}`;
+}
+
+// ---------------------------------------------------------------- events
+
+/** Where an event stands - Scheduled, In progress or Completed - as a badge. */
+export const STATUS_LABEL = { scheduled: 'Scheduled', 'in-progress': 'In progress', completed: 'Completed' };
+export function statusBadge(ev) {
+  const s = eventStatus(ev);
+  return `<span class="uv-evst ${s}" data-status="${s}">${STATUS_LABEL[s]}</span>`;
+}
+/** The shows taking part in an event, by name: "Raw & SmackDown", or "All shows". */
+export function eventShowsText(st, ev) {
+  const named = isBigEvent(ev) ? (ev.shows || []).filter(id => showById(st, id)) : [ev.showId];
+  if (!named.length && !ev.showId) return 'All shows';
+  return eventShows(st, ev).map(id => showName(st, id)).join(' & ');
 }
 
 // ---------------------------------------------------------------- the card

@@ -4,7 +4,7 @@ import * as M from './model.js';
 import { SCHEMA_VERSION, activeSeason, createUniverse, summary } from './model.js';
 import { STORAGE_KEY, exportUniverse, importUniverse, lastExported, listRestorePoints, noteExported, readRestorePoint } from './persist.js';
 import {
-  adoptUniverse, answerConfirm, bootUniverse, browserStorage, clearPages, closeSheet, confirmThen, currentPage, dropPage, keepRestore, lastSaveFailed,
+  adoptUniverse, answerConfirm, bootUniverse, browserStorage, clearPages, closeSheet, commit, confirmThen, currentPage, dropPage, keepRestore, lastSaveFailed,
   loadState, onSaved, openSheet, paintSheet, popPage, previousPage, pushPage, replaceUniverse, sheetShowing, toast, uni,
 } from './app.js';
 import { createCloud } from './cloud.js';
@@ -16,7 +16,7 @@ import * as RL from './relations.js';
 import { uvTrPart, uvTransitionSummary } from './relegation.js';
 import { uvPageView } from './pages.js';
 import { uvRankFor, uvRankingsView } from './ranks.js';
-import { ICON, esc } from './ui.js';
+import { ICON, esc, eventWhen } from './ui.js';
 
 const TABS = [['calendar', 'Calendar'], ['roster', 'Roster'], ['teams', 'Teams'], ['titles', 'Titles'], ['rankings', 'Rankings'],
   ['history', 'History']];
@@ -30,8 +30,10 @@ export function initUniverse() {
   bootUniverse(paint);
   // a new universe starts where it needs filling in: the roster
   if (!uni().wrestlers.length) tab = 'roster';
-  paint();
   const L = loadState();
+  // the year's annual events, on the calendar as the year comes round (a save from before the calendar gets them now)
+  if (!L.readOnly && M.scheduleAnnual(JSON.parse(JSON.stringify(uni()))).length) commit(st => M.scheduleAnnual(st));
+  paint();
   if (L.status === 'recovered' || L.readOnly || L.problems.length) {
     toast('There was a problem loading your saved universe — see the save menu.', true);
   }
@@ -117,6 +119,7 @@ export function uvGo(where, arg = '') {
     case 'tiers': uvTab('calendar'); pushPage('tiers', 'all'); return;
     case 'booker': uvTab('calendar'); pushPage('booker', 'all'); return;
     case 'sim': uvTab('calendar'); pushPage('sim', 'all'); return;
+    case 'universe': uvTab('calendar'); pushPage('calendar', 'all'); return;
     case 'transition': {
       const [id, part] = String(arg).split(':');
       uvTab('calendar');
@@ -144,6 +147,7 @@ function goSheet() {
   const tr = [...st.transitions].sort((a, b) => M.seasonById(st, b.season).number - M.seasonById(st, a.season).number)[0];
   const trWin = tr && tr.window && !tr.window.closed;
   const drafts = st.events.filter(e => e.draft).length;
+  const bigNext = M.eventsIn(st, s.id).find(e => M.isBigEvent(e) && e.at.week >= s.week && M.eventStatus(e) !== 'completed');
   const row = (go, icon, head, sub, cls = '') => `<div class="uv-go ${cls}" onclick="${go}">${icon}<div><b>${esc(head)}</b>
     <span>${esc(sub)}</span></div>${ICON.right}</div>`;
   const how = [['uvHowRanked', 'Rankings'], ['uvHowBalance', 'Booking balance'], ['uvHowRelegation', 'Relegation'],
@@ -156,6 +160,8 @@ function goSheet() {
         ${next ? row(`uvGo('show','${next.event.id}')`, ICON.cal, `Up next: ${next.event.name}`, next.text, 'hot')
           : row(`uvGo('calendar')`, ICON.cal, 'Up next', 'Nothing planned from this week on — plan a show')}
         ${row(`uvGo('calendar')`, ICON.cal, 'This week’s shows', `${s.name} · Week ${s.week} — cards and results`)}
+        ${row(`uvGo('universe')`, ICON.star, 'Universe calendar', bigNext ? `Next: ${bigNext.name}, ${eventWhen(st, bigNext)} — months, annual events, show nights`
+          : 'Months, annual events, show nights')}
         ${row(`uvGo('history')`, ICON.list, 'Results', `${played} result${played === 1 ? '' : 's'} this season, show by show`)}
         ${row(`uvGo('roster')`, ICON.user, 'Rosters', st.shows.map(x => `${x.name} ${count(x.id)}`).join(' · '))}
         ${row(`uvGo('teams')`, ICON.team, 'Tag teams', `${st.teams.filter(t => t.active).length} active`)}

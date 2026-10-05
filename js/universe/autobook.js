@@ -14,6 +14,7 @@ import * as SL from './storylines.js';
 import { ICON, chip, empty, esc, eventWhen, incidentText, kindChip, section, showColor, showName, vsLine } from './ui.js';
 import { closeSheet, commit, confirmThen, openSheet, pushPage, uni } from './app.js';
 import { uvDirect, uvDirectedToast } from './story.js';
+import { PREP_LABEL } from './calendar.js';
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const nope = msg => { throw new M.UniverseError(msg); };
@@ -85,7 +86,7 @@ function draftMatch(st, ev, dm, i, first, notes) {
   const move = d => `<div class="uv-ic mv" title="Move ${d < 0 ? 'up' : 'down'}" onclick="uvDraftMove('${ev.id}','${dm.id}',${d})">${d < 0 ? ICON.up : ICON.down}</div>`;
   const why = a ? a.why : [];
   return `<div class="uv-mc draft${a ? '' : ' own'}" data-dm="${dm.id}">
-    <div class="uv-mc-top"><span class="n">${first + i + 1}</span>${kindChip(dm)}${title ? chip(title.name, 'gold') : ''}${dm.contender && M.titleById(st, dm.contender) ? chip(`#1 contender · ${M.titleById(st, dm.contender).name}`, 'gold') : ''}${dm.stip ? chip(dm.stip) : ''}
+    <div class="uv-mc-top"><span class="n">${first + i + 1}</span>${kindChip(dm)}${dm.prep ? chip(`${PREP_LABEL[dm.prep.kind]} · ${(M.eventById(st, dm.prep.event) || dm.prep).name}`, 'gold') : ''}${title ? chip(title.name, 'gold') : ''}${dm.contender && M.titleById(st, dm.contender) ? chip(`#1 contender · ${M.titleById(st, dm.contender).name}`, 'gold') : ''}${dm.stip ? chip(dm.stip) : ''}
       <span class="st">${a ? (a.edited ? 'Draft · changed' : 'Draft') : 'Draft · yours'}</span></div>
     <div class="uv-mc-body">${vsLine(st, dm)}</div>
     ${dm.notes ? `<div class="uv-mc-n">${esc(dm.notes)}</div>` : ''}
@@ -157,7 +158,8 @@ export function uvDraftOut(eventId) {
     const st = uni();
     const ev = M.eventById(st, outPick.eventId);
     if (!ev || !ev.draft) return null;
-    const roster = st.wrestlers.filter(w => (ev.showId ? w.showId === ev.showId : !!w.showId)).sort(M.byName);
+    const shows = M.eventShows(st, ev);
+    const roster = st.wrestlers.filter(w => shows.includes(w.showId)).sort(M.byName);
     const row = w => {
       const off = w.status !== 'active';
       return `<label class="uv-check${off ? ' dim' : ''}"><input type="checkbox"${outPick.ids.has(w.id) || off ? ' checked' : ''}${off ? ' disabled' : ''}
@@ -202,7 +204,7 @@ export function uvDraftWeek(week) {
       body: `<p class="uv-p">The auto booker drafts a card for each show below, each by its own settings and roster. Nothing is booked:
           each draft waits on its show’s page for you to change and book. No winner is ever picked.</p>
         <div class="uv-plan">${rows.map(r => `<div class="uv-planrow${r.action === 'skip' ? ' off' : ''}" style="--c:${showColor(st, r.show ? r.show.id : null)}">
-          <div class="uv-main"><div class="nm">${esc(r.event ? r.event.name : `${r.show.name} · Week ${week}`)}</div><div class="sub">${esc(r.text)}</div></div>
+          <div class="uv-main"><div class="nm">${r.event && M.isBigEvent(r.event) ? `<span class="uv-star">${ICON.star}</span>` : ''}${esc(r.event ? r.event.name : `${r.show.name} · Week ${week}`)}</div><div class="sub">${esc(r.text)}</div></div>
           ${r.action === 'skip' ? '' : ICON.check}</div>`).join('')}</div>
         ${todo.length ? `<div class="uv-btn pri full" onclick="uvDraftWeekGo(${week})">${ICON.spark}Draft ${plural(todo.length, 'card')}</div>`
           : '<div class="fine">Nothing to draft this week.</div>'}
@@ -249,11 +251,11 @@ export function uvBookerSettings(showId) {
       title: show ? `${show.name}: auto booker` : 'All-shows events',
       body: `
         <p class="uv-p">${show ? `How ${esc(show.name)}’s cards are drafted. Anything you haven’t set follows its tier${t >= 0 ? ` (tier ${t + 1})` : ' (it’s in none)'}.`
-          : 'How a premium live event for every show is drafted: everyone on any show can be in it, and any title.'}
+          : 'How a premium live event or special event for more than one show is drafted: everyone on those shows can be in it, and their titles.'}
           A draft already made stays as it is — draw it again to use new settings.</p>
         <h4>${ICON.list}Matches on a card</h4>
         ${show ? step('size', s.size, 1, M.MAX_CARD, 'A weekly episode:') : ''}
-        ${step('pleSize', s.pleSize, 1, M.MAX_CARD, 'A premium live event:')}
+        ${step('pleSize', s.pleSize, 1, M.MAX_CARD, show ? 'A premium live event or special event:' : 'A premium live event:')}
         ${show ? step('titles', s.titles, 0, M.MAX_TITLE_MATCHES, 'Title matches on an episode, at most:') : ''}
         <div class="fine">At a premium live event, every title with a contender is on the line. A roster too small for the card gets as many
           matches as it can fill.</div>
@@ -308,7 +310,7 @@ export function uvBookerPage() {
           <div class="uv-main"><div class="nm">${esc(sh.name)} <span class="uv-muted">${esc(tierOf(sh.id))}</span>${s.changed ? ' ' + chip('Set by you', 'gold') : ''}</div>
           <div class="sub">${esc(summary(s))}</div></div>${ICON.right}</div>`;
       }).join('')}
-        <div class="uv-row" data-booker="all" onclick="uvBookerSettings('')"><div class="uv-main"><div class="nm">Premium live events for every show
+        <div class="uv-row" data-booker="all" onclick="uvBookerSettings('')"><div class="uv-main"><div class="nm">Events for more than one show
           ${all.changed ? chip('Set by you', 'gold') : ''}</div><div class="sub">${esc(`${all.pleSize} matches · stipulations: ${B.STIP_LABEL[all.stips].toLowerCase()}`)}</div></div>${ICON.right}</div>
       </div>
       <p class="uv-p uv-inset-p fine">A show you add later starts with the defaults for its tier: 6 matches a week in tier 1, 5 in tier 2,
@@ -341,7 +343,7 @@ export function uvHowBooker() {
       <p class="uv-p"><b>What it reads.</b> The show’s roster — injured, away and anyone you mark as not at the show left out — its tier
         (for the card’s size), the titles it can put on the line, this season’s standings, recent results and who is short of matches,
         rivalries, grudges, friendships and alliances, tag teams and factions (a team of three or more), what each wrestler is after,
-        arrivals from another show, and the calendar: a premium live event ahead, or tonight being one.</p>
+        arrivals from another show, and the universe calendar: the premium live events and special events ahead, or tonight being one.</p>
       <p class="uv-p"><b>What it looks for.</b></p>
       <div class="uv-calc">
         <div><b>Titles</b><span>the champion against the best contender — the #1 contender first, if someone has won a #1 contender’s
@@ -361,6 +363,13 @@ export function uvHowBooker() {
           turn it around; a new arrival gets a first match on the show.</span></div>
         <div><b>Everyone else</b><span>fresh matchups, close in the standings and not met lately.</span></div>
       </div>
+      <p class="uv-p"><b>Building toward an event.</b> Each premium live event or special event says how far ahead its build-up
+        begins and what for. In those weeks, on the shows taking part: <b>qualifying matches</b> until its spots are filled (one a division a
+        card; champions don’t need to qualify), <b>#1 contender’s matches</b> for the titles that could be on the line there, <b>teams
+        forming</b> — friends and allies who aren’t a team yet team up, factions work as units — and <b>feuds</b> that hold the big match
+        back for the night, with one last chapter on the go-home show. A weekly title defence waits for the event, too. Each such match is
+        booked toward the event, so if you move it, what no longer fits comes off — never a result, and never a match you’ve locked. On
+        the night, everyone who qualified meets.</p>
       <p class="uv-p"><b>Putting a card together.</b> Nobody is in two matches. The card leans toward each show’s mix of match types and
         each division’s share of who’s available, rests people who wrestled lately, never repeats last week’s singles match, and keeps a
         weekly show to its number of title matches. The biggest match goes last. Close calls are settled by a seeded draw, so the same

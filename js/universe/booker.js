@@ -5,9 +5,16 @@
 // the championships it can put on the line, the standings, who has wrestled
 // lately and who is short of matches, rivalries, grudges, friendships and
 // alliances, tag teams and factions (a team of three or more), what each
-// wrestler is after, arrivals from another tier, and the calendar - a premium
-// live event coming up, or tonight being one. Each show's settings say how
-// many matches and which kinds.
+// wrestler is after, arrivals from another tier, and the universe calendar -
+// the premium live events and special events the show is building toward, or
+// tonight being one. Each show's settings say how many matches and which kinds.
+//
+// Building toward an event: once its preparation has begun (so many weeks
+// ahead, as the event says), qualifying matches fill its spots, #1 contender's
+// matches settle who challenges for the titles on the line there, partners
+// who'd make a team get to team up, and feuds build without giving the big
+// match away - each such match booked for the event, so moving the event
+// moves its preparation. On the night, everyone who qualified meets.
 //
 // It looks for matches that make sense: a champion and the best contender,
 // rivals - or each other's allies and partners - a friend standing up to a
@@ -50,15 +57,15 @@ export const KIND_LABEL = {
   title: 'Title match', vacant: 'Vacant title', contender: 'Contenders', feud: 'Feud', build: 'Feud builds', defend: 'Friend steps in',
   teams: 'Teams collide', rematch: 'Rematch', step: 'Step up', chance: 'Opportunity', turn: 'Turn it around', arrival: 'New arrival',
   fresh: 'Fresh matchup', 'multi': 'Multi-person', hook: 'From the story', surprise: 'Surprise',
+  qualifier: 'Qualifier', qualified: 'The qualifiers', formation: 'Teams form',
 };
 // ideas whose line-up is the story itself: meeting again is the point, and storylines.js already spaces it out
-const STORY_KINDS = new Set(['feud', 'build', 'defend', 'rematch', 'title', 'hook', 'vacant']);
+const STORY_KINDS = new Set(['feud', 'build', 'defend', 'rematch', 'title', 'hook', 'vacant', 'qualified']);
 const MIX_WEIGHT = { often: 1, sometimes: 0.5, rarely: 0.2, never: 0 };
 export const RULES = {
   mixPull: 1.2,         // how hard the card leans toward each kind's share
   divisionPull: 1,      // ... and toward each division's share of who's available
   jitter: 0.8,          // how far a draw can move a score either way, for variety
-  pleAhead: 4,          // weeks ahead a premium live event shapes a feud
   recentWeeks: 6,       // how far back "lately" looks
   sameFeud: 2,          // at most this many matches from one feud on a card
 };
@@ -82,43 +89,48 @@ const isSingles = m => m.sides.length === 2 && m.sides.every(sd => sd.wrestlers.
 
 // ---------------------------------------------------------------- what the booker knows about a show
 
-function upcomingPle(st, ev, wk) {
-  return st.events.filter(e => e.kind === 'ple' && e.id !== ev.id && (e.showId === ev.showId || e.showId === null)
-      && M.compareStamps(st, e.at, ev.at) > 0 && weekNo(st, e.at) - wk <= RULES.pleAhead)
-    .sort((a, b) => M.compareStamps(st, a.at, b.at)).map(e => ({ ev: e, weeks: weekNo(st, e.at) - wk }))[0] || null;
-}
-
 function context(st, ev, { nonce = 0, keep = [] } = {}) {
   const draft = ev.draft || { passed: [], out: [] };
+  // the shows taking part: an episode's own, a big event's named shows (none named: every show)
+  const shows = M.eventShows(st, ev);
+  const showSet = new Set(shows);
   const showId = ev.showId || null;
+  const every = st.shows.length > 0 && st.shows.every(s => showSet.has(s.id));
   const settings = M.bookerSettings(st, showId);
-  const ple = ev.kind === 'ple';
+  const ple = M.isBigEvent(ev);
   const taken = new Set([...ev.matches.flatMap(inMatch), ...keep.flatMap(inMatch)]);
   const out = new Set(draft.out);
-  const roster = st.wrestlers.filter(w => (showId ? w.showId === showId : !!w.showId));
+  const roster = st.wrestlers.filter(w => (showId ? w.showId === showId : showSet.has(w.showId)));
+  const onRoster = new Set(roster.map(w => w.id));
   const avail = roster.filter(w => w.status === 'active' && !out.has(w.id));
   const free = new Set(avail.filter(w => !taken.has(w.id)).map(w => w.id));
   const wk = weekNo(st, ev.at);
   // where everyone stands this season, each division ranked on its own, as on the Rankings tab
   const period = SD.periodOf(st, ev.at.season);
   const table = SD.standings(st, { showId, period, kind: 'singles' });
-  const rows = [...table.ranked, ...table.unranked];
+  // a big event for some of the shows: ranked among those on them
+  const mine = r => showId || every || onRoster.has(r.id);
+  const rows = [...table.ranked, ...table.unranked].filter(mine);
   const rank = new Map();
   M.GENDERS.forEach(g => {
     const div = SD.rankRows(rows.filter(r => r.gender === g));
     div.ranked.forEach(r => rank.set(r.id, { rank: r.rank, score: r.score, of: div.ranked.length }));
   });
-  const teamTable = SD.standings(st, { showId, period, kind: 'teams' });
+  const teamAll = SD.standings(st, { showId, period, kind: 'teams' });
+  const teamTable = showId || every ? teamAll
+    : SD.rankRows([...teamAll.ranked, ...teamAll.unranked].filter(r => (M.teamById(st, r.id) || { members: [] }).members.some(id => onRoster.has(id))));
   const teamRank = new Map(teamTable.ranked.map(r => [r.id, { rank: r.rank, score: r.score, of: teamTable.ranked.length }]));
   const d = RL.relationships(st);
   const hist = history(st, ev.at);
   // the story so far: every story event up to tonight (tonight's only if before the show), and the storylines it makes
-  const onRoster = new Set(roster.map(w => w.id));
   const recent = M.allIncidents(st).filter(x => M.compareStamps(st, x.event.at, ev.at) <= 0 && (x.event.id !== ev.id || x.incident.phase === 'pre'))
     .map(x => ({ ...x, wk: weekNo(st, x.event.at) })).filter(x => wk - x.wk < SL.RULES.window);
+  // the calendar: the big events these shows are building toward, whose preparation has begun
+  const ahead = M.approaching(st, ev.at, shows).filter(x => x.event.id !== ev.id);
+  const feudsTo = ahead.find(x => x.phases.some(p => p.focus === 'feuds'));
   return {
-    st, ev, showId, settings, ple, nonce, keep, taken, out, roster, avail, free, wk, rank, teamRank,
-    size: ple ? settings.pleSize : settings.size,
+    st, ev, shows, showSet, every, showId, settings, ple, nonce, keep, taken, out, roster, avail, free, wk, rank, teamRank,
+    size: M.cardSize(st, ev),
     show: showId ? M.showById(st, showId) : null,
     d, hist, recent,
     lines: SL.storylines(st, { at: ev.at, d, hist }),
@@ -127,7 +139,8 @@ function context(st, ev, { nonce = 0, keep = [] } = {}) {
     types: new Map(),
     lineups: recentLineups(st, hist, wk),
     balance: showId ? SD.balance(st, { showId, period: SD.periodOf(st, 'last4') }) : { groups: [] },
-    nextPle: ple ? null : upcomingPle(st, ev, wk),
+    ahead,
+    nextPle: ple || !feudsTo ? null : { ev: feudsTo.event, weeks: feudsTo.weeks },
     passed: new Set(draft.passed),
     goals: new Map(), moods: new Map(),
   };
@@ -151,6 +164,7 @@ const rankLine = (c, id) => { const r = c.rank.get(id); return r ? `#${r.rank} i
 const ago = (c, wk) => (c.wk - wk <= 0 ? 'earlier this week' : c.wk - wk === 1 ? 'last week' : `${c.wk - wk} weeks ago`);
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const listOf = xs => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] || '');
+const toGoText = w => (w <= 0 ? 'this week' : w === 1 ? 'next week' : `in ${w} weeks`);
 
 // every played meeting between two wrestlers on opposite sides, oldest first
 function meetings(c, a, b, weeks = 99) {
@@ -176,8 +190,8 @@ const solo = id => ({ team: null, wrestlers: [id] });
 // a team's free members, up to n
 const freeOf = (c, t, n) => t.members.filter(id => c.free.has(id)).slice(0, n);
 
-// an idea: a line-up, its stakes, its score and why
-function idea(c, kind, sides, { titleId = null, contender = null, stip = '', notes = '', score, weight = 3, why = [], feud = null, events = [] }) {
+// an idea: a line-up, its stakes, its score and why - and the event it's booked toward, if it's preparation for one
+function idea(c, kind, sides, { titleId = null, contender = null, stip = '', notes = '', score, weight = 3, why = [], feud = null, events = [], prep = null }) {
   const m = { sides: sides.map(sd => ({ team: sd.team || null, wrestlers: [...sd.wrestlers] })), titleId, contender };
   const people = inMatch(m);
   const type = typeOf(m);
@@ -200,7 +214,7 @@ function idea(c, kind, sides, { titleId = null, contender = null, stip = '', not
   if (last != null && c.wk - last <= 1) s -= 2.5;
   else if (last != null && c.wk - last <= 2) s -= 1;
   return { key: matchKey(m), kind, type, gender: genderOf(c, people), sides: m.sides, titleId, contender, stip, notes,
-    score: s, weight, why: [...why, ...extra].filter(Boolean), feud, people, events: [...new Set(events)] };
+    score: s, weight, why: [...why, ...extra].filter(Boolean), feud, people, events: [...new Set(events)], prep };
 }
 // every line-up played lately, by who was in it (title aside): the week it last happened
 function recentLineups(st, hist, wk) {
@@ -220,18 +234,25 @@ function lastTypes(c, id) {
 
 // ---------------------------------------------------------------- championships
 
-// the titles a show can put on the line: its own, and any with no show whose champion is here
+// the titles a show (or a big event's shows) can put on the line: their own, and any with no show whose champion is here
 function titlesFor(c) {
-  const st = c.st;
+  return titlesOn(c.st, c.every ? null : c.showSet);
+}
+function titlesOn(st, showSet) {
   return st.titles.filter(t => {
     if (!t.active) return false;
-    if (!c.showId || t.showId === c.showId) return true;
+    if (!showSet || showSet.has(t.showId)) return true;
     if (t.showId) return false;
     const r = M.currentReign(st, t.id);
     const ids = r ? (r.holder.type === 'team' ? (M.teamById(st, r.holder.id) || { members: [] }).members : [r.holder.id]) : [];
-    return ids.some(id => (W(c, id) || {}).showId === c.showId);
+    return ids.some(id => showSet.has((M.wrestlerById(st, id) || {}).showId));
   });
 }
+// an event's own titles: what could be on the line there
+const eventTitles = (st, ev) => {
+  const shows = M.eventShows(st, ev);
+  return titlesOn(st, st.shows.every(s => shows.includes(s.id)) ? null : new Set(shows));
+};
 // weeks since a title was last on the line in a result, or since the reign began
 function titleIdle(c, t, reign) {
   const wks = c.st.events.filter(e => e.matches.some(m => m.status === 'played' && m.titleId === t.id) && M.compareStamps(c.st, e.at, c.ev.at) < 0)
@@ -336,13 +357,19 @@ function titleIdeas(c) {
       return;
     }
     const champSide = t.kind === 'tag' ? { team: reign.holder.id, wrestlers: here.slice(0, 2) } : solo(here[0]);
+    // a big event ahead that could put it on the line: the defence can wait for it
+    const saved = c.ple ? null : c.ahead.find(x => eventTitles(st, x.event).includes(t));
     const lead = c.ple ? `${champName} ${champIds.length > 1 ? 'defend' : 'defends'} the ${t.name} at ${c.ev.name}`
       : idle >= 3 ? `The ${t.name} hasn’t been on the line for ${plural(idle, 'week')}`
         : `${champName} ${champIds.length > 1 ? 'defend' : 'defends'} the ${t.name}`;
+    const waitFor = saved ? `${saved.event.name} is ${toGoText(saved.weeks)} — the ${t.name} could wait for it` : '';
+    // a #1 contender's match was booked toward that event: the winner's shot is there, on the night
+    const earnedFor = saved && M.numberOneContender(st, t.id);
+    if (earnedFor && earnedFor.match.prep && earnedFor.match.prep.event === saved.event.id) return;
     // a champion's open challenge: somebody answers it
     const open = c.recent.filter(x => x.incident.kind === 'open-challenge' && c.wk - x.wk <= 2 && x.incident.by.some(id => champIds.includes(id))
       && (!x.incident.title || x.incident.title === t.id)).pop();
-    const base = (c.ple ? 6 : 2 + (idle >= 4 ? 1 : idle <= 1 ? -1.5 : 0)) + (open ? 2 : 0);
+    const base = (c.ple ? 6 : 2 + (idle >= 4 ? 1 : idle <= 1 ? -1.5 : 0)) + (open ? 2 : 0) - (saved && !open ? 3.5 : 0);
     const weight = (c.ple ? 9 : 7) + (t.kind === 'singles' ? 0.5 : 0);
     if (top[0]) {
       const k = top[0];
@@ -350,11 +377,11 @@ function titleIdeas(c) {
       out.push(idea(c, 'title', [champSide, k.side], { titleId: t.id, stip: stip.stip, score: base + 0.8 * k.s, weight,
         why: [open ? `${champName} laid down an open challenge ${when(c, { ev: open.event, wk: open.wk })} — ${k.name} answers it`
           : k.earned ? `${k.name} earned the shot: ${k.reasons[0]}` : k.hook || lead,
-          `Challenger ${caseFor(k)}`, k.hook ? lead : '', stip.why], events: [...k.events, ...(open ? [open.incident.id] : [])], feud: k.feud }));
+          `Challenger ${caseFor(k)}`, k.hook ? lead : '', stip.why, waitFor], events: [...k.events, ...(open ? [open.incident.id] : [])], feud: k.feud }));
     }
     if (t.kind === 'singles' && top[1] && top[1].s >= top[0].s - 1.5) {
       out.push(idea(c, 'title', [champSide, top[0].side, top[1].side], { titleId: t.id, score: base - 0.3 + 0.4 * (top[0].s + top[1].s), weight,
-        why: [`Two contenders with a claim to the ${t.name}`, caseFor(top[0]), caseFor(top[1])], events: [...top[0].events, ...top[1].events] }));
+        why: [`Two contenders with a claim to the ${t.name}`, caseFor(top[0]), caseFor(top[1]), waitFor], events: [...top[0].events, ...top[1].events] }));
     }
     // the champion just defended: the contenders settle who's next
     if (!waiting) contenderIdeas(c, t, top, out, idle <= 1 ? `The ${t.name} was just defended — the contenders settle who’s next` : null);
@@ -470,7 +497,7 @@ function storyIdeas(c) {
       if (tonight) s += 4;
       if (l.settled) { s -= 4; why.push(`Settled lately (${l.settled.text}) — the feud is cooling off`); }
       if (c.ple) { s += 3; why.push(`The feud’s big match, at ${c.ev.name}`); }
-      else if (hold) { s -= 3.5; why.push(`${hold.ev.name} is ${hold.weeks === 1 ? 'next week' : `in ${hold.weeks} weeks`} — this could wait for it`); }
+      else if (hold) { s -= 3.5; why.push(`${hold.ev.name} is ${toGoText(hold.weeks)} — this could wait for it`); }
       if (justMet) s -= 3;
       else if (twoInARow) s -= 1.5;
       else if (rut && rut !== 'singles') { s += 1; why.push(`${SL.FORMAT_LABEL[rut].replace(/^./, x => x.toUpperCase())} twice running — this time one on one`); }
@@ -496,10 +523,12 @@ function storyIdeas(c) {
 
     // moving it on another way: someone who stands with the other one, or a tag match with backup on both sides
     const alt = justMet ? `They met one on one ${ago(c, lastDirect.wk)} — the feud moves on another way`
-      : hold ? `Building to ${hold.ev.name} without giving the singles match away`
+      : hold ? (hold.weeks === 0 ? `The go-home show for ${hold.ev.name} — one last chapter before the big match`
+        : `Building to ${hold.ev.name} (${toGoText(hold.weeks)}) without giving the singles match away`)
         : twoInARow ? 'Two singles matches in a row — something different this time'
           : rut ? `${SL.FORMAT_LABEL[rut].replace(/^./, x => x.toUpperCase())} twice running — something different this time` : '';
-    const altBonus = justMet || hold ? 1.5 : twoInARow || rut ? 1 : 0;
+    const altBonus = justMet || hold ? 1.5 + (hold && hold.weeks === 0 ? 0.5 : 0) : twoInARow || rut ? 1 : 0;
+    const toward = hold ? { event: hold.ev.id, kind: 'feud' } : null;     // built toward the event, so it moves with it
     const ruts = f => (rut === f ? -2 : 0);
     const standing = (who, foe) => SL.drawnIn(c.st, c.d, l, who, foe)
       .filter(p => c.free.has(p.id) && sameDivision(c, foe, p.id) && !partnered(c, foe, p.id) && !bondOf(c, foe, p.id));
@@ -509,7 +538,7 @@ function storyIdeas(c) {
         const friend = p.how === 'drawn in' && lvl(c, 'friends', y, p.id);
         out.push(idea(c, friend ? 'defend' : 'build', [solo(x), solo(p.id)], { score: 0.8 + 0.45 * l.priority * p.weight + altBonus + ruts('proxy'), weight: 5,
           why: [friend ? `${nm(c, p.id)} stands up for a friend: ${nm(c, y)}’s feud with ${nm(c, x)}`
-            : `${nm(c, x)} against ${nm(c, p.id)}, who stands with ${nm(c, y)}`, `Connection: ${p.path}`, lead, upset, alt || chapter], events, feud: key }));
+            : `${nm(c, x)} against ${nm(c, p.id)}, who stands with ${nm(c, y)}`, `Connection: ${p.path}`, lead, upset, alt || chapter], events, feud: key, prep: toward }));
       });
     });
     if (c.free.has(a) && c.free.has(b) && sameDivision(c, a, b)) {
@@ -519,7 +548,7 @@ function storyIdeas(c) {
         const tstip = stipFor(c, 'tag', l.heat, `${key}:tag`, { tag: true });
         out.push(idea(c, 'build', [sa, sb], { stip: tstip.stip, score: 1.1 + 0.5 * l.priority + altBonus + ruts('tag') + (sa.team && sb.team ? 0.5 : 0), weight: 5.5,
           why: [`${nm(c, a)} and ${nm(c, b)} on opposite sides, each with backup`, `Connection: ${pa.path}`, `Connection: ${pb.path}`, lead, upset, alt, tstip.why],
-          events, feud: key }));
+          events, feud: key, prep: toward }));
       }
     }
   });
@@ -577,6 +606,127 @@ function hookIdeas(c) {
     }
   });
   return out;
+}
+
+// ---------------------------------------------------------------- building toward the events ahead
+//
+// The universe calendar: each premium live event or special event these shows
+// take part in, once its preparation has begun, asks for what it's built
+// with - qualifying matches until its spots are filled, #1 contender's matches
+// for the titles that could be on the line there, partners teaming up before
+// a team event. Each is booked toward the event (its `prep`), so it moves
+// with the event. On the night itself, everyone who qualified meets.
+
+const holdersOf = (st, h) => (h.type === 'team' ? (M.teamById(st, h.id) || { members: [] }).members : [h.id]);
+function prepIdeas(c) {
+  const out = [];
+  c.ahead.forEach(x => {
+    const on = f => x.phases.some(p => p.focus === f);
+    if (on('qualifiers')) qualifierIdeas(c, x, out);
+    if (on('contenders')) prepContenderIdeas(c, x, out);
+    if (on('teams')) formationIdeas(c, x, out);
+  });
+  if (c.ple && c.ev.prep && c.ev.prep.focus.includes('qualifiers')) qualifiedIdeas(c, out);
+  return out;
+}
+
+// a qualifying match: its winner takes one of the event's spots (each division has its own)
+function qualifierIdeas(c, x, out) {
+  const st = c.st, ev = x.event, spots = ev.prep.spots;
+  if (!spots || x.weeks < 1) return;
+  const done = M.qualifiedFor(st, ev.id).map(q => q.wrestler);
+  // booked and still to play, anywhere: each one fills a spot
+  const pending = M.prepMatches(st, ev.id).filter(p => p.match.status === 'scheduled' && p.match.prep.kind === 'qualifier');
+  const busy = new Set(pending.flatMap(p => inMatch(p.match)));
+  // champions defend at the event; they don't need to qualify
+  const champs = new Set(st.titles.filter(t => t.active).flatMap(t => { const r = M.currentReign(st, t.id); return r ? holdersOf(st, r.holder) : []; }));
+  M.GENDERS.forEach(g => {
+    const have = done.filter(id => (W(c, id) || {}).gender === g).length;
+    const coming = pending.filter(p => genderOf(c, inMatch(p.match)) === g).length;
+    const left = spots - have - coming;
+    if (left <= 0) return;
+    const pool = [...c.free].filter(id => (W(c, id) || {}).gender === g && !done.includes(id) && !busy.has(id) && !champs.has(id))
+      .sort((a, b) => (c.rank.get(a) || { rank: 99 }).rank - (c.rank.get(b) || { rank: 99 }).rank || a.localeCompare(b));
+    if (pool.length < 2) return;
+    const urgency = Math.min(2, left / x.weeks);
+    const head = `Qualifying match for ${ev.name} (${toGoText(x.weeks)}) — the winner takes one of the ${division(g)} spots`;
+    const tally = `${plural(left, 'spot')} of ${spots} still open${have ? `, ${have} qualified so far` : ''}`;
+    const prep = { event: ev.id, kind: 'qualifier' };
+    for (let i = 0; i + 1 < pool.length && i < 6; i += 2) {
+      const pair = [pool[i], pool[i + 1]];
+      out.push(idea(c, 'qualifier', pair.map(solo), { score: 2.6 + urgency - 0.2 * i, weight: 6, prep,
+        why: [head, tally, ...pair.map(id => (rankLine(c, id) ? `${nm(c, id)} is ${rankLine(c, id)}` : ''))] }));
+    }
+    if (pool.length >= 3) {
+      out.push(idea(c, 'qualifier', pool.slice(0, 3).map(solo), { score: 2.3 + urgency, weight: 6, prep,
+        why: [`${head} — three go for it`, tally] }));
+    }
+  });
+}
+
+// on the night: everyone who qualified, in one match
+function qualifiedIdeas(c, out) {
+  const q = M.qualifiedFor(c.st, c.ev.id).map(x => x.wrestler);
+  M.GENDERS.forEach(g => {
+    const ids = q.filter(id => (W(c, id) || {}).gender === g && c.free.has(id));
+    if (ids.length < 2) return;
+    out.push(idea(c, 'qualified', ids.map(solo), { score: 7, weight: 9.6, notes: `The ${division(g)} ${c.ev.name} match`,
+      why: [`The ${division(g)} ${c.ev.name} match: the ${plural(ids.length, 'wrestler')} who qualified`, listOf(ids.map(id => nm(c, id)))] }));
+  });
+}
+
+// a #1 contender's match before the event: its winner challenges for the title there
+function prepContenderIdeas(c, x, out) {
+  const st = c.st, ev = x.event;
+  const pending = M.prepMatches(st, ev.id).filter(p => p.match.status === 'scheduled' && p.match.contender);
+  eventTitles(st, ev).filter(t => titlesFor(c).includes(t)).forEach(t => {
+    const reign = M.currentReign(st, t.id);
+    if (!reign || M.numberOneContender(st, t.id) || pending.some(p => p.match.contender === t.id)) return;
+    const champIds = holdersOf(st, reign.holder);
+    const champName = M.holderName(st, reign.holder);
+    const top = contenders(c, t, champIds, champName).filter(k => k.s > -1 && !(k.lostShot != null && c.wk - k.lostShot <= 2));
+    if (top.length < 2) return;
+    const [a, b] = top;
+    out.push(idea(c, 'contender', [a.side, b.side], { contender: t.id, score: 3 + 0.5 * (a.s + b.s) / 2, weight: 6, prep: { event: ev.id, kind: 'contender' },
+      why: [`#1 contender’s match: the winner faces ${champName} for the ${t.name} at ${ev.name} (${toGoText(x.weeks)})`, caseFor(a), caseFor(b)],
+      events: [...a.events, ...b.events] }));
+  });
+}
+
+// before a team event: friends and allies who aren't a team yet team up, and factions work as a unit
+function formationIdeas(c, x, out) {
+  const ev = x.event;
+  const lead = `Teams form for ${ev.name} (${toGoText(x.weeks)})`;
+  const prep = { event: ev.id, kind: 'team' };
+  const ids = [...c.free].sort();
+  const pairs = [];
+  ids.forEach((a, i) => ids.slice(i + 1).forEach(b => {
+    const bond = bondOf(c, a, b);
+    const [p, q] = [a, b].sort((x, y) => nm(c, x).localeCompare(nm(c, y)));      // named in order: "Cody and Jey"
+    if (bond >= 2 && !partnered(c, a, b) && sameDivision(c, a, b)) pairs.push({ a: p, b: q, bond, how: lvl(c, 'friends', a, b) ? 'friends' : 'allies' });
+  }));
+  pairs.sort((p, q) => q.bond - p.bond || p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
+  const regs = c.st.teams.filter(t => t.active && freeOf(c, t, 2).length === 2).map(t => ({ t, ids: freeOf(c, t, 2) }));
+  const apart = (xs, ys) => !xs.some(p => ys.includes(p) || ys.some(q => bondOf(c, p, q)));
+  pairs.slice(0, 4).forEach(p => {
+    const mine = [p.a, p.b];
+    const reg = regs.find(r => apart(mine, r.ids) && sameDivision(c, ...mine, ...r.ids));
+    const other = reg ? { team: reg.t.id, wrestlers: reg.ids }
+      : (pairs.find(q => apart(mine, [q.a, q.b]) && sameDivision(c, ...mine, q.a, q.b)) || null);
+    if (!other) return;
+    const side = other.wrestlers ? other : { team: null, wrestlers: [other.a, other.b] };
+    out.push(idea(c, 'formation', [{ team: null, wrestlers: mine }, side], { score: 2 + 0.4 * p.bond, weight: 5.5, prep,
+      why: [`${lead}: ${nm(c, p.a)} and ${nm(c, p.b)}, ${p.how} (level ${p.bond}), team up`,
+        reg ? `Against ${reg.t.name}, a team already` : `Against ${names(c, side.wrestlers)}, who are ${lvl(c, 'friends', side.wrestlers[0], side.wrestlers[1]) ? 'friends' : 'allies'} too`] }));
+  });
+  // a faction of three or more works as a unit
+  const units = c.st.teams.filter(t => t.active && freeOf(c, t, 3).length === 3 && genderOf(c, freeOf(c, t, 3)) !== 'mixed');
+  units.forEach((u, i) => units.slice(i + 1).forEach(v => {
+    const us = freeOf(c, u, 3), vs = freeOf(c, v, 3);
+    if (!apart(us, vs) || genderOf(c, us) !== genderOf(c, vs)) return;
+    out.push(idea(c, 'formation', [{ team: u.id, wrestlers: us }, { team: v.id, wrestlers: vs }], { score: 2.6, weight: 6, prep,
+      why: [`${lead}: ${u.name} and ${v.name} get ready as units`, 'Three on three'] }));
+  }));
 }
 
 // ---------------------------------------------------------------- the rare surprise
@@ -840,19 +990,21 @@ function freshIdeas(c) {
 // ---------------------------------------------------------------- the card
 
 function allIdeas(c) {
-  const ideas = [...titleIdeas(c), ...storyIdeas(c), ...hookIdeas(c), ...surpriseIdeas(c), ...teamIdeas(c), ...upsetIdeas(c), ...chanceIdeas(c), ...turnIdeas(c),
-    ...arrivalIdeas(c), ...freshIdeas(c)];
+  const ideas = [...titleIdeas(c), ...prepIdeas(c), ...storyIdeas(c), ...hookIdeas(c), ...surpriseIdeas(c), ...teamIdeas(c), ...upsetIdeas(c), ...chanceIdeas(c),
+    ...turnIdeas(c), ...arrivalIdeas(c), ...freshIdeas(c)];
   // one idea per line-up and title: the best-scoring reason for it, with the others' reasons after its own
   const best = new Map();
   ideas.forEach(x => {
     const b = best.get(x.key);
     if (!b) { best.set(x.key, x); return; }
     // the story behind a line-up outranks a fresh matchup that happens to be the same people
-    const [top, other] = (x.kind === 'fresh') !== (b.kind === 'fresh') ? (x.kind === 'fresh' ? [b, x] : [x, b]) : x.score > b.score ? [x, b] : [b, x];
+    // ...and what it's booked toward leads: a qualifier is a qualifier first, whatever else it is
+    const [top, other] = (x.kind === 'fresh') !== (b.kind === 'fresh') ? (x.kind === 'fresh' ? [b, x] : [x, b])
+      : !x.prep !== !b.prep ? (x.prep ? [x, b] : [b, x]) : x.score > b.score ? [x, b] : [b, x];
     const leads = y => y.leads || [y.why[0]];
     best.set(x.key, other.kind === 'fresh' ? top
-      : { ...top, leads: [...new Set([...leads(top), ...leads(other)])], why: [...new Set([...top.why, ...leads(other)])],
-        events: [...new Set([...top.events, ...other.events])], feud: top.feud || other.feud });
+      : { ...top, score: Math.max(top.score, other.score), leads: [...new Set([...leads(top), ...leads(other)])], why: [...new Set([...top.why, ...leads(other)])],
+        events: [...new Set([...top.events, ...other.events])], feud: top.feud || other.feud, prep: top.prep || other.prep });
   });
   return [...best.values()].filter(x => !c.passed.has(x.key) && x.people.length === new Set(x.people).size);
 }
@@ -884,15 +1036,17 @@ function assemble(c, ideas, slots, counted, prefer = null) {
   const genders = M.GENDERS.map(g => [g, [...c.free].filter(id => (W(c, id) || {}).gender === g).length]).filter(([, n]) => n >= 2);
   const people = genders.reduce((n, [, k]) => n + k, 0) || 1;
   const total = counted.length + slots;
-  const count = { type: {}, gender: {}, feud: {}, titles: new Set(), contenders: new Set() };
+  const count = { type: {}, gender: {}, feud: {}, titles: new Set(), contenders: new Set(), qualifiers: new Set() };
+  const qual = x => (x.prep && x.prep.kind === 'qualifier' ? `${x.prep.event}:${x.gender}` : null);
   const note = x => {
+    if (qual(x)) count.qualifiers.add(qual(x));
     count.type[x.type] = (count.type[x.type] || 0) + 1;
     count.gender[x.gender] = (count.gender[x.gender] || 0) + 1;
     if (x.feud) count.feud[x.feud] = (count.feud[x.feud] || 0) + 1;
     if (x.titleId) count.titles.add(x.titleId);
     if (x.contender) count.contenders.add(x.contender);
   };
-  counted.forEach(m => note({ type: typeOf(m), gender: genderOf(c, inMatch(m)), titleId: m.titleId, contender: m.contender, feud: null }));
+  counted.forEach(m => note({ type: typeOf(m), gender: genderOf(c, inMatch(m)), titleId: m.titleId, contender: m.contender, feud: null, prep: m.prep || null }));
   const cap = c.ple ? Infinity : c.settings.titles;
   const used = new Set();
   const picked = [];
@@ -903,6 +1057,7 @@ function assemble(c, ideas, slots, counted, prefer = null) {
     if (x.contender && (count.titles.has(x.contender) || count.contenders.has(x.contender))) return null;
     if (x.feud && (count.feud[x.feud] || 0) >= RULES.sameFeud) return null;
     if (x.kind === 'surprise' && picked.some(y => y.kind === 'surprise')) return null;
+    if (qual(x) && count.qualifiers.has(qual(x))) return null;            // one qualifier a division a card, for each event
     let s = x.score + (draw('book', c.ev.id, c.nonce, x.key) - 0.5) * RULES.jitter;
     s += RULES.mixPull * ((types[x.type] / sum) * total - (count.type[x.type] || 0));
     const share = genders.find(([g]) => g === x.gender);
@@ -958,6 +1113,7 @@ function runningOrder(picked) {
 /** A drafted idea as the model takes it: a line-up, its stakes, and why. */
 export function toSpec(x) {
   return { sides: x.sides, titleId: x.titleId, contender: x.contender || null, stip: x.stip, notes: x.notes,
+    prep: x.prep ? { event: x.prep.event, kind: x.prep.kind } : null,
     auto: { kind: x.kind, key: x.key, why: x.why.slice(0, 5), events: x.events.slice(0, 12) } };
 }
 
@@ -972,7 +1128,7 @@ export function draftCard(st, eventId, { nonce = 0, keep = [] } = {}) {
   if (!ev) return { size: 0, slots: 0, matches: [], short: 'That show isn’t on the calendar.' };
   const c = context(st, ev, { nonce, keep });
   const slots = c.size - ev.matches.length - keep.length;
-  const where = c.show ? c.show.name : 'the roster';
+  const where = c.show ? c.show.name : c.every ? 'the roster' : M.showNamesOf(st, c.shows);
   const known = { seen: c.seen, played: playedCount(st) };
   if (slots <= 0) return { size: c.size, slots: 0, matches: [], ...known, short: `The card already holds ${plural(ev.matches.length + keep.length, 'match', 'matches')} of ${c.size}.` };
   const picked = runningOrder(assemble(c, allIdeas(c), slots, [...ev.matches, ...keep]));
@@ -1028,6 +1184,7 @@ export function draftNotes(st, ev) {
   const out = new Map();
   if (!ev.draft) return out;
   const count = new Map();
+  const shows = M.eventShows(st, ev), every = st.shows.every(s => shows.includes(s.id));
   [...ev.matches, ...ev.draft.matches].forEach(m => inMatch(m).forEach(id => count.set(id, (count.get(id) || 0) + 1)));
   ev.draft.matches.forEach(dm => {
     const notes = [];
@@ -1036,7 +1193,7 @@ export function draftNotes(st, ev) {
       if (!w) return;
       if (w.status !== 'active') notes.push(`${w.name} is ${w.status}`);
       else if (ev.draft.out.includes(id)) notes.push(`${w.name} isn’t at this show`);
-      if (ev.showId && w.showId !== ev.showId) notes.push(`${w.name} is on ${w.showId ? M.showById(st, w.showId).name : 'no show'} now`);
+      if (!every && !shows.includes(w.showId)) notes.push(`${w.name} is on ${w.showId ? M.showById(st, w.showId).name : 'no show'} now`);
       if (count.get(id) > 1) notes.push(`${w.name} is in another match on this card`);
     });
     const t = dm.titleId && M.titleById(st, dm.titleId);
@@ -1082,19 +1239,29 @@ export function sinceDraft(st, ev) {
   return { incidents, results: d.played == null ? 0 : Math.max(0, playedCount(st) - d.played) };
 }
 
-/** The week's shows, and what drafting the week would do with each: [{ show, event, action, text }]. */
+/**
+ * The week's shows, and what drafting the week would do with each: [{ show,
+ * event, action, text }]. A special event for a show on its night takes the
+ * place of that week's episode; premium live events (and other special
+ * events) come after, on their own nights.
+ */
 export function weekPlan(st, week) {
   const season = M.activeSeason(st);
   const evs = st.events.filter(e => e.at.season === season.id && e.at.week === week);
   const rows = [];
+  const placed = new Set();
+  const availOn = shows => st.wrestlers.filter(w => shows.includes(w.showId) && w.status === 'active').length;
   st.shows.forEach(sh => {
-    const e = evs.find(x => x.kind === 'weekly' && x.showId === sh.id) || null;
-    const avail = st.wrestlers.filter(w => w.showId === sh.id && w.status === 'active').length;
-    rows.push({ show: sh, event: e, day: e ? e.at.day : sh.day, ...planFor(st, e, avail, sh.name) });
+    const special = evs.find(x => x.kind === 'special' && x.at.day === sh.day && M.eventShows(st, x).includes(sh.id));
+    const e = evs.find(x => x.kind === 'weekly' && x.showId === sh.id) || special || null;
+    if (e && e === special && placed.has(e.id)) { rows.push({ show: sh, event: e, day: e.at.day, action: 'skip', text: `Part of ${e.name}` }); return; }
+    if (e && e === special) placed.add(e.id);
+    const avail = availOn(e && e === special ? M.eventShows(st, e) : [sh.id]);
+    rows.push({ show: sh, event: e, day: e ? e.at.day : sh.day, ...planFor(st, e, avail, e && e === special ? e.name : sh.name) });
   });
-  evs.filter(e => e.kind === 'ple').forEach(e => {
-    const avail = st.wrestlers.filter(w => (e.showId ? w.showId === e.showId : !!w.showId) && w.status === 'active').length;
-    rows.push({ show: e.showId ? M.showById(st, e.showId) : null, event: e, day: e.at.day, ...planFor(st, e, avail, e.name) });
+  evs.filter(e => M.isBigEvent(e) && !placed.has(e.id)).forEach(e => {
+    const shows = M.eventShows(st, e);
+    rows.push({ show: e.showId ? M.showById(st, e.showId) : null, event: e, day: e.at.day, ...planFor(st, e, availOn(shows), e.name) });
   });
   return rows.sort((a, b) => a.day - b.day);
 }

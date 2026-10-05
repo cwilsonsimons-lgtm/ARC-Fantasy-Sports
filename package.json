@@ -15,7 +15,8 @@
     "demo:story": "node tools/universe-story-demo.mjs",
     "demo:tiers": "node tools/universe-tiers-demo.mjs",
     "demo:booker": "node tools/universe-booker-demo.mjs",
-    "demo:feud": "node tools/universe-feud-demo.mjs"
+    "demo:feud": "node tools/universe-feud-demo.mjs",
+    "demo:calendar": "node tools/universe-calendar-demo.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
