@@ -20,6 +20,7 @@ import * as story from './story.js';
 import * as find from './find.js';
 import * as tiers from './tiers.js';
 import * as autobook from './autobook.js';
+import * as ahead from './ahead.js';
 
-Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality, story, find, tiers, autobook);
+Object.assign(window, views, sheets, shell, pages, edits, card, ranks, relegation, promotion, personality, story, find, tiers, autobook, ahead);
 shell.initUniverse();

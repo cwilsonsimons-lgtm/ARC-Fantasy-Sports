@@ -17,6 +17,7 @@ import * as RL from '../js/universe/relations.js';
 import * as DR from '../js/universe/director.js';
 import * as B from '../js/universe/booker.js';
 import * as SL from '../js/universe/storylines.js';
+import * as SIM from '../js/universe/simulate.js';
 import { FIND_FROM, findable } from '../js/universe/ui.js';
 import { bookingSample, sampleCycle, sampleSeason } from './universe-sample.mjs';
 
@@ -3163,6 +3164,95 @@ test('a run whose picks can’t be recorded is logged with nothing made and why 
   assert.deepEqual([r.made, r.problem, r.considered[0].picked], [[], 'KO & Sami have already split.', false]);
   sound(st);
   assert.ok(M.validate(M.migrate(JSON.parse(exportUniverse(st)))).length === 0);
+});
+
+// ---------------------------------------------------------------- simulate ahead
+
+test('simulate ahead: weeks played on a copy — the universe itself never changes, and the same seed simulates the same weeks', () => {
+  const { st } = bookingSample();
+  M.setStory(st, { on: false });
+  const before = JSON.stringify(st);
+  const one = SIM.simulate(st, { weeks: 3, seed: 5 });
+  assert.equal(JSON.stringify(st), before, 'nothing in the universe changed');
+  assert.equal(st.story.on, false);
+  const after = one.after;
+  assert.deepEqual(M.validate(after), []);
+  assert.equal(M.activeSeason(after).week, M.activeSeason(st).week + 2);
+  assert.ok(after.story.on, 'the story director runs in the copy');
+  // every show in those weeks played out: every match on them has a result
+  const s = M.activeSeason(after);
+  const evs = after.events.filter(e => e.at.season === s.id && e.at.week >= one.report.from && e.at.week <= one.report.to);
+  assert.ok(evs.length >= 3 * after.shows.length - 1);
+  assert.ok(evs.every(e => e.matches.every(m => m.status === 'played')));
+  assert.ok(evs.every(e => e.draft === null), 'drafts booked as they stood');
+  // only active wrestlers on the cards the booker drew
+  const booked = evs.flatMap(e => e.matches.filter(m => m.auto)).flatMap(m => m.sides.flatMap(sd => sd.wrestlers));
+  assert.ok(booked.every(id => M.wrestlerById(st, id).status === 'active'));
+  // the same seed, the same weeks; another seed, (almost surely) others
+  const again = SIM.simulate(st, { weeks: 3, seed: 5 });
+  assert.equal(JSON.stringify(again.after), JSON.stringify(after));
+  const other = SIM.simulate(st, { weeks: 3, seed: 6 });
+  assert.notEqual(JSON.stringify(other.after.events), JSON.stringify(after.events));
+});
+
+test('simulate ahead: the report counts what changed against the universe as it is', () => {
+  const { st } = bookingSample();
+  const { after, report: r } = SIM.simulate(st, { weeks: 2, seed: 9, pace: 'wild' });
+  const known = new Set(st.events.flatMap(e => e.matches.filter(m => m.status === 'played').map(m => m.id)));
+  const played = after.events.flatMap(e => e.matches.filter(m => m.status === 'played' && !known.has(m.id)));
+  assert.equal(r.matches, played.length);
+  assert.equal(r.pace, 'wild');
+  // title changes: every reign that began in those weeks, from the result that made it
+  const fresh = after.reigns.filter(x => !st.reigns.some(y => y.id === x.id));
+  assert.equal(r.titles.length, fresh.length);
+  fresh.forEach(x => assert.ok(played.some(m => m.id === x.matchId), 'only on a simulated result'));
+  // relationships: the same as comparing the two
+  assert.deepEqual(r.relationships.lines, RL.changesBetween(after, RL.snapshot(st), RL.snapshot(after)));
+  const formed = Object.values(r.relationships.formed).reduce((n, k) => n + k, 0);
+  const ended = Object.values(r.relationships.ended).reduce((n, k) => n + k, 0);
+  assert.equal(formed + ended + r.relationships.grew + r.relationships.cooled, r.relationships.lines.length);
+  // story events: every new incident is in one of them
+  const incs = after.events.flatMap(e => e.incidents).filter(i => !st.events.some(e => e.incidents.some(j => j.id === i.id)));
+  assert.ok(r.story.length > 0 && r.story.length <= incs.length);
+  assert.equal(Object.values(r.storyKinds).reduce((n, k) => n + k, 0), r.story.length);
+  assert.ok(r.story.every(g => typeof g.text === 'string' && g.text && g.where && g.when));
+  assert.ok(r.standings.length >= 4 && r.standings.every(x => x.top.length >= 1));
+  assert.deepEqual(r.problems, []);
+});
+
+test('simulate ahead: favourites usually win; "anyone can win" is even', () => {
+  const st = M.createUniverse();
+  M.setStory(st, { on: false });
+  const [A, B] = ['Ace', 'Jobber'].map(n => M.addWrestler(st, { name: n, showId: 'raw' }));
+  const ev = M.addEvent(st, { showId: 'raw' });
+  for (let i = 0; i < 10; i++) M.recordMatch(st, ev.id, { sides: S([A.id, B.id]), winner: 0 });
+  const tally = results => {
+    const won = [0, 0, 0];
+    for (let seed = 1; seed <= 300; seed++) {
+      const c = JSON.parse(JSON.stringify(st));
+      const e = c.events[0];
+      const m = M.bookMatch(c, e.id, { sides: S([A.id, B.id]) });
+      SIM.playMatch(c, e, m, { seed, results });
+      won[m.outcome === 'win' ? m.winner : 2]++;
+    }
+    return won;
+  };
+  const form = tally('form'), even = tally('even');
+  assert.ok(form[0] > 0.75 * 300 && form[1] > 0, `favourite ${form[0]}, upsets ${form[1]}`);
+  assert.ok(Math.abs(even[0] - even[1]) < 60, `even ${even}`);
+  assert.ok(form[2] > 0 && form[2] < 30, 'a draw or no contest now and then');
+  // a title changes hands when the challenger wins it, and only then
+  const t = M.addTitle(st, { name: 'Belt', showId: 'raw', division: 'men' });
+  M.setChampion(st, t.id, { type: 'wrestler', id: B.id });
+  let changed = 0, kept = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const c = JSON.parse(JSON.stringify(st));
+    const m = M.bookMatch(c, c.events[0].id, { sides: S([A.id, B.id]), titleId: t.id });
+    SIM.playMatch(c, c.events[0], m, { seed });
+    const holder = M.currentReign(c, t.id).holder.id;
+    if (m.outcome === 'win' && m.winner === 0) { assert.equal(holder, A.id); changed++; } else { assert.equal(holder, B.id); kept++; }
+  }
+  assert.ok(changed > 0 && kept > 0);
 });
 
 test('a dropdown gets a search once its list is long enough to need one', () => {

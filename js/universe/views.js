@@ -61,7 +61,7 @@ export function uvCalendarView() {
     ${transitionRows(st, s)}
     ${uvStoryRow(st)}
     <div class="uv-card-f"><span onclick="uvSeasonDates('${s.id}')">${s.start ? 'Dates' : 'Set dates'}</span>
-      <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvNextSeason()">Start Season ${next}…</span></div>
+      <span onclick="uvRenameSeason('${s.id}')">Rename</span><span onclick="uvGo('sim')" data-simlink>Simulate ahead…</span><span onclick="uvNextSeason()">Start Season ${next}…</span></div>
   </div>`;
 
   // this week's episodes, and a row to plan each show that has none yet

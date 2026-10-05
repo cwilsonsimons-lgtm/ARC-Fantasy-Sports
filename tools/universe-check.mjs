@@ -2070,11 +2070,12 @@ await check('Go to lists every destination, with where each stands', async () =>
   await page.click('#uvGoBtn');
   await settle();
   return js(`[...document.querySelectorAll('#uvSheetBody .uv-go')].map(g => g.querySelector('b').textContent + ' | ' + g.querySelector('span').textContent)`);
-}, r => r.length === 14 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
+}, r => r.length === 15 && r[0] === 'Up next: Raw · Week 6 | Planned — nothing booked yet'
   && r.includes('Rosters | Raw 9 · SmackDown 6 · Dynamite 5 · NXT 7 · Evolve 0')
   && r.some(x => /^Season 1 transition · transfer window \| Raw: done — 1 to NXT/.test(x))
   && r.includes('Tiers & transfers | 1 Main roster · 2 NXT · 3 Evolve')
-  && r[12] === 'Auto booker | Draft a card for any show — each show’s size and kinds of match' && r[13].startsWith('Save & backup'));
+  && r[12] === 'Auto booker | Draft a card for any show — each show’s size and kinds of match'
+  && r[13] === 'Simulate ahead | Play the next weeks on a copy and see what changes — nothing is saved' && r[14].startsWith('Save & backup'));
 await check('Go to reaches champions, relationships, rankings, story and the transfer window', async () => {
   const seen = [];
   await closeSheet();
@@ -2547,6 +2548,47 @@ await check('a version 9 save imports with nothing drafted and every show on its
   return [u.version, u.booker, u.events.every(e => e.draft === null && e.matches.every(m => m.auto === null)), await sound()];
 }, [M.SCHEMA_VERSION, { shows: {}, all: {} }, true, []]);
 await check('layout anchored', anchored, isAnchored);
+
+// ---------------------------------------------------------------- simulate ahead (the same universe)
+const simReport = () => js(`(() => { const r = document.querySelector('[data-simreport]'); return r ? r.textContent.replace(/\\s+/g, ' ').trim() : null; })()`);
+await check('simulate ahead: from the calendar, its settings — four weeks, favourites, the universe’s own pace', async () => {
+  await noSheet();
+  await page.click('#uvTabs [data-uvtab=calendar]');
+  await body.locator('[data-simlink]').click();
+  await page.waitForTimeout(150);
+  return [await pageKind(), await js(`[...document.querySelectorAll('.uv-simset [data-sim]')].map(g => g.dataset.sim + ':' + g.querySelector('.on').dataset.v)`),
+    await js(`${TEXT}(document.querySelector('[data-simrun]'))`), await simReport()];
+}, r => Array.isArray(r) && r[0] === 'sim' && JSON.stringify(r[1]) === '["weeks:4","results:form","pace:normal"]' && /^Simulate weeks \d+–\d+$/.test(r[2]) && r[3] === null);
+let simBefore = null;
+await check('simulate two weeks: it plays them on a copy, shows what changed — and the universe is exactly as it was', async () => {
+  simBefore = await js(`localStorage.getItem('wwe_universe_v1')`);
+  await page.locator('.uv-simset [data-sim=weeks] div[data-v="2"]').click();
+  await page.locator('.uv-simset [data-sim=pace] div[data-v=wild]').click();
+  await page.waitForTimeout(80);
+  await page.click('[data-simrun]');
+  await page.waitForSelector('[data-simreport]', { timeout: 20000 });
+  await page.waitForTimeout(100);
+  const tiles = await js(`[...document.querySelectorAll('[data-tile]')].map(t => t.dataset.tile + ':' + t.querySelector('.v').textContent)`);
+  const secs = await js(`[...document.querySelectorAll('.uv-page .uv-sec .t')].map(e => e.textContent)`);
+  return [await simReport(), tiles, secs, await js(`localStorage.getItem('wwe_universe_v1')`) === simBefore, await sound()];
+}, r => Array.isArray(r) && /^Weeks \d+–\d+ of Season 1 · \d+ shows · \d+ matches · favourites usually win · wild story pace$/.test(r[0])
+  && r[1].length === 3 && r[1].every(x => /^(Title changes|Relationships|Story events):\d+$/.test(x))
+  && ['What changed', 'Championships', 'Relationships', 'Story events', 'Feuds to watch', 'Standings', 'On a roll'].every(x => r[2].includes(x))
+  && r[3] === true && r[4].length === 0);
+await check('run it again: a different draw — still nothing saved', async () => {
+  const first = await js(`document.querySelector('.uv-page').innerText`);
+  await btn(body, /Run it again/).click();
+  await page.waitForSelector('[data-simreport]', { timeout: 20000 });
+  await page.waitForTimeout(100);
+  return [await js(`document.querySelector('.uv-page').innerText`) !== first, await js(`localStorage.getItem('wwe_universe_v1')`) === simBefore];
+}, [true, true]);
+await check('it’s in the Go to menu too', async () => {
+  await page.click('#uvGoBtn');
+  await settle();
+  await sheet.locator('.uv-go', { has: page.locator('b', { hasText: 'Simulate ahead' }) }).click();
+  await page.waitForTimeout(150);
+  return pageKind();
+}, 'sim');
 
 // ================================================================ the booker reads the story
 // The booking sample again, with a story on record after Raw week 4: Gunther

@@ -116,6 +116,7 @@ export function uvGo(where, arg = '') {
     case 'story': uvTab('calendar'); pushPage('story', 'all'); return;
     case 'tiers': uvTab('calendar'); pushPage('tiers', 'all'); return;
     case 'booker': uvTab('calendar'); pushPage('booker', 'all'); return;
+    case 'sim': uvTab('calendar'); pushPage('sim', 'all'); return;
     case 'transition': {
       const [id, part] = String(arg).split(':');
       uvTab('calendar');
@@ -172,6 +173,7 @@ function goSheet() {
         ${row(`uvGo('tiers')`, ICON.list, 'Tiers & transfers', st.tiers.map((t, i) => `${i + 1} ${t.name}`).join(' · '))}
         ${row(`uvGo('booker')`, ICON.spark, 'Auto booker', drafts ? `${drafts} draft card${drafts === 1 ? '' : 's'} waiting to be booked`
           : 'Draft a card for any show — each show’s size and kinds of match')}
+        ${row(`uvGo('sim')`, ICON.spark, 'Simulate ahead', 'Play the next weeks on a copy and see what changes — nothing is saved')}
         ${row(`uvGo('save')`, ICON.save, 'Save & backup', 'Export, import, restore points')}
       </div>
       <div class="uv-sub flush" style="margin-top:14px">How it works</div>

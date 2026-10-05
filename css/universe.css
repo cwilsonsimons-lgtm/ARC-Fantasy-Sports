@@ -740,6 +740,21 @@ body.uv-confirm-open .uv-confirm{display:flex}
 .uv-wh .uv-main .sub.warn{color:var(--uv-amber)}
 .uv-wh.stale .uv-main .nm{color:var(--uv-ink-2)}
 .uv-sheet .uv-wh{padding-left:0;padding-right:0}
+/* simulate ahead */
+.uv-simset{margin:12px 14px 0;padding:12px;border:1px solid var(--uv-line);border-radius:14px;background:var(--uv-card)}
+.uv-simset .uv-sub{padding-left:0}
+.uv-simset .uv-btn.full{margin-top:12px}
+.uv-simset .fine{margin-top:6px;font-size:11px;line-height:1.5;color:var(--uv-ink-3)}
+.uv-simprog{margin:14px 14px 0;font-size:12.5px;color:var(--uv-ink-2)}
+.uv-simprog .bar{margin-top:8px;height:6px;border-radius:3px;background:var(--uv-line);overflow:hidden}
+.uv-simprog .bar i{display:block;height:100%;background:var(--uv-gold);transition:width .2s}
+.uv-simhead{padding:0 14px;font-size:12px;color:var(--uv-ink-3);line-height:1.5}
+.uv-simsum{padding:2px 14px 6px;font-size:12.5px;color:var(--uv-ink-2);line-height:1.5}
+.uv-simchips{display:flex;flex-wrap:wrap;gap:6px;padding:2px 14px 8px}
+.uv-simli{padding:8px 14px;border-bottom:1px solid var(--uv-line-soft);font-size:13px;line-height:1.4;color:var(--uv-ink)}
+.uv-simli span{display:block;margin-top:2px;font-size:11.5px;color:var(--uv-ink-3)}
+.uv-simli em{font-style:normal;color:var(--uv-ink-3);font-size:11.5px}
+.uv-simli.gold b{color:var(--uv-gold)}
 /* what happened straight after a match, on its card */
 .uv-mstory{margin-top:10px;padding-top:8px;border-top:1px dashed var(--uv-line)}
 .uv-mstory .h{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--uv-ink-3);margin-bottom:2px}

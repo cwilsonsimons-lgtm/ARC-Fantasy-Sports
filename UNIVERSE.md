@@ -63,13 +63,15 @@ js/universe/
   booker.js            the auto booker itself - pure, seeded, runs under Node
   storylines.js        every feud worked out from the record: beats, chapters, who's drawn in - pure, runs under Node
   autobook.js          the auto booker on screen: a show's draft card, drafting a week, each show's settings
+  simulate.js          simulate ahead: the next weeks played on a copy, and what changed - pure, seeded, runs under Node
+  ahead.js             the Simulate ahead page
   pages.js             profile pages: a wrestler, a team, a title
   edits.js             the sheets behind the profiles
   sheets.js            creating wrestlers, teams and titles; the season clock
   find.js              the search beside long wrestler and team dropdowns
   ui.js                small HTML building blocks
-tools/universe-test.mjs       163 model tests     npm run test:universe
-tools/universe-check.mjs      224 browser checks  npm run check:universe
+tools/universe-test.mjs       166 model tests     npm run test:universe
+tools/universe-check.mjs      228 browser checks  npm run check:universe
 tools/universe-sample.mjs     a whole sample season, shared by the tests and the checks
 tools/universe-story-demo.mjs a few weeks of the story director, printed  npm run demo:story
 tools/universe-tiers-demo.mjs a fourth tier from nothing, played through  npm run demo:tiers
@@ -976,6 +978,45 @@ Week 7
     before  Kevin Owens confronted Seth Rollins  (Kevin Owens holds a grudge against Seth Rollins (heat 1))
     after   Kevin Owens and Seth Rollins brawled  (Seth Rollins and Kevin Owens are rivals (heat 1))
 ```
+
+## Simulate ahead
+
+To see how much the next few weeks could change, **Simulate ahead** (the
+Calendar's season card, or Go to) plays them on a **copy** of the universe and
+reports what changed. Nothing is saved: the universe — its results, titles,
+story and relationships — is exactly as it was, and the copy lives only on that
+page. That's the line the app never crosses elsewhere: in the universe itself,
+results only come from the game.
+
+Pick how long (1, 2, 4, 8 or 12 weeks, starting with this week), how results go,
+and the story director's pace for the run (it runs in the copy even if it's
+switched off in the universe). Each week is played the way you would play it:
+
+1. every show's usual episode is planned (premium live events already on the
+   calendar are included);
+2. the story director goes before each show, once it's the next one up;
+3. a draft waiting on a show is booked as it stands; a show with no card gets
+   one from the auto booker, by that show's settings;
+4. a stand-in for the WWE 2K25 CPU decides each match, and the story director
+   goes straight after it.
+
+| Results | How the stand-in decides |
+|---|---|
+| Favourites usually win | each side's strength is its wrestlers' win rate (an even start for a newcomer), up a little for momentum or gold and down for a cold run; the chance of winning goes with strength squared — a 70% wrestler beats a 40% one about three times in four |
+| Anyone can win | every side the same chance |
+
+About 1 match in 25 is a draw or a no contest either way. A title changes hands
+when its challengers win it (a tag title needs a team on the winning side);
+\#1 contender's matches, relegation and qualifying matches on the card do what
+they always do.
+
+**What changed** compares the copy with the universe as it is: title changes
+and new #1 contenders; every relationship that formed, grew, cooled or ended;
+every story event, where and when ("Raw · Week 6, straight after Cody vs
+Gunther"), counted by kind; turns and teams that split; the feuds that matter
+most now (new ones marked); each show's top three and biggest climber; who's
+hot and who won most. **Run it again** is another draw — the same universe,
+settings and draw always simulate the same weeks.
 
 ## Profiles and records
 
