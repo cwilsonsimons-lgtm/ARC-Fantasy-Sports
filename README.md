@@ -66,8 +66,15 @@ working network sees it.
 `lottery.html` is a standalone page (double-click it) for the non-playoff draft
 lottery. Every ball in the machine is a team: last place 12, then 9, 6 and 3,
 so 30 balls for 30 Rumble entry numbers. Draw at #30 with every ball in; the
-team that comes out gets #30 and loses a ball, then #29, down to #1. After the
-Rumble, tap the winner's entry number to see who gets the 1st pick.
+team that comes out gets #30 and loses a ball, then #29, down to #1.
+
+Once every number is drawn, the **Rumble tracker** sets the draft order. Type
+each entrant's name against their number (Enter moves to the next) and tap
+**Eliminate** as they go out. A team is out when all of its entrants are
+eliminated: the first team out gets the last pick, the next the pick before,
+and the last team standing gets the 1st pick. Eliminations can be put back
+individually or with **Undo last elimination**; the board, team cards and
+copied results all follow the tracker. Entrant names survive a lottery reset.
 
 Draws are dealt like a bingo cage: **Spin** turns the cage and drops one ball,
 sealed, into the tray. Nothing on the page shows the team until the dealer taps

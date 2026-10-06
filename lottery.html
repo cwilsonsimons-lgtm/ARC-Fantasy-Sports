@@ -103,11 +103,10 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .tile.next{border:1.5px solid var(--gold)}
 .tile.next .n{color:var(--gold)}
 .tile.next::after{content:'NEXT';position:absolute;bottom:4px;font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--gold)}
-.board.pick .tile.filled{cursor:pointer}
-.board.pick .tile.filled:hover{outline:2px solid var(--ink)}
+.tile.out{opacity:.35}
+.tile.out .n{text-decoration:line-through;text-decoration-thickness:2px}
 .tile.winner{outline:3px solid var(--gold);outline-offset:1px}
 .tile.winner::before{content:'★';position:absolute;top:2px;right:5px;font-size:11px;color:var(--gold)}
-.tile.dim{opacity:.35}
 
 /* ---- per-team holdings ---- */
 .hold{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
@@ -124,6 +123,38 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .result .v{font-family:var(--display);font-weight:700;font-size:clamp(26px,5vw,36px);line-height:1.05;text-transform:uppercase;text-wrap:balance}
 .hint{color:var(--ink-2);font-size:14px}
 .hint b{color:var(--gold);font-weight:600}
+
+/* ---- rumble tracker ---- */
+.trk{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+@media (min-width:860px){.trk{grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}}
+.trk h3{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.order{display:flex;flex-direction:column;gap:6px}
+.prow{display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 12px;align-items:center;padding:10px 12px;border-radius:12px;
+  background:var(--card-2);border:1px solid var(--line-soft)}
+.prow .pk{grid-row:1/3;font-family:var(--display);font-weight:700;font-size:22px;line-height:1;color:var(--ink-3)}
+.prow .pn{font-family:var(--display);font-weight:600;font-size:17px;text-transform:uppercase;line-height:1.15;overflow-wrap:anywhere}
+.prow .pw{font-size:12px;color:var(--ink-2)}
+.prow.tbd .pn{color:var(--ink-3)}
+.prow.set .pk{color:var(--ink)}
+.prow.first.set{border-color:var(--gold)}
+.prow.first.set .pk{color:var(--gold)}
+.alive{font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.alive b{font-weight:600}
+.elist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px}
+.erow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border-radius:12px;
+  background:var(--card-2);border:1px solid var(--line-soft)}
+.enum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:4px 2px;min-width:0}
+.enum b{font-family:var(--display);font-weight:700;font-size:20px;line-height:1}
+.enum small{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.erow input{height:38px}
+.erow.out{opacity:.55}
+.erow.out input{text-decoration:line-through}
+.erow.won{border-color:var(--gold)}
+.ebtn{border:1px solid var(--line);background:transparent;border-radius:8px;padding:8px 10px;font-weight:600;font-size:13px;color:var(--ink-2);white-space:nowrap}
+.ebtn:hover:not(:disabled){border-color:#F0453E;color:#F0453E}
+.ebtn.back:hover:not(:disabled){border-color:var(--ink-3);color:var(--ink)}
+.ebtn:disabled{opacity:.4;cursor:default}
+.crown{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.08em;color:var(--gold);padding:0 8px}
 
 /* ---- setup ---- */
 .tlist{display:flex;flex-direction:column;gap:10px}
@@ -164,7 +195,7 @@ input:disabled{opacity:.55}
   <header>
     <div class="eyebrow">City Boys Dynasty · Draft lottery</div>
     <h1>Royal Rumble <em>Lottery</em></h1>
-    <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Whoever holds the Rumble winner's number gets the 1st pick.</p>
+    <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
 
   <section class="panel" aria-label="Lottery setup">
@@ -209,6 +240,23 @@ input:disabled{opacity:.55}
 
     </div>
   </div>
+
+  <section class="panel" id="tracker" aria-label="Rumble tracker" hidden>
+    <h2>Rumble tracker</h2>
+    <p class="hint">Type each entrant's name as they come out, and tap <b>Eliminate</b> when they go over the top rope. When a team has no entrants left, it's out: the first team out gets the last pick, the next team out the pick before that, and the last team standing gets the 1st pick.</p>
+    <div class="trk">
+      <div>
+        <h3>Draft order</h3>
+        <div class="order" id="order"></div>
+        <div class="alive" id="alive"></div>
+        <div class="actions" style="margin-top:12px"><button class="btn ghost" id="undoElim" type="button">Undo last elimination</button></div>
+      </div>
+      <div>
+        <h3>Entrants</h3>
+        <div class="elist" id="elist"></div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -239,7 +287,8 @@ function defaults(){
     slots:[fromLeague('dakyard', 12), fromLeague('brady', 9), fromLeague('longhorns', 6), fromLeague('burrow', 3)],
     draws:[],     // draws[k] = slot index that received numberOf(k)
     sealed:false, // last ball is out but the dealer hasn't revealed it
-    winner:null,  // Rumble-winning entrant number
+    entrants:{},  // entry number -> wrestler name
+    elims:[],     // entry numbers in the order they were eliminated
   };
 }
 let S = load();
@@ -251,13 +300,14 @@ function load(){
       // draws numbered the other way: put the counts back and clear the draws.
       if(s.mode === 'up'){
         const c = s.slots.map(x => x.balls).reverse(); s.slots.forEach((x, i) => x.balls = c[i]);
-        s.draws = []; s.sealed = false; s.winner = null;
+        s.draws = []; s.sealed = false;
       }
       delete s.mode;
       // Older saves picked teams from the league list and kept logos separately.
       s.slots = s.slots.map(x => x.team ? {...fromLeague(x.team, x.balls), logo:(s.logos || {})[x.team] || ''} : x);
       delete s.logos;
       s.sealed = !!s.sealed && s.draws.length > 0;
+      delete s.winner; s.entrants = s.entrants || {}; s.elims = Array.isArray(s.elims) ? s.elims : [];
       return s;
     }
   }catch(e){}
@@ -289,6 +339,29 @@ const team = i => {
 const who = t => t.mgr || t.n;   // how a team is named in short spaces
 const numsFor = i => S.draws.map((d, k) => d === i ? numberOf(k) : null).filter(n => n !== null).sort((a, b) => a - b);
 const holderOf = n => { const k = drawOf(n); return k >= 0 && k < S.draws.length ? S.draws[k] : null; };
+const isOut = n => S.elims.includes(n);
+const tracking = () => remaining() === 0 && !S.sealed && S.draws.length > 0;
+// Draft order from the Rumble: a team is out once every one of its entrants is eliminated. The first team
+// out gets the last pick, the next the pick before, and the last team standing gets the 1st pick.
+function standings(){
+  const N = S.slots.length, picks = Array(N).fill(null), out = [];
+  S.slots.forEach((s, i) => {
+    const nums = numsFor(i);
+    if(nums.length && nums.every(isOut)){
+      const at = Math.max(...nums.map(n => S.elims.indexOf(n)));
+      out.push({i, at, by:S.elims[at]});
+    }
+  });
+  out.sort((a, b) => a.at - b.at).forEach((o, k) => picks[N - 1 - k] = o);
+  if(out.length === N - 1){
+    const i = S.slots.findIndex((_, i) => !out.some(o => o.i === i));
+    picks[0] = {i, last:true};
+  }
+  const alive = Array.from({length:total()}, (_, k) => k + 1).filter(n => !isOut(n));
+  return {picks, out, winner:alive.length === 1 && tracking() ? alive[0] : null};
+}
+const entrant = n => (S.entrants[n] || '').trim();
+const label = n => `#${n}${entrant(n) ? ' ' + entrant(n) : ''}`;
 function setupError(){
   if(S.slots.length < 2) return 'Add at least two teams.';
   if(S.slots.some(s => !(s.balls >= 1 && s.balls <= 30))) return 'Every team needs between 1 and 30 balls.';
@@ -535,6 +608,38 @@ function showReveal(num, slot, pop){
     <div class="who"><span class="team" style="color:${t.tc}" aria-label="${esc(t.n)}">${letters}</span>
     <span class="sub">${esc(who(t))} gets entry #${num} · ${left(slot)} ball${left(slot) === 1 ? '' : 's'} left</span></div>`;
 }
+function renderTracker(st, lists){
+  const N = S.slots.length;
+  $('order').innerHTML = st.picks.map((p, k) => {
+    const first = k === 0;
+    if(!p) return `<div class="prow tbd${first ? ' first' : ''}"><span class="pk">${ord(k + 1)}</span>
+      <span class="pn">To be decided</span><span class="pw">${first ? 'Last team standing' : `${ord(N - k)} team to be eliminated`}</span></div>`;
+    const t = team(p.i);
+    return `<div class="prow set${first ? ' first' : ''}"><span class="pk">${ord(k + 1)}</span>
+      <span class="pn" style="color:${t.tc}">${esc(t.n)}</span>
+      <span class="pw">${p.last ? (st.winner ? `Holds the winner, ${esc(label(st.winner))}` : 'Last team standing') : `Out when ${esc(label(p.by))} was eliminated`}</span></div>`;
+  }).join('');
+  const alive = S.slots.map((s, i) => i).filter(i => !st.picks.some(p => p && p.i === i));
+  $('alive').innerHTML = alive.length ? alive.map(i => {
+    const t = team(i), nums = numsFor(i), left = nums.filter(x => !isOut(x));
+    return `<span><b style="color:${t.tc}">${esc(t.n)}</b> · ${left.length} of ${nums.length} still in: ${left.map(x => '#' + x).join(', ')}</span>`;
+  }).join('') : '';
+  $('undoElim').disabled = !S.elims.length;
+  if(!lists) return;
+  const T = total(), oneLeft = st.winner !== null;
+  let rows = '';
+  for(let n = 1; n <= T; n++){
+    const t = team(holderOf(n)), k = S.elims.indexOf(n), out = k >= 0, won = st.winner === n;
+    rows += `<div class="erow${out ? ' out' : ''}${won ? ' won' : ''}">
+      <span class="enum" style="background:${t.c}22;color:${t.tc}"><b>${n}</b><small>${esc(who(t))}</small></span>
+      <input type="text" id="ent${n}" data-n="${n}" value="${esc(S.entrants[n] || '')}" placeholder="Entrant #${n}" aria-label="Entrant #${n} name" autocomplete="off" enterkeyhint="next">
+      ${won ? '<span class="crown">WINNER</span>'
+        : out ? `<button type="button" class="ebtn back" data-back="${n}" aria-label="Put #${n} back in">${ord(k + 1)} out ↺</button>`
+        : `<button type="button" class="ebtn" data-elim="${n}" ${oneLeft ? 'disabled' : ''}>Eliminate</button>`}
+    </div>`;
+  }
+  $('elist').innerHTML = rows;
+}
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderAll(opt = {}){
@@ -560,17 +665,17 @@ function renderAll(opt = {}){
   }).join('');
 
   // entrant board
-  const T = total(), pick = done && !busy && !S.sealed;
-  $('board').className = 'board' + (pick ? ' pick' : '');
+  const T = total(), st = standings();
+  $('board').className = 'board';
   let tiles = '';
   for(let num = 1; num <= T; num++){
     const k = drawOf(num), has = k < S.draws.length && k !== hide, slot = has ? S.draws[k] : null;
     const next = !done && num === n;
     if(has){
-      const t = team(slot), win = S.winner === num;
-      tiles += `<button type="button" class="tile filled${win ? ' winner' : ''}${S.winner && !win ? ' dim' : ''}" data-n="${num}"
-        style="background:${t.c}22;color:${t.tc}" ${pick ? '' : 'tabindex="-1"'} aria-label="Entrant ${num}: ${esc(t.n)}">
-        <span class="n">${num}</span><span class="m">${esc(who(t))}</span></button>`;
+      const t = team(slot), win = st.winner === num, out = isOut(num);
+      tiles += `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}" style="background:${t.c}22;color:${t.tc}"
+        title="${esc(label(num))}" aria-label="Entrant ${num}: ${esc(t.n)}${out ? ', eliminated' : ''}">
+        <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
     }else{
       tiles += `<div class="tile${next ? ' next' : ''}"><span class="n">${num}</span></div>`;
     }
@@ -578,12 +683,12 @@ function renderAll(opt = {}){
   $('board').innerHTML = tiles;
 
   // result
-  if(S.winner && holderOf(S.winner) !== null){
-    const t = team(holderOf(S.winner));
-    $('resultBox').innerHTML = `<div class="result"><span class="k">Rumble winner: entrant #${S.winner}</span>
-      <span class="v">${esc(t.n)} gets the 1st pick</span><span>${esc(who(t))} held #${S.winner}. Tap a different number to change it.</span></div>`;
-  }else if(pick){
-    $('resultBox').innerHTML = `<p class="hint">Every number is out. After the Royal Rumble, <b>tap the winner's entrant number</b> to see who gets the 1st pick.</p>`;
+  if(st.picks[0]){
+    const t = team(st.picks[0].i);
+    $('resultBox').innerHTML = `<div class="result"><span class="k">${st.winner ? `Rumble winner: ${esc(label(st.winner))}` : 'Last team standing'}</span>
+      <span class="v">${esc(t.n)} gets the 1st pick</span><span>Full draft order is in the Rumble tracker below.</span></div>`;
+  }else if(tracking()){
+    $('resultBox').innerHTML = `<p class="hint">Every number is out. Log entrants and eliminations in the <b>Rumble tracker</b> below to set the draft order.</p>`;
   }else{
     $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
   }
@@ -591,11 +696,18 @@ function renderAll(opt = {}){
   // holdings
   $('hold').innerHTML = S.slots.map((s, i) => {
     const t = team(i), nums = numsFor(i).filter(x => hide < 0 || x !== numberOf(hide));
-    const win = S.winner && holderOf(S.winner) === i;
+    const win = st.picks[0] && st.picks[0].i === i, pk = st.picks.findIndex(p => p && p.i === i);
+    const inNow = nums.filter(x => !isOut(x)).length;
+    const status = !tracking() ? '' : pk >= 0 ? `<span class="hm"><b style="color:${t.tc}">${ord(pk + 1)} pick</b>${st.picks[pk].last ? ' · last team standing' : ` · out when ${esc(label(st.picks[pk].by))} went`}</span>`
+      : `<span class="hm">${inNow} of ${nums.length} entrants still in</span>`;
     return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.tc}">${esc(t.n)}</span>
       <span class="hm">${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
-      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => '#' + x).join('  ') : 'No numbers yet'}</span></div>`;
+      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => isOut(x) ? `<s>#${x}</s>` : '#' + x).join('  ') : 'No numbers yet'}</span>${status}</div>`;
   }).join('');
+
+  // rumble tracker
+  $('tracker').hidden = !tracking();
+  if(tracking()) renderTracker(st, !opt.keepEntrants);
 
   // setup
   const locked = S.draws.length > 0;
@@ -626,10 +738,21 @@ function renderAll(opt = {}){
 
 /* ---------------- events ---------------- */
 $('drawBtn').addEventListener('click', () => S.sealed ? reveal() : spin());
-$('board').addEventListener('click', e => {
-  const t = e.target.closest('.tile.filled'); if(!t || remaining() > 0 || busy || S.sealed) return;
-  const n = +t.dataset.n; S.winner = S.winner === n ? null : n; save(); renderAll({keepReveal:true});
+// Rumble tracker: names save as you type; Enter jumps to the next entrant.
+$('elist').addEventListener('input', e => {
+  const n = +e.target.dataset.n; if(!n) return;
+  S.entrants[n] = e.target.value; save(); renderAll({keepReveal:true, skipSetup:true, keepEntrants:true});
 });
+$('elist').addEventListener('keydown', e => {
+  if(e.key !== 'Enter' || !e.target.dataset.n) return;
+  e.preventDefault(); const nx = $('ent' + (+e.target.dataset.n + 1)); if(nx) nx.focus(); else e.target.blur();
+});
+$('elist').addEventListener('click', e => {
+  const el = e.target.closest('[data-elim]'), bk = e.target.closest('[data-back]');
+  if(el && !el.disabled){ S.elims.push(+el.dataset.elim); save(); renderAll({keepReveal:true, skipSetup:true}); }
+  if(bk){ S.elims = S.elims.filter(n => n !== +bk.dataset.back); save(); renderAll({keepReveal:true, skipSetup:true}); }
+});
+$('undoElim').addEventListener('click', () => { S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
 // Names, managers and colours update live as you type, without redrawing the setup (so focus stays put).
 $('setup').addEventListener('input', e => {
   const i = +e.target.dataset.i, f = e.target.dataset.f; if(isNaN(i) || !['name', 'mgr', 'c'].includes(f)) return;
@@ -694,12 +817,13 @@ armed($('restBtn'), 'Draw the rest', () => {
 // Undo: take back the most recent ball, sealed or revealed, and put it back in the cage.
 armed($('undoBtn'), 'Undo last spin', () => {
   if(busy || !S.draws.length) return;
-  S.draws.pop(); S.sealed = false; S.winner = null;
+  S.draws.pop(); S.sealed = false;
+  S.elims = S.elims.filter(n => holderOf(n) !== null);   // the tracker only covers numbers that are drawn
   save(); tray = null; sparks = []; fill(); renderAll();
 });
 armed($('resetBtn'), 'Reset lottery', () => {
   if(busy) return;
-  S = {...defaults(), slots:S.slots}; save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
+  S = {...defaults(), slots:S.slots, entrants:S.entrants};   // entrant names belong to the Rumble, so they stay save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
 });
 $('copyBtn').addEventListener('click', () => {
   const lines = ['ROYAL RUMBLE LOTTERY'];
@@ -707,7 +831,12 @@ $('copyBtn').addEventListener('click', () => {
     const t = team(i), nums = numsFor(i);
     lines.push(`${t.n}${t.mgr ? ` (${t.mgr})` : ''}, ${place(i).toLowerCase()}: ${nums.length ? nums.map(x => '#' + x).join(', ') : 'none yet'}`);
   });
-  if(S.winner && holderOf(S.winner) !== null) lines.push('', `Rumble winner #${S.winner}: ${team(holderOf(S.winner)).n} gets the 1st pick`);
+  if(tracking()){
+    const st = standings();
+    if(S.elims.length) lines.push('', 'ELIMINATIONS', ...S.elims.map((n, k) => `${k + 1}. ${label(n)} (${team(holderOf(n)).n})`));
+    if(st.winner) lines.push(`Winner: ${label(st.winner)} (${team(holderOf(st.winner)).n})`);
+    lines.push('', 'DRAFT ORDER', ...st.picks.map((p, k) => `${ord(k + 1)}: ${p ? team(p.i).n : 'TBD'}`));
+  }
   const text = lines.join('\n'), out = $('copyOut'), btn = $('copyBtn');
   out.value = text;
   const ok = () => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy results', 1500); };
