@@ -107,6 +107,8 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .flow{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .flow button{border:0;background:transparent;color:var(--ink-3);font-size:12px;font-weight:600;padding:5px 10px}
 .flow button[aria-pressed="true"]{background:var(--line);color:var(--ink)}
+.gridopt{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.gridopt input{accent-color:var(--gold);width:15px;height:15px}
 .tile{position:relative;aspect-ratio:1/1.05;border-radius:10px;background:var(--card-2);border:1px dashed var(--line);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px;
   font-variant-numeric:tabular-nums;min-width:0}
@@ -289,7 +291,8 @@ input:disabled{opacity:.55}
 
     <div class="col">
       <section class="panel" aria-label="Entrant numbers">
-        <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button><button type="button" data-flow="team">By team</button></span></div>
+        <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button><button type="button" data-flow="team">By team</button></span>
+          <label class="gridopt" id="gridOpt" hidden><input type="checkbox" id="drawGrid"> Grid while drawing</label></div>
         <div id="resultBox"></div>
         <div class="editor" id="editor" hidden>
           <span class="ednum" id="edNum"></span>
@@ -352,6 +355,7 @@ function defaults(){
     sealed:false, // last ball is out but the dealer hasn't revealed it
     entrants:{},  // entry number -> wrestler name
     elims:[],     // entry numbers in the order they were eliminated
+    drawGrid:false, // with "By team": show the number grid until every number is drawn
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
   };
 }
@@ -721,8 +725,10 @@ function renderAll(opt = {}){
   // entrant board
   const T = total(), st = standings();
   const live = tracking();
-  // "By team" only takes over once every number is out; during the draw the board stays the number grid.
-  const byTeam = S.flow === 'team' && live, down = S.flow === 'down' || (S.flow === 'team' && !live);
+  // "By team" can optionally keep the 6x5 number grid (down order) until every number is out.
+  const gridNow = S.flow === 'team' && S.drawGrid && !live;
+  const byTeam = S.flow === 'team' && !gridNow, down = S.flow === 'down' || gridNow;
+  $('gridOpt').hidden = S.flow !== 'team'; $('drawGrid').checked = !!S.drawGrid;
   if(!live) sel = null;
   $('board').className = 'board' + (down ? ' down' : '') + (byTeam ? ' teams' : '') + (live ? ' live' : '');
   $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5)); $('board').style.setProperty('--r3', Math.ceil(T / 3));
@@ -862,6 +868,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-flow]'); if(!b || b.dataset.flow === S.flow) return;
   S.flow = b.dataset.flow; save(); renderAll({keepReveal:true, skipSetup:true});
 });
+$('drawGrid').addEventListener('change', e => { S.drawGrid = e.target.checked; save(); renderAll({keepReveal:true, skipSetup:true}); });
 $('cageToggle').addEventListener('click', () => { showCage = !showCage; renderAll({keepReveal:true, skipSetup:true}); });
 $('setupToggle').addEventListener('click', () => { showSetup = !showSetup; renderAll({keepReveal:true}); });
 $('undoElim').addEventListener('click', () => { S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
@@ -936,7 +943,7 @@ armed($('undoBtn'), 'Undo last spin', () => {
 // Clears the drawn numbers (and eliminations) so the draw can start over; teams and entrant names stay.
 function resetLottery(){
   if(busy) return;
-  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow};   // entrant names belong to the Rumble, so they stay
+  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow, drawGrid:S.drawGrid};   // entrant names belong to the Rumble, so they stay
   save(); tray = null; sparks = []; showCage = showSetup = false; $('copyOut').hidden = true; fill(); renderAll();
 }
 armed($('resetBtn'), 'Reset lottery', resetLottery);
