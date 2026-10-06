@@ -230,7 +230,8 @@ input:disabled{opacity:.55}
   <div class="cagebar" id="cageBar" hidden><span>Every number is drawn.</span>
     <span class="actions"><button class="btn ghost copy" type="button">Copy results</button>
       <button class="btn ghost" id="setupToggle" type="button">Show setup</button>
-      <button class="btn ghost" id="cageToggle" type="button">Show cage</button></span></div>
+      <button class="btn ghost" id="cageToggle" type="button">Show cage</button>
+      <button class="btn ghost" id="resetNums" type="button">Reset numbers</button></span></div>
   <textarea class="copyout" id="copyOut" readonly hidden aria-label="Results to copy"></textarea>
 
   <div class="grid" id="mainGrid">
@@ -861,11 +862,14 @@ armed($('undoBtn'), 'Undo last spin', () => {
   S.elims = S.elims.filter(n => holderOf(n) !== null);   // the tracker only covers numbers that are drawn
   save(); tray = null; sparks = []; fill(); renderAll();
 });
-armed($('resetBtn'), 'Reset lottery', () => {
+// Clears the drawn numbers (and eliminations) so the draw can start over; teams and entrant names stay.
+function resetLottery(){
   if(busy) return;
   S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow};   // entrant names belong to the Rumble, so they stay
-  save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
-});
+  save(); tray = null; sparks = []; showCage = showSetup = false; $('copyOut').hidden = true; fill(); renderAll();
+}
+armed($('resetBtn'), 'Reset lottery', resetLottery);
+armed($('resetNums'), 'Reset numbers', resetLottery);
 document.addEventListener('click', e => {
   const btn = e.target.closest('.copy'); if(!btn) return;
   const lines = ['ROYAL RUMBLE LOTTERY'];

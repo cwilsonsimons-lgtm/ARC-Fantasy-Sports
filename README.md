@@ -80,7 +80,8 @@ toggle switches both to row order.
 
 Once every number is drawn, setup and the cage fold away so the board and the
 tracker get the room; a bar at the top brings either back (**Show setup**,
-**Show cage**, e.g. to undo the last spin) and carries **Copy results**.
+**Show cage**, e.g. to undo the last spin) and carries **Copy results** and
+**Reset numbers** (same as Reset lottery: clears the draw, keeps teams and names).
 
 Draws are dealt like a bingo cage: **Spin** turns the cage and drops one ball,
 sealed, into the tray. Nothing on the page shows the team until the dealer taps
