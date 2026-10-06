@@ -78,7 +78,9 @@ section fills in as teams go out; the team cards and copied results follow it.
 Entrant names survive a lottery reset. Numbers on the board run down each
 column by default; a **Down / Across / By team** toggle switches to row order,
 or to one row per team (its entrants in number order, crossed out as they go,
-with the team's pick down the right edge, like a handwritten sheet). On phones
+with the team's pick down the right edge, like a handwritten sheet). The next
+entrant due out (the lowest number with no name yet and not eliminated) is
+outlined in gold and marked NEXT, so it's easy to find in any layout. On phones
 the board drops to three columns once names go on it.
 
 Once every number is drawn, setup and the cage fold away so the board and the

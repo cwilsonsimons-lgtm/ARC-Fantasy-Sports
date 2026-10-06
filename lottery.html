@@ -138,6 +138,8 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
              linear-gradient(to top left,transparent calc(50% - 1.5px),#F0453E calc(50% - 1.5px),#F0453E calc(50% + 1.5px),transparent calc(50% + 1.5px))}
 .tile.out .tx{background:var(--ink);color:var(--bg)}
 .tile.sel{outline:2px solid var(--ink);outline-offset:1px}
+.board.live .tile.next{border:2px solid var(--gold);box-shadow:0 0 0 3px rgba(242,193,78,.18)}
+.board.live .tile.next::after{top:6px;left:8px;bottom:auto;z-index:2}
 /* "By team": one row per team, like a notebook page, with the team's pick down the right edge */
 .board.teams{display:flex;flex-direction:column;gap:0}
 .trow{display:grid;grid-template-columns:110px minmax(0,1fr) 64px;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
@@ -724,12 +726,15 @@ function renderAll(opt = {}){
   $('board').className = 'board' + (down ? ' down' : '') + (byTeam ? ' teams' : '') + (live ? ' live' : '');
   $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5)); $('board').style.setProperty('--r3', Math.ceil(T / 3));
   for(const b of document.querySelectorAll('[data-flow]')) b.setAttribute('aria-pressed', String(b.dataset.flow === S.flow));
+  // next entrant due out: the lowest number with no name yet that hasn't been eliminated
+  let nextIn = null;
+  if(live) for(let x = 1; x <= T; x++) if(!entrant(x) && !isOut(x)){ nextIn = x; break; }
   const tile = num => {
     const t = team(holderOf(num)), win = st.winner === num, out = isOut(num);
     if(!live) return `<div class="tile filled" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
       <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
     const nm = entrant(num);
-    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}" style="background:${t.c}22;color:${t.tc}">
+    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}" style="background:${t.c}22;color:${t.tc}">
         <button type="button" class="tmain" data-pick="${num}" aria-label="#${num}${nm ? ' ' + esc(nm) : ''}, ${esc(t.n)}${out ? ', eliminated' : ''}. Edit">
           <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${nm ? esc(nm) : 'Tap to name'}</span><span class="m">${esc(who(t))}</span></button>
         ${win ? '' : `<button type="button" class="tx" data-x="${num}" ${!out && st.winner !== null ? 'disabled' : ''}
