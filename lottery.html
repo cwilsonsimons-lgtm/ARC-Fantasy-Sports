@@ -21,6 +21,7 @@
   --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--body);font-size:15px;line-height:1.45;padding:28px 16px 48px;min-height:100%}
 button,select,input{font:inherit;color:inherit}
@@ -37,7 +38,13 @@ h1 em{font-style:normal;color:var(--gold)}
 h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
 
 .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
-@media (min-width:860px){.grid{grid-template-columns:minmax(0,420px) minmax(0,1fr);align-items:start}}
+@media (min-width:860px){.grid{grid-template-columns:minmax(0,420px) minmax(0,1fr);align-items:start}
+  .grid.nocage{grid-template-columns:minmax(0,1fr)}}
+/* full-width board once the cage folds away: keep tiles a sensible height instead of square */
+.grid.nocage .tile{aspect-ratio:auto;min-height:62px}
+.cagebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;
+  border:1px solid var(--line);border-radius:14px;color:var(--ink-2);font-size:14px}
+.cagebar .btn{padding:8px 12px;font-size:13px}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:16px}
 .col{display:flex;flex-direction:column;gap:22px;min-width:0}
 
@@ -207,7 +214,7 @@ input:disabled{opacity:.55}
     <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
 
-  <section class="panel" aria-label="Lottery setup">
+  <section class="panel" id="setupPanel" aria-label="Lottery setup">
     <h2>Setup</h2>
     <div id="setup" class="tlist"></div>
     <button class="btn ghost addteam" id="addTeam" type="button">+ Add team</button>
@@ -215,14 +222,19 @@ input:disabled{opacity:.55}
     <p class="note" id="setupNote"></p>
     <div class="actions">
       <button class="btn ghost" id="restBtn" type="button">Draw the rest</button>
-      <button class="btn ghost" id="copyBtn" type="button">Copy results</button>
+      <button class="btn ghost copy" type="button">Copy results</button>
       <button class="btn ghost" id="resetBtn" type="button">Reset lottery</button>
     </div>
-    <textarea class="copyout" id="copyOut" readonly hidden></textarea>
   </section>
 
-  <div class="grid">
-    <section class="panel" aria-label="Ball machine">
+  <div class="cagebar" id="cageBar" hidden><span>Every number is drawn.</span>
+    <span class="actions"><button class="btn ghost copy" type="button">Copy results</button>
+      <button class="btn ghost" id="setupToggle" type="button">Show setup</button>
+      <button class="btn ghost" id="cageToggle" type="button">Show cage</button></span></div>
+  <textarea class="copyout" id="copyOut" readonly hidden aria-label="Results to copy"></textarea>
+
+  <div class="grid" id="mainGrid">
+    <section class="panel" id="machine" aria-label="Ball machine">
       <div class="drum-wrap"><canvas id="drum" aria-hidden="true"></canvas></div>
       <div class="reveal" id="reveal" aria-live="polite"></div>
       <div class="actions">
@@ -302,6 +314,7 @@ function defaults(){
   };
 }
 let S = load();
+let showCage = false, showSetup = false;   // per view: bring the cage or setup back after every number is drawn
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
@@ -523,7 +536,7 @@ function render(now){
   drawWires();
   if(!balls.length && !tray){
     ctx.fillStyle = '#5E6B7C'; ctx.font = `600 ${Math.round(drum.r * .12)}px Oswald, 'Arial Narrow', sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CAGE EMPTY', drum.x, drum.y);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CAGE EMPTY', drum.x, drum.y - drum.r * .45);
   }
   if(tray){
     // drop from the cage into the tray
@@ -556,7 +569,7 @@ function burst(slot){
       c:Math.random() < .7 ? c : '#F2C14E', s:4 + Math.random() * 5, rot:Math.random() * 6, vr:(Math.random() - .5) * .4});
   }
 }
-function loop(now){ step(now); render(now); requestAnimationFrame(loop); }
+function loop(now){ if(drum.r > 0){ step(now); render(now); } requestAnimationFrame(loop); }   // skips frames while the cage is hidden
 
 /* ---------------- draw flow ---------------- */
 const $ = id => document.getElementById(id);
@@ -722,6 +735,12 @@ function renderAll(opt = {}){
 
   // rumble tracker
   $('tracker').hidden = !tracking();
+  // Once every number is out the cage has done its job: fold it away, with a bar to bring it back for an undo.
+  const fold = tracking() && !showCage;
+  $('machine').hidden = fold; $('mainGrid').classList.toggle('nocage', fold);
+  $('cageBar').hidden = !tracking(); $('cageToggle').textContent = fold ? 'Show cage' : 'Hide cage';
+  const foldSetup = tracking() && !showSetup;
+  $('setupPanel').hidden = foldSetup; $('setupToggle').textContent = foldSetup ? 'Show setup' : 'Hide setup';
   if(tracking()) renderTracker(st, !opt.keepEntrants);
 
   // setup
@@ -771,6 +790,8 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-flow]'); if(!b || b.dataset.flow === S.flow) return;
   S.flow = b.dataset.flow; save(); renderAll({keepReveal:true, skipSetup:true});
 });
+$('cageToggle').addEventListener('click', () => { showCage = !showCage; renderAll({keepReveal:true, skipSetup:true}); });
+$('setupToggle').addEventListener('click', () => { showSetup = !showSetup; renderAll({keepReveal:true}); });
 $('undoElim').addEventListener('click', () => { S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
 // Names, managers and colours update live as you type, without redrawing the setup (so focus stays put).
 $('setup').addEventListener('input', e => {
@@ -842,9 +863,11 @@ armed($('undoBtn'), 'Undo last spin', () => {
 });
 armed($('resetBtn'), 'Reset lottery', () => {
   if(busy) return;
-  S = {...defaults(), slots:S.slots, entrants:S.entrants};   // entrant names belong to the Rumble, so they stay save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
+  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow};   // entrant names belong to the Rumble, so they stay
+  save(); tray = null; sparks = []; $('copyOut').hidden = true; fill(); renderAll();
 });
-$('copyBtn').addEventListener('click', () => {
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.copy'); if(!btn) return;
   const lines = ['ROYAL RUMBLE LOTTERY'];
   S.slots.forEach((s, i) => {
     const t = team(i), nums = numsFor(i);
@@ -856,7 +879,7 @@ $('copyBtn').addEventListener('click', () => {
     if(st.winner) lines.push(`Winner: ${label(st.winner)} (${team(holderOf(st.winner)).n})`);
     lines.push('', 'DRAFT ORDER', ...st.picks.map((p, k) => `${ord(k + 1)}: ${p ? team(p.i).n : 'TBD'}`));
   }
-  const text = lines.join('\n'), out = $('copyOut'), btn = $('copyBtn');
+  const text = lines.join('\n'), out = $('copyOut');
   out.value = text;
   const ok = () => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy results', 1500); };
   const fallback = () => { out.hidden = false; out.focus(); out.select(); btn.textContent = 'Select and copy below'; };
