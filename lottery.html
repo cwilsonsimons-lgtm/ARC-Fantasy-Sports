@@ -213,6 +213,23 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .ebtn.back:hover:not(:disabled){border-color:var(--ink-3);color:var(--ink)}
 .ebtn:disabled{opacity:.4;cursor:default}
 
+/* ---- live sharing ---- */
+.livebar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2);margin-top:4px}
+.livebar .dot{width:8px;height:8px;border-radius:50%;background:#F0453E;flex:none;box-shadow:0 0 0 0 rgba(240,69,62,.6);animation:livepulse 1.8s infinite}
+.livebar b{font-family:var(--display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);font-size:12px}
+.livebar.off .dot{background:var(--ink-3);animation:none}
+@keyframes livepulse{70%{box-shadow:0 0 0 7px rgba(240,69,62,0)}100%{box-shadow:0 0 0 0 rgba(240,69,62,0)}}
+.notice{padding:28px 18px;text-align:center;color:var(--ink-2);border:1px dashed var(--line);border-radius:16px}
+.notice b{display:block;font-family:var(--display);font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);margin-bottom:6px}
+/* people following along: same page, no controls */
+body.viewer #setupPanel,body.viewer #drawBtn,body.viewer #undoBtn,body.viewer #setupToggle,body.viewer #resetNums,
+body.viewer .tx,body.viewer #editor,body.viewer #undoElim{display:none!important}
+body.viewer .tmain{pointer-events:none;cursor:default}
+body.viewer .tile .nm.empty{visibility:hidden}
+body.connecting .wrap>section,body.connecting .wrap>.grid,body.connecting .wrap>.cagebar,
+body.waiting .wrap>section,body.waiting .wrap>.grid,body.waiting .wrap>.cagebar{display:none!important}
+@media (prefers-reduced-motion:reduce){.livebar .dot{animation:none}}
+
 /* ---- setup ---- */
 .tlist{display:flex;flex-direction:column;gap:10px}
 .tcard{background:var(--card-2);border:1px solid var(--line-soft);border-radius:12px;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
@@ -252,8 +269,10 @@ input:disabled{opacity:.55}
   <header>
     <div class="eyebrow">City Boys Dynasty · Draft lottery</div>
     <h1>Royal Rumble <em>Lottery</em></h1>
+    <div class="livebar" id="liveBar" hidden><span class="dot"></span><span id="liveText"></span></div>
     <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
+  <div class="notice" id="liveNotice" hidden></div>
 
   <section class="panel" id="setupPanel" aria-label="Lottery setup">
     <h2>Setup</h2>
@@ -344,7 +363,8 @@ const BY_ID = Object.fromEntries(LEAGUE.map(t => [t.id, t]));
 const MAX_TEAMS = 8;
 const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th','st','nd','rd'][n % 10] || 'th');
 const place = i => i === 0 ? 'Last' : `${ord(i + 1)} to last`;
-const fromLeague = (id, balls) => { const t = BY_ID[id] || BY_ID.dakyard; return {name:t.n, mgr:t.mgr, c:t.c, balls, logo:''}; };
+const slotId = () => 's' + Math.random().toString(36).slice(2, 10);
+const fromLeague = (id, balls) => { const t = BY_ID[id] || BY_ID.dakyard; return {id:slotId(), name:t.n, mgr:t.mgr, c:t.c, balls, logo:''}; };
 const KEY = 'rumble_lottery_v1';
 
 function defaults(){
@@ -359,9 +379,12 @@ function defaults(){
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
   };
 }
+let mode = 'local';   // 'local' (this browser), 'host' (owner, live) or 'viewer' (following live)
+let pend = false;     // following live: a ball is out but not revealed yet
 let S = load();
 let showCage = false, showSetup = false;
-let sel = null;   // entry number open in the board's editor   // per view: bring the cage or setup back after every number is drawn
+// per view: bring the cage or setup back after every number is drawn
+let sel = null;   // entry number open in the board's editor
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
@@ -379,12 +402,17 @@ function load(){
       s.sealed = !!s.sealed && s.draws.length > 0;
       delete s.winner; s.entrants = s.entrants || {}; s.elims = Array.isArray(s.elims) ? s.elims : [];
       s.flow = ['across', 'team'].includes(s.flow) ? s.flow : 'down';
+      s.slots.forEach(x => { if(!x.id) x.id = slotId(); });
       return s;
     }
   }catch(e){}
   return defaults();
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function save(){
+  if(mode === 'host') return pushShared();   // the shared copy is the record when the page is live
+  if(mode === 'viewer') return;              // followers never write
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+}
 
 const total = () => S.slots.reduce((a, s) => a + s.balls, 0);
 const left = i => S.slots[i].balls - S.draws.filter(d => d === i).length;
@@ -405,7 +433,7 @@ function lift(hex){
 }
 const team = i => {
   const s = S.slots[i], c = /^#[0-9a-f]{6}$/i.test(s.c) ? s.c : '#93A0B0';
-  return {n:s.name.trim() || `Team ${i + 1}`, mgr:s.mgr.trim(), c, tc:lift(c), logo:s.logo};
+  return {n:s.name.trim() || `Team ${i + 1}`, mgr:s.mgr.trim(), c, tc:lift(c), logo:s.logo || remoteLogos[s.id] || ''};
 };
 const who = t => t.mgr || t.n;   // how a team is named in short spaces
 const numsFor = i => S.draws.map((d, k) => d === i ? numberOf(k) : null).filter(n => n !== null).sort((a, b) => a - b);
@@ -470,9 +498,10 @@ const trayPos = () => ({x:drum.x, y:H - br * 1.7 - 6, r:br * 1.7});
 function fill(){
   balls = [];
   // Every ball in the cage looks the same (a grey ?), so the cage never shows which teams are left.
-  for(let k = 0; k < remaining(); k++) balls.push(newBall(null));
+  for(let k = 0; k < remaining() - (pend ? 1 : 0); k++) balls.push(newBall(null));
   // a ball that is out of the cage but not yet revealed sits sealed in the tray
   const last = S.draws.length - 1;
+  if(pend){ tray = {slot:null, t0:-1e9, sealed:true, revealT:0}; return; }
   tray = last >= 0 && (S.sealed || tray) ? {slot:S.draws[last], t0:-1e9, sealed:!!S.sealed, revealT:S.sealed ? 0 : -1e9} : null;
 }
 function newBall(slot){
@@ -643,10 +672,11 @@ async function reveal(){
   if(busy || !S.sealed || !tray) return;
   busy = true; renderAll();
   const k = S.draws.length - 1, slot = S.draws[k];
+  if(mode === 'host'){ revealing = true; pushShared(); }
   tray.revealT = performance.now();
   $('reveal').classList.add('rattle');
   await wait(SHAKE + FLIP / 2);
-  tray.sealed = false; S.sealed = false; save();
+  tray.sealed = false; S.sealed = false; revealing = false; save();
   $('reveal').classList.remove('rattle');
   if(!reduce) burst(slot);
   showReveal(numberOf(k), slot, true);
@@ -664,7 +694,7 @@ function showReveal(num, slot, pop){
     el.classList.add('sealed');
     el.innerHTML = `<span class="big">#${num}</span>
       <div class="who"><span class="team">Ball is out</span>
-      <span class="sub">Tap <b>Reveal</b> to show everyone who it is.</span></div>`;
+      <span class="sub">${mode === 'viewer' ? 'Waiting for the reveal…' : 'Tap <b>Reveal</b> to show everyone who it is.'}</span></div>`;
     return;
   }
   const t = team(slot);
@@ -783,7 +813,9 @@ function renderAll(opt = {}){
     $('resultBox').innerHTML = `<div class="result"><span class="k">${st.winner ? `Rumble winner: ${esc(label(st.winner))}` : 'Last team standing'}</span>
       <span class="v">${esc(t.n)} gets the 1st pick</span><span>Full draft order is below.</span></div>`;
   }else if(tracking()){
-    $('resultBox').innerHTML = `<p class="hint">Every number is out. <b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. The draft order below fills in as teams go out.</p>`;
+    $('resultBox').innerHTML = mode === 'viewer'
+      ? `<p class="hint">Every number is out. Entrants' names and eliminations show up here as the Rumble goes, and the draft order below fills in as teams go out.</p>`
+      : `<p class="hint">Every number is out. <b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. The draft order below fills in as teams go out.</p>`;
   }else{
     $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
   }
@@ -832,7 +864,8 @@ function renderAll(opt = {}){
   $('restBtn').disabled = done || busy || S.sealed || !!err;
   if(!busy && !opt.keepReveal){
     const last = S.draws.length - 1;
-    if(last < 0) showReveal(null);
+    if(pend) showReveal(nextNum(), null);
+    else if(last < 0) showReveal(null);
     else showReveal(numberOf(last), S.sealed ? null : S.draws[last], false);
   }
 }
@@ -841,12 +874,14 @@ function renderAll(opt = {}){
 $('drawBtn').addEventListener('click', () => S.sealed ? reveal() : spin());
 // Board as tracker: tap a number to name its entrant (Enter moves to the next), × marks the elimination.
 function toggleElim(n){
+  if(mode === 'viewer') return;
   if(isOut(n)) S.elims = S.elims.filter(x => x !== n);
   else if(standings().winner === null) S.elims.push(n);
   else return;
   save(); renderAll({keepReveal:true, skipSetup:true});
 }
 function pick(n){
+  if(mode === 'viewer') return;
   sel = n; renderAll({keepReveal:true, skipSetup:true});
   if(n !== null){ $('edName').value = S.entrants[n] || ''; $('edName').focus(); $('edName').select(); }
 }
@@ -866,9 +901,9 @@ $('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); 
 $('edDone').addEventListener('click', () => pick(null));
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-flow]'); if(!b || b.dataset.flow === S.flow) return;
-  S.flow = b.dataset.flow; save(); renderAll({keepReveal:true, skipSetup:true});
+  S.flow = b.dataset.flow; if(mode === 'viewer') viewPref.flow = S.flow; save(); renderAll({keepReveal:true, skipSetup:true});
 });
-$('drawGrid').addEventListener('change', e => { S.drawGrid = e.target.checked; save(); renderAll({keepReveal:true, skipSetup:true}); });
+$('drawGrid').addEventListener('change', e => { S.drawGrid = e.target.checked; if(mode === 'viewer') viewPref.drawGrid = S.drawGrid; save(); renderAll({keepReveal:true, skipSetup:true}); });
 $('cageToggle').addEventListener('click', () => { showCage = !showCage; renderAll({keepReveal:true, skipSetup:true}); });
 $('setupToggle').addEventListener('click', () => { showSetup = !showSetup; renderAll({keepReveal:true}); });
 $('undoElim').addEventListener('click', () => { S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
@@ -902,7 +937,7 @@ $('addTeam').addEventListener('click', () => {
   if(S.draws.length || S.slots.length >= MAX_TEAMS) return;
   const used = new Set(S.slots.map(s => s.c.toLowerCase()));
   const c = (LEAGUE.find(t => !used.has(t.c.toLowerCase())) || LEAGUE[0]).c;
-  S.slots.push({name:'', mgr:'', c, balls:1, logo:''}); save(); fill(); renderAll();
+  S.slots.push({id:slotId(), name:'', mgr:'', c, balls:1, logo:''}); save(); fill(); renderAll();
   $('name' + (S.slots.length - 1)).focus();
 });
 $('leagueNames').innerHTML = LEAGUE.map(t => `<option value="${esc(t.n)}"></option>`).join('');
@@ -972,7 +1007,146 @@ new ResizeObserver(() => {
   const t = tray; fill(); if(t && tray) tray = {...t, x0:undefined, y0:undefined};
 }).observe(cv);
 
+/* ---------------- live sharing ----------------
+   Inside claude.ai the page keeps the lottery in the artifact's shared store. The owner runs it and
+   every change is written to lottery/state; everyone else the page is shared with gets a view-only
+   copy that follows along live, cage spin and reveal included. A sealed ball's team is kept in
+   host/sealed, which only the owner can read, so nobody can see a result before the reveal. Logos
+   live in logos/<slot id> to keep the state document small. Opened as a plain file, none of this
+   runs and the page saves to this browser as before. */
+let live = null;            // {db, refs} once connected
+let remoteLogos = {};       // slot id -> logo, for followers
+let viewPref = {};          // a follower's own layout choices, kept over the host's
+let queued = null, firstState = true;
+let pushTimer = 0, pushing = false, dirty = false, pushed = {logos:{}, sealed:undefined};
+
+function setLive(text, off){ $('liveBar').hidden = false; $('liveBar').classList.toggle('off', !!off); $('liveText').innerHTML = text; }
+function notice(html){ const n = $('liveNotice'); n.hidden = !html; n.innerHTML = html || ''; }
+let revealing = false;      // the owner tapped Reveal: share the result now so followers' reveal plays alongside
+const hidden = () => S.sealed && !revealing;
+const publicState = () => ({
+  slots:S.slots.map(({logo, ...rest}) => rest),
+  draws:hidden() ? S.draws.slice(0, -1) : S.draws.slice(),   // a sealed draw stays off the shared copy
+  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid,
+});
+function fromPublic(d){
+  return {...defaults(), slots:(d.slots || []).map(x => ({...x, logo:''})), draws:(d.draws || []).slice(), sealed:false,
+    entrants:{...(d.entrants || {})}, elims:(d.elims || []).slice(), flow:d.flow || 'down', drawGrid:!!d.drawGrid};
+}
+function pushShared(){ dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(flush, 250); }
+async function flush(){
+  if(pushing || !dirty || !live) return;
+  pushing = true; dirty = false;
+  try{
+    await live.refs.state.set(publicState());
+    const sealed = hidden() ? S.draws[S.draws.length - 1] : null;
+    if(sealed !== pushed.sealed){ await live.refs.sealed.set({slot:sealed}); pushed.sealed = sealed; }
+    const now = Object.fromEntries(S.slots.filter(x => x.logo).map(x => [x.id, x.logo]));
+    for(const [id, src] of Object.entries(now)) if(pushed.logos[id] !== src){ await live.db.doc('logos/' + id).set({src}); pushed.logos[id] = src; }
+    for(const id of Object.keys(pushed.logos)) if(!now[id]){ await live.db.doc('logos/' + id).delete(); delete pushed.logos[id]; }
+    setLive('<b>Live</b> Everyone you share this page with sees each spin, reveal and elimination as it happens.');
+  }catch(e){
+    dirty = true;
+    setLive(e && e.code === 'quota_exceeded' ? "<b>Not saved</b> The shared copy is full. Try smaller logos." : "<b>Not saved</b> Couldn't reach the shared copy. Your next change will try again.", true);
+  }
+  pushing = false;
+  if(dirty) pushTimer = setTimeout(flush, 250);
+}
+async function hostStart(db){
+  const refs = live.refs, snap = await refs.state.get();
+  if(snap.exists){
+    const next = fromPublic(snap.data());
+    if(snap.data().pend){
+      const sec = await refs.sealed.get(), slot = sec.exists ? sec.data().slot : null;
+      if(slot !== null && slot !== undefined){ next.draws.push(slot); next.sealed = true; pushed.sealed = slot; }
+    }
+    const logos = await db.collection('logos').get();
+    for(const d of logos.docs){ const x = next.slots.find(z => z.id === d.id); if(x){ x.logo = d.data().src; pushed.logos[d.id] = x.logo; } }
+    S = next;
+  }else{
+    // First time live: bring this browser's teams along, start the draw fresh.
+    S = {...defaults(), slots:S.slots, flow:S.flow, drawGrid:S.drawGrid};
+    pushShared();
+  }
+  tray = null; fill(); renderAll();
+  setLive('<b>Live</b> Everyone you share this page with sees each spin, reveal and elimination as it happens.');
+}
+function viewerStart(db){
+  document.body.classList.add('viewer', 'waiting');
+  notice('<b>Waiting for the lottery</b>Nothing has been shared yet. This page will fill in as soon as the draw starts.');
+  setLive('<b>Live</b> Following along. Updates appear here as they happen.');
+  const stop = e => setLive(e && e.code === 'revoked' ? '<b>Stopped</b> This page is no longer shared with you.' : '<b>Paused</b> Live updates stopped. Reload the page to reconnect.', true);
+  live.refs.state.onSnapshot(snap => {
+    if(!snap.exists){ document.body.classList.add('waiting'); notice('<b>Waiting for the lottery</b>Nothing has been shared yet. This page will fill in as soon as the draw starts.'); return; }
+    document.body.classList.remove('waiting'); notice('');
+    applyRemote(snap.data());
+  }, stop);
+  db.collection('logos').onSnapshot(q => {
+    remoteLogos = Object.fromEntries(q.docs.map(d => [d.id, d.data().src]));
+    if(!busy) renderAll({keepReveal:true});
+  }, () => {});
+}
+function applyRemote(d){
+  if(busy){ queued = d; return; }
+  const next = fromPublic(d);
+  if(viewPref.flow) next.flow = viewPref.flow;
+  if(viewPref.drawGrid !== undefined) next.drawGrid = viewPref.drawGrid;
+  const was = firstState; firstState = false;
+  if(!was && d.pend && !pend && next.draws.length === S.draws.length) return followSpin(next);
+  if(!was && pend && !d.pend && next.draws.length === S.draws.length + 1) return followReveal(next);
+  S = next; pend = !!d.pend; tray = null; fill(); renderAll();
+}
+function drain(){ if(queued){ const q = queued; queued = null; applyRemote(q); } }
+async function followSpin(next){
+  busy = true; S = next; tray = null; renderAll();
+  const el = $('reveal'); el.className = 'reveal sealed';
+  el.innerHTML = `<span class="big">#${nextNum()}</span><div class="who"><span class="team">Spinning…</span><span class="sub">One ball is about to drop.</span></div>`;
+  if(!reduce){ spinUntil = performance.now() + 1700; await wait(2100); }
+  const b = balls.splice(Math.floor(Math.random() * balls.length), 1)[0] || {x:drum.x, y:drum.y};
+  tray = {slot:null, x0:b.x, y0:b.y, t0:performance.now(), sealed:true, revealT:0};
+  pend = true;
+  await wait(reduce ? 0 : 650);
+  busy = false; renderAll(); drain();
+}
+async function followReveal(next){
+  busy = true;
+  const slot = next.draws[next.draws.length - 1];
+  if(!tray) tray = {slot:null, t0:-1e9, sealed:true, revealT:0};
+  tray.slot = slot; tray.revealT = performance.now();
+  $('reveal').classList.add('rattle');
+  await wait(SHAKE + FLIP / 2);
+  S = next; pend = false; tray.sealed = false;
+  $('reveal').classList.remove('rattle');
+  if(!reduce) burst(slot);
+  showReveal(numberOf(S.draws.length - 1), slot, true);
+  busy = false; renderAll({keepReveal:true}); drain();
+}
+async function goLive(){
+  if(!window.claude || typeof window.claude.use !== 'function') return;   // a plain file: stay local
+  document.body.classList.add('connecting');
+  let db = null, user = null;
+  try{ [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); }catch(e){}
+  document.body.classList.remove('connecting');
+  if(!db) return;
+  const owner = user ? await user.isOwner() : false;
+  live = {db, refs:{state:db.doc('lottery/state'), sealed:db.doc('host/sealed')}};
+  if(owner){
+    mode = 'host';
+    try{ await hostStart(db); }
+    catch(e){ mode = 'local'; live = null; setLive("<b>Not live</b> Couldn't open the shared copy, so this lottery is saved in this browser only.", true); }
+    return;
+  }
+  mode = 'viewer';
+  if(user && !(await user.id())){
+    document.body.classList.add('viewer', 'waiting');
+    notice('<b>Sign in to follow along</b>Sign in to claude.ai, then reopen this link to watch the lottery live.');
+    return;
+  }
+  viewerStart(db);
+}
+
 size(); fill(); renderAll(); requestAnimationFrame(loop);
+goLive();
 </script>
 </body>
 </html>

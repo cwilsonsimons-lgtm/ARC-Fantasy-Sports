@@ -110,6 +110,16 @@ in that manager and colour. Ball counts and the team list lock after the first
 draw; names, managers, colours and logos can change at any time. Very dark
 colours are lightened for text so they stay readable on the dark page.
 
+**Following along live.** Published as a claude.ai artifact, the page keeps the
+lottery in the artifact's shared store instead of the browser. The owner runs it;
+everyone the page is shared with (signed in to claude.ai) gets a view-only copy
+that follows along live: the cage spins and the ball flips for them too, names
+and eliminations appear as they're entered, and each follower can pick their own
+board layout. Only the owner can write (`db` rules: root `write: owner`). A sealed
+ball's team is kept in `host/sealed`, readable only by the owner, so the result
+isn't in the shared copy until the reveal. Logos live in `logos/<slot id>` to
+keep `lottery/state` small. Opened as a plain file, none of this runs.
+
 Draws use `crypto.getRandomValues` and are saved before the cage spins, so
 reloading mid-draw can't re-roll a result. Progress is kept in `localStorage`
 (`rumble_lottery_v1`); saves from before custom teams are converted on load.
