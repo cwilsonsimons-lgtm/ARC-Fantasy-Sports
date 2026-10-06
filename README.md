@@ -76,7 +76,9 @@ entrants are eliminated: the first team out gets the last pick, the next the
 pick before, and the last team standing gets the 1st pick. The **Draft order**
 section fills in as teams go out; the team cards and copied results follow it.
 Entrant names survive a lottery reset. Numbers on the board run down each
-column by default; a **Down / Across** toggle switches to row order. On phones
+column by default; a **Down / Across / By team** toggle switches to row order,
+or to one row per team (its entrants in number order, crossed out as they go,
+with the team's pick down the right edge, like a handwritten sheet). On phones
 the board drops to three columns once names go on it.
 
 Once every number is drawn, setup and the cage fold away so the board and the

@@ -138,6 +138,25 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
              linear-gradient(to top left,transparent calc(50% - 1.5px),#F0453E calc(50% - 1.5px),#F0453E calc(50% + 1.5px),transparent calc(50% + 1.5px))}
 .tile.out .tx{background:var(--ink);color:var(--bg)}
 .tile.sel{outline:2px solid var(--ink);outline-offset:1px}
+/* "By team": one row per team, like a notebook page, with the team's pick down the right edge */
+.board.teams{display:flex;flex-direction:column;gap:0}
+.trow{display:grid;grid-template-columns:110px minmax(0,1fr) 64px;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.trow:first-child{border-top:0;padding-top:0}
+.tlabel{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tlabel .tn{font-family:var(--display);font-weight:700;font-size:22px;line-height:1.05;text-transform:uppercase;overflow-wrap:anywhere}
+.tlabel .tt{font-size:12px;color:var(--ink-3);overflow-wrap:anywhere}
+.ttiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.ttiles .tile{aspect-ratio:auto;min-height:62px}
+.board.live .ttiles .tile{min-height:76px}
+.ttiles .tile .m{display:none}   /* the row already says whose they are */
+.tpick{align-self:stretch;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--line);
+  font-family:var(--display);font-weight:700;font-size:40px;line-height:1;color:var(--ink-3)}
+.tpick.set{color:var(--ink)}
+.tpick.first{color:var(--gold)}
+@media (max-width:520px){
+  .trow{grid-template-columns:minmax(0,1fr) 52px;gap:8px 10px}
+  .trow .ttiles{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tpick{grid-column:2;grid-row:1;border-left:0;font-size:30px}}
 .editor{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:end;padding:10px 12px;
   border:1px solid var(--line);border-radius:12px;background:var(--card-2)}
 .editor .ednum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:5px 10px;min-width:52px}
@@ -268,7 +287,7 @@ input:disabled{opacity:.55}
 
     <div class="col">
       <section class="panel" aria-label="Entrant numbers">
-        <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button></span></div>
+        <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button><button type="button" data-flow="team">By team</button></span></div>
         <div id="resultBox"></div>
         <div class="editor" id="editor" hidden>
           <span class="ednum" id="edNum"></span>
@@ -353,7 +372,7 @@ function load(){
       delete s.logos;
       s.sealed = !!s.sealed && s.draws.length > 0;
       delete s.winner; s.entrants = s.entrants || {}; s.elims = Array.isArray(s.elims) ? s.elims : [];
-      s.flow = s.flow === 'across' ? 'across' : 'down';
+      s.flow = ['across', 'team'].includes(s.flow) ? s.flow : 'down';
       return s;
     }
   }catch(e){}
@@ -699,33 +718,40 @@ function renderAll(opt = {}){
 
   // entrant board
   const T = total(), st = standings();
-  const down = S.flow === 'down';
+  const down = S.flow === 'down', byTeam = S.flow === 'team';
   const live = tracking();
   if(!live) sel = null;
-  $('board').className = 'board' + (down ? ' down' : '') + (live ? ' live' : '');
+  $('board').className = 'board' + (down ? ' down' : '') + (byTeam ? ' teams' : '') + (live ? ' live' : '');
   $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5)); $('board').style.setProperty('--r3', Math.ceil(T / 3));
   for(const b of document.querySelectorAll('[data-flow]')) b.setAttribute('aria-pressed', String(b.dataset.flow === S.flow));
-  let tiles = '';
-  for(let num = 1; num <= T; num++){
-    const k = drawOf(num), has = k < S.draws.length && k !== hide, slot = has ? S.draws[k] : null;
-    const next = !done && num === n;
-    if(has){
-      const t = team(slot), win = st.winner === num, out = isOut(num);
-      if(!live){
-        tiles += `<div class="tile filled" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
-          <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
-        continue;
-      }
-      const nm = entrant(num);
-      tiles += `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}" style="background:${t.c}22;color:${t.tc}">
+  const tile = num => {
+    const t = team(holderOf(num)), win = st.winner === num, out = isOut(num);
+    if(!live) return `<div class="tile filled" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
+      <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
+    const nm = entrant(num);
+    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}" style="background:${t.c}22;color:${t.tc}">
         <button type="button" class="tmain" data-pick="${num}" aria-label="#${num}${nm ? ' ' + esc(nm) : ''}, ${esc(t.n)}${out ? ', eliminated' : ''}. Edit">
           <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${nm ? esc(nm) : 'Tap to name'}</span><span class="m">${esc(who(t))}</span></button>
         ${win ? '' : `<button type="button" class="tx" data-x="${num}" ${!out && st.winner !== null ? 'disabled' : ''}
           aria-label="${out ? `Put #${num} back in` : `Eliminate #${num}`}" title="${out ? 'Put back in' : 'Eliminate'}">${out ? '↺' : '×'}</button>`}
       </div>`;
-    }else{
-      tiles += `<div class="tile${next ? ' next' : ''}"><span class="n">${num}</span></div>`;
-    }
+  };
+  let tiles = '';
+  if(byTeam){
+    // One row per team: its entrants in number order, and its pick on the right once it's decided.
+    tiles = S.slots.map((s, i) => {
+      const t = team(i), nums = numsFor(i).filter(x => hide < 0 || x !== numberOf(hide));
+      const pk = st.picks.findIndex(p => p && p.i === i);
+      return `<div class="trow">
+        <div class="tlabel"><span class="tn" style="color:${t.tc}">${esc(t.mgr || t.n)}</span>${t.mgr ? `<span class="tt">${esc(t.n)}</span>` : ''}</div>
+        <div class="ttiles">${nums.length ? nums.map(tile).join('') : '<span class="note">No numbers yet</span>'}</div>
+        <div class="tpick${pk >= 0 ? ' set' : ''}${pk === 0 ? ' first' : ''}" aria-label="${pk >= 0 ? ord(pk + 1) + ' pick' : 'Pick not decided'}">${pk >= 0 ? pk + 1 : '–'}</div>
+      </div>`;
+    }).join('');
+  }else for(let num = 1; num <= T; num++){
+    const k = drawOf(num), has = k < S.draws.length && k !== hide;
+    if(has) tiles += tile(num);
+    else tiles += `<div class="tile${!done && num === n ? ' next' : ''}"><span class="n">${num}</span></div>`;
   }
   $('board').innerHTML = tiles;
   // the editor above the board, for the selected number
