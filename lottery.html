@@ -92,6 +92,13 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 /* ---- entrant board ---- */
 .board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 @media (max-width:420px){.board{grid-template-columns:repeat(5,minmax(0,1fr))}}
+/* "Down": numbers fill each column top to bottom (1-5 down the first column, then 6-10...) */
+.board.down{grid-auto-flow:column;grid-template-rows:repeat(var(--r6),auto)}
+@media (max-width:420px){.board.down{grid-template-rows:repeat(var(--r5),auto)}}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.flow{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.flow button{border:0;background:transparent;color:var(--ink-3);font-size:12px;font-weight:600;padding:5px 10px}
+.flow button[aria-pressed="true"]{background:var(--line);color:var(--ink)}
 .tile{position:relative;aspect-ratio:1/1.05;border-radius:10px;background:var(--card-2);border:1px dashed var(--line);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px;
   font-variant-numeric:tabular-nums;min-width:0}
@@ -141,6 +148,8 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .alive{font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px;margin-top:10px}
 .alive b{font-weight:600}
 .elist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px}
+.elist.down{display:block;column-width:280px;column-gap:6px}
+.elist.down .erow{break-inside:avoid;margin-bottom:6px}
 .erow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border-radius:12px;
   background:var(--card-2);border:1px solid var(--line-soft)}
 .enum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:4px 2px;min-width:0}
@@ -228,7 +237,7 @@ input:disabled{opacity:.55}
 
     <div class="col">
       <section class="panel" aria-label="Entrant numbers">
-        <h2>Rumble entrants</h2>
+        <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button></span></div>
         <div id="resultBox"></div>
         <div class="board" id="board"></div>
       </section>
@@ -252,7 +261,7 @@ input:disabled{opacity:.55}
         <div class="actions" style="margin-top:12px"><button class="btn ghost" id="undoElim" type="button">Undo last elimination</button></div>
       </div>
       <div>
-        <h3>Entrants</h3>
+        <div class="phead" style="margin-bottom:8px"><h3 style="margin:0">Entrants</h3><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button></span></div>
         <div class="elist" id="elist"></div>
       </div>
     </div>
@@ -289,6 +298,7 @@ function defaults(){
     sealed:false, // last ball is out but the dealer hasn't revealed it
     entrants:{},  // entry number -> wrestler name
     elims:[],     // entry numbers in the order they were eliminated
+    flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
   };
 }
 let S = load();
@@ -308,6 +318,7 @@ function load(){
       delete s.logos;
       s.sealed = !!s.sealed && s.draws.length > 0;
       delete s.winner; s.entrants = s.entrants || {}; s.elims = Array.isArray(s.elims) ? s.elims : [];
+      s.flow = s.flow === 'across' ? 'across' : 'down';
       return s;
     }
   }catch(e){}
@@ -666,7 +677,11 @@ function renderAll(opt = {}){
 
   // entrant board
   const T = total(), st = standings();
-  $('board').className = 'board';
+  const down = S.flow === 'down';
+  $('board').className = 'board' + (down ? ' down' : '');
+  $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5));
+  $('elist').classList.toggle('down', down);
+  for(const b of document.querySelectorAll('[data-flow]')) b.setAttribute('aria-pressed', String(b.dataset.flow === S.flow));
   let tiles = '';
   for(let num = 1; num <= T; num++){
     const k = drawOf(num), has = k < S.draws.length && k !== hide, slot = has ? S.draws[k] : null;
@@ -751,6 +766,10 @@ $('elist').addEventListener('click', e => {
   const el = e.target.closest('[data-elim]'), bk = e.target.closest('[data-back]');
   if(el && !el.disabled){ S.elims.push(+el.dataset.elim); save(); renderAll({keepReveal:true, skipSetup:true}); }
   if(bk){ S.elims = S.elims.filter(n => n !== +bk.dataset.back); save(); renderAll({keepReveal:true, skipSetup:true}); }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-flow]'); if(!b || b.dataset.flow === S.flow) return;
+  S.flow = b.dataset.flow; save(); renderAll({keepReveal:true, skipSetup:true});
 });
 $('undoElim').addEventListener('click', () => { S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
 // Names, managers and colours update live as you type, without redrawing the setup (so focus stays put).

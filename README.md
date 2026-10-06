@@ -74,7 +74,9 @@ each entrant's name against their number (Enter moves to the next) and tap
 eliminated: the first team out gets the last pick, the next the pick before,
 and the last team standing gets the 1st pick. Eliminations can be put back
 individually or with **Undo last elimination**; the board, team cards and
-copied results all follow the tracker. Entrant names survive a lottery reset.
+copied results all follow the tracker. Entrant names survive a lottery reset. Numbers on the board
+and in the entrant list run down each column by default; a **Down / Across**
+toggle switches both to row order.
 
 Draws are dealt like a bingo cage: **Spin** turns the cage and drops one ball,
 sealed, into the tray. Nothing on the page shows the team until the dealer taps
