@@ -82,8 +82,16 @@ when it is revealed. Setup takes an optional logo per team (shrunk to 160px and
 kept with the rest of the lottery in `localStorage`); a revealed ball then shows
 the logo in a ring of the team's colour, and so does the reveal card.
 
-Draws use `crypto.getRandomValues` and are saved before the cage spins, so reloading mid-draw can't re-roll a result. Progress is kept in
-`localStorage` (`rumble_lottery_v1`); setup locks after the first draw.
+Teams are set up on the page: each has a name, manager, colour, ball count and
+optional logo, and teams can be added (up to 8) or removed (down to 2). Typing
+one of the league's team names offers it as a suggestion, and picking it fills
+in that manager and colour. Ball counts and the team list lock after the first
+draw; names, managers, colours and logos can change at any time. Very dark
+colours are lightened for text so they stay readable on the dark page.
+
+Draws use `crypto.getRandomValues` and are saved before the cage spins, so
+reloading mid-draw can't re-roll a result. Progress is kept in `localStorage`
+(`rumble_lottery_v1`); saves from before custom teams are converted on load.
 
 ## Layout
 
