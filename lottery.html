@@ -42,6 +42,7 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
   .grid.nocage{grid-template-columns:minmax(0,1fr)}}
 /* full-width board once the cage folds away: keep tiles a sensible height instead of square */
 .grid.nocage .tile{aspect-ratio:auto;min-height:62px}
+.grid.nocage .board.live .tile{min-height:78px}
 .cagebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;
   border:1px solid var(--line);border-radius:14px;color:var(--ink-2);font-size:14px}
 .cagebar .btn{padding:8px 12px;font-size:13px}
@@ -117,8 +118,38 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .tile.next{border:1.5px solid var(--gold)}
 .tile.next .n{color:var(--gold)}
 .tile.next::after{content:'NEXT';position:absolute;bottom:4px;font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--gold)}
-.tile.out{opacity:.35}
+/* once every number is drawn, each tile is the place to name its entrant and mark the elimination */
+.board.live .tile{aspect-ratio:auto;min-height:72px;padding:0}
+.tmain{all:unset;box-sizing:border-box;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:6px 8px;border-radius:inherit;text-align:center;cursor:pointer;min-width:0}
+.tmain:hover{background:rgba(255,255,255,.04)}
+.tmain:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.tile .nm{font-size:12px;font-weight:600;color:var(--ink);max-width:100%;line-height:1.15;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.tile .nm.empty{color:var(--ink-3);font-weight:500;font-size:11px}
+.tx{position:absolute;top:3px;right:3px;z-index:2;width:22px;height:22px;padding:0;border:0;border-radius:6px;
+  background:rgba(0,0,0,.35);color:var(--ink-2);font-size:15px;line-height:22px;cursor:pointer}
+.tx:hover:not(:disabled){background:#F0453E;color:#fff}
+.tx:disabled{opacity:.3;cursor:default}
+.tile.out .tmain{opacity:.55}
 .tile.out .n{text-decoration:line-through;text-decoration-thickness:2px}
+.tile.out::after{content:'';position:absolute;inset:8px;pointer-events:none;opacity:.5;
+  background:linear-gradient(to top right,transparent calc(50% - 1.5px),#F0453E calc(50% - 1.5px),#F0453E calc(50% + 1.5px),transparent calc(50% + 1.5px)),
+             linear-gradient(to top left,transparent calc(50% - 1.5px),#F0453E calc(50% - 1.5px),#F0453E calc(50% + 1.5px),transparent calc(50% + 1.5px))}
+.tile.out .tx{background:var(--ink);color:var(--bg)}
+.tile.sel{outline:2px solid var(--ink);outline-offset:1px}
+.editor{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:end;padding:10px 12px;
+  border:1px solid var(--line);border-radius:12px;background:var(--card-2)}
+.editor .ednum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:5px 10px;min-width:52px}
+.editor .ednum b{font-family:var(--display);font-weight:700;font-size:22px;line-height:1}
+.editor .ednum small{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.editor input{height:42px}
+.editor .ebtn{height:42px}
+.edbtns{display:flex;gap:8px}
+@media (max-width:520px){.editor{grid-template-columns:auto minmax(0,1fr)}.edbtns{grid-column:1/-1}.edbtns .ebtn{flex:1}
+  /* phones: three wide tiles per row once names go on them */
+  .board.live{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .board.live.down{grid-template-rows:repeat(var(--r3),auto)}}
 .tile.winner{outline:3px solid var(--gold);outline-offset:1px}
 .tile.winner::before{content:'★';position:absolute;top:2px;right:5px;font-size:11px;color:var(--gold)}
 
@@ -152,25 +183,12 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .prow.set .pk{color:var(--ink)}
 .prow.first.set{border-color:var(--gold)}
 .prow.first.set .pk{color:var(--gold)}
-.alive{font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.alive{font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:6px}
 .alive b{font-weight:600}
-.elist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px}
-.elist.down{display:block;column-width:280px;column-gap:6px}
-.elist.down .erow{break-inside:avoid;margin-bottom:6px}
-.erow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border-radius:12px;
-  background:var(--card-2);border:1px solid var(--line-soft)}
-.enum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:4px 2px;min-width:0}
-.enum b{font-family:var(--display);font-weight:700;font-size:20px;line-height:1}
-.enum small{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.erow input{height:38px}
-.erow.out{opacity:.55}
-.erow.out input{text-decoration:line-through}
-.erow.won{border-color:var(--gold)}
 .ebtn{border:1px solid var(--line);background:transparent;border-radius:8px;padding:8px 10px;font-weight:600;font-size:13px;color:var(--ink-2);white-space:nowrap}
 .ebtn:hover:not(:disabled){border-color:#F0453E;color:#F0453E}
 .ebtn.back:hover:not(:disabled){border-color:var(--ink-3);color:var(--ink)}
 .ebtn:disabled{opacity:.4;cursor:default}
-.crown{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.08em;color:var(--gold);padding:0 8px}
 
 /* ---- setup ---- */
 .tlist{display:flex;flex-direction:column;gap:10px}
@@ -252,6 +270,12 @@ input:disabled{opacity:.55}
       <section class="panel" aria-label="Entrant numbers">
         <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button></span></div>
         <div id="resultBox"></div>
+        <div class="editor" id="editor" hidden>
+          <span class="ednum" id="edNum"></span>
+          <label class="fld"><span>Entrant name</span><input type="text" id="edName" autocomplete="off" enterkeyhint="next" placeholder="Who came out?"></label>
+          <span class="edbtns"><button type="button" class="ebtn" id="edElim">Eliminate</button>
+          <button type="button" class="ebtn back" id="edDone">Done</button></span>
+        </div>
         <div class="board" id="board"></div>
       </section>
 
@@ -263,19 +287,15 @@ input:disabled{opacity:.55}
     </div>
   </div>
 
-  <section class="panel" id="tracker" aria-label="Rumble tracker" hidden>
-    <h2>Rumble tracker</h2>
-    <p class="hint">Type each entrant's name as they come out, and tap <b>Eliminate</b> when they go over the top rope. When a team has no entrants left, it's out: the first team out gets the last pick, the next team out the pick before that, and the last team standing gets the 1st pick.</p>
+  <section class="panel" id="tracker" aria-label="Draft order" hidden>
+    <h2>Draft order</h2>
+    <p class="hint">A team is out when all of its entrants are eliminated. The first team out gets the last pick, the next team out the pick before that, and the last team standing gets the 1st pick.</p>
     <div class="trk">
+      <div><div class="order" id="order"></div></div>
       <div>
-        <h3>Draft order</h3>
-        <div class="order" id="order"></div>
+        <h3>Still in</h3>
         <div class="alive" id="alive"></div>
         <div class="actions" style="margin-top:12px"><button class="btn ghost" id="undoElim" type="button">Undo last elimination</button></div>
-      </div>
-      <div>
-        <div class="phead" style="margin-bottom:8px"><h3 style="margin:0">Entrants</h3><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button></span></div>
-        <div class="elist" id="elist"></div>
       </div>
     </div>
   </section>
@@ -315,7 +335,8 @@ function defaults(){
   };
 }
 let S = load();
-let showCage = false, showSetup = false;   // per view: bring the cage or setup back after every number is drawn
+let showCage = false, showSetup = false;
+let sel = null;   // entry number open in the board's editor   // per view: bring the cage or setup back after every number is drawn
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
@@ -633,7 +654,7 @@ function showReveal(num, slot, pop){
     <div class="who"><span class="team" style="color:${t.tc}" aria-label="${esc(t.n)}">${letters}</span>
     <span class="sub">${esc(who(t))} gets entry #${num} · ${left(slot)} ball${left(slot) === 1 ? '' : 's'} left</span></div>`;
 }
-function renderTracker(st, lists){
+function renderTracker(st){
   const N = S.slots.length;
   $('order').innerHTML = st.picks.map((p, k) => {
     const first = k === 0;
@@ -650,20 +671,7 @@ function renderTracker(st, lists){
     return `<span><b style="color:${t.tc}">${esc(t.n)}</b> · ${left.length} of ${nums.length} still in: ${left.map(x => '#' + x).join(', ')}</span>`;
   }).join('') : '';
   $('undoElim').disabled = !S.elims.length;
-  if(!lists) return;
-  const T = total(), oneLeft = st.winner !== null;
-  let rows = '';
-  for(let n = 1; n <= T; n++){
-    const t = team(holderOf(n)), k = S.elims.indexOf(n), out = k >= 0, won = st.winner === n;
-    rows += `<div class="erow${out ? ' out' : ''}${won ? ' won' : ''}">
-      <span class="enum" style="background:${t.c}22;color:${t.tc}"><b>${n}</b><small>${esc(who(t))}</small></span>
-      <input type="text" id="ent${n}" data-n="${n}" value="${esc(S.entrants[n] || '')}" placeholder="Entrant #${n}" aria-label="Entrant #${n} name" autocomplete="off" enterkeyhint="next">
-      ${won ? '<span class="crown">WINNER</span>'
-        : out ? `<button type="button" class="ebtn back" data-back="${n}" aria-label="Put #${n} back in">${ord(k + 1)} out ↺</button>`
-        : `<button type="button" class="ebtn" data-elim="${n}" ${oneLeft ? 'disabled' : ''}>Eliminate</button>`}
-    </div>`;
-  }
-  $('elist').innerHTML = rows;
+  if(!alive.length) $('alive').innerHTML = '<span>Every team is placed.</span>';
 }
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -692,9 +700,10 @@ function renderAll(opt = {}){
   // entrant board
   const T = total(), st = standings();
   const down = S.flow === 'down';
-  $('board').className = 'board' + (down ? ' down' : '');
-  $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5));
-  $('elist').classList.toggle('down', down);
+  const live = tracking();
+  if(!live) sel = null;
+  $('board').className = 'board' + (down ? ' down' : '') + (live ? ' live' : '');
+  $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5)); $('board').style.setProperty('--r3', Math.ceil(T / 3));
   for(const b of document.querySelectorAll('[data-flow]')) b.setAttribute('aria-pressed', String(b.dataset.flow === S.flow));
   let tiles = '';
   for(let num = 1; num <= T; num++){
@@ -702,22 +711,41 @@ function renderAll(opt = {}){
     const next = !done && num === n;
     if(has){
       const t = team(slot), win = st.winner === num, out = isOut(num);
-      tiles += `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}" style="background:${t.c}22;color:${t.tc}"
-        title="${esc(label(num))}" aria-label="Entrant ${num}: ${esc(t.n)}${out ? ', eliminated' : ''}">
-        <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
+      if(!live){
+        tiles += `<div class="tile filled" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
+          <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
+        continue;
+      }
+      const nm = entrant(num);
+      tiles += `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}" style="background:${t.c}22;color:${t.tc}">
+        <button type="button" class="tmain" data-pick="${num}" aria-label="#${num}${nm ? ' ' + esc(nm) : ''}, ${esc(t.n)}${out ? ', eliminated' : ''}. Edit">
+          <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${nm ? esc(nm) : 'Tap to name'}</span><span class="m">${esc(who(t))}</span></button>
+        ${win ? '' : `<button type="button" class="tx" data-x="${num}" ${!out && st.winner !== null ? 'disabled' : ''}
+          aria-label="${out ? `Put #${num} back in` : `Eliminate #${num}`}" title="${out ? 'Put back in' : 'Eliminate'}">${out ? '↺' : '×'}</button>`}
+      </div>`;
     }else{
       tiles += `<div class="tile${next ? ' next' : ''}"><span class="n">${num}</span></div>`;
     }
   }
   $('board').innerHTML = tiles;
+  // the editor above the board, for the selected number
+  $('editor').hidden = sel === null;
+  if(sel !== null){
+    const t = team(holderOf(sel)), k = S.elims.indexOf(sel), won = st.winner === sel;
+    $('edNum').style.background = t.c + '22'; $('edNum').style.color = t.tc;
+    $('edNum').innerHTML = `<b>#${sel}</b><small>${esc(who(t))}</small>`;
+    const eb = $('edElim');
+    eb.textContent = won ? 'Winner' : k >= 0 ? `${ord(k + 1)} out · Put back` : 'Eliminate';
+    eb.classList.toggle('back', k >= 0); eb.disabled = won || (k < 0 && st.winner !== null);
+  }
 
   // result
   if(st.picks[0]){
     const t = team(st.picks[0].i);
     $('resultBox').innerHTML = `<div class="result"><span class="k">${st.winner ? `Rumble winner: ${esc(label(st.winner))}` : 'Last team standing'}</span>
-      <span class="v">${esc(t.n)} gets the 1st pick</span><span>Full draft order is in the Rumble tracker below.</span></div>`;
+      <span class="v">${esc(t.n)} gets the 1st pick</span><span>Full draft order is below.</span></div>`;
   }else if(tracking()){
-    $('resultBox').innerHTML = `<p class="hint">Every number is out. Log entrants and eliminations in the <b>Rumble tracker</b> below to set the draft order.</p>`;
+    $('resultBox').innerHTML = `<p class="hint">Every number is out. <b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. The draft order below fills in as teams go out.</p>`;
   }else{
     $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
   }
@@ -742,7 +770,7 @@ function renderAll(opt = {}){
   $('cageBar').hidden = !tracking(); $('cageToggle').textContent = fold ? 'Show cage' : 'Hide cage';
   const foldSetup = tracking() && !showSetup;
   $('setupPanel').hidden = foldSetup; $('setupToggle').textContent = foldSetup ? 'Show setup' : 'Hide setup';
-  if(tracking()) renderTracker(st, !opt.keepEntrants);
+  if(tracking()) renderTracker(st);
 
   // setup
   const locked = S.draws.length > 0;
@@ -773,20 +801,31 @@ function renderAll(opt = {}){
 
 /* ---------------- events ---------------- */
 $('drawBtn').addEventListener('click', () => S.sealed ? reveal() : spin());
-// Rumble tracker: names save as you type; Enter jumps to the next entrant.
-$('elist').addEventListener('input', e => {
-  const n = +e.target.dataset.n; if(!n) return;
-  S.entrants[n] = e.target.value; save(); renderAll({keepReveal:true, skipSetup:true, keepEntrants:true});
+// Board as tracker: tap a number to name its entrant (Enter moves to the next), × marks the elimination.
+function toggleElim(n){
+  if(isOut(n)) S.elims = S.elims.filter(x => x !== n);
+  else if(standings().winner === null) S.elims.push(n);
+  else return;
+  save(); renderAll({keepReveal:true, skipSetup:true});
+}
+function pick(n){
+  sel = n; renderAll({keepReveal:true, skipSetup:true});
+  if(n !== null){ $('edName').value = S.entrants[n] || ''; $('edName').focus(); $('edName').select(); }
+}
+$('board').addEventListener('click', e => {
+  const x = e.target.closest('[data-x]'); if(x){ if(!x.disabled) toggleElim(+x.dataset.x); return; }
+  const t = e.target.closest('[data-pick]'); if(t) pick(+t.dataset.pick === sel ? null : +t.dataset.pick);
 });
-$('elist').addEventListener('keydown', e => {
-  if(e.key !== 'Enter' || !e.target.dataset.n) return;
-  e.preventDefault(); const nx = $('ent' + (+e.target.dataset.n + 1)); if(nx) nx.focus(); else e.target.blur();
+$('edName').addEventListener('input', e => {
+  if(sel === null) return;
+  S.entrants[sel] = e.target.value; save(); renderAll({keepReveal:true, skipSetup:true});
 });
-$('elist').addEventListener('click', e => {
-  const el = e.target.closest('[data-elim]'), bk = e.target.closest('[data-back]');
-  if(el && !el.disabled){ S.elims.push(+el.dataset.elim); save(); renderAll({keepReveal:true, skipSetup:true}); }
-  if(bk){ S.elims = S.elims.filter(n => n !== +bk.dataset.back); save(); renderAll({keepReveal:true, skipSetup:true}); }
+$('edName').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); pick(sel < total() ? sel + 1 : null); }
+  if(e.key === 'Escape') pick(null);
 });
+$('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); });
+$('edDone').addEventListener('click', () => pick(null));
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-flow]'); if(!b || b.dataset.flow === S.flow) return;
   S.flow = b.dataset.flow; save(); renderAll({keepReveal:true, skipSetup:true});

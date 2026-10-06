@@ -68,15 +68,16 @@ lottery. Every ball in the machine is a team: last place 12, then 9, 6 and 3,
 so 30 balls for 30 Rumble entry numbers. Draw at #30 with every ball in; the
 team that comes out gets #30 and loses a ball, then #29, down to #1.
 
-Once every number is drawn, the **Rumble tracker** sets the draft order. Type
-each entrant's name against their number (Enter moves to the next) and tap
-**Eliminate** as they go out. A team is out when all of its entrants are
-eliminated: the first team out gets the last pick, the next the pick before,
-and the last team standing gets the 1st pick. Eliminations can be put back
-individually or with **Undo last elimination**; the board, team cards and
-copied results all follow the tracker. Entrant names survive a lottery reset. Numbers on the board
-and in the entrant list run down each column by default; a **Down / Across**
-toggle switches both to row order.
+Once every number is drawn, the number board doubles as the Rumble tracker.
+Tap a number to type its entrant's name in the editor above the board (Enter
+moves on to the next number), and tap the **×** in a tile's corner when that
+entrant is eliminated (**↺** puts them back). A team is out when all of its
+entrants are eliminated: the first team out gets the last pick, the next the
+pick before, and the last team standing gets the 1st pick. The **Draft order**
+section fills in as teams go out; the team cards and copied results follow it.
+Entrant names survive a lottery reset. Numbers on the board run down each
+column by default; a **Down / Across** toggle switches to row order. On phones
+the board drops to three columns once names go on it.
 
 Once every number is drawn, setup and the cage fold away so the board and the
 tracker get the room; a bar at the top brings either back (**Show setup**,
