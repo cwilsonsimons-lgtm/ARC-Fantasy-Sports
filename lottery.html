@@ -720,8 +720,9 @@ function renderAll(opt = {}){
 
   // entrant board
   const T = total(), st = standings();
-  const down = S.flow === 'down', byTeam = S.flow === 'team';
   const live = tracking();
+  // "By team" only takes over once every number is out; during the draw the board stays the number grid.
+  const byTeam = S.flow === 'team' && live, down = S.flow === 'down' || (S.flow === 'team' && !live);
   if(!live) sel = null;
   $('board').className = 'board' + (down ? ' down' : '') + (byTeam ? ' teams' : '') + (live ? ' live' : '');
   $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5)); $('board').style.setProperty('--r3', Math.ceil(T / 3));
