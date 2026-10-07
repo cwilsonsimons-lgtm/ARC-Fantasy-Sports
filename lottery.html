@@ -161,6 +161,24 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
   .trow{grid-template-columns:minmax(0,1fr) 52px;gap:8px 10px}
   .trow .ttiles{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(3,minmax(0,1fr))}
   .tpick{grid-column:2;grid-row:1;border-left:0;font-size:30px}}
+.finder{display:flex;flex-direction:column;gap:6px}
+.findwrap{position:relative}
+.findwrap::before{content:'';position:absolute;left:13px;top:50%;width:11px;height:11px;margin-top:-8px;border:2px solid var(--ink-3);border-radius:50%;pointer-events:none}
+.findwrap::after{content:'';position:absolute;left:24px;top:50%;width:6px;height:2px;margin-top:4px;background:var(--ink-3);transform:rotate(45deg);pointer-events:none}
+#findBox{width:100%;height:44px;padding:10px 12px 10px 36px;background:var(--bg);border:1px solid var(--line);border-radius:12px;font-size:15px}
+#findBox:focus{border-color:var(--gold);outline:none}
+.fres{display:flex;flex-direction:column;gap:4px}
+.frow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px;border-radius:10px;background:var(--card-2);border:1px solid var(--line-soft)}
+.frow .fnum{display:flex;flex-direction:column;align-items:center;border-radius:8px;padding:4px 2px}
+.frow .fnum b{font-family:var(--display);font-weight:700;font-size:19px;line-height:1}
+.frow .fnum small{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .fname{font-weight:600;overflow-wrap:anywhere}
+.frow .fname small{display:block;font-weight:500;color:var(--ink-3);font-size:12px}
+.frow.out .fname{text-decoration:line-through;color:var(--ink-3)}
+.fnone{font-size:13px;color:var(--ink-3);padding:4px 2px}
+.fhint{font-size:12px;color:var(--ink-3)}
+.board.searching .tile:not(.hit){opacity:.22}
+.board.searching .tile.hit{outline:2px solid var(--ink);outline-offset:1px}
 .editor{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:end;padding:10px 12px;
   border:1px solid var(--line);border-radius:12px;background:var(--card-2)}
 .editor .ednum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:5px 10px;min-width:52px}
@@ -223,7 +241,7 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .notice b{display:block;font-family:var(--display);font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);margin-bottom:6px}
 /* people following along: same page, no controls */
 body.viewer #setupPanel,body.viewer #drawBtn,body.viewer #undoBtn,body.viewer #setupToggle,body.viewer #resetNums,
-body.viewer .tx,body.viewer #editor,body.viewer #undoElim{display:none!important}
+body.viewer .tx,body.viewer #editor,body.viewer #undoElim,body.viewer .frow .ebtn,body.viewer .fhint{display:none!important}
 body.viewer .tmain{pointer-events:none;cursor:default}
 body.viewer .tile .nm.empty{visibility:hidden}
 body.connecting .wrap>section,body.connecting .wrap>.grid,body.connecting .wrap>.cagebar,
@@ -313,6 +331,11 @@ input:disabled{opacity:.55}
         <div class="phead"><h2>Rumble entrants</h2><span class="flow" role="group" aria-label="Number order"><button type="button" data-flow="down">Down ↓</button><button type="button" data-flow="across">Across →</button><button type="button" data-flow="team">By team</button></span>
           <label class="gridopt" id="gridOpt" hidden><input type="checkbox" id="drawGrid"> Grid while drawing</label></div>
         <div id="resultBox"></div>
+        <div class="finder" id="finder" hidden>
+          <label class="findwrap"><span class="sr" hidden>Find an entrant</span>
+            <input type="search" id="findBox" placeholder="Find an entrant by name or number" autocomplete="off" enterkeyhint="done" aria-label="Find an entrant by name or number"></label>
+          <div class="fres" id="findRes" aria-live="polite"></div>
+        </div>
         <div class="editor" id="editor" hidden>
           <span class="ednum" id="edNum"></span>
           <label class="fld"><span>Entrant name</span><input type="text" id="edName" autocomplete="off" enterkeyhint="next" placeholder="Who came out?"></label>
@@ -385,6 +408,7 @@ let S = load();
 let showCage = false, showSetup = false;
 // per view: bring the cage or setup back after every number is drawn
 let sel = null;   // entry number open in the board's editor
+let findQ = '';   // text in the find-an-entrant box
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
@@ -763,6 +787,9 @@ function renderAll(opt = {}){
   $('board').className = 'board' + (down ? ' down' : '') + (byTeam ? ' teams' : '') + (live ? ' live' : '');
   $('board').style.setProperty('--r6', Math.ceil(T / 6)); $('board').style.setProperty('--r5', Math.ceil(T / 5)); $('board').style.setProperty('--r3', Math.ceil(T / 3));
   for(const b of document.querySelectorAll('[data-flow]')) b.setAttribute('aria-pressed', String(b.dataset.flow === S.flow));
+  // search: entrants matching the find box, still-in first
+  if(!live) findQ = '';
+  const found = findMatches(), hits = new Set(found);
   // next entrant due out: the lowest number with no name yet that hasn't been eliminated
   let nextIn = null;
   if(live) for(let x = 1; x <= T; x++) if(!entrant(x) && !isOut(x)){ nextIn = x; break; }
@@ -771,7 +798,7 @@ function renderAll(opt = {}){
     if(!live) return `<div class="tile filled" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
       <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
     const nm = entrant(num);
-    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}" style="background:${t.c}22;color:${t.tc}">
+    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}${hits.has(num) ? ' hit' : ''}" style="background:${t.c}22;color:${t.tc}">
         <button type="button" class="tmain" data-pick="${num}" aria-label="#${num}${nm ? ' ' + esc(nm) : ''}, ${esc(t.n)}${out ? ', eliminated' : ''}. Edit">
           <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${nm ? esc(nm) : 'Tap to name'}</span><span class="m">${esc(who(t))}</span></button>
         ${win ? '' : `<button type="button" class="tx" data-x="${num}" ${!out && st.winner !== null ? 'disabled' : ''}
@@ -796,6 +823,9 @@ function renderAll(opt = {}){
     else tiles += `<div class="tile${!done && num === n ? ' next' : ''}"><span class="n">${num}</span></div>`;
   }
   $('board').innerHTML = tiles;
+  $('board').classList.toggle('searching', !!findQ.trim());
+  $('finder').hidden = !live;
+  if(live) renderFinder(found, st);
   // the editor above the board, for the selected number
   $('editor').hidden = sel === null;
   if(sel !== null){
@@ -899,6 +929,44 @@ $('edName').addEventListener('keydown', e => {
 });
 $('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); });
 $('edDone').addEventListener('click', () => pick(null));
+// Find an entrant by name (any part of it) or by number, to eliminate them without hunting the board.
+function findMatches(){
+  const q = findQ.trim().toLowerCase(); if(!q) return [];
+  const out = [];
+  for(let n = 1; n <= total(); n++){
+    if(holderOf(n) === null) continue;
+    if(String(n) === q.replace(/^#/, '') || entrant(n).toLowerCase().includes(q)) out.push(n);
+  }
+  return out.sort((a, b) => isOut(a) - isOut(b) || a - b);
+}
+function renderFinder(found, st){
+  const box = $('findRes');
+  if(!findQ.trim()){ box.innerHTML = ''; return; }
+  if(!found.length){ box.innerHTML = `<span class="fnone">No entrant matches “${esc(findQ.trim())}”. Names show up here once they're typed on the board.</span>`; return; }
+  const live1 = found.filter(n => !isOut(n));
+  box.innerHTML = found.slice(0, 6).map(n => {
+    const t = team(holderOf(n)), k = S.elims.indexOf(n), won = st.winner === n;
+    return `<div class="frow${k >= 0 ? ' out' : ''}">
+      <span class="fnum" style="background:${t.c}22;color:${t.tc}"><b>${n}</b><small>${esc(who(t))}</small></span>
+      <span class="fname">${entrant(n) ? esc(entrant(n)) : `Entrant #${n}`}<small>${esc(t.n)}${k >= 0 ? ` · ${ord(k + 1)} out` : won ? ' · winner' : ''}</small></span>
+      ${won ? '' : `<button type="button" class="ebtn${k >= 0 ? ' back' : ''}" data-fx="${n}" ${k < 0 && st.winner !== null ? 'disabled' : ''}>${k >= 0 ? 'Put back' : 'Eliminate'}</button>`}
+    </div>`;
+  }).join('') + (found.length > 6 ? `<span class="fnone">${found.length - 6} more match. Keep typing to narrow it down.</span>` : '')
+    + (live1.length === 1 && mode !== 'viewer' ? `<span class="fhint">Press Enter to eliminate #${live1[0]}.</span>` : '');
+}
+function clearFind(){ findQ = ''; $('findBox').value = ''; }
+$('findBox').addEventListener('input', e => { findQ = e.target.value; renderAll({keepReveal:true, skipSetup:true}); });
+$('findBox').addEventListener('keydown', e => {
+  if(e.key === 'Escape'){ clearFind(); renderAll({keepReveal:true, skipSetup:true}); return; }
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const still = findMatches().filter(n => !isOut(n));
+  if(mode !== 'viewer' && still.length === 1){ clearFind(); toggleElim(still[0]); $('findBox').focus(); }
+});
+$('findRes').addEventListener('click', e => {
+  const b = e.target.closest('[data-fx]'); if(!b || b.disabled) return;
+  clearFind(); toggleElim(+b.dataset.fx); $('findBox').focus();
+});
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-flow]'); if(!b || b.dataset.flow === S.flow) return;
   S.flow = b.dataset.flow; if(mode === 'viewer') viewPref.flow = S.flow; save(); renderAll({keepReveal:true, skipSetup:true});

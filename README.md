@@ -71,7 +71,10 @@ team that comes out gets #30 and loses a ball, then #29, down to #1.
 Once every number is drawn, the number board doubles as the Rumble tracker.
 Tap a number to type its entrant's name in the editor above the board (Enter
 moves on to the next number), and tap the **×** in a tile's corner when that
-entrant is eliminated (**↺** puts them back). A team is out when all of its
+entrant is eliminated (**↺** puts them back). A **find** box above the board
+looks entrants up by any part of their name or by number, lists the matches with
+an Eliminate / Put back button, and dims the rest of the board; when exactly one
+entrant still in matches, Enter eliminates them and clears the box. A team is out when all of its
 entrants are eliminated: the first team out gets the last pick, the next the
 pick before, and the last team standing gets the 1st pick. The **Draft order**
 section fills in as teams go out; the team cards and copied results follow it.
