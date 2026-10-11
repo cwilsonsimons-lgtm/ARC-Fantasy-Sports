@@ -91,7 +91,7 @@ for (const w of [3, 4]) {
     let markers = 0, expected = 0;
     getGames(w).forEach((g) => {
       const ev = {};
-      rewindSeries([g.a, g.x]).forEach((q) => q.ev.forEach((e) => ev[e.name] = (ev[e.name] || 0) + 1));
+      rewindSeries([g.a, g.x]).forEach((q) => q.ev.forEach((e) => { if (e.kind !== '2pt') ev[e.name] = (ev[e.name] || 0) + 1; }));
       [g.a, g.x].forEach((k) => weekStarters(k, w).forEach((pl) => {
         const full = norm((NFL_BY_ID[pl.id] || {}).full || pl.full || pl.n);
         const mine = plays.filter((t) => { const m = norm(t.replace(/\s*\(.*$/, '')); return m.indexOf(full + ' ') === 0 || new RegExp('pass from ' + full + '$').test(m); }).length;

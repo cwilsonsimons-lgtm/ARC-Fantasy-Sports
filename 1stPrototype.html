@@ -1007,6 +1007,7 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .ss-td{display:flex;gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line-soft);font-size:12px}
 .ss-td .q{width:58px;flex:none;color:var(--ink-3);font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 .ss-td .t{flex:1;min-width:0}
+.ss-td .t i{display:block;font-style:normal;font-size:10.5px;color:var(--ink-3);margin-top:2px}
 .ss-td .v{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--green)}
 .ss-note{font-size:11px;color:var(--ink-3);margin-top:12px;text-align:center}
 .swap-cur{background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:var(--ink)}
@@ -5131,7 +5132,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     // of yardage points that happens to be worth six or more
     const add = (list, side) => list.forEach((p) => jumpsFor(p.key || p.name).forEach((j) => {
       if (!j.td) return;
-      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts: j.pts, text: j.text || "" });
+      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts: j.pts, text: j.text || "", parts: j.parts || [], kind: j.kind || "td" });
     }));
     add(A, "a");
     add(X, "x");
@@ -5243,7 +5244,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         if (t >= ws && t <= we) times.add(t);
       });
       [...times].sort((p, q) => p - q).forEach((t) => {
-        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text }));
+        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text, parts: e.parts, kind: e.kind }));
         const a = sum(A, t), x = sum(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
         out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev, ko: kickoff(t) });
@@ -5406,8 +5407,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       if (p.ev.length) {
         const side = p.ev[0].side;
         cls = sideCls(side);
-        bub.innerHTML = `<div class="h">${escName(names[side])} &middot; TD</div>` + p.ev.map(
-          (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">+${e.pts.toFixed(1)} pts</em></div>${e.text ? `<div class="k">${escName(e.text)}</div>` : ""}`
+        // the whole play's worth to him, and what it was for
+        bub.innerHTML = `<div class="h">${escName(names[side])} &middot; ${p.ev.every((e) => e.kind === "2pt") ? "2-PT" : "TD"}</div>` + p.ev.map(
+          (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">${e.pts > 0 ? "+" : ""}${e.pts.toFixed(1)} pts</em></div>${e.text ? `<div class="k">${escName(e.text)}</div>` : ""}${e.parts && e.parts.length > 1 ? `<div class="k pp">${escName(lvPartsText(e.parts))}</div>` : ""}`
         ).join("");
       } else {
         // a kickoff: what the matchup looked like as these games started
@@ -11981,7 +11983,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!rows.length) rows.push(`<div class="ss-none">${played ? lvGameInfo(p.tm, w) && lvGameInfo(p.tm, w).state === "in" ? "No points yet." : "No points this week." : "No projection for this week yet."}</div>`);
     h += rows.join("") + `<div class="ss-row tot"><span class="l">Total</span><span class="c"></span><span class="v">${total.toFixed(2)}</span></div>`;
     const tds = played ? lvTdPlays(p, w) : [];
-    if (tds.length) h += `<div class="ss-sec">Touchdowns</div>` + tds.map((t) => `<div class="ss-td"><span class="q">${t.q ? (t.q > 4 ? "OT" : "Q" + t.q) + (t.clk ? " " + t.clk : "") : "Q" + Math.min(4, Math.max(1, Math.ceil(t.min / 15)))}</span><span class="t">${escHtml(t.text)}</span><span class="v">${t.pts ? "+" + ssNum(t.pts) : ""}</span></div>`).join("");
+    if (tds.length) h += `<div class="ss-sec">${tds.some((t) => t.kind === "2pt") ? "Scoring plays" : "Touchdowns"}</div>` + tds.map((t) => `<div class="ss-td${t.kind === "2pt" ? " two" : ""}"><span class="q">${t.q ? (t.q > 4 ? "OT" : "Q" + t.q) + (t.clk ? " " + t.clk : "") : "Q" + Math.min(4, Math.max(1, Math.ceil(t.min / 15)))}</span><span class="t">${escHtml(t.text)}${t.parts.length > 1 ? `<i>${escHtml(lvPartsText(t.parts))}</i>` : ""}</span><span class="v">${t.pts ? (t.pts > 0 ? "+" : "") + (+t.pts.toFixed(2)) : ""}</span></div>`).join("");
     if (played && SKILL_POS[p.pos] && gi && gi.state === "in") h += `<div class="ss-note">Live \xB7 updates about every minute</div>`;
     document.getElementById("statTitle").textContent = played ? "Week " + w + " stats" : "Week " + w + " projection";
     document.getElementById("statBody").innerHTML = h;
@@ -17845,6 +17847,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     weekStarters: () => weekStarters,
     lvJumps: () => lvJumps,
     lvTdPlays: () => lvTdPlays,
+    lvPartsText: () => lvPartsText,
     lvGameInfo: () => lvGameInfo,
     lvPlayed: () => lvPlayed,
     lvStatSummary: () => lvStatSummary,
@@ -18126,23 +18129,76 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // Real scoring moments for a player, as the Rewind's jumps: each touchdown
   // the player is named in lands at its game time, and the rest of their points
   // accrue at the quarter breaks. Null when the plays are not loaded.
-  // The touchdowns a player scored or threw that week, from ESPN's
-  // play-by-play; empty until it is loaded.
+  // What one scoring play put in a player's stat line, in the app's stat
+  // keys, so the league's own scoring prices the whole play: the touchdown,
+  // its yards, the catch, carry or completion, and the per-play distance
+  // bonuses. (A touchdown is not a first down in these stats, and game-total
+  // bonuses such as 100 yards belong to the game, not to one play.)
+  function lvPlayLine(kind, yd) {
+    const o = {};
+    if (kind === "rec") {
+      Object.assign(o, { rec: 1, recYd: yd, recTD: 1 });
+      o[yd >= 40 ? "recB40" : yd >= 30 ? "recB30" : yd >= 20 ? "recB20" : yd >= 10 ? "recB10" : yd >= 5 ? "recB5" : "recB0"] = 1;
+      if (yd >= 40) o.recTD40 = 1;
+      if (yd >= 50) o.recTD50 = 1;
+    } else if (kind === "pass") {
+      Object.assign(o, { passAtt: 1, passComp: 1, passYd: yd, passTD: 1 });
+      if (yd >= 40) o.passCmp40 = o.passTD40 = 1;
+      if (yd >= 50) o.passTD50 = 1;
+    } else if (kind === "rush") {
+      Object.assign(o, { rushAtt: 1, rushYd: yd, rushTD: 1 });
+      if (yd >= 40) o.rush40 = o.rushTD40 = 1;
+      if (yd >= 50) o.rushTD50 = 1;
+    } else if (kind === "fum") o.fumTD = 1;
+    else if (kind === "kr") Object.assign(o, { stpTD: 1, stpKRYd: yd });
+    else if (kind === "pr") Object.assign(o, { stpTD: 1, stpPRYd: yd });
+    else if (kind === "ret") o.stpTD = 1;
+    return o;
+  }
+  var PLAY_PART = { passTD: "TD", rushTD: "TD", recTD: "TD", fumTD: "TD", stpTD: "TD", pass2pt: "2-pt", rush2pt: "2-pt", rec2pt: "2-pt", passYd: "yardage", rushYd: "yardage", recYd: "yardage", stpKRYd: "yardage", stpPRYd: "yardage", rec: "catch", recRB: "catch", recWR: "catch", recTE: "catch", rushAtt: "carry", passComp: "completion", passAtt: "attempt" };
+  var PLAY_ORDER = ["TD", "2-pt", "yardage", "catch", "carry", "completion", "attempt", "bonus"];
+  // a play's points under this league's scoring, and what they were for:
+  // { pts, parts: [["TD", 6], ["yardage", 2.2], ["catch", 1], ["bonus", 1]] }
+  function lvPlayValue(line, pos) {
+    const sc = scoreStats(line, { pos }), by = {};
+    sc.lines.forEach((l) => {
+      const k = PLAY_PART[l.k] || "bonus";
+      by[k] = Math.round(((by[k] || 0) + l.pts) * 100) / 100;
+    });
+    return { pts: sc.total, parts: PLAY_ORDER.filter((k) => by[k]).map((k) => [k, by[k]]) };
+  }
+  // "(Dak Prescott Pass to CeeDee Lamb for Two-Point Conversion)" after a
+  // touchdown: the player's part in a good two-point try, if any
+  function lvTwoPoint(raw, full) {
+    const m = String(raw).match(/\(([^()]*two-point[^()]*)\)\s*$/i);
+    if (!m || /fail/i.test(m[1])) return null;
+    const t = lvNorm(m[1]);
+    let r = t.match(/^(.+?) pass to (.+?) for two point/);
+    if (r) return r[1] === full ? { k: "pass2pt", text: m[1] } : r[2] === full ? { k: "rec2pt", text: m[1] } : null;
+    r = t.match(/^(.+?) (run|rush) for two point/);
+    return r && r[1] === full ? { k: "rush2pt", text: m[1] } : null;
+  }
+  // The scoring plays a player had a hand in that week, from ESPN's
+  // play-by-play, each with everything it was worth to him; empty until the
+  // plays are loaded. kind "td" for a touchdown he scored or threw, "2pt" for
+  // a two-point try on someone else's.
   function lvTdPlays(p, w) {
     if (!LIVE) return [];
     w = +(w || S.week);
-    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm;
+    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm, pos = p && p.pos || rec.pos;
     const plays = (LIVE.plays[w] || {})[tm] || [];
-    const full = lvNorm(rec.full || p && (p.full || p.n) || ""), sc = scoringBag();
+    const full = lvNorm(rec.full || p && (p.full || p.n) || "");
     if (!full) return [];
     const esc = full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const out = [];
     plays.forEach((pl) => {
-      if (!/touchdown/i.test(pl.type)) return;
+      const raw = String(pl.text || "");
       // ESPN writes "<scorer> 23 Yd pass from <passer> (<extra point>)". Only
-      // the scorer and the passer count; a name in the bracketed extra point
-      // or two-point try is someone else's touchdown.
-      const desc = String(pl.text || "").replace(/\s*\(.*$/, "");
+      // the scorer and the passer get the touchdown; a name in the bracketed
+      // try is someone else's touchdown (his two-point try is counted below).
+      const desc = raw.replace(/\s*\(.*$/, "");
+      // the type is now and then off ("Fumble Recovery (Own)" on a TD pass)
+      if (!/touchdown/i.test(pl.type) && !/\byd (pass from|rush|run)\b|\byd [a-z ]*return\b/i.test(desc)) return;
       const main = lvNorm(desc);
       // "<passer> complete pass to <receiver> ..., lateral to <scorer>" leads
       // with the passer
@@ -18150,11 +18206,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const threw = lead != null && /^(complete )?pass\b/.test(lead);
       const scorer = main === full || lead != null && !threw;
       const passer = threw || new RegExp("\\bpass from " + esc + "(\\b|$)").test(main);
-      if (!scorer && !passer) return;
-      const pts = passer ? +sc.passTD || 0 : /rush/i.test(pl.type) ? +sc.rushTD || 0 : /pass|reception/i.test(pl.type) ? +sc.recTD || 0 : /fumble/i.test(pl.type) ? +sc.fumTD || 0 : +sc.stpTD || 0;
-      out.push({ min: pl.min, q: pl.q, clk: pl.clk, pts, text: desc, passer });
+      const two = lvTwoPoint(raw, full);
+      if (!scorer && !passer && !two) return;
+      // "23 Yd", or a lateral's "for 2 yards, lateral to ... for 80 yards"
+      const ydm = desc.match(/(-?\d+) Yd\b/i);
+      const yd = ydm ? +ydm[1] : (desc.match(/for -?\d+ yards?/gi) || []).reduce((n, x) => n + parseInt(x.match(/-?\d+/)[0], 10), 0);
+      const kind = /pass from/i.test(desc) ? "rec" : /\byd (rush|run)\b/i.test(desc) ? "rush" : /fumble/i.test(desc) ? "fum" : /punt return/i.test(desc) ? "pr" : /kick(off)? return/i.test(desc) ? "kr" : /rush/i.test(pl.type) ? "rush" : /pass|reception/i.test(pl.type) ? "rec" : /fumble/i.test(pl.type) ? "fum" : "ret";
+      const line = passer ? lvPlayLine("pass", yd) : scorer ? lvPlayLine(kind, yd) : {};
+      if (two) line[two.k] = 1;
+      const v = lvPlayValue(line, pos);
+      const td = scorer || passer;
+      out.push({ min: pl.min, q: pl.q, clk: pl.clk, pts: v.pts, parts: v.parts, kind: td ? "td" : "2pt", text: td ? desc : two.text, passer });
     });
     return out;
+  }
+  // "+6 TD · +2.2 yardage · +1 catch"
+  function lvPartsText(parts) {
+    return (parts || []).map(([k, v]) => `${v > 0 ? "+" : ""}${+v.toFixed(2)} ${k}`).join(" \xB7 ");
   }
   // A team's game that week as ESPN reports it: "Final", "Q3 2:29",
   // "Halftime", with the score ("NE 21 @ BUF 17"). Null before kickoff.
@@ -18209,8 +18277,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     // but the points still land within the part of the game already played
     const total = lvPoints(p, w);
     if (total == null) return null;
-    const hits = lvTdPlays(p, w).filter((h) => h.pts).map((h) => ({ at: Math.max(0.02, Math.min(0.98, h.min / 60)), pts: h.pts, text: h.text }));
-    if (!total) return [{ at: 0.5, share: 0 }];
+    const hits = lvTdPlays(p, w).filter((h) => h.pts).map((h) => ({ at: Math.max(0.02, Math.min(0.98, h.min / 60)), pts: h.pts, text: h.text, parts: h.parts, kind: h.kind }));
+    if (!total && !hits.length) return [{ at: 0.5, share: 0 }];
     // Place game-clock moments on the chart's wall clock. A finished game spans
     // its whole slot; one in progress has only reached "now", which is however
     // far into the game ESPN's clock says it is.
@@ -18222,13 +18290,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     const scale = played > 0 ? reach / played : 1;
     hits.forEach((h) => h.at = Math.max(0.01, Math.min(reach, h.at * scale)));
+    // Each scoring play lands whole, with everything it was worth (the
+    // touchdown, its yards, the catch, its bonuses); these are the chart's
+    // marked moments and nothing else is.
     const tdPts = hits.reduce((n, h) => n + h.pts, 0);
-    const rest = total - Math.min(tdPts, total);
-    // touchdowns are the chart's marked moments; nothing else is
-    const out = hits.map((h) => ({ at: h.at, share: Math.min(h.pts, total) / total, td: true, pts: h.pts, text: h.text }));
-    // yardage, catches and first downs land through the part of the game
+    const rest = total - tdPts;
+    const out = hits.map((h) => ({ at: h.at, share: total ? h.pts / total : 0, td: true, pts: h.pts, text: h.text, parts: h.parts, kind: h.kind }));
+    // the rest of his points (other yards, catches, first downs, and anything
+    // negative such as interceptions) land through the part of the game
     // played so far, unmarked
-    if (rest > 0.001) [0.25, 0.5, 0.75, 1].forEach((f) => out.push({ at: Math.max(0.01, reach * f - 0.001), share: rest / total / 4 }));
+    if (total && Math.abs(rest) > 0.001) [0.25, 0.5, 0.75, 1].forEach((f) => out.push({ at: Math.max(0.01, reach * f - 0.001), share: rest / total / 4 }));
     return out.sort((a, b) => a.at - b.at);
   }
   // Opening a finished week loads its scoreboard and scoring plays (once; they

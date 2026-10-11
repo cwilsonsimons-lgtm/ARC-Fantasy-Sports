@@ -161,7 +161,7 @@ if (tdRow) {
   const i3 = R3.indexOf(tdRow);
   await p.locator('#detailStarters .st-row').nth(Math.floor(i3 / 2)).locator('.st-pts').nth(i3 % 2).click();
   await p.waitForTimeout(450);
-  const s3 = await p.evaluate(() => { const s = document.getElementById('statSheet'); const num = t => parseFloat(String(t).replace(/[^\d.-]/g, '')); return { tds: [...s.querySelectorAll('.ss-td')].map(t => t.textContent), when: (s.querySelector('.ss-g') || {}).textContent, rows: [...s.querySelectorAll('.ss-row:not(.tot)')].map(r => num(r.querySelector('.v').textContent)), total: num(s.querySelector('.ss-row.tot .v').textContent) }; });
+  const s3 = await p.evaluate(() => { const s = document.getElementById('statSheet'); const num = t => parseFloat(String(t).replace(/[^\d.-]/g, '')); return { tds: [...s.querySelectorAll('.ss-td:not(.two)')].map(t => t.textContent), when: (s.querySelector('.ss-g') || {}).textContent, rows: [...s.querySelectorAll('.ss-row:not(.tot)')].map(r => num(r.querySelector('.v').textContent)), total: num(s.querySelector('.ss-row.tot .v').textContent) }; });
   console.log(tdRow.n, JSON.stringify(s3));
   const nTd = (tdRow.g2.match(/(\d+) TD/g) || []).reduce((n, x) => n + parseInt(x), 0);
   ok(`${tdRow.n}: touchdowns listed with quarter and clock (${nTd} in his line)`, s3.tds.length === nTd && s3.tds.every(t => /^(Q\d \d+:\d\d|OT)/.test(t)), s3.tds.join(' / '));
@@ -179,5 +179,36 @@ await p.locator('#detailStarters .st-pts.tap').first().click();
 await p.waitForTimeout(400);
 ok('sheet opens from another matchup', await p.evaluate(() => document.getElementById('statSheet').classList.contains('show')));
 await p.evaluate(() => closeStatSheet());
+// Scoring plays on the chart carry everything the play was worth: the TD, its
+// yards, the catch or carry, distance bonuses, a two-point try.
+for (const w of [3, 4]) {
+  await p.evaluate((w) => pickWeek(w), w);
+  await p.waitForFunction((w) => LIVE.plays[w] && Object.keys(LIVE.plays[w]).length > 6, w, { timeout: 15000 }).catch(() => {});
+  await p.waitForTimeout(500);
+  const res = await p.evaluate((w) => {
+    const out = [];
+    getGames(w).forEach((g) => [g.a, g.x].forEach((k) => weekStarters(k, w).forEach((pl) => {
+      const plays = lvTdPlays(pl, w), j = lvJumps(pl, w), tot = lvPoints(pl, w);
+      if (!plays.length) return;
+      out.push({ n: pl.n, tot, end: Math.round(j.reduce((n, x) => n + x.share, 0) * tot * 100) / 100, line: lvLine(pl, w), plays: plays.map((x) => ({ k: x.kind, pts: x.pts, parts: x.parts, t: x.text, passer: x.passer })), marks: j.filter((x) => x.td).map((x) => x.pts) });
+    })));
+    return { out, sc: scoringBag() };
+  }, w);
+  const bad = [];
+  res.out.forEach((r) => {
+    if (Math.abs(r.end - r.tot) > 0.02) bad.push(`${r.n} chart ends ${r.end} not ${r.tot}`);
+    const tds = r.plays.filter((x) => x.k === 'td').length, want = ['recTD', 'rushTD', 'passTD', 'fumTD', 'stpTD'].reduce((n, k) => n + (r.line[k] || 0), 0);
+    if (tds !== want) bad.push(`${r.n} ${tds} TD plays vs ${want} in his line`);
+    r.plays.forEach((x) => { if (Math.abs(x.parts.reduce((n, q) => n + q[1], 0) - x.pts) > 0.011) bad.push(`${r.n} parts do not add up: ${x.t}`); });
+  });
+  ok(`week ${w}: ${res.out.length} starters' scoring plays priced in full; one per TD; charts still end on their totals`, res.out.length > 10 && !bad.length, bad.join('; '));
+  // a receiving TD is worth the TD, its yards and its catch bonuses under this league's scoring
+  const sc = res.sc, rx = res.out.flatMap((r) => r.plays.map((x) => ({ ...x, n: r.n }))).find((x) => !x.passer && x.k === 'td' && /^\S+ \S+ 2\d Yd pass from/.test(x.t));
+  if (rx) {
+    const yd = +rx.t.match(/(\d+) Yd/)[1];
+    const want = Math.round(((sc.recTD || 0) + yd * (sc.recYd || 0) + (sc.rec || 0) + (sc.recB20 || 0)) * 100) / 100;
+    ok(`${rx.t}: ${rx.pts} = TD ${sc.recTD} + ${yd} yd x ${sc.recYd} + catch ${sc.rec || 0} + 20-29 yd catch ${sc.recB20 || 0} (+ position bonus)`, Math.abs(rx.pts - want) < 0.011 || Math.abs(rx.pts - want - (sc.recWR || sc.recTE || sc.recRB || 0)) < 0.011, JSON.stringify(rx.parts));
+  }
+}
 console.log('errors:', errs.length ? errs : 'none');
 await b.close();

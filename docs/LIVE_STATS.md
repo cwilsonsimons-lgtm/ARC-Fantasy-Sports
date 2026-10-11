@@ -40,8 +40,17 @@ pinned to that afternoon.
 - **Rewind**: each touchdown a starter scores or throws lands at its real game
   time and is the only kind of marker on the chart (scorer = the name ESPN's
   play text starts with, passer = "pass from <name>"; names in the bracketed
-  extra point or two-point try do not count). The rest of a player's points
-  accrue, unmarked, through the part of his game played. For the
+  extra point or two-point try do not get the touchdown). A marker is worth
+  the whole play under the league's scoring, not just the touchdown: its yards
+  (from the play text; a lateral's legs are added up for the passer), the
+  catch, carry or completion, per-play distance bonuses (catch length, 40+
+  yard plays and TDs) and a good two-point try he threw, caught or ran, which
+  is also its own "2-PT" marker when the touchdown was someone else's. The
+  bubble and the stats sheet show what it was for ("+6 TD · +2.2 yardage ·
+  +1 bonus"). A touchdown is not a first down in these stats, and game-total
+  bonuses (100 yards and the like) are not tied to one play. The rest of a
+  player's points (and anything negative) accrue, unmarked, through the part
+  of his game played, so every chart still ends on his total. For the
   live week the chart ends at now, on the live score and the card's odds.
 - **Every matchup has a chart**: All Matchups shows a win-chance strip on each
   card (above the midline the left team leads, below it the right, in team
