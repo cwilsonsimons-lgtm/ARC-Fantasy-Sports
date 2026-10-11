@@ -76,6 +76,66 @@ console.log('   odds wk3', JSON.stringify(odds[0])); console.log('   odds wk4', 
 ok('finished week: winner 100%, loser 0%', odds[0].every(o => { const [a, x] = o.split(' ')[0].split(':').map(Number); const w = +o.split(' ')[1].replace('%', ''); return a > x ? w === 100 : a < x ? w === 0 : w === 50; }));
 ok('live week: odds between 0 and 100, not all 50', odds[1].some(o => !/ 50%$/.test(o)));
 
+
+// TD markers = real touchdowns (scored or thrown), every player, every matchup
+const tdPlays = (w) => JSON.parse(fs.readFileSync(R + `live/board_${w}.json`)).events.flatMap((e) => {
+  const f = R + `live/summary_${e.id}.json`;
+  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)).scoringPlays.filter((x) => /touchdown/i.test(x.type.text)).map((x) => x.text) : [];
+});
+for (const w of [3, 4]) {
+  await p.evaluate((w) => pickWeek(w), w);
+  await p.waitForTimeout(1500);
+  const res = await p.evaluate(({ w, plays }) => {
+    const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[.'’]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/\s+/g, ' ').trim();
+    const bad = [], seen = [];
+    let markers = 0, expected = 0;
+    getGames(w).forEach((g) => {
+      const ev = {};
+      rewindSeries([g.a, g.x]).forEach((q) => q.ev.forEach((e) => ev[e.name] = (ev[e.name] || 0) + 1));
+      [g.a, g.x].forEach((k) => weekStarters(k, w).forEach((pl) => {
+        const full = norm((NFL_BY_ID[pl.id] || {}).full || pl.full || pl.n);
+        const mine = plays.filter((t) => { const m = norm(t.replace(/\s*\(.*$/, '')); return m.indexOf(full + ' ') === 0 || new RegExp('pass from ' + full + '$').test(m); }).length;
+        const got = ev[pl.n] || 0;
+        markers += got; expected += mine;
+        if (mine || got) seen.push(`${pl.n} ${got}/${mine}`);
+        if (got !== mine) bad.push(`${pl.n}: ${got} markers, ${mine} real`);
+      }));
+    });
+    return { markers, expected, bad, seen };
+  }, { w, plays: tdPlays(w) });
+  console.log(`   week ${w} TDs`, res.seen.join(', '));
+  ok(`week ${w}: TD markers = real touchdowns (${res.markers}/${res.expected})`, res.bad.length === 0 && res.expected > 0, res.bad.join('; '));
+}
+
+
+// past week, imported league: the lineup is the one Sleeper recorded, and it adds up to the final
+const wk3 = await p.evaluate(() => {
+  pickWeek(3);
+  const out = [];
+  getGames(3).forEach((g, i) => {
+    const html = fullStartersHTML(g.a, g.x, { phased: true });
+    const d = document.createElement('div'); d.innerHTML = html;
+    const cells = [...d.querySelector('.starters').querySelectorAll('.st-pts')];
+    const sum = (side) => Math.round(cells.filter((c, j) => j % 2 === side).reduce((n, c) => n + parseFloat(c.firstChild.nodeValue), 0) * 100) / 100;
+    out.push([g.as, sum(0), g.xs, sum(1)]);
+  });
+  return out;
+});
+console.log('   week 3 lineups vs finals', JSON.stringify(wk3));
+ok('week 3: each team\'s listed starters add up to its final (within display rounding)', wk3.every((r) => Math.abs(r[0] - r[1]) < 0.6 && Math.abs(r[2] - r[3]) < 0.6));
+// a touchdown marker's bubble names the play
+await p.evaluate(() => { pickWeek(3); showTab('league'); });
+await p.waitForTimeout(800);
+await p.locator('#leagueBody .lg-spark').nth(3).click();
+await p.waitForTimeout(800);
+const pin = p.locator('#detailRewind .rw-pin').first();
+const bb = await pin.boundingBox();
+if (bb) { await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.mouse.down(); await p.mouse.up(); }
+await p.waitForTimeout(300);
+const bub = await p.evaluate(() => { const b = document.querySelector('#detailRewind .rw-bub'); return b && b.style.display !== 'none' ? b.innerText : null; });
+ok('a TD marker shows the real play', !!bub && /Yd|yd/.test(bub), JSON.stringify(bub));
+await p.evaluate(() => document.getElementById('detailRewind').scrollIntoView());
+await p.screenshot({ path: OUT + '/S6-td-bubble.png' });
 // every matchup has its own chart, ending on that game's score
 for (const w of [3, 4]) {
   await p.evaluate((w) => { pickWeek(w); showTab('league'); }, w);

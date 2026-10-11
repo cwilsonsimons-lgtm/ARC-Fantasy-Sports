@@ -37,14 +37,18 @@ pinned to that afternoon.
   are cached in `localStorage` (`arc_live_v1`).
 - **Win %**: remaining projection is scaled by how much of each game is left
   (ESPN period and clock).
-- **Rewind**: each touchdown a starter is named in lands at its real game time;
-  the rest of their points accrue through the part of the game played. For the
+- **Rewind**: each touchdown a starter scores or throws lands at its real game
+  time and is the only kind of marker on the chart (scorer = the name ESPN's
+  play text starts with, passer = "pass from <name>"; names in the bracketed
+  extra point or two-point try do not count). The rest of a player's points
+  accrue, unmarked, through the part of his game played. For the
   live week the chart ends at now, on the live score and the card's odds.
 - **Every matchup has a chart**: All Matchups shows a win-chance strip on each
   card (above the midline the left team leads, below it the right, in team
   colours); tapping it opens that matchup with the full chart, and its lineup
   follows the chart's minute like your own. An imported league's finished weeks
-  chart the starters each team actually used (Sleeper's record). Scoring plays
+  chart, and list, the starters each team actually used (Sleeper's record), so
+  the lineup, the chart and the final agree. Scoring plays
   are fetched for every team's games, and a game's summary is re-fetched only
   when its score changes.
 - **Locks** compare a player's kickoff to the real time, so past weeks are

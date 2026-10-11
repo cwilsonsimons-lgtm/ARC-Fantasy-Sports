@@ -5084,10 +5084,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   var TD_PTS = 6;
   function touchdowns(A, X) {
     const out = [];
+    // a marker is a real touchdown play from the play-by-play, never a chunk
+    // of yardage points that happens to be worth six or more
     const add = (list, side) => list.forEach((p) => jumpsFor(p.key || p.name).forEach((j) => {
-      const pts = Math.round(p.total * j.share * 10) / 10;
-      if (pts < TD_PTS) return;
-      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts });
+      if (!j.td) return;
+      out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts: j.pts, text: j.text || "" });
     }));
     add(A, "a");
     add(X, "x");
@@ -5106,11 +5107,22 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   // The starters a team actually used that week: Sleeper's record for an
   // imported league's finished weeks, today's lineup otherwise.
   function weekStarters(key, w) {
+    return weekLineup(key, w).starters.map((s) => s.player).filter(Boolean);
+  }
+  // A team's lineup as it stood in a week: for an imported league's finished
+  // weeks, Sleeper's record (its starters in slot order, everyone else it had
+  // rostered that week on the bench); otherwise the roster as it is now.
+  function weekLineup(key, w) {
     const rec = typeof slRec === "function" ? slRec() : null;
     const wk = rec && rec.sleeper.pts && rec.sleeper.pts[w];
-    const st = wk && wk[key] && wk[key].st;
-    if (st && st.length && w !== LIVE_WEEK) return st.filter((sid) => sid && sid !== "0").map((sid) => hydratePlayer(slPlayer(sid), w)).filter(Boolean);
-    return starterPlayers(key);
+    const t = wk && wk[key];
+    if (!t || !t.st || !t.st.length || w >= LIVE_WEEK) return rosterOf(key);
+    const slots = (rec.sleeper.positions || []).filter((pos) => pos !== "BN").map((pos) => SL_SLOT[pos] || pos);
+    const starters = t.st.map((sid, i) => ({ slot: slots[i] || "FLEX", player: sid && sid !== "0" ? hydratePlayer(slPlayer(sid), w) : null }));
+    const on = {};
+    t.st.forEach((sid) => on[sid] = 1);
+    const bench = Object.keys(t.pp || {}).filter((sid) => !on[sid]).sort((a, b) => (t.pp[b] || 0) - (t.pp[a] || 0)).map((sid) => hydratePlayer(slPlayer(sid), w)).filter(Boolean);
+    return { starters, bench, ir: [], taxi: [] };
   }
   // The win-probability series for any matchup (yours by default).
   function rewindSeries(sides) {
@@ -5188,7 +5200,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         if (t >= ws && t <= we) times.add(t);
       });
       [...times].sort((p, q) => p - q).forEach((t) => {
-        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side }));
+        const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text }));
         const a = sum(A, t), x = sum(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
         out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev, ko: kickoff(t) });
@@ -5280,9 +5292,17 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       if (p.w === lastW) return;
       lastW = p.w;
       const x = X(i);
-      const prev = marks[marks.length - 1];
-      marks.push({ x, lb: !prev || x - prev.x > 34 ? slotLabel(p.abs) : "" });
+      // a label is ~40 units wide centred on its tick; a crowded one is skipped
+      const labelled = marks.filter((m) => m.lb), lastLb = labelled[labelled.length - 1];
+      marks.push({ x, lb: !lastLb || x - lastLb.x > 52 ? slotLabel(p.abs) : "" });
     });
+    // A label at either edge is drawn flush with it and so reaches further in.
+    // When it crowds its neighbour the edge one goes: the chart already tags
+    // TNF and MNF there, and the Sunday times are the ones worth reading.
+    const lbs = marks.filter((m) => m.lb), EDGE = 30;
+    if (lbs.length > 2 && lbs[0].x < EDGE && lbs[1].x - lbs[0].x < 68) lbs[0].lb = "";
+    if (lbs.length > 2 && lbs[lbs.length - 1].x > W - EDGE && lbs[lbs.length - 1].x - lbs[lbs.length - 2].x < 68) lbs[lbs.length - 1].lb = "";
+    const lbAlign = (x) => x < EDGE ? "translateX(0)" : x > W - EDGE ? "translateX(-100%)" : "translateX(-50%)";
     el.innerHTML = `
     <div class="rw-head">
       <span class="rw-title">WIN PROBABILITY</span>
@@ -5321,7 +5341,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         <div class="rw-bub"></div>
       </div>
       <div class="rw-y"><span>100</span><span>50</span><span>100</span></div>
-      <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%">${m.lb}</span>`).join("")}</div>
+      <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%;transform:${lbAlign(m.x)}">${m.lb}</span>`).join("")}</div>
     </div>`;
     const svg2 = el.querySelector(".rw-svg"), layer = el.querySelector(".rw-pins");
     const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
@@ -5344,7 +5364,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         const side = p.ev[0].side;
         cls = sideCls(side);
         bub.innerHTML = `<div class="h">${escName(names[side])} &middot; TD</div>` + p.ev.map(
-          (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">+${e.pts.toFixed(1)} pts</em></div>`
+          (e) => `<div class="b">${escName(e.name)} <em class="${sideCls(e.side)}">+${e.pts.toFixed(1)} pts</em></div>${e.text ? `<div class="k">${escName(e.text)}</div>` : ""}`
         ).join("");
       } else {
         // a kickoff: what the matchup looked like as these games started
@@ -7223,6 +7243,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (lb) lb.textContent = "WEEK " + S.week;
     hydrateRosters(S.week);
     S.games = getGames(S.week);
+    if (S.week < LIVE_WEEK) setTimeout(() => lvEnsureWeek(S.week), 0);
     renderLeagueBody();
     renderStandingsMatchups();
     renderUserMatchup();
@@ -11909,7 +11930,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function fullStartersHTML(aKey, xKey, opts) {
     opts = opts || {};
     const ph = opts.phased, ed = opts.editable;
-    const A = rosterOf(aKey), X = rosterOf(xKey);
+    // an editable lineup is always the live roster; a read-only one shows the
+    // week being viewed as it was played
+    const A = ed ? rosterOf(aKey) : weekLineup(aKey, S.week), X = ed ? rosterOf(xKey) : weekLineup(xKey, S.week);
     const starters = zipStarters(A.starters, X.starters);
     const bench = zipReserve(A.bench, X.bench), ir = zipReserve(A.ir, X.ir), taxi = zipReserve(A.taxi, X.taxi);
     let h = `<div class="starters"><div class="st-hd"><span class="g">Starters</span><span></span></div>`;
@@ -17696,6 +17719,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     liveStatus: () => liveStatus,
     lvLine: () => lvLine,
     lvState: () => lvState,
+    weekStarters: () => weekStarters,
     lvJumps: () => lvJumps,
     lvLeft: () => lvLeft,
     lvMatch: () => lvMatch,
@@ -17980,12 +18004,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (total == null) return null;
     const full = lvNorm(rec.full || p && (p.full || p.n) || ""), sc = scoringBag();
     const hits = [];
+    const esc = full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     plays.forEach((pl) => {
-      const t = lvNorm(pl.text);
-      if (!full || t.indexOf(full) < 0) return;
-      const passer = new RegExp("pass from " + full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(t);
-      const pts = /touchdown/i.test(pl.type) ? passer ? +sc.passTD || 0 : /rush/i.test(pl.type) ? +sc.rushTD || 0 : +sc.recTD || 0 : 0;
-      if (pts) hits.push({ at: Math.max(0.02, Math.min(0.98, pl.min / 60)), pts });
+      if (!full || !/touchdown/i.test(pl.type)) return;
+      // ESPN writes "<scorer> 23 Yd pass from <passer> (<extra point>)". Only
+      // the scorer and the passer count; a name in the bracketed extra point
+      // or two-point try is someone else's touchdown.
+      const desc = String(pl.text || "").replace(/\s*\(.*$/, "");
+      const main = lvNorm(desc);
+      const scorer = main === full || main.indexOf(full + " ") === 0;
+      const passer = new RegExp("\\bpass from " + esc + "(\\b|$)").test(main);
+      if (!scorer && !passer) return;
+      const pts = passer ? +sc.passTD || 0 : /rush/i.test(pl.type) ? +sc.rushTD || 0 : /pass|reception/i.test(pl.type) ? +sc.recTD || 0 : /fumble/i.test(pl.type) ? +sc.fumTD || 0 : +sc.stpTD || 0;
+      if (pts) hits.push({ at: Math.max(0.02, Math.min(0.98, pl.min / 60)), pts, text: desc });
     });
     if (!total) return [{ at: 0.5, share: 0 }];
     // Place game-clock moments on the chart's wall clock. A finished game spans
@@ -18001,10 +18032,30 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     hits.forEach((h) => h.at = Math.max(0.01, Math.min(reach, h.at * scale)));
     const tdPts = hits.reduce((n, h) => n + h.pts, 0);
     const rest = total - Math.min(tdPts, total);
-    const out = hits.map((h) => ({ at: h.at, share: Math.min(h.pts, total) / total }));
-    // yardage and catches land through the part of the game played so far
+    // touchdowns are the chart's marked moments; nothing else is
+    const out = hits.map((h) => ({ at: h.at, share: Math.min(h.pts, total) / total, td: true, pts: h.pts, text: h.text }));
+    // yardage, catches and first downs land through the part of the game
+    // played so far, unmarked
     if (rest > 0.001) [0.25, 0.5, 0.75, 1].forEach((f) => out.push({ at: Math.max(0.01, reach * f - 0.001), share: rest / total / 4 }));
     return out.sort((a, b) => a.at - b.at);
+  }
+  // Opening a finished week loads its scoreboard and scoring plays (once; they
+  // are cached on the device) rather than waiting for the next refresh.
+  var lvEnsuring = {};
+  async function lvEnsureWeek(w) {
+    if (!(w < LIVE_WEEK) || lvEnsuring[w]) return;
+    const games = LIVE.games[w], bag = LIVE.plays[w] || {};
+    const teams = lvMatchTeams(w);
+    if (games && teams.every((tm) => !games[tm] || bag[tm])) return;
+    lvEnsuring[w] = 1;
+    try {
+      if (!games) await lvFetchBoard(w);
+      await lvFetchPlays(w, teams);
+      lvSaveCache();
+    } catch (e) {
+    }
+    lvEnsuring[w] = 0;
+    if (S.week === w) lvRepaint();
   }
   // read-only snapshot for the checks in tools/
   function lvState() {
