@@ -2050,6 +2050,21 @@ body.forming .tabs{display:none}
 .ta-dl.busy,.ta-sh.busy{opacity:.55;pointer-events:none}
 .ta-sh{flex:1;background:var(--card);border:1px solid var(--line);color:var(--ink-2)}
 
+/* All Matchups: each card's win-chance strip */
+.lg-spark{margin:-4px 2px 12px;padding:8px 10px 10px;border-radius:0 0 14px 14px;background:var(--card-2);
+  border:1px solid var(--line-soft);border-top:0;cursor:pointer}
+.lg-sp-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9.5px;letter-spacing:1.2px;color:var(--ink-3)}
+.lg-sp-hd span:last-child{font-family:'Barlow',system-ui,sans-serif;letter-spacing:0;font-size:10px;color:var(--ink-2)}
+.lg-sp-ch{position:relative;height:46px}
+.lg-sp-ch svg{width:100%;height:100%;display:block;overflow:visible}
+.lg-sp-mid{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.lg-sp-line{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.lg-sp-dot{position:absolute;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);
+  box-shadow:0 0 0 2px var(--card-2)}
+.lg-sp-dot.live{animation:lgsp 1.6s ease-in-out infinite}
+@keyframes lgsp{50%{box-shadow:0 0 0 5px rgba(255,255,255,.12)}}
+
 /* Sleeper import sheet */
 .sl-help{padding:0 16px 10px;font-size:12px;line-height:1.5;color:var(--ink-2)}
 .sl-msg{padding:0 16px 8px;font-size:11.5px;color:var(--ink-2);min-height:14px}
@@ -4400,8 +4415,10 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   function pOrd(p) {
     return p && p.ord != null ? p.ord : kickoffOrd(p && p.g);
   }
+  // a player is locked once his own game has kicked off, in real time, in
+  // whichever week his entry is hydrated for
   function isLocked(p) {
-    return !!(p && pOrd(p) <= simKick());
+    return !!(p && pOrd(p) <= lvNowOrd());
   }
   // Real fantasy points (js/live.js), under this league's scoring. 0 until the
   // week's stats arrive or when the player has none; never invented.
@@ -4766,6 +4783,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     hhRow: () => hhRow,
     lineupRow: () => lineupRow,
     openMyMatchup: () => openMyMatchup,
+    openGameChart: () => openGameChart,
     renderLeagueBody: () => renderLeagueBody,
     renderStandingsMatchups: () => renderStandingsMatchups,
     reserveSection: () => reserveSection,
@@ -5031,7 +5049,16 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     h = h % 12 || 12;
     return `${DAYS[(day + 4) % 7]} ${h}:${String(m).padStart(2, "0")} ${ap}`;
   }
+  // A chart samples every player hundreds of times; their jumps are worked out
+  // once per series build (see rewindSeries).
+  var _jumpMemo = null;
   function jumpsFor(name) {
+    if (_jumpMemo && _jumpMemo.has(name)) return _jumpMemo.get(name);
+    const out = jumpsForRaw(name);
+    if (_jumpMemo) _jumpMemo.set(name, out);
+    return out;
+  }
+  function jumpsForRaw(name) {
     const real = lvJumps(name);
     if (real) return real;
     let h = 2166136261;
@@ -5076,9 +5103,26 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     });
     return out;
   }
-  function rewindSeries() {
-    const sides = liveSides();
-    const lists = sides.map(starterPlayers);
+  // The starters a team actually used that week: Sleeper's record for an
+  // imported league's finished weeks, today's lineup otherwise.
+  function weekStarters(key, w) {
+    const rec = typeof slRec === "function" ? slRec() : null;
+    const wk = rec && rec.sleeper.pts && rec.sleeper.pts[w];
+    const st = wk && wk[key] && wk[key].st;
+    if (st && st.length && w !== LIVE_WEEK) return st.filter((sid) => sid && sid !== "0").map((sid) => hydratePlayer(slPlayer(sid), w)).filter(Boolean);
+    return starterPlayers(key);
+  }
+  // The win-probability series for any matchup (yours by default).
+  function rewindSeries(sides) {
+    _jumpMemo = /* @__PURE__ */ new Map();
+    try {
+      return rewindSeriesFor(sides || liveSides());
+    } finally {
+      _jumpMemo = null;
+    }
+  }
+  function rewindSeriesFor(sides) {
+    const lists = sides.map((k) => weekStarters(k, S.week));
     if (!lists[0].length && !lists[1].length) return [];
     const ords = [];
     lists.forEach((list) => list.forEach((p) => {
@@ -5156,7 +5200,10 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       const past = out.filter((q) => q.abs < now);
       // end on the live score itself
       const a = sum(A, now), x = sum(X, now);
-      past.push({ abs: now, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win: winProbability(expect(A, now) - expect(X, now), remain(A, now) + remain(X, now)), w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
+      // the latest point is the matchup's live odds, the same figure its card shows
+      const as = seededScore(LIVE_WEEK, sides[0]), xs = seededScore(LIVE_WEEK, sides[1]);
+      const nowWin = sides[0] === liveSides()[0] && sides[1] === liveSides()[1] ? LT.aw : gameOdds(sides[0], sides[1], as, xs, LIVE_WEEK).aw;
+      past.push({ abs: now, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win: nowWin, w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
       return past.length >= 2 ? past : out.slice(0, 2);
     }
     return out;
@@ -5194,8 +5241,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   var PADL = 4;
   var PADR = 4;
   var BUB_GAP = 16;
-  function buildRewind(el, aFinal, xFinal) {
-    const pts = rewindSeries();
+  function buildRewind(el, aFinal, xFinal, sides) {
+    sides = sides || liveSides();
+    const pts = rewindSeries(sides);
     if (!pts.length) {
       el.innerHTML = `<div class="rw-empty">No games to replay yet</div>`;
       return;
@@ -5224,7 +5272,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const koLines = kos.filter((i) => pts[i].ko.tag).map((i) => `<line class="rw-kline" x1="${X(i).toFixed(1)}" y1="0" x2="${X(i).toFixed(1)}" y2="${H}"/>`).join("");
     const pins = plays.map((i) => `<span class="rw-pin ${sideCls(pts[i].ev[0].side)}" data-i="${i}"
          style="left:${pctX(i)};top:${pctY(pts[i].win)}"></span>`).join("");
-    const [aKey, xKey] = liveSides();
+    const [aKey, xKey] = sides;
     const names = { a: teamName(aKey), x: teamName(xKey) };
     const marks = [];
     let lastW = null;
@@ -5397,8 +5445,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   // player had at the chart's minute, using the same accrual as the chart, and
   // the Starters header names the minute.
   function scrubLineup(el, abs) {
-    if (el.id !== "userRewind") return;
-    const root = document.getElementById("userLineup");
+    const rootId = { userRewind: "userLineup", detailRewind: "detailStarters" }[el.id];
+    if (!rootId) return;
+    const root = document.getElementById(rootId);
     if (!root) return;
     root.querySelectorAll(".st-pts[data-n]").forEach((c) => {
       const name = c.dataset.n, id = c.dataset.id || name, proj = +c.dataset.proj, ord = +c.dataset.ord;
@@ -5429,6 +5478,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (id === "userRewind") {
       if (open && rwAt[id] != null) scrubLineup(rw, rwAt[id]);
       else if (!open) renderUserMatchup();
+    } else if (id === "detailRewind") {
+      if (open && rwAt[id] != null) scrubLineup(rw, rwAt[id]);
+      else if (!open && detailPair) document.getElementById("detailStarters").innerHTML = detailStartersHTML(detailPair[0], detailPair[1]);
     }
     if (open && rw.scrollIntoView) rw.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
@@ -11867,8 +11919,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (taxi.length) h += reserveSection("Taxi Squad", taxi, "TX", ph);
     return h;
   }
+  // phased like your own lineup, so its chart can rewind it to any minute
+  var detailPair = null;
   function detailStartersHTML(aKey, xKey) {
-    return fullStartersHTML(aKey, xKey);
+    detailPair = [aKey, xKey];
+    return fullStartersHTML(aKey, xKey, { phased: true });
   }
   function generatedWeek(week) {
     const ids = Object.keys(T), n = ids.length, arr = ids.slice(1), r = (week - 1) % (n - 1);
@@ -12023,14 +12078,61 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }).join("");
   }
   function renderLeagueBody() {
+    const played = weekPlayed(S.week);
     document.getElementById("leagueBody").innerHTML = S.games.map((g, i) => {
       const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
       const status = g.status === "live" ? { cls: "live", txt: "LIVE" } : g.status === "final" ? { cls: "final", txt: "FINAL" } : { cls: "sched", txt: "UPCOMING" };
       const ap = g.me ? LT.ap : null, xp = g.me ? LT.xp : null;
       return `<div class="lg-hero" onclick="${openClick}">
       ${stadiumHeroHTML(g.a, g.x, g.as, g.xs, g.aw, g.xw, ap, xp, { compact: true, status })}
+      ${played ? gameSparkHTML(g, i) : ""}
     </div>`;
     }).join("");
+  }
+  // The week's win chance for one matchup as a strip: above the midline the
+  // left team is ahead, below it the right team, each in its own colour.
+  function gameSparkHTML(g, i) {
+    let pts;
+    try {
+      pts = rewindSeries([g.a, g.x]);
+    } catch (e) {
+      return "";
+    }
+    if (!pts || pts.length < 2) return "";
+    const W2 = 320, H2 = 46, n = pts.length, a = T[g.a] || {}, x = T[g.x] || {};
+    const X = (j) => (j / (n - 1) * W2).toFixed(1), Y = (w) => (H2 - w / 100 * H2).toFixed(1);
+    const line = pts.map((p, j) => `${X(j)},${Y(p.win)}`).join(" ");
+    const last = pts[n - 1], id = "lgsp" + i;
+    const live = g.status === "live";
+    return `<div class="lg-spark" onclick="event.stopPropagation();openGameChart(${i})">
+      <div class="lg-sp-hd"><span>WIN PROBABILITY</span><span>${live ? "Live \u00B7 " : ""}tap for the full chart \u203A</span></div>
+      <div class="lg-sp-ch">
+        <svg viewBox="0 0 ${W2} ${H2}" preserveAspectRatio="none">
+          <defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H2}">
+            <stop offset="0" stop-color="${a.c || "#329F5B"}" stop-opacity=".55"/>
+            <stop offset="0.5" stop-color="${a.c || "#329F5B"}" stop-opacity=".05"/>
+            <stop offset="0.5" stop-color="${x.c || "#F05D5E"}" stop-opacity=".05"/>
+            <stop offset="1" stop-color="${x.c || "#F05D5E"}" stop-opacity=".55"/>
+          </linearGradient></defs>
+          <polygon points="0,${Y(50)} ${line} ${W2},${Y(50)}" fill="url(#${id})"/>
+          <line x1="0" y1="${Y(50)}" x2="${W2}" y2="${Y(50)}" class="lg-sp-mid"/>
+          <polyline points="${line}" class="lg-sp-line"/>
+        </svg>
+        <span class="lg-sp-dot${live ? " live" : ""}" style="left:100%;top:${(100 - last.win).toFixed(1)}%;background:${last.win >= 50 ? a.c : x.c}"></span>
+      </div>
+    </div>`;
+  }
+  // a card's strip opens that matchup with its chart already showing
+  function openGameChart(i) {
+    const g = S.games[i];
+    if (!g) return;
+    if (g.me) {
+      rwOpen.userRewind = true;
+      openMyMatchup();
+      return;
+    }
+    rwOpen.detailRewind = true;
+    openDetail(i);
   }
   function openMyMatchup() {
     renderUserMatchup();
@@ -13764,17 +13866,19 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const g = S.games[i];
     const dh = document.getElementById("detailHero");
     dh.className = "";
-    // the chart replays your matchup, so only your own game in a played week gets one
-    const canRewind = g.me && weekPlayed(S.week), dRw = document.getElementById("detailRewind");
+    // every matchup in a week with games played has its own chart
+    const canRewind = weekPlayed(S.week), dRw = document.getElementById("detailRewind");
     dh.innerHTML = stadiumHeroHTML(g.a, g.x, g.as, g.xs, g.aw, g.xw, null, null, { editBackdrop: true, rewind: canRewind ? "detailRewind" : null });
     if (canRewind) {
-      buildRewind(dRw, g.as, g.xs);
+      rwAt.detailRewind = null;
+      buildRewind(dRw, g.as, g.xs, [g.a, g.x]);
       syncRewind("detailRewind");
     } else {
       rwOpen.detailRewind = false;
       dRw.style.display = "none";
     }
     document.getElementById("detailStarters").innerHTML = detailStartersHTML(g.a, g.x);
+    if (canRewind && rwOpen.detailRewind && rwAt.detailRewind != null) scrubLineup(dRw, rwAt.detailRewind);
     showView2("detail");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
@@ -17783,7 +17887,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const out = {};
     (b.events || []).forEach((e) => {
       const c = (e.competitions || [])[0] || {}, st = c.status || e.status || {}, t = st.type || {};
-      const g = { id: e.id, state: t.state, period: st.period || 0, clock: st.clock || 0, detail: t.shortDetail || "", kick: Date.parse(e.date) };
+      const g = { id: e.id, state: t.state, period: st.period || 0, clock: st.clock || 0, detail: t.shortDetail || "", kick: Date.parse(e.date), sc: (c.competitors || []).map((x) => x.score).join("-") };
       (c.competitors || []).forEach((x) => out[lvTeam(x.team.abbreviation)] = g);
     });
     LIVE.games[w] = out;
@@ -17791,10 +17895,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // Scoring plays for the games the two sides of my matchup play in.
   async function lvFetchPlays(w, teams) {
     const games = LIVE.games[w] || {}, bag = LIVE.plays[w] = LIVE.plays[w] || {};
+    const sig = LIVE.playSig = LIVE.playSig || {};
     const ids = {};
+    // a game's scoring plays only change when its score does, so a summary
+    // (a large download) is fetched once and again only after a score
     teams.forEach((tm) => {
       const g = games[tm];
-      if (g && g.state !== "pre" && (!bag[tm] || g.state === "in")) ids[g.id] = 1;
+      if (!g || g.state === "pre") return;
+      if (bag[tm] && (w < LIVE_WEEK || sig[w + ":" + g.id] === g.sc)) return;
+      ids[g.id] = 1;
     });
     for (const id of Object.keys(ids)) {
       try {
@@ -17807,6 +17916,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         });
         const teamsIn = Object.keys(games).filter((tm) => games[tm].id === id);
         teamsIn.forEach((tm) => bag[tm] = plays);
+        if (teamsIn[0]) sig[w + ":" + id] = games[teamsIn[0]].sc;
       } catch (e) {
       }
     }
@@ -17863,8 +17973,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!LIVE) return null;
     w = +(w || S.week);
     const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm;
-    const plays = (LIVE.plays[w] || {})[tm];
-    if (!plays) return null;
+    // without play-by-play (not loaded yet) there are no touchdown moments,
+    // but the points still land within the part of the game already played
+    const plays = (LIVE.plays[w] || {})[tm] || [];
     const total = lvPoints(p, w);
     if (total == null) return null;
     const full = lvNorm(rec.full || p && (p.full || p.n) || ""), sc = scoringBag();
@@ -17900,11 +18011,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return { week: LIVE_WEEK, viewWeek: S.week, status: liveStatus(LIVE_WEEK), LT: Object.assign({}, LT), at: LIVE.at, error: LIVE.error };
   }
   // ---- refresh loop -----------------------------------------------------------
-  var lvTimer = null, lvBusy = false;
+  var lvTimer = null, lvBusy = false, lvAgain = false;
+  // NFL teams whose games matter to any matchup in the league that week
   function lvMatchTeams(w) {
     const out = {};
     try {
-      liveSides().forEach((k) => starterPlayers(k).forEach((p) => {
+      Object.keys(T).forEach((k) => weekStarters(k, w).forEach((p) => {
         if (p && p.tm) out[p.tm] = 1;
       }));
     } catch (e) {
@@ -17927,7 +18039,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // Loads what the visible week needs, then keeps the live week current: every
   // 60 seconds while a game in it is under way.
   async function liveRefresh(force) {
-    if (lvBusy) return;
+    // a request made while one is running (opening or importing a league
+    // mid-refresh) runs straight after it rather than being dropped
+    if (lvBusy) {
+      lvAgain = true;
+      return;
+    }
     lvBusy = true;
     const w = LIVE_WEEK;
     try {
@@ -17971,6 +18088,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       lvBusy = false;
     }
     lvRepaint();
+    if (lvAgain) {
+      lvAgain = false;
+      liveRefresh(true);
+    }
   }
   function lvTick() {
     if (document.hidden) return;
@@ -18057,6 +18178,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       gsis = lvMatch({ team: t[3], player: { first_name: parts[0], last_name: parts.slice(1).join(" "), position: t[2], team: t[3] } }) || gsis;
     }
     const pool = gsis && NFL_BY_ID[gsis];
+    // remember the pairing both ways, so a lookup by the app's id (the chart,
+    // the lineup scrubber) finds this player's Sleeper points too
+    if (pool) SL_BY_GSIS()[gsis] = sid;
     if (pool) return Object.assign(mkPlayer(pool), { sid });
     const full = t && t[1] || "Player " + sid, pos = t && t[2] || "", tm = t && (LV_TEAM[t[3]] || t[3]) || "FA";
     const parts = full.split(" ");
@@ -18185,7 +18309,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rec = slRec();
     if (!rec || !rec.sleeper.pts || !rec.sleeper.pts[w]) return null;
     const id = typeof p === "string" ? lvId(p) : p && p.id;
-    const sid = p && p.sid || SL_BY_GSIS()[id] || (typeof id === "string" && id.indexOf("sl:") === 0 ? id.slice(3) : null);
+    const sid = p && p.sid || SL_BY_GSIS()[id] || (typeof id === "string" && id.indexOf("sl:") === 0 ? id.slice(3) : null) || slSidOnRoster(id);
     if (!sid) return null;
     const wk = rec.sleeper.pts[w];
     for (const k in wk) if (wk[k].pp && wk[k].pp[sid] != null) return +wk[k].pp[sid];
@@ -18197,6 +18321,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rec = slRec();
     const t = rec && rec.sleeper.pts && rec.sleeper.pts[w] && rec.sleeper.pts[w][key];
     return t ? t.p : null;
+  }
+  // a saved roster entry carries its Sleeper id; used before the first sync
+  // of a session has rebuilt the pairings
+  function slSidOnRoster(id) {
+    if (!id) return null;
+    const bag = rosterBag();
+    for (const k in bag) {
+      const r = bag[k];
+      for (const list of [r.starters.map((x) => x.player), r.bench, r.taxi, r.ir]) for (const pl of list) if (pl && pl.id === id && pl.sid) {
+        SL_BY_GSIS()[id] = pl.sid;
+        return pl.sid;
+      }
+    }
+    return null;
   }
   var _slByGsis = null;
   function SL_BY_GSIS() {

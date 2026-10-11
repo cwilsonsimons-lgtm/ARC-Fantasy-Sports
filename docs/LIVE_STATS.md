@@ -17,7 +17,8 @@ Both send `Access-Control-Allow-Origin: *`, so the phone fetches them directly.
 The development container cannot reach these hosts, so their real responses
 were captured by a one-off GitHub Action: shapes in `docs/probe/`, trimmed
 QB/RB/WR/TE fixtures in `tools/fixtures/live/` (Sunday of week 4, games in
-progress). `node tools/live-check.mjs` runs the app against them.
+progress). `node tools/live-check.mjs` runs the app against them, with the browser clock
+pinned to that afternoon.
 
 ## How it fits
 
@@ -38,7 +39,16 @@ progress). `node tools/live-check.mjs` runs the app against them.
   (ESPN period and clock).
 - **Rewind**: each touchdown a starter is named in lands at its real game time;
   the rest of their points accrue through the part of the game played. For the
-  live week the chart ends at now, on the live score.
+  live week the chart ends at now, on the live score and the card's odds.
+- **Every matchup has a chart**: All Matchups shows a win-chance strip on each
+  card (above the midline the left team leads, below it the right, in team
+  colours); tapping it opens that matchup with the full chart, and its lineup
+  follows the chart's minute like your own. An imported league's finished weeks
+  chart the starters each team actually used (Sleeper's record). Scoring plays
+  are fetched for every team's games, and a game's summary is re-fetched only
+  when its score changes.
+- **Locks** compare a player's kickoff to the real time, so past weeks are
+  always locked and later weeks open.
 
 ## Known gaps
 

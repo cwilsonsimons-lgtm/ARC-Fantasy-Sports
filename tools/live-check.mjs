@@ -23,6 +23,8 @@ await p.route('**', r => {
   if (f) return r.fulfill({ status: 200, contentType: 'application/json', body: '[]', headers: { 'access-control-allow-origin': '*' } });
   return r.abort();
 });
+// the fixtures were captured on Sunday of week 4, mid-afternoon
+await p.clock.setFixedTime(new Date('2026-10-04T19:22:00Z'));
 await p.goto('file://' + new URL('../1stPrototype.html', import.meta.url).pathname, { waitUntil: 'domcontentloaded' });
 await p.waitForTimeout(500);
 const ok = (l, c, x) => console.log((c ? '  ok   ' : '  FAIL ') + l + (x ? '  ' + x : ''));
@@ -86,6 +88,15 @@ const jumps = await p.evaluate(`(() => { const [a] = liveSides(); return starter
 jumps.forEach(j => console.log('    jumps', j[0], j[1]));
 await p.evaluate(`document.getElementById('userRewind').scrollIntoView()`);
 await p.screenshot({ path: OUT + '/L2-rewind-live.png' });
+
+// All Matchups: a strip per game, each chart ending on its game's score
+await p.evaluate(() => { pickWeek(4); showTab('league'); });
+await p.waitForTimeout(500);
+const sparks4 = await p.locator('#leagueBody .lg-spark').count();
+const ends4 = await p.evaluate(() => getGames(4).map((g) => { const s = rewindSeries([g.a, g.x]); const e = s[s.length - 1]; return [g.as, g.xs, e && e.a, e && e.x]; }));
+console.log('   chart ends', JSON.stringify(ends4));
+ok(`City Boys week 4: ${sparks4} strips, each chart ends on its score`, sparks4 === 5 && ends4.every((r) => Math.abs(r[0] - r[2]) < 0.11 && Math.abs(r[1] - r[3]) < 0.11));
+await p.evaluate(() => { pickWeek(4); });
 // 5. past week, other matchups, standings
 await p.evaluate(`pickWeek(3); refreshApp()`);
 await p.waitForTimeout(500);

@@ -21,6 +21,8 @@ await p.route('**', r => {
   if (u.hostname === 'site.api.espn.com') return json(r, R + 'live/' + (u.pathname.endsWith('/scoreboard') ? 'board_' + u.searchParams.get('week') : 'summary_' + u.searchParams.get('event')) + '.json');
   return r.abort();
 });
+// the fixtures were captured on Sunday of week 4, mid-afternoon
+await p.clock.setFixedTime(new Date('2026-10-04T19:22:00Z'));
 await p.goto('file://' + new URL('../1stPrototype.html', import.meta.url).pathname, { waitUntil: 'domcontentloaded' });
 await p.waitForTimeout(800);
 const ok = (l, c, x) => console.log((c ? '  ok   ' : '  FAIL ') + l + (x ? '  ' + x : ''));
@@ -73,6 +75,38 @@ const odds = await p.evaluate(() => [3, 4, 5].map(w => getGames(w).map(g => `${g
 console.log('   odds wk3', JSON.stringify(odds[0])); console.log('   odds wk4', JSON.stringify(odds[1])); console.log('   odds wk5', JSON.stringify(odds[2]));
 ok('finished week: winner 100%, loser 0%', odds[0].every(o => { const [a, x] = o.split(' ')[0].split(':').map(Number); const w = +o.split(' ')[1].replace('%', ''); return a > x ? w === 100 : a < x ? w === 0 : w === 50; }));
 ok('live week: odds between 0 and 100, not all 50', odds[1].some(o => !/ 50%$/.test(o)));
+
+// every matchup has its own chart, ending on that game's score
+for (const w of [3, 4]) {
+  await p.evaluate((w) => { pickWeek(w); showTab('league'); }, w);
+  await p.waitForTimeout(500);
+  const sparks = await p.locator('#leagueBody .lg-spark').count();
+  ok(`week ${w}: all ${sparks} matchups show a win-chance strip`, sparks === 5);
+  const ends = await p.evaluate(() => getGames(lvState().viewWeek).map((g) => { const s = rewindSeries([g.a, g.x]); const e = s[s.length - 1]; return { g: [g.as, g.xs], e: e && [e.a, e.x, e.win], n: s.length }; }));
+  console.log('   ', JSON.stringify(ends));
+  ok(`week ${w}: each chart ends on its game's score`, ends.every((r) => r.e && Math.abs(r.e[0] - r.g[0]) < 0.11 && Math.abs(r.e[1] - r.g[1]) < 0.11));
+  if (w === 3) ok('week 3: finished games end at 100/0', ends.every((r) => r.e[2] === (r.g[0] > r.g[1] ? 100 : 0)));
+}
+await p.locator('#leagueBody .lg-spark').nth(2).click();
+await p.waitForTimeout(600);
+const det = await p.evaluate(() => { const el = document.getElementById('detailRewind'); return { view: document.querySelector('.view.on').dataset.view, shown: el.style.display !== 'none', svg: !!el.querySelector('.rw-svg'), legend: el.querySelector('.rw-legend') ? el.querySelector('.rw-legend').innerText : '' }; });
+ok('tapping a strip opens that matchup with its full chart', det.view === 'detail' && det.shown && det.svg, JSON.stringify(det));
+
+// the other matchup's lineup follows its chart
+const scrub = await p.evaluate(() => {
+  const cells = [...document.querySelectorAll('#detailStarters .st-pts[data-n]')];
+  const total = (side) => cells.filter((c, i) => i % 2 === side).slice(0, 10).reduce((n, c) => n + parseFloat(c.firstChild.nodeValue), 0);
+  const head = document.querySelector('#detailStarters .starters .st-hd span:last-child');
+  return { cells: cells.length, a: Math.round(total(0) * 10) / 10, x: Math.round(total(1) * 10) / 10, head: head && head.textContent };
+});
+ok('the matchup\'s lineup follows its chart (starters add up to the chart score)', scrub.cells >= 20 && Math.abs(scrub.a - 70.7) < 0.3 && Math.abs(scrub.x - 72.4) < 0.3, JSON.stringify(scrub));
+const same = await p.evaluate(() => { const r = document.querySelector('#detailRewind .rw-read .w').textContent; const h = [...document.querySelectorAll('#detailHero .sh-pct')].map(e => e.textContent); return { chart: r, card: h }; });
+ok('chart\'s win % now = the matchup card\'s', same.chart.startsWith(same.card[0]), JSON.stringify(same));
+await p.screenshot({ path: OUT + '/S5-detail-chart.png' });
+await p.evaluate(() => { showTab('league'); });
+await p.waitForTimeout(400);
+await p.evaluate(() => document.getElementById('scroll').scrollTop = 0);
+await p.screenshot({ path: OUT + '/S4-all-matchups.png' });
 await p.evaluate(`showView('matchup'); renderUserMatchup()`); await p.waitForTimeout(500);
 await p.screenshot({ path: OUT + '/S2-matchup.png' });
 await p.evaluate(`showTab('standings')`).catch(() => {}); await p.waitForTimeout(500);
