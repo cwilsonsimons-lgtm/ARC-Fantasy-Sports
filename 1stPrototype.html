@@ -1250,7 +1250,7 @@ body.open .drawer{transform:translateX(0)}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dg-cell .dg-l{font-size:12px;font-weight:800;line-height:1.1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dg-cell.empty{background:#080d16;color:var(--ink-3);display:grid;place-items:center}
+.dg-cell.empty{background:#080d16;color:var(--ink-3);display:grid;place-items:center;padding:5px 6px 4px;font-size:inherit;line-height:normal}
 .dg-cell.empty .pk{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
 .dg-cell.col{box-shadow:inset 1px 0 0 rgba(var(--accent-rgb),.35),inset -1px 0 0 rgba(var(--accent-rgb),.35)}
 .dg-cell.empty.clock{background:rgba(var(--accent-rgb),.14);
@@ -2149,8 +2149,8 @@ body.forming .tabs{display:none}
 .dh-empty{padding:22px 0;text-align:center;color:var(--ink-3);font-size:12px}
 
 /* ===== COMMISSIONER DRAFT SLOTS ===== */
-.dg-cell.cm{cursor:pointer}
-.dg-cell.empty.cm{box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.28)}
+.dg-cell.dg-cm{cursor:pointer}
+.dg-cell.empty.dg-cm{box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.28)}
 .ds-cur{font-size:13px;color:var(--ink);margin-bottom:11px}
 .ds-cur span{font-size:10px;color:var(--ink-3)}
 .ds-list{max-height:300px;overflow-y:auto;border:1px solid var(--line-soft);border-radius:11px}
@@ -12830,7 +12830,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         const label = `${r + 1}.${overall % n + 1}`;
         const live = !draftDone() && overall === onClock;
         if (!rec) {
-          return `<div class="dg-cell empty${live ? " clock" : ""}${team === clockTeam ? " col" : ""}${cm ? " cm" : ""}"
+          return `<div class="dg-cell empty${live ? " clock" : ""}${team === clockTeam ? " col" : ""}${cm ? " dg-cm" : ""}"
           ${cm ? `onclick="openSlotMenu(${overall})"` : ""}><span class="pk">${label}</span></div>`;
         }
         seedReactions(rec, overall);
@@ -12838,7 +12838,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         const parts = (p.full || p.n).split(" ");
         const first = parts.shift(), last = parts.join(" ");
         const open = reactionsOpen(overall, picks.length);
-        return `<div class="dg-cell ${p.pos}${team === clockTeam ? " col" : ""}${cm ? " cm" : ""}" data-pick="${overall}"
+        return `<div class="dg-cell ${p.pos}${team === clockTeam ? " col" : ""}${cm ? " dg-cm" : ""}" data-pick="${overall}"
           onclick="${cm ? `openSlotMenu(${overall})` : `openPickDetail(${overall})`}">
         <div class="dg-m"><span>${p.pos} \xB7 ${p.tm}${ageBit(p)}</span><span class="pk">${label}</span></div>
         <div class="dg-f">${esc(first)}</div>
