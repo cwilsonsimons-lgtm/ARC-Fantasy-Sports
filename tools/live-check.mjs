@@ -114,7 +114,7 @@ await p.screenshot({ path: OUT + '/L3-week3-rewind.png' });
 // 6. created league keeps working
 const cl = await p.evaluate(`(() => {
   const id = 'lglive', teams = []; for (let i = 0; i < 8; i++) teams.push(newTeam(i, i ? null : 'You'));
-  myLeagues().push({ id, name: 'Live Test League', created: Date.now(), invite: 'x', joined: 8, teams, league: Object.assign({}, LEAGUE_DEFAULTS, { teams: 8, commish: 't0' }), scoring: Object.assign({}, SCORING_DEFAULTS), slots: Object.assign({}, SLOT_DEFAULTS) });
+  myLeagues().push({ id, name: 'Live Test League', created: Date.UTC(2026, 7, 20), invite: 'x', joined: 8, teams, league: Object.assign({}, LEAGUE_DEFAULTS, { teams: 8, commish: 't0' }), scoring: Object.assign({}, SCORING_DEFAULTS), slots: Object.assign({}, SLOT_DEFAULTS) });
   store.leagueOrder.push(id); saveStore(); startCreatedDraft(id); autoDraftAll(); pickWeek(lvState().week); recomputeLT();
   const st = lvState(); return { week: st.viewWeek, LT: st.LT, games: getGames(st.week).length };
 })()`);

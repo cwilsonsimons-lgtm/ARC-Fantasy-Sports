@@ -1010,6 +1010,32 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .ss-td .t i{display:block;font-style:normal;font-size:10.5px;color:var(--ink-3);margin-top:2px}
 .ss-td .v{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--green)}
 .ss-note{font-size:11px;color:var(--ink-3);margin-top:12px;text-align:center}
+.plk,.rlk{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.plk:active,.rlk:active{opacity:.6}
+.rlk{text-decoration:underline dotted;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.35)}
+#schedSheet{max-height:84%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sch-top{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.sch-tbd{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;font-weight:800;font-size:17px}
+.sch-who{min-width:0}
+.sch-who .n{font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-who .m{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.sch-who .m b{color:var(--ink)}
+.sch-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line-soft);cursor:pointer}
+.sch-row:active{background:rgba(255,255,255,.04)}
+.sch-row.now{background:rgba(var(--accent-rgb),.08);border-radius:8px}
+.sch-row .wk{width:20px;flex:none;text-align:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:var(--ink-3)}
+.sch-bd{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;font-weight:800;font-size:12px}
+.sch-opp{flex:1;min-width:0}
+.sch-opp .n{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-opp .m{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-row.bye .n,.sch-row.pre .n{color:var(--ink-3)}
+.sch-row.pre{cursor:default;opacity:.7}
+.sch-res{flex:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:var(--ink-2);text-align:right}
+.sch-res b{font-weight:800;margin-right:3px}
+.sch-res.w b{color:var(--green)}
+.sch-res.l b{color:var(--red)}
+.sch-res.live{color:var(--green)}
+.sch-res .pulse{display:inline-block;width:6px;height:6px;margin-right:5px;vertical-align:1px}
 .swap-cur{background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:var(--ink)}
 .swap-cur b{color:#fff}
 .swap-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:12px;border:1px solid var(--line-soft);margin-bottom:8px;cursor:pointer}
@@ -2928,6 +2954,12 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     <div id="claimBody"></div>
   </div>
 
+  <div class="sheet-scrim" id="schedScrim" onclick="closeSchedule()"></div>
+  <div class="sheet" id="schedSheet">
+    <div class="sheet-h" id="schedTitle">Schedule</div>
+    <div id="schedBody"></div>
+  </div>
+
   <div class="sheet-scrim" id="statScrim" onclick="closeStatSheet()"></div>
   <div class="sheet" id="statSheet">
     <div class="sheet-h" id="statTitle">Stats</div>
@@ -4463,7 +4495,28 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   }
   // Real fantasy points (js/live.js), under this league's scoring. 0 until the
   // week's stats arrive or when the player has none; never invented.
+  // A league made after the season began counts only what happens from the
+  // moment it was made: the weeks before are not its own (every team starts
+  // 0-0), and in the week it was made a player counts only if his game kicks
+  // off after that moment. City Boys and imported leagues count every week.
+  var _leagueStart = { k: null, v: null };
+  function leagueStart() {
+    const rec = typeof createdRec === "function" ? createdRec(loadedLeague()) : null;
+    if (!rec || rec.sleeper || !rec.created) return null;
+    const k = rec.id + ":" + rec.created;
+    if (_leagueStart.k !== k) _leagueStart = { k, v: { week: lvCurrentWeek(rec.created), ord: lvNowOrd(rec.created) } };
+    return _leagueStart.v;
+  }
+  function counts(p, w) {
+    const st = leagueStart();
+    if (!st || !p || typeof p !== "object") return true;
+    w = +(w || S.week);
+    if (w !== st.week) return w > st.week;
+    const g = weekGame(p.tm, w);
+    return !!g && g.ord >= st.ord;
+  }
   function pLive(proj, name, p, w) {
+    if (!counts(p, w)) return 0;
     const v = lvPoints(p || name, w);
     // kept to the hundredth so team totals add up to the league's own
     return v == null ? 0 : Math.round(v * 100) / 100;
@@ -4483,12 +4536,14 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const sides = liveSides();
     let a = 0, x = 0, ap = 0, xp = 0, remA = 0, remX = 0;
     starterPlayers(sides[0]).forEach((p) => {
+      if (!counts(p)) return;
       const on = isLocked(p);
       a += on ? pLive(p.proj, p.n, p) : 0;
       ap += p.proj;
       remA += on ? p.proj * lvLeft(p.tm) : p.proj;
     });
     starterPlayers(sides[1]).forEach((p) => {
+      if (!counts(p)) return;
       const on = isLocked(p);
       x += on ? pLive(p.proj, p.n, p) : 0;
       xp += p.proj;
@@ -4833,6 +4888,12 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     scheduleForWeek: () => scheduleForWeek,
     scoreCell: () => scoreCell,
     openStatSheet: () => openStatSheet,
+    openSchedule: () => openSchedule,
+    closeSchedule: () => closeSchedule,
+    scheduleGo: () => scheduleGo,
+    syncRecords: () => syncRecords,
+    plink: () => plink,
+    rlink: () => rlink,
     STAT_REF: () => STAT_REF,
     closeStatSheet: () => closeStatSheet,
     seasonTotals: () => seasonTotals,
@@ -4991,6 +5052,15 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       S.teamBackView = homeTab2();
     }
     if (name === "draft") renderDraft();
+    // standings are drawn when shown, so they carry the records as they are now
+    if (name === "standings") {
+      try {
+        syncRecords();
+        renderStandings2();
+        renderStandingsMatchups();
+      } catch (e) {
+      }
+    }
     renderTabs2(name);
     document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === name));
     showView2(name);
@@ -5130,7 +5200,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const out = [];
     // a marker is a real touchdown play from the play-by-play, never a chunk
     // of yardage points that happens to be worth six or more
-    const add = (list, side) => list.forEach((p) => jumpsFor(p.key || p.name).forEach((j) => {
+    const add = (list, side) => list.filter((p) => p.counted !== false).forEach((p) => jumpsFor(p.key || p.name).forEach((j) => {
       if (!j.td) return;
       out.push({ t: Math.round(p.kick + j.at * GAME_MIN), name: p.name, side, pts: j.pts, text: j.text || "", parts: j.parts || [], kind: j.kind || "td" });
     }));
@@ -5205,7 +5275,10 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       if (!lastW || lastW[1] < frame.mnf) windows.push([frame.mnf, closes]);
       else lastW[1] = closes;
     }
-    const side = (list) => list.filter((p) => isFinite(pOrd(p))).map((p) => ({ name: p.n, key: p.id || p.n, total: pLive(p.proj, p.n, p), proj: p.proj, kick: absMin(pOrd(p)) }));
+    const side = (list) => list.filter((p) => isFinite(pOrd(p))).map((p) => {
+      const c = counts(p, S.week);
+      return { name: p.n, key: p.id || p.n, total: pLive(p.proj, p.n, p), proj: c ? p.proj : 0, kick: absMin(pOrd(p)), counted: c };
+    });
     const A = side(lists[0]), X = side(lists[1]);
     const sum = (list, t) => list.reduce((n, p) => n + accrued(p.total, p.key, (t - p.kick) / GAME_MIN), 0);
     const expect = (list, t) => list.reduce((n, p) => {
@@ -5516,7 +5589,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (!root) return;
     root.querySelectorAll(".st-pts[data-n]").forEach((c) => {
       const name = c.dataset.n, id = c.dataset.id || name, proj = +c.dataset.proj, ord = +c.dataset.ord;
-      const started = isFinite(ord) && abs >= absMin(ord);
+      const started = isFinite(ord) && abs >= absMin(ord) && !c.dataset.off;
       const pts = started ? accrued(pLive(proj, name, { id: c.dataset.id || null, n: name }), id, (abs - absMin(ord)) / GAME_MIN) : 0;
       c.firstChild.nodeValue = (Math.round(pts * 10) / 10).toFixed(1);
       c.classList.toggle("pre", !started);
@@ -7095,7 +7168,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <span class="stand-rk">${i + 1}</span>${badge(t, "stand-bd")}
         <div class="stand-nm"><div class="n tf-${r.k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${r.k}')">${escHtml(t.n)}</div><div class="m">${escHtml(t.mgr)}</div></div>
       </div>
-      <span class="st-c rec">${r.wins}</span>
+      <span class="st-c rec">${rlink(r.k, r.wins)}</span>
       <span class="st-c pf">${r.scored.toFixed(1)}</span>
       <span class="st-c df"><b>${r.pts}</b></span>
     </div>`;
@@ -7210,15 +7283,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (!p || p.fa || !slotAllows(slot, p.pos)) return;
       (isLocked(p) ? locked : open).push({ p, j });
     });
-    let body2 = `<div class="swap-cur">${cur ? `<b>${cur.n}</b>` : `<b>${slot}</b>`} \xB7 ${SLOT_ELIG[slot].join("/")}</div>`;
+    let body2 = `<div class="swap-cur">${cur ? `<b>${plink(cur, cur.n)}</b>` : `<b>${slot}</b>`} \xB7 ${SLOT_ELIG[slot].join("/")}</div>`;
     if (!open.length && !locked.length) body2 += `<div class="swap-empty">\u2014</div>`;
     body2 += open.map(({ p, j }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
     <div class="swap-pos">${p.pos}</div>
-    <div class="swap-nm"><div class="n">${p.n}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}</div><div class="m">${p.tm}${p.bye ? ` (${p.bye})` : ""} \xB7 ${p.g || "\u2014"}</div></div>
+    <div class="swap-nm"><div class="n">${plink(p, p.n)}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}</div><div class="m">${p.tm}${p.bye ? ` (${p.bye})` : ""} \xB7 ${p.g || "\u2014"}</div></div>
     <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
     body2 += locked.map(({ p }) => `<div class="swap-row dis">
     <div class="swap-pos">${p.pos}</div>
-    <div class="swap-nm"><div class="n">${p.n}</div><div class="m">Locked \xB7 ${p.g}</div></div>
+    <div class="swap-nm"><div class="n">${plink(p, p.n)}</div><div class="m">Locked \xB7 ${p.g}</div></div>
     <div class="swap-pts">${p.proj.toFixed(1)}</div></div>`).join("");
     document.getElementById("swapTitle").textContent = cur ? `Swap ${slot}` : `Fill ${slot}`;
     document.getElementById("swapBody").innerHTML = body2;
@@ -7238,15 +7311,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (!slotAllows(s.slot, p.pos)) return;
       (s.player && isLocked(s.player) ? locked : open).push({ s, i });
     });
-    let body2 = `<div class="swap-cur"><b>${p.n}</b> \xB7 ${p.pos}</div>`;
+    let body2 = `<div class="swap-cur"><b>${plink(p, p.n)}</b> \xB7 ${p.pos}</div>`;
     if (!open.length && !locked.length) body2 += `<div class="swap-empty">\u2014</div>`;
     body2 += open.map(({ s, i }) => `<div class="swap-row" onclick="doSwap(${i},${j})">
     <div class="swap-pos">${s.slot}</div>
-    <div class="swap-nm"><div class="n">${s.player ? s.player.n : "Empty"}</div><div class="m">${s.player ? `${s.player.pos} \xB7 ${s.player.tm}${ageBit(s.player)} \xB7 sits` : "Open slot"}</div></div>
+    <div class="swap-nm"><div class="n">${s.player ? plink(s.player, s.player.n) : "Empty"}</div><div class="m">${s.player ? `${s.player.pos} \xB7 ${s.player.tm}${ageBit(s.player)} \xB7 sits` : "Open slot"}</div></div>
     <div class="swap-pts">${s.player ? s.player.proj.toFixed(1) : "\u2014"}</div></div>`).join("");
     body2 += locked.map(({ s }) => `<div class="swap-row dis">
     <div class="swap-pos">${s.slot}</div>
-    <div class="swap-nm"><div class="n">${s.player.n}</div><div class="m">Locked \xB7 ${s.player.g}</div></div>
+    <div class="swap-nm"><div class="n">${plink(s.player, s.player.n)}</div><div class="m">Locked \xB7 ${s.player.g}</div></div>
     <div class="swap-pts">${s.player.proj.toFixed(1)}</div></div>`).join("");
     document.getElementById("swapTitle").textContent = `Start ${p.pos}`;
     document.getElementById("swapBody").innerHTML = body2;
@@ -7590,6 +7663,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const lg = leagueById(id);
     store.activeLeague = lg.id;
     useLeague(lg.id);
+    try {
+      syncRecords();
+    } catch (e) {
+    }
     if (slRec(lg.id)) {
       lvRebuildGames();
       setTimeout(() => liveRefresh(true), 0);
@@ -8005,7 +8082,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const p = a.player || {};
     return `<span class="as as-pl${opts.on ? " on" : ""}"${rm}>
     <span class="as-face">${faceInner(p.id || p.n)}</span>
-    <span class="as-nm">${escHtml(p.n || "")}</span>
+    <span class="as-nm">${plink(p, escHtml(p.n || ""))}</span>
     <span class="as-mt">${escHtml(p.pos || "")}${ageBit(p)}</span>
   </span>`;
   }
@@ -8589,17 +8666,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const t = T[k];
     return `<span class="cm-bd" style="background:${t.bg};color:${t.c}">${markInner(t)}</span>`;
   }
-  function cmRow(id, side, title, meta) {
+  function cmRow(id, side, title, meta, pc) {
     const on = (side === "theirs" ? CM.theirs : CM.mine)[id];
     return `<div class="cm-row${on ? " on" : ""}" onclick="cmToggle('${esc(id)}','${side}',this)">
     <span class="cm-box">✓</span>
-    <div class="cm-info"><div class="n">${escHtml(title)}</div><div class="m">${escHtml(meta)}</div></div>
+    <div class="cm-info"><div class="n">${pc ? plink(pc, escHtml(title)) : escHtml(title)}</div><div class="m">${escHtml(meta)}</div></div>
   </div>`;
   }
   function cmPlayerRows(key, side) {
     const list = rosterFor(key);
     if (!list.length) return `<div class="cm-empty">—</div>`;
-    return list.map((p) => cmRow(pKeyOf(p), side, p.n, `${p.pos} \xB7 ${p.tm} \xB7 ${p.group === "STARTERS" ? p.slot : p.group === "BENCH" ? "BN" : "TX"}`)).join("");
+    return list.map((p) => cmRow(pKeyOf(p), side, p.n, `${p.pos} \xB7 ${p.tm} \xB7 ${p.group === "STARTERS" ? p.slot : p.group === "BENCH" ? "BN" : "TX"}`, pKeyOf(p))).join("");
   }
   function cmPickRows(key, side) {
     const list = picksFor(key);
@@ -8620,7 +8697,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (CM.action === "addPlayers") {
       const q = CM.q.toLowerCase();
       const pool = freeAgents("ALL").filter((p) => !q || (p.full || p.n).toLowerCase().indexOf(q) > -1).slice(0, 40);
-      return setRow("Search", `<input class="set-ctl" type="text" value="${esc(CM.q)}" onchange="cmSetQ(this.value)">`) + `<div class="cm-list">${pool.length ? pool.map((p) => cmRow(pKeyOf(p), "mine", p.n, `${p.pos} \xB7 ${p.tm}`)).join("") : `<div class="cm-empty">—</div>`}</div>` + cmApplyBar(`Add to ${T[team].n}`);
+      return setRow("Search", `<input class="set-ctl" type="text" value="${esc(CM.q)}" onchange="cmSetQ(this.value)">`) + `<div class="cm-list">${pool.length ? pool.map((p) => cmRow(pKeyOf(p), "mine", p.n, `${p.pos} \xB7 ${p.tm}`, pKeyOf(p))).join("") : `<div class="cm-empty">—</div>`}</div>` + cmApplyBar(`Add to ${T[team].n}`);
     }
     if (CM.action === "addPicks") {
       const rows2 = Object.keys(T).filter((k) => k !== team).map((k) => {
@@ -8648,6 +8725,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return `<div class="cm-nav"><div class="cm-back" onclick="cmBack()">${ICON_CM_BACK}</div><div class="cm-crumb">${trail}</div></div>`;
   }
   function commishRosterCard() {
+    // the tool's place is kept per visit; one left open on another league's
+    // team (or trade partner) starts over rather than reading a missing team
+    if (CM.team && !T[CM.team] || CM.other && !T[CM.other]) {
+      Object.assign(CM, { step: "idle", team: null, action: null, other: null });
+      cmClearSel();
+    }
     if (CM.step === "idle") return `<div class="set-card">
     <div class="set-title">Rosters</div>
     <div class="cm-menu"><div class="cm-item" onclick="cmOpenRosters()">
@@ -9144,7 +9227,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="dh-picks">${h.picks.map((p) => `<div class="dh-row">
         <span class="dh-no">${p.round}.${String(p.pick).padStart(2, "0")}</span>
         <span class="dh-mgr">${escHtml(p.mgr)}</span>
-        <span class="dh-nm">${escHtml(p.n)}</span>
+        <span class="dh-nm">${p.id ? plink(p.id, escHtml(p.n)) : escHtml(p.n)}</span>
         <span class="dh-pos">${escHtml(p.pos)}</span>
         <span class="dh-ov">#${p.overall}</span>
       </div>`).join("")}</div>` : "";
@@ -9244,7 +9327,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const p = rec ? NFL_BY_ID[rec.id] : null;
     const title = `${m.round}.${String(m.pick).padStart(2, "0")} \xB7 ${t.n}`;
     sheet(title, `
-    <div class="ds-cur">${p ? `${escHtml(p.full || p.n)} <span>${p.pos} \xB7 ${p.tm}</span>` : `<span>Empty slot</span>`}</div>
+    <div class="ds-cur">${p ? `${plink(p, escHtml(p.full || p.n))} <span>${p.pos} \xB7 ${p.tm}</span>` : `<span>Empty slot</span>`}</div>
     <div class="dp-acts">
       ${p ? `<div class="dr-btn" onclick="closeDraftSheet();openPickDetail(${overall})">View pick details</div>` : ""}
       <div class="dr-btn go" onclick="openAssignPick(${overall})">${p ? "Replace pick" : "Assign player"}</div>
@@ -11776,7 +11859,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" onclick="openTeam('${aKey}')">${a.n}</div>
-        <div class="sh-rec">${a.mgr} \xB7 ${a.rec}</div>
+        <div class="sh-rec">${a.mgr} \xB7 ${opts.seeded ? a.rec : rlink(aKey, a.rec)}</div>
         <div class="sh-pct${tw}" style="color:${pctColor(aw, xw)}"${wc}>${aw}%</div>
       </div>
       <div class="ms-center" data-vs>
@@ -11788,7 +11871,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="ms-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" onclick="openTeam('${xKey}')">${x.n}</div>
-        <div class="sh-rec">${x.mgr} \xB7 ${x.rec}</div>
+        <div class="sh-rec">${x.mgr} \xB7 ${opts.seeded ? x.rec : rlink(xKey, x.rec)}</div>
         <div class="sh-pct${tw}" style="color:${pctColor(xw, aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -11823,7 +11906,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="sh-side L">
         ${logo(a)}
         <div class="sh-tn tf-${aKey}" style="color:${a.c}" ${nameClick(aKey)}>${a.n}</div>
-        <div class="sh-rec">${a.mgr} \xB7 ${a.rec}</div>
+        <div class="sh-rec">${a.mgr} \xB7 ${opts.teams ? a.rec : rlink(aKey, a.rec)}</div>
         <div class="sh-pct${tw}" style="color:${pctColor(aw, xw)}"${wc}>${aw}%</div>
       </div>
       <div class="sh-center" ${opts.tapHint ? "data-vs" : ""}>
@@ -11835,7 +11918,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="sh-side R">
         ${logo(x)}
         <div class="sh-tn tf-${xKey}" style="color:${x.c}" ${nameClick(xKey)}>${x.n}</div>
-        <div class="sh-rec">${x.mgr} \xB7 ${x.rec}</div>
+        <div class="sh-rec">${x.mgr} \xB7 ${opts.teams ? x.rec : rlink(xKey, x.rec)}</div>
         <div class="sh-pct${tw}" style="color:${pctColor(xw, aw)}"${wc}>${xw}%</div>
       </div>
     </div>
@@ -11916,12 +11999,130 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const line = lvLine(p, w), gi = lvGameInfo(p.tm, w), live = !!gi && gi.state === "in";
     let txt = lvStatSummary(line, p.pos);
     if (!txt) txt = line && SKILL_POS[p.pos] ? live ? "No stats yet" : "No stats" : gi ? gi.label : "";
+    // played before this league existed: shown, but worth nothing here
+    if (!counts(p, w)) txt = "Before league \xB7 " + txt;
     // a number stays with its unit when the line wraps ("93 yd", "2 TD"),
     // and a separator ends the first line rather than starting the second
     txt = txt.replace(/ (?=car|rec|yd|TD|INT|2PT|FUM|return|\(|\xB7)/g, "\xA0");
     return `<div class="g2 sl">${live ? '<span class="pulse"></span>' : ""}${escHtml(txt)}</div>`;
   }
   var SKILL_POS = { QB: 1, RB: 1, WR: 1, TE: 1 };
+  // ---- links ------------------------------------------------------------------
+  // A player's name anywhere opens his player card, and a team's record opens
+  // its schedule. They are marked (data-pc / data-sched) and caught on the way
+  // down, before any action of the row underneath: a row that selects, swaps
+  // or opens something else keeps doing that everywhere but on the name.
+  function plink(p, inner) {
+    const k = typeof p === "string" ? p : pKeyOf(p);
+    return k ? `<span class="plk" data-pc="${escAttr(k)}">${inner}</span>` : inner;
+  }
+  function rlink(key, inner) {
+    return T[key] ? `<span class="rlk" data-sched="${escAttr(key)}">${inner}</span>` : inner;
+  }
+  if (typeof document !== "undefined") document.addEventListener("click", (e) => {
+    const t = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
+    const el = t && t.closest("[data-pc], [data-sched]");
+    // a held draft tile is reacting, not following a link
+    if (!el || el.closest("[data-held]")) return;
+    e.stopPropagation();
+    e.preventDefault();
+    if (el.dataset.pc) openPlayer(el.dataset.pc);
+    else openSchedule(el.dataset.sched);
+  }, true);
+  // ---- records and schedules --------------------------------------------------
+  // A league the app runs keeps its records from the results it shows: each
+  // finished week's score against that week's opponent (a tie counts half a
+  // win), ranked by wins and then points for. An imported league keeps its
+  // host's official record.
+  function syncRecords() {
+    if (typeof slRec === "function" && slRec()) return;
+    const keys = Object.keys(T), tally = {};
+    keys.forEach((k) => tally[k] = { w: 0, l: 0, t: 0, pf: 0 });
+    let any = false;
+    for (let w = MINW; w <= Math.min(MAXW, LIVE_WEEK); w++) {
+      if (!(w < LIVE_WEEK || liveStatus(w) === "final")) continue;
+      getGames(w).forEach((g) => {
+        if (!tally[g.a] || !tally[g.x] || !(g.as || g.xs)) return;
+        any = true;
+        const r = g.as > g.xs ? ["w", "l"] : g.as < g.xs ? ["l", "w"] : ["t", "t"];
+        tally[g.a][r[0]]++;
+        tally[g.x][r[1]]++;
+        tally[g.a].pf += g.as;
+        tally[g.x].pf += g.xs;
+      });
+    }
+    keys.forEach((k) => {
+      const r = tally[k];
+      T[k].rec = `${r.w}-${r.l}${r.t ? "-" + r.t : ""}`;
+    });
+    if (any) {
+      const wins = (k) => tally[k].w + tally[k].t / 2;
+      keys.slice().sort((a, b) => wins(b) - wins(a) || tally[b].pf - tally[a].pf).forEach((k, i) => T[k].rk = i + 1);
+    }
+    order.splice(0, order.length, ...keys.slice().sort((a, b) => T[a].rk - T[b].rk));
+    // the leagues list shows a created league's record without loading it
+    const lg = typeof activeLeague2 === "function" ? activeLeague2() : null;
+    if (lg && lg.created && lg.rec && lg.rec.teams) lg.rec.teams.forEach((t) => {
+      if (T[t.key]) Object.assign(t, { rec: T[t.key].rec, rk: T[t.key].rk });
+    });
+  }
+  // Tapping a record: that team's season, week by week, with the result or
+  // the live score, or the matchup ahead and its odds. A week opens its matchup.
+  function openSchedule(key) {
+    const t = T[key];
+    if (!t) return;
+    const tot = seasonTotals(key);
+    let rows = "";
+    for (let w = MINW; w <= MAXW; w++) {
+      const g = getGames(w).find((x) => x.a === key || x.x === key);
+      if (!g) {
+        rows += `<div class="sch-row bye"><span class="wk">${w}</span><div class="sch-opp"><div class="n">Bye</div></div></div>`;
+        continue;
+      }
+      const home = g.a === key, opp = home ? g.x : g.a, o = T[opp] || {};
+      const st0 = leagueStart();
+      if (st0 && w < st0.week) {
+        rows += `<div class="sch-row pre"><span class="wk">${w}</span>${badge(o, "sch-bd")}<div class="sch-opp"><div class="n">${escHtml(o.n || opp)}</div><div class="m">Before the league started</div></div><div class="sch-res">\u2014</div></div>`;
+        continue;
+      }
+      const my = home ? g.as : g.xs, their = home ? g.xs : g.as, win = home ? g.aw : g.xw;
+      const st = w < LIVE_WEEK ? "final" : w > LIVE_WEEK ? "sched" : g.status;
+      const sc = `${(+my || 0).toFixed(1)}\u2013${(+their || 0).toFixed(1)}`;
+      let res;
+      if (st === "final" && (my || their)) {
+        const r = my > their ? "W" : my < their ? "L" : "T";
+        res = `<div class="sch-res ${r.toLowerCase()}"><b>${r}</b> ${sc}</div>`;
+      } else if (st === "final") res = `<div class="sch-res">\u2014</div>`;
+      else if (st === "live") res = `<div class="sch-res live"><span class="pulse"></span>${sc}</div>`;
+      else res = `<div class="sch-res">${win != null ? `${win}% win` : ""}</div>`;
+      rows += `<div class="sch-row${w === S.week ? " now" : ""}" onclick="scheduleGo(${w},'${esc(key)}')">
+        <span class="wk">${w}</span>${badge(o, "sch-bd")}
+        <div class="sch-opp"><div class="n">${escHtml(o.n || opp)}</div><div class="m">${escHtml(o.mgr || "")} \xB7 ${rlink(opp, escHtml(o.rec || "0-0"))}</div></div>
+        ${res}</div>`;
+    }
+    document.getElementById("schedTitle").textContent = "Schedule";
+    document.getElementById("schedBody").innerHTML = `<div class="sch-top">${badge(t, "sch-tbd")}
+      <div class="sch-who"><div class="n" style="color:${t.c}">${escHtml(t.n)}</div>
+        <div class="m">${escHtml(t.mgr)} \xB7 <b>${rlink(key, escHtml(t.rec || "0-0"))}</b> \xB7 #${t.rk} \xB7 PF ${tot.pf.toFixed(1)} \xB7 PA ${tot.pa.toFixed(1)}</div></div></div>
+      <div class="sch-list">${rows}</div>`;
+    document.getElementById("schedScrim").classList.add("show");
+    const sh = document.getElementById("schedSheet");
+    sh.scrollTop = 0;
+    sh.classList.add("show");
+  }
+  function closeSchedule() {
+    document.getElementById("schedScrim").classList.remove("show");
+    document.getElementById("schedSheet").classList.remove("show");
+  }
+  // a week in a schedule opens that week's matchup
+  function scheduleGo(w, key) {
+    closeSchedule();
+    pickWeek(w);
+    const i = (S.games || []).findIndex((g) => g.a === key || g.x === key);
+    if (i < 0) return;
+    if (S.games[i].me) openMyMatchup();
+    else openDetail(i);
+  }
   // players whose points are on screen, by key, for the stats sheet
   var STAT_REF = {};
   function statTap(p) {
@@ -11932,10 +12133,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function scoreCell(p, phased) {
     if (!p) return `<div class="st-pts">\u2014</div>`;
     if (phased) {
-      const locked = isLocked(p), pts = locked ? pLive(p.proj, p.n, p) : 0;
-      return `<div class="st-pts tap${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-id="${escAttr(p.id || "")}" data-proj="${p.proj}" data-ord="${pOrd(p)}"${statTap(p)}>${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+      const locked = isLocked(p), pts = locked ? pLive(p.proj, p.n, p) : 0, c = counts(p);
+      return `<div class="st-pts tap${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-id="${escAttr(p.id || "")}" data-proj="${c ? p.proj : 0}" data-ord="${pOrd(p)}"${c ? "" : ' data-off="1"'}${statTap(p)}>${pts.toFixed(1)}<div class="pj">${c ? p.proj.toFixed(1) : "\u2014"}</div></div>`;
     }
-    return `<div class="st-pts tap"${statTap(p)}>${pLive(p.proj, p.n, p).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+    return `<div class="st-pts tap"${statTap(p)}>${pLive(p.proj, p.n, p).toFixed(1)}<div class="pj">${counts(p) ? p.proj.toFixed(1) : "\u2014"}</div></div>`;
   }
   // ---- stats sheet ------------------------------------------------------------
   // Tapping a player's points opens his week: the box score, how each stat
@@ -11963,23 +12164,24 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function openStatSheet(key) {
     const p = STAT_REF[key];
     if (!p) return;
-    const w = S.week, played = lvPlayed(p, w), id = lvId(p);
+    const w = S.week, played = lvPlayed(p, w), id = lvId(p), off = !counts(p, w);
     const line = played ? lvLine(p, w) : LIVE.proj[w] && LIVE.proj[w][id] || null;
     const total = played ? pLive(p.proj, p.n, p) : +p.proj || 0;
     const gi = played ? lvGameInfo(p.tm, w) : null;
     const when = played ? gi ? gi.label + (gi.score ? " \xB7 " + gi.score : "") : "Week " + w : p.g || (p.bye === w ? "Bye" : "");
     let h = `<div class="ss-top">
-      <div class="ss-who"><div class="ss-n">${escHtml(p.n)}</div><div class="ss-m">${p.pos} \xB7 ${p.tm}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
+      <div class="ss-who"><div class="ss-n">${plink(p, escHtml(p.n))}</div><div class="ss-m">${p.pos} \xB7 ${p.tm}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
       <div class="ss-tot"><b>${total.toFixed(2)}</b><span>${played ? `Week ${w} \xB7 proj ${(+p.proj || 0).toFixed(1)}` : `Projected \xB7 week ${w}`}</span></div>
     </div>`;
     const sc = line ? scoreStats(line, { pos: p.pos }) : { total: 0, lines: [] };
     if (line && SKILL_POS[p.pos]) h += boxScoreHTML(line, p.pos);
     h += `<div class="ss-sec">${played ? "Points" : "Projected points"}</div>`;
-    const rows = sc.lines.map((l) => `<div class="ss-row"><span class="l">${escHtml(l.lb)}</span><span class="c">${ssNum(l.n)} \xD7 ${ssMult(l.v)}</span><span class="v">${l.pts > 0 ? "+" : ""}${l.pts.toFixed(2)}</span></div>`);
+    const rows = off ? [] : sc.lines.map((l) => `<div class="ss-row"><span class="l">${escHtml(l.lb)}</span><span class="c">${ssNum(l.n)} \xD7 ${ssMult(l.v)}</span><span class="v">${l.pts > 0 ? "+" : ""}${l.pts.toFixed(2)}</span></div>`);
     // Sleeper's official total for an imported league can hold scoring the
     // app does not itemize (kickers, defenses, rules it does not map)
     const diff = Math.round((total - sc.total) * 100) / 100;
-    if (played && Math.abs(diff) >= 0.015) rows.push(`<div class="ss-row other"><span class="l">${sc.lines.length ? "Other scoring" : "Points"} <i>per Sleeper</i></span><span class="c"></span><span class="v">${diff > 0 && sc.lines.length ? "+" : ""}${diff.toFixed(2)}</span></div>`);
+    if (played && !off && Math.abs(diff) >= 0.015) rows.push(`<div class="ss-row other"><span class="l">${sc.lines.length ? "Other scoring" : "Points"} <i>per Sleeper</i></span><span class="c"></span><span class="v">${diff > 0 && sc.lines.length ? "+" : ""}${diff.toFixed(2)}</span></div>`);
+    if (off) rows.push(`<div class="ss-none">${w < (leagueStart() || {}).week ? "This was before the league was created, so it doesn't count here." : "His game kicked off before the league was created, so it doesn't count here."}</div>`);
     if (!rows.length) rows.push(`<div class="ss-none">${played ? lvGameInfo(p.tm, w) && lvGameInfo(p.tm, w).state === "in" ? "No points yet." : "No points this week." : "No projection for this week yet."}</div>`);
     h += rows.join("") + `<div class="ss-row tot"><span class="l">Total</span><span class="c"></span><span class="v">${total.toFixed(2)}</span></div>`;
     const tds = played ? lvTdPlays(p, w) : [];
@@ -12082,7 +12284,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function scheduleBag() {
     if (!store.schedule) store.schedule = {};
-    const lid = store.activeLeague || "cbd";
+    // the pairings belong to the league whose teams are loaded (going back to
+    // the hub loads City Boys while another league is still the active one)
+    const lid = typeof loadedLeague === "function" ? loadedLeague() : store.activeLeague || "cbd";
     if (!store.schedule[lid]) store.schedule[lid] = {};
     return store.schedule[lid];
   }
@@ -12132,7 +12336,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     // mid-season show what today's lineup would have put up)
     let t = 0;
     (rosterOf(key).starters || []).forEach((s) => {
-      if (s.player) t += lvPoints(s.player, week) || 0;
+      if (s.player && counts(s.player, week)) t += lvPoints(s.player, week) || 0;
     });
     return Math.round(t * 10) / 10;
   }
@@ -12143,7 +12347,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     let rem = 0;
     if (week >= LIVE_WEEK) (rosterOf(key).starters || []).forEach((s) => {
       const p = s.player;
-      if (!p) return;
+      if (!p || !counts(p, week)) return;
       const proj = week === S.week ? +p.proj || 0 : lvProj(p, week) != null ? lvProj(p, week) : +p.proj || 0;
       rem += week > LIVE_WEEK || !isLocked(p) ? proj : proj * lvLeft(p.tm, week);
     });
@@ -12350,7 +12554,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
     <div class="tv-top">
       <div class="tv-crest" style="background:linear-gradient(155deg,${t.bg},#171416);border:1.5px solid ${t.c};color:${t.c}">${crestInner}${logoCam}</div>
-      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7 ${t.rec} \xB7 #${t.rk}</div>${ownTag}</div>
+      <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7 ${rlink(currentTeamKey, t.rec)} \xB7 #${t.rk}</div>${ownTag}</div>
       ${editBtn}${msgBtn}
     </div>
     ${editRow}
@@ -12573,6 +12777,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     refreshApp();
   }
   function refreshApp() {
+    // records follow the results (a draft or a lineup change moves them)
+    try {
+      syncRecords();
+    } catch (e) {
+    }
     renderTabs2();
     renderLeagueBody();
     renderUserMatchup();
@@ -12700,6 +12909,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         held = false;
         timer = setTimeout(() => {
           held = true;
+          el.dataset.held = "1";
           el.classList.add("held");
           openReactionSheet(overall);
         }, 420);
@@ -12721,6 +12931,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           e.preventDefault();
           held = false;
         }
+        delete el.dataset.held;
       }, true);
     });
   }
@@ -12841,8 +13052,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         return `<div class="dg-cell ${p.pos}${team === clockTeam ? " col" : ""}${cm ? " dg-cm" : ""}" data-pick="${overall}"
           onclick="${cm ? `openSlotMenu(${overall})` : `openPickDetail(${overall})`}">
         <div class="dg-m"><span>${p.pos} \xB7 ${p.tm}${ageBit(p)}</span><span class="pk">${label}</span></div>
-        <div class="dg-f">${esc(first)}</div>
-        <div class="dg-l">${esc(last)}</div>
+        <div class="plk" data-pc="${escAttr(rec.id)}"><div class="dg-f">${esc(first)}</div>
+        <div class="dg-l">${esc(last)}</div></div>
         ${badgeStrip(rec, overall)}
         ${reactionStrip(rec, overall)}
         ${open ? '<span class="dg-open" title="Reactions still open"></span>' : ""}
@@ -12982,7 +13193,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const i = ps.length - 1 - k, m = pickMeta(i), id = rec && rec.id, p = NFL_BY_ID[id], t = T[m.team];
       return `<div class="dr-pick${m.team === MY_TEAM ? " me" : ""}">
       <span class="no">${m.round}.${String(m.pick).padStart(2, "0")}</span>
-      <span class="pn">${p ? esc(p.full) : ""} <span class="dr-mt">${p ? p.pos + " \xB7 " + p.tm : ""}</span></span>
+      <span class="pn">${p ? plink(p, esc(p.full)) : ""} <span class="dr-mt">${p ? p.pos + " \xB7 " + p.tm : ""}</span></span>
       <span class="tn tf-${m.team}" style="color:${t.c}">${t.n}</span></div>`;
     }).join("");
   }
@@ -13378,7 +13589,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function confirmDrop(key) {
     const r = pIdx()[key], name = r && (r.full || r.n) || key;
-    openConfirm(`Drop ${name}?`, `${name} will be released to free agency. Any custom photo or nickname is kept, and you can re-add them later.`, () => cutPlayer(key));
+    openConfirm(`Drop ${name}?`, `${plink(key, escHtml(name))} will be released to free agency. Any custom photo or nickname is kept, and you can re-add them later.`, () => cutPlayer(key));
   }
   function refreshRosterViews() {
     recomputeLT();
@@ -13764,11 +13975,22 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   </div>`;
   }
   var playerBackView = "matchup";
+  // where Back from a player card returns: the view, how far down it was
+  // scrolled, and any sheet that was open over it
+  var playerBackScroll = 0, playerBackSheets = [];
   function openPlayer(key) {
     S.currentPlayerName = key;
     const cur = currentViewName();
-    if (cur !== "player") playerBackView = cur;
-    const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup", team: "Team", player: "Back" }[playerBackView] || "Matchup";
+    if (cur !== "player") {
+      playerBackView = cur;
+      playerBackScroll = document.getElementById("scroll").scrollTop;
+      playerBackSheets = [];
+    }
+    document.querySelectorAll(".sheet.show, .sheet-scrim.show").forEach((el) => {
+      el.classList.remove("show");
+      playerBackSheets.push(el);
+    });
+    const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup", team: "Team", player: "Back", chat: "Chat", trade: "Trade", tradeart: "Graphic", log: "Transactions", notifs: "Notifications", draft: "Draft", settings: "Settings", home: "Leagues" }[playerBackView] || "Matchup";
     setBackLabel(lbl);
     renderPlayer(key);
     showView2("player");
@@ -13777,15 +13999,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (document.body.classList.contains("open")) toggleDrawer();
   }
   function playerBack() {
-    const v = playerBackView;
+    const v = playerBackView, y = playerBackScroll, sheets = playerBackSheets;
+    playerBackSheets = [];
     if (v === "team") showView2("team");
     else if (v === "league") showLeagueView();
-    else if (v === "standings") showTab("standings");
-    else if (v === "detail") {
-      showView2("detail");
+    else if (v === "standings" || v === "draft") showTab(v);
+    else if (v && v !== "matchup" && v !== "player" && document.querySelector(`.view[data-view="${v}"]`)) {
+      // chat, a trade, the log, settings, the hub, a matchup: the page is still
+      // there as it was left
+      showView2(v);
       document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-      document.getElementById("scroll").scrollTop = 0;
     } else showTab("matchup");
+    const sc = document.getElementById("scroll");
+    if (sc) sc.scrollTop = y;
+    sheets.forEach((el) => el.classList.add("show"));
   }
   var order = Object.keys(T).sort((a, b) => T[a].rk - T[b].rk);
   function tableRow(k) {
@@ -13809,7 +14036,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <span class="stand-rk">${i + 1}</span>${badge(t, "stand-bd")}
         <div class="stand-nm"><div class="n tf-${r.k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${r.k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
       </div>
-      <span class="st-c rec">${r.w}-${r.d}-${r.l}</span>
+      <span class="st-c rec">${rlink(r.k, `${r.w}-${r.d}-${r.l}`)}</span>
       <span class="st-c pf ${r.gd > 0 ? "pos" : r.gd < 0 ? "neg" : ""}">${r.gd > 0 ? "+" : ""}${r.gd.toFixed(1)}</span>
       <span class="st-c df"><b>${r.pts}</b></span>
     </div>`;
@@ -13841,7 +14068,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <span class="stand-rk">${t.rk}</span>${badge(t, "stand-bd")}
         <div class="stand-nm"><div class="n tf-${k} ${me ? "me" : ""}" style="cursor:pointer" onclick="openTeam('${k}')">${t.n}</div><div class="m">${t.mgr}</div></div>
       </div>
-      <span class="st-c rec">${t.rec}</span>
+      <span class="st-c rec">${rlink(k, t.rec)}</span>
       <span class="st-c pf">${tot.pf.toFixed(1)}</span>
       <span class="st-c pa">${tot.pa.toFixed(1)}</span>
       <span class="st-c df ${diff > 0 ? "pos" : diff < 0 ? "neg" : ""}">${diff > 0 ? "+" : ""}${diff.toFixed(1)}</span>
@@ -14180,6 +14407,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     applyStoredRoster2();
     hydrateRosters(S.week);
     applyTeamFonts2();
+    try {
+      syncRecords();
+    } catch (e) {
+    }
     saveStore();
     return true;
   }
@@ -17847,6 +18078,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     weekStarters: () => weekStarters,
     lvJumps: () => lvJumps,
     lvTdPlays: () => lvTdPlays,
+    counts: () => counts,
+    leagueStart: () => leagueStart,
     lvPartsText: () => lvPartsText,
     lvGameInfo: () => lvGameInfo,
     lvPlayed: () => lvPlayed,
@@ -18342,6 +18575,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     try {
       hydrateRosters(S.week);
       recomputeLT();
+      syncRecords();
       // the League tab draws from S.games; a sync can change both the
       // pairings and the scores, so it is rebuilt every time
       S.games = getGames(S.week);

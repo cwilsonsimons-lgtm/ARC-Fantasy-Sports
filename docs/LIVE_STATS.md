@@ -77,10 +77,37 @@ pinned to that afternoon.
   itemize (kickers, defenses, unmapped rules) shows as "Other scoring per
   Sleeper". Before kickoff the sheet shows his projection the same way.
 
+## Links, records and schedules
+
+- **Player names** are links everywhere they appear (matchups, bench, swap
+  sheet, stats sheet, draft board and pick sheets, recent picks, draft
+  history, trade builder and trade cards, transactions, commissioner roster
+  tools, drop confirmation): `plink()` marks them with `data-pc`, and one
+  capture-phase click handler opens the player card before any action of the
+  row underneath. Rows that select or swap keep doing so everywhere except on
+  the name. A held draft tile (reactions) is not treated as a tap. Back from
+  the card returns to the same screen, scroll position and open sheet.
+- **Records** are links (`rlink()`, `data-sched`) in the matchup header, the
+  team page, every standings mode and the schedule itself; each opens that
+  team's schedule: every week's opponent and their record, the result and
+  score, the live score, or the odds ahead. A week opens its matchup.
+- **Records are computed** for leagues the app runs (`syncRecords`): each
+  finished week's score against that week's opponent, ranked by wins (a tie
+  counts half) then points for. Imported leagues keep the host's record.
+- **A league made after week 1** starts 0-0 and counts only what happens from
+  the moment it was made (`leagueStart`, `counts`): earlier weeks score 0 for
+  it, and in the week it was made a player counts only if his game kicked off
+  after that moment (his row reads "Before league" and his points are 0).
+  City Boys and imported leagues count the whole season.
+- `node tools/link-audit.mjs` walks 47 screens and sheets across City Boys, a
+  league mid-draft and the imported league, and fails on any visible player
+  name or record that is not a link; it also checks the taps themselves.
+  `node tools/league-start-check.mjs` checks the mid-season start rule.
+
 ## Known gaps
 
-- Team records (W-L) are still the stored `rec` values; points for and against
-  come from real scores, but wins and losses are not yet computed from them.
+- The made-up demo leagues on the home screen have no schedules, so their
+  records are not links. Markets keeps its own player sheet.
 - Kickers and defenses are not on rosters, so their stats are not mapped.
 - A handful of players whose names differ between sources may not match
   (about 3% of scorers in week 3).
