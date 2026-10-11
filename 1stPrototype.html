@@ -975,6 +975,40 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .st-nm .n .pk{cursor:pointer}
 .st-nm .n .pk:active{color:var(--accent)}
 .st-pts.pre{color:var(--ink-3)}
+.st-pts.tap{cursor:pointer;border-radius:8px}
+.st-pts.tap:active{background:rgba(255,255,255,.06)}
+.st-nm .g2.sl{color:var(--ink-2);opacity:1;white-space:normal;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.st-nm .g2 .pulse{display:inline-block;width:5px;height:5px;margin-right:4px;vertical-align:1px}
+#statSheet{max-height:84%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ss-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+.ss-who{flex:1;min-width:0}
+.ss-n{font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-m{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.ss-g{font-size:11.5px;color:var(--ink-2);margin-top:3px;font-weight:600}
+.ss-g .pulse{display:inline-block;width:6px;height:6px;margin-right:5px;vertical-align:1px}
+.ss-tot{text-align:right;flex:none}
+.ss-tot b{display:block;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:26px;font-weight:700;line-height:1.1}
+.ss-tot span{font-size:10.5px;color:var(--ink-3)}
+.ss-sec{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-3);margin:16px 0 6px}
+.ss-box{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line-soft)}
+.ss-bl{width:66px;flex:none;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.ss-cells{flex:1;display:flex;gap:4px;min-width:0}
+.ss-cell{flex:1;text-align:center;min-width:0}
+.ss-cell b{display:block;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:700}
+.ss-cell span{font-size:9px;color:var(--ink-3);letter-spacing:.6px}
+.ss-row{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-top:1px solid var(--line-soft);font-size:12.5px}
+.ss-row .l{flex:1;min-width:0}
+.ss-row .l i{font-style:normal;color:var(--ink-3);font-size:11px}
+.ss-row .c{color:var(--ink-3);font-size:11px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
+.ss-row .v{width:58px;text-align:right;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600}
+.ss-row.tot{border-top:1px solid var(--line);font-weight:700}
+.ss-row.tot .v{font-weight:800}
+.ss-none{font-size:12px;color:var(--ink-3);padding:6px 0}
+.ss-td{display:flex;gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line-soft);font-size:12px}
+.ss-td .q{width:58px;flex:none;color:var(--ink-3);font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.ss-td .t{flex:1;min-width:0}
+.ss-td .v{flex:none;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--green)}
+.ss-note{font-size:11px;color:var(--ink-3);margin-top:12px;text-align:center}
 .swap-cur{background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:var(--ink)}
 .swap-cur b{color:#fff}
 .swap-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:12px;border:1px solid var(--line-soft);margin-bottom:8px;cursor:pointer}
@@ -2893,6 +2927,12 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     <div id="claimBody"></div>
   </div>
 
+  <div class="sheet-scrim" id="statScrim" onclick="closeStatSheet()"></div>
+  <div class="sheet" id="statSheet">
+    <div class="sheet-h" id="statTitle">Stats</div>
+    <div id="statBody"></div>
+  </div>
+
   <div class="sheet-scrim" id="confirmScrim" onclick="closeConfirm()"></div>
   <div class="sheet" id="confirmSheet">
     <div class="sheet-h" id="confirmTitle">Drop player?</div>
@@ -4791,6 +4831,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     scheduleBag: () => scheduleBag,
     scheduleForWeek: () => scheduleForWeek,
     scoreCell: () => scoreCell,
+    openStatSheet: () => openStatSheet,
+    STAT_REF: () => STAT_REF,
+    closeStatSheet: () => closeStatSheet,
     seasonTotals: () => seasonTotals,
     seededScore: () => seededScore,
     setPairing: () => setPairing,
@@ -11856,20 +11899,100 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     for (let i = 0; i < name.length; i++) h = h * 31 + name.charCodeAt(i) >>> 0;
     return "Q" + (1 + h % 4) + " " + h % 15 + ":" + String(h % 6 * 10).padStart(2, "0");
   }
-  function sideCell(p) {
+  function sideCell(p, schedOnly) {
     if (!p) return `<div class="st-nm"><div class="n empty">Empty</div></div>`;
     const dim = p.fa ? ' style="color:var(--ink-3)"' : "";
     const l1 = `${p.pos} \xB7 ${p.tm}${p.bye ? ` (${p.bye})` : ""}${ageBit(p)}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}`;
     const nm = `<span class="pk" onclick="event.stopPropagation();openPlayer('${esc(pKeyOf(p))}')">${p.n}</span>`;
-    return `<div class="st-nm"><div class="n"${dim}>${nm}</div><div class="m">${l1}</div>${p.g ? `<div class="g2">${p.g}</div>` : ""}</div>`;
+    return `<div class="st-nm"><div class="n"${dim}>${nm}</div><div class="m">${l1}</div>${schedOnly ? p.g ? `<div class="g2">${p.g}</div>` : "" : gameLine(p)}</div>`;
+  }
+  // Under the name: whom he plays and when, until kickoff. From kickoff on,
+  // what he has done instead (a one-line box score; a dot while it is live).
+  function gameLine(p) {
+    const w = S.week;
+    if (!lvPlayed(p, w)) return p.g ? `<div class="g2">${p.g}</div>` : "";
+    const line = lvLine(p, w), gi = lvGameInfo(p.tm, w), live = !!gi && gi.state === "in";
+    let txt = lvStatSummary(line, p.pos);
+    if (!txt) txt = line && SKILL_POS[p.pos] ? live ? "No stats yet" : "No stats" : gi ? gi.label : "";
+    // a number stays with its unit when the line wraps ("93 yd", "2 TD"),
+    // and a separator ends the first line rather than starting the second
+    txt = txt.replace(/ (?=car|rec|yd|TD|INT|2PT|FUM|return|\(|\xB7)/g, "\xA0");
+    return `<div class="g2 sl">${live ? '<span class="pulse"></span>' : ""}${escHtml(txt)}</div>`;
+  }
+  var SKILL_POS = { QB: 1, RB: 1, WR: 1, TE: 1 };
+  // players whose points are on screen, by key, for the stats sheet
+  var STAT_REF = {};
+  function statTap(p) {
+    const k = pKeyOf(p);
+    STAT_REF[k] = p;
+    return ` onclick="event.stopPropagation();openStatSheet('${esc(k)}')"`;
   }
   function scoreCell(p, phased) {
     if (!p) return `<div class="st-pts">\u2014</div>`;
     if (phased) {
       const locked = isLocked(p), pts = locked ? pLive(p.proj, p.n, p) : 0;
-      return `<div class="st-pts${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-id="${escAttr(p.id || "")}" data-proj="${p.proj}" data-ord="${pOrd(p)}">${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+      return `<div class="st-pts tap${locked ? "" : " pre"}" data-n="${escAttr(p.n)}" data-id="${escAttr(p.id || "")}" data-proj="${p.proj}" data-ord="${pOrd(p)}"${statTap(p)}>${pts.toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
     }
-    return `<div class="st-pts">${pLive(p.proj, p.n, p).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+    return `<div class="st-pts tap"${statTap(p)}>${pLive(p.proj, p.n, p).toFixed(1)}<div class="pj">${p.proj.toFixed(1)}</div></div>`;
+  }
+  // ---- stats sheet ------------------------------------------------------------
+  // Tapping a player's points opens his week: the box score, how each stat
+  // became points under this league's scoring, and his touchdowns. Before
+  // kickoff it shows his projection the same way.
+  var BOX_GROUPS = [
+    { lb: "Passing", pos: "QB", cells: [["C/ATT", ["passComp", "passAtt"]], ["YDS", "passYd"], ["TD", "passTD"], ["INT", "passInt"], ["SCK", "passSacked"], ["LNG", "passLng"]] },
+    { lb: "Rushing", pos: "RB", cells: [["CAR", "rushAtt"], ["YDS", "rushYd"], ["TD", "rushTD"], ["LNG", "rushLng"]] },
+    { lb: "Receiving", pos: "WR TE", cells: [["REC", "rec"], ["TGT", "recTgt"], ["YDS", "recYd"], ["TD", "recTD"], ["LNG", "recLng"]] },
+    { lb: "Fumbles", pos: "", cells: [["FUM", "fum"], ["LOST", "fumLost"], ["TD", "fumTD"]] }
+  ];
+  function ssNum(v) {
+    v = +v || 0;
+    return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  }
+  function ssMult(v) {
+    return String(+(+v).toFixed(4));
+  }
+  function boxScoreHTML(line, pos) {
+    const n = (k) => +line[k] || 0;
+    const groups = BOX_GROUPS.filter((g) => g.pos.split(" ").indexOf(pos) >= 0 || g.cells.some(([, k]) => [].concat(k).some((x) => n(x))));
+    if (!groups.length) return "";
+    return `<div class="ss-sec">Box score</div>` + groups.map((g) => `<div class="ss-box"><div class="ss-bl">${g.lb}</div><div class="ss-cells">${g.cells.map(([lb, k]) => `<div class="ss-cell"><b>${Array.isArray(k) ? k.map((x) => ssNum(n(x))).join("/") : ssNum(n(k))}</b><span>${lb}</span></div>`).join("")}</div></div>`).join("");
+  }
+  function openStatSheet(key) {
+    const p = STAT_REF[key];
+    if (!p) return;
+    const w = S.week, played = lvPlayed(p, w), id = lvId(p);
+    const line = played ? lvLine(p, w) : LIVE.proj[w] && LIVE.proj[w][id] || null;
+    const total = played ? pLive(p.proj, p.n, p) : +p.proj || 0;
+    const gi = played ? lvGameInfo(p.tm, w) : null;
+    const when = played ? gi ? gi.label + (gi.score ? " \xB7 " + gi.score : "") : "Week " + w : p.g || (p.bye === w ? "Bye" : "");
+    let h = `<div class="ss-top">
+      <div class="ss-who"><div class="ss-n">${escHtml(p.n)}</div><div class="ss-m">${p.pos} \xB7 ${p.tm}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
+      <div class="ss-tot"><b>${total.toFixed(2)}</b><span>${played ? `Week ${w} \xB7 proj ${(+p.proj || 0).toFixed(1)}` : `Projected \xB7 week ${w}`}</span></div>
+    </div>`;
+    const sc = line ? scoreStats(line, { pos: p.pos }) : { total: 0, lines: [] };
+    if (line && SKILL_POS[p.pos]) h += boxScoreHTML(line, p.pos);
+    h += `<div class="ss-sec">${played ? "Points" : "Projected points"}</div>`;
+    const rows = sc.lines.map((l) => `<div class="ss-row"><span class="l">${escHtml(l.lb)}</span><span class="c">${ssNum(l.n)} \xD7 ${ssMult(l.v)}</span><span class="v">${l.pts > 0 ? "+" : ""}${l.pts.toFixed(2)}</span></div>`);
+    // Sleeper's official total for an imported league can hold scoring the
+    // app does not itemize (kickers, defenses, rules it does not map)
+    const diff = Math.round((total - sc.total) * 100) / 100;
+    if (played && Math.abs(diff) >= 0.015) rows.push(`<div class="ss-row other"><span class="l">${sc.lines.length ? "Other scoring" : "Points"} <i>per Sleeper</i></span><span class="c"></span><span class="v">${diff > 0 && sc.lines.length ? "+" : ""}${diff.toFixed(2)}</span></div>`);
+    if (!rows.length) rows.push(`<div class="ss-none">${played ? lvGameInfo(p.tm, w) && lvGameInfo(p.tm, w).state === "in" ? "No points yet." : "No points this week." : "No projection for this week yet."}</div>`);
+    h += rows.join("") + `<div class="ss-row tot"><span class="l">Total</span><span class="c"></span><span class="v">${total.toFixed(2)}</span></div>`;
+    const tds = played ? lvTdPlays(p, w) : [];
+    if (tds.length) h += `<div class="ss-sec">Touchdowns</div>` + tds.map((t) => `<div class="ss-td"><span class="q">${t.q ? (t.q > 4 ? "OT" : "Q" + t.q) + (t.clk ? " " + t.clk : "") : "Q" + Math.min(4, Math.max(1, Math.ceil(t.min / 15)))}</span><span class="t">${escHtml(t.text)}</span><span class="v">${t.pts ? "+" + ssNum(t.pts) : ""}</span></div>`).join("");
+    if (played && SKILL_POS[p.pos] && gi && gi.state === "in") h += `<div class="ss-note">Live \xB7 updates about every minute</div>`;
+    document.getElementById("statTitle").textContent = played ? "Week " + w + " stats" : "Week " + w + " projection";
+    document.getElementById("statBody").innerHTML = h;
+    document.getElementById("statScrim").classList.add("show");
+    const sh = document.getElementById("statSheet");
+    sh.scrollTop = 0;
+    sh.classList.add("show");
+  }
+  function closeStatSheet() {
+    document.getElementById("statScrim").classList.remove("show");
+    document.getElementById("statSheet").classList.remove("show");
   }
   function hhRow(a, x, badge2, opts) {
     opts = opts || {};
@@ -14755,11 +14878,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return mine.map((r, i) => {
       const x = theirs[i] ? theirs[i].p : null;
       return `<div class="st-row">
-      <div class="st-side">${sideCell(r.p)}</div>
+      <div class="st-side">${sideCell(r.p, true)}</div>
       ${seededScoreCell(r.p)}
       <div class="st-pos">${r.slot}</div>
       ${seededScoreCell(x)}
-      <div class="st-side opp">${sideCell(x)}</div>
+      <div class="st-side opp">${sideCell(x, true)}</div>
     </div>`;
     }).join("");
   }
@@ -17721,6 +17844,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     lvState: () => lvState,
     weekStarters: () => weekStarters,
     lvJumps: () => lvJumps,
+    lvTdPlays: () => lvTdPlays,
+    lvGameInfo: () => lvGameInfo,
+    lvPlayed: () => lvPlayed,
+    lvStatSummary: () => lvStatSummary,
     lvLeft: () => lvLeft,
     lvMatch: () => lvMatch,
     lvPoints: () => lvPoints,
@@ -17729,7 +17856,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     lvCurrentWeek: () => lvCurrentWeek
   });
   var LV_SEASON = 2026;
-  var LV_CACHE = "arc_live_v1";
+  var LV_CACHE = "arc_live_v2";
+  try {
+    localStorage.removeItem("arc_live_v1");
+  } catch (e) {
+  }
   var LV_TEAM = { LAR: "LA", WSH: "WAS", JAC: "JAX" };
   // Sleeper stat key -> app stat key. Yardage bonuses are derived below the way
   // the app always has (300-399 / 400+ and so on), not taken from Sleeper.
@@ -17743,7 +17874,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     rec_0_4: "recB0", rec_5_9: "recB5", rec_10_19: "recB10", rec_20_29: "recB20", rec_30_39: "recB30", rec_40p: "recB40",
     rec_td_40p: "recTD40", rec_td_50p: "recTD50",
     fum: "fum", fum_lost: "fumLost", fum_rec_td: "fumTD",
-    st_td: "stpTD", kr_yd: "stpKRYd", pr_yd: "stpPRYd", st_fum_rec: "stpFR", st_ff: "stpFF", st_tkl_solo: "stpSolo"
+    st_td: "stpTD", kr_yd: "stpKRYd", pr_yd: "stpPRYd", st_fum_rec: "stpFR", st_ff: "stpFF", st_tkl_solo: "stpSolo",
+    // shown in the box score only; no scoring rule reads them
+    rec_tgt: "recTgt", pass_lng: "passLng", rush_lng: "rushLng", rec_lng: "recLng"
   };
   var LIVE = {
     week: 1,
@@ -17911,7 +18044,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const out = {};
     (b.events || []).forEach((e) => {
       const c = (e.competitions || [])[0] || {}, st = c.status || e.status || {}, t = st.type || {};
-      const g = { id: e.id, state: t.state, period: st.period || 0, clock: st.clock || 0, detail: t.shortDetail || "", kick: Date.parse(e.date), sc: (c.competitors || []).map((x) => x.score).join("-") };
+      const g = { id: e.id, state: t.state, period: st.period || 0, clock: st.clock || 0, detail: t.shortDetail || "", kick: Date.parse(e.date), sc: (c.competitors || []).map((x) => x.score).join("-"), tms: (c.competitors || []).map((x) => [lvTeam(x.team.abbreviation), x.score, x.homeAway === "home" ? 1 : 0]) };
       (c.competitors || []).forEach((x) => out[lvTeam(x.team.abbreviation)] = g);
     });
     LIVE.games[w] = out;
@@ -17936,7 +18069,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           const per = p.period && p.period.number || 1, left = p.clock && +p.clock.value || 0;
           // minutes of game clock elapsed (overtime is 10 minutes)
           const min = per <= 4 ? (per - 1) * 15 + (15 - left / 60) : 60 + (10 - left / 60);
-          return { min: Math.round(min * 10) / 10, text: p.text || "", type: p.type && p.type.text || "" };
+          return { min: Math.round(min * 10) / 10, q: per, clk: p.clock && p.clock.displayValue || "", text: p.text || "", type: p.type && p.type.text || "" };
         });
         const teamsIn = Object.keys(games).filter((tm) => games[tm].id === id);
         teamsIn.forEach((tm) => bag[tm] = plays);
@@ -17993,31 +18126,90 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // Real scoring moments for a player, as the Rewind's jumps: each touchdown
   // the player is named in lands at its game time, and the rest of their points
   // accrue at the quarter breaks. Null when the plays are not loaded.
+  // The touchdowns a player scored or threw that week, from ESPN's
+  // play-by-play; empty until it is loaded.
+  function lvTdPlays(p, w) {
+    if (!LIVE) return [];
+    w = +(w || S.week);
+    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm;
+    const plays = (LIVE.plays[w] || {})[tm] || [];
+    const full = lvNorm(rec.full || p && (p.full || p.n) || ""), sc = scoringBag();
+    if (!full) return [];
+    const esc = full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const out = [];
+    plays.forEach((pl) => {
+      if (!/touchdown/i.test(pl.type)) return;
+      // ESPN writes "<scorer> 23 Yd pass from <passer> (<extra point>)". Only
+      // the scorer and the passer count; a name in the bracketed extra point
+      // or two-point try is someone else's touchdown.
+      const desc = String(pl.text || "").replace(/\s*\(.*$/, "");
+      const main = lvNorm(desc);
+      // "<passer> complete pass to <receiver> ..., lateral to <scorer>" leads
+      // with the passer
+      const lead = main.indexOf(full + " ") === 0 ? main.slice(full.length + 1) : null;
+      const threw = lead != null && /^(complete )?pass\b/.test(lead);
+      const scorer = main === full || lead != null && !threw;
+      const passer = threw || new RegExp("\\bpass from " + esc + "(\\b|$)").test(main);
+      if (!scorer && !passer) return;
+      const pts = passer ? +sc.passTD || 0 : /rush/i.test(pl.type) ? +sc.rushTD || 0 : /pass|reception/i.test(pl.type) ? +sc.recTD || 0 : /fumble/i.test(pl.type) ? +sc.fumTD || 0 : +sc.stpTD || 0;
+      out.push({ min: pl.min, q: pl.q, clk: pl.clk, pts, text: desc, passer });
+    });
+    return out;
+  }
+  // A team's game that week as ESPN reports it: "Final", "Q3 2:29",
+  // "Halftime", with the score ("NE 21 @ BUF 17"). Null before kickoff.
+  function lvGameInfo(tm, w) {
+    w = +(w || S.week);
+    const g = LIVE && (LIVE.games[w] || {})[tm];
+    if (!g) return w < LIVE_WEEK && weekGame(tm, w) ? { state: "post", label: "Final", score: "" } : null;
+    if (g.state !== "in" && g.state !== "post") return null;
+    const q = (n) => n > 4 ? "OT" : "Q" + (n || 1);
+    let label;
+    if (g.state === "post") label = /OT/i.test(g.detail) ? "Final/OT" : "Final";
+    else if (/half/i.test(g.detail)) label = "Halftime";
+    else if (/^end/i.test(g.detail)) label = "End of " + q(g.period);
+    else label = q(g.period) + " " + Math.floor((g.clock || 0) / 60) + ":" + String(Math.floor((g.clock || 0) % 60)).padStart(2, "0");
+    const away = (g.tms || []).find((t) => !t[2]), home = (g.tms || []).find((t) => t[2]);
+    return { state: g.state, label, score: away && home ? `${away[0]} ${away[1]} @ ${home[0]} ${home[1]}` : "" };
+  }
+  // Whether a player's game that week has kicked off, so his row shows what
+  // he has done instead of whom he plays.
+  function lvPlayed(p, w) {
+    w = +(w || S.week);
+    if (!p || p.fa || !p.tm || w > LIVE_WEEK || !weekGame(p.tm, w)) return false;
+    if (w < LIVE_WEEK) return true;
+    const g = LIVE && (LIVE.games[w] || {})[p.tm];
+    if (g && (g.state === "in" || g.state === "post")) return true;
+    if (g && g.state === "pre") return false;
+    return isLocked(p);
+  }
+  // A one-line box score: "7 rec 82 yd 1 TD · 1 car 4 yd". Empty when the
+  // line has nothing in it.
+  function lvStatSummary(line, pos) {
+    if (!line) return "";
+    const n = (k) => +line[k] || 0, td = (k) => n(k) ? ` ${n(k)} TD` : "";
+    const g = {
+      pass: n("passAtt") || n("passYd") || n("passTD") ? `${n("passComp")}/${n("passAtt")} ${n("passYd")} yd${td("passTD")}${n("passInt") ? ` ${n("passInt")} INT` : ""}` : "",
+      rush: n("rushAtt") || n("rushYd") || n("rushTD") ? `${n("rushAtt")} car ${n("rushYd")} yd${td("rushTD")}` : "",
+      rec: n("rec") || n("recYd") || n("recTD") ? `${n("rec")} rec ${n("recYd")} yd${td("recTD")}` : n("recTgt") ? `0 rec (${n("recTgt")} tgt)` : ""
+    };
+    const order = pos === "QB" ? ["pass", "rush", "rec"] : pos === "RB" ? ["rush", "rec", "pass"] : ["rec", "rush", "pass"];
+    const out = order.map((k) => g[k]).filter(Boolean);
+    const two = n("pass2pt") + n("rush2pt") + n("rec2pt"), ret = n("fumTD") + n("stpTD");
+    if (two) out.push(`${two} 2PT`);
+    if (ret) out.push(`${ret} return TD`);
+    if (n("fumLost")) out.push(`${n("fumLost")} FUM`);
+    return out.join(" \xB7 ");
+  }
   function lvJumps(p, w) {
     if (!LIVE) return null;
     w = +(w || S.week);
     const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm;
     // without play-by-play (not loaded yet) there are no touchdown moments,
     // but the points still land within the part of the game already played
-    const plays = (LIVE.plays[w] || {})[tm] || [];
     const total = lvPoints(p, w);
     if (total == null) return null;
-    const full = lvNorm(rec.full || p && (p.full || p.n) || ""), sc = scoringBag();
-    const hits = [];
-    const esc = full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    plays.forEach((pl) => {
-      if (!full || !/touchdown/i.test(pl.type)) return;
-      // ESPN writes "<scorer> 23 Yd pass from <passer> (<extra point>)". Only
-      // the scorer and the passer count; a name in the bracketed extra point
-      // or two-point try is someone else's touchdown.
-      const desc = String(pl.text || "").replace(/\s*\(.*$/, "");
-      const main = lvNorm(desc);
-      const scorer = main === full || main.indexOf(full + " ") === 0;
-      const passer = new RegExp("\\bpass from " + esc + "(\\b|$)").test(main);
-      if (!scorer && !passer) return;
-      const pts = passer ? +sc.passTD || 0 : /rush/i.test(pl.type) ? +sc.rushTD || 0 : /pass|reception/i.test(pl.type) ? +sc.recTD || 0 : /fumble/i.test(pl.type) ? +sc.fumTD || 0 : +sc.stpTD || 0;
-      if (pts) hits.push({ at: Math.max(0.02, Math.min(0.98, pl.min / 60)), pts, text: desc });
-    });
+    const hits = lvTdPlays(p, w).filter((h) => h.pts).map((h) => ({ at: Math.max(0.02, Math.min(0.98, h.min / 60)), pts: h.pts, text: h.text }));
     if (!total) return [{ at: 0.5, share: 0 }];
     // Place game-clock moments on the chart's wall clock. A finished game spans
     // its whole slot; one in progress has only reached "now", which is however

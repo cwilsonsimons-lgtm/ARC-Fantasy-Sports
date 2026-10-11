@@ -34,7 +34,7 @@ pinned to that afternoon.
   these. A player with no line scores 0; nothing is invented.
 - **Projections**: Sleeper's, scored the same way, replace `proj` per week.
 - **Refresh**: every ~60s while a game in the live week is on; finished weeks
-  are cached in `localStorage` (`arc_live_v1`).
+  are cached in `localStorage` (`arc_live_v2`).
 - **Win %**: remaining projection is scaled by how much of each game is left
   (ESPN period and clock).
 - **Rewind**: each touchdown a starter scores or throws lands at its real game
@@ -53,6 +53,20 @@ pinned to that afternoon.
   when its score changes.
 - **Locks** compare a player's kickoff to the real time, so past weeks are
   always locked and later weeks open.
+- **Stat lines**: once a player's game kicks off (ESPN says it is in progress
+  or over; a finished week counts as played), the line under his name stops
+  naming the opponent and kickoff and shows his box score in one line
+  ("7 rec 82 yd 1 TD · 1 car 4 yd"), with a green dot while the game is live.
+  Before kickoff, and on bye, it is the schedule as before. Demo leagues, whose
+  points are scaled projections, keep the schedule.
+- **Stats sheet**: tapping a player's points opens his week: the game's status
+  and score, a box score (targets and longest plays come from the same Sleeper
+  feed and are display only), each scoring rule that applied with its count,
+  value and points, the total (the same number as the row), and his
+  touchdowns with quarter and clock from ESPN's play-by-play. For an imported
+  league the total is Sleeper's; anything it holds that the app does not
+  itemize (kickers, defenses, unmapped rules) shows as "Other scoring per
+  Sleeper". Before kickoff the sheet shows his projection the same way.
 
 ## Known gaps
 
@@ -88,3 +102,5 @@ Sleeper's full player list, `tools/fixtures/sleeper_players.json`), then by name
 and position. Rookies missing from the app's player pool still show with their
 name and Sleeper points. `node tools/sleeper-check.mjs` imports the real City
 Boys Dynasty league from `tools/fixtures/league/`.
+`node tools/stat-check.mjs` checks the stat lines and the stats sheet against
+the same league and Sleeper's week 3 and 4 numbers.
