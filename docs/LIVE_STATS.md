@@ -114,8 +114,21 @@ pinned to that afternoon.
 
 ## Sleeper league import
 
-Home ▸ **Import from Sleeper** takes a league ID, lists its teams, and asks
-which one is yours. The league becomes a created league (`js/sleeper.js`)
+**By username (the usual way in).** Import from Sleeper asks for a Sleeper
+username. `GET /v1/user/<username>` gives the account and
+`GET /v1/user/<user_id>/leagues/nfl/<season>` its leagues for the season; each
+listed league imports with the roster that account owns or co-owns as "my
+team", so there is no league ID and no picking. An account that is not on any
+team in a league picks from the list. The username is kept in the store (it
+travels with the signed-in account), so the next import opens straight on the
+list, where leagues already brought in read "Open"; "Not you?" forgets it. A
+league ID still works from the first screen, and with the username known the
+user's own team leads that list, marked "You". `node tools/sleeper-user-check.mjs`
+covers the flow.
+
+**What the import does.**
+
+Either way, the league becomes a created league (`js/sleeper.js`)
 whose teams, records, roster spots, rosters (starters, IR, taxi, bench) and
 weekly schedule come from Sleeper's public API:
 

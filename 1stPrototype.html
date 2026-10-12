@@ -2135,10 +2135,20 @@ body.forming .tabs{display:none}
 .sl-team:active{border-color:rgba(var(--accent-rgb),.6)}
 .sl-av{width:34px;height:34px;border-radius:10px;overflow:hidden;flex:none;display:grid;place-items:center;
   background:var(--card-2);font-weight:700;color:var(--ink-2)}
-.sl-av img{width:100%;height:100%;object-fit:cover}
+.sl-av{position:relative}
+.sl-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .sl-tn{display:flex;flex-direction:column;min-width:0}
 .sl-tn b{font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sl-tn i{font-style:normal;font-size:10.5px;color:var(--ink-3);margin-top:2px}
+.sl-tn{flex:1}
+.sl-team.me{border-color:rgba(var(--accent-rgb),.55);background:rgba(var(--accent-rgb),.08)}
+.sl-go{flex:none;font-size:11px;font-weight:700;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.5);border-radius:999px;padding:4px 10px}
+.sl-go.have{color:var(--ink-2);border-color:var(--line)}
+.sl-or{display:flex;align-items:center;gap:10px;margin:14px 16px 10px;color:var(--ink-3);font-size:10.5px;text-transform:uppercase;letter-spacing:1px}
+.sl-or::before,.sl-or::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+.sl-me{display:flex;align-items:center;gap:10px;margin:0 16px 10px;padding:9px 10px;border-radius:12px;background:var(--card);border:1px solid var(--line-soft)}
+.sl-link{flex:none;font-size:11.5px;font-weight:600;color:var(--accent);cursor:pointer}
+.sl-alt{padding:0 16px 14px;text-align:center}
 .tc-btn.busy{opacity:.55;pointer-events:none}
 
 /* ===== PLAYER CARD OWNERSHIP ===== */
@@ -14926,7 +14936,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     </div>
     <div class="hb-new" onclick="openSleeperImport()">
       <div class="hb-plus">\u21E3</div>
-      <div class="hb-id"><div class="hb-nm">Import from Sleeper</div><div class="hb-st">Rosters and scores stay in sync</div></div>
+      <div class="hb-id"><div class="hb-nm">Import from Sleeper</div><div class="hb-st">Your leagues by username · rosters and scores stay in sync</div></div>
     </div>`;
     bindReorder(document.getElementById("hbList"));
     startClock();
@@ -18688,6 +18698,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var sleeper_exports = {};
   __export(sleeper_exports, {
     openSleeperImport: () => openSleeperImport,
+    slAsk: () => slAsk,
+    slFindUser: () => slFindUser,
+    slForgetMe: () => slForgetMe,
+    slShowLeagues: () => slShowLeagues,
+    slImportLeague: () => slImportLeague,
     slFind: () => slFind,
     slPick: () => slPick,
     slSync: () => slSync,
@@ -18943,17 +18958,129 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveStore();
   }
   // ---- import flow -------------------------------------------------------------
-  var slFound = null;
-  function openSleeperImport() {
-    document.getElementById("condTitle").textContent = "Import from Sleeper";
-    document.getElementById("condBody").innerHTML = `
-    <div class="sl-help">Paste your Sleeper league ID: the long number in the league's web address on sleeper.com.</div>
-    <div class="cond-row"><input id="slId" class="set-ctl" type="text" inputmode="numeric" autocomplete="off" placeholder="League ID"></div>
-    <div class="sl-msg" id="slMsg"></div>
-    <div class="cond-btns"><div class="tc-btn acc" id="slFindBtn" onclick="slFind()">Find league</div></div>`;
+  // ---- finding a league ----------------------------------------------------
+  // A Sleeper username finds every league that person is in this season and
+  // their own team in each, so there is no league ID to dig out and no picking
+  // yourself out of a list. The username is kept (it travels with the account)
+  // so the next import goes straight to the list. A league ID still works.
+  function slMe() {
+    return store.sleeperUser && store.sleeperUser.id ? store.sleeperUser : null;
+  }
+  function slSheet(title, body) {
+    document.getElementById("condTitle").textContent = title;
+    document.getElementById("condBody").innerHTML = body;
     document.getElementById("condScrim").classList.add("show");
     document.getElementById("condSheet").classList.add("show");
   }
+  function openSleeperImport() {
+    if (slMe()) slShowLeagues();
+    else slAsk();
+  }
+  function slAsk() {
+    slSheet("Import from Sleeper", `
+    <div class="sl-help">Your Sleeper username finds your leagues, and your team in each.</div>
+    <div class="cond-row"><input id="slUser" class="set-ctl" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Sleeper username"
+      onkeydown="if(event.key==='Enter')slFindUser()"></div>
+    <div class="sl-msg" id="slUserMsg"></div>
+    <div class="cond-btns"><div class="tc-btn acc" id="slUserBtn" onclick="slFindUser()">Find my leagues</div></div>
+    <div class="sl-or"><span>or paste a league ID</span></div>
+    <div class="sl-help">The long number in the league's web address on sleeper.com.</div>
+    <div class="cond-row"><input id="slId" class="set-ctl" type="text" inputmode="numeric" autocomplete="off" placeholder="League ID"
+      onkeydown="if(event.key==='Enter')slFind()"></div>
+    <div class="sl-msg" id="slMsg"></div>
+    <div class="cond-btns"><div class="tc-btn" id="slFindBtn" onclick="slFind()">Find league</div></div>`);
+  }
+  async function slFindUser() {
+    const name = ((document.getElementById("slUser") || {}).value || "").trim().replace(/^@/, "").toLowerCase();
+    const msg = document.getElementById("slUserMsg"), btn = document.getElementById("slUserBtn");
+    if (!name) {
+      msg.textContent = "Enter your Sleeper username";
+      return;
+    }
+    msg.textContent = "Looking you up…";
+    btn.classList.add("busy");
+    let u = null;
+    try {
+      u = await slGet(`/user/${encodeURIComponent(name)}`);
+    } catch (e) {
+      if (!/No Sleeper/.test(String(e.message))) {
+        msg.textContent = /Failed to fetch|NetworkError|Load failed/i.test(String(e)) ? "Couldn't reach Sleeper. Check your connection and try again." : String(e.message || e);
+        btn.classList.remove("busy");
+        return;
+      }
+    }
+    if (!u || !u.user_id) {
+      msg.textContent = `No Sleeper account is called “${name}”. Check the spelling (it's the name under your picture in Sleeper).`;
+      btn.classList.remove("busy");
+      return;
+    }
+    store.sleeperUser = { id: u.user_id, username: u.username || name, display: u.display_name || u.username || name, avatar: u.avatar || null };
+    saveStore();
+    slShowLeagues();
+  }
+  function slForgetMe() {
+    delete store.sleeperUser;
+    saveStore();
+    slAsk();
+  }
+  async function slShowLeagues() {
+    const me = slMe();
+    if (!me) return slAsk();
+    const av = me.avatar ? "https://sleepercdn.com/avatars/thumbs/" + me.avatar : null;
+    const head = `<div class="sl-me"><span class="sl-av">${escHtml(me.display.charAt(0))}${av ? `<img src="${av}" alt="" onerror="this.remove()">` : ""}</span>
+      <span class="sl-tn"><b>${escHtml(me.display)}</b><i>@${escHtml(me.username)} \xB7 ${LV_SEASON} season</i></span>
+      <span class="sl-link" onclick="slForgetMe()">Not you?</span></div>`;
+    const foot = `<div class="sl-alt"><span class="sl-link" onclick="slAsk()">Use a league ID instead</span></div>`;
+    slSheet("Your Sleeper leagues", head + `<div class="sl-msg" id="slMsg">Loading your leagues…</div><div id="slLeagues"></div>` + foot);
+    let list = [];
+    try {
+      list = (await slGet(`/user/${encodeURIComponent(me.id)}/leagues/nfl/${LV_SEASON}`) || []).filter((l) => l && l.league_id);
+    } catch (e) {
+      const m = document.getElementById("slMsg");
+      if (m) m.textContent = /Failed to fetch|NetworkError|Load failed/i.test(String(e)) ? "Couldn't reach Sleeper. Check your connection and try again." : String(e.message || e);
+      return;
+    }
+    const m = document.getElementById("slMsg"), el = document.getElementById("slLeagues");
+    if (!el) return;
+    if (!list.length) {
+      m.textContent = `No ${LV_SEASON} leagues on Sleeper for @${me.username}.`;
+      return;
+    }
+    m.textContent = `${list.length} league${list.length === 1 ? "" : "s"} \xB7 tap one to bring it in`;
+    el.innerHTML = `<div class="sl-teams">${list.map((l) => {
+      const have = myLeagues().find((x) => x.sleeper && x.sleeper.id === l.league_id);
+      const lav = l.avatar ? "https://sleepercdn.com/avatars/thumbs/" + l.avatar : null;
+      const kind = (l.settings || {}).type === 2 ? "Dynasty" : (l.settings || {}).type === 1 ? "Keeper" : "Redraft";
+      return `<div class="sl-team" onclick="slImportLeague('${escAttr(l.league_id)}')">
+        <span class="sl-av">${escHtml((l.name || "L").charAt(0))}${lav ? `<img src="${lav}" alt="" onerror="this.remove()">` : ""}</span>
+        <span class="sl-tn"><b>${escHtml(l.name || "Sleeper league")}</b><i>${l.total_rosters || "?"} teams \xB7 ${kind}</i></span>
+        <span class="sl-go${have ? " have" : ""}">${have ? "Open" : "Import"}</span>
+      </div>`;
+    }).join("")}</div>`;
+  }
+  // a league from the list: imported with the user's own team, no picking
+  async function slImportLeague(id) {
+    const me = slMe(), m = document.getElementById("slMsg");
+    if (m) m.textContent = "Loading the league…";
+    try {
+      const [lg, users, rosters] = await Promise.all([slGet(`/league/${id}`), slGet(`/league/${id}/users`), slGet(`/league/${id}/rosters`)]);
+      if (!lg || !lg.league_id) throw new Error("No Sleeper league with that ID");
+      slFound = { lg, users, rosters };
+      const mine = me && rosters.find((r) => r.owner_id === me.id || (r.co_owners || []).indexOf(me.id) >= 0);
+      const have = myLeagues().find((x) => x.sleeper && x.sleeper.id === lg.league_id);
+      if (mine && have && have.sleeper.me === mine.owner_id) {
+        // already here, as this user's team: just open it
+        closeCond();
+        openLeague(have.id);
+        return;
+      }
+      if (mine) return slPick(mine.owner_id);
+      slShowTeams(`@${me ? me.username : ""} isn't on a team in this league. Which team is yours?`);
+    } catch (e) {
+      if (m) m.textContent = /Failed to fetch|NetworkError|Load failed/i.test(String(e)) ? "Couldn't reach Sleeper. Check your connection and try again." : String(e.message || e);
+    }
+  }
+  var slFound = null;
   async function slFind() {
     const id = ((document.getElementById("slId") || {}).value || "").replace(/\D/g, "");
     const msg = document.getElementById("slMsg"), btn = document.getElementById("slFindBtn");
@@ -18967,23 +19094,32 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const [lg, users, rosters] = await Promise.all([slGet(`/league/${id}`), slGet(`/league/${id}/users`), slGet(`/league/${id}/rosters`)]);
       if (!lg || !lg.league_id) throw new Error("No Sleeper league with that ID");
       slFound = { lg, users, rosters };
-      const byUser = {};
-      users.forEach((u) => byUser[u.user_id] = u);
-      document.getElementById("condTitle").textContent = lg.name || "Sleeper league";
-      document.getElementById("condBody").innerHTML = `
-      <div class="sl-help">${rosters.length} teams \xB7 ${escHtml(lg.season || "")}. Which team is yours?</div>
-      <div class="sl-teams">${rosters.map((r) => {
-        const u = byUser[r.owner_id] || {}, av = slAvatar(u), st = r.settings || {};
-        const n = u.metadata && u.metadata.team_name || u.display_name || "Team " + r.roster_id;
-        return `<div class="sl-team" onclick="slPick('${escAttr(r.owner_id || "")}')">
-          <span class="sl-av">${av ? `<img src="${av}" alt="">` : escHtml(n.charAt(0))}</span>
-          <span class="sl-tn"><b>${escHtml(n)}</b><i>${escHtml(u.display_name || "Open")} \xB7 ${st.wins || 0}-${st.losses || 0}</i></span>
-        </div>`;
-      }).join("")}</div>`;
+      slShowTeams(`${rosters.length} teams \xB7 ${escHtml(lg.season || "")}. Which team is yours?`);
     } catch (e) {
       msg.textContent = /Failed to fetch|NetworkError|Load failed/i.test(String(e)) ? "Couldn't reach Sleeper. Check your connection and try again." : String(e.message || e);
       btn.classList.remove("busy");
     }
+  }
+  // Every team in the found league; the user's own (when their username is
+  // known) leads the list, marked.
+  function slShowTeams(note) {
+    const { lg, users, rosters } = slFound, me = slMe();
+    const byUser = {};
+    users.forEach((u) => byUser[u.user_id] = u);
+    const isMe = (r) => !!me && (r.owner_id === me.id || (r.co_owners || []).indexOf(me.id) >= 0);
+    const list = rosters.slice().sort((a, b) => (isMe(b) ? 1 : 0) - (isMe(a) ? 1 : 0));
+    document.getElementById("condTitle").textContent = lg.name || "Sleeper league";
+    document.getElementById("condBody").innerHTML = `
+      <div class="sl-help">${note}</div>
+      <div class="sl-teams">${list.map((r) => {
+      const u = byUser[r.owner_id] || {}, av = slAvatar(u), st = r.settings || {};
+      const n = u.metadata && u.metadata.team_name || u.display_name || "Team " + r.roster_id;
+      return `<div class="sl-team${isMe(r) ? " me" : ""}" onclick="slPick('${escAttr(r.owner_id || "")}')">
+          <span class="sl-av">${escHtml(n.charAt(0))}${av ? `<img src="${av}" alt="" onerror="this.remove()">` : ""}</span>
+          <span class="sl-tn"><b>${escHtml(n)}</b><i>${escHtml(u.display_name || "Open")} \xB7 ${st.wins || 0}-${st.losses || 0}</i></span>
+          ${isMe(r) ? `<span class="sl-go have">You</span>` : ""}
+        </div>`;
+    }).join("")}</div>`;
   }
   async function slPick(ownerId) {
     if (!slFound) return;
