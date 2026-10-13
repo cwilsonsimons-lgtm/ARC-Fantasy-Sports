@@ -104,6 +104,29 @@ pinned to that afternoon.
   name or record that is not a link; it also checks the taps themselves.
   `node tools/league-start-check.mjs` checks the mid-season start rule.
 
+## The matchup screen
+
+- **Swipe sideways** for the week's other games (`bindMatchupSwipe`,
+  `showGameAt`): left for the next, right for the one before, wrapping round
+  so both work from your own. The game shows on the same screen, scoreboard,
+  chart and both lineups, read-only; only your own lineup can be edited. Dots
+  in the scoreboard's top row say which game it is (yours is ringed) and tap
+  straight to one. The Matchup tab, All Matchups' own card and a new week all
+  go back to your game. A drag that starts on the chart scrubs the chart, a
+  mostly vertical one scrolls, and one from the very edge of the screen is
+  left to the browser's back gesture.
+- **Every week but the live one** opens on the full matchup, both lineups
+  with each player's stat line, instead of a "View Full Matchup" link. A past
+  week's chart is that week's game (it used to chart this week's opponent).
+- **The header folds away** as you scroll down and comes back as you scroll
+  up. Folding makes the scroll area taller, which near the end of a short
+  page pulls the scroll position back up; that used to read as a scroll up
+  and unfold it, over and over (All Matchups shook on a phone). It now folds
+  only when the page stays scrollable past where you are, ignores the moves
+  the browser makes while the fold settles, and ignores the end of the page.
+- `node tools/matchup-swipe-check.mjs` drives real touch events on City Boys
+  and the imported league, and flicks All Matchups at three screen heights.
+
 ## Known gaps
 
 - The made-up demo leagues on the home screen have no schedules, so their

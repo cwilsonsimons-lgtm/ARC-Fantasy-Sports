@@ -324,6 +324,13 @@ body.open .scrim{opacity:1;pointer-events:auto}
   background:rgba(var(--green-rgb),.16);border:1px solid rgba(var(--green-rgb),.4);border-radius:6px;padding:3px 7px}
 .ms-live .pulse{width:6px;height:6px}
 .ms-arena{position:relative;z-index:3;display:flex;align-items:flex-start;padding:6px 12px 4px}
+/* sideways swipes step through the week's games; the page still scrolls up and down */
+.view[data-view="matchup"]{touch-action:pan-y}
+.ms-dots{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:1px}
+.ms-dots i{display:grid;place-items:center;width:16px;height:16px;cursor:pointer}
+.ms-dots i::before{content:"";width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.32);transition:background .2s,transform .2s}
+.ms-dots i.me::before{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6)}
+.ms-dots i.on::before{background:#fff;box-shadow:none;transform:scale(1.25)}
 .ms-side{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
 .ms-side.L .sh-logo{transform:rotate(-11deg)}
 .ms-side.R .sh-logo{transform:rotate(11deg)}
@@ -5062,6 +5069,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       S.teamBackView = homeTab2();
     }
     if (name === "draft") renderDraft();
+    // the Matchup tab is always your own game, whichever you swiped to last
+    if (name === "matchup" && mPick != null) {
+      mPick = null;
+      renderUserMatchup();
+    }
     // standings are drawn when shown, so they carry the records as they are now
     if (name === "standings") {
       try {
@@ -5136,6 +5148,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     openSwap: () => openSwap,
     phaseStepperHTML: () => phaseStepperHTML,
     renderUserMatchup: () => renderUserMatchup,
+    bindMatchupSwipe: () => bindMatchupSwipe,
+    showGameAt: () => showGameAt,
+    shownGameIdx: () => shownGameIdx,
     stepSim: () => stepSim,
     swapIdx: () => swapIdx
   });
@@ -5248,6 +5263,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const bench = Object.keys(t.pp || {}).filter((sid) => !on[sid]).sort((a, b) => (t.pp[b] || 0) - (t.pp[a] || 0)).map((sid) => hydratePlayer(slPlayer(sid), w)).filter(Boolean);
     return { starters, bench, ir: [], taxi: [] };
   }
+  // A sum of hundredths drifts (153.75 adds up to 153.7499...), so it is
+  // settled to the hundredth before it is rounded to the tenth the scoreboard shows.
+  function tenth(v) {
+    return Math.round(Math.round(v * 100) / 10) / 10;
+  }
   // The win-probability series for any matchup (yours by default).
   function rewindSeries(sides) {
     _jumpMemo = /* @__PURE__ */ new Map();
@@ -5330,7 +5350,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text, parts: e.parts, kind: e.kind }));
         const a = sum(A, t), x = sum(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
-        out.push({ abs: t, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win, w, ev, ko: kickoff(t) });
+        out.push({ abs: t, a: tenth(a), x: tenth(x), win, w, ev, ko: kickoff(t) });
       });
     });
     // the live week is drawn up to now, not to the end of Monday night
@@ -5342,7 +5362,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       // the latest point is the matchup's live odds, the same figure its card shows
       const as = seededScore(LIVE_WEEK, sides[0]), xs = seededScore(LIVE_WEEK, sides[1]);
       const nowWin = sides[0] === liveSides()[0] && sides[1] === liveSides()[1] ? LT.aw : gameOdds(sides[0], sides[1], as, xs, LIVE_WEEK).aw;
-      past.push({ abs: now, a: Math.round(a * 10) / 10, x: Math.round(x * 10) / 10, win: nowWin, w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
+      past.push({ abs: now, a: tenth(a), x: tenth(x), win: nowWin, w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
       return past.length >= 2 ? past : out.slice(0, 2);
     }
     return out;
@@ -7186,6 +7206,22 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
 
   // js/matchup.js
+  // The matchup screen opens on your game; a swipe sideways steps through the
+  // rest of the week's games on the same screen (the dots in the scoreboard's
+  // top row say which one, and tap straight to it). mPick is that game's index in
+  // S.games, null for your own. Only your own lineup is editable.
+  var mPick = null;
+  function shownGameIdx() {
+    const mine = S.games.findIndex((g) => g.me);
+    return mPick != null && S.games[mPick] ? mPick : mine;
+  }
+  function showGameAt(i) {
+    const n = S.games.length;
+    if (!n) return;
+    i = (i % n + n) % n;
+    mPick = S.games[i].me ? null : i;
+    renderUserMatchup();
+  }
   function renderUserMatchup() {
     if (kartOn()) {
       renderKartWeek();
@@ -7196,8 +7232,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const live = S.week === LIVE_WEEK;
     if (live) recomputeLT();
     const uHero = document.getElementById("userHero"), uRw = document.getElementById("userRewind"), uLine = document.getElementById("userLineup");
+    if (mPick != null && (!S.games[mPick] || S.games[mPick].me)) mPick = null;
+    const other = mPick != null ? S.games[mPick] : null;
     let aK, xK, as, xs, aw, xw, ap = null, xp = null;
-    if (live) {
+    if (other) {
+      ({ a: aK, x: xK, as, xs, aw, xw } = other);
+      if (S.week >= LIVE_WEEK) {
+        const sum = (key) => starterPlayers(key).reduce((n, p) => n + (counts(p, S.week) ? p.proj : 0), 0);
+        ap = Math.round(sum(aK) * 10) / 10;
+        xp = Math.round(sum(xK) * 10) / 10;
+      }
+    } else if (live) {
       [aK, xK] = liveSides();
       as = LT.a;
       xs = LT.x;
@@ -7235,27 +7280,107 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const phase = live ? sk < 0 ? "pre" : !isFinite(sk) ? "final" : "live" : null;
     const canRewind = weekPlayed(S.week);
     uHero.className = "";
-    uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null });
+    uHero.innerHTML = stadiumStageHTML(aK, xK, as, xs, aw, xw, ap, xp, { phase, rewind: canRewind ? "userRewind" : null, pager: matchupPagerHTML() });
     bindVs(uHero.querySelector("[data-vs]"));
     if (canRewind) {
-      buildRewind(uRw, as, xs);
+      // the chart of the game on screen (a past week's opponent is not this week's)
+      buildRewind(uRw, as, xs, [aK, xK]);
       syncRewind("userRewind");
     } else {
       rwOpen.userRewind = false;
       uRw.style.display = "none";
     }
-    if (live) {
-      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: true, editable: true });
-      if (canRewind && rwOpen.userRewind && rwAt.userRewind != null) scrubLineup(uRw, rwAt.userRewind);
-    } else if (S.week > LIVE_WEEK && S.week === MINW) {
-      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: false, editable: true });
+    if (other || S.week !== LIVE_WEEK && !(S.week > LIVE_WEEK && S.week === MINW)) {
+      // anyone else's game, and any week but this one: both lineups as that
+      // week was played (or is projected), the same as the full matchup
+      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: true });
     } else {
-      const g = S.games.find((x) => x.me), idx = S.games.indexOf(g);
-      const note = S.week < LIVE_WEEK ? "Final result \xB7 open for Rewind" : "Scheduled \xB7 projections only";
-      uLine.innerHTML = `<div class="activity" onclick="openDetail(${idx})" style="margin-top:12px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>
-      <div class="t"><div class="a">View Full Matchup</div><div class="b">${note}</div></div><div class="arr">\u203A</div></div>`;
+      uLine.innerHTML = fullStartersHTML(aK, xK, { phased: live, editable: true });
     }
+    if (canRewind && rwOpen.userRewind && rwAt.userRewind != null) scrubLineup(uRw, rwAt.userRewind);
+  }
+  // One dot per game this week; yours is ringed.
+  function matchupPagerHTML() {
+    const n = S.games.length;
+    if (n < 2) return "";
+    const at = shownGameIdx();
+    return `<div class="ms-dots" role="tablist" aria-label="Swipe for the other matchups">${S.games.map((g, i) => `<i class="${i === at ? "on" : ""}${g.me ? " me" : ""}" role="tab" aria-label="${escAttr(T[g.a].n + " vs " + T[g.x].n)}" onclick="event.stopPropagation();showGameAt(${i})"></i>`).join("")}</div>`;
+  }
+  // Swipe left for the next game, right for the one before (it wraps, so both
+  // work from your own). The scoreboard and both lineups follow the finger;
+  // the stage's chrome, the week stepper and the chart stay put. A swipe that
+  // starts on the chart is the chart's (it scrubs), and one that starts at the
+  // very edge of the screen is the browser's back gesture.
+  function bindMatchupSwipe() {
+    const view = document.querySelector('.view[data-view="matchup"]');
+    if (!view || view._swipe) return;
+    view._swipe = true;
+    let t0 = null, mode = null, dx = 0, swallow = 0, busy = false;
+    const can = () => view.classList.contains("on") && !busy && !document.body.classList.contains("seeded") && !document.body.classList.contains("open") && !kartOn() && S.games && S.games.length > 1 && S.games.some((g) => g.me);
+    const movers = () => [document.querySelector("#userHero .ms-arena"), document.querySelector("#userHero .sh-winbar"), document.getElementById("userLineup")].filter(Boolean);
+    const place = (x, ms) => movers().forEach((el) => {
+      el.style.transition = ms ? `transform ${ms}ms cubic-bezier(.2,.7,.3,1), opacity ${ms}ms` : "none";
+      el.style.transform = x ? `translateX(${x}px)` : "";
+      el.style.opacity = x ? String(Math.max(0.25, 1 - Math.abs(x) / (view.offsetWidth || 390))) : "";
+    });
+    view.addEventListener("touchstart", (e) => {
+      t0 = null;
+      if (e.touches.length !== 1 || !can()) return;
+      const p = e.touches[0];
+      if (p.clientX < 20 || p.clientX > innerWidth - 20) return;
+      if (e.target.closest && e.target.closest(".rewind, input, textarea")) return;
+      t0 = { x: p.clientX, y: p.clientY, t: e.timeStamp };
+      mode = null;
+      dx = 0;
+    }, { passive: true });
+    view.addEventListener("touchmove", (e) => {
+      if (!t0) return;
+      const p = e.touches[0], mx = p.clientX - t0.x, my = p.clientY - t0.y;
+      if (!mode) {
+        if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+        mode = Math.abs(mx) > Math.abs(my) * 1.2 ? "x" : "y";
+        if (mode === "y") {
+          t0 = null;
+          return;
+        }
+      }
+      if (e.cancelable) e.preventDefault();
+      dx = mx;
+      place(dx, 0);
+    }, { passive: false });
+    const end = (e) => {
+      if (!t0 || mode !== "x") {
+        t0 = null;
+        return;
+      }
+      const w = view.offsetWidth || innerWidth, fast = Math.abs(dx) / Math.max(1, e.timeStamp - t0.t) > 0.45;
+      t0 = null;
+      swallow = performance.now() + 400;
+      if (e.type === "touchend" && (Math.abs(dx) > Math.min(90, w * 0.22) || Math.abs(dx) > 30 && fast)) {
+        const dir = dx < 0 ? 1 : -1;
+        busy = true;
+        place(-dir * w, 150);
+        setTimeout(() => {
+          showGameAt(shownGameIdx() + dir);
+          place(dir * w * 0.6, 0);
+          view.offsetWidth;
+          place(0, 220);
+          setTimeout(() => {
+            busy = false;
+            place(0, 0);
+          }, 230);
+        }, 150);
+      } else place(0, 200);
+    };
+    view.addEventListener("touchend", end);
+    view.addEventListener("touchcancel", end);
+    // a swipe is never also a tap on whatever it started on
+    window.addEventListener("click", (e) => {
+      if (performance.now() < swallow && view.contains(e.target)) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
   }
   function phaseStepperHTML() {
     const stops = simStops(), i = store.simIdx, sk = simKick();
@@ -7382,6 +7507,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function stepWeek(d) {
     S.week += d;
+    // a new week has new pairings: the matchup screen goes back to yours
+    mPick = null;
     renderWeek2();
   }
   var pickerTarget = "week";
@@ -7409,6 +7536,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       renderLeaders();
     } else {
       S.week = w;
+      mPick = null;
       renderWeek2();
     }
     closeWeekPicker();
@@ -11864,7 +11992,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <div class="ms-nav">
       ${TABS().map((t, i) => i === 0 ? `<div class="ms-tab on">${t.lb}</div>` : `<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join("")}
     </div>
-    <div class="ms-tools">${pill}<div style="flex:1"></div>${opts.seeded ? "" : `${rm}<div class="sh-cam" onclick="pickGameBackdrop('${aKey}','${xKey}')">${ICON_CAM}</div>`}</div>
+    <div class="ms-tools">${pill}${opts.pager || ""}<div style="flex:1"></div>${opts.seeded ? "" : `${rm}<div class="sh-cam" onclick="pickGameBackdrop('${aKey}','${xKey}')">${ICON_CAM}</div>`}</div>
     <div class="ms-arena">
       <div class="ms-side L">
         ${logo(a)}
@@ -12497,6 +12625,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     openDetail(i);
   }
   function openMyMatchup() {
+    mPick = null;
     renderUserMatchup();
     showTab("matchup");
   }
@@ -19237,6 +19366,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   initMarkets();
   applyStoredRoster();
   renderWeek();
+  bindMatchupSwipe();
   migratePlayerStore();
   migratePlayerLeagues();
   applyTeamFonts();
@@ -19255,17 +19385,35 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // any scroll up brings them straight back, and the top of a view always keeps
   // them. The drawer holds them open, since it shifts the whole app sideways and
   // a header collapsing mid-slide reads as a glitch.
+  //
+  // Folding the chrome makes the scroller taller, so near the end of a short
+  // page the browser pulls the scroll position back up by itself. Read as the
+  // reader scrolling up, that unfolded the chrome, which shrank the scroller,
+  // which let momentum carry on down and fold it again: the page shook up and
+  // down. So the chrome only folds when the page stays scrollable past where
+  // you are without it, moves the browser makes while a fold settles are not
+  // the reader's, and the end of the page (where the bounce runs back by
+  // itself) is no signal either way.
   (() => {
     const sc = document.getElementById("scroll"), shift = document.querySelector(".shift");
     if (!sc || !shift) return;
-    let last = 0, queued = false;
+    const bars = [...shift.children].filter((el) => el.classList.contains("leaguebar") || el.classList.contains("tabs"));
+    let last = 0, queued = false, settle = 0;
+    const fold = (hide) => {
+      if (shift.classList.contains("chrome-hide") === hide) return;
+      shift.classList.toggle("chrome-hide", hide);
+      settle = performance.now() + 340;
+    };
     const apply = () => {
       queued = false;
-      const y = sc.scrollTop, d = y - last;
-      if (document.body.classList.contains("open") || y < 40) shift.classList.remove("chrome-hide");
-      else if (d > 5) shift.classList.add("chrome-hide");
-      else if (d < -5) shift.classList.remove("chrome-hide");
+      const y = sc.scrollTop, d = y - last, end = sc.scrollHeight - sc.clientHeight;
       last = y;
+      if (document.body.classList.contains("open") || y < 40) return fold(false);
+      if (performance.now() < settle || y >= end - 2) return;
+      if (d > 5) {
+        const h = bars.reduce((n, el) => n + el.offsetHeight, 0);
+        if (y < end - h - 8) fold(true);
+      } else if (d < -5) fold(false);
     };
     sc.addEventListener("scroll", () => {
       if (!queued) {
