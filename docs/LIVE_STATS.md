@@ -76,6 +76,19 @@ pinned to that afternoon.
   league the total is Sleeper's; anything it holds that the app does not
   itemize (kickers, defenses, unmapped rules) shows as "Other scoring per
   Sleeper". Before kickoff the sheet shows his projection the same way.
+- **Finished weeks correct themselves.** A week's Sleeper points and ESPN
+  plays used to be fetched only while it was the live week, so opening the
+  app mid-game and not again until the next week froze them there: the total,
+  team scores and touchdowns stayed at that moment while the box score
+  (fetched fresh) was final, and the stats sheet showed the gap as a large
+  negative "Other scoring". Now each week's Sleeper points are marked final or
+  not when saved and pulled again until they are final (`slWeeksDue`), and the
+  six-hourly full sync takes last week again for stat corrections. ESPN plays
+  are keyed on the game's score and state (`lvPlaysFresh`), so a game's are
+  fetched once more when it goes final; a finished week's scoreboard saved
+  with a game under way is fetched again (`lvBoardStale`); last week's box
+  scores are fetched once a session. `node tools/stale-week-check.mjs` rolls
+  week 3 back to a mid-game save and checks it comes back whole.
 
 ## Links, records and schedules
 

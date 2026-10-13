@@ -18368,6 +18368,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       });
       Object.keys(c.plays || {}).forEach((w) => LIVE.plays[w] = c.plays[w]);
       Object.keys(c.games || {}).forEach((w) => LIVE.games[w] = c.games[w]);
+      LIVE.playSig = Object.assign(LIVE.playSig || {}, c.sig || {});
     } catch (e) {
     }
   }
@@ -18381,7 +18382,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       });
       return r;
     };
-    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games) };
+    const sig = {};
+    Object.keys(LIVE.playSig || {}).forEach((k) => {
+      if (done.indexOf(k.split(":")[0]) > -1) sig[k] = LIVE.playSig[k];
+    });
+    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), sig };
     try {
       localStorage.setItem(LV_CACHE, JSON.stringify(c));
     } catch (e) {
@@ -18423,6 +18428,27 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       (c.competitors || []).forEach((x) => out[lvTeam(x.team.abbreviation)] = g);
     });
     LIVE.games[w] = out;
+    if (w < LIVE_WEEK) lvBoardChecked[w] = 1;
+  }
+  // A finished week's scoreboard saved with a game still under way is fetched
+  // again (once a session: a postponed game never goes final).
+  var lvBoardChecked = {};
+  function lvBoardStale(w) {
+    const g = LIVE.games[w];
+    if (!g) return true;
+    if (w >= LIVE_WEEK || lvBoardChecked[w]) return false;
+    return Object.keys(g).some((tm) => g[tm].state !== "post");
+  }
+  // A game's scoring plays are current if they were fetched at its present
+  // score and state. Keying on the state too means a game's plays are fetched
+  // once more when it goes final, so plays saved mid-game are never the last word.
+  function lvPlayKey(g) {
+    return g.sc + "|" + g.state;
+  }
+  function lvPlaysFresh(w, tm) {
+    const g = (LIVE.games[w] || {})[tm];
+    if (!g || g.state === "pre") return true;
+    return !!((LIVE.plays[w] || {})[tm] && (LIVE.playSig || {})[w + ":" + g.id] === lvPlayKey(g));
   }
   // Scoring plays for the games the two sides of my matchup play in.
   async function lvFetchPlays(w, teams) {
@@ -18432,10 +18458,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     // a game's scoring plays only change when its score does, so a summary
     // (a large download) is fetched once and again only after a score
     teams.forEach((tm) => {
-      const g = games[tm];
-      if (!g || g.state === "pre") return;
-      if (bag[tm] && (w < LIVE_WEEK || sig[w + ":" + g.id] === g.sc)) return;
-      ids[g.id] = 1;
+      if (!lvPlaysFresh(w, tm)) ids[games[tm].id] = 1;
     });
     for (const id of Object.keys(ids)) {
       try {
@@ -18448,7 +18471,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         });
         const teamsIn = Object.keys(games).filter((tm) => games[tm].id === id);
         teamsIn.forEach((tm) => bag[tm] = plays);
-        if (teamsIn[0]) sig[w + ":" + id] = games[teamsIn[0]].sc;
+        if (teamsIn[0]) sig[w + ":" + id] = lvPlayKey(games[teamsIn[0]]);
       } catch (e) {
       }
     }
@@ -18679,12 +18702,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   var lvEnsuring = {};
   async function lvEnsureWeek(w) {
     if (!(w < LIVE_WEEK) || lvEnsuring[w]) return;
-    const games = LIVE.games[w], bag = LIVE.plays[w] || {};
     const teams = lvMatchTeams(w);
-    if (games && teams.every((tm) => !games[tm] || bag[tm])) return;
+    if (!lvBoardStale(w) && teams.every((tm) => lvPlaysFresh(w, tm))) return;
     lvEnsuring[w] = 1;
     try {
-      if (!games) await lvFetchBoard(w);
+      if (lvBoardStale(w)) await lvFetchBoard(w);
       await lvFetchPlays(w, teams);
       lvSaveCache();
     } catch (e) {
@@ -18736,7 +18758,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const w = LIVE_WEEK;
     try {
       const jobs = [];
-      for (let k = 1; k <= w; k++) if (k === w ? force || !LIVE.loaded["stats:" + k] || liveStatus(w) === "live" : !LIVE.loaded["stats:" + k]) jobs.push(["stats", k]);
+      // last week's stats come from the cache (loaded = 1) only until the first
+      // refresh of a session fetches them again, for Sleeper's stat corrections
+      for (let k = 1; k <= w; k++) if (k === w ? force || !LIVE.loaded["stats:" + k] || liveStatus(w) === "live" : !LIVE.loaded["stats:" + k] || k === w - 1 && LIVE.loaded["stats:" + k] === 1) jobs.push(["stats", k]);
       [w, w + 1, S.week].forEach((k) => {
         if (k >= w && !LIVE.loaded["proj:" + k] && NFL_WEEKS[k]) jobs.push(["proj", k]);
       });
@@ -18754,7 +18778,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (sl) {
         try {
           const full = !sl.sleeper.at || Date.now() - sl.sleeper.at > 6 * 36e5;
-          await slSync(sl.id, [w], full);
+          await slSync(sl.id, slWeeksDue(sl, w, full), full);
           lvRebuildGames();
         } catch (e) {
           LIVE.error = String(e);
@@ -18763,7 +18787,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       for (const k of [w, S.week]) {
         if (k > w) continue;
         try {
-          if (!LIVE.games[k] || k === w) await lvFetchBoard(k);
+          if (k === w || lvBoardStale(k)) await lvFetchBoard(k);
           await lvFetchPlays(k, lvMatchTeams(k));
         } catch (e) {
           LIVE.error = String(e);
@@ -18980,7 +19004,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // Weekly pairings and Sleeper's points: pairs go into the league's schedule,
   // points are kept for scores.
   function slApplyMatchups(rec, w, list) {
-    if (!Array.isArray(list) || !list.length) return;
+    if (!Array.isArray(list)) return;
+    if (!list.length) {
+      // no games that week (before the league's first): nothing to pull again
+      if (w < LIVE_WEEK) (rec.sleeper.ptsDone = rec.sleeper.ptsDone || {})[w] = 1;
+      return;
+    }
     const pairs = {}, pts = {};
     list.forEach((m) => {
       const key = "s" + m.roster_id;
@@ -18989,12 +19018,25 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     rec.sleeper.pts = rec.sleeper.pts || {};
     rec.sleeper.pts[w] = pts;
+    // whether these are the week's final numbers: anything saved while the week
+    // was still being played is pulled again once it is over (slWeeksDue)
+    rec.sleeper.ptsDone = rec.sleeper.ptsDone || {};
+    rec.sleeper.ptsDone[w] = w < LIVE_WEEK ? 1 : 0;
     const sched = Object.keys(pairs).map((k) => pairs[k]).filter((p) => p.length === 2);
     if (sched.length) {
       if (!store.schedule) store.schedule = {};
       if (!store.schedule[rec.id]) store.schedule[rec.id] = {};
       store.schedule[rec.id][w] = sched;
     }
+  }
+  // The weeks a refresh pulls from Sleeper: the live week always; a finished
+  // week whose points were saved before it was over (the app last opened
+  // mid-game, then not again until the next week), until it is saved final;
+  // and on the six-hourly full sync last week again, for stat corrections.
+  function slWeeksDue(rec, w, full) {
+    const done = rec.sleeper.ptsDone || {}, out = [w];
+    for (let k = 1; k < w; k++) if (!done[k] || full && k === w - 1) out.push(k);
+    return out;
   }
   // Sleeper's own number for a player or a team in a week, when synced.
   function slPoints(p, w) {
