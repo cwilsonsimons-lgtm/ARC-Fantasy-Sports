@@ -17075,11 +17075,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     tradeArtLayout: () => tradeArtLayout,
     tradeArtModel: () => tradeArtModel
   });
-  // Headlines a trade may carry, by status. Only true ones are offered: a trade
-  // still under review can say it was agreed, never that it is complete.
+  // Headlines a trade may carry, by status. Only an accepted trade gets a
+  // graphic (an offer or a counter has nothing to celebrate yet), and only true
+  // headlines are offered: a trade still under review can say it was agreed,
+  // never that it is complete.
   var TRADE_ART_STATUS = {
-    proposed: ["Trade Offer", "Trade Proposal"],
-    countered: ["Counter Offer", "Trade Offer"],
     review: ["Trade Agreed", "Deal Agreed", "Pending Review"],
     accepted: ["Trade Complete", "Trade Official", "Deal Done"]
   };

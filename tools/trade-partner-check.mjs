@@ -121,16 +121,33 @@ await p.evaluate((a) => buildTrade(MY_TEAM, a, { counterOf: 'x' }), L.a);
 ok('a counter-offer has no team row (it stays with the team that offered)', await p.locator('#tradeBody .tb-with').count() === 0);
 await p.evaluate(() => cancelTrade());
 
-// 5. The graphic: every team name in that team's font and colour
+// 5. A graphic is only for an accepted trade: not an offer, not a counter
 const art = await p.evaluate(({ a, b2, c }) => {
   const pa = rosterFor(a)[0], pb = rosterFor(b2)[0];
   const asPl = (q) => ({ kind: 'player', player: { id: q.id, n: q.n, full: q.full, pos: q.pos, tm: q.tm } });
   // b2 sends a pick that was c's, so the graphic says "via <c>"
   const m = postTrade({ from: a, to: b2, status: 'proposed', note: '', give: [asPl(pa)], get: [asPl(pb), { kind: 'pick', pick: { year: 2027, round: 2, originalTeam: c } }] });
-  openTradeArt(m.id);
   return m.id;
 }, { a: L.a, b2: L.b, c: L.c });
+const card = (st) => p.evaluate(({ id, st }) => {
+  const m = findMsg(id);
+  if (st) m.trade.status = st;
+  openChat();
+  const el = [...document.querySelectorAll('#chatBody .tc')].pop();
+  return { st: m.trade.status, art: el ? el.querySelectorAll('.tc-art').length : -1 };
+}, { id: art, st });
+const offer = await card(), counter = await card('countered');
+ok('an offer and a counter-offer have no "Create graphic"', offer.art === 0 && counter.art === 0, JSON.stringify([offer, counter]));
+await p.evaluate((id) => openTradeArt(id), art);
+await p.waitForTimeout(300);
+ok('and a graphic cannot be opened for one any other way', await p.evaluate(() => currentViewName()) !== 'tradeart');
+const agreed = await card('review'), done = await card('accepted');
+ok('once accepted (under review, or processed) the card offers it', agreed.art === 1 && done.art === 1);
+await p.locator('#chatBody .tc').last().locator('.tc-art').click();
 await p.waitForTimeout(1500);
+ok('and it opens', await p.evaluate(() => currentViewName()) === 'tradeart');
+
+// 6. The graphic: every team name in that team's font and colour
 const t = await p.evaluate(() => tradeArtLayout().texts);
 const heads = t.filter((x) => x.role === 'team'), marks = t.filter((x) => x.role === 'wordmark'), refs = t.filter((x) => x.role === 'team-ref');
 const fam = { [L.a]: 'Permanent Marker', [L.b]: 'Alfa Slab One', [L.c]: 'Bungee' };

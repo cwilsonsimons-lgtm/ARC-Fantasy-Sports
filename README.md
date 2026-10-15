@@ -50,7 +50,9 @@ the builder, so the partner can be switched at any time (what was picked from
 the last team is dropped; what you give is kept). A counter-offer stays with
 the team that made the offer. Back returns to where the trade was started.
 
-On the trade graphic every team name is set in that team's own font and colour:
+A trade graphic is offered once a trade is accepted (agreed and under league
+review, or processed), never for an offer or a counter-offer. On it every team
+name is set in that team's own font and colour:
 the wordmarks, the heading over what each side receives, and a pick's
 "via <team>". `node tools/trade-partner-check.mjs` checks all of this.
 
