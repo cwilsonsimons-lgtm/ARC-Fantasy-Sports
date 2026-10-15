@@ -467,13 +467,26 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .rw-axis span:first-child{transform:translateX(0)}
 .rw-axis span:last-child{transform:translateX(-100%)}
 .rw-empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
-/* zoom: the week's kickoff slots under the chart, and what a zoomed stretch did */
-.rw-zoom{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -12px 0;padding:0 12px}
-.rw-zoom::-webkit-scrollbar{display:none}
-.rw-z{flex:none;padding:5px 10px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.03);
-  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.9px;
-  text-transform:uppercase;white-space:nowrap;color:var(--ink-2);cursor:pointer}
-.rw-z.on{border-color:var(--ink-2);background:rgba(255,255,255,.13);color:var(--ink)}
+/* zoom: the time in the readout opens a menu of the week's kickoff slots; a
+   zoomed chart gets a line on what its stretch did */
+.rw-read{position:relative}
+.rw-when{display:inline-flex;align-items:center;gap:6px;font:inherit;color:inherit;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:8px;padding:3px 7px;margin:-4px 0 -4px -1px}
+.rw-when .cv{width:0;height:0;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-top:4.5px solid currentColor;transition:transform .15s}
+.rw-when.zoomed{border-color:var(--ink-2);background:rgba(255,255,255,.1);color:var(--ink)}
+.rw-menu-on .rw-when .cv{transform:rotate(180deg)}
+.rw-menu{display:none;position:absolute;left:0;top:calc(100% + 2px);z-index:30;min-width:236px;max-width:100%;padding:4px;
+  border:1px solid var(--line);border-radius:12px;background:#171416;box-shadow:0 10px 28px rgba(0,0,0,.55)}
+.rw-menu-on .rw-menu{display:block}
+.rw-mh{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:9px;letter-spacing:1.2px;
+  color:var(--ink-3);padding:5px 10px 4px}
+.rw-mi{display:flex;align-items:baseline;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:none;
+  color:var(--ink-2);text-align:left;cursor:pointer}
+.rw-mi::before{content:"";width:10px;flex:none;font-size:11px;color:var(--ink)}
+.rw-mi.on{background:rgba(255,255,255,.09);color:var(--ink)}
+.rw-mi.on::before{content:"\2713"}
+.rw-mi .l{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.9px;text-transform:uppercase;white-space:nowrap}
+.rw-mi .r{margin-left:auto;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9.5px;color:var(--ink-3);white-space:nowrap}
 .rw-sum{display:flex;align-items:baseline;gap:8px;margin-top:9px;padding-top:7px;border-top:1px solid var(--line-soft)}
 .rw-sum .r{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;color:var(--ink-2);flex:1;white-space:nowrap}
 .rw-sum .sc{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:var(--ink-3);white-space:nowrap}
@@ -5212,6 +5225,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     buildRewind: () => buildRewind,
     rewindSeries: () => rewindSeries,
     rwZoomTo: () => rwZoomTo,
+    rwMenuToggle: () => rwMenuToggle,
     rwOpen: () => rwOpen,
     syncRewind: () => syncRewind,
     toggleRewind: () => toggleRewind
@@ -5534,31 +5548,58 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     else rwZoom[id] = { wk: S.week, slot: +slot };
     // the cursor goes to where the new stretch ends: how it finished
     rwAt[id] = null;
+    rwMenuToggle(id, false);
     buildRewind(el, ...el._rwArgs);
   }
-  // "SUN 12PM–3:05PM"; the end is "Now" while the stretch is still being played.
-  // Short, as a chip, a Sunday goes without saying (as the slots do).
-  function rwRangeLabel(from, to, now, short) {
-    const one = dayName(to) === dayName(from), end = to === now ? "Now" : (one ? "" : dayName(to) + " ") + shortClock(to);
-    return `${short && one && dayName(from) === "SUN" ? "" : dayName(from) + " "}${shortClock(from)}\u2013${end}`;
+  // "SUN 12PM–3:05PM"; the end is "Now" while the stretch is still being played
+  function rwRangeLabel(from, to, now) {
+    const end = to === now ? "Now" : (dayName(to) === dayName(from) ? "" : dayName(to) + " ") + shortClock(to);
+    return `${dayName(from)} ${shortClock(from)}\u2013${end}`;
   }
-  // Under the chart: the week's kickoff slots that have anything in them for
-  // this matchup, to zoom to (a pinch makes a stretch of its own), and, zoomed,
-  // what the stretch did: each side's points over it and the odds either end.
-  function rwZoomHTML(id, span, zoom, pts) {
+  // The zoom menu, opened from the time in the readout: the whole week, then
+  // each kickoff slot that has anything in it for this matchup, with the
+  // stretch it covers (a pinch adds a stretch of its own). Empty when there is
+  // nothing to choose.
+  var rwMenu = {};
+  function rwMenuHTML(id, span, zoom) {
     // a slot is offered once it has been played, if a starter here kicked off in it
     const cov = span.windows.map(([ws, we]) => [ws, span.now != null ? Math.min(we, span.now) : we]);
-    const avail = span.slots.filter((s) => span.kicks.some((k) => k >= s.from && k < s.to) && cov.some(([ws, we]) => Math.min(we, s.to) - Math.max(ws, s.from) > 0));
+    const seen = (from, to) => cov.map(([ws, we]) => [Math.max(ws, from), Math.min(we, to)]).filter(([a, b]) => b > a);
+    const avail = span.slots.filter((s) => span.kicks.some((k) => k >= s.from && k < s.to) && seen(s.from, s.to).length);
     if (avail.length < 2 && !zoom) return "";
-    const chip = (on, slot, label, aria) => `<button class="rw-z${on ? " on" : ""}"${aria ? ` aria-label="${aria}"` : ""} onclick="rwZoomTo('${id}'${slot != null ? "," + slot : ""})">${label}</button>`;
+    const range = (from, to) => {
+      const g = seen(from, to);
+      return g.length ? rwRangeLabel(g[0][0], g[g.length - 1][1], span.now) : "";
+    };
+    const item = (on, act, label, r) => `<button class="rw-mi${on ? " on" : ""}" role="menuitemradio" aria-checked="${on ? "true" : "false"}" onclick="${act}"><span class="l">${label}</span><span class="r">${r}</span></button>`;
+    const pick = (slot) => `rwZoomTo('${id}'${slot != null ? "," + slot : ""})`;
     const custom = zoom && zoom.slot == null;
-    // a stretch of your own sits next to Week, the way back from it
-    let html = `<div class="rw-zoom">${chip(!zoom, null, "Week")}${custom ? chip(true, null, rwRangeLabel(zoom.from, zoom.to, null, true) + " \u2715", "Show the whole week") : ""}${avail.map((s) => chip(zoom && zoom.slot === s.from, s.from, s.label)).join("")}</div>`;
-    if (zoom) {
-      const a = pts[0], b = pts[pts.length - 1], d = (v) => (v < 0 ? "\u2212" : "+") + Math.abs(tenth(v)).toFixed(1);
-      html += `<div class="rw-sum"><span class="r">${rwRangeLabel(a.abs, b.abs, span.now)}</span><span class="sc"><b class="me">${d(b.a - a.a)}</b> &ndash; <b class="opp">${d(b.x - a.x)}</b></span><span class="w ${b.win >= a.win ? "up" : "dn"}">${a.win}% &rarr; ${b.win}%</span></div>`;
-    }
-    return html;
+    return `<div class="rw-menu" role="menu" aria-label="Zoom the chart">
+      <div class="rw-mh">SHOW</div>
+      ${item(!zoom, pick(null), "Whole week", range(-Infinity, Infinity))}
+      ${avail.map((s) => item(zoom && zoom.slot === s.from, pick(s.from), s.label, range(s.from, s.to))).join("")}
+      ${custom ? item(true, `rwMenuToggle('${id}',false)`, "Your stretch", rwRangeLabel(zoom.from, zoom.to, span.now)) : ""}
+    </div>`;
+  }
+  function rwMenuToggle(id, open) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    rwMenu[id] = open == null ? !rwMenu[id] : !!open;
+    el.classList.toggle("rw-menu-on", rwMenu[id]);
+    const b = el.querySelector(".rw-when");
+    if (b) b.setAttribute("aria-expanded", rwMenu[id] ? "true" : "false");
+  }
+  // a tap anywhere but the menu or the time closes it
+  document.addEventListener("click", (e) => {
+    Object.keys(rwMenu).forEach((id) => {
+      if (rwMenu[id] && !(e.target.closest && e.target.closest(`#${id} .rw-menu, #${id} .rw-when`))) rwMenuToggle(id, false);
+    });
+  }, true);
+  // Zoomed, under the chart: each side's points over the stretch and the odds
+  // at either end of it.
+  function rwSumHTML(span, pts) {
+    const a = pts[0], b = pts[pts.length - 1], d = (v) => (v < 0 ? "\u2212" : "+") + Math.abs(tenth(v)).toFixed(1);
+    return `<div class="rw-sum"><span class="r">${rwRangeLabel(a.abs, b.abs, span.now)}</span><span class="sc"><b class="me">${d(b.a - a.a)}</b> &ndash; <b class="opp">${d(b.x - a.x)}</b></span><span class="w ${b.win >= a.win ? "up" : "dn"}">${a.win}% &rarr; ${b.win}%</span></div>`;
   }
   var rwAt = {};
   var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -5647,15 +5688,17 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (!zoom && lbs.length > 2 && lbs[0].x < EDGE && lbs[1].x - lbs[0].x < 68) lbs[0].lb = "";
     if (!zoom && lbs.length > 2 && lbs[lbs.length - 1].x > W - EDGE && lbs[lbs.length - 1].x - lbs[lbs.length - 2].x < 68) lbs[lbs.length - 1].lb = "";
     const lbAlign = (x) => x < EDGE ? "translateX(0)" : x > W - EDGE ? "translateX(-100%)" : "translateX(-50%)";
+    const menu = rwMenuHTML(el.id, span, zoom);
     el.innerHTML = `
     <div class="rw-head">
       <span class="rw-title">WIN PROBABILITY</span>
       <span class="rw-legend"><i class="me"></i><span class="nm">${escName(names.a)}</span><i class="opp"></i><span class="nm">${escName(names.x)}</span></span>
     </div>
     <div class="rw-read">
-      <span class="t"></span>
+      <span class="t">${menu ? `<button class="rw-when${zoom ? " zoomed" : ""}" aria-haspopup="menu" aria-expanded="${rwMenu[el.id] ? "true" : "false"}" aria-label="Zoom the chart" onclick="rwMenuToggle('${el.id}')"><span class="tt"></span><i class="cv"></i></button>` : `<span class="tt"></span>`}</span>
       <span class="sc"></span>
       <span class="w"></span>
+      ${menu}
     </div>
     <div class="rw-chart">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="rw-svg">
@@ -5686,14 +5729,14 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       </div>
       <div class="rw-y"><span>100</span><span>50</span><span>100</span></div>
       <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%;transform:${lbAlign(m.x)}">${m.lb}</span>`).join("")}</div>
-    </div>${rwZoomHTML(el.id, span, zoom, pts)}`;
-    const zrow = el.querySelector(".rw-zoom"), zon = zrow && zrow.querySelector(".rw-z.on");
-    if (zon && zon.offsetLeft + zon.offsetWidth > zrow.clientWidth) zrow.scrollLeft = zon.offsetLeft - 12;
+    </div>${zoom ? rwSumHTML(span, pts) : ""}`;
+    if (!menu) rwMenu[el.id] = false;
+    el.classList.toggle("rw-menu-on", !!rwMenu[el.id]);
     const svg2 = el.querySelector(".rw-svg"), layer = el.querySelector(".rw-pins");
     const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
     const bub = el.querySelector(".rw-bub"), lead = el.querySelector(".rw-lead");
     const leadLn = lead.querySelector("line");
-    const rT = el.querySelector(".rw-read .t"), rW = el.querySelector(".rw-read .w");
+    const rT = el.querySelector(".rw-read .tt"), rW = el.querySelector(".rw-read .w");
     const rS = el.querySelector(".rw-read .sc");
     const pinEls = [...layer.querySelectorAll(".rw-pin, .rw-ko")];
     const nearestPlay = (i) => special.reduce((b, j) => b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b, -1);
@@ -5849,6 +5892,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       e.preventDefault();
     };
     const down = (e) => {
+      if (rwMenu[el.id]) rwMenuToggle(el.id, false);
       if (e.touches && e.touches.length >= 2) return pinchStart(e);
       before = last;
       drag = true;
@@ -5936,6 +5980,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (!rw) return;
     const open = !rwOpen[id];
     rwOpen[id] = open;
+    if (!open) rwMenuToggle(id, false);
     rw.style.display = open ? "block" : "none";
     document.querySelectorAll('[data-rw="' + id + '"]').forEach((e) => e.classList.toggle("rw-on", open));
     if (id === "userRewind") {

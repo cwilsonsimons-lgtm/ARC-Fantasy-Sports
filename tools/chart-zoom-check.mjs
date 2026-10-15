@@ -1,5 +1,6 @@
-// The win-probability chart zooms: chips under it pick a kickoff slot (the
-// noon games run from noon until the late games kick off at 3:05), a pinch
+// The win-probability chart zooms: the time at its top left opens a menu of
+// kickoff slots (the noon games run from noon until the late games kick off
+// at 3:05), a pinch
 // picks any stretch, and the chart, its scrub, the lineup beside it and a
 // summary of the stretch all agree with the whole-week chart. Runs on the real
 // City Boys Dynasty import (fixtures/league), week 3 finished and week 4 live
@@ -40,20 +41,28 @@ await p.waitForTimeout(2500);
 await p.evaluate(() => { showTab('matchup'); pickWeek(3); toggleRewind('userRewind'); });
 await p.waitForTimeout(600);
 
-// what the chart shows, read off the page: the chips, the axis, the readout,
-// the summary, and the time (chart minutes) of every point it was drawn from
+// what the chart shows, read off the page: the zoom menu's choices (the one
+// in force starred) and the stretch each covers, whether the menu is open,
+// the axis, the readout, the summary, and where the line's points sit
 const chart = (id = 'userRewind') => p.evaluate((id) => {
   const el = document.getElementById(id), txt = (s) => { const e = el.querySelector(s); return e ? e.innerText.replace(/\s+/g, ' ').trim() : null; };
   const xs = el.querySelector('.rw-line').getAttribute('points').split(' ').map((q) => +q.split(',')[0]);
   return {
-    chips: [...el.querySelectorAll('.rw-z')].map((c) => c.textContent + (c.classList.contains('on') ? '*' : '')),
+    chips: [...el.querySelectorAll('.rw-mi')].map((c) => c.querySelector('.l').textContent + (c.classList.contains('on') ? '*' : '')),
+    ranges: [...el.querySelectorAll('.rw-mi .r')].map((r) => r.textContent),
+    menu: (() => { const m = el.querySelector('.rw-menu'); return !!m && getComputedStyle(m).display !== 'none'; })(),
     axis: [...el.querySelectorAll('.rw-axis span')].map((s) => s.textContent),
-    read: txt('.rw-read'), time: txt('.rw-read .t'), sum: txt('.rw-sum'), xs,
+    read: [txt('.rw-read .t'), txt('.rw-read .sc'), txt('.rw-read .w')].join(' '), time: txt('.rw-read .t'), sum: txt('.rw-sum'), xs,
     pins: el.querySelectorAll('.rw-pin').length, kos: [...el.querySelectorAll('.rw-ko')].map((k) => parseFloat(k.style.left)),
     lineup: (document.querySelector('#userLineup .rw-at') || {}).textContent || null
   };
 }, id);
-const tap = (label, id = 'userRewind') => p.evaluate(([label, id]) => [...document.querySelectorAll('#' + id + ' .rw-z')].find((c) => c.textContent === label).click(), [label, id]);
+// a choice is made the way a finger makes it: tap the time, then the choice
+const tapTime = (id = 'userRewind') => p.evaluate((id) => document.querySelector('#' + id + ' .rw-when').click(), id);
+const tap = async (label, id = 'userRewind') => {
+  await tapTime(id);
+  await p.evaluate(([label, id]) => [...document.querySelectorAll('#' + id + ' .rw-mi')].find((c) => c.querySelector('.l').textContent === label).click(), [label, id]);
+};
 // "SUN 3:05 PM" -> minutes past midnight Central, for comparing times on the page
 const mins = (t) => { const m = t.match(/(\d+):(\d\d) (AM|PM)/); return (+m[1] % 12 + (m[3] === 'PM' ? 12 : 0)) * 60 + +m[2]; };
 // a chart minute (Eastern, the app's clock) as the Central time it shows
@@ -63,7 +72,17 @@ const series = (zoom) => p.evaluate((zoom) => { const g = getGames(lvState().vie
 
 console.log('week 3, finished');
 let c = await chart();
-ok('chips under the chart: the whole week, then each slot one of these starters kicked off in', c.chips.join() === 'Week*,12PM,3:05PM,SNF,MNF', c.chips.join(' '));
+ok('the menu is closed to start with', !c.menu);
+await tapTime();
+c = await chart();
+ok('tapping the time opens it: the whole week, then each slot one of these starters kicked off in', c.menu && c.chips.join() === 'Whole week*,12PM,3:05PM,SNF,MNF', c.chips.join(' '));
+ok('each with the stretch it covers', c.ranges.join() === 'THU 7:15PM\u2013MON 10:35PM,SUN 12PM\u20133:05PM,SUN 3:05PM\u20136:45PM,SUN 7:20PM\u201310:40PM,MON 7:15PM\u201310:35PM', c.ranges.join(' | '));
+await p.screenshot({ path: OUT + '/zoom-menu.png' });
+await p.evaluate(() => document.querySelector('#userHero').click());
+ok('a tap anywhere else closes it', !(await chart()).menu);
+await tapTime();
+await tapTime();
+ok('so does the time again', !(await chart()).menu);
 // the noon games kick off at 1:00 Eastern, the clock the app's minutes run on
 const full = await series(), noonAbs = full.find((q) => q.ko && q.abs % 1440 === 13 * 60).abs;
 await p.screenshot({ path: OUT + '/zoom-week.png' });
@@ -71,7 +90,8 @@ await tap('12PM');
 await p.waitForTimeout(300);
 c = await chart();
 const noon = await series({ from: noonAbs, to: noonAbs + 185 });
-ok('12PM zooms to the noon games: noon until 3:05, when the late games kick off', noon[0].abs === noonAbs && noon[noon.length - 1].abs === noonAbs + 185 && c.chips.join() === 'Week,12PM*,3:05PM,SNF,MNF', `${noon.length} points`);
+ok('12PM zooms to the noon games: noon until 3:05, when the late games kick off; the menu closes', noon[0].abs === noonAbs && noon[noon.length - 1].abs === noonAbs + 185 && c.chips.join() === 'Whole week,12PM*,3:05PM,SNF,MNF' && !c.menu, `${noon.length} points`);
+ok('the time says the chart is zoomed', await p.evaluate(() => document.querySelector('#userRewind .rw-when').classList.contains('zoomed')));
 ok('the axis reads the clock across it', c.axis.join() === '12PM,1PM,2PM,3PM', c.axis.join(' '));
 ok('the cursor lands on the end of it, and the lineup follows', c.time === 'SUN 3:05 PM' && c.lineup === 'SUN 3:05 PM', c.read + ' / ' + c.lineup);
 ok('drawn on a time scale, edge to edge', c.xs[0] === 4 && c.xs[c.xs.length - 1] === 316 && c.xs.every((x, i) => !i || x > c.xs[i - 1]));
@@ -110,10 +130,10 @@ await p.evaluate(() => showGameAt(0));
 await p.waitForTimeout(300);
 
 // a pinch
-await tap('Week');
+await tap('Whole week');
 await p.waitForTimeout(300);
 c = await chart();
-ok('Week goes back to the whole week, cursor on the final', c.chips[0] === 'Week*' && !c.sum && c.time === 'MON 10:35 PM' && c.axis.join() === 'SUN 12PM,SUN 7PM,MON 7PM', c.axis.join(' ') + ' / ' + c.time);
+ok('Whole week goes back to the whole week, cursor on the final', c.chips[0] === 'Whole week*' && !c.sum && c.time === 'MON 10:35 PM' && c.axis.join() === 'SUN 12PM,SUN 7PM,MON 7PM', c.axis.join(' ') + ' / ' + c.time);
 // two fingers, landing one after the other the way they do
 const pinch = async (from, to) => {
   const pt = (f) => box.x + box.w * f;
@@ -137,8 +157,8 @@ const was = [await minuteAt(0.3), await minuteAt(0.5)];
 // of the way along the week, spreads to 10% and 90% of it
 await pinch([0.3, 0.5], [0.1, 0.9]);
 c = await chart();
-const cust = c.chips[1] || '';
-ok('spreading two fingers zooms in on what was between them; the stretch is a chip beside Week', /^[\d:]+[AP]M\u2013[\d:]+[AP]M \u2715\*$/.test(cust) && c.chips[0] === 'Week' && c.sum && c.axis.length >= 2, c.chips.join(' ') + ' / ' + c.axis.join(' '));
+const cust = c.ranges[c.chips.indexOf('Your stretch*')] || '';
+ok('spreading two fingers zooms in on what was between them; the menu lists it as your stretch', /^SUN [\d:]+[AP]M\u2013[\d:]+[AP]M$/.test(cust) && c.chips[0] === 'Whole week' && c.sum && c.axis.length >= 2, cust + ' / ' + c.axis.join(' '));
 const now = [await minuteAt(0.1), await minuteAt(0.9)];
 ok('the minutes under the fingers stayed under them', Math.abs(now[0] - was[0]) <= 2 && Math.abs(now[1] - was[1]) <= 2, `${was.map(clock)} -> ${now.map(clock)}`);
 ok('the first finger\'s scrub is undone: the cursor was on the final, outside the stretch, so it goes to the end of it', c.time === 'SUN ' + c.sum.match(/\u2013(\d+)(:\d\d)?([AP]M)/).slice(1).map((v, k) => k === 1 ? v || ':00' : k === 2 ? ' ' + v : v).join(''), c.time + ' / ' + c.sum);
@@ -153,21 +173,29 @@ await p.screenshot({ path: OUT + '/zoom-pinch.png' });
 // pinch in, all the way out
 await pinch([0.1, 0.9], [0.47, 0.53]);
 c = await chart();
-ok('pinching in goes back out, to the whole week at most', c.chips[0] === 'Week*' && !c.sum, c.chips.join(' '));
+ok('pinching in goes back out, to the whole week at most', c.chips[0] === 'Whole week*' && !c.sum, c.chips.join(' '));
 // a trackpad pinch (ctrl + wheel)
 await p.evaluate(() => { const r = document.querySelector('#userRewind .rw-svg').getBoundingClientRect(); document.querySelector('#userRewind .rw-svg').dispatchEvent(new WheelEvent('wheel', { ctrlKey: true, deltaY: -120, clientX: r.left + r.width * 0.5, clientY: r.top + 50, bubbles: true, cancelable: true })); });
 await p.waitForTimeout(400);
 c = await chart();
-ok('ctrl + wheel (a trackpad pinch) zooms too', c.chips.some((t) => /✕\*$/.test(t)), c.chips.join(' '));
-await tap(c.chips.find((t) => /✕\*$/.test(t)).slice(0, -1));
+ok('ctrl + wheel (a trackpad pinch) zooms too', c.chips.includes('Your stretch*'), c.chips.join(' '));
+await tap('Your stretch');
+c = await chart();
+ok('choosing your stretch again just closes the menu', !c.menu && c.chips.includes('Your stretch*'));
+await tap('Whole week');
 await p.waitForTimeout(300);
-ok('tapping the stretch chip clears it', (await chart()).chips[0] === 'Week*');
+ok('Whole week clears it', (await chart()).chips[0] === 'Whole week*');
+// a touch on the chart closes the menu (and scrubs, as ever)
+await tapTime();
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.w * 0.6, y: box.y + 40, id: 0 }] });
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+ok('touching the chart closes the menu', !(await chart()).menu);
 
 // the matchup detail chart has its own
 await p.evaluate(() => { toggleRewind('userRewind'); rwOpen.detailRewind = true; openDetail(1); });
 await p.waitForTimeout(500);
 c = await chart('detailRewind');
-ok('another matchup\'s chart has the chips too', c.chips[0] === 'Week*' && c.chips.includes('12PM'), c.chips.join(' '));
+ok('another matchup\'s chart has the menu too', c.chips[0] === 'Whole week*' && c.chips.includes('12PM'), c.chips.join(' '));
 await tap('12PM', 'detailRewind');
 await p.waitForTimeout(300);
 c = await chart('detailRewind');
@@ -182,7 +210,7 @@ await p.waitForTimeout(600);
 await p.evaluate(() => { if (!rwOpen.userRewind) toggleRewind('userRewind'); });
 await p.waitForTimeout(300);
 c = await chart();
-ok('the week\'s zoom is its own: week 4 opens on the whole week', c.chips[0] === 'Week*', c.chips.join(' '));
+ok('the week\'s zoom is its own: week 4 opens on the whole week', c.chips[0] === 'Whole week*', c.chips.join(' '));
 ok('only slots already under way: no 3:05PM, SNF or MNF yet', c.chips.includes('12PM') && !c.chips.some((t) => /3:05|SNF|MNF/.test(t)), c.chips.join(' '));
 const card = await p.evaluate(() => [...document.querySelectorAll('#userHero .sh-pct')].map((e) => e.textContent.trim())[0]);
 await tap('12PM');
@@ -195,7 +223,7 @@ await p.waitForTimeout(1500);
 ok('a live refresh keeps the zoom', (await chart()).chips.includes('12PM*'));
 await p.evaluate(() => pickWeek(3));
 await p.waitForTimeout(400);
-ok('and back in week 3, the whole week again', (await chart()).chips[0] === 'Week*', (await chart()).chips.join(' '));
+ok('and back in week 3, the whole week again', (await chart()).chips[0] === 'Whole week*', (await chart()).chips.join(' '));
 
 // All Matchups: the strips are on the same time scale
 await p.evaluate(() => showLeagueView());
