@@ -843,6 +843,7 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .pc-act.drop{border:1px solid rgba(var(--red-rgb),.75);color:var(--red)}
 .pc-act.blk{border:1px solid rgba(255,255,255,.4);color:rgba(255,255,255,.9)}
 .pc-act.blk.on{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.18)}
+.pc-act.trd{border:1px solid var(--accent);color:#fff;background:var(--accent)}
 .pc-first{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.88);line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.7)}
 .pc-last{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:36px;text-transform:uppercase;letter-spacing:.5px;color:#fff;line-height:.95;text-shadow:0 2px 10px rgba(0,0,0,.7)}
 .pc-strip{display:flex;align-items:center;justify-content:space-between;background:#1B181A;border:1px solid var(--line);border-top:none;padding:9px 14px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--ink-3);letter-spacing:.5px}
@@ -1973,6 +1974,31 @@ body.forming .tabs{display:none}
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;letter-spacing:.8px;text-transform:uppercase}
 
 .tb-cols{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 0 96px}
+.tb-title b{--tn-size:12px}
+.tb-send.dis{opacity:.35;pointer-events:none}
+.tb-ch{--tn-size:11px}
+/* the teams to trade with, a row that scrolls sideways */
+.tb-with{padding:11px 0 2px;border-bottom:1px solid var(--line-soft)}
+.tb-wl{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:10px;letter-spacing:1.4px;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.tb-teams{position:relative;display:flex;gap:7px;overflow-x:auto;padding-bottom:11px;margin:0 -16px;padding-left:16px;padding-right:16px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tb-teams::-webkit-scrollbar{display:none}
+.tb-team{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 6px 8px;border-radius:13px;
+  background:var(--card);border:1.5px solid var(--line-soft);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.tb-team.on{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,var(--card))}
+.tb-tbd{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:14px}
+.tb-tn{--tn-size:11px;line-height:1.15;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.tb-tm{font-size:9.5px;color:var(--ink-3);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-pick{padding:28px 18px;text-align:center;color:var(--ink-3);font-size:13px;line-height:1.5}
+/* team page: propose a trade, beside the message button */
+.tv-trade{position:relative;margin-top:12px;height:38px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.06);
+  display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;color:var(--ink);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.9px;text-transform:uppercase}
+.tv-trade svg{width:16px;height:16px}
+/* the trade block: another team's player */
+.tbk-offer{margin-top:10px;padding:9px;border-radius:11px;background:var(--accent);color:#fff;text-align:center;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.9px;text-transform:uppercase}
 .tb-col{min-width:0}
 .tb-ch{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;
   letter-spacing:.4px;padding:0 2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2081,6 +2107,8 @@ body.forming .tabs{display:none}
   text-transform:uppercase;letter-spacing:.4px}
 .ta-title span{display:block;font-family:'Barlow',system-ui,sans-serif;font-size:10.5px;font-weight:600;color:var(--ink-3);
   text-transform:none;letter-spacing:0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ta-title span b{--tn-size:11px}
+.ta-sn{--tn-size:12.5px}
 .ta-stage{margin:12px 0 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#0B0A0C;line-height:0}
 .ta-stage canvas{width:100%;height:auto;display:block}
 .ta-note{display:none;margin-top:8px;font-size:11px;line-height:1.45;color:var(--ink-2);background:var(--card-2);
@@ -7063,7 +7091,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           onkeydown="wantKey('${esc(sel)}',event,this)">
         <span onclick="submitWant('${esc(sel)}',this.previousElementSibling)">Add</span>
       </div>
-      <div class="tbk-off" onclick="toggleTradeBlock('${esc(sel)}')">Remove from trade block</div>` : ""}
+      <div class="tbk-off" onclick="toggleTradeBlock('${esc(sel)}')">Remove from trade block</div>` : `<div class="tbk-offer" onclick="tradeFor('${esc(sel)}')">Make an offer</div>`}
     </div>`;
     }
 
@@ -7088,11 +7116,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="panel-hd sub">Active Trades</div>
       ${tradeRows}`;
   }
-  // open the builder against the first other team; the builder itself can retarget
+  // open the builder with no team yet: the row of teams across its top is the
+  // first thing to choose from
   function startTrade() {
-    const other = Object.keys(T).find((k) => k !== MY_TEAM);
-    if (!other) return;
-    buildTrade(MY_TEAM, other, {});
+    if (!Object.keys(T).some((k) => k !== MY_TEAM)) return;
+    buildTrade(MY_TEAM, null, {});
   }
   function renderPanel(key) {
     currentRail = key;
@@ -7838,6 +7866,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // this button did before.
   var BACK_BY_VIEW = {
     detail: () => showLeagueView(),
+    trade: () => cancelTrade(),
     team: () => teamBack(),
     player: () => playerBack(),
     log: () => logBack(),
@@ -7897,6 +7926,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     assetId: () => assetId,
     buildTrade: () => buildTrade,
     cancelTrade: () => cancelTrade,
+    tradeFor: () => tradeFor,
+    tradeWith: () => tradeWith,
     clearCond: () => clearCond,
     clearMoney: () => clearMoney,
     closeCond: () => closeCond,
@@ -8291,7 +8322,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${assetChipHTML(a, { on: true, holder: key })}
     </div>`).join("");
     return `<div class="tb-col">
-    <div class="tb-ch" style="color:${t.c}">${escHtml(t.n)}</div>
+    <div class="tb-ch tf-${key}" style="color:${t.c}">${escHtml(t.n)}</div>
     <div class="tb-list">${rows2}${cash}
       <div class="tb-money" onclick="openMoney('${which}')">+ Money</div>
     </div>
@@ -8322,6 +8353,37 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ev.innerHTML = `<div class="tb-bar"><i style="width:${v.pct}%"></i></div>
       <div class="tb-nums"><span>${outV}</span><b>${v.line}</b><span>${inV}</span></div>`;
   }
+  // Every team you can trade with, across the top of the builder: tap one to
+  // trade with them instead. A counter-offer stays with the team that made it.
+  function tradeWithHTML() {
+    if (TB.counterOf) return "";
+    const teams = Object.keys(T).filter((k) => k !== TB.from);
+    return `<div class="tb-with">
+      <div class="tb-wl">${TB.to ? "Trading with" : "Who do you want to trade with?"}</div>
+      <div class="tb-teams" id="tbTeams">${teams.map((k) => {
+      const t = T[k];
+      return `<div class="tb-team${k === TB.to ? " on" : ""}" data-team="${k}" style="--tc:${t.c}" onclick="tradeWith('${k}')">
+          ${badge(t, "tb-tbd")}
+          <span class="tb-tn tf-${k}" style="color:${t.c}">${escHtml(t.n)}</span>
+          <span class="tb-tm">${escHtml(t.mgr || "")}</span>
+        </div>`;
+    }).join("")}</div>
+    </div>`;
+  }
+  function tradeWith(key) {
+    if (!TB || TB.counterOf || !T[key] || key === TB.from || key === TB.to) return;
+    // what was picked from the last team was theirs to give, not this one's
+    TB.to = key;
+    TB.get = [];
+    renderTrade();
+  }
+  // Trade for one player: the builder opens with his team, and him already in it.
+  function tradeFor(key) {
+    const o = ownershipOf(key);
+    if (!o || o.state !== "owned" || o.team === MY_TEAM) return;
+    const p = rosterFor(o.team).find((q) => pKeyOf(q) === key);
+    buildTrade(MY_TEAM, o.team, p ? { get: [{ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: p.tm } }] } : {});
+  }
   function renderTrade() {
     if (!TB) return;
     const el = document.getElementById("tradeBody");
@@ -8331,20 +8393,26 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const inList = mineIsFrom ? TB.get : TB.give;
     const outV = sideValue(outList), inV = sideValue(inList);
     const v = verdictFor(inV, outV);
+    const nm = (k) => `<b class="tf-${k}" style="color:${T[k].c}">${escHtml(T[k].n)}</b>`;
     el.innerHTML = `
     <div class="tb-hd">
       <div class="tb-back" onclick="cancelTrade()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
-      <div class="tb-title">${escHtml((T[TB.from] || {}).n || "")} <span>\u2194</span> ${escHtml((T[TB.to] || {}).n || "")}</div>
-      <div class="tb-send" onclick="submitTrade()">Send</div>
+      <div class="tb-title">${TB.to ? `${nm(TB.from)} <span>\u2194</span> ${nm(TB.to)}` : "New trade"}</div>
+      <div class="tb-send${TB.to ? "" : " dis"}" onclick="submitTrade()">Send</div>
     </div>
-    <div class="tb-cols">
+    ${tradeWithHTML()}
+    ${TB.to ? `<div class="tb-cols">
       ${column(TB.from, TB.give, "give")}
       ${column(TB.to, TB.get, "get")}
     </div>
     <div class="tb-eval ${v.tone}">
       <div class="tb-bar"><i style="width:${v.pct}%"></i></div>
       <div class="tb-nums"><span>${outV}</span><b>${v.line}</b><span>${inV}</span></div>
-    </div>`;
+    </div>` : `<div class="tb-pick">Tap a team to see their players and picks next to yours.</div>`}`;
+    // keep the chosen team in view in the row (scrolled by hand: scrollIntoView
+    // would also scroll the app's frame)
+    const strip = document.getElementById("tbTeams"), on = strip && strip.querySelector(".tb-team.on");
+    if (on) strip.scrollLeft = Math.max(0, on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2);
   }
   function buildTrade(fromKey, toKey, prefill) {
     prefill = prefill || {};
@@ -8353,7 +8421,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       to: toKey,
       give: (prefill.give || []).map(clone),
       get: (prefill.get || []).map(clone),
-      counterOf: prefill.counterOf || null
+      counterOf: prefill.counterOf || null,
+      // where back returns to: the team, player or chat it was started from
+      back: currentViewName(),
+      backTab: (document.querySelector(".tab.on") || { dataset: {} }).dataset.tab || null,
+      backScroll: (document.getElementById("scroll") || {}).scrollTop || 0
     };
     renderTrade();
     showView2("trade");
@@ -8382,11 +8454,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     patchTrade(which, a);
   }
   function cancelTrade() {
+    const from = TB || {};
     TB = null;
-    openChat();
+    const back = from.back;
+    if (!back || back === "trade" || back === "tradeart" || !document.querySelector(`.view[data-view="${back}"]`)) {
+      openChat();
+      return;
+    }
+    showView2(back);
+    if (from.backTab) document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === from.backTab));
+    const sc = document.getElementById("scroll");
+    if (sc) sc.scrollTop = from.backScroll || 0;
   }
   function submitTrade() {
-    if (!TB) return;
+    if (!TB || !TB.to) return;
     if (!TB.give.length && !TB.get.length) return;
     const isCounter = !!TB.counterOf;
     if (isCounter) {
@@ -12691,8 +12772,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${fontDropdownHTML(t)}` : "";
     const editBtn = own ? `<div class="tv-editbtn${editing ? " on" : ""}" onclick="toggleTeamEdit()">${editing ? "Done" : ICON_PENCIL + " Edit"}</div>` : "";
     const ownTag = own ? `<div class="tv-own-tag">${ICON_STAR}</div>` : "";
-    const msgBtn = own ? "" : `<div class="tv-msg" onclick="openThread('${currentTeamKey}')">
+    const msgBtn = own ? "" : `<div class="tv-msg" onclick="openThread('${currentTeamKey}')" title="Message">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+    </div>`;
+    // its own row, so the team's name keeps the width of the header
+    const tradeBtn = own ? "" : `<div class="tv-trade" onclick="buildTrade('${MY_TEAM}','${currentTeamKey}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>Propose a trade
     </div>`;
     return `<div class="tv-head">
     <div class="tv-band" style="background:linear-gradient(90deg,${t.c},transparent)"></div>
@@ -12701,6 +12786,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="tv-idwrap">${nameBlock}<div class="tv-sub">${t.mgr} \xB7 ${rlink(currentTeamKey, t.rec)} \xB7 #${t.rk}</div>${ownTag}</div>
       ${editBtn}${msgBtn}
     </div>
+    ${tradeBtn}
     ${editRow}
   </div>`;
   }
@@ -14032,9 +14118,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         : isFA
           ? `<span class="pc-act add" onclick="event.stopPropagation();addPlayer('${esc(key)}')">Add</span>`
           : "";
+    const own = !mine && inRealLeague() ? ownershipOf(key) : null;
     const blockAct = mine
       ? `<span class="pc-act blk${onBlock(key) ? " on" : ""}" onclick="event.stopPropagation();toggleTradeBlock('${esc(key)}')">${onBlock(key) ? "On block" : "Trade block"}</span>`
-      : "";
+      : own && own.state === "owned" && own.team !== MY_TEAM ? `<span class="pc-act trd" onclick="event.stopPropagation();tradeFor('${esc(key)}')">Trade for</span>` : "";
     const nameActs = nameAct || blockAct ? `<div class="pc-acts">${nameAct}${blockAct}</div>` : "";
     const dropBtn = "";
     document.getElementById("playerBody").innerHTML = `
@@ -17024,11 +17111,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (a.kind === "pick") {
       const pk = a.pick || {};
       const c = pk.cond || pickCond(pickId(pk));
-      const bits = [];
-      if (pk.originalTeam && pk.originalTeam !== sender && T[pk.originalTeam]) bits.push(`via ${T[pk.originalTeam].n}`);
-      if (c) bits.push(`Becomes ${triggerLabel(c)}`);
+      // the meta line as parts, so a team named in it is drawn in its own font
+      // and colour: "via <team> · Becomes 1st if ..."
+      const parts = [];
+      if (pk.originalTeam && pk.originalTeam !== sender && T[pk.originalTeam]) parts.push({ t: "via " }, { t: T[pk.originalTeam].n, team: pk.originalTeam });
+      if (c) parts.push({ t: (parts.length ? " · " : "") + `Becomes ${triggerLabel(c)}` });
       // drawn as two tiers where there is room: the year small, the round large
-      return { kind: "pick", year: String(pk.year || ""), ord: ordRound(pk.round), title: `${pk.year} ${ordRound(pk.round)}-round pick`, meta: bits.join(" · ") };
+      return { kind: "pick", year: String(pk.year || ""), ord: ordRound(pk.round), title: `${pk.year} ${ordRound(pk.round)}-round pick`, meta: parts.map((x) => x.t).join(""), metaParts: parts.some((x) => x.team) ? parts : null };
     }
     if (a.kind === "player") {
       const p = a.player || {}, rec = taPlayerRec(p);
@@ -17522,9 +17611,52 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     if (hasMeta) {
       by += 4 + metaS;
+      const mc = pal.acText === pal.ink ? "rgba(255,255,255,.7)" : taShade(pal.ac, 0.3);
+      if (it.metaParts) return taRich(ctx, log, si, it.metaParts, tx, by - 3, tw, metaS, mc);
       ctx.font = TA_F.meta(metaS);
-      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 3, { color: pal.acText === pal.ink ? "rgba(255,255,255,.7)" : taShade(pal.ac, 0.3), size: metaS });
+      taText(ctx, log, si, "meta", taEllipsis(ctx, it.meta, tw), tx, by - 3, { color: mc, size: metaS });
     }
+  }
+  // The colour a team's name is drawn in: the colour chosen for it on this
+  // graphic if it is one of the two sides, its own team colour otherwise, made
+  // lighter only if it would vanish into the dark panel.
+  var TA_TEAMC = {};
+  function taTeamColor(key) {
+    const c = TA_TEAMC[key] || taHex((T[key] || {}).c) || "#FFFFFF";
+    return taContrast(c, "#0C0C0F") < 2 ? taShade(c, 0.45) : c;
+  }
+  // A line of small type with team names in their own font, case and colour.
+  // Parts are { t, team? }. It shrinks a little to fit, then cuts the plain
+  // text at the end before it would cut a name.
+  function taRich(ctx, log, si, parts, x, y, maxW, size, color) {
+    const list = parts.map((p) => ({ team: p.team || null, t: p.team && teamFont(p.team).tt === "uppercase" ? p.t.toUpperCase() : p.t }));
+    const fontOf = (p, s) => p.team ? taTeamFont(teamFont(p.team))(s) : TA_F.meta(s);
+    const width = (s) => list.reduce((n, p) => {
+      ctx.font = fontOf(p, s);
+      return n + ctx.measureText(p.t).width;
+    }, 0);
+    let s = size;
+    while (s > Math.round(size * 0.8) && width(s) > maxW) s--;
+    while (list.length && width(s) > maxW) {
+      const last = list[list.length - 1], bare = last.t.replace(/…$/, "");
+      if (bare.length <= 1) {
+        list.pop();
+        if (list.length && !list[list.length - 1].team) list[list.length - 1].t = list[list.length - 1].t.replace(/[\s·]+$/, "");
+      } else last.t = bare.slice(0, -1).trimEnd() + "…";
+    }
+    ctx.save();
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+    let cx = x;
+    list.forEach((p) => {
+      ctx.font = fontOf(p, s);
+      ctx.fillStyle = p.team ? taTeamColor(p.team) : color;
+      ctx.fillText(p.t, cx, y);
+      if (p.team) log.push({ side: si, role: "team-ref", team: p.team, text: p.t, font: ctx.font, color: ctx.fillStyle, size: s });
+      cx += ctx.measureText(p.t).width;
+    });
+    ctx.restore();
+    log.push({ side: si, role: "meta", text: list.map((p) => p.t).join(""), size: s });
   }
   // a side receiving one player: a big card with a colour splash behind the
   // portrait and a name plate across the bottom
@@ -17681,10 +17813,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ctx.fillStyle = pal.ac;
     ctx.fillRect(x, y + TA_PLAQUE - 14, w, 3);
     ctx.restore();
-    const t = side.team, upper = true;
-    const nm = taFit(ctx, taCase(t.n, upper), TA_F.big, w - 40, 46, 24, 1);
-    taDisplay(ctx, nm.lines[0], x + w / 2, y + 56, nm.size, TA_F.big, pal.ac, "center");
-    log.push({ side: si, role: "team", text: nm.lines[0], size: nm.size });
+    // the team's name in its own font, case and colour
+    const t = side.team, tf = taTeamFont(t.font), upper = t.font.tt === "uppercase";
+    const nm = taFit(ctx, taCase(t.n, upper), tf, w - 40, 46, 22, 1);
+    taDisplay(ctx, nm.lines[0], x + w / 2, y + 56, nm.size, tf, pal.ac, "center");
+    log.push({ side: si, role: "team", text: nm.lines[0], size: nm.size, font: tf(nm.size), color: pal.ac });
     ctx.font = TA_F.cap(19);
     taText(ctx, log, si, "label", "RECEIVES", x + w / 2, y + 78, { color: "rgba(255,255,255,.72)", sp: 8, align: "center", size: 19 });
     const items = side.gets;
@@ -17742,6 +17875,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const c = opts.col && opts.col[s.team.key] || {};
       return taPalette(taHex(c.bg) || s.team.bg, taHex(c.ac) || s.team.c);
     });
+    TA_TEAMC = {};
+    sides.forEach((s, i) => TA_TEAMC[s.team.key] = pals[i].ac);
     const heroTop = TA_HEAD_H + 6, heroBot = lay.panelTop - 10, heroH = heroBot - heroTop;
     ctx.save();
     ctx.scale(k, k);
@@ -17794,7 +17929,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       let wy = heroBot - wmH + wm.size * (t.font.sc || 1) * 0.82;
       wm.lines.forEach((l) => {
         taDisplay(ctx, l, cx, wy, wm.size, tf, pals[i].ac, "center");
-        log.push({ side: i, role: "wordmark", text: l, size: wm.size });
+        log.push({ side: i, role: "wordmark", text: l, size: wm.size, font: tf(wm.size), color: pals[i].ac });
         wy += wm.size * (t.font.sc || 1) * 0.95;
       });
     });
@@ -17841,6 +17976,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       fonts.push(taTeamFont(s.team.font)(40));
       if (s.team.logo) srcs.push(s.team.logo);
       s.gets.forEach((it) => {
+        // a pick's original team is named in its own font too
+        (it.metaParts || []).forEach((p) => p.team && fonts.push(taTeamFont(teamFont(p.team))(40)));
         if (it.kind !== "player") return;
         it.photoSrc = TA && TA.photos[it.pid] || it.photo;
         if (it.photoSrc) srcs.push(it.photoSrc);
@@ -17960,7 +18097,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const c = TA.opts.col[s.team.key] || {};
       const bg = taHex(c.bg) || taHex(s.team.bg) || "#262123", ac = taHex(c.ac) || taHex(s.team.c) || "#A5ABB0";
       return `<div class="ta-side" data-team="${s.team.key}">
-        <div class="ta-sn" style="color:${ac}">${escHtml(s.team.n)}</div>
+        <div class="ta-sn tf-${s.team.key}" style="color:${ac}">${escHtml(s.team.n)}</div>
         ${taSwatch(s.team.key, "bg", bg)}
         ${taSwatch(s.team.key, "ac", ac)}
         <span class="ta-reset" onclick="taResetColors('${s.team.key}')">Team colors</span>
@@ -17989,7 +18126,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     el.innerHTML = `
     <div class="ta-hd">
       <div class="tb-back" onclick="closeTradeArt()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
-      <div class="ta-title">Trade graphic<span>${escHtml(sides[0].team.n)} ↔ ${escHtml(sides[1].team.n)}</span></div>
+      <div class="ta-title">Trade graphic<span>${sides.map((sd) => `<b class="tf-${sd.team.key}" style="color:${taHex((TA.opts.col[sd.team.key] || {}).ac) || taHex(sd.team.c) || "inherit"}">${escHtml(sd.team.n)}</b>`).join(" ↔ ")}</span></div>
     </div>
     <div class="ta-stage"><canvas id="taCanvas" width="1080" height="1080"></canvas></div>
     <div class="ta-note" id="taNote"></div>
