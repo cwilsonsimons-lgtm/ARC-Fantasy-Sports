@@ -467,6 +467,24 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .rw-axis span:first-child{transform:translateX(0)}
 .rw-axis span:last-child{transform:translateX(-100%)}
 .rw-empty{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
+/* zoom: the week's kickoff slots under the chart, and what a zoomed stretch did */
+.rw-zoom{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -12px 0;padding:0 12px}
+.rw-zoom::-webkit-scrollbar{display:none}
+.rw-z{flex:none;padding:5px 10px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.03);
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:10px;letter-spacing:.9px;
+  text-transform:uppercase;white-space:nowrap;color:var(--ink-2);cursor:pointer}
+.rw-z.on{border-color:var(--ink-2);background:rgba(255,255,255,.13);color:var(--ink)}
+.rw-sum{display:flex;align-items:baseline;gap:8px;margin-top:9px;padding-top:7px;border-top:1px solid var(--line-soft)}
+.rw-sum .r{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;color:var(--ink-2);flex:1;white-space:nowrap}
+.rw-sum .sc{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:var(--ink-3);white-space:nowrap}
+.rw-sum .sc b{font-weight:700}
+.rw-sum .sc b.me{color:var(--green)}
+.rw-sum .sc b.opp{color:var(--red)}
+.rw-sum .w{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;flex:1;text-align:right;white-space:nowrap}
+.rw-sum .w.up{color:var(--green)}
+.rw-sum .w.dn{color:var(--red)}
+/* mid-pinch the drawing is stretched; the pins and times come back with the redraw */
+.rw-pinching .rw-pins,.rw-pinching .rw-axis span{visibility:hidden}
 
 /* starters */
 .starters{margin-top:12px;border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
@@ -5193,6 +5211,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   __export(rewind_exports, {
     buildRewind: () => buildRewind,
     rewindSeries: () => rewindSeries,
+    rwZoomTo: () => rwZoomTo,
     rwOpen: () => rwOpen,
     syncRewind: () => syncRewind,
     toggleRewind: () => toggleRewind
@@ -5220,6 +5239,18 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const ap = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
     return `${DAYS[(day + 4) % 7]} ${h}:${String(m).padStart(2, "0")} ${ap}`;
+  }
+  // "12PM", "3:05PM": a kickoff or tick on the chart's clock
+  function shortClock(abs) {
+    abs -= TZ_SHIFT;
+    const mins = (abs % 1440 + 1440) % 1440, m = mins % 60;
+    let h = Math.floor(mins / 60);
+    const ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return h + (m ? ":" + String(m).padStart(2, "0") : "") + ap;
+  }
+  function dayName(abs) {
+    return DAYS[(Math.floor((abs - TZ_SHIFT) / 1440) + 4) % 7];
   }
   // A chart samples every player hundreds of times; their jumps are worked out
   // once per series build (see rewindSeries).
@@ -5302,15 +5333,18 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     return Math.round(Math.round(v * 100) / 10) / 10;
   }
   // The win-probability series for any matchup (yours by default).
-  function rewindSeries(sides) {
+  // With a zoom ({from, to} in chart minutes) only that stretch is sampled, and
+  // more finely. The result carries the week's game windows, kickoff slots and
+  // (live week) the minute now as .span.
+  function rewindSeries(sides, zoom) {
     _jumpMemo = /* @__PURE__ */ new Map();
     try {
-      return rewindSeriesFor(sides || liveSides());
+      return rewindSeriesFor(sides || liveSides(), zoom);
     } finally {
       _jumpMemo = null;
     }
   }
-  function rewindSeriesFor(sides) {
+  function rewindSeriesFor(sides, zoom) {
     const lists = sides.map((k) => weekStarters(k, S.week));
     if (!lists[0].length && !lists[1].length) return [];
     const ords = [];
@@ -5368,10 +5402,21 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       info.who = [...A.map((p) => ({ ...p, side: "a" })), ...X.map((p) => ({ ...p, side: "x" }))].filter((p) => p.kick === t).map((p) => ({ name: p.name, side: p.side }));
       return info;
     };
+    // zoomed: the windows cut to the stretch, a sample every minute or two
+    let spans = windows.map(([ws, we], w) => [ws, we, w]), step = SAMPLE_MIN;
+    if (zoom && zoom.slot != null) {
+      const s = weekSlots(frame.wk).find((q) => q.from === zoom.slot);
+      zoom = s ? { from: s.from, to: s.to } : { from: 0, to: 0 };
+    }
+    if (zoom) {
+      spans = spans.map(([ws, we, w]) => [Math.max(ws, zoom.from), Math.min(we, zoom.to), w]).filter(([ws, we]) => we > ws);
+      const mins = spans.reduce((n, [ws, we]) => n + we - ws, 0);
+      step = Math.max(1, Math.min(SAMPLE_MIN, Math.round(mins / 90)));
+    }
     const out = [];
-    windows.forEach(([ws, we], w) => {
+    spans.forEach(([ws, we, w]) => {
       const times = /* @__PURE__ */ new Set();
-      for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
+      for (let t = ws; t <= we; t += step) times.add(t);
       times.add(we);
       plays.forEach((e) => {
         if (e.t >= ws && e.t <= we) times.add(e.t);
@@ -5383,22 +5428,27 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text, parts: e.parts, kind: e.kind }));
         const a = sum(A, t), x = sum(X, t);
         const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
-        out.push({ abs: t, a: tenth(a), x: tenth(x), win, w, ev, ko: kickoff(t) });
+        // a zoomed stretch ends as the next games kick off; that kickoff is theirs
+        out.push({ abs: t, a: tenth(a), x: tenth(x), win, w, ev, ko: zoom && t === zoom.to ? null : kickoff(t) });
       });
     });
     // the live week is drawn up to now, not to the end of Monday night
+    let res = out, now = null;
     if (S.week === LIVE_WEEK && liveStatus(LIVE_WEEK) === "live") {
-      const now = absMin(lvNowOrd());
+      now = absMin(lvNowOrd());
       const past = out.filter((q) => q.abs < now);
-      // end on the live score itself
-      const a = sum(A, now), x = sum(X, now);
-      // the latest point is the matchup's live odds, the same figure its card shows
-      const as = seededScore(LIVE_WEEK, sides[0]), xs = seededScore(LIVE_WEEK, sides[1]);
-      const nowWin = sides[0] === liveSides()[0] && sides[1] === liveSides()[1] ? LT.aw : gameOdds(sides[0], sides[1], as, xs, LIVE_WEEK).aw;
-      past.push({ abs: now, a: tenth(a), x: tenth(x), win: nowWin, w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
-      return past.length >= 2 ? past : out.slice(0, 2);
+      // end on the live score itself (a zoom that ends before now has no now)
+      if (!zoom || now <= zoom.to) {
+        const a = sum(A, now), x = sum(X, now);
+        // the latest point is the matchup's live odds, the same figure its card shows
+        const as = seededScore(LIVE_WEEK, sides[0]), xs = seededScore(LIVE_WEEK, sides[1]);
+        const nowWin = sides[0] === liveSides()[0] && sides[1] === liveSides()[1] ? LT.aw : gameOdds(sides[0], sides[1], as, xs, LIVE_WEEK).aw;
+        past.push({ abs: now, a: tenth(a), x: tenth(x), win: nowWin, w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
+      }
+      res = past.length >= 2 ? past : zoom ? [] : out.slice(0, 2);
     }
-    return out;
+    res.span = { windows, slots: weekSlots(frame.wk), now, kicks: A.concat(X).map((p) => p.kick) };
+    return res;
   }
   // Prime-time windows get their broadcast name; anything else is its slot.
   var PRIME = { THU: ["TNF", "Thursday Night Football"], SUN: ["SNF", "Sunday Night Football"], MON: ["MNF", "Monday Night Football"] };
@@ -5412,7 +5462,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   // TNF and MNF kickoffs for the NFL week the starters' games belong to.
   function weekFrame(ords) {
     const wk = Object.keys(NFL_WEEKS).find((w) => NFL_WEEKS[w].some((g) => ords.indexOf(kickOrd(g.dt, g.t)) > -1));
-    const out = { tnf: null, mnf: null, tnfOrd: null, mnfOrd: null };
+    const out = { tnf: null, mnf: null, tnfOrd: null, mnfOrd: null, wk };
     if (!wk) return out;
     const all = NFL_WEEKS[wk].map((g) => kickOrd(g.dt, g.t));
     const tnf = all.filter((o) => kickInfo(o).tag === "TNF"), mnf = all.filter((o) => kickInfo(o).tag === "MNF");
@@ -5426,6 +5476,90 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     }
     return out;
   }
+  // The week's kickoff slots, from the NFL schedule. Kickoffs within half an
+  // hour of each other (4:05 and 4:25 Eastern) are one slot, and a slot runs
+  // until the next one kicks off: the noon games' slot ends at 3:05, when the
+  // late games start. A prime-time slot goes by its broadcast name when that
+  // name is its alone, a Sunday one by its time, any other by day and time.
+  function weekSlots(wk) {
+    if (!wk || !NFL_WEEKS[wk]) return [];
+    const ords = [...new Set(NFL_WEEKS[wk].map((g) => kickOrd(g.dt, g.t)))].sort((a, b) => a - b);
+    const out = [];
+    ords.forEach((o) => {
+      const t = absMin(o), last = out[out.length - 1];
+      if (!last || t - last.from > 30) out.push({ from: t, tag: kickInfo(o).tag });
+    });
+    out.forEach((s, i) => {
+      s.to = i + 1 < out.length ? out[i + 1].from : Infinity;
+      const shared = out.some((q) => q !== s && q.tag === s.tag);
+      s.label = s.tag && !shared ? s.tag : (dayName(s.from) === "SUN" ? "" : dayName(s.from) + " ") + shortClock(s.from);
+    });
+    return out;
+  }
+  // The chart's horizontal scale is time, with the quiet hours between game
+  // windows taken out (each gap is drawn as ten minutes).
+  var RW_GAP = SAMPLE_MIN;
+  function rwScale(windows) {
+    const off = [];
+    let u = 0;
+    windows.forEach(([ws, we], w) => {
+      off[w] = u;
+      u += we - ws + RW_GAP;
+    });
+    return {
+      toU: (abs, w) => off[w] + abs - windows[w][0],
+      // back to a minute; one in a gap goes to the edge of the window beside it
+      fromU(u, end) {
+        for (let w = 0; w < windows.length; w++) {
+          const [ws, we] = windows[w];
+          if (u <= off[w] + we - ws) return u < off[w] ? end && w ? windows[w - 1][1] : ws : ws + u - off[w];
+        }
+        return windows[windows.length - 1][1];
+      }
+    };
+  }
+  // The stretch the chart is zoomed to, if any: a kickoff slot or a custom one.
+  // It stays through live updates and the other games of the week; another
+  // week opens on the whole week.
+  var rwZoom = {};
+  function rwZoomFor(id) {
+    const z = rwZoom[id];
+    if (z && z.wk !== S.week) delete rwZoom[id];
+    return rwZoom[id] || null;
+  }
+  function rwZoomTo(id, slot) {
+    const el = document.getElementById(id);
+    if (!el || !el._rwArgs) return;
+    if (slot == null) delete rwZoom[id];
+    else rwZoom[id] = { wk: S.week, slot: +slot };
+    // the cursor goes to where the new stretch ends: how it finished
+    rwAt[id] = null;
+    buildRewind(el, ...el._rwArgs);
+  }
+  // "SUN 12PM–3:05PM"; the end is "Now" while the stretch is still being played.
+  // Short, as a chip, a Sunday goes without saying (as the slots do).
+  function rwRangeLabel(from, to, now, short) {
+    const one = dayName(to) === dayName(from), end = to === now ? "Now" : (one ? "" : dayName(to) + " ") + shortClock(to);
+    return `${short && one && dayName(from) === "SUN" ? "" : dayName(from) + " "}${shortClock(from)}\u2013${end}`;
+  }
+  // Under the chart: the week's kickoff slots that have anything in them for
+  // this matchup, to zoom to (a pinch makes a stretch of its own), and, zoomed,
+  // what the stretch did: each side's points over it and the odds either end.
+  function rwZoomHTML(id, span, zoom, pts) {
+    // a slot is offered once it has been played, if a starter here kicked off in it
+    const cov = span.windows.map(([ws, we]) => [ws, span.now != null ? Math.min(we, span.now) : we]);
+    const avail = span.slots.filter((s) => span.kicks.some((k) => k >= s.from && k < s.to) && cov.some(([ws, we]) => Math.min(we, s.to) - Math.max(ws, s.from) > 0));
+    if (avail.length < 2 && !zoom) return "";
+    const chip = (on, slot, label, aria) => `<button class="rw-z${on ? " on" : ""}"${aria ? ` aria-label="${aria}"` : ""} onclick="rwZoomTo('${id}'${slot != null ? "," + slot : ""})">${label}</button>`;
+    const custom = zoom && zoom.slot == null;
+    // a stretch of your own sits next to Week, the way back from it
+    let html = `<div class="rw-zoom">${chip(!zoom, null, "Week")}${custom ? chip(true, null, rwRangeLabel(zoom.from, zoom.to, null, true) + " \u2715", "Show the whole week") : ""}${avail.map((s) => chip(zoom && zoom.slot === s.from, s.from, s.label)).join("")}</div>`;
+    if (zoom) {
+      const a = pts[0], b = pts[pts.length - 1], d = (v) => (v < 0 ? "\u2212" : "+") + Math.abs(tenth(v)).toFixed(1);
+      html += `<div class="rw-sum"><span class="r">${rwRangeLabel(a.abs, b.abs, span.now)}</span><span class="sc"><b class="me">${d(b.a - a.a)}</b> &ndash; <b class="opp">${d(b.x - a.x)}</b></span><span class="w ${b.win >= a.win ? "up" : "dn"}">${a.win}% &rarr; ${b.win}%</span></div>`;
+    }
+    return html;
+  }
   var rwAt = {};
   var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   var W = 320;
@@ -5435,13 +5569,22 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   var BUB_GAP = 16;
   function buildRewind(el, aFinal, xFinal, sides) {
     sides = sides || liveSides();
-    const pts = rewindSeries(sides);
+    el._rwArgs = [aFinal, xFinal, sides];
+    // zoomed to a kickoff slot or a stretch of its own, when that has anything
+    // in it for this matchup; the whole week otherwise
+    const z = rwZoomFor(el.id), zp = z ? rewindSeries(sides, z) : null;
+    const zoom = zp && zp.length >= 2 ? z : null;
+    const pts = zoom ? zp : rewindSeries(sides);
     if (!pts.length) {
       el.innerHTML = `<div class="rw-empty">No games to replay yet</div>`;
       return;
     }
-    const n = pts.length;
-    const X = (i) => PADL + i / (n - 1) * (W - PADL - PADR);
+    const n = pts.length, span = pts.span, sc = rwScale(span.windows);
+    el._rwPts = pts;
+    const PW = W - PADL - PADR;
+    const us = pts.map((p) => sc.toU(p.abs, p.w)), u0 = us[0], uw = us[n - 1] - u0 || 1;
+    const xOfU = (u) => PADL + (u - u0) / uw * PW;
+    const X = (i) => xOfU(us[i]);
     const Y = (w) => H - w / 100 * H;
     const pctX = (i) => (X(i) / W * 100).toFixed(2) + "%";
     const pctY = (w) => (Y(w) / H * 100).toFixed(2) + "%";
@@ -5474,14 +5617,35 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       const x = X(i);
       // a label is ~40 units wide centred on its tick; a crowded one is skipped
       const labelled = marks.filter((m) => m.lb), lastLb = labelled[labelled.length - 1];
-      marks.push({ x, lb: !lastLb || x - lastLb.x > 52 ? slotLabel(p.abs) : "" });
+      marks.push({ x, lb: !zoom && (!lastLb || x - lastLb.x > 52) ? slotLabel(p.abs) : "" });
     });
+    const EDGE = 30;
+    if (zoom) {
+      // zoomed: a tick every few minutes to few hours, whatever gives about
+      // four, on the clock; the day is named where it changes
+      const step = [5, 10, 15, 30, 60, 120, 180, 360, 720].find((m) => uw / m <= 4.5) || 1440;
+      const multiDay = dayName(pts[0].abs) !== dayName(pts[n - 1].abs);
+      let day = null;
+      pts.forEach((p, i) => {
+        if (i && pts[i - 1].w === p.w) return;
+        let j = i;
+        while (j + 1 < n && pts[j + 1].w === p.w) j++;
+        for (let t = Math.ceil((p.abs - TZ_SHIFT) / step) * step + TZ_SHIFT; t <= pts[j].abs; t += step) {
+          const x = xOfU(sc.toU(t, p.w)), prev = marks.filter((m) => m.lb).pop();
+          if (prev && x - prev.x < 40) continue;
+          const lb = (multiDay && dayName(t) !== day ? dayName(t) + " " : "") + shortClock(t).replace(/(:\d\d)[AP]M$/, "$1");
+          day = dayName(t);
+          marks.push({ x, lb });
+        }
+      });
+      marks.sort((a, b) => a.x - b.x);
+    }
     // A label at either edge is drawn flush with it and so reaches further in.
     // When it crowds its neighbour the edge one goes: the chart already tags
     // TNF and MNF there, and the Sunday times are the ones worth reading.
-    const lbs = marks.filter((m) => m.lb), EDGE = 30;
-    if (lbs.length > 2 && lbs[0].x < EDGE && lbs[1].x - lbs[0].x < 68) lbs[0].lb = "";
-    if (lbs.length > 2 && lbs[lbs.length - 1].x > W - EDGE && lbs[lbs.length - 1].x - lbs[lbs.length - 2].x < 68) lbs[lbs.length - 1].lb = "";
+    const lbs = marks.filter((m) => m.lb);
+    if (!zoom && lbs.length > 2 && lbs[0].x < EDGE && lbs[1].x - lbs[0].x < 68) lbs[0].lb = "";
+    if (!zoom && lbs.length > 2 && lbs[lbs.length - 1].x > W - EDGE && lbs[lbs.length - 1].x - lbs[lbs.length - 2].x < 68) lbs[lbs.length - 1].lb = "";
     const lbAlign = (x) => x < EDGE ? "translateX(0)" : x > W - EDGE ? "translateX(-100%)" : "translateX(-50%)";
     el.innerHTML = `
     <div class="rw-head">
@@ -5522,7 +5686,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       </div>
       <div class="rw-y"><span>100</span><span>50</span><span>100</span></div>
       <div class="rw-axis">${marks.filter((m) => m.lb).map((m) => `<span style="left:${(m.x / W * 100).toFixed(2)}%;transform:${lbAlign(m.x)}">${m.lb}</span>`).join("")}</div>
-    </div>`;
+    </div>${rwZoomHTML(el.id, span, zoom, pts)}`;
+    const zrow = el.querySelector(".rw-zoom"), zon = zrow && zrow.querySelector(".rw-z.on");
+    if (zon && zon.offsetLeft + zon.offsetWidth > zrow.clientWidth) zrow.scrollLeft = zon.offsetLeft - 12;
     const svg2 = el.querySelector(".rw-svg"), layer = el.querySelector(".rw-pins");
     const cur = el.querySelector(".rw-cursor"), dot = el.querySelector(".rw-dot");
     const bub = el.querySelector(".rw-bub"), lead = el.querySelector(".rw-lead");
@@ -5609,26 +5775,116 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     let drag = false;
     const at = (e) => {
       const r = svg2.getBoundingClientRect();
-      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-      let i = Math.round((cx / r.width * W - PADL) / (W - PADL - PADR) * (n - 1));
+      const sx = ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) / r.width * W;
+      // the sample nearest the finger (the scale is time, so not evenly spaced)
+      let lo = 0, hi = n - 1;
+      while (lo < hi) {
+        const mid = lo + hi >> 1;
+        if (X(mid) < sx) lo = mid + 1;
+        else hi = mid;
+      }
+      let i = lo > 0 && sx - X(lo - 1) < X(lo) - sx ? lo - 1 : lo;
       // snap onto a scoring play or kickoff when the finger lands close to one
       const j = nearestPlay(i);
-      if (j >= 0 && Math.abs(X(j) - X(i)) / W * r.width <= 10) i = j;
+      if (j >= 0 && Math.abs(X(j) - sx) / W * r.width <= 10) i = j;
       last = Math.max(0, Math.min(n - 1, i));
       show(last);
     };
-    const move = (e) => {
-      if (drag) {
-        at(e);
-        e.preventDefault();
+    // Two fingers zoom: the minutes under them stay under them. While they
+    // move, the drawing is stretched (its viewBox) and the pins are hidden;
+    // when one lifts, the chart is drawn again for that stretch.
+    const live = span.now != null;
+    const uEnd = live ? sc.toU(span.now, span.windows.reduce((b, [ws], w) => ws < span.now ? w : b, 0)) : sc.toU(span.windows[span.windows.length - 1][1], span.windows.length - 1);
+    let pinch = null;
+    const MIN_SPAN = 15;
+    const fit = (lo, hi) => {
+      if (hi - lo < MIN_SPAN) {
+        const c = (lo + hi) / 2;
+        lo = c - MIN_SPAN / 2;
+        hi = c + MIN_SPAN / 2;
       }
+      if (hi - lo >= uEnd) return [0, uEnd];
+      if (lo < 0) [lo, hi] = [0, hi - lo];
+      if (hi > uEnd) [lo, hi] = [lo - (hi - uEnd), uEnd];
+      return [lo, hi];
+    };
+    const preview = ([lo, hi]) => {
+      const vw = (xOfU(hi) - xOfU(lo)) * W / PW, vx = xOfU(lo) - PADL * vw / W;
+      svg2.setAttribute("viewBox", `${vx.toFixed(2)} 0 ${vw.toFixed(2)} ${H}`);
+      el.classList.add("rw-pinching");
+    };
+    const commit = ([lo, hi]) => {
+      if (lo <= 0.5 && hi >= uEnd - 0.5) delete rwZoom[el.id];
+      else rwZoom[el.id] = { wk: S.week, from: Math.round(sc.fromU(lo, false)), to: Math.round(sc.fromU(hi, true)) };
+      buildRewind(el, aFinal, xFinal, sides);
+    };
+    const svgX = (cx) => {
+      const r = svg2.getBoundingClientRect();
+      return (cx - r.left) / r.width * W;
+    };
+    const uOfX = (x) => u0 + (x - PADL) / PW * uw;
+    // fingers seldom land together: the first one has scrubbed by the time the
+    // second arrives, so the cursor goes back to where it was
+    let before = last;
+    const pinchStart = (e) => {
+      if (drag) show(last = before);
+      drag = false;
+      const xa = svgX(e.touches[0].clientX), xb = svgX(e.touches[1].clientX);
+      pinch = { ua: uOfX(xa), ub: uOfX(xb), range: null };
+    };
+    const pinchMove = (e) => {
+      const xa = svgX(e.touches[0].clientX), xb = svgX(e.touches[1].clientX);
+      if (Math.abs(xb - xa) < 8 || Math.abs(pinch.ub - pinch.ua) < 0.5) return;
+      const k = (pinch.ub - pinch.ua) / (xb - xa);
+      if (k <= 0) return;
+      const lo = pinch.ua - (xa - PADL) * k;
+      pinch.range = fit(lo, lo + PW * k);
+      preview(pinch.range);
+    };
+    const move = (e) => {
+      if (pinch && e.touches && e.touches.length >= 2) pinchMove(e);
+      else if (drag && e.touches && e.touches.length >= 2) pinchStart(e);
+      else if (drag) at(e);
+      else return;
+      e.preventDefault();
     };
     const down = (e) => {
+      if (e.touches && e.touches.length >= 2) return pinchStart(e);
+      before = last;
       drag = true;
       at(e);
     };
-    const up = () => {
+    const up = (e) => {
       drag = false;
+      if (pinch && !(e.touches && e.touches.length >= 2)) {
+        const rg = pinch.range;
+        pinch = null;
+        el.classList.remove("rw-pinching");
+        if (rg) commit(rg);
+      }
+    };
+    // the system took the touch (a call, a swipe from the edge): no zoom
+    const cancel = () => {
+      drag = false;
+      if (!pinch) return;
+      pinch = null;
+      el.classList.remove("rw-pinching");
+      buildRewind(el, aFinal, xFinal, sides);
+    };
+    // a trackpad pinch (ctrl + wheel) does the same about the pointer
+    let wheelT = 0, wheelRange = null;
+    const wheel = (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const [lo0, hi0] = wheelRange || [u0, u0 + uw], f = Math.exp(Math.max(-1, Math.min(1, e.deltaY * 0.01)));
+      const uc = lo0 + (svgX(e.clientX) - PADL) / PW * (hi0 - lo0);
+      wheelRange = fit(uc - (uc - lo0) * f, uc + (hi0 - uc) * f);
+      preview(wheelRange);
+      clearTimeout(wheelT);
+      wheelT = setTimeout(() => {
+        el.classList.remove("rw-pinching");
+        commit(wheelRange);
+      }, 220);
     };
     if (el._rwAbort) el._rwAbort.abort();
     const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -5641,6 +5897,12 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     svg2.addEventListener("touchstart", down, sigP);
     window.addEventListener("touchmove", move, sigP);
     window.addEventListener("touchend", up, sig);
+    window.addEventListener("touchcancel", cancel, sig);
+    svg2.addEventListener("wheel", wheel, sigP);
+    // Safari's own pinch (page zoom) stays off the chart
+    const noGesture = (e) => e.preventDefault();
+    svg2.addEventListener("gesturestart", noGesture, sigP);
+    svg2.addEventListener("gesturechange", noGesture, sigP);
   }
   // While the chart is open, every live score cell in the lineup shows what that
   // player had at the chart's minute, using the same accrual as the chart, and
@@ -12676,7 +12938,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     }
     if (!pts || pts.length < 2) return "";
     const W2 = 320, H2 = 46, n = pts.length, a = T[g.a] || {}, x = T[g.x] || {};
-    const X = (j) => (j / (n - 1) * W2).toFixed(1), Y = (w) => (H2 - w / 100 * H2).toFixed(1);
+    // on the full chart's scale: time, less the hours between game windows
+    const sc = rwScale(pts.span.windows), us = pts.map((p) => sc.toU(p.abs, p.w)), uw = us[n - 1] - us[0] || 1;
+    const X = (j) => ((us[j] - us[0]) / uw * W2).toFixed(1), Y = (w) => (H2 - w / 100 * H2).toFixed(1);
     const line = pts.map((p, j) => `${X(j)},${Y(p.win)}`).join(" ");
     const last = pts[n - 1], id = "lgsp" + i;
     const live = g.status === "live";

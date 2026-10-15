@@ -137,6 +137,20 @@ pinned to that afternoon.
   and unfold it, over and over (All Matchups shook on a phone). It now folds
   only when the page stays scrollable past where you are, ignores the moves
   the browser makes while the fold settles, and ignores the end of the page.
+- **The win-probability chart zooms.** Chips under it pick one of the week's
+  kickoff slots, taken from the NFL schedule (`weekSlots`): a slot runs until
+  the next one kicks off, so 12PM is noon to 3:05, and kickoffs within half
+  an hour (3:05 and 3:25) are one slot. A slot is offered when one of the
+  matchup's starters kicked off in it and it has been played. Two fingers (or
+  ctrl + wheel) zoom to any stretch; the minutes under the fingers stay under
+  them. Zoomed, the series is sampled every minute or two
+  (`rewindSeries(sides, zoom)`), the next slot's kickoff at the right edge is
+  left unmarked, the cursor goes to the end of the stretch, and a line under
+  the chips gives each side's points over it and the odds either end. The
+  scale is time (`rwScale`; gaps between game windows count as ten minutes),
+  for the full chart and All Matchups' strips too. `node tools/chart-zoom-check.mjs`
+  checks it against the whole-week series, minute for minute, with real
+  pinches.
 - `node tools/matchup-swipe-check.mjs` drives real touch events on City Boys
   and the imported league, and flicks All Matchups at three screen heights.
 

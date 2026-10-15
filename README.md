@@ -179,6 +179,25 @@ against. As the last game ends `rem` reaches zero and the function returns an
 exact 0 or 100, because by then the result is simply known. The previous
 straight-line formula clamped at 1–99 and so never resolved.
 
+The horizontal scale is time within each window, with every gap between
+windows drawn as ten minutes, so the extra points at scoring plays do not
+stretch the minutes around them.
+
+**Zoom.** Chips under the chart pick a kickoff slot: TNF, 12PM, 3:05PM, SNF,
+MNF (a Sunday slot goes by its time, another day's by day and time; kickoffs
+within half an hour, like 3:05 and 3:25, are one slot). A slot runs until the
+next one kicks off, so 12PM is the noon games from noon to 3:05. Only slots one
+of the matchup's starters kicked off in are offered, and in the live week only
+those already under way, ending on now. Two fingers zoom to any stretch, and
+back out to the whole week (ctrl + wheel, a trackpad pinch, does the same on a
+computer); the stretch becomes a chip beside **Week**, which goes back to the
+whole week. Zoomed, the chart is sampled every minute or two rather than ten,
+the axis reads the clock, the cursor goes to the end of the stretch and the
+lineup follows it, and a line under the chips gives each side's points over the
+stretch and the odds at either end. The zoom holds through live updates and
+the week's other games; another week opens on the whole week.
+`node tools/chart-zoom-check.mjs` covers it.
+
 Both were unreachable for a while: `LIVE_WEEK` was `0` while weeks run from
 `MINW` (1), so `week === LIVE_WEEK` could never be true. The hero stayed at
 0.0-0.0 however far the clock was stepped, and Rewind interpolated between
