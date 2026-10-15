@@ -1,4 +1,4 @@
-// Interaction checks for Summit Markets.
+// Interaction checks for Markets.
 //
 // Usage: node tools/markets-check.mjs [url]        (defaults to the dist build)
 //

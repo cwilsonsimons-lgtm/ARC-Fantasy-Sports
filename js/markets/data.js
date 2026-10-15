@@ -1,4 +1,4 @@
-// Summit Markets — the market model.
+// Markets — the market model.
 //
 // Deliberately independent of the fantasy side: this imports only from js/data/
 // (plain NFL facts) and keeps its own localStorage key. Nothing here reads or

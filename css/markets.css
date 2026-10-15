@@ -1,4 +1,4 @@
-/* ===== SUMMIT MARKETS =====
+/* ===== MARKETS =====
    A separate surface from the fantasy app: its own palette (blue, not violet),
    its own header and its own bottom nav. Every rule here is scoped under .mk. */
 .mk{

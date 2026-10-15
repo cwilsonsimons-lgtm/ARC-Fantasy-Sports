@@ -1,4 +1,4 @@
-// Summit Markets — section shell: open/close, bottom nav, sheets, toasts.
+// Markets — section shell: open/close, bottom nav, sheets, toasts.
 //
 // This is the only file that touches the fantasy app, and only at the seam:
 // opening the section adds a class to <body>, closing it removes it. Markets
@@ -21,7 +21,7 @@ export function openMarkets() {
   mkView(view);
 }
 
-/** Leave Summit Markets and go back to the fantasy app. */
+/** Leave Markets and go back to the fantasy app. */
 export function closeMarkets() {
   if (!document.body.classList.contains('markets')) return;   // also called by nav items
   document.body.classList.remove('markets');
@@ -127,7 +127,7 @@ function holdingFor(id) {
 }
 
 export function mkAbout() {
-  openSheet('Summit Markets', `
+  openSheet('Markets', `
     <p><b>Follow — and one day trade — the value of players the way you'd follow a stock.</b>
       Every notable player has a price that rises and falls as the season unfolds: big games,
       injuries, benchings, breakouts.</p>

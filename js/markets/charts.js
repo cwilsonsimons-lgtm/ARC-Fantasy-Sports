@@ -1,11 +1,11 @@
-// Summit Markets — the three charts on a contract.
+// Markets — the three charts on a contract.
 //
 // A. PRICE            what the crowd thought, over time
 // B. LAST FIVE        what the player actually did, against his own average
 // C. PACE             cumulative production against the pace today's price implies
 //
 // A and B exist elsewhere in some form. C does not, and cannot: it only works
-// because a Summit contract settles on a season total. A price line tells you the
+// because a Markets contract settles on a season total. A price line tells you the
 // crowd's opinion and never the player's output; a game-log chart tells you the
 // output and never whether the price is fair. C is the only one that puts the
 // two on the same axes, so the gap between the lines *is* the trade.

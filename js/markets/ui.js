@@ -1,4 +1,4 @@
-// Summit Markets — shared rendering helpers (icons, sparklines, rows, formatting).
+// Markets — shared rendering helpers (icons, sparklines, rows, formatting).
 import { isWatched, gameLog, paceData, SEASON_GAMES, WEEKS_PLAYED } from './data.js';
 
 export const money = n => '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');

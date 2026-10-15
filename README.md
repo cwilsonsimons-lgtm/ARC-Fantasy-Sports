@@ -30,9 +30,18 @@ the browser's default serif and the whole app changed character. Every family
 now carries a fallback too, so a miss degrades to a condensed sans rather than
 Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
 
-## Summit Markets
+### Logo
 
-The **Markets** item in the bottom nav opens Summit Markets — a separate section, not
+`assets/summit-logo.png` is the Summit logo as supplied. The page embeds a
+cut-out of it (the black background made transparent) once, as the
+`.summit-mark` class, so it still renders with no network; `assets/summit-mark.png`
+is a large copy of that cut-out, and `assets/summit-icon-180.png` and
+`summit-icon-512.png` are the home-screen and browser icons (the mountains on
+black).
+
+## Markets
+
+The **Markets** item in the bottom nav opens Markets — a separate section, not
 another fantasy screen. It takes over the whole phone with its own header, its own
 blue palette, its own bottom nav and its own `localStorage` key
 (`arc_markets_v1`). "Leagues" in its nav returns to the fantasy app.
@@ -72,7 +81,7 @@ js/
   state.js      the handful of values shared across modules
   store.js      localStorage persistence, roster rows, image downscaling
   data/         teams, league config, NFL player/schedule/colour tables
-  markets/      Summit Markets — self-contained, see above
+  markets/      Markets — self-contained, see above
   *.js          one module per screen or subsystem
 tools/          dev server and the verification harness
 ```

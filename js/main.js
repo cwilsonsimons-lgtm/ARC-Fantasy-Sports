@@ -26,7 +26,7 @@ import * as m20 from './week.js';
 import * as m21 from './nav.js';
 import * as m22 from './draft-meta.js';
 import * as m23 from './draft-room.js';
-// Summit Markets: a separate section, imported last so it layers on top.
+// Markets: a separate section, imported last so it layers on top.
 import * as mk0 from './markets/data.js';
 import * as mk1 from './markets/ui.js';
 import * as mk2 from './markets/market.js';
