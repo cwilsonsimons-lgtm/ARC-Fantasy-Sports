@@ -1,4 +1,4 @@
-// Model + render checks for the three contract charts in Arc Markets.
+// Model + render checks for the three contract charts in Summit Markets.
 //
 // Usage: node tools/charts-check.mjs [url]        (defaults to the dist build)
 //

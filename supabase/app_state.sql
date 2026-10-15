@@ -2,7 +2,7 @@
 -- Run it once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 --
 -- One row per account holding the app's whole saved state (the fantasy store and
--- Arc Markets). Row-level security means a signed-in user can only ever read or
+-- Summit Markets). Row-level security means a signed-in user can only ever read or
 -- write their own row; the publishable key in the page cannot see anyone else's.
 
 create table if not exists public.app_state (

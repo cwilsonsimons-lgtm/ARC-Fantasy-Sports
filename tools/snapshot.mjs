@@ -55,7 +55,7 @@ const steps = [
 const capture = `(()=>{
   const clone = document.body.cloneNode(true);
   clone.querySelectorAll('style,script').forEach(s=>s.remove());
-  const mk = clone.querySelector('#mk'); if (mk) mk.remove();  // Arc Markets is a separate surface
+  const mk = clone.querySelector('#mk'); if (mk) mk.remove();  // Summit Markets is a separate surface
   // the draft clock counts real seconds, so its text differs between runs
   const clk = clone.querySelector('#dgTimer'); if (clk) clk.textContent = 'CLOCK';
   return document.body.className + '\\n' + clone.innerHTML;

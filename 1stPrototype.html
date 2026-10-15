@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>City Boys Dynasty — Navigation</title>
+<meta name="apple-mobile-web-app-title" content="Summit">
+<meta name="application-name" content="Summit">
+<title>Summit</title>
 <style>
 /* css/fonts.css */
 /* Fonts embedded by tools/fetch-fonts.mjs — do not edit by hand.
@@ -1637,8 +1639,11 @@ body.seeded .view[data-view="standings"] .wsw{display:none}
   color:var(--ink-3)}
 .set-crestrow .set-btns{display:flex;flex-direction:column;gap:7px;margin:0}
 
-/* the Arc mark in the Markets header */
-.mk-mark{width:96px;height:auto;color:var(--mk-ink);display:block;margin:0 auto}
+/* the Summit mark in the Markets header: the peak, then the name */
+.mk-logo{display:flex;align-items:flex-end;justify-content:center;gap:6px}
+.mk-mark{width:31px;height:auto;color:var(--mk-ink);display:block}
+.mk-word{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:25px;line-height:.8;
+  letter-spacing:2px;color:var(--mk-ink)}
 
 /* the waiting room keeps the league bar but has no league tabs yet */
 body.forming .tabs{display:none}
@@ -2267,7 +2272,7 @@ body.forming .tabs{display:none}
 .tv-pick .tv-pts{flex:none}
 
 /* css/markets.css */
-/* ===== ARC MARKETS =====
+/* ===== SUMMIT MARKETS =====
    A separate surface from the fantasy app: its own palette (a darker step of the same four colours),
    its own header and its own bottom nav. Every rule here is scoped under .mk. */
 .mk{
@@ -2700,7 +2705,7 @@ body.mk-ticket-open .mk-ticket{transform:translateY(0)}
 
 /* css/account.css */
 /* ===== PROFILE / ACCOUNT =====
-   Covers the phone above the bottom nav, like Arc Markets. The element is .acct;
+   Covers the phone above the bottom nav, like Summit Markets. The element is .acct;
    the body state class is .acct-open. They must differ: a shared name would make
    every .acct rule match <body> too. */
 .acct{position:absolute;inset:0;z-index:60;background:var(--bg);display:none;flex-direction:column;color:var(--ink)}
@@ -2999,24 +3004,27 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     <div class="acct-scroll" id="acctBody"></div>
   </div>
 
-  <!-- ===== ARC MARKETS =====
+  <!-- ===== SUMMIT MARKETS =====
        A separate section, not a fantasy screen. It covers the phone above the
        app's own bottom nav, which stays put; the briefcase button in the header
        swaps between the market and the portfolio. -->
   <div class="mk" id="mk">
     <div class="mk-head">
       <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
-      <!-- ARC MARK — the one place the logo is drawn.
-           Vector rather than a bitmap so it stays self-contained and recolours
-           with the palette. To swap in the raster original, replace the <svg>
-           below with <img src="data:image/png;base64,..."> and nothing else
-           changes. -->
-      <div class="mk-brand" onclick="mkAbout()">
-        <svg class="mk-mark" viewBox="0 0 200 44" fill="none" aria-label="Arc Markets">
-          <path d="M52.5 6 34 40h7.6l4-7.9h14.6l4 7.9H72L53.5 6h-1Zm-4 20.6 4.2-8.4 4.2 8.4h-8.4Z" fill="currentColor"/>
-          <path d="M6 36.5 20.5 22l7 7L45.5 11" stroke="var(--mk-accent)" stroke-width="6.5"
-            stroke-linecap="square" stroke-linejoin="miter"/>
-        </svg>
+      <!-- SUMMIT MARK — the one place the logo is drawn: a peak with the
+           accent flag on its summit, and the name beside it. Vector rather than
+           a bitmap so it stays self-contained and recolours with the palette.
+           To swap in a raster original, replace the <svg> below with
+           <img src="data:image/png;base64,..."> and nothing else changes. -->
+      <div class="mk-brand" onclick="mkAbout()" role="img" aria-label="Summit Markets">
+        <div class="mk-logo">
+          <svg class="mk-mark" viewBox="0 0 34 28" fill="none" aria-hidden="true">
+            <path d="M1 27 13.5 8 19 16.5 23 11 33 27Z" fill="currentColor"/>
+            <path d="M13.5 8.5V1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M14.3 1.2 21 3.4 14.3 5.6Z" fill="var(--mk-accent)"/>
+          </svg>
+          <span class="mk-word">SUMMIT</span>
+        </div>
         <div class="m">MARKETS</div>
       </div>
       <div class="mk-tools">
@@ -13829,7 +13837,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // Headshots come off the network. When one does not arrive — offline, a slow
   // guest network, a dead URL — the <img> is swapped for the same initials a
   // player with no headshot at all would show, rather than left as a broken
-  // image icon. Arc Markets already does this in its own face(); this brings
+  // image icon. Summit Markets already does this in its own face(); this brings
   // the fantasy side in line.
   function faceFallback(img) {
     img.replaceWith(document.createTextNode(img.getAttribute("data-ini") || ""));
@@ -14944,8 +14952,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function inviteToken() {
     return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
   }
+  // The app's own address with the invite code, so a copied link opens the app
+  // wherever it is hosted rather than pointing at a domain that isn't ours.
   function inviteLink(lg) {
-    return `https://arc.app/join/${lg.invite}`;
+    return `${location.href.split(/[?#]/)[0]}?join=${lg.invite}`;
   }
   function wizCreate() {
     const w = wiz();
@@ -16908,7 +16918,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     renderMarket();
   }
   function mkAbout() {
-    openSheet("Arc Markets", `
+    openSheet("Summit Markets", `
     <p><b>Follow \u2014 and one day trade \u2014 the value of players the way you'd follow a stock.</b>
       Every notable player has a price that rises and falls as the season unfolds: big games,
       injuries, benchings, breakouts.</p>
@@ -16931,8 +16941,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       limits, self-exclusion and real consumer protections from day one, around season-long
       opinions rather than rapid-fire action.</p>
 
-    <div class="fine">Concept only \u2014 nothing is built. \u201CArc Markets\u201D is a working title. This
-      prototype is not an offer to sell securities, an invitation to invest, or a solicitation to
+    <div class="fine">Concept only \u2014 nothing is built. This prototype is not an offer to sell securities, an invitation to invest, or a solicitation to
       participate in any trading, gaming or wagering product. No real-money product exists or is
       being offered. Any future real-money markets would be listed only on exchanges regulated by
       the U.S. Commodity Futures Trading Commission and operated by licensed partners, subject to
@@ -19471,7 +19480,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
 /* ===== ACCOUNTS + CLOUD SYNC =====
    Sign in with the same account on a computer and a phone and the leagues follow
    you. Auth is Supabase's auth server (GoTrue) over plain fetch, no SDK. The app's
-   whole saved state is two localStorage blobs (the fantasy store and Arc Markets),
+   whole saved state is two localStorage blobs (the fantasy store and Summit Markets),
    and those travel together as one row per user in the `app_state` table, which
    row-level security limits to its owner.
 

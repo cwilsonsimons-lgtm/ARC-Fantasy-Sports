@@ -1,7 +1,8 @@
-# City Boys Dynasty
+# Summit
 
-Fantasy football league app prototype — matchups, standings, rosters, a mock
-draft room, free agency, and a simulated live-scoring week clock.
+Fantasy football app prototype, built around the City Boys Dynasty league —
+matchups, standings, rosters, a mock draft room, free agency, and a simulated
+live-scoring week clock.
 
 ## Running it
 
@@ -29,9 +30,9 @@ the browser's default serif and the whole app changed character. Every family
 now carries a fallback too, so a miss degrades to a condensed sans rather than
 Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
 
-## Arc Markets
+## Summit Markets
 
-The **Markets** item in the bottom nav opens Arc Markets — a separate section, not
+The **Markets** item in the bottom nav opens Summit Markets — a separate section, not
 another fantasy screen. It takes over the whole phone with its own header, its own
 blue palette, its own bottom nav and its own `localStorage` key
 (`arc_markets_v1`). "Leagues" in its nav returns to the fantasy app.
@@ -71,7 +72,7 @@ js/
   state.js      the handful of values shared across modules
   store.js      localStorage persistence, roster rows, image downscaling
   data/         teams, league config, NFL player/schedule/colour tables
-  markets/      Arc Markets — self-contained, see above
+  markets/      Summit Markets — self-contained, see above
   *.js          one module per screen or subsystem
 tools/          dev server and the verification harness
 ```

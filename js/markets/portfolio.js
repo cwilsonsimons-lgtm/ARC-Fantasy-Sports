@@ -1,4 +1,4 @@
-// Arc Markets — the Portfolio screen: value card, tabs, holdings table.
+// Summit Markets — the Portfolio screen: value card, tabs, holdings table.
 import { portfolio, watchRows } from './data.js';
 import { ICON, spark, money, signed, pctText, dirClass, tri, holdingRow, marketRow, empty } from './ui.js';
 
@@ -49,7 +49,7 @@ function body(pf) {
       + 'invented headlines about real players.');
   }
   return empty(ICON.history, 'No trades yet',
-    'Arc Markets is a concept. The first build is free to play, with no real money — '
+    'Summit Markets is a concept. The first build is free to play, with no real money — '
     + 'your play-money trade history would appear here.');
 }
 

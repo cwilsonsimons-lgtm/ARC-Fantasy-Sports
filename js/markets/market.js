@@ -1,4 +1,4 @@
-// Arc Markets — the Market screen: status strip, highlight cards, filters, table.
+// Summit Markets — the Market screen: status strip, highlight cards, filters, table.
 import { MARKET, marketStats, topMover, mostActive, topRookie, watchRows,
          mkStore, saveMk } from './data.js';
 import { ICON, spark, face, esc, money, pctText, marketRow, THUMBS } from './ui.js';

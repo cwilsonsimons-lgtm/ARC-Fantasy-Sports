@@ -1,4 +1,4 @@
-// Arc Markets — section shell: open/close, bottom nav, sheets, toasts.
+// Summit Markets — section shell: open/close, bottom nav, sheets, toasts.
 //
 // This is the only file that touches the fantasy app, and only at the seam:
 // opening the section adds a class to <body>, closing it removes it. Markets
@@ -21,7 +21,7 @@ export function openMarkets() {
   mkView(view);
 }
 
-/** Leave Arc Markets and go back to the fantasy app. */
+/** Leave Summit Markets and go back to the fantasy app. */
 export function closeMarkets() {
   if (!document.body.classList.contains('markets')) return;   // also called by nav items
   document.body.classList.remove('markets');
@@ -127,7 +127,7 @@ function holdingFor(id) {
 }
 
 export function mkAbout() {
-  openSheet('Arc Markets', `
+  openSheet('Summit Markets', `
     <p><b>Follow — and one day trade — the value of players the way you'd follow a stock.</b>
       Every notable player has a price that rises and falls as the season unfolds: big games,
       injuries, benchings, breakouts.</p>
@@ -150,7 +150,7 @@ export function mkAbout() {
       limits, self-exclusion and real consumer protections from day one, around season-long
       opinions rather than rapid-fire action.</p>
 
-    <div class="fine">Concept only — nothing is built. “Arc Markets” is a working title. This
+    <div class="fine">Concept only — nothing is built. This
       prototype is not an offer to sell securities, an invitation to invest, or a solicitation to
       participate in any trading, gaming or wagering product. No real-money product exists or is
       being offered. Any future real-money markets would be listed only on exchanges regulated by

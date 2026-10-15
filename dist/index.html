@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>City Boys Dynasty — Navigation</title>
+<title>Summit</title>
 <style>
 /* css/fonts.css */
 /* Fonts embedded by tools/fetch-fonts.mjs — do not edit by hand.
@@ -1132,7 +1132,7 @@ body.open .drawer{transform:translateX(0)}
 
 
 /* css/markets.css */
-/* ===== ARC MARKETS =====
+/* ===== SUMMIT MARKETS =====
    A separate surface from the fantasy app: its own palette (blue, not violet),
    its own header and its own bottom nav. Every rule here is scoped under .mk. */
 .mk{
@@ -1598,7 +1598,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
 
   <div class="hint" id="hint"></div>
 
-  <!-- ===== ARC MARKETS =====
+  <!-- ===== SUMMIT MARKETS =====
        A separate section, not a fantasy screen. It covers the phone above the
        app's own bottom nav, which stays put; the briefcase button in the header
        swaps between the market and the portfolio. -->
@@ -1606,7 +1606,7 @@ body.mk-sheet-open .mk-sheet{transform:translateY(0)}
     <div class="mk-head">
       <div class="mk-ic" onclick="mkAbout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
       <div class="mk-brand" onclick="mkAbout()">
-        <div class="a">Arc</div>
+        <div class="a">Summit</div>
         <div class="m">MARKETS</div>
       </div>
       <div class="mk-tools">
@@ -7914,7 +7914,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return empty(
       ICON.history,
       "No trades yet",
-      "Arc Markets is a concept. The first build is free to play, with no real money \u2014 your play-money trade history would appear here."
+      "Summit Markets is a concept. The first build is free to play, with no real money \u2014 your play-money trade history would appear here."
     );
   }
   function renderPortfolio() {
@@ -8257,7 +8257,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     &middot; <span class="${dirClass(h.dayChange)}">${money(h.dayChange)} today</span></span></div>`;
   }
   function mkAbout() {
-    openSheet("Arc Markets", `
+    openSheet("Summit Markets", `
     <p><b>Follow \u2014 and one day trade \u2014 the value of players the way you'd follow a stock.</b>
       Every notable player has a price that rises and falls as the season unfolds: big games,
       injuries, benchings, breakouts.</p>
@@ -8280,7 +8280,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       limits, self-exclusion and real consumer protections from day one, around season-long
       opinions rather than rapid-fire action.</p>
 
-    <div class="fine">Concept only \u2014 nothing is built. \u201CArc Markets\u201D is a working title. This
+    <div class="fine">Concept only \u2014 nothing is built. This
       prototype is not an offer to sell securities, an invitation to invest, or a solicitation to
       participate in any trading, gaming or wagering product. No real-money product exists or is
       being offered. Any future real-money markets would be listed only on exchanges regulated by
