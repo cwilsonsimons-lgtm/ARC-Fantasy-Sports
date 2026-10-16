@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { activeWorkspace, counts, switchWorkspace } from '../core/state';
 import { loadState, saveState } from '../core/storage';
 import { ConfirmHost, StoreContext, ToastHost, useStore, useStoreState } from './common';
@@ -6,13 +6,14 @@ import { emptyForm, FindMatch, type FindForm } from './FindMatch';
 import { Pool } from './Pool';
 import { History } from './History';
 import { SettingsPage } from './SettingsPage';
+import { SyncContext, useCloudSync, useSyncStatus, writeLocalSavedAt } from './sync';
 
 type Tab = 'find' | 'pool' | 'history' | 'settings';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'find', label: 'Find a Match' },
-  { id: 'pool', label: 'Prospect Pool' },
-  { id: 'history', label: 'Assignment History' },
-  { id: 'settings', label: 'Settings & Data' },
+const TABS: { id: Tab; label: string; short: string }[] = [
+  { id: 'find', label: 'Find a Match', short: 'Match' },
+  { id: 'pool', label: 'Prospect Pool', short: 'Pool' },
+  { id: 'history', label: 'Assignment History', short: 'History' },
+  { id: 'settings', label: 'Settings & Data', short: 'Settings' },
 ];
 
 const initial = loadState();
@@ -21,10 +22,24 @@ export function App() {
   const store = useStoreState(initial.state);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadNote, setLoadNote] = useState(initial.message ?? null);
+  const firstSave = useRef(true);
+  const fromCloud = useRef(false);
+  const sync = useCloudSync(store, (s, savedAt) => {
+    fromCloud.current = true;
+    writeLocalSavedAt(savedAt);
+    store.replace(s);
+  });
 
-  useEffect(() => { setSaveError(saveState(store.state)); }, [store.state]);
+  useEffect(() => {
+    setSaveError(saveState(store.state));
+    // Stamp real edits so a newer local copy wins over an older account copy, and vice versa.
+    if (firstSave.current) firstSave.current = false;
+    else if (fromCloud.current) fromCloud.current = false;
+    else writeLocalSavedAt(Date.now());
+  }, [store.state]);
 
   return (
+    <SyncContext.Provider value={sync}>
     <StoreContext.Provider value={store}>
       <ToastHost>
         <ConfirmHost>
@@ -32,6 +47,7 @@ export function App() {
         </ConfirmHost>
       </ToastHost>
     </StoreContext.Provider>
+    </SyncContext.Provider>
   );
 }
 
@@ -42,6 +58,7 @@ function readTab(): Tab {
 
 function Shell({ saveError, loadNote, dismissLoadNote }: { saveError: string | null; loadNote: string | null; dismissLoadNote: () => void }) {
   const { state, apply } = useStore();
+  const sync = useSyncStatus();
   const [tab, setTabState] = useState<Tab>(readTab);
   const [form, setForm] = useState<FindForm>(emptyForm);
   const ws = activeWorkspace(state);
@@ -82,7 +99,7 @@ function Shell({ saveError, loadNote, dismissLoadNote }: { saveError: string | n
           <div className="tabs-inner">
             {TABS.map((t) => (
               <button key={t.id} className={`tab ${tab === t.id ? 'tab-active' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
-                {t.label}
+                <span className="tab-long">{t.label}</span><span className="tab-short" aria-hidden="true">{t.short}</span>
                 {t.id === 'history' && ws.assignments.length > 0 && <span className="tab-count">{ws.assignments.length}</span>}
               </button>
             ))}
@@ -91,7 +108,8 @@ function Shell({ saveError, loadNote, dismissLoadNote }: { saveError: string | n
       </header>
 
       <main className="main">
-        {saveError && <div className="notice notice-error" role="alert">{saveError}</div>}
+        {saveError && sync.mode !== 'cloud' && <div className="notice notice-error" role="alert">{saveError}</div>}
+        {sync.mode === 'cloud' && sync.error && <div className="notice notice-error" role="alert">{sync.error}</div>}
         {loadNote && (
           <div className="notice notice-warn" role="alert">
             {loadNote} <button className="btn btn-small" onClick={dismissLoadNote}>Dismiss</button>
@@ -104,8 +122,20 @@ function Shell({ saveError, loadNote, dismissLoadNote }: { saveError: string | n
       </main>
 
       <footer className="footer">
-        Saved in this browser on this device only. <button className="link" onClick={() => setTab('settings')}>Back up your data</button> to keep it safe or move it.
+        <SaveLine /> <button className="link" onClick={() => setTab('settings')}>Back up your data</button>
       </footer>
     </div>
   );
+}
+
+export function saveWhere(sync: ReturnType<typeof useSyncStatus>): string {
+  if (sync.mode === 'checking') return 'Connecting to your account…';
+  if (sync.mode === 'cloud') return sync.saving ? 'Saving to your account…' : 'Saved to your Claude account. It follows you to any device where you open this page.';
+  if (sync.reason === 'signed-out') return 'Sign in to claude.ai to save to your account. For now, data is saved in this browser only.';
+  return 'Saved in this browser on this device only.';
+}
+
+function SaveLine() {
+  const sync = useSyncStatus();
+  return <span className={`save-line save-${sync.mode}`}>{saveWhere(sync)}</span>;
 }

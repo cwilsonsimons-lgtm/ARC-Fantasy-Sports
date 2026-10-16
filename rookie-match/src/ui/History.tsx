@@ -3,12 +3,13 @@ import { formatHeight, formatNumber, parseHeight, parseWeight } from '../core/he
 import { describeDiff } from '../core/match';
 import { activeWorkspace, removeAssignment, restoreAssignment, updateAssignment, type Assignment } from '../core/state';
 import { assignmentsCsv, fileSlug } from '../core/storage';
-import { download, formatDate, HeightField, Modal, plural, PositionSelect, today, useConfirm, useStore, useToast } from './common';
+import { useDownload, formatDate, HeightField, Modal, plural, PositionSelect, today, useConfirm, useStore, useToast } from './common';
 
 export function History() {
   const { state, apply } = useStore();
   const toast = useToast();
   const confirm = useConfirm();
+  const download = useDownload();
   const ws = activeWorkspace(state);
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Assignment | null>(null);

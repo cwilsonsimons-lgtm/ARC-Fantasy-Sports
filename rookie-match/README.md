@@ -10,13 +10,19 @@ repository.
 
 ## Running it
 
-Open `dist/rookie-match.html` in a browser. It's one file with no server, no
-login and no network needed.
+Two builds come from the same source:
+
+- **On claude.ai (phone or computer):** the published artifact
+  (`dist/artifact.html`). Data is saved to your private space on the page, tied
+  to your Claude account, so it follows you between devices. Backups and CSV
+  exports go through the viewer's save prompt.
+- **As a file:** open `dist/rookie-match.html` in a browser. It's one file with
+  no server, no login and no network needed, and it saves in that browser only.
 
 ```
 cd rookie-match
 npm install
-npm run build        # rewrites dist/rookie-match.html
+npm run build        # rewrites dist/rookie-match.html and dist/artifact.html
 npm test             # matching, parsing, tracking, import, storage (vitest)
 npm run typecheck
 npm run check:ui     # drives the built page through every required case in Chromium
@@ -27,7 +33,13 @@ and uses `/opt/pw-browsers/chromium` unless `CHROME_PATH` is set.
 
 ## Where data lives
 
-Everything is saved in the browser's local storage on the current device. It
+**On claude.ai**, the page uses the artifact `db` capability. Data is stored at
+`data/users/<your id>/meta`, with one document per workspace under it, because
+each document is capped at 256 KiB. That space is private to you. A copy is also
+kept in the browser so the page opens instantly. Whichever copy was changed most
+recently wins when the page loads (see `src/ui/sync.ts`).
+
+**As a standalone file**, everything is saved in the browser's local storage on the current device. It
 survives refreshes and browser restarts, but it does not sync to other browsers
 or devices, and clearing site data erases it. **Settings & Data → Download
 backup** writes a JSON file with every workspace, prospect, assignment and

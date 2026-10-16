@@ -5,7 +5,8 @@ import {
   type AppState,
 } from '../core/state';
 import { makeBackup, readBackup } from '../core/storage';
-import { download, plural, today, useConfirm, useStore, useToast } from './common';
+import { plural, today, useConfirm, useDownload, useStore, useToast } from './common';
+import { useSyncStatus } from './sync';
 
 export function SettingsPage() {
   return (
@@ -24,6 +25,15 @@ export function SettingsPage() {
 }
 
 function StorageNote() {
+  const sync = useSyncStatus();
+  if (sync.mode === 'cloud' || sync.mode === 'checking') {
+    return (
+      <div className="notice notice-info">
+        <b>Where your data lives:</b> in your private space on this page, tied to your Claude account. Only you can see it, and it follows you
+        between your phone and computer. A copy is also kept in this browser. Download a backup now and then anyway.
+      </div>
+    );
+  }
   return (
     <div className="notice notice-info">
       <b>Where your data lives:</b> everything is saved in this browser on this device (local storage). It survives refreshes and restarts, but it
@@ -275,6 +285,7 @@ function Backup() {
   const { state, replace } = useStore();
   const toast = useToast();
   const confirm = useConfirm();
+  const download = useDownload();
   const [errors, setErrors] = useState<string[]>([]);
 
   const summary = (s: AppState) => {

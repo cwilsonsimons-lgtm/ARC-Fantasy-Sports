@@ -8,7 +8,7 @@ import {
 } from '../core/state';
 import { prospectsCsv, fileSlug } from '../core/storage';
 import { TEMPLATE_CSV } from '../core/importer';
-import { download, HeightField, Modal, plural, PositionSelect, today, useConfirm, useStore, useToast } from './common';
+import { useDownload, HeightField, Modal, plural, PositionSelect, today, useConfirm, useStore, useToast } from './common';
 import { ImportDialog } from './ImportDialog';
 
 type SortKey = 'name' | 'position' | 'height' | 'weight' | 'college';
@@ -17,6 +17,7 @@ export function Pool() {
   const { state, apply } = useStore();
   const toast = useToast();
   const confirm = useConfirm();
+  const download = useDownload();
   const ws = activeWorkspace(state);
   const used = usedMap(ws);
   const c = counts(ws);

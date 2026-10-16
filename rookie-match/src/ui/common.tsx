@@ -139,7 +139,7 @@ export function HeightField({ id, value, onChange, label = 'Height', inputRef, o
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && onEnter) { e.preventDefault(); onEnter(); } }}
-        placeholder={`6'3" · 6-3 · 75`}
+        placeholder={`6'3" or 6-3`}
         autoComplete="off"
         inputMode="text"
         aria-describedby={`${id}-hint`}
@@ -169,7 +169,30 @@ export function PositionSelect({ id, value, onChange, positions, allowAll, label
 
 // ---- files ----
 
-export function download(filename: string, text: string, type: string) {
+/**
+ * Offers a generated file. Inside claude.ai the page can't start downloads itself,
+ * so it asks through the `downloads` capability (the viewer confirms); the
+ * standalone file uses an ordinary download link.
+ */
+export function useDownload() {
+  const toast = useToast();
+  return useCallback(async (filename: string, text: string, type: string) => {
+    const host = (window as unknown as { claude?: { use(n: string): Promise<unknown> } }).claude;
+    if (!host || typeof host.use !== 'function') { download(filename, text, type); return; }
+    const d = (await host.use('downloads')) as { save(r: { filename: string; data: string }): Promise<{ status: string }> } | null;
+    if (!d) { toast("Saving files isn't available in this view. Open the page in claude.ai to save files.", { tone: 'error' }); return; }
+    try {
+      const r = await d.save({ filename, data: text });
+      if (r.status === 'saved') toast(`Saved ${filename}.`);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'declined') return;
+      toast(code === 'rate_limited' ? 'Another save is already waiting for you. Finish it, then try again.' : `Couldn't save ${filename}.`, { tone: 'error' });
+    }
+  }, [toast]);
+}
+
+function download(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

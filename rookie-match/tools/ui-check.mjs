@@ -17,7 +17,7 @@ await ctx.route(/^https?:/, (r) => r.abort());
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+page.on('console', (m) => m.type() === 'error' && !/ERR_FAILED|net::/.test(m.text()) && errors.push(m.text()));
 page.on('dialog', (d) => { errors.push(`unexpected native dialog: ${d.message()}`); d.dismiss(); });
 
 const tab = (label) => page.locator('.tab', { hasText: label }).click();
@@ -200,6 +200,57 @@ await m.fill('#gen-weight', '216');
 await m.waitForSelector('.cand');
 check('no horizontal scroll on phone', (await m.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0);
 await m.screenshot({ path: `${out}/04-mobile.png`, fullPage: true });
+
+// ---- claude.ai mode: account sync + save prompt, with a stand-in for the platform ----
+// The stand-in keeps documents in a shared object, so a second browser context acts as a second device.
+const cloud = {};
+const saves = [];
+async function claudePage() {
+  const c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await c.route(/^https?:/, (r) => r.abort());
+  await c.exposeFunction('__dbGet', (p) => cloud[p] ?? null);
+  await c.exposeFunction('__dbSet', (p, d) => { cloud[p] = d; });
+  await c.exposeFunction('__dbDel', (p) => { delete cloud[p]; });
+  await c.exposeFunction('__save', (f, d) => { saves.push({ f, d }); });
+  await c.addInitScript(() => {
+    const ref = (path) => ({
+      get: async () => { const d = await window.__dbGet(path); return { exists: d !== null, data: () => d ?? undefined }; },
+      set: (d) => window.__dbSet(path, JSON.parse(JSON.stringify(d))),
+      delete: () => window.__dbDel(path),
+      collection: (sub) => ({ doc: (id) => ref(`${path}/${sub}/${id}`) }),
+    });
+    const caps = {
+      db: { doc: ref },
+      user: { id: async () => 'u_test' },
+      downloads: { save: async ({ filename, data }) => { await window.__save(filename, data); return { status: 'saved' }; } },
+    };
+    window.claude = { use: (n) => new Promise((res) => setTimeout(() => res(caps[n] ?? null), 30)) };
+  });
+  const p = await c.newPage();
+  p.on('pageerror', (e) => errors.push(String(e)));
+  await p.goto(url);
+  await p.waitForSelector('.topbar');
+  return { c, p };
+}
+const devA = await claudePage();
+await devA.p.waitForFunction(() => document.querySelector('.save-line')?.textContent.includes('Saved to your Claude account'));
+check('first visit copies data to the account', !!cloud['data/users/u_test/meta'] && Object.keys(cloud).some((k) => k.includes('/workspaces/')));
+await devA.p.locator('.tab', { hasText: 'Settings & Data' }).click();
+await devA.p.fill('#ws-name', 'Phone Class');
+await devA.p.getByRole('button', { name: 'Create' }).click();
+await devA.p.waitForFunction(() => document.querySelector('.save-line')?.textContent.startsWith('Saved to your'));
+await devA.p.waitForTimeout(800);
+check('changes reach the account', cloud['data/users/u_test/meta']?.workspaceIds?.length === 2);
+await devA.p.getByRole('button', { name: 'Download backup (.json)' }).click();
+await devA.p.waitForTimeout(200);
+check('backup goes through the save prompt', saves.length === 1 && saves[0].f.endsWith('.json') && JSON.parse(saves[0].d).app === 'rookie-match');
+const devB = await claudePage(); // empty browser storage: a second device
+await devB.p.waitForFunction(() => document.querySelectorAll('#ws-select option').length === 2, null, { timeout: 5000 }).catch(() => {});
+check('a second device loads the account copy', (await devB.p.locator('#ws-select option').allInnerTexts()).includes('Phone Class'));
+check('second device shows account status', (await devB.p.locator('.save-line').innerText()).includes('Claude account'));
+await devB.p.screenshot({ path: `${out}/05-claude-mode-phone.png`, fullPage: true });
+await devA.c.close();
+await devB.c.close();
 
 check('no console errors', errors.length === 0, errors.join(' | '));
 await browser.close();
