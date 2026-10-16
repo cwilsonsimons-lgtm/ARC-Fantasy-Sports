@@ -310,7 +310,7 @@ body.open .scrim{opacity:1;pointer-events:auto}
 .ms-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(19,17,20,.6) 0%,rgba(19,17,20,.12) 34%,rgba(19,17,20,.5) 80%,var(--bg) 100%)}
 .mstage .sh-glowL,.mstage .sh-glowR{top:8%;height:66%}
 .ms-chrome{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:14px 14px 2px}
-.ms-ic{width:34px;height:34px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);display:grid;place-items:center;color:#fff;cursor:pointer}
+.ms-ic{position:relative;width:34px;height:34px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.2);display:grid;place-items:center;color:#fff;cursor:pointer}
 .ms-badge{position:absolute;top:-5px;right:-5px;width:15px;height:15px;border-radius:50%;background:var(--accent);
   border:2px solid #16211B;font-size:9px;font-weight:700;display:grid;place-items:center;color:#fff}
 .ms-ic svg{width:17px;height:17px}
@@ -8001,10 +8001,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function asLeague(rec) {
     const teams = {};
     (rec.teams || []).forEach((t) => teams[t.key] = t);
+    // your own team as you styled it in this league (kept with the league while
+    // another is loaded): its name, logo and colours over the host's
+    const own = rec.started && rec.teams && rec.teams[0] && rec.team || null;
+    if (own) teams[rec.teams[0].key] = Object.assign({}, rec.teams[0], own.name ? { n: own.name } : {}, own.logo ? { logo: own.logo } : {}, own.c ? { c: own.c } : {}, own.bg ? { bg: own.bg } : {});
     return {
       id: rec.id,
       name: rec.name,
-      logo: null,
+      logo: rec.logo || null,
       type: rec.league.type,
       teamCount: +rec.league.teams,
       week: 1,
@@ -10053,18 +10057,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     paintBell();
   }
   function paintBell() {
-    const n = unreadNotifs(), el = document.getElementById("lbBell");
-    if (!el) return;
-    let b = el.querySelector(".b");
-    if (n && !b) {
-      b = document.createElement("span");
-      b.className = "b";
-      el.appendChild(b);
-    }
-    if (b) {
-      b.textContent = n;
-      b.style.display = n ? "grid" : "none";
-    }
+    const n = unreadNotifs();
+    // the league bar's bell, and the matchup screen's (its own header)
+    [[document.getElementById("lbBell"), "b"], ...[...document.querySelectorAll("[data-bell]")].map((e) => [e, "ms-badge"])].forEach(([el, cls]) => {
+      if (!el) return;
+      let b = el.querySelector("." + cls);
+      if (n && !b) {
+        b = document.createElement("span");
+        b.className = cls;
+        el.appendChild(b);
+      }
+      if (b) {
+        b.textContent = n;
+        b.style.display = n ? "grid" : "none";
+      }
+    });
   }
   function waiverClose(lgId) {
     const L = LG(), day = +L.waiverDay, hour = +L.waiverHour, now = waiverNow(lgId);
@@ -11832,6 +11839,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       saveStore();
       renderSettings();
       if (window.renderHome) window.renderHome();
+      // the crest behind the matchup score, and anywhere else it is drawn
+      refreshApp();
     });
   }
   function clearLeagueLogo() {
@@ -11840,6 +11849,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     saveStore();
     renderSettings();
     if (window.renderHome) window.renderHome();
+    refreshApp();
   }
   // A week is still open to schedule changes only while it has not been played.
   // Once it has, who played whom is league history and stays fixed — but the
@@ -12371,7 +12381,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
           ${chatUnread() ? `<span class="ms-badge">${chatUnread()}</span>` : ""}
         </div>`}
-        <div class="ms-ic" onclick="openNotifs()">
+        <div class="ms-ic" data-bell onclick="openNotifs()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15V10a6 6 0 1 0-12 0v5l-2 3h16Z"/><path d="M10 21h4"/></svg>
           ${unreadNotifs() ? `<span class="ms-badge">${unreadNotifs()}</span>` : ""}
         </div>
@@ -19545,10 +19555,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       rec.sleeper.positions = lg.roster_positions || rec.sleeper.positions;
       rec.sleeper.lastWeek = Math.max(1, (lg.settings && lg.settings.playoff_week_start || 15) - 1);
       rec.scoring = slScoring(lg.scoring_settings || {});
-      if (lg.avatar) {
-        store.leagueLogos = store.leagueLogos || {};
-        store.leagueLogos[rec.id] = "https://sleepercdn.com/avatars/" + lg.avatar;
-      }
+      // Sleeper's league picture is the fallback (asLeague); a logo uploaded
+      // here is kept in store.leagueLogos and wins. Syncs used to write the
+      // picture there, over the upload.
+      rec.logo = lg.avatar ? "https://sleepercdn.com/avatars/" + lg.avatar : null;
+      const up = store.leagueLogos && store.leagueLogos[rec.id];
+      if (up && /^https:\/\/sleepercdn\.com\//.test(up)) delete store.leagueLogos[rec.id];
     }
     if (users) rec.sleeper.users = users.map((u) => ({ user_id: u.user_id, display_name: u.display_name, metadata: { team_name: u.metadata && u.metadata.team_name, avatar: u.metadata && u.metadata.avatar }, avatar: u.avatar }));
     const built = slBuild(lg || { roster_positions: rec.sleeper.positions, settings: {} }, rec.sleeper.users || [], rosters, rec.sleeper.me, rec);
@@ -19567,8 +19579,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     rec.sleeper.at = Date.now();
     // the loaded league is rebuilt from the record
     if (loadedLeague() === rec.id) {
+      // your team keeps the name and logo you gave it here; Sleeper's are only
+      // where it starts (a sync used to put them back over yours)
+      const own = store.team || {};
       rec.teams.forEach((t) => {
-        if (T[t.key]) Object.assign(T[t.key], { n: t.n, mgr: t.mgr, rec: t.rec, rk: t.rk, logo: t.logo });
+        const mine = t.key === MY_TEAM ? own : {};
+        if (T[t.key]) Object.assign(T[t.key], { n: mine.name || t.n, mgr: t.mgr, rec: t.rec, rk: t.rk, logo: mine.logo || t.logo });
       });
       if (lg) {
         store.slots = Object.assign({}, rec.slots);

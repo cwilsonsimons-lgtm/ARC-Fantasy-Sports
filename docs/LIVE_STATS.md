@@ -196,6 +196,13 @@ own scoring. Rosters and the live week's matchups re-sync when the league is
 opened and with the live refresh (every ~60s during games); league settings
 and managers re-sync every few hours. Sleeper has no write API, so changes made
 here (lineups, trades) do not reach Sleeper and are replaced at the next sync.
+What is yours to style stays as you set it: your team's name and logo (and its
+colours and font) and an uploaded league logo outlast every sync, with
+Sleeper's team picture, team name and league picture as the fallback. Syncs
+used to write Sleeper's back over them. `node tools/logo-check.mjs` sets all
+three in the imported league, syncs, reloads and checks they hold, and checks
+the notification count sits on the matchup screen's bell (it used to show in
+the header's top right corner).
 
 Sleeper ids map to the app's players through `SLEEPER_PLAYERS` (built from
 Sleeper's full player list, `tools/fixtures/sleeper_players.json`), then by name
