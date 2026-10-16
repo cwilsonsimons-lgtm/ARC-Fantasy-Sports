@@ -4,9 +4,9 @@ Rename Madden's auto-generated draft prospects after real-life prospects with a
 similar position, height and weight. You keep Madden's ratings, looks and
 attributes; Rookie Match only helps you pick the name.
 
-This is a separate app from the fantasy-league prototype in the repo root. It
-uses the same setup as `card-factory/`: React + TypeScript, built by esbuild
-into one self-contained HTML file.
+It is a standalone React + TypeScript app, built by esbuild into one
+self-contained HTML file. It shares no code or data with anything else in this
+repository.
 
 ## Running it
 
@@ -37,8 +37,10 @@ rather than deleted.
 
 ## Workflow
 
-1. **Prospect Pool**: add prospects by hand, paste rows, or import a CSV
-   (there's a downloadable template). The import preview lets you map columns
+1. **Prospect Pool → Import from Tankathon / CSV**: open
+   [tankathon.com/nfl/big_board](https://www.tankathon.com/nfl/big_board), select
+   all, copy, and paste it in (or upload the page saved as .html). You can also
+   add prospects by hand or import a CSV (there's a downloadable template). The import preview lets you map columns
    and shows each row's problems. You can fix bad rows inline and map unknown
    positions before anything is saved.
 2. **Find a Match**: enter the generated player's position, height and weight.
@@ -49,6 +51,22 @@ rather than deleted.
 4. **Match Next Rookie** clears the fields and puts the cursor back in Position.
 5. **Assignment History**: search, edit, undo or delete. Undo and delete both
    make the prospect available again. After an undo, a toast offers **Restore**.
+
+## Importing from Tankathon
+
+Browsers won't let one site read another site's pages unless that site allows
+it, and Tankathon doesn't. So the page can't be fetched automatically; you copy
+it in instead. The importer anchors each player on Tankathon's `POS | School`
+line (e.g. `OT/IOL | Missouri`). It takes the name and board rank from just
+before that line and the height and weight from just after it. It also reads
+tab-separated table copies and saved HTML pages. A missing height or weight is
+left blank and flagged rather than guessed. The board rank goes into the
+player's notes. Re-pasting an updated board flags players you already have as
+possible duplicates and skips them.
+
+This parser was written without access to a live copy of the page, so it
+handles several plausible layouts. If a paste doesn't read correctly, the
+preview shows exactly which rows failed.
 
 ## Matching rules
 
@@ -74,11 +92,13 @@ nothing about talent.
 
 ## Positions
 
-Every prospect and Madden entry uses one canonical position list (QB RB FB WR
-TE OT OG C DE DT LB CB S K P LS by default). Mappings convert other spellings
-into a listed position, for example HB→RB, LT/RT→OT, LE/RE/EDGE→DE,
-MLB/LOLB/ROLB→LB and FS/SS→S. Vague labels such as DB, DL and IOL are left
-unmapped on purpose, so an import flags them and you choose. The list,
+Positions follow Tankathon's labels by default: QB RB FB WR TE OT IOL EDGE DL
+LB CB S K P LS. Madden's positions are mapped onto them: HB→RB, LT/RT→OT,
+LG/C/RG→IOL (Tankathon doesn't split guards from centers), LE/RE/LEDG/REDG→EDGE,
+DT→DL, MLB/LOLB/ROLB/SAM/MIKE/WILL→LB and FS/SS→S. Dual listings such as
+`OT/IOL` are kept, and those players count as exact-position matches for either
+position. Labels that could mean more than one position, such as ATH or DB,
+are left unmapped, so an import flags them and you choose. The list,
 mappings and related pairs can all be edited in Settings. Related positions
 (e.g. CB↔S) are only searched when you switch on **Include related positions**,
 and those results appear in their own section.
@@ -101,7 +121,7 @@ The WRs are clustered around 6'3" 215 lb so every tier appears for that search.
 ## Layout
 
 ```
-src/core/   height.ts (parsing) · positions.ts · match.ts (tiers + distance)
+src/core/   height.ts (parsing) · positions.ts · match.ts (tiers + distance) · tankathon.ts
             state.ts (model + pure operations) · importer.ts · csv.ts
             storage.ts (localStorage, backup, CSV export) · sample.ts
 src/ui/     App · FindMatch · Pool · ImportDialog · History · SettingsPage · common

@@ -10,8 +10,10 @@ export interface PositionSettings {
   related: [string, string][]; // pairs searched only when related search is on
 }
 
+// Defaults follow Tankathon's NFL big board labels, since that's where the prospect
+// pool comes from. Madden's positions are mapped onto them below.
 export const DEFAULT_POSITIONS = [
-  'QB', 'RB', 'FB', 'WR', 'TE', 'OT', 'OG', 'C', 'DE', 'DT', 'LB', 'CB', 'S', 'K', 'P', 'LS',
+  'QB', 'RB', 'FB', 'WR', 'TE', 'OT', 'IOL', 'EDGE', 'DL', 'LB', 'CB', 'S', 'K', 'P', 'LS',
 ];
 
 export const DEFAULT_ALIASES: Record<string, string> = {
@@ -19,10 +21,10 @@ export const DEFAULT_ALIASES: Record<string, string> = {
   QUARTERBACK: 'QB', FULLBACK: 'FB',
   'WIDE RECEIVER': 'WR', 'TIGHT END': 'TE',
   T: 'OT', LT: 'OT', RT: 'OT', TACKLE: 'OT', 'OFFENSIVE TACKLE': 'OT',
-  G: 'OG', LG: 'OG', RG: 'OG', GUARD: 'OG', 'OFFENSIVE GUARD': 'OG',
-  OC: 'C', CENTER: 'C',
-  LE: 'DE', RE: 'DE', EDGE: 'DE', LEDG: 'DE', REDG: 'DE', 'DEFENSIVE END': 'DE',
-  NT: 'DT', DI: 'DT', 'DEFENSIVE TACKLE': 'DT',
+  // Tankathon doesn't split guards from centers.
+  G: 'IOL', OG: 'IOL', LG: 'IOL', RG: 'IOL', C: 'IOL', OC: 'IOL', GUARD: 'IOL', CENTER: 'IOL', 'INTERIOR OL': 'IOL',
+  DE: 'EDGE', LE: 'EDGE', RE: 'EDGE', LEDG: 'EDGE', REDG: 'EDGE', ED: 'EDGE', 'DEFENSIVE END': 'EDGE',
+  DT: 'DL', NT: 'DL', DI: 'DL', IDL: 'DL', 'DEFENSIVE TACKLE': 'DL',
   OLB: 'LB', ILB: 'LB', MLB: 'LB', LOLB: 'LB', ROLB: 'LB', SAM: 'LB', MIKE: 'LB', WILL: 'LB', LINEBACKER: 'LB',
   CORNERBACK: 'CB', CORNER: 'CB',
   FS: 'S', SS: 'S', SAF: 'S', SAFETY: 'S',
@@ -30,7 +32,7 @@ export const DEFAULT_ALIASES: Record<string, string> = {
 };
 
 export const DEFAULT_RELATED: [string, string][] = [
-  ['RB', 'FB'], ['FB', 'TE'], ['WR', 'TE'], ['OT', 'OG'], ['OG', 'C'], ['DE', 'DT'], ['DE', 'LB'], ['CB', 'S'], ['S', 'LB'], ['K', 'P'],
+  ['RB', 'FB'], ['FB', 'TE'], ['WR', 'TE'], ['OT', 'IOL'], ['EDGE', 'DL'], ['EDGE', 'LB'], ['CB', 'S'], ['S', 'LB'], ['K', 'P'],
 ];
 
 export function defaultPositionSettings(): PositionSettings {
@@ -43,13 +45,38 @@ export function defaultPositionSettings(): PositionSettings {
 
 export const cleanCode = (raw: string) => raw.trim().toUpperCase().replace(/\s+/g, ' ').replace(/\./g, '');
 
-/** Canonical code for a raw position, or null when it is unknown. */
-export function normalizePosition(raw: string, s: PositionSettings): string | null {
-  const code = cleanCode(raw);
-  if (!code) return null;
+function normalizeOne(code: string, s: PositionSettings): string | null {
   if (s.positions.includes(code)) return code;
   const mapped = s.aliases[code];
   return mapped && s.positions.includes(mapped) ? mapped : null;
+}
+
+/**
+ * Canonical code for a raw position, or null when it is unknown. Dual listings
+ * such as Tankathon's "OT/IOL" stay dual ("OT/IOL"); every part must be known.
+ */
+export function normalizePosition(raw: string, s: PositionSettings): string | null {
+  const code = cleanCode(raw);
+  if (!code) return null;
+  const whole = normalizeOne(code, s);
+  if (whole) return whole;
+  const parts = code.split(/\s*\/\s*/).filter(Boolean);
+  if (parts.length < 2) return null;
+  const out: string[] = [];
+  for (const part of parts) {
+    const n = normalizeOne(part, s);
+    if (!n) return null;
+    if (!out.includes(n)) out.push(n);
+  }
+  return out.join('/');
+}
+
+/** The individual positions a stored position covers ("OT/IOL" → ["OT", "IOL"]). */
+export const positionsOf = (stored: string): string[] => stored.split('/');
+
+/** Raw codes in a position string that don't map to anything (for import messages). */
+export function unknownParts(raw: string, s: PositionSettings): string[] {
+  return cleanCode(raw).split(/\s*\/\s*/).filter((p) => p && !normalizeOne(p, s));
 }
 
 export function relatedPositions(pos: string, s: PositionSettings): string[] {

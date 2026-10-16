@@ -5,16 +5,20 @@ import {
   applyMapping, FIELD_LABEL, guessMapping, looksLikeHeader, validateRows, type Field, type RawValues, type ValidatedRow,
 } from '../core/importer';
 import { cleanCode } from '../core/positions';
+import { parseTankathon } from '../core/tankathon';
 import { activeWorkspace, addProspects, updateSettings } from '../core/state';
 import { Modal, plural, useStore, useToast } from './common';
 
 const FIELDS: Field[] = ['name', 'firstName', 'lastName', 'position', 'height', 'weight', 'college', 'notes', 'ignore'];
 const EDITABLE: (keyof RawValues)[] = ['name', 'position', 'height', 'weight', 'college', 'notes'];
 
+export const TANKATHON_URL = 'https://www.tankathon.com/nfl/big_board';
+
 export function ImportDialog({ onClose }: { onClose: () => void }) {
   const { state, apply } = useStore();
   const toast = useToast();
   const ws = activeWorkspace(state);
+  const [mode, setMode] = useState<'tankathon' | 'table'>('tankathon');
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState('');
   const [step, setStep] = useState<'source' | 'preview'>('source');
@@ -25,9 +29,13 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const [onlyProblems, setOnlyProblems] = useState(false);
 
   const table = useMemo(() => parseTable(text), [text]);
+  const tk = useMemo(() => (mode === 'tankathon' ? parseTankathon(text) : null), [text, mode]);
   const width = Math.max(0, ...table.rows.map((r) => r.length));
 
   const goPreview = () => {
+    setEdits({});
+    setIncludeDup({});
+    if (mode === 'tankathon') { setStep('preview'); return; }
     const header = table.rows.length > 0 && looksLikeHeader(table.rows[0]);
     setHasHeader(header);
     const first = table.rows[0] ?? [];
@@ -43,9 +51,14 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     [table, hasHeader],
   );
 
+  const sourceRows = useMemo<{ line: number; raw: RawValues }[]>(
+    () => (tk ? tk.rows.map(({ line, raw }) => ({ line, raw })) : dataRows.map(({ line, cells }) => ({ line, raw: applyMapping(cells, mapping) }))),
+    [tk, dataRows, mapping],
+  );
+
   const validated = useMemo<ValidatedRow[]>(
-    () => validateRows(dataRows.map(({ line, cells }) => ({ line, raw: { ...applyMapping(cells, mapping), ...edits[line] } })), state.settings, ws.prospects),
-    [dataRows, mapping, edits, state.settings, ws.prospects],
+    () => validateRows(sourceRows.map(({ line, raw }) => ({ line, raw: { ...raw, ...edits[line] } })), state.settings, ws.prospects),
+    [sourceRows, edits, state.settings, ws.prospects],
   );
 
   const unknown = [...new Set(validated.map((v) => v.unknownPosition).filter((x): x is string => !!x))];
@@ -54,8 +67,10 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const errorCount = validated.filter((v) => !v.prospect).length;
   const dupSkipped = validated.filter((v) => v.prospect && v.duplicates.length && !includeDup[v.line]).length;
   const mapped = new Set(mapping);
-  const missingFields = (['position', 'height', 'weight'] as Field[]).filter((f) => !mapped.has(f));
-  if (!mapped.has('name') && !mapped.has('firstName') && !mapped.has('lastName')) missingFields.unshift('name');
+  const missingFields = mode === 'tankathon' ? [] : (['position', 'height', 'weight'] as Field[]).filter((f) => !mapped.has(f));
+  if (mode === 'table' && !mapped.has('name') && !mapped.has('firstName') && !mapped.has('lastName')) missingFields.unshift('name');
+  const rankByLine = useMemo(() => new Map((tk?.rows ?? []).map((r) => [r.line, r.rank])), [tk]);
+  const canPreview = mode === 'tankathon' ? (tk?.rows.length ?? 0) > 0 : table.rows.length > 0;
 
   const mapPosition = (raw: string, to: string) => {
     if (!to) return;
@@ -86,7 +101,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       footer={step === 'source' ? (
         <>
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={table.rows.length === 0} onClick={goPreview}>Preview {table.rows.length ? `(${plural(table.rows.length, 'line')})` : ''}</button>
+          <button className="btn btn-primary" disabled={!canPreview} onClick={goPreview}>
+            Preview {mode === 'tankathon' ? (tk?.rows.length ? `(${plural(tk.rows.length, 'player')})` : '') : table.rows.length ? `(${plural(table.rows.length, 'line')})` : ''}
+          </button>
         </>
       ) : (
         <>
@@ -100,6 +117,35 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     >
       {step === 'source' ? (
         <div className="import-source">
+          <div className="seg" role="tablist" aria-label="Import source">
+            <button role="tab" aria-selected={mode === 'tankathon'} className={`seg-btn ${mode === 'tankathon' ? 'seg-on' : ''}`} onClick={() => setMode('tankathon')}>Tankathon big board</button>
+            <button role="tab" aria-selected={mode === 'table'} className={`seg-btn ${mode === 'table' ? 'seg-on' : ''}`} onClick={() => setMode('table')}>CSV / other list</button>
+          </div>
+          {mode === 'tankathon' ? (
+            <>
+              <ol className="steps">
+                <li>Open <a href={TANKATHON_URL} target="_blank" rel="noopener noreferrer">tankathon.com/nfl/big_board</a> and scroll to the bottom so the whole board has loaded.</li>
+                <li>Select the whole page (<kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>A</kbd>) and copy it (<kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd>).</li>
+                <li>Paste it below. You can also upload the page saved as <b>.html</b> (<kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>S</kbd>).</li>
+              </ol>
+              <p className="hint">Rookie Match picks out each player's name, position, school, height and weight. You'll check every row before anything is saved. Players already in your pool are flagged as possible duplicates and skipped, so you can re-paste an updated board.</p>
+              <div className="field">
+                <label htmlFor="imp-text">Paste the Tankathon page here</label>
+                <textarea id="imp-text" rows={10} value={text} onChange={(e) => { setText(e.target.value); setFileName(''); }} placeholder="Paste the copied big board here" spellCheck={false} />
+                <div className={`hint ${text.trim() && !tk?.rows.length ? 'hint-error' : ''}`}>
+                  {!text.trim() ? '' : tk?.rows.length
+                    ? <>Found <b>{plural(tk.rows.length, 'player')}</b>{tk.year ? ` on the ${tk.year} board` : ''}.</>
+                    : 'No players found. Each player should have a line like "WR | Ohio State". Make sure you copied the whole board.'}
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="imp-file">Or upload the saved page</label>
+                <input id="imp-file" type="file" accept=".html,.htm,.txt,text/html,text/plain" onChange={(e) => onFile(e.target.files?.[0])} />
+                {fileName && <div className="hint">Loaded {fileName}</div>}
+              </div>
+            </>
+          ) : (
+            <>
           <p>Paste rows from a spreadsheet or text file, or choose a CSV. Columns can be in any order — you'll map them on the next step. Without a header row, the order is assumed to be <b>name, position, height, weight, college, notes</b>.</p>
           <div className="field">
             <label htmlFor="imp-file">CSV or text file</label>
@@ -112,9 +158,16 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               placeholder={`name,position,height,weight,college\nJordan Example,WR,6'3",215,Example State\nChris Sample,HB,5-11,205,Sample Tech`} spellCheck={false} />
             <div className="hint">Comma, tab, semicolon or pipe separated. Heights like 6'3", 6-3 or 75 are all fine.</div>
           </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="import-preview">
+          {mode === 'tankathon' ? (
+            <div className="notice notice-info">
+              Read <b>{plural(validated.length, 'player')}</b> from the Tankathon board{tk?.year ? ` (${tk.year})` : ''}. Check heights and weights below. Rows Rookie Match couldn't fully read are highlighted and editable. The board rank is saved in each player's notes.
+            </div>
+          ) : (<>
           <div className="map-head">
             <label className="toggle"><input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} /> First line is a header row</label>
             <span className="muted">Detected {table.delimiter === '\t' ? 'tab' : `"${table.delimiter}"`}-separated · {plural(dataRows.length, 'data row')}</span>
@@ -133,6 +186,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             ))}
           </div>
           {missingFields.length > 0 && <div className="notice notice-error">Map a column to: {missingFields.map((f) => FIELD_LABEL[f]).join(', ')}.</div>}
+          </>)}
 
           {unknown.length > 0 && (
             <div className="notice notice-warn">
@@ -158,7 +212,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           <div className="table-wrap">
             <table className="table import-table">
               <thead>
-                <tr><th>Line</th><th>Name</th><th>Pos</th><th>Height</th><th>Weight</th><th>College</th><th>Notes</th><th>Check</th></tr>
+                <tr><th>{mode === 'tankathon' ? 'Rank' : 'Line'}</th><th>Name</th><th>Pos</th><th>Height</th><th>Weight</th><th>College</th><th>Notes</th><th>Check</th></tr>
               </thead>
               <tbody>
                 {shownRows.map((v) => {
@@ -167,7 +221,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                   const editable = bad || !!edits[v.line]; // keep inputs once edited so focus isn't lost mid-typing
                   return (
                     <tr key={v.line} className={bad ? 'row-error' : dup ? 'row-dup' : ''} data-line={v.line}>
-                      <td data-label="Line" className="muted">{v.line}</td>
+                      <td data-label={mode === 'tankathon' ? 'Rank' : 'Line'} className="muted">{mode === 'tankathon' ? (rankByLine.get(v.line) ?? '—') : v.line}</td>
                       {EDITABLE.map((k) => (
                         <td key={k} data-label={k}>
                           {editable ? (

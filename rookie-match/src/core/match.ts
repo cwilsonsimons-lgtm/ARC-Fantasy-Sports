@@ -4,7 +4,7 @@
 // Ties: smaller |Δheight|, then smaller |Δweight|, then name A→Z.
 // The score only compares measurements; it says nothing about talent or style.
 import type { GeneratedPlayer, Prospect } from './state';
-import { relatedPositions, type PositionSettings } from './positions';
+import { positionsOf, relatedPositions, type PositionSettings } from './positions';
 
 export type Tier = 'exact' | 'preferred' | 'fallback';
 
@@ -92,8 +92,9 @@ export function findMatches(
   for (const p of prospects) {
     const used = usedIds.has(p.id);
     if (used && !o.includeUsed) continue;
-    if (p.position === g.position) same.push(candidate(p, g, o, used, false));
-    else if (rel.includes(p.position)) related.push(candidate(p, g, o, used, true));
+    const listed = positionsOf(p.position);
+    if (listed.includes(g.position)) same.push(candidate(p, g, o, used, false));
+    else if (listed.some((x) => rel.includes(x))) related.push(candidate(p, g, o, used, true));
   }
   same.sort(compareCandidates);
   related.sort(compareCandidates);

@@ -8,6 +8,7 @@ import {
 } from '../src/core/state';
 import { parseTable, toCsv } from '../src/core/csv';
 import { applyMapping, guessMapping, looksLikeHeader, TEMPLATE_CSV, validateRows } from '../src/core/importer';
+import { parseTankathon } from '../src/core/tankathon';
 import { loadState, makeBackup, readBackup, saveState, STORAGE_KEY } from '../src/core/storage';
 
 const pos = defaultPositionSettings();
@@ -72,11 +73,24 @@ describe('positions', () => {
     expect(normalizePosition('LT', pos)).toBe('OT');
     expect(normalizePosition('FS', pos)).toBe('S');
   });
+  it('maps Madden positions onto Tankathon labels', () => {
+    expect(normalizePosition('LG', pos)).toBe('IOL');
+    expect(normalizePosition('C', pos)).toBe('IOL');
+    expect(normalizePosition('RE', pos)).toBe('EDGE');
+    expect(normalizePosition('REDG', pos)).toBe('EDGE');
+    expect(normalizePosition('DT', pos)).toBe('DL');
+    expect(normalizePosition('MIKE', pos)).toBe('LB');
+  });
+  it('keeps dual listings like OT/IOL, and rejects them if any part is unknown', () => {
+    expect(normalizePosition('OT/IOL', pos)).toBe('OT/IOL');
+    expect(normalizePosition('edge / lb', pos)).toBe('EDGE/LB');
+    expect(normalizePosition('CB/ATH', pos)).toBeNull();
+  });
   it('keeps distinct positions distinct and leaves vague ones unmapped', () => {
     expect(normalizePosition('CB', pos)).toBe('CB');
     expect(normalizePosition('S', pos)).toBe('S');
     expect(normalizePosition('DB', pos)).toBeNull();
-    expect(normalizePosition('IOL', pos)).toBeNull();
+    expect(normalizePosition('ATH', pos)).toBeNull();
   });
 });
 
@@ -132,6 +146,15 @@ describe('matching tiers', () => {
     const on = findMatches(g, pool, new Set(), { ...opts, includeRelated: true }, pos);
     expect(on.exact.map((c) => c.prospect.name)).toEqual(['Corner']);
     expect(on.related.map((c) => c.prospect.name)).toEqual(['Safety']);
+  });
+
+  it('matches a dual-listed prospect at either position, as an exact-position match', () => {
+    const pool = [P('Swing', 'OT/IOL', 77, 315)];
+    for (const position of ['OT', 'IOL']) {
+      const r = findMatches({ position, heightIn: 77, weight: 315 }, pool, new Set(), opts, pos);
+      expect(r.exact.map((c) => c.prospect.name)).toEqual(['Swing']);
+    }
+    expect(findMatches({ position: 'DL', heightIn: 77, weight: 315 }, pool, new Set(), opts, pos).exact).toHaveLength(0);
   });
 
   it('describes signed differences relative to the generated player', () => {
@@ -337,5 +360,69 @@ describe('persistence', () => {
     const bad = readBackup(JSON.stringify(broken));
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.errors.join()).toMatch(/assigned twice/);
+  });
+});
+
+describe('Tankathon big board', () => {
+  const toRows = (text: string) => parseTankathon(text).rows;
+
+  it('reads a select-all copy with one field per line', () => {
+    const text = [
+      'Tankathon', '2027 NFL Draft Big Board', 'Board', 'Mock Draft',
+      '1', 'Arch Manning', 'QB | Texas', `6'4"`, '222 lbs', 'Pass Yds', '3,163',
+      '2', 'Colin Simmons', 'EDGE | Texas', `6'3"`, '246 lbs', 'Sacks', '9',
+      '3', 'Cayden Green', 'OT/IOL | Missouri', `6'5"`, '324 lbs',
+    ].join('\n');
+    const r = parseTankathon(text);
+    expect(r.year).toBe('2027');
+    expect(r.rows.map((x) => [x.rank, x.raw.name, x.raw.position, x.raw.college, x.raw.height, x.raw.weight])).toEqual([
+      [1, 'Arch Manning', 'QB', 'Texas', `6'4"`, '222'],
+      [2, 'Colin Simmons', 'EDGE', 'Texas', `6'3"`, '246'],
+      [3, 'Cayden Green', 'OT/IOL', 'Missouri', `6'5"`, '324'],
+    ]);
+    expect(r.rows[0].raw.notes).toBe('Tankathon big board #1');
+  });
+
+  it('reads table-style rows (tabs) and measurements on one line', () => {
+    const rows = toRows([
+      `1\tArch Manning\tQB | Texas\t6'4" 222 lbs`,
+      `2. Leonard Moore\tCB | Notre Dame\t6' 2''\t197`,
+    ].join('\n'));
+    expect(rows.map((x) => [x.rank, x.raw.name, x.raw.height, x.raw.weight])).toEqual([
+      [1, 'Arch Manning', `6'4"`, '222'],
+      [2, 'Leonard Moore', `6'2"`, '197'],
+    ]);
+  });
+
+  it('reads measurements on the position line and labelled Ht/Wt', () => {
+    const rows = toRows(['Jamari Johnson', `TE | Oregon 6'5" 255 lbs`, 'Nyck Harbor', 'WR | South Carolina', 'Ht: 6-5', 'Wt: 239'].join('\n'));
+    expect(rows.map((x) => [x.raw.name, x.raw.college, x.raw.height, x.raw.weight])).toEqual([
+      ['Jamari Johnson', 'Oregon', `6'5"`, '255'],
+      ['Nyck Harbor', 'South Carolina', '6-5', '239'],
+    ]);
+  });
+
+  it('reads a saved HTML page', () => {
+    const html = `<html><head><style>.x{}</style></head><body><div class="row"><div class="rank">7</div>
+      <div class="name">Arch Manning</div><div class="pos">QB | Texas</div>
+      <div class="m"><span>6&#39;4&quot;</span> <span>222 lbs</span></div></div></body></html>`;
+    expect(toRows(html).map((x) => [x.rank, x.raw.name, x.raw.height, x.raw.weight])).toEqual([[7, 'Arch Manning', `6'4"`, '222']]);
+  });
+
+  it('leaves missing measurements empty instead of guessing, and the import flags them', () => {
+    const rows = toRows(['1', 'Arch Manning', 'QB | Texas', 'Pass Yds', '3,163', '2', 'Colin Simmons', 'EDGE | Texas', `6'3"`].join('\n'));
+    expect(rows.map((x) => [x.raw.height, x.raw.weight])).toEqual([['', ''], [`6'3"`, '']]);
+    const v = validateRows(rows.map((x) => ({ line: x.line, raw: x.raw })), pos, []);
+    expect(v.every((x) => !x.prospect)).toBe(true);
+    expect(v[0].errors.join()).toMatch(/Height is required/);
+  });
+
+  it('imports cleanly and flags re-imports as possible duplicates', () => {
+    const text = ['1', 'Arch Manning', 'QB | Texas', `6'4"`, '222 lbs', '3', 'Cayden Green', 'OT/IOL | Missouri', `6'5"`, '324 lbs'].join('\n');
+    const first = validateRows(toRows(text).map((x) => ({ line: x.line, raw: x.raw })), pos, []);
+    expect(first.map((x) => x.prospect?.position)).toEqual(['QB', 'OT/IOL']);
+    const existing = first.map((x, i) => ({ ...x.prospect!, id: `e${i}` }));
+    const again = validateRows(toRows(text).map((x) => ({ line: x.line, raw: x.raw })), pos, existing);
+    expect(again.every((x) => x.duplicates.length === 1)).toBe(true);
   });
 });

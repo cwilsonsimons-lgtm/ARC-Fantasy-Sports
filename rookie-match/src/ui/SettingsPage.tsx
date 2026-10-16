@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { cleanCode, defaultPositionSettings } from '../core/positions';
+import { cleanCode, defaultPositionSettings, positionsOf } from '../core/positions';
 import {
   activeWorkspace, clearAssignments, clearProspects, counts, createWorkspace, deleteWorkspace, renameWorkspace, switchWorkspace, updateSettings,
   type AppState,
@@ -173,7 +173,7 @@ function Positions() {
   const [aliasTo, setAliasTo] = useState('');
   const [relA, setRelA] = useState('');
   const [relB, setRelB] = useState('');
-  const inUse = (p: string) => state.workspaces.some((w) => w.prospects.some((x) => x.position === p) || w.assignments.some((a) => a.generated.position === p));
+  const inUse = (p: string) => state.workspaces.some((w) => w.prospects.some((x) => positionsOf(x.position).includes(p)) || w.assignments.some((a) => a.generated.position === p));
   const aliasList = Object.entries(s.aliases).sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
 
   return (
@@ -262,7 +262,7 @@ function Positions() {
 
       <button className="btn btn-small btn-ghost-danger" onClick={async () => {
         const d = defaultPositionSettings();
-        const missing = [...new Set(state.workspaces.flatMap((w) => w.prospects.map((p) => p.position)))].filter((p) => !d.positions.includes(p));
+        const missing = [...new Set(state.workspaces.flatMap((w) => w.prospects.flatMap((p) => positionsOf(p.position))))].filter((p) => !d.positions.includes(p));
         if (await confirm({ title: 'Reset positions?', body: <>Restore the default position list, mappings and related pairs? Your custom mappings will be lost.{missing.length ? <> Positions still used by prospects ({missing.join(', ')}) will be kept.</> : null}</>, confirmLabel: 'Reset positions', danger: true })) {
           apply((x) => updateSettings(x, { ...d, positions: [...d.positions, ...missing] }));
         }

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { formatHeight, formatNumber, parseHeight, parseWeight } from '../core/height';
 import { checkAgainst } from '../core/importer';
-import { normalizePosition } from '../core/positions';
+import { normalizePosition, positionsOf, unknownParts } from '../core/positions';
 import {
   activeWorkspace, addProspects, counts, deleteProspect, removeSamples, updateProspect, usedMap,
   type Prospect, type ProspectInput,
@@ -31,7 +31,7 @@ export function Pool() {
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const list = ws.prospects.filter((p) => {
-      if (pos && p.position !== pos) return false;
+      if (pos && !positionsOf(p.position).includes(pos)) return false;
       if (avail === 'available' && used.has(p.id)) return false;
       if (avail === 'used' && !used.has(p.id)) return false;
       if (needle && ![p.name, p.college, p.notes, p.position].some((v) => v?.toLowerCase().includes(needle))) return false;
@@ -82,7 +82,7 @@ export function Pool() {
         </div>
         <div className="row-actions wrap">
           <button className="btn btn-primary" onClick={() => setEditing('new')}>+ Add prospect</button>
-          <button className="btn" onClick={() => setImporting(true)}>Import CSV / paste</button>
+          <button className="btn" onClick={() => setImporting(true)}>Import from Tankathon / CSV</button>
           <button className="btn btn-ghost" onClick={() => download('rookie-match-template.csv', TEMPLATE_CSV, 'text/csv')}>CSV template</button>
           <button className="btn btn-ghost" onClick={() => download(`rookie-match-prospects-${fileSlug(state)}-${today()}.csv`, prospectsCsv(ws), 'text/csv')} disabled={!ws.prospects.length}>Export CSV</button>
         </div>
@@ -118,7 +118,7 @@ export function Pool() {
       </div>
 
       {ws.prospects.length === 0 ? (
-        <div className="empty">No prospects yet. Add them one at a time, paste a list, or import a CSV (download the template to see the format).</div>
+        <div className="empty">No prospects yet. Import the Tankathon big board, add players one at a time, or import a CSV (download the template to see the format).</div>
       ) : rows.length === 0 ? (
         <div className="empty">No prospects match these filters.</div>
       ) : (
@@ -193,7 +193,7 @@ function ProspectForm({ prospect, onClose }: { prospect: Prospect | null; onClos
     const w = parseWeight(weight);
     const position2 = normalizePosition(position, state.settings);
     if (!name.trim()) errs.push('Name is required.');
-    if (!position2) errs.push('Choose a position.');
+    if (!position2) errs.push(position.trim() ? `Unknown position "${unknownParts(position, state.settings).join('", "') || position}" — use a listed position or add a mapping in Settings.` : 'Enter a position.');
     if (!h.ok) errs.push(`Height: ${h.error}`);
     if (!w.ok) errs.push(`Weight: ${w.error}`);
     setErrors(errs);
@@ -245,7 +245,12 @@ function ProspectForm({ prospect, onClose }: { prospect: Prospect | null; onClos
           <label htmlFor="pf-name">Name</label>
           <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
         </div>
-        <PositionSelect id="pf-pos" value={position} onChange={setPosition} positions={state.settings.positions} />
+        <div className="field">
+          <label htmlFor="pf-pos">Position</label>
+          <input id="pf-pos" list="pf-pos-list" value={position} onChange={(e) => setPosition(e.target.value)} autoComplete="off" placeholder="WR, or OT/IOL" />
+          <datalist id="pf-pos-list">{state.settings.positions.map((p) => <option key={p} value={p} />)}</datalist>
+          <div className="hint">{position.trim() ? (normalizePosition(position, state.settings) ? <>Saved as <b>{normalizePosition(position, state.settings)}</b></> : <span className="hint-error">Not a known position</span>) : 'Use a slash for dual listings'}</div>
+        </div>
         <HeightField id="pf-height" value={height} onChange={setHeight} />
         <div className="field">
           <label htmlFor="pf-weight">Weight (lb)</label>

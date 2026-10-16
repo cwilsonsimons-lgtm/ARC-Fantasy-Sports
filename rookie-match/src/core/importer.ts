@@ -1,7 +1,7 @@
 // Import pipeline: table → field mapping → validated rows → duplicate checks.
 // Nothing here writes to state; the UI shows the preview and the user decides.
 import { parseHeight, parseWeight } from './height';
-import { cleanCode, normalizePosition, type PositionSettings } from './positions';
+import { normalizePosition, positionsOf, unknownParts, type PositionSettings } from './positions';
 import type { Prospect, ProspectInput } from './state';
 import { toCsv } from './csv';
 
@@ -105,8 +105,9 @@ export function validateRaw(raw: RawValues, positions: PositionSettings): Omit<V
   else {
     position = normalizePosition(raw.position, positions);
     if (!position) {
-      unknownPosition = cleanCode(raw.position);
-      errors.push(`Unknown position "${raw.position.trim()}" — map it to a position`);
+      const bad = unknownParts(raw.position, positions);
+      unknownPosition = bad[0] ?? raw.position.trim().toUpperCase();
+      errors.push(`Unknown position "${bad.length ? bad.join('", "') : raw.position.trim()}" — map it to a position`);
     }
   }
   const h = parseHeight(raw.height);
@@ -130,7 +131,8 @@ export function validateRaw(raw: RawValues, positions: PositionSettings): Omit<V
 
 /** Possible-duplicate rule: same name and position, and the same college when both records have one. */
 export function isPossibleDuplicate(a: Pick<Prospect, 'name' | 'position' | 'college'>, b: Pick<Prospect, 'name' | 'position' | 'college'>): boolean {
-  if (normName(a.name) !== normName(b.name) || a.position !== b.position) return false;
+  const samePos = positionsOf(a.position).sort().join('/') === positionsOf(b.position).sort().join('/');
+  if (normName(a.name) !== normName(b.name) || !samePos) return false;
   const ca = normCollege(a.college);
   const cb = normCollege(b.college);
   return !ca || !cb || ca === cb;

@@ -278,6 +278,13 @@ input.invalid { border-color: var(--danger); }
 .issue-info { color: var(--ink-3); }
 .issue-ok { color: var(--exact); font-weight: 700; }
 
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; padding: 3px; background: var(--surface-2); gap: 3px; align-self: flex-start; flex-wrap: wrap; }
+.seg-btn { background: none; border: 0; padding: 7px 14px; border-radius: 7px; font-weight: 700; cursor: pointer; color: var(--ink-2); }
+.seg-on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.steps a { color: var(--turf); font-weight: 700; }
+kbd { font: 600 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--surface-2); }
+
 /* ---- settings ---- */
 .settings-card { display: flex; flex-direction: column; gap: 10px; }
 .settings-card h2 { font: 800 18px/1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.04em; }

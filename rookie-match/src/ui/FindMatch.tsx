@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatHeight, formatNumber, parseHeight, parseWeight } from '../core/height';
+import { positionsOf } from '../core/positions';
 import { describeDiff, findMatches, TIER_LABEL, type Candidate, type Tier } from '../core/match';
 import { activeWorkspace, assign, AssignmentError, removeAssignment, restoreAssignment, updateSettings, usedMap, type Assignment, type GeneratedPlayer } from '../core/state';
 import { HeightField, Modal, PositionSelect, plural, useStore, useToast } from './common';
@@ -70,7 +71,7 @@ export function FindMatch({ form, setForm }: { form: FindForm; setForm: (f: Find
   };
 
   const posLabel = form.position || 'player';
-  const sameCount = ws.prospects.filter((p) => p.position === form.position && (showUsed || !used.has(p.id))).length;
+  const sameCount = ws.prospects.filter((p) => positionsOf(p.position).includes(form.position) && (showUsed || !used.has(p.id))).length;
 
   return (
     <section className="page" aria-labelledby="find-title">
@@ -123,7 +124,7 @@ export function FindMatch({ form, setForm }: { form: FindForm; setForm: (f: Find
       {!done && !generated && (
         <div className="empty">
           {ws.prospects.length === 0
-            ? <>Your prospect pool is empty. Add or import real-life prospects in <b>Prospect Pool</b> first.</>
+            ? <>Your prospect pool is empty. Import the Tankathon big board in <b>Prospect Pool</b> first.</>
             : <>Pick a position and enter height and weight to see ranked suggestions.</>}
         </div>
       )}
