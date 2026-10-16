@@ -273,6 +273,7 @@ input.invalid { border-color: var(--danger); }
 .import-table td { font-size: 13px; }
 .cell-input { min-height: 30px !important; padding: 3px 6px !important; min-width: 70px; font-size: 13px; }
 .row-error td { background: color-mix(in srgb, var(--danger-soft) 70%, transparent); }
+.row-have td { color: var(--ink-3); }
 .row-dup td { background: color-mix(in srgb, var(--fall-soft) 70%, transparent); }
 .cell-check { min-width: 200px; }
 .issues { margin: 0; padding-left: 16px; }

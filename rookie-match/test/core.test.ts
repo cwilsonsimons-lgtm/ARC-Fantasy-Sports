@@ -8,7 +8,8 @@ import {
 } from '../src/core/state';
 import { parseTable, toCsv } from '../src/core/csv';
 import { applyMapping, guessMapping, looksLikeHeader, TEMPLATE_CSV, validateRows } from '../src/core/importer';
-import { parseTankathon } from '../src/core/tankathon';
+import { parseBoard } from '../src/core/board';
+const parseTankathon = (t: string) => parseBoard(t, 'tankathon');
 import { loadState, makeBackup, readBackup, saveState, STORAGE_KEY } from '../src/core/storage';
 
 const pos = defaultPositionSettings();
@@ -424,5 +425,48 @@ describe('Tankathon big board', () => {
     const existing = first.map((x, i) => ({ ...x.prospect!, id: `e${i}` }));
     const again = validateRows(toRows(text).map((x) => ({ line: x.line, raw: x.raw })), pos, existing);
     expect(again.every((x) => x.duplicates.length === 1)).toBe(true);
+  });
+});
+
+describe('NFL Mock Draft Database board', () => {
+  const rows = (text: string) => parseBoard(text, 'mddb').rows.map((r) => [r.rank, r.raw.name, r.raw.position, r.raw.college, r.raw.height, r.raw.weight]);
+
+  it('reads one field per line, ignoring filter chips and headings', () => {
+    const text = [
+      'NFL Mock Draft Database', '2027 NFL Consensus Big Board', 'All', 'QB', 'RB', 'WR', 'TE', 'OT',
+      '1', 'Jeremiah Smith', 'WR', 'Ohio State',
+      '2', 'Arch Manning', 'QB', 'Texas',
+      '3', 'Leonard Moore', 'CB', 'Notre Dame',
+    ].join('\n');
+    const r = parseBoard(text, 'mddb');
+    expect(r.year).toBe('2027');
+    expect(rows(text)).toEqual([
+      [1, 'Jeremiah Smith', 'WR', 'Ohio State', '', ''],
+      [2, 'Arch Manning', 'QB', 'Texas', '', ''],
+      [3, 'Leonard Moore', 'CB', 'Notre Dame', '', ''],
+    ]);
+    expect(r.withMeasurements).toBe(0);
+    expect(r.rows[0].raw.notes).toBe('NFL Mock Draft Database board #1');
+  });
+
+  it('reads table copies, "School · POS" lines, and measurements when present', () => {
+    expect(rows([`1. Jeremiah Smith\tWR\tOhio State`, 'Colin Simmons', 'Texas · EDGE', '7', 'Dante Moore', 'QB', 'Oregon', `6'3"`, '206 lbs'].join('\n'))).toEqual([
+      [1, 'Jeremiah Smith', 'WR', 'Ohio State', '', ''],
+      [undefined, 'Colin Simmons', 'EDGE', 'Texas', '', ''],
+      [7, 'Dante Moore', 'QB', 'Oregon', `6'3"`, '206'],
+    ]);
+  });
+
+  it('flags rows without measurements and skips players already in the pool', () => {
+    const existing = [{ id: 'e1', name: 'Arch Manning', position: 'QB', heightIn: 76, weight: 222, college: 'Texas' }];
+    const r = parseBoard(['1', 'Jeremiah Smith', 'WR', 'Ohio State', '2', 'Arch Manning', 'QB', 'Texas'].join('\n'), 'mddb');
+    const v = validateRows(r.rows.map((x) => ({ line: x.line, raw: x.raw })), pos, existing);
+    expect(v[0].prospect).toBeUndefined();
+    expect(v[0].errors.join()).toMatch(/Height is required/);
+    expect(v[1].prospect).toBeUndefined();
+    expect(v[1].duplicates[0]).toMatchObject({ where: 'pool' }); // reads as already in the pool
+    // Filling the measurements in makes the new player importable.
+    const fixed = validateRows([{ line: 1, raw: { ...r.rows[0].raw, height: `6'3"`, weight: '215' } }], pos, existing);
+    expect(fixed[0].prospect).toMatchObject({ name: 'Jeremiah Smith', heightIn: 75, weight: 215, college: 'Ohio State' });
   });
 });

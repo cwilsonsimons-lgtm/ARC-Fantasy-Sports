@@ -49,10 +49,10 @@ await page.locator('.modal').getByRole('button', { name: 'Remove samples' }).cli
 check('samples removed', (await counts()).includes('0 total'), await counts());
 
 // Tankathon paste: the default import source.
-await page.getByRole('button', { name: 'Import from Tankathon / CSV' }).click();
-check('Tankathon is the default import source', (await page.locator('.seg-on').innerText()) === 'Tankathon big board');
+await page.getByRole('button', { name: 'Import a big board / CSV' }).click();
+check('Tankathon is the default import source', (await page.locator('.seg-on').innerText()) === 'Tankathon');
 check('Tankathon link points at the NFL big board', (await page.locator('.steps a').getAttribute('href')) === 'https://www.tankathon.com/nfl/big_board');
-await page.fill('#imp-text', ['2027 NFL Draft Big Board', '1', 'Board Qb', 'QB | Texas', `6'4"`, '222 lbs', '2', 'Board Swing', 'OT/IOL | Missouri', `6'5"`, '324 lbs', '3', 'Board Nolen', 'EDGE | Texas', 'Sacks', '9'].join('\n'));
+await page.fill('#imp-text', ['2027 NFL Draft Big Board', '1', 'Tank Qb', 'QB | Texas', `6'4"`, '222 lbs', '2', 'Tank Swing', 'OT/IOL | Missouri', `6'5"`, '324 lbs', '3', 'Tank Nolen', 'EDGE | Texas', 'Sacks', '9'].join('\n'));
 check('Tankathon paste finds players', /Found 3 players on the 2027 board/.test(await page.locator('.import-source').innerText()));
 await page.getByRole('button', { name: /^Preview/ }).click();
 check('missing measurements flagged, not guessed', /Height is required/.test(await page.locator('.import-table tbody tr').nth(2).innerText()));
@@ -60,12 +60,25 @@ check('board rank shown', (await page.locator('.import-table tbody tr').first().
 await page.getByRole('button', { name: 'Import 2 prospects' }).click();
 check('Tankathon import saved 2 players', (await counts()).includes('2 total'), await counts());
 await search('IOL', `6'5"`, 324);
-check('dual-listed OT/IOL player matches an IOL search exactly', (await names('.tier-exact'))[0] === 'Board Swing');
+check('dual-listed OT/IOL player matches an IOL search exactly', (await names('.tier-exact'))[0] === 'Tank Swing');
 await search('OT', `6'5"`, 324);
-check('...and an OT search', (await names('.tier-exact'))[0] === 'Board Swing');
+check('...and an OT search', (await names('.tier-exact'))[0] === 'Tank Swing');
 await tab('Prospect Pool');
 
-await page.getByRole('button', { name: 'Import from Tankathon / CSV' }).click();
+// NFL Mock Draft Database: no measurements on the board; existing players are skipped.
+await page.getByRole('button', { name: 'Import a big board / CSV' }).click();
+await page.getByRole('tab', { name: 'NFL Mock Draft Database' }).click();
+check('MDDB tab warns that boards lack measurements', /not height and weight/.test(await page.locator('.import-source').innerText()));
+await page.fill('#imp-text', ['2027 NFL Consensus Big Board', 'QB', 'RB', 'WR', '1', 'Jordan Newman', 'WR', 'Ohio State', '2', 'Tank Qb', 'QB', 'Texas'].join('\n'));
+check('MDDB paste finds players', /Found 2 players/.test(await page.locator('.import-source').innerText()));
+await page.getByRole('button', { name: /^Preview/ }).click();
+check('player already in pool reads as skipped', /Already in your pool/.test(await page.locator('.import-table tbody tr').nth(1).innerText()));
+await page.fill('input[aria-label$=" height"]', `6'1"`);
+await page.fill('input[aria-label$=" weight"]', '200');
+await page.getByRole('button', { name: 'Import 1 prospect' }).click();
+check('MDDB player imported after filling measurements', (await counts()).includes('3 total'), await counts());
+
+await page.getByRole('button', { name: 'Import a big board / CSV' }).click();
 await page.getByRole('tab', { name: 'CSV / other list' }).click();
 await page.fill('#imp-text', [
   'Player,Pos,Ht,Wt,College',
@@ -93,7 +106,7 @@ await page.screenshot({ path: `${out}/01-import-preview.png`, fullPage: true });
 await page.fill('tr[data-line="8"] input[aria-label="Line 8 height"]', `6'0"`);
 check('fixing a row makes it importable', (await page.locator('.modal-foot').innerText()).includes('8 prospects ready'), await page.locator('.modal-foot .foot-left').innerText());
 await page.getByRole('button', { name: 'Import 8 prospects' }).click();
-check('import saved 8 prospects', (await counts()).includes('10 total'), await counts());
+check('import saved 8 prospects', (await counts()).includes('11 total'), await counts());
 
 // ---- matching tiers ----
 await search('WR', `6'3"`, 215);
@@ -148,7 +161,7 @@ await tab('Settings & Data');
 await page.fill('#ws-name', 'Season 2');
 await page.selectOption('#ws-copy', { index: 1 });
 await page.getByRole('button', { name: 'Create' }).click();
-check('copied workspace has everyone available', (await counts()).includes('10 total') && (await counts()).includes('0 used'), await counts());
+check('copied workspace has everyone available', (await counts()).includes('11 total') && (await counts()).includes('0 used'), await counts());
 await search('WR', `6'3"`, 215);
 check('used status separate across workspaces', (await names('.tier-exact'))[0] === 'Exact Ed');
 await page.selectOption('#ws-select', { label: 'My Draft Class' });
@@ -157,7 +170,7 @@ check('first workspace still has its assignment', (await counts()).includes('1 u
 // ---- persistence across reload ----
 await page.reload();
 await page.waitForSelector('.topbar');
-check('data survives refresh', (await counts()).includes('10 total') && (await counts()).includes('1 used') && (await page.locator('#ws-select option').count()) === 2);
+check('data survives refresh', (await counts()).includes('11 total') && (await counts()).includes('1 used') && (await page.locator('#ws-select option').count()) === 2);
 
 // ---- backup / restore ----
 await tab('Settings & Data');
@@ -173,7 +186,7 @@ check('destructive clear (after confirm) emptied the workspace', (await counts()
 await page.setInputFiles('input[aria-label="Restore from backup"]', backupPath);
 check('restore asks before replacing', (await page.locator('.modal').innerText()).includes('replace everything'));
 await page.locator('.modal').getByRole('button', { name: 'Replace with backup' }).click();
-check('restore brings everything back', (await counts()).includes('10 total') && (await counts()).includes('1 used'));
+check('restore brings everything back', (await counts()).includes('11 total') && (await counts()).includes('1 used'));
 await page.reload();
 await page.waitForSelector('.topbar');
 check('restored data survives refresh', (await counts()).includes('1 used'));
@@ -181,7 +194,7 @@ const badPath = path.join(os.tmpdir(), `rm-bad-${Date.now()}.json`);
 await writeFile(badPath, '{"app":"rookie-match","data":{"version":1}}');
 await tab('Settings & Data');
 await page.setInputFiles('input[aria-label="Restore from backup"]', badPath);
-check('broken backup rejected without changes', (await page.locator('.notice-error').innerText()).includes('nothing was changed') && (await counts()).includes('10 total'));
+check('broken backup rejected without changes', (await page.locator('.notice-error').innerText()).includes('nothing was changed') && (await counts()).includes('11 total'));
 
 // ---- CSV template + exports ----
 await tab('Prospect Pool');

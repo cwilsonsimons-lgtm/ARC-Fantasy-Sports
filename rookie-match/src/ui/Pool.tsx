@@ -83,7 +83,7 @@ export function Pool() {
         </div>
         <div className="row-actions wrap">
           <button className="btn btn-primary" onClick={() => setEditing('new')}>+ Add prospect</button>
-          <button className="btn" onClick={() => setImporting(true)}>Import from Tankathon / CSV</button>
+          <button className="btn" onClick={() => setImporting(true)}>Import a big board / CSV</button>
           <button className="btn btn-ghost" onClick={() => download('rookie-match-template.csv', TEMPLATE_CSV, 'text/csv')}>CSV template</button>
           <button className="btn btn-ghost" onClick={() => download(`rookie-match-prospects-${fileSlug(state)}-${today()}.csv`, prospectsCsv(ws), 'text/csv')} disabled={!ws.prospects.length}>Export CSV</button>
         </div>
@@ -119,7 +119,7 @@ export function Pool() {
       </div>
 
       {ws.prospects.length === 0 ? (
-        <div className="empty">No prospects yet. Import the Tankathon big board, add players one at a time, or import a CSV (download the template to see the format).</div>
+        <div className="empty">No prospects yet. Import a big board from Tankathon or NFL Mock Draft Database, add players one at a time, or import a CSV (download the template to see the format).</div>
       ) : rows.length === 0 ? (
         <div className="empty">No prospects match these filters.</div>
       ) : (

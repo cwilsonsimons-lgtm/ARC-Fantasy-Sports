@@ -158,6 +158,15 @@ export function validateRows(rows: { line: number; raw: RawValues }[], positions
   for (const { line, raw } of rows) {
     const v = validateRaw(raw, positions);
     const row: ValidatedRow = { ...v, line, duplicates: [], sameName: [] };
+    if (!v.prospect) {
+      // Still say when an incomplete row (e.g. a board without measurements) is a
+      // player the pool already has, so it reads as "skipped", not as a problem.
+      const pos = normalizePosition(raw.position, positions);
+      const name = raw.name.replace(/\s+/g, ' ').trim();
+      if (pos && name) {
+        row.duplicates.push(...checkAgainst({ name, position: pos, ...(raw.college.trim() ? { college: raw.college.trim() } : {}), heightIn: 0, weight: 0 }, existing).duplicates);
+      }
+    }
     if (v.prospect) {
       const c = checkAgainst(v.prospect, existing);
       row.duplicates.push(...c.duplicates);

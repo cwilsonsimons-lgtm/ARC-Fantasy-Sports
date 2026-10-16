@@ -64,7 +64,7 @@ rather than deleted.
 5. **Assignment History**: search, edit, undo or delete. Undo and delete both
    make the prospect available again. After an undo, a toast offers **Restore**.
 
-## Importing from Tankathon
+## Importing a big board (Tankathon or NFL Mock Draft Database)
 
 Browsers won't let one site read another site's pages unless that site allows
 it, and Tankathon doesn't. So the page can't be fetched automatically; you copy
@@ -76,8 +76,15 @@ left blank and flagged rather than guessed. The board rank goes into the
 player's notes. Re-pasting an updated board flags players you already have as
 possible duplicates and skips them.
 
-This parser was written without access to a live copy of the page, so it
-handles several plausible layouts. If a paste doesn't read correctly, the
+**NFL Mock Draft Database** boards are read the same way. Players are anchored
+on a line holding just their position, followed by the school, or on a
+`School · POS` style line. Those boards usually list no height or weight, so
+import Tankathon first. Players you already have are marked "already in your
+pool" and skipped, and new players arrive with height and weight to fill in.
+Rows without measurements aren't imported.
+
+Both parsers live in `src/core/board.ts`. They were written without access to
+live copies of either page, so they handle several plausible layouts. If a paste doesn't read correctly, the
 preview shows exactly which rows failed.
 
 ## Matching rules
@@ -133,7 +140,7 @@ The WRs are clustered around 6'3" 215 lb so every tier appears for that search.
 ## Layout
 
 ```
-src/core/   height.ts (parsing) · positions.ts · match.ts (tiers + distance) · tankathon.ts
+src/core/   height.ts (parsing) · positions.ts · match.ts (tiers + distance) · board.ts (big-board paste)
             state.ts (model + pure operations) · importer.ts · csv.ts
             storage.ts (localStorage, backup, CSV export) · sample.ts
 src/ui/     App · FindMatch · Pool · ImportDialog · History · SettingsPage · common
