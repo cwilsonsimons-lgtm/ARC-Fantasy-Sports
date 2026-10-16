@@ -3,6 +3,10 @@
 Fantasy football league app prototype — matchups, standings, rosters, a mock
 draft room, free agency, and a simulated live-scoring week clock.
 
+> Also in this repo: **[Rookie Match](rookie-match/README.md)** (`rookie-match/`), which
+> renames generated Madden draft prospects after real prospects with similar measurements.
+> Open `rookie-match/dist/rookie-match.html` to use it.
+
 ## Running it
 
 **Just want to look at it?** Open `dist/index.html` — it is the whole app in one
