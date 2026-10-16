@@ -56,6 +56,22 @@ name is set in that team's own font and colour:
 the wordmarks, the heading over what each side receives, and a pick's
 "via <team>". `node tools/trade-partner-check.mjs` checks all of this.
 
+## Header and inbox
+
+Every league screen has the same header: the league on the left (tap it for
+the home screen), then chat, notifications and the menu on the right. The
+matchup screen draws its own header over the backdrop but in the same order.
+There is no back arrow; the Matchup, Team and League tabs, the league name and
+each screen's own controls (a player card's close button, the trade builder's
+back) get you around.
+
+Chat, notifications and transactions are one place with three tabs: the chat
+button opens it on Chat, the bell on Notifications, and Transactions holds the
+league's transaction log. Each tab shows its unread count. A conversation with
+one manager keeps the tabs, and Chat returns to the league chat. The side
+menu no longer has Chat or Transactions. `node tools/nav-check.mjs` checks the
+header on every screen, the side menu and the inbox.
+
 ## Markets
 
 The **Markets** item in the bottom nav opens Markets — a separate section, not

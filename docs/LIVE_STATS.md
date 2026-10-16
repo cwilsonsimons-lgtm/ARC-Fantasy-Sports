@@ -98,8 +98,9 @@ pinned to that afternoon.
   tools, drop confirmation): `plink()` marks them with `data-pc`, and one
   capture-phase click handler opens the player card before any action of the
   row underneath. Rows that select or swap keep doing so everywhere except on
-  the name. A held draft tile (reactions) is not treated as a tap. Back from
-  the card returns to the same screen, scroll position and open sheet.
+  the name. A held draft tile (reactions) is not treated as a tap. The card's
+  close button (top right of the card) returns to the same screen, scroll
+  position and open sheet.
 - **Records** are links (`rlink()`, `data-sched`) in the matchup header, the
   team page, every standings mode and the schedule itself; each opens that
   team's schedule: every week's opponent and their record, the result and

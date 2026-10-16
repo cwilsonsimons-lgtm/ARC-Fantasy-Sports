@@ -1484,9 +1484,6 @@ body.hub .leaguebar,
 body.hub .tabs{display:none}
 
 .leaguebar .lb-r{display:flex;align-items:center;gap:7px}
-.hubback{width:32px;height:32px;border-radius:10px;background:var(--card);border:1px solid var(--line);
-  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
-.hubback svg{width:17px;height:17px}
 .leaguebar .msg{width:32px;height:32px}
 .leaguebar .burger{width:32px;height:32px}
 
@@ -1532,8 +1529,11 @@ body.hub .tabs{display:none}
   padding:5px 6px;min-width:30px;text-align:center}
 .hb-cd b{display:block;font-size:13px;color:var(--ink);font-weight:700;line-height:1.1}
 
-/* the stage chrome grew a second icon on the left */
-.ms-chrome-l{display:flex;align-items:center;gap:7px}
+/* the stage chrome: the league on the left, chat, bell and menu on the right,
+   as in the league bar */
+.ms-chrome-r{display:flex;align-items:center;gap:7px;flex:none}
+.ms-chrome .ms-title{min-width:0}
+.ms-chrome .ms-title .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* A seeded league is read-only, so the controls that write to the real league's
    state — the week stepper and the All Matchups drill-in — do not belong to it. */
@@ -1881,9 +1881,16 @@ body.forming .tabs{display:none}
    league filtered to two people. Trades render inline here rather than in a
    trade tab, because the negotiation is the conversation. */
 .ch-hd{display:flex;align-items:center;gap:10px;padding:2px 0 12px;border-bottom:1px solid var(--line-soft)}
-.ch-back{width:30px;height:30px;border-radius:9px;background:var(--card);border:1px solid var(--line);
-  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
-.ch-back svg{width:16px;height:16px}
+/* chat, notifications and transactions: one place, three tabs */
+.ib-seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px;margin:0 0 12px}
+.ib-b{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 0;border-radius:8px;cursor:pointer;
+  font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink-3);white-space:nowrap;transition:background .15s,color .15s}
+.ib-b.on{background:var(--accent);color:#fff}
+.ib-n{min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;
+  letter-spacing:0;display:inline-grid;place-items:center;font-family:inherit}
+.ib-b.on .ib-n{background:#fff;color:var(--accent)}
+#logBody .ib-seg{margin-bottom:14px}
 .ch-bd{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;overflow:hidden;
   font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px}
 .ch-bd img{width:100%;height:100%;object-fit:cover}
@@ -2070,9 +2077,6 @@ body.forming .tabs{display:none}
    The only surface for anything the clock drives. Nothing else in the app
    carries a waiver banner or a recap ribbon. */
 .nt-hd{display:flex;align-items:center;gap:10px;padding:2px 0 12px;border-bottom:1px solid var(--line-soft)}
-.nt-back{width:30px;height:30px;border-radius:9px;background:var(--card);border:1px solid var(--line);
-  display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
-.nt-back svg{width:16px;height:16px}
 .nt-title{flex:1;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:15px;
   text-transform:uppercase;letter-spacing:.4px}
 .nt-clear{flex:none;font-size:10px;font-weight:700;color:var(--accent);cursor:pointer;letter-spacing:.3px}
@@ -2844,9 +2848,6 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   <!-- SHIFTABLE -->
   <div class="shift">
     <div class="leaguebar">
-      <div class="hubback" onclick="headerBack()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-      </div>
       <div class="league-id" onclick="goHome()">
         <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
         <div>
@@ -3212,13 +3213,8 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     games: [],
     lineupSlots: null,
     // filled in by store.js at load, from buildSlots()
-    teamBackView: "matchup",
-    seededBack: null,
-    // which seeded league a read-only roster came from
     chatThread: null,
     // team key when the chat is filtered to one manager
-    chatBackView: null,
-    notifBackView: null,
     currentPlayerName: null,
     pidx: null,
     // player index cache; null means "rebuild on next read"
@@ -4661,12 +4657,10 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   var STARTER_NEED = { QB: 1, RB: 2, WR: 3, TE: 1 };
   var DRAFT_TOTAL = DRAFT_ROUNDS * DRAFT_ORDER.length;
   var RAIL = [
-    { k: "chat", lb: "Chat", action: "openChat()", ic: '<path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/>' },
     { k: "trending", lb: "Trending", ic: '<path d="M3 17 9 11l4 4 8-8"/><path d="M17 7h4v4"/>' },
     { k: "available", lb: "Available", ic: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 8v6M21 11h-6"/>' },
     { k: "leaders", lb: "Leaders", ic: '<circle cx="12" cy="9" r="5"/><path d="m8.5 13-1.5 8 5-3 5 3-1.5-8"/>' },
     { k: "trades", lb: "Trades", ic: '<path d="M7 8h13l-3-3M17 16H4l3 3"/>' },
-    { k: "log", lb: "Transactions", action: "openLog()", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h7M7 17h4"/>' },
     { k: "scores", lb: "Scores", ic: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M16 5v14"/>' },
     { k: "news", lb: "News", ic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h7M7 12h10M7 16h6"/>' },
     { k: "settings", lb: "Settings", action: "openSettings()", ic: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>' }
@@ -4936,7 +4930,6 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     setNick: () => setNick,
     setTeamFont: () => setTeamFont,
     setTeamName: () => setTeamName,
-    teamBack: () => teamBack,
     teamHead: () => teamHead,
     teamRow: () => teamRow,
     toggleFontMenu: () => toggleFontMenu
@@ -5012,7 +5005,6 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     TRADE_STATUS: () => TRADE_STATUS,
     acceptTrade: () => acceptTrade,
     applyTrade: () => applyTrade,
-    backFromChat: () => backFromChat,
     chatLog: () => chatLog,
     chatUnread: () => chatUnread,
     counterTrade: () => counterTrade,
@@ -5055,11 +5047,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     countdownParts: () => countdownParts,
     draftAt: () => draftAt,
     goHome: () => goHome,
-    headerBack: () => headerBack,
     inRealLeague: () => inRealLeague,
     initLeagues: () => initLeagues2,
     leagueById: () => leagueById,
-    setBackLabel: () => setBackLabel,
     leagueMark: () => leagueMark,
     leagueScore: () => leagueScore,
     leagueStatus: () => leagueStatus,
@@ -5130,7 +5120,6 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     }
     if (name === "team") {
       renderTeam(MY_TEAM);
-      S.teamBackView = homeTab2();
     }
     if (name === "draft") renderDraft();
     // the Matchup tab is always your own game, whichever you swiped to last
@@ -8175,29 +8164,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // every screen down by a line, so the per-view handlers hang off here instead.
   // Anything without an entry falls through to the league hub, which is what
   // this button did before.
-  var BACK_BY_VIEW = {
-    detail: () => showLeagueView(),
-    trade: () => cancelTrade(),
-    team: () => teamBack(),
-    player: () => playerBack(),
-    log: () => logBack(),
-    settings: () => showTab(homeTab()),
-    draft: () => preDraft() ? goHome() : showTab("matchup")
-  };
-  function headerBack() {
-    const fn = BACK_BY_VIEW[currentViewName()];
-    if (fn) fn();
-    else goHome();
-  }
-  // Sub-views describe where back leads; the label rides on the header button as
-  // its tooltip and accessible name now that there is no visible text for it.
-  function setBackLabel(lbl) {
-    const b = document.querySelector(".hubback");
-    if (!b) return;
-    const t = lbl || "Back";
-    b.setAttribute("title", t);
-    b.setAttribute("aria-label", "Back to " + t);
-  }
   function goHome() {
     // the hub reads City Boys' draft and games for its card
     useLeague("cbd");
@@ -8345,7 +8311,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // js/log.js
   var log_exports = {};
   __export(log_exports, {
-    logBack: () => logBack,
     openLog: () => openLog,
     playerAsset: () => playerAsset,
     pushTx: () => pushTx,
@@ -9957,30 +9922,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const el = document.getElementById("logBody");
     if (!el) return;
     const rows2 = txRows();
-    el.innerHTML = rows2.length ? rows2.map(txRowHTML).join("") : `<div class="tx-empty">—</div>`;
+    el.innerHTML = inboxTabsHTML("log") + (rows2.length ? rows2.map(txRowHTML).join("") : `<div class="tx-empty">No transactions yet</div>`);
   }
-  var logBackView = "matchup";
+  // Chat, notifications and transactions are one place: the chat and the bell
+  // at the top right open it on their own tab, and the tabs move between them.
+  // A league that is only on show (seeded) has no chat or transactions of its
+  // own, so its notifications stand alone.
+  function inboxTabsHTML(cur) {
+    if (!inRealLeague()) return "";
+    const tab = (k, lb, act, n) => `<div class="ib-b${cur === k ? " on" : ""}" data-ib="${k}" role="tab" aria-selected="${cur === k}" onclick="${act}">${lb}<span class="ib-n"${n ? "" : ' style="display:none"'}>${n}</span></div>`;
+    return `<div class="ib-seg" role="tablist" aria-label="Inbox">${tab("chat", "Chat", "openChat()", chatUnread())}${tab("notifs", "Notifications", "openNotifs()", unreadNotifs())}${tab("log", "Transactions", "openLog()", 0)}</div>`;
+  }
   function openLog() {
-    const cur = currentViewName();
-    if (cur !== "log") logBackView = cur;
-    const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup", team: "Team", chat: "Chat", player: "Player" }[logBackView] || "Matchup";
-    setBackLabel(lbl);
     renderLog();
     showView2("log");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
     if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function logBack() {
-    const v = logBackView;
-    if (v === "league") showLeagueView();
-    else if (v === "standings") showTab("standings");
-    else if (v === "chat") openChat();
-    else if (v === "team" || v === "detail" || v === "player") {
-      showView2(v);
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-      document.getElementById("scroll").scrollTop = 0;
-    } else showTab(homeTab2());
   }
 
   // js/notifs.js
@@ -9988,7 +9946,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   __export(notifs_exports, {
     NOTIF_DEFAULTS: () => NOTIF_DEFAULTS,
     NOTIF_TYPES: () => NOTIF_TYPES,
-    backFromNotifs: () => backFromNotifs,
     fmtLocal: () => fmtLocal,
     initNotifs: () => initNotifs2,
     markAllRead: () => markAllRead,
@@ -10071,6 +10028,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         b.textContent = n;
         b.style.display = n ? "grid" : "none";
       }
+    });
+    document.querySelectorAll(".ib-b[data-ib=notifs] .ib-n").forEach((e) => {
+      e.textContent = n;
+      e.style.display = n ? "" : "none";
     });
   }
   function waiverClose(lgId) {
@@ -10181,11 +10142,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const el = document.getElementById("notifBody");
     if (!el) return;
     const list = notifs();
-    el.innerHTML = `
+    const tabs = inboxTabsHTML("notifs");
+    el.innerHTML = `${tabs}
     <div class="nt-hd">
-      <div class="nt-back" onclick="backFromNotifs()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
-      <div class="nt-title">Notifications</div>
-      ${list.some((n) => !n.read) ? `<div class="nt-clear" onclick="markAllRead()">Mark read</div>` : "<div></div>"}
+      <div class="nt-title">${tabs ? `${list.filter((n) => !n.read).length || "No"} unread` : "Notifications"}</div>
+      ${list.some((n) => !n.read) ? `<div class="nt-clear" onclick="markAllRead()">Mark all read</div>` : "<div></div>"}
     </div>
     <div class="nt-list">${list.map((n) => {
       const lg = leagueById(n.leagueId);
@@ -10207,32 +10168,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return Math.floor(s / 86400) + "d";
   }
   function openNotifs() {
-    S.notifBackView = currentBack();
     renderNotifs();
     showView2("notifs");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
     if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function currentBack() {
-    const v = document.querySelector(".view.on");
-    const n = v ? v.dataset.view : "matchup";
-    return n === "notifs" ? "matchup" : n;
-  }
-  function backFromNotifs() {
-    const v = S.notifBackView || "matchup";
-    S.notifBackView = null;
-    if (v === "home") {
-      showView2("home");
-      if (window.renderHome) window.renderHome();
-      return;
-    }
-    if (v === "chat" && window.openChat) {
-      window.openChat();
-      return;
-    }
-    if (window.showTab) window.showTab(v === "matchup" ? window.homeTab() : v);
-    else showView2("matchup");
   }
   function openNotif(id) {
     const n = notifs().find((x) => x.id === id);
@@ -10308,19 +10248,25 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     paintChatBadges2();
   }
   function paintChatBadges2() {
-    const n = chatUnread(), el = document.getElementById("lbChat");
-    if (el) {
-      let b = el.querySelector(".b");
+    const n = chatUnread();
+    // the league bar's chat, and the matchup screen's
+    [[document.getElementById("lbChat"), "b"], ...[...document.querySelectorAll("[data-chat]")].map((e) => [e, "ms-badge"])].forEach(([el, cls]) => {
+      if (!el) return;
+      let b = el.querySelector("." + cls);
       if (n && !b) {
         b = document.createElement("span");
-        b.className = "b";
+        b.className = cls;
         el.appendChild(b);
       }
       if (b) {
         b.textContent = n;
         b.style.display = n ? "grid" : "none";
       }
-    }
+    });
+    document.querySelectorAll(".ib-b[data-ib=chat] .ib-n").forEach((e) => {
+      e.textContent = n;
+      e.style.display = n ? "" : "none";
+    });
     const sub = document.getElementById("mActivitySub");
     if (sub) {
       const t = tradeMsgs().filter((m) => m.trade && m.trade.status === "proposed" && m.trade.to === MY_TEAM).length;
@@ -10425,17 +10371,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const thread = S.chatThread;
     const log = chatLog().filter((m) => thread ? m.to === thread && (m.from === MY_TEAM || m.from === thread) || m.from === thread && m.to === MY_TEAM : !m.to);
     const t = thread ? T[thread] : null;
-    const head = thread ? `<div class="ch-hd">
-        <div class="ch-back" onclick="openChat()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
+    // a thread is reached from the league chat, and the Chat tab goes back to it
+    const head = inboxTabsHTML("chat") + (thread ? `<div class="ch-hd">
         <span class="ch-bd" style="background:${t.bg};color:${t.c}">${markInner(t)}</span>
         <div class="ch-id"><div class="ch-nm" style="color:${t.c}">${escHtml(t.n)}</div><div class="ch-sub">${escHtml(t.mgr)}</div></div>
         <div class="ch-act" onclick="buildTrade('${MY_TEAM}','${thread}')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>
         </div>
       </div>` : `<div class="ch-hd">
-        <div class="ch-back" onclick="backFromChat()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></div>
         <div class="ch-id"><div class="ch-nm">League Chat</div><div class="ch-sub">${chatLog().filter((m) => !m.to).length} messages</div></div>
-      </div>`;
+      </div>`);
     el.innerHTML = `${head}
     <div class="ch-log" id="chLog">${log.map(msgRow).join("")}</div>
     <div class="ch-compose">
@@ -10460,7 +10405,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       openLeague("cbd");
     }
     S.chatThread = null;
-    S.chatBackView = currentBack2();
     renderChat();
     showView2("chat");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
@@ -10470,28 +10414,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function openThread(key) {
     if (!T[key] || key === MY_TEAM) return;
     S.chatThread = key;
-    if (!S.chatBackView) S.chatBackView = currentBack2();
     renderChat();
     showView2("chat");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
     document.getElementById("scroll").scrollTop = 0;
     if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function currentBack2() {
-    const v = document.querySelector(".view.on");
-    const n = v ? v.dataset.view : "matchup";
-    return n === "chat" || n === "trade" ? "matchup" : n;
-  }
-  function backFromChat() {
-    const v = S.chatBackView || "matchup";
-    S.chatBackView = null;
-    if (v === "home") {
-      showView2("home");
-      if (window.renderHome) window.renderHome();
-      return;
-    }
-    if (window.showTab) window.showTab(v === "matchup" ? window.homeTab() : v);
-    else showView2("matchup");
   }
   function postTrade(tr, note) {
     const m = pushMsg({ kind: "trade", from: tr.from, body: "", trade: Object.assign({}, tr, { note: note || tr.note || "" }) });
@@ -12288,7 +12215,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     document.getElementById("scroll").scrollTop = 0;
   }
   function renderSettings() {
-    setBackLabel(preDraft() ? "Draft" : "Matchup");
     const has = !!store.globalBackdrop;
     const perGame = Object.keys(store.backdrops || {}).length;
     const preview = has ? `<div class="set-preview" style="background-image:url('${store.globalBackdrop}')"></div>` : `<div class="set-preview none">Default stadium field</div>`;
@@ -12376,8 +12302,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     ${bg}<div class="ms-scrim"></div>
     <div class="sh-glowL"></div><div class="sh-glowR"></div>
     <div class="ms-chrome">
-      <div class="ms-chrome-l">
-        ${opts.seeded ? "" : `<div class="ms-ic" onclick="openChat()">
+      <div class="ms-title" onclick="goHome()">
+        <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+        <div><div class="nm">${escHtml(activeLeague2().name)} <span class="chev">\u25BE</span></div><div class="wk">${opts.weekLabel || "WEEK " + S.week}</div></div>
+      </div>
+      <div class="ms-chrome-r">
+        ${opts.seeded ? "" : `<div class="ms-ic" data-chat onclick="openChat()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z"/></svg>
           ${chatUnread() ? `<span class="ms-badge">${chatUnread()}</span>` : ""}
         </div>`}
@@ -12385,12 +12315,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15V10a6 6 0 1 0-12 0v5l-2 3h16Z"/><path d="M10 21h4"/></svg>
           ${unreadNotifs() ? `<span class="ms-badge">${unreadNotifs()}</span>` : ""}
         </div>
+        <div class="ms-ic" data-menu onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
       </div>
-      <div class="ms-title" onclick="goHome()">
-        <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
-        <div><div class="nm">${escHtml(activeLeague2().name)} <span class="chev">\u25BE</span></div><div class="wk">${opts.weekLabel || "WEEK " + S.week}</div></div>
-      </div>
-      <div class="ms-ic" onclick="toggleDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
     </div>
     <div class="ms-nav">
       ${TABS().map((t, i) => i === 0 ? `<div class="ms-tab on">${t.lb}</div>` : `<div class="ms-tab" onclick="showTab('${t.k}')">${t.lb}</div>`).join("")}
@@ -13154,31 +13080,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function openTeam(key) {
     if (!T[key]) return;
-    const cur = currentViewName();
-    if (cur !== "team") S.teamBackView = cur;
-    const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup" }[S.teamBackView] || "Matchup";
-    setBackLabel(lbl);
     teamEditOpen = false;
     renderTeam(key);
     showView2("team");
     document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === "team" && key === MY_TEAM));
     document.getElementById("scroll").scrollTop = 0;
     if (document.body.classList.contains("open")) toggleDrawer();
-  }
-  function teamBack() {
-    fontMenuOpen = false;
-    const v = S.teamBackView;
-    if (v === "seeded" && S.seededBack && window.openLeague) {
-      window.openLeague(S.seededBack);
-      return;
-    }
-    if (v === "league") showLeagueView();
-    else if (v === "standings") showTab("standings");
-    else if (v === "detail") {
-      showView2("detail");
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-      document.getElementById("scroll").scrollTop = 0;
-    } else showTab("matchup");
   }
   function pickPhoto(key) {
     photoTargetName = key;
@@ -14453,6 +14360,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div class="pc-fav">
           <div class="b" onclick="toast('Added to watchlist')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.5 12 21 12 21Z"/></svg></div>
           <div class="b" onclick="toast('Compare')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
+          <div class="b pc-close" aria-label="Close" onclick="playerBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
         </div>
         ${nickBanner}
         <div class="pc-name"><div class="pc-first">${first}</div>
@@ -14540,8 +14448,6 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       el.classList.remove("show");
       playerBackSheets.push(el);
     });
-    const lbl = { league: "All matchups", standings: "Standings", detail: "Matchup", team: "Team", player: "Back", chat: "Chat", trade: "Trade", tradeart: "Graphic", log: "Transactions", notifs: "Notifications", draft: "Draft", settings: "Settings", home: "Leagues" }[playerBackView] || "Matchup";
-    setBackLabel(lbl);
     renderPlayer(key);
     showView2("player");
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
@@ -15729,10 +15635,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const t = teamsOf(lg)[key];
     if (!t) return;
     currentSeededTeam = { id: lgId, key };
-    S.teamBackView = "seeded";
-    S.seededBack = lg.id;
     S.seededTab = "team";
-    setBackLabel(lg.name);
     const own = key === myKeyOf(lg);
     const roster = seededRoster(lg, key);
     let body2 = `<div class="tv-head">

@@ -6,8 +6,8 @@
 // a name and a league logo are set in the real City Boys Dynasty import
 // (fixtures/league), the league is synced (live and full) and the page
 // reloaded; all three must hold. City Boys' demo league is checked too. On the
-// matchup screen the bell is top left, and its count used to sit in the top
-// right corner of the header instead.
+// matchup screen the bell's count used to sit in the header's corner rather
+// than on the bell.
 import { chromium } from 'playwright';
 import fs from 'fs';
 const R = new URL('./fixtures/', import.meta.url).pathname;
@@ -126,19 +126,19 @@ await p.waitForTimeout(300);
 await p.evaluate(() => { pushNotif({ type: NOTIF_TYPES[0][0], title: 'Test', body: 'A notification' }); pushNotif({ type: NOTIF_TYPES[0][0], title: 'Test 2', body: 'Another' }); });
 await p.waitForTimeout(200);
 const where = () => p.evaluate(() => {
-  const bell = document.querySelector('#userHero [data-bell]'), badge = bell && bell.querySelector('.ms-badge'), menu = document.querySelector('#userHero .ms-chrome > .ms-ic:last-child');
+  const bell = document.querySelector('#userHero [data-bell]'), badge = bell && bell.querySelector('.ms-badge'), menu = document.querySelector('#userHero [data-menu]');
   const r = (e) => { const q = e.getBoundingClientRect(); return { l: q.left, r: q.right, t: q.top, b: q.bottom, cx: (q.left + q.right) / 2, cy: (q.top + q.bottom) / 2 }; };
   return badge && badge.style.display !== 'none' ? { bell: r(bell), badge: r(badge), menu: r(menu), n: badge.textContent } : null;
 });
 let w = await where();
 ok('a new notification shows its count on the matchup screen\'s bell at once', w && w.n === '2', w && w.n);
-ok('on the bell\'s top right corner, top left of the screen', w && Math.abs(w.badge.cx - w.bell.r) < 8 && Math.abs(w.badge.cy - w.bell.t) < 8 && w.badge.cx < 195, w && JSON.stringify({ badge: [w.badge.cx, w.badge.cy].map(Math.round), bell: [w.bell.r, w.bell.t].map(Math.round) }));
+ok('on the bell\'s top right corner', w && Math.abs(w.badge.cx - w.bell.r) < 8 && Math.abs(w.badge.cy - w.bell.t) < 8, w && JSON.stringify({ badge: [w.badge.cx, w.badge.cy].map(Math.round), bell: [w.bell.r, w.bell.t].map(Math.round) }));
 ok('not over the menu button in the top right', w && w.badge.r < w.menu.l, w && `${Math.round(w.badge.r)} < ${Math.round(w.menu.l)}`);
 await p.screenshot({ path: OUT + '/logo-bell.png', clip: { x: 0, y: 0, width: 390, height: 120 } });
 await p.evaluate(() => renderUserMatchup());
 w = await where();
 ok('and there after the screen is drawn again', w && Math.abs(w.badge.cx - w.bell.r) < 8 && w.n === '2');
-const chat = await p.evaluate(() => { const c = document.querySelector('#userHero .ms-chrome-l .ms-ic:not([data-bell])'); return c ? getComputedStyle(c).position : null; });
+const chat = await p.evaluate(() => { const c = document.querySelector('#userHero [data-chat]'); return c ? getComputedStyle(c).position : null; });
 ok('the chat button holds its own count the same way', chat === 'relative', chat);
 await p.evaluate(() => markAllRead());
 ok('reading them clears it', !(await where()));

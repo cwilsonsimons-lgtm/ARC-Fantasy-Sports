@@ -200,7 +200,7 @@ await p.screenshot({ path: `${OUT}/link-schedule.png` });
 await p.locator('#schedBody .sch-row').nth(2).click();
 await p.waitForTimeout(400);
 ok('a week in the schedule opens that matchup', !(await shown('schedSheet')) && (await p.evaluate(() => lvState().viewWeek)) === 3 && ['matchup', 'detail'].includes(await view()), await view());
-// a name in a selection row opens the card; the rest of the row still selects, and Back returns as it was
+// a name in a selection row opens the card; the rest of the row still selects, and closing the card returns as it was
 await p.evaluate(() => { pickWeek(4); const ks = Object.keys(T).filter((k) => k !== MY_TEAM); buildTrade(MY_TEAM, ks[0], {}); });
 await p.waitForTimeout(300);
 const row = p.locator('#tradeBody .tb-col').first().locator('.tb-row').first();
@@ -212,19 +212,19 @@ await row.locator('.plk').click();
 await p.waitForTimeout(300);
 const card = await p.evaluate(() => ({ v: currentViewName() }));
 ok(`trade builder: the row still selects (${sel}), the name opens ${nm}'s card`, sel === 1 && card.v === 'player');
-await p.evaluate(() => headerBack());
+await p.evaluate(() => document.querySelector('#playerBody .pc-close').click());
 await p.waitForTimeout(300);
-ok('Back returns to the trade, selection intact', (await view()) === 'trade' && (await p.evaluate(() => document.querySelectorAll('#tradeBody .tb-row.on').length)) === 1);
-// a sheet steps aside for the card and comes back with Back
+ok('closing the card returns to the trade, selection intact', (await view()) === 'trade' && (await p.evaluate(() => document.querySelectorAll('#tradeBody .tb-row.on').length)) === 1);
+// a sheet steps aside for the card and comes back when it closes
 idx = await openIdx();
 await p.evaluate((i) => { showTab('matchup'); renderUserMatchup(); openSwap(i); }, idx.s);
 await p.waitForTimeout(300);
 await p.locator('#swapSheet .plk').first().click();
 await p.waitForTimeout(300);
 const mid = { v: await view(), sheet: await shown('swapSheet') };
-await p.evaluate(() => headerBack());
+await p.evaluate(() => document.querySelector('#playerBody .pc-close').click());
 await p.waitForTimeout(300);
-ok('swap sheet: name opens the card, Back brings the sheet back', mid.v === 'player' && !mid.sheet && (await view()) === 'matchup' && (await shown('swapSheet')));
+ok('swap sheet: name opens the card, closing it brings the sheet back', mid.v === 'player' && !mid.sheet && (await view()) === 'matchup' && (await shown('swapSheet')));
 await closeSheets();
 // draft board: a tap on a name opens the card, a hold still reacts
 await p.evaluate(() => {
@@ -240,9 +240,9 @@ await p.waitForTimeout(400);
 await p.locator('.dg-cell[data-pick] .plk').first().click();
 await p.waitForTimeout(300);
 const fromBoard = await view();
-await p.evaluate(() => headerBack());
+await p.evaluate(() => document.querySelector('#playerBody .pc-close').click());
 await p.waitForTimeout(300);
-ok('draft board: a tap on a name opens the card, Back returns to the board', fromBoard === 'player' && (await view()) === 'draft', fromBoard);
+ok('draft board: a tap on a name opens the card, closing it returns to the board', fromBoard === 'player' && (await view()) === 'draft', fromBoard);
 // the latest pick is the one still open for reactions
 await p.locator('.dg-cell[data-pick="7"] .plk').scrollIntoViewIfNeeded();
 const cellBox = await p.locator('.dg-cell[data-pick="7"] .plk').boundingBox();
