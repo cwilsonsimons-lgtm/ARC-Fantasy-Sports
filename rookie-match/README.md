@@ -87,6 +87,28 @@ Both parsers live in `src/core/board.ts`. They were written without access to
 live copies of either page, so they handle several plausible layouts. If a paste doesn't read correctly, the
 preview shows exactly which rows failed.
 
+## Looked-up measurements (claude.ai only)
+
+The page can't browse the web, and the Claude it can call from inside the page
+can't either. Asking that Claude for heights and weights would mean guesses
+from memory. Instead, Claude in a chat session looks measurements up with web
+search and stores each one, with its source, in the artifact's shared `lookup`
+collection (`lookup/<name-slug>`: name, position, school, height, weight,
+source, sourceUrl). Only the owner can write there (`write: "admin"` rule).
+
+- **Importing:** any row missing height or weight is filled from `lookup` when
+  the name matches, and the school as well when both sides list one. Two
+  same-name players with no school to tell them apart are never guessed. Filled
+  rows name their source in the preview.
+- **Not found:** **Ask Claude to look up N players** saves the names to the
+  `requests` collection. In a Claude chat, ask it to "look up the pending Rookie
+  Match players". Claude reads `requests`, searches, writes `lookup`, and clears
+  the requests. The open preview fills in live.
+
+The first batch (52 players) came from individual Tankathon profile pages via
+web search on 2026-10-16. Figures from Tankathon's board and mock-draft pages
+were left out, because the search tool reported their text as scrambled.
+
 ## Matching rules
 
 Only the selected position is searched. The tiers are:
@@ -140,7 +162,7 @@ The WRs are clustered around 6'3" 215 lb so every tier appears for that search.
 ## Layout
 
 ```
-src/core/   height.ts (parsing) · positions.ts · match.ts (tiers + distance) · board.ts (big-board paste)
+src/core/   height.ts (parsing) · positions.ts · match.ts (tiers + distance) · board.ts (big-board paste) · lookup.ts
             state.ts (model + pure operations) · importer.ts · csv.ts
             storage.ts (localStorage, backup, CSV export) · sample.ts
 src/ui/     App · FindMatch · Pool · ImportDialog · History · SettingsPage · common

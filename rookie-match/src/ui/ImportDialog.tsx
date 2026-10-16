@@ -6,6 +6,8 @@ import {
 } from '../core/importer';
 import { cleanCode } from '../core/positions';
 import { parseBoard, type BoardSource } from '../core/board';
+import { fillFromLookup, lookupId, type LookupEntry } from '../core/lookup';
+import { useLookup } from './lookupStore';
 import { activeWorkspace, addProspects, updateSettings } from '../core/state';
 import { Modal, plural, useStore, useToast } from './common';
 
@@ -26,6 +28,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const ws = activeWorkspace(state);
   const [mode, setMode] = useState<BoardSource | 'table'>('tankathon');
   const board = mode === 'table' ? null : BOARD[mode];
+  const lookup = useLookup();
+  const [asking, setAsking] = useState(false);
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState('');
   const [step, setStep] = useState<'source' | 'preview'>('source');
@@ -63,15 +67,40 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     [tk, dataRows, mapping],
   );
 
+  // Fill missing measurements from the looked-up list; anything typed in the preview still wins.
+  const filled = useMemo(() => {
+    const used = new Map<number, LookupEntry>();
+    const rows = sourceRows.map(({ line, raw }) => {
+      const f = fillFromLookup(raw, lookup.index);
+      if (f.entry) used.set(line, f.entry);
+      return { line, raw: f.raw };
+    });
+    return { rows, used };
+  }, [sourceRows, lookup.index]);
+
   const validated = useMemo<ValidatedRow[]>(
-    () => validateRows(sourceRows.map(({ line, raw }) => ({ line, raw: { ...raw, ...edits[line] } })), state.settings, ws.prospects),
-    [sourceRows, edits, state.settings, ws.prospects],
+    () => validateRows(filled.rows.map(({ line, raw }) => ({ line, raw: { ...raw, ...edits[line] } })), state.settings, ws.prospects),
+    [filled, edits, state.settings, ws.prospects],
   );
 
   const unknown = [...new Set(validated.map((v) => v.unknownPosition).filter((x): x is string => !!x))];
   const isIncluded = (v: ValidatedRow) => !!v.prospect && (v.duplicates.length === 0 || includeDup[v.line]);
   const ready = validated.filter(isIncluded);
   const errorCount = validated.filter((v) => !v.prospect && !v.duplicates.length).length;
+  const noMeasure = validated.filter((v) => !v.prospect && !v.duplicates.length && v.raw.name.trim() && (!v.raw.height.trim() || !v.raw.weight.trim()));
+  const toAsk = noMeasure.filter((v) => !lookup.pending.has(lookupId(v.raw.name)));
+
+  const askClaude = async () => {
+    setAsking(true);
+    try {
+      const n = await lookup.request(toAsk.map((v) => v.raw));
+      toast(`Saved ${plural(n, 'name')} for Claude. In your Claude chat, ask it to "look up the pending Rookie Match players".`);
+    } catch {
+      toast("Couldn't save the names. Try again in a moment.", { tone: 'error' });
+    } finally {
+      setAsking(false);
+    }
+  };
   const dupSkipped = validated.filter((v) => v.duplicates.length && (!v.prospect || !includeDup[v.line])).length;
   const mapped = new Set(mapping);
   const missingFields = mode !== 'table' ? [] : (['position', 'height', 'weight'] as Field[]).filter((f) => !mapped.has(f));
@@ -212,6 +241,21 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           {missingFields.length > 0 && <div className="notice notice-error">Map a column to: {missingFields.map((f) => FIELD_LABEL[f]).join(', ')}.</div>}
           </>)}
 
+          {(filled.used.size > 0 || (lookup.available && noMeasure.length > 0)) && (
+            <div className="notice notice-info lookup-note">
+              {filled.used.size > 0 && <div><b>{plural(filled.used.size, 'player')}</b> had height and weight filled from measurements Claude looked up. Each row names its source; check them before importing.</div>}
+              {lookup.available && noMeasure.length > 0 && (
+                <div className="lookup-ask">
+                  <span>
+                    <b>{plural(noMeasure.length, 'player')}</b> still {noMeasure.length === 1 ? 'has' : 'have'} no height or weight.
+                    {toAsk.length < noMeasure.length && <> {noMeasure.length - toAsk.length} already waiting for Claude.</>}
+                  </span>
+                  {toAsk.length > 0 && <button className="btn btn-small btn-primary" disabled={asking} onClick={askClaude}>Ask Claude to look up {plural(toAsk.length, 'player')}</button>}
+                </div>
+              )}
+            </div>
+          )}
+
           {unknown.length > 0 && (
             <div className="notice notice-warn">
               <b>Unrecognized positions.</b> Map each to one of your positions (saved to Settings → Position mappings), or fix the rows below.
@@ -260,6 +304,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                         </td>
                       ))}
                       <td data-label="Check" className="cell-check">
+                        {filled.used.has(v.line) && !edits[v.line]?.height && (() => {
+                          const e = filled.used.get(v.line)!;
+                          return <div className="issue-info">Measurements from {e.sourceUrl ? <a href={e.sourceUrl} target="_blank" rel="noopener noreferrer">{e.source}</a> : e.source}. Check them.</div>;
+                        })()}
+                        {lookup.pending.has(lookupId(v.raw.name)) && !v.prospect && !have && <div className="issue-info">Waiting for Claude to look up.</div>}
                         {have && <div className="issue-info">Already in your pool ({v.duplicates[0].detail.replace('already in pool ', '')}). Skipped.</div>}
                         {bad && <ul className="issues">{v.errors.map((e) => <li key={e} className="issue-error">{e}</li>)}</ul>}
                         {dup && (

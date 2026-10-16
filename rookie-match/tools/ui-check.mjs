@@ -225,6 +225,7 @@ async function claudePage() {
   await c.exposeFunction('__dbSet', (p, d) => { cloud[p] = d; });
   await c.exposeFunction('__dbDel', (p) => { delete cloud[p]; });
   await c.exposeFunction('__save', (f, d) => { saves.push({ f, d }); });
+  await c.exposeFunction('__dbList', (col) => Object.entries(cloud).filter(([k]) => k.startsWith(col + '/') && !k.slice(col.length + 1).includes('/')).map(([k, d]) => ({ id: k.slice(col.length + 1), d })));
   await c.addInitScript(() => {
     const ref = (path) => ({
       get: async () => { const d = await window.__dbGet(path); return { exists: d !== null, data: () => d ?? undefined }; },
@@ -232,8 +233,23 @@ async function claudePage() {
       delete: () => window.__dbDel(path),
       collection: (sub) => ({ doc: (id) => ref(`${path}/${sub}/${id}`) }),
     });
+    const col = (path) => ({
+      limit: () => col(path),
+      doc: (id) => ref(`${path}/${id}`),
+      onSnapshot: (next) => {
+        let last = '';
+        const tick = async () => {
+          const items = await window.__dbList(path);
+          const key = JSON.stringify(items);
+          if (key !== last) { last = key; next({ docs: items.map(({ id, d }) => ({ id, data: () => d })) }); }
+        };
+        tick();
+        const t = setInterval(tick, 200);
+        return () => clearInterval(t);
+      },
+    });
     const caps = {
-      db: { doc: ref },
+      db: { doc: ref, collection: col },
       user: { id: async () => 'u_test' },
       downloads: { save: async ({ filename, data }) => { await window.__save(filename, data); return { status: 'saved' }; } },
     };
@@ -247,6 +263,26 @@ async function claudePage() {
 }
 const devA = await claudePage();
 await devA.p.waitForFunction(() => document.querySelector('.save-line')?.textContent.includes('Saved to your Claude account'));
+
+// Looked-up measurements fill an NFL Mock Draft Database import; unknown names can be sent to Claude.
+cloud['lookup/jeremiah-smith'] = { name: 'Jeremiah Smith', position: 'WR', school: 'Ohio State', height: `6'3"`, weight: 215, source: 'Tankathon profile', sourceUrl: 'https://www.tankathon.com/nfl/players/jeremiah-smith' };
+await devA.p.locator('.tab', { hasText: 'Pool' }).click();
+await devA.p.getByRole('button', { name: 'Import a big board / CSV' }).click();
+await devA.p.getByRole('tab', { name: 'NFL Mock Draft Database' }).click();
+await devA.p.fill('#imp-text', ['1', 'Jeremiah Smith', 'WR', 'Ohio State', '2', 'Marcus Unfound', 'CB', 'Somewhere State'].join('\n'));
+await devA.p.getByRole('button', { name: /^Preview/ }).click();
+await devA.p.waitForSelector('.lookup-note');
+const firstRow = await devA.p.locator('.import-table tbody tr').first().innerText();
+check('looked-up height and weight fill a board row', firstRow.includes(`6'3"`) && firstRow.includes('215') && /Tankathon profile/.test(firstRow), firstRow.replace(/\s+/g, ' '));
+await devA.p.getByRole('button', { name: 'Ask Claude to look up 1 player' }).click();
+await devA.p.waitForFunction(() => document.querySelector('.import-table')?.textContent.includes('Waiting for Claude'), null, { timeout: 3000 }).catch(() => {});
+check('missing players are saved for Claude to look up', cloud['requests/marcus-unfound']?.school === 'Somewhere State', JSON.stringify(Object.keys(cloud).filter((k) => k.startsWith('requests'))) + ' ' + JSON.stringify(cloud['requests/marcus-unfound']));
+check('row shows it is waiting for Claude', /Waiting for Claude/.test(await devA.p.locator('.import-table').innerText()));
+await devA.p.screenshot({ path: `${out}/06-lookup.png`, fullPage: true });
+const before = Number((await devA.p.locator('.counts .count b').first().innerText()));
+await devA.p.getByRole('button', { name: 'Import 1 prospect' }).click();
+check('filled player imports', Number(await devA.p.locator('.counts .count b').first().innerText()) === before + 1);
+await devA.p.locator('.tab', { hasText: 'Match' }).first().click();
 check('first visit copies data to the account', !!cloud['data/users/u_test/meta'] && Object.keys(cloud).some((k) => k.includes('/workspaces/')));
 await devA.p.locator('.tab', { hasText: 'Settings & Data' }).click();
 await devA.p.fill('#ws-name', 'Phone Class');

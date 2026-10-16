@@ -97,7 +97,7 @@ const NOT_A_NAME = /\b(board|draft|drafts|mock|rank|ranking|position|school|coll
 
 const MEASURE_TAIL = /\s\d\s*['’′-]\s*\d|\s\d{3}\s*lbs?\b/i;
 
-interface Anchor { pos: string; school: string; tail: string }
+interface Anchor { pos: string; school: string; tail: string; schoolOnNextLine?: boolean }
 
 const SEPARATED = /^(.+?)\s*(?:\||\s[•·–—-]\s|,\s)\s*(.+)$/;
 
@@ -121,7 +121,7 @@ function anchorAt(lines: string[], i: number, positions: PositionSettings): Anch
   const prev = lines[i - 1] ?? '';
   const next = lines[i + 1] ?? '';
   if (isPosition(prev, positions) || isPosition(next, positions)) return null;
-  return { pos: line, school: schoolLike(next) ? next : '', tail: '' };
+  return schoolLike(next) ? { pos: line, school: next, tail: '', schoolOnNextLine: true } : { pos: line, school: '', tail: '' };
 }
 
 /** A line that could be a player's name: letters, at least two words, no digits, not page furniture. */
@@ -161,7 +161,8 @@ export function parseBoard(input: string, source: BoardSource, positions: Positi
       if (pre && nameLikeStrict(pre[2])) { name = pre[2]; rank = Number(pre[1]); nameIdx = j; break; }
       if (nameLikeStrict(lines[j])) { name = lines[j]; nameIdx = j; break; }
     }
-    prevEnd = ai; // the next player's name and rank sit after this anchor
+    // The next player's name and rank sit after this anchor (and after its school line).
+    prevEnd = a.schoolOnNextLine ? ai + 1 : ai;
     if (!name) return; // a position with no player in front of it is page furniture
     if (rank === undefined) {
       for (let j = nameIdx - 1; j >= 0 && j >= nameIdx - 2; j--) {

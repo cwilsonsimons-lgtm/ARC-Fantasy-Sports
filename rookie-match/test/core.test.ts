@@ -9,6 +9,7 @@ import {
 import { parseTable, toCsv } from '../src/core/csv';
 import { applyMapping, guessMapping, looksLikeHeader, TEMPLATE_CSV, validateRows } from '../src/core/importer';
 import { parseBoard } from '../src/core/board';
+import { buildIndex, fillFromLookup, lookupId } from '../src/core/lookup';
 const parseTankathon = (t: string) => parseBoard(t, 'tankathon');
 import { loadState, makeBackup, readBackup, saveState, STORAGE_KEY } from '../src/core/storage';
 
@@ -457,6 +458,11 @@ describe('NFL Mock Draft Database board', () => {
     ]);
   });
 
+  it('never takes the previous player\'s school as a name', () => {
+    // "Sample Prospect" is rejected as page text, so the second player has no usable name and is dropped.
+    expect(rows(['1', 'Jeremiah Smith', 'WR', 'Ohio State', '2', 'Sample Prospect', 'CB', 'Texas'].join('\n')).map((r) => r[1])).toEqual(['Jeremiah Smith']);
+  });
+
   it('flags rows without measurements and skips players already in the pool', () => {
     const existing = [{ id: 'e1', name: 'Arch Manning', position: 'QB', heightIn: 76, weight: 222, college: 'Texas' }];
     const r = parseBoard(['1', 'Jeremiah Smith', 'WR', 'Ohio State', '2', 'Arch Manning', 'QB', 'Texas'].join('\n'), 'mddb');
@@ -468,5 +474,38 @@ describe('NFL Mock Draft Database board', () => {
     // Filling the measurements in makes the new player importable.
     const fixed = validateRows([{ line: 1, raw: { ...r.rows[0].raw, height: `6'3"`, weight: '215' } }], pos, existing);
     expect(fixed[0].prospect).toMatchObject({ name: 'Jeremiah Smith', heightIn: 75, weight: 215, college: 'Ohio State' });
+  });
+});
+
+describe('looked-up measurements', () => {
+  const entries = [
+    { name: 'Jeremiah Smith', position: 'WR', school: 'Ohio State', height: `6'3"`, weight: 215, source: 'Tankathon profile' },
+    { name: 'Chris Johnson', school: 'Alabama', height: `6'0"`, weight: 190, source: 'Tankathon profile' },
+    { name: 'Chris Johnson', school: 'Iowa', height: `6'4"`, weight: 245, source: 'Tankathon profile' },
+  ];
+  const idx = buildIndex(entries);
+  const raw = (name: string, college = '', height = '', weight = '') => ({ name, position: 'WR', height, weight, college, notes: '' });
+
+  it('fills missing height and weight by name', () => {
+    const f = fillFromLookup(raw('jeremiah  smith', 'Ohio State'), idx);
+    expect(f.raw).toMatchObject({ height: `6'3"`, weight: '215' });
+    expect(f.entry?.source).toBe('Tankathon profile');
+    expect(validateRows([{ line: 1, raw: f.raw }], pos, [])[0].prospect).toMatchObject({ heightIn: 75, weight: 215 });
+  });
+
+  it('keeps values already on the row and only fills the gap', () => {
+    expect(fillFromLookup(raw('Jeremiah Smith', '', `6'2"`, ''), idx).raw).toMatchObject({ height: `6'2"`, weight: '215' });
+    expect(fillFromLookup(raw('Jeremiah Smith', '', `6'2"`, '210'), idx).entry).toBeNull();
+  });
+
+  it('uses the school to tell same-name players apart, and never guesses between them', () => {
+    expect(fillFromLookup(raw('Chris Johnson', 'Iowa'), idx).raw.weight).toBe('245');
+    expect(fillFromLookup(raw('Chris Johnson'), idx).entry).toBeNull();
+    expect(fillFromLookup(raw('Jeremiah Smith', 'Texas'), idx).entry).toBeNull();
+    expect(fillFromLookup(raw('Nobody Here'), idx).entry).toBeNull();
+  });
+
+  it('makes stable document ids from names', () => {
+    expect(lookupId('Jeremiah Smith Jr.')).toBe('jeremiah-smith-jr');
   });
 });

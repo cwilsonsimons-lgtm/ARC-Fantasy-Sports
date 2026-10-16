@@ -6,6 +6,7 @@ import { emptyForm, FindMatch, type FindForm } from './FindMatch';
 import { Pool } from './Pool';
 import { History } from './History';
 import { SettingsPage } from './SettingsPage';
+import { LookupProvider } from './lookupStore';
 import { SyncContext, useCloudSync, useSyncStatus, writeLocalSavedAt } from './sync';
 
 type Tab = 'find' | 'pool' | 'history' | 'settings';
@@ -43,7 +44,9 @@ export function App() {
     <StoreContext.Provider value={store}>
       <ToastHost>
         <ConfirmHost>
-          <Shell saveError={saveError} loadNote={loadNote} dismissLoadNote={() => setLoadNote(null)} />
+          <LookupProvider>
+            <Shell saveError={saveError} loadNote={loadNote} dismissLoadNote={() => setLoadNote(null)} />
+          </LookupProvider>
         </ConfirmHost>
       </ToastHost>
     </StoreContext.Provider>
