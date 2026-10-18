@@ -16,10 +16,15 @@ const rostered = new Set(JSON.parse(fs.readFileSync(R + 'league/rosters.json')).
 const FA_TO = 'NYJ';
 const faRows = JSON.parse(fs.readFileSync(R + 'live/proj_4.json')).filter((r) => r.player && r.player.position === 'WR' && r.team && r.team !== FA_TO && r.team !== 'HOU' && !rostered.has(r.player_id) && (r.stats.pts_ppr || 0) > 4).slice(0, 12);
 const faMoved = faRows.map((r) => r.player_id), faNames = faRows.map((r) => r.player.first_name + ' ' + r.player.last_name);
+// One of your own starters, Nico Collins, goes from Houston (who kicked off
+// at 1:00) to Miami (4:05, not yet started): his week 4 stats row goes, since
+// he has not played yet.
+const NICO = '7569';
 // week 3 he played for Arizona; by week 4 he is a Texan, and Sleeper's player
 // record (in every week's rows) says Houston
-const moved = (name, rows) => rows.map((r) => {
+const moved = (name, rows) => rows.filter((r) => !(r.player_id === NICO && name === 'stats_4')).map((r) => {
   if (r.player_id === MHJ) return { ...r, team: name === 'stats_3' ? r.team : 'HOU', player: { ...r.player, team: 'HOU' } };
+  if (r.player_id === NICO) return { ...r, team: name === 'stats_3' ? r.team : 'MIA', player: { ...r.player, team: 'MIA' } };
   if (faMoved.includes(r.player_id)) return { ...r, team: name === 'stats_3' ? r.team : FA_TO, player: { ...r.player, team: FA_TO } };
   return r;
 });
@@ -66,10 +71,15 @@ const him = () => p.evaluate(() => {
   openPlayer(key);
   const card = document.querySelector('#playerBody .pc-tm').textContent.replace(/\s+/g, ' ').trim();
   const wk = document.querySelector('#playerBody').innerText.match(/THIS WEEK\s*\n?\s*([^\n]+)/i);
-  return { key, card, week: wk && wk[1].trim(), tm: row.tm, g: row.g, bye: row.bye, ord: row.ord, locked: row.ord <= lvNowOrd(), pts: pLive(row.proj, row.n, row) };
+  return { key, id: row.id, card, week: wk && wk[1].trim(), tm: row.tm, g: row.g, bye: row.bye, ord: row.ord, locked: row.ord <= lvNowOrd(), pts: pLive(row.proj, row.n, row) };
 });
 const before = await him();
 ok('before any trade: Arizona, on his card and his roster entry', before.card.startsWith('ARI') && before.tm === 'ARI', before.card);
+// how many players the list shipped with a team Sleeper disagrees with (real moves since it was made)
+const stale = await p.evaluate(() => POOL.filter((q) => q.tm0 && q.tm0 !== q.tm).map((q) => `${q.n} ${q.tm0}>${q.tm}`));
+const real = stale.filter((x) => !/>FA$/.test(x));
+console.log(`   the app's list had ${stale.length} players on an old team: ${real.length} now with another team (${real.slice(0, 5).join(', ')}, ...), ${stale.length - real.length} now unsigned`);
+ok('players already moved in the real data are on their new teams', stale.length > 0 && await p.evaluate(() => POOL.filter((q) => q.tm0 && q.tm0 !== q.tm).every((q) => pIdx()[pKeyOf(q)].tm === q.tm || pIdx()[pKeyOf(q)].g != null)));
 
 // the trade: Sleeper's rows now say Houston
 trade = true;
@@ -105,6 +115,70 @@ await p.waitForTimeout(300);
 const fa = await p.evaluate(([to, names]) => freeAgents('WR').filter((q) => names.includes(q.full)).map((q) => [q.full, q.tm]), [FA_TO, faNames]);
 const faCard = await p.evaluate((names) => { const q = freeAgents('WR').find((x) => names.includes(x.full)); if (!q) return null; openPlayer(pKeyOf(q)); return document.querySelector('#playerBody .pc-tm').textContent.trim(); }, faNames);
 ok(`free agents who moved show their new team, in the list and on their card (${fa.length} of them)`, fa.length >= 3 && fa.every(([, tm]) => tm === FA_TO) && faCard && faCard.startsWith(FA_TO), `${fa.slice(0, 3).map((x) => x.join(' ')).join(', ')} / ${faCard}`);
+// his fantasy team's page, and the stats sheet for his week
+const more = await p.evaluate((key) => {
+  pickWeek(4);
+  const o = ownershipOf(key);
+  openTeam(o.team);
+  const row = [...document.querySelectorAll('#teamBody .tv-row')].find((r) => /Harrison/.test(r.textContent));
+  // the card's week-by-week log: Houston's bye is his now, Arizona's is not
+  openPlayer(key);
+  const log = Object.fromEntries([...document.querySelectorAll('#playerBody .pw-row')].map((r) => [r.querySelector('.pw-w').textContent, !!r.querySelector('.bye')]));
+  return { row: row && row.querySelector('.tv-pmeta').textContent, bye8: log['Week 8'], bye14: log['Week 14'] };
+}, h.key);
+ok('his fantasy team\'s page lists him with Houston', /\bHOU\b/.test(more.row || ''), more.row);
+ok('his card\'s weekly log has Houston\'s bye (week 8), not Arizona\'s (week 14)', more.bye8 === true && more.bye14 === false, JSON.stringify(more));
+// touchdowns on the chart come from the game he played that week: a week 3
+// touchdown is in Arizona's plays, a week 4 one in Houston's
+const tds = await p.evaluate((key) => {
+  const td = { min: 20, q: 2, clk: '5:00', type: 'Passing Touchdown', text: 'Marvin Harrison Jr. 25 Yd pass from Kyler Murray (Chad Ryland Kick)' };
+  const was3 = LIVE.plays[3], was4 = LIVE.plays[4];
+  LIVE.plays[3] = Object.assign({}, was3, { ARI: [td], HOU: [] });
+  LIVE.plays[4] = Object.assign({}, was4, { ARI: [], HOU: [td] });
+  const out = { w3: lvTdPlays(key, 3).length, w4: lvTdPlays(key, 4).length };
+  LIVE.plays[3] = Object.assign({}, was3, { ARI: [], HOU: [td] });
+  LIVE.plays[4] = Object.assign({}, was4, { ARI: [td], HOU: [] });
+  out.w3wrong = lvTdPlays(key, 3).length;
+  out.w4wrong = lvTdPlays(key, 4).length;
+  LIVE.plays[3] = was3;
+  LIVE.plays[4] = was4;
+  return out;
+}, h.key);
+ok('his touchdowns are looked for in the game he played that week', tds.w3 === 1 && tds.w4 === 1 && tds.w3wrong === 0 && tds.w4wrong === 0, JSON.stringify(tds));
+// Sleeper writing his name differently after the trade still finds him
+const again = await p.evaluate(() => lvMatch({ player_id: '11628', team: 'HOU', player: { first_name: 'Marvin', last_name: 'Harrison', position: 'WR', team: 'HOU' } }));
+ok('a traded player Sleeper names a little differently is still matched to him', again === h.id, `${again} / ${h.id}`);
+// search by team, and Markets, which is built as the page loads
+const elsewhere = await p.evaluate((key) => {
+  document.querySelector('.burger').click();
+  onPanelSearch('leaders', 'hou');
+  const found = [...document.querySelectorAll('#panel .ld-row')].some((r) => /Marvin Harrison/.test(r.textContent));
+  clearPanelSearch('leaders');
+  document.querySelector('.burger').click();
+  // Markets: everyone in it who has moved since the list was made
+  // (the colour is the new team's: compare with a player who was always there)
+  const colorOf = (tm) => (MARKET.find((q) => q.tm === tm && NFL_BY_ID[q.id] && !NFL_BY_ID[q.id].tm0) || {}).color;
+  const movedMk = MARKET.filter((q) => NFL_BY_ID[q.id] && NFL_BY_ID[q.id].tm0 && NFL_BY_ID[q.id].tm0 !== NFL_BY_ID[q.id].tm);
+  return { found, mk: movedMk.length, mkRight: movedMk.every((q) => q.tm === NFL_BY_ID[q.id].tm && (!colorOf(q.tm) || q.color === colorOf(q.tm))), eg: movedMk.slice(0, 3).map((q) => q.short + ' ' + q.tm) };
+}, h.key);
+ok('searching "HOU" in the side menu finds him', elsewhere.found);
+ok(`Markets (built as the page loads) has everyone who moved on his new team, in its colours (${elsewhere.mk})`, elsewhere.mk > 0 && elsewhere.mkRight, elsewhere.eg.join(', '));
+// your own starter traded before his new team plays: his row, his lock, his sheet
+await p.evaluate(() => { document.getElementById('statSheet') && closeStatSheet(); showTab('matchup'); pickWeek(4); document.getElementById('scroll').scrollTop = 0; });
+await p.waitForTimeout(400);
+const nico = await p.evaluate(() => {
+  const rows = [...document.querySelectorAll('#userLineup .st-row')], i = rows.findIndex((r) => /N\. Collins/.test(r.querySelector('.st-side').textContent));
+  if (i < 0) return null;
+  const r = rows[i], side = r.querySelector('.st-side'), mid = r.querySelector('.st-mid, .tapslot, .lockslot');
+  const out = { line: side.innerText.replace(/\s+/g, ' '), editable: !!r.querySelector('.tapslot'), locked: !!r.querySelector('.lockslot'), label: gameLabel('MIA', 4) };
+  r.querySelector('.st-pts').click();
+  out.sheet = { m: (document.querySelector('#statSheet .ss-m') || {}).textContent, g: (document.querySelector('#statSheet .ss-g') || {}).textContent };
+  closeStatSheet();
+  return out;
+});
+ok('your starter traded to Miami shows Miami\'s game in your lineup', nico && nico.line.includes(nico.label) && /\bMIA\b/.test(nico.line), nico && nico.line);
+ok('and is not locked: Miami has not kicked off (Houston had)', nico && nico.editable && !nico.locked, JSON.stringify(nico && { editable: nico.editable, locked: nico.locked }));
+ok('his stats sheet is Miami\'s too', nico && /\bMIA\b/.test(nico.sheet.m || '') && (nico.sheet.g || '').includes(nico.label), nico && JSON.stringify(nico.sheet));
 // the side menu's Leaders and draft board lists too
 const lists = await p.evaluate(() => {
   document.querySelector('.burger').click();

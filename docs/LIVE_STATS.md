@@ -63,13 +63,31 @@ pinned to that afternoon.
 - **Teams follow trades.** The app's player list is from before the season,
   so a player's NFL team comes from Sleeper (`lvTeamOf`): each week's rows
   name the team he played for (stats) or is projected with (projections),
-  and every row carries the team he is with now. A week uses its own team,
-  otherwise the current one; the list's team is only the fallback before
-  Sleeper has answered. His game, kickoff, lock, bye, card and touchdowns all
-  follow, so a player traded mid-season plays for his new team from his first
-  game there while his earlier weeks stay with the old one. Both are saved
-  with the finished weeks. `node tools/team-move-check.mjs` moves Marvin
-  Harrison Jr. to Houston in the real week 4 data and checks it.
+  and every row carries the team he is with now. Two rules cover every place
+  a team is read:
+  - **The list itself is kept current** (`lvApplyTeams`): each record is moved
+    to the team the player is with now (or FA, unsigned), keeping the shipped
+    team as `tm0`. So anything that reads a player straight from the list
+    (search, Available, Leaders, the draft room and board, the trade builder
+    and trade block, a league on show, Markets, which is built as the page
+    loads and re-synced) has the current team. In the real fixture data 68
+    players had changed teams and 166 were no longer signed.
+  - **Anything worked out for a week uses that week's team** (`wkTeam`):
+    roster entries as they are hydrated (game, kickoff, lock, bye), stat
+    lines and the stats sheet, whether his game has started, how much of it
+    is left (live odds, team outlook), touchdowns on the chart, which games'
+    plays are fetched, a league's start-time rule, the card's weekly log and
+    byes, season points. A traded player plays for his new team from his
+    first game there; his earlier weeks stay with the old one.
+  Matching Sleeper's rows to the list knows both teams and remembers a
+  player once matched (`LIVE.sid`, with Sleeper's own NFL id as a last
+  resort), so a traded player is still found if Sleeper spells him
+  differently. A trade offer records the team he is with now; a trade
+  graphic shows the team he was with when the trade was made. Teams are
+  saved with the finished weeks. `node tools/team-move-check.mjs` moves
+  Marvin Harrison Jr. to Houston and one of your starters, Nico Collins,
+  to Miami (who had not kicked off) in the real week 4 data, and checks 21
+  places.
 - **Locks** compare a player's kickoff to the real time, so past weeks are
   always locked and later weeks open.
 - **Stat lines**: once a player's game kicks off (ESPN says it is in progress

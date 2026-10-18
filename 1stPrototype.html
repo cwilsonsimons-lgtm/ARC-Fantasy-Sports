@@ -4589,7 +4589,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (!st || !p || typeof p !== "object") return true;
     w = +(w || S.week);
     if (w !== st.week) return w > st.week;
-    const g = weekGame(p.tm, w);
+    const g = weekGame(wkTeam(p, w), w);
     return !!g && g.ord >= st.ord;
   }
   function pLive(proj, name, p, w) {
@@ -4617,14 +4617,14 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       const on = isLocked(p);
       a += on ? pLive(p.proj, p.n, p) : 0;
       ap += p.proj;
-      remA += on ? p.proj * lvLeft(p.tm) : p.proj;
+      remA += on ? p.proj * lvLeft(wkTeam(p, LIVE_WEEK)) : p.proj;
     });
     starterPlayers(sides[1]).forEach((p) => {
       if (!counts(p)) return;
       const on = isLocked(p);
       x += on ? pLive(p.proj, p.n, p) : 0;
       xp += p.proj;
-      remX += on ? p.proj * lvLeft(p.tm) : p.proj;
+      remX += on ? p.proj * lvLeft(wkTeam(p, LIVE_WEEK)) : p.proj;
     });
     const rnd = (v) => Math.round(v * 10) / 10;
     const aw = winProbability(a + remA - (x + remX), remA + remX);
@@ -7152,9 +7152,15 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const R = { QB: [12, 230], RB: [5, 260], WR: [4, 270], TE: [2, 180] }[pos] || [3, 200];
     return Math.round((R[0] + h % R[1] / 10) * 10) / 10;
   }
-  // the team he was with that week (a traded player's old bye is not his)
+  // the team he was with that week (a traded player's old bye is not his);
+  // a player's id, or his roster entry, or the list's record
   function wkTeam(p, w) {
-    return lvTeamOf(p.id, w) || p.tm;
+    if (!p) return null;
+    return lvTeamOf(p.id || lvId(p), w) || p.tm || (NFL_BY_ID[lvId(p)] || {}).tm || null;
+  }
+  // the team he is with now
+  function nowTeam(p) {
+    return wkTeam(p, LIVE_WEEK);
   }
   function wkProj(p, w) {
     if (byeFor(wkTeam(p, w)) === +w) return 0;
@@ -7374,7 +7380,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       return `<div class="tbk-p${on ? " on" : ""}" onclick="selectBlockPlayer('${esc(p.key)}')">
         <div class="tbk-face">${faceInner(p.key)}</div>
         <div class="tbk-nm">${escHtml(p.n || p.full || "")}</div>
-        <div class="tbk-mt">${escHtml(p.pos || "")} - ${escHtml(p.tm || "")}</div>
+        <div class="tbk-mt">${escHtml(p.pos || "")} - ${escHtml(nowTeam(p) || "")}</div>
       </div>`;
     }).join("")}</div>` : `<div class="tbk-empty">Nobody is on the block.
       Open a player and use <b>Trade block</b> to list them.</div>`;
@@ -7387,7 +7393,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       detail = `<div class="tbk-detail">
       <div class="tbk-dh">
         <div><b>${escHtml(rec.full || rec.n || "")}</b>
-          <span>${escHtml(rec.pos || "")} \u00B7 ${escHtml(rec.tm || "")}${ageBit(rec)}</span></div>
+          <span>${escHtml(rec.pos || "")} \u00B7 ${escHtml(nowTeam(rec) || "")}${ageBit(rec)}</span></div>
         <span class="tbk-x" onclick="selectBlockPlayer('${esc(sel)}')">\u2715</span>
       </div>
       <div class="tbk-lf">Looking for</div>
@@ -8603,7 +8609,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function column(key, side, which) {
     const t = T[key];
     const roster = rosterFor(key) || [];
-    const players = roster.map((p) => ({ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: p.tm } }));
+    const players = roster.map((p) => ({ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: nowTeam(p) } }));
     const picks = picksFor(key).map((pk) => ({ kind: "pick", pick: pk }));
     const rows2 = players.concat(picks).map((a) => {
       const on = inTrade(side, a);
@@ -8673,7 +8679,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const o = ownershipOf(key);
     if (!o || o.state !== "owned" || o.team === MY_TEAM) return;
     const p = rosterFor(o.team).find((q) => pKeyOf(q) === key);
-    buildTrade(MY_TEAM, o.team, p ? { get: [{ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: p.tm } }] } : {});
+    buildTrade(MY_TEAM, o.team, p ? { get: [{ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: nowTeam(p) } }] } : {});
   }
   function renderTrade() {
     if (!TB) return;
@@ -8738,7 +8744,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       return;
     }
     const roster = rosterFor(key) || [];
-    const all = roster.map((p) => ({ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: p.tm } })).concat(picksFor(key).map((pk) => ({ kind: "pick", pick: pk })));
+    const all = roster.map((p) => ({ kind: "player", player: { id: p.id, n: p.n, full: p.full, pos: p.pos, tm: nowTeam(p) } })).concat(picksFor(key).map((pk) => ({ kind: "pick", pick: pk })));
     const a = all.find((x) => assetId(x) === id);
     if (!a) return;
     side.push(clone(a));
@@ -9907,7 +9913,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     return log[log.length - 1];
   }
   function playerAsset(p) {
-    return { kind: "player", player: { id: p.id || null, n: p.n, pos: p.pos, tm: p.tm } };
+    return { kind: "player", player: { id: p.id || null, n: p.n, pos: p.pos, tm: nowTeam(p) } };
   }
   function txSeqOf(t) {
     return +String(t.id || "").slice(1) || 0;
@@ -12478,7 +12484,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function gameLine(p) {
     const w = S.week;
     if (!lvPlayed(p, w)) return p.g ? `<div class="g2">${p.g}</div>` : "";
-    const line = lvLine(p, w), gi = lvGameInfo(p.tm, w), live = !!gi && gi.state === "in";
+    const line = lvLine(p, w), gi = lvGameInfo(wkTeam(p, w), w), live = !!gi && gi.state === "in";
     let txt = lvStatSummary(line, p.pos);
     if (!txt) txt = line && SKILL_POS[p.pos] ? live ? "No stats yet" : "No stats" : gi ? gi.label : "";
     // played before this league existed: shown, but worth nothing here
@@ -12649,10 +12655,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const w = S.week, played = lvPlayed(p, w), id = lvId(p), off = !counts(p, w);
     const line = played ? lvLine(p, w) : LIVE.proj[w] && LIVE.proj[w][id] || null;
     const total = played ? pLive(p.proj, p.n, p) : +p.proj || 0;
-    const gi = played ? lvGameInfo(p.tm, w) : null;
+    const gi = played ? lvGameInfo(wkTeam(p, w), w) : null;
     const when = played ? gi ? gi.label + (gi.score ? " \xB7 " + gi.score : "") : "Week " + w : p.g || (p.bye === w ? "Bye" : "");
     let h = `<div class="ss-top">
-      <div class="ss-who"><div class="ss-n">${plink(p, escHtml(p.n))}</div><div class="ss-m">${p.pos} \xB7 ${p.tm}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
+      <div class="ss-who"><div class="ss-n">${plink(p, escHtml(p.n))}</div><div class="ss-m">${p.pos} \xB7 ${wkTeam(p, w)}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
       <div class="ss-tot"><b>${total.toFixed(2)}</b><span>${played ? `Week ${w} \xB7 proj ${(+p.proj || 0).toFixed(1)}` : `Projected \xB7 week ${w}`}</span></div>
     </div>`;
     const sc = line ? scoreStats(line, { pos: p.pos }) : { total: 0, lines: [] };
@@ -12664,7 +12670,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const diff = Math.round((total - sc.total) * 100) / 100;
     if (played && !off && Math.abs(diff) >= 0.015) rows.push(`<div class="ss-row other"><span class="l">${sc.lines.length ? "Other scoring" : "Points"} <i>per Sleeper</i></span><span class="c"></span><span class="v">${diff > 0 && sc.lines.length ? "+" : ""}${diff.toFixed(2)}</span></div>`);
     if (off) rows.push(`<div class="ss-none">${w < (leagueStart() || {}).week ? "This was before the league was created, so it doesn't count here." : "His game kicked off before the league was created, so it doesn't count here."}</div>`);
-    if (!rows.length) rows.push(`<div class="ss-none">${played ? lvGameInfo(p.tm, w) && lvGameInfo(p.tm, w).state === "in" ? "No points yet." : "No points this week." : "No projection for this week yet."}</div>`);
+    if (!rows.length) rows.push(`<div class="ss-none">${played ? gi && gi.state === "in" ? "No points yet." : "No points this week." : "No projection for this week yet."}</div>`);
     h += rows.join("") + `<div class="ss-row tot"><span class="l">Total</span><span class="c"></span><span class="v">${total.toFixed(2)}</span></div>`;
     const tds = played ? lvTdPlays(p, w) : [];
     if (tds.length) h += `<div class="ss-sec">${tds.some((t) => t.kind === "2pt") ? "Scoring plays" : "Touchdowns"}</div>` + tds.map((t) => `<div class="ss-td${t.kind === "2pt" ? " two" : ""}"><span class="q">${t.q ? (t.q > 4 ? "OT" : "Q" + t.q) + (t.clk ? " " + t.clk : "") : "Q" + Math.min(4, Math.max(1, Math.ceil(t.min / 15)))}</span><span class="t">${escHtml(t.text)}${t.parts.length > 1 ? `<i>${escHtml(lvPartsText(t.parts))}</i>` : ""}</span><span class="v">${t.pts ? (t.pts > 0 ? "+" : "") + (+t.pts.toFixed(2)) : ""}</span></div>`).join("");
@@ -12831,7 +12837,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const p = s.player;
       if (!p || !counts(p, week)) return;
       const proj = week === S.week ? +p.proj || 0 : lvProj(p, week) != null ? lvProj(p, week) : +p.proj || 0;
-      rem += week > LIVE_WEEK || !isLocked(p) ? proj : proj * lvLeft(p.tm, week);
+      rem += week > LIVE_WEEK || !isLocked(p) ? proj : proj * lvLeft(wkTeam(p, week), week);
     });
     return { pts, rem };
   }
@@ -14432,7 +14438,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function weeklyLogHTML(p) {
     const rows = [];
     for (let w = MINW; w <= MAXW; w++) {
-      const bye = byeFor(p.tm) === w;
+      const bye = byeFor(wkTeam(p, w)) === w;
       const pts = wkPts(p, w);
       const played = pts != null;
       const fin = played && !bye ? weekFinish(p, w) : null;
@@ -16001,6 +16007,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   var MARKET = build();
   var BY_ID = Object.fromEntries(MARKET.map((p) => [p.id, p]));
+  // Markets is built as the page loads, from the player list as it shipped;
+  // when Sleeper says who is with whom now (js/live.js), its players follow
+  function mkSyncTeams() {
+    MARKET.forEach((m) => {
+      const p = NFL_BY_ID[m.id];
+      if (!p || p.tm === m.tm) return;
+      m.tm = p.tm;
+      m.color = teamColor(p.tm);
+    });
+  }
   function marketStats() {
     const trades = MARKET.reduce((n, p) => n + p.trades, 0);
     return {
@@ -18650,6 +18666,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     loaded: {},  // "stats:3" -> timestamp
     tms: {},     // week -> { gsisId: team he played for / is projected with }
     cur: {},     // gsisId -> [team he is with now, when Sleeper said so]
+    sid: {},     // Sleeper player id -> gsisId, once matched
     error: null,
     at: 0
   };
@@ -18707,8 +18724,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const nm = lvNorm(p.full || p.n);
       (byName[nm + "|" + p.pos] = byName[nm + "|" + p.pos] || []).push(p.id);
       const last = nm.split(" ").slice(1).join(" ");
-      const lk = last + "|" + p.pos + "|" + p.tm;
-      (byLast[lk] = byLast[lk] || []).push(p.id);
+      [...new Set([p.tm0 || p.tm, p.tm])].forEach((tm) => {
+        const lk = last + "|" + p.pos + "|" + tm;
+        (byLast[lk] = byLast[lk] || []).push(p.id);
+      });
     });
     LV_IDX = { byName, byLast };
     return LV_IDX;
@@ -18723,9 +18742,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const b = ix.byLast[lvNorm(pl.last_name) + "|" + pos + "|" + tm];
     if (b && b.length === 1) return b[0];
     if (a && a.length > 1) {
-      const c = a.filter((id) => (NFL_BY_ID[id] || {}).tm === tm);
+      const c = a.filter((id) => [(NFL_BY_ID[id] || {}).tm0, (NFL_BY_ID[id] || {}).tm].includes(tm));
       if (c.length === 1) return c[0];
     }
+    // matched before (under his old team, say), or Sleeper's own NFL id
+    const known = LIVE.sid && LIVE.sid[rec.player_id], sl = SLEEPER_PLAYERS[rec.player_id];
+    if (known && NFL_BY_ID[known]) return known;
+    if (sl && sl[0] && NFL_BY_ID[sl[0]] && NFL_BY_ID[sl[0]].pos === pos) return sl[0];
     return null;
   }
   function lvTranslate(st) {
@@ -18762,6 +18785,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       Object.keys(c.cur || {}).forEach((id) => {
         if (!LIVE.cur[id] || LIVE.cur[id][1] < c.cur[id][1]) LIVE.cur[id] = c.cur[id];
       });
+      Object.assign(LIVE.sid, c.sid || {});
+      lvApplyTeams();
       LIVE.playSig = Object.assign(LIVE.playSig || {}, c.sig || {});
     } catch (e) {
     }
@@ -18780,7 +18805,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     Object.keys(LIVE.playSig || {}).forEach((k) => {
       if (done.indexOf(k.split(":")[0]) > -1) sig[k] = LIVE.playSig[k];
     });
-    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sig };
+    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sid: LIVE.sid, sig };
     try {
       localStorage.setItem(LV_CACHE, JSON.stringify(c));
     } catch (e) {
@@ -18803,8 +18828,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const tms = LIVE.tms[w] = LIVE.tms[w] || {}, now = Date.now();
     (Array.isArray(list) ? list : []).forEach((rec) => {
       const pl = rec.player || {};
-      if (rec.player_id && !LIVE.slp[rec.player_id]) LIVE.slp[rec.player_id] = ["", ((pl.first_name || "") + " " + (pl.last_name || "")).trim(), pl.position, LV_TEAM[pl.team] || pl.team];
+      if (rec.player_id && (!LIVE.slp[rec.player_id] || rec.player)) LIVE.slp[rec.player_id] = ["", ((pl.first_name || "") + " " + (pl.last_name || "")).trim(), pl.position, LV_TEAM[pl.team] || pl.team];
       const id = lvMatch(rec);
+      if (id && rec.player_id) LIVE.sid[rec.player_id] = id;
       // the team of this week's game, and the one he is with today (a player
       // traded since plays his next games for the new one); a player the app
       // only knows from Sleeper goes by his Sleeper id
@@ -18822,6 +18848,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     });
     (kind === "proj" ? LIVE.proj : LIVE.stats)[w] = out;
     LIVE.loaded[kind + ":" + w] = Date.now();
+    lvApplyTeams();
   }
   function lvTeam(abbr) {
     return LV_TEAM[abbr] || abbr;
@@ -18837,6 +18864,21 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (wk) return wk;
     const c = LIVE.cur[id];
     return c ? c[0] : null;
+  }
+  // The player list's own records are moved to the team each player is with
+  // now, so whatever reads a player straight from the list (search, the draft
+  // room, the trade builder, a league on show, Markets) has his team right.
+  // The team the list shipped with stays as tm0: the stats feed matches on
+  // it. A week's own team is still lvTeamOf's to say (wkTeam).
+  function lvApplyTeams() {
+    Object.keys(LIVE.cur).forEach((id) => {
+      const p = NFL_BY_ID[id], tm = LIVE.cur[id][0];
+      if (!p || !(tm === "FA" || NFL_TEAMS[tm])) return;
+      if (p.tm0 == null) p.tm0 = p.tm;
+      p.tm = tm;
+    });
+    S.pidx = null;
+    if (typeof mkSyncTeams === "function") mkSyncTeams();
   }
   async function lvFetchBoard(w) {
     const b = await lvJSON(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${w}&seasontype=2`);
@@ -18999,7 +19041,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function lvTdPlays(p, w) {
     if (!LIVE) return [];
     w = +(w || S.week);
-    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm, pos = p && p.pos || rec.pos;
+    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = lvTeamOf(id, w) || p && p.tm || rec.tm, pos = p && p.pos || rec.pos;
     const plays = (LIVE.plays[w] || {})[tm] || [];
     const full = lvNorm(rec.full || p && (p.full || p.n) || "");
     if (!full) return [];
@@ -19058,9 +19100,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // he has done instead of whom he plays.
   function lvPlayed(p, w) {
     w = +(w || S.week);
-    if (!p || p.fa || !p.tm || w > LIVE_WEEK || !weekGame(p.tm, w)) return false;
+    const tm = p && wkTeam(p, w);
+    if (!p || p.fa || !tm || w > LIVE_WEEK || !weekGame(tm, w)) return false;
     if (w < LIVE_WEEK) return true;
-    const g = LIVE && (LIVE.games[w] || {})[p.tm];
+    const g = LIVE && (LIVE.games[w] || {})[tm];
     if (g && (g.state === "in" || g.state === "post")) return true;
     if (g && g.state === "pre") return false;
     return isLocked(p);
@@ -19086,7 +19129,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function lvJumps(p, w) {
     if (!LIVE) return null;
     w = +(w || S.week);
-    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = p && p.tm || rec.tm;
+    const id = lvId(p), rec = NFL_BY_ID[id] || {}, tm = lvTeamOf(id, w) || p && p.tm || rec.tm;
     // without play-by-play (not loaded yet) there are no touchdown moments,
     // but the points still land within the part of the game already played
     const total = lvPoints(p, w);
@@ -19144,7 +19187,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const out = {};
     try {
       Object.keys(T).forEach((k) => weekStarters(k, w).forEach((p) => {
-        if (p && p.tm) out[p.tm] = 1;
+        const tm = p && wkTeam(p, w);
+        if (tm) out[tm] = 1;
       }));
     } catch (e) {
     }
