@@ -60,6 +60,16 @@ pinned to that afternoon.
   the lineup, the chart and the final agree. Scoring plays
   are fetched for every team's games, and a game's summary is re-fetched only
   when its score changes.
+- **Teams follow trades.** The app's player list is from before the season,
+  so a player's NFL team comes from Sleeper (`lvTeamOf`): each week's rows
+  name the team he played for (stats) or is projected with (projections),
+  and every row carries the team he is with now. A week uses its own team,
+  otherwise the current one; the list's team is only the fallback before
+  Sleeper has answered. His game, kickoff, lock, bye, card and touchdowns all
+  follow, so a player traded mid-season plays for his new team from his first
+  game there while his earlier weeks stay with the old one. Both are saved
+  with the finished weeks. `node tools/team-move-check.mjs` moves Marvin
+  Harrison Jr. to Houston in the real week 4 data and checks it.
 - **Locks** compare a player's kickoff to the real time, so past weeks are
   always locked and later weeks open.
 - **Stat lines**: once a player's game kicks off (ESPN says it is in progress

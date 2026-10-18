@@ -13977,15 +13977,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       if (!p || !p.n || !k || seen.has(k) || p.id && drafted.has(p.id)) return;
       if (taken.has(k)) return;
       seen.add(k);
+      const tm = lvTeamOf(p.id, S.week) || p.tm;
       list.push({
         id: p.id || null,
         n: p.n,
         full: p.full || p.n,
         pos: p.pos,
-        tm: p.tm,
-        bye: byeFor(p.tm),
+        tm,
+        bye: byeFor(tm),
         adp: p.adp || 999,
-        g: gameLabel(p.tm, S.week) || p.game || p.g || "",
+        g: gameLabel(tm, S.week) || p.game || p.g || "",
         proj: p.proj != null ? p.proj : seededPts(S.week, p.n, p.pos)
       });
     };
@@ -14192,18 +14193,22 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     S.pidx = {};
     const put = (p) => {
       if (!p || !p.n) return;
+      // a hydrated roster entry already has this week's team; the list's own
+      // players are checked against Sleeper here
+      const tm = p.g != null && p.ord != null ? p.tm : lvTeamOf(p.id, S.week) || p.tm;
+      const moved = tm !== p.tm;
       const rec = {
         id: p.id || null,
         n: p.n,
         full: p.full || p.n,
         pos: p.pos,
-        tm: p.tm,
+        tm,
         num: p.num,
         exp: p.exp,
         hs: p.hs,
-        bye: p.bye != null ? p.bye : byeFor(p.tm),
+        bye: p.bye != null && !moved ? p.bye : byeFor(tm),
         proj: p.proj,
-        g: p.g || gameLabel(p.tm, S.week),
+        g: p.g && !moved ? p.g : gameLabel(tm, S.week),
         tag: p.tag,
         adp: p.adp
       };
@@ -14592,6 +14597,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function hydratePlayer(p, wk) {
     if (!p) return p;
+    const live = lvTeamOf(p.id, wk);
+    if (live && (live === "FA" || NFL_TEAMS[live])) p.tm = live;
     if (p.fa || p.tm === "FA" || !NFL_TEAMS[p.tm]) {
       p.g = p.g || "";
       p.bye = null;
@@ -18626,6 +18633,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     games: {},   // week -> { team: { id, state, period, clock, kick } }
     plays: {},   // week -> { team: [{ min, text, type }] }
     loaded: {},  // "stats:3" -> timestamp
+    tms: {},     // week -> { gsisId: team he played for / is projected with }
+    cur: {},     // gsisId -> [team he is with now, when Sleeper said so]
     error: null,
     at: 0
   };
@@ -18734,6 +18743,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       });
       Object.keys(c.plays || {}).forEach((w) => LIVE.plays[w] = c.plays[w]);
       Object.keys(c.games || {}).forEach((w) => LIVE.games[w] = c.games[w]);
+      Object.keys(c.tms || {}).forEach((w) => LIVE.tms[w] = c.tms[w]);
+      Object.keys(c.cur || {}).forEach((id) => {
+        if (!LIVE.cur[id] || LIVE.cur[id][1] < c.cur[id][1]) LIVE.cur[id] = c.cur[id];
+      });
       LIVE.playSig = Object.assign(LIVE.playSig || {}, c.sig || {});
     } catch (e) {
     }
@@ -18752,7 +18765,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     Object.keys(LIVE.playSig || {}).forEach((k) => {
       if (done.indexOf(k.split(":")[0]) > -1) sig[k] = LIVE.playSig[k];
     });
-    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), sig };
+    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sig };
     try {
       localStorage.setItem(LV_CACHE, JSON.stringify(c));
     } catch (e) {
@@ -18772,10 +18785,23 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const list = await lvJSON(`https://api.sleeper.com/${kind === "proj" ? "projections" : "stats"}/nfl/${LV_SEASON}/${w}?season_type=regular`);
     const out = {};
     LIVE.slp = LIVE.slp || {};
+    const tms = LIVE.tms[w] = LIVE.tms[w] || {}, now = Date.now();
     (Array.isArray(list) ? list : []).forEach((rec) => {
       const pl = rec.player || {};
       if (rec.player_id && !LIVE.slp[rec.player_id]) LIVE.slp[rec.player_id] = ["", ((pl.first_name || "") + " " + (pl.last_name || "")).trim(), pl.position, LV_TEAM[pl.team] || pl.team];
       const id = lvMatch(rec);
+      // the team of this week's game, and the one he is with today (a player
+      // traded since plays his next games for the new one); a player the app
+      // only knows from Sleeper goes by his Sleeper id
+      if (rec.player_id) {
+        const sl = SLEEPER_PLAYERS[rec.player_id], keys = [id || "sl:" + rec.player_id];
+        if (!id && sl && sl[0]) keys.push(sl[0]);
+        keys.forEach((k) => {
+          if (rec.team) tms[k] = lvTeam(rec.team);
+          // no team on his player record means Sleeper has him unsigned
+          if (rec.player) LIVE.cur[k] = [pl.team ? lvTeam(pl.team) : "FA", now];
+        });
+      }
       if (!id || !rec.stats) return;
       out[id] = lvTranslate(rec.stats);
     });
@@ -18784,6 +18810,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function lvTeam(abbr) {
     return LV_TEAM[abbr] || abbr;
+  }
+  // A player's NFL team in a week. The app's player list is from before the
+  // season and players move during it (Marvin Harrison Jr., Arizona to
+  // Houston in week 6), so Sleeper decides: the team he played for that week
+  // (or is projected with), else the one he is with now. Null until Sleeper
+  // has said anything; the list's team stands until then.
+  function lvTeamOf(id, w) {
+    if (typeof LIVE === "undefined" || !LIVE || !id) return null;
+    const wk = (LIVE.tms[+w] || {})[id];
+    if (wk) return wk;
+    const c = LIVE.cur[id];
+    return c ? c[0] : null;
   }
   async function lvFetchBoard(w) {
     const b = await lvJSON(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${w}&seasontype=2`);
