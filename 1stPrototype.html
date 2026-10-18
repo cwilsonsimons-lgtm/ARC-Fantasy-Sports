@@ -5144,6 +5144,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   }
   function toggleDrawer() {
     document.body.classList.toggle("open");
+    if (document.body.classList.contains("open") && currentRail === "leaders") resetLeaders();
   }
   function showLeagueView() {
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
@@ -7116,7 +7117,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     <span class="tr-rk">${p.adp}</span>
     <span class="tr-face">${faceInner(p.id)}</span>
     <div class="tr-info"><div class="tr-nm">${p.full}${p.exp === 0 ? '<span class="rk-badge">R</span>' : ""}</div>
-      <div class="tr-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm}${ageBit(p)} \xB7 ${p.sproj.toFixed(0)} proj</div></div>
+      <div class="tr-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${wkTeam(p, S.week)}${ageBit(p)} \xB7 ${p.sproj.toFixed(0)} proj</div></div>
     <div class="tr-add">${t.has(p.id) ? "DRAFTED" : "ADP " + p.adp}</div>
   </div>`).join("");
   }
@@ -7132,7 +7133,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     paintPanelList("trending");
   }
   var leaderPos = "ALL";
-  var leaderMetric = "proj";
+  var leaderMetric = "pts";
+  // Leaders opens on this season's top scorers, every time the side menu
+  // opens on it or it is picked from the rail: real points, not projections
+  function resetLeaders() {
+    leaderMetric = "pts";
+    S.leaderScope = "season";
+    renderLeaders();
+  }
   function seededPts(week, key, pos) {
     let h = 2166136261;
     const s = key + "@" + week;
@@ -7144,8 +7152,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const R = { QB: [12, 230], RB: [5, 260], WR: [4, 270], TE: [2, 180] }[pos] || [3, 200];
     return Math.round((R[0] + h % R[1] / 10) * 10) / 10;
   }
+  // the team he was with that week (a traded player's old bye is not his)
+  function wkTeam(p, w) {
+    return lvTeamOf(p.id, w) || p.tm;
+  }
   function wkProj(p, w) {
-    if (byeFor(p.tm) === +w) return 0;
+    if (byeFor(wkTeam(p, w)) === +w) return 0;
     const real = lvProj(p, w);
     if (real != null) return real;
     const base = p.proj != null ? p.proj : (p.sproj || 0) / 17;
@@ -7159,7 +7171,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function wkPts(p, w) {
     if (+w > LIVE_WEEK) return null;
-    if (byeFor(p.tm) === +w) return 0;
+    if (byeFor(wkTeam(p, w)) === +w) return 0;
     return pLive(wkProj(p, w), p.full || p.n || "", p, w);
   }
   function seasonPts(p) {
@@ -7183,7 +7195,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function leaderMeta(p) {
     if (S.leaderScope === "season") return `ADP ${p.adp}`;
-    const g = weekGame(p.tm, S.leaderWeek);
+    const g = weekGame(wkTeam(p, S.leaderWeek), S.leaderWeek);
     return g ? (g.home ? "vs " : "@ ") + g.opp : "BYE";
   }
   function histOn() {
@@ -7220,7 +7232,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const add = faOpen() && !isRostered(pKeyOf(p)) ? `<span class="av-add" onclick="event.stopPropagation();addPlayer('${esc(pKeyOf(p))}')">+</span>` : "";
       return `<div class="ld-row" onclick="openPlayer('${esc(p.id)}')"><span class="ld-rk">${i + 1}</span>
         <span class="ld-face">${faceInner(p.id)}</span>
-        <div class="ld-info"><div class="ld-nm">${p.full}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${p.tm}${ageBit(p)} \xB7 ${leaderMeta(p)}</div></div>
+        <div class="ld-info"><div class="ld-nm">${p.full}</div><div class="ld-mt"><span class="pos ${p.pos}">${p.pos}</span> \xB7 ${wkTeam(p, S.leaderScope === "week" ? S.leaderWeek : S.week)}${ageBit(p)} \xB7 ${leaderMeta(p)}</div></div>
         <span class="ld-pt${r.v == null ? " none" : ""}">${leaderFmt(r.v)}</span>${add}</div>`;
     }).join("");
   }
@@ -7437,7 +7449,10 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function selectRail(key) {
     document.querySelectorAll(".rail-item").forEach((el) => el.classList.toggle("on", el.dataset.rail === key));
-    renderPanel(key);
+    if (key === "leaders") {
+      currentRail = key;
+      resetLeaders();
+    } else renderPanel(key);
   }
   function initPanel2() {
     document.getElementById("rail").innerHTML = RAIL.map((r) => `

@@ -105,6 +105,21 @@ await p.waitForTimeout(300);
 const fa = await p.evaluate(([to, names]) => freeAgents('WR').filter((q) => names.includes(q.full)).map((q) => [q.full, q.tm]), [FA_TO, faNames]);
 const faCard = await p.evaluate((names) => { const q = freeAgents('WR').find((x) => names.includes(x.full)); if (!q) return null; openPlayer(pKeyOf(q)); return document.querySelector('#playerBody .pc-tm').textContent.trim(); }, faNames);
 ok(`free agents who moved show their new team, in the list and on their card (${fa.length} of them)`, fa.length >= 3 && fa.every(([, tm]) => tm === FA_TO) && faCard && faCard.startsWith(FA_TO), `${fa.slice(0, 3).map((x) => x.join(' ')).join(', ')} / ${faCard}`);
+// the side menu's Leaders and draft board lists too
+const lists = await p.evaluate(() => {
+  document.querySelector('.burger').click();
+  onPanelSearch('leaders', 'harrison jr');
+  const ld = [...document.querySelectorAll('#panel .ld-row')].find((r) => /Marvin Harrison/.test(r.textContent));
+  selectRail('trending');
+  onPanelSearch('trending', 'harrison jr');
+  const tr = [...document.querySelectorAll('#panel .tr-row, #panel [class*="tr-"]')].find((r) => /Harrison/.test(r.textContent) && r.querySelector('.tr-mt'));
+  clearPanelSearch('trending');
+  selectRail('leaders');
+  clearPanelSearch('leaders');
+  document.querySelector('.burger').click();
+  return { ld: ld && ld.querySelector('.ld-mt').textContent, tr: tr && tr.querySelector('.tr-mt').textContent };
+});
+ok('the side menu\'s Leaders and draft board show him with Houston', /\bHOU\b/.test(lists.ld || '') && /\bHOU\b/.test(lists.tr || ''), JSON.stringify(lists));
 // and it all holds through a reload, from the saved data alone
 await p.goto(URL_, { waitUntil: 'domcontentloaded' });
 await p.waitForTimeout(600);

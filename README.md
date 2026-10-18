@@ -72,6 +72,14 @@ one manager keeps the tabs, and Chat returns to the league chat. The side
 menu no longer has Chat or Transactions. `node tools/nav-check.mjs` checks the
 header on every screen, the side menu and the inbox.
 
+## Side menu
+
+Leaders opens on this season's top scorers: real points under the league's
+scoring, highest first. Projections, a single week and past seasons are still
+in its two pickers, but every time the menu opens on Leaders, or Leaders is
+tapped in the rail, it goes back to this season's points. Another panel left
+open stays the one the menu opens on. `node tools/leaders-check.mjs` checks it.
+
 ## Markets
 
 The **Markets** item in the bottom nav opens Markets — a separate section, not
