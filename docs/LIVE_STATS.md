@@ -41,6 +41,17 @@ pinned to that afternoon.
   ~25% high. Stats rows are left as they are.
 - **Refresh**: every ~60s while a game in the live week is on; finished weeks
   are cached in `localStorage` (`arc_live_v2`).
+- **Injuries**: every Sleeper projection and stats row carries the player's
+  current record, with `injury_status` (Questionable, Doubtful, Out, IR,
+  PUP, Sus, DNR, NA; null when healthy), `injury_body_part`, `injury_notes`
+  (e.g. "Surgery") and `news_updated`. They are kept in `LIVE.inj` (by app id
+  and `"sl:" + Sleeper id`, cached) and read with `injuryOf(p)`. Anyone not
+  healthy is tagged by his name in the matchup lineups and bench (Q, D, O,
+  IR, PUP, SUS, DNR, NA; amber, orange, red, grey) and his player card says
+  what it is and when Sleeper's news on him last changed. The live week's
+  projections are fetched again every hour so the report stays current
+  through the week and on game day. Practice participation is not filled in
+  by Sleeper. `node tools/injury-check.mjs` runs it on Sleeper's real report.
 - **Win %**: remaining projection is scaled by how much of each game is left
   (ESPN period and clock). `winProbability` spreads the outcome by
   2.2 x the square root of the points still projected, measured on real

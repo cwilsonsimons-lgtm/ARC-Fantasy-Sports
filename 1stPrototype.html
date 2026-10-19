@@ -1016,6 +1016,25 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
 .st-pos .slotmk.plus{font:700 13px 'Oswald';line-height:11px}
 /* player name = open player card (tap target hugs the text) */
 .st-nm .n .pk{cursor:pointer}
+/* an injury tag by the name: it stays whole, the name gives way */
+.st-nm .n{display:flex;align-items:center;gap:5px}
+.st-nm .n .pk{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.st-side.opp .st-nm .n{justify-content:flex-end}
+.inj{flex:none;cursor:pointer;font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.4px;line-height:1;
+  padding:2px 4px 2.5px;border-radius:4px;color:var(--inj);background:color-mix(in srgb,var(--inj) 16%,transparent);border:1px solid color-mix(in srgb,var(--inj) 45%,transparent)}
+.inj.q,.pc-injb.q,.pc-injury.q{--inj:#E6A85A}
+.inj.d,.pc-injb.d,.pc-injury.d{--inj:#EE7F45}
+.inj.o,.pc-injb.o,.pc-injury.o{--inj:var(--red)}
+.inj.na,.pc-injb.na,.pc-injury.na{--inj:var(--ink-2)}
+.pc-injb{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:12px;letter-spacing:.8px;color:#fff;background:var(--inj);border-radius:6px;padding:3px 7px}
+.pc-injury{display:flex;align-items:center;gap:10px;margin:10px 12px;padding:10px 12px;border-radius:11px;
+  background:color-mix(in srgb,var(--inj) 10%,var(--card-2));border:1px solid color-mix(in srgb,var(--inj) 40%,transparent)}
+.pc-injury .ic{flex:none;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--inj);background:color-mix(in srgb,var(--inj) 18%,transparent)}
+.pc-injury .ic svg{width:14px;height:14px}
+.pc-injury .iw{min-width:0}
+.pc-injury .s{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--inj)}
+.pc-injury .d{font-size:12px;color:var(--ink-2);margin-top:1px}
+.pc-injury .u{margin-left:auto;flex:none;font-size:10px;color:var(--ink-3)}
 .st-nm .n .pk:active{color:var(--accent)}
 .st-pts.pre{color:var(--ink-3)}
 .st-pts.tap{cursor:pointer;border-radius:8px}
@@ -12495,7 +12514,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!p) return `<div class="st-nm"><div class="n empty">Empty</div></div>`;
     const dim = p.fa ? ' style="color:var(--ink-3)"' : "";
     const l1 = `${p.pos} \xB7 ${p.tm}${p.bye ? ` (${p.bye})` : ""}${ageBit(p)}${p.tag ? ` <span class="tag">${p.tag}</span>` : ""}`;
-    const nm = `<span class="pk" onclick="event.stopPropagation();openPlayer('${esc(pKeyOf(p))}')">${p.n}</span>`;
+    const open = `event.stopPropagation();openPlayer('${esc(pKeyOf(p))}')`, j = injuryOf(p);
+    const nm = `<span class="pk" onclick="${open}">${p.n}</span>${j ? `<span class="inj ${j.cls}" onclick="${open}" title="${escAttr(j.word + (j.body ? " \xB7 " + j.body : ""))}">${j.tag}</span>` : ""}`;
     return `<div class="st-nm"><div class="n"${dim}>${nm}</div><div class="m">${l1}</div>${schedOnly ? p.g ? `<div class="g2">${p.g}</div>` : "" : gameLine(p)}</div>`;
   }
   // Under the name: whom he plays and when, until kickoff. From kickoff on,
@@ -14412,13 +14432,14 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       : own && own.state === "owned" && own.team !== MY_TEAM ? `<span class="pc-act trd" onclick="event.stopPropagation();tradeFor('${esc(key)}')">Trade for</span>` : "";
     const nameActs = nameAct || blockAct ? `<div class="pc-acts">${nameAct}${blockAct}</div>` : "";
     const dropBtn = "";
+    const inj = injuryOf(p);
     document.getElementById("playerBody").innerHTML = `
     <div class="pc">
       <div class="pc-hero" style="--ac:${ac}">
         <div class="pc-wm">${jersey}</div>
         ${hero}
         <div class="pc-hero-grad"></div>
-        <div class="badges"><span class="pc-posb" style="background:${ac}">${p.pos || "\u2014"}</span><span class="pc-tm">${p.tm || ""}${p.bye ? ` \xB7 BYE ${p.bye}` : ""}</span></div>
+        <div class="badges"><span class="pc-posb" style="background:${ac}">${p.pos || "\u2014"}</span><span class="pc-tm">${p.tm || ""}${p.bye ? ` \xB7 BYE ${p.bye}` : ""}</span>${inj ? `<span class="pc-injb ${inj.cls}">${inj.tag}</span>` : ""}</div>
         <div class="pc-fav">
           <div class="b" onclick="toast('Added to watchlist')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.5 12 21 12 21Z"/></svg></div>
           <div class="b" onclick="toast('Compare')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></div>
@@ -14436,6 +14457,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         <div class="pc-stat"><div class="v">${ageFor(p) == null ? "\u2014" : ageFor(p)}</div><div class="l">Age</div></div>
         <div class="pc-stat"><div class="v">${rostPct(name)}%</div><div class="l">Rostered</div></div>
       </div>
+      ${inj ? injuryHTML(inj) : ""}
       ${ownershipHTML(key)}
       <div class="pc-week">
         <div><div class="k">This Week</div><div class="g">${p.g || "Scheduled"}</div></div>
@@ -14444,6 +14466,16 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       ${weeklyLogHTML(p)}
       ${editHint}
       ${dropBtn}
+    </div>`;
+  }
+  // The player card's injury line: the designation, what is hurt (and any
+  // note, such as surgery), and when Sleeper's news on him last changed.
+  function injuryHTML(j) {
+    const what = [j.body, j.notes].filter(Boolean).join(" \xB7 ");
+    return `<div class="pc-injury ${j.cls}">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z"/></svg></span>
+      <div class="iw"><div class="s">${j.word}</div>${what ? `<div class="d">${escHtml(what)}</div>` : ""}</div>
+      ${j.at ? `<div class="u">Updated ${relTime(j.at) === "now" ? "just now" : relTime(j.at) + " ago"}</div>` : ""}
     </div>`;
   }
   // ---- weekly production for the fantasy player card ----
@@ -18703,6 +18735,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     tms: {},     // week -> { gsisId: team he played for / is projected with }
     cur: {},     // gsisId -> [team he is with now, when Sleeper said so]
     sid: {},     // Sleeper player id -> gsisId, once matched
+    inj: {},     // gsisId and "sl:" + Sleeper id -> [status, body part, notes, news time]
     error: null,
     at: 0
   };
@@ -18822,6 +18855,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         if (!LIVE.cur[id] || LIVE.cur[id][1] < c.cur[id][1]) LIVE.cur[id] = c.cur[id];
       });
       Object.assign(LIVE.sid, c.sid || {});
+      Object.assign(LIVE.inj, c.inj || {});
       lvApplyTeams();
       LIVE.playSig = Object.assign(LIVE.playSig || {}, c.sig || {});
     } catch (e) {
@@ -18841,7 +18875,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     Object.keys(LIVE.playSig || {}).forEach((k) => {
       if (done.indexOf(k.split(":")[0]) > -1) sig[k] = LIVE.playSig[k];
     });
-    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sid: LIVE.sid, sig };
+    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sid: LIVE.sid, inj: LIVE.inj, sig };
     try {
       localStorage.setItem(LV_CACHE, JSON.stringify(c));
     } catch (e) {
@@ -18878,6 +18912,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
           // no team on his player record means Sleeper has him unsigned
           if (rec.player) LIVE.cur[k] = [pl.team ? lvTeam(pl.team) : "FA", now];
         });
+        // his injury report as it stands (every row carries his player record)
+        if (rec.player) keys.concat("sl:" + rec.player_id).forEach((k) => {
+          if (LV_INJ[pl.injury_status]) LIVE.inj[k] = [pl.injury_status, pl.injury_body_part || "", pl.injury_notes || "", pl.news_updated || 0];
+          else delete LIVE.inj[k];
+        });
       }
       if (!id || !rec.stats) return;
       out[id] = lvTranslate(kind === "proj" ? lvProjFix(rec.stats) : rec.stats);
@@ -18905,6 +18944,26 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   function lvTeam(abbr) {
     return LV_TEAM[abbr] || abbr;
+  }
+  // Sleeper's injury designations: the tag by a player's name, the word on
+  // his card, and how serious it is (its colour). Anything else is healthy.
+  var LV_INJ = {
+    Questionable: ["Q", "Questionable", "q"],
+    Doubtful: ["D", "Doubtful", "d"],
+    Out: ["O", "Out", "o"],
+    IR: ["IR", "Injured reserve", "o"],
+    PUP: ["PUP", "Physically unable to perform", "o"],
+    Sus: ["SUS", "Suspended", "o"],
+    DNR: ["DNR", "Did not report", "o"],
+    NA: ["NA", "Not active", "na"]
+  };
+  // A player's injury report, or null when he is healthy (or Sleeper has
+  // not said yet).
+  function injuryOf(p) {
+    if (!p || typeof LIVE === "undefined" || !LIVE) return null;
+    const r = LIVE.inj[p.id] || p.sid && LIVE.inj["sl:" + p.sid];
+    const d = r && LV_INJ[r[0]];
+    return d ? { tag: d[0], word: d[1], cls: d[2], body: r[1], notes: r[2], at: r[3] } : null;
   }
   // A player's NFL team in a week. The app's player list is from before the
   // season and players move during it (Marvin Harrison Jr., Arizona to
@@ -19280,8 +19339,11 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       // last week's stats come from the cache (loaded = 1) only until the first
       // refresh of a session fetches them again, for Sleeper's stat corrections
       for (let k = 1; k <= w; k++) if (k === w ? force || !LIVE.loaded["stats:" + k] || liveStatus(w) === "live" : !LIVE.loaded["stats:" + k] || k === w - 1 && LIVE.loaded["stats:" + k] === 1) jobs.push(["stats", k]);
+      // this week's projections again every hour: they carry the injury
+      // report, which moves all week (and on game day, the inactives)
       [w, w + 1, S.week].forEach((k) => {
-        if (k >= w && !LIVE.loaded["proj:" + k] && NFL_WEEKS[k]) jobs.push(["proj", k]);
+        const at = LIVE.loaded["proj:" + k];
+        if (k >= w && NFL_WEEKS[k] && (!at || k === w && Date.now() - at > 36e5)) jobs.push(["proj", k]);
       });
       const seen = {};
       for (const [kind, k] of jobs) {
