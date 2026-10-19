@@ -1,0 +1,118 @@
+/* ===== ACCOUNT / PROFILE =====
+   A full-screen section like Arc Markets, but on the fantasy app's own palette
+   (violet, not markets blue). Every rule is scoped under .acct. Opened from the
+   Profile item in the bottom nav. */
+/* The overlay is `.acct`; the body state class is `.account` (a different name
+   on purpose — sharing it would make these `.acct` rules also hit <body>). */
+.acct{
+  position:absolute;inset:0;z-index:60;background:var(--bg);
+  display:none;flex-direction:column;color:var(--ink);
+}
+body.account .acct{display:flex}
+/* while the account screen is open the fantasy chrome underneath is covered */
+body.account .shift,body.account .drawer,body.account .scrim{visibility:hidden}
+/* the app keeps its bottom nav; highlight Profile there without touching the
+   nav's own .on class, exactly the way Arc Markets does */
+body.account .nav{z-index:75}
+body.account .nav .nv.on{color:var(--ink-3)}
+body.account .nav .nv[data-nav="profile"]{color:var(--violet)}
+body.account #hint{display:none}
+
+/* ---------- header ---------- */
+.acct-head{flex:none;padding:56px 16px 12px;display:flex;align-items:center;gap:10px;
+  background:var(--bg);border-bottom:1px solid var(--line-soft)}
+.acct-ic{width:30px;height:30px;display:grid;place-items:center;color:var(--ink);cursor:pointer;flex:none}
+.acct-ic.ghost{visibility:hidden}
+.acct-ic svg{width:24px;height:24px}
+.acct-title{flex:1;text-align:center;font-size:17px;font-weight:800;letter-spacing:.3px}
+
+/* ---------- scroll body ---------- */
+.acct-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:18px 16px calc(var(--navh) + 24px);
+  scrollbar-width:none}
+.acct-scroll::-webkit-scrollbar{display:none}
+
+/* text inputs need selection re-enabled (base.css turns it off globally) */
+.acct input{user-select:text;-webkit-user-select:text}
+
+/* ---------- signed-out hero ---------- */
+.acct-hero{text-align:center;padding:8px 6px 20px}
+.acct-logo{width:58px;height:58px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;
+  background:var(--violet-soft);color:var(--violet)}
+.acct-logo svg{width:32px;height:32px}
+.acct-hero h1{font-size:23px;font-weight:800;letter-spacing:-.3px}
+.acct-hero p{font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:8px;max-width:300px;
+  margin-left:auto;margin-right:auto}
+
+/* ---------- sign in / create toggle ---------- */
+.acct-seg{display:flex;gap:4px;background:var(--card-2);border:1px solid var(--line);
+  border-radius:12px;padding:4px;margin-bottom:16px}
+.acct-seg .seg{flex:1;text-align:center;padding:9px 8px;border-radius:9px;font-size:13.5px;font-weight:700;
+  color:var(--ink-2);cursor:pointer}
+.acct-seg .seg.on{background:var(--violet);color:#fff}
+
+/* ---------- forms ---------- */
+.acct-form label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--ink-3);
+  margin:12px 2px 6px}
+.acct-form input,.acct-code input{width:100%;background:var(--card);border:1px solid var(--line);
+  border-radius:11px;padding:13px 14px;color:var(--ink);font-size:15px;font-family:inherit;outline:none}
+.acct-form input:focus,.acct-code input:focus{border-color:var(--violet)}
+.acct-form input::placeholder,.acct-code input::placeholder{color:var(--ink-3)}
+
+.acct-btn{margin-top:18px;background:var(--violet);color:#fff;text-align:center;padding:14px;border-radius:12px;
+  font-size:15px;font-weight:800;cursor:pointer;letter-spacing:.2px}
+.acct-btn:active{filter:brightness(1.08)}
+.acct-btn.sm{margin-top:0;padding:13px 18px;flex:none}
+.acct-btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.acct-btn.danger{background:transparent;border:1px solid var(--line);color:var(--red);margin-top:10px}
+
+.acct-err{background:rgba(240,69,62,.12);border:1px solid rgba(240,69,62,.4);color:#ffb4b0;
+  border-radius:11px;padding:11px 13px;font-size:13px;font-weight:600;margin-bottom:14px}
+
+.acct-guest{text-align:center;color:var(--ink-2);font-size:13.5px;font-weight:700;margin-top:22px;
+  padding:12px;cursor:pointer}
+.acct-guest:active{color:var(--ink)}
+.acct-fine{font-size:11px;line-height:1.5;color:var(--ink-3);text-align:center;margin-top:6px}
+
+/* ---------- section labels + cards ---------- */
+.acct-lb{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--ink-3);margin:22px 2px 8px}
+.acct-card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.acct-empty{padding:16px;font-size:13px;color:var(--ink-2);line-height:1.5}
+
+/* ---------- signed-in identity ---------- */
+.acct-me{display:flex;align-items:center;gap:14px;padding:6px 2px 4px}
+.acct-av{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--violet);color:#fff;font-size:20px;font-weight:800}
+.acct-av.sm{width:38px;height:38px;font-size:14px;background:var(--violet-soft);color:var(--violet)}
+.acct-me-t .a{font-size:20px;font-weight:800}
+.acct-me-t .b{font-size:13px;color:var(--ink-2);margin-top:2px}
+.acct-badge{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;letter-spacing:.4px;
+  color:var(--violet);background:var(--violet-soft);padding:3px 9px;border-radius:20px}
+
+/* ---------- rows inside cards ---------- */
+.acct-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line-soft);
+  cursor:pointer}
+.acct-row:last-child{border-bottom:none}
+.acct-row-t{flex:1;min-width:0}
+.acct-row-t .a{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-row-t .b{font-size:12px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-shield{width:34px;height:34px;flex:none;display:grid;place-items:center;color:var(--violet)}
+.acct-shield.dim{color:var(--ink-3)}
+.acct-shield svg{width:26px;height:26px}
+.acct-go{color:var(--ink-3);font-size:13px;font-weight:700;flex:none}
+.acct-join{flex:none;background:var(--violet);color:#fff;font-size:12.5px;font-weight:800;
+  padding:7px 15px;border-radius:9px}
+.acct-x{flex:none;color:var(--ink-3);font-size:12.5px;font-weight:700;padding:6px 10px}
+.acct-x:active{color:var(--red)}
+
+/* ---------- join by code ---------- */
+.acct-code{display:flex;gap:8px;margin-top:10px}
+.acct-code input{flex:1}
+
+/* ---------- markets snapshot ---------- */
+.acct-mk{display:flex;padding:16px 6px 6px}
+.acct-mk .stat{flex:1;text-align:center}
+.acct-mk .stat .k{font-size:10px;font-weight:800;letter-spacing:.6px;color:var(--ink-3)}
+.acct-mk .stat .v{font-size:19px;font-weight:800;margin-top:4px}
+.acct-card .acct-btn.ghost{margin:6px 12px 14px;border:none;background:var(--card-2)}
+
+/* ---------- account toast (reuses the .hint element) ---------- */

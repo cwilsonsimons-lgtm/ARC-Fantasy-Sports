@@ -1,6 +1,11 @@
 // Entry point. The imports below run every module in the same order the
 // original single-file <script> ran them in; several modules do top-level
 // work at load, so this order matters.
+//
+// account/boot.js runs FIRST: it namespaces the app's localStorage keys by the
+// signed-in account, and store.js / markets read those keys at import, so the
+// namespace has to be installed before any of them evaluate.
+import './account/boot.js';
 import * as m0 from './data/teams.js';
 import * as m1 from './store.js';
 import * as m2 from './data/league-config.js';
@@ -33,6 +38,9 @@ import * as mk2 from './markets/market.js';
 import * as mk3 from './markets/portfolio.js';
 import * as mk4 from './markets/charts.js';
 import * as mk5 from './markets/index.js';
+// Account / Profile: sign in, leagues, per-account markets. Imported after the
+// markets modules it reads from.
+import * as ac0 from './account/ui.js';
 
 // The markup drives the app through inline `onclick="..."` attributes, which
 // resolve against the global scope. Every top-level name was a global in the
@@ -41,7 +49,8 @@ import * as mk5 from './markets/index.js';
 Object.assign(window, m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16, m17, m18, m19, m20, m21,
   m22, m23,
   mh,
-  mk0, mk1, mk2, mk3, mk4, mk5);
+  mk0, mk1, mk2, mk3, mk4, mk5,
+  ac0);
 
 // Startup, in the order these ran in the original script.
 initStore();
@@ -51,6 +60,7 @@ initClock();
 renderStandings();
 initPanel();
 initMarkets();
+initAccount();
 
 // ---------- INIT ----------
 applyStoredRoster();

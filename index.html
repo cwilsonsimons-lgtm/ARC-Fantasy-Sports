@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="css/panel.css">
   <link rel="stylesheet" href="css/nav.css">
   <link rel="stylesheet" href="css/markets.css">
+  <link rel="stylesheet" href="css/account.css">
 </head>
 <body>
 <div class="phone">
@@ -166,10 +167,10 @@
 
   <!-- BOTTOM NAV -->
   <div class="nav">
-    <div class="nv on" data-nav="matchup" onclick="closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
-    <div class="nv" data-nav="markets" onclick="openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
-    <div class="nv" data-nav="feed" onclick="closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
-    <div class="nv" data-nav="profile" onclick="closeMarkets();toast('Profile — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
+    <div class="nv on" data-nav="matchup" onclick="closeAccount();closeMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>Matchup</div>
+    <div class="nv" data-nav="markets" onclick="closeAccount();openMarkets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18 9 11l4 4 7-9"/><path d="M15 6h5v5"/></svg>Markets</div>
+    <div class="nv" data-nav="feed" onclick="closeAccount();closeMarkets();toast('Feed — coming soon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6M7 12h10M7 16h10"/></svg>Feed</div>
+    <div class="nv" data-nav="profile" onclick="openAccount()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</div>
   </div>
 
   <div class="sheet-scrim" id="sheetScrim" onclick="closeWeekPicker()"></div>
@@ -229,6 +230,23 @@
       <div class="bd" id="mkSheetBody"></div>
     </div>
     <div class="hint" id="mkHint"></div>
+  </div>
+
+  <!-- ===== ACCOUNT / PROFILE =====
+       Sign in, create an account, manage leagues and see your Arc Markets
+       portfolio. Signing in namespaces the app's storage per account (see
+       js/account/boot.js), so each account is its own world: its own team,
+       roster, leagues and markets. Opened from the Profile item in the nav. -->
+  <div class="acct" id="acct">
+    <div class="acct-head">
+      <div class="acct-ic" onclick="closeAccount()" title="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </div>
+      <div class="acct-title">Account</div>
+      <div class="acct-ic ghost"></div>
+    </div>
+    <div class="acct-scroll"><div id="acctBody"></div></div>
+    <div class="hint" id="acctHint"></div>
   </div>
 </div>
 
