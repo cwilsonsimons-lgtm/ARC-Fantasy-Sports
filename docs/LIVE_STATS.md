@@ -48,6 +48,16 @@ pinned to that afternoon.
   projection), and stays between 1% and 99% until the last game is over.
   Sleeper does not publish its own win percentages (not in its public API),
   so these are the app's.
+- **PROJ** (`teamProj`): ahead of a week, the lineup's projection. While
+  the week is played, the points so far plus what is still to come (the
+  same remaining projection the odds use), so a team whose whole lineup has
+  played is projected exactly what it scored. When the live week moves on
+  (four hours after Monday night's kickoff, early Tuesday) the finished week
+  shows what each lineup was projected before any game was played: the
+  starters Sleeper has for that week, priced with that week's projections,
+  fetched when the week is opened (`lvEnsureWeek`). A week ahead takes its
+  odds from the projections (`gameOdds`), as it will when it goes live.
+  `node tools/proj-check.mjs` checks Thursday, Sunday, Monday and Tuesday.
 - **Rewind**: each touchdown a starter scores or throws lands at its real game
   time and is the only kind of marker on the chart (scorer = the name ESPN's
   play text starts with, passer = "pass from <name>"; names in the bracketed
