@@ -33,10 +33,21 @@ pinned to that afternoon.
   `seededScore` (team scores, other matchups, standings) and `wkProj` all read
   these. A player with no line scores 0; nothing is invented.
 - **Projections**: Sleeper's, scored the same way, replace `proj` per week.
+  Their first downs are not real projections: every row has them at a tenth
+  of the yards (`rec_fd = rec_yd / 10`, the same for rushing and passing),
+  about 2.4 times what players get. `lvProjFix` puts in this season's real
+  rates instead (one receiving first down per 24 yards, one rushing per 19,
+  one passing per 24), so a league that scores first downs is not projected
+  ~25% high. Stats rows are left as they are.
 - **Refresh**: every ~60s while a game in the live week is on; finished weeks
   are cached in `localStorage` (`arc_live_v2`).
 - **Win %**: remaining projection is scaled by how much of each game is left
-  (ESPN period and clock).
+  (ESPN period and clock). `winProbability` spreads the outcome by
+  2.2 x the square root of the points still projected, measured on real
+  week 1-3 lineups (a lineup's score landed about that far from its
+  projection), and stays between 1% and 99% until the last game is over.
+  Sleeper does not publish its own win percentages (not in its public API),
+  so these are the app's.
 - **Rewind**: each touchdown a starter scores or throws lands at its real game
   time and is the only kind of marker on the chart (scorer = the name ESPN's
   play text starts with, passer = "pass from <name>"; names in the bracketed
