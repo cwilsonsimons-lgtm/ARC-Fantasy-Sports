@@ -4611,9 +4611,19 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   // projection away from it (week 1-3 lineups in City Boys Dynasty).
   function winProbability(edge, rem) {
     if (rem <= 0.01) return edge > 0 ? 100 : edge < 0 ? 0 : 50;
+    return Math.round(winChance(edge, rem));
+  }
+  // where a chart point sits: unrounded, or a minute-by-minute line would
+  // climb in whole-percent stairs
+  function lineWin(p) {
+    return p.wf != null ? p.wf : p.win;
+  }
+  // the same, unrounded (the chart's line, drawn a minute at a time)
+  function winChance(edge, rem) {
+    if (rem <= 0.01) return edge > 0 ? 100 : edge < 0 ? 0 : 50;
     const sigma = 2.2 * Math.sqrt(rem) + 1;
     // nobody is a lock while there is still football to play
-    return Math.max(1, Math.min(99, Math.round(100 / (1 + Math.exp(-1.7 * (edge / sigma))))));
+    return Math.max(1, Math.min(99, 100 / (1 + Math.exp(-1.7 * (edge / sigma)))));
   }
   function recomputeLT() {
     const sides = liveSides();
@@ -5226,7 +5236,8 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     syncRewind: () => syncRewind,
     toggleRewind: () => toggleRewind
   });
-  var SAMPLE_MIN = 10;
+  // a point for every minute a game is being played
+  var SAMPLE_MIN = 1;
   var GAME_MIN = 200;
   var DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   var absMin = (ord) => Math.floor(ord / 2e3) * 1440 + ord % 2e3;
@@ -5345,7 +5356,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   // The win-probability series for any matchup (yours by default).
   // With a zoom ({from, to} in chart minutes) only that stretch is sampled, and
   // more finely. The result carries the week's game windows, kickoff slots and
-  // (live week) the minute now as .span.
+  // (live week) its latest minute, and whether a game is on then, as .span.
   function rewindSeries(sides, zoom) {
     _jumpMemo = /* @__PURE__ */ new Map();
     try {
@@ -5382,6 +5393,19 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       if (!lastW || lastW[1] < frame.mnf) windows.push([frame.mnf, closes]);
       else lastW[1] = closes;
     }
+    // The chart is game minutes only. Live, it runs up to now while a game is
+    // being played; between games (Sunday night until Monday's kickoff) it
+    // ends on the last minute played, not on the clock.
+    const live = S.week === LIVE_WEEK && liveStatus(LIVE_WEEK) === "live";
+    let now = null, playing = false;
+    if (live) {
+      const clock = absMin(lvNowOrd()), prev = windows.reduce((b, [, we], w) => we < clock ? w : b, -1);
+      // a game that runs long (overtime) is still being played
+      const going = prev > -1 && clock - windows[prev][1] <= 60 && Object.values(LIVE.games[LIVE_WEEK] || {}).some((g) => g.state === "in");
+      if (going) windows[prev][1] = clock;
+      playing = windows.some(([ws, we]) => clock >= ws && clock <= we);
+      now = playing ? clock : prev > -1 ? windows[prev][1] : windows[0][0];
+    }
     const side = (list) => list.filter((p) => isFinite(pOrd(p))).map((p) => {
       const c = counts(p, S.week);
       return { name: p.n, key: p.id || p.n, total: pLive(p.proj, p.n, p), proj: c ? p.proj : 0, kick: absMin(pOrd(p)), counted: c };
@@ -5412,21 +5436,19 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       info.who = [...A.map((p) => ({ ...p, side: "a" })), ...X.map((p) => ({ ...p, side: "x" }))].filter((p) => p.kick === t).map((p) => ({ name: p.name, side: p.side }));
       return info;
     };
-    // zoomed: the windows cut to the stretch, a sample every minute or two
-    let spans = windows.map(([ws, we], w) => [ws, we, w]), step = SAMPLE_MIN;
+    // zoomed: the windows cut to the stretch
+    let spans = windows.map(([ws, we], w) => [ws, we, w]);
     if (zoom && zoom.slot != null) {
       const s = weekSlots(frame.wk).find((q) => q.from === zoom.slot);
       zoom = s ? { from: s.from, to: s.to } : { from: 0, to: 0 };
     }
     if (zoom) {
       spans = spans.map(([ws, we, w]) => [Math.max(ws, zoom.from), Math.min(we, zoom.to), w]).filter(([ws, we]) => we > ws);
-      const mins = spans.reduce((n, [ws, we]) => n + we - ws, 0);
-      step = Math.max(1, Math.min(SAMPLE_MIN, Math.round(mins / 90)));
     }
     const out = [];
     spans.forEach(([ws, we, w]) => {
       const times = /* @__PURE__ */ new Set();
-      for (let t = ws; t <= we; t += step) times.add(t);
+      for (let t = ws; t <= we; t += SAMPLE_MIN) times.add(t);
       times.add(we);
       plays.forEach((e) => {
         if (e.t >= ws && e.t <= we) times.add(e.t);
@@ -5437,15 +5459,14 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       [...times].sort((p, q) => p - q).forEach((t) => {
         const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text, parts: e.parts, kind: e.kind }));
         const a = sum(A, t), x = sum(X, t);
-        const win = winProbability(expect(A, t) - expect(X, t), remain(A, t) + remain(X, t));
+        const edge = expect(A, t) - expect(X, t), rem = remain(A, t) + remain(X, t);
         // a zoomed stretch ends as the next games kick off; that kickoff is theirs
-        out.push({ abs: t, a: tenth(a), x: tenth(x), win, w, ev, ko: zoom && t === zoom.to ? null : kickoff(t) });
+        out.push({ abs: t, a: tenth(a), x: tenth(x), win: winProbability(edge, rem), wf: winChance(edge, rem), w, ev, ko: zoom && t === zoom.to ? null : kickoff(t) });
       });
     });
     // the live week is drawn up to now, not to the end of Monday night
-    let res = out, now = null;
-    if (S.week === LIVE_WEEK && liveStatus(LIVE_WEEK) === "live") {
-      now = absMin(lvNowOrd());
+    let res = out;
+    if (live) {
       const past = out.filter((q) => q.abs < now);
       // end on the live score itself (a zoom that ends before now has no now)
       if (!zoom || now <= zoom.to) {
@@ -5453,11 +5474,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
         // the latest point is the matchup's live odds, the same figure its card shows
         const as = seededScore(LIVE_WEEK, sides[0]), xs = seededScore(LIVE_WEEK, sides[1]);
         const nowWin = sides[0] === liveSides()[0] && sides[1] === liveSides()[1] ? LT.aw : gameOdds(sides[0], sides[1], as, xs, LIVE_WEEK).aw;
-        past.push({ abs: now, a: tenth(a), x: tenth(x), win: nowWin, w: past.length ? past[past.length - 1].w : 0, ev: [], ko: null });
+        past.push({ abs: now, a: tenth(a), x: tenth(x), win: nowWin, w: Math.max(0, windows.findIndex(([ws, we]) => now >= ws && now <= we)), ev: [], ko: null });
       }
       res = past.length >= 2 ? past : zoom ? [] : out.slice(0, 2);
     }
-    res.span = { windows, slots: weekSlots(frame.wk), now, kicks: A.concat(X).map((p) => p.kick) };
+    res.span = { windows, slots: weekSlots(frame.wk), now, playing, kicks: A.concat(X).map((p) => p.kick) };
     return res;
   }
   // Prime-time windows get their broadcast name; anything else is its slot.
@@ -5508,7 +5529,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   }
   // The chart's horizontal scale is time, with the quiet hours between game
   // windows taken out (each gap is drawn as ten minutes).
-  var RW_GAP = SAMPLE_MIN;
+  var RW_GAP = 10;
   function rwScale(windows) {
     const off = [];
     let u = 0;
@@ -5565,7 +5586,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (avail.length < 2 && !zoom) return "";
     const range = (from, to) => {
       const g = seen(from, to);
-      return g.length ? rwRangeLabel(g[0][0], g[g.length - 1][1], span.now) : "";
+      return g.length ? rwRangeLabel(g[0][0], g[g.length - 1][1], span.playing && span.now) : "";
     };
     const item = (on, act, label, r) => `<button class="rw-mi${on ? " on" : ""}" role="menuitemradio" aria-checked="${on ? "true" : "false"}" onclick="${act}"><span class="l">${label}</span><span class="r">${r}</span></button>`;
     const pick = (slot) => `rwZoomTo('${id}'${slot != null ? "," + slot : ""})`;
@@ -5574,7 +5595,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       <div class="rw-mh">SHOW</div>
       ${item(!zoom, pick(null), "Whole week", range(-Infinity, Infinity))}
       ${avail.map((s) => item(zoom && zoom.slot === s.from, pick(s.from), s.label, range(s.from, s.to))).join("")}
-      ${custom ? item(true, `rwMenuToggle('${id}',false)`, "Your stretch", rwRangeLabel(zoom.from, zoom.to, span.now)) : ""}
+      ${custom ? item(true, `rwMenuToggle('${id}',false)`, "Your stretch", rwRangeLabel(zoom.from, zoom.to, span.playing && span.now)) : ""}
     </div>`;
   }
   function rwMenuToggle(id, open) {
@@ -5595,7 +5616,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
   // at either end of it.
   function rwSumHTML(span, pts) {
     const a = pts[0], b = pts[pts.length - 1], d = (v) => (v < 0 ? "\u2212" : "+") + Math.abs(tenth(v)).toFixed(1);
-    return `<div class="rw-sum"><span class="r">${rwRangeLabel(a.abs, b.abs, span.now)}</span><span class="sc"><b class="me">${d(b.a - a.a)}</b> &ndash; <b class="opp">${d(b.x - a.x)}</b></span><span class="w ${b.win >= a.win ? "up" : "dn"}">${a.win}% &rarr; ${b.win}%</span></div>`;
+    return `<div class="rw-sum"><span class="r">${rwRangeLabel(a.abs, b.abs, span.playing && span.now)}</span><span class="sc"><b class="me">${d(b.a - a.a)}</b> &ndash; <b class="opp">${d(b.x - a.x)}</b></span><span class="w ${b.win >= a.win ? "up" : "dn"}">${a.win}% &rarr; ${b.win}%</span></div>`;
   }
   var rwAt = {};
   var escName = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -5625,7 +5646,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     const Y = (w) => H - w / 100 * H;
     const pctX = (i) => (X(i) / W * 100).toFixed(2) + "%";
     const pctY = (w) => (Y(w) / H * 100).toFixed(2) + "%";
-    const line = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.win).toFixed(1)}`).join(" ");
+    const line = pts.map((p, i) => `${X(i).toFixed(1)},${Y(lineWin(p)).toFixed(1)}`).join(" ");
     const area = `${PADL},${Y(50)} ${line} ${X(n - 1).toFixed(1)},${Y(50)}`;
     // Scoring plays are HTML pins over the chart, not SVG circles: the SVG is
     // stretched to fit (preserveAspectRatio="none"), which would squash a circle.
@@ -5639,11 +5660,11 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       if (p.ko) kos.push(i);
     });
     const special = [...new Set([...plays, ...kos])].sort((p, q) => p - q);
-    const koPins = kos.map((i) => `<span class="rw-ko${pts[i].ko.tag ? " prime" : ""}" data-i="${i}" style="left:${pctX(i)};top:${pctY(pts[i].win)}"></span>`).join("");
+    const koPins = kos.map((i) => `<span class="rw-ko${pts[i].ko.tag ? " prime" : ""}" data-i="${i}" style="left:${pctX(i)};top:${pctY(lineWin(pts[i]))}"></span>`).join("");
     const koTags = kos.filter((i) => pts[i].ko.tag).map((i) => `<span class="rw-ktag" style="left:${pctX(i)}">${pts[i].ko.tag}</span>`).join("");
     const koLines = kos.filter((i) => pts[i].ko.tag).map((i) => `<line class="rw-kline" x1="${X(i).toFixed(1)}" y1="0" x2="${X(i).toFixed(1)}" y2="${H}"/>`).join("");
     const pins = plays.map((i) => `<span class="rw-pin ${sideCls(pts[i].ev[0].side)}" data-i="${i}"
-         style="left:${pctX(i)};top:${pctY(pts[i].win)}"></span>`).join("");
+         style="left:${pctX(i)};top:${pctY(lineWin(pts[i]))}"></span>`).join("");
     const [aKey, xKey] = sides;
     const names = { a: teamName(aKey), x: teamName(xKey) };
     const marks = [];
@@ -5764,7 +5785,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       bub.className = "rw-bub " + cls;
       bub.style.display = "block";
       const lw = layer.clientWidth, lh = layer.clientHeight;
-      const dx = X(j) / W * lw, dy = Y(p.win) / H * lh;
+      const dx = X(j) / W * lw, dy = Y(lineWin(p)) / H * lh;
       const bw = bub.offsetWidth, bh = bub.offsetHeight;
       // off to the side toward the roomier half, and clear of the pin vertically
       // (below a high pin, above a low one) so the leader line reads as a pointer
@@ -5789,7 +5810,7 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       cur.setAttribute("x1", x);
       cur.setAttribute("x2", x);
       dot.style.left = pctX(i);
-      dot.style.top = pctY(p.win);
+      dot.style.top = pctY(lineWin(p));
       dot.className = "rw-dot " + (p.win >= 50 ? "up" : "dn");
       rT.textContent = clockLabel(p.abs);
       rW.textContent = p.win + "% win";
@@ -12949,7 +12970,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     // on the full chart's scale: time, less the hours between game windows
     const sc = rwScale(pts.span.windows), us = pts.map((p) => sc.toU(p.abs, p.w)), uw = us[n - 1] - us[0] || 1;
     const X = (j) => ((us[j] - us[0]) / uw * W2).toFixed(1), Y = (w) => (H2 - w / 100 * H2).toFixed(1);
-    const line = pts.map((p, j) => `${X(j)},${Y(p.win)}`).join(" ");
+    const line = pts.map((p, j) => `${X(j)},${Y(lineWin(p))}`).join(" ");
     const last = pts[n - 1], id = "lgsp" + i;
     const live = g.status === "live";
     return `<div class="lg-spark" onclick="event.stopPropagation();openGameChart(${i})">

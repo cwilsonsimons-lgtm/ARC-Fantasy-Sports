@@ -191,10 +191,11 @@ windows instead of 744 across the whole calendar.
 
 The series comes from the lineup rather than being drawn: each player's game has
 a kickoff, their points land in two to four deterministic jumps across it, and
-the chart samples every ten minutes **plus a point at the exact minute of every
-scoring play**, so a score is never rounded onto the nearest tick. Those points
-carry the scorer and the points gained, which is what the readout shows — a
-typical week has ~46 scoring points, most of them off the ten-minute grid.
+the chart has **a point for every minute a game is being played**, and the
+scoring plays land on their own minute. Those points carry the scorer and the
+points gained, which is what the readout shows — a typical week has ~46
+scoring points. The line is drawn from the unrounded odds, so a minute-by-minute
+line does not climb in whole-percent stairs; the readout shows whole percents.
 Dots are coloured by side: green for your players, red for the opponent's. That is what gives the line its shape —
 flat overnight, jagged on Sunday afternoon when games overlap. Odds come from `winProbability(edge, rem)` in `js/clock.js`, shared with the
 live hero so the two never disagree. `edge` is the expected-points margin,
@@ -203,9 +204,12 @@ against. As the last game ends `rem` reaches zero and the function returns an
 exact 0 or 100, because by then the result is simply known. The previous
 straight-line formula clamped at 1–99 and so never resolved.
 
-The horizontal scale is time within each window, with every gap between
-windows drawn as ten minutes, so the extra points at scoring plays do not
-stretch the minutes around them.
+The horizontal scale is game minutes: time within each window, with every gap
+between windows drawn as ten minutes. In the live week the chart runs to now
+while a game is on; between games (Sunday night until Monday's kickoff) it ends
+on the last minute played and the time over it says so, rather than drawing
+the night as a flat line up to the clock. A game running past its usual
+length (overtime) keeps it going.
 
 **Zoom.** Tapping the time at the chart's top left opens a menu: the whole
 week, then the week's kickoff slots, TNF, 12PM, 3:05PM, SNF, MNF (a Sunday
@@ -216,8 +220,7 @@ slot runs until the next one kicks off, so 12PM is the noon games from noon to
 in the live week only those already under way, ending on now. Two fingers zoom
 to any stretch, and back out to the whole week (ctrl + wheel, a trackpad pinch,
 does the same on a computer); the menu then lists it as "Your stretch".
-Zoomed, the time is outlined, the chart is sampled every minute or two rather
-than ten, the axis reads the clock, the cursor goes to the end of the stretch
+Zoomed, the time is outlined, the axis reads the clock, the cursor goes to the end of the stretch
 and the lineup follows it, and a line under the chart gives each side's points
 over the stretch and the odds at either end. The zoom holds through live
 updates and the week's other games; another week opens on the whole week.

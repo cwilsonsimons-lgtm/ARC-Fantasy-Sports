@@ -62,7 +62,10 @@ pinned to that afternoon.
   bonuses (100 yards and the like) are not tied to one play. The rest of a
   player's points (and anything negative) accrue, unmarked, through the part
   of his game played, so every chart still ends on his total. For the
-  live week the chart ends at now, on the live score and the card's odds.
+  live week the chart ends on the live score and the card's odds: at now
+  while a game is on, at the last minute played between games (Monday
+  morning it ends Sunday night, not on the clock). Game minutes only, a
+  point for each (`SAMPLE_MIN`).
 - **Every matchup has a chart**: All Matchups shows a win-chance strip on each
   card (above the midline the left team leads, below it the right, in team
   colours); tapping it opens that matchup with the full chart, and its lineup
@@ -184,7 +187,7 @@ pinned to that afternoon.
   an hour (3:05 and 3:25) are one slot. A slot is offered when one of the
   matchup's starters kicked off in it and it has been played. Two fingers (or
   ctrl + wheel) zoom to any stretch; the minutes under the fingers stay under
-  them. Zoomed, the series is sampled every minute or two
+  them. Zoomed, the series is that stretch's minutes
   (`rewindSeries(sides, zoom)`), the next slot's kickoff at the right edge is
   left unmarked, the cursor goes to the end of the stretch, and a line under
   the chart gives each side's points over it and the odds either end. The
