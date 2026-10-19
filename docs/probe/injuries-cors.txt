@@ -1,0 +1,22 @@
+== CORS (Origin: https://raw.githack.com)
+-- https://api.sleeper.com/projections/nfl/2026/6?season_type=regular
+access-control-allow-credentials: true
+access-control-allow-origin: *
+access-control-expose-headers: etag,date
+cache-control: public, s-maxage=600, stale-while-revalidate=600, stale-if-error=600
+cdn-cache-control: public, max-age=600, stale-while-revalidate=600, stale-if-error=600
+content-encoding: gzip
+-- https://api.sleeper.app/v1/players/nfl
+access-control-allow-credentials: true
+access-control-allow-origin: *
+access-control-expose-headers: etag,date
+cache-control: public, s-maxage=600, stale-while-revalidate=300, stale-if-error=600
+cdn-cache-control: public, max-age=600, stale-while-revalidate=300, stale-if-error=600
+content-encoding: gzip
+-- https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries
+content-length: 342412
+access-control-allow-origin: *
+access-control-allow-methods: GET,PUT,POST,DELETE,OPTIONS,HEAD
+access-control-expose-headers: content-length,location
+content-encoding: gzip
+cache-control: max-age=3
