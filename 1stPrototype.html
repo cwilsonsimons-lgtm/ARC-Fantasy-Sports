@@ -609,8 +609,12 @@ body.open .scrim{opacity:1;pointer-events:auto}
    Sized to be scannable at a glance and clearly smaller than both the stadium
    cards in All Matchups and the detail view a tap opens. */
 .sm-wrap{display:flex;flex-direction:column;gap:7px;margin-bottom:4px}
-.hd.sm-med{justify-content:flex-start;align-items:baseline;gap:10px}
+.hd.sm-med{justify-content:flex-start;align-items:baseline;gap:10px;flex-wrap:wrap;row-gap:6px}
 .sm-med .mv{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:15px;letter-spacing:0;color:var(--ink)}
+.sm-med .sm-key{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:9.5px;letter-spacing:1px;color:var(--ink-3);white-space:nowrap}
+.sm-med .sm-key .dbl-ic,.sm-dbl .dbl-ic{width:11px;height:11px}
+.sm-med .sm-key .dbl-ic{padding:2px;border-radius:50%;background:#E9B949;color:#1B181A;align-self:center}
+.sm-dbl{flex:none;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;background:#E9B949;color:#1B181A}
 .sm-med .pm{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:500;font-size:10px;letter-spacing:.4px;color:var(--ink-3)}
 .sm-card{display:flex;align-items:center;gap:9px;padding:7px 8px 7px 9px;
   border:1px solid var(--line-soft);border-radius:12px;background:var(--card-2);cursor:pointer}
@@ -12960,6 +12964,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   // to score (teamProj: live while the week is played, the pregame figure
   // once it is over). Before kickoff there is no median yet, only the
   // projected one.
+  // the double win: a team's game and the league median both beaten that week
+  var DBL_ICON = `<svg class="dbl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12.5 7 17 16 8"/><path d="m11.5 16 1 1 9-9"/></svg>`;
   function medianOf(list) {
     const v = list.filter((x) => x != null && isFinite(x)).sort((a, b) => a - b), n = v.length;
     return !n ? null : n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2;
@@ -12971,26 +12977,33 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function renderStandingsMatchups() {
     const el = document.getElementById("standMatchups");
     if (!el) return;
+    const sides = S.games.flatMap((g) => [[g.a, g.as], [g.x, g.xs]]);
+    // once the week is over, a team that won its game and scored above the
+    // league median gets the double-win mark by its score
+    const median = medianOf(sides.map(([, v]) => +v));
+    const over = S.games.length > 0 && S.games.every((g) => g.status === "final") && median != null;
+    const dbl = (score, opp) => over && +score > +opp && +score > median;
     const med = document.getElementById("standMedian");
     if (med) {
-      const sides = S.games.flatMap((g) => [[g.a, g.as], [g.x, g.xs]]);
       const started = S.week < LIVE_WEEK || S.week === LIVE_WEEK && liveStatus(LIVE_WEEK) !== "sched";
-      med.innerHTML = leagueMedianHTML(sides.map(([, v]) => +v), sides.map(([k, v]) => teamProj(k, S.week, +v)), started);
+      const key = over && S.games.some((g) => dbl(g.as, g.xs) || dbl(g.xs, g.as)) ? `<span class="sm-key">${DBL_ICON}Won + beat median</span>` : "";
+      med.innerHTML = leagueMedianHTML(sides.map(([, v]) => +v), sides.map(([k, v]) => teamProj(k, S.week, +v)), started) + key;
     }
     el.innerHTML = S.games.map((g, i) => {
       const openClick = g.me ? "openMyMatchup()" : `openDetail(${i})`;
       const st = g.status === "live" ? { c: "live", t: "LIVE" } : g.status === "final" ? { c: "final", t: "FINAL" } : { c: "sched", t: "WK " + S.week };
       const played = g.status !== "sched";
-      const row = (k, score, win) => `<div class="sm-tr${win ? " w" : ""}">
+      const row = (k, score, win, two) => `<div class="sm-tr${win ? " w" : ""}">
       ${badge(T[k], "sm-bd")}
       <div class="sm-nm tf-${k}">${escHtml(T[k].n)}</div>
+      ${two ? `<span class="sm-dbl" title="Won and beat the league median" aria-label="Won and beat the league median">${DBL_ICON}</span>` : ""}
       <div class="sm-pt">${(+score).toFixed(1)}</div>
     </div>`;
       return `<div class="sm-card${g.me ? " me" : ""}" onclick="${openClick}">
       <div class="sm-st ${st.c}">${st.t}</div>
       <div class="sm-teams">
-        ${row(g.a, g.as, played && g.as > g.xs)}
-        ${row(g.x, g.xs, played && g.xs > g.as)}
+        ${row(g.a, g.as, played && g.as > g.xs, dbl(g.as, g.xs))}
+        ${row(g.x, g.xs, played && g.xs > g.as, dbl(g.xs, g.as))}
       </div>
       <div class="sm-arr">&rsaquo;</div>
     </div>`;

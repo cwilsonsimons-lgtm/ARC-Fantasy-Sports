@@ -2,7 +2,8 @@
 // ten teams' scores) and, smaller beside it, the projected league median (the
 // middle of the teams' PROJ). The week stepper above it stays. Real City
 // Boys Dynasty import, week 4: before kickoff, on Sunday afternoon, a week
-// ahead, and looked back on once it is over.
+// ahead, and looked back on once it is over. A week that is over marks each
+// team that won its game and beat the league median.
 import { chromium } from 'playwright';
 import fs from 'fs';
 const R = new URL('./fixtures/', import.meta.url).pathname;
@@ -84,6 +85,9 @@ const league = (w) => p.evaluate(async (w) => {
     text: med.innerText.replace(/\s+/g, ' ').trim(), mv: big && big.textContent, pm: small && small.textContent,
     sizes: [big && parseFloat(getComputedStyle(big).fontSize), small && parseFloat(getComputedStyle(small).fontSize)],
     scores: [...v.querySelectorAll('#standMatchups .sm-pt')].map((e) => +e.textContent),
+    // each card's two rows: score, and whether the double-win mark is by it
+    cards: [...v.querySelectorAll('#standMatchups .sm-card')].map((c) => [...c.querySelectorAll('.sm-tr')].map((r) => ({ sc: +r.querySelector('.sm-pt').textContent, two: !!r.querySelector('.sm-dbl') }))),
+    key: !!med.querySelector('.sm-key'),
     proj: getGames(lvState().viewWeek).flatMap((g) => [teamProj(g.a, lvState().viewWeek, g.as), teamProj(g.x, lvState().viewWeek, g.xs)]),
     stepper: !!v.querySelector('.wsw .wk') && v.querySelector('.wsw .wk').textContent.includes('Week ' + lvState().viewWeek),
     oldLine: [...v.querySelectorAll('.hd')].some((e) => /Matchups/i.test(e.textContent)),
@@ -91,6 +95,9 @@ const league = (w) => p.evaluate(async (w) => {
   };
 }, w);
 const num = (s) => s ? +s.match(/[\d.]+/)[0] : null;
+// the teams that should carry the mark: won their game and beat the median
+const doubles = (L) => { const m = median(L.scores); return L.cards.flatMap(([a, x]) => [a.sc > x.sc && a.sc > m, x.sc > a.sc && x.sc > m]); };
+const marked = (L) => L.cards.flatMap(([a, x]) => [a.two, x.two]);
 
 console.log('Sunday 3:22 PM ET, week 4 under way');
 await at('2026-10-04T19:22:00Z');
@@ -99,6 +106,7 @@ ok('the "Week 4 · Matchups" line is gone, the week stepper above stays', !L.old
 ok(`league median: the middle of the ten scores (${L.scores.join(' ')})`, L.scores.length === 10 && Math.abs(num(L.mv) - median(L.scores)) < 0.051, L.text);
 ok('projected league median beside it: the middle of the ten PROJ', Math.abs(num(L.pm) - median(L.proj)) < 0.051, L.pm);
 ok('the projected one is smaller', L.sizes[1] < L.sizes[0], L.sizes.join(' / '));
+ok('while the week is played nobody has the double-win mark yet', !marked(L).some(Boolean) && !L.key);
 await p.locator('.view[data-view="standings"]').screenshot({ path: OUT + '/median-live.png', clip: { x: 0, y: 0, width: 390, height: 420 } }).catch(() => p.screenshot({ path: OUT + '/median-live.png' }));
 L = await league(5);
 ok('a week ahead: no median yet, only the projected one', L.week === 5 && L.mv === '—' && num(L.pm) > 50 && Math.abs(num(L.pm) - median(L.proj)) < 0.051, L.text);
@@ -114,5 +122,14 @@ await at('2026-10-06T14:00:00Z');
 L = await league(4);
 if (!L.pm) { await p.waitForTimeout(1500); L = await league(); }
 ok('the final median, and the projected median from before kickoff', Math.abs(num(L.mv) - median(L.scores)) < 0.051 && num(L.pm) === pre, `${L.text} (Thursday: ${pre})`);
+let want = doubles(L), got = marked(L);
+ok(`week 4 over: the mark is on each team that won and beat the median, and no other (${got.filter(Boolean).length})`, want.some(Boolean) && want.every((w, i) => w === got[i]), JSON.stringify(L.cards));
+ok('the line over the games says what the mark means', L.key && /Won \+ beat median/i.test(L.text), L.text);
+const lost = L.cards.flatMap(([a, x]) => [[a, x], [x, a]]).filter(([t, o]) => t.sc < o.sc && t.sc > median(L.scores));
+ok(`a team over the median that lost its game has no mark (${lost.map(([t]) => t.sc).join(', ')})`, lost.length > 0 && lost.every(([t]) => !t.two));
+await p.screenshot({ path: OUT + '/median-double.png', clip: { x: 0, y: 0, width: 390, height: 640 } });
+L = await league(3);
+want = doubles(L); got = marked(L);
+ok(`and week 3 the same (${got.filter(Boolean).length} teams)`, L.week === 3 && want.some(Boolean) && want.every((w, i) => w === got[i]), L.cards.map(([a, x]) => `${a.sc}${a.two ? '*' : ''}-${x.sc}${x.two ? '*' : ''}`).join(' '));
 ok('no page errors', errs.length === 0, errs.join(' | '));
 await b.close();

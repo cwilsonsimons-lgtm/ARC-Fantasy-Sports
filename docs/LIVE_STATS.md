@@ -75,7 +75,10 @@ pinned to that afternoon.
   projected league median: the middle of the teams' PROJ (`teamProj`), so
   it moves through the week the same way and shows the pregame figure for a
   finished week. Before a week kicks off only the projected one has a value.
-  `node tools/median-check.mjs`.
+  Once a week is over (every game final), a team that won its game and
+  scored above the league median has a gold double-check by its score (a
+  two-win week where median scoring is played), with a key on the median
+  line. Not shown while the week is played. `node tools/median-check.mjs`.
 - **Rewind**: each touchdown a starter scores or throws lands at its real game
   time and is the only kind of marker on the chart (scorer = the name ESPN's
   play text starts with, passer = "pass from <name>"; names in the bracketed
