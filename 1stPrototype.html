@@ -5314,27 +5314,24 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
     if (_jumpMemo) _jumpMemo.set(name, out);
     return out;
   }
+  // with nothing known of how his game went, his points come in steadily
   function jumpsForRaw(name) {
-    const real = lvJumps(name);
-    if (real) return real;
-    let h = 2166136261;
-    for (let i = 0; i < name.length; i++) {
-      h ^= name.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    const r = () => (h = Math.imul(h ^ h >>> 15, h | 1) >>> 0) / 4294967296;
-    const n = 2 + Math.floor(r() * 3);
-    const at = Array.from({ length: n }, () => 0.08 + r() * 0.86).sort((a, b) => a - b);
-    const w = at.map(() => 0.4 + r());
-    const tot = w.reduce((s, v) => s + v, 0);
-    return at.map((f, i) => ({ at: f, share: w[i] / tot }));
+    return lvJumps(name) || [{ at: 0, to: 0.98, share: 1 }];
   }
   var TOL = 0.5 / GAME_MIN;
+  // How much of a player's total he has at a point in his game: each scoring
+  // play lands whole at its moment, and the rest of his points (a spread,
+  // .to) come in steadily over the part of the game it covers. Steady, not
+  // in lumps: a lump at each quarter break against a projection that runs
+  // down minute by minute drew a sawtooth.
   function accrued(total, name, f) {
     if (f <= 0) return 0;
     if (f >= 1) return total;
     let got = 0;
-    for (const j of jumpsFor(name)) if (f >= j.at - TOL) got += j.share;
+    for (const j of jumpsFor(name)) {
+      if (j.to) got += j.share * Math.min(1, f / j.to);
+      else if (f >= j.at - TOL) got += j.share;
+    }
     return total * got;
   }
   var TD_PTS = 6;
@@ -19142,7 +19139,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   }
   // Real scoring moments for a player, as the Rewind's jumps: each touchdown
   // the player is named in lands at its game time, and the rest of their points
-  // accrue at the quarter breaks. Null when the plays are not loaded.
+  // come in steadily over the game. Null when the plays are not loaded.
   // What one scoring play put in a player's stat line, in the app's stat
   // keys, so the league's own scoring prices the whole play: the touchdown,
   // its yards, the catch, carry or completion, and the per-play distance
@@ -19312,9 +19309,9 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const rest = total - tdPts;
     const out = hits.map((h) => ({ at: h.at, share: total ? h.pts / total : 0, td: true, pts: h.pts, text: h.text, parts: h.parts, kind: h.kind }));
     // the rest of his points (other yards, catches, first downs, and anything
-    // negative such as interceptions) land through the part of the game
-    // played so far, unmarked
-    if (total && Math.abs(rest) > 0.001) [0.25, 0.5, 0.75, 1].forEach((f) => out.push({ at: Math.max(0.01, reach * f - 0.001), share: rest / total / 4 }));
+    // negative such as interceptions) come in steadily through the part of
+    // the game played so far, unmarked (see accrued)
+    if (total && Math.abs(rest) > 0.001) out.push({ at: 0, to: Math.max(0.01, reach), share: rest / total });
     return out.sort((a, b) => a.at - b.at);
   }
   // Opening a finished week loads its scoreboard and scoring plays (once; they

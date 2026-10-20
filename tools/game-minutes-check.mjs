@@ -104,6 +104,29 @@ ok('Sunday night\'s last minute is the chart\'s right edge', Math.abs(c.xLast - 
 ok('the zoom menu does not call Sunday night "now"', !/Now/.test(c.menu), c.menu.slice(0, 80));
 await p.locator('#userRewind').screenshot({ path: OUT + '/game-minutes-monday.png' });
 
+console.log('week 3, finished: no spikes');
+// the line only jumps at a scoring play or a kickoff; a player's other points
+// come in steadily (they used to land in four lumps at the quarter breaks,
+// against a projection running down minute by minute: a sawtooth)
+await p.evaluate(() => { pickWeek(3); if (!rwOpen.userRewind) toggleRewind('userRewind'); });
+await p.waitForTimeout(2500);
+await p.evaluate(() => pickWeek(3));
+await p.waitForTimeout(800);
+const w3 = await p.evaluate(() => {
+  const pts = document.getElementById('userRewind')._rwPts, v = pts.map((q) => q.wf != null ? q.wf : q.win);
+  let quiet = 0, turns = 0;
+  for (let i = 1; i < v.length; i++) {
+    const d = v[i] - v[i - 1];
+    // (the last minute is the final whistle: the result is settled there)
+    if (i < v.length - 1 && pts[i].w === pts[i - 1].w && !pts[i].ev.length && !pts[i].ko && Math.abs(d) >= 2) quiet++;
+    if (i + 1 < v.length && d * (v[i + 1] - v[i]) < 0 && Math.abs(d) > 0.05 && Math.abs(v[i + 1] - v[i]) > 0.05 && !pts[i].ev.length && !pts[i + 1].ev.length) turns++;
+  }
+  return { quiet, turns, n: v.length, plays: pts.filter((q) => q.ev.length).length };
+});
+ok(`no jump without a scoring play or kickoff behind it (${w3.n} minutes, ${w3.plays} scoring plays)`, w3.quiet === 0, JSON.stringify(w3));
+ok('and no sawtooth: between scoring plays the line does not zigzag', w3.turns <= 2, JSON.stringify(w3));
+await p.locator('#userRewind').screenshot({ path: OUT + '/game-minutes-week3.png' });
+
 console.log('Sunday 11:55 PM ET, Sunday night\'s game in overtime');
 done = Date.parse('2026-10-05T00:00:00Z'); going = '2026-10-05T00:20Z';
 c = await chartAt('2026-10-05T03:55:00Z');

@@ -190,7 +190,8 @@ of it has a ball in the air. For a drafted week that is 135 samples across five
 windows instead of 744 across the whole calendar.
 
 The series comes from the lineup rather than being drawn: each player's game has
-a kickoff, their points land in two to four deterministic jumps across it, and
+a kickoff, each scoring play lands whole at its real moment, the rest of their
+points (yards, catches, first downs) come in steadily over the game, and
 the chart has **a point for every minute a game is being played**, and the
 scoring plays land on their own minute. Those points carry the scorer and the
 points gained, which is what the readout shows — a typical week has ~46

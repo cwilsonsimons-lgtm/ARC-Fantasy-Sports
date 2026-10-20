@@ -92,8 +92,11 @@ pinned to that afternoon.
   bubble and the stats sheet show what it was for ("+6 TD · +2.2 yardage ·
   +1 bonus"). A touchdown is not a first down in these stats, and game-total
   bonuses (100 yards and the like) are not tied to one play. The rest of a
-  player's points (and anything negative) accrue, unmarked, through the part
-  of his game played, so every chart still ends on his total. For the
+  player's points (and anything negative) accrue, unmarked and steadily,
+  through the part of his game played, so every chart still ends on his
+  total. (They used to land in four lumps at the quarter breaks; against a
+  projection that runs down minute by minute that drew a sawtooth of
+  spikes, and a last lump right at the end.) For the
   live week the chart ends on the live score and the card's odds: at now
   while a game is on, at the last minute played between games (Monday
   morning it ends Sunday night, not on the clock). Game minutes only, a
