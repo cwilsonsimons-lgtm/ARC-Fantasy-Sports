@@ -107,13 +107,20 @@ await p.locator('#userRewind').screenshot({ path: OUT + '/game-minutes-monday.pn
 console.log('week 3, finished: no spikes');
 // the line only jumps at a scoring play or a kickoff; a player's other points
 // come in steadily (they used to land in four lumps at the quarter breaks,
-// against a projection running down minute by minute: a sawtooth)
+// against a projection running down minute by minute: a sawtooth), and the
+// odds run in straight lines between those moments rather than curling
 await p.evaluate(() => { pickWeek(3); if (!rwOpen.userRewind) toggleRewind('userRewind'); });
 await p.waitForTimeout(2500);
 await p.evaluate(() => pickWeek(3));
 await p.waitForTimeout(800);
 const w3 = await p.evaluate(() => {
   const pts = document.getElementById('userRewind')._rwPts, v = pts.map((q) => q.wf != null ? q.wf : q.win);
+  // the moments a line may bend at: a scoring play or the minute before it, a
+  // kickoff, a game's end, a window's edge
+  const ends = new Set(pts.span.kicks.map((k) => k + 200));
+  const moment = (i) => !!(pts[i].ev.length || pts[i].ko || pts[i + 1] && pts[i + 1].ev.length || ends.has(pts[i].abs) || !i || i === pts.length - 1 || pts[i - 1].w !== pts[i].w || pts[i + 1].w !== pts[i].w);
+  let curls = 0;
+  for (let i = 1; i + 1 < v.length; i++) if (!moment(i) && Math.abs((v[i + 1] - v[i]) - (v[i] - v[i - 1])) > 1e-6) curls++;
   let quiet = 0, turns = 0;
   for (let i = 1; i < v.length; i++) {
     const d = v[i] - v[i - 1];
@@ -121,10 +128,11 @@ const w3 = await p.evaluate(() => {
     if (i < v.length - 1 && pts[i].w === pts[i - 1].w && !pts[i].ev.length && !pts[i].ko && Math.abs(d) >= 2) quiet++;
     if (i + 1 < v.length && d * (v[i + 1] - v[i]) < 0 && Math.abs(d) > 0.05 && Math.abs(v[i + 1] - v[i]) > 0.05 && !pts[i].ev.length && !pts[i + 1].ev.length) turns++;
   }
-  return { quiet, turns, n: v.length, plays: pts.filter((q) => q.ev.length).length };
+  return { quiet, turns, curls, n: v.length, plays: pts.filter((q) => q.ev.length).length };
 });
 ok(`no jump without a scoring play or kickoff behind it (${w3.n} minutes, ${w3.plays} scoring plays)`, w3.quiet === 0, JSON.stringify(w3));
 ok('and no sawtooth: between scoring plays the line does not zigzag', w3.turns <= 2, JSON.stringify(w3));
+ok('straight lines: it only changes course at a kickoff, a scoring play or a game\'s end', w3.curls === 0, JSON.stringify(w3));
 await p.locator('#userRewind').screenshot({ path: OUT + '/game-minutes-week3.png' });
 
 console.log('Sunday 11:55 PM ET, Sunday night\'s game in overtime');

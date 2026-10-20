@@ -5465,6 +5465,49 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       info.who = [...A.map((p) => ({ ...p, side: "a" })), ...X.map((p) => ({ ...p, side: "x" }))].filter((p) => p.kick === t).map((p) => ({ name: p.name, side: p.side }));
       return info;
     };
+    // The odds run in straight lines between the moments that move a
+    // matchup: a kickoff, a scoring play (and the minute before it, so the
+    // play is the jump), a game's end, the edges of a window, and now.
+    // Worked out minute by minute in between they curl (the spread narrows
+    // as the games run down), which reads as noise; they are drawn, and read
+    // at the cursor, along the straight line. The moments are the whole
+    // week's, so a zoomed stretch draws the same line.
+    const anchors = windows.map(([ws, we]) => {
+      const at = /* @__PURE__ */ new Set([ws, we]);
+      const add = (t) => {
+        if (t >= ws && t <= we) at.add(t);
+      };
+      kicks.forEach((o, t) => {
+        add(t);
+        add(t + GAME_MIN);
+      });
+      plays.forEach((e) => {
+        add(e.t);
+        add(e.t - 1);
+      });
+      if (live) add(now);
+      return [...at].sort((p, q) => p - q);
+    });
+    const model = /* @__PURE__ */ new Map();
+    const oddsAt = (t) => {
+      if (!model.has(t)) {
+        const edge = expect(A, t) - expect(X, t), rem = remain(A, t) + remain(X, t);
+        model.set(t, [winProbability(edge, rem), winChance(edge, rem)]);
+      }
+      return model.get(t);
+    };
+    const lineAt = (t, w) => {
+      const an = anchors[w];
+      let lo = 0, hi = an.length - 1;
+      while (lo < hi) {
+        const m = lo + hi >> 1;
+        if (an[m] < t) lo = m + 1;
+        else hi = m;
+      }
+      if (an[lo] === t || !lo) return oddsAt(an[lo]);
+      const t0 = an[lo - 1], v0 = oddsAt(t0)[1], v = v0 + (oddsAt(an[lo])[1] - v0) * (t - t0) / (an[lo] - t0);
+      return [Math.round(v), v];
+    };
     // zoomed: the windows cut to the stretch
     let spans = windows.map(([ws, we], w) => [ws, we, w]);
     if (zoom && zoom.slot != null) {
@@ -5487,10 +5530,9 @@ body.acct-open .nav .nv[data-nav="profile"]{color:var(--accent)}
       });
       [...times].sort((p, q) => p - q).forEach((t) => {
         const ev = plays.filter((e) => e.t === t).map((e) => ({ name: e.name, pts: e.pts, side: e.side, text: e.text, parts: e.parts, kind: e.kind }));
-        const a = sum(A, t), x = sum(X, t);
-        const edge = expect(A, t) - expect(X, t), rem = remain(A, t) + remain(X, t);
+        const a = sum(A, t), x = sum(X, t), [win, wf] = lineAt(t, w);
         // a zoomed stretch ends as the next games kick off; that kickoff is theirs
-        out.push({ abs: t, a: tenth(a), x: tenth(x), win: winProbability(edge, rem), wf: winChance(edge, rem), w, ev, ko: zoom && t === zoom.to ? null : kickoff(t) });
+        out.push({ abs: t, a: tenth(a), x: tenth(x), win, wf, w, ev, ko: zoom && t === zoom.to ? null : kickoff(t) });
       });
     });
     // the live week is drawn up to now, not to the end of Monday night

@@ -96,7 +96,10 @@ pinned to that afternoon.
   through the part of his game played, so every chart still ends on his
   total. (They used to land in four lumps at the quarter breaks; against a
   projection that runs down minute by minute that drew a sawtooth of
-  spikes, and a last lump right at the end.) For the
+  spikes, and a last lump right at the end.) The odds line runs straight
+  between the moments that move a matchup (a kickoff, a scoring play and
+  the minute before it, a game's end, a window's edges, now), and the cursor
+  reads along it; worked out minute by minute in between it curled. For the
   live week the chart ends on the live score and the card's odds: at now
   while a game is on, at the last minute played between games (Monday
   morning it ends Sunday night, not on the clock). Game minutes only, a
