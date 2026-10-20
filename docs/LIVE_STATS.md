@@ -69,6 +69,13 @@ pinned to that afternoon.
   fetched when the week is opened (`lvEnsureWeek`). A week ahead takes its
   odds from the projections (`gameOdds`), as it will when it goes live.
   `node tools/proj-check.mjs` checks Thursday, Sunday, Monday and Tuesday.
+- **League median** (League tab, over the week's games, under the week
+  stepper): the middle of all the teams' scores that week (the average of
+  the two middle ones for an even count), and beside it, smaller, the
+  projected league median: the middle of the teams' PROJ (`teamProj`), so
+  it moves through the week the same way and shows the pregame figure for a
+  finished week. Before a week kicks off only the projected one has a value.
+  `node tools/median-check.mjs`.
 - **Rewind**: each touchdown a starter scores or throws lands at its real game
   time and is the only kind of marker on the chart (scorer = the name ESPN's
   play text starts with, passer = "pass from <name>"; names in the bracketed
