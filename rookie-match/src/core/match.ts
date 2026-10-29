@@ -21,6 +21,8 @@ export interface Candidate {
   weightDiff: number; // prospect − generated (positive = prospect is heavier)
   distance: number;
   used: boolean;
+  /** Used, but an exact match, so it may be picked again. */
+  reusable: boolean;
   related: boolean; // found through the related-position search
 }
 
@@ -28,6 +30,8 @@ export interface MatchOptions {
   heightTol: number;
   weightTol: number;
   includeUsed?: boolean;
+  /** Suggest used prospects that match exactly, even with includeUsed off. */
+  reuseExact?: boolean;
   includeRelated?: boolean;
 }
 
@@ -56,6 +60,8 @@ const TIER_ORDER: Record<Tier, number> = { exact: 0, preferred: 1, fallback: 2 }
 export function compareCandidates(a: Candidate, b: Candidate): number {
   return (
     TIER_ORDER[a.tier] - TIER_ORDER[b.tier] ||
+    // Within a tier, names still free come before ones already used.
+    Number(a.used) - Number(b.used) ||
     a.distance - b.distance ||
     Math.abs(a.heightDiff) - Math.abs(b.heightDiff) ||
     Math.abs(a.weightDiff) - Math.abs(b.weightDiff) ||
@@ -74,6 +80,7 @@ function candidate(p: Prospect, g: GeneratedPlayer, o: MatchOptions, used: boole
     weightDiff,
     distance: r(Math.abs(heightDiff) / o.heightTol + Math.abs(weightDiff) / o.weightTol),
     used,
+    reusable: false,
     related,
   };
 }
@@ -91,10 +98,16 @@ export function findMatches(
   const related: Candidate[] = [];
   for (const p of prospects) {
     const used = usedIds.has(p.id);
-    if (used && !o.includeUsed) continue;
     const listed = positionsOf(p.position);
-    if (listed.includes(g.position)) same.push(candidate(p, g, o, used, false));
-    else if (listed.some((x) => rel.includes(x))) related.push(candidate(p, g, o, used, true));
+    if (listed.includes(g.position)) {
+      const c = candidate(p, g, o, used, false);
+      c.reusable = used && !!o.reuseExact && c.tier === 'exact';
+      if (used && !o.includeUsed && !c.reusable) continue;
+      same.push(c);
+    } else if (listed.some((x) => rel.includes(x))) {
+      if (used && !o.includeUsed) continue;
+      related.push(candidate(p, g, o, used, true));
+    }
   }
   same.sort(compareCandidates);
   related.sort(compareCandidates);

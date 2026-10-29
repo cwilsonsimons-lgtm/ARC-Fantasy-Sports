@@ -146,6 +146,15 @@ and those results appear in their own section.
 
 ## Used-player tracking and workspaces
 
+**Exact matches can reuse a name.** If an already-used prospect matches a new
+generated player exactly (same position, height and weight), they're suggested
+again in the Exact match tier, marked "Used · can reuse", and can be confirmed.
+The review screen says who already has the name. The record is marked "Reused"
+in history. Assigning is only allowed when the match really is exact, and a
+prospect counts as available again only once every use is undone. You can
+switch this off in Settings → Matching. Every other used prospect is still
+excluded and can't be picked twice.
+
 Used status isn't stored on prospects. It comes from the active workspace's
 assignments, so the two can't disagree. The same prospect can't be assigned
 twice in one workspace, and a used prospect can't be deleted until its

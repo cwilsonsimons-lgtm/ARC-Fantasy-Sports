@@ -77,7 +77,7 @@ export function History() {
                   <tr key={a.id}>
                     <td data-label="Date" className="muted nowrap">{formatDate(a.date)}</td>
                     <td data-label="Real-life prospect">
-                      <div className="cell-name">{p?.name ?? a.prospectName}{p?.sample && <span className="badge badge-sample">Sample</span>}</div>
+                      <div className="cell-name">{p?.name ?? a.prospectName}{p?.sample && <span className="badge badge-sample">Sample</span>}{a.reused && <span className="badge badge-reuse" title="Name used again for an exact match">Reused</span>}</div>
                       <div className="cell-notes">{p?.position ?? a.prospectPosition}{(p?.college ?? a.prospectCollege) ? ` · ${p?.college ?? a.prospectCollege}` : ''}{p ? ` · ${formatHeight(p.heightIn)}, ${formatNumber(p.weight)} lb` : ''}</div>
                     </td>
                     <td data-label="Generated player">

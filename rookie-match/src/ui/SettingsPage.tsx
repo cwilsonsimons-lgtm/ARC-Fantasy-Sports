@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { cleanCode, defaultPositionSettings, positionsOf } from '../core/positions';
 import {
-  activeWorkspace, clearAssignments, clearProspects, counts, createWorkspace, deleteWorkspace, renameWorkspace, switchWorkspace, updateSettings,
+  activeWorkspace, clearAssignments, clearProspects, counts, createWorkspace, deleteWorkspace, renameWorkspace, switchWorkspace, updateSettings, reuseExactOn,
   type AppState,
 } from '../core/state';
 import { makeBackup, readBackup } from '../core/storage';
@@ -168,6 +168,10 @@ function Matching() {
         <NumberSetting key={`w${s.weightTol}`} id="set-wtol" label="Weight tolerance" unit="pounds" value={s.weightTol} min={0.5} step={1} onSave={(n) => apply((x) => updateSettings(x, { weightTol: n }))} />
         <NumberSetting key={`r${s.resultLimit}`} id="set-limit" label="Suggestions shown at first" unit="players" value={s.resultLimit} min={1} step={1} onSave={(n) => apply((x) => updateSettings(x, { resultLimit: Math.round(n) }))} />
       </div>
+      <label className="toggle">
+        <input id="set-reuse" type="checkbox" checked={reuseExactOn(s)} onChange={(e) => apply((x) => updateSettings(x, { reuseExact: e.target.checked }))} />
+        Suggest already-used players again when they're an exact match (same position, height and weight)
+      </label>
       <button className="btn btn-small" onClick={() => apply((x) => updateSettings(x, { heightTol: 1, weightTol: 5, resultLimit: 5 }))}>Reset to 1 in / 5 lb / 5 shown</button>
     </div>
   );

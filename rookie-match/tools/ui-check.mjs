@@ -137,7 +137,8 @@ await page.screenshot({ path: `${out}/03-assigned.png` });
 await page.getByRole('button', { name: 'Match Next Rookie →' }).click();
 const focused = await page.waitForFunction(() => document.activeElement?.id === 'gen-pos', null, { timeout: 2000 }).then(() => true, () => false);
 check('Match Next clears fields and focuses position', (await page.inputValue('#gen-height')) === '' && focused);
-await search('WR', `6'3"`, 215);
+// A near (not exact) search: the used player stays out of the suggestions.
+await search('WR', `6'3"`, 217);
 await page.getByRole('button', { name: 'Show all' }).click().catch(() => {});
 // Two prospects share the name Exact Ed; the used one is the one from Alpha.
 check('used prospect gone from suggestions', (await page.locator('.cand', { hasText: 'Alpha' }).count()) === 0 && (await page.locator('.cand', { hasText: 'Other U' }).count()) === 1);
@@ -146,6 +147,27 @@ await page.getByRole('button', { name: 'Show all' }).click().catch(() => {});
 const usedCard = page.locator('.cand', { hasText: 'Alpha' });
 check('used toggle shows it, but disabled', (await usedCard.count()) === 1 && (await usedCard.isDisabled()));
 await page.getByLabel('Show used prospects').uncheck();
+
+// An exact search: the used player is suggested again and can be reused.
+await search('WR', `6'3"`, 215);
+const reuseCard = page.locator('.tier-exact .cand', { hasText: 'Alpha' });
+check('exact match suggested even though used', (await reuseCard.count()) === 1 && !(await reuseCard.isDisabled()) && /can reuse/.test(await reuseCard.innerText()));
+await reuseCard.click();
+check('review warns the name is already in use', /already the name of another rookie/.test(await page.locator('.modal').innerText()));
+await page.fill('#rv-team', 'Lions');
+await page.getByRole('button', { name: 'Confirm assignment' }).click();
+await page.waitForSelector('.success');
+await tab('Assignment History');
+check('history shows the reuse', (await page.locator('.hist-table .badge-reuse').count()) === 1 && (await page.locator('.hist-table tbody tr').count()) === 2);
+await page.getByRole('button', { name: 'Undo Exact Ed' }).first().click(); // newest first: the reuse
+check('undoing the reuse leaves the first use', (await page.locator('.hist-table tbody tr').count()) === 1 && (await counts()).includes('1 used'));
+// Turning the setting off hides it again.
+await tab('Settings & Data');
+await page.uncheck('#set-reuse');
+await search('WR', `6'3"`, 215);
+check('setting off: exact used match hidden', (await page.locator('.cand', { hasText: 'Alpha' }).count()) === 0);
+await tab('Settings & Data');
+await page.check('#set-reuse');
 
 await tab('Assignment History');
 const histText = await page.locator('.hist-table').innerText();

@@ -1,7 +1,7 @@
 // App state and the pure operations on it. A prospect's used/available status is
 // never stored: it is derived from the active workspace's assignments, so the
 // two can't drift apart. Every operation returns a new state.
-import { defaultPositionSettings, type PositionSettings } from './positions';
+import { defaultPositionSettings, positionsOf, type PositionSettings } from './positions';
 
 export interface Prospect {
   id: string;
@@ -32,6 +32,9 @@ export interface Assignment {
   team?: string;
   notes?: string;
   date: string; // ISO timestamp
+  // This prospect's name was already in use and was picked again because the
+  // generated player matched them exactly (same position, height and weight).
+  reused?: true;
 }
 
 export interface Workspace {
@@ -46,6 +49,15 @@ export interface Settings extends PositionSettings {
   heightTol: number;
   weightTol: number;
   resultLimit: number;
+  /** Suggest already-used prospects again when they match exactly. Missing (older saves) means on. */
+  reuseExact?: boolean;
+}
+
+export const reuseExactOn = (s: Settings) => s.reuseExact !== false;
+
+/** Same position, height and weight: the only case where a used name may be picked again. */
+export function isExactFor(p: Prospect, g: GeneratedPlayer): boolean {
+  return positionsOf(p.position).includes(g.position) && p.heightIn === g.heightIn && p.weight === g.weight;
 }
 
 export interface AppState {
@@ -62,7 +74,7 @@ export function uid(prefix: string): string {
 }
 
 export function defaultSettings(): Settings {
-  return { ...defaultPositionSettings(), heightTol: 1, weightTol: 5, resultLimit: 5 };
+  return { ...defaultPositionSettings(), heightTol: 1, weightTol: 5, resultLimit: 5, reuseExact: true };
 }
 
 export function newWorkspace(name: string, prospects: Prospect[] = []): Workspace {
@@ -131,6 +143,8 @@ export interface AssignInput {
   team?: string;
   notes?: string;
   date?: string;
+  /** Allow picking a prospect who is already used, as long as they match exactly. */
+  allowReuse?: boolean;
 }
 
 export function assign(s: AppState, input: AssignInput): { state: AppState; assignment: Assignment } {
@@ -138,7 +152,9 @@ export function assign(s: AppState, input: AssignInput): { state: AppState; assi
   const p = ws.prospects.find((x) => x.id === input.prospectId);
   if (!p) throw new AssignmentError('That prospect is no longer in this workspace.');
   const existing = usedMap(ws).get(p.id);
-  if (existing) throw new AssignmentError(`${p.name} is already assigned in this workspace. Undo that assignment first.`);
+  if (existing && !(input.allowReuse && isExactFor(p, input.generated))) {
+    throw new AssignmentError(`${p.name} is already assigned in this workspace. Undo that assignment first.`);
+  }
   const assignment: Assignment = {
     id: uid('a'),
     prospectId: p.id,
@@ -150,6 +166,7 @@ export function assign(s: AppState, input: AssignInput): { state: AppState; assi
     ...(clean(input.team) ? { team: clean(input.team) } : {}),
     ...(clean(input.notes) ? { notes: clean(input.notes) } : {}),
     date: input.date ?? new Date().toISOString(),
+    ...(existing ? { reused: true as const } : {}),
   };
   return { state: mapActive(s, (w) => ({ ...w, assignments: [...w.assignments, assignment] })), assignment };
 }
@@ -183,9 +200,15 @@ export function removeAssignment(s: AppState, id: string): { state: AppState; re
 /** Puts back an assignment that was just undone (for the undo toast). Fails if the prospect was reassigned meanwhile. */
 export function restoreAssignment(s: AppState, a: Assignment): AppState {
   const ws = activeWorkspace(s);
-  if (!ws.prospects.some((p) => p.id === a.prospectId)) throw new AssignmentError('That prospect has been deleted.');
-  if (usedMap(ws).has(a.prospectId)) throw new AssignmentError(`${a.prospectName} has been assigned again since.`);
-  return mapActive(s, (w) => ({ ...w, assignments: [...w.assignments, a] }));
+  const p = ws.prospects.find((x) => x.id === a.prospectId);
+  if (!p) throw new AssignmentError('That prospect has been deleted.');
+  const others = ws.assignments.filter((x) => x.prospectId === a.prospectId);
+  if (others.length === 0) return mapActive(s, (w) => ({ ...w, assignments: [...w.assignments, a] }));
+  // Assigned again since: putting this one back is a reuse, allowed only for an exact match.
+  if (!isExactFor(p, a.generated)) throw new AssignmentError(`${a.prospectName} has been assigned again since.`);
+  const { reused: _drop, ...rest } = a;
+  const back: Assignment = others.some((x) => !x.reused) ? { ...rest, reused: true } : rest;
+  return mapActive(s, (w) => ({ ...w, assignments: [...w.assignments, back] }));
 }
 
 export function clearAssignments(s: AppState): AppState {
@@ -265,6 +288,8 @@ export function validateState(raw: unknown): string[] {
         continue;
       }
       if (!ids.has(a.prospectId)) errs.push(`${where}: assignment for "${a.prospectName}" points to a missing prospect.`);
+      // A prospect has at most one ordinary assignment; repeats must be marked as reuses.
+      if (a.reused) continue;
       if (assigned.has(a.prospectId)) errs.push(`${where}: "${a.prospectName}" is assigned twice.`);
       assigned.add(a.prospectId);
     }

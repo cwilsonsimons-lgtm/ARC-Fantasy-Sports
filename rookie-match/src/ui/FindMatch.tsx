@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatHeight, formatNumber, parseHeight, parseWeight } from '../core/height';
 import { positionsOf } from '../core/positions';
 import { describeDiff, findMatches, TIER_LABEL, type Candidate, type Tier } from '../core/match';
-import { activeWorkspace, assign, AssignmentError, removeAssignment, restoreAssignment, updateSettings, usedMap, type Assignment, type GeneratedPlayer } from '../core/state';
+import { activeWorkspace, assign, AssignmentError, removeAssignment, restoreAssignment, reuseExactOn, updateSettings, usedMap, type Assignment, type GeneratedPlayer } from '../core/state';
 import { HeightField, Modal, PositionSelect, plural, useStore, useToast } from './common';
 
 export interface FindForm { position: string; height: string; weight: string }
@@ -30,7 +30,7 @@ export function FindMatch({ form, setForm }: { form: FindForm; setForm: (f: Find
   const used = usedMap(ws);
 
   const result = useMemo(
-    () => generated && findMatches(generated, ws.prospects, new Set(used.keys()), { heightTol: settings.heightTol, weightTol: settings.weightTol, includeUsed: showUsed, includeRelated: related }, settings),
+    () => generated && findMatches(generated, ws.prospects, new Set(used.keys()), { heightTol: settings.heightTol, weightTol: settings.weightTol, includeUsed: showUsed, reuseExact: reuseExactOn(settings), includeRelated: related }, settings),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [generated?.position, generated?.heightIn, generated?.weight, ws, settings, showUsed, related],
   );
@@ -41,7 +41,7 @@ export function FindMatch({ form, setForm }: { form: FindForm; setForm: (f: Find
   const change = (patch: Partial<FindForm>) => { setDone(null); setForm({ ...form, ...patch }); };
   const ordered = result ? [...result.exact, ...result.preferred, ...result.fallback] : [];
   const visible = ordered.slice(0, shown);
-  const firstSelectable = ordered.find((c) => !c.used);
+  const firstSelectable = ordered.find((c) => !c.used || c.reusable);
   const openFirst = () => { if (firstSelectable) setReviewing(firstSelectable); };
 
   const [focusTick, setFocusTick] = useState(0);
@@ -199,12 +199,13 @@ export function FindMatch({ form, setForm }: { form: FindForm; setForm: (f: Find
       {reviewing && generated && (
         <ReviewDialog
           c={reviewing}
+          usedBy={used.get(reviewing.prospect.id)}
           generated={generated}
           onClose={() => setReviewing(null)}
           onConfirm={(extra) => {
             try {
               let made: Assignment | undefined;
-              apply((s) => { const r = assign(s, { prospectId: reviewing.prospect.id, generated, ...extra }); made = r.assignment; return r.state; });
+              apply((s) => { const r = assign(s, { prospectId: reviewing.prospect.id, generated, ...extra, allowReuse: reviewing.reusable }); made = r.assignment; return r.state; });
               setReviewing(null);
               setDone(made!);
               return null;
@@ -229,7 +230,7 @@ function CandidateCard({ c, usedBy, onSelect }: { c: Candidate; usedBy?: Assignm
   const p = c.prospect;
   return (
     <li>
-      <button className={`cand ${c.used ? 'cand-used' : ''}`} onClick={onSelect} disabled={c.used} aria-label={`${p.name}, ${TIER_LABEL[c.tier]}${c.used ? ', used' : ''}`}>
+      <button className={`cand ${c.used && !c.reusable ? 'cand-used' : ''}`} onClick={onSelect} disabled={c.used && !c.reusable} aria-label={`${p.name}, ${TIER_LABEL[c.tier]}${c.reusable ? ', already used, can reuse' : c.used ? ', used' : ''}`}>
         <div className="cand-main">
           <div className="cand-name">
             {p.name}
@@ -248,17 +249,17 @@ function CandidateCard({ c, usedBy, onSelect }: { c: Candidate; usedBy?: Assignm
         </div>
         <div className="cand-tags">
           <span className={`badge badge-${c.tier}`}>{TIER_LABEL[c.tier]}</span>
-          <span className={`badge ${c.used ? 'badge-used' : 'badge-avail'}`}>{c.used ? 'Used' : 'Available'}</span>
+          <span className={`badge ${c.reusable ? 'badge-reuse' : c.used ? 'badge-used' : 'badge-avail'}`}>{c.reusable ? 'Used · can reuse' : c.used ? 'Used' : 'Available'}</span>
           <span className="dist" title="distance = |Δheight| ÷ height tolerance + |Δweight| ÷ weight tolerance. Lower is closer.">distance {c.distance.toFixed(2)}</span>
         </div>
-        {c.used && usedBy && <div className="cand-usedby">Assigned to generated {usedBy.generated.position} {formatHeight(usedBy.generated.heightIn)} {usedBy.generated.weight} lb{usedBy.originalName ? ` (${usedBy.originalName})` : ''} — undo that assignment to reuse.</div>}
+        {c.used && usedBy && <div className="cand-usedby">{c.reusable ? 'Already used for' : 'Assigned to'} generated {usedBy.generated.position} {formatHeight(usedBy.generated.heightIn)} {usedBy.generated.weight} lb{usedBy.originalName ? ` (${usedBy.originalName})` : ''}{usedBy.team ? ` · ${usedBy.team}` : ''}. {c.reusable ? 'Exact match, so you can use this name again.' : 'Undo that assignment to reuse.'}</div>}
       </button>
     </li>
   );
 }
 
-function ReviewDialog({ c, generated, onClose, onConfirm }: {
-  c: Candidate; generated: GeneratedPlayer; onClose: () => void;
+function ReviewDialog({ c, usedBy, generated, onClose, onConfirm }: {
+  c: Candidate; usedBy?: Assignment; generated: GeneratedPlayer; onClose: () => void;
   onConfirm: (extra: { originalName?: string; team?: string; notes?: string }) => string | null;
 }) {
   const [originalName, setOriginalName] = useState('');
@@ -297,6 +298,13 @@ function ReviewDialog({ c, generated, onClose, onConfirm }: {
           <span>Compared with the generated player: <b>{describeDiff(c.heightDiff, c.weightDiff)}</b></span>
           <span className="dist">distance {c.distance.toFixed(2)}</span>
         </div>
+        {c.reusable && (
+          <div className="notice notice-warn">
+            <b>{c.prospect.name}</b> is already the name of another rookie in this workspace
+            {usedBy ? ` (generated ${usedBy.generated.position}, ${formatHeight(usedBy.generated.heightIn)}, ${usedBy.generated.weight} lb${usedBy.originalName ? `, originally ${usedBy.originalName}` : ''}${usedBy.team ? `, ${usedBy.team}` : ''})` : ''}.
+            They match this player exactly, so confirming uses the name again.
+          </div>
+        )}
         {c.tier === 'fallback' && <div className="notice notice-warn">This prospect is outside your preferred range.</div>}
         {c.related && <div className="notice notice-warn">This prospect plays a different position ({p.position}) than the generated player ({generated.position}).</div>}
         {p.notes && <p className="muted">Prospect notes: {p.notes}</p>}

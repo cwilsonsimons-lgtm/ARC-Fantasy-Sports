@@ -220,11 +220,58 @@ describe('used-player tracking', () => {
   it('restores an undone assignment unless the prospect was reused', () => {
     let s = stateWith(pool);
     const id = activeWorkspace(s).prospects[0].id;
-    const { state, assignment } = assign(s, { prospectId: id, generated: WR });
+    const NEAR = { position: 'WR', heightIn: 75, weight: 213 }; // close, not exact
+    const { state, assignment } = assign(s, { prospectId: id, generated: NEAR });
     s = removeAssignment(state, assignment.id).state;
-    const reassigned = assign(s, { prospectId: id, generated: WR }).state;
+    const reassigned = assign(s, { prospectId: id, generated: NEAR }).state;
     expect(() => restoreAssignment(reassigned, assignment)).toThrow(AssignmentError);
     expect(usedMap(activeWorkspace(restoreAssignment(s, assignment))).has(id)).toBe(true);
+  });
+
+  it('suggests an already-used prospect again only for an exact match, and lets it be reused', () => {
+    let s = stateWith([...pool, { name: 'Other Guy', position: 'WR', heightIn: 75, weight: 218 }]);
+    const exact = activeWorkspace(s).prospects.find((p) => p.name === 'Exact Guy')!;
+    const close = activeWorkspace(s).prospects.find((p) => p.name === 'Close Guy')!;
+    s = assign(s, { prospectId: exact.id, generated: WR }).state;
+    s = assign(s, { prospectId: close.id, generated: { position: 'WR', heightIn: 76, weight: 215 } }).state;
+    const ws = () => activeWorkspace(s);
+    const usedIds = () => new Set(usedMap(ws()).keys());
+
+    // Exact match comes back, marked reusable; the used near-miss stays hidden.
+    const r = findMatches(WR, ws().prospects, usedIds(), { ...opts, reuseExact: true }, pos);
+    expect(r.exact.map((c) => [c.prospect.name, c.used, c.reusable])).toEqual([['Exact Guy', true, true]]);
+    expect([...r.preferred, ...r.fallback].map((c) => c.prospect.name)).toEqual(['Other Guy']);
+    // Off: the old behaviour.
+    expect(findMatches(WR, ws().prospects, usedIds(), { ...opts, reuseExact: false }, pos).exact).toHaveLength(0);
+
+    // Reusing needs an exact match; the record is marked reused.
+    expect(() => assign(s, { prospectId: exact.id, generated: { position: 'WR', heightIn: 75, weight: 214 }, allowReuse: true })).toThrow(AssignmentError);
+    const again = assign(s, { prospectId: exact.id, generated: WR, allowReuse: true, team: 'Bears' });
+    expect(again.assignment.reused).toBe(true);
+    s = again.state;
+    expect(ws().assignments.filter((a) => a.prospectId === exact.id)).toHaveLength(2);
+    expect(counts(ws()).used).toBe(2); // counts players, not assignments
+
+    // Undoing one use keeps the name used; undoing both frees it.
+    const [first, second] = ws().assignments.filter((a) => a.prospectId === exact.id);
+    s = removeAssignment(s, first.id).state;
+    expect(usedMap(ws()).has(exact.id)).toBe(true);
+    s = removeAssignment(s, second.id).state;
+    expect(usedMap(ws()).has(exact.id)).toBe(false);
+
+    // Reuses survive backup and restore; an unmarked duplicate still doesn't.
+    s = assign(s, { prospectId: exact.id, generated: WR }).state;
+    s = assign(s, { prospectId: exact.id, generated: WR, allowReuse: true }).state;
+    expect(readBackup(makeBackup(s)).ok).toBe(true);
+  });
+
+  it('puts back an undone exact match as a reuse', () => {
+    let s = stateWith(pool);
+    const id = activeWorkspace(s).prospects[0].id;
+    const { state, assignment } = assign(s, { prospectId: id, generated: WR });
+    s = assign(removeAssignment(state, assignment.id).state, { prospectId: id, generated: WR }).state;
+    const back = activeWorkspace(restoreAssignment(s, assignment)).assignments;
+    expect(back.map((a) => !!a.reused)).toEqual([false, true]);
   });
 
   it('blocks deleting a used prospect', () => {
