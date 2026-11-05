@@ -52,6 +52,18 @@ pinned to that afternoon.
   projections are fetched again every hour so the report stays current
   through the week and on game day. Practice participation is not filled in
   by Sleeper. `node tools/injury-check.mjs` runs it on Sleeper's real report.
+- **QB kneels**: a scoring rule (Rushing, Kneel-downs, `qbKneel`, points per
+  kneel, 0 by default) so a commissioner can make up for, or reward, the
+  yard or two a quarterback loses taking a knee. Sleeper's stats do not
+  count kneels; ESPN's play-by-play writes them as runs ("K.Murray kneels to
+  IND 42 for -1 yards.") on the drives of the summary the app already
+  fetches, so they are read there into `LIVE.kneels` (week, team, cached
+  with the plays) and matched to the team's quarterback by first initial
+  and surname (`lvKneels`). The count joins his stat line (`lvLine`), so
+  the stats sheet itemizes it; in an imported league, which takes Sleeper's
+  points, it is added on top of his and his team's (`lvKneelPts`,
+  `seededScore`). `node tools/kneel-check.mjs` runs it on real kneel plays
+  (fixtures/live/kneels.json, 37 from weeks 7-8).
 - **Win %**: remaining projection is scaled by how much of each game is left
   (ESPN period and clock). `winProbability` spreads the outcome by
   2.2 x the square root of the points still projected, measured on real

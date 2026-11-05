@@ -10970,6 +10970,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       { lb: "First Downs", rules: [{ k: "rushFD", lb: "Rushing First Down", help: "A carry that moves the chains." }] },
       { lb: "Conversions", rules: [{ k: "rush2pt", lb: "2 Point Conversion", help: "A successful two-point conversion run." }] },
       { lb: "Attempts", rules: [{ k: "rushAtt", lb: "Rush Attempts", help: "Every carry, regardless of result. Rewards volume." }] },
+      { lb: "Kneel-downs", rules: [{ k: "qbKneel", lb: "QB Kneel", help: "Each time the quarterback takes a knee to run out the clock. A kneel counts as a carry for a yard or two lost, so it costs him rushing yards (-0.1 a yard at 1 point per 10 yards); 0.1 per kneel makes most of them even, more makes them worth something. From ESPN's play-by-play, added on top of Sleeper's points in an imported league." }] },
       { lb: "Bonuses", rules: [
         { k: "rush40", lb: "40+ Yard Rush Bonus", help: "Once per carry of 40 yards or more." },
         { k: "rushTD40", lb: "40+ Yard Rush TD Bonus", help: "Once per rushing touchdown of 40 yards or more." },
@@ -12910,7 +12911,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (ov != null) return ov;
     if (week > LIVE_WEEK) return 0;
     const sl = slTeamPoints(key, week);
-    if (sl != null) return sl;
+    // Sleeper's team total, and the starters' kneels under the league's rule
+    if (sl != null) return +scoringBag().qbKneel ? Math.round((sl + weekStarters(key, week).reduce((n, p) => n + (counts(p, week) ? lvKneelPts(p, week) : 0), 0)) * 100) / 100 : sl;
     // what the team's current starters scored that week (leagues drafted
     // mid-season show what today's lineup would have put up)
     let t = 0;
@@ -18821,6 +18823,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     cur: {},     // gsisId -> [team he is with now, when Sleeper said so]
     sid: {},     // Sleeper player id -> gsisId, once matched
     inj: {},     // gsisId and "sl:" + Sleeper id -> [status, body part, notes, news time]
+    kneels: {},  // week -> { team: [{ n: "k murray", yd, q, clk }] } (ESPN play-by-play)
     error: null,
     at: 0
   };
@@ -18934,6 +18937,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         LIVE.loaded["stats:" + w] = 1;
       });
       Object.keys(c.plays || {}).forEach((w) => LIVE.plays[w] = c.plays[w]);
+      Object.keys(c.kneels || {}).forEach((w) => LIVE.kneels[w] = c.kneels[w]);
       Object.keys(c.games || {}).forEach((w) => LIVE.games[w] = c.games[w]);
       Object.keys(c.tms || {}).forEach((w) => LIVE.tms[w] = c.tms[w]);
       Object.keys(c.cur || {}).forEach((id) => {
@@ -18960,7 +18964,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     Object.keys(LIVE.playSig || {}).forEach((k) => {
       if (done.indexOf(k.split(":")[0]) > -1) sig[k] = LIVE.playSig[k];
     });
-    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sid: LIVE.sid, inj: LIVE.inj, sig };
+    const c = { season: LV_SEASON, stats: pick(LIVE.stats), plays: pick(LIVE.plays), kneels: pick(LIVE.kneels), games: pick(LIVE.games), tms: pick(LIVE.tms), cur: LIVE.cur, sid: LIVE.sid, inj: LIVE.inj, sig };
     try {
       localStorage.setItem(LV_CACHE, JSON.stringify(c));
     } catch (e) {
@@ -19106,7 +19110,8 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
   function lvPlaysFresh(w, tm) {
     const g = (LIVE.games[w] || {})[tm];
     if (!g || g.state === "pre") return true;
-    return !!((LIVE.plays[w] || {})[tm] && (LIVE.playSig || {})[w + ":" + g.id] === lvPlayKey(g));
+    // (and its kneel-downs: a game saved before they were read is read again)
+    return !!((LIVE.plays[w] || {})[tm] && ((LIVE.kneels || {})[w] || {})[tm] && (LIVE.playSig || {})[w + ":" + g.id] === lvPlayKey(g));
   }
   // Scoring plays for the games the two sides of my matchup play in.
   async function lvFetchPlays(w, teams) {
@@ -19129,6 +19134,17 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
         });
         const teamsIn = Object.keys(games).filter((tm) => games[tm].id === id);
         teamsIn.forEach((tm) => bag[tm] = plays);
+        // kneel-downs: ESPN writes them as runs, "K.Murray kneels to IND 42
+        // for -1 yards.", on the drive of the team that has the ball
+        const kn = LIVE.kneels[w] = LIVE.kneels[w] || {};
+        teamsIn.forEach((tm) => kn[tm] = []);
+        ((s.drives || {}).previous || []).forEach((d) => (d.plays || []).forEach((pl) => {
+          const m = String(pl.text || "").match(/^\s*(?:\([^)]*\)\s*)?([A-Z][\w'’-]*\.\s?[^ ].*?) kneels\b/);
+          const tm = d.team && lvTeam(d.team.abbreviation);
+          if (!m || !kn[tm]) return;
+          const per = pl.period && pl.period.number || 0;
+          kn[tm].push({ n: lvNorm(m[1].replace(".", " ")), yd: +pl.statYardage || 0, q: per, clk: pl.clock && pl.clock.displayValue || "" });
+        }));
         if (teamsIn[0]) sig[w + ":" + id] = lvPlayKey(games[teamsIn[0]]);
       } catch (e) {
       }
@@ -19145,7 +19161,27 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     w = +(w || S.week);
     const bag = LIVE.stats[w], id = lvId(p);
     if (!bag || !id) return null;
-    return bag[id] || {};
+    // Sleeper's stats do not count kneel-downs; the play-by-play does
+    const k = lvKneels(p, w), line = bag[id] || {};
+    return k ? Object.assign({}, line, { qbKneel: k }) : line;
+  }
+  // How many times a quarterback took a knee in a week's game: ESPN names
+  // him by first initial and surname ("K.Murray").
+  function lvKneels(p, w) {
+    w = +(w || S.week);
+    const id = lvId(p), rec = NFL_BY_ID[id] || {};
+    if ((p && p.pos || rec.pos) !== "QB") return 0;
+    const list = ((LIVE.kneels || {})[w] || {})[lvTeamOf(id, w) || p && p.tm || rec.tm];
+    const parts = lvNorm(rec.full || p && (p.full || p.n) || "").split(" ");
+    if (!list || !list.length || parts.length < 2) return 0;
+    const me = parts[0].charAt(0) + " " + parts.slice(1).join(" ");
+    return list.filter((k) => k.n === me).length;
+  }
+  // What his kneels are worth under this league's QB Kneel rule. Sleeper has
+  // no such rule, so in an imported league it goes on top of Sleeper's points.
+  function lvKneelPts(p, w) {
+    const v = +scoringBag().qbKneel || 0;
+    return v ? lvKneels(p, w) * v : 0;
   }
   // Fantasy points for a player in a week under this league's scoring: null
   // while that week's stats have not arrived, 0 if the player has no line.
@@ -19153,7 +19189,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     w = +(w || S.week);
     if (w > LIVE_WEEK) return null;
     const sp = slPoints(p, w);
-    if (sp != null) return sp;
+    if (sp != null) return Math.round((sp + lvKneelPts(p, w)) * 100) / 100;
     const line = lvLine(p, w);
     if (!line) return null;
     const id = lvId(p), rec = NFL_BY_ID[id] || {};

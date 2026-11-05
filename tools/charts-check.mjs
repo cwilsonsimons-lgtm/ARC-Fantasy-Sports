@@ -11,7 +11,7 @@ import { chromium } from 'playwright';
 const url = process.argv[2] || 'file://' + process.cwd() + '/dist/index.html';
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ||
-    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    '/opt/pw-browsers/chromium',
 });
 const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
 const errs = [];

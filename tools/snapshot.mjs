@@ -64,7 +64,7 @@ const capture = `(()=>{
 // The environment ships a pinned Chromium; use it rather than downloading one.
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ||
-    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    '/opt/pw-browsers/chromium',
 });
 const page = await browser.newPage({ viewport: { width: 500, height: 1000 } });
 

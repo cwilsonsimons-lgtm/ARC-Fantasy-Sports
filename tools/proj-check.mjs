@@ -11,7 +11,7 @@ import fs from 'fs';
 const R = new URL('./fixtures/', import.meta.url).pathname;
 const OUT = process.argv[2] || '.';
 const URL_ = 'file://' + new URL('../1stPrototype.html', import.meta.url).pathname;
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
 const p = await ctx.newPage();
 const errs = [];

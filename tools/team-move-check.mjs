@@ -28,7 +28,7 @@ const moved = (name, rows) => rows.filter((r) => !(r.player_id === NICO && name 
   if (faMoved.includes(r.player_id)) return { ...r, team: name === 'stats_3' ? r.team : FA_TO, player: { ...r.player, team: FA_TO } };
   return r;
 });
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
 const p = await ctx.newPage();
 const errs = [];

@@ -93,7 +93,7 @@ async function compare(page, a, b) {
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ||
-    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    '/opt/pw-browsers/chromium',
 });
 const a = await shot(browser, urlA);
 const b = await shot(browser, urlB);

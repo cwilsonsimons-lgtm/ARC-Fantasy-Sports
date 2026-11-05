@@ -2,7 +2,7 @@
 // commissioner writes, and only the commissioner sees the extra tab.
 import { chromium } from 'playwright';
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const p = await b.newPage({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 });
 const errs = [];
 p.on('pageerror', e => errs.push(String(e)));
