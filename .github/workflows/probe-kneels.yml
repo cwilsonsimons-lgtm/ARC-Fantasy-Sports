@@ -1,0 +1,56 @@
+# One-off: what a quarterback's kneel-down looks like in ESPN's game summary
+# (the dev container cannot reach ESPN). Commits a trimmed sample to
+# tools/fixtures/live/ on this branch; removed once the app is built on it.
+name: Probe kneels
+on:
+  push:
+    branches: [claude/gifted-meitner-r7wwin]
+    paths: [.github/workflows/probe-kneels.yml]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch
+        run: |
+          mkdir -p tools/fixtures/live docs/probe && cd tools/fixtures/live
+          C='curl -sS --compressed -m 90'
+          for w in 7 8; do $C "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=$w&seasontype=2" -o board_$w.raw; done
+          python3 - <<'PY'
+          import json, subprocess, collections
+          out, kneels, types, sample = [], [], collections.Counter(), None
+          for w in (7, 8):
+              b = json.load(open(f'board_{w}.raw'))
+              for e in b.get('events', []):
+                  if e['status']['type']['state'] != 'post': continue
+                  subprocess.run(['bash', '-c', f"curl -sS --compressed -m 60 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={e['id']}' -o s.raw"])
+                  try: s = json.load(open('s.raw'))
+                  except Exception: continue
+                  if sample is None:
+                      sample = {'keys': list(s.keys()), 'drives': list((s.get('drives') or {}).keys())}
+                      d = ((s.get('drives') or {}).get('previous') or [{}])[0]
+                      sample['drive_keys'] = list(d.keys())
+                      sample['play'] = (d.get('plays') or [{}])[0]
+                  for d in (s.get('drives') or {}).get('previous') or []:
+                      for pl in d.get('plays') or []:
+                          t = pl.get('type') or {}
+                          types[(t.get('id'), t.get('text'), t.get('abbreviation'))] += 1
+                          if 'kneel' in (pl.get('text') or '').lower() or 'kneel' in (t.get('text') or '').lower():
+                              kneels.append({'week': w, 'event': e['id'], 'team': (d.get('team') or {}).get('abbreviation'),
+                                             'type': t, 'text': pl.get('text'), 'statYardage': pl.get('statYardage'),
+                                             'period': (pl.get('period') or {}).get('number'), 'clock': (pl.get('clock') or {}).get('displayValue'),
+                                             'participants': pl.get('participants'), 'keys': sorted(pl.keys())})
+          json.dump(kneels, open('kneels.json', 'w'), indent=1)
+          out.append(f'kneels found: {len(kneels)}')
+          out.append('play types: ' + json.dumps({f'{k[0]}|{k[1]}|{k[2]}': v for k, v in types.most_common()}))
+          out.append('sample: ' + json.dumps(sample)[:3000])
+          open('../../../docs/probe/kneels.txt', 'w').write('\n'.join(out) + '\n')
+          print('\n'.join(out)[:5000])
+          PY
+          rm -f *.raw
+      - name: Commit
+        run: |
+          git config user.name "probe-bot"; git config user.email "probe-bot@users.noreply.github.com"
+          git add docs/probe tools/fixtures && git commit -m "Kneel-down samples from ESPN" && git push || echo nothing
