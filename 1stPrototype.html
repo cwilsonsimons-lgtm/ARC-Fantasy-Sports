@@ -906,11 +906,17 @@ input.set-ctl::-webkit-outer-spin-button,input.set-ctl::-webkit-inner-spin-butto
   letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3)}
 .pw-tot{font-size:15px;color:var(--ink);letter-spacing:.4px}
 .pw-tot i{font-style:normal;font-size:9px;color:var(--ink-3);letter-spacing:1px}
-.pw-key{display:grid;grid-template-columns:1fr 62px 58px;gap:8px;padding:0 15px 6px;
+.pw-key{display:grid;grid-template-columns:1fr 62px 58px 8px;gap:8px;padding:0 15px 6px;
   font-size:8.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-3)}
 .pw-key span:not(:first-child){text-align:right}
-.pw-row{display:grid;grid-template-columns:1fr 62px 58px;gap:8px;align-items:center;
+.pw-row{display:grid;grid-template-columns:1fr 62px 58px 8px;gap:8px;align-items:center;
   padding:8px 15px;border-top:1px solid var(--line-soft)}
+.pw-row.tap{cursor:pointer}
+.pw-row.tap:active{background:rgba(255,255,255,.05)}
+.pw-go{color:var(--ink-3);font-size:14px;line-height:1;text-align:right}
+.pc-stat.tap{cursor:pointer}
+.pc-stat.tap:active{background:var(--card)}
+.pc-stat.tap .l::after{content:" \203A";font-size:11px}
 .pw-w{font-size:12px;font-weight:600;color:var(--ink-2)}
 .pw-f{text-align:right;font-size:11px;font-weight:700;color:var(--accent)}
 .pw-f .bye{color:var(--ink-3);font-weight:600}
@@ -12703,12 +12709,13 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (S.games[i].me) openMyMatchup();
     else openDetail(i);
   }
-  // players whose points are on screen, by key, for the stats sheet
+  // players whose points are on screen, by key, for the stats sheet (of the
+  // week on screen, or of week w: a player card's weeks)
   var STAT_REF = {};
-  function statTap(p) {
+  function statTap(p, w) {
     const k = pKeyOf(p);
     STAT_REF[k] = p;
-    return ` onclick="event.stopPropagation();openStatSheet('${esc(k)}')"`;
+    return ` onclick="event.stopPropagation();openStatSheet('${esc(k)}'${w ? ", " + w : ""})"`;
   }
   function scoreCell(p, phased) {
     if (!p) return `<div class="st-pts">\u2014</div>`;
@@ -12741,17 +12748,20 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     if (!groups.length) return "";
     return `<div class="ss-sec">Box score</div>` + groups.map((g) => `<div class="ss-box"><div class="ss-bl">${g.lb}</div><div class="ss-cells">${g.cells.map(([lb, k]) => `<div class="ss-cell"><b>${Array.isArray(k) ? k.map((x) => ssNum(n(x))).join("/") : ssNum(n(k))}</b><span>${lb}</span></div>`).join("")}</div></div>`).join("");
   }
-  function openStatSheet(key) {
+  function openStatSheet(key, week) {
     const p = STAT_REF[key];
     if (!p) return;
-    const w = S.week, played = lvPlayed(p, w), id = lvId(p), off = !counts(p, w);
+    // the week on screen, or another (a player card's week): a player's own
+    // projection and game are hydrated for the week on screen only
+    const w = +week || S.week, here = w === S.week, tm = wkTeam(p, w), bye = byeFor(tm) === w;
+    const played = lvPlayed(p, w), id = lvId(p), off = !counts(p, w), proj = here ? +p.proj || 0 : wkProj(p, w);
     const line = played ? lvLine(p, w) : LIVE.proj[w] && LIVE.proj[w][id] || null;
-    const total = played ? pLive(p.proj, p.n, p) : +p.proj || 0;
-    const gi = played ? lvGameInfo(wkTeam(p, w), w) : null;
-    const when = played ? gi ? gi.label + (gi.score ? " \xB7 " + gi.score : "") : "Week " + w : p.g || (p.bye === w ? "Bye" : "");
+    const total = played ? pLive(proj, p.n, p, w) : bye ? 0 : proj;
+    const gi = played ? lvGameInfo(tm, w) : null;
+    const when = played ? gi ? gi.label + (gi.score ? " \xB7 " + gi.score : "") : "Week " + w : bye ? "Bye" : here ? p.g : gameLabel(tm, w);
     let h = `<div class="ss-top">
-      <div class="ss-who"><div class="ss-n">${plink(p, escHtml(p.n))}</div><div class="ss-m">${p.pos} \xB7 ${wkTeam(p, w)}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
-      <div class="ss-tot"><b>${total.toFixed(2)}</b><span>${played ? `Week ${w} \xB7 proj ${(+p.proj || 0).toFixed(1)}` : `Projected \xB7 week ${w}`}</span></div>
+      <div class="ss-who"><div class="ss-n">${plink(p, escHtml(p.n))}</div><div class="ss-m">${p.pos} \xB7 ${tm}</div>${when ? `<div class="ss-g">${gi && gi.state === "in" ? '<span class="pulse"></span>' : ""}${escHtml(when)}</div>` : ""}</div>
+      <div class="ss-tot"><b>${total.toFixed(2)}</b><span>${played ? `Week ${w} \xB7 proj ${proj.toFixed(1)}` : `Projected \xB7 week ${w}`}</span></div>
     </div>`;
     const sc = line ? scoreStats(line, { pos: p.pos }) : { total: 0, lines: [] };
     if (line && SKILL_POS[p.pos]) h += boxScoreHTML(line, p.pos);
@@ -12762,12 +12772,12 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
     const diff = Math.round((total - sc.total) * 100) / 100;
     if (played && !off && Math.abs(diff) >= 0.015) rows.push(`<div class="ss-row other"><span class="l">${sc.lines.length ? "Other scoring" : "Points"} <i>per Sleeper</i></span><span class="c"></span><span class="v">${diff > 0 && sc.lines.length ? "+" : ""}${diff.toFixed(2)}</span></div>`);
     if (off) rows.push(`<div class="ss-none">${w < (leagueStart() || {}).week ? "This was before the league was created, so it doesn't count here." : "His game kicked off before the league was created, so it doesn't count here."}</div>`);
-    if (!rows.length) rows.push(`<div class="ss-none">${played ? gi && gi.state === "in" ? "No points yet." : "No points this week." : "No projection for this week yet."}</div>`);
+    if (!rows.length) rows.push(`<div class="ss-none">${bye ? "Bye week: no game." : played ? gi && gi.state === "in" ? "No points yet." : "No points this week." : total ? "Sleeper has not projected this week yet; this is an estimate from his season." : "No projection for this week yet."}</div>`);
     h += rows.join("") + `<div class="ss-row tot"><span class="l">Total</span><span class="c"></span><span class="v">${total.toFixed(2)}</span></div>`;
     const tds = played ? lvTdPlays(p, w) : [];
     if (tds.length) h += `<div class="ss-sec">${tds.some((t) => t.kind === "2pt") ? "Scoring plays" : "Touchdowns"}</div>` + tds.map((t) => `<div class="ss-td${t.kind === "2pt" ? " two" : ""}"><span class="q">${t.q ? (t.q > 4 ? "OT" : "Q" + t.q) + (t.clk ? " " + t.clk : "") : "Q" + Math.min(4, Math.max(1, Math.ceil(t.min / 15)))}</span><span class="t">${escHtml(t.text)}${t.parts.length > 1 ? `<i>${escHtml(lvPartsText(t.parts))}</i>` : ""}</span><span class="v">${t.pts ? (t.pts > 0 ? "+" : "") + (+t.pts.toFixed(2)) : ""}</span></div>`).join("");
     if (played && SKILL_POS[p.pos] && gi && gi.state === "in") h += `<div class="ss-note">Live \xB7 updates about every minute</div>`;
-    document.getElementById("statTitle").textContent = played ? "Week " + w + " stats" : "Week " + w + " projection";
+    document.getElementById("statTitle").textContent = "Week " + w + (played ? " stats" : bye ? " \xB7 Bye" : " projection");
     document.getElementById("statBody").innerHTML = h;
     document.getElementById("statScrim").classList.add("show");
     const sh = document.getElementById("statSheet");
@@ -14537,7 +14547,7 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       <div class="pc-strip"><span>CARD <b>#${cardNo}</b> / 500</span><span>CITY BOYS DYNASTY \xB7 <b>'25</b></span></div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="v" style="color:${ac}">${(p.proj || 0).toFixed(1)}</div><div class="l">Proj</div></div>
-        <div class="pc-stat"><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
+        <div class="pc-stat tap"${statTap(p)}><div class="v">${live.toFixed(1)}</div><div class="l">FPTS</div></div>
         <div class="pc-stat"><div class="v">${p.pos || "\u2014"}${posRankNo(name, p.pos)}</div><div class="l">Pos Rank</div></div>
         <div class="pc-stat"><div class="v">${ageFor(p) == null ? "\u2014" : ageFor(p)}</div><div class="l">Age</div></div>
         <div class="pc-stat"><div class="v">${rostPct(name)}%</div><div class="l">Rostered</div></div>
@@ -14596,17 +14606,18 @@ Devlin Hodges|QB|PIT|8|51.3|51.3|`
       const played = pts != null;
       const fin = played && !bye ? weekFinish(p, w) : null;
       const val = played ? pts.toFixed(1) : wkProj(p, w).toFixed(1);
-      rows.push(`<div class="pw-row${played ? "" : " up"}">
+      // a week opens its points breakdown (its projection, ahead of it)
+      rows.push(`<div class="pw-row tap${played ? "" : " up"}"${statTap(p, w)}>
       <span class="pw-w">Week ${w}</span>
       <span class="pw-f">${bye ? '<span class="bye">BYE</span>' : fin ? escHtml(fin) : ""}</span>
-      <span class="pw-p">${val}</span>
+      <span class="pw-p">${val}</span><span class="pw-go">\u203A</span>
     </div>`);
     }
     const total = seasonPts(p);
     return `<div class="pw">
     <div class="pw-hd"><span>By week</span>
       <span class="pw-tot">${total == null ? "\u2014" : total.toFixed(1)} <i>season</i></span></div>
-    <div class="pw-key"><span>Week</span><span>Finish</span><span>Pts</span></div>
+    <div class="pw-key"><span>Week</span><span>Finish</span><span>Pts</span><span></span></div>
     ${rows.join("")}
     <div class="pw-note">Weeks that have not kicked off show this week's projection.</div>
   </div>`;

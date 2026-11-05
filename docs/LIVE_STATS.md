@@ -52,6 +52,12 @@ pinned to that afternoon.
   projections are fetched again every hour so the report stays current
   through the week and on game day. Practice participation is not filled in
   by Sleeper. `node tools/injury-check.mjs` runs it on Sleeper's real report.
+- **Player card points open their breakdown**: FPTS (the week on screen)
+  and every week of the By week list open the stats sheet for that week
+  (`openStatSheet(key, week)`, `statTap(p, w)`): a played week's box score
+  and points line by line, an upcoming week's projection itemized (or, for
+  a week Sleeper has not projected yet, the estimate shown, said so), a
+  bye. Its total is the number tapped. `node tools/breakdown-check.mjs`.
 - **QB kneels**: a scoring rule (Rushing, Kneel-downs, `qbKneel`, points per
   kneel, 0 by default) so a commissioner can make up for, or reward, the
   yard or two a quarterback loses taking a knee. Sleeper's stats do not
