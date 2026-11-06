@@ -255,8 +255,16 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 /* people following along: same page, no controls */
 body.viewer #setupPanel,body.viewer #drawBtn,body.viewer #undoBtn,body.viewer #setupToggle,body.viewer #resetNums,
 body.viewer .tx,body.viewer #editor,body.viewer #undoElim,body.viewer .frow .ebtn,body.viewer .fhint{display:none!important}
-body.viewer .tmain{pointer-events:none;cursor:default}
-body.viewer .tile .nm.empty{visibility:hidden}
+body.previewing #setupPanel,body.previewing #drawBtn,body.previewing #undoBtn,body.previewing #setupToggle,body.previewing #resetNums,
+body.previewing .tx,body.previewing #editor,body.previewing #undoElim,body.previewing .frow .ebtn,body.previewing .fhint{display:none!important}
+body.viewer .tmain,body.previewing .tmain{pointer-events:none;cursor:default}
+body.viewer .tile .nm.empty,body.previewing .tile .nm.empty{visibility:hidden}
+.previewon{align-self:flex-start;padding:7px 12px;font-size:12px}
+.previewbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:10px 14px;border-radius:14px;background:var(--gold);color:var(--gold-ink);font-size:14px;margin-top:6px}
+.previewbar b{font-family:var(--display);letter-spacing:.12em;text-transform:uppercase;margin-right:6px}
+.previewbar .btn{flex:none;padding:8px 14px;font-size:13px;background:var(--gold-ink);color:var(--gold)}
+body.viewer .previewon,body.previewing .previewon{display:none!important}
 body.connecting .wrap>section,body.connecting .wrap>.grid,body.connecting .wrap>.cagebar,
 body.waiting .wrap>section,body.waiting .wrap>.grid,body.waiting .wrap>.cagebar{display:none!important}
 @media (prefers-reduced-motion:reduce){.livebar .dot{animation:none}}
@@ -301,6 +309,9 @@ input:disabled{opacity:.55}
     <div class="eyebrow">City Boys Dynasty · Draft lottery</div>
     <h1>Royal Rumble <em>Lottery</em></h1>
     <div class="livebar" id="liveBar" hidden><span class="dot"></span><span id="liveText"></span></div>
+    <div class="previewbar" id="previewBar" hidden><span><b>Preview</b> This is the page as league members see it. Nothing changes while you look.</span>
+      <button class="btn primary" id="previewOff" type="button">Back to my controls</button></div>
+    <button class="btn ghost previewon" id="previewOn" type="button">Preview their view</button>
     <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
   <div class="notice" id="liveNotice" hidden></div>
@@ -439,6 +450,8 @@ function defaults(){
 }
 let mode = 'local';   // 'local' (this browser), 'host' (owner, live) or 'viewer' (following live)
 let pend = false;     // following live: a ball is out but not revealed yet
+let previewing = false;   // the owner is looking at the page as league members see it
+const asViewer = () => mode === 'viewer' || previewing;
 let S = load();
 let showCage = false, showSetup = false;
 // per view: bring the cage or setup back after every number is drawn
@@ -753,7 +766,7 @@ function showReveal(num, slot, pop){
     el.classList.add('sealed');
     el.innerHTML = `<span class="big">#${num}</span>
       <div class="who"><span class="team">Ball is out</span>
-      <span class="sub">${mode === 'viewer' ? 'Waiting for the reveal…' : 'Tap <b>Reveal</b> to show everyone who it is.'}</span></div>`;
+      <span class="sub">${asViewer() ? 'Waiting for the reveal…' : 'Tap <b>Reveal</b> to show everyone who it is.'}</span></div>`;
     return;
   }
   const t = team(slot);
@@ -880,7 +893,7 @@ function renderAll(opt = {}){
     $('resultBox').innerHTML = `<div class="result"><span class="k">${st.winner ? `Rumble winner: ${esc(label(st.winner))}` : 'Last team standing'}</span>
       <span class="v">${esc(t.n)} gets the 1st pick</span><span>Full draft order is below.</span></div>`;
   }else if(tracking()){
-    $('resultBox').innerHTML = mode === 'viewer'
+    $('resultBox').innerHTML = asViewer()
       ? `<p class="hint">Every number is out. Entrants' names and eliminations show up here as the Rumble goes, and the draft order below fills in as teams go out.</p>`
       : `<p class="hint">Every number is out. <b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. The draft order below fills in as teams go out.</p>`;
   }else{
@@ -940,16 +953,26 @@ function renderAll(opt = {}){
 
 /* ---------------- events ---------------- */
 $('drawBtn').addEventListener('click', () => S.sealed ? reveal() : spin());
+// Preview: show the owner the follower's page, controls hidden, until they switch back.
+function setPreview(on){
+  previewing = on; sel = null; clearFind();
+  document.body.classList.toggle('previewing', on);
+  $('previewBar').hidden = !on;
+  renderAll();
+  if(on) scrollTo({top:0, behavior:'smooth'});
+}
+$('previewOn').addEventListener('click', () => setPreview(true));
+$('previewOff').addEventListener('click', () => setPreview(false));
 // Board as tracker: tap a number to name its entrant (Enter moves to the next), × marks the elimination.
 function toggleElim(n){
-  if(mode === 'viewer') return;
+  if(asViewer()) return;
   if(isOut(n)) S.elims = S.elims.filter(x => x !== n);
   else if(standings().winner === null) S.elims.push(n);
   else return;
   save(); renderAll({keepReveal:true, skipSetup:true});
 }
 function pick(n){
-  if(mode === 'viewer') return;
+  if(asViewer()) return;
   sel = n; renderAll({keepReveal:true, skipSetup:true});
   if(n !== null){ $('edName').value = S.entrants[n] || ''; $('edName').focus(); $('edName').select(); }
 }
@@ -1018,7 +1041,7 @@ function renderFinder(found, st){
       ${won ? '' : `<button type="button" class="ebtn${k >= 0 ? ' back' : ''}" data-fx="${n}" ${k < 0 && st.winner !== null ? 'disabled' : ''}>${k >= 0 ? 'Put back' : 'Eliminate'}</button>`}
     </div>`;
   }).join('') + (found.length > 6 ? `<span class="fnone">${found.length - 6} more match. Keep typing to narrow it down.</span>` : '')
-    + (live1.length === 1 && mode !== 'viewer' ? `<span class="fhint">Press Enter to eliminate #${live1[0]}.</span>` : '');
+    + (live1.length === 1 && !asViewer() ? `<span class="fhint">Press Enter to eliminate #${live1[0]}.</span>` : '');
 }
 function clearFind(){ findQ = ''; $('findBox').value = ''; }
 $('findBox').addEventListener('input', e => { findQ = e.target.value; renderAll({keepReveal:true, skipSetup:true}); });
@@ -1027,7 +1050,7 @@ $('findBox').addEventListener('keydown', e => {
   if(e.key !== 'Enter') return;
   e.preventDefault();
   const still = findMatches().filter(n => !isOut(n));
-  if(mode !== 'viewer' && still.length === 1){ clearFind(); toggleElim(still[0]); $('findBox').focus(); }
+  if(!asViewer() && still.length === 1){ clearFind(); toggleElim(still[0]); $('findBox').focus(); }
 });
 $('findRes').addEventListener('click', e => {
   const b = e.target.closest('[data-fx]'); if(!b || b.disabled) return;

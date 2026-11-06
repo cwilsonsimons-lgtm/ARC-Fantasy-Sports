@@ -130,6 +130,8 @@ board layout. Only the owner can write (`db` rules: root `write: owner`). A seal
 ball's team is kept in `host/sealed`, readable only by the owner, so the result
 isn't in the shared copy until the reveal. Logos live in `logos/<slot id>` to
 keep `lottery/state` small. Opened as a plain file, none of this runs.
+**Preview their view** (under the title) shows the owner the follower page —
+controls hidden, follower wording, no edits — until **Back to my controls**.
 
 Draws use `crypto.getRandomValues` and are saved before the cage spins, so
 reloading mid-draw can't re-roll a result. Progress is kept in `localStorage`
