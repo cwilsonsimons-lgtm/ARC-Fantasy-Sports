@@ -78,7 +78,7 @@ entrant still in matches, Enter eliminates them and clears the box. A team is ou
 entrants are eliminated: the first team out gets the last pick, the next the
 pick before, and the last team standing gets the 1st pick. A row of draft-order
 chips at the top of the entrants box (1st TBD · 2nd TBD · 3rd … · 4th …) fills in as
-teams go out, with **Undo last elimination** beside the search; the team cards and
+teams go out, with **Undo last elimination** beside the search; the By team rows and
 copied results follow it.
 Entrant names survive a lottery reset. Numbers on the board run down each
 column by default; a **Down / Across / By team** toggle switches to row order,
@@ -115,9 +115,9 @@ in that manager and colour. Ball counts and the team list lock after the first
 draw; names, managers, colours and logos can change at any time. Very dark
 colours are lightened for text so they stay readable on the dark page.
 
-**Rumble history.** Hovering (or tapping) any number on the board or on a team card shows how many
+**Rumble history.** Hovering (or tapping) any number on the board shows how many
 men's Royal Rumble winners entered at that number, who and when, and their share
-of all winners. Each team card and By team row adds up its numbers into one
+of all winners. Each By team row adds up its team's numbers into one
 figure: the share of past winners who entered at any of that team's numbers. The
 data is `RUMBLE_WINS` in `lottery.html` (1988-2026: 39 Rumbles, 40 winners with
 the 1994 co-winners; the 2018 Greatest Royal Rumble is left out). Percentages
@@ -150,7 +150,7 @@ back to the built-in bio); everyone sees it.
 
 **1st-pick chance.** Once every number is drawn, each team shows its estimated
 chance of getting the 1st pick (holding the winner), with the change since the
-last elimination, on the team cards and By team rows. Each entrant still in is weighted by their number's history
+last elimination, on the By team rows. Each entrant still in is weighted by their number's history
 (past winners there, +1) times their strength: a betting favorite counts by their
 implied odds (bookmaker margin removed) relative to an ordinary entrant; numbers
 not yet named share the strength of favorites who haven't appeared.

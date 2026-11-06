@@ -482,11 +482,6 @@ input:disabled{opacity:.55}
         <div class="board" id="board"></div>
       </section>
 
-      <section class="panel" aria-label="Numbers by team">
-        <h2>Numbers by team</h2>
-        <div class="hold" id="hold"></div>
-      </section>
-
       <section class="panel" aria-label="Favorites to win the 2027 Royal Rumble">
         <div class="phead"><h2>Favorites to win · 2027 Royal Rumble</h2><span class="favwhen">Feb 6, 2027 · Glendale, AZ</span></div>
         <ol class="favs" id="favs"></ol>
@@ -1184,20 +1179,6 @@ function renderAll(opt = {}){
     $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
   }
 
-  // holdings
-  $('hold').innerHTML = S.slots.map((s, i) => {
-    const t = team(i), nums = numsFor(i).filter(x => hide < 0 || x !== numberOf(hide));
-    const win = st.picks[0] && st.picks[0].i === i, pk = st.picks.findIndex(p => p && p.i === i);
-    const inNow = nums.filter(x => !isOut(x)).length;
-    const status = !tracking() ? '' : pk >= 0 ? `<span class="hm"><b style="color:${t.tc}">${ord(pk + 1)} pick</b>${st.picks[pk].last ? ' · last team standing' : ` · out when ${esc(label(st.picks[pk].by))} went`}</span>`
-      : `<span class="hm">${inNow} of ${nums.length} entrants still in</span>`;
-    return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.tc}">${esc(t.n)}</span>
-      <span class="hm">${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
-      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => `<span class="cnum" data-num="${x}" tabindex="0">${isOut(x) ? `<s>#${x}</s>` : '#' + x}</span>`).join('') : 'No numbers yet'}</span>${status}
-      ${nums.length ? `<span class="hist"><b>${shares[i].pct}</b> of past Rumble winners entered at these numbers (${shares[i].k} of ${WINNERS})</span>` : ''}
-      ${chances ? chanceTag(chances[i]) : ''}</div>`;
-  }).join('');
-
   // Once every number is out the cage has done its job: fold it away, with a bar to bring it back for an undo.
   const fold = tracking() && !showCage;
   $('machine').hidden = fold; $('mainGrid').classList.toggle('nocage', fold);
@@ -1350,12 +1331,12 @@ function placeTip(el, tip){
 let tipFor = null;
 const hideTip = () => { $('tip').hidden = true; tipFor = null; };
 document.addEventListener('mouseover', e => {
-  const el = e.target.closest('#board [data-num], #hold [data-num], [data-wr]');
+  const el = e.target.closest('#board [data-num], [data-wr]');
   if(!el){ if(tipFor !== null) hideTip(); return; }
   const key = el.dataset.wr !== undefined ? 'w:' + el.dataset.wr : +el.dataset.num;
   if(key !== tipFor) showTip(el);
 });
-document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num], #hold [data-num], [data-wr]'); if(el) showTip(el); else hideTip(); });
+document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num], [data-wr]'); if(el) showTip(el); else hideTip(); });
 addEventListener('scroll', hideTip, {passive:true});
 // Find an entrant by name (any part of it) or by number, to eliminate them without hunting the board.
 function findMatches(){
