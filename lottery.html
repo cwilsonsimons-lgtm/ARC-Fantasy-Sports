@@ -202,6 +202,14 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .editor .edcard .wcard{border-bottom:0;margin:0;padding:8px 10px;border-radius:10px;background:var(--bg)}
 .editor .edabout{grid-column:1/-1}
 .editor .edabout input{height:38px}
+.bioedit{margin-left:8px;padding:1px 8px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-3);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;vertical-align:1px}
+.bioedit:hover,.bioedit:focus-visible{color:var(--gold);border-color:var(--gold);outline:none}
+.bioback{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+.bioed{width:min(460px,100%);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.bioed h3{font-family:var(--display);font-weight:600;font-size:20px;letter-spacing:.04em;text-transform:uppercase}
+.bioed textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink);font:inherit;resize:vertical}
+.bioed textarea:focus{border-color:var(--gold);outline:none}
+.bioed .actions .btn{padding:10px 14px;font-size:13px}
 .wlink{cursor:help;border-bottom:1px dotted var(--ink-3)}
 .wlink:hover,.wlink:focus-visible{color:var(--gold);outline:none}
 .chance{font-size:12px;color:var(--ink-2)}
@@ -388,6 +396,19 @@ input:disabled{opacity:.55}
   </header>
   <div class="notice" id="liveNotice" hidden></div>
   <div class="tip" id="tip" role="tooltip" hidden></div>
+  <div class="bioback" id="bioBack" hidden>
+    <form class="bioed" id="bioEd" role="dialog" aria-modal="true" aria-labelledby="bioTitle">
+      <h3 id="bioTitle"></h3>
+      <p class="note" id="bioNote"></p>
+      <label class="fld"><span>Bio (everyone sees this)</span>
+        <textarea id="bioText" rows="4" maxlength="400" placeholder="Who are they? A line or two for people who don't watch."></textarea></label>
+      <div class="actions">
+        <button class="btn primary" type="submit">Save</button>
+        <button class="btn ghost" type="button" id="bioReset">Use the built-in bio</button>
+        <button class="btn ghost" type="button" id="bioCancel">Cancel</button>
+      </div>
+    </form>
+  </div>
 
   <section class="panel" id="setupPanel" aria-label="Lottery setup">
     <h2>Setup</h2>
@@ -610,7 +631,7 @@ function renderFavs(){
   const top = 1 / FAVORITES[0][1], dec = new Set(S.declared.map(norm));
   $('favs').innerHTML = FAVORITES.map(([name, d], i) => {
     const p = 1 / d;
-    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who"><span class="wlink" data-wr="${esc(name)}" tabindex="0">${esc(name)}</span> ${statusPill(name, dec.has(norm(name)))}</span>
+    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who"><span class="wlink" data-wr="${esc(name)}" tabindex="0">${esc(name)}</span>${canBio() ? `<button type="button" class="bioedit" data-bio="${esc(name)}" aria-label="Edit ${esc(name)}'s bio">Edit</button>` : ''} ${statusPill(name, dec.has(norm(name)))}</span>
       <span class="fodds"><b>${american(d)}</b> · ${Math.round(p * 100)}%</span>
       <span class="bar" aria-hidden="true"><i style="width:${(p / top * 100).toFixed(1)}%"></i></span></li>`;
   }).join('');
@@ -629,7 +650,7 @@ function renderDeclared(){
   const order = r => !r.st ? 1 : r.st.kind === 'out' ? 2 : 0;   // in the match, then yet to enter, then out
   $('decList').innerHTML = rows.map((r, i) => ({...r, i})).sort((a, b) => order(a) - order(b) || a.i - b.i).map(r => `
     <li class="drow${r.st && r.st.kind === 'out' ? ' out' : ''}">
-      <span class="dname">${r.fav ? `<span class="star" title="Betting favorite #${r.fav}">★</span>` : ''}<span class="wlink" data-wr="${esc(r.name)}" tabindex="0">${esc(r.name)}</span>${r.fav ? `<small>#${r.fav} favorite</small>` : ''}</span>
+      <span class="dname">${r.fav ? `<span class="star" title="Betting favorite #${r.fav}">★</span>` : ''}<span class="wlink" data-wr="${esc(r.name)}" tabindex="0">${esc(r.name)}</span>${canBio() ? `<button type="button" class="bioedit" data-bio="${esc(r.name)}" aria-label="Edit ${esc(r.name)}'s bio">Edit</button>` : ''}${r.fav ? `<small>#${r.fav} favorite</small>` : ''}</span>
       ${r.st ? statusPill(r.name, true) : '<span class="pill yet">Yet to enter</span>'}
       ${can ? `<button type="button" class="dx" data-undeclare="${r.i}" aria-label="Remove ${esc(r.name)}">×</button>` : ''}
     </li>`).join('');
@@ -1272,6 +1293,32 @@ $('edName').addEventListener('keydown', e => {
 });
 $('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); });
 $('edDone').addEventListener('click', () => pick(null));
+// Edit a wrestler's bio from the Favorites or Declared lists, any time (owner only).
+const canBio = () => (mode === 'host' || mode === 'local') && !previewing;
+let bioName = '';
+function openBio(name){
+  bioName = name; const k = norm(name), base = CARD[k], custom = (S.cards || {})[k] || '';
+  $('bioTitle').textContent = name;
+  $('bioNote').textContent = custom ? 'This is your own bio. Clear it or use the built-in one to go back.'
+    : base ? 'Showing the built-in bio. Change it to write your own.' : "There's no built-in bio for this wrestler yet. Write one here.";
+  $('bioText').value = custom || (base ? base.about : '');
+  $('bioReset').hidden = !base || !custom;
+  $('bioBack').hidden = false; hideTip(); $('bioText').focus();
+}
+function closeBio(){ $('bioBack').hidden = true; bioName = ''; }
+function setBio(text){
+  const k = norm(bioName), base = CARD[k]; if(!k) return;
+  S.cards = S.cards || {};
+  const t = text.trim();
+  if(!t || (base && t === base.about)) delete S.cards[k]; else S.cards[k] = t;
+  save(); closeBio(); renderAll({keepReveal:true, skipSetup:true});
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-bio]'); if(b){ e.preventDefault(); openBio(b.dataset.bio); } });
+$('bioEd').addEventListener('submit', e => { e.preventDefault(); setBio($('bioText').value); });
+$('bioReset').addEventListener('click', () => setBio(''));
+$('bioCancel').addEventListener('click', closeBio);
+$('bioBack').addEventListener('click', e => { if(e.target === $('bioBack')) closeBio(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('bioBack').hidden) closeBio(); });
 $('edAbout').addEventListener('input', e => {
   if(sel === null) return;
   const k = norm(entrant(sel)); if(!k) return;

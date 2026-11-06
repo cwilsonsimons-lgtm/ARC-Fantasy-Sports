@@ -142,7 +142,9 @@ Favorites or Declared lists) shows a short card for people who don't follow
 wrestling: who they are, their finisher, their Royal Rumble wins (from
 `RUMBLE_WINS`) and favorite rank. Built-in cards live in `WRESTLERS` and stick to
 facts that don't go stale; face/heel status is left out on purpose. The owner can
-write their own line for any entrant in the entrant editor, and everyone sees it.
+write their own line for any entrant in the entrant editor, or any time from the
+**Edit** button beside a name in the Favorites or Declared lists (save, or go
+back to the built-in bio); everyone sees it.
 
 **1st-pick chance.** Once every number is drawn, each team shows its estimated
 chance of getting the 1st pick (holding the winner), with the change since the
