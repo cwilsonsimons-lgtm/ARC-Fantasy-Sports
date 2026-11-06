@@ -410,8 +410,9 @@ const LEAGUE = [
 ];
 const BY_ID = Object.fromEntries(LEAGUE.map(t => [t.id, t]));
 // Every men's Royal Rumble winner at the annual event, with the number they entered at: 39 Rumbles,
-// 40 winners (Bret Hart and Lex Luger were co-winners in 1994). 2011 had 40 entrants; the 2018
-// Greatest Royal Rumble isn't the annual match and isn't counted. Add a line each year.
+// 40 winners (Bret Hart and Lex Luger were co-winners in 1994). Percentages count only winners from
+// #1-#30, so the teams' numbers add up to 100%: that leaves out Alberto Del Rio (#38 of 40 in 2011).
+// The 2018 Greatest Royal Rumble isn't the annual match and isn't listed. Add a line each year.
 const RUMBLE_WINS = [
   [1988, 13, 'Hacksaw Jim Duggan'], [1989, 27, 'Big John Studd'], [1990, 25, 'Hulk Hogan'], [1991, 24, 'Hulk Hogan'],
   [1992, 3, 'Ric Flair'], [1993, 27, 'Yokozuna'], [1994, 27, 'Bret Hart'], [1994, 23, 'Lex Luger'],
@@ -424,11 +425,20 @@ const RUMBLE_WINS = [
   [2019, 10, 'Seth Rollins'], [2020, 16, 'Drew McIntyre'], [2021, 1, 'Edge'], [2022, 30, 'Brock Lesnar'],
   [2023, 30, 'Cody Rhodes'], [2024, 15, 'Cody Rhodes'], [2025, 20, 'Jey Uso'], [2026, 26, 'Roman Reigns'],
 ];
-const WINNERS = RUMBLE_WINS.length, RUMBLES = new Set(RUMBLE_WINS.map(w => w[0])).size;
+const WINNERS = RUMBLE_WINS.filter(w => w[1] <= 30).length, RUMBLES = new Set(RUMBLE_WINS.map(w => w[0])).size;
 const winsAt = n => RUMBLE_WINS.filter(w => w[1] === n);
 const pctOf = k => (k / WINNERS * 100).toFixed(1).replace(/\.0$/, '') + '%';
 // share of all past winners who entered at one of these numbers
 const histFor = nums => { const k = nums.reduce((a, n) => a + winsAt(n).length, 0); return {k, pct:pctOf(k)}; };
+// Each team's share, rounded together (largest remainder, to 0.1%) so the teams' shares add up to
+// exactly what they hold in total: 100% once every number is drawn.
+function teamShares(sealedNum){   // a sealed ball's number stays out until it's revealed
+  const ks = S.slots.map((_, i) => numsFor(i).filter(n => n !== sealedNum).reduce((a, n) => a + winsAt(n).length, 0));
+  const raw = ks.map(k => k / WINNERS * 1000), fl = raw.map(Math.floor);
+  let left = Math.round(ks.reduce((a, k) => a + k, 0) / WINNERS * 1000) - fl.reduce((a, x) => a + x, 0);
+  raw.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if(left > 0){ fl[i]++; left--; } });
+  return ks.map((k, i) => ({k, pct:(fl[i] / 10).toFixed(1).replace(/\.0$/, '') + '%'}));
+}
 const MAX_TEAMS = 8;
 const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th','st','nd','rd'][n % 10] || 'th');
 const place = i => i === 0 ? 'Last' : `${ord(i + 1)} to last`;
@@ -841,6 +851,7 @@ function renderAll(opt = {}){
   // next entrant due out: the lowest number with no name yet that hasn't been eliminated
   let nextIn = null;
   if(live) for(let x = 1; x <= T; x++) if(!entrant(x) && !isOut(x)){ nextIn = x; break; }
+  const shares = teamShares(hide >= 0 ? numberOf(hide) : null);
   const tile = num => {
     const t = team(holderOf(num)), win = st.winner === num, out = isOut(num);
     if(!live) return `<div class="tile filled" data-num="${num}" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
@@ -861,7 +872,7 @@ function renderAll(opt = {}){
       const pk = st.picks.findIndex(p => p && p.i === i);
       return `<div class="trow">
         <div class="tlabel"><span class="tn" style="color:${t.tc}">${esc(t.mgr || t.n)}</span>${t.mgr ? `<span class="tt">${esc(t.n)}</span>` : ''}
-          ${nums.length ? `<span class="thist" title="${histFor(nums).k} of ${WINNERS} past Royal Rumble winners entered at these numbers">${histFor(nums).pct} of past winners</span>` : ''}</div>
+          ${nums.length ? `<span class="thist" title="${shares[i].k} of ${WINNERS} past Royal Rumble winners entered at these numbers">${shares[i].pct} of past winners</span>` : ''}</div>
         <div class="ttiles">${nums.length ? nums.map(tile).join('') : '<span class="note">No numbers yet</span>'}</div>
         <div class="tpick${pk >= 0 ? ' set' : ''}${pk === 0 ? ' first' : ''}" aria-label="${pk >= 0 ? ord(pk + 1) + ' pick' : 'Pick not decided'}">${pk >= 0 ? pk + 1 : '–'}</div>
       </div>`;
@@ -910,7 +921,7 @@ function renderAll(opt = {}){
     return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.tc}">${esc(t.n)}</span>
       <span class="hm">${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
       <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => isOut(x) ? `<s>#${x}</s>` : '#' + x).join('  ') : 'No numbers yet'}</span>${status}
-      ${nums.length ? `<span class="hist"><b>${histFor(nums).pct}</b> of past Rumble winners entered at these numbers (${histFor(nums).k} of ${WINNERS})</span>` : ''}</div>`;
+      ${nums.length ? `<span class="hist"><b>${shares[i].pct}</b> of past Rumble winners entered at these numbers (${shares[i].k} of ${WINNERS})</span>` : ''}</div>`;
   }).join('');
 
   // rumble tracker
@@ -999,7 +1010,7 @@ function histLine(n){
 function showTip(el){
   const n = +el.dataset.num, w = winsAt(n), tip = $('tip');
   tip.innerHTML = `<div class="th">#${n} · ${w.length ? `<b>${w.length}</b> winner${w.length === 1 ? '' : 's'}` : 'no winners yet'}</div>
-    ${w.length ? `<div>${pctOf(w.length)} of the ${WINNERS} Royal Rumble winners entered at #${n}.</div>
+    ${w.length ? `<div>${pctOf(w.length)} of the ${WINNERS} Royal Rumble winners from #1–#30 entered at #${n}.</div>
       <ol>${w.map(x => `<li><span>${x[0]}</span><em>${esc(x[2])}</em></li>`).join('')}</ol>`
       : `<div>Nobody has won the Royal Rumble from #${n} in ${RUMBLES} Rumbles.</div>`}`;
   tip.hidden = false;

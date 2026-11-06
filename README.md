@@ -118,8 +118,10 @@ men's Royal Rumble winners entered at that number, who and when, and their share
 of all winners. Each team card and By team row adds up its numbers into one
 figure: the share of past winners who entered at any of that team's numbers. The
 data is `RUMBLE_WINS` in `lottery.html` (1988-2026: 39 Rumbles, 40 winners with
-the 1994 co-winners; 2011's #38 counts but sits outside 1-30; the 2018 Greatest
-Royal Rumble is left out). Add a line after each year's Rumble.
+the 1994 co-winners; the 2018 Greatest Royal Rumble is left out). Percentages
+count only the 39 winners from #1-#30, leaving out Alberto Del Rio (#38 in 2011's
+40-man match), so the teams add up to 100%; team shares are rounded together so
+the displayed figures add up exactly. Add a line after each year's Rumble.
 
 **Following along live.** Published as a claude.ai artifact, the page keeps the
 lottery in the artifact's shared store instead of the browser. The owner runs it;
