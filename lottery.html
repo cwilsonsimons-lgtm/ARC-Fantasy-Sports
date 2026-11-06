@@ -192,6 +192,25 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
   background:var(--card);border:1px solid var(--line);box-shadow:0 12px 30px rgba(0,0,0,.5);font-size:13px;color:var(--ink-2);pointer-events:none}
 .tip .th{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin-bottom:4px}
 .tip .th b{color:var(--gold)}
+.wcard{display:flex;flex-direction:column;gap:4px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.wcard .wn{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink)}
+.wcard .wn small{font-family:var(--body);text-transform:none;letter-spacing:0;font-size:11px;font-weight:700;color:var(--gold)}
+.wcard .wa{color:var(--ink);line-height:1.35}
+.wcard .wm{font-size:12px;color:var(--ink-2)}
+.wcard .wm span{display:inline-block;min-width:78px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;font-size:10px;font-weight:700}
+.editor .edcard{grid-column:1/-1}
+.editor .edcard .wcard{border-bottom:0;margin:0;padding:8px 10px;border-radius:10px;background:var(--bg)}
+.editor .edabout{grid-column:1/-1}
+.editor .edabout input{height:38px}
+.wlink{cursor:help;border-bottom:1px dotted var(--ink-3)}
+.wlink:hover,.wlink:focus-visible{color:var(--gold);outline:none}
+.chance{font-size:12px;color:var(--ink-2)}
+.chance b{font-size:14px;color:var(--ink)}
+.chance i{font-style:normal;font-weight:700;margin-left:4px}
+.chance i.up{color:#5FD38D}
+.chance i.down{color:#F0453E}
+.hcard .chance{display:block}
+.tlabel .chance{display:block;margin-top:2px}
 .tip ol{list-style:none;display:flex;flex-direction:column;gap:2px;margin-top:6px}
 .tip li{display:flex;gap:8px;font-variant-numeric:tabular-nums}
 .tip li span{color:var(--ink-3);font-family:var(--mono);font-size:12px}
@@ -291,7 +310,7 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .notice b{display:block;font-family:var(--display);font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);margin-bottom:6px}
 /* people following along: same page, no controls */
 body.viewer #setupPanel,body.viewer #drawBtn,body.viewer #undoBtn,body.viewer #setupToggle,body.viewer #resetNums,
-body.viewer .tx,body.viewer #editor,body.viewer #undoElim,body.viewer .frow .ebtn,body.viewer .fhint{display:none!important}
+body.viewer .edabout,body.previewing .edabout,body.viewer .tx,body.viewer #editor,body.viewer #undoElim,body.viewer .frow .ebtn,body.viewer .fhint{display:none!important}
 body.previewing #setupPanel,body.previewing #drawBtn,body.previewing #undoBtn,body.previewing #setupToggle,body.previewing #resetNums,
 body.previewing .tx,body.previewing #editor,body.previewing #undoElim,body.previewing .frow .ebtn,body.previewing .fhint{display:none!important}
 body.viewer .tmain,body.previewing .tmain{pointer-events:none;cursor:default}
@@ -420,6 +439,9 @@ input:disabled{opacity:.55}
           <span class="edbtns"><button type="button" class="ebtn" id="edElim">Eliminate</button>
           <button type="button" class="ebtn back" id="edDone">Done</button></span>
           <span class="edhist" id="edHist"></span>
+          <div class="edcard" id="edCard"></div>
+          <label class="fld edabout"><span>About this wrestler (everyone sees this)</span>
+            <input type="text" id="edAbout" autocomplete="off" placeholder="Who are they? A line for people who don't watch."></label>
         </div>
         <div class="board" id="board"></div>
       </section>
@@ -507,8 +529,63 @@ const FAVORITES = [
   ['Kevin Owens', 7], ['Trick Williams', 9], ['Sami Zayn', 10], ['Roman Reigns', 19],
 ];
 const american = d => d >= 2 ? '+' + Math.round((d - 1) * 100) : '−' + Math.round(100 / (d - 1));
+// Wrestler cards for people who don't follow wrestling: who they are, the move that ends matches,
+// and accolades that don't go stale. Royal Rumble wins come from RUMBLE_WINS and favorite rank from
+// FAVORITES, so they stay right on their own. Who's a good guy or bad guy changes too often to keep
+// here. The owner can add or replace a card's description from the entrant editor.
+const WRESTLERS = [
+  ['Oba Femi', 'Nigerian powerhouse called "The Ruler". Huge, calm and almost impossible to knock down. Former NXT Champion.', 'Fall From Grace (powerbomb)'],
+  ['Bron Breakker', 'Ex-college football player who runs through people at full speed. Former Intercontinental Champion.', 'Spear'],
+  ['Gunther', 'Austrian heavyweight who chops chests red. Held the Intercontinental title a record 666 days; former World Heavyweight Champion.', 'Powerbomb / sleeper hold'],
+  ['Cody Rhodes', '"The American Nightmare". Won the Rumble twice in a row and became Undisputed WWE Champion.', 'Cross Rhodes'],
+  ['Kevin Owens', 'Rough, loud brawler who loves a fight. Former Universal Champion.', 'Stunner'],
+  ['Trick Williams', 'Young, confident and on the rise ("Whoop that Trick"). Former NXT Champion.', 'Trick Shot (running knee)'],
+  ['Sami Zayn', "The crowd's favorite underdog. Former Intercontinental Champion.", 'Helluva Kick'],
+  ['Roman Reigns', '"The Tribal Chief". Held the Universal title for 1,316 days, one of the longest reigns ever.', 'Spear'],
+  ['CM Punk', '"Best in the World". Fast talker and fan favorite; former WWE Champion.', 'GTS (Go To Sleep)'],
+  ['Seth Rollins', '"The Visionary". Flashy, athletic, multiple-time world champion.', 'Stomp'],
+  ['Jey Uso', '"Main Event Jey" (YEET!). Former World Heavyweight Champion.', 'Spear / top-rope splash'],
+  ['Jimmy Uso', "Jey's twin brother, a longtime tag-team champion.", 'Superkick / top-rope splash'],
+  ['Jacob Fatu', '"The Samoan Werewolf". A big man who moves and flies like a small one. Former United States Champion.', 'Moonsault'],
+  ['LA Knight', 'Charismatic talker ("YEAH!") with huge crowd support. Former United States Champion.', 'BFT (Blunt Force Trauma)'],
+  ['Drew McIntyre', '"The Scottish Warrior". Former WWE Champion.', 'Claymore kick'],
+  ['Randy Orton', '"The Viper". Veteran 14-time world champion; his finisher can come out of nowhere.', 'RKO'],
+  ['Logan Paul', 'YouTuber turned surprisingly good wrestler. Former United States Champion.', 'Brass knuckles punch'],
+  ['Solo Sikoa', 'Quiet, menacing enforcer from the Bloodline family. Former United States Champion.', 'Samoan Spike'],
+  ['Damian Priest', 'Tall, hard-hitting "Archer of Infamy". Former World Heavyweight Champion.', 'South of Heaven (chokeslam)'],
+  ['Dominik Mysterio', "Rey Mysterio's son, the man fans love to boo. Former Intercontinental Champion.", 'Frog splash'],
+  ['Rey Mysterio', 'Masked high-flying legend, one of the smallest Rumble winners ever.', '619'],
+  ['Brock Lesnar', '"The Beast". Former UFC heavyweight champion who throws people around.', 'F-5'],
+  ['Penta', 'Mexican luchador, "Cero Miedo" (zero fear). Hard hitter for his size.', 'Fear Factor'],
+  ['Rey Fenix', 'Spectacular Mexican high-flier, all flips and dives.', 'Fenix Driver'],
+  ['Bronson Reed', 'Giant Australian who crushes people with a splash off the top rope.', 'Tsunami (splash)'],
+  ['Sheamus', 'Pale Irish brawler, tough as nails. Former WWE Champion.', 'Brogue Kick'],
+  ['The Miz', 'Veteran showman and former WWE Champion.', 'Skull-Crushing Finale'],
+  ['Carmelo Hayes', 'Smooth, confident ("HIM"). Former NXT Champion.', 'Nothing But Net'],
+  ['Je\'Von Evans', 'Young, incredibly athletic high-flier.', 'Cutter'],
+  ['Austin Theory', 'Cocky young athlete. Former United States Champion.', 'A-Town Down'],
+  ['Rusev', 'Bulgarian brute with a submission that bends people backwards.', 'The Accolade'],
+  ['Dragon Lee', 'Fast Mexican luchador and high-flier.', 'Running knee'],
+  ['Matt Cardona', '"Indy God", formerly Zack Ryder in WWE.', 'Radio Silence'],
+  ['El Grande Americano', 'Masked "luchador" with a suspiciously American accent. Played for laughs.', 'Diving headbutt'],
+];
+const CARD = Object.fromEntries(WRESTLERS.map(([n, about, move]) => [n.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, ''), {n, about, move}]));
 // Names match ignoring case, spaces and punctuation ("Oba Femi" = "oba femi" = "ObaFemi").
 const norm = x => (x || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+function cardFor(name){
+  const k = norm(name); if(!k) return null;
+  const base = CARD[k] || null, custom = (S.cards || {})[k];
+  if(!base && !custom) return null;
+  return {n:base ? base.n : name.trim(), about:custom || (base && base.about) || '', move:base ? base.move : '', custom:!!custom,
+    wins:RUMBLE_WINS.filter(w => norm(w[2]) === k).map(w => w[0]), fav:favRank(name)};
+}
+function cardHTML(name){
+  const c = cardFor(name); if(!c) return '';
+  return `<div class="wcard"><div class="wn">${c.fav ? '<span class="star">★</span>' : ''}${esc(c.n)}${c.fav ? ` <small>#${c.fav} favorite</small>` : ''}</div>
+    ${c.about ? `<div class="wa">${esc(c.about)}</div>` : ''}
+    ${c.move ? `<div class="wm"><span>Finisher</span> ${esc(c.move)}</div>` : ''}
+    <div class="wm"><span>Rumble wins</span> ${c.wins.length ? c.wins.join(', ') : 'none yet'}</div></div>`;
+}
 const favRank = name => { const k = norm(name); if(!k) return 0; const i = FAVORITES.findIndex(f => norm(f[0]) === k); return i + 1; };
 // where a wrestler is in the match: the drawn number their name is typed on, if any
 function whereIs(name){
@@ -533,7 +610,7 @@ function renderFavs(){
   const top = 1 / FAVORITES[0][1], dec = new Set(S.declared.map(norm));
   $('favs').innerHTML = FAVORITES.map(([name, d], i) => {
     const p = 1 / d;
-    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who">${esc(name)} ${statusPill(name, dec.has(norm(name)))}</span>
+    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who"><span class="wlink" data-wr="${esc(name)}" tabindex="0">${esc(name)}</span> ${statusPill(name, dec.has(norm(name)))}</span>
       <span class="fodds"><b>${american(d)}</b> · ${Math.round(p * 100)}%</span>
       <span class="bar" aria-hidden="true"><i style="width:${(p / top * 100).toFixed(1)}%"></i></span></li>`;
   }).join('');
@@ -552,12 +629,44 @@ function renderDeclared(){
   const order = r => !r.st ? 1 : r.st.kind === 'out' ? 2 : 0;   // in the match, then yet to enter, then out
   $('decList').innerHTML = rows.map((r, i) => ({...r, i})).sort((a, b) => order(a) - order(b) || a.i - b.i).map(r => `
     <li class="drow${r.st && r.st.kind === 'out' ? ' out' : ''}">
-      <span class="dname">${r.fav ? `<span class="star" title="Betting favorite #${r.fav}">★</span>` : ''}${esc(r.name)}${r.fav ? `<small>#${r.fav} favorite</small>` : ''}</span>
+      <span class="dname">${r.fav ? `<span class="star" title="Betting favorite #${r.fav}">★</span>` : ''}<span class="wlink" data-wr="${esc(r.name)}" tabindex="0">${esc(r.name)}</span>${r.fav ? `<small>#${r.fav} favorite</small>` : ''}</span>
       ${r.st ? statusPill(r.name, true) : '<span class="pill yet">Yet to enter</span>'}
       ${can ? `<button type="button" class="dx" data-undeclare="${r.i}" aria-label="Remove ${esc(r.name)}">×</button>` : ''}
     </li>`).join('');
   $('wrestlerNames').innerHTML = [...new Set([...S.declared, ...FAVORITES.map(f => f[0])])].map(n => `<option value="${esc(n)}"></option>`).join('');
 }
+/* Chance each team ends up with the 1st pick, i.e. holds the Rumble winner. Every entrant still in
+   gets a weight: how often their number has won (past winners at that number, +1 so no number is
+   ever zero) times how strong the wrestler is. A betting favorite is worth their implied chance
+   relative to an ordinary entrant; anyone else counts as ordinary. Numbers nobody has been named on
+   yet share the strength of the favorites who haven't shown up yet. Eliminated entrants are worth 0. */
+const FAV_BOOK = FAVORITES.reduce((a, f) => a + 1 / f[1], 0);   // the bookmaker's total, to take out their margin
+const favStrength = name => { const r = favRank(name); return r ? Math.max(1, (1 / FAVORITES[r - 1][1]) / FAV_BOOK * 30) : 1; };
+function firstPickChances(elims){
+  const T = total(), out = new Set(elims), N = S.slots.length, w = Array(N).fill(0);
+  const named = n => entrant(n) !== '';
+  const seen = new Set(); for(let n = 1; n <= T; n++) if(named(n)) seen.add(norm(entrant(n)));
+  const unseenFav = FAVORITES.filter(f => !seen.has(norm(f[0]))).map(f => favStrength(f[0]));
+  const openSlots = []; for(let n = 1; n <= T; n++) if(!out.has(n) && !named(n) && holderOf(n) !== null) openSlots.push(n);
+  const U = openSlots.length, favPart = unseenFav.slice(0, U).reduce((a, x) => a + x, 0);
+  const unknown = U ? (favPart + Math.max(0, U - Math.min(U, unseenFav.length))) / U : 1;
+  for(let n = 1; n <= T; n++){
+    const i = holderOf(n); if(i === null || out.has(n)) continue;
+    w[i] += (winsAt(n).length + 1) * (named(n) ? favStrength(entrant(n)) : unknown);
+  }
+  const sum = w.reduce((a, x) => a + x, 0);
+  return w.map(x => sum ? x / sum : 0);
+}
+function chanceView(){
+  if(!tracking()) return null;
+  const st = standings(), now = firstPickChances(S.elims), before = S.elims.length ? firstPickChances(S.elims.slice(0, -1)) : null;
+  return S.slots.map((_, i) => {
+    if(st.picks[0]) return {pct:st.picks[0].i === i ? 100 : 0, delta:null, done:true};
+    const p = Math.round(now[i] * 100), d = before ? p - Math.round(before[i] * 100) : null;
+    return {pct:p, delta:d, done:false};
+  });
+}
+const chanceTag = c => !c ? '' : `<span class="chance"><b>${c.pct}%</b> chance at the 1st pick${c.delta ? ` <i class="${c.delta > 0 ? 'up' : 'down'}">${c.delta > 0 ? '▲' : '▼'}${Math.abs(c.delta)}</i>` : ''}</span>`;
 const histFor = nums => { const k = nums.reduce((a, n) => a + winsAt(n).length, 0); return {k, pct:pctOf(k)}; };
 // Each team's share, rounded together (largest remainder, to 0.1%) so the teams' shares add up to
 // exactly what they hold in total: 100% once every number is drawn.
@@ -584,6 +693,7 @@ function defaults(){
     entrants:{},  // entry number -> wrestler name
     elims:[],     // entry numbers in the order they were eliminated
     declared:[],  // wrestlers who have officially declared for the Rumble, in the order they declared
+    cards:{},     // owner's own card text, by normalized wrestler name
     drawGrid:false, // with "By team": show the number grid until every number is drawn
     official:false, // live: the owner has shared this draw with the league (until then they run practice draws)
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
@@ -616,6 +726,7 @@ function load(){
       delete s.winner; s.entrants = s.entrants || {}; s.elims = Array.isArray(s.elims) ? s.elims : [];
       s.flow = ['across', 'team'].includes(s.flow) ? s.flow : 'down';
       s.declared = Array.isArray(s.declared) ? s.declared : [];
+      s.cards = s.cards && typeof s.cards === 'object' ? s.cards : {};
       s.slots.forEach(x => { if(!x.id) x.id = slotId(); });
       return s;
     }
@@ -951,10 +1062,11 @@ function renderTracker(st){
       <span class="pw">${p.last ? (st.winner ? `Holds the winner, ${esc(label(st.winner))}` : 'Last team standing') : `Out when ${esc(label(p.by))} was eliminated`}</span></div>`;
   }).join('');
   const alive = S.slots.map((s, i) => i).filter(i => !st.picks.some(p => p && p.i === i));
+  const ch = chanceView();
   $('alive').innerHTML = alive.length ? alive.map(i => {
     const t = team(i), nums = numsFor(i), left = nums.filter(x => !isOut(x));
-    return `<span><b style="color:${t.tc}">${esc(t.n)}</b> · ${left.length} of ${nums.length} still in: ${left.map(x => '#' + x).join(', ')}</span>`;
-  }).join('') : '';
+    return `<span><b style="color:${t.tc}">${esc(t.n)}</b> · ${left.length} of ${nums.length} still in: ${left.map(x => '#' + x + (entrant(x) ? ' ' + esc(entrant(x)) : '')).join(', ')} ${ch ? chanceTag(ch[i]) : ''}</span>`;
+  }).join('') + '<span class="note">The 1st-pick chance is an estimate: betting odds for the favorites, plus how often each entry number has won, for everyone still in.</span>' : '';
   $('undoElim').disabled = !S.elims.length;
   if(!alive.length) $('alive').innerHTML = '<span>Every team is placed.</span>';
 }
@@ -1001,7 +1113,7 @@ function renderAll(opt = {}){
   // next entrant due out: the lowest number with no name yet that hasn't been eliminated
   let nextIn = null;
   if(live) for(let x = 1; x <= T; x++) if(!entrant(x) && !isOut(x)){ nextIn = x; break; }
-  const shares = teamShares(hide >= 0 ? numberOf(hide) : null);
+  const shares = teamShares(hide >= 0 ? numberOf(hide) : null), chances = chanceView();
   const tile = num => {
     const t = team(holderOf(num)), win = st.winner === num, out = isOut(num);
     if(!live) return `<div class="tile filled" data-num="${num}" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
@@ -1022,7 +1134,8 @@ function renderAll(opt = {}){
       const pk = st.picks.findIndex(p => p && p.i === i);
       return `<div class="trow">
         <div class="tlabel"><span class="tnrow">${t.logo ? `<img class="tlogo" src="${t.logo}" alt="" style="border-color:${t.tc}">` : ''}<span class="tn" style="color:${t.tc}">${esc(t.n)}</span></span>${t.mgr ? `<span class="tt">${esc(t.mgr)}</span>` : ''}
-          ${nums.length ? `<span class="thist" title="${shares[i].k} of ${WINNERS} past Royal Rumble winners entered at these numbers">${shares[i].pct} of past winners</span>` : ''}</div>
+          ${nums.length ? `<span class="thist" title="${shares[i].k} of ${WINNERS} past Royal Rumble winners entered at these numbers">${shares[i].pct} of past winners</span>` : ''}
+          ${chances ? chanceTag(chances[i]) : ''}</div>
         <div class="ttiles">${nums.length ? nums.map(tile).join('') : '<span class="note">No numbers yet</span>'}</div>
         <div class="tpick${pk >= 0 ? ' set' : ''}${pk === 0 ? ' first' : ''}" aria-label="${pk >= 0 ? ord(pk + 1) + ' pick' : 'Pick not decided'}">${pk >= 0 ? pk + 1 : '–'}</div>
       </div>`;
@@ -1043,6 +1156,10 @@ function renderAll(opt = {}){
     $('edNum').style.background = t.c + '22'; $('edNum').style.color = t.tc;
     $('edNum').innerHTML = `<b>#${sel}</b><small>${esc(who(t))}</small>`;
     $('edHist').innerHTML = histLine(sel);
+    $('edCard').innerHTML = cardHTML(entrant(sel));
+    const wk = norm(entrant(sel)), base = CARD[wk];
+    $('edAbout').closest('label').hidden = !wk;
+    if(document.activeElement !== $('edAbout')){ $('edAbout').value = (S.cards || {})[wk] || ''; $('edAbout').placeholder = base ? base.about : "Who are they? A line for people who don't watch."; }
     const eb = $('edElim');
     eb.textContent = won ? 'Winner' : k >= 0 ? `${ord(k + 1)} out · Put back` : 'Eliminate';
     eb.classList.toggle('back', k >= 0); eb.disabled = won || (k < 0 && st.winner !== null);
@@ -1071,7 +1188,8 @@ function renderAll(opt = {}){
     return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.tc}">${esc(t.n)}</span>
       <span class="hm">${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
       <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => `<span class="cnum" data-num="${x}" tabindex="0">${isOut(x) ? `<s>#${x}</s>` : '#' + x}</span>`).join('') : 'No numbers yet'}</span>${status}
-      ${nums.length ? `<span class="hist"><b>${shares[i].pct}</b> of past Rumble winners entered at these numbers (${shares[i].k} of ${WINNERS})</span>` : ''}</div>`;
+      ${nums.length ? `<span class="hist"><b>${shares[i].pct}</b> of past Rumble winners entered at these numbers (${shares[i].k} of ${WINNERS})</span>` : ''}
+      ${chances ? chanceTag(chances[i]) : ''}</div>`;
   }).join('');
 
   // rumble tracker
@@ -1154,6 +1272,13 @@ $('edName').addEventListener('keydown', e => {
 });
 $('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); });
 $('edDone').addEventListener('click', () => pick(null));
+$('edAbout').addEventListener('input', e => {
+  if(sel === null) return;
+  const k = norm(entrant(sel)); if(!k) return;
+  S.cards = S.cards || {};
+  if(e.target.value.trim()) S.cards[k] = e.target.value.trim(); else delete S.cards[k];
+  save(); $('edCard').innerHTML = cardHTML(entrant(sel)); renderAll({keepReveal:true, skipSetup:true});
+});
 $('decForm').addEventListener('submit', e => {
   e.preventDefault();
   const name = $('decName').value.trim().replace(/\s+/g, ' ');
@@ -1173,26 +1298,34 @@ function histLine(n){
     : `Nobody has won the Royal Rumble from #${n} yet.`;
 }
 function showTip(el){
-  const n = +el.dataset.num, w = winsAt(n), tip = $('tip');
-  tip.innerHTML = `<div class="th">#${n} · ${w.length ? `<b>${w.length}</b> winner${w.length === 1 ? '' : 's'}` : 'no winners yet'}</div>
+  const tip = $('tip');
+  if(el.dataset.wr !== undefined){   // a wrestler's name in the favorites or declared lists
+    const h = cardHTML(el.dataset.wr); if(!h){ hideTip(); return; }
+    tip.innerHTML = h; placeTip(el, tip); tipFor = 'w:' + el.dataset.wr; return;
+  }
+  const n = +el.dataset.num, w = winsAt(n), name = holderOf(n) !== null ? entrant(n) : '';
+  tip.innerHTML = cardHTML(name) + `<div class="th">#${n} · ${w.length ? `<b>${w.length}</b> winner${w.length === 1 ? '' : 's'}` : 'no winners yet'}</div>
     ${w.length ? `<div>${pctOf(w.length)} of the ${WINNERS} Royal Rumble winners from #1–#30 entered at #${n}.</div>
       <ol>${w.map(x => `<li><span>${x[0]}</span><em>${esc(x[2])}</em></li>`).join('')}</ol>`
       : `<div>Nobody has won the Royal Rumble from #${n} in ${RUMBLES} Rumbles.</div>`}`;
+  placeTip(el, tip); tipFor = n;
+}
+function placeTip(el, tip){
   tip.hidden = false;
   const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let x = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), innerWidth - tw - 12);
   let y = r.top - th - 8; if(y < 8) y = r.bottom + 8;
   tip.style.left = x + 'px'; tip.style.top = y + 'px';
-  tipFor = n;
 }
 let tipFor = null;
 const hideTip = () => { $('tip').hidden = true; tipFor = null; };
 document.addEventListener('mouseover', e => {
-  const el = e.target.closest('#board [data-num], #hold [data-num]');
+  const el = e.target.closest('#board [data-num], #hold [data-num], [data-wr]');
   if(!el){ if(tipFor !== null) hideTip(); return; }
-  if(+el.dataset.num !== tipFor) showTip(el);
+  const key = el.dataset.wr !== undefined ? 'w:' + el.dataset.wr : +el.dataset.num;
+  if(key !== tipFor) showTip(el);
 });
-document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num], #hold [data-num]'); if(el) showTip(el); else hideTip(); });
+document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num], #hold [data-num], [data-wr]'); if(el) showTip(el); else hideTip(); });
 addEventListener('scroll', hideTip, {passive:true});
 // Find an entrant by name (any part of it) or by number, to eliminate them without hunting the board.
 function findMatches(){
@@ -1357,16 +1490,16 @@ const bareSlots = () => S.slots.map(({logo, ...rest}) => rest);
 const publicState = () => S.official ? {
   official:true, slots:bareSlots(),
   draws:hidden() ? S.draws.slice(0, -1) : S.draws.slice(),   // a sealed draw stays off the shared copy
-  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared,
+  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared, cards:S.cards,
 } : {
   // not official yet: followers get the teams (for their practice draws) and nothing of the real one
   official:false, slots:bareSlots(), draws:[], pend:false, entrants:{}, elims:[], flow:S.flow, drawGrid:!!S.drawGrid,
-  declared:S.declared,   // who has declared isn't part of the draw, so it's shared either way
+  declared:S.declared, cards:S.cards,   // declarations and cards aren't part of the draw, so they're shared either way
 };
 function fromPublic(d){
   return {...defaults(), slots:(d.slots || []).map(x => ({...x, logo:''})), draws:(d.draws || []).slice(), sealed:false,
     entrants:{...(d.entrants || {})}, elims:(d.elims || []).slice(), flow:d.flow || 'down', drawGrid:!!d.drawGrid,
-    declared:(d.declared || []).slice()};
+    declared:(d.declared || []).slice(), cards:{...(d.cards || {})}};
 }
 function pushShared(){ dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(flush, 250); }
 async function flush(){
@@ -1498,13 +1631,13 @@ function enterMock(d){
   if(mode !== 'mock' || teamSig(slots) !== teamSig(S.slots)){
     mode = 'mock'; document.body.classList.remove('viewer'); document.body.classList.add('mock');
     $('mockBar').hidden = false; firstState = true; pend = false; sel = null; clearFind(); showCage = showSetup = false;
-    S = loadMock(slots); S.declared = (d.declared || []).slice(); tray = null; fill(); renderAll();
+    S = loadMock(slots); S.declared = (d.declared || []).slice(); S.cards = {...(d.cards || {})}; tray = null; fill(); renderAll();
     setLive("<b>Practice</b> The real numbers aren't official yet. This draw is yours alone.", true);
     return;
   }
   // same teams: pick up name and color changes, keep the practice draw
   S.slots = S.slots.map((x, i) => ({...x, ...slots[i], logo:''}));
-  S.declared = (d.declared || []).slice();
+  S.declared = (d.declared || []).slice(); S.cards = {...(d.cards || {})};
   renderAll({keepReveal:true});
 }
 function drawRest(){

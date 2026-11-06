@@ -137,6 +137,20 @@ list sorted into in the match, yet to enter and out, with counts. The declared
 list is shared even before the numbers are official, since it isn't part of the
 draw. Names from both lists are suggested when typing an entrant.
 
+**Wrestler cards.** Hovering or tapping a named entrant (or a name in the
+Favorites or Declared lists) shows a short card for people who don't follow
+wrestling: who they are, their finisher, their Royal Rumble wins (from
+`RUMBLE_WINS`) and favorite rank. Built-in cards live in `WRESTLERS` and stick to
+facts that don't go stale; face/heel status is left out on purpose. The owner can
+write their own line for any entrant in the entrant editor, and everyone sees it.
+
+**1st-pick chance.** Once every number is drawn, each team shows its estimated
+chance of getting the 1st pick (holding the winner), with the change since the
+last elimination. Each entrant still in is weighted by their number's history
+(past winners there, +1) times their strength: a betting favorite counts by their
+implied odds (bookmaker margin removed) relative to an ordinary entrant; numbers
+not yet named share the strength of favorites who haven't appeared.
+
 **Following along live.** Published as a claude.ai artifact, the page keeps the
 lottery in the artifact's shared store instead of the browser. The owner runs it;
 everyone the page is shared with (signed in to claude.ai) gets a view-only copy
