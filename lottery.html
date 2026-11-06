@@ -144,11 +144,13 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .board.live .tile.next::after{top:6px;left:8px;bottom:auto;z-index:2}
 /* "By team": one row per team, like a notebook page, with the team's pick down the right edge */
 .board.teams{display:flex;flex-direction:column;gap:0}
-.trow{display:grid;grid-template-columns:110px minmax(0,1fr) 64px;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.trow{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
 .trow:first-child{border-top:0;padding-top:0}
 .tlabel{display:flex;flex-direction:column;gap:2px;min-width:0}
-.tlabel .tn{font-family:var(--display);font-weight:700;font-size:22px;line-height:1.05;text-transform:uppercase;overflow-wrap:anywhere}
-.tlabel .tt{font-size:12px;color:var(--ink-3);overflow-wrap:anywhere}
+.tlabel .tn{font-family:var(--display);font-weight:700;font-size:19px;line-height:1.05;text-transform:uppercase;overflow-wrap:anywhere}
+.tlabel .tt{font-size:13px;color:var(--ink-2);overflow-wrap:anywhere}
+.tlabel .tnrow{display:flex;align-items:center;gap:8px;min-width:0}
+.tlabel .tlogo{flex:none;width:34px;height:34px;border-radius:50%;object-fit:contain;background:#fff;border:2px solid}
 .ttiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
 .ttiles .tile{aspect-ratio:auto;min-height:62px}
 .board.live .ttiles .tile{min-height:76px}
@@ -1010,7 +1012,7 @@ function renderAll(opt = {}){
       const t = team(i), nums = numsFor(i).filter(x => hide < 0 || x !== numberOf(hide));
       const pk = st.picks.findIndex(p => p && p.i === i);
       return `<div class="trow">
-        <div class="tlabel"><span class="tn" style="color:${t.tc}">${esc(t.mgr || t.n)}</span>${t.mgr ? `<span class="tt">${esc(t.n)}</span>` : ''}
+        <div class="tlabel"><span class="tnrow">${t.logo ? `<img class="tlogo" src="${t.logo}" alt="" style="border-color:${t.tc}">` : ''}<span class="tn" style="color:${t.tc}">${esc(t.n)}</span></span>${t.mgr ? `<span class="tt">${esc(t.mgr)}</span>` : ''}
           ${nums.length ? `<span class="thist" title="${shares[i].k} of ${WINNERS} past Royal Rumble winners entered at these numbers">${shares[i].pct} of past winners</span>` : ''}</div>
         <div class="ttiles">${nums.length ? nums.map(tile).join('') : '<span class="note">No numbers yet</span>'}</div>
         <div class="tpick${pk >= 0 ? ' set' : ''}${pk === 0 ? ' first' : ''}" aria-label="${pk >= 0 ? ord(pk + 1) + ' pick' : 'Pick not decided'}">${pk >= 0 ? pk + 1 : '–'}</div>
