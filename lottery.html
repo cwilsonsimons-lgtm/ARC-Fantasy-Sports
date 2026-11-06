@@ -163,7 +163,21 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
   .trow{grid-template-columns:minmax(0,1fr) 52px;gap:8px 10px}
   .trow .ttiles{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(3,minmax(0,1fr))}
   .tpick{grid-column:2;grid-row:1;border-left:0;font-size:30px}}
-.finder{display:flex;flex-direction:column;gap:6px}
+.finder{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px}
+.finder .fres{grid-column:1/-1}
+.undoelim{padding:0 12px;height:44px;font-size:12px}
+@media (max-width:520px){.undoelim{grid-column:1/-1;height:38px}}
+/* draft order chips at the top of the entrants box */
+#resultBox{display:flex;flex-direction:column;gap:10px}
+#resultBox:empty{display:none}
+.picks{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;background:var(--card-2);border:1px solid var(--line-soft);font-size:13px;min-width:0}
+.pchip b{font-family:var(--display);font-weight:700;font-size:15px;color:var(--ink-3)}
+.pchip span{font-weight:600;overflow-wrap:anywhere}
+.pchip.tbd span{color:var(--ink-3);font-weight:500}
+.pchip.set b{color:var(--ink)}
+.pchip.first.set{border-color:var(--gold)}
+.pchip.first.set b{color:var(--gold)}
 .findwrap{position:relative}
 .findwrap::before{content:'';position:absolute;left:13px;top:50%;width:11px;height:11px;margin-top:-8px;border:2px solid var(--ink-3);border-radius:50%;pointer-events:none}
 .findwrap::after{content:'';position:absolute;left:24px;top:50%;width:6px;height:2px;margin-top:4px;background:var(--ink-3);transform:rotate(45deg);pointer-events:none}
@@ -452,6 +466,7 @@ input:disabled{opacity:.55}
         <div class="finder" id="finder" hidden>
           <label class="findwrap"><span class="sr" hidden>Find an entrant</span>
             <input type="search" id="findBox" placeholder="Find an entrant by name or number" autocomplete="off" enterkeyhint="done" aria-label="Find an entrant by name or number"></label>
+          <button class="btn ghost undoelim" id="undoElim" type="button">Undo last elimination</button>
           <div class="fres" id="findRes" aria-live="polite"></div>
         </div>
         <div class="editor" id="editor" hidden>
@@ -492,18 +507,6 @@ input:disabled{opacity:.55}
     </div>
   </div>
 
-  <section class="panel" id="tracker" aria-label="Draft order" hidden>
-    <h2>Draft order</h2>
-    <p class="hint">A team is out when all of its entrants are eliminated. The first team out gets the last pick, the next team out the pick before that, and the last team standing gets the 1st pick.</p>
-    <div class="trk">
-      <div><div class="order" id="order"></div></div>
-      <div>
-        <h3>Still in</h3>
-        <div class="alive" id="alive"></div>
-        <div class="actions" style="margin-top:12px"><button class="btn ghost" id="undoElim" type="button">Undo last elimination</button></div>
-      </div>
-    </div>
-  </section>
 </div>
 
 <script>
@@ -687,7 +690,7 @@ function chanceView(){
     return {pct:p, delta:d, done:false};
   });
 }
-const chanceTag = c => !c ? '' : `<span class="chance"><b>${c.pct}%</b> chance at the 1st pick${c.delta ? ` <i class="${c.delta > 0 ? 'up' : 'down'}">${c.delta > 0 ? '▲' : '▼'}${Math.abs(c.delta)}</i>` : ''}</span>`;
+const chanceTag = c => !c ? '' : `<span class="chance" title="An estimate: betting odds for the favorites still in, plus how often each entry number has won. The arrow is the change since the last elimination."><b>${c.pct}%</b> chance at the 1st pick${c.delta ? ` <i class="${c.delta > 0 ? 'up' : 'down'}">${c.delta > 0 ? '▲' : '▼'}${Math.abs(c.delta)}</i>` : ''}</span>`;
 const histFor = nums => { const k = nums.reduce((a, n) => a + winsAt(n).length, 0); return {k, pct:pctOf(k)}; };
 // Each team's share, rounded together (largest remainder, to 0.1%) so the teams' shares add up to
 // exactly what they hold in total: 100% once every number is drawn.
@@ -1071,26 +1074,6 @@ function showReveal(num, slot, pop){
     <div class="who"><span class="team" style="color:${t.tc}" aria-label="${esc(t.n)}">${letters}</span>
     <span class="sub">${esc(who(t))} gets entry #${num} · ${left(slot)} ball${left(slot) === 1 ? '' : 's'} left</span></div>`;
 }
-function renderTracker(st){
-  const N = S.slots.length;
-  $('order').innerHTML = st.picks.map((p, k) => {
-    const first = k === 0;
-    if(!p) return `<div class="prow tbd${first ? ' first' : ''}"><span class="pk">${ord(k + 1)}</span>
-      <span class="pn">To be decided</span><span class="pw">${first ? 'Last team standing' : `${ord(N - k)} team to be eliminated`}</span></div>`;
-    const t = team(p.i);
-    return `<div class="prow set${first ? ' first' : ''}"><span class="pk">${ord(k + 1)}</span>
-      <span class="pn" style="color:${t.tc}">${esc(t.n)}</span>
-      <span class="pw">${p.last ? (st.winner ? `Holds the winner, ${esc(label(st.winner))}` : 'Last team standing') : `Out when ${esc(label(p.by))} was eliminated`}</span></div>`;
-  }).join('');
-  const alive = S.slots.map((s, i) => i).filter(i => !st.picks.some(p => p && p.i === i));
-  const ch = chanceView();
-  $('alive').innerHTML = alive.length ? alive.map(i => {
-    const t = team(i), nums = numsFor(i), left = nums.filter(x => !isOut(x));
-    return `<span><b style="color:${t.tc}">${esc(t.n)}</b> · ${left.length} of ${nums.length} still in: ${left.map(x => '#' + x + (entrant(x) ? ' ' + esc(entrant(x)) : '')).join(', ')} ${ch ? chanceTag(ch[i]) : ''}</span>`;
-  }).join('') + '<span class="note">The 1st-pick chance is an estimate: betting odds for the favorites, plus how often each entry number has won, for everyone still in.</span>' : '';
-  $('undoElim').disabled = !S.elims.length;
-  if(!alive.length) $('alive').innerHTML = '<span>Every team is placed.</span>';
-}
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderAll(opt = {}){
@@ -1186,15 +1169,17 @@ function renderAll(opt = {}){
     eb.classList.toggle('back', k >= 0); eb.disabled = won || (k < 0 && st.winner !== null);
   }
 
-  // result
-  if(st.picks[0]){
-    const t = team(st.picks[0].i);
-    $('resultBox').innerHTML = `<div class="result"><span class="k">${st.winner ? `Rumble winner: ${esc(label(st.winner))}` : 'Last team standing'}</span>
-      <span class="v">${esc(t.n)} gets the 1st pick</span><span>Full draft order is below.</span></div>`;
-  }else if(tracking()){
-    $('resultBox').innerHTML = asViewer()
-      ? `<p class="hint">Every number is out. Entrants' names and eliminations show up here as the Rumble goes, and the draft order below fills in as teams go out.</p>`
-      : `<p class="hint">Every number is out. <b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. The draft order below fills in as teams go out.</p>`;
+  // result: the 1st-pick banner, the draft order as it fills in, and what to do
+  if(tracking()){
+    const banner = st.picks[0] ? (() => { const t = team(st.picks[0].i); return `<div class="result"><span class="k">${st.winner ? `Rumble winner: ${esc(label(st.winner))}` : 'Last team standing'}</span>
+      <span class="v">${esc(t.n)} gets the 1st pick</span></div>`; })() : '';
+    const chips = `<div class="picks" aria-label="Draft order">${st.picks.map((p, k) => p
+      ? `<span class="pchip set${k === 0 ? ' first' : ''}" title="${p.last ? 'Last team standing' : `Out when ${esc(label(p.by))} was eliminated`}"><b>${ord(k + 1)}</b><span style="color:${team(p.i).tc}">${esc(team(p.i).n)}</span></span>`
+      : `<span class="pchip tbd${k === 0 ? ' first' : ''}"><b>${ord(k + 1)}</b><span>${k === 0 ? 'Last team standing' : 'TBD'}</span></span>`).join('')}</div>`;
+    const hint = st.winner ? '' : asViewer()
+      ? `<p class="hint">Entrants' names and eliminations show up here as the Rumble goes. When a team has no entrants left it's out: the first team out gets the last pick, and the last team standing gets the 1st.</p>`
+      : `<p class="hint"><b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. When a team has no entrants left it's out: the first team out gets the last pick, and the last team standing gets the 1st.</p>`;
+    $('resultBox').innerHTML = banner + chips + hint;
   }else{
     $('resultBox').innerHTML = `<p class="hint">Entry numbers go from #${T} down to #1. Each ball drawn fills in the next one.</p>`;
   }
@@ -1213,15 +1198,13 @@ function renderAll(opt = {}){
       ${chances ? chanceTag(chances[i]) : ''}</div>`;
   }).join('');
 
-  // rumble tracker
-  $('tracker').hidden = !tracking();
   // Once every number is out the cage has done its job: fold it away, with a bar to bring it back for an undo.
   const fold = tracking() && !showCage;
   $('machine').hidden = fold; $('mainGrid').classList.toggle('nocage', fold);
   $('cageBar').hidden = !tracking(); $('cageToggle').textContent = fold ? 'Show cage' : 'Hide cage';
   const foldSetup = tracking() && !showSetup;
   $('setupPanel').hidden = foldSetup; $('setupToggle').textContent = foldSetup ? 'Show setup' : 'Hide setup';
-  if(tracking()) renderTracker(st);
+  $('undoElim').disabled = !S.elims.length;
 
   // setup
   const locked = S.draws.length > 0;

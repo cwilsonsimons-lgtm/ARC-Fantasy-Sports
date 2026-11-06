@@ -76,8 +76,10 @@ looks entrants up by any part of their name or by number, lists the matches with
 an Eliminate / Put back button, and dims the rest of the board; when exactly one
 entrant still in matches, Enter eliminates them and clears the box. A team is out when all of its
 entrants are eliminated: the first team out gets the last pick, the next the
-pick before, and the last team standing gets the 1st pick. The **Draft order**
-section fills in as teams go out; the team cards and copied results follow it.
+pick before, and the last team standing gets the 1st pick. A row of draft-order
+chips at the top of the entrants box (1st TBD · 2nd TBD · 3rd … · 4th …) fills in as
+teams go out, with **Undo last elimination** beside the search; the team cards and
+copied results follow it.
 Entrant names survive a lottery reset. Numbers on the board run down each
 column by default; a **Down / Across / By team** toggle switches to row order,
 or to one row per team (its entrants in number order, crossed out as they go,
@@ -148,7 +150,7 @@ back to the built-in bio); everyone sees it.
 
 **1st-pick chance.** Once every number is drawn, each team shows its estimated
 chance of getting the 1st pick (holding the winner), with the change since the
-last elimination. Each entrant still in is weighted by their number's history
+last elimination, on the team cards and By team rows. Each entrant still in is weighted by their number's history
 (past winners there, +1) times their strength: a betting favorite counts by their
 implied odds (bookmaker margin removed) relative to an ordinary entrant; numbers
 not yet named share the strength of favorites who haven't appeared.
