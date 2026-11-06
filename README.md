@@ -128,6 +128,15 @@ the displayed figures add up exactly. Add a line after each year's Rumble.
 bookmaker's implied chance (1 ÷ decimal odds) and a bar scaled to the favorite.
 Update the list and `FAV_ASOF` when the odds move.
 
+**Favorites in the match and declared entrants.** An entrant whose name matches a
+betting favorite (ignoring case and punctuation) gets a gold star, outline and
+"#N fav" tag on the board, a star in search results, and a status in the
+Favorites panel (declared, in at #N, out, won). The **Declared for the Rumble**
+panel lets the owner add wrestlers as they officially declare; everyone sees the
+list sorted into in the match, yet to enter and out, with counts. The declared
+list is shared even before the numbers are official, since it isn't part of the
+draw. Names from both lists are suggested when typing an entrant.
+
 **Following along live.** Published as a claude.ai artifact, the page keeps the
 lottery in the artifact's shared store instead of the browser. The owner runs it;
 everyone the page is shared with (signed in to claude.ai) gets a view-only copy

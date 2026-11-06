@@ -238,6 +238,25 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .fav .bar i{display:block;height:100%;border-radius:3px;background:var(--ink-3)}
 .fav:first-child .rk{color:var(--gold)}
 .fav:first-child .bar i{background:var(--gold)}
+.pill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;vertical-align:1px;white-space:nowrap}
+.pill.dec,.pill.yet{background:var(--line);color:var(--ink-2)}
+.pill.in{background:rgba(242,193,78,.16);color:var(--gold)}
+.pill.won{background:var(--gold);color:var(--gold-ink)}
+.pill.out{background:rgba(240,69,62,.14);color:#F0453E}
+.star{color:var(--gold);margin-right:4px}
+.tile.isfav{box-shadow:inset 0 0 0 2px var(--gold)}
+.tile.isfav .nm{color:var(--gold)}
+.tile .ftag{position:absolute;left:7px;bottom:5px;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);pointer-events:none}
+.decadd{display:flex;gap:8px}
+.decadd input{flex:1;min-width:0;height:42px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.declist{list-style:none;display:flex;flex-direction:column;gap:6px}
+.drow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--card-2)}
+.drow .dname{font-weight:600;overflow-wrap:anywhere}
+.drow .dname small{display:block;font-size:11px;font-weight:600;color:var(--gold)}
+.drow.out .dname{color:var(--ink-3);text-decoration:line-through}
+.drow .pill{margin-left:0}
+.dx{width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:var(--ink-3);font-size:16px}
+.dx:hover{background:var(--line);color:var(--ink)}
 
 /* ---- rumble tracker ---- */
 .trk{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
@@ -395,7 +414,7 @@ input:disabled{opacity:.55}
         </div>
         <div class="editor" id="editor" hidden>
           <span class="ednum" id="edNum"></span>
-          <label class="fld"><span>Entrant name</span><input type="text" id="edName" autocomplete="off" enterkeyhint="next" placeholder="Who came out?"></label>
+          <label class="fld"><span>Entrant name</span><input type="text" id="edName" autocomplete="off" enterkeyhint="next" placeholder="Who came out?" list="wrestlerNames"></label>
           <span class="edbtns"><button type="button" class="ebtn" id="edElim">Eliminate</button>
           <button type="button" class="ebtn back" id="edDone">Done</button></span>
           <span class="edhist" id="edHist"></span>
@@ -412,6 +431,17 @@ input:disabled{opacity:.55}
         <div class="phead"><h2>Favorites to win · 2027 Royal Rumble</h2><span class="favwhen">Feb 6, 2027 · Glendale, AZ</span></div>
         <ol class="favs" id="favs"></ol>
         <p class="note" id="favNote"></p>
+      </section>
+
+      <section class="panel" aria-label="Declared for the Rumble">
+        <div class="phead"><h2>Declared for the Rumble</h2><span class="favwhen" id="decCount"></span></div>
+        <p class="hint" id="decHint"></p>
+        <form class="decadd" id="decForm" autocomplete="off">
+          <input type="text" id="decName" placeholder="Wrestler who declared" list="wrestlerNames" aria-label="Wrestler who declared">
+          <button class="btn ghost" type="submit">Add</button>
+        </form>
+        <ul class="declist" id="decList"></ul>
+        <datalist id="wrestlerNames"></datalist>
       </section>
 
     </div>
@@ -475,15 +505,56 @@ const FAVORITES = [
   ['Kevin Owens', 7], ['Trick Williams', 9], ['Sami Zayn', 10], ['Roman Reigns', 19],
 ];
 const american = d => d >= 2 ? '+' + Math.round((d - 1) * 100) : '−' + Math.round(100 / (d - 1));
+// Names match ignoring case, spaces and punctuation ("Oba Femi" = "oba femi" = "ObaFemi").
+const norm = x => (x || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+const favRank = name => { const k = norm(name); if(!k) return 0; const i = FAVORITES.findIndex(f => norm(f[0]) === k); return i + 1; };
+// where a wrestler is in the match: the drawn number their name is typed on, if any
+function whereIs(name){
+  const k = norm(name); if(!k) return null;
+  for(let n = 1; n <= total(); n++) if(holderOf(n) !== null && norm(entrant(n)) === k) return n;
+  return null;
+}
+function statusOf(name){
+  const n = whereIs(name); if(n === null) return null;
+  const st = standings();
+  return st.winner === n ? {n, kind:'won'} : isOut(n) ? {n, kind:'out', k:S.elims.indexOf(n) + 1} : {n, kind:'in'};
+}
+function statusPill(name, declared){
+  const x = statusOf(name);
+  if(!x) return declared ? '<span class="pill dec">Declared</span>' : '';
+  const t = team(holderOf(x.n));
+  return x.kind === 'won' ? `<span class="pill won">Won from #${x.n}</span>`
+    : x.kind === 'out' ? `<span class="pill out">Out · #${x.n}</span>`
+    : `<span class="pill in">In at #${x.n} · ${esc(who(t))}</span>`;
+}
 function renderFavs(){
-  const top = 1 / FAVORITES[0][1];
+  const top = 1 / FAVORITES[0][1], dec = new Set(S.declared.map(norm));
   $('favs').innerHTML = FAVORITES.map(([name, d], i) => {
     const p = 1 / d;
-    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who">${esc(name)}</span>
+    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who">${esc(name)} ${statusPill(name, dec.has(norm(name)))}</span>
       <span class="fodds"><b>${american(d)}</b> · ${Math.round(p * 100)}%</span>
       <span class="bar" aria-hidden="true"><i style="width:${(p / top * 100).toFixed(1)}%"></i></span></li>`;
   }).join('');
   $('favNote').textContent = `${FAV_ASOF}. The percentage is the bookmaker's implied chance (1 ÷ decimal odds); odds this far out move a lot.`;
+}
+function renderDeclared(){
+  const can = (mode === 'host' || mode === 'local') && !previewing;
+  $('decForm').hidden = !can;
+  const rows = S.declared.map(name => ({name, st:statusOf(name), fav:favRank(name)}));
+  const inN = rows.filter(r => r.st && r.st.kind !== 'out').length, outN = rows.filter(r => r.st && r.st.kind === 'out').length;
+  const yet = rows.length - inN - outN;
+  $('decCount').textContent = rows.length ? `${rows.length} declared · ${yet} yet to enter · ${inN} in · ${outN} out` : '';
+  $('decHint').textContent = rows.length ? '' : can
+    ? "Nobody has declared yet. Add wrestlers here as they officially declare, and everyone following along sees the list."
+    : 'Nobody has officially declared yet. Names show up here as they do.';
+  const order = r => !r.st ? 1 : r.st.kind === 'out' ? 2 : 0;   // in the match, then yet to enter, then out
+  $('decList').innerHTML = rows.map((r, i) => ({...r, i})).sort((a, b) => order(a) - order(b) || a.i - b.i).map(r => `
+    <li class="drow${r.st && r.st.kind === 'out' ? ' out' : ''}">
+      <span class="dname">${r.fav ? `<span class="star" title="Betting favorite #${r.fav}">★</span>` : ''}${esc(r.name)}${r.fav ? `<small>#${r.fav} favorite</small>` : ''}</span>
+      ${r.st ? statusPill(r.name, true) : '<span class="pill yet">Yet to enter</span>'}
+      ${can ? `<button type="button" class="dx" data-undeclare="${r.i}" aria-label="Remove ${esc(r.name)}">×</button>` : ''}
+    </li>`).join('');
+  $('wrestlerNames').innerHTML = [...new Set([...S.declared, ...FAVORITES.map(f => f[0])])].map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 const histFor = nums => { const k = nums.reduce((a, n) => a + winsAt(n).length, 0); return {k, pct:pctOf(k)}; };
 // Each team's share, rounded together (largest remainder, to 0.1%) so the teams' shares add up to
@@ -510,6 +581,7 @@ function defaults(){
     sealed:false, // last ball is out but the dealer hasn't revealed it
     entrants:{},  // entry number -> wrestler name
     elims:[],     // entry numbers in the order they were eliminated
+    declared:[],  // wrestlers who have officially declared for the Rumble, in the order they declared
     drawGrid:false, // with "By team": show the number grid until every number is drawn
     official:false, // live: the owner has shared this draw with the league (until then they run practice draws)
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
@@ -541,6 +613,7 @@ function load(){
       s.sealed = !!s.sealed && s.draws.length > 0;
       delete s.winner; s.entrants = s.entrants || {}; s.elims = Array.isArray(s.elims) ? s.elims : [];
       s.flow = ['across', 'team'].includes(s.flow) ? s.flow : 'down';
+      s.declared = Array.isArray(s.declared) ? s.declared : [];
       s.slots.forEach(x => { if(!x.id) x.id = slotId(); });
       return s;
     }
@@ -872,6 +945,7 @@ const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','
 
 function renderAll(opt = {}){
   renderOfficial();
+  if(typeof renderFavs === 'function'){ renderFavs(); renderDeclared(); }
   const hide = S.sealed ? S.draws.length - 1 : -1;       // a sealed ball stays secret everywhere until revealed
   const drawn = S.draws.length - (hide >= 0 ? 1 : 0), rem = total() - drawn;
   const n = numberOf(drawn), done = rem < 1, err = setupError();   // n = number on the line
@@ -915,10 +989,10 @@ function renderAll(opt = {}){
     const t = team(holderOf(num)), win = st.winner === num, out = isOut(num);
     if(!live) return `<div class="tile filled" data-num="${num}" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
       <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
-    const nm = entrant(num);
-    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}${hits.has(num) ? ' hit' : ''}" data-num="${num}" style="background:${t.c}22;color:${t.tc}">
+    const nm = entrant(num), fr = favRank(nm);
+    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}${hits.has(num) ? ' hit' : ''}${fr ? ' isfav' : ''}" data-num="${num}" style="background:${t.c}22;color:${t.tc}"${fr ? ` title="Betting favorite #${fr}"` : ''}>
         <button type="button" class="tmain" data-pick="${num}" aria-label="#${num}${nm ? ' ' + esc(nm) : ''}, ${esc(t.n)}${out ? ', eliminated' : ''}. Edit">
-          <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${nm ? esc(nm) : 'Tap to name'}</span><span class="m">${esc(who(t))}</span></button>
+          <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${fr ? '<span class="star">★</span>' : ''}${nm ? esc(nm) : 'Tap to name'}</span>${fr ? `<span class="ftag">#${fr} fav</span>` : ''}<span class="m">${esc(who(t))}</span></button>
         ${win ? '' : `<button type="button" class="tx" data-x="${num}" ${!out && st.winner !== null ? 'disabled' : ''}
           aria-label="${out ? `Put #${num} back in` : `Eliminate #${num}`}" title="${out ? 'Put back in' : 'Eliminate'}">${out ? '↺' : '×'}</button>`}
       </div>`;
@@ -1063,6 +1137,18 @@ $('edName').addEventListener('keydown', e => {
 });
 $('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); });
 $('edDone').addEventListener('click', () => pick(null));
+$('decForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('decName').value.trim().replace(/\s+/g, ' ');
+  if(!name) return;
+  const dupe = S.declared.find(x => norm(x) === norm(name));
+  if(dupe){ $('decHint').textContent = `${dupe} is already on the list.`; $('decName').select(); return; }
+  S.declared.push(name); $('decName').value = ''; save(); renderAll({keepReveal:true, skipSetup:true}); $('decName').focus();
+});
+$('decList').addEventListener('click', e => {
+  const b = e.target.closest('[data-undeclare]'); if(!b) return;
+  S.declared.splice(+b.dataset.undeclare, 1); save(); renderAll({keepReveal:true, skipSetup:true});
+});
 // Royal Rumble history for an entry number: hover (or tap) a number on the board.
 function histLine(n){
   const w = winsAt(n);
@@ -1110,7 +1196,7 @@ function renderFinder(found, st){
     const t = team(holderOf(n)), k = S.elims.indexOf(n), won = st.winner === n;
     return `<div class="frow${k >= 0 ? ' out' : ''}">
       <span class="fnum" style="background:${t.c}22;color:${t.tc}"><b>${n}</b><small>${esc(who(t))}</small></span>
-      <span class="fname">${entrant(n) ? esc(entrant(n)) : `Entrant #${n}`}<small>${esc(t.n)}${k >= 0 ? ` · ${ord(k + 1)} out` : won ? ' · winner' : ''}</small></span>
+      <span class="fname">${favRank(entrant(n)) ? '<span class="star">★</span>' : ''}${entrant(n) ? esc(entrant(n)) : `Entrant #${n}`}<small>${esc(t.n)}${k >= 0 ? ` · ${ord(k + 1)} out` : won ? ' · winner' : ''}</small></span>
       ${won ? '' : `<button type="button" class="ebtn${k >= 0 ? ' back' : ''}" data-fx="${n}" ${k < 0 && st.winner !== null ? 'disabled' : ''}>${k >= 0 ? 'Put back' : 'Eliminate'}</button>`}
     </div>`;
   }).join('') + (found.length > 6 ? `<span class="fnone">${found.length - 6} more match. Keep typing to narrow it down.</span>` : '')
@@ -1254,14 +1340,16 @@ const bareSlots = () => S.slots.map(({logo, ...rest}) => rest);
 const publicState = () => S.official ? {
   official:true, slots:bareSlots(),
   draws:hidden() ? S.draws.slice(0, -1) : S.draws.slice(),   // a sealed draw stays off the shared copy
-  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid,
+  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared,
 } : {
   // not official yet: followers get the teams (for their practice draws) and nothing of the real one
   official:false, slots:bareSlots(), draws:[], pend:false, entrants:{}, elims:[], flow:S.flow, drawGrid:!!S.drawGrid,
+  declared:S.declared,   // who has declared isn't part of the draw, so it's shared either way
 };
 function fromPublic(d){
   return {...defaults(), slots:(d.slots || []).map(x => ({...x, logo:''})), draws:(d.draws || []).slice(), sealed:false,
-    entrants:{...(d.entrants || {})}, elims:(d.elims || []).slice(), flow:d.flow || 'down', drawGrid:!!d.drawGrid};
+    entrants:{...(d.entrants || {})}, elims:(d.elims || []).slice(), flow:d.flow || 'down', drawGrid:!!d.drawGrid,
+    declared:(d.declared || []).slice()};
 }
 function pushShared(){ dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(flush, 250); }
 async function flush(){
@@ -1392,12 +1480,13 @@ function enterMock(d){
   if(mode !== 'mock' || teamSig(slots) !== teamSig(S.slots)){
     mode = 'mock'; document.body.classList.remove('viewer'); document.body.classList.add('mock');
     $('mockBar').hidden = false; firstState = true; pend = false; sel = null; clearFind(); showCage = showSetup = false;
-    S = loadMock(slots); tray = null; fill(); renderAll();
+    S = loadMock(slots); S.declared = (d.declared || []).slice(); tray = null; fill(); renderAll();
     setLive("<b>Practice</b> The real numbers aren't official yet. This draw is yours alone.", true);
     return;
   }
   // same teams: pick up name and color changes, keep the practice draw
   S.slots = S.slots.map((x, i) => ({...x, ...slots[i], logo:''}));
+  S.declared = (d.declared || []).slice();
   renderAll({keepReveal:true});
 }
 function drawRest(){
