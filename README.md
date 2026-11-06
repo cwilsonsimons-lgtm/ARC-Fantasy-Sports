@@ -113,6 +113,14 @@ in that manager and colour. Ball counts and the team list lock after the first
 draw; names, managers, colours and logos can change at any time. Very dark
 colours are lightened for text so they stay readable on the dark page.
 
+**Rumble history.** Hovering (or tapping) any number on the board shows how many
+men's Royal Rumble winners entered at that number, who and when, and their share
+of all winners. Each team card and By team row adds up its numbers into one
+figure: the share of past winners who entered at any of that team's numbers. The
+data is `RUMBLE_WINS` in `lottery.html` (1988-2026: 39 Rumbles, 40 winners with
+the 1994 co-winners; 2011's #38 counts but sits outside 1-30; the 2018 Greatest
+Royal Rumble is left out). Add a line after each year's Rumble.
+
 **Following along live.** Published as a claude.ai artifact, the page keeps the
 lottery in the artifact's shared store instead of the browser. The owner runs it;
 everyone the page is shared with (signed in to claude.ai) gets a view-only copy

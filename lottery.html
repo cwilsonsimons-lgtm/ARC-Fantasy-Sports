@@ -181,6 +181,19 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .board.searching .tile.hit{outline:2px solid var(--ink);outline-offset:1px}
 .editor{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:end;padding:10px 12px;
   border:1px solid var(--line);border-radius:12px;background:var(--card-2)}
+.editor .edhist{grid-column:1/-1;font-size:12px;color:var(--ink-3)}
+.editor .edhist b{color:var(--ink-2);font-weight:600}
+.hcard .hist{font-size:12px;color:var(--ink-3);border-top:1px solid var(--line-soft);padding-top:6px}
+.hcard .hist b{color:var(--gold);font-weight:700;font-size:13px}
+.tlabel .thist{font-size:12px;font-weight:600;color:var(--gold);margin-top:4px}
+.tip{position:fixed;z-index:60;width:max-content;max-width:min(270px,calc(100vw - 24px));padding:10px 12px;border-radius:12px;
+  background:var(--card);border:1px solid var(--line);box-shadow:0 12px 30px rgba(0,0,0,.5);font-size:13px;color:var(--ink-2);pointer-events:none}
+.tip .th{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin-bottom:4px}
+.tip .th b{color:var(--gold)}
+.tip ol{list-style:none;display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.tip li{display:flex;gap:8px;font-variant-numeric:tabular-nums}
+.tip li span{color:var(--ink-3);font-family:var(--mono);font-size:12px}
+.tip li em{font-style:normal;color:var(--ink)}
 .editor .ednum{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;padding:5px 10px;min-width:52px}
 .editor .ednum b{font-family:var(--display);font-weight:700;font-size:22px;line-height:1}
 .editor .ednum small{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
@@ -291,6 +304,7 @@ input:disabled{opacity:.55}
     <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
   <div class="notice" id="liveNotice" hidden></div>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
 
   <section class="panel" id="setupPanel" aria-label="Lottery setup">
     <h2>Setup</h2>
@@ -341,6 +355,7 @@ input:disabled{opacity:.55}
           <label class="fld"><span>Entrant name</span><input type="text" id="edName" autocomplete="off" enterkeyhint="next" placeholder="Who came out?"></label>
           <span class="edbtns"><button type="button" class="ebtn" id="edElim">Eliminate</button>
           <button type="button" class="ebtn back" id="edDone">Done</button></span>
+          <span class="edhist" id="edHist"></span>
         </div>
         <div class="board" id="board"></div>
       </section>
@@ -383,6 +398,26 @@ const LEAGUE = [
   {id:'doghouse',n:"Mike Vick's Dog House",mgr:'Seabass',c:'#E6D15A'},
 ];
 const BY_ID = Object.fromEntries(LEAGUE.map(t => [t.id, t]));
+// Every men's Royal Rumble winner at the annual event, with the number they entered at: 39 Rumbles,
+// 40 winners (Bret Hart and Lex Luger were co-winners in 1994). 2011 had 40 entrants; the 2018
+// Greatest Royal Rumble isn't the annual match and isn't counted. Add a line each year.
+const RUMBLE_WINS = [
+  [1988, 13, 'Hacksaw Jim Duggan'], [1989, 27, 'Big John Studd'], [1990, 25, 'Hulk Hogan'], [1991, 24, 'Hulk Hogan'],
+  [1992, 3, 'Ric Flair'], [1993, 27, 'Yokozuna'], [1994, 27, 'Bret Hart'], [1994, 23, 'Lex Luger'],
+  [1995, 1, 'Shawn Michaels'], [1996, 18, 'Shawn Michaels'], [1997, 5, 'Stone Cold Steve Austin'], [1998, 24, 'Stone Cold Steve Austin'],
+  [1999, 2, 'Vince McMahon'], [2000, 24, 'The Rock'], [2001, 27, 'Stone Cold Steve Austin'], [2002, 22, 'Triple H'],
+  [2003, 29, 'Brock Lesnar'], [2004, 1, 'Chris Benoit'], [2005, 28, 'Batista'], [2006, 2, 'Rey Mysterio'],
+  [2007, 30, 'The Undertaker'], [2008, 30, 'John Cena'], [2009, 8, 'Randy Orton'], [2010, 29, 'Edge'],
+  [2011, 38, 'Alberto Del Rio'], [2012, 22, 'Sheamus'], [2013, 19, 'John Cena'], [2014, 28, 'Batista'],
+  [2015, 19, 'Roman Reigns'], [2016, 30, 'Triple H'], [2017, 23, 'Randy Orton'], [2018, 14, 'Shinsuke Nakamura'],
+  [2019, 10, 'Seth Rollins'], [2020, 16, 'Drew McIntyre'], [2021, 1, 'Edge'], [2022, 30, 'Brock Lesnar'],
+  [2023, 30, 'Cody Rhodes'], [2024, 15, 'Cody Rhodes'], [2025, 20, 'Jey Uso'], [2026, 26, 'Roman Reigns'],
+];
+const WINNERS = RUMBLE_WINS.length, RUMBLES = new Set(RUMBLE_WINS.map(w => w[0])).size;
+const winsAt = n => RUMBLE_WINS.filter(w => w[1] === n);
+const pctOf = k => (k / WINNERS * 100).toFixed(1).replace(/\.0$/, '') + '%';
+// share of all past winners who entered at one of these numbers
+const histFor = nums => { const k = nums.reduce((a, n) => a + winsAt(n).length, 0); return {k, pct:pctOf(k)}; };
 const MAX_TEAMS = 8;
 const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th','st','nd','rd'][n % 10] || 'th');
 const place = i => i === 0 ? 'Last' : `${ord(i + 1)} to last`;
@@ -795,10 +830,10 @@ function renderAll(opt = {}){
   if(live) for(let x = 1; x <= T; x++) if(!entrant(x) && !isOut(x)){ nextIn = x; break; }
   const tile = num => {
     const t = team(holderOf(num)), win = st.winner === num, out = isOut(num);
-    if(!live) return `<div class="tile filled" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
+    if(!live) return `<div class="tile filled" data-num="${num}" style="background:${t.c}22;color:${t.tc}" aria-label="Entrant ${num}: ${esc(t.n)}">
       <span class="n">${num}</span><span class="m">${esc(who(t))}</span></div>`;
     const nm = entrant(num);
-    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}${hits.has(num) ? ' hit' : ''}" style="background:${t.c}22;color:${t.tc}">
+    return `<div class="tile filled${win ? ' winner' : ''}${out ? ' out' : ''}${sel === num ? ' sel' : ''}${num === nextIn ? ' next' : ''}${hits.has(num) ? ' hit' : ''}" data-num="${num}" style="background:${t.c}22;color:${t.tc}">
         <button type="button" class="tmain" data-pick="${num}" aria-label="#${num}${nm ? ' ' + esc(nm) : ''}, ${esc(t.n)}${out ? ', eliminated' : ''}. Edit">
           <span class="n">${num}</span><span class="nm${nm ? '' : ' empty'}">${nm ? esc(nm) : 'Tap to name'}</span><span class="m">${esc(who(t))}</span></button>
         ${win ? '' : `<button type="button" class="tx" data-x="${num}" ${!out && st.winner !== null ? 'disabled' : ''}
@@ -812,7 +847,8 @@ function renderAll(opt = {}){
       const t = team(i), nums = numsFor(i).filter(x => hide < 0 || x !== numberOf(hide));
       const pk = st.picks.findIndex(p => p && p.i === i);
       return `<div class="trow">
-        <div class="tlabel"><span class="tn" style="color:${t.tc}">${esc(t.mgr || t.n)}</span>${t.mgr ? `<span class="tt">${esc(t.n)}</span>` : ''}</div>
+        <div class="tlabel"><span class="tn" style="color:${t.tc}">${esc(t.mgr || t.n)}</span>${t.mgr ? `<span class="tt">${esc(t.n)}</span>` : ''}
+          ${nums.length ? `<span class="thist" title="${histFor(nums).k} of ${WINNERS} past Royal Rumble winners entered at these numbers">${histFor(nums).pct} of past winners</span>` : ''}</div>
         <div class="ttiles">${nums.length ? nums.map(tile).join('') : '<span class="note">No numbers yet</span>'}</div>
         <div class="tpick${pk >= 0 ? ' set' : ''}${pk === 0 ? ' first' : ''}" aria-label="${pk >= 0 ? ord(pk + 1) + ' pick' : 'Pick not decided'}">${pk >= 0 ? pk + 1 : '–'}</div>
       </div>`;
@@ -820,7 +856,7 @@ function renderAll(opt = {}){
   }else for(let num = 1; num <= T; num++){
     const k = drawOf(num), has = k < S.draws.length && k !== hide;
     if(has) tiles += tile(num);
-    else tiles += `<div class="tile${!done && num === n ? ' next' : ''}"><span class="n">${num}</span></div>`;
+    else tiles += `<div class="tile${!done && num === n ? ' next' : ''}" data-num="${num}"><span class="n">${num}</span></div>`;
   }
   $('board').innerHTML = tiles;
   $('board').classList.toggle('searching', !!findQ.trim());
@@ -832,6 +868,7 @@ function renderAll(opt = {}){
     const t = team(holderOf(sel)), k = S.elims.indexOf(sel), won = st.winner === sel;
     $('edNum').style.background = t.c + '22'; $('edNum').style.color = t.tc;
     $('edNum').innerHTML = `<b>#${sel}</b><small>${esc(who(t))}</small>`;
+    $('edHist').innerHTML = histLine(sel);
     const eb = $('edElim');
     eb.textContent = won ? 'Winner' : k >= 0 ? `${ord(k + 1)} out · Put back` : 'Eliminate';
     eb.classList.toggle('back', k >= 0); eb.disabled = won || (k < 0 && st.winner !== null);
@@ -859,7 +896,8 @@ function renderAll(opt = {}){
       : `<span class="hm">${inNow} of ${nums.length} entrants still in</span>`;
     return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.tc}">${esc(t.n)}</span>
       <span class="hm">${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
-      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => isOut(x) ? `<s>#${x}</s>` : '#' + x).join('  ') : 'No numbers yet'}</span>${status}</div>`;
+      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => isOut(x) ? `<s>#${x}</s>` : '#' + x).join('  ') : 'No numbers yet'}</span>${status}
+      ${nums.length ? `<span class="hist"><b>${histFor(nums).pct}</b> of past Rumble winners entered at these numbers (${histFor(nums).k} of ${WINNERS})</span>` : ''}</div>`;
   }).join('');
 
   // rumble tracker
@@ -929,6 +967,34 @@ $('edName').addEventListener('keydown', e => {
 });
 $('edElim').addEventListener('click', () => { if(sel !== null) toggleElim(sel); });
 $('edDone').addEventListener('click', () => pick(null));
+// Royal Rumble history for an entry number: hover (or tap) a number on the board.
+function histLine(n){
+  const w = winsAt(n);
+  return w.length ? `<b>${w.length} winner${w.length === 1 ? '' : 's'}</b> from #${n} (${pctOf(w.length)} of all Rumble winners): ${w.map(x => `${esc(x[2])} ${x[0]}`).join(', ')}`
+    : `Nobody has won the Royal Rumble from #${n} yet.`;
+}
+function showTip(el){
+  const n = +el.dataset.num, w = winsAt(n), tip = $('tip');
+  tip.innerHTML = `<div class="th">#${n} · ${w.length ? `<b>${w.length}</b> winner${w.length === 1 ? '' : 's'}` : 'no winners yet'}</div>
+    ${w.length ? `<div>${pctOf(w.length)} of the ${WINNERS} Royal Rumble winners entered at #${n}.</div>
+      <ol>${w.map(x => `<li><span>${x[0]}</span><em>${esc(x[2])}</em></li>`).join('')}</ol>`
+      : `<div>Nobody has won the Royal Rumble from #${n} in ${RUMBLES} Rumbles.</div>`}`;
+  tip.hidden = false;
+  const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), innerWidth - tw - 12);
+  let y = r.top - th - 8; if(y < 8) y = r.bottom + 8;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  tipFor = n;
+}
+let tipFor = null;
+const hideTip = () => { $('tip').hidden = true; tipFor = null; };
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('#board [data-num]');
+  if(!el){ if(tipFor !== null) hideTip(); return; }
+  if(+el.dataset.num !== tipFor) showTip(el);
+});
+document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num]'); if(el) showTip(el); else hideTip(); });
+addEventListener('scroll', hideTip, {passive:true});
 // Find an entrant by name (any part of it) or by number, to eliminate them without hunting the board.
 function findMatches(){
   const q = findQ.trim().toLowerCase(); if(!q) return [];
