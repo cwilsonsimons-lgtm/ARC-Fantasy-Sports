@@ -226,6 +226,19 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .hint{color:var(--ink-2);font-size:14px}
 .hint b{color:var(--gold);font-weight:600}
 
+/* ---- favorites ---- */
+.favwhen{font-size:12px;color:var(--ink-3)}
+.favs{list-style:none;display:flex;flex-direction:column;gap:6px}
+.fav{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--card-2)}
+.fav .rk{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink-3);text-align:center}
+.fav .who{font-weight:600;overflow-wrap:anywhere}
+.fav .fodds{font-family:var(--mono);font-size:13px;color:var(--ink-2);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fav .fodds b{color:var(--ink);font-weight:700}
+.fav .bar{grid-column:2/4;height:6px;border-radius:3px;background:var(--line-soft);overflow:hidden}
+.fav .bar i{display:block;height:100%;border-radius:3px;background:var(--ink-3)}
+.fav:first-child .rk{color:var(--gold)}
+.fav:first-child .bar i{background:var(--gold)}
+
 /* ---- rumble tracker ---- */
 .trk{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
 @media (min-width:860px){.trk{grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}}
@@ -379,6 +392,12 @@ input:disabled{opacity:.55}
         <div class="hold" id="hold"></div>
       </section>
 
+      <section class="panel" aria-label="Favorites to win the 2027 Royal Rumble">
+        <div class="phead"><h2>Favorites to win · 2027 Royal Rumble</h2><span class="favwhen">Feb 6, 2027 · Glendale, AZ</span></div>
+        <ol class="favs" id="favs"></ol>
+        <p class="note" id="favNote"></p>
+      </section>
+
     </div>
   </div>
 
@@ -432,6 +451,24 @@ const WINNERS = RUMBLE_WINS.filter(w => w[1] <= 30).length, RUMBLES = new Set(RU
 const winsAt = n => RUMBLE_WINS.filter(w => w[1] === n);
 const pctOf = k => (k / WINNERS * 100).toFixed(1).replace(/\.0$/, '') + '%';
 // share of all past winners who entered at one of these numbers
+// Betting favorites for the next men's Royal Rumble: Sportsbet decimal odds as reported in fall 2026.
+// Odds move; update the list (and FAV_ASOF) when they do.
+const FAV_ASOF = 'Sportsbet odds, as reported in fall 2026';
+const FAVORITES = [
+  ['Oba Femi', 3.5], ['Bron Breakker', 5], ['Gunther', 5], ['Cody Rhodes', 7],
+  ['Kevin Owens', 7], ['Trick Williams', 9], ['Sami Zayn', 10], ['Roman Reigns', 19],
+];
+const american = d => d >= 2 ? '+' + Math.round((d - 1) * 100) : '−' + Math.round(100 / (d - 1));
+function renderFavs(){
+  const top = 1 / FAVORITES[0][1];
+  $('favs').innerHTML = FAVORITES.map(([name, d], i) => {
+    const p = 1 / d;
+    return `<li class="fav"><span class="rk">${i + 1}</span><span class="who">${esc(name)}</span>
+      <span class="fodds"><b>${american(d)}</b> · ${Math.round(p * 100)}%</span>
+      <span class="bar" aria-hidden="true"><i style="width:${(p / top * 100).toFixed(1)}%"></i></span></li>`;
+  }).join('');
+  $('favNote').textContent = `${FAV_ASOF}. The percentage is the bookmaker's implied chance (1 ÷ decimal odds); odds this far out move a lot.`;
+}
 const histFor = nums => { const k = nums.reduce((a, n) => a + winsAt(n).length, 0); return {k, pct:pctOf(k)}; };
 // Each team's share, rounded together (largest remainder, to 0.1%) so the teams' shares add up to
 // exactly what they hold in total: 100% once every number is drawn.
@@ -1316,7 +1353,7 @@ async function goLive(){
   viewerStart(db);
 }
 
-size(); fill(); renderAll(); requestAnimationFrame(loop);
+size(); fill(); renderAll(); renderFavs(); requestAnimationFrame(loop);
 goLive();
 </script>
 </body>

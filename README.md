@@ -123,6 +123,11 @@ count only the 39 winners from #1-#30, leaving out Alberto Del Rio (#38 in 2011'
 40-man match), so the teams add up to 100%; team shares are rounded together so
 the displayed figures add up exactly. Add a line after each year's Rumble.
 
+**Favorites.** A panel lists the betting favorites for the next men's Royal Rumble
+(`FAVORITES` in `lottery.html`, Sportsbet decimal odds), with American odds, the
+bookmaker's implied chance (1 ÷ decimal odds) and a bar scaled to the favorite.
+Update the list and `FAV_ASOF` when the odds move.
+
 **Following along live.** Published as a claude.ai artifact, the page keeps the
 lottery in the artifact's shared store instead of the browser. The owner runs it;
 everyone the page is shared with (signed in to claude.ai) gets a view-only copy
