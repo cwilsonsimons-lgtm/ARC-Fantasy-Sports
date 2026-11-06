@@ -868,6 +868,9 @@ const SHAKE = reduce ? 0 : 1300, FLIP = reduce ? 0 : 420;
 // 1. Spin the cage and drop one ball, sealed. Nobody sees the team yet.
 async function spin(){
   if(busy || S.sealed || remaining() < 1 || setupError()) return;
+  try{ await spinNow(); }catch(e){ busy = false; renderAll(); throw e; }   // never leave the buttons stuck
+}
+async function spinNow(){
   busy = true; tray = null;
   const slot = pickSlot();
   S.draws.push(slot); S.sealed = true; save();      // committed before the show, so a reload can't re-roll it
@@ -883,6 +886,9 @@ async function spin(){
 // 2. The dealer reveals it to the room.
 async function reveal(){
   if(busy || !S.sealed || !tray) return;
+  try{ await revealNow(); }catch(e){ busy = false; revealing = false; renderAll(); throw e; }
+}
+async function revealNow(){
   busy = true; renderAll();
   const k = S.draws.length - 1, slot = S.draws[k];
   if(mode === 'host'){ revealing = true; pushShared(); }
@@ -1377,7 +1383,8 @@ const liveText = () => S.official
 async function hostStart(db){
   const refs = live.refs, full = await refs.full.get(), snap = full.exists ? null : await refs.state.get();
   if(full.exists){
-    const d = full.data(), next = {...defaults(), ...d, slots:(d.slots || []).map(x => ({...x, logo:''}))};
+    // snapshots arrive frozen: work on a deep copy, or the first push onto draws/elims throws
+    const d = JSON.parse(JSON.stringify(full.data())), next = {...defaults(), ...d, slots:(d.slots || []).map(x => ({...x, logo:''}))};
     next.sealed = !!next.sealed && next.draws.length > 0;
     const logos = await db.collection('logos').get();
     for(const x of logos.docs){ const z = next.slots.find(y => y.id === x.id); if(z){ z.logo = x.data().src; pushed.logos[x.id] = z.logo; } }
