@@ -113,7 +113,7 @@ in that manager and colour. Ball counts and the team list lock after the first
 draw; names, managers, colours and logos can change at any time. Very dark
 colours are lightened for text so they stay readable on the dark page.
 
-**Rumble history.** Hovering (or tapping) any number on the board shows how many
+**Rumble history.** Hovering (or tapping) any number on the board or on a team card shows how many
 men's Royal Rumble winners entered at that number, who and when, and their share
 of all winners. Each team card and By team row adds up its numbers into one
 figure: the share of past winners who entered at any of that team's numbers. The

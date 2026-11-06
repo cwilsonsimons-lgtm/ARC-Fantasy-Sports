@@ -214,6 +214,9 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .hcard .hm{color:var(--ink-2);font-size:13px}
 .hcard .nums{font-family:var(--mono);font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .hcard .nums.empty{color:var(--ink-3)}
+.hcard .nums:not(.empty){display:flex;flex-wrap:wrap;gap:2px 10px}
+.cnum{cursor:help;border-radius:4px;padding:0 2px;margin:0 -2px}
+.cnum:hover,.cnum:focus-visible{background:var(--line);outline:none}
 .hcard.win{border-color:var(--gold)}
 
 /* ---- result ---- */
@@ -920,7 +923,7 @@ function renderAll(opt = {}){
       : `<span class="hm">${inNow} of ${nums.length} entrants still in</span>`;
     return `<div class="hcard${win ? ' win' : ''}"><span class="hn" style="color:${t.tc}">${esc(t.n)}</span>
       <span class="hm">${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)} · ${nums.length} of ${s.balls} numbers · ${(s.balls / T * 100).toFixed(0)}% of the field</span>
-      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => isOut(x) ? `<s>#${x}</s>` : '#' + x).join('  ') : 'No numbers yet'}</span>${status}
+      <span class="nums${nums.length ? '' : ' empty'}">${nums.length ? nums.map(x => `<span class="cnum" data-num="${x}" tabindex="0">${isOut(x) ? `<s>#${x}</s>` : '#' + x}</span>`).join('') : 'No numbers yet'}</span>${status}
       ${nums.length ? `<span class="hist"><b>${shares[i].pct}</b> of past Rumble winners entered at these numbers (${shares[i].k} of ${WINNERS})</span>` : ''}</div>`;
   }).join('');
 
@@ -1023,11 +1026,11 @@ function showTip(el){
 let tipFor = null;
 const hideTip = () => { $('tip').hidden = true; tipFor = null; };
 document.addEventListener('mouseover', e => {
-  const el = e.target.closest('#board [data-num]');
+  const el = e.target.closest('#board [data-num], #hold [data-num]');
   if(!el){ if(tipFor !== null) hideTip(); return; }
   if(+el.dataset.num !== tipFor) showTip(el);
 });
-document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num]'); if(el) showTip(el); else hideTip(); });
+document.addEventListener('focusin', e => { const el = e.target.closest('#board [data-num], #hold [data-num]'); if(el) showTip(el); else hideTip(); });
 addEventListener('scroll', hideTip, {passive:true});
 // Find an entrant by name (any part of it) or by number, to eliminate them without hunting the board.
 function findMatches(){
