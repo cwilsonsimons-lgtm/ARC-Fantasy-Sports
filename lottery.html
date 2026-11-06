@@ -1295,7 +1295,8 @@ async function hostStart(db){
     for(const x of logos.docs){ const z = next.slots.find(y => y.id === x.id); if(z){ z.logo = x.data().src; pushed.logos[x.id] = z.logo; } }
     S = next;
   }else if(snap.exists){
-    // saved before the official switch existed: everything was already shared, so it stays official
+    // saved before the official switch existed: keep the draw, but start it unofficial (private)
+    // until the owner says otherwise; the push below takes it off the shared copy
     pushShared();
     const next = fromPublic(snap.data());
     if(snap.data().pend){
@@ -1304,7 +1305,7 @@ async function hostStart(db){
     }
     const logos = await db.collection('logos').get();
     for(const d of logos.docs){ const x = next.slots.find(z => z.id === d.id); if(x){ x.logo = d.data().src; pushed.logos[d.id] = x.logo; } }
-    next.official = true;
+    next.official = false;
     S = next;
   }else{
     // First time live: bring this browser's teams along, start the draw fresh.
