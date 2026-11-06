@@ -1688,8 +1688,16 @@ async function goLive(){
   let db = null, user = null;
   try{ [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); }catch(e){}
   document.body.classList.remove('connecting');
-  if(!db) return;
   const owner = user ? await user.isOwner() : false;
+  if(!db){
+    // Inside claude.ai with no shared store: a signed-out visitor (or one the page isn't shared with).
+    // Never fall back to a local lottery with commissioner controls for them.
+    if(owner){ setLive("<b>Not live</b> Couldn't open the shared copy, so this lottery is saved in this browser only.", true); return; }
+    mode = 'viewer';
+    document.body.classList.add('viewer', 'waiting');
+    notice('<b>Sign in to follow along</b>Sign in to claude.ai (a free account works), then reopen this link to watch the lottery live.');
+    return;
+  }
   live = {db, refs:{state:db.doc('lottery/state'), sealed:db.doc('host/sealed'), full:db.doc('host/full')}};
   if(owner){
     mode = 'host';
