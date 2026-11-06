@@ -137,6 +137,15 @@ board layout. Only the owner can write (`db` rules: root `write: owner`). A seal
 ball's team is kept in `host/sealed`, readable only by the owner, so the result
 isn't in the shared copy until the reveal. Logos live in `logos/<slot id>` to
 keep `lottery/state` small. Opened as a plain file, none of this runs.
+**Official numbers and practice lotteries.** The owner's draw stays private until
+they tap **Make numbers official** (two taps). Until then `lottery/state` carries
+only the teams, and each follower gets a practice lottery against those teams:
+they can spin, reveal, undo, draw the rest and start over, saved only in their
+own browser (`rumble_mock_v1`) and never shared. Once official, every follower
+switches to the real draw and follows along live; **Hide from league** takes it
+back, and a reset makes the new draw unofficial again. The owner's full lottery is
+kept in `host/full`, which only the owner can read.
+
 **Preview their view** (under the title) shows the owner the follower page —
 controls hidden, follower wording, no edits — until **Back to my controls**.
 

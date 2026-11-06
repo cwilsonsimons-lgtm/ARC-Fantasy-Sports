@@ -280,7 +280,19 @@ body.viewer .tile .nm.empty,body.previewing .tile .nm.empty{visibility:hidden}
   padding:10px 14px;border-radius:14px;background:var(--gold);color:var(--gold-ink);font-size:14px;margin-top:6px}
 .previewbar b{font-family:var(--display);letter-spacing:.12em;text-transform:uppercase;margin-right:6px}
 .previewbar .btn{flex:none;padding:8px 14px;font-size:13px;background:var(--gold-ink);color:var(--gold)}
-body.viewer .previewon,body.previewing .previewon{display:none!important}
+body.viewer .previewon,body.previewing .previewon,body.mock .previewon{display:none!important}
+body.mock #setupPanel,body.mock #setupToggle{display:none!important}
+.officialbar,.mockbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;
+  border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:14px;color:var(--ink-2);margin-top:6px}
+.officialbar b,.mockbar b{font-family:var(--display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin-right:6px}
+.officialbar.on{border-color:var(--gold)}
+.officialbar.on b{color:var(--gold)}
+.officialbar .btn{flex:none;padding:9px 14px;font-size:13px}
+.officialbar .btn.make{background:var(--gold);color:var(--gold-ink)}
+.officialbar .btn.hide{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
+.officialbar .btn.armed{background:#F0453E;color:#fff;border-color:#F0453E}
+.mockbar{border-style:dashed}
+.mockbar .actions .btn{padding:8px 12px;font-size:13px}
 body.connecting .wrap>section,body.connecting .wrap>.grid,body.connecting .wrap>.cagebar,
 body.waiting .wrap>section,body.waiting .wrap>.grid,body.waiting .wrap>.cagebar{display:none!important}
 @media (prefers-reduced-motion:reduce){.livebar .dot{animation:none}}
@@ -327,6 +339,10 @@ input:disabled{opacity:.55}
     <div class="livebar" id="liveBar" hidden><span class="dot"></span><span id="liveText"></span></div>
     <div class="previewbar" id="previewBar" hidden><span><b>Preview</b> This is the page as league members see it. Nothing changes while you look.</span>
       <button class="btn primary" id="previewOff" type="button">Back to my controls</button></div>
+    <div class="officialbar" id="officialBar" hidden><span id="officialText"></span>
+      <button class="btn" id="officialBtn" type="button"></button></div>
+    <div class="mockbar" id="mockBar" hidden><span><b>Practice lottery</b> The real numbers aren't official yet, so spin as much as you like. Nothing you do here is shared, and this page switches to the real draw as soon as it's official.</span>
+      <span class="actions"><button class="btn ghost" id="mockRest" type="button">Draw the rest</button><button class="btn ghost" id="mockReset" type="button">Start over</button></span></div>
     <button class="btn ghost previewon" id="previewOn" type="button">Preview their view</button>
     <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
@@ -495,6 +511,7 @@ function defaults(){
     entrants:{},  // entry number -> wrestler name
     elims:[],     // entry numbers in the order they were eliminated
     drawGrid:false, // with "By team": show the number grid until every number is drawn
+    official:false, // live: the owner has shared this draw with the league (until then they run practice draws)
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
   };
 }
@@ -533,6 +550,7 @@ function load(){
 function save(){
   if(mode === 'host') return pushShared();   // the shared copy is the record when the page is live
   if(mode === 'viewer') return;              // followers never write
+  if(mode === 'mock') return saveMock();     // a follower's practice draw stays on their device
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
 }
 
@@ -853,6 +871,7 @@ function renderTracker(st){
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderAll(opt = {}){
+  renderOfficial();
   const hide = S.sealed ? S.draws.length - 1 : -1;       // a sealed ball stays secret everywhere until revealed
   const drawn = S.draws.length - (hide >= 0 ? 1 : 0), rem = total() - drawn;
   const n = numberOf(drawn), done = rem < 1, err = setupError();   // n = number on the line
@@ -1007,6 +1026,9 @@ $('drawBtn').addEventListener('click', () => S.sealed ? reveal() : spin());
 // Preview: show the owner the follower's page, controls hidden, until they switch back.
 function setPreview(on){
   previewing = on; sel = null; clearFind();
+  $('previewBar').querySelector('span').innerHTML = mode === 'host' && !S.official
+    ? "<b>Preview</b> This is how your draw will look to league members once it's official. Until then they see a practice lottery."
+    : '<b>Preview</b> This is the page as league members see it. Nothing changes while you look.';
   document.body.classList.toggle('previewing', on);
   $('previewBar').hidden = !on;
   renderAll();
@@ -1171,11 +1193,7 @@ function armed(btn, label, action){
     t = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = label; }, 3000);
   });
 }
-armed($('restBtn'), 'Draw the rest', () => {
-  if(busy) return;
-  while(remaining() > 0) S.draws.push(pickSlot());
-  save(); tray = null; fill(); renderAll();
-});
+armed($('restBtn'), 'Draw the rest', () => drawRest());
 // Undo: take back the most recent ball, sealed or revealed, and put it back in the cage.
 armed($('undoBtn'), 'Undo last spin', () => {
   if(busy || !S.draws.length) return;
@@ -1186,7 +1204,7 @@ armed($('undoBtn'), 'Undo last spin', () => {
 // Clears the drawn numbers (and eliminations) so the draw can start over; teams and entrant names stay.
 function resetLottery(){
   if(busy) return;
-  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow, drawGrid:S.drawGrid};   // entrant names belong to the Rumble, so they stay
+  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow, drawGrid:S.drawGrid};   // entrant names belong to the Rumble, so they stay; a redraw isn't official
   save(); tray = null; sparks = []; showCage = showSetup = false; $('copyOut').hidden = true; fill(); renderAll();
 }
 armed($('resetBtn'), 'Reset lottery', resetLottery);
@@ -1232,11 +1250,15 @@ function setLive(text, off){ $('liveBar').hidden = false; $('liveBar').classList
 function notice(html){ const n = $('liveNotice'); n.hidden = !html; n.innerHTML = html || ''; }
 let revealing = false;      // the owner tapped Reveal: share the result now so followers' reveal plays alongside
 const hidden = () => S.sealed && !revealing;
-const publicState = () => ({
-  slots:S.slots.map(({logo, ...rest}) => rest),
+const bareSlots = () => S.slots.map(({logo, ...rest}) => rest);
+const publicState = () => S.official ? {
+  official:true, slots:bareSlots(),
   draws:hidden() ? S.draws.slice(0, -1) : S.draws.slice(),   // a sealed draw stays off the shared copy
   pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid,
-});
+} : {
+  // not official yet: followers get the teams (for their practice draws) and nothing of the real one
+  official:false, slots:bareSlots(), draws:[], pend:false, entrants:{}, elims:[], flow:S.flow, drawGrid:!!S.drawGrid,
+};
 function fromPublic(d){
   return {...defaults(), slots:(d.slots || []).map(x => ({...x, logo:''})), draws:(d.draws || []).slice(), sealed:false,
     entrants:{...(d.entrants || {})}, elims:(d.elims || []).slice(), flow:d.flow || 'down', drawGrid:!!d.drawGrid};
@@ -1246,13 +1268,14 @@ async function flush(){
   if(pushing || !dirty || !live) return;
   pushing = true; dirty = false;
   try{
+    await live.refs.full.set({...S, slots:bareSlots()});   // the owner's own copy, readable only by the owner
     await live.refs.state.set(publicState());
-    const sealed = hidden() ? S.draws[S.draws.length - 1] : null;
+    const sealed = S.official && hidden() ? S.draws[S.draws.length - 1] : null;
     if(sealed !== pushed.sealed){ await live.refs.sealed.set({slot:sealed}); pushed.sealed = sealed; }
     const now = Object.fromEntries(S.slots.filter(x => x.logo).map(x => [x.id, x.logo]));
     for(const [id, src] of Object.entries(now)) if(pushed.logos[id] !== src){ await live.db.doc('logos/' + id).set({src}); pushed.logos[id] = src; }
     for(const id of Object.keys(pushed.logos)) if(!now[id]){ await live.db.doc('logos/' + id).delete(); delete pushed.logos[id]; }
-    setLive('<b>Live</b> Everyone you share this page with sees each spin, reveal and elimination as it happens.');
+    setLive(liveText());
   }catch(e){
     dirty = true;
     setLive(e && e.code === 'quota_exceeded' ? "<b>Not saved</b> The shared copy is full. Try smaller logos." : "<b>Not saved</b> Couldn't reach the shared copy. Your next change will try again.", true);
@@ -1260,9 +1283,20 @@ async function flush(){
   pushing = false;
   if(dirty) pushTimer = setTimeout(flush, 250);
 }
+const liveText = () => S.official
+  ? '<b>Live</b> Everyone you share this page with sees each spin, reveal and elimination as it happens.'
+  : '<b>Live</b> Your draw is private until you make the numbers official. League members are running practice lotteries.';
 async function hostStart(db){
-  const refs = live.refs, snap = await refs.state.get();
-  if(snap.exists){
+  const refs = live.refs, full = await refs.full.get(), snap = full.exists ? null : await refs.state.get();
+  if(full.exists){
+    const d = full.data(), next = {...defaults(), ...d, slots:(d.slots || []).map(x => ({...x, logo:''}))};
+    next.sealed = !!next.sealed && next.draws.length > 0;
+    const logos = await db.collection('logos').get();
+    for(const x of logos.docs){ const z = next.slots.find(y => y.id === x.id); if(z){ z.logo = x.data().src; pushed.logos[x.id] = z.logo; } }
+    S = next;
+  }else if(snap.exists){
+    // saved before the official switch existed: everything was already shared, so it stays official
+    pushShared();
     const next = fromPublic(snap.data());
     if(snap.data().pend){
       const sec = await refs.sealed.get(), slot = sec.exists ? sec.data().slot : null;
@@ -1270,6 +1304,7 @@ async function hostStart(db){
     }
     const logos = await db.collection('logos').get();
     for(const d of logos.docs){ const x = next.slots.find(z => z.id === d.id); if(x){ x.logo = d.data().src; pushed.logos[d.id] = x.logo; } }
+    next.official = true;
     S = next;
   }else{
     // First time live: bring this browser's teams along, start the draw fresh.
@@ -1277,8 +1312,30 @@ async function hostStart(db){
     pushShared();
   }
   tray = null; fill(); renderAll();
-  setLive('<b>Live</b> Everyone you share this page with sees each spin, reveal and elimination as it happens.');
+  setLive(liveText());
 }
+// The owner's switch: share this draw with the league, or take it back.
+function renderOfficial(){
+  const bar = $('officialBar'); bar.hidden = mode !== 'host';
+  if(mode !== 'host') return;
+  bar.classList.toggle('on', !!S.official);
+  $('officialText').innerHTML = S.official
+    ? '<b>Official</b> Your numbers are shared with the league, and they follow along live.'
+    : '<b>Not official</b> League members only see your teams and run practice lotteries. Your draw stays private until you make it official.';
+  const b = $('officialBtn');
+  if(!b.classList.contains('armed')){ b.textContent = S.official ? 'Hide from league' : 'Make numbers official'; b.className = 'btn ' + (S.official ? 'hide' : 'make'); }
+}
+let officialT = 0;
+$('officialBtn').addEventListener('click', () => {
+  const b = $('officialBtn');
+  if(!b.classList.contains('armed')){
+    b.classList.add('armed'); b.textContent = S.official ? 'Tap again to hide it' : 'Tap again to share with everyone';
+    officialT = setTimeout(() => { b.classList.remove('armed'); renderOfficial(); }, 3500);
+    return;
+  }
+  clearTimeout(officialT); b.classList.remove('armed');
+  S.official = !S.official; save(); renderOfficial(); setLive(liveText()); renderAll({keepReveal:true, skipSetup:true});
+});
 function viewerStart(db){
   document.body.classList.add('viewer', 'waiting');
   notice('<b>Waiting for the lottery</b>Nothing has been shared yet. This page will fill in as soon as the draw starts.');
@@ -1287,7 +1344,7 @@ function viewerStart(db){
   live.refs.state.onSnapshot(snap => {
     if(!snap.exists){ document.body.classList.add('waiting'); notice('<b>Waiting for the lottery</b>Nothing has been shared yet. This page will fill in as soon as the draw starts.'); return; }
     document.body.classList.remove('waiting'); notice('');
-    applyRemote(snap.data());
+    handleRemote(snap.data());
   }, stop);
   db.collection('logos').onSnapshot(q => {
     remoteLogos = Object.fromEntries(q.docs.map(d => [d.id, d.data().src]));
@@ -1304,7 +1361,51 @@ function applyRemote(d){
   if(!was && pend && !d.pend && next.draws.length === S.draws.length + 1) return followReveal(next);
   S = next; pend = !!d.pend; tray = null; fill(); renderAll();
 }
-function drain(){ if(queued){ const q = queued; queued = null; applyRemote(q); } }
+function drain(){ if(queued){ const q = queued; queued = null; handleRemote(q); } }
+const MOCK_KEY = 'rumble_mock_v1';
+const teamSig = slots => JSON.stringify((slots || []).map(x => [x.id, x.balls]));
+function handleRemote(d){
+  if(busy){ queued = d; return; }
+  if(d.official === false) return enterMock(d);
+  if(mode !== 'viewer'){
+    // the owner made it official: leave the practice draw and pick up the real one
+    mode = 'viewer'; document.body.classList.remove('mock'); document.body.classList.add('viewer');
+    $('mockBar').hidden = true; firstState = true; pend = false; sel = null; clearFind(); showCage = showSetup = false;
+    setLive('<b>Official</b> These are the real numbers. Updates appear here as they happen.');
+  }
+  applyRemote(d);
+}
+function loadMock(slots){
+  let m = null;
+  try{ m = JSON.parse(localStorage.getItem(MOCK_KEY)); }catch(e){}
+  const fresh = !m || m.sig !== teamSig(slots);   // the owner changed the teams or ball counts: start over
+  return {...defaults(), slots:slots.map(x => ({...x, logo:''})),
+    draws:fresh ? [] : m.draws || [], sealed:fresh ? false : !!m.sealed, entrants:fresh ? {} : m.entrants || {}, elims:fresh ? [] : m.elims || [],
+    flow:viewPref.flow || 'down', drawGrid:viewPref.drawGrid !== undefined ? viewPref.drawGrid : false};
+}
+function saveMock(){
+  try{ localStorage.setItem(MOCK_KEY, JSON.stringify({sig:teamSig(S.slots), draws:S.draws, sealed:S.sealed, entrants:S.entrants, elims:S.elims})); }catch(e){}
+}
+function enterMock(d){
+  const slots = (d.slots || []).map(x => ({...x}));
+  if(mode !== 'mock' || teamSig(slots) !== teamSig(S.slots)){
+    mode = 'mock'; document.body.classList.remove('viewer'); document.body.classList.add('mock');
+    $('mockBar').hidden = false; firstState = true; pend = false; sel = null; clearFind(); showCage = showSetup = false;
+    S = loadMock(slots); tray = null; fill(); renderAll();
+    setLive("<b>Practice</b> The real numbers aren't official yet. This draw is yours alone.", true);
+    return;
+  }
+  // same teams: pick up name and color changes, keep the practice draw
+  S.slots = S.slots.map((x, i) => ({...x, ...slots[i], logo:''}));
+  renderAll({keepReveal:true});
+}
+function drawRest(){
+  if(busy) return;
+  while(remaining() > 0) S.draws.push(pickSlot());
+  S.sealed = false; save(); tray = null; fill(); renderAll();
+}
+armed($('mockRest'), 'Draw the rest', drawRest);
+armed($('mockReset'), 'Start over', () => resetLottery());
 async function followSpin(next){
   busy = true; S = next; tray = null; renderAll();
   const el = $('reveal'); el.className = 'reveal sealed';
@@ -1337,7 +1438,7 @@ async function goLive(){
   document.body.classList.remove('connecting');
   if(!db) return;
   const owner = user ? await user.isOwner() : false;
-  live = {db, refs:{state:db.doc('lottery/state'), sealed:db.doc('host/sealed')}};
+  live = {db, refs:{state:db.doc('lottery/state'), sealed:db.doc('host/sealed'), full:db.doc('host/full')}};
   if(owner){
     mode = 'host';
     try{ await hostStart(db); }
