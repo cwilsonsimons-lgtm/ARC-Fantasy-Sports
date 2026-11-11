@@ -167,7 +167,10 @@ keep `lottery/state` small. Opened as a plain file, none of this runs.
 **Official numbers and practice lotteries.** The owner's draw stays private until
 they tap **Make numbers official** (two taps). Until then `lottery/state` carries
 only the teams, and each follower gets a practice lottery against those teams:
-they can spin, reveal, undo, draw the rest and start over. A practice draw is
+they can spin, reveal, undo, draw the rest and start over, and nothing else: a
+practice draw only shows the numbers each team got, so there's no naming
+entrants, no eliminations and no search there (those belong to the real draw). A
+practice draw is
 never shared and lasts for that visit only (kept in the tab's `sessionStorage`
 under `rumble_mock_v1`, so a reload keeps it but the next visit starts fresh;
 browser storage is shared by every account signed in on that browser). Above the

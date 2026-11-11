@@ -344,6 +344,13 @@ body.viewer .tile .nm.empty,body.previewing .tile .nm.empty{visibility:hidden}
 .previewbar .btn{flex:none;padding:8px 14px;font-size:13px;background:var(--gold-ink);color:var(--gold)}
 body.viewer .previewon,body.previewing .previewon,body.mock .previewon{display:none!important}
 body.mock #setupPanel,body.mock #setupToggle{display:none!important}
+body.mock .tx,body.mock #editor,body.mock #undoElim,body.mock #finder,body.mock .frow .ebtn,body.mock .fhint,body.mock .edabout{display:none!important}
+body.mock .tmain{pointer-events:none;cursor:default}
+body.mock #resultBox .picks,body.mock #resultBox .result{display:none!important}
+body.mock .board.live .tile.next{border:1px solid transparent;box-shadow:none}
+body.mock .board.live .tile.next::after{content:none}
+body.mock .board.live .tile.next .n{color:inherit}
+body.mock .tile .nm.empty{visibility:hidden}
 .officialbar,.mockbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;
   border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:14px;color:var(--ink-2);margin-top:6px}
 .officialbar b,.mockbar b{font-family:var(--display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin-right:6px}
@@ -732,6 +739,8 @@ let mode = 'local';   // 'local' (this browser), 'host' (owner, live) or 'viewer
 let pend = false;     // following live: a ball is out but not revealed yet
 let previewing = false;   // the owner is looking at the page as league members see it
 const asViewer = () => mode === 'viewer' || previewing;
+// Entrant names and eliminations belong to the real draw: followers and practice draws can't touch them.
+const readOnly = () => asViewer() || mode === 'mock';
 let S = load();
 let showCage = false, showSetup = false;
 // per view: bring the cage or setup back after every number is drawn
@@ -1156,7 +1165,7 @@ function renderAll(opt = {}){
   }
   $('board').innerHTML = tiles;
   $('board').classList.toggle('searching', !!findQ.trim());
-  $('finder').hidden = !live;
+  $('finder').hidden = !live || mode === 'mock';   // a practice draw has no entrants to find
   if(live) renderFinder(found, st);
   // the editor above the board, for the selected number
   $('editor').hidden = sel === null;
@@ -1181,7 +1190,9 @@ function renderAll(opt = {}){
     const chips = `<div class="picks" aria-label="Draft order">${st.picks.map((p, k) => p
       ? `<span class="pchip set${k === 0 ? ' first' : ''}" title="${p.last ? 'Last team standing' : `Out when ${esc(label(p.by))} was eliminated`}"><b>${ord(k + 1)}</b><span style="color:${team(p.i).tc}">${esc(team(p.i).n)}</span></span>`
       : `<span class="pchip tbd${k === 0 ? ' first' : ''}"><b>${ord(k + 1)}</b><span>${k === 0 ? 'Last team standing' : 'TBD'}</span></span>`).join('')}</div>`;
-    const hint = st.winner ? '' : asViewer()
+    const hint = mode === 'mock'
+      ? `<p class="hint">These are the numbers your practice draw gave each team. Entrants and eliminations are only tracked on the real draw, once it's official.</p>`
+      : st.winner ? '' : asViewer()
       ? `<p class="hint">Entrants' names and eliminations show up here as the Rumble goes. When a team has no entrants left it's out: the first team out gets the last pick, and the last team standing gets the 1st.</p>`
       : `<p class="hint"><b>Tap a number</b> to type its entrant's name, and tap its <b>×</b> when they're eliminated. When a team has no entrants left it's out: the first team out gets the last pick, and the last team standing gets the 1st.</p>`;
     $('resultBox').innerHTML = banner + chips + hint;
@@ -1242,14 +1253,14 @@ $('previewOn').addEventListener('click', () => setPreview(true));
 $('previewOff').addEventListener('click', () => setPreview(false));
 // Board as tracker: tap a number to name its entrant (Enter moves to the next), × marks the elimination.
 function toggleElim(n){
-  if(asViewer()) return;
+  if(readOnly()) return;
   if(isOut(n)) S.elims = S.elims.filter(x => x !== n);
   else if(standings().winner === null) S.elims.push(n);
   else return;
   save(); renderAll({keepReveal:true, skipSetup:true});
 }
 function pick(n){
-  if(asViewer()) return;
+  if(readOnly()) return;
   sel = n; renderAll({keepReveal:true, skipSetup:true});
   if(n !== null){ $('edName').value = S.entrants[n] || ''; $('edName').focus(); $('edName').select(); }
 }
@@ -1380,7 +1391,7 @@ $('findBox').addEventListener('keydown', e => {
   if(e.key !== 'Enter') return;
   e.preventDefault();
   const still = findMatches().filter(n => !isOut(n));
-  if(!asViewer() && still.length === 1){ clearFind(); toggleElim(still[0]); $('findBox').focus(); }
+  if(!readOnly() && still.length === 1){ clearFind(); toggleElim(still[0]); $('findBox').focus(); }
 });
 $('findRes').addEventListener('click', e => {
   const b = e.target.closest('[data-fx]'); if(!b || b.disabled) return;
@@ -1393,7 +1404,7 @@ document.addEventListener('click', e => {
 $('drawGrid').addEventListener('change', e => { S.drawGrid = e.target.checked; if(mode === 'viewer') viewPref.drawGrid = S.drawGrid; save(); renderAll({keepReveal:true, skipSetup:true}); });
 $('cageToggle').addEventListener('click', () => { showCage = !showCage; renderAll({keepReveal:true, skipSetup:true}); });
 $('setupToggle').addEventListener('click', () => { showSetup = !showSetup; renderAll({keepReveal:true}); });
-$('undoElim').addEventListener('click', () => { S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
+$('undoElim').addEventListener('click', () => { if(readOnly()) return; S.elims.pop(); save(); renderAll({keepReveal:true, skipSetup:true}); });
 // Names, managers and colours update live as you type, without redrawing the setup (so focus stays put).
 $('setup').addEventListener('input', e => {
   const i = +e.target.dataset.i, f = e.target.dataset.f; if(isNaN(i) || !['name', 'mgr', 'c'].includes(f)) return;
@@ -1644,11 +1655,11 @@ function loadMock(slots){
   try{ m = JSON.parse(sessionStorage.getItem(MOCK_KEY)); }catch(e){}
   const fresh = !m || m.sig !== teamSig(slots);   // the owner changed the teams or ball counts: start over
   return {...defaults(), slots:slots.map(x => ({...x, logo:''})),
-    draws:fresh ? [] : m.draws || [], sealed:fresh ? false : !!m.sealed, entrants:fresh ? {} : m.entrants || {}, elims:fresh ? [] : m.elims || [],
+    draws:fresh ? [] : m.draws || [], sealed:fresh ? false : !!m.sealed, entrants:{}, elims:[],
     flow:viewPref.flow || 'down', drawGrid:viewPref.drawGrid !== undefined ? viewPref.drawGrid : false};
 }
 function saveMock(){
-  try{ sessionStorage.setItem(MOCK_KEY, JSON.stringify({sig:teamSig(S.slots), draws:S.draws, sealed:S.sealed, entrants:S.entrants, elims:S.elims})); }catch(e){}
+  try{ sessionStorage.setItem(MOCK_KEY, JSON.stringify({sig:teamSig(S.slots), draws:S.draws, sealed:S.sealed})); }catch(e){}
 }
 // Practice mode: the real lottery's teams and ball counts, whatever the practice draw has done to them.
 function renderRealTeams(){
