@@ -167,8 +167,12 @@ keep `lottery/state` small. Opened as a plain file, none of this runs.
 **Official numbers and practice lotteries.** The owner's draw stays private until
 they tap **Make numbers official** (two taps). Until then `lottery/state` carries
 only the teams, and each follower gets a practice lottery against those teams:
-they can spin, reveal, undo, draw the rest and start over, saved only in their
-own browser (`rumble_mock_v1`) and never shared. Once official, every follower
+they can spin, reveal, undo, draw the rest and start over. A practice draw is
+never shared and lasts for that visit only (kept in the tab's `sessionStorage`
+under `rumble_mock_v1`, so a reload keeps it but the next visit starts fresh;
+browser storage is shared by every account signed in on that browser). Above the
+practice cage, **In this year's lottery** lists the real teams with their
+managers, ball counts and chance at #30, whatever the practice draw has done. Once official, every follower
 switches to the real draw and follows along live; **Hide from league** takes it
 back, and a reset makes the new draw unofficial again. The owner's full lottery is
 kept in `host/full`, which only the owner can read.

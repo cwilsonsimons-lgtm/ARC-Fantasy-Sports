@@ -355,6 +355,15 @@ body.mock #setupPanel,body.mock #setupToggle{display:none!important}
 .officialbar .btn.armed{background:#F0453E;color:#fff;border-color:#F0453E}
 .mockbar{border-style:dashed}
 .mockbar .actions .btn{padding:8px 12px;font-size:13px}
+.realteams{flex-basis:100%;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line-soft);padding-top:10px}
+.realteams>small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.rteam{display:flex;align-items:center;gap:10px;min-width:0}
+.rteam .chip,.rteam img{flex:none;width:22px;height:22px;border-radius:50%}
+.rteam img{object-fit:contain;background:#fff;border:2px solid}
+.rteam .rn{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.rteam .rn b{font-family:var(--body,inherit);letter-spacing:0;text-transform:none;margin:0;font-weight:600;overflow-wrap:anywhere}
+.rteam .rn span{font-size:12px;color:var(--ink-3)}
+.rteam .rb{flex:none;font-size:13px;color:var(--ink-2);text-align:right}
 body.connecting .wrap>section,body.connecting .wrap>.grid,body.connecting .wrap>.cagebar,
 body.waiting .wrap>section,body.waiting .wrap>.grid,body.waiting .wrap>.cagebar{display:none!important}
 @media (prefers-reduced-motion:reduce){.livebar .dot{animation:none}}
@@ -404,7 +413,8 @@ input:disabled{opacity:.55}
     <div class="officialbar" id="officialBar" hidden><span id="officialText"></span>
       <button class="btn" id="officialBtn" type="button"></button></div>
     <div class="mockbar" id="mockBar" hidden><span><b>Practice lottery</b> The real numbers aren't official yet, so spin as much as you like. Nothing you do here is shared, and this page switches to the real draw as soon as it's official.</span>
-      <span class="actions"><button class="btn ghost" id="mockRest" type="button">Draw the rest</button><button class="btn ghost" id="mockReset" type="button">Start over</button></span></div>
+      <span class="actions"><button class="btn ghost" id="mockRest" type="button">Draw the rest</button><button class="btn ghost" id="mockReset" type="button">Start over</button></span>
+      <div class="realteams" id="realTeams"></div></div>
     <button class="btn ghost previewon" id="previewOn" type="button">Preview their view</button>
     <p class="lede">Every ball in the machine is a team. Start at entry #30 with every team holding all their balls, draw one, and that team gets #30 and loses a ball. Then draw for #29, #28, and so on down to #1. Then the Rumble decides the order: the last team with an entrant still in gets the 1st pick.</p>
   </header>
@@ -1072,7 +1082,7 @@ function showReveal(num, slot, pop){
 const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderAll(opt = {}){
-  renderOfficial();
+  renderOfficial(); renderRealTeams();
   if(typeof renderFavs === 'function'){ renderFavs(); renderDeclared(); }
   const hide = S.sealed ? S.draws.length - 1 : -1;       // a sealed ball stays secret everywhere until revealed
   const drawn = S.draws.length - (hide >= 0 ? 1 : 0), rem = total() - drawn;
@@ -1628,14 +1638,28 @@ function handleRemote(d){
 }
 function loadMock(slots){
   let m = null;
-  try{ m = JSON.parse(localStorage.getItem(MOCK_KEY)); }catch(e){}
+  // A practice draw lasts for this visit only (a reload keeps it). Saved in the browser it was shared by
+  // every account signed in there, so the next person to open the page found someone's old draw.
+  try{ localStorage.removeItem(MOCK_KEY); }catch(e){}
+  try{ m = JSON.parse(sessionStorage.getItem(MOCK_KEY)); }catch(e){}
   const fresh = !m || m.sig !== teamSig(slots);   // the owner changed the teams or ball counts: start over
   return {...defaults(), slots:slots.map(x => ({...x, logo:''})),
     draws:fresh ? [] : m.draws || [], sealed:fresh ? false : !!m.sealed, entrants:fresh ? {} : m.entrants || {}, elims:fresh ? [] : m.elims || [],
     flow:viewPref.flow || 'down', drawGrid:viewPref.drawGrid !== undefined ? viewPref.drawGrid : false};
 }
 function saveMock(){
-  try{ localStorage.setItem(MOCK_KEY, JSON.stringify({sig:teamSig(S.slots), draws:S.draws, sealed:S.sealed, entrants:S.entrants, elims:S.elims})); }catch(e){}
+  try{ sessionStorage.setItem(MOCK_KEY, JSON.stringify({sig:teamSig(S.slots), draws:S.draws, sealed:S.sealed, entrants:S.entrants, elims:S.elims})); }catch(e){}
+}
+// Practice mode: the real lottery's teams and ball counts, whatever the practice draw has done to them.
+function renderRealTeams(){
+  const box = $('realTeams'); if(!box || mode !== 'mock') return;
+  const all = total();
+  box.innerHTML = `<small>In this year's lottery</small>` + S.slots.map((s, i) => {
+    const t = team(i), pct = all ? Math.round(s.balls / all * 100) : 0;
+    return `<div class="rteam">${t.logo ? `<img src="${t.logo}" alt="" style="border-color:${t.tc}">` : `<span class="chip" style="background:${t.c}"></span>`}
+      <span class="rn"><b style="color:${t.tc}">${esc(t.n)}</b><span>${t.mgr ? esc(t.mgr) + ' · ' : ''}${place(i)}</span></span>
+      <span class="rb">${s.balls} ball${s.balls === 1 ? '' : 's'}<br><small>${pct}% at #30</small></span></div>`;
+  }).join('');
 }
 function enterMock(d){
   const slots = (d.slots || []).map(x => ({...x}));
