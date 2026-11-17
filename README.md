@@ -188,6 +188,21 @@ switches to the real draw and follows along live; **Hide from league** takes it
 back, and a reset makes the new draw unofficial again. The owner's full lottery is
 kept in `host/full`, which only the owner can read.
 
+**Past lotteries.** A panel under everything else keeps one season per year, with a
+tab for each (newest first): the teams with their managers and balls, who held
+each number, the wrestler at it, the elimination order (struck through, "4th
+out"), the Rumble winner and the draft order it gave, each team's card in pick
+order with the 1st pick highlighted. The owner fills it in two ways: **Save this
+lottery** (once every number is drawn) copies the lottery on the page into a new
+season, and **Add a season** opens a blank one for years before this page
+existed (the 2024 startup, when ten teams had 3 numbers each, and the 3/6/9/12
+lotteries since). Each season can be edited or deleted later. The draft order
+comes from the eliminations (first team with every number out picks last, last
+one standing picks 1st); when those weren't recorded, the owner picks it by
+hand. Built-in seasons can go in `PAST`; the owner's live in the shared store as
+`seasons/<year>` (this browser's storage when opened as a file), and everyone
+following along sees them.
+
 **Preview their view** (under the title) shows the owner the follower page —
 controls hidden, follower wording, no edits — until **Back to my controls**.
 

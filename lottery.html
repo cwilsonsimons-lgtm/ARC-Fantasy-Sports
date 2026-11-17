@@ -233,6 +233,52 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .addodds{align-self:flex-start;padding:8px 12px;font-size:13px}
 .oerr{color:#F0453E;font-size:13px}
 .favwhen .bioedit{margin-left:10px}
+/* past lotteries */
+.pastbtns{display:flex;gap:6px;flex-wrap:wrap}
+.pastbtns .bioedit{margin:0}
+.ptabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px}
+.ptab{border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:999px;padding:6px 14px;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.06em}
+.ptab[aria-selected=true]{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.pshead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.pshead b{font-family:var(--display);font-size:22px;letter-spacing:.04em}
+.pshead span{color:var(--ink-2)}
+.pshead small{color:var(--ink-3);font-size:12px}
+.pwin{font-size:14px;color:var(--ink-2);margin:0 0 12px}
+.pwin b{color:var(--gold)}
+.pteams{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.pteam{background:var(--card-2);border:1px solid var(--line-soft);border-left:4px solid var(--c);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.pteam.first{border-color:var(--gold);border-left-color:var(--c)}
+.pth{display:flex;align-items:center;gap:8px;min-width:0}
+.pth img{flex:none;width:26px;height:26px;border-radius:50%;object-fit:contain;background:#fff;border:2px solid}
+.pth .ptn{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.pth .ptn b{font-weight:700;overflow-wrap:anywhere}
+.pth .ptn small{font-size:12px;color:var(--ink-3)}
+.ppk{flex:none;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:8px;background:var(--line-soft);color:var(--ink-2)}
+.pteam.first .ppk{background:var(--gold);color:var(--gold-ink)}
+.pnums{display:flex;flex-direction:column;gap:3px;font-size:13px}
+.pn{display:flex;gap:8px;align-items:baseline;min-width:0}
+.pn b{flex:none;width:30px;font-family:var(--mono);color:var(--ink)}
+.pn .pw{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--ink)}
+.pn small{flex:none;color:var(--ink-3);font-size:11px}
+.pn.out .pw{color:var(--ink-3);text-decoration:line-through}
+.pn.win .pw{color:var(--gold);font-weight:700}
+.pempty{color:var(--ink-3);font-size:14px}
+.pasted{width:min(640px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto}
+.pasted h4{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-top:6px}
+.ps2{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px}
+.pst,.psn,.pso{display:flex;flex-direction:column;gap:6px}
+.pstr{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 44px 58px 30px;gap:6px;align-items:center}
+.pstr input[type=color]{height:42px;padding:3px}
+.psnr{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 54px;gap:6px;align-items:center}
+.psnr>b,.psor>b{font-family:var(--mono);font-size:13px;color:var(--ink-2);text-align:right}
+.psor{display:grid;grid-template-columns:44px minmax(0,1fr);gap:6px;align-items:center}
+.pasted select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 8px;height:42px;min-width:0;width:100%;color:var(--ink);font:inherit;font-size:14px}
+.pasted .psO,.pasted .psB{font-family:var(--mono);text-align:center;padding:10px 4px}
+.pasted .bad{border-color:#F0453E}
+@media (max-width:520px){
+  .pstr{grid-template-columns:minmax(0,1fr) 44px 52px 30px}.pstr .psN{grid-column:1/-1}
+  .psnr{grid-template-columns:30px minmax(0,1fr) 54px}.psnr select{grid-column:2/4}.psnr .psE{grid-column:2/3}
+}
 .wlink{cursor:help;border-bottom:1px dotted var(--ink-3)}
 .wlink:hover,.wlink:focus-visible{color:var(--gold);outline:none}
 .chance{font-size:12px;color:var(--ink-2)}
@@ -449,6 +495,31 @@ input:disabled{opacity:.55}
       </div>
     </form>
   </div>
+  <div class="bioback" id="pastBack" hidden>
+    <form class="bioed pasted" id="pastEd" role="dialog" aria-modal="true" aria-labelledby="pastTitle" autocomplete="off" novalidate>
+      <h3 id="pastTitle">Past season</h3>
+      <div class="ps2"><label class="fld"><span>Year</span><input type="text" id="psYear" inputmode="numeric" maxlength="4" placeholder="2025"></label>
+        <label class="fld"><span>What it decided</span><input type="text" id="psWhat" maxlength="60" placeholder="Rookie draft order"></label></div>
+      <h4>Teams</h4>
+      <p class="note">Worst finish first. <b>Balls</b> is how many ping-pong balls they had; leave it blank if there was no ball draw (like the startup, when everyone got 3 numbers).</p>
+      <div class="pst" id="psTeams"></div>
+      <span class="actions"><button class="btn ghost addodds" type="button" id="psAddTeam">+ Add a team</button>
+        <button class="btn ghost addodds" type="button" id="psCopyTeams">Copy this year's teams</button></span>
+      <h4>Numbers</h4>
+      <p class="note">Pick the team that had each number, the wrestler who came out at it, and the order they were eliminated (1 for the first one out). Leave the winner's <b>Out</b> blank. Fill in as much as you know.</p>
+      <div class="psn" id="psNums"></div>
+      <h4>Draft order</h4>
+      <p class="note">Set by the eliminations once they're filled in, or pick it here if they weren't recorded.</p>
+      <div class="pso" id="psOrder"></div>
+      <span class="actions"><button class="btn ghost addodds" type="button" id="psFillOrder">Fill from the eliminations</button></span>
+      <p class="oerr" id="psErr" role="alert" hidden></p>
+      <div class="actions">
+        <button class="btn primary" type="submit">Save season</button>
+        <button class="btn ghost" type="button" id="psDelete">Delete</button>
+        <button class="btn ghost" type="button" id="psCancel">Cancel</button>
+      </div>
+    </form>
+  </div>
   <div class="bioback" id="oddsBack" hidden>
     <form class="bioed oddsed" id="oddsEd" role="dialog" aria-modal="true" aria-labelledby="oddsTitle" autocomplete="off" novalidate>
       <h3 id="oddsTitle">Update the odds</h3>
@@ -542,6 +613,14 @@ input:disabled{opacity:.55}
 
     </div>
   </div>
+
+  <section class="panel" id="pastPanel" aria-label="Past lotteries">
+    <div class="phead"><h2>Past lotteries</h2><span class="pastbtns">
+      <button type="button" class="bioedit" id="pastSave" hidden>Save this lottery</button>
+      <button type="button" class="bioedit" id="pastAdd" hidden>Add a season</button></span></div>
+    <div class="ptabs" id="pastTabs" role="tablist" aria-label="Season"></div>
+    <div id="pastView"></div>
+  </section>
 
 </div>
 
@@ -1128,6 +1207,7 @@ const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','
 function renderAll(opt = {}){
   renderOfficial(); renderRealTeams();
   if(typeof renderFavs === 'function'){ renderFavs(); renderDeclared(); }
+  if(typeof renderPast === 'function') renderPast();
   const hide = S.sealed ? S.draws.length - 1 : -1;       // a sealed ball stays secret everywhere until revealed
   const drawn = S.draws.length - (hide >= 0 ? 1 : 0), rem = total() - drawn;
   const n = numberOf(drawn), done = rem < 1, err = setupError();   // n = number on the line
@@ -1337,6 +1417,208 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-bio]
 $('bioEd').addEventListener('submit', e => { e.preventDefault(); setBio($('bioText').value); });
 $('bioReset').addEventListener('click', () => setBio(''));
 $('bioCancel').addEventListener('click', closeBio);
+/* ---------------- past lotteries ----------------
+   One season per year: the teams (worst finish first, with their balls if there was a ball draw),
+   who held each number, the wrestler who came out at it, the elimination order and the draft order
+   it gave. Built-in seasons live in PAST; the owner adds and edits more, kept in the shared store's
+   seasons/<year> (or this browser when the page is opened as a file) and shown to everyone. */
+const PAST = [];
+const SEASON_KEY = 'rumble_seasons_v1', SEASON_NUMS = 30;
+let seasons = {}, pastSel = null, editingSeason = null;
+try{ const v = JSON.parse(localStorage.getItem(SEASON_KEY)); if(v && typeof v === 'object') for(const x of Object.values(v)){ const c = cleanSeason(x); if(c) seasons[c.id] = c; } }catch(e){}
+function cleanSeason(o){
+  if(!o || typeof o !== 'object') return null;
+  const year = String(o.year || '').trim(); if(!/^\d{4}$/.test(year)) return null;
+  const teams = (Array.isArray(o.teams) ? o.teams : []).filter(t => t && String(t.name || '').trim()).map(t => ({
+    name:String(t.name).trim(), mgr:String(t.mgr || '').trim(), c:/^#[0-9a-f]{6}$/i.test(t.c) ? t.c : '#888888', balls:+t.balls > 0 ? Math.round(+t.balls) : 0}));
+  if(!teams.length) return null;
+  const nums = {};
+  for(const [n, i] of Object.entries(o.nums || {})) if(+n >= 1 && +n <= SEASON_NUMS && Number.isInteger(+i) && +i >= 0 && +i < teams.length) nums[+n] = +i;
+  const entrants = {};
+  for(const [n, v] of Object.entries(o.entrants || {})) if(nums[n] !== undefined && String(v).trim()) entrants[+n] = String(v).trim();
+  const elims = (Array.isArray(o.elims) ? o.elims : []).map(Number).filter((n, k, a) => nums[n] !== undefined && a.indexOf(n) === k);
+  const order = (Array.isArray(o.order) ? o.order : []).map(Number).filter((i, k, a) => Number.isInteger(i) && i >= 0 && i < teams.length && a.indexOf(i) === k);
+  return {id:year, year, what:String(o.what || '').trim(), teams, nums, entrants, elims, order:order.length === teams.length ? order : []};
+}
+const allSeasons = () => {
+  const m = {}; for(const x of PAST){ const c = cleanSeason(x); if(c) m[c.id] = c; }
+  return Object.values({...m, ...seasons}).sort((a, b) => b.year - a.year);
+};
+const seasonNums = (se, i) => Object.keys(se.nums).map(Number).filter(n => se.nums[n] === i).sort((a, b) => a - b);
+// draft order from the eliminations: first team with every number out picks last, last one standing picks 1st
+function orderFromElims(se){
+  const N = se.teams.length, out = [];
+  se.teams.forEach((_, i) => {
+    const ns = seasonNums(se, i);
+    if(ns.length && ns.every(n => se.elims.includes(n))) out.push({i, at:Math.max(...ns.map(n => se.elims.indexOf(n)))});
+  });
+  if(out.length < N - 1) return [];
+  out.sort((a, b) => b.at - a.at);
+  const rest = se.teams.map((_, i) => i).filter(i => !out.some(o => o.i === i));
+  return [...rest, ...out.map(o => o.i)];
+}
+const seasonOrder = se => se.order.length ? se.order : orderFromElims(se);
+function seasonWinner(se){
+  if(!se.elims.length) return null;
+  const alive = Object.keys(se.nums).map(Number).filter(n => !se.elims.includes(n));
+  return alive.length === 1 ? alive[0] : null;
+}
+function pastLogo(name){ const i = S.slots.findIndex(x => norm(x.name) === norm(name)); return i >= 0 ? team(i).logo : ''; }
+function renderPast(){
+  const own = canBio(), list = allSeasons();
+  $('pastAdd').hidden = !own;
+  $('pastSave').hidden = !own || !tracking();
+  if(!list.length){
+    $('pastTabs').innerHTML = '';
+    $('pastView').innerHTML = `<p class="pempty">${own ? 'No past seasons yet. Tap <b>Add a season</b> to fill one in, or <b>Save this lottery</b> once every number is drawn.' : 'No past seasons yet.'}</p>`;
+    return;
+  }
+  if(!list.some(x => x.id === pastSel)) pastSel = list[0].id;
+  $('pastTabs').innerHTML = list.map(x => `<button type="button" class="ptab" role="tab" data-season="${x.id}" aria-selected="${x.id === pastSel}">${x.year}</button>`).join('');
+  const se = list.find(x => x.id === pastSel), order = seasonOrder(se), win = seasonWinner(se);
+  const balls = se.teams.every(t => t.balls) ? se.teams.map(t => t.balls).join(', ') + ' balls' : '';
+  const counts = se.teams.map((_, i) => seasonNums(se, i).length), same = counts.every(c => c === counts[0]) && counts[0];
+  const sum = [`${se.teams.length} teams`, balls || (same ? `${same} number${same === 1 ? '' : 's'} each` : '')].filter(Boolean).join(' · ');
+  const pickOf = i => order.indexOf(i);
+  const shown = order.length ? order : se.teams.map((_, i) => i);
+  const outAt = n => se.elims.indexOf(n);
+  $('pastView').innerHTML = `<div class="pshead"><b>${se.year}</b><span>${esc(se.what || 'Draft lottery')}</span><small>${esc(sum)}</small>${own ? `<button type="button" class="bioedit" data-editseason="${se.id}">Edit</button>` : ''}</div>
+    ${win ? `<p class="pwin">${se.entrants[win] ? `Rumble winner: <b>${esc(se.entrants[win])}</b> from` : 'The Rumble was won from'} <b>#${win}</b>, ${esc(se.teams[se.nums[win]].mgr || se.teams[se.nums[win]].name)}'s number</p>` : ''}
+    <div class="pteams">${shown.map(i => {
+      const t = se.teams[i], tc = lift(t.c), logo = pastLogo(t.name), k = pickOf(i), ns = seasonNums(se, i);
+      return `<div class="pteam${k === 0 ? ' first' : ''}" style="--c:${t.c}">
+        <div class="pth">${k >= 0 ? `<span class="ppk">${ord(k + 1)}</span>` : ''}${logo ? `<img src="${logo}" alt="" style="border-color:${tc}">` : ''}
+          <span class="ptn"><b style="color:${tc}">${esc(t.name)}</b><small>${[t.mgr, t.balls ? `${t.balls} ball${t.balls === 1 ? '' : 's'}` : ''].filter(Boolean).map(esc).join(' · ')}</small></span></div>
+        <div class="pnums">${ns.length ? ns.map(n => `<div class="pn${n === win ? ' win' : outAt(n) >= 0 ? ' out' : ''}"><b>#${n}</b><span class="pw">${esc(se.entrants[n] || '')}</span><small>${n === win ? 'won' : outAt(n) >= 0 ? `${ord(outAt(n) + 1)} out` : ''}</small></div>`).join('') : '<span class="pempty">No numbers recorded</span>'}</div>
+      </div>`; }).join('')}</div>`;
+}
+$('pastTabs').addEventListener('click', e => { const b = e.target.closest('[data-season]'); if(b){ pastSel = b.dataset.season; renderPast(); } });
+$('pastView').addEventListener('click', e => { const b = e.target.closest('[data-editseason]'); if(b) openSeason(allSeasons().find(x => x.id === b.dataset.editseason)); });
+$('pastAdd').addEventListener('click', () => openSeason(null));
+$('pastSave').addEventListener('click', () => {
+  // the lottery on the page now, as a season: teams, numbers, entrants, eliminations, and its draft order
+  const nums = {}; S.draws.forEach((i, k) => nums[numberOf(k)] = i);
+  const st = standings(), now = new Date();
+  openSeason({year:String(now.getFullYear() + (now.getMonth() >= 5 ? 1 : 0)), what:'Rookie draft order',
+    teams:S.slots.map(x => ({name:x.name, mgr:x.mgr, c:x.c, balls:x.balls})), nums, entrants:{...S.entrants}, elims:S.elims.slice(),
+    order:st.picks.every(Boolean) ? st.picks.map(x => x.i) : []}, true);
+});
+// ---- the season editor (owner) ----
+const tkey = () => 'k' + Math.random().toString(36).slice(2, 8);
+const psTeamRow = t => `<div class="pstr" data-k="${tkey()}">
+  <input type="text" class="psN" value="${esc(t.name || '')}" placeholder="Team name" maxlength="60" aria-label="Team name">
+  <input type="text" class="psM" value="${esc(t.mgr || '')}" placeholder="Manager" maxlength="40" aria-label="Manager">
+  <input type="color" class="psC" value="${/^#[0-9a-f]{6}$/i.test(t.c || '') ? t.c : '#888888'}" aria-label="Color">
+  <input type="text" class="psB" value="${t.balls || ''}" inputmode="numeric" maxlength="2" placeholder="Balls" aria-label="Balls">
+  <button type="button" class="dx" data-psdel aria-label="Remove team">×</button></div>`;
+const psTeams = () => [...$('psTeams').children].map(r => ({k:r.dataset.k, name:r.querySelector('.psN').value.trim(), mgr:r.querySelector('.psM').value.trim(), c:r.querySelector('.psC').value, balls:+r.querySelector('.psB').value || 0}));
+const psLabel = t => t.name ? (t.mgr ? `${t.name} (${t.mgr})` : t.name) : '(unnamed team)';
+function psRefreshSelects(){
+  const ts = psTeams();
+  for(const sel of $('pastEd').querySelectorAll('select')){
+    const v = sel.value;
+    sel.innerHTML = `<option value="">${sel.classList.contains('psT') ? '—' : 'Pick a team'}</option>` + ts.map(t => `<option value="${t.k}">${esc(psLabel(t))}</option>`).join('');
+    sel.value = ts.some(t => t.k === v) ? v : '';
+  }
+  // one draft-order row per team
+  const rows = $('psOrder'), want = ts.length;
+  while(rows.children.length > want) rows.lastElementChild.remove();
+  while(rows.children.length < want){
+    const k = rows.children.length;
+    rows.insertAdjacentHTML('beforeend', `<div class="psor"><b>${ord(k + 1)}</b><select class="psP" aria-label="${ord(k + 1)} pick"></select></div>`);
+    const sel = rows.lastElementChild.querySelector('select');
+    sel.innerHTML = '<option value="">Pick a team</option>' + ts.map(t => `<option value="${t.k}">${esc(psLabel(t))}</option>`).join('');
+  }
+}
+function openSeason(se, fresh){
+  editingSeason = se && !fresh ? se.id : null;
+  $('pastTitle').textContent = editingSeason ? `${se.year} season` : 'Add a past season';
+  $('psYear').value = se ? se.year : ''; $('psWhat').value = se ? se.what : '';
+  const teams = se ? se.teams : [{}, {}, {}, {}];
+  $('psTeams').innerHTML = teams.map(psTeamRow).join('');
+  const keys = [...$('psTeams').children].map(r => r.dataset.k);
+  $('psNums').innerHTML = Array.from({length:SEASON_NUMS}, (_, k) => k + 1).map(n => `<div class="psnr" data-n="${n}"><b>#${n}</b>
+    <select class="psT" aria-label="Team with #${n}"></select>
+    <input type="text" class="psE" value="${esc(se && se.entrants[n] || '')}" placeholder="Wrestler" list="wrestlerNames" maxlength="40" aria-label="Wrestler at #${n}">
+    <input type="text" class="psO" value="${se && se.elims.includes(n) ? se.elims.indexOf(n) + 1 : ''}" inputmode="numeric" maxlength="2" placeholder="Out" aria-label="Elimination order of #${n}"></div>`).join('');
+  $('psOrder').innerHTML = '';
+  psRefreshSelects();
+  if(se){
+    for(const r of $('psNums').children){ const i = se.nums[r.dataset.n]; if(i !== undefined) r.querySelector('select').value = keys[i]; }
+    const ord0 = seasonOrder(se);
+    [...$('psOrder').querySelectorAll('select')].forEach((sel, k) => { if(ord0[k] !== undefined) sel.value = keys[ord0[k]]; });
+  }
+  $('psDelete').hidden = !editingSeason; $('psErr').hidden = true;
+  $('pastBack').hidden = false; hideTip(); $('pastEd').scrollTop = 0;
+}
+function closeSeason(){ $('pastBack').hidden = true; editingSeason = null; }
+function psErr(msg, el){ $('psErr').textContent = msg; $('psErr').hidden = false; if(el){ el.classList.add('bad'); el.focus(); } }
+// the form, read back as a season (null and an error shown when something doesn't add up)
+function psRead(){
+  $('pastEd').querySelectorAll('.bad').forEach(x => x.classList.remove('bad'));
+  const year = $('psYear').value.trim();
+  if(!/^\d{4}$/.test(year)) return psErr('Give the season a year, like 2025.', $('psYear'));
+  const ts = psTeams().filter(t => t.name), idx = Object.fromEntries(ts.map((t, i) => [t.k, i]));
+  if(ts.length < 2) return psErr('Add at least two teams.');
+  const nums = {}, entrants = {}, outs = [];
+  for(const r of $('psNums').children){
+    const n = +r.dataset.n, k = r.querySelector('select').value, e = r.querySelector('.psE').value.trim(), o = r.querySelector('.psO');
+    if(!k){ if(e || o.value.trim()) return psErr(`Pick the team that had #${n}.`, r.querySelector('select')); continue; }
+    nums[n] = idx[k]; if(e) entrants[n] = e;
+    if(o.value.trim()){
+      const v = +o.value.trim();
+      if(!Number.isInteger(v) || v < 1 || v > SEASON_NUMS) return psErr(`#${n}: "Out" should be the elimination order, 1 to ${SEASON_NUMS - 1}.`, o);
+      if(outs.some(x => x.v === v)) return psErr(`Two numbers are marked out ${ord(v)}.`, o);
+      outs.push({n, v});
+    }
+  }
+  const elims = outs.sort((a, b) => a.v - b.v).map(x => x.n);
+  const picks = [...$('psOrder').querySelectorAll('select')].map(x => x.value);
+  let order = [];
+  if(picks.some(Boolean)){
+    if(picks.some(x => !x) || new Set(picks).size !== picks.length) return psErr('Fill in every pick in the draft order, each team once, or leave them all blank.');
+    order = picks.map(k => idx[k]);
+  }
+  return cleanSeason({year, what:$('psWhat').value.trim(), teams:ts, nums, entrants, elims, order});
+}
+async function storeSeason(se, dropId){
+  if(live){
+    if(dropId && dropId !== (se && se.id)) await live.db.doc('seasons/' + dropId).delete();
+    if(se) await live.db.doc('seasons/' + se.id).set(se);
+  }
+  if(dropId) delete seasons[dropId];
+  if(se) seasons[se.id] = se;
+  if(!live) try{ localStorage.setItem(SEASON_KEY, JSON.stringify(seasons)); }catch(e){}
+}
+$('pastEd').addEventListener('submit', async e => {
+  e.preventDefault();
+  const se = psRead(); if(!se) return;
+  if(se.id !== editingSeason && allSeasons().some(x => x.id === se.id)) return psErr(`There's already a ${se.year} season. Edit that one, or use another year.`, $('psYear'));
+  try{ await storeSeason(se, editingSeason); }catch(err){ return psErr("Couldn't save the season. Try again in a moment."); }
+  pastSel = se.id; closeSeason(); renderPast();
+});
+armed($('psDelete'), 'Delete', async () => {
+  if(!editingSeason) return;
+  try{ await storeSeason(null, editingSeason); }catch(err){ return psErr("Couldn't delete the season. Try again in a moment."); }
+  closeSeason(); renderPast();
+});
+$('psCancel').addEventListener('click', closeSeason);
+$('pastBack').addEventListener('click', e => { if(e.target === $('pastBack')) closeSeason(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('pastBack').hidden) closeSeason(); });
+$('psAddTeam').addEventListener('click', () => { $('psTeams').insertAdjacentHTML('beforeend', psTeamRow({})); psRefreshSelects(); $('psTeams').lastElementChild.querySelector('.psN').focus(); });
+$('psCopyTeams').addEventListener('click', () => { $('psTeams').innerHTML = S.slots.map(x => psTeamRow(x)).join(''); psRefreshSelects(); });
+$('psTeams').addEventListener('click', e => { const b = e.target.closest('[data-psdel]'); if(b){ b.parentElement.remove(); psRefreshSelects(); } });
+$('psTeams').addEventListener('input', e => { if(e.target.matches('.psN,.psM')) psRefreshSelects(); });
+$('psFillOrder').addEventListener('click', () => {
+  $('psErr').hidden = true;
+  const ts = psTeams().filter(t => t.name), keys = ts.map(t => t.k), idx = Object.fromEntries(keys.map((k, i) => [k, i]));
+  const nums = {}, outs = [];
+  for(const r of $('psNums').children){ const k = r.querySelector('select').value, v = +r.querySelector('.psO').value; if(k && idx[k] !== undefined){ nums[r.dataset.n] = idx[k]; if(v) outs.push({n:+r.dataset.n, v}); } }
+  const o = orderFromElims({teams:ts, nums, elims:outs.sort((a, b) => a.v - b.v).map(x => x.n)});
+  if(!o.length) return psErr("The eliminations don't settle the order yet: every team but one needs all its numbers marked out.");
+  const sels = [...$('psOrder').querySelectorAll('select')];
+  sels.forEach((sel, k) => sel.value = keys[o[k]] || '');
+});
 // The owner's odds editor: one row per wrestler, odds typed as the sportsbook shows them.
 function parseOdds(v){
   v = String(v).trim().replace(/[−–—]/g, '-').replace(/\s+/g, '');
@@ -1824,6 +2106,12 @@ async function goLive(){
     return;
   }
   live = {db, refs:{state:db.doc('lottery/state'), sealed:db.doc('host/sealed'), full:db.doc('host/full')}};
+  seasons = {};   // the shared copy is the record when the page is live
+  db.collection('seasons').onSnapshot(q => {
+    seasons = {};
+    for(const d of q.docs){ const c = cleanSeason(JSON.parse(JSON.stringify(d.data()))); if(c) seasons[c.id] = c; }
+    renderPast();
+  }, () => {});
   if(owner){
     mode = 'host';
     try{ await hostStart(db); }
