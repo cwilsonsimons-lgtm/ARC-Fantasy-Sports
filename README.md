@@ -128,7 +128,15 @@ the displayed figures add up exactly. Add a line after each year's Rumble.
 **Favorites.** A panel lists the betting favorites for the next men's Royal Rumble
 (`FAVORITES` in `lottery.html`, Sportsbet decimal odds), with American odds, the
 bookmaker's implied chance (1 ÷ decimal odds) and a bar scaled to the favorite.
-Update the list and `FAV_ASOF` when the odds move.
+When the odds move, the owner taps **Update odds** in the panel header: one row per
+wrestler (add, remove, rename), odds typed as the sportsbook shows them (`+250`,
+`-150`; fractional `5/2` and decimal `3.5` work too) and the sportsbook's name.
+Saving sorts the list favorite first, stamps today's date in the note under it,
+and shares it with everyone following along (`odds` in the shared state). The
+same list drives the favorite stars, wrestler cards and the 1st-pick chances.
+**Use the built-in odds** goes back to `FAVORITES`. Followers and practice
+lotteries never see the button. Reset numbers keeps the odds, the declared list
+and the bios.
 
 **Favorites in the match and declared entrants.** An entrant whose name matches a
 betting favorite (ignoring case and punctuation) gets a gold star, outline and

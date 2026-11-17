@@ -224,6 +224,15 @@ h2{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12e
 .bioed textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink);font:inherit;resize:vertical}
 .bioed textarea:focus{border-color:var(--gold);outline:none}
 .bioed .actions .btn{padding:10px 14px;font-size:13px}
+.oddsed{width:min(520px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto}
+.orows{display:flex;flex-direction:column;gap:8px}
+.orow2{display:grid;grid-template-columns:22px minmax(0,1fr) 96px 36px;gap:8px;align-items:center}
+.orow2 .ork{font-family:var(--display);font-weight:700;color:var(--ink-3);text-align:center}
+.orow2 .oin{font-family:var(--mono);text-align:center}
+.orow2 .oin.bad{border-color:#F0453E}
+.addodds{align-self:flex-start;padding:8px 12px;font-size:13px}
+.oerr{color:#F0453E;font-size:13px}
+.favwhen .bioedit{margin-left:10px}
 .wlink{cursor:help;border-bottom:1px dotted var(--ink-3)}
 .wlink:hover,.wlink:focus-visible{color:var(--gold);outline:none}
 .chance{font-size:12px;color:var(--ink-2)}
@@ -440,6 +449,21 @@ input:disabled{opacity:.55}
       </div>
     </form>
   </div>
+  <div class="bioback" id="oddsBack" hidden>
+    <form class="bioed oddsed" id="oddsEd" role="dialog" aria-modal="true" aria-labelledby="oddsTitle" autocomplete="off" novalidate>
+      <h3 id="oddsTitle">Update the odds</h3>
+      <p class="note">Type each wrestler's odds the way the sportsbook shows them, like <b>+250</b> or <b>-150</b>. The list sorts itself, favorite first, and everyone following along sees it.</p>
+      <div class="orows" id="oddsRows"></div>
+      <button class="btn ghost addodds" type="button" id="oddsAdd">+ Add a wrestler</button>
+      <label class="fld"><span>Sportsbook</span><input type="text" id="oddsSrc" maxlength="40" placeholder="Sportsbet"></label>
+      <p class="oerr" id="oddsErr" role="alert" hidden></p>
+      <div class="actions">
+        <button class="btn primary" type="submit">Save odds</button>
+        <button class="btn ghost" type="button" id="oddsReset">Use the built-in odds</button>
+        <button class="btn ghost" type="button" id="oddsCancel">Cancel</button>
+      </div>
+    </form>
+  </div>
 
   <section class="panel" id="setupPanel" aria-label="Lottery setup">
     <h2>Setup</h2>
@@ -500,7 +524,7 @@ input:disabled{opacity:.55}
       </section>
 
       <section class="panel" aria-label="Favorites to win the 2027 Royal Rumble">
-        <div class="phead"><h2>Favorites to win · 2027 Royal Rumble</h2><span class="favwhen">Feb 6, 2027 · Glendale, AZ</span></div>
+        <div class="phead"><h2>Favorites to win · 2027 Royal Rumble</h2><span class="favwhen">Feb 6, 2027 · Glendale, AZ<button type="button" class="bioedit" id="oddsEdit" hidden>Update odds</button></span></div>
         <ol class="favs" id="favs"></ol>
         <p class="note" id="favNote"></p>
       </section>
@@ -622,7 +646,15 @@ function cardHTML(name){
     ${c.move ? `<div class="wm"><span>Finisher</span> ${esc(c.move)}</div>` : ''}
     <div class="wm"><span>Rumble wins</span> ${c.wins.length ? c.wins.join(', ') : 'none yet'}</div></div>`;
 }
-const favRank = name => { const k = norm(name); if(!k) return 0; const i = FAVORITES.findIndex(f => norm(f[0]) === k); return i + 1; };
+// The owner's own odds (S.odds = {list:[[name, decimal odds]], src, date}) replace the built-in list.
+const favList = () => S.odds && Array.isArray(S.odds.list) && S.odds.list.length ? S.odds.list : FAVORITES;
+const favNoteText = () => S.odds && S.odds.list ? `${S.odds.src || 'Sportsbook'} odds, updated ${S.odds.date}` : FAV_ASOF;
+function cleanOdds(o){
+  if(!o || !Array.isArray(o.list)) return null;
+  const list = o.list.filter(x => Array.isArray(x) && typeof x[0] === 'string' && x[0].trim() && +x[1] > 1).map(x => [x[0].trim(), +x[1]]);
+  return list.length ? {list, src:String(o.src || ''), date:String(o.date || '')} : null;
+}
+const favRank = name => { const k = norm(name); if(!k) return 0; const i = favList().findIndex(f => norm(f[0]) === k); return i + 1; };
 // where a wrestler is in the match: the drawn number their name is typed on, if any
 function whereIs(name){
   const k = norm(name); if(!k) return null;
@@ -643,14 +675,15 @@ function statusPill(name, declared){
     : `<span class="pill in">In at #${x.n} · ${esc(who(t))}</span>`;
 }
 function renderFavs(){
-  const top = 1 / FAVORITES[0][1], dec = new Set(S.declared.map(norm));
-  $('favs').innerHTML = FAVORITES.map(([name, d], i) => {
+  const F = favList(), top = 1 / F[0][1], dec = new Set(S.declared.map(norm));
+  $('oddsEdit').hidden = !canBio();
+  $('favs').innerHTML = F.map(([name, d], i) => {
     const p = 1 / d;
     return `<li class="fav"><span class="rk">${i + 1}</span><span class="who"><span class="wlink" data-wr="${esc(name)}" tabindex="0">${esc(name)}</span>${canBio() ? `<button type="button" class="bioedit" data-bio="${esc(name)}" aria-label="Edit ${esc(name)}'s bio">Edit</button>` : ''} ${statusPill(name, dec.has(norm(name)))}</span>
       <span class="fodds"><b>${american(d)}</b> · ${Math.round(p * 100)}%</span>
       <span class="bar" aria-hidden="true"><i style="width:${(p / top * 100).toFixed(1)}%"></i></span></li>`;
   }).join('');
-  $('favNote').textContent = `${FAV_ASOF}. The percentage is the bookmaker's implied chance (1 ÷ decimal odds); odds this far out move a lot.`;
+  $('favNote').textContent = `${favNoteText()}. The percentage is the bookmaker's implied chance (1 ÷ decimal odds); odds this far out move a lot.`;
 }
 function renderDeclared(){
   const can = (mode === 'host' || mode === 'local') && !previewing;
@@ -669,20 +702,20 @@ function renderDeclared(){
       ${r.st ? statusPill(r.name, true) : '<span class="pill yet">Yet to enter</span>'}
       ${can ? `<button type="button" class="dx" data-undeclare="${r.i}" aria-label="Remove ${esc(r.name)}">×</button>` : ''}
     </li>`).join('');
-  $('wrestlerNames').innerHTML = [...new Set([...S.declared, ...FAVORITES.map(f => f[0])])].map(n => `<option value="${esc(n)}"></option>`).join('');
+  $('wrestlerNames').innerHTML = [...new Set([...S.declared, ...favList().map(f => f[0])])].map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 /* Chance each team ends up with the 1st pick, i.e. holds the Rumble winner. Every entrant still in
    gets a weight: how often their number has won (past winners at that number, +1 so no number is
    ever zero) times how strong the wrestler is. A betting favorite is worth their implied chance
    relative to an ordinary entrant; anyone else counts as ordinary. Numbers nobody has been named on
    yet share the strength of the favorites who haven't shown up yet. Eliminated entrants are worth 0. */
-const FAV_BOOK = FAVORITES.reduce((a, f) => a + 1 / f[1], 0);   // the bookmaker's total, to take out their margin
-const favStrength = name => { const r = favRank(name); return r ? Math.max(1, (1 / FAVORITES[r - 1][1]) / FAV_BOOK * 30) : 1; };
+const favBook = () => favList().reduce((a, f) => a + 1 / f[1], 0);   // the bookmaker's total, to take out their margin
+const favStrength = name => { const r = favRank(name); return r ? Math.max(1, (1 / favList()[r - 1][1]) / favBook() * 30) : 1; };
 function firstPickChances(elims){
   const T = total(), out = new Set(elims), N = S.slots.length, w = Array(N).fill(0);
   const named = n => entrant(n) !== '';
   const seen = new Set(); for(let n = 1; n <= T; n++) if(named(n)) seen.add(norm(entrant(n)));
-  const unseenFav = FAVORITES.filter(f => !seen.has(norm(f[0]))).map(f => favStrength(f[0]));
+  const unseenFav = favList().filter(f => !seen.has(norm(f[0]))).map(f => favStrength(f[0]));
   const openSlots = []; for(let n = 1; n <= T; n++) if(!out.has(n) && !named(n) && holderOf(n) !== null) openSlots.push(n);
   const U = openSlots.length, favPart = unseenFav.slice(0, U).reduce((a, x) => a + x, 0);
   const unknown = U ? (favPart + Math.max(0, U - Math.min(U, unseenFav.length))) / U : 1;
@@ -730,6 +763,7 @@ function defaults(){
     elims:[],     // entry numbers in the order they were eliminated
     declared:[],  // wrestlers who have officially declared for the Rumble, in the order they declared
     cards:{},     // owner's own card text, by normalized wrestler name
+    odds:null,    // owner's own betting odds for the favorites list (null: the built-in FAVORITES)
     drawGrid:false, // with "By team": show the number grid until every number is drawn
     official:false, // live: the owner has shared this draw with the league (until then they run practice draws)
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
@@ -765,6 +799,7 @@ function load(){
       s.flow = ['across', 'team'].includes(s.flow) ? s.flow : 'down';
       s.declared = Array.isArray(s.declared) ? s.declared : [];
       s.cards = s.cards && typeof s.cards === 'object' ? s.cards : {};
+      s.odds = cleanOdds(s.odds);
       s.slots.forEach(x => { if(!x.id) x.id = slotId(); });
       return s;
     }
@@ -1302,6 +1337,61 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-bio]
 $('bioEd').addEventListener('submit', e => { e.preventDefault(); setBio($('bioText').value); });
 $('bioReset').addEventListener('click', () => setBio(''));
 $('bioCancel').addEventListener('click', closeBio);
+// The owner's odds editor: one row per wrestler, odds typed as the sportsbook shows them.
+function parseOdds(v){
+  v = String(v).trim().replace(/[−–—]/g, '-').replace(/\s+/g, '');
+  if(!v) return null;
+  if(/^[+-]\d+(\.\d+)?$/.test(v) || /^\d{3,}$/.test(v)){   // American: +250, -150 (or 250)
+    const a = parseFloat(v); if(Math.abs(a) < 100) return null;
+    return a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+  }
+  const f = v.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);   // fractional: 5/2
+  if(f) return +f[2] > 0 && +f[1] > 0 ? 1 + f[1] / f[2] : null;
+  if(/^\d+(\.\d+)?$/.test(v)){ const d = parseFloat(v); return d > 1 ? d : null; }   // decimal: 3.5
+  return null;
+}
+const oddsRow = (name, odds) => `<div class="orow2"><span class="ork"></span>
+  <input type="text" class="onm" value="${esc(name)}" placeholder="Wrestler" list="wrestlerNames" aria-label="Wrestler" maxlength="40">
+  <input type="text" class="oin" value="${esc(odds)}" placeholder="+500" aria-label="Odds" maxlength="10">
+  <button type="button" class="dx" data-odel aria-label="Remove">×</button></div>`;
+function numberOddsRows(){ [...$('oddsRows').children].forEach((r, i) => r.querySelector('.ork').textContent = i + 1); }
+function openOdds(){
+  $('oddsRows').innerHTML = favList().map(([n, d]) => oddsRow(n, american(d))).join('');
+  numberOddsRows();
+  $('oddsSrc').value = S.odds ? S.odds.src : 'Sportsbet';
+  $('oddsReset').hidden = !S.odds; $('oddsErr').hidden = true;
+  $('oddsBack').hidden = false; hideTip();
+}
+function closeOdds(){ $('oddsBack').hidden = true; }
+$('oddsEdit').addEventListener('click', openOdds);
+$('oddsCancel').addEventListener('click', closeOdds);
+$('oddsBack').addEventListener('click', e => { if(e.target === $('oddsBack')) closeOdds(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('oddsBack').hidden) closeOdds(); });
+$('oddsAdd').addEventListener('click', () => {
+  $('oddsRows').insertAdjacentHTML('beforeend', oddsRow('', '')); numberOddsRows();
+  $('oddsRows').lastElementChild.querySelector('.onm').focus();
+});
+$('oddsRows').addEventListener('click', e => { const b = e.target.closest('[data-odel]'); if(b){ b.parentElement.remove(); numberOddsRows(); } });
+$('oddsRows').addEventListener('input', e => { if(e.target.classList.contains('oin')) e.target.classList.remove('bad'); });
+$('oddsEd').addEventListener('submit', e => {
+  e.preventDefault();
+  const list = [], bad = [], seen = new Set();
+  for(const r of $('oddsRows').children){
+    const nm = r.querySelector('.onm').value.trim().replace(/\s+/g, ' '), oi = r.querySelector('.oin'), d = parseOdds(oi.value);
+    if(!nm && !oi.value.trim()) continue;   // an empty row: skip it
+    if(!nm){ bad.push('Every row with odds needs a wrestler.'); continue; }
+    if(d === null){ oi.classList.add('bad'); bad.push(`${nm}: "${oi.value.trim() || 'blank'}" isn't odds I can read. Try +250 or -150.`); continue; }
+    if(seen.has(norm(nm))){ bad.push(`${nm} is on the list twice.`); continue; }
+    seen.add(norm(nm)); list.push([nm, Math.round(d * 1000) / 1000]);
+  }
+  if(!bad.length && !list.length) bad.push('Add at least one wrestler.');
+  if(bad.length){ $('oddsErr').textContent = bad[0]; $('oddsErr').hidden = false; return; }
+  list.sort((a, b) => a[1] - b[1]);
+  S.odds = {list, src:$('oddsSrc').value.trim() || 'Sportsbook',
+    date:new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})};
+  save(); closeOdds(); renderAll({keepReveal:true, skipSetup:true});
+});
+$('oddsReset').addEventListener('click', () => { S.odds = null; save(); closeOdds(); renderAll({keepReveal:true, skipSetup:true}); });
 $('bioBack').addEventListener('click', e => { if(e.target === $('bioBack')) closeBio(); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('bioBack').hidden) closeBio(); });
 $('edAbout').addEventListener('input', e => {
@@ -1472,7 +1562,7 @@ armed($('undoBtn'), 'Undo last spin', () => {
 // Clears the drawn numbers (and eliminations) so the draw can start over; teams and entrant names stay.
 function resetLottery(){
   if(busy) return;
-  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow, drawGrid:S.drawGrid};   // entrant names belong to the Rumble, so they stay; a redraw isn't official
+  S = {...defaults(), slots:S.slots, entrants:S.entrants, flow:S.flow, drawGrid:S.drawGrid, declared:S.declared, cards:S.cards, odds:S.odds};   // entrant names belong to the Rumble, so they stay; a redraw isn't official
   save(); tray = null; sparks = []; showCage = showSetup = false; $('copyOut').hidden = true; fill(); renderAll();
 }
 armed($('resetBtn'), 'Reset lottery', resetLottery);
@@ -1522,16 +1612,16 @@ const bareSlots = () => S.slots.map(({logo, ...rest}) => rest);
 const publicState = () => S.official ? {
   official:true, slots:bareSlots(),
   draws:hidden() ? S.draws.slice(0, -1) : S.draws.slice(),   // a sealed draw stays off the shared copy
-  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared, cards:S.cards,
+  pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared, cards:S.cards, odds:S.odds || null,
 } : {
   // not official yet: followers get the teams (for their practice draws) and nothing of the real one
   official:false, slots:bareSlots(), draws:[], pend:false, entrants:{}, elims:[], flow:S.flow, drawGrid:!!S.drawGrid,
-  declared:S.declared, cards:S.cards,   // declarations and cards aren't part of the draw, so they're shared either way
+  declared:S.declared, cards:S.cards, odds:S.odds || null,   // declarations, cards and odds aren't part of the draw, so they're shared either way
 };
 function fromPublic(d){
   return {...defaults(), slots:(d.slots || []).map(x => ({...x, logo:''})), draws:(d.draws || []).slice(), sealed:false,
     entrants:{...(d.entrants || {})}, elims:(d.elims || []).slice(), flow:d.flow || 'down', drawGrid:!!d.drawGrid,
-    declared:(d.declared || []).slice(), cards:{...(d.cards || {})}};
+    declared:(d.declared || []).slice(), cards:{...(d.cards || {})}, odds:cleanOdds(d.odds)};
 }
 function pushShared(){ dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(flush, 250); }
 async function flush(){
@@ -1561,7 +1651,7 @@ async function hostStart(db){
   if(full.exists){
     // snapshots arrive frozen: work on a deep copy, or the first push onto draws/elims throws
     const d = JSON.parse(JSON.stringify(full.data())), next = {...defaults(), ...d, slots:(d.slots || []).map(x => ({...x, logo:''}))};
-    next.sealed = !!next.sealed && next.draws.length > 0;
+    next.sealed = !!next.sealed && next.draws.length > 0; next.odds = cleanOdds(next.odds);
     const logos = await db.collection('logos').get();
     for(const x of logos.docs){ const z = next.slots.find(y => y.id === x.id); if(z){ z.logo = x.data().src; pushed.logos[x.id] = z.logo; } }
     S = next;
@@ -1580,7 +1670,7 @@ async function hostStart(db){
     S = next;
   }else{
     // First time live: bring this browser's teams along, start the draw fresh.
-    S = {...defaults(), slots:S.slots, flow:S.flow, drawGrid:S.drawGrid};
+    S = {...defaults(), slots:S.slots, flow:S.flow, drawGrid:S.drawGrid, declared:S.declared, cards:S.cards, odds:S.odds};
     pushShared();
   }
   tray = null; fill(); renderAll();
@@ -1677,13 +1767,13 @@ function enterMock(d){
   if(mode !== 'mock' || teamSig(slots) !== teamSig(S.slots)){
     mode = 'mock'; document.body.classList.remove('viewer'); document.body.classList.add('mock');
     $('mockBar').hidden = false; firstState = true; pend = false; sel = null; clearFind(); showCage = showSetup = false;
-    S = loadMock(slots); S.declared = (d.declared || []).slice(); S.cards = {...(d.cards || {})}; tray = null; fill(); renderAll();
+    S = loadMock(slots); S.declared = (d.declared || []).slice(); S.cards = {...(d.cards || {})}; S.odds = cleanOdds(d.odds); tray = null; fill(); renderAll();
     setLive("<b>Practice</b> The real numbers aren't official yet. This draw is yours alone.", true);
     return;
   }
   // same teams: pick up name and color changes, keep the practice draw
   S.slots = S.slots.map((x, i) => ({...x, ...slots[i], logo:''}));
-  S.declared = (d.declared || []).slice(); S.cards = {...(d.cards || {})};
+  S.declared = (d.declared || []).slice(); S.cards = {...(d.cards || {})}; S.odds = cleanOdds(d.odds);
   renderAll({keepReveal:true});
 }
 function drawRest(){
