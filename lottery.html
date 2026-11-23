@@ -412,6 +412,7 @@ body.mock .tile .nm.empty{visibility:hidden}
 .officialbar.on{border-color:var(--gold)}
 .officialbar.on b{color:var(--gold)}
 .officialbar .btn{flex:none;padding:9px 14px;font-size:13px}
+.officialbar .actions{flex:0 1 auto;display:flex;gap:8px;flex-wrap:wrap}
 .officialbar .btn.make{background:var(--gold);color:var(--gold-ink)}
 .officialbar .btn.hide{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
 .officialbar .btn.armed{background:#F0453E;color:#fff;border-color:#F0453E}
@@ -473,7 +474,8 @@ input:disabled{opacity:.55}
     <div class="previewbar" id="previewBar" hidden><span><b>Preview</b> This is the page as league members see it. Nothing changes while you look.</span>
       <button class="btn primary" id="previewOff" type="button">Back to my controls</button></div>
     <div class="officialbar" id="officialBar" hidden><span id="officialText"></span>
-      <button class="btn" id="officialBtn" type="button"></button></div>
+      <span class="actions"><button class="btn make" id="showNextBtn" type="button" hidden></button>
+      <button class="btn" id="officialBtn" type="button"></button></span></div>
     <div class="mockbar" id="mockBar" hidden><span><b>Practice lottery</b> The real numbers aren't official yet, so spin as much as you like. Nothing you do here is shared, and this page switches to the real draw as soon as it's official.</span>
       <span class="actions"><button class="btn ghost" id="mockRest" type="button">Draw the rest</button><button class="btn ghost" id="mockReset" type="button">Start over</button></span>
       <div class="realteams" id="realTeams"></div></div>
@@ -845,6 +847,7 @@ function defaults(){
     odds:null,    // owner's own betting odds for the favorites list (null: the built-in FAVORITES)
     drawGrid:false, // with "By team": show the number grid until every number is drawn
     official:false, // live: the owner has shared this draw with the league (until then they run practice draws)
+    shown:0,        // not official yet: how many drawn numbers the owner has shown the league, one at a time
     flow:'down',  // number layout on the board and entrant list: 'down' columns or 'across' rows
   };
 }
@@ -878,6 +881,7 @@ function load(){
       s.flow = ['across', 'team'].includes(s.flow) ? s.flow : 'down';
       s.declared = Array.isArray(s.declared) ? s.declared : [];
       s.cards = s.cards && typeof s.cards === 'object' ? s.cards : {};
+      s.shown = Math.max(0, Math.min(+s.shown || 0, s.draws.length));
       s.odds = cleanOdds(s.odds);
       s.slots.forEach(x => { if(!x.id) x.id = slotId(); });
       return s;
@@ -1837,7 +1841,7 @@ armed($('restBtn'), 'Draw the rest', () => drawRest());
 // Undo: take back the most recent ball, sealed or revealed, and put it back in the cage.
 armed($('undoBtn'), 'Undo last spin', () => {
   if(busy || !S.draws.length) return;
-  S.draws.pop(); S.sealed = false;
+  S.draws.pop(); S.sealed = false; S.shown = Math.min(S.shown, S.draws.length);
   S.elims = S.elims.filter(n => holderOf(n) !== null);   // the tracker only covers numbers that are drawn
   save(); tray = null; sparks = []; fill(); renderAll();
 });
@@ -1891,7 +1895,14 @@ function notice(html){ const n = $('liveNotice'); n.hidden = !html; n.innerHTML 
 let revealing = false;      // the owner tapped Reveal: share the result now so followers' reveal plays alongside
 const hidden = () => S.sealed && !revealing;
 const bareSlots = () => S.slots.map(({logo, ...rest}) => rest);
-const publicState = () => S.official ? {
+let showingNext = false;    // the owner tapped "Show #N": followers' cage is spinning for it
+const partShown = () => !S.official && (S.shown > 0 || showingNext);
+const publicState = () => partShown() ? {
+  // shown one at a time: followers get the real draw up to the last number shown, and nothing past it
+  official:true, partial:true, slots:bareSlots(), draws:S.draws.slice(0, S.shown), pend:showingNext,
+  entrants:Object.fromEntries(S.draws.slice(0, S.shown).map((_, k) => numberOf(k)).filter(n => S.entrants[n]).map(n => [n, S.entrants[n]])),
+  elims:[], flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared, cards:S.cards, odds:S.odds || null,
+} : S.official ? {
   official:true, slots:bareSlots(),
   draws:hidden() ? S.draws.slice(0, -1) : S.draws.slice(),   // a sealed draw stays off the shared copy
   pend:hidden(), entrants:S.entrants, elims:S.elims, flow:S.flow, drawGrid:!!S.drawGrid, declared:S.declared, cards:S.cards, odds:S.odds || null,
@@ -1927,6 +1938,7 @@ async function flush(){
 }
 const liveText = () => S.official
   ? '<b>Live</b> Everyone you share this page with sees each spin, reveal and elimination as it happens.'
+  : partShown() ? `<b>Live</b> The league has seen ${S.shown} of your numbers. The rest stay private until you show them.`
   : '<b>Live</b> Your draw is private until you make the numbers official. League members are running practice lotteries.';
 async function hostStart(db){
   const refs = live.refs, full = await refs.full.get(), snap = full.exists ? null : await refs.state.get();
@@ -1934,6 +1946,7 @@ async function hostStart(db){
     // snapshots arrive frozen: work on a deep copy, or the first push onto draws/elims throws
     const d = JSON.parse(JSON.stringify(full.data())), next = {...defaults(), ...d, slots:(d.slots || []).map(x => ({...x, logo:''}))};
     next.sealed = !!next.sealed && next.draws.length > 0; next.odds = cleanOdds(next.odds);
+    next.shown = Math.max(0, Math.min(+next.shown || 0, next.draws.length));
     const logos = await db.collection('logos').get();
     for(const x of logos.docs){ const z = next.slots.find(y => y.id === x.id); if(z){ z.logo = x.data().src; pushed.logos[x.id] = z.logo; } }
     S = next;
@@ -1963,11 +1976,23 @@ function renderOfficial(){
   const bar = $('officialBar'); bar.hidden = mode !== 'host';
   if(mode !== 'host') return;
   bar.classList.toggle('on', !!S.official);
+  const drawn = S.draws.length - (S.sealed ? 1 : 0);   // a sealed ball isn't revealed yet, even to you
   $('officialText').innerHTML = S.official
     ? '<b>Official</b> Your numbers are shared with the league, and they follow along live.'
-    : '<b>Not official</b> League members only see your teams and run practice lotteries. Your draw stays private until you make it official.';
+    : !S.draws.length
+      ? "<b>Not official</b> League members only see your teams and run practice lotteries. Make the numbers official <i>before</i> you spin and the league watches every spin live."
+      : partShown()
+        ? `<b>Showing one at a time</b> The league has seen ${S.shown} of ${total()} numbers.${S.shown >= drawn ? (drawn < total() ? ' Spin and reveal the next one to show it.' : '') : ` Next up: #${numberOf(S.shown)}.`}`
+        : `<b>Not official</b> League members only see your teams and run practice lotteries. Show your numbers one at a time, so the league watches them come out, or make them all official at once.`;
+  const nb = $('showNextBtn'), canShow = !S.official && S.shown < drawn;
+  nb.hidden = S.official || !S.draws.length;
+  nb.disabled = !canShow || showingNext || busy;
+  nb.textContent = showingNext ? `Showing #${numberOf(S.shown)}…` : canShow ? `Show #${numberOf(S.shown)} to the league` : 'Shown so far';
   const b = $('officialBtn');
-  if(!b.classList.contains('armed')){ b.textContent = S.official ? 'Hide from league' : 'Make numbers official'; b.className = 'btn ' + (S.official ? 'hide' : 'make'); }
+  if(!b.classList.contains('armed')){
+    b.textContent = S.official ? 'Hide from league' : S.draws.length ? 'Make them all official' : 'Make numbers official';
+    b.className = 'btn ' + (S.official || S.draws.length ? 'hide' : 'make');   // with numbers drawn, showing them one at a time leads
+  }
 }
 let officialT = 0;
 $('officialBtn').addEventListener('click', () => {
@@ -1978,7 +2003,19 @@ $('officialBtn').addEventListener('click', () => {
     return;
   }
   clearTimeout(officialT); b.classList.remove('armed');
-  S.official = !S.official; save(); renderOfficial(); setLive(liveText()); renderAll({keepReveal:true, skipSetup:true});
+  S.official = !S.official; S.shown = 0; save(); renderOfficial(); setLive(liveText()); renderAll({keepReveal:true, skipSetup:true});
+});
+// Show the league the next drawn number: their cage spins, then the ball is revealed, as if it were drawn live.
+$('showNextBtn').addEventListener('click', async () => {
+  if(showingNext || busy || S.official || S.shown >= S.draws.length - (S.sealed ? 1 : 0)) return;
+  const k = S.shown;
+  showingNext = true; pushShared(); renderOfficial();               // followers: the cage spins, a ball drops
+  await wait(reduce ? 400 : 3600);   // the followers' spin (about 2.8s) finishes, then a beat before the reveal
+  showingNext = false; S.shown = k + 1;                              // followers: the ball is revealed
+  if(S.shown >= total()){ S.official = true; S.shown = 0; }          // every number is out: the draw is official
+  save(); setLive(liveText());
+  showReveal(numberOf(k), S.draws[k], true); if(!reduce) burst(S.draws[k]);
+  renderAll({keepReveal:true, skipSetup:true});
 });
 function viewerStart(db){
   document.body.classList.add('viewer', 'waiting');
@@ -2015,8 +2052,11 @@ function handleRemote(d){
     // the owner made it official: leave the practice draw and pick up the real one
     mode = 'viewer'; document.body.classList.remove('mock'); document.body.classList.add('viewer');
     $('mockBar').hidden = true; firstState = true; pend = false; sel = null; clearFind(); showCage = showSetup = false;
-    setLive('<b>Official</b> These are the real numbers. Updates appear here as they happen.');
+    // arriving just as a ball is being drawn: start from the board as it was, so the spin plays here too
+    if(d.pend){ S = fromPublic(d); tray = null; fill(); firstState = false; }
   }
+  setLive(d.partial ? '<b>Live</b> The commissioner is showing the real numbers one at a time. Watch them come out here.'
+    : '<b>Official</b> These are the real numbers. Updates appear here as they happen.');
   applyRemote(d);
 }
 function loadMock(slots){

@@ -188,6 +188,17 @@ switches to the real draw and follows along live; **Hide from league** takes it
 back, and a reset makes the new draw unofficial again. The owner's full lottery is
 kept in `host/full`, which only the owner can read.
 
+**Showing numbers one at a time.** Making the numbers official *before* spinning
+lets the league watch every spin live. For a draw already done privately, the
+official bar offers **Show #N to the league**: each tap plays that number for
+everyone following along, with the cage spinning and the ball dropping, then the
+reveal about 3.6 seconds later, and practice lotteries switch over to the real
+draw. The shared copy carries the draw only up to the last number shown
+(`shown` in the owner's state, `partial` in `lottery/state`). Showing the last
+number makes the draw official; **Make them all official** shares the rest at
+once; undoing a shown number takes it back from the league too; a sealed ball
+can't be shown until the owner has revealed it.
+
 **Past lotteries.** A panel under everything else keeps one season per year, with a
 tab for each (newest first): the teams with their managers and balls, who held
 each number, the wrestler at it, the elimination order (struck through, "4th
