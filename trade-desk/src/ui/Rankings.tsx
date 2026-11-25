@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { defaultMarket, groupOf, marketSource } from '../core/model';
 import { byValue, clampValue, valueForRank, type Ranked } from '../core/rankings';
-import type { Group, Settings } from '../core/types';
-import { Asset, Delta, fmt, fullName, useApp, who } from './common';
+import type { Group, RankingWeek, Settings } from '../core/types';
+import { Asset, Delta, fmt, fullName, shortDate, useApp, who } from './common';
+import { weekRange } from '../core/weeks';
 
 export type Mode = 'mine' | 'league';
 
@@ -61,13 +62,13 @@ export function NumberEdit({
 
 /** Shared by the Rankings tab and the player sheet. */
 export function useRankEdits() {
-  const { v, saveSettings, toast } = useApp();
+  const { v, saveRanking, toast } = useApp();
   const key = (mode: Mode) => (mode === 'mine' ? 'mine' : 'consensus') as 'mine' | 'consensus';
+  const edited = () => ({ mine: { ...(v.settings.mine ?? {}) }, consensus: { ...(v.settings.consensus ?? {}) } });
   const write = (mode: Mode, patch: (m: Record<string, number>) => void) => {
-    const map = { ...(v.settings[key(mode)] ?? {}) };
-    patch(map);
-    const next: Settings = { ...v.settings, [key(mode)]: map };
-    return saveSettings(next).catch(() => undefined);
+    const next = edited();
+    patch(next[key(mode)]);
+    return saveRanking(next);
   };
   return {
     current: (mode: Mode, id: string) => (mode === 'mine' ? v.value(v.me, id) : v.market(id)),
@@ -76,7 +77,7 @@ export function useRankEdits() {
     set: (mode: Mode, id: string, value: number) => write(mode, (m) => void (m[id] = clampValue(value))),
     reset: (mode: Mode, id: string) => write(mode, (m) => void delete m[id]),
     resetAll: async (mode: Mode) => {
-      await saveSettings({ ...v.settings, [key(mode)]: {} }).catch(() => undefined);
+      await saveRanking({ ...edited(), [key(mode)]: {} });
       toast(mode === 'mine' ? 'Your values are back to the desk’s read.' : 'League values are back to the market.');
     },
   };
@@ -97,14 +98,171 @@ function sourceLabel(mode: Mode, s: Settings, id: string, edited: boolean) {
   return marketSource(s, id) === 'ktc' ? 'KTC' : 'model';
 }
 
+function WeekBar({ view, setView }: { view: string; setView: (w: string) => void }) {
+  const { data, week } = useApp();
+  const past = data.rankings.filter((w) => w.week < week.key).sort((a, b) => b.week.localeCompare(a.week));
+  const viewing = view ? data.rankings.find((w) => w.week === view) : null;
+  return (
+    <div className="weekbar">
+      <div>
+        <div className="wk-label">{viewing ? viewing.label : week.label}</div>
+        <div className="who-s">
+          {weekRange(viewing ? viewing.week : week.key)}
+          {viewing
+            ? ` · saved ${shortDate(viewing.updatedAt)}`
+            : week.from && week.from.week === week.key
+              ? ' · this week'
+              : week.from
+                ? ` · this week, starting from ${week.from.label}'s list`
+                : ' · this week'}
+        </div>
+      </div>
+      <label className="field" style={{ marginLeft: 'auto' }}>
+        <span>{past.length ? 'Look back' : 'Past weeks appear here once a week ends'}</span>
+        <select className="select" id="rank-week" value={view} onChange={(e) => setView(e.target.value)} disabled={!past.length}>
+          <option value="">{week.label} (this week)</option>
+          {past.map((w) => (
+            <option key={w.week} value={w.week}>
+              {w.label} · {weekRange(w.week)}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+interface PastRow extends Ranked {
+  group: Group;
+  edited: boolean;
+  now: number;
+  /** spots climbed since that week (negative = fell); null if he isn't on both lists */
+  rankNow: number | null;
+}
+
+/** A saved week, read-only, against where everyone stands now. */
+function PastBoard({ week, mode, filter, scope, q }: { week: RankingWeek; mode: Mode; filter: Group | 'ALL'; scope: 'all' | 'mine'; q: string }) {
+  const { v, openAsset } = useApp();
+  const edits = useRankEdits();
+  const values = mode === 'mine' ? week.board.mine : week.board.league;
+  const setBy = mode === 'mine' ? week.edited.mine : week.edited.consensus;
+  const keep = (id: string, g: Group) => (filter === 'ALL' || g === filter) && (scope === 'all' || v.league.owner[id] === v.me);
+  // Moves compare only players on both lists, so someone cut or newly added doesn't shift everyone by one.
+  const both = Object.keys(values).filter((id) => v.league.owner[id] && keep(id, (week.names[id]?.[1] ?? groupOf(v.league, id)) as Group));
+  const rankOf = (vals: (id: string) => number) =>
+    new Map(both.map((id) => ({ id, value: vals(id), name: fullName(v, id) })).sort(byValue).map((r, i) => [r.id, i + 1]));
+  const thenRank = rankOf((id) => values[id]);
+  const nowRank = rankOf((id) => edits.current(mode, id));
+  const list: PastRow[] = Object.entries(values)
+    .map(([id, value]) => {
+      const inLeague = !!v.league.owner[id];
+      const [stored, group] = week.names[id] ?? [id, groupOf(v.league, id)];
+      return {
+        id,
+        value,
+        name: inLeague ? fullName(v, id) : stored,
+        group: group as Group,
+        edited: setBy[id] != null,
+        now: inLeague ? edits.current(mode, id) : 0,
+        rankNow: inLeague && thenRank.has(id) ? thenRank.get(id)! - nowRank.get(id)! : null,
+      };
+    })
+    .filter((r) => keep(r.id, r.group))
+    .sort(byValue);
+  const shown = q ? list.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())) : list;
+  const moves = list
+    .map((r) => ({ r, d: r.rankNow ?? 0 }))
+    .filter((x) => x.d !== 0)
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  const risers = moves.filter((m) => m.d > 0).slice(0, 3);
+  const fallers = moves.filter((m) => m.d < 0).slice(0, 3);
+
+  return (
+    <>
+      {(risers.length > 0 || fallers.length > 0) && (
+        <div className="panel-b moves-since" style={{ borderBottom: '1px solid var(--line-2)' }}>
+          <div>
+            <div className="h2" style={{ fontSize: 13 }}>
+              Up since {week.label}
+            </div>
+            {risers.length ? risers.map((m) => <MoveLine key={m.r.id} name={m.r.name} d={m.d} />) : <div className="faint">Nobody</div>}
+          </div>
+          <div>
+            <div className="h2" style={{ fontSize: 13 }}>
+              Down since {week.label}
+            </div>
+            {fallers.length ? fallers.map((m) => <MoveLine key={m.r.id} name={m.r.name} d={m.d} />) : <div className="faint">Nobody</div>}
+          </div>
+        </div>
+      )}
+      <div className="tbl-wrap">
+        <table className="tbl rank-tbl">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>{filter === 'PICK' ? 'Pick' : 'Player'}</th>
+              <th className="r">{week.label}</th>
+              <th className="r">Now</th>
+              <th className="r">Move</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => {
+              const rank = list.indexOf(r) + 1;
+              const d = r.rankNow;
+              const inLeague = !!v.league.owner[r.id];
+              return (
+                <tr key={r.id} onClick={() => inLeague && openAsset(r.id)} className={r.edited ? 'edited' : undefined} style={inLeague ? undefined : { cursor: 'default' }}>
+                  <td className="num">{rank}</td>
+                  <td>
+                    {inLeague ? (
+                      <Asset id={r.id} />
+                    ) : (
+                      <div className="who">
+                        <span className={`pos pos-${r.group}`}>{r.group === 'PICK' ? 'PK' : r.group}</span>
+                        <div className="who-n">{r.name}</div>
+                      </div>
+                    )}
+                  </td>
+                  <td className="r">
+                    <div className="num">{fmt(r.value)}</div>
+                    {r.edited && (
+                      <div className="src">
+                        <span className="src-you">you</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="r">{inLeague ? <><div className="num">{fmt(r.now)}</div><Delta value={r.now} base={r.value} /></> : <span className="faint">gone</span>}</td>
+                  <td className="r num">{d == null ? <span className="faint">—</span> : d === 0 ? <span className="faint">same</span> : <span className={d > 0 ? 'up' : 'down'}>{d > 0 ? `▲${d}` : `▼${-d}`}</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function MoveLine({ name, d }: { name: string; d: number }) {
+  return (
+    <div className="kv">
+      <span>{name}</span>
+      <span className={'num ' + (d > 0 ? 'up' : 'down')}>{d > 0 ? `▲${d}` : `▼${-d}`}</span>
+    </div>
+  );
+}
+
 export function Rankings() {
-  const { v, canWrite, openAsset } = useApp();
+  const { v, canWrite, openAsset, data, week } = useApp();
   const edits = useRankEdits();
   const [mode, setMode] = useState<Mode>('mine');
   const [filter, setFilter] = useState<Group | 'ALL'>('ALL');
   const [scope, setScope] = useState<'all' | 'mine'>('all');
   const [q, setQ] = useState('');
   const [confirm, setConfirm] = useState(false);
+  const [view, setView] = useState('');
+  const past = view ? data.rankings.find((w) => w.week === view) ?? null : null;
 
   // Rank among everything that passes the position and roster filters; the search only hides rows.
   const list: Ranked[] = useMemo(
@@ -135,7 +293,15 @@ export function Rankings() {
           <input className="input" id="rank-q" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search rankings" />
         </div>
       </div>
+      <div className="panel-b" style={{ borderBottom: '1px solid var(--line-2)' }}>
+        <WeekBar view={view} setView={setView} />
+      </div>
       <div className="panel-b" style={{ display: 'grid', gap: 10, borderBottom: '1px solid var(--line-2)' }}>
+        {past ? (
+          <p className="note">
+            Your {mode === 'mine' ? 'values' : 'league values'} as they stood in {past.label}, against where everyone is now. Read-only: past weeks are kept as they were. ▲ means he has climbed since.
+          </p>
+        ) : (
         <p className="note">
           {mode === 'mine' ? (
             <>
@@ -147,8 +313,9 @@ export function Rankings() {
               {Object.keys(v.settings.market).length ? 'your KTC paste or ' : ''}the model.
             </>
           )}{' '}
-          Type a value, type a rank to move someone there, or use the arrows.
+          Type a value, type a rank to move someone there, or use the arrows. Edits save to {week.label}; next week starts from this list.
         </p>
+        )}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div className="seg" role="group" aria-label="Position">
             {FILTERS.map(([l, g]) => (
@@ -166,9 +333,13 @@ export function Rankings() {
             </button>
           </div>
           <span className="muted" style={{ fontSize: 12, marginLeft: 'auto' }}>
-            {editedCount ? `${editedCount} set by you` : 'Nothing set by you yet'}
+            {past
+              ? `${Object.keys(mode === 'mine' ? past.edited.mine : past.edited.consensus).length} set by you that week`
+              : editedCount
+                ? `${editedCount} set by you`
+                : 'Nothing set by you yet'}
           </span>
-          {editedCount > 0 &&
+          {!past && editedCount > 0 &&
             canWrite &&
             (confirm ? (
               <span style={{ display: 'flex', gap: 6 }}>
@@ -192,6 +363,9 @@ export function Rankings() {
             ))}
         </div>
       </div>
+      {past ? (
+        <PastBoard week={past} mode={mode} filter={filter} scope={scope} q={q} />
+      ) : (
       <div className="tbl-wrap">
         <table className="tbl rank-tbl">
           <thead>
@@ -254,6 +428,7 @@ export function Rankings() {
           </tbody>
         </table>
       </div>
+      )}
     </section>
   );
 }

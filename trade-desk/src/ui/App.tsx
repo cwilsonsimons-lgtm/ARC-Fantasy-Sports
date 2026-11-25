@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildValuer } from '../core/model';
 import { fitLearned } from '../core/trade';
 import { takeSnapshot } from '../core/history';
-import { emptySettings, type Settings, type TradeLog } from '../core/types';
+import { emptySettings, type RankingWeek, type Settings, type TradeLog } from '../core/types';
+import { editsFor, freezeWeek, type Edited } from '../core/rankings';
+import { weekLabel, weekStart } from '../core/weeks';
 import { AppCtx, Empty, shortDate, type Ctx, type LabState } from './common';
 import { explainMcp, subscribe, syncFromStatsDeck, useCapability, writes, type Data, type DB, type Status } from './runtime';
 import { MyTeam } from './MyTeam';
@@ -34,15 +36,18 @@ export function App() {
   const [db, setDb] = useState<DB | null>(null);
   const [status, setStatus] = useState<Status>({ phase: 'loading' });
   const [canWrite, setCanWrite] = useState(true);
-  const [data, setData] = useState<Data>({ league: null, settings: emptySettings(), trades: [], history: [], rebuilt: {} });
+  const [data, setData] = useState<Data>({ league: null, settings: emptySettings(), trades: [], history: [], rebuilt: {}, rankings: [] });
   const [sheet, setSheet] = useState<string | null>(null);
   const [lab, setLab] = useState<LabState>({ team: '', send: [], receive: [] });
   const [toastMsg, setToast] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const toastTimer = useRef<number>();
-  // Settings writes go out one at a time; a burst of edits collapses into the latest.
-  const settingsQueue = useRef<{ busy: boolean; next: Settings | null; waiters: (() => void)[] }>({ busy: false, next: null, waiters: [] });
+  // Writes to one document go out one at a time; a burst of edits collapses into the latest.
+  const queues = useRef<Record<string, { busy: boolean; next: (() => Promise<void>) | null; waiters: (() => void)[] }>>({});
+  const busy = (prefix: string) => Object.entries(queues.current).some(([k, q]) => k.startsWith(prefix) && q.busy);
+  // Set when your rankings change, so the week's board is re-frozen from the new values.
+  const rankDirty = useRef(false);
 
   useEffect(() => {
     const on = () => setRoute(readHash());
@@ -68,12 +73,9 @@ export function App() {
         d,
         (patch) => {
           // While our own settings writes are going out, the store echoes older versions; skip those.
-          if (patch.settings && settingsQueue.current.busy) {
-            const { settings: _skip, ...rest } = patch;
-            void _skip;
-            if (!Object.keys(rest).length) return;
-            patch = rest;
-          }
+          if (patch.settings && busy('settings')) delete patch.settings;
+          if (patch.rankings && (busy('rank:') || rankDirty.current)) delete patch.rankings;
+          if (!Object.keys(patch).length) return;
           setData((cur) => ({ ...cur, ...patch }));
         },
         setStatus,
@@ -107,8 +109,57 @@ export function App() {
     [toast],
   );
 
-  const learned = useMemo(() => (data.league ? fitLearned(data.league, data.settings, data.trades) : null), [data.league, data.settings, data.trades]);
-  const v = useMemo(() => (data.league && learned ? buildValuer(data.league, data.settings, learned) : null), [data.league, data.settings, learned]);
+  // This week's rankings (or last week's, carried forward) are what every value is built on.
+  const thisWeek = weekStart(new Date());
+  const current = useMemo(() => editsFor(data.rankings, thisWeek, data.settings), [data.rankings, thisWeek, data.settings]);
+  const settings = useMemo(() => ({ ...data.settings, mine: current.edited.mine, consensus: current.edited.consensus }), [data.settings, current]);
+  const learned = useMemo(() => (data.league ? fitLearned(data.league, settings, data.trades) : null), [data.league, settings, data.trades]);
+  const v = useMemo(() => (data.league && learned ? buildValuer(data.league, settings, learned) : null), [data.league, settings, learned]);
+
+  const enqueue = (key: string, write: () => Promise<void>) => {
+    const q = (queues.current[key] ??= { busy: false, next: null, waiters: [] });
+    q.next = write;
+    const done = new Promise<void>((res) => q.waiters.push(res));
+    if (!q.busy) {
+      q.busy = true;
+      (async () => {
+        while (q.next) {
+          const w = q.next;
+          q.next = null;
+          const waiters = q.waiters.splice(0);
+          try {
+            await guard(w);
+          } catch {
+            /* guard already told the viewer */
+          }
+          waiters.forEach((f) => f());
+        }
+        q.busy = false;
+      })();
+    }
+    return done;
+  };
+
+  // After a rankings edit re-renders with new values, freeze this week's board and save it.
+  useEffect(() => {
+    if (!rankDirty.current || !v || !db || !data.league) return;
+    rankDirty.current = false;
+    const doc = freezeWeek(v, thisWeek, weekLabel(thisWeek, data.league), current.edited, new Date().toISOString());
+    setData((cur) => ({ ...cur, rankings: [...cur.rankings.filter((w) => w.week !== thisWeek), doc] }));
+    void enqueue('rank:' + thisWeek, () => writes.ranking(db, doc));
+  }, [v, current]);
+
+  const saveRanking = (edited: Edited) => {
+    if (!data.league) return Promise.resolve();
+    rankDirty.current = true;
+    // Optimistic: this week now carries the new edits; the board is filled in by the effect above.
+    const prev = data.rankings.find((w) => w.week === thisWeek);
+    const placeholder: RankingWeek = prev
+      ? { ...prev, edited }
+      : { week: thisWeek, label: weekLabel(thisWeek, data.league), updatedAt: new Date().toISOString(), edited, board: { mine: {}, league: {} }, names: {} };
+    setData((cur) => ({ ...cur, rankings: [...cur.rankings.filter((w) => w.week !== thisWeek), placeholder] }));
+    return Promise.resolve();
+  };
 
   const go = (r: string) => {
     location.hash = r;
@@ -127,8 +178,11 @@ export function App() {
       const known = new Set(data.trades.map((t) => t.id));
       for (const t of trades) if (!known.has(t.id)) await guard(() => writes.trade(db, t));
       const all = [...data.trades.filter((t) => !trades.some((n) => n.id === t.id)), ...trades];
-      const val = buildValuer(league, data.settings, fitLearned(league, data.settings, all));
+      const val = buildValuer(league, settings, fitLearned(league, settings, all));
       await guard(() => writes.snapshot(db, takeSnapshot(val, league.asOf)));
+      // Every synced week gets a frozen copy of your rankings, edited or not.
+      const wk = weekStart(new Date());
+      await enqueue('rank:' + wk, () => writes.ranking(db, freezeWeek(val, wk, weekLabel(wk, league), editsFor(data.rankings, wk, data.settings).edited, new Date().toISOString())));
       const fresh = trades.filter((t) => !known.has(t.id)).length;
       toast(`Synced ${league.teams.length} teams${fresh ? `, ${fresh} new league trade${fresh > 1 ? 's' : ''}` : ''}.`);
     } catch (e) {
@@ -186,30 +240,16 @@ export function App() {
       go('lab');
     },
     saveSettings: (s: Settings) => {
-      // Show the change at once; the store's snapshot confirms it.
-      setData((cur) => ({ ...cur, settings: s }));
-      const q = settingsQueue.current;
-      q.next = s;
-      const done = new Promise<void>((res) => q.waiters.push(res));
-      if (!q.busy) {
-        q.busy = true;
-        (async () => {
-          while (q.next) {
-            const s2 = q.next;
-            q.next = null;
-            const waiters = q.waiters.splice(0);
-            try {
-              await guard(() => writes.settings(db!, s2));
-            } catch {
-              /* guard already told the viewer */
-            }
-            waiters.forEach((w) => w());
-          }
-          q.busy = false;
-        })();
-      }
-      return done;
+      // Show the change at once; the store's snapshot confirms it. Rankings live in their own docs.
+      const { mine: _m, consensus: _c, ...rest } = s;
+      void _m;
+      void _c;
+      const keep = { ...rest, mine: data.settings.mine, consensus: data.settings.consensus };
+      setData((cur) => ({ ...cur, settings: keep }));
+      return enqueue('settings', () => writes.settings(db!, keep));
     },
+    saveRanking,
+    week: { key: thisWeek, label: weekLabel(thisWeek, data.league), from: current.from },
     saveTrade: (t: TradeLog) => guard(() => writes.trade(db!, t)),
     dropTrade: (id: string) => guard(() => writes.dropTrade(db!, id)),
   };

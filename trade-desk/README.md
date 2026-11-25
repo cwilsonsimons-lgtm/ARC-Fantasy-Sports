@@ -34,7 +34,9 @@ node tools/ui-check.mjs <seed.json> [payloads.json] [shotsDir]   # drives the bu
 
 Database layout: `league/current` (the League), `league/settings` (traits, nudges, KTC
 overrides, your two rankings in `mine` and `consensus`), `trades/<id>` (one TradeLog each), `history/<YYYY-MM-DD>` (one Snapshot per sync
-day: market plus all ten teams' values), `rebuilt/<player id>` (values rebuilt from game logs).
+day: market plus all ten teams' values), `rebuilt/<player id>` (values rebuilt from game logs), `rankings/<YYYY-MM-DD>` (one week's
+rankings: what you set, plus the frozen board). Before weekly rankings existed, edits lived in
+`league/settings` (`mine`, `consensus`); those carry into the first week as its starting list.
 
 `tools/seed.ts` turns saved StatsDeck payloads into those documents, for seeding a new copy of
 the artifact or for the UI check. The payloads are real league data, so they aren't committed.
@@ -86,6 +88,12 @@ it rated close teaches the most.
   type a rank (the desk picks a value between the new neighbours), or use the arrows; ↺ resets
   one, *Reset all* resets the board. Both numbers are also editable on every player sheet.
   Precedence for market value: your league value, then a KTC paste, then the model.
+  **Rankings are kept per NFL week** (Tuesday to Monday). Edits go into this week's record; a
+  new week starts from the latest earlier week's list, so you only change what moved. Every edit
+  and every sync freezes the full board (both lists, every asset, with names so cut players
+  survive) into `rankings/<week's Tuesday>`. *Look back* shows any saved week read-only, with
+  each player's value then and now, rank moves since (counted only among players on both lists),
+  and the biggest risers and fallers. Each player sheet lists his values week by week.
 - **League**: every team's window, positional strength and what their trades have shown. A team's
   board lists who they overrate and underrate, and holds the manager's name and tendencies.
 - **Log**: every offer and league trade the desk learns from.

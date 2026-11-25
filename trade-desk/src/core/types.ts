@@ -48,6 +48,8 @@ export interface League {
   name: string;
   asOf: string; // ISO time the rosters were read
   season: number; // the next rookie draft
+  /** NFL week coming up at the last sync (1-18), when known. */
+  week?: number;
   teams: Team[];
   players: Record<string, Player>;
   picks: Record<string, Pick>;
@@ -136,4 +138,18 @@ export interface Snapshot {
   ts: string;
   market: Record<string, number>;
   teams: Record<string, Record<string, number>>;
+}
+
+/**
+ * One week's rankings. `edited` is what you set by hand; `board` is the full list as it stood
+ * (your value and the league value for every asset), frozen at the last edit or sync that week,
+ * so looking back shows exactly what you saw. `names` keeps players who have since left the league.
+ */
+export interface RankingWeek {
+  week: string; // Tuesday the week starts, YYYY-MM-DD
+  label: string; // "Week 12"
+  updatedAt: string;
+  edited: { mine: Record<string, number>; consensus: Record<string, number> };
+  board: { mine: Record<string, number>; league: Record<string, number> };
+  names: Record<string, [string, Group]>;
 }

@@ -6,9 +6,10 @@ import { FactorChips } from './Lab';
 import { LineChart, type Series } from './Chart';
 import { explainMcp, playerGames, writes } from './runtime';
 import { NumberEdit, useRankEdits, type Mode } from './Rankings';
+import { weekRange } from '../core/weeks';
 
 export function PlayerSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { v, data, db, saveSettings, canWrite, toast, openLab } = useApp();
+  const { v, data, db, saveSettings, canWrite, toast, openLab, week } = useApp();
   const p = v.league.players[id];
   const owner = v.league.owner[id];
   const [compare, setCompare] = useState<string>('');
@@ -174,6 +175,49 @@ export function PlayerSheet({ id, onClose }: { id: string; onClose: () => void }
               )}
             </div>
           </section>
+
+          {data.rankings.some((w) => w.board.mine[id] != null) && (
+            <section className="panel">
+              <div className="panel-h">
+                <h2>Your rankings by week</h2>
+              </div>
+              <div className="tbl-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Week</th>
+                      <th className="r">To you</th>
+                      <th className="r">League value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...data.rankings]
+                      .filter((w) => w.board.mine[id] != null)
+                      .sort((a, b) => b.week.localeCompare(a.week))
+                      .map((w) => (
+                        <tr key={w.week} style={{ cursor: 'default' }}>
+                          <td>
+                            <div className="who-n" style={{ fontSize: 13 }}>
+                              {w.label}
+                              {w.week === week.key ? ' · this week' : ''}
+                            </div>
+                            <div className="who-s">{weekRange(w.week)}</div>
+                          </td>
+                          <td className="r">
+                            <span className="num">{fmt(w.board.mine[id])}</span>
+                            {w.edited.mine[id] != null && <div className="src"><span className="src-you">you</span></div>}
+                          </td>
+                          <td className="r">
+                            <span className="num">{fmt(w.board.league[id])}</span>
+                            {w.edited.consensus[id] != null && <div className="src"><span className="src-you">you</span></div>}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           <section className="panel">
             <div className="panel-h">

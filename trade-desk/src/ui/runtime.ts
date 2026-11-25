@@ -1,6 +1,6 @@
 // Talks to the claude.ai page runtime: the db capability (where everything is saved) and the
 // mcp capability (the StatsDeck connector, which reads the Sleeper league).
-import type { League, Settings, Snapshot, TradeLog } from '../core/types';
+import type { League, RankingWeek, Settings, Snapshot, TradeLog } from '../core/types';
 import { emptySettings } from '../core/types';
 import type { Point } from '../core/history';
 import { buildLeague, dataOf, tradesFromPayload } from '../core/statsdeck';
@@ -36,6 +36,7 @@ export interface Data {
   trades: TradeLog[];
   history: Snapshot[];
   rebuilt: Record<string, Point[]>;
+  rankings: RankingWeek[];
 }
 
 export interface Status {
@@ -80,6 +81,9 @@ export function subscribe(db: DB, onData: (d: Partial<Data>) => void, onStatus: 
     db.collection('history').onSnapshot((q) => {
       onData({ history: q.docs.map((d) => d.data() as Snapshot) });
     }, fail),
+    db.collection('rankings').onSnapshot((q) => {
+      onData({ rankings: q.docs.map((d) => d.data() as RankingWeek) });
+    }, fail),
     db.collection('rebuilt').onSnapshot((q) => {
       const r: Record<string, Point[]> = {};
       for (const d of q.docs) {
@@ -101,6 +105,7 @@ export const writes = {
   trade: (db: DB, t: TradeLog) => db.collection('trades').doc(docId(t.id)).set(t as any),
   dropTrade: (db: DB, id: string) => db.collection('trades').doc(docId(id)).delete(),
   snapshot: (db: DB, s: Snapshot) => db.collection('history').doc(s.date).set(s as any),
+  ranking: (db: DB, w: RankingWeek) => db.collection('rankings').doc(w.week).set(w as any),
   rebuilt: (db: DB, id: string, points: Point[]) => db.collection('rebuilt').doc(docId(id)).set({ id, points }),
 };
 

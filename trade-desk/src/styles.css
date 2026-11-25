@@ -249,7 +249,7 @@ main {
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .pos { color: #0d1210; } }
 
 /* ---------- tables ---------- */
-.tbl-wrap { overflow-x: auto; }
+.tbl-wrap { overflow-x: auto; position: relative; }
 table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbl th {
   text-align: left;
@@ -467,3 +467,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 640px) { .rank-tbl .who-s { display: none; } .rank-tbl .input.edit { width: 64px !important; } .rank-tbl td:first-child .input.edit { width: 44px !important; } }
+
+.weekbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.weekbar .field { flex: 1 1 200px; min-width: 0; max-width: 360px; }
+.wk-label { font: 800 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; }
+.moves-since { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); font-size: 13px; }

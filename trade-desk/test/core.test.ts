@@ -342,3 +342,38 @@ describe('editing rankings', () => {
     expect(buildValuer(L, s, emptyLearned()).market('p:warren')).toBe(5600);
   });
 });
+
+describe('weekly rankings', () => {
+  it('keys a week by its Tuesday and numbers it from the last sync', async () => {
+    const { weekStart, weekLabel } = await import('../src/core/weeks');
+    expect(weekStart(new Date(2026, 10, 25, 9))).toBe('2026-11-24'); // Wed
+    expect(weekStart(new Date(2026, 10, 24, 0, 5))).toBe('2026-11-24'); // Tue
+    expect(weekStart(new Date(2026, 10, 23, 23))).toBe('2026-11-17'); // Mon night still last week
+    const lg = { asOf: new Date(2026, 10, 25, 3).toISOString(), week: 12 };
+    expect(weekLabel('2026-11-24', lg)).toBe('Week 12');
+    expect(weekLabel('2026-11-17', lg)).toBe('Week 11');
+    expect(weekLabel('2027-02-02', lg)).toBe('Week of Feb 2');
+  });
+  it('a new week starts from the latest earlier week, and keeps its own once edited', async () => {
+    const { editsFor } = await import('../src/core/rankings');
+    const s = emptySettings();
+    s.mine = { 'p:x': 1 };
+    const wk = (week: string, v: number) => ({ week, label: '', updatedAt: '', edited: { mine: { 'p:a': v }, consensus: {} }, board: { mine: {}, league: {} }, names: {} });
+    expect(editsFor([], '2026-11-24', s).edited.mine).toEqual({ 'p:x': 1 });
+    const weeks = [wk('2026-11-10', 10), wk('2026-11-17', 17)];
+    expect(editsFor(weeks, '2026-11-24', s).edited.mine).toEqual({ 'p:a': 17 });
+    expect(editsFor(weeks, '2026-11-24', s).from?.week).toBe('2026-11-17');
+    expect(editsFor([...weeks, wk('2026-11-24', 24)], '2026-11-24', s).edited.mine).toEqual({ 'p:a': 24 });
+  });
+  it('freezes the full board with names', async () => {
+    const { freezeWeek } = await import('../src/core/rankings');
+    const L = fixture();
+    const s = emptySettings();
+    s.mine = { 'p:warren': 6000 };
+    const w = freezeWeek(buildValuer(L, s, emptyLearned()), '2026-11-24', 'Week 12', { mine: s.mine, consensus: {} }, '2026-11-25T00:00:00Z');
+    expect(w.board.mine['p:warren']).toBe(6000);
+    expect(Object.keys(w.board.league)).toHaveLength(Object.keys(L.owner).length);
+    expect(w.names['k:2027-1-1']).toEqual(['2027 Early 1st (Jumpin Uncs)', 'PICK']);
+    expect(w.names['p:emmett']).toEqual(['Emmett Johnson', 'RB']);
+  });
+});

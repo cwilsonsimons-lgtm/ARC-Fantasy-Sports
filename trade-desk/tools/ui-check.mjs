@@ -14,7 +14,22 @@ if (!seedFile) {
   process.exit(2);
 }
 await mkdir(out, { recursive: true });
-const seed = await readFile(seedFile, 'utf8');
+const seedDocs = JSON.parse(await readFile(seedFile, 'utf8'));
+// A saved Week 11 to look back at, built from the seed's own snapshot with a few things moved.
+{
+  const snap = Object.entries(seedDocs).find(([k]) => k.startsWith('history/'))?.[1];
+  const league = seedDocs['league/current'];
+  const me = league.teams.find((t) => t.me).id;
+  const byName = (n) => Object.keys(league.players).find((id) => league.players[id].name === n);
+  const warren = byName('Jaylen Warren');
+  const emmett = byName('Emmett Johnson');
+  const names = Object.fromEntries(Object.keys(snap.market).map((id) => [id, [league.players[id]?.name ?? id, league.players[id]?.pos ?? 'PICK']]));
+  const mine = { ...snap.teams[me], [warren]: 5800 };
+  const leagueVals = { ...snap.market, [emmett]: 4200, 'p:gone-1': 3000 };
+  names['p:gone-1'] = ['Cut Player', 'WR'];
+  seedDocs['rankings/2026-11-17'] = { week: '2026-11-17', label: 'Week 11', updatedAt: '2026-11-18T15:00:00Z', edited: { mine: { [warren]: 5800 }, consensus: {} }, board: { mine, league: leagueVals }, names };
+}
+const seed = JSON.stringify(seedDocs);
 const payloads = payloadFile ? await readFile(payloadFile, 'utf8') : 'null';
 const body = await readFile('dist/artifact.html', 'utf8');
 
@@ -113,7 +128,7 @@ await page.screenshot({ path: `${out}/roster-desktop.png`, fullPage: false });
 // Player sheet
 await page.locator('main .tbl tbody tr', { hasText: 'Jaylen Warren' }).first().click();
 await page.waitForSelector('.sheet');
-check('sheet lists every team', (await page.locator('.sheet .tbl tbody tr').count()) === 10);
+check('sheet lists every team', (await page.locator('.sheet .panel', { hasText: "Every team's number" }).locator('tbody tr').count()) === 10);
 check('sheet draws the value chart', (await page.locator('.sheet .chart svg circle').count()) >= 2);
 await page.locator('.sheet button', { hasText: 'Rebuild from game logs' }).click();
 await page.waitForFunction(() => document.querySelectorAll('.sheet .chart path').length > 0);
@@ -177,7 +192,7 @@ const warrenId = (await page.locator('[id^="val-p:"]').first().getAttribute('id'
 await page.fill(`[id="val-${warrenId}"]`, '6200');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
-check('your value saves', (await page.evaluate((id) => window.__store.get('league/settings').mine?.[id], warrenId)) === 6200);
+check('your value saves', (await page.evaluate((id) => window.__store.get('rankings/2026-11-24')?.edited.mine[id], warrenId)) === 6200);
 check('edited row shows "you"', (await page.locator('.rank-tbl .src-you').count()) === 1);
 await page.locator('.seg button', { hasText: 'League values' }).click();
 await page.fill('#rank-q', '');
@@ -187,7 +202,7 @@ const emmettId = (await page.locator('[id^="val-p:"]').first().getAttribute('id'
 await page.fill(`[id="rank-${emmettId}"]`, '1');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
-const consensus = await page.evaluate((id) => window.__store.get('league/settings').consensus?.[id], emmettId);
+const consensus = await page.evaluate((id) => window.__store.get('rankings/2026-11-24')?.edited.consensus[id], emmettId);
 check('moving to rank 1 sets a league value above everyone', consensus > 9600, String(consensus));
 await page.fill('#rank-q', '');
 check('he is now the top RB', (await page.locator('.rank-tbl tbody tr').first().innerText()).includes('Emmett'));
@@ -198,10 +213,34 @@ check('sheet shows the league value you set', (await page.inputValue('#sheet-lea
 await page.fill('#sheet-mine', '8000');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
-check('sheet edits your value', (await page.evaluate((id) => window.__store.get('league/settings').mine?.[id], emmettId)) === 8000);
+check('sheet edits your value', (await page.evaluate((id) => window.__store.get('rankings/2026-11-24')?.edited.mine[id], emmettId)) === 8000);
 check('Enter in a sheet field keeps the sheet open', (await page.locator('.sheet').count()) === 1);
 check("your ranking shows in your row's why", (await page.locator('.sheet .factor', { hasText: 'your ranking' }).count()) === 1);
 await page.keyboard.press('Escape');
+
+// Weekly rankings: this week is saved on edit, last week can be looked back at
+await tab('Rankings');
+check('rankings are labelled with the NFL week', (await page.locator('.wk-label').innerText()).toLowerCase() === 'week 12');
+const wkDoc = await page.evaluate(() => window.__store.get('rankings/2026-11-24'));
+check("this week's edits are saved as Week 12", wkDoc?.label === 'Week 12' && Object.keys(wkDoc.edited.mine).length >= 2 && Object.keys(wkDoc.board.mine).length > 250);
+await page.locator('.seg button', { hasText: 'All' }).first().click();
+await page.selectOption('#rank-week', '2026-11-17');
+check('looking back shows Week 11', (await page.locator('.wk-label').innerText()).toLowerCase() === 'week 11');
+check('past board is read-only', (await page.locator('.rank-tbl input').count()) === 0);
+check('past board shows moves since', (await page.locator('.moves-since').innerText()).toLowerCase().includes('up since week 11'));
+await page.locator('.seg button', { hasText: 'League values' }).click();
+check('a player who left the league still shows', (await page.locator('.rank-tbl tbody tr', { hasText: 'Cut Player' }).count()) === 1);
+await page.fill('#rank-q', 'Emmett');
+check('Emmett climbed since Week 11', (await page.locator('.rank-tbl tbody tr').first().innerText()).includes('▲'));
+await page.fill('#rank-q', '');
+await page.screenshot({ path: `${out}/rankings-lookback.png` });
+await page.selectOption('#rank-week', '');
+await page.fill('#rank-q', 'Jaylen Warren');
+await page.locator('.rank-tbl tbody tr').first().click();
+await page.waitForSelector('.sheet');
+check('player sheet lists his rankings by week', (await page.locator('.sheet .panel', { hasText: 'Your rankings by week' }).locator('tbody tr').count()) === 2);
+await page.keyboard.press('Escape');
+await page.fill('#rank-q', '');
 
 // Data: KTC paste
 await tab('Data');
@@ -236,7 +275,8 @@ for (const [file, name] of [
   await p.screenshot({ path: `${out}/league-phone-${name}.png` });
   await p.locator('.tab', { hasText: 'Rankings' }).click();
   const rw = await p.evaluate(() => document.documentElement.scrollWidth);
-  check(`phone ${name}: rankings fit`, rw <= 390, `${rw}px`);
+  const wide = await p.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > 391 && !e.closest('.tbl-wrap') && !e.closest('.tabs')).slice(0, 4).map((e) => e.tagName + '.' + e.className + ' ' + Math.round(e.getBoundingClientRect().right)).join(', '));
+  check(`phone ${name}: rankings fit`, rw <= 390, `${rw}px ${wide}`);
   await p.screenshot({ path: `${out}/rankings-phone-${name}.png` });
   await p.locator('.tab', { hasText: 'My team' }).click();
   await p.locator('main .tbl tbody tr').nth(2).click();

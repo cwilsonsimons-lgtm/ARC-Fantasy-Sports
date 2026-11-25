@@ -2,7 +2,8 @@ import React, { createContext, useContext } from 'react';
 import type { Valuer } from '../core/model';
 import { assetName, assetSub, groupOf } from '../core/model';
 import type { Data, DB } from './runtime';
-import type { Settings, TradeLog } from '../core/types';
+import type { RankingWeek, Settings, TradeLog } from '../core/types';
+import type { Edited } from '../core/rankings';
 
 export interface LabState {
   team: string;
@@ -23,6 +24,10 @@ export interface Ctx {
   lab: LabState;
   setLab: (s: LabState) => void;
   saveSettings: (s: Settings) => Promise<void>;
+  /** Replace this week's hand-set rankings. */
+  saveRanking: (e: Edited) => Promise<void>;
+  /** The week in force: its key, label, and the saved week its rankings come from (null if none yet). */
+  week: { key: string; label: string; from: RankingWeek | null };
   saveTrade: (t: TradeLog) => Promise<void>;
   dropTrade: (id: string) => Promise<void>;
   toast: (msg: string) => void;

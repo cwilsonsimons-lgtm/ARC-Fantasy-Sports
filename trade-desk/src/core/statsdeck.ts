@@ -118,6 +118,17 @@ export function buildLeague(standings: unknown, rosters: unknown[], myTeamName: 
     }
   }
   league.season = Number.isFinite(minSeason) ? minSeason : new Date(asOf).getFullYear() + 1;
+  // The week every player's projection is for is the week coming up.
+  const weeks = new Map<number, number>();
+  for (const r of rosters) {
+    const d = dataOf(r);
+    for (const [key] of SECTIONS) for (const row of d[key] ?? []) {
+      const w = row.weekly_projection?.week;
+      if (typeof w === 'number') weeks.set(w, (weeks.get(w) ?? 0) + 1);
+    }
+  }
+  const top = [...weeks.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (top) league.week = top[0];
   return league;
 }
 
