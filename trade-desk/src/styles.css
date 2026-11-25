@@ -453,3 +453,17 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .howto { display: grid; gap: 10px; font-size: 13px; color: var(--ink-2); }
 .howto b { color: var(--ink); }
 .howto p { margin: 0; max-width: 72ch; }
+
+/* ---------- editable rankings ---------- */
+.input.edit { padding: 4px 8px; font-size: 13px; text-align: right; }
+.stat .input.edit { font-size: 18px; font-weight: 600; text-align: left; padding: 2px 6px; margin-top: 2px; }
+.src { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; }
+.src span { color: var(--ink-3); }
+.src .src-you { color: var(--accent); font-weight: 700; }
+.src .src-KTC { color: var(--pos-pick); }
+.tbl tr.edited td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.moves { display: inline-flex; gap: 4px; }
+.moves .btn { padding: 4px 7px; }
+.linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 640px) { .rank-tbl .who-s { display: none; } .rank-tbl .input.edit { width: 64px !important; } .rank-tbl td:first-child .input.edit { width: 44px !important; } }

@@ -169,6 +169,40 @@ await page.waitForTimeout(150);
 check('manager name is saved', (await page.locator('.panel-h h2').first().innerText()).toLowerCase().includes('jake'));
 await page.screenshot({ path: `${out}/board-desktop.png` });
 
+// Rankings: your values and the league's
+await tab('Rankings');
+check('rankings list the league', (await page.locator('.rank-tbl tbody tr').count()) > 250);
+await page.fill('#rank-q', 'Jaylen Warren');
+const warrenId = (await page.locator('[id^="val-p:"]').first().getAttribute('id')).slice(4);
+await page.fill(`[id="val-${warrenId}"]`, '6200');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+check('your value saves', (await page.evaluate((id) => window.__store.get('league/settings').mine?.[id], warrenId)) === 6200);
+check('edited row shows "you"', (await page.locator('.rank-tbl .src-you').count()) === 1);
+await page.locator('.seg button', { hasText: 'League values' }).click();
+await page.fill('#rank-q', '');
+await page.locator('.seg button', { hasText: 'RB' }).click();
+await page.fill('#rank-q', 'Emmett');
+const emmettId = (await page.locator('[id^="val-p:"]').first().getAttribute('id')).slice(4);
+await page.fill(`[id="rank-${emmettId}"]`, '1');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+const consensus = await page.evaluate((id) => window.__store.get('league/settings').consensus?.[id], emmettId);
+check('moving to rank 1 sets a league value above everyone', consensus > 9600, String(consensus));
+await page.fill('#rank-q', '');
+check('he is now the top RB', (await page.locator('.rank-tbl tbody tr').first().innerText()).includes('Emmett'));
+await page.screenshot({ path: `${out}/rankings-desktop.png` });
+await page.locator('.rank-tbl tbody tr').first().click();
+await page.waitForSelector('.sheet');
+check('sheet shows the league value you set', (await page.inputValue('#sheet-league')) === String(consensus));
+await page.fill('#sheet-mine', '8000');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+check('sheet edits your value', (await page.evaluate((id) => window.__store.get('league/settings').mine?.[id], emmettId)) === 8000);
+check('Enter in a sheet field keeps the sheet open', (await page.locator('.sheet').count()) === 1);
+check("your ranking shows in your row's why", (await page.locator('.sheet .factor', { hasText: 'your ranking' }).count()) === 1);
+await page.keyboard.press('Escape');
+
 // Data: KTC paste
 await tab('Data');
 await page.fill('#ktc-paste', ['1', 'Emmett Johnson', 'KC', 'RB3', '23.4 y.o.', '7,412', '2', 'Jaylen Warren', 'PIT', 'RB31', '28.1 y.o.', '3901', '2027 Early 1st 6900'].join('\n'));
@@ -200,6 +234,10 @@ for (const [file, name] of [
   await p.screenshot({ path: `${out}/roster-phone-${name}.png` });
   await p.locator('.tab', { hasText: 'League' }).click();
   await p.screenshot({ path: `${out}/league-phone-${name}.png` });
+  await p.locator('.tab', { hasText: 'Rankings' }).click();
+  const rw = await p.evaluate(() => document.documentElement.scrollWidth);
+  check(`phone ${name}: rankings fit`, rw <= 390, `${rw}px`);
+  await p.screenshot({ path: `${out}/rankings-phone-${name}.png` });
   await p.locator('.tab', { hasText: 'My team' }).click();
   await p.locator('main .tbl tbody tr').nth(2).click();
   await p.waitForSelector('.sheet');

@@ -105,13 +105,17 @@ export interface TeamTraits {
 export interface Settings {
   traits: Record<string, TeamTraits>;
   nudges: Nudge[];
-  /** Market value overrides by asset id, e.g. pasted from KeepTradeCut. */
+  /** Market value overrides by asset id, pasted from KeepTradeCut. */
   market: Record<string, number>;
   marketAsOf?: string;
   marketSource?: string;
+  /** Your read of what the league pays, set by hand on the Rankings tab. Beats the KTC paste. */
+  consensus?: Record<string, number>;
+  /** Your own value for an asset. Final: no factors are applied on top. */
+  mine?: Record<string, number>;
 }
 
-export const emptySettings = (): Settings => ({ traits: {}, nudges: [], market: {} });
+export const emptySettings = (): Settings => ({ traits: {}, nudges: [], market: {}, consensus: {}, mine: {} });
 
 /** What the learner took from the trade log, per team. All on a log scale. */
 export interface Learned {

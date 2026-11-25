@@ -303,3 +303,42 @@ describe('history', () => {
     expect(line[9].value).toBeGreaterThan(line[5].value + 2000);
   });
 });
+
+describe('editing rankings', () => {
+  it('moving to a rank lands between the new neighbours', async () => {
+    const { valueForRank, byValue } = await import('../src/core/rankings');
+    const list = [
+      { id: 'a', value: 9000, name: 'A' },
+      { id: 'b', value: 8000, name: 'B' },
+      { id: 'c', value: 7000, name: 'C' },
+      { id: 'd', value: 5000, name: 'D' },
+    ];
+    expect(valueForRank(list, 'd', 2)).toBe(8500);
+    expect(valueForRank(list, 'a', 4)).toBe(4950);
+    expect(valueForRank(list, 'c', 1)).toBe(9050);
+    const moved = list.map((r) => (r.id === 'd' ? { ...r, value: valueForRank(list, 'd', 2) } : r)).sort(byValue);
+    expect(moved.map((r) => r.id)).toEqual(['a', 'd', 'b', 'c']);
+  });
+  it('your own value is final for you; your league value flows to every team', () => {
+    const L = fixture();
+    const s = emptySettings();
+    const v0 = buildValuer(L, s, emptyLearned());
+    s.mine = { 'p:emmett': 9100 };
+    const vm = buildValuer(L, s, emptyLearned());
+    expect(vm.value('1', 'p:emmett')).toBe(9100);
+    expect(vm.explain('1', 'p:emmett').set).toBe(true);
+    // Nobody else's view moves when you rank a player for yourself.
+    for (const t of ['5', '2']) for (const id of Object.keys(L.owner)) expect(vm.value(t, id)).toBe(v0.value(t, id));
+    s.consensus = { 'p:warren': 6400 };
+    const v = buildValuer(L, s, emptyLearned());
+    expect(v.market('p:warren')).toBe(6400);
+    expect(v.value('5', 'p:warren')).toBeGreaterThan(v0.value('5', 'p:warren'));
+  });
+  it('your league value beats a KTC paste', () => {
+    const L = fixture();
+    const s = emptySettings();
+    s.market['p:warren'] = 5000;
+    s.consensus = { 'p:warren': 5600 };
+    expect(buildValuer(L, s, emptyLearned()).market('p:warren')).toBe(5600);
+  });
+});

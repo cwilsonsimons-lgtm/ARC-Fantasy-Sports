@@ -91,7 +91,10 @@ export function modelPickValue(league: League, pick: Pick): number {
   return Math.round(base * slot * discount);
 }
 
-export function marketValue(league: League, settings: Settings, id: string): number {
+export type MarketSource = 'you' | 'ktc' | 'model';
+
+/** Market value before your own edits: the KTC paste if there is one, else the model. */
+export function defaultMarket(league: League, settings: Settings, id: string): number {
   const o = settings.market[id];
   if (o != null) return o;
   const p = league.players[id];
@@ -99,6 +102,14 @@ export function marketValue(league: League, settings: Settings, id: string): num
   const k = league.picks[id];
   if (k) return modelPickValue(league, k);
   return 0;
+}
+
+export function marketValue(league: League, settings: Settings, id: string): number {
+  return settings.consensus?.[id] ?? defaultMarket(league, settings, id);
+}
+
+export function marketSource(settings: Settings, id: string): MarketSource {
+  return settings.consensus?.[id] != null ? 'you' : settings.market[id] != null ? 'ktc' : 'model';
 }
 
 // ---------- team context ----------
@@ -150,6 +161,10 @@ export interface Factors {
   learned: number;
   nudge: number;
   value: number;
+  /** What the factors alone give, before your own ranking replaces it. */
+  auto: number;
+  /** true when `value` is your own ranking (only ever for your team) */
+  set?: boolean;
 }
 
 export function groupOf(league: League, id: string): Group {
@@ -220,7 +235,7 @@ export function buildValuer(league: League, settings: Settings, learned: Learned
   const explain = (t: string, id: string): Factors => {
     const m = market(id);
     const c = ctx[t];
-    const f: Factors = { market: m, hype: 1, need: 1, window: 1, endowment: 1, learned: 1, nudge: 1, value: m };
+    const f: Factors = { market: m, hype: 1, need: 1, window: 1, endowment: 1, learned: 1, nudge: 1, value: m, auto: m };
     if (!c) return f;
     const p = league.players[id];
     const owner = league.owner[id];
@@ -251,7 +266,12 @@ export function buildValuer(league: League, settings: Settings, learned: Learned
     const lg = learned.group[t]?.[g] ?? 0;
     f.learned = Math.exp(la + lg);
     f.nudge = 1 + (nudges.get(t + '|' + id) ?? 0);
-    f.value = Math.round(m * f.hype * f.need * f.window * f.endowment * f.learned * f.nudge);
+    f.value = f.auto = Math.round(m * f.hype * f.need * f.window * f.endowment * f.learned * f.nudge);
+    const ranked = t === me ? settings.mine?.[id] : undefined;
+    if (ranked != null) {
+      f.value = ranked;
+      f.set = true;
+    }
     return f;
   };
 

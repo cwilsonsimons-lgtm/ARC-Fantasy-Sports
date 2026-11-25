@@ -67,6 +67,7 @@ export function reasons(f: Factors): { text: string; up: boolean }[] {
 }
 
 export function FactorChips({ f }: { f: Factors }) {
+  if (f.set) return <span className="factor pos-f" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>your ranking</span>;
   const r = reasons(f);
   if (!r.length) return <span className="faint" style={{ fontSize: 11 }}>at market</span>;
   return (

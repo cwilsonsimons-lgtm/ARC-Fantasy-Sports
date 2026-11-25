@@ -10,11 +10,13 @@ import { Lab } from './Lab';
 import { Find } from './Find';
 import { League, TeamBoard } from './League';
 import { Log } from './Log';
+import { Rankings } from './Rankings';
 import { DataView } from './DataView';
 import { PlayerSheet } from './PlayerSheet';
 
 const TABS: [string, string][] = [
   ['roster', 'My team'],
+  ['rankings', 'Rankings'],
   ['lab', 'Trade lab'],
   ['find', 'Find a trade'],
   ['league', 'League'],
@@ -39,6 +41,8 @@ export function App() {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const toastTimer = useRef<number>();
+  // Settings writes go out one at a time; a burst of edits collapses into the latest.
+  const settingsQueue = useRef<{ busy: boolean; next: Settings | null; waiters: (() => void)[] }>({ busy: false, next: null, waiters: [] });
 
   useEffect(() => {
     const on = () => setRoute(readHash());
@@ -60,7 +64,20 @@ export function App() {
       } catch {
         /* not told: keep the controls, a refused write will say so */
       }
-      unsub = subscribe(d, (patch) => setData((cur) => ({ ...cur, ...patch })), setStatus);
+      unsub = subscribe(
+        d,
+        (patch) => {
+          // While our own settings writes are going out, the store echoes older versions; skip those.
+          if (patch.settings && settingsQueue.current.busy) {
+            const { settings: _skip, ...rest } = patch;
+            void _skip;
+            if (!Object.keys(rest).length) return;
+            patch = rest;
+          }
+          setData((cur) => ({ ...cur, ...patch }));
+        },
+        setStatus,
+      );
     })();
     return () => {
       alive = false;
@@ -168,7 +185,31 @@ export function App() {
       setSheet(null);
       go('lab');
     },
-    saveSettings: (s: Settings) => guard(() => writes.settings(db!, s)),
+    saveSettings: (s: Settings) => {
+      // Show the change at once; the store's snapshot confirms it.
+      setData((cur) => ({ ...cur, settings: s }));
+      const q = settingsQueue.current;
+      q.next = s;
+      const done = new Promise<void>((res) => q.waiters.push(res));
+      if (!q.busy) {
+        q.busy = true;
+        (async () => {
+          while (q.next) {
+            const s2 = q.next;
+            q.next = null;
+            const waiters = q.waiters.splice(0);
+            try {
+              await guard(() => writes.settings(db!, s2));
+            } catch {
+              /* guard already told the viewer */
+            }
+            waiters.forEach((w) => w());
+          }
+          q.busy = false;
+        })();
+      }
+      return done;
+    },
     saveTrade: (t: TradeLog) => guard(() => writes.trade(db!, t)),
     dropTrade: (id: string) => guard(() => writes.dropTrade(db!, id)),
   };
@@ -177,6 +218,8 @@ export function App() {
   const view =
     route === 'lab' ? (
       <Lab />
+    ) : route === 'rankings' ? (
+      <Rankings />
     ) : route === 'find' ? (
       <Find />
     ) : board ? (

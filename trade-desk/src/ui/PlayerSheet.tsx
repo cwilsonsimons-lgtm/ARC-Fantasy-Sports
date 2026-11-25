@@ -5,6 +5,7 @@ import { Delta, fmt, fullName, PosTag, Trend, useApp, who } from './common';
 import { FactorChips } from './Lab';
 import { LineChart, type Series } from './Chart';
 import { explainMcp, playerGames, writes } from './runtime';
+import { NumberEdit, useRankEdits, type Mode } from './Rankings';
 
 export function PlayerSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { v, data, db, saveSettings, canWrite, toast, openLab } = useApp();
@@ -14,20 +15,25 @@ export function PlayerSheet({ id, onClose }: { id: string; onClose: () => void }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const edits = useRankEdits();
 
+  const closeFn = useRef(onClose);
+  closeFn.current = onClose;
+  // Focus Close once when the sheet opens (not on every save, or Enter in a field would hit it).
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeFn.current();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const teams = [...v.league.teams].sort((a, b) => v.value(b.id, id) - v.value(a.id, id));
   const market = v.market(id);
 
   // The line: recorded snapshots, plus anything rebuilt from his game log, plus today.
   const today = { date: v.league.asOf.slice(0, 10), value: market };
-  const withToday = (pts: { date: string; value: number }[], now: number) => (pts.some((x) => x.date === today.date) ? pts : [...pts, { date: today.date, value: now }]);
+  // Today's point is always the live number, so an edit shows on the chart straight away.
+  const withToday = (pts: { date: string; value: number }[], now: number) => [...pts.filter((x) => x.date !== today.date), { date: today.date, value: now }];
   const rebuilt = data.rebuilt[id] ?? [];
   const lines: Series[] = [];
   if (rebuilt.length) lines.push({ key: 'rebuilt', label: 'Market, from game logs', color: 'var(--series-market)', points: rebuilt.filter((x) => x.date < (series(data.history, id)[0]?.date ?? today.date)) });
@@ -79,14 +85,33 @@ export function PlayerSheet({ id, onClose }: { id: string; onClose: () => void }
         </div>
         <div className="sheet-b">
           <div className="stats">
-            <div className="stat">
-              <div className="l">Market</div>
-              <div className="v">{fmt(market)}</div>
-            </div>
-            <div className="stat">
-              <div className="l">To you</div>
-              <div className="v">{fmt(v.value(v.me, id))}</div>
-            </div>
+            {(['league', 'mine'] as Mode[]).map((mode) => (
+              <div className="stat" key={mode}>
+                <div className="l">{mode === 'mine' ? 'To you' : 'League value'}</div>
+                <NumberEdit
+                  id={`sheet-${mode}`}
+                  label={mode === 'mine' ? 'Your value' : 'League value'}
+                  value={edits.current(mode, id)}
+                  width={96}
+                  disabled={!canWrite}
+                  onCommit={(n) => edits.set(mode, id, n)}
+                />
+                <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>
+                  {edits.edited(mode, id) ? (
+                    <>
+                      set by you ·{' '}
+                      <button className="linkish" onClick={() => edits.reset(mode, id)} disabled={!canWrite}>
+                        reset to {fmt(edits.auto(mode, id))}
+                      </button>
+                    </>
+                  ) : mode === 'mine' ? (
+                    'desk read · tap to set'
+                  ) : (
+                    'tap to set'
+                  )}
+                </div>
+              </div>
+            ))}
             {p && (
               <>
                 <div className="stat">
