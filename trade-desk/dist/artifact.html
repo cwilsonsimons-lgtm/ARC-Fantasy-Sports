@@ -1,0 +1,476 @@
+<title>Trade Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: a trading-desk board. A dense header strip, a scrollable tab row, then one column of
+   ledger-style tables on phones, two columns from 960px. Numbers set in mono so they line up. */
+:root {
+  --bg: #eef1ee;
+  --surface: #ffffff;
+  --surface-2: #f6f8f6;
+  --ink: #142019;
+  --ink-2: #4f5d55;
+  --ink-3: #7a877f;
+  --line: #d7ddd8;
+  --line-2: #e6eae7;
+  --accent: #1f4fd6;
+  --accent-ink: #ffffff;
+  --accent-soft: #e5ecfd;
+  --up: #157a47;
+  --up-soft: #e1f2e8;
+  --down: #b83b26;
+  --down-soft: #f9e5e0;
+  --warn: #9a6512;
+  --pos-qb: #c23a5e;
+  --pos-rb: #12876a;
+  --pos-wr: #2a6fc4;
+  --pos-te: #b86b12;
+  --pos-pick: #6655c4;
+  --series-1: #257de0;
+  --series-2: #f47230;
+  --series-3: #00a888;
+  --series-market: #59655e;
+  --shadow: 0 1px 2px rgb(20 32 25 / 0.06), 0 6px 24px rgb(20 32 25 / 0.08);
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0d1210;
+    --surface: #151c19;
+    --surface-2: #1b2420;
+    --ink: #e4ebe7;
+    --ink-2: #a9b6af;
+    --ink-3: #7d8a83;
+    --line: #2b3632;
+    --line-2: #222c28;
+    --accent: #7c9cff;
+    --accent-ink: #0d1210;
+    --accent-soft: #1d2747;
+    --up: #4cc387;
+    --up-soft: #15301f;
+    --down: #f07a62;
+    --down-soft: #3a1d17;
+    --warn: #e0a84a;
+    --pos-qb: #f07896;
+    --pos-rb: #3fc9a3;
+    --pos-wr: #6fa8f2;
+    --pos-te: #eaa354;
+    --pos-pick: #a597f2;
+    --series-1: #338ced;
+    --series-2: #e76624;
+    --series-3: #00a888;
+    --series-market: #9aa7a0;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0d1210;
+  --surface: #151c19;
+  --surface-2: #1b2420;
+  --ink: #e4ebe7;
+  --ink-2: #a9b6af;
+  --ink-3: #7d8a83;
+  --line: #2b3632;
+  --line-2: #222c28;
+  --accent: #7c9cff;
+  --accent-ink: #0d1210;
+  --accent-soft: #1d2747;
+  --up: #4cc387;
+  --up-soft: #15301f;
+  --down: #f07a62;
+  --down-soft: #3a1d17;
+  --warn: #e0a84a;
+  --pos-qb: #f07896;
+  --pos-rb: #3fc9a3;
+  --pos-wr: #6fa8f2;
+  --pos-te: #eaa354;
+  --pos-pick: #a597f2;
+  --series-1: #338ced;
+  --series-2: #e76624;
+  --series-3: #00a888;
+  --series-market: #9aa7a0;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--surface);
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.muted { color: var(--ink-2); }
+.faint { color: var(--ink-3); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* ---------- header ---------- */
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.top-in {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-block: 10px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wordmark {
+  font: 800 24px/1 var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.wordmark small { font: 600 13px/1 var(--font-display); letter-spacing: 0.08em; color: var(--ink-2); }
+.asof { font-size: 12px; color: var(--ink-2); margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; margin-top: 8px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  border: 0;
+  background: none;
+  padding: 9px 12px 10px;
+  font: 700 15px/1 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-current='page'] { color: var(--ink); border-bottom-color: var(--accent); }
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-block: 16px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 16px;
+}
+.cols { display: grid; gap: 16px; }
+@media (min-width: 960px) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+.cols > * { min-width: 0; }
+
+/* ---------- panels ---------- */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
+.panel-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-2);
+  flex-wrap: wrap;
+}
+.panel-h h2, .h2 {
+  margin: 0;
+  font: 700 17px/1.1 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.panel-h .sub { color: var(--ink-2); font-size: 12px; }
+.panel-h .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.panel-b { padding: 14px; }
+.note { font-size: 13px; color: var(--ink-2); margin: 0; max-width: 68ch; }
+.banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 13px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.banner.bad { background: var(--down-soft); }
+
+/* ---------- team strip ---------- */
+.strip { display: grid; gap: 14px; grid-template-columns: 1fr; padding: 14px; }
+@media (min-width: 720px) { .strip { grid-template-columns: minmax(200px, 1fr) 2fr; } }
+.teamname { font: 800 28px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.chip.win { border-color: transparent; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.bar-l { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+.bar-t { position: relative; height: 8px; background: var(--line-2); border-radius: 4px; }
+.bar-f { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+.bar-avg { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink-2); left: 50%; }
+
+/* ---------- position tags ---------- */
+.pos {
+  display: inline-block;
+  min-width: 30px;
+  text-align: center;
+  font: 700 11px/16px var(--font-mono);
+  border-radius: 4px;
+  padding: 0 4px;
+  color: #fff;
+}
+.pos-QB { background: var(--pos-qb); }
+.pos-RB { background: var(--pos-rb); }
+.pos-WR { background: var(--pos-wr); }
+.pos-TE { background: var(--pos-te); }
+.pos-PICK { background: var(--pos-pick); }
+:root[data-theme='dark'] .pos { color: #0d1210; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .pos { color: #0d1210; } }
+
+/* ---------- tables ---------- */
+.tbl-wrap { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th {
+  text-align: left;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  background: var(--surface);
+}
+.tbl th.r, .tbl td.r { text-align: right; }
+.tbl th button { all: unset; cursor: pointer; }
+.tbl th button:hover { color: var(--ink); }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+.tbl tbody tr { cursor: pointer; }
+.tbl tbody tr:hover td { background: var(--surface-2); }
+.tbl tr:last-child td { border-bottom: 0; }
+.who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.who-n { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who-s { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.tag { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+.tag.inj { color: var(--down); border-color: currentColor; }
+.delta { font-size: 12px; }
+.trend { font-size: 12px; white-space: nowrap; }
+@media (max-width: 640px) {
+  .hide-sm { display: none; }
+  .tbl th, .tbl td { padding: 8px 6px; }
+  .tbl td:first-child, .tbl th:first-child { padding-left: 12px; }
+  .who-n { white-space: normal; }
+  .panel-h .sub { flex-basis: 100%; }
+}
+.tbl td .factors { min-width: 200px; }
+.sell { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.sell:last-child { border-bottom: 0; }
+.sell:hover { background: var(--surface-2); }
+.sell-to { grid-column: 1; min-width: 0; padding-left: 38px; }
+.sell > .btn { grid-column: 2; grid-row: 1 / span 2; }
+@media (min-width: 720px) { .sell { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; } .sell-to { grid-column: 2; padding-left: 0; } .sell > .btn { grid-column: 3; grid-row: 1; } }
+
+/* ---------- buttons & fields ---------- */
+.btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--down); }
+.btn.small { padding: 4px 8px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.field { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
+.input, .select, .textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.textarea { min-height: 140px; font-family: var(--font-mono); font-size: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.seg button[aria-pressed='true'] { background: var(--ink); color: var(--surface); }
+
+/* ---------- trade lab ---------- */
+.lab { display: grid; gap: 16px; }
+@media (min-width: 960px) { .lab { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.picker-list { max-height: 360px; overflow-y: auto; }
+.pick-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line-2);
+  cursor: pointer;
+}
+.pick-row:hover { background: var(--surface-2); }
+.pick-row[aria-checked='true'] { background: var(--accent-soft); }
+.pick-row input { accent-color: var(--accent); }
+.basket { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line-2); min-height: 46px; align-items: center; }
+.bchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 8px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); font-size: 12px; }
+.bchip button { border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 14px; line-height: 1; padding: 0 4px; }
+.verdict { display: grid; gap: 14px; padding: 14px; }
+@media (min-width: 640px) { .verdict { grid-template-columns: 1fr 1fr; } }
+.view { border: 1px solid var(--line-2); border-radius: 8px; padding: 12px; background: var(--surface-2); min-width: 0; }
+.view h3 { margin: 0 0 8px; font: 700 14px/1 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.kv { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0; }
+.big { font: 700 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.meter { height: 10px; border-radius: 5px; background: var(--line-2); position: relative; overflow: hidden; margin: 8px 0 4px; }
+.meter > span { position: absolute; inset: 0 auto 0 0; border-radius: 5px; }
+.lik { font: 700 15px/1.1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.why { font-size: 12px; color: var(--ink-2); display: grid; gap: 3px; margin-top: 8px; }
+.outcomes { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- league ---------- */
+.teams { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.tcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.tcard.me { border-color: var(--accent); }
+.tcard h3 { margin: 0; font: 800 20px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.heat { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.heat div { border-radius: 6px; padding: 6px 4px; text-align: center; font-size: 11px; }
+.heat b { display: block; font: 600 13px/1.1 var(--font-mono); }
+.lessons { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 12px; }
+
+/* ---------- log ---------- */
+.log-row { display: grid; gap: 6px; padding: 12px 14px; border-bottom: 1px solid var(--line-2); }
+.log-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.log-sides { display: grid; gap: 4px; font-size: 13px; }
+@media (min-width: 720px) { .log-sides { grid-template-columns: 1fr 1fr; } }
+.oc { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.oc-rejected, .oc-countered { background: var(--down-soft); color: var(--down); }
+.oc-accepted, .oc-completed, .oc-offered { background: var(--up-soft); color: var(--up); }
+.oc-pending { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+
+/* ---------- sheet ---------- */
+.scrim { position: fixed; inset: 0; background: rgb(8 12 10 / 0.45); z-index: 20; display: flex; justify-content: flex-end; }
+.sheet {
+  width: min(720px, 100%);
+  height: 100%;
+  background: var(--bg);
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.sheet-h {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding-block: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  z-index: 1;
+}
+.sheet-h h2 { margin: 0; font: 800 26px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.sheet-b { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.stat .l { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.stat .v { font: 600 20px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.factors { display: flex; flex-wrap: wrap; gap: 4px; }
+.factor { font-size: 11px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.factor.pos-f { background: var(--up-soft); color: var(--up); }
+.factor.neg-f { background: var(--down-soft); color: var(--down); }
+.stepper { display: inline-flex; align-items: center; gap: 2px; }
+.stepper button { width: 24px; height: 24px; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; cursor: pointer; line-height: 1; }
+.stepper span { min-width: 40px; text-align: center; font: 12px var(--font-mono); }
+
+/* ---------- chart ---------- */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid line { stroke: var(--line-2); stroke-width: 1; }
+.chart .axis text { fill: var(--ink-3); font: 11px var(--font-mono); }
+.chart .dlabel { fill: var(--ink-2); font: 600 11px var(--font-body); }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  min-width: 150px;
+  z-index: 2;
+}
+.tip .kv { font-size: 12px; }
+.empty { padding: 28px 16px; text-align: center; color: var(--ink-2); display: grid; gap: 10px; justify-items: center; }
+.empty h3 { margin: 0; font: 700 20px/1.1 var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); }
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink);
+  color: var(--surface);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 30;
+  box-shadow: var(--shadow);
+  max-width: calc(100% - 32px);
+}
+.howto { display: grid; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.howto b { color: var(--ink); }
+.howto p { margin: 0; max-width: 72ch; }
+
+</style>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script>
+"use strict";(()=>{var Vt=Object.create;var He=Object.defineProperty;var zt=Object.getOwnPropertyDescriptor;var Gt=Object.getOwnPropertyNames;var Yt=Object.getPrototypeOf,Ut=Object.prototype.hasOwnProperty;var qe=(e,t)=>()=>{try{return t||e((t={exports:{}}).exports,t),t.exports}catch(s){throw t=0,s}};var Kt=(e,t,s,n)=>{if(t&&typeof t=="object"||typeof t=="function")for(let a of Gt(t))!Ut.call(e,a)&&a!==s&&He(e,a,{get:()=>t[a],enumerable:!(n=zt(t,a))||n.enumerable});return e};var H=(e,t,s)=>(s=e!=null?Vt(Yt(e)):{},Kt(t||!e||!e.__esModule?He(s,"default",{value:e,enumerable:!0}):s,e));var q=qe((Cs,Je)=>{Je.exports=window.React});var Xe=qe((Os,Ze)=>{Ze.exports=window.ReactDOM});var Wt=H(q(),1),Ft=H(Xe(),1);var x=H(q(),1);var X=["QB","RB","WR","TE"],Re=["QB","RB","WR","TE","PICK"],be=()=>({traits:{},nudges:[],market:{}});var st={QB:14,RB:7.5,WR:7.5,TE:5.5};function Qt(e,t){let s={RB:[25,[.95,.88,.78,.66,.52,.4,.3]],WR:[27,[.96,.9,.82,.72,.6,.48,.36]],TE:[28,[.95,.88,.78,.66,.54,.42]],QB:[32,[.95,.88,.8,.7,.6,.45]]},[n,a]=s[e];if(t<=n)return 1;let o=Math.floor(t-n)-1;return o<a.length?a[o]:a[a.length-1]*.75}function Ht(e,t){let s=0;for(let n=0;n<5;n++){let a=1+.07*Math.min(n,Math.max(0,25-t));s+=Math.pow(.82,n)*Qt(e,t+n)*a}return s}var qt=23,Jt=e=>Math.round(1e4*(1-Math.exp(-Math.max(0,e)/qt)));function Zt(e,t){let n=Math.max(0,t-st[e.pos])*Ht(e.pos,e.age);return e.ovr&&e.age<=24&&(n=Math.max(n,14*Math.exp(-(e.ovr-1)/45))),n}var re=.5,nt=(e,t)=>e.base+t*(e.form-e.base);function ie(e,t=re){return Jt(Zt(e,nt(e,t)))}var Xt=[5200,2300,1e3,400];function at(e,t){let s=e.teams.length,n=e.teams.find(a=>a.id===t);return!n||s<2?.5:(n.standing-1)/(s-1)}function De(e,t){if(t.season!==e.season)return"";let s=at(e,t.orig);return s>=.7?"Early":s<=.3?"Late":"Mid"}function Rt(e,t){let s=Xt[t.round-1]??200,n=t.round===1?.3:t.round===2?.15:.1,a=t.season-e.season,o=1+n*(2*at(e,t.orig)-1)*(a<=0?1:a===1?.5:0),i=a<=0?1:a===1?.92:.85;return Math.round(s*o*i)}function es(e,t,s){let n=t.market[s];if(n!=null)return n;let a=e.players[s];if(a)return ie(a);let o=e.picks[s];return o?Rt(e,o):0}var ts={QB:[1,.9,.2],RB:[1,.9,.6,.2],WR:[1,.95,.85,.5,.2],TE:[1,.3]};function Ee(e,t){let s=ts[t];return[...e].sort((n,a)=>a-n).reduce((n,a,o)=>n+a*(s[o]??0),0)}function pe(e,t){return e.players[t]?.pos??"PICK"}var et=.1,ss=.15,tt={recency:re,endowment:.08};function ve(e,t,s){let n=new Map,a=c=>{let u=n.get(c);return u==null&&n.set(c,u=es(e,t,c)),u},o=e.teams.find(c=>c.me)?.id??e.teams[0]?.id??"",i={};for(let c of e.teams){let u={QB:[],RB:[],WR:[],TE:[]};for(let[M,A]of Object.entries(e.owner)){let b=e.players[M];A===c.id&&b&&u[b.pos].push({id:M,v:a(M)})}let w={};for(let M of X)w[M]=Ee(u[M].map(A=>A.v),M);let m=t.traits[c.id]??{},k=c.id===o;i[c.id]={team:c,byPos:u,strength:w,ratio:{},window:0,traits:{recency:m.recency??tt.recency,endowment:m.endowment??(k?0:tt.endowment),manager:m.manager}}}let d=Object.values(i);for(let c of X){let u=d.reduce((w,m)=>w+m.strength[c],0)/Math.max(1,d.length)||1;for(let w of d)w.ratio[c]=w.strength[c]/u}let r=d.map(c=>X.reduce((u,w)=>u+c.strength[w],0));for(let c of d){let u=X.reduce((O,_)=>O+c.strength[_],0),w=r.filter(O=>O<u).length,m=d.length>1?w/(d.length-1):.5,k=c.team.wins+c.team.losses,A=.5*(2*(k?c.team.wins/k:.5)-1)+.5*(2*m-1),b=t.traits[c.team.id]?.window;c.window=oe(b??A,-1,1)}let l=new Map;for(let c of t.nudges)l.set(c.team+"|"+c.asset,c.pct);let p=(c,u)=>{let w=a(u),m=i[c],k={market:w,hype:1,need:1,window:1,endowment:1,learned:1,nudge:1,value:w};if(!m)return k;let M=e.players[u],b=e.owner[u]===c;if(M){let I=m.traits.recency;if(b&&c!==o&&(I+=M.trend>=0?.25:-.25),I=oe(I,0,1),I!==re){let j=ie(M,I),S=ie(M,re);k.hype=S>150?oe(j/S,.5,2):1+(j-S)/1e3}k.need=ns(m,M.pos,u,w);let f=as(M);f<0&&nt(M,re)>=st[M.pos]+4&&(f*=.3),k.window=1+et*m.window*f}else{let I=e.picks[u],f=I?I.season-e.season:0;k.window=1+et*m.window*(f<=0?-.8:-1)}b&&(k.endowment=1+m.traits.endowment);let O=pe(e,u),_=s.asset[c]?.[u]??0,W=s.group[c]?.[O]??0;return k.learned=Math.exp(_+W),k.nudge=1+(l.get(c+"|"+u)??0),k.value=Math.round(w*k.hype*k.need*k.window*k.endowment*k.learned*k.nudge),k},g=new Map;return{league:e,settings:t,learned:s,market:a,ctx:i,me:o,value:(c,u)=>{let w=c+"|"+u,m=g.get(w);return m==null&&g.set(w,m=p(c,u).value),m},explain:p}}function ns(e,t,s,n){let a=oe(1+ss*(1-e.ratio[t]),.88,1.15);if(n<=0)return a;let o=e.byPos[t].filter(l=>l.id!==s).map(l=>l.v),i=Ee(o,t),d=Ee([...o,n],t),r=oe((d-i)/n,0,1);return a*(.92+.08*r)}function as(e){let t=e.pos==="RB"?0:e.pos==="QB"?5:2,s=e.age-t;return s<=23?-1:s<=24?-.5:s<=25?-.2:s<=26?.2:s<=27?.6:1}var oe=(e,t,s)=>Math.min(s,Math.max(t,e));function ye(e){return e>=.45?"Contending":e>=.1?"Fringe contender":e>-.1?"Middle":e>-.45?"Retooling":"Rebuilding"}function rt(e,t){let s=e.players[t];if(s)return s.name;let n=e.picks[t];if(!n)return t;let a=De(e,n),o=["1st","2nd","3rd","4th"][n.round-1]??`R${n.round}`;return`${n.season} ${a?a+" ":""}${o}`}function Le(e,t){let s=e.players[t];if(s)return`${s.pos} \xB7 ${s.nfl} \xB7 ${s.age}`;let n=e.picks[t];if(!n)return"";let a=e.teams.find(o=>o.id===n.orig);return`Pick \xB7 ${a?a.name+"'s":"unknown"}`}var $e=1.3;function Pe(e){let t=e.reduce((s,n)=>s+Math.pow(Math.max(0,n),$e),0);return t>0?Math.pow(t,1/$e):0}var ot=.03,it=e=>1/(1+Math.exp(-e));function ee(e,t){let s=Pe(t.give.map(r=>e.value(t.team,r))),n=Pe(t.get.map(r=>e.value(t.team,r))),a=Math.max(s,n),o=.06*a+150,i=ot+(e.learned.margin[t.team]??0),d=(n-s-i*a)/o;return{giveValue:s,getValue:n,edge:n-s,p:it(d),z:d,size:a,scale:o,margin:i}}function ke(e,t){return{team:e.me,give:t.get,get:t.give}}function lt(e){return e>=.8?"Likely yes":e>=.6?"Leaning yes":e>=.4?"Coin flip":e>=.2?"Leaning no":"Likely no"}var rs=60;function os(e,t){let s=[];for(let n of e){let a=Math.max(0,(t.getTime()-new Date(n.ts).getTime())/864e5),o=Math.pow(.5,a/rs);if(!(!n.give.length&&!n.get.length))switch(n.outcome){case"rejected":case"countered":s.push({team:n.team,give:n.give,get:n.get,y:0,w:o});break;case"accepted":case"offered":s.push({team:n.team,give:n.give,get:n.get,y:1,w:o});break;case"completed":s.push({team:n.team,give:n.give,get:n.get,y:1,w:o}),n.with&&s.push({team:n.with,give:n.get,get:n.give,y:1,w:o});break;case"pending":break}}return s}var is=12,ls=60,ds=300;function je(e,t,s,n=new Date,a=400){var u,w;let o=e.teams.find(m=>m.me)?.id,i=os(s,n).filter(m=>m.team!==o&&e.teams.some(k=>k.id===m.team)),d={asset:{},group:{},margin:{},observations:i.length};if(!i.length)return d;let r=ve(e,t,{asset:{},group:{},margin:{},observations:0}),l=(m,k)=>r.value(m,k),p=(m,k)=>d.asset[m]?.[k]??0,g=(m,k)=>d.group[m]?.[k]??0,L=(m,k)=>l(m,k)*Math.exp(p(m,k)+g(m,pe(e,k))),c=.01;for(let m=0;m<a;m++){let k={},M={},A={};for(let b of i){let O=b.give.map(V=>L(b.team,V)),_=b.get.map(V=>L(b.team,V)),W=Pe(O),I=Pe(_),f=Math.max(W,I,1),j=.06*f+150,S=ot+(d.margin[b.team]??0),D=(I-W-S*f)/j,Y=b.w*(it(D)-b.y),E=(V,Q,ue,ce)=>{V.forEach((J,Z)=>{var Ye,Ue,Ke,Qe;if(ue<=0)return;let Se=ce*Q[Z]*Math.pow(Q[Z]/ue,$e-1)/j;(Ue=k[Ye=b.team]??(k[Ye]={}))[J]??(Ue[J]=0),k[b.team][J]+=Y*Se;let Te=pe(e,J);(Qe=M[Ke=b.team]??(M[Ke]={}))[Te]??(Qe[Te]=0),M[b.team][Te]+=Y*Se})};E(b.get,_,I,1),E(b.give,O,W,-1),A[b.team]=(A[b.team]??0)+Y*(-f/j)}for(let[b,O]of Object.entries(k)){let _=(u=d.asset)[b]??(u[b]={});for(let[W,I]of Object.entries(O)){let f=_[W]??0;_[W]=oe(f-c*(I+is*f),-1.2,1.2)}}for(let[b,O]of Object.entries(M)){let _=(w=d.group)[b]??(w[b]={});for(let[W,I]of Object.entries(O)){let f=_[W]??0;_[W]=oe(f-c*.3*(I+ls*f),-.5,.5)}}for(let[b,O]of Object.entries(A)){let _=d.margin[b]??0;d.margin[b]=oe(_-c*.002*(O+ds*_),-.05,.15)}}for(let m of Object.values(d.asset))for(let[k,M]of Object.entries(m))Math.abs(M)<.005&&delete m[k];for(let m of Object.values(d.group))for(let[k,M]of Object.entries(m))Math.abs(M)<.005&&delete m[k];for(let[m,k]of Object.entries(d.margin))Math.abs(k)<.002&&delete d.margin[m];return d}function ms(e,t){let s=[],n=(a,o)=>{if(o.length===t)return void s.push(o.slice());for(let i=a;i<e.length;i++)o.push(e[i]),n(i+1,o),o.pop()};return n(0,[]),s}function dt(e,t,s,n={}){let a=n.minP??.55,o=new Set(n.keep??[]),d=Object.entries(e.league.owner).filter(([g,L])=>L===e.me&&!o.has(g)&&!s.includes(g)).map(([g])=>g).filter(g=>e.market(g)>=150).map(g=>({id:g,them:e.value(t,g),me:e.value(e.me,g)})).sort((g,L)=>L.them-L.me*.85-(g.them-g.me*.85)).slice(0,22).map(g=>g.id),r=[],l=n.maxPieces??3;for(let g=1;g<=l;g++)for(let L of ms(d,g)){let c={team:t,give:s,get:L},u=ee(e,c);u.p<a||r.push({side:c,them:u,mine:ee(e,ke(e,c))})}r.sort((g,L)=>L.mine.edge-g.mine.edge);let p=[];for(let g of r)if(!p.some(L=>L.side.get.every(c=>g.side.get.includes(c)))&&(p.push(g),p.length>=(n.limit??6)))break;return p}function mt(e,t,s=.6){let n=ee(e,t),a=[];if(n.p<s){let o=Object.entries(e.league.owner).filter(([i,d])=>d===e.me&&!t.get.includes(i)).map(([i])=>i);for(let i of o){let d={...t,get:[...t.get,i]},r=ee(e,d);r.p>=s&&a.push({kind:"add",id:i,read:r,mine:ee(e,ke(e,d))})}a.sort((i,d)=>d.mine.edge-i.mine.edge)}else{let o=Object.entries(e.league.owner).filter(([i,d])=>d===t.team&&!t.give.includes(i)).map(([i])=>i);for(let i of o){let d={...t,give:[...t.give,i]},r=ee(e,d);r.p>=s&&a.push({kind:"ask",id:i,read:r,mine:ee(e,ke(e,d))})}a.sort((i,d)=>d.mine.edge-i.mine.edge)}return a.slice(0,4)}function ut(e){return Object.entries(e.league.owner).filter(([,t])=>t===e.me).map(([t])=>{let s=e.league.teams.filter(n=>n.id!==e.me).map(n=>({team:n.id,value:e.value(n.id,t)})).sort((n,a)=>a.value-n.value);return{id:t,mine:e.value(e.me,t),market:e.market(t),best:s}}).sort((t,s)=>s.market-t.market)}var us=e=>e.slice(0,10);function ct(e,t){let s=Object.keys(e.league.owner),n={};for(let o of s)n[o]=e.market(o);let a={};for(let o of e.league.teams){let i={};for(let d of s)i[d]=e.value(o.id,d);a[o.id]=i}return{date:us(t),ts:t,market:n,teams:a}}function ge(e,t,s){return[...e].sort((n,a)=>n.date.localeCompare(a.date)).map(n=>({date:n.date,value:s?n.teams[s]?.[t]:n.market[t]})).filter(n=>typeof n.value=="number")}function pt(e){return((e?.data??e)?.games??[]).filter(s=>typeof s.fantasy_points=="number").map(s=>({week:s.week,date:s.date,points:s.fantasy_points})).sort((s,n)=>s.date.localeCompare(n.date))}function gt(e,t,s=3.4){let n=[];for(let a=0;a<t.length;a++){let o=t.slice(0,a+1),i=0,d=0;o.forEach((c,u)=>{let w=Math.pow(.5,(o.length-1-u)/s);i+=w,d+=w*c.points});let r=d/i,l=o.reduce((c,u)=>c+u.points,0)/o.length,p=Math.min(1,o.length/6),g=p*l+(1-p)*e.base,L=ie({...e,form:r,base:g},re);n.push({date:t[a].date,value:L,rebuilt:!0})}return n}var G=H(q(),1);var Be=(0,G.createContext)(null),z=()=>(0,G.useContext)(Be),$=e=>Math.round(e).toLocaleString("en-US"),te=(e,t=0)=>(e>=0?"+":"\u2212")+Math.abs(e*100).toFixed(t)+"%",he=e=>(e>=0?"+":"\u2212")+$(Math.abs(e));function ht(e,t){return t?e.league.teams.find(s=>s.id===t)?.name??"Unknown team":"Free agent"}function F(e,t,s=!1){let n=ht(e,t),a=e.settings.traits[t]?.manager;return a?s?a:`${a} \xB7 ${n}`:n}function Ae({v:e,id:t}){let s=pe(e.league,t);return G.default.createElement("span",{className:`pos pos-${s}`},s==="PICK"?"PK":s)}function U(e,t){let s=e.league.picks[t],n=rt(e.league,t);if(!s)return n;let a=e.league.owner[t];return a&&a!==s.orig?`${n} (${ht(e,s.orig)})`:n}function R({id:e,sub:t=!0}){let{v:s}=z(),n=s.league.players[e];return G.default.createElement("div",{className:"who"},G.default.createElement(Ae,{v:s,id:e}),G.default.createElement("div",{style:{minWidth:0}},G.default.createElement("div",{className:"who-n"},U(s,e)," ",n?.inj&&G.default.createElement("span",{className:"tag inj"},n.inj),n&&(n.slot==="taxi"||n.slot==="ir"&&n.inj!=="IR")&&G.default.createElement("span",{className:"tag"},n.slot)),t&&G.default.createElement("div",{className:"who-s"},Le(s.league,e))))}function Me({id:e}){let{v:t}=z(),s=t.league.players[e];if(!s)return G.default.createElement("span",{className:"faint"},"\u2014");let n=s.trend;return Math.abs(n)<.08?G.default.createElement("span",{className:"trend faint"},"steady"):G.default.createElement("span",{className:"trend "+(n>0?"up":"down"),title:`Recent form ${s.form} ppg vs ${s.base} longer run`},n>0?"\u25B2 hot":"\u25BC cold"," ",te(n))}function de({value:e,base:t}){if(!t)return null;let s=e/t-1;return Math.abs(s)<.01?G.default.createElement("span",{className:"delta faint"},"even"):G.default.createElement("span",{className:"delta "+(s>0?"up":"down")},te(s))}function se({title:e,children:t}){return G.default.createElement("div",{className:"empty"},G.default.createElement("h3",null,e),t)}var ne=e=>new Date(e.length===10?e+"T12:00:00":e).toLocaleDateString("en-US",{month:"short",day:"numeric"});var ae=e=>{let t=e;return(t&&typeof t=="object"&&"data"in t?t.data:t)??{}},cs=e=>{let t=/^(\d+)-(\d+)/.exec(e??"");return t?{wins:+t[1],losses:+t[2]}:{wins:0,losses:0}},ps=e=>{let t=/^(\d+)/.exec(e??"");return t?+t[1]:0};function gs(e,t){let s=ae(e),n=new Map;for(let a of s.strength?.teams??[])n.set(a.team_name,String(a.team_id));return(s.standings??[]).map(a=>({id:n.get(a.team_name)??a.team_name,name:a.team_name,...cs(a.record_display),standing:ps(a.standing),...a.team_name===t?{me:!0}:{}}))}var hs=[["starters","start"],["bench","bench"],["taxi","taxi"],["reserve","ir"]],Ie=e=>Math.round(e*100)/100;function ft(e,t="bench"){let s=e.position;if(!X.includes(s)||!e.source_id)return null;let n=e.rookie_projection?.projected_ppg,a=e._form?.weighting_basis?.games??0,o=e._form?.form_score??n??e.fantasy_points_per_game??0;n!=null&&a<4&&(o=(o*a+n*(4-a))/4);let i=e._trajectory?.delta,d=typeof i=="number"&&i>-.9?i:0,r=o/(1+d);return{id:"p:"+e.source_id,name:e.name,pos:s,age:e.age??25,nfl:e.nfl_team??"",rookie:!!e.is_rookie,form:Ie(o),base:Ie(r),trend:Ie(d),slot:t,...e.platform_injury?{inj:e.platform_injury}:{},...e.rookie_projection?.overall_pick?{ovr:e.rookie_projection.overall_pick}:{}}}function fs(e,t){let s=ae(e),n=new Map(t.map(d=>[d.name,d.id])),a=s.team_id!=null?String(s.team_id):n.get(s.team_name)??s.team_name,o=[];for(let[d,r]of hs)for(let l of s[d]??[]){let p=ft(l,r);p&&o.push(p)}let i=(s.owned_picks??[]).map(d=>{let r=n.get(d.original_owner)??d.original_owner;return{id:`k:${d.season}-${d.round}-${r}`,season:+d.season,round:+d.round,orig:r}});return{teamId:a,players:o,picks:i}}function bt(e,t,s,n){let a=gs(e,s),o={name:ae(e).connection?.league_name??"League",asOf:n,season:0,teams:a,players:{},picks:{},owner:{}},i=1/0;for(let d of t){let r=fs(d,a);for(let l of r.players)o.players[l.id]=l,o.owner[l.id]=r.teamId;for(let l of r.picks)o.picks[l.id]=l,o.owner[l.id]=r.teamId,i=Math.min(i,l.season)}return o.season=Number.isFinite(i)?i:new Date(n).getFullYear()+1,o}function vt(e,t){let s=ae(e),n=new Map(t.teams.map(o=>[o.name,o.id])),a=[];for(let o of s.recent_trades??[]){if(o.status!=="completed"||(o.sides??[]).length!==2)continue;let[i,d]=o.sides,r=c=>{let u=[];for(let w of c.receives_players??[]){let m=ft(w);m&&(t.players[m.id]||(t.players[m.id]=m),u.push(m.id))}for(let w of c.receives_picks??[]){let m=n.get(w.original_owner)??String(w.original_owner),k=`k:${w.season}-${w.round}-${m}`;t.picks[k]||(t.picks[k]={id:k,season:+w.season,round:+w.round,orig:m}),u.push(k)}return u},l=r(i),p=r(d),g=String(i.team_id??n.get(i.team_name)),L=String(d.team_id??n.get(d.team_name));a.push({id:"sleeper-"+o.trade_id,ts:new Date(o.proposed_at??Date.now()).toISOString(),team:g,with:L,give:p,get:l,outcome:"completed",source:"sleeper"})}return a}var bs="StatsDeck";async function we(e){try{return await window.claude?.use(e)??null}catch{return null}}var We=e=>e.replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,180);function yt(e,t,s){let n=[],a=!1,o=setTimeout(()=>{a||s({phase:"slow",message:"Your saved league hasn't loaded yet. It may be out of date until it does."})},1e4),i=r=>{clearTimeout(o),s({phase:"error",message:r?.code==="revoked"?"This page no longer has access to its saved data.":"Saved data could not be read."})},d=r=>{!r&&!a&&(a=!0,clearTimeout(o),s({phase:"ready"}))};return n.push(e.doc("league/current").onSnapshot(r=>{t({league:r.exists?r.data():null}),d(r.metadata.fromCache)},i),e.doc("league/settings").onSnapshot(r=>{t({settings:r.exists?{...be(),...r.data()}:be()})},i),e.collection("trades").onSnapshot(r=>{t({trades:r.docs.map(l=>l.data())})},i),e.collection("history").onSnapshot(r=>{t({history:r.docs.map(l=>l.data())})},i),e.collection("rebuilt").onSnapshot(r=>{let l={};for(let p of r.docs){let g=p.data();g?.id&&(l[g.id]=g.points)}t({rebuilt:l})},i)),()=>{clearTimeout(o),n.forEach(r=>r())}}var le={settings:(e,t)=>e.doc("league/settings").set(t),league:(e,t)=>e.doc("league/current").set(t),trade:(e,t)=>e.collection("trades").doc(We(t.id)).set(t),dropTrade:(e,t)=>e.collection("trades").doc(We(t)).delete(),snapshot:(e,t)=>e.collection("history").doc(t.date).set(t),rebuilt:(e,t,s)=>e.collection("rebuilt").doc(We(t)).set({id:t,points:s})},me=class extends Error{constructor(s,n){super(n);this.code=s}};function Ce(e){switch(e?.code){case"server_not_connected":case"selection_required":return"Add StatsDeck in claude.ai Settings \u2192 Connectors, then sync again.";case"needs_reauth":return"Reconnect StatsDeck in claude.ai Settings \u2192 Connectors, then sync again.";case"not_in_manifest":case"approval_required":case"consent_required":return"This page needs your OK to use StatsDeck. Sync again and allow it when asked.";case"blocked_by_policy":return"Your organization's settings block StatsDeck here.";case"server_unavailable":case"rate_limited":return"StatsDeck is busy. Try again in a minute.";case"tool_error":return"StatsDeck answered with an error: "+String(e?.message??"").slice(0,160);default:return e instanceof me?e.message:"StatsDeck could not be reached. Try again in a minute."}}async function fe(e,t,s={}){return(await e.callTool(bs,t,s)).payload}async function vs(e,t,s){let n=await fe(e,"get_league_team",{team_query:t});if(!ae(n).needs_pick)return n;let a=s.filter(i=>i!==t).join(" ").toLowerCase(),o=t.split(/\s+/).filter(i=>i.length>2).sort((i,d)=>d.length-i.length);for(let i of o){let d=i.replace(/[’']s$/i,"").replace(/[’']/g,"");if(a.includes(d.toLowerCase()))continue;let r=await fe(e,"get_league_team",{team_query:d});if(!ae(r).needs_pick&&ae(r).team_name===t)return r}throw new me("ambiguous",`StatsDeck couldn't pick out "${t}" from the other teams.`)}async function kt(e){let t=await we("mcp");if(!t)throw new me("no_mcp","Syncing works on claude.ai with the StatsDeck connector added.");e("Reading standings");let s=await fe(t,"get_standings"),n=(ae(s).standings??[]).map(g=>g.team_name);if(!n.length)throw new me("empty","StatsDeck has no league connected. Connect your Sleeper league in StatsDeck first.");e("Reading your roster");let a=await fe(t,"get_my_roster",{refresh:!0}),o=ae(a).team_name,i=[a],d=1;for(let g of n)g!==o&&(e(`Reading rosters (${++d} of ${n.length})`),i.push(await vs(t,g,n)));e("Reading league trades");let r=new Date().toISOString(),l=bt(s,i,o,r),p=vt(await fe(t,"get_trades"),l);return{league:l,trades:p}}async function wt(e){let t=await we("mcp");if(!t)throw new me("no_mcp","Rebuilding works on claude.ai with the StatsDeck connector added.");return fe(t,"get_player_stats",{player_name:e,timeframe:"recent",last_n:17})}var N=H(q(),1);function Nt(){let{v:e,openAsset:t,openLab:s}=z(),n=e.me,a=e.ctx[n],o=(0,N.useMemo)(()=>ut(e),[e]),[i,d]=(0,N.useState)("market"),[r,l]=(0,N.useState)("players"),p=o.filter(u=>r==="picks"==!e.league.players[u.id]).sort((u,w)=>i==="mine"?w.mine-u.mine:i==="buyer"?w.best[0].value-u.best[0].value:i==="edge"?w.best[0].value/(w.mine||1)-u.best[0].value/(u.mine||1):w.market-u.market),g=o.filter(u=>u.mine>1500&&u.best[0].value>u.mine*1.06).sort((u,w)=>w.best[0].value/w.mine-u.best[0].value/u.mine).slice(0,3),L=a.team,c=(u,w,m="r")=>N.default.createElement("th",{className:m,"aria-sort":i===u?"descending":void 0},N.default.createElement("button",{onClick:()=>d(u)},w,i===u?" \u2193":""));return N.default.createElement(N.default.Fragment,null,N.default.createElement("section",{className:"panel"},N.default.createElement("div",{className:"strip"},N.default.createElement("div",null,N.default.createElement("div",{className:"teamname"},L.name),N.default.createElement("div",{className:"chips"},N.default.createElement("span",{className:"chip"},L.wins,"-",L.losses," \xB7 ",Fe(L.standing)),N.default.createElement("span",{className:"chip win"},ye(a.window)),N.default.createElement("span",{className:"chip num"},$(o.reduce((u,w)=>u+w.market,0))," total"))),N.default.createElement("div",null,N.default.createElement("div",{className:"bar-l",style:{marginBottom:8}},N.default.createElement("span",null,"Starting strength vs league average"),N.default.createElement("span",{className:"faint"},"tick = average")),N.default.createElement("div",{className:"bars"},X.map(u=>{let w=a.ratio[u];return N.default.createElement("div",{key:u},N.default.createElement("div",{className:"bar-l"},N.default.createElement("b",{style:{color:"var(--ink)"}},u),N.default.createElement("span",{className:"num "+(w>=1?"up":"down")},te(w-1))),N.default.createElement("div",{className:"bar-t"},N.default.createElement("div",{className:"bar-f",style:{width:`${Math.min(100,w*50)}%`,background:`var(--pos-${u.toLowerCase()})`}}),N.default.createElement("div",{className:"bar-avg"})))}))))),g.length>0&&N.default.createElement("section",{className:"panel"},N.default.createElement("div",{className:"panel-h"},N.default.createElement("h2",null,"Sell-high spots"),N.default.createElement("span",{className:"sub"},"Teams that value your players above what they're worth to you")),N.default.createElement("div",null,g.map(u=>N.default.createElement("div",{key:u.id,className:"sell",onClick:()=>t(u.id)},N.default.createElement(R,{id:u.id}),N.default.createElement("div",{className:"sell-to"},N.default.createElement("div",{style:{fontSize:13}},F(e,u.best[0].team)," ",N.default.createElement(de,{value:u.best[0].value,base:u.mine})),N.default.createElement("div",{className:"who-s"},N.default.createElement("span",{className:"num"},$(u.best[0].value))," to them vs ",N.default.createElement("span",{className:"num"},$(u.mine))," to you")),N.default.createElement("button",{className:"btn small",onClick:w=>{w.stopPropagation(),s({team:u.best[0].team,send:[u.id],receive:[]})}},"Shop him"))))),N.default.createElement("section",{className:"panel"},N.default.createElement("div",{className:"panel-h"},N.default.createElement("h2",null,"Your roster"),N.default.createElement("span",{className:"sub"},"Tap anyone for every team's view and the value history"),N.default.createElement("div",{className:"right"},N.default.createElement("div",{className:"seg",role:"group","aria-label":"Show"},N.default.createElement("button",{"aria-pressed":r==="players",onClick:()=>l("players")},"Players"),N.default.createElement("button",{"aria-pressed":r==="picks",onClick:()=>l("picks")},"Picks")))),N.default.createElement("div",{className:"tbl-wrap"},N.default.createElement("table",{className:"tbl"},N.default.createElement("thead",null,N.default.createElement("tr",null,N.default.createElement("th",null,r==="players"?"Player":"Pick"),N.default.createElement("th",{className:"hide-sm"},"Form"),c("market","Market"),c("mine","To you"),c("buyer","Top buyer","r hide-sm"),c("edge","Premium"))),N.default.createElement("tbody",null,p.map(u=>N.default.createElement("tr",{key:u.id,onClick:()=>t(u.id)},N.default.createElement("td",null,N.default.createElement(R,{id:u.id})),N.default.createElement("td",{className:"hide-sm"},N.default.createElement(Me,{id:u.id})),N.default.createElement("td",{className:"r num"},$(u.market)),N.default.createElement("td",{className:"r num"},$(u.mine)),N.default.createElement("td",{className:"r hide-sm"},N.default.createElement("div",{style:{fontSize:12}},F(e,u.best[0].team,!0)),N.default.createElement("div",{className:"who-s num"},$(u.best[0].value))),N.default.createElement("td",{className:"r"},N.default.createElement(de,{value:u.best[0].value,base:u.mine})))))))))}var Fe=e=>e+(["th","st","nd","rd"][e%100>10&&e%100<14?0:e%10]??"th");var h=H(q(),1);var xt=e=>e>=.6?"var(--up)":e>=.4?"var(--warn)":"var(--down)";function St({team:e,chosen:t,onToggle:s,title:n}){let{v:a}=z(),[o,i]=(0,h.useState)(""),d=Object.entries(a.league.owner).filter(([,r])=>r===e).map(([r])=>r).filter(r=>!o||U(a,r).toLowerCase().includes(o.toLowerCase())).sort((r,l)=>a.value(e,l)-a.value(e,r));return h.default.createElement("section",{className:"panel"},h.default.createElement("div",{className:"panel-h"},h.default.createElement("h2",null,n),h.default.createElement("div",{className:"right",style:{flex:"1 1 160px"}},h.default.createElement("input",{className:"input",placeholder:"Search",value:o,onChange:r=>i(r.target.value),"aria-label":`Search ${n}`,id:`search-${e}`}))),h.default.createElement("div",{className:"basket","aria-live":"polite"},t.length===0&&h.default.createElement("span",{className:"faint",style:{fontSize:12}},"Nothing yet. Tick players or picks below."),t.map(r=>h.default.createElement("span",{className:"bchip",key:r},U(a,r),h.default.createElement("button",{"aria-label":`Remove ${U(a,r)}`,onClick:()=>s(r)},"\xD7")))),h.default.createElement("div",{className:"picker-list",role:"listbox","aria-multiselectable":"true"},d.map(r=>{let l=t.includes(r);return h.default.createElement("div",{key:r,className:"pick-row",role:"option","aria-checked":l,"aria-selected":l,onClick:()=>s(r)},h.default.createElement("input",{type:"checkbox",checked:l,readOnly:!0,tabIndex:-1,"aria-hidden":"true"}),h.default.createElement(R,{id:r}),h.default.createElement("span",{className:"num"},$(a.value(e,r))))})))}function ys(e){return[["hot/cold streak",e.hype],["positional need",e.need],["contend/rebuild",e.window],["owns him",e.endowment],["past trades",e.learned],["your note",e.nudge]].filter(([,s])=>Math.abs(s-1)>=.025).sort((s,n)=>Math.abs(n[1]-1)-Math.abs(s[1]-1)).slice(0,2).map(([s,n])=>({text:`${s} ${te(n-1)}`,up:n>1}))}function Ne({f:e}){let t=ys(e);return t.length?h.default.createElement("span",{className:"factors"},t.map(s=>h.default.createElement("span",{key:s.text,className:"factor "+(s.up?"pos-f":"neg-f")},s.text))):h.default.createElement("span",{className:"faint",style:{fontSize:11}},"at market")}function Tt({title:e,read:t,giveLabel:s,getLabel:n}){return h.default.createElement("div",{className:"view"},h.default.createElement("h3",null,e),h.default.createElement("div",{className:"kv"},h.default.createElement("span",{className:"muted"},n),h.default.createElement("span",{className:"num"},$(t.getValue))),h.default.createElement("div",{className:"kv"},h.default.createElement("span",{className:"muted"},s),h.default.createElement("span",{className:"num"},$(t.giveValue))),h.default.createElement("div",{className:"kv",style:{borderTop:"1px solid var(--line)",marginTop:4,paddingTop:6}},h.default.createElement("span",null,"Net"),h.default.createElement("span",{className:"num "+(t.edge>=0?"up":"down")},he(t.edge))))}function Lt(){let{v:e,lab:t,setLab:s,saveTrade:n,toast:a,canWrite:o,openAsset:i}=z(),d=e.league.teams.filter(b=>b.id!==e.me),r=t.team&&t.team!==e.me?t.team:d[0]?.id,l={team:r,give:t.receive,get:t.send},p=l.give.length>0||l.get.length>0,g=(0,h.useMemo)(()=>ee(e,l),[e,r,t.send.join(),t.receive.join()]),L=(0,h.useMemo)(()=>ee(e,ke(e,l)),[e,r,t.send.join(),t.receive.join()]),c=(0,h.useMemo)(()=>p&&l.give.length&&l.get.length?mt(e,l):[],[e,r,t.send.join(),t.receive.join()]),[u,w]=(0,h.useState)(""),[m,k]=(0,h.useState)(!1),M=b=>O=>{let _=t[b];s({...t,team:r,[b]:_.includes(O)?_.filter(W=>W!==O):[..._,O]})},A=async b=>{k(!0);let O={id:"m-"+Date.now().toString(36),ts:new Date().toISOString(),team:r,with:e.me,give:l.give,get:l.get,outcome:b,source:"manual",...u.trim()?{note:u.trim().slice(0,300)}:{}};try{await n(O),w(""),a(b==="pending"?"Saved as sent. Mark it once they answer.":`Logged as ${Oe[b].toLowerCase()}. ${F(e,r,!0)}'s values are updated.`)}catch{a("That offer could not be saved. Try again.")}finally{k(!1)}};return h.default.createElement(h.default.Fragment,null,h.default.createElement("section",{className:"panel"},h.default.createElement("div",{className:"panel-h"},h.default.createElement("h2",null,"Trade lab"),h.default.createElement("span",{className:"sub"},"Each side is priced in that team's own eyes"),h.default.createElement("div",{className:"right",style:{flex:"1 1 220px"}},h.default.createElement("label",{className:"field",style:{flex:1}},h.default.createElement("span",null,"Trading with"),h.default.createElement("select",{id:"lab-team",className:"select",value:r,onChange:b=>s({team:b.target.value,send:t.send,receive:[]})},d.map(b=>h.default.createElement("option",{key:b.id,value:b.id},F(e,b.id))))))),p?h.default.createElement(h.default.Fragment,null,h.default.createElement("div",{className:"verdict"},h.default.createElement("div",{className:"view",style:{gridColumn:"1 / -1",background:"var(--surface)"}},h.default.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap"}},h.default.createElement("span",{className:"big"},Math.round(g.p*100),"%"),h.default.createElement("span",{className:"lik",style:{color:xt(g.p)}},lt(g.p)),h.default.createElement("span",{className:"muted",style:{fontSize:13}},"chance ",F(e,r,!0)," accepts")),h.default.createElement("div",{className:"meter",role:"meter","aria-valuemin":0,"aria-valuemax":100,"aria-valuenow":Math.round(g.p*100),"aria-label":"Chance they accept"},h.default.createElement("span",{style:{width:`${g.p*100}%`,background:xt(g.p)}})),g.margin>.05&&h.default.createElement("div",{className:"faint",style:{fontSize:12}},"Their past trades say they want a clear win before they say yes.")),h.default.createElement(Tt,{title:`${F(e,r,!0)}'s view`,read:g,getLabel:"They get",giveLabel:"They give"}),h.default.createElement(Tt,{title:"Your view",read:L,getLabel:"You get",giveLabel:"You give"})),h.default.createElement("div",{className:"tbl-wrap"},h.default.createElement("table",{className:"tbl"},h.default.createElement("thead",null,h.default.createElement("tr",null,h.default.createElement("th",null,"In the deal"),h.default.createElement("th",{className:"r"},"Market"),h.default.createElement("th",{className:"r"},"Them"),h.default.createElement("th",{className:"r"},"You"),h.default.createElement("th",{className:"hide-sm"},"Why they differ"))),h.default.createElement("tbody",null,[...l.get.map(b=>({id:b,dir:"You send"})),...l.give.map(b=>({id:b,dir:"You get"}))].map(({id:b,dir:O})=>h.default.createElement("tr",{key:b,onClick:()=>i(b)},h.default.createElement("td",null,h.default.createElement("div",{className:"who-s",style:{marginBottom:2}},O),h.default.createElement(R,{id:b,sub:!1})),h.default.createElement("td",{className:"r num"},$(e.market(b))),h.default.createElement("td",{className:"r num"},$(e.value(r,b))),h.default.createElement("td",{className:"r num"},$(e.value(e.me,b))),h.default.createElement("td",{className:"hide-sm"},h.default.createElement(Ne,{f:e.explain(r,b)}))))))),c.length>0&&h.default.createElement("div",{className:"panel-b",style:{borderTop:"1px solid var(--line-2)"}},h.default.createElement("div",{className:"h2",style:{fontSize:14,marginBottom:8}},c[0].kind==="add"?"Get it to a yes":"Room to ask for more"),h.default.createElement("div",{style:{display:"grid",gap:6}},c.map(b=>h.default.createElement("div",{key:b.id,style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},h.default.createElement("button",{className:"btn small",onClick:()=>s(b.kind==="add"?{...t,team:r,send:[...t.send,b.id]}:{...t,team:r,receive:[...t.receive,b.id]})},b.kind==="add"?"Add":"Ask for"," ",U(e,b.id)),h.default.createElement("span",{className:"muted",style:{fontSize:12}},Math.round(b.read.p*100),"% yes \xB7 your net ",h.default.createElement("span",{className:"num "+(b.mine.edge>=0?"up":"down")},he(b.mine.edge))))))),h.default.createElement("div",{className:"panel-b",style:{borderTop:"1px solid var(--line-2)",display:"grid",gap:10}},h.default.createElement("div",{className:"h2",style:{fontSize:14}},"Log what happened"),h.default.createElement("p",{className:"note"},"A no tells the desk they value what they kept more than you thought. Logging it moves their numbers, and every future read for them."),h.default.createElement("input",{className:"input",id:"lab-note",placeholder:"Note (optional), e.g. said he's not selling his rookies",value:u,onChange:b=>w(b.target.value)}),h.default.createElement("div",{className:"outcomes"},["rejected","countered","accepted","offered","pending"].map(b=>h.default.createElement("button",{key:b,className:"btn"+(b==="rejected"?" primary":""),disabled:!o||m||!l.give.length||!l.get.length,onClick:()=>A(b)},ks[b])),h.default.createElement("button",{className:"btn",onClick:()=>s({team:r,send:[],receive:[]})},"Clear")),!o&&h.default.createElement("span",{className:"faint",style:{fontSize:12}},"Logging needs edit access to this page."))):h.default.createElement("div",{className:"panel-b"},h.default.createElement("p",{className:"note"},"Pick what you'd send and what you want back. The read updates as you go, and suggests the cheapest way to get a no to a yes."))),h.default.createElement("div",{className:"lab"},h.default.createElement(St,{team:e.me,chosen:t.send,onToggle:M("send"),title:"You send"}),h.default.createElement(St,{team:r,chosen:t.receive,onToggle:M("receive"),title:`You get from ${F(e,r,!0)}`})))}var Oe={rejected:"Rejected",countered:"Countered",accepted:"Accepted",offered:"Their offer",pending:"Sent",completed:"League trade"},ks={rejected:"They said no",countered:"They countered",accepted:"They said yes",offered:"They offered this",pending:"Sent, no answer yet",completed:"League trade"};var T=H(q(),1);function Pt(){let{v:e,openLab:t,openAsset:s}=z(),[n,a]=(0,T.useState)(""),[o,i]=(0,T.useState)(null),[d,r]=(0,T.useState)(.6),[l,p]=(0,T.useState)(!0),g=(0,T.useMemo)(()=>Object.entries(e.league.owner).filter(([,m])=>m!==e.me).map(([m])=>m).sort((m,k)=>e.market(k)-e.market(m)),[e]),L=n?g.filter(m=>U(e,m).toLowerCase().includes(n.toLowerCase())).slice(0,12):g.slice(0,12),c=o?e.league.owner[o]:null,u=l?[]:Object.keys(e.league.picks),w=(0,T.useMemo)(()=>o&&c?dt(e,c,[o],{minP:d,keep:u,limit:8}):[],[e,o,c,d,l]);return T.default.createElement("div",{className:"cols"},T.default.createElement("section",{className:"panel"},T.default.createElement("div",{className:"panel-h"},T.default.createElement("h2",null,"Who do you want?"),T.default.createElement("span",{className:"sub"},"Searches every roster but yours")),T.default.createElement("div",{className:"panel-b",style:{paddingBottom:0}},T.default.createElement("input",{className:"input",id:"find-q",placeholder:"Player or pick, e.g. Emmett",value:n,onChange:m=>a(m.target.value),"aria-label":"Search players and picks"})),T.default.createElement("div",{className:"tbl-wrap",style:{marginTop:10}},T.default.createElement("table",{className:"tbl"},T.default.createElement("thead",null,T.default.createElement("tr",null,T.default.createElement("th",null,"Target"),T.default.createElement("th",{className:"hide-sm"},"Owner"),T.default.createElement("th",{className:"r"},"Market"),T.default.createElement("th",{className:"r"},"To owner"))),T.default.createElement("tbody",null,L.map(m=>T.default.createElement("tr",{key:m,onClick:()=>i(m),"aria-selected":o===m,style:o===m?{background:"var(--accent-soft)"}:void 0},T.default.createElement("td",null,T.default.createElement(R,{id:m})),T.default.createElement("td",{className:"hide-sm",style:{fontSize:12}},F(e,e.league.owner[m],!0)),T.default.createElement("td",{className:"r num"},$(e.market(m))),T.default.createElement("td",{className:"r num"},$(e.value(e.league.owner[m],m))))))))),T.default.createElement("section",{className:"panel"},T.default.createElement("div",{className:"panel-h"},T.default.createElement("h2",null,o?`Offers for ${U(e,o)}`:"Offers"),o&&T.default.createElement("span",{className:"sub"},"Packages ",F(e,c,!0)," would likely take, cheapest for you first")),o?T.default.createElement(T.default.Fragment,null,T.default.createElement("div",{className:"panel-b",style:{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid var(--line-2)"}},T.default.createElement("label",{className:"field",style:{minWidth:200}},T.default.createElement("span",null,"At least ",T.default.createElement("b",{className:"num"},Math.round(d*100),"%")," chance of a yes"),T.default.createElement("input",{id:"find-minp",type:"range",min:.5,max:.9,step:.05,value:d,onChange:m=>r(+m.target.value)})),T.default.createElement("label",{style:{display:"flex",gap:6,alignItems:"center",fontSize:13}},T.default.createElement("input",{id:"find-picks",type:"checkbox",checked:l,onChange:m=>p(m.target.checked)})," Include my picks"),T.default.createElement("button",{className:"btn small",onClick:()=>s(o)},"See his values")),w.length===0?T.default.createElement(se,{title:"Nothing clears the bar"},T.default.createElement("p",{className:"note"},"No package of up to three of your pieces gets ",F(e,c,!0)," there. Lower the bar, or he may simply not be for sale at a price you'd pay.")):T.default.createElement("div",null,w.map((m,k)=>T.default.createElement("div",{key:k,className:"log-row"},T.default.createElement("div",{className:"log-top"},T.default.createElement("b",{className:"num"},Math.round(m.them.p*100),"% yes"),T.default.createElement("span",{className:"muted",style:{fontSize:12}},"Your net ",T.default.createElement("span",{className:"num "+(m.mine.edge>=0?"up":"down")},he(m.mine.edge))," \xB7 their net"," ",T.default.createElement("span",{className:"num"},he(m.them.edge))),T.default.createElement("button",{className:"btn small",style:{marginLeft:"auto"},onClick:()=>t({team:c,send:m.side.get,receive:[o]})},"Open in lab")),T.default.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:10}},m.side.get.map(M=>T.default.createElement("div",{key:M,style:{display:"flex",gap:6,alignItems:"center"}},T.default.createElement(R,{id:M,sub:!1}),T.default.createElement("span",{className:"faint num",style:{fontSize:11}},$(e.value(c,M))," to them \xB7 ",$(e.value(e.me,M))," to you")))))))):T.default.createElement(se,{title:"Pick a target"},T.default.createElement("p",{className:"note"},"Choose a player and the desk searches your roster for one-, two- and three-piece offers his owner would likely accept, leading with pieces they value more than you do."))))}var y=H(q(),1);var ws={QB:"QBs",RB:"RBs",WR:"WRs",TE:"TEs",PICK:"picks"};function ze(e,t){let s=[],n=e.learned.group[t]??{};for(let i of Re){let d=n[i];d!=null&&Math.abs(d)>=.03&&s.push(`${d>0?"Pays up for":"Discounts"} ${ws[i]} ${te(Math.exp(d)-1)}`)}let a=Object.entries(e.learned.asset[t]??{}).filter(([,i])=>Math.abs(i)>=.02).sort((i,d)=>Math.abs(d[1])-Math.abs(i[1])).slice(0,3);for(let[i,d]of a)s.push(`${d>0?"Values":"Cooler on"} ${U(e,i)} ${te(Math.exp(d)-1)}`);let o=e.learned.margin[t];return o!=null&&Math.abs(o)>=.01&&s.push(o>0?"Wants to win trades clearly":"Will take a close deal"),s}function Ns(e){let t=Math.max(-1,Math.min(1,(e-1)/.5));return Math.abs(t)<.08?"var(--surface-2)":t>0?`color-mix(in oklab, var(--series-1) ${Math.round(12+40*t)}%, var(--surface))`:`color-mix(in oklab, var(--down) ${Math.round(12+40*-t)}%, var(--surface))`}function xs({team:e}){let{v:t,saveSettings:s,canWrite:n}=z(),a=t.settings.traits[e]??{},[o,i]=(0,y.useState)(a.manager??"");(0,y.useEffect)(()=>i(a.manager??""),[a.manager]);let d=l=>{let p={...t.settings,traits:{...t.settings.traits,[e]:{...a,...l}}};for(let g of Object.keys(l))l[g]===void 0&&delete p.traits[e][g];return s(p)},r=(l,p,g)=>y.default.createElement("div",{className:"field"},y.default.createElement("span",null,l),y.default.createElement("div",{className:"seg",role:"group","aria-label":l},g.map(([L,c])=>y.default.createElement("button",{key:L,disabled:!n,"aria-pressed":a[p]===c,onClick:()=>d({[p]:c})},L))));return y.default.createElement("div",{style:{display:"grid",gap:10}},y.default.createElement("label",{className:"field"},y.default.createElement("span",null,"Manager"),y.default.createElement("input",{className:"input",id:`mgr-${e}`,placeholder:"e.g. Jake",value:o,disabled:!n,onChange:l=>i(l.target.value),onBlur:()=>o.trim()!==(a.manager??"")&&d({manager:o.trim().slice(0,30)||void 0})})),e!==t.me&&r("Hot streaks","recency",[["Ignores",.25],["Normal",void 0],["Chases",.8]]),e!==t.me&&r("Own players","endowment",[["Sells easily",.02],["Normal",void 0],["Hoards",.18]]),y.default.createElement("div",{className:"field"},y.default.createElement("span",null,"Window"),y.default.createElement("div",{className:"seg",role:"group","aria-label":"Window"},[["Auto",void 0],["Contending",.8],["Rebuilding",-.8]].map(([l,p])=>y.default.createElement("button",{key:l,disabled:!n,"aria-pressed":a.window===p,onClick:()=>d({window:p})},l)))))}var Ve=(e,t)=>e.filter(s=>s.outcome!=="pending"&&(s.team===t||s.with===t)).length;function Mt(){let{v:e,openTeam:t}=z(),s=[...e.league.teams].sort((n,a)=>n.standing-a.standing);return y.default.createElement(y.default.Fragment,null,y.default.createElement("p",{className:"note"},"Every manager prices players differently. Strength is each team's starters against the league average; the lessons come from trades they've made or turned down. Tap a team to see who they overrate and underrate."),y.default.createElement("div",{className:"teams"},s.map(n=>{let a=e.ctx[n.id],o=ze(e,n.id);return y.default.createElement("article",{key:n.id,className:"tcard"+(n.me?" me":"")},y.default.createElement("div",{style:{display:"flex",gap:8,alignItems:"flex-start"}},y.default.createElement("div",{style:{minWidth:0}},y.default.createElement("h3",null,n.name),y.default.createElement("div",{className:"who-s"},e.settings.traits[n.id]?.manager?e.settings.traits[n.id].manager+" \xB7 ":"",n.wins,"-",n.losses," \xB7 ",Fe(n.standing),n.me?" \xB7 you":"")),y.default.createElement("span",{className:"chip win",style:{marginLeft:"auto"}},ye(a.window))),y.default.createElement("div",{className:"heat","aria-label":"Strength by position vs league average"},X.map(i=>y.default.createElement("div",{key:i,style:{background:Ns(a.ratio[i])}},i,y.default.createElement("b",null,te(a.ratio[i]-1))))),o.length?y.default.createElement("ul",{className:"lessons"},o.map(i=>y.default.createElement("li",{key:i},i))):y.default.createElement("div",{className:"faint",style:{fontSize:12}},"No trade history to learn from yet."),y.default.createElement("button",{className:"btn small",style:{justifySelf:"start"},onClick:()=>t(n.id)},n.me?"Your settings":"Their board"))})))}function Ct({team:e}){let{v:t,data:s,openAsset:n,openLab:a,go:o}=z(),i=t.league.teams.find(p=>p.id===e),[d,r]=(0,y.useState)("theirs");if(!i)return null;let l=Object.entries(t.league.owner).filter(([,p])=>p===(d==="theirs"?e:t.me)).map(([p])=>p).sort((p,g)=>t.value(e,g)-t.value(e,p));return y.default.createElement("div",{className:"cols"},y.default.createElement("section",{className:"panel"},y.default.createElement("div",{className:"panel-h"},y.default.createElement("h2",null,F(t,e)),y.default.createElement("span",{className:"sub"},ye(t.ctx[e].window)),y.default.createElement("div",{className:"right"},y.default.createElement("button",{className:"btn small",onClick:()=>o("league")},"All teams"))),y.default.createElement("div",{className:"panel-b"},y.default.createElement(xs,{team:e})),y.default.createElement("div",{className:"panel-b",style:{borderTop:"1px solid var(--line-2)"}},y.default.createElement("div",{className:"h2",style:{fontSize:14,marginBottom:6}},"What their trades show"),ze(t,e).length?y.default.createElement("ul",{className:"lessons"},ze(t,e).map(p=>y.default.createElement("li",{key:p},p))):Ve(s.trades,e)?y.default.createElement("p",{className:"note"},Ve(s.trades,e)," answer",Ve(s.trades,e)>1?"s":""," logged, all in line with what the desk expected, so nothing has moved. A no to an offer the desk rated close teaches the most."):y.default.createElement("p",{className:"note"},"Nothing logged yet. Log offers they turn down in the Trade lab and this fills in."))),e!==t.me&&y.default.createElement("section",{className:"panel"},y.default.createElement("div",{className:"panel-h"},y.default.createElement("h2",null,"Through their eyes"),y.default.createElement("div",{className:"right"},y.default.createElement("div",{className:"seg",role:"group","aria-label":"Roster"},y.default.createElement("button",{"aria-pressed":d==="theirs",onClick:()=>r("theirs")},"Their roster"),y.default.createElement("button",{"aria-pressed":d==="mine",onClick:()=>r("mine")},"Your roster")))),y.default.createElement("div",{className:"tbl-wrap"},y.default.createElement("table",{className:"tbl"},y.default.createElement("thead",null,y.default.createElement("tr",null,y.default.createElement("th",null,d==="theirs"?"Their player":"Your player"),y.default.createElement("th",{className:"r"},"Market"),y.default.createElement("th",{className:"r"},"To them"),y.default.createElement("th",{className:"r"},"vs mkt"),y.default.createElement("th",{className:"hide-sm"},"Why"))),y.default.createElement("tbody",null,l.map(p=>y.default.createElement("tr",{key:p,onClick:()=>n(p)},y.default.createElement("td",null,y.default.createElement(R,{id:p})),y.default.createElement("td",{className:"r num"},$(t.market(p))),y.default.createElement("td",{className:"r num"},$(t.value(e,p))),y.default.createElement("td",{className:"r"},y.default.createElement(de,{value:t.value(e,p),base:t.market(p)})),y.default.createElement("td",{className:"hide-sm"},y.default.createElement(Ne,{f:t.explain(e,p)}))))))),y.default.createElement("div",{className:"panel-b",style:{borderTop:"1px solid var(--line-2)"}},y.default.createElement("button",{className:"btn",onClick:()=>a({team:e,send:[],receive:[]})},"Start a trade with ",F(t,e,!0)))))}var C=H(q(),1);function Ot({ids:e}){let{v:t,openAsset:s}=z();return e.length?C.default.createElement("span",null,e.map((n,a)=>C.default.createElement(C.default.Fragment,{key:n},a>0&&", ",C.default.createElement("a",{href:"#log",onClick:o=>{o.preventDefault(),s(n)},style:{color:"inherit"}},U(t,n))))):C.default.createElement("span",{className:"faint"},"nothing")}function Ss({t:e}){let{v:t,saveTrade:s,dropTrade:n,openLab:a,canWrite:o,toast:i}=z(),[d,r]=(0,C.useState)(!1),l=e.source==="sleeper",p=F(t,e.team,!0),g=e.with===t.me?"You":F(t,e.with,!0);return C.default.createElement("div",{className:"log-row"},C.default.createElement("div",{className:"log-top"},C.default.createElement("span",{className:"oc oc-"+e.outcome},Oe[e.outcome]),C.default.createElement("b",null,l?`${p} \u2194 ${g}`:`Offer to ${p}`),C.default.createElement("span",{className:"faint",style:{fontSize:12}},ne(e.ts)),C.default.createElement("div",{style:{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}},!l&&o&&C.default.createElement("select",{className:"select",style:{width:"auto",padding:"3px 8px",fontSize:12},"aria-label":"Outcome",value:e.outcome,onChange:async L=>{await s({...e,outcome:L.target.value}),i("Outcome updated.")}},["pending","rejected","countered","accepted","offered"].map(L=>C.default.createElement("option",{key:L,value:L},Oe[L]))),!l&&C.default.createElement("button",{className:"btn small",onClick:()=>a({team:e.team,send:e.get,receive:e.give})},"Reopen"),o&&(d?C.default.createElement(C.default.Fragment,null,C.default.createElement("button",{className:"btn small danger",onClick:async()=>{await n(e.id),i("Removed. What it taught the desk is gone too.")}},"Remove"),C.default.createElement("button",{className:"btn small",onClick:()=>r(!1)},"Keep")):C.default.createElement("button",{className:"btn small",onClick:()=>r(!0),"aria-label":"Remove this entry"},"\u2715")))),C.default.createElement("div",{className:"log-sides"},C.default.createElement("div",null,C.default.createElement("span",{className:"muted"},l?`${p} got`:"You asked for",": "),C.default.createElement(Ot,{ids:l?e.get:e.give})),C.default.createElement("div",null,C.default.createElement("span",{className:"muted"},l?`${g} got`:"You offered",": "),C.default.createElement(Ot,{ids:l?e.give:e.get}))),e.note&&C.default.createElement("div",{className:"faint",style:{fontSize:12}},"\u201C",e.note,"\u201D"))}function _t(){let{data:e}=z(),[t,s]=(0,C.useState)("all"),n=[...e.trades].filter(a=>t==="all"||t==="league"==(a.source==="sleeper")).sort((a,o)=>o.ts.localeCompare(a.ts));return C.default.createElement("section",{className:"panel"},C.default.createElement("div",{className:"panel-h"},C.default.createElement("h2",null,"Trade log"),C.default.createElement("span",{className:"sub"},"Everything the desk learns from. Recent answers count most; after about two months an answer counts half."),C.default.createElement("div",{className:"right"},C.default.createElement("div",{className:"seg",role:"group","aria-label":"Filter"},["all","mine","league"].map(a=>C.default.createElement("button",{key:a,"aria-pressed":t===a,onClick:()=>s(a)},a==="all"?"All":a==="mine"?"Your offers":"League trades"))))),n.length?n.map(a=>C.default.createElement(Ss,{key:a.id,t:a})):C.default.createElement(se,{title:"No offers logged"},C.default.createElement("p",{className:"note"},"Build an offer in the Trade lab and log the answer. League trades arrive with every sync.")))}var P=H(q(),1);var _e=e=>e.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[’'`.]/g,"").replace(/\b(jr|sr|ii|iii|iv|v)\b/g,"").replace(/[^a-z0-9]+/g," ").trim(),Ts={"1st":1,"2nd":2,"3rd":3,"4th":4};function Et(e,t){let s=new Map;for(let l of Object.values(t.players))s.set(_e(l.name),l.id);let n=e.split(/\r?\n/).map(l=>l.trim()).filter(Boolean),a={},o=[],i=[],d=0,r=l=>{for(let p of l.replace(/,(\d{3})/g,"$1").split(/[\s|\t]+/)){if(!/^\d{3,5}$/.test(p))continue;let g=+p;if(g>=100&&g<=1e4&&!(g>=2020&&g<=2035))return g}return null};for(let l=0;l<n.length;l++){let p=n[l],g=/(20\d\d)\s+(early|mid|late)?\s*(1st|2nd|3rd|4th)/i.exec(p);if(g){let m=p.slice(g.index+g[0].length),k=r(m)??r(n.slice(l+1,l+5).join(" "));k!=null&&i.push({season:+g[1],slot:(g[2]??"").toLowerCase(),round:Ts[g[3].toLowerCase()],value:k});continue}let L=_e(p),c=s.get(L),u="";if(!c){for(let[m,k]of s)m.length>4&&(" "+L+" ").includes(" "+m+" ")&&(!c||m.length>_e(t.players[c].name).length)&&(c=k);if(c){let m=t.players[c].name.split(" ").pop(),k=p.toLowerCase().lastIndexOf(m.toLowerCase());u=k>=0?p.slice(k+m.length):p}}if(!c){d++;continue}let w=r(u);for(let m=l+1;w==null&&m<Math.min(n.length,l+7)&&!s.has(_e(n[m]));m++)w=r(n[m]);w!=null&&a[c]==null&&(a[c]=w,o.push({id:c,name:t.players[c].name,value:w}))}for(let l of Object.values(t.picks)){let p=De(t,l).toLowerCase(),g=i.find(u=>u.season===l.season&&u.round===l.round&&u.slot===p),L=i.filter(u=>u.season===l.season&&u.round===l.round),c=g?.value??(L.length?Math.round(L.reduce((u,w)=>u+w.value,0)/L.length):null);c!=null&&(a[l.id]=c)}return{values:a,matched:o,unmatchedLines:d}}function Dt({sync:e,syncing:t,syncError:s}){let{v:n,data:a,saveSettings:o,canWrite:i,toast:d}=z(),[r,l]=(0,P.useState)(""),p=(0,P.useMemo)(()=>r.trim()?Et(r,n.league):null,[r,n.league]),g=Object.keys(n.settings.market).length,L=Object.keys(n.league.owner).filter(c=>n.league.players[c]).length;return P.default.createElement("div",{className:"cols"},P.default.createElement("section",{className:"panel"},P.default.createElement("div",{className:"panel-h"},P.default.createElement("h2",null,"Rosters"),P.default.createElement("span",{className:"sub"},"From Sleeper, through the StatsDeck connector")),P.default.createElement("div",{className:"panel-b",style:{display:"grid",gap:12}},P.default.createElement("div",{className:"kv"},P.default.createElement("span",{className:"muted"},"Last read"),P.default.createElement("span",null,new Date(n.league.asOf).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}))),P.default.createElement("div",{className:"kv"},P.default.createElement("span",{className:"muted"},"Rostered players \xB7 picks"),P.default.createElement("span",{className:"num"},L," \xB7 ",Object.keys(n.league.owner).length-L)),P.default.createElement("div",{className:"kv"},P.default.createElement("span",{className:"muted"},"Value readings saved"),P.default.createElement("span",{className:"num"},a.history.length,a.history.length?` (since ${ne([...a.history].sort((c,u)=>c.date.localeCompare(u.date))[0].date)})`:"")),P.default.createElement("p",{className:"note"},"Syncing reads every roster, record and league trade, then saves today's values for every team. Sync weekly (after Monday night) and the value history fills in."),P.default.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},P.default.createElement("button",{className:"btn primary",onClick:e,disabled:!!t||!i},t?"Syncing\u2026":"Sync from Sleeper"),t&&P.default.createElement("span",{className:"muted",style:{fontSize:13}},t)),s&&P.default.createElement("div",{className:"banner bad"},s))),P.default.createElement("section",{className:"panel"},P.default.createElement("div",{className:"panel-h"},P.default.createElement("h2",null,"Market values"),P.default.createElement("span",{className:"sub"},g?`${g} from ${n.settings.marketSource??"a paste"}${n.settings.marketAsOf?", "+ne(n.settings.marketAsOf):""}`:"Using the desk\u2019s production model")),P.default.createElement("div",{className:"panel-b",style:{display:"grid",gap:10}},P.default.createElement("p",{className:"note"},"To price off KeepTradeCut instead, open"," ",P.default.createElement("a",{href:"https://keeptradecut.com/dynasty-rankings?format=2",target:"_blank",rel:"noreferrer"},"KTC's superflex dynasty rankings"),", select the list, copy and paste it here. Players are matched by name. Anyone not on the list keeps the model value."),P.default.createElement("textarea",{className:"textarea",id:"ktc-paste",value:r,onChange:c=>l(c.target.value),placeholder:`1
+Josh Allen
+BUF
+QB1
+30.5 y.o.
+9999
+\u2026`,"aria-label":"Pasted rankings"}),p&&P.default.createElement("div",{className:"muted",style:{fontSize:13}},"Matched ",P.default.createElement("b",null,p.matched.length)," league players and ",P.default.createElement("b",null,Object.keys(p.values).length-p.matched.length)," picks.",p.matched.length>0&&" e.g. "+p.matched.slice(0,3).map(c=>`${c.name} ${$(c.value)}`).join(", ")),P.default.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},P.default.createElement("button",{className:"btn primary",disabled:!p||!Object.keys(p.values).length||!i,onClick:async()=>{await o({...n.settings,market:{...n.settings.market,...p.values},marketAsOf:new Date().toISOString(),marketSource:"KeepTradeCut"}),l(""),d(`Market updated for ${Object.keys(p.values).length} players and picks.`)}},"Use these values"),g>0&&P.default.createElement("button",{className:"btn",disabled:!i,onClick:async()=>{await o({...n.settings,market:{},marketAsOf:void 0,marketSource:void 0}),d("Back to the production model.")}},"Go back to the model")))),P.default.createElement("section",{className:"panel",style:{gridColumn:"1 / -1"}},P.default.createElement("div",{className:"panel-h"},P.default.createElement("h2",null,"How the numbers work")),P.default.createElement("div",{className:"panel-b howto"},P.default.createElement("p",null,P.default.createElement("b",null,"Market value")," is on KeepTradeCut's 0\u201310,000 scale. By default it comes from points per game above a replacement starter in this league (10 teams, superflex), stretched over the seasons a player has left at his age and position. Recent games count, but the market only believes half of a hot streak."),P.default.createElement("p",null,P.default.createElement("b",null,"Each team's value")," starts from market and moves for: how hard that manager chases streaks (and owners always believe their own guy's), how thin the team is at the position and whether he'd start there, whether they're contending (pay for veterans) or rebuilding (pay for youth and picks), the bump managers give their own players, and anything you set by hand."),P.default.createElement("p",null,P.default.createElement("b",null,"Learning.")," When a team turns down an offer, the desk raises what they kept and lowers what you offered, in their eyes only, by enough to explain the no. A yes does the opposite. Completed league trades teach both teams. One answer moves a value by up to about 20%, older answers fade, and removing a log entry removes its lesson."),P.default.createElement("p",null,P.default.createElement("b",null,"Packages")," add on a curve, so the best player in a deal counts for more than the depth around him. The chance of a yes compares what they get with what they give, in their eyes."))))}var v=H(q(),1);var B=H(q(),1);var xe=230,K={l:46,r:92,t:12,b:26};function Ls(e,t,s=4){let a=Math.max(1,t-e)/s,o=Math.pow(10,Math.floor(Math.log10(a))),i=[1,2,2.5,5,10].map(l=>l*o).find(l=>l>=a)??a,d=Math.floor(e/i)*i,r=[];for(let l=d;l<=t+i*.001;l+=i)r.push(Math.round(l));return r}var Ge=e=>new Date(e+(e.length===10?"T12:00:00Z":"")).getTime();function $t({series:e}){let t=(0,B.useRef)(null),[s,n]=(0,B.useState)(640),[a,o]=(0,B.useState)(null);(0,B.useEffect)(()=>{let f=t.current;if(!f)return;let j=new ResizeObserver(()=>n(Math.max(280,f.clientWidth)));return j.observe(f),()=>j.disconnect()},[]);let i=e.filter(f=>f.points.length),d=(0,B.useMemo)(()=>[...new Set(i.flatMap(f=>f.points.map(j=>j.date)))].sort(),[i]);if(!i.length)return null;let r=i.flatMap(f=>f.points.map(j=>j.value)),l=Math.min(...r),p=Math.max(...r),g=Math.max(200,(p-l)*.12),L=Ls(Math.max(0,l-g),p+g),c=L[0],u=L[L.length-1],w=s<420,m=w?12:K.r,k=Ge(d[0]),M=Ge(d[d.length-1]),A=f=>M===k?(K.l+s-m)/2:K.l+(Ge(f)-k)/(M-k)*(s-m-K.l),b=f=>K.t+(1-(f-c)/(u-c||1))*(xe-K.t-K.b),O=d.length<=5?d:[0,.33,.66,1].map(f=>d[Math.round(f*(d.length-1))]),_=i.map(f=>({s:f,p:f.points[f.points.length-1]})).map(f=>({...f,y:b(f.p.value)})).sort((f,j)=>f.y-j.y);for(let f=1;f<_.length;f++)_[f].y-_[f-1].y<13&&(_[f].y=_[f-1].y+13);let W=f=>{let j=f.currentTarget.getBoundingClientRect(),S=(f.clientX-j.left)/j.width*s,D=0,Y=1/0;d.forEach((E,V)=>{let Q=Math.abs(A(E)-S);Q<Y&&(Y=Q,D=V)}),o(D)},I=a!=null?d[a]:null;return B.default.createElement("div",{className:"chart",ref:t},B.default.createElement("div",{className:"legend","aria-hidden":"false"},i.map(f=>B.default.createElement("span",{key:f.key},B.default.createElement("i",{style:{background:f.color}}),f.label))),B.default.createElement("svg",{viewBox:`0 0 ${s} ${xe}`,role:"img","aria-label":"Value over time: "+i.map(f=>f.label).join(", "),onPointerMove:W,onPointerLeave:()=>o(null)},B.default.createElement("g",{className:"grid"},L.map(f=>B.default.createElement("line",{key:f,x1:K.l,x2:s-m,y1:b(f),y2:b(f)}))),B.default.createElement("g",{className:"axis"},L.map(f=>B.default.createElement("text",{key:f,x:K.l-8,y:b(f)+4,textAnchor:"end"},$(f))),O.map((f,j)=>B.default.createElement("text",{key:f+j,x:A(f),y:xe-6,textAnchor:O.length>1&&j===0?"start":j===O.length-1&&O.length>1?"end":"middle"},ne(f)))),I&&B.default.createElement("line",{x1:A(I),x2:A(I),y1:K.t,y2:xe-K.b,stroke:"var(--ink-3)",strokeWidth:1,strokeDasharray:"3 3"}),i.map(f=>{let j=f.points.map((D,Y)=>`${Y?"L":"M"}${A(D.date).toFixed(1)},${b(D.value).toFixed(1)}`).join(""),S=f.points.some(D=>D.rebuilt);return B.default.createElement("g",{key:f.key},f.points.length>1&&B.default.createElement("path",{d:j,fill:"none",stroke:f.color,strokeWidth:2,strokeLinejoin:"round",strokeLinecap:"round",strokeDasharray:S?"5 4":void 0}),f.points.map((D,Y)=>D.rebuilt&&f.points.length>1?null:B.default.createElement("circle",{key:Y,cx:A(D.date),cy:b(D.value),r:f.points.length===1?5:3.5,fill:f.color,stroke:"var(--surface)",strokeWidth:2})))}),!w&&_.map(f=>B.default.createElement("text",{key:f.s.key,className:"dlabel",x:A(f.p.date)+8,y:f.y+4},f.s.label.length>12?f.s.label.slice(0,11)+"\u2026":f.s.label)),B.default.createElement("rect",{x:K.l,y:K.t,width:Math.max(0,s-m-K.l),height:xe-K.t-K.b,fill:"transparent"})),I&&B.default.createElement("div",{className:"tip",style:{left:Math.min(Math.max(0,A(I)-80),s-170),top:30}},B.default.createElement("div",{style:{fontWeight:600,marginBottom:4}},ne(I)),i.map(f=>{let j=f.points.find(S=>S.date===I);return j?B.default.createElement("div",{className:"kv",key:f.key},B.default.createElement("span",null,B.default.createElement("i",{style:{display:"inline-block",width:8,height:8,borderRadius:2,background:f.color,marginRight:6}}),f.label),B.default.createElement("span",{className:"num"},$(j.value))):null})))}function jt({id:e,onClose:t}){let{v:s,data:n,db:a,saveSettings:o,canWrite:i,toast:d,openLab:r}=z(),l=s.league.players[e],p=s.league.owner[e],[g,L]=(0,v.useState)(""),[c,u]=(0,v.useState)(!1),[w,m]=(0,v.useState)(null),k=(0,v.useRef)(null);(0,v.useEffect)(()=>{k.current?.focus();let S=D=>D.key==="Escape"&&t();return window.addEventListener("keydown",S),()=>window.removeEventListener("keydown",S)},[t]);let M=[...s.league.teams].sort((S,D)=>s.value(D.id,e)-s.value(S.id,e)),A=s.market(e),b={date:s.league.asOf.slice(0,10),value:A},O=(S,D)=>S.some(Y=>Y.date===b.date)?S:[...S,{date:b.date,value:D}],_=n.rebuilt[e]??[],W=[];_.length&&W.push({key:"rebuilt",label:"Market, from game logs",color:"var(--series-market)",points:_.filter(S=>S.date<(ge(n.history,e)[0]?.date??b.date))}),W.push({key:"market",label:"Market",color:"var(--series-market)",points:O(ge(n.history,e),A)}),p&&p!==s.me&&W.push({key:"owner",label:F(s,p,!0),color:"var(--series-2)",points:O(ge(n.history,e,p),s.value(p,e))}),W.push({key:"me",label:"You",color:"var(--series-1)",points:O(ge(n.history,e,s.me),s.value(s.me,e))}),g&&g!==p&&g!==s.me&&W.push({key:"cmp",label:F(s,g,!0),color:"var(--series-3)",points:O(ge(n.history,e,g),s.value(g,e))});let I=S=>s.settings.nudges.find(D=>D.team===S&&D.asset===e)?.pct??0,f=(S,D)=>{let Y=s.settings.nudges.filter(V=>!(V.team===S&&V.asset===e)),E=Math.abs(D)<.001?Y:[...Y,{team:S,asset:e,pct:Math.round(D*100)/100}];return o({...s.settings,nudges:E})},j=async()=>{if(!(!l||!a)){u(!0),m(null);try{let S=pt(await wt(l.name));if(!S.length)throw Object.assign(new Error,{code:"none"});await le.rebuilt(a,e,gt(l,S)),d(`Rebuilt ${S.length} weeks for ${l.name}.`)}catch(S){m(S?.code==="none"?"StatsDeck has no game log for him yet.":Ce(S))}finally{u(!1)}}};return v.default.createElement("div",{className:"scrim",onClick:t},v.default.createElement("aside",{className:"sheet",role:"dialog","aria-modal":"true","aria-label":U(s,e),onClick:S=>S.stopPropagation()},v.default.createElement("div",{className:"sheet-h"},v.default.createElement("div",{style:{minWidth:0,flex:1}},v.default.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:6}},v.default.createElement(Ae,{v:s,id:e}),v.default.createElement("span",{className:"muted",style:{fontSize:12}},Le(s.league,e),p?" \xB7 "+(p===s.me?"your team":F(s,p)):"")),v.default.createElement("h2",null,U(s,e))),v.default.createElement("button",{ref:k,className:"btn",onClick:t,"aria-label":"Close"},"Close")),v.default.createElement("div",{className:"sheet-b"},v.default.createElement("div",{className:"stats"},v.default.createElement("div",{className:"stat"},v.default.createElement("div",{className:"l"},"Market"),v.default.createElement("div",{className:"v"},$(A))),v.default.createElement("div",{className:"stat"},v.default.createElement("div",{className:"l"},"To you"),v.default.createElement("div",{className:"v"},$(s.value(s.me,e)))),l&&v.default.createElement(v.default.Fragment,null,v.default.createElement("div",{className:"stat"},v.default.createElement("div",{className:"l"},"Recent form"),v.default.createElement("div",{className:"v"},l.form.toFixed(1)),v.default.createElement(Me,{id:e})),v.default.createElement("div",{className:"stat"},v.default.createElement("div",{className:"l"},"Longer run"),v.default.createElement("div",{className:"v"},l.base.toFixed(1)),v.default.createElement("span",{className:"faint",style:{fontSize:12}},"pts per game")))),l&&Math.abs(l.trend)>=.08&&v.default.createElement("p",{className:"note"},"On form alone he'd price at ",v.default.createElement("b",{className:"num"},$(ie(l,1))),"; on his longer run, ",v.default.createElement("b",{className:"num"},$(ie(l,0))),". The market takes the middle (",$(ie(l,re)),"). Managers who chase streaks, and his owner, lean toward form."),v.default.createElement("section",{className:"panel"},v.default.createElement("div",{className:"panel-h"},v.default.createElement("h2",null,"Value over time"),v.default.createElement("div",{className:"right"},v.default.createElement("select",{className:"select",id:"cmp-team",style:{width:"auto"},value:g,onChange:S=>L(S.target.value),"aria-label":"Compare a team"},v.default.createElement("option",{value:""},"Compare a team\u2026"),s.league.teams.filter(S=>S.id!==p&&S.id!==s.me).map(S=>v.default.createElement("option",{key:S.id,value:S.id},F(s,S.id)))))),v.default.createElement("div",{className:"panel-b"},v.default.createElement($t,{series:W}),n.history.length<=1&&!_.length&&v.default.createElement("p",{className:"note",style:{marginTop:8}},"One reading so far. Each sync adds a point",l?", or rebuild his season from game logs to see how his value moved before the desk was tracking.":"."),l&&v.default.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginTop:10,flexWrap:"wrap"}},v.default.createElement("button",{className:"btn small",onClick:j,disabled:c||!i},c?"Reading game logs\u2026":_.length?"Rebuild again":"Rebuild from game logs"),_.length>0&&v.default.createElement("span",{className:"faint",style:{fontSize:12}},"The earlier, gray stretch is rebuilt from game logs: market only.")),w&&v.default.createElement("div",{className:"banner bad",style:{marginTop:10}},w))),v.default.createElement("section",{className:"panel"},v.default.createElement("div",{className:"panel-h"},v.default.createElement("h2",null,"Every team's number"),v.default.createElement("span",{className:"sub"},"Tap \xB1 if you know a manager is higher or lower on him")),v.default.createElement("div",{className:"tbl-wrap"},v.default.createElement("table",{className:"tbl"},v.default.createElement("thead",null,v.default.createElement("tr",null,v.default.createElement("th",null,"Team"),v.default.createElement("th",{className:"r"},"Value"),v.default.createElement("th",{className:"r"},"vs mkt"),v.default.createElement("th",{className:"hide-sm"},"Why"),v.default.createElement("th",{className:"r"},"Your note"))),v.default.createElement("tbody",null,M.map(S=>{let D=I(S.id);return v.default.createElement("tr",{key:S.id,style:{cursor:"default"}},v.default.createElement("td",null,v.default.createElement("div",{className:"who-n",style:{fontSize:13}},F(s,S.id,!0),S.id===p?" \xB7 owner":"",S.me?" \xB7 you":""),v.default.createElement("div",{className:"who-s"},S.name)),v.default.createElement("td",{className:"r num"},$(s.value(S.id,e))),v.default.createElement("td",{className:"r"},v.default.createElement(de,{value:s.value(S.id,e),base:A})),v.default.createElement("td",{className:"hide-sm"},v.default.createElement(Ne,{f:s.explain(S.id,e)})),v.default.createElement("td",{className:"r"},v.default.createElement("span",{className:"stepper"},v.default.createElement("button",{disabled:!i,"aria-label":`Lower ${S.name}'s value 5%`,onClick:()=>f(S.id,Math.max(-.5,D-.05))},"\u2212"),v.default.createElement("span",null,D?(D>0?"+":"\u2212")+Math.round(Math.abs(D)*100)+"%":"\u2014"),v.default.createElement("button",{disabled:!i,"aria-label":`Raise ${S.name}'s value 5%`,onClick:()=>f(S.id,Math.min(.5,D+.05))},"+"))))}))))),p&&p!==s.me&&v.default.createElement("button",{className:"btn primary",style:{justifySelf:"start"},onClick:()=>{t(),r({team:p,send:[],receive:[e]})}},"Trade for ",l?l.name.split(" ").slice(-1)[0]:"this pick"))))}var Ps=[["roster","My team"],["lab","Trade lab"],["find","Find a trade"],["league","League"],["log","Log"],["data","Data"]],Bt=()=>{let e=location.hash.replace(/^#/,"");return/^[a-z0-9-]+$/.test(e)?e:"roster"};function It(){let[e,t]=(0,x.useState)(Bt),[s,n]=(0,x.useState)(null),[a,o]=(0,x.useState)({phase:"loading"}),[i,d]=(0,x.useState)(!0),[r,l]=(0,x.useState)({league:null,settings:be(),trades:[],history:[],rebuilt:{}}),[p,g]=(0,x.useState)(null),[L,c]=(0,x.useState)({team:"",send:[],receive:[]}),[u,w]=(0,x.useState)(null),[m,k]=(0,x.useState)(null),[M,A]=(0,x.useState)(null),b=(0,x.useRef)();(0,x.useEffect)(()=>{let E=()=>t(Bt());return window.addEventListener("hashchange",E),()=>window.removeEventListener("hashchange",E)},[]),(0,x.useEffect)(()=>{let E,V=!0;return(async()=>{let[Q,ue]=await Promise.all([we("db"),we("user")]);if(V){if(!Q)return o({phase:"nodb"});n(Q);try{await ue?.canEdit?.()===!1&&d(!1)}catch{}E=yt(Q,ce=>l(J=>({...J,...ce})),o)}})(),()=>{V=!1,E?.()}},[]);let O=(0,x.useCallback)(E=>{w(E),window.clearTimeout(b.current),b.current=window.setTimeout(()=>w(null),3200)},[]),_=(0,x.useCallback)(async E=>{try{await E()}catch(V){throw V?.code==="invalid_argument"?(d(!1),O("This page is read-only for you, so changes are not saved.")):V?.code==="quota_exceeded"?O("Saved data is full. Remove old log entries or value readings."):O("That change could not be saved. Try again."),V}},[O]),W=(0,x.useMemo)(()=>r.league?je(r.league,r.settings,r.trades):null,[r.league,r.settings,r.trades]),I=(0,x.useMemo)(()=>r.league&&W?ve(r.league,r.settings,W):null,[r.league,r.settings,W]),f=E=>{location.hash=E,t(E),window.scrollTo(0,0)},j=async()=>{if(s){A(null),k("Starting");try{let{league:E,trades:V}=await kt(k);k("Saving"),await _(()=>le.league(s,E));let Q=new Set(r.trades.map(Z=>Z.id));for(let Z of V)Q.has(Z.id)||await _(()=>le.trade(s,Z));let ue=[...r.trades.filter(Z=>!V.some(Se=>Se.id===Z.id)),...V],ce=ve(E,r.settings,je(E,r.settings,ue));await _(()=>le.snapshot(s,ct(ce,E.asOf)));let J=V.filter(Z=>!Q.has(Z.id)).length;O(`Synced ${E.teams.length} teams${J?`, ${J} new league trade${J>1?"s":""}`:""}.`)}catch(E){A(Ce(E))}finally{k(null)}}};if(!I||!r.league)return x.default.createElement(x.default.Fragment,null,x.default.createElement(At,{route:e,go:f}),x.default.createElement("main",null,a.phase==="nodb"?x.default.createElement(se,{title:"Open this on claude.ai"},x.default.createElement("p",{className:"note"},"Trade Desk saves your league, offers and value history to your account. Open the published page on claude.ai to use it.")):a.phase==="loading"||a.phase==="slow"&&!r.league?x.default.createElement(se,{title:"Loading your league"},x.default.createElement("p",{className:"note"},a.phase==="slow"?a.message:"Reading rosters, offers and value history.")):a.phase==="error"?x.default.createElement(se,{title:"Can't read saved data"},x.default.createElement("p",{className:"note"},a.message)):x.default.createElement(se,{title:"No league yet"},x.default.createElement("p",{className:"note"},"Sync once to read every roster, record, pick and league trade from Sleeper through the StatsDeck connector."),x.default.createElement("button",{className:"btn primary",onClick:j,disabled:!!m||!i},m?m+"\u2026":"Sync from Sleeper"),M&&x.default.createElement("div",{className:"banner bad"},M))));let S={v:I,data:r,db:s,canWrite:i,lab:L,setLab:c,toast:O,go:f,openAsset:g,openTeam:E=>f("league-"+E),openLab:E=>{c({team:E.team??L.team,send:E.send??[],receive:E.receive??[]}),g(null),f("lab")},saveSettings:E=>_(()=>le.settings(s,E)),saveTrade:E=>_(()=>le.trade(s,E)),dropTrade:E=>_(()=>le.dropTrade(s,E))},D=/^league-(.+)$/.exec(e)?.[1],Y=e==="lab"?x.default.createElement(Lt,null):e==="find"?x.default.createElement(Pt,null):D?x.default.createElement(Ct,{team:D}):e==="league"?x.default.createElement(Mt,null):e==="log"?x.default.createElement(_t,null):e==="data"?x.default.createElement(Dt,{sync:j,syncing:m,syncError:M}):x.default.createElement(Nt,null);return x.default.createElement(Be.Provider,{value:S},x.default.createElement(At,{route:D?"league":e,go:f,asOf:r.league.asOf,league:r.league.name,sync:j,syncing:m,canWrite:i}),x.default.createElement("main",null,a.phase==="slow"&&x.default.createElement("div",{className:"banner"},a.message),M&&e!=="data"&&x.default.createElement("div",{className:"banner bad"},M,x.default.createElement("button",{className:"btn small",onClick:()=>A(null)},"Dismiss")),Y),p&&x.default.createElement(jt,{id:p,onClose:()=>g(null)}),u&&x.default.createElement("div",{className:"toast",role:"status"},u))}function At({route:e,go:t,asOf:s,league:n,sync:a,syncing:o,canWrite:i}){return x.default.createElement("header",{className:"top"},x.default.createElement("div",{className:"top-in"},x.default.createElement("div",{className:"brand"},x.default.createElement("div",{className:"wordmark"},"Trade Desk ",x.default.createElement("small",null,n??"City Boys Dynasty")),s&&x.default.createElement("div",{className:"asof"},x.default.createElement("span",null,"Rosters ",ne(s)),a&&x.default.createElement("button",{className:"btn small",onClick:a,disabled:!!o||!i,title:"Read rosters and league trades again"},o?"Syncing\u2026":"Sync"))),x.default.createElement("nav",{className:"tabs","aria-label":"Sections"},Ps.map(([d,r])=>x.default.createElement("button",{key:d,className:"tab","aria-current":e===d?"page":void 0,onClick:()=>t(d)},r)))))}(0,Ft.createRoot)(document.getElementById("root")).render(Wt.default.createElement(It,null));})();
+
+</script>

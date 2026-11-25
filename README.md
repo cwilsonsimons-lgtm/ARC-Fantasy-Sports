@@ -29,6 +29,13 @@ the browser's default serif and the whole app changed character. Every family
 now carries a fallback too, so a miss degrades to a condensed sans rather than
 Times. Regenerate with `node tools/fetch-fonts.mjs` after changing the type.
 
+## Trade Desk
+
+`trade-desk/` is a separate claude.ai artifact: KeepTradeCut-style dynasty values where every
+team in the league gets its own number, learned from the trades they make and the offers they
+turn down. It reads the Sleeper league through the StatsDeck connector. See
+`trade-desk/README.md`.
+
 ## Arc Markets
 
 The **Markets** item in the bottom nav opens Arc Markets — a separate section, not
