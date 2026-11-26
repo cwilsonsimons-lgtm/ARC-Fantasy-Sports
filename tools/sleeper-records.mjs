@@ -246,7 +246,7 @@ const margins = pairings.filter(p => p.a.pts + p.b.pts > 0).map(p => {
 
 const data = {
   league: { id: LEAGUE, name: cur.league.name, avatar: cur.league.avatar || null, since: +first, season: curSeason,
-    latestWeek, median:!!cur.league.settings.league_average_match },
+    latestWeek, games: pairings.length, median: !!cur.league.settings.league_average_match },
   updated: new Date().toISOString(),
   positions: POSITIONS,
   owners,
