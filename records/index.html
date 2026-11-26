@@ -210,6 +210,7 @@ footer b{color:var(--ink-2)}
 </main>
 
 <script src="data.js"></script>
+<script src="art-auto.js"></script>
 <script src="art.js"></script>
 <script>
 (function(){
@@ -229,7 +230,9 @@ window.__imgFail=img=>{const p=img.parentNode;p.textContent=p.dataset.fb||'';};
 function face(url,label,bg){
   return `<div class="av" data-fb="${esc(initials(label))}" style="background:${bg}">${url?`<img src="${esc(url)}" alt="" loading="lazy" onerror="__imgFail(this)">`:esc(initials(label))}</div>`;
 }
-const ART=window.RECORDS_ART||{};
+// Hand-made art (art.js) wins over generated art (art-auto.js); both are optional.
+const AUTO=window.RECORDS_ART_AUTO||{}, HAND=window.RECORDS_ART||{};
+const ART={mascot:HAND.mascot||AUTO.mascot||null,players:{...AUTO.players,...HAND.players},owners:{...AUTO.owners,...HAND.owners}};
 const headshot=p=>(ART.players||{})[p.id]||`https://sleepercdn.com/content/nfl/players/thumb/${p.id}.jpg`;
 const playerFace=p=>face(p.pos==='D/ST'?`https://sleepercdn.com/images/team_logos/nfl/${String(p.nfl||'').toLowerCase()}.png`:headshot(p),p.name,TEAM_COLOR[p.nfl]||'#243049');
 const ownerFace=id=>{const o=owner(id);const art=(ART.owners||{})[o.name];return face(art?art:o.avatar?`https://sleepercdn.com/avatars/thumb/${o.avatar}`:null,o.name,`hsl(${hue(o.name)} 45% 32%)`);};
