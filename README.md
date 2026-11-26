@@ -208,3 +208,21 @@ It is kept for provenance — day-to-day work happens in the split files.
   wider than it needs to be; narrowing it to an explicit handler list is the
   obvious next cleanup.
 - **Scores are seeded hashes**, not real stats — deterministic per player/week.
+
+## Record Book
+
+`records/index.html` is the league's all-time record book — hi-score, champions,
+this season's leaders, best by position, position kings, biggest/smallest games,
+blowouts, bench disasters, the Hall of Shame and every owner's all-time record.
+Open it straight from disk; it reads `records/data.js`.
+
+The numbers are real, pulled from Sleeper (league `1312045587541020672` and every
+season before it). Refresh them after each week:
+
+```
+npm run records
+```
+
+Regular-season games count twice — head-to-head and against the week's median —
+and playoff weeks only count bracket games, so a benched-out week-17 lineup never
+sets a record. Details are at the top of `tools/sleeper-records.mjs`.

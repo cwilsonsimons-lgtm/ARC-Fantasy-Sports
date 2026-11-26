@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>City Boys Record Book</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@500;600;700&family=Oswald:wght@500;600;700&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: an arcade-scoreboard record book. Hero marquee with the all-time hi-score,
+   a banner row of champions, then paired leaderboards (2 columns, 1 on phones),
+   the Hall of Shame in red, and the owners' all-time table last.
+   Single dark look on purpose: it is a scoreboard. */
+:root{
+  --night:#080B14; --panel:#0F1524; --panel-2:#0B101C; --row:#121A2C; --line:#1F2A40;
+  --ink:#F2F5FA; --ink-2:#9AA6BA; --ink-3:#5F6B82;
+  --gold:#F7C948; --gold-2:#FF9F1C; --gold-glow:rgba(247,201,72,.35);
+  --green:#8CE04A; --green-glow:rgba(140,224,74,.25);
+  --red:#FF4D42; --red-2:#B3261E;
+  --f-display:'Anton','Oswald','Arial Narrow',Impact,sans-serif;
+  --f-head:'Oswald','Arial Narrow',system-ui,sans-serif;
+  --f-body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-pixel:'Press Start 2P',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;
+  background-image:radial-gradient(1200px 600px at 50% -200px,#16224A 0%,transparent 70%);background-repeat:no-repeat}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--night)}
+img{max-width:100%}
+.wrap{max-width:1200px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{margin:0;text-wrap:balance}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(8,11,20,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;min-height:60px;padding-block:8px}
+.logo{font-family:var(--f-display);font-size:24px;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;
+  background:linear-gradient(180deg,var(--gold),var(--gold-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo span{color:var(--green);-webkit-text-fill-color:var(--green)}
+nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none;min-width:0}
+nav::-webkit-scrollbar{display:none}
+nav a{font-family:var(--f-head);font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-2);
+  text-decoration:none;padding:8px 12px;border-radius:6px;white-space:nowrap;border:1px solid transparent}
+nav a:hover{color:var(--ink);border-color:var(--line);background:var(--panel)}
+
+/* ---------- hero ---------- */
+.hero{margin-top:24px;position:relative;overflow:hidden;border:2px solid var(--gold);border-radius:14px;
+  box-shadow:0 0 0 4px rgba(247,201,72,.08),0 0 40px var(--gold-glow) inset;
+  background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px),
+    conic-gradient(from 200deg at 30% 55%,#3B1A08,#7A3410 12%,#1A1030 30%,#0B1B4A 55%,#123A8A 75%,#3B1A08);
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;align-items:center;padding:40px 40px 36px}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-conic-gradient(from 0deg at 30% 55%,rgba(255,255,255,.05) 0 4deg,transparent 4deg 12deg)}
+.hero>*{position:relative;z-index:1;min-width:0}
+.eyebrow{font-family:var(--f-pixel);font-size:10px;letter-spacing:1px;color:var(--green);text-transform:uppercase;line-height:1.6}
+.title{font-family:var(--f-display);text-transform:uppercase;line-height:.86;font-size:clamp(64px,11vw,140px);letter-spacing:1px;margin-top:12px;font-style:italic}
+.title .a{display:block;background:linear-gradient(180deg,#FFF3B0 0%,var(--gold) 45%,var(--gold-2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 0 #6B2A00) drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+.title .b{display:block;background:linear-gradient(180deg,#FF8A5B 0%,var(--red) 50%,var(--red-2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 0 #4A0B07) drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+.sub{margin-top:18px;color:var(--ink-2);font-family:var(--f-head);font-size:15px;letter-spacing:.5px;text-transform:uppercase}
+.sub b{color:var(--ink);font-weight:600}
+
+.board{display:grid;gap:14px;justify-items:center;text-align:center}
+.shot{width:168px;height:168px;border-radius:50%;border:4px solid var(--gold);box-shadow:0 0 30px var(--gold-glow);overflow:hidden;
+  display:grid;place-items:center;font-family:var(--f-display);font-size:56px;color:var(--ink)}
+.shot img{width:100%;height:100%;object-fit:cover;object-position:top}
+.readout{display:flex;align-items:center;gap:18px;padding:14px 22px;border-radius:10px;background:#05070D;border:2px solid #2A3550;
+  box-shadow:0 0 0 3px #05070D,0 0 24px rgba(0,0,0,.6) inset}
+.readout .lbl{font-family:var(--f-pixel);font-size:11px;color:var(--red);text-shadow:0 0 8px rgba(255,77,66,.6);line-height:1.5}
+.readout .val{font-family:var(--f-pixel);font-size:clamp(30px,5vw,46px);color:var(--gold);text-shadow:0 0 14px var(--gold-glow),0 0 2px var(--gold);letter-spacing:2px}
+.who{font-family:var(--f-head);font-weight:600;font-size:22px;letter-spacing:.3px}
+.meta{color:var(--ink-2);font-size:13px;font-weight:600;letter-spacing:.3px}
+
+/* ---------- champions ---------- */
+.champs{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.champ{display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.champ.won{background:linear-gradient(135deg,rgba(247,201,72,.14),transparent 60%),var(--panel);border-color:rgba(247,201,72,.45)}
+.trophy{flex:none;width:42px;height:42px}
+.champ .yr{font-family:var(--f-pixel);font-size:10px;color:var(--gold);line-height:1.6}
+.champ .nm{font-family:var(--f-head);font-weight:600;font-size:18px;line-height:1.15}
+.champ .ow{color:var(--ink-2);font-size:13px;font-weight:600}
+.champ.live .yr{color:var(--green)}
+
+/* ---------- sections ---------- */
+section{margin-top:44px}
+.sec-head{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.sec-head::before,.sec-head::after{content:"";height:2px;flex:1;background:linear-gradient(90deg,transparent,#2E4A9A)}
+.sec-head::after{background:linear-gradient(270deg,transparent,#2E4A9A)}
+.sec-head h2{font-family:var(--f-display);font-style:italic;text-transform:uppercase;font-size:clamp(28px,4.5vw,40px);letter-spacing:1px;
+  color:#DCE4F5;text-shadow:0 3px 0 #1B2C66,0 0 20px rgba(80,120,255,.35);text-align:center}
+.sec-head small{display:block;font-family:var(--f-head);font-style:normal;font-size:12px;letter-spacing:2px;color:var(--ink-3);text-shadow:none;margin-top:2px}
+.shame .sec-head::before{background:linear-gradient(90deg,transparent,var(--red-2))}
+.shame .sec-head::after{background:linear-gradient(270deg,transparent,var(--red-2))}
+.shame .sec-head h2{color:#FFD9D4;text-shadow:0 3px 0 #5A0E09,0 0 20px rgba(255,77,66,.35)}
+
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:start}
+
+/* leaderboard card */
+.card{border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2));border:2px solid var(--gold);overflow:hidden;min-width:0}
+.card.blue{border-color:#3B63D9}
+.card.red{border-color:var(--red-2)}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 18px;background:#05070D;border-bottom:1px solid var(--line)}
+.card-h h3{font-family:var(--f-pixel);font-size:11px;line-height:1.5;color:var(--gold);text-transform:uppercase;letter-spacing:.5px}
+.card.red .card-h h3{color:var(--red)}
+.card-h span{font-family:var(--f-head);font-weight:600;font-size:12px;letter-spacing:1.5px;color:var(--ink-2);text-transform:uppercase;white-space:nowrap}
+.rows{list-style:none;margin:0;padding:0}
+.r{display:grid;grid-template-columns:28px 44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 18px;border-top:1px solid var(--line-soft,#161F33)}
+.r:first-child{border-top:0;background:linear-gradient(90deg,rgba(247,201,72,.08),transparent 70%)}
+.card.red .r:first-child{background:linear-gradient(90deg,rgba(255,77,66,.1),transparent 70%)}
+.rk{font-family:var(--f-pixel);font-size:11px;color:var(--ink-3);text-align:center}
+.r:first-child .rk{color:var(--gold)}
+.card.red .r:first-child .rk{color:var(--red)}
+.av{width:44px;height:44px;border-radius:50%;overflow:hidden;display:grid;place-items:center;border:2px solid var(--line);
+  font-family:var(--f-head);font-weight:700;font-size:15px;color:#fff;background:#243049}
+.av img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.nm{font-family:var(--f-head);font-weight:600;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
+.ds{color:var(--ink-2);font-size:12.5px;font-weight:600;line-height:1.35;letter-spacing:.2px;overflow-wrap:anywhere}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:1px}
+.tag.Playoffs{background:rgba(59,99,217,.25);color:#A9BEFF}
+.tag.Championship{background:rgba(247,201,72,.2);color:var(--gold)}
+.tag.Consolation{background:rgba(255,77,66,.15);color:#FF9A92}
+.pts{font-family:var(--f-pixel);font-size:14px;color:var(--ink);text-align:right;white-space:nowrap}
+.r:first-child .pts{color:var(--gold);text-shadow:0 0 10px var(--gold-glow)}
+.card.red .r:first-child .pts{color:var(--red);text-shadow:0 0 10px rgba(255,77,66,.4)}
+.pts small{display:block;font-family:var(--f-body);font-size:11px;color:var(--ink-3);font-weight:600;margin-top:5px;letter-spacing:.3px}
+
+/* best by position */
+.pos{border-radius:12px;border:2px solid #3B63D9;background:var(--panel-2);overflow:hidden;min-width:0}
+.pos-top{position:relative;display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:end;padding:14px 14px 12px;min-height:128px;
+  background:linear-gradient(120deg,var(--tc,#243049) 0%,transparent 75%),#0A0F1C}
+.pos-top .badge{position:absolute;top:10px;left:10px;z-index:2;font-family:var(--f-pixel);font-size:10px;padding:5px 7px;border-radius:4px;background:var(--gold);color:#1A1200;box-shadow:0 2px 0 #7A5A00}
+.pos-top .pic{width:96px;height:96px;border-radius:10px;overflow:hidden;display:grid;place-items:center;font-family:var(--f-display);font-size:34px;background:rgba(0,0,0,.25)}
+.pos-top .pic img{width:100%;height:100%;object-fit:cover;object-position:top}
+.pos-top .nm{font-size:18px}
+.pos-top .big{font-family:var(--f-pixel);font-size:20px;color:var(--gold);text-shadow:0 0 12px var(--gold-glow);margin-top:8px}
+.pos .r{grid-template-columns:20px 36px minmax(0,1fr) auto;padding:9px 12px;gap:10px}
+.pos .r:first-child{background:none}
+.pos .r:first-child .rk,.pos .r:first-child .pts{color:inherit;text-shadow:none}
+.pos .av{width:36px;height:36px;font-size:13px}
+.pos .pts{font-size:12px}
+
+/* position kings */
+.kings{overflow-x:auto}
+.kings table{width:100%;border-collapse:collapse;min-width:520px}
+.kings th,.kings td{text-align:left;padding:12px 18px;border-top:1px solid var(--line);vertical-align:top}
+.kings thead th{border-top:0;font-family:var(--f-pixel);font-size:11px;color:var(--gold);font-weight:400;background:#0B1120}
+.kings td.p{font-family:var(--f-pixel);font-size:11px;color:var(--ink-2);width:70px;padding-top:15px}
+.kings .nm{font-size:16px}
+.kings .ds b{color:var(--gold);font-weight:700}
+
+/* owners table */
+.tablewrap{overflow-x:auto}
+table.own{width:100%;border-collapse:collapse;min-width:720px}
+table.own th{font-family:var(--f-head);font-weight:600;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-2);text-align:right;padding:12px 14px;background:#05070D;white-space:nowrap}
+table.own td{padding:10px 14px;border-top:1px solid var(--line);text-align:right;font-weight:600;white-space:nowrap}
+table.own th:nth-child(-n+2),table.own td:nth-child(-n+2){text-align:left}
+table.own td.rk{width:40px}
+.ownr{display:flex;align-items:center;gap:12px}
+.ownr .av{width:36px;height:36px}
+.titles{color:var(--gold);font-family:var(--f-pixel);font-size:12px}
+.dim{color:var(--ink-3);font-weight:500}
+
+footer{margin:56px 0 0;padding-block:24px 40px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+footer b{color:var(--ink-2)}
+
+@media (max-width:1000px){.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){
+  .hero{grid-template-columns:minmax(0,1fr);padding:28px 20px;text-align:center}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .logo{font-size:20px}
+  .shot{width:132px;height:132px}
+}
+@media (max-width:520px){
+  .grid4{grid-template-columns:minmax(0,1fr)}
+  .r{grid-template-columns:22px 38px minmax(0,1fr) auto;gap:10px;padding:10px 14px}
+  .av{width:38px;height:38px}
+  .pts{font-size:12px}
+  .card-h{padding:12px 14px}
+  .readout{gap:12px;padding:12px 16px}
+  nav a{padding:8px 8px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo">City Boys <span>Dynasty</span></div>
+    <nav aria-label="Sections">
+      <a href="#season">This season</a>
+      <a href="#alltime">All-time</a>
+      <a href="#shame">Shame</a>
+      <a href="#owners">Owners</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="app">
+  <p style="padding:80px 0;text-align:center;color:var(--ink-2)">Loading the record book…</p>
+</main>
+
+<script src="data.js"></script>
+<script>
+(function(){
+const D = window.RECORDS;
+const app = document.getElementById('app');
+if(!D){app.innerHTML='<p style="padding:80px 0;text-align:center;color:var(--ink-2)">No records yet. Run <code>npm run records</code> to pull them from Sleeper.</p>';return;}
+
+const TEAM_COLOR={ARI:'#97233F',ATL:'#A71930',BAL:'#241773',BUF:'#00338D',CAR:'#0085CA',CHI:'#C83803',CIN:'#FB4F14',CLE:'#FF3C00',DAL:'#003594',DEN:'#FB4F14',DET:'#0076B6',GB:'#203731',HOU:'#03202F',IND:'#002C5F',JAX:'#006778',KC:'#E31837',LAR:'#003594',LA:'#003594',LAC:'#0080C6',LV:'#A5ACAF',MIA:'#008E97',MIN:'#4F2683',NE:'#002244',NO:'#D3BC8D',NYG:'#0B2265',NYJ:'#125740',PHI:'#004C54',PIT:'#FFB612',SEA:'#69BE28',SF:'#AA0000',TB:'#D50A0A',TEN:'#4B92DB',WAS:'#5A1414'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f2=n=>Number(n).toFixed(2);
+const owner=id=>D.owners[id]||{name:'?',team:'?'};
+const initials=s=>String(s).replace(/[^A-Za-z0-9 ]/g,'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
+const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))%360;return h;};
+
+// Images come from Sleeper's CDN; if one cannot load, initials take its place.
+window.__imgFail=img=>{const p=img.parentNode;p.textContent=p.dataset.fb||'';};
+function face(url,label,bg){
+  return `<div class="av" data-fb="${esc(initials(label))}" style="background:${bg}">${url?`<img src="${esc(url)}" alt="" loading="lazy" onerror="__imgFail(this)">`:esc(initials(label))}</div>`;
+}
+const headshot=p=>`https://sleepercdn.com/content/nfl/players/thumb/${p.id}.jpg`;
+const playerFace=p=>face(p.pos==='D/ST'?`https://sleepercdn.com/images/team_logos/nfl/${String(p.nfl||'').toLowerCase()}.png`:headshot(p),p.name,TEAM_COLOR[p.nfl]||'#243049');
+const ownerFace=id=>{const o=owner(id);return face(o.avatar?`https://sleepercdn.com/avatars/thumb/${o.avatar}`:null,o.name,`hsl(${hue(o.name)} 45% 32%)`);};
+
+const when=x=>`Week ${x.week}, ${x.season}${x.kind&&x.kind!=='Regular'?`<span class="tag ${x.kind}">${x.kind}</span>`:''}`;
+const ownerOf=x=>owner(x.owner).name;
+
+function card({title,span,tone='',rows}){
+  return `<article class="card ${tone}"><div class="card-h"><h3>${esc(title)}</h3><span>${esc(span)}</span></div><ol class="rows">${rows.join('')}</ol></article>`;
+}
+function row(rank,av,name,desc,pts,small){
+  return `<li class="r"><div class="rk">${rank}</div>${av}<div><div class="nm">${esc(name)}</div><div class="ds">${desc}</div></div><div class="pts num">${pts}${small?`<small>${small}</small>`:''}</div></li>`;
+}
+// Player rows: name, position · fantasy team (owner), then when or how many starts.
+const pRow=(p,opt={})=>row(p.rank,playerFace(p),p.name,
+  `${esc(p.pos)} · ${esc(p.team)} <span class="dim">(${esc(ownerOf(p))})</span><br>${opt.starts?`${p.starts} starts`:when(p)}`, f2(p.pts));
+const gRow=g=>row(g.rank,ownerFace(g.owner),g.team,`${esc(ownerOf(g))}<br>${when(g)}`,f2(g.pts),`vs ${f2(g.opp)}`);
+const mRow=m=>row(m.rank,ownerFace(m.winner.owner),m.winner.team,
+  `def. ${esc(m.loser.team)} <span class="dim">(${esc(owner(m.loser.owner).name)})</span><br>${f2(m.winner.pts)}–${f2(m.loser.pts)} · ${when(m)}`,`+${f2(m.margin)}`);
+
+const L=D.league, since=`Since ${L.since}`, curYr=String(L.season);
+const totalGames=L.games;
+
+// ---------- hero ----------
+const hi=D.hiScore[0];
+const hero=`
+<section class="hero" style="margin-top:24px">
+  <div>
+    <div class="eyebrow">${esc(L.name)} · Est. ${L.since}</div>
+    <h1 class="title"><span class="a">Record</span><span class="b">Book</span></h1>
+    <p class="sub"><b>${D.champions.length}</b> seasons · <b>${totalGames}</b> games · <b>10</b> owners · Superflex${L.median?' · vs. the median every week':''}</p>
+  </div>
+  <div class="board">
+    <div class="shot" data-fb="${esc(initials(hi.name))}" style="background:${TEAM_COLOR[hi.nfl]||'#243049'}"><img src="${esc(headshot(hi))}" alt="" onerror="__imgFail(this)"></div>
+    <div class="readout"><div class="lbl">HI-<br>SCORE</div><div class="val num">${f2(hi.pts)}</div></div>
+    <div>
+      ${D.hiScore.map(h=>`<div class="who">${esc(h.name)}</div><div class="meta">${esc(h.pos)} · ${esc(h.team)} (${esc(ownerOf(h))}) · ${when(h)}</div>`).join('')}
+    </div>
+  </div>
+</section>`;
+
+// ---------- champions ----------
+const trophy=(c)=>`<svg class="trophy" viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h20v8c0 7-4.5 12-10 12S14 21 14 14z" fill="${c}"/><path d="M14 9H7c0 6 3 10 8 10M34 9h7c0 6-3 10-8 10" fill="none" stroke="${c}" stroke-width="3"/><rect x="21" y="25" width="6" height="9" fill="${c}"/><rect x="14" y="34" width="20" height="6" rx="1.5" fill="${c}"/></svg>`;
+const champs=`<div class="champs">${D.champions.map(c=>c.done
+  ? `<div class="champ won">${trophy('var(--gold)')}<div><div class="yr">${c.season} champion</div><div class="nm">${esc(c.champ.team)}</div><div class="ow">${esc(owner(c.champ.owner).name)} · def. ${esc(c.runnerUp.team)}</div></div></div>`
+  : `<div class="champ live">${trophy('var(--ink-3)')}<div><div class="yr">${c.season} · in progress</div><div class="nm">Title up for grabs</div><div class="ow">Through week ${L.latestWeek} · playoffs start week 15</div></div></div>`).join('')}</div>`;
+
+// ---------- this season ----------
+const bestPos=D.positions.map(pos=>{
+  const [a,...rest]=D.bestByPosition[pos]; if(!a) return '';
+  return `<article class="pos"><div class="pos-top" style="--tc:${TEAM_COLOR[a.nfl]||'#243049'}">
+    <span class="badge">${esc(pos)}</span>
+    <div class="pic" data-fb="${esc(initials(a.name))}"><img src="${esc(headshot(a))}" alt="" loading="lazy" onerror="__imgFail(this)"></div>
+    <div><div class="nm">${esc(a.name)}</div><div class="ds">${esc(a.team)} · ${a.starts} starts</div><div class="big num">${f2(a.pts)}</div></div>
+  </div><ol class="rows">${rest.map(p=>row(p.rank,playerFace(p),p.name,`${esc(p.team)}<br>${p.starts} starts`,f2(p.pts))).join('')}</ol></article>`;
+}).join('');
+
+const season=`
+<section id="season">
+  <div class="sec-head"><h2>This season<small>${curYr} · through week ${L.latestWeek}</small></h2></div>
+  <div class="grid2">
+    ${card({title:'Top scorers',span:`Week ${L.latestWeek}`,rows:D.topScorers.map(p=>pRow(p))})}
+    ${card({title:'Season leaders',span:curYr,rows:D.seasonLeaders.map(p=>pRow(p,{starts:true}))})}
+  </div>
+</section>
+<section>
+  <div class="sec-head"><h2>Best by position<small>${curYr} · points as a starter</small></h2></div>
+  <div class="grid4">${bestPos}</div>
+</section>`;
+
+// ---------- position kings ----------
+const kings=`
+<section>
+  <div class="sec-head"><h2>Position kings<small>Best season at each spot</small></h2></div>
+  <article class="card blue"><div class="kings"><table>
+    <thead><tr><th></th>${D.positionKings.map(k=>`<th>${k.season}</th>`).join('')}</tr></thead>
+    <tbody>${D.positions.map(pos=>`<tr><td class="p">${esc(pos)}</td>${D.positionKings.map(k=>{const p=k.kings[pos];return p?`<td><div class="nm">${esc(p.name)}</div><div class="ds"><b class="num">${f2(p.pts)}</b> · ${esc(p.team)} (${esc(ownerOf(p))})</div></td>`:'<td class="dim">—</td>';}).join('')}</tr>`).join('')}</tbody>
+  </table></div></article>
+</section>`;
+
+// ---------- all-time ----------
+const alltime=`
+<section id="alltime">
+  <div class="sec-head"><h2>All-time records<small>${since}</small></h2></div>
+  <div class="grid2">
+    ${card({title:'Biggest games ever',span:since,rows:D.biggestGames.map(gRow)})}
+    ${card({title:'Biggest weeks ever',span:since,rows:D.biggestWeeks.map(p=>pRow(p))})}
+    ${card({title:'Most points all-time',span:since,rows:D.mostPoints.map(p=>pRow(p,{starts:true}))})}
+    <div style="display:grid;gap:20px;min-width:0">
+      ${card({title:'Left on the bench',span:since,tone:'blue',rows:D.bench.map(p=>pRow(p))})}
+      ${card({title:'Biggest blowouts',span:since,tone:'blue',rows:D.blowouts.map(mRow)})}
+    </div>
+    ${card({title:'Closest games',span:since,tone:'blue',rows:D.closest.map(mRow)})}
+    ${card({title:'Highest score in a loss',span:since,tone:'blue',rows:D.heartbreak.map(gRow)})}
+  </div>
+</section>`;
+
+// ---------- shame ----------
+const shame=`
+<section id="shame" class="shame">
+  <div class="sec-head"><h2>Hall of shame<small>${since}</small></h2></div>
+  <div class="grid2">
+    ${card({title:'Smallest games ever',span:since,tone:'red',rows:D.smallestGames.map(gRow)})}
+    ${card({title:'Worst starts',span:since,tone:'red',rows:D.worstStarts.map(p=>pRow(p))})}
+  </div>
+</section>`;
+
+// ---------- owners ----------
+const pct=x=>x.toFixed(3).replace(/^0/,'');
+const owners=`
+<section id="owners">
+  <div class="sec-head"><h2>Owners all-time<small>Regular season, head-to-head + median</small></h2></div>
+  <article class="card"><div class="tablewrap"><table class="own">
+    <thead><tr><th>#</th><th>Owner</th><th>Titles</th><th>Record</th><th>Win %</th><th>H2H</th><th>vs. Median</th><th>Points for</th><th>Per week</th><th>Playoffs</th></tr></thead>
+    <tbody>${D.standings.map((s,i)=>{const o=owner(s.owner);return `<tr>
+      <td class="rk"><span class="rk">${i+1}</span></td>
+      <td><div class="ownr">${ownerFace(s.owner)}<div><div class="nm">${esc(o.team)}</div><div class="ds">${esc(o.name)}</div></div></div></td>
+      <td class="titles">${s.titles?'★'.repeat(s.titles):'<span class="dim">—</span>'}</td>
+      <td class="num">${s.w}–${s.l}${s.t?`–${s.t}`:''}</td>
+      <td class="num">${pct(s.pct)}</td>
+      <td class="num dim">${s.h2h[0]}–${s.h2h[1]}</td>
+      <td class="num dim">${s.median[0]}–${s.median[1]}</td>
+      <td class="num">${s.pf.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td class="num">${f2(s.ppg)}</td>
+      <td class="num">${s.playoffs}<span class="dim"> / ${s.seasons}</span></td>
+    </tr>`;}).join('')}</tbody>
+  </table></div></article>
+</section>`;
+
+const updated=new Date(D.updated).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+app.innerHTML=hero+champs+season+kings+alltime+shame+owners+
+  `<footer><span><b>${esc(L.name)}</b> · Fantasy football since ${L.since}</span><span>Scores from Sleeper · Updated ${esc(updated)}</span></footer>`;
+})();
+</script>
+</body>
+</html>
